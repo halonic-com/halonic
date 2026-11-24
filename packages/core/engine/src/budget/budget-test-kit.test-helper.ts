@@ -1,4 +1,4 @@
-import type { RunEvent, RunParent } from "@halonicjs/events";
+import type { RunEvent, RunParent, Usage } from "@halonicjs/events";
 import type { KernelRuns } from "../kernel/kernel-test-kit.test-helper.ts";
 
 /** How a made-up run spent its money. */
@@ -10,6 +10,11 @@ export interface SpentRun {
   readonly parent?: RunParent;
   /** Set to `"test"` for a test case's run, which the budget leaves out. */
   readonly kind?: "run" | "test";
+}
+
+/** The tokens of `calls` calls made by `pricedCall`, added up. */
+export function callTokens(calls: number): Usage {
+  return { inputTokens: 1000 * calls, outputTokens: 200 * calls };
 }
 
 /** One model call that cost `cost`, as a run's turn log or harness writes it. */

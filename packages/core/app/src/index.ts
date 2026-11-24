@@ -488,7 +488,7 @@ export {
   type ToolRefusal,
   workspaceRisksOf,
 } from "./tool-listing.ts";
-export { treeCost, treeUnpriced } from "./tree-cost.ts";
+export { treeCost, treeUnpriced, treeUsage } from "./tree-cost.ts";
 export type {
   PersonTrustOrigin,
   TrustRefusal,

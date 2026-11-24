@@ -3,7 +3,7 @@ import { expect, it, vi } from "vitest";
 import { KernelRuns } from "../kernel/kernel-test-kit.test-helper.ts";
 import type { RunState } from "../kernel/run-state.ts";
 import { readRun } from "../kernel/step.ts";
-import { putSpentRun } from "./budget-test-kit.test-helper.ts";
+import { callTokens, putSpentRun } from "./budget-test-kit.test-helper.ts";
 import { monthsSpend, spendOf } from "./spend.ts";
 
 const at = "2026-01-20T10:00:00.000Z";
@@ -26,7 +26,11 @@ verifies("engine.budget-stops", () => {
 
     const spend = await spendOf(runs, await stateOf(runs, "run_1.2.2"), at);
 
-    expect(spend).toEqual({ run: 0.625, month: 4.625 });
+    expect(spend).toEqual({
+      run: 0.625,
+      month: 4.625,
+      tokens: { run: callTokens(3), month: callTokens(4) },
+    });
   });
 
   it("counts only this month's runs, and never a call the person's subscription paid", async () => {
@@ -41,7 +45,11 @@ verifies("engine.budget-stops", () => {
 
     const spend = await spendOf(runs, await stateOf(runs, "run_3"), at);
 
-    expect(spend).toEqual({ run: 0.5, month: 0.5 });
+    expect(spend).toEqual({
+      run: 0.5,
+      month: 0.5,
+      tokens: { run: callTokens(1), month: callTokens(2) },
+    });
   });
 
   it("leaves test runs out of the month, as the Studio's spend line does", async () => {
@@ -52,7 +60,11 @@ verifies("engine.budget-stops", () => {
     const spend = await spendOf(runs, await stateOf(runs, "run_1"), at);
     const months = await monthsSpend(runs, at, 1);
 
-    expect(spend).toEqual({ run: 0.5, month: 0.5 });
+    expect(spend).toEqual({
+      run: 0.5,
+      month: 0.5,
+      tokens: { run: callTokens(1), month: callTokens(1) },
+    });
     expect(months).toEqual([{ month: "2026-01", spent: 0.5 }]);
   });
 
@@ -68,8 +80,16 @@ verifies("engine.budget-stops", () => {
     const child = await spendOf(runs, await stateOf(runs, "run_1.2"), at);
     const plain = await spendOf(runs, await stateOf(runs, "run_2"), at);
 
-    expect(child).toEqual({ run: 0.375, month: 1.125 });
-    expect(plain).toEqual({ run: 1, month: 1.125 });
+    expect(child).toEqual({
+      run: 0.375,
+      month: 1.125,
+      tokens: { run: callTokens(2), month: callTokens(2) },
+    });
+    expect(plain).toEqual({
+      run: 1,
+      month: 1.125,
+      tokens: { run: callTokens(1), month: callTokens(2) },
+    });
     expect(list.mock.calls).toEqual([
       [{ kind: "run", startedSince: "2025-12-31T23:00:00.000Z" }],
       [{ kind: "run", startedSince: "2026-01-01T00:00:00.000Z" }],
