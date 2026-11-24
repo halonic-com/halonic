@@ -1,5 +1,6 @@
+import { workspaceRootsOf } from "./connector-places.ts";
 import type { HostIo } from "./host.ts";
-import { argumentAfter, connectorPlaces, logToError, shellChannelOf } from "./host-parts.ts";
+import { argumentAfter, logToError, shellChannelOf } from "./host-parts.ts";
 import { hostMessaging } from "./messaging/host-messaging.ts";
 import { optionalProfileOf } from "./profile-folder.ts";
 import { sweepRoots } from "./sandbox/sweep-lock.ts";
@@ -42,7 +43,7 @@ export async function serveMessagingOnly(
     return 2;
   }
   const profileFolder = argumentAfter(args, "--profile-folder");
-  const { workspaceRoots } = connectorPlaces(given.roots, profileFolder);
+  const workspaceRoots = workspaceRootsOf(given.roots, profileFolder);
   const profile = optionalProfileOf(profileFolder);
   const log = (text: string) => io.writeError(text);
   const keychain = hostKeychainOf(args, profile, log);
