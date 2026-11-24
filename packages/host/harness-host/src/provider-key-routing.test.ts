@@ -90,6 +90,8 @@ verifies("harness-host.bridge-routing", () => {
         baseUrl: "https://openrouter.ai/api",
         models: ["acme/flash"],
         routing: pin,
+        // The alias also names itself for the bridge's fallback (`harness-host.bridge-fallback`).
+        alias: "pinned",
       });
     });
 

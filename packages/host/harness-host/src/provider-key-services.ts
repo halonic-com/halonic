@@ -33,6 +33,7 @@ import {
   type ResolvedModelTarget,
   resolveModel,
 } from "@halonicjs/workspace";
+import { type BridgeFallbackSettings, fallbackSettingsOf } from "./bridge-fallbacks.ts";
 import type { BridgeAgent, BridgeServices } from "./bridge-host.ts";
 import { refusingApprovals } from "./not-wired.ts";
 import { type ProviderAccessChoice, providerAccessOf } from "./provider-access.ts";
@@ -175,6 +176,7 @@ export class ProviderKeyServices {
         [choice.provider]: accessOf(choice, models, pinned, {
           efforts: effortsOf(agent, target),
           routing: routingOf(target, pinned),
+          fallback: fallbackSettingsOf(target, pinned, baseUrlOf(choice)),
         }),
       },
       prices: choice.kind === "key" ? pricesOf(workspace, agent.hubId, choice) : {},
@@ -373,7 +375,8 @@ function aliasKey(hubId: string | undefined, model: string | undefined): string 
  * the type's own host, it names none, so the program's background calls on
  * its other models still go through (`harness-bridge.keyed-model`).
  * Either kind carries the agent's `efforts`, when it has one; a key also
- * carries its alias's `routing`, when it has one.
+ * carries its alias's `routing`, and its `alias` and `fallbacks` at
+ * OpenRouter (`fallbackSettingsOf`), when it has them.
  */
 function accessOf(
   choice: ProviderAccessChoice,
@@ -382,9 +385,10 @@ function accessOf(
   settings: {
     efforts: Readonly<Record<string, BridgeEffort>> | undefined;
     routing: ProviderRouting | undefined;
+    fallback: BridgeFallbackSettings | undefined;
   },
 ): BridgeProviderAccess {
-  const { efforts, routing } = settings;
+  const { efforts, routing, fallback } = settings;
   const withEfforts = efforts === undefined ? {} : { efforts };
   if (choice.kind === "sign-in") return { ...signIn, ...withEfforts };
   return {
@@ -395,7 +399,13 @@ function accessOf(
     ...(choice.baseUrl === undefined && !pinned ? {} : { models }),
     ...withEfforts,
     ...(routing === undefined ? {} : { routing }),
+    ...fallback,
   };
+}
+
+/** The address a key goes to, when it isn't its type's own; the program's sign-in has none. */
+function baseUrlOf(choice: ProviderAccessChoice): string | undefined {
+  return choice.kind === "key" ? choice.baseUrl : undefined;
 }
 
 /**
