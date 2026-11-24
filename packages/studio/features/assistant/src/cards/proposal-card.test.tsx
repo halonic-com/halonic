@@ -100,6 +100,31 @@ verifies("assistant.build.proposal-card", () => {
       }
     });
 
+    it("cuts a long why at 3 lines, and more opens the rest", async () => {
+      const scroll = vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(120);
+      const height = vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(60);
+      try {
+        const page = await show(card(reviewHost(reviewOf(1))).node);
+        const why = [...page.querySelectorAll("p")].find((each) =>
+          each.textContent?.startsWith("“"),
+        );
+        expect(why?.className).toContain("line-clamp-3");
+        expect(buttonNamed(page, "more")?.getAttribute("aria-controls")).toBe(why?.id);
+        await press(page, "more");
+        expect(why?.className).not.toContain("line-clamp-3");
+        expect(why?.textContent).toBe("“Pages on-call”");
+        expect(buttonNamed(page, "more")).toBeUndefined();
+      } finally {
+        scroll.mockRestore();
+        height.mockRestore();
+      }
+    });
+
+    it("leaves out more when the why fits", async () => {
+      const page = await show(card(reviewHost(reviewOf(1))).node);
+      expect(buttonNamed(page, "more")).toBeUndefined();
+    });
+
     it("shows the diff's removed and added lines", async () => {
       const page = await show(card(reviewHost(reviewOf(1))).node);
       expect(page.querySelector("details")?.open).toBe(false);

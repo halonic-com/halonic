@@ -12,6 +12,8 @@ export const cardWords = {
   wholeFile: { changed: "Changed", deleted: "Deleted" },
   /** The `article`'s name, so the card's buttons say which card they are for. */
   cardName: (tag: string, sentence: string) => `${tag}: ${sentence}`,
+  /** Under a why cut at 3 lines: shows the rest (flow-assistant 3.2). */
+  more: "more",
   showDiff: "Show the diff",
   wholeFileDeleted: "The whole file is deleted.",
   review: "Review",

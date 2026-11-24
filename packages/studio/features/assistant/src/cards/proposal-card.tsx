@@ -6,6 +6,7 @@ import { AssistantHostService } from "../api.ts";
 import { CardEndLine, cardElementId, endInWords } from "./card-end.tsx";
 import { reviewPlaceOf } from "./card-facts.ts";
 import { type CardReview, cardReviewsOf, type Proposal } from "./card-reviews.ts";
+import { CardWhy } from "./card-why.tsx";
 import { cardWords as words } from "./card-words.ts";
 
 /** The start of the `id` of an open card's **Review**, which the strip's count moves focus to. */
@@ -50,9 +51,7 @@ export function ProposalCard({ proposal, why, context }: ProposalCardProps) {
       </p>
       <p className="break-all font-mono text-caption text-fg-muted">{proposal.path}</p>
       {/* A rejected card folds its why away: it keeps only what you turned down. */}
-      {why === "" || end?.kind === "rejected" ? null : (
-        <p className="text-small text-fg-muted">“{why}”</p>
-      )}
+      {why === "" || end?.kind === "rejected" ? null : <CardWhy why={why} />}
       {state.kind === "open" ? (
         <OpenCard
           state={state}
