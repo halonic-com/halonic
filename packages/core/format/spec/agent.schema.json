@@ -359,6 +359,28 @@
         "always",
         "in-sandbox"
       ]
+    },
+    "chatUi": {
+      "type": "object",
+      "properties": {
+        "components": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "card",
+              "table",
+              "form",
+              "buttons"
+            ]
+          }
+        }
+      },
+      "required": [
+        "components"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [
