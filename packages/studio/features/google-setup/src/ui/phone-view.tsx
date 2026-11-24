@@ -19,6 +19,11 @@ export interface PhoneViewProps {
   readonly signInEntry: SignInEntry;
   /** A served window in a desktop browser: the read-only layout, in its own words, with **Copy**. */
   readonly served?: boolean;
+  /**
+   * Shown under a phone's top bar, which already names the item: the title is then for screen
+   * readers only (HAL-17215), as on the agent page.
+   */
+  readonly underTopBar?: boolean;
 }
 
 function stateOf(step: SetupStep, current: SetupStep | undefined, done: boolean): StepState {
@@ -68,7 +73,13 @@ function WhatNext(props: {
  * Start over: Google Cloud Console is hard to use on a phone. Its title takes focus as it opens,
  * as every other Inbox item's does.
  */
-export function PhoneView({ account, steps, signInEntry, served = false }: PhoneViewProps) {
+export function PhoneView({
+  account,
+  steps,
+  signInEntry,
+  served = false,
+  underTopBar = false,
+}: PhoneViewProps) {
   const current = currentStep(account, steps);
   const problem = connectorProblem(account);
   const doneCount = steps.filter((step) => account.record.stepsDone[step.id] !== undefined).length;
@@ -80,7 +91,7 @@ export function PhoneView({ account, steps, signInEntry, served = false }: Phone
         ref={heading}
         id="google-setup-phone-title"
         tabIndex={-1}
-        className="focus-ring text-title wrap-anywhere"
+        className={`focus-ring ${underTopBar ? "sr-only" : "text-title wrap-anywhere"}`}
       >
         Google for {account.email}
       </h2>
