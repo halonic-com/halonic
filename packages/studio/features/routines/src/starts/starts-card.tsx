@@ -7,7 +7,7 @@ import {
   TextArea,
   usePresentation,
 } from "@halonicjs/studio-kit";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   agentCantRunWords,
   type RoutineStartField,
@@ -28,6 +28,10 @@ export interface StartsCardProps {
   readonly routine: RoutineView;
   /** Opens the workflow or agent in its tab, for the phone's "Open <name>" row; without it there is no row. */
   readonly openTarget?: (target: RoutineTarget) => void;
+  /** Whether the picker should take the focus now, as **Pick what it runs** asks (HAL-17816). */
+  readonly focusPicker?: boolean;
+  /** Called once the picker has taken the focus. */
+  readonly onPickerFocused?: () => void;
 }
 
 /**
@@ -37,8 +41,15 @@ export interface StartsCardProps {
  * placeholders the text may use, and one line when the target can't be started. Each change is
  * written as soon as it can be; a change that can't be saved is shown in the card.
  */
-export function StartsCard({ host, routine, openTarget }: StartsCardProps) {
+export function StartsCard({
+  host,
+  routine,
+  openTarget,
+  focusPicker,
+  onPickerFocused,
+}: StartsCardProps) {
   const targets = useTargets(host, routine);
+  const picker = usePickerFocus(focusPicker === true, onPickerFocused);
   const [failure, setFailure] = useState<string | undefined>();
   const [picked, setPicked] = useState<RoutineTargetChoice | undefined>();
   // An agent picked but not yet written: the file keeps its target until the agent has a prompt.
@@ -90,6 +101,7 @@ export function StartsCard({ host, routine, openTarget }: StartsCardProps) {
         {/* An agent can't run from a routine yet (C52 claim 1.6), so the picker says so under an agent (HAL-14647). */}
         <Field label={words.pick} hint={target.kind === "agent" ? agentCantRunWords.line : null}>
           <Select
+            ref={picker}
             options={options}
             value={current === undefined ? "" : targetKey(current)}
             placeholder={target.id}
@@ -138,6 +150,22 @@ export function StartsCard({ host, routine, openTarget }: StartsCardProps) {
       </div>
     </Card>
   );
+}
+
+/**
+ * The picker's ref, which takes the focus while `focus` is true, as the When card's Trigger picker
+ * does: on a phone the picker is a button that opens its sheet, so it is pressed instead.
+ */
+function usePickerFocus(focus: boolean, onFocused: (() => void) | undefined) {
+  const picker = useRef<HTMLElement>(null);
+  const phone = usePresentation() === "phone";
+  useEffect(() => {
+    if (!focus) return;
+    if (phone) picker.current?.click();
+    else picker.current?.focus();
+    onFocused?.();
+  }, [focus, onFocused, phone]);
+  return picker;
 }
 
 /**

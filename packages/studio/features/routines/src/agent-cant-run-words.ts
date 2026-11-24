@@ -19,6 +19,13 @@ export const agentCantRunWords = {
   /** Both as one line, for the routine's own page, where Starts is. */
   line: `${agentCantRunWhy} ${agentCantRunInstead}.`,
   /**
+   * The notice at the top of the page of a routine that starts an agent (C2 option (a) on
+   * HAL-12374), which also says why Run now and Runs on its own are unavailable.
+   */
+  routineNotice: `${agentCantRunWhy} This routine won't start until it runs a workflow.`,
+  /** The notice's button, which opens the Starts picker. */
+  pickWhatItRuns: "Pick what it runs",
+  /**
    * On the agent's own Triggers section, which lists the workflows the agent is a step in, each
    * with its own Add trigger, or offers New workflow when there is none.
    */

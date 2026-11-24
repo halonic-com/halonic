@@ -19,6 +19,11 @@ export interface WhenCardProps {
   readonly focusTrigger?: boolean;
   /** Called once the picker has taken the focus. */
   readonly onTriggerFocused?: () => void;
+  /**
+   * The `id` of the page's agent routine notice, which says why Runs on its own is unavailable
+   * while the routine starts an agent (`routines.page.agent-routine-notice`).
+   */
+  readonly agentNoticeId?: string;
 }
 
 /**
@@ -35,6 +40,7 @@ export function WhenCard({
   announce,
   focusTrigger,
   onTriggerFocused,
+  agentNoticeId,
 }: WhenCardProps) {
   const reasonId = useId();
   const [saving, setSaving] = useState(false);
@@ -91,6 +97,7 @@ export function WhenCard({
   // Turning a routine that was never live on needs a version first; until that step exists, the
   // switch says so rather than doing nothing. A manual routine has no switch, so nothing to say.
   const blocked = neverLive && !routine.enabled && !manual;
+  const unavailableReason = switchUnavailableReason(routine, agentNoticeId, blocked && reasonId);
   // A manual routine never runs on its own, so the switch would say nothing true; the card says
   // "Starts only with Run now." instead and the switch comes back with another trigger.
   return (
@@ -109,7 +116,9 @@ export function WhenCard({
               rowTarget
               checked={routine.enabled}
               onChange={(enabled) => void turn(enabled)}
-              {...(blocked && { unavailable: { reason: reasonId } })}
+              {...(unavailableReason !== undefined && {
+                unavailable: { reason: unavailableReason },
+              })}
             />
           </>
         )
@@ -140,6 +149,20 @@ export function WhenCard({
       </div>
     </Card>
   );
+}
+
+/**
+ * The `id` of the line that says why the switch is unavailable, or `undefined` while it can be used.
+ * A routine that starts an agent won't start until it runs a workflow, whether it is on or off, so
+ * the page's notice says why (HAL-17816); else `makeLiveFirst`, the card's own line, when given.
+ */
+function switchUnavailableReason(
+  routine: RoutineView,
+  agentNoticeId: string | undefined,
+  makeLiveFirst: string | false,
+): string | undefined {
+  if (agentNoticeId !== undefined && routine.target.kind === "agent") return agentNoticeId;
+  return makeLiveFirst === false ? undefined : makeLiveFirst;
 }
 
 /** The line that says what still runs while the saved trigger isn't live; nothing when they agree. */

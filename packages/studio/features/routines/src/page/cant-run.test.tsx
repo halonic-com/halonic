@@ -108,7 +108,8 @@ verifies("routines.page.cant-run", () => {
 
   it("gives an agent routine the reason an agent can't run on its own, not the sandbox's", async () => {
     // The host reads an agent target as starting no program while agent runs aren't built
-    // (HAL-14848), even in Codex, and Run now refuses it with the New routine dialog's words.
+    // (HAL-14848), even in Codex, and Run now is unavailable for the agent notice's reason
+    // (HAL-17816), which starts with the New routine dialog's words.
     const analyst: RoutineView = {
       ...dailySummary,
       targetName: "Analyst",
@@ -137,8 +138,11 @@ verifies("routines.page.cant-run", () => {
     expect(check).not.toHaveBeenCalled();
     expect(page.textContent).not.toContain(firstLine);
 
-    await act(async () => runNowButton(page)?.click());
-    expect(runNow).toHaveBeenCalledTimes(1);
-    expect(toasts.list()[0]?.text).toContain(agentCantRunWords.why);
+    const button = runNowButton(page);
+    await act(async () => button?.click());
+    expect(runNow).not.toHaveBeenCalled();
+    expect(
+      document.getElementById(button?.getAttribute("aria-describedby") ?? "")?.textContent,
+    ).toContain(agentCantRunWords.why);
   });
 });
