@@ -56,12 +56,13 @@ async function issuesIn(files: Record<string, string>): Promise<string[]> {
 }
 
 const writerFile = "hubs/support/agents/writer.agent.yaml";
-const intro = `Deployment "web" lets many people sign in and stops them at a cost limit, and agent "writer"`;
+const intro = `Agent "writer"`;
+const limit = `deployment "web", where many people sign in, can't count its calls against its cost limit`;
 
 verifies("workspace.many-users-unpriced-model", () => {
   it("refuses an agent whose model has no price under a cost limit, at its model", async () => {
     expect(await issuesIn({ ...costLimit, ...writer("model: cheap\n") })).toEqual([
-      `error ${manyUsersUnpricedModelCode} ${writerFile} model: ${intro} calls model "cheap", which has no price or falls back to one without, so its calls would count no cost. Use an alias with a price, and give each of its fallbacks one too.`,
+      `error ${manyUsersUnpricedModelCode} ${writerFile} model: ${intro} calls model "cheap", which has no price or falls back to a model without one, so ${limit}. Use a model alias with a price, and give each of its fallbacks a price too.`,
     ]);
   });
 
@@ -97,7 +98,7 @@ verifies("workspace.many-users-unpriced-model", () => {
 
   it("refuses a harness agent without a model, at its harness: its program picks the model", async () => {
     expect(await issuesIn({ ...costLimit, ...writer("harness: claude-code\n") })).toEqual([
-      `error ${manyUsersUnpricedModelCode} ${writerFile} harness: ${intro} names no model, so claude-code picks one without a price and its calls would count no cost. Set model to an alias with a price.`,
+      `error ${manyUsersUnpricedModelCode} ${writerFile} harness: ${intro} names no model, so claude-code picks one Halonic has no price for, and ${limit}. Set model to an alias with a price.`,
     ]);
   });
 

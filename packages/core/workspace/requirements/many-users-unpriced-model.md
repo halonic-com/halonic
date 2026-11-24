@@ -11,7 +11,7 @@ When `loadWorkspace` has parsed a workspace whose `deployments.yaml` has a deplo
 - an agent of Halonic's own loop without a `model`, when the default it calls (the hub's `defaults.model`, else the workspace's, else `default`) has no `price` or falls back to one without, at the start of its file;
 - an agent whose `harness` names a program (`claude-code` or `codex`) and that names no `model`, since its program picks a model Halonic has no price for, at its `harness` key.
 
-The message names the deployment, the agent and the model, says its calls would count no cost, and says how to fix it. An alias no file has is the loader's own error, so it gets none of these. A `notify` limit, a limit on another unit, `meter: none` or `cloud`, `users.mode: owner` and a workspace with no `deployments.yaml` give no such error.
+The message starts with the agent, names the model and the deployment, says the deployment's cost limit can't count the agent's calls, and says how to fix it. An alias no file has is the loader's own error, so it gets none of these. A `notify` limit, a limit on another unit, `meter: none` or `cloud`, `users.mode: owner` and a workspace with no `deployments.yaml` give no such error.
 
 Since the error is on the agent's file, `errorsStoppingRun` (`workspace.run-problems`) gives it for every run of a workflow that uses the agent, so `halonic run` and Studio's Run refuse to start such a run with the same code.
 
@@ -21,13 +21,13 @@ Rationale: a call to a model without a price counts 0 cost (`events.summary-cost
 
 - Given a deployment `web` with `users: { mode: many, meter: config }`, a limit of 5 cost per month, the alias `cheap` without a price and the agent `writer` with `model: cheap`,
   when it is loaded,
-  then `writer`'s file has the error `users-many-unpriced-model` at `model`: `Deployment "web" lets many people sign in and stops them at a cost limit, and agent "writer" calls model "cheap", which has no price or falls back to one without, so its calls would count no cost. Use an alias with a price, and give each of its fallbacks one too.`
+  then `writer`'s file has the error `users-many-unpriced-model` at `model`: `Agent "writer" calls model "cheap", which has no price or falls back to a model without one, so deployment "web", where many people sign in, can't count its calls against its cost limit. Use a model alias with a price, and give each of its fallbacks a price too.`
 - Given the same deployment and `writer` with `model: smart`, an alias with a price,
   when it is loaded,
   then it has no errors; given `smart` falling back to `cheap`, it has the error.
 - Given the same deployment and `writer` with `harness: claude-code` and no `model`,
   when it is loaded,
-  then it has the error at `harness`: `… and agent "writer" names no model, so claude-code picks one without a price and its calls would count no cost. Set model to an alias with a price.`
+  then it has the error at `harness`: `Agent "writer" names no model, so claude-code picks one Halonic has no price for, and deployment "web", where many people sign in, can't count its calls against its cost limit. Set model to an alias with a price.`
 - Given a cost limit only on an organisation's pool, or only on a member's share,
   when it is loaded,
   then `writer` with `model: cheap` has the error.
