@@ -72,6 +72,11 @@ export class BuildChats {
     });
   }
 
+  /** Shows one kept chat: a replaced card's **Go to it** opens the chat with the newer card. */
+  async openChat(chatId: string): Promise<void> {
+    await this.load(() => this.host.chat(chatId));
+  }
+
   /** Shows a new Build chat, or the empty draft there is already. */
   async newChat(): Promise<void> {
     await this.load(() => this.host.newChat("build"));

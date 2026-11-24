@@ -230,6 +230,10 @@ export class WorkspaceAssistant implements AssistantHost {
     return this.#parts.review.changesIn(path);
   }
 
+  savedText(path: string): Promise<string | null> {
+    return this.#parts.files.read(path);
+  }
+
   accept(target: ReviewTarget): Promise<ReviewOutcome> {
     return this.#parts.review.accept(target);
   }

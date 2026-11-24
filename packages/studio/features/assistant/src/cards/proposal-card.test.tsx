@@ -158,7 +158,7 @@ verifies("assistant.build.apply-proposal", () => {
         ["accept", { kind: "card", card: { chatId: "c1", cardId: "call-1" } }],
       ]);
       expect(buttonNamed(page, "Accept all")).toBeUndefined();
-      expect(document.activeElement?.tagName).toBe("ARTICLE");
+      expect(document.activeElement?.textContent).toMatch(/^Accepted ?Now a change in triage\./);
       const [toast] = shown.toasts.list();
       expect(toast?.title).toBe("Accepted 3 changes in triage");
       await act(async () => toast?.action?.onClick());

@@ -188,6 +188,11 @@ export interface AssistantHost {
   changesForCard(card: ReviewCard): Promise<readonly FileReview[]>;
   /** The changes to review in one file, or `null` when it has none. */
   changesIn(path: string): Promise<FileReview | null>;
+  /**
+   * The file's saved text, changes to review included; `null` when there is no such file. A card
+   * whose last changes were decided elsewhere reads it to tell an Accept from a Reject.
+   */
+  savedText(path: string): Promise<string | null>;
   /** Accepts the target's changes as one step. Accepting makes nothing live. */
   accept(target: ReviewTarget): Promise<ReviewOutcome>;
   /** Rejects the target's changes as one step: the files go back to their baseline. */

@@ -1,7 +1,15 @@
 import type { FileReview, ReviewStep } from "@halonicjs/app";
 import type { AssistantHost } from "../api.ts";
+import {
+  type CardEnd,
+  type CardStep,
+  endOfSteps,
+  lastStep,
+  noteOf,
+  stepBetween,
+  stepsUpTo,
+} from "./card-ends.ts";
 import { type CardFacts, changeCount, factsOf } from "./card-facts.ts";
-import { notesToTheModel } from "./card-words.ts";
 
 /** The write a card shows: a `propose_file` (with its text) or a `propose_delete` (`null`). */
 export interface Proposal {
@@ -22,9 +30,22 @@ export type CardReview =
       /** Changes still to review, and how many the card had when first seen. */
       readonly left: number;
       readonly total: number;
+      /** The file changed outside Halonic, so Accept all and Reject all wait for Compare. */
+      readonly held: boolean;
+      /** A decision found the parts out of date, so they were read again (review panel note 1). */
+      readonly latest: boolean;
     }
-  /** Nothing of the card is left to review; its state line comes with T14 PR 8b. */
-  | { readonly kind: "decided"; readonly facts: CardFacts }
+  /**
+   * Nothing of the card is left to review. `end` is unknown for a card decided before Studio
+   * started, unless its file is just as the model wrote it.
+   */
+  | {
+      readonly kind: "decided";
+      readonly facts: CardFacts;
+      readonly end: CardEnd | undefined;
+      /** The changes as first seen, for the diff an accepted card keeps. */
+      readonly first: FileReview | undefined;
+    }
   | { readonly kind: "failed"; readonly facts: CardFacts; readonly reason: string };
 
 /** What a decision on a card did, for its toast and its Undo. */
@@ -40,6 +61,15 @@ interface Kept {
   total: number;
   /** Its first read has started; later ones follow the changes. */
   watched: boolean;
+  /** The changes as first and last seen to review, in this session. */
+  first: FileReview | undefined;
+  last: FileReview | undefined;
+  /** The decisions on its changes so far, oldest first. */
+  steps: CardStep[];
+  held: boolean;
+  latest: boolean;
+  /** The decision on the card itself being read now: it is what happened, not a guess from the file. */
+  deciding: CardStep["decision"] | undefined;
 }
 
 /**
@@ -98,20 +128,21 @@ export class CardReviews {
     } as const;
     const outcome =
       decision === "accept" ? await this.#host.accept(target) : await this.#host.reject(target);
-    await this.#read(keyOf(proposal));
+    const kept = this.#keep(proposal);
+    kept.held = outcome.status === "done" && outcome.held.includes(proposal.path);
+    // Review panel note 1: out-of-date parts are read again quietly, without an error.
+    kept.latest = outcome.status === "stale";
+    kept.deciding = decision;
+    await this.#read(keyOf(proposal)).finally(() => {
+      kept.deciding = undefined;
+    });
     if (outcome.status !== "done" || outcome.step.files.length === 0) return undefined;
-    const note =
-      decision === "accept"
-        ? notesToTheModel.accepted(proposal.path)
-        : notesToTheModel.rejected(proposal.path);
-    this.#notesOf(proposal.chatId).set(proposal.callId, note);
     return { count: state.left, name: state.facts.name, step: outcome.step };
   }
 
   /** Takes a decision back, for the toast's **Undo**: the changes are back to review. */
   async undo(proposal: Proposal, step: ReviewStep): Promise<void> {
     await this.#host.undo(step);
-    this.#notesOf(proposal.chatId).delete(proposal.callId);
     await this.#read(keyOf(proposal));
   }
 
@@ -127,7 +158,18 @@ export class CardReviews {
     let kept = this.#cards.get(key);
     if (kept === undefined) {
       const facts = factsOf(proposal.path, proposal.content);
-      kept = { proposal, state: { kind: "reading", facts }, total: 0, watched: false };
+      kept = {
+        proposal,
+        state: { kind: "reading", facts },
+        total: 0,
+        watched: false,
+        first: undefined,
+        last: undefined,
+        steps: [],
+        held: false,
+        latest: false,
+        deciding: undefined,
+      };
       this.#cards.set(key, kept);
     }
     return kept;
@@ -139,25 +181,66 @@ export class CardReviews {
     const { chatId, callId, path } = kept.proposal;
     try {
       const reviews = await this.#host.changesForCard({ chatId, cardId: callId });
-      this.#set(
-        kept,
-        reviews.find((each) => each.path === path),
-      );
+      const review = reviews.find((each) => each.path === path);
+      if (review !== undefined) this.#open(kept, review);
+      // An end stays: an accepted card is still Accepted when the model changes the file again.
+      else if (kept.state.kind !== "decided") this.#end(kept, await this.#endOf(kept));
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       this.#change(kept, { kind: "failed", facts: kept.state.facts, reason });
     }
   }
 
-  #set(kept: Kept, review: FileReview | undefined): void {
-    if (review === undefined) {
-      this.#change(kept, { kind: "decided", facts: kept.state.facts });
-      return;
-    }
+  #open(kept: Kept, review: FileReview): void {
     const left = changeCount(review);
+    const { last } = kept;
+    if (last !== undefined && kept.state.kind === "open" && left < kept.state.left) {
+      const count = kept.state.left - left;
+      const { deciding } = kept;
+      kept.steps.push(
+        deciding === undefined ? stepBetween(last, review, count) : { decision: deciding, count },
+      );
+    }
     kept.total = Math.max(kept.total, left);
+    // Changes back to review after an Undo take back the newest steps.
+    kept.steps = stepsUpTo(kept.steps, kept.total - left);
+    if (kept.state.kind === "decided")
+      this.#notesOf(kept.proposal.chatId).delete(kept.proposal.callId);
+    kept.first ??= review;
+    kept.last = review;
     const facts = factsOf(kept.proposal.path, kept.proposal.content, review);
-    this.#change(kept, { kind: "open", facts, review, left, total: kept.total });
+    const { held, latest, total } = kept;
+    this.#change(kept, { kind: "open", facts, review, left, total, held, latest });
+  }
+
+  /** Why nothing of the card is left to review: a newer card, Compare, or the decisions on it. */
+  async #endOf(kept: Kept): Promise<CardEnd | undefined> {
+    const { chatId, path, content } = kept.proposal;
+    const { last } = kept;
+    if (last === undefined) {
+      // Decided before Studio started: only a file just as the model wrote it says how.
+      return (await this.#host.savedText(path)) === content ? { kind: "accepted" } : undefined;
+    }
+    const newer = await this.#host.changesIn(path);
+    if (newer !== null) {
+      return { kind: "replaced", by: newer.card, sameChat: newer.card.chatId === chatId };
+    }
+    if (kept.held) return { kind: "replaced-outside" };
+    const left = kept.state.kind === "open" ? kept.state.left : changeCount(last);
+    const { deciding } = kept;
+    kept.steps.push(
+      deciding === undefined
+        ? lastStep(last, await this.#host.savedText(path), left)
+        : { decision: deciding, count: left },
+    );
+    return endOfSteps(kept.steps);
+  }
+
+  #end(kept: Kept, end: CardEnd | undefined): void {
+    const note =
+      end === undefined || kept.last === undefined ? undefined : noteOf(end, kept.proposal.path);
+    if (note !== undefined) this.#notesOf(kept.proposal.chatId).set(kept.proposal.callId, note);
+    this.#change(kept, { kind: "decided", facts: kept.state.facts, end, first: kept.first });
   }
 
   #change(kept: Kept, state: CardReview): void {

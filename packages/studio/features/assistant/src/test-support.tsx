@@ -134,6 +134,7 @@ export function fakeHost(chats: Chat[] = []) {
     itemsToReview: async () => Array.from({ length: items }, () => ({}) as never),
     changesForCard: async () => [],
     changesIn: async () => null,
+    savedText: async () => null,
     accept: async () => ({}) as never,
     reject: async () => ({}) as never,
     undo: async () => ({}) as never,
