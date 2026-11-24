@@ -1,3 +1,4 @@
+import { actionSenderVersion } from "./action-sender.ts";
 import { agentMessagingVersion } from "./agent-messaging.ts";
 import { agentPlacementStoreVersion } from "./agent-placement-store.ts";
 import { blobStoreVersion } from "./blob-store.ts";
@@ -52,6 +53,7 @@ import { vcsVersion } from "./vcs.ts";
  * if (portVersions.RunStore !== 1) throw new Error("this adapter implements RunStore 1");
  */
 export const portVersions = {
+  ActionSender: actionSenderVersion,
   AgentMessaging: agentMessagingVersion,
   AgentPlacementStore: agentPlacementStoreVersion,
   BlobStore: blobStoreVersion,

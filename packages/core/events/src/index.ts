@@ -1,3 +1,26 @@
+export {
+  type ActionEventCheck,
+  checkActionEvent,
+  maxActionErrorLength,
+  maxActionReasonLength,
+} from "./action-event-check.ts";
+export type {
+  ActionEvent,
+  ActionEventType,
+  ActionFinishedEvent,
+  ActionKeptValue,
+  ActionOutcome,
+  ActionParameterValue,
+  ActionRequestedEvent,
+  ActionRequester,
+  ActionReviewedEvent,
+  ActionSignedInEvent,
+  ActionStepFailedEvent,
+  ActionStepFailure,
+  ActionStepSkippedEvent,
+  ActionStepStartedEvent,
+  ActionStepSucceededEvent,
+} from "./action-events.ts";
 export { addUsage } from "./add-usage.ts";
 export type { AgentResume, LoggedToolCall } from "./agent-resume.ts";
 export {

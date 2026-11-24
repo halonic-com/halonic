@@ -1,4 +1,19 @@
 export {
+  type ActionAccount,
+  type ActionCatalogStep,
+  type ActionJson,
+  type ActionMethod,
+  type ActionRefusal,
+  type ActionSender,
+  type ActionSendRequest,
+  type ActionSendResult,
+  type ActionService,
+  type ActionSignInResult,
+  type ActionStepRef,
+  type ActionValue,
+  actionSenderVersion,
+} from "./action-sender.ts";
+export {
   type AgentActivity,
   type AgentMessaging,
   type AnswerResult,

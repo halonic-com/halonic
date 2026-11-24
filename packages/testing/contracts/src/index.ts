@@ -1,4 +1,10 @@
 export {
+  type ActionSenderHarness,
+  type ActionSenderSetup,
+  actionSenderContract,
+  type MakeActionSender,
+} from "./action-sender.ts";
+export {
   type AgentPlacementStoreHarness,
   agentPlacement,
   agentPlacementStoreContract,
@@ -61,6 +67,13 @@ export {
   deployTargetContract,
   type MakeDeployTarget,
 } from "./deploy-target.ts";
+export {
+  FakeActionSender,
+  type FakeActionSenderOptions,
+  maxActionSendErrorLength,
+  type SentActionCall,
+  type StandInAnswer,
+} from "./fake-action-sender.ts";
 export {
   FakeAgentMessaging,
   type FakeAgentMessagingOptions,
