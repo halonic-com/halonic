@@ -86,7 +86,7 @@ verifies("sandbox-srt.check", () => {
       ["linux-tools-missing", { missingLinuxHelpers: async () => ["socat" as const] }],
       ["other", bubblewrapRefused],
       ["ripgrep-missing", { platform: "darwin" as const, hasRipgrep: async () => false }],
-      ["other", { platform: "darwin" as const, hasSeatbelt: async () => false }],
+      ["not-supported", { platform: "darwin" as const, hasSeatbelt: async () => false }],
     ])("gives the reason %s", async (reason, overrides) => {
       const check = await srt(machine(overrides)).check();
       expect(check.reason).toBe(reason);
