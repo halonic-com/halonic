@@ -1,5 +1,5 @@
 diff --git a/interface.c b/interface.c
-index ff68294..756e9b5 100644
+index ff68294..2c6066c 100644
 --- a/interface.c
 +++ b/interface.c
 @@ -529,11 +529,21 @@ JSValue *QTS_NewArray(JSContext *ctx) {
@@ -39,3 +39,17 @@ index ff68294..756e9b5 100644
  int QTS_BuildIsDebug() {
  #ifdef QTS_DEBUG_MODE
    return 1;
+@@ -1241,8 +1257,11 @@ EM_JS(int, qts_host_interrupt_handler, (JSRuntime * rt), {
+ #endif
+ 
+ // interrupt: QuickJS -> C
+-int qts_interrupt_handler(JSRuntime *rt, void *_unused) {
+-  return qts_host_interrupt_handler(rt);
++// Halonic: quickjs-ng's JSInterruptHandler now receives the JSContext
++// instead of the JSRuntime. The host's shouldInterrupt callback still looks
++// the run up by its runtime pointer, so pass that on unchanged.
++int qts_interrupt_handler(JSContext *ctx, void *_unused) {
++  return qts_host_interrupt_handler(JS_GetRuntime(ctx));
+ }
+ 
+ // interrupt: Host -> QuickJS

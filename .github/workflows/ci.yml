@@ -2942,7 +2942,7 @@ jobs:
     # so a pin change can take its first build from this job's artifact.
     name: ToolScript engine is its build
     needs: changes
-    if: needs.changes.outputs.toolscript_engine == 'true'
+    if: github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' && needs.changes.outputs.toolscript_engine == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
