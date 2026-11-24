@@ -37,6 +37,7 @@ import { ProposalsElsewhere } from "./proposals-elsewhere.tsx";
 import type { RunFactsOf } from "./run-facts.ts";
 import { type AgentItems, useAgentItems } from "./use-agent-items.tsx";
 import { useOpenItem } from "./use-open-item.ts";
+import { useProjectFilter } from "./use-project-filter.tsx";
 import { useRequestPane } from "./use-request-pane.tsx";
 import { useRunFacts } from "./use-run-facts.ts";
 import { useRunReview } from "./use-run-review.ts";
@@ -184,6 +185,7 @@ export function InboxView({
     if (open !== null) closeAgent();
   }, [open, closeAgent]);
   const listed = needsYouListed(state.items, state.decided, open, openAt.current);
+  const project = useProjectFilter(agent.waitingItems, listed.length > 0);
   const retry = () => void inbox.refresh();
   useSettleLeftOver(state.leftOver, proposals, retry);
   // A list that opens over a failed load checks again at once, so it doesn't say the last poll's
@@ -235,6 +237,7 @@ export function InboxView({
         <ListHeader phone={phone} newRequest={request.newRequest} />
         <StaleLine error={state.loaded ? state.error : undefined} words={words} phone={phone} />
         {agent.lines(now())}
+        {project.chips}
         <div ref={list} className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
           {failedFirst ? (
             <EmptyState
@@ -255,8 +258,8 @@ export function InboxView({
                 ),
               }}
               rows={[
-                ...listed.map((item) => inboxRow(item, now(), runFacts)),
-                ...agent.rows(now()),
+                ...project.own(listed).map((item) => inboxRow(item, now(), runFacts)),
+                ...agent.rows(now(), project.filter),
               ]}
               onOpen={(key) => openRow(key, agent, listed, openItem)}
               {...currentRow(open?.key ?? agent.openKey)}

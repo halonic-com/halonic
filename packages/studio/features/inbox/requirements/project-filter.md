@@ -1,8 +1,8 @@
 # inbox.project-filter
 
-- Status: draft
+- Status: active
 - Since: unreleased
-- Source: the board's requirement on HAL-10 (24 Nov 11:05 UTC), relayed on HAL-17425; ADR `docs/adr/2026-11-24-agent-messaging.md`. Draft until track B lands; it then becomes active.
+- Source: the board's requirement on HAL-10 (24 Nov 11:05 UTC), relayed on HAL-17425; ADR `docs/adr/2026-11-24-agent-messaging.md`.
 
 The Inbox shall let the person keep its list to one project in one click, from a choice above the list that names every project its items belong to and "No project" for items without one. The choice shall combine with All and Waiting for me.
 

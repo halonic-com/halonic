@@ -9,14 +9,17 @@ import {
   isAgentItemLate,
   sourceDownLine,
 } from "../agent/agent-item-text.ts";
+import { agentItemShows, type ProjectFilter } from "../agent/project-filter.ts";
 import { AgentItemCard } from "./agent-item-card.tsx";
 
 /** What the Inbox page shows of the agents' items, next to its own. */
 export interface AgentItems {
   /** How many items wait, for the Needs you count. */
   readonly waiting: number;
-  /** One row per open item, after the Inbox's own rows. */
-  readonly rows: (now: Date) => ListRow[];
+  /** The items that wait, for the project filter's chips. */
+  readonly waitingItems: readonly AgentItem[];
+  /** One row per open item the project filter shows, after the Inbox's own rows. */
+  readonly rows: (now: Date, filter: ProjectFilter) => ListRow[];
   /** Over the list: each source that can't take answers, and a read that failed. */
   readonly lines: (now: Date) => ReactNode;
   /** The open item's row key, while one is open. */
@@ -62,7 +65,11 @@ export function useAgentItems(messaging: AgentMessaging | undefined): AgentItems
 
   return {
     waiting: waiting.length,
-    rows: (now) => waiting.map((item) => agentRow(item, sourceOf(item), now)),
+    waitingItems: waiting,
+    rows: (now, filter) =>
+      waiting
+        .filter((item) => agentItemShows(item, filter))
+        .map((item) => agentRow(item, sourceOf(item), now)),
     lines: (now) => (
       <SourceLines
         sources={state.sources}
