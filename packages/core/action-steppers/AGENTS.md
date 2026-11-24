@@ -4,7 +4,7 @@ Owner: owen · Layer: core · Read the root `AGENTS.md` first; this file adds lo
 
 ## Scope
 
-Pure stepper code for user-only actions: the requester policy now; the stepper-request format, its validator and strict parameters next.
+Pure stepper code for user-only actions: the stepper-request format, its validator, strict parameters and requester policy.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.
