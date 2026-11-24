@@ -216,6 +216,33 @@ verifies("services.agent-notifications", () => {
       expect(onError).toHaveBeenCalledTimes(1);
       expect(notifier.reasons()).toEqual(["card"]);
     });
+
+    it("reports a rejected change once and stops cleanly", async () => {
+      const failure = new Error("stream broke");
+      let calls = 0;
+      const messaging = {
+        listInboxItems: () => Promise.resolve([]),
+        listConversations: () => Promise.resolve([]),
+        listWork: () => Promise.resolve([]),
+        changes: () => ({
+          [Symbol.asyncIterator]: () => ({
+            next: () => {
+              calls += 1;
+              return Promise.reject(failure);
+            },
+          }),
+        }),
+      } as unknown as AgentMessaging;
+      const notifier = new RecordingNotifier();
+      const onError = vi.fn();
+      const watch = watchAgentNotifications(messaging, notifier, { open: vi.fn(), onError });
+      await watch.ready;
+      await watch.stop();
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(onError).toHaveBeenCalledWith(failure);
+      expect(calls).toBe(1);
+      expect(notifier.shown).toEqual([]);
+    });
   });
 });
 

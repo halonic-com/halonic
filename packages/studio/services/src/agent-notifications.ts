@@ -93,7 +93,11 @@ async function follow(
   options: AgentNotificationsOptions,
 ): Promise<void> {
   let last = await first;
-  for (let change = await changes.next(); change.done !== true; change = await changes.next()) {
+  for (
+    let change = await nextOrReport(changes, options);
+    change;
+    change = await nextOrReport(changes, options)
+  ) {
     const next = await readOrReport(messaging, options);
     if (last !== undefined && next !== undefined) {
       for (const notice of newNotices(last, next)) {
@@ -102,6 +106,22 @@ async function follow(
       }
     }
     last = next ?? last;
+  }
+}
+
+/**
+ * Whether the port reported another change. A rejected `next` is reported once and ends the
+ * watch as `stop` would, instead of leaving the rejection unhandled.
+ */
+async function nextOrReport(
+  changes: AsyncIterator<MessagingId>,
+  options: AgentNotificationsOptions,
+): Promise<boolean> {
+  try {
+    return (await changes.next()).done !== true;
+  } catch (error) {
+    options.onError(error);
+    return false;
   }
 }
 

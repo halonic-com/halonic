@@ -59,6 +59,7 @@ mod lite_check;
 mod local_network;
 mod native_dialogs;
 mod navigation;
+#[cfg(desktop)]
 mod notification_clicks;
 #[cfg(target_os = "android")]
 mod owner_check;
@@ -196,6 +197,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             window::open(app.handle())?;
             #[cfg(desktop)]
             updates::start(app.handle());
+            #[cfg(desktop)]
+            notification_clicks::listen(app.handle());
             Ok(())
         })
         // A page that reloads or closes can't end its agent host streams
