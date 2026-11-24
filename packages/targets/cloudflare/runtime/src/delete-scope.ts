@@ -44,7 +44,9 @@ export async function eraseScopeStores(stores: ScopeStores): Promise<ScopeDeleti
  *
  * Known limit: it finds a run's object through the run list, so the object of a run whose first
  * alarm hasn't published it yet stays. That is why the operator runs it, then runs it again after a
- * minute; a user-facing delete needs a register of the scope's objects first (S1-5).
+ * minute; a user-facing delete needs a register of the scope's objects first (S1-5). Likewise, a
+ * run's alarm that is already running when its object is erased can still write to it; the second
+ * run erases that too.
  *
  * @throws ConfigurationError when a binding or a secret is missing
  */
@@ -72,7 +74,7 @@ export type DeleteScope = (env: RuntimeEnv, scope: Scope) => Promise<ScopeDeleti
 /**
  * The admin route that deletes one scope: `POST /admin/scopes/delete?scope=u/<id>` or `o/<id>`.
  * The scope is read as a session's scope is read; anything else, or none, answers 400 `bad_scope`
- * and deletes nothing. A finished delete answers 204.
+ * and deletes nothing. A finished delete answers 200 `{"deleted":{"runs":n}}`, the runs it erased.
  *
  * @param remove - deletes the scope; only a test passes its own
  */
@@ -86,15 +88,19 @@ export function deleteScopeRoutes(remove: DeleteScope = deleteScope): readonly A
         if (scope === null) {
           return refusal(400, "bad_scope", "The scope isn't u/<id> or o/<id>.");
         }
+        let deletion: ScopeDeletion;
         try {
-          await remove(env, scope);
+          deletion = await remove(env, scope);
         } catch (error) {
           if (error instanceof ConfigurationError) {
             return refusal(503, "unavailable", "The server isn't ready.");
           }
           throw error;
         }
-        return new Response(null, { status: 204, headers: { "cache-control": "no-store" } });
+        return Response.json(
+          { deleted: { runs: deletion.runs } },
+          { status: 200, headers: { "cache-control": "no-store" } },
+        );
       },
     },
   ];

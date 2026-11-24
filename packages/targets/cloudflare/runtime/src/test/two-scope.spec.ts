@@ -4,6 +4,7 @@
  */
 
 import { env } from "cloudflare:workers";
+import { defaultRoutinesObjectName } from "@halonicjs/adapter-cloudflare-durable";
 import { parseScope, type Scope, scopePrefix } from "@halonicjs/host-server";
 import type { RunStore } from "@halonicjs/ports";
 import { completed, entered, started } from "@halonicjs/testing-contracts";
@@ -32,6 +33,7 @@ const configured = {
 };
 
 const { RUN } = env as unknown as { RUN: DurableObjectNamespace<AlarmRunObject> };
+const { ROUTINES } = env as unknown as { ROUTINES: DurableObjectNamespace };
 
 /** One side of a pair: the scope and the runtime built for it. */
 interface Side {
@@ -126,6 +128,11 @@ const storeCases: Record<keyof Runtime, StoreCase | Shared> = {
   },
   routines: async (owner, other) => {
     await storeRun(owner, ownerEvents());
+    // Each scope has a routines object of its own, apart from the other's and the deployment's.
+    const objectOf = (side: Side) => (side.runtime.routines as unknown as DurableObjectStub).id;
+    const deployments = ROUTINES.idFromName(defaultRoutinesObjectName);
+    expect(objectOf(owner).equals(objectOf(other))).toBe(false);
+    expect(objectOf(owner).equals(deployments)).toBe(false);
     // Only the deployment's routines object ticks; a scope's tick starts and changes nothing.
     await other.runtime.routines.tick(new Date().toISOString());
     expect(await other.runtime.runStore.list()).toEqual([]);
@@ -165,8 +172,17 @@ const storeCases: Record<keyof Runtime, StoreCase | Shared> = {
   coordination: async (owner, other) => {
     const ours = owner.runtime.coordination;
     const theirs = other.runtime.coordination;
-    expect(await ours.tryAcquire(key, 60_000)).not.toBeNull();
-    expect(await theirs.tryAcquire(key, 60_000)).not.toBeNull();
+    const ourLease = await ours.tryAcquire(key, 60_000);
+    const theirLease = await theirs.tryAcquire(key, 60_000);
+    expect(ourLease).not.toBeNull();
+    expect(theirLease).not.toBeNull();
+    if (ourLease === null || theirLease === null) return;
+    // Our lease means nothing to the other scope, and its own release leaves ours held.
+    expect(await theirs.renew(ourLease, 60_000)).toBeNull();
+    await theirs.release(ourLease);
+    await theirs.release(theirLease);
+    expect(await ours.tryAcquire(key, 60_000)).toBeNull();
+    expect(await ours.renew(ourLease, 60_000)).not.toBeNull();
 
     expect(await ours.compareAndSet(key, null, "owner")).toBe(true);
     expect(await theirs.read(key)).toBeNull();
@@ -175,6 +191,7 @@ const storeCases: Record<keyof Runtime, StoreCase | Shared> = {
 
     expect(await ours.increment(key, 5)).toEqual({ applied: true, value: 5 });
     expect(await theirs.increment(key, 1)).toEqual({ applied: true, value: 1 });
+    expect(await ours.increment(key, 1)).toEqual({ applied: true, value: 6 });
 
     expect((await ours.countInWindow(key, 60_000, 1)).allowed).toBe(true);
     expect((await theirs.countInWindow(key, 60_000, 1)).allowed).toBe(true);

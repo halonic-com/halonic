@@ -51,7 +51,7 @@ verifies("runtime.delete-scope", () => {
       const removed: string[] = [];
       const [route] = deleteScopeRoutes(async (_env, scope: Scope) => {
         removed.push(scopeName(scope));
-        return { runs: 0 };
+        return { runs: 3 };
       });
       if (route === undefined) throw new Error("The delete route is missing.");
       for (const query of ["", "?scope=", `?scope=${acme}/`, "?scope=x/org_acme0123456789abcdef"]) {
@@ -61,8 +61,9 @@ verifies("runtime.delete-scope", () => {
       }
       expect(removed).toEqual([]);
       const done = await ask(route, `?scope=${acme}`);
-      expect(done.status).toBe(204);
+      expect(done.status).toBe(200);
       expect(done.headers.get("cache-control")).toBe("no-store");
+      expect(await done.json()).toEqual({ deleted: { runs: 3 } });
       expect(removed).toEqual([scopeName(parseScope(acme) as Scope)]);
     });
 

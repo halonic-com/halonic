@@ -1,5 +1,6 @@
 import type { RunMetadata } from "@halonicjs/adapter-cloudflare-storage";
 import { checkClaims, type Principal, parseScope, type Scope } from "@halonicjs/host-server";
+import { entered, started } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import {
@@ -44,8 +45,7 @@ const source: ScopeExportSource = {
   records: { collections: async () => [], changes: async () => [] },
   runs: { list: async () => [{ id: privateRun.id }], metadata: async () => [privateRun] },
   runStore: {
-    events: async (runId) =>
-      [{ runId, seq: 1, at: privateRun.startedAt, type: "note", text: privateText }] as never,
+    events: async (runId) => [started(runId), entered(runId, 2, privateText)],
   },
   blobs: { hashes: async () => [], get: async () => null },
 };

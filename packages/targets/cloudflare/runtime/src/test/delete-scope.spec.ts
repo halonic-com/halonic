@@ -107,7 +107,7 @@ describe("deleting a scope", () => {
     await expectEmpty(deleted);
   });
 
-  it("answers the admin route with 204, and 400 bad_scope for a scope that isn't one", async () => {
+  it("answers the admin route with the runs it erased, and 400 bad_scope for a scope that isn't one", async () => {
     const [route] = deleteScopeRoutes();
     if (route === undefined) throw new Error("The delete route is missing.");
     const [deleted] = scopePair("o/org_");
@@ -126,7 +126,9 @@ describe("deleting a scope", () => {
       expect(refused.status).toBe(400);
       expect(await refused.json()).toMatchObject({ code: "bad_scope" });
     }
-    expect((await ask(`?scope=${encodeURIComponent(scopeName(deleted))}`)).status).toBe(204);
+    const done = await ask(`?scope=${encodeURIComponent(scopeName(deleted))}`);
+    expect(done.status).toBe(200);
+    expect(await done.json()).toEqual({ deleted: { runs: 1 } });
     await expectEmpty(deleted);
   });
 });
