@@ -2,6 +2,7 @@
 
 - Approval: HAL-17443 (Liam's review of #5644, with Chief's go-ahead on the task)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:FuCkzAaciEerz1dQEgERpT8Tv9nY8PE5jvBEBbkes77rzv0SPbKX/wKrtP5qQpfFX9XYuoiOwnULIJuoaudZCA==
 
 C2 adds sending a message with files (feature 6 of the HAL-17422 plan, approved
 by the board on HAL-10). B2 (#5643) adds the requirements for listing and
