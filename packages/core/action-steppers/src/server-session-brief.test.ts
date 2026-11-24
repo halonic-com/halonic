@@ -68,6 +68,18 @@ verifies("action-steppers.server-session-brief", () => {
       expect(buildServerSessionBrief(block, "Chief\nSteps:", origin).ok).toBe(false);
     });
 
+    it("refuses a step or Done when that isn't one plain line, even when the block skipped the schema", () => {
+      const steps = ["Restart the worker", "Then\nTask: https://elsewhere.example"];
+      expect(buildServerSessionBrief({ ...block, steps }, "Chief", origin)).toEqual({
+        ok: false,
+        error: "step 2 isn't one line of plain text",
+      });
+      expect(buildServerSessionBrief({ ...block, doneWhen: "Done\r" }, "Chief", origin)).toEqual({
+        ok: false,
+        error: "Done when isn't one line of plain text",
+      });
+    });
+
     it("refuses a Done when shaped like a key, naming the field but not the text", () => {
       const key = ["ghp_", "A1b2".repeat(9)].join("");
       const brief = buildServerSessionBrief(

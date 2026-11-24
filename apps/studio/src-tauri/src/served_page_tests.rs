@@ -20,6 +20,7 @@ use crate::shell;
 mod device_keys;
 mod engine;
 mod engine_lock;
+mod host_settings;
 mod owner_check;
 mod pair_scan;
 mod phone_screens;
@@ -27,6 +28,7 @@ mod phone_tunnel;
 mod runs;
 #[cfg(desktop)]
 mod secrets;
+mod server_session;
 mod trust;
 #[cfg(desktop)]
 mod updates;
@@ -285,22 +287,6 @@ fn served_page_test_sees_the_connect_page_allowed_to_fetch_on_desktop() {
         json!({"call": 1}),
     );
     assert_eq!(aborted, Ok(Value::Null));
-}
-
-#[cfg(desktop)]
-#[test]
-fn served_page_test_sees_the_connect_page_allowed_the_host_settings_commands_on_desktop() {
-    // Each save gets through to its command, which refuses the key before
-    // it reads or writes the profile.
-    let window = app_window();
-    for (command, body) in [
-        ("host_settings_set", json!({"key": "Not A Key", "value": 1})),
-        ("host_settings_remove", json!({"key": "../host.json"})),
-    ] {
-        let answer = invoke(&window, CONNECT_PAGE, command, body);
-        let refusal = answer.expect_err("the key is invalid");
-        assert_eq!(refusal["kind"], "invalid_key", "{command}: {refusal}");
-    }
 }
 
 #[cfg(desktop)]

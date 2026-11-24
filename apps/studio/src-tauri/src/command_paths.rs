@@ -31,7 +31,7 @@ pub struct CommandPathsRefusal {
 
 /// The PATH the CLI would see: the login shell's where it can be asked,
 /// else the app's own. Asked once per app run.
-fn search_path() -> OsString {
+pub(crate) fn search_path() -> OsString {
     static PATH: OnceLock<OsString> = OnceLock::new();
     PATH.get_or_init(|| {
         login_path()

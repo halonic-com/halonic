@@ -226,9 +226,11 @@ pub fn ask_to_allow_pairing<R: Runtime>(app: &AppHandle<R>) -> bool {
     ask(app, PAIRING_TITLE, PAIRING_QUESTION, REMOTE_ALLOW_BUTTON)
 }
 
-/// Shows a warning with `yes` and Cancel; `true` only for `yes`.
+/// Shows a warning with `yes` and Cancel; `true` only for `yes`. Other
+/// files keep their own words and ask through it, as `server_session.rs`
+/// does.
 #[cfg(desktop)]
-fn ask<R: Runtime>(
+pub(crate) fn ask<R: Runtime>(
     app: &AppHandle<R>,
     title: &'static str,
     question: &str,

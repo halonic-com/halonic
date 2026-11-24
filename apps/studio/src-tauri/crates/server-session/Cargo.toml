@@ -1,0 +1,17 @@
+[package]
+name = "halonic-server-session"
+description = "Checks the user's server and a brief, writes the brief and its launcher, and builds the terminal command for \"Run with Claude\"."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+# Finds the terminal program on PATH by the rules the rest of the shell uses.
+halonic-command-paths = { path = "../command-paths" }
+# The settings arrive as JSON values from `host.json`; already in the shell's build.
+serde_json = "1"
+
+[lints]
+workspace = true

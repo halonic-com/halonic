@@ -117,6 +117,7 @@ fn main() {
         "update_cancel",
         "update_restart",
         "update_set_automatic",
+        "server_session_open",
     ]);
     let attributes = tauri_build::Attributes::new()
         .app_manifest(commands)

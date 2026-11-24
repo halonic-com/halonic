@@ -26,7 +26,8 @@
 //! (capabilities/desktop-updates.json) and the page's close request
 //! (capabilities/desktop-window.json), its notifications
 //! (capabilities/desktop-notifications.json) and the `wsl_*` commands of the sandbox
-//! backup (capabilities/desktop-sandbox-backup.json) and, on Windows,
+//! backup (capabilities/desktop-sandbox-backup.json) and, on macOS and Linux,
+//! `server_session_open` (capabilities/desktop-server-session.json) and, on Windows,
 //! `sandbox_elevate` (capabilities/desktop-sandbox-elevate.json) and the WSL setup's
 //! `sandbox_wsl_*` commands (capabilities/desktop-sandbox-wsl-setup.json), and on Android the
 //! pairing scanner's `pair_scan` and `pair_scan_cancel`
@@ -92,6 +93,7 @@ mod sandbox_backup;
 mod sandbox_elevate;
 mod sandbox_wsl_setup;
 mod secrets;
+mod server_session;
 mod system_region;
 mod trust;
 #[cfg(desktop)]
@@ -158,7 +160,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(files::FileState::default())
         .manage(plugin_source::PluginSources::default())
         .manage(plugin_git::PluginGitExports::default())
-        .manage(phone_tunnel_events::TunnelWatchers::default());
+        .manage(phone_tunnel_events::TunnelWatchers::default())
+        .manage(server_session::ServerSessionState::default());
     #[cfg(windows)]
     let builder = builder
         .manage(sandbox_elevate::ElevateState::default())
@@ -220,6 +223,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             }
             #[cfg(mobile)]
             window::open(app.handle())?;
+            server_session::sweep_at_start(app.handle());
             #[cfg(desktop)]
             updates::start(app.handle());
             #[cfg(desktop)]
@@ -376,6 +380,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             updates::update_restart,
             #[cfg(desktop)]
             updates::update_set_automatic,
+            server_session::server_session_open,
         ])
 }
 

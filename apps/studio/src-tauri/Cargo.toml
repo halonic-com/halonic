@@ -48,6 +48,7 @@ halonic-record-store = { path = "crates/record-store" }
 halonic-resource-probe = { path = "crates/resource-probe" }
 halonic-run-lock = { path = "crates/run-lock" }
 halonic-run-store = { path = "crates/run-store" }
+halonic-server-session = { path = "crates/server-session" }
 halonic-secrets = { path = "crates/secrets" }
 halonic-shell-log = { path = "crates/shell-log" }
 halonic-trust-grant = { path = "crates/trust-grant" }
