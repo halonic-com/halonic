@@ -179,11 +179,12 @@ in this package.
 ## Deployments
 
 A deployment in `deployments.yaml` may have a `cloudflare` block (`worker`, required: 1 to 63
-lowercase letters, digits or `-`, not at the start or end; `domain`, a lowercase host name; and
-`location`, only `eu`) and a `limits` block (`dailyRequests`, a whole number above zero). Other
+lowercase letters, digits or `-`, not at the start or end; `domain`, a lowercase host name;
+`location`, only `eu`; and `account`, the account id: exactly 32 lowercase hexadecimal characters,
+never the account's name) and a `limits` block (`dailyRequests`, a whole number above zero). Other
 keys in either block fail. A `cloudflare` block on a deployment whose `host` isn't `cloudflare`
-only warns (`cloudflare-settings-unused`). No account id, token or key goes in the file
-(requirement `deployments-cloudflare`).
+only warns (`cloudflare-settings-unused`). The account id isn't a secret; no token or key goes in
+the file (requirements `deployments-cloudflare` and `deployments-cloudflare-account`).
 
 A deployment may also have a `users` block: who may use it and how their usage is counted
 (requirement `deployments-users`). Without the block nothing changes.
