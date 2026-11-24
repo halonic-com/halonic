@@ -193,6 +193,7 @@ verifies("runtime.admin-key", () => {
         "PUT /admin/import/files",
         "POST /admin/import",
         "POST /admin/sessions/revoke",
+        "POST /admin/scopes/delete",
       ]);
     });
   });

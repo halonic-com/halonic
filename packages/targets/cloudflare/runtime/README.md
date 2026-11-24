@@ -61,6 +61,7 @@ name, such as a preview address, or with an `Origin`, never reaches a route. A m
 | `PUT /admin/import/files/<path>` | the file's bytes as the body, `<path>` in the same three shapes | 204; the file is only staged |
 | `POST /admin/import` | the manifest as JSON | 200 `{"imported":{"runs":n,"records":n,"blobs":n}}` once every staged file matches the manifest's size and SHA-256 and is applied; 409 `{"code":"files_missing" or "files_differ","paths":[...]}` and nothing applied otherwise |
 | `POST /admin/sessions/revoke` | none | 204 once every browser signed in to the deployment is signed out (requirement `runtime.session-revoke`); it takes no lock |
+| `POST /admin/scopes/delete` | `?scope=u/<id>` or `?scope=o/<id>` | 204 once every store of that scope is erased (requirement `runtime.delete-scope`); 400 `{"code":"bad_scope"}` for anything else. Run it, then again after a minute: a run whose first alarm hadn't put it in the run list yet is erased only then |
 
 The two export routes answer now. `GET /admin/export` reads one file at a time to measure it, so a large
 deployment takes a while. The export holds every run log, every collection's record log except the sign-in

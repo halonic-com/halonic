@@ -34,6 +34,7 @@ function countingBucket(): {
       return env.BLOBS.put(key, value, options);
     },
     list: (options: { prefix: string; cursor?: string }) => env.BLOBS.list(options),
+    delete: (keys: string[]) => env.BLOBS.delete(keys),
   };
   return { bucket, calls };
 }

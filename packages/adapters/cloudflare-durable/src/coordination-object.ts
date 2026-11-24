@@ -51,4 +51,13 @@ export class CoordinationObject extends DurableObject implements Coordination {
   countInWindow(key: string, windowMs: number, limit: number): Promise<WindowCount> {
     return this.#state.countInWindow(key, windowMs, limit);
   }
+
+  /**
+   * Erases every lease, value, counter and window. It is an RPC method only: no `fetch` route
+   * reaches it, so only the Worker's own code can call it. Erasing twice is safe.
+   */
+  async eraseAll(): Promise<void> {
+    await this.ctx.storage.deleteAlarm();
+    await this.ctx.storage.deleteAll();
+  }
 }

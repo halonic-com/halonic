@@ -22,6 +22,7 @@ const onePerPage: ConstructorParameters<typeof R2BlobStore>[0] = {
   get: (key) => env.BLOBS.get(key),
   put: (key, value, options) => env.BLOBS.put(key, value, options),
   list: (options) => env.BLOBS.list({ ...options, limit: 1 }),
+  delete: (keys) => env.BLOBS.delete(keys),
 };
 
 /** A prefix of its own, so a case never finds what another left in the bucket. */

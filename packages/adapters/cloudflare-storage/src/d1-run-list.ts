@@ -52,6 +52,8 @@ export interface D1RunListOptions {
   scope: string;
 }
 
+const eraseRuns = "DELETE FROM run_list WHERE scope = ?";
+
 const openRunScopes = `SELECT DISTINCT scope FROM run_list
   WHERE scope != '' AND status IN ('running', 'waiting') ORDER BY scope`;
 
@@ -146,6 +148,12 @@ export class D1RunList {
       status: row.status,
       startedAt: new Date(row.started_at_ms).toISOString(),
     }));
+  }
+
+  /** Deletes every row of the list's scope, and no other scope's. Erasing twice does nothing. */
+  async eraseScope(): Promise<void> {
+    await this.#migrated();
+    await this.#db.prepare(eraseRuns).bind(this.#scope).run();
   }
 
   #migrated(): Promise<void> {

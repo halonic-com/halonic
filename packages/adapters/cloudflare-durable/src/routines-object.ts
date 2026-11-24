@@ -60,6 +60,15 @@ export class RoutinesObject extends DurableObject {
     return this.#state.tick(at);
   }
 
+  /**
+   * Erases what the object holds and its backup alarm. It is an RPC method only: no `fetch` route
+   * reaches it, so only the Worker's own code can call it. Erasing twice is safe.
+   */
+  async eraseAll(): Promise<void> {
+    await this.ctx.storage.deleteAlarm();
+    await this.ctx.storage.deleteAll();
+  }
+
   /** Cloudflare calls this when no tick has come for a few minutes. */
   override alarm(): Promise<void> {
     return this.#state.alarm();

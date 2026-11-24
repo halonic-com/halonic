@@ -5,7 +5,7 @@ import { bytesToHex } from "@halonicjs/std";
 const defaultKeyPrefix = "blobs/";
 
 /**
- * The four calls the store makes on an R2 bucket. A Worker's `R2Bucket` binding fits it, and so
+ * The five calls the store makes on an R2 bucket. A Worker's `R2Bucket` binding fits it, and so
  * does a wrapper around one, which a test uses to count the calls or to list one object per page.
  */
 export interface BlobBucket {
@@ -22,6 +22,8 @@ export interface BlobBucket {
     truncated: boolean;
     cursor?: string;
   }>;
+  /** Deletes the objects with these keys; a key with no object is no error. */
+  delete(keys: string[]): Promise<unknown>;
 }
 
 /**
@@ -92,6 +94,24 @@ export class R2BlobStore implements BlobStore {
       cursor = page.truncated ? page.cursor : undefined;
     } while (cursor !== undefined);
     return hashes.sort();
+  }
+
+  /**
+   * Deletes every object under the store's prefix, blobs and anything else, one listed page at a
+   * time, until a listing finds none. Erasing an empty store, or erasing twice, does nothing.
+   *
+   * @throws RangeError when the prefix is empty or only `/`, which would reach the whole bucket
+   */
+  async eraseAll(): Promise<void> {
+    if (this.#prefix.replaceAll("/", "") === "") {
+      throw new RangeError("A blob store without a prefix of its own can't be erased.");
+    }
+    for (;;) {
+      // Always the first page: the objects of the page before are gone, so it holds new ones.
+      const page = await this.#bucket.list({ prefix: this.#prefix });
+      if (page.objects.length === 0) return;
+      await this.#bucket.delete(page.objects.map((object) => object.key));
+    }
   }
 
   #keyFor(hash: string): string {

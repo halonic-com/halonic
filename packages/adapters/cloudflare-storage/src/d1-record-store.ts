@@ -23,6 +23,8 @@ const selectCollections =
   "SELECT DISTINCT collection FROM record_changes WHERE scope = ? ORDER BY collection";
 const selectVersion =
   "SELECT COALESCE(MAX(version), 0) AS version FROM record_compactions_scoped WHERE scope = ? AND collection = ?";
+const eraseChanges = "DELETE FROM record_changes WHERE scope = ?";
+const eraseClaims = "DELETE FROM record_compactions_scoped WHERE scope = ?";
 const selectRows = `SELECT seq, collection, id, at, op, "values", by FROM record_changes WHERE scope = ? AND collection = ? ORDER BY seq`;
 
 /** What a {@link D1RecordStore} is built with. */
@@ -135,6 +137,19 @@ export class D1RecordStore implements RecordStore {
             toJson(seed.values),
           ),
       ),
+    ]);
+  }
+
+  /**
+   * Deletes every change and every compaction claim of the store's scope, and no other scope's.
+   * It is for deleting the whole scope: a compaction still running in it may then claim a version
+   * a second time, which no longer matters once the scope is gone. Erasing twice does nothing.
+   */
+  async eraseScope(): Promise<void> {
+    await this.#migrated();
+    await this.#db.batch([
+      this.#db.prepare(eraseChanges).bind(this.#scope),
+      this.#db.prepare(eraseClaims).bind(this.#scope),
     ]);
   }
 

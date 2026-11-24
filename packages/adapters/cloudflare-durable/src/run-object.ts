@@ -34,16 +34,22 @@ export abstract class RunObject extends DurableObject implements RunObjectApi {
   protected clock: Clock = systemClock;
   /** How the delivery loop waits for the next timer. Only a test replaces it. */
   protected nap = napFor;
-  readonly #state: RunState;
+  #state: RunState;
 
   constructor(ctx: DurableObjectState, env: Cloudflare.Env) {
     super(ctx, env);
+    this.#state = this.#newState();
+  }
+
+  /** The run's state over this object's storage, as it is now. */
+  #newState(): RunState {
+    const { storage } = this.ctx;
     // Read through `this` on every call, so a subclass's clock, nap and listener count.
-    this.#state = new RunState({
-      sql: sqlOfStorage(ctx.storage),
+    return new RunState({
+      sql: sqlOfStorage(storage),
       alarm: {
-        set: (atMs) => ctx.storage.setAlarm(atMs),
-        clear: () => ctx.storage.deleteAlarm(),
+        set: (atMs) => storage.setAlarm(atMs),
+        clear: () => storage.deleteAlarm(),
       },
       clock: () => this.clock,
       nap: (ms, signal) => this.nap(ms, signal),
@@ -131,6 +137,19 @@ export abstract class RunObject extends DurableObject implements RunObjectApi {
 
   namePrefix(): Promise<string | null> {
     return this.#state.namePrefix();
+  }
+
+  /**
+   * Erases everything the object holds, its log, timers, outbox, name prefix and alarm, and breaks
+   * every open watch. Afterwards it answers as an object never written. It is an RPC method only:
+   * no `fetch` route reaches it, so only the Worker's own code can call it. Erasing twice is safe.
+   */
+  async eraseAll(): Promise<void> {
+    this.#state.breakWatches();
+    await this.ctx.storage.deleteAlarm();
+    await this.ctx.storage.deleteAll();
+    // The old state knew the tables existed; the new one finds out again.
+    this.#state = this.#newState();
   }
 
   /** Cloudflare calls this at the alarm time, and never twice at once. */

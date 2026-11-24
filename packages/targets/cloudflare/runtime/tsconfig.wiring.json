@@ -19,7 +19,8 @@
     "src/worker-executor.test.ts",
     "src/session-routes.test.ts",
     "src/scope-export.test.ts",
-    "src/scope-export-route.test.ts"
+    "src/scope-export-route.test.ts",
+    "src/delete-scope-routes.test.ts"
   ],
   "exclude": []
 }

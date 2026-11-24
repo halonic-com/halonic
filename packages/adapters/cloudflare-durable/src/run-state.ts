@@ -259,6 +259,11 @@ export class RunState implements RunObjectApi {
     this.#outbox.sent(entry.seq);
   }
 
+  /** Breaks every open watch: the object's data is about to be erased, so no later event comes. */
+  breakWatches(): void {
+    this.#watchers.breakAll(new Error("The run's data was erased."));
+  }
+
   /** Whether the object was ever written; reading the schema stores nothing. */
   #tablesExist(): boolean {
     this.#hasTables ||= hasRunTables(this.#options.sql);
