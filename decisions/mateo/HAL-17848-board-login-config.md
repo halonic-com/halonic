@@ -3,6 +3,7 @@
 - Task: HAL-17848
 - Approval: the board's rule on HAL-16851 (24 Nov): code that must recognise the board's GitHub login reads it from config, never a hard-coded value; HAL-17848 applies it to merge control
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:DgcEj6eRnxAkn2Bpdo+dac3tyPtEU6+33k4EGWW5ikrEQIHWYMJ93nINv+MGOtdfIgqUI8isTxFOU1sdOvfqDA==
 
 ## What changes
 
