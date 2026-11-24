@@ -95,6 +95,15 @@ jobs:
           $version = $tag.Substring(1)
           "TAG=$tag", "VERSION=$version", "SUBMIT=$($submit.ToString().ToLower())",
             "INSTALLER=Halonic-$version-windows-x64-setup.exe" | Add-Content $env:GITHUB_ENV
+      # The runner image's Defender signatures are as old as the image, so the
+      # scan below would miss anything newer. This also runs on pull
+      # requests, so a change to this file shows the update still works.
+      - name: Update Defender's signatures
+        run: |
+          $defender = Join-Path $env:ProgramFiles 'Windows Defender\MpCmdRun.exe'
+          & $defender -SignatureUpdate
+          if ($LASTEXITCODE -ne 0) { throw "Defender's signature update exited $LASTEXITCODE" }
+          Get-MpComputerStatus | Format-List AntivirusSignatureVersion, AntivirusSignatureLastUpdated
       # The installer must match the release's SHA256SUMS, and Defender must
       # find nothing in it before anyone is pointed at it.
       - name: Download the installer and hash it
