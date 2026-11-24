@@ -21,7 +21,8 @@ import { looksLikeKey } from "./secret-name.ts";
  *   /srv/runner/work/app2/creds`; a base64 key may hold a `/`, but doesn't
  *   start with one.
  */
-const credentialName =
+/** A name that says its value is a credential: `Authorization`, `GITHUB_TOKEN`, `apiKey`. */
+export const credentialName =
   /token|secret|passw(?:or)?d|api[-_]?key|access[-_]?key|private[-_]?key|credential|authorization|^auth$/i;
 const authScheme = /^(?:bearer|basic|token)\s+/i;
 const keyCharacters = /^[A-Za-z0-9+/=_-]+$/;

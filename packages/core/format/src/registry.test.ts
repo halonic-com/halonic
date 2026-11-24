@@ -3,7 +3,7 @@ import { expect, it } from "vitest";
 import { fileKinds, isKindName, isReservedPath, kindNames, RESERVED_FOLDER } from "./index.ts";
 
 verifies("format.kind-registry", () => {
-  it("lists the 14 kinds the old schema and loader read, workspace-level first, then the integration sheet and the plugin manifest", () => {
+  it("lists the 14 kinds the old schema and loader read and the workspace tool, workspace-level first, then the integration sheet and the plugin manifest", () => {
     expect(kindNames()).toEqual([
       "workspace",
       "deployments",
@@ -14,6 +14,7 @@ verifies("format.kind-registry", () => {
       "collection",
       "connector",
       "skill",
+      "tool",
       "hub",
       "agent",
       "workflow",
@@ -49,6 +50,7 @@ verifies("format.kind-registry", () => {
       "collection: workspace library/collections/<id>.collection.yaml",
       "connector: workspace-and-hub library/connectors/<id>.connector.yaml",
       "skill: workspace-and-hub library/skills/<id>/SKILL.md",
+      "tool: workspace library/tools/<id>.tool.yaml",
       "hub: hub /hub.yaml",
       "agent: workspace-and-hub agents/<id>.agent.yaml",
       "workflow: workspace-and-hub workflows/<id>.workflow.yaml",

@@ -13,6 +13,7 @@ const kindIcons: { readonly [Kind in ItemKind]: () => ReactNode } = {
   workflowTest: () => <PlaceIcon name="workflows" />,
   routine: () => <PlaceIcon name="routines" />,
   skill: () => <PlaceIcon name="library" />,
+  tool: () => <PlaceIcon name="library" />,
   knowledge: () => <PlaceIcon name="library" />,
   collection: () => <PlaceIcon name="library" />,
   provider: () => <SectionIcon name="models" />,

@@ -72,6 +72,7 @@ export const itemWords = {
     workflowTest: "Workflow test",
     routine: "Routine",
     skill: "Skill",
+    tool: "Tool",
     hub: "Hub",
     provider: "Provider",
     runtime: "Runtime",
