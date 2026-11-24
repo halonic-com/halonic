@@ -74,6 +74,7 @@ import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
 import type { RemoteEngine } from "../engine/remote-engine.ts";
 import { provideFilesServices } from "../files/provide-files-services.ts";
 import { provideGoogleSetup } from "../google/provide-google-setup.ts";
+import { provideAgentConnections } from "../inbox/provide-agent-connections.ts";
 import { provideAgentMessaging } from "../inbox/provide-agent-messaging.ts";
 import { WorkspaceHeldAgents } from "../inbox/workspace-held-agents.ts";
 import { WorkspaceRequests } from "../inbox/workspace-requests.ts";
@@ -219,6 +220,7 @@ export function provideFolderServices(
     );
   provideEngineAutoOpen(services, { ipc, files, trust, location, scope, remoteEngine });
   provideAgentMessaging(services, transport, location, window);
+  provideAgentConnections(services, transport, location);
   // Settings › New agents run and the Harness page share the agent host's choices.
   // One store for the workspace's chats: the Assistant's Build chats and the agents' Try it chats.
   const chatSessions = new TauriChatSessions(ipc);

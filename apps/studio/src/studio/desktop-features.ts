@@ -1,6 +1,7 @@
 import { agentsFeature } from "@halonicjs/studio-feature-agents";
 import { AgentReviewService, AgentsHostService } from "@halonicjs/studio-feature-agents/api";
 import { checkComputerFeature } from "@halonicjs/studio-feature-check-computer";
+import { connectionsFeature } from "@halonicjs/studio-feature-connections";
 import { filesFeature } from "@halonicjs/studio-feature-files";
 import { FilesHostService } from "@halonicjs/studio-feature-files/api";
 import { firstRunFeature } from "@halonicjs/studio-feature-first-run";
@@ -68,6 +69,7 @@ import { FilesWithErrorsService, type ShellOptions } from "@halonicjs/studio-she
 export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = {
   features: [
     checkComputerFeature,
+    connectionsFeature,
     filesFeature,
     firstRunFeature,
     googleSetupFeature,
