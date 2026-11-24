@@ -2,6 +2,7 @@
 
 - Approval: Liam's comment of 23 Nov 23:11 UTC on HAL-17139 approves `accounts()` on `DeployTarget` as port version 2; Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:tQ5LsAuGZR83/pWH/rs6IfrdHst6jnxHWV9/nhqLyQQjlHFMyno6z2GVbyCxYX9sLAWeYHYrgHt3rJsKi7cRDw==
 
 ## What changes
 
