@@ -3,6 +3,7 @@
 - Task: HAL-17438
 - Approval: Liam asked for both on the review of #5658 (HAL-17495), carried over to HAL-17438 (https://paperclip.halonic.com/HAL/issues/HAL-17438#comment-7a7ae7fc-9cc0-4971-a754-fbe90a834504); Liam approves this change on HAL-17438 with the review of this pull request. A team decision with no board card (HAL-2282 rule).
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:24FPcrfYlklrUnuUa5K6PZkDz2UysL1x2mydMtaGdADqeQg6xv3dKnSKvECigl4LyWKjAogCnvGBg+vLrBbJBQ==
 
 ## What changes
 
