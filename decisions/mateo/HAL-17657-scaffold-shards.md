@@ -4,6 +4,7 @@
   without losing what it proves, shard or partial cache)
 - Approval: Liam signs this note in review (CI workflow, internal CI time, no board card)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:aZCGtlc0KyFRTjv4soxhu7QbBgOYP0MLeoNLg46RSNA3B3UFtQ6uqkQN4ct11KqwafHxiKdaDxXagkR4+6rJAA==
 
 ## What changes
 
