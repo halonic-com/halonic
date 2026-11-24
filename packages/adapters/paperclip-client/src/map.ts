@@ -133,6 +133,7 @@ export function toMessage(
     author: authorOf(context, text(record, "authorAgentId"), text(record, "authorUserId")),
     body: text(record, "body") ?? "",
     sentAt: timeOf(record, "createdAt"),
+    attachments: [],
   };
 }
 

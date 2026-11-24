@@ -160,6 +160,42 @@ verifies("contracts.fake-agent-messaging", () => {
     expect(hits.map((hit) => hit.kind)).toEqual(["agent", "work"]);
   });
 
+  it("lists an item's and a message's files without their bytes, and gives the bytes on a read", async () => {
+    const { messaging, acme } = makeFake();
+    const screenshot = { name: "login.png", type: "image/png", bytes: new Uint8Array([1, 2, 3]) };
+    const item = messaging.addInboxItem(acme.id, { question: "Ship it?", files: [screenshot] });
+    const chief = messaging.addAgent(acme.id, { name: "Chief" });
+    const chat = messaging.addConversation(chief.id);
+    const message = messaging.addMessage(chat.id, {
+      body: "See the log",
+      attachments: [screenshot],
+    });
+
+    const [listed] = await messaging.listInboxItems();
+    const [attachment] = listed?.attachments ?? [];
+    const read = await messaging.readAttachment(attachment?.id ?? "");
+
+    expect(listed?.id).toBe(item.id);
+    expect(attachment).toEqual({
+      id: attachment?.id,
+      name: "login.png",
+      type: "image/png",
+      size: 3,
+    });
+    expect(message.attachments).toHaveLength(1);
+    expect(message.attachments[0]?.id).not.toBe(attachment?.id);
+    expect(read).toEqual({ outcome: "read", bytes: new Uint8Array([1, 2, 3]), type: "image/png" });
+    expect(await messaging.readAttachment("no-such-file")).toEqual({
+      outcome: "refused",
+      reason: "not-found",
+    });
+    messaging.goOffline(acme.id);
+    expect(await messaging.readAttachment(attachment?.id ?? "")).toEqual({
+      outcome: "refused",
+      reason: "offline",
+    });
+  });
+
   it("tells a reader which source changed", async () => {
     const { messaging, acme } = makeFake();
     const changes = messaging.changes()[Symbol.asyncIterator]();

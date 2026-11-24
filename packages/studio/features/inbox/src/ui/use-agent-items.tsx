@@ -1,6 +1,12 @@
 import type { InboxItem as AgentItem, AgentMessaging, MessagingSource } from "@halonicjs/ports";
 import { Button, type ListRow, StatusChip } from "@halonicjs/studio-kit";
 import { type ReactNode, useCallback, useMemo, useState, useSyncExternalStore } from "react";
+import {
+  type AgentBundle,
+  bundleAgentItems,
+  bundleMeta,
+  bundleTitle,
+} from "../agent/agent-bundles.ts";
 import { AgentInbox, type AgentInboxState } from "../agent/agent-inbox.ts";
 import {
   agentItemKey,
@@ -18,16 +24,19 @@ export interface AgentItems {
   readonly waiting: number;
   /** The items that wait, for the project filter's chips. */
   readonly waitingItems: readonly AgentItem[];
-  /** One row per open item the project filter shows, after the Inbox's own rows. */
+  /**
+   * One row per open item or bundle of them that the project filter shows, after the Inbox's own
+   * rows (`inbox.agent-item-bundles`). A bundle holds one project's items, so it shows whole or not.
+   */
   readonly rows: (now: Date, filter: ProjectFilter) => ListRow[];
   /** Over the list: each source that can't take answers, and a read that failed. */
   readonly lines: (now: Date) => ReactNode;
-  /** The open item's row key, while one is open. */
+  /** The open row's key, while one is open. */
   readonly openKey: string | undefined;
-  /** Opens the item of that row key; `false` when the key isn't an agent item's. */
+  /** Opens the item or bundle of that row key; `false` when the key isn't an agent row's. */
   readonly open: (key: string) => boolean;
   readonly close: () => void;
-  /** The open item's card, or `otherwise` while none is open. */
+  /** The open row's cards, or `otherwise` while none is open. */
   readonly card: (now: () => Date, otherwise: ReactNode) => ReactNode;
 }
 
@@ -56,20 +65,26 @@ export function useAgentItems(messaging: AgentMessaging | undefined): AgentItems
     [inbox],
   );
   const state = useSyncExternalStore(subscribe, () => inbox?.state ?? nothing);
-  const [openId, setOpenId] = useState<string | undefined>(undefined);
+  const [opened, setOpened] = useState<Opened | undefined>(undefined);
   const waiting = state.items.filter((item) => item.state.kind === "open");
+  const bundles = bundleAgentItems(waiting);
   const sourceOf = (item: AgentItem) => state.sources.find((source) => source.id === item.source);
-  const openItem = state.items.find((item) => item.id === openId);
+  const workOf = (item: AgentItem) => state.work.find((work) => work.id === item.work);
+  // From every item, answered too, so an answered card stays open and says who answered it.
+  const openItems = (opened?.ids ?? []).flatMap((id) => {
+    const found = state.items.find((item) => item.id === id);
+    return found === undefined ? [] : [found];
+  });
   // Stable, so the page can close the card from an effect when its own item opens.
-  const close = useCallback(() => setOpenId(undefined), []);
+  const close = useCallback(() => setOpened(undefined), []);
 
   return {
     waiting: waiting.length,
     waitingItems: waiting,
     rows: (now, filter) =>
-      waiting
-        .filter((item) => agentItemShows(item, filter))
-        .map((item) => agentRow(item, sourceOf(item), now)),
+      bundles
+        .filter((bundle) => bundle.items.some((item) => agentItemShows(item, filter)))
+        .map((bundle) => bundleRow(bundle, state, now)),
     lines: (now) => (
       <SourceLines
         sources={state.sources}
@@ -78,27 +93,61 @@ export function useAgentItems(messaging: AgentMessaging | undefined): AgentItems
         now={now}
       />
     ),
-    openKey: openItem === undefined ? undefined : agentItemKey(openItem),
+    openKey: openItems.length === 0 ? undefined : opened?.key,
     open: (key) => {
-      const found = waiting.find((item) => agentItemKey(item) === key);
-      setOpenId(found?.id);
+      const found = bundles.find((bundle) => bundle.key === key);
+      setOpened(found === undefined ? undefined : { key, ids: found.items.map((item) => item.id) });
       return found !== undefined;
     },
     close,
     card: (now, otherwise) =>
-      openItem === undefined || inbox === undefined ? (
+      openItems.length === 0 || inbox === undefined ? (
         otherwise
       ) : (
-        <AgentItemCard
-          key={openItem.id}
-          item={openItem}
-          source={sourceOf(openItem)}
-          work={state.work.find((work) => work.id === openItem.work)}
-          now={now}
-          answer={(answer) => inbox.answer(openItem.id, answer)}
-        />
+        <div key={opened?.key} className="flex min-h-0 flex-col gap-4 overflow-y-auto">
+          {openItems.map((item, index) => (
+            <AgentItemCard
+              key={item.id}
+              item={item}
+              source={sourceOf(item)}
+              work={workOf(item)}
+              now={now}
+              answer={(answer) => inbox.answer(item.id, answer)}
+              readAttachment={(attachment) => inbox.readAttachment(attachment)}
+              focusOnOpen={index === 0}
+            />
+          ))}
+        </div>
       ),
   };
+}
+
+/** The row that is open: its key, and the items it held when opened, oldest first. */
+interface Opened {
+  readonly key: string;
+  readonly ids: readonly string[];
+}
+
+/**
+ * A row of the agents' items: one item's title, or a bundle's count, then the source, who asks and
+ * how long the oldest has waited (`inbox.agent-item-bundles`).
+ */
+function bundleRow(bundle: AgentBundle, state: AgentInboxState, now: Date): ListRow {
+  const [oldest] = bundle.items;
+  if (oldest === undefined) return { id: bundle.key, title: "" };
+  const source = state.sources.find((each) => each.id === oldest.source);
+  if (bundle.items.length === 1) return agentRow(oldest, source, now);
+  const work = state.work.find((each) => each.id === bundle.work);
+  const row = {
+    id: bundle.key,
+    title: bundleTitle(bundle, work),
+    meta: bundleMeta(bundle, source, now),
+    wrapTitle: true,
+    wrapMeta: true,
+  };
+  return isAgentItemLate(oldest, now)
+    ? { ...row, trailing: <StatusChip tone="attention">Late</StatusChip> }
+    : row;
 }
 
 /** An agent item's row: its title, then its source, who asks and how long it has waited. */

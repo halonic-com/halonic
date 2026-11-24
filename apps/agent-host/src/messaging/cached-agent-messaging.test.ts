@@ -40,6 +40,7 @@ function keyedProvider(fake: FakeAgentMessaging, now: () => Date): AgentMessagin
     listWork: read(() => fake.listWork()),
     search: (text: string) => read(() => fake.search(text))(),
     answer: (item, answer) => fake.answer(item, answer),
+    readAttachment: (attachment) => fake.readAttachment(attachment),
     send: (conversation, body) => fake.send(conversation, body),
     changes: () => fake.changes(),
   };
@@ -142,6 +143,33 @@ verifies("agent-host.agent-messaging-cache", () => {
       expect(messages.map((message) => message.body)).toEqual(["The launch plan is ready."]);
       const [item] = await messaging.listInboxItems();
       expect(item?.state).toEqual({ kind: "open" });
+    });
+
+    it("keeps an offline message's file listing, and reads its bytes only from the source", async () => {
+      const { source, chat } = await readAcme();
+      const bytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+      fake.addMessage(chat.id, {
+        body: "The plan's chart",
+        attachments: [{ name: "chart.png", type: "image/png", bytes }],
+      });
+      const live = await messaging.listMessages(chat.id);
+      const file = live.at(-1)?.attachments[0];
+      expect(file).toMatchObject({ name: "chart.png", type: "image/png", size: 8 });
+      expect(await messaging.readAttachment(file?.id ?? "")).toEqual({
+        outcome: "read",
+        bytes,
+        type: "image/png",
+      });
+
+      fake.goOffline(source.id);
+      expect((await messaging.listMessages(chat.id)).at(-1)?.attachments).toEqual([file]);
+      expect(await messaging.readAttachment(file?.id ?? "")).toEqual({
+        outcome: "refused",
+        reason: "offline",
+      });
+      for (const cacheFile of await filesUnder(cacheFolder)) {
+        expect(await readFile(cacheFile, "utf8")).not.toContain('"bytes"');
+      }
     });
 
     it("keeps no key, Authorization header or request in any cache file", async () => {

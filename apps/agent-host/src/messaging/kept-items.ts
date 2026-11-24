@@ -1,4 +1,5 @@
 import type {
+  Attachment,
   Conversation,
   InboxAnswer,
   InboxItem,
@@ -45,6 +46,7 @@ export function keptMessage(message: Message): Message {
     author: keptAuthor(message.author),
     body: message.body,
     sentAt: message.sentAt,
+    attachments: message.attachments.map(keptAttachment),
   };
 }
 
@@ -58,6 +60,7 @@ export function keptInboxItem(item: InboxItem): InboxItem {
     options: item.options.map((option) => ({ id: option.id, label: option.label })),
     createdAt: item.createdAt,
     state: keptState(item.state),
+    attachments: item.attachments.map(keptAttachment),
   };
   if (item.project !== undefined) kept.project = { id: item.project.id, name: item.project.name };
   if (item.work !== undefined) kept.work = item.work;
@@ -77,6 +80,16 @@ export function keptWork(work: WorkItem): WorkItem {
   };
   if (work.assignee !== undefined) kept.assignee = work.assignee;
   return kept;
+}
+
+/** A file's listing only; its bytes are never cached, they come from the source on each read. */
+function keptAttachment(attachment: Attachment): Attachment {
+  return {
+    id: attachment.id,
+    name: attachment.name,
+    type: attachment.type,
+    size: attachment.size,
+  };
 }
 
 function keptAuthor(author: MessagingAuthor): MessagingAuthor {

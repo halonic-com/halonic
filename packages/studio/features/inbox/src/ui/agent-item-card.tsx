@@ -1,8 +1,10 @@
 import type {
   InboxItem as AgentItem,
   AnswerResult,
+  AttachmentRead,
   InboxAnswer,
   MessagingAuthor,
+  MessagingId,
   MessagingSource,
   WorkItem,
 } from "@halonicjs/ports";
@@ -16,6 +18,7 @@ import {
   workLine,
 } from "../agent/agent-item-text.ts";
 import { waitingSince } from "../plain/waiting-time.ts";
+import { AgentAttachments } from "./agent-attachments.tsx";
 import { AgentMarkdown } from "./agent-markdown.tsx";
 import {
   CardHeader,
@@ -35,6 +38,10 @@ export interface AgentItemCardProps {
   readonly work?: WorkItem | undefined;
   readonly now: () => Date;
   readonly answer: (answer: InboxAnswer) => Promise<AnswerResult>;
+  /** Reads one of its files through the engine, only when the person asks to see it. */
+  readonly readAttachment: (attachment: MessagingId) => Promise<AttachmentRead>;
+  /** Whether its title takes the focus when it opens: in a bundle, only the first card's does. */
+  readonly focusOnOpen?: boolean;
 }
 
 /** Where this card's own answer is. */
@@ -49,15 +56,26 @@ type Sent =
  * An agent's card or question (`inbox.agent-inbox-items`): its title, its source and since when it
  * waits, the question as safe Markdown, and one button per option, or a reply field when it has
  * none. Once answered, here or elsewhere, a line says by whom and how, and the buttons stay, off
- * (render 5f). It names the work it came from, whatever made it (`inbox.every-waiting-item`). While its source is offline or signed out the buttons are off and say why; nothing
- * is kept to send later.
+ * (render 5f). It names the work it came from, whatever made it (`inbox.every-waiting-item`), and
+ * lists its files, showing a picture only once asked (`inbox.agent-item-media`). While its source
+ * is offline or signed out the buttons are off and say why; nothing is kept to send later.
  */
-export function AgentItemCard({ item, source, work, now, answer }: AgentItemCardProps) {
+export function AgentItemCard({
+  item,
+  source,
+  work,
+  now,
+  answer,
+  readAttachment,
+  focusOnOpen = true,
+}: AgentItemCardProps) {
   useEveryMinute();
   const titleId = useId();
   const reasonId = useId();
   const heading = useRef<HTMLHeadingElement>(null);
-  useEffect(() => heading.current?.focus({ preventScroll: true }), []);
+  useEffect(() => {
+    if (focusOnOpen) heading.current?.focus({ preventScroll: true });
+  }, [focusOnOpen]);
   const [sent, setSent] = useState<Sent>({ kind: "idle" });
   const [reply, setReply] = useState("");
 
@@ -92,6 +110,7 @@ export function AgentItemCard({ item, source, work, now, answer }: AgentItemCard
         />
         {work === undefined ? null : <p className="text-small text-fg-muted">{workLine(work)}</p>}
         <AgentMarkdown text={item.question} />
+        <AgentAttachments attachments={item.attachments} read={readAttachment} />
       </div>
       <div className="flex flex-col gap-3 border-t border-border p-4">
         {decided === null ? null : (

@@ -64,6 +64,7 @@ export {
 export {
   FakeAgentMessaging,
   type FakeAgentMessagingOptions,
+  type FakeAttachment,
 } from "./fake-agent-messaging.ts";
 export {
   type AccountsFailureCode,

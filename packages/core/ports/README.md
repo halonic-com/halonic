@@ -17,7 +17,7 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 
 | Port | File | Version | What it does | Contract suite |
 | --- | --- | --- | --- | --- |
-| `AgentMessaging` | `agent-messaging.ts` | 1 | how Studio's apps talk to agents, whoever runs them: sources, agents, conversations, messages, inbox items and answers, work, search and changes, with opaque IDs and no provider types | `agent-messaging` (with first adapter; `FakeAgentMessaging` in `testing/contracts` until then) |
+| `AgentMessaging` | `agent-messaging.ts` | 2 | how Studio's apps talk to agents, whoever runs them: sources, agents, conversations, messages, inbox items and answers, attachments read through the engine, work, search and changes, with opaque IDs and no provider types | `agent-messaging` (with first adapter; `FakeAgentMessaging` in `testing/contracts` until then) |
 | `AgentPlacementStore` | `agent-placement-store.ts` | 2 | each agent's "this computer" choice in the user's profile, keyed by workspace, hub and agent id; `AgentPlacement` decides | `agent-placement-store` |
 | `BlobStore` | `blob-store.ts` | 1 | content-addressed bytes: attachments, large payloads, exports | `blob-store` |
 | `ChatSessions` | `chat-sessions.ts` | 1 | each workspace's Build and agent chats in the user's profile on this computer; `core/assistant` decides what is kept | `chat-sessions` |

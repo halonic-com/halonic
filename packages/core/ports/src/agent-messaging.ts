@@ -1,5 +1,8 @@
-/** Version of the {@link AgentMessaging} port. A breaking change bumps it and comes with an ADR. */
-export const agentMessagingVersion = 1;
+/**
+ * Version of the {@link AgentMessaging} port. A breaking change bumps it and comes with an ADR.
+ * Version 2 adds attachments and `readAttachment`.
+ */
+export const agentMessagingVersion = 2;
 
 /**
  * An item's ID, opaque to apps: only the provider that made it reads it. It
@@ -42,6 +45,27 @@ export interface MessagingAgent {
   activity: AgentActivity;
 }
 
+/**
+ * A file an agent put on a message or an inbox item, such as a screenshot. It holds no address:
+ * an app reads its bytes only through {@link AgentMessaging.readAttachment}, so the engine makes
+ * the call and an app never gets a provider's URL (requirement `ports.agent-messaging-attachments`).
+ * Its name and type come from the agent, so apps show them as text and trust neither.
+ */
+export interface Attachment {
+  id: MessagingId;
+  /** The file's name as the agent gave it, such as "login.png". */
+  name: string;
+  /** Its media type as the source gave it, such as "image/png". */
+  type: string;
+  /** Its size in bytes. */
+  size: number;
+}
+
+/** What reading an attachment's bytes gave. Offline, the cache may not hold them, so the read is refused. */
+export type AttachmentRead =
+  | { outcome: "read"; bytes: Uint8Array; type: string }
+  | { outcome: "refused"; reason: MessagingRefusal };
+
 /** Who wrote a message or answered an inbox item. `me` is the person using Studio. */
 export type MessagingAuthor =
   | { kind: "me" }
@@ -71,6 +95,8 @@ export interface Message {
   conversation: MessagingId;
   author: MessagingAuthor;
   body: string;
+  /** Files sent with it, in the order they were added; often none. */
+  attachments: readonly Attachment[];
   sentAt: string;
 }
 
@@ -105,6 +131,8 @@ export interface InboxItem {
   options: readonly InboxItemOption[];
   /** The project it belongs to (for Paperclip, its task's project). Without one, apps show it under "No project". */
   project?: MessagingProject;
+  /** Files the agent put on it, such as a screenshot, in the order they were added; often none. */
+  attachments: readonly Attachment[];
   /** The work it belongs to, when the source has one. */
   work?: MessagingId;
   createdAt: string;
@@ -190,6 +218,11 @@ export interface AgentMessaging {
   listWork(): Promise<readonly WorkItem[]>;
   search(text: string): Promise<readonly SearchHit[]>;
   answer(item: MessagingId, answer: InboxAnswer): Promise<AnswerResult>;
+  /**
+   * An attachment's bytes, read through the engine only when the person asks to see it: apps
+   * load nothing on their own and never get the provider's address for it.
+   */
+  readAttachment(attachment: MessagingId): Promise<AttachmentRead>;
   send(conversation: MessagingId, body: string): Promise<SendResult>;
   /** The ID of each source that changed, as it changes. Ends when the reader stops. */
   changes(): AsyncIterable<MessagingId>;

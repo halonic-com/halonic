@@ -1,6 +1,7 @@
 import type {
   AgentMessaging,
   AnswerResult,
+  AttachmentRead,
   Conversation,
   InboxAnswer,
   InboxItem,
@@ -171,6 +172,14 @@ export class PaperclipMessaging implements AgentMessaging {
     const result = await this.#writer.answer(this.#context(), target, answer);
     this.#changedAfter(result.outcome !== "refused");
     return result;
+  }
+
+  /**
+   * Refuses every read: this provider lists no attachments yet, so no ID it
+   * gave out names one, and it makes no request the ADR's list doesn't hold.
+   */
+  async readAttachment(_attachment: MessagingId): Promise<AttachmentRead> {
+    return { outcome: "refused", reason: "not-found" };
   }
 
   async send(conversation: MessagingId, body: string): Promise<SendResult> {

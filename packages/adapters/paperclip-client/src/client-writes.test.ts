@@ -157,6 +157,7 @@ verifies("ports.agent-messaging", () => {
           author: { kind: "me" },
           body: "On it",
           sentAt: "2026-11-24T10:12:00.000Z",
+          attachments: [],
         },
       });
       expect(paperclip.seen.at(-1)?.body).toMatchObject({

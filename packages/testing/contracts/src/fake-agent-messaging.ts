@@ -1,6 +1,8 @@
 import type {
   AgentMessaging,
   AnswerResult,
+  Attachment,
+  AttachmentRead,
   Conversation,
   InboxAnswer,
   InboxItem,
@@ -36,6 +38,13 @@ interface Held {
   work: WorkItem[];
 }
 
+/** A file to put on an item or a message: its bytes, which only `readAttachment` gives back. */
+export interface FakeAttachment {
+  name: string;
+  type: string;
+  bytes: Uint8Array;
+}
+
 const me: MessagingAuthor = { kind: "me" };
 
 /** The source of an item that names one. */
@@ -49,7 +58,8 @@ const bySource = (item: { source: MessagingId }): MessagingId => item.source;
  *
  * A test adds sources and fills them with `addAgent`, `addConversation`,
  * `addMessage`, `addInboxItem` and `addWork`, plays another client with
- * `answerElsewhere`, and cuts a source's line with `goOffline`. Offline, that
+ * `answerElsewhere`, and cuts a source's line with `goOffline`. Items and messages take files
+ * (`attachments`), whose bytes only `readAttachment` gives. Offline, that
  * source's items read as they were when the line was cut, and writes to it
  * are refused with `offline`, never queued.
  *
@@ -72,6 +82,8 @@ export class FakeAgentMessaging implements AgentMessaging {
   };
   private readonly frozen = new Map<MessagingId, Held>();
   private readonly readers = new Set<Feed<MessagingId>>();
+  /** Each attachment's bytes and the source that holds it. */
+  private readonly files = new Map<MessagingId, { source: MessagingId; file: FakeAttachment }>();
   private made = 0;
 
   constructor(options: FakeAgentMessagingOptions = {}) {
@@ -153,6 +165,15 @@ export class FakeAgentMessaging implements AgentMessaging {
     return Promise.resolve({ outcome: "answered", answeredAt });
   }
 
+  readAttachment(attachment: MessagingId): Promise<AttachmentRead> {
+    const found = this.files.get(attachment);
+    if (found === undefined) return Promise.resolve({ outcome: "refused", reason: "not-found" });
+    const refusal = this.refusal(found.source);
+    if (refusal !== undefined) return Promise.resolve({ outcome: "refused", reason: refusal });
+    const { bytes, type } = found.file;
+    return Promise.resolve({ outcome: "read", bytes: bytes.slice(), type });
+  }
+
   send(conversation: MessagingId, body: string): Promise<SendResult> {
     const found = this.live.conversations.find((each) => each.id === conversation);
     if (found === undefined) return Promise.resolve({ outcome: "refused", reason: "not-found" });
@@ -205,7 +226,7 @@ export class FakeAgentMessaging implements AgentMessaging {
   /** Adds a message to a conversation, from its agent unless told otherwise; an agent's message waits for the person. */
   addMessage(
     conversation: MessagingId,
-    message: { body: string; author?: MessagingAuthor },
+    message: { body: string; author?: MessagingAuthor; attachments?: readonly FakeAttachment[] },
   ): Message {
     const found = this.live.conversations.find((each) => each.id === conversation);
     if (found === undefined) throw new Error(`no conversation has the id ${conversation}`);
@@ -215,6 +236,7 @@ export class FakeAgentMessaging implements AgentMessaging {
       conversation,
       author,
       body: message.body,
+      attachments: this.keep(found.source, message.attachments),
       sentAt: this.stamp(),
     };
     found.updatedAt = added.sentAt;
@@ -222,8 +244,12 @@ export class FakeAgentMessaging implements AgentMessaging {
     return this.add("messages", found.source, added);
   }
 
-  /** Adds an open inbox item with the options Yes and No unless told otherwise. */
-  addInboxItem(source: MessagingId, item: { question: string } & Partial<InboxItem>): InboxItem {
+  /** Adds an open inbox item with the options Yes and No and no files unless told otherwise. */
+  addInboxItem(
+    source: MessagingId,
+    item: { question: string; files?: readonly FakeAttachment[] } & Partial<InboxItem>,
+  ): InboxItem {
+    const { files, ...rest } = item;
     const added: InboxItem = {
       id: this.newId(),
       source,
@@ -234,7 +260,8 @@ export class FakeAgentMessaging implements AgentMessaging {
       ],
       createdAt: this.stamp(),
       state: { kind: "open" },
-      ...item,
+      ...rest,
+      attachments: rest.attachments ?? this.keep(source, files),
     };
     return this.add("inbox", source, added);
   }
@@ -350,6 +377,15 @@ export class FakeAgentMessaging implements AgentMessaging {
   private newId(): MessagingId {
     this.made += 1;
     return `${this.idPrefix}-${this.made}`;
+  }
+
+  /** Keeps each file's bytes for `readAttachment` and gives the attachments an item lists. */
+  private keep(source: MessagingId, files: readonly FakeAttachment[] = []): Attachment[] {
+    return files.map((file) => {
+      const id = this.newId();
+      this.files.set(id, { source, file: { ...file, bytes: file.bytes.slice() } });
+      return { id, name: file.name, type: file.type, size: file.bytes.byteLength };
+    });
   }
 
   private stamp(): string {

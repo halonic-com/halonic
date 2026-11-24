@@ -109,11 +109,11 @@ our server's version, it uses that instead.
 
 **The provider's requests** are the whole list. It may list agents, projects,
 tasks, comments, cards and pending approvals, read one approval and the tasks
-it is linked to, answer a card, approve or reject an approval, and comment on
-one of the person's own chat tasks. It approves, rejects, answers or comments
-only when the person does so in Halonic, and shows an approval's type (what
-approving does) next to the asking agent's title (Julian's review of the
-provider, HAL-17437). Sign-in
+it is linked to, read the content of an attachment on one of those, answer a
+card, approve or reject an approval, and comment on one of the person's own
+chat tasks. It approves, rejects, answers or comments only when the person
+does so in Halonic, and shows an approval's type (what approving does) next to
+the asking agent's title (Julian's review of the provider, HAL-17437). Sign-in
 and disconnect may also start, poll and cancel a sign-in, read
 `/api/cli-auth/me` and revoke the current key. It makes nothing else, even
 though the key could: it never hires, sets budgets, changes settings or deletes
@@ -168,6 +168,17 @@ or `javascript:` links. Links open outside the app, no image loads on its
 own, and nothing in them is treated as a Halonic command
 (`inbox.agent-inbox-items`, `studio.messenger`).
 
+**Attachments** (`ports.agent-messaging-attachments`, port version 2). Items
+and messages list their files with an opaque ID, a name, a media type and a
+size, and never an address. An app reads a file's bytes with
+`readAttachment`, which the engine serves, so the provider makes the call
+with its key and no app ever holds a provider's URL. Apps read a file only
+when the person asks to see it: an image in a card shows after a click, never
+on its own. Studio draws the image from those bytes in the page, so its
+content security policy stays as it is. The name and type come from the
+agent, so apps show them as text and draw only common picture types (PNG,
+JPEG, GIF and WebP), never SVG.
+
 ## Threat model
 
 | Threat | Mitigation |
@@ -180,6 +191,7 @@ own, and nothing in them is treated as a Halonic command
 | A redirect sends the key elsewhere, or from `https` to `http` | The provider refuses every redirect |
 | Someone sends the board an approval link for their own sign-in | Studio shows a random phrase that the approval page also shows, and the board approves only that one. A challenge lasts 10 minutes and is cancelled when the dialog closes |
 | Agent-written Markdown fakes an answer button or leaks data through an image | No raw HTML, scripts or `javascript:` links. Links open outside the app, and no image loads on its own |
+| An attachment leaks that it was opened, or carries script | Its bytes come only through the engine, and only after the person asks. Apps get no address, and draw only PNG, JPEG, GIF and WebP from the bytes, never SVG or HTML |
 | The key or a failed answer ends up in a log | Errors carry no headers or answer bodies, and a test searches the logs for a test key |
 | Private Paperclip data lands in git | No data in the connection file. The cache is outside every workspace, readable only by the user, and holds no key |
 | A late approval does harm | Offline, writes are refused and never queued |

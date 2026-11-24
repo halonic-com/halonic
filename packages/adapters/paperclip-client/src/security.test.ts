@@ -90,6 +90,7 @@ async function callEverything(messaging: PaperclipMessaging): Promise<void> {
     await messaging.answer(item.id, { kind: "option", option });
   }
   await messaging.send(chat?.id ?? "", "Thanks");
+  await messaging.readAttachment(`paperclip:acme:file:${chatTask}:f1`);
   await messaging.refresh();
 }
 
@@ -155,6 +156,20 @@ verifies("ports.paperclip-key", () => {
         reason: "not-found",
       });
       expect(paperclip.seen).toEqual([]);
+    });
+
+    it("lists no files and refuses every file read with not-found, sending nothing", async () => {
+      paperclip.serveAcme();
+      const messaging = client();
+      const [chat] = await messaging.listConversations();
+      const messages = await messaging.listMessages(chat?.id ?? "");
+      const items = await messaging.listInboxItems();
+      expect([...messages, ...items].flatMap((each) => each.attachments)).toEqual([]);
+      const before = paperclip.seen.length;
+      await expect(messaging.readAttachment(`paperclip:acme:file:${chatTask}:f1`)).resolves.toEqual(
+        { outcome: "refused", reason: "not-found" },
+      );
+      expect(paperclip.seen.length).toBe(before);
     });
   });
 

@@ -114,6 +114,8 @@ export function cardToItem(
     options: optionsOf(kind, payload),
     work: context.ids.make("task", task),
     createdAt: timeOf(record, "createdAt"),
+    // The provider lists no files yet; it reads none, so it makes no request for them.
+    attachments: [],
     state:
       status === "pending"
         ? { kind: "open" }
@@ -196,6 +198,8 @@ export function approvalToItem(
     options: approvalOptions,
     ...(work === undefined ? {} : { work }),
     createdAt: timeOf(record, "createdAt"),
+    // The provider lists no files yet; it reads none, so it makes no request for them.
+    attachments: [],
     state: decided
       ? answeredState(context, record, {
           kind: "option",

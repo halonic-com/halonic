@@ -1,6 +1,7 @@
 import type {
   AgentMessaging,
   AnswerResult,
+  AttachmentRead,
   Conversation,
   InboxAnswer,
   InboxItem,
@@ -54,6 +55,8 @@ export interface MessagingHubOptions {
  * provider listed is refused with `not-found` and reaches no provider. A
  * provider that fails a read is reported and left out, and the others'
  * items still come back; only when every provider fails does the read fail.
+ * An attachment's bytes are read only from the provider that listed it on an
+ * inbox item or a message (`agent-host.messaging-hub-attachments`).
  *
  * @example
  * const hub = new MessagingHub({ providers: [{ name: "paperclip:acme", messaging }], report: log });
@@ -64,12 +67,16 @@ export class MessagingHub implements AgentMessaging {
   readonly #report: (failure: MessagingFailure) => void;
   readonly #inboxOwners: OwnerIndex;
   readonly #conversationOwners: OwnerIndex;
+  readonly #inboxAttachmentOwners: OwnerIndex;
+  /** Per conversation, who listed it and the files its messages carry; replaced on each read of it. */
+  readonly #messageAttachments = new Map<MessagingId, ConversationFiles>();
 
   constructor(options: MessagingHubOptions) {
     this.#providers = options.providers;
     this.#report = options.report;
     this.#inboxOwners = new OwnerIndex(options.providers.length);
     this.#conversationOwners = new OwnerIndex(options.providers.length);
+    this.#inboxAttachmentOwners = new OwnerIndex(options.providers.length);
   }
 
   async listSources(): Promise<readonly MessagingSource[]> {
@@ -88,12 +95,22 @@ export class MessagingHub implements AgentMessaging {
 
   async listMessages(conversation: MessagingId): Promise<readonly Message[]> {
     const owner = await this.#conversationOwner(conversation);
-    return owner === undefined ? [] : owner.messaging.listMessages(conversation);
+    if (owner === undefined) return [];
+    const messages = await owner.messaging.listMessages(conversation);
+    this.#messageAttachments.set(conversation, {
+      provider: this.#providers.indexOf(owner),
+      ids: new Set(messages.flatMap(attachmentIds)),
+    });
+    return messages;
   }
 
   async listInboxItems(): Promise<readonly InboxItem[]> {
     const lists = await this.#readAll("listInboxItems", (each) => each.listInboxItems());
     this.#remember(this.#inboxOwners, lists);
+    lists.forEach((list, index) => {
+      if (list !== undefined)
+        this.#inboxAttachmentOwners.record(index, list.flatMap(attachmentIds));
+    });
     return newestFirst(joined(lists), (item) => item.createdAt);
   }
 
@@ -110,6 +127,16 @@ export class MessagingHub implements AgentMessaging {
     const owner = await this.#inboxOwner(item);
     if (owner === undefined) return { outcome: "refused", reason: "not-found" };
     return owner.messaging.answer(item, answer);
+  }
+
+  async readAttachment(attachment: MessagingId): Promise<AttachmentRead> {
+    const owner = await this.#ownerOf(
+      attachment,
+      (id) => this.#attachmentOwners(id),
+      () => this.listInboxItems(),
+    );
+    if (owner === undefined) return { outcome: "refused", reason: "not-found" };
+    return owner.messaging.readAttachment(attachment);
   }
 
   async send(conversation: MessagingId, body: string): Promise<SendResult> {
@@ -177,12 +204,29 @@ export class MessagingHub implements AgentMessaging {
     });
   }
 
+  /** The providers that listed a file, on an inbox item or on a conversation's messages. */
+  #attachmentOwners(id: MessagingId): number[] {
+    const owners = new Set(this.#inboxAttachmentOwners.ownersOf(id));
+    for (const files of this.#messageAttachments.values()) {
+      if (files.ids.has(id)) owners.add(files.provider);
+    }
+    return [...owners];
+  }
+
   #inboxOwner(item: MessagingId): Promise<NamedMessagingProvider | undefined> {
-    return this.#ownerOf(item, this.#inboxOwners, () => this.listInboxItems());
+    return this.#ownerOf(
+      item,
+      (id) => this.#inboxOwners.ownersOf(id),
+      () => this.listInboxItems(),
+    );
   }
 
   #conversationOwner(conversation: MessagingId): Promise<NamedMessagingProvider | undefined> {
-    return this.#ownerOf(conversation, this.#conversationOwners, () => this.listConversations());
+    return this.#ownerOf(
+      conversation,
+      (id) => this.#conversationOwners.ownersOf(id),
+      () => this.listConversations(),
+    );
   }
 
   /**
@@ -192,11 +236,11 @@ export class MessagingHub implements AgentMessaging {
    */
   async #ownerOf(
     id: MessagingId,
-    owners: OwnerIndex,
+    ownersOf: (id: MessagingId) => readonly number[],
     readAgain: () => Promise<unknown>,
   ): Promise<NamedMessagingProvider | undefined> {
-    if (owners.ownersOf(id).length === 0) await readAgain();
-    const found = owners.ownersOf(id);
+    if (ownersOf(id).length === 0) await readAgain();
+    const found = ownersOf(id);
     if (found.length !== 1) return undefined;
     return this.#providers[found[0] ?? -1];
   }
@@ -204,6 +248,17 @@ export class MessagingHub implements AgentMessaging {
   #failed(index: number, action: string, error: unknown): void {
     this.#report({ provider: this.#providers[index]?.name ?? "unknown", action, error });
   }
+}
+
+/** Which provider listed a conversation, and the IDs of the files on its messages. */
+interface ConversationFiles {
+  provider: number;
+  ids: Set<MessagingId>;
+}
+
+/** The IDs of the files on an inbox item or a message. */
+function attachmentIds(item: { attachments: readonly { id: MessagingId }[] }): MessagingId[] {
+  return item.attachments.map((attachment) => attachment.id);
 }
 
 /** The lists of the providers that answered, one after the other. */

@@ -3,7 +3,11 @@ import { expect, expectTypeOf, it } from "vitest";
 import type {
   AgentMessaging,
   AnswerResult,
+  Attachment,
+  AttachmentRead,
   InboxAnswer,
+  InboxItem,
+  Message,
   MessagingId,
   MessagingSource,
   SendResult,
@@ -23,11 +27,15 @@ verifies("ports.agent-messaging", () => {
       | "listWork"
       | "search"
       | "answer"
+      | "readAttachment"
       | "send"
       | "changes"
     >();
     expectTypeOf<AgentMessaging["answer"]>().parameters.toEqualTypeOf<
       [item: MessagingId, answer: InboxAnswer]
+    >();
+    expectTypeOf<AgentMessaging["readAttachment"]>().parameters.toEqualTypeOf<
+      [attachment: MessagingId]
     >();
     expectTypeOf<AgentMessaging["answer"]>().returns.toEqualTypeOf<Promise<AnswerResult>>();
     expectTypeOf<AgentMessaging["send"]>().parameters.toEqualTypeOf<
@@ -56,5 +64,29 @@ verifies("ports.agent-messaging", () => {
     const queued: SendResult = { outcome: "queued" };
     expect(refused.outcome).toBe("refused");
     expect(queued).toBeDefined();
+  });
+});
+
+verifies("ports.agent-messaging-attachments", () => {
+  typeTest(
+    "lists attachments on items and messages, by name, type and size, with no address",
+    () => {
+      expectTypeOf<keyof Attachment>().toEqualTypeOf<"id" | "name" | "type" | "size">();
+      expectTypeOf<InboxItem["attachments"]>().toEqualTypeOf<readonly Attachment[]>();
+      expectTypeOf<Message["attachments"]>().toEqualTypeOf<readonly Attachment[]>();
+      expectTypeOf<AgentMessaging["readAttachment"]>().returns.toEqualTypeOf<
+        Promise<AttachmentRead>
+      >();
+    },
+  );
+
+  it("gives an attachment's bytes, or refuses the read", () => {
+    const read: AttachmentRead = { outcome: "read", bytes: new Uint8Array([1]), type: "image/png" };
+    const refused: AttachmentRead = { outcome: "refused", reason: "offline" };
+    // @ts-expect-error: an app never gets an address to load the file from itself
+    const address: AttachmentRead = { outcome: "read", url: "https://acme.example/a.png" };
+    expect(read.outcome).toBe("read");
+    expect(refused.outcome).toBe("refused");
+    expect(address).toBeDefined();
   });
 });

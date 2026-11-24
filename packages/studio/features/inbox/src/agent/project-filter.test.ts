@@ -8,6 +8,7 @@ const item = (project?: { id: string; name: string }) => ({
   from: { kind: "me" as const },
   question: "Ship it?",
   options: [],
+  attachments: [],
   createdAt: "2026-11-24T10:00:00.000Z",
   state: { kind: "open" as const },
   ...(project === undefined ? {} : { project }),

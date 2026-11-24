@@ -1,6 +1,7 @@
 import type {
   AgentMessaging,
   AnswerResult,
+  AttachmentRead,
   Conversation,
   InboxAnswer,
   InboxItem,
@@ -116,6 +117,11 @@ export class CachedAgentMessaging implements AgentMessaging {
   }
 
   /** Goes straight to the source, which sends or refuses; offline, it is never kept to send later. */
+  /** A file's bytes come only from the source, never from the cache; an offline source refuses. */
+  readAttachment(attachment: MessagingId): Promise<AttachmentRead> {
+    return this.#live.readAttachment(attachment);
+  }
+
   send(conversation: MessagingId, body: string): Promise<SendResult> {
     return this.#live.send(conversation, body);
   }
