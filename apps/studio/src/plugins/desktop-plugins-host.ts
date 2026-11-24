@@ -43,6 +43,8 @@ export interface DesktopPluginsParts {
   readonly runStates?: PluginRunStates;
   /** Whether the plugins' programs can run here, which the trust check reads when it opens (`desktopProgramsRun`). */
   readonly programs?: PluginsHost["actions"]["programs"];
+  /** Whether the agent host's build runs plugin tools: `AgentHostPluginTools`. */
+  readonly toolsInThisBuild?: PluginsHost["toolsInThisBuild"];
 }
 
 /** The desktop's plugins host, and the feed it keeps current. */
@@ -78,6 +80,7 @@ export function desktopPluginsHost({
   unfencedRuns,
   runStates,
   programs,
+  toolsInThisBuild,
 }: DesktopPluginsParts): DesktopPluginsHost {
   const service = new PluginService({
     plugins: new TauriPluginFolderReader(ipc),
@@ -125,6 +128,7 @@ export function desktopPluginsHost({
       signIns,
       actions,
       installer: desktopPluginInstaller({ ipc, service, reload: actions.reload, onReloadFailed }),
+      ...(toolsInThisBuild === undefined ? {} : { toolsInThisBuild }),
     },
   };
 }

@@ -132,3 +132,29 @@ verifies("studio.desktop-plugins-registered", () => {
     });
   });
 });
+
+verifies("studio.desktop-plugin-tools-in-build", () => {
+  it("asks the agent host whether its build runs plugin tools", async () => {
+    const { ipc } = acmeShell();
+    const page = acmeWindow();
+    const routes: string[] = [];
+    const singleExecutable = {
+      request: async (route: string) => {
+        routes.push(route);
+        return { status: 200, body: { inThisBuild: false } };
+      },
+    } as unknown as AgentHostTransport;
+    const services = new ServiceRegistry();
+    providePlugins(services, {
+      ipc,
+      window: page.window,
+      transport: singleExecutable,
+      platform: "linux",
+      onFocus: page.onFocus,
+      onReloadFailed: () => {},
+    });
+
+    expect(await services.get(PluginsHostService).toolsInThisBuild?.()).toBe(false);
+    expect(routes).toContain("GET /v1/plugins/tools");
+  });
+});

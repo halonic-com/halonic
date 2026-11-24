@@ -1,3 +1,4 @@
+import { InfoIcon, LineFrame } from "@halonicjs/studio-kit";
 import {
   focusSectionHeading,
   type SettingsSectionProps,
@@ -13,6 +14,7 @@ import {
 } from "../page/plugin-pages.ts";
 import { ReviewPluginDialog } from "../page/review-plugin-dialog.tsx";
 import { usePageActions } from "../page/use-page-actions.ts";
+import { NO_PLUGIN_TOOLS_LINE, TOOLS_ON } from "../tools-in-build.ts";
 import { LOAD_FAILED_REASON } from "./list-text.ts";
 import { BUILT_IN_PLUGINS, PluginsList, type PluginsLoad } from "./plugins-list.tsx";
 
@@ -66,7 +68,8 @@ function useFirstRead(
  * first so the focus can go to the page's heading. A served Settings is view only, whichever of
  * the `place` prop and the host's `place` says so. When **Add** works, the add dialog closes and
  * the plugin's trust check opens at once (checklist 3 and 4.5): **Trust and turn on** says it is
- * on, **Not now** says it is added but off, and either way the plugin's page opens.
+ * on, **Not now** says it is added but off, and either way the plugin's page opens. In a build
+ * without plugin tools, one line above the list says so (`plugins.plugin-tools-off`).
  */
 export function PluginsSettingsSection({
   context,
@@ -76,6 +79,8 @@ export function PluginsSettingsSection({
 }: SettingsSectionProps) {
   const plugins = context.services.get(PluginsService);
   const installed = useSyncExternalStore(plugins.feed.subscribe, plugins.feed.current);
+  const tools = plugins.tools ?? TOOLS_ON;
+  const toolsOff = useSyncExternalStore(tools.subscribe, tools.off);
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState<string | undefined>(undefined);
   const { toastOn, toastAddedOff } = usePageActions();
@@ -102,6 +107,11 @@ export function PluginsSettingsSection({
   });
   return (
     <div ref={anchor}>
+      {toolsOff ? (
+        <LineFrame icon={<InfoIcon />} muted>
+          {NO_PLUGIN_TOOLS_LINE}
+        </LineFrame>
+      ) : null}
       <PluginsList
         load={load}
         plugins={installed}

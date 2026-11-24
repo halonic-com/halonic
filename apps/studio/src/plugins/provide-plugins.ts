@@ -3,6 +3,7 @@ import {
   AgentHostPluginRunStates,
   AgentHostPluginSecrets,
   AgentHostPluginToolCaller,
+  AgentHostPluginTools,
   type AgentHostTransport,
 } from "@halonicjs/adapter-agent-host-client";
 import type { ServiceRegistry, SignOutPlugin } from "@halonicjs/app";
@@ -69,6 +70,7 @@ export function providePlugins(
     unfencedRuns,
     runStates: new AgentHostPluginRunStates(transport),
     programs: desktopProgramsRun(transport, parts.platform),
+    toolsInThisBuild: () => new AgentHostPluginTools(transport).inThisBuild(),
   });
   hosts.set(parts.window, { plugins, unfencedRuns });
   const reload = (): void => {

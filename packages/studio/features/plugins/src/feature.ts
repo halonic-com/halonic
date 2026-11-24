@@ -15,12 +15,14 @@ import {
   pluginPanelKind,
 } from "./panel/plugin-panels.ts";
 import { pageOptions, panelOptions, studioPlugins } from "./plugins-service.ts";
+import { TOOLS_ON } from "./tools-in-build.ts";
 
 /**
  * The Plugins feature (`plugins.feature`). It builds the open workspace's plugins from what the
  * app provides (`PluginsHostService`) and adds what they show, drawn by Studio: their commands
  * and "Open *name* panel" in Ctrl K, the command dialog, their cards on Home, the panel's tab and
- * each plugin's own page.
+ * each plugin's own page. In a build without plugin tools there are no plugin commands in Ctrl K
+ * and no cards on Home.
  */
 export const pluginsFeature = defineFeature({
   id: "plugins",
@@ -35,7 +37,8 @@ export const pluginsFeature = defineFeature({
       id: PLUGIN_COMMANDS_SOURCE,
       commands: (context) => {
         if (context === undefined) return [];
-        const { feed, opener } = context.services.get(PluginsService);
+        const { feed, opener, tools } = context.services.get(PluginsService);
+        if (tools?.off() === true) return [];
         return pluginCommandSource(() => commandsOf(feed), opener).commands();
       },
     });
@@ -67,7 +70,12 @@ export const pluginsFeature = defineFeature({
       pluginPageKind((context) => pageOptions(context.services.get(PluginsService), context)),
     );
     studio.itemKinds.add(pluginPanelKind(optionsFor));
-    studio.home.addCard(pluginHomeCards(optionsFor));
+    studio.home.addCard(
+      pluginHomeCards((context) => ({
+        ...optionsFor(context),
+        tools: context.services.get(PluginsService).tools ?? TOOLS_ON,
+      })),
+    );
   },
 });
 
