@@ -9,6 +9,7 @@ import type {
   MessagingAgent,
   MessagingId,
   MessagingSource,
+  OutgoingAttachment,
   SearchHit,
   SendResult,
   WorkItem,
@@ -116,14 +117,20 @@ export class CachedAgentMessaging implements AgentMessaging {
     return this.#live.answer(item, answer);
   }
 
-  /** Goes straight to the source, which sends or refuses; offline, it is never kept to send later. */
   /** A file's bytes come only from the source, never from the cache; an offline source refuses. */
   readAttachment(attachment: MessagingId): Promise<AttachmentRead> {
     return this.#live.readAttachment(attachment);
   }
 
-  send(conversation: MessagingId, body: string): Promise<SendResult> {
-    return this.#live.send(conversation, body);
+  /** Goes straight to the source, which sends or refuses; offline, it is never kept to send later. */
+  send(
+    conversation: MessagingId,
+    body: string,
+    attachments?: readonly OutgoingAttachment[],
+  ): Promise<SendResult> {
+    return attachments === undefined
+      ? this.#live.send(conversation, body)
+      : this.#live.send(conversation, body, attachments);
   }
 
   changes(): AsyncIterable<MessagingId> {

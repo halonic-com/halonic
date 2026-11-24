@@ -41,7 +41,7 @@ function keyedProvider(fake: FakeAgentMessaging, now: () => Date): AgentMessagin
     search: (text: string) => read(() => fake.search(text))(),
     answer: (item, answer) => fake.answer(item, answer),
     readAttachment: (attachment) => fake.readAttachment(attachment),
-    send: (conversation, body) => fake.send(conversation, body),
+    send: (conversation, body, attachments) => fake.send(conversation, body, attachments),
     changes: () => fake.changes(),
   };
 }
@@ -167,6 +167,20 @@ verifies("agent-host.agent-messaging-cache", () => {
         outcome: "refused",
         reason: "offline",
       });
+      for (const cacheFile of await filesUnder(cacheFolder)) {
+        expect(await readFile(cacheFile, "utf8")).not.toContain('"bytes"');
+      }
+    });
+
+    it("sends a message's files straight to the source, and caches none of their bytes", async () => {
+      const { chat } = await readAcme();
+      const bytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+      const sent = await messaging.send(chat.id, "Here's the chart", [
+        { name: "chart.png", type: "image/png", bytes },
+      ]);
+      expect(sent.outcome).toBe("sent");
+      const file = (await messaging.listMessages(chat.id)).at(-1)?.attachments[0];
+      expect(file).toMatchObject({ name: "chart.png", type: "image/png", size: 8 });
       for (const cacheFile of await filesUnder(cacheFolder)) {
         expect(await readFile(cacheFile, "utf8")).not.toContain('"bytes"');
       }
