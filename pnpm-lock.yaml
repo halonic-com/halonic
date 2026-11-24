@@ -197,6 +197,9 @@ catalogs:
     '@codemirror/view':
       specifier: ^6.43.15
       version: 6.43.15
+    '@jitl/quickjs-ng-wasmfile-release-sync':
+      specifier: 0.32.0
+      version: 0.32.0
     '@lezer/highlight':
       specifier: ^1.2.5
       version: 1.2.5
@@ -251,6 +254,9 @@ catalogs:
     miniflare:
       specifier: 4.20260730.0
       version: 4.20260730.0
+    quickjs-emscripten-core:
+      specifier: 0.32.0
+      version: 0.32.0
     react:
       specifier: ^19.3.1
       version: 19.3.1
@@ -2245,6 +2251,37 @@ importers:
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../testing/spec
+      '@halonicjs/tooling-config':
+        specifier: workspace:*
+        version: link:../../../tooling/config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.6
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(jsdom@30.1.3(@noble/hashes@2.4.0))(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+
+  packages/adapters/toolscript-quickjs:
+    dependencies:
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../../core/ports
+      '@jitl/quickjs-ng-wasmfile-release-sync':
+        specifier: 'catalog:'
+        version: 0.32.0
+      quickjs-emscripten-core:
+        specifier: 'catalog:'
+        version: 0.32.0
+    devDependencies:
+      '@halonicjs/testing-spec':
+        specifier: workspace:*
+        version: link:../../testing/spec
+      '@halonicjs/testing-toolscript-fence':
+        specifier: workspace:*
+        version: link:../../testing/toolscript-fence
       '@halonicjs/tooling-config':
         specifier: workspace:*
         version: link:../../../tooling/config
@@ -5105,6 +5142,28 @@ importers:
         specifier: 'catalog:'
         version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(jsdom@30.1.3(@noble/hashes@2.4.0))(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
 
+  packages/testing/toolscript-fence:
+    dependencies:
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../../core/ports
+      '@halonicjs/testing-spec':
+        specifier: workspace:*
+        version: link:../spec
+    devDependencies:
+      '@halonicjs/tooling-config':
+        specifier: workspace:*
+        version: link:../../../tooling/config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.6
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(jsdom@30.1.3(@noble/hashes@2.4.0))(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+
   packages/testing/tunnel-attacks:
     dependencies:
       '@halonicjs/adapter-e2e-noise':
@@ -6264,6 +6323,12 @@ packages:
     peerDependenciesMeta:
       '@types/node':
         optional: true
+
+  '@jitl/quickjs-ffi-types@0.32.0':
+    resolution: {integrity: sha512-v9T+GQpmk43VDJ7d72sf0Nexhk+ArvtUihW27dy7lqAl0zBObFKtSBBIm5RBjwIhE8VwsPPm9PNuvPvNqLWUEg==, tarball: https://registry.npmjs.org/@jitl/quickjs-ffi-types/-/quickjs-ffi-types-0.32.0.tgz}
+
+  '@jitl/quickjs-ng-wasmfile-release-sync@0.32.0':
+    resolution: {integrity: sha512-XAX2jjZWWh3M0YaRqi82xMKNW/gkF6mo3MpW3UY2cmVxnQai1JuboVsJQVoLU629iEL4XWvHtO4h5lo7NRnAcg==, tarball: https://registry.npmjs.org/@jitl/quickjs-ng-wasmfile-release-sync/-/quickjs-ng-wasmfile-release-sync-0.32.0.tgz}
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==, tarball: https://registry.npmjs.org/@jridgewell/gen-mapping/-/gen-mapping-0.3.13.tgz}
@@ -7559,6 +7624,9 @@ packages:
     resolution: {integrity: sha512-6YHEFRL9mfgcAvql/XhwTvf5jKcOiiupt2FiJxHkiX1z4j7WL8J/jRHYLluORvc1XxB5rV20KoeK00gVJamspg==, tarball: https://registry.npmjs.org/qs/-/qs-6.15.1.tgz}
     engines: {node: '>=0.6'}
 
+  quickjs-emscripten-core@0.32.0:
+    resolution: {integrity: sha512-QFnPfjFey8EqknSrSxe1hZrf1/8z7/6s1QzGOmKo6++02r7QRRX7ZoyNaZh7JuVjWsVW87KnQrbZqnHkOAzUyg==, tarball: https://registry.npmjs.org/quickjs-emscripten-core/-/quickjs-emscripten-core-0.32.0.tgz}
+
   react-dom@19.3.1:
     resolution: {integrity: sha512-Y0bARz53lhEC1NMCASs0/j+faB/zqt3R8hpvg1e8+61ZVJ4UL0UdC4cBbXfZMcIuhrfgeILTLe+ZeBCavQPtKQ==, tarball: https://registry.npmjs.org/react-dom/-/react-dom-19.3.1.tgz}
     peerDependencies:
@@ -8819,6 +8887,12 @@ snapshots:
     optionalDependencies:
       '@types/node': 26.6.6
 
+  '@jitl/quickjs-ffi-types@0.32.0': {}
+
+  '@jitl/quickjs-ng-wasmfile-release-sync@0.32.0':
+    dependencies:
+      '@jitl/quickjs-ffi-types': 0.32.0
+
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
       '@jridgewell/sourcemap-codec': 1.6.0
@@ -9800,6 +9874,10 @@ snapshots:
   qs@6.15.1:
     dependencies:
       side-channel: 1.1.1
+
+  quickjs-emscripten-core@0.32.0:
+    dependencies:
+      '@jitl/quickjs-ffi-types': 0.32.0
 
   react-dom@19.3.1(react@19.3.1):
     dependencies:
