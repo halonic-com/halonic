@@ -96,6 +96,8 @@ $helper = Join-Path $shell "binaries/halonic-sandbox-elevate-$triple.exe"
 if ((Get-AuthenticodeSignature $helper).Status -eq 'Valid') { throw 'The packed helper is signed, so this test proves nothing' }
 $env:HALONIC_SRT_SETUP_VERSION = [string](Get-Content (Join-Path $repo 'packages/adapters/sandbox-srt/windows-setup-version.json') -Raw | ConvertFrom-Json).setupVersion
 $env:HALONIC_SETUP_GUARD = Join-Path $PSScriptRoot 'setup-guard.ps1'
+$env:HALONIC_VCRUNTIME = Join-Path $shell 'binaries/vcruntime140.dll'
+$env:HALONIC_VCRUNTIME_LICENCE = Join-Path $shell 'binaries/vcruntime-licence.rtf'
 $env:HALONIC_SANDBOX_SIGNER = 'Halonic'
 $env:HALONIC_HELPER_SIGNED = 'yes'
 Push-Location $shell
@@ -103,7 +105,7 @@ try {
   pnpm exec tauri bundle --config tauri.installer.conf.json --bundles nsis --target $triple
   if ($LASTEXITCODE -ne 0) { throw 'tauri bundle failed' }
 } finally { Pop-Location }
-foreach ($name in 'HALONIC_SANDBOX_SIGNER', 'HALONIC_HELPER_SIGNED', 'HALONIC_SRT_SETUP_VERSION', 'HALONIC_SETUP_GUARD') { Remove-Item "Env:$name" }
+foreach ($name in 'HALONIC_SANDBOX_SIGNER', 'HALONIC_HELPER_SIGNED', 'HALONIC_SRT_SETUP_VERSION', 'HALONIC_SETUP_GUARD', 'HALONIC_VCRUNTIME', 'HALONIC_VCRUNTIME_LICENCE') { Remove-Item "Env:$name" }
 # Outside dist/, where the other steps find the installer by a wildcard.
 $setup = Join-Path $env:RUNNER_TEMP 'Halonic-publisher-unsigned-helper-setup.exe'
 Copy-Item (Join-Path $shell "target/$triple/release/bundle/nsis/Halonic_${version}_x64-setup.exe") $setup -Force
@@ -117,13 +119,14 @@ foreach ($i in 1..80) {
   Start-Sleep -Milliseconds 500
   $p.Refresh()
   $m = $p.MainWindowHandle
-  if ($m -ne [IntPtr]::Zero -and (Button-Text $m) -eq 'I &Agree') { $h = $m; break }
+  if ($m -ne [IntPtr]::Zero -and (Button-Text $m) -eq '&Next >') { $h = $m; break }
 }
-if ($h -eq [IntPtr]::Zero) { throw 'The installer showed no licence page' }
-Wait-Button $h 'I &Agree' 20
-# Posted, not sent: the Install page runs its own message loop.
+if ($h -eq [IntPtr]::Zero) { throw 'The installer showed no install page with the sandbox box ticked' }
+Wait-Button $h '&Next >' 20
+# Posted, not sent: the install page runs its own message loop. Microsoft's
+# licence page follows, as the sandbox box is ticked (HAL-17810).
 [S]::PostMessage($h, 0x111, [IntPtr]1, [S]::GetDlgItem($h, 1)) | Out-Null
-Wait-Button $h '&Install' 20
+Wait-Button $h 'I &Agree' 20
 Click ([S]::GetDlgItem($h, 1))
 Wait-Button $h '&Finish' 480
 Save-Picture $h '20-unsigned-helper-finish'

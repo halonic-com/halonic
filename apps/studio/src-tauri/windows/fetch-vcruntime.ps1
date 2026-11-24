@@ -1,10 +1,12 @@
-# Fetches the pinned vcruntime140.dll (HAL-8068, S-9 of HAL-7414) into
-# binaries/, where the installer ships it next to the sandbox helper. The
+# Fetches the pinned vcruntime140.dll (HAL-8068, S-9 of HAL-7414) and
+# Microsoft's licence for it (HAL-17810) into binaries/. The installer shows
+# the licence and puts the DLL next to the sandbox helper only when the
+# sandbox step is chosen. The
 # helper copies it beside srt-win in Program Files, because a clean Windows
 # has no Visual C++ runtime and srt-win imports it.
 #
 # windows/vcruntime.json pins Microsoft's Visual C++ Redistributable by
-# SHA-256, and the DLL inside it by SHA-256; the helper has the DLL's hash
+# SHA-256, and the DLL and the licence inside it by SHA-256; the helper has the DLL's hash
 # built in (tests/runtime_hash.rs keeps the two equal). Anything that doesn't
 # match stops the build. Needs 7-Zip (`7z`) on PATH, as the GitHub runners have.
 #
@@ -25,6 +27,7 @@ $pin = Get-Content (Join-Path $PSScriptRoot 'vcruntime.json') -Raw | ConvertFrom
 $bin = Join-Path $shell 'binaries'
 New-Item -ItemType Directory -Force $bin | Out-Null
 $out = Join-Path $bin 'vcruntime140.dll'
+$licenceOut = Join-Path $bin 'vcruntime-licence.rtf'
 
 $work = Join-Path ([IO.Path]::GetTempPath()) "halonic-vcruntime-$([guid]::NewGuid())"
 New-Item -ItemType Directory $work | Out-Null
@@ -74,7 +77,33 @@ try {
     throw "$name isn't the pinned file (windows/vcruntime.json)"
   }
   Copy-Item $found $out -Force
+
+  # Microsoft's licence for the runtime, unchanged: the redistributable's own
+  # license.rtf, which the installer shows before the sandbox step installs the
+  # DLL (HAL-17810). It is in the first cabinet, the installer's user interface,
+  # under a numbered name its manifest (the file named 0) maps.
+  $first = -1
+  for ($i = 0; $i -le $bytes.Length - 8; $i++) {
+    if ($bytes[$i] -eq 0x4D -and $bytes[$i + 1] -eq 0x53 -and $bytes[$i + 2] -eq 0x43 -and $bytes[$i + 3] -eq 0x46 -and
+        $bytes[$i + 4] -eq 0 -and $bytes[$i + 5] -eq 0 -and $bytes[$i + 6] -eq 0 -and $bytes[$i + 7] -eq 0) { $first = $i; break }
+  }
+  if ($first -lt 0 -or $first -eq $start) { throw 'no user interface cabinet in the Visual C++ Redistributable' }
+  $size = [BitConverter]::ToInt32($bytes, $first + 8)
+  $uxCab = Join-Path $work 'ux.cab'
+  [IO.File]::WriteAllBytes($uxCab, $bytes[$first..($first + $size - 1)])
+  $ux = Join-Path $work 'ux'
+  & 7z x -y "-o$ux" $uxCab | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw '7z could not open the user interface cabinet' }
+  $manifest = Get-Content (Join-Path $ux '0') -Raw
+  $entry = [regex]::Match($manifest, "<Payload [^>]*FilePath=`"$([regex]::Escape($pin.licence.name))`"[^>]*SourcePath=`"(u\d+)`"")
+  if (-not $entry.Success) { throw "$($pin.licence.name) isn't in the Visual C++ Redistributable" }
+  $licence = Join-Path $ux $entry.Groups[1].Value
+  if ((Get-FileHash $licence -Algorithm SHA256).Hash.ToLowerInvariant() -ne $pin.licence.sha256) {
+    throw "$($pin.licence.name) isn't the pinned licence (windows/vcruntime.json)"
+  }
+  Copy-Item $licence $licenceOut -Force
 } finally {
   Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue
 }
 Write-Output "vcruntime140.dll $($pin.redistributable.version): $out"
+Write-Output "Microsoft's licence for it: $licenceOut"

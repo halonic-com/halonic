@@ -2,6 +2,8 @@
 # installed in -InstallFolder, and saves a picture of each page:
 #   - the page opens with Continue, and Continue is disabled while no box is ticked;
 #   - without Repair it copies nothing, with Repair it copies Halonic again;
+#   - with the sandbox box ticked, Microsoft's licence page comes before the
+#     steps, and the runtime the sandbox needs is copied even without Repair;
 #   - both end on the finish page.
 # The page has the sandbox box only when the installed sandbox fails its check,
 # else the "is set up" line. In CI it has the box: the uninstall after the page
@@ -70,6 +72,7 @@ function Assert-Continue([IntPtr]$h, [bool]$enabled) {
 
 $uninstaller = Join-Path $InstallFolder 'uninstall.exe'
 $kept = Join-Path $env:TEMP 'halonic-uninstall-kept.exe'
+$runtime = Join-Path $InstallFolder 'vcruntime140.dll.pinned'
 
 # Opens the run-again page; returns the process and its window.
 function Open-RunAgain([string]$picture) {
@@ -86,9 +89,16 @@ function Open-RunAgain([string]$picture) {
   Save-Picture $h $picture
   return $p, $h
 }
-# Presses Continue, waits for the finish page, and closes it without starting Halonic.
-function Finish([System.Diagnostics.Process]$p, [IntPtr]$h, [string]$picture) {
+# Presses Continue, waits for the finish page, and closes it without starting
+# Halonic. With the sandbox box ticked, Microsoft's licence page comes first,
+# and is accepted (HAL-17810).
+function Finish([System.Diagnostics.Process]$p, [IntPtr]$h, [string]$picture, [string]$licence = '') {
   Click ([R]::GetDlgItem($h, 1))
+  if ($licence) {
+    Wait-Button $h 'I &Agree' 20
+    Save-Picture $h $licence
+    Click ([R]::GetDlgItem($h, 1))
+  }
   Wait-Button $h '&Finish' 480
   Save-Picture $h $picture
   Click (Must-Find $h 'Start Halonic')
@@ -112,8 +122,11 @@ try {
     Click $repair
     Click $sandbox
     Assert-Continue $h $true
-    Finish $p $h '7-run-again-sandbox-finish'
+    if (Test-Path $runtime) { throw 'The install before run again has the Microsoft runtime, so this proves nothing' }
+    Finish $p $h '7-run-again-sandbox-finish' '7-run-again-licence'
     if (Test-Path $uninstaller) { throw 'Run again without Repair copied Halonic' }
+    # Without Repair it copies only the runtime the sandbox step needs.
+    if (-not (Test-Path $runtime)) { throw 'Run again with the sandbox box ticked did not copy the Microsoft runtime' }
   } else {
     Write-Output 'run again: the sandbox is already set up'
     if ((Find-Control $h '✓ The agent sandbox is set up.' 'Static') -eq [IntPtr]::Zero) { throw 'The page has neither the sandbox box nor its "is set up" line' }

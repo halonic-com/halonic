@@ -126,9 +126,11 @@ if ($Step -ne 'pack') {
   $srtWin = Join-Path $repo 'packages/adapters/sandbox-srt/node_modules/@anthropic-ai/sandbox-runtime/vendor/srt-win/x64/srt-win.exe'
   Copy-Item $srtWin (Join-Path $bin 'srt-win.exe') -Force
   # srt-win imports vcruntime140.dll, which a clean Windows doesn't have. The
-  # pinned, hash-checked copy ships next to the helper, which puts it beside
-  # srt-win in Program Files. It is named vcruntime140.dll.pinned here, so
+  # pinned, hash-checked copy goes next to the helper, which puts it beside
+  # srt-win in Program Files. It is named vcruntime140.dll.pinned there, so
   # nothing started from the app folder can load it from there (HAL-8068).
+  # The installer copies it, and first shows Microsoft's licence for it, only
+  # when the sandbox step is chosen (HAL-17810).
   # -Target is a guard for later: $triple is x64 only, and the fetch refuses
   # anything else until an arm64 installer exists (HAL-8151).
   & (Join-Path $PSScriptRoot 'fetch-vcruntime.ps1') -Target $triple
@@ -181,6 +183,13 @@ $setupVersion = [string](Get-Content (Join-Path $repo 'packages/adapters/sandbox
 if ($setupVersion -notmatch '^[1-9][0-9]*$') { throw "srt's Windows setup version '$setupVersion' isn't a whole number above zero" }
 $env:HALONIC_SRT_SETUP_VERSION = $setupVersion
 $env:HALONIC_SETUP_GUARD = Join-Path $PSScriptRoot 'setup-guard.ps1'
+# The DLL and Microsoft's licence for it, which the installer packs outside
+# Tauri's resources: it installs them only for the sandbox step (HAL-17810).
+foreach ($f in 'vcruntime140.dll', 'vcruntime-licence.rtf') {
+  if (-not (Test-Path (Join-Path $bin $f) -PathType Leaf)) { throw "$f is missing from binaries/; fetch-vcruntime.ps1 writes it" }
+}
+$env:HALONIC_VCRUNTIME = Join-Path $bin 'vcruntime140.dll'
+$env:HALONIC_VCRUNTIME_LICENCE = Join-Path $bin 'vcruntime-licence.rtf'
 # A signed release's installer starts the helper only when it is signed by
 # HALONIC_SANDBOX_SIGNER (HAL-16342). NSIS can't tell an unset variable from
 # a name, so this says whether there is one.
