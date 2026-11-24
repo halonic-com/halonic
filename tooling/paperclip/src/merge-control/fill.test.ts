@@ -3,6 +3,7 @@ import { expect, test } from "vitest";
 import {
   actionsOf,
   ago,
+  boardLogin,
   enqueued,
   entry,
   logText,
@@ -11,7 +12,7 @@ import {
   snapshot,
   stateWith,
 } from "./merge-control.test-helper.ts";
-import { emptyMergeState } from "./state.ts";
+import { emptyMergeState, mergeSettingsFor } from "./state.ts";
 
 function queuedPulls(count: number, from = 100) {
   const numbers = Array.from({ length: count }, (_, index) => from + index);
@@ -21,7 +22,7 @@ function queuedPulls(count: number, from = 100) {
   };
 }
 
-function fast(number: number, by: string | null = "timothy-halonic") {
+function fast(number: number, by: string | null = boardLogin) {
   return pull(number, { labels: ["built-on:paperclip", "fast-track"], fastTrackBy: by });
 }
 
@@ -79,6 +80,17 @@ verifies("paperclip.merge-control-fast-track", () => {
     expect(enqueued(decision)).toEqual([2, 1, 3, 4]);
     expect(logText(decision)).toContain("FAST_UNVERIFIED #3(someone) #4(?)");
     expect(enqueued(pass(snapshot({ pulls: [pull(1), fast(5, "halonic-dev")] })))).toEqual([5, 1]);
+  });
+
+  test("the board's login counts only once the plugin setting names it", () => {
+    const facts = snapshot({ pulls: [pull(1), fast(2), fast(3, "halonic-dev")] });
+    const unset = pass(facts, emptyMergeState, mergeSettingsFor("  "));
+    expect(enqueued(unset)).toEqual([3, 1, 2]);
+    expect(logText(unset)).toContain(`FAST_UNVERIFIED #2(${boardLogin})`);
+    expect(mergeSettingsFor(` ${boardLogin} `).fastTrackLabellers).toEqual([
+      boardLogin,
+      "halonic-dev",
+    ]);
   });
 
   test("every ready fast-track pull request goes in during one pass, past the target", () => {

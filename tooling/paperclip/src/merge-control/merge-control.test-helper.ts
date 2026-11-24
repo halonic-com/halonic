@@ -2,12 +2,18 @@ import { decide } from "./decide.ts";
 import type { CheckFact, GatePull, MergeSnapshot, PullText, QueueEntry } from "./snapshot.ts";
 import {
   type Decision,
-  defaultSettings,
   emptyMergeState,
   type MergeAction,
   type MergeSettings,
   type MergeState,
+  mergeSettingsFor,
 } from "./state.ts";
+
+/** An invented board login, set as the plugin's `fastTrackLabelAdder`. */
+export const boardLogin = "acme-board";
+
+/** The settings with `boardLogin` configured. */
+export const testSettings: MergeSettings = mergeSettingsFor(boardLogin);
 
 /**
  * Fixture snapshots for the merge-control tests: by default a pull request
@@ -140,7 +146,7 @@ export function stateWith(changes: Partial<MergeState> = {}): MergeState {
 export function pass(
   facts: MergeSnapshot,
   state: MergeState = emptyMergeState,
-  settings: MergeSettings = defaultSettings,
+  settings: MergeSettings = testSettings,
 ): Decision {
   return decide(facts, state, settings, now);
 }

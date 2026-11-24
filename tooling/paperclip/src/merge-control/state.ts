@@ -85,7 +85,7 @@ export interface MergeSettings {
   readonly owner: string;
   /** The shared account every agent posts as: only its texts can be signed approvals. */
   readonly teamLogin: string;
-  /** Logins whose `fast-track` label counts (HAL-15971 rule 3). */
+  /** Logins whose `fast-track` label counts (HAL-15971 rule 3); see `mergeSettingsFor`. */
   readonly fastTrackLabellers: readonly string[];
   readonly fillTarget: number;
   /** A fast-track pull request jumps only with more than this many entries queued. */
@@ -98,11 +98,14 @@ export interface MergeSettings {
   readonly groupRunnerMinutes: number;
 }
 
-/** Today's settings (board, 22–24 Nov). */
+/**
+ * Today's settings (board, 22–24 Nov), before the board's login is known:
+ * only a `fast-track` label added as the team account counts.
+ */
 export const defaultSettings: MergeSettings = {
   owner: "halonic-com",
   teamLogin: "halonic-dev",
-  fastTrackLabellers: ["timothy-halonic", "halonic-dev"],
+  fastTrackLabellers: ["halonic-dev"],
   fillTarget: 15,
   jumpAhead: 8,
   rerunsPerPass: 8,
@@ -110,6 +113,22 @@ export const defaultSettings: MergeSettings = {
   queueRunnerLabel: "large",
   groupRunnerMinutes: 240,
 };
+
+/**
+ * The settings with the board's login, from the plugin setting
+ * `fastTrackLabelAdder`, as a verified fast-track labeller. The login is
+ * never written in code (HAL-16851); empty leaves the defaults.
+ */
+export function mergeSettingsFor(fastTrackLabelAdder: string): MergeSettings {
+  const login = fastTrackLabelAdder.trim();
+  if (login === "" || defaultSettings.fastTrackLabellers.includes(login)) {
+    return defaultSettings;
+  }
+  return {
+    ...defaultSettings,
+    fastTrackLabellers: [login, ...defaultSettings.fastTrackLabellers],
+  };
+}
 
 /** Why a queued pull request comes out (MERGER.md §4, a–e and the board's additions). */
 export type RemovalReason =
