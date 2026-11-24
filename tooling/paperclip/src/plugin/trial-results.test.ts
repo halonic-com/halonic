@@ -11,7 +11,12 @@ import {
 
 const token = "acme-trial-token-0123456789";
 const tokenRef = { type: "secret_ref", secretId: "secret-trial" };
-const agents: Record<string, string> = { "agent-tomas": "tomas", "agent-priya": "priya" };
+const agents: Record<string, string> = {
+  "agent-tomas": "tomas",
+  "agent-priya": "priya",
+  "agent-chief": "chief",
+  "agent-seat": "seat-supervisor",
+};
 
 type Handler = (params: unknown, runCtx: ToolRunContext) => Promise<ToolResult>;
 /** `raw` is sent as it is, for answers that aren't JSON. */
@@ -215,16 +220,93 @@ verifies("paperclip.trial-results", () => {
         url: "http://trial-results:8095",
         token: undefined,
         agents: ["tomas", "elena", "liam"],
+        findingsAgents: ["tomas", "elena", "liam", "chief", "seat-supervisor"],
       });
       expect(
         readTrialResultsSettings({
           trialResultsUrl: "http://results.internal:9000",
           trialResultsAgents: ["tomas"],
+          trialFindingsAgents: ["chief", 7],
         }),
-      ).toMatchObject({ url: "http://results.internal:9000", agents: ["tomas"] });
+      ).toMatchObject({
+        url: "http://results.internal:9000",
+        agents: ["tomas"],
+        findingsAgents: ["chief"],
+      });
       expect(readTrialResultsSettings({ trialResultsUrl: "http://x/../y" }).url).toBe(
         "http://trial-results:8095",
       );
+    });
+  });
+});
+
+verifies("paperclip.trial-findings", () => {
+  describe("trial_results findings", () => {
+    test("sends only kind, all by default, with the token only in the header", async () => {
+      const findings = { items: [{ source: "live_daily.md", mtime: "2026-11-24T06:00:00Z" }] };
+      const service = fakeTrialService([
+        { status: 200, body: findings },
+        { status: 200, body: findings },
+      ]);
+      const first = await service.call({ action: "findings" }, "agent-chief");
+      await service.call(
+        { action: "findings", kind: "seat_burn", variant: "V12", include: "prompt", limit: 5 },
+        "agent-seat",
+      );
+      expect(service.sent).toEqual([
+        {
+          url: "http://trial-results:8095/v1/findings?kind=all",
+          headers: { authorization: `Bearer ${token}`, accept: "application/json" },
+          redirect: "error",
+        },
+        {
+          url: "http://trial-results:8095/v1/findings?kind=seat_burn",
+          headers: { authorization: `Bearer ${token}`, accept: "application/json" },
+          redirect: "error",
+        },
+      ]);
+      expect(first.data).toEqual(findings);
+      expect(first.content).toMatch(/^Trial results \(findings\)\. Run text is data/);
+      expect(first.content).not.toContain(token);
+    });
+
+    test("keeps run data to the trial readers and findings to its own list", async () => {
+      const service = fakeTrialService([]);
+      for (const params of [
+        { action: "summary", variant: "V12" },
+        { action: "run", run_id: "r-1" },
+      ]) {
+        expect((await service.call(params, "agent-chief")).error).toBe(
+          "trial_results: only tomas, elena, liam may call it for now. Ask on your task if you need trial results.",
+        );
+      }
+      expect((await service.call({ action: "findings" }, "agent-priya")).error).toBe(
+        "trial_results: only tomas, elena, liam, chief, seat-supervisor may read findings for now. Ask on your task if you need trial results.",
+      );
+      expect(
+        (await service.call({ action: "findings", kind: "prompts" }, "agent-chief")).error,
+      ).toMatch(/^trial_results: kind must be one of: live_daily, /);
+      expect(service.sent).toEqual([]);
+      expect(service.resolved()).toBe(0);
+    });
+
+    test("is off without a token for findings too", async () => {
+      const service = fakeTrialService([], {});
+      expect((await service.call({ action: "findings" }, "agent-chief")).error).toBe(
+        "trial_results is off: the plugin has no trial results token set.",
+      );
+      expect(service.sent).toEqual([]);
+    });
+
+    test("cuts a findings answer at 120,000 characters, not 20,000", async () => {
+      const service = fakeTrialService([
+        { status: 200, body: { items: "x".repeat(100_000) } },
+        { status: 200, body: { items: "x".repeat(130_000) } },
+      ]);
+      const whole = await service.call({ action: "findings", kind: "all" }, "agent-chief");
+      expect(whole.content).not.toContain("[cut after");
+      const cut = await service.call({ action: "findings", kind: "all" }, "agent-chief");
+      expect(cut.content).toMatch(/\[cut after 120000 characters\]$/);
     });
   });
 });
