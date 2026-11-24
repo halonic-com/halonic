@@ -14,13 +14,14 @@ import type { PairedComputer } from "./phone-tunnel.ts";
 
 /**
  * A pairing screen's body at the top over its bottom buttons, which sit at the foot of the phone
- * in thumb reach: 16px from the sides and the bottom, plus the home bar.
+ * in thumb reach: 16px from the sides, and the kit's pb-safe at the bottom (12px or the home bar,
+ * whichever is larger).
  */
 function StepLayout({ children, actions }: { children: ReactNode; actions: ReactNode }) {
   return (
     <div className="flex flex-1 flex-col gap-6">
       <div className="flex flex-1 flex-col gap-6 px-6 pt-6">{children}</div>
-      <div className="flex flex-col gap-2 px-4 pb-[calc(1rem+var(--safe-bottom))]">{actions}</div>
+      <div className="flex flex-col gap-2 px-4 pb-safe">{actions}</div>
     </div>
   );
 }
