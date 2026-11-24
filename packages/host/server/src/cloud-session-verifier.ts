@@ -1,4 +1,5 @@
 import { decodeBase64url } from "@halonicjs/std";
+import { isHttpsOrigin } from "./https-origin.ts";
 import type { SessionClaims } from "./principal.ts";
 import type { SessionCredential, SessionVerifier } from "./session-verifier.ts";
 
@@ -229,13 +230,4 @@ function ownString(record: object, name: string): string | undefined {
 function ownNumber(record: object, name: string): number | undefined {
   const value = ownValue(record, name);
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
-}
-
-/** `https://host[:port]` exactly, with no path, query or trailing slash. */
-function isHttpsOrigin(text: string): boolean {
-  if (!URL.canParse(text)) {
-    return false;
-  }
-  const url = new URL(text);
-  return url.protocol === "https:" && url.origin === text;
 }

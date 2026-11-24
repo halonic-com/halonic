@@ -38,6 +38,11 @@ export {
   type CloudSessionVerifierOptions,
   type RevokedSessions,
 } from "./cloud-session-verifier.ts";
+export type {
+  CloudAppSession,
+  CloudSignInPorts,
+  CodeExchangeOutcome,
+} from "./cloud-sign-in-api.ts";
 export { createServer } from "./create-server.ts";
 export type {
   EngineHelloBody,
