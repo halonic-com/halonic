@@ -4,6 +4,10 @@ The Paperclip provider behind `AgentMessaging` (ADR `docs/adr/2026-11-24-agent-m
 one Paperclip company's agents, chats, cards, approvals and tasks over plain `fetch`, answers cards and
 approvals, and sends chat messages. It makes only the requests on its fixed list (`src/requests.ts`).
 
+`PaperclipTeamStatus` serves `TeamStatus` for the same connection, read-only: spend from Paperclip's cost
+routes and seats from the `halonic.seats` plugin. Paid money is what Paperclip billed, so subscription work
+is 0 in money and shows in tokens. Pull requests and the merge queue follow in a second pull request.
+
 - **Layer:** adapters
 - **Owner:** ravi
 - **Runtime:** any
@@ -68,6 +72,10 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `respondToCard` | `POST /api/issues/{task}/interactions/{card}/respond` | answer a one-question card |
 | `approve`, `rejectApproval` | `POST /api/approvals/{approval}/approve`, `/reject` | decide an approval |
 | `whoAmI`, `revokeKey` | `GET /api/cli-auth/me`, `POST /api/cli-auth/revoke-current` | disconnect (track A4) |
+| `spendSummary`, `spendByProvider` | `GET /api/companies/{company}/costs/summary?from=`, `/costs/by-provider?from=` | paid money, the budget, and tokens of every billing type |
+| `spendByAgent`, `spendByAgentModel` | `GET /api/companies/{company}/costs/by-agent?from=`, `/costs/by-agent-model?from=` | each agent's spend and tokens by model |
+| `budgetsOverview` | `GET /api/companies/{company}/budgets/overview` | each agent's monthly budget |
+| `seatsSummary` | `GET /api/plugins/halonic.seats/api/seats/summary?companyId=` | seats by label, windows, the pool's proposal |
 
 **No route that makes keys.** Nothing goes to Paperclip upstream (board, HAL-10, 24 Nov), so this list is the
 main protection. No entry makes, lists or deletes keys or tokens: not `/api/board-api-keys`, an agent's

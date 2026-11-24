@@ -119,6 +119,13 @@ verifies("ports.paperclip-key", () => {
         "rejectApproval",
         "whoAmI",
         "revokeKey",
+        // TeamStatus's reads (HAL-17606), pinned in team-requests.test.ts.
+        "spendSummary",
+        "spendByProvider",
+        "spendByAgent",
+        "spendByAgentModel",
+        "budgetsOverview",
+        "seatsSummary",
       ]);
     });
   });

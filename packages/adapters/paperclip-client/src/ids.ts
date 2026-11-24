@@ -8,7 +8,8 @@ export type PaperclipItemKind =
   | "card"
   | "approval"
   | "task"
-  | "project";
+  | "project"
+  | "seat";
 
 const provider = "paperclip";
 const partCounts: Readonly<Record<PaperclipItemKind, number>> = {
@@ -19,6 +20,7 @@ const partCounts: Readonly<Record<PaperclipItemKind, number>> = {
   approval: 1,
   task: 1,
   project: 1,
+  seat: 1,
 };
 
 /**

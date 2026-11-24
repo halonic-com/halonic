@@ -33,6 +33,14 @@ export const paperclipRequests = {
   // (board, HAL-10, 24 Nov). A4 brings sign-in with its own security review.
   whoAmI: { method: "GET", path: "/api/cli-auth/me" },
   revokeKey: { method: "POST", path: "/api/cli-auth/revoke-current" },
+  // TeamStatus (`paperclip-client.team-status`, HAL-17606): reads only. The plugin row
+  // is pinned to the plugin's id and route, so the key reaches no other plugin route.
+  spendSummary: { method: "GET", path: "/api/companies/:company/costs/summary" },
+  spendByProvider: { method: "GET", path: "/api/companies/:company/costs/by-provider" },
+  spendByAgent: { method: "GET", path: "/api/companies/:company/costs/by-agent" },
+  spendByAgentModel: { method: "GET", path: "/api/companies/:company/costs/by-agent-model" },
+  budgetsOverview: { method: "GET", path: "/api/companies/:company/budgets/overview" },
+  seatsSummary: { method: "GET", path: "/api/plugins/halonic.seats/api/seats/summary" },
 } as const satisfies Record<string, { method: "GET" | "POST"; path: string }>;
 
 /** The name of one request on {@link paperclipRequests}. */
