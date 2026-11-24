@@ -21,6 +21,7 @@ import {
   SIGN_INS_HEADING,
   type SignInOutcome,
   signedOutNotConfirmed,
+  signedOutOf,
   signInNotStarted,
   signInPageNotApproved,
   signInsNotLoadedTitle,
@@ -226,7 +227,7 @@ function SignInBlock({
   // On a phone the block's buttons are touch buttons, as the 44px rule asks (C569).
   const buttonSize: ButtonSize = usePresentation() === "phone" ? "touch" : "sm";
   const [busy, setBusy] = useState(false);
-  const [line, setLine] = useState<string | undefined>(undefined);
+  const [line, setLine] = useState<ActionLine | undefined>(undefined);
   // Set while the browser sign-in is open: where the sign-in stood when the browser opened, and
   // the page it opened. **Open again** opens that same page: starting another sign-in would make
   // the first tab's answer fail. The page is never shown, only opened.
@@ -238,8 +239,17 @@ function SignInBlock({
   const cancelButton = useRef<HTMLButtonElement>(null);
   // The person was on the row that the wait swaps, so focus goes to the button in its place.
   const refocus = useRef(false);
+  // The same after a sign-out: the row swaps Sign out for Sign in (SI1).
+  const refocusAfterSignOut = useRef(false);
   const state = facts === undefined ? "cannotSignIn" : status?.state;
   const announceKey = `sign-in:${plugin}:${name}`;
+  // An action's line is about the state it was written for; once the host reports another state,
+  // it is old news, also when the state changed without an action (SI2).
+  const lineNow = line !== undefined && line.state === state ? line.text : undefined;
+
+  useEffect(() => {
+    setLine((current) => (current?.state === state ? current : undefined));
+  }, [state]);
 
   // A sign-in the browser finished, or ended without a grant, is reported differently.
   useEffect(() => {
@@ -253,7 +263,7 @@ function SignInBlock({
     const timer = setTimeout(() => {
       refocus.current = hasFocus(waitingRow.current);
       setWaiting(undefined);
-      setLine(SIGN_IN_NOT_FINISHED);
+      setLine({ text: SIGN_IN_NOT_FINISHED, state: waiting.from?.state });
     }, browserWaitMs);
     return () => clearTimeout(timer);
   }, [waiting]);
@@ -265,6 +275,12 @@ function SignInBlock({
     if (waiting === undefined) block.current?.querySelector("button")?.focus();
     else cancelButton.current?.focus();
   }, [waiting]);
+
+  useEffect(() => {
+    if (!refocusAfterSignOut.current || state === "signedIn") return;
+    refocusAfterSignOut.current = false;
+    block.current?.querySelector("button")?.focus();
+  }, [state]);
 
   async function signIn() {
     // No button offers a sign-in without the facts; the check below needs them.
@@ -281,7 +297,7 @@ function SignInBlock({
       setWaiting({ from: status, page });
       announceState?.(announceKey, waitingForBrowser(service));
     } catch (error) {
-      setLine(startFailedLine(error));
+      setLine({ text: startFailedLine(error), state });
     } finally {
       setBusy(false);
     }
@@ -305,7 +321,7 @@ function SignInBlock({
       // rather than when the window next gets focus.
       await onChanged();
     } catch (error) {
-      setLine(cancelFailed(messageOf(error)));
+      setLine({ text: cancelFailed(messageOf(error)), state });
     } finally {
       setBusy(false);
     }
@@ -318,10 +334,12 @@ function SignInBlock({
       const result = await signIns.signOut(plugin, name);
       const confirmed =
         result.kind === "notSignedIn" || result.revoke === "revoked" || result.revoke === "skipped";
-      if (!confirmed) setLine(signedOutNotConfirmed());
+      refocusAfterSignOut.current = hasFocus(block.current);
+      if (confirmed) announceState?.(announceKey, signedOutOf(service));
+      else setLine({ text: signedOutNotConfirmed(), state: "signedOut" });
       await onChanged();
     } catch (error) {
-      setLine(signOutFailed(messageOf(error)));
+      setLine({ text: signOutFailed(messageOf(error)), state });
     } finally {
       setBusy(false);
     }
@@ -329,9 +347,9 @@ function SignInBlock({
 
   const outcome = outcomeShown(service, status);
   // While it waits, how an earlier sign-in ended is no longer news.
-  const shown = line ?? (waiting === undefined ? outcome : undefined);
+  const shown = lineNow ?? (waiting === undefined ? outcome : undefined);
   // Until the host answered where the sign-in stands, the line isn't known yet.
-  const known = line !== undefined || status !== undefined;
+  const known = lineNow !== undefined || status !== undefined;
   useAnnounceLineChanges(announceKey, known, shown, announceState);
 
   return (
@@ -403,6 +421,12 @@ function outcomeShown(service: string, status: PluginSignInStatus | undefined): 
   if (lastOutcome === undefined) return undefined;
   if (status?.state === "approvalChanged" && lastOutcome.kind === "signInChanged") return undefined;
   return outcomeLine(service, lastOutcome);
+}
+
+/** The line an action left under a sign-in, and the state it is about. */
+interface ActionLine {
+  readonly text: string;
+  readonly state: PluginSignInState | undefined;
 }
 
 /** Whether the person is on something inside `element`. */
