@@ -9,6 +9,14 @@ import type { WorkspaceModels } from "@halonicjs/app/run-failure";
 import type { LoggedInstructionPin, RunEvent, RunSummary } from "@halonicjs/events";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 
+export { type AllRunsFeed, type AllRunsFeedState, AllRunsService } from "./app/all-runs-feed.ts";
+export {
+  type AllRunsRow,
+  type TeamRowContext,
+  type TeamRunFields,
+  teamAppRun,
+  workflowAppRun,
+} from "./app/source-rows.ts";
 export { chatFailureLine } from "./chat-failure-line.ts";
 export {
   type RunModelPath,

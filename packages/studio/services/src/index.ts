@@ -43,6 +43,18 @@ export {
   watchAgentNotifications,
 } from "./agent-notifications.ts";
 export {
+  AllRuns,
+  type AllRunsState,
+  allRunsPollMs,
+  type MergedRun,
+  type MergedRuns,
+  mergeRuns,
+  type RunSource,
+  type RunSourceFailure,
+  type RunSourceName,
+  type SourceRead,
+} from "./all-runs.ts";
+export {
   EngineCallRefused,
   type EngineFetch,
   engineBaseUrl,

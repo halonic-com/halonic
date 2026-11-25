@@ -3,6 +3,7 @@ import { Button, EmptyState, FilterChips, List, usePresentation } from "@halonic
 import { type EngineWords, engineWordsOf, type PlaceViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { type RunnableWorkflow, RunStartHostService, SampleHintService } from "../api.ts";
+import { AllRunsService } from "../app/all-runs-feed.ts";
 import { listRows } from "../list/list-rows.ts";
 import { useSampleRuns } from "../list/run-model-path.ts";
 import type { RunRow } from "../list/run-row.ts";
@@ -24,10 +25,24 @@ import { type RunsList, RunsListService, type RunsListState } from "../runs-list
 import { DayList, runColumns, sampleCandidates } from "./day-list.tsx";
 import { NoRuns, type NoRunsWays } from "./no-runs.tsx";
 import type { PressRun } from "./press-run-line.tsx";
+import { RunsAppView } from "./runs-app-view.tsx";
 
-/** The Runs place's page: the open workspace's runs, from `RunsListService`. */
+/**
+ * The Runs place's page: the Runs app's list of every workspace's and team's runs where the app
+ * provides `AllRunsService`, else the open workspace's runs, from `RunsListService`.
+ */
 export function RunsPage({ context }: PlaceViewProps) {
   const { openItem } = context;
+  const allRuns = context.services.find(AllRunsService);
+  if (allRuns !== undefined) {
+    return (
+      <RunsAppView
+        feed={allRuns}
+        engine={engineWordsOf(context)}
+        {...(openItem === undefined ? {} : { openRun: openItem })}
+      />
+    );
+  }
   return (
     <RunsView
       list={context.services.get(RunsListService)}
