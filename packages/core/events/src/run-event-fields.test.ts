@@ -1,6 +1,7 @@
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expectTypeOf } from "vitest";
 import type { HarnessSessionStart } from "./harness-started.ts";
+import type { ProgramEffort } from "./llm-request.ts";
 import type { ProviderRouting } from "./provider-routing.ts";
 import type {
   ApprovalResolver,
@@ -305,6 +306,20 @@ verifies("events.llm-request-effort", () => {
       provider: "deepseek",
       model: "deepseek-v4.1-flash",
       effort: "low",
+      messages: 3,
+    } as const).toExtend<RunEventBody>();
+  });
+
+  typeTest("may say the effort the program itself sent", () => {
+    expectTypeOf<EventOf<"llm.request">["programEffort"]>().toEqualTypeOf<
+      ProgramEffort | undefined
+    >();
+    expectTypeOf({
+      type: "llm.request",
+      agent: "writer",
+      provider: "anthropic",
+      model: "claude-sonnet-5-5",
+      programEffort: "xhigh",
       messages: 3,
     } as const).toExtend<RunEventBody>();
   });

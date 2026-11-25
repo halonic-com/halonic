@@ -1,4 +1,4 @@
-import type { ProviderRouting, Usage } from "@halonicjs/events";
+import type { ProgramEffort, ProviderRouting, Usage } from "@halonicjs/events";
 import {
   type BridgeEffort,
   type BridgeProvider,
@@ -7,7 +7,7 @@ import {
   type HarnessBridgeOptions,
 } from "@halonicjs/ports";
 import { isPlainObject, KindedError } from "@halonicjs/std";
-import { effortFor } from "./effort.ts";
+import { type EffortField, effortFor, programEffortIn } from "./effort.ts";
 import { routingFor } from "./openrouter-routing.ts";
 import type { PassedReply, ReplyWatcher } from "./pass-through.ts";
 import type { BridgeRequestContext } from "./route.ts";
@@ -21,6 +21,8 @@ export interface ModelCall {
   messages: number;
   /** The effort the host set for the model, which the bridge sends in place of the program's. */
   effort?: BridgeEffort;
+  /** The effort the program itself sent, as `programEffortIn` finds it. */
+  programEffort?: ProgramEffort;
   /** Set when a sub-agent of the program made the call, as `withSubagent` finds it. */
   subagent?: string;
   /** The alias's OpenRouter host pin, which the bridge sends as the request's `provider`. */
@@ -48,7 +50,9 @@ export interface ReplyReader extends ReplyWatcher {
  * Anthropic's `messages` or OpenAI's `input`, where a plain text prompt
  * counts as one message. `request` is the body already parsed, as
  * `parseModelRequest` gives it. The effort is the one `access` names for
- * the model, if any (requirement `harness-bridge.effort`), and the routing
+ * the model, if any (requirement `harness-bridge.effort`), the program
+ * effort the one the program sent in `effortField` (requirement
+ * `harness-bridge.program-effort`), and the routing
  * the one it names for OpenRouter (requirement `harness-bridge.openrouter-routing`).
  *
  * @throws KindedError `invalid_input` when the request names no model
@@ -57,6 +61,7 @@ export function readModelCall(
   provider: BridgeProvider,
   request: unknown,
   messagesField: "messages" | "input",
+  effortField: EffortField,
   access: BridgeProviderAccess,
 ): ModelCall {
   if (!isPlainObject(request) || typeof request["model"] !== "string") {
@@ -64,12 +69,14 @@ export function readModelCall(
   }
   const model = request["model"];
   const effort = effortFor(access, model);
+  const programEffort = programEffortIn(request, effortField);
   const routing = routingFor(access);
   return {
     provider,
     model,
     messages: countMessages(request[messagesField]),
     ...(effort === undefined ? {} : { effort }),
+    ...(programEffort === undefined ? {} : { programEffort }),
     ...(routing === undefined ? {} : { routing }),
   };
 }
@@ -109,6 +116,7 @@ export async function recordModelCall(
     model,
     ...(call.alias === undefined ? {} : { alias: call.alias }),
     ...(call.effort === undefined ? {} : { effort: call.effort }),
+    ...(call.programEffort === undefined ? {} : { programEffort: call.programEffort }),
     ...subagent,
     ...(call.routing === undefined ? {} : { routing: call.routing }),
     messages: call.messages,

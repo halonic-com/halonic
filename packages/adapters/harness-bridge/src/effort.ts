@@ -1,3 +1,4 @@
+import type { ProgramEffort } from "@halonicjs/events";
 import type { BridgeEffort, BridgeProviderAccess } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
 
@@ -45,4 +46,30 @@ export function withEffort(
   const current = request[field.object];
   const kept = isPlainObject(current) ? current : {};
   return { ...request, [field.object]: { ...kept, [field.key]: effort } };
+}
+
+/** Every effort a program may send that the run log keeps (requirement `events.llm-request-effort`). */
+const programEfforts: ReadonlySet<string> = new Set<ProgramEffort>([
+  "none",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+]);
+
+/**
+ * The effort the program itself sent in `field` of `request`, or `undefined`
+ * when it sent none or one outside {@link ProgramEffort}, so the run log never
+ * keeps whatever text a program puts there (requirement `harness-bridge.program-effort`).
+ */
+export function programEffortIn(request: unknown, field: EffortField): ProgramEffort | undefined {
+  if (!isPlainObject(request)) return undefined;
+  const holder = request[field.object];
+  if (!isPlainObject(holder)) return undefined;
+  const effort = holder[field.key];
+  return typeof effort === "string" && programEfforts.has(effort)
+    ? (effort as ProgramEffort)
+    : undefined;
 }

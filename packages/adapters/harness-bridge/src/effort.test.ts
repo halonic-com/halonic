@@ -175,3 +175,53 @@ verifies("harness-bridge.effort", () => {
     });
   });
 });
+
+/** The `programEffort` of each `llm.request` the bridge recorded, `undefined` for one without. */
+function recordedProgramEfforts(recorded: readonly BridgeEvent[]): unknown[] {
+  return recorded
+    .filter((event) => event.type === "llm.request")
+    .map((event) => ("programEffort" in event ? event.programEffort : undefined));
+}
+
+verifies("harness-bridge.program-effort", () => {
+  it("records the program's output_config.effort next to the one the bridge set", async () => {
+    const opened = await open("anthropic", lowForCheapModel);
+
+    const sent = await providerGets(opened, "anthropic", {
+      model: "cheap-model",
+      max_tokens: 64,
+      messages: [],
+      output_config: { effort: "high" },
+    });
+
+    expect(sent["output_config"]).toEqual({ effort: "low" });
+    expect(recordedEfforts(opened.recorded)).toEqual(["low"]);
+    expect(recordedProgramEfforts(opened.recorded)).toEqual(["high"]);
+  });
+
+  it("records the program's reasoning.effort when the access names no effort", async () => {
+    const opened = await open("openai", { kind: "sign-in" });
+    const body = { model: "gpt-5.5", input: [], reasoning: { effort: "xhigh" } };
+
+    expect(await providerGets(opened, "openai", body)).toEqual(body);
+    expect(recordedEfforts(opened.recorded)).toEqual([undefined]);
+    expect(recordedProgramEfforts(opened.recorded)).toEqual(["xhigh"]);
+  });
+
+  it.each([
+    ["no effort", { model: "cheap-model", max_tokens: 64, messages: [] }],
+    [
+      "an effort outside the list",
+      { model: "cheap-model", max_tokens: 64, messages: [], output_config: { effort: "turbo" } },
+    ],
+    [
+      "an effort that isn't text",
+      { model: "cheap-model", max_tokens: 64, messages: [], output_config: { effort: 3 } },
+    ],
+  ])("records no program effort for %s, and sends the request as before", async (_, body) => {
+    const opened = await open("anthropic", { kind: "sign-in" });
+
+    expect(await providerGets(opened, "anthropic", body)).toEqual(body);
+    expect(recordedProgramEfforts(opened.recorded)).toEqual([undefined]);
+  });
+});

@@ -8,6 +8,7 @@ import type { HarnessStartedEvent } from "./harness-started.ts";
 import type { HarnessStoppedEvent } from "./harness-stopped.ts";
 import type { KeyOriginAnsweredEvent } from "./key-origin-answered.ts";
 import type { KeyOriginAskedEvent } from "./key-origin-asked.ts";
+import type { LlmRequestEvent } from "./llm-request.ts";
 import type { ProviderRouting } from "./provider-routing.ts";
 import type {
   ApprovalResolver,
@@ -103,30 +104,7 @@ export type RunEventBody =
   | { type: "state.entered"; state: string }
   /** `parent`: the agent that delegated this one (subagents); absent for the state's own agent. */
   | { type: "agent.started"; state: string; agent: string; prompt: string; parent?: string }
-  /**
-   * `alias`: the model alias the call went to, such as `fast`; absent in
-   * older logs and when the model has none (requirement
-   * `engine.llm-request-alias`). `address`: the `host:port` of a provider on
-   * this computer, such as `localhost:11434`, never a URL, path or user
-   * name; absent for any other provider and in older logs (requirement
-   * `engine.llm-event-address`). `effort`: the effort the harness bridge set
-   * on the call in place of the program's (requirement `events.llm-request-effort`).
-   * `subagent`: set, on the request and its response alike, when a sub-agent of
-   * the program made the call; absent for the agent itself (requirement `events.llm-subagent`).
-   * `routing`: the OpenRouter host pin the bridge sent (`events.llm-request-routing`).
-   */
-  | {
-      type: "llm.request";
-      agent: string;
-      provider: string;
-      model: string;
-      alias?: string;
-      address?: string;
-      effort?: "low" | "medium" | "high";
-      subagent?: string;
-      routing?: ProviderRouting;
-      messages: number;
-    }
+  | LlmRequestEvent
   | {
       type: "llm.response";
       agent: string;

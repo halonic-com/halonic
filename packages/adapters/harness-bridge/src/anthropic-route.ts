@@ -170,7 +170,7 @@ export function anthropicRoute(dependencies: AnthropicRouteDependencies): Bridge
         refuseUnknownAtCompatible(request, anthropicKnown, target.models);
       }
       const call = withSubagent(
-        readModelCall("anthropic", request, "messages", access),
+        readModelCall("anthropic", request, "messages", anthropicEffort, access),
         context.request.headers,
       );
       // Also before the key is read, so a model the agent wasn't given never reads it.

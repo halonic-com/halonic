@@ -1,6 +1,7 @@
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expectTypeOf } from "vitest";
 import type { AgentResume } from "./agent-resume.ts";
+import type { ProgramEffort } from "./llm-request.ts";
 import type { ProviderRouting } from "./provider-routing.ts";
 import type {
   ApprovalResolver,
@@ -223,6 +224,8 @@ verifies("events.run-log-contract", () => {
       address?: string;
       // Added after the reference by events.llm-request-effort (HAL-16735).
       effort?: "low" | "medium" | "high";
+      // Added after the reference by events.llm-request-effort (HAL-17262).
+      programEffort?: ProgramEffort;
       // Added after the reference by events.llm-subagent (HAL-17263).
       subagent?: string;
       // Added after the reference by events.llm-request-routing (HAL-16834).
