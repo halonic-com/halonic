@@ -25,6 +25,7 @@ verifies("server.api", () => {
       | "trust"
       | "modelSettings"
       | "webhooks"
+      | "routineSchedule"
       | "secrets"
       | "providerKeys"
       | "modelChoice"

@@ -274,10 +274,10 @@ function placedWarnings(context: CommandContext): PlacedWarnings {
 
 /**
  * The routine scheduler on the engine's parts, as `workspaceRoutineScheduler`
- * builds it. `scheduled` gets the routines each tick reads and returns those
- * to schedule.
+ * builds it, for this watch and `halonic serve`. `scheduled` gets the
+ * routines each tick reads and returns those to schedule.
  */
-function routineScheduler(
+export function routineScheduler(
   engine: RoutineEngine,
   workspace: LoadedWorkspace,
   versions: WatchedVersions,

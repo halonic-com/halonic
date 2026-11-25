@@ -29,6 +29,7 @@ import {
 } from "@halonicjs/adapter-workspace-engine-node";
 import { workspaceModelSettings } from "@halonicjs/adapter-workspace-models";
 import { workspaceRoutineScheduler } from "@halonicjs/app";
+import { routineTickReadings } from "@halonicjs/app/routines";
 import { endStoppedRuns, noListedToolApproval } from "@halonicjs/engine";
 import { createEngineServer, type EngineServerPorts } from "@halonicjs/host-server";
 import type { ProfileEnvironment } from "@halonicjs/profile";
@@ -46,7 +47,6 @@ import type { EngineArguments } from "./engine-arguments.ts";
 import { type EngineListener, listenForEngine } from "./engine-listener.ts";
 import type { EngineRoleParts, RunningEngine } from "./engine-role.ts";
 import { engineTrustSentences } from "./engine-trust-sentences.ts";
-import { nextRoutineAt } from "./next-routine.ts";
 import { runUpdatesFeed } from "./run-updates-feed.ts";
 import { EngineSchedule, runningEngine } from "./running-engine.ts";
 import type { SecretRedactor } from "./secret-redactor.ts";
@@ -192,15 +192,10 @@ async function openEngine(
           runVersion: () => versions.routines.runVersion(),
           policy: { ...DEFAULT_TICK_POLICY, timeZone: computerTimeZone() },
         });
-        return schedule.ticks(scheduler, {
-          countRuns: async () => {
-            const going = await engine.runs.list({ status: ["running", "waiting"] });
-            const waiting = going.filter((run) => run.status === "waiting").length;
-            return { active: going.length, waiting };
-          },
-          nextRoutineAt: async (at) =>
-            nextRoutineAt(await versions.routines.list(), new Date(at), computerTimeZone()),
-        });
+        return schedule.ticks(
+          scheduler,
+          routineTickReadings(engine.runs, () => versions.routines.list(), computerTimeZone()),
+        );
       },
     });
     const opened = local;

@@ -15,6 +15,7 @@ import type {
   GoogleSetupReadPorts,
   ModelSettingsGate,
   RequestLog,
+  RoutineSchedule,
   Server,
   ServerConfig,
   ServerPorts,
@@ -121,10 +122,11 @@ function optionalPorts(
     | "workspace"
     | "studioPage"
     | "requestLog"
+    | "routineSchedule"
   >,
 ): Partial<ServerPorts> {
   const { google, googleRead, providerKeys, modelChoice, connectors } = options;
-  const { workspace, studioPage, requestLog } = options;
+  const { workspace, studioPage, requestLog, routineSchedule } = options;
   return {
     ...(google === undefined ? {} : { google }),
     ...(googleRead === undefined ? {} : { googleRead }),
@@ -134,6 +136,7 @@ function optionalPorts(
     ...(workspace === undefined ? {} : { workspace }),
     ...(studioPage === undefined ? {} : { studioPage }),
     ...(requestLog === undefined ? {} : { requestLog }),
+    ...(routineSchedule === undefined ? {} : { routineSchedule }),
   };
 }
 
@@ -160,6 +163,7 @@ export function testServer(options: {
   requestLog?: RequestLog;
   workspace?: WorkspaceInfo;
   studioPage?: StudioPage;
+  routineSchedule?: RoutineSchedule;
   /** Builds a many-user server; the stub session verifier is allowed here. */
   manyUsers?: ManyUserPorts;
 }): Server {

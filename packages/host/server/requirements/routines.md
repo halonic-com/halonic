@@ -1,10 +1,10 @@
 # server.routines
 
-- Status: draft
+- Status: active
 - Since: unreleased
-- Source: HAL-18490 (PR S10, on the PR watcher's critical path, HAL-17974); today only the desktop engine runs routines (`workspaceRoutineScheduler` in `apps/agent-host/src/engine/open-engine.ts`)
+- Source: HAL-18490 (PR S10, on the PR watcher's critical path, HAL-17974), built on HAL-18499; before it only the desktop engine runs routines (`workspaceRoutineScheduler` in `apps/agent-host/src/engine/open-engine.ts`)
 
-The server (`halonic serve`) shall run the served workspace's routines with the same scheduler code as the desktop engine (`workspaceRoutineScheduler`), shared rather than copied, with its ticks driven through the `Scheduler` port. Each time a routine that is on falls due, the server shall start its workflow or agent once, as `routines.routine-start` fills it, as a normal run that the run list (`server.run-routes`) shows with the routine's key, and a run that fails shall show as failed and shall not stop the routine's next pass. While the served workspace isn't trusted (`server.trust-gate`), no routine run shall start. While routines are paused, the server shall start no routine run and skip the times that fall due, as `agent-host.engine-routine-pause` does, and it shall report `paused` and `nextRoutineAt` as `agent-host.engine-health-next-routine` defines them. A routine run on the server shall reach Paperclip only through the workflow's tool steps and the server's Paperclip connection (`server.paperclip-key-store`).
+The server (`halonic serve`) shall run the served workspace's routines with the same scheduler code as the desktop engine (`workspaceRoutineScheduler`), shared rather than copied, with its ticks driven through the `Scheduler` port. Each time a routine that is on falls due, the server shall start its workflow or agent once, as `routines.routine-start` fills it, as a normal run that the run list (`server.run-routes`) shows with the routine's key, and a run that fails shall show as failed and shall not stop the routine's next pass. While the served workspace isn't trusted (`server.trust-gate`), no routine run shall start. While routines are paused, the server shall start no routine run and skip the times that fall due, as `agent-host.engine-routine-pause` does, and it shall report `paused` and `nextRoutineAt` as `agent-host.engine-health-next-routine` defines them. `halonic serve` shall run its routines from the start. When a signed-in owner sends `PUT /api/routines/pause` with the JSON body `{"paused": true}` or `{"paused": false}`, the server shall pause or resume the routines from the next tick and answer 200 with the health; `GET /api/routines/health` shall answer the health, with the fields of the engine role's `health` frame but `kind`. If the caller isn't signed in while a password is set, then both routes shall answer 401 and change nothing. If the pause body isn't sent as `application/json`, then the server shall answer 415; if it has any field but `paused`, or a `paused` that isn't `true` or `false`, then it shall answer 400 and change nothing. A server whose host gives no routine schedule shall answer both routes with 404. A routine run on the server shall reach Paperclip only through the workflow's tool steps and the server's Paperclip connection (`server.paperclip-key-store`).
 
 ## Examples
 
@@ -18,6 +18,13 @@ The server (`halonic serve`) shall run the served workspace's routines with the 
   when it falls due twice,
   then the run list shows two failed runs.
 
+- Given a server with a password set and a caller who isn't signed in,
+  when it sends `PUT /api/routines/pause` with `{"paused": true}`,
+  then it gets 401 and the routines keep running.
+- Given the body `{"paused": "yes"}`,
+  when a signed-in owner sends it,
+  then the server answers 400 and pauses nothing.
+
 ## What it doesn't cover
 
-How the owner pauses the server's routines (a console subcommand or an owner route) is the S10 builder's choice, written into this requirement when it becomes active. The desktop engine's routine requirements don't change.
+The desktop engine's routine requirements don't change: its schedule is the same code, moved to `@halonicjs/app/routines` (`EngineSchedule`). Studio has no pause switch for a server yet; the owner uses the route.

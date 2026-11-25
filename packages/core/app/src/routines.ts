@@ -5,6 +5,15 @@ export type { RoutineOverlap } from "./routine-overlap.ts";
 export type { RoutinePassResult } from "./routine-pass.ts";
 export type { QueuedTimes } from "./routine-queue.ts";
 export {
+  EngineSchedule,
+  nextRoutineAt,
+  type RoutineHealth,
+  type RunCounts,
+  routineTickReadings,
+  type TickingScheduler,
+  type TickReadings,
+} from "./routine-schedule.ts";
+export {
   type DueFunction,
   RoutineScheduler,
   type RoutineSchedulerOptions,
