@@ -109,6 +109,7 @@ fn relay_stopped_counts_as_an_exited_host() {
         relay: Some(relay),
         secrets: None,
         handshake,
+        named: Vec::new(),
     };
 
     assert!(!host.has_exited(), "the relay serves and the host runs");
