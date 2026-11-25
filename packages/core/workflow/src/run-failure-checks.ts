@@ -97,3 +97,27 @@ export const ruleWithoutFileOrOutput: StateCheck = ({ id, state }): WorkflowIssu
   }
   return issues;
 };
+
+/**
+ * The engine fails a tool step that names no connector or no tool as soon as
+ * it is entered, and one with no `output`, whose result would go nowhere.
+ */
+export const toolWithoutTarget: StateCheck = ({ id, state }): WorkflowIssue[] => {
+  if (state.type !== "tool") {
+    return [];
+  }
+  const issues: WorkflowIssue[] = [];
+  if (!state.connector) {
+    const message = `Tool step "${id}" names no connector, so every run fails there. Name the connector whose tool it calls (connector: <id>).`;
+    issues.push(issue("error", "tool-without-connector", message, stateKey(id), id));
+  }
+  if (!state.tool) {
+    const message = `Tool step "${id}" names no tool, so every run fails there. Name the tool as its server lists it (tool: <name>).`;
+    issues.push(issue("error", "tool-without-name", message, stateKey(id), id));
+  }
+  if (!state.output) {
+    const message = `Tool step "${id}" has no output, so its result goes nowhere. Name the context key it writes (output: <key>).`;
+    issues.push(issue("error", "tool-without-output", message, stateKey(id), id));
+  }
+  return issues;
+};

@@ -133,6 +133,9 @@ export function inboxItems(
   return items.sort(newestFirst);
 }
 
+/** Who asks when a tool step, which has no agent, asks: `Tool step "merge"` (HAL-18635). */
+const toolStepName = (stepId: string) => `Tool step "${stepId}"`;
+
 function approvalItem(
   runId: string,
   approval: RunSummary["approvals"][number],
@@ -145,7 +148,9 @@ function approvalItem(
     callId: approval.callId,
     agent: approval.agent,
     subagent: approval.subagent ?? null,
-    agentName: nameOfAgent(approval.agent),
+    // A tool step has no agent: the step asks (`events.tool-step-marker`).
+    agentName:
+      approval.step === "tool" ? toolStepName(approval.agent) : nameOfAgent(approval.agent),
     subagentName: approval.subagent === undefined ? null : nameOfAgent(approval.subagent),
     tool: approval.tool,
     connector: approval.connector ?? null,

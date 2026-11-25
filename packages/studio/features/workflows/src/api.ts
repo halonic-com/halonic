@@ -108,7 +108,7 @@ export interface WorkflowLastRun {
 
 /**
  * What a step does: run an agent, wait for a person, end, run another workflow or several agents,
- * or run a rule of the hub with no model.
+ * or run a rule of the hub or call a connector's tool, each with no model.
  */
 export type WorkflowStepType =
   | "task"
@@ -117,7 +117,8 @@ export type WorkflowStepType =
   | "workflow"
   | "parallel"
   | "foreach"
-  | "rule";
+  | "rule"
+  | "tool";
 
 /** One step of a workflow, as its card shows it. */
 export interface WorkflowStep {

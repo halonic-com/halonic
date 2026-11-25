@@ -110,8 +110,8 @@ export interface LocalRunsOptions {
 
 /**
  * The effects this executor carries out: harness runs, and answers to their
- * approvals, only when it has `harnesses`, and connector calls only when it
- * has `connectorCalls`.
+ * approvals, only when it has `harnesses`, and connector calls, with the
+ * checks of tool steps' calls, only when it has `connectorCalls`.
  */
 export function builtEffectsOf(options: LocalRunsOptions): ReadonlySet<Effect["type"]> {
   const built: Effect["type"][] = [
@@ -122,7 +122,7 @@ export function builtEffectsOf(options: LocalRunsOptions): ReadonlySet<Effect["t
     "cancel-child",
   ];
   if (options.harnesses !== undefined) built.push("run-harness", "answer-harness");
-  if (options.connectorCalls !== undefined) built.push("call-tool");
+  if (options.connectorCalls !== undefined) built.push("call-tool", "check-tool");
   if (options.toolScriptIsolate !== undefined) built.push("run-rule");
   return new Set(built);
 }
@@ -139,6 +139,10 @@ export function unbuiltEffectFailure(
   if (unbuilt === undefined) return undefined;
   if (unbuilt.type === "run-rule") {
     const error = `This engine can't run rule steps: it has no ToolScript isolate, so the rule of step "${unbuilt.state}" can't run.`;
+    return { failure: { error }, reason: "error" };
+  }
+  if (unbuilt.type === "check-tool") {
+    const error = `This engine makes no connector calls, so tool step "${unbuilt.state}" can't run.`;
     return { failure: { error }, reason: "error" };
   }
   return {

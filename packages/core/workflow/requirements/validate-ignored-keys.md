@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-14302, from the C340 check on HAL-14271 (row 18, code row C38): keys a step's type doesn't use passed `halonic validate` silently
 
-When `validateWorkflow` checks a state that sets a key its type doesn't use, the workflow rules shall warn once per such key, with code `ignored-key` at that key, naming the state, its type and the key, and saying what to do: for an agent on a wait or final step, to put the agent on a task step before it; for any other key, which step types use it. The keys each type uses shall be the ones the engine's handler for that type is given (`STATE_KEYS`), so the check and the engine can't disagree. The rules shall also warn, with the same code, about `with` on a step or a parallel branch without `method`, and about `continueOnError` on a parallel step with `join: any`. These are warnings, so a workflow that runs today still passes.
+When `validateWorkflow` checks a state that sets a key its type doesn't use, the workflow rules shall warn once per such key, with code `ignored-key` at that key, naming the state, its type and the key, and saying what to do: for an agent on a wait or final step, to put the agent on a task step before it; for any other key, which step types use it. The keys each type uses shall be the ones the engine's handler for that type is given (`STATE_KEYS`), so the check and the engine can't disagree. The rules shall also warn, with the same code, about `with` on a step or a parallel branch without `method` (except on a tool step, whose `with` holds its tool's arguments), and about `continueOnError` on a parallel step with `join: any`. These are warnings, so a workflow that runs today still passes.
 
 ## Examples
 

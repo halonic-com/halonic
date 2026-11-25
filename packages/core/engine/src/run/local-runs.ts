@@ -45,10 +45,13 @@ import {
   callTimer,
   childTimer,
   harnessTimer,
+  nowTimerOf,
   ruleTimer,
   stateTimer,
+  toolCheckTimer,
   toolTimer,
 } from "./run-timer-ids.ts";
+import { type CheckTool, noToolChecks, RunToolChecks } from "./run-tool-checks.ts";
 import { sendNames } from "./send-names.ts";
 import { type ChildStartPorts, startChild } from "./start-child.ts";
 import { StartDeadlines } from "./start-deadlines.ts";
@@ -69,6 +72,7 @@ export class LocalRuns {
   readonly #clock: Clock;
   readonly #connectorCalls: RunConnectorCallRunner;
   readonly #rules: RunRules;
+  readonly #toolChecks: RunToolChecks;
   readonly #feed: RunFeed;
   readonly #startDeadlines: StartDeadlines;
   readonly #builtEffects: ReadonlySet<Effect["type"]>;
@@ -88,6 +92,7 @@ export class LocalRuns {
 
   /**
    * @param connectors - the connectors of the runs, which a top-level run's end ends
+   * @param checkTool - checks a tool step's call, as an agent's call to that tool is checked
    * @throws RangeError when a start limit in `harnesses` isn't a whole number of milliseconds of 1 or more
    */
   constructor(
@@ -96,6 +101,7 @@ export class LocalRuns {
     callModel: CallModel,
     callTool: CallTool = noConnectorCalls,
     connectors?: Pick<RunsConnectors, "ended" | "notStarted">,
+    checkTool: CheckTool = noToolChecks,
   ) {
     checkStartTimeouts(options.harnesses?.startTimeoutsMs);
     this.#options = options;
@@ -147,14 +153,16 @@ export class LocalRuns {
       now: () => this.#now(),
       isClosed: () => this.#closed,
     });
-    this.#rules = new RunRules({
+    // What a rule and a tool step's check need from the runs: neither calls a model.
+    const noModel = {
       store: this.store,
       blobs: options.blobs,
-      isolate: options.toolScriptIsolate,
-      record: (runId, input) => this.#recordIfTaken(runId, input),
+      record: (runId: string, input: DecideInput) => this.#recordIfTaken(runId, input),
       now: () => this.#now(),
       isClosed: () => this.#closed,
-    });
+    };
+    this.#rules = new RunRules({ ...noModel, isolate: options.toolScriptIsolate });
+    this.#toolChecks = new RunToolChecks({ ...noModel, checkTool });
   }
 
   /**
@@ -252,6 +260,8 @@ export class LocalRuns {
       await this.#connectorCalls.make(timer.key, timer.timerId.slice(toolTimer.length));
     } else if (timer.timerId.startsWith(ruleTimer)) {
       await this.#rules.run(timer.key, timer.timerId.slice(ruleTimer.length));
+    } else if (timer.timerId.startsWith(toolCheckTimer)) {
+      await this.#toolChecks.check(timer.key, timer.timerId.slice(toolCheckTimer.length));
     }
   }
 
@@ -396,21 +406,16 @@ export class LocalRuns {
   }
 
   /**
-   * Model calls, rules and state timers wait for their timer. A harness call that
-   * waits for an answer gets it at once. A child run starts at once, and a
+   * Calls, rules, tool checks and state timers wait for their timer ({@link nowTimerOf}). A
+   * harness call that waits for an answer gets it at once. A child run starts at once, and a
    * parent hears from its child at once, so it goes on in the same call;
    * its timer is set first and kept only if that fails.
    */
   async #carryOut(run: RunState, effect: Effect): Promise<void> {
     const scheduler = this.#options.scheduler;
-    if (effect.type === "call-model") {
-      await scheduler.schedule(run.runId, `${callTimer}${effect.callId}`, this.#now());
-    } else if (effect.type === "run-harness") {
-      await scheduler.schedule(run.runId, `${harnessTimer}${effect.callId}`, this.#now());
-    } else if (effect.type === "call-tool") {
-      await scheduler.schedule(run.runId, `${toolTimer}${effect.callId}`, this.#now());
-    } else if (effect.type === "run-rule") {
-      await scheduler.schedule(run.runId, `${ruleTimer}${effect.callId}`, this.#now());
+    const nowTimer = nowTimerOf(effect);
+    if (nowTimer !== undefined) {
+      await scheduler.schedule(run.runId, nowTimer, this.#now());
     } else if (effect.type === "answer-harness") {
       await this.#answerHarness(run.runId, effect);
     } else if (effect.type === "set-timer") {

@@ -74,8 +74,14 @@ function isDefinitions(parsed: unknown): parsed is RunDefinitions {
     (parsed["collections"] === undefined || isPlainObject(parsed["collections"])) &&
     (parsed["knowledge"] === undefined || isPlainObject(parsed["knowledge"])) &&
     (parsed["skills"] === undefined || isPlainObject(parsed["skills"])) &&
-    (parsed["rules"] === undefined || isPlainObject(parsed["rules"]))
+    (parsed["rules"] === undefined || isRuleSources(parsed["rules"]))
   );
+}
+
+// A rule step runs its rule's source text, so a value that isn't a string
+// fails here, with the definitions named, rather than later as `rule.not-run`.
+function isRuleSources(rules: unknown): boolean {
+  return isPlainObject(rules) && Object.values(rules).every((source) => typeof source === "string");
 }
 
 /** The error a run fails with when its definitions can't be read. */

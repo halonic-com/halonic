@@ -10,6 +10,8 @@ export const runChangeWords = {
   needsYou: (shortId: string, what: string) => `Run ${shortId} needs you. ${what}`,
   /** "Waiting for your approval: Sorter wants to use create_note (notes-mcp)." */
   approval: (ask: string) => `Waiting for your approval: ${ask}.`,
+  /** Who asks when a tool step, which has no agent, asks: `Tool step "merge"` (HAL-18635). */
+  toolStep: (stepId: string) => `Tool step "${stepId}"`,
   /** An open question "Allow this address?": the dialog says the rest (HAL-15831). */
   answer: (step: string) => `Waiting for your answer in the step ${step}.`,
   runningAgain: (shortId: string) => `Run ${shortId} is running again.`,

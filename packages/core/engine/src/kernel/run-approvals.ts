@@ -27,6 +27,11 @@ export interface WaitingApproval {
   readonly resume: AgentResume;
   /** The connector the tool comes from, as `approval.requested` names it; absent in older logs. */
   readonly connector?: string;
+  /**
+   * Set when a tool step asks: `"tool"`, with the arguments the call is made with once a person
+   * approves, as the approval showed them. No agent goes on after the answer.
+   */
+  readonly step?: { readonly kind: "tool"; readonly args: unknown };
 }
 
 /**
@@ -37,7 +42,7 @@ export function requestApproval(
   state: RunState,
   event: Extract<RunEvent, { type: "approval.requested" }>,
 ): RunState {
-  const { callId, state: stateId, agent, tool, resume, connector } = event;
+  const { callId, state: stateId, agent, tool, resume, connector, step, args } = event;
   const stopped = state.pendingCall?.state === stateId ? state.pendingCall : null;
   const approval: WaitingApproval = {
     callId,
@@ -47,6 +52,7 @@ export function requestApproval(
     prompt: stopped?.prompt ?? "",
     resume,
     ...(connector === undefined ? {} : { connector }),
+    ...(step === undefined ? {} : { step: { kind: step, args } }),
   };
   return {
     ...state,
@@ -58,7 +64,8 @@ export function requestApproval(
 
 /**
  * A person answered an approval. When the run is still in the approval's
- * state, its agent goes on with the answer in a new model call.
+ * state, its agent goes on with the answer in a new model call; a tool
+ * step's approval has no agent, so its state decides what the answer means.
  */
 export function resolveApproval(
   state: RunState,
@@ -66,7 +73,7 @@ export function resolveApproval(
 ): RunState {
   const approval = state.approvals.find((waiting) => waiting.callId === event.callId);
   const approvals = state.approvals.filter((waiting) => waiting.callId !== event.callId);
-  if (approval === undefined || approval.state !== state.state) {
+  if (approval === undefined || approval.state !== state.state || approval.step !== undefined) {
     return { ...state, approvals };
   }
   const calls = state.calls + 1;

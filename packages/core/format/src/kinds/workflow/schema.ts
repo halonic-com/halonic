@@ -26,7 +26,8 @@ export const Transition = s
  * task: run an agent. wait: wait for a person. final: end. workflow: run
  * another workflow of the hub as one step. parallel: run several agents at
  * once. foreach: run an agent or a workflow once per item of a list. rule:
- * run one pure function of the hub, with no model.
+ * run one pure function of the hub, with no model. tool: call one tool of a
+ * connector, with no model.
  */
 export const StateType = s.enum([
   "task",
@@ -36,6 +37,7 @@ export const StateType = s.enum([
   "parallel",
   "foreach",
   "rule",
+  "tool",
 ]);
 
 /**
@@ -93,6 +95,10 @@ export const WorkflowState = s
     workflow: s.string().optional(),
     /** Rule states: the rule's file in the hub, an ES module that exports `run(ctx)`. */
     rule: rulePath.optional(),
+    /** Tool states: the id of the connector whose tool the step calls. */
+    connector: s.string().optional(),
+    /** Tool states: the tool's name, as the connector's server lists it. */
+    tool: s.string().optional(),
     /** Agent states: the prompt template. Workflow states: the child's input. Rule states: `ctx.input`. */
     input: prompt().optional(),
     /** Task states: the data the agent gets after the prompt, such as [input.message]. */
@@ -119,7 +125,7 @@ export const WorkflowState = s
       .optional(),
     /** Task states: call this method of the agent. */
     method: id.optional(),
-    /** The method's arguments, as templates. */
+    /** The method's arguments, as templates. Tool states: the tool's arguments, as templates. */
     with: s.record(s.string(), s.unknown()).optional(),
     /** For-each states: the list to go through, a template such as "{{context.emails}}". */
     items: s.string().optional(),

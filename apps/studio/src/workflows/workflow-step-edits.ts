@@ -12,6 +12,7 @@ const stepTypes: Readonly<Record<StateType, true>> = {
   parallel: true,
   foreach: true,
   rule: true,
+  tool: true,
 };
 
 /** The key in the step's part of the file that each text field of the docked step card changes. */

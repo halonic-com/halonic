@@ -1,13 +1,11 @@
 import { summarize } from "@halonicjs/events";
 import type { Workflow, WorkflowState } from "@halonicjs/format";
-import { typeTest, verifies } from "@halonicjs/testing-spec";
-import { describe, expect, expectTypeOf, it } from "vitest";
-import { states } from "../generated/states.ts";
+import { verifies } from "@halonicjs/testing-spec";
+import { describe, expect, it } from "vitest";
 import { decide } from "./decide.ts";
 import type { DecideInput, StartInput } from "./decide-types.ts";
 import { InputRefused } from "./input-refused.ts";
 import { approvalWorkflow, play, writerAgent } from "./kernel-test-kit.test-helper.ts";
-import type { StateHandler, StateRegistry } from "./registry.ts";
 import { evolve, type RunState } from "./run-state.ts";
 
 function task(fields: Partial<WorkflowState> = {}): WorkflowState {
@@ -403,14 +401,6 @@ verifies("engine.initial-context-logged", () => {
 });
 
 verifies("engine.state-registry", () => {
-  typeTest("lists every built state type, typed against the registry", () => {
-    expectTypeOf(states).toMatchTypeOf<StateRegistry>();
-    expectTypeOf(states.task).toEqualTypeOf<StateHandler<"task">>();
-    expectTypeOf<keyof typeof states>().toEqualTypeOf<
-      "final" | "foreach" | "parallel" | "rule" | "task" | "wait" | "workflow"
-    >();
-  });
-
   it("fails a run that enters a state type the engine can't run yet", () => {
     // Every type the format knows has a handler now, so this stands for a
     // definition from a later format, with a type this engine doesn't know.

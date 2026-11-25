@@ -19,6 +19,8 @@ verifies("events.effect-requested", () => {
       resume: AgentResume;
       // Added by events.agent-resume-inner (HAL-3361).
       subagent?: string;
+      // Added by events.tool-step-marker (HAL-18635).
+      step?: "tool";
     }>();
   });
 

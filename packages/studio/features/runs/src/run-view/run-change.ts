@@ -74,13 +74,17 @@ function waitingForYou(wait: RunWait, step: string, context: RunPageContext): st
   return runPageWords.waitStepNoDescription(step);
 }
 
-/** "Sorter wants to use create_note (notes-mcp)": the banner's ask, with the tool's connector when it has one. */
+/**
+ * "Sorter wants to use create_note (notes-mcp)": the banner's ask, with the tool's connector when
+ * it has one. A tool step has no agent, so the step asks (`events.tool-step-marker`).
+ */
 function approvalAsk(approval: PendingApproval, context: RunPageContext): string {
   const asker = approval.subagent ?? approval.agent;
-  const ask = runPageWords.approvalAsk(
-    escapeHidden(context.agentName?.(asker) ?? asker),
-    approval.tool,
-  );
+  const name =
+    approval.step === "tool"
+      ? runChangeWords.toolStep(approval.agent)
+      : (context.agentName?.(asker) ?? asker);
+  const ask = runPageWords.approvalAsk(escapeHidden(name), approval.tool);
   return approval.connector === undefined ? ask : `${ask} (${escapeHidden(approval.connector)})`;
 }
 

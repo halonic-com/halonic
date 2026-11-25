@@ -7,6 +7,7 @@ import {
   noDoneTransition,
   ruleWithoutFileOrOutput,
   taskWithoutAgent,
+  toolWithoutTarget,
 } from "./run-failure-checks.ts";
 import { type StateKey, typesUsing, usesKey } from "./state-keys.ts";
 import {
@@ -296,6 +297,7 @@ const typeNames: { readonly [Type in StateType]: string } = {
   parallel: "parallel",
   foreach: "for-each",
   rule: "rule",
+  tool: "tool",
 };
 
 /**
@@ -335,10 +337,14 @@ function spokenList(items: readonly string[]): string {
   return items.length <= 1 ? last : `${items.slice(0, -1).join(", ")} and ${last}`;
 }
 
-/** `with` holds a method's arguments, so a step or branch without `method` ignores it. */
+/**
+ * `with` holds a method's arguments, so a step or branch without `method` ignores it. A tool
+ * step's `with` holds its tool's arguments, so it needs no method.
+ */
 const withWithoutMethod: StateCheck = ({ id, state }) => {
   const issues: WorkflowIssue[] = [];
-  if (usesKey(state.type, "with") && state.with !== undefined && state.method === undefined) {
+  const takesMethod = usesKey(state.type, "with") && state.type !== "tool";
+  if (takesMethod && state.with !== undefined && state.method === undefined) {
     const message = `"${id}" has with but no method: with is ignored. Add the method it is for, or put the text in input.`;
     issues.push(issue("warning", "ignored-key", message, stateKey(id, "with"), id));
   }
@@ -375,6 +381,7 @@ export const STATE_CHECKS: readonly StateCheck[] = [
   unknownTemplateNames,
   taskWithoutAgent,
   ruleWithoutFileOrOutput,
+  toolWithoutTarget,
   timersOutsideWait,
   timerWithEvent,
   waitWithoutEvents,

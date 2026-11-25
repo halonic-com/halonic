@@ -86,19 +86,22 @@ const writesOutput: ReadonlySet<WorkflowStepType> = new Set([
   "parallel",
   "foreach",
   "rule",
+  "tool",
 ]);
 
 /** The kinds that run an agent, and so have **Agent**; a parallel step's branches name their own. */
 const runsAgent: ReadonlySet<WorkflowStepType> = new Set(["task", "foreach"]);
 
+/** The kinds Studio doesn't offer yet: only a step of that kind lists it, to show the kind it is. */
+const notOffered: ReadonlySet<string> = new Set<WorkflowStepType>(["rule", "tool"]);
+
 /**
- * The Type picker's six kinds, in the order flow-workflows 5.2 lists them. Studio doesn't offer a
- * rule step yet, so only a rule step's own picker lists Rule, to show the kind it is
- * (`workflows.page.rule-step`).
+ * The Type picker's six kinds, in the order flow-workflows 5.2 lists them. A rule or tool step's own
+ * picker also lists its kind (`workflows.page.rule-step`, `workflows.page.tool-step`).
  */
 function typeOptionsOf(saved: WorkflowStepType): readonly SelectOption[] {
   return Object.entries(words.types)
-    .filter(([value]) => value !== "rule" || saved === "rule")
+    .filter(([value]) => !notOffered.has(value) || saved === value)
     .map(([value, label]) => ({ value, label }));
 }
 

@@ -134,7 +134,8 @@ function takeCallResult(context: StateContext<"task">, input: DecideInput): Stat
     case "effect":
       return requestEffect(context, pending, input.result);
     case "rule":
-      // Only a `rule` state asks for a rule; its result means nothing here.
+    case "tool-check":
+      // Only a `rule` state asks for a rule, and a `tool` state for a check; their results mean nothing here.
       return nothing;
   }
 }

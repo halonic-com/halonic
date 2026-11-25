@@ -4,6 +4,8 @@
 // own ids (`start-deadlines.ts`), and so does a run whose effects couldn't
 // all be carried out (`resumeTimer` in `unfinished-effects.ts`).
 
+import type { Effect } from "../kernel/decide-types.ts";
+
 /** A model call to carry out now. */
 export const callTimer = "call:";
 
@@ -21,3 +23,28 @@ export const toolTimer = "tool:";
 
 /** A rule of a `rule` state to run now. */
 export const ruleTimer = "rule:";
+
+/** The check of a `tool` state's call to make now. */
+export const toolCheckTimer = "tool-check:";
+
+/**
+ * The id of the timer that carries out `effect` now, for the effects that
+ * wait for one: model calls, harness runs, connector calls, rules and tool
+ * checks. `undefined` for any other effect.
+ */
+export function nowTimerOf(effect: Effect): string | undefined {
+  switch (effect.type) {
+    case "call-model":
+      return `${callTimer}${effect.callId}`;
+    case "run-harness":
+      return `${harnessTimer}${effect.callId}`;
+    case "call-tool":
+      return `${toolTimer}${effect.callId}`;
+    case "run-rule":
+      return `${ruleTimer}${effect.callId}`;
+    case "check-tool":
+      return `${toolCheckTimer}${effect.callId}`;
+    default:
+      return undefined;
+  }
+}

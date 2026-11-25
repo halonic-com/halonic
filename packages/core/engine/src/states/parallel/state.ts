@@ -122,6 +122,7 @@ function takeBranchResult(context: StateContext<"parallel">, input: DecideInput)
       return endWith(context, branch, effectRefused(context.stateId, branch, input.result.tool));
     case "tool":
     case "rule":
+    case "tool-check":
       return nothing;
   }
 }

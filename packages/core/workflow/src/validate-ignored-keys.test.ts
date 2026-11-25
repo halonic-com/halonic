@@ -128,7 +128,7 @@ verifies("workflow.validate-ignored-keys", () => {
     type UsedKey = (typeof COMMON_STATE_KEYS)[number] | (typeof STATE_KEYS)[StateType][number];
     // A key added to the workflow schema fails typecheck here until a type uses it.
     expectTypeOf<Exclude<StateKey, UsedKey>>().toEqualTypeOf<never>();
-    expect(typesUsing("with")).toEqual(["task", "foreach"]);
+    expect(typesUsing("with")).toEqual(["task", "foreach", "tool"]);
     expect(typesUsing("description")).toEqual(Object.keys(STATE_KEYS));
   });
 });

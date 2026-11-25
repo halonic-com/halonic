@@ -86,7 +86,7 @@ function takeCallResult(context: StateContext<"foreach">, input: EffectDoneInput
       `Agent "${agent}" stopped before a call to tool "${result.tool}" that can change things in item ${running.item} of for-each state "${context.stateId}"; an item's agent can't make one.`,
     );
   }
-  if (result.type === "tool" || result.type === "rule") {
+  if (result.type === "tool" || result.type === "rule" || result.type === "tool-check") {
     return nothing;
   }
   const stepOutput = stepOutputOf(context.agents, agent, context.state);
