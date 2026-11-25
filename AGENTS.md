@@ -255,6 +255,25 @@ adds it; the Merger checks who added it and treats the label as missing if anyon
 - **Never add a git remote to the old local copy of Halonic.** Its private history must never reach
   this repo. Copy files from it one by one, never by folder, and only when a task says so.
 
+## Releases below 0.9
+
+The board decided (25 Nov 2026) that a release below 0.9 needs no board card or approval when
+all of these hold:
+
+1. The full release review (A0) is green for it.
+2. The maintainer approved exactly the released head, and it merges with `--match-head-commit`
+   on that head.
+3. It's a normal release: a version bump plus changelog, with no change to workflows, signing or
+   guards.
+4. One notice per release goes to the board, through the chief of staff.
+
+If any of 1 to 3 fails, the release goes to the board on a card as before. The GitHub environments
+`release`, `npm-publish` and `npm-publish-cli` have no required reviewer; they accept only
+`v0.[0-8].*` tags, `release/0.[0-8].*` and `release/halonic-0.[0-8].*` branches, and `main` (for
+`release` and `npm-publish`), which changes only through reviewed pull requests. npm still asks a
+person to approve a staged version with 2FA. Before any 0.9 release, a reviewed environment must
+exist again.
+
 ## Generated files
 
 Never edit files in `src/generated/` folders, and never hand-edit `pnpm-lock.yaml`. On a lockfile or
