@@ -37,6 +37,17 @@ export function costPeriodStart(period: CostPeriod, now: Date, timeZone: string)
   return localMidnight(firstDay, timeZone);
 }
 
+/**
+ * The first instant of the calendar day `instant` falls on in `timeZone`:
+ * local midnight, or the clocks' jump on a day that skips it.
+ *
+ * @example
+ * dayStart(new Date("2026-11-25T10:00:00Z"), "Europe/Madrid"); // 2026-11-24T23:00:00.000Z
+ */
+export function dayStart(instant: Date, timeZone: string): Date {
+  return localMidnight(calendarDayIn(instant, timeZone), timeZone);
+}
+
 /** The calendar day an instant falls on in a time zone. */
 function calendarDayIn(instant: Date, timeZone: string): CalendarDay {
   const parts = dateParts(instant, timeZone);
