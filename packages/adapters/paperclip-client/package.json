@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@halonicjs/action-steppers": "workspace:*",
     "@halonicjs/ports": "workspace:*"
   },
   "devDependencies": {

@@ -65,6 +65,15 @@ each a non-empty string, and that one status. The client refuses any other body 
 neither can change a title, a blocker, a budget or another status. It reads the task first and writes only to a
 task of the connection's company. Like the person's writes, a task write is sent once or refused, never queued.
 
+**Stepper requests.** With a `stepperCatalog`, a confirmation card that pins a revision of its task's document
+`stepper-request` becomes an action item carrying that revision (`InboxItem.stepper`), checked with
+`validateStepperRequest` and then the port's allow-list. Every list reads the document's latest revision again,
+because Paperclip doesn't touch a task when a document changes, and marks the item as changed when a newer one
+exists. Studio's `action-result` is written back as the task document `stepper-result`, one summary comment and
+the card accepted or rejected. The three rows for this name their document key in the path, so the key reads
+`stepper-request` and writes `stepper-result` and nothing else. How agents write one:
+`docs/guides/paperclip-stepper-requests.md`.
+
 The key goes only in the `Authorization` header. Errors name the request and why it failed, never the key,
 a header or the body of a failed answer.
 

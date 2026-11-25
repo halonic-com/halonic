@@ -133,6 +133,10 @@ verifies("agent-host.paperclip-key", () => {
         "getTask",
         "wakeTask",
         "finishTask",
+        // Stepper requests (HAL-17536), pinned in stepper-requests.test.ts.
+        "readStepperRequest",
+        "latestStepperRequest",
+        "writeStepperResult",
       ]);
     });
   });

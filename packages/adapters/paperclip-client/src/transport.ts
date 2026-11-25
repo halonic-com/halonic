@@ -1,7 +1,9 @@
 import { checkedOrigin } from "./address.ts";
+import { asRecord, field, text } from "./json.ts";
 import {
   buildPath,
   fitsBody,
+  fitsSegment,
   matchesRequest,
   type PaperclipRequestName,
   type PathValues,
@@ -19,6 +21,8 @@ export type PaperclipAnswer =
       failure: PaperclipFailure;
       /** Paperclip's error code on a conflict, such as `interaction_already_resolved`. Never logged. */
       code?: string | undefined;
+      /** On a document conflict, the document's current revision, which an update must name. */
+      currentRevisionId?: string | undefined;
     };
 
 /**
@@ -160,7 +164,7 @@ export class PaperclipTransport {
     }
     const failure = statusFailures.get(response.status) ?? "refused";
     if (failure === "conflict") {
-      return { kind: "failed", failure, code: await errorCode(response) };
+      return { kind: "failed", failure, ...(await conflictDetails(response)) };
     }
     await response.body?.cancel();
     return { kind: "failed", failure };
@@ -177,18 +181,29 @@ function checkKey(key: string): void {
   }
 }
 
-/** Paperclip's short error code from a failed answer, if it has a plain one; nothing else of the body is kept. */
-async function errorCode(response: Response): Promise<string | undefined> {
+/**
+ * Paperclip's short error code from a conflict, if it has a plain one, and a
+ * document's current revision, if it is one; nothing else of the body is kept.
+ */
+async function conflictDetails(
+  response: Response,
+): Promise<{ code: string | undefined; currentRevisionId?: string }> {
+  let body: unknown;
   try {
-    const body: unknown = await response.json();
-    if (typeof body === "object" && body !== null && "code" in body) {
-      const code = body.code;
-      return typeof code === "string" && /^[a-z_]{1,64}$/.test(code) ? code : undefined;
-    }
+    body = await response.json();
   } catch {
     // A conflict without a JSON body has no code; the caller treats it as a plain conflict.
+    return { code: undefined };
   }
-  return undefined;
+  const record = asRecord(body);
+  const code = text(record, "code");
+  const revision = text(asRecord(field(record, "details")), "currentRevisionId");
+  return {
+    code: code !== undefined && /^[a-z_]{1,64}$/.test(code) ? code : undefined,
+    ...(revision !== undefined && fitsSegment("revision", revision)
+      ? { currentRevisionId: revision }
+      : {}),
+  };
 }
 
 /**

@@ -65,20 +65,40 @@ export const paperclipRequests = {
     path: "/api/issues/:task",
     body: { fields: ["status", "comment"], status: "done" },
   },
+  // Stepper requests (`paperclip-client.stepper-requests`, HAL-17536): each row names its one
+  // document key in the path, so the key reads or writes no other document, `plan` included.
+  // The result's summary comment goes through commentOnChat's route, the task's comments.
+  readStepperRequest: {
+    method: "GET",
+    path: "/api/issues/:task/documents/stepper-request/revisions/:revision",
+  },
+  latestStepperRequest: { method: "GET", path: "/api/issues/:task/documents/stepper-request" },
+  writeStepperResult: {
+    method: "PUT",
+    path: "/api/issues/:task/documents/stepper-result",
+    body: {
+      fields: ["title", "format", "body", "baseRevisionId"],
+      pinned: { title: "Stepper result", format: "markdown" },
+      nullable: ["baseRevisionId"],
+    },
+  },
 } as const satisfies Record<string, RequestRule>;
 
 /**
- * What a write's body must be: an object with exactly `fields`, its
- * `status` field set to `status`, and every field a non-empty string.
+ * What a write's body must be: an object with exactly `fields`, every field
+ * a non-empty string (or `null` for one listed in `nullable`), its `status`
+ * field set to `status` and each `pinned` field set to its value.
  */
 interface BodyRule {
   fields: readonly string[];
-  status: string;
+  status?: string;
+  pinned?: Readonly<Record<string, string>>;
+  nullable?: readonly string[];
 }
 
 /** One row of the fixed list. */
 interface RequestRule {
-  method: "GET" | "POST" | "PATCH";
+  method: "GET" | "POST" | "PATCH" | "PUT";
   path: string;
   /** For a write on a route that takes many fields: the only body it may send. */
   body?: BodyRule;
@@ -90,6 +110,8 @@ interface RequestRule {
  */
 const segmentRules: Readonly<Record<string, RegExp>> = {
   number: /^[1-9]\d{0,8}$/,
+  // A document revision is a UUID, as Paperclip makes them.
+  revision: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
 };
 
 /** Whether `value` may fill segment `:segment`: safe, and passing the segment's own rule. */
@@ -166,9 +188,10 @@ export function matchesRequest(name: PaperclipRequestName, method: string, path:
 
 /**
  * Whether `body` may go with request `name`: anything for a row without a
- * body rule, otherwise exactly the rule's fields, each a non-empty string,
- * with the rule's status. So a task write can't change a title, a blocker
- * or a budget, or set any other status.
+ * body rule, otherwise exactly the rule's fields, each a non-empty string or
+ * a `null` the rule allows, with the rule's status and pinned values. So a
+ * task write can't change a title, a blocker or a budget, or set any other
+ * status, and the stepper result is always a Markdown document of that title.
  */
 export function fitsBody(name: PaperclipRequestName, body: unknown): boolean {
   const rule: BodyRule | undefined = (paperclipRequests[name] as RequestRule).body;
@@ -181,8 +204,16 @@ export function fitsBody(name: PaperclipRequestName, body: unknown): boolean {
   const fields = new Map<string, unknown>(Object.entries(body));
   const onlyRuleFields =
     fields.size === rule.fields.length && rule.fields.every((field) => fields.has(field));
-  const allText = [...fields.values()].every((value) => typeof value === "string" && value !== "");
-  return onlyRuleFields && allText && fields.get("status") === rule.status;
+  const allText = [...fields].every(
+    ([field, value]) =>
+      (typeof value === "string" && value !== "") ||
+      (value === null && rule.nullable?.includes(field) === true),
+  );
+  const pinned = Object.entries({
+    ...(rule.status === undefined ? {} : { status: rule.status }),
+    ...rule.pinned,
+  });
+  return onlyRuleFields && allText && pinned.every(([field, value]) => fields.get(field) === value);
 }
 
 /**

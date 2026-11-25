@@ -1856,6 +1856,9 @@ importers:
 
   packages/adapters/paperclip-client:
     dependencies:
+      '@halonicjs/action-steppers':
+        specifier: workspace:*
+        version: link:../../core/action-steppers
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports
