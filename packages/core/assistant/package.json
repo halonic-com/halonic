@@ -9,7 +9,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
     "lint": "biome check .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "update-integration-guide": "sh scripts/update-integration-guide.sh"
   },
   "dependencies": {
     "@halonicjs/app": "workspace:*",

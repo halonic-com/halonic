@@ -46,4 +46,7 @@ export const toolTexts = {
   /** `schema` was asked for a kind that doesn't exist. */
   unknownKind: (kind: string, kinds: readonly string[]) =>
     `Error: there is no kind "${kind}". The kinds are: ${kinds.join(", ")}.`,
+  /** `integration_guide` was asked for a section the guide doesn't have. */
+  unknownGuideSection: (section: string, sections: readonly string[]) =>
+    `Error: the integration guide has no section "${section}". The sections are: ${sections.map((name) => `"${name}"`).join(", ")}.`,
 } as const;

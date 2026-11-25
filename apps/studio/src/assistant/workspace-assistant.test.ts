@@ -64,6 +64,7 @@ verifies("studio.workspace-assistant", () => {
         "list_files",
         "read_file",
         "schema",
+        "integration_guide",
         "validate",
         "propose_file",
         "propose_delete",
