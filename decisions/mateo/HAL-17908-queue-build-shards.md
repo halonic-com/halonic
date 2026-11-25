@@ -3,6 +3,7 @@
 - Task: HAL-17908 (item 6 of the merge-time report on HAL-17891)
 - Approval: HAL-17908 was opened from the merge-time report on HAL-17891 (item 6, 24 Nov) and specifies this change; Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:gVnoXHyEJJDSsn47JsWvkFtvmktZeckp/sH4GlgKC/UNXc+gArE29ibnoiLVJ5MQkElMC4IP6RmqtCbeKvYDBg==
 
 ## What changes
 
