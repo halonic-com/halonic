@@ -11,7 +11,12 @@
     "lint": "biome check .",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@halonicjs/action-steppers": "workspace:*"
+  },
   "devDependencies": {
+    "@halonicjs/schema-kit": "workspace:*",
+    "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",
     "typescript": "catalog:",
