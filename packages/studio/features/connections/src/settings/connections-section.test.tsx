@@ -57,6 +57,14 @@ verifies("connections.connection-row", () => {
     expect(button("Disconnect", row)).toBeDefined();
   });
 
+  it("sets the connection's name in the body-strong type", async () => {
+    const { view } = await showSection(new FakeAgentConnections({ connections: [connected] }));
+    const name = [...(rowOf(view, "Paperclip · Halonic")?.querySelectorAll("p") ?? [])].find(
+      (line) => line.textContent === "Paperclip · Halonic",
+    );
+    expect(name?.className).toContain("text-body-strong");
+  });
+
   it("says since when a connection is offline", async () => {
     const offline: AgentConnection = {
       ...connected,

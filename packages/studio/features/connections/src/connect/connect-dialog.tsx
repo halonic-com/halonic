@@ -1,6 +1,6 @@
 import { Dialog, Field, Input, useOpenExternal } from "@halonicjs/studio-kit";
 import type { AgentConnection, AgentConnections } from "@halonicjs/studio-services";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as words from "../connections-words.ts";
 import { EndedStep, useLeftMs, WaitingStep } from "./connect-steps.tsx";
 import {
@@ -146,11 +146,19 @@ function AddressStep({
   const [invalid, setInvalid] = useState(false);
   const openExternal = useOpenExternal();
   const fieldError = invalid ? words.ADDRESS_HTTPS_ONLY : fieldProblem(problem);
+  const input = useRef<HTMLInputElement>(null);
+
+  // The kit's Dialog contract: an error on the field takes focus to the field, off Continue. The
+  // engine's refusal comes later, once the sign-in didn't start.
+  useEffect(() => {
+    if (fieldProblem(problem) !== undefined) input.current?.focus();
+  }, [problem]);
 
   const start = () => {
     const trimmed = address.trim();
     if (!isAllowedAddress(trimmed)) {
       setInvalid(true);
+      input.current?.focus();
       return;
     }
     setInvalid(false);
@@ -172,11 +180,12 @@ function AddressStep({
       {...(problem === "failed" ? { error: words.START_FAILED } : {})}
     >
       <div className="flex flex-col gap-4">
-        <p className="m-0 text-fg">
+        <p className="m-0 text-body text-fg">
           {again === undefined ? words.CONNECT_LEAD : words.signInAgainLead(again.label)}
         </p>
         <Field label={words.ADDRESS_LABEL} hint={words.ADDRESS_HINT} error={fieldError ?? null}>
           <Input
+            ref={input}
             mono
             readOnly={busy || again !== undefined}
             value={address}

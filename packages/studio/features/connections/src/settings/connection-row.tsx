@@ -68,7 +68,7 @@ export function ConnectionRow({
             <LetterTile name={connection.provider} size="md" />
             <div className="flex min-w-0 grow flex-col gap-1">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="m-0 font-semibold text-fg">{connection.label}</p>
+                <p className="m-0 text-body-strong text-fg">{connection.label}</p>
                 <StatusChip tone="outline">{words.READ_ONLY}</StatusChip>
                 <StatusChip tone={chipTones[connection.state.kind]} dot>
                   {words.stateChips[connection.state.kind]}
