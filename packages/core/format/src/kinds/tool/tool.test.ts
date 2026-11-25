@@ -157,6 +157,7 @@ verifies("format.tool-actions", () => {
       "paperclip.comment paperclip-api",
       "paperclip.next-step paperclip-api",
       "paperclip.finish-run paperclip-api",
+      "halonic.precheck ",
     ]);
     expect(toolActionNames().filter((name) => toolActionInfo(name).writes)).toEqual([
       "paperclip.comment",

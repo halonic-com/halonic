@@ -6,6 +6,7 @@ import type { ActionHandlers } from "./handlers.ts";
 import type { RuntimeHost, ToolDeclaration, ToolResult, ToolRunContext } from "./host.ts";
 import { paperclipAccess } from "./paperclip-access.ts";
 import { writeMode } from "./paperclip-writes.ts";
+import { type PrecheckDeps, precheckAccess } from "./precheck/precheck-access.ts";
 import { keepFailedRun } from "./runs/failed-runs-record.ts";
 
 /**
@@ -31,6 +32,8 @@ export interface RuntimeSetup {
   readonly builtIn: WorkspaceSnapshot;
   readonly handlers: ActionHandlers;
   readonly now?: () => Date;
+  /** The precheck client's `fetch`, pause and clock; tests pass fakes. */
+  readonly precheck?: PrecheckDeps;
 }
 
 /** A whole call gives up after this long, before Paperclip's tool bridge stops it at about 15 s. */
@@ -157,6 +160,17 @@ async function serve(
       runId: runCtx.runId,
     }),
     now,
+    // Only this one action gets the precheck client, built from the settings read above.
+    ...(served.action.run === "halonic.precheck"
+      ? {
+          precheck: precheckAccess(
+            ctx,
+            config,
+            { companyId: runCtx.companyId, tool: name },
+            setup.precheck,
+          ),
+        }
+      : {}),
   });
 }
 

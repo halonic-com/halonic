@@ -5,7 +5,10 @@
 
 import { readFile } from "node:fs/promises";
 import type { PluginRuntime } from "@halonicjs/app";
-import { workspacePinProperties } from "@halonicjs/target-paperclip-runtime";
+import {
+  precheckSettingProperties,
+  workspacePinProperties,
+} from "@halonicjs/target-paperclip-runtime";
 import { pluginActions, runtimeCapabilities } from "@halonicjs/target-paperclip-runtime/actions";
 import { DetailedError } from "./command.ts";
 import { buildMessages } from "./messages/build.ts";
@@ -42,6 +45,10 @@ export async function shippedPluginRuntime(workerUrl = runtimeWorkerUrl): Promis
     worker: new Uint8Array(worker),
     actions: pluginActions(),
     capabilities: runtimeCapabilities,
-    settings: { githubToken: githubTokenSetting, ...workspacePinProperties },
+    settings: {
+      githubToken: githubTokenSetting,
+      ...workspacePinProperties,
+      ...precheckSettingProperties,
+    },
   };
 }

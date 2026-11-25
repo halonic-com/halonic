@@ -271,6 +271,20 @@ export const TOOL_ACTIONS = {
     ],
     settings: writeSettings,
   },
+  "halonic.precheck": {
+    about:
+      "Checks a pushed branch merged into current main at Halonic's precheck service, or reads a check started earlier.",
+    // It starts a check on Halonic's own service and changes nothing in GitHub or Paperclip.
+    // The service's address is a plugin setting, never a workspace one.
+    writes: false,
+    keys: [],
+    parameters: [
+      { name: "branch", required: false },
+      { name: "sha", required: false },
+      { name: "checkId", required: false },
+    ],
+    settings: s.object({}).strict().prefault({}),
+  },
 } as const;
 
 /** How a writing action runs. */

@@ -4,6 +4,8 @@ import type { GitHubGet, GitHubQuery } from "./github.ts";
 import type { Capability, ToolResult } from "./host.ts";
 import type { PaperclipAccess } from "./paperclip-access.ts";
 import { writeActionHandlers } from "./paperclip-writes.ts";
+import { precheckHandler } from "./precheck/precheck.ts";
+import type { PrecheckAccess } from "./precheck/precheck-access.ts";
 import { mergeQueueHandler } from "./pulls/merge-queue.ts";
 import { mergeTimesHandler } from "./pulls/merge-times.ts";
 import { openPullRequestsHandler } from "./pulls/open-pull-requests.ts";
@@ -41,6 +43,12 @@ export interface ActionCall {
   readonly paperclip: PaperclipAccess;
   /** The time of the call, for monitors. */
   readonly now: Date;
+  /**
+   * The precheck service client, given only to a call of `halonic.precheck`:
+   * it uses the plain `fetch`, which skips the host's outbound guard, so no
+   * other action may reach it.
+   */
+  readonly precheck?: PrecheckAccess;
 }
 
 /** One action's code and the Paperclip capabilities it needs beyond the runtime's own. */
@@ -67,4 +75,5 @@ export const runtimeHandlers: ActionHandlers = {
   "paperclip.budgets": budgetsHandler,
   "github.merge-times": mergeTimesHandler,
   ...writeActionHandlers,
+  "halonic.precheck": precheckHandler,
 };
