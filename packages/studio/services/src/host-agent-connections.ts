@@ -182,7 +182,8 @@ export class HostAgentConnections implements AgentConnections {
     const tokenName = paperclipKeyTokenName(name);
     // Read first, so a Sign in again that fails leaves the connection its old key (Julian, HAL-18048).
     const before = await tokens.get(tokenName).catch(failed(report));
-    const workspaces = before === false ? [] : this.#workspacesWith(before, { address, company });
+    const workspaces =
+      before === false ? [] : await this.#workspacesWith(before, { address, company });
     const entry = paperclipKeyEntryText({ key, address, company, workspaces });
     const written =
       before !== false && (await tokens.set(tokenName, entry).then(() => true, failed(report)));
@@ -237,9 +238,11 @@ export class HostAgentConnections implements AgentConnections {
    * held `before` named when it was made for the same address and company.
    * A key for another address or company starts the list again.
    */
-  #workspacesWith(before: string | null, madeFor: { address: string; company: string }): string[] {
-    // Settings lists the connections before any sign-in, so the real path is known by now.
-    const here = this.#realWorkspace ?? this.#options.workspace;
+  async #workspacesWith(
+    before: string | null,
+    madeFor: { address: string; company: string },
+  ): Promise<string[]> {
+    const here = await this.#realWorkspaceNow();
     const old = before === null ? undefined : paperclipKeyEntryOf(before);
     const sameKeyPlace =
       old !== undefined &&
@@ -248,6 +251,20 @@ export class HostAgentConnections implements AgentConnections {
     const kept = sameKeyPlace ? (old.workspaces ?? []) : [];
     const others = kept.filter((each) => !sameWorkspace(each, here));
     return [...others, here];
+  }
+
+  /**
+   * The workspace's real path: as the host last listed it, else as it lists
+   * it now. When that fails, the path Studio names, which a later restore
+   * may not match, so it only costs one more sign-in, never a key to a clone.
+   */
+  async #realWorkspaceNow(): Promise<string> {
+    if (this.#realWorkspace !== undefined) return this.#realWorkspace;
+    const listed = await this.#listed().catch((error: unknown) => {
+      this.#options.report(error);
+      return undefined;
+    });
+    return listed?.workspace ?? this.#options.workspace;
   }
 
   #now(): number {

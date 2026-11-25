@@ -92,9 +92,9 @@ function open(keychain: Keychain, host: FakeHost, named: string) {
   return { connections, reported };
 }
 
-/** Lists the connections, as Settings does, then signs in to the Halonic one. */
-async function signInThere(connections: HostAgentConnections): Promise<void> {
-  await connections.list();
+/** Lists the connections, as Settings does, unless `listFirst` is false, then signs in to the Halonic one. */
+async function signInThere(connections: HostAgentConnections, listFirst = true): Promise<void> {
+  if (listFirst) await connections.list();
   const start = await connections.signIn({ address, connection: "paperclip:halonic" });
   if (start.outcome !== "started") throw new Error("expected a started sign-in");
   expect((await start.challenge.result).outcome).toBe("connected");
@@ -118,6 +118,18 @@ verifies("services.paperclip-restore", () => {
       expect(heard).toBe(1);
       expect(reported).toEqual([]);
       expect((await connections.list())[0]?.state).toEqual(online);
+    });
+
+    it("records the real path also for a sign-in started without a list first", async () => {
+      const keychain: Keychain = new Map();
+      await signInThere(
+        open(keychain, new FakeHost("/real/acme"), "/links/acme").connections,
+        false,
+      );
+
+      expect(JSON.parse(keychain.get("paperclip-halonic") ?? "{}").workspaces).toEqual([
+        "/real/acme",
+      ]);
     });
 
     it("keeps one entry with the newest key when a second workspace signs in", async () => {
