@@ -4,6 +4,7 @@
 - Approval: a trust-root change written by Owen on Liam's decision (option A) on HAL-18533; Julian reviews first, then Julian and Liam sign as the two guardians
 - Kind: user-visible
 - Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:eDqBJVa1TRdwf5iBJfdxhC6C/ag9nXddDOh4yfgG0BEHBqJu5nARO4iwylbJZYS501ECE11KozeL89pXKDJTCQ==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5zbL0NbFZaJ49R5BMSf9dCGLxjgjWCR6bK+yWpqvxjUMb09YEMvfCz5AQ7vi+P9c8G4ZUz1P+FgfynwPCqzRDg==
 
 ## What changes
 
