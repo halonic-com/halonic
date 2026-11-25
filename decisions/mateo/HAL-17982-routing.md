@@ -15,6 +15,11 @@ nightly starts using it in the step that gives it a routing.
 routing decides who reviews (a trust root, plan "Safety"), and gets an example
 for them. Nothing else in it changes; every existing case routes as before.
 
+The snapshot's JSON Schema spec file (`spec/workspace-snapshot.schema.json`)
+gains the optional `routing` property, regenerated from the schema; no existing
+property changes.
+
 ## Covers
 
 - paperclip.reviewer-paths
+- packages/core/format/spec/workspace-snapshot.schema.json
