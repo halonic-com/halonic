@@ -29,6 +29,18 @@ pub enum AfterCrash {
     Problem { windows: HashSet<String> },
 }
 
+/// What became of a pause for one workspace ([`EngineTable::set_pause`]).
+#[derive(Debug, PartialEq, Eq)]
+pub enum PauseSet<'a, P> {
+    /// No launch yet: nothing to keep the pause on, so it is dropped.
+    NoWorkspace,
+    /// No engine runs now (between a crash and its restart, or in the
+    /// problem state): the pause is kept for the next handshake.
+    Kept,
+    /// Kept, and this running engine is to be sent it.
+    Sent(&'a P),
+}
+
 /// What the tray shows of every engine together (B1 step 5).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct EnginesSummary {
@@ -259,19 +271,26 @@ impl<P> EngineTable<P> {
             .unwrap_or_default()
     }
 
-    /// Pauses or resumes the routines of `workspace`, and gives back its
-    /// running engine, if one runs, to send the new pause to. The pause
-    /// stays through a crash and its restart, and until Quit; a workspace
-    /// with no launch yet has nothing to keep it on.
+    /// Pauses or resumes the routines of `workspace`. The pause stays
+    /// through a crash and its restart, and until Quit; a workspace with no
+    /// launch yet has nothing to keep it on.
     #[cfg_attr(
         not(test),
-        expect(dead_code, reason = "the tray's Pause routines calls it (HAL-14206)")
+        expect(
+            dead_code,
+            reason = "the pause is kept per workspace (routine-pause), but the tray only pauses every one (HAL-18433)"
+        )
     )]
-    pub fn set_pause(&mut self, workspace: &Path, paused: bool) -> Option<&P> {
-        let entry = self.workspaces.get_mut(workspace)?;
+    pub fn set_pause(&mut self, workspace: &Path, paused: bool) -> PauseSet<'_, P> {
+        let Some(entry) = self.workspaces.get_mut(workspace) else {
+            return PauseSet::NoWorkspace;
+        };
         // The frame goes through the engine's link, which writes it itself.
         let _frame = entry.pause.set(paused);
-        entry.engine.as_ref()
+        match entry.engine.as_ref() {
+            Some(engine) => PauseSet::Sent(engine),
+            None => PauseSet::Kept,
+        }
     }
 
     /// `window` closed: no engine serves it now. Engines keep running.
