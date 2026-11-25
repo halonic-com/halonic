@@ -2,6 +2,7 @@ import {
   type PaperclipAnswer,
   type PaperclipKeyGuard,
   PaperclipMessaging,
+  type PaperclipMessagingOptions,
 } from "@halonicjs/adapter-paperclip-client";
 import type {
   PaperclipBinding,
@@ -18,6 +19,8 @@ export interface PaperclipProviderOptions {
   label: string;
   /** Reads the connection file as it is now; `undefined` when it is gone or broken. */
   readNow: () => Promise<PaperclipConnectionNow | undefined>;
+  /** Hears a read of whom the key belongs to that threw; the next poll reads again. */
+  reportUserRead: (error: unknown) => void;
   /** The `fetch` the provider sends with; the global one by default. */
   fetch?: typeof fetch;
   now?: () => Date;
@@ -47,7 +50,7 @@ export function paperclipProvider(
       use.origin === madeFor.address ? request(use.key) : Promise.resolve(signedOut),
     );
   };
-  return new PaperclipConnectionProvider({
+  return new PaperclipConnectionProvider(options.reportUserRead, {
     address: madeFor.address,
     key: guard,
     connection: binding.connection,
@@ -67,8 +70,14 @@ export function paperclipProvider(
  * on would only repeat the refusal every 30 seconds.
  */
 export class PaperclipConnectionProvider extends PaperclipMessaging {
+  readonly #reportUserRead: (error: unknown) => void;
   /** The user's name once read; `null` once read from a Paperclip that holds none. */
   #userName: string | null | undefined;
+
+  constructor(reportUserRead: (error: unknown) => void, options: PaperclipMessagingOptions) {
+    super(options);
+    this.#reportUserRead = reportUserRead;
+  }
 
   /** The name of the Paperclip user the key belongs to, once read. */
   get userName(): string | undefined {
@@ -77,19 +86,25 @@ export class PaperclipConnectionProvider extends PaperclipMessaging {
 
   /**
    * Reads whom the key belongs to, until one read worked: Connect calls it
-   * once, and a poll tries again when Connect's read failed.
+   * once, and a poll tries again when Connect's read failed. A read that
+   * throws is reported, never thrown, so the poll it is part of goes on
+   * (`agent-host.paperclip-user-read-again`).
    */
   async readUser(): Promise<void> {
     if (this.#userName !== undefined) return;
-    const user = await this.signedInUser();
-    if (user !== undefined) this.#userName = user.name ?? null;
+    try {
+      const user = await this.signedInUser();
+      if (user !== undefined) this.#userName = user.name ?? null;
+    } catch (error) {
+      this.#reportUserRead(error);
+    }
   }
 
   override async listSources(): Promise<readonly MessagingSource[]> {
     const sources = await super.listSources();
     const { userName } = this;
     if (userName === undefined) return sources;
-    return sources.map((source) => ({ ...source, label: `${source.label} · ${userName}` }));
+    return sources.map((source) => ({ ...source, label: withUserName(source.label, userName) }));
   }
 
   override async refresh(): Promise<void> {
@@ -98,4 +113,25 @@ export class PaperclipConnectionProvider extends PaperclipMessaging {
     await this.readUser();
     await super.refresh();
   }
+}
+
+/** How many characters of the user's name a label shows; a longer name ends in "…". */
+const labelNameLength = 40;
+
+/**
+ * A connection's label with whom it is signed in as, "Paperclip · Halonic ·
+ * Board Supervisor". A long name is cut to {@link labelNameLength}
+ * characters and an ellipsis, so it can't push the label off a row
+ * (`agent-host.paperclip-user-read-again`); the row's `userName` keeps it whole.
+ */
+export function withUserName(label: string, userName: string): string {
+  const characters = [...userName];
+  const shown =
+    characters.length > labelNameLength
+      ? `${characters
+          .slice(0, labelNameLength - 1)
+          .join("")
+          .trimEnd()}…`
+      : userName;
+  return `${label} · ${shown}`;
 }

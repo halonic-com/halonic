@@ -256,3 +256,14 @@ verifies("agent-host.paperclip-signed-in-user", () => {
     });
   });
 });
+
+verifies("agent-host.paperclip-user-read-again", () => {
+  describe("signedInUser after a server fault", () => {
+    it("answers nothing yet on a 5xx, so the read is worth asking again", async () => {
+      paperclip.on("GET", "/api/cli-auth/me", { status: 503, body: { error: "unavailable" } });
+      expect(await client().signedInUser()).toBeUndefined();
+      paperclip.on("GET", "/api/cli-auth/me", { status: 403, body: { error: "forbidden" } });
+      expect(await client().signedInUser()).toEqual({});
+    });
+  });
+});
