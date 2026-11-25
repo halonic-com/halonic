@@ -40,11 +40,15 @@ impl SecretName {
         Ok(Self(format!("{TOKEN_PREFIX}{}", token.0)))
     }
 
-    /// Whether the name belongs to Halonic: one of [`HALONIC_NAMES`] or a
-    /// token under [`TOKEN_PREFIX`]. The same rule as `isHalonicSecretName`
-    /// in `@halonicjs/ports`.
+    /// Whether the name belongs to Halonic: one of [`HALONIC_NAMES`], a
+    /// token under [`TOKEN_PREFIX`] or a stepper's sign-in under
+    /// [`ACTION_PREFIX`]. The same rule as `isHalonicSecretName` in
+    /// `@halonicjs/ports`, which doesn't know the stepper prefix yet: a
+    /// workspace secret named like one is refused here.
     pub fn is_halonic(&self) -> bool {
-        HALONIC_NAMES.contains(&self.0.as_str()) || self.0.starts_with(TOKEN_PREFIX)
+        HALONIC_NAMES.contains(&self.0.as_str())
+            || self.0.starts_with(TOKEN_PREFIX)
+            || self.0.starts_with(ACTION_PREFIX)
     }
 
     /// Whether the agent host may reach the name through its secrets
@@ -61,6 +65,13 @@ impl SecretName {
 
 /// The canonical prefix of every token's keychain name.
 pub const TOKEN_PREFIX: &str = "halonic_token_";
+
+/// The canonical prefix of a stepper's sign-in: the user's own token for a
+/// service and the account it belongs to (`halonic-action-send`). Only the
+/// shell's `action_*` commands reach these; the secret commands, the agent
+/// host and the engine never do, so no page, agent or integration sees the
+/// token.
+pub const ACTION_PREFIX: &str = "action__";
 
 /// Halonic's own secrets, in canonical form: the key the CLI seals its
 /// tokens with, the hash of the served Studio's sign-in password and the

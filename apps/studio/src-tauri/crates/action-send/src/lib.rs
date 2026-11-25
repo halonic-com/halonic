@@ -1,0 +1,33 @@
+//! The Studio shell's side of user-only action steppers (HAL-17525;
+//! architecture note on HAL-17491, 2.4 and 3; ADR 2026-11-24, action
+//! sender). Plain Rust with no Tauri types: the shell's `action_*` commands
+//! wrap it and give it the keychain, the network and the native dialogs.
+//!
+//! - [`RouteList`]: every step the shell may send or open, generated from
+//!   the catalog and compiled in.
+//! - [`Sender::send`]: one call step, only from the list, to the service's
+//!   fixed origin with the user's token, following no redirect, handing back
+//!   only kept fields.
+//! - [`open_guided`] and [`open_page`]: a guided step's page, and a
+//!   `browser` block's address checked against the web origins.
+//! - [`account`]: where the token and the signed-in account are kept.
+
+pub mod account;
+mod answer;
+mod call;
+mod kinds;
+mod opens;
+mod pattern;
+mod routes;
+mod send;
+mod services;
+mod template;
+mod web;
+
+pub use answer::{MAX_ERROR_CHARS, error_text};
+pub use call::{MAX_LIST_ITEMS, Refusal, SendRequest, StepRef};
+pub use opens::{ANY_PAGE_GAP_MS, OpenLimiter, SAME_PAGE_GAP_MS, open_guided, open_page};
+pub use pattern::{MAX_VALUE_CHARS, Pattern};
+pub use routes::{FORMAT, Risk, RouteList};
+pub use send::{Answer, ConfirmSheet, Dialogs, Outgoing, SendResult, Sender, Tokens, Transport};
+pub use services::{GITHUB, SERVICES, Service, service};

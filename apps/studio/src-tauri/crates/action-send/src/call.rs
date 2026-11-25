@@ -1,0 +1,185 @@
+//! Checks what the page asked for against one route, and builds the call.
+//! The page names a step and gives values; the method, the address, the
+//! body's shape and the fields to keep all come from the route.
+
+use std::collections::BTreeMap;
+
+use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
+use url::Url;
+
+use crate::pattern::Pattern;
+use crate::routes::{BodyField, BodyKind, CallRoute, Method, RouteList, StepKey};
+use crate::template::fill;
+
+/// The most items an `integer-list` body field may hold.
+pub const MAX_LIST_ITEMS: usize = 100;
+
+/// Why a send or an open was refused before anything left the computer:
+/// `ActionRefusal` in `@halonicjs/ports`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Refusal {
+    NotInCatalog,
+    BadValue,
+    SignedOut,
+    TooOften,
+}
+
+/// Which reviewed step, and a value for each of its placeholders:
+/// `ActionStepRef` in `@halonicjs/ports`.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct StepRef {
+    pub definition: String,
+    pub version: u32,
+    pub step: u32,
+    pub placeholders: BTreeMap<String, String>,
+}
+
+impl StepRef {
+    /// The route list's key for the step.
+    pub fn key(&self) -> StepKey {
+        StepKey {
+            definition: self.definition.clone(),
+            version: self.version,
+            step: self.step,
+        }
+    }
+}
+
+/// A request to send one call step: `ActionSendRequest` in `@halonicjs/ports`.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SendRequest {
+    pub definition: String,
+    pub version: u32,
+    pub step: u32,
+    pub placeholders: BTreeMap<String, String>,
+    #[serde(default)]
+    pub body: BTreeMap<String, Value>,
+}
+
+/// A call ready to send, without the token, which the sender adds last.
+#[derive(Debug, Clone)]
+pub struct PreparedCall<'a> {
+    pub route: &'a CallRoute,
+    pub address: Url,
+    /// The JSON body, or `None` when the route has no body fields.
+    pub body: Option<Map<String, Value>>,
+}
+
+/// Checks each placeholder value: exactly the route's names, none empty,
+/// `.` or `..`, none holding `/`, `\`, `?`, `#` or `%`, each matching its
+/// pattern.
+pub fn check_placeholders(
+    declared: &BTreeMap<String, Pattern>,
+    given: &BTreeMap<String, String>,
+) -> Result<(), Refusal> {
+    if declared.len() != given.len() {
+        return Err(Refusal::BadValue);
+    }
+    let all_fit = given.iter().all(|(name, value)| {
+        let one_segment = !value.is_empty()
+            && value != "."
+            && value != ".."
+            && !value.contains(['/', '\\', '?', '#', '%']);
+        one_segment
+            && declared
+                .get(name)
+                .is_some_and(|pattern| pattern.matches(value))
+    });
+    if all_fit {
+        Ok(())
+    } else {
+        Err(Refusal::BadValue)
+    }
+}
+
+fn checked_value(field: &BodyField, value: Option<&Value>) -> Result<Option<Value>, Refusal> {
+    let checked = match (&field.kind, value) {
+        (BodyKind::Constant(constant), None) => constant.clone(),
+        (BodyKind::Text(pattern), Some(Value::String(text))) if pattern.matches(text) => {
+            Value::String(text.clone())
+        }
+        (BodyKind::Integer, Some(number @ Value::Number(n))) if n.is_i64() || n.is_u64() => {
+            number.clone()
+        }
+        (BodyKind::Boolean, Some(flag @ Value::Bool(_))) => flag.clone(),
+        (BodyKind::IntegerList, Some(Value::Array(items)))
+            if items.len() <= MAX_LIST_ITEMS
+                && items.iter().all(|item| item.is_i64() || item.is_u64()) =>
+        {
+            Value::Array(items.clone())
+        }
+        _ => return Err(Refusal::BadValue),
+    };
+    Ok(Some(checked))
+}
+
+/// Builds the body field by field from the route: every field the page must
+/// give, none extra, each of its kind, plus the route's constants. A
+/// `secret-input` field never comes from the page.
+fn check_body(
+    route: &CallRoute,
+    given: &BTreeMap<String, Value>,
+) -> Result<Option<Map<String, Value>>, Refusal> {
+    let page_fields = route
+        .body
+        .iter()
+        .filter(|field| !matches!(field.kind, BodyKind::Constant(_) | BodyKind::SecretInput))
+        .count();
+    if given.len() != page_fields {
+        return Err(Refusal::BadValue);
+    }
+    if route.body.is_empty() {
+        return Ok(None);
+    }
+    let mut body = Map::new();
+    for field in &route.body {
+        if let Some(value) = checked_value(field, given.get(&field.name))? {
+            body.insert(field.name.clone(), value);
+        }
+    }
+    Ok(Some(body))
+}
+
+/// Whether the shell can send the route at all. `secret-input` fields and
+/// `irreversible` steps need native dialogs with a text field, which the
+/// shell doesn't have yet, so those routes are treated as not on the list.
+pub fn is_sendable(route: &CallRoute) -> bool {
+    route.risk != crate::routes::Risk::Irreversible
+        && !route
+            .body
+            .iter()
+            .any(|field| field.kind == BodyKind::SecretInput)
+}
+
+/// Finds the request's route and checks every value the page gave.
+pub fn prepare<'a>(
+    list: &'a RouteList,
+    request: &SendRequest,
+) -> Result<PreparedCall<'a>, Refusal> {
+    let key = StepKey {
+        definition: request.definition.clone(),
+        version: request.version,
+        step: request.step,
+    };
+    let route = list
+        .calls
+        .get(&key)
+        .filter(|route| is_sendable(route))
+        .ok_or(Refusal::NotInCatalog)?;
+    check_placeholders(&route.placeholders, &request.placeholders)?;
+    let body = check_body(route, &request.body)?;
+    if route.method == Method::Get && body.is_some() {
+        return Err(Refusal::BadValue);
+    }
+    let origin = Url::parse(route.service.api_origin).map_err(|_| Refusal::NotInCatalog)?;
+    let address = fill(&origin, &route.path, &request.placeholders).ok_or(Refusal::BadValue)?;
+    Ok(PreparedCall {
+        route,
+        address,
+        body,
+    })
+}
