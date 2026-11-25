@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-18048 (Liam's and Julian's findings from the review of #5847)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:IuGxrRowqDev1z1kMkCy+isdgn3jQWD1xetRRONrsmxHHaXYrLiHLdY8Ayvs+wvx/ehnOZ+L+t6+TJIQgeLLCQ==
 
 The review of #5847 found three gaps in the sign-in hand-over:
 
