@@ -26,7 +26,13 @@ import { mergeNotices } from "../notices/merge-notices.ts";
 import type { ProposalDecisions } from "../proposal-decisions.ts";
 import type { InboxRequests } from "../request/inbox-requests.ts";
 import { DoneSection } from "./done-proposals.tsx";
-import { ItemPageBar, ListHeader, listPaneClass, nextItem } from "./inbox-page-parts.tsx";
+import {
+  ItemPageBar,
+  itemPaneClass,
+  ListHeader,
+  listPaneClass,
+  nextItem,
+} from "./inbox-page-parts.tsx";
 import { countDetail, inboxRow, lateCount } from "./inbox-row.tsx";
 import { failureReason, isSignedOut, loadFailed, StaleLine } from "./load-lines.tsx";
 import { needsYouListed } from "./needs-you-listed.ts";
@@ -197,20 +203,26 @@ export function InboxView({
   }, [inbox]);
   const list = useRef<HTMLDivElement>(null);
   const needsYouHeading = useRef<HTMLHeadingElement>(null);
-  // Not now: the pane empties and focus goes back to the row the item was open from.
+  // Not now and Back to Inbox: the pane empties and focus goes back to the row the item, or the
+  // agent's card, was open from.
   const close = () => {
     const row = list.current?.querySelector<HTMLElement>(
       'tr[aria-current="true"] [role="gridcell"]',
     );
     // With one pane the list is hidden until the item closes, and a hidden row can't take focus.
-    flushSync(() => openItem(null));
+    flushSync(() => {
+      openItem(null);
+      closeAgent();
+    });
     row?.focus();
   };
   const failedFirst = !state.loaded && state.error !== undefined;
   const phone = usePresentation() === "phone";
   // A phone or a narrow window: one pane at a time, the list or the open item (HAL-17822).
   const onePane = useNarrow() || phone;
-  const itemPage = onePane && open !== null;
+  // An agent's card takes the pane as the Inbox's own items do (a11y IN1, HAL-18073).
+  const anyOpen = open !== null || agent.openKey !== undefined;
+  const itemPage = onePane && anyOpen;
   const requestSheetOpen = useRef(false);
   const itemPane = useRef<HTMLDivElement>(null);
   const sentCard = useSentRequestCard({
@@ -303,11 +315,7 @@ export function InboxView({
         </div>
       </div>
       {request.sheet}
-      <div
-        ref={itemPane}
-        data-pane="item"
-        className={`${onePane && open === null ? "hidden" : "flex"} min-w-0 flex-1 justify-center overflow-y-auto`}
-      >
+      <div ref={itemPane} data-pane="item" className={itemPaneClass(onePane, anyOpen)}>
         <div className="flex w-full max-w-190 flex-col">
           {itemPage ? <ItemPageBar open={open} items={state.items} close={close} /> : null}
           {open === null ? (

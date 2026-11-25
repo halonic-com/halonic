@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { NarrowProvider, type Presentation, PresentationProvider } from "@halonicjs/studio-kit";
+import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it } from "vitest";
@@ -37,7 +38,18 @@ const windows: Record<string, { presentation: Presentation; narrow: boolean }> =
   "390 × 844": { presentation: "phone", narrow: true },
 };
 
-async function openInbox(size: keyof typeof windows) {
+/** Two cards from Chief, from the source "Paperclip · Acme", which make one row. */
+function cardsFromChief(): FakeAgentMessaging {
+  const messaging = new FakeAgentMessaging({ now: () => new Date(2026, 10, 8, 10, 0) });
+  const source = messaging.addSource({ label: "Paperclip · Acme", provider: "paperclip" });
+  const chief = messaging.addAgent(source.id, { name: "Chief" });
+  const from = { kind: "agent", agent: chief.id, name: "Chief" } as const;
+  messaging.addInboxItem(source.id, { question: "Ship the release today?", from });
+  messaging.addInboxItem(source.id, { question: "Merge the fix?", from });
+  return messaging;
+}
+
+async function openInbox(size: keyof typeof windows, agentMessaging?: FakeAgentMessaging) {
   const { presentation, narrow } = windows[size] ?? { presentation: "desktop", narrow: false };
   const root = render(
     <PresentationProvider presentation={presentation}>
@@ -45,6 +57,7 @@ async function openInbox(size: keyof typeof windows) {
         <InboxView
           inbox={new Inbox(fakeRuns([notes, review]).runs)}
           now={() => new Date(2026, 10, 8, 10, 43)}
+          agentMessaging={agentMessaging}
         />
       </NarrowProvider>
     </PresentationProvider>,
@@ -114,5 +127,28 @@ verifies("inbox.narrow-window", () => {
     expect(hidden(root, "list")).toBe(true);
     await click(backToInbox(root) as HTMLElement);
     expect(document.activeElement).toBe(rowCell(root, 0));
+  });
+
+  it("opens an agent's cards from the keyboard at 640 × 400, and Back to Inbox returns to the row", async () => {
+    const root = await openInbox("640 × 400", cardsFromChief());
+    const row = rowCell(root, 2);
+    expect(row.closest("tr")?.textContent).toContain("Chief");
+    act(() => row.focus());
+    act(() => {
+      row.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+    expect(hidden(root, "list")).toBe(true);
+    expect(hidden(root, "item")).toBe(false);
+    const titles = [...pane(root, "item").querySelectorAll("section h2")];
+    expect(titles).toHaveLength(2);
+    expect(document.activeElement).toBe(titles[0]);
+    const back = backToInbox(root);
+    expect(back).toBeDefined();
+
+    await click(back as HTMLElement);
+    expect(pane(root, "item").querySelector("section h2")).toBeNull();
+    expect(hidden(root, "list")).toBe(false);
+    expect(hidden(root, "item")).toBe(true);
+    expect(document.activeElement).toBe(rowCell(root, 2));
   });
 });
