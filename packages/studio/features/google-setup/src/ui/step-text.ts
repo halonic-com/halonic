@@ -1,4 +1,4 @@
-import type { SetupStep } from "@halonicjs/google-setup";
+import type { ConsentStep, SetupStep } from "@halonicjs/google-setup";
 import type { GoogleSetupAccount } from "../api.ts";
 import { plural } from "../step-names.ts";
 
@@ -10,7 +10,7 @@ export function stepWhy(step: SetupStep): string {
     case "apis":
       return "Google keeps each API switched off until you switch it on.";
     case "consent":
-      return "Tell Google what your app is called and who may use it.";
+      return consentWhy(step);
     case "scopes":
       return "Tell Google which parts of your account your app may use.";
     case "client":
@@ -20,6 +20,15 @@ export function stepWhy(step: SetupStep): string {
     case "sign-in":
       return "Sign in so Google lets Halonic use your account.";
   }
+}
+
+/** Step 3's sentence: in *Testing* it lets the account in, and on a shared app it only does that. */
+function consentWhy(step: ConsentStep): string {
+  const testUser = step.copyValues.find((value) => value.id === "test-user")?.value;
+  if (step.parts === "test-user-only") return `Add ${testUser} under Test users.`;
+  return step.publishing === "testing"
+    ? "Tell Google what your app is called, and let your own address in."
+    : "Tell Google what your app is called and who may use it.";
 }
 
 /** What a finished step shows after its title, in muted text: the project ID, the API names. */

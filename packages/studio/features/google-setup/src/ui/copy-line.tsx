@@ -7,6 +7,7 @@ const copyNames: Readonly<Record<CopyValueId, { label: string; copy: string }>> 
   "app-name": { label: "App name", copy: "Copy the app name" },
   "support-email": { label: "User support e-mail", copy: "Copy the user support e-mail" },
   "contact-email": { label: "Contact e-mail", copy: "Copy the contact e-mail" },
+  "test-user": { label: "Test user", copy: "Copy the test user" },
   "all-scopes": { label: "All scopes", copy: "Copy all scopes" },
   "client-name": { label: "Client name", copy: "Copy the client name" },
 };

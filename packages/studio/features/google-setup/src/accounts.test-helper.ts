@@ -40,6 +40,7 @@ export function record(done: readonly string[], extra: Partial<SetupRecord> = {}
     projectId: null,
     stepsDone: Object.fromEntries(done.map((id) => [id, at])),
     inProductionTickedAt: null,
+    personalApp: null,
     clientId: null,
     clientSecret: null,
     signInStartedAt: null,

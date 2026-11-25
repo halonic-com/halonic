@@ -1,7 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { compareSetups, ticksToKeep } from "./compare-setups.ts";
-import { atlasService, ledgerService, personalSetup } from "./services.test-helper.ts";
+import { atlasService, ledgerService, publishedSetup } from "./services.test-helper.ts";
 import type { StepId } from "./setup-step.ts";
 import { setupSteps } from "./setup-steps.ts";
 
@@ -15,8 +15,8 @@ const allSteps: StepId[] = [
   "sign-in",
 ];
 
-const ledgerOnly = setupSteps(personalSetup([ledgerService]));
-const ledgerAndAtlas = setupSteps(personalSetup([ledgerService, atlasService]));
+const ledgerOnly = setupSteps(publishedSetup([ledgerService]));
+const ledgerAndAtlas = setupSteps(publishedSetup([ledgerService, atlasService]));
 
 verifies("google-setup.service-changes", () => {
   it("reopens only the steps a new service needs, with its new rows", () => {
@@ -54,30 +54,43 @@ verifies("google-setup.service-changes", () => {
     expect(ticksToKeep(changes, allSteps)).toEqual(allSteps);
   });
 
+  it("reopens step 3 and drops step 4 when a personal app goes back to Testing", () => {
+    const testing = setupSteps({ ...publishedSetup([ledgerService]), publishing: "testing" });
+    const changes = compareSetups(ledgerOnly, testing);
+    expect(changes.reopened).toEqual(["consent"]);
+    expect(ticksToKeep(changes, allSteps)).toEqual([
+      "project",
+      "apis",
+      "client",
+      "credentials",
+      "sign-in",
+    ]);
+  });
+
   it("reopens sign-in for a new scope when step 4 is switched off", () => {
-    const before = setupSteps({ ...personalSetup([ledgerService]), listScopes: false });
+    const before = setupSteps({ ...publishedSetup([ledgerService]), listScopes: false });
     const after = setupSteps({
-      ...personalSetup([ledgerService, atlasService]),
+      ...publishedSetup([ledgerService, atlasService]),
       listScopes: false,
     });
     expect(compareSetups(before, after).reopened).toEqual(["apis", "sign-in"]);
   });
 
   it("reopens the steps that depend on the account type when it changes", () => {
-    const workspace = setupSteps({ ...personalSetup([ledgerService]), accountType: "workspace" });
+    const workspace = setupSteps({ ...publishedSetup([ledgerService]), accountType: "workspace" });
     const changes = compareSetups(ledgerOnly, workspace);
     expect(changes.reopened).toEqual(["project", "consent", "sign-in"]);
     expect(changes.addedServices).toEqual([]);
   });
 
   it("keeps the ticks when only the project ID changes", () => {
-    const withProject = setupSteps({ ...personalSetup([ledgerService]), projectId: "halonic-x1" });
+    const withProject = setupSteps({ ...publishedSetup([ledgerService]), projectId: "halonic-x1" });
     const changes = compareSetups(ledgerOnly, withProject);
     expect(changes.steps.every((step) => step.change === "unchanged")).toBe(true);
   });
 
   it("asks for step 4 again after the switch goes off and on", () => {
-    const switchedOff = setupSteps({ ...personalSetup([ledgerService]), listScopes: false });
+    const switchedOff = setupSteps({ ...publishedSetup([ledgerService]), listScopes: false });
     const off = compareSetups(ledgerOnly, switchedOff);
     expect(off.reopened).toEqual([]);
     expect(ticksToKeep(off, allSteps)).not.toContain("scopes");

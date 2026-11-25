@@ -1,9 +1,10 @@
-import type { AccountType } from "@halonicjs/google-setup";
-import { Button, Callout, type CalloutHandle, StatusChip } from "@halonicjs/studio-kit";
+import type { AccountType, PersonalPublishing } from "@halonicjs/google-setup";
+import { Button, Callout, type CalloutHandle, Disclosure, StatusChip } from "@halonicjs/studio-kit";
 import { failureLine } from "@halonicjs/studio-shell";
 import { useEffect, useId, useRef, useState } from "react";
 import { accountTypeNames, listNames } from "./account-labels.ts";
 import { AccountTypeQuestion } from "./account-type-question.tsx";
+import { WhyNotPublish } from "./consent-body.tsx";
 import { OtherWays } from "./other-ways.tsx";
 
 /** Props for {@link AccountHeader}. */
@@ -19,12 +20,17 @@ export interface AccountHeaderProps {
   readonly answering: boolean;
   /** Saves the account type. It rejects when it can't be saved. */
   readonly onAccountType: (accountType: AccountType) => Promise<void>;
+  /** How the personal app is published, from step 3; `null` for a Workspace account. */
+  readonly publishing: PersonalPublishing | null;
+  /** **Publish with my own pages**. It rejects when it can't be saved. */
+  readonly onPublish: () => Promise<void>;
 }
 
 /**
  * The item's header: "SETUP Google for x@example.com" and the step it is at, then the services
  * and the account type with **Change**, then the route line. An address Studio can't tell is
- * asked once, in place of the first line.
+ * asked once, in place of the first line. A personal app in *Testing* also says, before step 1,
+ * that Google ends the sign-in every 7 days, with **Why?** (design 2.3).
  */
 export function AccountHeader(props: AccountHeaderProps) {
   const { email, serviceNames, accountType, asking, progress, answering, onAccountType } = props;
@@ -53,6 +59,16 @@ export function AccountHeader(props: AccountHeaderProps) {
     returnFocus.current = true;
     setFailed(undefined);
     setChanging(false);
+  }
+
+  async function publish() {
+    setFailed(undefined);
+    try {
+      await props.onPublish();
+    } catch (error) {
+      setFailed(failureLine("save your progress", error));
+      retry.current = () => void publish();
+    }
   }
 
   async function pick(next: AccountType) {
@@ -127,6 +143,17 @@ export function AccountHeader(props: AccountHeaderProps) {
         <p className="text-body">Uses your own Google app, on this computer.</p>
         <OtherWays services={listNames(serviceNames, "or")} />
       </div>
+      {props.publishing === "testing" && !asking ? (
+        <div className="flex flex-col gap-1">
+          <p className="text-body">
+            With a personal account, Google ends the sign-in every 7 days, so you'll sign in again
+            once a week. It takes about a minute, and Studio reminds you the day before.
+          </p>
+          <Disclosure summary="Why?">
+            <WhyNotPublish onPublish={() => void publish()} />
+          </Disclosure>
+        </div>
+      ) : null}
     </header>
   );
 }

@@ -88,7 +88,7 @@ verifies("google-setup.connector-problem", () => {
   it("names the Testing cause unless In production was ticked, and leads with the hint at 7 days", async () => {
     const hinted = await open([refused("sign-in")]);
     expect(hinted.textContent).toContain("or when an app in Testing reaches 7 days");
-    expect(hinted.querySelector("strong")?.textContent).toBe(
+    expect(hinted.querySelector("strong.block")?.textContent).toBe(
       "Your app is probably still in Testing. Google ends the sign-in after 7 days for those. Publish it, then sign in again.",
     );
     expect(openStepNumber(hinted)).toBe(3);
@@ -98,7 +98,7 @@ verifies("google-setup.connector-problem", () => {
     const container = await open([
       refused("sign-in", { accountType: "workspace", inProductionTickedAt: null }),
     ]);
-    expect(container.querySelector("strong")).toBeNull();
+    expect(container.querySelector("strong.block")).toBeNull();
     expect(openStepNumber(container)).toBe(7);
   });
 
@@ -108,12 +108,13 @@ verifies("google-setup.connector-problem", () => {
       (b) => b.textContent === "Sign in with Google",
     );
     await act(async () => button?.click());
-    expect(openStepNumber(container)).toBe(7);
+    // A personal app in Testing has six steps, so signing in is step 6.
+    expect(openStepNumber(container)).toBe(6);
   });
 
   it("opens a refused client secret at step 6 with Replace secret", async () => {
     const container = await open([refused("client")]);
-    expect(openStepNumber(container)).toBe(6);
+    expect(openStepNumber(container)).toBe(5);
     expect(container.textContent).toContain(
       "Google no longer accepts the saved client secret. Paste the current one.",
     );
@@ -122,7 +123,7 @@ verifies("google-setup.connector-problem", () => {
 
   it("opens a client Google no longer knows at step 5", async () => {
     const container = await open([refused("client-gone")]);
-    expect(openStepNumber(container)).toBe(5);
+    expect(openStepNumber(container)).toBe(4);
     expect(container.textContent).toContain(
       "Google doesn't recognise this client any more. Create a new client and sign in again.",
     );
@@ -157,7 +158,7 @@ verifies("google-setup.connector-problem", () => {
 
   it("does not say the client is kept on a phone under the Testing hint, where the app must be published first", async () => {
     const container = await open([refused("sign-in")], "phone");
-    expect(container.querySelector("strong")?.textContent).toContain("Publish it");
+    expect(container.querySelector("strong.block")?.textContent).toContain("Publish it");
     expect(container.textContent).not.toContain("are kept");
   });
 

@@ -40,3 +40,8 @@ export function personalSetup(services: readonly SetupService[]): SetupInput {
     services,
   };
 }
+
+/** `personalSetup` for an app published with the user's own pages: seven steps, as for Workspace. */
+export function publishedSetup(services: readonly SetupService[]): SetupInput {
+  return { ...personalSetup(services), publishing: "production" };
+}

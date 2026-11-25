@@ -98,8 +98,13 @@ function readEdit(fields: Fields): SetupEdit | null {
     case "step-reopened":
       return isStepId(fields["step"]) ? { kind: fields["kind"], step: fields["step"] } : null;
     case "in-production":
+    case "test-user":
       return typeof fields["ticked"] === "boolean"
-        ? { kind: "in-production", ticked: fields["ticked"] }
+        ? { kind: fields["kind"], ticked: fields["ticked"] }
+        : null;
+    case "publishing":
+      return fields["publishing"] === "testing" || fields["publishing"] === "production"
+        ? { kind: "publishing", publishing: fields["publishing"] }
         : null;
     case "address-changed":
       return { kind: "address-changed" };

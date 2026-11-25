@@ -47,6 +47,7 @@ function samsAccount(extra: Partial<SetupRecord>): GoogleSetupAccount {
     projectId: null,
     stepsDone: {},
     inProductionTickedAt: null,
+    personalApp: null,
     clientId: null,
     clientSecret: null,
     signInStartedAt: null,

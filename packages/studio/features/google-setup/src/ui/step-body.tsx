@@ -1,7 +1,7 @@
 import type {
   AccountType,
   ApisStep,
-  ConsentStep,
+  PersonalPublishing,
   ProjectStep,
   ScopesStep,
   SetupStep,
@@ -10,24 +10,21 @@ import type {
 import {
   Button,
   Callout,
-  Checkbox,
-  Disclosure,
   ExternalLink,
   Field,
   Input,
   StatusChip,
   useOpenExternal,
 } from "@halonicjs/studio-kit";
-import { type ReactNode, useId } from "react";
 import { adminNote } from "../admin-note.ts";
 import type { SignInEntry } from "../api.ts";
 import { listNames } from "./account-labels.ts";
 import { BeforeSignIn } from "./before-sign-in.tsx";
+import { Actions, ConsentBody } from "./consent-body.tsx";
 import { ConsoleLink } from "./console-link.tsx";
 import { CopyLine } from "./copy-line.tsx";
 import { CredentialsBody, type CredentialsBodyProps } from "./credentials-body.tsx";
 import { GoogleErrorList } from "./google-error-list.tsx";
-import { useNotAnswering } from "./not-answering.tsx";
 import { SignInElsewhere } from "./sign-in-elsewhere.tsx";
 import { SignInEnded, type SignInEndedProps } from "./sign-in-ended.tsx";
 import { SignInPanel, type SignInPanelProps } from "./sign-in-panel.tsx";
@@ -39,10 +36,10 @@ export interface StepBodyProps {
   readonly step: SetupStep;
   /** Personal or Workspace, which decides what the scopes note may say. */
   readonly accountType: AccountType | null;
-  /** Whether step 3 asks for the "In production" tick: false for an Internal app. */
-  readonly canPublish: boolean;
-  /** The "In production" tick as saved. */
-  readonly inProduction: boolean;
+  /** How the personal app is published, from step 3; `null` for an Internal app. */
+  readonly publishing: PersonalPublishing | null;
+  /** Step 3's required tick as saved: the test user in *Testing*, or "In production". */
+  readonly consentTicked: boolean;
   /** The project ID as typed in step 1, and what is wrong with it, if anything. */
   readonly projectId: string;
   readonly projectIdError: string | null;
@@ -67,7 +64,10 @@ export interface StepBodyProps {
   /** A service's name from its id, for "Needed by …". Studio never knows the services itself. */
   readonly serviceName: (id: string) => string;
   readonly onProjectId: (text: string) => void;
-  readonly onInProduction: (ticked: boolean) => void;
+  /** Sets or clears step 3's required tick. */
+  readonly onConsentTick: (ticked: boolean) => void;
+  /** **Publish with my own pages** and **Stay in Testing instead** in step 3. */
+  readonly onPublishing: (publishing: PersonalPublishing) => void;
   /** Opens a finished step again, for the way back from "Internal isn't available?". */
   readonly onEditProject: () => void;
   /** Opens a step, for the fixes under "Google showed an error instead?". */
@@ -87,7 +87,16 @@ export function StepBody(props: StepBodyProps) {
     case "apis":
       return <ApisBody step={step} serviceName={props.serviceName} />;
     case "consent":
-      return <ConsentBody {...props} step={step} />;
+      return (
+        <ConsentBody
+          step={step}
+          ticked={props.consentTicked}
+          answering={props.answering}
+          onTick={props.onConsentTick}
+          onPublishing={props.onPublishing}
+          onEditProject={props.onEditProject}
+        />
+      );
     case "scopes":
       return <ScopesBody step={step} accountType={props.accountType} />;
     case "client":
@@ -138,11 +147,11 @@ export function StepBody(props: StepBodyProps) {
               whileWaiting={
                 <GoogleErrorList
                   accountType={props.accountType}
-                  canPublish={props.canPublish}
+                  publishing={props.publishing}
                   email={props.results.email}
                   adminNote={note}
                   onOpenStep={leaveWaiting}
-                  onClearInProduction={() => props.onInProduction(false)}
+                  onClearConsentTick={() => props.onConsentTick(false)}
                 />
               }
             />
@@ -151,11 +160,6 @@ export function StepBody(props: StepBodyProps) {
       );
     }
   }
-}
-
-function Actions({ children }: { readonly children: ReactNode }) {
-  // Lettered, so an action is never "3" under a step that is itself number 3.
-  return <ol className="flex list-[lower-alpha] flex-col gap-2 pl-5 text-body">{children}</ol>;
 }
 
 function ProjectBody({
@@ -220,75 +224,6 @@ function ApisBody({
           </li>
         ))}
       </ul>
-    </div>
-  );
-}
-
-function ConsentBody({
-  step,
-  inProduction,
-  answering,
-  onInProduction,
-  onEditProject,
-}: StepBodyProps & { readonly step: ConsentStep }) {
-  const notAnswering = useNotAnswering();
-  const reason = useId();
-  const external = step.audience === "external";
-  return (
-    <div className="flex flex-col gap-3">
-      <Actions>
-        <li>
-          Open the <ConsoleLink step={step} page="branding" /> and start the wizard.
-        </li>
-        <li className="flex flex-col gap-1">
-          Give the app these values:
-          <CopyLine step={step} id="app-name" />
-          <CopyLine step={step} id="support-email" />
-          <CopyLine step={step} id="contact-email" />
-        </li>
-        <li>
-          Choose the audience "{external ? "External" : "Internal"}". Check it on the{" "}
-          <ConsoleLink step={step} page="audience" />.
-        </li>
-        {external ? (
-          <li>
-            Then on "Audience", click "Publish app" and confirm. The status must say "In
-            production".
-          </li>
-        ) : null}
-      </Actions>
-      {step.requiredTicks.includes("in-production") ? (
-        <div className="flex flex-col gap-1">
-          <Checkbox
-            checked={inProduction}
-            onChange={onInProduction}
-            unavailable={answering ? undefined : { reason }}
-          >
-            The status says "In production"
-          </Checkbox>
-          <p className="pl-6 text-small text-fg-muted">
-            In "Testing", Google ends your sign-in after 7 days.
-          </p>
-          {answering ? null : (
-            <p id={reason} className="pl-6 text-small text-fg-muted">
-              {notAnswering}
-            </p>
-          )}
-        </div>
-      ) : null}
-      {external ? null : (
-        <Disclosure summary="Internal isn't available?">
-          <div className="flex flex-col items-start gap-2 p-4 text-body">
-            <p>
-              Your project isn't in your organisation. Create a new project with Location set to
-              your organisation (step 1), or ask your admin for permission to create projects.
-            </p>
-            <Button variant="ghost" size="sm" onClick={onEditProject}>
-              Edit step 1
-            </Button>
-          </div>
-        </Disclosure>
-      )}
     </div>
   );
 }

@@ -147,6 +147,7 @@ export function setupRecords(options: SetupRecordsOptions): SetupRecords {
         projectId: null,
         stepsDone: {},
         inProductionTickedAt: null,
+        personalApp: null,
         clientId: null,
         clientSecret: null,
         signInStartedAt: null,

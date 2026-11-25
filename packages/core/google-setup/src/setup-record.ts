@@ -177,6 +177,24 @@ const lastSignInEnded = s
   .default(null);
 
 /**
+ * How a personal account's app is set up in step 3 (design 3.2 and 3.6). A
+ * Workspace record has none, and a personal record written before HAL-18663
+ * has none either: it reads as `personalAppOf` says.
+ */
+const personalApp = s
+  .object({
+    /** `testing`, the default, or `production` with the user's own pages. */
+    publishing: s.enum(["testing", "production"]),
+    /** When the user ticked "*x* is listed under Test users" (in *Testing*). */
+    testUserTickedAt: time.nullable(),
+    /** True when the account uses another account's app (`shareClient`). */
+    sharedApp: s.boolean(),
+  })
+  .strict()
+  .nullable()
+  .default(null);
+
+/**
  * The values of a setup record as stored. Every key is always there, `null`
  * when it isn't set yet, so an update can clear a value by writing `null`.
  *
@@ -203,6 +221,8 @@ const setupValues = s
     stepsDone: s.object(stepTicks).strict(),
     /** When the user ticked "In production" (personal accounts, step 3). */
     inProductionTickedAt: time.nullable(),
+    /** How a personal account's app is published, and its test-user tick. */
+    personalApp,
     clientId: s.string().refine(isClientId).nullable(),
     /**
      * The ref of the client secret in the `TokenStore` and when it was saved.
@@ -230,6 +250,29 @@ const setupValues = s
 
 /** The stored values of a setup record, without its account ref. */
 export type SetupValues = Infer<typeof setupValues>;
+
+/** How a personal account's app is set up in step 3. */
+export type PersonalApp = NonNullable<SetupValues["personalApp"]>;
+
+/**
+ * How a personal account's app is set up, or `null` for a Workspace account.
+ * A personal record with none yet is in *Testing*, unless it was ticked "In
+ * production" before *Testing* became the default.
+ */
+export function personalAppOf(
+  values: Pick<SetupValues, "accountType" | "inProductionTickedAt" | "personalApp">,
+): PersonalApp | null {
+  if (values.accountType !== "personal") {
+    return null;
+  }
+  return (
+    values.personalApp ?? {
+      publishing: values.inProductionTickedAt === null ? "testing" : "production",
+      testUserTickedAt: null,
+      sharedApp: false,
+    }
+  );
+}
 
 /** One Google account's saved setup progress (design 3.6, plan D5). */
 export interface SetupRecord extends SetupValues {

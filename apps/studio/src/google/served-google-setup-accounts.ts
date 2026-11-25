@@ -38,6 +38,8 @@ const setupSchema = s.object({
   projectId: s.string().nullable(),
   stepsDone: s.record(s.string(), s.string()),
   inProductionTickedAt: s.string().nullable(),
+  // Missing from a computer that runs an older Halonic: read as none, so the record says how.
+  personalApp: s.unknown().default(null),
   clientId: s.string().nullable(),
   clientSecretSavedAt: s.string().nullable(),
   signInStartedAt: s.string().nullable(),
@@ -159,6 +161,7 @@ function recordOf(setup: Listed["setups"][number]): SetupRecord {
     projectId: setup.projectId,
     stepsDone: setup.stepsDone as SetupRecord["stepsDone"],
     inProductionTickedAt: setup.inProductionTickedAt,
+    personalApp: setup.personalApp as SetupRecord["personalApp"],
     clientId: setup.clientId,
     clientSecret:
       setup.clientSecretSavedAt === null

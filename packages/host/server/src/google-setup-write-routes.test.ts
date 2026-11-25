@@ -146,6 +146,25 @@ describe("google setup write routes", () => {
       });
     });
 
+    it("applies the test-user tick and the publishing choice of a personal app", async () => {
+      const state = setup();
+      const accountRef = await started(state);
+      await send(state, "PATCH", `/${accountRef}`, { kind: "test-user", ticked: true });
+      await send(state, "PATCH", `/${accountRef}`, {
+        kind: "publishing",
+        publishing: "production",
+      });
+      expect(await state.google.setups.read(accountRef)).toMatchObject({
+        personalApp: { publishing: "production", testUserTickedAt: expect.any(String) },
+      });
+
+      const refused = await send(state, "PATCH", `/${accountRef}`, {
+        kind: "publishing",
+        publishing: "public",
+      });
+      expect(refused.status).toBe(400);
+    });
+
     it("refuses the edits the server records itself", async () => {
       const state = setup();
       const accountRef = await started(state);

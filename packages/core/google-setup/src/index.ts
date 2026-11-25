@@ -60,17 +60,20 @@ export type {
   GoogleApi,
   GoogleCheck,
   GoogleScope,
+  PersonalPublishing,
   SetupInput,
   SetupRoute,
   SetupService,
 } from "./setup-input.ts";
+export { setupInputOf } from "./setup-input-of.ts";
 export type {
+  PersonalApp,
   RefreshRefusalReason,
   SetupRecord,
   SetupValues,
   SignInEnding,
 } from "./setup-record.ts";
-export { setupCollection } from "./setup-record.ts";
+export { personalAppOf, setupCollection } from "./setup-record.ts";
 export { SetupRecordError, type SetupRecordErrorReason } from "./setup-record-error.ts";
 export {
   type NewSetup,
