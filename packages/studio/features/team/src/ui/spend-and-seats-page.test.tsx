@@ -170,6 +170,20 @@ verifies("team.spend-and-seats", () => {
       expect(problem?.querySelector("svg")).not.toBeNull();
     });
 
+    it("draws a signed-out seat's dash and last-read line in one column", async () => {
+      const fake = acme();
+      fake.setNow("2026-11-24T09:40:00.000Z");
+      fake.team.addSeat(fake.source, { label: "Seat D", state: "signed-out" });
+      fake.setNow("2026-11-24T09:50:00.000Z");
+      const page = await open(fake);
+      const cell = page.querySelector('[data-week="none"]');
+      const [dash, under] = [...(cell?.children ?? [])];
+      expect(dash?.textContent).toBe("—");
+      // On a desktop the dash lines up with the line under it, not right of it (HAL-18833).
+      expect(dash?.className.split(" ")).not.toContain("text-right");
+      expect(under?.textContent).toBe("last read 09:40");
+    });
+
     it("warns when every seat reading is older than 30 minutes", async () => {
       const fake = acme();
       fake.setNow("2026-11-24T12:18:00.000Z");
