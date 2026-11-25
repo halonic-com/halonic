@@ -32,6 +32,18 @@ The plugin builder (`halonic build paperclip-plugin`, a later step) writes three
 A tool the served snapshot doesn't define, or defines with another action or other parameters than
 the plugin was built with, is off. So is a tool whose action has no handler in this runtime.
 
+## Actions it can run
+
+| Action | What it answers |
+| --- | --- |
+| `github.pull-request` | one pull request on the tool's `repositories`: `ci-ok`, mergeability, merge queue, signed approvals on the head, the newest review finding, what the author does next |
+| `github.open-pull-requests` | the caller's open pull requests (branches starting with its `urlKey`), the ones out of sync first |
+
+An approval counts on the current head when the repository's team signed it ("Name: approved on
+head `abc1234`") and it isn't the author's own. Which reviewer may approve which paths is a
+company's routing, so it isn't in the runtime. The other actions of the format are off until their
+handlers move in.
+
 A tool's `callers` name agents by their `urlKey`, compared without case. An agent's display name
 never counts, because two agents can share one.
 
