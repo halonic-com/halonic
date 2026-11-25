@@ -810,7 +810,7 @@ compares it with the monitor session for 2 days before it writes anything.
 | Stage | When (each once per key) |
 | --- | --- |
 | `new` | a pass sees the `fast-track` label for the first time |
-| `wrong_label:<adder>` | the label's last adder is neither `halonic-dev` (the board and Chief label through it, the Merger's rule 3) nor the board's login from the `fastTrackLabelAdder` setting (unset: only `halonic-dev` counts; unknown never counts): queued without a jump |
+| `wrong_label:<adder>` | the label's last adder is neither the board's login from the `fastTrackLabelAdder` setting (counts everywhere) nor `halonic-dev` on a pull request in the `fastTrackSharedLabelScope` setting (unknown never counts): queued without a jump. That setting lists task identifiers, whose child tasks' pull requests count, and pull requests as `owner/name#123`; unset, it is the board's list of 24 Nov (HAL-17422, `halonic-com/halonic#5659`, `#5674`), and an empty list lets `halonic-dev`'s label count nowhere (HAL-16003 scope note) |
 | `bot_label` | the pull request's author is a `[bot]` (HAL-16033) |
 | `review_nudge:<head>` | ready for review (no draft, no check running) and not approved on the head by Liam (Julian on Liam's own): at once, to the task |
 | `review_escalate:<head>` | still not approved on the same head 15 min after `review_nudge`: to the board |

@@ -13,8 +13,12 @@ export const head = "abc1234def5678900000000000000000000000000";
 /** The board's GitHub login in these tests, a placeholder for the real one. */
 export const boardLogin = "board-member";
 
-/** The pass's settings, with the board's placeholder login and nothing that unblocks. */
-export const settings = { unblocks: new Set<number>(), labelAdder: boardLogin };
+/** The pass's settings, with the board's placeholder login, nothing that unblocks and nothing in `halonic-dev`'s scope. */
+export const settings = {
+  unblocks: new Set<number>(),
+  labelAdder: boardLogin,
+  sharedScope: { pulls: new Set<string>(), tasks: new Set<string>() },
+};
 
 /** An open, ready, green `fast-track` pull request labelled by the board an hour ago, with changes. */
 export function pull(

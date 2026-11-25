@@ -7,6 +7,12 @@ import {
   type PluginSecretsClient,
 } from "@paperclipai/plugin-sdk";
 import { fastTrackPass, loadFastTrack, saveFastTrack } from "../fast-track/pass.ts";
+import { sharedLabelAdder } from "../fast-track/rules.ts";
+import {
+  readSharedLabelList,
+  type SharedLabelList,
+  sharedLabelScope,
+} from "../fast-track/scope.ts";
 import { gitHubConflictFiles } from "../pr-watcher/conflict-files.ts";
 import { discoverPulls } from "../pr-watcher/discover.ts";
 import { baseGreenSince, snapshotFacts } from "../pr-watcher/facts.ts";
@@ -47,10 +53,12 @@ export interface WatcherSettings {
   readonly dryRun: boolean;
   /** Fast-track pull requests the board or Chief said unblock the queue or CI for everyone (HAL-15971 point 3). */
   readonly fastTrackUnblocks: ReadonlySet<number>;
-  /** The board's GitHub login, whose `fast-track` label counts for a jump next to `halonic-dev`'s; empty: only `halonic-dev`'s counts. */
+  /** The board's GitHub login, whose `fast-track` label counts for a jump on any pull request; empty: only `halonic-dev`'s counts, within its scope. */
   readonly fastTrackLabelAdder: string;
   /** The reviewer wake and the 6-hour escalation (HAL-17938). */
   readonly watchers: WatchersSettings;
+  /** Where a `fast-track` label added as `halonic-dev` counts (HAL-16003 scope note); unset: the board's list of 24 Nov. */
+  readonly fastTrackSharedLabelScope: SharedLabelList;
 }
 
 /** `halonic` first: tools without a `repo` argument answer for the first one. */
@@ -87,6 +95,7 @@ export function readSettings(config: Readonly<Record<string, unknown>>): Watcher
     fastTrackLabelAdder:
       typeof config["fastTrackLabelAdder"] === "string" ? config["fastTrackLabelAdder"].trim() : "",
     watchers: readWatchersSettings(config),
+    fastTrackSharedLabelScope: readSharedLabelList(config["fastTrackSharedLabelScope"]),
   };
 }
 
@@ -201,10 +210,21 @@ async function runFastTrack(
   now: Date,
 ): Promise<void> {
   try {
+    const sharedScope = await sharedLabelScope(
+      ctx.issues,
+      companyId,
+      snapshot,
+      settings.fastTrackSharedLabelScope,
+      sharedLabelAdder,
+    );
     const pass = fastTrackPass(
       snapshot,
       await loadFastTrack(ctx, companyId),
-      { unblocks: settings.fastTrackUnblocks, labelAdder: settings.fastTrackLabelAdder },
+      {
+        unblocks: settings.fastTrackUnblocks,
+        labelAdder: settings.fastTrackLabelAdder,
+        sharedScope,
+      },
       now,
     );
     for (const line of pass.lines) {
