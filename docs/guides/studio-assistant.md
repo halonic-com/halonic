@@ -4,7 +4,7 @@ The Assistant is the chat in Studio that helps you build and change your
 workspace. You describe what you want; it reads your files and proposes
 changes for you to review. Nothing it writes counts until you accept it.
 
-This page describes what ships on `main`.
+This page describes the Assistant in the current version of Studio.
 
 ## Open the Assistant
 
