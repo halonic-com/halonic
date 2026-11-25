@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, matchesGlob, relative, resolve } from "node:path";
 import { findRepoRoot } from "@halonicjs/tooling-check";
 import { describe, expect, it } from "vitest";
@@ -14,11 +14,15 @@ const entry = "tooling/discover/src/cli/discover.ts";
 const workspaceSources: Record<string, string> = {
   "@halonicjs/tooling-check": "tooling/check/src/index.ts",
 };
-const importPattern = /(?:import|export)[^'"]*?from\s*["']([^"']+)["']/g;
+// Anchored to the start of a line, so an import inside a string or comment doesn't count.
+const importPattern = /^\s*(?:import|export)\b[^'"]*?from\s*["']([^"']+)["']/gm;
 
 function importedFiles(file: string, seen: Set<string>): Set<string> {
   if (seen.has(file)) {
     return seen;
+  }
+  if (!existsSync(join(root, file))) {
+    throw new Error(`The discover script's imports name a file that doesn't exist: ${file}`);
   }
   seen.add(file);
   const text = readFileSync(join(root, file), "utf8");
