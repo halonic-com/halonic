@@ -31,6 +31,8 @@ const notPorts = new Set([
   "remote-gateway-session.ts",
   "run-failure-error.ts",
   "run-target-not-found.ts",
+  // The types of `TeamStatus.runs`, versioned with `TeamStatus`.
+  "team-runs.ts",
   "vcs-status.ts",
   "web-link.ts",
 ]);

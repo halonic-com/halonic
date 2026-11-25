@@ -547,6 +547,13 @@ export {
   workspaceSecrets,
   workspaceSecretWriter,
 } from "./secrets.ts";
+export type {
+  TeamRun,
+  TeamRunState,
+  TeamRuns,
+  TeamRunsQuery,
+  TeamRunTask,
+} from "./team-runs.ts";
 export {
   type AgentDetail,
   type AgentSpend,

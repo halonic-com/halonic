@@ -1,4 +1,5 @@
 import type { MessagingAuthor, MessagingId } from "./agent-messaging.ts";
+import type { TeamRuns, TeamRunsQuery } from "./team-runs.ts";
 
 /** Version of the {@link TeamStatus} port. A breaking change bumps it and comes with an ADR. */
 export const teamStatusVersion = 1;
@@ -267,6 +268,11 @@ export interface TeamStatus {
    * without it is still a whole `TeamStatus`.
    */
   agent?(id: MessagingId, range: SpendRange): Promise<AgentDetail | undefined>;
+  /**
+   * The team agents' runs (requirement `ports.team-runs`), one answer per
+   * source. Optional, as `agent` is: a source without it serves no runs.
+   */
+  runs?(query: TeamRunsQuery): Promise<readonly TeamRuns[]>;
   /** The ID of each source whose team status changed. Ends when the reader stops. */
   changes(): AsyncIterable<MessagingId>;
 }
