@@ -52,6 +52,7 @@ verifies("engine.meter-port", () => {
       expect(usage).toEqual({
         kind: "model_call",
         runId: "r-acme",
+        callId: "r-acme:2",
         usage: { inputTokens: 1000, outputTokens: 200 },
         cost: 0.006,
         counted: "priced",
@@ -121,5 +122,22 @@ verifies("engine.meter-port", () => {
     }
     const reserved = await meter.reserve(principal, { cost: 2, minutes: 30, steps: 100 });
     expect(reserved).toEqual({ allowed: true, reservation: { id: "none", principal } });
+  });
+});
+
+verifies("engine.meter-call-id", () => {
+  it("names a model call by its run and its place in the run log", () => {
+    expect(modelCallUsageOf(response({ runId: "r-acme", seq: 7 })).callId).toBe("r-acme:7");
+  });
+
+  it("gives the same call the same id each time, and other calls other ids", () => {
+    const logged = response({ seq: 7, cost: 0.006 });
+    expect(modelCallUsageOf(logged).callId).toBe(modelCallUsageOf({ ...logged }).callId);
+    const ids = new Set([
+      modelCallUsageOf(response({ runId: "r-acme", seq: 7 })).callId,
+      modelCallUsageOf(response({ runId: "r-acme", seq: 9 })).callId,
+      modelCallUsageOf(response({ runId: "r-acme-child", seq: 7 })).callId,
+    ]);
+    expect(ids.size).toBe(3);
   });
 });
