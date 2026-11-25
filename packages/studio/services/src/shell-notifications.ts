@@ -31,8 +31,11 @@ export class ShellNotifier implements Notifier {
   readonly #ipc: TauriIpc & TauriCallbacks;
   readonly #onError: (error: unknown) => void;
   readonly #clicks = new Map<string, () => void>();
+  /** Each shell listener as it was registered: its event, its callback and the shell's id for it. */
+  readonly #listeners: Promise<Listener | undefined>[] = [];
   #allowed: Promise<boolean> | undefined;
   #listening = false;
+  #disposed = false;
 
   /**
    * @param ipc - the shell's IPC with its callback table (`tauriChannelIpc`)
@@ -44,16 +47,37 @@ export class ShellNotifier implements Notifier {
   }
 
   async show(notice: AgentNotice, onClick: () => void): Promise<void> {
+    if (this.#disposed) return;
     this.#listen();
     this.#allowed ??= this.#ask();
     if (!(await this.#allowed)) return;
     const { kind, id } = notice.target;
     // A summary names no item, so clicking it opens nothing.
     const extra = id === "" ? {} : { messagingId: id, kind };
+    if (this.#disposed) return;
     if (id !== "") this.#clicks.set(clickKey(id, kind), onClick);
     await this.#ipc.invoke("plugin:notification|notify", {
       options: { title: notice.title, body: notice.body, extra },
     });
+  }
+
+  /**
+   * Stops hearing clicks and focus and forgets every notification's click, so a notification shown
+   * for a folder that has since closed opens nothing. Later notifications show nothing.
+   */
+  async dispose(): Promise<void> {
+    this.#disposed = true;
+    this.#clicks.clear();
+    const listeners = this.#listeners.splice(0);
+    await Promise.all(listeners.map(async (listening) => this.#unlisten(await listening)));
+  }
+
+  async #unlisten(listener: Listener | undefined): Promise<void> {
+    if (listener === undefined) return;
+    this.#ipc.unregisterCallback(listener.handler);
+    await this.#ipc
+      .invoke("plugin:event|unlisten", { event: listener.event, eventId: listener.eventId })
+      .catch((error: unknown) => this.#onError(error));
   }
 
   async #ask(): Promise<boolean> {
@@ -73,16 +97,19 @@ export class ShellNotifier implements Notifier {
 
   #on(event: string, handle: (payload: unknown) => void): void {
     const handler = this.#ipc.transformCallback((message) => handle(payloadOf(message)));
-    this.#ipc
+    const listening = this.#ipc
       .invoke("plugin:event|listen", {
         event,
         target: { kind: "Window", label: windowLabel },
         handler,
       })
+      .then((eventId) => ({ event, handler, eventId }))
       .catch((error: unknown) => {
         this.#ipc.unregisterCallback(handler);
         this.#onError(error);
+        return undefined;
       });
+    this.#listeners.push(listening);
   }
 
   #clicked(payload: unknown): void {
@@ -101,6 +128,13 @@ export class ShellNotifier implements Notifier {
       if (!granted) forget();
     }, forget);
   }
+}
+
+/** A shell listener to take back on dispose. */
+interface Listener {
+  readonly event: string;
+  readonly handler: number;
+  readonly eventId: unknown;
 }
 
 function clickKey(id: string, kind: string | undefined): string {

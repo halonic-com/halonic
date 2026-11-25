@@ -219,5 +219,73 @@ verifies("services.agent-notification-permission", () => {
       await notifier.show(notice, never);
       expect(shell.callsOf("plugin:notification|request_permission")).toHaveLength(2);
     });
+
+    it("stops listening and forgets every click when disposed", async () => {
+      const shell = listeningShell()
+        .answer("plugin:notification|is_permission_granted", () => true)
+        .answer("plugin:notification|notify", () => null)
+        .answer("plugin:event|unlisten", () => null);
+      const notifier = new ShellNotifier(shell, fail);
+      await notifier.show(notice, never);
+      const clickListener = listenerOf(shell, "notification-clicked");
+      const focusListener = listenerOf(shell, "tauri://focus");
+
+      await notifier.dispose();
+      shell.send(`__CHANNEL__:${clickListener}`, {
+        event: "notification-clicked",
+        id: 1,
+        payload: { messagingId: "card", kind: "inbox-item" },
+      });
+      await notifier.show(notice, never);
+
+      expect(shell.callsOf("plugin:event|unlisten")).toEqual([
+        { event: "notification-clicked", eventId: 1 },
+        { event: "tauri://focus", eventId: 2 },
+      ]);
+      expect(shell.registered(`__CHANNEL__:${clickListener}`)).toBe(false);
+      expect(shell.registered(`__CHANNEL__:${focusListener}`)).toBe(false);
+      expect(shell.callsOf("plugin:notification|notify")).toHaveLength(1);
+    });
+
+    it("shows nothing when disposed while it asks the person", async () => {
+      let answer: (granted: boolean) => void = () => undefined;
+      const shell = listeningShell()
+        .answer(
+          "plugin:notification|is_permission_granted",
+          () => new Promise<boolean>((resolve) => (answer = resolve)),
+        )
+        .answer("plugin:notification|notify", () => null)
+        .answer("plugin:event|unlisten", () => null);
+      const notifier = new ShellNotifier(shell, fail);
+      const showing = notifier.show(notice, never);
+      const disposing = notifier.dispose();
+      answer(true);
+      await Promise.all([showing, disposing]);
+      expect(shell.callsOf("plugin:notification|notify")).toEqual([]);
+    });
+
+    it("reports an unlisten the shell refused, and skips a listener it never had", async () => {
+      const refused = new Error("unlisten refused");
+      let listens = 0;
+      const shell = new FakeShell()
+        .answer("plugin:event|listen", () => {
+          listens += 1;
+          if (listens === 2) throw new Error("no focus events here");
+          return listens;
+        })
+        .answer("plugin:notification|is_permission_granted", () => true)
+        .answer("plugin:notification|notify", () => null)
+        .answer("plugin:event|unlisten", () => {
+          throw refused;
+        });
+      const errors: unknown[] = [];
+      const notifier = new ShellNotifier(shell, (error) => errors.push(error));
+      await notifier.show(notice, never);
+      await notifier.dispose();
+      expect(shell.callsOf("plugin:event|unlisten")).toEqual([
+        { event: "notification-clicked", eventId: 1 },
+      ]);
+      expect(errors).toEqual([new Error("no focus events here"), refused]);
+    });
   });
 });
