@@ -120,6 +120,9 @@ verifies("agent-host.paperclip-key", () => {
         "rejectApproval",
         // Request changes (HAL-18872), pinned in approval-fields.test.ts.
         "requestApprovalRevision",
+        // Standalone decisions (HAL-18872), pinned in decisions.test.ts.
+        "listDecisions",
+        "decide",
         "whoAmI",
         "revokeKey",
         // TeamStatus's reads (HAL-17606), pinned in team-requests.test.ts.

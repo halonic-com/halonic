@@ -118,6 +118,8 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `respondToCard` | `POST /api/issues/{task}/interactions/{card}/respond` | answer a question card, every question at once |
 | `submitVerdicts` | `POST /api/issues/{task}/interactions/{card}/verdicts` | approve, reject or defer a verdict card's items, some or all |
 | `approve`, `rejectApproval` | `POST /api/approvals/{approval}/approve`, `/reject` | decide an approval |
+| `listDecisions` | `GET /api/companies/{company}/decisions?status=open&limit=100`, and `?status=decided` before an answer | the board's open decisions; who decided one first |
+| `decide` | `POST /api/decisions/{decision}/decide` with `{ optionId, idempotencyKey }` | pick one option of a decision |
 | `requestApprovalRevision` | `POST /api/approvals/{approval}/request-revision` with `{ decisionNote }` | Request changes: send an approval back to the agent that asked |
 | `whoAmI`, `revokeKey` | `GET /api/cli-auth/me`, `POST /api/cli-auth/revoke-current` | whom a connection is signed in as (its name only); disconnect (track A4) |
 | `spendSummary`, `spendByProvider` | `GET /api/companies/{company}/costs/summary?from=`, `/costs/by-provider?from=` | paid money, the budget, and tokens of every billing type |

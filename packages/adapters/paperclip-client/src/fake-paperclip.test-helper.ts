@@ -63,6 +63,9 @@ export class FakePaperclip {
       .on("GET", `/api/issues/${chatTask}/interactions`, { body: [] })
       .on("GET", `/api/issues/${plainTask}/interactions`, () => ({ body: data.cards }))
       .on("GET", `/api/companies/${company}/approvals`, { body: data.approvals })
+      .on("GET", `/api/companies/${company}/decisions`, ({ query }) => ({
+        body: data.decisions.filter((decision) => decision.status === query.get("status")),
+      }))
       .on("GET", `/api/companies/${company}/projects`, { body: data.projects })
       .on("GET", `/api/approvals/${approvalId}/issues`, {
         body: [{ id: plainTask, projectId: websiteProject }],

@@ -32,6 +32,9 @@ export const paperclipRequests = {
   rejectApproval: { method: "POST", path: "/api/approvals/:approval/reject" },
   // Request changes (HAL-18872): the approval goes back to the agent that asked, with the note.
   requestApprovalRevision: { method: "POST", path: "/api/approvals/:approval/request-revision" },
+  // Standalone decisions (HAL-18872): read the open ones, and pick one option of one.
+  listDecisions: { method: "GET", path: "/api/companies/:company/decisions" },
+  decide: { method: "POST", path: "/api/decisions/:decision/decide" },
   // Disconnect (track A4): read who the key belongs to, and revoke the key in use.
   // Starting a sign-in makes a key, so it isn't here: no route that makes keys is
   // (board, HAL-10, 24 Nov). Sign-in has its own list, `sign-in-requests.ts` (HAL-17439).
