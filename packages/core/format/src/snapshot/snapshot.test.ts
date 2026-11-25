@@ -61,7 +61,7 @@ verifies("format.workspace-snapshot", () => {
 
   it("refuses another format, an unknown key, a short commit and an unknown action", () => {
     expect(problemsOf(snapshotData([], { format: 2 }))).toEqual(["format invalid_value"]);
-    expect(problemsOf(snapshotData([], { signals: [] }))).toEqual([" unrecognized_keys"]);
+    expect(problemsOf(snapshotData([], { secrets: [] }))).toEqual([" unrecognized_keys"]);
     expect(
       problemsOf({ format: 1, workspace: { name: "Acme", commit: "abc1234" }, tools: [] }),
     ).toEqual(["workspace.commit invalid_format"]);

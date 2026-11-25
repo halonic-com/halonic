@@ -3,7 +3,7 @@ import { filesOf, type LoadedWorkspace } from "./load-workspace.ts";
 
 /**
  * What a workspace commit's snapshot is made from: the workspace's name and
- * its tool and template files, all at the workspace root. The plugin
+ * its tool, template and signal files, all at the workspace root. The plugin
  * builder passes this to `makeSnapshot`, so it never lists a workspace's
  * files itself.
  *
@@ -21,5 +21,6 @@ export function snapshotInputOf(workspace: LoadedWorkspace, commit: string): Sna
     commit,
     tools: filesOf(workspace, "tool").map((file) => file.value),
     templates: filesOf(workspace, "template").map((file) => file.value),
+    signals: filesOf(workspace, "signal").map((file) => file.value),
   };
 }

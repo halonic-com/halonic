@@ -497,6 +497,87 @@
         }
       },
       "additionalProperties": false
+    },
+    "signals": {
+      "maxItems": 50,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "default": 1,
+            "type": "number",
+            "const": 1
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z0-9][a-z0-9-_]*$"
+          },
+          "rule": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "run": {
+                    "type": "string",
+                    "const": "pr-watcher"
+                  },
+                  "with": {
+                    "default": {},
+                    "type": "object",
+                    "properties": {
+                      "done": {
+                        "default": true,
+                        "type": "boolean"
+                      },
+                      "wakeOn": {
+                        "default": [
+                          "ci-red",
+                          "conflict",
+                          "retargeted",
+                          "review",
+                          "approved",
+                          "merged",
+                          "held"
+                        ],
+                        "maxItems": 7,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "ci-red",
+                            "conflict",
+                            "retargeted",
+                            "review",
+                            "approved",
+                            "merged",
+                            "held"
+                          ]
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "run"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "dryRun": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "rule"
+        ],
+        "additionalProperties": false
+      }
     }
   },
   "required": [
