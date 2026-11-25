@@ -128,7 +128,7 @@ verifies("cloudflare-durable.run-container-object", () => {
 
     await expect(logic.end("u/acme/run_other")).rejects.toThrow();
 
-    expect(revoked).not.toContain("u/acme/run_other");
+    expect(revoked).toEqual([objectName]);
   });
 
   it("revokes the run's bridge credential when its alarm stops the container", async () => {

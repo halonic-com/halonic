@@ -31,6 +31,12 @@ function plainAbsolute(path: string): boolean {
 }
 
 /**
+ * The socket file of the container's bridge: none. The intercept, outside the container, routes
+ * the bridge's name, so the program reaches it over HTTP and never opens a socket.
+ */
+const noSocketFile = "";
+
+/**
  * The bridge as the container reaches it: by the name the intercept answers, over plain HTTP on
  * port 80. Any other address can't be reached from the container, so it is refused.
  */
@@ -39,8 +45,7 @@ function containerBridgeOf(bridge: HarnessBridge): SandboxBridge {
   if (url.protocol !== "http:" || url.port !== "" || url.hostname !== workerBridgeName) {
     throw new Error(`A run container reaches its bridge only as http://${workerBridgeName}.`);
   }
-  // The intercept, outside the container, routes the name: there is no socket file.
-  return { kind: "socket", name: workerBridgeName, socketPath: "" };
+  return { kind: "socket", name: workerBridgeName, socketPath: noSocketFile };
 }
 
 /**

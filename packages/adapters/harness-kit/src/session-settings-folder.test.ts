@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { chmod, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Readable, Writable } from "node:stream";
@@ -188,6 +188,25 @@ verifies("harness-kit.session-settings-folder", () => {
       const writer = sessionSettingsFolder(localSession());
 
       await expect(writer.read(join(tempFolder, "big.txt"))).rejects.toThrow(/over/);
+    },
+  );
+
+  it.runIf(posixShell)(
+    "[platform:win32] the scripts run on a POSIX sh: refuses a path under a symlinked folder inside its folders",
+    async () => {
+      await mkdir(settingsFolder, { recursive: true });
+      await writeFile(join(workingFolder, "notes.md"), "kept");
+      await symlink(workingFolder, join(tempFolder, "link"));
+      const writer = sessionSettingsFolder(localSession());
+
+      await expect(writer.write(join(tempFolder, "link", "notes.md"), "{}")).rejects.toThrow(
+        /symlink/,
+      );
+      await expect(writer.remove(join(tempFolder, "link", "notes.md"))).rejects.toThrow(/symlink/);
+      await expect(writer.read(join(tempFolder, "link", "notes.md"))).rejects.toThrow(/symlink/);
+
+      expect(await readFile(join(workingFolder, "notes.md"), "utf8")).toBe("kept");
+      expect(await readdir(workingFolder)).toEqual(["notes.md"]);
     },
   );
 
