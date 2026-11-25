@@ -267,3 +267,70 @@ describe("cloud session verifier", () => {
     });
   });
 });
+
+describe("cloud session profile", () => {
+  const profile = {
+    name: "Sofia Marin",
+    account: "https://account.acme.example/prod_acmeAAAAAAAAAAAAAAAA",
+    product_name: "Acme Agents",
+  };
+
+  verifies("server.cloud-session-profile", () => {
+    it("passes a well-formed name, account page and product name on to the session", async () => {
+      const claims = await verifyToken(await token({ payload: profile }));
+      expect(checkClaims(claims)?.profile).toEqual({
+        name: "Sofia Marin",
+        account: "https://account.acme.example/prod_acmeAAAAAAAAAAAAAAAA",
+        productName: "Acme Agents",
+      });
+    });
+
+    it("refuses an http account address, or one with a user or password in it", async () => {
+      for (const account of [
+        "http://account.acme.example/prod_acme",
+        "https://alice@account.acme.example/prod_acme",
+        "https://:secret@account.acme.example/prod_acme",
+        "javascript:alert(1)",
+        "account.acme.example/prod_acme",
+        42,
+      ]) {
+        const refused = await token({ payload: { ...profile, account } });
+        expect(await verifyToken(refused), String(account)).toBeNull();
+      }
+    });
+
+    it("refuses a name or product name over 200 characters, or one that isn't text", async () => {
+      for (const changes of [
+        { name: "a".repeat(201) },
+        { product_name: "a".repeat(201) },
+        { name: 7 },
+        { product_name: null },
+      ]) {
+        const refused = await token({ payload: { ...profile, ...changes } });
+        expect(await verifyToken(refused), JSON.stringify(changes)).toBeNull();
+      }
+    });
+
+    it("counts characters, so 200 emoji are accepted and 201 are refused", async () => {
+      const accepted = await verifyToken(
+        await token({ payload: { ...profile, name: "😀".repeat(200) } }),
+      );
+      expect(checkClaims(accepted)?.profile?.name).toBe("😀".repeat(200));
+      const refused = await token({ payload: { ...profile, name: "😀".repeat(201) } });
+      expect(await verifyToken(refused)).toBeNull();
+    });
+
+    it("refuses a token with only some of the three, and accepts one with none", async () => {
+      const { product_name: _left, ...partial } = profile;
+      expect(await verifyToken(await token({ payload: partial }))).toBeNull();
+      const without = await verifyToken(await token());
+      expect(checkClaims(without)?.profile).toBeNull();
+    });
+
+    it("refuses wrong claims in the shared checks too, whatever verifier returned them", () => {
+      const claims = { aud: "app", sub: ids.alice, scope: `u/${ids.alice}` };
+      expect(checkClaims({ ...claims, ...profile, account: "http://x.example" })).toBeNull();
+      expect(checkClaims({ ...claims, ...profile })?.profile?.productName).toBe("Acme Agents");
+    });
+  });
+});

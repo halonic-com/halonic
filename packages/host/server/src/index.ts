@@ -46,6 +46,7 @@ export type {
   VerifiedCloudRequest,
   VerifyCloudRequest,
 } from "./cloud-inbox-api.ts";
+export type { CloudProfile } from "./cloud-profile.ts";
 export {
   type CloudKey,
   type CloudKeySet,
@@ -91,7 +92,7 @@ export {
   type LaunchRequestHeaders,
   launchRequestRefusal,
 } from "./launch-token-check.ts";
-export type { ManyUserPorts, ScopedRunPorts } from "./many-users-api.ts";
+export type { AccountUsage, ManyUserPorts, ScopedRunPorts } from "./many-users-api.ts";
 export { MemoryRequestCountStore } from "./memory-request-count-store.ts";
 export type { MessagingFocus, MessagingPorts } from "./messaging-api.ts";
 export {

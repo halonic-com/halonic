@@ -1,4 +1,5 @@
 import { decodeBase64url } from "@halonicjs/std";
+import { checkCloudProfile } from "./cloud-profile.ts";
 import { isHttpsOrigin } from "./https-origin.ts";
 import type { SessionClaims } from "./principal.ts";
 import type { SessionCredential, SessionVerifier } from "./session-verifier.ts";
@@ -65,8 +66,9 @@ const idPattern = /^[\x21-\x7E]{1,128}$/;
 /**
  * Verifies the session tokens Halonic Cloud issues for a deployment's end users: compact JSON Web
  * Tokens signed with Ed25519 by a `session` key from Cloud's key set. It accepts a token only for
- * this product and the `app` audience, within its time window and not revoked, then hands the
- * claims to the server's shared claim checks. Every refusal is the same `null`.
+ * this product and the `app` audience, within its time window and not revoked, with a well-formed
+ * customer name, account page and product name, then hands the claims to the server's shared
+ * claim checks. Every refusal is the same `null`.
  */
 export class CloudSessionVerifier implements SessionVerifier {
   readonly #options: CloudSessionVerifierOptions;
@@ -95,6 +97,9 @@ export class CloudSessionVerifier implements SessionVerifier {
     }
     const payload = token.payload;
     if (!this.#isForThisApp(payload) || !this.#isInTimeWindow(payload)) {
+      return null;
+    }
+    if (!checkCloudProfile((name) => ownValue(payload, name)).ok) {
       return null;
     }
     const sessionId = ownString(payload, "sid");
@@ -192,12 +197,22 @@ async function isSignedBy(key: CloudKey, token: ParsedToken): Promise<boolean> {
 /**
  * The claims in the form the shared checks read. Cloud's `aud` names the product, which was
  * checked above, so the shared audience becomes `app`. A token without a scope works in its
- * user's own scope, the only kind there is until organisations come.
+ * user's own scope, the only kind there is until organisations come. The customer's name, account
+ * page and product name go on for the account menu.
  */
 function claimsFor(payload: object, sessionId: string): SessionClaims {
   const sub = ownValue(payload, "sub");
   const scope = ownValue(payload, "scope") ?? (typeof sub === "string" ? `u/${sub}` : undefined);
-  return { aud: appSessionAudience, sub, scope, role: ownValue(payload, "role"), sid: sessionId };
+  return {
+    aud: appSessionAudience,
+    sub,
+    scope,
+    role: ownValue(payload, "role"),
+    sid: sessionId,
+    name: ownValue(payload, "name"),
+    account: ownValue(payload, "account"),
+    product_name: ownValue(payload, "product_name"),
+  };
 }
 
 /** Base64url JSON that must hold an object, or `null`. */

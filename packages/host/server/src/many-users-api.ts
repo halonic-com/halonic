@@ -43,6 +43,17 @@ export type ScopedRunPorts = Pick<ServerPorts, "runs" | "runStore"> & {
   readonly defaultRunVisibility?: RunVisibility;
 };
 
+/** What the account menu shows of a scope's use of its plan (S2-25). */
+export interface AccountUsage {
+  /** The plan's name, such as "Pro", or `null` with no plan. */
+  readonly plan: string | null;
+  /**
+   * What was spent of the cost limit this period, as a whole percent rounded down and at most
+   * 100, or `null` with no cost limit.
+   */
+  readonly usedPercent: number | null;
+}
+
 /**
  * What a server needs to let many people sign in, each for their own scope (`users.mode: many`).
  * A server built with these has no shared password: every route but `GET /api/hello` and the
@@ -66,4 +77,10 @@ export interface ManyUserPorts {
    * routes answer 404, and sessions come from elsewhere.
    */
   readonly cloudSignIn?: CloudSignInPorts;
+  /**
+   * The principal's plan and how much of its cost limit they used, for `GET /api/account-menu`.
+   * Without it the menu shows no plan and no percent. It throws when it can't answer, so the
+   * menu fails instead of showing a wrong plan.
+   */
+  accountUsage?(principal: Principal): Promise<AccountUsage>;
 }

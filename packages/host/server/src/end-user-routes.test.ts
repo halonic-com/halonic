@@ -22,6 +22,7 @@ const endUserAllowList = [
   "public POST /api/session/refresh",
   "public POST /api/sign-out",
   "signed-in GET /api/session",
+  "signed-in GET /api/account-menu",
   "signed-in GET /api/waiting-runs",
   "signed-in POST /api/runs",
   "signed-in GET /api/runs/:runId",
