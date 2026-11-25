@@ -2,7 +2,7 @@
 
 - Approval: the board decided the update address on HAL-18474 and the task asks for it (HAL-18480); Liam approves and signs this note in review
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:RoCUEmJE5oGaARITujiZb2mm1Y/Bf+HqxpqWWNfWFWp47Ok/9TATdO+ibd72Hj9p10H3gN/Nd6a/EdzD8TXzAA==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:1MvCAD+yPwwfFwgf4R4kdE6cDr6GppWYcwdEZ0D3kAXPrNburzUdAXt14v07feFv+HCg2eaBoD8pMblaWcxoAA==
 
 ## What changes
 
