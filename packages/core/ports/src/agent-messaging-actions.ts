@@ -75,8 +75,8 @@ export type ActionResultCheck =
 
 /**
  * Whether an answer fits its item: an action item (one with `action` or
- * `stepper`) takes only an
- * `action-result` that passes {@link checkActionResultAnswer}, an item with
+ * `stepper`, even with `questions` too) takes only an
+ * `action-result` that passes {@link checkActionResultAnswer}, any other item with
  * `questions` only an `answers` answer that fits them (`questionsAnswerFits`),
  * any other item only an option or a reply. Every `AgentMessaging` refuses an answer that
  * doesn't fit with `bad-answer`, before sending anything.
@@ -85,13 +85,14 @@ export type ActionResultCheck =
  * answerFitsItem(item, { kind: "reply", text: "Not yet" }); // false when `item.action` is set
  */
 export function answerFitsItem(item: InboxItem, answer: InboxAnswer): boolean {
+  // The action comes first: an item that carries both takes only the stepper's result.
+  if (item.action !== undefined || item.stepper !== undefined) {
+    return answer.kind === "action-result" && checkActionResultAnswer(answer).ok;
+  }
   if (item.questions !== undefined) {
     return answer.kind === "answers" && questionsAnswerFits(item.questions, answer);
   }
-  if (item.action === undefined && item.stepper === undefined) {
-    return answer.kind === "option" || answer.kind === "reply";
-  }
-  return answer.kind === "action-result" && checkActionResultAnswer(answer).ok;
+  return answer.kind === "option" || answer.kind === "reply";
 }
 
 const stepOutcomes: readonly string[] = ["succeeded", "failed", "skipped"];

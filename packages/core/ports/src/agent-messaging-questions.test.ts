@@ -96,4 +96,17 @@ verifies("ports.agent-messaging-questions", () => {
     expect(answerFitsItem(plain, answers({ question: "repo", options: ["mono"] }))).toBe(false);
     expect(answerFitsItem(plain, { kind: "option", option: "yes" })).toBe(true);
   });
+
+  it("takes only an action-result for an item with both an action and questions", () => {
+    const action = {
+      definition: "acme.invite",
+      version: 1,
+      parameters: {},
+      expires: "2026-11-25T10:00:00Z",
+    };
+    const both: InboxItem = { ...asking, action };
+    const declined = { kind: "action-result", outcome: "declined", steps: [] } as const;
+    expect(answerFitsItem(both, declined)).toBe(true);
+    expect(answerFitsItem(both, answers({ question: "repo", options: ["mono"] }))).toBe(false);
+  });
 });
