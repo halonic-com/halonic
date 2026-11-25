@@ -16,15 +16,18 @@ export const factsPageSize = 10;
 /** Files per `mainFilesQuery`. */
 export const mainFileBatch = 40;
 
+/** A head's check runs per rollup page; GitHub allows no more. */
+export const checksPageSize = 100;
+
+const checkRunFields = `... on CheckRun {
+  databaseId name status conclusion startedAt detailsUrl
+  checkSuite { status workflowRun { databaseId event createdAt workflow { name } } }
+}`;
+
 const rollup = `statusCheckRollup {
-  contexts(first: 100) {
-    pageInfo { hasNextPage }
-    nodes {
-      ... on CheckRun {
-        databaseId name status conclusion startedAt detailsUrl
-        checkSuite { status workflowRun { databaseId event createdAt workflow { name } } }
-      }
-    }
+  contexts(first: ${checksPageSize}) {
+    pageInfo { hasNextPage endCursor }
+    nodes { ${checkRunFields} }
   }
 }`;
 
@@ -67,6 +70,26 @@ export const factsPullsQuery = `query MergeFactsPulls($owner: String!, $name: St
         commits(last: 1) { nodes { commit { committedDate ${rollup} } } }
         reviews(last: 50) { nodes { state body submittedAt commit { oid } author { login } } }
         comments(last: 100) { nodes { body createdAt author { login } } }
+      }
+    }
+  }
+}`;
+
+/**
+ * The next page of a head's check runs, after `$after`: a head with more
+ * than 100 (#5999 had 106) can have `ci-ok` past the first page (HAL-18344).
+ */
+export const factsChecksQuery = `query MergeFactsChecks($owner: String!, $name: String!, $oid: GitObjectID!, $after: String!) {
+  rateLimit { cost remaining resetAt }
+  repository(owner: $owner, name: $name) {
+    object(oid: $oid) {
+      ... on Commit {
+        statusCheckRollup {
+          contexts(first: ${checksPageSize}, after: $after) {
+            pageInfo { hasNextPage endCursor }
+            nodes { ${checkRunFields} }
+          }
+        }
       }
     }
   }
@@ -122,7 +145,7 @@ export interface RollupRun {
 /** A head commit's rollup; null when GitHub has none yet. */
 export interface FactsRollup {
   readonly contexts: {
-    readonly pageInfo?: { readonly hasNextPage: boolean };
+    readonly pageInfo?: { readonly hasNextPage: boolean; readonly endCursor?: string | null };
     readonly nodes: readonly RollupRun[];
   };
 }
@@ -200,6 +223,13 @@ export interface QueueNode {
     readonly oid: string;
     readonly statusCheckRollup: FactsRollup | null;
   } | null;
+}
+
+/** One page of `factsChecksQuery`. */
+export interface ChecksPage {
+  readonly repository: {
+    readonly object: { readonly statusCheckRollup?: FactsRollup | null } | null;
+  };
 }
 
 /** One page of `factsPullsQuery`. */

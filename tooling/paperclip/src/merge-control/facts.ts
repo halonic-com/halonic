@@ -3,6 +3,7 @@ import type { PrioTask } from "../rules/queue-prio.ts";
 import type { GitHubQuery } from "../snapshot/graphql.ts";
 import { type BoundedCache, boundedCache } from "./facts-cache.ts";
 import { type CapacitySources, type PlainGet, readCapacity } from "./facts-capacity.ts";
+import { withAllChecks } from "./facts-checks.ts";
 import {
   cancelsOf,
   groupRerunsOf,
@@ -191,16 +192,20 @@ async function readMainFiles(
   return files;
 }
 
-/** The gate's pull requests, with their manifests and red fast-track run. */
+/**
+ * The gate's pull requests, with every check run of their head, their
+ * manifests and red fast-track run.
+ */
 async function readGatePulls(
   deps: FactsDeps,
   pulls: readonly PullNode[],
   lean: boolean,
 ): Promise<GatePull[]> {
   const { get, settings, caches } = deps;
+  const checks = { query: deps.query, ...ownerAndName(settings.repo), log: deps.log };
   const gate: GatePull[] = [];
   for (const node of pulls.filter(isGatePull)) {
-    const pull = gatePullOf(node);
+    const pull = gatePullOf(await withAllChecks(checks, node));
     gate.push({
       ...pull,
       manifests: await manifestsOf(get, settings.repo, pull, caches.manifests),
