@@ -29,6 +29,7 @@ Who may approve is unchanged (HAL-14809).
 
 ## Covers
 
+- `paperclip.merge-control-carry-over`
 - `paperclip.pr-watcher-rereview`
 - `paperclip.pr-watcher-handoff`
 - `paperclip.pr-watcher-pushed-after-approval`
@@ -36,6 +37,14 @@ Who may approve is unchanged (HAL-14809).
 
 ## What changes
 
+- `paperclip.merge-control-carry-over`: the plugin's Merger had no git, so its patch-ids were all
+  null and an approval never carried over a rebase there. Now its facts reader compares as the PR
+  watcher does: for a pull request whose signed approval names an older head, it fingerprints
+  GitHub's compare of both heads from the base (`changeIdOf`, line numbers aside) and uses those as
+  the patch-ids, once per head and base. A compare GitHub can't give or fails stays null, so the
+  approval doesn't carry. The requirement now says so and gains an example; its existing examples
+  and tests are unchanged. The live queue session's Merger already carries approvals by
+  `git patch-id` (its "carried to … rebase only, identical diff" comments on 35 pull requests).
 - `paperclip.pr-watcher-rereview`: a rebase-only pull request whose approval carries over no longer
   goes to review. Its first example (Liam's paths, Liam's approval) now expects the carry-over and
   no handoff. Its second example (within Julian's limits, Liam's approval) would now carry over too,

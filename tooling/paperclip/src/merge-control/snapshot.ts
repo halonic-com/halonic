@@ -199,7 +199,7 @@ export interface MergeSnapshot {
   readonly mainFiles: Readonly<
     Record<string, { readonly lines: number; readonly barrel: boolean }>
   >;
-  /** `git patch-id --stable` of `merge-base..sha`, by sha; null when it couldn't be worked out. */
+  /** A fingerprint of `merge-base..sha`'s changes, by sha (`facts-patch-ids.ts`); null when it couldn't be worked out. */
   readonly patchIds: Readonly<Record<string, string | null>>;
   /** Completed merge-group `CI` runs of the last 3 hours. */
   readonly groupRuns: readonly GroupRun[];

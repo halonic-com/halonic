@@ -2,6 +2,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
 import type { PullFacts } from "./decide.ts";
 import { agentComment, agents, type FakeTask, task } from "./fakes.test-helper.ts";
+import { findingBy } from "./github.ts";
 import { mateoBranch, open, repo, setup } from "./handoff.test-helper.ts";
 import type { Reviewer } from "./handoff.ts";
 
@@ -85,10 +86,29 @@ verifies("paperclip.pr-watcher-answered-review", () => {
       // Pushed, but ci-ok is still running or red.
       watcher(asked("Liam", { ...pushed, ciOkOnHead: "pending" })),
       watcher(asked("Liam", { ...pushed, ciOkOnHead: "failure" })),
+      // A head GitHub committed: the watcher's own stack rebase, not the author's fix.
+      watcher(asked("Liam", { ...pushed, headCommittedByGitHub: true }), {
+        authorAt: "2026-11-24T14:30:00Z",
+      }),
     ];
     for (const each of cases) {
       await each.run();
       expect(each.handoffs).toEqual([]);
     }
+  });
+});
+
+verifies("paperclip.pr-watcher-answered-review", () => {
+  test("a finding names the reviewer who signed it, even when it mentions the other one", () => {
+    expect(
+      findingBy(
+        "Julian: changes requested on head `5701aaa`.\n\n[blocker] Liam's note still applies.",
+      ),
+    ).toEqual({ by: "Julian" });
+    expect(
+      findingBy("[blocker] As Liam said, this breaks the gate.\nJulian: changes requested"),
+    ).toEqual({ by: "Julian" });
+    expect(findingBy("[major] Liam: the cache key needs the base.")).toEqual({ by: "Liam" });
+    expect(findingBy("[minor] rename this")).toEqual({});
   });
 });

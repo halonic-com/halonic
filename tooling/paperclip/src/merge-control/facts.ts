@@ -11,6 +11,7 @@ import {
   pullRerunsOf,
   queueActionsOf,
 } from "./facts-observed.ts";
+import { readPatchIds } from "./facts-patch-ids.ts";
 import { gatePullOf, isGatePull, queueOf, runnerWaitOf } from "./facts-pulls.ts";
 import {
   factsMergedQuery,
@@ -40,8 +41,8 @@ import type { CiOkRun, FailedJob, GatePull, MergeSnapshot } from "./snapshot.ts"
  * only through the query-only GraphQL reader and the GET-only REST reader,
  * with the read-only token (`pr-watcher-read-only`); capacity comes from the
  * two addresses in the settings, without a token. Patch-ids need git, which
- * the plugin doesn't have, so they are null and an approval never carries
- * over a rebase here.
+ * the plugin doesn't have, so they are the PR watcher's fingerprint of a
+ * GitHub compare instead (`facts-patch-ids.ts`, HAL-18460).
  */
 
 /** What the reader needs to know. */
@@ -60,6 +61,8 @@ export interface FactsCaches extends ObservedCaches {
   readonly ciOkRuns: BoundedCache<CiOkRun | null>;
   readonly manifests: BoundedCache<GatePull["manifests"]>;
   readonly mainFiles: BoundedCache<{ readonly lines: number; readonly barrel: boolean } | null>;
+  /** Change ids by `<base>...<sha>` (`facts-patch-ids.ts`). */
+  readonly patchIds: BoundedCache<string | null>;
   /** Every GET's answer for 90 s. */
   readonly gets: GetCache;
 }
@@ -72,6 +75,7 @@ export function factsCaches(): FactsCaches {
     ciOkRuns: boundedCache(),
     manifests: boundedCache(),
     mainFiles: boundedCache(),
+    patchIds: boundedCache(),
     gets: boundedCache(),
     seenQueued: boundedCache(),
     cancelledBy: boundedCache(),
@@ -287,7 +291,10 @@ async function readCountedFacts(deps: FactsDeps, now: Date, lean: boolean): Prom
     merged: await readMerged(deps),
     tasks: await deps.tasks(),
     mainFiles: await readMainFiles(deps, read.pulls.filter(isGatePull), read.main.sha),
-    patchIds: Object.fromEntries(gate.map((pull) => [pull.head, null])),
+    patchIds: await readPatchIds(
+      { get, repo: settings.repo, cache: deps.caches.patchIds, log: deps.log },
+      gate,
+    ),
     groupRuns: await groupRunsOf(get, settings.repo, groups, now, deps.caches.failedJobs),
     mergeGroupRuns: groups.map(runFactOf),
     queuedPullRuns: queued.map(runFactOf),

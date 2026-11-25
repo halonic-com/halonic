@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { branchPath, type PullDetails } from "../pr-tools/pr-status.ts";
 import type { PullFacts } from "./decide.ts";
 import type { GitHubGet } from "./github.ts";
@@ -6,7 +7,7 @@ import type { GitHubGet } from "./github.ts";
 export type RebaseOnly = (pull: PullFacts, approvedHead: string) => Promise<boolean>;
 
 /** One changed file of a compare, as the REST API lists it. */
-interface CompareFile {
+export interface CompareFile {
   readonly filename?: string;
   readonly previous_filename?: string;
   readonly status?: string;
@@ -56,6 +57,24 @@ export function sameChanges(
     old.size === now.size &&
     [...old].every(([name, change]) => now.get(name) === change)
   );
+}
+
+/**
+ * A fingerprint of a compare's changes, line numbers aside, or null when
+ * one can't be compared. Two compares with the same fingerprint have the
+ * same changes (`sameChanges`), so the Merger uses it in place of
+ * `git patch-id`, which needs git (HAL-18460).
+ */
+export function changeIdOf(files: readonly CompareFile[]): string | null {
+  const byName = changes(files);
+  if (byName === undefined) {
+    return null;
+  }
+  const hash = createHash("sha256");
+  for (const [name, change] of [...byName].sort(([a], [b]) => a.localeCompare(b))) {
+    hash.update(`${name}\0${change}\0`);
+  }
+  return hash.digest("hex");
 }
 
 /**

@@ -1060,7 +1060,10 @@ points a page on 24 Nov), the merge-group runs of the last day, the queued
 pull request runs and `main`'s CI runs. What never changes once read (a
 finished run's failed jobs, a head's manifests, a file on one `main` commit,
 who reran or cancelled a run) is kept in the worker's memory. Patch-ids need
-git, so they are null and an approval never carries over a rebase here.
+git, so for a pull request whose approval names an older head the reader
+fingerprints GitHub's compare of each head from the base instead, the PR
+watcher's rebase-only check (HAL-18460); an approval carries over a rebase when
+both match. A compare GitHub can't give or fails leaves it null: no carry-over.
 
 Settings under `mergeControl`, all empty by default:
 

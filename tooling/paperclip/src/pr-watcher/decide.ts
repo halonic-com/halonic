@@ -36,6 +36,8 @@ export interface PullFacts {
     | undefined;
   /** Open only: when the head commit was committed, so a push after a finding shows (HAL-18460). */
   readonly headCommittedAt?: string;
+  /** Open only: GitHub committed the head, as the watcher's stack rebase does: no fix of the author's. */
+  readonly headCommittedByGitHub?: boolean;
   /** Open only: our reviewers' signed approvals, oldest first, each with the head it names. */
   readonly approvals?: readonly {
     readonly by: string;

@@ -30,7 +30,7 @@ function shortCheckPending(task: WatchedTask, now: Date): boolean {
 
 /**
  * How the author answered the pull request's open finding, if they did: a
- * head committed after it, or a task comment after it while no short check
+ * head they committed after it, or a task comment after it while no short check
  * of theirs is pending. A comment with a short check pending is a progress
  * note ("fixing it, CI is running"), not an answer.
  */
@@ -46,7 +46,8 @@ export function answerOf(
   }
   const after = (at: string | undefined) =>
     at !== undefined && Date.parse(at) > Date.parse(finding.at);
-  if (after(pull.headCommittedAt)) {
+  // A head GitHub committed is a rebase it made, such as the watcher's own stack rebase: no fix.
+  if (after(pull.headCommittedAt) && pull.headCommittedByGitHub !== true) {
     return "push";
   }
   return after(memory.authorLastAt) && !shortCheckPending(task, now) ? "reply" : undefined;

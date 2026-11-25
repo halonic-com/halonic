@@ -176,9 +176,15 @@ export async function latestReview(
   return newestFinding({ reviews, inline, conversation }, head);
 }
 
-/** The reviewer a finding's opening names ("Liam: changes requested …"), when it names one. */
-function findingBy(body: string | null | undefined): { by?: string } {
-  const by = /\b(Liam|Julian)\b/.exec((body ?? "").slice(0, 160))?.[1];
+/**
+ * The reviewer a finding's opening names, when it names one: the signed
+ * lead-in ("Julian: changes requested …") first, so a finding that mentions
+ * the other reviewer in passing still names the one who asked; otherwise
+ * the first name in it.
+ */
+export function findingBy(body: string | null | undefined): { by?: string } {
+  const opening = (body ?? "").slice(0, 160);
+  const by = /^[ \t]*(Liam|Julian):/m.exec(opening)?.[1] ?? /\b(Liam|Julian)\b/.exec(opening)?.[1];
   return by === undefined ? {} : { by };
 }
 

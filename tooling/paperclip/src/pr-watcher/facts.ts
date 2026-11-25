@@ -85,6 +85,7 @@ function openPullFacts(ref: PullRef, pull: SnapshotPull, open: OpenFacts): PullF
     ...(open.missingChecks === undefined ? {} : { missingChecks: open.missingChecks }),
     latestReview: open.finding ?? undefined,
     ...(open.headCommittedAt === undefined ? {} : { headCommittedAt: open.headCommittedAt }),
+    ...(open.headCommittedByGitHub === true ? { headCommittedByGitHub: true } : {}),
     approvals: githubApproval === undefined ? signed : [...signed, githubApproval],
     ...(githubApproval === undefined ? {} : { githubApproval }),
     landed: false,

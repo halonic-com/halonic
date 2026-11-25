@@ -116,6 +116,8 @@ export interface OpenFacts {
   readonly finding: { readonly id: string; readonly at: string; readonly by?: string } | null;
   /** When the head commit was committed, so a push after a finding shows. Added like `by` (HAL-18460). */
   readonly headCommittedAt?: string;
+  /** GitHub committed the head itself (a rebase or update it made, such as the stack rebase), not the author. Added like `by`. */
+  readonly headCommittedByGitHub?: true;
   /**
    * Signed approvals by our reviewers on any head, oldest first. Whether one counts depends on the head and the paths.
    * `rebaseOf` is the head a re-approval after a rebase-only push names (HAL-14809), added after version 1 shipped.

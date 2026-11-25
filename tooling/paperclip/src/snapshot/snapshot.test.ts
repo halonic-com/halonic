@@ -386,8 +386,13 @@ verifies("paperclip.github-routes", () => {
   });
 });
 
-/** Sets `committedDate` on pull request `number`'s head commit in a recording's open page. */
-function withCommittedDate(answers: Recording, number: number, at: string): Recording {
+/** Sets `committedDate` (and more) on pull request `number`'s head commit in a recording's open page. */
+function withCommittedDate(
+  answers: Recording,
+  number: number,
+  at: string,
+  extra: object = {},
+): Recording {
   const page = answers.open.data as {
     repository: {
       pullRequests: { nodes: { number: number; commits: { nodes: { commit: object }[] } }[] };
@@ -396,7 +401,7 @@ function withCommittedDate(answers: Recording, number: number, at: string): Reco
   for (const node of page.repository.pullRequests.nodes) {
     if (node.number === number) {
       node.commits.nodes = node.commits.nodes.map(({ commit }) => ({
-        commit: { ...commit, committedDate: at },
+        commit: { ...commit, committedDate: at, ...extra },
       }));
     }
   }
@@ -415,5 +420,22 @@ verifies("paperclip.pr-watcher-answered-review", () => {
     });
     const pull = snapshot.repos[0]?.pulls.find((each) => each.number === 4965);
     expect(pull?.open?.headCommittedAt).toBe("2026-11-22T13:50:00Z");
+    expect(pull?.open?.headCommittedByGitHub).toBeUndefined();
+  });
+
+  test("marks a head GitHub committed itself, as a rebase through the API is", async () => {
+    const committer = { committer: { email: "noreply@github.com" } };
+    const { query } = fakeQuery(
+      withCommittedDate(recording(), 4965, "2026-11-22T13:50:00Z", committer),
+    );
+    const snapshot = await takeSnapshot({
+      token: "shared",
+      query,
+      repos,
+      now: new Date("2026-11-22T14:10:00Z"),
+      fallback: noFallback,
+    });
+    const pull = snapshot.repos[0]?.pulls.find((each) => each.number === 4965);
+    expect(pull?.open?.headCommittedByGitHub).toBe(true);
   });
 });

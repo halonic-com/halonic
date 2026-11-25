@@ -98,6 +98,7 @@ interface OpenNode extends PullNode {
     readonly nodes: readonly {
       readonly commit: {
         readonly committedDate?: string;
+        readonly committer?: { readonly email?: string | null } | null;
         readonly statusCheckRollup: Rollup | null;
       };
     }[];
@@ -200,6 +201,9 @@ export function checksOf(rollup: Rollup | null): {
   };
 }
 
+/** The committer of a commit GitHub made itself, such as a rebase through the API. */
+const gitHubCommitter = "noreply@github.com";
+
 const mergeableOf = { MERGEABLE: "yes", CONFLICTING: "no", UNKNOWN: "unknown" } as const;
 
 function rest(comment: Comment): Review {
@@ -256,6 +260,7 @@ async function openFacts(
     ...(headCommit?.committedDate === undefined
       ? {}
       : { headCommittedAt: headCommit.committedDate }),
+    ...(headCommit?.committer?.email === gitHubCommitter ? { headCommittedByGitHub: true } : {}),
     approvals: signedApprovals(conversation),
     githubApprovals: githubApprovals(reviews),
     baseChangedSincePush: baseChangedSincePush(node, defaultBranch),
