@@ -2,9 +2,11 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { AttemptStep } from "./attempt-step.ts";
 import { countChangedLines } from "./attempt-step.ts";
-import { endOfRunModel, endOfRunSelftest, inRunModels, inRunSelftest } from "./coefficients.ts";
+import { endOfRunModel, inRunModels } from "./coefficients.ts";
 import { endOfRunFeatures, scoreFinishedAttempt } from "./end-of-run.ts";
+import { endOfRunSelftest } from "./end-of-run-selftest.ts";
 import { checkpointMinutes, checkpointTags, scoreRunningAttempt } from "./in-run.ts";
+import { inRunSelftest } from "./in-run-selftest.ts";
 import { type LogisticModel, scoreWith } from "./logistic-model.ts";
 
 const twoFeatureModel: LogisticModel = {
@@ -168,7 +170,7 @@ verifies("retry-detectors.end-of-run", () => {
       }
     });
 
-    it("are untrained placeholders that flag nothing until the export lands", () => {
+    it("flag nothing while a model is an untrained placeholder", () => {
       const models = [endOfRunModel, ...checkpointMinutes.map((minute) => inRunModels[minute])];
       for (const model of models.filter((m) => !m.trained)) {
         expect(

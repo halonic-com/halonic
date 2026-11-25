@@ -14,7 +14,13 @@ Both read `AttemptStep`s, the per-step timeline of the writer's event stream.
 
 ## Coefficients
 
-All coefficients live in `src/coefficients.ts`, written from variant-router's exports so they
-can be retrained on production runs. A model with `trained: false` is the placeholder: it
-scores 0.5 and flags nothing. The tests score every `selftest` case from the export and
-fail if this port disagrees with the Python model by more than 0.001.
+All coefficients live in `src/coefficients.ts`, written from variant-router's
+`export_halonic_detectors.py` so they can be retrained on production runs; the Python-scored
+cases from the same export are in `src/end-of-run-selftest.ts` and `src/in-run-selftest.ts`.
+The tests score every case and fail if this port disagrees with the Python model by more
+than 0.001.
+
+The end-of-run and 3-minute models are trained (held-out AUC 0.785 and 0.720 on live runs).
+The 6- and 10-minute models are placeholders (`trained: false`: every attempt scores 0.5 and
+none is flagged) until there are enough live runs to fit them; on today's data they scored
+0.68 and 0.50.

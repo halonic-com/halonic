@@ -1,12 +1,13 @@
 /**
  * The detectors' coefficients: the one file to replace when they are
- * retrained. Written from variant-router's exports (`live_detector.py` for the
- * end-of-run model, `inrun_export.py` for the checkpoint models); paste their
- * `model.json` and `selftest.json` in as they are.
+ * retrained. Written from variant-router's exports (`export_halonic_detectors.py`).
  *
- * Until the first export lands, every model is untrained: all coefficients 0,
- * so it scores every attempt 0.5 and flags none. Callers check `trained`
- * before they act on a score.
+ * Current export: variant-router `7d5cc47`, fitted on live opencode /
+ * deepseek-v4.1-flash runs (25 Nov 2026). The 6- and 10-minute models stay
+ * untrained placeholders (all coefficients 0: every attempt scores 0.5 and
+ * none is flagged): on live runs alone they scored a held-out AUC of 0.68 and
+ * 0.50, too weak to act on until there are more live runs. Callers check
+ * `trained` before they act on a score.
  */
 import type { CheckpointMinute } from "./in-run.ts";
 import type { FeatureValues, LogisticModel } from "./logistic-model.ts";
@@ -21,12 +22,6 @@ export interface TrainedModel extends LogisticModel {
     readonly tasks: number;
     readonly heldoutAuc: number;
   };
-}
-
-/** A known attempt and the score the Python model gave it; the tests check every one. */
-export interface SelftestCase {
-  readonly features: FeatureValues;
-  readonly pFail: number;
 }
 
 const endOfRunFeatureNames = [
@@ -66,6 +61,12 @@ const inRunFeatureNames = [
   "tokens_out",
 ];
 
+/** A known attempt and the score the Python model gave it; the tests check every one. */
+export interface SelftestCase {
+  readonly features: FeatureValues;
+  readonly pFail: number;
+}
+
 function untrained(
   features: readonly string[],
   logged: readonly string[],
@@ -87,35 +88,64 @@ function untrained(
 }
 
 /** End-of-run detector; report threshold 0.5 (catches 70–73% of failures at 24–26% false flags). */
-export const endOfRunModel: TrainedModel = untrained(
-  endOfRunFeatureNames,
-  [
-    "turns",
-    "shell",
-    "read",
-    "edit",
-    "write",
-    "grep",
-    "changed_lines",
+export const endOfRunModel: TrainedModel = {
+  trained: true,
+  trainedOn: { runs: 1016, tasks: 294, heldoutAuc: 0.7847 },
+  features: endOfRunFeatureNames,
+  logged: [
     "agent_seconds",
+    "changed_lines",
+    "edit",
+    "grep",
     "prompt_chars",
+    "read",
+    "shell",
+    "turns",
+    "write",
   ],
-  0,
-);
+  logFloor: 0,
+  mean: [
+    3.72660892, 3.60438687, 2.2808059, 1.94006801, 0.45507343, 0.84254434, 4.75148778, 5.73725766,
+    0.01377953, 0.00885827, 0.21850394, 6.87348721,
+  ],
+  scale: [
+    0.72042426, 0.77963765, 1.21313907, 1.22434766, 0.5843498, 0.99848334, 1.04197452, 0.66373595,
+    0.11657466, 0.09370058, 0.41323113, 0.50492919,
+  ],
+  coef: [
+    0.5555798, -0.17927861, 0.15013515, 0.42859601, 0.10032071, 0.02133088, -0.18586401, 0.44585838,
+    0.55429584, 0.63532762, -0.48445275, -0.11009868,
+  ],
+  intercept: -0.09731875,
+  threshold: 0.5,
+};
 
 /** In-run detectors, one per checkpoint; every tag is logged with a floor of -0.99, as in training. */
 export const inRunModels: Readonly<Record<CheckpointMinute, TrainedModel>> = {
-  3: untrained(inRunFeatureNames, inRunFeatureNames, -0.99),
+  3: {
+    trained: true,
+    trainedOn: { runs: 168, tasks: 81, heldoutAuc: 0.7201 },
+    features: inRunFeatureNames,
+    logged: inRunFeatureNames,
+    logFloor: -0.99,
+    mean: [
+      3.40162357, 5.07483245, 3.40220761, 0.38783235, 0.57211972, 0.9122641, 0.71000928, 1.11296847,
+      3.17335097, 0.53701927, 0.02958222, 0.33832184, -3.84826771, -0.02741173, 0.41400322, 0.0,
+      0.0, 11.30903551, 9.49176261,
+    ],
+    scale: [
+      0.27752929, 0.23143378, 0.57786677, 0.34410895, 4.60591431, 0.88770366, 0.67142441, 0.2976995,
+      2.07237095, 0.62178965, 0.15790089, 0.34647534, 1.85402486, 0.35423758, 0.50004062, 1.0, 1.0,
+      0.40112129, 0.36938977,
+    ],
+    coef: [
+      -0.17518699, 0.23270625, -0.33201446, 0.15308253, 0.31972255, 0.05181616, -1.04373699,
+      0.17167707, -0.21690072, 0.24210717, -0.23326205, -0.0298245, -0.18157573, 0.12110896,
+      -0.06377274, 0.0, 0.0, 0.14935663, 1.08729437,
+    ],
+    intercept: -0.10694947,
+    threshold: 0.5,
+  },
   6: untrained(inRunFeatureNames, inRunFeatureNames, -0.99),
   10: untrained(inRunFeatureNames, inRunFeatureNames, -0.99),
-};
-
-/** Python-scored cases for the end-of-run model, from the export's `selftest.json`. */
-export const endOfRunSelftest: readonly SelftestCase[] = [];
-
-/** Python-scored cases per checkpoint, from the in-run export. */
-export const inRunSelftest: Readonly<Record<CheckpointMinute, readonly SelftestCase[]>> = {
-  3: [],
-  6: [],
-  10: [],
 };
