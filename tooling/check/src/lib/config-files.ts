@@ -55,6 +55,12 @@ export interface Policy {
   readonly published: readonly string[];
   readonly adapterGateways: readonly string[];
   /**
+   * Tooling packages that may also use core packages, such as the Agent
+   * tools plugin, whose workflow host runs on our own engine (HAL-18009).
+   * Empty when `policy.json` has none.
+   */
+  readonly toolingUsesCore: readonly string[];
+  /**
    * Subpath exports a package may have besides `.` (and `./api` for a
    * feature), by package name. Empty when `policy.json` has none.
    */
@@ -79,7 +85,7 @@ export function parsePolicy(path: string, value: unknown): Policy {
     value,
     "",
     ["coreOrder", "published", "adapterGateways", "cloudRuntimes", "fileSize"],
-    ["apiTypes", "extraExports"],
+    ["apiTypes", "toolingUsesCore", "extraExports"],
   );
   const fileSize = at.object(policy["fileSize"], "fileSize", [
     "warnLines",
@@ -91,6 +97,10 @@ export function parsePolicy(path: string, value: unknown): Policy {
     apiTypes: policy["apiTypes"] === undefined ? [] : at.strings(policy["apiTypes"], "apiTypes"),
     published: at.strings(policy["published"], "published"),
     adapterGateways: at.strings(policy["adapterGateways"], "adapterGateways"),
+    toolingUsesCore:
+      policy["toolingUsesCore"] === undefined
+        ? []
+        : at.strings(policy["toolingUsesCore"], "toolingUsesCore"),
     extraExports:
       policy["extraExports"] === undefined ? {} : parseExtraExports(at, policy["extraExports"]),
     cloudRuntimes: parseCloudRuntimes(at, policy["cloudRuntimes"]),

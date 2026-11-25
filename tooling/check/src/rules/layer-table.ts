@@ -54,9 +54,7 @@ function layerRule(
     case "testing":
       return undefined;
     case "tooling":
-      return toLayer === "tooling"
-        ? undefined
-        : "tooling packages use only other tooling packages.";
+      return toolingRule(context, toLayer, fromName);
     case "core":
       return coreRule(context, toLayer, fromName, toName);
     case "adapters":
@@ -100,6 +98,23 @@ function appRule(
   return shipped
     ? undefined
     : "the halonic CLI ships only the Node runtime and the Node harness. It loads a deploy target by name when the user deploys, so users install only the targets they use (HAL-7114).";
+}
+
+/**
+ * Tooling uses only tooling, except the packages listed under
+ * "toolingUsesCore", which may also use core packages: the Agent tools
+ * plugin runs its workflow host on our own engine (HAL-18009).
+ */
+function toolingRule(context: CheckContext, toLayer: Layer, fromName: string): string | undefined {
+  if (toLayer === "tooling") {
+    return undefined;
+  }
+  if (!context.policy.toolingUsesCore.includes(fromName)) {
+    return "tooling packages use only other tooling packages.";
+  }
+  return toLayer === "core"
+    ? undefined
+    : `${fromName} is listed under "toolingUsesCore" (${context.policyPath}), so it may use core and tooling packages only.`;
 }
 
 function coreRule(
