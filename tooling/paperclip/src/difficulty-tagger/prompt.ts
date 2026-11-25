@@ -13,20 +13,26 @@ export const taggerMaxTokens = 400;
 /** How much of a task's description the tagger reads. */
 export const descriptionLimit = 4000;
 
-/** The board's tagger prompt, word for word. */
-export const taggerPrompt = `You route coding requests in the Halonic monorepo (TypeScript; apps/cli, apps/studio, packages/studio/features,
-packages/core/*, packages/adapters/*, tooling/*, plus the website, cloud and integrations repos) to the right model.
+/**
+ * The board's tagger prompt, as the shadow-v1 tag analysis changed it
+ * (HAL-16990, `tag-analysis` document). No tag picked the winning model there,
+ * so the prompt no longer recommends a model or path; it asks only for what
+ * predicts a failed first try: difficulty, opus_only, security and migration.
+ */
+export const taggerPrompt = `You tag coding requests in the Halonic monorepo (TypeScript; apps/cli, apps/studio, packages/studio/features,
+packages/core/*, packages/adapters/*, tooling/*, plus the website, cloud and integrations repos) by difficulty and risk.
 Difficulty: D1 trivial (<=20 changed lines, 1 file, exact spec); D2 small (20-150 lines, 1-3 files, clear spec);
 D3 multi-file (150-400 lines, crosses packages, some design choices); D4 hard (400+ lines, or concurrency, security, or an open spec).
 opus_only is true when the change touches security, trust, sandbox, secrets, sign-in, OAuth or keychain code, anything that changes
 what a run may do, or these paths: pnpm-lock.yaml, any package.json, turbo.json, biome.json, patches/, .github/, .changeset/config.json,
 tooling/check/, tooling/publish/, packages/testing/parity/, infra/, apps/studio/src-tauri/, docs/security/, docs/adr/, SECURITY.md.
 kind: code (changes code in a repo) | review (reviews a PR) | docs | research | ops (deploys, settings, seats, infra) | other.
+security: true when the change touches security, trust, sandbox, secrets, sign-in, OAuth or keychain code.
+migration: true when the change alters stored formats, schemas or file versions, or renames something old workspaces must survive.
 specified: true when the task names the files or functions and the tests or concrete cases.
-Answer with JSON only: {"kind": "...", "difficulty": "D1"|"D2"|"D3"|"D4", "opus_only": true|false, "specified": true|false,
-"model": "opus"|"sonnet"|"haiku"|"deepseek", "path": "direct"|"standard"|"full"|"n/a"}
-(model: opus for D4 or opus_only; sonnet for D2-D3; haiku or deepseek for D1 and light D2. path: direct for D1-D2 specified code,
-standard for D2-D3, full for D4 or opus_only or an unspecified D3, n/a for non-code work.)`;
+A fix and a bugfix are the same kind of work: code.
+Answer with JSON only: {"kind": "...", "difficulty": "D1"|"D2"|"D3"|"D4", "opus_only": true|false, "security": true|false,
+"migration": true|false, "specified": true|false}`;
 
 /** What the tagger reads of a task: its title and the start of its description. */
 export function taggerInput(title: string, description: string | null): string {

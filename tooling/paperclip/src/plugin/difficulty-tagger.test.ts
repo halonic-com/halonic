@@ -136,6 +136,16 @@ verifies("paperclip.difficulty-tagger", () => {
       ).toBeUndefined();
     });
 
+    test("reads the learned prompt's answer, which names no model (HAL-16990)", () => {
+      expect(taggerPrompt).not.toContain('"model"');
+      expect(taggerPrompt).toContain('"migration": true|false');
+      expect(
+        parseTaggerAnswer(
+          '{"kind":"code","difficulty":"D3","opus_only":true,"security":true,"migration":false,"specified":true}',
+        ),
+      ).toEqual({ kind: "code", difficulty: "D3", opusOnly: true });
+    });
+
     test("asks again after a label it couldn't write, without handing the task over", async () => {
       const task = taggedTask([]);
       const { tagger, labels, logs, listedLabels } = taggerHarness(task, [
