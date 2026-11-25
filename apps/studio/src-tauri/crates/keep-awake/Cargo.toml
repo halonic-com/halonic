@@ -1,0 +1,26 @@
+[package]
+name = "halonic-keep-awake"
+description = "Keeps this computer from sleeping while remote is on, the setting is on and it runs on mains power, so a paired phone can reach it."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# The Windows calls need `unsafe`. As in login-item, this crate turns the
+# workspace's `unsafe_code = "forbid"` off in its own Cargo.toml, every block
+# has a `// SAFETY:` comment, and nothing unsafe leaves the `windows` module.
+# These are the workspace lints with that one change.
+[lints.rust]
+unsafe_code = "allow"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+undocumented_unsafe_blocks = "deny"
+print_stderr = "deny"
+
+# Pinned to the version already in Cargo.lock, so this crate adds no new
+# code to the build. Win32_System_Power has SetThreadExecutionState and
+# GetSystemPowerStatus.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "=0.61.2", features = ["Win32_System_Power"] }

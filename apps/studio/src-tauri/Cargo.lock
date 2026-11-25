@@ -1712,6 +1712,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "halonic-keep-awake"
+version = "0.1.0"
+dependencies = [
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "halonic-keychain"
 version = "0.1.0"
 dependencies = [
@@ -1866,6 +1873,7 @@ dependencies = [
  "halonic-git-guard",
  "halonic-host-settings",
  "halonic-http-guard",
+ "halonic-keep-awake",
  "halonic-keychain",
  "halonic-login-item",
  "halonic-login-shell",

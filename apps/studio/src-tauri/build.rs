@@ -130,6 +130,7 @@ fn main() {
         "server_session_open",
         "login_item_get",
         "login_item_set",
+        "keep_awake_set",
         "show_main_window",
         "set_frame_colour",
     ]);

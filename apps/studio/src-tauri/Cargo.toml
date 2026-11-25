@@ -120,6 +120,9 @@ tauri-plugin-single-instance = "=2.5.5"
 # not tauri-plugin-autostart, so the entry is per-user only and its path is
 # quoted (crates/login-item/README.md). Desktop only.
 halonic-login-item = { path = "crates/login-item" }
+# "Keep this computer awake while it's plugged in" (phase 2 G5, HAL-17641):
+# our own crate, with the OS lock and power reading. Desktop only.
+halonic-keep-awake = { path = "crates/keep-awake" }
 # The updater's own reqwest, named only so src/updates_proxy.rs can give its
 # client a proxy and a redirect policy; the bucket check for a Scoop install
 # uses the same client type on the same rules. Pinned to the version the updater

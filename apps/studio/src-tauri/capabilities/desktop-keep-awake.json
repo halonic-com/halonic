@@ -1,0 +1,16 @@
+{
+  "identifier": "desktop-keep-awake",
+  "description": "On desktop, Studio's own main window may call keep_awake_set, which Settings › Remote's \"Keep this computer awake while it's plugged in\" switch and the remote state call (phase 2 G5, HAL-17641). It takes only two switches, the setting and remote; the shell holds the system's sleep lock only while both are on and the computer is on mains power. A focused app's window gets none of it, and it is local only, so the Studio the computer serves gets nothing.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "allow-keep-awake-set"
+  ]
+}
