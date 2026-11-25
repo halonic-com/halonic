@@ -14,6 +14,9 @@ import type { ChiefLineSettings } from "./chief-line-settings.ts";
 /** The longest message `board/post` takes, in characters. */
 export const boardPostMaxLength = 8000;
 
+/** Blocker statuses that no longer hold a task back. */
+const resolvedStatuses = new Set(["done", "cancelled"]);
+
 /** Where the board's posts are counted against the hourly limit. */
 const boardPostCounter = "board";
 
@@ -56,7 +59,23 @@ export async function boardPost(
   }
   // Posted by the plugin itself (no actorUserId): the run it starts stays on the board's seats.
   const comment = await ctx.issues.createComment(issue.id, `Board: ${message}`, companyId);
-  const woke = await wakeThread(ctx, companyId, issue.id, comment.id, "board_post");
+  // An ordinary task's blockers are its own: leave them, say so, and don't wake (or reopen) it.
+  const { blockedBy } = await ctx.issues.relations.get(issue.id, companyId);
+  const open = blockedBy.filter((blocker) => !resolvedStatuses.has(blocker.status));
+  if (open.length > 0) {
+    const ids = open.map((blocker) => blocker.identifier ?? blocker.id).join(", ");
+    return {
+      status: 409,
+      body: {
+        error: `Task ${issue.identifier ?? issue.id} is blocked by ${ids}, not woken (the post was made).`,
+        issueId: issue.id,
+        commentId: comment.id,
+        blockedBy: open.map((blocker) => blocker.identifier ?? blocker.id),
+        woke: false,
+      },
+    };
+  }
+  const woke = await wakeThread(ctx, companyId, issue.id, comment.id, { reason: "board_post" });
   return {
     status: 200,
     body: {

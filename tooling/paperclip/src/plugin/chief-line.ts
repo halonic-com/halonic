@@ -40,7 +40,7 @@ export interface ChiefLineApi {
   readonly issues: Pick<
     PluginIssuesClient,
     "list" | "get" | "create" | "update" | "createComment" | "listComments" | "requestWakeup"
-  >;
+  > & { readonly relations: Pick<PluginIssuesClient["relations"], "get" | "removeBlockers"> };
   readonly logger: {
     info(message: string, meta?: Record<string, unknown>): void;
     error(message: string, meta?: Record<string, unknown>): void;
@@ -177,23 +177,28 @@ async function findOrCreateThread(
 const parkedStatuses = new Set(["backlog", "done", "blocked"]);
 
 /**
- * Wakes Chief on a thread for one comment, first moving a `backlog`, `done` or `blocked` thread to `todo`
- * (the host wakes only open work). Logs a failure and answers false; never throws.
+ * Wakes the agent on a thread for one comment, first moving a `backlog`, `done` or `blocked` thread to `todo`
+ * (the host wakes only open work). With `unblock` (line threads only, never an ordinary task), first removes
+ * every blocked-by link on the thread: Chief links its follow-up tasks as blockers, and the host won't wake
+ * a task with unresolved blockers. Logs a failure and answers false; never throws.
  */
 export async function wakeThread(
   ctx: Pick<ChiefLineApi, "issues" | "logger">,
   companyId: string,
   threadId: string,
   commentId: string,
-  reason = "chief_line",
+  options: { readonly reason?: string; readonly unblock?: boolean } = {},
 ): Promise<boolean> {
   try {
+    if (options.unblock === true) {
+      await removeLineBlockers(ctx, companyId, threadId);
+    }
     const issue = await ctx.issues.get(threadId, companyId);
     if (issue !== null && parkedStatuses.has(issue.status)) {
       await reopenThread(ctx.issues, threadId, companyId);
     }
     await ctx.issues.requestWakeup(threadId, companyId, {
-      reason,
+      reason: options.reason ?? "chief_line",
       idempotencyKey: `chief-line ${commentId}`,
     });
     return true;
@@ -205,6 +210,27 @@ export async function wakeThread(
     });
     return false;
   }
+}
+
+/** Removes every blocked-by link on a line thread, logging the blockers it removed. */
+async function removeLineBlockers(
+  ctx: Pick<ChiefLineApi, "issues" | "logger">,
+  companyId: string,
+  threadId: string,
+): Promise<void> {
+  const { blockedBy } = await ctx.issues.relations.get(threadId, companyId);
+  if (blockedBy.length === 0) {
+    return;
+  }
+  await ctx.issues.relations.removeBlockers(
+    threadId,
+    blockedBy.map((blocker) => blocker.id),
+    companyId,
+  );
+  ctx.logger.info("Chief line: removed blockers from a line thread before waking it.", {
+    threadId,
+    removed: blockedBy.map((blocker) => blocker.identifier ?? blocker.id),
+  });
 }
 
 /** Counts one wake against the caller's hourly limit; false when the limit is reached. */
@@ -275,7 +301,7 @@ async function send(
     companyId,
   );
   // The comment is posted: from here on the send succeeded, whether or not Chief wakes.
-  const woke = await wakeThread(ctx, companyId, thread.id, comment.id);
+  const woke = await wakeThread(ctx, companyId, thread.id, comment.id, { unblock: true });
   return {
     status: 200,
     body: { threadId: thread.id, identifier: thread.identifier, commentId: comment.id, woke },
