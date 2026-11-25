@@ -51,6 +51,7 @@ function GitHubSignIn({
   readonly code: string | null;
   readonly start: StepperActions["signIn"];
 }) {
+  const textId = useId();
   if (code === null) {
     return (
       <div>
@@ -62,9 +63,19 @@ function GitHubSignIn({
   }
   return (
     <>
-      <p className="text-body text-fg">{signInWords.githubText}</p>
-      {/* Focus comes here from Sign in to GitHub, which the code replaces. */}
-      <div data-focus={focusMarks.signInCode} tabIndex={-1} className="focus-ring self-start">
+      <p id={textId} className="text-body text-fg">
+        {signInWords.githubText}
+      </p>
+      {/* Focus comes here from Sign in to GitHub, which the code replaces. A named group, so a
+          screen reader says what the focused element is before it reads the code. */}
+      {/* biome-ignore lint/a11y/useSemanticElements: a code to read, not form fields, so not a fieldset. */}
+      <div
+        role="group"
+        aria-labelledby={textId}
+        data-focus={focusMarks.signInCode}
+        tabIndex={-1}
+        className="focus-ring self-start"
+      >
         <CodeDisplay code={code} group={4} size="md" label={signInWords.githubCode} />
       </div>
       <p className="text-small text-fg-muted">{signInWords.githubWaiting}</p>

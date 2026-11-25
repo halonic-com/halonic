@@ -199,6 +199,8 @@ export function reviewActionItem(
   const { risk, touches } = checked.value;
   let stage: StepperStage = { kind: "desktop-only" };
   if (!policyAllows(item, source, risk, context.policy)) stage = { kind: "blocked" };
+  // Expired wins over blocked on purpose: an expired request can't run whatever the policy says,
+  // so the screen says it expired and offers no Decline, rather than blaming the user's settings.
   if (expiresAt.getTime() <= context.now.getTime()) stage = { kind: "expired" };
   const view: StepperView = {
     title: definition.title,
