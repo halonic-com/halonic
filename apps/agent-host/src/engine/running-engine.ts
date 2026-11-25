@@ -25,17 +25,33 @@ export interface TickingScheduler {
   dispose(): Promise<void>;
 }
 
+/** The runs going now, and how many of them wait for someone's answer. */
+export interface RunCounts {
+  readonly active: number;
+  readonly waiting: number;
+}
+
+/** What the schedule reads after a tick, for the health. */
+export interface TickReadings {
+  /** The runs going now (running or waiting), and how many of them wait. */
+  countRuns(): Promise<RunCounts>;
+  /** When the next routine is due to start after `at`, as an ISO time, or `null` when none is. */
+  nextRoutineAt(at: string): Promise<string | null>;
+}
+
 /**
  * Whether the routine scheduler ticks, whether routines are paused, when it
- * last ticked and how many runs are going, for the role's `health` frames.
- * Made before the engine opens, as the engine's `routines` option needs it.
+ * last ticked, how many runs are going and when the next routine is due, for
+ * the role's `health` frames. Made before the engine opens, as the engine's
+ * `routines` option needs it.
  */
 export class EngineSchedule {
   #scheduling = true;
   /** The shell's newest `pause_routines`, `null` until its first. */
   #paused: boolean | null = null;
   #lastTick: string | null = null;
-  #activeRuns = 0;
+  #runs: RunCounts = { active: 0, waiting: 0 };
+  #nextRoutineAt: string | null = null;
   readonly #listeners = new Set<() => void>();
 
   /** The health now. */
@@ -43,8 +59,10 @@ export class EngineSchedule {
     return {
       scheduling: this.#scheduling,
       paused: this.#paused !== false,
-      activeRuns: this.#activeRuns,
+      activeRuns: this.#runs.active,
+      runsWaiting: this.#runs.waiting,
       lastTick: this.#lastTick,
+      nextRoutineAt: this.#nextRoutineAt,
     };
   }
 
@@ -58,25 +76,31 @@ export class EngineSchedule {
    * The engine's routine ticks on `scheduler`: a tick after {@link stop}, or
    * before the shell's first `pause_routines`, does nothing; one while paused
    * passes, so the times due during the pause are skipped, not caught up after
-   * it. After each tick it counts the runs that are going.
+   * it. After each tick, paused or not, it counts the runs that are going, as
+   * a run started by hand goes on while routines are paused; after a tick that
+   * wasn't paused it also reads when the next routine is due.
    */
   ticks(
     scheduler: TickingScheduler,
-    countActiveRuns: () => Promise<number>,
+    readings: TickReadings,
   ): { onTick(at: string): Promise<void>; dispose(): Promise<void> } {
     return {
       onTick: async (at) => {
         // Before the shell's word nothing is stored either: if it says resume,
         // the times due since the last tick are caught up as after any start.
         if (!this.#scheduling || this.#paused === null) return;
+        const before = JSON.stringify(this.health());
         if (this.#paused) {
           await scheduler.pass();
-          return;
+        } else {
+          await scheduler.tick();
+          this.#lastTick = at;
+          this.#nextRoutineAt = await readings.nextRoutineAt(at);
         }
-        await scheduler.tick();
-        this.#lastTick = at;
-        this.#activeRuns = await countActiveRuns();
-        this.#changed();
+        this.#runs = await readings.countRuns();
+        // A pause or a stop while the tick ran wins over what it read.
+        if (this.#paused || !this.#scheduling) this.#nextRoutineAt = null;
+        if (JSON.stringify(this.health()) !== before) this.#changed();
       },
       dispose: () => scheduler.dispose(),
     };
@@ -87,6 +111,8 @@ export class EngineSchedule {
     // Before the first one the health already says paused.
     const wasPaused = this.#paused !== false;
     this.#paused = paused;
+    // No routine is due while paused; the first tick after the resume reads it again.
+    if (paused) this.#nextRoutineAt = null;
     if (paused !== wasPaused) this.#changed();
   }
 
@@ -94,6 +120,7 @@ export class EngineSchedule {
   stop(): void {
     if (!this.#scheduling) return;
     this.#scheduling = false;
+    this.#nextRoutineAt = null;
     this.#changed();
   }
 

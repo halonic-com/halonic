@@ -112,8 +112,20 @@ export interface HealthMessage {
   readonly paused: boolean;
   /** The runs that are going now (running or waiting). */
   readonly activeRuns: number;
+  /**
+   * Of `activeRuns`, the ones waiting for someone's answer, such as an
+   * approval: the tray's "1 run needs you". They aren't in progress.
+   */
+  readonly runsWaiting: number;
   /** When the scheduler last ticked, as an ISO time, or `null` before its first tick. */
   readonly lastTick: string | null;
+  /**
+   * When the next routine is due to start on its own, as
+   * `Date.toISOString()` writes it (`2026-11-25T14:00:00.000Z`), or `null`
+   * when none is, before the first tick, or while routines are paused or
+   * stopping.
+   */
+  readonly nextRoutineAt: string | null;
 }
 
 /**
