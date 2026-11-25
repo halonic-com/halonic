@@ -1,11 +1,13 @@
 import type { ActionResultAnswer, InboxActionRequest } from "./agent-messaging-actions.ts";
+import type { ChannelResult, MessageSendOptions, MessageWork } from "./agent-messaging-channels.ts";
 
 /**
  * Version of the {@link AgentMessaging} port. A breaking change bumps it and comes with an ADR.
  * Version 2 adds attachments, `readAttachment` and files sent with a message. Version 3 adds action
- * items and the `action-result` answer (ADR 2026-11-24, AgentMessaging version 3).
+ * items and the `action-result` answer (ADR 2026-11-24, AgentMessaging version 3). Version 4 adds
+ * channels: conversations with several agents (ADR 2026-11-24, agent messaging, "Version 4").
  */
-export const agentMessagingVersion = 3;
+export const agentMessagingVersion = 4;
 
 /**
  * An item's ID, opaque to apps: only the provider that made it reads it. It
@@ -86,11 +88,14 @@ export type MessagingAuthor =
   | { kind: "agent"; agent: MessagingId; name: string }
   | { kind: "person"; name: string };
 
-/** One conversation: the person and one agent. Phase 2 adds channels with several agents. */
+/** One conversation: the person and one agent, or in a channel the person and several agents. */
 export interface Conversation {
   id: MessagingId;
   source: MessagingId;
+  /** For a direct conversation, the agent. For a channel, its lead: the agent who answers when the person names no one. */
   agent: MessagingId;
+  /** Only for a channel: every agent in it, the lead included, 2 to 8 agents of one source. */
+  members?: readonly MessagingId[];
   title: string;
   /** When the last message came, as ISO text. Lists are newest first by this. */
   updatedAt: string;
@@ -103,6 +108,9 @@ export interface Conversation {
  * whoever can steer one: apps render it with no raw HTML, no scripts and no
  * `javascript:` links, open links outside the app, load no image on their
  * own, and never treat it as a Halonic command.
+ *
+ * `author` always comes from the source: a message the person sent is `me`,
+ * and no app can say who wrote a message.
  */
 export interface Message {
   id: MessagingId;
@@ -112,6 +120,10 @@ export interface Message {
   /** Files sent with it, in the order they were added; often none. */
   attachments: readonly Attachment[];
   sentAt: string;
+  /** Who the person addressed, from {@link MessageSendOptions.to}. */
+  to?: readonly MessagingId[];
+  /** One line per agent the person's message went to. */
+  work?: readonly MessageWork[];
 }
 
 /** One answer an inbox item offers. */
@@ -163,6 +175,8 @@ export interface InboxItem {
   attachments: readonly Attachment[];
   /** The work it belongs to, when the source has one. */
   work?: MessagingId;
+  /** Set by the provider only: `risky` is an approval that spends money or changes who may do what. Absent reads as `normal`. */
+  risk?: "normal" | "risky";
   createdAt: string;
   state: InboxItemState;
 }
@@ -195,6 +209,8 @@ export interface WorkItem {
  * `too-large` and `unsupported-type` refuse a file sent with a message, whole: nothing of it is sent.
  * `bad-answer`: the answer doesn't fit the item: an option or a reply to an action item, an
  * `action-result` to any other, or an `action-result` that fails its allow-list.
+ * `bad-members`: the agents don't make a channel (`channelMembersFit`).
+ * `not-supported`: the source has no channels.
  */
 export type MessagingRefusal =
   | "offline"
@@ -202,7 +218,9 @@ export type MessagingRefusal =
   | "not-found"
   | "too-large"
   | "unsupported-type"
-  | "bad-answer";
+  | "bad-answer"
+  | "bad-members"
+  | "not-supported";
 
 /** What answering an inbox item did. An item is answered once; the source decides who was first. */
 export type AnswerResult =
@@ -263,12 +281,35 @@ export interface AgentMessaging {
    * load nothing on their own and never get the provider's address for it.
    */
   readAttachment(attachment: MessagingId): Promise<AttachmentRead>;
-  /** Sends a message, with files when given; the engine refuses a file it won't take, and then sends nothing. */
+  /**
+   * Sends as the person, with files when given, to the agents in `options.to` or else the lead.
+   * The engine refuses a file it won't take, and then sends nothing. A `to` naming anyone outside
+   * the conversation is refused with `not-found`.
+   */
   send(
     conversation: MessagingId,
     body: string,
     attachments?: readonly OutgoingAttachment[],
+    options?: MessageSendOptions,
   ): Promise<SendResult>;
+  /** Starts a channel with these agents, `lead` among them (`channelMembersFit`). Only the person does this. */
+  startChannel(
+    title: string,
+    members: readonly MessagingId[],
+    lead: MessagingId,
+  ): Promise<ChannelResult>;
+  /** Sets a channel's members. A new member sees the channel's history, so the app says so first. */
+  setMembers(
+    channel: MessagingId,
+    members: readonly MessagingId[],
+    lead: MessagingId,
+  ): Promise<ChannelResult>;
+  /** Channels in the sources that the person isn't in. */
+  browseChannels(): Promise<readonly Conversation[]>;
+  /** The person joins a channel. Agents are members only through `setMembers`. */
+  joinChannel(channel: MessagingId): Promise<ChannelResult>;
+  /** The person leaves a channel; it shows in `browseChannels` again. */
+  leaveChannel(channel: MessagingId): Promise<ChannelResult>;
   /** The ID of each source that changed, as it changes. Ends when the reader stops. */
   changes(): AsyncIterable<MessagingId>;
 }

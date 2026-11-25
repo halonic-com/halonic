@@ -41,7 +41,13 @@ function keyedProvider(fake: FakeAgentMessaging, now: () => Date): AgentMessagin
     search: (text: string) => read(() => fake.search(text))(),
     answer: (item, answer) => fake.answer(item, answer),
     readAttachment: (attachment) => fake.readAttachment(attachment),
-    send: (conversation, body, attachments) => fake.send(conversation, body, attachments),
+    send: (conversation, body, attachments, options) =>
+      fake.send(conversation, body, attachments, options),
+    startChannel: (title, members, lead) => fake.startChannel(title, members, lead),
+    setMembers: (channel, members, lead) => fake.setMembers(channel, members, lead),
+    browseChannels: () => fake.browseChannels(),
+    joinChannel: (channel) => fake.joinChannel(channel),
+    leaveChannel: (channel) => fake.leaveChannel(channel),
     changes: () => fake.changes(),
   };
 }
@@ -184,6 +190,38 @@ verifies("agent-host.agent-messaging-cache", () => {
       for (const cacheFile of await filesUnder(cacheFolder)) {
         expect(await readFile(cacheFile, "utf8")).not.toContain('"bytes"');
       }
+    });
+
+    it("keeps a channel's members, who a message was for and its work lines for an offline read", async () => {
+      const { source } = await readAcme();
+      const [chief] = await messaging.listAgents();
+      const elena = fake.addAgent(source.id, { name: "Elena" });
+      const started = await messaging.startChannel("Launch", [chief?.id ?? "", elena.id], elena.id);
+      if (started.outcome !== "done") throw new Error(`no channel: ${started.reason}`);
+      const channel = started.conversation;
+      const since = "2026-11-24T14:03:00.000Z";
+      fake.addMessage(channel.id, {
+        author: { kind: "me" },
+        body: "Can you both check this?",
+        to: [elena.id],
+        work: [{ agent: elena.id, state: "working", work: "acme-task-7", since }],
+      });
+      fake.addInboxItem(source.id, { question: "Buy 2 more seats?", risk: "risky" });
+      const live = {
+        conversations: await messaging.listConversations(),
+        messages: await messaging.listMessages(channel.id),
+        inbox: await messaging.listInboxItems(),
+      };
+      fake.goOffline(source.id);
+
+      expect(await messaging.listConversations()).toEqual(live.conversations);
+      expect(live.conversations.find((each) => each.id === channel.id)?.members).toEqual(
+        channel.members,
+      );
+      expect(await messaging.listMessages(channel.id)).toEqual(live.messages);
+      expect(live.messages.at(-1)).toMatchObject({ to: [elena.id], work: [{ state: "working" }] });
+      expect(await messaging.listInboxItems()).toEqual(live.inbox);
+      expect(live.inbox[0]?.risk).toBe("risky");
     });
 
     it("keeps an action item and its action-result answer for an offline read", async () => {

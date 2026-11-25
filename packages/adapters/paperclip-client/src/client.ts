@@ -1,19 +1,22 @@
-import type {
-  AgentMessaging,
-  AnswerResult,
-  AttachmentRead,
-  Conversation,
-  InboxAnswer,
-  InboxItem,
-  Message,
-  MessagingAgent,
-  MessagingId,
-  MessagingRefusal,
-  MessagingSource,
-  OutgoingAttachment,
-  SearchHit,
-  SendResult,
-  WorkItem,
+import {
+  type AgentMessaging,
+  type AnswerResult,
+  type AttachmentRead,
+  addresseesFit,
+  type ChannelResult,
+  type Conversation,
+  type InboxAnswer,
+  type InboxItem,
+  type Message,
+  type MessageSendOptions,
+  type MessagingAgent,
+  type MessagingId,
+  type MessagingRefusal,
+  type MessagingSource,
+  type OutgoingAttachment,
+  type SearchHit,
+  type SendResult,
+  type WorkItem,
 } from "@halonicjs/ports";
 import { ChangeFeed } from "./changes.ts";
 import { PaperclipIds } from "./ids.ts";
@@ -187,6 +190,7 @@ export class PaperclipMessaging implements AgentMessaging {
     conversation: MessagingId,
     body: string,
     attachments: readonly OutgoingAttachment[] = [],
+    options: MessageSendOptions = {},
   ): Promise<SendResult> {
     // Files aren't sent to Paperclip yet, so a message with files is refused whole, before any request.
     if (attachments.length > 0) {
@@ -199,7 +203,7 @@ export class PaperclipMessaging implements AgentMessaging {
     }
     // The key may comment only on the person's own chats (ADR: "comment on a chat task"),
     // so a stale or made-up chat ID never turns into a comment on some other task.
-    const notAChat = await this.#refusalUnlessChat(task);
+    const notAChat = await this.#refusalUnlessChat(task, options.to ?? []);
     if (notAChat !== undefined) {
       return { outcome: "refused", reason: notAChat };
     }
@@ -216,6 +220,37 @@ export class PaperclipMessaging implements AgentMessaging {
     }
     this.#changedAfter(true);
     return { outcome: "sent", message };
+  }
+
+  // Paperclip has no channels: every chat is one agent's. So it lists none to browse and refuses
+  // every channel call before any request (AgentMessaging version 4).
+
+  startChannel(
+    _title: string,
+    _members: readonly MessagingId[],
+    _lead: MessagingId,
+  ): Promise<ChannelResult> {
+    return noChannels();
+  }
+
+  setMembers(
+    _channel: MessagingId,
+    _members: readonly MessagingId[],
+    _lead: MessagingId,
+  ): Promise<ChannelResult> {
+    return noChannels();
+  }
+
+  async browseChannels(): Promise<readonly Conversation[]> {
+    return [];
+  }
+
+  joinChannel(_channel: MessagingId): Promise<ChannelResult> {
+    return noChannels();
+  }
+
+  leaveChannel(_channel: MessagingId): Promise<ChannelResult> {
+    return noChannels();
   }
 
   changes(): AsyncIterable<MessagingId> {
@@ -258,8 +293,14 @@ export class PaperclipMessaging implements AgentMessaging {
     }
   }
 
-  /** Why `task` can't take a message: offline, signed out, or not one of the person's chats. */
-  async #refusalUnlessChat(task: string): Promise<MessagingRefusal | undefined> {
+  /**
+   * Why `task` can't take a message: offline, signed out, not one of the person's chats, or a `to`
+   * naming an agent other than the chat's one agent.
+   */
+  async #refusalUnlessChat(
+    task: string,
+    to: readonly MessagingId[],
+  ): Promise<MessagingRefusal | undefined> {
     const answer = await this.#reader.send("listChats", { path: { company: this.#company } });
     if (answer.kind === "failed") {
       const { failure } = answer;
@@ -268,7 +309,11 @@ export class PaperclipMessaging implements AgentMessaging {
       }
     }
     const chats = asRecords(bodyOf("listChats", answer));
-    return chats.some((chat) => text(chat, "id") === task) ? undefined : "not-found";
+    const chat = chats.find((each) => text(each, "id") === task);
+    if (chat === undefined) return "not-found";
+    if (to.length === 0) return undefined;
+    const conversation = toConversation(this.#context(), chat);
+    return conversation !== undefined && addresseesFit(conversation, to) ? undefined : "not-found";
   }
 
   async #inboxFrom(tasks: readonly JsonRecord[] | undefined): Promise<InboxItem[]> {
@@ -297,4 +342,9 @@ export class PaperclipMessaging implements AgentMessaging {
       ...(this.#userId === undefined ? {} : { userId: this.#userId }),
     };
   }
+}
+
+/** A channel call Paperclip can't serve. */
+function noChannels(): Promise<ChannelResult> {
+  return Promise.resolve({ outcome: "refused", reason: "not-supported" });
 }

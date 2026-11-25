@@ -55,6 +55,16 @@ export {
   type UntrustedText,
 } from "./agent-messaging-actions.ts";
 export {
+  addresseesFit,
+  type ChannelResult,
+  channelMembersFit,
+  channelMembersMax,
+  channelMembersMin,
+  type MessageSendOptions,
+  type MessageWork,
+  type MessageWorkState,
+} from "./agent-messaging-channels.ts";
+export {
   type AgentPlacementKey,
   type AgentPlacementRecord,
   type AgentPlacementStore,

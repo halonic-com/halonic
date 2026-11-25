@@ -186,6 +186,23 @@ verifies("ports.agent-messaging", () => {
       expect(paperclip.seen.filter((request) => request.method === "POST")).toEqual([]);
     });
 
+    it("has no channels, and sends nothing addressed to an agent outside the chat", async () => {
+      paperclip.serveAcme();
+      const messaging = client();
+      const chat = `${source}:chat:${chatTask}`;
+      const notSupported = { outcome: "refused", reason: "not-supported" };
+      expect(await messaging.startChannel("Launch", [], "")).toEqual(notSupported);
+      expect(await messaging.setMembers(chat, [], "")).toEqual(notSupported);
+      expect(await messaging.joinChannel(chat)).toEqual(notSupported);
+      expect(await messaging.leaveChannel(chat)).toEqual(notSupported);
+      expect(await messaging.browseChannels()).toEqual([]);
+      expect(await messaging.send(chat, "hi", [], { to: [`${source}:agent:someone`] })).toEqual({
+        outcome: "refused",
+        reason: "not-found",
+      });
+      expect(paperclip.seen.filter((request) => request.method === "POST")).toEqual([]);
+    });
+
     it("refuses a write to a task Paperclip doesn't know or after sign-out", async () => {
       paperclip
         .serveAcme()

@@ -134,6 +134,37 @@ verifies("agent-host.messaging-hub", () => {
       expect(result.outcome).toBe("sent");
     });
 
+    it("passes who a message is addressed to on to the provider that has the conversation", async () => {
+      const { b, sourceB, hub } = twoSources();
+      const chief = b.addAgent(sourceB.id, { name: "Chief" });
+      const chat = b.addConversation(chief.id);
+
+      const result = await hub.send(chat.id, "Hello", [], { to: [chief.id] });
+
+      expect(result).toMatchObject({ outcome: "sent", message: { to: [chief.id] } });
+    });
+
+    it("lists no channel to browse and refuses every channel write, asking no provider", async () => {
+      const { a, b, sourceA, hub } = twoSources();
+      const chief = a.addAgent(sourceA.id, { name: "Chief" });
+      const liam = a.addAgent(sourceA.id, { name: "Liam" });
+      const calls = [a, b].flatMap((each) => [
+        vi.spyOn(each, "startChannel"),
+        vi.spyOn(each, "browseChannels"),
+      ]);
+
+      const results = [
+        await hub.startChannel("Launch", [chief.id, liam.id], chief.id),
+        await hub.setMembers("c-1", [chief.id, liam.id], chief.id),
+        await hub.joinChannel("c-1"),
+        await hub.leaveChannel("c-1"),
+      ];
+
+      expect(await hub.browseChannels()).toEqual([]);
+      for (const result of results) expect(result).toMatchObject({ reason: "not-supported" });
+      for (const call of calls) expect(call).not.toHaveBeenCalled();
+    });
+
     it("refuses an ID no provider listed with not-found, and sends it to no provider", async () => {
       const { a, b, hub } = twoSources();
       const calls = [

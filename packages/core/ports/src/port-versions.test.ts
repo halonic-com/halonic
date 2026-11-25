@@ -11,6 +11,7 @@ const readme = readFileSync(fileURLToPath(new URL("../README.md", import.meta.ur
 const notPorts = new Set([
   "cant-try-error.ts",
   "agent-messaging-actions.ts",
+  "agent-messaging-channels.ts",
   "agent-runs-not-available.ts",
   "chat.ts",
   "connector-start-failure.ts",

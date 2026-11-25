@@ -2,10 +2,12 @@ import type {
   AgentMessaging,
   AnswerResult,
   AttachmentRead,
+  ChannelResult,
   Conversation,
   InboxAnswer,
   InboxItem,
   Message,
+  MessageSendOptions,
   MessagingAgent,
   MessagingId,
   MessagingSource,
@@ -144,12 +146,44 @@ export class MessagingHub implements AgentMessaging {
     conversation: MessagingId,
     body: string,
     attachments?: readonly OutgoingAttachment[],
+    options?: MessageSendOptions,
   ): Promise<SendResult> {
     const owner = await this.#conversationOwner(conversation);
     if (owner === undefined) return { outcome: "refused", reason: "not-found" };
-    const result = await owner.messaging.send(conversation, body, attachments);
+    const result = await owner.messaging.send(conversation, body, attachments, options);
     if (result.outcome === "sent") this.#rememberSent(conversation, owner, result.message);
     return result;
+  }
+
+  // Channels aren't joined across providers yet: the hub lists none and
+  // refuses every channel write, so no provider is asked (AgentMessaging version 4).
+
+  startChannel(
+    _title: string,
+    _members: readonly MessagingId[],
+    _lead: MessagingId,
+  ): Promise<ChannelResult> {
+    return notSupported();
+  }
+
+  setMembers(
+    _channel: MessagingId,
+    _members: readonly MessagingId[],
+    _lead: MessagingId,
+  ): Promise<ChannelResult> {
+    return notSupported();
+  }
+
+  browseChannels(): Promise<readonly Conversation[]> {
+    return Promise.resolve([]);
+  }
+
+  joinChannel(_channel: MessagingId): Promise<ChannelResult> {
+    return notSupported();
+  }
+
+  leaveChannel(_channel: MessagingId): Promise<ChannelResult> {
+    return notSupported();
   }
 
   changes(): AsyncIterable<MessagingId> {
@@ -275,6 +309,11 @@ interface ConversationFiles {
 /** The IDs of the files on an inbox item or a message. */
 function attachmentIds(item: { attachments: readonly { id: MessagingId }[] }): MessagingId[] {
   return item.attachments.map((attachment) => attachment.id);
+}
+
+/** A channel write the hub doesn't route yet. */
+function notSupported(): Promise<ChannelResult> {
+  return Promise.resolve({ outcome: "refused", reason: "not-supported" });
 }
 
 /** The lists of the providers that answered, one after the other. */
