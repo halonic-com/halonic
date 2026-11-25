@@ -29,7 +29,8 @@ verifies("paperclip-client.team-status", () => {
         unpricedRuns: 2,
       });
       const froms = paperclip.seen.map((request) => request.query.get("from"));
-      expect(froms).toEqual(["2026-11-24T00:00:00.000Z", "2026-11-24T00:00:00.000Z"]);
+      // The two cost routes, then the seats summary for the runs with no seat.
+      expect(froms).toEqual(Array(3).fill("2026-11-24T00:00:00.000Z"));
       await connectTeam(paperclip).spend("month");
       expect(paperclip.seen.at(-1)?.query.get("from")).toBe("2026-11-01T00:00:00.000Z");
     });

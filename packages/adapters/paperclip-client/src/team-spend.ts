@@ -11,6 +11,11 @@ export interface SpendAnswers {
   summary: unknown;
   /** `costs/by-provider`: tokens of every billing type, subscription included. */
   byProvider: unknown;
+  /**
+   * `seats/summary?from=`: its `unknownSeatRuns`, the runs with cost rows but
+   * no seat. `undefined` when the seats plugin isn't installed.
+   */
+  seats: unknown;
 }
 
 /** The answers one agent spend read is made from. */
@@ -72,6 +77,18 @@ function addTokens(total: TokenCount, more: TokenCount): TokenCount {
 
 const noTokens: TokenCount = { input: 0, cached: 0, output: 0 };
 
+/**
+ * The seats plugin's count of runs with no seat, when it sent a whole number
+ * of at least 0. A plugin from before HAL-17898 sends none, so the field is
+ * left out, as the port asks of a source that can't tell.
+ */
+function unknownSeatRunsOf(seats: unknown): Pick<SpendSummary, "unknownSeatRuns"> {
+  const value = field(asRecord(seats), "unknownSeatRuns");
+  return typeof value === "number" && Number.isInteger(value) && value >= 0
+    ? { unknownSeatRuns: value }
+    : {};
+}
+
 /** The company's spend for the context's range: paid money only, and the tokens of all work. */
 export function toSpendSummary(context: SpendContext, answers: SpendAnswers): SpendSummary {
   const summary = asRecord(answers.summary);
@@ -85,6 +102,7 @@ export function toSpendSummary(context: SpendContext, answers: SpendAnswers): Sp
     tokens,
     ...(budgetCents > 0 ? { budget: money(budgetCents) } : {}),
     unpricedRuns: count(summary, "pendingRunCount"),
+    ...unknownSeatRunsOf(answers.seats),
   };
 }
 

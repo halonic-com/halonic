@@ -85,10 +85,13 @@ export class PaperclipTeamStatus implements TeamStatus {
   }
 
   async spend(range: SpendRange): Promise<readonly SpendSummary[]> {
-    const details = this.#costDetails(range);
+    const from = rangeStart(range, this.#now());
+    const details = { path: { company: this.#company }, query: { from } };
     const summary = await this.#reader.read("spendSummary", details);
     const byProvider = await this.#reader.read("spendByProvider", details);
-    return [toSpendSummary(this.#spendContext(range), { summary, byProvider })];
+    // The seats plugin counts the range's runs with no seat; the cost routes can't tell.
+    const seats = await this.#pluginRead("seats", "seatsSummary", { query: { from } });
+    return [toSpendSummary(this.#spendContext(range), { summary, byProvider, seats })];
   }
 
   async agentSpend(range: SpendRange): Promise<readonly AgentSpend[]> {
