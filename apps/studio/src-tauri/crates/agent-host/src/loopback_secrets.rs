@@ -9,17 +9,21 @@
 //! alone writes to the host's input, so a keychain that waits for the person
 //! never holds up reading, and stopping never waits for a write. Anything
 //! but one request at a time on id 0 closes the host's input, so the host
-//! stops.
+//! stops. The host's answers to the shell's notices (`opened_workspaces.rs`)
+//! travel on id 0 too; they go to the shell's waiting call, never to the
+//! keychain.
 
 use std::io::{Read, Write};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::thread;
+use std::time::Instant;
 
 use halonic_secrets::SecretBackend;
 
 use crate::host_secrets::{HOST_SECRETS_ID, answer};
+use crate::opened_workspaces::noticed_folder;
 use crate::relay::{DATA, HostFrame, frame, read_host_frame};
 
 /// What goes to the thread that holds the host's input.
@@ -37,6 +41,8 @@ enum ToHost {
 pub(crate) struct LoopbackSecrets {
     to_host: Sender<ToHost>,
     stopped: Arc<AtomicBool>,
+    /// The folders the host answered `noticed` for, in order.
+    noticed: Receiver<String>,
 }
 
 impl LoopbackSecrets {
@@ -49,6 +55,7 @@ impl LoopbackSecrets {
         backend: Arc<dyn SecretBackend>,
     ) -> Self {
         let (to_host, received) = mpsc::channel();
+        let (noticed_sender, noticed) = mpsc::channel();
         let stopped = Arc::new(AtomicBool::new(false));
         let in_flight = Arc::new(AtomicBool::new(false));
         let answering = Answering {
@@ -61,11 +68,16 @@ impl LoopbackSecrets {
         });
         let reading = Reading {
             to_host: to_host.clone(),
+            noticed: noticed_sender,
             in_flight,
             stopped: Arc::clone(&stopped),
         };
         spawn("host-secrets-read", move || reading.run(output));
-        Self { to_host, stopped }
+        Self {
+            to_host,
+            stopped,
+            noticed,
+        }
     }
 
     /// True once the channel stopped: the host broke its rules, or its
@@ -78,6 +90,20 @@ impl LoopbackSecrets {
     /// written. False once the channel stopped.
     pub(crate) fn notify(&self, notice: Vec<u8>) -> bool {
         !self.is_stopped() && self.to_host.send(ToHost::Notice(notice)).is_ok()
+    }
+
+    /// Waits until `deadline` for the host's `noticed` answer for `folder`,
+    /// skipping answers for folders an earlier wait gave up on. False when
+    /// the deadline passed or the channel stopped first.
+    pub(crate) fn wait_noticed(&self, folder: &str, deadline: Instant) -> bool {
+        loop {
+            let left = deadline.saturating_duration_since(Instant::now());
+            match self.noticed.recv_timeout(left) {
+                Ok(noticed) if noticed == folder => return true,
+                Ok(_) => {}
+                Err(RecvTimeoutError::Timeout | RecvTimeoutError::Disconnected) => return false,
+            }
+        }
     }
 
     /// Closes the host's input once any answer being written is. Stopping
@@ -107,16 +133,27 @@ impl std::fmt::Debug for LoopbackSecrets {
 /// The thread that reads the host's frames.
 struct Reading {
     to_host: Sender<ToHost>,
+    /// Where the host's `noticed` answers go.
+    noticed: Sender<String>,
     /// Set when a request arrives, cleared just before its answer is written.
     in_flight: Arc<AtomicBool>,
     stopped: Arc<AtomicBool>,
 }
 
 impl Reading {
-    /// Passes each request on until the output ends or breaks the rules,
-    /// then closes the host's input.
+    /// Passes each request on, and each `noticed` answer to the waiting
+    /// call, until the output ends or breaks the rules, then closes the
+    /// host's input.
     fn run(self, mut output: impl Read) {
         while let Some(HostFrame { id, kind, bytes }) = read_host_frame(&mut output) {
+            if id == HOST_SECRETS_ID
+                && kind == DATA
+                && let Some(folder) = noticed_folder(&bytes)
+            {
+                // Nobody may wait any more: the shell gave up on it.
+                let _ = self.noticed.send(folder);
+                continue;
+            }
             let one_request = id == HOST_SECRETS_ID
                 && kind == DATA
                 && !self.in_flight.swap(true, Ordering::SeqCst);

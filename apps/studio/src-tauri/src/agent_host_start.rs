@@ -104,7 +104,7 @@ fn start_host<R: Runtime>(
 
 /// Starts the host beside the shell; with `secrets`, the shell answers for
 /// the host's own secrets from it.
-fn start_local(
+pub(super) fn start_local(
     command: Command,
     secrets: Option<Arc<dyn SecretBackend>>,
 ) -> Result<AgentHost, HostRefusal> {
@@ -121,7 +121,7 @@ fn start_in_distro(
 }
 
 /// The shell's keychain, for the real host's own secrets.
-fn host_keychain<R: Runtime>(app: &AppHandle<R>) -> Arc<dyn SecretBackend> {
+pub(super) fn host_keychain<R: Runtime>(app: &AppHandle<R>) -> Arc<dyn SecretBackend> {
     app.state::<SecretsState>().host_keychain()
 }
 
@@ -257,7 +257,7 @@ pub(super) async fn local_host_starts<R: Runtime>(app: &AppHandle<R>) -> bool {
 
 /// The host next to the shell's executable, for the CLI's profile, with
 /// the folders it may sweep kept grants in.
-fn real_host_command<R: Runtime>(app: &AppHandle<R>) -> Result<Command, HostRefusal> {
+pub(super) fn real_host_command<R: Runtime>(app: &AppHandle<R>) -> Result<Command, HostRefusal> {
     let profile = cli_profile(app).map_err(HostRefusal::from)?;
     let shell = std::env::current_exe().map_err(|error| HostRefusal::new("io", error))?;
     let executable = executable_beside(&shell).map_err(unavailable)?;
@@ -275,7 +275,7 @@ fn real_host_command<R: Runtime>(app: &AppHandle<R>) -> Result<Command, HostRefu
 /// `opened-workspaces`): a host whose workspace routes don't know a folder
 /// refuses it as `unknown_workspace`. Only a host beside the shell is told.
 /// An app without the folders' state (the commands' tests) has none open.
-fn opened_folders<R: Runtime>(app: &AppHandle<R>) -> Vec<PathBuf> {
+pub(super) fn opened_folders<R: Runtime>(app: &AppHandle<R>) -> Vec<PathBuf> {
     let Some(git) = app.try_state::<GitState>() else {
         return Vec::new();
     };

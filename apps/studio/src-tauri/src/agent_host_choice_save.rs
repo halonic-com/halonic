@@ -129,6 +129,8 @@ fn save_choice<R: Runtime>(
     put_copy_back_when_unsaved(saved, put_back)?;
     if moves_host(before.map(|(kind, _)| kind), after) {
         drop(host.take());
+        // Whether a messaging host runs beside the shell follows where the host runs.
+        drop(state.messaging_host.lock().map_err(|_| poisoned())?.take());
         state.streams.end(|_| true);
         // The engines forget the old host's address and token.
         #[cfg(desktop)]

@@ -16,9 +16,10 @@ pub fn end_page_streams<R: Runtime>(app: &AppHandle<R>, page: &str) {
     }
 }
 
-/// Stops the host, as dropping it does, before the updater's installer
-/// replaces its file: the updater ends the shell with `exit`, which drops
-/// nothing (HAL-1206). The background engines stop first, as Quit stops
+/// Stops the host, and the messaging host beside the shell where one runs,
+/// as dropping them does, before the updater's installer replaces their
+/// file: the updater ends the shell with `exit`, which drops nothing
+/// (HAL-1206). The background engines stop first, as Quit stops
 /// them, since their harness steps use the host.
 pub fn stop_host<R: Runtime>(app: &AppHandle<R>) {
     #[cfg(desktop)]
@@ -28,6 +29,12 @@ pub fn stop_host<R: Runtime>(app: &AppHandle<R>) {
     };
     let host = state.host.lock().ok().and_then(|mut host| host.take());
     drop(host);
+    let messaging = state
+        .messaging_host
+        .lock()
+        .ok()
+        .and_then(|mut host| host.take());
+    drop(messaging);
 }
 
 /// Starts the host once the WSL setup is done (HAL-16765). It refused to
