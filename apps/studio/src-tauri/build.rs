@@ -131,6 +131,7 @@ fn main() {
         "login_item_get",
         "login_item_set",
         "show_main_window",
+        "set_frame_colour",
     ]);
     let attributes = tauri_build::Attributes::new()
         .app_manifest(commands)

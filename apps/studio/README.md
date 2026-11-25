@@ -62,7 +62,10 @@ on the same page instead, with its own taskbar entry, and a second start hands
 its arguments to the running Halonic (`studio.src-tauri.focused-apps`,
 `studio.installer-focused-apps`). The page reads its window's label and shows
 only that app, for the workspace first in Recent, on the focused frame
-(`studio.focused-app-window`, `shell.focused-apps`). On desktop only, the
+(`studio.focused-app-window`, `shell.focused-apps`). Each window tells the
+shell its frame's colour through `set_frame_colour`, so on Windows 11 the
+title bar takes it; Windows 10 keeps the system's title bar
+(`studio.window-title-bar-colour`, `studio.src-tauri.frame-colour`). On desktop only, the
 page may also call the commands for git, secrets, trust and picked folders
 (`reopen_folder`, `forget_folder`), runs, the workspace's files (`fs_*`) and the agent
 host (`agent_host_request`, `agent_host_stream`, `agent_host_stream_end`),

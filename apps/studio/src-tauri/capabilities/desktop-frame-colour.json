@@ -1,0 +1,18 @@
+{
+  "identifier": "desktop-frame-colour",
+  "description": "On desktop, the app's own page may tell the shell its frame's colour, through set_frame_colour, so on Windows the window's title bar takes it (HAL-18698). The command takes one #rrggbb colour, refuses anything else, and colours only the title bar of the window that calls it. It reads nothing. It is local only, so the Studio the computer serves gets nothing.",
+  "local": true,
+  "windows": [
+    "main",
+    "inbox",
+    "messenger"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "allow-set-frame-colour"
+  ]
+}

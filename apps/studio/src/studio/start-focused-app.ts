@@ -11,6 +11,7 @@ import {
   type Shell,
 } from "@halonicjs/studio-shell";
 import type { DeviceMemory } from "./device-memory.ts";
+import { focusedFrameColour, followFrameColour } from "./frame-colour.ts";
 import { noStorage, openFolder } from "./open-folder.ts";
 import type { StartedStudio, StudioPage } from "./start-studio.ts";
 import { windowLabelOf } from "./window-label.ts";
@@ -51,6 +52,8 @@ export function focusedAppOf(
 export function startFocusedApp(page: StudioPage, parts: FocusedAppParts): StartedStudio {
   const { shell, ipc, app, language, display } = parts;
   const stopAppearance = watchAppearance(display, page.element.ownerDocument.documentElement);
+  const document = page.element.ownerDocument;
+  const stopFrameColour = followFrameColour(ipc, document, () => focusedFrameColour(document));
   const device: DeviceMemory = {
     recent: new RecentWorkspaces(page.storage ?? noStorage),
     storage: page.storage ?? noStorage,
@@ -79,6 +82,7 @@ export function startFocusedApp(page: StudioPage, parts: FocusedAppParts): Start
     stop: async () => {
       const opened = await shown;
       mounted?.unmount();
+      stopFrameColour();
       stopAppearance();
       await opened?.dispose();
     },

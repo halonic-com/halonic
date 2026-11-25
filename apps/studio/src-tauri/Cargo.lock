@@ -1886,6 +1886,7 @@ dependencies = [
  "halonic-tunnel",
  "halonic-update-state",
  "halonic-window-app-id",
+ "halonic-window-caption",
  "halonic-workspace-files",
  "reqwest 0.13.5",
  "rfd",
@@ -1955,6 +1956,13 @@ dependencies = [
 
 [[package]]
 name = "halonic-window-app-id"
+version = "0.1.0"
+dependencies = [
+ "windows",
+]
+
+[[package]]
+name = "halonic-window-caption"
 version = "0.1.0"
 dependencies = [
  "windows",

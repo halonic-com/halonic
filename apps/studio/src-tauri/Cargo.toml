@@ -59,6 +59,10 @@ halonic-shell-log = { path = "crates/shell-log" }
 halonic-trust-grant = { path = "crates/trust-grant" }
 halonic-trust-store = { path = "crates/trust-store" }
 halonic-update-state = { path = "crates/update-state" }
+# The title bar takes the frame's colour on Windows (HAL-18698). A plain
+# crate on every platform, so its colour reading is tested anywhere; only
+# its Windows call is Windows only.
+halonic-window-caption = { path = "crates/window-caption" }
 halonic-workspace-files = { path = "crates/workspace-files" }
 serde = { version = "1", features = ["derive"] }
 sys-locale = "0.3"
