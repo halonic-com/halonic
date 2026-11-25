@@ -21,12 +21,14 @@ import { meteredWrites, type ReadFetch, ReadRefused } from "../merge-control/rea
 import { keepSent } from "../merge-control/retry.ts";
 import {
   emptyShadowDay,
+  nextShadowDay,
   type ObservedAction,
   recordShadow,
   type ShadowDay,
   shadowDiff,
   shadowDiffText,
 } from "../merge-control/shadow.ts";
+import { passView } from "../merge-control/shadow-reasons.ts";
 import type { MergeSnapshot } from "../merge-control/snapshot.ts";
 import {
   type Decision,
@@ -152,8 +154,9 @@ function costLine(action: MergeAction): string | undefined {
 
 /**
  * Shadow mode's day: on the first pass of a new UTC day, posts the last
- * day's diff and starts a new one. Returns undefined when the post failed,
- * so the next pass tries again with the old day kept.
+ * day's diff and starts a new one with the pull requests' tracks kept.
+ * Returns undefined when the post failed, so the next pass tries again with
+ * the old day kept.
  */
 async function shadowDay(
   ctx: MergeControlApi,
@@ -169,11 +172,11 @@ async function shadowDay(
   const text = shadowDiffText(shadowDiff(day));
   if (settings.diffTask === "") {
     ctx.logger.info(text, { companyId });
-    return today;
+    return nextShadowDay(day, now);
   }
   try {
     await ctx.issues.createComment(settings.diffTask, text, companyId);
-    return today;
+    return nextShadowDay(day, now);
   } catch (error) {
     ctx.logger.error(`Merge control: couldn't post the shadow diff: ${(error as Error).message}`, {
       companyId,
@@ -322,7 +325,8 @@ async function lockedPass(
   if (settings.mode === "shadow") {
     const day = await shadowDay(ctx, companyId, settings, stored.shadow, now);
     if (day !== undefined) {
-      shadow = recordShadow(day, decision.actions, facts.observed, now);
+      const view = passView(facts.snapshot, decision, defaultSettings);
+      shadow = recordShadow(day, decision.actions, facts.observed, now, view);
     }
   }
   const state = keepSent(stored.state, decision.state, decision.actions, results);
