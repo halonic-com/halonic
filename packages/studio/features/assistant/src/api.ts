@@ -16,8 +16,9 @@ import type {
 } from "@halonicjs/app";
 import type { RunFailure } from "@halonicjs/app/run-failure";
 import type { ShowOutcome } from "@halonicjs/assistant";
-import type { ChatMessage } from "@halonicjs/ports";
+import type { ChatMessage, SavedChatAbout } from "@halonicjs/ports";
 import {
+  type ItemPageChat,
   type ItemRef,
   type ServiceKey,
   serviceKey,
@@ -78,6 +79,19 @@ export interface ChatAgent {
   readonly colors?: readonly [string, string] | undefined;
 }
 
+/**
+ * The item a Build chat is about, such as the workflow whose page it sits on (flow 2.4): only its
+ * reference, so a renamed item keeps its chats. An agent chat says what it's about through its
+ * kind and has none.
+ */
+export type ChatAbout = SavedChatAbout;
+
+/** Whether `left` and `right` are about the same item: the same kind, hub and id. */
+export function sameAbout(left: ChatAbout | undefined, right: ChatAbout | undefined): boolean {
+  if (left === undefined || right === undefined) return left === right;
+  return left.kind === right.kind && left.hub === right.hub && left.id === right.id;
+}
+
 /** One row of the chat menu (flow 5.5). */
 export interface ChatSummary {
   readonly id: string;
@@ -90,6 +104,8 @@ export interface ChatSummary {
   readonly answering: boolean;
   /** How many items still have changes to review from this chat: the row's "2 to review". */
   readonly itemsToReview: number;
+  /** The item a Build chat is about; absent for a chat about no item. */
+  readonly about?: ChatAbout | undefined;
 }
 
 /** A chat with its messages, as the panel and the chat tab show it. */
@@ -180,10 +196,11 @@ export interface AssistantHost {
   /** One chat. Rejects with `not_found` when it isn't kept (any more) and isn't a draft. */
   chat(chatId: string): Promise<Chat>;
   /**
-   * A new chat of `kind`, as a draft, on the model a new chat starts on (flow 5.2). It reuses an
-   * empty draft of the same kind instead of making a second one.
+   * A new chat of `kind`, as a draft, on the model a new chat starts on (flow 5.2), about `about`
+   * when it is a Build chat on an item's page. It reuses an empty draft of the same kind about the
+   * same item ({@link sameAbout}) instead of making a second one.
    */
-  newChat(kind: ChatKind): Promise<Chat>;
+  newChat(kind: ChatKind, about?: ChatAbout): Promise<Chat>;
   /**
    * Answers in the chat: adds the message, runs the answer and keeps the chat. A model or tool
    * that fails ends the answer as `failed` instead of rejecting, so the messages before it are
@@ -274,3 +291,23 @@ export interface ShowInChat {
 /** Show in chat, provided by the Assistant feature while the app gives it a host. */
 export const ShowInChatService: ServiceKey<ShowInChat> =
   serviceKey<ShowInChat>("assistant.show-in-chat");
+
+/**
+ * The Build chat on an item's page, for the workflows and library features (flow 2.4): they use
+ * the Assistant only through this service, never by a deep import.
+ */
+export interface ItemChat {
+  /**
+   * The chat on the left of the page of `about`, whose name is `name`: the chats about this item
+   * only, a new one about it, and the item shown in the page's own panel.
+   */
+  chatFor(about: ChatAbout, name: string, context: WorkspaceContext): ItemPageChat;
+  /**
+   * Opens a new Build chat about `about` in the side panel, for a page's "Ask about this <kind>…"
+   * and the New workflow dialog's Describe link. Focus moves to the chat's box.
+   */
+  askAbout(about: ChatAbout, name: string, context: WorkspaceContext): Promise<void>;
+}
+
+/** The chat on an item's page, provided by the Assistant feature while the app gives it a host. */
+export const ItemChatService: ServiceKey<ItemChat> = serviceKey<ItemChat>("assistant.item-chat");

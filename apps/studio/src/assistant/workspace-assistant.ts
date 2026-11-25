@@ -29,12 +29,12 @@ import type {
   AssistantChange,
   AssistantHost,
   Chat,
+  ChatAbout,
   ChatAgent,
   ChatKind,
   ChatModel,
   ChatSummary,
   ModelOption,
-  ShownItem,
 } from "@halonicjs/studio-feature-assistant/api";
 import { EngineNotAnswering, type ItemRef, WorkspaceUntrusted } from "@halonicjs/studio-shell";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
@@ -48,6 +48,7 @@ import {
   chatSettingsOf,
   deviceModelOf,
   localOnlyOf,
+  shownNote,
   turnLimitOf,
 } from "./workspace-assistant-model.ts";
 
@@ -171,14 +172,14 @@ export class WorkspaceAssistant implements AssistantHost {
   }
 
   /** A new chat starts on the model of flow-assistant 5.2's order. */
-  async newChat(kind: ChatKind): Promise<Chat> {
+  async newChat(kind: ChatKind, about?: ChatAbout): Promise<Chat> {
     const loaded = await loadWorkspace(this.#parts.files);
     const recent = (await this.#chats.list()).find((chat) => chat.kind === "build");
     const model: ChatModel =
       assistantModelOf(loaded) !== null || deviceModelOf(this.#parts.settings) !== undefined
         ? { kind: "assistant" }
         : (recent?.model ?? { kind: "alias", name: "default" });
-    return this.chat((await this.#chats.newChat(kind, model)).id);
+    return this.chat((await this.#chats.newChat(kind, model, about)).id);
   }
 
   /**
@@ -444,24 +445,15 @@ export class WorkspaceAssistant implements AssistantHost {
   }
 
   #summaryOf(chat: KeptChat, items: readonly ItemToReview[]): ChatSummary {
-    const { id, kind, title, lastUsedAt } = chat;
+    const { id, kind, title, lastUsedAt, about } = chat;
     const itemsToReview = items.filter((item) => item.card.chatId === id).length;
-    return { id, kind, title, lastUsedAt, answering: this.#answering.has(id), itemsToReview };
+    const answering = this.#answering.has(id);
+    return { id, kind, title, lastUsedAt, answering, itemsToReview, about };
   }
 
   #changed(change: AssistantChange): void {
     for (const listener of [...this.#listeners]) listener(change);
   }
-}
-
-/**
- * What Show in chat put in the chat, told to the model with this answer only (flow-assistant 5.7):
- * a note before the person's message, never kept, so a removed chip is gone from the next one.
- */
-function shownNote(shown: readonly ShownItem[] | undefined): ChatMessage[] {
-  if (shown === undefined || shown.length === 0) return [];
-  const items = shown.map(({ item, name }) => `${item.kind} "${name}" (${item.hub}/${item.id})`);
-  return [{ role: "system", content: `The person showed you these items: ${items.join(", ")}.` }];
 }
 
 /**
