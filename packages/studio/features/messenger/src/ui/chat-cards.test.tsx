@@ -3,7 +3,7 @@ import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { askForUpdateText } from "../quick-actions.ts";
-import { byText, openChat, openMessenger, press } from "../test-support/page.tsx";
+import { byText, openChat, openMessenger, press, said } from "../test-support/page.tsx";
 import { unmountAll } from "../test-support/render.tsx";
 
 afterEach(unmountAll);
@@ -22,7 +22,7 @@ function chiefAsks() {
       { id: "reject", label: "Reject" },
     ],
   });
-  return { messaging, acme, chat, card };
+  return { messaging, acme, chief, chat, card };
 }
 
 function transcript(page: HTMLElement): string {
@@ -44,6 +44,27 @@ verifies("messenger.quick-actions", () => {
       expect(answer.mock.calls).toEqual([[card.id, { kind: "option", option: "approve" }]]);
       expect(send).not.toHaveBeenCalled();
       expect(transcript(page)).not.toContain("Merge #12?");
+    });
+
+    it("reads out the option that answered a card, and focuses the next card's first option, then the box", async () => {
+      const { messaging, acme, chief } = chiefAsks();
+      messaging.addInboxItem(acme.id, {
+        question: "When shall I ship?",
+        from: { kind: "agent", agent: chief.id, name: "Chief" },
+        options: [
+          { id: "tomorrow", label: "Tomorrow" },
+          { id: "later", label: "Next week" },
+        ],
+      });
+      const page = await openMessenger(messaging);
+      await openChat(page, "Chief");
+      await press(byText(page, "main ol button", "Tomorrow"));
+      expect(said(page)).toBe("Answered: Tomorrow.");
+      expect(transcript(page)).not.toContain("When shall I ship?");
+      expect(document.activeElement).toBe(byText(page, "main ol button", "Approve"));
+      await press(byText(page, "main ol button", "Approve"));
+      expect(said(page)).toBe("Answered: Approve.");
+      expect(document.activeElement).toBe(page.querySelector("textarea"));
     });
 
     it("says who answered first when the card was answered elsewhere, and answers nothing more", async () => {

@@ -7,7 +7,7 @@ import {
   useOpenExternal,
   waitingSince,
 } from "@halonicjs/studio-kit";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ConversationRow } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import type { QuickActions } from "../quick-actions.ts";
@@ -18,15 +18,23 @@ export interface ChatCardsProps {
   readonly row: ConversationRow;
   /** Grows each time a source changes, so the cards are read again. */
   readonly changed: number;
+  /** Reads a line out in the chat's status region, which stays when the card goes. */
+  readonly announce: (line: string) => void;
+  /** Called once an answered card is gone, to put focus on what comes next. */
+  readonly afterAnswer: () => void;
 }
 
 /**
  * The chat agent's open cards, below its messages (HAL-17421 render 4e). Each
  * option is a button that answers the card through `AgentMessaging.answer`,
  * once; the card is the Inbox's own item, so it leaves both places together.
+ * Once answered, "Answered: Tomorrow." is read out and focus moves on, as
+ * `afterAnswer` says (HAL-18074 MS2).
  */
-export function ChatCards({ quickActions, row, changed }: ChatCardsProps) {
+export function ChatCards({ quickActions, row, changed, announce, afterAnswer }: ChatCardsProps) {
   const [cards, setCards] = useState<readonly InboxItem[]>([]);
+  // Set by an answer that landed, so the cards read after it move focus on.
+  const answered = useRef(false);
 
   const read = useCallback(async () => {
     setCards(await quickActions.cards(row));
@@ -38,9 +46,21 @@ export function ChatCards({ quickActions, row, changed }: ChatCardsProps) {
     );
   }, [read, changed]);
 
+  useEffect(() => {
+    if (!answered.current) return;
+    answered.current = false;
+    afterAnswer();
+  }, [cards, afterAnswer]);
+
+  async function onAnswered(option: string) {
+    announce(messengerWords.card.answered(option));
+    answered.current = true;
+    await read();
+  }
+
   return cards.map((card) => (
-    <li key={card.id} className="max-w-[80%]">
-      <ChatCard quickActions={quickActions} row={row} card={card} onAnswered={read} />
+    <li key={card.id} data-chat-card className="max-w-[80%]">
+      <ChatCard quickActions={quickActions} row={row} card={card} onAnswered={onAnswered} />
     </li>
   ));
 }
@@ -55,19 +75,20 @@ function ChatCard({
   readonly quickActions: QuickActions;
   readonly row: ConversationRow;
   readonly card: InboxItem;
-  readonly onAnswered: () => Promise<void>;
+  /** Called with the option's label once the answer landed. */
+  readonly onAnswered: (option: string) => Promise<void>;
 }) {
   const [busy, setBusy] = useState<string | undefined>(undefined);
   const [line, setLine] = useState<string | undefined>(undefined);
   const openLink = useOpenExternal();
 
-  async function choose(option: string) {
-    setBusy(option);
+  async function choose(option: InboxItem["options"][number]) {
+    setBusy(option.id);
     try {
-      const outcome = await quickActions.answerCard(row, card, option);
+      const outcome = await quickActions.answerCard(row, card, option.id);
       setLine(lineOf(outcome, row));
       // Only an answer that landed takes the card away; otherwise it stays, saying why.
-      if (outcome.outcome === "answered") await onAnswered();
+      if (outcome.outcome === "answered") await onAnswered(option.label);
     } finally {
       setBusy(undefined);
     }
@@ -89,7 +110,7 @@ function ChatCard({
             variant={variantOf(index)}
             busy={busy === option.id}
             onClick={() => {
-              void choose(option.id).catch((error: unknown) =>
+              void choose(option).catch((error: unknown) =>
                 console.error("The card couldn't be answered:", error),
               );
             }}

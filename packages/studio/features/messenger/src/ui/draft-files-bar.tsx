@@ -1,5 +1,5 @@
 import { Button, CloseIcon, sizeText } from "@halonicjs/studio-kit";
-import { useRef } from "react";
+import { type Ref, useRef } from "react";
 import type { DraftFile } from "../draft-files.ts";
 import { messengerFileLimits } from "../file-limits.ts";
 import { messengerWords } from "../messenger-words.ts";
@@ -10,13 +10,15 @@ import { messengerWords } from "../messenger-words.ts";
  */
 export function AttachFileButton({
   onAdd,
+  buttonRef,
 }: {
   readonly onAdd: (files: readonly DraftFile[]) => void;
+  readonly buttonRef: Ref<HTMLButtonElement>;
 }) {
   const picker = useRef<HTMLInputElement>(null);
   return (
     <>
-      <Button variant="secondary" size="sm" onClick={() => picker.current?.click()}>
+      <Button ref={buttonRef} variant="secondary" size="sm" onClick={() => picker.current?.click()}>
         {messengerWords.files.attach}
       </Button>
       <input
@@ -50,7 +52,7 @@ export function DraftFileList({
 }) {
   if (files.length === 0) return null;
   return (
-    <ul className="flex flex-wrap gap-2">
+    <ul data-draft-files className="flex flex-wrap gap-2">
       {files.map((file, index) => (
         <li
           // A box can hold two files of the same name; their place tells them apart.

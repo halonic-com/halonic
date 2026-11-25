@@ -1,6 +1,7 @@
 import type { MessagingRefusal } from "@halonicjs/ports";
-import { Button, ChatBoxLine, ChatComposer } from "@halonicjs/studio-kit";
-import { useState } from "react";
+import { Button, ChatBoxLine, type ChatBoxLineTone, ChatComposer } from "@halonicjs/studio-kit";
+import { useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import type { DraftFile } from "../draft-files.ts";
 import { type ConversationRow, type Messenger, refusalOf } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
@@ -14,19 +15,35 @@ export interface ChatBoxProps {
   readonly onSent: () => Promise<void>;
 }
 
+/** The line under the box: why something wasn't sent or added, or that a file was removed. */
+interface BoxLine {
+  readonly text: string;
+  readonly tone: ChatBoxLineTone;
+}
+
 /**
  * A chat's box: "Attach a file" and "Ask for an update", the files waiting
  * in it on their own row, the text, and
  * the line saying why something wasn't sent. A screenshot pasted anywhere in
  * it waits with the files (requirements `messenger.files`,
- * `messenger.quick-actions` and `messenger.conversations`).
+ * `messenger.quick-actions` and `messenger.conversations`). Remove takes its
+ * button away, so focus moves to the next file's Remove, else the one before,
+ * else Attach a file, and the line says the file was removed (HAL-18074 MS3).
  */
 export function ChatBox({ messenger, row, onSent }: ChatBoxProps) {
   const box = useChatBox(messenger, row, onSent);
   const name = row.conversation.title;
   const report = (what: string) => (error: unknown) => console.error(what, error);
+  const container = useRef<HTMLDivElement>(null);
+  const attach = useRef<HTMLButtonElement>(null);
+  const remove = (index: number) => {
+    flushSync(() => box.removeFile(index));
+    const removes = container.current?.querySelectorAll<HTMLElement>("[data-draft-files] button");
+    (removes?.[index] ?? removes?.[index - 1] ?? attach.current)?.focus();
+  };
   return (
     <div
+      ref={container}
       className="flex flex-col gap-2 px-4 pb-4"
       onPaste={(event) => {
         const pasted = pastedFiles(event.clipboardData);
@@ -36,7 +53,7 @@ export function ChatBox({ messenger, row, onSent }: ChatBoxProps) {
       }}
     >
       <div className="flex flex-wrap items-center gap-2">
-        <AttachFileButton onAdd={box.addFiles} />
+        <AttachFileButton onAdd={box.addFiles} buttonRef={attach} />
         <Button
           variant="secondary"
           size="sm"
@@ -47,7 +64,7 @@ export function ChatBox({ messenger, row, onSent }: ChatBoxProps) {
           {messengerWords.askForUpdate}
         </Button>
       </div>
-      <DraftFileList files={box.files} onRemove={box.removeFile} />
+      <DraftFileList files={box.files} onRemove={remove} />
       <ChatComposer
         label={messengerWords.composerLabel(name)}
         placeholder={messengerWords.composerPlaceholder(name)}
@@ -59,7 +76,9 @@ export function ChatBox({ messenger, row, onSent }: ChatBoxProps) {
         onStop={() => {}}
         answering={false}
         line={
-          box.line === undefined ? undefined : <ChatBoxLine tone="warning">{box.line}</ChatBoxLine>
+          box.line === undefined ? undefined : (
+            <ChatBoxLine tone={box.line.tone}>{box.line.text}</ChatBoxLine>
+          )
         }
       />
     </div>
@@ -73,13 +92,15 @@ function useChatBox(messenger: Messenger, row: ConversationRow, onSent: () => Pr
   const [files, setFiles] = useState(() => messenger.files.of(id));
   const [kept, setKept] = useState<MessagingRefusal | undefined>(undefined);
   // What the last action that sent nothing says: a quick action, a file or a send.
-  const [notice, setNotice] = useState<string | undefined>(undefined);
+  const [notice, setNotice] = useState<BoxLine | undefined>(undefined);
   const source = row.source?.label ?? "";
+  const warn = (text: string | undefined): BoxLine | undefined =>
+    text === undefined ? undefined : { text, tone: "warning" };
 
   return {
     draft,
     files,
-    line: notice ?? keptLine(source, kept ?? refusalOf(row)),
+    line: notice ?? warn(keptLine(source, kept ?? refusalOf(row))),
     type(text: string) {
       setDraft(text);
       messenger.setDraft(id, text);
@@ -91,11 +112,15 @@ function useChatBox(messenger: Messenger, row: ConversationRow, onSent: () => Pr
         if (refusal !== undefined) refused = messengerWords.files.refused[refusal](file.name);
       }
       setFiles(messenger.files.of(id));
-      setNotice(refused);
+      setNotice(warn(refused));
     },
     removeFile(index: number) {
+      const removed = messenger.files.of(id)[index];
       messenger.files.remove(id, index);
       setFiles(messenger.files.of(id));
+      if (removed !== undefined) {
+        setNotice({ text: messengerWords.files.removed(removed.name), tone: "muted" });
+      }
     },
     async send() {
       const outcome = await messenger.sendDraft(id, row);
@@ -115,7 +140,7 @@ function useChatBox(messenger: Messenger, row: ConversationRow, onSent: () => Pr
       if (outcome.outcome === "sent") {
         setNotice(undefined);
         await onSent();
-      } else setNotice(messengerWords.notSent[outcome.reason](source));
+      } else setNotice(warn(messengerWords.notSent[outcome.reason](source)));
     },
   };
 }

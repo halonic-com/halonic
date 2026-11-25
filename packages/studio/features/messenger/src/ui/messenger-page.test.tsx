@@ -8,6 +8,7 @@ import {
   openChat,
   openMessenger,
   press,
+  said,
   settle,
   typeAndSend,
 } from "../test-support/page.tsx";
@@ -115,7 +116,40 @@ verifies("messenger.conversations", () => {
       await searchFor(page, "invoice");
       const transcript = page.querySelector("main ol");
       expect(transcript?.textContent).not.toContain("Shall I merge #12?");
-      expect(transcript?.querySelector("li")?.textContent).toBe("No message in this chat matches.");
+      // In a status region that is always there, outside the list, so a screen reader reads it.
+      const status = byText(page, 'main [role="status"]', "No message in this chat matches.");
+      expect(status?.textContent).toBe("No message in this chat matches.");
+      expect(transcript?.contains(status ?? null)).toBe(false);
+      await searchFor(page, "");
+      expect(status?.isConnected).toBe(true);
+      expect(status?.textContent).toBe("");
+    });
+
+    it("reads out what the agent writes after the chat opened, but not on a search or another chat", async () => {
+      const { messaging, acmeChat } = twoChiefs();
+      const page = await openMessenger(messaging);
+      await openAcmeChat(page);
+      expect(said(page)).toBe("");
+      await searchFor(page, "merge");
+      await searchFor(page, "");
+      expect(said(page)).toBe("");
+      await act(async () => void messaging.addMessage(acmeChat.id, { body: "x".repeat(150) }));
+      await settle();
+      expect(said(page)).toBe(`Chief: ${"x".repeat(100)}`);
+      await openChat(page, "Globex");
+      expect(said(page)).toBe("");
+    });
+
+    it("in a narrow window shows the list or the open chat, and Back to chats focuses its row", async () => {
+      const { messaging } = twoChiefs();
+      const page = await openMessenger(messaging, [], true);
+      expect(page.querySelector("main")).toBeNull();
+      const box = await openAcmeChat(page);
+      expect(page.querySelector("nav")).toBeNull();
+      expect(document.activeElement).toBe(box);
+      await press(byText(page, "main button", "Back to chats"));
+      expect(page.querySelector("main")).toBeNull();
+      expect(document.activeElement).toBe(byText(page, "nav li button", "Acme"));
     });
 
     it("never lets a search's late answer replace a newer one's", async () => {
