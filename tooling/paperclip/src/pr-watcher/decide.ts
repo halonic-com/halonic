@@ -113,6 +113,8 @@ export interface Memory {
   readonly ownReview?: boolean;
   /** When the author last commented on the task. */
   readonly authorLastAt?: string | undefined;
+  /** The pull requests and heads the queue manager's wakes on the task name (HAL-18722). */
+  readonly queueRequests?: readonly { readonly number: number; readonly head: string }[];
 }
 
 /** The outcome for one task. */

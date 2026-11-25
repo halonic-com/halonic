@@ -45,7 +45,9 @@ verifies("paperclip.pr-watcher-rereview", () => {
     expect(await rebased.run()).toMatchObject({ handedOff: 0, warned: 0, failed: [] });
     expect(rebased.compared).toEqual(["4999bbb"]);
     expect(rebased.handoffs).toEqual([]);
-    const [note] = rebased.comments["task-5701"] ?? [];
+    const note = (rebased.comments["task-5701"] ?? []).find(({ body }) =>
+      body.includes("no new review round"),
+    );
     expect(note?.body).toContain(
       "PR watcher: only a rebase since the approval, so no new review round.",
     );

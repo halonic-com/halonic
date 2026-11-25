@@ -29,6 +29,7 @@ import {
 import type { Paperclip } from "./paperclip.ts";
 import type { RebaseOnly } from "./rebase-only.ts";
 import type { StackRebase } from "./stack-rebase.ts";
+import { type Unneeded, unneeded, unneededKey, unneededMessage } from "./unneeded-rebase.ts";
 
 /** What the review steps need from the pass. */
 export interface ReviewStepOptions {
@@ -154,22 +155,61 @@ function answersOf(
 }
 
 /**
- * The pull requests approved on an older head whose approval carries to the
- * current one: those the watcher would warn about or hand to review now,
- * so each head is compared about once (HAL-18460).
+ * The pull requests the watcher would warn about or hand to review now:
+ * the ones worth comparing, so each head is compared about once.
  */
-async function carriedOf(
+async function dueOf(
   task: WatchedTask,
   pulls: readonly PullFacts[],
   memory: Memory,
   reads: Reads,
-): Promise<Carried[]> {
+): Promise<PullFacts[]> {
   const refused = await refusedOf(pulls, memory, reads);
   const due = [
     ...pushedAfterApproval(pulls, memory).map(({ pull }) => pull),
     ...waitingForReview(task, pulls, memory, refused),
-  ].filter((pull) => !memory.reported.has(carryKey(pull)));
-  const unique = [...new Map(due.map((pull) => [pullId(pull), pull])).values()];
+  ];
+  return [...new Map(due.map((pull) => [pullId(pull), pull])).values()];
+}
+
+/** Of the due pull requests, the ones rebased after their approval with no reason (HAL-18722). */
+async function unneededOf(
+  due: readonly PullFacts[],
+  memory: Memory,
+  reads: Reads,
+): Promise<Unneeded[]> {
+  const found = await Promise.all(
+    due.map(async (pull): Promise<Unneeded[]> => {
+      const since = await reads.sinceOf(pull);
+      return since !== undefined && unneeded(pull, since, memory) ? [{ pull, since }] : [];
+    }),
+  );
+  return found.flat();
+}
+
+/** Notes the unneeded rebases on the task, waking nobody; the memory with their keys added. */
+async function flagUnneeded(
+  options: ReviewStepOptions,
+  task: WatchedTask,
+  found: readonly Unneeded[],
+  memory: Memory,
+): Promise<Memory> {
+  const body = unneededMessage(found);
+  options.log(`${task.identifier}: unneeded rebase${options.dryRun ? " (dry run)" : ""}\n${body}`);
+  if (!options.dryRun) {
+    await options.paperclip.note(task.id, body);
+  }
+  const keys = found.map(({ pull }) => unneededKey(pull));
+  return { ...memory, reported: new Set([...memory.reported, ...keys]) };
+}
+
+/** Of the due pull requests, the ones whose approval carries to the current head (HAL-18460). */
+async function carriedOf(
+  due: readonly PullFacts[],
+  memory: Memory,
+  reads: Reads,
+): Promise<Carried[]> {
+  const unique = due.filter((pull) => !memory.reported.has(carryKey(pull)));
   const found = await Promise.all(
     unique.map(async (pull): Promise<Carried[]> => {
       const since = await reads.sinceOf(pull);
@@ -302,7 +342,8 @@ function mayApply(task: WatchedTask, pulls: readonly PullFacts[]): boolean {
 
 /**
  * For a task its author holds with no run going, and nothing else to tell
- * them: records an approval that carries over a rebase, warns once about
+ * them: notes a rebase after an approval that nothing asked for, records
+ * an approval that carries over a rebase, warns once about
  * any other push after an approval, then hands the task to its reviewer
  * when every open pull request is ready, or back to the reviewer who asked
  * for changes once the author answered. The task's comments are read only
@@ -326,7 +367,12 @@ export async function reviewSteps(
     return { ...nothing, warned };
   }
   const reads = readsOf(options, task, options.route);
-  const carried = await carriedOf(task, pulls, memory, reads);
+  const due = await dueOf(task, pulls, memory, reads);
+  const rebased = await unneededOf(due, memory, reads);
+  if (rebased.length > 0) {
+    memory = await flagUnneeded(options, task, rebased, memory);
+  }
+  const carried = await carriedOf(due, memory, reads);
   if (carried.length > 0) {
     memory = await carry(options, task, carried, memory);
   }
