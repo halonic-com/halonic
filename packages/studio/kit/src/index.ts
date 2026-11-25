@@ -283,6 +283,7 @@ export {
   ListHeading,
   type ListHeadingLayout,
   type ListHeadingProps,
+  type ListHeadingTone,
 } from "./list-heading/list-heading.tsx";
 export { LongText, type LongTextProps } from "./long-text/long-text.tsx";
 export {

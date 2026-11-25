@@ -39,6 +39,7 @@ verifies("runs.app-sources", () => {
         cost: { kind: "money", currency: "EUR", minorUnits: 4 },
         title: "Support reply",
         where: "Acme Ops",
+        by: { kind: "workflow" },
         chip: { word: "Done", tone: "success" },
         item: { kind: "run", hub: "acme", id: "run_mfx3k2a1_01jd8q" },
       });
@@ -64,6 +65,7 @@ verifies("runs.app-sources", () => {
         title: "Ada · CTO",
         line: "ACME-7 Fix the login",
         where: "Paperclip · Acme",
+        by: { kind: "agent", name: "Ada" },
         chip: { word: "Running", tone: "running" },
         label: "Running, Ada · CTO, ACME-7 Fix the login, Paperclip · Acme.",
       });

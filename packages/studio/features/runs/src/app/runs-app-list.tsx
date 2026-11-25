@@ -1,7 +1,7 @@
-import { Button, List, type ListRow, StatusChip } from "@halonicjs/studio-kit";
-import { type GroupedRun, runGroups, todaySummary } from "../list/run-groups.ts";
-import { lineSeparator } from "../run-words.ts";
-import { type AppRun, appListWords, rowCostWords, summaryWords } from "./app-run.ts";
+import { Button, List, type ListHeadingTone, type ListRow } from "@halonicjs/studio-kit";
+import { type GroupedRun, type RunGroup, runGroups, todaySummary } from "../list/run-groups.ts";
+import { type AppRun, appListWords, rowCostParts, rowTimeWords, summaryWords } from "./app-run.ts";
+import { RunTile } from "./run-tile.tsx";
 
 /** Props for {@link RunsAppList}. */
 export interface RunsAppListProps {
@@ -24,8 +24,10 @@ export interface RunsAppListProps {
  * The Runs app's list column (`runs.app-list`): "Runs" with how many are
  * running, the summary line with **Costs ›**, then the runs grouped Needs
  * you, Failed, Running, then by day, in the Messenger and Inbox list look.
- * Each row says what ran, its line and where it runs, with its cost at the
- * end. ↑ ↓ pass over the rows; a click or Enter opens one.
+ * Each row leads with what ran as a tile with its state's corner dot, then
+ * three lines (HAL-18594 rev 3): what ran and the time, the run's line, and
+ * where it runs with its cost under the time. ↑ ↓ pass over the rows; a
+ * click or Enter opens one.
  */
 export function RunsAppList({
   runs,
@@ -58,8 +60,8 @@ export function RunsAppList({
         label={appListWords.title}
         groups={groups.map((group) => ({
           id: group.kind === "day" ? `day-${group.heading}` : group.kind,
-          heading: { name: group.heading },
-          rows: group.runs.map(appRow),
+          heading: { name: group.heading, ...headingTone(group.kind) },
+          rows: group.runs.map((run) => appRow(run, now, timeZone)),
         }))}
         groupHeadingLevel={2}
         onOpen={onOpen}
@@ -69,21 +71,47 @@ export function RunsAppList({
   );
 }
 
+/** Needs you in the needs-you violet and Failed in `danger`; the other headings as the List draws them. */
+function headingTone(kind: RunGroup<AppRun>["kind"]): { tone?: ListHeadingTone } {
+  if (kind === "needs-you") return { tone: "warning" };
+  if (kind === "failed") return { tone: "danger" };
+  return {};
+}
+
 /**
- * A run as a List row: its chip, what ran, its line and where, and its cost at the end. A failed
- * run shows it by its chip, in the danger tone.
+ * A run as a List row: its tile, what ran with the time, its line, and where it runs with its
+ * cost. The state is the tile's corner dot for the eye and the label's word for a screen reader.
  */
-function appRow(run: AppRun): ListRow {
-  const cost = rowCostWords(run.cost, isGoing(run));
+function appRow(run: AppRun, now: Date, timeZone: string): ListRow {
   return {
     id: run.id,
     title: run.title,
-    meta: `${run.line}${lineSeparator}${run.where}`,
-    icon: <StatusChip tone={run.chip.tone}>{run.chip.word}</StatusChip>,
-    ...(cost === undefined ? {} : { trailing: <span className="text-fg-muted">{cost}</span> }),
+    titleEnd: rowTimeWords(run, now, timeZone),
+    meta: run.line,
+    under: <WhereLine run={run} />,
+    avatar: <RunTile by={run.by} phase={run.phase} />,
     // Not the kit's error look: it gives the row's end to the reason, and every row keeps its cost.
     label: run.label,
   };
+}
+
+/** The row's third line: where it runs, and its cost right-aligned under the time. */
+function WhereLine({ run }: { readonly run: AppRun }) {
+  const cost = rowCostParts(run.cost, isGoing(run));
+  return (
+    <span
+      data-part="where-line"
+      className="flex min-w-0 items-baseline justify-between gap-3 text-small text-fg-muted"
+    >
+      <span className="truncate">{run.where}</span>
+      {cost === undefined ? null : (
+        <span data-part="cost" className="shrink-0 tabular-nums">
+          {cost.amount === undefined ? null : <span className="text-fg">{cost.amount}</span>}
+          {cost.rest}
+        </span>
+      )}
+    </span>
+  );
 }
 
 /** Whether the run is still going, so its cost is "so far". */

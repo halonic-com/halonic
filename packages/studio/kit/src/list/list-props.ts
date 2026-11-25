@@ -1,4 +1,5 @@
 import type { MouseEvent, ReactNode, Ref } from "react";
+import type { ListHeadingTone } from "../list-heading/list-heading.tsx";
 import type { ListEmpty } from "./empty-list.tsx";
 import type { ListSkeletonShape } from "./list-skeleton.tsx";
 
@@ -61,6 +62,11 @@ export interface ListRow<Id extends string = string> extends ListRowBase<Id> {
    */
   readonly wrapTitle?: boolean;
   /**
+   * A short part at the title line's end, never cut, in `fg-muted`: the Runs app's start time or
+   * "7 min" (HAL-18594 rev 3). Hidden from screen readers like the rest: the `label` says it.
+   */
+  readonly titleEnd?: ReactNode;
+  /**
    * The meta line wraps onto a second line, then is cut with an ellipsis, as the Inbox's "Support
    * reply · run 891b5a · a person step · Waiting 1 h", whose end is what the row is for (HAL-15126).
    */
@@ -115,6 +121,7 @@ interface ListColumnsRowBase<Id extends string> extends ListRowBase<Id> {
   readonly trailing?: never;
   readonly muted?: never;
   readonly wrapTitle?: never;
+  readonly titleEnd?: never;
   readonly wrapMeta?: never;
   readonly inert?: never;
   readonly wrap?: never;
@@ -212,6 +219,7 @@ export interface ListGroup<Id extends string = string, Row extends AnyListRow<Id
     readonly name: string;
     readonly detail?: ReactNode;
     readonly headingLevel?: 2 | 3 | 4;
+    readonly tone?: ListHeadingTone;
   };
   /** A group with no rows isn't drawn, heading and all. */
   readonly rows: readonly Row[];

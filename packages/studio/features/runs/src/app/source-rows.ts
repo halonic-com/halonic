@@ -46,6 +46,7 @@ export function workflowAppRun(
     title: row.workflow,
     line: row.line,
     where,
+    by: { kind: "workflow" },
     chip: { word: row.chip.word, tone: row.chip.tone },
     label: row.label,
     item: { kind: "run", hub: summary.hubId, id: summary.id },
@@ -126,6 +127,7 @@ export function teamAppRun(run: TeamRunFields, context: TeamRowContext): AllRuns
     title,
     line,
     where: context.where,
+    by: { kind: "agent", name: context.agent?.name ?? teamRowWords.unknownAgent },
     chip: { word: look.word, tone: look.tone },
     label: teamRowWords.label(look.word, title, line, context.where),
   };

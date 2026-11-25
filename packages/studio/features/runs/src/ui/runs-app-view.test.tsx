@@ -23,6 +23,7 @@ function row(id: string, changes: Partial<AllRunsRow> = {}): AllRunsRow {
     title: "Support reply",
     line: "Finished",
     where: "Acme Ops",
+    by: { kind: "workflow" },
     chip: { word: "Done", tone: "success" },
     label: `Run ${id}, Support reply, finished.`,
     ...changes,
@@ -35,6 +36,7 @@ const teamRow = row("a1", {
   title: "Ada · CTO",
   line: "ACME-7 Fix the login",
   where: "Paperclip · Acme",
+  by: { kind: "agent", name: "Ada" },
 });
 
 function feedOf(changes: Partial<AllRunsFeedState>): AllRunsFeed {
@@ -62,8 +64,8 @@ verifies("runs.app-sources", () => {
       const { root } = show(feedOf({ rows: [teamRow, workspaceRow] }));
       const content = root.textContent ?? "";
       expect(content).toContain("Ada · CTO");
-      expect(content).toContain("ACME-7 Fix the login · Paperclip · Acme");
-      expect(content).toContain("Finished · Acme Ops");
+      expect(content).toContain("ACME-7 Fix the loginPaperclip · Acme");
+      expect(content).toContain("FinishedAcme Ops");
     });
 
     it("says which source couldn't be read, over the rows it kept", () => {
@@ -78,7 +80,7 @@ verifies("runs.app-sources", () => {
       const lines = [...root.querySelectorAll("p.text-small")].map((line) => line.textContent);
       expect(lines[0]).toContain("Couldn't list your workspaces and teams.");
       expect(lines[1]).toContain("Couldn't refresh the runs of Paperclip · Globex.");
-      expect(root.textContent).toContain("Finished · Acme Ops");
+      expect(root.textContent).toContain("FinishedAcme Ops");
     });
 
     it("is the Runs page where the app provides every source's runs", () => {
@@ -86,7 +88,7 @@ verifies("runs.app-sources", () => {
       const services = { find: (key: unknown) => (key === AllRunsService ? feed : undefined) };
       const context = { services, openItem: vi.fn() } as unknown as PlaceViewProps["context"];
       const root = render(<RunsPage context={context} />);
-      expect(root.textContent).toContain("ACME-7 Fix the login · Paperclip · Acme");
+      expect(root.textContent).toContain("ACME-7 Fix the loginPaperclip · Acme");
     });
 
     it("opens a workspace run's page, and nothing yet for an agent's run", () => {
