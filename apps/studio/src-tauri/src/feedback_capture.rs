@@ -22,7 +22,8 @@ mod held;
 #[path = "feedback_shortcut.rs"]
 mod shortcut;
 use held::{
-    Held, MAX_SCREENS, OVERLAY_PREFIX, STILL_LIFETIME, SelectedBox, overlay_index, still_bytes,
+    Held, MAX_SCREENS, OVERLAY_PREFIX, OpenWindows, Press, STILL_LIFETIME, SelectedBox,
+    overlay_index, still_bytes,
 };
 pub use shortcut::keys;
 
@@ -59,24 +60,41 @@ fn held<R: Runtime>(app: &AppHandle<R>) -> MutexGuard<'_, Held> {
     state.held.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-/// A press: closes the overlays when they are open, otherwise takes the
-/// stills and opens them.
+/// A press: closes the overlays when they are open, brings the Send
+/// feedback window forward when it is open, and otherwise takes the stills
+/// and opens the overlays. A press while the stills are still being taken
+/// does nothing.
 fn pressed<R: Runtime>(app: &AppHandle<R>) {
-    let open = app
-        .webview_windows()
-        .keys()
-        .any(|label| overlay_index(label).is_some());
-    if open {
-        finish(app);
-        return;
-    }
-    let app = app.clone();
-    tauri::async_runtime::spawn_blocking(move || {
-        if let Err(error) = open_overlays(&app) {
-            finish(&app);
-            log(format!("no screenshot was taken: {error}"));
+    let windows = app.webview_windows();
+    let open = OpenWindows {
+        overlays: windows.keys().any(|label| overlay_index(label).is_some()),
+        send_feedback: windows.contains_key(FEEDBACK_WINDOW),
+    };
+    let press = held(app).on_press(open);
+    match press {
+        Press::Ignore => {}
+        Press::End => finish(app),
+        Press::ShowSendFeedback => {
+            if let Some(window) = windows.get(FEEDBACK_WINDOW)
+                && let Err(error) = window.set_focus()
+            {
+                log(format!(
+                    "the Send feedback window didn't come forward: {error}"
+                ));
+            }
         }
-    });
+        Press::Capture => {
+            let app = app.clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                let opened = open_overlays(&app);
+                held(&app).capture_done();
+                if let Err(error) = opened {
+                    finish(&app);
+                    log(format!("no screenshot was taken: {error}"));
+                }
+            });
+        }
+    }
 }
 
 /// Takes every screen's still before any overlay shows, then opens one
@@ -91,7 +109,6 @@ fn open_overlays<R: Runtime>(app: &AppHandle<R>) -> Result<(), Box<dyn std::erro
             top: monitor.position().y,
             width: monitor.size().width,
             height: monitor.size().height,
-            scale: monitor.scale_factor(),
         })
         .collect();
     let stills = areas
@@ -127,16 +144,18 @@ fn page_window<R: Runtime>(app: &AppHandle<R>, label: &str) -> tauri::Result<Web
     config.resizable = false;
     let window = WebviewWindowBuilder::from_config(app, &config)?.build()?;
     // Closed any other way, such as Alt+F4 or a crashed page, an overlay
-    // drops every still and the Send feedback window the crop.
+    // drops every still and the Send feedback window the crop. Only its own
+    // press's: a window can close after the next press took its stills.
     let closed = app.clone();
     let overlay = overlay_index(label).is_some();
+    let press = held(app).press();
     window.on_window_event(move |event| {
         if matches!(event, WindowEvent::Destroyed) {
             let mut held = held(&closed);
             if overlay {
-                held.drop_stills()
+                held.drop_stills_of(press)
             } else {
-                held.clear()
+                held.clear_press(press)
             }
         }
     });
@@ -213,6 +232,9 @@ pub fn end<R: Runtime>(app: AppHandle<R>) {
     finish(&app);
 }
 
+#[cfg(test)]
+#[path = "feedback_press_tests.rs"]
+mod press_tests;
 #[cfg(test)]
 #[path = "feedback_capture_tests.rs"]
 mod tests;

@@ -171,11 +171,11 @@ fn an_overlay_closed_another_way_drops_the_stills_and_the_end_drops_all() {
     let now = Instant::now();
     let mut held = Held::default();
     let first = held.hold(vec![still()], now);
-    held.drop_stills();
+    held.drop_stills_of(first);
     assert_eq!(held.still(0, now), None);
-    held.hold(vec![still()], now);
+    let second = held.hold(vec![still()], now);
     assert!(held.select(0, whole_box(2, 2), now));
-    held.drop_stills();
+    held.drop_stills_of(second);
     assert!(
         held.crop().is_some(),
         "the crop stays for the Send feedback window"

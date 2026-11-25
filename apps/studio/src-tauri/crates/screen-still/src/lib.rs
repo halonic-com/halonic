@@ -23,15 +23,13 @@ fn platform_take(_area: &ScreenArea) -> Result<Still, StillError> {
 }
 
 /// One screen as the shell's windows see it: its top-left corner on the
-/// desktop and its size, in device pixels, and how many device pixels make
-/// one point.
-#[derive(Clone, Copy, Debug, PartialEq)]
+/// desktop and its size, in device pixels.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ScreenArea {
     pub left: i32,
     pub top: i32,
     pub width: u32,
     pub height: u32,
-    pub scale: f64,
 }
 
 /// A picture in memory: rows of RGBA, top row first, four bytes a pixel.

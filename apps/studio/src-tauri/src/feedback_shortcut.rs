@@ -9,7 +9,7 @@ use serde_json::Value;
 use tauri::{AppHandle, Builder, Manager, Runtime};
 use tauri_plugin_global_shortcut::{GlobalShortcut, Shortcut, ShortcutState};
 
-use super::held::saved_shortcut;
+use super::held::{saved_shortcut, shortcut_of};
 use super::{FeedbackCapture, log, pressed};
 
 /// The host setting that holds the shortcut, as the plugin writes it.
@@ -70,37 +70,99 @@ fn shortcut_lock<R: Runtime>(app: &AppHandle<R>) -> MutexGuard<'_, Option<Shortc
 }
 
 /// Saves `shortcut` as the feedback shortcut. Refused as `invalid` when
-/// it isn't a shortcut, `taken` when the system or another app holds it,
-/// and `unavailable` where Studio hears no keys.
+/// it isn't a shortcut or holds none of Ctrl, Alt and Super (⌘), `taken`
+/// when the system or another app holds it, and `unavailable` where Studio
+/// hears no keys. When it can't be saved, the old keys come back.
 #[tauri::command]
 pub async fn shortcut_set<R: Runtime>(
     app: AppHandle<R>,
     shortcut: String,
 ) -> Result<(), &'static str> {
-    let new: Shortcut = shortcut.parse().map_err(|_| "invalid")?;
-    register_instead(&app, new)?;
+    let new = shortcut_of(&shortcut).ok_or("invalid")?;
+    let old = {
+        let plugin = shortcuts(&app).ok_or("unavailable")?;
+        register_instead(plugin, &mut shortcut_lock(&app), new)?
+    };
     let value = Value::String(new.into_string());
-    tauri::async_runtime::spawn_blocking(move || {
-        crate::host_settings::save(&app, SHORTCUT_SETTING, Some(&value))
+    let saving = app.clone();
+    let saved = tauri::async_runtime::spawn_blocking(move || {
+        crate::host_settings::save(&saving, SHORTCUT_SETTING, Some(&value))
     })
-    .await
-    .map_err(|_| "failed")?
-    .map_err(|_| "failed")
+    .await;
+    let failure = match saved {
+        Ok(Ok(())) => return Ok(()),
+        Ok(Err(refusal)) => format!("{refusal:?}"),
+        Err(error) => error.to_string(),
+    };
+    log(format!("the shortcut {new} isn't saved: {failure}"));
+    if let Some(plugin) = shortcuts(&app) {
+        put_back(plugin, &mut shortcut_lock(&app), new, old);
+    }
+    Err("failed")
+}
+
+/// The two calls the shortcut change makes on the global-shortcut plugin,
+/// so the change tests without a keyboard.
+pub trait Keys {
+    /// Starts hearing `shortcut`; refused when another app holds it.
+    fn register(&self, shortcut: Shortcut) -> Result<(), String>;
+    /// Stops hearing `shortcut`.
+    fn unregister(&self, shortcut: Shortcut) -> Result<(), String>;
+}
+
+impl<R: Runtime> Keys for GlobalShortcut<R> {
+    fn register(&self, shortcut: Shortcut) -> Result<(), String> {
+        GlobalShortcut::register(self, shortcut).map_err(|error| error.to_string())
+    }
+
+    fn unregister(&self, shortcut: Shortcut) -> Result<(), String> {
+        GlobalShortcut::unregister(self, shortcut).map_err(|error| error.to_string())
+    }
 }
 
 /// Registers `new` before it lets go of the old shortcut, so a refused
-/// change leaves the old one working.
-fn register_instead<R: Runtime>(app: &AppHandle<R>, new: Shortcut) -> Result<(), &'static str> {
-    let shortcuts = shortcuts(app).ok_or("unavailable")?;
-    let mut registered = shortcut_lock(app);
-    if *registered == Some(new) {
-        return Ok(());
+/// change leaves the old one working. Gives what was registered before.
+pub fn register_instead(
+    keys: &impl Keys,
+    registered: &mut Option<Shortcut>,
+    new: Shortcut,
+) -> Result<Option<Shortcut>, &'static str> {
+    let old = *registered;
+    if old == Some(new) {
+        return Ok(old);
     }
-    shortcuts.register(new).map_err(|_| "taken")?;
-    if let Some(old) = registered.replace(new)
-        && let Err(error) = shortcuts.unregister(old)
+    keys.register(new).map_err(|_| "taken")?;
+    *registered = Some(new);
+    if let Some(old) = old
+        && let Err(error) = keys.unregister(old)
     {
         log(format!("the old shortcut {old} stays registered: {error}"));
     }
-    Ok(())
+    Ok(old)
+}
+
+/// Undoes `register_instead` when the new shortcut can't be saved: the
+/// `old` keys come back and `new` is let go. When another app took the old
+/// keys in between, `new` stays, so some shortcut still works.
+pub fn put_back(
+    keys: &impl Keys,
+    registered: &mut Option<Shortcut>,
+    new: Shortcut,
+    old: Option<Shortcut>,
+) {
+    if old == Some(new) {
+        return;
+    }
+    if let Some(old) = old
+        && let Err(error) = keys.register(old)
+    {
+        log(format!("the old shortcut {old} can't come back: {error}"));
+        return;
+    }
+    if let Err(error) = keys.unregister(new) {
+        log(format!(
+            "the unsaved shortcut {new} stays registered: {error}"
+        ));
+    }
+    *registered = old;
 }
