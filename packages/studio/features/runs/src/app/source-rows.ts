@@ -161,6 +161,7 @@ export function teamAppRun(run: TeamRunFields, context: TeamRowContext): AllRuns
     label: teamRowWords.label(look.word, title, line, context.where),
     notice: {
       startedByMe: false,
+      // The team gives no end time: an ended run's last activity is when it ended.
       ...(look.phase === "running" || run.startedAt === undefined
         ? {}
         : tookOf(run.startedAt, run.lastActivityAt)),

@@ -21,8 +21,11 @@ export const runNotificationsWatchKey: ServiceKey<Disposable> = serviceKey<Dispo
 
 /** What the run notifications need from the window. */
 export interface RunNotificationsParts {
-  /** The window's desktop notifications, such as the shell's `ShellNotifier`. */
-  readonly notifier: Notifier;
+  /**
+   * The folder's desktop notifications, such as the shell's `ShellNotifier`. The watch disposes it
+   * with the folder, so a click on a notification of a closed folder opens nothing.
+   */
+  readonly notifier: Notifier & Disposable;
   /** Opens Runs on the run or on the Failed group that a clicked notification names. */
   readonly open: (target: NoticeTarget) => void;
   /** Hears a read or a notification that failed; the watch goes on. */
@@ -65,6 +68,7 @@ export function provideRunNotifications(
     dispose: async () => {
       unsubscribe();
       await watch?.stop();
+      await notifier.dispose();
     },
   });
 }

@@ -58,6 +58,7 @@ class FakeRuns implements AllRunsFeed {
 /** Stands in for the shell's `ShellNotifier`: keeps each notice and hands out the next one. */
 class FakeNotifier implements Notifier {
   readonly shown: AgentNotice[] = [];
+  disposed = false;
   readonly clicks: (() => void)[] = [];
   #waiting: ((notice: AgentNotice) => void) | undefined;
 
@@ -65,6 +66,10 @@ class FakeNotifier implements Notifier {
     this.shown.push(notice);
     this.clicks.push(onClick);
     this.#waiting?.(notice);
+  }
+
+  async dispose(): Promise<void> {
+    this.disposed = true;
   }
 
   next(): Promise<AgentNotice> {
@@ -172,6 +177,8 @@ verifies("studio.run-notifications-watch", () => {
       await folder.services.dispose();
 
       expect(folder.runs.listeners.size).toBe(0);
+      // Its notifier goes too, so a click on an old notification opens nothing in a closed folder.
+      expect(folder.notifier.disposed).toBe(true);
     });
 
     it("starts nothing without the Runs app's runs, which need the agent host", () => {
