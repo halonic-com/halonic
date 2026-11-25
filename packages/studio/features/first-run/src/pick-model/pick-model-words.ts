@@ -25,7 +25,7 @@ export const pickModelWords = {
   localFree: "Free, nothing leaves this computer.",
   localOff: "Local models need the desktop app.",
   model: "Model",
-  pullHint: "Download a small model first, in a terminal. Then check again.",
+  pullHint: "To download a small model, run this in a terminal, then press Check again:",
   startHint: "Start Ollama, then check again.",
   noOllama: "Don't have Ollama?",
   getOllama: "Get it from ollama.com",
@@ -134,8 +134,8 @@ export function messageText(message: PickMessage, provider: FirstRunKeyProvider)
       return `That doesn't look like a key. It usually starts with ${message.problem.keyStart}`;
     case "files":
       return message.problem.kind === "unreadable"
-        ? `Studio can't read ${message.problem.file}. Fix it, or pick another option.`
-        : `This workspace already has its own ${message.problem.file}, and Studio won't change a file you set up. Pick another option.`;
+        ? `Halonic can't read ${message.problem.file}. Fix it, or pick another option.`
+        : `This workspace already has its own ${message.problem.file}, and Halonic won't change a file you set up. Pick another option.`;
     case "tested":
       return testedText(message.outcome, name);
     case "line-changed":
@@ -146,8 +146,8 @@ export function messageText(message: PickMessage, provider: FirstRunKeyProvider)
       return notCommittedText(message.files);
     case "broke":
       return message.step === "save"
-        ? "Studio couldn't save this choice. Try again."
-        : "Studio couldn't test this choice. Try again.";
+        ? "Couldn't save this choice. Try again."
+        : "Couldn't test this choice. Try again.";
   }
 }
 
@@ -161,7 +161,7 @@ function testedText(
     case "no-credit":
       return `The key works, but your account has no credit or is over its limit. Add credit on ${name}'s site, then test again.`;
     case "offline":
-      return `Studio can't reach ${name}. Check your connection.`;
+      return `Halonic can't reach ${name}. Check your connection.`;
     case "provider-error":
       return `${name} isn't answering right now. Try again in a minute.`;
     case "local-not-answering":
@@ -178,10 +178,10 @@ function notSavedText(
   if (failed === "no-test") return "The test is out of date. Test again.";
   if (failed === "files") return "A workspace file changed and now stops this choice. Test again.";
   if (failed === "key")
-    return "Studio couldn't keep the key on this computer. Nothing changed. Try again.";
+    return "Couldn't keep the key on this computer. Nothing changed. Try again.";
   if (failed === "no-save") return "Nothing can be saved here. Use Sample answers.";
   const kept = keySaved ? " The key is kept on this computer." : "";
-  return `Studio couldn't save the change to the workspace's files.${kept} Try again.`;
+  return `Couldn't save the change to the workspace's files.${kept} Try again.`;
 }
 
 /**

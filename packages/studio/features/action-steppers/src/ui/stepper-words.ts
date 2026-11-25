@@ -97,7 +97,11 @@ export function stepLabel(number: number, total: number): string {
   return `Step ${number} of ${total}`;
 }
 
-/** The line under a step that has started. `null` while it is still to do. */
+/**
+ * The line under a step that has started. `null` while it is still to do. A failure names the
+ * service and its status, never the service's own text (microcopy 1.6 E3): that goes to
+ * {@link failureDetails}, for **Copy details**.
+ */
 export function outcomeText(outcome: StepOutcome, service: StepperService): string | null {
   switch (outcome.kind) {
     case "pending":
@@ -107,12 +111,24 @@ export function outcomeText(outcome: StepOutcome, service: StepperService): stri
     case "succeeded":
       return outcome.result === undefined ? "Done." : `Done. ${outcome.result}`;
     case "failed":
-      return `Failed with status ${outcome.status}. ${serviceName(service)} said: “${outcome.message}”`;
+      return `Failed: ${serviceName(service)} refused this step (status ${outcome.status}).`;
     case "skipped":
       return "Done already";
     case "by-hand":
       return outcome.checked === null ? "Done by hand, not checked" : `Checked: ${outcome.checked}`;
   }
+}
+
+/**
+ * What **Copy details** puts on the clipboard for a failed step: the service's status and its own
+ * words, for a bug report.
+ *
+ * @example
+ * failureDetails(403, "Resource not accessible by integration", "github");
+ * // "Status 403. GitHub said: “Resource not accessible by integration”"
+ */
+export function failureDetails(status: number, message: string, service: StepperService): string {
+  return `Status ${status}. ${serviceName(service)} said: “${message}”`;
 }
 
 /** The buttons under the steps. */

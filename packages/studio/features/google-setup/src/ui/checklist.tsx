@@ -31,7 +31,7 @@ export interface ChecklistProps {
   readonly onEdit: (edit: SetupEdit) => Promise<void>;
   /** How the client secret is entered on this host. */
   readonly secretEntry: SecretEntry;
-  /** Whether this window can sign in, or says where to. */
+  /** Whether this Studio can sign in, or says where to. */
   readonly signInEntry: SignInEntry;
   /** Whether **Check again** can run here, or says where to sign in again instead. */
   readonly checkAgainEntry: CheckAgainEntry;

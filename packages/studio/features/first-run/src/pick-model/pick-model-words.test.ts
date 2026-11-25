@@ -62,25 +62,28 @@ verifies("first-run.pick-model", () => {
     ],
     [
       { kind: "files", problem: { kind: "unreadable", file: "models.yaml" } },
-      "can't read models.yaml",
+      "Halonic can't read models.yaml.",
     ],
     [
       { kind: "files", problem: { kind: "provider-differs", file: "providers/anthropic.yaml" } },
-      "This workspace already has its own providers/anthropic.yaml, and Studio won't change a file you set up.",
+      "This workspace already has its own providers/anthropic.yaml, and Halonic won't change a file you set up.",
     ],
     [{ kind: "tested", outcome: "key-refused" }, "Anthropic didn't accept this key."],
-    [{ kind: "tested", outcome: "offline" }, "Studio can't reach Anthropic."],
+    [{ kind: "tested", outcome: "offline" }, "Halonic can't reach Anthropic."],
     [{ kind: "tested", outcome: "provider-error" }, "Anthropic isn't answering right now."],
     [{ kind: "tested", outcome: "local-not-answering" }, "Check that Ollama is running"],
     [{ kind: "tested", outcome: "local-not-usable" }, "It may be too small."],
     [{ kind: "line-changed" }, "then press Continue"],
     [{ kind: "not-saved", failed: "no-test", keySaved: false }, "Test again."],
     [{ kind: "not-saved", failed: "files", keySaved: false }, "now stops this choice"],
-    [{ kind: "not-saved", failed: "key", keySaved: false }, "couldn't keep the key"],
+    [
+      { kind: "not-saved", failed: "key", keySaved: false },
+      "Couldn't keep the key on this computer.",
+    ],
     [{ kind: "not-saved", failed: "no-save", keySaved: false }, "Use Sample answers."],
     [{ kind: "not-saved", failed: "write", keySaved: true }, "The key is kept on this computer."],
-    [{ kind: "broke", step: "test" }, "couldn't test this choice"],
-    [{ kind: "broke", step: "save" }, "couldn't save this choice"],
+    [{ kind: "broke", step: "test" }, "Couldn't test this choice. Try again."],
+    [{ kind: "broke", step: "save" }, "Couldn't save this choice. Try again."],
   ])("words %j", (message, words) => {
     expect(messageText(message, "anthropic")).toContain(words);
   });

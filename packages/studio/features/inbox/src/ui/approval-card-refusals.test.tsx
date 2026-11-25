@@ -93,7 +93,7 @@ verifies("inbox.approval-card", () => {
       await press(button(root, "Approve"));
       const slot = root.querySelector("[role='alert']");
       expect(slot?.textContent).toBe(
-        "This workspace isn't trusted yet, so Studio can't send your answer.Review",
+        "This workspace isn't trusted yet, so Halonic can't send your answer.Review",
       );
       expect(root.textContent).not.toContain("Try again");
       const reviewButton = button(root, "Review");
@@ -101,7 +101,7 @@ verifies("inbox.approval-card", () => {
       expect(review).toHaveBeenCalledWith(reviewButton);
       await press(button(root, "Reject"));
       expect(slot?.textContent).toBe(
-        "This workspace isn't trusted yet, so Studio can't send your answer.Review",
+        "This workspace isn't trusted yet, so Halonic can't send your answer.Review",
       );
     });
 
@@ -145,7 +145,7 @@ verifies("inbox.approval-card", () => {
       later(2);
       await press(button(root, "Approve"));
       expect(root.querySelector("[role='alert']")?.textContent).toBe(
-        "This workspace isn't trusted yet, so Studio can't send your answer.",
+        "This workspace isn't trusted yet, so Halonic can't send your answer.",
       );
     });
   });

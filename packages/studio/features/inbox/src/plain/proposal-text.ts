@@ -139,7 +139,7 @@ const unexplainedReason = "Halonic ran into a problem it can't explain yet.";
 
 /** The workspace's trust check refused it: the host was never asked. */
 export const untrustedDecisionLine =
-  "This workspace isn't trusted yet, so Studio can't change its files.";
+  "This workspace isn't trusted yet, so Halonic can't change its files.";
 
 const decisionFailureReasons: Readonly<Record<ProposalFailure, string>> = {
   "changes-back": unexplainedReason,

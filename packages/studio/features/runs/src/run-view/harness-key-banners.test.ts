@@ -65,11 +65,18 @@ verifies("runs.run-view.failure-banners", () => {
       expect(banner?.noRunAgain).toBe(true);
     });
 
-    it("says to run it from the command line on a phone", () => {
-      expect(lines(causeBanner(baseUrl, startedWriter, named, true))).toEqual([
+    it("gives the same command on a phone, to run on the computer", () => {
+      const banner = callout(causeBanner(baseUrl, startedWriter, named, true));
+
+      expect(banner?.lines).toEqual([
         "Writer didn't start: Studio can't send its model calls to Z.ai's Base URL yet. Nothing ran.",
-        "Run it from the command line on your computer.",
+        "To run it, run this on your computer:",
+        "halonic run support-reply",
       ]);
+      expect(banner?.fixes).toEqual([
+        { kind: "copy-command", command: "halonic run support-reply" },
+      ]);
+      expect(banner?.noRunAgain).toBe(true);
     });
 
     it("names a provider without a name by its id, and an agent the log doesn't name as the agent", () => {

@@ -158,7 +158,7 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
   const canChoose = () => {
     if (options.placement === false) {
       throw new Error(
-        "Halonic can't choose where agents run in the browser. Open this workspace in the desktop app to choose.",
+        "Halonic can't choose where agents run from a browser. To choose, open this workspace in Studio on your computer.",
       );
     }
   };

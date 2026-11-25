@@ -29,7 +29,7 @@ export const pageWords = {
    * **Open the Runs page ›** (HAL-12642, HAL-12934). Said only when no workflow runs the agent
    * (HAL-12399).
    */
-  noRuns: "Runs aren't listed by agent yet.",
+  noRuns: "Studio can't list runs by agent yet.",
   openRuns: "Open the Runs page ›",
   /** Halonic runs an agent only as a step in a workflow in 0.1 (HAL-12399, rule N3 of HAL-12363). */
   runsInAWorkflow: (name: string) =>

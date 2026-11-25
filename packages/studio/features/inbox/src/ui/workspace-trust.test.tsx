@@ -17,7 +17,7 @@ afterEach(() => {
   restoreModal();
 });
 
-const untrustedLine = "This workspace isn't trusted yet, so Studio can't send your answer.";
+const untrustedLine = "This workspace isn't trusted yet, so Halonic can't send your answer.";
 
 /** Answers refused as `denied` until `trusted` is set, as the window's engine does. */
 function trustGate() {

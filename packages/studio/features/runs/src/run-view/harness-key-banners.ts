@@ -69,7 +69,8 @@ function noKey(
 
 /**
  * The reason, then the command that runs the workflow where the key can go, with **Copy
- * command**. Running again in Studio would stop the same way, so there's no **Run again**.
+ * command**; on a phone the same command, to run on the computer (microcopy N4). Running again in
+ * Studio would stop the same way, so there's no **Run again**.
  */
 function baseUrl(
   provider: string,
@@ -84,11 +85,9 @@ function baseUrl(
   );
   const agent = started === undefined ? failureWords.theAgent : nameOf(started.agent, context);
   const line = failureWords.harnessBaseUrl(agent, provider);
-  if (phone) {
-    return danger([line, failureWords.runOnComputer], { noRunAgain: true });
-  }
   const command = `halonic run ${summary.workflowId}`;
-  return danger([line, failureWords.runInTerminal, command], {
+  const lead = phone ? failureWords.runOnComputer : failureWords.runInTerminal;
+  return danger([line, lead, command], {
     fixes: [{ kind: "copy-command", command }],
     noRunAgain: true,
   });

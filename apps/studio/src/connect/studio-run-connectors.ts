@@ -253,7 +253,7 @@ export function studioConnectorCalls(
 const sendingOff: SendingSettings = {
   checkSending: async ({ connector }) => ({
     allowed: false,
-    reason: `sending is off for the connector "${connector}": Studio can't switch it on yet`,
+    reason: `sending is off for the connector "${connector}", and Studio can't switch it on yet.`,
   }),
 };
 

@@ -49,7 +49,7 @@ formatExample(formatLocale(settings.get(formatPref), "en-GB")); // "12,345.60 ·
 ```
 
 `followTag` is the system's region format in the desktop app and the browser's language when
-served ("Follow this browser: …"). The options after Follow are the tags this window can format,
+served ("Follow this browser: …"). The options after Follow are the tags Studio can format here,
 named in English and sorted by name.
 
 ## Sections

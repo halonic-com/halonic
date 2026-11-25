@@ -193,7 +193,8 @@ export async function readRunFile(
   runId: string,
   name: string,
 ): Promise<FileRead> {
-  if (files === undefined) throw new Error("This window can't read the files a run saved.");
+  if (files === undefined)
+    throw new Error("Couldn't show the run's files: this run's files can't be read from here.");
   const saved = (await source.log(runId)).findLast(
     (event) => event.type === "artifact.created" && event.name === name,
   );

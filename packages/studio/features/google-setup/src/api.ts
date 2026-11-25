@@ -58,7 +58,7 @@ export type SecretEntry =
     };
 
 /**
- * Whether this window can run the sign-in (design 3.5, item 10). Google sends the sign-in back to
+ * Whether this Studio can run the sign-in (design 3.5, item 10). Google sends the sign-in back to
  * the computer that runs Halonic, so only a window on that computer has **Sign in with Google**.
  * The host knows how Studio reaches it, so the view never guesses from the address bar.
  */

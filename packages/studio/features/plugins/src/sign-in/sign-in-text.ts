@@ -75,7 +75,7 @@ export const CLIENT_SECRET_NOT_SET = "The client secret is missing. Add it in Se
 
 /** The host can't take a sign-in's callback where it runs now, such as inside WSL (team wording). */
 export const SIGN_IN_UNAVAILABLE_HERE =
-  "Signing in doesn't work here yet: Halonic can't get the browser's answer where it runs now.";
+  "Halonic can't sign in here yet: the browser's answer can't reach Halonic where it runs now.";
 
 /**
  * The title when reading where the sign-ins stand failed, with the reason

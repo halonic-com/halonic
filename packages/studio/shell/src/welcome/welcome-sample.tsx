@@ -24,10 +24,10 @@ export const trySampleWords = {
 /** The sentence under Welcome's text when the demo couldn't be copied, with a closing full stop. */
 export function cantCreateSampleLine(problem: WelcomeSampleProblem): string {
   if (problem.unavailable === true) {
-    return `Can't copy the demo to ${problem.folder}: ${cantOpenWords.silent}`;
+    return `Couldn't copy the demo to ${problem.folder}: ${cantOpenWords.silent}`;
   }
   const reason = problem.reason.endsWith(".") ? problem.reason : `${problem.reason}.`;
-  return `Can't copy the demo to ${problem.folder}: ${reason}`;
+  return `Couldn't copy the demo to ${problem.folder}: ${reason}`;
 }
 
 /** Props for {@link TrySample}. */

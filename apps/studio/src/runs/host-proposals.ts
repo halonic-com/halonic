@@ -145,4 +145,4 @@ function detailsOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-const untrusted = "This workspace isn't trusted yet, so Studio can't change its files.";
+const untrusted = "This workspace isn't trusted yet, so Halonic can't change its files.";

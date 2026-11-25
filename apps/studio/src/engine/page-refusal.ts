@@ -70,7 +70,7 @@ interface PageRefusal {
 
 /**
  * The page's refusal of an agent it can't start: `unavailable`, like an engine that can't be
- * reached, but its own class, so a caller tells "this window can't start it" from "the engine
+ * reached, but its own class, so a caller tells "Studio can't start it here" from "the engine
  * isn't answering" and shows its words (HAL-12649). A workflow's refusal, with its next step, is
  * {@link StartRefused} instead.
  */

@@ -27,9 +27,9 @@ export const LIST_FAILED =
 /** After closing the dialog, when the engine couldn't cancel its sign-in. */
 export const CANCEL_FAILED =
   "Halonic couldn't cancel the sign-in. Don't approve it in Paperclip: it ends by itself within 10 minutes.";
-/** "Halonic couldn't disconnect Paperclip · Halonic. Try again." */
+/** "Couldn't disconnect Paperclip · Halonic. Try again." */
 export const disconnectFailed = (label: string): string =>
-  `Halonic couldn't disconnect ${label}. Try again.`;
+  `Couldn't disconnect ${label}. Try again.`;
 
 /** The address step for a new connection, above the field. */
 export const CONNECT_LEAD =

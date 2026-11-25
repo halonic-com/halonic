@@ -1,4 +1,5 @@
 import { Callout } from "@halonicjs/studio-kit";
+import { copyDetailsWords, useCopyDetails } from "@halonicjs/studio-shell";
 import { useId } from "react";
 import {
   isRunning,
@@ -11,7 +12,7 @@ import {
 import { BrowserControls, BrowserCopy, BrowserInstructions } from "./browser-step.tsx";
 import { StepByHand } from "./manual-guide.tsx";
 import { RiskChip } from "./request-review.tsx";
-import { outcomeText, stepLabel, stepsHeading } from "./stepper-words.ts";
+import { failureDetails, outcomeText, stepLabel, stepsHeading } from "./stepper-words.ts";
 
 /** Props for {@link StepList}. */
 export interface StepListProps {
@@ -31,8 +32,8 @@ export interface StepListProps {
 /**
  * The request's steps in order (`action-steppers.run`): each with its number, its risk, what it
  * does in plain words, a browser step's page and instructions, and, once it has started, how it
- * went. A failure says the service's status and its own message, and is announced, since the run
- * stops there. While the request is ready, each step not done has **Do it by hand**, and the next
+ * went. A failure names the service and its status, with the service's own message behind
+ * **Copy details**, and is announced, since the run stops there. While the request is ready, each step not done has **Do it by hand**, and the next
  * browser step has its own controls.
  */
 export function StepList({ view, actions, active, reviewOnly = false, runningId }: StepListProps) {
@@ -92,11 +93,17 @@ function StepOutcomeLine({
   readonly service: StepperService;
   readonly runningId: string;
 }) {
+  const copy = useCopyDetails();
   const text = outcomeText(step.outcome, service);
   if (text === null) return null;
   if (step.outcome.kind === "failed") {
+    const details = failureDetails(step.outcome.status, step.outcome.message, service);
     return (
-      <Callout tone="danger" announce="polite">
+      <Callout
+        tone="danger"
+        announce="polite"
+        action={{ label: copyDetailsWords.label, onClick: () => copy(details) }}
+      >
         {text}
       </Callout>
     );
