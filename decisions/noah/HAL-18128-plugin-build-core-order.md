@@ -3,6 +3,7 @@
 - Task: HAL-18128
 - Approval: Liam approved `@halonicjs/plugin-build` as a core package on HAL-17985 (the HAL-17950 plan for `halonic build paperclip-plugin`), and that plan puts the command's service in `@halonicjs/app`, which needs this order. It changes `tooling/check/policy.json` outside `extraExports`, a trust root, so both guardians sign: Julian, then Liam
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:4IBj6F7vUGRLsLruSeTVv0qZRYMZhlXJTAhrE0LboPvW6W3uYgeKfSN//whUaNrlNhdWg21JJMax4HFX8TyNAQ==
 
 ## What changes
 
