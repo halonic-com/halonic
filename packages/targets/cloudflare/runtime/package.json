@@ -15,6 +15,7 @@
     "@halonicjs/adapter-cloudflare-durable": "workspace:*",
     "@halonicjs/adapter-cloudflare-storage": "workspace:*",
     "@halonicjs/adapter-env-secrets": "workspace:*",
+    "@halonicjs/adapter-harness-bridge": "workspace:*",
     "@halonicjs/adapter-password-pbkdf2": "workspace:*",
     "@halonicjs/adapter-token-store": "workspace:*",
     "@halonicjs/adapter-workspace-models": "workspace:*",

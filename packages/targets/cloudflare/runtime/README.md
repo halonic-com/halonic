@@ -119,6 +119,13 @@ Worker's engine, built from `env` on the first timer, so a run the API started m
 one step per timer. `run-driving.test.ts` checks a run from its start to `run.completed`
 inside workerd; the rule is `runtime.run-driving`.
 
+A harness step's bridge lives in its run object too: `WorkerBridgeServer`
+(`src/worker-bridge-server.ts`) is the `HarnessBridgeServer` port on the bridge's Web entry. It
+gives the run one credential, kept only as a hash in the run object's storage
+(`src/run-credential-storage.ts`), and revokes it when the engine closes the bridge or the run
+container's alarm stops the run. The rule is `runtime.worker-bridge`. It isn't wired into the
+engine yet (HAL-18020).
+
 ## Configuration and wiring
 
 `createRuntime(env)` builds every Cloudflare adapter from the Worker's `env`:

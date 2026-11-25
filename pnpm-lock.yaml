@@ -4848,6 +4848,9 @@ importers:
       '@halonicjs/adapter-env-secrets':
         specifier: workspace:*
         version: link:../../../adapters/env-secrets
+      '@halonicjs/adapter-harness-bridge':
+        specifier: workspace:*
+        version: link:../../../adapters/harness-bridge
       '@halonicjs/adapter-password-pbkdf2':
         specifier: workspace:*
         version: link:../../../adapters/password-pbkdf2
