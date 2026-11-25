@@ -15,7 +15,7 @@ This page describes what ships on `main`.
   Inbox, Runs or More. The Assistant opens as a full page; **Back** returns
   to where you were. Under its name it says which page you came from, such as
   "Looking at: Home".
-- **From an item:** choose **Show in chat** in the ⋮ of an agent or a
+- **From an item:** on a computer, choose **Show in chat** in the ⋮ of an agent or a
   workflow, or Alt-click (⌥-click on a Mac) its row in the overview. The item
   shows as a chip under the status line, and the Assistant knows it's shown.
 - **From a skill or a new workflow:** **Ask about this skill** opens the
