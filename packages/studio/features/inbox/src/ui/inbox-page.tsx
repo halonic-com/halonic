@@ -23,7 +23,7 @@ import {
   type OpenItemOptions,
   type PlaceViewProps,
 } from "@halonicjs/studio-shell";
-import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { flushSync } from "react-dom";
 import {
   InboxNoticesService,
@@ -49,6 +49,7 @@ import {
   placeOf,
 } from "./inbox-page-parts.tsx";
 import { countDetail, inboxRow, lateCount } from "./inbox-row.tsx";
+import { type InboxMotion, kitMotion, useGlidingState } from "./list-motion.ts";
 import { failureReason, isSignedOut, loadFailed, StaleLine } from "./load-lines.tsx";
 import { needsYouListed } from "./needs-you-listed.ts";
 import { NothingOpen, nothingWaiting } from "./nothing-open.tsx";
@@ -167,6 +168,8 @@ export interface InboxViewProps {
   readonly announce?: ((line: string) => void) | undefined;
   /** The agents' cards and questions, listed after the Inbox's own items; without it there are none. */
   readonly agentMessaging?: AgentMessaging | undefined;
+  /** The motions it plays as rows come and go and panes change; tests pass their own. */
+  readonly motion?: InboxMotion;
 }
 
 /**
@@ -213,9 +216,12 @@ export function InboxView({
   actionCatalog = emptyActionCatalog,
   requesterPolicy = defaultRequesterPolicy,
   actionSteps = desktopOnlyActionSteps,
+  motion = kitMotion,
 }: InboxViewProps) {
   const subscribe = useCallback((listener: () => void) => inbox.subscribe(listener), [inbox]);
-  const state = useSyncExternalStore(subscribe, () => inbox.state);
+  const read = useCallback(() => inbox.state, [inbox]);
+  const list = useRef<HTMLDivElement>(null);
+  const state = useGlidingState(subscribe, read, list, motion);
   const { open, focus, openItem, openAt } = useOpenItem(inbox, state.items);
   const agent = useAgentItems(agentMessaging, {
     catalog: actionCatalog,
@@ -236,7 +242,6 @@ export function InboxView({
   useEffect(() => {
     if (inbox.state.error !== undefined) void inbox.refresh();
   }, [inbox]);
-  const list = useRef<HTMLDivElement>(null);
   const needsYouHeading = useRef<HTMLHeadingElement>(null);
   // Not now and Back to Inbox: the pane empties and focus goes back to the row the item, or the
   // agent's card, was open from.
@@ -245,10 +250,12 @@ export function InboxView({
       'tr[aria-current="true"] [role="gridcell"]',
     );
     // With one pane the list is hidden until the item closes, and a hidden row can't take focus.
-    flushSync(() => {
-      openItem(null);
-      closeAgent();
-    });
+    const render = () =>
+      flushSync(() => {
+        openItem(null);
+        closeAgent();
+      });
+    paneMotion(listPane.current, render, "back");
     row?.focus();
   };
   const failedFirst = !state.loaded && state.error !== undefined;
@@ -260,6 +267,12 @@ export function InboxView({
   const itemPage = onePane && anyOpen;
   const requestSheetOpen = useRef(false);
   const itemPane = useRef<HTMLDivElement>(null);
+  const listPane = useRef<HTMLDivElement>(null);
+  // One pane at a time: the pane that comes slides in from where you went (motion 2).
+  const paneMotion = (pane: HTMLElement | null, render: () => void, way: "in" | "back") => {
+    if (onePane && pane !== null) void motion.swap(pane, render, way);
+    else render();
+  };
   const waitingOrder = [
     ...state.items.filter(waits).map((item) => ({ key: item.key, items: 1 })),
     ...agent.order,
@@ -288,7 +301,7 @@ export function InboxView({
 
   return (
     <div className="flex h-full min-h-0 w-full">
-      <div data-pane="list" className={listPaneClass(onePane, itemPage)}>
+      <div ref={listPane} data-pane="list" className={listPaneClass(onePane, itemPage)}>
         <ListHeader phone={phone} onePane={onePane} newRequest={request.newRequest} />
         <StaleLine
           error={state.loaded ? state.error : undefined}
@@ -320,7 +333,13 @@ export function InboxView({
                   .map((item) => ({ ...inboxRow(item, now(), runFacts), ...itemMark(item) })),
                 ...agent.rows(now(), project.filter),
               ]}
-              onOpen={(key) => openRow(key, agent, listed, openItem)}
+              onOpen={(key) =>
+                paneMotion(
+                  itemPane.current,
+                  () => flushSync(() => openRow(key, agent, listed, openItem)),
+                  "in",
+                )
+              }
               {...currentRow(open?.key ?? agent.openKey)}
               empty={
                 phone
