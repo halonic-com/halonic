@@ -44,6 +44,7 @@ export const STATE_KEYS = {
     "output",
     "signal",
   ],
+  rule: ["rule", "input", "output", "signal"],
 } as const satisfies { readonly [Type in StateType]: readonly StateKey[] };
 
 /** A state of one type, with only the keys that type uses. */

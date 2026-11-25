@@ -13,11 +13,11 @@ import type { RunState } from "./run-state.ts";
 /**
  * The state types the engine can run so far. Each one has a folder in
  * `src/states`. The composite states join as their folders land (step 5);
- * once all six are here, the registry is typed against `StateType` itself.
+ * once all of them are here, the registry is typed against `StateType` itself.
  */
 export type BuiltStateType = Extract<
   StateType,
-  "task" | "wait" | "final" | "workflow" | "parallel" | "foreach"
+  "task" | "wait" | "final" | "workflow" | "parallel" | "foreach" | "rule"
 >;
 
 /**

@@ -2,7 +2,13 @@
 // effects they can carry out, and the budget check they keep to.
 
 import type { RunFailureReason, RunVersion } from "@halonicjs/events";
-import type { BlobStore, IdGenerator, RunStore, Scheduler } from "@halonicjs/ports";
+import type {
+  BlobStore,
+  IdGenerator,
+  RunStore,
+  Scheduler,
+  ToolScriptIsolate,
+} from "@halonicjs/ports";
 import type { Budget } from "../budget/budget.ts";
 import type { BudgetCheck } from "../budget/keep-to-limits.ts";
 import { spendOf } from "../budget/spend.ts";
@@ -94,6 +100,12 @@ export interface LocalRunsOptions {
    * watchdog finds stuck runs instead.
    */
   readonly sweepsLostRuns?: boolean;
+  /**
+   * Where the rules of `rule` states run, each in a fresh isolate with no
+   * host functions (requirement `engine.rule-state`). Without it, a run fails
+   * at its first rule step with an error that says so.
+   */
+  readonly toolScriptIsolate?: ToolScriptIsolate;
 }
 
 /**
@@ -111,6 +123,7 @@ export function builtEffectsOf(options: LocalRunsOptions): ReadonlySet<Effect["t
   ];
   if (options.harnesses !== undefined) built.push("run-harness", "answer-harness");
   if (options.connectorCalls !== undefined) built.push("call-tool");
+  if (options.toolScriptIsolate !== undefined) built.push("run-rule");
   return new Set(built);
 }
 
@@ -124,6 +137,10 @@ export function unbuiltEffectFailure(
 ): { readonly failure: Failure; readonly reason: RunFailureReason } | undefined {
   const unbuilt = effects.find((effect) => !built.has(effect.type));
   if (unbuilt === undefined) return undefined;
+  if (unbuilt.type === "run-rule") {
+    const error = `This engine can't run rule steps: it has no ToolScript isolate, so the rule of step "${unbuilt.state}" can't run.`;
+    return { failure: { error }, reason: "error" };
+  }
   return {
     failure: { error: `The local executor can't carry out a ${unbuilt.type} effect yet.` },
     reason: unbuilt.type === "run-harness" ? "harness-unavailable" : "error",

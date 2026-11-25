@@ -16,6 +16,7 @@ import type {
   ModelPrice,
   RecordStore,
   ScheduledTimer,
+  ToolScriptIsolate,
 } from "@halonicjs/ports";
 import { fixedIds } from "@halonicjs/std";
 import { reviewedTools } from "../agent/listed-tool-approval.test-helper.ts";
@@ -166,6 +167,10 @@ export interface RunsSetup {
   readonly abortOnStop?: AbortOnStop;
   /** Whether getting ready ends the runs lost when the engine last stopped; it does when left out. */
   readonly sweepsLostRuns?: boolean;
+  /** The code of the hub's rule files by path, kept in the run's definitions; none when left out. */
+  readonly rules?: Readonly<Record<string, string>>;
+  /** Where rules run; rule steps fail when left out. */
+  readonly toolScriptIsolate?: ToolScriptIsolate;
   /**
    * Gets each request the executor resolves a model for, such as a method's alias; the model is
    * picked once what it returns has settled.
@@ -181,6 +186,17 @@ function runsExtrasOf(setup: RunsSetup): Partial<LocalRunsOptions> {
     ...(setup.runConnectors === undefined ? {} : { runConnectors: setup.runConnectors }),
     ...(setup.sweepsLostRuns === undefined ? {} : { sweepsLostRuns: setup.sweepsLostRuns }),
     ...(setup.meter === undefined ? {} : { meter: setup.meter }),
+    ...(setup.toolScriptIsolate === undefined
+      ? {}
+      : { toolScriptIsolate: setup.toolScriptIsolate }),
+  };
+}
+
+/** The run definitions the setup gives besides the hub's files, each only when it gives it. */
+function definitionsExtrasOf(setup: RunsSetup): Partial<RunDefinitions> {
+  return {
+    ...(setup.declaredTools === undefined ? {} : { declaredTools: setup.declaredTools }),
+    ...(setup.rules === undefined ? {} : { rules: setup.rules }),
   };
 }
 
@@ -256,7 +272,7 @@ export function runsOn<Runs extends KernelRuns = KernelRuns>(
           ...(knowledge === undefined ? {} : { knowledge }),
           ...(skills === undefined ? {} : { skills }),
           connectorTools,
-          ...(setup.declaredTools === undefined ? {} : { declaredTools: setup.declaredTools }),
+          ...definitionsExtrasOf(setup),
         };
       },
     },

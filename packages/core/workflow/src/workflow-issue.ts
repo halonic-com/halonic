@@ -20,6 +20,8 @@ export type WorkflowIssueCode =
   | "foreach-without-items"
   | "foreach-without-work"
   | "task-without-agent"
+  | "rule-without-file"
+  | "rule-without-output"
   | "wait-without-events"
   | "wait-arrow-without-event"
   | "wait-with-signal"

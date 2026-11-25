@@ -407,7 +407,7 @@ verifies("engine.state-registry", () => {
     expectTypeOf(states).toMatchTypeOf<StateRegistry>();
     expectTypeOf(states.task).toEqualTypeOf<StateHandler<"task">>();
     expectTypeOf<keyof typeof states>().toEqualTypeOf<
-      "final" | "foreach" | "parallel" | "task" | "wait" | "workflow"
+      "final" | "foreach" | "parallel" | "rule" | "task" | "wait" | "workflow"
     >();
   });
 

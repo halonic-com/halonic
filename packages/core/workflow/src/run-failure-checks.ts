@@ -76,3 +76,24 @@ export const taskWithoutAgent: StateCheck = ({ id, state }): WorkflowIssue[] =>
         ),
       ]
     : [];
+
+/**
+ * The engine fails a rule step with no file as soon as it is entered. A rule
+ * step's only work is its result, so one with no `output` would do nothing:
+ * the engine fails that too.
+ */
+export const ruleWithoutFileOrOutput: StateCheck = ({ id, state }): WorkflowIssue[] => {
+  if (state.type !== "rule") {
+    return [];
+  }
+  const issues: WorkflowIssue[] = [];
+  if (!state.rule) {
+    const message = `Rule "${id}" names no file, so every run fails there. Give it one (rule: rules/<name>.rule.js).`;
+    issues.push(issue("error", "rule-without-file", message, stateKey(id), id));
+  }
+  if (!state.output) {
+    const message = `Rule "${id}" has no output, so its result goes nowhere. Name the context key it writes (output: <key>).`;
+    issues.push(issue("error", "rule-without-output", message, stateKey(id), id));
+  }
+  return issues;
+};

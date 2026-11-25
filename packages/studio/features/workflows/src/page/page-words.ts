@@ -54,7 +54,7 @@ export const pageWords = {
     breadcrumb: (workflowName: string, stepId: string) => `${workflowName} › ${stepId}`,
     close: "Close step",
     type: "Type",
-    /** The six kinds, as the Type picker names them (flow-workflows 5.2). */
+    /** The six kinds, as the Type picker names them (flow-workflows 5.2), and a rule step's own. */
     types: {
       task: "Agent step",
       wait: "Wait",
@@ -62,6 +62,7 @@ export const pageWords = {
       workflow: "Workflow",
       parallel: "Parallel",
       foreach: "For each",
+      rule: "Rule",
     } satisfies Record<WorkflowStepType, string>,
     agent: "Agent",
     noAgent: "No agent: this step passes the data straight on.",
@@ -167,6 +168,7 @@ export const pageWords = {
     workflow: "WORKFLOW STEP",
     parallel: "PARALLEL STEP",
     foreach: "FOR EACH STEP",
+    rule: "RULE STEP",
   } satisfies Record<WorkflowStepType, string>,
   /**
    * The can't-run bands under the workflow page's header: the first lines of the problems and

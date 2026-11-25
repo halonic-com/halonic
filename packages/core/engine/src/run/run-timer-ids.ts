@@ -18,3 +18,6 @@ export const childTimer = "child:";
 
 /** A connector call to make now. */
 export const toolTimer = "tool:";
+
+/** A rule of a `rule` state to run now. */
+export const ruleTimer = "rule:";

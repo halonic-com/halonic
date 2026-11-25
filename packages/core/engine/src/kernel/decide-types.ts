@@ -29,6 +29,7 @@ import type {
   Workflow,
 } from "@halonicjs/format";
 import type { DeclaredTools } from "../agent/offer-listed-tools.ts";
+import type { RuleResult, RunRuleEffect } from "./rule-call.ts";
 import type { ResumeAfterStop, RunState } from "./run-state.ts";
 
 // `decide` does no input or output and reads no clock. Everything it needs
@@ -160,7 +161,7 @@ export interface EffectDoneInput extends InputBase {
   readonly type: "effect-done";
   /** The `callId` of the effect that finished. */
   readonly callId: string;
-  readonly result: ModelCallResult | HarnessResult | ToolResult;
+  readonly result: ModelCallResult | HarnessResult | ToolResult | RuleResult;
 }
 
 /**
@@ -368,7 +369,8 @@ export type Effect =
   | StartChildEffect
   | TellParentEffect
   | CancelChildEffect
-  | SetTimerEffect;
+  | SetTimerEffect
+  | RunRuleEffect;
 
 /**
  * An event as the run log keeps it, before `step` adds `runId`, `seq` and
@@ -445,6 +447,11 @@ export interface RunDefinitions {
    * without them log no noun.
    */
   readonly declaredTools?: Readonly<Record<string, DeclaredTools>>;
+  /**
+   * The code of the hub's rule files by path, for its `rule` states: a run
+   * runs the code it started with. Runs kept without them can't run a rule.
+   */
+  readonly rules?: Readonly<Record<string, string>>;
 }
 
 /** The pure decider: what a run does next, given its state and one input. */

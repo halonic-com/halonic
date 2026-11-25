@@ -29,7 +29,7 @@ verifies("workflow.validate-ignored-keys", () => {
     };
     expect(ignored(states)).toEqual([
       'states.review.agent: "review" is a wait step: agent is ignored. Put the agent on a task step before it.',
-      'states.review.input: "review" is a wait step: input is ignored. Only task, workflow and for-each steps use it; remove it here.',
+      'states.review.input: "review" is a wait step: input is ignored. Only task, workflow, for-each and rule steps use it; remove it here.',
     ]);
   });
 

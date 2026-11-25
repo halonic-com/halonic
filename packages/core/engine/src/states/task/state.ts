@@ -133,6 +133,9 @@ function takeCallResult(context: StateContext<"task">, input: DecideInput): Stat
       return askForApproval(context, pending, input.result);
     case "effect":
       return requestEffect(context, pending, input.result);
+    case "rule":
+      // Only a `rule` state asks for a rule; its result means nothing here.
+      return nothing;
   }
 }
 

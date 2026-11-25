@@ -68,7 +68,8 @@
               "final",
               "workflow",
               "parallel",
-              "foreach"
+              "foreach",
+              "rule"
             ]
           },
           "description": {
@@ -78,6 +79,9 @@
             "type": "string"
           },
           "workflow": {
+            "type": "string"
+          },
+          "rule": {
             "type": "string"
           },
           "input": {

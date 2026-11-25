@@ -1,22 +1,24 @@
 # workflow.rule-step
 
-- Status: draft
+- Status: active
 - Since: unreleased
-- Source: HAL-18490 (PR S11, on the PR watcher's critical path, HAL-17974); ToolScript ADR `docs/adr/2026-11-24-toolscript.md`, sections 1.4, 2.1 and 2.3; narrows HAL-17572 (A2)
+- Source: HAL-18500 (S11 of HAL-18490, on the PR watcher's critical path, HAL-17974), with the plan rev 1 approved there; ToolScript ADR `docs/adr/2026-11-24-toolscript.md`, sections 1.4, 2.1 and 2.3; narrows HAL-17572 (A2)
 
-The workflow rules shall have a `rule` step kind that calls no model: it runs one pure rule function, a built ToolScript artifact of `audience: "agent"` whose header `uses` no capability, in a fresh QuickJS isolate through the `ToolScriptHost` port (HAL-17570), with the step's rendered input as JSON in and the function's JSON result as the step's output for the next steps. A workflow made only of `rule` steps and tool steps shall run with no model configured. The rule shall have no network, file system, process or timer, and only the agent limits of the ToolScript ADR (section 2.3): 32 MB of memory, 2 s of CPU, 60 s of wall clock, 16 KB of input and 64 KB of output. When a rule touches what it may not, trips a limit, throws or returns a value that isn't plain JSON, the step shall fail with the ToolScript host's reason code (such as `limit.cpu`) and a message that names the step, and the run shall take the step's failure path. A host shall refuse an artifact whose `codeHash` doesn't match its code, or whose hash the workflow didn't pin, before it runs. The same input shall give the same output on every run. A rule shall cause no effect itself: actions go only through the workflow's tool steps.
+The workflow format shall have a `rule` step kind that calls no model and runs one pure function of the hub (`engine.rule-state`). A rule step shall use the keys `rule`, `input`, `output` and `signal`: `rule` is the rule's file, a path in the hub by the rules of a path in an agent's working folder; `input` gives the rule its `ctx.input` as templates; `output` is the context key its result goes to. The file is for now an ES module that exports `run(ctx)`; when ToolScript artifacts can be built, `rule` stays a path. When a workflow is checked, a rule step with no `rule` shall be the error `rule-without-file` and one with no `output` the error `rule-without-output`, because the engine fails the run there; any other key on a rule step shall be the warning `ignored-key`. The same input shall give the same output for a rule that keeps the ADR's rule P5 (no `Date.now()`, `new Date()` or `Math.random`): the runtime doesn't enforce P5 yet, only the build's static check will (T3).
 
-Rationale: a no-model routine such as the PR watcher decides with code it can test, and only reviewed tool steps act.
+Rationale: a no-model routine, such as the PR watcher, decides with code it can test, and only the workflow's other steps act.
 
 ## Examples
 
-- Given a workflow `rule`, then a fake tool step, with no model configured,
-  when it runs,
-  then the tool step gets the rule's output as its input.
-- Given a rule that reads `fetch`, `process` or the file system,
-  when it runs,
-  then the step fails with a clear error and the tool step doesn't run.
-- Given a rule that loops forever,
-  when it runs,
-  then the step fails with `limit.cpu`.
-- Given the same input twice, then the rule gives the same output twice.
+- Given the rule step `match` with `rule: rules/match.rule.js`, `input: { prs: "{{context.prs}}" }` and `output: decisions`,
+  when the workflow is checked,
+  then there is no error.
+- Given a rule step with no `rule` and no `output`,
+  when the workflow is checked,
+  then both errors are reported, each naming the step and the fix.
+- Given a rule step with `rule: ../secrets.rule.js` or `rule: /etc/passwd`,
+  when the file is read,
+  then the path is refused.
+- Given a rule step with `agent: writer`,
+  when the workflow is checked,
+  then `agent` is an `ignored-key` warning.

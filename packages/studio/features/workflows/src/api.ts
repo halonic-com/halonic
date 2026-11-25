@@ -106,8 +106,18 @@ export interface WorkflowLastRun {
   readonly outcome: WorkflowRunOutcome;
 }
 
-/** What a step does: run an agent, wait for a person, end, or run another workflow or several agents. */
-export type WorkflowStepType = "task" | "wait" | "final" | "workflow" | "parallel" | "foreach";
+/**
+ * What a step does: run an agent, wait for a person, end, run another workflow or several agents,
+ * or run a rule of the hub with no model.
+ */
+export type WorkflowStepType =
+  | "task"
+  | "wait"
+  | "final"
+  | "workflow"
+  | "parallel"
+  | "foreach"
+  | "rule";
 
 /** One step of a workflow, as its card shows it. */
 export interface WorkflowStep {
