@@ -43,6 +43,12 @@ const missingChiefLogged = new Set<string>();
 /** How many signalled comment ids are kept per caller, to send each signal once. */
 const keptSignalled = 50;
 
+const bodylessSuccess = /Invalid response status code 20[45]\b/;
+
+/** Whether a fetch error is the SDK failing to rebuild a delivered 204 or 205 answer. */
+export const deliveredWithoutBody = (error: unknown) =>
+  error instanceof TypeError && bodylessSuccess.test(error.message);
+
 async function postOnce(ctx: ChiefLineSignalApi, url: string, signal: ChiefLineSignal) {
   try {
     const response = await ctx.http.fetch(url, {
@@ -51,8 +57,10 @@ async function postOnce(ctx: ChiefLineSignalApi, url: string, signal: ChiefLineS
       body: JSON.stringify(signal),
     });
     return response.ok;
-  } catch {
-    return false;
+  } catch (error) {
+    // The SDK's worker rebuilds the host's answer as `new Response(body, …)` with an empty string
+    // body, which throws for a body-less 2xx (204, 205) after the POST was delivered.
+    return deliveredWithoutBody(error);
   }
 }
 

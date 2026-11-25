@@ -127,7 +127,7 @@ export async function assignTaskBack(
 }
 
 /**
- * The chief line's only task change: a parked (`backlog` or `done`) thread back to `todo`
+ * The chief line's only task change: a parked (`backlog`, `done` or `blocked`) thread back to `todo`
  * before Chief is woken on it, and no other field.
  */
 export async function reopenThread(

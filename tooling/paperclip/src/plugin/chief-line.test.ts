@@ -355,4 +355,31 @@ verifies("paperclip.chief-line", () => {
     expect(line.wakes).toHaveLength(1);
     expect(line.logs).not.toContain("Chief line: couldn't handle a new comment.");
   });
+
+  test("a 204 from the webhook counts as delivered, not as a failed signal", async () => {
+    const line = fakeChiefLine({ hookStatuses: [204] });
+    await handleChiefLineRequest(lineRequest(keys.openThread, { caller: "sup" }), line.ctx);
+    await handleChiefLineRequest(
+      lineRequest(keys.subscribe, { caller: "sup", url: "https://hooks.acme.test/c" }),
+      line.ctx,
+    );
+    const chief = line.addComment("issue-1", "answer", "agent-chief", null);
+    await onChiefLineComment(line.ctx, commentEvent("issue-1", chief.id));
+    expect(line.posts).toHaveLength(1);
+    expect(line.logs).not.toContain("Chief line: the reply signal failed twice.");
+  });
+
+  test("a send to a blocked thread moves it to todo and wakes Chief", async () => {
+    const line = fakeChiefLine();
+    await handleChiefLineRequest(lineRequest(keys.openThread, { caller: "sup" }), line.ctx);
+    const [thread] = line.issues;
+    if (thread === undefined) throw new Error("no thread");
+    thread.status = "blocked";
+    const sent = await handleChiefLineRequest(
+      lineRequest(keys.send, { caller: "sup", message: "x" }),
+      line.ctx,
+    );
+    expect(sent.body).toMatchObject({ woke: true });
+    expect(thread.status).toBe("todo");
+  });
 });
