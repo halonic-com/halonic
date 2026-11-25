@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { type Frame, FrameKind } from "./frame-codec.ts";
+import { type Frame, FrameDecoder, FrameKind } from "./frame-codec.ts";
 import type { HostConnection } from "./frame-stream.ts";
 import { ShellChannel } from "./shell-channel.ts";
 
@@ -31,6 +31,26 @@ verifies("agent-host.opened-workspaces", () => {
 
       expect(opened).toEqual(["/work/acme"]);
       expect(secrets.received).toEqual(['{"ok":true,"value":null}']);
+    });
+
+    it("answers each notice with noticed, naming the folder, once the folder is handled", () => {
+      const sent: Buffer[] = [];
+      const opened: string[] = [];
+      const channel = new ShellChannel(recordingSecrets(), (folder) => {
+        opened.push(folder);
+        expect(sent).toHaveLength(0);
+      });
+      channel.open({ send: (frame) => sent.push(frame) });
+
+      channel.receive(dataFrame({ op: "open_workspace", folder: "/work/acme" }));
+
+      expect(opened).toEqual(["/work/acme"]);
+      const answers = new FrameDecoder().push(Buffer.concat(sent));
+      expect(answers.map((frame) => [frame.connection, frame.kind])).toEqual([[0, FrameKind.data]]);
+      expect(JSON.parse(answers[0]?.bytes.toString("utf8") ?? "")).toEqual({
+        op: "noticed",
+        folder: "/work/acme",
+      });
     });
 
     it("passes anything that isn't exactly a notice to the secrets channel, which judges it", () => {

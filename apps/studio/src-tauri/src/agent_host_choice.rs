@@ -34,6 +34,15 @@ pub fn host_for(backend: Option<&str>, platform: Platform) -> HostKind {
     }
 }
 
+/// Whether the shell also starts a messaging host beside itself (requirement
+/// `agent-host-messaging`, HAL-18311): only on Windows, and only when the
+/// harnesses' host runs in Halonic's WSL distro, which sees other paths than
+/// the shell's and can't read the workspaces the person opens on Windows.
+/// Everywhere else the one host serves the messaging too.
+pub fn messaging_host_for(platform: Platform, backend: Option<&str>) -> bool {
+    platform == Platform::Windows && host_for(backend, platform) == HostKind::Distro
+}
+
 /// Whether the host the shell starts runs beside it, which is where the
 /// removal of Halonic's WSL setup is served (the host in the distro can't
 /// unregister the distro it runs in). A choice that can't be read says no.
@@ -100,6 +109,19 @@ mod tests {
         assert_eq!(host_for(None, Platform::Windows), HostKind::Distro);
         assert_eq!(host_for(None, Platform::Macos), HostKind::Local);
         assert_eq!(host_for(None, Platform::Linux), HostKind::Local);
+    }
+
+    #[test]
+    fn agent_host_messaging_runs_beside_the_shell_only_on_windows_with_the_distro() {
+        assert!(messaging_host_for(Platform::Windows, None));
+        assert!(messaging_host_for(Platform::Windows, Some("srt-wsl")));
+        for backend in ["none", "srt", "mxc"] {
+            assert!(!messaging_host_for(Platform::Windows, Some(backend)));
+        }
+        for platform in [Platform::Linux, Platform::Macos] {
+            assert!(!messaging_host_for(platform, None));
+            assert!(!messaging_host_for(platform, Some("srt-wsl")));
+        }
     }
 
     #[test]

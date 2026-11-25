@@ -63,12 +63,17 @@ async function relayedHost(extra: readonly string[]) {
   const headers = { host: `127.0.0.1:${relayPort}`, authorization: `Bearer ${token}` };
   const post = (path: string, body: unknown) =>
     relay.request(path, { method: "POST", headers, body: JSON.stringify(body) });
-  const name = (folder: string) =>
+  /** Names `folder` and resolves once the host answered that it handled it, as the shell waits. */
+  const name = async (folder: string) => {
+    const answered = shell.noticed.length;
     relay.sendFrame(
       0,
       FrameKind.data,
       Buffer.from(JSON.stringify({ op: "open_workspace", folder })),
     );
+    await eventually(() => shell.noticed.length > answered);
+    expect(shell.noticed.at(-1)).toBe(folder);
+  };
   const stop = async () => {
     relay.streams.input.end();
     return await running;
@@ -91,17 +96,19 @@ verifies("agent-host.opened-workspaces", () => {
       expect(before.status).toBe(404);
       expect(JSON.parse(before.body)).toMatchObject({ error: { kind: "unknown_workspace" } });
 
-      host.name(workspace);
-      await eventually(async () => (await connections()).status === 200);
-      expect(JSON.parse((await connections()).body)).toEqual({ connections: [] });
+      await host.name(workspace);
+      // Once the host has answered the notice, the very next request finds the folder.
+      const after = await connections();
+      expect(after.status).toBe(200);
+      expect(JSON.parse(after.body)).toEqual({ connections: [] });
       expect(await host.stop()).toBe(0);
     });
 
     it("refuses a folder that doesn't exist and says why on standard error, without its path", async () => {
       const host = await relayedHost([]);
       const missing = join(scratch, "gone");
-      host.name(missing);
-      await eventually(() => host.errors.join("").includes("doesn't exist"));
+      await host.name(missing);
+      expect(host.errors.join("")).toContain("doesn't exist");
       expect(host.errors.join("")).not.toContain(missing);
       expect((await host.post("/v1/paperclip/connections", { workspace: missing })).status).toBe(
         404,
@@ -111,8 +118,8 @@ verifies("agent-host.opened-workspaces", () => {
 
     it("never takes the profile folder as a workspace", async () => {
       const host = await relayedHost([]);
-      host.name(profileFolder);
-      await eventually(() => host.errors.join("").includes("profile folder"));
+      await host.name(profileFolder);
+      expect(host.errors.join("")).toContain("profile folder");
       const answer = await host.post("/v1/paperclip/connections", { workspace: profileFolder });
       expect(answer.status).toBe(404);
       expect(await host.stop()).toBe(0);
@@ -144,10 +151,8 @@ verifies("agent-host.messaging-only", () => {
 
     it("names opened folders to it too", async () => {
       const host = await relayedHost(["--messaging-only"]);
-      host.name(workspace);
-      await eventually(
-        async () => (await host.post("/v1/paperclip/connections", { workspace })).status === 200,
-      );
+      await host.name(workspace);
+      expect((await host.post("/v1/paperclip/connections", { workspace })).status).toBe(200);
       expect(await host.stop()).toBe(0);
     });
 

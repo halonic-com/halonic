@@ -205,3 +205,27 @@ fn opened_workspaces_notice_isnt_sent_once_the_channel_stopped() {
     assert!(!secrets.notify(b"{}".to_vec()));
     assert!(host.input_closed());
 }
+
+#[test]
+fn opened_workspaces_the_host_noticed_answer_ends_the_wait_even_between_a_request_and_its_answer() {
+    let (secrets, mut host) = serve(Arc::new(MemoryBackend::new()));
+    let deadline = Instant::now() + WAIT;
+
+    host.request(&json!({ "op": "get", "name": "remote_host_key" }));
+    // An answer for a folder an earlier wait gave up on is skipped.
+    host.request(&json!({ "op": "noticed", "folder": "/work/older" }));
+    host.request(&json!({ "op": "noticed", "folder": "/work/acme" }));
+
+    assert!(secrets.wait_noticed("/work/acme", deadline));
+    assert_eq!(host.answer(), json!({ "ok": true, "value": null }));
+    assert!(!secrets.is_stopped());
+}
+
+#[test]
+fn opened_workspaces_the_wait_gives_up_at_its_deadline() {
+    let (secrets, _host) = serve(Arc::new(MemoryBackend::new()));
+    let deadline = Instant::now() + Duration::from_millis(50);
+
+    assert!(!secrets.wait_noticed("/work/acme", deadline));
+    assert!(!secrets.is_stopped());
+}

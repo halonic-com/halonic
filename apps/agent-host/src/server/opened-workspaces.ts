@@ -15,8 +15,9 @@ export type OpenedWorkspace = { added: string } | { refused: OpenedWorkspaceRefu
  *
  * Only Studio's shell can name one, on its own channel (see
  * `ShellChannel`); no route takes a folder to add. It is checked and added
- * at once, while the shell's frame is read, so a request the shell sends
- * right after its notice finds it. The real path is kept, so
+ * at once, while the shell's frame is read, and only then does the channel
+ * answer `noticed`, which the shell waits for: so the shell's next request
+ * finds it. The real path is kept, so
  * a link swapped in later changes nothing, and a folder already named isn't
  * added twice. Halonic's profile folder is never a workspace, as at start.
  *

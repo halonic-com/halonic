@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-18311 (Settings › Connections showed "couldn't read the connections" for a folder opened after Studio started)
 
-Where Studio's shell starts the agent host with `--keychain-relay`, the shell may send the host, at any time after the handshake, a notice on connection id 0: one `data` frame holding exactly `{"op":"open_workspace","folder":…}`, the folder the person opened. When the host gets one, it shall add the folder's real path to the workspaces it serves, as if the launcher had named it at start, until the host stops; and every route that takes a workspace shall accept that folder from then on. The host shall send no answer to a notice. A notice isn't an answer to a secret request: it shall neither settle nor break a request that waits (requirement `agent-host.keychain-secrets`), and a frame that isn't exactly a notice shall go to the secrets channel, as before.
+Where Studio's shell starts the agent host with `--keychain-relay`, the shell may send the host, at any time after the handshake, a notice on connection id 0: one `data` frame holding exactly `{"op":"open_workspace","folder":…}`, the folder the person opened. When the host gets one, it shall add the folder's real path to the workspaces it serves, as if the launcher had named it at start, until the host stops; and every route that takes a workspace shall accept that folder from then on. Once it has added the folder, or refused it, the host shall answer with one `data` frame on id 0 holding exactly `{"op":"noticed","folder":…}`, naming the folder as the notice did, so the shell can wait for it before its next request. A notice isn't an answer to a secret request: it shall neither settle nor break a request that waits (requirement `agent-host.keychain-secrets`), and a frame that isn't exactly a notice shall go to the secrets channel, as before.
 
 If the folder doesn't exist, isn't a folder, or is Halonic's profile folder, then the host shall not add it, and shall write why to its standard error, which the shell keeps in its log, without the folder's path. No route shall add a workspace: only the shell's channel can, so a page can't name a folder of its choosing.
 
@@ -12,13 +12,13 @@ If the folder doesn't exist, isn't a folder, or is Halonic's profile folder, the
 
 - Given a host started with `--keychain-relay` and no workspace,
   when the shell names a folder that exists,
-  then `POST /v1/paperclip/connections` for that folder answers 200, not 404 `unknown_workspace`.
+  then the host answers `{"op":"noticed","folder":…}`, and the next `POST /v1/paperclip/connections` for that folder answers 200, not 404 `unknown_workspace`.
 - Given a host waiting for the shell's answer to a secret request,
   when the shell names a folder before it answers,
   then the request still gets its answer, and the folder is added.
 - Given a folder that doesn't exist,
   when the shell names it,
-  then the host serves no new workspace and its standard error says the folder doesn't exist, without its path.
+  then the host serves no new workspace, its standard error says the folder doesn't exist, without its path, and it still answers `noticed`.
 - Given the profile folder,
   when the shell names it,
   then the host doesn't add it.
