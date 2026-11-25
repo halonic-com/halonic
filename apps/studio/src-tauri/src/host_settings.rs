@@ -99,7 +99,7 @@ where
 }
 
 /// Saves one key, or removes it when `value` is `None`, holding the lock.
-fn save<R: Runtime>(
+pub(crate) fn save<R: Runtime>(
     app: &AppHandle<R>,
     key: &str,
     value: Option<&Value>,
