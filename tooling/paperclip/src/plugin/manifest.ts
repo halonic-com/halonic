@@ -5,6 +5,7 @@ import { chiefLine } from "./chief-line-settings.ts";
 import { mergeControlJob } from "./merge-control-declaration.ts";
 import { fastTrackConfigProperties, mergeControlConfigProperties } from "./queue-settings.ts";
 import { stackRebaseConfigProperties } from "./stack-rebase-settings.ts";
+import { statePacketConfigProperties } from "./state-packet-declaration.ts";
 import { taskToolDeclarations } from "./task-tool-declarations.ts";
 import {
   trialResultsConfigProperties,
@@ -291,6 +292,7 @@ export const manifest: PaperclipPluginManifestV1 = {
         default: ["liam", "julian"],
       },
       ...trialResultsConfigProperties,
+      ...statePacketConfigProperties,
       ...chiefLine.properties,
     },
   },

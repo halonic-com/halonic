@@ -765,6 +765,8 @@ front of each name. A metric that doesn't save is logged and changes nothing.
   all with the extra tag `result`.
 - **Each `gh` status read the guard sees** (tags `companyId`, `subcommand`,
   `agent`, `mode`): `tools.gh_redirected` (see gh guard above).
+- **Each state packet asked for** (tag `companyId`): `state_packet.built` or
+  `state_packet.none` (see State packet in monitor wakes below).
 
 ## GitHub snapshot
 
@@ -836,6 +838,39 @@ requests and the merge queue. Requirement `paperclip.github-routes`.
   keeps only a few days, so every board check pass adds new agent merges to
   plugin state key `agent-merges` (pull request, agent, merge time; 30 days;
   `src/snapshot/agent-merges.ts`). Requirement `paperclip.agent-merge-counts`.
+
+## State packet in monitor wakes
+
+HAL-17402, with Liam's design review of 24 Nov. A wait-check run usually spends
+its first turns on `task_get`, `pr_status` and `queue_state`. With the packet,
+the run gets that state in its prompt and can decide on its first turn.
+
+- **Who asks:** the server, through the data key `state-packet`
+  (`src/plugin/state-packet-data.ts`), just before an `issue_monitor_due` run
+  starts, with `{ companyId, issueId, wakeReason }`. It adds a packet it gets
+  to the run's prompt. The server side is a local Paperclip patch in
+  `halonic-com/server` (HAL-18684's follow-up). Without that patch nothing asks.
+- **Setting:** `statePacket`, off by default. Off means no packet, so the wake
+  is as before. The board turns it on for the 48-hour trial.
+- **What it holds** (`src/state-packet/`): one line per pull request of the
+  task, on an `<agent>/HAL-<n>-<words>` branch in the watcher's snapshot. Each
+  line gives the state, the head, `ci-ok`, whether it is mergeable, the
+  reviewers with a signed approval on the head, the merge queue position and
+  its own `dataAsOf`. A merged pull request shows `ci-ok` on its merge commit.
+  Below the lines come the task's 3 newest comments, JSON-quoted as untrusted
+  data and each cut to 500 characters. The whole packet is at most 6,000
+  characters; the oldest comments go first when it is over.
+- **Fresh enough:** a line older than 5 minutes is read again from GitHub
+  (`pr_status`'s read, or one `ci-ok` read on a merge commit) and kept as its
+  own state entry (`github` / `pull-fresh:<repo>#<n>`). The watcher replaces
+  the whole snapshot on each pass, so the line isn't written into it. The next
+  wake takes whichever is newer. A merge commit whose `ci-ok` finished is never
+  read again. A run reads a line again itself only when its `dataAsOf` is more
+  than 10 minutes old.
+- **Never half a packet:** no packet, with the reason in the log, when the
+  task has no such pull request, the snapshot or a kept line can't be read, a
+  GitHub read fails, the lines alone are over the cap, or the build takes
+  longer than 8 seconds.
 
 ## Fast-track rules
 

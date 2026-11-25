@@ -76,6 +76,36 @@ export function readPrParams(
   return { repo: chosen, number };
 }
 
+/** A company's GitHub reader for one call, counting its requests, and its watched repositories. */
+export interface CompanyGitHub {
+  readonly get: GitHubGet;
+  readonly requests: () => number;
+  readonly repos: readonly string[];
+}
+
+/**
+ * The company's read-only GitHub reader, as the tools and the state packet
+ * use it: each request gives up after `toolRequestTimeoutMs`.
+ */
+export async function companyGitHub(
+  ctx: Pick<ToolsApi, "config" | "secrets" | "http">,
+  companyId: string,
+): Promise<CompanyGitHub> {
+  const settings = readSettings(await ctx.config.get(companyId));
+  if (settings.token === undefined) {
+    throw new Error("no GitHub token is set in the plugin's settings.");
+  }
+  const token = await ctx.secrets.resolve(settings.token, { companyId });
+  const counted = countingGet(
+    gitHubReader({
+      fetch: (url, init) =>
+        ctx.http.fetch(url, { ...init, signal: AbortSignal.timeout(toolRequestTimeoutMs) }),
+      token,
+    }),
+  );
+  return { ...counted, repos: settings.repos };
+}
+
 /** Runs one tool call with the company's settings and GitHub reader. Errors go back to the agent. */
 async function run(
   ctx: ToolsApi,
@@ -86,20 +116,9 @@ async function run(
   let requests = () => 0;
   let result: ToolResult;
   try {
-    const settings = readSettings(await ctx.config.get(runCtx.companyId));
-    if (settings.token === undefined) {
-      return { error: `${name}: no GitHub token is set in the plugin's settings.` };
-    }
-    const token = await ctx.secrets.resolve(settings.token, { companyId: runCtx.companyId });
-    const counted = countingGet(
-      gitHubReader({
-        fetch: (url, init) =>
-          ctx.http.fetch(url, { ...init, signal: AbortSignal.timeout(toolRequestTimeoutMs) }),
-        token,
-      }),
-    );
-    requests = counted.requests;
-    result = await withTimeout(body(counted.get, settings.repos), toolTimeoutMs, name);
+    const github = await companyGitHub(ctx, runCtx.companyId);
+    requests = github.requests;
+    result = await withTimeout(body(github.get, github.repos), toolTimeoutMs, name);
   } catch (error) {
     result = { error: `${name}: ${(error as Error).message}` };
   }
