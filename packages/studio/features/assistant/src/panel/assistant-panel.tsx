@@ -240,10 +240,7 @@ export function ChatBody(props: ChatBodyProps) {
     />
   );
   const agent = agentOfView(view, props.choices);
-  if (view !== undefined && onStartScreen) {
-    return <StartScreen composer={composer} link={skillLink(view)} />;
-  }
-  return (
+  const chat = (
     <>
       <StatusLine view={view} agent={agent} lookingAt={lookingAt} />
       <ShownItems
@@ -267,9 +264,15 @@ export function ChatBody(props: ChatBodyProps) {
           continueWaits={engineAnswering ? undefined : { reason: noticeId }}
         />
       )}
-      {composer}
-      {view === undefined ? null : skillLink(view)}
     </>
+  );
+  return (
+    <StartScreen
+      on={onStartScreen}
+      chat={chat}
+      composer={composer}
+      link={view === undefined ? null : skillLink(view)}
+    />
   );
 }
 
