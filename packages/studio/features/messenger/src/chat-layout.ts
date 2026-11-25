@@ -34,7 +34,8 @@ export type ChatLine =
 /**
  * The transcript's lines (`messenger.chat-transcript`): "Today", "Yesterday" or "Mon 23 Nov"
  * before each day's first entry, and an agent's message marked as a run's head when the line before
- * it isn't a message by the same author on the same day. In a channel every message that isn't the
+ * it isn't a message by the same author on the same day, or when it answers after that author's
+ * automatic notes (`messenger.automatic-notes`). In a channel every message that isn't the
  * person's has a head (`messenger.author-from-source`). The person's own messages have none: their
  * bubble says whose they are. A message that goes on a run without a head of its own `follows`, so
  * a run reads as one group. Pending messages come last, after today's label if none shows.
@@ -51,6 +52,8 @@ export function chatLines(
   const lines: ChatLine[] = [];
   let day = "";
   let author = "";
+  // An agent's answer after its automatic notes gets its own head, so it doesn't carry their time.
+  let afterNote = false;
   const startDay = (at: Date) => {
     const label = dayLabel(at, now);
     if (label === day) return;
@@ -68,7 +71,8 @@ export function chatLines(
     const { message } = entry;
     startDay(new Date(message.sentAt));
     const by = authorKey(message);
-    const head = by !== "me" && (channel || by !== author);
+    const answer = afterNote && message.automatic !== true;
+    const head = by !== "me" && (channel || by !== author || answer);
     lines.push({
       kind: "message",
       key: message.id,
@@ -77,6 +81,7 @@ export function chatLines(
       follows: !head && by === author,
     });
     author = by;
+    afterNote = message.automatic === true;
   }
   if (pending.length > 0) startDay(now);
   for (const each of pending) {

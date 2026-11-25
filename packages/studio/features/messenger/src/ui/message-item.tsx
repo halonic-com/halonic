@@ -91,7 +91,7 @@ export function MessageItem({
           </span>
         </p>
       ) : null}
-      <div className="flex items-start gap-1.5 ps-9">
+      <div className="flex items-start gap-2 ps-9">
         <div data-bubble className={agentBubble(automatic)}>
           {automatic ? <span className="sr-only">{messengerWords.automatic(author)} </span> : null}
           {body}

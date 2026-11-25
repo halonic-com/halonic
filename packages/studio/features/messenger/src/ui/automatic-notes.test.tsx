@@ -50,6 +50,21 @@ verifies("messenger.automatic-notes", () => {
       );
     });
 
+    it("is followed by Chief's answer under its own name and time", async () => {
+      const { messaging, clock, chat } = acme();
+      clock.now = new Date(2026, 10, 25, 9, 0, 2);
+      messaging.addMessage(chat.id, { body: "On it. Checking the build.", automatic: true });
+      clock.now = new Date(2026, 10, 25, 9, 4);
+      messaging.addMessage(chat.id, { body: "Yes, 0.3 is built." });
+      const page = await openMessenger(messaging, [], false, noon);
+      await openChat(page, "Chief");
+      const heads = [...page.querySelectorAll("main ol > li[data-head]")];
+      expect(heads.map((each) => each.querySelector("p")?.textContent)).toEqual([
+        "CChief · 09:00",
+        "CChief · 09:04",
+      ]);
+    });
+
     it("changes neither the row's preview, nor its unread dot, nor Chief's working line", async () => {
       const { messaging, clock, chat } = acme();
       const page = await openMessenger(messaging, [], false, noon);
