@@ -112,6 +112,13 @@ fn main() {
         "phone_open_settings",
         "phone_open_tailscale",
         "owner_check_available",
+        "action_send",
+        "action_sign_in",
+        "action_sign_in_cancel",
+        "action_sign_out",
+        "action_account",
+        "action_open_guided",
+        "action_open_page",
         "update_status",
         "update_watch",
         "update_check",
@@ -128,6 +135,36 @@ fn main() {
         .windows_attributes(tauri_build::WindowsAttributes::new_without_app_manifest());
     tauri_build::try_build(attributes).expect("the shell's build step failed");
     embed_windows_manifest();
+    stage_action_routes();
+}
+
+/// An empty route list, in the format `halonic-action-send` reads.
+const NO_ACTION_ROUTES: &str =
+    "{\"format\":\"halonic.action-routes/1\",\"webOrigins\":[],\"routes\":[]}\n";
+
+// The route list the `action_*` commands send and open from (HAL-18084).
+// `pnpm discover` writes it from the action catalog into src/generated/,
+// which git ignores. A build that hasn't run discover, such as `cargo test`
+// in CI, gets an empty list, with which the shell sends and opens nothing.
+// The shell compiles in the copy this puts in OUT_DIR.
+fn stage_action_routes() {
+    let generated = std::path::Path::new("src/generated/action-routes.json");
+    let text = match std::fs::read_to_string(generated) {
+        Ok(text) => {
+            println!("cargo:rerun-if-changed={}", generated.display());
+            text
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            // Watching a path that doesn't exist would rerun this on every
+            // build, so the folder is watched until discover writes the list.
+            println!("cargo:rerun-if-changed=src");
+            NO_ACTION_ROUTES.to_owned()
+        }
+        Err(error) => panic!("the route list can't be read: {error}"),
+    };
+    let out_dir = std::env::var("OUT_DIR").expect("cargo sets OUT_DIR");
+    let staged = std::path::Path::new(&out_dir).join("action-routes.json");
+    std::fs::write(staged, text).expect("the route list can be staged in OUT_DIR");
 }
 
 // tauri-build embeds its Windows manifest in the app binary only. The

@@ -45,6 +45,12 @@ impl SecretsState {
     pub(crate) fn host_keychain(&self) -> Arc<dyn SecretBackend> {
         Arc::clone(&self.backend)
     }
+
+    /// The keychain a stepper's sign-in is kept in, for the `action_*`
+    /// commands only, which reach just the `action__` names (HAL-18084).
+    pub(crate) fn action_keychain(&self) -> Arc<dyn SecretBackend> {
+        Arc::clone(&self.backend)
+    }
 }
 
 /// Why a call failed: a stable `kind` for the page to pick its words by

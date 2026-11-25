@@ -27,8 +27,9 @@
 //! `login_item_*` commands (capabilities/desktop-login-item.json), and the page's close request
 //! (capabilities/desktop-window.json), its notifications
 //! (capabilities/desktop-notifications.json) and the `wsl_*` commands of the sandbox
-//! backup (capabilities/desktop-sandbox-backup.json) and, on macOS and Linux,
-//! `server_session_open` (capabilities/desktop-server-session.json) and, on Windows,
+//! backup (capabilities/desktop-sandbox-backup.json) and the `action_*` commands of
+//! user-only action steppers (capabilities/desktop-actions.json) and, on macOS and
+//! Linux, `server_session_open` (capabilities/desktop-server-session.json) and, on Windows,
 //! `sandbox_elevate` (capabilities/desktop-sandbox-elevate.json) and the WSL setup's
 //! `sandbox_wsl_*` commands (capabilities/desktop-sandbox-wsl-setup.json), and on Android the
 //! pairing scanner's `pair_scan` and `pair_scan_cancel`
@@ -43,6 +44,8 @@
 //! `server_session_open` shows the brief in a second window whose page no
 //! capability names, so it gets no command either (`server_session_brief.rs`).
 
+mod action_parts;
+mod actions;
 mod agent_host;
 mod blobs;
 mod command_paths;
@@ -172,7 +175,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(plugin_git::PluginGitExports::default())
         .manage(phone_tunnel_events::TunnelWatchers::default())
         .manage(server_session::ServerSessionState::default())
-        .manage(phone_nearby::NearbyState::default());
+        .manage(phone_nearby::NearbyState::default())
+        .manage(actions::ActionState::default());
     // The window that shows the whole brief before Claude Code starts on
     // the user's server, and its page, served to that window only.
     #[cfg(any(target_os = "macos", target_os = "linux"))]
@@ -267,6 +271,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
                 agent_host::end_page_streams(webview.app_handle(), webview.label());
                 engine::end_page(webview.app_handle(), webview.label());
                 http_fetch::end_page_calls(webview.app_handle(), webview.label());
+                actions::end_page(webview.app_handle(), webview.label());
                 files::end_page_watches(webview.app_handle(), webview.label());
                 pair_scan::end_page_scan(webview.app_handle());
                 phone_tunnel::end_page(webview.app_handle(), webview.label());
@@ -284,6 +289,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
                 agent_host::end_page_streams(window.app_handle(), window.label());
                 engine::end_page(window.app_handle(), window.label());
                 http_fetch::end_page_calls(window.app_handle(), window.label());
+                actions::end_page(window.app_handle(), window.label());
                 files::end_page_watches(window.app_handle(), window.label());
                 pair_scan::end_page_scan(window.app_handle());
                 phone_tunnel::end_page(window.app_handle(), window.label());
@@ -398,6 +404,13 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             phone_screens::phone_open_settings,
             phone_screens::phone_open_tailscale,
             owner_check_page::owner_check_available,
+            actions::action_send,
+            actions::action_sign_in,
+            actions::action_sign_in_cancel,
+            actions::action_sign_out,
+            actions::action_account,
+            actions::action_open_guided,
+            actions::action_open_page,
             #[cfg(desktop)]
             updates::update_status,
             #[cfg(desktop)]

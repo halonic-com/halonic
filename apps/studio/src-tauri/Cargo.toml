@@ -29,6 +29,8 @@ crate-type = ["cdylib", "rlib"]
 tauri-build = { version = "=2.7.4", features = [] }
 
 [dependencies]
+# User-only action steppers' calls, sign-in and pages (HAL-17525, HAL-18084).
+halonic-action-send = { path = "crates/action-send" }
 halonic-agent-host = { path = "crates/agent-host" }
 halonic-blob-store = { path = "crates/blob-store" }
 halonic-command-paths = { path = "crates/command-paths" }
