@@ -7,7 +7,8 @@
 When Studio sends screenshot feedback, the Paperclip provider shall create one task with
 `POST /api/companies/{company}/issues` whose body is exactly `title`, `description`, `projectId`,
 `assigneeAgentId`, `status: "todo"` and `idempotencyKey`, the key made from the feedback's own ID, so
-sending the same feedback again gets the task Paperclip already made. It shall find the project and
+sending the same feedback again gets the task Paperclip already made. The row shall take only a key
+that starts `halonic-feedback:`, so it can make no other task. It shall find the project and
 the agent by name with the company's project and agent lists, and refuse, sending no task, when
 either has no match. When the feedback has a screenshot, the provider shall read the task's
 attachments with `GET /api/issues/{task}/attachments` and, when no file of the screenshot's name is
@@ -29,5 +30,8 @@ shall answer `sent` with the task's ID and its page, `offline` when Paperclip ca
   when the same feedback is sent again,
   then the same key goes out, Paperclip answers with the same task, and the PNG is not uploaded again.
 - Given a file that isn't a PNG, or a JSON body on the upload row,
+  when it reaches the transport,
+  then it is refused and nothing goes out.
+- Given a task create whose key doesn't start `halonic-feedback:`, or that also sets a parent,
   when it reaches the transport,
   then it is refused and nothing goes out.

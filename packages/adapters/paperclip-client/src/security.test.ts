@@ -15,6 +15,7 @@ import {
 import { PaperclipMessaging } from "./client.ts";
 import { FakePaperclip } from "./fake-paperclip.test-helper.ts";
 import { buildPath, findRequest, paperclipRequests, UnsafeIdError } from "./requests.ts";
+import { PaperclipTransport } from "./transport.ts";
 
 /** Puts `fake` behind a real HTTP server on 127.0.0.1, so the platform's own `fetch` talks to it. */
 async function listen(fake: FakePaperclip): Promise<http.Server> {
@@ -73,6 +74,15 @@ function client(address = paperclip.address, fetchFunction?: typeof fetch): Pape
     label: "Paperclip · Acme",
     userId: me,
     ...(fetchFunction === undefined ? {} : { fetch: fetchFunction }),
+  });
+}
+
+/** Uploads a tiny made-up PNG to the plain task, with the platform's own `fetch`. */
+function uploadScreenshot(address: string): Promise<unknown> {
+  const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2]);
+  return new PaperclipTransport({ address, key: testKey }).send("attachScreenshot", {
+    path: { company, task: plainTask },
+    upload: { fileName: "shot.png", contentType: "image/png", bytes: png },
   });
 }
 
@@ -248,6 +258,44 @@ verifies("agent-host.paperclip-key", () => {
       );
       expect(JSON.stringify(otherHeaders)).not.toContain(testKey);
       expect(`${request?.path}?${request?.query}`).not.toContain(testKey);
+    });
+
+    it("sends an upload with the key only in the Authorization header, in no part", async () => {
+      const attachments = `/api/companies/${company}/issues/${plainTask}/attachments`;
+      paperclip.on("POST", attachments, { status: 201, body: { id: "att-1" } });
+      await uploadScreenshot(paperclip.address);
+      const [request] = paperclip.seen;
+      expect(request?.headers.get("authorization")).toBe(`Bearer ${testKey}`);
+      expect(request?.headers.get("content-type")).toMatch(/^multipart\/form-data; boundary=/);
+      const form = request?.body as FormData;
+      const parts = await Promise.all(
+        [...form.entries()].map(async ([name, value]) =>
+          [
+            name,
+            typeof value === "string" ? value : value.name,
+            await new Response(value).text(),
+          ].join(" "),
+        ),
+      );
+      expect(parts).toHaveLength(1);
+      expect(parts.join("\n")).not.toContain(testKey);
+    });
+
+    it("refuses a redirect on an upload, and the other host never hears from the client", async () => {
+      const other = new FakePaperclip();
+      const otherServer = await listen(other);
+      try {
+        paperclip.on("POST", `/api/companies/${company}/issues/${plainTask}/attachments`, {
+          status: 307,
+          headers: { location: `${other.address}/steal` },
+        });
+        await expect(uploadScreenshot(paperclip.address)).rejects.toMatchObject({
+          reason: "redirect",
+        });
+        expect(other.seen).toEqual([]);
+      } finally {
+        await close(otherServer);
+      }
     });
   });
 

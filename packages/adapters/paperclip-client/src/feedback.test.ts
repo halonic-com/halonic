@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { acmeData, agentAda, company, testKey, websiteProject } from "./acme-data.test-helper.ts";
 import { FakePaperclip, type SeenRequest } from "./fake-paperclip.test-helper.ts";
 import { type FeedbackTaskInput, findByName, PaperclipFeedback } from "./feedback.ts";
-import { findRequest, paperclipRequests } from "./requests.ts";
+import { findRequest, fitsBody, paperclipRequests } from "./requests.ts";
 import { PaperclipClientError, PaperclipTransport } from "./transport.ts";
 
 const madeTask = "i0000000-0000-4000-8000-000000000077";
@@ -84,7 +84,22 @@ verifies("paperclip-client.feedback-tasks", () => {
           "idempotencyKey",
         ],
         status: "todo",
+        prefixed: { idempotencyKey: "halonic-feedback:" },
       });
+      const body = {
+        title: "t",
+        description: "d",
+        projectId: websiteProject,
+        assigneeAgentId: agentAda,
+        status: "todo",
+        idempotencyKey: "halonic-feedback:f1",
+      };
+      expect(fitsBody("createFeedbackTask", body)).toBe(true);
+      expect(fitsBody("createFeedbackTask", { ...body, idempotencyKey: "other:f1" })).toBe(false);
+      expect(fitsBody("createFeedbackTask", { ...body, idempotencyKey: "halonic-feedback:" })).toBe(
+        false,
+      );
+      expect(fitsBody("createFeedbackTask", { ...body, parentId: "i1" })).toBe(false);
       expect(findRequest("GET", `/api/issues/${madeTask}/attachments`)).toBe("listTaskAttachments");
       expect(findRequest("POST", attachmentsPath)).toBe("attachScreenshot");
       expect(findRequest("DELETE", `/api/attachments/att-1`)).toBeUndefined();
