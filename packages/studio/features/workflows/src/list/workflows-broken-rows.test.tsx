@@ -1,12 +1,18 @@
 // @vitest-environment jsdom
 
+import type { RemoveFocus } from "@halonicjs/studio-feature-files/api";
 import type { FilesWithErrorsSource, FileWithErrors } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import { listing, memoryHost, show, typeInto, unmount } from "../test-support.tsx";
 import { WorkflowsView } from "./workflows-page.tsx";
 
+// jsdom has no popover: a menu closes itself after a pick by hiding it.
+beforeAll(() => {
+  HTMLElement.prototype.showPopover ??= () => {};
+  HTMLElement.prototype.hidePopover ??= () => {};
+});
 afterEach(unmount);
 
 const reportFile: FileWithErrors = {
@@ -91,5 +97,53 @@ verifies("workflows.list.broken-rows", () => {
 
     expect(cellOf(page, "weekly-report.workflow.yaml")).toBeDefined();
     expect(cellOf(page, "Support reply")).toBeUndefined();
+  });
+
+  it("moves the focus to the next row on Delete, and back to the row on Undo", async () => {
+    let files: readonly FileWithErrors[] = [reportFile];
+    const listeners = new Set<() => void>();
+    const changeTo = async (next: readonly FileWithErrors[]) => {
+      files = next;
+      await act(async () => {
+        for (const listener of listeners) listener();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+    };
+    const source: FilesWithErrorsSource = {
+      list: async () => files,
+      subscribe: (listener) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+    };
+    let focus: RemoveFocus | undefined;
+    const remove = vi.fn((_file: FileWithErrors, given?: RemoveFocus) => {
+      focus = given;
+    });
+    const { host } = memoryHost(hubs, [listing("support", "reply", "Support reply")]);
+    const page = await show(
+      <WorkflowsView host={host} filesWithErrors={source} brokenActions={{ remove }} />,
+    );
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    await act(async () =>
+      page.querySelector<HTMLElement>("button[aria-label^='More actions']")?.click(),
+    );
+    await act(async () =>
+      [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')]
+        .find((item) => item.textContent === "Delete")
+        ?.click(),
+    );
+    await act(async () => focus?.removed?.());
+    await changeTo([]);
+
+    expect(document.activeElement).toBe(cellOf(page, "Support reply"));
+
+    await act(async () => focus?.restored?.());
+    await changeTo([reportFile]);
+
+    expect(document.activeElement).toBe(cellOf(page, "weekly-report.workflow.yaml"));
   });
 });
