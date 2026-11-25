@@ -18,6 +18,33 @@ import type { PaperclipReader } from "./reader.ts";
 import { PaperclipClientError } from "./transport.ts";
 import { refusalOf } from "./writer.ts";
 
+/** A channel found, or why it can't be used. */
+export type FoundChannel =
+  | { kind: "found"; channel: ChannelTask }
+  | { kind: "refused"; reason: MessagingRefusal };
+
+/** Parent task `task` as a channel of company `company`, or why it can't take a write. */
+export async function findChannel(
+  reader: PaperclipReader,
+  company: string,
+  userId: string | undefined,
+  task: string,
+): Promise<FoundChannel> {
+  const answer = await reader.send("getTask", { path: { task } });
+  const reason = refusalOf(answer);
+  if (reason !== undefined) {
+    return { kind: "refused", reason };
+  }
+  const record: JsonRecord | undefined = answer.kind === "ok" ? asRecord(answer.body) : undefined;
+  const channel =
+    record === undefined || text(record, "companyId") !== company
+      ? undefined
+      : readChannel(record, userId);
+  return channel === undefined || channel.id !== task
+    ? { kind: "refused", reason: "not-found" }
+    : { kind: "found", channel };
+}
+
 function refused(reason: MessagingRefusal): SendResult {
   return { outcome: "refused", reason };
 }
@@ -53,7 +80,7 @@ export class PaperclipChannelSender {
     body: string,
     to: readonly MessagingId[],
   ): Promise<SendResult> {
-    const found = await this.#channel(task);
+    const found = await findChannel(this.#reader, this.#company, this.#userId, task);
     if (found.kind === "refused") {
       return refused(found.reason);
     }
@@ -90,27 +117,6 @@ export class PaperclipChannelSender {
       outcome: "sent",
       message: { ...message, conversation: conversation.id, to: addressees, work },
     };
-  }
-
-  /** Parent task `task` as a channel of the connection's company, or why it can't take a message. */
-  async #channel(
-    task: string,
-  ): Promise<
-    { kind: "found"; channel: ChannelTask } | { kind: "refused"; reason: MessagingRefusal }
-  > {
-    const answer = await this.#reader.send("getTask", { path: { task } });
-    const reason = refusalOf(answer);
-    if (reason !== undefined) {
-      return { kind: "refused", reason };
-    }
-    const record: JsonRecord | undefined = answer.kind === "ok" ? asRecord(answer.body) : undefined;
-    const channel =
-      record === undefined || text(record, "companyId") !== this.#company
-        ? undefined
-        : readChannel(record, this.#userId);
-    return channel === undefined || channel.id !== task
-      ? { kind: "refused", reason: "not-found" }
-      : { kind: "found", channel };
   }
 
   /**

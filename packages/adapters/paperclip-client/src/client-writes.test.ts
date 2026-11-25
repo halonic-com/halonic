@@ -186,15 +186,18 @@ verifies("ports.agent-messaging", () => {
       expect(paperclip.seen.filter((request) => request.method === "POST")).toEqual([]);
     });
 
-    it("has no channels, and sends nothing addressed to an agent outside the chat", async () => {
+    it("takes no channel call on a chat, and sends nothing addressed to an agent outside it", async () => {
       paperclip.serveAcme();
       const messaging = client();
       const chat = `${source}:chat:${chatTask}`;
-      const notSupported = { outcome: "refused", reason: "not-supported" };
-      expect(await messaging.startChannel("Launch", [], "")).toEqual(notSupported);
-      expect(await messaging.setMembers(chat, [], "")).toEqual(notSupported);
-      expect(await messaging.joinChannel(chat)).toEqual(notSupported);
-      expect(await messaging.leaveChannel(chat)).toEqual(notSupported);
+      const notFound = { outcome: "refused", reason: "not-found" };
+      expect(await messaging.startChannel("Launch", [], "")).toEqual({
+        outcome: "refused",
+        reason: "bad-members",
+      });
+      expect(await messaging.setMembers(chat, [], "")).toEqual(notFound);
+      expect(await messaging.joinChannel(chat)).toEqual(notFound);
+      expect(await messaging.leaveChannel(chat)).toEqual(notFound);
       expect(await messaging.browseChannels()).toEqual([]);
       expect(await messaging.send(chat, "hi", [], { to: [`${source}:agent:someone`] })).toEqual({
         outcome: "refused",

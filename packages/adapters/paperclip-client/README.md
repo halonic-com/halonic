@@ -63,7 +63,14 @@ person made, never an agent, with a members line the provider writes (2 to 8 age
 message in a channel is a comment on that task, and each agent in `to`, or the lead when `to` is empty, gets one
 child task assigned to it, holding only the person's text, quoted and labelled as the board's. In Paperclip only
 an assignment wakes an agent, and the provider never reads a name out of the text, so a typed `@Bo` wakes
-nobody. Starting a channel, members, browsing, joining and leaving aren't served yet.
+nobody.
+
+**Starting a channel and its members** (`paperclip-client.channel-membership`). `startChannel` makes the parent
+task with the person's key, the `channel` tag (made once if the company has none), status `backlog` and no
+assignee, so a comment on it wakes no agent. Paperclip keeps no followers on a task, so the members line also
+names the people who follow the channel: `setMembers`, `joinChannel` and `leaveChannel` rewrite only that line,
+and `browseChannels` lists the channels the person made and doesn't follow. Members are checked (2 to 8 of the
+company's agents, the lead among them) before any write. Titles are kept to one line of at most 80 characters.
 
 **Workflow task writes.** `PaperclipTasks` gives workflows (phase 3, step 4) two writes on the same connection:
 `wake` assigns a task to an agent with status `todo` and a comment, and `finish` sets status `done` with a
@@ -116,6 +123,10 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `finishTask` | `PATCH /api/issues/{task}` with exactly `{ status: "done", comment }` | a workflow closes a task as done |
 | `commentOnChannel` | `POST /api/issues/{task}/comments` | send a message in a channel: a comment on its parent task |
 | `createChildTask` | `POST /api/companies/{company}/issues` with exactly `{ title, description, parentId, assigneeAgentId, status: "todo" }` | one child task per agent a channel message is for |
+| `listLabels` | `GET /api/companies/{company}/labels` | find the company's `channel` tag |
+| `createChannelLabel` | `POST /api/companies/{company}/labels` with exactly `{ name: "channel", color: "#6366f1" }` | make the `channel` tag when the company has none |
+| `createChannel` | `POST /api/companies/{company}/issues` with exactly `{ title, description, labelIds: [one], status: "backlog" }` | start a channel: its parent task, unassigned |
+| `updateChannel` | `PATCH /api/issues/{task}` with exactly `{ description }` | change a channel's members line: members, lead, who follows it |
 
 **No route that makes keys.** Nothing goes to Paperclip upstream (board, HAL-10, 24 Nov), so this list is the
 main protection. No entry makes, lists or deletes keys or tokens: not `/api/board-api-keys`, an agent's

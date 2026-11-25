@@ -140,6 +140,11 @@ verifies("agent-host.paperclip-key", () => {
         // Channels (HAL-17637), pinned in channels.test.ts.
         "commentOnChannel",
         "createChildTask",
+        // Starting a channel and its members (HAL-18121), pinned in channel-members.test.ts.
+        "listLabels",
+        "createChannelLabel",
+        "createChannel",
+        "updateChannel",
       ]);
     });
   });
