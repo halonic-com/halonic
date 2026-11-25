@@ -1,7 +1,7 @@
 import { request } from "node:http";
 import { gatewayFrameKinds, gatewayMaxFrameBytes } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { TestPhone } from "./e2e-phone.test-helper.ts";
 import { gatewayLoopbackHost } from "./gateway-listener.ts";
 import {
@@ -294,14 +294,22 @@ verifies("remote-gateway.listener", () => {
     });
 
     it("drops a connection that has been silent for 2.5 heartbeats, and pings the rest", async () => {
+      // The heartbeat runs on a driven clock: on real time, a runner that stalls
+      // for 2.5 heartbeats after the handshake drops the client before its first ping.
+      vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
       const t = await openListener({ heartbeatMs: 20 });
       try {
         const client = t.client();
         await client.open(t.listener.port);
+        stallRealTime(100);
+        vi.advanceTimersByTime(20);
         await client.until((text) => text.includes("\u0089\u0000"));
+        expect(client.socket.destroyed).toBe(false);
+        vi.advanceTimersByTime(40);
         await client.ended;
         expect(client.socket.destroyed).toBe(true);
       } finally {
+        vi.useRealTimers();
         await t.stop();
       }
     });
@@ -383,3 +391,11 @@ verifies("remote-gateway.listener", () => {
     expect(typeof startGatewayListener).toBe("function");
   });
 });
+
+/** Blocks the event loop for `ms` of real time, as a loaded CI runner does. */
+function stallRealTime(ms: number): void {
+  const until = performance.now() + ms;
+  while (performance.now() < until) {
+    // Busy-wait on purpose: the stall must hold the event loop.
+  }
+}
