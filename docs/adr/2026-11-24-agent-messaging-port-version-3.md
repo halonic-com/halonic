@@ -53,7 +53,12 @@ an action item as a question with no options.
   build against it.
 - The Paperclip provider turns a card with a pinned `stepper-request` into an
   action item and posts an `action-result` answer as one comment, in its own
-  pull request. Until then it serves no action items.
+  pull request. Until then it serves no action items. Such an item carries
+  `stepper` instead of `action` (`ports.agent-messaging-steppers`, HAL-17536):
+  the pinned revision's text, the revision, what each block touches and
+  whether a newer revision exists, checked by `checkInboxStepperRequest`
+  before it is served. It is an optional field, as `action` is, and an
+  `action-result` step may be marked `byHand`.
 - The Inbox shows an `action-result` answer by its outcome until its own
   change shows action items and opens the stepper.
 - If the requesting run has ended, the engine records the answer as a run

@@ -65,6 +65,17 @@ export {
   type MessageWorkState,
 } from "./agent-messaging-channels.ts";
 export {
+  checkInboxStepperRequest,
+  type InboxStepperCheck,
+  type InboxStepperRequest,
+  type InboxStepperTarget,
+  type InboxStepperTouch,
+  inboxStepperFormat,
+  inboxStepperRisks,
+  maxInboxStepperBlocks,
+  maxInboxStepperBytes,
+} from "./agent-messaging-steppers.ts";
+export {
   type AgentPlacementKey,
   type AgentPlacementRecord,
   type AgentPlacementStore,
