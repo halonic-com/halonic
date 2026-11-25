@@ -13,7 +13,7 @@ const STDERR_LINE_LIMIT: usize = 64 * 1024;
 /// time, as `source`. A release build on Windows has no console, so stderr
 /// passed on would go nowhere; and a pipe nobody reads would stall the
 /// child once it is full, so a thread reads it until the child closes it.
-pub(crate) fn log_stderr(child: &mut Child, source: &'static str) {
+pub fn log_stderr(child: &mut Child, source: &'static str) {
     let Some(stderr) = child.stderr.take() else {
         return;
     };

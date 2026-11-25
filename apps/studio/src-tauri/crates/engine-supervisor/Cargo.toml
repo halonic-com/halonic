@@ -1,0 +1,21 @@
+[package]
+name = "halonic-engine-supervisor"
+description = "Starts the background engine, reads its control pipe on a thread of its own, answers its secret requests from a bounded queue, stops it and kills it when it doesn't stop, and limits how often a crashed engine is restarted."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+# The engine's command, its handshake type and the shell's stderr log.
+halonic-agent-host = { path = "../agent-host" }
+halonic-engine-pipe = { path = "../engine-pipe" }
+halonic-secret-broker = { path = "../secret-broker" }
+halonic-shell-log = { path = "../shell-log" }
+
+[dev-dependencies]
+halonic-secrets = { path = "../secrets" }
