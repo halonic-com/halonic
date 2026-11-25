@@ -1137,6 +1137,50 @@
                   "run"
                 ],
                 "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "run": {
+                    "type": "string",
+                    "const": "fast-track"
+                  },
+                  "with": {
+                    "default": {},
+                    "type": "object",
+                    "properties": {
+                      "reviewEscalateMinutes": {
+                        "default": 15,
+                        "type": "integer",
+                        "minimum": 5,
+                        "maximum": 120
+                      },
+                      "enqueueAfterMinutes": {
+                        "default": 10,
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 60
+                      },
+                      "queueSlowMinutes": {
+                        "default": 30,
+                        "type": "integer",
+                        "minimum": 10,
+                        "maximum": 240
+                      },
+                      "jumpAhead": {
+                        "default": 8,
+                        "type": "integer",
+                        "minimum": 8,
+                        "maximum": 50
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "run"
+                ],
+                "additionalProperties": false
               }
             ]
           },

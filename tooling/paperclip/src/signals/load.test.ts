@@ -43,6 +43,26 @@ verifies("paperclip.signals", () => {
     expect(loaded.plans.get("pr-watcher")).toMatchObject({ source: "default" });
   });
 
+  test("runs the fast-track rule with today's settings, or a file's", () => {
+    expect(loadSignals(undefined).plans.get("fast-track")).toMatchObject({
+      source: "default",
+      writes: true,
+      settings: {
+        reviewEscalateMinutes: 15,
+        enqueueAfterMinutes: 10,
+        queueSlowMinutes: 30,
+        jumpAhead: 8,
+      },
+    });
+    const fast = { version: 1, id: "fast", rule: { run: "fast-track", with: { jumpAhead: 12 } } };
+    expect(loadSignals([fast]).plans.get("fast-track")).toMatchObject({
+      source: "file",
+      settings: { jumpAhead: 12, enqueueAfterMinutes: 10 },
+    });
+    const looser = { ...fast, rule: { run: "fast-track", with: { jumpAhead: 3 } } };
+    expect(loadSignals([looser]).plans.get("fast-track")).toBe("off");
+  });
+
   test("takes a signal file's settings", () => {
     const signal = { ...watcher, rule: { run: "pr-watcher", with: { wakeOn: ["ci-red"] } } };
     expect(loadSignals([signal]).plans.get("pr-watcher")).toMatchObject({

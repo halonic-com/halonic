@@ -47,6 +47,7 @@ verifies("cli.commands.validate.signal-refused", () => {
     ["pr-watcher", "rule: { run: pr-watcher }"],
     ["board-ask", "rule: { run: board-ask, with: { windowMinutes: 20, wake: false } }"],
     ["task-effort", "rule: { run: task-effort, with: { highFrom: 3, highAfterSendBack: false } }"],
+    ["fast-track", "rule: { run: fast-track, with: { jumpAhead: 12, queueSlowMinutes: 45 } }"],
   ])("passes a signal file that picks the offered rule %s", async (_, line) => {
     withSignal(line);
 
@@ -58,6 +59,7 @@ verifies("cli.commands.validate.signal-refused", () => {
   it.each([
     ["board-ask", "rule: { run: board-ask, with: { wakeOn: [ci-red] } }"],
     ["task-effort", "rule: { run: task-effort, with: { effort: max } }"],
+    ["fast-track", "rule: { run: fast-track, with: { labelAdder: someone } }"],
   ])("refuses a setting the rule %s doesn't know", async (_, line) => {
     withSignal(line);
 

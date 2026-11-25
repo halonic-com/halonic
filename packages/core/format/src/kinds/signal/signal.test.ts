@@ -36,12 +36,30 @@ verifies("format.signal-file", () => {
   });
 
   it("lists every rule with whether it writes", () => {
-    expect(signalRuleNames()).toEqual(["pr-watcher", "board-ask", "task-effort"]);
+    expect(signalRuleNames()).toEqual(["pr-watcher", "board-ask", "task-effort", "fast-track"]);
     expect(signalRuleNames().map((name) => signalRuleInfo(name).writes)).toEqual([
       true,
       true,
       true,
+      true,
     ]);
+  });
+
+  it("fills in today's settings for the fast-track rule, and takes a file's", () => {
+    expect(parsedValue("signal", yaml("id: fast", "rule: { run: fast-track }")).rule).toEqual({
+      run: "fast-track",
+      with: {
+        reviewEscalateMinutes: 15,
+        enqueueAfterMinutes: 10,
+        queueSlowMinutes: 30,
+        jumpAhead: 8,
+      },
+    });
+    const text = yaml("id: fast", "rule:", "  run: fast-track", "  with: { jumpAhead: 12 }");
+    expect(parsedValue("signal", text).rule.with).toMatchObject({
+      jumpAhead: 12,
+      queueSlowMinutes: 30,
+    });
   });
 
   it("fills in today's settings for the board-ask and task-effort rules, and takes a file's", () => {
@@ -98,6 +116,13 @@ verifies("format.signal-refusals", () => {
     ]);
     const effort = yaml("id: effort", "rule:", "  run: task-effort", "  with: { effort: max }");
     expect(summary(problemsOf("signal", effort))).toEqual(["rule.with unrecognized_keys 4"]);
+    const fast = (line: string) => yaml("id: fast", "rule:", "  run: fast-track", line);
+    expect(summary(problemsOf("signal", fast("  with: { labelAdder: someone }")))).toEqual([
+      "rule.with unrecognized_keys 4",
+    ]);
+    expect(summary(problemsOf("signal", fast("  with: { jumpAhead: 2 }")))).toEqual([
+      "rule.with.jumpAhead too_small 4",
+    ]);
   });
 
   it("refuses a key written as its id, without repeating it", () => {
