@@ -73,6 +73,17 @@ export class MessagingPoller {
   }
 
   /**
+   * Polls at once, then on the usual schedule. A sign-in that just connected
+   * a source calls it: until a source's first answer it reads as offline, so
+   * without it Studio would show a new connection offline until the next
+   * poll. Does nothing once stopped.
+   */
+  async pollNow(): Promise<void> {
+    if (this.#dueAt === undefined) return;
+    await this.#scheduleIn(0);
+  }
+
+  /**
    * Handles a scheduler timer. Returns `false` for a timer that isn't the
    * poll's, so the host's listener passes it on.
    */
