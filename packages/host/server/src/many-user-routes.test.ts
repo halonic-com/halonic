@@ -5,6 +5,7 @@ import type { Server, ServerConfig, ServerPorts } from "./api.ts";
 import { createServer } from "./create-server.ts";
 import type { DeploymentPorts } from "./many-user-routes.ts";
 import type { ManyUserPorts } from "./many-users-api.ts";
+import { memoryRunOwnership } from "./memory-run-ownership.test-helper.ts";
 import { type Principal, scopeName } from "./principal.ts";
 import type { SessionVerifier } from "./session-verifier.ts";
 import { ids, personalClaims, StubSessionVerifier } from "./stub-session-verifier.test-helper.ts";
@@ -46,6 +47,7 @@ function setup(verifier: SessionVerifier = stub()) {
           list: async () => stored,
           get: async (runId: string) => stored.find((run) => run.id === runId) ?? null,
         } as unknown as Pick<RunStore, "list" | "get">,
+        ownership: memoryRunOwnership(),
       };
     },
   };
@@ -153,7 +155,10 @@ describe("many-user server", () => {
         start,
       );
       expect(response.status).toBe(200);
-      expect(started).toEqual([{ scope: `u/${ids.alice}`, request: start }]);
+      // The server names a new run's id before the start, so it can record who started it first.
+      expect(started).toEqual([
+        { scope: `u/${ids.alice}`, request: { ...start, runId: expect.any(String) } },
+      ]);
     });
 
     it("answers 404 for the password sign-in and every route that isn't a run route", async () => {
