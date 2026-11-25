@@ -3,6 +3,7 @@
 - Task: HAL-18586 (chief line pull request outcomes, webhook receiver)
 - Approval: Liam approves this note in review on HAL-18586 (CI workflows are the guard's path; internal CI change, no board card)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jblnJ9TAWr9wz1b5m8kpDHVcJle/WjIN8oSbbfn7emMC9tgvnu8d1NIT4pcZqZO88Ns2DiyHgvqlS/Y+uvdKDQ==
 
 ## What changes
 
