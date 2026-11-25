@@ -118,9 +118,15 @@ const oneCommit: OpenWorkspaceHistory = async () => {
 /**
  * A target whose deploy sends `events`, then ends as `end` says: with a
  * result, or once it's stopped, with the port's `stopped` failure.
+ * `waiting` settles when the deploy waits to be stopped, so a test sends its
+ * signal then, not after a guessed delay.
  */
 function targetWith(plan: DeployPlan, events: DeployEvent[], end: DeployResult | "until-stopped") {
   const asked: DeployRequest[] = [];
+  let reached = () => {};
+  const waiting = new Promise<void>((resolve) => {
+    reached = resolve;
+  });
   const target = {
     accounts: async () => [account],
     plan: async () => plan,
@@ -128,7 +134,10 @@ function targetWith(plan: DeployPlan, events: DeployEvent[], end: DeployResult |
       asked.push(request);
       for (const event of events) onEvent(event);
       if (end !== "until-stopped") return end;
-      await new Promise((resolve) => request.signal?.addEventListener("abort", resolve));
+      await new Promise((resolve) => {
+        request.signal?.addEventListener("abort", resolve);
+        reached();
+      });
       throw Object.assign(new Error("The deploy was interrupted."), {
         kind: "conflict",
         code: "stopped",
@@ -146,7 +155,7 @@ function targetWith(plan: DeployPlan, events: DeployEvent[], end: DeployResult |
     clock: { now: () => new Date("2026-11-24T14:34:00.000Z") },
     openHistory: oneCommit,
   };
-  return { setup, asked };
+  return { setup, asked, waiting };
 }
 
 const plainTerminal: Terminal = {
@@ -286,13 +295,13 @@ verifies("cli.commands.deploy.run", () => {
       ["SIGTERM", 143],
       ["SIGHUP", 129],
     ] as const)("after %s, exits with %i", async (signal: StopSignal, code) => {
-      const { setup } = targetWith(livePlan, uploadAndGoLive.slice(0, 2), "until-stopped");
+      const target = targetWith(livePlan, uploadAndGoLive.slice(0, 2), "until-stopped");
       const io = captureIo(folder);
       const signals = fakeSignals();
-      const running = runCli(["deploy", "web"], io, [deployCommandWith(setup)], {
+      const running = runCli(["deploy", "web"], io, [deployCommandWith(target.setup)], {
         stop: { signals, exitNow: () => {} },
       });
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      await target.waiting;
       signals.send(signal);
       expect(await running).toBe(code);
       expect(io.stderr).toEqual([
