@@ -6,12 +6,14 @@ import { D1RunList } from "@halonicjs/adapter-cloudflare-storage";
 import type { AssembledEngine, LocalExecutor } from "@halonicjs/engine";
 import type { SchedulerListener } from "@halonicjs/ports";
 import type { RuntimeEnv } from "./env.ts";
+import { runIdOfObjectName, runObjectBridgeServer } from "./run-object-bridge.ts";
 import {
   createRuntime,
   type Runtime,
   type RuntimeOptions,
   runtimeOptionsOfNamePrefix,
 } from "./runtime.ts";
+import type { WorkerBridgeServer } from "./worker-bridge-server.ts";
 import { workerEngine } from "./worker-runs.ts";
 
 /**
@@ -32,6 +34,7 @@ import { workerEngine } from "./worker-runs.ts";
 export class RunObject extends AdapterRunObject {
   #executor: Promise<LocalExecutor> | undefined;
   #scopedRunList: Promise<D1RunList> | undefined;
+  #bridgeServer: WorkerBridgeServer | undefined;
 
   protected override runList(): RunListSink {
     return {
@@ -49,6 +52,37 @@ export class RunObject extends AdapterRunObject {
         await executor.onTimer(timer);
       },
     };
+  }
+
+  /**
+   * Answers a request the run's container sent its bridge, from the Worker's `ContainerOutbound`
+   * (requirement `runtime.run-container-object`). The run is the one this object is named after,
+   * never one the request names. A run whose bridge isn't open here gets 401.
+   */
+  async bridge(request: Request): Promise<Response> {
+    return this.#bridges().serve(request, {
+      runId: await this.#runIdOfName(),
+      waitUntil: (work) => this.ctx.waitUntil(work),
+    });
+  }
+
+  /** Revokes the run's bridge credential: its container was stopped. Safe to call twice. */
+  async revokeBridge(): Promise<void> {
+    await this.#bridges().revoke(await this.#runIdOfName());
+  }
+
+  /** The bridge server of the harness steps this object runs, built on first use. */
+  #bridges(): WorkerBridgeServer {
+    this.#bridgeServer ??= runObjectBridgeServer(
+      this.ctx.storage,
+      this.env as unknown as RuntimeEnv,
+    );
+    return this.#bridgeServer;
+  }
+
+  /** The run id this object is named after: its name without the scope's prefix. */
+  async #runIdOfName(): Promise<string> {
+    return runIdOfObjectName(this.ctx.id.name, await this.namePrefix());
   }
 
   /** The engine the timers go to: the Worker's. Only a test gives it another model. */

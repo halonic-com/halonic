@@ -5,6 +5,7 @@ import type {
   UsageObject,
 } from "@halonicjs/adapter-cloudflare-durable";
 import { halonicSecretNames } from "@halonicjs/ports";
+import type { RunContainerObject } from "./run-container-object.ts";
 
 /**
  * What the Worker's `env` holds: the bindings `wrangler.toml` declares. Secrets
@@ -27,6 +28,12 @@ export interface RuntimeEnv {
    * Cloud sells through needs it, so it isn't in {@link requiredBindings}.
    */
   readonly USAGE?: DurableObjectNamespace<UsageObject>;
+  /**
+   * One container per run, named as the run's run object is. Harness steps run in it only where
+   * the configuration also gives the class a container (HAL-18021), so it isn't in
+   * {@link requiredBindings}.
+   */
+  readonly RUN_CONTAINER?: DurableObjectNamespace<RunContainerObject>;
 }
 
 /** The bindings every deployment needs, by the name `wrangler.toml` gives them. */

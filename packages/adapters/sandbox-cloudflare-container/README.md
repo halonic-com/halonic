@@ -12,9 +12,9 @@ bridge and the profile's allowed sites.
 ## How it works
 
 - `RunContainerState` is the logic of the Durable Object that owns one run's container. The
-  Worker's container class (in `targets/cloudflare/runtime`, since only `cloudflare-*` packages
-  may use `cloudflare:workers`) wraps it around `ctx.container` and names each instance after its
-  run id. The object refuses any call that names another run, and a second start even for the
+  container class, `RunContainerObject` in `adapter-cloudflare-durable` (only `cloudflare-*`
+  packages may use `cloudflare:workers`), wraps it around `ctx.container` and names each instance
+  after its run. The object refuses any call that names another run, and a second start even for the
   same run.
 - It starts the container with `enableInternet: false` and intercepts only the bridge's name
   (plain HTTP, port 80) and each allowed site (HTTPS). The platform drops everything else, and

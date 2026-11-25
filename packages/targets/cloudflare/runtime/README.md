@@ -128,8 +128,19 @@ A harness step's bridge lives in its run object too: `WorkerBridgeServer`
 (`src/worker-bridge-server.ts`) is the `HarnessBridgeServer` port on the bridge's Web entry. It
 gives the run one credential, kept only as a hash in the run object's storage
 (`src/run-credential-storage.ts`), and revokes it when the engine closes the bridge or the run
-container's alarm stops the run. The rule is `runtime.worker-bridge`. It isn't wired into the
-engine yet (HAL-18020).
+container's alarm stops the run. The rule is `runtime.worker-bridge`. The open bridges live only
+in the run object's memory: if the object is evicted while a step runs, they are gone, and the
+run's credential then works until it expires rather than until it is revoked. It expires at the
+container's time cap counted from the bridge's opening, a little after the container's own
+deadline; the container's alarm revokes it at that deadline as well.
+
+`RunContainerObject` (`src/run-container-object.ts`, bound as `RUN_CONTAINER`) is the adapter's
+class with its hooks filled: its container's intercepts go to the `ContainerOutbound` entrypoint,
+which checks each request against the rules the object gave it in its props and sends a bridge
+request to the run object of the same name, and it revokes the credential in that run object.
+Harness steps don't run in it yet: the engine isn't wired to it (HAL-18020), and the class has
+no container until the configuration gives it one (HAL-18021). The rule is
+`runtime.run-container-object`.
 
 ## Configuration and wiring
 

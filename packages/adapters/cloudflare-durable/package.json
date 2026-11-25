@@ -33,6 +33,7 @@
     "runtime": "workers"
   },
   "dependencies": {
+    "@halonicjs/adapter-sandbox-cloudflare-container": "workspace:*",
     "@halonicjs/events": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/std": "workspace:*"

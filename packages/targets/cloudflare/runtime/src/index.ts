@@ -6,7 +6,9 @@
  */
 
 export { CoordinationObject, UsageObject } from "@halonicjs/adapter-cloudflare-durable";
+export { ContainerOutbound } from "./container-outbound.ts";
 export { RoutinesObject } from "./routines-object.ts";
+export { RunContainerObject } from "./run-container-object.ts";
 export { RunObject } from "./run-object.ts";
 // biome-ignore lint/style/noDefaultExport: Cloudflare finds the Worker on the default export.
 export { worker as default } from "./worker.ts";

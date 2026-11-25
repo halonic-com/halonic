@@ -920,6 +920,9 @@ importers:
 
   packages/adapters/cloudflare-durable:
     dependencies:
+      '@halonicjs/adapter-sandbox-cloudflare-container':
+        specifier: workspace:*
+        version: link:../sandbox-cloudflare-container
       '@halonicjs/events':
         specifier: workspace:*
         version: link:../../core/events
@@ -4906,6 +4909,9 @@ importers:
       '@halonicjs/adapter-password-pbkdf2':
         specifier: workspace:*
         version: link:../../../adapters/password-pbkdf2
+      '@halonicjs/adapter-sandbox-cloudflare-container':
+        specifier: workspace:*
+        version: link:../../../adapters/sandbox-cloudflare-container
       '@halonicjs/adapter-token-store':
         specifier: workspace:*
         version: link:../../../adapters/token-store
