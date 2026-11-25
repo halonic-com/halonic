@@ -1,5 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
+import { reviewerFor } from "../reviewer-paths.ts";
 import { approvalOf } from "./approval.ts";
 import {
   actionsOf,
@@ -53,6 +54,34 @@ verifies("paperclip.merge-control-signed-approval", () => {
     expect(reasonsOf({ texts: [signed] }).added).toEqual([1]);
     const julian = said(`Julian: ${notes}\nJulian: approved on head \`${head.slice(0, 7)}\``);
     expect(reasonsOf({ texts: [julian] }).added).toEqual([1]);
+  });
+
+  test("#6002: Liam's full-sha approval with notes below counts, and the plugin's reviewerFor routes it as live does", () => {
+    const files = [
+      "packages/core/assistant/README.md",
+      "packages/core/assistant/src/build/integration-checks.test.ts",
+      "packages/core/assistant/src/build/integration-checks.ts",
+      "packages/core/assistant/src/build/integration-proposals.test.ts",
+      "packages/core/assistant/src/build/read-tools.ts",
+      "packages/core/assistant/src/build/requirements/integration-proposals.md",
+      "packages/core/assistant/src/build/requirements/validate-integrations.md",
+      "packages/core/assistant/src/testing/notes-integration.test-helper.ts",
+    ];
+    // The live Merger and pr_status both route #6002 (602 changed lines, no Liam path) to Julian.
+    expect(reviewerFor({ files, changedLines: 602, sensitive: false })).toBe("julian");
+    const body = [
+      `Liam: approved on head \`${head}\``,
+      "",
+      "- **Untrusted workspace:** integration lines go through the same `proposalRefusal` filter.",
+      "",
+      "Notes, not blocking:",
+      "- The patterns also match inside comments and strings.",
+      "",
+      "602 changed lines is over the 400-line guide, but only 236 are code, so no split needed.",
+    ].join("\n");
+    const changes = { files, filesTotal: files.length, additions: 599, deletions: 3 };
+    const decision = pass(snapshot({ pulls: [pull(1, { ...changes, texts: [said(body, 1)] })] }));
+    expect(enqueued(decision)).toEqual([1]);
   });
 
   test("an unsigned mention of the head on line 4 still doesn't count", () => {

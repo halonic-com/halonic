@@ -108,6 +108,12 @@ export interface GatePull {
   readonly forcePushedAt: readonly string[];
   /** Base changes, by hand or automatic after the lower pull request merged. */
   readonly retargetedAt: readonly string[];
+  /**
+   * The newest merge-queue event when it is a removal: when, and GitHub's
+   * reason in upper case, such as `FAILED_CHECKS`. Null when the newest is
+   * an add, or there is none.
+   */
+  readonly queueExit: { readonly at: string; readonly reason: string } | null;
   readonly texts: readonly PullText[];
   /** Check runs on the head, every workflow and event. */
   readonly checks: readonly CheckFact[];

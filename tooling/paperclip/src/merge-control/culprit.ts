@@ -1,3 +1,4 @@
+import { lastPushOf } from "./approval.ts";
 import { failedGroupFacts, wakeAuthor } from "./author-wake.ts";
 import { commentOnce, logLine, minutesSince, type PassContext } from "./context.ts";
 import type { GateRow } from "./gate.ts";
@@ -150,6 +151,44 @@ function judgeGroup(context: PassContext, run: GroupRun, rows: readonly GateRow[
     holdCulprit(context, run, row, rows, where);
   }
   return true;
+}
+
+/**
+ * A head GitHub took out for failed checks after its last push, longer ago
+ * than the culprit window, with no pass having judged any of its groups up to
+ * then: the pass wasn't running, or lost its state (#5768, HAL-18324). It is
+ * held as the Merger holds it, since the group can no longer be judged.
+ */
+export function unjudgedHolds(context: PassContext, rows: readonly GateRow[]): void {
+  const { state } = context;
+  const seen = new Set(state.seenFailedRuns);
+  for (const row of rows) {
+    const { number, head, queueExit } = row.pull;
+    const key = String(number);
+    const judged = context.snapshot.groupRuns.some(
+      (run) =>
+        groupPull(run.branch) === number &&
+        seen.has(run.id) &&
+        run.createdAt <= (queueExit?.at ?? ""),
+    );
+    if (
+      row.entry !== undefined ||
+      queueExit?.reason !== "FAILED_CHECKS" ||
+      queueExit.at < lastPushOf(row.pull) ||
+      minutesSince(context, queueExit.at) < culpritWindowMinutes ||
+      judged ||
+      state.failedHeads[key] === head ||
+      state.flakeLifted[key] === head
+    ) {
+      continue;
+    }
+    state.failedHeads[key] = head;
+    logLine(
+      context,
+      "culprit",
+      `UNJUDGED_HOLD #${number} (GitHub took it out for failed checks at ${queueExit.at.slice(11, 16)} on this head; no pass judged its group)`,
+    );
+  }
 }
 
 /** Reads the failed groups not seen before, and sets or lifts culprit holds. */

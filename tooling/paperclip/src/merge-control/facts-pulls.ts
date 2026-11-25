@@ -108,6 +108,19 @@ function fastTrackByOf(node: PullNode): string | null {
   return added?.actor?.login ?? null;
 }
 
+const queueEvents = ["AddedToMergeQueueEvent", "RemovedFromMergeQueueEvent"];
+
+function queueExitOf(node: PullNode): GatePull["queueExit"] {
+  const last = node.timelineItems.nodes
+    .filter((item) => queueEvents.includes(item.__typename) && item.createdAt !== undefined)
+    .sort((a, b) => (a.createdAt ?? "").localeCompare(b.createdAt ?? ""))
+    .pop();
+  if (last?.__typename !== "RemovedFromMergeQueueEvent" || last.createdAt === undefined) {
+    return null;
+  }
+  return { at: last.createdAt, reason: (last.reason ?? "").toUpperCase() };
+}
+
 function filesOf(node: PullNode): Pick<GatePull, "files" | "filesTotal" | "fileNet"> {
   const files = node.files?.nodes ?? [];
   const fileNet: Record<string, number> = {};
@@ -160,6 +173,7 @@ export function gatePullOf(node: PullNode): GatePull {
     headCommittedAt: node.commits.nodes[0]?.commit.committedDate ?? node.createdAt,
     forcePushedAt: timesOf(node, ["HeadRefForcePushedEvent"]),
     retargetedAt: timesOf(node, ["BaseRefChangedEvent", "AutomaticBaseChangeSucceededEvent"]),
+    queueExit: queueExitOf(node),
     texts: textsOf(node),
     checks,
     liveCloud: liveCloudOf(rollup, checks),

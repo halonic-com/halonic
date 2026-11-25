@@ -132,6 +132,10 @@ function waitReason(
     }
     delete state.cooldown[key];
   }
+  // GitHub refuses to queue it; the Merger leaves it out too and only posts the blocked note (HAL-16399).
+  if (row.pull.mergeStateStatus === "BLOCKED") {
+    return "GitHub shows it as blocked";
+  }
   if (row.pull.filesTotal > row.pull.files.length) {
     return `touches ${row.pull.filesTotal} files (over 100), queue by hand`;
   }
