@@ -16,7 +16,13 @@ describe("pairing a device", () => {
         200,
       );
       const again = await send("/api/pair", { body: { code: used, deviceName: "Laptop" } });
-      expect(again).toMatchObject({ status: 401, json: { code: "pairing_code_refused" } });
+      expect(again).toMatchObject({
+        status: 401,
+        json: {
+          code: "pairing_code_refused",
+          message: "That pairing code didn't work. Check it, or ask for a new one.",
+        },
+      });
       const old = await newCode({ cookie });
       clock.advance(10 * 60 * 1000);
       const late = await send("/api/pair", { body: { code: old, deviceName: "Laptop" } });

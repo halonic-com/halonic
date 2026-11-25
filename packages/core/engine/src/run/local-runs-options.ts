@@ -138,11 +138,11 @@ export function unbuiltEffectFailure(
   const unbuilt = effects.find((effect) => !built.has(effect.type));
   if (unbuilt === undefined) return undefined;
   if (unbuilt.type === "run-rule") {
-    const error = `This engine can't run rule steps: it has no ToolScript isolate, so the rule of step "${unbuilt.state}" can't run.`;
+    const error = `Step "${unbuilt.state}" is a rule step, and rule steps can't run here yet. Remove the step to run this workflow.`;
     return { failure: { error }, reason: "error" };
   }
   if (unbuilt.type === "check-tool") {
-    const error = `This engine makes no connector calls, so tool step "${unbuilt.state}" can't run.`;
+    const error = `Step "${unbuilt.state}" is a tool step, and tool steps can't call connectors here yet. Remove the step to run this workflow.`;
     return { failure: { error }, reason: "error" };
   }
   return {

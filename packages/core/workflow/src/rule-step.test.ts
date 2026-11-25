@@ -34,12 +34,12 @@ verifies("workflow.rule-step", () => {
       {
         code: "rule-without-file",
         message:
-          'Rule "match" names no file, so every run fails there. Give it one (rule: rules/<name>.rule.js).',
+          'Rule step "match" names no file, so every run fails there. Give it one (rule: rules/<name>.rule.js).',
       },
       {
         code: "rule-without-output",
         message:
-          'Rule "match" has no output, so its result goes nowhere. Name the context key it writes (output: <key>).',
+          'Rule step "match" has no output, so its result goes nowhere. Name the context key it writes (output: <key>).',
       },
     ]);
   });
