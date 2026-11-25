@@ -1,6 +1,7 @@
 import type { AgentHostTransport } from "@halonicjs/adapter-agent-host-client";
 import { claudeCodeEnvironment } from "@halonicjs/adapter-harness-claude-code/environment";
 import { codexEnvironment } from "@halonicjs/adapter-harness-codex/environment";
+import { opencodeHarnessEnvironment } from "@halonicjs/adapter-harness-opencode/environment";
 import type { HarnessBridge } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
@@ -41,6 +42,18 @@ verifies("services.agent-host-harnesses", () => {
         claudeCodeEnvironment(bridge, folders),
       );
       expect(codex?.environment?.(bridge, folders)).toEqual(codexEnvironment(bridge, folders));
+    });
+
+    it("gives an OpenCode agent its environment, though the picker hides OpenCode in v1", async () => {
+      const transport = hostListing([{ id: "opencode", name: "OpenCode" }]);
+      const model = { model: "claude-sonnet-5-5" };
+
+      const [opencode] = await studioHarnesses(transport, () => "b1");
+      const environment = opencode?.environment?.(bridge, folders, model);
+
+      expect(environment).toEqual(opencodeHarnessEnvironment(bridge, folders, model));
+      expect(environment?.["HOME"]).toBe("/work/.settings/home");
+      expect(environment?.["OPENCODE_DB"]).toBe("/work/.settings/opencode.db");
     });
 
     it("leaves a harness it has no function for without an environment", async () => {

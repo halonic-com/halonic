@@ -4970,6 +4970,9 @@ importers:
       '@halonicjs/adapter-harness-codex':
         specifier: workspace:*
         version: link:../../adapters/harness-codex
+      '@halonicjs/adapter-harness-opencode':
+        specifier: workspace:*
+        version: link:../../adapters/harness-opencode
       '@halonicjs/adapter-secrets-tauri':
         specifier: workspace:*
         version: link:../../adapters/secrets-tauri

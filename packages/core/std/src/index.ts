@@ -55,6 +55,7 @@ export {
   mergeLines,
 } from "./line-merge.ts";
 export { editDistance, type NearMatchOptions, nearMatch } from "./near-match.ts";
+export { pathBelow } from "./path-below.ts";
 export { absolutePathsOverlap, insideOrSame } from "./path-overlap.ts";
 export {
   ignoredByPatterns,

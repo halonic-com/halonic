@@ -2,7 +2,12 @@ import { join } from "node:path";
 import type { HarnessBridge } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { disableSwitches, opencodeEnvironment, opencodeStandInKey } from "./environment.ts";
+import {
+  disableSwitches,
+  opencodeEnvironment,
+  opencodeHarnessEnvironment,
+  opencodeStandInKey,
+} from "./environment.ts";
 import { opencodeFiles } from "./files.ts";
 
 const token = "made-up-run-token";
@@ -52,6 +57,31 @@ verifies("harness-opencode.environment", () => {
       expect(() => opencodeFiles({ settingsFolder: null, tempFolder: "/run/tmp" })).toThrow(
         "OpenCode needs a settings folder",
       );
+    });
+  });
+
+  describe("opencodeHarnessEnvironment", () => {
+    it("is the environment of the run's files, for the Studio page", () => {
+      const folders = {
+        workingFolder: "/work",
+        tempFolder: join("/run", "tmp"),
+        settingsFolder: settings,
+      };
+
+      expect(opencodeHarnessEnvironment(keyed, folders, task)).toEqual(
+        opencodeEnvironment(keyed, task, files),
+      );
+    });
+
+    it("writes a Windows settings folder's files with \\", () => {
+      const windows = (...names: string[]) => names.join("\\");
+      const onWindows = opencodeFiles({
+        settingsFolder: windows("D:", "Agents", "writer"),
+        tempFolder: windows("D:", "Temp"),
+      });
+
+      expect(onWindows.database).toBe(windows("D:", "Agents", "writer", "opencode.db"));
+      expect(onWindows.instructionsFile).toBe(windows("D:", "Temp", "halonic-instructions.md"));
     });
   });
 });

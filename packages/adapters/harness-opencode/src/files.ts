@@ -1,5 +1,5 @@
-import { join } from "node:path";
 import type { SandboxProfile } from "@halonicjs/ports";
+import { pathBelow } from "@halonicjs/std";
 
 /** The folders of the sandbox profile OpenCode's files go in. */
 export type OpenCodeFolders = Pick<SandboxProfile, "tempFolder" | "settingsFolder">;
@@ -35,6 +35,7 @@ export interface OpenCodeFiles {
 /**
  * The files of one OpenCode session: the agent's settings folder holds what
  * its runs share, the session's temp folder what is this run's alone.
+ * It imports no `node:path`, so the Studio page can call it too.
  *
  * @throws Error when the profile has no settings folder: OpenCode always needs one
  */
@@ -44,14 +45,14 @@ export function opencodeFiles(folders: OpenCodeFolders): OpenCodeFiles {
     throw new Error("OpenCode needs a settings folder, and the sandbox profile has none.");
   }
   return {
-    homeFolder: join(settings, "home"),
-    configFolder: join(settings, "config"),
-    updatePolicyFile: join(settings, "config", "opencode.json"),
-    dataFolder: join(settings, "data"),
-    stateFolder: join(settings, "state"),
-    cacheFolder: join(settings, "cache"),
-    database: join(settings, "opencode.db"),
-    modelCatalog: join(settings, "models.json"),
-    instructionsFile: join(folders.tempFolder, "halonic-instructions.md"),
+    homeFolder: pathBelow(settings, "home"),
+    configFolder: pathBelow(settings, "config"),
+    updatePolicyFile: pathBelow(settings, "config", "opencode.json"),
+    dataFolder: pathBelow(settings, "data"),
+    stateFolder: pathBelow(settings, "state"),
+    cacheFolder: pathBelow(settings, "cache"),
+    database: pathBelow(settings, "opencode.db"),
+    modelCatalog: pathBelow(settings, "models.json"),
+    instructionsFile: pathBelow(folders.tempFolder, "halonic-instructions.md"),
   };
 }

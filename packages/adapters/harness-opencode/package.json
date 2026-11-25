@@ -4,7 +4,8 @@
   "type": "module",
   "description": "Runs OpenCode as an agent's harness: finds it, checks its exact version, and points it at the Halonic bridge with its network features off.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./environment": "./src/environment.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
