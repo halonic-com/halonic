@@ -1,5 +1,5 @@
 import { HostSettings, hostSetting } from "@halonicjs/app";
-import type { HostSettingsStore, MessagingId, MessagingSource } from "@halonicjs/ports";
+import type { HostSettingsStore, MessagingId } from "@halonicjs/ports";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 
 /**
@@ -31,7 +31,7 @@ const preferredSetting = hostSetting(
  * ID is its source's ID (`AgentConnection.id`), so this is the only place the two meet.
  */
 export function chooseSource(
-  sources: readonly MessagingSource[],
+  sources: readonly { readonly id: MessagingId }[],
   preferred: MessagingId | undefined,
 ): MessagingId | undefined {
   const picked = sources.find((source) => source.id === preferred);
