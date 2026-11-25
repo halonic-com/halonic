@@ -124,10 +124,8 @@ describe("the assistant's changes to review in the editor", () => {
       );
       editor.destroy();
     });
-  });
 
-  verifies("code-editor.review-part-focus", () => {
-    it("goes to a part's first line and moves the focus to its named group", () => {
+    it("goes to a part's first line and takes focus", () => {
       const editor = editorWith();
       editor.setReviewParts([
         { line: 1, added: 1, removed: [] },
@@ -136,6 +134,19 @@ describe("the assistant's changes to review in the editor", () => {
       editor.goToReviewPart(1);
       const { state } = editor.view;
       expect(state.doc.lineAt(state.selection.main.head).number).toBe(3);
+      expect(editor.view.dom.contains(document.activeElement)).toBe(true);
+      editor.destroy();
+    });
+  });
+
+  verifies("code-editor.review-part-focus", () => {
+    it("moves the focus to the named group of the part it goes to", () => {
+      const editor = editorWith();
+      editor.setReviewParts([
+        { line: 1, added: 1, removed: [] },
+        { line: 3, added: 1, removed: [] },
+      ]);
+      editor.goToReviewPart(1);
       expect(document.activeElement).toBe(groups(editor)[1]);
       expect(document.activeElement?.getAttribute("aria-label")).toBe(
         "Change 2 of 2: 1 added, 0 removed at line 3",
