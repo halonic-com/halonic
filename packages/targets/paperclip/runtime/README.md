@@ -101,6 +101,9 @@ tests.
 - It calls back to Paperclip for state, secrets, http, agents, tasks, metrics and event
   subscriptions only when the plugin's manifest declares the capability that call needs, and
   refuses the call itself otherwise.
+- Task writes go through `issues.createComment` and `issues.update`. The protocol has no
+  `issues.setDisposition` (only Halonic's server does), so through the worker a writing action that
+  asks for `in_progress` is refused.
 - `onEvent` hands the event to the plugin's listeners for it. A listener that fails, or a
   subscription Paperclip or the worker refuses, goes to Paperclip's plugin log and never stops the
   worker.

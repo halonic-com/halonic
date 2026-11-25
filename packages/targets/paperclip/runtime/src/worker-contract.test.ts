@@ -23,6 +23,8 @@ const allCapabilities = [
   "issue.comments.read",
   "issue.relations.read",
   "issue.documents.read",
+  "issue.comments.create",
+  "issues.update",
 ];
 
 async function initialized(config: Record<string, unknown> = {}) {
@@ -139,6 +141,22 @@ verifies("runtime.worker-protocol", () => {
           },
         },
       });
+    });
+
+    test("tasks: a comment and a status change reach Paperclip's task", async () => {
+      const host = await initialized();
+      const task = { id: "issue-1", companyId: "acme", title: "Ship the plugin", status: "todo" };
+      host.harness.seed({ issues: [task as never] });
+
+      expect(await host.executeTool({ kind: "comment" })).toMatchObject({
+        result: { data: { id: expect.any(String) } },
+      });
+      expect(await host.executeTool({ kind: "update" })).toMatchObject({
+        result: { data: "in_review" },
+      });
+      expect(await host.harness.ctx.issues.listComments("issue-1", "acme")).toMatchObject([
+        { body: "On it." },
+      ]);
     });
 
     test("a call back made for a tool call echoes the invocation id Paperclip scopes it by", async () => {

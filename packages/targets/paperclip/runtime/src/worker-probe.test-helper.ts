@@ -39,6 +39,13 @@ const probes: Record<
   },
   agent: (host) => host.agents.get("agent-mateo", "acme"),
   agents: (host) => host.agents.list({ companyId: "acme" }),
+  comment: (host) =>
+    host.issues.createComment("issue-1", "On it.", "acme", { authorAgentId: "agent-mateo" }),
+  update: async (host) => {
+    const actor = { actorAgentId: "agent-mateo", actorRunId: "run-1" };
+    const issue = await host.issues.update("issue-1", { status: "in_review" }, "acme", actor);
+    return issue.status;
+  },
   task: async (host) => {
     const task = await host.issues.get("issue-1", "acme");
     const comments = await host.issues.listComments("issue-1", "acme");

@@ -19,6 +19,8 @@ const callCapability: Readonly<Record<string, Capability | undefined>> = {
   "agents.list": "agents.read",
   "issues.get": "issues.read",
   "issues.listComments": "issue.comments.read",
+  "issues.createComment": "issue.comments.create",
+  "issues.update": "issues.update",
   "issues.relations.get": "issue.relations.read",
   "issues.documents.list": "issue.documents.read",
   "issues.documents.get": "issue.documents.read",

@@ -1,4 +1,4 @@
-import type { RuntimeHost, ToolResult, ToolRunContext } from "./host.ts";
+import type { IssueRecord, RuntimeHost, ToolResult, ToolRunContext } from "./host.ts";
 import type { HostLink } from "./host-link.ts";
 import type { WorkerEvents } from "./worker-events.ts";
 
@@ -90,6 +90,25 @@ export function rpcHost(
     issues: {
       get: async (issueId, companyId) =>
         asRecordOrNull("issues.get", await to("issues.get", { issueId, companyId })),
+      createComment: async (issueId, body, companyId, options) => {
+        const params = { issueId, body, companyId, authorAgentId: options?.authorAgentId };
+        const comment = await to("issues.createComment", params);
+        if (!isRecord(comment) || typeof comment["id"] !== "string")
+          throw new Error("Paperclip's issues.createComment answer has no id.");
+        return { id: comment["id"] };
+      },
+      // As the SDK sends it: the acting agent and run travel inside the patch.
+      update: async (issueId, patch, companyId, actor) => {
+        const sent = { ...patch, actorAgentId: actor?.actorAgentId, actorRunId: actor?.actorRunId };
+        const issue = await to("issues.update", { issueId, patch: sent, companyId });
+        if (
+          !isRecord(issue) ||
+          typeof issue["id"] !== "string" ||
+          typeof issue["status"] !== "string"
+        )
+          throw new Error("Paperclip's issues.update answer isn't a task.");
+        return issue as unknown as IssueRecord;
+      },
       listComments: async (issueId, companyId) =>
         asList("issues.listComments", await to("issues.listComments", { issueId, companyId })),
       relations: {

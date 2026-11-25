@@ -43,6 +43,13 @@ export interface SdkHarness {
     readonly issues: {
       get(issueId: string, companyId: string): Promise<unknown>;
       listComments(issueId: string, companyId: string): Promise<unknown>;
+      createComment(
+        issueId: string,
+        body: string,
+        companyId: string,
+        options?: { authorAgentId?: string },
+      ): Promise<unknown>;
+      update(issueId: string, patch: Record<string, unknown>, companyId: string): Promise<unknown>;
       readonly relations: { get(issueId: string, companyId: string): Promise<unknown> };
       readonly documents: {
         list(issueId: string, companyId: string): Promise<unknown>;
@@ -60,19 +67,28 @@ export interface SdkHarness {
   seed(input: { agents?: never[]; issues?: never[]; issueComments?: never[] }): void;
 }
 
-/** What the host answers a task read with, or `undefined` when the call isn't one. */
+/** What the host answers a task read or write with, or `undefined` when the call isn't one. */
 function taskReadAnswer(harness: SdkHarness, request: Message): Promise<unknown> | undefined {
   const { issues } = harness.ctx;
-  const { issueId, key, companyId } = request.params as {
+  const { issueId, key, companyId, body, authorAgentId, patch } = request.params as {
     issueId: string;
     key: string;
     companyId: string;
+    body: string;
+    authorAgentId?: string;
+    patch: Record<string, unknown>;
   };
   switch (request.method) {
     case "issues.get":
       return issues.get(issueId, companyId);
     case "issues.listComments":
       return issues.listComments(issueId, companyId);
+    case "issues.createComment":
+      return issues.createComment(issueId, body, companyId, {
+        ...(authorAgentId && { authorAgentId }),
+      });
+    case "issues.update":
+      return issues.update(issueId, patch, companyId);
     case "issues.relations.get":
       return issues.relations.get(issueId, companyId);
     case "issues.documents.list":

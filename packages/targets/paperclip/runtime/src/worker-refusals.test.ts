@@ -102,6 +102,8 @@ verifies("runtime.worker-protocol", () => {
       ["agent", "agents.read"],
       ["agents", "agents.read"],
       ["task", "issues.read"],
+      ["comment", "issue.comments.create"],
+      ["update", "issues.update"],
       ["metric", "metrics.write"],
     ])(
       "a %s call the manifest doesn't declare is refused by the worker itself",
