@@ -73,11 +73,11 @@ verifies("paperclip-client.approval-fields", () => {
         "Hire an agent\n\n- Name: Iris\n- Role: designer\n- Adapter: claude_local\n- Monthly budget: $50.00",
       );
       expect(items.get(approvalItem("p-2"))?.question).toBe(
-        "Approve the strategy\n\n**Plan**\n\nShip the website first.",
+        "Strategy approval\n\n**Plan**\n\nShip the website first.",
       );
       expect(items.get(approvalItem("p-3"))?.question).toBe(
         "Budget override\n\n- For: Website\n- Limit: $100.00\n- Spent: $125.50\n\n" +
-          "Approving records your answer only. The budget stays the same and the work stays paused until you raise the budget in Paperclip.",
+          "Approving only records your answer. The budget doesn't change, and the work stays paused until you raise the budget in Paperclip.",
       );
       expect(items.get(approvalItem("p-4"))?.question).toBe(
         "Board approval\n\nPublish the launch post\n\n**Recommended action**\n\nPublish on Friday.\n\n" +

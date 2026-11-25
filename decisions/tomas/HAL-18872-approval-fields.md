@@ -7,7 +7,7 @@
 ## What changes
 
 A Paperclip approval in the Inbox and Messenger now starts with its type in words ("Hire an
-agent", "Approve the strategy", "Budget override", "Board approval") instead of
+agent", "Strategy approval", "Budget override", "Board approval") instead of
 "Approval: hire_agent", and shows its fields: the hire's name, role, adapter and monthly budget;
 the strategy's plan; the budget's scope, limit and spend, with a line saying that approving
 only records the answer; the board approval's recommended action and risks. Every approval

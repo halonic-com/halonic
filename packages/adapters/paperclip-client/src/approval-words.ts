@@ -4,7 +4,7 @@
  */
 export const approvalTypeWords: ReadonlyMap<string, string> = new Map([
   ["hire_agent", "Hire an agent"],
-  ["approve_ceo_strategy", "Approve the strategy"],
+  ["approve_ceo_strategy", "Strategy approval"],
   ["budget_override_required", "Budget override"],
   ["request_board_approval", "Board approval"],
 ]);
@@ -27,7 +27,7 @@ export const approvalWords = {
   spent: "Spent",
   // Paperclip's approve route only records the answer; the budget is raised from Paperclip's budget page.
   budgetApproving:
-    "Approving records your answer only. The budget stays the same and the work stays paused until you raise the budget in Paperclip.",
+    "Approving only records your answer. The budget doesn't change, and the work stays paused until you raise the budget in Paperclip.",
   document: "Document",
   revision: (number: number) => `revision ${number}`,
   tool: "Tool",
