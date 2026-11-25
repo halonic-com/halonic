@@ -28,7 +28,8 @@ Don't run `pnpm verify` by default: CI runs the full suite (HAL-2418).
 - Every colour is `light-dark(light, dark)`. Never add `dark:` classes or a second dark copy.
 - Never import from another Studio package. The shell and features depend on the kit, not the
   reverse; `src/boundaries.test.ts` enforces it.
-- Motion: colour changes and short fades only. No slides, scaling or moving dots; the busy spinner
-  is the one exception.
+- Motion: colour changes, short fades and the three movements in `src/motion/motion.ts` (a rise
+  for what arrives, a glide for list rows, a slide between panes in a one-pane window), through
+  its helpers and tokens. No scaling, bounces or moving dots; the busy spinner is the one exception.
 - Changing a token list or a contrast pair in `src/theme.test.ts` is a design decision: say why in
   the pull request.

@@ -398,7 +398,7 @@ describe("theme.css scales", () => {
     expect(themeTokens.get("--breakpoint-wide")).toBe("900px");
   });
 
-  it("has exactly the agreed layers and durations", () => {
+  it("has exactly the agreed layers, durations and distances", () => {
     expect(namesStartingWith(plainVariables, "--layer-")).toEqual([
       "--layer-sticky",
       "--layer-overlay",
@@ -410,14 +410,22 @@ describe("theme.css scales", () => {
       "--duration-base",
       "--duration-slow",
     ]);
+    expect(namesStartingWith(plainVariables, "--motion-")).toEqual([
+      "--motion-rise",
+      "--motion-slide",
+    ]);
+    expect(plainVariables.get("--motion-rise")).toBe("8px");
+    expect(plainVariables.get("--motion-slide")).toBe("24px");
   });
 
-  it("keeps fades short and makes colour changes instant with reduced motion", () => {
+  it("keeps fades short, makes colour changes instant and moves nothing with reduced motion", () => {
     const reduced = customProperties(
       blockBody(blockBody(css, "@media (prefers-reduced-motion: reduce)"), ":root"),
     );
     expect(reduced.get("--duration-base")).toBe("120ms");
     expect(reduced.get("--duration-slow")).toBe("120ms");
     expect(reduced.get("--default-transition-duration")).toBe("0ms");
+    expect(reduced.get("--motion-rise")).toBe("0px");
+    expect(reduced.get("--motion-slide")).toBe("0px");
   });
 });
