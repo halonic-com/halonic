@@ -2,6 +2,7 @@ import {
   type GatewayClientMessage,
   type GatewayHostMessage,
   type GatewaySession,
+  gatewayFallbackProtocolVersion,
   gatewayMaxPromptLength,
   gatewayProtocolVersion,
 } from "@halonicjs/ports";
@@ -50,6 +51,12 @@ export class GatewayClient implements PhoneRemote {
   private ownerChecks = 0;
   /** The last connection found the computer on another message version. */
   private updateNeeded = false;
+  /** The message version the open session's `hello` named. */
+  private speaking = gatewayProtocolVersion;
+  /** The computer refused version 4, so the next session says `hello` with version 3 once. */
+  private fallBackNext = false;
+  /** The last `welcome` was version 3's: the computer serves Agents only, no Inbox or Messenger. */
+  private olderComputer = false;
   private readonly memories = new Map<string, SessionMemory>();
   private readonly sentAnswers = new SentAnswers();
   private readonly watches = new Watches(this.memories);
@@ -145,11 +152,15 @@ export class GatewayClient implements PhoneRemote {
       () => this.newId(),
       (pending, reason) => this.notSent(pending, { kind: "not-sent", reason }),
     );
-    this.send({ kind: "hello" }, (id) => ({ type: "hello", id, version: gatewayProtocolVersion }));
+    // Every session tries version 4 first, so a computer updated since is found at once.
+    this.speaking = this.fallBackNext ? gatewayFallbackProtocolVersion : gatewayProtocolVersion;
+    this.fallBackNext = false;
+    const version = this.speaking;
+    this.send({ kind: "hello" }, (id) => ({ type: "hello", id, version }));
   }
 
   private read(text: string): void {
-    const result = parseHostMessage(text);
+    const result = parseHostMessage(text, this.speaking);
     if (!result.ok && result.problem === "other-version") this.updateNeeded = true;
     if (!result.ok || !this.handle(result.message)) this.disconnect();
   }
@@ -170,7 +181,7 @@ export class GatewayClient implements PhoneRemote {
           return this.answered(message.replyTo, { kind: "refused", code: message.code });
         }
         // The host closes after any error without `replyTo`; this one says why.
-        if (message.code === "unsupported-version") this.updateNeeded = true;
+        if (message.code === "unsupported-version") this.versionRefused();
         return true;
       default:
         // Pairing messages come only while pairing, which isn't this client's.
@@ -182,9 +193,20 @@ export class GatewayClient implements PhoneRemote {
     if (this.session?.take(replyTo)?.kind !== "hello") return false;
     this.session.welcomed = true;
     this.updateNeeded = false;
+    this.olderComputer = this.speaking === gatewayFallbackProtocolVersion;
     this.listSessions();
     this.planListing();
     return true;
+  }
+
+  /**
+   * The computer closes on the `hello`'s version. A version 4 phone tries
+   * version 3 on the next session, for one release (`ports.remote-gateway-protocol`);
+   * only when that is refused too does it say an update is needed.
+   */
+  private versionRefused(): void {
+    if (this.speaking === gatewayProtocolVersion) this.fallBackNext = true;
+    else this.updateNeeded = true;
   }
 
   /**
@@ -358,6 +380,8 @@ export class GatewayClient implements PhoneRemote {
     this.memories.clear();
     this.sentAnswers.clear();
     this.asOf = undefined;
+    this.olderComputer = false;
+    this.fallBackNext = false;
   }
 
   /** The phone's clock when the last session list or event arrived. */
@@ -378,6 +402,7 @@ export class GatewayClient implements PhoneRemote {
       answersRisky: this.answersRisky,
       ownerCheckAvailable: this.ownerCheckAvailable,
       updateNeeded: this.updateNeeded,
+      olderComputer: this.olderComputer,
     });
   }
 
