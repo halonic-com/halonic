@@ -1,5 +1,5 @@
 import type { ItemPageChat, WorkspaceContext } from "@halonicjs/studio-shell";
-import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import {
   type AssistantHost,
   AssistantHostService,
@@ -89,16 +89,35 @@ function ItemPageChatBody(props: PageItem) {
       current = false;
     };
   }, [host, about, attempt]);
+  // The chat box, shared by the header so its focus rules reach it (HAL-18315, AS10).
+  const box = useRef<HTMLTextAreaElement>(null);
+  const [focusAsked, setFocusAsked] = useState(0);
+  // Runs after the chat asked for is drawn, so its box is there to take focus.
+  useEffect(() => {
+    if (focusAsked > 0) box.current?.focus();
+  }, [focusAsked]);
+  // Shows a chat with focus in its box, as the panel does (HAL-18315, AS9). The chat is read
+  // first, so its menu stays drawn rather than giving way to a plain title while it loads.
+  const show = (id: string) => {
+    void buildChatsOf(host)
+      .read(id)
+      .catch(() => {})
+      .then(() => {
+        setChatId(id);
+        setFocusAsked((count) => count + 1);
+      });
+  };
   // A new chat about the item, or the empty draft about it there is.
-  const newChat = () => void host.newChat("build", about).then((chat) => setChatId(chat.id));
+  const newChat = () => void host.newChat("build", about).then((chat) => show(chat.id));
   if (chatId !== undefined) {
-    return <HeldChat {...props} chatId={chatId} onPick={setChatId} onNewChat={newChat} />;
+    return <HeldChat {...props} box={box} chatId={chatId} onPick={show} onNewChat={newChat} />;
   }
   const shown: Shown =
     failed === undefined ? { kind: "loading" } : { kind: "failed", reason: failed };
   return (
     <ChatOnPage
       {...props}
+      box={box}
       shown={shown}
       header={null}
       onRetry={() => setAttempt((count) => count + 1)}
@@ -127,6 +146,7 @@ async function chatAbout(host: AssistantHost, about: ChatAbout): Promise<string>
 /** The item's chat once it is known, held by the page, under its menu and ⋮. */
 function HeldChat(
   props: PageItem & {
+    readonly box: RefObject<HTMLTextAreaElement | null>;
     readonly chatId: string;
     readonly onPick: (chatId: string) => void;
     readonly onNewChat: () => void;
@@ -156,6 +176,7 @@ function HeldChat(
       host={host}
       chats={chats}
       view={view}
+      box={props.box}
       title={buildChatWords.panel}
       onNewChat={props.onNewChat}
       only={(chat) => chat.kind === "build" && sameAbout(chat.about, about)}
@@ -170,6 +191,7 @@ function HeldChat(
 /** The Assistant's chat body, as a chat tab draws it, on the left of the page. */
 function ChatOnPage(
   props: PageItem & {
+    readonly box: RefObject<HTMLTextAreaElement | null>;
     readonly shown: Shown;
     readonly header: ReactNode;
     readonly onRetry: () => void;
@@ -179,7 +201,6 @@ function ChatOnPage(
   const host = context.services.get(AssistantHostService);
   const chats = buildChatsOf(host);
   const choices = useChatChoices(host, shown.kind === "chat" ? shown.view.chat.id : undefined);
-  const box = useRef<HTMLTextAreaElement>(null);
   const announce = useCallback<Announce>(
     (text, politeness) => context.announcer.announce(text, politeness),
     [context],
@@ -191,7 +212,7 @@ function ChatOnPage(
         context={context}
         shown={shown}
         chats={chats}
-        box={box}
+        box={props.box}
         announce={announce}
         onNewChat={() => {}}
         newChatButton={{ current: null }}

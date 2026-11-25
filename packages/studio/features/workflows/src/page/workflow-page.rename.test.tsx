@@ -133,4 +133,14 @@ verifies("workflows.page.rename", () => {
     expect(phone.querySelector("h1 input")).toBeNull();
     expect(phone.querySelector("h1")?.textContent).toBe("Support reply");
   });
+
+  it("shows the name as a title, not a field, until the workflow is read (HAL-18315, AS11)", async () => {
+    const { page, field } = await showPage({
+      rename: async () => {},
+      read: () => new Promise(() => {}),
+    });
+    expect(field()).toBeUndefined();
+    expect(page.querySelector("h1 input")).toBeNull();
+    expect(page.querySelector("h1")?.textContent).toContain("reply");
+  });
 });
