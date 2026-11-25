@@ -2,6 +2,7 @@
 
 - Approval: HAL-17711, from Liam's review of #5716 (HAL-17438) and Julian's follow-ups on it (HAL-17710, folded into HAL-17711); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:7lP23LCow09oNGmtZ/Ag1VQ6RbX0WVMB2SkqWy+g8s8DLIiJj1fWJeV+zWKlVHs+CWvXMNimv91AYsnBUIXhAQ==
 - Task: HAL-17711
 
 ## What changes
