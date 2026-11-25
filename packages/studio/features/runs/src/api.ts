@@ -258,6 +258,24 @@ export const RunStartHostService: ServiceKey<RunStartHost> =
   serviceKey<RunStartHost>("runs.start-host");
 
 /**
+ * **Save…** for a file a run created, on the run page's Items line (HAL-17832). The app provides it
+ * where the shell has a save dialog; a served page or a phone has none, and the files then have no
+ * **Save…**.
+ */
+export interface RunFileSaveHost {
+  /**
+   * Saves the file run `runId` created as `hash` (its `artifact.created` event's) where the person
+   * picks in the shell's own save dialog: `saved` once written, `cancelled` when they closed the
+   * dialog. Rejects when the file couldn't be saved.
+   */
+  readonly save: (runId: string, hash: string) => Promise<"saved" | "cancelled">;
+}
+
+/** The open workspace's way to save a run's file. Absent where the shell has no save dialog. */
+export const RunFileSaveService: ServiceKey<RunFileSaveHost> =
+  serviceKey<RunFileSaveHost>("runs.file-save");
+
+/**
  * Whether the open workspace keeps versions, for the run page's Ran on row: a workspace with no
  * version history leaves it out rather than say "Version not recorded." on every run (HAL-12727).
  */

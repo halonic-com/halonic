@@ -1,5 +1,5 @@
 //! The served page and the run commands: the connect page may append to and
-//! read runs on desktop, and no remote page may.
+//! read runs, and save a file a run created, on desktop, and no remote page may.
 
 use serde_json::{Value, json};
 
@@ -27,6 +27,10 @@ fn served_page_test_sees_the_connect_page_allowed_the_run_commands_on_desktop() 
         ("run_events", run.clone()),
         ("run_snapshot", run),
         ("run_logs", folder),
+        (
+            "run_file_save",
+            json!({"workspace": ".", "runId": "r1", "hash": "0".repeat(64)}),
+        ),
     ] {
         let answer = invoke(&window, CONNECT_PAGE, command, body);
         let refusal = answer.expect_err("no folder is opened yet");
@@ -52,4 +56,15 @@ fn served_page_test_sees_runs_granted_to_the_local_main_window_only() {
             "allow-run-logs"
         ])
     );
+}
+
+#[test]
+fn served_page_test_sees_run_file_save_granted_to_the_local_main_window_only() {
+    // A remote page must never reach the save dialog or a run's files.
+    let text = include_str!("../../capabilities/desktop-run-files.json");
+    let capability: Value = serde_json::from_str(text).expect("the capability is JSON");
+    assert_eq!(capability["local"], true);
+    assert_eq!(capability["windows"], json!(["main"]));
+    assert!(capability.get("remote").is_none(), "{capability}");
+    assert_eq!(capability["permissions"], json!(["allow-run-file-save"]));
 }

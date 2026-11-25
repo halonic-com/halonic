@@ -3,6 +3,7 @@ import { escapeHidden } from "@halonicjs/std";
 import { defineFeature } from "@halonicjs/studio-shell";
 import {
   InstructionTrustHostService,
+  RunFileSaveService,
   RunFilesService,
   RunStartHostService,
   RunsSourceService,
@@ -31,6 +32,7 @@ export const runsFeature = defineFeature({
   needs: [RunsSourceService],
   wants: [
     InstructionTrustHostService,
+    RunFileSaveService,
     RunFilesService,
     RunStartHostService,
     SampleHintService,

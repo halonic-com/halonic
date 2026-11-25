@@ -6,6 +6,8 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import {
   type InstructionTrustHost,
   InstructionTrustHostService,
+  type RunFileSaveHost,
+  RunFileSaveService,
   RunFilesService,
   type RunStartHost,
   RunStartHostService,
@@ -58,6 +60,7 @@ export function RunPage({ item, context, step, asked }: ItemViewProps) {
   const runStart = context.services.find(RunStartHostService);
   const list = context.services.get(RunsListService);
   const versionHistory = context.services.find(VersionHistoryHostService);
+  const fileSave = context.services.find(RunFileSaveService);
   const openModels = openModelsOf(context);
   const openPlugin = openPluginOf(context);
   const canReadFiles = context.services.find(RunFilesService) !== undefined;
@@ -79,6 +82,7 @@ export function RunPage({ item, context, step, asked }: ItemViewProps) {
         : { openBudget: () => void context.runCommand?.(openBudgetCommand) })}
       {...(runStart === undefined ? {} : { runStart })}
       {...(versionHistory === undefined ? {} : { versionHistory })}
+      {...(fileSave === undefined ? {} : { fileSave })}
       {...(openPlace === undefined
         ? {}
         : {
@@ -126,6 +130,8 @@ export interface RunViewProps {
   readonly runStart?: RunStartHost;
   /** Whether the workspace keeps versions; without it, the Details' Ran on shows as before. */
   readonly versionHistory?: VersionHistoryHost;
+  /** Saves a file the run saved, for **Save…** on the Items line; without it there is none. */
+  readonly fileSave?: RunFileSaveHost;
   /** Opens Models, at an alias's tab when given one, for **Open Models** on a failed banner; without it the button isn't there. */
   readonly openModels?: (alias?: string) => void;
   /** Opens the workspace page at its Budget block, for **Change budget** on a budget banner; without it the button isn't there. */
@@ -183,6 +189,7 @@ export function RunView({
   announceState,
   runStart,
   versionHistory,
+  fileSave,
   openModels,
   openBudget,
   goToRuns,
@@ -289,6 +296,7 @@ export function RunView({
                 engine={engine}
                 entries={entries}
                 openFile={openFile}
+                fileSave={fileSave}
                 openEntry={open?.id}
                 onOpenEntry={setOpenEntry}
               />
@@ -344,6 +352,7 @@ function ReceiptAndSteps({
   engine,
   entries,
   openFile,
+  fileSave,
   openEntry,
   onOpenEntry,
 }: {
@@ -354,6 +363,7 @@ function ReceiptAndSteps({
   readonly engine: EngineWords;
   readonly entries: readonly StepEntry[];
   readonly openFile: ((name: string) => void) | undefined;
+  readonly fileSave: RunFileSaveHost | undefined;
   readonly openEntry: string | undefined;
   readonly onOpenEntry: (entryId: string | undefined) => void;
 }) {
@@ -370,6 +380,7 @@ function ReceiptAndSteps({
         items={itemLines(log)}
         files={savedFiles(log)}
         openFile={openFile}
+        saveFile={fileSave && { runId: run.summary.id, save: fileSave.save }}
         messages={messageLines(log)}
         reads={readLines(log)}
         models={modelLines(log, run.summary, context.currency)}

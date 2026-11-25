@@ -81,6 +81,7 @@ mod profile_place;
 mod raised_start;
 mod records;
 mod resource_report;
+mod run_files;
 mod runs;
 mod sandbox_backup;
 mod sandbox_elevate;
@@ -270,6 +271,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             runs::run_events,
             runs::run_snapshot,
             runs::run_logs,
+            run_files::run_file_save,
             engine_lock::engine_lock_hold,
             engine_lock::engine_lock_release,
             agent_host::agent_host_request,

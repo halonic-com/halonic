@@ -282,15 +282,17 @@ export interface SavedFile {
   readonly name: string;
   /** The name with hidden characters escaped. */
   readonly shown: string;
+  /** The hash of its last save, so a file saved twice gives its newer bytes (HAL-17832). */
+  readonly hash: string;
 }
 
-/** The files the run saved, in the order it saved them, each name once (RCPT-2.1). */
+/** The files the run saved, in the order it first saved them, each name once (RCPT-2.1). */
 export function savedFiles(events: readonly RunEvent[]): SavedFile[] {
-  const names = new Set<string>();
+  const hashes = new Map<string, string>();
   for (const event of events) {
-    if (event.type === "artifact.created") names.add(event.name);
+    if (event.type === "artifact.created") hashes.set(event.name, event.hash);
   }
-  return [...names].map((name) => ({ name, shown: escapeHidden(name) }));
+  return [...hashes].map(([name, hash]) => ({ name, shown: escapeHidden(name), hash }));
 }
 
 /**
