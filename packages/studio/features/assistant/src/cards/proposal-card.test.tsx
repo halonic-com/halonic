@@ -199,7 +199,7 @@ verifies("assistant.build.apply-proposal", () => {
       await press(page, "Accept all");
       const chats = buildChatsOf(host.fake.host);
       await act(async () => chats.open());
-      void chats.send("Thanks", () => {});
+      void chats.send("c1", "Thanks", () => {});
       expect(host.fake.requests[0]?.notes).toEqual([
         `(The person accepted the changes to ${path}.)`,
       ]);

@@ -6,6 +6,7 @@ import {
   Menu,
   type MenuEntry,
   MoreIcon,
+  OpenAsTabIcon,
   PlusIcon,
   SparkIcon,
 } from "@halonicjs/studio-kit";
@@ -28,6 +29,8 @@ export interface ChatHeaderProps {
   readonly onNewChat: () => void;
   /** The workspace's agents, for the colours of an agent chat's orb in the recent chats. */
   readonly agents: readonly ChatAgent[];
+  /** Switches to the tab of a chat open as one, picked in the menu: one chat in one place. */
+  readonly onOpenTab?: ((chatId: string) => void) | undefined;
 }
 
 /**
@@ -46,8 +49,12 @@ export function ChatHeading(
       props.onRenamed();
       props.box.current?.focus();
     };
-    return <RenameField chats={chats} title={heading} onDone={done} />;
+    return <RenameField chats={chats} chatId={view.chat.id} title={heading} onDone={done} />;
   }
+  const pick = (chatId: string) => {
+    if (chats.inTab(chatId) && props.onOpenTab !== undefined) return props.onOpenTab(chatId);
+    void chats.pick(chatId).then(() => props.box.current?.focus());
+  };
   const now = new Date();
   const rows: MenuEntry[] = recent.map((chat) => {
     const time = chatTime(chat.lastUsedAt, now);
@@ -66,7 +73,7 @@ export function ChatHeading(
         !chat.answering && chat.itemsToReview > 0 ? words.toReview(chat.itemsToReview) : undefined,
       name: words.rowName(chat.title, time, chat.answering, chat.itemsToReview),
       checked: chat.id === view.chat.id,
-      onSelect: () => void chats.pick(chat.id).then(() => props.box.current?.focus()),
+      onSelect: () => pick(chat.id),
     };
   });
   return (
@@ -87,9 +94,11 @@ export function ChatHeading(
   );
 }
 
-/** The desktop header's **New chat**, ⋮ and ✕. */
+/** The desktop header's **New chat**, Open as tab (flow-assistant 2.3), ⋮ and ✕. */
 export function DesktopActions(
   props: ChatHeaderProps & {
+    /** Moves the chat to a tab; none while there's no chat, or no tabs to open. */
+    readonly onOpenAsTab: (() => void) | undefined;
     readonly onRename: () => void;
     readonly afterDelete: () => HTMLElement | null;
     readonly onClose: () => void;
@@ -104,6 +113,15 @@ export function DesktopActions(
         label={buildChatWords.newChat}
         onClick={props.onNewChat}
       />
+      {props.onOpenAsTab === undefined ? null : (
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<OpenAsTabIcon />}
+          label={buildChatWords.openAsTab}
+          onClick={props.onOpenAsTab}
+        />
+      )}
       <ChatMoreActions {...props} />
       <Button
         variant="ghost"
@@ -118,11 +136,12 @@ export function DesktopActions(
 
 /**
  * The header's ⋮ (Rename, Delete chat…) and the Delete dialog, for a kept chat only. Delete chat
- * is a danger item, below a divider (component specs 14).
+ * is a danger item, below a divider (component specs 14). A chat tab's title is its rename field,
+ * so its ⋮ has no Rename.
  */
 export function ChatMoreActions(
-  props: ChatHeaderProps & {
-    readonly onRename: () => void;
+  props: Pick<ChatHeaderProps, "chats" | "view"> & {
+    readonly onRename?: (() => void) | undefined;
     /** Where focus goes once the chat is deleted: the empty panel's New chat (flow 2.2). */
     readonly afterDelete: () => HTMLElement | null;
   },
@@ -144,8 +163,12 @@ export function ChatMoreActions(
           />
         )}
         entries={[
-          { id: "rename", label: words.rename, onSelect: props.onRename },
-          "divider",
+          ...(props.onRename === undefined
+            ? []
+            : [
+                { id: "rename", label: words.rename, onSelect: props.onRename },
+                "divider" as const,
+              ]),
           {
             id: "delete",
             label: words.deleteChat,
@@ -182,7 +205,7 @@ export function DeleteChatDialog(props: {
   const remove = () => {
     setDeleting("busy");
     props.chats
-      .deleteShown()
+      .deleteChat(chat.id)
       .then(onClose, (error: unknown) =>
         setDeleting({ failed: error instanceof Error ? error.message : String(error) }),
       );
@@ -207,12 +230,14 @@ export function DeleteChatDialog(props: {
  * The title as a field with its text selected (`assistant.chat.rename`): Enter or leaving saves
  * it trimmed, an empty title puts the old one back, Escape cancels.
  */
-function RenameField({
+export function RenameField({
   chats,
+  chatId,
   title,
   onDone,
 }: {
   readonly chats: BuildChats;
+  readonly chatId: string;
   readonly title: string;
   readonly onDone: () => void;
 }) {
@@ -224,7 +249,7 @@ function RenameField({
     done.current = true;
     const typed = field.current?.value ?? "";
     // A rename the host refuses keeps the old title, as an empty one does.
-    void (save ? chats.rename(typed) : Promise.resolve()).catch(() => {}).finally(onDone);
+    void (save ? chats.rename(chatId, typed) : Promise.resolve()).catch(() => {}).finally(onDone);
   };
   return (
     <input

@@ -183,6 +183,20 @@ verifies("assistant.build.newer-proposal-replaces-open-one", () => {
     ]);
   });
 
+  it("goes to the other chat's tab when that chat is open as one", async () => {
+    const host = filesHost(reviewOf(1));
+    const shown = cards(host);
+    const page = await show(shown.node);
+    buildChatsOf(host.fake.host).moveToTab("c2");
+    await act(async () => host.changed(reviewOf(1, "id: triage\n", { chatId: "c2", cardId: "x" })));
+    await press(page, "Go to it");
+    expect(shown.openItem).toHaveBeenCalledWith({
+      kind: "assistant-chat",
+      hub: "workspace",
+      id: "c2",
+    });
+  });
+
   it("keeps an accepted card Accepted when the model changes the file again", async () => {
     const host = filesHost(reviewOf(1));
     const page = await show(cards(host, first, second).node);

@@ -53,15 +53,18 @@ export type Shown =
   | { readonly kind: "chat"; readonly view: ChatView };
 
 /**
- * The Build chats of one open workspace in this session: which one the panel shows, and each one
- * shown so far. A chat shown before shows again at once, where it got to (H8), and an answer goes
- * on while the panel is closed or shows another chat, so Stop still reaches it.
+ * The Build chats of one open workspace in this session: which one the panel shows, which ones are
+ * open as tabs, and each one shown so far. A chat shown before shows again at once, where it got to
+ * (H8), and an answer goes on while the panel is closed or shows another chat, so Stop still
+ * reaches it. One chat is in one place at a time: the panel or its tab (flow-assistant 1).
  */
 export class BuildChats {
   private readonly host: AssistantHost;
   private readonly views = new Map<string, ChatView>();
   private readonly stoppers = new Map<string, AbortController>();
   private readonly listeners = new Set<() => void>();
+  /** The chats open as tabs (`assistant.chat.open-as-tab`). */
+  private readonly tabbed = new Set<string>();
   private currentId: string | undefined;
   private state: Shown = { kind: "loading" };
   private keepFocus = false;
@@ -79,15 +82,15 @@ export class BuildChats {
   };
 
   /**
-   * Shows the chat the panel showed last, else the most recently used one, else a new Build chat
-   * (`assistant.chat.panel-shortcut`).
+   * Shows the chat the panel showed last, else the most recently used one not open as a tab, else
+   * a new Build chat (`assistant.chat.panel-shortcut`).
    */
   async open(): Promise<void> {
     const shown = this.currentId === undefined ? undefined : this.views.get(this.currentId);
     if (shown !== undefined) return this.show({ kind: "chat", view: shown });
     await this.load(async () => {
       if (this.currentId !== undefined) return this.host.chat(this.currentId);
-      const [recent] = await this.host.chats();
+      const recent = (await this.host.chats()).find((chat) => !this.tabbed.has(chat.id));
       return recent === undefined ? this.host.newChat("build") : this.host.chat(recent.id);
     });
   }
@@ -95,6 +98,46 @@ export class BuildChats {
   /** Shows one kept chat: a replaced card's **Go to it** opens the chat with the newer card. */
   async openChat(chatId: string): Promise<void> {
     await this.load(() => this.host.chat(chatId));
+  }
+
+  /** A chat as this session shows it, once the panel or its tab has read it. */
+  viewOf = (chatId: string): ChatView | undefined => this.views.get(chatId);
+
+  /** Reads a chat for its tab, unless it was read before; fails as the host does. */
+  async read(chatId: string): Promise<void> {
+    if (this.views.has(chatId)) return;
+    const chat = await this.host.chat(chatId);
+    if (!this.views.has(chat.id)) this.views.set(chat.id, viewOf(chat));
+    this.changed();
+  }
+
+  /** Whether the chat is open as a tab, so its tab stays open (`shell.gone-item-tabs`). */
+  inTab(chatId: string): boolean {
+    return this.tabbed.has(chatId);
+  }
+
+  /**
+   * Moves a chat into its tab (`assistant.chat.open-as-tab`): the panel no longer shows it and
+   * opens on another one next time. Its shown items go along, since they belong to the chat.
+   */
+  moveToTab(chatId: string): void {
+    this.tabbed.add(chatId);
+    this.leavePanel(chatId);
+  }
+
+  /**
+   * Moves a chat from its tab back to the panel (Continue in the side panel): the panel shows it,
+   * and its tab closes, the way a gone item's tab does.
+   */
+  moveToPanel(chatId: string): void {
+    const view = this.views.get(chatId);
+    this.tabbed.delete(chatId);
+    if (view === undefined) {
+      this.changed();
+    } else {
+      this.currentId = chatId;
+      this.show({ kind: "chat", view });
+    }
   }
 
   /** Shows a new chat of `kind`, a Build chat unless named, or the empty draft there is already. */
@@ -112,10 +155,8 @@ export class BuildChats {
     await this.newChat(kind);
   }
 
-  /** Changes the model of the chat shown, and only of it (`assistant.chat.model-per-chat`). */
-  async setModel(model: ChatModel, announce: Announce): Promise<void> {
-    if (this.state.kind !== "chat") return;
-    const chatId = this.state.view.chat.id;
+  /** Changes the model of a chat, and only of it (`assistant.chat.model-per-chat`). */
+  async setModel(chatId: string, model: ChatModel, announce: Announce): Promise<void> {
     try {
       await this.host.setModel(chatId, model);
     } catch (error) {
@@ -131,8 +172,12 @@ export class BuildChats {
    */
   async showItem(shown: ShownItem): Promise<void> {
     if (this.currentId === undefined || !this.views.has(this.currentId)) await this.newChat();
-    if (this.currentId === undefined) return;
-    this.update(this.currentId, (view) => withShown(view, shown));
+    if (this.currentId !== undefined) this.addShown(this.currentId, shown);
+  }
+
+  /** Puts `shown` in a chat, unless it's there already. */
+  addShown(chatId: string, shown: ShownItem): void {
+    this.update(chatId, (view) => withShown(view, shown));
   }
 
   /** Asks the panel, as it opens next, to leave focus where it is: Show in chat opened it. */
@@ -147,29 +192,28 @@ export class BuildChats {
     return keep;
   }
 
-  /** Takes `shown` out of the chat the panel shows: its chip's ×. */
-  removeShown(shown: ShownItem): void {
-    if (this.state.kind !== "chat") return;
-    this.update(this.state.view.chat.id, (view) => ({
+  /** Takes `shown` out of a chat: its chip's ×. */
+  removeShown(chatId: string, shown: ShownItem): void {
+    this.update(chatId, (view) => ({
       shown: view.shown.filter((each) => !isSameItem(each, shown)),
     }));
   }
 
   /**
-   * Sends `message` in the chat shown, or, without one, continues the answer that reached the
+   * Sends `message` in a chat, or, without one, continues the answer that reached the
    * model call limit (flow-assistant 3.6) or tries a failed one again. Says once how it ended.
    * When the host refuses it because the workspace isn't trusted, nothing was sent (H16): the chat
    * goes back to how it was, nothing is announced, and `refused` gets the message. The model's
    * `show` shows items with `showItem` (`assistant.build.show-tool`).
    */
   async send(
+    chatId: string,
     message: string | undefined,
     announce: Announce,
     { refused, showItem }: SendOptions = {},
   ): Promise<void> {
-    const view = this.state.kind === "chat" ? this.state.view : undefined;
+    const view = this.views.get(chatId);
     if (view === undefined || view.answering) return;
-    const chatId = view.chat.id;
     const messages =
       message === undefined
         ? view.messages
@@ -258,33 +302,30 @@ export class BuildChats {
   }
 
   /**
-   * Renames the chat shown (`assistant.chat.rename`): the title trimmed, and an empty one keeps
-   * the old title.
+   * Renames a chat (`assistant.chat.rename`): the title trimmed, and an empty one keeps the old
+   * title.
    */
-  async rename(title: string): Promise<void> {
-    if (this.state.kind !== "chat" || title.trim() === "") return;
-    const chatId = this.state.view.chat.id;
+  async rename(chatId: string, title: string): Promise<void> {
+    if (title.trim() === "") return;
     await this.host.rename(chatId, title);
     await this.refresh(chatId);
   }
 
   /**
-   * Deletes the chat shown (`assistant.chat.delete`), stopping its answer: the panel shows no
-   * chat (H3). Its changes to review stay in the items.
+   * Deletes a chat (`assistant.chat.delete`), stopping its answer: the panel shows no chat (H3),
+   * and its tab closes. Its changes to review stay in the items.
    */
-  async deleteShown(): Promise<void> {
-    if (this.state.kind !== "chat") return;
-    const chatId = this.state.view.chat.id;
+  async deleteChat(chatId: string): Promise<void> {
     await this.host.deleteChat(chatId);
     this.stoppers.get(chatId)?.abort();
     this.views.delete(chatId);
-    this.currentId = undefined;
-    this.show({ kind: "none" });
+    this.tabbed.delete(chatId);
+    this.leavePanel(chatId);
   }
 
-  /** Stops the answer of the chat shown; it ends with "Stopped by you.". */
-  stop(): void {
-    if (this.state.kind === "chat") this.stoppers.get(this.state.view.chat.id)?.abort();
+  /** Stops a chat's answer; it ends with "Stopped by you.". */
+  stop(chatId: string): void {
+    this.stoppers.get(chatId)?.abort();
   }
 
   /** Whether a tool answered after the chat's first `count` messages. */
@@ -322,6 +363,8 @@ export class BuildChats {
   }
 
   private async announceEnd(chatId: string, end: ReplyEnd | undefined, announce: Announce) {
+    // A chat deleted while it answered says nothing more: its place already shows no chat.
+    if (!this.views.has(chatId)) return;
     if (end !== undefined) {
       announce(endLine(end), end.kind === "failed" ? "assertive" : "polite");
       return;
@@ -339,10 +382,26 @@ export class BuildChats {
     const next = { ...view, ...change(view) };
     this.views.set(chatId, next);
     if (this.currentId === chatId) this.show({ kind: "chat", view: next });
+    else this.changed();
   }
 
   private show(state: Shown): void {
     this.state = state;
+    this.changed();
+  }
+
+  /** The panel shows no chat (H3) if it showed `chatId`, which went to its tab or was deleted. */
+  private leavePanel(chatId: string): void {
+    if (this.currentId !== chatId) {
+      this.changed();
+      return;
+    }
+    this.currentId = undefined;
+    this.show({ kind: "none" });
+  }
+
+  /** Tells the panel and the tabs that a chat, or where it is, changed. */
+  private changed(): void {
     for (const listener of this.listeners) listener();
   }
 }

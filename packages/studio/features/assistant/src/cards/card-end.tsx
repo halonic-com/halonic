@@ -4,6 +4,7 @@ import type { WorkspaceContext } from "@halonicjs/studio-shell";
 import type { Ref } from "react";
 import { AssistantHostService } from "../api.ts";
 import { buildChatsOf } from "../chat/build-chats.ts";
+import { chatTabItem } from "../chat/chat-tab-item.ts";
 import type { CardEnd } from "./card-ends.ts";
 import { cardWords as words } from "./card-words.ts";
 
@@ -114,11 +115,14 @@ export function cardElementId(card: ReviewCard): string {
 
 /**
  * **Go to it**: scrolls to the newer card and puts focus on its Review. A card of another chat
- * opens that chat first, then goes to it once it shows.
+ * opens that chat first, in the panel or its tab, then goes to it once it shows.
  */
 async function goTo(card: ReviewCard, sameChat: boolean, context: WorkspaceContext): Promise<void> {
   if (!sameChat) {
-    await buildChatsOf(context.services.get(AssistantHostService)).openChat(card.chatId);
+    const chats = buildChatsOf(context.services.get(AssistantHostService));
+    // A chat open as a tab is shown there, not in the panel too: one chat in one place.
+    if (chats.inTab(card.chatId)) context.openItem?.(chatTabItem(card.chatId));
+    else await chats.openChat(card.chatId);
     // The chat renders after this task; the card is there on the next one.
     await new Promise((resolve) => setTimeout(resolve, 0));
   }

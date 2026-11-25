@@ -12,6 +12,14 @@ export const buildChatWords = {
   /** H1: an empty chat's heading and the line under it, at the top of the panel's transcript. */
   heading: "What should we build?",
   startLine: "I make changes in your files and mark them; you accept or reject each one.",
+  /** The chat tab (flow-assistant 2.3): the panel's ⧉, the tab's way back, and its kind. */
+  openAsTab: "Open as tab",
+  continueInPanel: "Continue in the side panel",
+  chatKind: "Chat",
+  /** H6: the tab's side panel, its one view, and its state while nothing is shown yet. */
+  items: "Items",
+  noItems: "Items the assistant shows or changes appear here.",
+  noItemsHint: "Alt+click an agent or workflow in the sidebar to show it.",
   /** H3: the panel when its chat is gone. */
   noChat: "No chat open",
   noChatLine:

@@ -1,3 +1,8 @@
+/** The row's chip: items that still have changes to review from the chat. */
+function toReview(items: number): string {
+  return `${items} to review`;
+}
+
 /**
  * The words of the chat menu, Rename and Delete chat (microcopy 14.1 and 19.5; states H3, H4;
  * flow-assistant 5.5 and 5.6). Where the T14 checklist still says "2 open", the microcopy's
@@ -6,11 +11,10 @@
 export const chatMenuWords = {
   /** H4: under the rows, or under New chat alone when there are none yet. */
   footer: "Keeps your 40 most recent chats on this computer.",
-  /** The row's chip: items that still have changes to review from the chat. */
-  toReview: (items: number) => `${items} to review`,
+  toReview,
   /** A row's name: "Add a routine, 10:42, answering" or "…, 09:15, 2 to review" (mc 19.5). */
   rowName: (title: string, time: string, answering: boolean, items: number) =>
-    [title, time, answering ? "answering" : undefined, items > 0 ? `${items} to review` : undefined]
+    [title, time, answering ? "answering" : undefined, items > 0 ? toReview(items) : undefined]
       .filter((part) => part !== undefined)
       .join(", "),
   answering: "answering",
