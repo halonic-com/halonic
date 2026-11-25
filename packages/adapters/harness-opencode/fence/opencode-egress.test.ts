@@ -18,7 +18,12 @@ import { opencodeEnvironment } from "../src/environment.ts";
 import { opencodeFiles } from "../src/files.ts";
 import { OpenCodeRun } from "../src/run.ts";
 import { attemptsOut, readTrace, type TracedAttempt, tracedSession } from "./network-trace.ts";
-import { type ScriptedBridge, scriptedAnswer, startScriptedBridge } from "./scripted-bridge.ts";
+import {
+  bridgeName,
+  type ScriptedBridge,
+  scriptedAnswer,
+  startScriptedBridge,
+} from "./scripted-bridge.ts";
 
 /**
  * The egress test (docs/adr/2026-11-24-opencode-harness-program.md, the
@@ -91,7 +96,8 @@ beforeEach(async () => {
   await mkdir(join(root, "work"), { recursive: true });
   await mkdir(join(root, "temp"), { recursive: true });
   await writeFile(join(root, "work", "hello.txt"), "hello from acme\n");
-  bridge = await startScriptedBridge(join(root, "work", "hello.txt"));
+  // The socket stays outside the fence's folders, as the agent host's does.
+  bridge = await startScriptedBridge(join(root, "work", "hello.txt"), join(root, "bridge.sock"));
 });
 
 afterEach(async () => {
@@ -110,7 +116,7 @@ function profileFor(harnessBridge: HarnessBridge, unset: readonly string[]): San
     deniedPaths: [],
     env: {},
     network: {
-      bridge: { kind: "loopback", host: "127.0.0.1", port: bridge.port },
+      bridge: { kind: "socket", name: bridgeName, socketPath: bridge.socketPath },
       allowedSites: [],
     },
     timeLimitMs: 120_000,
@@ -157,6 +163,7 @@ async function read(stream: ReadableStream<Uint8Array>): Promise<string> {
 async function runOpenCode(unset: readonly string[] = []): Promise<FencedRun> {
   const harnessBridge: HarnessBridge = {
     url: bridge.url,
+    socketPath: bridge.socketPath,
     token: `made-up-token-${crypto.randomUUID()}`,
   };
   const traceFile = traceFileIn("opencode.trace");
@@ -234,7 +241,11 @@ describe.skipIf(!ready)(
 
     it("tracer control: a DNS question in the fence is in the trace", async () => {
       const traceFile = traceFileIn("dns.trace");
-      const harnessBridge: HarnessBridge = { url: bridge.url, token: "made-up-token" };
+      const harnessBridge: HarnessBridge = {
+        url: bridge.url,
+        socketPath: bridge.socketPath,
+        token: "made-up-token",
+      };
       const { session } = await openRecorded(profileFor(harnessBridge, []), traceFile);
 
       const lookup = await session.start({

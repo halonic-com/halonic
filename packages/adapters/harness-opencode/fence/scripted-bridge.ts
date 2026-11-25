@@ -1,5 +1,4 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import type { AddressInfo } from "node:net";
 
 /** A request the scripted bridge got: its method and path, never its headers. */
 export interface BridgeRequest {
@@ -12,11 +11,19 @@ type ScriptedTurn =
   | { kind: "tool"; name: string; input: Record<string, unknown> }
   | { kind: "answer"; text: string };
 
+/**
+ * The name a program calls a socket bridge by, as Halonic's bridge
+ * (`socketBridgeName` in harness-bridge): srt's proxy sends port 80 of it to
+ * the socket.
+ */
+export const bridgeName = "bridge.halonic.invalid";
+
 /** A running scripted bridge, and every request it got. */
 export interface ScriptedBridge {
-  /** The bridge's address, as the harness gets it: `http://127.0.0.1:<port>`. */
+  /** The bridge's address, as the harness gets it: `http://bridge.halonic.invalid`. */
   url: string;
-  port: number;
+  /** The Unix socket it serves, outside the fence. */
+  socketPath: string;
   requests: BridgeRequest[];
   close(): Promise<void>;
 }
@@ -25,7 +32,8 @@ export interface ScriptedBridge {
 export const scriptedAnswer = "The file says hello from acme.";
 
 /**
- * Starts a stand-in for Halonic's bridge on `127.0.0.1`: it answers
+ * Starts a stand-in for Halonic's bridge on the Unix socket `socketPath`,
+ * the way the agent host serves it on Linux and macOS: it answers
  * Anthropic-style Messages calls from a script, so OpenCode runs real tools,
  * and its MCP route with an MCP server that has no tools.
  *
@@ -33,7 +41,10 @@ export const scriptedAnswer = "The file says hello from acme.";
  * answer. Which reply a call gets depends only on how many assistant turns
  * the call already holds, so a retried call gets the same reply.
  */
-export async function startScriptedBridge(readPath: string): Promise<ScriptedBridge> {
+export async function startScriptedBridge(
+  readPath: string,
+  socketPath: string,
+): Promise<ScriptedBridge> {
   const script: ScriptedTurn[] = [
     { kind: "tool", name: "read", input: { path: readPath } },
     {
@@ -51,11 +62,10 @@ export async function startScriptedBridge(readPath: string): Promise<ScriptedBri
       response.end(error instanceof Error ? error.message : String(error));
     });
   });
-  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-  const port = (server.address() as AddressInfo).port;
+  await new Promise<void>((resolve) => server.listen(socketPath, resolve));
   return {
-    url: `http://127.0.0.1:${port}`,
-    port,
+    url: `http://${bridgeName}`,
+    socketPath,
     requests,
     close: () => closeServer(server),
   };
