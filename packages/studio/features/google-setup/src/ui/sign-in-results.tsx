@@ -3,6 +3,7 @@ import { Button, Callout, CommandBox, ExternalLink } from "@halonicjs/studio-kit
 import { failureLine } from "@halonicjs/studio-shell";
 import { useEffect, useId, useRef, useState } from "react";
 import type { CheckAgainAnswer, CheckAgainEntry } from "../api.ts";
+import { weeklyWords } from "../weekly-words.ts";
 import { checkAgainText, signInAgainText } from "./check-again.ts";
 import { useNotAnswering } from "./not-answering.tsx";
 import {
@@ -11,7 +12,6 @@ import {
   resultText,
   type ServiceResultLine,
 } from "./result-lines.ts";
-import { weeklyWords } from "../weekly-words.ts";
 import { signInCommand } from "./sign-in-elsewhere.tsx";
 
 /**
