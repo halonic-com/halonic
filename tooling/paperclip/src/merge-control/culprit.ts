@@ -1,7 +1,7 @@
 import { failedGroupFacts, wakeAuthor } from "./author-wake.ts";
 import { commentOnce, logLine, minutesSince, type PassContext } from "./context.ts";
 import type { GateRow } from "./gate.ts";
-import { mainBroken } from "./main-broken.ts";
+import { groupCulprit } from "./main-broken.ts";
 import { refusedOnly } from "./refused.ts";
 import type { GroupRun } from "./snapshot.ts";
 import { texts } from "./texts.ts";
@@ -13,8 +13,9 @@ import { texts } from "./texts.ts";
  * new head (rule 13), and told once which job failed. A cancelled group with
  * no failed job lets its pull request back in once (Chief, HAL-10, 24 Nov);
  * a second one holds it. A group that failed only on files its pull request
- * doesn't touch holds nothing: main is broken (`main-broken.ts`). Nor does a
- * group whose jobs the runner hook refused (`refused.ts`).
+ * doesn't touch holds nothing: main is broken (`main-broken.ts`); one that
+ * failed on files a pull request ahead of it in the group chain touches holds
+ * that one. Nor does a group whose jobs the runner hook refused (`refused.ts`).
  */
 
 /** Failed groups are read this far back. */
@@ -44,7 +45,13 @@ export function errorLine(run: GroupRun): string | null {
 }
 
 /** Sets the hold for a group's pull request that GitHub took out, or lets a cancelled group off once. */
-function holdCulprit(context: PassContext, run: GroupRun, row: GateRow, where: string): void {
+function holdCulprit(
+  context: PassContext,
+  run: GroupRun,
+  row: GateRow,
+  rows: readonly GateRow[],
+  where: string,
+): void {
   const { state } = context;
   const { number, head } = row.pull;
   const key = String(number);
@@ -74,12 +81,36 @@ function holdCulprit(context: PassContext, run: GroupRun, row: GateRow, where: s
     );
     return;
   }
-  if (mainBroken(context, run, row, where)) {
+  const culprit = groupCulprit(context, run, row, rows, where);
+  if (culprit === undefined) {
     return;
   }
-  state.failedHeads[key] = head;
+  const ahead = culprit.pull;
+  if (
+    culprit !== row &&
+    (culprit.entry !== undefined || state.flakeLifted[ahead.number] === ahead.head)
+  ) {
+    logLine(
+      context,
+      "culprit",
+      `failed group ${where} culprit #${ahead.number}(still queued or lifted; its own group decides)`,
+    );
+    return;
+  }
+  hold(context, run, culprit, where);
+}
+
+/** Holds `row`'s pull request until it has a new head, and tells its author once. */
+function hold(context: PassContext, run: GroupRun, row: GateRow, where: string): void {
+  const { state } = context;
+  const { number, head } = row.pull;
+  const key = String(number);
   const jobs = run.failedJobs.map((job) => job.name);
-  state.heldRuns[key] = { head, url: run.url, jobs, error: errorLine(run) };
+  // Its own group may have held it first: that run is the one to show.
+  if (state.failedHeads[key] !== head || state.heldRuns[key]?.head !== head) {
+    state.heldRuns[key] = { head, url: run.url, jobs, error: errorLine(run) };
+  }
+  state.failedHeads[key] = head;
   logLine(
     context,
     "culprit",
@@ -116,7 +147,7 @@ function judgeGroup(context: PassContext, run: GroupRun, rows: readonly GateRow[
     return false;
   }
   if (row.entry === undefined && fresh) {
-    holdCulprit(context, run, row, where);
+    holdCulprit(context, run, row, rows, where);
   }
   return true;
 }
