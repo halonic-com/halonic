@@ -38,20 +38,33 @@ vm_down() {
   rm -f "$LIB/run.qcow2"
 }
 if [[ -n $CLEANUP ]]; then vm_down; fi
-# Paused: take no new job. The sleep keeps a paused unit from restarting every few seconds.
-if [[ -z $CLEANUP && -e $ETC/paused ]]; then
+# Paused: take no new job. The sleep keeps a paused unit from restarting every few seconds, and
+# --cleanup skips GitHub (a cycle removes its own runner on exit; the next one removes stale ones).
+if [[ -e $ETC/paused ]]; then
+  if [[ -n $CLEANUP ]]; then exit 0; fi
   log "paused ($ETC/paused exists), not taking a job"
   sleep 60
   exit 0
 fi
 
 # --- GitHub: an installation token for the App halonic-win-runners (self-hosted runners only).
+# runner.env is sourced as root, so only root may write it.
+ENV_FILE=$ETC/runner.env
+[[ -f $ENV_FILE && ! -L $ENV_FILE && $(stat -c %u "$ENV_FILE") == 0 ]] &&
+  (((8#$(stat -c %a "$ENV_FILE") & 8#022) == 0)) || fail "$ENV_FILE must be a root-owned file no one else can write"
 # shellcheck source=/dev/null
-. "$ETC/runner.env" # APP_ID INSTALLATION_ID
-[[ ${APP_ID:-} =~ ^[0-9]+$ && ${INSTALLATION_ID:-} =~ ^[0-9]+$ ]] || fail "$ETC/runner.env must set APP_ID and INSTALLATION_ID"
+. "$ENV_FILE" # APP_ID INSTALLATION_ID
+[[ ${APP_ID:-} =~ ^[0-9]+$ && ${INSTALLATION_ID:-} =~ ^[0-9]+$ ]] || fail "$ENV_FILE must set APP_ID and INSTALLATION_ID"
 [[ -f $KEY && ! -L $KEY && $(stat -c '%u %a' "$KEY") == "0 400" ]] || fail "$KEY must be a root-owned 0400 file"
 b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
 api() { curl -fsS --max-time 30 -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "$@"; }
+# authed <bearer> <curl args>: the Authorization header goes through a pipe (printf is a builtin),
+# never curl's command line, which any local user can read in /proc/<pid>/cmdline.
+authed() {
+  local bearer=$1
+  shift
+  api -H @<(printf 'Authorization: Bearer %s\n' "$bearer") "$@"
+}
 TOKEN=""; TOKEN_AT=-3600
 # token: mints a new installation token when the last one is older than 50 minutes (they last 60).
 token() {
@@ -61,12 +74,12 @@ token() {
   hdr=$(printf '{"alg":"RS256","typ":"JWT"}' | b64url)
   pl=$(printf '{"iat":%d,"exp":%d,"iss":"%s"}' $((now - 60)) $((now + 540)) "$APP_ID" | b64url)
   sig=$(printf '%s.%s' "$hdr" "$pl" | openssl dgst -sha256 -sign "$KEY" -binary | b64url)
-  TOKEN=$(api -X POST -H "Authorization: Bearer $hdr.$pl.$sig" \
+  TOKEN=$(authed "$hdr.$pl.$sig" -X POST \
     "https://api.github.com/app/installations/$INSTALLATION_ID/access_tokens" | jq -r .token) || TOKEN=""
   [[ -n $TOKEN && $TOKEN != null ]] || { echo "win-runner: no installation token" >&2; return 1; }
   TOKEN_AT=$SECONDS
 }
-gh_api() { token && api -H "Authorization: Bearer $TOKEN" "$@"; }
+gh_api() { token && authed "$TOKEN" "$@"; }
 
 # --- Runners: none of ours left registered once its VM is gone.
 remove_runner() {

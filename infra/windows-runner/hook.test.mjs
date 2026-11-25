@@ -191,10 +191,37 @@ test("the image wires the hook in: run-job.ps1 sets it, job-started.ps1 runs the
   );
   assert.match(
     read("image/job-started.ps1"),
-    /node\.exe" \(Join-Path \$PSScriptRoot 'job-started\.mjs'\)\r?\nexit \$LASTEXITCODE/,
+    /^& 'C:\\Program Files\\nodejs\\node\.exe' "\$PSScriptRoot\\job-started\.mjs".*\r?\nexit \$LASTEXITCODE/m, // leak-guard: allow absolute-path the image's fixed Node path
   );
   assert.match(
     read("host/build-image.sh"),
     /image\/job-started\.mjs" "\$HERE\/image\/job-started\.ps1"/,
+  );
+});
+
+test("job-started.ps1 drops every NODE_* variable before Node starts, and takes nothing from the job's env", () => {
+  const hook = read("image/job-started.ps1");
+  const code = hook.replace(/#.*$/gm, "");
+  const drop = code.search(
+    /if \(\$name -like 'NODE_\*'\) \{ \[Environment\]::SetEnvironmentVariable\(\$name, \$null\) \}/,
+  );
+  assert.ok(drop >= 0, "removes NODE_* variables");
+  assert.match(
+    code,
+    /foreach \(\$name in @\(\[Environment\]::GetEnvironmentVariables\(\)\.Keys\)\)/,
+  );
+  assert.ok(drop < code.indexOf("node.exe"), "removes them before starting Node");
+  // A job's env: can set any of these, so the hook names neither a variable nor a cmdlet.
+  assert.doesNotMatch(code, /\$env:/i);
+  assert.doesNotMatch(code, /Join-Path|Remove-Item|Get-ChildItem/i);
+});
+
+test("win-runner-cycle.sh keeps tokens off curl's command line and checks runner.env", () => {
+  const cycle = read("host/win-runner-cycle.sh");
+  assert.doesNotMatch(cycle, /-H "Authorization/);
+  assert.match(cycle, /api -H @<\(printf 'Authorization: Bearer %s\\n' "\$bearer"\)/);
+  assert.ok(
+    cycle.indexOf('stat -c %u "$ENV_FILE"') < cycle.indexOf('. "$ENV_FILE"'),
+    "checks runner.env's owner before sourcing it",
   );
 });

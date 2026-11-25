@@ -3,6 +3,7 @@
 - Task: HAL-18585 (PR 2 of the Windows runner VM, plan on HAL-18572)
 - Approval: Liam approves this note in review on HAL-18585 (CI workflows are the guard's path; internal CI change, no board card)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:i/TSToMVhKHBkB8UJi/KqhqCYIQ+8Bu2HKtVbusmbAeR3q+CnGzWDPJaS6AVU3UsjvWGTCx3qCe71RXO8qNlAA==
 
 ## What changes
 
