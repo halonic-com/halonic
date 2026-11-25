@@ -2,6 +2,7 @@
 
 - Approval: HAL-18292 (PR 1 of HAL-18289, as Liam set it out there)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:o0hJIdl9WxCAvYJNC+2qjq+AGQGSZ0W04GEDz1++6S9Rkevo0z6TYpvqLeOGs+GcQcpsLxzk3lj7lsV49XPfAQ==
 
 The `github.pull-request` action takes one more optional setting, `reviewerRules`: for each
 repository, the files, folders, words (with `wordsSkip` regexes), a line limit (with skip
