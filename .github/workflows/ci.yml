@@ -1184,18 +1184,18 @@ jobs:
               exit 0
             fi
           fi
-          echo "run=true" >> "$GITHUB_OUTPUT"
-      - if: steps.due.outputs.run == 'true'
+          echo "copy=true" >> "$GITHUB_OUTPUT"
+      - if: steps.due.outputs.copy == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - if: steps.due.outputs.run == 'true'
+      - if: steps.due.outputs.copy == 'true'
         uses: $/.github/actions/setup
       # One cache per shard, as the build job restores it. The path must be
       # the same string as the build job's: actions/cache keys each entry on
       # its paths and compression, and our server has zstd like GitHub's runners.
       - id: copy
-        if: steps.due.outputs.run == 'true'
+        if: steps.due.outputs.copy == 'true'
         name: Copy each shard's task results
         run: |
           mkdir -p .turbo
@@ -1219,92 +1219,92 @@ jobs:
             echo "$name: $found task results copied, $missing not in the disk cache (build and transit tasks keep none)"
           done <<< "$BUILD_SHARDS"
           echo "root=$root" >> "$GITHUB_OUTPUT"
-      - if: steps.due.outputs.run == 'true'
+      - if: steps.due.outputs.copy == 'true'
         name: Stage the adapters-a shard
         env:
           ROOT: ${{ steps.copy.outputs.root }}
         run: rm -rf .turbo/cache && cp -r "$ROOT/adapters-a" .turbo/cache
-      - if: steps.due.outputs.run == 'true'
+      - if: steps.due.outputs.copy == 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .turbo/cache
           key: turbo-${{ runner.os }}-adapters-a-${{ github.sha }}
-      - if: steps.due.outputs.run == 'true'
+      - if: steps.due.outputs.copy == 'true'
         name: Stage the adapters-b shard
         env:
           ROOT: ${{ steps.copy.outputs.root }}
         run: rm -rf .turbo/cache && cp -r "$ROOT/adapters-b" .turbo/cache
-      - if: steps.due.outputs.run == 'true'
+      - if: steps.due.outputs.copy == 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .turbo/cache
           key: turbo-${{ runner.os }}-adapters-b-${{ github.sha }}
-      - if: steps.due.outputs.run == 'true'
+      - if: steps.due.outputs.copy == 'true'
         name: Stage the features-a shard
         env:
           ROOT: ${{ steps.copy.outputs.root }}
         run: rm -rf .turbo/cache && cp -r "$ROOT/features-a" .turbo/cache
-      - if: steps.due.outputs.run == 'true'
+      - if: steps.due.outputs.copy == 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .turbo/cache
           key: turbo-${{ runner.os }}-features-a-${{ github.sha }}
-      - if: steps.due.outputs.run == 'true'
+      - if: steps.due.outputs.copy == 'true'
         name: Stage the features-b shard
         env:
           ROOT: ${{ steps.copy.outputs.root }}
         run: rm -rf .turbo/cache && cp -r "$ROOT/features-b" .turbo/cache
-      - if: steps.due.outputs.run == 'true'
+      - if: steps.due.outputs.copy == 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .turbo/cache
           key: turbo-${{ runner.os }}-features-b-${{ github.sha }}
-      - if: steps.due.outputs.run == 'true'
+      - if: steps.due.outputs.copy == 'true'
         name: Stage the core shard
         env:
           ROOT: ${{ steps.copy.outputs.root }}
         run: rm -rf .turbo/cache && cp -r "$ROOT/core" .turbo/cache
-      - if: steps.due.outputs.run == 'true'
+      - if: steps.due.outputs.copy == 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .turbo/cache
           key: turbo-${{ runner.os }}-core-${{ github.sha }}
-      - if: steps.due.outputs.run == 'true'
+      - if: steps.due.outputs.copy == 'true'
         name: Stage the studio-testing shard
         env:
           ROOT: ${{ steps.copy.outputs.root }}
         run: rm -rf .turbo/cache && cp -r "$ROOT/studio-testing" .turbo/cache
-      - if: steps.due.outputs.run == 'true'
+      - if: steps.due.outputs.copy == 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .turbo/cache
           key: turbo-${{ runner.os }}-studio-testing-${{ github.sha }}
-      - if: steps.due.outputs.run == 'true'
+      - if: steps.due.outputs.copy == 'true'
         name: Stage the apps-host shard
         env:
           ROOT: ${{ steps.copy.outputs.root }}
         run: rm -rf .turbo/cache && cp -r "$ROOT/apps-host" .turbo/cache
-      - if: steps.due.outputs.run == 'true'
+      - if: steps.due.outputs.copy == 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .turbo/cache
           key: turbo-${{ runner.os }}-apps-host-${{ github.sha }}
-      - if: steps.due.outputs.run == 'true'
+      - if: steps.due.outputs.copy == 'true'
         name: Stage the app-studio shard
         env:
           ROOT: ${{ steps.copy.outputs.root }}
         run: rm -rf .turbo/cache && cp -r "$ROOT/app-studio" .turbo/cache
-      - if: steps.due.outputs.run == 'true'
+      - if: steps.due.outputs.copy == 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .turbo/cache
           key: turbo-${{ runner.os }}-app-studio-${{ github.sha }}
-      - if: steps.due.outputs.run == 'true'
+      - if: steps.due.outputs.copy == 'true'
         name: Stage the tooling-targets shard
         env:
           ROOT: ${{ steps.copy.outputs.root }}
         run: rm -rf .turbo/cache && cp -r "$ROOT/tooling-targets" .turbo/cache
-      - if: steps.due.outputs.run == 'true'
+      - if: steps.due.outputs.copy == 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .turbo/cache
