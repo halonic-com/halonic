@@ -11,6 +11,8 @@ export const channelWords = {
     `Ask the channel anything: ${lead} (lead) answers unless you name someone with @.`,
   toLead: (lead: string) => `To ${lead} (lead) · Type @ to ask someone else`,
   to: (names: readonly string[]) => `To ${andList(names)}`,
+  /** Above a sent message that named nobody, as the To line's first part (k10d, k11a). */
+  toLeadSent: (lead: string) => `To ${lead} (lead)`,
   toNobody: "To nobody yet",
   noLead: "Name someone with @, or pick a lead in Members.",
   picker: "Members · ↑↓ to pick · Enter names them · Esc closes",

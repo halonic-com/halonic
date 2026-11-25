@@ -208,9 +208,79 @@ verifies("messenger.channel-messages", () => {
     const mine = page.querySelector('main li[data-author="me"]');
     expect(mine?.textContent).toContain("To Liam and Elena");
     const lines = [...(mine?.querySelectorAll("[data-work-lines] li") ?? [])];
-    expect(lines.map((line) => line.textContent)).toEqual([
-      "✓ Liam answered",
-      "◔ Elena · starting…",
+    expect(lines.map((line) => line.textContent)).toEqual(["Liam answered", "Elena · starting…"]);
+  });
+
+  it("draws each work line's kit icon in its state's tone, hidden from screen readers (HAL-18331 A)", async () => {
+    const { messaging, chief, liam, elena, channel } = engineering();
+    const since = "2026-11-24T10:00:00.000Z";
+    const handOff = (agent: string, passedTo: string) =>
+      ({ agent, state: "passed-on", passedTo, since }) as const;
+    messaging.addMessage(channel.id, {
+      author: { kind: "me" },
+      body: "Who owns the flaky login test?",
+      work: [
+        { agent: liam.id, state: "working", since },
+        { agent: elena.id, state: "answered", since },
+        { agent: chief.id, state: "asks-you", since },
+        { agent: liam.id, state: "failed", since },
+        handOff(chief.id, liam.id),
+        handOff(liam.id, elena.id),
+        handOff(elena.id, chief.id),
+      ],
+    });
+    const page = await openMessenger(messaging);
+    await openChat(page, "Engineering");
+    const lines = [...page.querySelectorAll("[data-work-lines] li")];
+    const tones = lines.map((line) => {
+      const icon = line.querySelector('[aria-hidden="true"]');
+      expect(icon?.querySelector("svg")).not.toBeNull();
+      return [line.getAttribute("data-work"), icon?.className.match(/text-[a-z-]+/)?.[0]];
+    });
+    expect(tones).toEqual([
+      ["running", "text-running"],
+      ["answered", "text-success"],
+      ["asks-you", "text-warning"],
+      ["failed", "text-danger"],
+      ["passed-on", "text-fg-muted"],
+      ["passed-on", "text-fg-muted"],
+      ["passed-on", "text-fg-muted"],
+      ["limit", "text-attention"],
     ]);
+  });
+
+  it("shows To above the person's messages at their end side, the lead's when nobody was named (HAL-18331 B, C)", async () => {
+    const { messaging, liam, channel } = engineering();
+    messaging.addMessage(channel.id, { author: { kind: "me" }, body: "Anyone?" });
+    messaging.addMessage(channel.id, { author: { kind: "me" }, body: "Notes?", to: [liam.id] });
+    messaging.addMessage(channel.id, {
+      author: { kind: "agent", agent: liam.id, name: "Liam" },
+      body: "Yes",
+    });
+    const page = await openMessenger(messaging);
+    await openChat(page, "Engineering");
+    const labels = [...page.querySelectorAll("main li[data-author] [data-message-to]")];
+    expect(labels.map((label) => label.textContent)).toEqual(["To Chief (lead)", "To Liam"]);
+    for (const label of labels) expect(label.className).toContain("text-end");
+  });
+
+  it("puts the To line and accent @ chips inside the box's frame (HAL-18331 D)", async () => {
+    const page = await openMessenger(engineering().messaging);
+    const box = await openChat(page, "Engineering");
+    await typeAndPress(box, "@");
+    await press(byText(page, "[data-chat-picker] [role=option]", "Elena"));
+    const frame = box.parentElement;
+    expect(frame?.querySelector("[data-to-line]")?.textContent).toBe("To Elena");
+    const chip = frame?.querySelector("[data-chip]");
+    expect(chip?.querySelector("bdi")?.textContent).toBe("@Elena");
+    expect(chip?.className).toContain("bg-accent-soft");
+  });
+
+  it("shows an empty channel as the kit's empty state, on the group icon's tile (HAL-18331 E)", async () => {
+    const page = await openMessenger(engineering().messaging);
+    await openChat(page, "Engineering");
+    const empty = byText(page, "main li", "No messages yet");
+    expect(empty?.querySelector("h3")?.textContent).toBe("No messages yet");
+    expect(empty?.querySelector("svg")).not.toBeNull();
   });
 });

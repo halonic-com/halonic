@@ -82,8 +82,9 @@ function MemberOption({ agent }: { readonly agent: MessagingAgent }) {
 }
 
 /**
- * The To line above a channel's box, and a chip with Remove per named agent. Remove takes its
- * button away, so `onUnname` moves focus on (HAL-18316 MS9).
+ * The To line inside a channel's box, above the text, and an accent "@Elena" chip with Remove per
+ * named agent (k10a, k10d). Remove takes its button away, so `onUnname` moves focus on (HAL-18316
+ * MS9).
  */
 export function ChannelAddressBar({
   address,
@@ -93,31 +94,29 @@ export function ChannelAddressBar({
   readonly onUnname: (index: number) => void;
 }) {
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex flex-wrap items-center gap-2 text-small">
-        <span data-to-line className="text-fg-muted">
-          {address.line.text}
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-small">
+      <span data-to-line className="text-fg-muted">
+        {address.line.text}
+      </span>
+      {address.line.waits === undefined ? null : (
+        <span id={address.lineId}>{address.line.waits}</span>
+      )}
+      {address.named.map((agent, index) => (
+        <span
+          key={agent.id}
+          data-chip
+          className="flex items-center rounded-sm bg-accent-soft ps-1.5 text-accent-text"
+        >
+          <bdi>@{agent.name}</bdi>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<CloseIcon />}
+            label={channelWords.unname(agent.name)}
+            onClick={() => onUnname(index)}
+          />
         </span>
-        {address.line.waits === undefined ? null : (
-          <span id={address.lineId}>{address.line.waits}</span>
-        )}
-        {address.named.map((agent, index) => (
-          <span
-            key={agent.id}
-            data-chip
-            className="flex items-center gap-1 rounded-md border border-border py-0.5 ps-2"
-          >
-            <bdi>{agent.name}</bdi>
-            <Button
-              variant="ghost"
-              size="sm"
-              icon={<CloseIcon />}
-              label={channelWords.unname(agent.name)}
-              onClick={() => onUnname(index)}
-            />
-          </span>
-        ))}
-      </div>
+      ))}
     </div>
   );
 }
