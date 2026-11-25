@@ -49,13 +49,22 @@ class AllTestFilesRanReporter implements Reporter {
 
 const packageTest = packageConfig.test ?? {};
 
+/** The package's test files: each project names its own (see `vitest.config.ts`). */
+const testFileGlobs = [packageTest.projects ?? []]
+  .flat()
+  .flatMap((project) =>
+    typeof project === "object" && project !== null && "test" in project
+      ? [project.test?.include ?? []].flat()
+      : [],
+  );
+
 export default {
   ...packageConfig,
   test: {
     ...packageTest,
     reporters: [
       ...[packageTest.reporters ?? []].flat(),
-      new AllTestFilesRanReporter(packageTest.include ?? []),
+      new AllTestFilesRanReporter(testFileGlobs),
     ],
   },
 } satisfies ViteUserConfig;
