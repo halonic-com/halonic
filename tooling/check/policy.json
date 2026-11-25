@@ -12,6 +12,7 @@
     "@halonicjs/workflow",
     "@halonicjs/routines",
     "@halonicjs/workspace",
+    "@halonicjs/plugin-build",
     "@halonicjs/app",
     "@halonicjs/engine",
     "@halonicjs/oauth-sign-in",
@@ -19,8 +20,7 @@
     "@halonicjs/test-runner",
     "@halonicjs/words",
     "@halonicjs/assistant",
-    "@halonicjs/openui-lang",
-    "@halonicjs/plugin-build"
+    "@halonicjs/openui-lang"
   ],
   "apiTypes": [
     "@halonicjs/events",
