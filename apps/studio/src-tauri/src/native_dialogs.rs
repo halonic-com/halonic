@@ -115,11 +115,6 @@ const SEND_STEP_TITLE: &str = "Send this request?";
 #[cfg(desktop)]
 const SEND_STEP_BUTTON: &str = "Send";
 
-/// The label of the shell's only window. tauri.conf.json gives the window
-/// no label, so Tauri names it `main`, as the capabilities do.
-#[cfg(desktop)]
-const SHELL_WINDOW: &str = "main";
-
 /// Shows the folder picker; `None` when the person cancels it.
 #[cfg(desktop)]
 pub fn pick_folder<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
