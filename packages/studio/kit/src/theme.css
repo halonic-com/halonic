@@ -245,9 +245,10 @@
     0 4px 12px -4px var(--shade-mid);
 
   /* ---------------------------------------------------------------- Motion (ease-*, animate-*) */
-  /* For now the Studio uses colour changes and short fades only: nothing slides, scales or
-     moves on its own. The one exception is the busy spinner, because it tells you something
-     is happening. The curves and durations are here for when that changes. */
+  /* Colour changes and short fades, plus three movements (design review HAL-18481): things that
+     arrive rise --motion-rise, list rows that move glide, and panes in a one-pane window slide
+     --motion-slide. Nothing scales, bounces or moves on its own; the busy spinner is the one
+     exception, because it tells you something is happening. Under reduced motion only fades. */
   --ease-standard: cubic-bezier(0.2, 0, 0, 1); /* things that move on screen */
   --ease-enter: cubic-bezier(0.22, 1, 0.36, 1); /* things that appear */
   --ease-exit: cubic-bezier(0.4, 0, 1, 1); /* things that leave */
@@ -298,6 +299,9 @@
   --duration-base: 200ms; /* menus, toasts, tabs, toggles */
   --duration-slow: 320ms; /* dialogs, drawers, side panels */
 
+  --motion-rise: 8px; /* how far anything that arrives rises (or drops) as it fades in */
+  --motion-slide: 24px; /* how far a pane slides in a one-pane window */
+
   --layer-sticky: 10;
   --layer-overlay: 200;
   --layer-dialog: 300;
@@ -308,6 +312,8 @@
   :root {
     --duration-base: 120ms;
     --duration-slow: 120ms;
+    --motion-rise: 0px;
+    --motion-slide: 0px;
     /* Colour changes are instant; fades name --duration-base or --duration-slow and stay. */
     --default-transition-duration: 0ms;
   }
