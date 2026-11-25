@@ -101,7 +101,10 @@ function StepOutcomeLine({
   if (step.outcome.kind === "failed") {
     const details = failureDetails(step.outcome.status, step.outcome.message, service);
     return (
-      <Callout tone="danger" action={{ label: copyDetailsWords.label, onClick: () => copy(details) }}>
+      <Callout
+        tone="danger"
+        action={{ label: copyDetailsWords.label, onClick: () => copy(details) }}
+      >
         {text}
       </Callout>
     );

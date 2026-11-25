@@ -81,7 +81,7 @@ verifies("action-steppers.run", () => {
         { kind: "failed", status: 403, message: "Resource not accessible by integration" },
       ]);
       const { root, actions, copied } = show(view);
-      const line = root.querySelector('[role="status"], [aria-live]')?.textContent;
+      const line = root.querySelectorAll("ol > li")[1]?.textContent;
       expect(line).toContain("Failed: GitHub refused this step (status 403).");
       // The service's own words go only to Copy details (microcopy 1.6 E3, C805 A7).
       expect(line).not.toContain("Resource not accessible");

@@ -85,7 +85,7 @@ verifies("action-steppers.results", () => {
       const { root, next } = show(withOutcomes(routineRequest(), [{ kind: "running" }]));
       next(withOutcomes(routineRequest(), [{ kind: "failed", status: 403, message: "Forbidden" }]));
       expect(statusRegion(root)?.textContent).toBe(
-        "Failed with status 403. GitHub said: “Forbidden”",
+        "Failed: GitHub refused this step (status 403).",
       );
     });
 
