@@ -16,11 +16,13 @@ export const maxServerSessionDoneWhenLength = 500;
 
 /**
  * A control character (Unicode `Cc`), a format character (`Cf`: zero-width
- * characters, U+FEFF, the bidi controls, the tag characters) or a line or
- * paragraph separator. Each either breaks a line or hides or reorders text,
- * so the person could read one brief while Claude Code reads another.
+ * characters, U+FEFF, the bidi controls, the tag characters), a variation
+ * selector or a line or paragraph separator. Each either breaks a line or
+ * hides or reorders text, so the person could read one brief while Claude
+ * Code reads another. Variation selectors are `Mn`, not `Cf`, but a run of
+ * them after an emoji draws nothing and can carry hidden bytes.
  */
-const hiddenCharacter = /[\p{Cc}\p{Cf}\u2028\u2029]/u;
+const hiddenCharacter = /[\p{Cc}\p{Cf}\u2028\u2029\ufe00-\ufe0f\u{E0100}-\u{E01EF}]/u;
 
 /**
  * Whether `text` is one line of plain text: no control or format character

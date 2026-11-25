@@ -26,8 +26,8 @@ const USER_KEY: &str = "server-session.user";
 const PORT_KEY: &str = "server-session.port";
 
 /// A second launch of one request within this time is taken for a double
-/// click and ignored. It is no protection against a hostile page: the
-/// dialog is.
+/// click and ignored. It is no protection against a hostile page, which can
+/// vary the hash: the brief window is, and only one is open at a time.
 const DOUBLE_CLICK_WINDOW: Duration = Duration::from_secs(60);
 
 /// How old a brief or launcher left in the folder may get before it is

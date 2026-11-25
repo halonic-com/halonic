@@ -104,7 +104,12 @@
       "\ufeff",
       "\udb40\udc01",
       "\udb40\udc41",
-      "\udb40\udc7f"
+      "\udb40\udc7f",
+      "\ufe00",
+      "\ufe0e",
+      "\ufe0f",
+      "\udb40\udd00",
+      "\udb40\uddef"
     ]
   },
   "launcher": {
