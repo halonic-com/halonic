@@ -1,0 +1,17 @@
+{
+  "identifier": "desktop-login-item",
+  "description": "On desktop, Studio's own main window may read and set Halonic's login item through login_item_get and login_item_set, which Settings › Startup's \"Start Halonic when I log in\" switch calls (B1 step 6, HAL-14221; D9 of the HAL-14206 design note). login_item_set takes only on or off: the entry is this user's only and its one argument, --background, is fixed in the shell (security review on HAL-14212). No window gets an autostart plugin's own commands, a focused app's window gets none of these, and it is local only, so the Studio the computer serves gets nothing.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "allow-login-item-get",
+    "allow-login-item-set"
+  ]
+}

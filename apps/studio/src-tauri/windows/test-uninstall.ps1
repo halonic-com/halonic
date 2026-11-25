@@ -11,6 +11,7 @@
 #     a sandbox-remove.ps1 swapped in there doesn't run;
 #   - the Start menu's Halonic Inbox and Halonic Messenger (HAL-17903), there
 #     after the install and each starting Halonic with its --app, are gone.
+#   - the login item (HAL-14221), this user's Run value Halonic, is gone.
 # The runner is an administrator, so the removal needs no prompt here; the
 # refused prompt needs a desktop Windows machine.
 param(
@@ -147,6 +148,10 @@ foreach ($name in $focusedApps.Keys) {
   if ($link.Arguments -ne $focusedApps[$name]) { throw "$name starts Halonic with '$($link.Arguments)', not '$($focusedApps[$name])'" }
 }
 
+# The login item as Settings › Startup writes it (crates/login-item).
+$runKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+New-ItemProperty -Path $runKey -Name 'Halonic' -Value "`"$halonicExe`" --background" -Force | Out-Null
+
 # 1. The page; Enter cancels and removes nothing.
 $h = Open-Uninstaller '10-uninstall'
 Must-Find $h "Your workspaces are folders of plain files. Halonic doesn't touch them." 'Static' | Out-Null
@@ -202,4 +207,5 @@ if (-not (Test-Path (Join-Path $profileFolder 'workspaces\k1\runs\r1.log'))) { t
 foreach ($name in $focusedApps.Keys) {
   if (Test-Path (Join-Path $startMenu "$name.lnk")) { throw "$name is still in the Start menu after uninstalling" }
 }
-Write-Output 'uninstall: Enter cancelled; Uninstall removed Halonic, the sandbox and the settings, kept the runs, removed the Inbox and Messenger shortcuts, and said how to end the kept access'
+if ($null -ne (Get-ItemProperty -Path $runKey -Name 'Halonic' -ErrorAction SilentlyContinue)) { throw 'The login item is still there after uninstalling' }
+Write-Output 'uninstall: Enter cancelled; Uninstall removed Halonic, the sandbox and the settings, kept the runs, removed the Inbox and Messenger shortcuts and the login item, and said how to end the kept access'

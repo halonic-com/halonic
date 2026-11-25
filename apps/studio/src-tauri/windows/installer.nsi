@@ -1672,6 +1672,10 @@ Section Uninstall
   ${If} $UpdateMode <> 1
     !insertmacro DeleteAppUserModelId
 
+    ; Halonic change (HAL-14221): "Start Halonic when I log in" is this
+    ; user's Run value (crates/login-item). An update keeps it.
+    DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "${PRODUCTNAME}"
+
     ; Remove start menu shortcut
     StrCpy $AppStartMenuFolder "${STARTMENUFOLDER}"
     ; Halonic change (HAL-17903): the focused apps' shortcuts first, so the

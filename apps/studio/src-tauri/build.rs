@@ -118,6 +118,8 @@ fn main() {
         "update_restart",
         "update_set_automatic",
         "server_session_open",
+        "login_item_get",
+        "login_item_set",
     ]);
     let attributes = tauri_build::Attributes::new()
         .app_manifest(commands)

@@ -23,7 +23,8 @@
 //! command (capabilities/desktop-workspace-key.json) and the read-only `resource_report`
 //! command (capabilities/desktop-resources.json) and the `lite_check` command, which
 //! makes and removes a probe file in the profile (capabilities/desktop-lite-check.json) and the `update_*` commands
-//! (capabilities/desktop-updates.json) and the page's close request
+//! (capabilities/desktop-updates.json), in the main window only the
+//! `login_item_*` commands (capabilities/desktop-login-item.json), and the page's close request
 //! (capabilities/desktop-window.json), its notifications
 //! (capabilities/desktop-notifications.json) and the `wsl_*` commands of the sandbox
 //! backup (capabilities/desktop-sandbox-backup.json) and, on macOS and Linux,
@@ -63,6 +64,8 @@ mod http_fetch;
 mod instruction_trust;
 mod lite_check;
 mod local_network;
+#[cfg(desktop)]
+mod login_item;
 mod native_dialogs;
 mod navigation;
 #[cfg(desktop)]
@@ -381,6 +384,10 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             #[cfg(desktop)]
             updates::update_set_automatic,
             server_session::server_session_open,
+            #[cfg(desktop)]
+            login_item::login_item_get,
+            #[cfg(desktop)]
+            login_item::login_item_set,
         ])
 }
 
