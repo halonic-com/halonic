@@ -6,6 +6,7 @@ import type {
   ServerPorts,
 } from "./api.ts";
 import { chatTurnPath, createChatTurnRoutes } from "./chat-turn-routes.ts";
+import { cloudCommandsPath, createCloudCommandRoute } from "./cloud-commands.ts";
 import { isCloudSignInReturnPath } from "./cloud-sign-in-routes.ts";
 import { connectorCallPath, createConnectorRoutes } from "./connector-routes.ts";
 import { type CountRequest, checkDailyRequests } from "./daily-requests.ts";
@@ -142,6 +143,23 @@ function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<Cr
   const paperclipKeyRoutes =
     ports.paperclipKeys === undefined ? null : createPaperclipKeyRoutes(ports.paperclipKeys, ports);
   const countRequest: CountRequest = () => checkDailyRequests(config, ports);
+  const cloudInbox = ports.cloudInbox;
+  const cloudCommands =
+    cloudInbox === undefined ? null : createCloudCommandRoute(cloudInbox, ports.clock);
+
+  /**
+   * Cloud's commands, which answer even while the app is paused so Cloud can resume it; then the
+   * one paused check for every other request. Before Cloud's first product state nothing is
+   * closed. `null` lets the request through.
+   */
+  async function cloudRoute(request: Request, body: Uint8Array): Promise<Response | null> {
+    if (cloudInbox === undefined || cloudCommands === null) return null;
+    if (request.method === "POST" && new URL(request.url).pathname === cloudCommandsPath) {
+      return cloudCommands.answer(request, body);
+    }
+    const link = await cloudInbox.link.read();
+    return link?.state === "paused" ? errorResponse(serverErrors.appPaused) : null;
+  }
 
   /** `/api/runs/<runId>` and `/api/runs/<runId>/<action>`: the routes of one run, behind the sign-in. */
   async function runRoute(
@@ -371,6 +389,10 @@ function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<Cr
     const body = await readBody(request, config.maxBodyBytes);
     if (!body.ok) {
       return errorResponse(serverErrors.bodyTooLarge);
+    }
+    const cloudAnswer = await cloudRoute(request, body.bytes);
+    if (cloudAnswer !== null) {
+      return cloudAnswer;
     }
     return manyUserRoutes === null
       ? route(request, context, body.bytes)

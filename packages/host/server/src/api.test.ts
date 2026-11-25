@@ -41,6 +41,7 @@ verifies("server.api", () => {
       | "google"
       | "googleRead"
       | "requestLog"
+      | "cloudInbox"
       | "clock"
       | "ids"
     >();

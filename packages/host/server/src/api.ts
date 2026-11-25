@@ -1,6 +1,5 @@
 import type { SendingSettings } from "@halonicjs/app";
 import type { OutsideRunCall } from "@halonicjs/app/outside-run";
-import type { RoutineHealth } from "@halonicjs/app/routines";
 import type {
   ClientSecretStore,
   ServiceResult,
@@ -20,12 +19,14 @@ import type {
   TokenStore,
 } from "@halonicjs/ports";
 import type { PlacedRoutine } from "@halonicjs/routines";
+import type { CloudInboxPorts } from "./cloud-inbox-api.ts";
 import type { ManyUserPorts } from "./many-users-api.ts";
 import type { MessagingPorts } from "./messaging-api.ts";
 import type { ModelChoicePort } from "./model-choice-api.ts";
 import type { PaperclipKeyPorts } from "./paperclip-key-api.ts";
 import type { ProviderKeyStore } from "./provider-key-store.ts";
 import type { RequestCountStore } from "./request-count-store-api.ts";
+import type { RoutineSchedule } from "./routine-schedule-api.ts";
 
 /**
  * The `Request → Response` handler behind `halonic serve` and a cloud Worker.
@@ -366,13 +367,6 @@ export interface WorkspaceFacts {
   readonly home: string | null;
 }
 
-/** The served workspace's routine scheduler: its health, and pausing it (`server.routines`). */
-export interface RoutineSchedule {
-  health(): RoutineHealth;
-  /** Pauses the routines, or resumes them, from the next tick on. */
-  pause(paused: boolean): void;
-}
-
 /** Which workspace the server shows. Read-only. */
 export interface WorkspaceInfo {
   describe(): Promise<WorkspaceFacts>;
@@ -450,6 +444,8 @@ export interface ServerPorts {
    * Ignored when `google` is given. Without either, `/api/google/…` answers 404.
    */
   readonly googleRead?: GoogleSetupReadPorts;
+  /** Halonic Cloud's commands and the product state they set. Without them `/api/cloud/…` answers 404. */
+  readonly cloudInbox?: CloudInboxPorts;
   /** Where finished requests are logged by path. Without it nothing is logged. */
   readonly requestLog?: RequestLog;
   /** The time; replaced in tests to cross a UTC day. */
