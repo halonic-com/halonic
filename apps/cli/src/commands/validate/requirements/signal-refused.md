@@ -11,9 +11,9 @@ When `halonic validate` checks a workspace with a signal file (`library/signals/
 - Given `library/signals/watcher.signal.yaml` with `rule: { run: shell.run }`, `action: { run: paperclip.task }` or `token: abc`,
   when `halonic validate` is run,
   then it lists an error on that file and exits 1.
-- Given `rule: { run: board-ask, with: { wakeOn: [ci-red] } }` `rule: { run: task-effort, with: { effort: max } }` or `rule: { run: fast-track, with: { labelAdder: someone } }`,
+- Given `rule: { run: board-ask, with: { wakeOn: [ci-red] } }`, `rule: { run: task-effort, with: { effort: max } }`, `rule: { run: fast-track, with: { labelAdder: someone } }`, `rule: { run: thin-spec, with: { clarifier: pm } }` or `rule: { run: rule-checks, with: { checks: [workload] } }`,
   when `halonic validate` is run,
   then it lists an error on that file and exits 1.
-- Given the same file with `rule: { run: pr-watcher }` only, or `board-ask`, `task-effort` or `fast-track` with settings they know,
+- Given the same file with `rule: { run: pr-watcher }` only, or `board-ask`, `task-effort`, `fast-track`, `thin-spec` or `rule-checks` with settings they know,
   when `halonic validate` is run,
   then it exits 0.

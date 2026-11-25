@@ -36,12 +36,21 @@ verifies("format.signal-file", () => {
   });
 
   it("lists every rule with whether it writes", () => {
-    expect(signalRuleNames()).toEqual(["pr-watcher", "board-ask", "task-effort", "fast-track"]);
+    expect(signalRuleNames()).toEqual([
+      "pr-watcher",
+      "board-ask",
+      "task-effort",
+      "fast-track",
+      "thin-spec",
+      "rule-checks",
+    ]);
     expect(signalRuleNames().map((name) => signalRuleInfo(name).writes)).toEqual([
       true,
       true,
       true,
       true,
+      true,
+      false,
     ]);
   });
 
@@ -73,6 +82,17 @@ verifies("format.signal-file", () => {
     });
     const text = yaml("id: effort", "rule:", "  run: task-effort", "  with: { highFrom: 3 }");
     expect(parsedValue("signal", text).rule.with).toEqual({ highFrom: 3, highAfterSendBack: true });
+  });
+
+  it("fills in today's settings for the thin-spec and rule-checks rules", () => {
+    expect(parsedValue("signal", yaml("id: spec", "rule: { run: thin-spec }")).rule).toEqual({
+      run: "thin-spec",
+      with: { threshold: 0.5, upTo: 4, newForHours: 24, doneWhen: true },
+    });
+    expect(parsedValue("signal", yaml("id: checks", "rule: { run: rule-checks }")).rule).toEqual({
+      run: "rule-checks",
+      with: { shortestMonitorMinutes: 15, inProgressLimit: 10 },
+    });
   });
 });
 
@@ -123,6 +143,20 @@ verifies("format.signal-refusals", () => {
     expect(summary(problemsOf("signal", fast("  with: { jumpAhead: 2 }")))).toEqual([
       "rule.with.jumpAhead too_small 4",
     ]);
+    const spec = (line: string) => yaml("id: spec", "rule:", "  run: thin-spec", line);
+    expect(summary(problemsOf("signal", spec("  with: { threshold: 2 }")))).toEqual([
+      "rule.with.threshold too_big 4",
+    ]);
+    expect(summary(problemsOf("signal", spec("  with: { clarifier: pm }")))).toEqual([
+      "rule.with unrecognized_keys 4",
+    ]);
+    const checks = yaml(
+      "id: checks",
+      "rule:",
+      "  run: rule-checks",
+      "  with: { checks: [workload] }",
+    );
+    expect(summary(problemsOf("signal", checks))).toEqual(["rule.with unrecognized_keys 4"]);
   });
 
   it("refuses a key written as its id, without repeating it", () => {
