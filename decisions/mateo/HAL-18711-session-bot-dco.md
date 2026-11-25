@@ -3,6 +3,7 @@
 - Task: HAL-18711
 - Approval: the board approved adding the session bot to the standing statement on HAL-18714 (option A); Liam reviews the code on HAL-18711 and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:barQsy/xHS1SyOeZfsxDf7lSvwCtyKwApvlmpsrPeJjA36DAkbmT1EecSnCYKjZlWyeGIwp8CxZ7axLnzT4vBw==
 
 ## What changes
 
