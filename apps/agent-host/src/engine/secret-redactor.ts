@@ -34,6 +34,9 @@ export class SecretRedactor {
   }
 }
 
+/** Prints an uncaught error, then calls `exit` once the print is written. */
+type UncaughtHandler = (error: unknown, exit: () => void) => void;
+
 /** The part of a stream {@link redactStandardError} replaces. */
 interface ErrorStream {
   write: NodeJS.WriteStream["write"];
@@ -48,18 +51,21 @@ interface ErrorStream {
  * not caught: the engine and Node write whole lines.
  *
  * @param stderr - the process's standard error; tests pass their own
- * @param onUncaught - where uncaught errors are caught; the process by default
+ * @param onUncaught - where uncaught errors are caught, with how to end the process; the process by default
  */
 export function redactStandardError(
   redactor: SecretRedactor,
   stderr: ErrorStream = process.stderr,
-  onUncaught: (handle: (error: unknown) => void) => void = catchUncaught,
+  onUncaught: (handle: UncaughtHandler) => void = catchUncaught,
 ): void {
   const write = stderr.write.bind(stderr) as (...args: unknown[]) => boolean;
   stderr.write = ((chunk: unknown, ...rest: unknown[]) =>
     write(redactedChunk(redactor, chunk), ...rest)) as ErrorStream["write"];
-  onUncaught((error) => {
-    stderr.write(`${uncaughtText(error)}\n`);
+  // On macOS Node writes to a pipe asynchronously, so ending the process
+  // before the write's callback could lose the stack (HAL-18298). The
+  // callback also runs when the write fails; the process still has to end.
+  onUncaught((error, exit) => {
+    stderr.write(`${uncaughtText(error)}\n`, () => exit());
   });
 }
 
@@ -75,10 +81,9 @@ function uncaughtText(error: unknown): string {
   return `Uncaught ${String(error)}`;
 }
 
-/** Prints through `handle`, then ends the process with code 1, as Node does for an uncaught error. */
-function catchUncaught(handle: (error: unknown) => void): void {
+/** Prints through `handle`, which ends the process with code 1, as Node does for an uncaught error. */
+function catchUncaught(handle: UncaughtHandler): void {
   process.on("uncaughtException", (error) => {
-    handle(error);
-    process.exit(1);
+    handle(error, () => process.exit(1));
   });
 }
