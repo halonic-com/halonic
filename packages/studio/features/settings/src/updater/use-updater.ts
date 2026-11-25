@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { UpdaterHost } from "../api.ts";
 import { checkAnnouncement } from "./about-state.ts";
-import type { UpdateStatus } from "./updater-status.ts";
+import type { UpdateStatus, UpdateTrack } from "./updater-status.ts";
 
 /** What About Halonic can do. Each action starts only when the person presses its button. */
 export interface UpdaterControls {
@@ -15,6 +15,8 @@ export interface UpdaterControls {
   readonly download: () => void;
   readonly cancel: () => void;
   readonly setAutomatic: (on: boolean) => void;
+  /** Picking a track counts as a press of Check now on that track: one check, announced. */
+  readonly pickTrack: (track: UpdateTrack) => void;
 }
 
 /**
@@ -81,5 +83,10 @@ export function useUpdater(host: UpdaterHost, announce: (line: string) => void):
     download: () => void press(() => host.download()),
     cancel: () => void press(() => host.cancel()),
     setAutomatic: (on) => void press(() => host.setAutomatic(on)),
+    pickTrack: (track) =>
+      void press(async () => {
+        await host.setTrack(track);
+        return host.check();
+      }, true),
   };
 }

@@ -1,6 +1,6 @@
 import { type TauriCallbacks, TauriChannel, type TauriIpc } from "@halonicjs/studio-services";
 import type { UpdaterHost } from "./updater-host.ts";
-import type { UpdateStatus } from "./updater-status.ts";
+import type { UpdateStatus, UpdateTrack } from "./updater-status.ts";
 
 /**
  * The updater as the desktop shell offers it to a page: the shell's `update_*` commands
@@ -51,6 +51,10 @@ export class TauriUpdater implements UpdaterHost {
 
   async setAutomatic(on: boolean): Promise<UpdateStatus> {
     return this.#invoke("update_set_automatic", { on });
+  }
+
+  async setTrack(track: UpdateTrack): Promise<UpdateStatus> {
+    return this.#invoke("update_set_track", { track });
   }
 
   async #invoke(command: string, args: Record<string, unknown> = {}): Promise<UpdateStatus> {

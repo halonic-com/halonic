@@ -20,6 +20,7 @@ import * as text from "./about-text.ts";
 import { repository } from "./links.ts";
 import { RestartFlowService } from "./restart-flow.ts";
 import * as restartText from "./restart-text.ts";
+import { UpdateTrackField, VersionHeading } from "./update-track.tsx";
 import { useSandboxSetUp } from "./use-sandbox-set-up.ts";
 import { useUpdater } from "./use-updater.ts";
 
@@ -75,7 +76,6 @@ export interface AboutHostViewProps {
 export function AboutHostView({ host, announce, onRestart, surface, sandbox }: AboutHostViewProps) {
   const updater = useUpdater(host, announce);
   const sandboxSetUp = useSandboxSetUp(sandbox, updater.status?.sandboxSetupAgain === true);
-  const Version = `h${versionLevel(surface)}` as const;
   const { status } = updater;
   if (status === null)
     return (
@@ -103,7 +103,7 @@ export function AboutHostView({ host, announce, onRestart, surface, sandbox }: A
     <div className="flex max-w-120 flex-col gap-5">
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 flex-col gap-1">
-          <Version className="text-body font-medium">{text.versionHeading(status.current)}</Version>
+          <VersionHeading level={versionLevel(surface)} version={status.current} />
           {updater.unanswered ? <NoAnswer onRetry={updater.retry} /> : null}
           {updater.unanswered || view.callout ? null : (
             <p className="text-small text-fg-muted">{view.line}</p>
@@ -157,6 +157,7 @@ export function AboutHostView({ host, announce, onRestart, surface, sandbox }: A
         managed={status.managed !== null}
         onChange={updater.setAutomatic}
       />
+      <UpdateTrackField status={status} onPick={updater.pickTrack} />
       <AboutLinks heading={status.current} />
     </div>
   );
@@ -269,11 +270,10 @@ function ViewOnlyAbout({
   readonly version: string | undefined;
   readonly surface: SettingsSurface;
 }) {
-  const Version = `h${versionLevel(surface)}` as const;
   return (
     <div className="flex max-w-120 flex-col gap-5">
       {version === undefined ? null : (
-        <Version className="text-body font-medium">{text.versionHeading(version)}</Version>
+        <VersionHeading level={versionLevel(surface)} version={version} />
       )}
       <ViewOnlyLine>{text.VIEW_ONLY}</ViewOnlyLine>
       <AboutLinks heading={null} />
