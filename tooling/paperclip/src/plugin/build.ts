@@ -1,6 +1,7 @@
+import { writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
-import { decideFileBuildOptions, workerBuildOptions } from "./build-options.ts";
+import { decideFileBuildOptions, rulesFile, workerBuildOptions } from "./build-options.ts";
 
 /**
  * Builds the Agent tools plugin into `dist/`: the worker and manifest with
@@ -13,10 +14,8 @@ import { decideFileBuildOptions, workerBuildOptions } from "./build-options.ts";
 const here = (path: string): string => fileURLToPath(new URL(path, import.meta.url));
 
 await build({ ...workerBuildOptions, outdir: here("../../dist/") });
-await build({
-  ...decideFileBuildOptions,
-  outfile: here(`../../dist/${decideFileBuildOptions.outfile}`),
-});
+const rules = rulesFile((await build(decideFileBuildOptions)).outputFiles[0]?.text ?? "");
+await writeFile(here(`../../dist/${rules.name}`), rules.text);
 await build({
   entryPoints: [here("../worker-agents/ui/index.tsx")],
   bundle: true,

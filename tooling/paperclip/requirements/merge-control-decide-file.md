@@ -2,11 +2,11 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-18337, step 4 of the plan for the live Merger and the shadow (board, HAL-10, 25 Nov 08:53 UTC; plan on HAL-17912): one set of merge rules, which the Merger loads from the plugin
+- Source: HAL-18337 (the hash and the setting types: Liam's review of #6050), step 4 of the plan for the live Merger and the shadow (board, HAL-10, 25 Nov 08:53 UTC; plan on HAL-17912): one set of merge rules, which the Merger loads from the plugin
 
-When `build:plugin` runs, the plugin build shall also write `dist/merge-control-decide-<version>.js`, one ES module with every module it uses bundled in and no import of a Node module, whose `decidePass` takes one pass's snapshot, state, settings that differ from the defaults, and time as plain JSON, and returns `decide`'s actions, new state and log with `rules` set to `halonic.agent-tools@<version>` and `format` set to 1.
+When `build:plugin` runs, the plugin build shall also write `dist/merge-control-decide-<version>-<hash>.js`, where `<hash>` is the first 8 hex digits of the SHA-256 of the bundle, one ES module with every module it uses bundled in and no import of a Node module, whose `decidePass` takes one pass's snapshot, state, settings that differ from the defaults, and time as plain JSON, and returns `decide`'s actions, new state and log with `rules` set to `halonic.agent-tools@<version>+<hash>` and `format` set to 1.
 
-If the time can't be read, the state has another version, the snapshot lacks one of its lists or a setting has an unknown name, then `decidePass` shall throw an error that names it instead of deciding.
+If the time can't be read, the state has another version, the snapshot lacks one of its lists, or a setting has an unknown name or a type other than its default's (a number, a string, or a list of strings), then `decidePass` shall throw an error that names it instead of deciding.
 
 ## Examples
 
@@ -18,7 +18,10 @@ If the time can't be read, the state has another version, the snapshot lacks one
   then the build fails.
 - Given a snapshot and state passed through JSON,
   when the loaded file's `decidePass` runs,
-  then its actions, state and log equal those of `decide` with the same input, and `rules` names the manifest's version.
-- Given the settings `fastTrackLabeller` (misspelt) or a time `soon`,
+  then its actions, state and log equal those of `decide` with the same input, and `rules` names the manifest's version and the file's hash.
+- Given the same bundle twice, and a bundle with one more line,
+  when each is named,
+  then the first two get the same name and the third another.
+- Given the settings `fastTrackLabeller` (misspelt) or `fillTarget: "15"`, or a time `soon`,
   when `decidePass` runs,
   then it throws and decides nothing.
