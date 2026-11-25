@@ -12,5 +12,11 @@ drawn from it, and are not edited by hand.
 - The GitHub social preview isn't kept here: GitHub only takes an upload in the repository's Settings, so the image
   lives in `brand/dist/social-preview.png` in halonic-com/website.
 
+- `tray/` (B1 step 5, HAL-14220): the tray icon, the ring with the state in its centre (`idle`, `running`,
+  `paused`, `problem`), 32 by 32 raw RGBA, so the shell needs no image decoder. `colour-*` for Windows and KDE,
+  `template-*` for the macOS menu bar, `symbolic-*` (white) for GNOME. They are Noah's drawings (HAL-14222,
+  HAL-14253): `glyph.js` in the source zip on HAL-14253 draws each one at 32 px, which is screenshotted on a
+  transparent background and stored as RGBA.
+
 The script that draws all of them, with the master SVGs and the rules for using the logo, is `brand/` in
 halonic-com/website. Change the logo there, then copy the new files here.

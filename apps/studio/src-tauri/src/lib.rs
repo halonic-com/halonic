@@ -115,6 +115,10 @@ mod server_session;
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 mod server_session_brief;
 mod system_region;
+#[cfg(desktop)]
+mod tray;
+#[cfg(desktop)]
+mod tray_status;
 mod trust;
 #[cfg(desktop)]
 mod updates;
@@ -139,6 +143,8 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("the Studio shell could not start")
         .run(|app, event| {
+            #[cfg(desktop)]
+            tray::run_event(app, &event);
             if matches!(event, RunEvent::Exit) {
                 // Each engine releases its own `engine.lock` as it stops.
                 #[cfg(desktop)]
@@ -207,6 +213,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(actions::ActionState::default())
         .manage(updates::Updates::default())
         .manage(engines::EnginesState::default())
+        .manage(tray::TrayShellState::default())
         // Registered only so the shell can use it from Rust: no capability
         // grants its commands, so no page can call them.
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -271,6 +278,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             updates::start(app.handle());
             #[cfg(desktop)]
             notification_clicks::listen(app.handle());
+            #[cfg(desktop)]
+            tray::start(app.handle());
             Ok(())
         })
         // A page that reloads or closes can't end its agent host streams
@@ -293,6 +302,10 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             }
         })
         .on_window_event(|window, event| {
+            #[cfg(desktop)]
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                tray::close_requested(window, api);
+            }
             if matches!(event, WindowEvent::Destroyed) {
                 window
                     .app_handle()

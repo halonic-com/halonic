@@ -63,7 +63,10 @@ halonic-workspace-files = { path = "crates/workspace-files" }
 serde = { version = "1", features = ["derive"] }
 sys-locale = "0.3"
 serde_json = "1"
-tauri = { version = "=2.12.5", features = [] }
+# The tray icon and its menu (B1 step 5, HAL-14220). The icons are raw
+# RGBA (`icons/tray`), so no image decoder is needed. Linux builds need
+# libayatana-appindicator3 (CI has it since #4196).
+tauri = { version = "=2.12.5", features = ["tray-icon"] }
 # The plugins are pinned with tauri, for the same reason. The http plugin
 # is used only from Rust, for its reqwest client (the hello call); it is
 # never registered, so no page can make HTTP calls through it. Only
