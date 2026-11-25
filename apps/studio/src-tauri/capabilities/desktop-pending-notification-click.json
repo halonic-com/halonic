@@ -1,0 +1,16 @@
+{
+  "identifier": "desktop-pending-notification-click",
+  "description": "On desktop, Studio's window may take the run notification's click that opened it, once, through take_pending_notification_click, which its page calls on start (HAL-18882). The command takes nothing and returns only a click the shell checked: a run with its ID, or Runs' Failed group. The focused apps' windows don't get it, and it is local only, so the Studio the computer serves gets nothing.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "allow-take-pending-notification-click"
+  ]
+}
