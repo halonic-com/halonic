@@ -105,7 +105,11 @@ verifies("messenger.channel-messages", () => {
         { kind: "running", text: "Liam · working · 4 min" },
         { kind: "answered", text: "Owen answered" },
         { kind: "asks-you", text: "Chief asks you: Which hostname?" },
-        { kind: "failed", text: "Writer's task was closed without an answer." },
+        {
+          kind: "failed",
+          text: "Writer's task was closed without an answer.",
+          askAgain: writer.id,
+        },
         { kind: "passed-on", text: "Chief passed this to Liam" },
       ]);
     });
@@ -117,9 +121,9 @@ verifies("messenger.channel-messages", () => {
         { agent: owen.id, state: "failed", reason: "  ", since },
       ]);
       expect(workLines(message, engineering(), new Map(), now)).toEqual([
-        { kind: "failed", text: "Elena couldn't finish: Build broke" },
-        { kind: "failed", text: "Liam's task was closed without an answer." },
-        { kind: "failed", text: "Owen's task was closed without an answer." },
+        { kind: "failed", text: "Elena couldn't finish: Build broke", askAgain: elena.id },
+        { kind: "failed", text: "Liam's task was closed without an answer.", askAgain: liam.id },
+        { kind: "failed", text: "Owen's task was closed without an answer.", askAgain: owen.id },
       ]);
     });
 

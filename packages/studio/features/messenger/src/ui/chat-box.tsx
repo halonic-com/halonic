@@ -8,8 +8,9 @@ import { chatAgent } from "../chat-name.ts";
 import type { DraftFile } from "../draft-files.ts";
 import { type ConversationRow, type Messenger, refusalOf } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
-import { ChannelAddressBar, useChannelAddress } from "./channel-address.tsx";
+import { ChannelAddressBar, ChannelNotMember, useChannelAddress } from "./channel-address.tsx";
 import { AttachFileButton, DraftFileList, pastedFiles } from "./draft-files-bar.tsx";
+import { useMembers } from "./use-members.ts";
 
 /** The props of {@link ChatBox}. */
 export interface ChatBoxProps {
@@ -22,6 +23,8 @@ export interface ChatBoxProps {
   readonly onSending: (body: string, files: readonly string[]) => () => void;
   /** Called once something was sent, so the chat reads its messages again. */
   readonly onSent: () => Promise<void>;
+  /** The picker's **Add** changed the channel's members; the page reads the list again. */
+  readonly onChanged: () => void;
 }
 
 /**
@@ -47,7 +50,7 @@ interface BoxLine {
  * (`messenger.channel-messages`); a chip's Remove moves focus the same way, ending on the box,
  * and the line says the new To line (HAL-18316 MS9, MS10).
  */
-export function ChatBox({ messenger, row, onSending, onSent }: ChatBoxProps) {
+export function ChatBox({ messenger, row, onSending, onSent, onChanged }: ChatBoxProps) {
   const box = useChatBox(messenger, row, onSending, onSent);
   // A chat is named by its agent alone, "Message Liam"; a channel by its title (`messenger.agent-names`).
   const name = chatAgent(row)?.name ?? row.conversation.title;
@@ -56,6 +59,7 @@ export function ChatBox({ messenger, row, onSending, onSent }: ChatBoxProps) {
   const waits = channel && address.line.waits !== undefined;
   const report = (what: string) => (error: unknown) => console.error(what, error);
   const container = useRef<HTMLDivElement>(null);
+  const members = useMembers(messenger, row, onChanged, box.say, container);
   const attach = useRef<HTMLButtonElement>(null);
   const remove = (index: number) => {
     flushSync(() => box.removeFile(index));
@@ -86,6 +90,7 @@ export function ChatBox({ messenger, row, onSending, onSent }: ChatBoxProps) {
         }}
       />
       <DraftFileList files={box.files} onRemove={remove} />
+      {channel ? <ChannelNotMember row={row} address={address} members={members} /> : null}
       <ChatComposer
         label={channel ? channelWords.composer(name) : messengerWords.composerLabel(name)}
         placeholder={

@@ -1,29 +1,35 @@
 // @vitest-environment jsdom
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
+import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { channelAdminWords, failureReason } from "../channel-admin-words.ts";
 import { Messenger } from "../messenger.ts";
-import { button, polyfillModals } from "../test-support/modal.ts";
-import { byText, openChat, openMessenger, press } from "../test-support/page.tsx";
+import { button, openDialog, polyfillModals } from "../test-support/modal.ts";
+import { byText, openChat, openMessenger, press, settle } from "../test-support/page.tsx";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { MembersPanel } from "./members-panel.tsx";
+import { MessengerPage } from "./messenger-page.tsx";
 
 beforeEach(polyfillModals);
 afterEach(unmountAll);
 
-/** Acme's "Engineering": Chief leads, Elena and Liam are members and both working. */
-function engineering() {
-  const messaging = new FakeAgentMessaging();
+/** 14:02 on 24 Nov in the test's own time zone, so the clock reads "14:02" wherever it runs. */
+const at1402 = new Date(2026, 10, 24, 14, 2);
+
+/** Acme's "Engineering": Chief leads, Elena and Liam are members, Writer is only in the source. */
+function engineering(now?: () => Date) {
+  const messaging = new FakeAgentMessaging(now === undefined ? {} : { now });
   const acme = messaging.addSource({ label: "Paperclip · Acme" });
   const chief = messaging.addAgent(acme.id, { name: "Chief" });
   const elena = messaging.addAgent(acme.id, { name: "Elena", activity: "working" });
   const liam = messaging.addAgent(acme.id, { name: "Liam", activity: "working" });
+  const writer = messaging.addAgent(acme.id, { name: "Writer" });
   const channel = messaging.addConversation(chief.id, {
     title: "Engineering",
     members: [chief.id, elena.id, liam.id],
   });
-  return { messaging, acme, chief, elena, liam, channel };
+  return { messaging, acme, chief, elena, liam, writer, channel };
 }
 
 /** Elena asked "Which hostname?", then Liam "Which port?", both under one of the person's messages. */
@@ -54,6 +60,14 @@ function withQuestions() {
 
 function rowOf(page: HTMLElement, title: string): Element | undefined {
   return byText(page, "nav li button", title);
+}
+
+async function typeInBox(box: HTMLTextAreaElement, text: string): Promise<void> {
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(box, text);
+    box.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await settle();
 }
 
 verifies("messenger.channel-waiting", () => {
@@ -113,6 +127,87 @@ verifies("messenger.channel-waiting", () => {
       await openChat(page, "Engineering");
       expect(page.querySelector("[data-waiting-bar]")).toBeNull();
     });
+  });
+});
+
+verifies("messenger.channel-work-actions", () => {
+  it("sends the message again to that agent only on Ask again", async () => {
+    const { messaging, elena, liam, channel } = engineering();
+    const since = "2026-11-24T10:00:00.000Z";
+    messaging.addMessage(channel.id, {
+      author: { kind: "me" },
+      body: "Check the build",
+      to: [elena.id, liam.id],
+      work: [
+        { agent: elena.id, state: "failed", since },
+        { agent: liam.id, state: "answered", since },
+      ],
+    });
+    const send = vi.spyOn(messaging, "send");
+    const page = await openMessenger(messaging);
+    await openChat(page, "Engineering");
+    const lines = page.querySelector("[data-work-lines]");
+    expect(lines?.textContent).toContain("Elena's task was closed without an answer. · Ask again");
+    expect(button("Ask again", lines ?? document)).toBeDefined();
+    expect(lines?.querySelectorAll("button")).toHaveLength(1);
+
+    await press(button("Ask again", lines ?? document));
+    expect(send).toHaveBeenCalledExactlyOnceWith(channel.id, "Check the build", [], {
+      to: [elena.id],
+    });
+    expect(page.querySelectorAll('main li[data-author="me"]')).toHaveLength(2);
+  });
+
+  it("says as of when the source was last read while it is offline", async () => {
+    const { messaging, acme, elena, channel } = engineering(() => at1402);
+    messaging.addMessage(channel.id, {
+      author: { kind: "me" },
+      body: "Check the build",
+      to: [elena.id],
+      work: [{ agent: elena.id, state: "working", since: at1402.toISOString() }],
+    });
+    messaging.goOffline(acme.id);
+    const later = new Date(2026, 10, 24, 15, 30);
+    const page = render(<MessengerPage messenger={new Messenger(messaging, () => later)} />);
+    await settle();
+    await openChat(page, "Engineering");
+    expect(page.querySelector("[data-work-lines]")?.textContent).toBe(
+      "Elena · working, as of 14:02",
+    );
+  });
+});
+
+verifies("messenger.channel-picker-add", () => {
+  it("offers Add Writer for a name that isn't a member, through the history notice", async () => {
+    const { messaging, writer, channel } = engineering();
+    messaging.addMessage(channel.id, { body: "Plan for today" });
+    const setMembers = vi.spyOn(messaging, "setMembers");
+    const page = await openMessenger(messaging);
+    const box = await openChat(page, "Engineering");
+    await typeInBox(box, "@Wri");
+    const notMember = page.querySelector("[data-not-member]");
+    expect(notMember?.textContent).toBe(
+      "Writer isn't in this channel.Add WriterOnly members can be named here.",
+    );
+
+    await press(button("Add Writer", notMember ?? document));
+    expect(openDialog()?.querySelector("[data-history-notice]")?.textContent).toBe(
+      "Writer will see all earlier messages in Engineering.",
+    );
+    expect(setMembers).not.toHaveBeenCalled();
+
+    await press(button("Add Writer", openDialog() ?? document));
+    expect(setMembers).toHaveBeenCalledOnce();
+    const [after] = await messaging.listConversations();
+    expect(after?.members).toContain(writer.id);
+  });
+
+  it("says nothing about adding while the name typed is a member's", async () => {
+    const { messaging } = engineering();
+    const page = await openMessenger(messaging);
+    const box = await openChat(page, "Engineering");
+    await typeInBox(box, "@Ele");
+    expect(page.querySelector("[data-not-member]")).toBeNull();
   });
 });
 

@@ -131,6 +131,7 @@ export function ConversationView({
           failure={failure}
           words={words}
           onRetry={() => void read().catch(reportRead)}
+          onAsked={read}
           picture={picture}
           onAnswered={onAnswered}
         />
@@ -148,7 +149,13 @@ export function ConversationView({
       {isChannel(row) || messages === undefined ? null : (
         <CardsBar cards={cards ?? []} section={section} />
       )}
-      <ChatBox messenger={messenger} row={row} onSending={sending} onSent={read} />
+      <ChatBox
+        messenger={messenger}
+        row={row}
+        onSending={sending}
+        onSent={read}
+        onChanged={onChanged ?? (() => undefined)}
+      />
     </section>
   );
 }

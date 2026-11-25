@@ -151,3 +151,6 @@ function buttonNamed(within: HTMLElement | undefined, label: string): HTMLElemen
     (each) => each.textContent === label,
   );
 }
+
+/** The Members panel's changes, as {@link useMembers} gives them. */
+export type MemberChanges = ReturnType<typeof useMembers>;

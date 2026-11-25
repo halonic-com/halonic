@@ -1,6 +1,7 @@
 import type { Message, MessagingId } from "@halonicjs/ports";
 import {
   AlertIcon,
+  Button,
   EmptyState,
   ForwardIcon,
   PeopleIcon,
@@ -8,7 +9,7 @@ import {
   TickIcon,
   WarningIcon,
 } from "@halonicjs/studio-kit";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { agentName, leadOf, memberName, type WorkLineKind, workLines } from "../channel.ts";
 import { channelWords } from "../channel-words.ts";
 import type { ConversationRow } from "../messenger.ts";
@@ -69,20 +70,32 @@ const workIcons: Record<WorkLineKind, { readonly icon: ReactNode; readonly tone:
   limit: { icon: <WarningIcon />, tone: "text-attention" },
 };
 
-/** Under the person's message: one work line per agent it went to, a symbol and words each. */
+/**
+ * Under the person's message: one work line per agent it went to, a symbol and words each. A line
+ * that ended without an answer has **Ask again**, which sends the message again to that agent
+ * only; `askAgain` gives back why nothing was sent, or nothing once it was.
+ */
 export function WorkLines({
   message,
   row,
   questions,
   now,
+  askAgain,
 }: {
   readonly message: Message;
   readonly row: ConversationRow;
   readonly questions: ReadonlyMap<MessagingId, string>;
   readonly now: Date;
+  readonly askAgain: (message: Message, agent: MessagingId) => Promise<string | undefined>;
 }) {
+  const [notSent, setNotSent] = useState<string | undefined>(undefined);
   const lines = workLines(message, row, questions, now);
   if (lines.length === 0) return null;
+  const ask = (agent: MessagingId) => {
+    askAgain(message, agent).then(setNotSent, (error: unknown) =>
+      console.error("Asking again failed:", error),
+    );
+  };
   return (
     <ul data-work-lines className="mt-1 flex flex-col gap-0.5 text-small text-fg-muted">
       {lines.map((line, index) => (
@@ -95,9 +108,32 @@ export function WorkLines({
             {workIcons[line.kind].icon}
           </span>
           {line.text}
+          {line.askAgain === undefined ? null : <AskAgain agent={line.askAgain} onAsk={ask} />}
         </li>
       ))}
+      {notSent === undefined ? null : (
+        <li role="alert" className="text-danger">
+          {notSent}
+        </li>
+      )}
     </ul>
+  );
+}
+
+function AskAgain({
+  agent,
+  onAsk,
+}: {
+  readonly agent: MessagingId;
+  readonly onAsk: (agent: MessagingId) => void;
+}) {
+  return (
+    <>
+      <span aria-hidden="true"> · </span>
+      <Button size="sm" variant="ghost" onClick={() => onAsk(agent)}>
+        {channelWords.work.askAgain}
+      </Button>
+    </>
   );
 }
 
