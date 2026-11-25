@@ -58,8 +58,8 @@ handlers move in.
 Each action reads fixed parameter names from an agent's call, listed with it in `@halonicjs/format`
 (`toolActionInfo(name).parameters`): `pr` and `repo` for `github.pull-request`, `task`, `comments`
 and `document` for `paperclip.task`, `since` for `paperclip.failed-runs`, `id` for
-`paperclip.template`. `halonic validate` refuses a tool
-file that leaves out a required one or declares one its action doesn't read, so the builder never
+`paperclip.template`; the writing actions' are under Writing actions. `halonic validate` refuses a
+tool file that leaves out a required one or declares one its action doesn't read, so the builder never
 builds it. `action-parameters.test.ts` holds every handler here to that list.
 
 A tool's `callers` name agents by their `urlKey`, compared without case. An agent's display name
@@ -81,6 +81,11 @@ parameters never pick the mode. A task change goes through `issues.setDispositio
 has it (Halonic's server), and through the comment and the plain issue update otherwise; without
 `setDisposition` no monitor can be set, so `in_progress` is refused there. Each action reaches only
 the Paperclip clients its handler declares capabilities for.
+
+Their parameters: `task` and `body` for `paperclip.comment`; `task`, `status`, `comment`, `monitor`
+and `blockedBy` for `paperclip.next-step`; `task`, `outcome`, `comment`, `to` and `blockedBy` for
+`paperclip.finish-run`. `monitor` and `blockedBy` aren't flat values, so a tool file can't declare
+them yet.
 
 ## Keys
 

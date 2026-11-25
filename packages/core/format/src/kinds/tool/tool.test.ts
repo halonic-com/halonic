@@ -156,15 +156,19 @@ verifies("format.tool-actions", () => {
   });
 
   it("starts a writing action in dry run, and refuses a mode it doesn't know", () => {
-    const comment = toolFile()
-      .replace("github.pull-request", "paperclip.comment")
+    const comment = toolFile(
+      "parameters:",
+      "  task: { type: string, description: The task., required: true }",
+      "  body: { type: string, description: The comment., required: true }",
+    )
+      .replace("github.open-pull-requests", "paperclip.comment")
       .replace("  with: { repositories: [acme/website] }\n", "");
     expect(parsedValue("tool", comment).action).toEqual({
       run: "paperclip.comment",
       with: { mode: "dry-run" },
     });
     const unknown = toolFile()
-      .replace("github.pull-request", "paperclip.comment")
+      .replace("github.open-pull-requests", "paperclip.comment")
       .replace("{ repositories: [acme/website] }", "{ mode: always }");
     expect(summary(problemsOf("tool", unknown))).toEqual(["action.with.mode invalid_value 7"]);
   });
