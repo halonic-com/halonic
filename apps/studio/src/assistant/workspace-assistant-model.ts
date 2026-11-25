@@ -1,6 +1,6 @@
 import { type ChatSettings, type HostSettings, maxTurnLimit } from "@halonicjs/app";
-import type { ChatAgentSettings } from "@halonicjs/ports";
-import type { ChatModel } from "@halonicjs/studio-feature-assistant/api";
+import type { ChatAgentSettings, ChatMessage } from "@halonicjs/ports";
+import type { ChatModel, ShownItem } from "@halonicjs/studio-feature-assistant/api";
 import { assistantPrefs } from "@halonicjs/studio-feature-settings/api";
 import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
 
@@ -86,4 +86,14 @@ export function localOnlyOf(workspace: LoadedWorkspace): boolean {
 function hubOf(workspace: LoadedWorkspace): string {
   const hubs = workspace.files.flatMap((file) => (file.hub === null ? [] : [file.hub]));
   return hubs.sort()[0] ?? "";
+}
+
+/**
+ * What Show in chat put in the chat, told to the model with this answer only (flow-assistant 5.7):
+ * a note before the person's message, never kept, so a removed chip is gone from the next one.
+ */
+export function shownNote(shown: readonly ShownItem[] | undefined): ChatMessage[] {
+  if (shown === undefined || shown.length === 0) return [];
+  const items = shown.map(({ item, name }) => `${item.kind} "${name}" (${item.hub}/${item.id})`);
+  return [{ role: "system", content: `The person showed you these items: ${items.join(", ")}.` }];
 }

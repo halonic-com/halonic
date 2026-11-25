@@ -110,6 +110,50 @@ verifies("studio.workspace-assistant", () => {
       expect(await shared.sessions.list(shared.location)).toHaveLength(40);
     });
 
+    it("reuses an empty draft only when it is about the same item, by kind, hub and id", async () => {
+      const chats = new KeptChats({ store: newStore(), now: ticking() });
+      const model = { kind: "alias", name: "default" } as const;
+      const triage = await chats.newChat("build", model, {
+        kind: "workflow",
+        hub: "support",
+        id: "triage",
+      });
+      // A copy of the same reference, not the same object.
+      const again = await chats.newChat("build", model, {
+        kind: "workflow",
+        hub: "support",
+        id: "triage",
+      });
+      const other = await chats.newChat("build", model, {
+        kind: "workflow",
+        hub: "support",
+        id: "intake",
+      });
+      const agent = await chats.newChat("build", model, {
+        kind: "agent",
+        hub: "support",
+        id: "triage",
+      });
+      const plain = await chats.newChat("build", model);
+      expect(again.id).toBe(triage.id);
+      expect(new Set([triage.id, other.id, agent.id, plain.id]).size).toBe(4);
+      expect(plain).not.toHaveProperty("about");
+      expect(await chats.newChat("build", model)).toBe(plain);
+    });
+
+    it("saves the item a chat is about, and a new window reads it back", async () => {
+      const store = newStore();
+      const about = { kind: "skill", hub: "library", id: "tone" } as const;
+      const first = new KeptChats({ store, now: ticking() });
+      const chat = await first.newChat("build", { kind: "assistant" }, about);
+      first.add(chat.id, { role: "user", content: "Make it friendlier" });
+      await first.saved();
+      expect((await store.sessions.list(store.location))[0]?.about).toEqual(about);
+
+      const next = new KeptChats({ store, now: ticking() });
+      expect((await next.get(chat.id)).about).toEqual(about);
+    });
+
     it("says which chat went when it is deleted", async () => {
       const gone: string[] = [];
       const chats = new KeptChats({

@@ -37,6 +37,22 @@ verifies("studio.workspace-assistant", () => {
       expect(saved.map((chat) => chat.id)).not.toContain(kept.id);
     });
 
+    it("lists the item a chat is about, after a restart too, and only for a chat about one", async () => {
+      const sessions = new MemoryChatSessions();
+      const about = { kind: "workflow", hub: "support", id: "triage" } as const;
+      const first = setup({ sessions });
+      const triage = await first.assistant.newChat("build", about);
+      expect(triage.about).toEqual(about);
+      await first.assistant.answer({ chatId: triage.id, message: "Add a step" });
+      const plain = await first.assistant.newChat("build");
+      await first.assistant.answer({ chatId: plain.id, message: "Add a routine" });
+      await first.assistant.saved();
+
+      const chats = await setup({ sessions }).assistant.chats();
+      expect(chats.find((chat) => chat.id === triage.id)?.about).toEqual(about);
+      expect(chats.find((chat) => chat.id === plain.id)?.about).toBeUndefined();
+    });
+
     it("answers on the chat service with the Build chat's tools and the Settings model call limit", async () => {
       const { assistant, requests, turnRequests } = setup({
         settings: { "assistant.turn-limit": 9 },

@@ -9,7 +9,12 @@ import {
 } from "@halonicjs/assistant";
 import type { ChatMessage, ChatSessions, SavedChatSummary } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
-import type { ChatKind, ChatModel } from "@halonicjs/studio-feature-assistant/api";
+import {
+  type ChatAbout,
+  type ChatKind,
+  type ChatModel,
+  sameAbout,
+} from "@halonicjs/studio-feature-assistant/api";
 
 /** One chat as the window keeps it. */
 export interface KeptChat {
@@ -20,6 +25,8 @@ export interface KeptChat {
   readonly model: ChatModel;
   readonly messages: readonly ChatMessage[];
   readonly draft: boolean;
+  /** The item a Build chat is about; absent for a chat about no item. */
+  readonly about?: ChatAbout | undefined;
   /** True when it was answering as Halonic closed, until its next message (H14). */
   readonly stoppedWhenClosed: boolean;
 }
@@ -75,10 +82,15 @@ export class KeptChats {
     return this.#got(chatId);
   }
 
-  /** A new draft of `kind` on `model`, or the empty draft of that kind there is already. */
-  async newChat(kind: ChatKind, model: ChatModel): Promise<KeptChat> {
+  /**
+   * A new draft of `kind` on `model` about `about`, or the empty draft of that kind about the same
+   * item there is already.
+   */
+  async newChat(kind: ChatKind, model: ChatModel, about?: ChatAbout): Promise<KeptChat> {
     await this.#readSaved();
-    const empty = [...this.#chats.values()].find((chat) => chat.draft && chat.kind === kind);
+    const empty = [...this.#chats.values()].find(
+      (chat) => chat.draft && chat.kind === kind && sameAbout(chat.about, about),
+    );
     if (empty !== undefined) return empty;
     this.#made += 1;
     const chat: KeptChat = {
@@ -90,6 +102,7 @@ export class KeptChats {
       messages: [],
       draft: true,
       stoppedWhenClosed: false,
+      ...(about === undefined ? {} : { about }),
     };
     this.#chats.set(chat.id, chat);
     return chat;
@@ -151,7 +164,7 @@ export class KeptChats {
       const saved = await sessions.load(location, summary.id);
       if (saved === null) continue;
       const { chat, stoppedWhenClosed } = restoredChat(saved);
-      const { id, kind, title, lastUsedAt, model, messages } = chat;
+      const { id, kind, title, lastUsedAt, model, messages, about } = chat;
       // A chat changed in this window while the store answered wins over its saved copy.
       if (!this.#savedIsNewer(summary)) continue;
       this.#chats.set(id, {
@@ -163,6 +176,7 @@ export class KeptChats {
         messages,
         draft: false,
         stoppedWhenClosed,
+        ...(about === undefined ? {} : { about }),
       });
     }
   }
@@ -230,6 +244,13 @@ export class KeptChats {
 }
 
 function summaryOf(chat: KeptChat): SavedChatSummary {
-  const { id, kind, title, lastUsedAt } = chat;
-  return { id, kind, title, lastUsedAt, answering: false };
+  const { id, kind, title, lastUsedAt, about } = chat;
+  return {
+    id,
+    kind,
+    title,
+    lastUsedAt,
+    answering: false,
+    ...(about === undefined ? {} : { about }),
+  };
 }
