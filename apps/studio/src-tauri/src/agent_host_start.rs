@@ -274,9 +274,13 @@ fn real_host_command<R: Runtime>(app: &AppHandle<R>) -> Result<Command, HostRefu
 /// them, for naming the ones opened since the host started (requirement
 /// `opened-workspaces`): a host whose workspace routes don't know a folder
 /// refuses it as `unknown_workspace`. Only a host beside the shell is told.
+/// An app without the folders' state (the commands' tests) has none open.
 fn opened_folders<R: Runtime>(app: &AppHandle<R>) -> Vec<PathBuf> {
-    let opened = app.state::<GitState>().folders().list();
-    opened
+    let Some(git) = app.try_state::<GitState>() else {
+        return Vec::new();
+    };
+    git.folders()
+        .list()
         .iter()
         .map(|folder| PathBuf::from(plain_path(folder)))
         .collect()
