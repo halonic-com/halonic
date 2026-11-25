@@ -1,15 +1,20 @@
 import type { RemoteControl } from "@halonicjs/ports";
-import { limitedLookup, type WorkspaceContext } from "@halonicjs/studio-shell";
+import { limitedLookup, type ServiceKey, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { act } from "react";
 import { RemoteControlService } from "../api.ts";
 import { remoteFeature } from "../feature.ts";
 
-/** A feature context over `remote` (or none), whose announcer writes into `announced`. */
+/**
+ * A feature context over `remote` (or none), whose announcer writes into `announced`. `others`
+ * gives more services by their key's name.
+ */
 export function remoteContext(
   remote: RemoteControl | undefined,
   announced: string[] = [],
+  others: Readonly<Record<string, unknown>> = {},
 ): WorkspaceContext {
-  const find = (key: unknown) => (key === RemoteControlService ? remote : undefined);
+  const find = (key: ServiceKey<unknown>) =>
+    key === RemoteControlService ? remote : others[key.name];
   const services = limitedLookup(remoteFeature, { get: find, find });
   const announcer = { announce: (line: string) => announced.push(line) };
   return { services, announcer } as unknown as WorkspaceContext;

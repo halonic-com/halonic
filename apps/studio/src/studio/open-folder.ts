@@ -39,7 +39,7 @@ import {
 import { itemLocationKey, placeNames, type Shell, StudioWorkspace } from "@halonicjs/studio-shell";
 import { showEngineLockLost } from "../engine/engine-lock-lost-toast.ts";
 import { openShellEngine } from "../engine/remote-engine.ts";
-import { provideRemoteControl } from "../remote/provide-remote.ts";
+import { provideKeepAwake, provideRemoteControl } from "../remote/provide-remote.ts";
 import { provideAssistant } from "./assistant-workspace.ts";
 import type { DeviceMemory } from "./device-memory.ts";
 import { firstRunDeviceOf } from "./first-run-device.ts";
@@ -53,6 +53,7 @@ import { sampleWorkspaceOf } from "./sample-workspace.ts";
 import { demoModelWatch } from "./test-model-watch.ts";
 import { desktopTrustedSources } from "./trusted-sources.ts";
 import { hostSettingsOf } from "./window-host-settings.ts";
+import { windowLabelOf } from "./window-label.ts";
 import { WorkspaceTrustView } from "./workspace-trust-control.ts";
 
 /** Recent on a page without storage: nothing is remembered. */
@@ -118,6 +119,7 @@ export async function openFolder(
   services.provide(HostSettingsService, await hostSettingsOf(services, window));
   await provideAgentSandbox(services, window, ipc, device.platform ?? "linux");
   provideRemoteControl(services, tauriAgentHostTransport(window));
+  provideKeepAwake(services, ipc, windowLabelOf(window));
   if (ipc !== undefined) {
     services.provide(UpdaterService, updaterOf(ipc));
     services.provide(RestartRunsService, restartRunsOfWindow(services));
