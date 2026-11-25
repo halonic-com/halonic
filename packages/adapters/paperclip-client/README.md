@@ -115,7 +115,7 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `listApprovalTasks` | `GET /api/approvals/{approval}/issues` | the task an approval belongs to |
 | `commentOnChat` | `POST /api/issues/{task}/comments` | send a message, with a `clientRequestId` |
 | `acceptCard`, `rejectCard` | `POST /api/issues/{task}/interactions/{card}/accept`, `/reject` | answer a confirmation |
-| `respondToCard` | `POST /api/issues/{task}/interactions/{card}/respond` | answer a one-question card |
+| `respondToCard` | `POST /api/issues/{task}/interactions/{card}/respond` | answer a question card, every question at once |
 | `approve`, `rejectApproval` | `POST /api/approvals/{approval}/approve`, `/reject` | decide an approval |
 | `whoAmI`, `revokeKey` | `GET /api/cli-auth/me`, `POST /api/cli-auth/revoke-current` | whom a connection is signed in as (its name only); disconnect (track A4) |
 | `spendSummary`, `spendByProvider` | `GET /api/companies/{company}/costs/summary?from=`, `/costs/by-provider?from=` | paid money, the budget, and tokens of every billing type |
@@ -190,7 +190,10 @@ task comes back as its conversation, any other task as work. Agents match by nam
 `listAgents` and `listChats`; inbox items match by question from the Inbox as last read, so a search reads
 no cards. Messages and documents aren't searched in phase 1. A blank query makes no request.
 
-**Card kinds:** confirmations and one-question cards can be answered here. Cards with several questions,
-task suggestions, checklists and verdicts show in the Inbox with no options and are answered in Paperclip.
+**Card kinds:** confirmations and question cards can be answered here. A question card with several
+questions, or a multiple-select one, becomes an item with `questions` and takes an `answers` answer, sent as
+one `respondToCard` request (`paperclip-client.question-cards`); one with a single single-select question
+keeps plain `options`. Task suggestions, checklists and verdicts show in the Inbox with no options and are
+answered in Paperclip.
 Cards addressed to an agent aren't listed. A chat waits on the person when Paperclip marks it `waiting`.
 Tasks' blockers aren't read yet (`blockedBy` is empty).

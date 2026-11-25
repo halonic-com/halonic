@@ -6,6 +6,12 @@ import type {
   MessagingId,
 } from "@halonicjs/ports";
 import { approvalRisk } from "./approval-risk.ts";
+import {
+  cardQuestions,
+  questionOptions,
+  questionsAnswerBody,
+  questionsAnswerOf,
+} from "./card-questions.ts";
 import { asList, asRecord, asRecords, field, type JsonRecord, text } from "./json.ts";
 import { authorOf, type MapContext, timeOf } from "./map.ts";
 import type { PaperclipRequestName } from "./requests.ts";
@@ -45,18 +51,24 @@ function optionsOf(kind: string, payload: JsonRecord | undefined): InboxItemOpti
     ];
   }
   if (kind === "ask_user_questions") {
-    return asRecords(field(onlyQuestion(payload), "options")).flatMap((option) => {
-      const id = text(option, "id");
-      const label = text(option, "label");
-      return id === undefined || label === undefined ? [] : [{ id, label }];
-    });
+    return questionOptions(onlyQuestion(payload));
   }
   // Task suggestions, checklists and verdicts are answered in Paperclip; Inbox shows them.
   return [];
 }
 
-/** What the person answered, from a resolved card's status and result. */
-function answerOf(status: string, result: JsonRecord | undefined): InboxAnswer {
+/**
+ * What the person answered, from a resolved card's status and result. A card
+ * that asks `questions` reads back as an `answers` answer with every question's options.
+ */
+function answerOf(
+  status: string,
+  result: JsonRecord | undefined,
+  asksQuestions: boolean,
+): InboxAnswer {
+  if (asksQuestions) {
+    return questionsAnswerOf(result);
+  }
   if (status === "accepted" || status === "rejected") {
     const note = text(result, "reason");
     const option = status === "accepted" ? "accept" : "reject";
@@ -107,12 +119,15 @@ export function cardToItem(
     return undefined;
   }
   const payload = asRecord(field(record, "payload"));
+  const questions = kind === "ask_user_questions" ? cardQuestions(payload) : undefined;
+  const result = asRecord(field(record, "result"));
   return {
     id: context.ids.make("card", task, id),
     source: context.ids.source(),
     from: authorOf(context, text(record, "createdByAgentId"), text(record, "createdByUserId")),
     question: questionOf(kind, payload),
-    options: optionsOf(kind, payload),
+    options: questions === undefined ? optionsOf(kind, payload) : [],
+    ...(questions === undefined ? {} : { questions }),
     work: context.ids.make("task", task),
     // A card asks a question in words; answering it spends nothing and changes no one's rights.
     risk: "normal",
@@ -122,35 +137,58 @@ export function cardToItem(
     state:
       status === "pending"
         ? { kind: "open" }
-        : answeredState(context, record, answerOf(status, asRecord(field(record, "result")))),
+        : answeredState(context, record, answerOf(status, result, questions !== undefined)),
   };
 }
 
 /**
  * The request that gives `answer` to card `record`, or `undefined` when the
  * card can't take that answer here: a written reply to a confirmation, an
- * option the card doesn't offer, an `action-result`, an `answers` answer (no
- * Paperclip item carries `questions` yet), or a kind answered only in Paperclip.
+ * option the card doesn't offer, an `action-result`, an `answers` answer to a
+ * card without `questions` (or an option or reply to one with them, or answers
+ * that don't fit them), or a kind answered only in Paperclip.
  */
 export function cardAnswerRequest(
   record: JsonRecord,
   answer: InboxAnswer,
 ): AnswerRequest | undefined {
-  if (!isOptionOrReply(answer)) {
-    return undefined;
-  }
   const kind = text(record, "kind");
   const payload = asRecord(field(record, "payload"));
-  if (kind === "request_confirmation" && answer.kind === "option") {
-    if (answer.option === "accept") {
-      return { name: "acceptCard", body: {} };
-    }
-    return answer.option === "reject"
-      ? { name: "rejectCard", body: answer.note === undefined ? {} : { reason: answer.note } }
-      : undefined;
+  const questions = kind === "ask_user_questions" ? cardQuestions(payload) : undefined;
+  if (questions !== undefined || answer.kind === "answers") {
+    const body =
+      questions !== undefined && answer.kind === "answers"
+        ? questionsAnswerBody(questions, answer)
+        : undefined;
+    return body === undefined ? undefined : { name: "respondToCard", body };
   }
-  const question = kind === "ask_user_questions" ? onlyQuestion(payload) : undefined;
-  const questionId = text(question, "id");
+  if (answer.kind === "action-result") {
+    return undefined;
+  }
+  if (kind === "request_confirmation") {
+    return answer.kind === "option" ? confirmationRequest(answer) : undefined;
+  }
+  return kind === "ask_user_questions" ? oneQuestionRequest(payload, answer) : undefined;
+}
+
+/** The request that accepts or rejects a confirmation card, or `undefined` for another option. */
+function confirmationRequest(
+  answer: Extract<InboxAnswer, { kind: "option" }>,
+): AnswerRequest | undefined {
+  if (answer.option === "accept") {
+    return { name: "acceptCard", body: {} };
+  }
+  return answer.option === "reject"
+    ? { name: "rejectCard", body: answer.note === undefined ? {} : { reason: answer.note } }
+    : undefined;
+}
+
+/** The request that answers a card's one single-select question with an option it offers or a reply. */
+function oneQuestionRequest(
+  payload: JsonRecord | undefined,
+  answer: Extract<InboxAnswer, { kind: "option" | "reply" }>,
+): AnswerRequest | undefined {
+  const questionId = text(onlyQuestion(payload), "id");
   if (questionId === undefined) {
     return undefined;
   }
@@ -171,13 +209,6 @@ export function cardAnswerRequest(
     name: "respondToCard",
     body: { answers: [{ questionId, optionIds: [answer.option], ...otherText }] },
   };
-}
-
-/** Whether an answer is an option or a reply, the only kinds a Paperclip card takes here. */
-function isOptionOrReply(
-  answer: InboxAnswer,
-): answer is Extract<InboxAnswer, { kind: "option" | "reply" }> {
-  return answer.kind === "option" || answer.kind === "reply";
 }
 
 const approvalOptions: readonly InboxItemOption[] = [
