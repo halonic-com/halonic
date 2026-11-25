@@ -265,14 +265,15 @@ verifies("messenger.channel-messages", () => {
   });
 
   it("puts the To line and accent @ chips inside the box's frame (HAL-18331 D)", async () => {
-    const page = await openMessenger(engineering().messaging);
+    const { messaging, elena } = engineering();
+    const page = await openMessenger(messaging);
     const box = await openChat(page, "Engineering");
     await typeAndPress(box, "@");
-    await press(byText(page, "[data-chat-picker] [role=option]", "Elena"));
+    await press(byText(page, "[data-chat-picker] [role=option]", elena.name));
     const frame = box.parentElement;
     expect(frame?.querySelector("[data-to-line]")?.textContent).toBe("To Elena");
     const chip = frame?.querySelector("[data-chip]");
-    expect(chip?.querySelector("bdi")?.textContent).toBe("@Elena");
+    expect(chip?.querySelector("bdi")?.textContent).toBe(`@${elena.name}`);
     expect(chip?.className).toContain("bg-accent-soft");
   });
 

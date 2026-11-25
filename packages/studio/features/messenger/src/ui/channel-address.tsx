@@ -82,7 +82,7 @@ function MemberOption({ agent }: { readonly agent: MessagingAgent }) {
 }
 
 /**
- * The To line inside a channel's box, above the text, and an accent "@Elena" chip with Remove per
+ * The To line inside a channel's box, above the text, and an accent "@name" chip with Remove per
  * named agent (k10a, k10d). Remove takes its button away, so `onUnname` moves focus on (HAL-18316
  * MS9).
  */
