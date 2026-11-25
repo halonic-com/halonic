@@ -2,6 +2,7 @@
 
 - Approval: Liam (workflow), for HAL-18424
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:q18WKUANw1k5mKPFIklTC53++0n6wR9bDtuNiSiDen4vXgqhbvY2pNw0PboFkLbmdspOZQ0sjQAe7atCw9z9Ag==
 
 ## What changes
 
