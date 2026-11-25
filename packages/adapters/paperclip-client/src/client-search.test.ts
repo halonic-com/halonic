@@ -115,6 +115,7 @@ verifies("agent-host.paperclip-key", () => {
         "acceptCard",
         "rejectCard",
         "respondToCard",
+        "submitVerdicts",
         "approve",
         "rejectApproval",
         "whoAmI",

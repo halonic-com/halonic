@@ -26,6 +26,8 @@ export const paperclipRequests = {
   acceptCard: { method: "POST", path: "/api/issues/:task/interactions/:card/accept" },
   rejectCard: { method: "POST", path: "/api/issues/:task/interactions/:card/reject" },
   respondToCard: { method: "POST", path: "/api/issues/:task/interactions/:card/respond" },
+  // Item verdicts (`paperclip-client.card-kinds`, HAL-18871): approve, reject or defer a card's items.
+  submitVerdicts: { method: "POST", path: "/api/issues/:task/interactions/:card/verdicts" },
   approve: { method: "POST", path: "/api/approvals/:approval/approve" },
   rejectApproval: { method: "POST", path: "/api/approvals/:approval/reject" },
   // Disconnect (track A4): read who the key belongs to, and revoke the key in use.
