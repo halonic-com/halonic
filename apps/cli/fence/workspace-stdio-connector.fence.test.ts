@@ -10,6 +10,8 @@ import { profileFolder, trustFolder } from "@halonicjs/profile";
 import { fixedClock } from "@halonicjs/std";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { CommandContext } from "../src/command.ts";
+import { approveTools } from "../src/commands/tools/approve.ts";
+import { nodeToolsMachine } from "../src/commands/tools/source.ts";
 import { runMessages } from "../src/messages/run.ts";
 import { removeTestFolder } from "../src/test/remove-folder.ts";
 import { savedVersionOf } from "../src/workspace-at-version.ts";
@@ -139,6 +141,24 @@ interface RunOutcome {
   readonly others: string;
 }
 
+/**
+ * Approves the tools the connector lists, as `halonic tools approve notes --all`
+ * does: a workspace's own program lists tools nobody reviewed, so a run
+ * offers none of them before.
+ */
+async function approveListedTools(): Promise<void> {
+  const context = {
+    cwd: acme,
+    secrets: { get: async () => null },
+    printAhead: () => undefined,
+  } as unknown as CommandContext;
+  await approveTools(
+    { positionals: ["notes"], options: { all: true } },
+    context,
+    nodeToolsMachine(),
+  );
+}
+
 /** Runs Weekly report with this computer's real connectors. */
 async function runReport(): Promise<RunOutcome> {
   const warnings: string[] = [];
@@ -203,6 +223,7 @@ describe("a workspace's stdio connector, started by a run through openWorkspaceE
     "can't read a key in the person's home folder or Halonic's profile",
     async () => {
       await trust();
+      await approveListedTools();
 
       const { results, others } = await runReport();
 
