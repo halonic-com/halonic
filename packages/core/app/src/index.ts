@@ -284,6 +284,16 @@ export {
   type TrustedPluginBackend,
 } from "./plugin-backend.ts";
 export {
+  type BuiltPlugin,
+  buildWorkspacePlugin,
+  type PluginBuildProblem,
+  type PluginRuntime,
+  type RuntimeAction,
+  type UnavailableTool,
+  type WorkspaceCommit,
+  type WorkspacePluginRequest,
+} from "./plugin-build/build-workspace-plugin.ts";
+export {
   type AddPluginCommand,
   type PluginCommands,
   type PluginCommandsHost,
