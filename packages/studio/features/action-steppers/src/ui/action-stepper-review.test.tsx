@@ -134,9 +134,7 @@ verifies("action-steppers.sign-in", () => {
       const { root } = show(github("WDJBMJHT"));
       expect(root.textContent).toContain("Enter this code on the GitHub page that opened.");
       expect(root.textContent).toContain("WDJB");
-      expect(root.querySelector('[role="status"]')?.textContent).toBe(
-        "Waiting for you to finish on GitHub…",
-      );
+      expect(root.textContent).toContain("Waiting for you to finish on GitHub…");
     });
 
     it("lists Cloudflare's permissions and takes the token in the secure field", async () => {

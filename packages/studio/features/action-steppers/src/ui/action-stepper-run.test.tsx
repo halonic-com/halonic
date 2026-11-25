@@ -81,7 +81,7 @@ verifies("action-steppers.run", () => {
         { kind: "failed", status: 403, message: "Resource not accessible by integration" },
       ]);
       const { root, actions, copied } = show(view);
-      const line = root.querySelector('[role="status"], [aria-live]')?.textContent;
+      const line = root.querySelectorAll("ol > li")[1]?.textContent;
       expect(line).toContain("Failed: GitHub refused this step (status 403).");
       // The service's own words go only to Copy details (microcopy 1.6 E3, C805 A7).
       expect(line).not.toContain("Resource not accessible");
@@ -161,8 +161,8 @@ verifies("action-steppers.end", () => {
 
     it("says so right under the title, before the facts and the steps", () => {
       const { root } = show(inStage({ kind: "expired" }));
-      const line = [...root.querySelectorAll('[role="status"]')].find(
-        (status) => status.textContent === "This request has expired, so it can't run anymore.",
+      const line = [...root.querySelectorAll("div")].find(
+        (div) => div.textContent === "This request has expired, so it can't run anymore.",
       );
       expect(root.querySelector("h2")?.compareDocumentPosition(line as Node)).toBe(
         Node.DOCUMENT_POSITION_FOLLOWING,

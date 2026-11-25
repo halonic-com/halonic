@@ -1,6 +1,7 @@
 import { Button, Callout, CodeDisplay } from "@halonicjs/studio-kit";
 import { useId } from "react";
 import type { StepperActions, StepperService, StepperSignIn } from "../stepper-view.ts";
+import { focusMarks } from "./stepper-changes.ts";
 import { missingPermissionText, signInWords } from "./stepper-words.ts";
 
 /** Props for {@link SignInPanel}. */
@@ -62,10 +63,11 @@ function GitHubSignIn({
   return (
     <>
       <p className="text-body text-fg">{signInWords.githubText}</p>
-      <CodeDisplay code={code} group={4} size="md" label={signInWords.githubCode} />
-      <p role="status" className="text-small text-fg-muted">
-        {signInWords.githubWaiting}
-      </p>
+      {/* Focus comes here from Sign in to GitHub, which the code replaces. */}
+      <div data-focus={focusMarks.signInCode} tabIndex={-1} className="focus-ring self-start">
+        <CodeDisplay code={code} group={4} size="md" label={signInWords.githubCode} />
+      </div>
+      <p className="text-small text-fg-muted">{signInWords.githubWaiting}</p>
     </>
   );
 }
@@ -88,7 +90,6 @@ export function MissingPermission({
   return (
     <Callout
       tone="attention"
-      announce="polite"
       action={{
         label: signInWords.signInAgain,
         onClick: () => {

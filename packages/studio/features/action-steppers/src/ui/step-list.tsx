@@ -12,6 +12,7 @@ import {
 import { BrowserControls, BrowserCopy, BrowserInstructions } from "./browser-step.tsx";
 import { StepByHand } from "./manual-guide.tsx";
 import { RiskChip } from "./request-review.tsx";
+import { focusMarks } from "./stepper-changes.ts";
 import { failureDetails, outcomeText, stepLabel, stepsHeading } from "./stepper-words.ts";
 
 /** Props for {@link StepList}. */
@@ -33,8 +34,9 @@ export interface StepListProps {
  * The request's steps in order (`action-steppers.run`): each with its number, its risk, what it
  * does in plain words, a browser step's page and instructions, and, once it has started, how it
  * went. A failure names the service and its status, with the service's own message behind
- * **Copy details**, and is announced, since the run stops there. While the request is ready, each step not done has **Do it by hand**, and the next
- * browser step has its own controls.
+ * **Copy details**; the stepper's status region reads each result out as it arrives. While the
+ * request is ready, each step not done has **Do it by hand**, and the next browser step has its
+ * own controls.
  */
 export function StepList({ view, actions, active, reviewOnly = false, runningId }: StepListProps) {
   const headingId = useId();
@@ -48,7 +50,7 @@ export function StepList({ view, actions, active, reviewOnly = false, runningId 
       </h3>
       <ol className="flex flex-col divide-y divide-border rounded-md border border-border">
         {view.steps.map((step) => (
-          <li key={step.number} className="flex flex-col gap-2 py-4">
+          <li key={step.number} data-step={step.number} className="flex flex-col gap-2 py-4">
             <div className="flex flex-col gap-2 px-4">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-small text-fg-muted">
@@ -101,17 +103,19 @@ function StepOutcomeLine({
     return (
       <Callout
         tone="danger"
-        announce="polite"
         action={{ label: copyDetailsWords.label, onClick: () => copy(details) }}
       >
         {text}
       </Callout>
     );
   }
+  // Focus comes here once the step was done from its own controls, which went with it.
   return (
     <p
       id={step.outcome.kind === "running" ? runningId : undefined}
-      className="text-small text-fg-muted"
+      data-focus={focusMarks.stepOutcome}
+      tabIndex={-1}
+      className="focus-ring text-small text-fg-muted"
     >
       {text}
     </p>

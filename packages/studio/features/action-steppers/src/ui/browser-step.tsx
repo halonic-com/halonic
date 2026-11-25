@@ -7,6 +7,7 @@ import {
 } from "@halonicjs/studio-kit";
 import { useState } from "react";
 import type { StepAction, StepperActions, StepperRequester } from "../stepper-view.ts";
+import { focusMarks } from "./stepper-changes.ts";
 import { browserWords, instructionsText, resultHintText, sourceText } from "./stepper-words.ts";
 
 type BrowserAction = Extract<StepAction, { readonly kind: "browser" }>;
@@ -102,7 +103,8 @@ export interface BrowserControlsProps {
 /**
  * The next browser step's controls: **Open the page**, **Copy instructions** (the copied text
  * starts with the "not checked" label on a requester's step, HAL-17491 8.4), the optional
- * paste-back field, which is never secret, and **Step 2 is done**.
+ * paste-back field, which is never secret, and **Step 2 is done**. Once the step before is done,
+ * focus comes to **Open the page**.
  */
 export function BrowserControls({
   number,
@@ -114,7 +116,7 @@ export function BrowserControls({
   const [result, setResult] = useState("");
   const fromRequester = action.source.kind === "requester";
   return (
-    <div className="flex flex-col gap-3">
+    <div data-focus={focusMarks.stepControls} className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-2">
         <Button onClick={() => actions.openPage(action.address)}>{browserWords.open}</Button>
         <CopyInstructions text={copiedText(action, requester)} />
