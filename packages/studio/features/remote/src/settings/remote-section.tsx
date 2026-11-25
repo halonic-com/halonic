@@ -12,6 +12,7 @@ import { type ReactNode, useRef, useState } from "react";
 import { RemoteControlService } from "../api.ts";
 import { PairDialog } from "../pairing/pair-dialog.tsx";
 import { useRemoteState } from "../remote-state.ts";
+import { shellDeclined } from "../shell-declined.ts";
 import { providerName, tunnelProblem, tunnelState } from "../tunnel-words.ts";
 import { PhoneList } from "./phone-list.tsx";
 import * as text from "./remote-text.ts";
@@ -52,7 +53,10 @@ export function RemoteSettingsView({ remote, state, announce, surface }: RemoteS
   };
   const run = (action: Promise<void>, failure: string): Promise<void> => {
     setFailed(undefined);
-    return action.catch(() => fail(failure));
+    // A no in the shell's own window sent nothing: the switch stays as it was, with no error.
+    return action.catch((error: unknown) => {
+      if (!shellDeclined(error)) fail(failure);
+    });
   };
   // A switch ignores a change while its own host call is out, so a quick second click doesn't
   // send a second call. A ref, not state: two clicks can land before React renders again.

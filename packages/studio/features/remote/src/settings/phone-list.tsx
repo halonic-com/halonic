@@ -2,6 +2,7 @@ import type { PairedPhone, RemoteControl, RemoteState } from "@halonicjs/ports";
 import { Button, Dialog, EmptyState } from "@halonicjs/studio-kit";
 import { type SettingsSurface, sectionHeading, sectionHeadingLevel } from "@halonicjs/studio-shell";
 import { useId, useRef, useState } from "react";
+import { PhoneName, phoneNameText } from "../pairing/phone-name.tsx";
 import { pairedLine, seenLine } from "./phone-words.ts";
 import * as text from "./remote-text.ts";
 
@@ -58,7 +59,9 @@ export function PhoneList({
       await (one === undefined ? remote.revokeAll() : remote.revoke(one.id));
     } catch {
       setBusy(false);
-      setError(one === undefined ? text.REVOKE_ALL_FAILED : text.revokeFailed(one.name));
+      setError(
+        one === undefined ? text.REVOKE_ALL_FAILED : text.revokeFailed(phoneNameText(one.name)),
+      );
       return;
     }
     if (one !== undefined) {
@@ -67,7 +70,7 @@ export function PhoneList({
     }
     setBusy(false);
     setRevoking(undefined);
-    announce(one === undefined ? text.ALL_REVOKED : text.revoked(one.name));
+    announce(one === undefined ? text.ALL_REVOKED : text.revoked(phoneNameText(one.name)));
   };
 
   return (
@@ -101,7 +104,7 @@ export function PhoneList({
           size="sm"
           title={
             "phone" in revoking
-              ? text.revokeTitle(revoking.phone.name)
+              ? text.revokeTitle(phoneNameText(revoking.phone.name))
               : text.revokeAllTitle(revoking.all)
           }
           confirm={{
@@ -121,7 +124,7 @@ export function PhoneList({
         >
           {"phone" in revoking ? (
             <>
-              <p>{text.revokeLine(revoking.phone.name)}</p>
+              <p>{text.revokeLine(phoneNameText(revoking.phone.name))}</p>
               <p>{text.REVOKE_AGAIN}</p>
             </>
           ) : (
@@ -175,7 +178,9 @@ function Phones({
         {state.phones.map((phone) => (
           <li key={phone.id} className="flex items-center gap-4 px-4 py-3">
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <p className="text-fg">{phone.name}</p>
+              <p className="text-fg">
+                <PhoneName name={phone.name} />
+              </p>
               <p className="text-small text-fg-muted">{pairedLine(phone, now)}</p>
               <p className="text-small text-fg-muted">{text.CAN}</p>
             </div>
@@ -193,7 +198,7 @@ function Phones({
             >
               {text.REVOKE}
               {/* Names the phone for a screen reader, so each row's Revoke differs. */}
-              <span className="sr-only"> {phone.name}</span>
+              <span className="sr-only"> {phoneNameText(phone.name)}</span>
             </Button>
           </li>
         ))}
