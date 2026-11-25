@@ -2,8 +2,8 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
 import type { OpenFacts, Snapshot, SnapshotPull } from "../snapshot/shape.ts";
 import type { PullFacts, Reason } from "./decide.ts";
+import { wakeMessage } from "./messages.ts";
 import { snapshotSummary } from "./wake-status.ts";
-import { wakeMessage } from "./watch.ts";
 
 const repo = "halonic-com/halonic";
 const head = "7dd0ccf1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";

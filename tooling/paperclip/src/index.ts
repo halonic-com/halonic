@@ -50,15 +50,14 @@ export {
   newestCheck,
   newestFinding,
 } from "./pr-watcher/github.ts";
+export { doneMessage, wakeMessage } from "./pr-watcher/messages.ts";
 export type { AgentRow, CommentRow, Paperclip, TaskRow } from "./pr-watcher/paperclip.ts";
 export {
-  doneMessage,
   isSelf,
   readMemory,
   type TickOptions,
   type TickSummary,
   tick,
-  wakeMessage,
 } from "./pr-watcher/watch.ts";
 export {
   isLiamPath,

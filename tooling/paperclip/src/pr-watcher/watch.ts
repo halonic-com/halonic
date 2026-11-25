@@ -1,3 +1,4 @@
+import { type ConflictFiles, conflictFilesOf } from "./conflict-files.ts";
 import {
   branchesOwner,
   candidates,
@@ -5,14 +6,13 @@ import {
   type Decision,
   decide,
   type Memory,
-  marker,
   type PullFacts,
   parkedCandidates,
-  type Reason,
 } from "./decide.ts";
 import type { FoundPulls, PullRef } from "./discover.ts";
 import { type PullFactsReader, pullKey } from "./facts.ts";
 import type { ReviewerRoute } from "./handoff.ts";
+import { doneMessage, wakeMessage } from "./messages.ts";
 import { postponeUntil } from "./monitors.ts";
 import type { CommentRow, Paperclip, TaskRow } from "./paperclip.ts";
 import type { RebaseOnly } from "./rebase-only.ts";
@@ -39,6 +39,8 @@ export interface TickOptions {
   readonly route?: ReviewerRoute;
   /** Whether only a rebase changed a pull request since its approval (HAL-17759); without it, never. */
   readonly rebaseOnly?: RebaseOnly;
+  /** The files a conflicting pull request conflicts in, for the wake comment (HAL-17922); none when unset. */
+  readonly conflictFiles?: ConflictFiles;
 }
 
 /** How a tick went: counts, and the tasks it couldn't check. */
@@ -140,61 +142,6 @@ export function readMemory(comments: readonly CommentRow[], ownerId: string): Me
   };
 }
 
-const reasonText: Record<Reason["kind"], (head: string) => string> = {
-  "ci-red": (head) => `\`ci-ok\` failed on its head \`${head}\`.`,
-  conflict: () => "it conflicts with its base branch and isn't in the merge queue.",
-  retargeted: (head) =>
-    `its base changed after its last reopen or push, so GitHub keeps it blocked even with green checks. Close and reopen it (or push a commit) to run the check against the new base. Reopening keeps head \`${head}\`, so approvals on it still count.`,
-  review: (head) => `there's a new review comment on its head \`${head}\`.`,
-  approved: (head) =>
-    `it has an approving GitHub review on its head \`${head}\`, which its base branch needs. Merge it on that head once \`ci-ok\` is green (\`--match-head-commit\`); nobody queues it for you.`,
-  merged: () =>
-    "it merged and `ci-ok` is green, but the task has comments since. Mark it done if nothing else is left.",
-};
-
-/** What `pr_status` would say about each open pull request the reasons name, once each. */
-function statusLines(reasons: readonly Reason[], summary: PullSummary | undefined): string[] {
-  if (summary === undefined) {
-    return [];
-  }
-  const pulls = new Map(reasons.map(({ pull }) => [pullKey(pull), pull]));
-  const lines = [...pulls.values()].flatMap((pull) =>
-    summary(pull).map((line) => `- #${pull.number} ${line}`),
-  );
-  return lines.length === 0
-    ? []
-    : [
-        "What `pr_status` says, as of this check. No need to check again unless you pushed since:",
-        ...lines,
-        "",
-      ];
-}
-
-/**
- * The comment that wakes the author: one line per new state, then each pull
- * request's status from the same pass, then the markers.
- */
-export function wakeMessage(reasons: readonly Reason[], summary?: PullSummary): string {
-  const lines = reasons.map(
-    ({ pull, kind }) =>
-      `- [#${pull.number}](${pull.url}): ${reasonText[kind](pull.head.slice(0, 7))}`,
-  );
-  return [
-    "PR watcher: this needs you.",
-    "",
-    ...lines,
-    "",
-    ...statusLines(reasons, summary),
-    ...reasons.map((reason) => marker(reason.key)),
-  ].join("\n");
-}
-
-/** The comment that closes the task. */
-export function doneMessage(pulls: readonly PullFacts[]): string {
-  const links = pulls.map((pull) => `[#${pull.number}](${pull.url})`).join(", ");
-  return `PR watcher: ${links} merged and \`ci-ok\` is green on the base branch, so this task is done.`;
-}
-
 /** The agent every branch names, by its id, when there is one and Paperclip knows it. */
 function ownerOf(branches: readonly string[], owners: ReadonlyMap<string, string>) {
   const key = branchesOwner(branches);
@@ -292,7 +239,11 @@ async function act(options: TickOptions, task: TaskRow, decision: Decision): Pro
   const body =
     decision.kind === "done"
       ? doneMessage(decision.pulls)
-      : wakeMessage(decision.reasons, options.summary);
+      : wakeMessage(
+          decision.reasons,
+          options.summary,
+          await conflictFilesOf(decision.reasons, options.conflictFiles, options.log),
+        );
   options.log(`${task.identifier}: ${decision.kind}${options.dryRun ? " (dry run)" : ""}\n${body}`);
   if (options.dryRun) {
     return true;
