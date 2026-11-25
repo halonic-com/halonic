@@ -15,6 +15,28 @@ export type SavedChatKind = "build" | `agent:${string}`;
  */
 export type SavedChatModel = { kind: "assistant" } | { kind: "alias"; name: string };
 
+/** The kinds of item a Build chat can be about: a workflow, an agent or a library item. */
+export const savedChatAboutKinds = [
+  "workflow",
+  "agent",
+  "skill",
+  "knowledge",
+  "collection",
+  "connector",
+] as const;
+
+/**
+ * The item a Build chat is about, such as the workflow whose page it sits on. Only the reference
+ * is kept, never the item's name, so a renamed item keeps its chats.
+ */
+export interface SavedChatAbout {
+  kind: (typeof savedChatAboutKinds)[number];
+  /** The hub the item is in. */
+  hub: string;
+  /** The item's id in its hub. */
+  id: string;
+}
+
 /** One row of the recent chats, without its messages. */
 export interface SavedChatSummary {
   /** Matches {@link savedChatIdPattern}, so an adapter may use it as a file name. */
@@ -25,6 +47,11 @@ export interface SavedChatSummary {
   lastUsedAt: string;
   /** True when the chat was answering as it was saved. */
   answering: boolean;
+  /**
+   * The item a `build` chat is about, so a page can list only its own chats. Missing for a chat
+   * about no item, and for an `agent:` chat, which says what it's about through its kind.
+   */
+  about?: SavedChatAbout;
 }
 
 /**
@@ -38,6 +65,7 @@ export interface SavedChatSummary {
  *   lastUsedAt: "2026-11-23T10:42:00.000Z",
  *   answering: false,
  *   model: { kind: "assistant" },
+ *   about: { kind: "workflow", hub: "support", id: "triage" },
  *   messages: [{ role: "user", content: "Add a routine" }],
  * };
  */
@@ -81,10 +109,12 @@ export interface ChatSessions {
 }
 
 const roles = new Set(["system", "user", "assistant", "tool"]);
+const aboutKinds: ReadonlySet<unknown> = new Set(savedChatAboutKinds);
 
 /**
  * Whether `value` is a {@link SavedChat}: every field with its type, an id that matches
- * {@link savedChatIdPattern}, a known kind and model, and messages that each have a known role and
+ * {@link savedChatIdPattern}, a known kind and model, an `about` (when there is one) with a known kind and a hub and id that
+ * aren't empty, and messages that each have a known role and
  * text content. Adapters check what they read with it.
  *
  * @example
@@ -101,6 +131,7 @@ export function isSavedChat(value: unknown): value is SavedChat {
     typeof chat.lastUsedAt === "string" &&
     typeof chat.answering === "boolean" &&
     isModel(chat.model) &&
+    (chat.about === undefined || isAbout(chat.about)) &&
     Array.isArray(chat.messages) &&
     chat.messages.every(isMessage)
   );
@@ -110,6 +141,18 @@ function isModel(value: unknown): boolean {
   if (typeof value !== "object" || value === null) return false;
   const model = value as { kind?: unknown; name?: unknown };
   return model.kind === "assistant" || (model.kind === "alias" && typeof model.name === "string");
+}
+
+function isAbout(value: unknown): boolean {
+  if (typeof value !== "object" || value === null) return false;
+  const about = value as { kind?: unknown; hub?: unknown; id?: unknown };
+  return (
+    aboutKinds.has(about.kind) &&
+    typeof about.hub === "string" &&
+    about.hub !== "" &&
+    typeof about.id === "string" &&
+    about.id !== ""
+  );
 }
 
 function isMessage(value: unknown): boolean {
