@@ -11,7 +11,12 @@ import { RunsView } from "./runs-view.tsx";
 import { runsWords } from "./runs-words.ts";
 import { useRuns } from "./use-runs.ts";
 
-beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
+// The view dates its rows from the clock: a fixed midday on the runs' own day keeps them the same
+// on any date and in any time zone (HAL-17931).
+beforeEach(() => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  vi.setSystemTime(new Date(2026, 10, 9, 12, 0));
+});
 afterEach(() => {
   unmount();
   vi.useRealTimers();

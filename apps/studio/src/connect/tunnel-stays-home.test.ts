@@ -57,6 +57,22 @@ afterEach(() => {
 /** Lets the shell's answers and React's renders run, without letting time pass. */
 const settle = () => vi.advanceTimersByTimeAsync(0);
 
+/** Node's own `setImmediate`, taken before the fake timers replace it. */
+const realSetImmediate = globalThis.setImmediate;
+
+/**
+ * Lets the page work until `condition` holds, without letting time pass. A screen can take more
+ * than one turn of the event loop to draw, and on a busy CI machine one `settle()` sometimes
+ * wasn't enough (HAL-17931). Fails, naming `what`, if it never holds.
+ */
+async function until(what: string, condition: () => boolean): Promise<void> {
+  for (let turn = 0; turn < 500 && !condition(); turn += 1) {
+    await settle();
+    await new Promise((resolve) => realSetImmediate(resolve));
+  }
+  expect(condition(), what).toBe(true);
+}
+
 /** Starts the Android page on a shell with a tunnel that answers `answers`. */
 async function launch(answers: Record<string, unknown>, scanner?: PairingScanner) {
   const shell = new FakeShell();
@@ -103,17 +119,24 @@ function expectStayedHome({ shell, start }: { shell: FakeShell; start: string })
 
 const shownText = () => document.querySelector('[data-screen="tunnel"]')?.textContent ?? "";
 
+const buttonNamed = (name: string) =>
+  [...document.querySelectorAll<HTMLButtonElement>('[data-screen="tunnel"] button')].find(
+    (each) => each.textContent?.trim() === name,
+  );
+
+/** Presses `name` once the screen shows it. */
 async function press(name: string): Promise<void> {
-  const button = [
-    ...document.querySelectorAll<HTMLButtonElement>('[data-screen="tunnel"] button'),
-  ].find((each) => each.textContent?.trim() === name);
-  expect(button, name).toBeDefined();
-  button?.click();
+  await until(name, () => buttonNamed(name) !== undefined);
+  buttonNamed(name)?.click();
   await settle();
 }
 
 const connects = (shell: FakeShell) =>
   shell.calls.filter((call) => call.command === "phone_connect").map((call) => call.args);
+
+/** Waits until the page has asked to connect `count` times; it watches statuses before the first. */
+const connected = (shell: FakeShell, count: number) =>
+  until(`${count} × phone_connect`, () => connects(shell).length >= count);
 
 verifies("studio.connect.tunnel-stays-home", () => {
   it("opens the paired computer at launch on the app's own page", async () => {
@@ -121,11 +144,11 @@ verifies("studio.connect.tunnel-stays-home", () => {
       phone_computers: { kind: "computers", computers: [laptop] },
       phone_connect: { kind: "connecting" },
     });
+    await connected(page.shell, 1);
     page.shell.sendStatus(0, "c-1", { state: "connected" });
-    await settle();
+    await until("Tim's laptop shown", () => shownText().includes("Tim's laptop"));
 
     expect(connects(page.shell)).toEqual([{ computer: "c-1" }]);
-    expect(shownText()).toContain("Tim's laptop");
     expectStayedHome(page);
   });
 
@@ -154,6 +177,7 @@ verifies("studio.connect.tunnel-stays-home", () => {
     await press("Scan code");
     page.shell.answers.set("phone_computers", { kind: "computers", computers: [laptop] });
     await press("Open agents");
+    await connected(page.shell, 1);
 
     expect(connects(page.shell)).toEqual([{ computer: "c-1" }]);
     expectStayedHome(page);
@@ -164,11 +188,14 @@ verifies("studio.connect.tunnel-stays-home", () => {
       phone_computers: { kind: "computers", computers: [laptop] },
       phone_connect: { kind: "cant-reach", reason: "unreachable" },
     });
+    await connected(page.shell, 1);
     page.shell.sendStatus(0, "c-1", { state: "reconnecting", lastTry: "refused" });
-    await settle();
-    expect(shownText()).toContain("Tim's laptop isn't answering");
+    await until("isn't answering shown", () =>
+      shownText().includes("Tim's laptop isn't answering"),
+    );
 
     await press("Try again");
+    await connected(page.shell, 2);
 
     expect(connects(page.shell)).toEqual([{ computer: "c-1" }, { computer: "c-1" }]);
     expectStayedHome(page);
@@ -176,8 +203,8 @@ verifies("studio.connect.tunnel-stays-home", () => {
 
   it("stays in the tunnel when the shell refuses to connect", async () => {
     const page = await launch({ phone_computers: { kind: "computers", computers: [laptop] } });
+    await until("refusal reported", () => page.reported.includes("connect was refused"));
 
-    expect(page.reported).toContain("connect was refused");
     expectStayedHome(page);
   });
 
@@ -186,10 +213,14 @@ verifies("studio.connect.tunnel-stays-home", () => {
       phone_computers: { kind: "computers", computers: [laptop] },
       phone_connect: { kind: "connecting" },
     });
+    // The 30 seconds start with the first connect, so time may pass only after it.
+    await connected(page.shell, 1);
 
     await vi.advanceTimersByTimeAsync(31_000);
 
-    expect(shownText()).toContain("Tim's laptop isn't answering");
+    await until("isn't answering shown", () =>
+      shownText().includes("Tim's laptop isn't answering"),
+    );
     expectStayedHome(page);
   });
 });
