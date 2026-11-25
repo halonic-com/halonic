@@ -36,9 +36,12 @@ use crate::phone_tunnel_events::{self, TunnelEvent};
 /// The answer when this build has no tunnel.
 const NO_TUNNEL: Problem = Problem::KeysUnavailable;
 
-/// Starts a pairing, ending any other, and answers at the check code.
+/// Starts a pairing, ending any other, and answers at the check code. A
+/// start for a computer the picker found names it by its id, and gets its
+/// endpoint here from the nearby list (HAL-16824).
 #[tauri::command]
 pub async fn phone_pair_start<R: Runtime>(app: AppHandle<R>, start: PairingStart) -> PairingStep {
+    let start = start.find_nearby(|id| crate::phone_nearby::endpoint(&app, id));
     #[cfg(target_os = "android")]
     {
         if let Some(tunnel) = android::tunnel(&app) {

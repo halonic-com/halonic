@@ -8,7 +8,8 @@
 //! `engine_*` commands, the `fs_*`
 //! commands, the `blob_*` and `record_*` commands and the `update_*`
 //! commands, and, on Android, `pair_scan` and `pair_scan_cancel` and the
-//! phone tunnel's `phone_*` commands with `phone_tunnel_watch`.
+//! phone tunnel's `phone_*` commands with `phone_tunnel_watch`, and the
+//! computer picker's `phone_nearby_browse` and `phone_nearby_stop`.
 
 use serde_json::{Value, json};
 use tauri::ipc::{CallbackFn, InvokeBody};
@@ -21,8 +22,10 @@ mod device_keys;
 mod engine;
 mod engine_lock;
 mod host_settings;
+mod local_network;
 mod owner_check;
 mod pair_scan;
+mod phone_nearby;
 mod phone_screens;
 mod phone_tunnel;
 mod runs;
@@ -169,6 +172,8 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "phone_connect",
         "phone_disconnect",
         "phone_tunnel_watch",
+        "phone_nearby_browse",
+        "phone_nearby_stop",
         "agent_host_request",
         "agent_host_stream",
         "agent_host_stream_end",
@@ -222,25 +227,6 @@ fn served_page_is_refused_every_app_and_plugin_command() {
             refusal.to_string().contains("not allowed"),
             "{command} failed for another reason: {refusal}"
         );
-    }
-}
-
-#[test]
-fn no_page_may_ask_for_the_local_network_permission() {
-    // Only the shell's `connect` asks, from Rust (HAL-12253). The plugin is
-    // registered on Android only, but the ACL refuses its command anywhere.
-    let window = app_window();
-    for from in [CONNECT_PAGE, SERVED_PAGE] {
-        for command in [
-            "plugin:local-network|allow_local_network",
-            "plugin:local-network|allowLocalNetwork",
-            "plugin:local-network|request_permissions",
-        ] {
-            assert!(
-                invoke(&window, from, command, json!({})).is_err(),
-                "{command} must be refused from {from}"
-            );
-        }
     }
 }
 

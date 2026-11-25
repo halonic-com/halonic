@@ -1,0 +1,15 @@
+{
+  "identifier": "phone-nearby",
+  "description": "On Android, the app's own page may list the Halonic computers on this Wi-Fi while its typed-code computer picker is open, through phone_nearby_browse and phone_nearby_stop (HAL-16824). The shell browses with Android's NsdManager and keeps each computer's address and port: the page gets only names and opaque ids, and pairs with an id. The list reaches the page only while the window is on the app's own page. It is local only, so the Studio the computer serves gets neither command.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "android"
+  ],
+  "permissions": [
+    "allow-phone-nearby-browse",
+    "allow-phone-nearby-stop"
+  ]
+}

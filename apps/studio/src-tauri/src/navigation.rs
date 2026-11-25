@@ -72,10 +72,11 @@ pub(crate) fn on_navigation<R: Runtime>(webview: &Webview<R>, url: &Url) -> bool
     match navigation_destination(&going_to, confirmed.as_ref()) {
         Destination::Stay => {
             // Leaving the app's own page for the served Studio: the phone
-            // tunnel's events stop here, before that page loads (H1 on
-            // HAL-15181).
+            // tunnel's events and the computer picker's list stop here,
+            // before that page loads (H1 on HAL-15181, HAL-16824).
             if !is_app_page(&going_to) {
                 crate::phone_tunnel_events::end_page_watch(webview.app_handle(), webview.label());
+                crate::phone_nearby::end_page(webview.app_handle());
             }
             true
         }
