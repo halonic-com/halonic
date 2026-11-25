@@ -1,8 +1,8 @@
 import type { Coordination } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import type { RequestCountStore } from "./api.ts";
 import { MemoryRequestCountStore } from "./memory-request-count-store.ts";
+import type { RequestCountStore } from "./request-count-store-api.ts";
 import { FakeCoordination, FakePasswordHasher, TestClock, testServer } from "./test-server.ts";
 
 const host = "halonic.acme.example";

@@ -22,6 +22,7 @@ import type { PlacedRoutine } from "@halonicjs/routines";
 import type { ManyUserPorts } from "./many-users-api.ts";
 import type { ModelChoicePort } from "./model-choice-api.ts";
 import type { ProviderKeyStore } from "./provider-key-store.ts";
+import type { RequestCountStore } from "./request-count-store-api.ts";
 
 /**
  * The `Request → Response` handler behind `halonic serve` and a cloud Worker.
@@ -64,27 +65,6 @@ export interface ServerErrorBody {
   readonly message: string;
   /** What the person can do about it, when the error says. */
   readonly fix?: string;
-}
-
-/**
- * Counts requests per deployment and UTC day, for `limits.dailyRequests`.
- * Each host supplies one that survives a restart: `targets/node/runtime` keeps
- * it on disk, the Cloudflare target in its own durable store. The count is
- * atomic, so parallel requests never get past the ceiling. It is its own
- * port, not a `Coordination.increment` counter, so a host can back the count
- * of every request with a store of its own choice, apart from the shared
- * login limits and sessions.
- */
-export interface RequestCountStore {
-  /**
-   * Counts one request for `day` unless `limit` requests were already
-   * counted for it.
-   *
-   * @param day The UTC day as `YYYY-MM-DD`.
-   * @param limit The ceiling; the count never goes above it.
-   * @returns whether the request is within the ceiling, and the count after the call
-   */
-  countRequest(day: string, limit: number): Promise<{ allowed: boolean; count: number }>;
 }
 
 /** What a host decides before it starts the server. None of it is a secret. */

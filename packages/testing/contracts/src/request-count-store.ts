@@ -2,12 +2,16 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 
 /**
- * What a request-count store does, for the daily request ceiling. It matches
+ * What a request-count store does, for the daily request ceiling and each scope's share of it. It matches
  * `RequestCountStore` in `host/server`; this suite can't import that package,
  * because the testing layer sits below the host layer.
  */
 export interface RequestCountStoreUnderTest {
-  countRequest(day: string, limit: number): Promise<{ allowed: boolean; count: number }>;
+  countRequest(
+    day: string,
+    limit: number,
+    scope?: string,
+  ): Promise<{ allowed: boolean; count: number }>;
 }
 
 /**
@@ -51,6 +55,47 @@ export function requestCountStoreContract(
         expect(await store.countRequest("2026-11-13", 1)).toEqual({ allowed: true, count: 1 });
       });
 
+      it("keeps each scope's count apart from the total and from other scopes", async () => {
+        const store = await harness.make();
+        await store.countRequest("2026-11-12", 1);
+        expect(await store.countRequest("2026-11-12", 1, "u/acme")).toEqual({
+          allowed: true,
+          count: 1,
+        });
+        expect((await store.countRequest("2026-11-12", 1, "u/acme")).allowed).toBe(false);
+        expect(await store.countRequest("2026-11-12", 1, "o/acme")).toEqual({
+          allowed: true,
+          count: 1,
+        });
+        expect((await store.countRequest("2026-11-12", 1)).allowed).toBe(false);
+      });
+
+      it.each(["", "daily-requests:2026-11-12", "2026-11-12", "total"])(
+        "never counts the scope %j into the total",
+        async (scope) => {
+          const store = await harness.make();
+          await store.countRequest("2026-11-12", 3, scope);
+          expect(await store.countRequest("2026-11-12", 3)).toEqual({ allowed: true, count: 1 });
+        },
+      );
+
+      it("never lets parallel requests past a scope's limit", async () => {
+        const store = await harness.make();
+        const answers = await Promise.all(
+          Array.from({ length: 20 }, () => store.countRequest("2026-11-12", 5, "u/acme")),
+        );
+        expect(answers.filter((answer) => answer.allowed)).toHaveLength(5);
+      });
+
+      it("starts a scope's new day from zero", async () => {
+        const store = await harness.make();
+        await store.countRequest("2026-11-12", 1, "u/acme");
+        expect(await store.countRequest("2026-11-13", 1, "u/acme")).toEqual({
+          allowed: true,
+          count: 1,
+        });
+      });
+
       if (options.durable) {
         it("keeps the count over a restart", async () => {
           const store = await harness.make();
@@ -60,6 +105,16 @@ export function requestCountStoreContract(
           }
           const reopened = await harness.reopen();
           expect((await reopened.countRequest("2026-11-12", 1)).allowed).toBe(false);
+        });
+
+        it("keeps a scope's count over a restart", async () => {
+          const store = await harness.make();
+          await store.countRequest("2026-11-12", 1, "u/acme");
+          if (harness.reopen === undefined) {
+            throw new Error("A durable store's harness must say how to reopen it");
+          }
+          const reopened = await harness.reopen();
+          expect((await reopened.countRequest("2026-11-12", 1, "u/acme")).allowed).toBe(false);
         });
       }
     });

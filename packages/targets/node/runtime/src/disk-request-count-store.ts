@@ -1,11 +1,11 @@
 import { NodeCoordination } from "@halonicjs/adapter-coordination-node";
 import { randomLeaseToken } from "@halonicjs/adapter-coordination-node/node";
 import { FileRecordStore } from "@halonicjs/adapter-fs-node";
-import type { Clock } from "@halonicjs/ports";
 import {
   CoordinationRequestCountStore,
-  type DailyRequestCounter,
-} from "./coordination-request-count-store.ts";
+  type RequestCountStore as DailyRequestCounter,
+} from "@halonicjs/host-server";
+import type { Clock } from "@halonicjs/ports";
 
 /**
  * A request count kept in a folder on disk, so a restart of `halonic serve`

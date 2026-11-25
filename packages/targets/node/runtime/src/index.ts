@@ -1,7 +1,8 @@
+// The count lives in `host/server`, shared with the Cloudflare target; this package still ships it.
 export {
   CoordinationRequestCountStore,
-  type DailyRequestCounter,
-} from "./coordination-request-count-store.ts";
+  type RequestCountStore as DailyRequestCounter,
+} from "@halonicjs/host-server";
 export { openDiskRequestCountStore } from "./disk-request-count-store.ts";
 export type { NetworkInterfaces } from "./lan-address.ts";
 export {

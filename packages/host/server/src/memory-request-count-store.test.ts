@@ -18,6 +18,16 @@ describe("MemoryRequestCountStore", () => {
       expect(await store.countRequest("2026-11-13", 1)).toEqual({ allowed: true, count: 1 });
     });
 
+    it("drops every scope's count when a new day starts", async () => {
+      const store = new MemoryRequestCountStore();
+      await store.countRequest("2026-11-12", 1, "u/acme");
+      await store.countRequest("2026-11-13", 1);
+      expect(await store.countRequest("2026-11-12", 1, "u/acme")).toEqual({
+        allowed: true,
+        count: 1,
+      });
+    });
+
     it("isn't durable: a new store starts from zero", async () => {
       await new MemoryRequestCountStore().countRequest("2026-11-12", 1);
       expect(await new MemoryRequestCountStore().countRequest("2026-11-12", 1)).toEqual({

@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-7197; build plan on HAL-195 (PR 4)
 
-Where an adapter implements the request-count store behind `limits.dailyRequests`, it shall count one request for a UTC day unless the limit was already reached for that day, and answer whether the request was allowed and the count after the call. The count shall never go above the limit, even for parallel calls. A new day shall start from zero. A store that says it is durable shall keep the count over a restart.
+Where an adapter implements the request-count store behind `limits.dailyRequests`, it shall count one request for a UTC day unless the limit was already reached for that day, and answer whether the request was allowed and the count after the call. The count shall never go above the limit, even for parallel calls. A new day shall start from zero. When a call names a scope, the store shall count it in that scope's own count, apart from the total and from every other scope's count, whatever the scope's name holds; the same rules apply to it. A store that says it is durable shall keep every count over a restart.
 
 ## Examples
 
@@ -15,3 +15,9 @@ Where an adapter implements the request-count store behind `limits.dailyRequests
   then exactly 5 are allowed.
 - Given a durable store that is reopened,
   then the day's count is still there.
+- Given a total that reached its limit,
+  when a call names the scope `u/acme`,
+  then it is allowed with count 1, and `o/acme` has a count of its own.
+- Given the scope names `""`, `total` and `daily-requests:2026-11-12`,
+  when each is counted,
+  then the total's count doesn't change.

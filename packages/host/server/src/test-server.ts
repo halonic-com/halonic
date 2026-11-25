@@ -14,7 +14,6 @@ import type {
   GoogleSetupPorts,
   GoogleSetupReadPorts,
   ModelSettingsGate,
-  RequestCountStore,
   RequestLog,
   Server,
   ServerConfig,
@@ -28,6 +27,7 @@ import { createServerForTests } from "./create-server.ts";
 import type { ManyUserPorts } from "./many-users-api.ts";
 import type { ModelChoicePort } from "./model-choice-api.ts";
 import type { ProviderKeyStore } from "./provider-key-store.ts";
+import type { RequestCountStore } from "./request-count-store-api.ts";
 
 /** A port the test doesn't expect the server to touch: any call fails the test loudly. */
 export function unusedPort<Port extends object>(name: string): Port {
