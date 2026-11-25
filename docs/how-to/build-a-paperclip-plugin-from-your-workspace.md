@@ -74,6 +74,8 @@ refuses a tool file that could leak a key or hide what it does:
   or marks that change the text's direction;
 - an action that isn't in the list, a setting the action doesn't take, or a
   field the format doesn't know;
+- a parameter the action needs but the tool doesn't declare, or one the
+  action never reads (see the next section);
 - a file larger than 64 KiB.
 
 For example, a parameter named `token`:
@@ -85,34 +87,79 @@ library/tools/deploy.tool.yaml
 ✕ 1 error in 1 file. Checked 14 files.
 ```
 
+And a tool for `github.pull-request` whose parameter is called `number`
+instead of `pr`:
+
+```text
+library/tools/bad-pr.tool.yaml
+  4:3  ✕ The action github.pull-request reads the parameter 'pr', so every tool that runs it must declare it. Add 'pr' under parameters, or rename the parameter that should be 'pr'.  (parameter-missing)
+  5:5  ✕ The action github.pull-request never reads this parameter, so an agent's value for it would be dropped. It reads only 'pr', 'repo': rename or remove it.  (parameter-not-read)
+
+✕ 2 errors in 1 file. Checked 17 files.
+```
+
 ## 2. Pick an action
 
 An action is reviewed code that ships with Halonic. Your tool picks one and
-fills in its settings; it can't add an action of its own. No action writes
-anything.
+fills in its settings; it can't add an action of its own.
 
-This version of Halonic can build a plugin with these actions:
+This version of Halonic can build a plugin with these actions that read:
 
 | Action | What it answers | Parameters it reads | Settings under `with` |
 | --- | --- | --- | --- |
 | `github.pull-request` | one pull request: its checks, whether it can merge, its place in the merge queue, approvals on its newest commit, the newest review finding and what its author does next | `pr` (a number or the pull request's GitHub URL), and `repo` when the tool lists more than one repository | `repositories`: 1 to 20, each `owner/name` |
 | `github.open-pull-requests` | the caller's open pull requests (branches that start with the agent's URL key), listed with the ones that need attention first | none | `repositories` |
+| `github.merge-times` | how long pull requests took from being opened to being merged, per repository | none | `repositories`, and `days`: 1 to 90, 7 by default |
 | `paperclip.task` | one Paperclip task: status, holder, blockers, documents and its newest comments | `task` (its identifier, such as `ACME-12`, or its id), `comments` (0 to 20, 5 by default), `document` (a document key) | none |
+| `paperclip.failed-runs` | the agent runs that failed or timed out, counted from when the plugin started watching | `since` (a time such as `2026-11-22T12:00:00Z`; the last `hours` when left out) | `hours`: 1 to 168, 24 by default |
 | `paperclip.template` | one of the workspace's templates, or the list of them | `id` (leave it out for the list) | none |
 
-The two `github.` actions need a GitHub read token (see step 4). The
-`paperclip.` actions need no key: they read through Paperclip.
+And these that write to Paperclip, each as the agent that calls the tool:
 
-An action reads its parameters only by the names in this table. Declare them
-in your tool under those names: a parameter with another name never reaches
-the action.
+| Action | What it does | Parameters it reads | Settings under `with` |
+| --- | --- | --- | --- |
+| `paperclip.comment` | posts one comment on a task in the caller's company | `task`, `body` | `mode` (see below) |
+| `paperclip.next-step` | sets a task the caller holds to `in_progress` with a monitor, or to `blocked` with the tasks that block it, with a comment | `task`, `status`, `comment`, `blockedBy`, and `monitor` or the `monitorInMinutes`, `monitorRef`, `monitorService` and `monitorMaxChecks` fields | `mode` |
+| `paperclip.finish-run` | ends the caller's run on a task it holds: `done`, `blocked` with its blockers, or `handoff` to the agent named in `to`, with a comment | `task`, `outcome`, `comment`, `to`, `blockedBy` | `mode` |
+
+The `github.` actions need a GitHub read token (see step 4). The
+`paperclip.` actions need no key: they go through Paperclip.
+
+Declare each parameter in your tool under the name in these tables.
+`halonic validate` refuses a tool that leaves out one its action needs, or
+declares one its action never reads.
 
 The `paperclip.template` action reads the Markdown files in your workspace's
 `library/templates/` folder, one template per file.
 
-The format also knows `github.merge-queue`, `github.merge-times` and
-`paperclip.failed-runs`, but a plugin from this version of Halonic can't run
-them. `halonic validate` accepts them; the build refuses them (see below).
+The format also knows `github.merge-queue`, but a plugin from this version of
+Halonic can't run it. `halonic validate` accepts it; the build refuses it (see
+below).
+
+### Writing actions start in dry run
+
+A writing action only writes when its tool file says `mode: write`. Without
+it, the tool checks the call and answers what it would have written, and
+writes nothing:
+
+```text
+Dry run: would post your comment on ACME-12. Nothing was written; the tool file sets mode: write when it goes live.
+```
+
+Only the tool file sets the mode; an agent's call can't change it. So try a
+new writing tool in dry run first, then set `mode: write` and build again:
+
+```yaml
+action:
+  run: paperclip.comment
+  with:
+    mode: write
+```
+
+`paperclip.next-step` and `paperclip.finish-run` change only a task the
+calling agent holds. Setting a task to `in_progress` needs a monitor, and
+only a Paperclip that lets a plugin set monitors allows it; elsewhere the
+tool refuses, and the agent sets the monitor itself.
 
 ## 3. Build the plugin
 
@@ -123,11 +170,11 @@ halonic build paperclip-plugin --out dist
 ```
 
 ```text
-✓ Built halonic-ws.acme 0.1.0 from commit 1c23cc6
+✓ Built halonic-ws.acme 0.1.0 from commit 873b694
   Plugin file    ./dist/halonic-ws.acme-0.1.0.tar
   Release file   ./dist/halonic-ws.acme-0.1.0.release.json
-  SHA-256        <the plugin file's sha-256>
-  Changes        added pr_status
+  SHA-256        b97549649579591470fb81d0474f83a0fd5393c8b8a0307d0f00493e8379b8ee
+  Changes        added my_prs, pr_status and task_get
 ```
 
 It writes two files:
@@ -224,7 +271,8 @@ nothing runs.
 
 The plugin asks Paperclip only for the permissions its tools need. For
 example, it asks to read tasks and their comments only when one of your tools
-uses `paperclip.task`.
+uses `paperclip.task`, and to post comments or change tasks only when one
+uses a writing action.
 
 ## 5. Update or roll back
 
@@ -238,10 +286,10 @@ To change your tools:
    ```
 
    ```text
-   ✓ Built halonic-ws.acme 0.2.0 from commit b1f6913
+   ✓ Built halonic-ws.acme 0.2.0 from commit d5e0193
      Plugin file    ./dist/halonic-ws.acme-0.2.0.tar
      Release file   ./dist/halonic-ws.acme-0.2.0.release.json
-     SHA-256        <the plugin file's sha-256>
+     SHA-256        a5de844b64b5f392887a731b6cb6e76f10a79757646d915a7d355d302c34401e
      Changes        changed pr_status
    ```
 
