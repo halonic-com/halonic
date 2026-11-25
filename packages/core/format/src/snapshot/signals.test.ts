@@ -63,7 +63,10 @@ verifies("format.workspace-snapshot", () => {
 
   it("reads one signal on its own, with its defaults and its refusals", () => {
     const read = readSignal({ version: 1, id: "watcher", rule: { run: "pr-watcher" } });
-    expect(read.ok && read.value.rule.with.done && !read.value.dryRun).toBe(true);
+    expect(read.ok ? read.value : undefined).toMatchObject({
+      rule: { run: "pr-watcher", with: { done: true } },
+      dryRun: false,
+    });
     const leaky = readSignal(signal(lowercaseKey));
     expect(leaky.ok ? [] : summary(leaky.error)).toEqual(["id value-looks-like-key"]);
     expect(leaky.ok ? "" : JSON.stringify(leaky.error)).not.toContain(lowercaseKey);

@@ -43,11 +43,27 @@ verifies("cli.commands.validate.signal-refused", () => {
     expect(io.stdout.join("\n")).toContain(`library${sep}signals${sep}watcher.signal.yaml`);
   });
 
-  it("passes a signal file that picks an offered rule", async () => {
-    withSignal("rule: { run: pr-watcher }");
+  it.each([
+    ["pr-watcher", "rule: { run: pr-watcher }"],
+    ["board-ask", "rule: { run: board-ask, with: { windowMinutes: 20, wake: false } }"],
+    ["task-effort", "rule: { run: task-effort, with: { highFrom: 3, highAfterSendBack: false } }"],
+  ])("passes a signal file that picks the offered rule %s", async (_, line) => {
+    withSignal(line);
 
     const { code } = await validateIn(workspace);
 
     expect(code).toBe(exitCode.ok);
+  });
+
+  it.each([
+    ["board-ask", "rule: { run: board-ask, with: { wakeOn: [ci-red] } }"],
+    ["task-effort", "rule: { run: task-effort, with: { effort: max } }"],
+  ])("refuses a setting the rule %s doesn't know", async (_, line) => {
+    withSignal(line);
+
+    const { code, io } = await validateIn(workspace);
+
+    expect(code).toBe(exitCode.failed);
+    expect(io.stdout.join("\n")).toContain(`library${sep}signals${sep}watcher.signal.yaml`);
   });
 });

@@ -21,7 +21,11 @@ function ruleChoice<Name extends SignalRuleName>(name: Name) {
 }
 
 /** Which rule the signal switches on, and its settings. An unknown rule is refused. */
-export const SignalRuleChoice = s.discriminatedUnion("run", [ruleChoice("pr-watcher")]);
+export const SignalRuleChoice = s.discriminatedUnion("run", [
+  ruleChoice("pr-watcher"),
+  ruleChoice("board-ask"),
+  ruleChoice("task-effort"),
+]);
 
 /** A workspace signal, as `library/signals/<id>.signal.yaml` holds it. */
 export const Signal = s
