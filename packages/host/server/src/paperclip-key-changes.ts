@@ -37,6 +37,90 @@ export async function recordKeyChange(
   );
 }
 
+/**
+ * The newest sign-ins started: who started each, and whether its `connected` is recorded yet, so
+ * the record names the device that started a sign-in and holds one `connected` per sign-in.
+ */
+export const keySignInsKey = "paperclip-keys:sign-ins";
+
+/** The sign-in list keeps only the newest of these. */
+const keptSignIns = 20;
+
+interface StartedSignIn {
+  readonly signInId: string;
+  /** As {@link KeyChange.by}: the session that started the sign-in. */
+  readonly by: string;
+  readonly recorded: boolean;
+}
+
+/** Notes that `by` started the sign-in `signInId`, for {@link claimConnected}. */
+export async function rememberSignIn(
+  coordination: Coordination,
+  signInId: string,
+  by: string,
+): Promise<void> {
+  await updateSignIns(coordination, signInId, () => ({ signInId, by, recorded: false }));
+}
+
+/**
+ * Marks the sign-in's `connected` as recorded and says whom to record it for: the session that
+ * started it, or `poller` when the list no longer holds it. `null` when it is recorded already,
+ * so polls after the first add nothing.
+ */
+export async function claimConnected(
+  coordination: Coordination,
+  signInId: string,
+  poller: string,
+): Promise<string | null> {
+  let by: string | null = null;
+  await updateSignIns(coordination, signInId, (known) => {
+    if (known?.recorded === true) {
+      by = null;
+      return undefined;
+    }
+    by = known?.by ?? poller;
+    return { signInId, by, recorded: true };
+  });
+  return by;
+}
+
+/** Puts `next`'s entry for `signInId` last in the list, or leaves the list when it gives `undefined`. */
+async function updateSignIns(
+  coordination: Coordination,
+  signInId: string,
+  next: (known: StartedSignIn | undefined) => StartedSignIn | undefined,
+): Promise<void> {
+  await updateRecord(coordination, keySignInsKey, (stored) => {
+    const signIns = readSignIns(stored);
+    const entry = next(signIns.find((signIn) => signIn.signInId === signInId));
+    if (entry === undefined) {
+      return undefined;
+    }
+    const others = signIns.filter((signIn) => signIn.signInId !== signInId);
+    return JSON.stringify({
+      version: recordVersion,
+      signIns: [...others, entry].slice(-keptSignIns),
+    });
+  });
+}
+
+function readSignIns(stored: string | null): StartedSignIn[] {
+  return readList(stored, "signIns")
+    .filter(isStartedSignIn)
+    .map(({ signInId, by, recorded }) => ({ signInId, by, recorded }));
+}
+
+function isStartedSignIn(value: unknown): value is StartedSignIn {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const fields = value as Record<string, unknown>;
+  return (
+    ["signInId", "by"].every((field) => typeof fields[field] === "string") &&
+    typeof fields["recorded"] === "boolean"
+  );
+}
+
 /** The changes, oldest first. */
 export async function keyChanges(coordination: Coordination): Promise<readonly KeyChange[]> {
   return readChanges(await coordination.read(keyChangesKey));
@@ -44,20 +128,20 @@ export async function keyChanges(coordination: Coordination): Promise<readonly K
 
 /** The changes in a stored record; one of another version, or that doesn't read, holds none. */
 function readChanges(stored: string | null): KeyChange[] {
+  return readList(stored, "changes")
+    .filter(isKeyChange)
+    .map(({ connection, change, by, at }) => ({ connection, change, by, at }));
+}
+
+/** The list under `field` in a stored record; one of another version, or that doesn't read, holds none. */
+function readList(stored: string | null, field: string): unknown[] {
   if (stored === null) {
     return [];
   }
   try {
-    const record = JSON.parse(stored) as { version?: unknown; changes?: unknown };
-    if (record?.version !== recordVersion || !Array.isArray(record.changes)) {
-      return [];
-    }
-    return record.changes.filter(isKeyChange).map(({ connection, change, by, at }) => ({
-      connection,
-      change,
-      by,
-      at,
-    }));
+    const record = JSON.parse(stored) as Record<string, unknown> | null;
+    const list = record?.[field];
+    return record?.["version"] === recordVersion && Array.isArray(list) ? list : [];
   } catch {
     return [];
   }

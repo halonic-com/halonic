@@ -1,4 +1,5 @@
 import type { Coordination } from "@halonicjs/ports";
+import type { ErrorLog } from "./api.ts";
 import type { PaperclipKeyPorts } from "./paperclip-key-api.ts";
 import { FakeCoordination, FakePasswordHasher, TestClock, testServer } from "./test-server.ts";
 
@@ -8,9 +9,9 @@ export const password = "correct horse";
 
 /**
  * A test server with a password, and helpers to pair devices with it the way a client would;
- * with `paperclipKeys`, it serves the Paperclip key routes too.
+ * with `paperclipKeys`, it serves the Paperclip key routes too, and `errorLog` hears its errors.
  */
-export function setup(paperclipKeys?: PaperclipKeyPorts) {
+export function setup(paperclipKeys?: PaperclipKeyPorts, errorLog?: ErrorLog) {
   const clock = new TestClock();
   const coordination = new FakeCoordination(clock);
   const secret = { hash: `hash:${password}` };
@@ -21,6 +22,7 @@ export function setup(paperclipKeys?: PaperclipKeyPorts) {
     coordination: coordination as unknown as Coordination,
     passwordHasher: new FakePasswordHasher(),
     ...(paperclipKeys === undefined ? {} : { paperclipKeys }),
+    ...(errorLog === undefined ? {} : { errorLog }),
   });
 
   async function send(path: string, init: { body?: object; auth?: string; cookie?: string } = {}) {

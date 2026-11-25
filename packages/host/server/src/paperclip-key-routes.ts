@@ -4,7 +4,12 @@ import { sessionHolder } from "./device-sign-in.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { readMessagingBody } from "./messaging-wire.ts";
 import type { PaperclipKeyPorts } from "./paperclip-key-api.ts";
-import { type KeyChange, recordKeyChange } from "./paperclip-key-changes.ts";
+import {
+  claimConnected,
+  type KeyChange,
+  recordKeyChange,
+  rememberSignIn,
+} from "./paperclip-key-changes.ts";
 import { checkPasswordAgain } from "./password-again.ts";
 import { isJsonRequest } from "./run-routes.ts";
 import { passwordSecretName, thisComputerSession } from "./sign-in.ts";
@@ -90,30 +95,67 @@ function withPassword<S extends Schema<{ password: string }>>(
   };
 }
 
+/** The name of what was thrown, for the error log: a message could quote Paperclip's answer. */
+function errorName(cause: unknown): string {
+  return cause instanceof Error ? cause.name : typeof cause;
+}
+
 /**
  * The routes by call: sign in to Paperclip (`sign-in/start`, `sign-in/poll`,
  * `sign-in/cancel`), and `disconnect`. The ones that put a key in the store or
- * take it out are `sign-in/poll` and `disconnect`, and each records which
- * session did. A sign-in starts only with the password, so no key is stored
- * without it; `sign-in/cancel` may undo a key nobody holds.
+ * take it out are `sign-in/poll` and `disconnect`, and each records who did:
+ * for a sign-in, the session that started it, once however often it is polled.
+ * A sign-in starts only with the password, so no key is stored without it;
+ * `sign-in/cancel` may undo a key nobody holds.
  */
 function routesOf(
   port: PaperclipKeyPorts,
   ports: KeyRoutePorts,
 ): Readonly<Record<string, PaperclipKeyRoute>> {
-  const record = (call: PaperclipKeyCall, connection: string, change: KeyChange["change"]) =>
-    recordKeyChange(ports, { connection, change, by: sessionHolder(call.session) });
+  const { coordination } = ports;
+  /**
+   * Writes to the record after the key change it notes is done, so a failed write goes to the
+   * error log and the route still answers what the port did.
+   */
+  const keepRecord = async (call: string, write: () => Promise<void>) => {
+    try {
+      await write();
+    } catch (cause) {
+      ports.errorLog.record(
+        new Error(`Paperclip key record failed at ${call}: ${errorName(cause)}`),
+      );
+    }
+  };
+  const record = (connection: string, change: KeyChange["change"], by: string) =>
+    recordKeyChange(ports, { connection, change, by });
   return {
-    "sign-in/start": withPassword(ports, bodies.start, (body) => port.start(body)),
+    "sign-in/start": withPassword(ports, bodies.start, async (body, call) => {
+      const started = await port.start(body);
+      if (started.outcome === "started") {
+        await keepRecord("sign-in/start", () =>
+          rememberSignIn(coordination, started.signInId, sessionHolder(call.session)),
+        );
+      }
+      return started;
+    }),
     "sign-in/poll": withBody(bodies.signIn, async ({ signInId }, call) => {
       const state = await port.poll(signInId);
-      if (state.status === "connected") await record(call, state.connection, "connected");
+      if (state.status === "connected") {
+        await keepRecord("sign-in/poll", async () => {
+          const by = await claimConnected(coordination, signInId, sessionHolder(call.session));
+          if (by !== null) await record(state.connection, "connected", by);
+        });
+      }
       return state;
     }),
     "sign-in/cancel": withBody(bodies.signIn, ({ signInId }) => port.cancel(signInId)),
     disconnect: withPassword(ports, bodies.disconnect, async ({ connection }, call) => {
       const done = await port.disconnect(connection);
-      if (done.outcome === "disconnected") await record(call, connection, "disconnected");
+      if (done.outcome === "disconnected") {
+        await keepRecord("disconnect", () =>
+          record(connection, "disconnected", sessionHolder(call.session)),
+        );
+      }
       return done;
     }),
   };
@@ -142,7 +184,9 @@ export interface PaperclipKeyRoutes {
  * server with no password treats no request as signed in), the route (404), a
  * JSON body (415), then the body (400). No answer holds a key. A failure is
  * 502 `paperclip_sign_in_failed`, and the error log gets only the call and
- * the error's name, since a message could quote Paperclip's answer.
+ * the error's name, since a message could quote Paperclip's answer. A failed
+ * write to the record of who changed a key only goes to the error log: the key
+ * is stored or removed by then, so the answer says so.
  */
 export function createPaperclipKeyRoutes(
   port: PaperclipKeyPorts,
@@ -171,8 +215,7 @@ export function createPaperclipKeyRoutes(
     try {
       return await route({ request, context, body, session });
     } catch (cause) {
-      const name = cause instanceof Error ? cause.name : typeof cause;
-      errorLog.record(new Error(`Paperclip sign-in failed at ${call}: ${name}`));
+      errorLog.record(new Error(`Paperclip sign-in failed at ${call}: ${errorName(cause)}`));
       return errorResponse(serverErrors.paperclipSignInFailed);
     }
   }
