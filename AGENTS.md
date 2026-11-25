@@ -173,6 +173,10 @@ Stacks stay short, so a closed pull request never strands work above it:
   approves the whole stack once. The layers then merge bottom-up without another round. A layer
   that has only been rebased since the approval needs no new review; a layer whose content changed
   goes back to the same reviewer for that layer only.
+- After approval, don't rebase or push unless the pull request conflicts with `main` or the merge
+  queue asks for it on the pull request. Being behind `main` is fine: the merge queue tests it on
+  top of current `main` anyway, and any push needs a new CI run and a new approval
+  ([docs/guides/review.md](docs/guides/review.md#after-approval)).
 - The maintainer gives final approval only on the core building blocks: `packages/core/*`,
   `packages/host`, the guard (`tooling/check`, `testing/spec`, `.github/workflows`), a new package,
   and any change to a package's public interface (what its `src/index.ts` exports; an API report
