@@ -41,6 +41,7 @@ const setVariable: StepperDefinition<Values> = {
       address: "https://github.com/{owner}/{repo}/settings/variables/actions",
       instructions: ["Check that {name} is there."],
       checkedOn: "2026-11-24",
+      result: { label: "Variable name", pattern: "^[A-Z][A-Z0-9_]{0,63}$" },
     },
   ],
   targets: repository,

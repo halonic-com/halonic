@@ -9,6 +9,7 @@
 import type { ActionOutcome } from "@halonicjs/events";
 import type { AnswerResult, InboxAnswer, MessagingSource } from "@halonicjs/ports";
 import type { ActionSteps } from "@halonicjs/studio-services";
+import { checkPastedResult } from "../pasted-result.ts";
 import {
   type ActionItem,
   type ActionReviewContext,
@@ -74,7 +75,7 @@ export class StepperRun {
     runAll: () => void this.guard(() => this.runAll()),
     decline: () => void this.guard(() => this.end("stopped")),
     openPage: (address) => void this.guard(() => this.openPage(address)),
-    confirmBrowserStep: (number) => void this.guard(() => this.confirm(number)),
+    confirmBrowserStep: (number, result) => void this.guard(() => this.confirm(number, result)),
     // No step has a check until ToolScript check steps land (HAL-17491 7.9), so none offers it.
     checkStep: () => {},
     markDoneByHand: (number) => void this.guard(() => this.confirm(number)),
@@ -226,14 +227,32 @@ export class StepperRun {
     if (step !== undefined) await this.run(step.number);
   }
 
-  /** Records a step the user did on the page or by hand, and ends the request if it was the last. */
-  private async confirm(number: number): Promise<void> {
+  /**
+   * Records a step the user did on the page or by hand, with the result they pasted back as its
+   * `kept.result`, and ends the request if it was the last. The pasted result is checked again
+   * here (`action-steppers.pasted-result`), so one the screen should have refused records nothing.
+   */
+  private async confirm(number: number, pasted?: string): Promise<void> {
     const ran = await this.alone(async () => {
       await this.refresh();
-      if (this.view.stage.kind === "ready")
-        await this.options.steps.confirmStep(this.request, number);
+      if (this.view.stage.kind !== "ready") return;
+      const kept = this.keptResult(number, pasted);
+      await this.options.steps.confirmStep(this.request, number, kept);
     });
     if (ran) await this.endIfDone();
+  }
+
+  /** A browser step's pasted result as its kept field; throws, never naming the value, if refused. */
+  private keptResult(number: number, pasted: string | undefined): { result: string } | undefined {
+    const action = this.view.steps.find((step) => step.number === number)?.action;
+    if (pasted === undefined || action?.kind !== "browser" || action.resultLabel === undefined) {
+      return undefined;
+    }
+    const checked = checkPastedResult(pasted, action.resultPattern);
+    if (checked.kind === "refused") {
+      throw new Error(`The pasted result wasn't kept (${checked.reason}).`);
+    }
+    return checked.kind === "kept" ? { result: checked.value } : undefined;
   }
 
   private async endIfDone(): Promise<void> {

@@ -267,3 +267,56 @@ verifies("action-steppers.shell-run", () => {
     });
   });
 });
+
+/** Shaped like an access key, built in parts so the leak guard doesn't take it for one. */
+const keyShaped = `${"AKIA"}${"Q".repeat(8)}${"7".repeat(8)}`;
+
+verifies("action-steppers.pasted-result", () => {
+  describe("StepperRun with a pasted result", () => {
+    /** A run whose step 1 is done, so step 2, the guided step, is the last. */
+    async function atGuidedStep() {
+      const ran = await runOf(variableRequest);
+      const run = await ran.open();
+      run.actions.runStep(1);
+      await run.idle();
+      return { ...ran, run };
+    }
+
+    it("sends a matching pasted value back in the answer's kept.result", async () => {
+      const { answers, run } = await atGuidedStep();
+      run.actions.confirmBrowserStep(2, " ACME_MODE ");
+      await run.idle();
+      expect(answers).toEqual([
+        {
+          kind: "action-result",
+          outcome: "succeeded",
+          steps: [
+            { step: 1, outcome: "succeeded", status: 201, kept: { name: "ACME_MODE" } },
+            { step: 2, outcome: "succeeded", byHand: true, kept: { result: "ACME_MODE" } },
+          ],
+        },
+      ]);
+    });
+
+    it("records nothing for a value that doesn't match the step's pattern", async () => {
+      const { answers, records, run } = await atGuidedStep();
+      const before = await records.read(request);
+      run.actions.confirmBrowserStep(2, "acme mode");
+      await run.idle();
+      expect(run.failure).toEqual(new Error("The pasted result wasn't kept (no-match)."));
+      expect(await records.read(request)).toEqual(before);
+      expect(answers).toEqual([]);
+    });
+
+    it("never records a key-shaped value, even one the pattern takes", async () => {
+      const { answers, records, run } = await atGuidedStep();
+      const before = await records.read(request);
+      run.actions.confirmBrowserStep(2, keyShaped);
+      await run.idle();
+      expect(run.failure).toEqual(new Error("The pasted result wasn't kept (key-shaped)."));
+      expect(await records.read(request)).toEqual(before);
+      expect(answers).toEqual([]);
+      expect(String(run.failure)).not.toContain(keyShaped);
+    });
+  });
+});

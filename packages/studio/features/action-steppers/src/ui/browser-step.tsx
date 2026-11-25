@@ -6,9 +6,16 @@ import {
   useWriteClipboard,
 } from "@halonicjs/studio-kit";
 import { useState } from "react";
+import { checkPastedResult } from "../pasted-result.ts";
 import type { StepAction, StepperActions, StepperRequester } from "../stepper-view.ts";
 import { focusMarks } from "./stepper-changes.ts";
-import { browserWords, instructionsText, resultHintText, sourceText } from "./stepper-words.ts";
+import {
+  browserWords,
+  instructionsText,
+  pastedResultWords,
+  resultHintText,
+  sourceText,
+} from "./stepper-words.ts";
 
 type BrowserAction = Extract<StepAction, { readonly kind: "browser" }>;
 
@@ -104,7 +111,9 @@ export interface BrowserControlsProps {
  * The next browser step's controls: **Open the page**, **Copy instructions** (the copied text
  * starts with the "not checked" label on a requester's step, HAL-17491 8.4), the optional
  * paste-back field, which is never secret, and **Step 2 is done**. Once the step before is done,
- * focus comes to **Open the page**.
+ * focus comes to **Open the page**. A pasted value that looks like a key or doesn't match the
+ * step's pattern says why under the field, and the step isn't recorded
+ * (`action-steppers.pasted-result`); a new paste clears the reason.
  */
 export function BrowserControls({
   number,
@@ -114,7 +123,20 @@ export function BrowserControls({
   waits,
 }: BrowserControlsProps) {
   const [result, setResult] = useState("");
+  const [refused, setRefused] = useState<keyof typeof pastedResultWords>();
   const fromRequester = action.source.kind === "requester";
+  const confirm = () => {
+    if (action.resultLabel === undefined) {
+      actions.confirmBrowserStep(number, undefined);
+      return;
+    }
+    const pasted = checkPastedResult(result, action.resultPattern);
+    if (pasted.kind === "refused") {
+      setRefused(pasted.reason);
+      return;
+    }
+    actions.confirmBrowserStep(number, pasted.kind === "kept" ? pasted.value : undefined);
+  };
   return (
     <div data-focus={focusMarks.stepControls} className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-2">
@@ -125,12 +147,16 @@ export function BrowserControls({
         <Field
           label={action.resultLabel}
           hint={fromRequester ? resultHintText(requester) : undefined}
+          error={refused === undefined ? null : pastedResultWords[refused]}
         >
           <Input
             autoComplete="off"
             spellCheck={false}
             value={result}
-            onChange={(event) => setResult(event.target.value)}
+            onChange={(event) => {
+              setResult(event.target.value);
+              setRefused(undefined);
+            }}
           />
         </Field>
       )}
@@ -138,14 +164,7 @@ export function BrowserControls({
         <Button
           variant="primary"
           unavailable={waits}
-          onClick={() =>
-            waits !== undefined
-              ? undefined
-              : actions.confirmBrowserStep(
-                  number,
-                  action.resultLabel === undefined ? undefined : result.trim(),
-                )
-          }
+          onClick={() => (waits !== undefined ? undefined : confirm())}
         >
           {browserWords.done(number)}
         </Button>

@@ -152,6 +152,7 @@ function stepAction(
         instructions: step.instructions.map((line) => fill(line, parameters, false)),
         source: { kind: "library", checkedOn: localDay(step.checkedOn) },
         resultLabel: step.result?.label,
+        resultPattern: step.result?.pattern,
       };
     case "input":
       return { kind: "input", label: step.label, secret: step.secret };

@@ -118,6 +118,7 @@ export function browserRequest(instructions: readonly string[] = ["Type acme-pro
         instructions,
         source: { kind: "requester" },
         resultLabel: "Project ID",
+        resultPattern: "^[a-z][a-z0-9-]{5,29}$",
       }),
       step(2, "admin", "Turns on billing for the project", {
         kind: "browser",
