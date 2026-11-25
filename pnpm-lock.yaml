@@ -1537,6 +1537,9 @@ importers:
 
   packages/adapters/harness-opencode:
     dependencies:
+      '@halonicjs/adapter-harness-kit':
+        specifier: workspace:*
+        version: link:../harness-kit
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports
@@ -1544,6 +1547,9 @@ importers:
         specifier: workspace:*
         version: link:../../core/std
     devDependencies:
+      '@halonicjs/testing-contracts':
+        specifier: workspace:*
+        version: link:../../testing/contracts
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../testing/spec
