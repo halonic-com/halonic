@@ -2,6 +2,7 @@
 
 - Approval: HAL-17977 (step 5 of the phase 3 plan on HAL-17450, rev 5: budgets first read-only)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:SelXCIzFABZD8PE+pP36BxNsWQb+w0llZf88GNq25/xnEeav0sPJbp33ITb+pCLgA2DeUuQIiXWuww0Vs7PHCw==
 
 `format.tool-actions` lists one more action, `paperclip.budgets`. It needs `paperclip-api` and
 takes one setting, `agents`: each agent's monthly budget in dollars by its url key. It doesn't
