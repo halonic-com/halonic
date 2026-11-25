@@ -28,13 +28,14 @@ jobs:
   check:
     if: github.ref == 'refs/heads/owen/HAL-18578-cloud-check'
     runs-on: ubuntu-24.04
+    # Step budgets add up to 19 minutes, so cleanup keeps its 5 inside the 20-minute cap.
     timeout-minutes: 20
     environment: cloud-check
     permissions:
       contents: read
+    # The Cloudflare secrets are only in the env of the steps that call Cloudflare, never the
+    # install's, so no package's install script can read them.
     env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       WRANGLER_SEND_METRICS: "false"
     defaults:
       run:
@@ -42,71 +43,126 @@ jobs:
         working-directory: packages/targets/cloudflare/runtime/cloud-check
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        timeout-minutes: 1
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup
+        timeout-minutes: 4
 
-      - name: Secrets present
+      # Deploy output names the account's workers.dev subdomain: it goes to a file, never the log.
+      - name: Build the image and deploy
+        timeout-minutes: 5
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
             echo "::error::The cloud-check environment has no CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID."
             exit 1
           fi
-
-      # Deploy output names the account's workers.dev subdomain: it goes to a file, never the log.
-      - name: Build the image and deploy
-        run: |
           token=$(openssl rand -hex 32)
           echo "::add-mask::$token"
           echo "CHECK_TOKEN=$token" >> "$GITHUB_ENV"
           if ! $WRANGLER deploy --var "CHECK_TOKEN:$token" > "$RUNNER_TEMP/deploy.log" 2>&1; then
             echo "::error::wrangler deploy failed; its output is withheld because it names the account."
-            grep -iE 'error|failed' "$RUNNER_TEMP/deploy.log" | sed -E 's/[a-z0-9-]+\.workers\.dev/<subdomain>.workers.dev/g' | head -20
+            grep -iE 'error|failed' "$RUNNER_TEMP/deploy.log" | sed -E 's/[a-z0-9-]+\.workers\.dev/<subdomain>.workers.dev/g' | head -20 || true
             exit 1
           fi
-          url=$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' "$RUNNER_TEMP/deploy.log" | head -1)
+          url=$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' "$RUNNER_TEMP/deploy.log" | head -1 || true)
+          if [ -z "$url" ]; then
+            echo "::error::wrangler deploy succeeded but printed no workers.dev URL."
+            exit 1
+          fi
           echo "::add-mask::$url"
           echo "CHECK_URL=$url" >> "$GITHUB_ENV"
           echo "Deployed $WORKER_NAME."
 
+      # Two tries at most: each starts new containers, and max_instances = 1 makes extra tries queue.
       - name: Run the checks
+        timeout-minutes: 4
         run: |
-          # The first request starts the container; give it a few tries while it comes up.
-          for attempt in 1 2 3 4 5; do
-            if curl --fail --silent --show-error --max-time 180 \
+          got_results=false
+          for attempt in 1 2; do
+            if curl --fail --silent --show-error --max-time 100 \
               -H "x-check-token: $CHECK_TOKEN" "$CHECK_URL/check" > "$RUNNER_TEMP/results.txt"; then
+              got_results=true
               break
             fi
-            echo "Attempt $attempt failed; retrying in 20 s."
-            sleep 20
+            echo "Attempt $attempt failed."
+            [ "$attempt" = 1 ] && sleep 20
           done
+          if [ "$got_results" != true ]; then
+            echo "::error::The check Worker gave no results."
+            exit 1
+          fi
           echo "--- results ---"
           cat "$RUNNER_TEMP/results.txt"
-          test "$(grep -c '^PASS ' "$RUNNER_TEMP/results.txt")" -eq 6
-          ! grep -q '^FAIL ' "$RUNNER_TEMP/results.txt"
+          passes=$(grep -c '^PASS ' "$RUNNER_TEMP/results.txt" || true)
+          if [ "$passes" != 7 ]; then
+            echo "::error::$passes of 7 checks passed."
+            exit 1
+          fi
 
+      # Every listing must succeed: a list that fails counts as a failure, never as "0 left".
       - name: Clean up and list what is left
         if: always()
+        timeout-minutes: 5
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
+          set +e
           status=0
-          $WRANGLER delete --name "$WORKER_NAME" --force > /dev/null 2>&1 || echo "Worker delete: nothing deleted (it may not exist)."
-          for id in $($WRANGLER containers list 2>/dev/null | grep "$WORKER_NAME" | grep -oE '[0-9a-f]{8}-[0-9a-f-]{27}'); do
-            $WRANGLER containers delete "$id" > /dev/null 2>&1 || { echo "::error::Could not delete a container application."; status=1; }
+          list_or_fail() {
+            # $1: what is listed; the rest: the wrangler command. Prints only lines naming the Worker.
+            local what=$1; shift
+            local output
+            if ! output=$($WRANGLER "$@" 2>&1); then
+              echo "::error::Could not list $what." >&2
+              status=1
+              return 1
+            fi
+            printf '%s\n' "$output" | grep "$WORKER_NAME"
+            return 0
+          }
+
+          $WRANGLER delete --name "$WORKER_NAME" --force > /dev/null 2>&1 \
+            || echo "Worker delete: nothing deleted (it may not exist)."
+          for id in $(list_or_fail "container applications" containers list | grep -oE '[0-9a-f]{8}-[0-9a-f-]{27}'); do
+            $WRANGLER containers delete "$id" > /dev/null 2>&1 \
+              || { echo "::error::Could not delete a container application."; status=1; }
           done
-          for image in $($WRANGLER containers images list 2>/dev/null | grep "$WORKER_NAME" | awk '{print $1 ":" $2}'); do
-            $WRANGLER containers images delete "$image" > /dev/null 2>&1 || { echo "::error::Could not delete image $image."; status=1; }
+          for image in $(list_or_fail images containers images list | awk '{print $1 ":" $2}'); do
+            $WRANGLER containers images delete "$image" > /dev/null 2>&1 \
+              || { echo "::error::Could not delete image $image."; status=1; }
           done
+
           echo "--- left after cleanup ---"
-          workers=$(curl --silent -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts" \
-            | grep -o "\"id\":\"$WORKER_NAME\"" | wc -l)
-          applications=$($WRANGLER containers list 2>/dev/null | grep -c "$WORKER_NAME" || true)
-          images=$($WRANGLER containers images list 2>/dev/null | grep -c "$WORKER_NAME" || true)
+          scripts=$(curl --fail --silent --show-error --max-time 30 \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts")
+          if [ $? -ne 0 ] || ! printf '%s' "$scripts" | grep -q '"success": *true'; then
+            echo "::error::Could not list Workers."
+            workers=unknown
+            status=1
+          else
+            workers=$(printf '%s' "$scripts" | grep -o "\"id\": *\"$WORKER_NAME\"" | wc -l)
+          fi
+          if applications=$(list_or_fail "container applications" containers list); then
+            applications=$(printf '%s' "$applications" | grep -c . )
+          else
+            applications=unknown
+          fi
+          if images=$(list_or_fail images containers images list); then
+            images=$(printf '%s' "$images" | grep -c . )
+          else
+            images=unknown
+          fi
           echo "$WORKER_NAME Workers: $workers"
           echo "$WORKER_NAME container applications: $applications"
           echo "$WORKER_NAME images: $images"
           if [ "$workers" != 0 ] || [ "$applications" != 0 ] || [ "$images" != 0 ]; then
-            echo "::error::Something is left; delete it by hand and say so on HAL-18578."
+            echo "::error::Something is left or could not be listed; check by hand and say so on HAL-18578."
             status=1
           fi
           exit $status

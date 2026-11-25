@@ -27,7 +27,10 @@ const PROBES: Record<string, string> = {
   "control: allowed site answers": `fetch("https://${ALLOWED_SITE}/").then(
     (r) => console.log(JSON.stringify({ pass: r.ok, detail: "status " + r.status })),
     (e) => console.log(JSON.stringify({ pass: false, detail: String(e.cause ?? e) })))`,
-  "blocked host refused": `fetch("https://blocked.halonic-check.invalid.example.net/").then(
+  "blocked host refused (cloudflare.com)": `fetch("https://cloudflare.com/").then(
+    (r) => console.log(JSON.stringify({ pass: !r.ok, detail: "status " + r.status })),
+    (e) => console.log(JSON.stringify({ pass: true, detail: "refused: " + String(e.cause?.code ?? e) })))`,
+  "blocked host refused (1.1.1.1)": `fetch("https://1.1.1.1/").then(
     (r) => console.log(JSON.stringify({ pass: !r.ok, detail: "status " + r.status })),
     (e) => console.log(JSON.stringify({ pass: true, detail: "refused: " + String(e.cause?.code ?? e) })))`,
   "raw TCP refused": `const s = require("node:net").connect(22, "1.1.1.1");
@@ -57,10 +60,14 @@ export class CheckContainerObject extends RunContainerObject {
   async networkChecks(runId: string): Promise<CheckResult[]> {
     await this.begin(setupFor(runId));
     const results: CheckResult[] = [];
-    for (const [name, script] of Object.entries(PROBES)) {
-      results.push(await this.#probe(runId, name, script));
+    try {
+      for (const [name, script] of Object.entries(PROBES)) {
+        results.push(await this.#probe(runId, name, script));
+      }
+    } finally {
+      // Stop the container even when a probe throws, so a retry isn't held by max_instances = 1.
+      await this.end(runId);
     }
-    await this.end(runId);
     results.push(await outcome("destroy() on a stopped container", () => this.end(runId)));
     return results;
   }
