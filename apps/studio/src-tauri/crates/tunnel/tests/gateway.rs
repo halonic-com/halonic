@@ -195,9 +195,9 @@ fn pixel() -> PhoneDetails {
     }
 }
 
-/// The gateway protocol's `hello`, message version 3 (the session, and so the prologue, stays at 2).
+/// The gateway protocol's `hello`, message version 4 (the session, and so the prologue, stays at 2).
 fn hello() -> Vec<u8> {
-    json!({ "type": "hello", "id": "h1", "version": 3 })
+    json!({ "type": "hello", "id": "h1", "version": 4 })
         .to_string()
         .into_bytes()
 }
@@ -267,7 +267,7 @@ async fn connect(host: &Host, keys: PhoneKeys) -> (PhoneConnection, UnboundedRec
     let welcome: Value = serde_json::from_slice(&welcome).expect("a JSON welcome");
     assert_eq!(welcome["type"], "welcome");
     assert_eq!(welcome["replyTo"], "h1");
-    assert_eq!(welcome["version"], 3);
+    assert_eq!(welcome["version"], 4);
     (phone, events)
 }
 
