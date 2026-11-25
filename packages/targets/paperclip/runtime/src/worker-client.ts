@@ -1,6 +1,7 @@
 import type { RuntimeHost, ToolDeclaration, ToolRunContext } from "./host.ts";
 import { HostLink } from "./host-link.ts";
-import { rpcHost, type ToolRun } from "./rpc-host.ts";
+import { rpcHost, type WorkerRegistry } from "./rpc-host.ts";
+import { WorkerEvents } from "./worker-events.ts";
 import {
   type Frame,
   frame,
@@ -15,7 +16,7 @@ import {
 
 /**
  * Our own client for Paperclip's plugin worker protocol: it answers
- * Paperclip's `initialize`, `health`, `shutdown` and `executeTool`, and gives
+ * Paperclip's `initialize`, `health`, `shutdown`, `executeTool` and `onEvent`, and gives
  * the runtime a `RuntimeHost` whose calls go back to Paperclip. It uses only
  * built-in web APIs, so the worker ships no Paperclip code.
  */
@@ -134,7 +135,9 @@ export function startWorker(
     }
   };
   const link = new HostLink(send, options.timeoutMs ?? hostCallTimeoutMs);
-  const tools = new Map<string, ToolRun>();
+  const log = (level: "warn" | "error", message: string) =>
+    send({ method: "log", params: { level, message } });
+  const registry: WorkerRegistry = { tools: new Map(), events: new WorkerEvents(link, log) };
   let initialized = false;
   let stop: () => void = () => {};
   const stopped = new Promise<void>((resolve) => {
@@ -147,7 +150,7 @@ export function startWorker(
     const start = readStart(params);
     initialized = true;
     link.allow(start.capabilities);
-    await setup(rpcHost(link, tools), start);
+    await setup(rpcHost(link, registry), start);
     return { ok: true, supportedMethods: [] };
   }
 
@@ -155,10 +158,10 @@ export function startWorker(
     if (!initialized)
       throw new RpcError(rpcErrors.invalidRequest, "the worker isn't initialized yet.");
     const { toolName, parameters, runContext } = readToolCall(params);
-    const run = tools.get(toolName);
+    const run = registry.tools.get(toolName);
     if (run === undefined)
       throw new RpcError(rpcErrors.workerError, `no tool ${toolName} is registered.`);
-    return run(parameters, runContext, rpcHost(link, tools, invocationId));
+    return run(parameters, runContext, rpcHost(link, registry, invocationId));
   }
 
   async function dispatch(request: Request): Promise<unknown> {
@@ -172,6 +175,10 @@ export function startWorker(
         return null;
       case "executeTool":
         return executeTool(request.params, request.invocationId);
+      case "onEvent":
+        if (!initialized)
+          throw new RpcError(rpcErrors.invalidRequest, "the worker isn't initialized yet.");
+        return registry.events.deliver(request.params);
       default:
         throw new RpcError(rpcErrors.methodNotFound, `the worker has no method ${request.method}.`);
     }

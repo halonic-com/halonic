@@ -96,10 +96,14 @@ refuses a Paperclip that initializes it with another API version. It uses only b
 so `worker.js` holds no Paperclip code and imports nothing but its `snapshot.json`; the SDK is used only in the contract
 tests.
 
-- It answers `initialize`, `health`, `shutdown` and `executeTool`; any other method gets a
-  method-not-found error.
-- It calls back to Paperclip for state, secrets, http, agents and metrics only when the plugin's
-  manifest declares the capability that call needs, and refuses the call itself otherwise.
+- It answers `initialize`, `health`, `shutdown`, `executeTool` and `onEvent`; any other method gets
+  a method-not-found error.
+- It calls back to Paperclip for state, secrets, http, agents, tasks, metrics and event
+  subscriptions only when the plugin's manifest declares the capability that call needs, and
+  refuses the call itself otherwise.
+- `onEvent` hands the event to the plugin's listeners for it. A listener that fails, or a
+  subscription Paperclip or the worker refuses, goes to Paperclip's plugin log and never stops the
+  worker.
 - A line longer than 4 MiB, a line that isn't JSON-RPC, and a call back that gets no answer within
   9 s each end in an error, never in a stopped worker. A call's params, which may hold a key, never
   go into an error.

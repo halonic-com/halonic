@@ -148,6 +148,9 @@ async function hostAnswer(harness: SdkHarness, request: Message): Promise<unknow
       const { agentId, companyId } = params<{ agentId: string; companyId: string }>();
       return ctx.agents.get(agentId, companyId);
     }
+    case "events.subscribe":
+      // Paperclip records the subscription and answers with nothing.
+      return null;
     case "agents.list":
       return ctx.agents.list(params<{ companyId: string; limit?: number }>());
     case "metrics.write": {

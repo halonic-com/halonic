@@ -1,5 +1,6 @@
 import type { RuntimeHost, ToolResult, ToolRunContext } from "./host.ts";
 import type { HostLink } from "./host-link.ts";
+import type { WorkerEvents } from "./worker-events.ts";
 
 /**
  * The runtime's `RuntimeHost` over the worker protocol: each client call
@@ -56,18 +57,25 @@ function sentInit(init: RequestInit) {
   };
 }
 
+/** Where the plugin's tools and event listeners go, for the worker to find. */
+export interface WorkerRegistry {
+  readonly tools: Map<string, ToolRun>;
+  readonly events: WorkerEvents;
+}
+
 /**
  * The host for one invocation: its calls echo the invocation id Paperclip
- * scopes them by. Tools register into `tools`, where the worker finds them.
+ * scopes them by. Tools and event listeners go into the worker's registry.
  */
 export function rpcHost(
   link: HostLink,
-  tools: Map<string, ToolRun>,
+  registry: WorkerRegistry,
   invocationId?: string,
 ): RuntimeHost {
   const to = (method: string, params: unknown) => link.call({ method, params, invocationId });
   return {
-    tools: { register: (name, _declaration, run) => void tools.set(name, run) },
+    tools: { register: (name, _declaration, run) => void registry.tools.set(name, run) },
+    events: { on: (name, listener) => registry.events.on(name, listener) },
     agents: {
       get: async (agentId, companyId) => {
         const agent = await to("agents.get", { agentId, companyId });

@@ -23,6 +23,7 @@ const callCapability: Readonly<Record<string, Capability | undefined>> = {
   "issues.documents.list": "issue.documents.read",
   "issues.documents.get": "issue.documents.read",
   "metrics.write": "metrics.write",
+  "events.subscribe": "events.subscribe",
 };
 
 /** Paperclip's answer to one call: a result or an error. */
