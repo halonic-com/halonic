@@ -32,7 +32,7 @@ export interface HostAgentConnectionsOptions {
     disconnect(ref: PaperclipConnectionRef): Promise<{ revoked: boolean }>;
   };
   /** The keychain's tokens, where each connection's key is kept. */
-  readonly tokens: Pick<TokenStore, "set" | "remove">;
+  readonly tokens: Pick<TokenStore, "get" | "set" | "remove">;
   /** The open workspace's real path. */
   readonly workspace: string;
   /** Waits between two polls: a timer in the app; tests pass one they move on themselves. */
@@ -49,9 +49,11 @@ export interface HostAgentConnectionsOptions {
  * sign-in; the approved poll's answer is the one answer that holds the key
  * (Liam's option 1, HAL-17439). This class writes that key straight to the
  * keychain and passes on no key: no feature, React state or view ever sees
- * it, then confirms the write to the host. When the write or the confirm
- * fails, it cancels the sign-in, so the host revokes the key and undoes it,
- * and the sign-in ends as `key-not-saved`.
+ * it, then confirms the write to the host. A confirm whose answer got lost
+ * is sent once more; the host answers a repeated confirm the same way. When
+ * the write or the confirm fails, it puts back the keychain entry held
+ * before, if any, and cancels the sign-in, so the host revokes the new key
+ * and puts back its old one, and the sign-in ends as `key-not-saved`.
  */
 export class HostAgentConnections implements AgentConnections {
   readonly #options: HostAgentConnectionsOptions;
@@ -152,11 +154,14 @@ export class HostAgentConnections implements AgentConnections {
     const { connection: name, key, address, company } = state;
     const tokenName = paperclipKeyTokenName(name);
     const entry = paperclipKeyEntryText({ key, address, company });
-    const written = await tokens.set(tokenName, entry).then(() => true, failed(report));
-    const confirmed = written && (await signIn.confirm(signInId).catch(failed(report)));
+    // Read first, so a Sign in again that fails leaves the connection its old key (Julian, HAL-18048).
+    const before = await tokens.get(tokenName).catch(failed(report));
+    const written =
+      before !== false && (await tokens.set(tokenName, entry).then(() => true, failed(report)));
+    const confirmed = written && (await this.#confirm(signInId));
     if (!confirmed) {
       // The host revokes a key it has no confirm for, so the keychain keeps no dead key.
-      if (written) await tokens.remove(tokenName).catch(report);
+      if (written) await putBack(tokens, tokenName, before).catch(report);
       await signIn.cancel(signInId).catch(report);
       this.#changed();
       return { outcome: "key-not-saved" };
@@ -177,6 +182,20 @@ export class HostAgentConnections implements AgentConnections {
     };
   }
 
+  /**
+   * Confirms the keychain write to the host. A confirm that failed is sent
+   * once more, as its answer may have been lost after the host took it.
+   */
+  async #confirm(signInId: string): Promise<boolean> {
+    const { signIn, report } = this.#options;
+    const first = await signIn.confirm(signInId).catch((error: unknown) => {
+      report(error);
+      return undefined;
+    });
+    if (first !== undefined) return first;
+    return await signIn.confirm(signInId).catch(failed(report));
+  }
+
   #now(): number {
     return this.#options.now();
   }
@@ -192,6 +211,16 @@ function failed(report: (error: unknown) => void): (error: unknown) => false {
     report(error);
     return false;
   };
+}
+
+/** Puts the keychain entry held before back, or removes the new one when there was none. */
+async function putBack(
+  tokens: Pick<TokenStore, "set" | "remove">,
+  tokenName: string,
+  before: string | null,
+): Promise<void> {
+  if (before === null) await tokens.remove(tokenName);
+  else await tokens.set(tokenName, before);
 }
 
 /** Paperclip's sign-in keys expire after 30 days (HAL-17423). */

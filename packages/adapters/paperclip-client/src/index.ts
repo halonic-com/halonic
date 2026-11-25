@@ -21,7 +21,6 @@ export {
   type SignInKeyOwner,
 } from "./sign-in.ts";
 export {
-  findSignInRequest,
   type PaperclipSignInRequestName,
   paperclipSignInRequests,
 } from "./sign-in-requests.ts";

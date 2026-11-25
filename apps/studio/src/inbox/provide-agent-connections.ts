@@ -27,6 +27,7 @@ export function provideAgentConnections(
   if (transport === undefined) return;
   // Read when a key comes or goes, so the keychain is the one the window has then.
   const tokens = {
+    get: (name: string) => services.get(tokenStoreKey).get(name),
     set: (name: string, value: string) => services.get(tokenStoreKey).set(name, value),
     remove: (name: string) => services.get(tokenStoreKey).remove(name),
   };

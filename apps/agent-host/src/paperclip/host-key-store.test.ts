@@ -2,6 +2,7 @@ import type { PaperclipConnection } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { HostKeyStore, newConnectionLabel, newConnectionName } from "./host-key-store.ts";
+import { PaperclipKeys } from "./paperclip-keys.ts";
 import { fakeBoardKey } from "./sign-in-calls.test-helper.ts";
 import type { StoredPaperclipKey } from "./sign-in-calls.ts";
 
@@ -20,7 +21,7 @@ function storeWith(file: PaperclipConnection | undefined) {
   const forgot: string[] = [];
   const removed: string[] = [];
   const store = new HostKeyStore({
-    keep: (stored) => kept.push(stored),
+    keep: (stored) => void kept.push(stored),
     connect: async () => undefined,
     readConnection: async () => file,
     writeConnection: async (_workspace, _name, connection) => void written.push(connection),
@@ -52,6 +53,29 @@ verifies("agent-host.paperclip-sign-in", () => {
       expect(removed).toEqual(["acme"]);
       await store.drop(entry, { createdFile: false });
       expect(removed).toEqual(["acme"]);
+    });
+
+    it("puts back the key a connection held before when its Sign in again is undone", async () => {
+      const keys = new PaperclipKeys();
+      const binding = { workspace: "/work/acme", connection: "acme" };
+      const keyNow = () =>
+        keys.callWith(binding, { address, company: "acme" }, async ({ key }) => key);
+      keys.replace(binding, { key: "acme-test-old-key", address, company: "acme" });
+      const forgot: string[] = [];
+      const store = new HostKeyStore({
+        keep: (stored) =>
+          keys.replace(binding, { key: stored.key, address: stored.address, company: "acme" }),
+        connect: async () => undefined,
+        readConnection: async () => ({ label: "Acme", address, company: "acme" }),
+        writeConnection: async () => undefined,
+        forget: async (_workspace, name) => void forgot.push(name),
+        removeConnection: async () => undefined,
+      });
+      const saved = await store.save(entry);
+      expect(await keyNow()).toBe(fakeBoardKey);
+      await store.drop(entry, saved);
+      expect(await keyNow()).toBe("acme-test-old-key");
+      expect(forgot).toEqual([]);
     });
 
     it("keeps no key when the file changed to another company during the sign-in", async () => {

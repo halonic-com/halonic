@@ -80,9 +80,16 @@ export class FakeKeyStore implements PaperclipKeyStore {
   readonly saved: StoredPaperclipKey[] = [];
   readonly dropped: { entry: StoredPaperclipKey; saved: SavedKey }[] = [];
   failWith: Error | undefined;
+  /** When set, the next save waits until the test calls the function it is given. */
+  holdNextSave: ((answer: () => void) => void) | undefined;
 
   async save(entry: StoredPaperclipKey): Promise<SavedKey> {
     if (this.failWith !== undefined) throw this.failWith;
+    const hold = this.holdNextSave;
+    if (hold !== undefined) {
+      this.holdNextSave = undefined;
+      await new Promise<void>((resolve) => hold(resolve));
+    }
     this.saved.push(entry);
     return { createdFile: false };
   }
