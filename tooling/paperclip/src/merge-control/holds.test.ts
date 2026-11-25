@@ -56,7 +56,7 @@ verifies("paperclip.merge-control-unjudged-hold", () => {
     expect(enqueued(pass(snapshot({ pulls: [pushed] }), next.state))).toEqual([5768]);
   });
 
-  test("a judged group, a lifted hold, a push since, another reason or a fresh exit hold nothing", () => {
+  test("a judged group, a lifted hold, a push since, another reason or a removal without its run yet hold nothing", () => {
     const judged = pass(
       snapshot({ pulls: [failedOut(5, 90)], groupRuns: [group(5, 7005, 100)] }),
       stateWith({ seenFailedRuns: [7005] }),
@@ -68,8 +68,26 @@ verifies("paperclip.merge-control-unjudged-hold", () => {
     expect(enqueued(pass(snapshot({ pulls: [pushedSince] })))).toEqual([5]);
     const manual = failedOut(5, 90, { queueExit: { at: ago(90), reason: "MANUAL" } });
     expect(enqueued(pass(snapshot({ pulls: [manual] })))).toEqual([5]);
-    // Within the window the failed-group rules judge it, as before.
-    expect(enqueued(pass(snapshot({ pulls: [failedOut(5, 20)] })))).toEqual([5]);
+    // No run in the facts yet: a fresh removal waits for its run to show up.
+    expect(enqueued(pass(snapshot({ pulls: [failedOut(5, 5)] })))).toEqual([5]);
+  });
+
+  test("state reset mid-run: a group too old to judge holds at once, a fresh one goes through the failed-group rules", () => {
+    // HAL-18340: the state was emptied 90 minutes after the group; the pass marks it seen without judging it.
+    const old = pass(snapshot({ pulls: [failedOut(5, 70)], groupRuns: [group(5, 7005, 90)] }));
+    expect(enqueued(old)).toEqual([]);
+    expect(old.state.failedHeads).toEqual({ "5": headOf(5) });
+    expect(logText(old)).toContain("UNJUDGED_HOLD #5");
+    const again = pass(
+      snapshot({ pulls: [failedOut(5, 70)], groupRuns: [group(5, 7005, 90)] }),
+      old.state,
+    );
+    expect(enqueued(again)).toEqual([]);
+
+    // Emptied 30 minutes after the group: the culprit rules judge it as before, no unjudged hold.
+    const fresh = pass(snapshot({ pulls: [failedOut(5, 10)], groupRuns: [group(5, 7005, 30)] }));
+    expect(fresh.state.failedHeads).toEqual({ "5": headOf(5) });
+    expect(logText(fresh)).not.toContain("UNJUDGED_HOLD");
   });
 
   test("the reader keeps the newest queue event only when it is a removal, with its reason", () => {

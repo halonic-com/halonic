@@ -153,32 +153,55 @@ function judgeGroup(context: PassContext, run: GroupRun, rows: readonly GateRow[
   return true;
 }
 
+/** With no group run of it in the snapshot, a removal waits this long for its run to show up. */
+export const unjudgedWaitMinutes = 10;
+
 /**
- * A head GitHub took out for failed checks after its last push, longer ago
- * than the culprit window, with no pass having judged any of its groups up to
- * then: the pass wasn't running, or lost its state (#5768, HAL-18324). It is
- * held as the Merger holds it, since the group can no longer be judged.
+ * Whether a pass before this one judged one of the pull request's groups up
+ * to its removal, or this pass's failed-group rules still can (a fresh run).
  */
-export function unjudgedHolds(context: PassContext, rows: readonly GateRow[]): void {
+function judgedOrJudgeable(
+  context: PassContext,
+  number: number,
+  exitAt: string,
+  seenBefore: ReadonlySet<number>,
+): boolean {
+  const runs = context.snapshot.groupRuns.filter(
+    (run) => groupPull(run.branch) === number && run.createdAt <= exitAt,
+  );
+  if (runs.some((run) => seenBefore.has(run.id))) {
+    return true;
+  }
+  if (runs.length === 0) {
+    return minutesSince(context, exitAt) < unjudgedWaitMinutes;
+  }
+  return runs.some((run) => minutesSince(context, run.createdAt) < culpritWindowMinutes);
+}
+
+/**
+ * A head GitHub took out for failed checks after its last push, whose
+ * groups no pass judged and none can judge any more: the pass wasn't
+ * running, or its state was lost or reset (#5768, HAL-18324, HAL-18340). It
+ * is held as the Merger holds it, in the same pass, before the fill.
+ * `seenBefore` is the state's seen runs before this pass: a run this pass
+ * only marked as seen, too old to judge, doesn't count as judged.
+ */
+export function unjudgedHolds(
+  context: PassContext,
+  rows: readonly GateRow[],
+  seenBefore: ReadonlySet<number>,
+): void {
   const { state } = context;
-  const seen = new Set(state.seenFailedRuns);
   for (const row of rows) {
     const { number, head, queueExit } = row.pull;
     const key = String(number);
-    const judged = context.snapshot.groupRuns.some(
-      (run) =>
-        groupPull(run.branch) === number &&
-        seen.has(run.id) &&
-        run.createdAt <= (queueExit?.at ?? ""),
-    );
     if (
       row.entry !== undefined ||
       queueExit?.reason !== "FAILED_CHECKS" ||
       queueExit.at < lastPushOf(row.pull) ||
-      minutesSince(context, queueExit.at) < culpritWindowMinutes ||
-      judged ||
       state.failedHeads[key] === head ||
-      state.flakeLifted[key] === head
+      state.flakeLifted[key] === head ||
+      judgedOrJudgeable(context, number, queueExit.at, seenBefore)
     ) {
       continue;
     }

@@ -48,8 +48,9 @@ export function decide(
   }
 
   const removed = removals(context, rows);
+  const seenBefore = new Set(state.seenFailedRuns);
   failedGroups(context, rows);
-  unjudgedHolds(context, rows);
+  unjudgedHolds(context, rows, seenBefore);
   const fast = verifiedFastTrack(context, rows);
   trackReady(context, rows);
   const pauseOn = fillPauseOn(context, rows);
