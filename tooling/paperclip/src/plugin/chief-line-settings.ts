@@ -9,6 +9,7 @@ export const callerPattern = /^[a-z0-9][a-z0-9-]{0,40}$/;
 
 /** The route keys the manifest declares and the worker answers. */
 export const chiefLineRouteKeys = {
+  send: "chief-line-send",
   openThread: "chief-line-open-thread",
   thread: "chief-line-thread",
   subscribe: "chief-line-subscribe",
@@ -105,14 +106,15 @@ export const threadTitlePattern = /^\[chief-line\] ([a-z0-9][a-z0-9-]{0,40})$/;
 export const chiefLineStateKey = (companyId: string, key: ChiefLineRecord) =>
   ({ scopeKind: "company", scopeId: companyId, namespace: "chief-line", stateKey: key }) as const;
 
-/** The chief line's records in plugin state: threads, wakes per hour, webhooks, signalled comments. */
-export type ChiefLineRecord = "threads" | "wakes" | "hooks" | "signalled";
+/** The chief line's records in plugin state: threads, wakes per hour, the plugin's own posts, webhooks, signalled comments. */
+export type ChiefLineRecord = "threads" | "wakes" | "posted" | "hooks" | "signalled";
 
 /** The chief line's routes, board only (src/plugin/chief-line.ts). */
 export const chiefLineRoutes = (
   [
     [chiefLineRouteKeys.openThread, "POST", "/chief-line/thread"],
     [chiefLineRouteKeys.thread, "GET", "/chief-line/thread"],
+    [chiefLineRouteKeys.send, "POST", "/chief-line/send"],
     [chiefLineRouteKeys.subscribe, "POST", "/chief-line/subscribe"],
   ] as const
 ).map(([routeKey, method, path]) => ({
