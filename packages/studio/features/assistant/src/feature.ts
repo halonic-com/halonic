@@ -11,8 +11,8 @@ export const togglePanelCommand = "assistant.panel";
 /**
  * The Assistant feature: the side panel with the Build chat (flow-assistant 2.2), its title bar
  * button and Ctrl+Alt+I (5.8), Ctrl K's "Assistant" and "New chat", a chat open as a tab (2.3),
- * and Show in chat for the agents and workflows features (5.7). The app provides the Assistant host for each open
- * workspace; without one there is no panel.
+ * and Show in chat for the agents and workflows features (5.7). The app provides the Assistant
+ * host for each open workspace; without one there is no panel.
  */
 export const assistantFeature = defineFeature({
   id: "assistant",

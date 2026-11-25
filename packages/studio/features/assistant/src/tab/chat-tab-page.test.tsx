@@ -196,10 +196,13 @@ describe("the start screen", () => {
       expect(page.querySelector("h2")?.textContent).toBe("What should we build?");
       expect(page.querySelector(".max-w-reading textarea")).not.toBeNull();
       expect(document.activeElement?.tagName).toBe("TEXTAREA");
+      const box = page.querySelector("textarea");
       await sendMessage(page, "Add a routine");
       expect(page.querySelector("h2")).toBeNull();
       expect(page.querySelector("[data-chat-message]")?.textContent).toContain("Add a routine");
-      expect(document.activeElement?.tagName).toBe("TEXTAREA");
+      // The box is the same element at the bottom, not a new one (UX checklist T14 1.12).
+      expect(page.querySelector("textarea")).toBe(box);
+      expect(document.activeElement).toBe(box);
       await fake.finish({ messages: [], end: { reason: "answered" } } as never);
     });
   });
