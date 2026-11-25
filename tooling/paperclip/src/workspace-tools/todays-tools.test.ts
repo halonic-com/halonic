@@ -12,15 +12,15 @@ import { fakeMetrics } from "../plugin/fake-host.test-helper.ts";
 import { readSettings } from "../plugin/job.ts";
 import { manifest } from "../plugin/manifest.ts";
 import { readPrParams, registerTools, type ToolsApi } from "../plugin/tools.ts";
-import { myPrs, myPrsText } from "../pr-tools/my-prs.ts";
 import { prStatus, statusText } from "../pr-tools/pr-status.ts";
 import { recording } from "../pr-watcher/fakes.test-helper.ts";
 
 /**
- * Today's `pr_status` and `my_prs` from Agent tools, as handlers and a
- * snapshot for the generic Paperclip plugin runtime. They hold our review
- * rules (HAL-14809), so they stay here until those are generic (plan
- * HAL-17450, step 1b). Their test shows the runtime answers as Agent tools does.
+ * Today's `pr_status` from Agent tools, as a handler and a snapshot for the
+ * generic Paperclip plugin runtime. It holds our review rules (HAL-14809), so
+ * it stays here until those are generic (plan HAL-17450, step 1b). Its test
+ * shows the runtime answers as Agent tools does. `my_prs` moved to the
+ * workspace plugin (HAL-17968).
  */
 
 /** The repositories the tools read when a snapshot names none: Agent tools' own default. */
@@ -32,7 +32,7 @@ function repositoriesOf(settings: unknown): readonly string[] {
   return repositories ?? [];
 }
 
-/** Today's two tools as action handlers, with their answers unchanged. */
+/** Today's tool as an action handler, with its answers unchanged. */
 const todaysHandlers: ActionHandlers = {
   "github.pull-request": {
     capabilities: [],
@@ -46,20 +46,10 @@ const todaysHandlers: ActionHandlers = {
       return { content: statusText(status), data: status };
     },
   },
-  "github.open-pull-requests": {
-    capabilities: [],
-    run: async ({ tool, caller, github }) => {
-      const get = await github();
-      const unread: string[] = [];
-      const prs = await myPrs(get, repositoriesOf(tool.action.with), caller.urlKey, unread);
-      return { content: myPrsText(caller.urlKey, prs, unread), data: prs };
-    },
-  },
 };
 
 /** Which action runs each of today's tools. */
 const todaysActions: Readonly<Record<string, string>> = {
-  my_prs: "github.open-pull-requests",
   pr_status: "github.pull-request",
 };
 
@@ -123,30 +113,16 @@ const runCtx: ToolRunContext = {
 };
 const githubToken = { type: "secret_ref", secretId: "secret-read-token" };
 
-/** Agent tools' own declarations of the two tools, as the builder will copy them. */
-const declarations = (manifest.tools ?? []).filter((tool) =>
-  ["pr_status", "my_prs"].includes(tool.name),
-);
+/** Agent tools' own declaration of the tool, as the builder will copy it. */
+const declarations = (manifest.tools ?? []).filter((tool) => tool.name === "pr_status");
 
-const answers = {
-  ...recording("green"),
-  "/repos/halonic-com/halonic/pulls?state=open&per_page=100&page=1": [
-    {
-      number: 4605,
-      head: {
-        ref: "mateo/HAL-15342-inbox-retry-focus",
-        repo: { full_name: "halonic-com/halonic" },
-      },
-    },
-  ],
-};
+const answers = recording("green");
 
-/** The calls compared: an answer, refusals before any request, and an agent's list. */
+/** The calls compared: an answer and refusals before any request. */
 const calls: [string, unknown][] = [
   ["pr_status", { pr: 4605 }],
   ["pr_status", { pr: "https://github.com/someone/else/pull/7" }],
   ["pr_status", { pr: "not a number" }],
-  ["my_prs", {}],
 ];
 
 type Handler = (params: unknown, runCtx: ToolRunContext) => Promise<ToolResult>;
@@ -211,20 +187,12 @@ verifies("paperclip.workspace-runtime-today", () => {
       expect(runtime.sent.length).toBeGreaterThan(0);
     });
 
-    test("the snapshot holds both tools on Agent tools' repositories, with their parameters", () => {
+    test("the snapshot holds the tool on Agent tools' repositories, with its parameters", () => {
       const snapshot = todaysSnapshot(declarations);
       expect(snapshot.tools.map((tool) => [tool.name, Object.keys(tool.parameters)])).toEqual([
-        ["my_prs", []],
         ["pr_status", ["pr", "repo"]],
       ]);
       expect(snapshot.tools.map((tool) => [tool.name, tool.action])).toEqual([
-        [
-          "my_prs",
-          {
-            run: "github.open-pull-requests",
-            with: { repositories: ["halonic-com/halonic", "halonic-com/cloud"] },
-          },
-        ],
         [
           "pr_status",
           {

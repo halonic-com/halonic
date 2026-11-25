@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-15929, phase 1 of the Agent tools plugin (HAL-15920, tools B1); Liam's decision there to build it in `tooling/paperclip`
 
-When an agent calls the Agent tools plugin's `pr_status` tool with a pull request on one of the plugin's repositories, the plugin shall answer from GitHub GET requests alone with the pull request's state, its `ci-ok` on the current head (the light run's while it's a draft), whether it's mergeable, in the merge queue and behind its base, the reviewer by the path rules, and each signed approval from the repository's team (owner, members, collaborators) with whether it counts on the current head by the HAL-14809 rules; and when an agent calls `my_prs`, it shall list the open pull requests whose branch, in the repository itself and not a fork, starts with the agent's name, those that conflict or have a red `ci-ok` first.
+When an agent calls the Agent tools plugin's `pr_status` tool with a pull request on one of the plugin's repositories, the plugin shall answer from GitHub GET requests alone with the pull request's state, its `ci-ok` on the current head (the light run's while it's a draft), whether it's mergeable, in the merge queue and behind its base, the reviewer by the path rules, and each signed approval from the repository's team (owner, members, collaborators) with whether it counts on the current head by the HAL-14809 rules. (`my_prs` moved to the workspace plugin, HAL-17968.)
 
 ## Examples
 
@@ -29,6 +29,3 @@ When an agent calls the Agent tools plugin's `pr_status` tool with a pull reques
 - Given a pull request URL on a repository the plugin doesn't watch,
   when an agent asks `pr_status` about it,
   then the tool answers with an error and sends no request to GitHub.
-- Given Mateo with one green and one conflicting open pull request, Priya with one, and a fork's branch named `mateo/HAL-1-…`,
-  when Mateo calls `my_prs`,
-  then it lists his two, the conflicting one first and marked as needing him.

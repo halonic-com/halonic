@@ -1,5 +1,4 @@
 import type {
-  PluginAgentsClient,
   PluginConfigClient,
   PluginHttpClient,
   PluginSecretsClient,
@@ -7,7 +6,6 @@ import type {
   ToolResult,
   ToolRunContext,
 } from "@paperclipai/plugin-sdk";
-import { myPrs, myPrsText } from "../pr-tools/my-prs.ts";
 import { prStatus, statusText } from "../pr-tools/pr-status.ts";
 import { queueState, queueStateText } from "../pr-tools/queue-state.ts";
 import { type GitHubGet, gitHubReader } from "../pr-watcher/github.ts";
@@ -18,16 +16,16 @@ import { manifest } from "./manifest.ts";
 import { countingGet, type MetricsApi, writeMetrics } from "./metrics.ts";
 
 /**
- * The agent tools `pr_status` and `my_prs`. Like the watcher, they read
- * GitHub with GET requests only, through `ctx.http`, with the company's
- * read-only token. `queue_state` reads the watcher's last snapshot from
- * plugin state and sends no request at all.
+ * The agent tools `pr_status` and `queue_state`. Like the watcher,
+ * `pr_status` reads GitHub with GET requests only, through `ctx.http`, with
+ * the company's read-only token. `queue_state` reads the watcher's last
+ * snapshot from plugin state and sends no request at all. `my_prs` moved to
+ * the workspace plugin (HAL-17968).
  */
 
 /** The part of the plugin context the tools use, so tests can fake it. */
 export interface ToolsApi extends MetricsApi, StateApi {
   readonly tools: Pick<PluginToolsClient, "register">;
-  readonly agents: Pick<PluginAgentsClient, "get">;
   readonly config: PluginConfigClient;
   readonly secrets: Pick<PluginSecretsClient, "resolve">;
   readonly http: PluginHttpClient;
@@ -165,7 +163,7 @@ async function fromSnapshot(
   return recordCall(ctx, name, runCtx, result, 0);
 }
 
-/** Registers `pr_status`, `my_prs` and `queue_state` as the manifest declares them. */
+/** Registers `pr_status` and `queue_state` as the manifest declares them. */
 export function registerTools(ctx: ToolsApi): void {
   const declared = new Map((manifest.tools ?? []).map((tool) => [tool.name, tool]));
   const declaration = (name: string) => {
@@ -184,18 +182,6 @@ export function registerTools(ctx: ToolsApi): void {
       }
       const status = await prStatus(get, target.repo, target.number);
       return { content: statusText(status), data: status };
-    }),
-  );
-
-  ctx.tools.register("my_prs", declaration("my_prs"), (_params, runCtx) =>
-    run(ctx, "my_prs", runCtx, async (get, repos) => {
-      const agent = await ctx.agents.get(runCtx.agentId, runCtx.companyId);
-      if (agent === null) {
-        return { error: "my_prs: the calling agent wasn't found." };
-      }
-      const unread: string[] = [];
-      const prs = await myPrs(get, repos, agent.urlKey, unread);
-      return { content: myPrsText(agent.urlKey, prs, unread), data: prs };
     }),
   );
 

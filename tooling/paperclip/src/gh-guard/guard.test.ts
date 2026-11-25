@@ -47,7 +47,7 @@ verifies("paperclip.gh-guard", () => {
       expect(text).toContain("select:mcp__paperclip-assigned__halonic_agent-tools_pr_status");
     });
 
-    test("names my_prs for a list, and my_prs for the number when the read named none", () => {
+    test("names the workspace plugin's my_prs for a list, and my_prs for the number when the read named none", () => {
       const list = redirectMessage({
         command: "pr list",
         repo: "halonic-com/halonic",
@@ -55,6 +55,7 @@ verifies("paperclip.gh-guard", () => {
         tool: "my_prs",
       });
       expect(list).toContain("  my_prs()\n");
+      expect(list).toContain("select:mcp__paperclip-assigned__halonic-ws_company_my_prs");
       const checks = redirectMessage({
         command: "pr checks",
         repo: "halonic-com/halonic",

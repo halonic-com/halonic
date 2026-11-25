@@ -304,11 +304,8 @@ inside the about 15 s the tool bridge gives a call.
   author says whether a pull request is a security or release one; the
   tool can't tell, so a counting approval from Julian carries that note.
   About 10 requests.
-- **`my_prs()`**: the calling agent's open pull requests, the branches
-  starting with its name, each with `ci-ok`, mergeable and whether a
-  reviewer signed an approval on its head. The ones that conflict or have a
-  red `ci-ok` come first, marked `NEEDS YOU`: the "check your open PRs
-  first" rule (HAL-14785) in one call. About 3 requests per pull request.
+- `my_prs()` moved to the workspace plugin (workspace-company, HAL-17968);
+  the gh guard still points `gh pr list` and `gh pr status` to it there.
 - **`queue_state()`** (Board Checker addendum on HAL-15997, for the Merger
   and the Fast-track Monitor): the merge queue in order, each entry's
   state, `ci-ok` on its group commit, minutes in the queue and who queued
@@ -341,19 +338,14 @@ Agent tools (HAL-16403, B2 in the tools plan on HAL-15920) that replace a
 chain of curl requests to Paperclip's API with one call. They go through
 the plugin host, so they need no key and send nothing to GitHub.
 
-- **`task_get(task, comments?, document?)`**: one task by identifier
-  (`HAL-16403`) or id: title, status, priority, holder, parent and blockers
-  with their statuses, the next monitor check, the description, the list of
-  documents and the newest comments (5 by default, 0 to 20), oldest first,
-  each with its author and time. `document` adds one document's text. The
-  description is trimmed to 4,000 characters, each comment to 2,000 and the
-  document to 20,000, each saying how much it left out.
+- `task_get(task, comments?, document?)` moved to the workspace plugin
+  (workspace-company, HAL-17968).
 - **`comment(task, body)`**: posts one comment, at most 20,000 characters,
   with the calling agent as its author (from the run's context, never from
   the parameters). A plugin's comment wakes nobody, not even the task's
   holder, so the answer says to assign the task to hand it on.
 
-Neither changes a task's status, holder or monitor. These two do, each with
+`comment` doesn't change a task's status, holder or monitor. These two do, each with
 a comment in the same change:
 
 - **`set_next_step(task, status, comment, monitor?, blockedBy?)`**: keeps
