@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-The Windows installer opens with a licence page: it shows the terms for the Microsoft Visual C++ runtime file it installs, and installs only after you press I Agree. Running the same version again, updates and silent installs don't show it.
+The Windows installer shows Microsoft's own licence terms for the Visual C++ runtime file only when Set up the agent sandbox is ticked, after the install page: press I Agree to set up the sandbox, or press Back and clear the box to install Halonic without it.
