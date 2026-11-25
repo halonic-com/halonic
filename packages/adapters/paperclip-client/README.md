@@ -51,6 +51,13 @@ on a chat only when the person does so in Halonic (`answer` and `send`). It neve
 retry. An approval always shows its type, which says what approving does (such as `hire_agent`), above
 the title the asking agent wrote.
 
+**Risky approvals.** Every inbox item carries a `risk`. An approval is `risky` when approving it spends
+money or changes who may do what (`hire_agent`, `budget_override_required`, `approve_ceo_strategy`), and
+also when its type is missing or one the provider doesn't know, so a new kind of approval fails closed.
+Only `request_board_approval`, which just records the board's answer, is `normal`, and so is every card.
+The risk comes from Paperclip's type, never from the asking agent's title. A phone can't answer a risky
+item unless the desktop allows it (requirement `paperclip-client.approval-risk`).
+
 **Workflow task writes.** `PaperclipTasks` gives workflows (phase 3, step 4) two writes on the same connection:
 `wake` assigns a task to an agent with status `todo` and a comment, and `finish` sets status `done` with a
 comment. Both are Paperclip's task update, so their rows on the list also pin the body: exactly those fields,
