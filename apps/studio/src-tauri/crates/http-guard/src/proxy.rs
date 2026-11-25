@@ -11,7 +11,7 @@ use url::{Host, Url};
 
 use crate::address::is_local;
 use crate::no_proxy::NoProxy;
-use crate::request::Refusal;
+use crate::request::{CheckedRequest, Refusal};
 
 /// What the environment says about a proxy. Read once, when the app starts.
 #[derive(Debug, Clone)]
@@ -99,6 +99,28 @@ pub fn route_for<'a>(url: &Url, setting: &'a ProxySetting) -> Result<Route<'a>, 
         ));
     }
     Ok(Route::Tunnel(endpoint))
+}
+
+/// [`route_for`] for one hop of a request. A `public_only` request never
+/// goes through the proxy: the proxy resolves the name, so the shell couldn't
+/// check that it leads to a public address. It is refused instead, and never
+/// sent direct either, which would walk around the company's egress rules.
+///
+/// # Errors
+///
+/// A [`Refusal`] with the code [`route_for`] gives, or `public_only_proxied`.
+pub fn route_for_request<'a>(
+    request: &CheckedRequest,
+    setting: &'a ProxySetting,
+) -> Result<Route<'a>, Refusal> {
+    let route = route_for(&request.url, setting)?;
+    if request.public_only && matches!(route, Route::Tunnel(_)) {
+        return Err(Refusal::new(
+            "public_only_proxied",
+            "this call may reach public addresses only and a proxy is set, so nothing was sent",
+        ));
+    }
+    Ok(route)
 }
 
 /// The CLI's host class by name (`connectorHostClass`): `localhost` and a

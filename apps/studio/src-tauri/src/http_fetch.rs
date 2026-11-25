@@ -13,6 +13,11 @@
 //! decides for each hop, by the CLI's rules: a local host or one on
 //! `NO_PROXY` goes direct as above; any other host goes through a CONNECT
 //! tunnel to its name, and the shell checks its certificate itself.
+//!
+//! A call with `publicOnly` (`read_docs`, HAL-18450) may reach public
+//! addresses only: the guard refuses this computer and private networks for
+//! every address it resolves to and every hop, and refuses a hop that would go
+//! through the proxy, which resolves the name where the shell can't check it.
 
 use std::collections::HashMap;
 use std::net::{SocketAddr, ToSocketAddrs};
@@ -21,12 +26,12 @@ use std::time::{Duration, Instant};
 
 use halonic_http_guard::{
     CheckedRequest, MAX_REDIRECTS, MAX_RESPONSE_BYTES, PageRequest, ProxyEndpoint, ProxySetting,
-    Refusal, Route, check_address, check_redirect, check_request, route_for,
+    Refusal, Route, check_redirect, check_request, route_for_request,
 };
 use serde::Serialize;
 use tauri::{Manager, Runtime, Webview};
 use tauri_plugin_http::reqwest;
-use url::{Host, Url};
+use url::Host;
 
 /// How long one call may take in all, redirects and the whole body included.
 const CALL_TIMEOUT: Duration = Duration::from_secs(300);
@@ -106,7 +111,8 @@ impl HttpFetchState {
 /// Why a call failed: a stable `kind` and a message for the log. The guard's
 /// codes (`method_refused`, `url_refused`, `address_refused`, …) are kinds;
 /// the shell adds `call_in_use`, `aborted`, `timeout`, `network`, `proxy`,
-/// `response_too_large`, `too_many_redirects` and `resolve_failed`.
+/// `response_too_large`, `too_many_redirects` and `resolve_failed`. A
+/// `publicOnly` call adds `address_not_public` and `public_only_proxied`.
 #[derive(Debug, Serialize)]
 pub struct FetchRefusal {
     kind: String,
@@ -185,7 +191,7 @@ async fn run(first: CheckedRequest, proxy: &ProxySetting) -> Result<FetchAnswer,
     let mut request = first;
     let mut hops = 0;
     loop {
-        let response = send(&request, route_for(&request.url, proxy)?, deadline).await?;
+        let response = send(&request, route_for_request(&request, proxy)?, deadline).await?;
         let status = response.status();
         let location = response
             .headers()
@@ -289,7 +295,7 @@ async fn direct(
     let Some(Host::Domain(name)) = request.url.host() else {
         return Ok(builder);
     };
-    let addresses = resolve(&request.url, request.is_plain()).await?;
+    let addresses = resolve(request).await?;
     Ok(builder.resolve_to_addrs(name, &addresses))
 }
 
@@ -311,11 +317,12 @@ fn tunnelled(
     Ok(builder.proxy(proxy))
 }
 
-/// Resolves the host and checks every address it gives; a name with one
-/// refused address is refused, so a mixed answer can't be used to pick.
-async fn resolve(url: &Url, plain: bool) -> Result<Vec<SocketAddr>, FetchRefusal> {
-    let host = url.host_str().unwrap_or_default().to_owned();
-    let port = url.port_or_known_default().unwrap_or(443);
+/// Resolves the host and checks every address it gives, by the request's
+/// rules; a name with one refused address is refused, so a mixed answer can't
+/// be used to pick.
+async fn resolve(request: &CheckedRequest) -> Result<Vec<SocketAddr>, FetchRefusal> {
+    let host = request.url.host_str().unwrap_or_default().to_owned();
+    let port = request.url.port_or_known_default().unwrap_or(443);
     let addresses = tauri::async_runtime::spawn_blocking(move || {
         (host.as_str(), port)
             .to_socket_addrs()
@@ -331,7 +338,7 @@ async fn resolve(url: &Url, plain: bool) -> Result<Vec<SocketAddr>, FetchRefusal
         ));
     }
     for address in &addresses {
-        check_address(address.ip(), plain)?;
+        request.check_address(address.ip())?;
     }
     Ok(addresses)
 }

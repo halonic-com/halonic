@@ -1,7 +1,11 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { FakeShell } from "./fake-shell.test-helper.ts";
-import { ShellHttpClient, shellHttpClient } from "./shell-http-client.ts";
+import {
+  publicOnlyShellHttpClient,
+  ShellHttpClient,
+  shellHttpClient,
+} from "./shell-http-client.ts";
 
 const answer = (over: Record<string, unknown> = {}) => ({
   status: 200,
@@ -54,6 +58,22 @@ verifies("services.shell-http-client", () => {
       expect(get?.request).toMatchObject({ method: "GET" });
       expect(get?.request).not.toHaveProperty("body");
       expect(post?.request["body"]).toBe("a=1");
+    });
+
+    it("sends publicOnly on every call of a public-only client, and the plain one leaves it out", async () => {
+      const shell = new FakeShell().answer("http_fetch", () => answer());
+      const publicOnly = new ShellHttpClient(shell, { publicOnly: true });
+
+      await publicOnly.fetch("https://docs.example.com/");
+      await publicOnly.fetch("https://docs.example.com/b", { method: "POST", body: "{}" });
+      await new ShellHttpClient(shell).fetch("https://docs.example.com/");
+
+      const [first, second, plain] = shell.callsOf("http_fetch") as {
+        request: Record<string, unknown>;
+      }[];
+      expect(first?.request["publicOnly"]).toBe(true);
+      expect(second?.request["publicOnly"]).toBe(true);
+      expect(plain?.request).not.toHaveProperty("publicOnly");
     });
 
     it("refuses a body that isn't text before any call", async () => {
@@ -262,6 +282,30 @@ verifies("services.shell-http-client", () => {
 
     it("makes none for a page outside the shell", () => {
       expect(shellHttpClient({})).toBeUndefined();
+    });
+  });
+
+  describe("publicOnlyShellHttpClient", () => {
+    it("makes a client that sends publicOnly for a page in the shell", async () => {
+      const calls: unknown[] = [];
+      const page = {
+        __TAURI_INTERNALS__: {
+          invoke: async (_command: string, args: unknown) => {
+            calls.push(args);
+            return answer();
+          },
+        },
+      };
+
+      await publicOnlyShellHttpClient(page)?.fetch("https://docs.example.com/");
+
+      expect(calls).toEqual([
+        { request: expect.objectContaining({ publicOnly: true }), call: expect.any(Number) },
+      ]);
+    });
+
+    it("makes none for a page outside the shell", () => {
+      expect(publicOnlyShellHttpClient({})).toBeUndefined();
     });
   });
 });

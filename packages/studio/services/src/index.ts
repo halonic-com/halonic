@@ -76,7 +76,12 @@ export {
 } from "./quiet-hours.ts";
 export { actionStepsKey, provideActionSteps } from "./shell-actions.ts";
 export { hostSettingsStoreKey, provideShellHostSettings } from "./shell-host-settings.ts";
-export { ShellHttpClient, shellHttpClient } from "./shell-http-client.ts";
+export {
+  publicOnlyShellHttpClient,
+  ShellHttpClient,
+  type ShellHttpClientOptions,
+  shellHttpClient,
+} from "./shell-http-client.ts";
 export { ShellNotifier } from "./shell-notifications.ts";
 export {
   provideShellSecrets,

@@ -1,11 +1,12 @@
 //! What the page may ask the shell to send.
 
 use std::fmt;
+use std::net::IpAddr;
 
 use serde::{Deserialize, Serialize};
 use url::{Host, Url};
 
-use crate::address::check_address;
+use crate::address::{check_address, check_public};
 
 /// The longest request body the shell sends.
 pub const MAX_BODY_BYTES: usize = 8 * 1024 * 1024;
@@ -45,6 +46,12 @@ pub struct PageRequest {
     /// (a bearer token must not follow a redirect) is `false`.
     #[serde(default)]
     pub follow_redirects: bool,
+    /// Whether the call may reach public addresses only (`read_docs`, HAL-18450):
+    /// then this computer and private networks are refused too, for every
+    /// address and every redirect hop, and no hop goes through a proxy. Off by
+    /// default, because model providers on this computer need them.
+    #[serde(default)]
+    pub public_only: bool,
 }
 
 /// A request the guard accepted: the method upper-cased, the address read.
@@ -55,12 +62,30 @@ pub struct CheckedRequest {
     pub headers: Vec<(String, String)>,
     pub body: Option<String>,
     pub follow_redirects: bool,
+    pub public_only: bool,
 }
 
 impl CheckedRequest {
     /// Whether the request goes over plain `http`, for [`check_address`].
     pub fn is_plain(&self) -> bool {
         self.url.scheme() == "http"
+    }
+
+    /// Checks one address this request may connect to: the host when it is
+    /// an IP address, or one its name resolved to. [`check_address`] for
+    /// every request, and for a `public_only` one also no address on this
+    /// computer or a private network.
+    ///
+    /// # Errors
+    ///
+    /// A [`Refusal`] with code `address_refused`, `plain_http_public` or
+    /// `address_not_public`.
+    pub fn check_address(&self, ip: IpAddr) -> Result<(), Refusal> {
+        check_address(ip, self.is_plain())?;
+        if self.public_only {
+            check_public(ip)?;
+        }
+        Ok(())
     }
 }
 
@@ -132,6 +157,7 @@ pub fn check_request(request: PageRequest) -> Result<CheckedRequest, Refusal> {
         headers: request.headers,
         body: request.body,
         follow_redirects: request.follow_redirects,
+        public_only: request.public_only,
     };
     check_literal_host(&checked)?;
     Ok(checked)
@@ -180,8 +206,8 @@ fn check_url(raw: &str) -> Result<Url, Refusal> {
 
 fn check_literal_host(request: &CheckedRequest) -> Result<(), Refusal> {
     match request.url.host() {
-        Some(Host::Ipv4(ip)) => check_address(ip.into(), request.is_plain()),
-        Some(Host::Ipv6(ip)) => check_address(ip.into(), request.is_plain()),
+        Some(Host::Ipv4(ip)) => request.check_address(ip.into()),
+        Some(Host::Ipv6(ip)) => request.check_address(ip.into()),
         _ => Ok(()),
     }
 }
@@ -218,6 +244,14 @@ mod tests {
             headers: vec![],
             body: None,
             follow_redirects: false,
+            public_only: false,
+        }
+    }
+
+    fn public_only(method: &str, url: &str) -> PageRequest {
+        PageRequest {
+            public_only: true,
+            ..request(method, url)
         }
     }
 
@@ -351,6 +385,61 @@ mod tests {
         ] {
             assert!(check_redirect(&from, location).is_err(), "{location}");
         }
+    }
+
+    #[test]
+    fn request_public_only_refuses_this_computer_and_private_networks() {
+        for url in [
+            "https://127.0.0.1/",
+            "https://[fd00::1]/",
+            "http://10.0.0.5/",
+        ] {
+            assert_eq!(code(request("GET", url)), None, "{url}");
+            assert_eq!(
+                code(public_only("GET", url)),
+                Some("address_not_public"),
+                "{url}"
+            );
+        }
+        assert_eq!(code(public_only("GET", "https://93.184.216.34/")), None);
+        // A name is checked by the shell once it resolves.
+        assert_eq!(code(public_only("GET", "https://localhost/")), None);
+        let message = check_request(public_only("GET", "https://127.0.0.1/?key=secret"))
+            .unwrap_err()
+            .to_string();
+        assert!(
+            !message.contains("127.0") && !message.contains("secret"),
+            "{message}"
+        );
+    }
+
+    #[test]
+    fn redirect_of_a_public_only_request_is_public_only_too() {
+        let from = check_request(public_only("GET", "https://example.com/a")).unwrap();
+        assert!(from.public_only);
+        assert!(check_redirect(&from, "/b").is_ok());
+        for location in [
+            "https://127.0.0.1/",
+            "https://[fd00::1]/",
+            "http://192.168.1.1/",
+        ] {
+            assert_eq!(
+                check_redirect(&from, location).unwrap_err().code(),
+                "address_not_public",
+                "{location}"
+            );
+        }
+        let plain = check_request(request("GET", "https://example.com/a")).unwrap();
+        assert!(check_redirect(&plain, "https://127.0.0.1/").is_ok());
+    }
+
+    #[test]
+    fn request_public_only_is_read_from_the_page_and_off_by_default() {
+        let read = |json: &str| check_request(serde_json::from_str(json).unwrap()).unwrap();
+        let on = read(r#"{"method":"GET","url":"https://example.com/","publicOnly":true}"#);
+        assert!(on.public_only);
+        let off = read(r#"{"method":"GET","url":"https://example.com/"}"#);
+        assert!(!off.public_only);
     }
 
     #[test]
