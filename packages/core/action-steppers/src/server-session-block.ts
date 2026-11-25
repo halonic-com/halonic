@@ -16,22 +16,41 @@ export const maxServerSessionDoneWhenLength = 500;
 
 /**
  * A control character (Unicode `Cc`), a format character (`Cf`: zero-width
- * characters, U+FEFF, the bidi controls, the tag characters), a variation
- * selector or a line or paragraph separator. Each either breaks a line or
- * hides or reorders text, so the person could read one brief while Claude
- * Code reads another. Variation selectors are `Mn`, not `Cf`, but a run of
- * them after an emoji draws nothing and can carry hidden bytes.
+ * characters, U+FEFF, the bidi controls, the tag characters) or a line or
+ * paragraph separator. Each either breaks a line or hides or reorders text,
+ * so the person could read one brief while Claude Code reads another.
  */
-const hiddenCharacter = /[\p{Cc}\p{Cf}\u2028\u2029\ufe00-\ufe0f\u{E0100}-\u{E01EF}]/u;
+const hiddenCharacter = /[\p{Cc}\p{Cf}\u2028\u2029]/u;
 
 /**
- * Whether `text` is one line of plain text: no control or format character
- * and no line separator, so a step can't add a line of its own to the brief
- * or hide text from the person who reads it. The shell refuses the same
- * characters in the brief it shows (`server-session-cases.json`, `characters`).
+ * Whether `codePoint` is a variation selector (U+FE00 to U+FE0F, U+E0100 to U+E01EF).
+ * They are `Mn`, not `Cf`, but a run of them after an emoji draws nothing and
+ * can carry hidden bytes. Checked by code point because a regular expression
+ * class with combining characters in it is misleading (and the linter says so).
+ */
+function isVariationSelector(codePoint: number): boolean {
+  return (
+    (codePoint >= 0xfe00 && codePoint <= 0xfe0f) || (codePoint >= 0xe0100 && codePoint <= 0xe01ef)
+  );
+}
+
+/**
+ * Whether `text` is one line of plain text: no control or format character,
+ * no variation selector and no line separator, so a step can't add a line of
+ * its own to the brief or hide text from the person who reads it. The shell
+ * refuses the same characters in the brief it shows
+ * (`server-session-cases.json`, `characters`).
  */
 export function isPlainLine(text: string): boolean {
-  return !hiddenCharacter.test(text);
+  if (hiddenCharacter.test(text)) {
+    return false;
+  }
+  for (const character of text) {
+    if (isVariationSelector(character.codePointAt(0) ?? 0)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 const plainText = (max: number) =>
