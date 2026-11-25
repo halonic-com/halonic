@@ -3,8 +3,10 @@ import {
   type PluginCompaniesClient,
   type PluginConfigClient,
   type PluginLogger,
+  type PluginStateClient,
+  type ScopeKey,
 } from "@paperclipai/plugin-sdk";
-import type { SeatsReader } from "./seats-reader.ts";
+import type { SeatReadStatus, SeatsReader } from "./seats-reader.ts";
 import { readSeatsSettings, type SeatsSettings } from "./settings.ts";
 
 /** The part of the plugin context `seats.read` uses, so tests can fake it. */
@@ -12,6 +14,42 @@ export interface ReadJobApi {
   readonly companies: Pick<PluginCompaniesClient, "list">;
   readonly config: PluginConfigClient;
   readonly logger: Pick<PluginLogger, "info" | "error">;
+}
+
+/** What `seats.read` needs beyond the shared part: it stores each seat's read status. */
+export interface SeatsReadJobApi extends ReadJobApi {
+  readonly state: Pick<PluginStateClient, "set">;
+}
+
+/**
+ * One seat's read status as stored for read-only views such as Grafana's
+ * sign-in expiry panel. Seat ids only: no account, folder or connection id.
+ */
+export interface StoredSeatStatus {
+  readonly seatId: string;
+  /** ISO time the sign-in expires, or null when Claude Code did not say. */
+  readonly signInExpiresAt: string | null;
+  readonly lastReadAt: string | null;
+  readonly alerts: readonly string[];
+}
+
+/** Where `seats.read` keeps the newest status of every seat: plugin state holds only the latest values. */
+export function seatsReadStatusKey(companyId: string): ScopeKey {
+  return {
+    scopeKind: "company",
+    scopeId: companyId,
+    namespace: "seats-read",
+    stateKey: "status",
+  };
+}
+
+export function storedSeatStatus(status: SeatReadStatus): StoredSeatStatus {
+  return {
+    seatId: status.seatId,
+    signInExpiresAt: status.signInExpiresAt ?? null,
+    lastReadAt: status.lastReadAt ?? null,
+    alerts: status.alerts,
+  };
 }
 
 /** The company whose settings hold the seats, and those settings. */
@@ -47,8 +85,9 @@ export async function seatsOwner(ctx: ReadJobApi): Promise<SeatsOwner | undefine
 /**
  * The `seats.read` job, every minute: reads the seats that are due. It logs
  * counts and error kinds only, never a folder, an account or program output.
+ * After each round it stores every seat's status under `seatsReadStatusKey`.
  */
-export async function runSeatsRead(ctx: ReadJobApi, reader: SeatsReader): Promise<void> {
+export async function runSeatsRead(ctx: SeatsReadJobApi, reader: SeatsReader): Promise<void> {
   const owner = await seatsOwner(ctx);
   if (owner === undefined) {
     return;
@@ -60,6 +99,8 @@ export async function runSeatsRead(ctx: ReadJobApi, reader: SeatsReader): Promis
     });
     return;
   }
+  const statuses = reader.status(owner.settings.seats).map(storedSeatStatus);
+  await ctx.state.set(seatsReadStatusKey(owner.companyId), statuses);
   if (result.read > 0) {
     const errors = result.errors.length > 0 ? ` (${result.errors.join(", ")})` : "";
     ctx.logger.info(
