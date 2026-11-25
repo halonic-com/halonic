@@ -1,4 +1,4 @@
-import { Button, CloseIcon, Menu, PlaceIcon } from "@halonicjs/studio-kit";
+import { Button, CloseIcon, Menu, PlaceIcon, type PlaceIconName } from "@halonicjs/studio-kit";
 import type { ItemRef } from "@halonicjs/studio-shell";
 import { type RefObject, useId, useRef } from "react";
 import type { ShownItem } from "../api.ts";
@@ -91,7 +91,7 @@ function ShownChip({
   return (
     <span className="inline-flex h-6 items-center gap-1 rounded-full bg-surface-muted pr-0.5 pl-2">
       <span aria-hidden="true" className="size-4 text-fg-muted">
-        <PlaceIcon name={shown.item.kind === "agent" ? "agents" : "workflows"} />
+        <PlaceIcon name={placeOfKind(shown.item.kind)} />
       </span>
       <button
         type="button"
@@ -114,4 +114,11 @@ function ShownChip({
       </button>
     </span>
   );
+}
+
+/** The place a shown item's chip takes its icon from: a skill lives in the Library. */
+function placeOfKind(kind: string): PlaceIconName {
+  if (kind === "agent") return "agents";
+  if (kind === "skill") return "library";
+  return "workflows";
 }

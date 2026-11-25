@@ -1,4 +1,4 @@
-import { Button, Dialog, Field, Input, Select, usePresentation } from "@halonicjs/studio-kit";
+import { Dialog, Field, Input, Select, usePresentation } from "@halonicjs/studio-kit";
 import { NameAndHubRow, NewItemNote } from "@halonicjs/studio-shell";
 import { useId, useRef, useState } from "react";
 import type { NewWorkflow, WorkflowHub, WorkflowRef } from "../api.ts";
@@ -86,6 +86,10 @@ export function NewWorkflowDialog({
       {...(failure === undefined ? {} : { error: failure })}
       onConfirm={() => void submit()}
       onCancel={onCancel}
+      // flow-workflows 2.2: a text link at the start of the footer, across from Cancel and Create.
+      {...(onDescribe && {
+        startLink: { label: words.describe, onClick: () => onDescribe(name.trim()) },
+      })}
       returnFocus={returnFocus}
       // The info line says what the workflow starts as, so a screen reader reads it on opening (UX 2.1).
       describedBy={noteId}
@@ -123,13 +127,6 @@ export function NewWorkflowDialog({
           }
         />
         <NewItemNote id={noteId}>{words.startsWith}</NewItemNote>
-        {onDescribe && (
-          <div>
-            <Button variant="ghost" size="sm" onClick={() => onDescribe(name.trim())}>
-              {words.describe}
-            </Button>
-          </div>
-        )}
       </div>
     </Dialog>
   );

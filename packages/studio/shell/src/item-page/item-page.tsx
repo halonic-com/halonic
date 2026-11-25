@@ -292,7 +292,7 @@ export function ItemPage<Id extends string>({
           id={`${idBase}-panel`}
           tabIndex={-1}
           hidden={!shown.panel}
-          className={panelClasses(shown.split, maximised)}
+          className={panelClasses(shown, maximised)}
           style={
             layout.shows === "chat-and-panel" && !maximised
               ? { width: layout.panelWidth }
@@ -302,7 +302,12 @@ export function ItemPage<Id extends string>({
           {/* Full height, so a view that fills the panel, such as the agent map, gets its room;
               a taller view still scrolls in the panel. */}
           {/* While closed, the panel's tabs aren't drawn, so it names itself after none (a11y AS8). */}
-          <TabPanel ids={tabIds} tabs={shown.panel ? views : []} selected={view} className="h-full">
+          <TabPanel
+            ids={tabIds}
+            tabs={shown.panel ? views : []}
+            selected={view}
+            className="h-full flex-1"
+          >
             {children(view)}
           </TabPanel>
         </div>
@@ -364,13 +369,17 @@ function chatClasses(layout: ItemLayout): string {
 
 /**
  * Beside the chat, the panel keeps its width with a line on its left. Maximised, it covers the tab's
- * body inside a 112px margin (`inset-28`), as its own surface over the dimmed chat.
+ * body inside a 112px margin (`inset-28`), as its own surface over the dimmed chat. Alone, it fills
+ * the rest of the tab, so a view drawn at full size (the workflow canvas) gets the tab's height;
+ * while hidden it sets no display, so the `hidden` attribute hides it.
  */
-function panelClasses(split: boolean, maximised: boolean): string {
+function panelClasses(
+  shown: { readonly panel: boolean; readonly split: boolean },
+  maximised: boolean,
+): string {
   if (maximised) {
     return "absolute inset-28 min-h-0 overflow-y-auto rounded-md border border-border bg-surface shadow-3 outline-none";
   }
-  return split
-    ? "min-h-0 shrink-0 overflow-y-auto border-s border-border outline-none"
-    : "outline-none";
+  if (shown.split) return "min-h-0 shrink-0 overflow-y-auto border-s border-border outline-none";
+  return shown.panel ? "flex min-h-0 flex-1 flex-col outline-none" : "outline-none";
 }

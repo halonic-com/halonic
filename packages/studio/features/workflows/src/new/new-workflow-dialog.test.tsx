@@ -188,10 +188,12 @@ verifies("workflows.new.create", () => {
     const onDescribe = vi.fn();
     await show(dialog({ onDescribe }).node);
     await typeInto(nameField(), "Invoice intake");
+    const link = buttonNamed(document.body, "Describe it to the Assistant instead ›");
+    // flow-workflows 2.2: first in the footer, across from Cancel and Create.
+    expect(link?.parentElement?.tagName).toBe("FOOTER");
+    expect(link?.parentElement?.firstElementChild).toBe(link);
 
-    await act(async () =>
-      buttonNamed(document.body, "Describe it to the Assistant instead ›")?.click(),
-    );
+    await act(async () => link?.click());
 
     expect(onDescribe).toHaveBeenCalledWith("Invoice intake");
   });
