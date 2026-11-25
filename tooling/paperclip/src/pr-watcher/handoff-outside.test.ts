@@ -44,7 +44,24 @@ verifies("paperclip.pr-watcher-handoff", () => {
     );
   });
 
-  test("leaves it when Julian's approval counts: within his limits, beside Liam's, or a rebase-only re-approval", async () => {
+  test("gives Liam a pull request on his paths with only Julian's rebase-only re-approval, as the Merger waits for Liam", async () => {
+    const watcher = setup({
+      tasks: [task(5701, agents.mateo, { branch: mateoBranch })],
+      pulls: [
+        open(5701, mateoBranch, {
+          approvals: [
+            { by: "Liam", head: "4999bbb" },
+            { by: "Julian", head: "5701aaa", rebaseOf: "4999bbb" },
+          ],
+        }),
+      ],
+      byPaths: "liam",
+    });
+    await watcher.run();
+    expect(watcher.handoffs.map(({ to }) => to)).toEqual([agents.liam]);
+  });
+
+  test("leaves it when Julian's approval counts: within his limits or beside Liam's", async () => {
     const cases: { extra: Partial<PullFacts>; byPaths: "julian" | "liam" }[] = [
       { extra: julianOnHead, byPaths: "julian" },
       {
@@ -52,15 +69,6 @@ verifies("paperclip.pr-watcher-handoff", () => {
           approvals: [
             { by: "Julian", head: "5701aaa" },
             { by: "Liam", head: "5701aaa" },
-          ],
-        },
-        byPaths: "liam",
-      },
-      {
-        extra: {
-          approvals: [
-            { by: "Liam", head: "4999bbb" },
-            { by: "Julian", head: "5701aaa", rebaseOf: "4999bbb" },
           ],
         },
         byPaths: "liam",

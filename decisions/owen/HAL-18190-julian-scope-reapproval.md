@@ -13,6 +13,7 @@ Both now decide Julian's limits with the same `reviewerFor` rule.
 ## Covers
 
 - `paperclip.pr-tools-reapproval`
+- `paperclip.pr-watcher-handoff`
 
 ## What changes
 
@@ -24,6 +25,11 @@ Both now decide Julian's limits with the same `reviewerFor` rule.
   names" becomes "doesn't count Julian's rebase-only re-approval on Liam's paths (#5676)" and
   expects the opposite outcome; the note for a re-approval naming a head Liam didn't approve gains
   the same "the Merger waits for Liam" ending.
+
+- The requirement `paperclip.pr-watcher-handoff`, which reads approvals through the same code,
+  gives Liam a pull request on his paths whose only approval is Julian's rebase-only
+  re-approval; that case moves from the "leaves it with its author" example and test to a new
+  example and test where Liam gets the task.
 
 ## Why
 
