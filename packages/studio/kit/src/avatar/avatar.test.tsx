@@ -50,6 +50,27 @@ verifies("kit.avatar-picture", () => {
     expect(calls).toEqual([[picture, 1, 0, 2, 2, 0, 0, 2, 2]]);
   });
 
+  it("draws a large picture at the tile's size in device pixels, smoothed", () => {
+    const calls: unknown[][] = [];
+    const context = {
+      drawImage: (...args: unknown[]) => calls.push(args),
+      imageSmoothingQuality: "low",
+    };
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+      context as unknown as CanvasRenderingContext2D,
+    );
+    vi.spyOn(window, "devicePixelRatio", "get").mockReturnValue(2);
+    const picture = { width: 2000, height: 3000 } as ImageBitmap;
+
+    const avatar = render(<Avatar name="Ada" picture={picture} />).container
+      .firstElementChild as HTMLElement;
+    const canvas = avatar.querySelector("canvas") as HTMLCanvasElement;
+
+    expect([canvas.width, canvas.height]).toEqual([56, 56]);
+    expect(context.imageSmoothingQuality).toBe("high");
+    expect(calls).toEqual([[picture, 0, 500, 2000, 2000, 0, 0, 56, 56]]);
+  });
+
   it("shows the initials when it has no picture", () => {
     expect(avatarOf("Ada Lovelace").textContent).toBe("AL");
   });

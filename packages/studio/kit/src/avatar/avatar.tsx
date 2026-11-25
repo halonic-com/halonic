@@ -13,6 +13,8 @@ export interface AvatarProps {
 }
 
 const tile = "size-7 shrink-0 rounded-full bg-surface-muted";
+/** The tile's side in CSS pixels; it matches `size-7`. */
+const tilePixels = 28;
 
 /**
  * A member's initials, or their picture, on a 28px round tile: who is signed in, in Cloud's top
@@ -37,8 +39,10 @@ export function Avatar({ name, picture }: AvatarProps) {
 }
 
 /**
- * Draws the picture's centre square on a canvas at the picture's own resolution; the tile scales
- * it down and rounds it. It is drawn again only for another picture.
+ * Draws the picture's centre square on a canvas the tile's size in device pixels, never larger
+ * than the square itself. Drawing it small here, with high-quality smoothing, keeps fine detail
+ * from turning into moiré, which a CSS shrink of a full-size canvas does, and a 2000px picture
+ * from holding 16 MB per row (HAL-18570). It is drawn again only for another picture.
  */
 function AvatarPicture({ picture }: { readonly picture: ImageBitmap }) {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -46,11 +50,15 @@ function AvatarPicture({ picture }: { readonly picture: ImageBitmap }) {
     const target = canvas.current;
     if (target === null) return;
     const side = Math.max(1, Math.min(picture.width, picture.height));
-    target.width = side;
-    target.height = side;
+    const drawn = Math.min(side, Math.ceil(tilePixels * window.devicePixelRatio));
+    target.width = drawn;
+    target.height = drawn;
+    const context = target.getContext("2d");
+    if (context === null) return;
+    context.imageSmoothingQuality = "high";
     const left = (picture.width - side) / 2;
     const top = (picture.height - side) / 2;
-    target.getContext("2d")?.drawImage(picture, left, top, side, side, 0, 0, side, side);
+    context.drawImage(picture, left, top, side, side, 0, 0, drawn, drawn);
   }, [picture]);
   return (
     <span aria-hidden="true" className={`block overflow-hidden ${tile}`}>
