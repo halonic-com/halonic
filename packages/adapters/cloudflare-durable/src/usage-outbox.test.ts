@@ -22,6 +22,7 @@ verifies("cloudflare-durable.usage-outbox", () => {
           ...owner,
           kind: "step",
           units: { cost: 120, harnessMs: 4_000 },
+          reservedMax: { cost: 300 },
           periodStart: period.start,
           at: period.start,
         },

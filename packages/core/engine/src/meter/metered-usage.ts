@@ -16,7 +16,8 @@ export type LoggedModelResponse = Extract<RunEvent, { type: "llm.response" }>;
  * up with (`events.summary-cost`): a call a subscription paid, an unpriced one
  * and a cached one cost 0, and a cached one has no tokens. Its `callId` is
  * the response's place in the run log (requirement `engine.meter-call-id`),
- * so it never changes for that call.
+ * so it never changes for that call. Its `model` is the one that answered,
+ * which a fallback may have picked over the one asked for.
  */
 export function modelCallUsageOf(response: LoggedModelResponse): ModelCallUsage {
   const charge = modelCallCharge(response);
@@ -24,6 +25,7 @@ export function modelCallUsageOf(response: LoggedModelResponse): ModelCallUsage 
     kind: "model_call",
     runId: response.runId,
     callId: `${response.runId}:${response.seq}`,
+    model: `${response.provider}/${response.model}`,
     ...charge,
   };
   // The cast adds the mark only this package may add.

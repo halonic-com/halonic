@@ -17,6 +17,7 @@ import {
   checkRecordKind,
   checkScope,
   correctionSuffix,
+  modelOrNone,
 } from "./usage-input.ts";
 import {
   firstOver,
@@ -46,6 +47,9 @@ interface Spent {
   /** The thresholds already reported this period, as `<unit>:<percent>`. */
   reported: string[];
 }
+
+/** What Cloud prices a record by: a model call's model, or a step's reservation. */
+type RecordPricing = Pick<UsageRecord, "model" | "reservedMax">;
 
 /** Amounts held for a step until it settles or runs out. */
 interface Reservation extends Owner {
@@ -173,7 +177,8 @@ export class UsageAccount {
       if (reservation !== undefined) {
         this.#storage.delete(keys.reservation + id);
         const { runId, actor } = reservation;
-        this.#charge(id, { runId, actor, amounts, by: "settle" }, "step");
+        const reservedMax = reservation.amounts;
+        this.#charge(id, { runId, actor, amounts, by: "settle" }, "step", { reservedMax });
         return "settled";
       }
       const found = this.#charged.find(id, this.#spent());
@@ -186,18 +191,28 @@ export class UsageAccount {
 
   /**
    * Charges a model call or a run's end once per `id`; a repeat changes nothing. Records and
-   * reservations share one set of ids, since Cloud keeps one record per id.
+   * reservations share one set of ids, since Cloud keeps one record per id. A model call's record
+   * names its `model`, for Cloud's price table; a run's names none.
    */
-  record(id: string, owner: Owner, kind: "model_call" | "run", used: UsageAmounts): void {
+  record(
+    id: string,
+    owner: Owner,
+    kind: "model_call" | "run",
+    used: UsageAmounts,
+    model?: string,
+  ): void {
     checkIds({ id, ...owner });
     checkRecordKind(kind);
     const amounts = checkAmounts(used);
+    const checkedModel = kind === "model_call" ? modelOrNone(model) : undefined;
+    const pricing = checkedModel === undefined ? {} : { model: checkedModel };
     this.#storage.transactionSync(() => {
       if (this.#storage.get(keys.reservation + id) !== undefined) {
         throw new RangeError("This id belongs to a held reservation.");
       }
       if (this.#charged.find(id, this.#spent()) !== undefined) return;
-      this.#charge(id, { runId: owner.runId, actor: owner.actor, amounts, by: "record" }, kind);
+      const charge: Charged = { runId: owner.runId, actor: owner.actor, amounts, by: "record" };
+      this.#charge(id, charge, kind, pricing);
     });
   }
 
@@ -218,7 +233,8 @@ export class UsageAccount {
         this.#storage.delete(key);
         const id = key.slice(keys.reservation.length);
         const { runId, actor, amounts } = reservation;
-        this.#charge(id, { runId, actor, amounts, by: "expiry" }, "step");
+        const charge: Charged = { runId, actor, amounts, by: "expiry" };
+        this.#charge(id, charge, "step", { reservedMax: amounts });
       }
       return next;
     });
@@ -319,12 +335,12 @@ export class UsageAccount {
   }
 
   /** Counts `charge` in the current period, with its record in the outbox. */
-  #charge(id: string, charge: Charged, kind: UsageRecord["kind"]): void {
+  #charge(id: string, charge: Charged, kind: UsageRecord["kind"], pricing: RecordPricing): void {
     const spent = this.#spent();
     spent.pool = addAmounts(spent.pool, charge.amounts);
     spent.actors[charge.actor] = addAmounts(spent.actors[charge.actor] ?? {}, charge.amounts);
     this.#charged.put(spent.periodStart, id, charge);
-    this.#addRecord(id, charge, kind, charge.amounts, spent.periodStart);
+    this.#addRecord(id, charge, kind, charge.amounts, spent.periodStart, pricing);
     this.#reportThresholds(spent);
     this.#storage.put(keys.spent, spent);
   }
@@ -338,7 +354,7 @@ export class UsageAccount {
     const charge: Charged = { ...found.charged, amounts: used, by: "settle" };
     this.#storage.put<Charged>(found.key, charge);
     // Cloud drops a record whose id it has, so a correction needs an id of its own.
-    this.#addRecord(id + correctionSuffix, charge, "correction", change, found.periodStart);
+    this.#addRecord(id + correctionSuffix, charge, "correction", change, found.periodStart, {});
     const spent = this.#spent();
     if (found.periodStart !== spent.periodStart) return;
     spent.pool = addAmounts(spent.pool, change);
@@ -352,10 +368,21 @@ export class UsageAccount {
     kind: UsageRecord["kind"],
     units: UsageAmounts,
     periodStart: number,
+    pricing: RecordPricing,
   ): void {
     const { runId, actor } = owner;
     const at = this.#now();
-    const record = { id, scope: this.#scope, actor, runId, kind, units, periodStart, at };
+    const record: UsageRecord = {
+      id,
+      scope: this.#scope,
+      actor,
+      runId,
+      kind,
+      units,
+      ...pricing,
+      periodStart,
+      at,
+    };
     this.#outbox.add({ kind: "usage", record });
   }
 

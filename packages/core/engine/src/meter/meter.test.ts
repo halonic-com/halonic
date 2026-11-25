@@ -53,6 +53,7 @@ verifies("engine.meter-port", () => {
         kind: "model_call",
         runId: "r-acme",
         callId: "r-acme:2",
+        model: "acme-ai/acme-1",
         usage: { inputTokens: 1000, outputTokens: 200 },
         cost: 0.006,
         counted: "priced",
@@ -102,6 +103,7 @@ verifies("engine.meter-port", () => {
     const written = {
       kind: "model_call",
       runId: "r-acme",
+      model: "acme-ai/acme-1",
       usage: null,
       cost: 0,
       counted: "cached",

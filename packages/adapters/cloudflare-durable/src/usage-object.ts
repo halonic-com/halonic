@@ -82,8 +82,9 @@ export class UsageObject extends DurableObject {
     runId: string,
     kind: "model_call" | "run",
     used: UsageAmounts,
+    model?: string,
   ): void {
-    this.#scope.record(principal, id, runId, kind, used);
+    this.#scope.record(principal, id, runId, kind, used, model);
   }
 
   startRun(principal: UsagePrincipal, runId: string): Promise<UsageAnswer> {
