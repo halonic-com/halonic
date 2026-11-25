@@ -104,9 +104,14 @@ verifies("account-menu.menu", () => {
       const trigger = container.querySelector("button[aria-haspopup=menu]");
       expect(trigger?.getAttribute("aria-label")).toBe("Account menu, Sofia Marin");
       expect(trigger?.textContent).toBe("SM");
-      expect(container.querySelector("[role=menu]")?.textContent).toContain("Sofia Marin");
+      const menu = container.querySelector("[role=menu]");
+      expect(menu?.textContent).toContain("Signed in as Sofia Marin");
+      const items = [...container.querySelectorAll("[role=menuitem]")];
+      expect(
+        items.map((element) => element.getAttribute("aria-label") ?? element.textContent),
+      ).toEqual(["Pro, 62% of this month's usage", "Account", "Sign out"]);
 
-      await pick(container, "Pro · 62% of this month's usage");
+      await pick(container, "62% of this month's usage");
       await pick(container, "Account");
       expect(host.open.mock.calls).toEqual([[sofia.planUrl], [sofia.accountUrl]]);
     });
@@ -115,14 +120,20 @@ verifies("account-menu.menu", () => {
       const noLimit = await renderItem(fakeHost(Promise.resolve({ ...sofia, usedPercent: null })));
       const noPlan = await renderItem(fakeHost(Promise.resolve({ ...sofia, plan: null })));
       expect(item(noLimit, "Pro")?.textContent).not.toContain("%");
-      expect(item(noPlan, "No plan")).toBeDefined();
+      expect(item(noPlan, "No plan")?.textContent).not.toContain("%");
     });
 
-    it("marks the usage line from 80%", async () => {
+    it("names the plan nearly used up from 80% and used up at 100%, capping the figure", async () => {
       const under = await renderItem(fakeHost(Promise.resolve({ ...sofia, usedPercent: 79 })));
       const over = await renderItem(fakeHost(Promise.resolve({ ...sofia, usedPercent: 80 })));
-      expect(item(under, "79%")?.textContent).not.toContain("nearly used up");
-      expect(item(over, "80%")?.textContent).toContain("nearly used up");
+      const past = await renderItem(fakeHost(Promise.resolve({ ...sofia, usedPercent: 120 })));
+      expect(item(under, "79%")?.getAttribute("aria-label")).toBe("Pro, 79% of this month's usage");
+      expect(item(over, "80%")?.getAttribute("aria-label")).toBe(
+        "Pro, 80% of this month's usage, nearly used up",
+      );
+      expect(item(past, "100%")?.getAttribute("aria-label")).toBe(
+        "Pro, 100% of this month's usage, used up",
+      );
     });
 
     it("shows the name as text, never as markup or a link", async () => {
@@ -143,7 +154,10 @@ verifies("account-menu.sign-out", () => {
 
       expect(host.signOut).toHaveBeenCalledOnce();
       const page = container.querySelector("dialog[open]");
-      expect(page?.querySelector("h1")?.textContent).toBe("You've signed out of Acme Agents");
+      const heading = page?.querySelector("h1");
+      expect(heading?.textContent).toBe("You've signed out of Acme Agents");
+      expect(document.activeElement).toBe(heading);
+      expect(document.title).toBe("Signed out · Acme Agents");
       expect(container.querySelector("[role=menu]")).toBeNull();
 
       const signIn = page?.querySelector("button");

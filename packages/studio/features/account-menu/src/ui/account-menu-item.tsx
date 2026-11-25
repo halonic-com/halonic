@@ -1,8 +1,8 @@
-import { Avatar, Menu, type MenuEntry, usePresentation } from "@halonicjs/studio-kit";
+import { Avatar, Button, Menu, type MenuEntry } from "@halonicjs/studio-kit";
 import type { StatusBarItemProps } from "@halonicjs/studio-shell";
 import { useEffect, useState } from "react";
 import { type AccountMenuFacts, type AccountMenuHost, AccountMenuHostService } from "../api.ts";
-import { accountMenuWords, nearlyUsedPercent, usageLine } from "./account-menu-words.ts";
+import { accountMenuWords, planItemWords } from "./account-menu-words.ts";
 import { SignedOutPage } from "./signed-out-page.tsx";
 
 /** What the item shows: nothing yet, nothing at all, the menu, or the signed-out page. */
@@ -14,9 +14,9 @@ type MenuState =
 
 /**
  * The account menu at the title bar's right end (`account-menu.menu`): the customer's initials,
- * opening their name, the plan and usage line (to AC-00 #plan), **Account** (to AC-00) and
- * **Sign out**, which shows B4's signed-out page (`account-menu.sign-out`). Without a host, or
- * when the computer has no menu or can't say, it draws nothing.
+ * opening "Signed in as {name}", the plan item with its usage (to AC-00 #plan), **Account** (to
+ * AC-00) and **Sign out**, which shows B4's signed-out page (`account-menu.sign-out`). Without a
+ * host, while loading, or when the computer has no menu or can't say, it draws nothing.
  */
 export function AccountMenuItem({ context }: StatusBarItemProps) {
   const host = context.services.find(AccountMenuHostService);
@@ -49,18 +49,13 @@ function AccountMenu(props: {
   readonly onSignOut: () => void;
 }) {
   const { facts, host } = props;
-  const phone = usePresentation() === "phone";
-  const nearlyUsed = facts.usedPercent !== null && facts.usedPercent >= nearlyUsedPercent;
+  const plan = planItemWords(facts.plan, facts.usedPercent);
+  // Both the plan item and Account lead to the account page, so they sit together; Sign out
+  // leaves the app, so it sits alone below its own divider, plain and with no confirm (HAL-18213).
   const entries: readonly MenuEntry[] = [
-    { heading: facts.name },
-    {
-      id: "usage",
-      label: usageLine(facts.plan, facts.usedPercent),
-      attention: nearlyUsed ? accountMenuWords.nearlyUsed : undefined,
-      onSelect: () => host.open(facts.planUrl),
-    },
-    "divider",
+    { id: "plan", ...plan, onSelect: () => host.open(facts.planUrl) },
     { id: "account", label: accountMenuWords.account, onSelect: () => host.open(facts.accountUrl) },
+    "divider",
     {
       id: "sign-out",
       label: accountMenuWords.signOut,
@@ -71,23 +66,19 @@ function AccountMenu(props: {
   return (
     <Menu
       align="end"
+      description={accountMenuWords.signedInAs(facts.name)}
       entries={entries}
       trigger={(trigger) => (
-        <button
+        <Button
           {...trigger}
-          type="button"
-          aria-label={accountMenuWords.trigger(facts.name)}
-          className={`${triggerClasses} ${phone ? "size-12" : "size-7"}`}
-        >
-          <Avatar name={facts.name} />
-        </button>
+          variant="ghost"
+          icon={<Avatar name={facts.name} />}
+          label={accountMenuWords.trigger(facts.name)}
+        />
       )}
     />
   );
 }
-
-const triggerClasses =
-  "inline-flex shrink-0 items-center justify-center rounded-full outline-none focus-ring";
 
 /** Loads the facts once, and signs out: the signed-out page on success, a note in the menu if not. */
 function useAccountMenu(host: AccountMenuHost | undefined) {
