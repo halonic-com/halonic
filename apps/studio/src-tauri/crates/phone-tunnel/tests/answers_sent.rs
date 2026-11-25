@@ -128,3 +128,27 @@ async fn owner_check_never_lets_an_ambiguous_answer_out() {
     phone.tunnel.send(&id, generation, HELLO).await.unwrap();
     assert_eq!(next_message(&mut server, &mut session).await, HELLO);
 }
+
+/// Message version 4 (HAL-17634): an answer to an inbox item goes out only
+/// after the owner check passed, as an answer to an approval does.
+#[tokio::test]
+async fn owner_check_guards_an_inbox_answer_too() {
+    const INBOX_ANSWER: &str = r#"{"type":"msg-answer","id":"i1","item":"item1","answer":{"kind":"reply","text":"yes"},"confirmed":true}"#;
+    let mut phone = Phone::new("answers-inbox", LocalNetwork::Allowed);
+    let gateway = Gateway::start().await;
+    let (id, mut server, mut session, generation) = connected(&mut phone, &gateway).await;
+
+    owner(&phone).answer_next(Confirmation::Cancelled);
+    assert_eq!(
+        phone.tunnel.send(&id, generation, INBOX_ANSWER).await,
+        Err(SendRefusal::NotConfirmed)
+    );
+    owner(&phone).answer_next(Confirmation::Confirmed);
+    phone
+        .tunnel
+        .send(&id, generation, INBOX_ANSWER)
+        .await
+        .unwrap();
+    assert_eq!(next_message(&mut server, &mut session).await, INBOX_ANSWER);
+    assert_eq!(owner(&phone).asked(), [Decision::Answer, Decision::Answer]);
+}

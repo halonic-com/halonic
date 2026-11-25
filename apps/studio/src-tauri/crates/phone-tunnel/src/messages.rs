@@ -5,9 +5,10 @@
 //!
 //! It reads each message's keys as strictly as the host does, so the two
 //! can't read one message two ways (Julian's condition 1 on HAL-15212): no
-//! key twice, and exactly the keys of one of the phone's six messages. An
+//! key twice, and exactly the keys of one of the phone's messages. An
 //! `answer-approval` also gives its `decision`, which the owner check asks
-//! the person to confirm (HAL-15194). The host's own parser stays the
+//! the person to confirm (HAL-15194); a `msg-answer` (message version 4,
+//! HAL-17634) is always confirmed too. The host's own parser stays the
 //! authority on every other value.
 
 use std::collections::BTreeSet;
@@ -23,30 +24,80 @@ use serde::{Deserialize, Serialize};
 /// `gatewayMaxMessageBytes` (65,519).
 pub const GATEWAY_MAX_MESSAGE_BYTES: usize = MAX_MESSAGE_BYTES;
 
-/// The six messages a phone may send (`ports.remote-gateway-protocol`).
-pub const PHONE_MESSAGE_TYPES: [&str; 6] = [
+/// The thirteen messages a phone may send (`ports.remote-gateway-protocol`,
+/// message version 4).
+pub const PHONE_MESSAGE_TYPES: [&str; 13] = [
     "hello",
     "list-sessions",
     "watch",
     "unwatch",
     ANSWER_APPROVAL,
     "prompt",
+    "msg-read",
+    "msg-search",
+    MSG_ANSWER,
+    "msg-send",
+    "msg-watch",
+    "msg-unwatch",
+    "team-read",
 ];
 
 const ANSWER_APPROVAL: &str = "answer-approval";
+const MSG_ANSWER: &str = "msg-answer";
 
-/// The keys each phone message has besides `type`, as the host's
-/// `parseGatewayClientMessage` checks them, in [`PHONE_MESSAGE_TYPES`] order.
-const MESSAGE_KEYS: [(&str, &[&str]); 6] = [
-    ("hello", &["id", "version"]),
-    ("list-sessions", &["id"]),
-    ("watch", &["id", "sessionId", "afterSeq"]),
-    ("unwatch", &["id", "sessionId"]),
+/// The keys a phone message must have besides `type`, and the ones it may
+/// have.
+struct Keys {
+    required: &'static [&'static str],
+    optional: &'static [&'static str],
+}
+
+const fn required(keys: &'static [&'static str]) -> Keys {
+    Keys {
+        required: keys,
+        optional: &[],
+    }
+}
+
+/// The keys of each phone message, as the host's
+/// `parseGatewayClientMessage` checks them, in [`PHONE_MESSAGE_TYPES`]
+/// order. `msg-read` and `team-read` take a different key set for each
+/// `what`; the host checks which goes with which, so this allows their union.
+const MESSAGE_KEYS: [(&str, Keys); 13] = [
+    ("hello", required(&["id", "version"])),
+    ("list-sessions", required(&["id"])),
+    ("watch", required(&["id", "sessionId", "afterSeq"])),
+    ("unwatch", required(&["id", "sessionId"])),
     (
         ANSWER_APPROVAL,
-        &["id", "sessionId", "approvalId", "decision"],
+        required(&["id", "sessionId", "approvalId", "decision"]),
     ),
-    ("prompt", &["id", "sessionId", "text"]),
+    ("prompt", required(&["id", "sessionId", "text"])),
+    (
+        "msg-read",
+        Keys {
+            required: &["id", "what"],
+            optional: &["cursor", "conversation", "before"],
+        },
+    ),
+    ("msg-search", required(&["id", "text"])),
+    (MSG_ANSWER, required(&["id", "item", "answer", "confirmed"])),
+    (
+        "msg-send",
+        Keys {
+            required: &["id", "conversation", "body"],
+            optional: &["to"],
+        },
+    ),
+    ("msg-watch", required(&["id"])),
+    ("msg-unwatch", required(&["id"])),
+    (
+        "team-read",
+        Keys {
+            required: &["id", "what"],
+            optional: &["range", "pullRequest"],
+        },
+    ),
 ];
 
 /// Why a message wasn't sent. Nothing was, and the session stays open.
@@ -95,16 +146,16 @@ impl From<Result<(), SendRefusal>> for SendAnswer {
 pub(crate) enum CheckedMessage {
     /// Goes out as it is.
     Plain,
-    /// An `answer-approval`: goes out only after the owner confirms this
-    /// decision.
+    /// An `answer-approval` or a `msg-answer`: goes out only after the
+    /// owner confirms this decision.
     Answer(Decision),
 }
 
 /// Checks a message before it is sealed: its size first, in UTF-8 bytes,
 /// before any parsing; then that it is one JSON object, with nothing after
-/// it and no key twice, whose `type` is one of the phone's six messages and
-/// whose other keys are exactly that message's. An `answer-approval`'s
-/// `decision` must be `approve` or `deny`.
+/// it and no key twice, whose `type` is one of the phone's messages and
+/// whose other keys are all of that message's required keys and only its
+/// own. An `answer-approval`'s `decision` must be `approve` or `deny`.
 pub(crate) fn check_message(text: &str) -> Result<CheckedMessage, SendRefusal> {
     if text.len() > GATEWAY_MAX_MESSAGE_BYTES {
         return Err(SendRefusal::TooLarge);
@@ -114,10 +165,15 @@ pub(crate) fn check_message(text: &str) -> Result<CheckedMessage, SendRefusal> {
         .iter()
         .find(|(kind, _)| *kind == read.kind)
         .ok_or(SendRefusal::NotAllowed)?;
-    let exact =
-        read.keys.len() == expected.len() && expected.iter().all(|key| read.keys.contains(*key));
-    if !exact {
+    let has_required = expected.required.iter().all(|key| read.keys.contains(*key));
+    let only_listed = read.keys.iter().all(|key| {
+        expected.required.contains(&key.as_str()) || expected.optional.contains(&key.as_str())
+    });
+    if !has_required || !only_listed {
         return Err(SendRefusal::NotAllowed);
+    }
+    if read.kind == MSG_ANSWER {
+        return Ok(CheckedMessage::Answer(Decision::Answer));
     }
     if read.kind != ANSWER_APPROVAL {
         return Ok(CheckedMessage::Plain);
