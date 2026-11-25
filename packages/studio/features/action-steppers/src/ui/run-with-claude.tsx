@@ -47,6 +47,14 @@ export function RunWithClaude({
   onStarted,
 }: RunWithClaudeProps) {
   const [phase, setPhase] = useState<Phase>({ kind: "closed" });
+  const runButton = useRef<HTMLButtonElement>(null);
+  // Cancel removes the focused element with the screen, so focus goes back to the button it came from.
+  const focusRunButton = useRef(false);
+  useEffect(() => {
+    if (phase.kind !== "closed" || !focusRunButton.current) return;
+    focusRunButton.current = false;
+    runButton.current?.focus();
+  }, [phase]);
   if (server.kind !== "set") {
     return (
       <div className="flex flex-col gap-2">
@@ -55,7 +63,7 @@ export function RunWithClaude({
         ) : null}
         <div>
           <Button variant="secondary" onClick={openSettings}>
-            {words.setUpFirst}
+            {server.kind === "refused" ? words.fixInSettings : words.setUpFirst}
           </Button>
         </div>
       </div>
@@ -64,7 +72,9 @@ export function RunWithClaude({
   if (phase.kind === "closed") {
     return (
       <div>
-        <Button onClick={() => setPhase({ kind: "confirm" })}>{words.runWithClaude}</Button>
+        <Button ref={runButton} onClick={() => setPhase({ kind: "confirm" })}>
+          {words.runWithClaude}
+        </Button>
       </div>
     );
   }
@@ -76,21 +86,28 @@ export function RunWithClaude({
     try {
       answer = await shell.open(offer);
     } catch {
-      answer = { kind: "refused", reason: "the desktop app could not open the session" };
+      answer = { kind: "refused", reason: words.desktopAppFailed };
     }
     setPhase({ kind: "answered", answer });
     if (answer.kind === "terminal-opened") onStarted?.();
   }
 
+  const answer = phase.kind === "answered" ? phase.answer : undefined;
+  const manual =
+    shell === undefined || (answer !== undefined && guideAnswers.includes(answer.kind));
   return (
-    <ConfirmScreen offer={offer} target={server.target}>
+    // By hand the user runs the ssh command, never the launcher, so its disclosure stays hidden.
+    <ConfirmScreen offer={offer} target={server.target} showLauncher={!manual}>
       <Outcome
         phase={phase}
         offer={offer}
         target={server.target}
-        canLaunch={shell !== undefined}
+        manual={manual}
         start={start}
-        cancel={() => setPhase({ kind: "closed" })}
+        cancel={() => {
+          focusRunButton.current = true;
+          setPhase({ kind: "closed" });
+        }}
         openSettings={openSettings}
       />
     </ConfirmScreen>
@@ -100,6 +117,7 @@ export function RunWithClaude({
 interface ConfirmScreenProps {
   readonly offer: ServerSessionOffer;
   readonly target: ServerTarget;
+  readonly showLauncher: boolean;
   readonly children: ReactNode;
 }
 
@@ -107,8 +125,9 @@ interface ConfirmScreenProps {
  * The confirm screen, copied from the review (`request-review.tsx`): where it starts, then the
  * brief word for word. React writes the brief as a text node, so nothing in it is ever Markdown.
  */
-function ConfirmScreen({ offer, target, children }: ConfirmScreenProps) {
+function ConfirmScreen({ offer, target, showLauncher, children }: ConfirmScreenProps) {
   const titleId = useId();
+  const captionId = useId();
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus({ preventScroll: true }), []);
   const launcher = renderServerSessionLauncher(target, offer.task);
@@ -123,14 +142,21 @@ function ConfirmScreen({ offer, target, children }: ConfirmScreenProps) {
         {words.confirmLine.after}
       </p>
       <figure className="flex flex-col gap-1">
-        <figcaption className="text-small text-fg-muted">
+        <figcaption id={captionId} className="text-small text-fg-muted">
           {words.writtenBy(offer.requester)}
         </figcaption>
-        <pre className="max-h-80 overflow-y-auto rounded-sm bg-surface-subtle p-3 font-mono text-small text-fg whitespace-pre-wrap wrap-anywhere">
+        {/* biome-ignore lint/a11y/useSemanticElements: the `pre` keeps the brief's spaces and line breaks; a `section` around it would add a second box to scroll and focus */}
+        <pre
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: a scroll area must take focus to scroll by keyboard, which WebKit doesn't do otherwise
+          tabIndex={0}
+          role="region"
+          aria-labelledby={captionId}
+          className="focus-ring max-h-80 overflow-y-auto rounded-sm bg-surface-subtle p-3 font-mono text-small text-fg whitespace-pre-wrap wrap-anywhere"
+        >
           {offer.brief}
         </pre>
       </figure>
-      {launcher.ok ? (
+      {showLauncher && launcher.ok ? (
         <Disclosure summary={words.showCommands} openSummary={words.hideCommands}>
           <pre className="mx-4 mb-4 rounded-sm bg-surface-subtle p-3 font-mono text-small text-fg whitespace-pre-wrap wrap-anywhere">
             {launcher.value}
@@ -146,28 +172,35 @@ interface OutcomeProps {
   readonly phase: Phase;
   readonly offer: ServerSessionOffer;
   readonly target: ServerTarget;
-  readonly canLaunch: boolean;
+  /** Whether the user starts it by hand: no shell, or the shell can't open a terminal. */
+  readonly manual: boolean;
   readonly start: () => Promise<void>;
   readonly cancel: () => void;
   readonly openSettings: () => void;
 }
 
 /** Under the brief: the buttons, or what the shell answered. */
-function Outcome({ phase, offer, target, canLaunch, start, cancel, openSettings }: OutcomeProps) {
+function Outcome({ phase, offer, target, manual, start, cancel, openSettings }: OutcomeProps) {
   const answer = phase.kind === "answered" ? phase.answer : undefined;
-  if (!canLaunch || (answer !== undefined && guideAnswers.includes(answer.kind))) {
+  if (manual) {
     const why = answer?.kind === "no-terminal" ? words.noTerminal : words.cannotOpenTerminal;
-    return <ManualStart why={why} brief={offer.brief} target={target} />;
+    return (
+      <div className="flex flex-col gap-2">
+        <ManualStart why={why} brief={offer.brief} target={target} />
+        <CancelButton cancel={cancel} />
+      </div>
+    );
   }
   if (answer?.kind === "terminal-opened") {
     return <Callout tone="info">{words.started(offer.task)}</Callout>;
   }
   if (answer?.kind === "not-configured") {
     return (
-      <div>
+      <div className="flex flex-wrap gap-2">
         <Button variant="secondary" onClick={openSettings}>
           {words.setUpFirst}
         </Button>
+        <CancelButton cancel={cancel} />
       </div>
     );
   }
@@ -184,10 +217,19 @@ function Outcome({ phase, offer, target, canLaunch, start, cancel, openSettings 
         <Button busy={phase.kind === "starting"} onClick={start}>
           {words.runWithClaude}
         </Button>
-        <Button variant="ghost" onClick={cancel}>
-          {words.cancel}
-        </Button>
+        <CancelButton cancel={cancel} />
       </div>
+    </div>
+  );
+}
+
+/** The ghost **Cancel** that closes the confirm screen, under every answer that leaves it open. */
+function CancelButton({ cancel }: { readonly cancel: () => void }) {
+  return (
+    <div>
+      <Button variant="ghost" onClick={cancel}>
+        {words.cancel}
+      </Button>
     </div>
   );
 }
@@ -210,13 +252,25 @@ function ManualStart({ why, brief, target }: ManualStartProps) {
     <Callout tone="info" title={words.guideTitle}>
       <div className="flex flex-col gap-2">
         <p>{why}</p>
-        <p>{words.guideSteps.connect}</p>
-        <CommandBox command={sshCommand(target)} />
-        <p>{words.guideSteps.claude}</p>
-        <div className="flex flex-wrap items-center gap-2">
-          <span>{words.guideSteps.paste}</span>
-          <CopyButton text={brief} label={words.copyBrief} />
-        </div>
+        <ol className="list-decimal pl-5">
+          <li>
+            <div className="flex flex-col gap-2">
+              {words.guideSteps.connect}
+              <CommandBox command={sshCommand(target)} />
+            </div>
+          </li>
+          <li className="mt-2">
+            {words.guideSteps.claude.before}
+            <code className="font-mono">claude</code>
+            {words.guideSteps.claude.after}
+          </li>
+          <li className="mt-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span>{words.guideSteps.paste}</span>
+              <CopyButton text={brief} label={words.copyBrief} />
+            </div>
+          </li>
+        </ol>
       </div>
     </Callout>
   );

@@ -53,6 +53,7 @@ export function ServerSessionView({ settings }: { readonly settings: HostSetting
       />
       <SavedTextField
         label={text.USER_LABEL}
+        hint={text.USER_HINT}
         placeholder={text.USER_PLACEHOLDER}
         stored={user.value}
         check={checkText}

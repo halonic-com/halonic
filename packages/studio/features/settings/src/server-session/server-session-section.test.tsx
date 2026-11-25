@@ -38,6 +38,11 @@ verifies("settings.server-session", () => {
       });
     });
 
+    it("says the user name goes in lower case", async () => {
+      const { view } = await setup();
+      expect(view.textContent).toContain("Your user name on the server, in lower case.");
+    });
+
     it("removes a field's saved value when it is emptied", async () => {
       const { store, view } = await setup();
       await typeAndLeave(box(view, "ops"), "ops");

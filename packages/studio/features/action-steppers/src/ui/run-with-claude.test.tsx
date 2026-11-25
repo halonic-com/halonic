@@ -72,14 +72,16 @@ verifies("action-steppers.run-with-claude", () => {
       expect(opened).toEqual(["settings"]);
     });
 
-    it("says why a refused server can't be used", () => {
-      const { root } = show(
+    it("says why a refused server can't be used, and offers to fix it in Settings", async () => {
+      const { root, opened } = show(
         { kind: "refused", reason: "the user must be a lower-case user name, such as ops" },
         undefined,
       );
       expect(root.textContent).toContain(
         "Your server in Settings can't be used: the user must be a lower-case user name, such as ops.",
       );
+      await press(root, "Fix your server in Settings");
+      expect(opened).toEqual(["settings"]);
     });
 
     it("shows the whole brief as plain text under who wrote it, then starts through the shell", async () => {
@@ -91,7 +93,14 @@ verifies("action-steppers.run-with-claude", () => {
       expect(root.querySelector("figcaption")?.textContent).toBe(
         "Written by Chief, not checked by Halonic",
       );
-      expect(root.querySelector("figure pre")?.textContent).toBe(offer.brief);
+      const briefBox = root.querySelector("figure pre");
+      expect(briefBox?.textContent).toBe(offer.brief);
+      // A keyboard reaches the scrolling box, named by who wrote it.
+      expect(briefBox?.getAttribute("tabindex")).toBe("0");
+      expect(briefBox?.getAttribute("role")).toBe("region");
+      const captionId = root.querySelector("figcaption")?.id;
+      expect(briefBox?.getAttribute("aria-labelledby")).toBe(captionId);
+      expect(root.textContent).toContain("Show the commands that will run");
       expect(root.querySelector("b")).toBeNull();
       await press(root, "Run with Claude");
       expect(requests).toEqual([offer]);
@@ -109,6 +118,7 @@ verifies("action-steppers.run-with-claude", () => {
       expect(root.textContent).toContain("Nothing was started.");
       await press(root, "Cancel");
       expect(root.querySelector("h3")).toBeNull();
+      expect(document.activeElement).toBe(button(root, "Run with Claude"));
     });
 
     it("shows the manual guide with Copy command where the shell can't open a terminal", async () => {
@@ -121,6 +131,16 @@ verifies("action-steppers.run-with-claude", () => {
       expect(root.textContent).toContain("ssh -p 2222 -- ops@build.acme.example");
       expect(root.querySelector('button[aria-label="Copy command"]')).not.toBeNull();
       expect(root.querySelector('button[aria-label="Copy the brief"]')).not.toBeNull();
+      expect([...root.querySelectorAll("ol li")].map((step) => step.textContent)).toEqual([
+        expect.stringContaining("Open a terminal and run this command:"),
+        "On the server, run claude.",
+        expect.stringContaining("Paste the brief as your first message."),
+      ]);
+      expect(root.querySelector("ol li:nth-child(2) code")?.textContent).toBe("claude");
+      // By hand the launcher never runs, so the screen doesn't offer to show it.
+      expect(root.textContent).not.toContain("Show the commands that will run");
+      await press(root, "Cancel");
+      expect(root.querySelector("h3")).toBeNull();
     });
 
     it("shows the manual guide when the shell found no terminal", async () => {
@@ -129,6 +149,31 @@ verifies("action-steppers.run-with-claude", () => {
       await press(root, "Run with Claude");
       expect(root.textContent).toContain("Halonic found no terminal on this computer.");
       expect(root.querySelector('button[aria-label="Copy command"]')).not.toBeNull();
+      expect(root.textContent).not.toContain("Show the commands that will run");
+    });
+
+    it("offers Settings and Cancel when the shell finds no server set", async () => {
+      const { root, opened } = show(acmeServer, fakeShell({ kind: "not-configured" }).shell);
+      await press(root, "Run with Claude");
+      await press(root, "Run with Claude");
+      await press(root, "Set up your server in Settings first");
+      expect(opened).toEqual(["settings"]);
+      await press(root, "Cancel");
+      expect(root.querySelector("h3")).toBeNull();
+    });
+
+    it("says the desktop app couldn't open the session when the shell throws", async () => {
+      const shell: ServerSessionShell = {
+        open: async () => {
+          throw new Error("bridge down");
+        },
+      };
+      const { root } = show(acmeServer, shell);
+      await press(root, "Run with Claude");
+      await press(root, "Run with Claude");
+      expect(root.textContent).toContain(
+        "Halonic didn't start it: the desktop app couldn't open the session.",
+      );
     });
 
     it("says why the shell refused", async () => {

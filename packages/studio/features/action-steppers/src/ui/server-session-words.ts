@@ -9,6 +9,9 @@ export const runWithClaude = "Run with Claude";
 /** The item's button while no server is set: it opens Settings. */
 export const setUpFirst = "Set up your server in Settings first";
 
+/** The item's button while the server in Settings is set but refused: it opens Settings. */
+export const fixInSettings = "Fix your server in Settings";
+
 /** Under that button when the server in Settings is set but refused. */
 export function serverRefused(reason: string): string {
   return `Your server in Settings can't be used: ${reason}.`;
@@ -52,16 +55,19 @@ export function shellRefused(reason: string): string {
   return `Halonic didn't start it: ${reason}.`;
 }
 
+/** The refusal's reason when the desktop app threw instead of answering. */
+export const desktopAppFailed = "the desktop app couldn't open the session";
+
 /** The manual guide's title, and why it shows instead of the button. */
 export const guideTitle = "Start it yourself";
 export const noTerminal = "Halonic found no terminal on this computer.";
 export const cannotOpenTerminal = "Halonic can't open a terminal for you on this computer.";
 
-/** The manual guide's three steps. */
+/** The manual guide's three steps, numbered by the list; `claude` sits in code between the halves. */
 export const guideSteps = {
-  connect: "1. Open a terminal and run this command:",
-  claude: "2. On the server, run claude.",
-  paste: "3. Paste the brief as your first message.",
+  connect: "Open a terminal and run this command:",
+  claude: { before: "On the server, run ", after: "." },
+  paste: "Paste the brief as your first message.",
 } as const;
 
 /** The Copy button's name for screen readers. */
