@@ -107,12 +107,17 @@ const headerClasses = "flex items-center gap-3 border-b border-border px-4 py-3"
  */
 const headerWithActionsClasses = `${headerClasses} relative phone:min-h-touch`;
 
-/** A card that is one button as a whole; an unavailable one stays focusable but opens nothing. */
+/**
+ * A card that is one button as a whole; an unavailable one stays focusable but opens nothing. It
+ * keeps its look, since only now it can't open (HAL-17515 s09): `aria-disabled` and no hover lift
+ * say so. Only a `disabled` card, which is paused, fades.
+ */
 function CardButton(props: InteractiveCard) {
   const { onClick, unavailable } = props;
-  const state = unavailable === undefined ? (props.state ?? "default") : "disabled";
+  const state = props.state ?? "default";
   const faded = state === "disabled" ? ` ${fadedClasses}` : "";
-  const classes = `${box} ${stateClasses[state]}${faded} ${interactiveClasses[state]} p-4`;
+  const reacting = interactiveClasses[unavailable === undefined ? state : "disabled"];
+  const classes = `${box} ${stateClasses[state]}${faded} ${reacting} p-4`;
   return (
     <button
       type="button"

@@ -3,7 +3,7 @@ import { ListHeading } from "@halonicjs/studio-kit";
 import type { SeatProblem } from "../seat-problems.ts";
 import { formatDayTime, formatTime, type TeamClock } from "../team-format.ts";
 import { type TeamLink, teamWords } from "../team-words.ts";
-import { LinkRow, RowChevron } from "./link-row.tsx";
+import { LinkRow, RowChevron, RowList } from "./link-row.tsx";
 import { StateIcon } from "./seat-state.tsx";
 
 /**
@@ -54,7 +54,7 @@ function ProblemIcon({ kind }: { kind: SeatProblem["kind"] }) {
 }
 
 /**
- * Needs you: one bordered row per seat problem, worst first, or one line when nothing needs the
+ * Needs you: one bordered list with a row per seat problem (s01), worst first, or one line when nothing needs the
  * board. Each row opens AI seats in Paperclip, where the seat is fixed, when links are on. Only for a team with seats.
  */
 export function NeedsYou(props: {
@@ -70,7 +70,7 @@ export function NeedsYou(props: {
       {problems.length === 0 ? (
         <p className="px-4 text-small text-fg-muted">{teamWords.nothingNeedsYou}</p>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <RowList>
           {problems.map((problem) => {
             const [title, line] = problemLines(problem, clock);
             return (
@@ -91,7 +91,7 @@ export function NeedsYou(props: {
               </li>
             );
           })}
-        </ul>
+        </RowList>
       )}
     </section>
   );

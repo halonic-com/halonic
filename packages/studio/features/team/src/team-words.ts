@@ -20,6 +20,8 @@ export const teamWords = {
   notAnswering: "Paperclip isn't answering.",
   tryAgain: "Try again",
   asOf: (time: string, minutes: number) => `As of ${time} · ${minutes} min ago`,
+  /** The freshness slot while offline, with the last good read's time (wording, Shared). */
+  asOfOffline: (time: string) => `As of ${time} · offline`,
   needsYou: "Needs you",
   problemCount: (count: number) => (count === 1 ? "1 problem" : `${count} problems`),
   nothingNeedsYou: "Nothing needs you. All seats are under 80%.",
@@ -77,7 +79,8 @@ export const teamWords = {
     paperclip: "Open Paperclip",
     "connect-again": "Connect again",
   } satisfies Record<TeamLink, string>,
-  openAiSeatsInPaperclip: "Open AI seats in Paperclip ↗",
+  /** The page header's button (s01, s09); the ↗ is its icon, beside the name. */
+  openAiSeatsInPaperclip: "Open AI seats in Paperclip",
   agentsStillOn: (count: number) =>
     count === 1 ? "1 agent still on it" : `${count} agents still on it`,
   /** The Inbox notices and desktop notifications, HAL-17515 S19 and S20. */
@@ -108,18 +111,22 @@ export const teamWords = {
     // Only "since": the port has one time, `asOf`, so a separate "last read" would repeat it.
     "signed-out": (since?: string) =>
       since === undefined ? "Signed out" : `Signed out · since ${since}`,
-    "not-read": (since?: string) =>
-      since === undefined ? "? Not read" : `? Not read · last good ${since}`,
+    // The chip's ⓘ is its symbol, so the words carry no "?"; "last good" goes under the bar (S6).
+    "not-read": () => "Not read",
     other: () => "",
   } satisfies Record<SeatState, (time?: string) => string>,
   /**
    * A failed read's cause in the seat's row, from Sofia's table 1.6 row "One
-   * seat's read failed" (HAL-17510): "? Not read · rate-limited · last good
-   * 12:20". A cause with no words leaves the row as plain "? Not read".
+   * seat's read failed" (HAL-17510): "Not read · rate-limited", with "last good
+   * 12:20" under the greyed bar (S6). A cause with no words leaves "Not read".
    */
   readCause: { "rate-limited": "rate-limited", other: undefined } satisfies Record<
     SeatReadCause,
     string | undefined
   >,
-  notReadBecause: (cause: string, since: string) => `? Not read · ${cause} · last good ${since}`,
+  notReadBecause: (cause: string) => `Not read · ${cause}`,
+  /** Under a seat's greyed week bar: a not-read seat's "last good 12:20" (S6). */
+  lastGood: (time: string) => `last good ${time}`,
+  /** Under a signed-out seat's greyed week bar: "last read 09:40" (S1, S6). */
+  lastRead: (time: string) => `last read ${time}`,
 };

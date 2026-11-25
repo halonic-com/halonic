@@ -102,7 +102,7 @@ verifies("shell.sidebar-places", () => {
       expect(heading?.textContent).toBe("Team");
       expect(group?.getAttribute("aria-labelledby")).toBe(heading?.id);
       expect([...(group?.querySelectorAll("li") ?? [])].map((li) => li.textContent)).toEqual([
-        "Spend and seats! 2, 2 problems",
+        "Spend and seats2, 2 problems",
       ]);
       expect(container.querySelector("nav > div li")?.textContent).toBe("Home");
     });

@@ -4,7 +4,7 @@ import type { SeatProblem, SeatProblemKind } from "../seat-problems.ts";
 import { formatDayTime, formatTime, type TeamClock } from "../team-format.ts";
 import { type TeamLink, teamWords } from "../team-words.ts";
 import { pageKey } from "./detail-pages.tsx";
-import { LinkRow, RowChevron } from "./link-row.tsx";
+import { LinkRow, RowChevron, RowList } from "./link-row.tsx";
 import { Amount, SmallLine, Tile } from "./money-tiles.tsx";
 import { StateIcon, stateTones } from "./seat-state.tsx";
 import { UsageMeter } from "./usage-meter.tsx";
@@ -52,7 +52,7 @@ function stateWords(seat: Seat, clock: TeamClock): string {
         week?.resetsAt === undefined ? undefined : formatDayTime(week.resetsAt, clock),
       );
     case "not-read":
-      return notReadWords(seat, clock);
+      return notReadWords(seat);
     case "signed-out":
       return teamWords.state[seat.state](formatTime(seat.asOf, clock));
     default:
@@ -61,13 +61,10 @@ function stateWords(seat: Seat, clock: TeamClock): string {
 }
 
 /** A seat not read, with why its newest read failed when the cause has words. */
-function notReadWords(seat: Seat, clock: TeamClock): string {
-  const lastGood = formatTime(seat.asOf, clock);
+function notReadWords(seat: Seat): string {
   const cause =
     seat.failedRead === undefined ? undefined : teamWords.readCause[seat.failedRead.cause];
-  return cause === undefined
-    ? teamWords.state["not-read"](lastGood)
-    : teamWords.notReadBecause(cause, lastGood);
+  return cause === undefined ? teamWords.state["not-read"]() : teamWords.notReadBecause(cause);
 }
 
 /** A seat's State: a StatusChip in the state's tone, with its symbol and always its words. */
@@ -103,23 +100,52 @@ const numberCell = "text-right text-small tabular-nums";
 const desktopNumberCell = `${numberCell} phone:hidden`;
 
 /**
- * The week: on a desktop a meter, with a near-limit seat's forecast under it; on a phone only the
- * percent. A seat with no week shows a dash.
+ * Whether a seat's week numbers may be out of date, and the line under its greyed bar that says
+ * since when: a signed-out seat's "last read 09:40", a seat whose read failed "last good 12:20"
+ * (S1, S6).
+ */
+function staleLine(seat: Seat, clock: TeamClock): string | undefined {
+  const time = formatTime(seat.asOf, clock);
+  if (seat.state === "signed-out") return teamWords.lastRead(time);
+  if (seat.state === "not-read" || seat.failedRead !== undefined) return teamWords.lastGood(time);
+  return undefined;
+}
+
+/** The line under a week meter: an old reading's time, or a near-limit seat's forecast. */
+function UnderMeter({ seat, clock }: { seat: Seat; clock: TeamClock }) {
+  const stale = staleLine(seat, clock);
+  if (stale !== undefined) return <span className="block text-small text-fg-muted">{stale}</span>;
+  const week = seat.windows.find((each) => each.kind === "week");
+  if (seat.state !== "near-limit" || week?.reaches90At === undefined) return null;
+  return (
+    <span className="block text-small text-attention">
+      {teamWords.forecast90(formatTime(week.reaches90At, clock))}
+    </span>
+  );
+}
+
+/**
+ * The week: on a desktop a meter, greyed with its time under it when the reading may be old, or
+ * with a near-limit seat's forecast under it; on a phone only the percent. A seat with no week
+ * shows a dash.
  */
 function WeekCell({ seat, clock }: { seat: Seat; clock: TeamClock }) {
   const week = seat.windows.find((each) => each.kind === "week");
-  if (week === undefined) return <span className={numberCell}>—</span>;
-  const forecast =
-    seat.state === "near-limit" && week.reaches90At !== undefined
-      ? teamWords.forecast90(formatTime(week.reaches90At, clock))
-      : undefined;
+  if (week === undefined) {
+    return (
+      <span className="block min-w-0">
+        <span className={`block ${numberCell}`}>—</span>
+        <span className="block phone:hidden">
+          <UnderMeter seat={seat} clock={clock} />
+        </span>
+      </span>
+    );
+  }
   return (
     <span className="block min-w-0">
       <span className="block phone:hidden">
-        <UsageMeter percent={week.usedPercent} />
-        {forecast === undefined ? null : (
-          <span className="block text-small text-attention">{forecast}</span>
-        )}
+        <UsageMeter percent={week.usedPercent} greyed={staleLine(seat, clock) !== undefined} />
+        <UnderMeter seat={seat} clock={clock} />
       </span>
       <span className={`hidden phone:block ${numberCell}`}>
         {teamWords.percent(Math.round(week.usedPercent))}
@@ -161,8 +187,9 @@ function SeatMiddle({ seat, clock }: { seat: Seat; clock: TeamClock }) {
 }
 
 /**
- * A seat's name, "Seat C · pool": when it wraps, "· pool" moves under the label whole, so a line
- * never starts or ends with the separator.
+ * A seat's name, "Seat C · pool": on a desktop, when it wraps, "· pool" moves under the label
+ * whole, so a line never starts or ends with the separator; on a phone it stays on one line and a
+ * long one is cut with an ellipsis (S24).
  */
 function SeatName({ seat }: { seat: Seat }) {
   const role = teamWords.seatRole(seat);
@@ -188,7 +215,7 @@ function SeatRow(props: {
       {(opens) => (
         // A failed read keeps the last good numbers, greyed (Sofia's table 1.6).
         <span className={seat.failedRead === undefined ? rowGrid : `${rowGrid} text-fg-muted`}>
-          <span className="min-w-0 w-full wrap-anywhere text-body-strong">
+          <span className="min-w-0 w-full wrap-anywhere text-body-strong phone:truncate">
             <Spoken column={seatColumn ?? ""} />
             <SeatName seat={seat} />
           </span>
@@ -205,8 +232,8 @@ function SeatRow(props: {
 }
 
 /**
- * The seats, worst first, under the "Seats · worst first" heading, with the column names above
- * them on a desktop. Each row opens the seat's page, or AI seats in Paperclip where there is none. A paid-API seat shows money's words
+ * The seats, worst first, under the "Seats · worst first" heading: one bordered list with the
+ * column names at its top on a desktop (s01). Each row opens the seat's page, or AI seats in Paperclip where there is none. A paid-API seat shows money's words
  * instead of a weekly limit.
  */
 export function SeatList(props: {
@@ -216,31 +243,32 @@ export function SeatList(props: {
   onOpenSeat?: ((seat: MessagingId) => void) | undefined;
 }) {
   return (
-    <div className="flex flex-col gap-2">
-      {/* The rows say each column's name to screen readers, so the heading row is for eyes only. */}
-      <div
-        aria-hidden="true"
-        className={`${rowGrid} px-4 text-label uppercase text-fg-muted phone:hidden`}
-      >
-        {teamWords.seatColumns.map((column, index) => (
-          <span key={column} className={index >= 3 ? "text-right" : undefined}>
-            {column}
-          </span>
-        ))}
-      </div>
-      <ul className="flex flex-col gap-2">
-        {props.seats.map((seat) => (
-          <li key={seat.id} data-opens={pageKey({ kind: "seat", id: seat.id })}>
-            <SeatRow
-              seat={seat}
-              clock={props.clock}
-              onLink={props.onLink}
-              onOpenSeat={props.onOpenSeat}
-            />
-          </li>
-        ))}
-      </ul>
-    </div>
+    <RowList
+      head={
+        // The rows say each column's name to screen readers, so the heading row is for eyes only.
+        <div
+          aria-hidden="true"
+          className={`${rowGrid} px-4 py-2 text-label uppercase text-fg-muted phone:hidden`}
+        >
+          {teamWords.seatColumns.map((column, index) => (
+            <span key={column} className={index >= 3 ? "text-right" : undefined}>
+              {column}
+            </span>
+          ))}
+        </div>
+      }
+    >
+      {props.seats.map((seat) => (
+        <li key={seat.id} data-opens={pageKey({ kind: "seat", id: seat.id })}>
+          <SeatRow
+            seat={seat}
+            clock={props.clock}
+            onLink={props.onLink}
+            onOpenSeat={props.onOpenSeat}
+          />
+        </li>
+      ))}
+    </RowList>
   );
 }
 

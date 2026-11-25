@@ -232,4 +232,15 @@ verifies("kit.card", () => {
     expect(button.getAttribute("aria-describedby")).toBe("why");
     expect(button.disabled).toBe(false);
   });
+
+  it("draws an unavailable card as it was, with no fade and no hover lift (HAL-17515 s09)", () => {
+    const { container } = render(
+      <Card onClick={() => {}} unavailable={{ reason: "why" }}>
+        Seat A
+      </Card>,
+    );
+    const button = container.querySelector("button") as HTMLButtonElement;
+    expect(button.className).not.toContain("text-fg-disabled");
+    expect(button.className).not.toContain("hover:shadow-1");
+  });
 });
