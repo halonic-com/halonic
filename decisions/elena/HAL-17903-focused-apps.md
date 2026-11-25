@@ -3,6 +3,7 @@
 - Task: HAL-17903
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-17903 (Liam, reviewer of `src-tauri` and the capabilities)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:CcORqJaLcqJF6ZUMG+ItHAN8upHwUhaKfWgEY2qBJKJYZa0EqrgZh4aNotBVHV1xOqT+J8CUDfV4SoAa5frkDg==
 
 ## What changes
 
