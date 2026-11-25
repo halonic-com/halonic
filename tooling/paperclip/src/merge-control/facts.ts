@@ -53,6 +53,8 @@ export interface FactsSettings {
 /** What the reader keeps between passes. */
 export interface FactsCaches extends ObservedCaches {
   readonly failedJobs: BoundedCache<FailedJob[]>;
+  /** The red jobs' names of `main`'s newest finished push run, by run and attempt. */
+  readonly mainRedJobs: BoundedCache<string[]>;
   readonly ciOkRuns: BoundedCache<CiOkRun | null>;
   readonly manifests: BoundedCache<GatePull["manifests"]>;
   readonly mainFiles: BoundedCache<{ readonly lines: number; readonly barrel: boolean } | null>;
@@ -62,6 +64,7 @@ export interface FactsCaches extends ObservedCaches {
 export function factsCaches(): FactsCaches {
   return {
     failedJobs: boundedCache(),
+    mainRedJobs: boundedCache(),
     ciOkRuns: boundedCache(),
     manifests: boundedCache(),
     mainFiles: boundedCache(),
@@ -243,7 +246,7 @@ export async function readMergeFacts(deps: FactsDeps, now: Date): Promise<ReadFa
     queuedPullRuns: queued.map(runFactOf),
     runnerWaitMinutes: runnerWaitOf(read.queue, now),
     capacity: capacity.capacity,
-    mainRuns: await mainRunsOf(get, settings.repo),
+    mainRuns: await mainRunsOf(get, settings.repo, deps.caches.mainRedJobs),
   };
   return { snapshot, observed: await readObserved(deps, read, { groups, queued }) };
 }

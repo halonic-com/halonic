@@ -2,7 +2,7 @@ import { type ChangedFile, readManifests } from "../pr-tools/manifests.ts";
 import type { GitHubGet } from "../pr-watcher/github.ts";
 import { ciOkOf } from "./checks.ts";
 import { type BoundedCache, cached } from "./facts-cache.ts";
-import type { CiOkRun, FailedJob, GatePull, GroupRun, RunFact } from "./snapshot.ts";
+import type { CiOkRun, FailedJob, GatePull, GroupRun, MainRun, RunFact } from "./snapshot.ts";
 
 /**
  * The facts read from the GitHub Actions REST API, GET only: merge-group
@@ -67,12 +67,38 @@ export function runFactOf(run: RestRun): RunFact {
   };
 }
 
-/** `main`'s newest `CI` push runs. */
-export async function mainRunsOf(get: GitHubGet, repo: string): Promise<RunFact[]> {
+/** Job conclusions that aren't red. */
+const notRed = new Set(["success", "skipped", "neutral"]);
+
+/**
+ * `main`'s newest `CI` push runs; the newest completed, not cancelled one
+ * that didn't pass with the names of its red jobs, for the main-red freeze.
+ */
+export async function mainRunsOf(
+  get: GitHubGet,
+  repo: string,
+  cache: BoundedCache<string[]>,
+): Promise<MainRun[]> {
   const body = (await get(
     `/repos/${repo}/actions/workflows/ci.yml/runs?branch=main&event=push&per_page=10`,
   )) as { workflow_runs?: RestRun[] };
-  return (body.workflow_runs ?? []).map(runFactOf);
+  const runs = body.workflow_runs ?? [];
+  const newest = runs
+    .filter((run) => run.status === "completed" && run.conclusion !== "cancelled")
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+  const runFacts: MainRun[] = runs.map(runFactOf);
+  if (newest === undefined || newest.conclusion === "success") {
+    return runFacts;
+  }
+  const redJobs = await cached(cache, `${newest.id}:${newest.run_attempt ?? 1}`, async () => {
+    const jobs = (await get(
+      `/repos/${repo}/actions/runs/${newest.id}/jobs?filter=latest&per_page=100`,
+    )) as { jobs?: RestJob[] };
+    return (jobs.jobs ?? [])
+      .filter((job) => !notRed.has(job.conclusion ?? ""))
+      .map((job) => job.name);
+  });
+  return runFacts.map((run) => (run.id === newest.id ? { ...run, redJobs } : run));
 }
 
 /** A run's failed jobs on its latest attempt, without `ci-ok`, with their failed steps. */

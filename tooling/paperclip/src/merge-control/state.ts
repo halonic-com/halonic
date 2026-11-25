@@ -115,6 +115,12 @@ export interface MergeSettings {
   readonly queueRunnerLabel: string;
   /** Runner-minutes to rebuild one merge group: about 16 jobs of about 15 minutes. */
   readonly groupRunnerMinutes: number;
+  /**
+   * Push-run jobs on `main` known to fail without a code cause: a push run
+   * red only in these ends the main-red freeze (HAL-17912 item D). Each
+   * entry goes once its flake is fixed.
+   */
+  readonly knownFlakyPushJobs: readonly string[];
 }
 
 /** Today's settings (board, 22–24 Nov). */
@@ -128,6 +134,8 @@ export const defaultSettings: MergeSettings = {
   fileSizeLimit: 500,
   queueRunnerLabel: "large",
   groupRunnerMinutes: 240,
+  // Goes once HAL-18065 fixes the emulator flake.
+  knownFlakyPushJobs: ["Android device keys (emulator)"],
 };
 
 /** Why a queued pull request comes out (MERGER.md §4, a–e and the board's additions). */

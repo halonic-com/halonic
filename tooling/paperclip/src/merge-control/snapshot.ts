@@ -142,6 +142,15 @@ export interface RunFact {
   readonly branch: string;
 }
 
+/** A `CI` push run on `main`. */
+export interface MainRun extends RunFact {
+  /**
+   * The names of its jobs that didn't pass or get skipped; read only for the
+   * newest completed, not cancelled run that didn't pass, missing otherwise.
+   */
+  readonly redJobs?: readonly string[];
+}
+
 /** Runner capacity, from the CI live metrics and the CI server's status file; null where unreadable. */
 export interface RunnerCapacity {
   /** Free merge-queue (large) runner slots. */
@@ -158,13 +167,19 @@ export interface MergeSnapshot {
   readonly queue: readonly QueueEntry[];
   /** Queued pull requests and open `built-on:paperclip` ones. */
   readonly pulls: readonly GatePull[];
-  /** Every open pull request: stacks for the fill order, heads for stale runs. */
-  readonly open: readonly {
-    readonly number: number;
-    readonly branch: string;
-    readonly base: string;
-    readonly head: string;
-  }[];
+  /**
+   * Every open pull request: stacks for the fill order, heads for stale runs
+   * and for pruning the state. Null when the list couldn't be read (a
+   * replayed pass): nothing is pruned then.
+   */
+  readonly open:
+    | readonly {
+        readonly number: number;
+        readonly branch: string;
+        readonly base: string;
+        readonly head: string;
+      }[]
+    | null;
   /** Pull requests merged lately, to report the ones that left the queue that way. */
   readonly merged: readonly { readonly number: number; readonly mergedAt: string }[];
   /** Paperclip tasks for the fill order. */
@@ -186,5 +201,5 @@ export interface MergeSnapshot {
   /** Null when the reader couldn't read it at all; counts as short. */
   readonly capacity: RunnerCapacity | null;
   /** Newest `CI` push runs on `main`. */
-  readonly mainRuns: readonly RunFact[];
+  readonly mainRuns: readonly MainRun[];
 }

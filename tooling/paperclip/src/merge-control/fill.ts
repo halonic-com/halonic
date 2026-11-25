@@ -84,7 +84,7 @@ export function fillOrder(
       base: row.pull.base,
       readySince: state.readySince[String(row.pull.number)],
     })),
-    open: snapshot.open.map((pull) => ({ ...pull, readySince: undefined })),
+    open: (snapshot.open ?? []).map((pull) => ({ ...pull, readySince: undefined })),
     tasks: snapshot.tasks,
     now,
   });

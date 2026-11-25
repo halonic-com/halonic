@@ -1,5 +1,6 @@
 import { logLine, minutesSince, type PassContext } from "./context.ts";
 import type { GateRow } from "./gate.ts";
+import { mainRedEnd } from "./main-red-end.ts";
 import { texts } from "./texts.ts";
 
 /**
@@ -45,8 +46,7 @@ export function fillPauseOn(context: PassContext, rows: readonly GateRow[]): boo
 
 /**
  * The main-red freeze: while on, only pull requests whose title or branch
- * match its pattern go in, with a jump. It ends on the first completed,
- * not cancelled `CI` push run on `main` created after it began, if green.
+ * match its pattern go in, with a jump. It ends as `mainRedEnd` says.
  * Returns the pattern while it holds.
  */
 export function mainRedFreeze(context: PassContext): RegExp | null {
@@ -54,16 +54,9 @@ export function mainRedFreeze(context: PassContext): RegExp | null {
   if (freeze === null) {
     return null;
   }
-  const newest = context.snapshot.mainRuns
-    .filter(
-      (run) =>
-        run.status === "completed" &&
-        run.createdAt > freeze.since &&
-        run.conclusion !== "cancelled",
-    )
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
-  if (newest?.conclusion === "success") {
-    logLine(context, "main-red", `MAIN_GREEN at ${newest.headSha.slice(0, 9)}`);
+  const end = mainRedEnd(context, freeze.since);
+  if (end !== undefined) {
+    logLine(context, "main-red", end);
     context.state.board.mainRed = null;
     context.state.mainBroken = null;
     return null;

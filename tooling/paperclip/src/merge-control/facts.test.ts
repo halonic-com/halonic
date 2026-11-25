@@ -84,7 +84,7 @@ verifies("paperclip.merge-control-facts", () => {
     ]);
     // #104 has no built-on label and isn't queued: open, but not one the gate looks at.
     expect(snapshot.pulls.map((pull) => pull.number)).toEqual([101, 102, 103, 106]);
-    expect(snapshot.open.map((pull) => pull.number)).toEqual([101, 102, 103, 104, 106]);
+    expect(snapshot.open?.map((pull) => pull.number)).toEqual([101, 102, 103, 104, 106]);
     const [ready, queued, fast] = snapshot.pulls;
     expect(ready?.checks.find((check) => check.name === "guard")).toMatchObject({
       workflow: "Guard notes",
