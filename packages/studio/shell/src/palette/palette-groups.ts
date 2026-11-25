@@ -1,4 +1,5 @@
 import type { CommandContribution, SearchResult } from "../points/commands.ts";
+import { placeNames, type SidebarPlace } from "../points/frame.ts";
 import type { ItemRef } from "../points/item-kinds.ts";
 import type { TabLocation } from "../tabs/tab-set.ts";
 import { compareNameMatches, matchName, type NameMatch } from "./name-match.ts";
@@ -115,6 +116,19 @@ export function itemLocation(item: ItemRef, label: string, kinds: PaletteKindNam
 }
 
 /**
+ * Where a found item opens: the place that lists it when the provider names one
+ * (`SearchResult.place`), else the item's own page, as {@link itemLocation} names it.
+ */
+export function foundLocation(result: SearchResult, kinds: PaletteKindNames): TabLocation {
+  if (result.place !== undefined) return placeLocation(result.place);
+  return itemLocation(result.item, result.label, kinds);
+}
+
+function placeLocation(place: SidebarPlace): TabLocation {
+  return { key: place, title: placeNames[place].label };
+}
+
+/**
  * Ranks and groups what Ctrl K shows (design-search 2, component specs 24.3). With nothing typed:
  * Open tabs, then Recent places that no tab shows. With words typed: "Agents, workflows and
  * more", the places whose name matches and every item a search provider found, and Actions, the
@@ -155,7 +169,10 @@ export function paletteGroups(sources: PaletteSources): PaletteContent {
       ...(result.detail === undefined ? {} : { detail: result.detail }),
       ...(result.hubName === undefined ? {} : { hubName: result.hubName }),
       open: openKeys.has(key),
-      target: { kind: "item", item: result.item },
+      target:
+        result.place === undefined
+          ? { kind: "item", item: result.item }
+          : { kind: "location", location: placeLocation(result.place) },
     };
   });
   // A place a command opens ("Workspace settings") shows once, as the Action.

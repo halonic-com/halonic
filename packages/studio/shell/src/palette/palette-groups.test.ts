@@ -2,7 +2,12 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import type { SearchResult } from "../points/commands.ts";
 import type { TabLocation } from "../tabs/tab-set.ts";
-import { type PaletteContent, type PaletteSources, paletteGroups } from "./palette-groups.ts";
+import {
+  foundLocation,
+  type PaletteContent,
+  type PaletteSources,
+  paletteGroups,
+} from "./palette-groups.ts";
 
 const home: TabLocation = { key: "home", title: "Home" };
 const workflows: TabLocation = { key: "workflows", title: "Workflows" };
@@ -262,5 +267,43 @@ verifies("shell.command-sources", () => {
       label: "Show forecast",
       source: "Weather plugin",
     });
+  });
+});
+
+verifies("shell.found-in-place", () => {
+  const task: SearchResult = {
+    item: { kind: "agent-work", hub: "paperclip-acme", id: "ACME-7" },
+    label: "Acme: answer the click test",
+    place: "overview",
+  };
+
+  it("opens a found item with a place on that place, not on a page of its own", () => {
+    const content = palette({ words: "click test", found: [task] });
+    const row = content.groups[0]?.rows[0];
+    expect(row?.label).toBe("Acme: answer the click test");
+    expect(row?.target).toEqual({
+      kind: "location",
+      location: { key: "overview", title: "Overview" },
+    });
+    expect(foundLocation(task, new Map())).toEqual({ key: "overview", title: "Overview" });
+  });
+
+  it("keeps two found items that open the same place as two rows", () => {
+    const other: SearchResult = {
+      ...task,
+      item: { ...task.item, id: "ACME-8" },
+      label: "Acme: second",
+    };
+    const content = palette({ words: "acme", found: [task, other] });
+    expect(read(content)).toEqual([
+      "Agents, workflows and more:",
+      "Acme: answer the click test",
+      "Acme: second",
+    ]);
+  });
+
+  it("opens a found item without a place on its own page", () => {
+    const agent = found("agent", "sorter", "Sorter");
+    expect(foundLocation(agent, new Map())).toEqual({ key: "agent/acme/sorter", title: "Sorter" });
   });
 });

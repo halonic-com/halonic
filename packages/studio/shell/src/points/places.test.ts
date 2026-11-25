@@ -41,7 +41,7 @@ verifies("shell.sidebar-places", () => {
     expect(places.map((entry) => entry.featureId)).toEqual(["shell", "inbox", "agents", "runs"]);
   });
 
-  it("lists Pull requests right after Spend and seats, both in the Team group", () => {
+  it("lists Overview, then Spend and seats, then Pull requests, all in the Team group", () => {
     const shell = createShell({
       features: [
         feature("team", (studio) => {
@@ -49,16 +49,18 @@ verifies("shell.sidebar-places", () => {
           studio.places.add(place("team"));
         }),
         feature("inbox", (studio) => studio.places.add(place("inbox"))),
+        feature("overview", (studio) => studio.places.add(place("overview"))),
       ],
     });
     const names = shell.contributions.places.list().map((entry) => placeNames[entry.id]);
     expect(names.map((name) => name.label)).toEqual([
       "Home",
       "Inbox",
+      "Overview",
       "Spend and seats",
       "Pull requests",
     ]);
-    expect(names.map((name) => name.group)).toEqual([undefined, undefined, "team", "team"]);
+    expect(names.map((name) => name.group)).toEqual([undefined, undefined, "team", "team", "team"]);
   });
 
   // home-page.test.tsx loads Home's view for real; importing the page here
@@ -91,6 +93,7 @@ verifies("shell.sidebar-places", () => {
       "library",
       "runs",
       "changes",
+      "overview",
       "team",
       "pull-requests",
     ]);
@@ -103,6 +106,7 @@ verifies("shell.sidebar-places", () => {
       "Library",
       "Runs",
       "Changes",
+      "Overview",
       "Spend and seats",
       "Pull requests",
     ]);
@@ -115,7 +119,8 @@ verifies("shell.sidebar-places", () => {
     });
   });
 
-  it("puts Spend and seats and Pull requests in the Team group, whose heading the shell names", () => {
+  it("puts Overview, Spend and seats and Pull requests in the Team group, whose heading the shell names", () => {
+    expect(placeNames.overview).toEqual({ label: "Overview", icon: "overview", group: "team" });
     expect(placeNames.team).toEqual({ label: "Spend and seats", icon: "team", group: "team" });
     expect(placeNames["pull-requests"]).toEqual({
       label: "Pull requests",
@@ -123,7 +128,7 @@ verifies("shell.sidebar-places", () => {
       group: "team",
     });
     expect(placeGroupNames.team).toBe("Team");
-    expect(Object.values(placeNames).filter((name) => name.group !== undefined)).toHaveLength(2);
+    expect(Object.values(placeNames).filter((name) => name.group !== undefined)).toHaveLength(3);
   });
 
   it("speaks a problems signal after the name, as 2 problems", () => {
