@@ -67,7 +67,7 @@ import { openChoiceHistory } from "./choice-files.ts";
 import { workspaceGoogleRead } from "./google-read.ts";
 import { startsOnLiveVersion } from "./live-version-runs.ts";
 import { type ConsoleTransport, openServeConsole, type ServeConsole } from "./serve-console.ts";
-import { openServePaperclip } from "./serve-paperclip-sign-in.ts";
+import { openServePaperclip } from "./serve-paperclip.ts";
 import { type ServedRoutines, servedRoutines } from "./serve-routines.ts";
 import { servedModelChoice } from "./served-model-choice.ts";
 import { studioPageIsOutdated } from "./studio-page-age.ts";
@@ -378,7 +378,8 @@ async function listenOnComputer(
     runStore: parts.runs,
     secrets: context.secrets,
     providerKeys: providerKeysOf(keys),
-    // Signing in and Disconnect need a signed-in session; a many-user server never mounts them.
+    // Both need a signed-in session, and `serve` is one owner's: a many-user server mounts neither.
+    messaging: paperclip.messaging,
     paperclipKeys: paperclip.signIn,
     // Pick a model in a served window: saves the key and commits the choice, never trust (HAL-14808).
     modelChoice: servedModelChoice({

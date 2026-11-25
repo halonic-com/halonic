@@ -22,6 +22,7 @@ import {
 } from "@halonicjs/host-agent-messaging-hub";
 import { type AgentMessaging, type SecretStore, tokenNamePrefix } from "@halonicjs/ports";
 import { PAPERCLIP_CONNECTIONS_FOLDER } from "@halonicjs/workspace";
+import { SwappableMessaging } from "./swappable-messaging.ts";
 
 /** A connection's name: its file name without `.yaml`, as the desktop host allows it. */
 const connectionNamePattern = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/u;
@@ -63,9 +64,16 @@ export interface ServeMessagingOptions {
 
 /** The server's messaging, and the connections that have a stored key. */
 export interface ServeMessaging {
-  messaging: AgentMessaging;
-  /** The connections whose provider started, by name; empty when no key is stored. */
-  connected: readonly string[];
+  /** One port for the server's whole life; {@link rebuild} changes what is behind it. */
+  readonly messaging: AgentMessaging;
+  /** The sources whose provider started at the last build; empty when no key is stored. */
+  readonly connected: readonly string[];
+  /**
+   * Makes the providers again from the stored keys, after a sign-in stored a key or Disconnect
+   * removed one, and names `connection`'s source to every `changes` reader. Builds run one at a
+   * time, in the order they were asked for, so the last one asked for is the one that stays.
+   */
+  rebuild(connection: string): Promise<void>;
 }
 
 /**
@@ -76,6 +84,33 @@ export interface ServeMessaging {
  * @throws when the cache folder is inside the engine workspace
  */
 export async function openServeMessaging(options: ServeMessagingOptions): Promise<ServeMessaging> {
+  let built = await joinedProviders(options);
+  const swappable = new SwappableMessaging(built.messaging, (error) =>
+    options.report({ provider: "messaging-hub", action: "changes", error }),
+  );
+  let latest = Promise.resolve();
+  const rebuildNow = async (connection: string): Promise<void> => {
+    built = await joinedProviders(options);
+    swappable.swap(built.messaging, [paperclipSourceId(connection)]);
+  };
+  return {
+    messaging: swappable,
+    get connected() {
+      return built.connected;
+    },
+    rebuild(connection) {
+      const next = latest.then(() => rebuildNow(connection));
+      // The caller hears this build's failure; the next build still runs.
+      latest = next.catch(() => undefined);
+      return next;
+    },
+  };
+}
+
+/** The hub over a provider for each connection with a stored key, with the cache in front. */
+async function joinedProviders(
+  options: ServeMessagingOptions,
+): Promise<{ messaging: AgentMessaging; connected: readonly string[] }> {
   const { workspace, report, warn } = options;
   const providers: { name: string; messaging: AgentMessaging }[] = [];
   for (const connection of await connectionNames(workspace)) {

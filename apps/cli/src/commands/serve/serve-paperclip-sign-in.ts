@@ -2,7 +2,6 @@
 // S5): the same CLI sign-in as the desktop host's, except that the approved key goes into the
 // serve profile's secret store, never to Studio.
 
-import { join } from "node:path";
 import { MessagingCacheFolder } from "@halonicjs/adapter-agent-messaging-cache";
 import {
   approvalPageUrl,
@@ -25,11 +24,9 @@ import { type Phrase, plainText } from "../../messages/phrase.ts";
 import { serveMessages } from "../../messages/serve.ts";
 import {
   connectionNames,
-  openServeMessaging,
   paperclipKeySecretName,
   readConnectionFile,
   readStoredKey,
-  type ServeMessaging,
 } from "./serve-messaging.ts";
 
 /** How long a sign-in lasts: Paperclip's challenge lifetime (HAL-17423), as on the desktop. */
@@ -60,46 +57,6 @@ export interface ServePaperclipSignInOptions {
   setTimer?: (ms: number, end: () => void) => void;
   /** Makes the phrase; tests may pass a fixed one. */
   newPhrase?: () => string;
-}
-
-/** What {@link openServePaperclip} needs. */
-export interface ServePaperclipOptions {
-  /** The engine workspace's real path. */
-  workspace: string;
-  /** The serve profile's own secrets file, the only place a Paperclip key is kept. */
-  keys: Pick<SecretStore, "get" | "set" | "remove">;
-  /** The serve profile's folder; the messaging cache goes in it. */
-  profileFolder: string;
-  /** Where failures and broken cache files are written; never a key. */
-  log: (failure: unknown) => void;
-  /** The `fetch` Paperclip is called with; the global one by default. */
-  fetch?: typeof fetch;
-}
-
-/** The server's messaging over the stored keys (S4), and the sign-in that stores them. */
-export async function openServePaperclip(
-  options: ServePaperclipOptions,
-): Promise<ServeMessaging & { signIn: ServePaperclipSignIn }> {
-  const { workspace, keys, log } = options;
-  const cacheFolder = join(options.profileFolder, "agent-messaging-cache");
-  const network = options.fetch === undefined ? {} : { fetch: options.fetch };
-  const opened = await openServeMessaging({
-    workspace,
-    keys,
-    cacheFolder,
-    report: (failure) => log(failure.error),
-    warn: log,
-    ...network,
-  });
-  const signIn = new ServePaperclipSignIn({
-    workspace,
-    keys,
-    cacheFolder,
-    warn: log,
-    report: log,
-    ...network,
-  });
-  return { ...opened, signIn };
 }
 
 /** Hears a failure the sign-in carries on past; never a key. */
