@@ -20,6 +20,7 @@ class FakeSignInPaperclip {
   status = "pending";
   companyIds = [acme.company];
   revokeFails = false;
+  cancelFails = false;
   approvalPath = `/cli-auth/${challengeId}?token=made-up-challenge-secret`;
 
   readonly fetch = async (input: Request | string | URL, init?: RequestInit): Promise<Response> => {
@@ -39,7 +40,11 @@ class FakeSignInPaperclip {
       });
     }
     if (path === challengePath) return Response.json({ id: challengeId, status: this.status });
-    if (path === `${challengePath}/cancel`) return Response.json({ status: this.status });
+    if (path === `${challengePath}/cancel`) {
+      return this.cancelFails
+        ? Response.json({ error: "no" }, { status: 500 })
+        : Response.json({ status: this.status });
+    }
     if (path === "/api/cli-auth/me")
       return Response.json({ userId: "user-ada", companyIds: this.companyIds });
     if (path === "/api/cli-auth/revoke-current") {
@@ -66,6 +71,7 @@ let store: Map<string, string>;
 let now: number;
 let timers: (() => void)[];
 let signIn: ServePaperclipSignIn;
+let reported: unknown[];
 
 beforeEach(async () => {
   folder = await mkdtemp(join(tmpdir(), "serve-paperclip-sign-in-"));
@@ -76,6 +82,7 @@ beforeEach(async () => {
   store = new Map();
   now = Date.parse("2026-11-25T10:00:00Z");
   timers = [];
+  reported = [];
   signIn = new ServePaperclipSignIn({
     workspace,
     keys: {
@@ -85,7 +92,7 @@ beforeEach(async () => {
     },
     cacheFolder,
     warn: () => {},
-    report: () => {},
+    report: (error) => void reported.push(error),
     fetch: paperclip.fetch,
     now: () => new Date(now),
     setTimer: (ms, end) => {
@@ -259,5 +266,67 @@ verifies("server.paperclip-sign-in", () => {
       expect(await signIn.disconnect("other")).toEqual({ outcome: "unknown" });
       expect(paperclip.seen).toEqual([]);
     });
+  });
+});
+
+/** Every reported error's message and its causes' messages, as the debug log could show them. */
+function reportedText(): string[] {
+  const texts: string[] = [];
+  for (let each of reported) {
+    while (each instanceof Error) {
+      texts.push(each.message);
+      each = each.cause;
+    }
+  }
+  return texts;
+}
+
+verifies("server.paperclip-sign-in-failures", () => {
+  it("reports a failed cancel, then revokes the key and says nothing more", async () => {
+    paperclip.cancelFails = true;
+    const id = await started();
+
+    expect(await signIn.cancel(id)).toEqual({ status: "cancelled" });
+    expect(paperclip.revoked()).toEqual([canaryKey]);
+    expect(reportedText()[0]).toBe(
+      "Paperclip didn't cancel an ended sign-in's challenge, so its key is revoked instead.",
+    );
+    expect(reported).toHaveLength(1);
+    expect(reportedText().join("\n")).not.toContain(canaryKey);
+  });
+
+  it("reports a failed revoke after an approval the cancel found, with no key in it", async () => {
+    const id = await started();
+    paperclip.status = "approved";
+    paperclip.revokeFails = true;
+
+    expect(await signIn.cancel(id)).toEqual({ status: "cancelled", keyMayWork: true });
+    expect(reportedText()[0]).toBe(
+      "The key of an ended Paperclip sign-in couldn't be revoked, so it may work until it expires. Revoke it in Paperclip.",
+    );
+    expect(reportedText().join("\n")).not.toContain(canaryKey);
+  });
+
+  it("reports both when an expired sign-in's cancel and revoke fail", async () => {
+    paperclip.cancelFails = true;
+    paperclip.revokeFails = true;
+    await started();
+    now += serveSignInLimitMs;
+
+    await runTimers();
+
+    expect(reported).toHaveLength(2);
+    expect(reportedText().join("\n")).not.toContain(canaryKey);
+  });
+
+  it("reports a failed revoke of another company's key, with no key in it", async () => {
+    paperclip.companyIds = ["globex-company"];
+    paperclip.revokeFails = true;
+    const id = await started();
+    paperclip.status = "approved";
+
+    expect(await signIn.poll(id)).toEqual({ status: "wrong-company", keyMayWork: true });
+    expect(reported).toHaveLength(1);
+    expect(reportedText().join("\n")).not.toContain(canaryKey);
   });
 });

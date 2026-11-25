@@ -21,7 +21,7 @@ import type {
   PaperclipSignInState,
 } from "@halonicjs/host-server";
 import type { SecretStore } from "@halonicjs/ports";
-import { plainText } from "../../messages/phrase.ts";
+import { type Phrase, plainText } from "../../messages/phrase.ts";
 import { serveMessages } from "../../messages/serve.ts";
 import {
   connectionNames,
@@ -96,6 +96,9 @@ export async function openServePaperclip(
   return { ...opened, signIn };
 }
 
+/** Hears a failure the sign-in carries on past; never a key. */
+type Report = (error: unknown) => void;
+
 /** A sign-in waiting for the board's approval. */
 interface OpenSignIn {
   connection: string;
@@ -163,7 +166,7 @@ export class ServePaperclipSignIn implements PaperclipKeyPorts {
       approvalUrl = approvalPageUrl(address, created.approvalPath);
     } catch (error) {
       // Without a page on the connection's own address the sign-in can't go on: drop the key.
-      await end(open, "cancelled");
+      await end(open, "cancelled", this.#options.report);
       throw error;
     }
     this.#open.set(signInId, open);
@@ -194,7 +197,9 @@ export class ServePaperclipSignIn implements PaperclipKeyPorts {
 
   async cancel(signInId: string): Promise<PaperclipSignInState> {
     const open = this.#take(signInId);
-    return open === undefined ? { status: "unknown" } : end(open, "cancelled");
+    return open === undefined
+      ? { status: "unknown" }
+      : end(open, "cancelled", this.#options.report);
   }
 
   /**
@@ -232,7 +237,7 @@ export class ServePaperclipSignIn implements PaperclipKeyPorts {
     const { calls, connection, address, company, key } = open;
     const owner = await revokeOnFailure(open, () => calls.readMe(key));
     // Outside revokeOnFailure, so a failed revoke is reported once and not tried again.
-    if (!owner.companyIds.includes(company)) return refuseKey(open);
+    if (!owner.companyIds.includes(company)) return refuseKey(open, this.#options.report);
     const before = await revokeOnFailure(open, async () => {
       const stored = await readStoredKey(keys, connection);
       await keys.set(paperclipKeySecretName(connection), JSON.stringify({ key, address, company }));
@@ -246,7 +251,7 @@ export class ServePaperclipSignIn implements PaperclipKeyPorts {
 
   async #expire(signInId: string): Promise<PaperclipSignInState> {
     const open = this.#take(signInId);
-    return open === undefined ? { status: "unknown" } : end(open, "expired");
+    return open === undefined ? { status: "unknown" } : end(open, "expired", this.#options.report);
   }
 
   /** Takes a sign-in out of memory, at once and without waiting, so only one caller gets it. */
@@ -293,35 +298,51 @@ async function connectionFor(
 }
 
 /** Revokes a key whose user isn't in the connection's company; nothing is stored. */
-async function refuseKey(open: OpenSignIn): Promise<PaperclipSignInState> {
-  const revoked = await open.calls.revokeCurrent(open.key).then(
-    () => true,
-    () => false,
-  );
+async function refuseKey(open: OpenSignIn, report: Report): Promise<PaperclipSignInState> {
   // Nobody holds the key, so a failed revoke is said, as a cancel says it, not thrown.
-  return revoked ? { status: "wrong-company" } : { status: "wrong-company", keyMayWork: true };
+  return (await revokeOrReport(open, report))
+    ? { status: "wrong-company" }
+    : { status: "wrong-company", keyMayWork: true };
 }
 
 /**
  * Ends a sign-in taken out of memory: cancels its challenge, and revokes the key when the board
  * approved it first. When Paperclip can't say how the challenge ended, the key is revoked
- * instead, and when that fails too, the answer says the key may work.
+ * instead, and when that fails too, the answer says the key may work. Each failure is reported,
+ * so the log says why a key may still work.
  */
 async function end(
   open: OpenSignIn,
   status: "cancelled" | "expired",
+  report: Report,
 ): Promise<PaperclipSignInState> {
-  const { calls, challenge, key } = open;
+  let ended: Awaited<ReturnType<PaperclipSignInClient["cancelChallenge"]>> | undefined;
   try {
-    if ((await calls.cancelChallenge(challenge)) === "approved") await calls.revokeCurrent(key);
-    return { status };
-  } catch {
-    const revoked = await calls.revokeCurrent(key).then(
-      () => true,
-      () => false,
-    );
-    return revoked ? { status } : { status, keyMayWork: true };
+    ended = await open.calls.cancelChallenge(open.challenge);
+  } catch (error) {
+    report(failure(serveMessages.paperclipChallengeNotCancelled(), error));
   }
+  if (ended !== undefined && ended !== "approved") return { status };
+  return (await revokeOrReport(open, report)) ? { status } : { status, keyMayWork: true };
+}
+
+/** Revokes the sign-in's key; when Paperclip refuses, reports why and answers `false`. */
+async function revokeOrReport(open: OpenSignIn, report: Report): Promise<boolean> {
+  try {
+    await open.calls.revokeCurrent(open.key);
+    return true;
+  } catch (error) {
+    report(failure(serveMessages.paperclipSignInKeyNotRevoked(), error));
+    return false;
+  }
+}
+
+/**
+ * An error for the log with a fixed sentence of ours, never Paperclip's text, and the cause kept
+ * for `--debug`. The sign-in client's errors name the request and the status, never the key.
+ */
+function failure(message: { phrase: Phrase }, cause: unknown): Error {
+  return new Error(plainText(message.phrase), { cause });
 }
 
 /**
