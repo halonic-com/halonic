@@ -2,6 +2,7 @@ import { type Path, parse } from "@halonicjs/schema-kit";
 import { canonicalJson, err, ok, type Result } from "@halonicjs/std";
 import { checkTool } from "../kinds/tool/checks.ts";
 import type { Tool } from "../kinds/tool/schema.ts";
+import { checkKeysIn } from "../shared/key-in-value.ts";
 import { WorkspaceSnapshot } from "./schema.ts";
 
 /**
@@ -63,7 +64,8 @@ function outOfOrder(tools: readonly Tool[]): SnapshotProblem[] {
  * the same way a tool file is. Nothing is filled in or left out: the
  * snapshot passes whole, or not at all.
  *
- * Refused besides the schema: a key in any text (`value-looks-like-key`),
+ * Refused besides the schema: a key in any text or name, the workspace's
+ * name included (`value-looks-like-key`),
  * a parameter that asks for a key (`parameter-asks-for-key`), an empty
  * number range (`parameter-range-empty`), a tool name or id used twice
  * (`tool-name-twice`, `tool-id-twice`) and tools out of name order
@@ -82,6 +84,9 @@ export function readSnapshot(data: unknown): Result<WorkspaceSnapshot, SnapshotP
   }
   const { tools } = parsed.value;
   const problems: SnapshotProblem[] = [
+    ...checkKeysIn(parsed.value.workspace.name, ["workspace", "name"], "setting").map(
+      ({ code, path, message }) => ({ code, path, message }),
+    ),
     ...tools.flatMap((tool, index) =>
       checkTool(tool).map(({ code, path, message }) => ({
         code,

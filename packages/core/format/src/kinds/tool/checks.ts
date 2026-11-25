@@ -18,11 +18,13 @@ const words = {
 
 /**
  * Every text in a tool file an agent reads or an action uses, with where
- * it sits: the description, each parameter's description and choices, the
- * named callers and the action's settings.
+ * it sits: the tool's id and name, the description, each parameter's name,
+ * description and choices, the named callers and the action's settings.
+ * Names are checked too: an agent sees them as often as the wording.
  */
 function textsOf(tool: Tool): { readonly value: unknown; readonly path: (string | number)[] }[] {
   const parameters = Object.entries(tool.parameters).flatMap(([name, parameter]) => [
+    { value: name, path: ["parameters", name] },
     { value: parameter.description, path: ["parameters", name, "description"] },
     ...(parameter.type === "string" && parameter.enum !== undefined
       ? [{ value: parameter.enum, path: ["parameters", name, "enum"] }]
@@ -33,6 +35,8 @@ function textsOf(tool: Tool): { readonly value: unknown; readonly path: (string 
       ? []
       : [{ value: tool.callers.agents, path: ["callers", "agents"] }];
   return [
+    { value: tool.id, path: ["id"] },
+    { value: tool.name, path: ["name"] },
     { value: tool.description, path: ["description"] },
     ...parameters,
     ...callers,

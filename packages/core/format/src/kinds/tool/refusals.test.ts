@@ -5,6 +5,9 @@ import { problemsOf, summary, yaml } from "../../test/parse.spec.ts";
 /** An invented key in a format `findSecretShape` knows; never a real one. */
 const anthropicKey = `sk-ant-api03-${"Q7x2Lm9K".repeat(4)}`;
 
+/** An invented classic GitHub token; at 40 characters it fits a parameter's name. */
+const githubToken = `ghp_${"Q7x2Lm9K3".repeat(4)}`;
+
 /** A tool file whose description, parameter and settings are given. */
 function toolFile(parts: { description?: string; parameter?: string; agents?: string }): string {
   return yaml(
@@ -37,6 +40,13 @@ verifies("format.tool-refusals", () => {
     expect(summary(problemsOf("tool", toolFile({ agents: `Builder, ${anthropicKey}` })))).toEqual([
       "callers.agents.1 value-looks-like-key 6",
     ]);
+  });
+
+  it("refuses a key written as a parameter's name, without repeating it", () => {
+    const parameter = `${githubToken}: { type: string, description: Pass it. }`;
+    const problems = problemsOf("tool", toolFile({ parameter }));
+    expect(summary(problems)).toEqual([`parameters.${githubToken} value-looks-like-key 5`]);
+    expect(problems[0]?.message).not.toContain(githubToken);
   });
 
   it("refuses a parameter whose name asks for a key", () => {

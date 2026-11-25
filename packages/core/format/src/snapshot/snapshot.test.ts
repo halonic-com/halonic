@@ -75,6 +75,15 @@ verifies("format.workspace-snapshot", () => {
     ]);
   });
 
+  it("refuses a key in the workspace's name", () => {
+    const leaky = {
+      format: 1,
+      workspace: { name: `sk-ant-api03-${"Q7x2Lm9K".repeat(4)}`, commit },
+      tools: [],
+    };
+    expect(problemsOf(leaky)).toEqual(["workspace.name value-looks-like-key"]);
+  });
+
   it("refuses a name or id used twice, and tools out of name order", () => {
     expect(problemsOf(snapshotData([tool("my_prs"), tool("my_prs", "other")]))).toEqual([
       "tools.1.name tool-name-twice",
