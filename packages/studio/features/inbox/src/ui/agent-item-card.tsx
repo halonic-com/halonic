@@ -218,7 +218,7 @@ function CannotRun({ reasons, unavailable, busy, onDecline }: CannotRunProps) {
         <ul className="list-disc pl-5">
           {reasons.map((reason) => (
             <li key={reason} className="wrap-break-word">
-              {reason}
+              <QuotedAsCode text={reason} />
             </li>
           ))}
         </ul>
@@ -229,6 +229,26 @@ function CannotRun({ reasons, unavailable, busy, onDecline }: CannotRunProps) {
         </Button>
       </div>
     </>
+  );
+}
+
+/**
+ * A reason with what the validator quotes in backticks (a stepper's name, an address) set in code
+ * type, without the backticks. Nothing else is read as Markdown. A stray backtick with no partner
+ * leaves the whole reason as it came.
+ */
+function QuotedAsCode({ text }: { readonly text: string }) {
+  const parts = text.split("`");
+  const balanced = parts.length % 2 === 1;
+  if (!balanced) return text;
+  return parts.map((part, index) =>
+    index % 2 === 1 ? (
+      <code key={index} className="font-mono text-code">
+        {part}
+      </code>
+    ) : (
+      part
+    ),
   );
 }
 
