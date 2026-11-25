@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-18167; Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ZnIRyOKlSUeMME/nHXoCKq7HjI9A9/NZ9/sNjyreR3lxIXXrf2pswuuXxQdSvYUzM9h47A2uAto9YHGHymVsDw==
 - Task: HAL-18167
 
 `pr_status` and `my_prs` now read "approved on head", "re-approved on head" and "approved again on
