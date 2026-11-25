@@ -14,6 +14,6 @@ When the Agent tools plugin's PR watcher job finishes a pass for a company, the 
 - Given a metrics store that refuses every write,
   when the job runs,
   then the pass finishes and the log says the metrics didn't save.
-- Given an agent that calls `my_prs` and then `pr_status` on a repository the plugin doesn't watch,
+- Given an agent that calls `pr_status` on #4605 and then on a repository the plugin doesn't watch,
   when both answer,
   then it saves one `ok` call with its GitHub requests and one `error` call with none.

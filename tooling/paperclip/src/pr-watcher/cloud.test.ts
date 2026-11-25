@@ -1,7 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
 import { readSettings } from "../plugin/job.ts";
-import { type MyPr, myPrs, myPrsText } from "../pr-tools/my-prs.ts";
 import { type PullDetails, shownTitle, titleText } from "../pr-tools/pr-status.ts";
 import { githubApprovals } from "../snapshot/github-approvals.ts";
 import type { GitHubQuery } from "../snapshot/graphql.ts";
@@ -260,36 +259,6 @@ verifies("paperclip.pr-watcher-cloud", () => {
     expect(unread).toEqual([cloud]);
   });
 
-  test("my_prs says which repository it couldn't read and names the repository when there are several", async () => {
-    const github = fakeGitHub({ [`/repos/${halonic}/pulls?state=open&per_page=100&page=1`]: [] });
-    const unread: string[] = [];
-    expect(await myPrs(github.get, [halonic, cloud], "mateo", unread)).toEqual([]);
-    expect(unread).toEqual([cloud]);
-    expect(myPrsText("mateo", [], unread).split("\n")).toEqual([
-      "No open pull requests on branches starting with mateo/.",
-      "Not read: halonic-com/cloud, the token doesn't reach it.",
-    ]);
-    await expect(myPrs(github.get, [cloud, halonic], "mateo")).rejects.toThrow("404");
-    const row = (repo: string, number: number): MyPr => ({
-      repo,
-      number,
-      title: "feat: acme",
-      url: `https://github.com/${repo}/pull/${number}`,
-      task: `HAL-${number}`,
-      draft: false,
-      head,
-      ciOk: "success",
-      mergeable: "yes",
-      approvedOnHead: false,
-      needsYou: false,
-    });
-    const lines = myPrsText("mateo", [row(halonic, 5701), row(cloud, 103)]).split("\n");
-    expect(lines.slice(1, 3).map((line) => line.split(" (")[0])).toEqual([
-      "halonic#5701",
-      "cloud#103",
-    ]);
-  });
-
   test("keeps and shows no title of a private repository's pull request", async () => {
     const privateTitle = "feat: acme private plan";
     const query: GitHubQuery = async (document) =>
@@ -338,22 +307,6 @@ verifies("paperclip.pr-watcher-cloud", () => {
     expect(shownTitle(details(true))).toBeUndefined();
     expect(shownTitle(details(false))).toBe(privateTitle);
     expect(titleText(undefined)).toBe("title not shown (private repository)");
-    const { title: _shown, ...untitled } = {
-      repo: cloud,
-      number: 103,
-      title: "",
-      url: `https://github.com/${cloud}/pull/103`,
-      task: "HAL-103",
-      draft: false,
-      head,
-      ciOk: "success" as const,
-      mergeable: "yes" as const,
-      approvedOnHead: true,
-      needsYou: false,
-    };
-    expect(myPrsText("mateo", [untitled])).toContain(
-      "#103 (HAL-103): ready, ci-ok success, mergeable yes, approved on head; title not shown (private repository)",
-    );
   });
 
   test("watches halonic and cloud when no repos are set", () => {

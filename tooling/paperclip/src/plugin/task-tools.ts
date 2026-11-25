@@ -1,69 +1,30 @@
 import type {
   Issue,
-  PluginAgentsClient,
   PluginIssuesClient,
   PluginToolsClient,
   ToolResult,
   ToolRunContext,
 } from "@paperclipai/plugin-sdk";
 import { readTask, ToolInputError } from "../task-tools/input.ts";
-import {
-  type CommentView,
-  limits,
-  shownView,
-  type TaskRef,
-  type TaskView,
-  taskText,
-} from "../task-tools/task-view.ts";
 import { manifest } from "./manifest.ts";
 import { type MetricsApi, writeMetrics } from "./metrics.ts";
 
 /**
- * The task tools `task_get` and `comment` (HAL-16403, B2 in the tools plan
- * on HAL-15920): one call each instead of a chain of curl requests to
- * Paperclip's API. `task_get` only reads; `comment` posts one comment with
- * the calling agent as its author. Neither changes a task's status, holder or
- * monitor: `set_next_step` and `finish_run` do, in next-step-tools.ts.
+ * The task tool `comment` (HAL-16403, B2 in the tools plan on HAL-15920):
+ * one call instead of a curl request to Paperclip's API. It posts one comment
+ * with the calling agent as its author and doesn't change a task's status,
+ * holder or monitor: `set_next_step` and `finish_run` do, in next-step-tools.ts.
+ * `task_get` moved to the workspace plugin (HAL-17968).
  */
 
 /** The part of the plugin context the task tools use, so tests can fake it. */
 export interface TaskToolsApi extends MetricsApi {
   readonly tools: Pick<PluginToolsClient, "register">;
-  readonly agents: Pick<PluginAgentsClient, "list">;
-  readonly issues: Pick<PluginIssuesClient, "get" | "listComments" | "createComment"> & {
-    readonly relations: Pick<PluginIssuesClient["relations"], "get">;
-    readonly documents: Pick<PluginIssuesClient["documents"], "list" | "get">;
-  };
+  readonly issues: Pick<PluginIssuesClient, "get" | "createComment">;
 }
 
 /** The longest comment `comment` posts; a longer one belongs in a document. */
 export const maxCommentLength = 20_000;
-
-/** `task_get`'s parameters: the task, how many comments, and an optional document key. */
-export function readTaskGetParams(params: unknown): {
-  task: string;
-  comments: number;
-  document?: string;
-} {
-  const task = readTask(params);
-  const { comments, document } = (params ?? {}) as { comments?: unknown; document?: unknown };
-  const count = comments ?? limits.defaultComments;
-  if (
-    typeof count !== "number" ||
-    !Number.isInteger(count) ||
-    count < 0 ||
-    count > limits.maxComments
-  ) {
-    throw new ToolInputError(`comments must be a whole number from 0 to ${limits.maxComments}.`);
-  }
-  if (document === undefined || document === null || document === "") {
-    return { task, comments: count };
-  }
-  if (typeof document !== "string") {
-    throw new ToolInputError("document must be a document key, such as plan.");
-  }
-  return { task, comments: count, document };
-}
 
 /** `comment`'s parameters: the task and a body that isn't empty or too long. */
 export function readCommentParams(params: unknown): { task: string; body: string } {
@@ -80,10 +41,6 @@ export function readCommentParams(params: unknown): { task: string; body: string
   return { task, body };
 }
 
-function iso(value: Date | string | null | undefined): string | null {
-  return value == null ? null : new Date(value).toISOString();
-}
-
 /** The task by identifier or id; throws a `ToolInputError` when the plugin can't find it. */
 export async function findTask(
   ctx: { readonly issues: Pick<PluginIssuesClient, "get"> },
@@ -95,79 +52,6 @@ export async function findTask(
     throw new ToolInputError(`no task ${task} in this company, or the plugin may not read it.`);
   }
   return issue;
-}
-
-async function refTo(ctx: TaskToolsApi, id: string, companyId: string): Promise<TaskRef | null> {
-  const issue = await ctx.issues.get(id, companyId);
-  return issue === null ? null : { identifier: issue.identifier ?? issue.id, status: issue.status };
-}
-
-/** Reads the task, its parent, blockers, documents and comments into one view. */
-async function readView(
-  ctx: TaskToolsApi,
-  companyId: string,
-  params: ReturnType<typeof readTaskGetParams>,
-): Promise<TaskView> {
-  const issue = await findTask(ctx, params.task, companyId);
-  const [agents, relations, documents, comments, parent, document] = await Promise.all([
-    ctx.agents.list({ companyId, limit: 500 }),
-    ctx.issues.relations.get(issue.id, companyId),
-    ctx.issues.documents.list(issue.id, companyId),
-    ctx.issues.listComments(issue.id, companyId),
-    issue.parentId === null ? null : refTo(ctx, issue.parentId, companyId),
-    params.document === undefined
-      ? undefined
-      : ctx.issues.documents.get(issue.id, params.document, companyId),
-  ]);
-  const names = new Map(agents.map((agent) => [agent.id, agent.name]));
-  const author = (agentId: string | null, userId: string | null) => {
-    if (agentId !== null) {
-      return names.get(agentId) ?? agentId;
-    }
-    return userId !== null ? "board" : "Paperclip";
-  };
-  return {
-    identifier: issue.identifier ?? issue.id,
-    title: issue.title,
-    status: issue.status,
-    priority: issue.priority,
-    holder:
-      issue.assigneeAgentId === null && issue.assigneeUserId === null
-        ? null
-        : author(issue.assigneeAgentId, issue.assigneeUserId),
-    parent,
-    blockedBy: relations.blockedBy.map((blocker) => ({
-      identifier: blocker.identifier ?? blocker.id,
-      status: blocker.status,
-    })),
-    monitorNextCheckAt: iso(issue.monitorNextCheckAt),
-    description: issue.description ?? "",
-    documents: documents.map((summary) => ({
-      key: summary.key,
-      title: summary.title,
-      updatedAt: iso(summary.updatedAt) ?? "",
-    })),
-    comments: comments
-      .map(
-        (comment): CommentView => ({
-          id: comment.id,
-          author: author(comment.authorAgentId, comment.authorUserId),
-          createdAt: iso(comment.createdAt) ?? "",
-          body: comment.body,
-        }),
-      )
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
-    ...(document === undefined
-      ? {}
-      : { document: document === null ? null : { key: document.key, body: document.body } }),
-  };
-}
-
-async function taskGet(ctx: TaskToolsApi, params: unknown, runCtx: ToolRunContext) {
-  const read = readTaskGetParams(params);
-  const view = await readView(ctx, runCtx.companyId, read);
-  const shown = shownView(view, read.comments);
-  return { content: taskText(shown), data: shown };
 }
 
 async function comment(ctx: TaskToolsApi, params: unknown, runCtx: ToolRunContext) {
@@ -225,7 +109,7 @@ export function registerCounted<Api extends MetricsApi & { readonly tools: TaskT
   }
 }
 
-/** Registers `task_get` and `comment` as the manifest declares them, each call counted. */
+/** Registers `comment` as the manifest declares it, each call counted. */
 export function registerTaskTools(ctx: TaskToolsApi): void {
-  registerCounted(ctx, { task_get: taskGet, comment });
+  registerCounted(ctx, { comment });
 }

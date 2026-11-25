@@ -43,9 +43,13 @@ export async function runGuard(deps: GuardDeps): Promise<number> {
   return 1;
 }
 
-/** The name an agent in Claude Code calls a tool by, and loads it by with ToolSearch. */
+/**
+ * The name an agent in Claude Code calls a tool by, and loads it by with ToolSearch.
+ * `my_prs` moved to the workspace plugin (HAL-17968); `pr_status` is still Agent tools'.
+ */
 export function claudeToolName(tool: StatusCall["tool"]): string {
-  return `mcp__paperclip-assigned__halonic_agent-tools_${tool}`;
+  const plugin = tool === "my_prs" ? "halonic-ws_company" : "halonic_agent-tools";
+  return `mcp__paperclip-assigned__${plugin}_${tool}`;
 }
 
 /** The exact call that replaces the read. */

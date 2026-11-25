@@ -27,8 +27,8 @@ When the Agent tools plugin watches `halonic-com/cloud`, whose `main` rule asks 
   when the watcher takes its snapshot,
   then it reads `halonic`, leaves `cloud` out and logs why; when the token doesn't reach `halonic`, the pass fails.
 - Given a private repository's pull request titled "feat: acme private plan",
-  when the snapshot is taken or `pr_status` and `my_prs` describe it,
-  then the snapshot keeps no title and the tools print "title not shown (private repository)".
+  when the snapshot is taken or `pr_status` describes it,
+  then the snapshot keeps no title and the tool prints "title not shown (private repository)".
 - Given no `repos` setting,
   when the plugin reads its settings,
   then it watches `halonic-com/halonic` and `halonic-com/cloud`, in that order.
