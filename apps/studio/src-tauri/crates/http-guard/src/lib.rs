@@ -9,6 +9,10 @@
 //!
 //! When `HTTPS_PROXY` is set, [`route_for`] decides for each hop whether it
 //! goes direct, with the address check, or through the proxy.
+//!
+//! A request with `publicOnly` set (`read_docs`) may reach public addresses
+//! only: this computer and private networks are refused for it as well, and
+//! [`route_for_request`] refuses it rather than send it through a proxy.
 
 mod address;
 mod no_proxy;
@@ -17,7 +21,7 @@ mod request;
 
 pub use address::check_address;
 pub use no_proxy::NoProxy;
-pub use proxy::{ProxyEndpoint, ProxySetting, Route, route_for};
+pub use proxy::{ProxyEndpoint, ProxySetting, Route, route_for, route_for_request};
 pub use request::{
     CheckedRequest, MAX_BODY_BYTES, MAX_REDIRECTS, MAX_RESPONSE_BYTES, PageRequest, Refusal,
     check_redirect, check_request,

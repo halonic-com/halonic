@@ -16,6 +16,19 @@ interface ShellAnswer {
   readonly url: string;
 }
 
+/** How a {@link ShellHttpClient} asks the shell to make its calls. */
+export interface ShellHttpClientOptions {
+  /**
+   * Every call may reach public addresses only (`publicOnly`): the shell
+   * also refuses this computer and private networks, for every address the
+   * name resolves to and every redirect hop (`address_not_public`), and
+   * refuses a call that would go through a proxy (`public_only_proxied`).
+   * For tools that read the web, such as `read_docs`; off by default,
+   * because a model provider on this computer needs those addresses.
+   */
+  readonly publicOnly?: boolean;
+}
+
 /** The statuses whose `Response` must have no body. */
 const noBodyStatuses = new Set([101, 204, 205, 304]);
 
@@ -36,9 +49,11 @@ const noBodyStatuses = new Set([101, 204, 205, 304]);
  */
 export class ShellHttpClient implements HttpClient {
   readonly #ipc: TauriIpc;
+  readonly #publicOnly: boolean;
 
-  constructor(ipc: TauriIpc) {
+  constructor(ipc: TauriIpc, options: ShellHttpClientOptions = {}) {
     this.#ipc = ipc;
+    this.#publicOnly = options.publicOnly === true;
   }
 
   async fetch(url: string, init: RequestInit = {}): Promise<Response> {
@@ -51,6 +66,7 @@ export class ShellHttpClient implements HttpClient {
       headers: [...new Headers(init.headers)],
       ...(init.body === undefined || init.body === null ? {} : { body: textBody(init.body) }),
       followRedirects: redirect === "follow",
+      ...(this.#publicOnly ? { publicOnly: true } : {}),
     };
     const call = nextCallId++;
     const hangUp = (): void => {
@@ -83,6 +99,17 @@ export class ShellHttpClient implements HttpClient {
 export function shellHttpClient(page: object): ShellHttpClient | undefined {
   const ipc = tauriIpc(page);
   return ipc === undefined ? undefined : new ShellHttpClient(ipc);
+}
+
+/**
+ * The shell's client for calls that may reach public addresses only, or
+ * `undefined` when the page isn't running in the shell.
+ *
+ * @param page - the page's global object, usually `window`
+ */
+export function publicOnlyShellHttpClient(page: object): ShellHttpClient | undefined {
+  const ipc = tauriIpc(page);
+  return ipc === undefined ? undefined : new ShellHttpClient(ipc, { publicOnly: true });
 }
 
 /** The shell takes text only; a stream or a binary body is refused here, before any call. */

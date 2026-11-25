@@ -32,6 +32,28 @@ pub fn check_address(ip: IpAddr, plain: bool) -> Result<(), Refusal> {
     Ok(())
 }
 
+/// Checks one address for a request that may reach public addresses only
+/// (`publicOnly`), on top of [`check_address`]: this computer, a private
+/// network, `100.64.0.0/10` and `0.0.0.0/8` are refused.
+///
+/// # Errors
+///
+/// A [`Refusal`] with code `address_not_public`.
+pub(crate) fn check_public(ip: IpAddr) -> Result<(), Refusal> {
+    if is_local(ip) || is_this_network(ip) {
+        return Err(Refusal::new(
+            "address_not_public",
+            "this call may reach public addresses only",
+        ));
+    }
+    Ok(())
+}
+
+/// `0.0.0.0/8`: "this network", which some systems connect to this computer.
+fn is_this_network(ip: IpAddr) -> bool {
+    matches!(unmapped(ip), IpAddr::V4(v4) if v4.octets()[0] == 0)
+}
+
 /// An IPv4 address written as IPv6 (`::ffff:a.b.c.d`) is checked as the IPv4 one.
 fn unmapped(ip: IpAddr) -> IpAddr {
     match ip {
@@ -154,6 +176,28 @@ mod tests {
             assert_eq!(code(ip, false), Some("address_refused"), "{ip}");
             assert_eq!(code(ip, true), Some("address_refused"), "{ip}");
             assert!(!is_local(ip.parse().unwrap()), "{ip}");
+        }
+    }
+
+    #[test]
+    fn address_public_only_refuses_this_computer_and_private_networks() {
+        for ip in [
+            "127.0.0.1",
+            "::1",
+            "10.0.0.5",
+            "192.168.1.20",
+            "172.16.0.1",
+            "fd00::1",
+            "100.64.1.1",
+            "0.1.2.3",
+            "::ffff:127.0.0.1",
+            "::ffff:10.0.0.5",
+        ] {
+            let refusal = check_public(ip.parse().unwrap()).expect_err(ip);
+            assert_eq!(refusal.code(), "address_not_public", "{ip}");
+        }
+        for ip in ["93.184.216.34", "2606:4700::1111", "100.128.0.1"] {
+            assert_eq!(check_public(ip.parse().unwrap()), Ok(()), "{ip}");
         }
     }
 

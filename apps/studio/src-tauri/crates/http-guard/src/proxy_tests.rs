@@ -138,3 +138,38 @@ fn proxy_refusal_names_the_scheme_it_does_not_support() {
     let message = ProxyEndpoint::parse("socks5://proxy.corp:1080").unwrap_err();
     assert!(message.contains("socks5"), "{message}");
 }
+
+#[test]
+fn proxy_never_tunnels_a_public_only_request() {
+    let setting = ProxySetting::from_env(|name| {
+        (name == "HTTPS_PROXY").then(|| "http://proxy.example.com:3128".to_owned())
+    });
+    let request = |url: &str, public_only| {
+        crate::check_request(crate::PageRequest {
+            method: "GET".to_owned(),
+            url: url.to_owned(),
+            headers: vec![],
+            body: None,
+            follow_redirects: false,
+            public_only,
+        })
+        .expect("accepted")
+    };
+    let public = request("https://docs.example.com/", true);
+    let refusal = route_for_request(&public, &setting).expect_err("refused");
+    assert_eq!(refusal.code(), "public_only_proxied");
+    assert!(!refusal.message().contains("example"), "{refusal}");
+    let plain = request("https://docs.example.com/", false);
+    assert!(matches!(
+        route_for_request(&plain, &setting),
+        Ok(Route::Tunnel(_))
+    ));
+    // Direct, so the shell checks the address it resolves to.
+    let local = request("https://localhost/", true);
+    assert_eq!(route_for_request(&local, &setting), Ok(Route::Direct));
+    let none = request("https://docs.example.com/", true);
+    assert_eq!(
+        route_for_request(&none, &ProxySetting::None),
+        Ok(Route::Direct)
+    );
+}

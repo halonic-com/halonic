@@ -88,6 +88,15 @@ fn page_request(method: &str, url: &str, body: Option<&str>, follow: bool) -> Pa
         headers: vec![("X-Test".to_owned(), "one".to_owned())],
         body: body.map(str::to_owned),
         follow_redirects: follow,
+        public_only: false,
+    }
+}
+
+/// The same request, for a call that may reach public addresses only.
+fn public_only(request: PageRequest) -> PageRequest {
+    PageRequest {
+        public_only: true,
+        ..request
     }
 }
 
@@ -138,6 +147,43 @@ fn http_fetch_test_reaches_a_name_that_resolves_to_this_computer() {
     let url = server.url("/").replace("127.0.0.1", "localhost");
     let answer = fetch(page_request("GET", &url, None, false)).expect("an answer");
     assert_eq!(answer.body, "ok");
+}
+
+#[test]
+fn http_fetch_test_public_only_refuses_a_name_that_resolves_to_this_computer() {
+    let server = Server::serve(vec![reply("200 OK", "", "ok")]);
+    let url = server
+        .url("/?key=hunter2")
+        .replace("127.0.0.1", "localhost");
+    let refusal = fetch(public_only(page_request("GET", &url, None, false))).expect_err("refused");
+    assert_eq!(refusal.kind, "address_not_public", "{}", refusal.message);
+    assert!(
+        !refusal.message.contains("127.0") && !refusal.message.contains("hunter2"),
+        "{}",
+        refusal.message
+    );
+    // The same call without `publicOnly` still reaches it.
+    let answer = fetch(page_request("GET", &url, None, false)).expect("an answer");
+    assert_eq!(answer.body, "ok");
+}
+
+#[test]
+fn http_fetch_test_public_only_refuses_a_redirect_to_this_computer() {
+    let from = check_request(public_only(page_request(
+        "GET",
+        "https://docs.example.com/",
+        None,
+        true,
+    )))
+    .expect("accepted");
+    let refusal = next_hop(&from, "http://127.0.0.1:8080/", 302).expect_err("refused");
+    assert_eq!(refusal.kind, "address_not_public");
+    // A hop to a name stays public-only, so its addresses are checked when it resolves.
+    let named = next_hop(&from, "https://localhost/", 302).expect("checked when it resolves");
+    assert!(named.public_only);
+    let refusal = tauri::async_runtime::block_on(run(named, &ProxySetting::None))
+        .expect_err("refused once resolved");
+    assert_eq!(refusal.kind, "address_not_public");
 }
 
 #[test]
@@ -317,4 +363,25 @@ fn http_fetch_test_with_a_proxy_refuses_plain_http_to_a_public_name_and_an_unusa
     let secure = page_request("GET", "https://api.example.com/", None, false);
     let refusal = fetch_with(secure, &unusable).expect_err("refused");
     assert_eq!(refusal.kind, "proxy_refused");
+}
+
+#[test]
+fn http_fetch_test_with_a_proxy_refuses_a_public_only_call_before_any_connection() {
+    let proxy = Server::serve(vec![reply("200 OK", "", "")]);
+    let setting = proxy_setting(&proxy.url(""));
+    let call = public_only(page_request(
+        "GET",
+        "https://docs.example.com/",
+        None,
+        false,
+    ));
+    let refusal = fetch_with(call, &setting).expect_err("refused");
+    assert_eq!(refusal.kind, "public_only_proxied", "{}", refusal.message);
+    assert!(
+        proxy
+            .requests
+            .recv_timeout(Duration::from_millis(200))
+            .is_err(),
+        "the proxy was asked"
+    );
 }
