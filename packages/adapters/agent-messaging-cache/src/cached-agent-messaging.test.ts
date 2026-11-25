@@ -192,6 +192,15 @@ verifies("agent-host.agent-messaging-cache", () => {
       }
     });
 
+    it("keeps that a message was written automatically for an offline read", async () => {
+      const { source, chat } = await readAcme();
+      fake.addMessage(chat.id, { body: "On it.", automatic: true });
+      const live = await messaging.listMessages(chat.id);
+      fake.goOffline(source.id);
+      expect(live.at(-1)?.automatic).toBe(true);
+      expect(await messaging.listMessages(chat.id)).toEqual(live);
+    });
+
     it("keeps a channel's members, who a message was for and its work lines for an offline read", async () => {
       const { source } = await readAcme();
       const [chief] = await messaging.listAgents();

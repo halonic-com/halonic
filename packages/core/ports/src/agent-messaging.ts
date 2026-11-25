@@ -144,6 +144,12 @@ export interface Message {
    * Absent while unread, or when the source can't tell.
    */
   readAt?: string;
+  /**
+   * Written automatically on an agent's behalf, not by the agent: a quick acknowledgement such as
+   * Paperclip's fast-response receipt. It is never the agent's answer, so apps don't count it as
+   * unread, a preview or a notification.
+   */
+  automatic?: boolean;
 }
 
 /** One answer an inbox item offers. */

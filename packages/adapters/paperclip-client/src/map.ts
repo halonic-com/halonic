@@ -120,7 +120,11 @@ export function toConversation(context: MapContext, record: JsonRecord): Convers
   };
 }
 
-/** A comment on chat task `task` as a message, or `undefined` when it was deleted or has no ID. */
+/**
+ * A comment on chat task `task` as a message, or `undefined` when it was deleted or has no ID. An
+ * agent's comment with a `fastResponseRequestId` is the receipt Paperclip's fast response posted in
+ * the agent's name, so it is `automatic` (`paperclip-client.automatic-notes`).
+ */
 export function toMessage(
   context: MapContext,
   task: string,
@@ -130,14 +134,17 @@ export function toMessage(
   if (id === undefined || text(record, "deletedAt") !== undefined) {
     return undefined;
   }
-  return {
+  const agentId = text(record, "authorAgentId");
+  const message: Message = {
     id: context.ids.make("comment", task, id),
     conversation: context.ids.make("chat", task),
-    author: authorOf(context, text(record, "authorAgentId"), text(record, "authorUserId")),
+    author: authorOf(context, agentId, text(record, "authorUserId")),
     body: text(record, "body") ?? "",
     sentAt: timeOf(record, "createdAt"),
     attachments: [],
   };
+  const receipt = agentId !== undefined && text(record, "fastResponseRequestId") !== undefined;
+  return receipt ? { ...message, automatic: true } : message;
 }
 
 /** `items` newest first by `key`. ISO times sort as text. */

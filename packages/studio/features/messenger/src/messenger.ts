@@ -34,7 +34,7 @@ export interface ConversationRow {
   readonly source: MessagingSource | undefined;
   /** A channel's questions still waiting for the person, oldest first; none for a chat. */
   readonly questions?: readonly ChannelQuestion[];
-  /** The newest message, for the row's preview and time; none in an empty chat. */
+  /** The newest message that isn't an automatic note, for the row's preview and time; none in an empty chat. */
   readonly last?: Message;
   /** How many of the chat agent's cards are open, for the row's "1 card" chip. */
   readonly openCards?: number;
@@ -104,7 +104,8 @@ export class Messenger {
     return Promise.all(
       rows.map(async (row) => {
         const messages = await this.newestOf(row);
-        const last = messages.at(-1);
+        // An automatic note isn't the agent's answer: the row's preview and unread dot skip it.
+        const last = messages.findLast((message) => message.automatic !== true);
         const facts = last === undefined ? row : { ...row, last };
         if (row.conversation.members !== undefined) {
           return { ...facts, questions: channelQuestions(row, messages, items) };

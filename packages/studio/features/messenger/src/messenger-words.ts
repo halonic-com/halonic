@@ -56,6 +56,12 @@ export const messengerWords = {
   youSaid: "You: ",
   /** One pane at a time in a narrow window: back from the open chat to the list (HAL-18074). */
   backToChats: "Back to chats",
+  /**
+   * An automatic note's mark: its tooltip, the plan's wording (HAL-18743 section 4, approved by the
+   * board on 25 Nov), which a screen reader reads before the note.
+   */
+  automatic: (name: string) =>
+    `Written automatically from what ${name} is doing. ${name}'s own answer follows.`,
   /** Read out when the agent writes after the chat opened: its name and the message's start. */
   newMessage: (name: string, body: string) => `${name}: ${[...body].slice(0, 100).join("")}`,
   activity: {
