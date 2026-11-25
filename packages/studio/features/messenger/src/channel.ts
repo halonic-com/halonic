@@ -1,4 +1,10 @@
-import type { Message, MessageWork, MessagingAgent, MessagingId } from "@halonicjs/ports";
+import {
+  type Message,
+  type MessageWork,
+  type MessagingAgent,
+  type MessagingId,
+  messageWorkReasonMax,
+} from "@halonicjs/ports";
 import { channelWords } from "./channel-words.ts";
 import type { ConversationRow } from "./messenger.ts";
 
@@ -117,8 +123,11 @@ function lineOf(
       const question = share.work === undefined ? undefined : questions.get(share.work);
       return { symbol: "!", text: words.asksYou(agent, question) };
     }
-    case "failed":
-      return { symbol: "✕", text: words.closed(agent) };
+    case "failed": {
+      const reason = shownReason(share.reason);
+      const text = reason === undefined ? words.closed(agent) : words.couldntFinish(agent, reason);
+      return { symbol: "✕", text };
+    }
     case "passed-on": {
       const to = share.passedTo === undefined ? undefined : agentName(row, share.passedTo);
       return to === undefined ? undefined : { symbol: "→", text: words.passedOn(agent, to) };
@@ -126,4 +135,15 @@ function lineOf(
     default:
       return undefined;
   }
+}
+
+/**
+ * A failed line's reason as one line of plain text, cut to the port's cap; none when the source
+ * gave none or only spaces. The source wrote it, so it is never read as Markdown.
+ */
+function shownReason(reason: string | undefined): string | undefined {
+  const line = reason?.replace(/\s+/gu, " ").trim();
+  if (line === undefined || line === "") return undefined;
+  if (line.length <= messageWorkReasonMax) return line;
+  return `${line.slice(0, messageWorkReasonMax - 1)}…`;
 }

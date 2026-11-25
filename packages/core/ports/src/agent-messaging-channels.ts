@@ -32,6 +32,9 @@ export type MessageWorkState =
   | "passed-on"
   | "other";
 
+/** The most characters of a failed work line's reason an app shows; it cuts a longer one. */
+export const messageWorkReasonMax = 300;
+
 /** What happened to one agent's share of a message the person sent: one work line under the message. */
 export interface MessageWork {
   agent: MessagingId;
@@ -40,6 +43,11 @@ export interface MessageWork {
   work?: MessagingId;
   /** For `passed-on`: the member it was handed to. */
   passedTo?: MessagingId;
+  /**
+   * For `failed`: why, when the source says. Agent- or source-written plain text: apps show it
+   * as text, never as Markdown or HTML, cut to `messageWorkReasonMax` characters.
+   */
+  reason?: string;
   /** Since when it has been in this state, as ISO text. */
   since: string;
 }

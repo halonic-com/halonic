@@ -110,6 +110,30 @@ verifies("messenger.channel-messages", () => {
       ]);
     });
 
+    it("says why a failed line couldn't finish when the source gives a reason", () => {
+      const message = sent([
+        { agent: elena.id, state: "failed", reason: "Build broke", since },
+        { agent: liam.id, state: "failed", since },
+        { agent: owen.id, state: "failed", reason: "  ", since },
+      ]);
+      expect(workLines(message, engineering(), new Map(), now)).toEqual([
+        { symbol: "✕", text: "Elena couldn't finish: Build broke" },
+        { symbol: "✕", text: "Liam's task was closed without an answer." },
+        { symbol: "✕", text: "Owen's task was closed without an answer." },
+      ]);
+    });
+
+    it("shows a reason on one line, cut to 300 characters", () => {
+      const long = `${"a".repeat(299)}bc`;
+      const message = sent([
+        { agent: elena.id, state: "failed", reason: "Tests\nfailed", since },
+        { agent: liam.id, state: "failed", reason: long, since },
+      ]);
+      const [multiLine, cut] = workLines(message, engineering(), new Map(), now);
+      expect(multiLine?.text).toBe("Elena couldn't finish: Tests failed");
+      expect(cut?.text).toBe(`Liam couldn't finish: ${"a".repeat(299)}…`);
+    });
+
     it("stops after 3 hand-offs (K3)", () => {
       const handOff = (from: string, to: string): MessageWork => ({
         agent: from,

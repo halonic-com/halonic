@@ -63,6 +63,7 @@ export {
   type MessageSendOptions,
   type MessageWork,
   type MessageWorkState,
+  messageWorkReasonMax,
 } from "./agent-messaging-channels.ts";
 export {
   checkInboxStepperRequest,

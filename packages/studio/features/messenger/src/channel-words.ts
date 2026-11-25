@@ -25,7 +25,10 @@ export const channelWords = {
     /** Without the question's text, while its card hasn't been read yet, the line ends at "asks you". */
     asksYou: (agent: string, question: string | undefined) =>
       question === undefined ? `${agent} asks you` : `${agent} asks you: ${question}`,
+    /** A failed line whose source gave no reason. */
     closed: (agent: string) => `${agent}'s task was closed without an answer.`,
+    /** A failed line with the source's reason, as plain text (HAL-18156). */
+    couldntFinish: (agent: string, reason: string) => `${agent} couldn't finish: ${reason}`,
     passedOn: (agent: string, to: string) => `${agent} passed this to ${to}`,
     handOffLimit: "Stopped after 3 hand-offs. Name who should answer.",
   },
