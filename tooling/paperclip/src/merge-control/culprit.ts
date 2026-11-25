@@ -13,9 +13,11 @@ import { texts } from "./texts.ts";
  * new head (rule 13), and told once which job failed. A cancelled group with
  * no failed job lets its pull request back in once (Chief, HAL-10, 24 Nov);
  * a second one holds it. A group that failed only on files its pull request
- * doesn't touch holds nothing: main is broken (`main-broken.ts`); one that
+ * doesn't touch is main broken (`main-broken.ts`), and still holds its pull
+ * request's head (HAL-18340: #5969 went back in on the same head); one that
  * failed on files a pull request ahead of it in the group chain touches holds
- * that one. Nor does a group whose jobs the runner hook refused (`refused.ts`).
+ * that one. A group whose jobs the runner hook refused holds nothing
+ * (`refused.ts`).
  */
 
 /** Failed groups are read this far back. */
@@ -83,6 +85,8 @@ function holdCulprit(
   }
   const culprit = groupCulprit(context, run, row, rows, where);
   if (culprit === undefined) {
+    // Main is broken, yet this head failed a group: it never goes in again on it (HAL-18340, #5969).
+    hold(context, run, row, where);
     return;
   }
   const ahead = culprit.pull;
