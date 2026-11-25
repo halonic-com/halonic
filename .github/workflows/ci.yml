@@ -3589,12 +3589,56 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       # The runner's SDK brings the platform tools and the command-line tools,
-      # but no system image.
+      # but no system image. Google's download now and then answers with
+      # "unknown archive" (HAL-18065), so the image is cached, keyed on the
+      # exact package and the revision Google lists for it, and every
+      # sdkmanager call is retried with a short backoff.
+      - name: Look up the Android 15 image's revision
+        id: android-image
+        env:
+          IMAGE: system-images;android-35;google_apis;x86_64
+        run: |
+          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          for attempt in 1 2 3; do
+            if list="$("$sdkmanager" --list 2>/dev/null)"; then break; fi
+            [ "$attempt" = 3 ] && { echo "sdkmanager --list failed 3 times" >&2; exit 1; }
+            sleep $((attempt * 15))
+          done
+          revision="$(printf '%s\n' "$list" | awk -F'|' -v pkg="$IMAGE" '{ gsub(/ /, "", $1) } $1 == pkg { gsub(/ /, "", $2); print $2; exit }')"
+          [ -n "$revision" ] || { echo "No revision listed for $IMAGE" >&2; exit 1; }
+          echo "package=$IMAGE" >> "$GITHUB_OUTPUT"
+          echo "path=$ANDROID_HOME/system-images/android-35/google_apis/x86_64" >> "$GITHUB_OUTPUT"
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+      - name: Restore the Android 15 image
+        id: android-image-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.android-image.outputs.path }}
+          key: android-image-${{ runner.os }}-android-35-google_apis-x86_64-r${{ steps.android-image.outputs.revision }}
       - name: Install the emulator and the Android 15 image
+        env:
+          IMAGE: ${{ steps.android-image.outputs.package }}
+          CACHED: ${{ steps.android-image-cache.outputs.cache-hit }}
         run: |
           sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$sdkmanager" --licenses >/dev/null || true
-          "$sdkmanager" --install emulator platform-tools "system-images;android-35;google_apis;x86_64" >/dev/null
+          packages=(emulator platform-tools)
+          [ "$CACHED" = true ] || packages+=("$IMAGE")
+          for attempt in 1 2 3; do
+            if "$sdkmanager" --install "${packages[@]}" >/dev/null; then exit 0; fi
+            [ "$attempt" = 3 ] && break
+            echo "sdkmanager --install failed (attempt $attempt), retrying" >&2
+            sleep $((attempt * 15))
+          done
+          echo "sdkmanager --install failed 3 times" >&2
+          exit 1
+      # Only main saves, like the Gradle cache: every branch reads main's copy.
+      - name: Save the Android 15 image
+        if: ${{ success() && github.ref == 'refs/heads/main' && steps.android-image-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.android-image.outputs.path }}
+          key: ${{ steps.android-image-cache.outputs.cache-primary-key }}
       - name: Run the device key contract on the Keystore
         run: apps/studio/src-tauri/android/check-device-keys.sh "$RUNNER_TEMP/apk/app-universal-debug.apk"
 
