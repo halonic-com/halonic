@@ -1,4 +1,8 @@
 import { createHash } from "node:crypto";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { migrations } from "@halonicjs/adapter-cloudflare-storage";
 import type { DeployEvent, DeployFailure, DeploymentRef, DeployRequest } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
@@ -9,6 +13,7 @@ import {
   createCloudflareDeployTarget,
 } from "./deploy-target-entry.ts";
 import { type FakeCloudflareState, fakeCloudflareApi } from "./fake-api.ts";
+import { shippedWorker } from "./shipped-worker.ts";
 import { FilesSource } from "./write-workspace-snapshot.ts";
 
 const web: DeploymentRef = {
@@ -198,10 +203,17 @@ verifies("deploy.target-deploy", () => {
     expect(api.calls.some((call) => call.startsWith("upload"))).toBe(false);
   });
 
-  it("rejects with unexpected while there's no Worker to upload", async () => {
-    const { api, target, show } = setup({ resources: existing }, passing, {});
-    await expect(target.deploy(request, show)).rejects.toMatchObject({ code: "unexpected" });
-    expect(api.calls).toEqual([]);
+  it("rejects with unexpected, before any Cloudflare call, while there's no Worker to upload", async () => {
+    const empty = await mkdtemp(join(tmpdir(), "halonic-no-worker-"));
+    try {
+      const { api, target, show } = setup({ resources: existing }, passing, {
+        worker: shippedWorker(pathToFileURL(`${empty}/`)),
+      });
+      await expect(target.deploy(request, show)).rejects.toMatchObject({ code: "unexpected" });
+      expect(api.calls).toEqual([]);
+    } finally {
+      await rm(empty, { recursive: true, force: true });
+    }
   });
 });
 

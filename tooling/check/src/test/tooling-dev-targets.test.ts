@@ -25,6 +25,21 @@ const cli: FixturePackage = {
   files: { "src/index.ts": "export const x = 1;\n" },
 };
 
+const cloudflareDeploy: FixturePackage = {
+  directory: "packages/targets/cloudflare/deploy",
+  manifest: manifestFor("@halonicjs/target-cloudflare-deploy", "targets"),
+  files: { "src/index.ts": "export const x = 1;\n" },
+};
+
+/** The repository's root package, a tooling package, using `name` in `field`. */
+function root(field: "dependencies" | "devDependencies", name: string): FixturePackage {
+  return {
+    directory: "tooling/root",
+    manifest: manifestFor("@halonicjs/root", "tooling", { [field]: { [name]: "workspace:*" } }),
+    files: { "src/index.ts": "export const x = 1;\n" },
+  };
+}
+
 const refused = "A target's runtime package is allowed as a dev dependency only.";
 
 /** The layers check's messages for these packages. */
@@ -54,5 +69,23 @@ verifies("check.tooling-dev-uses-target-runtimes", () => {
   it("refuses an app as a tooling package's dev dependency", () => {
     const found = layerMessages([cli, tooling("devDependencies", "halonic")]);
     expect(found.some((message) => message.includes(refused))).toBe(true);
+  });
+
+  it("lets the root package take a target's deploy package as a dev dependency", () => {
+    const found = layerMessages([
+      cloudflareDeploy,
+      root("devDependencies", "@halonicjs/target-cloudflare-deploy"),
+    ]);
+    expect(found).toEqual([]);
+  });
+
+  it("refuses a deploy package as the root's runtime dependency, or another tooling package's", () => {
+    for (const using of [
+      root("dependencies", "@halonicjs/target-cloudflare-deploy"),
+      tooling("devDependencies", "@halonicjs/target-cloudflare-deploy"),
+    ]) {
+      const found = layerMessages([cloudflareDeploy, using]);
+      expect(found.some((message) => message.includes(refused))).toBe(true);
+    }
   });
 });
