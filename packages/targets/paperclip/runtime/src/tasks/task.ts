@@ -168,6 +168,7 @@ export const taskHandler: ActionHandler = {
     "issue.comments.read",
     "issue.documents.read",
     "issue.relations.read",
+    "agents.read",
   ],
   run: async (call) => {
     const { tool } = call;

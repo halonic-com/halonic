@@ -5,6 +5,7 @@ import { type GitHubGet, type GitHubQuery, gitHubQueryReader, gitHubReader } fro
 import type { ActionHandlers } from "./handlers.ts";
 import type { RuntimeHost, ToolDeclaration, ToolResult, ToolRunContext } from "./host.ts";
 import { paperclipAccess } from "./paperclip-access.ts";
+import { writeMode } from "./paperclip-writes.ts";
 import { keepFailedRun } from "./runs/failed-runs-record.ts";
 
 /**
@@ -14,7 +15,9 @@ import { keepFailedRun } from "./runs/failed-runs-record.ts";
  * manifest, which the builder writes from the built-in snapshot. So a newer
  * snapshot can change a tool's settings, callers and wording, or leave the
  * tool out, but never add a tool, change its parameters or point it at
- * another action: such a tool is off.
+ * another action: such a tool is off. Nor can it switch a tool from dry run
+ * to write: going live is a reviewed plugin build. Going back to dry run
+ * is allowed, so a misbehaving writing tool can be stopped without one.
  */
 
 /** The part of the plugin context the runtime uses, so tests can fake it. */
@@ -88,6 +91,9 @@ function offReason(served: Tool | undefined, built: Tool | undefined, commit: st
   }
   if (served.action.run !== built.action.run || !deepEqual(served.parameters, built.parameters)) {
     return `the workspace snapshot ${commit} changes its action or parameters; that needs a new plugin build.`;
+  }
+  if (writeMode(served) === "write" && writeMode(built) !== "write") {
+    return `the workspace snapshot ${commit} sets mode: write, which the plugin wasn't built with; that needs a new plugin build.`;
   }
   return undefined;
 }

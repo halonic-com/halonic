@@ -132,7 +132,7 @@ async function budgetsAnswer(call: ActionCall): Promise<ToolResult> {
 /** Reports each agent's workspace and Paperclip budget. Reads the agent list only. */
 export const budgetsHandler: ActionHandler = {
   // The agent list is `agents.read`, which every plugin holds (`runtimeCapabilities`).
-  capabilities: [],
+  capabilities: ["agents.read"],
   run: async (call) => {
     const { tool } = call;
     if (tool.action.run !== "paperclip.budgets") {

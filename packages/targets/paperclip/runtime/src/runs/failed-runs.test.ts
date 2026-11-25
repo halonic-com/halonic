@@ -133,10 +133,11 @@ verifies("runtime.paperclip-failed-runs", () => {
       expect(record.since).toBe(weekAgo);
     });
 
-    test("asks Paperclip only to subscribe to events and read tasks", () => {
+    test("asks Paperclip only to subscribe to events, read tasks and list agents", () => {
       expect(runtimeHandlers["paperclip.failed-runs"]?.capabilities).toEqual([
         "events.subscribe",
         "issues.read",
+        "agents.read",
       ]);
     });
   });

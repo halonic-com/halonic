@@ -213,7 +213,8 @@ export function pullRequestText(status: PullRequestStatus): string {
 
 /** Reads the pull request the agent names, on one of the tool's repositories. */
 export const pullRequestHandler: ActionHandler = {
-  capabilities: [],
+  // It lists agents to show an author's display name (agentNames).
+  capabilities: ["agents.read"],
   run: async (call) => {
     const { tool, params, github, routing } = call;
     if (tool.action.run !== "github.pull-request") {
