@@ -5,6 +5,7 @@ import type { PullFacts } from "./decide.ts";
 import { agents, task } from "./fakes.test-helper.ts";
 import { mateoBranch, open, setup } from "./handoff.test-helper.ts";
 import type { Reviewer } from "./handoff.ts";
+import { unneededText } from "./unneeded-rebase.ts";
 
 /** An approval that carries over a rebase-only push (HAL-18460), on facts given directly. */
 
@@ -27,8 +28,11 @@ function watcher(pull: PullFacts, byPaths: Reviewer, rebaseOnly = true, files: s
   return { ...run, compared };
 }
 
+/** The task's comments, apart from the unneeded-rebase note (HAL-18722). */
 function bodies(comments: Record<string, { body: string }[]>): string[] {
-  return (comments["task-5701"] ?? []).map(({ body }) => body);
+  return (comments["task-5701"] ?? [])
+    .map(({ body }) => body)
+    .filter((body) => !body.includes(unneededText));
 }
 
 const since = { by: "Liam", approvedHead: "4999bbb", rebaseOnly: true };

@@ -20,6 +20,7 @@ import type { RebaseOnly } from "./rebase-only.ts";
 import { reviewSteps } from "./review-steps.ts";
 import { noReviewWait, noteReviewWait, oldestFirst, type WaitRow } from "./review-wait.ts";
 import { type StackRebase, stackStep } from "./stack-rebase.ts";
+import { queueRequestsOf } from "./unneeded-rebase.ts";
 import type { PullSummary } from "./wake-status.ts";
 
 /**
@@ -146,6 +147,9 @@ export function readMemory(comments: readonly CommentRow[], ownerId: string): Me
     ownReview: ownReviewPattern.test(authorLast?.body ?? ""),
     authorLastAt: newestAt(comments.filter((comment) => comment.authorAgentId === ownerId)),
     lastCommentAt: newestAt(comments.filter((comment) => !isSelf(comment))),
+    queueRequests: queueRequestsOf(
+      comments.filter((comment) => !isSelf(comment)).map(({ body }) => body),
+    ),
   };
 }
 
