@@ -90,7 +90,11 @@ pub fn report_click<R: Runtime>(
     };
     if opens_in_runs(clicked.kind.as_deref()) {
         focused_apps::show(app, None)?;
-        return app.emit_to(focused_apps::STUDIO_WINDOW, NOTIFICATION_CLICKED_EVENT, clicked);
+        return app.emit_to(
+            focused_apps::STUDIO_WINDOW,
+            NOTIFICATION_CLICKED_EVENT,
+            clicked,
+        );
     }
     match focused_apps::first_open(app, &windows_for(clicked.kind.as_deref())) {
         Some(window) => app.emit_to(window.label(), NOTIFICATION_CLICKED_EVENT, clicked),
