@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-17780 (plan approved by Liam with conditions, 24 Nov)
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:zlWCJ05OkMlaliTBqkEPJEOqhvuB2MWwL/V/ONHIlXNpokPTOf1fXFbwNTLo8rpcvxiRQnFOks7RHx/n0Ky3DA==
 
 The QuickJS adapter (`packages/adapters/toolscript-quickjs`) stops loading the engine from the
 npm package `@jitl/quickjs-ng-wasmfile-release-sync`, which carries quickjs-ng 0.12.1 and has had
