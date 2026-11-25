@@ -109,6 +109,15 @@
     "@halonicjs/std": [
       "./error-kind"
     ],
+    "@halonicjs/studio-feature-assistant": [
+      "./words"
+    ],
+    "@halonicjs/studio-feature-connections": [
+      "./words"
+    ],
+    "@halonicjs/studio-feature-messenger": [
+      "./words"
+    ],
     "@halonicjs/studio-feature-remote": [
       "./phone",
       "./phone-client"
@@ -119,6 +128,9 @@
     "@halonicjs/studio-services": [
       "./tauri-ipc",
       "./tauri-channel"
+    ],
+    "@halonicjs/studio-shell": [
+      "./welcome-words"
     ],
     "@halonicjs/target-paperclip-runtime": [
       "./actions"

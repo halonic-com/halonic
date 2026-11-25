@@ -1,0 +1,84 @@
+import type { Step, StepContext, StepOutcome } from "../runner.ts";
+import { clickOrWhyNot, clickWhenShown, lastWords, waitForText } from "../screen.ts";
+import { keys } from "../webdriver.ts";
+import { buttonLabels, errorCodeIn, screenText } from "../words.ts";
+import { openDemo } from "./open-demo.ts";
+
+/** How long the engine may take to answer the first message. */
+const replyWaitMs = 90_000;
+/** What step 1 sends. The demo's model echoes it, so it shows twice once the engine answers. */
+export const probeMessage = "Click test: are you there?";
+
+/**
+ * Step 1 (Tomas, HAL-18317): the engine answers. Opens the demo from Welcome,
+ * then the demo's Writer agent, whose Try it chat is open on its page, and
+ * sends one message. The demo's model is the mock echo, which needs no key, so
+ * the step passes once the reply shows and fails on an engine line. The desktop
+ * Studio registers no Assistant panel (run 45654461077), so the Try it chat is
+ * where a person meets "The engine isn't answering".
+ */
+export const engineAnswers: Step = {
+  id: "engine-answers",
+  title: "The engine answers",
+  run: async (context) => {
+    const opened = await openDemo(context);
+    if (!opened.passed) return withShellLog(context, opened);
+    const chat = await openWriterChat(context);
+    if (!chat.passed) return withShellLog(context, chat);
+    return withShellLog(context, await sendAndWaitForReply(context));
+  },
+};
+
+async function openWriterChat(context: StepContext): Promise<StepOutcome> {
+  const { places, agents, writer, chatWith } = screenText;
+  for (const label of [places.text, agents.text, writer.text]) {
+    const whyNot = await clickOrWhyNot(context, label, 30_000);
+    if (whyNot !== undefined) {
+      const { text } = await waitForText(context, 0, () => undefined);
+      return failure("NO_CHAT", `Couldn't click ${label} (${whyNot}).`, text);
+    }
+  }
+  const heading = `${chatWith.text}${writer.text}`;
+  const chat = await waitForText(context, 30_000, (text) =>
+    text.includes(heading) ? true : undefined,
+  );
+  if (chat.value === undefined) return failure("NO_CHAT", `No "${heading}".`, chat.text);
+  return { passed: true };
+}
+
+async function sendAndWaitForReply(context: StepContext): Promise<StepOutcome> {
+  const box = `//textarea[@aria-label='${screenText.messageTo.text}${screenText.writer.text}']`;
+  const whyNot = await context.driver
+    .type(box, probeMessage)
+    .then(() => context.driver.pressKeys([keys.enter]))
+    .then(
+      () => undefined,
+      (error: unknown) => (error instanceof Error ? error.message : String(error)),
+    );
+  if (whyNot !== undefined) return failure("NOT_SENT", `Couldn't send (${whyNot}).`, "");
+  // Sending asks the trust check when the demo isn't trusted yet; no dialog is fine.
+  await clickWhenShown(context, buttonLabels.trust.text, 5_000);
+  const reply = await waitForText(context, replyWaitMs, (text) => {
+    const code = errorCodeIn(text);
+    if (code !== undefined) return code;
+    return text.split(probeMessage).length > 2 ? "replied" : undefined;
+  });
+  if (reply.value === "replied") return { passed: true };
+  if (reply.value !== undefined) return failure(reply.value, "", reply.text);
+  return failure("NO_REPLY", "No reply.", reply.text);
+}
+
+function failure(code: string, note: string, text: string): StepOutcome {
+  const seen = text === "" ? "" : `Screen: ${lastWords(text)}`;
+  return { passed: false, code, note: [note, seen].filter((part) => part !== "").join(" ") };
+}
+
+async function withShellLog(context: StepContext, outcome: StepOutcome): Promise<StepOutcome> {
+  if (outcome.passed) return outcome;
+  const log = await context.shellLog();
+  const page = await context.driver.describePage().catch((error: unknown) => String(error));
+  return {
+    ...outcome,
+    note: `${outcome.note}\nPage: ${page}\nshell.log (engine, agent host):\n${log}`,
+  };
+}

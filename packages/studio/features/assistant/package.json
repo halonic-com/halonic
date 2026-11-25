@@ -5,7 +5,8 @@
   "description": "The Assistant feature of the Studio: the Build chat, its sessions and its changes to review.",
   "exports": {
     ".": "./src/index.ts",
-    "./api": "./src/api.ts"
+    "./api": "./src/api.ts",
+    "./words": "./src/chat/build-chat-words.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",

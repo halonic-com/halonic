@@ -86,11 +86,13 @@ verifies("studio.installer-preview-version", () => {
   it("builds the preview with that version and updates the release version with it", () => {
     const text = workflow();
     expect(text).toContain(
-      "node windows/preview-version.mjs tauri.conf.json $env:GITHUB_RUN_NUMBER",
+      "node ../../../workflow-ref/apps/studio/src-tauri/windows/preview-version.mjs tauri.conf.json $env:GITHUB_RUN_NUMBER",
     );
     expect(text).toContain('build-installer.ps1 -Config "$env:RUNNER_TEMP/preview.conf.json"');
     expect(text).toContain("pwsh windows/build-installer.ps1 -Step pack");
-    expect(text).toContain('foreach ($installer in "$env:RUNNER_TEMP/older-setup.exe", $setup)');
+    expect(text).toContain(
+      'foreach ($installer in "apps/studio/src-tauri/older/older-setup.exe", $setup)',
+    );
     expect(text).toContain("if ($installed -ne $env:PREVIEW_VERSION)");
   });
 });

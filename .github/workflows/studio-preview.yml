@@ -5,18 +5,33 @@
 #
 #   gh workflow run studio-preview.yml --ref main
 #
-# It builds the installer as CI's installer-windows job does (HAL-1202), as
-# version <next patch>-preview.<run number> (HAL-18308), installs an
-# installer with the release version and then updates it with the preview,
-# silently, checks that Halonic starts and keeps running, and keeps the
-# setup .exe as a 7-day artifact.
+# It builds the installer as CI's installer-windows job does (HAL-1202), with
+# Halonic's WSL image and runtime, as version <next patch>-preview.<run
+# number> (HAL-18308), installs an installer with the release version and
+# then updates it with the preview, silently, checks that Halonic starts and
+# keeps running, and keeps the setup .exe as a 7-day artifact.
+#
+# The click-test job then installs the same two setups on a clean runner and
+# clicks through the installed app (HAL-18317): see
+# packages/testing/studio-click-test. To test an older build with today's
+# click test, name it; the installer comes from that commit and the click
+# test from the ref the workflow runs on:
+#
+#   gh workflow run studio-preview.yml --ref main -f build-ref=9115b95
+#
+# Such a run reuses the installers an earlier run built from the same commit
+# while their artifact lasts (7 days), so a click-test change costs one
+# click-test job, not a rebuild (the board, HAL-18353). A run without
+# build-ref always builds, since its preview version is numbered by the run.
 #
 # A build of main whose installer builds, updates the release version and
 # keeps running is then published as a pre-release of
 # halonic-com/halonic-preview, "Preview, not for general use", signed for the
 # updater with the Preview key (HAL-18477, board decision on HAL-18474,
-# standing yes). A run on any other branch publishes nothing. Stable builds go to this repo's
-# releases only through release.yml, after the board's release card.
+# standing yes). Until the click test is proven on main, publishing doesn't
+# wait for it (board, HAL-18477). A run on any other branch, or one that names
+# a build-ref, publishes nothing. Stable builds go to this repo's releases
+# only through release.yml, after the board's release card.
 
 name: Studio preview (Windows, unsigned)
 
@@ -29,12 +44,114 @@ on:
       - pnpm-lock.yaml
       - .github/workflows/studio-preview.yml
   workflow_dispatch:
+    inputs:
+      build-ref:
+        description: The commit, branch or tag to build the installer from (default, the workflow's own ref). The click test always comes from the workflow's ref.
+        required: false
+        default: ""
 
 permissions: {}
 
 jobs:
+  resolve:
+    # A short commit such as 9115b95 can't be checked out by name, so the
+    # build ref becomes its full commit once, for every job.
+    name: Name the commit to build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      sha: ${{ steps.commit.outputs.sha }}
+      installer-run: ${{ steps.reuse.outputs.run }}
+    steps:
+      - id: commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_REF: ${{ inputs.build-ref || github.sha }}
+        run: |
+          sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/$BUILD_REF" --jq .sha)"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "Building the installer from $sha; the click test runs from $GITHUB_SHA." >> "$GITHUB_STEP_SUMMARY"
+      - id: reuse
+        if: inputs.build-ref != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.commit.outputs.sha }}
+        run: |
+          run="$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=halonic-installers-$SHA&per_page=10" \
+            --jq '[.artifacts[] | select(.expired | not)][0].workflow_run.id // empty')"
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+          if [ -n "$run" ]; then
+            echo "Reusing the installers run $run built from $SHA." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  wsl-runtime:
+    # The Linux agent host packed for Halonic's WSL distro, as CI's
+    # wsl-runtime job builds it (HAL-15136), from the build ref.
+    name: WSL runtime (Linux agent host, packed)
+    needs: resolve
+    if: needs.resolve.outputs.installer-run == ''
+    # As the installer: one per branch, a waiting one replaced by a newer merge.
+    concurrency:
+      group: studio-preview-wsl-runtime-${{ github.ref }}
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+      - name: Build the Linux agent host
+        run: pnpm --filter @halonicjs/app-agent-host build:sea
+      - name: Pack the WSL runtime
+        run: |
+          version="$(jq -r .version apps/studio/package.json)+$(git rev-parse --short=12 HEAD)"
+          infra/wsl-image/runtime-archive.sh apps/agent-host/dist/halonic-agent-host "$version" "$RUNNER_TEMP/wsl-runtime"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: halonic-wsl-runtime
+          path: ${{ runner.temp }}/wsl-runtime/*
+          if-no-files-found: error
+          retention-days: 1
+
+  wsl-image:
+    # Halonic's WSL image, as CI's wsl-image job builds it (HAL-16773). The
+    # app imports it on first start, which is where HAL-18311 failed.
+    name: WSL image (for the installer)
+    needs: resolve
+    if: needs.resolve.outputs.installer-run == ''
+    # As the installer: one per branch, a waiting one replaced by a newer merge.
+    concurrency:
+      group: studio-preview-wsl-image-${{ github.ref }}
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+          persist-credentials: false
+      - name: Build and check the WSL image
+        run: infra/wsl-image/build-in-docker.sh "$RUNNER_TEMP/wsl-image"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: halonic-wsl-image
+          path: ${{ runner.temp }}/wsl-image/*
+          if-no-files-found: error
+          retention-days: 1
+
   installer:
     name: Build and start the unsigned Windows installer
+    needs: [resolve, wsl-runtime, wsl-image]
+    if: needs.resolve.outputs.installer-run == ''
     runs-on: windows-2025
     timeout-minutes: 45
     # One build per branch at a time. A newer merge replaces a build still
@@ -56,10 +173,26 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ needs.resolve.outputs.sha }}
+          persist-credentials: false
+      # The preview version's script is the workflow's, since an older build ref predates it.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: workflow-ref
+          sparse-checkout: apps/studio/src-tauri/windows/preview-version.mjs
+          sparse-checkout-cone-mode: false
           persist-credentials: false
       - uses: $/.github/actions/setup
         with:
           cache: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: halonic-wsl-runtime
+          path: ${{ runner.temp }}/wsl-runtime
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: halonic-wsl-image
+          path: ${{ runner.temp }}/wsl-image
       - name: Install the pinned Rust toolchain
         working-directory: apps/studio/src-tauri
         run: rustup toolchain install
@@ -85,16 +218,16 @@ jobs:
         id: version
         working-directory: apps/studio/src-tauri
         run: |
-          $version = node windows/preview-version.mjs tauri.conf.json $env:GITHUB_RUN_NUMBER
+          $version = node ../../../workflow-ref/apps/studio/src-tauri/windows/preview-version.mjs tauri.conf.json $env:GITHUB_RUN_NUMBER
           if ($LASTEXITCODE -ne 0) { throw 'preview-version.mjs failed' }
           @{ version = $version } | ConvertTo-Json | Set-Content "$env:RUNNER_TEMP/preview.conf.json" -Encoding utf8NoBOM
           "PREVIEW_VERSION=$version" >> $env:GITHUB_ENV
           "version=$version" >> $env:GITHUB_OUTPUT
       - name: Build the installer
         working-directory: apps/studio/src-tauri
-        run: pwsh windows/build-installer.ps1 -Config "$env:RUNNER_TEMP/preview.conf.json"
+        run: pwsh windows/build-installer.ps1 -Config "$env:RUNNER_TEMP/preview.conf.json" -Runtime "$env:RUNNER_TEMP/wsl-runtime" -Image "$env:RUNNER_TEMP/wsl-image"
       - name: Save the Rust release cache
-        if: ${{ !cancelled() && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' && !inputs.build-ref && steps.rust-cache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
@@ -108,15 +241,16 @@ jobs:
       - name: Pack an installer with the release version
         working-directory: apps/studio/src-tauri
         run: |
-          pwsh windows/build-installer.ps1 -Step pack
+          pwsh windows/build-installer.ps1 -Step pack -Runtime "$env:RUNNER_TEMP/wsl-runtime" -Image "$env:RUNNER_TEMP/wsl-image"
           if ($LASTEXITCODE -ne 0) { throw 'packing the release-version installer failed' }
           $release = (Get-Content tauri.conf.json -Raw | ConvertFrom-Json).version
-          Move-Item "../../../dist/Halonic-$release-windows-x64-setup.exe" "$env:RUNNER_TEMP/older-setup.exe"
+          New-Item -ItemType Directory older | Out-Null
+          Move-Item "../../../dist/Halonic-$release-windows-x64-setup.exe" older/older-setup.exe
       - name: Install the older one, update it silently and check that Halonic starts
         run: |
           $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Halonic'
           $setup = Resolve-Path "dist/Halonic-$env:PREVIEW_VERSION-windows-x64-setup.exe"
-          foreach ($installer in "$env:RUNNER_TEMP/older-setup.exe", $setup) {
+          foreach ($installer in "apps/studio/src-tauri/older/older-setup.exe", $setup) {
             $p = Start-Process $installer -ArgumentList '/S' -Wait -PassThru
             if ($p.ExitCode -ne 0) { throw "$(Split-Path -Leaf $installer) exited with $($p.ExitCode)" }
             "$(Split-Path -Leaf $installer): installed $((Get-ItemProperty $key).DisplayVersion)"
@@ -137,6 +271,188 @@ jobs:
           path: dist/Halonic-*-windows-x64-setup.exe
           if-no-files-found: error
           retention-days: 7
+      # Both setups for the click test's upgrade install, by build commit, so
+      # a later build-ref run of the same commit reuses them.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: halonic-installers-${{ needs.resolve.outputs.sha }}
+          path: |
+            dist/Halonic-*-windows-x64-setup.exe
+            apps/studio/src-tauri/older/older-setup.exe
+          if-no-files-found: error
+          retention-days: 7
+
+  click-test:
+    # The installed app, clicked through as a person would (HAL-18317), on a
+    # runner of its own: the upgrade install, the Start menu shortcut, WSL as
+    # on a PC, and a throwaway Paperclip that holds no secret.
+    name: Click through the installed app
+    needs: [resolve, installer]
+    # The installer job is skipped when the run reuses an earlier one's setups.
+    if: ${{ !cancelled() && needs.resolve.result == 'success' && needs.installer.result != 'failure' }}
+    concurrency:
+      group: studio-preview-click-test-${{ github.ref }}
+      cancel-in-progress: false
+    runs-on: windows-2025
+    timeout-minutes: 75
+    permissions:
+      contents: read
+      actions: read
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      PAPERCLIP_VERSION: 2026.1117.0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      # Its first start takes about 12 minutes, so it starts first and the
+      # other steps run meanwhile. Paperclip's own PostgreSQL can't
+      # initialise on the runner (HAL-18317 spike), so it uses the runner's.
+      - name: Start a throwaway Paperclip in the background
+        run: |
+          $service = Get-Service postgresql*
+          Set-Service $service.Name -StartupType Manual
+          Start-Service $service.Name
+          & "$env:PGBIN/createdb.exe" -h 127.0.0.1 paperclip
+          if ($LASTEXITCODE -ne 0) { throw 'createdb failed' }
+          $pcHome = Join-Path $env:RUNNER_TEMP 'paperclip'
+          New-Item -ItemType Directory $pcHome | Out-Null
+          # The runner ends a step's own processes with the step, so WMI starts
+          # Paperclip outside it. Such a process gets the machine's environment,
+          # where the runner image keeps PGUSER and PGPASSWORD, so the database
+          # login never goes on a command line. It runs outside the repo, whose
+          # devEngines (Node 26) npm would refuse. The machine's PATH has the
+          # image's Node 22, which Paperclip refuses, so setup-node's comes first.
+          $npx = (Get-Command npx.cmd).Source
+          $start = Join-Path $pcHome 'start.ps1'
+          Set-Content $start -Encoding utf8 -Value @'
+          param($npx, $version)
+          $env:PATH = "$(Split-Path $npx);$env:PATH"
+          $env:HOME = $PSScriptRoot
+          $env:USERPROFILE = $PSScriptRoot
+          $env:DATABASE_URL = "postgres://$($env:PGUSER):$($env:PGPASSWORD)@127.0.0.1:5432/paperclip"
+          & $npx -y "paperclipai@$version" onboard --yes --data-dir "$PSScriptRoot/data" > "$PSScriptRoot/out.log" 2> "$PSScriptRoot/err.log"
+          '@
+          $started = Invoke-CimMethod Win32_Process -MethodName Create -Arguments @{
+            CommandLine = "pwsh.exe -NoProfile -File `"$start`" `"$npx`" $env:PAPERCLIP_VERSION"
+            CurrentDirectory = $pcHome
+          }
+          if ($started.ReturnValue -ne 0) { throw "Win32_Process.Create returned $($started.ReturnValue)" }
+          "PAPERCLIP_PID=$($started.ProcessId)" >> $env:GITHUB_ENV
+      - uses: $/.github/actions/setup
+        with:
+          cache: false
+      # The app imports its own distro as WSL2, as on the board's PC; WSL2
+      # runs on hosted windows-2025 (HAL-18317 spike, run 45578215467).
+      - name: Turn on WSL
+        run: |
+          wsl --install --no-distribution
+          if ($LASTEXITCODE -ne 0) { throw "wsl --install exited $LASTEXITCODE" }
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: halonic-installers-${{ needs.resolve.outputs.sha }}
+          path: ${{ runner.temp }}/setups
+          run-id: ${{ needs.resolve.outputs.installer-run || github.run_id }}
+          github-token: ${{ github.token }}
+      - name: Install the older one, then update it silently with the preview
+        run: |
+          $older = Get-ChildItem "$env:RUNNER_TEMP/setups" -Recurse -Filter older-setup.exe | Select-Object -First 1
+          $preview = Get-ChildItem "$env:RUNNER_TEMP/setups" -Recurse -Filter 'Halonic-*-windows-x64-setup.exe' | Select-Object -First 1
+          if (-not $older -or -not $preview) { throw 'The installers artifact lacks a setup' }
+          foreach ($installer in $older.FullName, $preview.FullName) {
+            $p = Start-Process $installer -ArgumentList '/S' -Wait -PassThru
+            if ($p.ExitCode -ne 0) { throw "$(Split-Path -Leaf $installer) exited with $($p.ExitCode)" }
+          }
+      # The suite starts Halonic through this shortcut, as a user would.
+      - name: Find the Start menu shortcut and check what it starts
+        run: |
+          $programs = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs'
+          $shortcut = Get-ChildItem $programs -Recurse -Filter 'Halonic.lnk' | Select-Object -First 1
+          if (-not $shortcut) { throw 'No Halonic shortcut in the Start menu' }
+          $target = (New-Object -ComObject WScript.Shell).CreateShortcut($shortcut.FullName).TargetPath
+          $exe = Join-Path $env:LOCALAPPDATA 'Programs\Halonic\Halonic.exe'
+          if ($target -ne $exe) { throw "The Halonic shortcut starts $target, not $exe" }
+          "HALONIC_SHORTCUTS=$($shortcut.DirectoryName)" >> $env:GITHUB_ENV
+      # Microsoft publishes no checksum for msedgedriver, so it comes only
+      # from its HTTPS host, at the installed WebView2's version, and the
+      # summary records what was used.
+      - name: Download msedgedriver for the installed WebView2
+        run: |
+          $client = '{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
+          $keys = "HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\$client", "HKCU:\Software\Microsoft\EdgeUpdate\Clients\$client"
+          $version = $keys | Where-Object { Test-Path $_ } | ForEach-Object { (Get-ItemProperty $_).pv } | Select-Object -First 1
+          if (-not $version) { throw 'No WebView2 runtime is installed' }
+          $zip = Join-Path $env:RUNNER_TEMP 'edgedriver.zip'
+          Invoke-WebRequest "https://msedgedriver.microsoft.com/$version/edgedriver_win64.zip" -OutFile $zip
+          $sha = (Get-FileHash $zip -Algorithm SHA256).Hash
+          Expand-Archive $zip (Join-Path $env:RUNNER_TEMP 'edgedriver')
+          "### Click-test driver`n`nmsedgedriver $version for WebView2 $version, edgedriver_win64.zip SHA-256 $sha" >> $env:GITHUB_STEP_SUMMARY
+      - name: Wait for the Paperclip and seed it
+        run: |
+          $pcHome = Join-Path $env:RUNNER_TEMP 'paperclip'
+          $url = 'http://127.0.0.1:3100'
+          $up = $false
+          foreach ($i in 1..120) {
+            try { Invoke-WebRequest "$url/api/health" -TimeoutSec 3 | Out-Null; $up = $true; break } catch { }
+            # A Paperclip that exited won't answer later: stop waiting.
+            if (-not (Get-Process -Id $env:PAPERCLIP_PID -ErrorAction SilentlyContinue)) { break }
+            Start-Sleep -Seconds 10
+          }
+          if (-not $up) {
+            foreach ($log in 'out.log', 'err.log') { "--- $log"; Get-Content (Join-Path $pcHome $log) -Tail 40 -ErrorAction SilentlyContinue }
+            throw 'Paperclip never answered /api/health'
+          }
+          $post = { param($path, $body) Invoke-RestMethod "$url$path" -Method Post -ContentType 'application/json' -Body ($body | ConvertTo-Json -Depth 5) }
+          $company = & $post '/api/companies' @{ name = 'Acme Click Test' }
+          & $post "/api/companies/$($company.id)/issues" @{ title = 'Acme: answer the click test' } | Out-Null
+          & $post "/api/companies/$($company.id)/approvals" @{ type = 'approve_ceo_strategy'; payload = @{ plan = 'Acme click-test card' } } | Out-Null
+          "PAPERCLIP_URL=$url" >> $env:GITHUB_ENV
+      # The shell gives WebView2 its own browser arguments, which beat the
+      # variable msedgedriver (and so tauri-driver) uses to open the DevTools
+      # port. WebView2's registry policy beats them (as in test-update.ps1), so
+      # the suite starts Halonic itself and msedgedriver attaches to that port.
+      # msedgedriver starts in the suite's own step: the runner ends a step's
+      # processes when the step ends.
+      - name: Click through the installed app
+        env:
+          CLICK_TEST_OUT: ${{ runner.temp }}/click-test
+          CLICK_TEST_BUILD: ${{ needs.resolve.outputs.sha }}
+          HALONIC_DEVTOOLS: 127.0.0.1:9222
+        run: |
+          foreach ($key in 'HKLM:\SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments', 'HKCU:\Software\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments') {
+            New-Item -Path $key -Force | Out-Null
+            New-ItemProperty -Path $key -Name 'Halonic.exe' -Value '--remote-debugging-port=9222' -PropertyType String -Force | Out-Null
+          }
+          # A Halonic the installer left running would take the shortcut's start.
+          Get-Process Halonic, halonic-agent-host -ErrorAction SilentlyContinue | Stop-Process -Force
+          $driver = Get-ChildItem (Join-Path $env:RUNNER_TEMP 'edgedriver') -Recurse -Filter msedgedriver.exe | Select-Object -First 1
+          Start-Process $driver.FullName -WindowStyle Hidden -ArgumentList '--port=9515' `
+            -RedirectStandardOutput "$env:RUNNER_TEMP/msedgedriver.log" -RedirectStandardError "$env:RUNNER_TEMP/msedgedriver.err.log"
+          $up = $false
+          foreach ($i in 1..30) {
+            try { Invoke-WebRequest 'http://127.0.0.1:9515/status' -TimeoutSec 2 | Out-Null; $up = $true; break } catch { Start-Sleep -Seconds 1 }
+          }
+          if (-not $up) { Get-Content "$env:RUNNER_TEMP/msedgedriver.err.log" -ErrorAction SilentlyContinue; throw 'msedgedriver never answered' }
+          pnpm --filter @halonicjs/testing-studio-click-test click-test
+          if ($LASTEXITCODE -ne 0) { throw "The click test failed (exit $LASTEXITCODE); the table is in the summary." }
+      - name: Put the results table in the summary
+        if: always()
+        run: |
+          $table = Join-Path $env:RUNNER_TEMP 'click-test/results.md'
+          if (Test-Path $table) { Get-Content $table -Raw >> $env:GITHUB_STEP_SUMMARY }
+          else { "### Click test`n`nNo results: the suite didn't get to run its steps. See the job log." >> $env:GITHUB_STEP_SUMMARY }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: halonic-click-test
+          path: ${{ runner.temp }}/click-test
+          if-no-files-found: ignore
+          retention-days: 7
 
   publish:
     # Only a build of main whose installer built, installed over the release
@@ -146,8 +462,9 @@ jobs:
     # and a token that can write releases to halonic-preview and nothing
     # else; this repo's token stays read-only.
     name: Publish to halonic-preview as a pre-release
-    needs: installer
-    if: github.ref == 'refs/heads/main'
+    # A run that names a build-ref builds an older commit: it never publishes.
+    needs: [resolve, installer]
+    if: github.ref == 'refs/heads/main' && !inputs.build-ref
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     # One publish at a time, and a running one is never cancelled.
@@ -195,7 +512,7 @@ jobs:
       - name: Publish the pre-release
         env:
           GH_TOKEN: ${{ secrets.PREVIEW_PUBLISH_TOKEN }}
-          SOURCE: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+          SOURCE: ${{ github.server_url }}/${{ github.repository }}/commit/${{ needs.resolve.outputs.sha }}
           RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           notes="Preview, not for general use. Unsigned Windows build of $SOURCE, built, installed and started in $RUN. Halonic installs set to the Preview update track update to it; stable releases are on $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases."
