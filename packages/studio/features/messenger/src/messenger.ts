@@ -26,6 +26,8 @@ export type MessengerTab = "all" | "waiting";
 export interface ConversationRow {
   readonly conversation: Conversation;
   readonly agents: readonly MessagingAgent[];
+  /** Every agent its source lists, members or not: who wrote a message is looked up here. */
+  readonly sourceAgents: readonly MessagingAgent[];
   /** The conversation's source, with its label and whether it is online; none once it is gone. */
   readonly source: MessagingSource | undefined;
 }
@@ -205,6 +207,7 @@ function rowOf(
   return {
     conversation,
     agents: ids.flatMap((id) => agents.find((agent) => agent.id === id) ?? []),
+    sourceAgents: agents.filter((agent) => agent.source === conversation.source),
     source: sources.find((each) => each.id === conversation.source),
   };
 }

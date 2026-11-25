@@ -92,6 +92,7 @@ function useMessages(
   announce: (line: string) => void,
 ) {
   const id = row.conversation.id;
+  const channel = isChannel(row);
   // The row is read again on each change; the author's name is taken from the newest one.
   const latestRow = useRef(row);
   latestRow.current = row;
@@ -105,9 +106,10 @@ function useMessages(
   const read = useCallback(async () => {
     reads.current += 1;
     const thisRead = reads.current;
+    // Only a channel's work lines show a question's text, so a chat reads no inbox for them.
     const [found, asked] = await Promise.all([
       messenger.messages(id, search),
-      messenger.questions(),
+      channel ? messenger.questions() : new Map<MessagingId, string>(),
     ]);
     if (thisRead !== reads.current) return;
     setMessages(found);
@@ -117,7 +119,7 @@ function useMessages(
     const fresh = before === undefined ? undefined : newestFromAgent(found, before);
     if (fresh !== undefined)
       announce(messengerWords.newMessage(authorOf(fresh, latestRow.current), fresh.body));
-  }, [messenger, id, search, announce]);
+  }, [messenger, id, channel, search, announce]);
 
   useEffect(() => {
     void read().catch((error: unknown) => console.error("The chat couldn't be read:", error));
@@ -172,9 +174,10 @@ function ConversationHeader({
 /**
  * The messages, oldest first; the person's on the end side. Each says who wrote it to a screen
  * reader; in a channel it shows it too, and the person's say who they went to and what each agent
- * did with them (`messenger.channel-messages`). An agent writes a message, so whoever can steer that agent does (ADR 2026-11-24,
- * agent-written content): the kit's `ChatText` keeps HTML, images and any link that isn't a web
- * address as plain text, and a web link opens outside the app with its address after it.
+ * did with them (`messenger.channel-messages`). An agent writes a message, so whoever can steer
+ * that agent does (ADR 2026-11-24, agent-written content): the kit's `ChatText` keeps HTML, images
+ * and any link that isn't a web address as plain text, and a web link opens outside the app with
+ * its address after it.
  */
 function Transcript({
   messenger,

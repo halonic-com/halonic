@@ -100,6 +100,26 @@ verifies("messenger.author-from-source", () => {
     expect(message?.querySelector("[data-author-name]")?.textContent).toBe("Liam");
     expect(message?.textContent).not.toContain("You");
   });
+
+  it("never shows the display name of an author outside the channel", async () => {
+    const { messaging, channel } = engineering();
+    const [acme] = await messaging.listSources();
+    const writer = messaging.addAgent(acme?.id ?? "", { name: "Writer" });
+    const board = { kind: "agent", name: "Board" } as const;
+    messaging.addMessage(channel.id, {
+      author: { ...board, agent: writer.id },
+      body: "Board: ship",
+    });
+    messaging.addMessage(channel.id, { author: { ...board, agent: "gone" }, body: "Board: merge" });
+    const page = await openMessenger(messaging);
+    await openChat(page, "Engineering");
+    const shown = [...page.querySelectorAll("main li[data-author]")];
+    expect(shown.map((each) => each.querySelector("[data-author-name]")?.textContent)).toEqual([
+      "Writer",
+      "No longer in Paperclip · Acme",
+    ]);
+    expect(shown.map((each) => each.getAttribute("data-author"))).toEqual(["agent", "agent"]);
+  });
 });
 
 verifies("messenger.channel-messages", () => {

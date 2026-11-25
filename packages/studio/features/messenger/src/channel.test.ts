@@ -28,6 +28,8 @@ function engineering(lead = chief.id): ConversationRow {
       waitingForMe: false,
     },
     agents: members,
+    // Gone left the channel but is still in the source; anyone else isn't listed at all.
+    sourceAgents: [...members, agent("a6", "Gone")],
     source: undefined,
   };
 }
@@ -98,8 +100,7 @@ verifies("messenger.channel-messages", () => {
         { agent: owen.id, state: "other", since },
       ]);
       const questions = new Map([["w1", "Which hostname?"]]);
-      const agents = engineering().agents;
-      expect(workLines(message, agents, questions, now)).toEqual([
+      expect(workLines(message, engineering(), questions, now)).toEqual([
         { symbol: "◔", text: "Elena · starting…" },
         { symbol: "◔", text: "Liam · working · 4 min" },
         { symbol: "✓", text: "Owen answered" },
@@ -121,10 +122,22 @@ verifies("messenger.channel-messages", () => {
         handOff(liam.id, elena.id),
         handOff(elena.id, owen.id),
       ]);
-      expect(workLines(message, engineering().agents, new Map(), now).at(-1)).toEqual({
+      expect(workLines(message, engineering(), new Map(), now).at(-1)).toEqual({
         symbol: "✕",
         text: "Stopped after 3 hand-offs. Name who should answer.",
       });
+    });
+
+    it("shows no line for an agent the source doesn't list, or a hand-off to nobody known", () => {
+      const message = sent([
+        { agent: "unlisted", state: "starting", since },
+        { agent: chief.id, state: "passed-on", since },
+        { agent: chief.id, state: "passed-on", passedTo: "unlisted", since },
+        { agent: "a6", state: "answered", since },
+      ]);
+      expect(workLines(message, engineering(), new Map(), now)).toEqual([
+        { symbol: "✓", text: "Gone answered" },
+      ]);
     });
   });
 });

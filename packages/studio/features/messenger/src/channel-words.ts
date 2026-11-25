@@ -14,6 +14,8 @@ export const channelWords = {
   toNobody: "To nobody yet",
   noLead: "Name someone with @, or pick a lead in Members.",
   picker: "Members · ↑↓ to pick · Enter names them · Esc closes",
+  /** An agent's message whose agent the source no longer lists ("An agent left the source"). */
+  authorGone: (source: string) => `No longer in ${source}`,
   /** A chip's remove button, as a file's in the box. */
   unname: (name: string) => `Remove ${name}`,
   work: {

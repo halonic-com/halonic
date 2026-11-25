@@ -49,7 +49,9 @@ verifies("messenger.conversations", () => {
 
     it("shows `other` for a conversation whose agent it doesn't know", () => {
       const { acmeChat } = twoChiefs();
-      expect(activityOf({ conversation: acmeChat, agents: [], source: undefined })).toBe("other");
+      expect(
+        activityOf({ conversation: acmeChat, agents: [], sourceAgents: [], source: undefined }),
+      ).toBe("other");
     });
   });
 

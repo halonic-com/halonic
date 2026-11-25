@@ -19,6 +19,14 @@ export function leadOf(row: ConversationRow): MessagingAgent | undefined {
   return row.agents.find((agent) => agent.id === row.conversation.agent);
 }
 
+/**
+ * An agent's name as its source lists it, member of the channel or not; none when the source no
+ * longer lists it. Never a name a message carries (requirement `messenger.author-from-source`).
+ */
+export function agentName(row: ConversationRow, id: MessagingId): string | undefined {
+  return row.sourceAgents.find((agent) => agent.id === id)?.name;
+}
+
 /** What the To line says, and whether Send may send to it (flow I, K2). */
 export interface ToLine {
   readonly text: string;
@@ -28,7 +36,7 @@ export interface ToLine {
 
 /** The To line for the agents the person named: those, or else the lead. */
 export function toLine(row: ConversationRow, named: readonly MessagingId[]): ToLine {
-  const names = named.map((id) => nameOf(row.agents, id));
+  const names = named.flatMap((id) => agentName(row, id) ?? []);
   if (names.length > 0) return { text: channelWords.to(names) };
   const lead = leadOf(row);
   if (lead === undefined) return { text: channelWords.toNobody, waits: channelWords.noLead };
@@ -70,17 +78,18 @@ const handOffLimit = 3;
 
 /**
  * The work lines under one of the person's messages, one per agent it went to, then the
- * hand-off limit's line once it was passed on 3 times. A state the source couldn't map shows no
- * line. `questions` gives an open question's text by the work it belongs to.
+ * hand-off limit's line once it was passed on 3 times. A state the source couldn't map, an agent
+ * the source no longer lists, and a hand-off to no known agent show no line. `questions` gives an
+ * open question's text by the work it belongs to.
  */
 export function workLines(
   message: Message,
-  agents: readonly MessagingAgent[],
+  row: ConversationRow,
   questions: ReadonlyMap<MessagingId, string>,
   now: Date,
 ): readonly WorkLine[] {
   const work = message.work ?? [];
-  const lines = work.flatMap((share) => lineOf(share, agents, questions, now) ?? []);
+  const lines = work.flatMap((share) => lineOf(share, row, questions, now) ?? []);
   const handOffs = work.filter((share) => share.state === "passed-on").length;
   if (handOffs >= handOffLimit) lines.push({ symbol: "✕", text: channelWords.work.handOffLimit });
   return lines;
@@ -88,11 +97,12 @@ export function workLines(
 
 function lineOf(
   share: MessageWork,
-  agents: readonly MessagingAgent[],
+  row: ConversationRow,
   questions: ReadonlyMap<MessagingId, string>,
   now: Date,
 ): WorkLine | undefined {
-  const agent = nameOf(agents, share.agent);
+  const agent = agentName(row, share.agent);
+  if (agent === undefined) return undefined;
   const words = channelWords.work;
   switch (share.state) {
     case "starting":
@@ -109,13 +119,11 @@ function lineOf(
     }
     case "failed":
       return { symbol: "✕", text: words.closed(agent) };
-    case "passed-on":
-      return { symbol: "→", text: words.passedOn(agent, nameOf(agents, share.passedTo ?? "")) };
+    case "passed-on": {
+      const to = share.passedTo === undefined ? undefined : agentName(row, share.passedTo);
+      return to === undefined ? undefined : { symbol: "→", text: words.passedOn(agent, to) };
+    }
     default:
       return undefined;
   }
-}
-
-function nameOf(agents: readonly MessagingAgent[], id: MessagingId): string {
-  return agents.find((agent) => agent.id === id)?.name ?? "";
 }

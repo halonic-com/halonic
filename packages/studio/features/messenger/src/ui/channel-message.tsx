@@ -1,5 +1,5 @@
 import type { Message, MessagingId } from "@halonicjs/ports";
-import { leadOf, workLines } from "../channel.ts";
+import { agentName, leadOf, workLines } from "../channel.ts";
 import { channelWords } from "../channel-words.ts";
 import type { ConversationRow } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
@@ -13,7 +13,7 @@ export function authorOf(message: Message, row: ConversationRow): string {
   const { author } = message;
   if (author.kind === "me") return messengerWords.you;
   if (author.kind === "person") return author.name;
-  return row.agents.find((agent) => agent.id === author.agent)?.name ?? author.name;
+  return agentName(row, author.agent) ?? channelWords.authorGone(row.source?.label ?? "");
 }
 
 /** Above the person's message in a channel: who it went to, "To Elena and Liam". */
@@ -26,7 +26,7 @@ export function MessageTo({
 }) {
   const to = message.to ?? [];
   if (to.length === 0) return null;
-  const names = to.map((id) => row.agents.find((agent) => agent.id === id)?.name ?? "");
+  const names = to.flatMap((id) => agentName(row, id) ?? []);
   return <p className="text-small text-fg-muted">{channelWords.to(names)}</p>;
 }
 
@@ -42,7 +42,7 @@ export function WorkLines({
   readonly questions: ReadonlyMap<MessagingId, string>;
   readonly now: Date;
 }) {
-  const lines = workLines(message, row.agents, questions, now);
+  const lines = workLines(message, row, questions, now);
   if (lines.length === 0) return null;
   return (
     <ul data-work-lines className="mt-1 flex flex-col gap-0.5 text-small text-fg-muted">
