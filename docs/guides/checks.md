@@ -1051,7 +1051,10 @@ a push to `main` the `pr-turbo-cache` job copies each shard's current task
 results from that disk cache into `main`'s GitHub copy, at most once per
 `CI_PR_TURBO_CACHE_MINUTES` (50 by default). It builds nothing: a dry run lists
 the task hashes, and it copies the entries that exist. Without it, pull
-requests on GitHub's runners hit about 1% of their tasks (HAL-17923).
+requests on GitHub's runners hit about 1% of their tasks (HAL-17923). A pull request
+first restores the entry saved for its merge commit's first parent, the `main`
+it was merged with, and falls back to the newest entry only when that one is
+missing; the newest alone is often a later `main` whose tasks miss.
 
 It also runs **mutation testing** every night: Stryker on
 `workflow`, `routines`, `schema-kit` and `yaml`, for each package that has

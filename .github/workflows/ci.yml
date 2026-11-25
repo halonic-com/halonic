@@ -954,6 +954,18 @@ jobs:
       # request can read main's cache but never write to it. The save is the
       # job's last step. One cache per shard: each holds only its own
       # packages' tasks.
+      # A pull request runs on its merge commit, which never has an entry, so
+      # the prefix alone restores the newest one: often a newer main than the
+      # one this pull request was merged with, and most tasks then miss. The
+      # merge commit's first parent is the main it was merged with
+      # (pull_request.base.sha can be older), and pr-turbo-cache saved that
+      # main's results under its sha, so that exact entry is tried first.
+      # Merge groups and pushes keep the prefix: their newest entry is their
+      # own branch's latest.
+      - id: turbo-parent
+        if: steps.turbo-dir.outputs.disk != 'true' && github.event_name == 'pull_request'
+        name: Find the main this pull request was merged with
+        run: echo "sha=$(git rev-parse HEAD^1)" >> "$GITHUB_OUTPUT"
       - id: turbo-cache
         if: steps.turbo-dir.outputs.disk != 'true'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -962,7 +974,9 @@ jobs:
           # actions/cache keys an entry on its path strings (HAL-17923).
           path: .turbo/cache
           key: turbo-${{ runner.os }}-${{ matrix.shard }}-${{ github.sha }}
-          restore-keys: turbo-${{ runner.os }}-${{ matrix.shard }}-
+          restore-keys: |
+            ${{ steps.turbo-parent.outputs.sha && format('turbo-{0}-{1}-{2}', runner.os, matrix.shard, steps.turbo-parent.outputs.sha) || '' }}
+            turbo-${{ runner.os }}-${{ matrix.shard }}-
       # Remote cache (Cloudflare, infra/turbo-cache). Only main and the merge
       # queue hold the signing key, and only main gets a write token for the
       # shared area. The merge queue gets a queue token: it reads its own
