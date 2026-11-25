@@ -1,6 +1,8 @@
 import { once } from "node:events";
 import { createServer, type RequestListener } from "node:http";
 import type { AddressInfo } from "node:net";
+import { setFlagsFromString } from "node:v8";
+import { runInNewContext } from "node:vm";
 import { harnessBridgeTokenHeader } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -90,6 +92,17 @@ function endlessStream(onPull: () => void = () => {}) {
       controller.enqueue(chunk);
     },
   });
+}
+
+/**
+ * Runs a full garbage collection, then lets the finalizers that follow it run,
+ * the way a busy test worker may at any moment.
+ */
+async function collectGarbage() {
+  setFlagsFromString("--expose-gc");
+  const gc: unknown = runInNewContext("gc");
+  if (typeof gc === "function") gc();
+  for (let turn = 0; turn < 20; turn += 1) await new Promise(setImmediate);
 }
 
 /** The program's request, with the run token and a header the provider must not get. */
@@ -239,16 +252,21 @@ verifies("harness-bridge.pass-through", () => {
       const provider = fakeProvider(() => new Response(endlessStream(() => (pulls += 1))));
       const bridge = await open(provider.fetch);
       // The program never reads the body, so the bridge soon stops reading the provider.
-      await programRequest(bridge);
+      const reply = await programRequest(bridge);
       for (let seen = -1; seen !== pulls; ) {
         seen = pulls;
         for (let turn = 0; turn < 20; turn += 1) await new Promise(setImmediate);
       }
+      // Collect garbage the way a busy test worker may: an unread reply that
+      // nothing holds is cancelled, its connection closes, and the bridge takes
+      // that for the program going away (HAL-18032).
+      await collectGarbage();
 
       await vi.advanceTimersByTimeAsync(500);
       expect(provider.calls[0]?.signal.reason).toMatchObject({
         message: "The program read nothing of the reply for 0.5 seconds.",
       });
+      await reply.body?.cancel();
     });
 
     it("stops it when the bridge closes in the middle of a reply", async () => {
