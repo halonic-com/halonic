@@ -1,6 +1,7 @@
 import type { PaperclipPluginManifestV1, PluginCapability } from "@paperclipai/plugin-sdk";
 import { workerAgentsRouteKey } from "../worker-agents/keys.ts";
 import { workerReadTables } from "../worker-agents/tables.ts";
+import { chiefLine } from "./chief-line-settings.ts";
 import { mergeControlJob } from "./merge-control-declaration.ts";
 import { fastTrackConfigProperties, mergeControlConfigProperties } from "./queue-settings.ts";
 import { stackRebaseConfigProperties } from "./stack-rebase-settings.ts";
@@ -290,6 +291,7 @@ export const manifest: PaperclipPluginManifestV1 = {
         default: ["liam", "julian"],
       },
       ...trialResultsConfigProperties,
+      ...chiefLine.properties,
     },
   },
   jobs: [
@@ -345,6 +347,7 @@ export const manifest: PaperclipPluginManifestV1 = {
       capability: "api.routes.register",
       companyResolution: { from: "query", key: "companyId" },
     },
+    ...chiefLine.routes,
   ],
   ui: {
     slots: [

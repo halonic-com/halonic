@@ -126,6 +126,18 @@ export async function assignTaskBack(
   await issues.update(taskId, { assigneeAgentId: agentId }, companyId);
 }
 
+/**
+ * The chief line's only task change: a parked (`backlog`, `done` or `blocked`) thread back to `todo`
+ * before Chief is woken on it, and no other field.
+ */
+export async function reopenThread(
+  issues: Pick<PluginIssuesClient, "update">,
+  taskId: string,
+  companyId: string,
+): Promise<void> {
+  await issues.update(taskId, todoOnly({ status: "todo" }), companyId);
+}
+
 /** A host time (a `Date`, or a string over the wire) as ISO, or null when there is none. */
 function isoOrNull(value: Date | string | null | undefined): string | null {
   return value == null ? null : new Date(value).toISOString();
