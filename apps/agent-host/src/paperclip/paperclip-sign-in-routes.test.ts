@@ -239,3 +239,57 @@ company: acme
     });
   });
 });
+
+verifies("agent-host.paperclip-add-account", () => {
+  describe("the sign-in routes with newConnection", () => {
+    const halonic = `label: Halonic\naddress: ${address}\ncompany: acme\n`;
+
+    it("write a second connection file and leave the first connection's file and key alone", async () => {
+      const { calls, workspace, kept, connected, forgot } = await started();
+      await connectionFile(workspace, "acme", halonic);
+      const answer = await startAt({ address, newConnection: true });
+      expect(calls.challenges[0]?.requestedCompanyId).toBe("acme");
+      calls.statuses = ["approved"];
+      expect(await (await post("poll", { signInId: answer["signInId"] })).json()).toMatchObject({
+        status: "connected",
+        connection: "acme-2",
+      });
+      expect(await readConnectionFile(workspace, "acme")).toEqual({
+        label: "Halonic",
+        address,
+        company: "acme",
+      });
+      expect(await readConnectionFile(workspace, "acme-2")).toEqual({
+        label: "Acme",
+        address,
+        company: "acme",
+      });
+      expect(kept).toEqual([
+        { address, companyId: "acme", key: fakeBoardKey, workspace, name: "acme-2" },
+      ]);
+      expect(connected).toEqual(["acme-2"]);
+      expect(forgot).toEqual([]);
+    });
+
+    it("remove only the second file when Studio couldn't keep its key", async () => {
+      const { calls, workspace, forgot } = await started();
+      await connectionFile(workspace, "acme", halonic);
+      const { signInId } = await startAt({ address, newConnection: true });
+      calls.statuses = ["approved"];
+      await post("poll", { signInId });
+      await post("cancel", { signInId });
+      expect(await readdir(join(workspace, "connections/paperclip"))).toEqual(["acme.yaml"]);
+      expect(forgot).toEqual(["acme-2"]);
+    });
+
+    it("refuse a new connection that names a file", async () => {
+      const { calls, workspace } = await started();
+      await connectionFile(workspace, "acme", halonic);
+      expect(await startAt({ address, connection: "acme", newConnection: true })).toEqual({
+        outcome: "refused",
+        reason: "address-not-allowed",
+      });
+      expect(calls.challenges).toEqual([]);
+    });
+  });
+});

@@ -26,8 +26,11 @@ export interface FakeAgentConnectionsOptions {
 }
 
 /** A sign-in the fake started and hasn't ended yet. */
+/** What a sign-in was started with. */
+type SignInRequest = Parameters<AgentConnections["signIn"]>[0];
+
 interface Pending {
-  readonly request: { readonly address: string; readonly connection?: MessagingId };
+  readonly request: SignInRequest;
   readonly end: (result: SignInResult) => void;
 }
 
@@ -38,7 +41,7 @@ interface Pending {
  */
 export class FakeAgentConnections implements AgentConnections {
   /** Every `signIn` request, in order. */
-  readonly signIns: { readonly address: string; readonly connection?: MessagingId }[] = [];
+  readonly signIns: SignInRequest[] = [];
   /** How many times a sign-in was cancelled. */
   cancels = 0;
   /** Every connection `disconnect` was called for, in order. */
@@ -63,10 +66,7 @@ export class FakeAgentConnections implements AgentConnections {
     return () => this.listeners.delete(listener);
   }
 
-  async signIn(request: {
-    readonly address: string;
-    readonly connection?: MessagingId;
-  }): Promise<SignInStart> {
+  async signIn(request: SignInRequest): Promise<SignInStart> {
     this.signIns.push(request);
     if (this.options.refuseStart !== undefined) {
       return { outcome: "refused", reason: this.options.refuseStart };

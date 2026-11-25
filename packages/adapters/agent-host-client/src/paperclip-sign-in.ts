@@ -105,16 +105,23 @@ export class AgentHostPaperclipSignIn {
 
   /**
    * Starts a sign-in at `address`, for the connection named `connection`, or
-   * for the file with that address, or a new connection.
+   * for the file with that address, or a new connection. With
+   * `newConnection`, it is always for a new connection: another account on
+   * the same Paperclip (`agent-host.paperclip-add-account`).
    *
    * @throws {@link AgentHostError} when the host refuses or can't be reached
    */
-  async start(address: string, connection?: string): Promise<PaperclipSignInStart> {
+  async start(
+    address: string,
+    connection?: string,
+    options: { readonly newConnection?: boolean } = {},
+  ): Promise<PaperclipSignInStart> {
     const route = "POST /v1/paperclip/sign-in/start";
     const body = {
       workspace: this.#workspace,
       address,
       ...(connection === undefined ? {} : { connection }),
+      ...(options.newConnection === true ? { newConnection: true } : {}),
     };
     return readAnswer(route, await this.#transport.request(route, body), startAnswer);
   }

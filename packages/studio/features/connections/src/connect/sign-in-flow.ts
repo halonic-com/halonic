@@ -57,7 +57,7 @@ function viewOfResult(result: SignInResult, challenge: SignInChallenge): SignInV
  */
 async function startOnce(
   connections: AgentConnections,
-  request: { readonly address: string; readonly connection?: MessagingId },
+  request: Parameters<AgentConnections["signIn"]>[0],
   isCurrent: () => boolean,
   show: (view: SignInView) => void,
 ): Promise<SignInChallenge> {
@@ -80,11 +80,13 @@ async function startOnce(
 /**
  * Follows one sign-in at a time while the dialog is open. Unmounting cancels a waiting sign-in,
  * so a dialog that goes away never leaves one the board could still approve (ADR 2026-11-24,
- * "Sign-in", step 2). `connection` names the signed-out connection to sign in again.
+ * "Sign-in", step 2). `connection` names the signed-out connection to sign in again;
+ * `newConnection` asks for another account beside the connections already there.
  */
 export function useSignIn(
   connections: AgentConnections,
   connection: MessagingId | undefined,
+  newConnection = false,
 ): SignIn {
   const [view, setView] = useState<SignInView>({ stage: "address" });
   // The waiting sign-in, until it ends.
@@ -116,7 +118,11 @@ export function useSignIn(
   const start = useCallback(
     async (address: string): Promise<string> => {
       const mine = ++generation.current;
-      const request = connection === undefined ? { address } : { address, connection };
+      const request = {
+        address,
+        ...(connection === undefined ? {} : { connection }),
+        ...(newConnection ? { newConnection } : {}),
+      };
       const challenge = await startOnce(
         connections,
         request,
@@ -126,7 +132,7 @@ export function useSignIn(
       follow(challenge, mine);
       return challenge.approvalUrl;
     },
-    [connections, connection, follow],
+    [connections, connection, newConnection, follow],
   );
 
   const again = useCallback(() => {

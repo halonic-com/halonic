@@ -90,11 +90,14 @@ export interface AgentConnections {
   subscribe(listener: () => void): () => void;
   /**
    * Starts a sign-in at `address`, for a new connection or, with `connection`, again for one
-   * that was signed out. It rejects only when the engine can't be asked at all.
+   * that was signed out. With `newConnection`, it is for a new connection even when one already
+   * has that address: another account on the same Paperclip. It rejects only when the engine
+   * can't be asked at all.
    */
   signIn(request: {
     readonly address: string;
     readonly connection?: MessagingId;
+    readonly newConnection?: boolean;
   }): Promise<SignInStart>;
   /**
    * Revokes the connection's key, then deletes it and its cache: both are deleted even when the

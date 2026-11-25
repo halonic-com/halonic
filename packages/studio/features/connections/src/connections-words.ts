@@ -19,6 +19,9 @@ export const CONNECT = "Connect Paperclip";
 /** The button on a signed-out connection, and the dialog's title for it. Fixed (HAL-17497). */
 export const SIGN_IN_AGAIN = "Sign in again";
 
+/** The button on a connected Paperclip, and the dialog's title for another account on it (HAL-18670). */
+export const ADD_ACCOUNT = "Add another account";
+
 /** What a board key can do, under every connection. Fixed (HAL-17497). */
 export const KEY_POWER = "This key can do everything the board can in Paperclip";
 /** The section when the engine couldn't list the connections. */
@@ -36,6 +39,9 @@ export const disconnectFailed = (label: string): string =>
 /** The address step for a new connection, above the field. */
 export const CONNECT_LEAD =
   "Answer your agents' cards and chat with them from Halonic Inbox and Messenger. Everything stays in Paperclip; Halonic reads it live.";
+/** The address step for another account on a connected Paperclip, above the field. */
+export const ADD_ACCOUNT_LEAD =
+  "Connect another account on this Paperclip. Approve the sign-in in a browser where you're signed in to Paperclip as that account.";
 /** The address step when signing in again, above the field. */
 export const signInAgainLead = (label: string): string =>
   `The key for ${label} has expired or was revoked. Sign in again to keep reading and answering.`;

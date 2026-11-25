@@ -49,18 +49,22 @@ function StateCallout({
 
 /**
  * One connection, shown like a read-only hub (`connections.connection-row`): its name, host and
- * state, Sign in again once it is signed out, what its key can do, and Disconnect.
+ * state, Sign in again once it is signed out, Add another account while it is connected
+ * (`connections.add-account`), what its key can do, and Disconnect.
  */
 export function ConnectionRow({
   connection,
   disconnectRef,
   onSignInAgain,
+  onAddAccount,
   onDisconnect,
 }: {
   readonly connection: AgentConnection;
   /** The Disconnect button, where the section puts focus after a dialog closed. */
   readonly disconnectRef: Ref<HTMLButtonElement>;
   readonly onSignInAgain: () => void;
+  /** Opens the dialog for another account on this connection's Paperclip. */
+  readonly onAddAccount: () => void;
   /** Asks before it disconnects: the section opens the confirmation. */
   readonly onDisconnect: () => void;
 }) {
@@ -87,6 +91,16 @@ export function ConnectionRow({
                 {` · ${words.stateMeta(connection.state, connection.keyExpiresAt)}`}
               </p>
             </div>
+            {connection.state.kind === "online" ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                aria-describedby={nameId}
+                onClick={onAddAccount}
+              >
+                {words.ADD_ACCOUNT}
+              </Button>
+            ) : null}
             <Button
               ref={disconnectRef}
               variant="danger-outline"

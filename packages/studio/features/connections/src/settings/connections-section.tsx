@@ -62,8 +62,13 @@ function useConnectionList(connections: AgentConnections): ConnectionList {
   return { list, retry: () => setAttempt((count) => count + 1) };
 }
 
-/** What the dialog is open for: a new connection, or signing in again to a signed-out one. */
-type Connecting = { readonly again?: AgentConnection } | undefined;
+/**
+ * What the dialog is open for: a new connection, signing in again to a signed-out one, or another
+ * account on a connected one's Paperclip.
+ */
+type Connecting =
+  | { readonly again?: AgentConnection; readonly another?: AgentConnection }
+  | undefined;
 
 /** The props of {@link ConnectionsView}. */
 export interface ConnectionsViewProps {
@@ -195,6 +200,7 @@ export function ConnectionsView({ connections, announce, now }: ConnectionsViewP
                   else disconnectButtons.current.delete(connection.id);
                 }}
                 onSignInAgain={() => setConnecting({ again: connection })}
+                onAddAccount={() => setConnecting({ another: connection })}
                 onDisconnect={() => setDisconnecting(connection)}
               />
             ))}
@@ -217,6 +223,7 @@ export function ConnectionsView({ connections, announce, now }: ConnectionsViewP
         <ConnectDialog
           connections={connections}
           again={connecting.again}
+          another={connecting.another}
           onClose={() => setConnecting(undefined)}
           onConnected={connected}
           onCancelFailed={() =>
