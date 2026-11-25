@@ -89,7 +89,9 @@ export function PullRequestLists(props: {
           {tab === "open"
             ? byState(props.rows).map(([title, rows]) => allOpenGroup(title, rows))
             : null}
-          {tab === "queue" ? <QueueTab view={props.queue} clock={props.clock} /> : null}
+          {tab === "queue" ? (
+            <QueueTab view={props.queue} clock={props.clock} opener={props.opener} />
+          ) : null}
           {tab === "merged" ? (
             <MergedToday rows={props.merged} clock={props.clock} opener={props.opener} />
           ) : null}

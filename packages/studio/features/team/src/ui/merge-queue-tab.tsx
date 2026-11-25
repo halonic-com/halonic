@@ -5,6 +5,7 @@ import { mergeQueueWords } from "../merge-queue-words.ts";
 import type { PullRequestRow } from "../pull-requests.ts";
 import type { TeamClock } from "../team-format.ts";
 import { listBox, Note, Section } from "./pr-list-parts.tsx";
+import type { WebLinkOpener } from "./pull-request-row.tsx";
 import { GroupHeaderRow, QueueHeaderRow, QueueRow, TakenOutRow } from "./queue-rows.tsx";
 
 /** The health chip's tone: amber while pushes wait, red once the queue has stopped. */
@@ -52,8 +53,12 @@ export function QueueHealth(props: { view: QueueView; where: "list" | "queue" })
  * bordered list with a header row per group as it builds and one for the PRs waiting to enter,
  * then those taken out today. Positions are the queue's own; no time to merge is ever guessed.
  */
-export function QueueTab(props: { view: QueueView | undefined; clock: TeamClock }) {
-  const { view, clock } = props;
+export function QueueTab(props: {
+  view: QueueView | undefined;
+  clock: TeamClock;
+  opener: WebLinkOpener;
+}) {
+  const { view, clock, opener } = props;
   if (view === undefined || (view.total === 0 && view.takenOut.length === 0)) {
     return (
       <Note>
@@ -62,7 +67,9 @@ export function QueueTab(props: { view: QueueView | undefined; clock: TeamClock 
     );
   }
   const queueRows = (rows: readonly PullRequestRow[]) =>
-    rows.map((row) => <QueueRow key={row.pullRequest.id} row={row} clock={clock} />);
+    rows.map((row) => (
+      <QueueRow key={row.pullRequest.id} row={row} clock={clock} opener={opener} />
+    ));
   return (
     <>
       <QueueHealth view={view} where="queue" />

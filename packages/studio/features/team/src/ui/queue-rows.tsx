@@ -5,7 +5,7 @@ import { mergeQueueWords } from "../merge-queue-words.ts";
 import { formatAge, pullRequestWords } from "../pull-request-words.ts";
 import type { PullRequestRow } from "../pull-requests.ts";
 import { formatTime, minutesSince, type TeamClock } from "../team-format.ts";
-import { authorName } from "./pull-request-row.tsx";
+import { authorName, OwnerLine, type WebLinkOpener } from "./pull-request-row.tsx";
 
 /** A "·" only screen readers hear, between parts a row lays out apart. */
 function SpokenDot() {
@@ -62,9 +62,11 @@ export function GroupHeaderRow({ group, clock }: { group: QueueGroup; clock: Tea
 
 /**
  * One PR in the queue (P18): its position first, then its number and title, the Fast-track tag,
- * and its author and time in the queue at the end. The position is the queue's own, never guessed.
+ * and at the end its author with its task (or "Open in GitHub" when it has none) and its time in
+ * the queue. The position is the queue's own, never guessed.
  */
-export function QueueRow({ row, clock }: { row: PullRequestRow; clock: TeamClock }) {
+export function QueueRow(props: { row: PullRequestRow; clock: TeamClock; opener: WebLinkOpener }) {
+  const { row, clock } = props;
   const { pullRequest } = row;
   return (
     <li className="flex items-center gap-x-3 gap-y-1 px-4 py-3 phone:flex-wrap">
@@ -82,9 +84,7 @@ export function QueueRow({ row, clock }: { row: PullRequestRow; clock: TeamClock
         </>
       ) : null}
       <SpokenDot />
-      <span className="w-24 shrink-0 wrap-anywhere text-small text-fg-muted">
-        {authorName(pullRequest.author)}
-      </span>
+      <OwnerLine row={row} opener={props.opener} />
       <SpokenDot />
       <span className="w-28 shrink-0 text-end text-small text-fg-muted">
         {mergeQueueWords.queued(formatAge(minutesSince(pullRequest.since, clock)))}

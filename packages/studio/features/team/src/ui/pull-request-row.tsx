@@ -110,8 +110,11 @@ function StateLine({ row, clock }: { row: PullRequestRow; clock: TeamClock }) {
   );
 }
 
-/** Who opened it and the task its branch names; with no task, says so and offers GitHub. */
-function OwnerLine({ row, opener }: { row: PullRequestRow; opener: WebLinkOpener }) {
+/**
+ * Who opened it and the task its branch names; with no task, says so and offers GitHub. The
+ * Queue tab's rows use it too, so a queued PR can still be reached.
+ */
+export function OwnerLine({ row, opener }: { row: PullRequestRow; opener: WebLinkOpener }) {
   const { pullRequest, task } = row;
   return (
     <span className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-small text-fg-muted phone:justify-start">

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { MergeQueue, PullRequest } from "@halonicjs/ports";
-import { FakeTeamStatus } from "@halonicjs/testing-contracts";
+import { FakeAgentMessaging, FakeTeamStatus } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it } from "vitest";
@@ -24,12 +24,19 @@ function acme() {
   return { team, add, queue };
 }
 
-async function open(fake: ReturnType<typeof acme>) {
-  const pullRequests = new PullRequests(fake.team, undefined, {
+/** Renders the screen and lets its first read land; `opened` collects the links opened. */
+async function open(
+  fake: ReturnType<typeof acme>,
+  options: { opened?: string[]; messaging?: FakeAgentMessaging } = {},
+) {
+  const pullRequests = new PullRequests(fake.team, options.messaging, {
     now: () => new Date("2026-11-24T13:00:00.000Z"),
     timeZone: "UTC",
   });
-  const opener = { connectionOrigin: "https://paperclip.acme.test", open: () => {} };
+  const opener = {
+    connectionOrigin: "https://paperclip.acme.test",
+    open: (link: string) => options.opened?.push(link),
+  };
   const page = render(
     <PullRequestsPage pullRequests={pullRequests} opener={opener} onLink={() => {}} />,
   );
@@ -43,7 +50,7 @@ const text = (page: HTMLElement) => page.textContent ?? "";
 const sectionNames = (page: HTMLElement) =>
   [...page.querySelectorAll("section")].map((each) => each.getAttribute("aria-label"));
 
-/** The element whose own text, without its children's markup, is `words`. */
+/** The first element whose whole text, its children's text included, is exactly `words`. */
 function withText(page: HTMLElement, words: string): HTMLElement {
   const found = [...page.querySelectorAll<HTMLElement>("*")].find(
     (each) => each.textContent === words,
@@ -175,6 +182,28 @@ verifies("team.merge-queue", () => {
       expect(text(page)).not.toContain("In the queue ·");
       expect(text(page)).toContain("queued ");
       expect(text(page)).toContain("Numbers are real positions.");
+    });
+
+    it("keeps each queued PR's task, or its GitHub link when it has none", async () => {
+      const fake = acme();
+      const messaging = new FakeAgentMessaging();
+      const tasks = messaging.addSource({ label: "Paperclip · Acme" });
+      const task = messaging.addWork(tasks.id, { label: "ACME-7", title: "A change" });
+      const link = "https://github.com/acme/app/pull/2";
+      const first = fake.add("#1", { state: "in-queue", author: agent("Bo"), work: task.id });
+      const second = fake.add("#2", { state: "in-queue", author: agent("Kim"), webLink: link });
+      fake.queue({ health: "running", waiting: [first, second] });
+      const opened: string[] = [];
+      const page = await open(fake, { opened, messaging });
+      pressTab(page, "Queue, 2");
+      const [withTask, withoutTask] = queueListRows(page, false).map((row) => row.textContent);
+      expect(withTask).toContain("Bo · ACME-7");
+      expect(withoutTask).toContain(`No task found for this branch Open in GitHub ↗ ${link}`);
+      const button = [...page.querySelectorAll<HTMLElement>("li button")].find(
+        (each) => each.textContent === "Open in GitHub ↗",
+      );
+      act(() => button?.click());
+      expect(opened).toEqual([link]);
     });
 
     it("names a failed group's cause and the PRs taken out today", async () => {
