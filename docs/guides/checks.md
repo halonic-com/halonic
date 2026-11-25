@@ -208,6 +208,17 @@ The ID of `packages/core/workflow/requirements/timer-fires.md` is
 `packages/studio/features/agents/src/explorer/requirements/filter-by-hub.md`
 is `agents.explorer.filter-by-hub`.
 
+### A user-visible Studio requirement comes with a click step
+
+A requirement for something a user sees or does in the installed Studio adds
+or extends a step of the click test
+(`packages/testing/studio-click-test/README.md`) in the same pull request. The
+step names the requirement's id in its `requirements` list, and the click
+test's own tests fail when a step names an id that isn't a requirement file.
+`trace` doesn't check that a user-visible requirement has a step; the reviewer
+does. A requirement with nothing a user sees (an engine rule, a package
+detail) needs no step: say so in the pull request's Requirements section.
+
 ### What `Since` says
 
 `Since` is the version that first ships the requirement. A requirement

@@ -84,6 +84,10 @@ Check these on every pull request. The guides for
 - [ ] The change does what its task asks, and nothing the task doesn't ask.
 - [ ] Each requirement it adds or changes has a test linked with
   `verifies()`, and that test fails without the change.
+- [ ] A new or changed user-visible Studio requirement adds or extends a
+  click step in the same pull request, and the step names its id
+  ([checks.md](checks.md#a-user-visible-studio-requirement-comes-with-a-click-step)).
+  Ask for it if it's missing.
 - [ ] No test is skipped, loosened or deleted without a decision note.
 - [ ] Errors have a kind and reach the user as a plain sentence, never a
   stack trace or an internal path.
