@@ -27,7 +27,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Manager, Runtime, Webview};
 
 use crate::engine::EngineState;
-use crate::engine_table::{AfterCrash, EngineTable};
+use crate::engine_table::{AfterCrash, EngineTable, EnginesSummary};
 use crate::git::GitState;
 use crate::profile::cli_profile;
 use crate::secrets::SecretsState;
@@ -102,6 +102,8 @@ fn open<R: Runtime>(
             let engine = start(app, &workspace, location, launch_number)?;
             let handshake = engine.link().handshake().clone();
             join(&state, workspace, location, engine, window)?;
+            // It may have left the problem state.
+            crate::tray::refresh(app);
             handshake
         }
     };
@@ -229,6 +231,10 @@ struct Watcher<R: Runtime> {
 }
 
 impl<R: Runtime> LinkWatcher for Watcher<R> {
+    fn health_changed(&self) {
+        crate::tray::refresh(&self.app);
+    }
+
     fn ended(&self, end: LinkEnd) {
         if matches!(end, LinkEnd::Stopped { .. }) {
             return;
@@ -259,6 +265,35 @@ fn crashed<R: Runtime>(app: &AppHandle<R>, workspace: &Path, launch: u64) {
             restart(app, &state, workspace, &location);
         }
     }
+    crate::tray::refresh(app);
+}
+
+/// The tray's Try again: starts every engine in the problem state again,
+/// with a fresh restart limit, and reconnects the windows it served.
+pub fn try_again<R: Runtime>(app: &AppHandle<R>) {
+    let state = app.state::<EnginesState>();
+    let stopped = lock(&state.table).try_again();
+    for (workspace, location) in stopped {
+        let start_lock = start_lock(&state, &workspace);
+        let _starting = lock(&start_lock);
+        restart(app, &state, &workspace, &location);
+    }
+    crate::tray::refresh(app);
+}
+
+/// Every engine together, for the tray: runs in progress from each one's
+/// latest health.
+pub fn summary<R: Runtime>(app: &AppHandle<R>) -> EnginesSummary {
+    let Some(state) = app.try_state::<EnginesState>() else {
+        return EnginesSummary::default();
+    };
+    let table = lock(&state.table);
+    table.summary(|engine| {
+        engine
+            .link()
+            .health()
+            .map_or(0, |health| health.active_runs)
+    })
 }
 
 fn restart<R: Runtime>(app: &AppHandle<R>, state: &EnginesState, workspace: &Path, location: &str) {

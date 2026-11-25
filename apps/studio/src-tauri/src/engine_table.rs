@@ -29,6 +29,18 @@ pub enum AfterCrash {
     Problem { windows: HashSet<String> },
 }
 
+/// What the tray shows of every engine together (B1 step 5).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct EnginesSummary {
+    /// The runs going now in every workspace, running or waiting.
+    pub active_runs: u32,
+    /// Whether the user paused routines in every workspace that has an
+    /// engine (and at least one has).
+    pub paused: bool,
+    /// Whether a workspace is in the problem state.
+    pub problem: bool,
+}
+
 struct Workspace<P> {
     location: String,
     /// `None` between a crash and the restart, and in the problem state.
@@ -38,6 +50,9 @@ struct Workspace<P> {
     windows: HashSet<String>,
     restarts: RestartLimit,
     pause: RoutinePause,
+    /// Crashed too often: left stopped until a window opens it again or
+    /// the user picks Try again.
+    problem: bool,
 }
 
 /// The engines by the workspace's real path.
@@ -94,11 +109,13 @@ impl<P> EngineTable<P> {
                 windows: HashSet::new(),
                 restarts: RestartLimit::default(),
                 pause: RoutinePause::default(),
+                problem: false,
             });
         entry.location = location;
         entry.engine = Some(engine);
         entry.launch += 1;
         entry.restarts = RestartLimit::default();
+        entry.problem = false;
         entry.windows.insert(window.to_owned());
         Ok(entry.launch)
     }
@@ -124,7 +141,42 @@ impl<P> EngineTable<P> {
             let location = entry.location.clone();
             return (engine, AfterCrash::Restart { location, windows });
         }
+        entry.problem = true;
         (engine, AfterCrash::Problem { windows })
+    }
+
+    /// The tray's Try again: takes every workspace out of the problem state
+    /// with a fresh restart limit, and gives each back with its location, to
+    /// start again as after a crash.
+    pub fn try_again(&mut self) -> Vec<(PathBuf, String)> {
+        self.workspaces
+            .iter_mut()
+            .filter(|(_, entry)| entry.problem)
+            .map(|(workspace, entry)| {
+                entry.problem = false;
+                entry.restarts = RestartLimit::default();
+                (workspace.clone(), entry.location.clone())
+            })
+            .collect()
+    }
+
+    /// Every engine together, for the tray. `active_runs` reads one
+    /// engine's runs from its latest health.
+    pub fn summary(&self, active_runs: impl Fn(&P) -> u32) -> EnginesSummary {
+        let mut summary = EnginesSummary::default();
+        let mut running = 0;
+        let mut paused = 0;
+        for entry in self.workspaces.values() {
+            summary.problem |= entry.problem;
+            let Some(engine) = &entry.engine else {
+                continue;
+            };
+            running += 1;
+            paused += usize::from(entry.pause.is_paused());
+            summary.active_runs += active_runs(engine);
+        }
+        summary.paused = running > 0 && paused == running;
+        summary
     }
 
     /// Notes a restart's launch, which keeps the restart limit.
