@@ -52,7 +52,6 @@ describe("declared route table", () => {
       expect(runRoutes.map(({ method, path, kind }) => `${kind} ${method} ${path}`)).toEqual([
         "run-list GET /api/waiting-runs",
         "run-start POST /api/runs",
-        "run-start POST /api/agent-runs",
         "run-read GET /api/runs/:runId",
         "run-read GET /api/runs/:runId/events",
         "run-write POST /api/runs/:runId/events",

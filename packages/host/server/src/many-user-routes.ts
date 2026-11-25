@@ -30,14 +30,13 @@ import { matchRoute, type RouteEntry } from "./route-table.ts";
 import { unrecordedOwnership } from "./run-access.ts";
 import { createRunRoutes, runPathPrefix, waitingRunsPath } from "./run-routes.ts";
 import { verifySession } from "./session-verifier.ts";
-import { createStudioPageRoutes } from "./studio-page-routes.ts";
 import { createTrustRoutes } from "./trust-routes.ts";
 
 /**
  * The deployment-wide ports the routes of a many-user server may use. It has no run ports on
  * purpose: a route gets those only from {@link ManyUserPorts.scopedRuns}, for the principal.
  */
-export type DeploymentPorts = Pick<ServerPorts, "trust" | "errorLog" | "workspace" | "studioPage">;
+export type DeploymentPorts = Pick<ServerPorts, "trust" | "errorLog" | "workspace">;
 
 /** What a route open to anyone works with: the config and the Cloud sign-in routes, when set up. */
 interface PublicParts {
@@ -46,7 +45,7 @@ interface PublicParts {
   readonly cloudSessionRoutes: CloudSessionRoutes | null;
 }
 
-/** Answers a request open to anyone; `null` hands it on to the Studio page, then 404. */
+/** Answers a request open to anyone; `null` answers 404. */
 type PublicHandler = (request: Request, parts: PublicParts) => Promise<Response> | Response | null;
 
 /** A route of a many-user server: open to anyone, or behind a session. */
@@ -69,9 +68,10 @@ const sessionResponse: SignedInHandler = async (_request, _body, { principal }) 
 const runPath = `${runPathPrefix}:runId`;
 
 /**
- * Every route of a many-user server. It answers only through this table. Every other route of an
- * owner's server, `POST /api/login` included, has no entry and answers 404: the password, the
- * keys, the Google setup and the webhooks are the deployment's.
+ * Every route of a many-user server, where every caller is an end user. It answers only through
+ * this table. Every other route of an owner's server, `POST /api/login`, the agent runs and the
+ * Studio page included, has no entry and answers 404: the password, the keys, the Google setup,
+ * the webhooks and how the project is set up are the deployment's.
  */
 export const manyUserRouteTable: readonly ManyUserRoute[] = [
   {
@@ -122,13 +122,6 @@ export const manyUserRouteTable: readonly ManyUserRoute[] = [
     handler: startHandler(true),
   },
   {
-    method: "POST",
-    path: "/api/agent-runs",
-    access: "signed-in",
-    kind: "run-start",
-    handler: startHandler(false),
-  },
-  {
     method: "GET",
     path: runPath,
     access: "signed-in",
@@ -168,8 +161,6 @@ export function createManyUserRoutes(
   deployment: DeploymentPorts,
   manyUsers: ManyUserPorts,
 ): ManyUserRoutes {
-  const studioPageRoutes =
-    deployment.studioPage === undefined ? null : createStudioPageRoutes(deployment.studioPage);
   const { trust, errorLog, workspace } = deployment;
   const cloudSignInRoutes =
     manyUsers.cloudSignIn === undefined
@@ -214,7 +205,7 @@ export function createManyUserRoutes(
         return answer;
       }
       if (match?.route.access !== "signed-in") {
-        return (await studioPageRoutes?.serve(request)) ?? errorResponse(serverErrors.notFound);
+        return errorResponse(serverErrors.notFound);
       }
       // A verifier that throws goes up as a server error, never as "not signed in".
       const session = await verifySession(request, manyUsers);
