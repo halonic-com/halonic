@@ -23,7 +23,18 @@ const approveDeployment: StepperDefinition<Values> = {
     repo: { kind: "text", pattern: /^[A-Za-z0-9._-]{1,100}$/ },
     environment: { kind: "choice", options: ["release", "staging"] },
   }),
-  steps: [{ kind: "script", ref: "github/approve-deployment" }],
+  steps: [
+    {
+      kind: "script",
+      ref: "github/approve-deployment",
+      manual: {
+        url: "https://github.com/{owner}/{repo}/actions",
+        instructions: [
+          "Open the waiting run, click Review deployments, tick {environment} and approve.",
+        ],
+      },
+    },
+  ],
   targets: (parameters) => [
     { service: "github", kind: "repository", name: `${parameters["owner"]}/${parameters["repo"]}` },
   ],
