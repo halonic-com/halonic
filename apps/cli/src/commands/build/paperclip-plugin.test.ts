@@ -94,10 +94,10 @@ verifies("cli.commands.build.paperclip-plugin", () => {
     });
     expect(io.stdout).toEqual([
       `✓ Built halonic-ws.acme 0.1.0 from commit ${(await head()).slice(0, 7)}`,
-      "  Plugin    ./dist/halonic-ws.acme-0.1.0.tar",
-      "  Release   ./dist/halonic-ws.acme-0.1.0.release.json",
-      `  sha-256   ${release.sha256}`,
-      "  Changes   added pr_status",
+      "  Plugin file    ./dist/halonic-ws.acme-0.1.0.tar",
+      "  Release file   ./dist/halonic-ws.acme-0.1.0.release.json",
+      `  SHA-256        ${release.sha256}`,
+      "  Changes        added pr_status",
     ]);
   });
 
@@ -121,7 +121,18 @@ verifies("cli.commands.build.paperclip-plugin", () => {
 
     expect(code).toBe(exitCode.ok);
     expect(io.stdout[0]).toMatch(/^✓ Built halonic-ws\.acme 0\.4\.0 /);
-    expect(io.stdout).toContain("  Changes   changed pr_status");
+    expect(io.stdout).toContain("  Changes        changed pr_status");
+  });
+
+  it("says so when the plugin file isn't next to the --since release file", async () => {
+    await build();
+    await rm(join(folder, "halonic-ws.acme-0.1.0.tar"));
+    const { code, io } = await build("--since", "halonic-ws.acme-0.1.0.release.json");
+
+    expect(code).toBe(exitCode.notFound);
+    expect(io.stderr[0]).toBe(
+      "✕ Couldn't build the plugin: the plugin file halonic-ws.acme-0.1.0.tar isn't next to halonic-ws.acme-0.1.0.release.json.",
+    );
   });
 
   it("refuses a tool file with changes that aren't committed", async () => {
@@ -145,15 +156,21 @@ verifies("cli.commands.build.paperclip-plugin", () => {
 
     expect(code).toBe(exitCode.usage);
     expect(io.stderr[0]).toBe(
-      "✕ Couldn't build the plugin: this Halonic's plugin runtime can't run paperclip.task yet, which task_get uses.",
+      "✕ Couldn't build the plugin: task_get uses paperclip.task, which a plugin from this version of Halonic can't run yet.",
+    );
+    expect(io.stderr[1]).toBe(
+      "  Take the file for task_get out of library/tools and commit, then build again.",
     );
   });
 
   it("never overwrites a different archive of the same version", async () => {
     await writeFile(join(folder, "halonic-ws.acme-0.1.0.tar"), "something else");
-    const { code } = await build();
+    const { code, io } = await build();
 
     expect(code).toBe(exitCode.conflict);
+    expect(io.stderr[0]).toBe(
+      "✕ Couldn't build the plugin: ./halonic-ws.acme-0.1.0.tar is already there, and it isn't this build.",
+    );
     expect(await readFile(join(folder, "halonic-ws.acme-0.1.0.tar"), "utf8")).toBe(
       "something else",
     );
@@ -164,14 +181,17 @@ verifies("cli.commands.build.paperclip-plugin", () => {
     const { code, io } = await build();
 
     expect(code).toBe(exitCode.conflict);
-    expect(io.stderr[0]).toContain("the workspace isn't a git repository");
+    expect(io.stderr[0]).toContain("the workspace isn't in a git repository");
+    expect(io.stderr[1]).toBe(
+      '  Make one and commit: git init && git add . && git commit -m "First version"',
+    );
   });
 
   it("refuses a --plugin-version that isn't x.y.z", async () => {
     const { code, io } = await build("--plugin-version", "v1");
 
     expect(code).toBe(exitCode.usage);
-    expect(io.stderr[0]).toContain("v1 isn't a version such as 0.3.0.");
+    expect(io.stderr[0]).toBe("✕ --plugin-version takes a version such as 0.3.0, and you gave v1.");
   });
 
   describe("the shipped runtime", () => {

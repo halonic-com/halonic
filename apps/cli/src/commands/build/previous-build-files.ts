@@ -15,17 +15,21 @@ import {
 import { decodeUtf8 } from "@halonicjs/std";
 import { DetailedError } from "../../command.ts";
 import { buildMessages } from "../../messages/build.ts";
+import type { Message } from "../../messages/define.ts";
 
 /**
  * The release file at `path` and the archive next to it.
  *
  * @param path - the release file, resolved
  * @param shown - the path as the user gave it, for the messages
- * @throws DetailedError `not_found` when either file is missing, and
- *   `invalid_input` when either is too large or the release file isn't one Halonic wrote
+ * @throws DetailedError `not_found` when the release file or the plugin file next to it is
+ *   missing, and `invalid_input` when either is too large or the release file isn't one
+ *   Halonic wrote
  */
 export async function previousBuildFiles(path: string, shown: string): Promise<PreviousBuildFiles> {
-  const releaseFile = decodeUtf8(await readUpTo(path, maxReleaseFileBytes, shown));
+  const releaseFile = decodeUtf8(
+    await readUpTo(path, maxReleaseFileBytes, shown, buildMessages.noPrevious(shown)),
+  );
   const release = parseReleaseFile(releaseFile);
   if (!release.ok) {
     throw new DetailedError(
@@ -39,6 +43,7 @@ export async function previousBuildFiles(path: string, shown: string): Promise<P
     join(dirname(path), release.value.archive),
     maxPreviousArchiveBytes,
     shown,
+    buildMessages.previousFileMissing(release.value.archive, shown),
   );
   return { releaseFile, archive };
 }
@@ -67,14 +72,18 @@ export function previousBuildRefusal(
   return new DetailedError("invalid_input", reason, buildMessages.previousFix());
 }
 
-/** A file's bytes, refused when it is missing or larger than `limit`, before it is read. */
-async function readUpTo(path: string, limit: number, shown: string): Promise<Uint8Array> {
+/**
+ * A file's bytes, refused with `missing` when it isn't there, or when it is
+ * larger than `limit`, before it is read.
+ */
+async function readUpTo(
+  path: string,
+  limit: number,
+  shown: string,
+  missing: Message,
+): Promise<Uint8Array> {
   const file = await open(path, "r").catch(() => {
-    throw new DetailedError(
-      "not_found",
-      buildMessages.noPrevious(shown),
-      buildMessages.previousFix(),
-    );
+    throw new DetailedError("not_found", missing, buildMessages.previousFix());
   });
   const tooLarge = () =>
     new DetailedError(

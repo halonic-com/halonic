@@ -146,8 +146,8 @@ async function writeOnce(folder: string, name: string, bytes: Uint8Array, cwd: s
   if (Buffer.compare(existing, bytes) !== 0) {
     throw new DetailedError(
       "conflict",
-      buildMessages.archiveExists(name, shownPath(cwd, folder)),
-      buildMessages.archiveExistsFix(),
+      buildMessages.fileExists(shownPath(cwd, path)),
+      buildMessages.fileExistsFix(),
     );
   }
 }
@@ -162,7 +162,7 @@ function refusalOf(problem: PluginBuildProblem, since: string): Error {
         buildMessages.workspaceErrorsFix(),
       );
     case "no-repository":
-      return new DetailedError("conflict", buildMessages.notInGit(), buildMessages.commitFix());
+      return new DetailedError("conflict", buildMessages.notInGit(), buildMessages.notInGitFix());
     case "no-commit":
       return new DetailedError("conflict", buildMessages.noCommit(), buildMessages.commitFix());
     case "uncommitted":
@@ -178,7 +178,12 @@ function refusalOf(problem: PluginBuildProblem, since: string): Error {
         buildMessages.badPluginId(problem.pluginId.slice(pluginIdPrefix.length)),
       );
     case "bad-version":
-      return new UsageError(buildMessages.badVersion(problem.version));
+      // The command checks --plugin-version first, so this is the --since build's version.
+      return new DetailedError(
+        "invalid_input",
+        buildMessages.noNextVersion(problem.version),
+        buildMessages.noNextVersionFix(),
+      );
     case "snapshot":
       return new DetailedError(
         "invalid_input",
@@ -199,7 +204,7 @@ function refusalOf(problem: PluginBuildProblem, since: string): Error {
           problem.tools.map((each) => each.tool),
           [...new Set(problem.tools.map((each) => each.action))],
         ),
-        buildMessages.actionUnavailableFix(),
+        buildMessages.actionUnavailableFix(problem.tools.map((each) => each.tool)),
         { tools: problem.tools },
       );
     case "previous-build":
