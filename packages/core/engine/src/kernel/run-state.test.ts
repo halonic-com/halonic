@@ -67,6 +67,7 @@ verifies("engine.run-state-fold", () => {
       child: null,
       parallel: null,
       foreach: null,
+      limitWait: null,
       lastSeq: 5,
     });
   });

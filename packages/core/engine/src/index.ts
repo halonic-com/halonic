@@ -88,15 +88,14 @@ export {
   type ResumeAfterEffect,
   skippedEffectResult,
 } from "./kernel/requested-effect.ts";
+export type { ResumeAfterApproval, WaitingApproval } from "./kernel/run-approvals.ts";
 export {
   type ChildRun,
   evolve,
   foldRun,
   type PendingCall,
-  type ResumeAfterApproval,
   type ResumeAfterStop,
   type RunState,
-  type WaitingApproval,
 } from "./kernel/run-state.ts";
 export {
   maxStepAttempts,

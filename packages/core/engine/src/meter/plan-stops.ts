@@ -99,6 +99,18 @@ export function isPlanStop(cause: RunFailureCause | undefined): boolean {
   return cause?.kind === "limit_reached" && cause.code?.startsWith("plan.") === true;
 }
 
+/**
+ * Whether a cause is the stop for a unit's limit, `plan.<unit>` or
+ * `plan.member.<unit>`, which a run waits at (requirement
+ * `engine.plan-limit-wait`). `plan.none`, `plan.suspended`,
+ * `plan.member-removed` and `plan.concurrency` are not.
+ */
+export function isUnitLimitStop(cause: RunFailureCause): boolean {
+  if (cause.kind !== "limit_reached" || cause.code === undefined) return false;
+  const unit = /^plan\.(?:member\.)?(.*)$/.exec(cause.code)?.[1];
+  return unit !== undefined && isUnit(unit);
+}
+
 function planStop(
   code: string,
   error: string,
@@ -136,8 +148,12 @@ function unitWords(reached: Pick<ReachedLimit, "unit" | "currency">): string {
   return reached.currency ?? reached.unit;
 }
 
+function isUnit(unit: string): boolean {
+  return /^[a-z][A-Za-z]*$/.test(unit) && !notUnits.has(unit);
+}
+
 function checkedUnit(unit: string): string {
-  if (!/^[a-z][A-Za-z]*$/.test(unit) || notUnits.has(unit)) {
+  if (!isUnit(unit)) {
     throw new RangeError(
       `"${unit}" can't be a plan's unit: a unit is one word, such as cost or harnessMinutes.`,
     );

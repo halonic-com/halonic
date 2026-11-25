@@ -2,11 +2,13 @@ import type { RunEvent } from "@halonicjs/events";
 import type { BlobStore, RunStore } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
 import { type BudgetCheck, keepToLimits } from "../budget/keep-to-limits.ts";
+import { continuesAtLimit, limitTimerDecision, resumedAtLimit } from "../budget/limit-wait.ts";
 import type { StepMeter } from "../meter/run-meter.ts";
-import { checkRunTakes, decide, tellParent } from "./decide.ts";
+import { checkRunTakes, decide, startAgain, tellParent } from "./decide.ts";
 import type { DecideInput, Decision, Effect, LoggedEvent, RunDefinitions } from "./decide-types.ts";
 import { InputRefused } from "./input-refused.ts";
 import { definitionsOf, UnreadableDefinitions } from "./kept-definitions.ts";
+import type { LimitWait } from "./limit-wait-state.ts";
 import { foldRun, type RunState } from "./run-state.ts";
 import { saveArtifacts } from "./saved-artifacts.ts";
 
@@ -15,7 +17,7 @@ import { saveArtifacts } from "./saved-artifacts.ts";
  * changes shape: a snapshot of another version is ignored and the run is
  * folded from its log again, because a snapshot is only a cache (C53).
  */
-export const snapshotVersion = 11;
+export const snapshotVersion = 12;
 
 /** How often `step` reads the run again after losing a race before it gives up. */
 export const maxStepAttempts = 10;
@@ -79,7 +81,8 @@ export async function readRun(
  * error that says so. It never falls back to the workspace's files. With
  * `budget` or `meter`, a decision that asks for a paid call while a budget
  * or a plan limit is reached stores its events and then fails the run with
- * the reason `budget`. A file
+ * the reason `budget`, or, for a unit's limit of the customer's plan, waits
+ * for `continue`, which decides the refused input again. A file
  * a state saves goes into the blob store before the events, so its
  * `artifact.created` never names a missing blob.
  *
@@ -96,7 +99,7 @@ export async function step(
   for (let attempt = 1; attempt <= maxStepAttempts; attempt += 1) {
     const run = await readRun(ports.runs, runId);
     const decided = await decideWithDefinitions(ports, run, input);
-    const decision = await keepToLimits(ports, runId, run, decided, input.at);
+    const decision = await keepToLimits(ports, runId, run, decided, input);
     if (decision.events.length === 0) {
       // Only an input that doesn't start a run can decide nothing, so `run` is set.
       return { run: run as RunState, events: [], effects: decision.effects };
@@ -121,6 +124,33 @@ async function decideWithDefinitions(
   input: DecideInput,
 ): Promise<Decision> {
   checkRunTakes(run, input);
+  if (continuesAtLimit(run, input)) {
+    return decideAgain(ports, run, input.at);
+  }
+  const expired = run !== null && input.type === "timer" ? limitTimerDecision(run, input) : null;
+  if (expired !== null) return expired;
+  return decideOnce(ports, run, input);
+}
+
+/**
+ * `continue` and the decision the plan limit refused, made again from the
+ * run as it was before it: a started run whose first step was refused goes
+ * on from its `run.started`. `step` then asks the limits again.
+ */
+async function decideAgain(ports: StepPorts, run: RunState, at: string): Promise<Decision> {
+  const { received, resumed, input } = resumedAtLimit(run, run.limitWait as LimitWait, at);
+  const again =
+    input.type === "start"
+      ? startAgain(resumed, at, await definitionsOf(ports.blobs, input.definitionsVersion))
+      : await decideOnce(ports, resumed, input);
+  return { events: [received, ...again.events], effects: again.effects };
+}
+
+async function decideOnce(
+  ports: StepPorts,
+  run: RunState | null,
+  input: DecideInput,
+): Promise<Decision> {
   const version =
     input.type === "start" ? input.definitionsVersion : (run as RunState).definitionsVersion;
   let definitions: RunDefinitions;
