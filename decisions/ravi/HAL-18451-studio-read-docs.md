@@ -2,6 +2,7 @@
 
 - Approval: the task to build this is HAL-18451, a security PR; Liam approves this note in review, and Julian gives the security OK on the task
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:0s30Ag3Rn/nclRl6nlNCRwpYuEL1XRjT92dM+xUuTd64MNO6KKcV7Zlaq3tI6iGIajHiY5RdxdjouWjs7davDA==
 - Task: HAL-18451
 
 ## What changes
