@@ -3,7 +3,7 @@ import { KindedError } from "@halonicjs/std";
 import type { WorkflowStepChange } from "@halonicjs/studio-feature-workflows/api";
 import type { YamlEdit } from "@halonicjs/yaml";
 
-/** The six kinds a step's `type` can be; the record keeps the list the same as the format's. */
+/** The kinds a step's `type` can be; the record keeps the list the same as the format's. */
 const stepTypes: Readonly<Record<StateType, true>> = {
   task: true,
   wait: true,
@@ -11,6 +11,7 @@ const stepTypes: Readonly<Record<StateType, true>> = {
   workflow: true,
   parallel: true,
   foreach: true,
+  rule: true,
 };
 
 /** The key in the step's part of the file that each text field of the docked step card changes. */

@@ -40,7 +40,15 @@ import type { RunsConnectors } from "./run-connectors.ts";
 import { RunEnds } from "./run-ends.ts";
 import { cancelledError, harnessGoneError } from "./run-errors.ts";
 import { RunFeed } from "./run-feed.ts";
-import { callTimer, childTimer, harnessTimer, stateTimer, toolTimer } from "./run-timer-ids.ts";
+import { RunRules } from "./run-rules.ts";
+import {
+  callTimer,
+  childTimer,
+  harnessTimer,
+  ruleTimer,
+  stateTimer,
+  toolTimer,
+} from "./run-timer-ids.ts";
 import { sendNames } from "./send-names.ts";
 import { type ChildStartPorts, startChild } from "./start-child.ts";
 import { StartDeadlines } from "./start-deadlines.ts";
@@ -60,6 +68,7 @@ export class LocalRuns {
   readonly #options: LocalRunsOptions;
   readonly #clock: Clock;
   readonly #connectorCalls: RunConnectorCallRunner;
+  readonly #rules: RunRules;
   readonly #feed: RunFeed;
   readonly #startDeadlines: StartDeadlines;
   readonly #builtEffects: ReadonlySet<Effect["type"]>;
@@ -134,6 +143,14 @@ export class LocalRuns {
       store: this.store,
       deadlines: this.#startDeadlines,
       callTool,
+      record: (runId, input) => this.#recordIfTaken(runId, input),
+      now: () => this.#now(),
+      isClosed: () => this.#closed,
+    });
+    this.#rules = new RunRules({
+      store: this.store,
+      blobs: options.blobs,
+      isolate: options.toolScriptIsolate,
       record: (runId, input) => this.#recordIfTaken(runId, input),
       now: () => this.#now(),
       isClosed: () => this.#closed,
@@ -233,6 +250,8 @@ export class LocalRuns {
       await this.#hearFromChild(timer.key, timer.timerId.slice(childTimer.length));
     } else if (timer.timerId.startsWith(toolTimer)) {
       await this.#connectorCalls.make(timer.key, timer.timerId.slice(toolTimer.length));
+    } else if (timer.timerId.startsWith(ruleTimer)) {
+      await this.#rules.run(timer.key, timer.timerId.slice(ruleTimer.length));
     }
   }
 
@@ -377,7 +396,7 @@ export class LocalRuns {
   }
 
   /**
-   * Model calls and state timers wait for their timer. A harness call that
+   * Model calls, rules and state timers wait for their timer. A harness call that
    * waits for an answer gets it at once. A child run starts at once, and a
    * parent hears from its child at once, so it goes on in the same call;
    * its timer is set first and kept only if that fails.
@@ -390,6 +409,8 @@ export class LocalRuns {
       await scheduler.schedule(run.runId, `${harnessTimer}${effect.callId}`, this.#now());
     } else if (effect.type === "call-tool") {
       await scheduler.schedule(run.runId, `${toolTimer}${effect.callId}`, this.#now());
+    } else if (effect.type === "run-rule") {
+      await scheduler.schedule(run.runId, `${ruleTimer}${effect.callId}`, this.#now());
     } else if (effect.type === "answer-harness") {
       await this.#answerHarness(run.runId, effect);
     } else if (effect.type === "set-timer") {

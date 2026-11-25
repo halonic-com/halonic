@@ -2,7 +2,12 @@ import type { StateType, Workflow, WorkflowState } from "@halonicjs/format";
 import { contextBefore } from "./inputs.ts";
 import { hasState } from "./machine.ts";
 import { didYouMean } from "./near-name.ts";
-import { foreachItems, noDoneTransition, taskWithoutAgent } from "./run-failure-checks.ts";
+import {
+  foreachItems,
+  noDoneTransition,
+  ruleWithoutFileOrOutput,
+  taskWithoutAgent,
+} from "./run-failure-checks.ts";
 import { type StateKey, typesUsing, usesKey } from "./state-keys.ts";
 import {
   contextKey,
@@ -290,6 +295,7 @@ const typeNames: { readonly [Type in StateType]: string } = {
   workflow: "workflow",
   parallel: "parallel",
   foreach: "for-each",
+  rule: "rule",
 };
 
 /**
@@ -368,6 +374,7 @@ export const STATE_CHECKS: readonly StateCheck[] = [
   unknownGets,
   unknownTemplateNames,
   taskWithoutAgent,
+  ruleWithoutFileOrOutput,
   timersOutsideWait,
   timerWithEvent,
   waitWithoutEvents,

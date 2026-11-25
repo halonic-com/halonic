@@ -85,16 +85,22 @@ const writesOutput: ReadonlySet<WorkflowStepType> = new Set([
   "workflow",
   "parallel",
   "foreach",
+  "rule",
 ]);
 
 /** The kinds that run an agent, and so have **Agent**; a parallel step's branches name their own. */
 const runsAgent: ReadonlySet<WorkflowStepType> = new Set(["task", "foreach"]);
 
-/** The Type picker's six kinds, in the order flow-workflows 5.2 lists them. */
-const typeOptions: readonly SelectOption[] = Object.entries(words.types).map(([value, label]) => ({
-  value,
-  label,
-}));
+/**
+ * The Type picker's six kinds, in the order flow-workflows 5.2 lists them. Studio doesn't offer a
+ * rule step yet, so only a rule step's own picker lists Rule, to show the kind it is
+ * (`workflows.page.rule-step`).
+ */
+function typeOptionsOf(saved: WorkflowStepType): readonly SelectOption[] {
+  return Object.entries(words.types)
+    .filter(([value]) => value !== "rule" || saved === "rule")
+    .map(([value, label]) => ({ value, label }));
+}
 
 /** The steps with an arrow to `stepId`, each once, for **Arrows in**; a step's arrow to itself isn't a way in. */
 function stepsInto(stepId: string, arrows: readonly WorkflowArrow[]): readonly string[] {
@@ -185,7 +191,11 @@ export function DockedStepCard({
           <p className="text-caption text-fg-muted">{words.breadcrumb(workflowName, step.id)}</p>
           <StepProblemsCallout id={problemsId} rows={problems} />
           <Field label={words.type}>
-            <Select options={typeOptions} value={type.value} onChange={pickNow(type)} />
+            <Select
+              options={typeOptionsOf(step.type)}
+              value={type.value}
+              onChange={pickNow(type)}
+            />
           </Field>
           {hasAgent && (
             <AgentField

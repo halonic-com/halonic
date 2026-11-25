@@ -25,9 +25,18 @@ export const Transition = s
 /**
  * task: run an agent. wait: wait for a person. final: end. workflow: run
  * another workflow of the hub as one step. parallel: run several agents at
- * once. foreach: run an agent or a workflow once per item of a list.
+ * once. foreach: run an agent or a workflow once per item of a list. rule:
+ * run one pure function of the hub, with no model.
  */
-export const StateType = s.enum(["task", "wait", "final", "workflow", "parallel", "foreach"]);
+export const StateType = s.enum([
+  "task",
+  "wait",
+  "final",
+  "workflow",
+  "parallel",
+  "foreach",
+  "rule",
+]);
 
 /**
  * Why an artifact's name can't be a file's name, or `null` when it can: one
@@ -52,6 +61,15 @@ const artifactName = s.string().superRefine((name, context) => {
   if (problem !== null) context.addIssue({ code: "custom", message: problem });
 });
 
+/**
+ * A rule step's file: a path in the hub, by the same rules as a path in an
+ * agent's working folder, so it can't name a file outside the hub.
+ */
+const rulePath = s.string().superRefine((path, context) => {
+  const problem = relativePathProblem(path, { root: "the hub", part: "file or folder name" });
+  if (problem !== null) context.addIssue({ code: "custom", message: problem });
+});
+
 const prompt = () => s.union([s.string(), s.record(s.string(), s.unknown())]);
 
 /** One branch of a parallel state: an agent and its prompt or method. */
@@ -73,7 +91,9 @@ export const WorkflowState = s
     agent: s.string().optional(),
     /** Workflow states: a workflow id of the same hub. */
     workflow: s.string().optional(),
-    /** Agent states: the prompt template. Workflow states: the child's input. */
+    /** Rule states: the rule's file in the hub, an ES module that exports `run(ctx)`. */
+    rule: rulePath.optional(),
+    /** Agent states: the prompt template. Workflow states: the child's input. Rule states: `ctx.input`. */
     input: prompt().optional(),
     /** Task states: the data the agent gets after the prompt, such as [input.message]. */
     gets: s

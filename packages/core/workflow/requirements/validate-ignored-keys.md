@@ -8,7 +8,7 @@ When `validateWorkflow` checks a state that sets a key its type doesn't use, the
 
 ## Examples
 
-- Given a wait step `review` with `agent` and `input`, when it is checked, then there are two warnings: `"review" is a wait step: agent is ignored. Put the agent on a task step before it.` at `states.review.agent`, and one for `input` at `states.review.input` that says only task, workflow and for-each steps use it.
+- Given a wait step `review` with `agent` and `input`, when it is checked, then there are two warnings: `"review" is a wait step: agent is ignored. Put the agent on a task step before it.` at `states.review.agent`, and one for `input` at `states.review.input` that says only task, workflow, for-each and rule steps use it.
 - Given a task step with `items` and `concurrency`, when it is checked, then each is a warning that says only for-each steps use it.
 - Given a task step with `with` and no `method`, and a parallel branch with `with` and no `method`, when it is checked, then each `with` is a warning that says to add the method or put the text in `input`.
 - Given a parallel step with `join: any` and `continueOnError: true`, when it is checked, then `continueOnError` is a warning.

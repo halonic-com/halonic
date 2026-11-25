@@ -73,7 +73,8 @@ function isDefinitions(parsed: unknown): parsed is RunDefinitions {
     (parsed["workflows"] === undefined || isPlainObject(parsed["workflows"])) &&
     (parsed["collections"] === undefined || isPlainObject(parsed["collections"])) &&
     (parsed["knowledge"] === undefined || isPlainObject(parsed["knowledge"])) &&
-    (parsed["skills"] === undefined || isPlainObject(parsed["skills"]))
+    (parsed["skills"] === undefined || isPlainObject(parsed["skills"])) &&
+    (parsed["rules"] === undefined || isPlainObject(parsed["rules"]))
   );
 }
 
