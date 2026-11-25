@@ -1,5 +1,5 @@
 import type { ItemPageChat, WorkspaceContext } from "@halonicjs/studio-shell";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import {
   type AssistantHost,
   AssistantHostService,
@@ -9,10 +9,12 @@ import {
 } from "../api.ts";
 import { buildChatWords } from "../chat/build-chat-words.ts";
 import { type Announce, type BoxAsk, buildChatsOf, type Shown } from "../chat/build-chats.ts";
+import { chatTabItem } from "../chat/chat-tab-item.ts";
 import { ChatBody } from "../panel/assistant-panel.tsx";
 import { useChatChoices } from "../panel/chat-choices.tsx";
 import { SkillLink } from "../panel/skill-link.tsx";
 import { useTabChat } from "../tab/chat-tab-page.tsx";
+import { ItemChatHeader } from "./item-chat-header.tsx";
 
 /**
  * The Build chat about one item, for the workflows and library features (`ItemChatService`):
@@ -20,10 +22,10 @@ import { useTabChat } from "../tab/chat-tab-page.tsx";
  * "Ask about this <kind>…" and for the New workflow dialog's Describe link (flow-workflows 2.2).
  */
 export const itemChat: ItemChat = {
-  chatFor(about, _name, context): ItemPageChat {
+  chatFor(about, name, context): ItemPageChat {
     return {
       startsOpen: true,
-      render: () => <ItemPageChatBody about={about} context={context} />,
+      render: () => <ItemPageChatBody about={about} name={name} context={context} />,
     };
   },
   async askAbout(about, name, context) {
@@ -53,15 +55,20 @@ async function openInPanel(
   if (panel !== undefined && !panel.isOpen()) panel.show();
 }
 
-/**
- * The chat on the left of an item's page: the item's most recently used chat, else a new draft
- * about it. The page holds it as a chat tab holds its chat, so the panel never shows the same
- * chat. The chat's own words about the item come with the workflow page (flow-assistant 2.4).
- */
-function ItemPageChatBody(props: {
+/** The item a chat on its page is about, and its name as the page shows it now. */
+interface PageItem {
   readonly about: ChatAbout;
+  readonly name: string;
   readonly context: WorkspaceContext;
-}) {
+}
+
+/**
+ * The chat on the left of an item's page (flow-assistant 2.4): the item's most recently used
+ * chat, else a new draft about it. The page holds it as a chat tab holds its chat, so the panel
+ * never shows the same chat. Its menu lists only the chats about the item, and picking one, or
+ * New chat, changes the chat the page holds.
+ */
+function ItemPageChatBody(props: PageItem) {
   const { context } = props;
   const about = useSameAbout(props.about);
   const host = context.services.get(AssistantHostService);
@@ -82,11 +89,20 @@ function ItemPageChatBody(props: {
       current = false;
     };
   }, [host, about, attempt]);
-  if (chatId !== undefined) return <HeldChat context={context} chatId={chatId} />;
+  // A new chat about the item, or the empty draft about it there is.
+  const newChat = () => void host.newChat("build", about).then((chat) => setChatId(chat.id));
+  if (chatId !== undefined) {
+    return <HeldChat {...props} chatId={chatId} onPick={setChatId} onNewChat={newChat} />;
+  }
   const shown: Shown =
     failed === undefined ? { kind: "loading" } : { kind: "failed", reason: failed };
   return (
-    <ChatOnPage context={context} shown={shown} onRetry={() => setAttempt((count) => count + 1)} />
+    <ChatOnPage
+      {...props}
+      shown={shown}
+      header={null}
+      onRetry={() => setAttempt((count) => count + 1)}
+    />
   );
 }
 
@@ -108,19 +124,52 @@ async function chatAbout(host: AssistantHost, about: ChatAbout): Promise<string>
   return kept?.id ?? (await host.newChat("build", about)).id;
 }
 
-/** The item's chat once it is known, held by the page. */
-function HeldChat(props: { readonly context: WorkspaceContext; readonly chatId: string }) {
-  const chats = buildChatsOf(props.context.services.get(AssistantHostService));
+/** The item's chat once it is known, held by the page, under its menu and ⋮. */
+function HeldChat(
+  props: PageItem & {
+    readonly chatId: string;
+    readonly onPick: (chatId: string) => void;
+    readonly onNewChat: () => void;
+  },
+) {
+  const { context, about } = props;
+  const host = context.services.get(AssistantHostService);
+  const chats = buildChatsOf(host);
   const [shown, retry] = useTabChat(chats, props.chatId);
-  return <ChatOnPage context={props.context} shown={shown} onRetry={retry} />;
+  const view = shown.kind === "chat" ? shown.view : undefined;
+  const { openItem } = context;
+  // Open as tab gives the chat its own tab, and the page a new chat about the item: one chat in
+  // one place. A draft has nothing to move yet.
+  const openAsTab =
+    view === undefined || view.chat.draft || openItem === undefined
+      ? undefined
+      : () => {
+          openItem(chatTabItem(view.chat.id));
+          props.onNewChat();
+        };
+  const header = (
+    <ItemChatHeader
+      host={host}
+      chats={chats}
+      view={view}
+      title={buildChatWords.panel}
+      onNewChat={props.onNewChat}
+      only={(chat) => chat.kind === "build" && sameAbout(chat.about, about)}
+      onPick={props.onPick}
+      onOpenAsTab={openAsTab}
+    />
+  );
+  return <ChatOnPage {...props} shown={shown} header={header} onRetry={retry} />;
 }
 
 /** The Assistant's chat body, as a chat tab draws it, on the left of the page. */
-function ChatOnPage(props: {
-  readonly context: WorkspaceContext;
-  readonly shown: Shown;
-  readonly onRetry: () => void;
-}) {
+function ChatOnPage(
+  props: PageItem & {
+    readonly shown: Shown;
+    readonly header: ReactNode;
+    readonly onRetry: () => void;
+  },
+) {
   const { context, shown } = props;
   const host = context.services.get(AssistantHostService);
   const chats = buildChatsOf(host);
@@ -131,21 +180,24 @@ function ChatOnPage(props: {
     [context],
   );
   return (
-    <ChatBody
-      context={context}
-      shown={shown}
-      chats={chats}
-      box={box}
-      announce={announce}
-      onNewChat={() => {}}
-      newChatButton={{ current: null }}
-      lookingAt={undefined}
-      skillLink={(view) => <SkillLink host={host} context={context} freshness={view.messages} />}
-      onOpenItem={(item) => context.openItem?.(item)}
-      onRetry={props.onRetry}
-      // A chat about an item stays a Build chat: Chat with offers no agents here.
-      choices={{ ...choices, agents: [] }}
-      onChatWith={() => {}}
-    />
+    <>
+      {props.header}
+      <ChatBody
+        context={context}
+        shown={shown}
+        chats={chats}
+        box={box}
+        announce={announce}
+        onNewChat={() => {}}
+        newChatButton={{ current: null }}
+        lookingAt={undefined}
+        aboutName={props.name}
+        skillLink={(view) => <SkillLink host={host} context={context} freshness={view.messages} />}
+        onOpenItem={(item) => context.openItem?.(item)}
+        onRetry={props.onRetry}
+        // A chat about an item stays a Build chat: no Chat with chip (flow-assistant 2.4).
+        choices={{ ...choices, agents: [] }}
+      />
+    </>
   );
 }

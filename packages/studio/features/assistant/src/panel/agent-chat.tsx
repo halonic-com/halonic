@@ -79,7 +79,14 @@ export function agentStateOf(view: ChatView): {
  * the middle of the transcript, its heading in `text-heading`, with no halo and no glow
  * (flow-assistant 11.5): the composer stays at the bottom, on the keyboard.
  */
-export function PanelChatStart({ agent }: { readonly agent: ChatAgent | undefined }) {
+export function PanelChatStart({
+  agent,
+  aboutName,
+}: {
+  readonly agent: ChatAgent | undefined;
+  /** The item a chat on its page is about: "What should change in Triage?" (flow-assistant 6.1). */
+  readonly aboutName?: string | undefined;
+}) {
   const centred = usePresentation() === "phone" && agent === undefined;
   return (
     <div
@@ -91,11 +98,17 @@ export function PanelChatStart({ agent }: { readonly agent: ChatAgent | undefine
         </div>
       )}
       <h3 className={`${centred ? "text-heading" : "text-section"} text-fg`}>
-        {agent === undefined ? words.heading : agentWords.heading(agent.name)}
+        {startHeading(agent, aboutName)}
       </h3>
       <p className="text-body text-fg-muted">
         {agent === undefined ? words.startLine : agent.description}
       </p>
     </div>
   );
+}
+
+/** The empty chat's heading: an agent chat's, a chat about one item's, else the Build chat's. */
+function startHeading(agent: ChatAgent | undefined, aboutName: string | undefined): string {
+  if (agent !== undefined) return agentWords.heading(agent.name);
+  return aboutName === undefined ? words.heading : words.aboutHeading(aboutName);
 }

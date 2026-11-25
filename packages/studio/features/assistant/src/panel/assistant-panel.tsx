@@ -187,8 +187,13 @@ export interface ChatBodyProps {
   readonly onOpenItem: (item: ItemRef) => void;
   /** The models and agents the Model and Chat with chips offer. */
   readonly choices: ReadChoices;
-  /** Chat with: a new chat of that kind, where this one is. */
-  readonly onChatWith: (kind: ChatKind) => void;
+  /** Chat with: a new chat of that kind, where this one is; none in a chat about one item. */
+  readonly onChatWith?: ((kind: ChatKind) => void) | undefined;
+  /**
+   * The name of the item a chat on its page is about: the status line says "About: <name>" and
+   * the empty chat asks what should change in it (flow-assistant 2.4, 6.1).
+   */
+  readonly aboutName?: string | undefined;
   /** Reads the chat again after it couldn't load; the panel's own chat by default. */
   readonly onRetry?: (() => void) | undefined;
   /** An empty chat shows the start screen, as in a chat tab (flow-assistant 6). */
@@ -242,7 +247,13 @@ export function ChatBody(props: ChatBodyProps) {
   const agent = agentOfView(view, props.choices);
   const chat = (
     <>
-      <StatusLine view={view} agent={agent} lookingAt={lookingAt} />
+      <StatusLine
+        view={view}
+        agent={agent}
+        idle={
+          props.aboutName === undefined ? lookingAtLine(lookingAt) : words.about(props.aboutName)
+        }
+      />
       <ShownItems
         shown={view?.shown ?? []}
         onOpen={props.onOpenItem}
@@ -258,6 +269,7 @@ export function ChatBody(props: ChatBodyProps) {
           view={view}
           context={context}
           agent={agent}
+          aboutName={props.aboutName}
           notice={engineAnswering ? undefined : notAnsweringLine(context)}
           noticeId={noticeId}
           onContinue={() => send(view.chat.id, undefined, () => {})}
@@ -334,23 +346,29 @@ function agentOfView(view: ChatView | undefined, choices: ChatChoices): ChatAgen
 function StatusLine(props: {
   readonly view: ChatView | undefined;
   readonly agent: ChatAgent | undefined;
-  readonly lookingAt: string | undefined;
+  /** The line while nothing runs: "Looking at: Home", or "About: Triage" on an item's page. */
+  readonly idle: string;
 }) {
   const { view, agent } = props;
   const phone = usePresentation() === "phone";
   if (view !== undefined && agent !== undefined)
     return <AgentStatusLine agent={agent} view={view} />;
   if (phone) return null; // It's in the top bar on a phone (flow-assistant 11.3).
-  return <p className="px-4 text-caption text-fg-muted">{statusLine(view, props.lookingAt)}</p>;
+  return <p className="px-4 text-caption text-fg-muted">{statusLine(view, props.idle)}</p>;
 }
 
 /**
- * The status line (flow-assistant 2.2): running with the tool, "Stopped by you", else the page the
- * window shows ("Looking at: Home"). Not live.
+ * The status line (flow-assistant 2.2): running with the tool, "Stopped by you", else its idle
+ * line. Not live.
  */
-function statusLine(view: ChatView | undefined, lookingAt: string | undefined): string {
+function statusLine(view: ChatView | undefined, idle: string): string {
   if (view?.answering === true) return runningLine(view.tool);
   if (view?.stoppedByYou === true) return words.stopped;
+  return idle;
+}
+
+/** The panel's idle line: the page the window shows ("Looking at: Home"), else nothing. */
+function lookingAtLine(lookingAt: string | undefined): string {
   return lookingAt === undefined ? "" : words.lookingAt(lookingAt);
 }
 
@@ -366,6 +384,7 @@ function Transcript({
   view,
   context,
   agent,
+  aboutName,
   notice,
   noticeId,
   onContinue,
@@ -375,6 +394,8 @@ function Transcript({
   readonly context: WorkspaceContext;
   /** The agent an agent chat talks to: its start says "Chat with Triage" and its description. */
   readonly agent: ChatAgent | undefined;
+  /** The item a chat on its page is about, which its start names (flow-assistant 6.1). */
+  readonly aboutName: string | undefined;
   /** The engine's line at the top while it doesn't answer (H12). */
   readonly notice: string | undefined;
   readonly noticeId: string;
@@ -384,7 +405,9 @@ function Transcript({
   readonly continueWaits: ButtonUnavailable | undefined;
 }) {
   const turns = turnsOf(view.messages, view.ends, view.answering);
-  if (turns.length === 0 && notice === undefined) return <PanelChatStart agent={agent} />;
+  if (turns.length === 0 && notice === undefined) {
+    return <PanelChatStart agent={agent} aboutName={aboutName} />;
+  }
   return (
     <ChatTranscript label={words.transcript} notice={notice} noticeId={noticeId}>
       {turns.map((turn, index) => (

@@ -31,6 +31,10 @@ export interface ChatHeaderProps {
   readonly agents: readonly ChatAgent[];
   /** Switches to the tab of a chat open as one, picked in the menu: one chat in one place. */
   readonly onOpenTab?: ((chatId: string) => void) | undefined;
+  /** The chats the menu lists; every kept chat by default, only an item's on its page (2.4). */
+  readonly only?: ((chat: ChatSummary) => boolean) | undefined;
+  /** Shows a chat picked in the menu; by default the panel shows it, with focus in the box. */
+  readonly onPick?: ((chatId: string) => void) | undefined;
 }
 
 /**
@@ -41,7 +45,8 @@ export function ChatHeading(
   props: ChatHeaderProps & { readonly renaming: boolean; readonly onRenamed: () => void },
 ) {
   const { chats, view, title, renaming } = props;
-  const recent = useRecentChats(props.host);
+  const kept = useRecentChats(props.host);
+  const recent = props.only === undefined ? kept : kept.filter(props.only);
   if (view === undefined) return title;
   const heading = view.chat.draft ? title : view.chat.title;
   if (renaming) {
@@ -52,6 +57,7 @@ export function ChatHeading(
     return <RenameField chats={chats} chatId={view.chat.id} title={heading} onDone={done} />;
   }
   const pick = (chatId: string) => {
+    if (props.onPick !== undefined) return props.onPick(chatId);
     if (chats.inTab(chatId) && props.onOpenTab !== undefined) return props.onOpenTab(chatId);
     void chats.pick(chatId).then(() => props.box.current?.focus());
   };
