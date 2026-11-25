@@ -1,0 +1,23 @@
+[package]
+name = "halonic-owner-sign-in"
+description = "Signs the desktop shell in to an owner's own server with its password, and keeps the session in the keychain where only Rust reads it."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+# The pinned-address check and the hello answer, shared with the connect page.
+halonic-connect = { path = "../connect" }
+# The keychain rules: the session's reserved name and the backend trait.
+halonic-secrets = { path = "../secrets" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# The session's keychain name is the hex SHA-256 of the server's origin, so
+# any origin fits the name rule. The version the other crates pin, already
+# in the shell's build.
+sha2 = { version = "=0.10.9", default-features = false }
+
+[lints]
+workspace = true

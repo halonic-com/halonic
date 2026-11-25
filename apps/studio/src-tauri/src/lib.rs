@@ -101,6 +101,8 @@ mod notification_clicks;
 #[cfg(target_os = "android")]
 mod owner_check;
 mod owner_check_page;
+#[cfg(desktop)]
+mod owner_sign_in;
 mod page_calls;
 mod page_streams;
 mod pair_scan;
@@ -451,6 +453,12 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             login_item::login_item_set,
             #[cfg(desktop)]
             keep_awake::keep_awake_set,
+            #[cfg(desktop)]
+            owner_sign_in::owner_login,
+            #[cfg(desktop)]
+            owner_sign_in::owner_logout,
+            #[cfg(desktop)]
+            owner_sign_in::owner_status,
             #[cfg(desktop)]
             focused_apps::show_main_window,
             #[cfg(desktop)]

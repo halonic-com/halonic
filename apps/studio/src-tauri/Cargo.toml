@@ -123,6 +123,10 @@ halonic-login-item = { path = "crates/login-item" }
 # "Keep this computer awake while it's plugged in" (phase 2 G5, HAL-17641):
 # our own crate, with the OS lock and power reading. Desktop only.
 halonic-keep-awake = { path = "crates/keep-awake" }
+# Signing in to an owner's own server with its password (HAL-18944): the
+# order of the calls and the session's keychain entry. Desktop only, like
+# the reqwest and rustls it is called with.
+halonic-owner-sign-in = { path = "crates/owner-sign-in" }
 # The updater's own reqwest, named only so src/updates_proxy.rs can give its
 # client a proxy and a redirect policy; the bucket check for a Scoop install
 # uses the same client type on the same rules. Pinned to the version the updater

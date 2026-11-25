@@ -1773,6 +1773,17 @@ name = "halonic-owner-check"
 version = "0.1.0"
 
 [[package]]
+name = "halonic-owner-sign-in"
+version = "0.1.0"
+dependencies = [
+ "halonic-connect",
+ "halonic-secrets",
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "halonic-phone-tunnel"
 version = "0.1.0"
 dependencies = [
@@ -1914,6 +1925,7 @@ dependencies = [
  "halonic-login-item",
  "halonic-login-shell",
  "halonic-owner-check",
+ "halonic-owner-sign-in",
  "halonic-phone-tunnel",
  "halonic-process-probe",
  "halonic-profile",
