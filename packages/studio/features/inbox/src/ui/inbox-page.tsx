@@ -1,4 +1,12 @@
 import type { AgentMessaging } from "@halonicjs/ports";
+import {
+  ActionCatalogService,
+  defaultRequesterPolicy,
+  emptyActionCatalog,
+  type RequesterPolicy,
+  RequesterPolicyService,
+  type StepperCatalog,
+} from "@halonicjs/studio-feature-action-steppers/api";
 import { type RunsList, RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { EmptyState, List, useNarrow, usePresentation } from "@halonicjs/studio-kit";
 import { AgentMessagingService } from "@halonicjs/studio-services";
@@ -80,6 +88,8 @@ export function InboxPage({ context }: PlaceViewProps) {
       requests={context.services.find(InboxRequestsService)}
       proposals={context.services.find(ProposalDecisionsService)}
       agentMessaging={context.services.find(AgentMessagingService)}
+      actionCatalog={context.services.find(ActionCatalogService)}
+      requesterPolicy={context.services.find(RequesterPolicyService)}
       notices={notices}
       {...(context.runCommand === undefined
         ? {}
@@ -133,6 +143,13 @@ export interface InboxViewProps {
    * the run and has **Open run** (with `openRun`). Without it the Inbox says neither.
    */
   readonly runFacts?: RunFactsOf | undefined;
+  /**
+   * The installed catalog an agent's action request is checked against when it opens. Without it
+   * nothing is in the catalog, so every request shows as a card Halonic can't read.
+   */
+  readonly actionCatalog?: StepperCatalog | undefined;
+  /** The user's requester policy. Without it the default holds: only routine requests may run. */
+  readonly requesterPolicy?: RequesterPolicy | undefined;
   /** The workspace's runs: a phone's request sheet stops waiting when the run it started ends. */
   readonly runs?: RunsList | undefined;
   /** Says a line where a screen reader hears it: "New in Needs you: …" for a sent request's card that didn't open. */
@@ -182,11 +199,16 @@ export function InboxView({
   runs,
   announce,
   agentMessaging,
+  actionCatalog = emptyActionCatalog,
+  requesterPolicy = defaultRequesterPolicy,
 }: InboxViewProps) {
   const subscribe = useCallback((listener: () => void) => inbox.subscribe(listener), [inbox]);
   const state = useSyncExternalStore(subscribe, () => inbox.state);
   const { open, focus, openItem, openAt } = useOpenItem(inbox, state.items);
-  const agent = useAgentItems(agentMessaging);
+  const agent = useAgentItems(agentMessaging, {
+    catalog: actionCatalog,
+    policy: requesterPolicy,
+  });
   // An item of the Inbox's own that opens, by hand or on request, takes the pane from an agent's.
   const closeAgent = agent.close;
   useEffect(() => {

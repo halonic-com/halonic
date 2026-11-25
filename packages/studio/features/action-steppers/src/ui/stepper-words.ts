@@ -5,6 +5,7 @@
  */
 import type {
   InstructionsSource,
+  StepAction,
   StepOutcome,
   StepperRequester,
   StepperService,
@@ -13,11 +14,16 @@ import type {
   StepRisk,
 } from "../stepper-view.ts";
 
-/** The service's name as people write it. */
-export const serviceNames: Record<StepperService, string> = {
+const serviceNames: Readonly<Record<string, string>> = {
   github: "GitHub",
   cloudflare: "Cloudflare",
+  paperclip: "Paperclip",
 };
+
+/** The service's name as people write it; an id the words don't know is shown as it is. */
+export function serviceName(service: StepperService): string {
+  return serviceNames[service] ?? service;
+}
 
 /** The risk as a chip's word. */
 export const riskWords: Record<StepRisk, string> = {
@@ -62,6 +68,23 @@ export function expiresText(at: Date): string {
   return `${dayText(at)} at ${time}`;
 }
 
+/**
+ * A step as "Show the request" writes the steps that aren't a call: the page a browser step opens,
+ * the reviewed script an API step runs, or the value the user gives.
+ */
+export function actionLine(action: Exclude<StepAction, { readonly kind: "call" }>): string {
+  switch (action.kind) {
+    case "browser":
+      return touchText({ kind: "page", address: action.address });
+    case "script":
+      return `Runs the reviewed script ${action.script}`;
+    case "input":
+      return action.secret
+        ? `You type “${action.label}” into the desktop app's secure field`
+        : `You type “${action.label}”`;
+  }
+}
+
 /** The fold with the exact calls: its row while closed and while open. */
 export const showRequest = "Show the request";
 /** See {@link showRequest}. */
@@ -84,7 +107,7 @@ export function outcomeText(outcome: StepOutcome, service: StepperService): stri
     case "succeeded":
       return outcome.result === undefined ? "Done." : `Done. ${outcome.result}`;
     case "failed":
-      return `Failed with status ${outcome.status}. ${serviceNames[service]} said: “${outcome.message}”`;
+      return `Failed with status ${outcome.status}. ${serviceName(service)} said: “${outcome.message}”`;
     case "skipped":
       return "Done already";
     case "by-hand":
@@ -142,7 +165,7 @@ export function resultHintText(requester: StepperRequester): string {
 
 /** The line above the steps while the service's API is down. */
 export function serviceDownText(service: StepperService): string {
-  return `${serviceNames[service]} isn't answering right now, so the steps may fail. You can do them all by hand below.`;
+  return `${serviceName(service)} isn't answering right now, so the steps may fail. You can do them all by hand below.`;
 }
 
 /** The warning under the facts for a step that can't be undone (HAL-17491 6.4). */
@@ -181,7 +204,7 @@ export function missingPermissionText(
   account: string | null,
   permission: string,
 ): string {
-  const who = account ?? `Your ${serviceNames[service]} account`;
+  const who = account ?? `Your ${serviceName(service)} account`;
   return `${who} doesn't have the permission “${permission}”, which this request needs.`;
 }
 
@@ -196,6 +219,8 @@ export function stageText(stage: StepperStage): string | null {
       return "This request isn't available in this version of Halonic, so it can't run here.";
     case "desktop-only":
       return "Open it in the desktop app to run it.";
+    case "blocked":
+      return "Blocked by your settings. This requester may only ask for routine changes.";
     case "finished":
       return "Finished. Every step is done.";
     default:

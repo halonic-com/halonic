@@ -8,6 +8,7 @@ import {
   type StepView,
 } from "../stepper-view.ts";
 import {
+  actionLine,
   expiresText,
   factLabels,
   hideRequest,
@@ -93,9 +94,9 @@ function Fact({ label, children }: { readonly label: string; readonly children: 
   );
 }
 
-/** A step as "Show the request" writes it: the exact call, or the page a browser step opens. */
+/** A step as "Show the request" writes it: the exact call, or what the step does instead. */
 function actionText(action: StepAction): string {
-  if (action.kind === "browser") return touchText({ kind: "page", address: action.address });
+  if (action.kind !== "call") return actionLine(action);
   const { method, address, body } = action.call;
   return body === undefined ? `${method} ${address}` : `${method} ${address}\n\n${body}`;
 }

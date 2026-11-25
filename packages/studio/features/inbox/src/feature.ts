@@ -1,4 +1,8 @@
 import { sandboxStartCheckKey } from "@halonicjs/app";
+import {
+  ActionCatalogService,
+  RequesterPolicyService,
+} from "@halonicjs/studio-feature-action-steppers/api";
 import { RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { AgentMessagingService } from "@halonicjs/studio-services";
 import { defineFeature } from "@halonicjs/studio-shell";
@@ -44,6 +48,9 @@ export const inboxFeature = defineFeature({
     RunsListService,
     // The agents' cards and questions, from every AgentMessaging source (inbox.agent-inbox-items).
     AgentMessagingService,
+    // What an agent's action request is checked against when it opens (inbox.agent-action-items).
+    ActionCatalogService,
+    RequesterPolicyService,
   ],
   provides: [InboxService],
   register(studio) {

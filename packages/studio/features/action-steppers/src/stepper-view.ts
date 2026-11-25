@@ -8,8 +8,11 @@
 /** How much harm a step can do: `routine`, an `admin` change, or `irreversible`. */
 export type StepRisk = "routine" | "admin" | "irreversible";
 
-/** The service a request's API steps go to, which decides how the user signs in. */
-export type StepperService = "github" | "cloudflare";
+/**
+ * The catalog's id of the service a request's steps go to, such as `github` or `cloudflare`, which
+ * decides how the user signs in. The words name the ones they know and show any other id as it is.
+ */
+export type StepperService = string;
 
 /** One HTTP call, exactly as the user's client will send it, for "Show the request". */
 export interface StepCall {
@@ -49,9 +52,20 @@ export type InstructionsSource =
   | { readonly kind: "library"; readonly checkedOn: Date }
   | { readonly kind: "requester" };
 
-/** What a step does: an API call the desktop app makes, or a page the user works on in the browser. */
+/**
+ * What a step does: an API call the desktop app makes, a page the user works on in the browser, a
+ * value only the user gives, or an API step whose exact call comes from its reviewed script once
+ * ToolScript lands (HAL-17491 7.9); until then the review names the script.
+ */
 export type StepAction =
   | { readonly kind: "call"; readonly call: StepCall }
+  | { readonly kind: "script"; readonly script: string }
+  | {
+      readonly kind: "input";
+      readonly label: string;
+      /** Typed into the desktop app's secure field, never into the page (HAL-17491 1.2). */
+      readonly secret: boolean;
+    }
   | {
       readonly kind: "browser";
       /** The full address that will open, as the shell checked it. */
@@ -106,7 +120,8 @@ export type StepperSignIn =
 
 /**
  * What the screen as a whole shows besides the request. `ready` is the review and the run, step
- * by step; the others say why nothing (more) can run.
+ * by step; the others say why nothing (more) can run. `blocked` is a request the user's requester
+ * policy doesn't let run (HAL-17491 6.5).
  */
 export type StepperStage =
   | { readonly kind: "ready" }
@@ -116,6 +131,7 @@ export type StepperStage =
   | { readonly kind: "expired" }
   | { readonly kind: "not-available" }
   | { readonly kind: "desktop-only" }
+  | { readonly kind: "blocked" }
   | { readonly kind: "finished" };
 
 /** One action request as the stepper shows it. */
@@ -214,13 +230,15 @@ export function irreversibleStepsAhead(view: StepperView): readonly StepView[] {
 
 /**
  * Whether the user may still decline: while the request can run, while it waits for a sign-in,
- * and where it can only be shown, such as Studio in a browser (HAL-17491 2.4).
+ * where it can only be shown, such as Studio in a browser (HAL-17491 2.4), and when their settings
+ * block it, so the requester hears it won't run.
  */
 export function canDecline(stage: StepperStage): boolean {
   return (
     stage.kind === "ready" ||
     stage.kind === "sign-in" ||
     stage.kind === "missing-permission" ||
-    stage.kind === "desktop-only"
+    stage.kind === "desktop-only" ||
+    stage.kind === "blocked"
   );
 }

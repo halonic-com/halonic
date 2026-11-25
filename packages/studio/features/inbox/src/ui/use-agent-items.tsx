@@ -1,4 +1,9 @@
 import type { InboxItem as AgentItem, AgentMessaging, MessagingSource } from "@halonicjs/ports";
+import type {
+  ActionItem,
+  RequesterPolicy,
+  StepperCatalog,
+} from "@halonicjs/studio-feature-action-steppers/api";
 import { Button, type ListRow, StatusChip } from "@halonicjs/studio-kit";
 import { type ReactNode, useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import {
@@ -16,7 +21,8 @@ import {
   sourceDownLine,
 } from "../agent/agent-item-text.ts";
 import { agentItemShows, type ProjectFilter } from "../agent/project-filter.ts";
-import { AgentItemCard } from "./agent-item-card.tsx";
+import { ActionItemCard } from "./action-item-card.tsx";
+import { AgentItemCard, type AgentItemCardProps } from "./agent-item-card.tsx";
 
 /** What the Inbox page shows of the agents' items, next to its own. */
 export interface AgentItems {
@@ -51,11 +57,32 @@ const nothing: AgentInboxState = {
 /** Couldn't read the agents' items; said over the list, with **Try again**. */
 export const agentLoadFailed = "Couldn't load the items from your agents.";
 
+/** What an action item is checked against when it opens: the installed catalog and the user's policy. */
+export interface ActionChecks {
+  readonly catalog: StepperCatalog;
+  readonly policy: RequesterPolicy;
+}
+
+function isActionItem(item: AgentItem): item is ActionItem {
+  return item.action !== undefined;
+}
+
+/** An agent's card, or for an action item the stepper in review mode (`inbox.agent-action-items`). */
+function AgentCard({ checks, ...card }: AgentItemCardProps & { readonly checks: ActionChecks }) {
+  const { item } = card;
+  if (!isActionItem(item)) return <AgentItemCard {...card} />;
+  return <ActionItemCard {...card} item={item} catalog={checks.catalog} policy={checks.policy} />;
+}
+
 /**
  * The agents' cards and questions for the Inbox page (`inbox.agent-inbox-items`), read from
- * `AgentMessaging` while the page is open. Without it, there are none.
+ * `AgentMessaging` while the page is open. Without it, there are none. Action items open the
+ * stepper, checked against `checks`.
  */
-export function useAgentItems(messaging: AgentMessaging | undefined): AgentItems {
+export function useAgentItems(
+  messaging: AgentMessaging | undefined,
+  checks: ActionChecks,
+): AgentItems {
   const inbox = useMemo(
     () => (messaging === undefined ? undefined : new AgentInbox(messaging)),
     [messaging],
@@ -106,8 +133,9 @@ export function useAgentItems(messaging: AgentMessaging | undefined): AgentItems
       ) : (
         <div key={opened?.key} className="flex min-h-0 flex-col gap-4 overflow-y-auto">
           {openItems.map((item, index) => (
-            <AgentItemCard
+            <AgentCard
               key={item.id}
+              checks={checks}
               item={item}
               source={sourceOf(item)}
               work={workOf(item)}

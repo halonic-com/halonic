@@ -71,6 +71,24 @@ function CopyInstructions({ text }: { readonly text: string }) {
   );
 }
 
+/** The text "Copy instructions" copies: on a requester's step it starts with the "not checked" label. */
+function copiedText(action: BrowserAction, requester: StepperRequester): string {
+  const label = action.source.kind === "requester" ? sourceText(action.source, requester) : null;
+  return instructionsText(label, action.address, action.instructions);
+}
+
+/**
+ * A browser step while the request can only be reviewed (`action-steppers.review-mode`): only
+ * **Copy instructions**, since opening the page waits for the desktop shell (HAL-17535).
+ */
+export function BrowserCopy({ action, requester }: BrowserInstructionsProps) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <CopyInstructions text={copiedText(action, requester)} />
+    </div>
+  );
+}
+
 /** Props for {@link BrowserControls}. */
 export interface BrowserControlsProps {
   readonly number: number;
@@ -95,12 +113,11 @@ export function BrowserControls({
 }: BrowserControlsProps) {
   const [result, setResult] = useState("");
   const fromRequester = action.source.kind === "requester";
-  const label = fromRequester ? sourceText(action.source, requester) : null;
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-2">
         <Button onClick={() => actions.openPage(action.address)}>{browserWords.open}</Button>
-        <CopyInstructions text={instructionsText(label, action.address, action.instructions)} />
+        <CopyInstructions text={copiedText(action, requester)} />
       </div>
       {action.resultLabel === undefined ? null : (
         <Field

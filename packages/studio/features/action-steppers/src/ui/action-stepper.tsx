@@ -23,6 +23,7 @@ export interface ActionStepperProps {
 const stageTones: Partial<Record<StepperStage["kind"], CalloutTone>> = {
   expired: "attention",
   "not-available": "attention",
+  blocked: "attention",
 };
 
 /**
@@ -77,6 +78,7 @@ export function ActionStepper({ view, actions }: ActionStepperProps) {
           view={view}
           actions={actions}
           active={stage.kind === "ready"}
+          reviewOnly={stage.kind === "desktop-only"}
           runningId={runningId}
         />
         <RequestCalls steps={view.steps} />
