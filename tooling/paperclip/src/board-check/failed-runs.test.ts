@@ -126,7 +126,7 @@ verifies("paperclip.board-check-failed-runs", () => {
       {
         kind: "comment",
         taskId: "task-seats",
-        body: "Spend-limit failures: 2 runs since 2026-11-22T13:55:00.000Z (Mateo, Priya).",
+        body: "Spend-limit failures: 2 runs since 22 Nov 14:55 CET (Mateo, Priya).",
       },
     ]);
     expect(

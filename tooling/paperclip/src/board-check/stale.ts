@@ -1,3 +1,4 @@
+import { amsterdamTime } from "../amsterdam-time.ts";
 import type { BoardWrite } from "./writes.ts";
 
 /**
@@ -248,7 +249,7 @@ export function planStale(
     return { writes: [], record: unsent, recordIfUnsent: unsent };
   }
   const lines = fresh.map(
-    (task) => `- ${task.identifier}: ${task.reason}, no owner since ${task.since}`,
+    (task) => `- ${task.identifier}: ${task.reason}, no owner since ${amsterdamTime(task.since)}`,
   );
   const writes: BoardWrite[] = [
     {

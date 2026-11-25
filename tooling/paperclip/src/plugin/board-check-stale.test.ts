@@ -60,7 +60,7 @@ verifies("paperclip.board-check-stale", () => {
     expect(comments).toHaveLength(1);
     expect(comments[0]?.args[0]).toBe(chiefTask.id);
     expect(String(comments[0]?.args[1])).toContain(
-      "- HAL-17412: cycle guard, no owner since 2026-11-24T09:00:00.000Z",
+      "- HAL-17412: cycle guard, no owner since 24 Nov 10:00 CET",
     );
     expect(String(comments[0]?.args[1])).not.toContain("HAL-16411");
     const wakes = fake.sent.filter((write) => write.call === "requestWakeup");

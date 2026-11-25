@@ -65,7 +65,7 @@ verifies("paperclip.board-check-asks", () => {
     const document = (sent[0]?.args[0] ?? {}) as { issueId: string; key: string; body: string };
     expect(document).toMatchObject({ issueId: "task-checker", key: "board-asks" });
     expect(document.body).toContain(
-      "| HAL-16003 | comment-1 | Mateo | 2026-11-22T13:58:00.000Z | [open](/HAL/issues/HAL-16003#comment-comment-1) |",
+      "| HAL-16003 | comment-1 | Mateo | 22 Nov 14:58 CET | [open](/HAL/issues/HAL-16003#comment-comment-1) |",
     );
     expect(document.body).not.toContain("needs the board");
     expect(sent[1]?.args).toEqual([

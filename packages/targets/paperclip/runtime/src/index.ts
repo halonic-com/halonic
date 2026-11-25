@@ -10,6 +10,7 @@ export {
   type RuntimeApi,
   retryAfterMs,
 } from "./active-snapshot.ts";
+export { amsterdamTime } from "./amsterdam-time.ts";
 export { builtInSnapshot, emptySnapshot, type ReadJson } from "./built-in.ts";
 export { type CheckState, checkState, type GitHubGet, gitHubReader } from "./github.ts";
 export {

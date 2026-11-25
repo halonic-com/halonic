@@ -37,7 +37,7 @@ verifies("paperclip.pr-watcher-review-wait", () => {
     expect(await run.run()).toMatchObject({ reviewWaits: 0, failed: [] });
     expect(notes(run)).toHaveLength(1);
     expect(notes(run)[0]?.split("\n")[0]).toBe(
-      "PR watcher: waiting for review for over 1 h: #5701, head `5701aaa`, handed over at 2026-11-24 15:59 UTC.",
+      "PR watcher: waiting for review for over 1 h: #5701, head `5701aaa`, handed over at 24 Nov 16:59 CET.",
     );
     expect(run.wakes).toEqual([]);
     expect(run.handoffs).toEqual([]);
@@ -47,7 +47,7 @@ verifies("paperclip.pr-watcher-review-wait", () => {
     const run = watcher({ extra: { missingChecks: ["Guard notes"] } });
     expect(await run.run()).toMatchObject({ reviewWaits: 1 });
     expect(notes(run)[0]?.split("\n")[0]).toBe(
-      "PR watcher: waiting for review for over 1 h: #5701, head `5701aaa`, handed over at 2026-11-24 15:59 UTC; no `Guard notes` run on this head.",
+      "PR watcher: waiting for review for over 1 h: #5701, head `5701aaa`, handed over at 24 Nov 16:59 CET; no `Guard notes` run on this head.",
     );
   });
 

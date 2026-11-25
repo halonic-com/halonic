@@ -1,3 +1,4 @@
+import { amsterdamTime } from "../amsterdam-time.ts";
 /**
  * Part (b) of the board check: every open task that waits on the board,
  * ranked by how many tasks it holds up. A task waits on the board when it
@@ -133,7 +134,7 @@ export function waitingLine(task: WaitingTask, names: ReadonlyMap<string, string
     task.holderAgentId === null
       ? "held by the board"
       : `held by ${names.get(task.holderAgentId) ?? task.holderAgentId}`;
-  return `${task.identifier}: ${what}, ${blocksText(task)}, waiting since ${task.since}, ${holder}`;
+  return `${task.identifier}: ${what}, ${blocksText(task)}, waiting since ${amsterdamTime(task.since)}, ${holder}`;
 }
 
 /** The `board-waiting` document's ranked list, without the time it was written. */

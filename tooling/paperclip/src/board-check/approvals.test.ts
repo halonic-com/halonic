@@ -26,8 +26,8 @@ verifies("paperclip.board-check-approvals", () => {
     expect(plan.comment).toBe(
       [
         "New pending approvals: 2. Listed only; the board decides them.",
-        "- approval-2: hire_agent, asked by a board user at 2026-11-22T13:20:00.000Z",
-        "- approval-3: hire_agent, asked by Chief at 2026-11-22T13:40:00.000Z",
+        "- approval-2: hire_agent, asked by a board user at 22 Nov 14:20 CET",
+        "- approval-3: hire_agent, asked by Chief at 22 Nov 14:40 CET",
       ].join("\n"),
     );
     expect(plan.seen).toEqual(["approval-3", "approval-1", "approval-2"]);
