@@ -154,8 +154,9 @@ function costLine(action: MergeAction): string | undefined {
 
 /**
  * Shadow mode's day: on the first pass of a new UTC day, posts the last
- * day's diff and starts a new one with the pull requests' tracks kept. Returns undefined when the post failed,
- * so the next pass tries again with the old day kept.
+ * day's diff and starts a new one with the pull requests' tracks kept.
+ * Returns undefined when the post failed, so the next pass tries again with
+ * the old day kept.
  */
 async function shadowDay(
   ctx: MergeControlApi,

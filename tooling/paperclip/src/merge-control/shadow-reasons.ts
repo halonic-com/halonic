@@ -21,6 +21,8 @@ export interface PullSeen {
   readonly head: string;
   readonly queued: boolean;
   readonly reasons: readonly string[];
+  /** Its gate passed but a wait rule held it back (a hold, a hotspot, the queue full). */
+  readonly waiting?: true;
 }
 
 /** One pass's view, by pull request number. */
@@ -30,7 +32,11 @@ export type PassView = Readonly<Record<string, PullSeen>>;
 export interface PullTrack {
   readonly head: string;
   /** The newest pass that saw it out of the queue on this head, and its reasons then. */
-  readonly outside?: { readonly at: string; readonly reasons: readonly string[] };
+  readonly outside?: {
+    readonly at: string;
+    readonly reasons: readonly string[];
+    readonly waiting?: true;
+  };
   /** The first pass on this head whose gate and wait rules passed. */
   readonly passedAt?: string;
 }
@@ -80,10 +86,17 @@ function addWaits(text: string, waits: Map<number, string>): void {
   }
 }
 
-function reasonsOf(row: GateRow, added: ReadonlySet<number>, waits: Map<number, string>): string[] {
-  if (added.has(row.pull.number)) {
-    return [];
+function seenOf(row: GateRow, added: ReadonlySet<number>, waits: Map<number, string>): PullSeen {
+  const queued = row.entry !== undefined;
+  const reasons = added.has(row.pull.number) ? [] : gateReasonsOf(row);
+  if (queued || reasons.length > 0 || added.has(row.pull.number)) {
+    return { head: row.pull.head, queued, reasons };
   }
+  const wait = waits.get(row.pull.number) ?? notAdded;
+  return { head: row.pull.head, queued, reasons: [wait], waiting: true };
+}
+
+function gateReasonsOf(row: GateRow): string[] {
   const reasons = [...(row.pull.draft ? ["draft"] : []), ...row.reasons];
   if (reasons.length === 0 && row.pull.mergeable !== "MERGEABLE") {
     reasons.push(`mergeable ${row.pull.mergeable.toLowerCase()} on GitHub`);
@@ -91,10 +104,7 @@ function reasonsOf(row: GateRow, added: ReadonlySet<number>, waits: Map<number, 
   if (!row.candidate) {
     reasons.push(notCandidate);
   }
-  if (row.entry !== undefined || reasons.length > 0) {
-    return reasons;
-  }
-  return [waits.get(row.pull.number) ?? notAdded];
+  return reasons;
 }
 
 /**
@@ -118,18 +128,17 @@ export function passView(
   const waits = waitsOf(decision.log);
   const view: Record<string, PullSeen> = {};
   for (const row of rows) {
-    view[String(row.pull.number)] = {
-      head: row.pull.head,
-      queued: row.entry !== undefined,
-      reasons: reasonsOf(row, added, waits),
-    };
+    view[String(row.pull.number)] = seenOf(row, added, waits);
   }
   return view;
 }
 
 /**
  * The tracks after one more pass: only the open pull requests it saw, each
- * starting over when its head changed.
+ * starting over when its head changed. A queued pass sees the gate only, so
+ * it counts as passing only when merge control wasn't holding the pull
+ * request back by a wait rule on its last pass out of the queue: else a
+ * Merger enqueue past a hold or a hotspot would look like "late, agrees".
  */
 export function trackPulls(
   before: Readonly<Record<string, PullTrack>> | undefined,
@@ -139,8 +148,9 @@ export function trackPulls(
   const tracks: Record<string, PullTrack> = {};
   for (const [key, seen] of Object.entries(view)) {
     const old = before?.[key]?.head === seen.head ? before[key] : undefined;
-    const outside = seen.queued ? old?.outside : { at, reasons: seen.reasons };
-    const passedAt = old?.passedAt ?? (seen.reasons.length === 0 ? at : undefined);
+    const outside = seen.queued ? old?.outside : outsideOf(seen, at);
+    const passes = seen.reasons.length === 0 && outside?.waiting !== true;
+    const passedAt = old?.passedAt ?? (passes ? at : undefined);
     tracks[key] = {
       head: seen.head,
       ...(outside === undefined ? {} : { outside }),
@@ -148,6 +158,10 @@ export function trackPulls(
     };
   }
   return tracks;
+}
+
+function outsideOf(seen: PullSeen, at: string): PullTrack["outside"] {
+  return { at, reasons: seen.reasons, ...(seen.waiting === true ? { waiting: true } : {}) };
 }
 
 /**

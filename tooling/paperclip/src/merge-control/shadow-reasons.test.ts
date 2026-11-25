@@ -105,6 +105,16 @@ verifies("paperclip.merge-control-shadow-reasons", () => {
     );
   });
 
+  test("a Merger enqueue past merge control's wait rule is a real miss, not late, agrees", () => {
+    const enqueued: ObservedAction = { kind: "enqueue", number: 46, jump: false, at: ago(1) };
+    const wide = pull(46, { filesTotal: 150 });
+    let day = shadowPass(emptyShadowDay(now), snapshot({ pulls: [wide] }), [], 2);
+    day = shadowPass(day, snapshot({ pulls: [wide], queue: [entry(46, 1)] }), [enqueued]);
+    const diff = shadowDiff(day);
+    expect(diff.lateAgreed).toEqual([]);
+    expect(diff.mergerOnly[0]?.reason).toBe("touches 150 files (over 100), queue by hand");
+  });
+
   test("the next day keeps each open pull request's track and its notes", () => {
     const observed = queueActionsOf(
       merger,
