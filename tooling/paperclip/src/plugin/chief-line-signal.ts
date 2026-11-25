@@ -7,6 +7,7 @@ import {
   readRecords,
   rememberThread,
   takeSlot,
+  wakeThread,
 } from "./chief-line.ts";
 import {
   chiefLineStateKey,
@@ -23,13 +24,9 @@ import {
  * One retry on a failed POST, then a log line; it never throws.
  */
 
-/** The chief line's event handler's context: the routes' plus outbound HTTP and a logger. */
+/** The chief line's event handler's context: the routes' plus outbound HTTP. */
 export interface ChiefLineSignalApi extends ChiefLineApi {
   readonly http: { fetch(url: string, init?: RequestInit): Promise<Response> };
-  readonly logger: {
-    info(message: string, meta?: Record<string, unknown>): void;
-    error(message: string, meta?: Record<string, unknown>): void;
-  };
 }
 
 /** The signal a caller's webhook gets. */
@@ -95,10 +92,7 @@ async function wakeChief(
     ctx.logger.info("Chief line: over the hourly limit, Chief not woken.", { caller, commentId });
     return;
   }
-  await ctx.issues.requestWakeup(thread.id, companyId, {
-    reason: "chief_line",
-    idempotencyKey: `chief-line ${commentId}`,
-  });
+  await wakeThread(ctx, companyId, thread.id, commentId);
 }
 
 /** The comment's thread id and comment id, from the event's payload. */

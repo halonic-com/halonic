@@ -217,7 +217,7 @@ verifies("paperclip.chief-line", () => {
     );
     expect(sent).toEqual({
       status: 200,
-      body: { threadId: "issue-1", identifier: "ACME-1", commentId: "c1" },
+      body: { threadId: "issue-1", identifier: "ACME-1", commentId: "c1", woke: true },
     });
     const [comment] = line.comments["issue-1"] ?? [];
     expect(comment?.body).toBe("**From sup (chief line)**\n\nHow is the queue?");
@@ -304,5 +304,55 @@ verifies("paperclip.chief-line", () => {
     expect((await read()).status).toBe(404);
     await line.ctx.issues.create({ title: "[chief-line] sup", projectId: "proj-1" } as never);
     expect((await read()).body).toMatchObject({ threadId: "issue-2", identifier: "ACME-2" });
+  });
+
+  test("a send to a backlog or done thread moves it to todo before waking Chief", async () => {
+    const line = fakeChiefLine();
+    await handleChiefLineRequest(lineRequest(keys.openThread, { caller: "sup" }), line.ctx);
+    const [thread] = line.issues;
+    if (thread === undefined) throw new Error("no thread");
+    for (const status of ["backlog", "done"]) {
+      thread.status = status;
+      const sent = await handleChiefLineRequest(
+        lineRequest(keys.send, { caller: "sup", message: "x" }),
+        line.ctx,
+      );
+      expect(sent.status).toBe(200);
+      expect(sent.body).toMatchObject({ woke: true });
+      expect(thread.status).toBe("todo");
+    }
+    expect(line.updates).toEqual([
+      { issueId: "issue-1", patch: { status: "todo" } },
+      { issueId: "issue-1", patch: { status: "todo" } },
+    ]);
+    expect(line.wakes).toHaveLength(2);
+  });
+
+  test("a failed wake after the post is logged, and send still answers 200 with woke false", async () => {
+    const line = fakeChiefLine();
+    await handleChiefLineRequest(lineRequest(keys.openThread, { caller: "sup" }), line.ctx);
+    line.failWakes();
+    const sent = await handleChiefLineRequest(
+      lineRequest(keys.send, { caller: "sup", message: "x" }),
+      line.ctx,
+    );
+    expect(sent).toEqual({
+      status: 200,
+      body: { threadId: "issue-1", identifier: "ACME-1", commentId: "c1", woke: false },
+    });
+    expect(line.logs).toContain("Chief line: couldn't wake Chief.");
+  });
+
+  test("a human's comment on a backlog thread reopens it and wakes Chief", async () => {
+    const line = fakeChiefLine();
+    await handleChiefLineRequest(lineRequest(keys.openThread, { caller: "sup" }), line.ctx);
+    const [thread] = line.issues;
+    if (thread === undefined) throw new Error("no thread");
+    thread.status = "backlog";
+    const human = line.addComment("issue-1", "q", null, "user-1");
+    await onChiefLineComment(line.ctx, commentEvent("issue-1", human.id));
+    expect(thread.status).toBe("todo");
+    expect(line.wakes).toHaveLength(1);
+    expect(line.logs).not.toContain("Chief line: couldn't handle a new comment.");
   });
 });

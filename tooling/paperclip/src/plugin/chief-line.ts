@@ -16,6 +16,7 @@ import {
   threadTitle,
   webhookAllowed,
 } from "./chief-line-settings.ts";
+import { reopenThread } from "./host.ts";
 
 /**
  * The chief line (board supervisor to Chief): one task per caller, assigned
@@ -30,8 +31,12 @@ import {
 export interface ChiefLineApi {
   readonly issues: Pick<
     PluginIssuesClient,
-    "list" | "get" | "create" | "createComment" | "listComments" | "requestWakeup"
+    "list" | "get" | "create" | "update" | "createComment" | "listComments" | "requestWakeup"
   >;
+  readonly logger: {
+    info(message: string, meta?: Record<string, unknown>): void;
+    error(message: string, meta?: Record<string, unknown>): void;
+  };
   readonly agents: Pick<PluginAgentsClient, "list">;
   readonly state: Pick<PluginStateClient, "get" | "set">;
   readonly config: Pick<PluginConfigClient, "get">;
@@ -158,6 +163,39 @@ async function findOrCreateThread(
   return thread;
 }
 
+/** Statuses Chief can't be woken on; a new message moves the thread back to `todo` first. */
+const parkedStatuses = new Set(["backlog", "done"]);
+
+/**
+ * Wakes Chief on a thread for one comment, first moving a `backlog` or `done` thread to `todo`
+ * (the host wakes only open work). Logs a failure and answers false; never throws.
+ */
+export async function wakeThread(
+  ctx: Pick<ChiefLineApi, "issues" | "logger">,
+  companyId: string,
+  threadId: string,
+  commentId: string,
+): Promise<boolean> {
+  try {
+    const issue = await ctx.issues.get(threadId, companyId);
+    if (issue !== null && parkedStatuses.has(issue.status)) {
+      await reopenThread(ctx.issues, threadId, companyId);
+    }
+    await ctx.issues.requestWakeup(threadId, companyId, {
+      reason: "chief_line",
+      idempotencyKey: `chief-line ${commentId}`,
+    });
+    return true;
+  } catch (error) {
+    ctx.logger.error("Chief line: couldn't wake Chief.", {
+      threadId,
+      commentId,
+      error: (error as Error).message,
+    });
+    return false;
+  }
+}
+
 /** Counts one wake against the caller's hourly limit; false when the limit is reached. */
 export async function takeSlot(
   ctx: Pick<ChiefLineApi, "state">,
@@ -215,13 +253,11 @@ async function send(
     `**From ${caller} (chief line)**\n\n${message}`,
     companyId,
   );
-  await ctx.issues.requestWakeup(thread.id, companyId, {
-    reason: "chief_line",
-    idempotencyKey: `chief-line ${comment.id}`,
-  });
+  // The comment is posted: from here on the send succeeded, whether or not Chief wakes.
+  const woke = await wakeThread(ctx, companyId, thread.id, comment.id);
   return {
     status: 200,
-    body: { threadId: thread.id, identifier: thread.identifier, commentId: comment.id },
+    body: { threadId: thread.id, identifier: thread.identifier, commentId: comment.id, woke },
   };
 }
 
