@@ -10,10 +10,12 @@ import {
   type InboxItem,
   type Message,
   type MessageSendOptions,
+  type MessageWork,
   type MessagingAgent,
   type MessagingId,
   type MessagingRefusal,
   type MessagingSource,
+  messageWorkReasonMax,
   type OutgoingAttachment,
   type SendResult,
 } from "./index.ts";
@@ -92,6 +94,18 @@ verifies("ports.agent-messaging", () => {
     expect(channelMembersFit(["a", "b"], "c", agents)).toBe(false);
     expect(channelMembersFit(["a", "a"], "a", agents)).toBe(false);
     expect(channelMembersFit(["a", "unknown"], "a", agents)).toBe(false);
+  });
+
+  it("gives a failed work line a reason, shown cut to 300 characters", () => {
+    const failed: MessageWork = {
+      agent: "elena",
+      state: "failed",
+      reason: "Build broke",
+      since: "2026-11-25T10:00:00.000Z",
+    };
+
+    expectTypeOf(failed.reason).toEqualTypeOf<string | undefined>();
+    expect(messageWorkReasonMax).toBe(300);
   });
 
   it("refuses a write rather than queueing it", () => {

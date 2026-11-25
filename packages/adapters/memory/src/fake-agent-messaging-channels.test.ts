@@ -46,6 +46,22 @@ verifies("contracts.fake-agent-messaging-channels", () => {
     expect(listed).toMatchObject({ author: { kind: "me" }, to: [liam.id] });
   });
 
+  it("a failed work line keeps its reason", async () => {
+    const { messaging, elena, channel } = makeFake();
+    const since = "2026-11-25T10:00:00.000Z";
+    messaging.addMessage(channel.id, {
+      body: "Can someone check the build?",
+      author: { kind: "me" },
+      work: [{ agent: elena.id, state: "failed", reason: "Build broke", since }],
+    });
+
+    const [listed] = await messaging.listMessages(channel.id);
+
+    expect(listed?.work).toEqual([
+      { agent: elena.id, state: "failed", reason: "Build broke", since },
+    ]);
+  });
+
   it("refuses startChannel with 1 or 9 agents, or agents of two sources", async () => {
     const { messaging, acme, chief, liam } = makeFake();
     const globex = messaging.addSource({ label: "Paperclip · Globex" });
