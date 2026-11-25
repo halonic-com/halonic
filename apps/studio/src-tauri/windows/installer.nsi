@@ -2194,7 +2194,9 @@ Function PageInstall
   !ifdef SANDBOX_STEP
     ${NSD_CreateCheckbox} 0 54u 100% 10u "Set up the agent sandbox (recommended)"
     Pop $SandboxCheckbox
-    ${NSD_Check} $SandboxCheckbox
+    ; Halonic change (HAL-17872): both boxes show the person's choice, ticked
+    ; at first (.onInit), as they left them when Back comes from the licence page.
+    ${NSD_SetState} $SandboxCheckbox $SandboxState
     ${NSD_OnClick} $SandboxCheckbox PageInstallButton
     ${NSD_CreateLabel} 12u 66u 96% 32u "Agents then run in a fence: they can only change their own folder and can't reach the internet unless you allow a site. Windows asks for administrator rights once for this step."
     Pop $0
@@ -2203,7 +2205,7 @@ Function PageInstall
     ${NSD_CreateCheckbox} 0 54u 100% 10u "Add a desktop shortcut"
   !endif
   Pop $ShortcutCheckbox
-  ${NSD_Check} $ShortcutCheckbox
+  ${NSD_SetState} $ShortcutCheckbox $ShortcutState
 
   ${NSD_CreateLabel} 0 -12u 60% 10u "Uses about ${SIZE_MB} MB."
   Pop $0

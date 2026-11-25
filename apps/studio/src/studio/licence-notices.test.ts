@@ -231,6 +231,7 @@ verifies("studio.installer-licence-page", () => {
     expect(walk).toContain("'MICROSOFT VISUAL C++ 2015 - 2022 RUNTIME'");
     expect(walk).toContain("if ($text -eq 'I &Agree')");
     expect(walk).toContain("$found = Runtime-Files");
+    expect(walk).toContain("Back from the licence page ticked the desktop shortcut box again");
     const job = readFileSync(resolve(process.cwd(), "../../.github/workflows/ci.yml"), "utf8");
     expect(job).toContain("windows/screenshot-installer.ps1 -Setup");
     expect(job).toContain("windows/screenshot-installer.ps1 -NoSandbox -Setup");
