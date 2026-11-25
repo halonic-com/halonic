@@ -178,6 +178,16 @@ function checkAdd(
 ): string | undefined {
   const parts = words(instruction.argument);
   const sources = parts.filter((word) => !word.startsWith("--")).slice(0, -1);
+  // A variable can hold a URL, which the check can't read; only a written-out source is checked.
+  const variable = sources.find((source) => source.includes("$"));
+  if (variable !== undefined) {
+    report.error(
+      file,
+      `ADD ${variable} takes its source from a variable, so the check can't tell what it downloads. Write the URL or path out in the ADD line.`,
+      instruction.line,
+    );
+    return undefined;
+  }
   const remote = sources.filter((source) => /^(https?|git):\/\/|^git@/.test(source));
   if (remote.length === 0) {
     return undefined;

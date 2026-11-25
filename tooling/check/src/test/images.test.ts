@@ -167,6 +167,27 @@ verifies("check.image-contents", () => {
     }
   });
 
+  test("fails on an ADD whose source holds a variable, and says to write the URL out", () => {
+    const sources = ["${TOOL_URL}", "$TOOL_URL", "https://acme.example/tool-${VERSION}.tgz"];
+    for (const source of sources) {
+      const found = problems(`${passing}ARG TOOL_URL\nADD ${source} /build/\n`);
+      expect(found, source).toEqual([expect.stringContaining("Write the URL or path out")]);
+    }
+  });
+
+  test("passes an ADD whose destination, not its source, holds a variable", () => {
+    expect(problems(`${passing}ARG DEST=/opt\nADD start.sh \${DEST}/\n`)).toEqual([]);
+  });
+
+  test("checks a Containerfile like a Dockerfile", () => {
+    for (const name of ["Containerfile", "Containerfile.dev", "run.Containerfile"]) {
+      const path = `packages/targets/acme/container/${name}`;
+      expect(problems(passing, null, path), name).toEqual([
+        expect.stringContaining(`keyed by "${path}"`),
+      ]);
+    }
+  });
+
   test("counts npm install --offline undone by --no-offline as online", () => {
     const found = problems(passing.replace("--offline ", "--offline --no-offline "));
     expect(found).toEqual([expect.stringContaining("npm install without --offline")]);
