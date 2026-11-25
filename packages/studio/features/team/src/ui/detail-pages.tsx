@@ -1,90 +1,23 @@
-import type { MessagingId, SpendRange } from "@halonicjs/ports";
-import {
-  Button,
-  Card,
-  ChevronRightIcon,
-  ListHeading,
-  usePresentation,
-} from "@halonicjs/studio-kit";
-import { type ReactNode, useEffect, useState } from "react";
+import type { AgentSpend, MessagingId, Seat, SeatWindow, SpendRange } from "@halonicjs/ports";
+import { Card, ListHeading, StatusChip } from "@halonicjs/studio-kit";
 import { teamDetailWords as words } from "../team-detail-words.ts";
+import type { AgentLine, TeamDetails } from "../team-details.ts";
 import {
-  type AgentLine,
-  type AgentsBySpend,
-  agentsBySpendShown,
-  type TeamDetails,
-} from "../team-details.ts";
-import { formatDayTime, formatMoney, formatTime, formatTokens } from "../team-format.ts";
+  formatDate,
+  formatDayTime,
+  formatMoney,
+  formatTime,
+  formatTokens,
+  type TeamClock,
+} from "../team-format.ts";
 import { teamWords } from "../team-words.ts";
-import { LoadingBody, PageFrame, TryAgain } from "./page-frame.tsx";
+import { DetailFrame, OpenRow, type TeamPage, useDetail } from "./detail-frame.tsx";
+import { Tile } from "./money-tiles.tsx";
+import { SeatStateChip } from "./seat-parts.tsx";
+import { StateIcon, stateTones } from "./seat-state.tsx";
 import { UsageMeter } from "./usage-meter.tsx";
 
-/** A page the Team place can show over Spend and seats. */
-export type TeamPage =
-  | { kind: "agent"; id: MessagingId }
-  | { kind: "seat"; id: MessagingId }
-  | { kind: "agents" };
-
-/** The `data-opens` key of the row that opens `page`, so Back can focus that row again. */
-export function pageKey(page: TeamPage): string {
-  return page.kind === "agents" ? "agents" : `${page.kind}:${page.id}`;
-}
-
-/** What a detail page holds while it reads: still loading, the answer, or a failed read. */
-type Read<Value> = { kind: "loading" } | { kind: "read"; value: Value } | { kind: "failed" };
-
-/** Reads once, again whenever a source says it changed, and on Try again. */
-function useDetail<Value>(details: TeamDetails, read: () => Promise<Value>, key: string) {
-  const [shown, setShown] = useState<Read<Value>>({ kind: "loading" });
-  const [changed, setChanged] = useState(0);
-  const readAgain = () => setChanged((count) => count + 1);
-  useEffect(() => details.watch(readAgain), [details]);
-  // `read` is a new function each render; `key` says what it reads, so the effect reruns on that.
-  useEffect(() => {
-    let current = true;
-    read().then(
-      (value) => current && setShown({ kind: "read", value }),
-      (error: unknown) => {
-        console.error("A Team detail page couldn't be read:", error);
-        if (current) setShown({ kind: "failed" });
-      },
-    );
-    return () => {
-      current = false;
-    };
-  }, [details, key, changed]);
-  return { shown, readAgain };
-}
-
-/** Opening a detail page focuses its h1, since the page replaces the one whose row was pressed. */
-const opened = { kind: "heading" } as const;
-
-/**
- * The frame of a detail page: Back, then the page, or why there is none. One frame for every
- * state, so the main and h1 stay the same elements when the read lands.
- */
-function DetailFrame<Value>(props: {
-  shown: Read<Value | undefined>;
-  onBack: () => void;
-  onTryAgain: () => void;
-  children: (value: Value) => ReactNode;
-}) {
-  const { shown } = props;
-  const loading = shown.kind === "loading";
-  return (
-    <PageFrame busy={loading} freshness={loading ? teamWords.loading : undefined} arrival={opened}>
-      <Button variant="secondary" size="sm" onClick={props.onBack}>
-        {words.back}
-      </Button>
-      {loading ? <LoadingBody /> : null}
-      {shown.kind === "failed" ? <TryAgain onPress={props.onTryAgain} /> : null}
-      {shown.kind === "read" && shown.value === undefined ? <p>{words.notFound}</p> : null}
-      {shown.kind === "read" && shown.value !== undefined ? props.children(shown.value) : null}
-    </PageFrame>
-  );
-}
-
-/** An agent's name, status word and task, as one line. */
+/** An agent's name, status word and task, as one line on its seat's page. */
 function agentWords(agent: AgentLine): string {
   const parts = [agent.name ?? words.unknownAgent];
   if (agent.activity !== undefined) parts.push(words.activity[agent.activity]);
@@ -92,95 +25,29 @@ function agentWords(agent: AgentLine): string {
   return parts.join(" · ");
 }
 
-/** A row that opens a page, with › at its end. */
-function OpenRow(props: { onOpen: () => void; children: ReactNode }) {
-  return (
-    <Card onClick={props.onOpen}>
-      <span className="flex items-center justify-between gap-3">
-        <span className="min-w-0 wrap-anywhere">{props.children}</span>
-        <span aria-hidden="true" className="inline-grid size-icon-sm text-fg-muted *:size-full">
-          <ChevronRightIcon />
-        </span>
-      </span>
-    </Card>
-  );
-}
-
-/**
- * Agents by spend: each agent with what it paid and its tokens today; a row opens the agent. On
- * Spend and seats (`top`) it shows the first few with **See all**; a phone's heading,
- * "Agents by spend ›", opens them all instead (S24).
- */
-export function AgentsBySpendList(props: {
-  bySpend: AgentsBySpend;
-  onOpen: (page: TeamPage) => void;
-  top?: boolean;
-}) {
-  const { rows, total } = props.bySpend;
-  const headingOpensAll = usePresentation() === "phone" && props.top === true;
-  if (total === 0) return null;
-  const openAll = () => props.onOpen({ kind: "agents" });
-  return (
-    <section aria-label={words.agentsBySpend} className="flex flex-col gap-2">
-      {headingOpensAll ? (
-        <AllAgentsHeading onOpen={openAll} />
-      ) : (
-        <ListHeading name={words.agentsBySpend} />
-      )}
-      <ul className="flex flex-col gap-2">
-        {rows.map(({ agent, spend }) => (
-          <li key={agent.id} data-opens={pageKey({ kind: "agent", id: agent.id })}>
-            <OpenRow onOpen={() => props.onOpen({ kind: "agent", id: agent.id })}>
-              {`${agent.name ?? words.unknownAgent} · ${formatMoney(spend.paid)} · ${formatTokens(spend.tokens.input + spend.tokens.cached + spend.tokens.output)}`}
-            </OpenRow>
-          </li>
-        ))}
-      </ul>
-      {!headingOpensAll && rows.length < total ? (
-        <div data-opens={pageKey({ kind: "agents" })} className="flex flex-col">
-          <Button variant="secondary" size="sm" onClick={openAll}>
-            {words.seeAll(total)}
-          </Button>
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
-/** The phone's "Agents by spend ›" heading: a button inside the heading, so it stays one. */
-function AllAgentsHeading({ onOpen }: { onOpen: () => void }) {
-  return (
-    <h2 data-opens={pageKey({ kind: "agents" })} className="px-4 pt-4 pb-1">
-      <button
-        type="button"
-        onClick={onOpen}
-        className="flex items-center gap-1 text-label uppercase text-fg-muted outline-none focus-ring"
-      >
-        {words.agentsBySpendPhone}
-        <span aria-hidden="true">›</span>
-      </button>
-    </h2>
-  );
-}
-
-/** Every agent that spent today, for **See all**. */
-export function AllAgentsPage(props: {
-  details: TeamDetails;
-  onOpen: (page: TeamPage) => void;
-  onBack: () => void;
-}) {
-  const { details } = props;
-  const { shown, readAgain } = useDetail(details, () => details.agentsBySpend(), "all");
-  return (
-    <DetailFrame shown={shown} onBack={props.onBack} onTryAgain={readAgain}>
-      {(bySpend) => <AgentsBySpendList bySpend={bySpend} onOpen={props.onOpen} />}
-    </DetailFrame>
-  );
+/** Under an agent's name (S11, S13): "Works on HAL-17508 · Working", or "No task right now · Idle". */
+function agentHeader(agent: AgentLine): string {
+  const parts = [agent.work === undefined ? words.noTask : words.worksOn(agent.work.label)];
+  if (agent.activity !== undefined) parts.push(words.activity[agent.activity]);
+  return parts.join(" · ");
 }
 
 const ranges: readonly SpendRange[] = ["today", "week", "month"];
 
-/** One agent (flows 1.3): its status and task, money by range, its seat and tokens by model. */
+/** One range's money as a tile; this month's shows the agent's own budget after it. */
+function MoneyTile({ range, spend }: { range: SpendRange; spend: AgentSpend }) {
+  const budget = range === "month" ? spend.budget : undefined;
+  const after =
+    budget === undefined || budget.cents === 0
+      ? undefined
+      : words.ofBudget(
+          formatMoney(budget, true),
+          Math.round((spend.paid.cents / budget.cents) * 100),
+        );
+  return <Tile title={words.range[range]} headline={{ value: formatMoney(spend.paid), after }} />;
+}
+
+/** One agent (S11–S13): its task and status, money by range as tiles, its seat and tokens by model. */
 export function AgentDetailPage(props: {
   details: TeamDetails;
   id: MessagingId;
@@ -189,29 +56,23 @@ export function AgentDetailPage(props: {
   const { details, id } = props;
   const { shown, readAgain } = useDetail(details, () => details.agent(id), id);
   return (
-    <DetailFrame shown={shown} onBack={props.onBack} onTryAgain={readAgain}>
+    <DetailFrame
+      shown={shown}
+      title={({ agent }) => agent.name ?? words.unknownAgent}
+      onBack={props.onBack}
+      onTryAgain={readAgain}
+    >
       {({ agent, spend, seat }) => (
         <>
-          <h2 className="text-heading">{agentWords(agent)}</h2>
-          {agent.work === undefined ? null : <p>{words.worksOn(agent.work.label)}</p>}
-          <dl className="flex gap-6 phone:flex-col">
+          <p>{agentHeader(agent)}</p>
+          <div className="flex gap-3 phone:flex-col">
             {ranges.map((range) => {
               const answer = spend[range];
-              if (answer === undefined) return null;
-              const budget = range === "month" ? answer.budget : undefined;
-              return (
-                <div key={range}>
-                  <dt className="text-small text-fg-muted">{words[range]}</dt>
-                  <dd>
-                    {formatMoney(answer.paid)}
-                    {budget === undefined || budget.cents === 0
-                      ? null
-                      : ` ${words.ofBudget(formatMoney(budget), Math.round((answer.paid.cents / budget.cents) * 100))}`}
-                  </dd>
-                </div>
+              return answer === undefined ? null : (
+                <MoneyTile key={range} range={range} spend={answer} />
               );
             })}
-          </dl>
+          </div>
           <p>{seat === undefined ? words.noSeat : words.onSeat(seat.label)}</p>
           {spend.week === undefined || spend.week.tokensByModel.length === 0 ? null : (
             <section aria-label={words.tokensByModel} className="flex flex-col gap-1">
@@ -229,7 +90,65 @@ export function AgentDetailPage(props: {
   );
 }
 
-/** One seat (flows 1.4): its windows, manual reset, agents and the Seat Supervisor's proposal. */
+/**
+ * A seat's state under its title (S14–S17). Near its limit, the chip carries the forecast,
+ * "Near limit: reaches 90% around 16:40"; every other state is the seat list's chip.
+ */
+function SeatTitleChip({ seat, clock }: { seat: Seat; clock: TeamClock }) {
+  const reaches90At = seat.windows.find((each) => each.kind === "week")?.reaches90At;
+  if (seat.state !== "near-limit" || reaches90At === undefined) {
+    return <SeatStateChip seat={seat} clock={clock} />;
+  }
+  return (
+    <StatusChip tone={stateTones[seat.state]}>
+      <span className="inline-flex items-center gap-1">
+        <StateIcon state={seat.state} />
+        {words.nearLimitUntil(formatTime(reaches90At, clock))}
+      </span>
+    </StatusChip>
+  );
+}
+
+/** A window's line under its meter: "84% · resets Thu 09:00 · ↗ reaches 90% around 16:40". */
+function windowWords(window: SeatWindow, clock: TeamClock): string {
+  return [
+    teamWords.percent(Math.round(window.usedPercent)),
+    window.resetsAt && words.resets(formatDayTime(window.resetsAt, clock)),
+    window.reaches90At && words.reaches90(formatTime(window.reaches90At, clock)),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/** Limits (S14): each window with its meter, then the manual reset. */
+function LimitsCard({ seat, clock }: { seat: Seat; clock: TeamClock }) {
+  const usedAt = typeof seat.manualReset === "object" ? seat.manualReset.usedAt : undefined;
+  const resetDate = usedAt === undefined ? "" : formatDate(new Date(usedAt), clock);
+  return (
+    <Card label={words.limits} headingLevel={2}>
+      <ul className="flex flex-col gap-3">
+        {seat.windows.map((window) => (
+          <li
+            key={`${window.kind}-${window.label}`}
+            className="grid grid-cols-[8rem_1fr] gap-2 phone:grid-cols-1"
+          >
+            <span>{window.label}</span>
+            <span className="flex flex-col">
+              <UsageMeter percent={window.usedPercent} />
+              <span className="text-small text-fg-muted">{windowWords(window, clock)}</span>
+            </span>
+          </li>
+        ))}
+        <li className="grid grid-cols-[8rem_1fr] gap-2 phone:grid-cols-1">
+          <span>{words.manualReset}</span>
+          <span>{words.manualResetState(seat.manualReset, seat.manualResetGroup, resetDate)}</span>
+        </li>
+      </ul>
+    </Card>
+  );
+}
+
+/** One seat (S14–S18): its state, Limits, its agents and the Seat Supervisor's proposal. */
 export function SeatDetailPage(props: {
   details: TeamDetails;
   id: MessagingId;
@@ -240,37 +159,24 @@ export function SeatDetailPage(props: {
   const clock = details.timeClock;
   const { shown, readAgain } = useDetail(details, () => details.seat(id), id);
   return (
-    <DetailFrame shown={shown} onBack={props.onBack} onTryAgain={readAgain}>
+    <DetailFrame
+      shown={shown}
+      title={({ seat }) => words.seatTitle(seat)}
+      onBack={props.onBack}
+      onTryAgain={readAgain}
+    >
       {({ seat, agents }) => (
         <>
-          <h2 className="text-heading">{seat.label}</h2>
-          <ul className="flex flex-col gap-2">
-            {seat.windows.map((window) => (
-              <li
-                key={`${window.kind}-${window.label}`}
-                className="grid grid-cols-[8rem_1fr] gap-2"
-              >
-                <span>{window.label}</span>
-                <span className="flex flex-col">
-                  <UsageMeter percent={window.usedPercent} />
-                  <span className="text-small text-fg-muted">
-                    {[
-                      window.resetsAt && words.resets(formatDayTime(window.resetsAt, clock)),
-                      window.reaches90At && words.reaches90(formatTime(window.reaches90At, clock)),
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
-          <p>{words.manualReset(seat.manualReset, (at) => formatDayTime(at, clock))}</p>
+          <div>
+            <SeatTitleChip seat={seat} clock={clock} />
+          </div>
+          <LimitsCard seat={seat} clock={clock} />
           <section
             aria-label={words.agentsOnSeat(seat.label, agents.length)}
             className="flex flex-col gap-2"
           >
             <ListHeading name={words.agentsOnSeat(seat.label, agents.length)} />
+            {agents.length === 0 ? <p>{words.noAgents}</p> : null}
             <ul className="flex flex-col gap-2">
               {agents.map((agent) => (
                 <li key={agent.id}>
@@ -288,21 +194,11 @@ export function SeatDetailPage(props: {
                 detail={words.proposedAt(formatTime(seat.proposal.at, clock))}
               />
               <p>{seat.proposal.text}</p>
+              <p className="text-small text-fg-muted">{words.proposalHint}</p>
             </section>
           )}
         </>
       )}
     </DetailFrame>
   );
-}
-
-/** Agents by spend today on Spend and seats: the top 5, with **See all**. Nothing while it reads. */
-export function AgentsBySpendSection(props: {
-  details: TeamDetails;
-  onOpen: (page: TeamPage) => void;
-}) {
-  const { details } = props;
-  const { shown } = useDetail(details, () => details.agentsBySpend(agentsBySpendShown), "top");
-  if (shown.kind !== "read") return null;
-  return <AgentsBySpendList bySpend={shown.value} onOpen={props.onOpen} top />;
 }

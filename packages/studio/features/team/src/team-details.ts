@@ -29,6 +29,16 @@ export interface AgentLine {
 export interface AgentSpendRow {
   readonly agent: AgentLine;
   readonly spend: AgentSpend;
+  /** The seat that lists the agent now, if any. */
+  readonly seat: Seat | undefined;
+}
+
+/** One row of the See all page: an agent's spend in each range, and its seat now. */
+export interface AgentRangesRow {
+  readonly agent: AgentLine;
+  /** Spend by range; a range the source has no answer for is left out. */
+  readonly spend: Readonly<Partial<Record<SpendRange, AgentSpend>>>;
+  readonly seat: Seat | undefined;
 }
 
 /** Agents by spend today: the top rows, and how many agents spent in all, for **See all**. */
@@ -86,12 +96,44 @@ export class TeamDetails {
   async agentsBySpend(limit?: number): Promise<AgentsBySpend> {
     const team = this.team;
     if (team === undefined) return { rows: [], total: 0 };
-    const [spend, lines] = await Promise.all([team.agentSpend("today"), this.readLines()]);
-    const sorted = [...spend].sort(
-      (a, b) => b.paid.cents - a.paid.cents || tokenTotal(b) - tokenTotal(a),
-    );
-    const rows = sorted.map((each) => ({ agent: lines(each.agent), spend: each }));
+    const [spend, seats, lines] = await Promise.all([
+      team.agentSpend("today"),
+      team.seats(),
+      this.readLines(),
+    ]);
+    const sorted = [...spend].sort(bySpend);
+    const rows = sorted.map((each) => ({
+      agent: lines(each.agent),
+      spend: each,
+      seat: seatOf(seats, each.agent),
+    }));
     return { rows: limit === undefined ? rows : rows.slice(0, limit), total: rows.length };
+  }
+
+  /**
+   * Every agent that spent in any range, with its spend in each, most paid in `range` first, for
+   * the See all page (HAL-17515 S10). An agent with nothing in `range` goes last.
+   */
+  async agentsByRange(range: SpendRange): Promise<readonly AgentRangesRow[]> {
+    const team = this.team;
+    if (team === undefined) return [];
+    const [byRange, seats, lines] = await Promise.all([
+      Promise.all(ranges.map((each) => team.agentSpend(each))),
+      team.seats(),
+      this.readLines(),
+    ]);
+    const spendOf = new Map<MessagingId, Partial<Record<SpendRange, AgentSpend>>>();
+    for (const answer of byRange.flat()) {
+      const spend = spendOf.get(answer.agent) ?? {};
+      spend[answer.range] = answer;
+      spendOf.set(answer.agent, spend);
+    }
+    const rows = [...spendOf].map(([id, spend]) => ({
+      agent: lines(id),
+      spend,
+      seat: seatOf(seats, id),
+    }));
+    return rows.sort((a, b) => byOptionalSpend(a.spend[range], b.spend[range]));
   }
 
   /** One agent's page, or `undefined` when no source knows the agent. */
@@ -108,7 +150,7 @@ export class TeamDetails {
       const found = answers.find((each) => each.agent === id);
       if (found !== undefined) spend[found.range] = found;
     }
-    const seat = seats.find((each) => each.agents.includes(id));
+    const seat = seatOf(seats, id);
     const agent = lines(id);
     if (seat === undefined && Object.keys(spend).length === 0 && agent.name === undefined) {
       return undefined;
@@ -159,4 +201,21 @@ export class TeamDetails {
 
 function tokenTotal(spend: AgentSpend): number {
   return spend.tokens.input + spend.tokens.cached + spend.tokens.output;
+}
+
+/** Most paid first, then most tokens. */
+function bySpend(a: AgentSpend, b: AgentSpend): number {
+  return b.paid.cents - a.paid.cents || tokenTotal(b) - tokenTotal(a);
+}
+
+/** As {@link bySpend}, with no spend in the range last. */
+function byOptionalSpend(a: AgentSpend | undefined, b: AgentSpend | undefined): number {
+  if (a === undefined) return b === undefined ? 0 : 1;
+  if (b === undefined) return -1;
+  return bySpend(a, b);
+}
+
+/** The seat that lists the agent now, if any. */
+function seatOf(seats: readonly Seat[], agent: MessagingId): Seat | undefined {
+  return seats.find((each) => each.agents.includes(agent));
 }

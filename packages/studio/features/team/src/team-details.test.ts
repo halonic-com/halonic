@@ -41,6 +41,35 @@ verifies("team.agent-and-seat-detail", () => {
       const { rows } = await new TeamDetails(team, messaging, clock).agentsBySpend();
       expect(rows.map((row) => row.agent.name)).toEqual(["Owen", "Kim"]);
     });
+
+    it("gives each row the seat its agent is on", async () => {
+      const { team, source, messaging, addAgent } = acme();
+      const kim = addAgent("Kim");
+      team.addAgentSpend(source, { agent: kim, range: "today", paid: usd(3) });
+      team.addSeat(source, { label: "Seat A", agents: [kim] });
+      const { rows } = await new TeamDetails(team, messaging, clock).agentsBySpend();
+      expect(rows[0]?.seat?.label).toBe("Seat A");
+    });
+  });
+
+  describe("TeamDetails.agentsByRange", () => {
+    it("gives every agent's spend in each range, most paid in the picked range first", async () => {
+      const { team, source, messaging, addAgent } = acme();
+      const kim = addAgent("Kim");
+      const owen = addAgent("Owen");
+      const ada = addAgent("Ada");
+      team.addAgentSpend(source, { agent: kim, range: "today", paid: usd(9) });
+      team.addAgentSpend(source, { agent: owen, range: "today", paid: usd(4) });
+      team.addAgentSpend(source, { agent: owen, range: "week", paid: usd(80) });
+      team.addAgentSpend(source, { agent: ada, range: "month", paid: usd(500) });
+      const details = new TeamDetails(team, messaging, clock);
+      const today = await details.agentsByRange("today");
+      expect(today.map((row) => row.agent.name)).toEqual(["Kim", "Owen", "Ada"]);
+      expect(today[1]?.spend.week?.paid.cents).toBe(8000);
+      const week = await details.agentsByRange("week");
+      expect(week[0]?.agent.name).toBe("Owen");
+      expect(await new TeamDetails(undefined, messaging, clock).agentsByRange("today")).toEqual([]);
+    });
   });
 
   describe("TeamDetails.agent", () => {
