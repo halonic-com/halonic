@@ -81,6 +81,15 @@ const drawings = {
     solid: "M4 17a8 8 0 0116 0z",
     cuts: [{ path: "M12 17l3.5-5" }],
   },
+  "pull-requests": {
+    // A branch's three commits, the right one's line coming back to the left with an arrow
+    // (HAL-17515's mockup kit, "pr"). Filled, the dots fill and the lines stay lines.
+    outline:
+      "M6.5 4a2 2 0 110 4 2 2 0 010-4zM6.5 16a2 2 0 110 4 2 2 0 010-4zM17.5 16a2 2 0 110 4 2 2 0 010-4zM6.5 8v8M17.5 16v-6a3 3 0 00-3-3H11M13 4.5L10.5 7 13 9.5",
+    solid:
+      "M6.5 4a2 2 0 110 4 2 2 0 010-4zM6.5 16a2 2 0 110 4 2 2 0 010-4zM17.5 16a2 2 0 110 4 2 2 0 010-4z",
+    lines: "M6.5 8v8M17.5 16v-6a3 3 0 00-3-3H11M13 4.5L10.5 7 13 9.5",
+  },
 } as const satisfies Record<string, PlaceDrawing>;
 
 /** The name of a place icon, the same as the place's key in the shell. */

@@ -1,8 +1,22 @@
-import { createShell, type ServiceKey, type ServiceTarget } from "@halonicjs/studio-shell";
+// @vitest-environment jsdom
+import {
+  createShell,
+  type PlaceViewProps,
+  type ServiceKey,
+  type ServiceTarget,
+  type WorkspaceContext,
+} from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { act, type ComponentType, createElement } from "react";
+import { afterEach, describe, expect, it } from "vitest";
 import { PullRequestsService, SpendAndSeatsService } from "./api.ts";
 import { teamFeature } from "./feature.ts";
+import { pullRequestWords } from "./pull-request-words.ts";
+import { render, unmountAll } from "./test-support/render.tsx";
+
+afterEach(() => {
+  unmountAll();
+});
 
 /** One open workspace's services, as the shell fills them. */
 class WorkspaceServices implements ServiceTarget {
@@ -48,5 +62,30 @@ verifies("team.pull-request-stuck", () => {
     const workspace = new WorkspaceServices();
     shell.services.instantiate(workspace);
     expect(await workspace.get(PullRequestsService).read()).toEqual({ kind: "not-available" });
+  });
+
+  it("adds Pull requests as the sidebar's pull-requests place, with the stuck PRs as the signal", () => {
+    const shell = createShell({ features: [teamFeature], hostServices: [] });
+    const place = shell.contributions.places.list().find((each) => each.id === "pull-requests");
+    expect(place?.featureId).toBe("team");
+    expect(place?.view).toBe("PullRequestsPlace");
+    expect(place?.signal).toBeTypeOf("function");
+    expect(place?.subscribeSignal).toBeTypeOf("function");
+  });
+
+  it("loads the Pull requests page as the pull-requests place's view", async () => {
+    const shell = createShell({ features: [teamFeature], hostServices: [] });
+    const place = shell.contributions.places.list().find((each) => each.id === "pull-requests");
+    const workspace = new WorkspaceServices();
+    shell.services.instantiate(workspace);
+    const loaded = (await place?.load()) ?? {};
+    const View = Reflect.get(loaded, place?.view ?? "") as ComponentType<PlaceViewProps>;
+    const context = { services: workspace } as unknown as WorkspaceContext;
+    const container = render(createElement(View, { context }));
+    await act(async () => {
+      for (let turn = 0; turn < 10; turn += 1) await Promise.resolve();
+    });
+    expect(container.querySelector("h1")?.textContent).toBe(pullRequestWords.place);
+    expect(container.textContent).toContain(pullRequestWords.notAvailable);
   });
 });

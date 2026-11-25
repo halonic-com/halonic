@@ -6,7 +6,9 @@ import type {
   TeamStatus,
   WorkItem,
 } from "@halonicjs/ports";
+import type { PlaceSignal } from "@halonicjs/studio-shell";
 import { type QueueView, queueView } from "./merge-queue.ts";
+import { ProblemSignal } from "./problem-signal.ts";
 import { type StuckReason, stuckReasons } from "./stuck-reasons.ts";
 import type { TeamClock } from "./team-format.ts";
 import { watchTeamStatus } from "./team-watch.ts";
@@ -46,7 +48,8 @@ export type PullRequestsState =
  * The Pull requests screen's reads (requirement `team.pull-request-stuck`): the
  * first `TeamStatus` source that serves pull requests, its first repo's open
  * PRs with why each is stuck, and their tasks from `AgentMessaging` when a
- * workspace has it. It holds no copy; each read asks the ports again.
+ * workspace has it. It holds no copy; each read asks the ports again. It
+ * keeps only the last stuck count, for the sidebar's signal.
  */
 export class PullRequests {
   /** Absent where no engine serves `TeamStatus`: the screen says PR states aren't available. */
@@ -54,6 +57,16 @@ export class PullRequests {
   /** Absent where no engine serves messaging: rows then name no task. */
   private readonly messaging: AgentMessaging | undefined;
   private readonly clock: TeamClock;
+  /** The sidebar's count of the stuck PRs. */
+  private readonly stuck = new ProblemSignal({
+    count: async () => {
+      const state = await this.read();
+      if (state.kind !== "read") return 0;
+      return state.rows.filter((row) => row.stuck.length > 0).length;
+    },
+    watch: (listener) => this.watch(listener),
+    place: "Pull requests",
+  });
 
   constructor(
     team: TeamStatus | undefined,
@@ -99,6 +112,19 @@ export class PullRequests {
   /** Calls `listener` whenever a source says its team status changed. Returns a function that stops it. */
   watch(listener: () => void): () => void {
     return watchTeamStatus(this.team, listener, "Pull requests");
+  }
+
+  /** The sidebar's signal for Pull requests: the stuck PRs, shown as "⚠ 3" (HAL-17515 S0). */
+  signal(): PlaceSignal {
+    return this.stuck.signal();
+  }
+
+  /**
+   * Reads now and whenever a source says it changed, and calls `listener`
+   * when the stuck count changed. Returns a function that stops it.
+   */
+  watchSignal(listener: () => void): () => void {
+    return this.stuck.watch(listener);
   }
 
   private rows(

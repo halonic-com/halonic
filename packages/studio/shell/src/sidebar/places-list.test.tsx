@@ -107,6 +107,26 @@ verifies("shell.sidebar-places", () => {
       expect(container.querySelector("nav > div li")?.textContent).toBe("Home");
     });
 
+    it("keeps Spend and seats and Pull requests together under one Team heading", () => {
+      const container = render(
+        <PlacesList
+          places={[
+            showPlace("home", undefined),
+            showPlace("team", undefined),
+            showPlace("pull-requests", { mark: "problems", value: 3, spoken: "3 problems" }),
+          ]}
+          tabs={new TabSet()}
+          announcer={createAnnouncer({ timers: new FakeTimers() })}
+        />,
+      );
+      const groups = container.querySelectorAll("nav section");
+      expect(groups).toHaveLength(1);
+      expect([...(groups[0]?.querySelectorAll("li") ?? [])].map((li) => li.textContent)).toEqual([
+        "Spend and seats",
+        "Pull requests3, 3 problems",
+      ]);
+    });
+
     it("shows where you are with the filled icon, and the others with the outline", () => {
       const { link } = renderPlaces();
       expect(link("Home").getAttribute("aria-current")).toBe("page");

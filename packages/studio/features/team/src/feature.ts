@@ -10,8 +10,9 @@ import { TeamDetails } from "./team-details.ts";
  * `team.pull-request-stuck`). It offers the Spend and seats screen's reads as
  * `SpendAndSeatsService` and the Pull requests screen's as
  * `PullRequestsService`, and the detail pages' as `TeamDetailsService`, built on the engine's `TeamStatus`; it never sees a
- * provider's own types. It adds the Spend and seats place, which the shell
- * shows under its Team heading, with the problems in Needs you as its signal.
+ * provider's own types. It adds the Spend and seats and Pull requests places,
+ * which the shell shows under its Team heading, with the problems in Needs you
+ * and the stuck PRs as their signals.
  */
 export const teamFeature = defineFeature({
   id: "team",
@@ -46,6 +47,14 @@ export const teamFeature = defineFeature({
       signal: (context) => context.services.get(SpendAndSeatsService).signal(),
       subscribeSignal: (context, listener) =>
         context.services.get(SpendAndSeatsService).watchSignal(listener),
+    });
+    studio.places.add({
+      id: "pull-requests",
+      view: "PullRequestsPlace",
+      load: () => import("./ui/pull-requests-place.tsx"),
+      signal: (context) => context.services.get(PullRequestsService).signal(),
+      subscribeSignal: (context, listener) =>
+        context.services.get(PullRequestsService).watchSignal(listener),
     });
   },
 });

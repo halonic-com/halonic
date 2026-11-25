@@ -6,6 +6,10 @@ import { PullRequests } from "./pull-requests.ts";
 const now = new Date("2026-11-24T13:00:00.000Z");
 const minutesAgo = (minutes: number) => new Date(now.getTime() - minutes * 60 * 1000).toISOString();
 
+async function settle(): Promise<void> {
+  for (let turn = 0; turn < 10; turn += 1) await Promise.resolve();
+}
+
 /** A fake with one acme source, read at 13:00 UTC. */
 function acme(parts: { pullRequests?: boolean } = {}) {
   const team = new FakeTeamStatus({ now: () => now });
@@ -66,6 +70,51 @@ verifies("team.pull-request-stuck", () => {
       expect(read.kind === "read" ? read.rows.map((row) => row.task) : read).toEqual([undefined]);
       expect(logged).toHaveBeenCalledOnce();
       logged.mockRestore();
+    });
+  });
+
+  describe("PullRequests.signal", () => {
+    it("counts the stuck PRs for the sidebar, and tells the watcher when that changes", async () => {
+      const { team, source } = acme();
+      team.addPullRequest(source, {
+        label: "#1",
+        title: "a",
+        state: "failing",
+        since: minutesAgo(61),
+      });
+      team.addPullRequest(source, {
+        label: "#2",
+        title: "b",
+        state: "failing",
+        since: minutesAgo(5),
+      });
+      const pullRequests = new PullRequests(team, undefined, { now: () => now });
+      let calls = 0;
+      const stop = pullRequests.watchSignal(() => {
+        calls += 1;
+      });
+      await settle();
+      expect(pullRequests.signal()).toEqual({ mark: "problems", value: 1, spoken: "1 problem" });
+      expect(calls).toBe(1);
+
+      team.addPullRequest(source, {
+        label: "#3",
+        title: "c",
+        state: "conflicting",
+        since: minutesAgo(90),
+      });
+      await settle();
+      expect(pullRequests.signal().value).toBe(2);
+      expect(calls).toBe(2);
+      stop();
+    });
+
+    it("counts nothing where nothing serves TeamStatus", async () => {
+      const pullRequests = new PullRequests(undefined, undefined, { now: () => now });
+      const stop = pullRequests.watchSignal(() => {});
+      await settle();
+      expect(pullRequests.signal().value).toBe(0);
+      stop();
     });
   });
 });

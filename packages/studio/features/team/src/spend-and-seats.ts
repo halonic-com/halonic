@@ -1,9 +1,9 @@
 import type { AsOf, MessagingId, Seat, SpendSummary, TeamStatus } from "@halonicjs/ports";
 import type { PlaceSignal } from "@halonicjs/studio-shell";
+import { ProblemSignal } from "./problem-signal.ts";
 import { type SeatProblem, seatProblems } from "./seat-problems.ts";
 import type { TeamClock } from "./team-format.ts";
 import { watchTeamStatus } from "./team-watch.ts";
-import { teamWords } from "./team-words.ts";
 
 /** Everything the Spend and seats screen shows, for one source, as read now. */
 export interface SpendAndSeatsState {
@@ -36,8 +36,15 @@ export class SpendAndSeats {
   /** Absent where no engine serves `TeamStatus`: the screen then says seat use isn't available. */
   private readonly team: TeamStatus | undefined;
   private readonly clock: TeamClock;
-  /** The problems the sidebar counts, as of the newest read any `watchSignal` made. */
-  private problemCount = 0;
+  /** The sidebar's count of the problems in Needs you. */
+  private readonly problems = new ProblemSignal({
+    count: async () => {
+      const state = await this.read();
+      return state?.problems.filter((problem) => !problem.quiet).length ?? 0;
+    },
+    watch: (listener) => this.watch(listener),
+    place: "Spend and seats",
+  });
 
   constructor(team: TeamStatus | undefined, clock: TeamClock) {
     this.team = team;
@@ -96,11 +103,7 @@ export class SpendAndSeats {
    * leaving out the quiet 80% ones (HAL-17510 flows 1.2), shown as "⚠ 2".
    */
   signal(): PlaceSignal {
-    return {
-      mark: "problems",
-      value: this.problemCount,
-      spoken: teamWords.problemCount(this.problemCount),
-    };
+    return this.problems.signal();
   }
 
   /**
@@ -108,29 +111,7 @@ export class SpendAndSeats {
    * when the signal's count changed. Returns a function that stops it.
    */
   watchSignal(listener: () => void): () => void {
-    let watching = true;
-    // Each watch keeps the count it last told its listener: the desktop watches places from
-    // the window and the sidebar, and each must hear a change, not only the first to read it.
-    let heard = 0;
-    const readCount = () => {
-      this.read().then(
-        (state) => {
-          const count = state?.problems.filter((problem) => !problem.quiet).length ?? 0;
-          this.problemCount = count;
-          if (!watching || count === heard) return;
-          heard = count;
-          listener();
-        },
-        (error: unknown) =>
-          console.error("Spend and seats' problem count couldn't be read:", error),
-      );
-    };
-    readCount();
-    const stop = this.watch(readCount);
-    return () => {
-      watching = false;
-      stop();
-    };
+    return this.problems.watch(listener);
   }
 
   /** Calls `listener` whenever a source says its team status changed. Returns a function that stops it. */

@@ -24,6 +24,7 @@ verifies("kit.place-icon", () => {
       "runs",
       "changes",
       "team",
+      "pull-requests",
     ]);
   });
 
