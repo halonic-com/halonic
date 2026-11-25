@@ -2,6 +2,7 @@
 
 - Approval: the board's request on HAL-18705 (quicker preview builds, built on HAL-18706); Liam approves and signs this note in review, Julian checks the cache safety on HAL-18706
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:hOTUPBxZjkxDA7WPhra8A7ieVyTcVBhw4h/UQg1er31sYkAo5ANLTv85vFitq7qfKSobDARRBhjvePfxMcemAg==
 
 ## What changes
 
