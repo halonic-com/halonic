@@ -47,4 +47,11 @@ verifies("engine.kept-definitions-why", () => {
 
     await expect(definitionsOf(blobs, version)).rejects.toThrow("doesn't hold a workflow");
   });
+
+  it("says a blob whose rules aren't all source text isn't definitions", async () => {
+    const blobs = new KernelBlobs();
+    blobs.blobs.set(version, encodeUtf8('{"workflow":{},"rules":{"triage":42}}'));
+
+    await expect(definitionsOf(blobs, version)).rejects.toThrow("doesn't hold a workflow");
+  });
 });
