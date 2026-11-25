@@ -18,6 +18,15 @@ export const messengerWords = {
   noChats: "No chats yet.",
   nothingWaiting: "No chat is waiting for you.",
   pickChat: "Pick a chat to read it.",
+  /**
+   * The Messenger with nothing connected: the words of Settings › Connections with no connection
+   * (Noah's wording table on HAL-17498), so both places say the same.
+   */
+  noConnections: {
+    title: "No connections",
+    line: "Connect Paperclip to answer your agents' cards and chat with them from Inbox and Messenger.",
+    connect: "Connect Paperclip",
+  },
   searchLabel: "Search this chat",
   noMatches: "No message in this chat matches.",
   /** One pane at a time in a narrow window: back from the open chat to the list (HAL-18074). */
