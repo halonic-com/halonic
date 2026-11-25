@@ -37,6 +37,7 @@ verifies("ports.team-status", () => {
       | "pullRequest"
       | "mergeQueue"
       | "agent"
+      | "runs"
       | "changes"
     >();
     expectTypeOf<TeamStatus["spend"]>().parameters.toEqualTypeOf<[range: SpendRange]>();
