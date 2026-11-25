@@ -19,7 +19,6 @@
     "worker": "./dist/worker.js"
   },
   "devDependencies": {
-    "@halonicjs/target-paperclip-runtime": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@paperclipai/plugin-sdk": "catalog:",
