@@ -16,6 +16,7 @@
     "states": "vite"
   },
   "dependencies": {
+    "@halonicjs/openui-lang": "workspace:*",
     "react": "catalog:"
   },
   "devDependencies": {
