@@ -117,6 +117,8 @@ verifies("agent-host.paperclip-key", () => {
         "respondToCard",
         "approve",
         "rejectApproval",
+        // Request changes (HAL-18872), pinned in approval-fields.test.ts.
+        "requestApprovalRevision",
         "whoAmI",
         "revokeKey",
         // TeamStatus's reads (HAL-17606), pinned in team-requests.test.ts.
