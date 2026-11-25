@@ -2,6 +2,7 @@
 
 - Approval: HAL-17930 (routed from the board's merge-time report on HAL-17891); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:6nOA9oL9QyLZWfMEg+foijko7/pis/dDBzAf+aW0w9f11iaEDEawMrCC2Zcd6vv7uMPv/TSqtSbEezK2AFEWBQ==
 
 ## What changes
 
