@@ -9,16 +9,25 @@ import type {
 /**
  * What a notification opens in Studio: an inbox item, a conversation, a piece
  * of work, the inbox as a whole (a quiet-hours summary, whose `id` is empty),
- * a seat on Spend and seats, or a source's merge queue.
+ * a seat on Spend and seats, a source's merge queue, a run in Runs, or Runs'
+ * Failed group (`runs-failed`, for several failures shown as one).
  */
 export interface NoticeTarget {
-  kind: "inbox-item" | "conversation" | "work" | "inbox" | "seat" | "merge-queue";
+  kind:
+    | "inbox-item"
+    | "conversation"
+    | "work"
+    | "inbox"
+    | "seat"
+    | "merge-queue"
+    | "run"
+    | "runs-failed";
   id: MessagingId;
 }
 
 /** One desktop notification: why it was shown, what it says and what clicking it opens. */
 export interface AgentNotice {
-  reason: "card" | "question" | "done" | "summary" | "seat" | "queue";
+  reason: "card" | "question" | "done" | "summary" | "seat" | "queue" | "run";
   title: string;
   body: string;
   target: NoticeTarget;

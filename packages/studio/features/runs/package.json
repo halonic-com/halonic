@@ -17,6 +17,7 @@
     "@halonicjs/events": "workspace:*",
     "@halonicjs/std": "workspace:*",
     "@halonicjs/studio-kit": "workspace:*",
+    "@halonicjs/studio-services": "workspace:*",
     "@halonicjs/studio-shell": "workspace:*",
     "react": "catalog:"
   },
