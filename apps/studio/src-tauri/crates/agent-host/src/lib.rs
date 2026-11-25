@@ -12,7 +12,7 @@
 mod bundled_runtime;
 mod console_window;
 mod default_distro;
-mod engine_command;
+pub mod engine_command;
 mod error;
 mod handshake;
 #[cfg(test)]
@@ -41,7 +41,6 @@ pub use bundled_runtime::{
 };
 use console_window::{new_command, without_console_window};
 pub use default_distro::halonic_is_default;
-pub use engine_command::engine_command;
 pub use error::{AgentHostError, StartCause};
 use halonic_secrets::SecretBackend;
 pub use handshake::{Handshake, read_handshake};
