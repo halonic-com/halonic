@@ -16,6 +16,7 @@ export type {
   RequestContext,
   RequestLog,
   RequestLogEntry,
+  RoutineSchedule,
   Server,
   ServerConfig,
   ServerErrorBody,

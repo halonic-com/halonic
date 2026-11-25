@@ -53,9 +53,8 @@ run:
 ## Where signal routines start
 
 They start from the same check that starts routines on a schedule: in
-`halonic routines watch`, and in the Studio while its engine is open.
-`halonic serve` doesn't start them. A routine starts on the check after the
-signal, not at once.
+`halonic routines watch`, in `halonic serve`, and in the Studio while its
+engine is open. A routine starts on the check after the signal, not at once.
 
 `halonic routines watch` prints the signal where a timed run has its due time:
 

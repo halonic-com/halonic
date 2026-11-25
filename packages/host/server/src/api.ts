@@ -1,5 +1,6 @@
 import type { SendingSettings } from "@halonicjs/app";
 import type { OutsideRunCall } from "@halonicjs/app/outside-run";
+import type { RoutineHealth } from "@halonicjs/app/routines";
 import type {
   ClientSecretStore,
   ServiceResult,
@@ -363,6 +364,13 @@ export interface WorkspaceFacts {
   readonly home: string | null;
 }
 
+/** The served workspace's routine scheduler: its health, and pausing it (`server.routines`). */
+export interface RoutineSchedule {
+  health(): RoutineHealth;
+  /** Pauses the routines, or resumes them, from the next tick on. */
+  pause(paused: boolean): void;
+}
+
 /** Which workspace the server shows. Read-only. */
 export interface WorkspaceInfo {
   describe(): Promise<WorkspaceFacts>;
@@ -417,6 +425,8 @@ export interface ServerPorts {
   readonly modelSettings: ModelSettingsGate;
   /** The routines with a webhook trigger; `POST /api/webhooks/<hub>/<routine>` starts one. */
   readonly webhooks: WebhookRoutines;
+  /** The routines on a clock, for `/api/routines/health` and `/pause`. Without it those answer 404. */
+  readonly routineSchedule?: RoutineSchedule;
   /** The daily request counter. */
   readonly requestCounts: RequestCountStore;
   /** Where the cause of an unexpected failure goes. The reply to the caller never carries it. */

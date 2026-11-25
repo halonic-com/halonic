@@ -274,10 +274,10 @@ function placedWarnings(context: CommandContext): PlacedWarnings {
 
 /**
  * The routine scheduler on the engine's parts, as `workspaceRoutineScheduler`
- * builds it. `scheduled` gets the routines each tick reads and returns those
- * to schedule.
+ * builds it, for this watch and `halonic serve`. `scheduled` gets the
+ * routines each tick reads and returns those to schedule.
  */
-function routineScheduler(
+export function routineScheduler(
   engine: RoutineEngine,
   workspace: LoadedWorkspace,
   versions: WatchedVersions,
@@ -308,9 +308,9 @@ function routineScheduler(
  * routine's workflow in its hub, once. A routine that runs one agent has no
  * workflow to check; the watch leaves it out when that agent is in a
  * harness (`RoutinesThatCantStart`), and the local engine starts no other
- * program for it.
+ * program for it. `halonic serve` checks its routines' workflows with it too.
  */
-function workflowsOf(routines: readonly PlacedRoutine[]): SandboxGateRun[] {
+export function workflowsOf(routines: readonly PlacedRoutine[]): SandboxGateRun[] {
   const runs = new Map<string, SandboxGateRun>();
   for (const { hub, routine } of routines) {
     const hubId = routine.run.hub ?? hub;

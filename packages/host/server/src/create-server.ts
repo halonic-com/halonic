@@ -34,6 +34,7 @@ import {
   isProviderKeyPath,
   providerKeyPathPrefix,
 } from "./provider-key-routes.ts";
+import { isRoutineSchedulePath, routineScheduleRoute } from "./routine-schedule-routes.ts";
 import { parseRunEndpoint, serveRunEndpoint } from "./run-endpoint.ts";
 import { createRunRoutes, isJsonRequest, runPathPrefix, waitingRunsPath } from "./run-routes.ts";
 import {
@@ -200,7 +201,7 @@ function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<Cr
     return modelChoiceRoutes.handle(request, context, body, rest, session);
   }
 
-  /** The routes that need a session: a chat turn, a connector call, the provider keys and the model choice. `null` when the address is none of them. */
+  /** The routes that need a session: a chat turn, a connector call, the provider keys, the model choice and the routines' health and pause. `null` when the address is none of them. */
   async function signedInOnlyRoute(
     request: Request,
     context: RequestContext,
@@ -226,7 +227,11 @@ function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<Cr
     if (pathname.startsWith(modelChoicePathPrefix)) {
       return modelChoiceRoute(request, context, body, pathname);
     }
-    return null;
+    const schedule = ports.routineSchedule;
+    if (schedule === undefined || !isRoutineSchedulePath(pathname)) return null;
+    return whenSignedIn(request, context, () =>
+      routineScheduleRoute(schedule, request, pathname, body),
+    );
   }
 
   /** Counts a signed-in request against the daily ceiling; one nobody signed isn't counted, so it can't use up the day. */

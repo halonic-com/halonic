@@ -10,6 +10,7 @@
 // read-only trust gate again before every request that starts a run, so an
 // edit after this check stops the runs until a person trusts it again with
 // `halonic trust`. Later versions are checked as `routines watch` checks them.
+// The routines on a clock run as `routines watch` runs them (`server.routines`).
 
 import { access, realpath } from "node:fs/promises";
 import { join } from "node:path";
@@ -65,6 +66,7 @@ import { workspaceAgentNames } from "./agent-names.ts";
 import { openChoiceHistory } from "./choice-files.ts";
 import { workspaceGoogleRead } from "./google-read.ts";
 import { startsOnLiveVersion } from "./live-version-runs.ts";
+import { type ServedRoutines, servedRoutines } from "./serve-routines.ts";
 import { servedModelChoice } from "./served-model-choice.ts";
 import { studioPageIsOutdated } from "./studio-page-age.ts";
 import { reportWebhookRefusals } from "./webhook-refusals.ts";
@@ -223,6 +225,7 @@ async function serveVersions(
 
   // The port the server takes, then the one it got: a run's bridge never calls it (HAL-15251).
   let servePort = listen.port;
+  const routines = await servedRoutines(context, setup, dir, typedDir, workspace, versions);
   const engine = await openWorkspaceEngine(context, setup, {
     holder: "serve",
     dir,
@@ -230,15 +233,20 @@ async function serveVersions(
     integrations: first.integrations,
     versions,
     trust: grant,
-    // Each served run is checked as it starts, in `versions`; none is known before.
-    runs: [],
+    // The routines' workflows, as `routines watch` checks them; every served run is also checked
+    // as it starts, in `versions`.
+    runs: routines.runs,
     ending: serveMessages.nothingServed(),
     ownPorts: () => [servePort],
+    routines: (parts) => routines.ticks(parts),
   });
   try {
     // The server takes the engine's own parts, the ones a webhook starts runs with. The webhook
-    // routines are read live from `versions`; none runs on a clock.
-    const server = await listenOnComputer(context, setup, dir, versions, engine, listen);
+    // routines are read live from `versions`; those on a clock run on the engine's tick.
+    const server = await listenOnComputer(context, setup, dir, versions, engine, {
+      ...listen,
+      routines,
+    });
     servePort = server.port;
     try {
       const name = printable(workspaceNameOf(workspace, dir));
@@ -248,8 +256,8 @@ async function serveVersions(
       const studioLine = await studioPageLine(setup);
       if (studioLine !== null) context.printAhead(studioLine);
       // Each webhook routine's address, so a routine that never starts says why (HAL-14299).
-      const routines = await versions.routines.listLoaded();
-      for (const line of await webhookRoutineLines(routines, context.secrets, address)) {
+      const loaded = await versions.routines.listLoaded();
+      for (const line of await webhookRoutineLines(loaded, context.secrets, address)) {
         context.printAhead(line);
       }
       await stopped(engine.signal);
@@ -303,7 +311,7 @@ async function listenOnComputer(
   dir: OpenWorkspaceDir,
   versions: WatchedVersions,
   parts: RoutineEngine,
-  listen: ListenChoice,
+  listen: ListenChoice & { readonly routines: ServedRoutines },
 ): Promise<Listening> {
   const environment = setup.profile ?? nodeProfileEnvironment();
   const root = await realpath(dir.root);
@@ -350,6 +358,7 @@ async function listenOnComputer(
       workspace: () => versions.live(),
     }),
     webhooks: { find: findWebhookRoutine },
+    routineSchedule: listen.routines.schedule,
     workspace: {
       // Both read at every request, from the live version as it is now: a rename shows once
       // it is committed, before a run starts from that commit.
