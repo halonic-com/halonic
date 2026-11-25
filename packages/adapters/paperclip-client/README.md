@@ -85,7 +85,7 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `spendSummary`, `spendByProvider` | `GET /api/companies/{company}/costs/summary?from=`, `/costs/by-provider?from=` | paid money, the budget, and tokens of every billing type |
 | `spendByAgent`, `spendByAgentModel` | `GET /api/companies/{company}/costs/by-agent?from=`, `/costs/by-agent-model?from=` | each agent's spend and tokens by model |
 | `budgetsOverview` | `GET /api/companies/{company}/budgets/overview` | each agent's monthly budget |
-| `seatsSummary` | `GET /api/plugins/halonic.seats/api/seats/summary?companyId=`, with `&from=` for spend | seats by label, windows, the pool's proposal, when a failed read ran; with `from=`, the range's runs with no seat |
+| `seatsSummary` | `GET /api/plugins/halonic.seats/api/seats/summary?companyId=`, with `&from=` for spend | seats by label, windows, the pool's proposal, when a failed read ran; with `from=`, the range's runs with no seat (left out if that read fails; `refresh` doesn't ask for it) |
 | `pullRequestsSummary` | `GET /api/plugins/halonic.agent-tools/api/github/summary?companyId=` | pull requests and the merge queue |
 | `pullRequestDetail` | `GET /api/plugins/halonic.agent-tools/api/github/pr/{number}?repo=&companyId=` | one pull request; `{number}` a positive integer |
 | `getTask` | `GET /api/issues/{task}` | before a task write: the task's ID and company |

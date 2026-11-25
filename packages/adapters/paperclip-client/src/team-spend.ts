@@ -13,7 +13,8 @@ export interface SpendAnswers {
   byProvider: unknown;
   /**
    * `seats/summary?from=`: its `unknownSeatRuns`, the runs with cost rows but
-   * no seat. `undefined` when the seats plugin isn't installed.
+   * no seat. `undefined` when the seats plugin isn't installed, its read
+   * failed, or the read was skipped (a refresh).
    */
   seats: unknown;
 }

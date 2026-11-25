@@ -96,6 +96,25 @@ verifies("paperclip-client.team-status-fields", () => {
       }
     });
 
+    it("keeps the paid money and tokens and leaves unknownSeatRuns out when the seats read fails", async () => {
+      const expected = await connectTeam(serveTeam(new FakePaperclip())).spend("today");
+      for (const status of [500, 400]) {
+        const failing = serveTeam(new FakePaperclip()).on("GET", seatsPath, { status });
+        const team = connectTeam(failing);
+        const spend = await team.spend("today");
+        expect(spend).toEqual(expected);
+        expect(spend.map((summary) => summary.unknownSeatRuns)).toEqual([undefined]);
+        // Only a 404 says the plugin isn't there.
+        expect((await team.parts()).map((part) => part.seats)).toEqual([true]);
+      }
+    });
+
+    it("reads spend without the count on a refresh", async () => {
+      await connectTeam(paperclip).refresh();
+      const seatsReads = paperclip.seen.filter((request) => request.path === seatsPath);
+      expect(seatsReads.map((request) => request.query.has("from"))).toEqual([false]);
+    });
+
     it("carries no fromCache, because the provider reads live", async () => {
       const team = connectTeam(paperclip);
       const spend = await team.spend("today");
