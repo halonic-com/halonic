@@ -48,6 +48,11 @@ verifies("messenger.channel-create", () => {
       });
     });
 
+    it("keeps it off for a blank name", () => {
+      const check = checkNewChannel({ name: "   ", picked: picks(2) }, from, []);
+      expect(check.blocked).toBe("Give the channel a name.");
+    });
+
     it("says the name is taken, ignoring case", () => {
       const check = checkNewChannel({ name: "engineering ", picked: picks(2) }, from, [
         "Engineering",

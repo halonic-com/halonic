@@ -22,14 +22,21 @@ export interface BrowseChannelsProps {
  */
 export function BrowseChannels({ messenger, onClose, onJoined }: BrowseChannelsProps) {
   const [found, setFound] = useState<readonly SourceChannels[]>([]);
+  const [unread, setUnread] = useState(false);
   useEffect(() => {
     messenger.channels.browse().then(setFound, (error: unknown) => {
       console.error("Browse channels couldn't read the channels:", error);
+      setUnread(true);
     });
   }, [messenger]);
   return (
     <Dialog title={words.title} size="md" onCancel={onClose}>
       <div className="flex flex-col gap-4">
+        {unread ? (
+          <p role="alert" className="text-small text-danger">
+            {words.unread(channelAdminWords.noAnswer)}
+          </p>
+        ) : null}
         {found.map(({ source, channels }) => (
           <section key={source.id} className="flex flex-col gap-2">
             <p className="text-small text-fg-muted">{words.subtitle(source.label)}</p>

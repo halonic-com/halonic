@@ -26,6 +26,22 @@ function acme(options: { withMessage?: boolean; members?: number } = {}) {
   return { messaging, source, chief, liam, elena, writer, channel };
 }
 
+/** Types `text` in the New channel dialog's name field. */
+async function typeName(dialog: HTMLDialogElement, text: string): Promise<void> {
+  const name = dialog.querySelector<HTMLInputElement>("input:not([type=checkbox])");
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(name, text);
+    name?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
+/** The New channel dialog's checkbox for `label`. */
+function box(label: string): HTMLInputElement | undefined {
+  return [...document.querySelectorAll<HTMLInputElement>("dialog input[type=checkbox]")].find(
+    (each) => each.closest("label")?.textContent?.includes(label),
+  );
+}
+
 async function check(label: string): Promise<void> {
   const box = [...document.querySelectorAll<HTMLInputElement>("dialog input[type=checkbox]")].find(
     (each) => each.closest("label")?.textContent?.includes(label),
@@ -62,6 +78,7 @@ verifies("messenger.channel-create", () => {
       for (let index = 1; index <= 9; index += 1)
         messaging.addAgent(source.id, { name: `Agent ${index}` });
       const dialog = await openNewChannel(await openMessenger(messaging));
+      await typeName(dialog, "Everyone");
       for (let index = 1; index <= 9; index += 1) await check(`Agent ${index}`);
       expect(dialog.textContent).toContain("A channel can have up to 8 agents. · 8 of 8 picked");
       const boxes = [...dialog.querySelectorAll<HTMLInputElement>("input[type=checkbox]")];
@@ -70,18 +87,45 @@ verifies("messenger.channel-create", () => {
       expect(button("Create channel", dialog)?.getAttribute("aria-disabled")).toBeNull();
     });
 
+    it("lets the person pick a second source's agents, then closes the first source's", async () => {
+      const { messaging } = acme();
+      const globex = messaging.addSource({ label: "Paperclip · Globex" });
+      messaging.addAgent(globex.id, { name: "Ada" });
+      messaging.addAgent(globex.id, { name: "Grace" });
+      const start = vi.spyOn(messaging, "startChannel");
+      const dialog = await openNewChannel(await openMessenger(messaging));
+      expect(box("Ada")?.getAttribute("aria-disabled")).toBeNull();
+      expect(box("Chief")?.getAttribute("aria-disabled")).toBeNull();
+      expect(dialog.textContent).not.toContain("only. A channel stays in one place.");
+
+      await check("Ada");
+      await check("Grace");
+      expect(box("Chief")?.getAttribute("aria-disabled")).toBe("true");
+      expect(dialog.textContent).toContain(
+        "Agents from Paperclip · Globex only. A channel stays in one place.",
+      );
+      await typeName(dialog, "Research");
+      await press(button("Create channel", dialog));
+      expect(start).toHaveBeenCalledOnce();
+    });
+
+    it("keeps Create channel off for a blank name, and says why", async () => {
+      const { messaging } = acme();
+      const dialog = await openNewChannel(await openMessenger(messaging));
+      await typeName(dialog, "   ");
+      await check("Liam");
+      await check("Writer");
+      expect(button("Create channel", dialog)?.getAttribute("aria-disabled")).toBe("true");
+      expect(dialog.querySelector("[data-create-reason]")?.textContent).toBe(
+        "Give the channel a name.",
+      );
+    });
+
     it("makes the channel and opens it", async () => {
       const { messaging } = acme();
       const page = await openMessenger(messaging);
       const dialog = await openNewChannel(page);
-      const name = dialog.querySelector<HTMLInputElement>("input:not([type=checkbox])");
-      await act(async () => {
-        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(
-          name,
-          "Design",
-        );
-        name?.dispatchEvent(new Event("input", { bubbles: true }));
-      });
+      await typeName(dialog, "Design");
       await check("Liam");
       await check("Writer");
       await press(button("Create channel", dialog));
@@ -109,6 +153,16 @@ verifies("messenger.channel-create", () => {
       expect(openDialog()).toBeNull();
       expect(byText(page, "nav li button", "Design")).toBeDefined();
       expect(page.querySelector("main h2")?.textContent).toBe("Design");
+    });
+
+    it("says so when the channels can't be read, instead of an empty list", async () => {
+      const { messaging } = acme();
+      vi.spyOn(messaging, "browseChannels").mockRejectedValue(new Error("no line"));
+      vi.spyOn(console, "error").mockImplementation(() => undefined);
+      await press(button("Browse channels", await openMessenger(messaging)));
+      expect(openDialog()?.querySelector("[role=alert]")?.textContent).toBe(
+        "Couldn't read the channels: the source didn't answer.",
+      );
     });
   });
 });

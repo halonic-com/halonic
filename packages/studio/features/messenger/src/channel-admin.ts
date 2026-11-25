@@ -41,7 +41,7 @@ export interface NewChannelCheck {
 
 /**
  * Whether a channel can be made from `form` in `from` (flow G): its source online, 2 to 8 agents
- * picked, and a name no other channel of the source has, ignoring case. `taken` holds the names of
+ * picked, and a name that isn't blank and that no other channel of the source has, ignoring case. `taken` holds the names of
  * the source's channels, the person's and the others.
  */
 export function checkNewChannel(
@@ -54,7 +54,8 @@ export function checkNewChannel(
   const name = form.name.trim();
   const clash = taken.some((each) => each.toLowerCase() === name.toLowerCase());
   const nameTaken = name !== "" && clash ? words.nameTaken(name) : undefined;
-  const blocked = blockedBy(form, from) ?? nameTaken;
+  const nameNeeded = name === "" ? words.nameNeeded : undefined;
+  const blocked = blockedBy(form, from) ?? nameNeeded ?? nameTaken;
   return {
     full,
     ...(blocked === undefined ? {} : { blocked }),
