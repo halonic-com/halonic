@@ -130,6 +130,8 @@ verifies("kit.chat-ui", () => {
     expect(document.activeElement).toBe(row21);
     expect(row21?.textContent).toBe("Order 2020");
     expect(row21?.getAttribute("tabindex")).toBe("-1");
+    // The kit's inset ring, not the browser's outline: an outer ring clips in the scrolling chat.
+    expect(row21?.classList.contains("focus-ring-inset")).toBe(true);
   });
 
   it("draws the agent's buttons small, outlined and grey, never like the approval button", () => {

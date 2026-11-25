@@ -136,6 +136,7 @@ verifies("google-setup.personal-testing-step", () => {
     await settled();
     expect(document.activeElement?.tagName).toBe("LI");
     expect(document.activeElement?.textContent).toMatch(/^On "Branding", fill in/);
+    expect(document.activeElement?.classList.contains("focus-ring")).toBe(true);
 
     const stay = button(container, "Stay in Testing instead");
     stay.focus();
@@ -143,6 +144,7 @@ verifies("google-setup.personal-testing-step", () => {
     await act(async () => fake.change([testing]));
     await settled();
     expect(document.activeElement?.textContent).toMatch(/^On "Audience", under "Test users"/);
+    expect(document.activeElement?.classList.contains("focus-ring")).toBe(true);
   });
 
   it("leaves focus to the failure, not a part, when the publishing choice isn't saved", async () => {

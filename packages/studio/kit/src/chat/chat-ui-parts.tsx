@@ -136,7 +136,7 @@ function AgentTable({ part }: { readonly part: OpenUiComponent }) {
                 key={row}
                 ref={row === CHAT_UI_ROWS_SHOWN ? firstNewRow : undefined}
                 tabIndex={row === CHAT_UI_ROWS_SHOWN ? -1 : undefined}
-                className="border-t border-border"
+                className="border-t border-border focus-ring-inset"
               >
                 {columns.map((_, index) => (
                   <td key={index} className={`px-3 py-1.5 align-top ${align[index]}`}>
