@@ -104,6 +104,10 @@ tauri-plugin-notification = "=2.8.1"
 # Tauri's official plugin, pinned with tauri: 2.5.5 needs tauri ^2.12. Rust
 # only: it has no commands, so no page can call it.
 tauri-plugin-single-instance = "=2.5.5"
+# "Start Halonic when I log in" (B1 step 6, HAL-14221): our own crate,
+# not tauri-plugin-autostart, so the entry is per-user only and its path is
+# quoted (crates/login-item/README.md). Desktop only.
+halonic-login-item = { path = "crates/login-item" }
 # The updater's own reqwest, named only so src/updates_proxy.rs can give its
 # client a proxy and a redirect policy; the bucket check for a Scoop install
 # uses the same client type on the same rules. Pinned to the version the updater
