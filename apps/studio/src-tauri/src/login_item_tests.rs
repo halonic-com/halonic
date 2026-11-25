@@ -13,7 +13,9 @@ fn item_in(name: &str) -> (PathBuf, LoginItem) {
         std::process::id()
     ));
     let _ = std::fs::remove_dir_all(&folder);
-    let executable = std::env::temp_dir().join("Acme").join("Halonic");
+    // A macOS or Linux path on every computer: a `.desktop` entry refuses any
+    // other path. It is only written into the entry, never run.
+    let executable = PathBuf::from("/opt/Acme/Halonic");
     let item = LoginItem::at(executable, Place::File(folder.join("halonic.desktop")));
     (folder, item)
 }

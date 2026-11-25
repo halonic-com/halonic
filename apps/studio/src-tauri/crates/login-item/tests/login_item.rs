@@ -13,12 +13,15 @@ fn fresh_folder(name: &str) -> PathBuf {
     folder
 }
 
+/// A macOS or Linux path on every computer: a `.desktop` file or a plist only
+/// exists there, and its entry refuses any other path.
 fn executable() -> PathBuf {
-    if cfg!(windows) {
-        PathBuf::from(r"C:\Programs\Acme Halonic\Halonic.exe") // leak-guard: allow absolute-path made-up install paths under test
-    } else {
-        PathBuf::from("/opt/Acme Halonic/halonic")
-    }
+    PathBuf::from("/opt/Acme Halonic/halonic")
+}
+
+#[cfg(windows)]
+fn windows_executable() -> PathBuf {
+    PathBuf::from(r"C:\Programs\Acme Halonic\Halonic.exe") // leak-guard: allow absolute-path made-up install paths under test
 }
 
 #[test]
@@ -64,7 +67,7 @@ fn login_item_writes_a_launch_agent_for_a_plist_place() {
 #[test]
 fn login_item_writes_a_quoted_run_value_for_this_user_only() {
     let name = format!("Halonic test {}", std::process::id());
-    let item = LoginItem::at(executable(), Place::RunValue(name));
+    let item = LoginItem::at(windows_executable(), Place::RunValue(name));
     assert_eq!(item.is_on(), Ok(false));
     item.turn_on(true).expect("turned on");
     assert_eq!(item.is_on(), Ok(true));
