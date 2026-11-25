@@ -1,6 +1,11 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { answerFitsItem, type InboxItem, type InboxQuestionAnswer } from "./index.ts";
+import {
+  answerFitsItem,
+  type InboxItem,
+  type InboxQuestionAnswer,
+  inboxItemFits,
+} from "./index.ts";
 
 const plain: InboxItem = {
   id: "acme:item:1",
@@ -108,5 +113,37 @@ verifies("ports.agent-messaging-questions", () => {
     const declined = { kind: "action-result", outcome: "declined", steps: [] } as const;
     expect(answerFitsItem(both, declined)).toBe(true);
     expect(answerFitsItem(both, answers({ question: "repo", options: ["mono"] }))).toBe(false);
+  });
+
+  it("takes a whole-item option next to the questions, with the note it needs", () => {
+    const rejectable: InboxItem = {
+      ...asking,
+      options: [{ id: "reject", label: "Reject", noteRequired: true }],
+    };
+    const reject = { kind: "option", option: "reject" } as const;
+
+    expect(answerFitsItem(rejectable, { ...reject, note: "Not this week" })).toBe(true);
+    expect(answerFitsItem(rejectable, reject)).toBe(false);
+    expect(answerFitsItem(rejectable, { ...reject, note: "  " })).toBe(false);
+    expect(answerFitsItem(rejectable, { kind: "option", option: "separate" })).toBe(false);
+    expect(answerFitsItem(rejectable, answers({ question: "repo", options: ["mono"] }))).toBe(true);
+  });
+
+  it("holds an item whose preselected options are ones its question offers", () => {
+    const [repo, phase] = asking.questions ?? [];
+    if (repo === undefined || phase === undefined)
+      throw new Error("the fixture asks two questions");
+    const withPicks = (repoPicks: string[], phasePicks: string[]): InboxItem => ({
+      ...asking,
+      questions: [
+        { ...repo, preselected: repoPicks },
+        { ...phase, preselected: phasePicks },
+      ],
+    });
+
+    expect(inboxItemFits(withPicks(["mono"], ["tests", "docs"]))).toBe(true);
+    expect(inboxItemFits(withPicks(["mono", "separate"], []))).toBe(false);
+    expect(inboxItemFits(withPicks([], ["elsewhere"]))).toBe(false);
+    expect(inboxItemFits(withPicks([], ["docs", "docs"]))).toBe(false);
   });
 });

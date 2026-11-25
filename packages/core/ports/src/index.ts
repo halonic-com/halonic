@@ -29,6 +29,7 @@ export {
   type Conversation,
   type FullAnswer,
   type InboxAnswer,
+  type InboxAnswerElsewhere,
   type InboxItem,
   type InboxItemOption,
   type InboxItemState,
@@ -70,8 +71,10 @@ export {
   type InboxQuestion,
   type InboxQuestionAnswer,
   type InboxQuestionsAnswer,
+  inboxItemFits,
   inboxQuestionOptionsMax,
   inboxQuestionsMax,
+  optionAnswerFits,
   questionsAnswerFits,
 } from "./agent-messaging-questions.ts";
 export {
