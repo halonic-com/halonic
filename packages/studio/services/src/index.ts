@@ -1,4 +1,15 @@
 export {
+  type ActionPageResult,
+  type ActionStepResult,
+  type ActionSteps,
+  type ActionStepsOptions,
+  createActionSteps,
+  type DesktopOnly,
+  desktopOnlyActionSteps,
+  type RequestClosed,
+  type StepSender,
+} from "./action-steps.ts";
+export {
   type AgentConnection,
   type AgentConnections,
   AgentConnectionsService,
@@ -60,6 +71,7 @@ export {
   QuietHoursNotifier,
   type QuietHoursOptions,
 } from "./quiet-hours.ts";
+export { actionStepsKey, provideActionSteps } from "./shell-actions.ts";
 export { hostSettingsStoreKey, provideShellHostSettings } from "./shell-host-settings.ts";
 export { ShellHttpClient, shellHttpClient } from "./shell-http-client.ts";
 export { ShellNotifier } from "./shell-notifications.ts";
