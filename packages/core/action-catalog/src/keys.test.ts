@@ -4,17 +4,21 @@ import { shippedKeys } from "./keys.ts";
 describe("shippedKeys", () => {
   it("lists every definition file under src/<service>/", () => {
     expect(shippedKeys).toEqual([
+      "cloudflare/enable-email-routing",
       "device/check-android-build",
       "device/check-phone-pairing",
       "device/check-windows-build",
       "github/upload-social-preview",
       "google/configure-oauth-consent",
       "google/create-cloud-project",
+      "google/create-test-account",
       "npm/claim-placeholder",
       "npm/renew-trusted-publisher",
       "npm/set-trusted-publisher",
+      "openrouter/add-credit",
       "play/fill-data-safety",
       "play/set-up-closed-test",
+      "registrar/set-nameservers",
     ]);
   });
 });
