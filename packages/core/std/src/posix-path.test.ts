@@ -93,3 +93,56 @@ verifies("std.posix-path-parts", () => {
     }
   });
 });
+
+verifies("std.posix-path-relative", () => {
+  it.each([
+    ["/workspace/hubs", "/workspace/hubs/support/agents"],
+    ["/workspace/hubs", "/workspace/skills"],
+    ["/a/b", "/a/bc"],
+    ["/a/bc", "/a/b"],
+    ["/a/b", "/a/b"],
+    ["/a/b/", "/a/b"],
+    ["//a//b", "/a/b/c/"],
+    ["/a/./b/../c", "/a/c/d"],
+    ["/", "/"],
+    ["/", "/a/b"],
+    ["/a/b", "/"],
+    ["/..", "/a"],
+  ])("gives the way from %j to %j as node:path.posix does", (from, to) => {
+    expect(posixPath.relative(from, to)).toBe(posix.relative(from, to));
+  });
+
+  it("never puts a path that only shares a prefix inside the other", () => {
+    expect(posixPath.relative("/a/b", "/a/bc")).toBe("../bc");
+  });
+
+  it.each([
+    ["hubs", "/workspace"],
+    ["/workspace", "hubs"],
+    ["", "/workspace"],
+    ["./a", "/a"],
+  ])("refuses a relative path rather than resolve it against a cwd (%j, %j)", (from, to) => {
+    expect(() => posixPath.relative(from, to)).toThrow(/only absolute paths/);
+  });
+
+  it("matches node:path.posix.relative on generated absolute paths", () => {
+    const paths = generatedPaths(41, 3000).map((path) => `/${path}`);
+    for (let index = 0; index + 1 < paths.length; index += 2) {
+      const [from = "/", to = "/"] = paths.slice(index, index + 2);
+      expect(posixPath.relative(from, to), JSON.stringify([from, to])).toBe(
+        posix.relative(from, to),
+      );
+    }
+  });
+
+  it.each(["/", "/a", "//a", "a", "", ".", "./a", "../a", "a/b/"])(
+    "tells whether %j is absolute as node:path.posix does",
+    (path) => {
+      expect(posixPath.isAbsolute(path)).toBe(posix.isAbsolute(path));
+    },
+  );
+
+  it("uses / as its separator", () => {
+    expect(posixPath.sep).toBe(posix.sep);
+  });
+});
