@@ -139,6 +139,7 @@ export {
   skillScriptsRefusal,
   touchesSkillScripts,
 } from "./kinds/skill/scripts-folder.ts";
+export { MAX_TEMPLATE_CHARS, Template } from "./kinds/template/schema.ts";
 export {
   type ActionKey,
   type ToolActionInfo,

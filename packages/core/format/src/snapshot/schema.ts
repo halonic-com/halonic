@@ -3,7 +3,8 @@
 // The builder writes it into the plugin, and the plugin's loader reads it
 // again before using it. It is plain data with nothing engine- or
 // Paperclip-specific in it, so the server engine can serve the same file.
-// Signals, templates and routing join it later, each as a new optional list.
+// Templates are the first optional list (HAL-18141); signals and routing
+// join it later the same way, so a snapshot without them stays as it was.
 import {
   type Infer,
   JSON_SCHEMA_DRAFT,
@@ -12,6 +13,7 @@ import {
   toJsonSchema,
 } from "@halonicjs/schema-kit";
 import { SPEC_ID_BASE } from "../json-schema.ts";
+import { Template } from "../kinds/template/schema.ts";
 import { Tool } from "../kinds/tool/schema.ts";
 import { label } from "../shared/shown-text.ts";
 
@@ -20,6 +22,9 @@ export const SNAPSHOT_FORMAT = 1 as const;
 
 /** The most tools one snapshot holds. */
 export const MAX_SNAPSHOT_TOOLS = 200;
+
+/** The most templates one snapshot holds. */
+export const MAX_SNAPSHOT_TEMPLATES = 100;
 
 /** The most bytes a snapshot's text may have; a larger one is refused before it is parsed. */
 export const MAX_SNAPSHOT_BYTES = 4 * 1024 * 1024;
@@ -37,6 +42,8 @@ export const WorkspaceSnapshot = s
     workspace: s.object({ name: label, commit }).strict(),
     /** The tools, sorted by name, each name once. */
     tools: s.array(Tool).max(MAX_SNAPSHOT_TOOLS),
+    /** The templates agents can read, sorted by id, each id once. Left out when there are none. */
+    templates: s.array(Template.strict()).max(MAX_SNAPSHOT_TEMPLATES).optional(),
   })
   .strict();
 
@@ -45,8 +52,8 @@ export type WorkspaceSnapshot = Infer<typeof WorkspaceSnapshot>;
 
 /**
  * The snapshot's JSON Schema (2020-12), for other engines and for anyone
- * who checks a snapshot without Halonic. Checks over several tools (names
- * used twice, the order) can't be expressed and are left out.
+ * who checks a snapshot without Halonic. Checks over several tools or
+ * templates (names or ids used twice, the order) can't be expressed and are left out.
  *
  * @example
  * snapshotJsonSchema()["$id"]; // "https://halonic.com/spec/format/workspace-snapshot/v1.schema.json"

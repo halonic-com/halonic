@@ -108,6 +108,7 @@ export {
   workflowUses,
 } from "./run-problems.ts";
 export { skillFileOf } from "./skill-file.ts";
+export { snapshotInputOf } from "./snapshot-input.ts";
 export { type AgentTrustContent, agentsTrustContent } from "./trust-agents.ts";
 export {
   type ChangedAgent,

@@ -73,6 +73,7 @@ export const itemWords = {
     routine: "Routine",
     skill: "Skill",
     tool: "Tool",
+    template: "Template",
     hub: "Hub",
     provider: "Provider",
     runtime: "Runtime",

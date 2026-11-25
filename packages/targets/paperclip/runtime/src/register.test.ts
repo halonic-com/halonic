@@ -150,8 +150,14 @@ verifies("runtime.tools", () => {
         "github.pull-request",
         "github.open-pull-requests",
         "paperclip.task",
+        "paperclip.template",
       ]);
       expect(actions[0]).toMatchObject({ name: "github.pull-request", keys: ["github-read"] });
+      expect(actions.find((action) => action.name === "paperclip.template")).toMatchObject({
+        writes: false,
+        keys: [],
+        capabilities: [],
+      });
       const withHandler = pluginActions({
         "paperclip.failed-runs": { capabilities: ["issues.read"], run: async () => ({}) },
       });

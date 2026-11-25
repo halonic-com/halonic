@@ -65,9 +65,9 @@ const differing = new Set(
 );
 const compared = files.filter((file) => !differing.has(file.caseId));
 
-// The old app had no integration sheet, no plugin manifest and no workspace
-// tool, so there is nothing to compare them with.
-type ComparedKind = Exclude<KindName, "skill" | "integration" | "plugin" | "tool">;
+// The old app had no integration sheet, no plugin manifest and no workspace tools or
+// templates, so there is nothing to compare them with.
+type ComparedKind = Exclude<KindName, "skill" | "integration" | "plugin" | "tool" | "template">;
 
 /** The data a file's kind schema gets: its YAML with old keys upgraded and the id from its place. */
 function dataOf(file: FileCase, kind: ComparedKind): unknown {

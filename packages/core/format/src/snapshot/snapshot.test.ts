@@ -102,6 +102,35 @@ verifies("format.workspace-snapshot", () => {
     ]);
   });
 
+  it("lists templates sorted by id, and leaves the list out when there are none", () => {
+    const templates = [
+      { id: "pr-body", body: "## Summary" },
+      { id: "card", title: "Card", body: "Question" },
+    ];
+    const made = makeSnapshot({ name: "Acme", commit, tools: [], templates });
+    expect(made.ok && made.value.templates?.map((template) => template.id)).toEqual([
+      "card",
+      "pr-body",
+    ]);
+    const none = makeSnapshot({ name: "Acme", commit, tools: [], templates: [] });
+    expect(none.ok && "templates" in none.value).toBe(false);
+  });
+
+  it("refuses a template id used twice, templates out of order and a key in a template", () => {
+    const card = { id: "card", body: "Question" };
+    expect(problemsOf(snapshotData([], { templates: [card, card] }))).toEqual([
+      "templates.1.id template-id-twice",
+    ]);
+    const prBody = { id: "pr-body", body: "## Summary" };
+    expect(problemsOf(snapshotData([], { templates: [prBody, card] }))).toEqual([
+      "templates.1 templates-not-sorted",
+    ]);
+    const leaky = { id: "card", body: `Use sk-ant-api03-${"Q7x2Lm9K".repeat(4)}.` };
+    expect(problemsOf(snapshotData([], { templates: [leaky] }))).toEqual([
+      "templates.0.body value-looks-like-key",
+    ]);
+  });
+
   it("refuses more than 200 tools", () => {
     const tools = Array.from({ length: 201 }, (_, index) =>
       tool(`t${String(index).padStart(3, "0")}`),

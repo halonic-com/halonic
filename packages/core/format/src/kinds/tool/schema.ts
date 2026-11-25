@@ -106,6 +106,7 @@ export const ToolActionChoice = s.discriminatedUnion("run", [
   actionChoice("github.merge-times"),
   actionChoice("paperclip.task"),
   actionChoice("paperclip.failed-runs"),
+  actionChoice("paperclip.template"),
 ]);
 
 /** A workspace tool, as `library/tools/<id>.tool.yaml` holds it. */

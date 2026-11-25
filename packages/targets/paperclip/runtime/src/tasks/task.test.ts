@@ -74,6 +74,7 @@ function run(params: unknown, paperclip: Pick<RuntimeHost, "agents" | "issues">)
   const call: ActionCall = {
     tool: acmeTool("task_get", { action: { run: "paperclip.task", with: {} } }),
     params,
+    templates: [],
     caller: { agentId: "agent-tomas", urlKey: "tomas" },
     companyId: "acme",
     paperclip,

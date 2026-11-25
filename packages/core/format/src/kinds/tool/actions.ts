@@ -13,6 +13,8 @@ import { s } from "@halonicjs/schema-kit";
  *
  * - `github-read`: a GitHub token that can read the listed repositories.
  * - `paperclip-api`: the plugin's own Paperclip API access.
+ *
+ * An action that only reads the snapshot, such as `paperclip.template`, needs none.
  */
 export type ActionKey = "github-read" | "paperclip-api";
 
@@ -83,6 +85,13 @@ export const TOOL_ACTIONS = {
       .object({ hours: s.number().int().min(1).max(168).default(24) })
       .strict()
       .prefault({}),
+  },
+  "paperclip.template": {
+    about:
+      "Reads one of the workspace's templates by its id, or lists them all when no id is given.",
+    writes: false,
+    keys: [],
+    settings: s.object({}).strict().prefault({}),
   },
 } as const;
 
