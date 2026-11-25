@@ -71,7 +71,7 @@ verifies("check.ci-pr-turbo-cache", () => {
     });
 
     test("a pull request first restores the entry of the main it was merged with", () => {
-      expect(build).toContain("run: echo \"sha=$(git rev-parse HEAD^1)\" >> \"$GITHUB_OUTPUT\"");
+      expect(build).toContain('run: echo "sha=$(git rev-parse HEAD^1)" >> "$GITHUB_OUTPUT"');
       expect(build).toContain(
         "if: steps.turbo-dir.outputs.disk != 'true' && github.event_name == 'pull_request'",
       );

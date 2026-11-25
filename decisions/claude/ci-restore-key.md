@@ -2,7 +2,6 @@
 
 - Approval: Liam (workflow), for HAL-18424
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:bSdYpqqC6S6qK81c9IPNb9HDkEBxfQUMIxh0YSnBcQuSsXv1+mkWcC+TnKfrUn1bfnwsDYo/SoGyT33lYqY7Dg==
 
 ## What changes
 
@@ -33,3 +32,4 @@ extra step runs `git rev-parse` on the checked-out merge ref (fetched with depth
 ## Covers
 
 - .github/
+- tooling/check/
