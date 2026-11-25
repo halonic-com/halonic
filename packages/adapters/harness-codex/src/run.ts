@@ -1,12 +1,12 @@
-import { join } from "node:path";
 import {
   codingToolsCommand,
   exitWithin,
+  type HostPaths,
   type OwnSandboxCheck,
   outputTail,
-  resetSettingsFolder,
+  resetSettingsFolderWith,
   type SettingsFolderWriter,
-} from "@halonicjs/adapter-harness-kit";
+} from "@halonicjs/adapter-harness-kit/web";
 import type {
   HarnessBridge,
   HarnessEvent,
@@ -49,6 +49,8 @@ export interface CodexRunOptions {
   clientInfo: ClientInfo;
   /** Whether Codex's own sandbox works here; asked only for a run Halonic's fence isn't proven around. */
   ownSandbox: OwnSandboxCheck;
+  /** The path rules of the machine Codex runs on, for the files the run names and looks for. */
+  paths: HostPaths;
 }
 
 /** Codex, once it has started its thread and the task's turn. */
@@ -88,6 +90,7 @@ export class CodexRun implements HarnessRun {
   /** Settles with the running program once the session has started it, or `undefined` when it never did. */
   readonly #launched: Promise<SandboxProcess | undefined>;
   readonly #started: Promise<Started>;
+  readonly #paths: HostPaths;
   /** Talks to Codex; set once it has started. */
   #client: AppServerClient | undefined;
   /** Reads the task's thread; set once `thread/start` has answered. */
@@ -105,6 +108,7 @@ export class CodexRun implements HarnessRun {
   ) {
     this.#task = task;
     this.#bridgeToken = bridge.token;
+    this.#paths = options.paths;
     this.#scrubber.remember(bridge.token);
     const launch = this.#launch(session, bridge, options);
     this.#launched = launch.then(
@@ -138,9 +142,10 @@ export class CodexRun implements HarnessRun {
     if (folder === null) {
       throw new Error("Codex needs a settings folder, and the sandbox profile has none.");
     }
-    await refuseProjectConfig(session.profile.workingFolder, settings);
+    await refuseProjectConfig(session.profile.workingFolder, settings, this.#paths);
     const files = { [codexConfigFile]: codexConfigText() };
-    await resetSettingsFolder(folder, { files, signIn: codexSignInFiles }, settings);
+    const contents = { files, signIn: codexSignInFiles };
+    await resetSettingsFolderWith(this.#paths, folder, contents, settings);
     // Wherever the fence isn't proven, Codex's own sandbox is the one around the commands it starts.
     const own = session.fence.state !== "fenced" && (await ownSandbox());
     if (this.#cancelled) throw cancelledError();
@@ -178,7 +183,9 @@ export class CodexRun implements HarnessRun {
     const skills = this.#task.instructionsFolder;
     // Codex reads each folder of `<id>/SKILL.md` in an extra root as a skill.
     if (skills !== undefined) {
-      await client.request("skills/extraRoots/set", { extraRoots: [join(skills, "skills")] });
+      await client.request("skills/extraRoots/set", {
+        extraRoots: [this.#paths.join(skills, "skills")],
+      });
     }
     const thread = await client.request("thread/start", this.#threadParams(workingFolder, askMode));
     const threadId = idOf(thread, "thread");

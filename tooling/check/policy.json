@@ -54,10 +54,15 @@
       "./web"
     ],
     "@halonicjs/adapter-harness-claude-code": [
-      "./environment"
+      "./environment",
+      "./web"
     ],
     "@halonicjs/adapter-harness-codex": [
-      "./environment"
+      "./environment",
+      "./web"
+    ],
+    "@halonicjs/adapter-harness-kit": [
+      "./web"
     ],
     "@halonicjs/adapter-integration-kit": [
       "./integration"

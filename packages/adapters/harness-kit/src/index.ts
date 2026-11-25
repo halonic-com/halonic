@@ -58,13 +58,8 @@ export {
   RunInstructions,
   type RunInstructionsOptions,
 } from "./run-instructions.ts";
-export {
-  diskSettingsFolder,
-  resetSettingsFolder,
-  type SettingsFolderContents,
-  type SettingsFolderWriter,
-  writeSettingsFiles,
-} from "./settings-folder.ts";
+export type { SettingsFolderContents, SettingsFolderWriter } from "./settings-files.ts";
+export { diskSettingsFolder, resetSettingsFolder, writeSettingsFiles } from "./settings-folder.ts";
 export {
   isInsideOrSame,
   type ProfileDisk,

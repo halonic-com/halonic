@@ -1,4 +1,4 @@
-import { join } from "node:path";
+import type { HostPaths } from "@halonicjs/adapter-harness-kit/web";
 import type { HarnessTask, SandboxCommand } from "@halonicjs/ports";
 import { claudeProgram } from "./detect.ts";
 import { mcpSettingsFile, permissionPromptTool, unfencedSettingsFile } from "./settings.ts";
@@ -67,7 +67,11 @@ export function hasInstructions(task: HarnessTask): boolean {
  * a whole command line at 32,767 characters, which a long agent file would
  * pass. The prompt goes on standard input, the instructions in a file.
  */
-export function claudeCodeCommand(task: HarnessTask, files: ClaudeCodeFiles): SandboxCommand {
+export function claudeCodeCommand(
+  task: HarnessTask,
+  files: ClaudeCodeFiles,
+  paths: Pick<HostPaths, "join">,
+): SandboxCommand {
   const args = [
     "-p",
     "--input-format",
@@ -76,7 +80,7 @@ export function claudeCodeCommand(task: HarnessTask, files: ClaudeCodeFiles): Sa
     "stream-json",
     "--verbose",
     "--mcp-config",
-    join(files.settingsFolder, mcpSettingsFile),
+    paths.join(files.settingsFolder, mcpSettingsFile),
     ...(files.codingToolsFile === null ? [] : [files.codingToolsFile]),
     "--strict-mcp-config",
     "--setting-sources",
@@ -84,7 +88,9 @@ export function claudeCodeCommand(task: HarnessTask, files: ClaudeCodeFiles): Sa
     "--permission-mode",
     "default",
   ];
-  if (files.ownSandbox) args.push("--settings", join(files.settingsFolder, unfencedSettingsFile));
+  if (files.ownSandbox) {
+    args.push("--settings", paths.join(files.settingsFolder, unfencedSettingsFile));
+  }
   args.push("--permission-prompt-tool", permissionPromptTool);
   if (task.model !== undefined) args.push("--model", task.model);
   if (files.instructionsFile !== null)

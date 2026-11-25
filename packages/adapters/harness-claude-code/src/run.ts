@@ -1,13 +1,13 @@
-import { join } from "node:path";
 import {
   codingToolsCommand,
   exitGraceMs,
   exitWithin,
+  type HostPaths,
   type OwnSandboxCheck,
   outputTail,
   type SettingsFolderWriter,
   stopUnlessExited,
-} from "@halonicjs/adapter-harness-kit";
+} from "@halonicjs/adapter-harness-kit/web";
 import type {
   HarnessBridge,
   HarnessEvent,
@@ -43,6 +43,8 @@ export interface ClaudeCodeRunOptions {
   settings: SettingsFolderWriter;
   /** Whether Claude Code's own sandbox works here; asked only for a run Halonic's fence isn't proven around. */
   ownSandbox: OwnSandboxCheck;
+  /** The path rules of the machine Claude Code runs on, for the files the run names to it. */
+  paths: HostPaths;
 }
 
 /** The running program, with what the run needs to talk to it. */
@@ -77,6 +79,7 @@ export class ClaudeCodeRun implements HarnessRun {
   /** Removes the bridge token from every error the run ends with. */
   readonly #scrubber = new SecretScrubber();
   readonly #started: Promise<Started>;
+  readonly #paths: HostPaths;
   #iterated = false;
   #ended = false;
   #cancelled = false;
@@ -89,6 +92,7 @@ export class ClaudeCodeRun implements HarnessRun {
   ) {
     this.#task = task;
     this.#bridgeToken = bridge.token;
+    this.#paths = options.paths;
     this.#scrubber.remember(bridge.token);
     this.#started = this.#start(session, options);
     // A program that can't start is reported by the stream, not here.
@@ -103,20 +107,24 @@ export class ClaudeCodeRun implements HarnessRun {
     if (folder === null) {
       throw new Error("Claude Code needs a settings folder, and the sandbox profile has none.");
     }
-    await writeClaudeCodeSettings(folder, settings);
+    await writeClaudeCodeSettings(folder, settings, this.#paths);
     const instructionsFile = await this.#writeInstructions(session.profile.tempFolder, settings);
     const codingToolsFile = await this.#writeCodingTools(session, settings);
     // Wherever the fence isn't proven, Claude Code's own sandbox is the one around its shell commands.
     const own = session.fence.state !== "fenced" && (await ownSandbox());
     if (this.#cancelled) throw cancelledError();
     const process = await session.start(
-      claudeCodeCommand(this.#task, {
-        settingsFolder: folder,
-        instructionsFile,
-        skillsFolder: this.#task.instructionsFolder ?? null,
-        ownSandbox: own,
-        codingToolsFile,
-      }),
+      claudeCodeCommand(
+        this.#task,
+        {
+          settingsFolder: folder,
+          instructionsFile,
+          skillsFolder: this.#task.instructionsFolder ?? null,
+          ownSandbox: own,
+          codingToolsFile,
+        },
+        this.#paths,
+      ),
     );
     const input = process.stdin.getWriter();
     const errorTail = outputTail(process.stderr, keptErrorCharacters).catch(() => "");
@@ -138,7 +146,7 @@ export class ClaudeCodeRun implements HarnessRun {
     writer: SettingsFolderWriter,
   ): Promise<string | null> {
     if (!hasInstructions(this.#task)) return null;
-    const path = join(tempFolder, instructionsFileName);
+    const path = this.#paths.join(tempFolder, instructionsFileName);
     await writer.write(path, this.#task.instructions);
     return path;
   }
@@ -154,7 +162,7 @@ export class ClaudeCodeRun implements HarnessRun {
   ): Promise<string | null> {
     const command = codingToolsCommand(this.#task, session, "all");
     if (command === null) return null;
-    const path = join(session.profile.tempFolder, codingToolsSettingsFile);
+    const path = this.#paths.join(session.profile.tempFolder, codingToolsSettingsFile);
     await writer.write(path, codingToolsSettings(command));
     return path;
   }

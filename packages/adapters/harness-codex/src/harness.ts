@@ -1,3 +1,4 @@
+import thisComputer from "node:path";
 import {
   diskSettingsFolder,
   type OwnSandboxCheck,
@@ -5,10 +6,7 @@ import {
   type SettingsFolderWriter,
 } from "@halonicjs/adapter-harness-kit";
 import type { Harness, ProgramProbe } from "@halonicjs/ports";
-import { detectCodex } from "./detect.ts";
-import { codexEnvironment } from "./environment.ts";
-import { CodexRun } from "./run.ts";
-import { codexSignIn } from "./sign-in-command.ts";
+import { codexWebHarness } from "./web-harness.ts";
 
 /** What the Codex harness is made with. */
 export interface CodexHarnessOptions {
@@ -25,7 +23,8 @@ export interface CodexHarnessOptions {
 /**
  * Codex as a {@link Harness}: an agent whose file says `harness: codex`
  * runs in `codex app-server`, inside Halonic's sandbox and behind the run's
- * bridge.
+ * bridge. Its files are named under this computer's own path rules,
+ * `node:path` itself.
  *
  * @example
  * const codex = codexHarness({ probe });
@@ -33,20 +32,11 @@ export interface CodexHarnessOptions {
  * for await (const event of run) record(event);
  */
 export function codexHarness(options: CodexHarnessOptions): Harness {
-  const settings = options.settings ?? diskSettingsFolder;
-  const ownSandbox = options.ownSandbox ?? ownSandboxCheck({ probe: options.probe });
-  const clientInfo = {
-    name: "halonic",
-    title: "Halonic",
-    version: options.halonicVersion ?? "0.0.0",
-  };
-  return {
-    id: "codex",
-    name: "Codex",
-    detect: (detectOptions) => detectCodex(options.probe, detectOptions),
-    environment: codexEnvironment,
-    start: (task, session, bridge) =>
-      new CodexRun(task, session, bridge, { settings, clientInfo, ownSandbox }),
-    signIn: codexSignIn,
-  };
+  return codexWebHarness({
+    probe: options.probe,
+    settings: options.settings ?? diskSettingsFolder,
+    halonicVersion: options.halonicVersion ?? "0.0.0",
+    ownSandbox: options.ownSandbox ?? ownSandboxCheck({ probe: options.probe }),
+    paths: thisComputer,
+  });
 }

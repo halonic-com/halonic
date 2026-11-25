@@ -1,4 +1,4 @@
-import { join } from "node:path";
+import thisComputer, { join } from "node:path";
 import type { HarnessTask } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
@@ -24,7 +24,7 @@ const task: HarnessTask = {
 verifies("harness-claude-code.command", () => {
   describe("claudeCodeCommand", () => {
     it("runs claude in stream-json mode with only the bridge's MCP server and its permission tool", () => {
-      expect(claudeCodeCommand(task, files)).toEqual({
+      expect(claudeCodeCommand(task, files, thisComputer)).toEqual({
         program: "claude",
         args: [
           "-p",
@@ -51,7 +51,7 @@ verifies("harness-claude-code.command", () => {
     });
 
     it("adds Claude Code's own sandbox settings next to the agent's own when the sandbox is on", () => {
-      const { args } = claudeCodeCommand(task, { ...files, ownSandbox: true });
+      const { args } = claudeCodeCommand(task, { ...files, ownSandbox: true }, thisComputer);
       const settings = args.indexOf("--settings");
 
       expect(args.slice(settings, settings + 2)).toEqual([
@@ -61,11 +61,11 @@ verifies("harness-claude-code.command", () => {
       expect(
         args.slice(args.indexOf("--setting-sources"), args.indexOf("--setting-sources") + 2),
       ).toEqual(["--setting-sources", "user"]);
-      expect(claudeCodeCommand(task, files).args).not.toContain("--settings");
+      expect(claudeCodeCommand(task, files, thisComputer).args).not.toContain("--settings");
     });
 
     it("reads settings from the user source alone, so the working folder's CLAUDE.md files and skills aren't read", () => {
-      const args = claudeCodeCommand(task, files).args;
+      const args = claudeCodeCommand(task, files, thisComputer).args;
 
       expect(args.filter((arg) => arg === "--setting-sources")).toHaveLength(1);
       expect(args[args.indexOf("--setting-sources") + 1]).toBe("user");
@@ -73,7 +73,7 @@ verifies("harness-claude-code.command", () => {
     });
 
     it("keeps the prompt and the instructions out of the arguments", () => {
-      const commandLine = claudeCodeCommand(task, files).args.join(" ");
+      const commandLine = claudeCodeCommand(task, files, thisComputer).args.join(" ");
 
       expect(commandLine).not.toContain(task.prompt);
       expect(commandLine).not.toContain(task.instructions);
@@ -81,7 +81,11 @@ verifies("harness-claude-code.command", () => {
 
     it("leaves out the model and the instructions file when there are none", () => {
       const { model: _model, ...withoutModel } = task;
-      const { args } = claudeCodeCommand(withoutModel, { ...files, instructionsFile: null });
+      const { args } = claudeCodeCommand(
+        withoutModel,
+        { ...files, instructionsFile: null },
+        thisComputer,
+      );
 
       expect(args).not.toContain("--model");
       expect(args).not.toContain("--append-system-prompt-file");
@@ -92,11 +96,10 @@ verifies("harness-claude-code.command", () => {
     it("loads the run's instructions folder as a plugin, and not without one", () => {
       const folder = join("data", "instructions", "instructions-1");
 
-      expect(claudeCodeCommand(task, { ...files, skillsFolder: folder }).args.slice(-2)).toEqual([
-        "--plugin-dir",
-        folder,
-      ]);
-      expect(claudeCodeCommand(task, files).args).not.toContain("--plugin-dir");
+      expect(
+        claudeCodeCommand(task, { ...files, skillsFolder: folder }, thisComputer).args.slice(-2),
+      ).toEqual(["--plugin-dir", folder]);
+      expect(claudeCodeCommand(task, files, thisComputer).args).not.toContain("--plugin-dir");
     });
   });
 

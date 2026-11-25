@@ -2,10 +2,11 @@ import {
   askingCodingTools,
   type CodingToolsCommand,
   codingToolsServerName,
+  type HostPaths,
   readOnlyCodingTools,
-  resetSettingsFolder,
+  resetSettingsFolderWith,
   type SettingsFolderWriter,
-} from "@halonicjs/adapter-harness-kit";
+} from "@halonicjs/adapter-harness-kit/web";
 import { harnessBridgeTokenHeader } from "@halonicjs/ports";
 import { bridgeServerName, permissionServerName } from "./bridge-tools.ts";
 import { claudeCodeRunTokenVariable } from "./environment.ts";
@@ -168,7 +169,8 @@ export const claudeCodeSignInFiles: readonly string[] = [".credentials.json", ".
 export async function writeClaudeCodeSettings(
   folder: string,
   writer: SettingsFolderWriter,
+  paths: Pick<HostPaths, "join">,
 ): Promise<void> {
   const contents = { files: claudeCodeSettingsFiles(), signIn: claudeCodeSignInFiles };
-  await resetSettingsFolder(folder, contents, writer);
+  await resetSettingsFolderWith(paths, folder, contents, writer);
 }
