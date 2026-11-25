@@ -1,12 +1,13 @@
-import { Tabs } from "@halonicjs/studio-kit";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { Callout, EmptyState, LockIcon, SkeletonBar } from "@halonicjs/studio-kit";
+import { type ReactNode, useEffect, useState } from "react";
 import { pullRequestWords } from "../pull-request-words.ts";
-import type { PullRequestRow, PullRequests, PullRequestsState } from "../pull-requests.ts";
+import type { PullRequests, PullRequestsState } from "../pull-requests.ts";
 import { formatTime, minutesSince, type TeamClock } from "../team-format.ts";
 import { type TeamLink, teamWords } from "../team-words.ts";
-import { useKeepFocus } from "./keep-focus.ts";
 import { LinkButton } from "./money-tiles.tsx";
-import { PullRequestRowView, type WebLinkOpener } from "./pull-request-row.tsx";
+import { PageFrame, TryAgain } from "./page-frame.tsx";
+import { listBox, PullRequestLists } from "./pull-request-lists.tsx";
+import type { WebLinkOpener } from "./pull-request-row.tsx";
 
 /** The props of {@link PullRequestsPage}. */
 export interface PullRequestsPageProps {
@@ -22,8 +23,6 @@ type Shown =
   | { kind: "loading" }
   | { kind: "read"; state: PullRequestsState; failed: boolean }
   | { kind: "failed" };
-
-type Tab = "attention" | "open";
 
 /** A snapshot older than this gets a named warning, never quietly old rows (Sofia's rule 0.5). */
 const oldAfterMinutes = 30;
@@ -63,42 +62,53 @@ export function PullRequestsPage({ pullRequests, opener, onLink }: PullRequestsP
     };
   }, [pullRequests, changed]);
 
+  const clock = pullRequests.timeClock;
+  const read = shown.kind === "read" && shown.state.kind === "read" ? shown.state : undefined;
   // One frame for every state, so the main and h1 stay put when a read lands.
   return (
-    <PullRequestsFrame shown={shown} clock={pullRequests.timeClock}>
+    <PageFrame
+      title={<PageTitle repo={read?.repo} />}
+      loadingSpoken={pullRequestWords.loadingSpoken}
+      busy={shown.kind === "loading"}
+      freshness={freshness(shown, read, clock)}
+    >
       <ShownBody
         shown={shown}
-        clock={pullRequests.timeClock}
+        clock={clock}
         opener={opener}
         onLink={onLink}
         onTryAgain={readAgain}
       />
-    </PullRequestsFrame>
+    </PageFrame>
   );
 }
 
-/** The page's main and h1 in every state, with the snapshot's freshness once there is a read. */
-function PullRequestsFrame(props: { shown: Shown; clock: TeamClock; children: ReactNode }) {
-  const { shown, clock } = props;
-  const { heading, remember } = useKeepFocus();
-  const busy = shown.kind === "loading";
-  const read = shown.kind === "read" && shown.state.kind === "read" ? shown.state : undefined;
+/** "Pull requests · halonic", the repo muted; the place's name alone before a repo is known. */
+function PageTitle({ repo }: { repo: string | undefined }) {
+  if (repo === undefined) return pullRequestWords.place;
   return (
-    <main
-      aria-busy={busy ? "true" : undefined}
-      aria-label={busy ? pullRequestWords.loadingSpoken : undefined}
-      className="flex flex-col gap-3 p-3"
-      onFocus={remember}
-    >
-      <header className="flex flex-wrap justify-between gap-x-4">
-        <h1 ref={heading} tabIndex={-1}>
-          {read === undefined ? pullRequestWords.place : pullRequestWords.title(read.repo)}
-        </h1>
-        {read === undefined ? null : <Freshness asOf={read.asOf} clock={clock} />}
-      </header>
-      {props.children}
-    </main>
+    <>
+      {pullRequestWords.place}
+      <span className="text-body text-fg-muted"> · {repo}</span>
+    </>
   );
+}
+
+/** The frame's freshness slot: "Loading…", then "As of 13:00 · 3 min ago", ⚠ when it's old. */
+function freshness(
+  shown: Shown,
+  read: Extract<PullRequestsState, { kind: "read" }> | undefined,
+  clock: TeamClock,
+): ReactNode {
+  if (shown.kind === "loading") return pullRequestWords.loading;
+  if (read === undefined) return undefined;
+  const line = asOfLine(read.asOf, clock);
+  if (minutesSince(read.asOf, clock) <= oldAfterMinutes) return line;
+  return <span className="text-attention">{pullRequestWords.oldAsOf(line)}</span>;
+}
+
+function asOfLine(asOf: string, clock: TeamClock): string {
+  return teamWords.asOf(formatTime(asOf, clock), minutesSince(asOf, clock));
 }
 
 /** What the frame holds: loading, a failed first read, why there are no rows, or the lists. */
@@ -110,34 +120,61 @@ function ShownBody(props: {
   onTryAgain: () => void;
 }) {
   const { shown, clock } = props;
-  if (shown.kind === "loading") return <p>{pullRequestWords.loading}</p>;
-  if (shown.kind === "failed") {
-    return (
-      <p role="alert">
-        {teamWords.notAnswering} <TryAgain onPress={props.onTryAgain} />
-      </p>
-    );
-  }
-  const { state } = shown;
-  if (state.kind !== "read") return <Unavailable state={state} onLink={props.onLink} />;
+  const state = shown.kind === "read" ? shown.state : undefined;
+  const words = failedWords(shown, clock);
   return (
     <>
-      {shown.failed ? (
-        <p role="alert">
-          {pullRequestWords.offline(formatTime(state.asOf, clock))}{" "}
-          <TryAgain onPress={props.onTryAgain} />
-        </p>
+      {/* Always on the page, so the failed and offline words are read out when a read fails. */}
+      {/* Empty while nothing failed, so the kit draws no box; the region stays for the words. */}
+      <Callout tone="attention" announce="polite">
+        {words === undefined ? null : (
+          <span className="flex flex-col items-start gap-2">
+            <span>{words}</span>
+            <TryAgain onPress={props.onTryAgain} />
+          </span>
+        )}
+      </Callout>
+      {shown.kind === "loading" ? <LoadingRows /> : null}
+      {state !== undefined && state.kind !== "read" ? (
+        <Unavailable state={state} onLink={props.onLink} />
       ) : null}
-      <Lists rows={state.rows} clock={clock} opener={props.opener} />
+      {state?.kind === "read" ? (
+        <>
+          <OldSnapshot asOf={state.asOf} clock={clock} />
+          <PullRequestLists rows={state.rows} clock={clock} opener={props.opener} />
+        </>
+      ) : null}
     </>
   );
 }
 
-function TryAgain({ onPress }: { onPress: () => void }) {
+/**
+ * The words in the attention Callout: Paperclip isn't answering when the first read failed, or
+ * offline as of the last good read when a later one did; nothing otherwise.
+ */
+function failedWords(shown: Shown, clock: TeamClock): string | undefined {
+  if (shown.kind === "failed") return teamWords.notAnswering;
+  if (shown.kind === "read" && shown.failed && shown.state.kind === "read") {
+    return pullRequestWords.offline(formatTime(shown.state.asOf, clock));
+  }
+  return undefined;
+}
+
+/** Loading (HAL-17515 P9): three skeleton rows in one bordered list where the PRs go. */
+function LoadingRows() {
   return (
-    <button type="button" className="focus-ring text-small text-accent" onClick={onPress}>
-      {teamWords.tryAgain}
-    </button>
+    <ul className={listBox}>
+      {[0, 1, 2].map((index) => (
+        <li key={index} className="flex items-center gap-3 px-4 py-4">
+          <span className="w-16">
+            <SkeletonBar kind="meta" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <SkeletonBar kind="title" width="2/3" />
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -148,143 +185,25 @@ function Unavailable(props: {
 }) {
   if (props.state.kind === "no-access") {
     return (
-      <p>
-        {pullRequestWords.cantRead} <LinkButton link="connect-again" onLink={props.onLink} />
-      </p>
+      <Callout tone="attention" icon={<LockIcon />}>
+        <span className="flex flex-col items-start gap-2">
+          <span>{pullRequestWords.cantRead}</span>
+          <LinkButton link="connect-again" onLink={props.onLink} />
+        </span>
+      </Callout>
     );
   }
+  // P8 also has Open in GitHub ↗, but the port carries no link to the repo yet.
   return (
-    <>
-      <p>{pullRequestWords.notAvailable}</p>
-      {props.state.kind === "no-snapshot" ? <p>{pullRequestWords.noSnapshot}</p> : null}
-    </>
+    <EmptyState
+      title={pullRequestWords.notAvailable}
+      description={props.state.kind === "no-snapshot" ? pullRequestWords.noSnapshot : undefined}
+    />
   );
 }
 
-function Freshness({ asOf, clock }: { asOf: string; clock: TeamClock }) {
-  const minutes = minutesSince(asOf, clock);
-  const line = teamWords.asOf(formatTime(asOf, clock), minutes);
-  return minutes > oldAfterMinutes ? (
-    <p role="status">{pullRequestWords.oldSnapshot(line)}</p>
-  ) : (
-    <p className="text-small text-fg-muted">{line}</p>
-  );
-}
-
-/** Failing and conflicting first, then the oldest waits. */
-function worstFirst(a: PullRequestRow, b: PullRequestRow): number {
-  const rank = (row: PullRequestRow) =>
-    row.stuck.includes("failing") || row.stuck.includes("conflicting") ? 0 : 1;
-  return rank(a) - rank(b) || Date.parse(a.pullRequest.since) - Date.parse(b.pullRequest.since);
-}
-
-/**
- * Needs attention and All open as the kit's tabs: the selected list is shown by more than colour,
- * read as selected, and moved through with the arrow keys.
- */
-function Lists(props: {
-  rows: readonly PullRequestRow[];
-  clock: TeamClock;
-  opener: WebLinkOpener;
-}) {
-  const [tab, setTab] = useState<Tab>("attention");
-  const tabList = useRef<HTMLDivElement>(null);
-  // See all open removes itself, so focus moves to the All open tab instead of the page.
-  const focusAllOpen = useRef(false);
-  useEffect(() => {
-    if (!focusAllOpen.current) return;
-    focusAllOpen.current = false;
-    tabList.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus();
-  });
-  const seeAllOpen = () => {
-    focusAllOpen.current = true;
-    setTab("open");
-  };
-  const stuck = props.rows.filter((row) => row.stuck.length > 0).sort(worstFirst);
-  const tabs = [
-    { id: "attention", label: `${pullRequestWords.tabs.attention} ${stuck.length}` },
-    { id: "open", label: `${pullRequestWords.tabs.open} ${props.rows.length}` },
-  ] as const;
-  const list = (title: string, rows: readonly PullRequestRow[]) => (
-    <RowList key={title} title={title} rows={rows} clock={props.clock} opener={props.opener} />
-  );
-  return (
-    <div ref={tabList}>
-      <Tabs label={pullRequestWords.listsLabel} tabs={tabs} selected={tab} onSelect={setTab}>
-        {props.rows.length === 0 ? <p>{pullRequestWords.noOpen}</p> : null}
-        {props.rows.length > 0 && tab === "attention" ? (
-          <>
-            {stuck.length === 0 ? (
-              <p>
-                {pullRequestWords.nothingStuck(props.rows.length)}{" "}
-                <button
-                  type="button"
-                  className="focus-ring text-small text-accent"
-                  onClick={seeAllOpen}
-                >
-                  {pullRequestWords.seeAllOpen}
-                </button>
-              </p>
-            ) : (
-              list(pullRequestWords.stuckHeading, stuck)
-            )}
-            {list(pullRequestWords.comingUp, comingUp(props.rows))}
-          </>
-        ) : null}
-        {tab === "open"
-          ? byState(props.rows).map(([title, rows]) =>
-              list(title === "" ? "" : `${title} · ${rows.length}`, rows),
-            )
-          : null}
-      </Tabs>
-    </div>
-  );
-}
-
-/** PRs on their way in that aren't stuck: approved, then the queue in its order. */
-function comingUp(rows: readonly PullRequestRow[]): readonly PullRequestRow[] {
-  const place = (row: PullRequestRow) => row.pullRequest.queue?.position ?? 0;
-  return rows
-    .filter((row) => row.stuck.length === 0)
-    .filter((row) => row.pullRequest.state === "approved" || row.pullRequest.state === "in-queue")
-    .sort((a, b) => place(a) - place(b));
-}
-
-/** All open's groups in the state table's order, each with its rows; empty groups left out. */
-function byState(rows: readonly PullRequestRow[]): readonly [string, readonly PullRequestRow[]][] {
-  const groups = pullRequestWords.groups.map(
-    ([state, title]): [string, readonly PullRequestRow[]] => [
-      title,
-      rows.filter((row) => row.pullRequest.state === state),
-    ],
-  );
-  const named = new Set<string>(pullRequestWords.groups.map(([state]) => state));
-  const rest = rows.filter((row) => !named.has(row.pullRequest.state));
-  return [...groups, ["", rest] as [string, readonly PullRequestRow[]]].filter(
-    ([, each]) => each.length > 0,
-  );
-}
-
-function RowList(props: {
-  title: string;
-  rows: readonly PullRequestRow[];
-  clock: TeamClock;
-  opener: WebLinkOpener;
-}) {
-  if (props.rows.length === 0) return null;
-  return (
-    <section aria-label={props.title || undefined}>
-      {props.title === "" ? null : <h2>{props.title}</h2>}
-      <ul>
-        {props.rows.map((row) => (
-          <PullRequestRowView
-            key={row.pullRequest.id}
-            row={row}
-            clock={props.clock}
-            opener={props.opener}
-          />
-        ))}
-      </ul>
-    </section>
-  );
+/** A snapshot older than half an hour says so above the rows, never quietly old rows (P7). */
+function OldSnapshot({ asOf, clock }: { asOf: string; clock: TeamClock }) {
+  if (minutesSince(asOf, clock) <= oldAfterMinutes) return null;
+  return <Callout tone="attention">{pullRequestWords.oldSnapshot(asOfLine(asOf, clock))}</Callout>;
 }

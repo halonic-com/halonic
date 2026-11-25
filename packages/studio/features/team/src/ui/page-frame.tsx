@@ -8,9 +8,12 @@ import { type ArrivalFocus, useArrivalFocus, useKeepFocus } from "./keep-focus.t
  * slot ("As of 13:00 · 2 min ago", or "Loading…") and the header's action on the right (s01, s09:
  * "Open AI seats in Paperclip ↗"). On a phone they wrap under the title. The screen keeps one frame mounted across loading, failed and read, so
  * the main and h1 stay the same elements, and focus lands on the h1 when what had it goes away.
- * `arrival` says where focus goes when the page replaces another one.
+ * `arrival` says where focus goes when the page replaces another one. `title` and `loadingSpoken`
+ * default to Spend and seats' own.
  */
 export function PageFrame(props: {
+  title?: ReactNode;
+  loadingSpoken?: string;
   freshness?: ReactNode;
   action?: ReactNode;
   busy?: boolean;
@@ -23,13 +26,15 @@ export function PageFrame(props: {
     <main
       ref={page}
       aria-busy={props.busy === true ? "true" : undefined}
-      aria-label={props.busy === true ? teamWords.loadingSpoken : undefined}
+      aria-label={
+        props.busy === true ? (props.loadingSpoken ?? teamWords.loadingSpoken) : undefined
+      }
       className="flex w-full flex-col gap-4 px-6 py-5 phone:px-4"
       onFocus={remember}
     >
       <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h1 ref={heading} tabIndex={-1} className="text-title">
-          {teamWords.title}
+          {props.title ?? teamWords.title}
         </h1>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
           {props.freshness === undefined ? null : (

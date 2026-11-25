@@ -57,6 +57,8 @@ async function settle(): Promise<void> {
 }
 
 const text = (page: HTMLElement) => page.textContent ?? "";
+const sectionNames = (page: HTMLElement) =>
+  [...page.querySelectorAll("section")].map((each) => each.getAttribute("aria-label"));
 const rows = (page: HTMLElement) => [...page.querySelectorAll("li")].map((li) => li.textContent);
 
 /** A button's words without what's hidden from screen readers, such as a tab's width copy. */
@@ -116,7 +118,7 @@ verifies("team.pull-requests", () => {
       fake.add("#8", { state: "dequeued", reason: "group failed", since: minutesAgo(20) });
       fake.add("#9", { state: "approval-outdated", fastTrack: true });
       const page = await open(fake);
-      press(page, "All open 9");
+      press(page, "All open, 9");
       for (const line of [
         "○ Draft · 2 d",
         "◔ Waiting for review · Liam · 3 h",
@@ -130,8 +132,7 @@ verifies("team.pull-requests", () => {
       ]) {
         expect(text(page)).toContain(line);
       }
-      const headings = [...page.querySelectorAll("h2")].map((h2) => h2.textContent);
-      expect(headings).toEqual([
+      expect(sectionNames(page)).toEqual([
         "Failing · 1",
         "Conflicting · 1",
         "Taken out of the queue · 1",
@@ -152,13 +153,9 @@ verifies("team.pull-requests", () => {
       fake.add("#23", { state: "draft" });
       const page = await open(fake);
       expect(text(page)).toContain("Pull requests · app");
-      expect(text(page)).toContain("Needs attention 2");
+      expect(button(page, "Needs attention, 2").getAttribute("aria-selected")).toBe("true");
       expect(text(page)).toContain("As of 13:00 · 0 min ago");
-      const sections = [...page.querySelectorAll("section")];
-      expect(sections.map((each) => each.getAttribute("aria-label"))).toEqual([
-        "Stuck · worst first",
-        "Coming up",
-      ]);
+      expect(sectionNames(page)).toEqual(["Stuck · worst first", "Coming up"]);
       expect(rows(page).map((row) => row?.slice(0, 3))).toEqual(["#21", "#20", "#22"]);
     });
 
@@ -168,7 +165,7 @@ verifies("team.pull-requests", () => {
       const page = await open(fake);
       expect(text(page)).toContain("Nothing is stuck. 1 PR is open.");
       press(page, "See all open");
-      expect(text(page)).toContain("Drafts · 1");
+      expect(sectionNames(page)).toEqual(["Drafts · 1"]);
     });
 
     it("shows no rows, and says why, when no snapshot has arrived", async () => {
@@ -191,7 +188,8 @@ verifies("team.pull-requests", () => {
       fake.add("#40", { state: "draft" });
       fake.setNow("2026-11-24T13:43:00.000Z");
       const page = await open(fake);
-      expect(text(page)).toContain("⚠ As of 13:00 · 43 min ago. The PR watcher may have stopped.");
+      expect(page.querySelector("header")?.textContent).toContain("⚠ As of 13:00 · 43 min ago");
+      expect(text(page)).toContain("As of 13:00 · 43 min ago. The PR watcher may have stopped.");
       vi.spyOn(console, "error").mockImplementation(() => {});
       vi.spyOn(fake.team, "pullRequests").mockRejectedValue(new Error("connection reset"));
       fake.add("#41", { state: "draft" });
@@ -266,6 +264,42 @@ verifies("team.pull-requests", () => {
 });
 
 verifies("team.pull-requests", () => {
+  describe("PullRequestsPage look (HAL-17515 P1–P10)", () => {
+    it("draws each state as a chip in its tone, with Fast-track as a tag", async () => {
+      const fake = acme();
+      fake.add("#80", { state: "failing", reason: "typecheck", since: minutesAgo(120) });
+      fake.add("#81", { state: "approval-outdated", fastTrack: true });
+      const page = await open(fake);
+      const chip = (words: string) =>
+        [...page.querySelectorAll("li span")].findLast((each) => each.textContent === words);
+      expect(chip("✕ Failing: typecheck")?.className).toContain("text-danger");
+      expect(chip("⚠ Approved on an older head")?.className).toContain("text-attention");
+      expect(chip("⚡ Fast-track")?.className).toContain("border-border-strong");
+      expect(page.querySelector("h1")?.className).toContain("text-title");
+    });
+
+    it("says a failed first read in an attention Callout, with the kit's Try again", async () => {
+      const fake = acme();
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      vi.spyOn(fake.team, "parts").mockRejectedValue(new Error("no answer"));
+      const page = await open(fake);
+      const status = page.querySelector('[role="status"]');
+      expect(status?.textContent).toContain("Paperclip isn't answering.");
+      expect(status?.closest(".bg-attention-soft")).not.toBeNull();
+      expect(button(page, "Try again").className).not.toContain("text-accent");
+    });
+
+    it("draws no attention box while nothing failed, keeping the live region", async () => {
+      const fake = acme();
+      fake.add("#82", { state: "draft" });
+      const page = await open(fake);
+      expect(page.querySelector(".bg-attention-soft")).toBeNull();
+      expect(page.querySelector('[role="status"]')?.textContent).toBe("");
+    });
+  });
+});
+
+verifies("team.pull-requests", () => {
   describe("PullRequestsPage keyboard and screen readers (a11y check TM1, TM4–TM6)", () => {
     it("keeps the same h1 across a failed read and Try again, and focuses it", async () => {
       const fake = acme();
@@ -292,10 +326,10 @@ verifies("team.pull-requests", () => {
       const page = await open(fake);
       const lists = page.querySelector('[role="tablist"]');
       expect(lists?.getAttribute("aria-label")).toBe("Pull request lists");
-      expect(button(page, "Needs attention 1").getAttribute("aria-selected")).toBe("true");
-      expect(button(page, "All open 1").getAttribute("aria-selected")).toBe("false");
-      press(page, "All open 1");
-      expect(button(page, "All open 1").getAttribute("aria-selected")).toBe("true");
+      expect(button(page, "Needs attention, 1").getAttribute("aria-selected")).toBe("true");
+      expect(button(page, "All open, 1").getAttribute("aria-selected")).toBe("false");
+      press(page, "All open, 1");
+      expect(button(page, "All open, 1").getAttribute("aria-selected")).toBe("true");
     });
 
     it("moves focus to All open after See all open", async () => {
@@ -304,7 +338,7 @@ verifies("team.pull-requests", () => {
       const page = await open(fake);
       button(page, "See all open").focus();
       press(page, "See all open");
-      expect(document.activeElement).toBe(button(page, "All open 1"));
+      expect(document.activeElement).toBe(button(page, "All open, 1"));
     });
 
     it("wraps a long title instead of cutting it off", async () => {

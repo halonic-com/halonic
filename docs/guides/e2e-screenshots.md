@@ -83,6 +83,15 @@ each state, at a glance and while its first read is loading (HAL-17853). The spe
 nothing scrolls sideways on the 390 px phone. The page loads the screen through
 `loadSpendAndSeatsScreen` in the team feature's `api.ts`.
 
+## Pull requests
+
+`pull-requests-<attention|all-open|old|loading|failed|no-snapshot|no-access>-<1440|390>-<light|dark|high-contrast>.png`
+is the Team feature's Pull requests screen from a made-up repo, for the design check against
+HAL-17515's P1–P10 (HAL-18328): stuck PRs and those coming up, All open by state, an old snapshot,
+loading, a failed first read, no snapshot and no access. The spec also checks that nothing scrolls
+sideways on the 390 px phone. The page loads the screen through `loadPullRequestsScreen` in the
+team feature's `api.ts`.
+
 ## Pictures for halonic.dev
 
 `e2e/site-screenshots.spec.ts` takes the pictures the website shows (HAL-10732): the run page of a

@@ -26,3 +26,16 @@ export const loadSpendAndSeatsScreen = async () => {
   ]);
   return { SpendAndSeatsPage: page.SpendAndSeatsPage, SpendAndSeats: reads.SpendAndSeats };
 };
+
+/**
+ * The Pull requests screen and the reads it takes, loaded only when called. Only for the
+ * screenshots CI takes for a reviewer (`docs/guides/e2e-screenshots.md`), which draw it from a
+ * made-up `TeamStatus`. The app never calls it.
+ */
+export const loadPullRequestsScreen = async () => {
+  const [page, reads] = await Promise.all([
+    import("./ui/pull-requests-page.tsx"),
+    import("./pull-requests.ts"),
+  ]);
+  return { PullRequestsPage: page.PullRequestsPage, PullRequests: reads.PullRequests };
+};
