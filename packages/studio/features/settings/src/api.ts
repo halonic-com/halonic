@@ -226,6 +226,12 @@ export {
 } from "./assistant/assistant-prefs.ts";
 export type { AssistantProvider } from "./assistant/assistant-providers.ts";
 
+/**
+ * Settings › Your server, for the Inbox to read from {@link HostSettingsService} when it offers
+ * "Run with Claude": the host, the user and the port. Only Settings changes them.
+ */
+export { serverSessionPrefs } from "./server-session/server-session-prefs.ts";
+
 export type { UpdaterHost } from "./updater/updater-host.ts";
 export type {
   CheckFailure,

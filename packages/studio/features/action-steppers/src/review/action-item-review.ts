@@ -84,8 +84,8 @@ function attestedSource(source: MessagingSource | undefined): AttestedSource | u
 }
 
 /** Whether the user's policy lets this item's source ask for a request of this risk. */
-function policyAllows(
-  item: ActionItem,
+export function policyAllows(
+  item: InboxItem,
   source: MessagingSource | undefined,
   risk: StepperRisk,
   policy: RequesterPolicy,
@@ -197,7 +197,8 @@ function touchOf(target: StepperTarget): StepperTouch {
   };
 }
 
-function requesterName(author: MessagingAuthor): string {
+/** Who asked, as the provider attests it: "You", or the agent's name with hidden characters marked. */
+export function requesterName(author: MessagingAuthor): string {
   return author.kind === "me" ? "You" : markHiddenName(author.name);
 }
 
