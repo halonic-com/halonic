@@ -2,6 +2,15 @@
 
 export { type ChangedTool, type ChangeList, changeList } from "./change-list.ts";
 export {
+  type ManifestInput,
+  manifestApiVersion,
+  pluginManifestText,
+  pluginPackageJsonText,
+  type ToolDeclaration,
+  toolDeclarations,
+  toolParametersSchema,
+} from "./manifest.ts";
+export {
   archiveSha256,
   buildPluginArchive,
   type PluginFiles,

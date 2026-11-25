@@ -595,6 +595,9 @@ importers:
       '@halonicjs/oauth-sign-in':
         specifier: workspace:*
         version: link:../../packages/core/oauth-sign-in
+      '@halonicjs/plugin-build':
+        specifier: workspace:*
+        version: link:../../packages/core/plugin-build
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../packages/core/ports
@@ -616,6 +619,9 @@ importers:
       '@halonicjs/target-node-runtime':
         specifier: workspace:*
         version: link:../../packages/targets/node/runtime
+      '@halonicjs/target-paperclip-runtime':
+        specifier: workspace:*
+        version: link:../../packages/targets/paperclip/runtime
       '@halonicjs/test-runner':
         specifier: workspace:*
         version: link:../../packages/core/test-runner
@@ -2553,6 +2559,9 @@ importers:
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../format
+      '@halonicjs/plugin-build':
+        specifier: workspace:*
+        version: link:../plugin-build
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../ports
@@ -2796,6 +2805,9 @@ importers:
 
   packages/core/plugin-build:
     dependencies:
+      '@halonicjs/format':
+        specifier: workspace:*
+        version: link:../format
       '@halonicjs/schema-kit':
         specifier: workspace:*
         version: link:../schema-kit

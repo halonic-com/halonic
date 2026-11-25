@@ -26,6 +26,7 @@
   "dependencies": {
     "@halonicjs/events": "workspace:*",
     "@halonicjs/format": "workspace:*",
+    "@halonicjs/plugin-build": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/routines": "workspace:*",
     "@halonicjs/std": "workspace:*",
