@@ -49,9 +49,11 @@
 # only through release.yml, after the board's release card.
 
 name: Studio preview (Windows, unsigned)
-# The nightly's name is how nightly-click-test.ts and main-failures find it;
+# The nightly's name is how nightly-click-test.ts and main-failures find it,
+# and it names the commit the installer was built from, which the next night
+# diffs from (the run's head_sha is main's tip when it started, HAL-18889);
 # any other run keeps GitHub's own name.
-run-name: ${{ inputs.nightly && 'Nightly click test' || '' }}
+run-name: ${{ inputs.nightly && format('Nightly click test of {0}', inputs.build-ref) || '' }}
 
 on:
   push:
