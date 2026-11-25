@@ -38,7 +38,7 @@ export type {
   PlacementAnswer,
   PlacementPolicy,
 } from "./harness/harness-host.ts";
-export { type RunEffortTags, runEffortForTags } from "./harness/run-effort.ts";
+export { opusOnlyRunTags, type RunEffortTags, runEffortForTags } from "./harness/run-effort.ts";
 export { decide } from "./kernel/decide.ts";
 export type {
   AnswerHarnessEffect,

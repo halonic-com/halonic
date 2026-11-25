@@ -15,10 +15,12 @@ export interface RunEffortTags {
 }
 
 /**
- * Tags that keep a task's runs at the default effort by themselves: work only
- * Opus does (the triage step's risk areas) and design work.
+ * Tags that make a task's work Opus-only by themselves: the `opus-only` tag
+ * and the triage step's risk areas. Paperclip's effort table and the retry
+ * detectors' routing guard keep the same list; a test in tooling/paperclip
+ * fails when the three differ.
  */
-const keepDefaultTags: ReadonlySet<string> = new Set([
+export const opusOnlyRunTags: ReadonlySet<string> = new Set([
   "opus-only",
   "security",
   "trust",
@@ -28,8 +30,10 @@ const keepDefaultTags: ReadonlySet<string> = new Set([
   "sign-in",
   "oauth",
   "keychain",
-  "design",
 ]);
+
+/** Tags that keep a task's runs at the default effort by themselves: Opus-only work and design work. */
+const keepDefaultTags: ReadonlySet<string> = new Set([...opusOnlyRunTags, "design"]);
 
 /** The difficulty tags that let a run think less, from a one-file change up. */
 const lowDifficultyTags: ReadonlySet<string> = new Set(["d1", "d2", "d3"]);
