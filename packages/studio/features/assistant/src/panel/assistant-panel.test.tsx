@@ -244,9 +244,12 @@ verifies("assistant.build.step-limit", () => {
     const line = "Stopped after 16 model calls. Ask it to continue.";
     expect(page.textContent).toContain(line);
     expect(announce).toHaveBeenCalledWith(line, "polite");
+    buttonNamed(page, "Continue")?.focus();
     await act(async () => buttonNamed(page, "Continue")?.click());
     expect(fake.requests[1]?.message).toBeUndefined();
     expect(page.textContent).not.toContain(line);
+    // Continue goes as the answer restarts, so focus waits in the box.
+    expect(document.activeElement?.tagName).toBe("TEXTAREA");
   });
 });
 
@@ -280,7 +283,9 @@ verifies("assistant.chat.engine-stopped", () => {
     });
     expect(page.textContent).toContain(stopped);
     expect(page.textContent).not.toContain("Couldn't reach the model");
+    buttonNamed(page, "Try again")?.focus();
     await act(async () => buttonNamed(page, "Try again")?.click());
+    expect(document.activeElement?.tagName).toBe("TEXTAREA");
     expect(fake.requests[1]).toMatchObject({ chatId: fake.requests[0]?.chatId });
     expect(fake.requests[1]?.message).toBeUndefined();
   });

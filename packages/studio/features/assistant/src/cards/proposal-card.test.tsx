@@ -73,14 +73,16 @@ function card(host: ReturnType<typeof reviewHost>, content: string | null = "id:
   const openItem = vi.fn();
   const openPlace = vi.fn();
   const services = { get: () => host.fake.host, find: () => host.fake.host };
-  const context = { services, openItem, openPlace } as unknown as WorkspaceContext;
+  const announce = vi.fn();
+  const announcer = { announce };
+  const context = { services, openItem, openPlace, announcer } as unknown as WorkspaceContext;
   const proposal: Proposal = { chatId: "c1", callId: "call-1", path, content };
   const node = (
     <ToastStoreProvider store={toasts}>
       <ProposalCard proposal={proposal} why="Pages on-call" context={context} />
     </ToastStoreProvider>
   );
-  return { node, toasts, openItem, openPlace, proposal };
+  return { node, toasts, openItem, openPlace, proposal, announce };
 }
 
 const press = (page: HTMLElement, name: string) =>
@@ -189,7 +191,12 @@ verifies("assistant.build.apply-proposal", () => {
       const [toast] = shown.toasts.list();
       expect(toast?.title).toBe("Accepted 3 changes in triage");
       await act(async () => toast?.action?.onClick());
-      expect(buttonNamed(page, "Accept all")).toBeDefined();
+      // The state line that had focus is gone: focus goes to Accept all, and Undo says what it did.
+      expect(document.activeElement).toBe(buttonNamed(page, "Accept all"));
+      expect(shown.announce).toHaveBeenCalledWith(
+        "Undone. 3 changes in triage are back to review.",
+        "polite",
+      );
       expect(cardReviewsOf(host.fake.host).takeNotes("c1")).toEqual([]);
     });
 

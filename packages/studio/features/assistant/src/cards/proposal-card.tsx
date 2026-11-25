@@ -11,7 +11,12 @@ import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react"
 import { AssistantHostService } from "../api.ts";
 import { CardEndLine, cardElementId, endInWords } from "./card-end.tsx";
 import { reviewPlaceOf } from "./card-facts.ts";
-import { type CardReview, cardReviewsOf, type Proposal } from "./card-reviews.ts";
+import {
+  type CardDecision,
+  type CardReview,
+  cardReviewsOf,
+  type Proposal,
+} from "./card-reviews.ts";
 import { CardWhy } from "./card-why.tsx";
 import { cardWords as words } from "./card-words.ts";
 import { TouchActions } from "./touch-actions.tsx";
@@ -45,6 +50,8 @@ export function ProposalCard({ proposal, why, context }: ProposalCardProps) {
   const line = useEndFocus(state, decide, context);
   const { facts } = state;
   const nameId = useId();
+  const acceptId = `${nameId}accept`;
+  useUndoFocus(state, decide, acceptId);
   const tag = words.tag[facts.tag];
   const end = state.kind === "decided" ? state.end : undefined;
   const phone = usePresentation() === "phone";
@@ -74,6 +81,7 @@ export function ProposalCard({ proposal, why, context }: ProposalCardProps) {
           state={state}
           decide={decide}
           nameId={nameId}
+          acceptId={acceptId}
           context={context}
           path={proposal.path}
           touch={phone ? { about: about(), stateLine: () => line.current } : undefined}
@@ -112,6 +120,7 @@ function OpenCard({
   state,
   decide,
   nameId,
+  acceptId,
   context,
   path,
   touch,
@@ -119,6 +128,8 @@ function OpenCard({
   readonly state: Open;
   readonly decide: Decide;
   readonly nameId: string;
+  /** The card's Accept all, which takes focus after an Undo. */
+  readonly acceptId: string;
   readonly context: WorkspaceContext;
   readonly path: string;
   /** On a phone: what the What changes sheet shows above the diff, and the state line. */
@@ -166,6 +177,7 @@ function OpenCard({
             {words.review}
           </Button>
           <Button
+            id={acceptId}
             variant="primary"
             size="sm"
             aria-describedby={nameId}
@@ -191,6 +203,7 @@ function OpenCard({
           host={context.services.get(AssistantHostService)}
           nameId={nameId}
           reviewId={`${cardReviewId}${nameId}`}
+          acceptId={acceptId}
           busy={decide.busy}
           onDecide={decide.run}
           held={held ? { id: heldId, text: words.changedOutside(state.facts.name) } : undefined}
@@ -282,6 +295,20 @@ function useEndFocus(
   return line;
 }
 
+/**
+ * After an Undo the card is open again and the state line that had focus is gone, so focus goes
+ * to its Accept all (a11y AS2), once the card shows it.
+ */
+function useUndoFocus(state: CardReview, { undone }: Decide, acceptId: string) {
+  const focused = useRef(0);
+  const open = state.kind === "open";
+  useEffect(() => {
+    if (undone === focused.current || !open) return;
+    focused.current = undone;
+    document.getElementById(acceptId)?.focus();
+  }, [undone, open, acceptId]);
+}
+
 interface Decide {
   readonly card: React.RefObject<HTMLElement | null>;
   /** A decision on the card itself is running or just ended the card: focus goes to its state line. */
@@ -289,12 +316,15 @@ interface Decide {
   readonly busy: "accept" | "reject" | undefined;
   readonly run: (decision: "accept" | "reject") => void;
   readonly review: () => void;
+  /** How many Undos took the card's decision back: each moves focus to Accept all. */
+  readonly undone: number;
 }
 
 /**
  * Accept all, Reject all and Review. A decision is one step with a toast and **Undo**
  * (flow-assistant 3.4); focus then goes to the card's state line. A failure says so
- * in a danger toast with its reason.
+ * in a danger toast with its reason. A decision held because the file changed outside Halonic
+ * says so, as nothing else on the card moves (a11y AS3).
  */
 function useDecide(proposal: Proposal, state: CardReview, context: WorkspaceContext): Decide {
   const cards = cardReviewsOf(context.services.get(AssistantHostService));
@@ -302,15 +332,27 @@ function useDecide(proposal: Proposal, state: CardReview, context: WorkspaceCont
   const card = useRef<HTMLElement>(null);
   const decidedHere = useRef(false);
   const [busy, setBusy] = useState<"accept" | "reject">();
+  const [undone, setUndone] = useState(0);
   const name = state.facts.name;
+  const announce = (text: string) => context.announcer?.announce(text, "polite");
   const failed = (title: string, error: unknown) =>
     toasts?.show({
       tone: "danger",
       title,
       text: error instanceof Error ? error.message : String(error),
     });
-  const undo = (step: Parameters<typeof cards.undo>[1], doneName: string) =>
-    cards.undo(proposal, step).catch((error: unknown) => failed(words.cantUndo(doneName), error));
+  const undo = (done: CardDecision) =>
+    cards.undo(proposal, done.step).then(
+      () => {
+        announce(words.undone(done.count, done.name));
+        setUndone((count) => count + 1);
+      },
+      (error: unknown) => failed(words.cantUndo(done.name), error),
+    );
+  const sayIfHeld = () => {
+    const now = cards.stateOf(proposal);
+    if (now.kind === "open" && now.held) announce(words.changedOutside(now.facts.name));
+  };
   const run = async (decision: "accept" | "reject") => {
     if (busy !== undefined) return;
     setBusy(decision);
@@ -319,13 +361,14 @@ function useDecide(proposal: Proposal, state: CardReview, context: WorkspaceCont
       const done = await cards.decide(proposal, decision);
       if (done === undefined) {
         decidedHere.current = false;
+        sayIfHeld();
         return;
       }
       const said = decision === "accept" ? words.accepted : words.rejected;
       toasts?.show({
         tone: "info",
         title: said(done.count, done.name),
-        action: { label: words.undo, onClick: () => void undo(done.step, done.name) },
+        action: { label: words.undo, onClick: () => void undo(done) },
       });
     } catch (error) {
       decidedHere.current = false;
@@ -339,5 +382,5 @@ function useDecide(proposal: Proposal, state: CardReview, context: WorkspaceCont
     if (place.kind === "changes") context.openPlace?.("changes");
     else context.openItem?.(place.item);
   };
-  return { card, decidedHere, busy, run: (decision) => void run(decision), review };
+  return { card, decidedHere, busy, run: (decision) => void run(decision), review, undone };
 }

@@ -98,6 +98,13 @@ verifies("assistant.chat.model-per-chat", () => {
     const page = await show(panel(fakeHost([gone], { models })));
     expect(chip(page, "Model:")).toBe("Model: smart");
   });
+
+  it("reads Model: none while the chat has no model to name", async () => {
+    const page = await show(
+      panel(fakeHost([{ ...routine, model: { kind: "assistant" } }], { models: [] })),
+    );
+    expect(chip(page, "Model:")).toBe("Model: none");
+  });
 });
 
 verifies("assistant.chat.switch-build-or-agent", () => {

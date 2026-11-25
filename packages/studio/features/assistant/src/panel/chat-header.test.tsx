@@ -37,9 +37,9 @@ const alias = {
   itemsToReview: 2,
 };
 
-function panel(fake: ReturnType<typeof fakeHost>) {
+function panel(fake: ReturnType<typeof fakeHost>, announce: (text: string) => void = () => {}) {
   const services = { get: () => fake.host, find: () => fake.host };
-  const context = { services, announcer: { announce: () => {} } } as unknown as WorkspaceContext;
+  const context = { services, announcer: { announce } } as unknown as WorkspaceContext;
   return <AssistantPanel context={context} title="Assistant" onClose={() => {}} />;
 }
 
@@ -170,7 +170,8 @@ verifies("assistant.chat.delete", () => {
 
   it("asks first, saying the changes to review stay, then shows no chat", async () => {
     const fake = fakeHost([alias]);
-    const page = await show(panel(fake));
+    const announce = vi.fn();
+    const page = await show(panel(fake, announce));
     await pick(page, "Delete chat…");
     const dialog = document.querySelector("dialog") as HTMLElement;
     expect(dialog.textContent).toContain('Delete the chat "Fix the triage alias"?');
@@ -183,6 +184,8 @@ verifies("assistant.chat.delete", () => {
     expect(fake.kept()).toEqual([]);
     expect(page.textContent).toContain("No chat open");
     expect(document.activeElement?.textContent).toBe("New chat");
+    // New chat taking focus doesn't say the chat is gone, so that is said out loud.
+    expect(announce).toHaveBeenCalledWith("Deleted “Fix the triage alias”.", "polite");
   });
 
   it("changes nothing on Cancel, and a draft has no ⋮", async () => {

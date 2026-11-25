@@ -213,8 +213,14 @@ verifies("assistant.build.card-changed-outside", () => {
     host.answer({ status: "done", step: { files: [] }, held: [path] });
     const shown = cards(host);
     const page = await show(shown.node);
+    buttonNamed(page, "Accept all")?.focus();
     await press(page, "Accept all");
     expect(page.textContent).toContain("triage changed outside Halonic. Compare first.");
+    // Focus stays on the button that now waits, so the held decision is said out loud.
+    expect(shown.announce).toHaveBeenCalledWith(
+      "triage changed outside Halonic. Compare first.",
+      "polite",
+    );
     expect(buttonNamed(page, "Accept all")?.getAttribute("aria-disabled")).toBe("true");
     expect(shown.toasts.list()).toEqual([]);
     await press(page, "Compare");

@@ -138,6 +138,10 @@ function HeldChat(
   const [shown, retry] = useTabChat(chats, props.chatId);
   const view = shown.kind === "chat" ? shown.view : undefined;
   const { openItem } = context;
+  const announce = useCallback<Announce>(
+    (text, politeness) => context.announcer.announce(text, politeness),
+    [context],
+  );
   // Open as tab gives the chat its own tab, and the page a new chat about the item: one chat in
   // one place. A draft has nothing to move yet.
   const openAsTab =
@@ -157,6 +161,7 @@ function HeldChat(
       only={(chat) => chat.kind === "build" && sameAbout(chat.about, about)}
       onPick={props.onPick}
       onOpenAsTab={openAsTab}
+      announce={announce}
     />
   );
   return <ChatOnPage {...props} shown={shown} header={header} onRetry={retry} />;

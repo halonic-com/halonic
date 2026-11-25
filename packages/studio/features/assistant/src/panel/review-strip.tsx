@@ -79,7 +79,7 @@ export function ReviewStrip({ host, chatId, answering, box, announce }: ReviewSt
           className="self-start rounded-sm text-small text-fg focus-ring"
           onClick={goToNext}
         >
-          {phone && answering ? words.shortCount(items) : words.count(items)}
+          <StripCount items={items} phone={phone} answering={answering} />
         </button>
         {answering ? (
           <p id={reasonId} className="text-caption text-fg-muted">
@@ -203,4 +203,24 @@ function toastOf(
 
 function reasonOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * The count's words: the short count on a phone while the chat answers, and on a phone as narrow
+ * as 320px, where the long one squeezes the buttons (a11y AS7).
+ */
+function StripCount(props: {
+  readonly items: number;
+  readonly phone: boolean;
+  readonly answering: boolean;
+}) {
+  const { items, phone, answering } = props;
+  if (!phone) return words.count(items);
+  if (answering) return words.shortCount(items);
+  return (
+    <>
+      <span className="max-[24rem]:hidden">{words.count(items)}</span>
+      <span className="hidden max-[24rem]:inline">{words.shortCount(items)}</span>
+    </>
+  );
 }

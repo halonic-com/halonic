@@ -50,6 +50,8 @@ verifies("shell.item-page-panel-starts-closed", () => {
     expect(panel(page)?.parentElement?.hidden).toBe(true);
     expect(page.querySelector('header [role="tablist"]')).toBeNull();
     expect(named(page, "Items")).toBeDefined();
+    // Its tab isn't drawn while it's closed, so the hidden panel names itself after none.
+    expect(panel(page)?.hasAttribute("aria-labelledby")).toBe(false);
   });
 
   it("shows the panel beside the chat when the page asks, focus where it says", () => {
@@ -59,6 +61,9 @@ verifies("shell.item-page-panel-starts-closed", () => {
     box.focus();
     act(() => handle.current?.show("items", () => box));
     expect(panel(page)?.parentElement?.hidden).toBe(false);
+    expect(
+      document.getElementById(panel(page)?.getAttribute("aria-labelledby") ?? ""),
+    ).not.toBeNull();
     expect(document.activeElement).toBe(box);
   });
 });

@@ -143,7 +143,8 @@ function modelEntries(
  */
 function modelLabel(model: ChatModel, choices: ChatChoices): string {
   if (model.kind === "alias") return model.name;
-  return choices.models.find((option) => option.model.kind === "assistant")?.label ?? "";
+  // Never empty, or the chip reads just "Model:" (a11y AS6).
+  return choices.models.find((option) => option.model.kind === "assistant")?.label ?? words.noModel;
 }
 
 /** Whether two chat models are the same: the Assistant model, or one alias by name. */

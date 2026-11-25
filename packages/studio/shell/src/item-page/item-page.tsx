@@ -301,7 +301,8 @@ export function ItemPage<Id extends string>({
         >
           {/* Full height, so a view that fills the panel, such as the agent map, gets its room;
               a taller view still scrolls in the panel. */}
-          <TabPanel ids={tabIds} tabs={views} selected={view} className="h-full">
+          {/* While closed, the panel's tabs aren't drawn, so it names itself after none (a11y AS8). */}
+          <TabPanel ids={tabIds} tabs={shown.panel ? views : []} selected={view} className="h-full">
             {children(view)}
           </TabPanel>
         </div>

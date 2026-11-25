@@ -25,6 +25,9 @@ export const cardWords = {
   accepted: (count: number, name: string) => `Accepted ${count} ${changes(count)} in ${name}`,
   rejected: (count: number, name: string) => `Rejected ${count} ${changes(count)} in ${name}`,
   undo: "Undo",
+  /** New (HAL-18075): said once Undo put the card's changes back to review. */
+  undone: (count: number, name: string) =>
+    `Undone. ${count} ${changes(count)} in ${name} ${count === 1 ? "is" : "are"} back to review.`,
   /** New (HAL-16798): a decision or its undo that failed, with the reason under it. */
   cantAccept: (name: string) => `Couldn't accept the changes in ${name}`,
   cantReject: (name: string) => `Couldn't reject the changes in ${name}`,

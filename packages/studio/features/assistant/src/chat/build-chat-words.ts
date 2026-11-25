@@ -56,6 +56,8 @@ export const buildChatWords = {
   showInChat: "Show in chat",
   shown: "Shown:",
   removeShown: (name: string) => `Remove ${name} from this chat`,
+  /** New (HAL-18075): said once × removed a shown item, as focus moves on. */
+  removedShown: (name: string) => `Removed ${name} from this chat.`,
   moreShown: (count: number) => `+${count}`,
   /** The status line after Stop, without the line's full stop (flow-assistant 2.2). */
   stopped: "Stopped by you",
