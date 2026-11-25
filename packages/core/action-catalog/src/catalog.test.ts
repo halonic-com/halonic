@@ -8,10 +8,18 @@ import { shippedCatalog, shippedDefinitions, sourceHashOf } from "./catalog.ts";
 
 const sourceFolder = import.meta.dirname;
 
-function sha256Of(key: string): string {
-  return createHash("sha256")
-    .update(readFileSync(join(sourceFolder, `${key}.ts`)))
-    .digest("hex");
+/**
+ * The hash as `pnpm discover --fix` writes it, over the given files under `src/`
+ * in that order: each file's path in the package, its length in bytes, its bytes.
+ */
+function sha256Of(files: readonly string[]): string {
+  const hash = createHash("sha256");
+  for (const file of files) {
+    const bytes = readFileSync(join(sourceFolder, file));
+    hash.update(`src/${file}\n${bytes.byteLength}\n`);
+    hash.update(bytes);
+  }
+  return hash.digest("hex");
 }
 
 verifies("action-catalog.discovery", () => {
@@ -35,9 +43,9 @@ verifies("action-catalog.discovery", () => {
       expect(shippedCatalog.route("github.upload-social-preview", 1, 1)).toBeUndefined();
     });
 
-    it("carries the SHA-256 of each definition's source", () => {
+    it("carries the SHA-256 of a definition's source and the shared file it imports", () => {
       expect(sourceHashOf("github.upload-social-preview", 1)).toBe(
-        sha256Of("github/upload-social-preview"),
+        sha256Of(["github/upload-social-preview.ts", "github-parameters.ts"]),
       );
     });
 
