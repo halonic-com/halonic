@@ -134,9 +134,9 @@ verifies("paperclip.pr-watcher-stack-rebase", () => {
     expect(rebase).toHaveBeenCalledTimes(1);
     expect([second.woken, second.warned, second.handedOff]).toEqual([0, 0, 1]);
     expect(paperclip.handoffs).toEqual([
-      expect.objectContaining({ taskId: "task-17843", to: agents.julian }),
+      expect.objectContaining({ taskId: "task-17843", to: agents.liam }),
     ]);
-    expect(paperclip.comments["task-17843"]?.at(-1)?.body).toContain("rebase only");
+    expect(paperclip.comments["task-17843"]?.at(-1)?.body).toContain("only a rebase since");
   });
 
   test("(b) a refused rebase gives exactly one conflict wake naming the files and the command", async () => {

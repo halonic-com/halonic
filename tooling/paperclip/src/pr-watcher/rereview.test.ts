@@ -2,6 +2,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
 import { agentComment, agents, fakeGitHub, task } from "./fakes.test-helper.ts";
 import { head, mateoBranch, oldHead, open, repo, setup } from "./handoff.test-helper.ts";
+import type { Reviewer } from "./handoff.ts";
 import { gitHubRebaseOnly, sameChanges } from "./rebase-only.ts";
 
 /** The re-review after a push to an approved pull request (HAL-17759), on facts given directly. */
@@ -11,12 +12,13 @@ const approvedByLiam = open(5701, mateoBranch, { approvals: [{ by: "Liam", head:
 function watcher(
   rebaseOnly: (pull: unknown, approved: string) => Promise<boolean>,
   files: readonly string[] = [],
+  byPaths: Reviewer = "liam",
 ) {
   const compared: string[] = [];
   const run = setup({
     tasks: [task(5701, agents.mateo, { branch: mateoBranch })],
     pulls: [approvedByLiam],
-    byPaths: "liam",
+    byPaths,
     files,
     rebaseOnly: (pull, approved) => {
       compared.push(approved);
@@ -38,14 +40,21 @@ function patch(start: number) {
 }
 
 verifies("paperclip.pr-watcher-rereview", () => {
-  test("sends a rebase-only push after Liam's approval to Julian, with the re-approval line", async () => {
-    const rebased = watcher(async () => true);
+  test("sends a rebase-only push after Liam's approval on Liam's paths back to Liam (HAL-18201)", async () => {
+    const rebased = watcher(async () => true, ["pnpm-lock.yaml"]);
     expect(await rebased.run()).toMatchObject({ handedOff: 1, failed: [] });
     expect(rebased.compared).toEqual(["4999bbb"]);
-    expect(rebased.handoffs.map(({ to }) => to)).toEqual([agents.julian]);
+    expect(rebased.handoffs.map(({ to }) => to)).toEqual([agents.liam]);
     const body = handoffBody(rebased.comments);
     expect(body).toContain("#5701: only a rebase since Liam's approval on `4999bbb`");
-    expect(body).toContain(
+    expect(body).not.toContain("Julian: re-approved");
+  });
+
+  test("sends a rebase-only push after Liam's approval within Julian's limits to Julian, with the re-approval line", async () => {
+    const rebased = watcher(async () => true, ["packages/x/src/a.ts"], "julian");
+    expect(await rebased.run()).toMatchObject({ handedOff: 1, failed: [] });
+    expect(rebased.handoffs.map(({ to }) => to)).toEqual([agents.julian]);
+    expect(handoffBody(rebased.comments)).toContain(
       '"Julian: re-approved on head `5701aaa` (rebase only, range-diff vs `4999bbb`)"',
     );
   });
