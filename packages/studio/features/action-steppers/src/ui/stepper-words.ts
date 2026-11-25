@@ -253,7 +253,7 @@ export function stageText(stage: StepperStage): string | null {
     case "desktop-only":
       return "Open it in the desktop app to run it.";
     case "blocked":
-      return "Blocked by your settings. This requester may only ask for routine changes.";
+      return "Blocked by your settings. This requester may only ask for steps marked Routine.";
     case "finished":
       return "Finished. Every step is done.";
     default:

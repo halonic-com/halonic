@@ -45,7 +45,7 @@ verifies("action-steppers.review-mode", () => {
     it("says a blocked request is blocked by the user's settings, and offers only Decline", () => {
       const { root, actions } = show({ ...browserRequest(), stage: { kind: "blocked" } });
       expect(root.textContent).toContain(
-        "Blocked by your settings. This requester may only ask for routine changes.",
+        "Blocked by your settings. This requester may only ask for steps marked Routine.",
       );
       expect(buttons(root).filter((name) => name !== "Show the request")).toEqual(["Decline"]);
       act(() => button(root, "Decline").click());
