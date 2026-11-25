@@ -132,18 +132,21 @@ function isYes(answer: string | undefined): boolean {
  * `askYesNo`). An empty line is an empty answer, not `undefined`.
  *
  * @param signal - the command's stop signal; once aborted, nothing is asked
+ * @param shownFirst - lines written right before the prompt, only when it asks
  */
 export async function askSecret(
   prompt: Message,
   refusal: () => Error,
   asking: Asking,
   signal?: AbortSignal,
+  shownFirst: readonly Phrase[] = [],
 ): Promise<string | undefined> {
   const { terminal } = asking;
   if (!asking.canAsk || terminal.readSecret === undefined) {
     throw refusal();
   }
   signal?.throwIfAborted();
+  for (const line of shownFirst) terminal.write(`${asking.render(line)}\n`);
   terminal.write(asking.render(questionMessages.secret(prompt.phrase).phrase));
   const answer = await terminal.readSecret(signal);
   terminal.write("\n");

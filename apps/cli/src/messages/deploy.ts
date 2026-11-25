@@ -103,20 +103,15 @@ export const deployMessages = defineMessages("deploy", {
   noDeployments: (workspace: string) => phrase`${workspace} has no deployments yet.`,
   noDeploymentsFix: () =>
     phrase`Add one to deployments.yaml in the workspace folder, then run halonic deploy again.`,
-  yesOption: () => phrase`Answer Deploy? [y/N] with yes`,
+  yesOption: () => phrase`Answer yes to Deploy? [y/N] (never to secrets, destroy or data loss)`,
   /** A deploy takes its files from a commit (3.6). Exit 2. */
   notARepository: (workspace: string) =>
     phrase`${workspace} isn't in a git repository, and a deploy takes its files from a commit.`,
   notARepositoryFix: () =>
     phrase`Make one and commit: git init && git add . && git commit -m "First version"`,
 
-  /** The summary before the one question (2.7), with the rows the deploy can fill so far. */
+  /** The summary's heading before the one question (2.7). */
   summary: (workspace: string, host: string) => phrase`Deploy ${workspace} to ${host}?`,
-  accountRow: (account: string) => phrase`  Account     ${account}`,
-  addressRow: (url: string) => phrase`  Address     ${url}`,
-  filesRow: (files: number, commit: string, subject: string) =>
-    phrase`  Files       ${files} from commit ${commit} "${subject}"`,
-  createsRow: (what: string) => phrase`  Creates     ${what}`,
   question: () => phrase`Deploy?`,
   /** After no to `Deploy? [y/N]` (exit 1), and after "Stopped." before anything changed (3.7). */
   nothingChanged: () => phrase`Nothing changed on Cloudflare.`,
