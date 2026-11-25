@@ -27,7 +27,8 @@ import { checkPulls } from "./rules/fast-track-checks.ts";
  * The inputs of `fast-track/rules.test.ts`, `pass.test.ts` and
  * `scope.test.ts`, replayed through the `fast-track` signal rule (HAL-18320):
  * for each, the rule's notices and what it remembers equal today's
- * `fastTrackPass`. The queue-wait log follows in its own pull request.
+ * `fastTrackPass`. The queue-wait log, the third step, has its own parity
+ * test in `fast-track-jumps.test.ts` (HAL-18973).
  */
 
 const defaults: FastTrackSettings = {
