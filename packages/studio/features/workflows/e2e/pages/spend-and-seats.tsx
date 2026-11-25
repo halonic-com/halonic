@@ -1,5 +1,6 @@
 import type { Seat, SeatWindow, SpendSummary, TeamStatus } from "@halonicjs/ports";
 import { loadSpendAndSeatsScreen } from "@halonicjs/studio-feature-team/api";
+import { PHONE_MAX_WIDTH, PresentationProvider } from "@halonicjs/studio-kit";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -71,6 +72,8 @@ const seats: Seat[] = [
   seat("Paid API", "ok", [], 1),
 ];
 
+/** As the shell decides it: below the phone width the screen draws its phone layout (S24). */
+const phone = matchMedia(`(width < ${PHONE_MAX_WIDTH}px)`).matches;
 const loading = new URLSearchParams(location.search).get("state") === "loading";
 const never = new Promise<never>(() => {});
 
@@ -96,7 +99,9 @@ async function show(): Promise<void> {
   if (root === null) throw new Error("The page has no #root.");
   createRoot(root).render(
     <StrictMode>
-      <SpendAndSeatsPage spendAndSeats={spendAndSeats} onLink={() => {}} />
+      <PresentationProvider presentation={phone ? "phone" : "desktop"}>
+        <SpendAndSeatsPage spendAndSeats={spendAndSeats} onLink={() => {}} />
+      </PresentationProvider>
     </StrictMode>,
   );
 }

@@ -1,5 +1,11 @@
 import type { MessagingId, SpendRange } from "@halonicjs/ports";
-import { Button, Card, ChevronRightIcon, ListHeading } from "@halonicjs/studio-kit";
+import {
+  Button,
+  Card,
+  ChevronRightIcon,
+  ListHeading,
+  usePresentation,
+} from "@halonicjs/studio-kit";
 import { type ReactNode, useEffect, useState } from "react";
 import { teamDetailWords as words } from "../team-detail-words.ts";
 import {
@@ -100,16 +106,27 @@ function OpenRow(props: { onOpen: () => void; children: ReactNode }) {
   );
 }
 
-/** Agents by spend: each agent with what it paid and its tokens today; a row opens the agent. */
+/**
+ * Agents by spend: each agent with what it paid and its tokens today; a row opens the agent. On
+ * Spend and seats (`top`) it shows the first few with **See all**; a phone's heading,
+ * "Agents by spend ›", opens them all instead (S24).
+ */
 export function AgentsBySpendList(props: {
   bySpend: AgentsBySpend;
   onOpen: (page: TeamPage) => void;
+  top?: boolean;
 }) {
   const { rows, total } = props.bySpend;
+  const headingOpensAll = usePresentation() === "phone" && props.top === true;
   if (total === 0) return null;
+  const openAll = () => props.onOpen({ kind: "agents" });
   return (
     <section aria-label={words.agentsBySpend} className="flex flex-col gap-2">
-      <ListHeading name={words.agentsBySpend} />
+      {headingOpensAll ? (
+        <AllAgentsHeading onOpen={openAll} />
+      ) : (
+        <ListHeading name={words.agentsBySpend} />
+      )}
       <ul className="flex flex-col gap-2">
         {rows.map(({ agent, spend }) => (
           <li key={agent.id} data-opens={pageKey({ kind: "agent", id: agent.id })}>
@@ -119,14 +136,30 @@ export function AgentsBySpendList(props: {
           </li>
         ))}
       </ul>
-      {rows.length < total ? (
+      {!headingOpensAll && rows.length < total ? (
         <div data-opens={pageKey({ kind: "agents" })} className="flex flex-col">
-          <Button variant="secondary" size="sm" onClick={() => props.onOpen({ kind: "agents" })}>
+          <Button variant="secondary" size="sm" onClick={openAll}>
             {words.seeAll(total)}
           </Button>
         </div>
       ) : null}
     </section>
+  );
+}
+
+/** The phone's "Agents by spend ›" heading: a button inside the heading, so it stays one. */
+function AllAgentsHeading({ onOpen }: { onOpen: () => void }) {
+  return (
+    <h2 data-opens={pageKey({ kind: "agents" })} className="px-4 pt-4 pb-1">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex items-center gap-1 text-label uppercase text-fg-muted outline-none focus-ring"
+      >
+        {words.agentsBySpendPhone}
+        <span aria-hidden="true">›</span>
+      </button>
+    </h2>
   );
 }
 
@@ -271,5 +304,5 @@ export function AgentsBySpendSection(props: {
   const { details } = props;
   const { shown } = useDetail(details, () => details.agentsBySpend(agentsBySpendShown), "top");
   if (shown.kind !== "read") return null;
-  return <AgentsBySpendList bySpend={shown.value} onOpen={props.onOpen} />;
+  return <AgentsBySpendList bySpend={shown.value} onOpen={props.onOpen} top />;
 }

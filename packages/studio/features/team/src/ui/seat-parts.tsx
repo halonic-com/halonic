@@ -1,11 +1,11 @@
 import type { MessagingId, Seat } from "@halonicjs/ports";
-import { ListHeading, StatusChip } from "@halonicjs/studio-kit";
+import { ListHeading, StatusChip, usePresentation } from "@halonicjs/studio-kit";
 import type { SeatProblem, SeatProblemKind } from "../seat-problems.ts";
 import { formatDayTime, formatTime, type TeamClock } from "../team-format.ts";
 import { type TeamLink, teamWords } from "../team-words.ts";
 import { pageKey } from "./detail-pages.tsx";
 import { LinkRow, RowChevron, RowList } from "./link-row.tsx";
-import { Amount, SmallLine, Tile } from "./money-tiles.tsx";
+import { SmallLine, Tile } from "./money-tiles.tsx";
 import { StateIcon, stateTones } from "./seat-state.tsx";
 import { UsageMeter } from "./usage-meter.tsx";
 
@@ -18,6 +18,7 @@ export function SeatsTile(props: {
   problems: readonly SeatProblem[];
   clock: TeamClock;
 }) {
+  const phone = usePresentation() === "phone";
   const pool = props.seats.filter((seat) => seat.role === "pool");
   const readable = pool.filter((seat) => seat.state !== "signed-out" && seat.state !== "not-read");
   const weeks = readable.flatMap((seat) => seat.windows.filter((each) => each.kind === "week"));
@@ -30,14 +31,17 @@ export function SeatsTile(props: {
   const refill = weeks
     .flatMap((week) => (week.resetsAt === undefined ? [] : [week.resetsAt]))
     .sort()[0];
+  const nextRefill = phone ? teamWords.phone.nextRefill : teamWords.nextRefill;
   const lines = [
     teamWords.nearLimit(near),
     ...(signedOut > 0 ? [teamWords.signedOutCount(signedOut)] : []),
-    ...(refill === undefined ? [] : [teamWords.nextRefill(formatDayTime(refill, props.clock))]),
+    ...(refill === undefined ? [] : [nextRefill(formatDayTime(refill, props.clock))]),
   ];
+  const left = teamWords.percent(Math.round(100 - used));
+  // A phone's row says "38% left" and "next refill" (S24), shortened from the tile's words.
+  const headline = { value: left, after: phone ? teamWords.phone.left : teamWords.ofPoolLeft };
   return (
-    <Tile title={teamWords.seatsThisWeek}>
-      <Amount value={teamWords.percent(Math.round(100 - used))} after={teamWords.ofPoolLeft} />
+    <Tile title={teamWords.seatsThisWeek} headline={headline}>
       <SmallLine>{lines.join(" · ")}</SmallLine>
     </Tile>
   );
@@ -272,7 +276,9 @@ export function SeatList(props: {
   );
 }
 
-/** The heading over the seats: "Seats · worst first". */
+/** The heading over the seats: "Seats · worst first", and on a phone "Seats · this week" (S24). */
 export function SeatsHeading() {
-  return <ListHeading name={teamWords.seatsHeading} detail={teamWords.worstFirst} />;
+  const phone = usePresentation() === "phone";
+  const detail = phone ? teamWords.phone.thisWeek : teamWords.worstFirst;
+  return <ListHeading name={teamWords.seatsHeading} detail={detail} />;
 }

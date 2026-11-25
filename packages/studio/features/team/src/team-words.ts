@@ -127,6 +127,17 @@ export const teamWords = {
   notReadBecause: (cause: string) => `Not read · ${cause}`,
   /** Under a seat's greyed week bar: a not-read seat's "last good 12:20" (S6). */
   lastGood: (time: string) => `last good ${time}`,
-  /** Under a signed-out seat's greyed week bar: "last read 09:40" (S1, S6). */
+  /** Under a seat's greyed week bar: "last read 09:40" (S1, S6). */
   lastRead: (time: string) => `last read ${time}`,
+  /** The phone's heading over the tiles, which it draws as rows (S24). */
+  moneyAndSeats: "Money and seats",
+  /** The tiles' words a phone shortens, from the table's "Spend and seats tiles" row (S22–S28). */
+  phone: {
+    atThisPace: (money: string) => `at this pace ${money}`,
+    /** After the pool's percent: "38% left". */
+    left: "left",
+    nextRefill: (at: string) => `next refill ${at}`,
+    /** The seats' heading's detail: "Seats · this week". */
+    thisWeek: "this week",
+  },
 };

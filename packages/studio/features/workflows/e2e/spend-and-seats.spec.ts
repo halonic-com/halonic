@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
  * The Spend and seats screen (HAL-17853), from made-up seats, for the design check against
  * HAL-17515's s01, s06, s08 and S24: `spend-and-seats-<glance|loading>-<width>-<look>.png`, on a
  * desktop and a 390 px phone, in light, dark and high contrast (docs/guides/e2e-screenshots.md).
- * On the phone the three tiles stack, and nothing scrolls sideways.
+ * On the phone the tiles are rows under Money and seats, and nothing scrolls sideways.
  */
 const sizes = [
   { width: 1440, height: 900 },

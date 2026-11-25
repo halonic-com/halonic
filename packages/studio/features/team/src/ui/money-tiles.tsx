@@ -1,5 +1,5 @@
 import type { SpendSummary } from "@halonicjs/ports";
-import { AlertIcon, Button, Card, WarningIcon } from "@halonicjs/studio-kit";
+import { AlertIcon, Button, Card, usePresentation, WarningIcon } from "@halonicjs/studio-kit";
 import { createContext, type ReactNode, useContext } from "react";
 import {
   allTokens,
@@ -14,16 +14,39 @@ import { UsageMeter } from "./usage-meter.tsx";
 
 const dayMs = 24 * 60 * 60 * 1000;
 
+/** A tile's headline: the amount, and muted words after it on a desktop ("$977" "of $1,500"). */
+export interface Headline {
+  readonly value: string;
+  readonly after?: string | undefined;
+}
+
 /**
- * A tile of the Spend and seats screen: a Card with its title as a plain small caption, then its
- * lines (s01). The Card fills the tile, so every tile in a row ends at the same height.
+ * A tile of the Spend and seats screen. On a desktop, a Card with its title as a plain small
+ * caption, then its headline and lines; the Card fills the tile, so every tile in a row ends at the
+ * same height (s01). On a phone, a row under the "Money and seats" heading (S24): the title on the
+ * left, the headline on the right in one colour, and the lines under them.
  */
-export function Tile({ title, children }: { title: string; children: ReactNode }) {
+export function Tile(props: { title: string; headline: Headline; children?: ReactNode }) {
+  const { title, headline, children } = props;
+  if (usePresentation() === "phone") {
+    const amount =
+      headline.after === undefined ? headline.value : `${headline.value} ${headline.after}`;
+    return (
+      <div className="flex flex-col gap-1 border-b border-border px-4 py-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+          <h3 className="text-body text-fg-muted">{title}</h3>
+          <p className="text-title tabular-nums wrap-anywhere">{amount}</p>
+        </div>
+        {children}
+      </div>
+    );
+  }
   return (
     <div className="flex min-w-0 flex-1 *:min-w-0 *:flex-1">
       <Card>
         <section className="flex flex-col gap-1" aria-label={title}>
           <h2 className="text-small text-fg-muted">{title}</h2>
+          <Amount value={headline.value} after={headline.after} />
           {children}
         </section>
       </Card>
@@ -32,7 +55,7 @@ export function Tile({ title, children }: { title: string; children: ReactNode }
 }
 
 /** A tile's headline: the amount, large and in tabular figures, with muted words after it. */
-export function Amount({ value, after }: { value: string; after?: string }) {
+function Amount({ value, after }: Headline) {
   return (
     <p className="wrap-anywhere">
       <span className="text-title tabular-nums">{value}</span>
@@ -115,8 +138,10 @@ export function SpentTodayTile({ today }: { today: SpendSummary | undefined }) {
   const money = formatMoney(today.paid);
   const unpriced = today.unpricedRuns > 0;
   return (
-    <Tile title={teamWords.spentToday}>
-      <Amount value={unpriced ? teamWords.atLeast(money) : money} />
+    <Tile
+      title={teamWords.spentToday}
+      headline={{ value: unpriced ? teamWords.atLeast(money) : money }}
+    >
       {unpriced ? (
         <ToneLine tone="attention">{teamWords.notPriced(today.unpricedRuns)}</ToneLine>
       ) : null}
@@ -135,12 +160,15 @@ export function ThisMonthTile(props: {
   onLink: (link: TeamLink) => void;
 }) {
   const { month, clock, onLink } = props;
+  const phone = usePresentation() === "phone";
   if (month === undefined) return null;
   const spent = formatMoney(month.paid, true);
   if (month.budget === undefined) {
     return (
-      <Tile title={teamWords.thisMonth}>
-        <Amount value={spent} after={teamWords.thisMonthAfter} />
+      <Tile
+        title={teamWords.thisMonth}
+        headline={{ value: spent, after: teamWords.thisMonthAfter }}
+      >
         <SmallLine>{teamWords.noBudget}</SmallLine>
         <div className="mt-1">
           <LinkButton link="set-budget" onLink={onLink} />
@@ -149,34 +177,40 @@ export function ThisMonthTile(props: {
     );
   }
   const budget = month.budget;
-  const percent = (month.paid.cents / budget.cents) * 100;
-  const head = (
-    <>
-      <Amount value={spent} after={teamWords.ofBudget(formatMoney(budget, true))} />
-      <UsageMeter percent={percent} />
-    </>
-  );
+  const headline = { value: spent, after: teamWords.ofBudget(formatMoney(budget, true)) };
+  const meter = <UsageMeter percent={(month.paid.cents / budget.cents) * 100} />;
   if (month.paid.cents >= budget.cents) {
     return (
-      <Tile title={teamWords.thisMonth}>
-        {head}
+      <Tile title={teamWords.thisMonth} headline={headline}>
+        {meter}
         <ToneLine tone="danger">{teamWords.budgetUsedUp}</ToneLine>
       </Tile>
     );
   }
   const { day, daysInMonth } = monthDay(clock);
   const left = formatMoney({ ...budget, cents: budget.cents - month.paid.cents }, true);
-  const pace = paceLine(month, day, daysInMonth, clock);
-  return (
-    <Tile title={teamWords.thisMonth}>
-      {head}
-      <SmallLine>
-        {teamWords.left(left)} · {teamWords.daysToGo(daysInMonth - day)}
-      </SmallLine>
-      {pace.passes ? (
+  const pace = paceLine(month, day, daysInMonth, clock, phone);
+  const room = `${teamWords.left(left)} · ${teamWords.daysToGo(daysInMonth - day)}`;
+  if (pace.passes) {
+    return (
+      <Tile title={teamWords.thisMonth} headline={headline}>
+        {meter}
+        <SmallLine>{room}</SmallLine>
         <ToneLine tone="attention">{pace.words}</ToneLine>
+      </Tile>
+    );
+  }
+  return (
+    <Tile title={teamWords.thisMonth} headline={headline}>
+      {meter}
+      {/* A phone keeps a pace under the budget on the same line as the room left (S24). */}
+      {phone ? (
+        <SmallLine>{`${room} · ${pace.words}`}</SmallLine>
       ) : (
-        <SmallLine>{pace.words}</SmallLine>
+        <>
+          <SmallLine>{room}</SmallLine>
+          <SmallLine>{pace.words}</SmallLine>
+        </>
       )}
     </Tile>
   );
@@ -188,12 +222,14 @@ function paceLine(
   day: number,
   daysInMonth: number,
   clock: TeamClock,
+  phone: boolean,
 ): { words: string; passes: boolean } {
   const perDay = month.paid.cents / day;
   const projected = perDay * daysInMonth;
   const budget = month.budget?.cents ?? Number.POSITIVE_INFINITY;
   if (projected <= budget) {
-    const words = teamWords.atThisPace(formatMoney({ ...month.paid, cents: projected }, true));
+    const total = formatMoney({ ...month.paid, cents: projected }, true);
+    const words = phone ? teamWords.phone.atThisPace(total) : teamWords.atThisPace(total);
     return { words, passes: false };
   }
   const daysToBudget = Math.ceil((budget - month.paid.cents) / perDay);

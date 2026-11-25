@@ -6,6 +6,8 @@ import type { AgentActivity, Seat } from "@halonicjs/ports";
  */
 export const teamDetailWords = {
   agentsBySpend: "Agents by spend today",
+  /** The phone's heading, which opens every agent: "Agents by spend ›" (S24). */
+  agentsBySpendPhone: "Agents by spend",
   seeAll: (count: number) => `See all ${count}`,
   back: "Back",
   unknownAgent: "Unknown agent",
