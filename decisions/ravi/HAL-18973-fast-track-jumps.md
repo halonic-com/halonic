@@ -2,6 +2,7 @@
 
 - Approval: HAL-18973, split from HAL-18320 (plan HAL-17450 rev 5, step 2, accepted by the board on 24 Nov); a security PR, so Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:gABUuouMJsf4h1U1UkJo3/vzZiAmYm4IrKtQmBt/BUjtqQbipgsdeeuUXgdnAWZ6yJwz8aGdoyeqZC5cx1d0Cw==
 
 ## What changes
 
