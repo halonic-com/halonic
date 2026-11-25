@@ -193,8 +193,11 @@ export class RoutineScheduler<
   /**
    * A tick that starts nothing, for a host whose user paused the routines:
    * moves the last tick to now and records the times due in between as
-   * `paused` skips (see {@link passOnce}). Does nothing while another tick
-   * or pass of this scheduler runs, or after `dispose`.
+   * `paused` skips (see {@link passOnce}). A last tick ahead of now, as after
+   * the clock was set back, stays: the first tick after the resume forgets
+   * one more than `clockSetBackMs` ahead (see {@link forgetTickAhead}). Does
+   * nothing while another tick or pass of this scheduler runs, or after
+   * `dispose`.
    */
   async pass(): Promise<RoutinePassResult> {
     const { options, lastTickKey, lastRuns, skipRecords } = this;

@@ -129,3 +129,64 @@ fn engine_lifetime_a_fresh_workspace_is_not_paused() {
     let table = EngineTable::<()>::default();
     assert!(!table.pause(&acme()).is_paused());
 }
+
+/// HAL-17185: the pause the user set reaches every launch's handshake: a
+/// restart after a crash, and a window opening the workspace again after
+/// the problem state, both get it from the table.
+#[test]
+fn engine_lifetime_the_pause_stays_through_crashes_and_restarts() {
+    let mut table = EngineTable::default();
+    let start = Instant::now();
+    let launch = table.started(acme(), "acme".into(), 1, "main").unwrap();
+    assert_eq!(
+        table.set_pause(&acme(), true),
+        Some(&1),
+        "the running engine hears it"
+    );
+
+    let mut launch = launch;
+    for minute in 0..3 {
+        let now = start + Duration::from_secs(60 * minute);
+        let (_, next) = table.crashed(&acme(), launch, now);
+        assert!(matches!(next, AfterCrash::Restart { .. }));
+        assert!(
+            table.pause(&acme()).is_paused(),
+            "kept between a crash and its restart"
+        );
+        launch = table.restarted(&acme(), launch + 1).unwrap().0;
+        assert!(
+            table.pause(&acme()).is_paused(),
+            "the restart's handshake gets it"
+        );
+    }
+    let (_, next) = table.crashed(&acme(), launch, start + Duration::from_secs(3 * 60));
+    assert!(matches!(next, AfterCrash::Problem { .. }));
+    table.started(acme(), "acme".into(), 9, "code").unwrap();
+    assert!(
+        table.pause(&acme()).is_paused(),
+        "opening it again keeps it"
+    );
+
+    assert_eq!(table.set_pause(&acme(), false), Some(&9));
+    assert!(!table.pause(&acme()).is_paused());
+}
+
+#[test]
+fn engine_lifetime_pausing_with_no_engine_running() {
+    let mut table = EngineTable::default();
+    assert_eq!(table.set_pause(&acme(), true), None, "no launch yet");
+    assert!(!table.pause(&acme()).is_paused(), "nothing to keep it on");
+
+    let launch = table.started(acme(), "acme".into(), 1, "main").unwrap();
+    let _ = table.crashed(&acme(), launch, Instant::now());
+    assert_eq!(
+        table.set_pause(&acme(), true),
+        None,
+        "between a crash and its restart"
+    );
+    table.restarted(&acme(), 2).unwrap();
+    assert!(
+        table.pause(&acme()).is_paused(),
+        "the restart's handshake gets it"
+    );
+}

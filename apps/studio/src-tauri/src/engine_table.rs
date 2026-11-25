@@ -171,6 +171,21 @@ impl<P> EngineTable<P> {
             .unwrap_or_default()
     }
 
+    /// Pauses or resumes the routines of `workspace`, and gives back its
+    /// running engine, if one runs, to send the new pause to. The pause
+    /// stays through a crash and its restart, and until Quit; a workspace
+    /// with no launch yet has nothing to keep it on.
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "the tray's Pause routines calls it (HAL-14206)")
+    )]
+    pub fn set_pause(&mut self, workspace: &Path, paused: bool) -> Option<&P> {
+        let entry = self.workspaces.get_mut(workspace)?;
+        // The frame goes through the engine's link, which writes it itself.
+        let _frame = entry.pause.set(paused);
+        entry.engine.as_ref()
+    }
+
     /// `window` closed: no engine serves it now. Engines keep running.
     pub fn close_window(&mut self, window: &str) {
         for entry in self.workspaces.values_mut() {

@@ -350,6 +350,34 @@ fn engine_process_sends_the_host_and_the_pause_after_every_handshake() {
     }
 }
 
+/// HAL-17185: Pause routines the user sets while an engine runs reaches it
+/// at once, after what it heard at its handshake.
+#[test]
+fn engine_process_sends_a_pause_that_changes_while_it_runs() {
+    let mut pause = RoutinePause::default();
+    let paused = String::from_utf8(pause.set(true)).unwrap();
+    let resumed = String::from_utf8(pause.set(false)).unwrap();
+    let no_host = String::from_utf8(sandbox_host_json(None)).unwrap();
+    let attached = attach(acme_broker(), WAIT, move |engine| {
+        engine.handshake();
+        assert_eq!(engine.read().as_deref(), Some(no_host.as_str()));
+        assert_eq!(engine.read().as_deref(), Some(resumed.as_str()));
+        assert_eq!(engine.read().as_deref(), Some(paused.as_str()));
+        assert_eq!(engine.read().as_deref(), Some(resumed.as_str()));
+    });
+    let process = attached.started.unwrap();
+    let link = process.link();
+    link.send_after_handshake(None, RoutinePause::default())
+        .unwrap();
+    let mut pause = RoutinePause::default();
+    let _frame = pause.set(true);
+    link.send_pause_routines(pause).unwrap();
+    let _frame = pause.set(false);
+    link.send_pause_routines(pause).unwrap();
+    let engine = attached.engine_done.recv_timeout(WAIT).unwrap();
+    engine.exited.store(true, Ordering::SeqCst);
+}
+
 #[test]
 fn engine_process_restarts_at_most_three_times_in_five_minutes() {
     let start = Instant::now();

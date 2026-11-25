@@ -16,7 +16,11 @@ export const engineStoppedCause: RunFailureCause = {
 /** The routine scheduler, as `workspaceRoutineScheduler` makes it. */
 export interface TickingScheduler {
   tick(): Promise<unknown>;
-  /** A tick that starts nothing and moves the last tick to now, recording the times it skipped. */
+  /**
+   * A tick that starts nothing and moves the last tick to now, recording the times it skipped.
+   * A last tick ahead of now (the clock was set back) stays; the scheduler's first tick after the
+   * resume fixes it.
+   */
   pass(): Promise<unknown>;
   dispose(): Promise<void>;
 }
