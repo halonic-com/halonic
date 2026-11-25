@@ -2,6 +2,7 @@
 
 - Approval: HAL-17932 (item E of the merge-time report on HAL-17891, routed on HAL-17926); Liam wrote it, Julian reviews and signs it there
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:nrWsU6xNeGNWJE5gADwd36Etg9+uCsWAJbQh2MpQtW/OhyXcUItIzvoqT4cfJ2fITYbUhzG/mK7P5OCItpyaAQ==
 
 The read-time test for `yaml.read-time` no longer times 2,000- and 16,000-key maps with the
 wall clock over seven warmed-up rounds. It reads each map once and counts how often a parsed
