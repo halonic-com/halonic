@@ -180,4 +180,15 @@ verifies("paperclip.merge-control-stale-runs", () => {
     });
     expect(actionsOf(pass(facts), "cancel-run").map((each) => each.runId)).toEqual([11, 21]);
   });
+
+  test("a group run GitHub queued under 3 minutes ago is left alone, even if the queue read doesn't show its group yet", () => {
+    // Run 45600263634, 25 Nov 11:00: #6053's group rebuilt without #6052; it went green and merged.
+    const facts = snapshot({
+      queue: [entry(6053, 1, { groupHead: "group-with-6052" })],
+      mergeGroupRuns: [
+        run(45600263634, { status: "queued", headSha: "group-without-6052", createdAt: ago(1) }),
+      ],
+    });
+    expect(actionsOf(pass(facts), "cancel-run")).toEqual([]);
+  });
 });
