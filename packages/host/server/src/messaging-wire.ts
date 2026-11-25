@@ -3,6 +3,8 @@ import {
   channelMembersMax,
   checkActionResultAnswer,
   type InboxAnswer,
+  inboxQuestionOptionsMax,
+  inboxQuestionsMax,
   type MessagingRefusal,
   type OutgoingAttachment,
 } from "@halonicjs/ports";
@@ -64,11 +66,25 @@ const optionAnswer = s
 const replyAnswer = s
   .object({ kind: s.literal("reply"), text: s.string().min(1).max(20_000) })
   .strict();
+const questionAnswer = s
+  .object({
+    question: s.string().min(1).max(256),
+    options: s.array(s.string().min(1).max(256)).max(inboxQuestionOptionsMax),
+    text: s.string().max(20_000).optional(),
+  })
+  .strict();
+const questionsAnswer = s
+  .object({
+    kind: s.literal("answers"),
+    answers: s.array(questionAnswer).max(inboxQuestionsMax),
+  })
+  .strict();
 
 /**
  * The port's answer from a body's `answer`, or `null` when it is none: an
- * option, a reply, or an `action-result` that passes the port's own
- * allow-list (`checkActionResultAnswer`).
+ * option, a reply, the `answers` to an item's questions, or an
+ * `action-result` that passes the port's own allow-list
+ * (`checkActionResultAnswer`). Whether it fits the item, the port decides.
  */
 export function readInboxAnswer(value: unknown): InboxAnswer | null {
   const option = parse(optionAnswer, value);
@@ -80,8 +96,18 @@ export function readInboxAnswer(value: unknown): InboxAnswer | null {
   }
   const reply = parse(replyAnswer, value);
   if (reply.ok) return reply.value;
+  const questions = parse(questionsAnswer, value);
+  if (questions.ok) return questionsAnswerOf(questions.value);
   const action = checkActionResultAnswer(value);
   return action.ok ? action.answer : null;
+}
+
+/** An `answers` answer without the `text` keys the schema left `undefined`, so the port gets what was sent. */
+function questionsAnswerOf(parsed: Infer<typeof questionsAnswer>): InboxAnswer {
+  const answers = parsed.answers.map(({ question, options, text }) =>
+    text === undefined ? { question, options } : { question, options, text },
+  );
+  return { kind: "answers", answers };
 }
 
 /** The files of a send, or `null` when one isn't strict base64url. */

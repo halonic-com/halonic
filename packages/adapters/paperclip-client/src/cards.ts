@@ -129,14 +129,14 @@ export function cardToItem(
 /**
  * The request that gives `answer` to card `record`, or `undefined` when the
  * card can't take that answer here: a written reply to a confirmation, an
- * option the card doesn't offer, an `action-result`, or a kind answered only
- * in Paperclip.
+ * option the card doesn't offer, an `action-result`, an `answers` answer (no
+ * Paperclip item carries `questions` yet), or a kind answered only in Paperclip.
  */
 export function cardAnswerRequest(
   record: JsonRecord,
   answer: InboxAnswer,
 ): AnswerRequest | undefined {
-  if (answer.kind === "action-result") {
+  if (!isOptionOrReply(answer)) {
     return undefined;
   }
   const kind = text(record, "kind");
@@ -171,6 +171,13 @@ export function cardAnswerRequest(
     name: "respondToCard",
     body: { answers: [{ questionId, optionIds: [answer.option], ...otherText }] },
   };
+}
+
+/** Whether an answer is an option or a reply, the only kinds a Paperclip card takes here. */
+function isOptionOrReply(
+  answer: InboxAnswer,
+): answer is Extract<InboxAnswer, { kind: "option" | "reply" }> {
+  return answer.kind === "option" || answer.kind === "reply";
 }
 
 const approvalOptions: readonly InboxItemOption[] = [

@@ -1,5 +1,6 @@
 import type { ActionResultAnswer, InboxActionRequest } from "./agent-messaging-actions.ts";
 import type { ChannelResult, MessageSendOptions, MessageWork } from "./agent-messaging-channels.ts";
+import type { InboxQuestion, InboxQuestionsAnswer } from "./agent-messaging-questions.ts";
 import type { InboxStepperRequest } from "./agent-messaging-steppers.ts";
 
 /**
@@ -7,8 +8,9 @@ import type { InboxStepperRequest } from "./agent-messaging-steppers.ts";
  * Version 2 adds attachments, `readAttachment` and files sent with a message. Version 3 adds action
  * items and the `action-result` answer (ADR 2026-11-24, AgentMessaging version 3). Version 4 adds
  * channels: conversations with several agents (ADR 2026-11-24, agent messaging, "Version 4").
+ * Version 5 adds items that ask several questions and the `answers` answer (same ADR, "Version 5").
  */
-export const agentMessagingVersion = 4;
+export const agentMessagingVersion = 5;
 
 /**
  * An item's ID, opaque to apps: only the provider that made it reads it. It
@@ -160,12 +162,14 @@ export interface InboxItemOption {
 
 /**
  * The person's answer to an inbox item: one of its options or a written reply
- * to a question, or for an action item the result of the stepper the person
- * ran, which only Studio's stepper sends.
+ * to a question, for an item with `questions` the options picked for each, or
+ * for an action item the result of the stepper the person ran, which only
+ * Studio's stepper sends.
  */
 export type InboxAnswer =
   | { kind: "option"; option: string; note?: string }
   | { kind: "reply"; text: string }
+  | InboxQuestionsAnswer
   | ActionResultAnswer;
 
 /** Whether an inbox item still waits, and if not, who answered it and how. */
@@ -185,7 +189,8 @@ export interface MessagingProject {
  * An item with `action` or `stepper` is an action item: a request that the person run a
  * user-only action stepper (ADR 2026-11-24, action sender). It offers no
  * options, `question` is the requester's reason, and it takes only an
- * `action-result` answer. Any other item takes only an option or a reply.
+ * `action-result` answer. An item with `questions` takes only an `answers` answer.
+ * Any other item takes only an option or a reply.
  */
 export interface InboxItem {
   id: MessagingId;
@@ -193,6 +198,12 @@ export interface InboxItem {
   from: MessagingAuthor;
   question: string;
   options: readonly InboxItemOption[];
+  /**
+   * Set only when the item asks several questions, or one answered with several
+   * options; then `options` is empty. A single single-select question stays in
+   * `options` (requirement `ports.agent-messaging-questions`).
+   */
+  questions?: readonly InboxQuestion[];
   /** For an action item, the request: a reviewed definition and its parameters, never a call. */
   action?: InboxActionRequest;
   /**

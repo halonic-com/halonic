@@ -336,3 +336,27 @@ each one.
 | S9 key added after deploy, rollback keeps it | `server.paperclip-key-store`, `server.device-pairing` (unknown record version), and the runbook |
 | S10 no password, no public start; one `Host` | `server.public-endpoint` |
 | S11 a device can't add devices on its own | `server.device-pairing` |
+
+## Version 5: several questions on one item (25 Nov 2026)
+
+A Paperclip card can ask several questions, each single- or multiple-select.
+Version 4 carried only one question's options and one option in an answer, so
+such a card showed nothing to tick (HAL-18762, from a board report on HAL-10).
+`agentMessagingVersion` is 5 (`ports.agent-messaging-questions`).
+
+- **`InboxItem.questions`** holds each question with its prompt, options,
+  `selection` (`single` or `multiple`) and `required`. A source sets it only
+  for two or more questions or a multiple-select one, and then leaves
+  `options` empty. A single single-select question stays in `options` with an
+  `option` answer, so the common card is unchanged.
+- **The `answers` answer** gives, per question, the IDs of the options picked
+  (and a source's kept free text, such as Paperclip's "other" text).
+  `answerFitsItem` is the one check: an item with `questions` takes only
+  `answers`, no other item takes it, every question and option must be the
+  item's own and named once, a single-select question gets at most one option
+  and a required one at least one. Anything else is refused with `bad-answer`.
+- **The server's wire** caps it: at most 20 questions, 50 options per
+  question, IDs of 1 to 256 characters and text of at most 20,000.
+
+A new answer kind breaks every exhaustive `switch` on `InboxAnswer`, as
+`action-result` did in version 3, so this is a version bump.

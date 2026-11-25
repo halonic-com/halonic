@@ -1,4 +1,4 @@
-import type { InboxAnswer, InboxItem, Message } from "@halonicjs/ports";
+import type { InboxAnswer, InboxItem, InboxQuestionsAnswer, Message } from "@halonicjs/ports";
 import { decidedAt } from "@halonicjs/studio-kit";
 import { messengerWords } from "./messenger-words.ts";
 
@@ -49,9 +49,21 @@ export function cardRecord(card: InboxItem): string | undefined {
   return `${choiceOf(card, card.state.answer)}, ${decidedAt(new Date(card.state.answeredAt))}`;
 }
 
-/** How a card was answered: the option's label, the reply in quotes, or how an action ended. */
+/**
+ * How a card was answered: the option's label, the labels picked for its questions, the reply in
+ * quotes, or how an action ended.
+ */
 function choiceOf(card: InboxItem, answer: InboxAnswer): string {
   if (answer.kind === "reply") return `“${answer.text}”`;
   if (answer.kind === "action-result") return messengerWords.card.outcomes[answer.outcome];
+  if (answer.kind === "answers") return pickedLabels(card, answer.answers).join(", ");
   return card.options.find((option) => option.id === answer.option)?.label ?? answer.option;
+}
+
+/** Each option picked for a card's questions, by its label, in the order answered. */
+function pickedLabels(card: InboxItem, answers: InboxQuestionsAnswer["answers"]): string[] {
+  return answers.flatMap((each) => {
+    const offered = card.questions?.find((question) => question.id === each.question)?.options;
+    return each.options.map((id) => offered?.find((option) => option.id === id)?.label ?? id);
+  });
 }

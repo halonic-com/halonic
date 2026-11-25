@@ -102,5 +102,43 @@ verifies("messenger.inline-cards", () => {
       );
       expect(cardRecord(card("merge", at(10)))).toBeUndefined();
     });
+
+    it("says the labels picked for a card's questions", () => {
+      const asking: InboxItem = {
+        ...card("decide", at(10), {
+          kind: "answered",
+          by: me,
+          answer: {
+            kind: "answers",
+            answers: [
+              { question: "repo", options: ["separate"] },
+              { question: "phase", options: ["tests", "docs"] },
+            ],
+          },
+          answeredAt: at(12, 10),
+        }),
+        options: [],
+        questions: [
+          {
+            id: "repo",
+            prompt: "Where?",
+            selection: "single",
+            required: true,
+            options: [{ id: "separate", label: "A separate repo" }],
+          },
+          {
+            id: "phase",
+            prompt: "What?",
+            selection: "multiple",
+            required: false,
+            options: [
+              { id: "tests", label: "Tests" },
+              { id: "docs", label: "Docs" },
+            ],
+          },
+        ],
+      };
+      expect(cardRecord(asking)).toBe("A separate repo, Tests, Docs, 12:10");
+    });
   });
 });
