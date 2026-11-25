@@ -15,7 +15,7 @@ The plugin builder (`halonic build paperclip-plugin`, a later step) writes three
 
 | File | Where it comes from |
 | --- | --- |
-| `worker.js` | this package's worker, copied unchanged into every plugin (the worker entry comes in a follow-up, HAL-18000) |
+| `worker.js` | this package's worker (`pnpm build` writes it to `dist/worker.js`), copied unchanged into every plugin |
 | `snapshot.json` | the workspace's snapshot (`makeSnapshot` and `snapshotText` in `@halonicjs/format`) |
 | the manifest | written by the builder from the snapshot and `pluginActions()` |
 
@@ -86,6 +86,30 @@ Their parameters: `task` and `body` for `paperclip.comment`; `task`, `status`, `
 and `blockedBy` for `paperclip.next-step`; `task`, `outcome`, `comment`, `to` and `blockedBy` for
 `paperclip.finish-run`. `monitor` and `blockedBy` aren't flat values, so a tool file can't declare
 them yet.
+
+## How the worker talks to Paperclip
+
+The worker speaks Paperclip's plugin worker protocol with its own client: JSON-RPC 2.0, one message
+per line over stdin and stdout. It was written against `@paperclipai/plugin-sdk` **2026.1117.0**,
+plugin API version **1** (`pinnedSdkVersion` and `pluginApiVersion` in `src/worker-protocol.ts`), and
+refuses a Paperclip that initializes it with another API version. It uses only built-in web APIs,
+so `worker.js` holds no Paperclip code and imports nothing but its `snapshot.json`; the SDK is used only in the contract
+tests.
+
+- It answers `initialize`, `health`, `shutdown`, `executeTool` and `onEvent`; any other method gets
+  a method-not-found error.
+- It calls back to Paperclip for state, secrets, http, agents, tasks, metrics and event
+  subscriptions only when the plugin's manifest declares the capability that call needs, and
+  refuses the call itself otherwise.
+- Task writes go through `issues.createComment` and `issues.update`. The protocol has no
+  `issues.setDisposition` (only Halonic's server does), so through the worker a writing action that
+  asks for `in_progress` is refused.
+- `onEvent` hands the event to the plugin's listeners for it. A listener that fails, or a
+  subscription Paperclip or the worker refuses, goes to Paperclip's plugin log and never stops the
+  worker.
+- A line longer than 4 MiB, a line that isn't JSON-RPC, and a call back that gets no answer within
+  9 s each end in an error, never in a stopped worker. A call's params, which may hold a key, never
+  go into an error.
 
 ## Keys
 

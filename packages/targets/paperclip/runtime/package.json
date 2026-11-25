@@ -8,6 +8,7 @@
     "./actions": "./src/actions.ts"
   },
   "scripts": {
+    "build": "node esbuild.config.ts",
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
     "lint": "biome check .",
     "test": "vitest run"
@@ -19,7 +20,9 @@
   "devDependencies": {
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
+    "@paperclipai/plugin-sdk": "catalog:",
     "@types/node": "catalog:",
+    "esbuild": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },

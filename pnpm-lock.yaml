@@ -5148,9 +5148,15 @@ importers:
       '@halonicjs/tooling-config':
         specifier: workspace:*
         version: link:../../../../tooling/config
+      '@paperclipai/plugin-sdk':
+        specifier: 'catalog:'
+        version: 2026.1117.0(patch_hash=b629ab384d0078b6c7494feb5df35a0ab930fecc8fd93bc62dd3a38ff43979ab)(react@19.3.1)
       '@types/node':
         specifier: 'catalog:'
         version: 26.6.6
+      esbuild:
+        specifier: 'catalog:'
+        version: 0.28.2
       typescript:
         specifier: 'catalog:'
         version: 7.0.2

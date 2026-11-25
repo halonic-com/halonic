@@ -185,18 +185,18 @@ export function registerWorkspaceTools(ctx: WorkspaceRuntimeApi, setup: RuntimeS
   keepFailedRuns(ctx, setup);
   for (const declaration of setup.declarations) {
     const name = declaration.name;
-    ctx.tools.register(name, declaration, async (params, runCtx) => {
+    ctx.tools.register(name, declaration, async (params, runCtx, host = ctx) => {
       let result: ToolResult;
       try {
         result = await withTimeout(
-          serve(ctx, setup, { name, params, runCtx }),
+          serve(host, setup, { name, params, runCtx }),
           callTimeoutMs,
           name,
         );
       } catch (error) {
         result = { error: `${name}: ${(error as Error).message}` };
       }
-      return counted(ctx, name, runCtx, result);
+      return counted(host, name, runCtx, result);
     });
   }
 }
