@@ -80,8 +80,9 @@ type ReadBody = Infer<typeof readBody>;
  *   workspace's connection files with their labels, addresses and states,
  *   for Settings › Connections. No key.
  * - `POST /v1/paperclip/disconnect` with `{ connection }` revokes the key,
- *   then forgets it and deletes the cache even if the revoke failed, and
- *   answers `{ revoked }`.
+ *   then forgets it and deletes the cache even if the revoke failed, in this
+ *   workspace and every other one that holds the same key, and answers
+ *   `{ revoked }`.
  *
  * A read that fails for every source is 502 `messaging_failed` with no
  * detail; the log says which error it was.
@@ -137,9 +138,14 @@ export function messagingRoutes(deps: MessagingRouteDeps): HostRoute[] {
     inWorkspace("/v1/paperclip/connections", connectionsBody, async (messaging) => ({
       connections: await messaging.connections(),
     })),
-    inWorkspace("/v1/paperclip/disconnect", disconnectBody, (messaging, body) =>
-      messaging.disconnect(body.connection),
-    ),
+    route("/v1/paperclip/disconnect", disconnectBody, async (body, response) => {
+      const disconnected = await deps.messaging.disconnect(body.workspace, body.connection);
+      if (disconnected === undefined) {
+        sendError(response, 404, "unknown_workspace", "The host serves no such workspace.");
+        return;
+      }
+      sendJson(response, 200, disconnected);
+    }),
     route("/v1/messaging/focus", focusBody, async (body, response) => {
       await deps.poller.setInFront(body.inFront);
       sendJson(response, 200, {});

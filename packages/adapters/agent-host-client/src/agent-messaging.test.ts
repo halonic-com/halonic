@@ -82,6 +82,16 @@ verifies("agent-host-client.agent-messaging", () => {
       });
       expect(host.calls[0]?.body).toEqual({ workspace, attachment: "a1" });
     });
+
+    it("fails on a refusal the port doesn't name, rather than passing it on", async () => {
+      const host = new FakeHost().answer(
+        "POST /v1/messaging/attachment",
+        ok({ result: { outcome: "refused", reason: "gone-fishing" } }),
+      );
+      const messaging = new AgentHostMessaging(host, workspace);
+
+      await expect(messaging.readAttachment("a1")).rejects.toThrow();
+    });
   });
 
   describe("changes", () => {

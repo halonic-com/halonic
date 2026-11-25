@@ -8,6 +8,7 @@ import type {
   Message,
   MessagingAgent,
   MessagingId,
+  MessagingRefusal,
   MessagingSource,
   SearchHit,
   SendResult,
@@ -19,11 +20,19 @@ import { AgentHostError, type AgentHostTransport, readAnswer } from "./transport
 
 const itemsAnswer = s.object({ items: s.array(s.unknown()) }).strict();
 const resultAnswer = s.object({ result: s.object({ outcome: s.string() }).passthrough() }).strict();
+/** Every refusal the port names; the host answers with one of these and no other. */
+const refusals = [
+  "offline",
+  "signed-out",
+  "not-found",
+  "too-large",
+  "unsupported-type",
+] as const satisfies readonly MessagingRefusal[];
 const attachmentAnswer = s
   .object({
     result: s.union([
       s.object({ outcome: s.literal("read"), type: s.string(), base64url: s.string() }).strict(),
-      s.object({ outcome: s.literal("refused"), reason: s.string() }).strict(),
+      s.object({ outcome: s.literal("refused"), reason: s.enum(refusals) }).strict(),
     ]),
   })
   .strict();
@@ -116,7 +125,7 @@ export class AgentHostMessaging implements AgentMessaging {
     const route = "POST /v1/messaging/attachment";
     const reply = await this.#transport.request(route, { workspace: this.#workspace, attachment });
     const { result } = readAnswer(route, reply, attachmentAnswer);
-    if (result.outcome === "refused") return result as AttachmentRead;
+    if (result.outcome === "refused") return { outcome: "refused", reason: result.reason };
     return { outcome: "read", type: result.type, bytes: bytesOf(route, result.base64url) };
   }
 

@@ -16,9 +16,9 @@ async function started(): Promise<Desktop> {
 }
 
 /** Connects `halonic` the way Studio does: the key, the address and company it was made for. */
-async function connect(on: Desktop): Promise<void> {
+async function connect(on: Desktop, workspace = on.workspace): Promise<void> {
   await on.paperclipKey.handOver({
-    workspace: on.workspace,
+    workspace,
     connection: "halonic",
     key: testKey,
     ...acme,
@@ -137,8 +137,61 @@ verifies("agent-host.paperclip-key", () => {
       expect(on.keys.has({ workspace: on.workspace, connection: "halonic" })).toBe(false);
       expect([...(await on.filesIn(join(on.profile, "agent-messaging-cache"))).keys()]).toEqual([]);
     });
+
+    it("stops every workspace using the key when the revoke fails, not only the one disconnected", async () => {
+      const on = await started();
+      await connect(on);
+      await connect(on, on.otherWorkspace);
+      await on.studio.listAgents();
+      await on.otherStudio.listAgents();
+      on.paperclip.offline = true;
+
+      const result = await on.paperclipKey.disconnect({
+        workspace: on.workspace,
+        connection: "halonic",
+      });
+      on.paperclip.offline = false;
+      const seenBefore = on.paperclip.seen.length;
+      await on.wait(30_000);
+      await on.otherStudio.listAgents().catch(() => []);
+
+      expect(result).toEqual({ revoked: false });
+      const withKey = on.paperclip.seen
+        .slice(seenBefore)
+        .filter((request) => request.authorization?.includes(testKey));
+      expect(withKey).toEqual([]);
+      for (const workspace of [on.workspace, on.otherWorkspace]) {
+        expect(on.keys.has({ workspace, connection: "halonic" })).toBe(false);
+        expect(await connectionStates(on, workspace)).toEqual([{ kind: "signed-out" }]);
+      }
+      expect([...(await on.filesIn(join(on.profile, "agent-messaging-cache"))).keys()]).toEqual([]);
+    });
+
+    it("leaves a key made for another company in the other workspace", async () => {
+      const on = await started();
+      await connect(on);
+      await on.paperclipKey.handOver({
+        workspace: on.otherWorkspace,
+        connection: "halonic",
+        key: testKey,
+        ...acme,
+        company: "other-company",
+      });
+
+      await on.paperclipKey.disconnect({ workspace: on.workspace, connection: "halonic" });
+
+      expect(on.keys.has({ workspace: on.workspace, connection: "halonic" })).toBe(false);
+      expect(on.keys.has({ workspace: on.otherWorkspace, connection: "halonic" })).toBe(true);
+    });
   });
 });
+
+/** The states Settings › Connections shows for `workspace`'s connection files. */
+async function connectionStates(on: Desktop, workspace: string): Promise<unknown[]> {
+  const answer = await on.transport.request("POST /v1/paperclip/connections", { workspace });
+  const { connections } = answer.body as { connections: { state: unknown }[] };
+  return connections.map((connection) => connection.state);
+}
 
 verifies("agent-host.agent-messaging-offline", () => {
   it("caches in the profile, changes no workspace file and keeps no key in any cache file", async () => {

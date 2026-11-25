@@ -7,7 +7,7 @@ import type {
   MessagingSourceState,
 } from "@halonicjs/ports";
 import { paperclipConnectionNamePattern } from "../paperclip/paperclip-key-routes.ts";
-import type { PaperclipKeys } from "../paperclip/paperclip-keys.ts";
+import type { PaperclipConnectionNow, PaperclipKeys } from "../paperclip/paperclip-keys.ts";
 import { CachedAgentMessaging } from "./cached-agent-messaging.ts";
 import { ChangeLog, type ChangesSince } from "./change-log.ts";
 import { listConnectionFiles } from "./connection-file.ts";
@@ -77,6 +77,11 @@ export class WorkspaceMessaging {
     this.#follow();
   }
 
+  /** The workspace's real path, as the launcher named it. */
+  get workspace(): string {
+    return this.#options.workspace;
+  }
+
   /** What Studio reads and answers through: every connected source, cached. */
   get messaging(): AgentMessaging {
     return this.#served;
@@ -123,12 +128,22 @@ export class WorkspaceMessaging {
     } catch (error) {
       this.#options.report({ provider: source, action: "revoke", error });
     }
-    this.#options.keys.forget({ workspace: this.#options.workspace, connection });
-    this.#providers.delete(connection);
-    this.#rejoin();
-    await this.#served.clear(source);
-    this.#changes.note(source);
+    await this.#drop(connection);
     return { revoked };
+  }
+
+  /**
+   * Forgets the key held for `connection` here when it was made for the same
+   * address and company as `madeFor`, the key another workspace just
+   * disconnected. Studio keeps one keychain entry per connection name, so the
+   * key is gone from the keychain and, if the revoke failed, still valid:
+   * this workspace stops using it too, and deletes the source's cache. A key
+   * made for another address or company is a different key and stays.
+   */
+  async forgetSameKey(connection: string, madeFor: PaperclipConnectionNow): Promise<void> {
+    const held = this.#options.keys.madeFor({ workspace: this.#options.workspace, connection });
+    if (held?.address !== madeFor.address || held.company !== madeFor.company) return;
+    await this.#drop(connection);
   }
 
   /**
@@ -172,6 +187,16 @@ export class WorkspaceMessaging {
   /** Stops following the providers' changes, when the host stops. */
   close(): void {
     this.#changes.stop((error) => this.#failed("changes", error));
+  }
+
+  /** Forgets the connection's key, drops its provider and deletes its cache. */
+  async #drop(connection: string): Promise<void> {
+    const source = paperclipSourceId(connection);
+    this.#options.keys.forget({ workspace: this.#options.workspace, connection });
+    this.#providers.delete(connection);
+    this.#rejoin();
+    await this.#served.clear(source);
+    this.#changes.note(source);
   }
 
   #rejoin(): void {

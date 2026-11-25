@@ -18,6 +18,9 @@ export async function readConnectionFile(
   const path = join(workspace, PAPERCLIP_CONNECTIONS_FOLDER, `${connection}.yaml`);
   let text: string;
   try {
+    // A symlinked file is followed on purpose. It can only name an address and a
+    // company, and the key's guard sends the key only when both match the ones the
+    // key was made for, so a link to another file can't send the key anywhere new.
     text = await readFile(path, "utf8");
   } catch (error) {
     if (isMissing(error)) return undefined;

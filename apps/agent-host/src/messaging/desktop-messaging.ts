@@ -1,7 +1,11 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { namedWorkspace } from "../server/named-workspace.ts";
-import { WorkspaceMessaging, type WorkspaceMessagingOptions } from "./workspace-messaging.ts";
+import {
+  type Disconnected,
+  WorkspaceMessaging,
+  type WorkspaceMessagingOptions,
+} from "./workspace-messaging.ts";
 
 /** What the desktop engine needs; each workspace gets its own messaging and cache folder. */
 export interface DesktopMessagingOptions
@@ -37,6 +41,26 @@ export class DesktopMessaging {
     });
     this.#workspaces.set(workspace, made);
     return made;
+  }
+
+  /**
+   * Disconnect (`agent-host.paperclip-key`) in the workspace at `folder`, then
+   * in every other open workspace that holds the same key for a connection of
+   * the same name: Studio deletes the one keychain entry for that name, and
+   * when the revoke failed the key stays valid, so no workspace may go on
+   * polling with it.
+   *
+   * @returns what Disconnect did, or `undefined` when `folder` isn't the real path of a workspace the launcher named
+   */
+  async disconnect(folder: string, connection: string): Promise<Disconnected | undefined> {
+    const messaging = await this.of(folder);
+    if (messaging === undefined) return undefined;
+    const madeFor = this.#options.keys.madeFor({ workspace: messaging.workspace, connection });
+    const disconnected = await messaging.disconnect(connection);
+    if (madeFor === undefined) return disconnected;
+    const others = [...this.#workspaces.values()].filter((other) => other !== messaging);
+    await Promise.all(others.map((other) => other.forgetSameKey(connection, madeFor)));
+    return disconnected;
   }
 
   /** Reads every workspace's connected sources again; the poller calls it. Failures are reported, never thrown. */

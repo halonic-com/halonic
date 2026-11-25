@@ -77,9 +77,13 @@ export interface Desktop {
   /** Moves the scheduler's clock on by `ms` and delivers the timers that are due: no sleep. */
   wait(ms: number): Promise<void>;
   workspace: string;
+  /** A second workspace the launcher named, with the same `halonic.yaml`; nobody connected it yet. */
+  otherWorkspace: string;
   profile: string;
   /** What Studio reads through, as `AgentMessagingService` gives it. */
   studio: AgentHostMessaging;
+  /** What Studio reads through for {@link Desktop.otherWorkspace}. */
+  otherStudio: AgentHostMessaging;
   /** Studio's key hand-over and Disconnect. */
   paperclipKey: AgentHostPaperclipKey;
   /** The page's calls to the host. */
@@ -96,12 +100,14 @@ export interface Desktop {
 }
 
 /**
- * The desktop engine on a real loopback server, with Acme's workspace (one
- * connection file, nobody connected yet), a profile folder for the cache, a
+ * The desktop engine on a real loopback server, with two of Acme's workspaces
+ * (the same connection file, nobody connected yet), a profile folder for the cache, a
  * fake Paperclip and a scheduler the test moves on.
  */
 export async function startDesktop(): Promise<Desktop> {
   const workspace = await realpath(await mkdtemp(join(tmpdir(), "acme-workspace-")));
+  const otherWorkspace = await realpath(await mkdtemp(join(tmpdir(), "acme-other-workspace-")));
+  const workspaceRoots = [workspace, otherWorkspace];
   const profile = await realpath(await mkdtemp(join(tmpdir(), "acme-profile-")));
   const paperclip = new FakePaperclip();
   const keys = new PaperclipKeys();
@@ -111,7 +117,7 @@ export async function startDesktop(): Promise<Desktop> {
   const messaging = new DesktopMessaging({
     keys,
     cacheRoot: join(profile, "agent-messaging-cache"),
-    workspaceRoots: [workspace],
+    workspaceRoots,
     readConnection: readConnectionFile,
     report: (failure) => log(`${failure.provider} ${failure.action}\n`),
     warn: log,
@@ -128,7 +134,7 @@ export async function startDesktop(): Promise<Desktop> {
   const server: HostServer = await startHostServer(token, [
     ...paperclipKeyRoutes({
       keys,
-      workspaceRoots: [workspace],
+      workspaceRoots,
       kept: async (binding) => (await messaging.of(binding.workspace))?.connect(binding.connection),
       log,
     }),
@@ -136,12 +142,13 @@ export async function startDesktop(): Promise<Desktop> {
   ]);
   const answers: string[] = [];
   const transport = pageTransport(server.url, token, answers);
-  const writeConnection = async (address: string, company = acme.company) => {
-    await mkdir(join(workspace, "connections", "paperclip"), { recursive: true });
+  const writeConnection = async (address: string, company = acme.company, into = workspace) => {
+    await mkdir(join(into, "connections", "paperclip"), { recursive: true });
     const text = `label: Halonic\naddress: ${address}\ncompany: ${company}\n`;
-    await writeFile(join(workspace, "connections", "paperclip", "halonic.yaml"), text);
+    await writeFile(join(into, "connections", "paperclip", "halonic.yaml"), text);
   };
   await writeConnection(acme.address);
+  await writeConnection(acme.address, acme.company, otherWorkspace);
   return {
     paperclip,
     keys,
@@ -150,19 +157,22 @@ export async function startDesktop(): Promise<Desktop> {
       await scheduler.runDue();
     },
     workspace,
+    otherWorkspace,
     profile,
     studio: new AgentHostMessaging(transport, workspace, async () => {}),
+    otherStudio: new AgentHostMessaging(transport, otherWorkspace, async () => {}),
     paperclipKey: new AgentHostPaperclipKey(transport),
     transport,
     answers,
     logged,
-    writeConnection,
+    writeConnection: (address, company) => writeConnection(address, company),
     filesIn,
     close: async () => {
       await poller.stop();
       messaging.close();
       await server.close();
       await rm(workspace, { recursive: true, force: true });
+      await rm(otherWorkspace, { recursive: true, force: true });
       await rm(profile, { recursive: true, force: true });
     },
   };

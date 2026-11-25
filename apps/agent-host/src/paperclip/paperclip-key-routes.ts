@@ -88,7 +88,17 @@ export function paperclipKeyRoutes(deps: PaperclipKeyRouteDeps): HostRoute[] {
           sendError(response, 400, "body_invalid", "The request body is not valid.");
           return;
         }
-        await deps.kept?.(binding);
+        try {
+          await deps.kept?.(binding);
+        } catch (error) {
+          // No key stays held without a provider that the person can see and disconnect.
+          deps.keys.forget(binding);
+          deps.log?.(
+            `A Paperclip key wasn't kept: its provider didn't start (${errorName(error)}).\n`,
+          );
+          sendError(response, 502, "provider_not_started", "The connection couldn't be started.");
+          return;
+        }
         sendJson(response, 200, { kept: true });
       },
     },
