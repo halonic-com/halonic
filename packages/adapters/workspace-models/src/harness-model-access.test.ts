@@ -231,5 +231,7 @@ verifies("cli.harness-model-access", () => {
     expect(harnessCallsProviderType("codex", "openai-compatible")).toBe(true);
     expect(harnessCallsProviderType("codex", "anthropic")).toBe(false);
     expect(harnessCallsProviderType("codex", "ollama")).toBe(false);
+    expect(harnessCallsProviderType("opencode", "anthropic")).toBe(true);
+    expect(harnessCallsProviderType("opencode", "openai-compatible")).toBe(false);
   });
 });

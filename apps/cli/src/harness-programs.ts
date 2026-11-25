@@ -4,13 +4,14 @@
 
 import { claudeCodeSignIn, detectClaudeCode } from "@halonicjs/adapter-harness-claude-code";
 import { codexSignIn, detectCodex } from "@halonicjs/adapter-harness-codex";
+import { detectOpenCode } from "@halonicjs/adapter-harness-opencode";
 import { createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import type { Harness } from "@halonicjs/ports";
 
 /** A harness program, as far as finding it on this computer and signing in an agent go. */
 export type HarnessProgram = Pick<Harness, "id" | "name" | "detect" | "signIn">;
 
-/** Claude Code and Codex, as `PATH` and their usual install folders find them. */
+/** Claude Code, Codex and OpenCode, as `PATH` and their usual install folders find them. */
 export function nodeHarnessPrograms(): HarnessProgram[] {
   const programs = createProgramProbe();
   return [
@@ -25,6 +26,12 @@ export function nodeHarnessPrograms(): HarnessProgram[] {
       name: "Codex",
       detect: (options) => detectCodex(programs, options),
       signIn: codexSignIn,
+    },
+    {
+      // No sign-in: the bridge holds the provider's key.
+      id: "opencode",
+      name: "OpenCode",
+      detect: () => detectOpenCode(programs),
     },
   ];
 }

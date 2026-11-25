@@ -345,6 +345,9 @@ importers:
       '@halonicjs/adapter-harness-kit':
         specifier: workspace:*
         version: link:../../packages/adapters/harness-kit
+      '@halonicjs/adapter-harness-opencode':
+        specifier: workspace:*
+        version: link:../../packages/adapters/harness-opencode
       '@halonicjs/adapter-http-kit':
         specifier: workspace:*
         version: link:../../packages/adapters/http-kit
@@ -523,6 +526,9 @@ importers:
       '@halonicjs/adapter-harness-kit':
         specifier: workspace:*
         version: link:../../packages/adapters/harness-kit
+      '@halonicjs/adapter-harness-opencode':
+        specifier: workspace:*
+        version: link:../../packages/adapters/harness-opencode
       '@halonicjs/adapter-http-kit':
         specifier: workspace:*
         version: link:../../packages/adapters/http-kit

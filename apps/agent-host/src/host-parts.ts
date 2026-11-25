@@ -1,5 +1,6 @@
 import { claudeCodeHarness } from "@halonicjs/adapter-harness-claude-code";
 import { codexHarness } from "@halonicjs/adapter-harness-codex";
+import { opencodeHarness } from "@halonicjs/adapter-harness-opencode";
 import { createProgramProbe } from "@halonicjs/adapter-sandbox-host";
 import { WSL_SHARED_FOLDERS } from "@halonicjs/adapter-sandbox-srt";
 import { FileSecretStore } from "@halonicjs/adapter-secrets-file";
@@ -46,10 +47,14 @@ export function logToError(text: string): void {
   process.stderr.write(text);
 }
 
-/** The harnesses the host runs: Claude Code and Codex, found with this computer's launcher. */
+/** The harnesses the host runs: Claude Code, Codex and OpenCode, found with this computer's launcher. */
 export function hostHarnesses(version: string): Harness[] {
   const probe = createProgramProbe();
-  return [claudeCodeHarness({ probe }), codexHarness({ probe, halonicVersion: version })];
+  return [
+    claudeCodeHarness({ probe }),
+    codexHarness({ probe, halonicVersion: version }),
+    opencodeHarness({ probe }),
+  ];
 }
 
 /**
