@@ -15,6 +15,7 @@ import type {
 import { checkedOrigin } from "./address.ts";
 import { ChangeFeed } from "./changes.ts";
 import { PaperclipIds } from "./ids.ts";
+import { eachLimited } from "./inbox.ts";
 import { asRecords, text } from "./json.ts";
 import { PaperclipReader } from "./reader.ts";
 import { fitsSegment, isSafeSegment, type PaperclipRequestName } from "./requests.ts";
@@ -25,11 +26,21 @@ import {
   toPullRequestDetail,
   toPullRequestLists,
 } from "./team-pulls.ts";
-import { finishedRunsLimit, pickRuns, type TaskName, toTaskName, toTeamRun } from "./team-runs.ts";
+import {
+  finishedRunsLimit,
+  pickRuns,
+  type TaskName,
+  taskNameMaxAgeMs,
+  taskReadLanes,
+  taskReadLimit,
+  toTaskName,
+  toTeamRun,
+} from "./team-runs.ts";
 import { toSeats } from "./team-seats.ts";
 import { rangeStart, type SpendContext, toAgentSpend, toSpendSummary } from "./team-spend.ts";
 import {
   bodyOf,
+  type PaperclipAnswer,
   PaperclipTransport,
   type RequestDetails,
   type TransportOptions,
@@ -66,8 +77,8 @@ export class PaperclipTeamStatus implements TeamStatus {
   readonly #feed = new ChangeFeed<MessagingId>();
   readonly #missing = new Set<PluginPart>();
   #agents = new Map<string, KnownAgent>();
-  /** Runs' task names, read once each: a run's task keeps its identifier. */
-  readonly #taskNames = new Map<string, TaskName | undefined>();
+  /** Runs' task names and when each was read; read again once older than `taskNameMaxAgeMs`. */
+  readonly #taskNames = new Map<string, { name: TaskName | undefined; readAt: number }>();
   #lastSeen: string | undefined;
 
   constructor(options: PaperclipTeamStatusOptions) {
@@ -136,6 +147,10 @@ export class PaperclipTeamStatus implements TeamStatus {
    * (`paperclip-client.team-runs`). An agent of another connection has no runs here.
    */
   async runs(query: TeamRunsQuery): Promise<readonly TeamRuns[]> {
+    if (query.since !== undefined && Number.isNaN(Date.parse(query.since))) {
+      // Every finished run would fall outside a bound that isn't a time, with no sign why.
+      throw new RangeError("The runs query's `since` isn't a time.");
+    }
     const agent = query.agent === undefined ? undefined : this.#ids.read(query.agent, "agent")?.[0];
     if (query.agent !== undefined && (agent === undefined || !isSafeSegment(agent))) {
       return [];
@@ -160,7 +175,8 @@ export class PaperclipTeamStatus implements TeamStatus {
       },
     );
     await this.#readTaskNames(picked.runs.flatMap((run) => text(run, "issueId") ?? []));
-    const context = { ids: this.#ids, tasks: this.#taskNames };
+    const tasks = new Map([...this.#taskNames].map(([task, { name }]) => [task, name] as const));
+    const context = { ids: this.#ids, tasks };
     return [
       {
         source: this.#ids.source(),
@@ -249,18 +265,22 @@ export class PaperclipTeamStatus implements TeamStatus {
   }
 
   /**
-   * Reads the name of each task not read yet. A task the key can't see
-   * (404) has no name; any other failure is thrown, as every read's is.
+   * Reads the name of each task not read in the last `taskNameMaxAgeMs`, at
+   * most `taskReadLimit` of them, `taskReadLanes` at a time. A task the key
+   * can't find (404) or may not read (403) has no name; any other failure is
+   * thrown, as every read's is.
    */
   async #readTaskNames(tasks: readonly string[]): Promise<void> {
-    for (const task of new Set(tasks)) {
-      if (this.#taskNames.has(task) || !isSafeSegment(task)) {
-        continue;
-      }
+    const now = this.#now().getTime();
+    const due = [...new Set(tasks)].filter((task) => {
+      const known = this.#taskNames.get(task);
+      return isSafeSegment(task) && (known === undefined || now - known.readAt > taskNameMaxAgeMs);
+    });
+    await eachLimited(due.slice(0, taskReadLimit), taskReadLanes, async (task) => {
       const answer = await this.#reader.send("getTask", { path: { task } });
-      const missing = answer.kind === "failed" && answer.failure === "not-found";
-      this.#taskNames.set(task, missing ? undefined : toTaskName(bodyOf("getTask", answer)));
-    }
+      const name = isUnreadable(answer) ? undefined : toTaskName(bodyOf("getTask", answer));
+      this.#taskNames.set(task, { name, readAt: now });
+    });
   }
 
   #costDetails(range: SpendRange): RequestDetails {
@@ -289,4 +309,12 @@ export class PaperclipTeamStatus implements TeamStatus {
     }
     return { ids: this.#ids, origin: this.#origin, agents: this.#agents };
   }
+}
+
+/** Whether a task read failed because the key can't find the task or may not read it. */
+function isUnreadable(answer: PaperclipAnswer): boolean {
+  return (
+    answer.kind === "failed" &&
+    (answer.failure === "not-found" || (answer.failure === "refused" && answer.status === 403))
+  );
 }

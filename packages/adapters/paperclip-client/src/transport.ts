@@ -26,6 +26,8 @@ export type PaperclipAnswer =
       currentRevisionId?: string | undefined;
       /** On a refusal, Paperclip's own one-line error text, for a work line's reason. Never logged. */
       detail?: string | undefined;
+      /** On a refusal, the HTTP status, so a caller can tell a 403 from a server fault. */
+      status?: number | undefined;
     };
 
 /**
@@ -204,7 +206,12 @@ export class PaperclipTransport {
       return { kind: "failed", failure, ...(await conflictDetails(response)) };
     }
     if (failure === "refused") {
-      return { kind: "failed", failure, ...(await refusalDetail(response)) };
+      return {
+        kind: "failed",
+        failure,
+        status: response.status,
+        ...(await refusalDetail(response)),
+      };
     }
     await response.body?.cancel();
     return { kind: "failed", failure };

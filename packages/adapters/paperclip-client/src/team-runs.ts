@@ -1,12 +1,22 @@
 import type { Money, TeamRun, TeamRunState, TokenCount } from "@halonicjs/ports";
 import type { PaperclipIds } from "./ids.ts";
 import { asRecord, field, type JsonRecord, text } from "./json.ts";
+import { isSafeSegment } from "./requests.ts";
 
 /**
  * How many finished runs one read asks for. `heartbeat-runs` has no time
  * bound and no paging, so the newest this many are all a read can see.
  */
 export const finishedRunsLimit = 200;
+
+/** How many task names one read asks for. A task past the cap keeps its ID; a later read names it. */
+export const taskReadLimit = 50;
+
+/** How many task-name reads go out at once. */
+export const taskReadLanes = 4;
+
+/** How long a task's name is kept before it is read again: a task can be renamed. */
+export const taskNameMaxAgeMs = 10 * 60_000;
 
 /** A task's short name and title, as `getTask` answers them. */
 export interface TaskName {
@@ -121,10 +131,13 @@ function lastActivityOf(record: JsonRecord): Pick<TeamRun, "lastActivityAt"> {
   return latest === undefined ? {} : { lastActivityAt: latest };
 }
 
-/** The run's task, its name left out when the key couldn't read it. */
+/**
+ * The run's task, its name left out when the key couldn't read it. A task ID
+ * that can't be a path segment isn't one of Paperclip's, so it is left out.
+ */
 function taskOf(context: RunContext, record: JsonRecord): Pick<TeamRun, "task"> {
   const task = text(record, "issueId");
-  if (task === undefined) {
+  if (task === undefined || !isSafeSegment(task)) {
     return {};
   }
   const name = context.tasks.get(task);
