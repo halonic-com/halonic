@@ -3,6 +3,7 @@
 - Task: HAL-17525
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-17525 (security PR: Julian reviews security, Liam signs)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jOaanHPjYbhF8nens2SRZVeb1Tn/TsuVHRaKihu421sZbpN54LoLZbJaviLXeGBlswAbTYNCskkFW9hEqd27DA==
 
 ## What changes
 
