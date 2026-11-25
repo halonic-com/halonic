@@ -1,3 +1,4 @@
+import { fenceUntrusted } from "@halonicjs/app";
 import { toolTexts } from "@halonicjs/assistant";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
@@ -57,9 +58,47 @@ verifies("assistant.build.proposal-card", () => {
       false,
     );
     expect(turn?.steps).toEqual([
-      { kind: "proposal", callId: "w1", path: file, why: "B", content: "a" },
-      { kind: "proposal", callId: "w2", path: file, why: "C", content: null },
+      { kind: "proposal", callId: "w1", path: file, why: "B", content: "a", afterReading: [] },
+      { kind: "proposal", callId: "w2", path: file, why: "C", content: null, afterReading: [] },
       { kind: "tool", callId: "w3", name: "propose_file", state: "done" },
     ]);
+  });
+});
+
+verifies("assistant.build.loaded-page", () => {
+  it("gives a proposal written after a docs page the page's site", () => {
+    const file = "models.yaml";
+    const read = {
+      id: "r1",
+      name: "read_docs",
+      arguments: { url: "https://docs.example.com/api" },
+    };
+    const write = (id: string) => ({
+      id,
+      name: "propose_file",
+      arguments: { path: file, content: "a", why: "B" },
+    });
+    const written = (id: string) =>
+      ({
+        role: "tool",
+        toolCallId: id,
+        name: "propose_file",
+        content: toolTexts.changed(file),
+      }) as const;
+    const [turn] = turnsOf(
+      [
+        { role: "user", content: "Use the docs" },
+        { role: "assistant", content: "", toolCalls: [write("w1"), read, write("w2")] },
+        written("w1"),
+        { role: "tool", toolCallId: "r1", name: "read_docs", content: fenceUntrusted("Hi") },
+        written("w2"),
+      ],
+      new Map(),
+      false,
+    );
+    const afterReading = turn?.steps.map((step) =>
+      step.kind === "proposal" ? step.afterReading : undefined,
+    );
+    expect(afterReading).toEqual([[], undefined, ["docs.example.com"]]);
   });
 });

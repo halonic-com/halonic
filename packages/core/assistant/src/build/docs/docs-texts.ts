@@ -17,6 +17,9 @@ export const docsTexts = {
   /** The site isn't allowed yet in this chat: the person sees a card for it. */
   waiting: (host: string) =>
     `Waiting for the person to allow reading pages from ${host}. Tell them which page you want to read and why, then stop. Once they allow it, call read_docs again.`,
+  /** A page is loaded in this chat, and the person didn't name the site, so they aren't asked. */
+  notNamed: (host: string) =>
+    `Couldn't read that: a docs page is loaded in this chat, so read_docs only asks about sites the person named in their own messages, and they haven't named ${host}. If you need it, ask them to write the site's address in the chat.`,
   /** The person said no to the site in this chat. */
   declined: (host: string) =>
     `The person didn't allow reading pages from ${host} in this chat. Don't ask again: work without it, or ask them to paste what you need.`,

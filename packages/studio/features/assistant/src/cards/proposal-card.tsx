@@ -32,6 +32,11 @@ export interface ProposalCardProps {
   readonly proposal: Proposal;
   /** The model's one sentence on the change. */
   readonly why: string;
+  /**
+   * The sites of the docs pages loaded in the chat before the change was written, which the card
+   * names (`assistant.build.loaded-page`); none when absent.
+   */
+  readonly afterReading?: readonly string[] | undefined;
   readonly context: WorkspaceContext;
 }
 
@@ -42,7 +47,7 @@ export interface ProposalCardProps {
  * (component specs 21.2), so it draws the kit Card's box itself. Never green, never "Saved".
  * On a phone its buttons are the touch ones, with the diff in a sheet (flow-assistant 11.4).
  */
-export function ProposalCard({ proposal, why, context }: ProposalCardProps) {
+export function ProposalCard({ proposal, why, afterReading = [], context }: ProposalCardProps) {
   const cards = cardReviewsOf(context.services.get(AssistantHostService));
   const state = useSyncExternalStore(cards.subscribe, () => cards.stateOf(proposal));
   useEffect(() => cards.watch(proposal), [cards, proposal]);
@@ -63,6 +68,9 @@ export function ProposalCard({ proposal, why, context }: ProposalCardProps) {
         {facts.important ? <StatusChip tone="outline">{words.important}</StatusChip> : null}
       </p>
       <p className="break-all font-mono text-caption text-fg-muted">{proposal.path}</p>
+      {afterReading.length === 0 ? null : (
+        <p className="text-caption text-fg-muted">{words.writtenAfterReading(afterReading)}</p>
+      )}
       {/* A rejected card folds its why away: it keeps only what you turned down. */}
       {why === "" || end?.kind === "rejected" ? null : <CardWhy why={why} />}
     </>

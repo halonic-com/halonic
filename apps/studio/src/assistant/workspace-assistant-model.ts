@@ -1,8 +1,26 @@
-import { type ChatSettings, type HostSettings, maxTurnLimit } from "@halonicjs/app";
+import {
+  type ChatAnswerRequest,
+  type ChatSettings,
+  type ChatTool,
+  type HostSettings,
+  maxTurnLimit,
+} from "@halonicjs/app";
 import type { ChatAgentSettings, ChatMessage } from "@halonicjs/ports";
 import type { ChatModel, ShownItem } from "@halonicjs/studio-feature-assistant/api";
 import { assistantPrefs } from "@halonicjs/studio-feature-settings/api";
 import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
+
+/** One answer's model and tools; an agent chat also brings its own model call limit. */
+export interface ChatModelParts {
+  readonly settings: ChatSettings;
+  readonly tools: readonly ChatTool[];
+  /**
+   * Narrows a Build chat's tools once a docs page is loaded, before each model turn
+   * (`assistant.build.loaded-page`).
+   */
+  readonly offerTools?: NonNullable<ChatAnswerRequest["offerTools"]>;
+  readonly turnLimit?: number | undefined;
+}
 
 /** The alias `workspace.yaml` sets for the workspace's own assistant chats, or `null`. */
 export function assistantModelOf(workspace: LoadedWorkspace): string | null {

@@ -49,6 +49,16 @@ export interface ChatAnswerRequest {
   /** The conversation so far, with the person's new message last. It is not changed. */
   messages: readonly ChatMessage[];
   tools: readonly ChatTool[];
+  /**
+   * Picks, before each model turn, which of `tools` that turn offers, from the conversation so
+   * far, this answer's earlier tool results included (`app.chat-tools-per-turn`). A tool it
+   * leaves out isn't offered on that turn, and a call to it isn't run. Absent: every turn offers
+   * all of `tools`.
+   */
+  offerTools?: (
+    tools: readonly ChatTool[],
+    messages: readonly ChatMessage[],
+  ) => readonly ChatTool[];
   /** The most model turns this answer makes, from 1 to 64; {@link defaultTurnLimit} when absent. */
   turnLimit?: number;
   /** Aborted when the person clicks Stop. It is passed on to each model turn and tool call. */

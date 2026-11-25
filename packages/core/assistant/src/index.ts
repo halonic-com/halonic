@@ -16,6 +16,12 @@ export {
   type SiteAnswer,
   type TimeLimit,
 } from "./build/docs/docs-sites.ts";
+export {
+  builderToolNames,
+  sitesRead,
+  sitesReadBefore,
+  toolsWhilePageLoaded,
+} from "./build/docs/loaded-page.ts";
 export { sheetHostsNamedIn } from "./build/sheet-hosts-named.ts";
 export { toolTexts } from "./build/tool-texts.ts";
 export {

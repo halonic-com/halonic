@@ -3,7 +3,7 @@
 // keeps both with the chat, outside the workspace, so no workspace file can
 // allow a site or change the log.
 
-import type { HttpClient } from "@halonicjs/ports";
+import type { ChatMessage, HttpClient } from "@halonicjs/ports";
 
 /**
  * What the person said about one site in this chat: `asked` while its card
@@ -65,6 +65,12 @@ export interface DocsOptions {
    */
   readonly http: HttpClient;
   readonly sites: DocsSites;
+  /**
+   * The chat's messages as kept so far, tool results of the answer in progress included, read on
+   * every call. Once they hold a page, a site is asked for only when the person named it
+   * (`assistant.build.loaded-page`).
+   */
+  readonly messages: () => Promise<readonly ChatMessage[]>;
   /** Starts a time limit of `delayMs`; the core has no timers of its own. */
   readonly timeLimit: (delayMs: number) => TimeLimit;
   readonly now: () => Date;

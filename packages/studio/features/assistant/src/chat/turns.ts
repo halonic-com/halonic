@@ -1,5 +1,5 @@
 import type { RunFailure } from "@halonicjs/app/run-failure";
-import { toolTexts } from "@halonicjs/assistant";
+import { sitesReadBefore, toolTexts } from "@halonicjs/assistant";
 import type { ChatMessage, ToolCall } from "@halonicjs/ports";
 import { chatFailureLine } from "@halonicjs/studio-feature-runs/api";
 import type { ChatToolState } from "@halonicjs/studio-kit";
@@ -25,6 +25,8 @@ export type ReplyStep =
       readonly why: string;
       /** The file's new text; `null` for a delete. */
       readonly content: string | null;
+      /** The sites of the docs pages loaded in the chat before it was written (`assistant.build.loaded-page`). */
+      readonly afterReading: readonly string[];
     };
 
 /** How a reply ended, when it ended other than by answering. */
@@ -71,7 +73,7 @@ export function turnsOf(
       continue;
     }
     const steps = turns.at(-1)?.steps;
-    if (steps !== undefined) addStep(steps, message, calls);
+    if (steps !== undefined) addStep(steps, message, calls, messages);
   }
   return turns.map((turn, index) => {
     const live = answering && index === turns.length - 1;
@@ -90,6 +92,7 @@ function addStep(
   steps: ReplyStep[],
   message: ChatMessage,
   calls: ReadonlyMap<string, ToolCall>,
+  messages: readonly ChatMessage[],
 ): void {
   if (message.role === "assistant") {
     if (message.content.trim() !== "") steps.push({ kind: "text", text: message.content });
@@ -106,7 +109,10 @@ function addStep(
   const step = steps[index];
   if (step?.kind !== "tool") return;
   const call = calls.get(step.callId);
-  const card = call === undefined ? undefined : proposalOf(call, message.content);
+  const card =
+    call === undefined
+      ? undefined
+      : proposalOf(call, message.content, sitesReadBefore(messages, call.id));
   const shown = state === "done" && call?.name === "show" ? shownBy(call) : undefined;
   steps[index] = card ?? (shown === undefined ? { ...step, state } : { ...step, state, shown });
 }
@@ -117,12 +123,19 @@ function shownBy(call: ToolCall): { kind: string; id: string } | undefined {
   return typeof kind === "string" && typeof id === "string" ? { kind, id } : undefined;
 }
 
-/** The card of a write the tool made, told by its result; `undefined` for any other call. */
-function proposalOf(call: ToolCall, result: string): ReplyStep | undefined {
+/**
+ * The card of a write the tool made, told by its result; `undefined` for any other call.
+ * `afterReading` is the sites of the docs pages loaded before it.
+ */
+function proposalOf(
+  call: ToolCall,
+  result: string,
+  afterReading: readonly string[],
+): ReplyStep | undefined {
   const { path, why, content } = call.arguments;
   if (typeof path !== "string") return undefined;
   const said = typeof why === "string" ? why : "";
-  const written = { kind: "proposal", callId: call.id, path, why: said } as const;
+  const written = { kind: "proposal", callId: call.id, path, why: said, afterReading } as const;
   if (call.name === "propose_file" && result === toolTexts.changed(path)) {
     return typeof content === "string" ? { ...written, content } : undefined;
   }

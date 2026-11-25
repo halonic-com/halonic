@@ -68,7 +68,11 @@ function reviewHost(start: FileReview | null) {
   return { fake, decided, changed };
 }
 
-function card(host: ReturnType<typeof reviewHost>, content: string | null = "id: triage\n") {
+function card(
+  host: ReturnType<typeof reviewHost>,
+  content: string | null = "id: triage\n",
+  afterReading: readonly string[] = [],
+) {
   const toasts = createToastStore();
   const openItem = vi.fn();
   const openPlace = vi.fn();
@@ -79,7 +83,12 @@ function card(host: ReturnType<typeof reviewHost>, content: string | null = "id:
   const proposal: Proposal = { chatId: "c1", callId: "call-1", path, content };
   const node = (
     <ToastStoreProvider store={toasts}>
-      <ProposalCard proposal={proposal} why="Pages on-call" context={context} />
+      <ProposalCard
+        proposal={proposal}
+        why="Pages on-call"
+        afterReading={afterReading}
+        context={context}
+      />
     </ToastStoreProvider>
   );
   return { node, toasts, openItem, openPlace, proposal, announce };
@@ -254,5 +263,19 @@ verifies("assistant.build.reject-proposal", () => {
       text: "Disk full",
     });
     expect(buttonNamed(page, "Reject all")).toBeDefined();
+  });
+});
+
+verifies("assistant.build.loaded-page", () => {
+  it("says a change written after reading docs pages names their sites", async () => {
+    const page = await show(card(reviewHost(reviewOf(1)), undefined, ["docs.example.com"]).node);
+    expect(page.querySelector("article")?.textContent).toContain(
+      "Written after reading docs.example.com",
+    );
+  });
+
+  it("says nothing of pages for a change written before any", async () => {
+    const page = await show(card(reviewHost(reviewOf(1))).node);
+    expect(page.querySelector("article")?.textContent).not.toContain("Written after reading");
   });
 });
