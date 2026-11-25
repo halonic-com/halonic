@@ -1,4 +1,4 @@
-import type { WindowCount } from "@halonicjs/ports";
+import type { Clock, Coordination, WindowCount } from "@halonicjs/ports";
 import type { RequestContext, ServerPorts } from "./api.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import {
@@ -22,6 +22,8 @@ export const passwordSecretName = "serve-password";
  */
 const secureCookieName = "__Host-halonic-session";
 const plainCookieName = "halonic-session";
+/** Both names the session cookie may have. */
+export const sessionCookieNames: readonly string[] = [secureCookieName, plainCookieName];
 const sessionLifetimeMs = 30 * 24 * 60 * 60 * 1000;
 
 /**
@@ -160,23 +162,6 @@ export function createSignIn(ports: SignInPorts): SignIn {
     return session.password === (await passwordFingerprint(passwordHash));
   }
 
-  /** Counts one attempt: the client's own count first, so a refused client never uses up the server's. */
-  async function countAttempt(context: RequestContext): Promise<WindowCount> {
-    if (context.clientAddress === undefined) {
-      return coordination.countInWindow(loginAttemptsKey, loginWindowMs, loginAttemptsPerWindow);
-    }
-    const key = `${loginAddressKeyPrefix}${await sha256Hex(addressGroup(context.clientAddress))}`;
-    const own = await coordination.countInWindow(key, loginWindowMs, loginAttemptsPerWindow);
-    if (!own.allowed) {
-      return own;
-    }
-    return coordination.countInWindow(
-      loginAttemptsKey,
-      loginWindowMs,
-      loginAttemptsPerWindowForServer,
-    );
-  }
-
   return {
     async login(request, body, context) {
       const hash = await secrets.get(passwordSecretName);
@@ -187,11 +172,9 @@ export function createSignIn(ports: SignInPorts): SignIn {
       if (password === null) {
         return errorResponse(serverErrors.badRequest);
       }
-      const attempt = await countAttempt(context);
+      const attempt = await countLoginAttempt(coordination, context);
       if (!attempt.allowed) {
-        const waitMs = Date.parse(attempt.resetAt) - clock.now().getTime();
-        const retryAfter = String(Math.max(1, Math.ceil(waitMs / 1000)));
-        return errorResponse(serverErrors.tooManyAttempts, { "Retry-After": retryAfter });
+        return tooManyAttempts(attempt, clock);
       }
       if (!(await passwordHasher.verify(password, hash))) {
         return errorResponse(serverErrors.wrongPassword);
@@ -227,6 +210,36 @@ export function createSignIn(ports: SignInPorts): SignIn {
       await coordination.compareAndSet(sessionGenerationKey, current, newSessionGeneration());
     },
   };
+}
+
+/**
+ * Counts one sign-in attempt (`server.login-limit`): the client's own count first, so a refused
+ * client never uses up the server's. Pairing codes and the password asked again count here too.
+ */
+export async function countLoginAttempt(
+  coordination: Coordination,
+  context: RequestContext,
+): Promise<WindowCount> {
+  if (context.clientAddress === undefined) {
+    return coordination.countInWindow(loginAttemptsKey, loginWindowMs, loginAttemptsPerWindow);
+  }
+  const key = `${loginAddressKeyPrefix}${await sha256Hex(addressGroup(context.clientAddress))}`;
+  const own = await coordination.countInWindow(key, loginWindowMs, loginAttemptsPerWindow);
+  if (!own.allowed) {
+    return own;
+  }
+  return coordination.countInWindow(
+    loginAttemptsKey,
+    loginWindowMs,
+    loginAttemptsPerWindowForServer,
+  );
+}
+
+/** The 429 for an attempt over the limit, with the seconds until its window ends. */
+export function tooManyAttempts(attempt: WindowCount, clock: Clock): Response {
+  const waitMs = Date.parse(attempt.resetAt) - clock.now().getTime();
+  const retryAfter = String(Math.max(1, Math.ceil(waitMs / 1000)));
+  return errorResponse(serverErrors.tooManyAttempts, { "Retry-After": retryAfter });
 }
 
 /**

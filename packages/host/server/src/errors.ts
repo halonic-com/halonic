@@ -25,6 +25,12 @@ export const serverErrors = {
     message: "The request doesn't carry this launch's token.",
   },
   wrongPassword: { status: 401, code: "wrong_password", message: "The password is wrong." },
+  pairingCodeRefused: {
+    status: 401,
+    code: "pairing_code_refused",
+    message: "That pairing code isn't valid any more. Ask for a new one.",
+  },
+  deviceNotFound: { status: 404, code: "device_not_found", message: "There is no such device." },
   tooManyAttempts: {
     status: 429,
     code: "too_many_attempts",
