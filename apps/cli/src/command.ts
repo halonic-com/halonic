@@ -91,8 +91,13 @@ export interface CommandContext {
    * nothing and throws `refusal`, which names the other way to give the
    * value. `runCli` scrubs the value from everything it prints afterwards.
    * Ctrl C or SIGTERM while it waits ends the prompt, as for {@link ask}.
+   * Its `shownFirst` lines come right before the prompt, and only when it asks.
    */
-  askSecret(prompt: Message, refusal: () => Error): Promise<string | undefined>;
+  askSecret(
+    prompt: Message,
+    refusal: () => Error,
+    shownFirst?: readonly Phrase[],
+  ): Promise<string | undefined>;
   /**
    * Aborted at the first Ctrl C or SIGTERM (cli-output 1.5). The command
    * passes it on to what it starts, winds down, and returns a

@@ -201,8 +201,8 @@ async function runCommandLine(
       printAhead: (line) => printer.ahead(line),
       printJsonLine: (fields) => printer.jsonLine(fields),
       ask: (question) => printer.ask(question, watch.signal),
-      askSecret: async (prompt, refusal) => {
-        const value = await printer.askSecret(prompt, refusal, watch.signal);
+      askSecret: async (prompt, refusal, shownFirst) => {
+        const value = await printer.askSecret(prompt, refusal, watch.signal, shownFirst);
         if (value !== undefined) scrubber.remember(value);
         return value;
       },

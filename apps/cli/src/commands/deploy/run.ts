@@ -1,11 +1,17 @@
-// `halonic deploy <deployment>`: deploys the workspace's last commit (deploy
-// flow 2.7 to 2.10, 3.6 and 3.7). A thin command over the deploy app
-// service's `deploy`: the service checks the lock, asks `Deploy? [y/N]` when
-// something is new and runs the target; this file takes the files from the
-// commit, draws the steps and says how it ended.
+// `halonic deploy <deployment>` and `--plan`: deploys the workspace's last
+// commit (deploy flow 2.6 to 2.11, 3.6 and 3.7), or shows what that would do.
+// A thin command over the deploy app service: the service checks the lock,
+// asks the questions and runs the target; this file takes the files and
+// `deployments.yaml` from the commit, runs the gate (3.6), draws the steps
+// and says how it ended.
 
-import { chooseDeployment, type DeployInput, type DeployOutcome } from "@halonicjs/app";
-import type { Deployment } from "@halonicjs/format";
+import {
+  chooseDeployment,
+  type DeployInput,
+  type DeployOutcome,
+  deployReaches,
+} from "@halonicjs/app";
+import type { Connector, Deployment, Provider } from "@halonicjs/format";
 import type {
   DeployEvent,
   DeploymentRef,
@@ -14,7 +20,7 @@ import type {
   VcsCommit,
 } from "@halonicjs/ports";
 import { KindedError, systemClock } from "@halonicjs/std";
-import { filesOf, loadWorkspace, VersionSource } from "@halonicjs/workspace";
+import { filesOf, type LoadedWorkspace, loadWorkspace, VersionSource } from "@halonicjs/workspace";
 import {
   type CommandContext,
   type CommandInput,
@@ -25,10 +31,17 @@ import {
 import { type DeploySetup, deployServiceOf } from "../../deploy-host.ts";
 import { exitCode } from "../../exit-code.ts";
 import { deployMessages } from "../../messages/deploy.ts";
+import { deployPlanMessages as words } from "../../messages/deploy-plan.ts";
 import { duration } from "../../messages/duration.ts";
 import { plainText } from "../../messages/phrase.ts";
 import { deployFailure, selfTestFailedResult } from "../../output/deploy-failure.ts";
-import { deployLiveLines, deployResult, resourceList } from "../../output/deploy-output.ts";
+import { deployLiveLines, deployResult } from "../../output/deploy-output.ts";
+import {
+  cannotRunError,
+  type DeploySummaryFacts,
+  deployPlanResult,
+  deploySummary,
+} from "../../output/deploy-plan.ts";
 import { deployStopped } from "../../output/deploy-stop.ts";
 import { openGitHistory } from "../../run-workspace.ts";
 import { halonicVersion } from "../../version.ts";
@@ -42,39 +55,52 @@ class NobodyToAsk extends Error {
 
 /**
  * Deploys the workspace's last commit to the named deployment, or to its one
- * Cloudflare deployment when none is named.
+ * Cloudflare deployment when none is named; with `--plan`, shows what that
+ * would do and changes nothing.
  *
- * @throws UsageError with more than one name, or none and no Cloudflare deployment (or no
- *   deployment at all)
+ * @throws UsageError with more than one name, none and no Cloudflare deployment (or no
+ *   deployment at all), or `--exit-code` without `--plan`
  * @throws KindedError `invalid_input` when the workspace isn't in a git repository with a commit
- * @throws KindedError from the deploy app service, through `deployFailure`
+ * @throws KindedError from the gate, and from the deploy app service through `deployFailure`
  */
 export async function runDeploy(
   input: CommandInput,
   context: CommandContext,
   setup: DeploySetup,
 ): Promise<CommandResult | StoppedResult> {
+  const planOnly = input.options["plan"] === true;
+  const exitCodeAsked = input.options["exit-code"] === true;
+  if (exitCodeAsked && !planOnly) throw new UsageError(words.exitCodeNeedsPlan());
   const [name, ...extra] = input.positionals;
-  if (extra.length > 0) throw new UsageError(deployMessages.needsName());
+  if (extra.length > 0) throw new UsageError(words.oneDeployment());
   const dir = await openWorkspaceDir(input, context);
-  const workspace = await loadWorkspace(dir.store);
-  const workspaceName = workspaceNameOf(workspace, dir);
-  const deployments = filesOf(workspace, "deployments")[0]?.value.deployments ?? {};
-  const chosen = chooseDeployment(workspaceName, deployments, name, workspace.files);
-  if (chosen.kind === "none") throw nothingChosen(workspaceName, deployments);
+  const here = workspaceNameOf(await loadWorkspace(dir.store), dir);
   const history = await (setup.openHistory ?? openGitHistory)(dir.root);
-  if (history === null) throw notARepository(workspaceName);
+  if (history === null) throw notARepository(here);
   try {
     const [head] = await history.vcs.log(1).catch(() => []);
-    if (head === undefined) throw notARepository(workspaceName);
-    return await deploy(context, setup, {
+    if (head === undefined) throw notARepository(here);
+    const files = new VersionSource(history.vcs, head.hash, dir.store.location);
+    // Everything the deploy uses comes from the commit, `deployments.yaml` too: an
+    // uncommitted `stage`, account or Worker never decides where it goes.
+    const committed = await loadWorkspace(files);
+    const workspace = workspaceNameOf(committed, dir);
+    const deployments = filesOf(committed, "deployments")[0]?.value.deployments ?? {};
+    const chosen = chooseDeployment(workspace, deployments, name, committed.files);
+    if (chosen.kind === "none") throw nothingChosen(workspace, deployments);
+    const facts: DeployFacts = {
       id: chosen.id,
       deployment: chosen.deployment,
-      workspace: workspaceName,
+      workspace,
+      committed,
       head,
-      files: new VersionSource(history.vcs, head.hash, dir.store.location),
+      files,
+      changed: (await history.vcs.status()).changes.length,
       yes: input.options["yes"] === true,
-    });
+    };
+    return planOnly
+      ? await plan(context, setup, facts, exitCodeAsked)
+      : await deploy(context, setup, facts);
   } finally {
     await history.close();
   }
@@ -84,10 +110,85 @@ interface DeployFacts {
   readonly id: string;
   readonly deployment: Deployment;
   readonly workspace: string;
+  /** The workspace as the last commit has it: what the deploy and its questions use. */
+  readonly committed: LoadedWorkspace;
   /** The last commit, whose files are deployed. */
   readonly head: VcsCommit;
   readonly files: VersionSource;
+  /** Files with changes that aren't in `head`, untracked ones included. */
+  readonly changed: number;
   readonly yes: boolean;
+}
+
+/** What a deploy and `--plan` share, once the gate has passed. */
+interface Gated {
+  readonly deploys: ReturnType<typeof deployServiceOf>;
+  readonly ref: DeploymentRef;
+  readonly summary: DeploySummaryFacts;
+}
+
+/**
+ * Works out where the deployment lives, then the gate (3.6): uncommitted
+ * changes, refused on production and named on development, then what can't
+ * run on Cloudflare. Nothing has reached the host's deploy by then.
+ */
+async function gate(
+  context: CommandContext,
+  setup: DeploySetup,
+  facts: DeployFacts,
+): Promise<Gated> {
+  const { id, deployment } = facts;
+  const deploys = deployServiceOf(setup, deployment.cloudflare?.worker);
+  const ref = await deploys
+    .deploymentRef(deployment.host, id, deployment)
+    .catch((error: unknown) => Promise.reject(deployFailure(error, id)));
+  const commit = facts.head.hash.slice(0, 7);
+  if (facts.changed > 0) {
+    if (ref.environment === "production") {
+      throw new KindedError("conflict", plainText(words.uncommitted(facts.changed).phrase), {
+        fix: plainText(words.uncommittedFix().phrase),
+      });
+    }
+    context.warn(words.uncommittedDevelopment(facts.changed, commit).phrase);
+  }
+  const reach = deployReaches(facts.committed);
+  if (reach.kind === "cannot-run") throw cannotRunError(reach.problems, facts.workspace, id);
+  return {
+    deploys,
+    ref,
+    summary: {
+      workspace: facts.workspace,
+      deployment: id,
+      commit,
+      subject: facts.head.message.split("\n")[0] ?? "",
+      reaches: reach.reaches,
+      secretNames: reach.secretNames,
+      routines: filesOf(facts.committed, "routine").length,
+      inTheEu: deployment.cloudflare?.location === "eu",
+    },
+  };
+}
+
+/** `--plan` (2.11): the summary and every file, asking nothing and changing nothing. */
+async function plan(
+  context: CommandContext,
+  setup: DeploySetup,
+  facts: DeployFacts,
+  exitCodeAsked: boolean,
+): Promise<CommandResult> {
+  const gated = await gate(context, setup, facts);
+  const request = { ...requestOf(context, facts, gated, () => {}), questions: undefined };
+  const { plan } = await gated.deploys
+    .plan(request)
+    .catch((error: unknown) => Promise.reject(deployFailure(error, facts.id)));
+  return deployPlanResult(plan, {
+    ...gated.summary,
+    clock: {
+      now: (setup.clock ?? systemClock).now(),
+      ...(setup.timeZone === undefined ? {} : { timeZone: setup.timeZone }),
+    },
+    exitCode: exitCodeAsked,
+  });
 }
 
 async function deploy(
@@ -95,17 +196,32 @@ async function deploy(
   setup: DeploySetup,
   facts: DeployFacts,
 ): Promise<CommandResult | StoppedResult> {
-  const { id, deployment } = facts;
+  const { id } = facts;
   const clock = setup.clock ?? systemClock;
-  const deploys = deployServiceOf(setup, deployment.cloudflare?.worker);
+  const gated = await gate(context, setup, facts);
+  const { deploys, summary } = gated;
   const lines = deployLiveLines(context);
-  const steps = stepsSeen(lines.onEvent);
   let plan: DeployPlan | undefined;
+  // The heading of 2.8 and the gate's ✓ lines, printed ahead of the target's first step.
+  const ahead = () => [
+    words.deploying(facts.workspace, id).phrase,
+    words.where("Cloudflare", plan?.account.name ?? "", summary.commit).phrase,
+    [],
+    words.checked(facts.workspace).phrase,
+    words.took(plan?.files.length ?? 0, summary.commit).phrase,
+  ];
+  let heading: ReturnType<typeof ahead> = [];
+  const steps = stepsSeen((event) => {
+    if (heading.length === 0) {
+      heading = ahead();
+      for (const line of heading) context.printAhead(line);
+    }
+    lines.onEvent(event);
+  });
   const started = clock.now().getTime();
   let outcome: DeployOutcome;
   try {
-    const ref = await deploys.deploymentRef(deployment.host, id, deployment);
-    const request = requestOf(context, facts, ref, (planned) => {
+    const request = requestOf(context, facts, gated, (planned) => {
       plan = planned;
     });
     outcome = await deploys.deploy(request, steps.onEvent).catch((error: unknown) => {
@@ -135,14 +251,15 @@ async function deploy(
       json: { deployment: id, deployed: false },
     };
   }
+  const stepLines = [...heading, ...lines.lines];
   if (outcome.outcome === "self-test-failed") {
-    return selfTestFailedResult(outcome, id, plan, lines.lines);
+    return selfTestFailedResult(outcome, id, plan, stepLines);
   }
   return deployResult(outcome, {
     workspace: facts.workspace,
     deployment: id,
     took: duration(clock.now().getTime() - started),
-    stepLines: lines.lines,
+    stepLines,
   });
 }
 
@@ -150,27 +267,55 @@ async function deploy(
 function requestOf(
   context: CommandContext,
   facts: DeployFacts,
-  deployment: DeploymentRef,
+  gated: Gated,
   onPlan: (plan: DeployPlan) => void,
 ): DeployInput {
+  const { summary } = gated;
   return {
     host: facts.deployment.host,
-    deployment,
+    deployment: gated.ref,
     snapshot: { commit: facts.head.hash, files: facts.files, halonicVersion },
-    // What the workspace reaches and the secrets it needs come with the summary's
-    // Reaches and Secrets rows; until then nothing is sent (HAL-18019's follow-ups).
-    reaches: [],
-    secretNames: [],
+    reaches: summary.reaches,
+    secretNames: summary.secretNames,
     secrets: new Map(),
     yes: facts.yes,
     questions: {
-      // With `secretNames` empty the service asks for no secret, so this is never called.
-      secret: (secretName) => Promise.reject(new RangeError(secretName)),
-      confirm: (plan) => confirm(context, facts, plan),
+      secret: (secret) => askSecretValue(context, facts, secret),
+      confirm: (plan) =>
+        context.ask({
+          question: deployMessages.question(),
+          shownFirst: deploySummary(plan, summary),
+          yes: false,
+          refusal: () => new NobodyToAsk(),
+        }),
     },
     signal: context.signal,
     onPlan,
   };
+}
+
+/** 2.6: what needs the secret, then the paste prompt. */
+async function askSecretValue(
+  context: CommandContext,
+  facts: DeployFacts,
+  secret: string,
+): Promise<string> {
+  const owner = secretOwner(facts.committed, secret);
+  const value = await context.askSecret(words.secretPrompt(secret), () => new NobodyToAsk(), [
+    words.secretNeeded(facts.workspace, owner, secret).phrase,
+    words.secretPaste().phrase,
+  ]);
+  if (value === undefined) throw new NobodyToAsk();
+  return value;
+}
+
+/** "provider anthropic" or "connector crm": the first file that names the secret. */
+function secretOwner(workspace: LoadedWorkspace, secret: string): string {
+  const named = (item: Provider | Connector) => item.secret === secret;
+  const provider = filesOf(workspace, "provider").find((file) => named(file.value));
+  if (provider !== undefined) return `provider ${provider.value.id}`;
+  const connector = filesOf(workspace, "connector").find((file) => named(file.value));
+  return connector === undefined ? "workspace" : `connector ${connector.value.id}`;
 }
 
 /** Passes each event on and keeps the step that's running and whether any finished, for a stop. */
@@ -189,27 +334,6 @@ function stepsSeen(onEvent: (event: DeployEvent) => void) {
     running: () => running,
     changed: () => changed,
   };
-}
-
-/** The summary and `Deploy? [y/N]` (2.7), with the rows this deploy can fill. */
-function confirm(context: CommandContext, facts: DeployFacts, plan: DeployPlan): Promise<boolean> {
-  const { head } = facts;
-  const commit = head.hash.slice(0, 7);
-  const rows = [
-    deployMessages.summary(facts.workspace, "Cloudflare").phrase,
-    deployMessages.accountRow(plan.account.name).phrase,
-    ...(plan.url === undefined ? [] : [deployMessages.addressRow(plan.url).phrase]),
-    deployMessages.filesRow(plan.files.length, commit, head.message).phrase,
-    ...(plan.creates.length === 0
-      ? []
-      : [deployMessages.createsRow(resourceList(plan.creates)).phrase]),
-  ];
-  return context.ask({
-    question: deployMessages.question(),
-    shownFirst: rows,
-    yes: false,
-    refusal: () => new NobodyToAsk(),
-  });
 }
 
 /** Why no deployment was picked: the workspace has none yet, or the user has to name one. */

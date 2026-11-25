@@ -62,35 +62,31 @@ const deployed: DeployResult = {
   warnings: [],
 };
 
+const deploymentsYaml = [
+  "deployments:",
+  "  web:",
+  "    name: Web",
+  "    host: cloudflare",
+  "    cloudflare:",
+  `      account: ${account.id}`,
+  "      worker: acme",
+  "",
+].join("\n");
+
 let folder: string;
 
 beforeEach(async () => {
   folder = await mkdtemp(join(tmpdir(), "halonic-deploy-run-"));
   await writeFile(join(folder, "workspace.yaml"), "id: acme\nname: Acme\n");
-  await writeFile(
-    join(folder, "deployments.yaml"),
-    [
-      "deployments:",
-      "  web:",
-      "    name: Web",
-      "    host: cloudflare",
-      "    cloudflare:",
-      `      account: ${account.id}`,
-      "      worker: acme",
-      "",
-    ].join("\n"),
-  );
+  await writeFile(join(folder, "deployments.yaml"), deploymentsYaml);
 });
 
 afterEach(() => rm(folder, { recursive: true, force: true }));
 
-/** The workspace's history: one commit, with the two files. */
-const oneCommit: OpenWorkspaceHistory = async () => {
-  const files: Record<string, string> = {
-    "workspace.yaml": "id: acme\nname: Acme\n",
-    "deployments.yaml": "deployments: {}\n",
-  };
-  return {
+/** The workspace's history: one commit, with these files. */
+const commitOf =
+  (files: Readonly<Record<string, string>>): OpenWorkspaceHistory =>
+  async () => ({
     vcs: {
       status: async () => ({
         isRepo: true,
@@ -112,8 +108,13 @@ const oneCommit: OpenWorkspaceHistory = async () => {
       listAt: async () => Object.keys(files).sort(),
     },
     close: async () => {},
-  };
-};
+  });
+
+/** One commit with the two files. */
+const oneCommit = commitOf({
+  "workspace.yaml": "id: acme\nname: Acme\n",
+  "deployments.yaml": deploymentsYaml,
+});
 
 /**
  * A target whose deploy sends `events`, then ends as `end` says: with a
@@ -189,6 +190,11 @@ verifies("cli.commands.deploy.run", () => {
     const code = await runCli(["deploy", "web"], io, [deployCommandWith(setup)]);
     expect(code).toBe(exitCode.ok);
     expect(io.stdout).toEqual([
+      "Deploying Acme to web",
+      "  Cloudflare · sam@example.com's Account · commit 8d1a04b",
+      "",
+      "✓ Checked Acme for Cloudflare. No problems.",
+      "✓ Took 2 files from commit 8d1a04b.",
       "✓ Uploaded version 2.",
       "✓ Self-test of version 2 passed.",
       `✓ Acme is live on web: ${url}`,
@@ -216,7 +222,10 @@ verifies("cli.commands.deploy.run", () => {
     await rm(join(folder, "deployments.yaml"));
     const { setup, asked } = targetWith(livePlan, uploadAndGoLive, deployed);
     const io = captureIo(folder);
-    const code = await runCli(["deploy"], io, [deployCommandWith(setup)]);
+    const withoutDeployments = commitOf({ "workspace.yaml": "id: acme\nname: Acme\n" });
+    const code = await runCli(["deploy"], io, [
+      deployCommandWith({ ...setup, openHistory: withoutDeployments }),
+    ]);
     expect(code).toBe(exitCode.usage);
     expect(io.stderr).toEqual([
       "✕ Acme has no deployments yet.",
@@ -241,6 +250,7 @@ verifies("cli.commands.deploy.run", () => {
         `  Address     ${url}`,
         '  Files       2 from commit 8d1a04b "Add the Friday routine"',
         "  Creates     the Worker acme",
+        "  Reaches     nothing outside Cloudflare",
         "Deploy? [y/N] ",
       ].join("\n"),
     );
@@ -296,6 +306,11 @@ verifies("cli.commands.deploy.run", () => {
     const code = await runCli(["deploy", "web"], io, [deployCommandWith(setup)]);
     expect(code).toBe(exitCode.failed);
     expect(io.stdout).toEqual([
+      "Deploying Acme to web",
+      "  Cloudflare · sam@example.com's Account · commit 8d1a04b",
+      "",
+      "✓ Checked Acme for Cloudflare. No problems.",
+      "✓ Took 2 files from commit 8d1a04b.",
       "✓ Uploaded version 2.",
       "✕ Couldn't deploy web: version 2 failed its self-test. Version 1 is still live.",
       "  Run again. If it fails again, run it with --debug and report it: https://github.com/halonic-com/halonic/issues",

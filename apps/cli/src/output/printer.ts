@@ -110,6 +110,7 @@ export interface Printer {
     prompt: Message,
     refusal: () => Error,
     signal?: AbortSignal,
+    shownFirst?: readonly Phrase[],
   ): Promise<string | undefined>;
 }
 
@@ -254,9 +255,9 @@ export function printerFor(io: CliIo, options: PrinterOptions): Printer {
       liveLine?.clear();
       return askYesNo(question, asking, signal);
     },
-    askSecret(prompt, refusal, signal) {
+    askSecret(prompt, refusal, signal, shownFirst) {
       liveLine?.clear();
-      return askSecret(prompt, refusal, asking, signal);
+      return askSecret(prompt, refusal, asking, signal, shownFirst);
     },
   };
 }
