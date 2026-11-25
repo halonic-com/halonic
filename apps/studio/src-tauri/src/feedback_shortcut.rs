@@ -97,10 +97,10 @@ fn register_instead<R: Runtime>(app: &AppHandle<R>, new: Shortcut) -> Result<(),
         return Ok(());
     }
     shortcuts.register(new).map_err(|_| "taken")?;
-    if let Some(old) = registered.replace(new) {
-        if let Err(error) = shortcuts.unregister(old) {
-            log(format!("the old shortcut {old} stays registered: {error}"));
-        }
+    if let Some(old) = registered.replace(new)
+        && let Err(error) = shortcuts.unregister(old)
+    {
+        log(format!("the old shortcut {old} stays registered: {error}"));
     }
     Ok(())
 }

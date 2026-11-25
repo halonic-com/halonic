@@ -152,10 +152,10 @@ fn finish<R: Runtime>(app: &AppHandle<R>) {
 /// Closes every window whose label `closes` picks.
 fn close_windows<R: Runtime>(app: &AppHandle<R>, closes: impl Fn(&str) -> bool) {
     for (label, window) in app.webview_windows() {
-        if closes(&label) {
-            if let Err(error) = window.close() {
-                log(format!("{label} didn't close: {error}"));
-            }
+        if closes(&label)
+            && let Err(error) = window.close()
+        {
+            log(format!("{label} didn't close: {error}"));
         }
     }
 }

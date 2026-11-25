@@ -7,7 +7,7 @@ use halonic_screen_still::{CropBox, Still};
 use serde_json::{Value, json};
 use tauri::test::{MockRuntime, mock_builder};
 use tauri::webview::WebviewWindowBuilder;
-use tauri::{App, Manager, WebviewUrl};
+use tauri::{App, Manager, Webview, WebviewUrl};
 use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut};
 
 use super::held::{
@@ -127,7 +127,8 @@ fn a_box_outside_the_still_or_after_it_was_dropped_keeps_nothing() {
     let mut held = Held::default();
     held.hold(vec![still()], now);
     assert!(!held.select(0, whole_box(5, 1), now));
-    assert_eq!((held.crop(), held.still(0, now)), (None, None));
+    assert_eq!(held.crop(), None);
+    assert_eq!(held.still(0, now), None);
     assert!(!held.select(0, whole_box(1, 1), now));
 }
 
@@ -229,11 +230,17 @@ fn app_with(labels: &[&str]) -> App<MockRuntime> {
     app
 }
 
+fn webview(app: &App<MockRuntime>, label: &str) -> Webview<MockRuntime> {
+    let window = app.get_webview_window(label).expect("the window is open");
+    let webview: &Webview<MockRuntime> = window.as_ref();
+    webview.clone()
+}
+
 #[test]
 fn only_an_overlay_window_gets_a_still_and_only_while_one_is_held() {
     let app = app_with(&["main", "feedback-overlay-0"]);
-    let main = app.get_webview("main").expect("main");
-    let overlay = app.get_webview("feedback-overlay-0").expect("overlay");
+    let main = webview(&app, "main");
+    let overlay = webview(&app, "feedback-overlay-0");
     assert_eq!(overlay_still(main).err(), Some("not_an_overlay"));
     assert_eq!(overlay_still(overlay.clone()).err(), Some("gone"));
     let state = app.state::<FeedbackCapture>();
