@@ -131,14 +131,15 @@ function UnderMeter({ seat, clock }: { seat: Seat; clock: TeamClock }) {
 /**
  * The week: on a desktop a meter, greyed with its time under it when the reading may be old, or
  * with a near-limit seat's forecast under it; on a phone only the percent. A seat with no week
- * shows a dash.
+ * shows a dash where the bar goes, with its time under it in the same column, so the dash doesn't
+ * float right of the line under it (HAL-18833); on a phone the dash sits where the percent goes.
  */
 function WeekCell({ seat, clock }: { seat: Seat; clock: TeamClock }) {
   const week = seat.windows.find((each) => each.kind === "week");
   if (week === undefined) {
     return (
-      <span className="block min-w-0">
-        <span className={`block ${numberCell}`}>—</span>
+      <span className="block min-w-0" data-week="none">
+        <span className="block text-small tabular-nums phone:text-right">—</span>
         <span className="block phone:hidden">
           <UnderMeter seat={seat} clock={clock} />
         </span>
