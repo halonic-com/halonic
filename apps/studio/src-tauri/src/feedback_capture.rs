@@ -21,7 +21,9 @@ use tauri_plugin_global_shortcut::Shortcut;
 mod held;
 #[path = "feedback_shortcut.rs"]
 mod shortcut;
-use held::{Held, OVERLAY_PREFIX, STILL_LIFETIME, SelectedBox, overlay_index, still_bytes};
+use held::{
+    Held, MAX_SCREENS, OVERLAY_PREFIX, STILL_LIFETIME, SelectedBox, overlay_index, still_bytes,
+};
 pub use shortcut::keys;
 
 /// The Send feedback window's label.
@@ -83,6 +85,7 @@ fn open_overlays<R: Runtime>(app: &AppHandle<R>) -> Result<(), Box<dyn std::erro
     let areas: Vec<ScreenArea> = app
         .available_monitors()?
         .iter()
+        .take(MAX_SCREENS)
         .map(|monitor| ScreenArea {
             left: monitor.position().x,
             top: monitor.position().y,

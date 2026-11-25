@@ -25,6 +25,11 @@ pub const DEFAULT_SHORTCUT: &str = "CommandOrControl+Alt+F";
 /// The overlay windows' labels: this and the screen's number.
 pub const OVERLAY_PREFIX: &str = "feedback-overlay-";
 
+/// The most screens one press captures. No capability may name a window
+/// with a wildcard (`served_page_tests`), so the overlay's capability lists
+/// each of these labels by name.
+pub const MAX_SCREENS: usize = 8;
+
 /// How long the stills wait for a selection before they are dropped.
 pub const STILL_LIFETIME: Duration = Duration::from_secs(120);
 
@@ -135,9 +140,10 @@ pub fn saved_shortcut(value: Option<&Value>) -> Shortcut {
         .unwrap_or_else(|| Shortcut::from_str(DEFAULT_SHORTCUT).expect("the default parses"))
 }
 
-/// The screen number of an overlay window's label.
+/// The screen number of an overlay window's label, below `MAX_SCREENS`.
 pub fn overlay_index(label: &str) -> Option<usize> {
-    label.strip_prefix(OVERLAY_PREFIX)?.parse().ok()
+    let index: usize = label.strip_prefix(OVERLAY_PREFIX)?.parse().ok()?;
+    (index < MAX_SCREENS).then_some(index)
 }
 
 /// A still as the page reads it: width and height as two little-endian

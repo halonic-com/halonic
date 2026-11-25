@@ -11,7 +11,7 @@ use tauri::{App, Manager, Webview, WebviewUrl};
 use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut};
 
 use super::held::{
-    DEFAULT_SHORTCUT, Held, SelectedBox, overlay_index, saved_shortcut, still_bytes,
+    DEFAULT_SHORTCUT, Held, MAX_SCREENS, SelectedBox, overlay_index, saved_shortcut, still_bytes,
 };
 use super::{FeedbackCapture, crop, end, still as overlay_still};
 
@@ -61,12 +61,13 @@ fn a_saved_shortcut_is_used_and_anything_else_falls_back_to_the_default() {
 #[test]
 fn only_overlay_labels_have_a_screen_number() {
     assert_eq!(overlay_index("feedback-overlay-0"), Some(0));
-    assert_eq!(overlay_index("feedback-overlay-12"), Some(12));
+    assert_eq!(overlay_index("feedback-overlay-7"), Some(7));
     for label in [
         "main",
         "feedback",
         "feedback-overlay-",
         "feedback-overlay-x",
+        "feedback-overlay-8",
     ] {
         assert_eq!(overlay_index(label), None, "{label}");
     }
@@ -279,7 +280,10 @@ fn each_feedback_window_is_granted_only_its_own_commands_and_never_served() {
     let overlay = capability(include_str!(
         "../capabilities/desktop-feedback-overlay.json"
     ));
-    assert_eq!(overlay["windows"], json!(["feedback-overlay-*"]));
+    let labels: Vec<String> = (0..MAX_SCREENS)
+        .map(|index| format!("feedback-overlay-{index}"))
+        .collect();
+    assert_eq!(overlay["windows"], json!(labels));
     assert_eq!(
         overlay["permissions"],
         json!([
