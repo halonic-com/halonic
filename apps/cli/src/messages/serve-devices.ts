@@ -81,6 +81,15 @@ export const serveDevicesMessages = defineMessages("serveDevices", {
   byBrowser: () => phrase`a browser`,
   /** Who allowed a device: a paired device that is signed out since. */
   byGoneDevice: () => phrase`a device that's signed out`,
+  /**
+   * A Paperclip key was put in the server's store, new or replacing one (`server.paperclip-key-password`).
+   * `when` is the day and time; `by` is a browser, or a device's name and id.
+   */
+  keyConnected: (connection: string, when: string, by: string) =>
+    phrase`Paperclip key for ${connection} connected ${markPart("separator")} ${when} ${markPart("separator")} by ${by}`,
+  /** A Paperclip key was taken out of the server's store; as {@link keyConnected}. */
+  keyDisconnected: (connection: string, when: string, by: string) =>
+    phrase`Paperclip key for ${connection} disconnected ${markPart("separator")} ${when} ${markPart("separator")} by ${by}`,
   /** No device is paired. */
   noDevices: () => phrase`No devices are paired. Add one with: halonic serve pair`,
   /** `--revoke` names no paired device. */

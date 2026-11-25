@@ -6,6 +6,13 @@ import { passwordSecretName, type SignIn, sessionCookieNames } from "./sign-in.t
 /** The session id of a device session: this, then the device's id. Never the token or its hash. */
 export const deviceSessionPrefix = "device:";
 
+/** Who a session is, as a record names it: the device's id, or `browser` for a password session. */
+export function sessionHolder(session: string): string {
+  return session.startsWith(deviceSessionPrefix)
+    ? session.slice(deviceSessionPrefix.length)
+    : "browser";
+}
+
 /** A device token in `Authorization`: 64 hex characters, as {@link DeviceSessions.start} makes it. */
 const deviceBearer = /^Bearer ([0-9a-f]{64})$/;
 
