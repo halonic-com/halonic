@@ -15,6 +15,11 @@ export {
   type RunVisibility,
   replaceStarter,
 } from "./d1-run-list.ts";
+export {
+  D1RunOwnership,
+  type D1RunOwnershipOptions,
+  type StoredRunOwnership,
+} from "./d1-run-ownership.ts";
 export { DefinitionSnapshotError } from "./definition-snapshot.ts";
 export {
   type SnapshotIndexes,

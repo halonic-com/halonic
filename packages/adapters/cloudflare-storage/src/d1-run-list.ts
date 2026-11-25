@@ -17,7 +17,14 @@ interface MetadataRow {
 }
 
 const selectMetadata = `SELECT run_id, started_by, visibility, status, started_at_ms FROM run_list
-  WHERE scope = ? ORDER BY started_at_ms DESC, run_id`;
+  WHERE scope = ? AND status != 'pending' ORDER BY started_at_ms DESC, run_id`;
+
+/** Every run id of the scope, a claimed run's that has no event yet included. */
+const selectRunIds = "SELECT run_id FROM run_list WHERE scope = ? ORDER BY run_id";
+
+interface RunIdRow {
+  run_id: string;
+}
 
 /** Who may see a run: only whoever started it, or every member of the organisation. */
 export type RunVisibility = "private" | "organisation";
@@ -65,6 +72,9 @@ export const formerMemberId = "former-member";
 /** Every organisation's rows whose starter is the given id; both values are bound. */
 const replaceOrganisationStarter = `UPDATE run_list SET started_by = ?
   WHERE scope LIKE ? AND started_by = ? RETURNING scope`;
+
+/** An end user's id: `eu_` and letters or digits, as the sign-in service issues them. */
+const endUserId = /^eu_[A-Za-z0-9]+$/;
 
 /** Matches every organisation's scope, `o/<id>`, and no person's. */
 const organisationScopes = "o/%";
@@ -166,6 +176,17 @@ export class D1RunList {
     }));
   }
 
+  /**
+   * The id of every run of the scope, sorted, a claimed run's that has published no event yet
+   * included: unlike {@link D1RunList.list}, it names every run object the scope may have, so a
+   * scope's deletion finds them all.
+   */
+  async runIds(): Promise<string[]> {
+    await this.#migrated();
+    const { results } = await this.#db.prepare(selectRunIds).bind(this.#scope).all<RunIdRow>();
+    return results.map((row) => row.run_id);
+  }
+
   /** Deletes every row of the list's scope, and no other scope's. Erasing twice does nothing. */
   async eraseScope(): Promise<void> {
     await this.#migrated();
@@ -208,11 +229,16 @@ export async function listOpenRunScopes(db: SqlDatabase): Promise<string[]> {
  * @param db - the D1 binding from the Worker's `env`
  * @param actor - the deleted person's id
  * @returns how many runs it changed
+ * An `actor` that isn't an end user's id changes nothing and gives 0 without reaching D1: the
+ * empty id would otherwise match every organisation's run that names nobody yet.
  *
  * @example
  * await replaceStarter(env.DB, "eu_0123456789abcdef");
  */
 export async function replaceStarter(db: SqlDatabase, actor: string): Promise<number> {
+  if (!endUserId.test(actor)) {
+    return 0;
+  }
   await runMigrations(db, migrations);
   const { results } = await db
     .prepare(replaceOrganisationStarter)
@@ -227,7 +253,8 @@ export async function replaceStarter(db: SqlDatabase, actor: string): Promise<nu
  * part of the SQL text.
  */
 function narrow(scope: string, filter: RunFilter): { where: string; values: (string | number)[] } {
-  const clauses: string[] = ["scope = ?"];
+  // A claimed run's row has no summary until its first event, so no list shows it.
+  const clauses: string[] = ["scope = ?", "status != 'pending'"];
   const values: (string | number)[] = [scope];
   const equals = (column: string, value: string | undefined) => {
     if (value !== undefined) {

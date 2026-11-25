@@ -21,7 +21,7 @@ export function scopedRuntime(env: RuntimeEnv, scope: Scope): Runtime {
 
 /**
  * The `scopedRuns` hook of `host/server`'s `ManyUserPorts`: for each principal, the run executor
- * and run store of its scope's runtime, and nothing another scope can reach. It checks the
+ * run store and run ownership of its scope's runtime, and nothing another scope can reach. It checks the
  * deployment's configuration once, here, so a request never builds ports of a broken one.
  *
  * @throws ConfigurationError when a binding or a secret is missing
@@ -39,6 +39,10 @@ export async function createScopedRuns(
   }
   return (principal) => {
     const runtime = scopedRuntime(env, principal.scope);
-    return { runs: workerRuns(runtime), runStore: runtime.runStore };
+    return {
+      runs: workerRuns(runtime),
+      runStore: runtime.runStore,
+      ownership: runtime.ownership,
+    };
   };
 }

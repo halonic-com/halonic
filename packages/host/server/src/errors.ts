@@ -76,7 +76,7 @@ export const serverErrors = {
   runActionForbidden: {
     status: 403,
     code: "run_action_forbidden",
-    message: "Only whoever started this run can do that.",
+    message: "You can see this run, but you aren't allowed to do that to it.",
   },
   routineNotFound: {
     status: 404,

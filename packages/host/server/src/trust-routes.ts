@@ -57,7 +57,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
  * The optional `runId` of a start: absent, or a non-empty string of at most
  * 256 UTF-8 bytes (the executor's limit), so a retry can't start a second run.
  */
-function isRunId(value: unknown): value is string | undefined {
+export function isRunId(value: unknown): value is string | undefined {
   return (
     value === undefined ||
     (typeof value === "string" && value !== "" && new TextEncoder().encode(value).length <= 256)

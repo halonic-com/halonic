@@ -10,6 +10,7 @@ import {
 import {
   D1RecordStore,
   D1RunList,
+  D1RunOwnership,
   DefinitionSnapshotError,
   R2BlobStore,
   R2DefinitionSource,
@@ -34,6 +35,8 @@ export interface Runtime {
   readonly secrets: Secrets;
   readonly records: D1RecordStore;
   readonly runs: D1RunList;
+  /** Who started each run, kept in the run list's rows. */
+  readonly ownership: D1RunOwnership;
   readonly runStore: DurableRunStore<DurableObjectId>;
   readonly runEvents: DurableRunEvents<DurableObjectId>;
   readonly blobs: R2BlobStore;
@@ -181,6 +184,7 @@ export function buildRuntime(env: RuntimeEnv, options: RuntimeOptions = {}): Run
   const secrets = workerSecrets(env);
   const records = new D1RecordStore(env.DB, { scope: scope ?? "" });
   const runs = new D1RunList(env.DB, { scope: scope ?? "" });
+  const ownership = new D1RunOwnership(env.DB, { scope: scope ?? "" });
   const definitions = definitionsOf(env, options);
   // Every run object of the scope is named under this prefix; empty when unscoped.
   const namePrefix = scope === undefined ? "" : scopedKeyPrefix(scope);
@@ -193,6 +197,7 @@ export function buildRuntime(env: RuntimeEnv, options: RuntimeOptions = {}): Run
     secrets,
     records,
     runs,
+    ownership,
     runStore: new DurableRunStore({
       namespace: env.RUN,
       runList: runs,

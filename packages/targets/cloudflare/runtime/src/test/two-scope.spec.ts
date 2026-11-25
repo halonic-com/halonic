@@ -101,6 +101,16 @@ const storeCases: Record<keyof Runtime, StoreCase | Shared> = {
     expect(await other.runtime.runs.list()).toEqual([]);
     expect(await other.runtime.runs.list({ status: "running" })).toEqual([]);
   },
+  ownership: async (owner, other) => {
+    const byOwner = { startedBy: "eu_acmeowner", visibility: "private" } as const;
+    const byOther = { startedBy: "eu_acmeother", visibility: "private" } as const;
+    await owner.runtime.ownership.claim(runId, byOwner);
+    expect(await other.runtime.ownership.get(runId)).toBeNull();
+    expect(await other.runtime.runs.runIds()).toEqual([]);
+    // The same id is free in the other scope, and claiming it there leaves the owner's claim alone.
+    expect(await other.runtime.ownership.claim(runId, byOther)).toEqual(byOther);
+    expect(await owner.runtime.ownership.get(runId)).toEqual(byOwner);
+  },
   runEvents: async (owner, other) => {
     await storeRun(owner, ownerEvents());
     await other.runtime.runStore.append(runId, 0, [started(runId), completed(runId, 2)]);
