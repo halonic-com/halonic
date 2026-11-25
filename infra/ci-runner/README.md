@@ -23,11 +23,12 @@ server by the board supervisor after it merges; the server doesn't pull from the
    and the pool has at least `vars.CI_FAST_MIN_IDLE` (14 when unset) online, idle runners right
    now. Otherwise the whole run stays on `ubuntu-24.04`, and so does every fork's and bot's pull
    request (a `Bot` account, a login ending in `[bot]`, `dependabot`, `renovate`,
-   `renovate-bot`), labelled or not. Adding the label starts a run (HAL-17672), which the picker
-   routes like a push's; adding any other label starts a run that skips every job, `pick-runner`
-   too, and cancels nothing. The hook and the gate need nothing for it: they read the pull request
-   as it is when the job starts, whatever event started the run. This is routing, not security: a
-   pull request runs its own copy of `ci.yml`.
+   `renovate-bot`), labelled or not. Adding the label restarts the pull request's run
+   (`fast-track-label.yml`, HAL-17672 and HAL-17992): every job runs again, and `pick-runner` reads
+   the labels as they are now, so the picker routes it like a push's. Any other label starts no
+   `ci.yml` run, which would hide `ci-ok` from GitHub's merge check. The hook and the gate need
+   nothing for it: they read the pull request as it is when the job starts, whatever event started
+   the run. This is routing, not security: a pull request runs its own copy of `ci.yml`.
 2. **The runner group** `halonic-ci` serves only `halonic-com/halonic`.
 3. **The hook** (`vm/job-started.sh`) is the boundary. It is baked into the image, runs before
    the job's first step and fails the job unless every check passes. It trusts nothing a

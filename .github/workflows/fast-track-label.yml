@@ -1,0 +1,71 @@
+# Adding the `fast-track` label restarts the pull request's CI run, so it goes
+# to the fast pool at once instead of on the next push (HAL-17672, HAL-17992).
+# The re-run starts every job again, `pick-runner` too, which reads the pull
+# request's labels as they are now: a re-run reuses the old event, whose
+# labels don't have fast-track yet.
+#
+# This is its own workflow, not a `labeled` trigger in ci.yml: GitHub reads a
+# required check from a workflow's newest run on the head, so every label
+# started a ci.yml run that hid `ci-ok`, and GitHub refused to queue the pull
+# request ("Required status check ci-ok is expected", HAL-17992). A run of
+# this workflow holds no `ci-ok`, and any other label skips its one job.
+#
+# Only for a pull request a person opened from our own branch, as in
+# ci.yml's routing: no other one goes to the fast pool. It checks out nothing
+# and runs no code of the pull request.
+
+name: Fast-track label
+
+on:
+  pull_request:
+    types: [labeled]
+
+permissions: {}
+
+concurrency:
+  group: fast-track-label-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  restart:
+    name: Restart CI for the fast pool
+    if: ${{ github.event.label.name == 'fast-track' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.type == 'User' && !endsWith(github.event.pull_request.user.login, '[bot]') && github.event.pull_request.user.login != 'dependabot' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate-bot' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: write # to cancel and re-run the pull request's CI run
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Restart the pull request's CI run
+        run: |
+          # The newest run on the head. A label run of ci.yml from before
+          # HAL-17992 tested nothing, so it doesn't count.
+          ci=$(gh api "repos/$GH_REPO/actions/workflows/ci.yml/runs?head_sha=$SHA&event=pull_request&per_page=20" \
+            --jq '[.workflow_runs[] | select(.display_title != "A label was added: nothing to run")][0] // empty | "\(.id) \(.status) \(.conclusion)"')
+          read -r run status conclusion <<< "$ci"
+          if [ -z "$run" ]; then
+            echo "No CI run on $SHA yet: it reads the labels when it starts."
+            exit 0
+          fi
+          if [ "$status" = completed ] && [ "$conclusion" = success ]; then
+            echo "CI on $SHA already passed: nothing to restart."
+            exit 0
+          fi
+          # A run can only be re-run once it has ended.
+          if [ "$status" != completed ]; then
+            gh run cancel "$run"
+            for _ in $(seq 1 30); do
+              status=$(gh api "repos/$GH_REPO/actions/runs/$run" --jq .status)
+              [ "$status" = completed ] && break
+              sleep 10
+            done
+            if [ "$status" != completed ]; then
+              echo "::error::CI run $run hasn't stopped after 5 minutes. Re-run all its jobs once it has."
+              exit 1
+            fi
+          fi
+          gh api --method POST "repos/$GH_REPO/actions/runs/$run/rerun" --silent
+          echo "::notice title=CI restarted::Run $run re-runs every job; pick-runner reads the fast-track label now."
