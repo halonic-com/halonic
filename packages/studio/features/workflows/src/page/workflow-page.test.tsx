@@ -20,6 +20,7 @@ import {
 } from "../test-support.tsx";
 import { reply, settings } from "./page-fixtures.ts";
 import { WorkflowPage } from "./workflow-item.tsx";
+import { buttonLabelled, shownName } from "./workflow-page.test-helper.ts";
 import { WorkflowScreen } from "./workflow-page.tsx";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
@@ -31,14 +32,21 @@ afterEach(() => {
 const surface = (page: HTMLElement) =>
   page.querySelector<HTMLElement>("[data-testid=canvas-surface]");
 
-/** A button that has only an icon, by its name. */
-const buttonLabelled = (page: HTMLElement, name: string) =>
-  page.querySelector<HTMLButtonElement>(`button[aria-label="${name}"]`) ?? undefined;
-
-/** The name the header shows as its title, after the kind, where the host can't rename. */
-const shownName = (page: HTMLElement) => page.querySelector("h1")?.lastElementChild?.textContent;
-
 verifies("workflows.page.frame-and-states", () => {
+  it("shows the name and the cards at once, with no skeleton and no ⤢ or ✕", async () => {
+    const { host } = memoryHost([], [], [reply]);
+    const page = await show(
+      <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
+    );
+
+    expect(shownName(page)).toBe("Support reply");
+    // The item page's header shows the kind in small caps: "WORKFLOW".
+    expect(page.querySelector("h1 .uppercase")?.textContent).toBe("Workflow");
+    expect(page.querySelector("[role=status]")).toBeNull();
+    expect(page.querySelector("[aria-label*=ximise], [aria-label=Close]")).toBeNull();
+    expect(page.querySelector("[data-item-chat]")).toBeNull();
+  });
+
   it("doesn't repeat the name on a phone, where the top bar has it", async () => {
     const { host } = memoryHost([], [], [reply]);
     const page = await show(
