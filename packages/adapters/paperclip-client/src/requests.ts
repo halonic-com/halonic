@@ -123,6 +123,9 @@ export const paperclipRequests = {
   // Channel work lines (HAL-18120): a child task's history, read for its hand-offs. The child
   // tasks themselves come from listTasks with `parentId=`, and replies from listComments.
   listTaskActivity: { method: "GET", path: "/api/issues/:task/activity" },
+  // Agents' pictures (HAL-18485): the one read that isn't JSON. The answer must be a PNG, JPEG or
+  // WebP picture of at most 256 KB (`avatars.ts`); anything else is refused, its body unread.
+  readAgentAvatar: { method: "GET", path: "/api/agent-avatars/:avatar" },
 } as const satisfies Record<string, RequestRule>;
 
 /**

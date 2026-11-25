@@ -23,6 +23,7 @@ import {
 } from "@halonicjs/ports";
 import { FakeAgentFiles, type FakeAttachment } from "./fake-agent-files.ts";
 import { searchHits } from "./fake-agent-search.ts";
+import { copy, refused } from "./fake-agent-values.ts";
 import { Feed } from "./feed.ts";
 
 /** What a {@link FakeAgentMessaging} stamps its times with. */
@@ -261,9 +262,14 @@ export class FakeAgentMessaging implements AgentMessaging {
     return copy(added);
   }
 
-  /** Adds an idle agent to a source. */
-  addAgent(source: MessagingId, agent: { name: string } & Partial<MessagingAgent>): MessagingAgent {
-    return this.add("agents", source, { id: this.newId(), source, activity: "idle", ...agent });
+  /** Adds an idle agent to a source; a `picture` is its avatar, which `readAttachment` gives. */
+  addAgent(
+    source: MessagingId,
+    agent: { name: string; picture?: FakeAttachment } & Partial<MessagingAgent>,
+  ): MessagingAgent {
+    const { picture, ...rest } = agent;
+    const added = { ...this.files.avatar(source, picture), ...rest };
+    return this.add("agents", source, { id: this.newId(), source, activity: "idle", ...added });
   }
 
   /** Adds a conversation with an agent, titled with its name. */
@@ -465,14 +471,4 @@ export class FakeAgentMessaging implements AgentMessaging {
   private stamp(): string {
     return this.now().toISOString();
   }
-}
-
-/** A channel call's refusal. */
-function refused(reason: MessagingRefusal): Promise<ChannelResult> {
-  return Promise.resolve({ outcome: "refused", reason });
-}
-
-/** A deep copy of plain data, so a test can't change the fake's items through what a read gave. */
-function copy<Value>(value: Value): Value {
-  return JSON.parse(JSON.stringify(value)) as Value;
 }

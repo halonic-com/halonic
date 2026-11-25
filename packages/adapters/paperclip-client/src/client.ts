@@ -19,6 +19,7 @@ import {
   type SendResult,
   type WorkItem,
 } from "@halonicjs/ports";
+import { readAvatar } from "./avatars.ts";
 import { ChangeFeed } from "./changes.ts";
 import { PaperclipChannelMembers } from "./channel-members.ts";
 import { PaperclipChannelSender } from "./channel-send.ts";
@@ -197,11 +198,14 @@ export class PaperclipMessaging implements AgentMessaging {
   }
 
   /**
-   * Refuses every read: this provider lists no attachments yet, so no ID it
-   * gave out names one, and it makes no request the ADR's list doesn't hold.
+   * Reads an agent's picture (`ports.agent-messaging-avatars`). This provider lists no files on
+   * messages or cards yet, so any other ID is refused with `not-found` before any request.
    */
-  async readAttachment(_attachment: MessagingId): Promise<AttachmentRead> {
-    return { outcome: "refused", reason: "not-found" };
+  async readAttachment(attachment: MessagingId): Promise<AttachmentRead> {
+    const [avatar] = this.#ids.read(attachment, "avatar") ?? [];
+    return avatar === undefined
+      ? { outcome: "refused", reason: "not-found" }
+      : readAvatar(this.#reader, avatar);
   }
 
   async send(

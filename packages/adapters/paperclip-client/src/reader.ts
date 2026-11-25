@@ -1,6 +1,7 @@
 import type { MessagingSourceState } from "@halonicjs/ports";
 import type { PaperclipRequestName } from "./requests.ts";
 import {
+  type BodyReader,
   bodyOf,
   type PaperclipAnswer,
   type PaperclipTransport,
@@ -29,9 +30,19 @@ export class PaperclipReader {
     return this.#state;
   }
 
-  /** Sends request `name` and records what its answer says about the source. */
-  async send(name: PaperclipRequestName, details?: RequestDetails): Promise<PaperclipAnswer> {
-    const answer = await this.#transport.send(name, details);
+  /**
+   * Sends request `name` and records what its answer says about the source. A good answer is
+   * read as JSON, or with `reader` when given.
+   */
+  async send(
+    name: PaperclipRequestName,
+    details?: RequestDetails,
+    reader?: BodyReader,
+  ): Promise<PaperclipAnswer> {
+    const answer =
+      reader === undefined
+        ? await this.#transport.send(name, details)
+        : await this.#transport.sendReading(name, details ?? {}, reader);
     this.#note(answer);
     return answer;
   }

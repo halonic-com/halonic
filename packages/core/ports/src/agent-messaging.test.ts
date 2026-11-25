@@ -149,3 +149,23 @@ verifies("ports.agent-messaging-attachments", () => {
     expect(address).toBeDefined();
   });
 });
+
+verifies("ports.agent-messaging-avatars", () => {
+  typeTest("gives an agent's picture as an optional ID", () => {
+    expectTypeOf<MessagingAgent["avatar"]>().toEqualTypeOf<MessagingId | undefined>();
+  });
+
+  it("holds no address for an agent's picture", () => {
+    const agent: MessagingAgent = {
+      id: "acme:ada",
+      source: "acme",
+      name: "Ada",
+      activity: "idle",
+      avatar: "acme:avatar:ada.png",
+    };
+    // @ts-expect-error: an app never gets an address to load the picture from itself
+    const address: MessagingAgent = { ...agent, avatarUrl: "https://acme.example/ada.png" };
+    expect(agent.avatar).toBeDefined();
+    expect(address).toBeDefined();
+  });
+});

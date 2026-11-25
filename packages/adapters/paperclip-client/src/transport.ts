@@ -69,6 +69,30 @@ export interface RequestDetails {
   body?: unknown;
 }
 
+/**
+ * How a good answer's body is read: what the request accepts, and the reader. JSON by default;
+ * an agent's picture is read as bytes (`avatars.ts`).
+ */
+export interface BodyReader {
+  accept: string;
+  read(name: PaperclipRequestName, response: Response): Promise<PaperclipAnswer>;
+}
+
+const jsonBody: BodyReader = {
+  accept: "application/json",
+  async read(name, response) {
+    try {
+      return { kind: "ok", body: await response.json() };
+    } catch {
+      const { method } = paperclipRequests[name];
+      throw new PaperclipClientError(
+        `Paperclip's answer to ${method} ${name} isn't JSON.`,
+        "bad-answer",
+      );
+    }
+  },
+};
+
 const statusFailures: ReadonlyMap<number, PaperclipFailure> = new Map([
   [401, "signed-out"],
   [404, "not-found"],
@@ -95,7 +119,19 @@ export class PaperclipTransport {
   }
 
   /** Sends request `name`. An unsafe ID throws before anything is sent. */
-  async send(name: PaperclipRequestName, details: RequestDetails = {}): Promise<PaperclipAnswer> {
+  send(name: PaperclipRequestName, details: RequestDetails = {}): Promise<PaperclipAnswer> {
+    return this.sendReading(name, details, jsonBody);
+  }
+
+  /**
+   * Sends request `name` and reads a good answer's body with `reader`, for a read that isn't
+   * JSON. Every rule of {@link send} still holds: the list, the key's one header, no redirect.
+   */
+  async sendReading(
+    name: PaperclipRequestName,
+    details: RequestDetails,
+    reader: BodyReader,
+  ): Promise<PaperclipAnswer> {
     // A name from outside the list (only possible past the type checker) is refused here.
     if (!Object.hasOwn(paperclipRequests, name)) {
       throw new PaperclipClientError("That request isn't on the request list.", "refused");
@@ -113,7 +149,7 @@ export class PaperclipTransport {
     if (!fitsBody(name, details.body)) {
       throw new PaperclipClientError(`${method} ${name} can't send that body.`, "refused");
     }
-    return this.#guard((key) => this.#sendWith(key, name, url, details.body));
+    return this.#guard((key) => this.#sendWith(key, name, url, details.body, reader));
   }
 
   async #sendWith(
@@ -121,11 +157,12 @@ export class PaperclipTransport {
     name: PaperclipRequestName,
     url: URL,
     body: unknown,
+    reader: BodyReader,
   ): Promise<PaperclipAnswer> {
     checkKey(key);
     const { method } = paperclipRequests[name];
     const headers: Record<string, string> = {
-      accept: "application/json",
+      accept: reader.accept,
       authorization: `Bearer ${key}`,
     };
     if (body !== undefined) {
@@ -143,10 +180,14 @@ export class PaperclipTransport {
       // The platform's error can name the address; "offline" is all a caller needs.
       return { kind: "failed", failure: "offline" };
     }
-    return this.#read(name, response);
+    return this.#read(name, response, reader);
   }
 
-  async #read(name: PaperclipRequestName, response: Response): Promise<PaperclipAnswer> {
+  async #read(
+    name: PaperclipRequestName,
+    response: Response,
+    reader: BodyReader,
+  ): Promise<PaperclipAnswer> {
     const { method } = paperclipRequests[name];
     if (response.type === "opaqueredirect" || (response.status >= 300 && response.status < 400)) {
       await response.body?.cancel();
@@ -156,14 +197,7 @@ export class PaperclipTransport {
       );
     }
     if (response.ok) {
-      try {
-        return { kind: "ok", body: await response.json() };
-      } catch {
-        throw new PaperclipClientError(
-          `Paperclip's answer to ${method} ${name} isn't JSON.`,
-          "bad-answer",
-        );
-      }
+      return reader.read(name, response);
     }
     const failure = statusFailures.get(response.status) ?? "refused";
     if (failure === "conflict") {

@@ -147,6 +147,7 @@ verifies("agent-host.paperclip-key", () => {
         "updateChannel",
         // Channel work lines (HAL-18120), pinned in channel-work.test.ts.
         "listTaskActivity",
+        "readAgentAvatar",
       ]);
     });
   });

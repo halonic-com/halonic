@@ -102,6 +102,7 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | Request | Route | What for |
 | --- | --- | --- |
 | `listAgents` | `GET /api/companies/{company}/agents` | agents, and authors' names |
+| `readAgentAvatar` | `GET /api/agent-avatars/{segment}` | an agent's picture, when its `avatarUrl` is a path under `/api/agent-avatars/`: PNG, JPEG or WebP, at most 256 KB |
 | `listTasks` | `GET /api/companies/{company}/issues?status=backlog,todo,in_progress,in_review,blocked&limit=1000` | work, and the tasks whose cards are read |
 | `listTasks` with `parentId=` | `GET /api/companies/{company}/issues?parentId={task}&limit=200` | a channel's child tasks, for its work lines and replies |
 | `searchTasks` | `GET /api/companies/{company}/issues?q={query}&limit=50` | search: Paperclip's matching tasks, as work or as a chat |

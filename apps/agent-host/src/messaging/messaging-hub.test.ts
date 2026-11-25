@@ -305,3 +305,17 @@ verifies("agent-host.messaging-hub-attachments", () => {
     expect((await hub.readAttachment(file?.id ?? "")).outcome).toBe("read");
   });
 });
+
+verifies("ports.agent-messaging-avatars", () => {
+  it("reads an agent's picture only from the provider that listed the agent, even before a list", async () => {
+    const { a, b, sourceB, hub } = twoSources();
+    const ada = b.addAgent(sourceB.id, { name: "Ada", picture: screenshot });
+    const readA = vi.spyOn(a, "readAttachment");
+
+    const read = await hub.readAttachment(ada.avatar ?? "");
+
+    expect(read).toEqual({ outcome: "read", bytes: screenshot.bytes, type: "image/png" });
+    expect(readA).not.toHaveBeenCalled();
+    expect((await hub.listAgents()).find((agent) => agent.id === ada.id)?.avatar).toBe(ada.avatar);
+  });
+});

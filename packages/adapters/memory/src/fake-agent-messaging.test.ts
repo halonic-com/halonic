@@ -229,3 +229,23 @@ verifies("contracts.fake-agent-messaging", () => {
     await changes.return?.();
   });
 });
+
+verifies("ports.agent-messaging-avatars", () => {
+  it("gives an agent with a picture an avatar ID whose bytes only readAttachment gives", async () => {
+    const { messaging, acme } = makeFake();
+    const picture = {
+      name: "ada.png",
+      type: "image/png",
+      bytes: new Uint8Array([137, 80, 78, 71]),
+    };
+    messaging.addAgent(acme.id, { name: "Ada", picture });
+    messaging.addAgent(acme.id, { name: "Bo" });
+
+    const [ada, bo] = await messaging.listAgents();
+    const read = await messaging.readAttachment(ada?.avatar ?? "");
+
+    expect(Object.keys(ada ?? {})).not.toContain("picture");
+    expect(bo).not.toHaveProperty("avatar");
+    expect(read).toEqual({ outcome: "read", bytes: picture.bytes, type: "image/png" });
+  });
+});
