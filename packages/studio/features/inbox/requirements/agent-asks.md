@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-18557; design review HAL-18481, improvement 7 and flow 5.2 (approved by the board on HAL-10)
 
-An agent's card in the Inbox shall say who asks over its title, with their picture: "Chief · Chief of Staff asks" when the source gives the agent a title, and "Chief asks" when it doesn't. When the question is one line, the card shall show it once, as its title, and not again under it.
+The Inbox shall say who asks over the title of an agent's card, with their picture: "Chief · Chief of Staff asks" when the source gives the agent a title, and "Chief asks" when it doesn't. When the question is one line, the Inbox shall show it once, as its title, and not again under it.
 
 ## Examples
 
