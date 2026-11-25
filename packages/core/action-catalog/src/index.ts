@@ -6,3 +6,4 @@ export {
   shippedDefinitions,
   sourceHashOf,
 } from "./catalog.ts";
+export { shippedKeys } from "./keys.ts";
