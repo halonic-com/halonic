@@ -2,6 +2,7 @@
 
 - Approval: HAL-18229 (the task asks for this change and its requirement example)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Y+QwYNk1p1sHr1U+fPareLaqEWGUybKGU7HDInoTaRr48lN8H1hnPN/8OQj0n9Kdh4hwgHD2tgbEMMNeBlsbAw==
 
 `runtime.paperclip-writes` gets one more example: a `set_next_step` tool file whose
 parameters are plain values. The runtime now also reads the monitor from
