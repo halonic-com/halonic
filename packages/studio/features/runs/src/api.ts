@@ -306,3 +306,13 @@ export const RunFilesService: ServiceKey<RunFiles> = serviceKey<RunFiles>("runs.
 /** The open workspace's version history. Absent where the app can't read it; Ran on then shows. */
 export const VersionHistoryHostService: ServiceKey<VersionHistoryHost> =
   serviceKey<VersionHistoryHost>("runs.version-history-host");
+
+/**
+ * The switches under Settings › Notifications › Runs: Settings saves them, the background
+ * service's run notifications read them.
+ */
+export { runNotificationSettingWords } from "./notify/run-notices.ts";
+export {
+  runNotificationPrefs,
+  runNotificationSettingsOf,
+} from "./notify/run-notification-prefs.ts";
