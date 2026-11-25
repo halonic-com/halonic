@@ -394,6 +394,7 @@ export {
   gatewayMessagingLists,
   gatewayMessagingRefusalCodes,
   gatewayTeamLists,
+  type PhoneMessaging,
 } from "./remote-gateway-messaging.ts";
 export {
   type GatewayApproval,

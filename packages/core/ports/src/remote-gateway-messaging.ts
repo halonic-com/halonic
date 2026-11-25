@@ -9,8 +9,8 @@
  * a raw answer from Paperclip.
  */
 
-import type { AnswerResult, MessagingId, SendResult } from "./agent-messaging.ts";
-import type { SpendRange } from "./team-status.ts";
+import type { AgentMessaging, AnswerResult, MessagingId, SendResult } from "./agent-messaging.ts";
+import type { SpendRange, TeamStatus } from "./team-status.ts";
 
 /**
  * The longest search text from a phone, in UTF-16 code units (Julian,
@@ -129,9 +129,12 @@ export type GatewayMessagingHostMessage =
     };
 
 /**
- * The refusals version 4 adds, which leave the connection open. All but
- * `not-allowed-from-phone` map one to one from the ports' refusals; that one
- * is the host's own, for what the phone may never do.
+ * The refusals version 4 adds, which leave the connection open. The ports'
+ * refusals map one to one onto `offline`, `signed-out`, `not-found` and
+ * `not-supported`. The other two are the host's own: `not-allowed-from-phone`
+ * for what the phone may never do, and `rate-limited` for a search or a send
+ * over the paired phone's rate (Julian, HAL-17540), which the phone may try
+ * again later (UX rows G2-12 and G2-13 on HAL-17997).
  */
 export const gatewayMessagingRefusalCodes = [
   "not-allowed-from-phone",
@@ -139,4 +142,37 @@ export const gatewayMessagingRefusalCodes = [
   "signed-out",
   "not-found",
   "not-supported",
+  "rate-limited",
 ] as const;
+
+/**
+ * What a paired phone may ask of the desktop's agent ports, and nothing more
+ * (architecture note section 2.3 on HAL-17511). The host builds one from its
+ * hub and the gateway reads only this, so the allow-list is a type, not a
+ * filter: a member the ports gain later stays off until it has its own "safe
+ * from the phone" decision.
+ *
+ * Left off on purpose: starting a channel and changing its members (on the
+ * phone, Members is read-only), reading attachments, `agentSpend`, and every
+ * host route (connect, sign in, Settings, remote control and pairing).
+ */
+export interface PhoneMessaging
+  extends Pick<
+    AgentMessaging,
+    | "listSources"
+    | "listAgents"
+    | "listConversations"
+    | "listMessages"
+    | "listInboxItems"
+    | "listWork"
+    | "search"
+    | "answer"
+    | "send"
+    | "changes"
+  > {
+  /** The team-status reads the phone's screens show. */
+  readonly team: Pick<
+    TeamStatus,
+    "parts" | "spend" | "seats" | "pullRequests" | "pullRequest" | "mergeQueue" | "changes"
+  >;
+}
