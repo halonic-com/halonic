@@ -48,7 +48,8 @@ export const openModelsCommand = "workspace.open-models";
 
 /**
  * The model's line under a Build chat's box, in `warning` with the triangle, because the chat can't
- * send (flow-assistant 5.9, Noah's N1). No model at all offers **Settings ›** and a missing key
+ * send (flow-assistant 5.9, Noah's N1). No model at all offers **Settings ›** (or **Open Models ›**
+ * while Settings hides its Assistant section) and a missing key
  * **Set the key ›**; pressing Send then keeps the message and puts focus on that link, so Send is
  * never dead (flow 7). A cloud model in a local-only workspace has no link: Send waits with the
  * line as its reason, and the Model chip is where to pick another.
@@ -93,7 +94,7 @@ export function useModelBox(
 function sentenceOf(line: ModelLine): ReactNode {
   switch (line.kind) {
     case "no-model":
-      return words.noModel;
+      return showUnfinishedSettings ? words.noModel : words.noModelInModels;
     case "needs-key":
       return (
         <>
@@ -107,14 +108,17 @@ function sentenceOf(line: ModelLine): ReactNode {
 
 /**
  * **Settings ›** opens Settings › Assistant, so it shows only while Settings shows that section
- * (HAL-17857); without it the line has no link and Send waits on it. **Set the key ›** opens
- * Models, where keys are kept, until the models feature offers the provider's key block (models
- * flow 3.3).
+ * (HAL-17857); while it's hidden, **Open Models ›** goes where a model alias is added (HAL-18099).
+ * **Set the key ›** opens Models, where keys are kept, until the models feature offers the
+ * provider's key block (models flow 3.3).
  */
 function linkOf(line: ModelLine, context: WorkspaceContext): ChatAction | undefined {
   const { openSettings, runCommand } = context;
   if (line.kind === "no-model" && openSettings !== undefined && showUnfinishedSettings) {
     return { label: words.openSettings, onClick: () => openSettings("assistant"), look: "link" };
+  }
+  if (line.kind === "no-model" && runCommand !== undefined && !showUnfinishedSettings) {
+    return { label: words.openModels, onClick: () => runCommand(openModelsCommand), look: "link" };
   }
   if (line.kind === "needs-key" && runCommand !== undefined) {
     return { label: words.setTheKey, onClick: () => runCommand(openModelsCommand), look: "link" };

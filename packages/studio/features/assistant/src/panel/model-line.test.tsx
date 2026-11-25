@@ -63,19 +63,23 @@ verifies("assistant.chat.model-line", () => {
       expect(openSettings).toHaveBeenCalledWith("assistant");
     });
 
-    it("has no Settings › while Settings hides its Assistant section, so Send waits on the line", async () => {
+    it("sends you to Models, not Settings ›, while Settings hides its Assistant section", async () => {
       settings.showUnfinished = false;
       const fake = fakeHost([chatOf("c1")], { models: [] });
-      const page = await show(panel(fake).node);
-      expect(status(page)).toContain("The assistant has no model yet.");
+      const { node, runCommand } = panel(fake);
+      const page = await show(node);
+      expect(status(page)).toContain(
+        "The assistant has no model yet. Add a model alias in Models.",
+      );
+      expect(status(page)).not.toContain("Settings");
       expect(buttonNamed(page, "Settings ›")).toBeUndefined();
       await sendMessage(page, "Add a routine");
       expect(fake.requests).toEqual([]);
       expect(box(page).value).toBe("Add a routine");
-      const reason = buttonNamed(page, "Send")?.getAttribute("aria-describedby") ?? "";
-      expect(document.getElementById(reason)?.textContent).toContain(
-        "The assistant has no model yet.",
-      );
+      const link = buttonNamed(page, "Open Models ›");
+      expect(document.activeElement).toBe(link);
+      await act(async () => link?.click());
+      expect(runCommand).toHaveBeenCalledWith("workspace.open-models");
     });
 
     it("names the model and its provider's missing key, with Set the key › (H19)", async () => {
