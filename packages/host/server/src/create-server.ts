@@ -9,6 +9,9 @@ import { chatTurnPath, createChatTurnRoutes } from "./chat-turn-routes.ts";
 import { isCloudSignInReturnPath } from "./cloud-sign-in-routes.ts";
 import { connectorCallPath, createConnectorRoutes } from "./connector-routes.ts";
 import { type CountRequest, checkDailyRequests } from "./daily-requests.ts";
+import { createDeviceRoutes } from "./device-routes.ts";
+import { createDeviceSessions } from "./device-sessions.ts";
+import { withDeviceSessions } from "./device-sign-in.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import {
   createGoogleReadOnlyRoutes,
@@ -120,7 +123,9 @@ function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<Cr
       publicHost === null ? config.allowedHosts.map((name) => name.toLowerCase()) : [publicHost],
     loopbackAllowed: publicHost === null,
   };
-  const signIn = createSignIn(ports);
+  const devices = createDeviceSessions(ports);
+  const signIn = withDeviceSessions(createSignIn(ports), devices, ports.secrets);
+  const deviceRoutes = createDeviceRoutes(ports, signIn, devices);
   const trustRoutes = createTrustRoutes(ports);
   const webhookRoutes = createWebhookRoutes(ports);
   const runRoutes = createRunRoutes(ports);
@@ -245,6 +250,7 @@ function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<Cr
     }
     const earlyAnswer =
       (await countIfSignedIn(request, context)) ??
+      (await deviceRoutes.route(request, context, body)) ??
       (await signedInOnlyRoute(request, context, body, pathname));
     if (earlyAnswer !== null) {
       return earlyAnswer;
