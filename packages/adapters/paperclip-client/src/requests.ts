@@ -131,6 +131,11 @@ export const paperclipRequests = {
   // keeps none of it. Stopping a run is a separate row with its own review (HAL-18624 PR 3).
   listLiveRuns: { method: "GET", path: "/api/companies/:company/live-runs" },
   listRuns: { method: "GET", path: "/api/companies/:company/heartbeat-runs" },
+  // Run control (`paperclip-client.team-run-control`, HAL-18695): one run, read again before each
+  // write for its company, agent, task and `canStop` only (its logs and errors are never kept), and
+  // its cancel, which takes no body. Run again wakes the agent through `wakeTask` above.
+  getRun: { method: "GET", path: "/api/heartbeat-runs/:run" },
+  cancelRun: { method: "POST", path: "/api/heartbeat-runs/:run/cancel" },
 } as const satisfies Record<string, RequestRule>;
 
 /**
@@ -163,6 +168,8 @@ const segmentRules: Readonly<Record<string, RegExp>> = {
   number: /^[1-9]\d{0,8}$/,
   // A document revision is a UUID, as Paperclip makes them.
   revision: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+  // A run is a UUID too: Paperclip's run routes refuse anything else.
+  run: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
 };
 
 /** Whether `value` may fill segment `:segment`: safe, and passing the segment's own rule. */

@@ -16,6 +16,11 @@ export {
   UnsafeIdError,
 } from "./requests.ts";
 export {
+  PaperclipRunControl,
+  type PaperclipRunControlOptions,
+  runAgainComment,
+} from "./run-control.ts";
+export {
   PaperclipSignInClient,
   type PaperclipSignInClientOptions,
   type SignInChallenge,

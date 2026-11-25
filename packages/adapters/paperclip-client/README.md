@@ -127,6 +127,8 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `getTask` | `GET /api/issues/{task}` | before a task write: the task's ID and company |
 | `wakeTask` | `PATCH /api/issues/{task}` with exactly `{ assigneeAgentId, status: "todo", comment }` | a workflow wakes an agent on a task |
 | `finishTask` | `PATCH /api/issues/{task}` with exactly `{ status: "done", comment }` | a workflow closes a task as done |
+| `getRun` | `GET /api/heartbeat-runs/{run}`, `{run}` a UUID | before Stop or Run again: the run's company, agent, task and `canStop`, read again (nothing else kept) |
+| `cancelRun` | `POST /api/heartbeat-runs/{run}/cancel`, no body | Stop, only while Paperclip says the run can stop; Run again wakes through `wakeTask` |
 | `commentOnChannel` | `POST /api/issues/{task}/comments` | send a message in a channel: a comment on its parent task |
 | `createChildTask` | `POST /api/companies/{company}/issues` with exactly `{ title, description, parentId, assigneeAgentId, status: "todo" }` | one child task per agent a channel message is for |
 | `listLabels` | `GET /api/companies/{company}/labels` | find the company's `channel` tag |
