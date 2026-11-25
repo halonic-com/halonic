@@ -1,10 +1,12 @@
-//! A notification click reaches the app window as one event naming the item.
+//! A notification click reaches the window its item belongs to as one event
+//! naming the item.
 
 use std::sync::{Arc, Mutex};
 
 use serde_json::{Map, Value, json};
-use tauri::Listener;
 use tauri::test::{mock_builder, mock_context, noop_assets};
+use tauri::webview::WebviewWindowBuilder;
+use tauri::{Listener, WebviewUrl};
 
 use super::{NOTIFICATION_CLICKED_EVENT, report_action, report_click};
 use tauri_plugin_notification::ActionPerformed;
@@ -13,23 +15,70 @@ fn extra(value: Value) -> Map<String, Value> {
     value.as_object().cloned().expect("an object")
 }
 
-/// The payloads the click event carried, after `click` ran on a mock app.
-fn events_after(click: impl FnOnce(&tauri::AppHandle<tauri::test::MockRuntime>)) -> Vec<String> {
+/// The windows that got the click event, each with the payload it carried,
+/// after `click` ran on a mock app with the windows labelled `open`.
+fn received_after(
+    open: &[&str],
+    click: impl FnOnce(&tauri::AppHandle<tauri::test::MockRuntime>),
+) -> Vec<(String, String)> {
     let app = mock_builder()
         .build(mock_context(noop_assets()))
         .expect("the mock app builds");
     let seen = Arc::new(Mutex::new(Vec::new()));
-    let sink = Arc::clone(&seen);
-    app.listen_any(NOTIFICATION_CLICKED_EVENT, move |event| {
-        sink.lock()
-            .expect("not poisoned")
-            .push(event.payload().to_owned());
-    });
+    for label in open {
+        let window = WebviewWindowBuilder::new(&app, *label, WebviewUrl::default())
+            .build()
+            .expect("the window opens");
+        let sink = Arc::clone(&seen);
+        let receiver = (*label).to_owned();
+        window.listen(NOTIFICATION_CLICKED_EVENT, move |event| {
+            sink.lock()
+                .expect("not poisoned")
+                .push((receiver.clone(), event.payload().to_owned()));
+        });
+    }
     click(app.handle());
     // The guard is dropped inside `map`, before `seen` goes out of scope.
     seen.lock()
-        .map(|payloads| payloads.clone())
+        .map(|received| received.clone())
         .expect("not poisoned")
+}
+
+/// The payloads the click event carried while only Studio's window was open.
+fn events_after(click: impl FnOnce(&tauri::AppHandle<tauri::test::MockRuntime>)) -> Vec<String> {
+    received_after(&["main"], click)
+        .into_iter()
+        .map(|(_, payload)| payload)
+        .collect()
+}
+
+/// The windows that got a click on an item of `kind` while `open` were open.
+fn receivers_of(kind: &str, open: &[&str]) -> Vec<String> {
+    let clicked = extra(json!({ "messagingId": "item-acme-7", "kind": kind }));
+    received_after(open, |app| report_click(app, &clicked).expect("sent"))
+        .into_iter()
+        .map(|(window, _)| window)
+        .collect()
+}
+
+#[test]
+fn a_click_goes_to_the_window_its_item_belongs_to() {
+    let all = ["main", "inbox", "messenger"];
+    assert_eq!(receivers_of("inbox-item", &all), ["inbox"]);
+    assert_eq!(receivers_of("conversation", &all), ["messenger"]);
+    assert_eq!(receivers_of("work", &all), ["main"]);
+}
+
+#[test]
+fn a_click_reaches_the_app_window_while_only_it_is_open() {
+    assert_eq!(receivers_of("work", &["inbox"]), ["inbox"]);
+    assert_eq!(receivers_of("conversation", &["inbox"]), ["inbox"]);
+    assert_eq!(receivers_of("inbox-item", &["main", "messenger"]), ["main"]);
+}
+
+#[test]
+fn a_click_while_no_window_is_open_sends_nothing() {
+    assert!(receivers_of("inbox-item", &[]).is_empty());
 }
 
 #[test]
