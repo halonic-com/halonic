@@ -5,6 +5,10 @@
 //! never a URL, and the shell makes the call: the host refuses requests
 //! from web pages, and its launch token stays in the shell.
 //!
+//! On Windows, where the harnesses' host runs in Halonic's WSL distro, a
+//! second host beside the shell serves the messaging's routes
+//! (`agent_host_messaging.rs`); the page doesn't know which host answers.
+//!
 //! The page names each stream it opens with an id of its own, so it can
 //! end the stream before the host has answered. The shell ends every
 //! stream of a page that reloads or closes (`end_page_streams`): such a
@@ -31,6 +35,9 @@ pub use choice::{host_runs_beside_shell, host_runs_in_distro};
 #[path = "agent_host_start.rs"]
 mod start;
 use start::running_host;
+
+#[path = "agent_host_messaging.rs"]
+mod messaging;
 
 #[path = "agent_host_updates.rs"]
 pub mod updates;
@@ -109,6 +116,12 @@ enum Launch {
 #[derive(Default)]
 pub struct AgentHostState {
     host: Mutex<Option<AgentHost>>,
+    /// The messaging host beside the shell, where one runs
+    /// (`agent_host_messaging.rs`). Locked after `host`, never before it.
+    messaging_host: Mutex<Option<AgentHost>>,
+    /// Makes the command that starts a stand-in messaging host, for tests.
+    #[cfg(test)]
+    messaging_launch: Option<HostCommand>,
     /// The streams pages have open on the host, with no limit per page.
     streams: PageStreams,
     client: Mutex<Option<reqwest::Client>>,
@@ -136,6 +149,21 @@ impl AgentHostState {
     pub fn with_distro_command(command: impl Fn(u16) -> Command + Send + Sync + 'static) -> Self {
         Self {
             launch: Launch::Distro(Box::new(command)),
+            ..Self::default()
+        }
+    }
+
+    /// A state whose host is started with `harness`, and whose messaging
+    /// host beside it with `messaging`, as on Windows with the distro, for
+    /// tests.
+    #[cfg(test)]
+    pub fn with_messaging_command(
+        harness: impl Fn() -> Command + Send + Sync + 'static,
+        messaging: impl Fn() -> Command + Send + Sync + 'static,
+    ) -> Self {
+        Self {
+            launch: Launch::Local(Box::new(harness)),
+            messaging_launch: Some(Box::new(messaging)),
             ..Self::default()
         }
     }
@@ -290,15 +318,16 @@ fn named_route(name: &str, answer: Answer) -> Result<Route, HostRefusal> {
     })
 }
 
-/// Sends one request to the host, with the launch token and no `Origin`.
-/// A JSON route has [`REQUEST_TIMEOUT`] for its whole answer.
+/// Sends one request to the host that serves the route, with its launch
+/// token and no `Origin`. A JSON route has [`REQUEST_TIMEOUT`] for its whole
+/// answer.
 async fn send<R: Runtime>(
     app: &AppHandle<R>,
     route: Route,
     body: Option<Value>,
 ) -> Result<reqwest::Response, HostRefusal> {
     let body = request_body(route, body)?;
-    let handshake = running_host(app).await?;
+    let handshake = messaging::host_serving(app, route.path).await?;
     let client = app.state::<AgentHostState>().client()?;
     let url = format!("{}{}", handshake.url(), route.path);
     let mut request = match body {

@@ -25,9 +25,19 @@ export class FakeKeychainShell {
     this.#send = send;
   }
 
-  /** Answers one frame the host sent on id 0. */
+  /** The folders the host said it handled (`{"op":"noticed"}`), in order. */
+  readonly noticed: string[] = [];
+
+  /** Answers one frame the host sent on id 0; a `noticed` answer is kept, not answered. */
   take(frame: Frame): void {
-    const request = JSON.parse(frame.bytes.toString("utf8")) as ShellSecretRequest;
+    const parsed = JSON.parse(frame.bytes.toString("utf8")) as
+      | ShellSecretRequest
+      | { op: "noticed"; folder: string };
+    if (parsed.op === "noticed") {
+      this.noticed.push(parsed.folder);
+      return;
+    }
+    const request = parsed;
     this.asked.push(`${request.op} ${request.name}`);
     const answer = this.#answer(request);
     this.#send(encodeFrame(0, FrameKind.data, Buffer.from(JSON.stringify(answer))));
