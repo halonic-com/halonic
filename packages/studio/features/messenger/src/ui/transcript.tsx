@@ -1,7 +1,7 @@
 import type { InboxItem, Message, MessagingId } from "@halonicjs/ports";
 import { Button, ChatLoading, EmptyState, enter } from "@halonicjs/studio-kit";
 import type { EngineWords } from "@halonicjs/studio-shell";
-import { type RefObject, useLayoutEffect, useRef, useState } from "react";
+import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { isChannel } from "../channel.ts";
 import { type ChatLine, chatLines, type PendingMessage } from "../chat-layout.ts";
 import { chatTimeline } from "../chat-timeline.ts";
@@ -53,14 +53,17 @@ export function Transcript(props: TranscriptProps) {
   const { messenger, row, messages, cards, pending, failure, words, onRetry } = props;
   const scroller = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLOListElement>(null);
-  const ready = messages !== undefined && cards !== undefined;
   const lines = chatLines(
     chatTimeline(messages ?? [], cards ?? []),
     pending,
     messenger.now(),
     isChannel(row),
   );
-  const { unseen, onScroll, toEnd } = useStickToEnd(scroller, list, lines, ready, props.searching);
+  const { unseen, onScroll, toEnd } = useStickToEnd(scroller, list, lines, {
+    messages: messages !== undefined,
+    cards: cards !== undefined,
+    searching: props.searching,
+  });
 
   if (messages === undefined && failure !== undefined) {
     const title = messengerWords.load.chatFailed;
@@ -155,8 +158,10 @@ function arrive(element: HTMLElement | null): void {
 }
 
 /**
- * Keeps the chat at its newest entry (motions 3 and 4 of the design review): it opens there, and
- * then follows new entries while the person is within 24px of the end, or sent something.
+ * Keeps the chat at its newest entry (motions 3 and 4 of the design review): it opens there as
+ * soon as its messages landed, without waiting for its cards (`messenger.open-at-newest`), and
+ * then follows new entries, and the transcript growing, while the person is within 24px of the
+ * end, or sent something. The cards' first read only puts them in their place.
  * Scrolled up, a new message from someone else only counts toward the pill. Each new entry rises
  * into view, except a search's results and the person's own message that took its pending one's
  * place.
@@ -165,13 +170,14 @@ function useStickToEnd(
   scroller: RefObject<HTMLDivElement | null>,
   list: RefObject<HTMLOListElement | null>,
   lines: readonly ChatLine[],
-  ready: boolean,
-  searching: boolean,
+  read: { readonly messages: boolean; readonly cards: boolean; readonly searching: boolean },
 ) {
+  const { searching } = read;
   const [unseen, setUnseen] = useState(0);
   const pinned = useRef(true);
   const known = useRef<ReadonlySet<string> | undefined>(undefined);
   const wasSearching = useRef(searching);
+  const hadCards = useRef(read.cards);
   const keys = lines.map((line) => line.key).join("\n");
 
   const toEnd = (smooth: boolean) => {
@@ -185,25 +191,48 @@ function useStickToEnd(
     element.scrollTo?.({ top: element.scrollHeight, behavior });
   };
 
+  // The cards' first read puts them in their place; the person at the end stays there.
+  const cardsFirstLanded = (): boolean => {
+    const landed = read.cards && !hadCards.current;
+    hadCards.current = read.cards;
+    if (landed && pinned.current) toEnd(false);
+    return landed;
+  };
+
   // It runs once per change of the lines' keys, not on each render's new `lines` array.
   useLayoutEffect(() => {
-    if (!ready) return;
+    if (!read.messages) return;
     const before = known.current;
     known.current = new Set(lines.map((line) => line.key));
     if (before === undefined) {
-      // The chat opens at its latest entry, with no scroll to watch.
+      // The chat opens at its latest entry, before its first paint, with no scroll to watch.
       list.current?.lastElementChild?.scrollIntoView?.({ block: "end" });
       return;
     }
-    // A search, and the end of one, swaps the lines: nothing in them is new.
+    // A search, and the end of one, swap the lines: nothing in them is new.
     const swapped = searching || wasSearching.current;
     wasSearching.current = searching;
-    const added = lines.filter((line) => !before.has(line.key) && line.kind !== "day");
+    // The cards' first read only puts them in their place: they aren't new either.
+    const placed = cardsFirstLanded();
+    const added = lines.filter(
+      (line) => !before.has(line.key) && line.kind !== "day" && !(placed && line.kind === "card"),
+    );
     if (swapped || added.length === 0) return;
     riseIntoView(list.current, lines, added);
     if (added.some((line) => line.kind === "pending") || pinned.current) toEnd(false);
     else setUnseen((count) => count + added.filter(isNewToThePerson).length);
-  }, [keys, ready, searching]);
+  }, [keys, read.messages, read.cards, searching]);
+
+  // A picture or a long message taking its size grows the transcript; the person at the end stays there.
+  useEffect(() => {
+    const element = list.current;
+    if (!read.messages || element === null || globalThis.ResizeObserver === undefined) return;
+    const watcher = new ResizeObserver(() => {
+      if (pinned.current) toEnd(false);
+    });
+    watcher.observe(element);
+    return () => watcher.disconnect();
+  }, [read.messages]);
 
   const onScroll = () => {
     const element = scroller.current;

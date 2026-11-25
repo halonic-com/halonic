@@ -27,11 +27,12 @@ import { PaperclipChannelWork } from "./channel-work.ts";
 import { readChannel, toChannel } from "./channels.ts";
 import { PaperclipIds } from "./ids.ts";
 import { PaperclipInbox } from "./inbox.ts";
-import { asRecord, asRecords, field, type JsonRecord, text } from "./json.ts";
+import { asRecords, type JsonRecord, text } from "./json.ts";
 import { type MapContext, newestFirst, toAgent, toConversation, toMessage, toWork } from "./map.ts";
 import { PaperclipReader } from "./reader.ts";
 import { isSafeSegment } from "./requests.ts";
 import { searchAll } from "./search.ts";
+import { type PaperclipUser, SignedInUser } from "./signed-in-user.ts";
 import { PaperclipSteppers } from "./steppers.ts";
 import {
   bodyOf,
@@ -56,11 +57,7 @@ export interface PaperclipMessagingOptions extends TransportOptions {
   now?: () => Date;
 }
 
-/** The Paperclip user a key belongs to, as far as the apps show it. */
-export interface PaperclipUser {
-  /** Their name in Paperclip, such as "Board Supervisor". */
-  name?: string;
-}
+export type { PaperclipUser } from "./signed-in-user.ts";
 
 /** How many of a chat's newest messages are read. */
 const messagePage = "100";
@@ -79,7 +76,9 @@ export class PaperclipMessaging implements AgentMessaging {
   readonly #ids: PaperclipIds;
   readonly #company: string;
   readonly #label: string;
-  readonly #userId: string | undefined;
+  readonly #user: SignedInUser;
+  /** The user the host named. Channel membership keeps to it; reading it from Paperclip there is HAL-18736's follow-up. */
+  readonly #namedUserId: string | undefined;
   readonly #reader: PaperclipReader;
   readonly #inbox: PaperclipInbox;
   readonly #writer: PaperclipWriter;
@@ -97,8 +96,9 @@ export class PaperclipMessaging implements AgentMessaging {
     this.#ids = new PaperclipIds(options.connection);
     this.#company = options.company;
     this.#label = options.label;
-    this.#userId = options.userId;
     this.#reader = new PaperclipReader(new PaperclipTransport(options), now);
+    this.#user = new SignedInUser(this.#reader, options.userId);
+    this.#namedUserId = options.userId;
     const steppers =
       options.stepperCatalog && new PaperclipSteppers(this.#reader, options.stepperCatalog);
     this.#inbox = new PaperclipInbox(this.#reader, options.company, steppers);
@@ -151,6 +151,7 @@ export class PaperclipMessaging implements AgentMessaging {
       return [];
     }
     await this.#knowAgents();
+    await this.#user.know();
     const body = await this.#reader.read("listComments", {
       path: { task },
       query: { order: "desc", limit: messagePage },
@@ -243,6 +244,7 @@ export class PaperclipMessaging implements AgentMessaging {
     if (sent.kind === "refused") {
       return { outcome: "refused", reason: sent.reason };
     }
+    await this.#user.know();
     const message = toMessage(this.#context(), task, sent.comment);
     if (message === undefined) {
       throw new PaperclipClientError(
@@ -327,23 +329,9 @@ export class PaperclipMessaging implements AgentMessaging {
     return answer.kind === "ok";
   }
 
-  /**
-   * Reads who the key belongs to (`GET /api/cli-auth/me`), so two connections
-   * to one Paperclip can be told apart. Answers only the user's name, never
-   * their email; `undefined` while Paperclip can't be reached, refuses the
-   * key or fails on its side (a 5xx), so it is worth asking again, and no
-   * `name` when Paperclip has none to give.
-   */
-  async signedInUser(): Promise<PaperclipUser | undefined> {
-    const answer = await this.#reader.send("whoAmI");
-    if (answer.kind === "failed") {
-      const serverFault = answer.status !== undefined && answer.status >= 500;
-      const askLater =
-        answer.failure === "offline" || answer.failure === "signed-out" || serverFault;
-      return askLater ? undefined : {};
-    }
-    const name = text(asRecord(field(asRecord(answer.body), "user")), "name");
-    return name === undefined ? {} : { name };
+  /** Reads who the key belongs to (`GET /api/cli-auth/me`); see {@link SignedInUser.read}. */
+  signedInUser(): Promise<PaperclipUser | undefined> {
+    return this.#user.read();
   }
 
   #changedAfter(wrote: boolean): void {
@@ -385,8 +373,9 @@ export class PaperclipMessaging implements AgentMessaging {
     const context = this.#context();
     // A channel the person left shows in Browse instead.
     const channels = tasks.flatMap((record) => {
-      const channel = readChannel(record, this.#userId);
-      const left = this.#userId !== undefined && !channel?.people.includes(this.#userId);
+      const userId = this.#namedUserId;
+      const channel = readChannel(record, userId);
+      const left = userId !== undefined && !channel?.people.includes(userId);
       return channel === undefined || left ? [] : [toChannel(context, channel)];
     });
     const answer = await this.#reader.send("listChats", { path: { company: this.#company } });
@@ -446,7 +435,7 @@ export class PaperclipMessaging implements AgentMessaging {
     return {
       ids: this.#ids,
       agentNames: this.#agentNames,
-      ...(this.#userId === undefined ? {} : { userId: this.#userId }),
+      ...(this.#user.id === undefined ? {} : { userId: this.#user.id }),
     };
   }
 }
