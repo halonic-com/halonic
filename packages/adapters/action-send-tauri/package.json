@@ -1,0 +1,36 @@
+{
+  "name": "@halonicjs/adapter-action-send-tauri",
+  "private": true,
+  "type": "module",
+  "description": "The ActionSender port over the Studio shell's action_* commands; no token ever passes through it.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/events": "workspace:*",
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/std": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-contracts": "workspace:*",
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "tomas",
+    "coverage": {
+      "lines": 100,
+      "branches": 100
+    },
+    "runtime": "web"
+  }
+}
