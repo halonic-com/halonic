@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import { acmeTool } from "../fake-host.test-helper.ts";
 import { type ActionCall, runtimeHandlers } from "../handlers.ts";
 import type { PaperclipComment, RuntimeHost } from "../host.ts";
+import { paperclipAccess } from "../paperclip-access.ts";
 
 /**
  * The same invented tasks and comments as `tooling/paperclip`'s
@@ -78,10 +79,15 @@ function run(params: unknown, paperclip: Pick<RuntimeHost, "agents" | "issues">)
     caller: { agentId: "agent-tomas", urlKey: "tomas", name: "Tomas" },
     companyId: "acme",
     now: new Date("2026-11-24T12:00:00Z"),
-    paperclip: { ...paperclip, state: { get: async () => null } },
+    paperclip: paperclipAccess(
+      { ...paperclip, state: { get: async () => null } },
+      handler.capabilities,
+      { companyId: "acme", runId: "run-1" },
+    ),
     github: async () => {
       throw new Error("paperclip.task doesn't read GitHub");
     },
+    now: new Date("2026-11-23T14:00:00Z"),
   };
   return handler.run(call);
 }

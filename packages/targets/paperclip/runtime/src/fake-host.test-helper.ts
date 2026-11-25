@@ -76,6 +76,7 @@ type Handler = (params: unknown, runCtx: ToolRunContext) => Promise<ToolResult>;
  * state in memory, the metrics written, the tool handlers registered and
  * `deliver` handing an event to the worker's subscriptions. The caller is
  * always `agent-mateo`, as `agent` describes it; the one task is `ACME-7`.
+ * Its issue client records each write in `writes`.
  */
 export function fakeHost(config: Record<string, unknown>, answers: Record<string, unknown>) {
   const handlers = new Map<string, Handler>();
@@ -85,6 +86,7 @@ export function fakeHost(config: Record<string, unknown>, answers: Record<string
   const github = { down: false };
   const agent = { urlKey: "mateo", name: "Mateo" };
   const subscribed = new Map<string, ((event: PaperclipEvent) => Promise<void>)[]>();
+  const writes: string[] = [];
   const ctx = {
     events: {
       on: (name: string, fn: (event: PaperclipEvent) => Promise<void>) => {
@@ -116,6 +118,17 @@ export function fakeHost(config: Record<string, unknown>, answers: Record<string
       get: async (id: string) => (id === "agent-mateo" ? { id, ...agent } : null),
       list: async () => [{ id: "agent-mateo", ...agent }],
     },
+    issues: {
+      get: async () => null,
+      createComment: async (issueId: string) => {
+        writes.push(`createComment ${issueId}`);
+        return { id: "comment-new" };
+      },
+      update: async (issueId: string) => {
+        writes.push(`update ${issueId}`);
+        return { id: issueId, status: "todo" };
+      },
+    },
     config: { get: async () => config },
     secrets: { resolve: async () => "test-token" },
     http: {
@@ -140,5 +153,5 @@ export function fakeHost(config: Record<string, unknown>, answers: Record<string
   const deliver = async (event: PaperclipEvent) => {
     await Promise.all((subscribed.get(event.eventType) ?? []).map((fn) => fn(event)));
   };
-  return { ctx, call, deliver, subscribed, sent, saved, metrics, github, agent };
+  return { ctx, call, deliver, subscribed, sent, saved, metrics, github, agent, writes };
 }

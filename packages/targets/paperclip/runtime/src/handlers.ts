@@ -1,6 +1,8 @@
 import type { Template, Tool, ToolActionName } from "@halonicjs/format";
 import type { GitHubGet } from "./github.ts";
-import type { Capability, RuntimeHost, ToolResult } from "./host.ts";
+import type { Capability, ToolResult } from "./host.ts";
+import type { PaperclipAccess } from "./paperclip-access.ts";
+import { writeActionHandlers } from "./paperclip-writes.ts";
 import { mergeTimesHandler } from "./pulls/merge-times.ts";
 import { openPullRequestsHandler } from "./pulls/open-pull-requests.ts";
 import { pullRequestHandler } from "./pulls/pull-request.ts";
@@ -27,18 +29,12 @@ export interface ActionCall {
   readonly caller: { readonly agentId: string; readonly urlKey: string; readonly name: string };
   /** The company the call runs in. */
   readonly companyId: string;
-  /** When the call started. */
-  readonly now: Date;
-  /**
-   * Paperclip's read clients, and reading the runtime's own plugin state. A
-   * handler may call only those its `capabilities` cover: Paperclip refuses
-   * the rest.
-   */
-  readonly paperclip: Pick<RuntimeHost, "agents" | "issues"> & {
-    readonly state: Pick<RuntimeHost["state"], "get">;
-  };
   /** The GitHub reader with the plugin's read token: GET to api.github.com only. */
   readonly github: () => Promise<GitHubGet>;
+  /** Paperclip's clients, cut down to the capabilities the handler declares. */
+  readonly paperclip: PaperclipAccess;
+  /** The time of the call, for monitors. */
+  readonly now: Date;
 }
 
 /** One action's code and the Paperclip capabilities it needs beyond the runtime's own. */
@@ -62,4 +58,5 @@ export const runtimeHandlers: ActionHandlers = {
   "paperclip.template": templateHandler,
   "paperclip.failed-runs": failedRunsHandler,
   "github.merge-times": mergeTimesHandler,
+  ...writeActionHandlers,
 };

@@ -29,11 +29,24 @@ const repository = s
 /** The repositories a GitHub action may read. Any other is refused at run time. */
 const repositories = s.array(repository).min(1).max(20);
 
+/**
+ * Whether a writing action writes (`write`) or only answers what it would
+ * write (`dry-run`, the default). Only the tool file sets it, never the
+ * agent's call: a new writing tool starts in dry run for one pass.
+ */
+const WriteMode = s.enum(["dry-run", "write"]);
+
+/** The settings every writing action takes. */
+const writeSettings = s
+  .object({ mode: WriteMode.default("dry-run") })
+  .strict()
+  .prefault({});
+
 /** What one action is, for the people who write and review tool files. */
 export interface ToolActionInfo {
   /** One line on what the action does. */
   readonly about: string;
-  /** Whether the action changes anything. None does yet: writing actions come with their own review. */
+  /** Whether the action changes anything. A writing action has a `mode` and starts in dry run. */
   readonly writes: boolean;
   /** The keys the installer fills in for it. */
   readonly keys: readonly ActionKey[];
@@ -93,7 +106,29 @@ export const TOOL_ACTIONS = {
     keys: [],
     settings: s.object({}).strict().prefault({}),
   },
+  "paperclip.comment": {
+    about: "Posts one comment on a task in the caller's company, with the caller as its author.",
+    writes: true,
+    keys: ["paperclip-api"],
+    settings: writeSettings,
+  },
+  "paperclip.next-step": {
+    about:
+      "Sets the caller's own task to in progress with a monitor, or to blocked with its blockers, with a comment.",
+    writes: true,
+    keys: ["paperclip-api"],
+    settings: writeSettings,
+  },
+  "paperclip.finish-run": {
+    about: "Ends the caller's run on its own task: done, blocked, or handed to another agent.",
+    writes: true,
+    keys: ["paperclip-api"],
+    settings: writeSettings,
+  },
 } as const;
+
+/** How a writing action runs. */
+export type WriteModeName = "dry-run" | "write";
 
 /** An action's name, such as `github.pull-request`. */
 export type ToolActionName = keyof typeof TOOL_ACTIONS;

@@ -122,7 +122,7 @@ verifies("format.tool-file", () => {
 });
 
 verifies("format.tool-actions", () => {
-  it("lists the read-only actions, each with the keys it needs", () => {
+  it("lists the actions, each with the keys it needs, and only the Paperclip writers write", () => {
     expect(
       toolActionNames().map((name) => `${name} ${toolActionInfo(name).keys.join(",")}`),
     ).toEqual([
@@ -133,13 +133,34 @@ verifies("format.tool-actions", () => {
       "paperclip.task paperclip-api",
       "paperclip.failed-runs paperclip-api",
       "paperclip.template ",
+      "paperclip.comment paperclip-api",
+      "paperclip.next-step paperclip-api",
+      "paperclip.finish-run paperclip-api",
     ]);
-    expect(toolActionNames().some((name) => toolActionInfo(name).writes)).toBe(false);
+    expect(toolActionNames().filter((name) => toolActionInfo(name).writes)).toEqual([
+      "paperclip.comment",
+      "paperclip.next-step",
+      "paperclip.finish-run",
+    ]);
   });
 
   it("refuses an action the runtime doesn't have", () => {
     const text = toolFile().replace("github.pull-request", "shell.run");
     expect(summary(problemsOf("tool", text))).toEqual(["action.run invalid_union 6"]);
+  });
+
+  it("starts a writing action in dry run, and refuses a mode it doesn't know", () => {
+    const comment = toolFile()
+      .replace("github.pull-request", "paperclip.comment")
+      .replace("  with: { repositories: [acme/website] }\n", "");
+    expect(parsedValue("tool", comment).action).toEqual({
+      run: "paperclip.comment",
+      with: { mode: "dry-run" },
+    });
+    const unknown = toolFile()
+      .replace("github.pull-request", "paperclip.comment")
+      .replace("{ repositories: [acme/website] }", "{ mode: always }");
+    expect(summary(problemsOf("tool", unknown))).toEqual(["action.with.mode invalid_value 7"]);
   });
 
   it("refuses a GitHub action without its repositories, and fills in the others' defaults", () => {

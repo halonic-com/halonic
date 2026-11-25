@@ -5,6 +5,7 @@ import { type GitHubGet, gitHubReader } from "./github.ts";
 import type { ActionHandlers } from "./handlers.ts";
 import type { RuntimeHost, ToolDeclaration, ToolResult, ToolRunContext } from "./host.ts";
 import { keepFailedRun } from "./runs/failed-runs-record.ts";
+import { paperclipAccess } from "./paperclip-access.ts";
 
 /**
  * Registers a plugin's tools under their short names (`pr_status`), each
@@ -136,9 +137,12 @@ async function serve(
     templates: active.snapshot.templates ?? [],
     caller: { agentId: runCtx.agentId, urlKey: agent.urlKey, name: agent.name },
     companyId: runCtx.companyId,
-    now,
-    paperclip: ctx,
     github,
+    paperclip: paperclipAccess(ctx, handler.capabilities, {
+      companyId: runCtx.companyId,
+      runId: runCtx.runId,
+    }),
+    now,
   });
 }
 

@@ -1,0 +1,28 @@
+# runtime.paperclip-writes
+
+- Status: active
+- Since: unreleased
+- Source: HAL-17956 (plan document on that task, and Liam's decisions A and B and his five security requirements there); the refusals and limits are those of the task tools in `tooling/paperclip` (HAL-16403)
+
+When an agent calls a tool on `paperclip.comment`, `paperclip.next-step` or `paperclip.finish-run`, the runtime shall check the parameters, the task and the caller exactly as a write would, refusing the same input with the same words as the task tools in `tooling/paperclip`, and refusing a task change on a task the caller doesn't hold; and only when the tool file sets `mode: write` shall it make the writes, otherwise it shall answer the exact writes it would make and call no write client, whatever the agent's parameters say. A task change shall go through `issues.setDisposition` when the host has it, as one write with the comment; on a host without it, through the comment and then the plain issue update, refusing `in_progress`, whose monitor only `setDisposition` can set. An action shall reach only the Paperclip clients its handler declares the capabilities for, and only the writing actions shall declare `issue.comments.create` or `issues.update`.
+
+## Examples
+
+- Given a `comment` tool with `mode: dry-run`, or with no mode,
+  when an agent calls it with `mode: write` in its parameters,
+  then it answers "Dry run: would post your comment on …" and the host gets no write.
+- Given a `set_next_step` tool with `mode: write` on a host with `setDisposition`,
+  when Tomas sets his task to `in_progress` with a 20-minute monitor,
+  then the host gets one `setDisposition` with the status, the comment and the monitor.
+- Given the same tool on a host without `setDisposition`,
+  when Tomas sets his task to `in_progress`,
+  then it is refused and nothing is written.
+- Given a `finish_run` tool with `mode: write` on a host without `setDisposition`,
+  when Tomas hands his task to Liam,
+  then the host gets Tomas's comment, then one update to `todo` assigned to Liam, as Tomas's run.
+- Given a `finish_run` tool,
+  when Tomas finishes a task Liam holds,
+  then it is refused, in dry run too.
+- Given a read action whose code asks for the comment client,
+  when it runs,
+  then it fails and the host gets no write.

@@ -1,0 +1,76 @@
+import { toolActionInfo, toolActionNames } from "@halonicjs/format";
+import { verifies } from "@halonicjs/testing-spec";
+import { describe, expect, test } from "vitest";
+import { pluginActions } from "./actions.ts";
+import { builtIn, fakeHost } from "./fake-host.test-helper.ts";
+import type { ActionCall, ActionHandlers } from "./handlers.ts";
+import { writeCapabilities } from "./host.ts";
+import { paperclipAccess } from "./paperclip-access.ts";
+import { fakePaperclip } from "./paperclip-writes.test-helper.ts";
+import { registerWorkspaceTools } from "./register.ts";
+
+const call = { companyId: "acme", runId: "run-1" };
+
+verifies("runtime.paperclip-writes", () => {
+  describe("a call's Paperclip access", () => {
+    test("refuses the write clients to an action that didn't declare them, before the host", async () => {
+      const { host, received } = fakePaperclip();
+      const access = paperclipAccess(host, ["issues.read"], call);
+      expect(() => access.issues.createComment("task-16403", "Hi.", "acme")).toThrow(
+        "this action doesn't declare issue.comments.create, so it may not use it.",
+      );
+      expect(() => access.issues.update("task-16403", { status: "done" }, "acme")).toThrow(
+        "this action doesn't declare issues.update, so it may not use it.",
+      );
+      expect(access.issues.setDisposition).toBeUndefined();
+      expect(received).toEqual([]);
+      expect(await access.issues.get("HAL-16403", "acme")).toMatchObject({ id: "task-16403" });
+    });
+
+    test("gives setDisposition only to an action that may update, on a host that has it", () => {
+      const mayUpdate = paperclipAccess(fakePaperclip().host, ["issues.update"], call);
+      expect(mayUpdate.issues.setDisposition).toBeTypeOf("function");
+      const plain = paperclipAccess(
+        fakePaperclip({ disposition: false }).host,
+        ["issues.update"],
+        call,
+      );
+      expect(plain.issues.setDisposition).toBeUndefined();
+    });
+
+    test("a read action served by the runtime can't reach a write client", async () => {
+      const handlers: ActionHandlers = {
+        "github.pull-request": {
+          capabilities: [],
+          run: async (one: ActionCall) => {
+            await one.paperclip.issues.createComment("task-1", "Sneaky.", "acme");
+            return { content: "wrote" };
+          },
+        },
+      };
+      const host = fakeHost({}, {});
+      const declarations = [
+        { name: "pr_status", displayName: "pr_status", description: "", parametersSchema: {} },
+      ];
+      registerWorkspaceTools(host.ctx, { declarations, builtIn, handlers });
+      expect(await host.call("pr_status", {})).toEqual({
+        error:
+          "pr_status: this action doesn't declare issue.comments.create, so it may not use it.",
+      });
+      expect(host.writes).toEqual([]);
+    });
+  });
+
+  test("only the actions the format marks as writing get a write capability", () => {
+    for (const action of pluginActions()) {
+      const writes = action.capabilities.some((one) => writeCapabilities.includes(one));
+      expect([action.name, writes]).toEqual([action.name, toolActionInfo(action.name).writes]);
+    }
+    const available = pluginActions()
+      .filter((action) => action.available)
+      .map((action) => action.name);
+    expect(available).toEqual(
+      expect.arrayContaining(toolActionNames().filter((name) => toolActionInfo(name).writes)),
+    );
+  });
+});

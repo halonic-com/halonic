@@ -1,5 +1,6 @@
 import type { ActionCall, ActionHandler } from "../handlers.ts";
-import type { PaperclipTask, RuntimeHost, ToolResult } from "../host.ts";
+import type { PaperclipTask, ToolResult } from "../host.ts";
+import type { PaperclipAccess } from "../paperclip-access.ts";
 import {
   type CommentView,
   limits,
@@ -61,7 +62,7 @@ function readTaskParams(params: unknown): TaskParams {
   return { task, comments: count, document };
 }
 
-type PaperclipReads = Pick<RuntimeHost, "agents" | "issues">;
+type PaperclipReads = Pick<PaperclipAccess, "agents" | "issues">;
 
 function iso(value: Date | string | null | undefined): string | null {
   return value == null ? null : new Date(value).toISOString();
