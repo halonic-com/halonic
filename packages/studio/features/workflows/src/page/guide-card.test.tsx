@@ -91,7 +91,7 @@ verifies("workflows.page.guide-card", () => {
     expect(card?.querySelector("h2")?.className).toContain("border-b");
     expect(card?.querySelector("h2")?.className).toContain("text-section");
     // At the right: after the canvas's panel, in the same row.
-    const panel = page.querySelector("[role=tabpanel]") as HTMLElement;
+    const panel = page.querySelector("[data-workflow-view]") as HTMLElement;
     expect(panel.parentElement).toBe(card?.parentElement);
   });
 
@@ -223,7 +223,7 @@ verifies("workflows.page.guide-card", () => {
       </PresentationProvider>,
     );
     const card = guideCardOf(page) as HTMLElement;
-    const panel = page.querySelector("[role=tabpanel]") as HTMLElement;
+    const panel = page.querySelector("[data-workflow-view]") as HTMLElement;
     expect(card.compareDocumentPosition(panel)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(card.parentElement).not.toBe(panel.parentElement);
   });

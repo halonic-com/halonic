@@ -6,6 +6,8 @@ const places = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh
 /** The workflow page's words (microcopy 9.3, flow-workflows 3 and 4; states C9, C16). */
 export const pageWords = {
   kind: "WORKFLOW",
+  /** The kind in the item page's header, which shows it in small caps. */
+  kindWord: "Workflow",
   /** The header's name field (UX checklist 10.2, microcopy 9.1). */
   nameField: "Workflow name",
   nameTaken: (name: string) => `A workflow called ${name} already exists.`,

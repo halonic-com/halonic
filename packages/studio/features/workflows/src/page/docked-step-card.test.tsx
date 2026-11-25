@@ -363,7 +363,7 @@ verifies("workflows.page.docked-card-body", () => {
   // 1280 px window the 360 px card would leave 262 px of blank body, the canvas hidden (C538-1).
   it("gives a step's card the page's body under 800 px, and on close shows the canvas with focus on the step", async () => {
     const { page } = await showPage();
-    const panel = () => page.querySelector("[role='tabpanel']")?.className.split(" ") ?? [];
+    const panel = () => page.querySelector("[data-workflow-view]")?.className.split(" ") ?? [];
     await pick(page, "write");
 
     expect(docked(page)?.parentElement?.className.split(" ")).toContain("@max-[800px]:w-full");

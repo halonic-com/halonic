@@ -6,7 +6,10 @@ import { runsWords } from "../runs/runs-words.ts";
 export type WorkflowView = "flow" | "configuration" | "runs";
 
 /** The page's tabs: Flow, Configuration with its error count, and Runs with the count of runs that need you. */
-export function workflowTabs(errors: number, needYou: number): readonly Tab<WorkflowView>[] {
+export function workflowTabs(
+  errors: number,
+  needYou: number,
+): readonly [Tab<WorkflowView>, ...Tab<WorkflowView>[]] {
   return [
     { id: "flow", label: configurationWords.flowTab },
     {
