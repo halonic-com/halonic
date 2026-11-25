@@ -38,6 +38,13 @@ new_sqlite_classes = ["UsageObject"]
 tag = "v3"
 new_sqlite_classes = ["RunContainerObject"]
 
+# The run container behind RunContainerObject. A low ceiling keeps a runaway run from scaling spend.
+[[containers]]
+class_name = "RunContainerObject"
+image = "./container/Dockerfile"
+instance_type = "standard-1"
+max_instances = 5
+
 # The cron: every minute, the routine tick and the watchdog (scheduled() in src/worker.ts).
 [triggers]
 crons = ["* * * * *"]
