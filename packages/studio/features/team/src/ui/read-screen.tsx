@@ -1,4 +1,5 @@
-import { Callout } from "@halonicjs/studio-kit";
+import { Callout, ListHeading, usePresentation } from "@halonicjs/studio-kit";
+import type { ReactNode } from "react";
 import { notReadAfterMs } from "../seat-problems.ts";
 import type { SpendAndSeatsState } from "../spend-and-seats.ts";
 import type { TeamDetails } from "../team-details.ts";
@@ -96,7 +97,7 @@ export function ReadBody(props: {
       {state.hasSeats && state.seats.length > 0 ? (
         <NeedsYou problems={state.problems} clock={clock} onLink={onLink} />
       ) : null}
-      <div className="flex gap-3 phone:flex-col">
+      <MoneyAndSeats>
         {state.canReadSpend ? (
           <>
             <SpentTodayTile today={state.today} />
@@ -113,7 +114,7 @@ export function ReadBody(props: {
           </div>
         )}
         <SeatsTile seats={state.seats} problems={state.problems} clock={clock} />
-      </div>
+      </MoneyAndSeats>
       <section aria-label={teamWords.seatsHeading} className="flex flex-col gap-2">
         <SeatsHeading />
         <SeatsBody state={state} clock={clock} onLink={onLink} pages={pages} />
@@ -121,6 +122,22 @@ export function ReadBody(props: {
       {state.canReadSpend ? <AgentsBySpendSlot pages={pages} /> : null}
     </>
   );
+}
+
+/**
+ * Where the tiles go: one row of tiles on a desktop; on a phone, rows under the "Money and seats"
+ * heading (S24).
+ */
+function MoneyAndSeats({ children }: { children: ReactNode }) {
+  if (usePresentation() === "phone") {
+    return (
+      <section aria-label={teamWords.moneyAndSeats} className="flex flex-col">
+        <ListHeading name={teamWords.moneyAndSeats} />
+        {children}
+      </section>
+    );
+  }
+  return <div className="flex gap-3">{children}</div>;
 }
 
 /** Agents by spend, where the detail pages are. */
