@@ -4,7 +4,13 @@ import { expectSpecFile } from "@halonicjs/testing-spec/node";
 import { expect, it } from "vitest";
 import type { Tool } from "../kinds/tool/schema.ts";
 import { snapshotJsonSchema } from "./schema.ts";
-import { makeSnapshot, readSnapshot, type SnapshotProblem, snapshotText } from "./snapshot.ts";
+import {
+  makeSnapshot,
+  readSnapshot,
+  readSnapshotText,
+  type SnapshotProblem,
+  snapshotText,
+} from "./snapshot.ts";
 
 const commit = "0123456789abcdef0123456789abcdef01234567";
 
@@ -106,5 +112,19 @@ verifies("format.workspace-snapshot", () => {
   it("matches its committed spec file", () => {
     const path = join(import.meta.dirname, "..", "..", "spec", "workspace-snapshot.schema.json");
     expectSpecFile(path, snapshotJsonSchema());
+  });
+
+  it("refuses a snapshot text over 4 MiB, or not JSON, before parsing it", () => {
+    const text = JSON.stringify(snapshotData([]));
+    const padded = `${text}${" ".repeat(4 * 1024 * 1024 - text.length + 1)}`;
+    const tooLarge = readSnapshotText(padded);
+    expect(tooLarge.ok ? [] : tooLarge.error.map((problem) => problem.code)).toEqual([
+      "snapshot-too-large",
+    ]);
+    const notJson = readSnapshotText("{");
+    expect(notJson.ok ? [] : notJson.error.map((problem) => problem.code)).toEqual([
+      "snapshot-not-json",
+    ]);
+    expect(readSnapshotText(text).ok).toBe(true);
   });
 });

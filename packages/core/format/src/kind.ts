@@ -70,6 +70,8 @@ export interface FileKind<Value = unknown> {
    * Codes and paths stay the schema's.
    */
   readonly wordIssues?: (issues: readonly Issue[], data: unknown) => Issue[];
+  /** The most bytes a file of this kind may have; a larger one is refused before it is parsed. */
+  readonly maxBytes?: number;
   /** Checks that span several fields, run after the schema passed. */
   readonly check?: (value: Value) => readonly KindCheckProblem[];
 }

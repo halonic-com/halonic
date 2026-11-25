@@ -58,6 +58,34 @@ verifies("format.tool-refusals", () => {
     }
   });
 
+  it("refuses invisible characters in a description and in a parameter's choices", () => {
+    for (const hidden of ["\u200B", "\uFEFF", "\u{E0041}", "\u2028", "\u2029"]) {
+      expect(summary(problemsOf("tool", toolFile({ description: `Lists${hidden} runs.` })))).toEqual(
+        ["description custom 3"],
+      );
+      const parameter = `mode: { type: string, description: Which., enum: [fast, "sl${hidden}ow"] }`;
+      expect(summary(problemsOf("tool", toolFile({ parameter })))).toEqual([
+        "parameters.mode.enum.1 custom 5",
+      ]);
+    }
+  });
+
+  it("refuses a parameter name every object already has", () => {
+    for (const name of ["constructor", "toString", "hasOwnProperty", "valueOf"]) {
+      const parameter = `${name}: { type: string, description: Pass it. }`;
+      expect(summary(problemsOf("tool", toolFile({ parameter })))).toEqual([
+        `parameters.${name} invalid_key 5`,
+      ]);
+    }
+  });
+
+  it("refuses a tool file over 64 KiB before parsing it", () => {
+    const padding = `# ${"x".repeat(64 * 1024)}`;
+    expect(summary(problemsOf("tool", `${toolFile({})}${padding}\n`))).toEqual([
+      " file-too-large 1",
+    ]);
+  });
+
   it("refuses a number range that holds no value", () => {
     const parameter =
       "hours: { type: integer, description: How far back., minimum: 10, maximum: 1 }";
