@@ -1,9 +1,9 @@
 import { type Path, parse } from "@halonicjs/schema-kit";
-import { canonicalJson, err, ok, type Result } from "@halonicjs/std";
+import { canonicalJson, encodeUtf8, err, ok, type Result } from "@halonicjs/std";
 import { checkTool } from "../kinds/tool/checks.ts";
 import type { Tool } from "../kinds/tool/schema.ts";
 import { checkKeysIn } from "../shared/key-in-value.ts";
-import { WorkspaceSnapshot } from "./schema.ts";
+import { MAX_SNAPSHOT_BYTES, WorkspaceSnapshot } from "./schema.ts";
 
 /**
  * Why a snapshot is refused. A refused snapshot is never used in part:
@@ -99,6 +99,34 @@ export function readSnapshot(data: unknown): Result<WorkspaceSnapshot, SnapshotP
     ...outOfOrder(tools),
   ];
   return problems.length > 0 ? err(problems) : ok(parsed.value);
+}
+
+/**
+ * Reads a snapshot file's text, as the plugin's loader gets it: refused
+ * whole when it is over {@link MAX_SNAPSHOT_BYTES} (`snapshot-too-large`)
+ * or isn't JSON (`snapshot-not-json`), both before it is parsed further;
+ * otherwise checked by {@link readSnapshot}.
+ *
+ * @param text - the snapshot file's text
+ * @returns the snapshot, or every problem found
+ */
+export function readSnapshotText(text: string): Result<WorkspaceSnapshot, SnapshotProblem[]> {
+  if (encodeUtf8(text).length > MAX_SNAPSHOT_BYTES) {
+    return err([
+      {
+        code: "snapshot-too-large",
+        path: [],
+        message: `keep the snapshot to at most ${MAX_SNAPSHOT_BYTES / (1024 * 1024)} MiB`,
+      },
+    ]);
+  }
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    return err([{ code: "snapshot-not-json", path: [], message: "write the snapshot as JSON" }]);
+  }
+  return readSnapshot(data);
 }
 
 /**

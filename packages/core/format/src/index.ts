@@ -171,6 +171,7 @@ export { type Guard, isGuard } from "./shared/guard.ts";
 export { type NamedPath, type ProgramStart, pathsNamedBy } from "./shared/program-start.ts";
 export { foldName } from "./shared/relative-path.ts";
 export {
+  MAX_SNAPSHOT_BYTES,
   MAX_SNAPSHOT_TOOLS,
   SNAPSHOT_FORMAT,
   snapshotJsonSchema,
@@ -179,6 +180,7 @@ export {
 export {
   makeSnapshot,
   readSnapshot,
+  readSnapshotText,
   type SnapshotInput,
   type SnapshotProblem,
   snapshotText,

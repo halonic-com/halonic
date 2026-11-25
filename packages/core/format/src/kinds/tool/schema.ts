@@ -20,6 +20,23 @@ export const TOOL_NAME_PATTERN = /^[a-z][a-z0-9_]{0,47}$/;
 /** A parameter's name, such as `pr` or `repoName`. */
 export const PARAMETER_NAME_PATTERN = /^[a-z][A-Za-z0-9_]{0,39}$/;
 
+/** The most bytes a tool file may have; a larger one is refused before it is parsed. */
+export const MAX_TOOL_FILE_BYTES = 64 * 1024;
+
+/**
+ * A parameter's name, as the agent writes it. A name every object already
+ * has, such as `constructor` or `toString`, is refused, so code that asks
+ * whether a call's argument is a declared parameter can't be fooled by the
+ * object's own members.
+ */
+const parameterName = s
+  .string()
+  .regex(PARAMETER_NAME_PATTERN, "start with a lowercase letter, such as 'pr' or 'repoName'")
+  .refine(
+    (name) => !(name in Object.prototype),
+    "use a name of your own: every object already has this one",
+  );
+
 /** Text an agent reads to decide how to call the tool. It may break lines. */
 function shownText(most: number) {
   return s.string().min(1).max(most).refine(withoutHiddenMarks, NO_HIDDEN_MARKS);
@@ -102,15 +119,7 @@ export const Tool = s
     /** The short description the agent sees with the tool. Longer guidance belongs in a skill. */
     description: shownText(500),
     parameters: s
-      .record(
-        s
-          .string()
-          .regex(
-            PARAMETER_NAME_PATTERN,
-            "start with a lowercase letter, such as 'pr' or 'repoName'",
-          ),
-        ToolParameter,
-      )
+      .record(parameterName, ToolParameter)
       .refine(
         (parameters) => Object.keys(parameters).length <= MAX_TOOL_PARAMETERS,
         `use at most ${MAX_TOOL_PARAMETERS} parameters`,

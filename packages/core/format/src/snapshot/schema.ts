@@ -21,6 +21,9 @@ export const SNAPSHOT_FORMAT = 1 as const;
 /** The most tools one snapshot holds. */
 export const MAX_SNAPSHOT_TOOLS = 200;
 
+/** The most bytes a snapshot's text may have; a larger one is refused before it is parsed. */
+export const MAX_SNAPSHOT_BYTES = 4 * 1024 * 1024;
+
 /** A git commit id: 40 hex digits (SHA-1) or 64 (SHA-256), lowercase. */
 const commit = s
   .string()

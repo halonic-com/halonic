@@ -1,5 +1,5 @@
 import { formatPath, type Issue, type Path, parse } from "@halonicjs/schema-kit";
-import { err, ok, type Result } from "@halonicjs/std";
+import { encodeUtf8, err, ok, type Result } from "@halonicjs/std";
 import type { YamlProblem } from "@halonicjs/yaml";
 import type { FileKind, KindCheckProblem } from "./kind.ts";
 import { fileKinds, type KindName, type KindValues } from "./registry.ts";
@@ -89,6 +89,9 @@ export function parseWithKind<Value>(
   text: string,
   options: ParseFileOptions = {},
 ): Result<ParsedFile<Value>, FileProblem[]> {
+  if (fileKind.maxBytes !== undefined && encodeUtf8(text).length > fileKind.maxBytes) {
+    return err([tooLarge(fileKind.maxBytes)]);
+  }
   const read = readSource(fileKind.syntax, text);
   if (!read.ok) {
     return err([syntaxProblem(read.error)]);
@@ -193,6 +196,19 @@ function namePlaceId(problem: FileProblem, placeId: string | undefined): FilePro
   return {
     ...problem,
     message: `${problem.message} (the id "${placeId}" comes from the file name)`,
+  };
+}
+
+/** A file larger than its kind allows, refused before it is parsed. */
+function tooLarge(maxBytes: number): FileProblem {
+  return {
+    severity: "error",
+    source: "syntax",
+    code: "file-too-large",
+    path: [],
+    message: `keep the file to at most ${maxBytes / 1024} KiB`,
+    line: 1,
+    col: 1,
   };
 }
 

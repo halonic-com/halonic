@@ -1,6 +1,6 @@
 import type { FileKind } from "../../kind.ts";
 import { checkTool } from "./checks.ts";
-import { Tool } from "./schema.ts";
+import { MAX_TOOL_FILE_BYTES, Tool } from "./schema.ts";
 
 /**
  * `library/tools/<id>.tool.yaml`, at the workspace root only: a plugin is
@@ -14,5 +14,6 @@ export const toolKind: FileKind<Tool> = {
   schema: Tool,
   places: [{ scope: "workspace", folder: "library/tools", name: "<id>.tool.yaml" }],
   idFromPlace: "fallback",
+  maxBytes: MAX_TOOL_FILE_BYTES,
   check: checkTool,
 };

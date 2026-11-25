@@ -25,7 +25,7 @@ The `halonic trust --plugin <id>` command shall show the trust check of the plug
   then it says `✕ Couldn't trust wether: there's no plugin called "wether". Did you mean weather?` and "See them with halonic plugin list." and exits 4.
 - Given Weather, whose plugin.yaml has a text-direction mark (U+202E) in the second choice of its units setting,
   when `halonic trust --plugin weather` is run,
-  then it says "✕ Couldn't trust weather: ui.settings.units.choices[1]: don't use control characters or text-direction marks" and "Remove it with halonic plugin remove weather, then add a version that works.", without the mark, Weather stays off and it exits 2.
+  then it says "✕ Couldn't trust weather: ui.settings.units.choices[1]: don't use control, invisible or text-direction characters" and "Remove it with halonic plugin remove weather, then add a version that works.", without the mark, Weather stays off and it exits 2.
 - Given Weather, on,
   when `halonic trust --plugin weather --remove` is run,
   then it says "✓ Removed trust for Weather. Nothing from this plugin runs until you trust it.", Weather is off and it exits 0.
