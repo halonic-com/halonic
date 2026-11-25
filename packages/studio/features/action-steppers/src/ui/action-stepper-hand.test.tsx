@@ -115,6 +115,49 @@ verifies("action-steppers.browser", () => {
   });
 });
 
+/** Shaped like an access key, built in parts so the leak guard doesn't take it for one. */
+const keyShaped = `${"AKIA"}${"Q".repeat(8)}${"7".repeat(8)}`;
+
+verifies("action-steppers.pasted-result", () => {
+  describe("a pasted result", () => {
+    /** Pastes `value` into step 1's result field and says the step is done. */
+    async function paste(value: string) {
+      const shown = show(browserRequest());
+      const [first] = steps(shown.root);
+      const field = first?.querySelector("input");
+      if (first === undefined || field === null || field === undefined) throw new Error("no field");
+      await type(field, value);
+      await click(button(first, "Step 1 is done"));
+      const line = () => document.getElementById(field.getAttribute("aria-describedby") ?? "");
+      return { ...shown, field, line };
+    }
+
+    it("says why a value that doesn't match the pattern isn't kept, and records nothing", async () => {
+      const { actions, field, line } = await paste("Acme Prod");
+      expect(line()?.textContent).toBe(
+        "This doesn't match what the step asks for. Check it and paste it again.",
+      );
+      expect(field.getAttribute("aria-invalid")).toBe("true");
+      expect(actions.calls).toEqual([]);
+    });
+
+    it("refuses a key-shaped value with the secure field's line, never showing or sending it", async () => {
+      const { root, actions, line } = await paste(keyShaped);
+      expect(line()?.textContent).toBe("This looks like a key: use the secure field.");
+      expect(actions.calls).toEqual([]);
+      expect(line()?.textContent).not.toContain(keyShaped);
+      expect(root.textContent).not.toContain(keyShaped);
+    });
+
+    it("clears the reason when the value changes", async () => {
+      const { field, line } = await paste("Acme Prod");
+      await type(field, "acme-prod");
+      expect(field.getAttribute("aria-invalid")).not.toBe("true");
+      expect(line()?.textContent).toBe("From Chief on Paperclip · Acme, not checked by Halonic");
+    });
+  });
+});
+
 verifies("action-steppers.by-hand", () => {
   describe("by hand", () => {
     it("shows the manual guide for the whole stepper", async () => {

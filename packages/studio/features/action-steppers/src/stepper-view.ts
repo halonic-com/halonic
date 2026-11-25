@@ -79,6 +79,8 @@ export type StepAction =
       readonly source: InstructionsSource;
       /** The label of the optional "paste the result here" field. Never a secret. */
       readonly resultLabel?: string | undefined;
+      /** The anchored pattern (`^…$`) the whole pasted result must match before it's kept. */
+      readonly resultPattern?: string | undefined;
     };
 
 /** One step of the request, in plain words, with what it does and where it stands. */

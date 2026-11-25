@@ -187,6 +187,15 @@ export function resultHintText(requester: StepperRequester): string {
   return `From ${requesterText(requester)}, not checked by Halonic`;
 }
 
+/**
+ * Why a pasted result wasn't kept, under its field. Neither repeats the value: a key-shaped one
+ * holds the key (HAL-17491 7.6).
+ */
+export const pastedResultWords = {
+  "key-shaped": "This looks like a key: use the secure field.",
+  "no-match": "This doesn't match what the step asks for. Check it and paste it again.",
+} as const;
+
 /** The line above the steps while the service's API is down. */
 export function serviceDownText(service: StepperService): string {
   return `${serviceName(service)} isn't answering right now, so the steps may fail. You can do them all by hand below.`;

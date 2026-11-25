@@ -9,6 +9,7 @@
 import type { ActionOutcome } from "@halonicjs/events";
 import type { AnswerResult, InboxAnswer, MessagingSource } from "@halonicjs/ports";
 import type { ActionSteps } from "@halonicjs/studio-services";
+import { checkPastedResult } from "../pasted-result.ts";
 import {
   type ActionItem,
   type ActionReviewContext,
@@ -74,7 +75,7 @@ export class StepperRun {
     runAll: () => void this.guard(() => this.runAll()),
     decline: () => void this.guard(() => this.end("stopped")),
     openPage: (address) => void this.guard(() => this.openPage(address)),
-    confirmBrowserStep: (number) => void this.guard(() => this.confirm(number)),
+    confirmBrowserStep: (number, result) => void this.guard(() => this.confirm(number, result)),
     // No step has a check until ToolScript check steps land (HAL-17491 7.9), so none offers it.
     checkStep: () => {},
     markDoneByHand: (number) => void this.guard(() => this.confirm(number)),
@@ -226,14 +227,39 @@ export class StepperRun {
     if (step !== undefined) await this.run(step.number);
   }
 
-  /** Records a step the user did on the page or by hand, and ends the request if it was the last. */
-  private async confirm(number: number): Promise<void> {
+  /**
+   * Records a step the user did on the page or by hand, with the result they pasted back as its
+   * `kept.result`, and ends the request if it was the last. The pasted result is checked again
+   * here (`action-steppers.pasted-result`), so one the screen should have refused records nothing.
+   */
+  private async confirm(number: number, pasted?: string): Promise<void> {
     const ran = await this.alone(async () => {
       await this.refresh();
-      if (this.view.stage.kind === "ready")
-        await this.options.steps.confirmStep(this.request, number);
+      if (this.view.stage.kind !== "ready") return;
+      const kept = this.keptResult(number, pasted);
+      checkKeptFields(kept, this.keptFieldsOf(number));
+      await this.options.steps.confirmStep(this.request, number, kept);
     });
     if (ran) await this.endIfDone();
+  }
+
+  /** The fields a step may keep when the user confirms it: `result`, if it asks for one. */
+  private keptFieldsOf(number: number): readonly string[] {
+    const action = this.view.steps.find((step) => step.number === number)?.action;
+    return action?.kind === "browser" && action.resultLabel !== undefined ? ["result"] : [];
+  }
+
+  /** A browser step's pasted result as its kept field; throws, never naming the value, if refused. */
+  private keptResult(number: number, pasted: string | undefined): { result: string } | undefined {
+    const action = this.view.steps.find((step) => step.number === number)?.action;
+    if (pasted === undefined || action?.kind !== "browser" || action.resultLabel === undefined) {
+      return undefined;
+    }
+    const checked = checkPastedResult(pasted, action.resultPattern);
+    if (checked.kind === "refused") {
+      throw new Error(`The pasted result wasn't kept (${checked.reason}).`);
+    }
+    return checked.kind === "kept" ? { result: checked.value } : undefined;
   }
 
   private async endIfDone(): Promise<void> {
@@ -245,13 +271,16 @@ export class StepperRun {
   /**
    * Answers the item with the folded result, then records the end, so nothing of it runs again.
    * When the user stops it (`stopped`), it ends `declined` if nothing ran and `failed` if some
-   * steps did, since a declined answer lists no steps.
+   * steps did, since a declined answer lists no steps. A request whose record says it ended
+   * already is left as it is.
    */
   private async end(outcome: ActionOutcome | "stopped"): Promise<void> {
     const { item, catalog, steps, answer, now } = this.options;
     const { definition, version } = item.action;
     await this.alone(async () => {
       const record = foldRecord(await steps.history(this.request));
+      // Ended already, here or in another window: it has had its answer, so it gets no second one.
+      if (record.finished !== undefined) return;
       const ended = outcome === "stopped" ? stoppedOutcome(record) : outcome;
       const secretSteps = new Set(
         this.view.steps
@@ -283,4 +312,16 @@ export class StepperRun {
     await this.options.steps.signOut(this.view.service);
     await this.signIn();
   }
+}
+
+/**
+ * Refuses a kept field the step doesn't keep, so a stray field never reaches the record. The
+ * error names the field, never its value.
+ */
+function checkKeptFields(
+  kept: Readonly<Record<string, string>> | undefined,
+  allowed: readonly string[],
+): void {
+  const stray = Object.keys(kept ?? {}).find((field) => !allowed.includes(field));
+  if (stray !== undefined) throw new Error(`The step doesn't keep a field named "${stray}".`);
 }

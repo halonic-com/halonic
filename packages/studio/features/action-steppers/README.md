@@ -25,7 +25,10 @@ the request's record and the sign-in through the `ActionSteps` app service of `s
 so the request is `ready`, asks for a sign-in, or resumes where it stopped; it sends each step
 with its values sorted by the catalog's route into placeholders and body, records steps the user
 did on the page or by hand, and answers the item through `AgentMessaging` when the stepper ends,
-with only "set on <day>" for a value typed in the shell's secret dialog. Outside the desktop app it
+with only "set on <day>" for a value typed in the shell's secret dialog. A result pasted back into
+a browser step's field is checked against the step's pattern and for key shapes
+(`checkPastedResult`, requirement `action-steppers.pasted-result`) and kept as `kept.result`; one
+that fails says why under the field and records nothing. Outside the desktop app it
 runs nothing and **Decline** still answers. Without the services, the catalog is empty and the
 default policy holds.
 
