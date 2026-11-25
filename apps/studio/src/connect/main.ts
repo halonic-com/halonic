@@ -1,9 +1,10 @@
 import type { ComputerId } from "@halonicjs/studio-feature-remote/phone";
-import { tauriIpc } from "@halonicjs/studio-services/tauri-ipc";
+import { tauriChannelIpc, tauriIpc } from "@halonicjs/studio-services/tauri-ipc";
 import { type ConnectBridge, localAddressStore } from "./bridge.ts";
 import { type PairingScanner, tauriPairingScanner } from "./pair-scan.ts";
 import { startPage } from "./start-page.ts";
 import { tauriBridge } from "./tauri-bridge.ts";
+import { tauriNearbyComputers } from "./tauri-nearby-computers.ts";
 import { tauriOwnerCheckAvailable } from "./tauri-owner-check.ts";
 import { type PhoneScreens, tauriPhoneScreens } from "./tauri-phone-screens.ts";
 import { tauriPhoneTunnel } from "./tauri-phone-tunnel.ts";
@@ -32,6 +33,7 @@ const internals = tauriIpc(window);
 const report = (line: string): void => console.warn(line);
 // With the shell's tunnel, startPage's launch rule picks the phone app or the 0.1 page (HAL-16439).
 const tunnel = internals === undefined ? undefined : tauriPhoneTunnel(window, report);
+const nearby = tauriNearbyComputers(tauriChannelIpc(window), report);
 
 void startPage({
   document,
@@ -47,6 +49,7 @@ void startPage({
   pageNotShown: location.hash === "#page-not-shown",
   tunnel,
   scanner: internals === undefined ? noScanner : tauriPairingScanner(internals),
+  ...(nearby === undefined ? {} : { nearby }),
   window,
   ...(internals === undefined ? noScreens : tauriPhoneScreens(internals, report)),
   report,

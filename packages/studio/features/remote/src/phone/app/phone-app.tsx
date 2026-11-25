@@ -9,10 +9,12 @@ import {
 } from "react";
 import { computersWords } from "../computers-words.ts";
 import { forgottenWords } from "../forget-dialog.tsx";
+import type { NearbyComputers } from "../nearby-computers.ts";
 import { pairWords } from "../pair-words.ts";
 import { PairedComputers } from "../paired-computers.tsx";
 import type { PairingView, PhonePairingFlow } from "../pairing-flow.ts";
 import { PairingScreens } from "../pairing-screens.tsx";
+import { TypedStep } from "../typed-step.tsx";
 import { ComputerScreen, type PhoneOutside } from "./computer-screen.tsx";
 import type { PhoneAppRouter, PhoneAppView } from "./phone-app-router.ts";
 
@@ -21,6 +23,8 @@ export interface PhoneAppProps extends PhoneOutside {
   readonly router: PhoneAppRouter;
   /** The scanner shows: the page lets the camera behind it show through. */
   readonly onCamera: (showing: boolean) => void;
+  /** The shell's list of computers on this Wi-Fi, for Type a code; none outside the Android app. */
+  readonly nearby?: NearbyComputers | undefined;
 }
 
 /**
@@ -58,7 +62,7 @@ function PhoneScreen(props: PhoneAppProps & { readonly view: PhoneAppView }) {
     case "address":
       return null;
     case "pair":
-      return <PairScreen {...props} flow={screen.flow} onBack={back} />;
+      return <PairScreen {...props} flow={screen.flow} computers={view.computers} onBack={back} />;
     case "computers":
       return (
         <TopBar title={computersWords.title} onBack={back} focusOnOpen>
@@ -92,10 +96,16 @@ function PhoneScreen(props: PhoneAppProps & { readonly view: PhoneAppView }) {
 function PairScreen({
   router,
   flow,
+  computers,
+  nearby,
   onBack,
   onOpenSettings,
   onCamera,
-}: PhoneAppProps & { readonly flow: PhonePairingFlow; readonly onBack: (() => void) | undefined }) {
+}: PhoneAppProps & {
+  readonly flow: PhonePairingFlow;
+  readonly computers: PhoneAppView["computers"];
+  readonly onBack: (() => void) | undefined;
+}) {
   const step = useSyncExternalStore(flow.subscribe, () => flow.view);
   const title = useRef<HTMLHeadingElement>(null);
   // The scanner is full-bleed, with only its Close scanner (p-m2). The bar only goes: the same
@@ -105,7 +115,15 @@ function PairScreen({
       <PairingScreens
         onFocusTitle={() => title.current?.focus()}
         flow={flow}
-        typed={() => <TypedStep onEnterAddress={() => router.enterAddress()} />}
+        typed={(typed) => (
+          <TypedStep
+            step={typed}
+            flow={flow}
+            nearby={nearby}
+            computers={computers}
+            onEnterAddress={() => router.enterAddress()}
+          />
+        )}
         onOpenSettings={onOpenSettings}
         onOpenAgents={(computer) => void router.openPaired(computer)}
         onCamera={onCamera}
@@ -126,20 +144,6 @@ function pairTitle(step: PairingView): string {
     default:
       return pairWords.title;
   }
-}
-
-/**
- * The typed route until its screen with the computer picker is built: only "Not listed? Enter its
- * address", which opens the 0.1 connect screen, so a computer on this Wi-Fi stays reachable.
- */
-function TypedStep({ onEnterAddress }: { readonly onEnterAddress: () => void }) {
-  return (
-    <div className="flex flex-col gap-4 px-6 py-6">
-      <Button variant="secondary" size="touch" block onClick={onEnterAddress}>
-        {pairWords.typed.notListed}
-      </Button>
-    </div>
-  );
 }
 
 /**
