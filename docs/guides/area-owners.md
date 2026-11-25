@@ -67,11 +67,15 @@ night.
 
 It also starts the nightly click test of the installed Studio (HAL-18356): a
 run of `studio-preview.yml` named "Nightly click test", of `main`'s newest
-commit, but only when `apps/studio/`, `apps/agent-host/` or `packages/studio/`
-changed since the last one (`tooling/check/src/cli/nightly-click-test.ts`).
+commit, but only when something the installed app is built from changed since
+the last one: `apps/studio/`, `apps/agent-host/`, `packages/core/`,
+`packages/adapters/`, `packages/host/`, `packages/studio/`,
+`packages/targets/node/`, the click test, its workflow or the lockfile
+(`clickTestPaths` in `tooling/check/src/lib/nightly-click-test.ts`). It runs
+every step of the click test, never only the ones a change touched (HAL-18864).
 When nothing changed, the last one's result stands, for up to 30 days. A
-failing click test opens "Failing on main: Desktop app". After a fix to the
-suite or the workflow, which those paths don't cover, start one by hand:
+failing click test opens "Failing on main: Desktop app". To try a fix before
+the next night, start one by hand:
 `gh workflow run studio-preview.yml --ref main -f build-ref=<commit> -f nightly=true`. A job that also failed on the run from the night before is marked
 "second night in a row". Each morning a Paperclip routine turns the open
 `nightly:*` issues into tasks for the area owners and tells Liam.

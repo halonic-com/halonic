@@ -25,7 +25,7 @@ runner, after the `installer` job:
 No installer artifact unless the click test passed on this build: only a passing run keeps the
 preview setup as the `halonic-studio-preview-windows` artifact (HAL-18356). There is no override;
 a flaky run is fixed, not bypassed. Every night `scheduled.yml` also runs it on `main`, when
-`apps/studio/`, `apps/agent-host/` or `packages/studio/` changed since the last nightly run, and a
+anything the installed app is built from, or the click test, changed since the last nightly run, and a
 failure there opens "Failing on main: Desktop app" (`docs/guides/area-owners.md`).
 
 The shell gives WebView2 its own browser arguments, which beat the variable `msedgedriver` (and
