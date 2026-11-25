@@ -118,7 +118,7 @@ function AutomaticMark({ author }: { readonly author: string }) {
     // The note's sr-only line already says it, so the tooltip is for the eye only.
     <Tooltip text={messengerWords.automatic(author)} visualOnly>
       {() => (
-        <span data-automatic-mark className="mt-3 size-3 shrink-0 text-fg-muted">
+        <span data-automatic-mark className="mt-3.5 size-3 shrink-0 text-fg-muted">
           <SparkIcon />
         </span>
       )}
