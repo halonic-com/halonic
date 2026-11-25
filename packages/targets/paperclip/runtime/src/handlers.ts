@@ -1,6 +1,8 @@
 import type { Tool, ToolActionName } from "@halonicjs/format";
 import type { GitHubGet } from "./github.ts";
 import type { Capability, ToolResult } from "./host.ts";
+import { openPullRequestsHandler } from "./pulls/open-pull-requests.ts";
+import { pullRequestHandler } from "./pulls/pull-request.ts";
 
 /**
  * The code behind each action a workspace tool can name (`TOOL_ACTIONS` in
@@ -31,8 +33,11 @@ export interface ActionHandler {
 export type ActionHandlers = Readonly<Partial<Record<ToolActionName, ActionHandler>>>;
 
 /**
- * The handlers the plugin worker ships with. Empty for now: each action
- * moves here once its code is generic (plan HAL-17450, step 1b), so until
- * then every tool of a built plugin answers that it is off.
+ * The handlers the plugin worker ships with, one entry per action. Each
+ * action moves here once its code is generic (plan HAL-17450, step 1b);
+ * until then a tool that names it answers that it is off.
  */
-export const runtimeHandlers: ActionHandlers = {};
+export const runtimeHandlers: ActionHandlers = {
+  "github.pull-request": pullRequestHandler,
+  "github.open-pull-requests": openPullRequestsHandler,
+};

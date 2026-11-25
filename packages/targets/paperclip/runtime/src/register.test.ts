@@ -143,10 +143,13 @@ verifies("runtime.tools", () => {
   });
 
   describe("the action list for the builder", () => {
-    test("lists every action of the format, and none as available until it has a handler", () => {
+    test("lists every action of the format, and only the ones with a handler as available", () => {
       const actions = pluginActions();
       expect(actions.map((action) => action.name)).toEqual(toolActionNames());
-      expect(actions.filter((action) => action.available)).toEqual([]);
+      expect(actions.filter((action) => action.available).map((action) => action.name)).toEqual([
+        "github.pull-request",
+        "github.open-pull-requests",
+      ]);
       expect(actions[0]).toMatchObject({ name: "github.pull-request", keys: ["github-read"] });
       const withHandler = pluginActions({
         "paperclip.task": { capabilities: ["issues.read"], run: async () => ({}) },
