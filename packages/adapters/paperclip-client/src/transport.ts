@@ -9,7 +9,9 @@ import {
   type PaperclipRequestName,
   type PathValues,
   paperclipRequests,
+  uploadRule,
 } from "./requests.ts";
+import { fitsUpload, type Upload, uploadForm } from "./uploads.ts";
 
 /** Why a request didn't give an answer the client can use. */
 export type PaperclipFailure = "offline" | "signed-out" | "not-found" | "conflict" | "refused";
@@ -69,6 +71,14 @@ export interface RequestDetails {
   path?: PathValues;
   query?: Readonly<Record<string, string>>;
   body?: unknown;
+  /** The one file of a row with an upload rule, sent as multipart form data instead of JSON. */
+  upload?: Upload;
+}
+
+/** What goes on the wire: the encoded body and its type, or nothing. */
+interface Payload {
+  body: string | Uint8Array<ArrayBuffer> | null;
+  contentType?: string;
 }
 
 /**
@@ -151,14 +161,15 @@ export class PaperclipTransport {
     if (!fitsBody(name, details.body)) {
       throw new PaperclipClientError(`${method} ${name} can't send that body.`, "refused");
     }
-    return this.#guard((key) => this.#sendWith(key, name, url, details.body, reader));
+    const payload = payloadOf(name, details);
+    return this.#guard((key) => this.#sendWith(key, name, url, payload, reader));
   }
 
   async #sendWith(
     key: string,
     name: PaperclipRequestName,
     url: URL,
-    body: unknown,
+    payload: Payload,
     reader: BodyReader,
   ): Promise<PaperclipAnswer> {
     checkKey(key);
@@ -167,15 +178,15 @@ export class PaperclipTransport {
       accept: reader.accept,
       authorization: `Bearer ${key}`,
     };
-    if (body !== undefined) {
-      headers["content-type"] = "application/json";
+    if (payload.contentType !== undefined) {
+      headers["content-type"] = payload.contentType;
     }
     let response: Response;
     try {
       response = await this.#fetch(url, {
         method,
         headers,
-        body: body === undefined ? null : JSON.stringify(body),
+        body: payload.body,
         redirect: "manual",
       });
     } catch {
@@ -216,6 +227,33 @@ export class PaperclipTransport {
     await response.body?.cancel();
     return { kind: "failed", failure };
   }
+}
+
+/**
+ * The encoded body of request `name`: form data for a row with an upload rule, which takes its
+ * one file and no JSON, and JSON for any other row, which takes no file. Throws, sending
+ * nothing, for a file the rule doesn't allow or one on a row that takes none.
+ */
+function payloadOf(name: PaperclipRequestName, details: RequestDetails): Payload {
+  const { method } = paperclipRequests[name];
+  const rule = uploadRule(name);
+  if (rule === undefined && details.upload !== undefined) {
+    throw new PaperclipClientError(`${method} ${name} can't send a file.`, "refused");
+  }
+  if (rule === undefined) {
+    return details.body === undefined
+      ? { body: null }
+      : { body: JSON.stringify(details.body), contentType: "application/json" };
+  }
+  if (
+    details.upload === undefined ||
+    details.body !== undefined ||
+    !fitsUpload(rule, details.upload)
+  ) {
+    throw new PaperclipClientError(`${method} ${name} can't send that file.`, "refused");
+  }
+  const form = uploadForm(rule, details.upload);
+  return { body: form.bytes, contentType: form.contentType };
 }
 
 /** The longest error text kept from a refusal; the port's work-line reason is no longer. */

@@ -153,6 +153,9 @@ verifies("agent-host.paperclip-key", () => {
         "listRuns",
         "getRun",
         "cancelRun",
+        "createFeedbackTask",
+        "listTaskAttachments",
+        "attachScreenshot",
       ]);
     });
   });

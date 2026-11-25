@@ -136,6 +136,24 @@ export const paperclipRequests = {
   // its cancel, which takes no body. Run again wakes the agent through `wakeTask` above.
   getRun: { method: "GET", path: "/api/heartbeat-runs/:run" },
   cancelRun: { method: "POST", path: "/api/heartbeat-runs/:run/cancel" },
+  // Screenshot feedback (`paperclip-client.feedback-tasks`, HAL-18737): one task in a project,
+  // assigned to one agent, with an idempotency key, so a retry after a lost reply gets the same
+  // task back. The upload row takes one PNG and nothing else; the list row lets a retry see
+  // that the PNG is already there.
+  createFeedbackTask: {
+    method: "POST",
+    path: "/api/companies/:company/issues",
+    body: {
+      fields: ["title", "description", "projectId", "assigneeAgentId", "status", "idempotencyKey"],
+      status: "todo",
+    },
+  },
+  listTaskAttachments: { method: "GET", path: "/api/issues/:task/attachments" },
+  attachScreenshot: {
+    method: "POST",
+    path: "/api/companies/:company/issues/:task/attachments",
+    upload: { field: "file", contentType: "image/png", maxBytes: 10 * 1024 * 1024 },
+  },
 } as const satisfies Record<string, RequestRule>;
 
 /**
@@ -158,6 +176,15 @@ interface RequestRule {
   path: string;
   /** For a write on a route that takes many fields: the only body it may send. */
   body?: BodyRule;
+  /** For a file upload: the one file it may send, as multipart form data. */
+  upload?: UploadRule;
+}
+
+/** What a row's one uploaded file must be: in form field `field`, of this type, at most `maxBytes`. */
+export interface UploadRule {
+  field: string;
+  contentType: "image/png";
+  maxBytes: number;
 }
 
 /**
@@ -273,6 +300,11 @@ export function fitsBody(name: PaperclipRequestName, body: unknown): boolean {
     ...rule.pinned,
   });
   return onlyRuleFields && allText && pinned.every(([field, value]) => fields.get(field) === value);
+}
+
+/** Row `name`'s upload rule, or `undefined` for a row that sends no file. */
+export function uploadRule(name: PaperclipRequestName): UploadRule | undefined {
+  return (paperclipRequests[name] as RequestRule).upload;
 }
 
 /** Whether `value` is a list of exactly one ID that is a safe segment, such as one label. */
