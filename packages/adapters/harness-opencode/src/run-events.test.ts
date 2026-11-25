@@ -31,7 +31,12 @@ verifies("harness-opencode.run-events", () => {
     it("reads a recorded 2.3.0 run into tool calls and the last step's answer", () => {
       const events = readAll(newReader(), fixture("opencode-2.3.0-ok.jsonl").split("\n"));
       expect(events).toEqual([
-        { type: "tool.called", agent: "writer", tool: "read", args: { path: "/acme/work/notes.txt" } },
+        {
+          type: "tool.called",
+          agent: "writer",
+          tool: "read",
+          args: { path: "/acme/work/notes.txt" },
+        },
         {
           type: "tool.result",
           agent: "writer",
@@ -45,7 +50,13 @@ verifies("harness-opencode.run-events", () => {
           tool: "shell",
           args: { command: "exit 3", description: "Fails on purpose" },
         },
-        { type: "tool.result", agent: "writer", tool: "shell", result: "(no output)", outcome: "ok" },
+        {
+          type: "tool.result",
+          agent: "writer",
+          tool: "shell",
+          result: "(no output)",
+          outcome: "ok",
+        },
         { type: "agent.finished", agent: "writer", output: "The file says hello from acme." },
       ]);
     });
@@ -53,7 +64,10 @@ verifies("harness-opencode.run-events", () => {
     it("ends a recorded 2.3.0 run that the bridge refused with OpenCode's reason", () => {
       const reader = newReader();
       const lines = fixture("opencode-2.3.0-fail.jsonl").split("\n");
-      expect(() => lines.forEach((each) => reader.read(each))).toThrow(
+      const readAllLines = () => {
+        for (const each of lines) reader.read(each);
+      };
+      expect(readAllLines).toThrow(
         "OpenCode stopped with an error: The bridge refused the model acme-other.",
       );
     });
@@ -71,17 +85,25 @@ verifies("harness-opencode.run-events", () => {
 
     it("leaves out calls to the bridge's tools, which the bridge records", () => {
       const reader = newReader();
-      const call = { tool: "halonic_web_search", state: { status: "completed", input: {}, output: "x" } };
+      const call = {
+        tool: "halonic_web_search",
+        state: { status: "completed", input: {}, output: "x" },
+      };
       expect(reader.read(line({ type: "tool_use", part: call }))).toEqual([]);
     });
 
     it("removes the bridge token from events and errors", () => {
       const reader = newReader();
-      const call = { tool: "shell", state: { status: "completed", input: { command: "env" }, output: token } };
-      expect(JSON.stringify(reader.read(line({ type: "tool_use", part: call })))).not.toContain(token);
-      expect(() => reader.read(line({ type: "error", error: { message: `bad ${token}` } }))).toThrow(
-        /^OpenCode stopped with an error: bad (?!.*fixture-run-token)/,
+      const call = {
+        tool: "shell",
+        state: { status: "completed", input: { command: "env" }, output: token },
+      };
+      expect(JSON.stringify(reader.read(line({ type: "tool_use", part: call })))).not.toContain(
+        token,
       );
+      expect(() =>
+        reader.read(line({ type: "error", error: { message: `bad ${token}` } })),
+      ).toThrow(/^OpenCode stopped with an error: bad (?!.*fixture-run-token)/);
     });
 
     it("refuses a line that isn't JSON without quoting it", () => {

@@ -8,7 +8,11 @@ const fenced: SandboxSession["fence"] = { state: "fenced" };
 verifies("harness-opencode.refusals", () => {
   describe("opencodeRefusal", () => {
     it("lets a fenced in-sandbox agent on Linux start", () => {
-      const check = { task: { asks: "in-sandbox" as const }, session: { fence: fenced }, platform: "linux" };
+      const check = {
+        task: { asks: "in-sandbox" as const },
+        session: { fence: fenced },
+        platform: "linux",
+      };
       expect(opencodeRefusal(check)).toBeUndefined();
     });
 
@@ -23,11 +27,18 @@ verifies("harness-opencode.refusals", () => {
     });
 
     it.each([
-      [{ state: "not-fenced", reason: "the canary answered" }, /isn't fenced: the canary answered$/],
+      [
+        { state: "not-fenced", reason: "the canary answered" },
+        /isn't fenced: the canary answered$/,
+      ],
       [{ state: "off" }, /isn't fenced\.$/],
       [{ state: "stopped" }, /isn't fenced\.$/],
     ] as const)("refuses a session that is %o", (fence, reason) => {
-      const check = { task: { asks: "in-sandbox" as const }, session: { fence }, platform: "linux" };
+      const check = {
+        task: { asks: "in-sandbox" as const },
+        session: { fence },
+        platform: "linux",
+      };
       expect(opencodeRefusal(check)).toMatch(reason);
     });
   });
