@@ -43,7 +43,7 @@ verifies("cli.commands.validate.check-workspace", () => {
     const { code, lines } = await validateWith("", "");
 
     expect(code).toBe(exitCode.ok);
-    expect(lines.at(-1)).toBe("✓ Checked 13 files in acme. No problems.");
+    expect(lines.at(-1)).toBe("✓ Checked 16 files in acme. No problems.");
   });
 
   it("fails {{item}} in a step that names its items topic, at its line (row 15)", async () => {

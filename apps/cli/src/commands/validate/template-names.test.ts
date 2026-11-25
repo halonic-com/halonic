@@ -69,6 +69,6 @@ verifies("cli.commands.validate.check-workspace", () => {
       /^ {2}22:\d+ +! "classify" compares context\.kind with "junk", but the agent sorter only answers refund, question or spam\./,
     );
     expect(lines[1]).toMatch(/ {2}\(not-a-choice\)$/);
-    expect(lines.at(-1)).toBe("✓ Checked 12 files in acme. 1 warning.");
+    expect(lines.at(-1)).toBe("✓ Checked 15 files in acme. 1 warning.");
   });
 });

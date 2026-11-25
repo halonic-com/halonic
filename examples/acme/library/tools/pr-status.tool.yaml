@@ -1,0 +1,14 @@
+# Acme is an invented company: the repository below doesn't exist.
+name: pr_status
+description: Reads one pull request on Acme's shop website, with its checks, whether it can merge and its place in the merge queue.
+parameters:
+  pr:
+    type: integer
+    description: The pull request's number, such as 42.
+    required: true
+    minimum: 1
+callers: everyone
+action:
+  run: github.pull-request
+  with:
+    repositories: [acme/shop-website]

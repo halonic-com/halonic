@@ -51,6 +51,13 @@ verifies("workspace.acme-example", () => {
       ]);
     });
 
+    it("has the three tools its Paperclip plugin offers", () => {
+      const tools = filesOf(workspace, "tool").map((file) => file.value.name);
+
+      // `halonic build paperclip-plugin` builds these in apps/cli's acme-plugin test.
+      expect(tools.sort()).toEqual(["my_prs", "pr_status", "task_get"]);
+    });
+
     it("keeps the Support reply description whole, past the # of the order number", () => {
       const [workflow] = filesOf(workspace, "workflow").filter(
         (file) => file.value.id === "support-reply",
