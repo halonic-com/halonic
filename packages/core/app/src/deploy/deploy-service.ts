@@ -93,6 +93,28 @@ export function createDeployService(deps: DeployServiceDeps) {
     },
 
     /**
+     * What a deploy would do, and what of it is new against what's live, for
+     * `--plan` (deploy flow 2.11). Changes nothing, takes no lock and asks
+     * nothing; a held lock is in the plan's `lockedBy`, not an error.
+     */
+    async plan(
+      input: DeployInput,
+    ): Promise<{ readonly plan: DeployPlan; readonly news: DeployNews }> {
+      const target = await deps.loadTarget(input.host);
+      const plan = await target.plan(requestOf(input));
+      return { plan, news: deployNews(plan, input.reaches) };
+    },
+
+    /**
+     * Where a deployment from `deployments.yaml` lives on its host, once the
+     * token's accounts are checked (requirement `app.deploy-account`), for
+     * {@link DeployInput.deployment}. Changes nothing.
+     */
+    async deploymentRef(host: string, id: string, deployment: Deployment): Promise<DeploymentRef> {
+      return deploymentRefOf(await deps.loadTarget(host), id, deployment);
+    },
+
+    /**
      * What's live on a deployment from `deployments.yaml`, read through its
      * target once its account is checked (requirement `app.deploy-account`).
      * Changes nothing and takes no lock.

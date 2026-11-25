@@ -63,6 +63,11 @@ export { type ConnectorTrustFields, connectorTrustFields } from "./connector-tru
 export { type ChosenDeployment, chooseDeployment } from "./deploy/choose-deployment.ts";
 export { type DeployNews, deployNews, hasNews } from "./deploy/deploy-news.ts";
 export {
+  type CloudflareProblem,
+  type DeployReaches,
+  deployReaches,
+} from "./deploy/deploy-reaches.ts";
+export {
   createDeployService,
   type DeployInput,
   type DeployOutcome,
