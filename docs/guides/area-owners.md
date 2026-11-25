@@ -21,6 +21,7 @@ it. A path ending in `/` covers everything under it.
 | --- | --- | --- |
 | Sandbox | Julian | `packages/adapters/sandbox-*/`, `packages/adapters/connector-stdio-sandbox/`, `apps/cli/fence/` |
 | Integrations | Tomas, with Ravi | `packages/adapters/integration-*/`, `packages/adapters/mcp/`, `packages/adapters/model-*/`, `packages/adapters/http-*/`, `packages/adapters/token-store/`, `packages/adapters/sign-in-loopback/`, `packages/adapters/tool-approval-kit/`, `packages/core/oauth-sign-in/`, `packages/core/google-setup/`, `packages/host/integration-sign-in/`, `packages/host/google-sign-in/`, `packages/testing/integration/`, `packages/testing/sign-in/` |
+| Desktop app | Mateo | `packages/testing/studio-click-test/` |
 | Studio | Elena | `apps/studio/`, `packages/studio/` |
 | Engine and CLI | Priya | `apps/cli/`, `packages/core/engine/`, `packages/core/workflow/`, `packages/core/routines/`, `packages/core/test-runner/`, `packages/core/workspace/`, `packages/host/server/`, `packages/targets/`, `packages/testing/cloudflare-live/`, `examples/` |
 | Adapters | Owen | `packages/adapters/`, `packages/host/harness-host/`, `apps/agent-host/`, `packages/testing/harness-checks/` |
@@ -33,10 +34,13 @@ the task goes to Tomas and Ravi is told on it; either of them can take it.
 
 ## CI jobs
 
-Most CI jobs check one area. A failing job goes to its area's owner.
+Most CI jobs check one area. A failing job goes to its area's owner. The jobs
+are `ci.yml`'s, except the Desktop app's, which are the nightly click test's in
+`studio-preview.yml`.
 
-| Area | Jobs in `ci.yml` | Other workflows |
+| Area | Jobs | Other workflows |
 | --- | --- | --- |
+| Desktop app | Click through the installed app, Build and start the unsigned Windows installer |  |
 | Sandbox | Sandbox fence (bubblewrap), Sandbox fence (Seatbelt), Sandbox fence (MXC on Windows 11), Sandbox packages on macOS, Sandbox packages on Windows, Sandbox fence on Windows (canary probes) |  |
 | Studio | Tauri shell (Rust checks), Tauri shell on Windows, Keychain contract on macOS, Android shell (debug APK), Android device keys (emulator), Studio end-to-end (Playwright) | `android-screens.yml` |
 | Engine and CLI | Live cloud suites passed |  |
@@ -55,10 +59,19 @@ it goes to Liam.
 Every night `scheduled.yml` runs `tooling/check/src/cli/main-failures.ts`. It
 reads the newest finished push run of `ci.yml` on `main`, the newest finished
 hourly run of `ci.yml` (the only run on `main` with the macOS and Windows jobs)
-and the newest `android-screens.yml` run, sorts their failed jobs into areas with the tables
-above, and opens or updates one GitHub issue per failing area, labelled
+the newest `android-screens.yml` run and the jobs of the newest nightly click
+test, sorts their failed jobs into areas with the tables above, and opens or updates one GitHub issue per failing area, labelled
 `nightly:<area>` (for example `nightly:engine-and-cli`). It closes the issue of
 an area that is green again, and then starts `android-screens.yml` for the next
-night. A job that also failed on the run from the night before is marked
+night.
+
+It also starts the nightly click test of the installed Studio (HAL-18356): a
+run of `studio-preview.yml` named "Nightly click test", of `main`'s newest
+commit, but only when `apps/studio/`, `apps/agent-host/` or `packages/studio/`
+changed since the last one (`tooling/check/src/cli/nightly-click-test.ts`).
+When nothing changed, the last one's result stands, for up to 30 days. A
+failing click test opens "Failing on main: Desktop app". After a fix to the
+suite or the workflow, which those paths don't cover, start one by hand:
+`gh workflow run studio-preview.yml --ref main -f build-ref=<commit> -f nightly=true`. A job that also failed on the run from the night before is marked
 "second night in a row". Each morning a Paperclip routine turns the open
 `nightly:*` issues into tasks for the area owners and tells Liam.
