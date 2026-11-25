@@ -94,8 +94,7 @@ off again when they change. It doesn't stop a tool from asking before each use.
 
 ## Turn a tool on, or off again
 
-A tool its server lists is off until you review it: agents aren't offered it
-until you have read its name, description and arguments and approved it.
+A tool its server lists is off until you review it: agents aren't offered it until you have read its name, description and arguments and approved it. This applies to MCP and built-in connectors only. For a plugin's connector, trusting the plugin covers its tools, and for an integration's connector there is nothing to approve, so `halonic tools review` and `halonic tools approve` say so and exit 0.
 Approving is the review's yes. It doesn't change whether the tool asks before
 each use: that is the rule above.
 
@@ -103,8 +102,7 @@ In Studio, open the connector's page in the Library. A line says
 "2 tools are off until you review them", or "3 tools are on." when none is
 waiting. **Review tools** opens the review in both cases:
 
-- Tick the tools you expect this server to have, then press
-  **Approve selected**, or **Approve all** for every tool shown.
+- Tick the tools you expect this server to have, then press **Approve selected**, or **Approve all** for every tool shown. Studio shows only the tools the connector file's `tools.allow` names. `halonic tools approve <connector> <tool>` still approves one that `allow` leaves out, and says agents never see it until `tools.allow` names it.
 - Under **Approved**, **Remove approval** turns a tool off again.
 - A tool whose name, description or arguments changed since you approved it
   is under **Changed**, and stays off until you approve the new version.

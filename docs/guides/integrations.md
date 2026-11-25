@@ -22,7 +22,7 @@ The interface is decided in
    only, no wildcards. The kit refuses anything else, including a redirect
    to an undeclared host. The one exception is a host the user picks in a
    setting, such as a local MCP server: plain `http` is allowed when it is
-   `localhost`, a loopback or a private network address, and a key goes over
+   `localhost`, a loopback or a private network address (an address written in hex is refused, and under `privacy.localOnly` only `localhost`, `[::1]` or `127.x.y.z` count as this computer), and a key goes over
    plain `http` only to the user's own machine.
 3. **Never touch a secret value.** Name the secret and say where it goes; the
    kit puts the value in, and only for the hosts the sheet allows for it:

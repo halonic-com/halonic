@@ -34,6 +34,8 @@ check. Each starts with a mark and the name of the check:
 | ! | `warning` | Some things won't run until you fix it, such as one agent or one model alias. Halonic itself works. |
 | ✕ | `failed` | A problem. Everything that needs this check stops until you fix it. |
 
+`doctor` gives each check 5 seconds. A check that doesn't answer in time shows as a warning, "didn't answer in 5 seconds", and the other checks still show.
+
 A check that doesn't apply has no line. For example, there are no
 **Workspace** and **Models** lines outside a workspace.
 
@@ -70,8 +72,8 @@ Workspace lines under it, and `doctor` exits 1.
 
 | You see | Means | Fix |
 | --- | --- | --- |
-| ✕ "the profile folder HALONIC_HOME is inside this workspace" | `HALONIC_HOME` put the profile in the workspace, so a change in the workspace could change your trust records. When `XDG_DATA_HOME` put it there, the line names `XDG_DATA_HOME` instead. | Move the profile folder out of the workspace and set `HALONIC_HOME` to its new place, as the `Fix:` line says. |
-| ✕ "this workspace is inside the profile folder" | The workspace is inside the profile folder, which the line names, so its files would land in the profile. | Move the workspace somewhere else. |
+| ✕ "Your profile folder <path> is inside this workspace." | A variable put your profile folder in the workspace, so a change in the workspace could change your trust records. When `XDG_DATA_HOME` or `LOCALAPPDATA` put it there, the line says so, but the fix still names `HALONIC_HOME`. | Move the profile folder out, then set `HALONIC_HOME` to its new place, as the `Fix:` line says. |
+| ✕ "this workspace is inside your profile folder" | The workspace is inside your profile folder, so its files would land in the profile. | Move the workspace somewhere else. |
 
 With `--json`, the check is `profile`, with `problem`: `profile-in-workspace`
 (and `movedBy`, the variable that moved the profile) or `workspace-in-profile`
@@ -201,7 +203,7 @@ On Linux it uses bubblewrap, on macOS Seatbelt. Always shown.
 
 | You see | Means | Fix |
 | --- | --- | --- |
-| ✓ "ready" | The sandbox can start. The line names its kind. | Nothing. |
+| ✓ "ready" | The sandbox can start. The line names its kind: "ready · bubblewrap", "ready · Seatbelt" or "ready · Sandbox for Windows". | Nothing. |
 | ✕ "can't start on this computer" | Agents set to run in a sandbox won't start. The lines under it give the reason, the fix and a `More:` link to the sandbox page. | Follow the `Fix:` line. |
 
 Common reasons and their fixes:

@@ -1,8 +1,7 @@
 # Turn Local only on or off
 
 Local only is a workspace setting. While it is on, nothing leaves your
-computer: agents may use only local models, such as Ollama, and connectors
-that run on this computer. A run that would reach a cloud model or service is
+computer: agents may use only local models, such as Ollama, and connectors that run on this computer. An `http` connector counts as local only when its URL names `localhost`, `[::1]` or a `127.x.y.z` address; set `local: true` on the connector if another name really runs on your machine. A model provider marked `local: true` must be at an address on this computer or your local network. A plugin or local integration counts only if none of the hosts it lists are outside this computer. A run that would reach a cloud model or service is
 refused before it sends anything. A new workspace starts with Local only on.
 
 ## Turn it on or off
@@ -17,9 +16,7 @@ privacy:
 Set it to `true` to turn Local only back on. In Studio, choosing a cloud model
 when you set up a workspace turns it off for you, and says so before it does.
 
-In a workspace with history, runs start from the live version, but turning
-Local only on counts as soon as you save it, in Studio and on the command
-line. Turning it off counts only once you make the change live.
+In a workspace with history, runs start from the live version, but turning Local only on counts as soon as you save it, in Studio and on the command line. While it is on only in your saved `workspace.yaml`, `halonic run` and `halonic routines watch` say it comes from that file and isn't live yet. Turning it off counts only once you make the change live.
 
 ## While a run is going
 
@@ -30,7 +27,7 @@ next depends on where the workspace runs.
 in the workspace is refused with, for example, "Local only was turned on in
 Acme while a run was going." and "Try again once that run ends." Nothing was
 started or sent. Once the run ends, press **Try again**. A run that waits for
-you or for a timer isn't going: it goes on with the new setting.
+you or for a timer isn't going: it goes on with Local only as you last saved it.
 
 A routine that was due in that time doesn't start, and says "Local only was
 turned on in Acme." with "It starts at its next time." You don't need to do

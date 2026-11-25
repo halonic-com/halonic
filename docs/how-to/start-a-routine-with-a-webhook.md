@@ -41,8 +41,7 @@ with the request's body.
    halonic secret set orders-hook
    ```
 
-   Give the same value to the program that sends the requests. Don't use the
-   name of one of Halonic's own secrets, such as `serve-password`.
+   Give the same value to the program that sends the requests. Don't use the name of a secret that belongs to Halonic or a plugin, such as `serve-password`. `halonic validate` refuses it.
 
 3. Run `halonic serve`. It prints the address of each webhook routine that is
    on:
@@ -102,7 +101,7 @@ Here `ORDERS_HOOK` holds the secret's value in the sender's environment.
 | 401 | The request isn't signed right for this address: a header is missing, the timestamp is more than 5 minutes off, the signature doesn't match, or the routine is off, missing or has no secret set. The answer doesn't say which. |
 | 400 | The routine can't start, for the reason in the answer, such as a value its trigger doesn't have. `halonic serve` prints the same reason. |
 | 403 | The workspace changed since it was trusted. Run `halonic trust`. |
-| 409 | This delivery id was already received. A resend with the same id starts nothing. |
+| 409 | This delivery id was already received, here or by another routine whose secret has the same value. A resend with the same id starts nothing. |
 | 429 | A run of the routine is still going and its `overlap` is `queue`. Send it again after the time in `Retry-After`. |
 | 501 | The routine starts an agent. The answer says "Halonic can't run an agent on its own yet, only as a step in a workflow." Make a workflow with the agent as a step, then have the routine start that workflow. |
 
