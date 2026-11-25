@@ -24,6 +24,7 @@ export const HostSettingsService: ServiceKey<HostSettings> =
 
 export type { DisplayPref } from "./display-prefs.ts";
 export { DisplaySettings, type SaveOutcome } from "./display-settings.ts";
+export { showUnfinishedSettings } from "./unfinished.ts";
 
 /**
  * The window's display settings: Appearance, Formats and Developer. The app makes one
