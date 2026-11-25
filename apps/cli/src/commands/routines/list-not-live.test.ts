@@ -16,7 +16,7 @@ import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
 import { routinesCommandWith } from "./command.ts";
 
 const hint =
-  "Routines start on time only while this workspace is open in Halonic Studio or `halonic routines watch` is running.";
+  "Routines start on time only while this workspace is open in Halonic Studio, or while `halonic serve` or `halonic routines watch` is running.";
 const routinePath = "hubs/support/workflows/routines/morning.routine.yaml";
 
 /** Morning check of the support hub, on `schedule`. */

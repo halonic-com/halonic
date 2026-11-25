@@ -24,7 +24,7 @@ import { routinesCommandWith } from "./command.ts";
 /** The Acme example, with its Weekly report routine on Mondays at 09:00. */
 const acmeExample = fileURLToPath(new URL("../../../../../examples/acme", import.meta.url));
 const hint =
-  "Routines start on time only while this workspace is open in Halonic Studio or `halonic routines watch` is running.";
+  "Routines start on time only while this workspace is open in Halonic Studio, or while `halonic serve` or `halonic routines watch` is running.";
 const golden = (name: string) => join(import.meta.dirname, "golden", name);
 
 let acmeRuns: AcmeRuns;
