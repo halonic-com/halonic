@@ -3,6 +3,7 @@
 - Task: HAL-18212
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-18243 (Liam's decision: option 1)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:YHwUlV21ZL3scI56MdSD6hasjIIimzGCy1r/8bLgO91QUCvY33mQeEknJrueFInkbgsJ+sLi8JVO9z+/1MOiCQ==
 
 ## What changes
 
