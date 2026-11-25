@@ -18,7 +18,8 @@ use halonic_secrets::{MemoryBackend, SecretBackend, SecretError, SecretName};
 
 const TOKEN: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ";
 const WAIT: Duration = Duration::from_secs(5);
-const HEALTH: &str = r#"{"kind":"health","scheduling":true,"paused":false,"activeRuns":0,"lastTick":null}"#;
+const HEALTH: &str =
+    r#"{"kind":"health","scheduling":true,"paused":false,"activeRuns":0,"lastTick":null}"#;
 
 /// The test's end of the engine's pipes.
 struct FakeEngine {
