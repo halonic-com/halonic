@@ -16,8 +16,11 @@ use crate::account::Account;
 use crate::answer::{error_text, kept_fields, redirect_text};
 use crate::call::{Refusal, SendRequest, prepare};
 use crate::routes::{Risk, RouteList};
+use crate::wipe::{Wiped, wipe_bytes, wipe_text};
 
-/// One HTTP call, ready for the network.
+/// One HTTP call, ready for the network. Its header values (one carries the
+/// token) and its body (a sign-in poll's carries the device code) are wiped
+/// when it is dropped, so the transport drops it once the call is sent.
 #[derive(Debug)]
 pub struct Outgoing {
     pub method: &'static str,
@@ -25,6 +28,25 @@ pub struct Outgoing {
     /// Header names in lower case. One of them carries the token.
     pub headers: Vec<(String, String)>,
     pub body: Option<Vec<u8>>,
+}
+
+impl Outgoing {
+    /// Overwrites every header value and the body with zeros, keeping their
+    /// lengths. Dropping the call does this.
+    pub fn wipe(&mut self) {
+        for (_, value) in &mut self.headers {
+            wipe_text(value);
+        }
+        if let Some(body) = &mut self.body {
+            wipe_bytes(body);
+        }
+    }
+}
+
+impl Drop for Outgoing {
+    fn drop(&mut self) {
+        self.wipe();
+    }
 }
 
 /// What the service answered. The transport never follows a redirect: a
@@ -116,7 +138,7 @@ impl<T: Transport, K: Tokens, D: Dialogs> Sender<'_, T, K, D> {
             Err(reason) => return refused(reason),
         };
         let (account, token) = match self.tokens.token(call.route.service.name).await {
-            Ok(Some(signed_in)) => signed_in,
+            Ok(Some((account, token))) => (account, Wiped::text(token)),
             Ok(None) => return refused(Refusal::SignedOut),
             Err(error) => {
                 (self.log)(error.log_message(&format!("action_send {step}")));
@@ -146,7 +168,10 @@ impl<T: Transport, K: Tokens, D: Dialogs> Sender<'_, T, K, D> {
             .iter()
             .map(|(name, value)| ((*name).to_owned(), (*value).to_owned()))
             .collect();
-        headers.push(("authorization".to_owned(), format!("Bearer {token}")));
+        headers.push((
+            "authorization".to_owned(),
+            format!("Bearer {}", token.as_str()),
+        ));
         let body = call
             .body
             .as_ref()
@@ -165,7 +190,7 @@ impl<T: Transport, K: Tokens, D: Dialogs> Sender<'_, T, K, D> {
             Err(error) => {
                 (self.log)(format!(
                     "action_send {step}: unreachable ({})",
-                    error_text(&error, &token)
+                    error_text(&error, token.as_str())
                 ));
                 return SendResult::Unreachable;
             }
@@ -184,11 +209,11 @@ impl<T: Transport, K: Tokens, D: Dialogs> Sender<'_, T, K, D> {
         if (200..300).contains(&status) {
             return SendResult::Answered {
                 status,
-                kept: kept_fields(&answer, &call.route.keep, &token),
+                kept: kept_fields(&answer, &call.route.keep, token.as_str()),
                 error: None,
             };
         }
-        let error = crate::answer::failure_text(&answer, &token);
+        let error = crate::answer::failure_text(&answer, token.as_str());
         SendResult::Answered {
             status,
             kept: Map::new(),

@@ -126,3 +126,18 @@ pub fn sign_out(backend: &dyn SecretBackend, service: &str) -> Result<(), Secret
     }
     backend.delete(&record_name(service)?)
 }
+
+/// Takes back what [`store`] wrote for `account`: its token, and the record
+/// if it still names that account. For a sign-in cancelled while its write
+/// was under way, so a stale sign-in never stays stored.
+pub fn take_back(
+    backend: &dyn SecretBackend,
+    service: &str,
+    account: &str,
+) -> Result<(), SecretError> {
+    backend.delete(&token_name(service, account)?)?;
+    match read_record(backend, service)? {
+        Some(record) if record.account == account => backend.delete(&record_name(service)?),
+        _ => Ok(()),
+    }
+}

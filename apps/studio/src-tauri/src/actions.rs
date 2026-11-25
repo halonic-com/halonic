@@ -71,6 +71,8 @@ impl ActionState {
     }
 
     /// Cancels the running sign-in if `page` started it, or any when `None`.
+    /// It never waits for the keychain, so the UI thread may call it while
+    /// an unlock prompt holds up the sign-in's write.
     fn cancel_sign_in(&self, page: Option<&str>) {
         let mut running = self.sign_in.lock().unwrap_or_else(PoisonError::into_inner);
         let started_there =

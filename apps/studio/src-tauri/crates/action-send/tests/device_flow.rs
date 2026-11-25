@@ -108,6 +108,9 @@ impl Transport for ScriptedNetwork {
 struct RecordingKeychain {
     backend: MemoryBackend,
     writes: Mutex<Vec<String>>,
+    /// Cancels the sign-in as the first write starts, as a stepper closing
+    /// while an unlock prompt holds that write would.
+    cancel_on_write: Option<Arc<SignInCancel>>,
 }
 
 impl SecretBackend for RecordingKeychain {
@@ -115,6 +118,9 @@ impl SecretBackend for RecordingKeychain {
         self.backend.get(name)
     }
     fn set(&self, name: &SecretName, value: &str) -> Result<(), SecretError> {
+        if let Some(cancel) = &self.cancel_on_write {
+            cancel.cancel();
+        }
         self.writes
             .lock()
             .expect("not poisoned")
@@ -294,6 +300,32 @@ fn a_cancel_while_the_login_is_read_stores_nothing() {
     run.network.cancel_at = Some((3, Arc::clone(&run.cancel)));
     assert_eq!(run.sign_in(CLIENT_ID), SignInResult::Cancelled);
     run.assert_nothing_stored();
+}
+
+#[test]
+fn a_cancel_while_the_token_is_written_takes_it_back() {
+    // Liam's review of HAL-18145: a cancel doesn't wait for the keychain, so
+    // the write it came during still goes through, and is then taken back.
+    let mut run = Run::new(vec![
+        code_answer(),
+        token_answer(Some(28_800)),
+        user_answer(),
+    ]);
+    run.keychain.cancel_on_write = Some(Arc::clone(&run.cancel));
+    assert_eq!(run.sign_in(CLIENT_ID), SignInResult::Cancelled);
+    assert_eq!(
+        run.keychain.writes(),
+        [
+            "action__github__acme_admin",
+            "action__github",
+            "action__github__acme_admin",
+            "action__github"
+        ]
+    );
+    assert_eq!(account::signed_in(&run.keychain, "github", NOW), Ok(None));
+    let token_name = SecretName::parse("action__github__acme-admin").expect("a name");
+    assert_eq!(run.keychain.backend.get(&token_name), Ok(None));
+    run.assert_no_secret_in_the_log();
 }
 
 #[test]

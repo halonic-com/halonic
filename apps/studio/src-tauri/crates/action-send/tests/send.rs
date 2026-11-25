@@ -382,3 +382,23 @@ fn irreversible_and_secret_input_steps_wait_for_their_dialogs() {
         assert!(network.calls().is_empty());
     }
 }
+
+#[test]
+fn a_sent_call_wipes_its_token_and_body() {
+    // Liam's and Julian's reviews of HAL-18084: the call's copy of the token
+    // in its header, and a sign-in poll's device code in its body, are
+    // overwritten once it has gone. Dropping the call runs this `wipe`.
+    let mut call = halonic_action_send::Outgoing {
+        method: "POST",
+        address: url::Url::parse("https://github.com/login/oauth/access_token").expect("a URL"),
+        headers: vec![("authorization".to_owned(), format!("Bearer {TOKEN}"))],
+        body: Some(b"client_id=acme&device_code=acme-device-code-0001".to_vec()),
+    };
+    let header_length = call.headers[0].1.len();
+    call.wipe();
+    let header = &call.headers[0].1;
+    assert_eq!(header.len(), header_length);
+    assert!(header.bytes().all(|byte| byte == 0));
+    let body = call.body.as_deref().unwrap_or_default();
+    assert!(!body.is_empty() && body.iter().all(|byte| *byte == 0));
+}
