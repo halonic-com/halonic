@@ -3,17 +3,21 @@ import {
   Button,
   type ButtonVariant,
   ChatText,
+  enter,
+  leave,
   StatusChip,
+  TickIcon,
   useOpenExternal,
   waitingSince,
 } from "@halonicjs/studio-kit";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { isChannel } from "../channel.ts";
 import { channelWords } from "../channel-words.ts";
 import { cardRecord } from "../chat-timeline.ts";
 import type { ConversationRow } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import type { QuickActions } from "../quick-actions.ts";
+import { reportMotion } from "./load-states.tsx";
 
 /** What {@link useChatCards} gives: the chat's cards, open and answered, and how to answer one. */
 export interface ChatCardsState {
@@ -87,22 +91,38 @@ export function ChatCardItem({
   readonly now: Date;
   readonly onAnswered: (option: string) => Promise<void>;
 }) {
-  const record = cardRecord(card);
+  // While the person's answer is on its way and the card folds away, it stays the card, even
+  // once the source reports the change and the card comes back answered.
+  const [folding, setFolding] = useState(false);
+  const record = folding ? undefined : cardRecord(card);
+  const item = useRef<HTMLLIElement>(null);
+  const wasOpen = useRef(record === undefined);
+  // A card answered while it showed fades into its record (motion 5 of the design review).
+  useLayoutEffect(() => {
+    if (record === undefined || !wasOpen.current) return;
+    wasOpen.current = false;
+    if (item.current !== null) enter(item.current, { move: "none" }).catch(reportMotion);
+  }, [record]);
   if (record !== undefined) {
     return (
-      <li data-chat-card-record={card.id} className="max-w-[80%] text-small text-fg-muted">
+      <li
+        ref={item}
+        data-chat-card-record={card.id}
+        className="max-w-[80%] text-small text-fg-muted"
+      >
         <span className="sr-only">{messengerWords.card.recordPrefix}</span>
         {record}
       </li>
     );
   }
   return (
-    <li data-chat-card={card.id} className="max-w-[80%]">
+    <li ref={item} data-chat-card={card.id} className="max-w-[80%]">
       <ChatCard
         quickActions={quickActions}
         row={row}
         card={card}
         now={now}
+        onFolding={setFolding}
         onAnswered={onAnswered}
       />
     </li>
@@ -115,33 +135,47 @@ function ChatCard({
   row,
   card,
   now,
+  onFolding,
   onAnswered,
 }: {
   readonly quickActions: QuickActions;
   readonly row: ConversationRow;
   readonly card: InboxItem;
   readonly now: Date;
-  /** Called with the option's label once the answer landed. */
+  /** True from an option's press until the card folded away, or the answer didn't land. */
+  readonly onFolding: (folding: boolean) => void;
+  /** Called with the option's label once the answer landed and the card folded away. */
   readonly onAnswered: (option: string) => Promise<void>;
 }) {
   const [busy, setBusy] = useState<string | undefined>(undefined);
   const [line, setLine] = useState<string | undefined>(undefined);
+  const [chosen, setChosen] = useState<string | undefined>(undefined);
+  const article = useRef<HTMLElement>(null);
   const openLink = useOpenExternal();
 
   async function choose(option: InboxItem["options"][number]) {
     setBusy(option.id);
+    onFolding(true);
     try {
       const outcome = await quickActions.answerCard(row, card, option.id);
       setLine(lineOf(outcome, row));
       // Only an answer that landed takes the card away; otherwise it stays, saying why.
-      if (outcome.outcome === "answered") await onAnswered(option.label);
+      if (outcome.outcome !== "answered") return;
+      setChosen(option.label);
+      await foldAway(article.current).catch(reportMotion);
     } finally {
       setBusy(undefined);
+      // The record, if the source already reported it, takes the folded card's place now.
+      onFolding(false);
     }
+    await onAnswered(option.label);
   }
 
   return (
-    <article className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
+    <article
+      ref={article}
+      className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4"
+    >
       <p className="flex items-center gap-2 text-small text-fg-muted">
         <StatusChip tone="warning" dot>
           {messengerWords.card.needsYou}
@@ -150,7 +184,18 @@ function ChatCard({
       </p>
       <ChatText openLink={openLink}>{card.question}</ChatText>
       <div className="flex flex-wrap gap-2">
-        {card.options.map((option, index) => (
+        {chosen === undefined ? null : (
+          <StatusChip tone="success">
+            <span
+              aria-hidden="true"
+              className="inline-grid size-icon-sm shrink-0 place-items-center align-middle *:size-full"
+            >
+              <TickIcon />
+            </span>{" "}
+            {chosen}
+          </StatusChip>
+        )}
+        {(chosen === undefined ? card.options : []).map((option, index) => (
           <Button
             key={option.id}
             variant={variantOf(index)}
@@ -170,6 +215,18 @@ function ChatCard({
       </p>
     </article>
   );
+}
+
+/**
+ * Once a card is answered: the choice shows for `--duration-slow`, then the card fades out
+ * (motion 5). Under reduced motion it goes at once, and the record takes its place.
+ */
+async function foldAway(element: HTMLElement | null): Promise<void> {
+  if (element === null || typeof element.animate !== "function") return;
+  if (globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true) return;
+  const hold = Number.parseFloat(getComputedStyle(element).getPropertyValue("--duration-slow"));
+  await element.animate([{ opacity: 1 }, { opacity: 1 }], { duration: hold || 0 }).finished;
+  await leave(element);
 }
 
 /** Where else the card shows: in a channel, also where it was asked (k13a). */

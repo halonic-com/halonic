@@ -1,7 +1,9 @@
 import type { Message, MessagingId } from "@halonicjs/ports";
 import { Avatar, Input } from "@halonicjs/studio-kit";
+import type { EngineWords } from "@halonicjs/studio-shell";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { isChannel } from "../channel.ts";
+import type { PendingMessage } from "../chat-layout.ts";
 import { chatAgent, chatName } from "../chat-name.ts";
 import { activityOf, type ConversationRow, type Messenger } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
@@ -24,8 +26,10 @@ export interface ConversationViewProps {
   readonly onLeft?: () => void;
   /** The channel's members changed; the page reads the list again. */
   readonly onChanged?: () => void;
-  /** The chat agent's picture for the header; without one, its initial shows. */
+  /** The chat agent's picture for the header and its messages; without one, its initial shows. */
   readonly picture?: ImageBitmap | undefined;
+  /** How a failed read says the engine isn't answering. */
+  readonly words: EngineWords;
 }
 
 /**
@@ -50,6 +54,7 @@ export function ConversationView({
   onLeft,
   onChanged,
   picture,
+  words,
 }: ConversationViewProps) {
   const [search, setSearch] = useState("");
   // What the chat's status region reads out: a new message, or the option that answered a card.
@@ -61,7 +66,8 @@ export function ConversationView({
   );
   const [membersOpen, setMembersOpen] = useState(false);
   const section = useRef<HTMLElement>(null);
-  const { messages, questions, read } = useMessages(messenger, row, search, changed, say);
+  const { messages, questions, failure, read } = useMessages(messenger, row, search, changed, say);
+  const { pending, sending } = usePending();
 
   // Once a card is answered and gone, the next card's first option, or else the box, takes focus.
   const focusAfterAnswer = useCallback(() => {
@@ -105,8 +111,13 @@ export function ConversationView({
           row={row}
           messages={messages}
           cards={cards}
+          pending={pending}
           questions={questions}
           searching={search.trim() !== ""}
+          failure={failure}
+          words={words}
+          onRetry={() => void read().catch(reportRead)}
+          picture={picture}
           onAnswered={onAnswered}
         />
         {membersOpen ? (
@@ -117,9 +128,12 @@ export function ConversationView({
           />
         ) : null}
       </div>
-      {/* A channel has the waiting bar at the top instead: one count per screen (HAL-18483). */}
-      {isChannel(row) ? null : <CardsBar cards={cards ?? []} section={section} />}
-      <ChatBox messenger={messenger} row={row} onSent={read} />
+      {/* A channel has the waiting bar at the top instead: one count per screen (HAL-18483). Until
+          the transcript shows there is no card for Next to go to. */}
+      {isChannel(row) || messages === undefined ? null : (
+        <CardsBar cards={cards ?? []} section={section} />
+      )}
+      <ChatBox messenger={messenger} row={row} onSending={sending} onSent={read} />
     </section>
   );
 }
@@ -142,6 +156,7 @@ function useMessages(
   latestRow.current = row;
   const [messages, setMessages] = useState<readonly Message[] | undefined>(undefined);
   const [questions, setQuestions] = useState<ReadonlyMap<MessagingId, string>>(new Map());
+  const [failure, setFailure] = useState<unknown>(undefined);
   // Counts the reads, so an answer that arrives after a newer read's never shows.
   const reads = useRef(0);
   // The messages the last read without a search found; none before the first and after a search.
@@ -150,14 +165,16 @@ function useMessages(
   const read = useCallback(async () => {
     reads.current += 1;
     const thisRead = reads.current;
-    // Only a channel's work lines show a question's text, so a chat reads no inbox for them.
-    const [found, asked] = await Promise.all([
-      messenger.messages(id, search),
-      channel ? messenger.questions() : new Map<MessagingId, string>(),
-    ]);
+    const [found, asked] = await readChat(messenger, id, search, channel).catch(
+      (error: unknown) => {
+        if (thisRead === reads.current) setFailure(error);
+        throw error;
+      },
+    );
     if (thisRead !== reads.current) return;
     setMessages(found);
     setQuestions(asked);
+    setFailure(undefined);
     if (search.trim() === "") messenger.markSeen(id, found);
     const before = search.trim() === "" ? seen.current : undefined;
     seen.current = search.trim() === "" ? new Set(found.map((message) => message.id)) : undefined;
@@ -167,10 +184,45 @@ function useMessages(
   }, [messenger, id, channel, search, announce]);
 
   useEffect(() => {
-    void read().catch((error: unknown) => console.error("The chat couldn't be read:", error));
+    void read().catch(reportRead);
   }, [read, changed]);
 
-  return { messages, questions, read };
+  return { messages, questions, failure, read };
+}
+
+/**
+ * The person's messages on their way (motion 4 of the design review): `sending` shows one at once
+ * and gives the function that takes it away once it was sent, or wasn't.
+ */
+function usePending() {
+  const [pending, setPending] = useState<readonly PendingMessage[]>([]);
+  const count = useRef(0);
+  const sending = useCallback((body: string) => {
+    count.current += 1;
+    const key = count.current;
+    setPending((before) => [...before, { key, body }]);
+    return () => setPending((before) => before.filter((each) => each.key !== key));
+  }, []);
+  return { pending, sending };
+}
+
+/** A chat's messages found by `search`; a channel's open questions too, for its work lines. */
+function readChat(
+  messenger: Messenger,
+  id: MessagingId,
+  search: string,
+  channel: boolean,
+): Promise<[readonly Message[], ReadonlyMap<MessagingId, string>]> {
+  // Only a channel's work lines show a question's text, so a chat reads no inbox for them.
+  return Promise.all([
+    messenger.messages(id, search),
+    channel ? messenger.questions() : new Map<MessagingId, string>(),
+  ]);
+}
+
+/** A read that failed: the transcript says so, and the console keeps the error. */
+function reportRead(error: unknown): void {
+  console.error("The chat couldn't be read:", error);
 }
 
 /** The newest message an agent wrote that wasn't in the chat at the last read. */

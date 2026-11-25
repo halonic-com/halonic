@@ -140,6 +140,7 @@ export function MessengerPage({
           <Panel
             messenger={messenger}
             loaded={rows !== undefined}
+            words={words}
             connected={connected}
             open={open}
             changed={changed}
@@ -183,6 +184,7 @@ function ListColumn({
 function Panel({
   messenger,
   loaded,
+  words,
   connected,
   open,
   changed,
@@ -193,6 +195,7 @@ function Panel({
 }: {
   readonly messenger: Messenger;
   readonly loaded: boolean;
+  readonly words: EngineWords;
   readonly connected: boolean | undefined;
   readonly open: ConversationRow | undefined;
   readonly changed: number;
@@ -214,6 +217,7 @@ function Panel({
       row={open}
       changed={changed}
       picture={pictureOf(pictures, open)}
+      words={words}
       onLeft={onLeft}
       onChanged={onChanged}
     />

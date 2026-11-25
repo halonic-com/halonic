@@ -3,7 +3,7 @@ import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { askForUpdateText } from "../quick-actions.ts";
-import { byText, openChat, openMessenger, press, said } from "../test-support/page.tsx";
+import { byText, openChat, openMessenger, press, said, settle } from "../test-support/page.tsx";
 import { unmountAll } from "../test-support/render.tsx";
 
 afterEach(unmountAll);
@@ -160,6 +160,38 @@ verifies("messenger.quick-actions", () => {
       await press(byText(page, "main button", "Ask for an update"));
       expect(send).not.toHaveBeenCalled();
       expect(page.textContent).toContain("Paperclip · Acme is offline, so nothing was sent.");
+    });
+  });
+});
+
+verifies("messenger.inline-cards", () => {
+  describe("an answered card's motion", () => {
+    it("keeps the card with its choice while it folds away, though the source reports the answer at once", async () => {
+      const { messaging } = chiefAsks();
+      const page = await openMessenger(messaging);
+      await openChat(page, "Chief");
+      // Every motion waits until the test lets it end, as the 320 ms hold and the fade do.
+      let end = () => {};
+      const ended = new Promise<void>((resolve) => {
+        end = resolve;
+      });
+      const animate = vi.fn(() => ({ finished: ended }) as unknown as Animation);
+      HTMLElement.prototype.animate = animate;
+      try {
+        await press(byText(page, "main ol button", "Approve"));
+        await settle();
+        // The source said the card is answered, and the page read it again during the hold.
+        expect(animate).toHaveBeenCalled();
+        expect(page.querySelector("[data-chat-card-record]")).toBeNull();
+        expect(page.querySelector("[data-chat-card]")?.textContent).toContain("Approve");
+        expect(byText(page, "main ol button", "Approve")).toBeUndefined();
+        end();
+        await settle();
+        expect(page.querySelector("[data-chat-card]")).toBeNull();
+        expect(page.querySelector("[data-chat-card-record]")?.textContent).toContain("Approve");
+      } finally {
+        Reflect.deleteProperty(HTMLElement.prototype, "animate");
+      }
     });
   });
 });

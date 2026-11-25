@@ -3,6 +3,7 @@ import { Button, Menu } from "@halonicjs/studio-kit";
 import type { RefObject } from "react";
 import { channelWords } from "../channel-words.ts";
 import type { ConversationRow } from "../messenger.ts";
+import { focusNextCard } from "./cards-bar.tsx";
 
 /**
  * "2 waiting for you ▾ · Next" above a channel's messages (flow K, render k13a): ▾ lists each
@@ -27,11 +28,7 @@ export function WaitingBar({
     (card?.querySelector<HTMLElement>("button") ?? card)?.focus();
   const show = (item: MessagingId) =>
     focus(cards().find((card) => card.getAttribute("data-chat-card") === item));
-  const next = () => {
-    const all = cards();
-    const current = all.findIndex((card) => card.contains(document.activeElement));
-    focus(all[(current + 1) % all.length]);
-  };
+  const next = () => focusNextCard(section.current);
   return (
     <div data-waiting-bar className="flex items-center gap-1 border-b border-border px-4 py-1">
       <Menu
