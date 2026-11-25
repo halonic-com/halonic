@@ -158,7 +158,10 @@ export class RunSession implements RunState {
 
   /** Runs the prelude on its own and checks every slot before any script code runs. */
   #installPrelude(): QuickJSHandle | undefined {
-    const installed = this.meter.inside(() => this.vm.evalCode(this.#prelude, "prelude.js"));
+    // The prelude is the host's own code, so it runs outside the CPU meter: a
+    // busy or paused machine could otherwise stretch it past a short `cpuMs`
+    // and end the run with `toolscript.failed` before the script starts.
+    const installed = this.vm.evalCode(this.#prelude, "prelude.js");
     if (installed.error) {
       installed.error.dispose();
       this.fail("toolscript.failed", "the eval prelude failed");

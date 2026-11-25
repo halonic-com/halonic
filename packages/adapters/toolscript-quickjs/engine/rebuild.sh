@@ -26,8 +26,9 @@ node -e 'const pins = JSON.parse(require("node:fs").readFileSync(process.argv[1]
   "$engine/SOURCES.json" >"$work/files.sha256"
 (cd "$engine" && sha256sum --check --strict --quiet "$work/files.sha256")
 
-# 2. The quickjs-ng release, checked before it is unpacked.
-curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
+# 2. The quickjs-ng release, checked before it is unpacked. The size cap (the
+# archive is well under 1 MiB) stops a wrong or hostile answer from filling the disk.
+curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 --max-filesize 16777216 \
   --output "$work/amalgam.zip" "$(pin quickjsNg.amalgam.url)"
 echo "$(pin quickjsNg.amalgam.sha256)  $work/amalgam.zip" | sha256sum --check --strict
 mkdir -p "$work/src/vendor/quickjs-ng" "$work/src/c"

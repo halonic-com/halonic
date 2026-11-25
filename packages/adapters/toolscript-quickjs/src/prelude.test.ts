@@ -5,7 +5,7 @@ import { runInQuickJs } from "./isolate.ts";
 import { preludeSlots, preludeSource, removedGlobals } from "./prelude.ts";
 
 /** Runs `body` as the script's `run(ctx)`, recording each `ctx.acme.ping` call. */
-async function run(body: string, prelude?: string) {
+async function run(body: string, prelude?: string, limits = toolScriptDefaultLimits.agent) {
   const calls: ToolScriptIsolateValue[] = [];
   const ping = async (args: ToolScriptIsolateValue) => {
     calls.push(args);
@@ -17,9 +17,9 @@ async function run(body: string, prelude?: string) {
       code: `await Promise.resolve();\nexport async function run(ctx) {\n${body}\n}`,
       input: null,
       functions: { acme: { ping } },
-      limits: toolScriptDefaultLimits.agent,
+      limits,
     },
-    toolScriptDefaultLimits.agent,
+    limits,
     prelude,
   );
   return { result, calls };
@@ -148,6 +148,20 @@ verifies("toolscript-quickjs.eval-prelude", () => {
     );
     expect(result).toMatchObject({ ok: false, reason: "toolscript.failed" });
     expect(calls).toEqual([]);
+  });
+
+  it("never counts the host's prelude towards the script's CPU limit", async () => {
+    // A busy or paused machine can stretch the prelude past a short cpuMs; that
+    // time isn't the script's, and it must not end the run before the script starts.
+    const slowPrelude = `{ const until = Date.now() + 300; while (Date.now() < until) {} }\n${preludeSource}`;
+    const limits = { ...toolScriptDefaultLimits.agent, cpuMs: 100 };
+    const { result, calls } = await run(
+      "await ctx.acme.ping('ran'); return 'done';",
+      slowPrelude,
+      limits,
+    );
+    expect(result).toMatchObject({ ok: true, output: "done" });
+    expect(calls).toEqual(["ran"]);
   });
 
   it("runs a script with top-level await under the real prelude", async () => {
