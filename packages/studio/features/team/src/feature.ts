@@ -9,8 +9,8 @@ import { SpendAndSeats } from "./spend-and-seats.ts";
  * `team.pull-request-stuck`). It offers the Spend and seats screen's reads as
  * `SpendAndSeatsService` and the Pull requests screen's as
  * `PullRequestsService`, built on the engine's `TeamStatus`; it never sees a
- * provider's own types. The sidebar's Team group, which shows the pages,
- * comes in its own change.
+ * provider's own types. It adds the Spend and seats place, which the shell
+ * shows under its Team heading, with the problems in Needs you as its signal.
  */
 export const teamFeature = defineFeature({
   id: "team",
@@ -31,5 +31,13 @@ export const teamFeature = defineFeature({
           now: () => new Date(),
         }),
     );
+    studio.places.add({
+      id: "team",
+      view: "SpendAndSeatsPlace",
+      load: () => import("./ui/spend-and-seats-place.tsx"),
+      signal: (context) => context.services.get(SpendAndSeatsService).signal(),
+      subscribeSignal: (context, listener) =>
+        context.services.get(SpendAndSeatsService).watchSignal(listener),
+    });
   },
 });

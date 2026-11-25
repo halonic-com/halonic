@@ -31,6 +31,15 @@ verifies("team.spend-and-seats", () => {
     shell.services.instantiate(workspace);
     expect(await workspace.get(SpendAndSeatsService).read()).toBeUndefined();
   });
+
+  it("adds Spend and seats as the sidebar's team place, with its problems as the signal", () => {
+    const shell = createShell({ features: [teamFeature], hostServices: [] });
+    const place = shell.contributions.places.list().find((each) => each.id === "team");
+    expect(place?.featureId).toBe("team");
+    expect(place?.view).toBe("SpendAndSeatsPlace");
+    expect(place?.signal).toBeTypeOf("function");
+    expect(place?.subscribeSignal).toBeTypeOf("function");
+  });
 });
 
 verifies("team.pull-request-stuck", () => {

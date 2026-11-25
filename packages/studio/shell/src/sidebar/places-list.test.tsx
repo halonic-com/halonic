@@ -86,6 +86,27 @@ verifies("shell.sidebar-places", () => {
       ]);
     });
 
+    it("shows a grouped place under its group's heading, with its problems after !", () => {
+      const container = render(
+        <PlacesList
+          places={[
+            showPlace("home", undefined),
+            showPlace("team", { mark: "problems", value: 2, spoken: "2 problems" }),
+          ]}
+          tabs={new TabSet()}
+          announcer={createAnnouncer({ timers: new FakeTimers() })}
+        />,
+      );
+      const group = container.querySelector("nav section");
+      const heading = group?.querySelector("h2");
+      expect(heading?.textContent).toBe("Team");
+      expect(group?.getAttribute("aria-labelledby")).toBe(heading?.id);
+      expect([...(group?.querySelectorAll("li") ?? [])].map((li) => li.textContent)).toEqual([
+        "Spend and seats! 2, 2 problems",
+      ]);
+      expect(container.querySelector("nav > div li")?.textContent).toBe("Home");
+    });
+
     it("shows where you are with the filled icon, and the others with the outline", () => {
       const { link } = renderPlaces();
       expect(link("Home").getAttribute("aria-current")).toBe("page");

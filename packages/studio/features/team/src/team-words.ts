@@ -1,4 +1,4 @@
-import type { Seat, SeatState } from "@halonicjs/ports";
+import type { Seat, SeatReadCause, SeatState } from "@halonicjs/ports";
 
 /** Where a button that leaves the app goes; the shell turns it into the Paperclip page. */
 export type TeamLink = "set-budget" | "ai-seats" | "paperclip" | "connect-again";
@@ -31,6 +31,9 @@ export const teamWords = {
   notPriced: (runs: number) =>
     runs === 1 ? "1 run not priced yet" : `${runs} runs not priced yet`,
   tokensToday: (tokens: string) => `Subscription seats used ${tokens} tokens today.`,
+  /** Sofia's table 1.6 row "Cost rows with no known seat" (HAL-17510). */
+  seatUnknown: (runs: number) =>
+    runs === 1 ? "Seat unknown for 1 run" : `Seat unknown for ${runs} runs`,
   thisMonth: "This month",
   /** After the month's money when no budget is set: "$977 this month". */
   thisMonthAfter: "this month",
@@ -109,4 +112,14 @@ export const teamWords = {
       since === undefined ? "? Not read" : `? Not read · last good ${since}`,
     other: () => "",
   } satisfies Record<SeatState, (time?: string) => string>,
+  /**
+   * A failed read's cause in the seat's row, from Sofia's table 1.6 row "One
+   * seat's read failed" (HAL-17510): "? Not read · rate-limited · last good
+   * 12:20". A cause with no words leaves the row as plain "? Not read".
+   */
+  readCause: { "rate-limited": "rate-limited", other: undefined } satisfies Record<
+    SeatReadCause,
+    string | undefined
+  >,
+  notReadBecause: (cause: string, since: string) => `? Not read · ${cause} · last good ${since}`,
 };

@@ -54,6 +54,7 @@ import {
   ChangesSourceService,
   ShareChoiceService,
 } from "@halonicjs/studio-feature-source-control/api";
+import { teamFeature } from "@halonicjs/studio-feature-team";
 import { workflowsFeature } from "@halonicjs/studio-feature-workflows";
 import {
   WorkflowReviewService,
@@ -91,6 +92,7 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
     workflowsFeature,
     routinesFeature,
     workspaceFeature,
+    teamFeature,
   ],
   hostServices: [
     FilesHostService,

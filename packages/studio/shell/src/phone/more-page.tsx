@@ -11,10 +11,10 @@ import {
   MiddleCut,
   PlaceIcon,
   SettingsIcon,
-  StatusChip,
 } from "@halonicjs/studio-kit";
 import { type ReactNode, useId, useState } from "react";
 import type { ShownPlace, SidebarPlace } from "../points/frame.ts";
+import { SignalCount } from "../sidebar/signal-count.tsx";
 import {
   letterMark,
   type SwitcherWorkspace,
@@ -212,12 +212,8 @@ export function moreRows(
 
 /** One job on the right edge (component specs 6): the count when there is one, else a chevron. */
 function RowEnd({ place }: { readonly place: ShownPlace }) {
-  if (place.signal?.mark === "count") {
-    return (
-      <StatusChip tone="accent" shape="count" name={place.signal.spoken}>
-        {place.signal.value}
-      </StatusChip>
-    );
+  if (place.signal !== undefined && place.signal.mark !== "running") {
+    return <SignalCount signal={place.signal} />;
   }
   return (
     <span aria-hidden="true" className="size-icon-md text-fg-subtle *:size-full">

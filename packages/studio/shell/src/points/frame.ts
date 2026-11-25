@@ -187,6 +187,8 @@ export const sidebarPlaces = [
   "library",
   "runs",
   "changes",
+  // Grouped places come last, so each group's places stay together under its heading.
+  "team",
 ] as const;
 
 /** One of the sidebar's places. */
@@ -197,12 +199,22 @@ export function isSidebarPlace(key: string): key is SidebarPlace {
   return (sidebarPlaces as readonly string[]).includes(key);
 }
 
+/** A group of places under one heading in the sidebar, such as Team (HAL-17510 flows, Choice P1). */
+export type PlaceGroup = "team";
+
+/** Each group's heading. The shell owns it, so no feature draws a heading of its own. */
+export const placeGroupNames: Readonly<Record<PlaceGroup, string>> = {
+  team: "Team",
+};
+
 /** A place's name and icon, the same wherever the place shows. */
 export interface PlaceName {
   /** The place's name in the sidebar, the phone's bar and More page, a tab's title and the palette. */
   readonly label: string;
   /** The outline icon's name; the shell fills it when the place is where you are. */
   readonly icon: string;
+  /** The group the sidebar shows the place under; left out for the places at the top. */
+  readonly group?: PlaceGroup;
 }
 
 /**
@@ -218,16 +230,18 @@ export const placeNames: Readonly<Record<SidebarPlace, PlaceName>> = {
   library: { label: "Library", icon: "library" },
   runs: { label: "Runs", icon: "runs" },
   changes: { label: "Changes", icon: "changes" },
+  team: { label: "Spend and seats", icon: "team", group: "team" },
 };
 
 /**
  * What a place shows next to its name. Nothing shows at zero. A `count` shows the number (the
- * Inbox, Changes); `running` shows the still 6px running dot (Runs).
+ * Inbox, Changes); `problems` shows it after "!" in the warning colour (Spend and seats);
+ * `running` shows the still 6px running dot (Runs).
  */
 export interface PlaceSignal {
-  readonly mark: "count" | "running";
+  readonly mark: "count" | "problems" | "running";
   readonly value: number;
-  /** What a screen reader hears after the place's name, such as "2 waiting" or "1 running". */
+  /** What a screen reader hears after the place's name, such as "2 waiting", "2 problems" or "1 running". */
   readonly spoken: string;
 }
 

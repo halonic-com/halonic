@@ -49,12 +49,23 @@ function stateWords(seat: Seat, clock: TeamClock): string {
       return teamWords.state.full(
         week?.resetsAt === undefined ? undefined : formatDayTime(week.resetsAt, clock),
       );
-    case "signed-out":
     case "not-read":
+      return notReadWords(seat, clock);
+    case "signed-out":
       return teamWords.state[seat.state](formatTime(seat.asOf, clock));
     default:
       return teamWords.state[seat.state]();
   }
+}
+
+/** A seat not read, with why its newest read failed when the cause has words. */
+function notReadWords(seat: Seat, clock: TeamClock): string {
+  const lastGood = formatTime(seat.asOf, clock);
+  const cause =
+    seat.failedRead === undefined ? undefined : teamWords.readCause[seat.failedRead.cause];
+  return cause === undefined
+    ? teamWords.state["not-read"](lastGood)
+    : teamWords.notReadBecause(cause, lastGood);
 }
 
 /** A seat's State: a StatusChip in the state's tone, with its symbol and always its words. */
@@ -166,7 +177,8 @@ function SeatRow(props: { seat: Seat; clock: TeamClock; onLink: (link: TeamLink)
   const { seat, clock, onLink } = props;
   return (
     <Card onClick={() => onLink("ai-seats")}>
-      <span className={rowGrid}>
+      {/* A failed read keeps the last good numbers, greyed (Sofia's table 1.6). */}
+      <span className={seat.failedRead === undefined ? rowGrid : `${rowGrid} text-fg-muted`}>
         <span className="min-w-0 w-full wrap-anywhere text-body-strong">
           <Spoken column={seatColumn ?? ""} />
           <SeatName seat={seat} />

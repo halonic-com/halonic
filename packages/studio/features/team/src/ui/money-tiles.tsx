@@ -1,6 +1,6 @@
 import type { SpendSummary } from "@halonicjs/ports";
 import { AlertIcon, Button, Card, WarningIcon } from "@halonicjs/studio-kit";
-import type { ReactNode } from "react";
+import { createContext, type ReactNode, useContext } from "react";
 import {
   allTokens,
   formatDate,
@@ -56,14 +56,28 @@ export function ToneLine({ tone, children }: { tone: "warning" | "danger"; child
   );
 }
 
+/**
+ * Whether the screen's link buttons work: `on`; off while the Offline banner
+ * shows, since Paperclip isn't answering, with the banner's id as the reason;
+ * `none` where nothing can open a Paperclip page, so no button is drawn that
+ * would do nothing.
+ */
+export type TeamLinksState = "on" | "none" | { readonly offBecause: string };
+
+/** The link buttons' state for everything under it; `on` unless a screen says otherwise. */
+export const TeamLinks = createContext<TeamLinksState>("on");
+
 /** A button that opens a page outside the app, or the connection flow; ↗ marks a page outside. */
 export function LinkButton({ link, onLink }: { link: TeamLink; onLink: (link: TeamLink) => void }) {
+  const state = useContext(TeamLinks);
+  if (state === "none") return null;
   const leaves = link !== "connect-again";
   return (
     <Button
       variant="secondary"
       size="sm"
       icon={leaves ? <span className="leading-none">↗</span> : undefined}
+      unavailable={state === "on" ? undefined : { reason: state.offBecause }}
       onClick={() => onLink(link)}
     >
       {teamWords.links[link]}
@@ -87,6 +101,9 @@ export function SpentTodayTile({ today }: { today: SpendSummary | undefined }) {
         <ToneLine tone="warning">{teamWords.notPriced(today.unpricedRuns)}</ToneLine>
       ) : null}
       <SmallLine>{teamWords.tokensToday(formatTokens(allTokens(today.tokens)))}</SmallLine>
+      {today.unknownSeatRuns === undefined || today.unknownSeatRuns === 0 ? null : (
+        <SmallLine>{teamWords.seatUnknown(today.unknownSeatRuns)}</SmallLine>
+      )}
     </Tile>
   );
 }

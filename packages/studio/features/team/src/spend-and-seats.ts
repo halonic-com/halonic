@@ -1,7 +1,9 @@
-import type { MessagingId, Seat, SpendSummary, TeamStatus } from "@halonicjs/ports";
+import type { AsOf, MessagingId, Seat, SpendSummary, TeamStatus } from "@halonicjs/ports";
+import type { PlaceSignal } from "@halonicjs/studio-shell";
 import { type SeatProblem, seatProblems } from "./seat-problems.ts";
 import type { TeamClock } from "./team-format.ts";
 import { watchTeamStatus } from "./team-watch.ts";
+import { teamWords } from "./team-words.ts";
 
 /** Everything the Spend and seats screen shows, for one source, as read now. */
 export interface SpendAndSeatsState {
@@ -16,18 +18,26 @@ export interface SpendAndSeatsState {
   readonly problems: readonly SeatProblem[];
   /** The oldest reading on the screen, for its "As of" line. */
   readonly asOf: string | undefined;
+  /**
+   * The newest reading among the answers the engine gave from its offline
+   * cache, for the "Offline, as of …" banner; `undefined` when every answer is live.
+   */
+  readonly offlineAsOf: string | undefined;
 }
 
 /**
  * The Spend and seats screen's reads (requirement `team.spend-and-seats`):
  * one `TeamStatus` source's spend today and this month and its seats, with
  * each seat's problem. The screen shows the first source that serves spend or
- * seats. It holds no copy; each read asks the port again.
+ * seats. It holds no copy of the data; each read asks the port again. It
+ * keeps only the last problem count, for the sidebar's signal.
  */
 export class SpendAndSeats {
   /** Absent where no engine serves `TeamStatus`: the screen then says seat use isn't available. */
   private readonly team: TeamStatus | undefined;
   private readonly clock: TeamClock;
+  /** The problems the sidebar counts, as of the newest read any `watchSignal` made. */
+  private problemCount = 0;
 
   constructor(team: TeamStatus | undefined, clock: TeamClock) {
     this.team = team;
@@ -64,15 +74,59 @@ export class SpendAndSeats {
     };
     // A signed-out seat's stamp says since when it is signed out, not how fresh the read is.
     const readSeats = seats.filter((seat) => seat.state !== "signed-out");
-    const times = [shown.today, shown.month, ...readSeats].flatMap((each) =>
-      each === undefined ? [] : [each.asOf],
+    const answers: AsOf[] = [shown.today, shown.month, ...readSeats].flatMap((each) =>
+      each === undefined ? [] : [each],
     );
+    const cached = answers.filter((each) => each.fromCache === true);
     return {
       canReadSpend: part.spend,
       hasSeats: part.seats,
       ...shown,
       problems,
-      asOf: times.sort((a, b) => Date.parse(a) - Date.parse(b))[0],
+      asOf: byTime(answers)[0],
+      offlineAsOf: byTime(cached).at(-1),
+    };
+  }
+
+  /**
+   * The sidebar's signal for Spend and seats: the problems in Needs you,
+   * leaving out the quiet 80% ones (HAL-17510 flows 1.2), shown as "! 2".
+   */
+  signal(): PlaceSignal {
+    return {
+      mark: "problems",
+      value: this.problemCount,
+      spoken: teamWords.problemCount(this.problemCount),
+    };
+  }
+
+  /**
+   * Reads now and whenever a source says it changed, and calls `listener`
+   * when the signal's count changed. Returns a function that stops it.
+   */
+  watchSignal(listener: () => void): () => void {
+    let watching = true;
+    // Each watch keeps the count it last told its listener: the desktop watches places from
+    // the window and the sidebar, and each must hear a change, not only the first to read it.
+    let heard = 0;
+    const readCount = () => {
+      this.read().then(
+        (state) => {
+          const count = state?.problems.filter((problem) => !problem.quiet).length ?? 0;
+          this.problemCount = count;
+          if (!watching || count === heard) return;
+          heard = count;
+          listener();
+        },
+        (error: unknown) =>
+          console.error("Spend and seats' problem count couldn't be read:", error),
+      );
+    };
+    readCount();
+    const stop = this.watch(readCount);
+    return () => {
+      watching = false;
+      stop();
     };
   }
 
@@ -80,4 +134,9 @@ export class SpendAndSeats {
   watch(listener: () => void): () => void {
     return watchTeamStatus(this.team, listener, "Spend and seats");
   }
+}
+
+/** The answers' times, oldest first, compared as times, not as text. */
+function byTime(answers: readonly AsOf[]): readonly string[] {
+  return answers.map((each) => each.asOf).sort((a, b) => Date.parse(a) - Date.parse(b));
 }
