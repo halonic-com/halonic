@@ -12,7 +12,11 @@ import { PaperclipKeys } from "../paperclip/paperclip-keys.ts";
 import { PaperclipSignIn } from "../paperclip/paperclip-sign-in.ts";
 import { paperclipSignInRoutes } from "../paperclip/paperclip-sign-in-routes.ts";
 import type { HostRoute } from "../server/host-server.ts";
-import { readConnectionFile, writeConnectionFile } from "./connection-file.ts";
+import {
+  readConnectionFile,
+  removeConnectionFile,
+  writeConnectionFile,
+} from "./connection-file.ts";
 import { DesktopMessaging } from "./desktop-messaging.ts";
 import type { MessagingFailure } from "./messaging-hub.ts";
 import { MessagingPoller } from "./messaging-poller.ts";
@@ -126,6 +130,12 @@ function hostSignIn(
       connect: async (workspace, name) => (await messaging.of(workspace))?.connect(name),
       readConnection: readConnectionFile,
       writeConnection: writeConnectionFile,
+      // Forgotten first, so Disconnect's own revoke has no key to send: the sign-in revoked it.
+      forget: async (workspace, name) => {
+        keys.forget({ workspace, connection: name });
+        await (await messaging.of(workspace))?.disconnect(name);
+      },
+      removeConnection: removeConnectionFile,
     }),
     scheduler,
     clock: systemClock,

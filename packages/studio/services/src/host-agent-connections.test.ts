@@ -35,6 +35,9 @@ class FakeSignIn {
   states: (PaperclipSignInState | Error)[] = [];
   starts: { address: string; connection: string | undefined }[] = [];
   cancels: string[] = [];
+  confirms: string[] = [];
+  /** When set, a confirm or a cancel throws it. */
+  failWith: Error | undefined;
   startAnswer: PaperclipSignInStart = {
     outcome: "started",
     signInId: "sign-in-1",
@@ -56,13 +59,19 @@ class FakeSignIn {
     if (next.status === "connected") this.rows = [acmeRow];
     return next;
   }
+  async confirm(signInId: string) {
+    this.confirms.push(signInId);
+    if (this.failWith !== undefined) throw this.failWith;
+    return true;
+  }
   async cancel(signInId: string) {
     this.cancels.push(signInId);
+    if (this.failWith !== undefined) throw this.failWith;
     return { status: "cancelled" } as const;
   }
 }
 
-function setUp(options: { setFails?: boolean; revoked?: boolean; disconnectFails?: boolean } = {}) {
+function setUp(options: { setFails?: boolean; revoked?: boolean } = {}) {
   const signIn = new FakeSignIn();
   const kept = new Map<string, string>();
   const disconnected: PaperclipConnectionRef[] = [];
@@ -73,7 +82,6 @@ function setUp(options: { setFails?: boolean; revoked?: boolean; disconnectFails
     host: {
       disconnect: async (ref) => {
         disconnected.push(ref);
-        if (options.disconnectFails) throw new Error("The host can't be reached.");
         return { revoked: options.revoked ?? true };
       },
     },
@@ -127,6 +135,8 @@ verifies("services.host-agent-connections", () => {
         address,
         company: "acme",
       });
+      expect(signIn.confirms).toEqual(["sign-in-1"]);
+      expect(signIn.cancels).toEqual([]);
       expect(heard).toBe(1);
     });
 
@@ -141,15 +151,27 @@ verifies("services.host-agent-connections", () => {
       expect(signIn.starts).toEqual([{ address, connection: "acme" }]);
     });
 
-    it("revokes the key when the keychain refuses it, and keeps no copy", async () => {
-      const { signIn, kept, disconnected, reported, connections } = setUp({
-        setFails: true,
-        disconnectFails: true,
-      });
+    it("cancels the sign-in when the keychain refuses the key, and keeps no copy", async () => {
+      const { signIn, kept, disconnected, reported, connections } = setUp({ setFails: true });
       signIn.states = [connected];
+      signIn.failWith = new Error("The host can't be reached.");
       const { result } = await resultOf(connections);
       expect(result).toEqual({ outcome: "key-not-saved" });
-      expect(disconnected).toEqual([{ workspace: "/work/acme", connection: "acme" }]);
+      expect(signIn.confirms).toEqual([]);
+      expect(signIn.cancels).toEqual(["sign-in-1"]);
+      expect(disconnected).toEqual([]);
+      expect(kept.size).toBe(0);
+      expect(reported).toHaveLength(2);
+    });
+
+    it("removes the written key and cancels when the host doesn't take the confirm", async () => {
+      const { signIn, kept, reported, connections } = setUp();
+      signIn.states = [connected];
+      signIn.failWith = new Error("The host can't be reached.");
+      const { result } = await resultOf(connections);
+      expect(result).toEqual({ outcome: "key-not-saved" });
+      expect(signIn.confirms).toEqual(["sign-in-1"]);
+      expect(signIn.cancels).toEqual(["sign-in-1"]);
       expect(kept.size).toBe(0);
       expect(reported).toHaveLength(2);
     });

@@ -30,12 +30,6 @@ export interface PaperclipSignInRouteDeps {
   log: (text: string) => void;
 }
 
-/** The connection an open sign-in is for, so the approved answer can name it. */
-interface SignInFor {
-  name: string;
-  address: string;
-}
-
 /**
  * The routes Studio's Connect dialog signs in to Paperclip with
  * (`agent-host.paperclip-sign-in`, ADR 2026-11-24, "Sign-in"). Each refuses a
@@ -52,13 +46,16 @@ interface SignInFor {
  * - `POST /v1/paperclip/sign-in/poll` with `{ signInId }` answers the
  *   sign-in's state. The first `connected` answer is the only one that holds
  *   the key, with the connection's name, address and company, for Studio's
- *   keychain; the sign-in ends with it.
- * - `POST /v1/paperclip/sign-in/cancel` with `{ signInId }` ends it.
+ *   keychain.
+ * - `POST /v1/paperclip/sign-in/confirm` with `{ signInId }` says the keychain
+ *   has that key, and answers `{ confirmed }`. A key Studio doesn't confirm
+ *   within a minute is revoked, and its sign-in undone.
+ * - `POST /v1/paperclip/sign-in/cancel` with `{ signInId }` ends it; after the
+ *   approved answer, it revokes the key Studio couldn't keep and undoes it.
  *
  * A failure is 502 `sign_in_failed`; the log names only the error's kind.
  */
 export function paperclipSignInRoutes(deps: PaperclipSignInRouteDeps): HostRoute[] {
-  const open = new Map<string, SignInFor>();
   const route = <T>(
     path: string,
     schema: Schema<T>,
@@ -74,16 +71,19 @@ export function paperclipSignInRoutes(deps: PaperclipSignInRouteDeps): HostRoute
       if (folder === undefined) return unknownWorkspace;
       const started = await start(deps, folder, body);
       if (started.outcome === "refused") return { status: 200, body: started };
-      open.set(started.answer.signInId, started.for);
       return { status: 200, body: { outcome: "started", ...started.answer } };
     }),
     route("/v1/paperclip/sign-in/poll", signInBody, async (body) => {
       const state = await deps.signIn.poll(body.signInId);
-      return { status: 200, body: answerOf(state, open, body.signInId) };
+      return { status: 200, body: answerOf(state) };
+    }),
+    route("/v1/paperclip/sign-in/confirm", signInBody, async (body) => {
+      const confirmed = await deps.signIn.confirm(body.signInId);
+      return { status: 200, body: { confirmed } };
     }),
     route("/v1/paperclip/sign-in/cancel", signInBody, async (body) => {
       const state = await deps.signIn.cancel(body.signInId);
-      return { status: 200, body: answerOf(state, open, body.signInId) };
+      return { status: 200, body: answerOf(state) };
     }),
   ];
 }
@@ -94,7 +94,7 @@ const unknownWorkspace = {
 };
 
 type Started =
-  | { outcome: "started"; answer: StartedSignIn; for: SignInFor }
+  | { outcome: "started"; answer: StartedSignIn }
   | { outcome: "refused"; reason: "address-not-allowed" | "unreachable" };
 
 /** Picks the connection the sign-in is for, then starts it. */
@@ -122,7 +122,7 @@ async function start(
       name,
       ...(companyId === undefined ? {} : { companyId }),
     });
-    return { outcome: "started", answer, for: { name, address } };
+    return { outcome: "started", answer };
   } catch (error) {
     deps.log(`A Paperclip sign-in couldn't start (${errorName(error)}).\n`);
     return { outcome: "refused", reason: "unreachable" };
@@ -146,15 +146,12 @@ function fileFor(
 }
 
 /** A state as Studio reads it; only the approved answer holds the key. */
-function answerOf(state: SignInState, open: Map<string, SignInFor>, id: string): unknown {
-  const signedInFor = open.get(id);
-  if (state.status !== "pending") open.delete(id);
+function answerOf(state: SignInState): unknown {
   if (state.status !== "connected") return state;
-  if (signedInFor === undefined) throw new Error("A sign-in ended for no known connection.");
   return {
     status: "connected",
-    connection: signedInFor.name,
-    address: signedInFor.address,
+    connection: state.name,
+    address: state.address,
     company: state.companyId,
     key: state.key,
   };

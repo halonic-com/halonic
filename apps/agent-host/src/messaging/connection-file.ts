@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { type PaperclipConnection, parsePaperclipConnection } from "@halonicjs/format";
 import { PAPERCLIP_CONNECTIONS_FOLDER } from "@halonicjs/workspace";
@@ -87,6 +87,11 @@ export async function writeConnectionFile(
     "",
   ].join("\n");
   await writeFile(join(folder, `${name}.yaml`), text, { encoding: "utf8", flag: "wx" });
+}
+
+/** Removes `connections/paperclip/<name>.yaml`; a file that is gone already is fine. */
+export async function removeConnectionFile(workspace: string, name: string): Promise<void> {
+  await rm(join(workspace, PAPERCLIP_CONNECTIONS_FOLDER, `${name}.yaml`), { force: true });
 }
 
 function isMissing(error: unknown): boolean {

@@ -18,6 +18,7 @@ mod handshake;
 mod held_backend;
 mod host_secrets;
 mod loopback_secrets;
+mod paperclip_routes;
 mod relay;
 mod route_kinds;
 mod routes;

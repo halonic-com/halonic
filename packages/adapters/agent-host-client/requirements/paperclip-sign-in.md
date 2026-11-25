@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-17439 (PR 2, the wiring), HAL-17897 (Settings › Connections in the app); ADR `docs/adr/2026-11-24-agent-messaging.md`, section "Sign-in"; `agent-host.paperclip-sign-in`
+- Source: HAL-17439 (PR 2, the wiring), HAL-17897 (Settings › Connections in the app), HAL-17942 (the confirm); ADR `docs/adr/2026-11-24-agent-messaging.md`, section "Sign-in"; `agent-host.paperclip-sign-in`
 
-The Paperclip sign-in stand-in shall offer `connections`, which asks the host's `POST /v1/paperclip/connections` with the open workspace's path and answers each connection's ID, name, label, address and state; `start`, which asks `POST /v1/paperclip/sign-in/start` with the workspace, the address and, when given, the connection's name; and `poll` and `cancel`, which ask `POST /v1/paperclip/sign-in/poll` and `/cancel` with the sign-in's ID. It shall answer the host's outcome or state as it came, and fail with the host's kind and status when the host refuses, or with `answer_invalid` for an answer of another shape.
+The Paperclip sign-in stand-in shall offer `connections`, which asks the host's `POST /v1/paperclip/connections` with the open workspace's path and answers each connection's ID, name, label, address and state; `start`, which asks `POST /v1/paperclip/sign-in/start` with the workspace, the address and, when given, the connection's name; `poll` and `cancel`, which ask `POST /v1/paperclip/sign-in/poll` and `/cancel` with the sign-in's ID; and `confirm`, which asks `/confirm` with the sign-in's ID and answers whether the host still had it. It shall answer the host's outcome or state as it came, and fail with the host's kind and status when the host refuses, or with `answer_invalid` for an answer of another shape.
 
 ## Examples
 

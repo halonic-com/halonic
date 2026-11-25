@@ -3,12 +3,21 @@ import type {
   ChallengeRef,
   ChallengeStatus,
   PaperclipKeyStore,
+  SavedKey,
   SignInCalls,
+  StoredPaperclipKey,
 } from "./sign-in-calls.ts";
 import { newSignInPhrase } from "./sign-in-phrase.ts";
 
 /** How long a sign-in lasts: Paperclip's challenge lifetime (HAL-17423). */
 export const signInLimitMs = 10 * 60 * 1000;
+
+/**
+ * How long the host waits, after the approved poll's answer, for Studio to
+ * confirm the key is in the keychain. A key it never confirms is revoked
+ * (Liam's review of #5805, HAL-17942).
+ */
+export const handOverLimitMs = 60 * 1000;
 
 /** The scheduler key every sign-in's time limit is set under; the timer ID is the sign-in's ID. */
 export const signInTimerKey = "paperclip-sign-in";
@@ -51,7 +60,15 @@ export type SignInState =
    * gets it again (Liam's option 1, HAL-17439): Studio writes it to the
    * keychain at once.
    */
-  | { status: "connected"; userId: string; companyId: string; key: string }
+  | {
+      status: "connected";
+      userId: string;
+      companyId: string;
+      key: string;
+      /** The connection's name and address, from the start. */
+      name: string;
+      address: string;
+    }
   | { status: "cancelled" | "expired"; keyMayWork?: KeyMayWork }
   /** The key's user isn't in the connection's company; the key was revoked. */
   | { status: "wrong-company" }
@@ -88,6 +105,13 @@ interface OpenSignIn {
   polling: boolean;
 }
 
+/** An approved sign-in whose key went to Studio, until Studio confirms the keychain has it. */
+interface HandedOver {
+  calls: SignInCalls;
+  entry: StoredPaperclipKey;
+  saved: SavedKey;
+}
+
 /**
  * Paperclip sign-in in the engine: starts a challenge, polls it and stores
  * the key once the board approves (`agent-host.paperclip-sign-in`). The key
@@ -99,6 +123,7 @@ interface OpenSignIn {
 export class PaperclipSignIn {
   readonly #options: PaperclipSignInOptions;
   readonly #open = new Map<string, OpenSignIn>();
+  readonly #handedOver = new Map<string, HandedOver>();
 
   /** Makes the flow; nothing is sent until {@link start}. */
   constructor(options: PaperclipSignInOptions) {
@@ -146,9 +171,19 @@ export class PaperclipSignIn {
     return { signInId, phrase, approvalUrl, expiresAt };
   }
 
-  /** Whether the engine still holds a key for this sign-in. */
+  /** Whether the engine still holds a key for this sign-in, open or handed over. */
   holdsKey(signInId: string): boolean {
-    return this.#open.has(signInId);
+    return this.#open.has(signInId) || this.#handedOver.has(signInId);
+  }
+
+  /**
+   * Studio says the handed-over key is in its keychain: the sign-in ends and
+   * the key stays connected. Answers whether there was such a sign-in.
+   */
+  async confirm(signInId: string): Promise<boolean> {
+    if (!this.#handedOver.delete(signInId)) return false;
+    await this.#endTimer(signInId);
+    return true;
   }
 
   /** Polls the challenge once and acts on its answer. */
@@ -175,14 +210,20 @@ export class PaperclipSignIn {
     return { status };
   }
 
-  /** Ends a sign-in because its dialog closed: drops the key and cancels the challenge. */
+  /**
+   * Ends a sign-in because its dialog closed: drops the key and cancels the
+   * challenge. A handed-over key Studio couldn't keep is revoked and undone.
+   */
   async cancel(signInId: string): Promise<SignInState> {
     const open = this.#take(signInId);
-    if (open === undefined) return { status: "unknown" };
+    if (open === undefined) return await this.#undoHandOver(signInId, "cancelled");
     return await this.#end(signInId, open, "cancelled");
   }
 
-  /** The scheduler's timer: a sign-in still open at its limit ends as `expired`. */
+  /**
+   * The scheduler's timer: a sign-in still open at its limit ends as
+   * `expired`, and a handed-over key Studio didn't confirm in time is undone.
+   */
   async onTimer(timer: ScheduledTimer): Promise<void> {
     if (timer.key !== signInTimerKey) return;
     await this.#expire(timer.timerId);
@@ -190,7 +231,7 @@ export class PaperclipSignIn {
 
   async #expire(signInId: string): Promise<SignInState> {
     const open = this.#take(signInId);
-    if (open === undefined) return { status: "unknown" };
+    if (open === undefined) return await this.#undoHandOver(signInId, "expired");
     // Paperclip ends the challenge too, but its clock may run behind ours.
     return await this.#end(signInId, open, "expired");
   }
@@ -240,8 +281,23 @@ export class PaperclipSignIn {
       const companyId = companyOf(open.connection, owner.companyIds);
       if (companyId !== undefined) {
         const { address, workspace, name } = open.connection;
-        await keyStore.save({ address, companyId, key: open.key, workspace, name });
-        return { status: "connected", userId: owner.userId, companyId, key: open.key };
+        const entry = { address, companyId, key: open.key, workspace, name };
+        const limit = this.#options.clock.now().getTime() + handOverLimitMs;
+        await this.#options.scheduler.schedule(
+          signInTimerKey,
+          signInId,
+          new Date(limit).toISOString(),
+        );
+        const saved = await keyStore.save(entry);
+        this.#handedOver.set(signInId, { calls, entry, saved });
+        return {
+          status: "connected",
+          userId: owner.userId,
+          companyId,
+          key: open.key,
+          name,
+          address,
+        };
       }
     } catch (error) {
       // The key works but isn't stored: revoke it so no working key is left anywhere.
@@ -256,6 +312,23 @@ export class PaperclipSignIn {
     // the try, so a failed revoke is reported once and not retried.
     await calls.revokeCurrent(open.key);
     return { status: "wrong-company" };
+  }
+
+  /**
+   * Revokes a handed-over key Studio didn't keep and undoes its save. When the
+   * revoke fails, the answer says the key may work.
+   */
+  async #undoHandOver(signInId: string, status: "cancelled" | "expired"): Promise<SignInState> {
+    const handed = this.#handedOver.get(signInId);
+    if (handed === undefined) return { status: "unknown" };
+    this.#handedOver.delete(signInId);
+    await this.#endTimer(signInId);
+    const revoked = await handed.calls.revokeCurrent(handed.entry.key).then(
+      () => true,
+      () => false,
+    );
+    await this.#options.keyStore.drop(handed.entry, handed.saved);
+    return revoked ? { status } : { status, keyMayWork: true };
   }
 
   /** Takes a sign-in out of memory, at once and without waiting, so only one caller gets it. */

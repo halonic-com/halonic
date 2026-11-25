@@ -4,6 +4,7 @@
 //! `packages/adapters/agent-host-client`, and its `shell-routes.test.ts` fails
 //! when the two drift apart. A stream's lines are split in `stream_lines.rs`.
 
+use crate::paperclip_routes::PAPERCLIP_ROUTES;
 use crate::route_kinds::{Answer, Method, Route, route};
 
 /// Every route a page may call, by its name.
@@ -340,60 +341,6 @@ const ROUTES: &[(&str, Route)] = &[
         "POST /v1/plugins/secrets",
         route(Method::Post, "/v1/plugins/secrets", Answer::Json),
     ),
-    // A Paperclip connection's key, handed over when the person connects
-    // (HAL-17495): the host keeps it in memory only, with the address and
-    // company it was made for, and answers no key.
-    (
-        "POST /v1/paperclip/key",
-        route(Method::Post, "/v1/paperclip/key", Answer::Json),
-    ),
-    // Disconnect and the desktop engine's AgentMessaging (HAL-17438); no key comes back.
-    (
-        "POST /v1/paperclip/disconnect",
-        route(Method::Post, "/v1/paperclip/disconnect", Answer::Json),
-    ),
-    // Settings › Connections and the Paperclip sign-in (HAL-17439, HAL-17897):
-    // only the first approved poll answers the key, once, for the keychain.
-    (
-        "POST /v1/paperclip/connections",
-        route(Method::Post, "/v1/paperclip/connections", Answer::Json),
-    ),
-    (
-        "POST /v1/paperclip/sign-in/start",
-        route(Method::Post, "/v1/paperclip/sign-in/start", Answer::Json),
-    ),
-    (
-        "POST /v1/paperclip/sign-in/poll",
-        route(Method::Post, "/v1/paperclip/sign-in/poll", Answer::Json),
-    ),
-    (
-        "POST /v1/paperclip/sign-in/cancel",
-        route(Method::Post, "/v1/paperclip/sign-in/cancel", Answer::Json),
-    ),
-    (
-        "POST /v1/messaging/read",
-        route(Method::Post, "/v1/messaging/read", Answer::Json),
-    ),
-    (
-        "POST /v1/messaging/answer",
-        route(Method::Post, "/v1/messaging/answer", Answer::Json),
-    ),
-    (
-        "POST /v1/messaging/send",
-        route(Method::Post, "/v1/messaging/send", Answer::Json),
-    ),
-    (
-        "POST /v1/messaging/attachment",
-        route(Method::Post, "/v1/messaging/attachment", Answer::Json),
-    ),
-    (
-        "POST /v1/messaging/changes",
-        route(Method::Post, "/v1/messaging/changes", Answer::Json),
-    ),
-    (
-        "POST /v1/messaging/focus",
-        route(Method::Post, "/v1/messaging/focus", Answer::Json),
-    ),
     // Whether a plugin's runner stopped because the sandbox failed while it
     // ran, and Check again (HAL-15113): codes only, kept in the host's
     // memory; the page sends only the plugin's id, and nothing starts.
@@ -470,11 +417,12 @@ const ROUTES: &[(&str, Route)] = &[
     ),
 ];
 
-/// The route a page names, when it is one of the table's and answers as
+/// The route a page names, when it is one of the tables' and answers as
 /// `answer`; `None` for any other name.
 pub fn find_route(name: &str, answer: Answer) -> Option<Route> {
     ROUTES
         .iter()
+        .chain(PAPERCLIP_ROUTES)
         .find(|(each, route)| *each == name && route.answer == answer)
         .map(|(_, route)| *route)
 }

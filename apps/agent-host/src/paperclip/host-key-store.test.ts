@@ -17,13 +17,17 @@ const entry = {
 function storeWith(file: PaperclipConnection | undefined) {
   const kept: StoredPaperclipKey[] = [];
   const written: PaperclipConnection[] = [];
+  const forgot: string[] = [];
+  const removed: string[] = [];
   const store = new HostKeyStore({
     keep: (stored) => kept.push(stored),
     connect: async () => undefined,
     readConnection: async () => file,
     writeConnection: async (_workspace, _name, connection) => void written.push(connection),
+    forget: async (_workspace, name) => void forgot.push(name),
+    removeConnection: async (_workspace, name) => void removed.push(name),
   });
-  return { store, kept, written };
+  return { store, kept, written, forgot, removed };
 }
 
 verifies("agent-host.paperclip-sign-in", () => {
@@ -34,9 +38,20 @@ verifies("agent-host.paperclip-sign-in", () => {
         address: `${address}/`,
         company: "acme",
       });
-      await store.save(entry);
+      expect(await store.save(entry)).toEqual({ createdFile: false });
       expect(kept).toEqual([entry]);
       expect(written).toEqual([]);
+    });
+
+    it("undoes a save: forgets the key, and removes only a file it wrote", async () => {
+      const { store, forgot, removed } = storeWith(undefined);
+      const saved = await store.save(entry);
+      expect(saved).toEqual({ createdFile: true });
+      await store.drop(entry, saved);
+      expect(forgot).toEqual(["acme"]);
+      expect(removed).toEqual(["acme"]);
+      await store.drop(entry, { createdFile: false });
+      expect(removed).toEqual(["acme"]);
     });
 
     it("keeps no key when the file changed to another company during the sign-in", async () => {

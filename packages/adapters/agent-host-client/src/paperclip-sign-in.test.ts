@@ -44,14 +44,17 @@ verifies("agent-host-client.paperclip-sign-in", () => {
       ]);
     });
 
-    it("polls and cancels by the sign-in's ID", async () => {
+    it("polls, confirms and cancels by the sign-in's ID", async () => {
       const host = new FakeHost()
         .answer("POST /v1/paperclip/sign-in/poll", ok({ status: "pending" }))
+        .answer("POST /v1/paperclip/sign-in/confirm", ok({ confirmed: true }))
         .answer("POST /v1/paperclip/sign-in/cancel", ok({ status: "cancelled", keyMayWork: true }));
       const signIn = new AgentHostPaperclipSignIn(host, workspace);
       expect(await signIn.poll("sign-in-1")).toEqual({ status: "pending" });
+      expect(await signIn.confirm("sign-in-1")).toBe(true);
       expect(await signIn.cancel("sign-in-1")).toEqual({ status: "cancelled", keyMayWork: true });
       expect(host.calls.map((call) => call.body)).toEqual([
+        { signInId: "sign-in-1" },
         { signInId: "sign-in-1" },
         { signInId: "sign-in-1" },
       ]);

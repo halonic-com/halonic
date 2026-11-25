@@ -1,11 +1,15 @@
-import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ManualClock, MemoryScheduler } from "@halonicjs/adapter-memory";
 import { parsePaperclipConnection } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it } from "vitest";
-import { readConnectionFile, writeConnectionFile } from "../messaging/connection-file.ts";
+import {
+  readConnectionFile,
+  removeConnectionFile,
+  writeConnectionFile,
+} from "../messaging/connection-file.ts";
 import { type HostServer, startHostServer } from "../server/host-server.ts";
 import { randomLaunchToken } from "../server/launch-token.ts";
 import { HostKeyStore } from "./host-key-store.ts";
@@ -23,6 +27,7 @@ interface Setup {
   calls: FakeSignInCalls;
   kept: StoredPaperclipKey[];
   connected: string[];
+  forgot: string[];
   logged: string[];
   close(): Promise<void>;
 }
@@ -40,6 +45,7 @@ async function started(): Promise<Setup> {
   const clock = new ManualClock();
   const kept: StoredPaperclipKey[] = [];
   const connected: string[] = [];
+  const forgot: string[] = [];
   const logged: string[] = [];
   let signIn: PaperclipSignIn | undefined;
   const scheduler = new MemoryScheduler(
@@ -53,6 +59,8 @@ async function started(): Promise<Setup> {
       connect: async (_workspace, name) => void connected.push(name),
       readConnection: readConnectionFile,
       writeConnection: writeConnectionFile,
+      forget: async (_workspace, name) => void forgot.push(name),
+      removeConnection: removeConnectionFile,
     }),
     scheduler,
     clock,
@@ -69,7 +77,7 @@ async function started(): Promise<Setup> {
     await server.close();
     await rm(workspace, { recursive: true, force: true });
   };
-  setup = { url: server.url, workspace, calls, kept, connected, logged, close };
+  setup = { url: server.url, workspace, calls, kept, connected, forgot, logged, close };
   return setup;
 }
 
@@ -175,6 +183,47 @@ verifies("agent-host.paperclip-sign-in", () => {
       const { signInId } = await startAt({ address });
       expect(await (await post("cancel", { signInId })).json()).toEqual({ status: "cancelled" });
       expect(calls.cancelled).toHaveLength(1);
+    });
+
+    it("confirm a key Studio kept, so the host keeps it and the file", async () => {
+      const { calls, workspace } = await started();
+      const { signInId } = await startAt({ address });
+      calls.statuses = ["approved"];
+      await post("poll", { signInId });
+      expect(await (await post("confirm", { signInId })).json()).toEqual({ confirmed: true });
+      expect(await (await post("cancel", { signInId })).json()).toEqual({ status: "unknown" });
+      expect(await readConnectionFile(workspace, "acme")).toBeDefined();
+      expect(calls.revoked).toEqual([]);
+    });
+
+    it("remove the new connection's file when Studio couldn't keep the key", async () => {
+      const { calls, workspace, forgot } = await started();
+      const { signInId } = await startAt({ address });
+      calls.statuses = ["approved"];
+      await post("poll", { signInId });
+      expect(await (await post("cancel", { signInId })).json()).toEqual({ status: "cancelled" });
+      expect(await readdir(join(workspace, "connections/paperclip"))).toEqual([]);
+      expect(forgot).toEqual(["acme"]);
+      expect(calls.revoked).toEqual([fakeBoardKey]);
+      expect(await (await post("confirm", { signInId })).json()).toEqual({ confirmed: false });
+    });
+
+    it("keep an existing connection's file when Studio couldn't keep the key", async () => {
+      const { calls, workspace, forgot } = await started();
+      await connectionFile(
+        workspace,
+        "acme",
+        `label: Acme
+address: ${address}
+company: acme
+`,
+      );
+      const { signInId } = await startAt({ address });
+      calls.statuses = ["approved"];
+      await post("poll", { signInId });
+      await post("cancel", { signInId });
+      expect(await readConnectionFile(workspace, "acme")).toBeDefined();
+      expect(forgot).toEqual(["acme"]);
     });
 
     it("refuse a request from another site before reading it", async () => {

@@ -59,6 +59,8 @@ const stateAnswer = s.discriminatedUnion("status", [
   s.object({ status: s.literal("unknown") }).strict(),
 ]);
 
+const confirmAnswer = s.object({ confirmed: s.boolean() }).strict();
+
 /** One of the workspace's Paperclip connection files, as Settings › Connections lists it. */
 export interface PaperclipConnectionRow {
   readonly id: MessagingId;
@@ -123,7 +125,22 @@ export class AgentHostPaperclipSignIn {
     return readAnswer(route, await this.#transport.request(route, { signInId }), stateAnswer);
   }
 
-  /** Ends a sign-in: the host cancels its challenge and drops the key. */
+  /**
+   * Says the keychain has the key the approved poll answered. Until then the
+   * host keeps the sign-in, and revokes the key after a minute.
+   *
+   * @returns whether the host still had the sign-in; `false` means it revoked the key already
+   */
+  async confirm(signInId: string): Promise<boolean> {
+    const route = "POST /v1/paperclip/sign-in/confirm";
+    const answer = await this.#transport.request(route, { signInId });
+    return readAnswer(route, answer, confirmAnswer).confirmed;
+  }
+
+  /**
+   * Ends a sign-in: the host cancels its challenge and drops the key. After
+   * the approved answer, the host revokes the key and undoes the sign-in.
+   */
   async cancel(signInId: string): Promise<PaperclipSignInState> {
     const route = "POST /v1/paperclip/sign-in/cancel";
     return readAnswer(route, await this.#transport.request(route, { signInId }), stateAnswer);

@@ -65,11 +65,16 @@ verifies("agent-host.paperclip-sign-in", () => {
         userId: "user-ada",
         companyId: "acme",
         key: fakeBoardKey,
+        name: connection.name,
+        address: connection.address,
       });
       expect(keyStore.saved).toEqual([{ ...connection, key: fakeBoardKey }]);
       // The answer that holds the key ends the sign-in: no later poll gets it again.
       expect(await flow.poll(started.signInId)).toEqual({ status: "unknown" });
+      // Studio's confirm ends the hand-over; the key stays connected.
+      expect(await flow.confirm(started.signInId)).toBe(true);
       expect(flow.holdsKey(started.signInId)).toBe(false);
+      expect(calls.revoked).toEqual([]);
       expect(calls.revoked).toEqual([]);
     });
 
