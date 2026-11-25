@@ -65,6 +65,8 @@ function fieldProblem(problem: StartProblem | undefined): string | undefined {
       return words.ADDRESS_UNREACHABLE;
     case "address-not-allowed":
       return words.ADDRESS_NOT_PAPERCLIP;
+    case "too-many-sign-ins":
+      return words.TOO_MANY_SIGN_INS;
     case "other-company":
       return words.companyMismatch(undefined).text;
   }

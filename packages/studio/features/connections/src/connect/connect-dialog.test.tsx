@@ -240,6 +240,18 @@ verifies("connections.connect-dialog", () => {
     await connectTo("https://elsewhere.test");
     expect(text()).toContain("Halonic couldn't reach Paperclip at this address.");
   });
+
+  it("says when the server already has 8 sign-ins waiting, under the address", async () => {
+    const fake = new FakeAgentConnections({ refuseStart: "too-many-sign-ins" });
+    await openDialog({ fake });
+    await connectTo("https://paperclip.acme.test");
+    const field = dialog()?.querySelector("input");
+    const line = document.getElementById(field?.getAttribute("aria-describedby") ?? "");
+    expect(line?.textContent).toBe(
+      "This server already has 8 sign-ins waiting for approval. Approve or close one, or try again in 10 minutes.",
+    );
+    expect(text()).not.toContain("Halonic couldn't start the sign-in.");
+  });
 });
 
 verifies("connections.connect-dialog", () => {

@@ -38,7 +38,7 @@ const startAnswer = s.discriminatedUnion("outcome", [
   s
     .object({
       outcome: s.literal("refused"),
-      reason: s.enum(["address-not-allowed", "unreachable"]),
+      reason: s.enum(["address-not-allowed", "unreachable", "too-many-sign-ins"]),
     })
     .strict(),
 ]);

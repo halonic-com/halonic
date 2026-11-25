@@ -31,6 +31,8 @@ export type SignInRefusal =
   | "address-not-allowed"
   /** Nothing answered at the address. */
   | "unreachable"
+  /** The server already holds 8 sign-ins waiting for approval; one frees up within 10 minutes. */
+  | "too-many-sign-ins"
   /** The person who approved doesn't belong to the connection's company. */
   | "other-company";
 
