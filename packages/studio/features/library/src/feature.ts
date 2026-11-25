@@ -1,4 +1,5 @@
 import type { LibraryItemKind } from "@halonicjs/app";
+import { ItemChatService } from "@halonicjs/studio-feature-assistant/api";
 import { defineFeature, type ItemRef, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { CollectionHostService } from "./collection-host.ts";
 import { ConnectorSecretsService } from "./connector-secrets-host.ts";
@@ -59,6 +60,8 @@ export const libraryFeature = defineFeature({
     NewCollectionHostService,
     NewConnectorHostService,
     NewSkillHostService,
+    // The skill page's "Ask about this skill…" (assistant.chat.ask-about).
+    ItemChatService,
   ],
   register(studio) {
     studio.places.add({

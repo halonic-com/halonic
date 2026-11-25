@@ -18,5 +18,7 @@ export const skillWords = {
   loading: "Loading the skill…",
   couldntLoad: "Couldn't load this skill",
   tryAgain: "Try again",
+  /** The shell's item-page wording, opening the side panel in v0.1 (HAL-18155). */
+  askAbout: "Ask about this skill…",
   unreadable: "This skill's file can't be read here. Open it as a file to fix its header.",
 } as const;

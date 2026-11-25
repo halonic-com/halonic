@@ -5,7 +5,14 @@ import {
   ChatComposer,
 } from "@halonicjs/studio-kit";
 import { type ChatSecretHold, chatSecretHold } from "@halonicjs/studio-shell";
-import { type ReactNode, type RefObject, useEffect, useState } from "react";
+import {
+  type Dispatch,
+  type ReactNode,
+  type RefObject,
+  type SetStateAction,
+  useEffect,
+  useState,
+} from "react";
 import { buildChatWords as words } from "../chat/build-chat-words.ts";
 
 /** The props of {@link BuildComposer}. */
@@ -120,17 +127,20 @@ export function BuildComposer(props: BuildComposerProps) {
 }
 
 /**
- * Does what the box is asked once: puts the text in when there is one, then moves focus into the
+ * Does what the box is asked once: puts the text in when there is one, after any unsent text
+ * in a new paragraph so nothing typed is lost (`assistant.chat.describe`), then moves focus into the
  * box with the caret at the end, once the text is drawn (flow-workflows 2.2).
  */
 function useBoxRequest(
   { request, onRequestDone, box }: BuildComposerProps,
-  setDraft: (text: string) => void,
+  setDraft: Dispatch<SetStateAction<string>>,
 ): void {
   const [caretToEnd, setCaretToEnd] = useState(0);
   useEffect(() => {
     if (request === undefined) return;
-    if (request.text !== undefined) setDraft(request.text);
+    const text = request.text;
+    if (text !== undefined)
+      setDraft((typed) => (typed.trim() === "" ? text : `${typed}\n\n${text}`));
     setCaretToEnd((count) => count + 1);
     onRequestDone?.();
   }, [request, onRequestDone, setDraft]);

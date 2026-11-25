@@ -1,4 +1,5 @@
 import type { SkillChange } from "@halonicjs/app";
+import { ItemChatService } from "@halonicjs/studio-feature-assistant/api";
 import {
   Button,
   EmptyState,
@@ -30,6 +31,29 @@ const keptWords: Readonly<Record<SkillField, string>> = {
   name: skillWords.nameKept,
   description: skillWords.descriptionKept,
 };
+
+/** "Ask about this skill…": the Assistant's side panel on a chat about it; none without the Assistant. */
+function AskAboutSkill({
+  item,
+  name,
+  context,
+}: Pick<ItemViewProps, "item" | "context"> & { readonly name: string }) {
+  const itemChat = context.services.find(ItemChatService);
+  if (itemChat === undefined) return null;
+  // An unnamed skill goes by its id, as its title does.
+  const shownName = name || item.id;
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={() =>
+        void itemChat.askAbout({ kind: "skill", hub: item.hub, id: item.id }, shownName, context)
+      }
+    >
+      {skillWords.askAbout}
+    </Button>
+  );
+}
 
 function refOf(hub: string, id: string): SkillRef {
   return { hub: hub === sharedHubKey ? null : hub, id };
@@ -198,7 +222,10 @@ function LoadedSkillPage({
         <h1 ref={trash.titleRef} tabIndex={-1} className={trash.titleClassName}>
           {parts.name || item.id}
         </h1>
-        {trash.menu}
+        <div className="flex items-center gap-1">
+          <AskAboutSkill item={item} name={parts.name} context={context} />
+          {trash.menu}
+        </div>
       </div>
       <FormRows>
         <Field label={skillWords.name} hint={keptHint("name")}>
