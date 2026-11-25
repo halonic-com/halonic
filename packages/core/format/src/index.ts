@@ -159,6 +159,7 @@ export {
   type WriteModeName,
 } from "./kinds/tool/actions.ts";
 export { checkTool } from "./kinds/tool/checks.ts";
+export type { RepositoryReviewerRules } from "./kinds/tool/reviewer-rules.ts";
 export type { Tool, ToolCallers, ToolParameter } from "./kinds/tool/schema.ts";
 export type {
   Branch,

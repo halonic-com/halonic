@@ -5,6 +5,7 @@
 // tool can never give itself a power the runtime doesn't already have.
 // Adding an action is a security PR (Julian and Liam).
 import { s } from "@halonicjs/schema-kit";
+import { ReviewerRules } from "./reviewer-rules.ts";
 
 /**
  * A key the plugin's installer gives the action, as a secret reference in
@@ -115,7 +116,14 @@ export const TOOL_ACTIONS = {
       { name: "pr", required: true },
       { name: "repo", required: false },
     ],
-    settings: s.object({ repositories }).strict(),
+    settings: s
+      .object({ repositories, reviewerRules: ReviewerRules.optional() })
+      .strict()
+      .refine(
+        ({ repositories: listed, reviewerRules }) =>
+          Object.keys(reviewerRules ?? {}).every((repo) => listed.includes(repo)),
+        "give reviewer rules only for repositories in the list",
+      ),
   },
   "github.open-pull-requests": {
     about: "Lists the open pull requests whose branch starts with the caller's name.",

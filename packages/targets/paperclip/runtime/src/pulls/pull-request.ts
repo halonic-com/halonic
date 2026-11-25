@@ -1,3 +1,4 @@
+import type { RepositoryReviewerRules, Routing } from "@halonicjs/format";
 import type { CheckState, GitHubGet } from "../github.ts";
 import type { ActionCall, ActionHandler } from "../handlers.ts";
 import {
@@ -16,13 +17,21 @@ import {
   titleText,
   untrustedNote,
 } from "./reads.ts";
+import {
+  changedPaths,
+  type ReviewerByPaths,
+  reviewerByPaths,
+  reviewerRulesOf,
+  reviewerText,
+} from "./reviewer-role.ts";
 import { type Approval, approvals, latestFinding, type Review } from "./reviews.ts";
 
 /**
  * The `github.pull-request` action: everything an agent asks GitHub when it
  * checks a pull request (is it green, mergeable, approved, queued?) in one
- * read. Ported from `tooling/paperclip`'s `pr_status`, without its company
- * reviewer routing (see `reviews.ts`).
+ * read. Ported from `tooling/paperclip`'s `pr_status`; the company's reviewer
+ * routing comes from the tool's `reviewerRules` and the snapshot's routing
+ * (`reviewer-role.ts`).
  */
 
 /** What the action returns as `data`. */
@@ -49,6 +58,14 @@ export interface PullRequestStatus {
   readonly changedLines: number;
   /** The newest review finding on the head, as `<id> at <time>`. */
   readonly latestReviewFinding: string | undefined;
+  /** The reviewer by the tool's path rules; undefined when it has none for this repository. */
+  readonly reviewer: ReviewerByPaths | undefined;
+}
+
+/** What picks the reviewer: the repository's path rules and who covers each role. */
+export interface ReviewerSources {
+  readonly rules: RepositoryReviewerRules | undefined;
+  readonly routing: Routing | undefined;
 }
 
 /** `pr` as a number or a pull request URL on one of the tool's repositories. */
@@ -90,12 +107,14 @@ export async function pullRequestStatus(
   repo: string,
   number: number,
   nameOf: AgentName = async () => undefined,
+  sources: ReviewerSources = { rules: undefined, routing: undefined },
 ): Promise<PullRequestStatus> {
   const pull = (await get(`/repos/${repo}/pulls/${number}`)) as PullDetails;
   const head = pull.head.sha;
   const state = pull.merged_at !== null ? "merged" : pull.state;
   const open = state === "open";
-  const [ciOk, comments, inQueue, compare] = await Promise.all([
+  const changedLines = (pull.additions ?? 0) + (pull.deletions ?? 0);
+  const [ciOk, comments, inQueue, compare, paths] = await Promise.all([
     ciOkOf(get, repo, pull),
     everyPage(get, `/repos/${repo}/issues/${number}/comments`) as Promise<Review[]>,
     open ? inMergeQueue(get, repo, number) : Promise.resolve(false),
@@ -104,6 +123,8 @@ export async function pullRequestStatus(
           behind_by?: number;
         }>)
       : Promise.resolve(undefined),
+    // The files list costs a request per 100 files, so only with rules to match.
+    sources.rules === undefined ? Promise.resolve([]) : changedPaths(get, repo, number),
   ]);
   const finding = await latestFinding(get, repo, number, head, comments);
   // A fork's branch can be named like ours, so it names no author or task.
@@ -131,8 +152,12 @@ export async function pullRequestStatus(
     inQueue,
     approvals: found,
     approvedOnHead: found.some((approval) => approval.counts),
-    changedLines: (pull.additions ?? 0) + (pull.deletions ?? 0),
+    changedLines,
     latestReviewFinding: finding === undefined ? undefined : `${finding.id} at ${finding.at}`,
+    reviewer:
+      sources.rules === undefined
+        ? undefined
+        : reviewerByPaths(sources.rules, paths, changedLines, sources.routing),
   };
 }
 
@@ -178,6 +203,7 @@ export function pullRequestText(status: PullRequestStatus): string {
     `head ${status.head.slice(0, 7)}: ci-ok ${status.ciOk}; mergeable ${status.mergeable}; behind base by ${status.behindBase ?? "n/a"}`,
     `merge queue: ${status.inQueue ? "queued" : "not queued"}; approvals: ${approvalsText(status.approvals)}`,
     `${status.changedLines} changed lines`,
+    reviewerText(status.reviewer),
     ...(status.latestReviewFinding === undefined
       ? []
       : [`newest review finding on this head: ${status.latestReviewFinding}`]),
@@ -189,7 +215,7 @@ export function pullRequestText(status: PullRequestStatus): string {
 export const pullRequestHandler: ActionHandler = {
   capabilities: [],
   run: async (call) => {
-    const { tool, params, github } = call;
+    const { tool, params, github, routing } = call;
     if (tool.action.run !== "github.pull-request") {
       return { error: `${tool.name}: runs ${tool.action.run}, not github.pull-request.` };
     }
@@ -202,6 +228,7 @@ export const pullRequestHandler: ActionHandler = {
       target.repo,
       target.number,
       agentNames(call),
+      { rules: reviewerRulesOf(tool, target.repo), routing },
     );
     return { content: pullRequestText(status), data: status };
   },
