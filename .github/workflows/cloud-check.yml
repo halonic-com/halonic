@@ -1,0 +1,112 @@
+# One-off deployed check of the run container (HAL-18578, board approval on HAL-18117). Never
+# merged: this file lives only on the draft branch owen/HAL-18578-cloud-check, and the branch is
+# deleted after the run. It builds #5907's image, deploys the throwaway `halonic-cloud-check`
+# Worker (one standard-1 instance at most), runs the checks, prints pass/fail lines, then deletes
+# the Worker, the container application and the image whatever happened, and lists them again.
+#
+# The job runs in the `cloud-check` environment: the board is its required reviewer, it accepts
+# only this branch, and it holds a scoped token that expires in 48 h. A push alone deploys nothing.
+
+name: Cloud container check (one-off)
+
+on:
+  push:
+    branches: [owen/HAL-18578-cloud-check]
+
+permissions: {}
+
+concurrency:
+  group: cloud-check
+  cancel-in-progress: false
+
+env:
+  # Exact version, fetched only by this throwaway job (no dependencies.json entry).
+  WRANGLER: npx --yes wrangler@4.168.0
+  WORKER_NAME: halonic-cloud-check
+
+jobs:
+  check:
+    if: github.ref == 'refs/heads/owen/HAL-18578-cloud-check'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: cloud-check
+    permissions:
+      contents: read
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      WRANGLER_SEND_METRICS: "false"
+    defaults:
+      run:
+        shell: bash
+        working-directory: packages/targets/cloudflare/runtime/cloud-check
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+
+      - name: Secrets present
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::The cloud-check environment has no CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID."
+            exit 1
+          fi
+
+      # Deploy output names the account's workers.dev subdomain: it goes to a file, never the log.
+      - name: Build the image and deploy
+        run: |
+          token=$(openssl rand -hex 32)
+          echo "::add-mask::$token"
+          echo "CHECK_TOKEN=$token" >> "$GITHUB_ENV"
+          if ! $WRANGLER deploy --var "CHECK_TOKEN:$token" > "$RUNNER_TEMP/deploy.log" 2>&1; then
+            echo "::error::wrangler deploy failed; its output is withheld because it names the account."
+            grep -iE 'error|failed' "$RUNNER_TEMP/deploy.log" | sed -E 's/[a-z0-9-]+\.workers\.dev/<subdomain>.workers.dev/g' | head -20
+            exit 1
+          fi
+          url=$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' "$RUNNER_TEMP/deploy.log" | head -1)
+          echo "::add-mask::$url"
+          echo "CHECK_URL=$url" >> "$GITHUB_ENV"
+          echo "Deployed $WORKER_NAME."
+
+      - name: Run the checks
+        run: |
+          # The first request starts the container; give it a few tries while it comes up.
+          for attempt in 1 2 3 4 5; do
+            if curl --fail --silent --show-error --max-time 180 \
+              -H "x-check-token: $CHECK_TOKEN" "$CHECK_URL/check" > "$RUNNER_TEMP/results.txt"; then
+              break
+            fi
+            echo "Attempt $attempt failed; retrying in 20 s."
+            sleep 20
+          done
+          echo "--- results ---"
+          cat "$RUNNER_TEMP/results.txt"
+          test "$(grep -c '^PASS ' "$RUNNER_TEMP/results.txt")" -eq 6
+          ! grep -q '^FAIL ' "$RUNNER_TEMP/results.txt"
+
+      - name: Clean up and list what is left
+        if: always()
+        run: |
+          status=0
+          $WRANGLER delete --name "$WORKER_NAME" --force > /dev/null 2>&1 || echo "Worker delete: nothing deleted (it may not exist)."
+          for id in $($WRANGLER containers list 2>/dev/null | grep "$WORKER_NAME" | grep -oE '[0-9a-f]{8}-[0-9a-f-]{27}'); do
+            $WRANGLER containers delete "$id" > /dev/null 2>&1 || { echo "::error::Could not delete a container application."; status=1; }
+          done
+          for image in $($WRANGLER containers images list 2>/dev/null | grep "$WORKER_NAME" | awk '{print $1 ":" $2}'); do
+            $WRANGLER containers images delete "$image" > /dev/null 2>&1 || { echo "::error::Could not delete image $image."; status=1; }
+          done
+          echo "--- left after cleanup ---"
+          workers=$(curl --silent -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts" \
+            | grep -o "\"id\":\"$WORKER_NAME\"" | wc -l)
+          applications=$($WRANGLER containers list 2>/dev/null | grep -c "$WORKER_NAME" || true)
+          images=$($WRANGLER containers images list 2>/dev/null | grep -c "$WORKER_NAME" || true)
+          echo "$WORKER_NAME Workers: $workers"
+          echo "$WORKER_NAME container applications: $applications"
+          echo "$WORKER_NAME images: $images"
+          if [ "$workers" != 0 ] || [ "$applications" != 0 ] || [ "$images" != 0 ]; then
+            echo "::error::Something is left; delete it by hand and say so on HAL-18578."
+            status=1
+          fi
+          exit $status

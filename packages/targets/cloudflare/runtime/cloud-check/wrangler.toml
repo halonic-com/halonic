@@ -1,0 +1,22 @@
+# One-off deployed check of the run container (HAL-18578). Never merged: lives only on the draft
+# branch, is deployed by .github/workflows/cloud-check.yml and deleted again by the same job.
+name = "halonic-cloud-check"
+main = "worker.ts"
+compatibility_date = "2026-07-30"
+
+[[durable_objects.bindings]]
+name = "CHECK_CONTAINER"
+class_name = "CheckContainerObject"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["CheckContainerObject"]
+
+# The board's limits (HAL-18117): one standard-1 instance at most.
+# The build context is the repo root, as the Dockerfile expects (it copies from patches/).
+[[containers]]
+class_name = "CheckContainerObject"
+image = "../container/Dockerfile"
+image_build_context = "../../../../.."
+instance_type = "standard-1"
+max_instances = 1
