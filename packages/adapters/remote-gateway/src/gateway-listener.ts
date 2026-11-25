@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
 import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { Duplex } from "node:stream";
-import { gatewayMaxFrameBytes, gatewaySessionLimits } from "@halonicjs/ports";
+import { gatewayMaxFrameBytes, gatewaySessionLimits, type PhoneMessaging } from "@halonicjs/ports";
 import { GatewayConnection } from "./gateway-connection.ts";
+import type { GatewayRateLimit } from "./messaging-dispatch.ts";
 import type { GatewayPairing, GatewayPhones } from "./phone-access.ts";
 import { SecureSession } from "./secure-session.ts";
 import type { GatewayPolicy, GatewaySessionSource } from "./session-source.ts";
@@ -20,6 +21,8 @@ export const gatewayPath = "/v1/gateway";
 export interface GatewayListenerOptions {
   source: GatewaySessionSource;
   policy: GatewayPolicy;
+  /** The Inbox, Messenger and team status; without it a phone's version 4 reads are `not-supported`. */
+  messaging?: GatewayMessagingHost;
   /** The host's key and its paired phones. */
   phones: GatewayPhones;
   /** The host's pairing service. */
@@ -53,6 +56,14 @@ export interface GatewayListenerOptions {
    * and the host carry on.
    */
   onError(error: unknown): void;
+}
+
+/** What the host serves every phone's Inbox, Messenger and team status from. */
+export interface GatewayMessagingHost {
+  /** The host's allow-list view of its agent ports. */
+  readonly view: PhoneMessaging;
+  /** The rate of the paired phone with this key, the same one each time it connects. */
+  rateLimitFor(phoneKey: Uint8Array): GatewayRateLimit;
 }
 
 /** A running gateway listener. */
@@ -207,11 +218,15 @@ function serveSocket(
     handshakeTimeoutMs: options.handshakeTimeoutMs ?? gatewaySessionLimits.handshakeTimeoutMs,
     // The session has closed its wire by then; the error only needs reporting.
     onError: (error) => options.onError(error),
-    openConnection: (transport) => {
+    openConnection: (transport, phoneKey) => {
+      const { messaging } = options;
       connection = new GatewayConnection({
         source: options.source,
         policy: options.policy,
         transport,
+        ...(messaging === undefined
+          ? {}
+          : { messaging: { view: messaging.view, rateLimit: messaging.rateLimitFor(phoneKey) } }),
       });
       connections.add(connection);
       return connection;

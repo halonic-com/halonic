@@ -6,6 +6,7 @@ export {
 export {
   type GatewayListener,
   type GatewayListenerOptions,
+  type GatewayMessagingHost,
   gatewayLoopbackHost,
   gatewayPath,
   startGatewayListener,
@@ -15,6 +16,11 @@ export {
   type GatewayParseResult,
   parseGatewayClientMessage,
 } from "./message-parser.ts";
+export type {
+  GatewayMessaging,
+  GatewayRateLimit,
+  GatewayRateLimited,
+} from "./messaging-dispatch.ts";
 export type {
   ConnectedPhone,
   GatewayPairing,

@@ -9,6 +9,12 @@ import {
 } from "@halonicjs/ports";
 import { fitEvent } from "./fit-event.ts";
 import { type GatewayFrame, parseGatewayClientMessage } from "./message-parser.ts";
+import {
+  dispatchMessaging,
+  type GatewayMessaging,
+  type MessagingContext,
+  MessagingWatch,
+} from "./messaging-dispatch.ts";
 import type { GatewayPolicy, GatewaySessionEvent, GatewaySessionSource } from "./session-source.ts";
 
 /** What a connection needs from the transport that carries it. */
@@ -25,6 +31,8 @@ export interface GatewayConnectionDeps {
   source: GatewaySessionSource;
   policy: GatewayPolicy;
   transport: GatewayTransport;
+  /** The Inbox, Messenger and team status for this phone; without it they are `not-supported`. */
+  messaging?: GatewayMessaging;
 }
 
 /** How many frames may wait to be handled (the one being handled included) before the phone is cut off. */
@@ -50,6 +58,7 @@ interface Watch {
 export class GatewayConnection {
   private readonly deps: GatewayConnectionDeps;
   private readonly watches = new Map<string, Watch>();
+  private readonly messagingWatch = new MessagingWatch();
   private greeted = false;
   private closed = false;
   private pendingFrames = 0;
@@ -97,6 +106,7 @@ export class GatewayConnection {
     this.closed = true;
     for (const watch of this.watches.values()) watch.stop();
     this.watches.clear();
+    this.messagingWatch.stop();
     this.deps.transport.close();
   }
 
@@ -141,10 +151,26 @@ export class GatewayConnection {
       case "prompt":
         return this.prompt(message);
       default:
-        // The Inbox, Messenger and team status are served once the host has
-        // its `PhoneMessaging` view (G2 on HAL-17511); until then, refused.
-        return this.refuse(message.id, "not-supported");
+        return this.serveMessaging(message);
     }
+  }
+
+  /** The Inbox, Messenger and team status, through the dispatcher table only. */
+  private serveMessaging(message: Parameters<typeof dispatchMessaging>[1]): Promise<void> | void {
+    const { messaging, policy } = this.deps;
+    if (messaging === undefined) return this.refuse(message.id, "not-supported");
+    const context: MessagingContext = {
+      messaging,
+      policy,
+      watch: this.messagingWatch,
+      replies: {
+        send: (json) => this.write(json),
+        refuse: (replyTo, code) => this.refuse(replyTo, code),
+        malformed: () => this.closeWith("malformed"),
+        close: () => this.close(),
+      },
+    };
+    return dispatchMessaging(context, message);
   }
 
   /**
