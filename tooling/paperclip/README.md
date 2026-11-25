@@ -8,7 +8,7 @@ the merge queue's fill order (`queue.prio`).
 - **Layer:** tooling
 - **Owner:** mateo
 - **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; the GitHub snapshot's reader and shape; `reviewerFor`, `isLiamPath` and the path lists; `queuePrio` and its weights)
-- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-conflict-files`, `paperclip.pr-watcher-wake-status`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-monitor-postpone`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-stack-rebase`, `paperclip.branch-update-write-scope`, `paperclip.pr-watcher-plugin`, `paperclip.pr-watcher-review-priority`, `paperclip.pr-watcher-parent-block`, `paperclip.pr-tools`, `paperclip.task-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-piles`, `paperclip.board-check-waiting`, `paperclip.board-check-load`, `paperclip.board-check-approvals`, `paperclip.board-check-merge-speed`, `paperclip.board-tools`, `paperclip.merge-speed-tool`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.github-routes`, `paperclip.agent-merge-counts`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`, `paperclip.task-effort-rules`, `paperclip.task-effort-guard`, `paperclip.task-effort-writes`, `paperclip.handoff-limit`
+- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-conflict-files`, `paperclip.pr-watcher-wake-status`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-monitor-postpone`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-stack-rebase`, `paperclip.branch-update-write-scope`, `paperclip.pr-watcher-plugin`, `paperclip.pr-watcher-review-priority`, `paperclip.pr-watcher-parent-block`, `paperclip.pr-tools`, `paperclip.ci-failures-tool`, `paperclip.task-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-piles`, `paperclip.board-check-waiting`, `paperclip.board-check-load`, `paperclip.board-check-approvals`, `paperclip.board-check-merge-speed`, `paperclip.board-tools`, `paperclip.merge-speed-tool`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.github-routes`, `paperclip.agent-merge-counts`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`, `paperclip.task-effort-rules`, `paperclip.task-effort-guard`, `paperclip.task-effort-writes`, `paperclip.handoff-limit`
 
 ## PR watcher
 
@@ -290,7 +290,7 @@ worst first. Open PRs say "Not available yet" until HAL-16251.
 ## PR tools
 
 Agent tools (HAL-15920, B1) that replace a handful of `gh` calls with
-one. The first two read GitHub with GET requests only, through the same reader and
+one. `pr_status` and `ci_failures` read GitHub with GET requests only, through the same reader and
 token as the watcher, and give up after 10 s (each request after 8 s),
 inside the about 15 s the tool bridge gives a call.
 
@@ -304,6 +304,20 @@ inside the about 15 s the tool bridge gives a call.
   author says whether a pull request is a security or release one; the
   tool can't tell, so a counting approval from Julian carries that note.
   About 10 requests.
+- **`ci_failures(pr | sha, repo?)`** (HAL-18982, token plan Track B on
+  HAL-18938): why CI is red, instead of `gh run view --log` and `gh api`
+  log reads. For a pull request's head or a full commit sha it lists the
+  failed jobs (the newest run of each check that ended `failure`,
+  `timed_out` or `startup_failure`; not cancelled or skipped ones, and not
+  `ci-ok`, which only repeats them), each with its link, its error
+  annotations (failing test, file, line, the message's last 8 lines; 10 per
+  job) and its summary's last 12 lines. At most 8 jobs; every line of
+  GitHub text is cut at 300 characters and JSON-quoted, and the answer at
+  8,000 characters. A private repository's answer has job names and links
+  only. It doesn't read raw job logs: GitHub serves them through a
+  redirect to another host, which the reader refuses so the token stays
+  on api.github.com, and they need the Actions read permission. About 3
+  requests, plus one per failed job.
 - `my_prs()` moved to the workspace plugin (workspace-company, HAL-17968);
   the gh guard still points `gh pr list` and `gh pr status` to it there.
 - **`queue_state()`** (Board Checker addendum on HAL-15997, for the Merger
