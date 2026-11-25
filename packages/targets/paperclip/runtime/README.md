@@ -15,7 +15,7 @@ The plugin builder (`halonic build paperclip-plugin`, a later step) writes three
 
 | File | Where it comes from |
 | --- | --- |
-| `worker.js` | `pnpm run build:worker` in this package; copied unchanged into every plugin |
+| `worker.js` | this package's worker, copied unchanged into every plugin (the worker entry comes in a follow-up, HAL-18000) |
 | `snapshot.json` | the workspace's snapshot (`makeSnapshot` and `snapshotText` in `@halonicjs/format`) |
 | the manifest | written by the builder from the snapshot and `pluginActions()` |
 
