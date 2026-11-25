@@ -4,7 +4,7 @@
 // pointed at temporary folders and stubs for what needs root (setpriv, install -o, chown) or XFS
 // (cp --reflink).
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
@@ -69,7 +69,12 @@ const vm = ({ settle = -60, evilLink = false } = {}) => {
       .replace("LOWER=/cache/fast-lower", `LOWER=${lower}`)
       .replace("MOUNTS=/proc/self/mountinfo", `MOUNTS=${join(box, "mountinfo")}`)
       .replace("SUBUID=/etc/subuid", `SUBUID=${join(box, "subuid")}`)
-      .replace("SETTLE=120", `SETTLE=${settle}`),
+      .replace("SETTLE=120", `SETTLE=${settle}`)
+      .replace("SLOTS=/etc/halonic-ci/slots", `SLOTS=${join(box, "slots")}`)
+      .replace(
+        "MAINT_LOCK=/run/lock/halonic-ci-maint.lock",
+        `MAINT_LOCK=${join(box, "maint.lock")}`,
+      ),
   );
   const run = (...args) => {
     const res = spawnSync("/bin/bash", [script, ...args], {
@@ -182,20 +187,60 @@ test("fast lower: fast slots mount a generation, never /cache/trusted", () => {
   assert.ok(shipped.includes('9>"$LOWER/.lock"'));
 });
 
-test("fast lower: refreshed every 5 minutes on its own timer, never while the cache check runs (HAL-18424)", () => {
+test("fast lower: refreshed every 5 minutes on its own timer, by the script's timer command (HAL-18424)", () => {
   assert.match(read("vm/halonic-ci-fast-lower.timer"), /^OnCalendar=\*:0\/5$/m);
-  const unit = read("vm/halonic-ci-fast-lower.service");
-  assert.ok(
-    unit.includes(
-      "ExecStart=/usr/bin/flock -n -E 0 /run/lock/halonic-ci-maint.lock /usr/local/sbin/halonic-ci-fast-lower.sh refresh",
-    ),
-  );
   assert.match(
-    unit,
-    /^ExecCondition=\/bin\/grep -q halonic-runner@fast- \/etc\/halonic-ci\/slots$/m,
+    read("vm/halonic-ci-fast-lower.service"),
+    /^ExecStart=\/usr\/local\/sbin\/halonic-ci-fast-lower\.sh timer$/m,
   );
   // One refresher only: the hourly check no longer copies too.
   assert.doesNotMatch(read("vm/halonic-ci-maint.sh"), /fast-lower\.sh refresh/);
+});
+
+test("fast lower: the timer refreshes once fast slots are listed, and says why it skipped otherwise", () => {
+  const { box, lower, run } = vm();
+  const none = run("timer");
+  assert.equal(none.status, 0, none.out);
+  assert.match(none.out, /refresh skipped: no fast slot in /);
+  assert.equal(existsSync(join(lower, "current")), false);
+  writeFileSync(join(box, "slots"), "halonic-runner@large-1 halonic-runner@fast-1\n");
+  const res = run("timer");
+  assert.equal(res.status, 0, res.out);
+  assert.match(res.out, /generation [0-9]+ is current/);
+  assert.equal(generations(lower).length, 1);
+});
+
+test("fast lower: the timer skips while the cache check holds its lock, and fails once the snapshot is stale", async () => {
+  const { box, lower, run } = vm();
+  writeFileSync(join(box, "slots"), "halonic-runner@fast-1\n");
+  const lock = join(box, "maint.lock");
+  // The hourly check, holding the lock until its stdin closes.
+  const holder = spawn("flock", ["-x", lock, "-c", "echo held; read -r _"], {
+    stdio: ["pipe", "pipe", "inherit"],
+  });
+  await new Promise((resolve) => holder.stdout.once("data", resolve));
+  try {
+    const fresh = String(Math.floor(Date.now() / 1000) - 60);
+    mkdirSync(join(lower, fresh, "turbo"), { recursive: true });
+    symlinkSync(fresh, join(lower, "current"));
+    const skipped = run("timer");
+    assert.equal(skipped.status, 0, skipped.out);
+    assert.match(
+      skipped.out,
+      /refresh skipped: the weekly cleanup or the hourly cache check holds /,
+    );
+    assert.deepEqual(generations(lower), [fresh]);
+    const old = String(Math.floor(Date.now() / 1000) - 3600);
+    mkdirSync(join(lower, old, "turbo"), { recursive: true });
+    rmSync(join(lower, "current"));
+    symlinkSync(old, join(lower, "current"));
+    const stale = run("timer");
+    assert.notEqual(stale.status, 0);
+    assert.match(stale.out, /current generation is [0-9]+s old \(limit 1800s\)/);
+  } finally {
+    holder.stdin.end();
+    await new Promise((resolve) => holder.once("exit", resolve));
+  }
 });
 
 test("fast lower: only an idle fast slot leaves a stale snapshot, and only once GitHub let its runner go (HAL-18424)", () => {
@@ -207,7 +252,8 @@ test("fast lower: only an idle fast slot leaves a stale snapshot, and only once 
   assert.ok(check.includes('[ "$LABEL" = halonic-ci-fast ] && [ "$JOB_START" = 0 ] || return 1'));
   assert.ok(check.includes('[ $((now - MOUNTED_GEN)) -gt "$STALE_GEN_S" ] || return 1'));
   assert.ok(check.includes('[ "$cur" -gt "$MOUNTED_GEN" ]'));
-  assert.ok(slot.includes("STALE_GEN_S=600;"));
+  assert.ok(slot.includes("STALE_GEN_S=600; WARN_GEN_S=1800;"));
+  assert.ok(check.includes("warning: idle on snapshot $MOUNTED_GEN"));
   // The runner is deleted first (GitHub refuses while it holds a job); the container stops only after.
   assert.ok(
     slot.includes(

@@ -119,11 +119,14 @@ copy and the clean-up run as the runner's uid (`setpriv`), never as root, so a l
 mid-copy reaches only what jobs could read anyway. `vm/halonic-ci-fast-lower.timer` refreshes it every
 5 minutes once fast slots are listed in `/etc/halonic-ci/slots` (HAL-18424: hourly, a fast pull
 request missed nearly every typecheck and test entry, whose hashes change with most pushes to main).
-It skips a round while the weekly cleanup or the hourly check holds their lock. A slot mounts the
+It skips a round while the weekly cleanup or the hourly check holds their lock and logs why
+(`journalctl -t halonic-ci-fast-lower`); the unit fails when the current generation is over 30 minutes
+old. A slot mounts the
 generation current when it starts and may then wait long for a job, so an idle fast slot whose
 generation is over 10 minutes old, with a newer one published, deletes its runner and restarts on the
 new one. GitHub refuses to delete a runner that has taken a job, so a slot with a job is never
-restarted. A slot that finds no generation makes the first one. A failed copy keeps the last generation and is
+restarted. An idle slot whose generation passes 30 minutes logs a warning every minute. A slot that
+finds no generation makes the first one. A failed copy keeps the last generation and is
 logged (`journalctl -t halonic-ci-maint`).
 
 ## One job, one container

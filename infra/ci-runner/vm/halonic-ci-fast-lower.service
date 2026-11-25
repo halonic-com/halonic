@@ -1,12 +1,9 @@
 [Unit]
 Description=halonic-ci refresh of the fast slots' cache snapshot (HAL-16032, HAL-18424)
-# Only once fast slots are deployed; without them there is nothing to refresh.
-ConditionPathExists=/etc/halonic-ci/slots
 [Service]
 Type=oneshot
-ExecCondition=/bin/grep -q halonic-runner@fast- /etc/halonic-ci/slots
-# -n -E 0: skip this round (without failing) while the weekly cleanup or the hourly check runs:
-# they may be emptying /cache/trusted, and the next round comes 5 minutes later anyway.
-ExecStart=/usr/bin/flock -n -E 0 /run/lock/halonic-ci-maint.lock /usr/local/sbin/halonic-ci-fast-lower.sh refresh
+# The script logs why a round was skipped (no fast slot, or the weekly cleanup or hourly check holding
+# their lock) and fails the unit when the current snapshot is over 30 minutes old (HAL-18424).
+ExecStart=/usr/local/sbin/halonic-ci-fast-lower.sh timer
 SyslogIdentifier=halonic-ci-fast-lower
 TimeoutStartSec=10min

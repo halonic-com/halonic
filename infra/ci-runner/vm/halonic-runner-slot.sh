@@ -309,11 +309,16 @@ STEP_B=4294967296; HEAD_B=2147483648; GROWS=0; HIGH_SET=""  # RESERVE_B: memory 
 # runner and restarts on the new one (HAL-18424): a slot can wait an hour for a job, and its job would
 # miss every cache entry written since. Only while no job runs: GitHub refuses to delete a runner that
 # has taken one (422), and only after that refusal can't happen is the container stopped.
-STALE_GEN_S=600; GEN_CHECKED=0
+# Past WARN_GEN_S an idle slot says so every check: the restart isn't happening (no newer snapshot, or
+# GitHub won't delete the runner), and its next job would read old caches.
+STALE_GEN_S=600; WARN_GEN_S=1800; GEN_CHECKED=0
 idle_on_stale_snapshot() {
   local now cur
   [ "$LABEL" = halonic-ci-fast ] && [ "$JOB_START" = 0 ] || return 1
   now=$(date +%s); [ $((now - GEN_CHECKED)) -ge 60 ] || return 1; GEN_CHECKED=$now
+  if [ $((now - MOUNTED_GEN)) -gt "$WARN_GEN_S" ]; then
+    echo "slot $SLOT: warning: idle on snapshot $MOUNTED_GEN, $(( (now - MOUNTED_GEN) / 60 )) minutes old" >&2
+  fi
   [ $((now - MOUNTED_GEN)) -gt "$STALE_GEN_S" ] || return 1
   cur=$(readlink /cache/fast-lower/current 2>/dev/null) || return 1
   [[ "$cur" =~ ^[0-9]+$ ]] && [ "$cur" -gt "$MOUNTED_GEN" ]
