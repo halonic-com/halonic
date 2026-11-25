@@ -2,7 +2,7 @@
 
 - Approval: Liam's follow-up from the review of halonic-com/halonic#5930 (HAL-18139), tracked on HAL-18162. Liam approves this note in review of this PR.
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:KR/HuEUqp/zGUa7oNHWNboMkxgAUrr1tFXhs4Gu9SIs0PsEVfJYz4fKnEBybMxu8V9VwCs6sAEuNM2+9B2dBBQ==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:6zM4fAPIU8sdWX4qc1LBn49vvYev9YbbobgMI2K/lHEEUyatnjztoq/aExZ8sMu+SHt8qbI+R7HPSdSPRvc0DQ==
 
 `runtime.github-pulls` said an approval doesn't count when it is the author's
 own, and the runtime compared the signer ("Liam") with the branch owner's
