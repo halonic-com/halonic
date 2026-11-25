@@ -1,0 +1,29 @@
+{
+  "name": "@halonicjs/tooling-opencode-diff",
+  "private": true,
+  "type": "module",
+  "description": "Lists what changed between two OpenCode versions: its OPENCODE_* environment names and its config schema keys, for a version-bump pull request.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run",
+    "diff": "node src/cli.ts"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "tooling",
+    "owner": "owen",
+    "coverage": {
+      "lines": 80
+    }
+  }
+}
