@@ -24,7 +24,8 @@ export class UsageUnsentError extends Error {
 /** The stores of one scope, as a delete erases them. */
 export interface ScopeStores {
   readonly runs: {
-    list(): Promise<readonly { readonly id: string }[]>;
+    /** Every run id of the scope, a claimed run's that has published nothing yet included. */
+    runIds(): Promise<readonly string[]>;
     eraseScope(): Promise<void>;
   };
   readonly records: { eraseScope(): Promise<void> };
@@ -48,7 +49,7 @@ export interface ScopeStores {
 export async function eraseScopeStores(stores: ScopeStores): Promise<ScopeDeletion> {
   const { unsent } = await stores.eraseUsage();
   if (unsent > 0) throw new UsageUnsentError(unsent);
-  const runIds = (await stores.runs.list()).map((run) => run.id);
+  const runIds = await stores.runs.runIds();
   for (const runId of runIds) await stores.eraseRunObject(runId);
   await stores.eraseCoordination();
   await stores.eraseRoutines();
@@ -63,11 +64,10 @@ export async function eraseScopeStores(stores: ScopeStores): Promise<ScopeDeleti
  * objects of the runs its run list names, its coordination and routines objects, its blobs, its
  * records (the sign-in tokens' included) and its run list rows ({@link eraseScopeStores}).
  *
- * Known limit: it finds a run's object through the run list, so the object of a run whose first
- * alarm hasn't published it yet stays. That is why the operator runs it, then runs it again after a
- * minute; a user-facing delete needs a register of the scope's objects first (S1-5). Likewise, a
- * run's alarm that is already running when its object is erased can still write to it; the second
- * run erases that too.
+ * It finds a run's object through the run list, which names a run from its claim on, before
+ * anything calls the run's object. Known limit: a run's alarm that is already running when its
+ * object is erased can still write to it; the operator runs the delete again after a minute, which
+ * erases that too.
  *
  * @throws ConfigurationError when a binding or a secret is missing
  */

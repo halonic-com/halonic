@@ -200,6 +200,23 @@ describe("runs belong to whoever started them", () => {
   });
 });
 
+describe("a start's run id", () => {
+  verifies("server.run-claim-id", () => {
+    it("is refused before it is claimed when it is empty, too long or not text", async () => {
+      const { server, acted, ownership } = setup();
+      const tooLong = "r".repeat(257);
+      for (const runId of ["", tooLong, 42]) {
+        const start = { hubId: "acme", workflowId: "review", runId };
+        const answer = await call(server, "bob-token", "POST", "/api/runs", start);
+        expect(answer.status, JSON.stringify(runId)).toBe(400);
+      }
+      expect(await ownership.get("")).toBeNull();
+      expect(await ownership.get(tooLong)).toBeNull();
+      expect(acted).toEqual([]);
+    });
+  });
+});
+
 describe("a scope whose host records no run owners", () => {
   verifies("server.run-access", () => {
     it("lets no organisation member start, read or answer a run", async () => {

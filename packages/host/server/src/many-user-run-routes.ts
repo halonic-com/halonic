@@ -7,7 +7,7 @@ import type { RouteParams } from "./route-table.ts";
 import { actionAccess, ownerOfUnrecordedRun, type RunAction, readAccess } from "./run-access.ts";
 import { type RunEndpointRequest, serveRunEndpoint } from "./run-endpoint.ts";
 import { isJsonRequest, maxWaitingRuns, type RunRoutes } from "./run-routes.ts";
-import type { TrustRoutes } from "./trust-routes.ts";
+import { isRunId, type TrustRoutes } from "./trust-routes.ts";
 
 /** What a signed-in request works with: its principal and the routes over that scope's runs. */
 export interface ScopedRoutes {
@@ -167,7 +167,8 @@ export function startHandler(isWorkflow: boolean): SignedInHandler {
       return errorResponse(serverErrors.unsupportedMediaType);
     }
     const start = withRunId(body);
-    if (start === null || typeof start.runId !== "string" || start.runId === "") {
+    // The id is checked before it is claimed, so a malformed one never gets an owner's row.
+    if (start === null || start.runId === undefined || !isRunId(start.runId)) {
       return errorResponse(serverErrors.badRequest);
     }
     const { principal, ports } = scoped;

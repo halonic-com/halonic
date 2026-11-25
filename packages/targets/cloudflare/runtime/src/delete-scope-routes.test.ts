@@ -19,7 +19,7 @@ function recordingStores(unsent = 0): { stores: ScopeStores; erased: string[] } 
     erased.push(what);
   };
   const stores: ScopeStores = {
-    runs: { list: async () => [{ id: "r1" }, { id: "r2" }], eraseScope: note("run list") },
+    runs: { runIds: async () => ["r1", "r2"], eraseScope: note("run list") },
     records: { eraseScope: note("records") },
     blobs: { eraseAll: note("blobs") },
     eraseRunObject: async (runId) => {
