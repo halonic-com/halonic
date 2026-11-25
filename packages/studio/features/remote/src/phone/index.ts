@@ -35,6 +35,13 @@ export {
   routeOf,
 } from "./computers-words.ts";
 export type { OwnerCheckAvailable } from "./gateway-client.ts";
+export {
+  MAX_NEARBY,
+  type NearbyComputer,
+  type NearbyComputers,
+  type NearbyId,
+  type NearbyStart,
+} from "./nearby-computers.ts";
 export { pairWords } from "./pair-words.ts";
 export { computerRowState, PairedComputers } from "./paired-computers.tsx";
 export {

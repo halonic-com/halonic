@@ -5,6 +5,7 @@
  * Kinds are the shell's kebab-case wire names; the screens map them in `problemScreen` and
  * {@link phoneStatusLabelState}.
  */
+import type { NearbyId } from "./nearby-computers.ts";
 import type { PhoneState } from "./phone-status.ts";
 
 /** A pairing in progress, named by the shell. */
@@ -17,8 +18,10 @@ export type ReachFailure = "network-down" | "timeout" | "refused" | "unreachable
 
 /**
  * Where a pairing starts: the scanned QR text (the shell decodes it again), or a typed code
- * with the picked computer's `host[:port]`. `again` replaces that computer's entry; an `again`
- * that names no listed computer (forgotten on another screen) answers `bad-start`.
+ * with the picked computer's `host[:port]` or, for a computer the picker found on this Wi-Fi,
+ * its {@link NearbyId}, whose address only the shell holds (HAL-16829). `again` replaces that
+ * computer's entry; an `again` that names no listed computer (forgotten on another screen)
+ * answers `bad-start`.
  */
 export type TunnelPairingStart =
   | { readonly route: "qr"; readonly scanned: string; readonly again?: ComputerId }
@@ -26,6 +29,12 @@ export type TunnelPairingStart =
       readonly route: "typed";
       readonly code: string;
       readonly endpoint: string;
+      readonly again?: ComputerId;
+    }
+  | {
+      readonly route: "typed";
+      readonly code: string;
+      readonly nearby: NearbyId;
       readonly again?: ComputerId;
     };
 

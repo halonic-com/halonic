@@ -51,11 +51,20 @@ export class FakePhoneTunnel implements PhoneTunnel {
       id,
       name: this.nextStep.kind === "check" ? this.nextStep.computerName : "Tim's laptop",
       pairedAt: "2026-11-14T14:02:00Z",
-      endpoints: this.start?.route === "typed" ? [this.start.endpoint] : [],
+      endpoints: this.endpoints(),
       standing: "paired",
     };
     this.computers.set(id, computer);
     return { kind: "paired", computer };
+  }
+
+  /**
+   * A typed start's endpoint, as the shell saves it. A `nearby` start's address is the shell's,
+   * so the fake makes one up from the id.
+   */
+  private endpoints(): string[] {
+    if (this.start?.route !== "typed") return [];
+    return "nearby" in this.start ? [`tcp://${this.start.nearby}.lan:4100`] : [this.start.endpoint];
   }
 
   async cancelPairing(pairing: PairingId): Promise<void> {
