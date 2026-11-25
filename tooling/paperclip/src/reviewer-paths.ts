@@ -159,6 +159,34 @@ export function isSecurityPath(path: string): boolean {
   return path === "SECURITY.md" || path.startsWith("docs/security/") || hasLiamWord(path);
 }
 
+/** What the rebase-only rule needs to know about a pull request: all its changed files, and its branch. */
+export interface ReapprovedPull {
+  readonly files: readonly string[];
+  readonly branch: string;
+}
+
+/**
+ * Why Julian's "re-approved on head `<new>` (rebase only, range-diff vs
+ * `<old>`)" can't stand in for Liam's approval of `<old>` on this pull
+ * request, or null when it can (HAL-18459): on any pull request, Liam's
+ * paths and size included, except a security one by its paths, a release
+ * one and Julian's own. The Agent tools plugin and the Merger's gate both
+ * call this, so they count the same re-approvals.
+ */
+export function julianRebaseRefusal(pull: ReapprovedPull): string | null {
+  if (pull.branch.startsWith("changeset-release/")) {
+    return "a release pull request";
+  }
+  if (pull.branch.startsWith("julian/")) {
+    return "Julian's own pull request";
+  }
+  const security = pull.files.find(isSecurityPath);
+  if (security !== undefined) {
+    return `a security pull request by its paths (${security})`;
+  }
+  return null;
+}
+
 /** A `package.json`'s text at the pull request's merge base and head; `null` where it doesn't exist. */
 export interface ManifestChange {
   readonly before: string | null;

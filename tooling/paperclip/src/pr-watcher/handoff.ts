@@ -25,6 +25,8 @@ export type Reviewer = "julian" | "liam";
 export interface PathReview {
   readonly reviewer: Reviewer;
   readonly security: boolean;
+  /** Why Julian's rebase-only re-approval can't count on it (`julianRebaseRefusal`), or null when it can. */
+  readonly rebaseRefusal?: string | null;
 }
 
 /** The path rules (`reviewerFor`, `isSecurityPath`), read from GitHub for one pull request. */
@@ -108,13 +110,14 @@ export function julianOnlyOnHead(pull: PullFacts, memory: Memory): boolean {
  * Julian approved the head but, by the HAL-14809 rules the queue gate uses,
  * his approval doesn't count there and nobody else's does: the pull request
  * is Liam's by its paths and it isn't a re-approval after a rebase-only push
- * Liam approved.
+ * Liam approved, on a pull request `julianRebaseRefusal` allows (HAL-18459).
  */
-export function julianRefused(pull: PullFacts, byPaths: Reviewer): boolean {
+export function julianRefused(pull: PullFacts, paths: PathReview): boolean {
   const judged = judgeApprovals(pull.approvals ?? [], {
     head: pull.head,
     author: branchOwner(pull.branch),
-    reviewer: byPaths,
+    reviewer: paths.reviewer,
+    ...(paths.rebaseRefusal === undefined ? {} : { rebaseRefusal: paths.rebaseRefusal }),
   }).filter(({ head }) => pull.head.startsWith(head));
   return (
     judged.some(({ by, counts }) => by === "Julian" && !counts) &&

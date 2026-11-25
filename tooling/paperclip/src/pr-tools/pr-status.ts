@@ -8,7 +8,7 @@ import {
   inMergeQueue,
   latestReview,
 } from "../pr-watcher/github.ts";
-import { reviewerFor } from "../reviewer-paths.ts";
+import { julianRebaseRefusal, reviewerFor } from "../reviewer-paths.ts";
 import { type Approval, approvals, type PullComment } from "./approvals.ts";
 import { type ChangedFile, linesByFile, readManifests } from "./manifests.ts";
 
@@ -139,14 +139,16 @@ export async function prStatus(get: GitHubGet, repo: string, number: number): Pr
   const ours = pull.head.repo?.full_name.toLowerCase() === repo.toLowerCase();
   const author = ours ? branchOwner(pull.head.ref) : undefined;
   // The author says whether it's a security or release pull request; the paths can't tell.
+  const paths = files.map((file) => file.filename);
   const reviewer = reviewerFor({
-    files: files.map((file) => file.filename),
+    files: paths,
     changedLines,
     sensitive: false,
     manifests,
     fileLines: linesByFile(files),
   });
-  const found = approvals(comments, { head, author, reviewer });
+  const rebaseRefusal = julianRebaseRefusal({ files: paths, branch: pull.head.ref });
+  const found = approvals(comments, { head, author, reviewer, rebaseRefusal });
   const title = shownTitle(pull);
   return {
     repo,

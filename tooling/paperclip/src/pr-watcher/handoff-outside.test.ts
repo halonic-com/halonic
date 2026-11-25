@@ -44,18 +44,24 @@ verifies("paperclip.pr-watcher-handoff", () => {
     );
   });
 
-  test("gives Liam a pull request on his paths with only Julian's rebase-only re-approval, as the Merger waits for Liam", async () => {
+  test("leaves a pull request on Liam's paths with Julian's rebase-only re-approval, and gives Liam a security one", async () => {
+    const approvals = [
+      { by: "Liam", head: "4999bbb" },
+      { by: "Julian", head: "5701aaa", rebaseOf: "4999bbb" },
+    ];
+    const lockfile = setup({
+      tasks: [task(5701, agents.mateo, { branch: mateoBranch })],
+      pulls: [open(5701, mateoBranch, { approvals })],
+      byPaths: "liam",
+      files: ["pnpm-lock.yaml"],
+    });
+    await lockfile.run();
+    expect(lockfile.handoffs).toEqual([]);
     const watcher = setup({
       tasks: [task(5701, agents.mateo, { branch: mateoBranch })],
-      pulls: [
-        open(5701, mateoBranch, {
-          approvals: [
-            { by: "Liam", head: "4999bbb" },
-            { by: "Julian", head: "5701aaa", rebaseOf: "4999bbb" },
-          ],
-        }),
-      ],
+      pulls: [open(5701, mateoBranch, { approvals })],
       byPaths: "liam",
+      files: ["packages/x/src/sandbox/fence.ts"],
     });
     await watcher.run();
     expect(watcher.handoffs.map(({ to }) => to)).toEqual([agents.liam]);

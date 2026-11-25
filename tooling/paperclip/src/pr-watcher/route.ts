@@ -1,6 +1,6 @@
 import { type ChangedFile, linesByFile, readManifests } from "../pr-tools/manifests.ts";
 import { branchPath, type PullDetails } from "../pr-tools/pr-status.ts";
-import { isSecurityPath, reviewerFor } from "../reviewer-paths.ts";
+import { isSecurityPath, julianRebaseRefusal, reviewerFor } from "../reviewer-paths.ts";
 import { everyPage, type GitHubGet } from "./github.ts";
 import type { ReviewerRoute } from "./handoff.ts";
 
@@ -35,6 +35,10 @@ export function gitHubRoute(get: GitHubGet): ReviewerRoute {
       manifests,
       fileLines: linesByFile(files),
     });
-    return { reviewer, security: paths.some(isSecurityPath) };
+    return {
+      reviewer,
+      security: paths.some(isSecurityPath),
+      rebaseRefusal: julianRebaseRefusal({ files: paths, branch: pull.head.ref }),
+    };
   };
 }

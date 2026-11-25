@@ -1,12 +1,13 @@
-import { isLiamPath, overLineLimit, reviewerFor } from "../reviewer-paths.ts";
+import { isLiamPath, julianRebaseRefusal, overLineLimit, reviewerFor } from "../reviewer-paths.ts";
 import { anySignedApproval, blockWords, fixedWords, signedApproval } from "./signed.ts";
 import type { GatePull, PullText } from "./snapshot.ts";
 
 /**
  * The approval rules of the gate (MERGER.md §4, rules 1–6): signed
  * approvals on the current head after the last push, carry-over across a
- * rebase with an identical diff, Julian within `reviewerFor`, "Author: Liam",
- * and open change requests. The texts follow the Merger's own matching,
+ * rebase with an identical diff, Julian within `reviewerFor` or re-approving
+ * after a rebase-only push (HAL-18459), "Author: Liam", and open change
+ * requests. The texts follow the Merger's own matching,
  * which differs from `pr-tools/approvals.ts`: a bare "re-approved on head"
  * counts here (HAL-15553), and time after the last push matters. A signed
  * line counts on any line of a comment, outside code and quotes, once, and
@@ -94,27 +95,61 @@ export function liamApproval(pull: GatePull, teamLogin: string): ApprovalVerdict
   return verdict;
 }
 
+/** Julian's signed approval as the gate reads it: "Author: Liam", and the head a rebase-only re-approval names. */
+export type JulianApproval = ApprovalVerdict & {
+  readonly authorLiam: boolean;
+  readonly rebaseOf?: string;
+};
+
 /** Julian's newest signed approval, with whether it holds on the head. */
 export function julianApproval(
   pull: GatePull,
   teamLogin: string,
   patchIds: Readonly<Record<string, string | null>>,
-): (ApprovalVerdict & { readonly authorLiam: boolean }) | null {
+): JulianApproval | null {
   const text = teamTexts(pull, teamLogin)
     .filter((each) => !ours(each) && signedApproval(each.body, "Julian") !== null)
     .pop();
-  const sha = text === undefined ? undefined : signedApproval(text.body, "Julian")?.sha;
-  if (text === undefined || sha === undefined) {
+  const signed = text === undefined ? null : signedApproval(text.body, "Julian");
+  if (text === undefined || signed === null) {
     return null;
   }
-  const authorLiam = /\bAuthor:\s*Liam\b/i.test(text.body);
+  const { sha } = signed;
+  const read = {
+    authorLiam: /\bAuthor:\s*Liam\b/i.test(text.body),
+    ...(signed.rebaseOf === undefined ? {} : { rebaseOf: signed.rebaseOf }),
+  };
   if (sameHead(pull.head, sha) && text.at >= lastPushOf(pull)) {
-    return { ok: true, at: text.at, authorLiam };
+    return { ok: true, at: text.at, ...read };
   }
   if (carriedOver(patchIds, sha, pull.head)) {
-    return { ok: true, at: text.at, carried: sha, authorLiam };
+    return { ok: true, at: text.at, carried: sha, ...read };
   }
-  return { ok: false, stale: sha, authorLiam };
+  return { ok: false, stale: sha, ...read };
+}
+
+/**
+ * Whether Julian's approval is a re-approval after a rebase-only push of a
+ * head Liam signed, on a pull request `julianRebaseRefusal` allows: then it
+ * counts outside his limits too (HAL-18459). Every changed file must be
+ * known, or a security path could hide among the ones not listed.
+ */
+export function rebaseOnlyAfterLiam(
+  pull: GatePull,
+  teamLogin: string,
+  julian: JulianApproval,
+): boolean {
+  const { rebaseOf } = julian;
+  if (rebaseOf === undefined || pull.filesTotal > pull.files.length) {
+    return false;
+  }
+  if (julianRebaseRefusal({ files: pull.files, branch: pull.branch }) !== null) {
+    return false;
+  }
+  return teamTexts(pull, teamLogin).some((text) => {
+    const liam = ours(text) ? undefined : signedApproval(text.body, "Liam")?.sha;
+    return liam !== undefined && (liam.startsWith(rebaseOf) || rebaseOf.startsWith(liam));
+  });
 }
 
 /** Why Julian's approval doesn't count here, or null when it is within his scope (HAL-14809). */
@@ -203,7 +238,7 @@ function julianVerdict(
     return { note: "waiting for Liam: his change request on this head is still open" };
   }
   const out = anyPath ? null : outsideJulianScope(pull);
-  if (out === null) {
+  if (out === null || (!liamOwn && rebaseOnlyAfterLiam(pull, teamLogin, julian))) {
     const carried = julian.carried === undefined ? {} : { carried: julian.carried };
     return { approval: { ok: true, julian: true, ...withAt(julian.at), ...carried } };
   }

@@ -187,7 +187,7 @@ verifies("paperclip.pr-tools", () => {
 
 verifies("paperclip.pr-tools-reapproval", () => {
   describe("pr_status", () => {
-    test("doesn't count Julian's rebase-only re-approval on Liam's paths, as the Merger doesn't (#5676)", async () => {
+    test("doesn't count Julian's rebase-only re-approval on a security pull request by its paths (#5676)", async () => {
       const reapproval =
         "Julian: re-approved on head `7651f8c` (rebase only, range-diff vs `0000000`)";
       const github = pr4588(
@@ -207,8 +207,48 @@ verifies("paperclip.pr-tools-reapproval", () => {
         by: "Julian",
         rebaseOf: "0000000",
         counts: false,
-        note: "rebase only since Liam's approval on 0000000, but outside Julian's limits the Merger waits for Liam (HAL-18190)",
+        note: "rebase only since Liam's approval on 0000000, but a security pull request by its paths (packages/host/server/src/cloud-sign-in-api.ts): needs Liam",
       });
+    });
+
+    test("counts Julian's rebase-only re-approval on Liam's paths after Liam approved the older head (HAL-18459)", async () => {
+      const github = pr4588(
+        [
+          "Liam: approved on head `0000000`",
+          "Julian: re-approved on head `7651f8c` (rebase only, range-diff vs `0000000`)",
+        ],
+        ["pnpm-lock.yaml"],
+      );
+      const status = await prStatus(github.get, repo, 4588);
+      expect(status.reviewer).toBe("liam");
+      expect(status.approvedOnHead).toBe(true);
+      expect(status.approvals[1]).toMatchObject({
+        by: "Julian",
+        rebaseOf: "0000000",
+        counts: true,
+        note: "rebase only since Liam's approval on 0000000 (HAL-18459)",
+      });
+    });
+
+    test("doesn't count it on a pull request touching a sandbox path, or on a release branch", async () => {
+      const conversation = [
+        "Liam: approved on head `0000000`",
+        "Julian: re-approved on head `7651f8c` (rebase only, range-diff vs `0000000`)",
+      ];
+      const fence = pr4588(conversation, ["packages/x/src/sandbox/fence.ts"]);
+      const fenceStatus = await prStatus(fence.get, repo, 4588);
+      expect(fenceStatus.approvedOnHead).toBe(false);
+      expect(fenceStatus.approvals[1]?.note).toBe(
+        "rebase only since Liam's approval on 0000000, but a security pull request by its paths (packages/x/src/sandbox/fence.ts): needs Liam",
+      );
+      const release = pr4588(conversation, ["pnpm-lock.yaml"], ours, {
+        ref: "changeset-release/main",
+      });
+      const releaseStatus = await prStatus(release.get, repo, 4588);
+      expect(releaseStatus.approvedOnHead).toBe(false);
+      expect(releaseStatus.approvals[1]?.note).toBe(
+        "rebase only since Liam's approval on 0000000, but a release pull request: needs Liam",
+      );
     });
 
     test("doesn't count a re-approval without Liam's approval on the named head or without the range-diff", async () => {
@@ -229,7 +269,7 @@ verifies("paperclip.pr-tools-reapproval", () => {
       const status = await prStatus(github.get, repo, 4588);
       expect(status.approvedOnHead).toBe(false);
       expect(status.approvals[1]?.note).toBe(
-        "re-approval after a rebase, and Liam didn't approve 0000000, but outside Julian's limits the Merger waits for Liam (HAL-18190)",
+        "re-approval after a rebase, and Liam didn't approve 0000000",
       );
     });
 

@@ -19,6 +19,8 @@ export const fixedWords =
 export interface SignedApproval {
   readonly sha: string;
   readonly reapproved: boolean;
+  /** The older head named in "(rebase only, range-diff vs `<old>`)". */
+  readonly rebaseOf?: string;
 }
 
 /** The lines that count: outside fenced code, not indented code, not quoted. */
@@ -41,7 +43,8 @@ export function plainLines(body: string): string[] {
 /** Julian's pattern, with the backticks and spacing as loose as the Merger's own matching. */
 function approvalLine(reviewer: Reviewer): RegExp {
   return new RegExp(
-    `^${reviewer}:[ \\t]*(re-approved|approved(?: again)?) on head[ \\t]*\`?([0-9a-f]{7,40})`,
+    `^${reviewer}:[ \\t]*(re-approved|approved(?: again)?) on head[ \\t]*\`?([0-9a-f]{7,40})` +
+      `\`?(?:[ \\t]*\\(rebase only, range-diff vs[ \\t]*\`?([0-9a-f]{7,40})\`?\\))?`,
   );
 }
 
@@ -67,7 +70,12 @@ export function signedApproval(body: string, reviewer: Reviewer): SignedApproval
   if (only === undefined || requestsChanges(lines, reviewer)) {
     return null;
   }
-  return { sha: only[2] ?? "", reapproved: only[1] === "re-approved" };
+  const rebaseOf = only[3];
+  return {
+    sha: only[2] ?? "",
+    reapproved: only[1] === "re-approved",
+    ...(rebaseOf === undefined ? {} : { rebaseOf }),
+  };
 }
 
 /** The approval Liam or Julian gives in this comment, the first that counts. */
