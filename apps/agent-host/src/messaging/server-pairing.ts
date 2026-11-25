@@ -202,14 +202,15 @@ export class ServerEnginePairing {
     sessionEndsAt: string,
   ): Promise<PairStatusAnswer> {
     const { setting, keychain, messaging } = this.#options;
-    const name = serverPairingSecretName(await setting.keyOf(pending.workspace));
+    let name: string | undefined;
     try {
+      name = serverPairingSecretName(await setting.keyOf(pending.workspace));
       await keychain.set(name, token);
       if ((await keychain.get(name)) !== token) throw new PairingNotKept();
       await setting.useServer(pending.workspace, pending.address);
     } catch (error) {
       this.#failed("couldn't keep the new pairing, so it ends it on the server", error);
-      await keychain.remove(name).catch(() => undefined);
+      if (name !== undefined) await keychain.remove(name).catch(() => undefined);
       return { state: "key_not_saved", signedOut: await client.signOut(token) };
     }
     await messaging.switchEngine(pending.workspace);
