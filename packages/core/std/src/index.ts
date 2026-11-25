@@ -30,6 +30,13 @@ export {
   markHiddenName,
   segmentHidden,
 } from "./hidden-characters.ts";
+export {
+  type HiddenTextSource,
+  hiddenTextWarning,
+  hidesText,
+  htmlToText,
+  withoutHiddenText,
+} from "./html-text.ts";
 export { fixedIds, type IdGenerator, type RandomBytes, randomIds } from "./ids.ts";
 export { KeyedQueue } from "./keyed-queue.ts";
 export {
