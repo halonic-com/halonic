@@ -8,7 +8,6 @@ import {
   type StepperCatalog,
 } from "@halonicjs/action-steppers";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
-import type { StepperActions } from "./stepper-view.ts";
 
 export {
   type ActionItem,
@@ -16,8 +15,10 @@ export {
   type ActionReviewContext,
   reviewActionItem,
 } from "./review/action-item-review.ts";
+export { StepperRun, type StepperRunOptions } from "./run/stepper-run.ts";
 export type { StepperActions, StepperView } from "./stepper-view.ts";
 export { ActionStepper, type ActionStepperProps } from "./ui/action-stepper.tsx";
+export { type StepperRunState, useStepperRun } from "./ui/use-stepper-run.ts";
 
 /**
  * The installed catalog of reviewed definitions, step types and browser pages. The app provides it
@@ -45,23 +46,3 @@ export const emptyActionCatalog: StepperCatalog = {
 };
 
 export { defaultRequesterPolicy, type RequesterPolicy, type StepperCatalog };
-
-/**
- * The screen's callbacks while a request can only be reviewed: **Decline** answers it, and the
- * rest wait for the desktop shell (HAL-17535). The screen offers none of them in review mode, so
- * they do nothing.
- */
-export function reviewOnlyActions(decline: () => void): StepperActions {
-  const waitsForTheShell = () => {};
-  return {
-    runStep: waitsForTheShell,
-    runAll: waitsForTheShell,
-    decline,
-    openPage: waitsForTheShell,
-    confirmBrowserStep: waitsForTheShell,
-    checkStep: waitsForTheShell,
-    markDoneByHand: waitsForTheShell,
-    signIn: waitsForTheShell,
-    signInAgain: waitsForTheShell,
-  };
-}

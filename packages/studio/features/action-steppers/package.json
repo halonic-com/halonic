@@ -14,14 +14,17 @@
   },
   "dependencies": {
     "@halonicjs/action-steppers": "workspace:*",
+    "@halonicjs/events": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/schema-kit": "workspace:*",
     "@halonicjs/std": "workspace:*",
     "@halonicjs/studio-kit": "workspace:*",
+    "@halonicjs/studio-services": "workspace:*",
     "@halonicjs/studio-shell": "workspace:*",
     "react": "catalog:"
   },
   "devDependencies": {
+    "@halonicjs/testing-contracts": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",

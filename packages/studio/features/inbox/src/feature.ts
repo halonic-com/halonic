@@ -4,7 +4,7 @@ import {
   RequesterPolicyService,
 } from "@halonicjs/studio-feature-action-steppers/api";
 import { RunsListService } from "@halonicjs/studio-feature-runs/api";
-import { AgentMessagingService } from "@halonicjs/studio-services";
+import { AgentMessagingService, actionStepsKey } from "@halonicjs/studio-services";
 import { defineFeature } from "@halonicjs/studio-shell";
 import {
   HeldAgentsService,
@@ -51,6 +51,8 @@ export const inboxFeature = defineFeature({
     // What an agent's action request is checked against when it opens (inbox.agent-action-items).
     ActionCatalogService,
     RequesterPolicyService,
+    // What runs its steps with the user's sign-in, in the desktop app (inbox.agent-action-items).
+    actionStepsKey,
   ],
   provides: [InboxService],
   register(studio) {
