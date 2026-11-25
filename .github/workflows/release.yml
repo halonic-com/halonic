@@ -164,7 +164,7 @@ jobs:
             echo "installer=Halonic-$version-windows-x64-setup.exe"
             echo "apk=Halonic-$version-android.apk"
             echo "android_notices=THIRD-PARTY-NOTICES-android.txt"
-            echo "cli_tarball=halonic-cli-$version.tgz"
+            echo "cli_tarball=halonic-$version.tgz"
             echo "publisher=$publisher"
             echo "signed=$signed"
           } >> "$GITHUB_OUTPUT"
@@ -205,13 +205,26 @@ jobs:
           pnpm --filter @halonicjs/tooling-publish run stage-cli "$VERSION" "$PWD/dist/THIRD-PARTY-NOTICES.txt"
           mkdir -p cli-package
           (cd tooling/publish/dist/cli && npm pack --pack-destination ../../../../cli-package --silent)
-          mv "cli-package/halonic-$VERSION.tgz" "cli-package/$CLI_TARBALL"
+          test -f "cli-package/$CLI_TARBALL"
+      # The check runs on the oldest Node the package says it supports
+      # (`engines`, HAL-1204), not the newest 26.x the build used.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26.12.0"
+          package-manager-cache: false
       - name: Check the CLI package in a clean folder
         env:
           VERSION: ${{ steps.plan.outputs.version }}
           CLI_TARBALL: ${{ steps.plan.outputs.cli_tarball }}
         run: |
           tarball="$PWD/cli-package/$CLI_TARBALL"
+          [ "$(node --version)" = "v26.12.0" ]
+          # npm only warns on a Node below `engines`, so the floor must be in
+          # the tarball for that warning to reach users.
+          engines=$(tar -xzOf "$tarball" package/package.json | node -p 'JSON.parse(require("node:fs").readFileSync(0, "utf8")).engines?.node')
+          [ "$engines" = ">=26.12.0" ] || { echo "::error::The CLI package's engines.node is '$engines', expected '>=26.12.0'."; exit 1; }
+          # What npm would publish, without publishing: no login needed.
+          npm publish --dry-run "$tarball" --tag latest
           clean=$(mktemp -d)
           cd "$clean"
           # The tarball is a file dependency, so this is a plain `npm install`.
