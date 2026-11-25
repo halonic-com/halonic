@@ -1,0 +1,184 @@
+// @vitest-environment jsdom
+import type { MergeQueue, PullRequest } from "@halonicjs/ports";
+import { FakeTeamStatus } from "@halonicjs/testing-contracts";
+import { verifies } from "@halonicjs/testing-spec";
+import { act } from "react";
+import { afterEach, describe, expect, it } from "vitest";
+import { PullRequests } from "../pull-requests.ts";
+import { render, unmountAll } from "../test-support/render.tsx";
+import { PullRequestsPage } from "./pull-requests-page.tsx";
+
+afterEach(unmountAll);
+
+const minutesAgo = (minutes: number) =>
+  new Date(Date.parse("2026-11-24T13:00:00.000Z") - minutes * 60 * 1000).toISOString();
+const agent = (name: string) => ({ kind: "agent" as const, agent: `acme-${name}`, name });
+
+/** A source at 24 Nov 13:00 UTC; `add` returns the PR's id for the queue to name. */
+function acme() {
+  const team = new FakeTeamStatus({ now: () => new Date("2026-11-24T13:00:00.000Z") });
+  const { source } = team.addSource();
+  const add = (label: string, pullRequest: Partial<PullRequest> = {}) =>
+    team.addPullRequest(source, { label, title: `feat(app): change ${label}`, ...pullRequest }).id;
+  const queue = (set: Partial<MergeQueue>) => team.setMergeQueue(source, set);
+  return { team, add, queue };
+}
+
+async function open(fake: ReturnType<typeof acme>) {
+  const pullRequests = new PullRequests(fake.team, undefined, {
+    now: () => new Date("2026-11-24T13:00:00.000Z"),
+    timeZone: "UTC",
+  });
+  const opener = { connectionOrigin: "https://paperclip.acme.test", open: () => {} };
+  const page = render(
+    <PullRequestsPage pullRequests={pullRequests} opener={opener} onLink={() => {}} />,
+  );
+  await act(async () => {
+    for (let turn = 0; turn < 10; turn += 1) await Promise.resolve();
+  });
+  return page;
+}
+
+const text = (page: HTMLElement) => page.textContent ?? "";
+const sectionNames = (page: HTMLElement) =>
+  [...page.querySelectorAll("section")].map((each) => each.getAttribute("aria-label"));
+
+/** Presses the tab whose spoken words are `label`, such as "Queue, 7". */
+function pressTab(page: HTMLElement, label: string): void {
+  const tab = [...page.querySelectorAll<HTMLElement>('[role="tab"]')].find((each) => {
+    const copy = each.cloneNode(true) as HTMLElement;
+    for (const hidden of copy.querySelectorAll('[aria-hidden="true"]')) hidden.remove();
+    return copy.textContent === label;
+  });
+  if (tab === undefined) throw new Error(`no tab ${label}`);
+  act(() => tab.click());
+}
+
+/** Seven PRs in three groups and two waiting: group 1 merging, groups 2 and 3 building. */
+function sevenInTheQueue(fake: ReturnType<typeof acme>) {
+  const inQueue = (label: string, position: number, group?: number) =>
+    fake.add(label, {
+      state: "in-queue",
+      queue: group === undefined ? { position } : { position, group },
+    });
+  fake.queue({
+    health: "running",
+    runnerWaitMinutes: 0,
+    medianMinutesToMerge: 22,
+    groups: [
+      { position: 1, state: "passed", since: minutesAgo(20), pullRequests: [inQueue("#1", 1, 1)] },
+      {
+        position: 2,
+        state: "building",
+        since: minutesAgo(9),
+        pullRequests: [inQueue("#2", 2, 2), inQueue("#3", 3, 2), inQueue("#4", 4, 2)],
+      },
+      { position: 3, state: "building", since: minutesAgo(4), pullRequests: [inQueue("#5", 5, 3)] },
+    ],
+    waiting: [inQueue("#6", 6), inQueue("#7", 7)],
+  });
+}
+
+verifies("team.merge-queue", () => {
+  describe("PullRequestsPage merge queue (HAL-17515 P1, P6, P18–P22)", () => {
+    it("says the running queue's health under the tabs", async () => {
+      const fake = acme();
+      sevenInTheQueue(fake);
+      const page = await open(fake);
+      expect(text(page)).toContain(
+        "Merge queue: Running · 7 PRs · group 2 of 3 building · no runner wait",
+      );
+      pressTab(page, "All open, 7");
+      expect(text(page)).toContain("Merge queue: Running · 7 PRs");
+    });
+
+    it("says when runners are busy and when the queue has stopped", async () => {
+      const fake = acme();
+      fake.add("#8", { state: "draft" });
+      fake.queue({ health: "runners-busy", runnerWaitMinutes: 12 });
+      const busy = await open(fake);
+      expect(text(busy)).toContain(
+        "Merge queue: ⚠ Runners busy · longest wait 12 min · pushes are on hold",
+      );
+      fake.queue({ health: "stopped", waiting: [fake.add("#9", { state: "in-queue" })] });
+      const stopped = await open(fake);
+      expect(text(stopped)).toContain("Merge queue: ⚠ Stopped · 1 PR");
+    });
+
+    it("shows the groups in order, then the PRs waiting to enter", async () => {
+      const fake = acme();
+      sevenInTheQueue(fake);
+      const page = await open(fake);
+      pressTab(page, "Queue, 7");
+      expect(text(page)).toContain(
+        "Running · 7 PRs · no runner wait · median 22 min to merge today",
+      );
+      expect(sectionNames(page)).toEqual([
+        "Group 1 · ci-ok passed · merging",
+        "Group 2 · Building · 9 min",
+        "Group 3 · Building · 4 min",
+        "Waiting to enter",
+      ]);
+      expect(text(page)).toContain("Numbers are real positions.");
+    });
+
+    it("names a failed group's cause and the PRs taken out today", async () => {
+      const fake = acme();
+      const culprit = fake.add("#5655", {
+        state: "dequeued",
+        reason: "group failed",
+        author: agent("Kim"),
+      });
+      const behind = ["#5660", "#5661", "#5662"].map((label) =>
+        fake.add(label, { state: "in-queue" }),
+      );
+      fake.queue({
+        health: "running",
+        groups: [
+          { position: 1, state: "failed", since: minutesAgo(25), pullRequests: [culprit] },
+          { position: 2, state: "building", since: minutesAgo(5), pullRequests: behind },
+        ],
+        removedToday: [
+          { pullRequest: culprit, at: minutesAgo(20), reason: "Group failed: typecheck" },
+        ],
+      });
+      const page = await open(fake);
+      pressTab(page, "Queue, 4");
+      expect(sectionNames(page)).toContain(
+        "Group failed: #5655 · the 3 PRs behind it are being tested again",
+      );
+      expect(text(page)).toContain(
+        "The queue session named #5655 as the cause and took it out at 12:40.",
+      );
+      expect(sectionNames(page)).toContain("Taken out today (1)");
+      expect(text(page)).toContain("Group failed: typecheck · 12:40 · Kim");
+    });
+
+    it("says the merge queue is empty, and when PRs show up there", async () => {
+      const fake = acme();
+      fake.add("#9", { state: "draft" });
+      fake.queue({ health: "empty" });
+      const page = await open(fake);
+      expect(text(page)).toContain("The merge queue is empty.");
+      expect(text(page)).not.toContain("Merge queue: ");
+      pressTab(page, "Queue, 0");
+      expect(text(page)).toContain(
+        "The merge queue is empty. Approved PRs with a green ci-ok show up here once the queue session adds them.",
+      );
+    });
+
+    it("lists the PRs merged today newest first, without closed ones", async () => {
+      const fake = acme();
+      fake.add("#10", { state: "merged", since: minutesAgo(115) });
+      fake.add("#11", { state: "merged", since: minutesAgo(20) });
+      fake.add("#12", { state: "closed", since: minutesAgo(10) });
+      const page = await open(fake);
+      pressTab(page, "Merged today, 2");
+      expect(sectionNames(page)).toContain("Merged today · newest first");
+      const rows = [...page.querySelectorAll("li")].map((li) => li.textContent ?? "");
+      expect(rows.map((row) => row.slice(0, 3))).toEqual(["#11", "#10"]);
+      expect(rows[0]).toContain("Merged 12:40");
+      expect(rows[1]).toContain("Merged 11:05");
+    });
+  });
+});

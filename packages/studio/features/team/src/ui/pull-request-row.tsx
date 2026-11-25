@@ -3,7 +3,7 @@ import { Button, StatusChip, type StatusChipTone } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import { formatAge, pullRequestWords, type StateWords } from "../pull-request-words.ts";
 import type { PullRequestRow } from "../pull-requests.ts";
-import { minutesSince, type TeamClock } from "../team-format.ts";
+import { formatTime, minutesSince, type TeamClock } from "../team-format.ts";
 
 /** Where a web link may open: the connection's Paperclip origin, and the opener the shell gives. */
 export interface WebLinkOpener {
@@ -42,7 +42,7 @@ export function WebLinkButton(props: {
 }
 
 /** A PR's author as a row names it; the port already gives the board and outsiders their words. */
-function authorName(author: MessagingAuthor): string {
+export function authorName(author: MessagingAuthor): string {
   return author.kind === "me" ? "the board" : author.name;
 }
 
@@ -67,6 +67,7 @@ function stateWords(row: PullRequestRow, clock: TeamClock): StateWords {
   const { pullRequest, queue } = row;
   return pullRequestWords.state[pullRequest.state]({
     age: formatAge(minutesSince(pullRequest.since, clock)),
+    time: formatTime(pullRequest.since, clock),
     reviewer: pullRequest.reviewer === undefined ? undefined : authorName(pullRequest.reviewer),
     reason: pullRequest.reason,
     queue:
