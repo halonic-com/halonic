@@ -3,6 +3,7 @@
 - Task: HAL-18830 (from the visual check on HAL-18821)
 - Approval: the row is design revision 3 on HAL-18594, section 1 "A running run" and the "Visual pass" tables, approved by the board on 25 Nov 14:48 UTC; the requirement's first text described the chip the first build used instead
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:6MGn1qb9+EfDUdvBIT73qZq/nnpJDepyvxO5Qod+0lm3ciVI7cfKtQAVTIZwbQ7nEVKwv2Np4+zQgEDKlVkDCg==
 
 ## What changes
 
