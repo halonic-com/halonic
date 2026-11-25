@@ -61,6 +61,11 @@ export interface FailedJob {
    * for a merge group's failed jobs, and missing when not read.
    */
   readonly annotatedFiles?: readonly string[];
+  /**
+   * The titles of its `failure` annotations; read only for a merge group's
+   * failed jobs, and missing when not read or when the read failed.
+   */
+  readonly annotationTitles?: readonly string[];
 }
 
 /** What a known-flake check reads about the run whose `ci-ok` failed on the head. */
