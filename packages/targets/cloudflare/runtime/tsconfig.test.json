@@ -29,6 +29,7 @@
     "src/usage-meter-calls.test.ts",
     "src/container-outbound.test.ts",
     "src/run-object-bridge.test.ts",
-    "src/container-wiring.node.test.ts"
+    "src/container-wiring.node.test.ts",
+    "src/usage-stops.test.ts"
   ]
 }

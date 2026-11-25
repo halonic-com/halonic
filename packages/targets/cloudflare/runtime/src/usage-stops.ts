@@ -21,8 +21,8 @@ export const costBase = 1_000_000;
 export const minuteBase = 60_000;
 
 /**
- * The plan a stop names. The limits document carries no plan name yet, so every stop names this
- * one and says it can't be upgraded, until Cloud sends a plan (a follow-up to HAL-18183).
+ * The plan a stop names when the limits document carries none. Every stop says it can't be
+ * upgraded: the document doesn't say whether a bigger plan exists.
  */
 export const cloudPlan: StopPlan = { id: "cloud", version: 0, name: "" };
 
@@ -67,7 +67,7 @@ function limitStop(
     used: fromBase(refusal.unit, refusal.used),
     limit: fromBase(refusal.unit, refusal.limit),
     resetsAt: new Date(refusal.resetsAt).toISOString(),
-    plan: cloudPlan,
+    plan: refusal.plan ?? cloudPlan,
     ...(phase === "reserve"
       ? {
           reserve: {

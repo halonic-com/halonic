@@ -315,14 +315,19 @@ verifies("runtime.limits-push-plan", () => {
     return usage.kept.get(scope);
   }
 
-  it("keeps the name of Cloud's plan as the plan name, without the plan itself", async () => {
+  it("keeps Cloud's plan as its id, version and name, without its state", async () => {
     const plan = { state: "active", id: "plan_starter", version: 3, name: "Starter" };
-    expect(await keptAfter({ ...limits, plan })).toEqual({ ...limits, planName: "Starter" });
+    expect(await keptAfter({ ...limits, plan })).toEqual({
+      ...limits,
+      plan: { id: "plan_starter", version: 3, name: "Starter" },
+    });
   });
 
-  it("takes the name only from a plan that isn't none", async () => {
+  it("keeps no plan from a plan in state none, and never a pushed plan name", async () => {
     const document = { ...limits, plan: { state: "none" }, planName: "Pro" };
     expect(await keptAfter(document)).toEqual(limits);
+    const named = { ...limits, planName: "Pro" };
+    expect(await keptAfter(named)).toEqual(limits);
   });
 
   it("keeps a push sent before Cloud sent plans as it is", async () => {

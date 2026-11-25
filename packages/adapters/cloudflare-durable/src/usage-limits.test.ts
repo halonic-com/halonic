@@ -41,6 +41,30 @@ verifies("cloudflare-durable.usage-limits", () => {
     expect(account.applyLimits(acmeLimits({ version: 2 }))).toBe("applied");
   });
 
+  it("names the document's plan in a limit's refusal, and refuses a plan that isn't valid", () => {
+    const pro = { id: "pro", version: 3, name: "Pro" };
+    const { account } = openAccount(acmeLimits({ plan: pro }));
+    account.record("call_1", owner, "model_call", { cost: 1_000 });
+    expect(account.check("u_acme")).toMatchObject({ refusal: { code: "plan.cost", plan: pro } });
+
+    const wrong = [
+      { id: "Pro plan", version: 3, name: "Pro" },
+      { id: "pro", version: -1, name: "Pro" },
+      { id: "pro", version: 3, name: "" },
+      { id: "pro", version: 3, name: "Pro\n" },
+      { id: "pro", version: 3, name: "P".repeat(201) },
+      { id: "pro", version: 3, name: "Pro\u200b" },
+      { id: "pro", version: 3, name: "  " },
+      { id: "pro", version: 3 },
+      "pro",
+    ];
+    for (const plan of wrong) {
+      expect(() => account.applyLimits(acmeLimits({ version: 2, plan: plan as never }))).toThrow(
+        RangeError,
+      );
+    }
+  });
+
   describe("the period", () => {
     it("starts again only on a document for a later period, never because time passed", () => {
       const { account, clock } = openAccount();

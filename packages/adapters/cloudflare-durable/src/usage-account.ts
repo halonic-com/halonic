@@ -299,9 +299,11 @@ export class UsageAccount {
     if (this.#outbox.isFull()) return { code: "usage.outbox-full" };
     const taken = this.#taken();
     const resetsAt = limits.period.end;
-    const pool = firstOver("plan", limits.limits, taken.pool, needed, resetsAt);
+    const { plan } = limits;
+    const pool = firstOver("plan", limits.limits, taken.pool, needed, resetsAt, plan);
     if (pool !== null || member?.shares === undefined) return pool;
-    return firstOver("plan.member", member.shares, taken.actors[actor] ?? {}, needed, resetsAt);
+    const memberTaken = taken.actors[actor] ?? {};
+    return firstOver("plan.member", member.shares, memberTaken, needed, resetsAt, plan);
   }
 
   /** Spent plus reserved, for the pool and per actor. */

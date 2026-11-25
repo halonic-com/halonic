@@ -46,7 +46,10 @@ A deployment Halonic Cloud sells through takes each scope's limits document at
 Only a request signed by one of Cloud's pinned `command` keys, in the `cloud-to-deployment` direction of
 `@halonicjs/host-signed-request`, for this deployment's product and this scope's path, reaches the scope's
 `UsageObject` (binding `USAGE`); every other one answers the same 401. The object keeps the nonce for the
-time window and keeps the document unless it has that version or a newer one. Two plain variables configure it:
+time window and keeps the document unless it has that version or a newer one. A document may carry Cloud's
+plan, `{ "state", "id", "version", "name" }`; unless its state is `none`, the object keeps its id, version and
+name, which a stop for a reached limit and the account menu's summary then name
+(requirements `runtime.limits-push-plan` and `runtime.limits-plan`). Two plain variables configure it:
 
 | Variable | Meaning |
 | --- | --- |
