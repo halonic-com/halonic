@@ -169,6 +169,7 @@ describe("many-user server", () => {
         ["POST", "/api/chat-turns"],
         ["POST", "/api/connector-calls"],
         ["GET", "/api/runs/run_alice/approvals"],
+        ["GET", "/api/runs/run_alice/"],
       ] as const;
       for (const [method, path] of routes) {
         for (const headers of [{}, bearer("alice-token")]) {
