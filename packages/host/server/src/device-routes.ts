@@ -9,7 +9,8 @@ import { countLoginAttempt, passwordSecretName, type SignIn, tooManyAttempts } f
 /** The fields of a JSON body the device routes read, each with the pattern its text must match. */
 const fieldPatterns = {
   code: /^[\w -]{1,32}$/,
-  deviceName: /^[^\p{Cc}]{1,80}$/u,
+  // No control or format characters (bidi or zero-width ones), so a name can't pass for another's.
+  deviceName: /^[^\p{Cc}\p{Cf}]{1,80}$/u,
   pendingId: /^[0-9a-f]{64}$/,
   password: /^[\s\S]{1,1024}$/,
   requestId: /^[0-9a-f]{32}$/,
@@ -87,7 +88,7 @@ export function createDeviceRoutes(
     if (refusal !== null) {
       return refusal;
     }
-    const pending = await pairing.request(fields.code, fields.deviceName);
+    const pending = await pairing.request(fields.code, fields.deviceName, call.passwordHash);
     return pending === null
       ? errorResponse(serverErrors.pairingCodeRefused)
       : Response.json(pending);
@@ -110,7 +111,10 @@ export function createDeviceRoutes(
 
   /** `GET /api/devices`: the live devices and the requests waiting for Allow. */
   async function list(call: DeviceCall): Promise<Response> {
-    const [live, waiting] = await Promise.all([devices.list(call.passwordHash), pairing.waiting()]);
+    const [live, waiting] = await Promise.all([
+      devices.list(call.passwordHash),
+      pairing.waiting(call.passwordHash),
+    ]);
     return Response.json({ devices: live, waiting });
   }
 
@@ -153,7 +157,7 @@ export function createDeviceRoutes(
     return withPassword(
       call,
       async ({ requestId = "" }) =>
-        (await pairing.allow(requestId, allowedBy))
+        (await pairing.allow(requestId, allowedBy, call.passwordHash))
           ? new Response(null, { status: 204 })
           : errorResponse(serverErrors.notFound),
       ["requestId"],
@@ -171,7 +175,7 @@ export function createDeviceRoutes(
     "GET /api/devices": list,
     "POST /api/devices/revoke": revoke,
     "POST /api/devices/code": (call) =>
-      withPassword(call, async () => Response.json(await pairing.newCode())),
+      withPassword(call, async () => Response.json(await pairing.newCode(call.passwordHash))),
     "POST /api/devices/allow": allow,
   };
 

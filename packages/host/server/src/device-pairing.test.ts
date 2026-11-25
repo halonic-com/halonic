@@ -2,6 +2,7 @@ import type { Coordination } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { deviceSessionsKey } from "./device-sessions.ts";
+import { sessionGenerationKey } from "./stored-session.ts";
 import { FakeCoordination, FakePasswordHasher, TestClock, testServer } from "./test-server.ts";
 
 const host = "halonic.acme.example";
@@ -145,6 +146,37 @@ describe("pairing a device", () => {
       expect([...coordination.values.values()].join()).not.toContain(done.json.token);
     });
 
+    it("gives no token for a request allowed before a new password or a revoke of every session", async () => {
+      for (const change of ["new password", "revoke every session"]) {
+        const { coordination, secret, send, browserCookie, newCode } = setup();
+        const cookie = await browserCookie();
+        const code = await newCode({ cookie });
+        const unused = await newCode({ cookie });
+        const pending = await send("/api/pair", { body: { code, deviceName: "Laptop" } });
+        const [waiting] = (await send("/api/devices", { cookie })).json.waiting ?? [];
+        await send("/api/devices/allow", { cookie, body: { password, requestId: waiting?.id } });
+        if (change === "new password") secret.hash = "hash:battery staple";
+        else coordination.values.set(sessionGenerationKey, "after-revoke");
+        const poll = await send("/api/pair/status", {
+          body: { pendingId: pending.json.pendingId },
+        });
+        expect(poll.status, change).toBe(404);
+        const late = await send("/api/pair", { body: { code: unused, deviceName: "Other" } });
+        expect(late.status, change).toBe(401);
+      }
+    });
+
+    it("refuses a device name with a control or format character", async () => {
+      const { send, browserCookie, newCode } = setup();
+      const code = await newCode({ cookie: await browserCookie() });
+      // Right-to-left override, zero-width space and a line break, built so no editor hides them.
+      const hidden = [0x202e, 0x200b, 0x0a].map((point) => String.fromCodePoint(point));
+      for (const deviceName of hidden.map((character) => `Lap${character}top`)) {
+        const refused = await send("/api/pair", { body: { code, deviceName } });
+        expect(refused.status, JSON.stringify(deviceName)).toBe(400);
+      }
+    });
+
     it("refuses Allow and Add a device from a device session without the password", async () => {
       const { send, browserCookie, pairDevice } = setup();
       const auth = await pairDevice("Laptop", { cookie: await browserCookie() });
@@ -201,6 +233,16 @@ describe("device sessions", () => {
       }
       clock.advance(2 * dayMs);
       expect(await isSignedIn(busy)).toBe(false);
+    });
+
+    it("lets a request through when its last-seen write keeps losing to other writers", async () => {
+      const { clock, coordination, browserCookie, pairDevice, isSignedIn } = setup();
+      const auth = await pairDevice("Laptop", { cookie: await browserCookie() });
+      clock.advance(2 * 60 * 60 * 1000);
+      const compareAndSet = coordination.compareAndSet.bind(coordination);
+      coordination.compareAndSet = async (key, expected, next) =>
+        key === deviceSessionsKey ? false : compareAndSet(key, expected, next);
+      expect(await isSignedIn(auth)).toBe(true);
     });
 
     it("ends every device session when a new password is set", async () => {

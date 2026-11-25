@@ -54,9 +54,16 @@ export interface RevokeResult {
 
 /** The device sessions of one server. Every call takes the current `serve-password` hash. */
 export interface DeviceSessions {
-  /** Starts a session for a newly allowed device and gives its token, the only time it is given. */
+  /**
+   * Starts a session for a newly allowed device, in the session generation its pairing code was
+   * made in, and gives its token, the only time it is given.
+   */
   start(
-    device: { readonly name: string; readonly allowedBy: AllowedBy },
+    device: {
+      readonly name: string;
+      readonly allowedBy: AllowedBy;
+      readonly generation: string | null;
+    },
     passwordHash: string,
   ): Promise<string>;
   /** The id of the live device that holds `token`, or `null`. Notes the use as last seen. */
@@ -122,7 +129,7 @@ export function createDeviceSessions({ coordination, clock }: DevicePorts): Devi
         startedAt: now,
         lastSeenAt: now,
         password: await passwordFingerprint(passwordHash),
-        generation: await coordination.read(sessionGenerationKey),
+        generation: device.generation,
       };
       await change(passwordHash, (live) => [...live, entry]);
       return token;
@@ -141,9 +148,13 @@ export function createDeviceSessions({ coordination, clock }: DevicePorts): Devi
       const now = clock.now();
       if (now.getTime() - Date.parse(found.lastSeenAt) >= lastSeenStepMs) {
         const seen = { ...found, lastSeenAt: now.toISOString() };
-        await change(passwordHash, (live) =>
-          live.map((device) => (device.id === seen.id ? seen : device)),
-        );
+        try {
+          await change(passwordHash, (live) =>
+            live.map((device) => (device.id === seen.id ? seen : device)),
+          );
+        } catch {
+          // Last seen is a note, not a check: on a busy server a later request writes it instead.
+        }
       }
       return found.id;
     },
