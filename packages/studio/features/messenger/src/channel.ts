@@ -159,3 +159,15 @@ function shownReason(reason: string | undefined): string | undefined {
   if (line.length <= messageWorkReasonMax) return line;
   return `${line.slice(0, messageWorkReasonMax - 1)}…`;
 }
+
+/** A channel row's size: "3 agents", counting members its source no longer lists too. */
+export function channelSize(row: ConversationRow): string {
+  return channelWords.row.size((row.conversation.members ?? []).length);
+}
+
+/** "2 working · Elena, Liam" or "1 working · Elena" while members are working; else nothing. */
+export function workingMembers(row: ConversationRow): string | undefined {
+  const working = row.agents.filter((agent) => agent.activity === "working");
+  if (working.length === 0) return undefined;
+  return channelWords.row.working(working.map((agent) => agent.name));
+}

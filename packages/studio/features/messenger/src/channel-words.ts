@@ -1,6 +1,6 @@
 /**
  * A channel's words: its box, the To line, the `@` picker and the work lines under the person's
- * messages. Each is a row of HAL-17514's `wording` table (flows G, I and J), approved with the
+ * messages. Each is a row of HAL-17514's `wording` table (flows G, I, J and K), approved with the
  * phase 2 card on HAL-17544; Nina checked the new rows on HAL-17547.
  */
 export const channelWords = {
@@ -14,6 +14,19 @@ export const channelWords = {
   toNobody: "To nobody yet",
   noLead: "Name someone with @, or pick a lead in Members.",
   picker: "Members · ↑↓ to pick · Enter names them · Esc closes",
+  /** A channel's row in the list (k14a): its size, and who is working (Noah, HAL-18224: "1 working · Elena" too). */
+  row: {
+    size: (count: number) => `${count} agents`,
+    working: (names: readonly string[]) => `${names.length} working · ${names.join(", ")}`,
+  },
+  /** What waits for the person in a channel (flow K, k13a). */
+  waiting: {
+    more: (count: number) => `+${count} more`,
+    bar: (count: number) => `${count} waiting for you`,
+    next: "Next",
+    alsoInInbox: (channel: string) =>
+      `Also in your Inbox, asked in ${channel}. Answering here answers it there.`,
+  },
   /** An agent's message whose agent the source no longer lists ("An agent left the source"). */
   authorGone: (source: string) => `No longer in ${source}`,
   /** The same, when the source itself is gone too, so it has no label to name. */

@@ -1,5 +1,7 @@
 import type { MessagingId } from "@halonicjs/ports";
 import { Avatar, TabList, TabPanel, useTabIds } from "@halonicjs/studio-kit";
+import { channelSize, isChannel, workingMembers } from "../channel.ts";
+import { waitingLine } from "../channel-waiting.ts";
 import { activityOf, type ConversationRow, type MessengerTab } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 
@@ -43,7 +45,12 @@ export function ConversationList({ tab, onTab, rows, selected, onSelect }: Conve
           <ul className="flex flex-col gap-1">
             {rows.map((row) => (
               <li key={row.conversation.id}>
-                <Row row={row} current={row.conversation.id === selected} onSelect={onSelect} />
+                <Row
+                  row={row}
+                  tab={tab}
+                  current={row.conversation.id === selected}
+                  onSelect={onSelect}
+                />
               </li>
             ))}
           </ul>
@@ -53,16 +60,31 @@ export function ConversationList({ tab, onTab, rows, selected, onSelect }: Conve
   );
 }
 
+/**
+ * What a row says under its name: in Waiting for me, a channel's oldest question ("Elena asks you:
+ * Which hostname? · +1 more"); for a channel, who is working; for a chat,
+ * its agent's activity.
+ */
+function rowLine(row: ConversationRow, tab: MessengerTab): string {
+  if (!isChannel(row)) return messengerWords.activity[activityOf(row)];
+  const waiting = tab === "waiting" ? waitingLine(row.questions ?? []) : undefined;
+  return waiting ?? workingMembers(row) ?? "";
+}
+
 function Row({
   row,
+  tab,
   current,
   onSelect,
 }: {
   readonly row: ConversationRow;
+  readonly tab: MessengerTab;
   readonly current: boolean;
   readonly onSelect: (conversation: MessagingId) => void;
 }) {
-  const activity = messengerWords.activity[activityOf(row)];
+  const activity = rowLine(row, tab);
+  // A channel's row says how many agents it has (k14a); a chat's, its source.
+  const after = isChannel(row) ? channelSize(row) : row.source?.label;
   return (
     <button
       type="button"
@@ -75,8 +97,8 @@ function Row({
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-body">
           <bdi>{row.conversation.title}</bdi>
-          {row.source === undefined ? null : (
-            <span className="text-small text-fg-muted"> · {row.source.label}</span>
+          {after === undefined ? null : (
+            <span className="text-small text-fg-muted"> · {after}</span>
           )}
         </span>
         {activity === "" ? null : <span className="text-small text-fg-muted">{activity}</span>}

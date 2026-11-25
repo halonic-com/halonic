@@ -27,8 +27,7 @@ export function LeaveChannel({ messenger, row, onCancel, onLeft }: LeaveChannelP
     });
     setBusy(false);
     if (result?.outcome === "done") return onLeft();
-    const source = row.source?.label ?? "";
-    const reason = failureReason(result, source);
+    const reason = failureReason(result, row.source?.label);
     setFailure(leave.failed(title, reason));
   };
   return (

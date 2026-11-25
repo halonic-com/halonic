@@ -10,6 +10,7 @@ import { authorOf, EmptyChannel, MessageTo, WorkLines } from "./channel-message.
 import { ChatBox } from "./chat-box.tsx";
 import { ChatCards } from "./chat-cards.tsx";
 import { MembersPanel } from "./members-panel.tsx";
+import { WaitingBar } from "./waiting-bar.tsx";
 
 /** The props of {@link ConversationView}. */
 export interface ConversationViewProps {
@@ -88,6 +89,7 @@ export function ConversationView({
       <p role="status" className={noMatch ? "px-4 pt-4 text-small text-fg-muted" : undefined}>
         {noMatch ? messengerWords.noMatches : ""}
       </p>
+      {isChannel(row) ? <WaitingBar row={row} section={section} /> : null}
       <div className="flex min-h-0 flex-1">
         <Transcript
           messenger={messenger}
