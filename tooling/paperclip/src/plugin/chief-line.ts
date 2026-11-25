@@ -27,7 +27,10 @@ import {
 
 /** What the chief line uses from the plugin context, so tests can fake it. */
 export interface ChiefLineApi {
-  readonly issues: Pick<PluginIssuesClient, "list" | "create" | "listComments" | "requestWakeup">;
+  readonly issues: Pick<
+    PluginIssuesClient,
+    "list" | "get" | "create" | "listComments" | "requestWakeup"
+  >;
   readonly agents: Pick<PluginAgentsClient, "list">;
   readonly state: Pick<PluginStateClient, "get" | "set">;
   readonly config: Pick<PluginConfigClient, "get">;
@@ -61,6 +64,47 @@ export async function chiefAgentId(
     ?.id;
 }
 
+/** The fields of a task the chief line looks at. */
+interface ThreadIssue {
+  readonly id: string;
+  readonly identifier?: string | null;
+  readonly title: string;
+  readonly status: string;
+  readonly projectId?: string | null;
+  readonly createdAt: Date | string;
+}
+
+/** Whether a task is a live chief-line thread of `caller` in the line's project (done is fine). */
+export const isLiveThread = (issue: ThreadIssue | null, caller: string, projectId: string) =>
+  issue !== null &&
+  issue.status !== "cancelled" &&
+  issue.title === threadTitle(caller) &&
+  issue.projectId === projectId;
+
+const asThread = (issue: ThreadIssue): ChiefLineThread => ({
+  id: issue.id,
+  identifier: issue.identifier ?? issue.id,
+});
+
+/** Stores a caller's thread, unless it is already the stored one. */
+export async function rememberThread(
+  ctx: Pick<ChiefLineApi, "state">,
+  companyId: string,
+  caller: string,
+  thread: ChiefLineThread,
+): Promise<void> {
+  const threads = await readRecords<ChiefLineThread>(ctx, companyId, "threads");
+  const known = threads[caller];
+  if (known?.id === thread.id && known.identifier === thread.identifier) {
+    return;
+  }
+  await ctx.state.set(chiefLineStateKey(companyId, "threads"), { ...threads, [caller]: thread });
+}
+
+/**
+ * The caller's thread: the stored one while it is still a live `[chief-line] <caller>` task in
+ * the project, else the newest such task (the board may create it itself), else a new one.
+ */
 async function findOrCreateThread(
   ctx: ChiefLineApi,
   companyId: string,
@@ -68,19 +112,21 @@ async function findOrCreateThread(
   projectId: string,
   chiefId: string,
 ): Promise<ChiefLineThread> {
-  const threads = await readRecords<ChiefLineThread>(ctx, companyId, "threads");
-  const known = threads[caller];
+  const known = (await readRecords<ChiefLineThread>(ctx, companyId, "threads"))[caller];
   if (known !== undefined) {
-    return known;
+    const issue = await ctx.issues.get(known.id, companyId);
+    if (isLiveThread(issue, caller, projectId) && issue !== null) {
+      const thread = asThread(issue);
+      await rememberThread(ctx, companyId, caller, thread);
+      return thread;
+    }
   }
-  const listed = await ctx.issues.list({
-    companyId,
-    projectId,
-    assigneeAgentId: chiefId,
-    limit: 500,
-  });
+  const listed = await ctx.issues.list({ companyId, projectId, limit: 500 });
+  const newest = listed
+    .filter((candidate) => isLiveThread(candidate, caller, projectId))
+    .sort((x, y) => new Date(y.createdAt).getTime() - new Date(x.createdAt).getTime())[0];
   const issue =
-    listed.find((candidate) => candidate.title === threadTitle(caller)) ??
+    newest ??
     (await ctx.issues.create({
       companyId,
       projectId,
@@ -89,8 +135,8 @@ async function findOrCreateThread(
       status: "todo",
       assigneeAgentId: chiefId,
     }));
-  const thread = { id: issue.id, identifier: issue.identifier ?? issue.id };
-  await ctx.state.set(chiefLineStateKey(companyId, "threads"), { ...threads, [caller]: thread });
+  const thread = asThread(issue);
+  await rememberThread(ctx, companyId, caller, thread);
   return thread;
 }
 

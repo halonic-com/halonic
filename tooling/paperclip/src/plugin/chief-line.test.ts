@@ -7,7 +7,7 @@ import { onChiefLineComment } from "./chief-line-signal.ts";
 import { manifest } from "./manifest.ts";
 
 verifies("paperclip.chief-line", () => {
-  test("the manifest declares the four routes board-only", () => {
+  test("the manifest declares the three routes board-only", () => {
     const routes = manifest.apiRoutes?.filter((route) => route.routeKey.startsWith("chief-line"));
     expect(routes?.map((route) => [route.method, route.path, route.auth])).toEqual([
       ["POST", "/chief-line/thread", "board"],
@@ -141,5 +141,69 @@ verifies("paperclip.chief-line", () => {
         idempotencyKey: `chief-line ${id}`,
       })),
     );
+  });
+
+  test("a cancelled or renamed stored thread is ignored; the newest live [chief-line] task is used and signals", async () => {
+    const line = fakeChiefLine();
+    await handleChiefLineRequest(lineRequest(keys.openThread, { caller: "sup" }), line.ctx);
+    await handleChiefLineRequest(
+      lineRequest(keys.subscribe, { caller: "sup", url: "https://hooks.acme.test/c" }),
+      line.ctx,
+    );
+    const [old] = line.issues;
+    if (old === undefined) throw new Error("no thread");
+    old.status = "cancelled";
+    old.title = "[chief-line] sup (old)";
+    // The board makes the new thread itself; a cancelled one with the exact title is skipped.
+    await line.ctx.issues.create({
+      title: "[chief-line] sup",
+      status: "cancelled",
+      projectId: "proj-1",
+    } as never);
+    await line.ctx.issues.create({
+      title: "[chief-line] sup",
+      status: "done",
+      projectId: "proj-1",
+    } as never);
+    const opened = await handleChiefLineRequest(
+      lineRequest(keys.openThread, { caller: "sup" }),
+      line.ctx,
+    );
+    expect(opened.body).toEqual({ threadId: "issue-3", identifier: "ACME-3" });
+    const chief = line.addComment("issue-3", "answer", "agent-chief", null);
+    await onChiefLineComment(line.ctx, commentEvent("issue-3", chief.id));
+    expect(line.posts).toEqual([
+      {
+        url: "https://hooks.acme.test/c",
+        body: {
+          thread: "ACME-3",
+          caller: "sup",
+          commentId: chief.id,
+          at: "2026-11-25T10:00:00.000Z",
+        },
+      },
+    ]);
+  });
+
+  test("the signal finds a thread by its title even before the plugin stored it, only in the line's project", async () => {
+    const line = fakeChiefLine();
+    await handleChiefLineRequest(
+      lineRequest(keys.subscribe, { caller: "studio", url: "https://hooks.acme.test/s" }),
+      line.ctx,
+    );
+    const elsewhere = await line.ctx.issues.create({
+      title: "[chief-line] studio",
+      projectId: "proj-2",
+    } as never);
+    const a = line.addComment(elsewhere.id, "x", "agent-chief", null);
+    await onChiefLineComment(line.ctx, commentEvent(elsewhere.id, a.id));
+    expect(line.posts).toEqual([]);
+    const own = await line.ctx.issues.create({
+      title: "[chief-line] studio",
+      projectId: "proj-1",
+    } as never);
+    const b = line.addComment(own.id, "y", "agent-chief", null);
+    await onChiefLineComment(line.ctx, commentEvent(own.id, b.id));
+    expect(line.posts).toHaveLength(1);
   });
 });

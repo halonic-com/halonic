@@ -3,10 +3,17 @@ import {
   type ChiefLineApi,
   type ChiefLineThread,
   chiefAgentId,
+  isLiveThread,
   readRecords,
+  rememberThread,
   takeSlot,
 } from "./chief-line.ts";
-import { chiefLineStateKey, readChiefLineSettings, webhookAllowed } from "./chief-line-settings.ts";
+import {
+  chiefLineStateKey,
+  readChiefLineSettings,
+  threadTitlePattern,
+  webhookAllowed,
+} from "./chief-line-settings.ts";
 
 /**
  * What the chief line does on `issue.comment.created`: a comment on a caller's
@@ -109,12 +116,19 @@ async function handle(ctx: ChiefLineSignalApi, event: PluginEvent): Promise<void
   if (!settings.enabled || issueId === undefined) {
     return;
   }
-  const threads = await readRecords<ChiefLineThread>(ctx, companyId, "threads");
-  const entry = Object.entries(threads).find(([, thread]) => thread.id === issueId);
-  if (entry === undefined) {
+  // The task's own title names the caller, so a stored record can't go stale here.
+  const issue = await ctx.issues.get(issueId, companyId);
+  const caller = issue?.title.match(threadTitlePattern)?.[1];
+  if (
+    issue === null ||
+    caller === undefined ||
+    settings.projectId === undefined ||
+    !isLiveThread(issue, caller, settings.projectId)
+  ) {
     return;
   }
-  const [caller, thread] = entry;
+  const thread: ChiefLineThread = { id: issue.id, identifier: issue.identifier ?? issue.id };
+  await rememberThread(ctx, companyId, caller, thread);
   const comments = await ctx.issues.listComments(thread.id, companyId);
   // Without a comment id in the payload, the newest comment is the one just created.
   const comment =
