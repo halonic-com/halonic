@@ -60,9 +60,9 @@ verifies("format.tool-refusals", () => {
 
   it("refuses invisible characters in a description and in a parameter's choices", () => {
     for (const hidden of ["\u200B", "\uFEFF", "\u{E0041}", "\u2028", "\u2029"]) {
-      expect(summary(problemsOf("tool", toolFile({ description: `Lists${hidden} runs.` })))).toEqual(
-        ["description custom 3"],
-      );
+      expect(
+        summary(problemsOf("tool", toolFile({ description: `Lists${hidden} runs.` }))),
+      ).toEqual(["description custom 3"]);
       const parameter = `mode: { type: string, description: Which., enum: [fast, "sl${hidden}ow"] }`;
       expect(summary(problemsOf("tool", toolFile({ parameter })))).toEqual([
         "parameters.mode.enum.1 custom 5",

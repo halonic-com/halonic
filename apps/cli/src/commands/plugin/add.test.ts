@@ -222,7 +222,7 @@ verifies("cli.commands.plugin.add", () => {
 
     expect(code).toBe(exitCode.usage);
     expect(io.stderr[0]).toBe(
-      "✕ Couldn't add the plugin: plugin.yaml 4:7 name: don't use control characters or text-direction marks",
+      "✕ Couldn't add the plugin: plugin.yaml 4:7 name: don't use control, invisible or text-direction characters",
     );
     await expect(readdir(pluginsFolder())).rejects.toThrow();
     expect([...io.stdout, ...io.stderr].join("\n")).not.toContain("\u001b");
@@ -240,7 +240,7 @@ verifies("cli.commands.plugin.add", () => {
 
     expect(code).toBe(exitCode.usage);
     expect(io.stderr[0]).toBe(
-      "✕ Couldn't add the plugin: plugin.yaml 20:60 ui.settings.units.choices[1]: don't use control characters or text-direction marks",
+      "✕ Couldn't add the plugin: plugin.yaml 20:60 ui.settings.units.choices[1]: don't use control, invisible or text-direction characters",
     );
     await expect(readdir(pluginsFolder())).rejects.toThrow();
   });

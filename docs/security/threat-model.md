@@ -1003,7 +1003,7 @@ a real sandbox. Plugin secrets and sign-ins are in
 | A local tool runs where its fence isn't proven | Local tools run only fenced: a session whose proof isn't `fenced` starts nothing and the call fails with the reason | **On `main`** (`app.plugin-local-tools`, `cli.plugin-local-tools`, `agent-host.plugin-local-tools`) |
 | Plugin text becomes markup or script in Studio | Studio draws plugin text as text or through its own small Markdown reader. A source guard keeps HTML sinks, `window.open` and page changes out of the plugins feature, and links on `ExternalLink` only | **On `main`** (`plugins.plugin-text`; `packages/studio/features/plugins/src/no-raw-markup.test.ts`, `labels.never-html.test.tsx`, `ui/plugin-result.never-html.test.tsx`) |
 | A plugin link opens something other than a web page | `ExternalLink` allows only `http` and `https`, by the rule the Markdown reader shares | **On `main`** (`kit.external-link-web-only`) |
-| A plugin's name imitates another's with control characters or text-direction marks | The manifest check refuses them in names, labels, titles and descriptions, and Studio isolates each such text | **On `main`** (`format.plugin-file`, `plugins.plugin-text`) |
+| A plugin's name imitates another's with control characters, invisible characters or text-direction marks | The manifest check refuses them in names, labels, titles and descriptions, and Studio isolates each such text | **On `main`** (`format.plugin-file`, `plugins.plugin-text`) |
 | A plugin's command or card calls a tool that changes or sends something | A `ui` that calls a `write` or `send` tool is refused | **On `main`** (`format.plugin-ui-read-tools`) |
 
 **Known limit.** On Linux, a credential folder you create while a local tool's

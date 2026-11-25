@@ -203,7 +203,7 @@ Linux, Seatbelt on macOS).
   window or change the page, and only `ExternalLink` carries a link. It allows
   only `http` and `https`, by the same rule the Markdown reader uses
   (`kit.external-link-web-only`). A manifest's names, labels, titles and
-  descriptions can't hold control characters or text-direction marks
+  descriptions can't hold control characters, invisible characters or text-direction marks
   (`format.plugin-file`), and Studio isolates them so they can't reorder the
   text around them (`plugins.plugin-text`). A command or a card can call only a
   `read` tool (`format.plugin-ui-read-tools`).
