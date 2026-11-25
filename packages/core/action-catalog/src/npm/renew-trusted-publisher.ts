@@ -28,13 +28,15 @@ export const definition: StepperDefinition<Record<string, string | number>> = {
       address: "https://www.npmjs.com/package/@{scope}/{package}/access",
       instructions: [
         "Sign in to npm with the account that maintains the package, if npm asks you to.",
+        "Only do this for an entry that has not published yet: npm expires a configuration only when its first successful publish is overdue (2 days after it was created). An entry that already published keeps working; leave it alone.",
         "Under **Trusted Publisher**, find the entry for {owner}/{repo} and {workflow}. npm can't edit an entry, so delete it: click its delete button and confirm.",
         "Under **Trusted Publisher**, click **GitHub Actions**.",
         "Fill in **Organization or user** with {owner} and **Repository** with {repo}. Both are case-sensitive and must be exact.",
         "Fill in **Workflow filename** with {workflow}: only the file name, not the path. The file must exist in `.github/workflows/` of that repository.",
         "Fill in **Environment name** with {environment}, exactly as the workflow's publish job spells it. If that is `none`, leave the field empty.",
-        "Click **Set up connection**. npm doesn't check the entry when you save it, so a mistake only shows when the workflow publishes.",
-        "Within 2 days, run the workflow once so it publishes: npm drops an entry that has had no successful publish in that time.",
+        "Under **Allowed actions**, tick **npm publish** if the workflow publishes directly; `npm stage publish` is always allowed. Tick **npm dist-tag** only if the workflow also manages dist-tags.",
+        "Click **Update Package Settings**. npm doesn't check the entry when you save it, so a mistake only shows when the workflow publishes.",
+        "Within 2 days, run the workflow once so it publishes: a new entry that has not published by then expires and can't be edited or used (npm's documentation).",
         "Instructions follow npm's documentation: https://docs.npmjs.com/trusted-publishers",
       ],
       // From npm's public documentation; the live smoke test walks it.

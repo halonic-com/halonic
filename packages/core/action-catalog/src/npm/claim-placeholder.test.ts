@@ -29,7 +29,7 @@ verifies("action-catalog.npm-claim-placeholder", () => {
       const guide = manualGuideFor("npm.claim-placeholder@1", parameters);
       expect(guide).toContain("1. Open https://www.npmjs.com/package/acme-app\n");
       expect(guide).toContain("4. In an empty folder, run `npm init -y`");
-      expect(guide.split("\n").filter((line) => /^\d+\. /.test(line))).toHaveLength(7);
+      expect(guide.split("\n").filter((line) => /^\d+\. /.test(line))).toHaveLength(8);
     });
 
     it.each(["../acme", "acme%2Fapp", "acme?x=1", "@acme/app", "Acme"])(

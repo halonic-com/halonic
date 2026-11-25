@@ -25,15 +25,15 @@ export const catalogEntries = {
   },
   "npm/claim-placeholder": {
     definition: npmClaimPlaceholder,
-    sourceHash: "ae812c3eb22a2ba7dfbdf22937f5b64a9c8e01195018d79bb2094eb44942fe1b",
+    sourceHash: "e2dcbe0e19bcd87e0d05826b42505df4c5a07a4c09cfaf5de21760940e7893e0",
   },
   "npm/renew-trusted-publisher": {
     definition: npmRenewTrustedPublisher,
-    sourceHash: "0d21538738d70d090524fb593ba47a3eac228de0a6c790685a6075871f3b208a",
+    sourceHash: "e7dacb21bbd4a1f760baace253109f15f24599a003df47dc84d119bb6a8c772f",
   },
   "npm/set-trusted-publisher": {
     definition: npmSetTrustedPublisher,
-    sourceHash: "1a54930f042c0757bbe5d73be4fa2fe222f3a77130240445ab74810aa3370115",
+    sourceHash: "4fa8cc66c04d32d72f3e021ee03bba2985c497c60956bfe624f12ebc1dcc66be",
   },
   "play/fill-data-safety": {
     definition: playFillDataSafety,

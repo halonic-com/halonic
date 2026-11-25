@@ -23,6 +23,7 @@ export const definition: StepperDefinition<Record<string, string | number>> = {
         "Sign in to npm in a terminal with `npm login`, using the account that should own the package.",
         "In an empty folder, run `npm init -y`, then set `name` in `package.json` to {package} and `version` to `0.0.1`.",
         "Add a `README.md` that says the name is reserved, then run `npm publish --access public`.",
+        "If npm refuses the name as too close to an existing package, pick another name and start again from the first step.",
         "Reload the address above: the package page should now show version 0.0.1.",
         "Instructions follow npm's documentation: https://docs.npmjs.com/creating-and-publishing-unscoped-public-packages",
       ],

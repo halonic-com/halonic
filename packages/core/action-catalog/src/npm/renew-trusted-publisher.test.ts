@@ -35,9 +35,9 @@ verifies("action-catalog.npm-renew-trusted-publisher", () => {
     it("gives a numbered manual guide that opens the access page", () => {
       const guide = manualGuideFor("npm.renew-trusted-publisher@1", parameters);
       expect(guide).toContain("1. Open https://www.npmjs.com/package/@acme/app/access\n");
-      expect(guide).toContain("6. Fill in **Workflow filename** with `publish.yml`");
-      expect(guide).toContain("7. Fill in **Environment name** with `release`");
-      expect(guide.split("\n").filter((line) => /^\d+\. /.test(line))).toHaveLength(10);
+      expect(guide).toContain("7. Fill in **Workflow filename** with `publish.yml`");
+      expect(guide).toContain("8. Fill in **Environment name** with `release`");
+      expect(guide.split("\n").filter((line) => /^\d+\. /.test(line))).toHaveLength(12);
     });
 
     it.each(["../x.yml", ".github/workflows/publish.yml", "publish.sh", "Publish.yml", "a b.yml"])(

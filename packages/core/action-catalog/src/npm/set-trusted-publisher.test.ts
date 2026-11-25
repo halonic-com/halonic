@@ -37,7 +37,7 @@ verifies("action-catalog.npm-set-trusted-publisher", () => {
       expect(guide).toContain("1. Open https://www.npmjs.com/package/@acme/app/access\n");
       expect(guide).toContain("5. Fill in **Workflow filename** with `publish.yml`");
       expect(guide).toContain("6. Fill in **Environment name** with `release`");
-      expect(guide.split("\n").filter((line) => /^\d+\. /.test(line))).toHaveLength(9);
+      expect(guide.split("\n").filter((line) => /^\d+\. /.test(line))).toHaveLength(10);
     });
 
     it("is refused as a request when the workflow file is a path", () => {
