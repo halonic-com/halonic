@@ -344,9 +344,10 @@ fn a_sign_in_reads_the_login_and_stores_only_the_expiring_token() {
         account::signed_in(&run.keychain, "github", now + 28_800),
         Ok(None)
     );
+    // Secret names keep `_` where the login has `-`.
     assert_eq!(
         run.keychain.writes(),
-        ["action__github__acme-admin", "action__github"]
+        ["action__github__acme_admin", "action__github"]
     );
     // The code is shown with the shell's own page, not the one GitHub sent.
     let shown = run.screen.0.lock().expect("not poisoned").clone();
