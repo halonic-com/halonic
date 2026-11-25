@@ -44,6 +44,15 @@ verifies("assistant.sessions.draft-until-first-message", () => {
     expect(isDraft(sent.messages)).toBe(false);
     expect(chatToSave(sent)).toEqual(sent);
   });
+
+  it("keeps the item a chat is about when it is saved and restored", () => {
+    const about: SavedChat = {
+      ...chat("c-1", at(0)),
+      about: { kind: "workflow", hub: "support", id: "triage" },
+    };
+    expect(chatToSave(about)?.about).toEqual(about.about);
+    expect(restoredChat(about).chat.about).toEqual(about.about);
+  });
 });
 
 verifies("assistant.sessions.title-from-first-message", () => {

@@ -75,6 +75,21 @@ function storageCases(make: MakeChatSessions): void {
     expect(await store.list(acme)).toEqual([summaryOf(agentChat)]);
   });
 
+  it("gives back the item a Build chat is about, in the list too, and reads a chat without one", async () => {
+    const { store } = await make();
+    const about: SavedChat = {
+      ...savedChat("c-1"),
+      about: { kind: "workflow", hub: "support", id: "triage" },
+    };
+    await store.save(acme, about);
+    await store.save(acme, savedChat("c-2", "2026-11-23T09:00:00.000Z"));
+    expect(await store.load(acme, "c-1")).toEqual(about);
+    expect(await store.load(acme, "c-2")).toEqual(savedChat("c-2", "2026-11-23T09:00:00.000Z"));
+    const listed = await store.list(acme);
+    expect(listed[0]?.about).toEqual(about.about);
+    expect(listed[1]).not.toHaveProperty("about");
+  });
+
   it("replaces a chat saved again, and deletes one, missing or not", async () => {
     const { store } = await make();
     await store.save(acme, savedChat("c-1"));

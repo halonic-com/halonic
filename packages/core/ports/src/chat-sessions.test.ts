@@ -28,6 +28,23 @@ verifies("ports.chat-sessions", () => {
     expect(isSavedChat({ ...chat, kind: "build", model: { kind: "assistant" } })).toBe(true);
   });
 
+  it("knows a Build chat about an item, and refuses a malformed about", () => {
+    const build: SavedChat = { ...chat, kind: "build" };
+    expect(
+      isSavedChat({ ...build, about: { kind: "workflow", hub: "support", id: "triage" } }),
+    ).toBe(true);
+    for (const about of [
+      null,
+      "triage",
+      { kind: "page", hub: "support", id: "triage" },
+      { kind: "workflow", hub: "", id: "triage" },
+      { kind: "workflow", hub: "support", id: "" },
+      { kind: "workflow", hub: "support" },
+    ]) {
+      expect(isSavedChat({ ...build, about }), JSON.stringify(about)).toBe(false);
+    }
+  });
+
   it("refuses an id that couldn't be a file name", () => {
     for (const id of ["../acme", "C-1", "", "-a", "a".repeat(65), 7]) {
       expect(isSavedChat({ ...chat, id })).toBe(false);

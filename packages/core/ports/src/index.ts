@@ -85,9 +85,11 @@ export {
   chatSessionsVersion,
   isSavedChat,
   type SavedChat,
+  type SavedChatAbout,
   type SavedChatKind,
   type SavedChatModel,
   type SavedChatSummary,
+  savedChatAboutKinds,
   savedChatIdPattern,
 } from "./chat-sessions.ts";
 export { type Clock, clockVersion } from "./clock.ts";
