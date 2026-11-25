@@ -1,4 +1,4 @@
-import { isLiamPath, julianLineLimit, reviewerFor } from "../reviewer-paths.ts";
+import { isLiamPath, overLineLimit, reviewerFor } from "../reviewer-paths.ts";
 import { anySignedApproval, blockWords, fixedWords, signedApproval } from "./signed.ts";
 import type { GatePull, PullText } from "./snapshot.ts";
 
@@ -142,8 +142,9 @@ export function outsideJulianScope(pull: GatePull): string | null {
   if (bad.length > 0) {
     return `touches ${bad.slice(0, 2).join(", ")}${bad.length > 2 ? " …" : ""}`;
   }
-  if (changedLines > julianLineLimit) {
-    return `${changedLines} changed lines (limit ${julianLineLimit})`;
+  const tooBig = overLineLimit(routed);
+  if (tooBig !== undefined) {
+    return tooBig;
   }
   return "changes a package.json field Liam owns, or the lockfile";
 }

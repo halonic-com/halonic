@@ -61,8 +61,24 @@ export const liamWords: readonly string[] = [
   "trust",
 ];
 
-/** Julian approves at most this many changed lines, unless it's only tests and Markdown. */
-export const julianLineLimit = 1200;
+/**
+ * Julian approves at most this many changed lines (HAL-18459); tests,
+ * Markdown and wording files don't count toward it.
+ */
+export const julianLineLimit = 1500;
+
+/** The engine's kernel and the event types: Liam reviews bigger changes to them at any size limit. */
+export const coreFolders: readonly string[] = [
+  "packages/core/engine/src/kernel/",
+  "packages/core/events/",
+];
+
+/** Julian approves at most this many changed lines in `coreFolders` (HAL-18459). */
+export const coreLineLimit = 800;
+
+function isCorePath(path: string): boolean {
+  return coreFolders.some((folder) => path.startsWith(folder));
+}
 
 /**
  * Top-level `package.json` fields that publish, install or pin something: a
@@ -230,6 +246,50 @@ export interface RoutedPull {
   readonly sensitive: boolean;
   /** Each changed `package.json` at base and head, by path; a missing one counts as touching Liam's fields. */
   readonly manifests?: Readonly<Record<string, ManifestChange>>;
+  /**
+   * Changed lines (additions plus deletions) per file. Without a file's
+   * count, the line limits use the whole pull request's `changedLines`.
+   */
+  readonly fileLines?: Readonly<Record<string, number>>;
+}
+
+/**
+ * Changed lines in the pull request's code files that `inScope` picks; tests,
+ * Markdown and wording don't count. When a picked file's count is missing,
+ * the whole pull request's lines stand in for them, which can only route
+ * to Liam more often, never less.
+ */
+function codeLines(pull: RoutedPull, inScope: (path: string) => boolean): number {
+  const picked = pull.files.filter((path) => inScope(path) && !isWordsOnly(path));
+  if (picked.length === 0) {
+    return 0;
+  }
+  let sum = 0;
+  for (const path of picked) {
+    const lines = pull.fileLines?.[path];
+    if (lines === undefined) {
+      return pull.changedLines;
+    }
+    sum += lines;
+  }
+  return sum;
+}
+
+/**
+ * Why the pull request is too big for Julian (HAL-18459), or undefined when
+ * it isn't: more than `julianLineLimit` changed lines of code, or more than
+ * `coreLineLimit` of them in `coreFolders`.
+ */
+export function overLineLimit(pull: RoutedPull): string | undefined {
+  const lines = codeLines(pull, () => true);
+  if (lines > julianLineLimit) {
+    return `${lines} changed lines outside tests, Markdown and wording (limit ${julianLineLimit})`;
+  }
+  const coreLines = codeLines(pull, isCorePath);
+  if (coreLines > coreLineLimit) {
+    return `${coreLines} changed lines in the kernel or the event types (limit ${coreLineLimit})`;
+  }
+  return undefined;
 }
 
 /**
@@ -254,10 +314,12 @@ function isLiamPackageChange(pull: RoutedPull): boolean {
  * role comes from the routing (`routing.ts`).
  */
 export function reviewerRoleFor(pull: RoutedPull): "second-reviewer" | "code-reviewer" {
-  const overLimit =
-    pull.changedLines > julianLineLimit &&
-    !pull.files.every((path) => isTestPath(path) || path.endsWith(".md"));
-  if (pull.sensitive || overLimit || pull.files.some(isLiamPath) || isLiamPackageChange(pull)) {
+  if (
+    pull.sensitive ||
+    overLineLimit(pull) !== undefined ||
+    pull.files.some(isLiamPath) ||
+    isLiamPackageChange(pull)
+  ) {
     return "code-reviewer";
   }
   return "second-reviewer";

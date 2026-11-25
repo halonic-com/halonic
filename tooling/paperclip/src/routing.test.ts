@@ -32,8 +32,8 @@ const cases: readonly (readonly [RoutedPull, "julian" | "liam"])[] = [
     { files: ["tooling/paperclip/src/reviewer-paths.ts"], changedLines: 2, sensitive: false },
     "liam",
   ],
-  [{ files: ["packages/core/app/src/a.ts"], changedLines: 1201, sensitive: false }, "liam"],
-  [{ files: ["packages/core/app/src/a.ts"], changedLines: 1200, sensitive: false }, "julian"],
+  [{ files: ["packages/core/app/src/a.ts"], changedLines: 1501, sensitive: false }, "liam"],
+  [{ files: ["packages/core/app/src/a.ts"], changedLines: 1500, sensitive: false }, "julian"],
   [{ files: ["packages/core/app/src/a.ts"], changedLines: 5, sensitive: true }, "liam"],
   [
     {
