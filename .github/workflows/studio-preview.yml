@@ -31,11 +31,12 @@
 # build-ref always builds, since its preview version is numbered by the run.
 #
 # Every night scheduled.yml starts a nightly run, of main's newest commit as
-# build-ref, when apps/studio, apps/agent-host or packages/studio changed
-# since the last one (tooling/check/src/cli/nightly-click-test.ts). The
+# build-ref, when anything the installed app is built from, the click test,
+# this workflow or the lockfile changed since the last one (clickTestPaths in
+# tooling/check/src/lib/nightly-click-test.ts). It runs every step. The
 # next night's main-failures reads its jobs, so a failing click test opens
-# "Failing on main: Desktop app" (docs/guides/area-owners.md). After fixing
-# the suite or this workflow, start one by hand:
+# "Failing on main: Desktop app" (docs/guides/area-owners.md). To try a fix
+# before then, start one by hand:
 #
 #   gh workflow run studio-preview.yml --ref main -f build-ref=<commit> -f nightly=true
 #

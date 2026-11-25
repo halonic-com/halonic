@@ -7,7 +7,7 @@ import { needsClickTest, testedCommit } from "../lib/nightly-click-test.ts";
  *
  * Run from a checkout of main. Finds the commit the last nightly click
  * test that finished (`studio-preview.yml`, HAL-18356) built its installer
- * from, which its run name gives (HAL-18889), and says whether `apps/studio/`, `apps/agent-host/` or `packages/studio/` changed since.
+ * from, which its run name gives (HAL-18889), and says whether a file under `clickTestPaths` changed since.
  * With `--apply` it then starts tonight's, of the checked-out commit. Needs
  * `gh`, signed in with actions:write, and `git`; a shallow checkout is
  * enough, since only the two commits' trees are compared.
