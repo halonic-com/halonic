@@ -6,8 +6,9 @@ import type { CiOkRun, FailedJob, GatePull, GroupRun, RunFact } from "./snapshot
 
 /**
  * The facts read from the GitHub Actions REST API, GET only: merge-group
- * runs, queued pull request runs, `main`'s CI runs, a failed run's jobs, a
- * red fast-track head's `ci-ok` run, and changed package manifests.
+ * runs, queued pull request runs, `main`'s CI runs, a failed run's jobs
+ * (with a merge group's failure annotations), a red fast-track head's
+ * `ci-ok` run, and changed package manifests.
  */
 
 /** A workflow run as the REST API lists it. */
@@ -94,6 +95,49 @@ async function failedJobsOf(get: GitHubGet, repo: string, runId: number): Promis
     }));
 }
 
+interface RestAnnotation {
+  readonly path?: string;
+  readonly annotation_level?: string;
+}
+
+/**
+ * The paths a job's `failure` annotations name, once each; `.github` (a
+ * workflow's own annotation) and empty paths left out. Undefined when they
+ * can't be read, which keeps the culprit hold (`main-broken.ts`).
+ */
+async function annotatedFilesOf(
+  get: GitHubGet,
+  repo: string,
+  jobId: number,
+): Promise<string[] | undefined> {
+  try {
+    const annotations = (await get(
+      `/repos/${repo}/check-runs/${jobId}/annotations?per_page=100`,
+    )) as RestAnnotation[];
+    const paths = annotations
+      .filter((annotation) => annotation.annotation_level === "failure")
+      .map((annotation) => annotation.path ?? "")
+      .filter((path) => path !== "" && path !== ".github");
+    return [...new Set(paths)];
+  } catch {
+    return undefined;
+  }
+}
+
+/** A merge group's failed jobs, each with the files its annotations name. */
+async function groupFailedJobsOf(
+  get: GitHubGet,
+  repo: string,
+  runId: number,
+): Promise<FailedJob[]> {
+  const jobs: FailedJob[] = [];
+  for (const job of await failedJobsOf(get, repo, runId)) {
+    const annotatedFiles = await annotatedFilesOf(get, repo, job.id);
+    jobs.push(annotatedFiles === undefined ? job : { ...job, annotatedFiles });
+  }
+  return jobs;
+}
+
 /** The merge groups' `CI` runs that finished in the last 3 hours, with the failed jobs of each that didn't pass. */
 export async function groupRunsOf(
   get: GitHubGet,
@@ -108,12 +152,15 @@ export async function groupRunsOf(
   );
   const groups: GroupRun[] = [];
   for (const run of finished) {
-    const failedJobs =
-      run.conclusion === "success"
-        ? []
-        : await cached(cache, `${run.id}:${run.run_attempt ?? 1}`, () =>
-            failedJobsOf(get, repo, run.id),
-          );
+    const key = `${run.id}:${run.run_attempt ?? 1}`;
+    let failedJobs = run.conclusion === "success" ? [] : cache.get(key);
+    if (failedJobs === undefined) {
+      failedJobs = await groupFailedJobsOf(get, repo, run.id);
+      // A job whose annotations couldn't be read is read again on the next pass.
+      if (failedJobs.every((job) => job.annotatedFiles !== undefined)) {
+        cache.set(key, failedJobs);
+      }
+    }
     groups.push({
       id: run.id,
       conclusion: run.conclusion ?? "",

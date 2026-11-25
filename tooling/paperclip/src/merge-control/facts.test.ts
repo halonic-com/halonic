@@ -27,10 +27,15 @@ interface Sent {
 
 /** A reader on recorded answers, through the real GitHub readers, recording every request. */
 function recorded(
-  options: { capacity?: Record<string, unknown>; groups?: RestRun[]; caches?: FactsCaches } = {},
+  options: {
+    capacity?: Record<string, unknown>;
+    groups?: RestRun[];
+    caches?: FactsCaches;
+    rest?: Record<string, unknown>;
+  } = {},
 ) {
   const sent: Sent[] = [];
-  const rest = restAnswers(options.groups);
+  const rest = { ...restAnswers(options.groups), ...options.rest };
   const fetch: Fetch = async (url, init) => {
     sent.push({
       method: init.method,
@@ -238,5 +243,41 @@ verifies("paperclip.merge-control-request-count", () => {
     expect(lines).toContain(
       "GitHub requests this pass: 1 REST GETs, 1 GraphQL queries (cost 2, 4990 points left)",
     );
+  });
+});
+
+verifies("paperclip.merge-control-facts", () => {
+  const annotations = `/repos/${repo}/check-runs/71/annotations`;
+  const failedJobs = async (rest: Record<string, unknown>) => {
+    const { snapshot } = await readMergeFacts(recorded({ rest }).deps, now);
+    return snapshot.groupRuns.find((run) => run.id === 7001)?.failedJobs ?? [];
+  };
+
+  test("a failed group job's failure annotations give the files it names", async () => {
+    const [lint] = await failedJobs({
+      [annotations]: [
+        {
+          path: "tooling/paperclip/src/merge-control/state.ts",
+          annotation_level: "failure",
+          message: "Leak guard: a token-shaped string.",
+        },
+        { path: ".github", annotation_level: "failure", message: "exit code 1" },
+        { path: "", annotation_level: "failure", message: "no file" },
+        { path: "README.md", annotation_level: "notice", message: "a note" },
+      ],
+    });
+    expect(lint?.annotatedFiles).toEqual(["tooling/paperclip/src/merge-control/state.ts"]);
+  });
+
+  test("an annotation read error leaves the files out, and the run is read again next pass", async () => {
+    const caches = factsCaches();
+    const first = recorded({ caches, rest: { [annotations]: undefined } });
+    const { snapshot } = await readMergeFacts(first.deps, now);
+    const lint = snapshot.groupRuns.find((run) => run.id === 7001)?.failedJobs[0];
+    expect(lint?.name).toBe("Lint");
+    expect(lint?.annotatedFiles).toBeUndefined();
+    const second = recorded({ caches });
+    await readMergeFacts(second.deps, now);
+    expect(second.sent.some((request) => request.url.includes("/runs/7001/jobs"))).toBe(true);
   });
 });

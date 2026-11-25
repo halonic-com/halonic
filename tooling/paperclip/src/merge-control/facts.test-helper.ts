@@ -332,6 +332,15 @@ export function restAnswers(groups: RestRun[] = groupRuns()): Record<string, unk
         },
       ],
     },
+    // Lint's only failure annotation is the workflow's own: it names no file.
+    [`${p}/check-runs/71/annotations`]: [
+      {
+        path: ".github",
+        annotation_level: "failure",
+        message: "Process completed with exit code 1.",
+      },
+      { path: "packages/core/thing-101/src/a.ts", annotation_level: "warning", message: "Unused" },
+    ],
     [`${p}/check-runs/10301/annotations`]: [{ message: flakeLine }],
     [`${p}/actions/runs/7004/jobs`]: { jobs: [{ id: 74, conclusion: "cancelled" }] },
     [`${p}/check-runs/74/annotations`]: [{ message: `The run was canceled by @${merger}.` }],

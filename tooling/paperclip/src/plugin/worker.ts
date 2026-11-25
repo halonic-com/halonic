@@ -16,6 +16,7 @@ import {
 import { handoffLimit } from "./handoff-limit.ts";
 import { runWatcher } from "./job.ts";
 import { mergeControlPass } from "./merge-control-job.ts";
+import { passLock } from "./merge-control-lock.ts";
 import { mergeFactsReader } from "./merge-control-reader.ts";
 import { registerNextStepTools } from "./next-step-tools.ts";
 import { registerReadyForReview } from "./ready-for-review.ts";
@@ -60,8 +61,10 @@ export const plugin = definePlugin({
     ctx.jobs.register("board-check", () => boardJob.dispatch());
     // Off unless the board sets a mode: the pass then returns before reading anything.
     const readFacts = mergeFactsReader(ctx, (url, init) => fetch(url, init));
+    // The worker's one pass lock: merge control's state is written only through it.
+    const lock = passLock(ctx.state);
     const mergeJob = scheduledPerCompany(ctx, roster, "merge-control", (companyId, now) =>
-      mergeControlPass(ctx, companyId, now, readFacts),
+      mergeControlPass(ctx, lock, companyId, now, readFacts),
     );
     ctx.jobs.register("merge-control", () => mergeJob.dispatch());
     ctx.events.on("issue.comment.created", async (event) => {
