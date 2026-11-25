@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
 import { fakeHost } from "./fake-host.test-helper.ts";
-import { doneOnly, handoffOnly, paperclipHost } from "./host.ts";
+import { doneOnly, type HostApi, handoffOnly, paperclipHost } from "./host.ts";
 
 const srcDir = fileURLToPath(new URL("..", import.meta.url));
 
@@ -88,22 +88,46 @@ verifies("paperclip.pr-watcher-handoff", () => {
     }
   });
 
-  test("comments, gives the task to the reviewer with status todo, then wakes them", async () => {
+  test("gives the task to the reviewer with status todo, then comments and wakes them", async () => {
     const { host, writes } = fakeHost([authorsTask]);
     const body = "PR watcher: ready for review: #5701, head `5701aaa`.";
     expect(await paperclipHost(host, "acme").handOff("task-1", change, body, "k1")).toBe("written");
     expect(writes).toEqual([
-      { kind: "comment", issueId: "task-1", body },
       {
         kind: "update",
         issueId: "task-1",
         patch: { assigneeAgentId: "agent-julian", status: "todo" },
       },
+      { kind: "comment", issueId: "task-1", body },
       {
         kind: "wake",
         issueId: "task-1",
         options: { reason: "pr_watcher", idempotencyKey: "pr-watcher task-1 k1" },
       },
+    ]);
+  });
+
+  test("posts no comment, so no once-per-head marker, when the reassignment fails", async () => {
+    // HAL-17690: the marker in the comment keeps the head from being handed off again.
+    const { host, writes } = fakeHost([authorsTask]);
+    const refusing: HostApi = {
+      ...host,
+      issues: {
+        ...host.issues,
+        update: async () => {
+          throw new Error("Paperclip refused the change");
+        },
+      },
+    };
+    const body = "PR watcher: ready for review: #5701, head `5701aaa`.";
+    await expect(
+      paperclipHost(refusing, "acme").handOff("task-1", change, body, "k1"),
+    ).rejects.toThrow("Paperclip refused the change");
+    expect(writes).toEqual([]);
+    // The next pass hands the same head off.
+    expect(await paperclipHost(host, "acme").handOff("task-1", change, body, "k1")).toBe("written");
+    expect(writes.filter(({ kind }) => kind === "comment")).toEqual([
+      { kind: "comment", issueId: "task-1", body },
     ]);
   });
 
