@@ -174,7 +174,11 @@ export class PaperclipSignIn {
     return { signInId, phrase, approvalUrl, expiresAt };
   }
 
-  /** Whether the engine still holds a key for this sign-in, open or handed over and not confirmed. */
+  /**
+   * Whether the engine still holds a key for this sign-in, open or handed over and not confirmed.
+   * A confirmed sign-in no longer counts: the connection's key memory holds the key now, and the
+   * record is kept only to answer a repeated confirm.
+   */
   holdsKey(signInId: string): boolean {
     const handed = this.#handedOver.get(signInId);
     return this.#open.has(signInId) || (handed !== undefined && !handed.confirmed);

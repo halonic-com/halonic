@@ -133,4 +133,36 @@ verifies("agent-host.paperclip-key-hand-over", () => {
       expect(request).toHaveBeenCalledWith({ key: fakeKey, origin: "https://paperclip.acme.test" });
     });
   });
+
+  describe("putting the earlier key back", () => {
+    const keyB = "pcp_board_fake-key-b";
+    const keyC = "pcp_board_fake-key-c";
+
+    it("puts the earlier key back while the key it replaced is still held", async () => {
+      const keys = keysForAcme();
+      const putBack = keys.replace(halonic, { key: keyB, ...acme });
+      putBack?.();
+      const request = recordingRequest();
+      await keys.callWith(halonic, acme, request);
+      expect(request).toHaveBeenCalledWith({ key: fakeKey, origin: "https://paperclip.acme.test" });
+    });
+
+    it("keeps a newer key when a later sign-in replaced the one it would undo", async () => {
+      const keys = keysForAcme();
+      const putBackB = keys.replace(halonic, { key: keyB, ...acme });
+      keys.replace(halonic, { key: keyC, ...acme });
+      putBackB?.();
+      const request = recordingRequest();
+      await keys.callWith(halonic, acme, request);
+      expect(request).toHaveBeenCalledWith({ key: keyC, origin: "https://paperclip.acme.test" });
+    });
+
+    it("keeps no key when Disconnect forgot the one it would undo", () => {
+      const keys = keysForAcme();
+      const putBackB = keys.replace(halonic, { key: keyB, ...acme });
+      keys.forget(halonic);
+      putBackB?.();
+      expect(keys.has(halonic)).toBe(false);
+    });
+  });
 });
