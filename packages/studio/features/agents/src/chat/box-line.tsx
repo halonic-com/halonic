@@ -1,7 +1,7 @@
 import type { ChatAction } from "@halonicjs/studio-kit";
 import { ChatBoxLine } from "@halonicjs/studio-kit";
 import type { ChatSecretHold } from "@halonicjs/studio-shell";
-import type { AgentHarnessId } from "../api.ts";
+import type { AgentHarnessId, MissingModelKey } from "../api.ts";
 import { configurationWords } from "../configuration/configuration-words.ts";
 import type { HarnessStrip } from "../configuration/harness-strip.ts";
 import { tryItWords } from "./try-it-words.ts";
@@ -9,13 +9,14 @@ import { tryItWords } from "./try-it-words.ts";
 /**
  * What stops a Try it message now, most urgent first: a message held because it looks like it
  * holds a key (H29), then the harness and the sandbox in harness-states rule 1's order (H27,
- * HAL-4291). Signed out, the model's key (H19) and the budget (H21) join this list as their checks
- * land.
+ * HAL-4291), then the model's missing key (H19). The budget (H21) joins this list as its check
+ * lands.
  */
 export type BoxProblem =
   | { readonly kind: "key-in-message"; readonly hold: ChatSecretHold }
   | { readonly kind: "harness"; readonly strip: HarnessStrip; readonly harness: AgentHarnessId }
-  | { readonly kind: "sandbox" };
+  | { readonly kind: "sandbox" }
+  | { readonly kind: "model-key"; readonly key: MissingModelKey };
 
 /** What {@link boxProblem} weighs. */
 export interface BoxState {
@@ -26,6 +27,8 @@ export interface BoxState {
   readonly strip: HarnessStrip | null;
   /** The sandbox check refused: the agent's program can't start on this computer. */
   readonly sandboxRefused: boolean;
+  /** The agent's model, when it needs a key that isn't stored. */
+  readonly missingKey: MissingModelKey | undefined;
 }
 
 /** The first problem that applies, or `undefined` when the message can go. */
@@ -33,10 +36,14 @@ export function boxProblem(state: BoxState): BoxProblem | undefined {
   if (state.held !== undefined) return { kind: "key-in-message", hold: state.held };
   if (state.strip !== null) return { kind: "harness", strip: state.strip, harness: state.harness };
   if (state.sandboxRefused) return { kind: "sandbox" };
+  if (state.missingKey !== undefined) return { kind: "model-key", key: state.missingKey };
   return undefined;
 }
 
-/** Whether a problem makes Send wait, with the line under the box as its reason. */
+/**
+ * Whether a problem makes Send wait, with the line under the box as its reason. A missing model
+ * key doesn't: Send stays, so pressing it can find a key set since (flow-assistant 7).
+ */
 export function makesSendWait(problem: BoxProblem | undefined): boolean {
   return problem?.kind === "harness" || problem?.kind === "sandbox";
 }
@@ -49,6 +56,8 @@ export interface BoxLineActions {
   readonly sendAnyway: () => void;
   /** Opens Configuration › Harness. */
   readonly openHarness: () => void;
+  /** Opens the key block of the provider whose key is stored under `secretName`. */
+  readonly setTheKey: (secretName: string) => void;
 }
 
 /**
@@ -66,31 +75,63 @@ export function TryItBoxLine({
   readonly name: string;
   readonly actions: BoxLineActions;
 }) {
-  if (problem.kind === "key-in-message") {
-    const keyField: ChatAction[] = problem.hold.keyField
-      ? [{ label: tryItWords.goToKeyField, onClick: actions.goToKeyField, look: "link" }]
-      : [];
-    const offers: ChatAction[] = [
-      ...keyField,
-      { label: tryItWords.sendAnyway, onClick: actions.sendAnyway },
-    ];
-    return (
-      <ChatBoxLine tone="warning" actions={offers}>
-        {problem.hold.line}
-      </ChatBoxLine>
-    );
+  switch (problem.kind) {
+    case "key-in-message":
+      return <HeldMessageLine hold={problem.hold} actions={actions} />;
+    case "model-key":
+      return <ModelKeyLine missing={problem.key} name={name} setTheKey={actions.setTheKey} />;
+    case "harness":
+      return (
+        <ChatBoxLine
+          tone="warning"
+          actions={[{ label: tryItWords.openHarness, onClick: actions.openHarness, look: "link" }]}
+        >
+          {harnessSentence(problem.strip, name, configurationWords.harnessNames[problem.harness])}
+        </ChatBoxLine>
+      );
   }
-  const sentence = harnessSentence(
-    problem.strip,
-    name,
-    configurationWords.harnessNames[problem.harness],
-  );
+}
+
+function HeldMessageLine({
+  hold,
+  actions,
+}: {
+  readonly hold: ChatSecretHold;
+  readonly actions: BoxLineActions;
+}) {
+  const keyField: ChatAction[] = hold.keyField
+    ? [{ label: tryItWords.goToKeyField, onClick: actions.goToKeyField, look: "link" }]
+    : [];
+  const offers: ChatAction[] = [
+    ...keyField,
+    { label: tryItWords.sendAnyway, onClick: actions.sendAnyway },
+  ];
   return (
-    <ChatBoxLine
-      tone="warning"
-      actions={[{ label: tryItWords.openHarness, onClick: actions.openHarness, look: "link" }]}
-    >
-      {sentence}
+    <ChatBoxLine tone="warning" actions={offers}>
+      {hold.line}
+    </ChatBoxLine>
+  );
+}
+
+/** H19, as the Assistant's model line says it, with the model's name as code. */
+function ModelKeyLine({
+  missing,
+  name,
+  setTheKey,
+}: {
+  readonly missing: MissingModelKey;
+  readonly name: string;
+  readonly setTheKey: (secretName: string) => void;
+}) {
+  const link: ChatAction = {
+    label: tryItWords.setTheKey,
+    onClick: () => setTheKey(missing.secretName),
+    look: "link",
+  };
+  return (
+    <ChatBoxLine tone="warning" actions={[link]}>
+      {tryItWords.noUsableModel(name)} <code>{missing.model}</code>{" "}
+      {tryItWords.needsKey(missing.provider)}
     </ChatBoxLine>
   );
 }

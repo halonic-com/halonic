@@ -11,9 +11,12 @@ const sharedLibraryFolder = "library";
 /** The workspace's model aliases, which every hub can use. */
 const modelsFile = "models.yaml";
 
+/** The workspace's providers, for the key a model needs (H19). */
+const providersFolder = "providers";
+
 /**
  * The workspace's hubs, its shared library, its root routines (for the agent map), its
- * `models.yaml` and its settings as files, with unsaved changes applied, for `loadWorkspace`.
+ * `models.yaml`, its providers and its settings as files, with unsaved changes applied, for `loadWorkspace`.
  */
 export function unsavedWorkspaceSource(files: {
   read(path: string): Promise<string | null>;
@@ -27,6 +30,7 @@ export function unsavedWorkspaceSource(files: {
       ...(await files.list(sharedLibraryFolder)),
       ...(await files.list(routineFolder(null))),
       ...(await existing(modelsFile)),
+      ...(await files.list(providersFolder)),
       ...(await existing(settingsPath)),
     ],
     read: (path) => files.read(path),

@@ -39,6 +39,7 @@ import {
   outputValue,
   trashAgentFile,
 } from "./agent-file.ts";
+import { missingModelKeyOf } from "./agent-model-key.ts";
 import { paramsEdits, paramsOf } from "./agent-params.ts";
 import { choicesHere } from "./agent-placement-choices.ts";
 import { agentRoutinesOf, agentUsersOf, defaultModelOf, toolOptionsOf } from "./agent-reads.ts";
@@ -74,11 +75,19 @@ export class WorkspaceAgents implements AgentsHost {
   workspaceName?: NonNullable<AgentsHost["workspaceName"]>;
   /** Present only where the workspace's chats are saved; see {@link AgentsHost.savedChats}. */
   readonly savedChats?: SavedChatsPlace;
+  /** Present only where keys can be asked; see {@link AgentsHost.missingModelKey}. */
+  missingModelKey?: NonNullable<AgentsHost["missingModelKey"]>;
 
   constructor(parts: WorkspaceAgentsParts) {
     this.#parts = parts;
-    const { versionDialog, trust, savedChats } = parts;
+    const { versionDialog, trust, savedChats, hasKey } = parts;
     if (savedChats !== undefined) this.savedChats = savedChats;
+    if (hasKey !== undefined) {
+      this.missingModelKey = async (ref) => {
+        const { agent } = await this.#find(ref);
+        return missingModelKeyOf(await this.#load(), ref.hubId, agent, hasKey);
+      };
+    }
     if (versionDialog !== undefined) {
       // Only the agent's own file, so the version holds nothing else the person changed.
       this.makeLive = async (ref, options) =>

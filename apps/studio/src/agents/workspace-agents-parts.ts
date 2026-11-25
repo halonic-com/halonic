@@ -7,6 +7,7 @@ import type {
   HarnessSignIn,
   SavedChatsPlace,
 } from "@halonicjs/studio-feature-agents/api";
+import type { HasKey } from "../assistant/chat-models.ts";
 import type { WatchItemTryItChanges } from "../changes/try-it-changes.ts";
 import type { AgentPlacementChoices } from "./agent-placement-choices.ts";
 import type { NewAgentsParts } from "./new-agent-placing.ts";
@@ -87,4 +88,9 @@ export interface WorkspaceAgentsParts {
   readonly tryItChanges?: WatchItemTryItChanges;
   /** Where the workspace's chats are saved, so Try it chats are kept with the Build chats. */
   readonly savedChats?: SavedChatsPlace;
+  /**
+   * Whether a key is stored under a secret name, never the key, for the Try it line of a model
+   * without its key (H19). Absent where keys can't be asked, which shows no line.
+   */
+  readonly hasKey?: HasKey;
 }

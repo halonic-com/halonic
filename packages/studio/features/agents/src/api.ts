@@ -8,9 +8,16 @@ import type { ChatComponentName } from "@halonicjs/openui-lang";
 import type { ChatMessage, ChatSessions } from "@halonicjs/ports";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import type { TryItChanges } from "./chat/try-it-changes.ts";
+import type { AgentHarnessId, HarnessReadiness, HarnessSignIn } from "./harness-api.ts";
 import type { AgentPlacementState, ThisComputerChoice } from "./placement-api.ts";
 import type { AgentTeamMember } from "./team.ts";
 
+export {
+  type AgentHarnessId,
+  agentHarnessIds,
+  type HarnessReadiness,
+  type HarnessSignIn,
+} from "./harness-api.ts";
 export { type AgentTeamMember, alreadyHandsWork, handOffPath, loopRefusal } from "./team.ts";
 
 /** Names one agent the way a deep link does: its hub and its id. */
@@ -28,24 +35,6 @@ export interface AgentListing extends AgentRef {
   /** The name of the model the agent uses, as its row shows it; absent when the file names none. */
   readonly model?: string | undefined;
 }
-
-/** The programs an agent can run in: Halonic's own loop, Claude Code or Codex (the file's `harness`). */
-export type AgentHarnessId = "halonic" | "claude-code" | "codex" | "opencode";
-
-/** The harnesses in the order the Harness page lists them. */
-export const agentHarnessIds: readonly AgentHarnessId[] = ["halonic", "claude-code", "codex"];
-
-/**
- * Whether a harness can run on this computer, as the agent host's `detect()` finds it. `signed-out`
- * is for the agent's own settings folder; `failed` means the host found the program but its check
- * didn't work.
- */
-export type HarnessReadiness =
-  | { readonly status: "ready"; readonly version: string }
-  | { readonly status: "signed-out"; readonly version: string }
-  | { readonly status: "missing" }
-  | { readonly status: "unsupported"; readonly version: string; readonly supported: string }
-  | { readonly status: "failed"; readonly error: string };
 
 /**
  * The shape of the agent's replies (the file's `output`): free text, exactly one of a list of
@@ -86,14 +75,6 @@ export interface AgentModelParams {
 export type AgentModelParamsChange = {
   readonly [Key in keyof AgentModelParams]?: Exclude<AgentModelParams[Key], undefined> | null;
 };
-
-/**
- * What opening an agent's own sign-in did: a terminal the person can see opened, or none did, with
- * why and the command to run by hand in their own terminal (HAL-5395).
- */
-export type HarnessSignIn =
-  | { readonly opened: true }
-  | { readonly opened: false; readonly reason: string; readonly command: string };
 
 export type {
   AgentPlacementState,
@@ -247,6 +228,16 @@ export interface AgentChatRequest {
   readonly listener?: ChatAnswerListener | undefined;
 }
 
+/** An agent's model that needs an API key that isn't stored here (states H19). */
+export interface MissingModelKey {
+  /** The model as the agent's file names it, such as `smart`. */
+  readonly model: string;
+  /** The provider's name, such as Anthropic. */
+  readonly provider: string;
+  /** The name the provider's key is stored under, never the key, for its key block on Models. */
+  readonly secretName: string;
+}
+
 /** A workflow that runs an agent in one of its task steps. */
 export interface AgentUser {
   readonly hubId: string;
@@ -374,6 +365,13 @@ export interface AgentsHost {
    * the agent isn't there, and with the reason the engine couldn't be opened.
    */
   answer(ref: AgentRef, request: AgentChatRequest): Promise<ChatAnswer>;
+  /**
+   * The agent's model when it needs an API key that isn't stored, for the line under the Try it
+   * box (states H19); `undefined` when it can be used, when the agent runs in a program with its
+   * own sign-in, or when the model isn't found (the workspace checks report that). Absent where
+   * keys can't be asked, which shows no line. Rejects like {@link AgentsHost.read}.
+   */
+  missingModelKey?(ref: AgentRef): Promise<MissingModelKey | undefined>;
   /**
    * Makes the agent live: opens Create version with only this agent's file, and answers `"made"`
    * once the version is created, `"cancelled"` when the person closed it. Absent while the app

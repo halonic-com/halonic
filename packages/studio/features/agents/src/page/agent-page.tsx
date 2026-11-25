@@ -22,6 +22,7 @@ import {
   type AgentUser,
   selectStepsStep,
 } from "../api.ts";
+import { keyFieldOpener } from "../chat/key-field.ts";
 import { TryItPanel } from "../chat/try-it-panel.tsx";
 import {
   Configuration,
@@ -63,12 +64,6 @@ const libraryTabCommands: Readonly<Record<AgentToolList, string>> = {
   connectors: "library.connector",
 };
 
-/**
- * The Workspace feature's command that opens Workspace settings at Models, where the providers and
- * their keys are kept; run by id, as the Agents feature can't import it.
- */
-const openModelsCommand = "workspace.open-models";
-
 /** The step that opens an agent's page at its model, as `openItem(agent, { step: "model" })`. */
 export const MODEL_STEP = "model";
 
@@ -106,8 +101,8 @@ export function AgentPage({ item, context, step, asked, Sections, sections }: It
         {...(openItem && { openFile: (path: string) => openItem(fileItemOf(path)) })}
         {...(runCommand && {
           openLibrary: (list: AgentToolList) => runCommand(libraryTabCommands[list]),
-          openKeyField: () => runCommand(openModelsCommand),
         })}
+        openKeyField={keyFieldOpener(context)}
         closeStack={closeStack}
         announce={announce}
         sandboxStartCheck={context.services.find(sandboxStartCheckKey)}
@@ -460,6 +455,7 @@ export function AgentScreen({
             }
             ways={{
               goToKeyField: () => openKeyField?.(),
+              setTheKey: (secretName) => openKeyField?.(secretName),
               openHarness,
             }}
             sandboxStartCheck={sandboxStartCheck}

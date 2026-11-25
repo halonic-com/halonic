@@ -3677,6 +3677,9 @@ importers:
       '@halonicjs/studio-feature-files':
         specifier: workspace:*
         version: link:../files
+      '@halonicjs/studio-feature-models':
+        specifier: workspace:*
+        version: link:../models
       '@halonicjs/studio-feature-routines':
         specifier: workspace:*
         version: link:../routines
