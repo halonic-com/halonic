@@ -58,10 +58,18 @@ The steps, in `src/steps/`:
 | 7 | Theme | `settings.feature`, `settings.appearance-section`, `settings.appearance-theme` | Settings › Appearance › Theme Dark sets the window's `data-theme="dark"`, and System takes it off again |
 | 8 | Formats | `settings.formats-section`, `settings.formats-format` | Settings › Formats' example turns Dutch (`12.345,60`) after Dutch (Netherlands), and back after Follow this computer |
 | 9 | Agent sandbox and About Halonic | `settings.agent-sandbox-section`, `settings.agent-sandbox-state`, `settings.about-section` | Agent sandbox shows a state chip without a button pressed, and About Halonic shows Check now and Update Halonic automatically |
+| 10 | The account switcher opens Settings › Connections | `connections.account-switcher` | the sidebar's account switcher shows "Show Inbox and Messenger for", and its Settings › Connections row opens the section with the connection |
+| 11 | The row and who it's signed in as | `connections.connection-row`, `connections.connection-user`, `agent-host.paperclip-signed-in-user` | the row reads Read-only and Connected, has no Sign in again, and its label names the signed-in user |
+| 12 | Connect Paperclip refuses plain http | `connections.connect-dialog` | `http://paperclip.acme.test` gets the https-only line on the field, and the dialog closes |
+| 13 | Add another account | `connections.add-account`, `agent-host.paperclip-add-account` | a second sign-in, approved, lists two connections; the step then disconnects the second, which stays listed as Signed out, leaving step 3's the only connected one |
 
 Steps 4 to 6 are the Studio basics (HAL-18866), steps 7 to 9 Settings (HAL-18867). Close workspace
 ends the basics because it leaves the window on Welcome; a later step that needs a workspace, such
 as each Settings step, opens the demo again from there.
+
+Steps 10 to 13 cover the Connections requirements (`requirements/connections-steps.md`, HAL-18868).
+Not covered, because the click test can't bring them about on a real install: the list failing
+(`connections.list-retry`), a signed-out or expiring key, and a keychain that refuses the key.
 
 Each step names, in its file, the requirement ids it checks (`requirements`), and the results table
 shows them in its Requirements column. The package's tests fail when a step names none, or an id
