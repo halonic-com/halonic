@@ -21,6 +21,7 @@ import type {
 } from "@halonicjs/ports";
 import type { PlacedRoutine } from "@halonicjs/routines";
 import type { ManyUserPorts } from "./many-users-api.ts";
+import type { MessagingPorts } from "./messaging-api.ts";
 import type { ModelChoicePort } from "./model-choice-api.ts";
 import type { ProviderKeyStore } from "./provider-key-store.ts";
 import type { RequestCountStore } from "./request-count-store-api.ts";
@@ -431,6 +432,8 @@ export interface ServerPorts {
   readonly requestCounts: RequestCountStore;
   /** Where the cause of an unexpected failure goes. The reply to the caller never carries it. */
   readonly errorLog: ErrorLog;
+  /** The messaging routes' ports, for one owner only. Without them `/api/messaging/…` answers 404. */
+  readonly messaging?: MessagingPorts;
   /** The connector-call route's ports. Without them `/api/connector-calls` answers 404. */
   readonly connectors?: ConnectorCallPorts;
   /** Which workspace this is, for `GET /api/workspace`. Without it that route answers 404. */

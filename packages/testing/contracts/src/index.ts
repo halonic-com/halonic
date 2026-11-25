@@ -5,6 +5,7 @@ export {
   actionSenderContract,
   type MakeActionSender,
 } from "./action-sender.ts";
+export { agentMessagingContract, type MakeAgentMessaging } from "./agent-messaging.ts";
 export {
   type AgentPlacementStoreHarness,
   agentPlacement,

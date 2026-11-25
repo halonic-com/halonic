@@ -24,6 +24,7 @@ import { googleCallbackPath } from "./google-sign-in-routes.ts";
 import { helloResponse } from "./hello-route.ts";
 import { isHttpsOrigin } from "./https-origin.ts";
 import { createManyUserRoutes, type ManyUserRoutes } from "./many-user-routes.ts";
+import { createMessagingRoutes, messagingPathPrefix } from "./messaging-routes.ts";
 import {
   createModelChoiceRoutes,
   isModelChoiceKeyPath,
@@ -134,6 +135,9 @@ function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<Cr
   const chatTurnRoutes = createChatTurnRoutes(ports);
   const providerKeyRoutes = createProviderKeyRoutes(ports);
   const modelChoiceRoutes = createModelChoiceRoutes(ports);
+  // Mounted for one owner only: on a many-user server every user would act with the one Paperclip key.
+  const messagingRoutes =
+    ports.messaging === undefined ? null : createMessagingRoutes(ports.messaging, ports);
   const countRequest: CountRequest = () => checkDailyRequests(config, ports);
 
   /** `/api/runs/<runId>` and `/api/runs/<runId>/<action>`: the routes of one run, behind the sign-in. */
@@ -234,6 +238,18 @@ function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<Cr
     );
   }
 
+  /** The messaging routes, which check the session themselves; `null` when the address isn't theirs or the host runs no messaging. */
+  async function messagingRoute(
+    request: Request,
+    context: RequestContext,
+    body: Uint8Array,
+    pathname: string,
+  ): Promise<Response | null> {
+    if (messagingRoutes === null || !pathname.startsWith(messagingPathPrefix)) return null;
+    const call = pathname.slice(messagingPathPrefix.length);
+    return messagingRoutes.handle(request, body, call, await signIn.session(request, context));
+  }
+
   /** Counts a signed-in request against the daily ceiling; one nobody signed isn't counted, so it can't use up the day. */
   async function countIfSignedIn(
     request: Request,
@@ -256,6 +272,7 @@ function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<Cr
     const earlyAnswer =
       (await countIfSignedIn(request, context)) ??
       (await deviceRoutes.route(request, context, body)) ??
+      (await messagingRoute(request, context, body, pathname)) ??
       (await signedInOnlyRoute(request, context, body, pathname));
     if (earlyAnswer !== null) {
       return earlyAnswer;
