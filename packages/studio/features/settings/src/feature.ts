@@ -17,6 +17,7 @@ import { agentCharactersPref, themePref } from "./appearance/appearance-prefs.ts
 import { onOrOff, themeNames } from "./appearance/appearance-text.ts";
 import * as assistantText from "./assistant/assistant-text.ts";
 import { agentSandboxSummary, assistantSummary } from "./section-summaries.ts";
+import * as serverSessionText from "./server-session/server-session-text.ts";
 import { showUnfinishedSettings, unfinishedSectionIds } from "./unfinished.ts";
 import { createRestartFlow, RestartFlowService } from "./updater/restart-flow.ts";
 import { updateCommands } from "./updater/update-commands.ts";
@@ -74,6 +75,15 @@ export function settingsSectionsFor(showUnfinished: boolean): SettingsSectionCon
       summary: agentSandboxSummary,
       view: "AgentSandboxSection",
       load: () => import("./agent-sandbox/agent-sandbox-section.tsx"),
+    },
+    {
+      id: "server-session",
+      title: serverSessionText.TITLE,
+      scope: "host",
+      order: 40,
+      description: serverSessionText.FIRST_LINE,
+      view: "ServerSessionSection",
+      load: () => import("./server-session/server-session-section.tsx"),
     },
     {
       id: "about",
