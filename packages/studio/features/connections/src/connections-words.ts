@@ -60,6 +60,9 @@ export const ADDRESS_UNREACHABLE =
 /** The engine may not sign in there, or what answered isn't Paperclip. */
 export const ADDRESS_NOT_PAPERCLIP =
   "This address didn't answer like Paperclip. Use the address you open Paperclip at in your browser.";
+/** The server already has as many sign-ins waiting as it holds; each expires after 10 minutes. */
+export const TOO_MANY_SIGN_INS =
+  "This server already has 8 sign-ins waiting for approval. Approve or close one, or try again in 10 minutes.";
 /** The address step's confirming button, and while it runs. */
 export const CONTINUE = "Continue";
 export const STARTING = "Starting sign-in…";

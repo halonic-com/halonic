@@ -44,6 +44,12 @@ verifies("agent-host-client.paperclip-sign-in", () => {
       ]);
     });
 
+    it("answers a refused start with its reason, too many open sign-ins included", async () => {
+      const refusal = { outcome: "refused", reason: "too-many-sign-ins" };
+      const host = new FakeHost().answer("POST /v1/paperclip/sign-in/start", ok(refusal));
+      expect(await new AgentHostPaperclipSignIn(host, workspace).start(address)).toEqual(refusal);
+    });
+
     it("polls, confirms and cancels by the sign-in's ID", async () => {
       const host = new FakeHost()
         .answer("POST /v1/paperclip/sign-in/poll", ok({ status: "pending" }))
