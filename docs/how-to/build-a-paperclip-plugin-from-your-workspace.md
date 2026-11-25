@@ -107,27 +107,27 @@ This version of Halonic can build a plugin with these actions that read:
 
 | Action | What it answers | Parameters it reads | Settings under `with` |
 | --- | --- | --- | --- |
-| `github.pull-request` | one pull request: its checks, whether it can merge, its place in the merge queue, approvals on its newest commit, the newest review finding and what its author does next | `pr` (a number or the pull request's GitHub URL), and `repo` when the tool lists more than one repository | `repositories`: 1 to 20, each `owner/name` |
+| `github.pull-request` | one pull request: its checks, whether it can merge, its place in the merge queue, approvals on its newest commit, the newest review finding and what its author does next | `pr` (a number or the pull request's GitHub URL); optional: `repo`, when the tool lists more than one repository | `repositories`: 1 to 20, each `owner/name` |
 | `github.open-pull-requests` | the caller's open pull requests (branches that start with the agent's URL key), listed with the ones that need attention first | none | `repositories` |
 | `github.merge-times` | how long pull requests took from being opened to being merged, per repository | none | `repositories`, and `days`: 1 to 90, 7 by default |
-| `paperclip.task` | one Paperclip task: status, holder, blockers, documents and its newest comments | `task` (its identifier, such as `ACME-12`, or its id), `comments` (0 to 20, 5 by default), `document` (a document key) | none |
-| `paperclip.failed-runs` | the agent runs that failed or timed out, counted from when the plugin started watching | `since` (a time such as `2026-11-22T12:00:00Z`; the last `hours` when left out) | `hours`: 1 to 168, 24 by default |
-| `paperclip.template` | one of the workspace's templates, or the list of them | `id` (leave it out for the list) | none |
+| `paperclip.task` | one Paperclip task: status, holder, blockers, documents and its newest comments | `task` (its identifier, such as `ACME-12`, or its id); optional: `comments` (0 to 20, 5 by default) and `document` (a document key) | none |
+| `paperclip.failed-runs` | the agent runs that failed or timed out, counted from when the plugin started watching | `since` (optional: a time such as `2026-11-22T12:00:00Z`; when left out, the last `hours` from the settings) | `hours`: 1 to 168, 24 by default |
+| `paperclip.template` | one of the workspace's templates, or the list of them | `id` (optional: leave it out for the list) | none |
 
 And these that write to Paperclip, each as the agent that calls the tool:
 
 | Action | What it does | Parameters it reads | Settings under `with` |
 | --- | --- | --- | --- |
 | `paperclip.comment` | posts one comment on a task in the caller's company | `task`, `body` | `mode` (see below) |
-| `paperclip.next-step` | sets a task the caller holds to `in_progress` with a monitor, or to `blocked` with the tasks that block it, with a comment | `task`, `status`, `comment`, `blockedBy`, and `monitor` or the `monitorInMinutes`, `monitorRef`, `monitorService` and `monitorMaxChecks` fields | `mode` |
-| `paperclip.finish-run` | ends the caller's run on a task it holds: `done`, `blocked` with its blockers, or `handoff` to the agent named in `to`, with a comment | `task`, `outcome`, `comment`, `to`, `blockedBy` | `mode` |
+| `paperclip.next-step` | sets a task the caller holds to `in_progress` with a monitor, or to `blocked` with the tasks that block it, with a comment | `task`, `status`, `comment`; optional: `blockedBy` and the monitor (see below) | `mode` |
+| `paperclip.finish-run` | ends the caller's run on a task it holds: `done`, `blocked` with its blockers, or `handoff` to the agent named in `to`, with a comment | `task`, `outcome`, `comment`; optional: `to` and `blockedBy` | `mode` |
 
 The `github.` actions need a GitHub read token (see step 4). The
 `paperclip.` actions need no key: they go through Paperclip.
 
 Declare each parameter in your tool under the name in these tables.
-`halonic validate` refuses a tool that leaves out one its action needs, or
-declares one its action never reads.
+`halonic validate` refuses a tool that leaves out one its action needs (any
+that isn't marked optional), or declares one its action never reads.
 
 The `paperclip.template` action reads the Markdown files in your workspace's
 `library/templates/` folder, one template per file.
@@ -157,9 +157,12 @@ action:
 ```
 
 `paperclip.next-step` and `paperclip.finish-run` change only a task the
-calling agent holds. Setting a task to `in_progress` needs a monitor, and
-only a Paperclip that lets a plugin set monitors allows it; elsewhere the
-tool refuses, and the agent sets the monitor itself.
+calling agent holds. Setting a task to `in_progress` needs a monitor. If
+your Paperclip doesn't let plugins set monitors, the tool refuses and the
+agent sets the monitor itself. The agent gives the monitor in 4 parameters:
+`monitorInMinutes` (15 to 1,440) and `monitorRef` (what it waits on, such as
+`acme/shop-website#42`), and optionally `monitorService` (`github` by
+default) and `monitorMaxChecks` (1 to 8, 4 by default).
 
 ## 3. Build the plugin
 
