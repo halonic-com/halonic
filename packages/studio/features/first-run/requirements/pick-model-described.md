@@ -15,6 +15,6 @@ When the trust line shows, the Pick a model screen's one button shall be describ
 - Given Anthropic refused the pasted key,
   then the key field is described by "Anthropic didn't accept this key. Check that you copied all of it." and is marked invalid.
 - Given the local option ticked and no Ollama found,
-  then it says "Start Ollama, then check again." and "Don't have Ollama? Get it from ollama.com ↗", and the link goes to https://ollama.com/download.
+  then it says "Start Ollama, then press Check again." and "Don't have Ollama? Get it from ollama.com ↗", and the link goes to https://ollama.com/download.
 - Given the key option ticked with Anthropic,
   then it says "Don't have a key? Get one from Anthropic ↗. You need an account there."

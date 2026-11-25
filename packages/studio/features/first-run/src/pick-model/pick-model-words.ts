@@ -26,7 +26,7 @@ export const pickModelWords = {
   localOff: "Local models need the desktop app.",
   model: "Model",
   pullHint: "To download a small model, run this in a terminal, then press Check again:",
-  startHint: "Start Ollama, then check again.",
+  startHint: "Start Ollama, then press Check again.",
   noOllama: "Don't have Ollama?",
   getOllama: "Get it from ollama.com",
   copyCommand: "Copy command",

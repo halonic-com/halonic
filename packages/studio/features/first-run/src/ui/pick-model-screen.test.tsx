@@ -213,7 +213,7 @@ verifies("first-run.pick-model-described", () => {
     const root = await open(fakeService(["openai"], { kind: "not-found", cause: "off" }));
     expect(root.textContent).not.toContain("Don't have Ollama?");
     await act(async () => optionRadios(root)[1]?.click());
-    expect(root.textContent).toContain("Start Ollama, then check again.");
+    expect(root.textContent).toContain("Start Ollama, then press Check again.");
     const link = root.querySelector<HTMLAnchorElement>('a[href="https://ollama.com/download"]');
     expect(link?.parentElement?.textContent).toBe(
       "Don't have Ollama? Get it from ollama.com ↗ (opens in your browser)",

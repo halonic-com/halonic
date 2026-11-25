@@ -40,7 +40,7 @@ default policy holds.
 | `declined`, `expired`, `finished` | one line, no buttons |
 | `not-available` | the request's definition isn't in this version; no steps |
 | `desktop-only` | "Open it in the desktop app to run it.", **Copy instructions** on each browser step, and **Decline** |
-| `blocked` | "Blocked by your settings. This requester may only ask for routine changes." and **Decline** |
+| `blocked` | "Blocked by your settings. This requester may only ask for steps marked Routine." and **Decline** |
 
 Every sentence is in `src/ui/stepper-words.ts`.
 
