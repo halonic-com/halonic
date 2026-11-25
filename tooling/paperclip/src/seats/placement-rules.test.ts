@@ -93,7 +93,7 @@ verifies("paperclip.seats-placement-rules", () => {
       session: window(0, now),
       week: window(0, now),
     });
-    const full = seat("seat-a", { session: window(95, "2026-11-22T12:00:00.000Z") });
+    const full = seat("seat-a", { session: window(85, "2026-11-22T12:00:00.000Z") });
 
     const { moves } = proposePlacements(
       [paid, full],
@@ -162,5 +162,89 @@ verifies("paperclip.seats-placement-rules", () => {
     ];
 
     expect(proposePlacements(seats, on(), now).resetAdvice).toEqual(["seat-a"]);
+  });
+
+  test("at 95% of the 5-hour window, or heading there before the next check, everyone moves", () => {
+    const atStop = seat("seat-a", { session: window(96, "2026-11-22T10:05:00.000Z") });
+    const heading = seat("seat-c", { session: window(85, "2026-11-22T12:00:00.000Z", 70) });
+
+    const { moves } = proposePlacements(
+      [atStop, heading, seat("seat-b")],
+      on(["agent-1", "seat-a"], ["agent-2", "seat-c"]),
+      now,
+    );
+    expect(moves.map((move) => move.reason)).toEqual(["session-hard-stop", "session-hard-stop"]);
+  });
+
+  test("the 88% weekly rule fires before the reserve rule", () => {
+    const full = seat("seat-a", { week: window(89, "2026-11-26T08:00:00.000Z") });
+
+    const { moves } = proposePlacements([full, seat("seat-b")], on(["agent-1", "seat-a"]), now);
+    expect(moves.map((move) => move.reason)).toEqual(["week-full"]);
+  });
+
+  test("a seat at 75% of its week with the reset more than a day off becomes a reserve", () => {
+    const reserve = seat("seat-a", { week: window(78, "2026-11-26T08:00:00.000Z") });
+    const resetsSoon = seat("seat-c", { week: window(78, "2026-11-23T08:00:00.000Z") });
+
+    const { moves } = proposePlacements(
+      [reserve, resetsSoon, seat("seat-b")],
+      on(["agent-1", "seat-a"], ["agent-2", "seat-c"]),
+      now,
+    );
+    expect(moves).toEqual([
+      { agentId: "agent-1", from: "seat-a", to: "seat-c", reason: "week-reserve" },
+    ]);
+  });
+
+  test("a target needs its 5-hour window below 50% and its week below 75%, or 85% near its reset", () => {
+    const busy = seat("seat-b", { session: window(55, "2026-11-22T12:00:00.000Z") });
+    const nearReset = seat("seat-c", { week: window(80, "2026-11-23T08:00:00.000Z") });
+    const full = seat("seat-a", { session: window(82, "2026-11-22T12:00:00.000Z") });
+
+    const { moves } = proposePlacements([full, busy, nearReset], on(["agent-1", "seat-a"]), now);
+    expect(moves.map((move) => move.to)).toEqual(["seat-c"]);
+  });
+
+  test("the emptiest 5-hour window comes first, ties to the soonest weekly reset", () => {
+    const full = seat("seat-a", { session: window(82, "2026-11-22T12:00:00.000Z") });
+    const later = seat("seat-b", { session: window(10, "2026-11-22T12:00:00.000Z") });
+    const sooner = seat("seat-c", {
+      session: window(10, "2026-11-22T12:00:00.000Z"),
+      week: window(40, "2026-11-24T08:00:00.000Z"),
+    });
+    const fuller = seat("seat-d", {
+      session: window(30, "2026-11-22T12:00:00.000Z"),
+      week: window(10, "2026-11-23T08:00:00.000Z"),
+    });
+
+    const { moves } = proposePlacements(
+      [full, later, sooner, fuller],
+      on(["agent-1", "seat-a"]),
+      now,
+    );
+    expect(moves.map((move) => move.to)).toEqual(["seat-c"]);
+  });
+
+  test("a reserve takes agents only when no other seat fits", () => {
+    const full = seat("seat-a", { session: window(82, "2026-11-22T12:00:00.000Z") });
+    const reserve = seat("seat-r", { week: window(78, "2026-11-26T08:00:00.000Z") });
+    const busy = seat("seat-b", { session: window(60, "2026-11-22T12:00:00.000Z") });
+
+    const { moves } = proposePlacements([full, reserve, busy], on(["agent-1", "seat-a"]), now);
+    expect(moves.map((move) => move.to)).toEqual(["seat-r"]);
+  });
+
+  test("a seat takes at most 3 agents by default", () => {
+    const full = seat("seat-a", { session: window(82, "2026-11-22T12:00:00.000Z") });
+    const agents = on(
+      ["agent-1", "seat-a"],
+      ["agent-2", "seat-a"],
+      ["agent-3", "seat-a"],
+      ["agent-4", "seat-a"],
+    );
+
+    const { moves } = proposePlacements([full, seat("seat-b")], agents, now);
+    expect(moves.map((move) => move.to)).toEqual(["seat-b", "seat-b", "seat-b", undefined]);
   });
 });

@@ -63,7 +63,7 @@ verifies("paperclip.seats-check-proposal", () => {
         ["agent-5", "seat-b"],
       ]),
     );
-    expect(text).toContain("Seats after these moves. No limit of agents per seat is set.");
+    expect(text).toContain("Seats after these moves. At most 3 agents per seat.");
     expect(text).toContain("- seat-b: 4 agents (1 now).");
   });
 
