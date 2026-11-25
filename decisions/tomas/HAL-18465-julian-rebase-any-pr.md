@@ -2,6 +2,7 @@
 
 - Approval: Liam decided it on HAL-18459 (25 Nov, point 3); Julian's scope is Liam's call under HAL-14809
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:pzPfjzPlX9qppX2UuuHhWqzGloG2qDB8VM76SSiqjykJWFE/UBbkzvqcKOYqFZLOgAR3N3rtCyhiE+WzlSBdDA==
 
 Julian's "re-approved on head `<new>` (rebase only, range-diff vs `<old>`)" now counts on
 any pull request whose head `<old>` Liam approved, Liam's paths and the line limits
