@@ -187,6 +187,11 @@ export interface InboxItem {
   attachments: readonly Attachment[];
   /** The work it belongs to, when the source has one. */
   work?: MessagingId;
+  /**
+   * The conversation it was asked in, when the source knows one, so an app can open
+   * that chat from the card. Absent when the item came from no conversation.
+   */
+  conversation?: MessagingId;
   /** Set by the provider only: `risky` is an approval that spends money or changes who may do what. Absent reads as `normal`. */
   risk?: "normal" | "risky";
   createdAt: string;

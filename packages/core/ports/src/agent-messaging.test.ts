@@ -169,3 +169,25 @@ verifies("ports.agent-messaging-avatars", () => {
     expect(address).toBeDefined();
   });
 });
+
+verifies("ports.agent-messaging-inbox-conversation", () => {
+  typeTest("names the conversation an inbox item was asked in as an optional ID", () => {
+    expectTypeOf<InboxItem["conversation"]>().toEqualTypeOf<MessagingId | undefined>();
+  });
+
+  it("takes an item with no conversation", () => {
+    const item: InboxItem = {
+      id: "acme:item:1",
+      source: "acme",
+      from: { kind: "agent", agent: "acme:ada", name: "Ada" },
+      question: "Ship it?",
+      options: [],
+      attachments: [],
+      createdAt: "2026-11-25T10:00:00Z",
+      state: { kind: "open" },
+    };
+    const asked: InboxItem = { ...item, conversation: "acme:chat:1" };
+    expect(item.conversation).toBeUndefined();
+    expect(asked.conversation).toBe("acme:chat:1");
+  });
+});
