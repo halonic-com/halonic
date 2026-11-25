@@ -2,6 +2,7 @@
 
 - Approval: Liam approved the new package on HAL-17985 (the HAL-17950 plan for `halonic build paperclip-plugin`, question 1: "`packages/core/plugin-build` is approved"); this step is HAL-17986. It changes `tooling/check/policy.json`, a trust root, so both guardians sign: Julian, then Liam
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Bivgb2m1lpy/DxzMGdiZWDpSi9mR8kocszoCB6PeLJE+tnjlVqbtZJ2BXMdsD6iXzQptQe0cwMw169xvK5HABw==
 
 ## What changes
 
