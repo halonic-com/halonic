@@ -70,8 +70,10 @@ function logged(fetched: Fetched): Omit<DocsLogEntry, "at" | "url"> {
   switch (fetched.kind) {
     case "page":
       return { outcome: "read", status: fetched.status, bytes: fetched.bytes };
-    case "moved":
-      return { outcome: "moved", status: fetched.status, bytes: 0, location: fetched.location };
+    case "moved": {
+      const location = fetched.location === undefined ? undefined : loggedUrl(fetched.location);
+      return { outcome: "moved", status: fetched.status, bytes: 0, location };
+    }
     case "status":
     case "not-text":
       return { outcome: "not-read", status: fetched.status, bytes: 0 };
@@ -87,7 +89,7 @@ function resultOf(fetched: Fetched, url: string): string {
     case "page":
       return pageText(url, fetched.type, fetched.text);
     case "moved":
-      return docsTexts.moved(fetched.status, fetched.location);
+      return movedText(fetched.status, fetched.location);
     case "status":
       return docsTexts.status(fetched.status);
     case "not-text":
@@ -99,4 +101,17 @@ function resultOf(fetched: Fetched, url: string): string {
     case "failed":
       return docsTexts.failed;
   }
+}
+
+/**
+ * Where a `3xx` pointed, as the model reads it. The site writes the
+ * `Location`, and this text sits outside the untrusted fence, so only an
+ * address that passes {@link checkDocsUrl} is named, in its checked form.
+ */
+function movedText(status: number, location: string | undefined): string {
+  if (location === undefined) return docsTexts.movedNowhere(status);
+  const target = checkDocsUrl(location);
+  return "refused" in target
+    ? docsTexts.movedUnreadable(status)
+    : docsTexts.moved(status, target.url);
 }

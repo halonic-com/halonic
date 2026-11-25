@@ -20,11 +20,15 @@ export const docsTexts = {
   /** The person said no to the site in this chat. */
   declined: (host: string) =>
     `The person didn't allow reading pages from ${host} in this chat. Don't ask again: work without it, or ask them to paste what you need.`,
-  /** A `3xx`, which is never followed. */
-  moved: (status: number, to: string | undefined) =>
-    to === undefined
-      ? `The page moved (${status}) and didn't say where; nothing was read.`
-      : `The page moved (${status}) to ${to}. It wasn't followed: call read_docs with that address if you still need it.`,
+  /** A `3xx`, which is never followed, to an address `read_docs` could read. */
+  moved: (status: number, to: string) =>
+    `The page moved (${status}) to ${to}. It wasn't followed: call read_docs with that address if you still need it.`,
+  /** A `3xx` with no usable `Location`. */
+  movedNowhere: (status: number) =>
+    `The page moved (${status}) and didn't say where; nothing was read.`,
+  /** A `3xx` to an address `read_docs` refuses; the site's own words aren't passed on. */
+  movedUnreadable: (status: number) =>
+    `The page moved (${status}) to an address read_docs can't read; nothing was read.`,
   status: (status: number) => `The site answered ${status}; nothing was read.`,
   notText: (type: string) =>
     `The page is ${type === "" ? "of no stated type" : type}, not HTML, text or Markdown; nothing was read.`,
