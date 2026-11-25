@@ -3,6 +3,7 @@
 - Task: HAL-18498
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-17512 (Liam's `server-engine` plan rev 2, §4 and PR S7, with Julian's findings S3 and S10 from HAL-17513; Julian signs this security PR on its review task and Liam reviews the code)
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:dlBxr270I3fyPPhMaf+htqFtERn9urgU5jBtIxE3ItvOwpBWVrFVSn8XKapF5FJdvXQ+yw62BH1Hqar1Q8fnBA==
 
 `halonic serve --public-origin https://<host>` is new. It builds `server.public-endpoint`, which S0 merged as a draft, and sets it to active. Four active requirements gain one clause each, so that what they say stays true for a server with a public origin. None of them changes for a server without one, and no test is weakened or removed.
 
