@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-17512 `server-engine` rev 2, §7 (PRs S2 and S3); task HAL-18493
 
-Every `AgentMessaging`, whatever carries it, shall pass one contract run over a `FakeAgentMessaging` behind it: each list and the search shall give what the fake holds, an item shall be answered once, a refusal shall keep its reason, a file sent with a message shall read back with the same bytes and type, every write to an offline source shall be refused with `offline`, a channel shall be started, left, joined and given new members, and `changes` shall name the source that changed. The fake itself passes it, and so does a transport such as the server's messaging routes.
+The `AgentMessaging` contract shall pass for every `AgentMessaging`, whatever carries it, run over a `FakeAgentMessaging` behind it: each list and the search shall give what the fake holds, an item shall be answered once, a refusal shall keep its reason, a file sent with a message shall read back with the same bytes and type, every write to an offline source shall be refused with `offline`, a channel shall be started, left, joined and given new members, and `changes` shall name the source that changed. The fake itself passes it, and so does a transport such as the server's messaging routes.
 
 ## Examples
 
