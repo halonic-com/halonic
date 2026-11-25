@@ -105,8 +105,11 @@ verifies("runtime.worker-protocol", () => {
         {
           jsonrpc: "2.0",
           id: "host-1",
+          // The manifest leaves out agents.read, so the caller lookup is refused
+          // before anything reaches Paperclip.
           result: {
-            error: "pr_status is off: this plugin runtime can't run github.pull-request yet.",
+            error:
+              "pr_status: the plugin's manifest doesn't declare agents.read, so the worker doesn't call agents.get.",
           },
         },
         { jsonrpc: "2.0", id: "host-2", result: { status: "ok" } },
