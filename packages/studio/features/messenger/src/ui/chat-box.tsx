@@ -4,6 +4,7 @@ import { type Ref, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { isChannel } from "../channel.ts";
 import { channelWords } from "../channel-words.ts";
+import { chatAgent } from "../chat-name.ts";
 import type { DraftFile } from "../draft-files.ts";
 import { type ConversationRow, type Messenger, refusalOf } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
@@ -43,7 +44,8 @@ interface BoxLine {
  */
 export function ChatBox({ messenger, row, onSent }: ChatBoxProps) {
   const box = useChatBox(messenger, row, onSent);
-  const name = row.conversation.title;
+  // A chat is named by its agent alone, "Message Liam"; a channel by its title (`messenger.agent-names`).
+  const name = chatAgent(row)?.name ?? row.conversation.title;
   const channel = isChannel(row);
   const address = useChannelAddress(messenger, row, box.draft, box.type, box.say);
   const waits = channel && address.line.waits !== undefined;

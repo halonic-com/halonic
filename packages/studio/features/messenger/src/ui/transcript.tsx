@@ -72,6 +72,7 @@ export function Transcript({
             quickActions={messenger.quickActions}
             row={row}
             card={entry.card}
+            now={messenger.now()}
             onAnswered={onAnswered}
           />
         ),

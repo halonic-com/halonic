@@ -100,9 +100,18 @@ verifies("messenger.inline-cards", () => {
       clock.now = new Date(2026, 10, 25, 12, 10);
       await press(byText(page, "main ol > li:nth-child(2) button", "Approve"));
       const entries = timeline(page);
-      expect(entries[1]).toBe("Approve, 12:10");
+      expect(entries[1]).toBe("Answered: Approve, 12:10");
       expect(entries[2]).toContain("Merge #2?");
       expect(bar(page)).toBe("49 cards waiting");
+    });
+
+    it("says how long a card waits by the Messenger's clock, as the Inbox does (HAL-18473)", async () => {
+      const { messaging } = chiefWithCards(1);
+      const page = await openMessenger(messaging, [], false, () => new Date(2026, 10, 25, 13, 0));
+      await openChat(page, "Chief");
+      expect(byText(page, "main ol > li", "Merge #1?")?.textContent).toContain(
+        "Waiting since 10:00 (3 h)",
+      );
     });
 
     it("says 1 card waiting for one, and shows no bar once it is answered", async () => {
@@ -112,7 +121,7 @@ verifies("messenger.inline-cards", () => {
       expect(bar(page)).toBe("1 card waiting");
       await press(byText(page, "main ol button", "Reject"));
       expect(bar(page)).toBeUndefined();
-      expect(timeline(page)).toEqual(["Chief: Morning", "Reject, 11:30", "Chief: Done"]);
+      expect(timeline(page)).toEqual(["Chief: Morning", "Answered: Reject, 11:30", "Chief: Done"]);
     });
 
     it("in a channel with open cards, shows only the waiting bar, not the cards bar", async () => {

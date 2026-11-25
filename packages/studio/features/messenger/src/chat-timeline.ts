@@ -1,5 +1,6 @@
 import type { InboxAnswer, InboxItem, Message } from "@halonicjs/ports";
 import { decidedAt } from "@halonicjs/studio-kit";
+import { messengerWords } from "./messenger-words.ts";
 
 /** One entry of a chat's timeline: a message, or a card the chat's agent put to the person. */
 export type TimelineEntry =
@@ -51,6 +52,6 @@ export function cardRecord(card: InboxItem): string | undefined {
 /** How a card was answered: the option's label, the reply in quotes, or how an action ended. */
 function choiceOf(card: InboxItem, answer: InboxAnswer): string {
   if (answer.kind === "reply") return `“${answer.text}”`;
-  if (answer.kind === "action-result") return answer.outcome;
+  if (answer.kind === "action-result") return messengerWords.card.outcomes[answer.outcome];
   return card.options.find((option) => option.id === answer.option)?.label ?? answer.option;
 }

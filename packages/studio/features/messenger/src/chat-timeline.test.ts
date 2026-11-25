@@ -94,6 +94,12 @@ verifies("messenger.inline-cards", () => {
         cardRecord(card("merge", at(10), { kind: "answered", by: me, answer, answeredAt }));
       expect(answer({ kind: "option", option: "approve" })).toBe("Approve, 12:10");
       expect(answer({ kind: "reply", text: "Not yet" })).toBe("“Not yet”, 12:10");
+      expect(answer({ kind: "action-result", outcome: "succeeded", steps: [] })).toBe(
+        "Succeeded, 12:10",
+      );
+      expect(answer({ kind: "action-result", outcome: "declined", steps: [] })).toBe(
+        "Declined, 12:10",
+      );
       expect(cardRecord(card("merge", at(10)))).toBeUndefined();
     });
   });

@@ -20,19 +20,20 @@ export async function settle(): Promise<void> {
 
 /**
  * Renders the Messenger and lets its first reads land; links it opens go to `opened`. `narrow`
- * renders it in a window narrower than 900px. Strict mode, as Studio renders every page, so an
+ * renders it in a window narrower than 900px; `now` gives the Messenger its own clock. Strict mode, as Studio renders every page, so an
  * effect that can't run twice fails here too.
  */
 export async function openMessenger(
   messaging: AgentMessaging,
   opened: string[] = [],
   narrow = false,
+  now?: () => Date,
 ): Promise<HTMLElement> {
   const page = render(
     <StrictMode>
       <NarrowProvider narrow={narrow}>
         <OpenExternalProvider openExternal={async (address) => void opened.push(await address)}>
-          <MessengerPage messenger={new Messenger(messaging)} />
+          <MessengerPage messenger={new Messenger(messaging, now)} />
         </OpenExternalProvider>
       </NarrowProvider>
     </StrictMode>,

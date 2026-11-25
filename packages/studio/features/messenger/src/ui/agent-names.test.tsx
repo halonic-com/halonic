@@ -33,6 +33,7 @@ verifies("messenger.agent-names", () => {
       expect(rowNames(page)).toContain("Liam · CTO");
       await openChat(page, "Liam");
       expect(header(page)).toBe("Liam · CTO");
+      expect(page.querySelector("textarea")?.getAttribute("placeholder")).toBe("Message Liam…");
       expect(page.textContent).not.toContain("Chat with Liam");
     });
 

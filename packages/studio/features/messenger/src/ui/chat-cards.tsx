@@ -77,24 +77,34 @@ export function ChatCardItem({
   quickActions,
   row,
   card,
+  now,
   onAnswered,
 }: {
   readonly quickActions: QuickActions;
   readonly row: ConversationRow;
   readonly card: InboxItem;
+  /** The Messenger's clock, so the card says how long it waits as the Inbox does. */
+  readonly now: Date;
   readonly onAnswered: (option: string) => Promise<void>;
 }) {
   const record = cardRecord(card);
   if (record !== undefined) {
     return (
       <li data-chat-card-record={card.id} className="max-w-[80%] text-small text-fg-muted">
+        <span className="sr-only">{messengerWords.card.recordPrefix}</span>
         {record}
       </li>
     );
   }
   return (
     <li data-chat-card={card.id} className="max-w-[80%]">
-      <ChatCard quickActions={quickActions} row={row} card={card} onAnswered={onAnswered} />
+      <ChatCard
+        quickActions={quickActions}
+        row={row}
+        card={card}
+        now={now}
+        onAnswered={onAnswered}
+      />
     </li>
   );
 }
@@ -104,11 +114,13 @@ function ChatCard({
   quickActions,
   row,
   card,
+  now,
   onAnswered,
 }: {
   readonly quickActions: QuickActions;
   readonly row: ConversationRow;
   readonly card: InboxItem;
+  readonly now: Date;
   /** Called with the option's label once the answer landed. */
   readonly onAnswered: (option: string) => Promise<void>;
 }) {
@@ -134,7 +146,7 @@ function ChatCard({
         <StatusChip tone="warning" dot>
           {messengerWords.card.needsYou}
         </StatusChip>
-        {waitingSince(new Date(card.createdAt), new Date())}
+        {waitingSince(new Date(card.createdAt), now)}
       </p>
       <ChatText openLink={openLink}>{card.question}</ChatText>
       <div className="flex flex-wrap gap-2">
