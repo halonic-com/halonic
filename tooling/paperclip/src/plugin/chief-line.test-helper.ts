@@ -33,6 +33,10 @@ export function fakeChiefLine(
   const created: unknown[] = [];
   const wakes: { issueId: string; options: unknown }[] = [];
   const posts: { url: string; body: unknown }[] = [];
+  const updates: { issueId: string; patch: unknown }[] = [];
+  /** Like the host: only these statuses can be woken; others throw. */
+  const wakeable = new Set(["todo", "in_progress", "blocked"]);
+  let wakeFails = false;
   const agents = [
     { id: "agent-chief", name: "Chief", urlKey: "chief" },
     { id: "agent-ravi", name: "Ravi", urlKey: "ravi" },
@@ -81,7 +85,19 @@ export function fakeChiefLine(
         return addComment(issueId, body, null, null);
       },
       listComments: async (issueId: string) => comments[issueId] ?? [],
+      update: async (issueId: string, patch: { status?: string }) => {
+        updates.push({ issueId, patch });
+        const issue = issues.find((candidate) => candidate.id === issueId);
+        if (issue !== undefined && patch.status !== undefined) {
+          issue.status = patch.status;
+        }
+        return issue;
+      },
       requestWakeup: async (issueId: string, _companyId: string, opts: unknown) => {
+        const status = issues.find((candidate) => candidate.id === issueId)?.status;
+        if (wakeFails || status === undefined || !wakeable.has(status)) {
+          throw new Error("Issue is not wakeable");
+        }
         wakes.push({ issueId, options: opts });
         return {};
       },
@@ -118,6 +134,10 @@ export function fakeChiefLine(
     created,
     wakes,
     posts,
+    updates,
+    failWakes: () => {
+      wakeFails = true;
+    },
     agents,
     createCommentOptions,
     logs,
