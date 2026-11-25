@@ -112,7 +112,7 @@ export class PaperclipMessaging implements AgentMessaging {
     const steppers =
       options.stepperCatalog && new PaperclipSteppers(this.#reader, options.stepperCatalog);
     this.#inbox = new PaperclipInbox(this.#reader, options.company, steppers);
-    this.#writer = new PaperclipWriter(this.#reader, now, steppers);
+    this.#writer = new PaperclipWriter(this.#reader, this.#company, now, steppers);
     this.#channels = new PaperclipChannelSender(this.#reader, options.company, options.userId, now);
     this.#members = new PaperclipChannelMembers(this.#reader, options.company, options.userId);
     this.#channelWork = new PaperclipChannelWork(this.#reader, options.company, options.userId);
@@ -216,6 +216,7 @@ export class PaperclipMessaging implements AgentMessaging {
     const target = {
       card: this.#ids.read(item, "card"),
       approval: this.#ids.read(item, "approval"),
+      decision: this.#ids.read(item, "decision"),
     };
     const result = await this.#writer.answer(this.#context(), target, answer);
     this.#changedAfter(result.outcome !== "refused");

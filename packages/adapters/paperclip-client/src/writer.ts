@@ -1,5 +1,7 @@
 import type { AnswerResult, InboxAnswer, InboxItem, MessagingRefusal } from "@halonicjs/ports";
 import { approvalAnswerRequest, approvalToItem, cardAnswerRequest, cardToItem } from "./cards.ts";
+import { decisionAnswerRequest, decisionToItem } from "./decisions.ts";
+import { decisionPage } from "./inbox.ts";
 import { asRecord, asRecords, type JsonRecord, text } from "./json.ts";
 import type { MapContext } from "./map.ts";
 import type { PaperclipReader } from "./reader.ts";
@@ -8,10 +10,11 @@ import { answerStepperCard } from "./stepper-answer.ts";
 import { type PaperclipSteppers, pinnedRevision } from "./steppers.ts";
 import { type PaperclipAnswer, PaperclipClientError } from "./transport.ts";
 
-/** Which item an answer is for: Paperclip's IDs of a card (task, card) or of an approval. */
+/** Which item an answer is for: Paperclip's IDs of a card (task, card), an approval or a decision. */
 export interface AnswerTarget {
   card: readonly string[] | undefined;
   approval: readonly string[] | undefined;
+  decision?: readonly string[] | undefined;
 }
 
 /** What sending a chat message did, before it is mapped to the port. */
@@ -57,11 +60,19 @@ function unexpected(name: string): PaperclipClientError {
  */
 export class PaperclipWriter {
   readonly #reader: PaperclipReader;
+  readonly #company: string;
   readonly #now: () => Date;
   readonly #steppers: PaperclipSteppers | undefined;
 
-  constructor(reader: PaperclipReader, now: () => Date, steppers?: PaperclipSteppers) {
+  /** `company` is the one whose decisions it reads before answering one. */
+  constructor(
+    reader: PaperclipReader,
+    company: string,
+    now: () => Date,
+    steppers?: PaperclipSteppers,
+  ) {
     this.#reader = reader;
+    this.#company = company;
     this.#now = now;
     this.#steppers = steppers;
   }
@@ -82,6 +93,9 @@ export class PaperclipWriter {
       }
       if (target.approval !== undefined) {
         return await this.#answerApproval(context, target.approval, answer);
+      }
+      if (target.decision !== undefined) {
+        return await this.#answerDecision(context, target.decision, answer);
       }
     } catch (error) {
       if (error instanceof UnsafeIdError) {
@@ -240,5 +254,50 @@ export class PaperclipWriter {
       throw unexpected(request.name);
     }
     return answered;
+  }
+
+  async #answerDecision(
+    context: MapContext,
+    ids: readonly string[],
+    answer: InboxAnswer,
+  ): Promise<AnswerResult> {
+    const [decision = ""] = ids;
+    const open = await this.#findDecision(decision, "open");
+    if (open === undefined) {
+      const decided = await this.#findDecision(decision, "decided");
+      const item = decided === undefined ? undefined : decisionToItem(context, decided);
+      return alreadyAnswered(item) ?? refused("not-found");
+    }
+    const request = decisionAnswerRequest(decision, open, answer);
+    if (request === undefined) {
+      throw new PaperclipClientError(
+        "This answer doesn't fit the decision; answer it in Paperclip.",
+        "refused",
+      );
+    }
+    const sent = await this.#reader.send(request.name, { path: { decision }, body: request.body });
+    if (sent.kind === "ok") {
+      return { outcome: "answered", answeredAt: this.#now().toISOString() };
+    }
+    const reason = refusalOf(sent);
+    if (reason !== undefined) {
+      return refused(reason);
+    }
+    // Decided by someone else meanwhile, or expired: it no longer waits on the person.
+    if (sent.failure === "conflict") {
+      const decided = await this.#findDecision(decision, "decided");
+      const item = decided === undefined ? undefined : decisionToItem(context, decided);
+      return alreadyAnswered(item) ?? refused("not-found");
+    }
+    throw unexpected(request.name);
+  }
+
+  /** Decision `decision` among the company's decisions in `status`, as Paperclip has it now. */
+  async #findDecision(decision: string, status: string): Promise<JsonRecord | undefined> {
+    const body = await this.#reader.read("listDecisions", {
+      path: { company: this.#company },
+      query: { status, limit: decisionPage },
+    });
+    return asRecords(body).find((record) => text(record, "id") === decision);
   }
 }

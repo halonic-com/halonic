@@ -123,5 +123,7 @@ export function acmeData() {
         createdAt: "2026-11-24T09:30:00.000Z",
       },
     ],
+    // Standalone decisions; Acme has none open unless a test adds one.
+    decisions: [] as { status: string }[],
   };
 }
