@@ -6,6 +6,7 @@ import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
 import type { DesktopMessaging } from "./desktop-messaging.ts";
 import type { MessagingPoller } from "./messaging-poller.ts";
+import { serverEngineMessage } from "./server-engine.ts";
 import type { WorkspaceMessaging } from "./workspace-messaging.ts";
 
 const workspace = s.string().min(1).max(4096);
@@ -96,7 +97,8 @@ type ReadBody = Infer<typeof readBody>;
  * - `POST /v1/paperclip/disconnect` with `{ connection }` revokes the key,
  *   then forgets it and deletes the cache even if the revoke failed, in this
  *   workspace and every other one that holds the same key, and answers
- *   `{ revoked }`.
+ *   `{ revoked }`. While the workspace's messaging engine is a server it is
+ *   409 `server_engine` (`agent-host.messaging-engine`).
  *
  * A read that fails for every source is 502 `messaging_failed` with no
  * detail; the log says which error it was.
@@ -172,6 +174,10 @@ export function messagingRoutes(deps: MessagingRouteDeps): HostRoute[] {
       connections: await messaging.connections(),
     })),
     route("/v1/paperclip/disconnect", disconnectBody, async (body, response) => {
+      if (await deps.messaging.usesServer(body.workspace)) {
+        sendError(response, 409, "server_engine", serverEngineMessage);
+        return;
+      }
       const disconnected = await deps.messaging.disconnect(body.workspace, body.connection);
       if (disconnected === undefined) {
         sendError(response, 404, "unknown_workspace", "The host serves no such workspace.");

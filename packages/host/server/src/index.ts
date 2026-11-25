@@ -84,6 +84,7 @@ export {
   type ServerAgentMessagingOptions,
 } from "./messaging-client.ts";
 export {
+  checkedServerOrigin,
   ServerClientError,
   type ServerClientFailure,
   type ServerFetch,

@@ -13,6 +13,7 @@ import type {
 import { paperclipConnectionNamePattern } from "../paperclip/paperclip-key-routes.ts";
 import { ChangeLog, type ChangesSince, changesWaitMs } from "./change-log.ts";
 import { listConnectionFiles } from "./connection-file.ts";
+import type { MessagingEngine } from "./messaging-engine-setting.ts";
 import {
   type PaperclipConnectionProvider,
   type PaperclipProviderOptions,
@@ -20,6 +21,7 @@ import {
   paperclipTeamStatus,
   withUserName,
 } from "./paperclip-provider.ts";
+import { type JoinedEngine, ServerEngineInUse } from "./server-engine.ts";
 import { TeamStatusHub } from "./team-status-hub.ts";
 
 /** What one workspace's messaging needs. */
@@ -43,6 +45,8 @@ export interface WorkspaceMessagingOptions {
   /** The `fetch` the providers send with; the global one by default. */
   fetch?: typeof fetch;
   now?: () => Date;
+  /** What the workspace's messaging engine setting joins; "This computer" by default. */
+  engine?: JoinedEngine;
 }
 
 /** What the Messenger's activity panel reads: each connected source's runs and pull requests. */
@@ -75,6 +79,12 @@ export interface ConnectionRow {
  * A connection file alone makes no provider, so opening a workspace calls
  * nobody (`agent-host.paperclip-connection`). Connect and Disconnect make the
  * hub again with the providers that are left.
+ *
+ * When the workspace's engine is a server (`agent-host.messaging-engine`),
+ * the hub joins that server's client in place of every Paperclip provider,
+ * behind the same cache; Connect and Disconnect are refused until it is
+ * "This computer" again, and the Paperclip providers kept meanwhile are
+ * joined again then.
  */
 export class WorkspaceMessaging {
   readonly #options: WorkspaceMessagingOptions;
@@ -83,12 +93,14 @@ export class WorkspaceMessaging {
   /** Each connected connection's team status, by the connection's name. */
   readonly #teams = new Map<string, PaperclipTeamStatus>();
   readonly #changes = new ChangeLog();
+  #engine: JoinedEngine;
   #hub: MessagingHub;
   #served: CachedAgentMessaging;
   #team: TeamStatusHub;
 
   constructor(options: WorkspaceMessagingOptions) {
     this.#options = options;
+    this.#engine = options.engine ?? { kind: "this-computer" };
     this.#hub = this.#joined();
     this.#served = this.#cached(this.#hub);
     this.#team = this.#teamJoined();
@@ -98,6 +110,24 @@ export class WorkspaceMessaging {
   /** The workspace's real path, as the launcher named it. */
   get workspace(): string {
     return this.#options.workspace;
+  }
+
+  /** Where the workspace's messaging runs now; never the token. */
+  get engine(): MessagingEngine {
+    const engine = this.#engine;
+    return engine.kind === "server" ? { kind: "server", address: engine.address } : engine;
+  }
+
+  /**
+   * Joins `engine` in place of the one before: only the hub's providers
+   * change, behind a cache over the same folder, and Studio's routes stay as
+   * they are. Every source either engine served is named on `changes`.
+   */
+  switchEngine(engine: JoinedEngine): void {
+    const before = this.#sourceNames();
+    this.#engine = engine;
+    this.#rejoin();
+    for (const source of new Set([...before, ...this.#sourceNames()])) this.#changes.note(source);
   }
 
   /** What Studio reads and answers through: every connected source, cached. */
@@ -121,6 +151,7 @@ export class WorkspaceMessaging {
    * tries again. A connection whose file is gone gets no provider.
    */
   async connect(connection: string): Promise<void> {
+    this.#refuseOnServer();
     const binding = { workspace: this.#options.workspace, connection };
     const file = await this.#options.readConnection(binding.workspace, connection);
     const made: PaperclipProviderOptions | undefined =
@@ -156,6 +187,7 @@ export class WorkspaceMessaging {
    * until its expiry.
    */
   async disconnect(connection: string): Promise<Disconnected> {
+    this.#refuseOnServer();
     const source = paperclipSourceId(connection);
     const provider = this.#providers.get(connection);
     let revoked = false;
@@ -190,8 +222,9 @@ export class WorkspaceMessaging {
   async connections(): Promise<ConnectionRow[]> {
     const { workspace, now } = this.#options;
     const files = await listConnectionFiles(workspace, paperclipConnectionNamePattern);
+    const joined = this.#engine.kind === "this-computer";
     const sources =
-      this.#providers.size === 0
+      !joined || this.#providers.size === 0
         ? []
         : await this.#served.listSources().catch((error: unknown) => {
             this.#failed("list connections", error);
@@ -200,7 +233,7 @@ export class WorkspaceMessaging {
     const asOf = (now?.() ?? new Date()).toISOString();
     return files.map(({ name, connection }) => {
       const id = paperclipSourceId(name);
-      const provider = this.#providers.get(name);
+      const provider = joined ? this.#providers.get(name) : undefined;
       const userName = provider?.userName;
       const label = `Paperclip · ${connection.label}`;
       return {
@@ -259,7 +292,9 @@ export class WorkspaceMessaging {
   /** The team hub over each connected connection's team status, named as its source, as the messaging hub's providers are. */
   #teamJoined(): TeamStatusHub {
     const { cacheFolder, workspaceRoots, warn, report, now } = this.#options;
-    const providers = [...this.#teams].map(([connection, status]) => ({
+    // A server's runs and pull requests aren't read yet: its team status is empty.
+    const teams = this.#engine.kind === "this-computer" ? [...this.#teams] : [];
+    const providers = teams.map(([connection, status]) => ({
       name: paperclipSourceId(connection),
       status,
     }));
@@ -275,10 +310,14 @@ export class WorkspaceMessaging {
   }
 
   #joined(): MessagingHub {
-    const providers = [...this.#providers].map(([connection, messaging]) => ({
-      name: paperclipSourceId(connection),
-      messaging,
-    }));
+    const engine = this.#engine;
+    const providers =
+      engine.kind === "server"
+        ? serverProviders(engine)
+        : [...this.#providers].map(([connection, messaging]) => ({
+            name: paperclipSourceId(connection),
+            messaging,
+          }));
     return new MessagingHub({ providers, report: this.#options.report });
   }
 
@@ -291,6 +330,16 @@ export class WorkspaceMessaging {
     this.#changes.follow(this.#hub.changes(), (error) => this.#failed("changes", error));
   }
 
+  /** The sources the joined engine serves, as the cache keeps them. */
+  #sourceNames(): MessagingId[] {
+    if (this.#engine.kind === "server") return [serverSourceName];
+    return [...this.#providers.keys()].map(paperclipSourceId);
+  }
+
+  #refuseOnServer(): void {
+    if (this.#engine.kind === "server") throw new ServerEngineInUse();
+  }
+
   #failed(action: string, error: unknown): void {
     this.#options.report({ provider: "messaging-hub", action, error });
   }
@@ -299,6 +348,16 @@ export class WorkspaceMessaging {
     const { fetch, now } = this.#options;
     return { ...(fetch === undefined ? {} : { fetch }), ...(now === undefined ? {} : { now }) };
   }
+}
+
+/** The name a server's failures are reported under, and what `changes` names when it switches. */
+const serverSourceName = "halonic-server";
+
+/** The server's client, when the workspace has a token it can use. */
+function serverProviders(engine: Extract<JoinedEngine, { kind: "server" }>) {
+  return engine.messaging === undefined
+    ? []
+    : [{ name: serverSourceName, messaging: engine.messaging }];
 }
 
 /** A connected source's state; offline when its sources couldn't be read. */

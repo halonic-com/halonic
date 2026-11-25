@@ -1,5 +1,6 @@
 import type { PaperclipBinding, PaperclipKeys } from "@halonicjs/host-agent-messaging-hub";
 import { s } from "@halonicjs/schema-kit";
+import { serverEngineMessage } from "../messaging/server-engine.ts";
 import { type HostRoute, sendError, sendErrorAndHangUp, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
 import { namedWorkspace } from "../server/named-workspace.ts";
@@ -35,6 +36,8 @@ export interface PaperclipKeyRouteDeps {
   kept?: ((binding: PaperclipBinding) => Promise<void>) | undefined;
   /** Where the host writes what failed; never a key. */
   log?: ((text: string) => void) | undefined;
+  /** Whether the workspace's messaging engine is a server, so no Paperclip key is kept for it. */
+  usesServer?: ((workspace: string) => Promise<boolean>) | undefined;
 }
 
 /**
@@ -52,7 +55,8 @@ export interface PaperclipKeyRouteDeps {
  * doesn't fit or an address that isn't `https` or plain `http` to this
  * computer (400 `body_invalid`, with no detail, as the body holds the key),
  * and a folder that isn't the real path of a workspace the launcher named
- * (404 `unknown_workspace`). No
+ * (404 `unknown_workspace`), and a workspace whose messaging engine is a
+ * server (409 `server_engine`, `agent-host.messaging-engine`). No
  * answer and no log line holds the key.
  */
 export function paperclipKeyRoutes(deps: PaperclipKeyRouteDeps): HostRoute[] {
@@ -78,6 +82,10 @@ export function paperclipKeyRoutes(deps: PaperclipKeyRouteDeps): HostRoute[] {
         const workspace = await namedWorkspace(deps.workspaceRoots, body.workspace);
         if (workspace === undefined) {
           sendError(response, 404, "unknown_workspace", "The host serves no such workspace.");
+          return;
+        }
+        if ((await deps.usesServer?.(workspace)) === true) {
+          sendError(response, 409, "server_engine", serverEngineMessage);
           return;
         }
         const binding = { workspace, connection: body.connection };

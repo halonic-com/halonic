@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { paperclipOrigin } from "@halonicjs/host-agent-messaging-hub";
 import { type Schema, s } from "@halonicjs/schema-kit";
 import { listConnectionFiles, type NamedConnection } from "../messaging/connection-file.ts";
+import { serverEngineMessage } from "../messaging/server-engine.ts";
 import { type HostRoute, sendError, sendErrorAndHangUp, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
 import { namedWorkspace } from "../server/named-workspace.ts";
@@ -29,6 +30,8 @@ export interface PaperclipSignInRouteDeps {
   workspaceRoots: readonly string[];
   /** Where the host writes what failed; never a key. */
   log: (text: string) => void;
+  /** Whether the workspace's messaging engine is a server, so no sign-in starts for it. */
+  usesServer?: ((workspace: string) => Promise<boolean>) | undefined;
 }
 
 /**
@@ -47,7 +50,8 @@ export interface PaperclipSignInRouteDeps {
  *   `{ outcome: "refused", reason }` for an address that isn't `https` (nor
  *   plain `http` to this computer) or isn't the named file's, for a named
  *   file with `newConnection`, and for an
- *   address where no sign-in could start.
+ *   address where no sign-in could start. While the workspace's messaging
+ *   engine is a server it is 409 `server_engine` (`agent-host.messaging-engine`).
  * - `POST /v1/paperclip/sign-in/poll` with `{ signInId }` answers the
  *   sign-in's state. The first `connected` answer is the only one that holds
  *   the key, with the connection's name, address and company, for Studio's
@@ -74,6 +78,7 @@ export function paperclipSignInRoutes(deps: PaperclipSignInRouteDeps): HostRoute
     route("/v1/paperclip/sign-in/start", startBody, async (body) => {
       const folder = await namedWorkspace(deps.workspaceRoots, body.workspace);
       if (folder === undefined) return unknownWorkspace;
+      if ((await deps.usesServer?.(folder)) === true) return serverEngine;
       const started = await start(deps, folder, body);
       if (started.outcome === "refused") return { status: 200, body: started };
       return { status: 200, body: { outcome: "started", ...started.answer } };
@@ -96,6 +101,11 @@ export function paperclipSignInRoutes(deps: PaperclipSignInRouteDeps): HostRoute
 const unknownWorkspace = {
   status: 404,
   body: { error: { kind: "unknown_workspace", message: "The host serves no such workspace." } },
+};
+
+const serverEngine = {
+  status: 409,
+  body: { error: { kind: "server_engine", message: serverEngineMessage } },
 };
 
 type Started =
