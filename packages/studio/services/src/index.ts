@@ -13,6 +13,12 @@ export {
   type StepSender,
 } from "./action-steps.ts";
 export {
+  type ActiveAccount,
+  ActiveAccountService,
+  chooseSource,
+  HostActiveAccount,
+} from "./active-account.ts";
+export {
   type AgentConnection,
   type AgentConnections,
   AgentConnectionsService,
@@ -74,6 +80,7 @@ export {
   QuietHoursNotifier,
   type QuietHoursOptions,
 } from "./quiet-hours.ts";
+export { scopeToAccount } from "./scope-to-account.ts";
 export { actionStepsKey, provideActionSteps } from "./shell-actions.ts";
 export { hostSettingsStoreKey, provideShellHostSettings } from "./shell-host-settings.ts";
 export {

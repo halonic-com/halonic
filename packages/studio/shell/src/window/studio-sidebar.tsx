@@ -1,7 +1,12 @@
 import type { MenuEntry } from "@halonicjs/studio-kit";
 import { useCallback, useId, useState, useSyncExternalStore } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
-import type { PlaceContribution, SidebarViewContribution } from "../points/frame.ts";
+import { StatusBarItems } from "../frame/status-bar.tsx";
+import type {
+  BarItemContribution,
+  PlaceContribution,
+  SidebarViewContribution,
+} from "../points/frame.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
 import type { Registered } from "../points/point-store.ts";
 import { PlacesList } from "../sidebar/places-list.tsx";
@@ -44,6 +49,8 @@ export interface StudioSidebarProps {
   readonly selectedView?: string | undefined;
   /** Called with the switch's tab the user picks, when the window keeps it. */
   readonly onSelectView?: ((id: string) => void) | undefined;
+  /** The item at the bottom left, such as the account switcher: `shell.contributions.sidebarFooter.item()`. Pass the same object each render. */
+  readonly footer?: Registered<BarItemContribution> | undefined;
   /** The workspace switcher, once the app has a workspace menu (T3); without it, none shows. */
   readonly switcher?: WorkspaceSwitcherProps | undefined;
 }
@@ -105,6 +112,11 @@ export function StudioSidebar(props: StudioSidebarProps) {
             />
           }
         />
+        {props.footer === undefined ? null : (
+          <div data-sidebar-footer="" className="mt-auto flex flex-col pt-2">
+            <StatusBarItems items={footerItems(props.footer)} contextFor={contextFor} />
+          </div>
+        )}
       </div>
       <SidebarResizeEdge
         width={width}
@@ -114,4 +126,16 @@ export function StudioSidebar(props: StudioSidebarProps) {
       />
     </>
   );
+}
+
+/** The footer's one item as the list the bar items draw; the same array for the same item. */
+const footerLists = new WeakMap<object, readonly Registered<BarItemContribution>[]>();
+function footerItems(
+  item: Registered<BarItemContribution>,
+): readonly Registered<BarItemContribution>[] {
+  const known = footerLists.get(item);
+  if (known !== undefined) return known;
+  const list = [item];
+  footerLists.set(item, list);
+  return list;
 }

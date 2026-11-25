@@ -357,6 +357,7 @@ function StudioWindowBody(props: StudioWindowProps) {
           onSettings={() => openSettings()}
           help={help}
           switcher={sidebarSwitcher}
+          footer={contributions.sidebarFooter.item()}
         />
       }
       statusBar={

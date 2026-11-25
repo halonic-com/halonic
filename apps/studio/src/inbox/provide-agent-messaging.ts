@@ -1,8 +1,15 @@
 import { AgentHostMessaging, type AgentHostTransport } from "@halonicjs/adapter-agent-host-client";
+import { MemoryHostSettingsStore } from "@halonicjs/adapter-memory";
 import type { Disposable, ServiceRegistry } from "@halonicjs/app";
 import { OverviewMessagingService } from "@halonicjs/studio-feature-overview/api";
 import { SearchMessagingService } from "@halonicjs/studio-feature-search/api";
-import { AgentMessagingService } from "@halonicjs/studio-services";
+import {
+  ActiveAccountService,
+  AgentMessagingService,
+  HostActiveAccount,
+  hostSettingsStoreKey,
+  scopeToAccount,
+} from "@halonicjs/studio-services";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 
 /** The window listeners that tell the host whether the window is in front; the folder's registry removes them when it closes. */
@@ -16,7 +23,7 @@ export const agentMessagingFocusKey: ServiceKey<Disposable> = serviceKey<Disposa
  * providers and holds their keys, and the Inbox, Messenger and overview read
  * it through `AgentMessagingService` without knowing which engine serves it.
  * Search and the overview with its daily recap read the same one through
- * their own keys.
+ * their own keys. All of them see only the active account's sources.
  * It also tells the host when the window comes to the front or goes to the
  * back, so the host polls every 30 seconds or every 5 minutes. Without an
  * agent host nothing is provided, and the features show no agent items.
@@ -33,9 +40,21 @@ export function provideAgentMessaging(
 ): void {
   if (transport === undefined) return;
   const messaging = new AgentHostMessaging(transport, location);
-  services.provide(AgentMessagingService, messaging);
-  services.provide(SearchMessagingService, messaging);
-  services.provide(OverviewMessagingService, messaging);
+  const active = new HostActiveAccount(
+    services.has(hostSettingsStoreKey)
+      ? services.get(hostSettingsStoreKey)
+      : new MemoryHostSettingsStore(),
+  );
+  active.load().catch((error: unknown) => {
+    console.error("Reading the active account", error);
+  });
+  services.provide(ActiveAccountService, active);
+  // One account at a time, for every reader of the port: the Inbox and Messenger in every window,
+  // search and the overview, and so the desktop notifications, which follow the active account.
+  const scoped = scopeToAccount(messaging, active);
+  services.provide(AgentMessagingService, scoped);
+  services.provide(SearchMessagingService, scoped);
+  services.provide(OverviewMessagingService, scoped);
   if (!(window instanceof EventTarget)) return;
   const tell = (inFront: boolean) => () => {
     messaging.setInFront(inFront).catch((error: unknown) => {
