@@ -130,6 +130,10 @@ describe("theme.css colours", () => {
     }
   });
 
+  it("draws a focused app's frame in slate-75 in light and slate-950 in dark (HAL-18691)", () => {
+    expect(themeTokens.get("--color-app-frame")).toBe("light-dark(#f4f7fa, #020617)");
+  });
+
   for (const mode of ["light", "dark"] as const) {
     it.each(contrastPairs)(
       `keeps $name readable in ${mode} mode`,

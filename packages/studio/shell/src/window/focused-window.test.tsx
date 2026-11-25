@@ -80,7 +80,9 @@ verifies("shell.focused-apps", () => {
     const focused = await mount("Acme");
 
     expect(element.querySelector("main h1")?.textContent).toBe("Inbox for desktop-app");
-    expect(element.querySelector('[data-focused-app="inbox"]')).not.toBeNull();
+    expect(element.querySelector('[data-focused-app="inbox"]')?.classList).toContain(
+      "bg-app-frame",
+    );
     expect(element.querySelector('[role="tablist"]')).toBeNull();
     expect(element.querySelector('nav[aria-label="Places"]')).toBeNull();
     expect(document.title).toBe("Inbox · Acme · Halonic Inbox");
