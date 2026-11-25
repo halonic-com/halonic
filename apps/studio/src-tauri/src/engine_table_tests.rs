@@ -316,10 +316,43 @@ fn background_start_records_every_open_workspace_once() {
         .started(PathBuf::from("other"), "other".into(), 2, None)
         .unwrap();
     assert_eq!(
-        table.open_at_quit(),
+        table.open_at_quit(9),
         Some(vec!["acme".to_owned(), "other".to_owned()])
     );
     let taken = table.take_all();
     assert_eq!(taken, vec![(2, HashSet::new())]);
-    assert_eq!(table.open_at_quit(), None);
+    assert_eq!(table.open_at_quit(9), None);
+}
+
+/// `studio.src-tauri.background-start`: a Quit while the start at login is
+/// still starting engines records the workspaces waiting to start too, but
+/// not one it skipped or failed to start.
+#[test]
+fn background_start_quit_during_start_records_the_waiting_workspaces() {
+    let mut table = EngineTable::default();
+    table.waiting_to_start(&["acme".to_owned(), "gone".to_owned(), "notes".to_owned()]);
+    table.started(acme(), "acme".into(), 1, None).unwrap();
+    table.not_waiting("gone");
+    assert_eq!(
+        table.open_at_quit(9),
+        Some(vec!["acme".to_owned(), "notes".to_owned()])
+    );
+}
+
+/// `studio.src-tauri.background-start`: over the cap, Quit keeps the
+/// newest workspaces, the ones still waiting to start counting as oldest,
+/// then sorts them.
+#[test]
+fn background_start_the_cap_keeps_the_newest() {
+    let mut table = EngineTable::default();
+    table.waiting_to_start(&["0-waiting".to_owned()]);
+    for (engine, name) in ["c", "b", "a"].into_iter().enumerate() {
+        table
+            .started(PathBuf::from(name), name.into(), engine, None)
+            .unwrap();
+    }
+    assert_eq!(
+        table.open_at_quit(2),
+        Some(vec!["a".to_owned(), "b".to_owned()])
+    );
 }

@@ -204,3 +204,26 @@ fn background_start_skips_a_folder_that_is_no_longer_a_workspace() {
     assert_eq!(refusal.kind(), "not_workspace");
     assert!(folders.list().is_empty());
 }
+
+/// The folder stops being a workspace after its location was read but
+/// before it opens: the check reads the resolved path, so it is skipped.
+#[test]
+fn background_start_the_workspace_check_uses_the_resolved_path() {
+    let scratch = Scratch::new("resolved");
+    let list = PickedFolders::new(scratch.0.join("picked-folders.json"));
+    let folder = scratch.folder("acme", true);
+    let location = picked(&TrustState::default(), &list, &folder);
+    let folders = OpenedFolders::new();
+    let refusal = reopen_workspace(
+        &TrustState::default(),
+        &folders,
+        &list,
+        |real| {
+            fs::remove_file(real.join("workspace.yaml")).expect("removed");
+            FolderPlace::Apart
+        },
+        &location,
+    )
+    .expect_err("not a workspace any more");
+    assert_eq!(refusal.kind(), "not_workspace");
+}
