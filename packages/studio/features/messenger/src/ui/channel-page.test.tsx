@@ -133,10 +133,10 @@ verifies("messenger.channel-messages", () => {
     );
     expect(toLine(page)).toBe("To Chief (lead) · Type @ to ask someone else");
     await typeAndPress(box, "@");
-    expect(page.querySelector("[data-member-picker]")?.textContent).toContain(
+    expect(page.querySelector("[data-chat-picker]")?.textContent).toContain(
       "Members · ↑↓ to pick · Enter names them · Esc closes",
     );
-    await press(byText(page, "[data-member-picker] button", "Elena"));
+    await press(byText(page, "[data-chat-picker] [role=option]", "Elena"));
     await typeAndPress(box, "@", "ArrowDown");
     await typeAndPress(box, "@", "Enter");
     expect(toLine(page)).toBe("To Elena and Liam");
