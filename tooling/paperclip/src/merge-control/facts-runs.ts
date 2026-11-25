@@ -91,12 +91,20 @@ export async function mainRunsOf(
     return runFacts;
   }
   const redJobs = await cached(cache, `${newest.id}:${newest.run_attempt ?? 1}`, async () => {
-    const jobs = (await get(
-      `/repos/${repo}/actions/runs/${newest.id}/jobs?filter=latest&per_page=100`,
-    )) as { jobs?: RestJob[] };
-    return (jobs.jobs ?? [])
-      .filter((job) => !notRed.has(job.conclusion ?? ""))
-      .map((job) => job.name);
+    // Every page: a red job missed past the first 100 would end the freeze wrongly.
+    const red: string[] = [];
+    for (let page = 1; page <= runPagesMax; page += 1) {
+      const body = (await get(
+        `/repos/${repo}/actions/runs/${newest.id}/jobs?filter=latest&per_page=100&page=${page}`,
+      )) as { jobs?: RestJob[] };
+      const jobs = body.jobs ?? [];
+      red.push(...jobs.filter((job) => !notRed.has(job.conclusion ?? "")).map((job) => job.name));
+      if (jobs.length < 100) {
+        return red;
+      }
+    }
+    // More jobs than were read: count the rest as red, so the freeze holds.
+    return [...red, "(jobs not read)"];
   });
   return runFacts.map((run) => (run.id === newest.id ? { ...run, redJobs } : run));
 }

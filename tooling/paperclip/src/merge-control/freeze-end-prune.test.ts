@@ -89,7 +89,7 @@ verifies("paperclip.merge-control-freeze-end-prune", () => {
     expect(read.map((run) => run.redJobs)).toEqual([undefined, [flaky, "Test (core)"], undefined]);
     await mainRunsOf(get, "acme/tools", cache);
     expect(asked.filter((path) => path.includes("/jobs"))).toEqual([
-      "/repos/acme/tools/actions/runs/7102/jobs?filter=latest&per_page=100",
+      "/repos/acme/tools/actions/runs/7102/jobs?filter=latest&per_page=100&page=1",
     ]);
   });
 
