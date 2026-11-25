@@ -7,7 +7,11 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { acme, canaryKey, writeConnection } from "../../test/fake-paperclip.ts";
 import { paperclipKeySecretName } from "./serve-messaging.ts";
-import { ServePaperclipSignIn, serveSignInLimitMs } from "./serve-paperclip-sign-in.ts";
+import {
+  ServePaperclipSignIn,
+  serveOpenSignInLimit,
+  serveSignInLimitMs,
+} from "./serve-paperclip-sign-in.ts";
 
 const challengeId = "69effd29-0000-4000-8000-000000000001";
 const challengePath = `/api/cli-auth/challenges/${challengeId}`;
@@ -20,9 +24,12 @@ class FakeSignInPaperclip {
   status = "pending";
   companyIds = [acme.company];
   revokeFails = false;
+  cancelFails = false;
+  offline = false;
   approvalPath = `/cli-auth/${challengeId}?token=made-up-challenge-secret`;
 
   readonly fetch = async (input: Request | string | URL, init?: RequestInit): Promise<Response> => {
+    if (this.offline) throw new TypeError("fetch failed");
     const request = new Request(input, init);
     const path = new URL(request.url).pathname;
     const authorization = request.headers.get("authorization");
@@ -39,7 +46,11 @@ class FakeSignInPaperclip {
       });
     }
     if (path === challengePath) return Response.json({ id: challengeId, status: this.status });
-    if (path === `${challengePath}/cancel`) return Response.json({ status: this.status });
+    if (path === `${challengePath}/cancel`) {
+      return this.cancelFails
+        ? Response.json({ error: "no" }, { status: 500 })
+        : Response.json({ status: this.status });
+    }
     if (path === "/api/cli-auth/me")
       return Response.json({ userId: "user-ada", companyIds: this.companyIds });
     if (path === "/api/cli-auth/revoke-current") {
@@ -66,6 +77,7 @@ let store: Map<string, string>;
 let now: number;
 let timers: (() => void)[];
 let signIn: ServePaperclipSignIn;
+let reported: unknown[];
 
 beforeEach(async () => {
   folder = await mkdtemp(join(tmpdir(), "serve-paperclip-sign-in-"));
@@ -76,6 +88,7 @@ beforeEach(async () => {
   store = new Map();
   now = Date.parse("2026-11-25T10:00:00Z");
   timers = [];
+  reported = [];
   signIn = new ServePaperclipSignIn({
     workspace,
     keys: {
@@ -85,7 +98,7 @@ beforeEach(async () => {
     },
     cacheFolder,
     warn: () => {},
-    report: () => {},
+    report: (error) => void reported.push(error),
     fetch: paperclip.fetch,
     now: () => new Date(now),
     setTimer: (ms, end) => {
@@ -259,5 +272,121 @@ verifies("server.paperclip-sign-in", () => {
       expect(await signIn.disconnect("other")).toEqual({ outcome: "unknown" });
       expect(paperclip.seen).toEqual([]);
     });
+  });
+});
+
+/** Every reported error's message and its causes' messages, as the debug log could show them. */
+function reportedText(): string[] {
+  const texts: string[] = [];
+  for (let each of reported) {
+    while (each instanceof Error) {
+      texts.push(each.message);
+      each = each.cause;
+    }
+  }
+  return texts;
+}
+
+verifies("server.paperclip-sign-in-failures", () => {
+  it("reports a failed cancel, then revokes the key and says nothing more", async () => {
+    paperclip.cancelFails = true;
+    const id = await started();
+
+    expect(await signIn.cancel(id)).toEqual({ status: "cancelled" });
+    expect(paperclip.revoked()).toEqual([canaryKey]);
+    expect(reportedText()[0]).toBe(
+      "Paperclip didn't cancel an ended sign-in's challenge, so its key is revoked instead.",
+    );
+    expect(reported).toHaveLength(1);
+    expect(reportedText().join("\n")).not.toContain(canaryKey);
+  });
+
+  it("reports a failed revoke after an approval the cancel found, with no key in it", async () => {
+    const id = await started();
+    paperclip.status = "approved";
+    paperclip.revokeFails = true;
+
+    expect(await signIn.cancel(id)).toEqual({ status: "cancelled", keyMayWork: true });
+    expect(reportedText()[0]).toBe(
+      "The key of an ended Paperclip sign-in couldn't be revoked, so it may work until it expires. Revoke it in Paperclip.",
+    );
+    expect(reportedText().join("\n")).not.toContain(canaryKey);
+  });
+
+  it("reports both when an expired sign-in's cancel and revoke fail", async () => {
+    paperclip.cancelFails = true;
+    paperclip.revokeFails = true;
+    await started();
+    now += serveSignInLimitMs;
+
+    await runTimers();
+
+    expect(reported).toHaveLength(2);
+    expect(reportedText().join("\n")).not.toContain(canaryKey);
+  });
+
+  it("reports a failed revoke of another company's key, with no key in it", async () => {
+    paperclip.companyIds = ["globex-company"];
+    paperclip.revokeFails = true;
+    const id = await started();
+    paperclip.status = "approved";
+
+    expect(await signIn.poll(id)).toEqual({ status: "wrong-company", keyMayWork: true });
+    expect(reported).toHaveLength(1);
+    expect(reportedText().join("\n")).not.toContain(canaryKey);
+  });
+});
+
+verifies("server.paperclip-sign-in-cap", () => {
+  /** How many challenges the server asked Paperclip for. */
+  function challengesMade(): number {
+    return paperclip.seen.filter((each) => each.path === "/api/cli-auth/challenges").length;
+  }
+
+  it("refuses one sign-in past the cap, asks Paperclip nothing and holds nothing new", async () => {
+    const ids: string[] = [];
+    for (let count = 0; count < serveOpenSignInLimit; count += 1) ids.push(await started());
+
+    const refused = await signIn.start({ address: acme.address });
+
+    expect(serveOpenSignInLimit).toBe(8);
+    expect(refused).toEqual({ outcome: "refused", reason: "too-many-sign-ins" });
+    expect(challengesMade()).toBe(serveOpenSignInLimit);
+    expect(timers).toHaveLength(serveOpenSignInLimit);
+  });
+
+  it("lets only as many starts through as the cap when they come at once", async () => {
+    const starts = await Promise.all(
+      Array.from({ length: serveOpenSignInLimit + 3 }, () =>
+        signIn.start({ address: acme.address }),
+      ),
+    );
+
+    expect(starts.filter((start) => start.outcome === "started")).toHaveLength(8);
+    expect(starts.filter((start) => start.outcome === "refused")).toEqual(
+      Array.from({ length: 3 }, () => ({ outcome: "refused", reason: "too-many-sign-ins" })),
+    );
+    expect(challengesMade()).toBe(serveOpenSignInLimit);
+  });
+
+  it("starts again once a sign-in ends", async () => {
+    const ids: string[] = [];
+    for (let count = 0; count < serveOpenSignInLimit; count += 1) ids.push(await started());
+
+    await signIn.cancel(ids[0] ?? "");
+
+    expect(await signIn.start({ address: acme.address })).toMatchObject({ outcome: "started" });
+  });
+
+  it("frees the place of a start Paperclip didn't answer", async () => {
+    paperclip.offline = true;
+    for (let count = 0; count < serveOpenSignInLimit; count += 1) {
+      expect(await signIn.start({ address: acme.address })).toMatchObject({
+        reason: "unreachable",
+      });
+    }
+    paperclip.offline = false;
+
+    expect(await signIn.start({ address: acme.address })).toMatchObject({ outcome: "started" });
   });
 });
