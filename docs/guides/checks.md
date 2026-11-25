@@ -915,6 +915,33 @@ results that the build job and the merge base's tests job saved. Those jobs
 passed, so they don't run again, and the guard sees the same counts. Use
 *Re-run all jobs* to get new counts.
 
+**A push that only signs the decision note reuses the previous results**
+(HAL-17896). The signature covers the note without its signature lines and
+the covered files' git objects, not the head commit, so a push that only adds
+it changes nothing the build or the tests read. CI's `Signature-only push` job
+(`infra/ci-runner/signature-reuse.mjs`) checks every new commit of a pull
+request that isn't a draft. When the commit is the only one on top of the
+previous head, changes only `decisions/<branch name>.md`, and every line it
+adds or removes there is a `- Signature: ed25519:` line (the first signature,
+a second guardian's line, or a replaced one), and the previous head's full run
+passed every job except `ci-ok`, the fail-fast job and the requirement guard's
+two jobs (its file checks and the full guard),
+this run skips the build shards, the merge base's tests and every area job
+(scaffold, end-to-end, docs, Tauri, sandbox, installer, Android). The fast
+gates, the leak and secret scans, the workflow lint, the policy rules and the
+coverage floors still run. The requirement guard runs in full on the new head,
+with that run's test results and merge base: it tests the new head merged
+into the same `main` commit as that run, even when `main` has moved since, so
+it compares like with like. That guard run is what checks the new signature.
+The run's notice names the run it reused. Anything else runs every job: a
+second file, another line of the note, a rebase, a previous run with another
+failed or cancelled job, results that have expired (after a day), or any doubt.
+To force a full run, use *Re-run all jobs* on the run (a re-run never
+reuses), or set the repo variable `CI_PR_SIGNATURE_REUSE` to `off`. This is not
+a trust boundary: a pull request runs its own copy of `ci.yml`. The merge queue
+still runs every job, and `guard-notes.yml` still checks the note with the
+base's code.
+
 On a pull request, the `Changed areas` job decides which of those jobs run
 from the pull request's diff against the `main` it is merged into, so what
 `main` merged since the pull request's base doesn't count (HAL-15970). In the merge queue it reads the group's diff
@@ -958,7 +985,7 @@ requirement guard, and the workflow lint unless the group changes
 | Android shell | when the Tauri shell, Studio's connect page, the lockfile or the notices check changes: builds the debug APK, then lists the release build's Gradle libraries and checks their licences with `pnpm check:sbom --notices --gradle` |
 | End-to-end, docs | the Studio's Playwright tests when their area changes; the docs job is a stub until `apps/docs` exists |
 | Live cloud suites passed | pull requests and the queue, when the change touches a cloud path (`cloud-affected.ts`). In the merge queue it waits for `live-cloud.yml`'s `live-cloud` job on the group's commit (HAL-15970). On a pull request it passes with a notice, unless the change touches what the suites exercise directly (`on-pull-request`: the Cloudflare and S3 adapters, `packages/targets/cloudflare`, the live suites, the deploy command, the live workflow and its code): then a ready pull request fails at once until that job passed on its head, and `live-cloud-gate.yml` re-runs it when they pass. A draft gets only a notice; a fork's pull request that touches any cloud path fails. Only a notice while `LIVE_CLOUD_ENABLED` isn't `true` |
-| Cancel the run on the first failure | pull requests and the queue: watches the run's other jobs and cancels the run when one fails, so `ci-ok` fails at once and names it (HAL-17684). On a pull request, a failure in `Fast gates`, `Leak guard`, `Coverage floors don't go down` or `Live cloud suites passed` doesn't cancel the run, as another workflow re-runs those jobs alone once the cause is fixed. After a cancel, "Re-run failed jobs" runs the failed and cancelled jobs again |
+| Cancel the run on the first failure | pull requests and the queue: watches the run's other jobs and cancels the run when one fails, so `ci-ok` fails at once and names it (HAL-17684). On a pull request, a failure in `Fast gates`, `Leak guard`, `Coverage floors don't go down` or `Live cloud suites passed` doesn't cancel the run, as another workflow re-runs those jobs alone once the cause is fixed, and neither does one in the requirement guard's two jobs, so the rest of the run finishes and a signature-only push can reuse it. After a cancel, "Re-run failed jobs" runs the failed and cancelled jobs again |
 
 **The merge queue.** `main` merges through GitHub's merge queue. The queue builds each pull request
 on top of the latest `main` (or the entry ahead of it), runs `ci.yml` on that

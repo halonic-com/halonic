@@ -77,6 +77,9 @@ function whyItSkips(block: string, guarded: Set<string>): string {
   const condition = field(block, "if");
   const needs = needsOf(block);
   if (holdsGuard(condition)) return "its condition holds the guard";
+  // signature-reuse (HAL-17896): only for a new commit, never for a label.
+  if (condition?.includes("github.event.action == 'synchronize'"))
+    return "it runs only for a new commit";
   if (
     /github\.event_name == '(push|merge_group)'|github\.event_name != 'pull_request'/.test(
       condition,
@@ -236,7 +239,8 @@ verifies("check.ci-self-hosted-routing", () => {
 
     test("in a run for any other label every job skips, and ci-ok reports under another name", () => {
       const jobs = jobBlocks(workflow);
-      expect(field(jobs.get("changes") ?? "", "if")).toBe(GUARD.slice(1, -1));
+      // `!cancelled()`: it needs signature-reuse, which skips outside a pull request's new commit.
+      expect(field(jobs.get("changes") ?? "", "if")).toBe(`\${{ !cancelled() && ${GUARD} }}`);
       const guarded = new Set(
         [...jobs].filter(([, block]) => holdsGuard(field(block, "if"))).map(([job]) => job),
       );

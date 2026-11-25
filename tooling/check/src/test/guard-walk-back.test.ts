@@ -87,7 +87,11 @@ verifies("check.guard-base-after-walk-back", () => {
       "utf8",
     );
     expect(workflow).toContain("built-on: ${{ steps.merge-base.outputs.sha }}");
-    expect(workflow).toContain("ref: ${{ needs.base-tests.outputs.built-on }}");
+    expect(workflow).toContain(
+      "BUILT_ON_SHA: ${{ env.REUSE_RUN != '' && needs.signature-reuse.outputs.built-on || needs.base-tests.outputs.built-on }}",
+    );
+    expect(workflow).toContain('echo "built-on=$BUILT_ON_SHA"');
+    expect(workflow).toContain("ref: ${{ steps.inputs.outputs.built-on }}");
     expect(workflow).toMatch(
       /if \[ "\$BUILT_ON_SHA" != "\$BASE_SHA" \]; then\n\s+built_on=\(--built-on "\$BUILT_ON_DIR"\)/,
     );

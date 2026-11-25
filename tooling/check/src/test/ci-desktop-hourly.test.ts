@@ -50,7 +50,8 @@ const notHourly = "github.event_name != 'schedule' && github.event_name != 'work
 /** Jobs whose condition already names the one event they run on, or that every run needs. */
 const ownEvent =
   /^(\$\{\{ (!cancelled\(\) && )?)?github\.event_name == '(pull_request|merge_group|push)'/;
-const everyRun = ["changes", "ci-ok", "agent-host"];
+// signature-reuse runs wherever changes runs: a skipped need of changes would skip the hourly set.
+const everyRun = ["changes", "signature-reuse", "ci-ok", "agent-host"];
 
 verifies("check.ci-desktop-hourly", () => {
   describe("ci.yml runs the macOS and Windows set hourly on main", () => {
