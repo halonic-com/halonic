@@ -191,13 +191,17 @@ export interface AgentRecord {
   readonly urlKey: string;
 }
 
-/** The plugin host's clients the runtime calls. */
+/**
+ * The plugin host's clients the runtime calls. A tool call may get its own
+ * host, whose calls Paperclip scopes to that call (the worker client gives
+ * one); without one, the tool uses the host it was registered on.
+ */
 export interface RuntimeHost {
   readonly tools: {
     register(
       name: string,
       declaration: ToolDeclaration,
-      run: (params: unknown, runCtx: ToolRunContext) => Promise<ToolResult>,
+      run: (params: unknown, runCtx: ToolRunContext, host?: RuntimeHost) => Promise<ToolResult>,
     ): void;
   };
   readonly agents: {
