@@ -99,6 +99,7 @@ export function AssistantPanel({ context, title, onClose }: PanelWindowViewProps
     onNewChat: newChat,
     onOpenTab: openTab,
     agents: choices.agents,
+    announce,
   };
   // Open as tab moves the chat to its tab and closes the panel: one chat in one place (2.3).
   const openAsTab =
@@ -258,6 +259,8 @@ export function ChatBody(props: ChatBodyProps) {
         shown={view?.shown ?? []}
         onOpen={props.onOpenItem}
         onRemove={(item) => view !== undefined && chats.removeShown(view.chat.id, item)}
+        box={box}
+        announce={announce}
       />
       {view === undefined ? (
         // Fills the transcript's place, so the box is at the bottom from the start (H7).
@@ -272,7 +275,11 @@ export function ChatBody(props: ChatBodyProps) {
           aboutName={props.aboutName}
           notice={engineAnswering ? undefined : notAnsweringLine(context)}
           noticeId={noticeId}
-          onContinue={() => send(view.chat.id, undefined, () => {})}
+          onContinue={() => {
+            // Continue and Try again go as the answer restarts: focus waits in the box (a11y AS1).
+            box.current?.focus();
+            send(view.chat.id, undefined, () => {});
+          }}
           continueWaits={engineAnswering ? undefined : { reason: noticeId }}
         />
       )}

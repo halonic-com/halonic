@@ -11,6 +11,8 @@ export interface TouchActionsProps {
   readonly nameId: string;
   /** See what changes' `id`, which the strip's count moves focus to. */
   readonly reviewId: string;
+  /** Accept all's `id` on the card, which takes focus after an Undo. */
+  readonly acceptId: string;
   readonly busy: "accept" | "reject" | undefined;
   readonly onDecide: (decision: "accept" | "reject") => void;
   /** The line above the buttons when the file changed outside Halonic: its `id` and its words. */
@@ -46,6 +48,8 @@ export function TouchActions(props: TouchActionsProps) {
     waits: string | undefined,
   ) => (
     <Button
+      // Only the card's own Accept all, not the sheet's, which is gone after an Undo.
+      {...(choice === "accept" && size === "lg" ? { id: props.acceptId } : {})}
       variant={choice === "accept" ? "primary" : "secondary"}
       size={size}
       block

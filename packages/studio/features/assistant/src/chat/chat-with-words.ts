@@ -11,6 +11,8 @@ export const chatWithWords = {
   /** The menu's first entry (parity name). */
   buildTheWorkspace: "Build the workspace",
   model: "Model:",
+  /** New (HAL-18075): the Model chip's value while no model is set or read yet. */
+  noModel: "none",
   /** An agent chat's model, as plain text: "Model: smart (Triage's)". */
   agentModel: (alias: string, agent: string) => `Model: ${alias} (${agent}'s)`,
   /** Why a model can't be used, as the Model menu's description of it. */

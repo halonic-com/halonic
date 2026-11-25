@@ -129,6 +129,7 @@ export function PhoneChatMenu(
           chat={kept}
           onClose={() => setDeleting(false)}
           afterDelete={props.afterDelete}
+          announce={props.announce}
         />
       ) : null}
     </>

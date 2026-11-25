@@ -105,4 +105,29 @@ verifies("assistant.chat.show-in-chat", () => {
     await act(async () => buttonNamed(page, "two")?.click());
     expect(context.openItem).toHaveBeenCalledWith({ kind: "workflow", hub: "acme", id: "two" });
   });
+
+  it("moves focus to the next ×, else the previous one, else the box, and says what it removed", async () => {
+    const fake = fakeHost();
+    const context = windowOf(fake);
+    const page = await show(
+      <AssistantPanel context={context} title="Assistant" onClose={() => {}} />,
+    );
+    for (const each of [triage, sorter, shownOf("workflow", "intake")]) {
+      await act(() => showInChat.show(each, context));
+    }
+    const remove = async (name: string) => {
+      buttonNamed(page, `Remove ${name} from this chat`)?.focus();
+      await act(async () => buttonNamed(page, `Remove ${name} from this chat`)?.click());
+    };
+    await remove("Sorter");
+    expect(document.activeElement).toBe(buttonNamed(page, "Remove intake from this chat"));
+    expect(context.announcer.announce).toHaveBeenCalledWith(
+      "Removed Sorter from this chat.",
+      "polite",
+    );
+    await remove("intake");
+    expect(document.activeElement).toBe(buttonNamed(page, "Remove triage from this chat"));
+    await remove("triage");
+    expect(document.activeElement?.tagName).toBe("TEXTAREA");
+  });
 });

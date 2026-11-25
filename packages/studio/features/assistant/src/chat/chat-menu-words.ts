@@ -29,6 +29,8 @@ export const chatMenuWords = {
   deleteBody: (items: number) =>
     `The changes it made in ${items} ${items === 1 ? "item" : "items"} stay there to review.`,
   deleteConfirm: "Delete chat",
+  /** New (HAL-18075): said once the chat is deleted, as focus moves on. */
+  deleted: (title: string) => `Deleted “${title}”.`,
   deleting: "Deleting…",
   cantDelete: (reason: string) => `Couldn't delete the chat: ${reason.trim().replace(/\.+$/, "")}.`,
   /** The phone's ⋮ (flow-assistant 11.3), whose items carry no "…", and its two sheets. */

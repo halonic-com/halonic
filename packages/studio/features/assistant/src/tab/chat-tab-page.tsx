@@ -118,6 +118,8 @@ export function ChatTabPage({ item, context }: ItemViewProps) {
               shown={view.shown}
               onOpen={(each) => context.openItem?.(each)}
               onRemove={(each) => chats.removeShown(chatId, each)}
+              box={box}
+              announce={announce}
             />
           )
         }
@@ -128,6 +130,7 @@ export function ChatTabPage({ item, context }: ItemViewProps) {
           chat={chat}
           onClose={() => setDeleting(false)}
           afterDelete={() => null}
+          announce={announce}
         />
       ) : null}
     </>

@@ -13,7 +13,7 @@ import {
 import { type RefObject, useEffect, useRef, useState } from "react";
 import type { AssistantHost, ChatAgent, ChatSummary } from "../api.ts";
 import { buildChatWords } from "../chat/build-chat-words.ts";
-import type { BuildChats, ChatView } from "../chat/build-chats.ts";
+import type { Announce, BuildChats, ChatView } from "../chat/build-chats.ts";
 import { chatTime, chatMenuWords as words } from "../chat/chat-menu-words.ts";
 import { ChatAgentOrb } from "./agent-chat.tsx";
 
@@ -35,6 +35,8 @@ export interface ChatHeaderProps {
   readonly only?: ((chat: ChatSummary) => boolean) | undefined;
   /** Shows a chat picked in the menu; by default the panel shows it, with focus in the box. */
   readonly onPick?: ((chatId: string) => void) | undefined;
+  /** Says what happened that focus doesn't show, such as a deleted chat. */
+  readonly announce: Announce;
 }
 
 /**
@@ -148,7 +150,7 @@ export function DesktopActions(
  * so its ⋮ has no Rename.
  */
 export function ChatMoreActions(
-  props: Pick<ChatHeaderProps, "chats" | "view"> & {
+  props: Pick<ChatHeaderProps, "chats" | "view" | "announce"> & {
     readonly onRename?: (() => void) | undefined;
     /** Where focus goes once the chat is deleted: the empty panel's New chat (flow 2.2). */
     readonly afterDelete: () => HTMLElement | null;
@@ -191,6 +193,7 @@ export function ChatMoreActions(
           chat={chat}
           onClose={() => setDeleting(false)}
           afterDelete={props.afterDelete}
+          announce={props.announce}
         />
       ) : null}
     </>
@@ -207,16 +210,21 @@ export function DeleteChatDialog(props: {
   readonly onClose: () => void;
   /** Where focus goes once the chat is deleted: the empty panel's New chat (flow 2.2). */
   readonly afterDelete: () => HTMLElement | null;
+  readonly announce: Announce;
 }) {
   const { chat, onClose } = props;
   const [deleting, setDeleting] = useState<"asking" | "busy" | { failed: string }>("asking");
   const remove = () => {
     setDeleting("busy");
-    props.chats
-      .deleteChat(chat.id)
-      .then(onClose, (error: unknown) =>
+    props.chats.deleteChat(chat.id).then(
+      () => {
+        // Focus moves on to New chat, which doesn't say the chat is gone (a11y AS5).
+        props.announce(words.deleted(chat.title), "polite");
+        onClose();
+      },
+      (error: unknown) =>
         setDeleting({ failed: error instanceof Error ? error.message : String(error) }),
-      );
+    );
   };
   return (
     <Dialog
