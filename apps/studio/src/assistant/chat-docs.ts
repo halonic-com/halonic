@@ -10,7 +10,7 @@ import type {
   SiteAnswer,
   TimeLimit,
 } from "@halonicjs/assistant";
-import type { HttpClient, SavedChatDocs } from "@halonicjs/ports";
+import type { ChatMessage, HttpClient, SavedChatDocs } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type { KeptChats } from "./kept-chats.ts";
 
@@ -83,13 +83,23 @@ export class KeptDocsSites implements DocsSites {
   }
 }
 
-/** The options `read_docs` gets for one chat. */
+/**
+ * The options `read_docs` gets for one chat. `messages` reads the chat as kept, which holds each
+ * tool result as it arrives, so a page read earlier in the same answer counts.
+ */
 export function docsOptionsOf(
   reading: DocsReading,
   sites: KeptDocsSites,
+  messages: () => Promise<readonly ChatMessage[]>,
   now: () => Date,
 ): DocsOptions {
-  return { http: reading.http, sites, timeLimit: reading.timeLimit ?? pageTimeLimit, now };
+  return {
+    http: reading.http,
+    sites,
+    messages,
+    timeLimit: reading.timeLimit ?? pageTimeLimit,
+    now,
+  };
 }
 
 /** The chat's tools, with each `read_docs` call run as itself, so its log lines name it. */

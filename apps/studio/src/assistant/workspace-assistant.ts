@@ -411,7 +411,8 @@ export class WorkspaceAssistant implements AssistantHost {
       );
       const reading = this.#parts.docs;
       const now = this.#parts.now ?? (() => new Date());
-      const docs = reading === undefined ? undefined : docsOptionsOf(reading, sites, now);
+      const messages = async () => (await this.#chats.get(chatId)).messages;
+      const docs = reading === undefined ? undefined : docsOptionsOf(reading, sites, messages, now);
       const options = { chatId, files, review, isTrusted, digest, show, personMessages, docs };
       tools = withCallIds(buildChatTools(options), sites);
       this.#tools.set(chatId, tools);
