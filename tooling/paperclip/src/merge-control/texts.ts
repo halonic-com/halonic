@@ -52,6 +52,13 @@ export const texts = {
     `Queue manager: took this PR out of the merge queue because its merge group failed: ${url}\nA PR ahead of it in the group is the likely cause, so it can go back in on this head.`,
   autoLabelled: (head: string) =>
     `Queue manager: approved and \`ci-ok\` is green on \`${head.slice(0, 9)}\`, but this PR had no \`built-on:*\` label, so the queue skipped it. Added \`built-on:paperclip\`; the next pass checks it for the queue as usual. Nothing to do.`,
+  notQueued: (head: string, minutes: number, reasons: readonly string[]) =>
+    [
+      `Queue manager: approved and \`ci-ok\` is green on \`${head.slice(0, 9)}\`, but this PR has waited out of the merge queue for ${minutes} minutes. Why:`,
+      ...reasons.map((reason) => `- ${reason}`),
+      "",
+      "A rebase, a retarget or a file split is yours to do: push, and the queue manager adds the PR once the new head passes. Holds, pauses and a full queue clear without you; please don't queue the PR yourself.",
+    ].join("\n"),
   brakeOn: (minutes: number) =>
     `Runner wait ${minutes} min on merge-group jobs: please hold pushes.`,
   brakeOff: "Runner wait cleared.",

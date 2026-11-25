@@ -107,20 +107,32 @@ export function fillOrder(
   );
 }
 
+/**
+ * Why a candidate waits: `why` for the pass log, `tell` for the not-queued
+ * note when it says more, and `noted`, the note kind that already told the
+ * author on this head (HAL-18735).
+ */
+export interface Wait {
+  readonly why: string;
+  readonly tell?: string;
+  readonly noted?: string;
+}
+
 /** What holds a candidate back this pass, or undefined when it may go in. */
 function waitReason(
   context: PassContext,
   row: GateRow,
   still: readonly GateRow[],
-  held: ReadonlySet<string>,
-) {
+  held: ReadonlyMap<string, number>,
+): Wait | undefined {
   const { state } = context;
   const key = String(row.pull.number);
-  if (state.board.hold[key] !== undefined) {
-    return "board hold";
+  const hold = state.board.hold[key];
+  if (hold !== undefined) {
+    return { why: "board hold", tell: `held out by the board: ${hold}` };
   }
   if (state.failedHeads[key] === row.pull.head) {
-    return "failed in a merge group on this head; waits for a new head";
+    return { why: "failed in a merge group on this head; waits for a new head", noted: "held" };
   }
   const cooldown = state.cooldown[key];
   if (cooldown !== undefined) {
@@ -128,25 +140,33 @@ function waitReason(
       still.some((each) => each.pull.number === number),
     );
     if (cooldown.head === row.pull.head && ahead.length > 0) {
-      return `removed as unmergeable at ${cooldown.at.slice(11, 16)}; waits for a new head or for ${ahead.map((number) => `#${number}`).join(",")} to leave the queue`;
+      return {
+        why: `removed as unmergeable at ${cooldown.at.slice(11, 16)}; waits for a new head or for ${ahead.map((number) => `#${number}`).join(",")} to leave the queue`,
+      };
     }
     delete state.cooldown[key];
   }
   // GitHub refuses to queue it; the Merger leaves it out too and only posts the blocked note (HAL-16399).
   if (row.pull.mergeStateStatus === "BLOCKED") {
-    return "GitHub shows it as blocked";
+    return { why: "GitHub shows it as blocked", noted: "blocked" };
   }
   if (row.pull.filesTotal > row.pull.files.length) {
-    return `touches ${row.pull.filesTotal} files (over 100), queue by hand`;
+    return { why: `touches ${row.pull.filesTotal} files (over 100), queue by hand` };
   }
   const clash = row.pull.files.filter((path) => isHotspot(path) && held.has(path));
   if (clash.length > 0) {
-    return `shares ${clash.slice(0, 3).join(", ")}${clash.length > 3 ? " …" : ""} with a queued PR (hotspot)`;
+    return {
+      why: `shares ${clash.slice(0, 3).join(", ")}${clash.length > 3 ? " …" : ""} with a queued PR (hotspot)`,
+      tell: clash
+        .slice(0, 3)
+        .map((path) => `overlaps queued #${held.get(path)} in \`${path}\` (hotspot)`)
+        .join("; "),
+    };
   }
   const live = liveCloudOf(row.pull);
   if (!live.ok) {
     commentOnce(context, "live-cloud", row.pull.number, row.pull.head, texts.liveCloud);
-    return live.why;
+    return { why: live.why ?? "live-cloud", noted: "live-cloud" };
   }
   return undefined;
 }
@@ -162,12 +182,15 @@ function matches(pattern: RegExp, row: GateRow): boolean {
   return pattern.test(`${row.pull.title} ${row.pull.branch}`);
 }
 
-/** Left out in silence by the fill pause or the main-red freeze. */
-function excluded(row: GateRow, limits: FillLimits): boolean {
-  return (
-    (limits.pauseOn && !limits.waitFor.includes(row.pull.number)) ||
-    (limits.freeze !== null && !matches(limits.freeze, row))
-  );
+/** Left out in silence by the fill pause or the main-red freeze: which of them, or undefined. */
+function excluded(row: GateRow, limits: FillLimits): string | undefined {
+  if (limits.pauseOn && !limits.waitFor.includes(row.pull.number)) {
+    return "the board's fill pause: only the PRs it waits for go in until it ends";
+  }
+  if (limits.freeze !== null && !matches(limits.freeze, row)) {
+    return "main is red (main-red freeze): only the fix goes in until main is green again";
+  }
+  return undefined;
 }
 
 /** Sends the enqueue and its carry-over note, and logs it. */
@@ -241,7 +264,9 @@ export function fill(
 ): number[] {
   const { state, settings } = context;
   const target = Math.min(state.fillTarget ?? settings.fillTarget, settings.fillTarget);
-  const held = new Set(still.flatMap((row) => row.pull.files));
+  const held = new Map(
+    still.flatMap((row) => row.pull.files.map((path) => [path, row.pull.number] as const)),
+  );
   const added: number[] = [];
   const waiting: string[] = [];
   let fastQueued = still.some((row) => fast.has(row.pull.number));
@@ -249,16 +274,22 @@ export function fill(
   const queued = still.map((row) => row.pull.number);
   for (const row of ordered) {
     const isFast = fast.has(row.pull.number);
-    // Fast-track rows sort first, so the first other row at the target ends the fill.
+    // Fast-track rows sort first, so every row after the first other one at the target waits.
     if (!isFast && still.length + added.length >= target) {
-      break;
-    }
-    if (excluded(row, limits)) {
+      context.waits.set(row.pull.number, {
+        why: `the queue is full (${still.length + added.length} of its target ${target})`,
+      });
       continue;
     }
-    const why = waitReason(context, row, still, held);
-    if (why !== undefined) {
-      waiting.push(`#${row.pull.number}(${why})`);
+    const left = excluded(row, limits);
+    if (left !== undefined) {
+      context.waits.set(row.pull.number, { why: left });
+      continue;
+    }
+    const wait = waitReason(context, row, still, held);
+    if (wait !== undefined) {
+      context.waits.set(row.pull.number, wait);
+      waiting.push(`#${row.pull.number}(${wait.why})`);
       continue;
     }
     const isFix = limits.freeze !== null && matches(limits.freeze, row);
@@ -267,7 +298,7 @@ export function fill(
     enqueue(context, row, jumps(context, row, wantsJump, isFix, short), isFast, queued);
     fastQueued ||= isFast;
     for (const path of row.pull.files) {
-      held.add(path);
+      held.set(path, row.pull.number);
     }
     added.push(row.pull.number);
   }
