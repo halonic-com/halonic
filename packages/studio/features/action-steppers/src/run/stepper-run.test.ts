@@ -167,6 +167,22 @@ verifies("action-steppers.shell-run", () => {
       expect(answers).toHaveLength(1);
     });
 
+    it("answers a request once, even when a second window that opened it earlier stops it too", async () => {
+      const { answers, records, open } = await runOf(variableRequest);
+      const first = await open();
+      const second = await open();
+      first.actions.decline();
+      await first.idle();
+      second.actions.decline();
+      await second.idle();
+      expect(answers).toEqual([{ kind: "action-result", outcome: "declined", steps: [] }]);
+      const finished = (await records.read(request)).filter(
+        (event) => event.type === "action.finished",
+      );
+      expect(finished).toHaveLength(1);
+      expect(second.current().stage).toEqual({ kind: "declined" });
+    });
+
     it("asks for a sign-in first, and runs nothing before it", async () => {
       const { fake, records, open } = await runOf(variableRequest, { signedIn: false });
       const run = await open();

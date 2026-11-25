@@ -19,7 +19,8 @@ export interface StepperRunState {
  * @param reviewed - the request's view in review mode, which the run starts from
  */
 export function useStepperRun(reviewed: StepperView, options: StepperRunOptions): StepperRunState {
-  // One run per card: the item, its source and the service don't change while it shows.
+  // One run per card: the item, its source and the service don't change while it shows. So the
+  // run keeps the first `reviewed` view and checks the request again on each click instead.
   const [run] = useState(() => new StepperRun(reviewed, options));
   useSyncExternalStore(run.subscribe, run.changes);
   useEffect(() => {

@@ -237,9 +237,16 @@ export class StepperRun {
       await this.refresh();
       if (this.view.stage.kind !== "ready") return;
       const kept = this.keptResult(number, pasted);
+      checkKeptFields(kept, this.keptFieldsOf(number));
       await this.options.steps.confirmStep(this.request, number, kept);
     });
     if (ran) await this.endIfDone();
+  }
+
+  /** The fields a step may keep when the user confirms it: `result`, if it asks for one. */
+  private keptFieldsOf(number: number): readonly string[] {
+    const action = this.view.steps.find((step) => step.number === number)?.action;
+    return action?.kind === "browser" && action.resultLabel !== undefined ? ["result"] : [];
   }
 
   /** A browser step's pasted result as its kept field; throws, never naming the value, if refused. */
@@ -264,13 +271,16 @@ export class StepperRun {
   /**
    * Answers the item with the folded result, then records the end, so nothing of it runs again.
    * When the user stops it (`stopped`), it ends `declined` if nothing ran and `failed` if some
-   * steps did, since a declined answer lists no steps.
+   * steps did, since a declined answer lists no steps. A request whose record says it ended
+   * already is left as it is.
    */
   private async end(outcome: ActionOutcome | "stopped"): Promise<void> {
     const { item, catalog, steps, answer, now } = this.options;
     const { definition, version } = item.action;
     await this.alone(async () => {
       const record = foldRecord(await steps.history(this.request));
+      // Ended already, here or in another window: it has had its answer, so it gets no second one.
+      if (record.finished !== undefined) return;
       const ended = outcome === "stopped" ? stoppedOutcome(record) : outcome;
       const secretSteps = new Set(
         this.view.steps
@@ -302,4 +312,16 @@ export class StepperRun {
     await this.options.steps.signOut(this.view.service);
     await this.signIn();
   }
+}
+
+/**
+ * Refuses a kept field the step doesn't keep, so a stray field never reaches the record. The
+ * error names the field, never its value.
+ */
+function checkKeptFields(
+  kept: Readonly<Record<string, string>> | undefined,
+  allowed: readonly string[],
+): void {
+  const stray = Object.keys(kept ?? {}).find((field) => !allowed.includes(field));
+  if (stray !== undefined) throw new Error(`The step doesn't keep a field named "${stray}".`);
 }

@@ -51,7 +51,7 @@ export const inboxFeature = defineFeature({
     // What an agent's action request is checked against when it opens (inbox.agent-action-items).
     ActionCatalogService,
     RequesterPolicyService,
-    // What runs its steps with the user's sign-in, in the desktop app (inbox.agent-action-items).
+    // What runs its steps with the user's sign-in, in the desktop app (inbox.agent-action-run).
     actionStepsKey,
   ],
   provides: [InboxService],
