@@ -26,7 +26,7 @@ export const buildMessages = defineMessages("build", {
     phrase`--plugin-version takes a version such as 0.3.0, and you gave ${version}.`,
   /** The `--since` build's version, or the one after it, isn't a strict `x.y.z`. */
   noNextVersion: (version: string) =>
-    phrase`the --since build doesn't lead to a next version: ${version} isn't a version such as 0.3.0.`,
+    phrase`the --since build has version ${version}, and the next version can't be worked out from it.`,
   noNextVersionFix: () => phrase`Give the version with --plugin-version.`,
 
   /** The heading of a finished build: the plugin, its version and the commit it holds. */
