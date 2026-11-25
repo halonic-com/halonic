@@ -1,3 +1,4 @@
+import { messageWorkReasonMax } from "@halonicjs/ports";
 import { checkedOrigin } from "./address.ts";
 import { asRecord, field, text } from "./json.ts";
 import {
@@ -23,6 +24,8 @@ export type PaperclipAnswer =
       code?: string | undefined;
       /** On a document conflict, the document's current revision, which an update must name. */
       currentRevisionId?: string | undefined;
+      /** On a refusal, Paperclip's own one-line error text, for a work line's reason. Never logged. */
+      detail?: string | undefined;
     };
 
 /**
@@ -166,9 +169,31 @@ export class PaperclipTransport {
     if (failure === "conflict") {
       return { kind: "failed", failure, ...(await conflictDetails(response)) };
     }
+    if (failure === "refused") {
+      return { kind: "failed", failure, ...(await refusalDetail(response)) };
+    }
     await response.body?.cancel();
     return { kind: "failed", failure };
   }
+}
+
+/** The longest error text kept from a refusal; the port's work-line reason is no longer. */
+const detailMax = messageWorkReasonMax;
+
+/** Paperclip's `error` text from a refusal, on one line and cut short; nothing else of the body. */
+async function refusalDetail(response: Response): Promise<{ detail?: string }> {
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    // A refusal without a JSON body has no text; the caller shows the refusal without a reason.
+    return {};
+  }
+  const detail = text(asRecord(body), "error")
+    ?.replace(/\p{Cc}+/gu, " ")
+    .trim()
+    .slice(0, detailMax);
+  return detail === undefined || detail === "" ? {} : { detail };
 }
 
 /** A header can't carry a line break or a control character; fetch would fail as if offline. */

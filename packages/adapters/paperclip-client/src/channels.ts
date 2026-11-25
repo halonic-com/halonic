@@ -26,6 +26,15 @@ export interface ChannelTask {
 // A quoted line ("> …") never matches, so text of the person's can't pass for it.
 const membersLine = /^<!-- halonic-channel (\{[^\n]*\}) -->$/m;
 
+// The line that ties a child task to the person's message, as `childTaskDescription` writes it.
+// The person's text is quoted line by line, so it can't hold this line unquoted.
+const messageLine = /^<!-- halonic-channel-message ([A-Za-z0-9._~-]+) -->$/m;
+
+/** The comment ID a child task's description ties it to, or `undefined` when it has no such line. */
+export function channelMessageOf(description: string): string | undefined {
+  return messageLine.exec(description)?.[1];
+}
+
 /**
  * The members line for a parent task's description, which `readChannel` reads back. `people`
  * are who follow the channel; a line without it is followed by the person who made the task.
@@ -69,7 +78,7 @@ function hasChannelTag(record: JsonRecord): boolean {
  * the person's key, so an agent that tags its own task makes no channel. With the key's user
  * known, it must be that person.
  */
-function madeByThePerson(record: JsonRecord, userId: string | undefined): boolean {
+export function madeByThePerson(record: JsonRecord, userId: string | undefined): boolean {
   const creator = text(record, "createdByUserId");
   const agentMade = text(record, "createdByAgentId") !== undefined;
   return !agentMade && creator !== undefined && (userId === undefined || creator === userId);

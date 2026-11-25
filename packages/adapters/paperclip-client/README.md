@@ -63,7 +63,11 @@ person made, never an agent, with a members line the provider writes (2 to 8 age
 message in a channel is a comment on that task, and each agent in `to`, or the lead when `to` is empty, gets one
 child task assigned to it, holding only the person's text, quoted and labelled as the board's. In Paperclip only
 an assignment wakes an agent, and the provider never reads a name out of the text, so a typed `@Bo` wakes
-nobody.
+nobody. Reading a channel also reads its child tasks (`paperclip-client.channel-work`): only those the person
+made, holding the line that ties them to one of the person's messages, count. Each gives the work lines under
+that message (one "passed on" line per hand-off between agents, from the task's activity, then the holder's state
+from the task's status), and each agent's comment on it shows in the channel as that agent's message. Reading
+posts nothing. A child task Paperclip refused carries Paperclip's own error text as the line's reason.
 
 **Starting a channel and its members** (`paperclip-client.channel-membership`). `startChannel` makes the parent
 task with the person's key, the `channel` tag (made once if the company has none), status `backlog` and no
@@ -99,6 +103,7 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | --- | --- | --- |
 | `listAgents` | `GET /api/companies/{company}/agents` | agents, and authors' names |
 | `listTasks` | `GET /api/companies/{company}/issues?status=backlog,todo,in_progress,in_review,blocked&limit=1000` | work, and the tasks whose cards are read |
+| `listTasks` with `parentId=` | `GET /api/companies/{company}/issues?parentId={task}&limit=200` | a channel's child tasks, for its work lines and replies |
 | `searchTasks` | `GET /api/companies/{company}/issues?q={query}&limit=50` | search: Paperclip's matching tasks, as work or as a chat |
 | `listProjects` | `GET /api/companies/{company}/projects` | each inbox item's project, from its task |
 | `listChats` | `GET /api/companies/{company}/chats` | the signed-in user's chats; 404 when Agent Chat is off |
@@ -127,6 +132,7 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `createChannelLabel` | `POST /api/companies/{company}/labels` with exactly `{ name: "channel", color: "#6366f1" }` | make the `channel` tag when the company has none |
 | `createChannel` | `POST /api/companies/{company}/issues` with exactly `{ title, description, labelIds: [one], status: "backlog" }` | start a channel: its parent task, unassigned |
 | `updateChannel` | `PATCH /api/issues/{task}` with exactly `{ description }` | change a channel's members line: members, lead, who follows it |
+| `listTaskActivity` | `GET /api/issues/{task}/activity` | a channel child task's history: who passed it to whom |
 
 **No route that makes keys.** Nothing goes to Paperclip upstream (board, HAL-10, 24 Nov), so this list is the
 main protection. No entry makes, lists or deletes keys or tokens: not `/api/board-api-keys`, an agent's

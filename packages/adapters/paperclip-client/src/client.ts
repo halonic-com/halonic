@@ -22,6 +22,7 @@ import {
 import { ChangeFeed } from "./changes.ts";
 import { PaperclipChannelMembers } from "./channel-members.ts";
 import { PaperclipChannelSender } from "./channel-send.ts";
+import { PaperclipChannelWork } from "./channel-work.ts";
 import { readChannel, toChannel } from "./channels.ts";
 import { PaperclipIds } from "./ids.ts";
 import { PaperclipInbox } from "./inbox.ts";
@@ -77,6 +78,7 @@ export class PaperclipMessaging implements AgentMessaging {
   readonly #writer: PaperclipWriter;
   readonly #channels: PaperclipChannelSender;
   readonly #members: PaperclipChannelMembers;
+  readonly #channelWork: PaperclipChannelWork;
   readonly #feed = new ChangeFeed<MessagingId>();
   #agentNames = new Map<string, string>();
   /** The Inbox as last read, which search matches without reading every task's cards again. */
@@ -96,6 +98,7 @@ export class PaperclipMessaging implements AgentMessaging {
     this.#writer = new PaperclipWriter(this.#reader, now, steppers);
     this.#channels = new PaperclipChannelSender(this.#reader, options.company, options.userId, now);
     this.#members = new PaperclipChannelMembers(this.#reader, options.company, options.userId);
+    this.#channelWork = new PaperclipChannelWork(this.#reader, options.company, options.userId);
   }
 
   async listSources(): Promise<readonly MessagingSource[]> {
@@ -129,10 +132,14 @@ export class PaperclipMessaging implements AgentMessaging {
     return this.#conversationsFrom(await this.#inbox.openTasks());
   }
 
-  /** A chat's or a channel's messages: the comments on its task, oldest first. */
+  /**
+   * A chat's or a channel's messages: the comments on its task, oldest first. A channel's also
+   * hold the agents' replies on its child tasks, and work lines under the person's messages
+   * (`paperclip-client.channel-work`).
+   */
   async listMessages(conversation: MessagingId): Promise<readonly Message[]> {
-    const [task] =
-      this.#ids.read(conversation, "chat") ?? this.#ids.read(conversation, "channel") ?? [];
+    const [channel] = this.#ids.read(conversation, "channel") ?? [];
+    const [task] = this.#ids.read(conversation, "chat") ?? (channel === undefined ? [] : [channel]);
     if (task === undefined) {
       return [];
     }
@@ -142,10 +149,13 @@ export class PaperclipMessaging implements AgentMessaging {
       query: { order: "desc", limit: messagePage },
     });
     const context = this.#context();
-    return asRecords(body)
+    const messages = asRecords(body)
       .flatMap((record) => toMessage(context, task, record) ?? [])
       .map((message) => ({ ...message, conversation }))
       .reverse();
+    return channel === undefined
+      ? messages
+      : this.#channelWork.add(context, channel, conversation, messages);
   }
 
   async listInboxItems(): Promise<readonly InboxItem[]> {
