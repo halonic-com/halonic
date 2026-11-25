@@ -79,7 +79,7 @@ export const manyUserRouteTable: readonly ManyUserRoute[] = [
     path: "/api/hello",
     access: "public",
     kind: "other",
-    handler: (_request, { config }) => helloResponse(config),
+    handler: (_request, { config }) => helloResponse(config, "many"),
   },
   ...[
     { method: "GET", path: cloudSignInStartPath },

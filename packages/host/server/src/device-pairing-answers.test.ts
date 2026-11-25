@@ -132,6 +132,8 @@ describe("telling a Halonic server from anything else", () => {
       expect(hello.json).toMatchObject({ product: "halonic" });
       expect(Object.keys(hello.json ?? {}).sort()).toEqual([
         "minAppVersion",
+        "minStudioVersion",
+        "mode",
         "product",
         "runExecutorVersion",
         "version",
