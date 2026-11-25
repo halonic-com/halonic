@@ -8,7 +8,7 @@ the merge queue's fill order (`queue.prio`).
 - **Layer:** tooling
 - **Owner:** mateo
 - **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; the GitHub snapshot's reader and shape; `reviewerFor`, `isLiamPath` and the path lists; `queuePrio` and its weights)
-- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-conflict-files`, `paperclip.pr-watcher-wake-status`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-monitor-postpone`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-stack-rebase`, `paperclip.branch-update-write-scope`, `paperclip.pr-watcher-plugin`, `paperclip.pr-watcher-review-priority`, `paperclip.pr-watcher-parent-block`, `paperclip.pr-tools`, `paperclip.ci-failures-tool`, `paperclip.task-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-piles`, `paperclip.board-check-waiting`, `paperclip.board-check-load`, `paperclip.board-check-approvals`, `paperclip.board-check-merge-speed`, `paperclip.board-tools`, `paperclip.merge-speed-tool`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.github-routes`, `paperclip.agent-merge-counts`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`, `paperclip.task-effort-rules`, `paperclip.task-effort-guard`, `paperclip.task-effort-writes`, `paperclip.handoff-limit`
+- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-conflict-files`, `paperclip.pr-watcher-wake-status`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-monitor-postpone`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-stack-rebase`, `paperclip.branch-update-write-scope`, `paperclip.pr-watcher-plugin`, `paperclip.pr-watcher-review-priority`, `paperclip.pr-watcher-parent-block`, `paperclip.pr-tools`, `paperclip.ci-failures-tool`, `paperclip.task-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-piles`, `paperclip.board-check-waiting`, `paperclip.board-check-load`, `paperclip.board-check-approvals`, `paperclip.board-check-merge-speed`, `paperclip.board-tools`, `paperclip.merge-speed-tool`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.github-routes`, `paperclip.agent-merge-counts`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`, `paperclip.ready-for-review-wake`, `paperclip.task-effort-rules`, `paperclip.task-effort-guard`, `paperclip.task-effort-writes`, `paperclip.handoff-limit`
 
 ## PR watcher
 
@@ -345,6 +345,18 @@ inside the about 15 s the tool bridge gives a call.
   the service with Node's own `fetch`, because the host's guard may refuse a
   private address; setting `precheckUrl` (empty:
   `http://halonic-precheck:8787`) is the only address it calls.
+- **Wake when the check is done** (HAL-18980): when the branch is named
+  `<agent>/HAL-<n>-<words>` and the calling agent holds HAL-<n>, a `RUNNING`
+  answer says the plugin wakes that task, and the plugin keeps the check in
+  its state. Another call for the same check (its id, or the same branch and
+  commit) gives the same answer without a request. The `precheck-wake` job
+  reads each kept check every minute; once it is done, or still running after
+  30 minutes (then `CHECK UNAVAILABLE`), it posts the answer on the task and
+  wakes it once, only if the same agent still holds it. Once the answer is
+  posted the check is dropped, even if the wake fails; a check whose answer
+  can't be posted is dropped after 60 minutes. A new check of the
+  same branch replaces the kept one. Other branches keep the old answer:
+  `RUNNING` with the id for the next call.
 
 ## Task tools
 
@@ -776,7 +788,9 @@ front of each name. A metric that doesn't save is logged and changes nothing.
   `tools.github_requests`. `ready_for_review` saves `tools.calls`,
   `tools.duration_ms`, one of `precheck.pass`, `.fail`, `.running`,
   `.unavailable` or `.error`, and, once a check is done, `precheck.duration_s`,
-  all with the extra tag `result`.
+  all with the extra tag `result`. The `precheck-wake` job saves
+  `precheck.answers` for each answer it posts (tags `companyId`, `job`,
+  `result`, `woken`).
 - **Each `gh` status read the guard sees** (tags `companyId`, `subcommand`,
   `agent`, `mode`): `tools.gh_redirected` (see gh guard above).
 - **Each state packet asked for** (tag `companyId`): `state_packet.built` or
