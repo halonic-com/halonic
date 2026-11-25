@@ -547,6 +547,15 @@ export {
   workspaceSecrets,
   workspaceSecretWriter,
 } from "./secrets.ts";
+export {
+  type RunAgainBlock,
+  type RunAgainCheck,
+  type RunAgainResult,
+  type RunControlRefusal,
+  type StopRunResult,
+  type TeamRunControl,
+  teamRunControlVersion,
+} from "./team-run-control.ts";
 export type {
   TeamRun,
   TeamRunState,

@@ -53,6 +53,7 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 | `SandboxSettingStore` | `sandbox-setting-store.ts` | 1 | the person's sandbox choice (a backend or none) in the user's profile; `SandboxChoiceService` decides | `sandbox-setting-store` |
 | `Scheduler` | `scheduler.ts` | 1 | run timers and the routine tick; timers may arrive late or twice | `scheduler` |
 | `Secrets` | `secrets.ts` | 1 | configured secrets, read-only; `SecretStore` (same file and version) adds `set`, `remove` and `names` for a store the person owns | `secrets`, `secret-store` |
+| `TeamRunControl` | `team-run-control.ts` | 1 | how Studio's Runs app stops a team agent's run and wakes its agent on the same task again: takes the run's ID only, so the source checks again before it writes; refusals are a closed set of codes, never the source's text | `team-run-control` (type tests; with first adapter) |
 | `TeamStatus` | `team-status.ts` | 1 | how Studio's Team screens read spend, seat use, pull requests and the merge queue: read-only by type, every answer as of its source's time, no seat account, login or review text | `team-status` (with first adapter; `FakeTeamStatus` in `testing/contracts` until then) |
 | `TokenStore` | `token-store.ts` | 1 | secrets the server writes itself, such as refresh tokens | `token-store` |
 | `ToolApprovalStore` | `tool-approval-store.ts` | 1 | approved listed tools in the user's profile, by workspace, source, name; `approveListedTools` decides | `tool-approval-store` (with first adapter) |
