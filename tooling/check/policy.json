@@ -34,9 +34,6 @@
   "adapterGateways": [
     "@halonicjs/studio-services"
   ],
-  "toolingUsesCore": [
-    "@halonicjs/tooling-paperclip"
-  ],
   "extraExports": {
     "@halonicjs/adapter-cloudflare-durable": [
       "./testing"

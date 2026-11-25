@@ -738,8 +738,8 @@ Who may use what:
 `targets/cloudflare/runtime` and `cloudflare-*` adapters with `"runtime": "workers"` or `"any"`. The API
 types packages, listed under `apiTypes` in `policy.json`, use only each other and no third-party code
 ([decision](../adr/2026-11-09-api-types-stand-alone.md)). The tooling packages listed under
-`toolingUsesCore` (today only `@halonicjs/tooling-paperclip`) may also use core packages, because
-the Agent tools plugin's workflow host runs on our own engine (HAL-18009). A core package
+`toolingUsesCore` in `policy.json` may also use core packages. It exists for the Agent tools plugin
+(`@halonicjs/tooling-paperclip`), whose workflow host runs on our own engine (HAL-18009). A core package
 may not be named `root` or `host`, or start with another layer's prefix
 (`app-`, `adapter-`, `host-`, `target-`, `studio-`, `testing-`, `tooling-`).
 

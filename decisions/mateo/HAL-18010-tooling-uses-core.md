@@ -2,14 +2,15 @@
 
 - Task: HAL-18010
 - Approval: Liam decided on HAL-18009 (option 1) that the Agent tools plugin may embed the Halonic engine through a `toolingUsesCore` exception in the layer table; HAL-18010 specifies it
-- Kind: internal
+- Kind: user-visible
 
 ## What changes
 
-- `tooling/check/policy.json`: a new field, `toolingUsesCore`, listing
-  `@halonicjs/tooling-paperclip`. It is read strictly like `apiTypes` (optional, a list of
-  strings). This is a change to `policy.json` outside `extraExports`, so it reaches a trust root
-  and needs both guardians' signatures.
+- `tooling/check/src/lib/config-files.ts`: `policy.json` gets an optional field,
+  `toolingUsesCore`, a list of package names, read strictly like `apiTypes`. Both are trust
+  roots, so this note is `user-visible` and needs both guardians' signatures. The field stays
+  unset here: CI checks this pull request with the base's copy of the checker, which doesn't know
+  the field yet, so `@halonicjs/tooling-paperclip` is listed in a follow-up pull request.
 - `tooling/check/src/rules/layer-table.ts`: a listed tooling package may use core packages, in
   runtime and dev edges and in imports. Adapters, targets and Studio packages stay forbidden for
   it. Unlisted tooling packages keep today's rule.
@@ -24,7 +25,7 @@
 
 The Agent tools plugin's workflow host is to run on our own engine (HAL-17774). Without this,
 the layers check refuses every edge from `tooling/paperclip` to a core package. The queue runs
-the policy rules from the base's copy, so this lands first.
+the policy rules from the base's copy, so the field lands first and the entry after it.
 
 ## Security
 
