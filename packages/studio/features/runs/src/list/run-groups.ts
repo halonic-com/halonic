@@ -5,7 +5,7 @@
 
 import type { RunStanding } from "@halonicjs/app";
 import { dayStart } from "../costs/cost-period.ts";
-import type { MoneyTotal, RunCost } from "../costs/cost-totals.ts";
+import { assertWholeUnits, type MoneyTotal, type RunCost } from "../costs/cost-totals.ts";
 
 /**
  * Where a run is, as the groups see it. `stopped` is a run someone stopped,
@@ -133,12 +133,10 @@ function dayGroups<Run extends GroupedRun>(
   runs: readonly Run[],
   context: RunGroupsContext,
 ): RunGroup<Run>[] {
-  const today = dayStart(context.now, context.timeZone).getTime();
-  const yesterday = dayStart(new Date(today - 1), context.timeZone).getTime();
+  const headingOf = dayHeadings(context);
   const groups: { kind: "day"; heading: string; runs: Run[] }[] = [];
   for (const run of runs) {
-    const day = dayStart(new Date(startOf(run)), context.timeZone).getTime();
-    const heading = dayHeading(day, { today, yesterday }, context);
+    const heading = headingOf(dayStart(new Date(startOf(run)), context.timeZone).getTime());
     const last = groups.at(-1);
     if (last?.heading === heading) {
       last.runs.push(run);
@@ -149,31 +147,39 @@ function dayGroups<Run extends GroupedRun>(
   return groups;
 }
 
-/** "Earlier today", "Yesterday", then "Fri 6 Nov", with the year when it isn't this one. */
-function dayHeading(
-  day: number,
-  known: { readonly today: number; readonly yesterday: number },
-  context: RunGroupsContext,
-): string {
-  if (day >= known.today) {
-    return groupWords.today;
-  }
-  if (day >= known.yesterday) {
-    return groupWords.yesterday;
-  }
-  // A day's start can sit just before midnight UTC, so the date is read at its noon.
-  const noon = new Date(day + 12 * 3_600_000);
-  const year = (instant: Date) =>
-    new Intl.DateTimeFormat("en-GB", { timeZone: context.timeZone, year: "numeric" }).format(
-      instant,
-    );
-  const date = new Intl.DateTimeFormat("en-GB", {
+/**
+ * Heads a day by its first instant: "Earlier today", "Yesterday", then "Fri 6 Nov", with the
+ * year when it isn't this one. The formatters are made once, and each day is worked out once,
+ * however many runs it holds.
+ */
+function dayHeadings(context: RunGroupsContext): (day: number) => string {
+  const today = dayStart(context.now, context.timeZone).getTime();
+  const yesterday = dayStart(new Date(today - 1), context.timeZone).getTime();
+  const yearOf = new Intl.DateTimeFormat("en-GB", { timeZone: context.timeZone, year: "numeric" });
+  const dateOf = new Intl.DateTimeFormat("en-GB", {
     timeZone: context.timeZone,
     weekday: "short",
     day: "numeric",
     month: "short",
-  }).format(noon);
-  return year(noon) === year(context.now) ? date : `${date} ${year(noon)}`;
+  });
+  const thisYear = yearOf.format(context.now);
+  const known = new Map<number, string>([
+    [today, groupWords.today],
+    [yesterday, groupWords.yesterday],
+  ]);
+  return (day) => {
+    const heading = known.get(day);
+    if (heading !== undefined) {
+      return heading;
+    }
+    // A day's start can sit just before midnight UTC, so the date is read at its noon.
+    const noon = new Date(day + 12 * 3_600_000);
+    const year = yearOf.format(noon);
+    const date = dateOf.format(noon);
+    const words = year === thisYear ? date : `${date} ${year}`;
+    known.set(day, words);
+    return words;
+  };
 }
 
 function startOf(run: GroupedRun): number {
@@ -194,6 +200,8 @@ export interface TodaySummary {
  * The summary line's numbers: today's runs, how many of them failed, and
  * what they cost, from local midnight in the user's zone, as the Costs view's
  * Today counts.
+ *
+ * @throws RangeError when a money cost isn't a whole number of minor units
  */
 export function todaySummary(
   runs: readonly GroupedRun[],
@@ -204,6 +212,7 @@ export function todaySummary(
   const money = new Map<string, number>();
   for (const run of todays) {
     if (run.cost.kind === "money") {
+      assertWholeUnits(run.cost.minorUnits, run.cost.currency);
       money.set(run.cost.currency, (money.get(run.cost.currency) ?? 0) + run.cost.minorUnits);
     }
   }

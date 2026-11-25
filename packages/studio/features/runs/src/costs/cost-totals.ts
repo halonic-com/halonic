@@ -136,8 +136,12 @@ function total(
   };
 }
 
-/** Refuses a fraction of a cent: it means a caller passed a float amount, not minor units. */
-function assertWholeUnits(minorUnits: number, currency: string): void {
+/**
+ * Refuses a fraction of a cent: it means a caller passed a float amount, not minor units.
+ *
+ * @throws RangeError when `minorUnits` isn't a whole, non-negative number
+ */
+export function assertWholeUnits(minorUnits: number, currency: string): void {
   if (!Number.isSafeInteger(minorUnits) || minorUnits < 0) {
     throw new RangeError(
       `A run's cost must be a whole, non-negative number of ${currency} minor units, got ${minorUnits}.`,
@@ -183,12 +187,29 @@ function sortedByName<T extends { readonly name: string }>(items: readonly T[]):
  * toMinorUnits(150, "JPY"); // 150
  */
 export function toMinorUnits(amount: number, currency: string): number {
-  const decimals =
-    new Intl.NumberFormat("en", { style: "currency", currency }).resolvedOptions()
-      .maximumFractionDigits ?? 2;
+  const decimals = currencyDecimals(currency);
   // Shifting the decimal point in the text avoids float products such as 0.285 * 100 = 28.499….
   const shifted = Number(`${amount}e${decimals}`);
   // The text trick gives NaN only for amounts that print in exponent form (1e-7, 1e21); for
   // those the plain product is as exact as a float allows, and rounding below absorbs the rest.
   return Math.round(Number.isNaN(shifted) ? amount * 10 ** decimals : shifted);
+}
+
+/**
+ * Turns whole minor units back into an amount in whole units, for display only: 11 euro cents
+ * are 0.11 euros. Totals are always added in minor units first.
+ *
+ * @example
+ * fromMinorUnits(11, "EUR"); // 0.11
+ */
+export function fromMinorUnits(minorUnits: number, currency: string): number {
+  return Number(`${minorUnits}e-${currencyDecimals(currency)}`);
+}
+
+/** How many decimals a currency writes: 2 for EUR and USD, 0 for JPY. */
+function currencyDecimals(currency: string): number {
+  return (
+    new Intl.NumberFormat("en", { style: "currency", currency }).resolvedOptions()
+      .maximumFractionDigits ?? 2
+  );
 }

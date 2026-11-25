@@ -145,5 +145,10 @@ verifies("runs.run-groups", () => {
         running: 2,
       });
     });
+
+    it("refuses a money cost that isn't whole minor units", () => {
+      const runs = [run("float", { cost: { kind: "money", currency: "EUR", minorUnits: 0.11 } })];
+      expect(() => todaySummary(runs, { now, timeZone })).toThrow(RangeError);
+    });
   });
 });
