@@ -1,4 +1,4 @@
-# paperclip-runtime.tools
+# runtime.tools
 
 - Status: active
 - Since: unreleased

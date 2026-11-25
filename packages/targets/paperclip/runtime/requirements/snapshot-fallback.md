@@ -1,4 +1,4 @@
-# paperclip-runtime.snapshot-fallback
+# runtime.snapshot-fallback
 
 - Status: active
 - Since: unreleased

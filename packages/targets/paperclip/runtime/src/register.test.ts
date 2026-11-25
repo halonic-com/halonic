@@ -46,7 +46,7 @@ async function plugin(pinned?: unknown, handlers = recordingHandlers()) {
   return { ...host, calls: handlers.calls };
 }
 
-verifies("paperclip-runtime.tools", () => {
+verifies("runtime.tools", () => {
   describe("a declared tool", () => {
     test("runs its action with the served snapshot's settings, as the caller", async () => {
       const { call, calls, sent, metrics } = await plugin();

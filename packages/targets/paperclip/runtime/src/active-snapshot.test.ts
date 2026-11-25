@@ -26,7 +26,7 @@ function runtime(config: Record<string, unknown>, answers: Record<string, unknow
   return { ...host, active };
 }
 
-verifies("paperclip-runtime.snapshot-fallback", () => {
+verifies("runtime.snapshot-fallback", () => {
   describe("which snapshot it serves", () => {
     test("without a pin, the built-in snapshot and no request", async () => {
       const { active, sent } = runtime({}, {});
