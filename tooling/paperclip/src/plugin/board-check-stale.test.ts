@@ -1,8 +1,9 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
+import type { Snapshot } from "../snapshot/shape.ts";
 import { checkerTask, type FakeTask, fakeBoardContext } from "./board-check.test-helper.ts";
 import { boardCheck } from "./board-check.ts";
-import { roomLeft } from "./board-check-stale.ts";
+import { openPullTasks, roomLeft } from "./board-check-stale.ts";
 import { manifest } from "./manifest.ts";
 
 const chiefTask: FakeTask = {
@@ -99,6 +100,30 @@ verifies("paperclip.board-check-stale", () => {
     const fake = fakeBoardContext({ tasks, comments: {}, config: () => settings });
     await boardCheck(fake.ctx).run(new Date("2026-11-24T14:20:00Z"));
     expect(fake.state.get("stale")).toBeUndefined();
+  });
+
+  test("reads the tasks with an open pull request from our own branches in the snapshot", () => {
+    const pull = (number: number, branch: string, state: string, headRepo: string | null) => ({
+      number,
+      branch,
+      state,
+      headRepo,
+    });
+    const snapshot = {
+      repos: [
+        {
+          repo: "acme/app",
+          pulls: [
+            pull(1, "mateo/HAL-1-open", "open", "acme/app"),
+            pull(2, "mateo/HAL-2-merged", "merged", "acme/app"),
+            pull(3, "mateo/HAL-3-fork", "open", "stranger/app"),
+            pull(4, "no-task-here", "open", "acme/app"),
+          ],
+        },
+      ],
+    } as unknown as Snapshot;
+    expect([...openPullTasks(snapshot)]).toEqual(["HAL-1"]);
+    expect(openPullTasks(undefined).size).toBe(0);
   });
 
   test("counts the room the pass's other writes leave under the ceilings", () => {

@@ -1,6 +1,13 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
-import { emptyStale, planStale, readStale, type StaleTask, staleVerdict } from "./stale.ts";
+import {
+  agentLoad,
+  emptyStale,
+  planStale,
+  readStale,
+  type StaleTask,
+  staleVerdict,
+} from "./stale.ts";
 
 const now = new Date("2026-11-24T18:00:00Z");
 const hoursAgo = (hours: number) => new Date(now.getTime() - hours * 3_600_000);
@@ -18,6 +25,7 @@ const task = (overrides: Partial<StaleTask>): StaleTask => ({
 
 const nobody = { assigneeAgentId: null, assigneeUserId: null };
 const room = { comment: 5, wake: 5 };
+const alone = { load: new Map<string, number>(), openPulls: new Set<string>() };
 
 verifies("paperclip.board-check-stale", () => {
   test.each([
@@ -31,7 +39,7 @@ verifies("paperclip.board-check-stale", () => {
       task({ status: "in_progress", assigneeAgentId: null, assigneeUserId: "user-1" }),
     ],
   ])("%s waits on the board, never stuck, slow or ownerless", (_name, board) => {
-    expect(staleVerdict(board, now)).toEqual({ kind: "waiting_on_board" });
+    expect(staleVerdict(board, now, alone)).toEqual({ kind: "waiting_on_board" });
   });
 
   test.each([
@@ -40,35 +48,55 @@ verifies("paperclip.board-check-stale", () => {
     ["a standing monitor", task({ status: "in_progress", monitorNextCheckAt: hoursAgo(-1) })],
     ["an ownerless todo with a monitor", task({ ...nobody, monitorNextCheckAt: hoursAgo(-1) })],
   ])("skips a task with %s", (_name, standing) => {
-    expect(staleVerdict(standing, now)).toEqual({ kind: "standing" });
+    expect(staleVerdict(standing, now, alone)).toEqual({ kind: "standing" });
   });
 
   test("names the reason for a todo with no owner from 4 hours on", () => {
     const child = { parentId: "task-parent", createdByAgentId: "agent-chief" };
-    expect(staleVerdict(task({ ...nobody, ...child, createdAt: hoursAgo(5) }), now)).toEqual({
-      kind: "no_owner",
-      reason: "cycle guard",
-    });
-    expect(staleVerdict(task({ ...nobody, createdAt: hoursAgo(5) }), now)).toEqual({
+    expect(staleVerdict(task({ ...nobody, ...child, createdAt: hoursAgo(5) }), now, alone)).toEqual(
+      {
+        kind: "no_owner",
+        reason: "cycle guard",
+      },
+    );
+    expect(staleVerdict(task({ ...nobody, createdAt: hoursAgo(5) }), now, alone)).toEqual({
       kind: "no_owner",
       reason: "missing assignee",
     });
-    expect(staleVerdict(task({ ...nobody, createdAt: hoursAgo(3) }), now)).toEqual({
+    expect(staleVerdict(task({ ...nobody, createdAt: hoursAgo(3) }), now, alone)).toEqual({
       kind: "fine",
     });
-    expect(staleVerdict(task({ ...nobody, status: "backlog" }), now)).toEqual({ kind: "fine" });
+    expect(staleVerdict(task({ ...nobody, status: "backlog" }), now, alone)).toEqual({
+      kind: "fine",
+    });
   });
 
-  test("finds an agent's slow review after 8 hours and a stuck task after 24", () => {
-    expect(staleVerdict(task({ status: "in_review", updatedAt: hoursAgo(9) }), now).kind).toBe(
-      "slow_review",
-    );
-    expect(staleVerdict(task({ status: "in_progress", updatedAt: hoursAgo(25) }), now).kind).toBe(
-      "stuck",
-    );
+  test("finds an agent's slow review after 8 hours and a stuck task after 4", () => {
+    const review = task({ status: "in_review", updatedAt: hoursAgo(9) });
+    expect(staleVerdict(review, now, alone).kind).toBe("slow_review");
+    const idle = task({ status: "in_progress", updatedAt: hoursAgo(25) });
+    expect(staleVerdict(idle, now, alone).kind).toBe("stuck");
+    expect(staleVerdict(task({ updatedAt: hoursAgo(5) }), now, alone).kind).toBe("stuck");
     const running = task({ status: "in_progress", activeRun: { id: "run-1" } });
-    expect(staleVerdict(running, now).kind).toBe("fine");
-    expect(staleVerdict(task({ updatedAt: hoursAgo(2) }), now).kind).toBe("fine");
+    expect(staleVerdict(running, now, alone).kind).toBe("fine");
+    expect(staleVerdict(task({ updatedAt: hoursAgo(2) }), now, alone).kind).toBe("fine");
+  });
+
+  test("gives a builder one hour per task it holds before a task is stuck", () => {
+    const eight = Array.from({ length: 8 }, (_, index) => task({ id: `t${index}` }));
+    const busy = { load: agentLoad(eight), openPulls: new Set<string>() };
+    expect(busy.load.get("agent-mateo")).toBe(8);
+    expect(staleVerdict(task({ updatedAt: hoursAgo(7) }), now, busy).kind).toBe("fine");
+    expect(staleVerdict(task({ updatedAt: hoursAgo(9) }), now, busy).kind).toBe("stuck");
+    const touched = task({ updatedAt: hoursAgo(30), lastActivityAt: hoursAgo(3) });
+    expect(staleVerdict(touched, now, alone).kind).toBe("fine");
+  });
+
+  test("never calls a task stuck while it waits on its pull request or a blocker", () => {
+    const withPull = { load: new Map<string, number>(), openPulls: new Set(["HAL-1"]) };
+    expect(staleVerdict(task({}), now, withPull).kind).toBe("fine");
+    const blocked = task({ status: "in_progress", blockedBy: [{ id: "task-2" }] });
+    expect(staleVerdict(blocked, now, alone).kind).toBe("fine");
   });
 
   test("wakes Chief once for a no-owner todo, and again only after it had an owner", () => {
