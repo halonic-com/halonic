@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-18147, asked for by the board supervisor and Chief on HAL-17912 (25 Nov 03:28 UTC). Liam reviews the pull request on HAL-18147 and signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:VMfl1kx49DNLqAWbpEKeIG/GnKmYf6M48DhPsIklHojhZ52mJ4p6Anu+cVLizHUip5WicKCsFUFLZwtcfFIyAQ==
 
 Until now the PR watcher never marked a task in `backlog` or `blocked` done
 (`paperclip.pr-watcher-retargeted`, second paragraph). A task often stays
