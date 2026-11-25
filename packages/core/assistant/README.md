@@ -22,6 +22,11 @@ anywhere `ChatService` runs: the desktop app, a served window and later the CLI.
   answer the model reads.
 - **`validate`** checks the workspace as saved, changes to review included, as
   "<severity> <path>: <message>" lines or "No problems." (`assistant.build.validate-with-proposals`).
+  For each local integration it also checks the permission sheet (the check `halonic validate`
+  runs), the code against the sheet and the static rules on the code
+  (`assistant.build.validate-integrations`, `build/integration-checks.ts`). The code checks read
+  the code as text: they are hints for the model, not a security boundary. The kit and the
+  isolated runner are the boundary.
 - **`toolTexts`**: what the tools tell the model as tool results (flow-assistant 3.1 and 3.7, AI
   changes 1.11), for the chat's tool line to show in its details.
 - **The authoring skill** (`build/authoring-skill.ts`): `authoringInstructions(workspace)` is what

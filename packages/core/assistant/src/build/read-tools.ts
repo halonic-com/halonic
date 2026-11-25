@@ -9,6 +9,7 @@ import { type ChatTool, isCredentialFile, isNeverWritten, proposalRefusal } from
 import { isKindName, jsonSchemaOf, kindNames } from "@halonicjs/format";
 import { loadWorkspace } from "@halonicjs/workspace";
 import { type BuildChat, textArgument, unlessRefused } from "./build-chat.ts";
+import { integrationProblems } from "./integration-checks.ts";
 import { toolTexts } from "./tool-texts.ts";
 
 /** The most paths `list_files` gives in one result. */
@@ -98,8 +99,10 @@ export function schemaTool(): ChatTool {
 
 /**
  * `validate`: checks the workspace as saved, changes to review included,
- * and gives each problem as "<severity> <path>: <message>". While the
- * workspace is untrusted it names only Halonic items, as the reads do.
+ * and gives each problem as "<severity> <path>: <message>". That includes
+ * the local integrations' sheets and code ({@link integrationProblems}).
+ * While the workspace is untrusted it names only Halonic items, as the
+ * reads do.
  */
 export function validateTool(chat: BuildChat): ChatTool {
   return {
@@ -112,7 +115,8 @@ export function validateTool(chat: BuildChat): ChatTool {
     async call() {
       const trusted = chat.options.isTrusted();
       const { issues } = await loadWorkspace(chat.options.files);
-      const lines = issues
+      const integrations = await integrationProblems(chat.options.files);
+      const lines = [...issues, ...integrations]
         .filter((issue) => proposalRefusal(issue.file, trusted) === null)
         .map((issue) => `${issue.severity} ${issue.file}: ${issue.message}`);
       return lines.length === 0 ? toolTexts.noProblems : lines.join("\n");
