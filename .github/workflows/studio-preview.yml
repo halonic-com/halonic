@@ -4,9 +4,11 @@
 #
 #   gh workflow run studio-preview.yml --ref main
 #
-# It builds the installer as CI's installer-windows job does (HAL-1202),
-# installs it silently, checks that Halonic starts and keeps running, and
-# keeps the setup .exe as a 7-day artifact.
+# It builds the installer as CI's installer-windows job does (HAL-1202), as
+# version <next patch>-preview.<run number> (HAL-18308), installs an
+# installer with the release version and then updates it with the preview,
+# silently, checks that Halonic starts and keeps running, and keeps the
+# setup .exe as a 7-day artifact.
 #
 # The repo is public, so any signed-in GitHub user can download an artifact
 # of this run. Sharing that file counts as publishing (HAL-5379 plan, step 2):
@@ -46,14 +48,38 @@ jobs:
       - name: Install the pinned Rust toolchain
         working-directory: apps/studio/src-tauri
         run: rustup toolchain install
+      # Each preview gets its own, higher version, so the installer updates
+      # the one before it instead of offering to run again (HAL-18308).
+      - name: Choose the preview version
+        working-directory: apps/studio/src-tauri
+        run: |
+          $version = node windows/preview-version.mjs tauri.conf.json $env:GITHUB_RUN_NUMBER
+          if ($LASTEXITCODE -ne 0) { throw 'preview-version.mjs failed' }
+          @{ version = $version } | ConvertTo-Json | Set-Content "$env:RUNNER_TEMP/preview.conf.json" -Encoding utf8NoBOM
+          "PREVIEW_VERSION=$version" >> $env:GITHUB_ENV
       - name: Build the installer
         working-directory: apps/studio/src-tauri
-        run: pwsh windows/build-installer.ps1
-      - name: Install it silently and check that Halonic starts
+        run: pwsh windows/build-installer.ps1 -Config "$env:RUNNER_TEMP/preview.conf.json"
+      # An installer with the release version, as every preview before
+      # HAL-18308 had, from the same build. The upgrade check installs it first.
+      - name: Pack an installer with the release version
+        working-directory: apps/studio/src-tauri
         run: |
-          $setup = Resolve-Path "dist/Halonic-*-windows-x64-setup.exe"
-          $p = Start-Process $setup -ArgumentList '/S' -Wait -PassThru
-          if ($p.ExitCode -ne 0) { throw "The installer exited with $($p.ExitCode)" }
+          pwsh windows/build-installer.ps1 -Step pack
+          if ($LASTEXITCODE -ne 0) { throw 'packing the release-version installer failed' }
+          $release = (Get-Content tauri.conf.json -Raw | ConvertFrom-Json).version
+          Move-Item "../../../dist/Halonic-$release-windows-x64-setup.exe" "$env:RUNNER_TEMP/older-setup.exe"
+      - name: Install the older one, update it silently and check that Halonic starts
+        run: |
+          $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Halonic'
+          $setup = Resolve-Path "dist/Halonic-$env:PREVIEW_VERSION-windows-x64-setup.exe"
+          foreach ($installer in "$env:RUNNER_TEMP/older-setup.exe", $setup) {
+            $p = Start-Process $installer -ArgumentList '/S' -Wait -PassThru
+            if ($p.ExitCode -ne 0) { throw "$(Split-Path -Leaf $installer) exited with $($p.ExitCode)" }
+            "$(Split-Path -Leaf $installer): installed $((Get-ItemProperty $key).DisplayVersion)"
+          }
+          $installed = (Get-ItemProperty $key).DisplayVersion
+          if ($installed -ne $env:PREVIEW_VERSION) { throw "Installed apps shows $installed, not $env:PREVIEW_VERSION" }
           $exe = Join-Path $env:LOCALAPPDATA 'Programs\Halonic\Halonic.exe'
           if (-not (Test-Path $exe)) { throw "Halonic isn't in the default folder" }
           $app = Start-Process $exe -PassThru
@@ -61,7 +87,7 @@ jobs:
           if ($app.HasExited) { throw "Halonic closed by itself with exit code $($app.ExitCode)" }
           Stop-Process -Id $app.Id -Force
           $mb = [math]::Round((Get-Item $setup).Length / 1MB)
-          "### Studio preview`n`n$(Split-Path -Leaf $setup), $mb MB, unsigned. Installed and still running after 20 s." >> $env:GITHUB_STEP_SUMMARY
+          "### Studio preview`n`n$(Split-Path -Leaf $setup), $mb MB, unsigned. Updated the release version to $installed, and still running after 20 s." >> $env:GITHUB_STEP_SUMMARY
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: halonic-studio-preview-windows
