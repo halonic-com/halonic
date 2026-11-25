@@ -26,6 +26,8 @@ export function ConnectionsSection({ context }: SettingsSectionProps) {
 /** The connections as they are now, and a way to read them again after a failed read. */
 interface ConnectionList {
   readonly list: readonly AgentConnection[] | "failed" | undefined;
+  /** How many reads failed, so the failure line is said again after each one. */
+  readonly failures: number;
   readonly retry: () => void;
 }
 
@@ -37,6 +39,7 @@ interface ConnectionList {
  */
 function useConnectionList(connections: AgentConnections): ConnectionList {
   const [list, setList] = useState<readonly AgentConnection[] | "failed">();
+  const [failures, setFailures] = useState(0);
   // Try again counts up `attempt`, which runs the effect again.
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
@@ -48,7 +51,9 @@ function useConnectionList(connections: AgentConnections): ConnectionList {
         },
         (error: unknown) => {
           console.error("Settings › Connections couldn't read the connections", error);
-          if (current) setList("failed");
+          if (!current) return;
+          setList("failed");
+          setFailures((count) => count + 1);
         },
       );
     };
@@ -59,7 +64,7 @@ function useConnectionList(connections: AgentConnections): ConnectionList {
       stop();
     };
   }, [connections, attempt]);
-  return { list, retry: () => setAttempt((count) => count + 1) };
+  return { list, failures, retry: () => setAttempt((count) => count + 1) };
 }
 
 /**
@@ -81,13 +86,14 @@ export interface ConnectionsViewProps {
 
 /**
  * Where focus goes once a dialog closed and the list shows what it did, since the button that
- * opened it may be gone (component specs 23 A2): a row's Disconnect while that row is listed,
- * else `fallback`.
+ * opened it may be gone (component specs 23 A2), or once Try again read the list and took the
+ * failure line and its button away: a row's Disconnect while that row is listed, else `fallback`.
  */
 interface FocusNext {
   /** Whether the list shows the change yet: the new row is in it, or the removed one has left. */
   readonly shown: (list: readonly AgentConnection[]) => boolean;
-  readonly row: AgentConnection["id"] | undefined;
+  /** The row whose Disconnect takes focus, picked from the list as it is shown. */
+  readonly row: (list: readonly AgentConnection[]) => AgentConnection["id"] | undefined;
   readonly fallback: "heading" | "connect";
 }
 
@@ -114,7 +120,7 @@ function NoteCallout({ note }: { readonly note: DisconnectNote }) {
 
 /** The section's view: what happened last, a row per connection, and Connect Paperclip. */
 export function ConnectionsView({ connections, announce, now }: ConnectionsViewProps) {
-  const { list, retry } = useConnectionList(connections);
+  const { list, failures, retry } = useConnectionList(connections);
   const [connecting, setConnecting] = useState<Connecting>();
   const [disconnecting, setDisconnecting] = useState<AgentConnection>();
   const [note, setNote] = useState<DisconnectNote>();
@@ -129,7 +135,8 @@ export function ConnectionsView({ connections, announce, now }: ConnectionsViewP
     const next = focusNext.current;
     if (dialogOpen || next === undefined || !Array.isArray(list) || !next.shown(list)) return;
     focusNext.current = undefined;
-    const row = next.row === undefined ? undefined : disconnectButtons.current.get(next.row);
+    const id = next.row(list);
+    const row = id === undefined ? undefined : disconnectButtons.current.get(id);
     const fallback =
       next.fallback === "connect" ? connectButton(root.current) : sectionHeading(root.current);
     (row ?? fallback)?.focus();
@@ -143,7 +150,7 @@ export function ConnectionsView({ connections, announce, now }: ConnectionsViewP
   const connected = (connection: AgentConnection) => {
     focusNext.current = {
       shown: (now) => now.some((known) => known.id === connection.id),
-      row: connection.id,
+      row: () => connection.id,
       fallback: "heading",
     };
     setConnecting(undefined);
@@ -160,7 +167,7 @@ export function ConnectionsView({ connections, announce, now }: ConnectionsViewP
       const at = list.findIndex((known) => known.id === connection.id);
       focusNext.current = {
         shown: (now) => now.every((known) => known.id !== connection.id),
-        row: list[at + 1]?.id,
+        row: () => list[at + 1]?.id,
         fallback: "connect",
       };
     }
@@ -168,12 +175,21 @@ export function ConnectionsView({ connections, announce, now }: ConnectionsViewP
     if (result !== undefined) tell(result);
   };
 
+  // Try again goes away once the list reads, so focus goes to the first row, or Connect Paperclip.
+  const tryAgain = () => {
+    focusNext.current = { shown: () => true, row: (now) => now[0]?.id, fallback: "connect" };
+    retry();
+  };
+
   if (list === undefined) return null;
   if (list === "failed") {
     return (
       <div className="flex flex-col items-start gap-3">
-        <p className="m-0 text-danger">{words.LIST_FAILED}</p>
-        <Button variant="secondary" onClick={retry}>
+        {/* A new key for each failed read, so a second failure is said again. */}
+        <p key={failures} role="alert" className="m-0 text-danger">
+          {words.LIST_FAILED}
+        </p>
+        <Button variant="secondary" onClick={tryAgain}>
           {words.TRY_AGAIN}
         </Button>
       </div>

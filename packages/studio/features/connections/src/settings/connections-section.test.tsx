@@ -222,8 +222,8 @@ verifies("connections.connection-row", () => {
 
 verifies("connections.list-retry", () => {
   /** A fake whose list fails until `failing` is false. */
-  function failingFirst() {
-    const fake = new FakeAgentConnections({ connections: [connected] });
+  function failingFirst(connections: readonly AgentConnection[] = [connected]) {
+    const fake = new FakeAgentConnections({ connections: [...connections] });
     const read = fake.list.bind(fake);
     const state = { failing: true };
     fake.list = async () => {
@@ -247,6 +247,46 @@ verifies("connections.list-retry", () => {
     await press(button("Try again", view));
     expect(rowOf(view, "Paperclip · Halonic")).toBeDefined();
     expect(view.textContent).not.toContain("couldn't read");
+    reported.mockRestore();
+  });
+
+  it("says the failure again as an alert when Try again fails again", async () => {
+    const reported = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { fake } = failingFirst();
+    const { view } = await showSection(fake);
+    const first = view.querySelector('[role="alert"]');
+    expect(first?.textContent).toBe(
+      "Halonic couldn't read the connections. Close Settings and open it again.",
+    );
+    await press(button("Try again", view));
+    const second = view.querySelector('[role="alert"]');
+    expect(second?.textContent).toBe(first?.textContent);
+    // A new element, so a screen reader says it again.
+    expect(second).not.toBe(first);
+    reported.mockRestore();
+  });
+
+  it("puts focus on the first row's Disconnect once Try again reads the list", async () => {
+    const reported = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { fake, state } = failingFirst([connected, signedOut]);
+    const { view } = await showSection(fake);
+    state.failing = false;
+    const tryAgain = button("Try again", view);
+    tryAgain?.focus();
+    await press(tryAgain);
+    expect(document.activeElement).toBe(button("Disconnect", rowOf(view, "Paperclip · Halonic")));
+    reported.mockRestore();
+  });
+
+  it("puts focus on Connect Paperclip once Try again reads an empty list", async () => {
+    const reported = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { fake, state } = failingFirst([]);
+    const { view } = await showSection(fake);
+    state.failing = false;
+    const tryAgain = button("Try again", view);
+    tryAgain?.focus();
+    await press(tryAgain);
+    expect(document.activeElement).toBe(button("Connect Paperclip"));
     reported.mockRestore();
   });
 });
