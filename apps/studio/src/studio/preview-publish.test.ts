@@ -28,10 +28,11 @@ function keyIdOf(pubkey: string): string {
 
 verifies("studio.preview-publish", () => {
   describe("the preview workflow's publish job", () => {
-    it("runs only on main, after the installer built, updated and started", () => {
+    // A build-ref run builds an older commit, so it never publishes (HAL-18477, HAL-18353).
+    it("runs only on main without a build-ref, after the installer built, updated and started", () => {
       const job = jobOf(workflow(), "publish");
-      expect(job).toContain("needs: installer");
-      expect(job).toContain("if: github.ref == 'refs/heads/main'");
+      expect(job).toContain("needs: [resolve, installer]");
+      expect(job).toContain("if: github.ref == 'refs/heads/main' && !inputs.build-ref");
       expect(job).not.toMatch(/always\(\)|failure\(\)|continue-on-error/);
       expect(job).toContain("environment: preview-publish");
     });
