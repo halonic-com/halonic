@@ -2,6 +2,7 @@
 
 - Approval: wording decided by the words check HAL-18822 and set on HAL-18838; the reviewer (Liam) approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:77vN3CWBEOTup4A8SfprTTNR6pSTsgLWUvR1/cGGAkozUk5Sx8kl/QckfptXWpwyG/RqLYraTE2ysDZ9oIDADg==
 
 ## What changes
 
