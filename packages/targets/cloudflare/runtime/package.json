@@ -23,6 +23,7 @@
     "@halonicjs/app": "workspace:*",
     "@halonicjs/engine": "workspace:*",
     "@halonicjs/format": "workspace:*",
+    "@halonicjs/host-harness-host": "workspace:*",
     "@halonicjs/host-server": "workspace:*",
     "@halonicjs/host-signed-request": "workspace:*",
     "@halonicjs/ports": "workspace:*",
