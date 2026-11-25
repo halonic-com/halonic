@@ -35,7 +35,8 @@
    colours), the custom variants and the other utilities, and the safe areas live in their own
    files. They hold no tokens, only rules that read them. The one exception is
    theme-agent-pages.css: the agent orb, stacked card and canvas variables, which only those
-   pages read, next to the canvas grid utility. */
+   pages read, next to the canvas grid utility. theme-font.css holds the Inter font faces. */
+@import "./theme-font.css";
 @import "./theme-selection.css";
 @import "./theme-lines.css";
 @import "./checkbox/checkbox.css";

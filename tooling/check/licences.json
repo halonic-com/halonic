@@ -51,6 +51,22 @@
       "licence": "MIT",
       "source": "https://github.com/nayuki/QR-Code-generator/blob/bcfe1b018cec5f1f91b5705eca5bb4cdd34e9f8d/typescript-javascript/qrcodegen.ts",
       "task": "HAL-12239"
+    },
+    {
+      "path": "packages/studio/kit/src/fonts/InterVariable.woff2",
+      "name": "Inter 4.1 (variable font, upright)",
+      "licence": "OFL-1.1",
+      "source": "https://github.com/rsms/inter/releases/download/v4.1/Inter-4.1.zip",
+      "task": "HAL-18694",
+      "text": "tooling/check/licence-texts/Inter-OFL-1.1.txt"
+    },
+    {
+      "path": "packages/studio/kit/src/fonts/InterVariable-Italic.woff2",
+      "name": "Inter 4.1 (variable font, italic)",
+      "licence": "OFL-1.1",
+      "source": "https://github.com/rsms/inter/releases/download/v4.1/Inter-4.1.zip",
+      "task": "HAL-18694",
+      "text": "tooling/check/licence-texts/Inter-OFL-1.1.txt"
     }
   ],
   "gradle": {
