@@ -9,7 +9,12 @@ import {
 } from "@halonicjs/studio-feature-action-steppers/api";
 import { type RunsList, RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { EmptyState, List, useNarrow, usePresentation } from "@halonicjs/studio-kit";
-import { AgentMessagingService } from "@halonicjs/studio-services";
+import {
+  type ActionSteps,
+  AgentMessagingService,
+  actionStepsKey,
+  desktopOnlyActionSteps,
+} from "@halonicjs/studio-services";
 import {
   type EngineWords,
   engineWords,
@@ -90,6 +95,7 @@ export function InboxPage({ context }: PlaceViewProps) {
       agentMessaging={context.services.find(AgentMessagingService)}
       actionCatalog={context.services.find(ActionCatalogService)}
       requesterPolicy={context.services.find(RequesterPolicyService)}
+      actionSteps={context.services.find(actionStepsKey)}
       notices={notices}
       {...(context.runCommand === undefined
         ? {}
@@ -150,6 +156,8 @@ export interface InboxViewProps {
   readonly actionCatalog?: StepperCatalog | undefined;
   /** The user's requester policy. Without it the default holds: only routine requests may run. */
   readonly requesterPolicy?: RequesterPolicy | undefined;
+  /** Runs an action request's steps; without it, as in a browser, requests can only be reviewed. */
+  readonly actionSteps?: ActionSteps | undefined;
   /** The workspace's runs: a phone's request sheet stops waiting when the run it started ends. */
   readonly runs?: RunsList | undefined;
   /** Says a line where a screen reader hears it: "New in Needs you: …" for a sent request's card that didn't open. */
@@ -201,6 +209,7 @@ export function InboxView({
   agentMessaging,
   actionCatalog = emptyActionCatalog,
   requesterPolicy = defaultRequesterPolicy,
+  actionSteps = desktopOnlyActionSteps,
 }: InboxViewProps) {
   const subscribe = useCallback((listener: () => void) => inbox.subscribe(listener), [inbox]);
   const state = useSyncExternalStore(subscribe, () => inbox.state);
@@ -208,6 +217,7 @@ export function InboxView({
   const agent = useAgentItems(agentMessaging, {
     catalog: actionCatalog,
     policy: requesterPolicy,
+    steps: actionSteps,
   });
   // An item of the Inbox's own that opens, by hand or on request, takes the pane from an agent's.
   const closeAgent = agent.close;

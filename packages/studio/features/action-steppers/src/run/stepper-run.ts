@@ -1,0 +1,286 @@
+/**
+ * The stepper run (`action-steppers.shell-run`): what the screen's buttons do once the desktop
+ * app can run steps (HAL-17535). It runs each step through the `ActionSteps` app service, which
+ * sends it with the user's own sign-in and records it, reads the request's record back to show
+ * where each step stands, and answers the Inbox item through `AgentMessaging` once the stepper
+ * ends. Every step is checked again first (HAL-17491 7.3). In a browser the service runs nothing,
+ * so the screen stays in review mode and only **Decline** answers.
+ */
+import type { ActionOutcome } from "@halonicjs/events";
+import type { AnswerResult, InboxAnswer, MessagingSource } from "@halonicjs/ports";
+import type { ActionSteps } from "@halonicjs/studio-services";
+import {
+  type ActionItem,
+  type ActionReviewContext,
+  reviewActionItem,
+} from "../review/action-item-review.ts";
+import { isDone, type StepperActions, type StepperView } from "../stepper-view.ts";
+import { answerDay, foldRecord, resultAnswer, stepOutcome, stoppedOutcome } from "./record-fold.ts";
+import { endedStage, signInStage } from "./stages.ts";
+import { setsSecret, stepRequest } from "./step-request.ts";
+
+/** What a {@link StepperRun} checks against, runs with and answers through. */
+export interface StepperRunOptions {
+  readonly item: ActionItem;
+  /** The item's source as `AgentMessaging` lists it, which the requester policy keys on. */
+  readonly source: MessagingSource | undefined;
+  readonly catalog: ActionReviewContext["catalog"];
+  readonly policy: ActionReviewContext["policy"];
+  readonly steps: ActionSteps;
+  /** Answers the item through `AgentMessaging`, once. */
+  readonly answer: (answer: InboxAnswer) => Promise<AnswerResult>;
+  /** The clock for expiry and for the day a secret was set. */
+  readonly now: () => Date;
+}
+
+/**
+ * One open action request, from review to answer. The screen draws {@link current} and calls
+ * {@link actions}; when a callback fails, {@link failure} says why and {@link retry} does it again.
+ */
+export class StepperRun {
+  /** The request's id in its record: the item's, within its source. */
+  readonly request: string;
+  private view: StepperView;
+  private readonly listeners = new Set<() => void>();
+  private busy = false;
+  private signingIn = false;
+  /** How this run ended, for a Studio that keeps no record, such as one in a browser. */
+  private endedWith: ActionOutcome | undefined;
+  private readonly options: StepperRunOptions;
+
+  constructor(view: StepperView, options: StepperRunOptions) {
+    this.options = options;
+    this.view = view;
+    this.request = `${options.item.source}/${options.item.id}`;
+  }
+
+  /** What the screen shows now. */
+  current = (): StepperView => this.view;
+
+  /** Goes up on every change, the view's or the failure's, so the card draws again. */
+  changes = (): number => this.changeCount;
+
+  private changeCount = 0;
+
+  /** Calls `listener` whenever {@link current} changes; returns the call that stops it. */
+  subscribe = (listener: () => void): (() => void) => {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  };
+
+  /** The screen's callbacks. */
+  readonly actions: StepperActions = {
+    runStep: (number) => void this.guard(() => this.run(number)),
+    runAll: () => void this.guard(() => this.runAll()),
+    decline: () => void this.guard(() => this.end("stopped")),
+    openPage: (address) => void this.guard(() => this.openPage(address)),
+    confirmBrowserStep: (number) => void this.guard(() => this.confirm(number)),
+    // No step has a check until ToolScript check steps land (HAL-17491 7.9), so none offers it.
+    checkStep: () => {},
+    markDoneByHand: (number) => void this.guard(() => this.confirm(number)),
+    signIn: () => void this.guard(() => this.signIn()),
+    signInAgain: () => void this.guard(() => this.signInAgain()),
+  };
+
+  /** Reads the request's record and the user's sign-in, so a request opened again resumes. */
+  open = (): Promise<void> => this.refresh();
+
+  /** Stops a sign-in this run started, when the screen closes. */
+  async close(): Promise<void> {
+    if (this.signingIn) await this.options.steps.cancelSignIn();
+  }
+
+  /** The last failure of a callback, for the card's line; cleared by the next one that works. */
+  failure: unknown;
+  /** What failed last, so **Try again** does it again. */
+  private failed: (() => Promise<void>) | undefined;
+
+  /** Does the callback that failed last again; nothing when the last one worked. */
+  retry = (): void => {
+    const work = this.failed;
+    if (work !== undefined) void this.guard(work);
+  };
+
+  /** Keeps a failure from outside the callbacks, such as reading the record when the card opens. */
+  fail(error: unknown): void {
+    this.failure = error;
+    this.failed = () => this.refresh();
+    this.emit();
+  }
+
+  /** Settles once the callback the screen called last has finished, for tests and the card. */
+  idle(): Promise<void> {
+    return this.last;
+  }
+
+  private last: Promise<void> = Promise.resolve();
+
+  private guard(work: () => Promise<void>): Promise<void> {
+    this.last = this.attempt(work);
+    return this.last;
+  }
+
+  private async attempt(work: () => Promise<void>): Promise<void> {
+    try {
+      await work();
+      this.failure = undefined;
+      this.failed = undefined;
+    } catch (error) {
+      this.failure = error;
+      this.failed = work;
+    }
+    this.emit();
+  }
+
+  private set(view: StepperView): void {
+    this.view = view;
+    this.emit();
+  }
+
+  private emit(): void {
+    this.changeCount += 1;
+    for (const listener of this.listeners) listener();
+  }
+
+  /** Checks the item again and rebuilds the view from the record and the sign-in. */
+  private async refresh(): Promise<void> {
+    const { item, source, catalog, policy, steps, now } = this.options;
+    const review = reviewActionItem(item, source, { catalog, policy, now: now() });
+    if (review.kind === "unreadable")
+      return this.set({ ...this.view, stage: { kind: "not-available" } });
+    const reviewed = review.view;
+    if (this.endedWith !== undefined && !steps.canRun) {
+      return this.set({ ...reviewed, stage: endedStage(this.endedWith) });
+    }
+    // Expired and blocked requests can't run, and outside the desktop app nothing can.
+    if (reviewed.stage.kind !== "desktop-only" || !steps.canRun) return this.set(reviewed);
+    const record = foldRecord(await steps.history(this.request));
+    const shown = reviewed.steps.map((step) => ({
+      ...step,
+      outcome: stepOutcome(record.steps.get(step.number)),
+    }));
+    if (record.finished !== undefined) {
+      return this.set({ ...reviewed, steps: shown, stage: endedStage(record.finished) });
+    }
+    const account = await steps.account(reviewed.service);
+    const stage =
+      account === undefined ? signInStage(reviewed.service, null) : { kind: "ready" as const };
+    this.set({ ...reviewed, steps: shown, account: account?.name ?? null, stage });
+  }
+
+  /**
+   * Does `work` while nothing else does, and reads the record back afterwards whatever happened.
+   * Returns whether it ran, so a second click while a step runs does nothing.
+   */
+  private async alone(work: () => Promise<void>): Promise<boolean> {
+    if (this.busy) return false;
+    this.busy = true;
+    try {
+      await work();
+    } finally {
+      this.busy = false;
+      await this.refresh();
+    }
+    return true;
+  }
+
+  /** Runs or opens one step, if the request is still ready after a fresh check. */
+  private async run(number: number): Promise<void> {
+    const { item, catalog, steps } = this.options;
+    const ran = await this.alone(async () => {
+      await this.refresh();
+      const route = catalog.route(item.action.definition, item.action.version, number);
+      if (this.view.stage.kind !== "ready" || route === undefined) return;
+      this.markRunning(number);
+      const request = stepRequest(item.action, route);
+      if (route.kind === "call") await steps.runStep(this.request, request);
+      else await steps.openGuidedStep(this.request, request);
+    });
+    if (ran) await this.endIfDone();
+  }
+
+  private markRunning(number: number): void {
+    const running = { kind: "running" } as const;
+    const shown = this.view.steps.map((step) =>
+      step.number === number ? { ...step, outcome: running } : step,
+    );
+    this.set({ ...this.view, steps: shown });
+  }
+
+  /** Runs the call steps still to do, in order, and stops at the first that doesn't succeed. */
+  private async runAll(): Promise<void> {
+    for (const step of this.view.steps) {
+      if (isDone(step)) continue;
+      if (step.action.kind !== "call") return;
+      await this.run(step.number);
+      const after = this.view.steps.find((each) => each.number === step.number);
+      if (after === undefined || !isDone(after)) return;
+    }
+  }
+
+  /** Opens the page of the browser step that shows `address`; the step waits for the user's word. */
+  private async openPage(address: string): Promise<void> {
+    const step = this.view.steps.find(
+      (each) => each.action.kind === "browser" && each.action.address === address && !isDone(each),
+    );
+    if (step !== undefined) await this.run(step.number);
+  }
+
+  /** Records a step the user did on the page or by hand, and ends the request if it was the last. */
+  private async confirm(number: number): Promise<void> {
+    const ran = await this.alone(async () => {
+      await this.refresh();
+      if (this.view.stage.kind === "ready")
+        await this.options.steps.confirmStep(this.request, number);
+    });
+    if (ran) await this.endIfDone();
+  }
+
+  private async endIfDone(): Promise<void> {
+    if (this.view.stage.kind === "ready" && this.view.steps.every(isDone)) {
+      await this.end("succeeded");
+    }
+  }
+
+  /**
+   * Answers the item with the folded result, then records the end, so nothing of it runs again.
+   * When the user stops it (`stopped`), it ends `declined` if nothing ran and `failed` if some
+   * steps did, since a declined answer lists no steps.
+   */
+  private async end(outcome: ActionOutcome | "stopped"): Promise<void> {
+    const { item, catalog, steps, answer, now } = this.options;
+    const { definition, version } = item.action;
+    await this.alone(async () => {
+      const record = foldRecord(await steps.history(this.request));
+      const ended = outcome === "stopped" ? stoppedOutcome(record) : outcome;
+      const secretSteps = new Set(
+        this.view.steps
+          .map((step) => step.number)
+          .filter((number) => setsSecret(catalog.route(definition, version, number))),
+      );
+      const result = await answer(resultAnswer(record, ended, secretSteps, answerDay(now())));
+      if (result.outcome === "refused") throw new Error(`The answer was refused: ${result.reason}`);
+      // Answered here or, first, elsewhere: either way this request has had its answer.
+      await steps.finish(this.request, ended);
+      this.endedWith = ended;
+    });
+  }
+
+  private async signIn(): Promise<void> {
+    const service = this.view.service;
+    this.signingIn = true;
+    try {
+      await this.options.steps.signIn(this.request, service, (code) =>
+        this.set({ ...this.view, stage: signInStage(service, code.code) }),
+      );
+    } finally {
+      this.signingIn = false;
+      await this.refresh();
+    }
+  }
+
+  private async signInAgain(): Promise<void> {
+    await this.options.steps.signOut(this.view.service);
+    await this.signIn();
+  }
+}

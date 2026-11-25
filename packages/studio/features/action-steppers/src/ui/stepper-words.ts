@@ -111,6 +111,8 @@ export function outcomeText(outcome: StepOutcome, service: StepperService): stri
     case "succeeded":
       return outcome.result === undefined ? "Done." : `Done. ${outcome.result}`;
     case "failed":
+      // Without a status nothing reached the service, so the reason is in Halonic's own words.
+      if (outcome.status === undefined) return `Failed. ${outcome.message}`;
       return `Failed: ${serviceName(service)} refused this step (status ${outcome.status}).`;
     case "skipped":
       return "Done already";
@@ -127,7 +129,13 @@ export function outcomeText(outcome: StepOutcome, service: StepperService): stri
  * failureDetails(403, "Resource not accessible by integration", "github");
  * // "Status 403. GitHub said: “Resource not accessible by integration”"
  */
-export function failureDetails(status: number, message: string, service: StepperService): string {
+export function failureDetails(
+  status: number | undefined,
+  message: string,
+  service: StepperService,
+): string {
+  // Without a status the message is Halonic's own, so it isn't quoted as the service's.
+  if (status === undefined) return message;
   return `Status ${status}. ${serviceName(service)} said: “${message}”`;
 }
 

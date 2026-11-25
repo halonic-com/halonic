@@ -30,7 +30,12 @@ export type StepOutcome =
   | { readonly kind: "pending" }
   | { readonly kind: "running" }
   | { readonly kind: "succeeded"; readonly result?: string | undefined }
-  | { readonly kind: "failed"; readonly status: number; readonly message: string }
+  | {
+      readonly kind: "failed";
+      /** The service's HTTP status, or `undefined` when it never answered or nothing was sent. */
+      readonly status?: number | undefined;
+      readonly message: string;
+    }
   | { readonly kind: "skipped" }
   | { readonly kind: "by-hand"; readonly checked: string | null };
 

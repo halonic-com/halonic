@@ -19,9 +19,15 @@ The Inbox opens an action item through `api.ts`: `reviewActionItem` checks the i
 with `validateStepperRequest` from `core/action-steppers`, against the installed catalog
 (`ActionCatalogService`), applies the user's requester policy (`RequesterPolicyService`) to the
 source the messaging provider attests, and builds the view in review mode (requirement
-`action-steppers.review-mode`). Until the desktop shell runs steps (HAL-17535), the stage is
-`desktop-only`, and `reviewOnlyActions` wires only **Decline**. Without the services, the catalog is
-empty and the default policy holds.
+`action-steppers.review-mode`), with the stage `desktop-only`. `useStepperRun` (a `StepperRun` in
+`src/run/`) then takes over (requirement `action-steppers.shell-run`): in the desktop app it reads
+the request's record and the sign-in through the `ActionSteps` app service of `studio/services`,
+so the request is `ready`, asks for a sign-in, or resumes where it stopped; it sends each step
+with its values sorted by the catalog's route into placeholders and body, records steps the user
+did on the page or by hand, and answers the item through `AgentMessaging` when the stepper ends,
+with only "set on <day>" for a value typed in the shell's secret dialog. Outside the desktop app it
+runs nothing and **Decline** still answers. Without the services, the catalog is empty and the
+default policy holds.
 
 | State | What the user sees |
 | --- | --- |

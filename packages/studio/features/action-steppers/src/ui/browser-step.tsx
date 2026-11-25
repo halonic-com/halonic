@@ -80,7 +80,7 @@ function copiedText(action: BrowserAction, requester: StepperRequester): string 
 
 /**
  * A browser step while the request can only be reviewed (`action-steppers.review-mode`): only
- * **Copy instructions**, since opening the page waits for the desktop shell (HAL-17535).
+ * **Copy instructions**, since only the desktop app opens the page.
  */
 export function BrowserCopy({ action, requester }: BrowserInstructionsProps) {
   return (

@@ -5,6 +5,7 @@ import type {
   StepperCatalog,
 } from "@halonicjs/studio-feature-action-steppers/api";
 import { Button, type ListRow, StatusChip } from "@halonicjs/studio-kit";
+import type { ActionSteps } from "@halonicjs/studio-services";
 import { type ReactNode, useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import {
   type AgentBundle,
@@ -57,10 +58,14 @@ const nothing: AgentInboxState = {
 /** Couldn't read the agents' items; said over the list, with **Try again**. */
 export const agentLoadFailed = "Couldn't load the items from your agents.";
 
-/** What an action item is checked against when it opens: the installed catalog and the user's policy. */
+/**
+ * What an action item is checked against when it opens, the installed catalog and the user's
+ * policy, and what runs its steps.
+ */
 export interface ActionChecks {
   readonly catalog: StepperCatalog;
   readonly policy: RequesterPolicy;
+  readonly steps: ActionSteps;
 }
 
 function isActionItem(item: AgentItem): item is ActionItem {
@@ -71,7 +76,15 @@ function isActionItem(item: AgentItem): item is ActionItem {
 function AgentCard({ checks, ...card }: AgentItemCardProps & { readonly checks: ActionChecks }) {
   const { item } = card;
   if (!isActionItem(item)) return <AgentItemCard {...card} />;
-  return <ActionItemCard {...card} item={item} catalog={checks.catalog} policy={checks.policy} />;
+  return (
+    <ActionItemCard
+      {...card}
+      item={item}
+      catalog={checks.catalog}
+      policy={checks.policy}
+      steps={checks.steps}
+    />
+  );
 }
 
 /**

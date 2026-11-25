@@ -1,8 +1,8 @@
 /**
  * Turns an action Inbox item into the stepper screen's view in review mode (HAL-17528): the user
- * sees what it touches, each step and who asked, but nothing runs until the desktop shell can make
- * the calls (HAL-17535). Every check here runs again when the user opens the item, whatever the
- * engine or the provider already checked (HAL-17491 7.3).
+ * sees what it touches, each step and who asked. In the desktop app the stepper run takes it from
+ * there (`run/stepper-run.ts`). Every check here runs again when the user opens the item and
+ * before each step, whatever the engine or the provider already checked (HAL-17491 7.3).
  */
 import {
   type AttestedSource,
@@ -17,6 +17,8 @@ import {
   validateStepperRequest,
 } from "@halonicjs/action-steppers";
 import type {
+  ActionCallRoute,
+  ActionRoute,
   InboxActionRequest,
   InboxItem,
   MessagingAuthor,
@@ -111,7 +113,37 @@ function localDay(day: string): Date {
   return new Date(year, month - 1, date);
 }
 
-function stepAction(step: Step, parameters: InboxActionRequest["parameters"]): StepAction {
+/**
+ * A call step as "Show the request" shows it: the route's method, its path with the parameters
+ * filled in, and the body fields the page sends. The shell adds constants and the values typed in
+ * its own dialog, so those never show here.
+ */
+function callAction(
+  route: ActionCallRoute,
+  parameters: InboxActionRequest["parameters"],
+): StepAction {
+  const body: Record<string, unknown> = {};
+  for (const field of route.body) {
+    const value = parameters[field.name];
+    if (field.kind !== "constant" && field.kind !== "secret-input" && value !== undefined) {
+      body[field.name] = value;
+    }
+  }
+  return {
+    kind: "call",
+    call: {
+      method: route.method,
+      address: fill(route.path, parameters, true),
+      body: Object.keys(body).length === 0 ? undefined : JSON.stringify(body),
+    },
+  };
+}
+
+function stepAction(
+  step: Step,
+  parameters: InboxActionRequest["parameters"],
+  route: ActionRoute | undefined,
+): StepAction {
   switch (step.kind) {
     case "guided":
       return {
@@ -124,7 +156,10 @@ function stepAction(step: Step, parameters: InboxActionRequest["parameters"]): S
     case "input":
       return { kind: "input", label: step.label, secret: step.secret };
     case "script":
-      return { kind: "script", script: step.ref };
+      // A script step runs once the catalog has its call route; until then the review names it.
+      return route?.kind === "call"
+        ? callAction(route, parameters)
+        : { kind: "script", script: step.ref };
   }
 }
 
@@ -132,9 +167,11 @@ function stepViews(
   definition: StepperDefinition,
   previews: readonly string[],
   parameters: InboxActionRequest["parameters"],
+  catalog: StepperCatalog,
 ): StepView[] {
   return definition.steps.map((step, index) => {
-    const action = stepAction(step, parameters);
+    const route = catalog.route(definition.id, definition.version, index + 1);
+    const action = stepAction(step, parameters, route);
     return {
       number: index + 1,
       preview: previews[index] ?? definition.summary,
@@ -168,7 +205,7 @@ function requesterName(author: MessagingAuthor): string {
  * against the installed catalog with `validateStepperRequest`, applies the user's requester policy
  * to the source the provider attests, and builds the screen's view. The stage is `expired` past
  * the request's expiry, `blocked` when the policy doesn't allow its risk from that source, and
- * otherwise `desktop-only`, since steps run only once the desktop shell is wired (HAL-17535).
+ * otherwise `desktop-only`: only the stepper run, in the desktop app, makes a request `ready`.
  *
  * @param source - the item's source as `AgentMessaging` lists it; `undefined` when it isn't listed
  * @returns the screen's view, or the reasons the request can't be read
@@ -211,7 +248,12 @@ export function reviewActionItem(
     expiresAt,
     requester: { name: requesterName(item.from), source: source?.label ?? "an unknown source" },
     reason: item.question,
-    steps: stepViews(definition, definition.preview(parsed.value), action.parameters),
+    steps: stepViews(
+      definition,
+      definition.preview(parsed.value),
+      action.parameters,
+      context.catalog,
+    ),
     serviceDown: false,
     stage,
   };
