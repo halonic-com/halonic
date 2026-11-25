@@ -3,6 +3,9 @@
 import { definition as githubUploadSocialPreview } from "./github/upload-social-preview.ts";
 import { definition as googleConfigureOauthConsent } from "./google/configure-oauth-consent.ts";
 import { definition as googleCreateCloudProject } from "./google/create-cloud-project.ts";
+import { definition as npmClaimPlaceholder } from "./npm/claim-placeholder.ts";
+import { definition as npmRenewTrustedPublisher } from "./npm/renew-trusted-publisher.ts";
+import { definition as npmSetTrustedPublisher } from "./npm/set-trusted-publisher.ts";
 import { definition as playFillDataSafety } from "./play/fill-data-safety.ts";
 import { definition as playSetUpClosedTest } from "./play/set-up-closed-test.ts";
 
@@ -19,6 +22,18 @@ export const catalogEntries = {
   "google/create-cloud-project": {
     definition: googleCreateCloudProject,
     sourceHash: "11e1e6e5413c519add3dd5480f3b99156f9961a212cc3cd48af7340fb154ef5a",
+  },
+  "npm/claim-placeholder": {
+    definition: npmClaimPlaceholder,
+    sourceHash: "e2dcbe0e19bcd87e0d05826b42505df4c5a07a4c09cfaf5de21760940e7893e0",
+  },
+  "npm/renew-trusted-publisher": {
+    definition: npmRenewTrustedPublisher,
+    sourceHash: "e7dacb21bbd4a1f760baace253109f15f24599a003df47dc84d119bb6a8c772f",
+  },
+  "npm/set-trusted-publisher": {
+    definition: npmSetTrustedPublisher,
+    sourceHash: "4fa8cc66c04d32d72f3e021ee03bba2985c497c60956bfe624f12ebc1dcc66be",
   },
   "play/fill-data-safety": {
     definition: playFillDataSafety,

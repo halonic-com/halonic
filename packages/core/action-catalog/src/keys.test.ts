@@ -7,6 +7,9 @@ describe("shippedKeys", () => {
       "github/upload-social-preview",
       "google/configure-oauth-consent",
       "google/create-cloud-project",
+      "npm/claim-placeholder",
+      "npm/renew-trusted-publisher",
+      "npm/set-trusted-publisher",
       "play/fill-data-safety",
       "play/set-up-closed-test",
     ]);
