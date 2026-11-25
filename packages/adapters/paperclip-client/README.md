@@ -139,7 +139,10 @@ fails unless each of the rows from `spendSummary` to `pullRequestDetail` answers
 in `pnpm test` or CI. The seats and GitHub routes answer only a board key, so a board user runs it, with
 the key in the environment, never on the command line: `HALONIC_PAPERCLIP_LIVE_ADDRESS` (the server's
 address), `HALONIC_PAPERCLIP_LIVE_KEY` and `HALONIC_PAPERCLIP_LIVE_COMPANY` (the company ID). Its log names
-the Paperclip version, each request with its status, and how many items mapped; it prints nothing it read.
+the Paperclip version, each request with its status, how many items mapped, and the public number of the
+pull request whose detail it read; it prints nothing else it read. It picks a pull request that is queued,
+dequeued, failing or merged, because one waiting for review has no timeline step to map, and fails when the
+seats plugin is served but lists no seats.
 
 **No route that makes keys.** Nothing goes to Paperclip upstream (board, HAL-10, 24 Nov), so this list is the
 main protection. No entry makes, lists or deletes keys or tokens: not `/api/board-api-keys`, an agent's

@@ -1,3 +1,4 @@
+import type { PullRequest, PullRequestState } from "@halonicjs/ports";
 import { afterAll, describe, expect, it } from "vitest";
 import { findRequest } from "../src/requests.ts";
 import { PaperclipTeamStatus } from "../src/team-status.ts";
@@ -5,8 +6,24 @@ import { PaperclipTeamStatus } from "../src/team-status.ts";
 // Run by `pnpm test:live`, never by `pnpm test`: it reads a real Paperclip server with a board key,
 // so CI never runs it. It checks that every route of the architecture note's section 1.5 answers
 // and maps with no error, as of the server's Paperclip version. The key comes from the environment
-// only, never a command-line argument, and nothing it reads is printed: the run log names each
-// request, its status and how many items mapped.
+// only, never a command-line argument, and nothing else it reads is printed: the run log names each
+// request, its status, how many items mapped, and the public number of the pull request whose
+// detail it read, so the timeline can be compared with GitHub.
+
+/**
+ * The states whose detail has a timeline step, best first: an open pull request that is waiting for
+ * review or approved has none, so picking one would map an empty timeline and prove nothing.
+ */
+const statesWithSteps: readonly PullRequestState[] = ["in-queue", "dequeued", "failing", "merged"];
+
+/** The first pull request in the best state for a timeline, if any is in one. */
+function withTimeline(pulls: readonly PullRequest[]): PullRequest | undefined {
+  for (const state of statesWithSteps) {
+    const found = pulls.find((pull) => pull.state === state);
+    if (found !== undefined) return found;
+  }
+  return undefined;
+}
 
 function required(name: string): string {
   const value = process.env[name] ?? "";
@@ -71,7 +88,9 @@ describe("the Paperclip provider's TeamStatus on a live server", () => {
     const seats = await team.seats();
     const [parts] = await team.parts();
     expect(parts?.seats).toBe(true);
-    expect(seats.length).toBeGreaterThan(0);
+    // Empty still fails: a served seats plugin with no seats is the fault this check is here to
+    // catch (HAL-18334 was one), even though an empty list maps without an error.
+    expect(seats.length, "the seats plugin is served but lists no seats").toBeGreaterThan(0);
     mapped.push(`seats: ${seats.length} seats`);
   });
 
@@ -82,15 +101,16 @@ describe("the Paperclip provider's TeamStatus on a live server", () => {
     expect(parts?.pullRequests).toBe(true);
     expect(lists.length).toBeGreaterThan(0);
     expect(queues.length).toBeGreaterThan(0);
-    const first = lists.flatMap((list) => [...list.open, ...list.recent])[0];
-    expect(first).toBeDefined();
-    const detail = first === undefined ? undefined : await team.pullRequest(first.id);
-    expect(detail?.pullRequest.id).toBe(first?.id);
+    const picked = withTimeline(lists.flatMap((list) => [...list.open, ...list.recent]));
+    expect(picked, "no pull request is queued, dequeued, failing or merged").toBeDefined();
+    const detail = picked === undefined ? undefined : await team.pullRequest(picked.id);
+    expect(detail?.pullRequest.id).toBe(picked?.id);
+    expect(detail?.timeline.length, "the picked pull request's timeline").toBeGreaterThan(0);
     const open = lists.reduce((sum, list) => sum + list.open.length, 0);
     mapped.push(
       `pull requests: ${lists.length} repos, ${open} open`,
       `merge queue: ${queues.length} queues`,
-      `pull request detail: ${detail?.timeline.length ?? 0} timeline events`,
+      `pull request detail: ${picked?.repo} ${picked?.label} (${picked?.state}), ${detail?.timeline.length ?? 0} timeline events`,
     );
   });
 
