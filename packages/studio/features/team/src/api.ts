@@ -1,6 +1,7 @@
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import type { PullRequests } from "./pull-requests.ts";
 import type { SpendAndSeats } from "./spend-and-seats.ts";
+import type { TeamDetails } from "./team-details.ts";
 
 /** The Spend and seats screen's reads, built on the engine's `TeamStatus`. */
 export const SpendAndSeatsService: ServiceKey<SpendAndSeats> =
@@ -9,6 +10,9 @@ export const SpendAndSeatsService: ServiceKey<SpendAndSeats> =
 /** The Pull requests screen's reads, built on the engine's `TeamStatus` and the tasks in `AgentMessaging`. */
 export const PullRequestsService: ServiceKey<PullRequests> =
   serviceKey<PullRequests>("team.pull-requests");
+
+/** The agent and seat detail pages' reads and Agents by spend's, on `TeamStatus` and `AgentMessaging`. */
+export const TeamDetailsService: ServiceKey<TeamDetails> = serviceKey<TeamDetails>("team.details");
 
 /**
  * The Spend and seats screen and the reads it takes, loaded only when called. Only for the

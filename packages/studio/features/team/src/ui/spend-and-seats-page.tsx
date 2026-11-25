@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import type { SpendAndSeats, SpendAndSeatsState } from "../spend-and-seats.ts";
+import type { TeamDetails } from "../team-details.ts";
 import { type TeamLink, teamWords } from "../team-words.ts";
+import { AgentDetailPage, AllAgentsPage, SeatDetailPage, type TeamPage } from "./detail-pages.tsx";
 import { TeamLinks, type TeamLinksState } from "./money-tiles.tsx";
 import { LoadingPage, PageFrame, TryAgain } from "./page-frame.tsx";
 import { NoSeatsLine, ReadScreen } from "./read-screen.tsx";
@@ -13,6 +15,8 @@ export interface SpendAndSeatsPageProps {
    * "Connect again". Without it, the screen draws no link buttons.
    */
   readonly onLink?: ((link: TeamLink) => void) | undefined;
+  /** The detail pages' reads. Without them, there is no Agents by spend and seat rows open AI seats. */
+  readonly details?: TeamDetails | undefined;
 }
 
 /**
@@ -34,11 +38,39 @@ type Shown =
  */
 export function SpendAndSeatsPage(props: SpendAndSeatsPageProps) {
   const links: TeamLinksState = props.onLink === undefined ? "none" : "on";
+  const [page, setPage] = useState<TeamPage | undefined>(undefined);
+  const details = props.details;
+  const back = () => setPage(undefined);
+  const pages = details === undefined ? undefined : { details, onOpen: setPage };
   return (
     <TeamLinks.Provider value={links}>
-      <SpendAndSeatsScreen spendAndSeats={props.spendAndSeats} onLink={props.onLink ?? noLink} />
+      {details === undefined || page === undefined ? (
+        <SpendAndSeatsScreen
+          spendAndSeats={props.spendAndSeats}
+          onLink={props.onLink ?? noLink}
+          pages={pages}
+        />
+      ) : (
+        <DetailPage details={details} page={page} onOpen={setPage} onBack={back} />
+      )}
     </TeamLinks.Provider>
   );
+}
+
+/** The detail page open over Spend and seats. */
+function DetailPage(props: {
+  details: TeamDetails;
+  page: TeamPage;
+  onOpen: (page: TeamPage) => void;
+  onBack: () => void;
+}) {
+  const { details, page, onOpen, onBack } = props;
+  if (page.kind === "agent")
+    return <AgentDetailPage details={details} id={page.id} onBack={onBack} />;
+  if (page.kind === "seat") {
+    return <SeatDetailPage details={details} id={page.id} onOpen={onOpen} onBack={onBack} />;
+  }
+  return <AllAgentsPage details={details} onOpen={onOpen} onBack={onBack} />;
 }
 
 /** Never called: with no `onLink`, no link button is drawn. */
@@ -47,6 +79,7 @@ function noLink(): void {}
 function SpendAndSeatsScreen(props: {
   spendAndSeats: SpendAndSeats;
   onLink: (link: TeamLink) => void;
+  pages: { details: TeamDetails; onOpen: (page: TeamPage) => void } | undefined;
 }) {
   const { spendAndSeats, onLink } = props;
   const [shown, setShown] = useState<Shown>({ kind: "loading" });
@@ -101,6 +134,7 @@ function SpendAndSeatsScreen(props: {
       clock={clock}
       onLink={onLink}
       onTryAgain={readAgain}
+      pages={props.pages}
     />
   );
 }

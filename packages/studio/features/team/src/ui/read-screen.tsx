@@ -2,8 +2,10 @@ import { Callout } from "@halonicjs/studio-kit";
 import { useContext, useId } from "react";
 import { notReadAfterMs } from "../seat-problems.ts";
 import type { SpendAndSeatsState } from "../spend-and-seats.ts";
+import type { TeamDetails } from "../team-details.ts";
 import { formatTime, minutesSince, type TeamClock } from "../team-format.ts";
 import { type TeamLink, teamWords } from "../team-words.ts";
+import { AgentsBySpendSection, type TeamPage } from "./detail-pages.tsx";
 import { LinkButton, SpentTodayTile, TeamLinks, ThisMonthTile } from "./money-tiles.tsx";
 import { NeedsYou } from "./needs-you.tsx";
 import { PageFrame, TryAgain } from "./page-frame.tsx";
@@ -23,8 +25,10 @@ export function ReadScreen(props: {
   clock: TeamClock;
   onLink: (link: TeamLink) => void;
   onTryAgain: () => void;
+  /** Where the detail pages are: Agents by spend shows and seat rows open their page. */
+  pages?: { details: TeamDetails; onOpen: (page: TeamPage) => void } | undefined;
 }) {
-  const { state, failed, clock, onLink } = props;
+  const { state, failed, clock, onLink, pages } = props;
   // A signed-out seat's stamp is when it signed out, not a reading's age.
   const readSeats = state.seats.filter((seat) => seat.state !== "signed-out");
   const oldest = oldestOf(readSeats.map((seat) => seat.asOf));
@@ -84,11 +88,20 @@ export function ReadScreen(props: {
         </div>
         <section aria-label={teamWords.seatsHeading} className="flex flex-col gap-2">
           <SeatsHeading />
-          <SeatsBody state={state} clock={clock} onLink={onLink} />
+          <SeatsBody state={state} clock={clock} onLink={onLink} pages={pages} />
         </section>
+        {state.canReadSpend ? <AgentsBySpendSlot pages={pages} /> : null}
       </PageFrame>
     </TeamLinks.Provider>
   );
+}
+
+/** Agents by spend, where the detail pages are. */
+function AgentsBySpendSlot(props: {
+  pages: { details: TeamDetails; onOpen: (page: TeamPage) => void } | undefined;
+}) {
+  if (props.pages === undefined) return null;
+  return <AgentsBySpendSection details={props.pages.details} onOpen={props.pages.onOpen} />;
 }
 
 /** The seats, or why there are none: no AI seats plugin, or no seats set up in it. */
@@ -96,15 +109,19 @@ function SeatsBody(props: {
   state: SpendAndSeatsState;
   clock: TeamClock;
   onLink: (link: TeamLink) => void;
+  pages: { onOpen: (page: TeamPage) => void } | undefined;
 }) {
-  const { state, clock, onLink } = props;
+  const { state, clock, onLink, pages } = props;
   if (!state.hasSeats) {
     return <NoSeatsLine words={teamWords.seatsMissing} link="paperclip" onLink={onLink} />;
   }
   if (state.seats.length === 0) {
     return <NoSeatsLine words={teamWords.noSeats} link="ai-seats" onLink={onLink} />;
   }
-  return <SeatList seats={state.seats} clock={clock} onLink={onLink} />;
+  const onOpen = pages?.onOpen;
+  const onOpenSeat =
+    onOpen === undefined ? undefined : (id: string) => onOpen({ kind: "seat", id });
+  return <SeatList seats={state.seats} clock={clock} onLink={onLink} onOpenSeat={onOpenSeat} />;
 }
 
 /** Why there are no seats to show, and the button to Paperclip that fixes it. */

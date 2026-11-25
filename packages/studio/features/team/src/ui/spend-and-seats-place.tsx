@@ -1,5 +1,5 @@
 import type { PlaceViewProps } from "@halonicjs/studio-shell";
-import { SpendAndSeatsService } from "../api.ts";
+import { SpendAndSeatsService, TeamDetailsService } from "../api.ts";
 import { SpendAndSeatsPage } from "./spend-and-seats-page.tsx";
 
 /**
@@ -8,5 +8,10 @@ import { SpendAndSeatsPage } from "./spend-and-seats-page.tsx";
  * gets no `onLink` and draws no link buttons rather than ones that do nothing.
  */
 export function SpendAndSeatsPlace({ context }: PlaceViewProps) {
-  return <SpendAndSeatsPage spendAndSeats={context.services.get(SpendAndSeatsService)} />;
+  return (
+    <SpendAndSeatsPage
+      spendAndSeats={context.services.get(SpendAndSeatsService)}
+      details={context.services.get(TeamDetailsService)}
+    />
+  );
 }
