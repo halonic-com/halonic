@@ -40,6 +40,10 @@ fn login_item_writes_the_macos_path_and_argument_as_separate_escaped_strings() {
 
 #[test]
 fn login_item_refuses_a_path_it_cant_write_safely() {
+    assert_eq!(
+        run_value(Path::new("/opt/Halonic")),
+        Err(LoginItemError::UnsafePath)
+    );
     for path in [
         "Halonic.exe",
         "/opt/Halonic\n--other",

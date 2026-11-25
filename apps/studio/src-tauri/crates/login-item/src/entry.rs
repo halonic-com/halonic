@@ -14,19 +14,34 @@ fn unsafe_character(character: char) -> bool {
 }
 
 fn checked(executable: &Path) -> Result<&str, LoginItemError> {
+    checked_as(executable, executable.is_absolute())
+}
+
+fn checked_as(executable: &Path, absolute: bool) -> Result<&str, LoginItemError> {
     let text = executable.to_str().ok_or(LoginItemError::UnsafePath)?;
-    if !executable.is_absolute() || text.chars().any(unsafe_character) {
+    if !absolute || text.chars().any(unsafe_character) {
         return Err(LoginItemError::UnsafePath);
     }
     Ok(text)
 }
 
+/// A Windows absolute path, read from the text rather than `Path::is_absolute`,
+/// so the `Run` value is checked the same way on any computer: a drive
+/// (`D:\`) or a UNC share (`\\server\`).
+fn windows_absolute(text: &str) -> bool {
+    let bytes = text.as_bytes();
+    let drive =
+        bytes.len() >= 3 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':' && bytes[2] == b'\\';
+    drive || text.starts_with(r"\\")
+}
+
 /// Windows: the `Run` value's data, the path in double quotes, so a path with
 /// spaces (`…\Acme Tools\Halonic.exe`) can't be read as a shorter program.
 pub fn run_value(executable: &Path) -> Result<String, LoginItemError> {
+    let absolute = executable.to_str().is_some_and(windows_absolute);
     Ok(format!(
         "\"{}\" {BACKGROUND_ARGUMENT}",
-        checked(executable)?
+        checked_as(executable, absolute)?
     ))
 }
 
