@@ -31,6 +31,19 @@ export interface BoardSwitches {
   readonly mainRed: { readonly since: string; readonly allowRe: string } | null;
 }
 
+/**
+ * Main is broken: a merge group failed only on files its pull request
+ * doesn't touch (HAL-17875). Set once, with the main-red freeze; cleared
+ * when the freeze ends.
+ */
+export interface MainBroken {
+  readonly since: string;
+  /** The failed group run that showed it. */
+  readonly run: string;
+  /** The files its failed jobs' annotations name. */
+  readonly files: readonly string[];
+}
+
 /** Everything kept between passes, keyed by pull request number. */
 export interface MergeState {
   readonly version: 1;
@@ -55,6 +68,8 @@ export interface MergeState {
   readonly fillTarget: number | null;
   /** The board set `fillTarget` by hand: don't restore it. */
   readonly tuneManual: boolean;
+  /** Not a culprit hold: no pull request is held for it. */
+  readonly mainBroken: MainBroken | null;
   readonly board: BoardSwitches;
 }
 
@@ -76,6 +91,7 @@ export const emptyMergeState: MergeState = {
   lowWaitSince: null,
   fillTarget: null,
   tuneManual: false,
+  mainBroken: null,
   board: { hold: {}, prio: {}, fillPause: null, mainRed: null },
 };
 

@@ -1,5 +1,6 @@
 import { commentOnce, logLine, minutesSince, type PassContext } from "./context.ts";
 import type { GateRow } from "./gate.ts";
+import { mainBroken } from "./main-broken.ts";
 import type { GroupRun } from "./snapshot.ts";
 import { texts } from "./texts.ts";
 
@@ -9,7 +10,8 @@ import { texts } from "./texts.ts";
  * GitHub has taken it out, is the likely culprit: it is held until it has a
  * new head (rule 13), and told once which job failed. A cancelled group with
  * no failed job lets its pull request back in once (Chief, HAL-10, 24 Nov);
- * a second one holds it.
+ * a second one holds it. A group that failed only on files its pull request
+ * doesn't touch holds nothing: main is broken (`main-broken.ts`).
  */
 
 /** Failed groups are read this far back. */
@@ -50,6 +52,9 @@ function holdCulprit(context: PassContext, run: GroupRun, row: GateRow, where: s
       "culprit",
       `cancelled group ${run.url} #${number}(cancelled run, re-queued once)`,
     );
+    return;
+  }
+  if (mainBroken(context, run, row, where)) {
     return;
   }
   state.failedHeads[key] = head;

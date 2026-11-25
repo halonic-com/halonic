@@ -56,6 +56,11 @@ export interface FailedJob {
   readonly name: string;
   readonly url: string;
   readonly failedSteps: readonly string[];
+  /**
+   * The paths its `failure` annotations name, `.github` left out; read only
+   * for a merge group's failed jobs, and missing when not read.
+   */
+  readonly annotatedFiles?: readonly string[];
 }
 
 /** What a known-flake check reads about the run whose `ci-ok` failed on the head. */

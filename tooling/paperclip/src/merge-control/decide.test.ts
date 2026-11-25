@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -57,13 +57,18 @@ verifies("paperclip.merge-control-pure", () => {
 
   test("the check follows re-exports and side-effect imports into an I/O module", () => {
     const root = mkdtempSync(join(tmpdir(), "merge-control-pure-"));
-    writeFileSync(join(root, "clock.ts"), "export const at = () => Date.now();\n");
-    writeFileSync(join(root, "types.ts"), 'export type { At } from "./typed.ts";\n');
-    writeFileSync(join(root, "reexport.ts"), 'export * from "./clock.ts";\n');
-    writeFileSync(join(root, "side.ts"), 'import "./clock.ts";\n');
-    expect(impure(join(root, "reexport.ts"), root)).toEqual(["clock.ts"]);
-    expect(impure(join(root, "side.ts"), root)).toEqual(["clock.ts"]);
-    expect(impure(join(root, "types.ts"), root)).toEqual([]);
+    try {
+      writeFileSync(join(root, "clock.ts"), "export const at = () => Date.now();\n");
+      writeFileSync(join(root, "types.ts"), 'export type { At } from "./typed.ts";\n');
+      writeFileSync(join(root, "reexport.ts"), 'export * from "./clock.ts";\n');
+      writeFileSync(join(root, "side.ts"), 'import "./clock.ts";\n');
+      expect(impure(join(root, "reexport.ts"), root)).toEqual(["clock.ts"]);
+      expect(impure(join(root, "side.ts"), root)).toEqual(["clock.ts"]);
+      expect(impure(join(root, "types.ts"), root)).toEqual([]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+    expect(existsSync(root)).toBe(false);
   });
 
   test("the same snapshot, state and time give the same decision, and the caller's state is left as it was", () => {

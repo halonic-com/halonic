@@ -65,6 +65,7 @@ export function mainRedFreeze(context: PassContext): RegExp | null {
   if (newest?.conclusion === "success") {
     logLine(context, "main-red", `MAIN_GREEN at ${newest.headSha.slice(0, 9)}`);
     context.state.board.mainRed = null;
+    context.state.mainBroken = null;
     return null;
   }
   logLine(context, "main-red", `MAIN_RED freeze: only ${freeze.allowRe} PRs are added`);
