@@ -2,6 +2,7 @@
 
 - Approval: Liam decided it on HAL-18459 (25 Nov); Julian's scope is Liam's call under HAL-14809
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:HzyA751VxVGmpofIjY52OWDEcz9uToqtwyLHMXX6uGpV9bvnOrrhTlqQ2nztPqsCaZSxDA4QB72UaqlMWC5NCQ==
 
 `paperclip.reviewer-paths` names Julian for a pull request of up to 1500 changed lines
 instead of 1200. Tests, Markdown and wording files (the CLI's `messages/`, `*-words.ts`)
