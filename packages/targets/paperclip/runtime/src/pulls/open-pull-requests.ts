@@ -12,7 +12,7 @@ import {
   titleText,
   untrustedNote,
 } from "./reads.ts";
-import { type Review, signedApprovals } from "./reviews.ts";
+import { type PullAuthor, type Review, signedApprovals, signedByAuthor } from "./reviews.ts";
 
 /**
  * The `github.open-pull-requests` action: every open pull request whose
@@ -69,7 +69,7 @@ async function openPullRequest(
   get: GitHubGet,
   repo: string,
   number: number,
-  author: string,
+  author: PullAuthor,
 ): Promise<OpenPullRequest> {
   // The list leaves out `mergeable`; only the pull request itself has it.
   const pull = (await get(`/repos/${repo}/pulls/${number}`)) as PullDetails;
@@ -90,7 +90,7 @@ async function openPullRequest(
     ciOk,
     mergeable,
     approvedOnHead: signedApprovals(comments).some(
-      ({ by, head }) => pull.head.sha.startsWith(head) && by.toLowerCase() !== author,
+      ({ by, head }) => pull.head.sha.startsWith(head) && !signedByAuthor(by, author),
     ),
     needsYou: ciOk === "failure" || mergeable === "conflict",
   };
@@ -100,10 +100,10 @@ async function openPullRequest(
 export async function openPullRequests(
   get: GitHubGet,
   repos: readonly string[],
-  urlKey: string,
+  agent: PullAuthor,
   unread: string[] = [],
 ): Promise<OpenPullRequest[]> {
-  const author = urlKey.toLowerCase();
+  const author = agent.urlKey.toLowerCase();
   const found: OpenPullRequest[] = [];
   for (const [index, repo] of repos.entries()) {
     const open = await openPulls(get, repo, index === 0);
@@ -118,7 +118,7 @@ export async function openPullRequests(
         pull.head.ref.toLowerCase().startsWith(`${author}/`),
     );
     found.push(
-      ...(await Promise.all(mine.map(({ number }) => openPullRequest(get, repo, number, author)))),
+      ...(await Promise.all(mine.map(({ number }) => openPullRequest(get, repo, number, agent)))),
     );
   }
   return found;
@@ -169,7 +169,7 @@ export const openPullRequestsHandler: ActionHandler = {
     }
     const unread: string[] = [];
     const repos = repositoriesOf(tool);
-    const prs = await openPullRequests(await github(), repos, caller.urlKey, unread);
+    const prs = await openPullRequests(await github(), repos, caller, unread);
     return { content: openPullRequestsText(caller.urlKey, prs, unread), data: prs };
   },
 };

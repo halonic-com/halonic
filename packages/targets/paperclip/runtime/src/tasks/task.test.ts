@@ -75,9 +75,10 @@ function run(params: unknown, paperclip: Pick<RuntimeHost, "agents" | "issues">)
     tool: acmeTool("task_get", { action: { run: "paperclip.task", with: {} } }),
     params,
     templates: [],
-    caller: { agentId: "agent-tomas", urlKey: "tomas" },
+    caller: { agentId: "agent-tomas", urlKey: "tomas", name: "Tomas" },
     companyId: "acme",
-    paperclip,
+    now: new Date("2026-11-24T12:00:00Z"),
+    paperclip: { ...paperclip, state: { get: async () => null } },
     github: async () => {
       throw new Error("paperclip.task doesn't read GitHub");
     },

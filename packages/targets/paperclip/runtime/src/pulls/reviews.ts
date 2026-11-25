@@ -67,16 +67,36 @@ export function signedApprovals(comments: readonly Review[]): SignedApproval[] {
   );
 }
 
+/** A pull request's author: the agent whose `urlKey` starts the branch, and its display name when known. */
+export interface PullAuthor {
+  readonly urlKey: string;
+  readonly name?: string | undefined;
+}
+
+/**
+ * Whether the author signed this approval. A signature names one word, such
+ * as "Liam", while a `urlKey` can be `liam-cto`, so the author's display name
+ * and its first word count too, ignoring case.
+ */
+export function signedByAuthor(by: string, author: PullAuthor | undefined): boolean {
+  if (author === undefined) {
+    return false;
+  }
+  const name = author.name?.trim().toLowerCase() ?? "";
+  const own = [author.urlKey.toLowerCase(), name, name.split(/\s+/)[0] ?? ""];
+  return own.filter((word) => word !== "").includes(by.toLowerCase());
+}
+
 /** Whether each signed approval counts on the current head of a pull request by `author`. */
 export function approvals(
   comments: readonly Review[],
-  pull: { readonly head: string; readonly author: string | undefined },
+  pull: { readonly head: string; readonly author: PullAuthor | undefined },
 ): Approval[] {
   return signedApprovals(comments).map((approval): Approval => {
     if (!pull.head.startsWith(approval.head)) {
       return { ...approval, counts: false, note: "names an older head" };
     }
-    if (approval.by.toLowerCase() === pull.author) {
+    if (signedByAuthor(approval.by, pull.author)) {
       return { ...approval, counts: false, note: "the author's own pull request" };
     }
     return { ...approval, counts: true };

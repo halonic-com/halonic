@@ -1,5 +1,5 @@
 import type { CheckState, GitHubGet } from "../github.ts";
-import type { ActionHandler } from "../handlers.ts";
+import type { ActionCall, ActionHandler } from "../handlers.ts";
 import {
   branchOwner,
   branchPath,
@@ -72,11 +72,24 @@ export function readPrParams(
   return { repo: chosen, number };
 }
 
+/** The display name of the agent with this `urlKey`, or undefined when the workspace has none. */
+export type AgentName = (urlKey: string) => Promise<string | undefined>;
+
+/** Looks an author's display name up in the company's agent list, read once per call. */
+export function agentNames({ paperclip, companyId }: ActionCall): AgentName {
+  let agents: Promise<readonly { readonly urlKey: string; readonly name: string }[]> | undefined;
+  return async (urlKey) => {
+    agents ??= paperclip.agents.list({ companyId, limit: 500 });
+    return (await agents).find((agent) => agent.urlKey.toLowerCase() === urlKey)?.name;
+  };
+}
+
 /** Reads one pull request's whole status: about 9 GitHub requests. */
 export async function pullRequestStatus(
   get: GitHubGet,
   repo: string,
   number: number,
+  nameOf: AgentName = async () => undefined,
 ): Promise<PullRequestStatus> {
   const pull = (await get(`/repos/${repo}/pulls/${number}`)) as PullDetails;
   const head = pull.head.sha;
@@ -96,7 +109,10 @@ export async function pullRequestStatus(
   // A fork's branch can be named like ours, so it names no author or task.
   const ours = fromRepo(pull, repo);
   const author = ours ? branchOwner(pull.head.ref) : undefined;
-  const found = approvals(comments, { head, author });
+  const found = approvals(comments, {
+    head,
+    author: author === undefined ? undefined : { urlKey: author, name: await nameOf(author) },
+  });
   const title = shownTitle(pull);
   return {
     repo,
@@ -172,7 +188,8 @@ export function pullRequestText(status: PullRequestStatus): string {
 /** Reads the pull request the agent names, on one of the tool's repositories. */
 export const pullRequestHandler: ActionHandler = {
   capabilities: [],
-  run: async ({ tool, params, github }) => {
+  run: async (call) => {
+    const { tool, params, github } = call;
     if (tool.action.run !== "github.pull-request") {
       return { error: `${tool.name}: runs ${tool.action.run}, not github.pull-request.` };
     }
@@ -180,7 +197,12 @@ export const pullRequestHandler: ActionHandler = {
     if (typeof target === "string") {
       return { error: `${tool.name}: ${target}` };
     }
-    const status = await pullRequestStatus(await github(), target.repo, target.number);
+    const status = await pullRequestStatus(
+      await github(),
+      target.repo,
+      target.number,
+      agentNames(call),
+    );
     return { content: pullRequestText(status), data: status };
   },
 };
