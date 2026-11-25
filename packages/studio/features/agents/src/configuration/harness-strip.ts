@@ -18,6 +18,7 @@ export type HarnessCheck =
 export const harnessSetupPages: Readonly<Record<Exclude<AgentHarnessId, "halonic">, string>> = {
   "claude-code": "https://code.claude.com/docs/en/setup",
   codex: "https://developers.openai.com/codex/cli",
+  opencode: "https://opencode.ai/docs/",
 };
 
 /**

@@ -18,7 +18,7 @@ import { WorkspaceModelError } from "./workspace-providers.ts";
 
 /**
  * The bridge route of each provider type a harness program can call: Claude
- * Code speaks Anthropic's Messages API, Codex OpenAI's Responses API. Any
+ * Code and OpenCode speak Anthropic's Messages API, Codex OpenAI's Responses API. Any
  * other type has neither.
  */
 const bridgeRoutes: ReadonlyMap<string, BridgeProvider> = new Map([
@@ -31,6 +31,7 @@ const bridgeRoutes: ReadonlyMap<string, BridgeProvider> = new Map([
 const harnessRoutes: ReadonlyMap<string, { route: BridgeProvider; name: string }> = new Map([
   ["claude-code", { route: "anthropic", name: "Claude Code" }],
   ["codex", { route: "openai", name: "Codex" }],
+  ["opencode", { route: "anthropic", name: "OpenCode" }],
 ]);
 
 /**

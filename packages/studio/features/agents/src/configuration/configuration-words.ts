@@ -86,7 +86,12 @@ export const configurationWords = {
   harness: "Harness",
   /** Flow-agents 5.3, the group's hint. */
   harnessHint: "What drives this agent",
-  harnessNames: { halonic: "Halonic", "claude-code": "Claude Code", codex: "Codex" },
+  harnessNames: {
+    halonic: "Halonic",
+    "claude-code": "Claude Code",
+    codex: "Codex",
+    opencode: "OpenCode",
+  },
   /** Flow-agents 5.3, the lines under the options. */
   builtIn: "Built in. Needs nothing installed.",
   found: (program: string, version: string) => `Found ${program} ${version}`,

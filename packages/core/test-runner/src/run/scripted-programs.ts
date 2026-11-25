@@ -30,6 +30,7 @@ export interface UnscriptedProgram {
 const harnessNames: Readonly<Record<ProgramHarness, string>> = {
   "claude-code": "Claude Code",
   codex: "Codex",
+  opencode: "OpenCode",
 };
 
 /**

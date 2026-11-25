@@ -315,7 +315,8 @@
       "enum": [
         "halonic",
         "claude-code",
-        "codex"
+        "codex",
+        "opencode"
       ]
     },
     "workingFolder": {

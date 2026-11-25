@@ -137,6 +137,7 @@ export async function openSandbox(
 const providerOfHarness: Readonly<Record<ProgramHarness, BridgeProvider>> = {
   "claude-code": "anthropic",
   codex: "openai",
+  opencode: "anthropic",
 };
 
 /**

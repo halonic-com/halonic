@@ -1,4 +1,4 @@
-# Docker image pins only: the gitleaks action's image (its Dockerfile is
+# Docker image pins: the gitleaks action's image (its Dockerfile is
 # never built) and the WSL image's build container.
 version: 2
 updates:
@@ -20,3 +20,15 @@ updates:
       default-days: 7
     commit-message:
       prefix: ci
+  # No npm version updates (limit 0); security updates still come. OpenCode is
+  # pinned to one exact version and only moves in its own security PR
+  # (docs/adr/2026-11-24-opencode-harness-program.md).
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+    ignore:
+      - dependency-name: "@opencode/*"
+    commit-message:
+      prefix: chore

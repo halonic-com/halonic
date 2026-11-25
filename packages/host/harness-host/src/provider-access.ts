@@ -13,10 +13,11 @@ import {
   manyUsersSubscriptionMessage,
 } from "@halonicjs/workspace";
 
-/** The provider each harness program calls: Claude Code calls Anthropic, Codex calls OpenAI. */
+/** The provider each harness program calls: Claude Code and OpenCode call Anthropic's API, Codex OpenAI's. */
 const providerOfHarness: Record<ProgramHarness, BridgeProvider> = {
   "claude-code": "anthropic",
   codex: "openai",
+  opencode: "anthropic",
 };
 
 /** Each provider's name as people know it, for messages. */

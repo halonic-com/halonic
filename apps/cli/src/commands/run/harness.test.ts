@@ -147,7 +147,7 @@ verifies("cli.run-harness", () => {
       expect(code).toBe(exitCode.usage);
       expect(stderr).toEqual([
         "✕ Couldn't run support-reply: there's no harness called claude. Nothing ran.",
-        "  Use halonic, claude-code or codex, or leave --harness out to run each agent in its own.",
+        "  Use halonic, claude-code, codex or opencode, or leave --harness out to run each agent in its own.",
       ]);
       expect(await startedRuns()).toEqual([]);
     });

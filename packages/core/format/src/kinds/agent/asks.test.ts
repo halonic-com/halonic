@@ -14,6 +14,7 @@ verifies("format.agent-asks", () => {
     ["claude-code", "in-sandbox"],
     ["codex", "always"],
     ["codex", "in-sandbox"],
+    ["opencode", "in-sandbox"],
   ])("reads asks on a %s agent: %s", (harness, asks) => {
     const value = parsedValue("agent", agent(`harness: ${harness}`, `asks: ${asks}`));
     expect(value.asks).toBe(asks);
@@ -35,7 +36,7 @@ verifies("format.agent-asks", () => {
           `asks asks-needs-a-program-harness ${3 + lines.length}`,
         ]);
         expect(problems[0]?.message).toBe(
-          `asks works only for an agent with harness: claude-code or harness: codex, and this one runs in ${harness}. Remove asks, or set harness: claude-code or harness: codex.`,
+          `asks works only for an agent with harness: claude-code, codex or opencode, and this one runs in ${harness}. Remove asks, or set one of those harnesses.`,
         );
       }
     });

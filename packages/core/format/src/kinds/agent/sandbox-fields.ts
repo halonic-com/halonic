@@ -8,11 +8,12 @@ import { asciiHost, posixPath } from "@halonicjs/std";
 import { foldName, relativePathProblem } from "../../shared/relative-path.ts";
 
 /**
- * The harnesses an agent can run in: Halonic's own loop, Claude Code or
- * Codex. A closed list, so a typo fails `halonic validate`; each new harness
- * adds a value here.
+ * The harnesses an agent can run in: Halonic's own loop, Claude Code, Codex
+ * or OpenCode. A closed list, so a typo fails `halonic validate`; each new
+ * harness adds a value here. OpenCode is approved at one exact version only
+ * (docs/adr/2026-11-24-opencode-harness-program.md).
  */
-export const AgentHarness = s.enum(["halonic", "claude-code", "codex"]);
+export const AgentHarness = s.enum(["halonic", "claude-code", "codex", "opencode"]);
 
 /**
  * When a harness agent's own tools ask for a person's OK (HAL-14992):
