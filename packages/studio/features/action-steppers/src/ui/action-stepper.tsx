@@ -130,7 +130,7 @@ export function ActionStepper({ view, actions, focusOnOpen = true }: ActionStepp
       ) : null}
       {stage.kind !== "ready" && canDecline(stage) ? (
         <div className="border-t border-border p-4">
-          <Button variant="ghost" onClick={actions.decline}>
+          <Button variant="secondary" onClick={actions.decline}>
             {runWords.decline}
           </Button>
         </div>

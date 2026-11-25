@@ -99,9 +99,10 @@ verifies("inbox.agent-action-items", () => {
       const root = await openAction(messaging, allowsAcme);
       const normal = card(root, "The release of acme/app is ready.");
       expect(normal.textContent).toContain("This card has a stepper Halonic can't read:");
-      expect(normal.textContent).toContain(
-        "`github.delete-repo@1` isn't in this Halonic's catalog",
-      );
+      // The quoted name is set in code type, not shown with its backticks.
+      expect(normal.textContent).toContain("github.delete-repo@1 isn't in this Halonic's catalog");
+      expect(normal.textContent).not.toContain("`");
+      expect(normal.querySelector("li code")?.textContent).toBe("github.delete-repo@1");
       expect(buttons(normal)).toEqual(["Decline"]);
     });
 

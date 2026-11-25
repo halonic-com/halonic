@@ -59,7 +59,8 @@ export function RunBar({ view, actions, runningId }: RunBarProps) {
         </Button>
       ) : null}
       <Button
-        variant="ghost"
+        // Secondary wherever Decline shows, like the Inbox's Reject next to Approve.
+        variant="secondary"
         unavailable={waits}
         onClick={() => (running ? undefined : actions.decline())}
       >
