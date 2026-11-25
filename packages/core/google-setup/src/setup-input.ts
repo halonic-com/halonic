@@ -42,6 +42,14 @@ export interface SetupService {
   readonly googleCheck?: GoogleCheck;
 }
 
+/**
+ * How a personal account's app is published (design 3.2): `testing`, the
+ * default, where the account is listed as a test user and Google ends the
+ * sign-in every 7 days, or `production`, with the user's own home page and
+ * privacy policy. A Workspace app is Internal and has neither.
+ */
+export type PersonalPublishing = "testing" | "production";
+
 /** What the setup steps are generated from (design 3.2). */
 export interface SetupInput {
   readonly route: SetupRoute;
@@ -52,6 +60,17 @@ export interface SetupInput {
   readonly projectId?: string;
   /** The ticked services, in the order Studio shows them. */
   readonly services: readonly SetupService[];
-  /** Whether step 4 (scopes) is part of the setup (D4). Default `true`. */
+  /** How a personal account's app is published. Default `testing`; a Workspace account ignores it. */
+  readonly publishing?: PersonalPublishing;
+  /**
+   * True when a personal account uses another account's app in *Testing*:
+   * step 3 then only adds this address as a test user (design 3.6).
+   */
+  readonly sharedApp?: boolean;
+  /**
+   * Whether step 4 (scopes) is part of the setup (D4). By default it is,
+   * except for a personal app in *Testing*, where Google grants the scopes at
+   * sign-in (design 3.2, "Step 4 only where it may be needed").
+   */
   readonly listScopes?: boolean;
 }

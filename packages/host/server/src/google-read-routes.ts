@@ -1,4 +1,9 @@
-import { type SetupRecord, savedConnectorState, setupSteps } from "@halonicjs/google-setup";
+import {
+  type SetupRecord,
+  savedConnectorState,
+  setupInputOf,
+  setupSteps,
+} from "@halonicjs/google-setup";
 import type { GoogleSetupReadPorts, RequestContext } from "./api.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { readSetup } from "./google-read-setup.ts";
@@ -25,6 +30,7 @@ async function setupView(
     projectId: record.projectId,
     stepsDone: record.stepsDone,
     inProductionTickedAt: record.inProductionTickedAt,
+    personalApp: record.personalApp,
     clientId: record.clientId,
     clientSecretSavedAt: record.clientSecret?.savedAt ?? null,
     signInStartedAt: record.signInStartedAt,
@@ -34,13 +40,7 @@ async function setupView(
     lastSignInEnded: record.lastSignInEnded,
     services: record.services,
     problem: savedConnectorState(record),
-    steps: setupSteps({
-      route: record.route,
-      accountType: record.accountType,
-      account: subject.account,
-      ...(record.projectId === null ? {} : { projectId: record.projectId }),
-      services: subject.services,
-    }),
+    steps: setupSteps(setupInputOf(record, subject.account, subject.services)),
   };
 }
 

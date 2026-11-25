@@ -62,6 +62,7 @@ const recordLine = `${JSON.stringify({
     projectId: null,
     stepsDone: {},
     inProductionTickedAt: null,
+    personalApp: null,
     clientId: null,
     clientSecret: null,
     signInStartedAt: null,

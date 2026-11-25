@@ -1,6 +1,6 @@
 import type { AccountType } from "./account-type.ts";
 import type { ConsolePage } from "./console-links.ts";
-import type { GoogleCheck } from "./setup-input.ts";
+import type { GoogleCheck, PersonalPublishing } from "./setup-input.ts";
 
 /**
  * A step's stable name. Progress keys ticks by it, never by number, so
@@ -27,6 +27,7 @@ export type CopyValueId =
   | "app-name"
   | "support-email"
   | "contact-email"
+  | "test-user"
   | "all-scopes"
   | "client-name";
 
@@ -36,8 +37,11 @@ export interface CopyValue {
   readonly value: string;
 }
 
-/** A tick the user must set before **Done, next**: the app is in production. */
-export type RequiredTick = "in-production";
+/**
+ * A tick the user must set before **Done, next**: the account is listed as a
+ * test user (a personal app in *Testing*), or the app is in production.
+ */
+export type RequiredTick = "test-user" | "in-production";
 
 /** What finishes a step (design 3.2, last column). */
 export type DoneWhen =
@@ -91,12 +95,23 @@ export interface ApisStep extends StepBase<"apis"> {
   readonly switchOnAllUrl?: string;
 }
 
-/** Step 3. A personal account's app is External and must be published. */
+/**
+ * Step 3. A personal account's app is External, and either stays in
+ * *Testing* with the account as a test user or is published with the user's
+ * own pages.
+ */
 export interface ConsentStep extends StepBase<"consent"> {
   readonly audience: "internal" | "external";
+  /** How the personal app is published; `null` for a Workspace app. */
+  readonly publishing: PersonalPublishing | null;
+  /**
+   * `test-user-only` when the app is another account's, so the user only
+   * adds this address under Test users (design 3.6); otherwise `all`.
+   */
+  readonly parts: "all" | "test-user-only";
 }
 
-/** Step 4, when `listScopes` is on. */
+/** Step 4: for Workspace and a published personal app, or when `listScopes` is on. */
 export interface ScopesStep extends StepBase<"scopes"> {
   readonly scopes: readonly ScopeRow[];
 }

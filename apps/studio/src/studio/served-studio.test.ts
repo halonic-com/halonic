@@ -29,6 +29,7 @@ const googleSetup = {
   projectId: null,
   stepsDone: {},
   inProductionTickedAt: null,
+  personalApp: null,
   clientId: null,
   clientSecretSavedAt: null,
   signInStartedAt: null,

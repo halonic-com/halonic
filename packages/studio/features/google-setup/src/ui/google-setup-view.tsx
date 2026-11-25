@@ -9,6 +9,7 @@ import { AccountHeader } from "./account-header.tsx";
 import { Checklist, currentStep } from "./checklist.tsx";
 import { NotAnsweringProvider, useNotAnswering } from "./not-answering.tsx";
 import { PhoneView } from "./phone-view.tsx";
+import { publishingOf } from "./required-tick.ts";
 import { resumeLine } from "./resume-line.ts";
 import { StartOver } from "./start-over.tsx";
 
@@ -166,6 +167,8 @@ function GoogleSetupBody({ item, answering, close, accounts, focus }: GoogleSetu
         }
         answering={answering}
         onAccountType={(accountType: AccountType) => edit({ kind: "account-type", accountType })}
+        publishing={publishingOf(steps)}
+        onPublish={() => edit({ kind: "publishing", publishing: "production" })}
       />
       {asking || !resumed.current ? null : (
         <p className="text-body text-fg-muted">{resumeLine(account, steps)}</p>

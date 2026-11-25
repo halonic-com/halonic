@@ -1,19 +1,19 @@
-import type { AccountType, StepId } from "@halonicjs/google-setup";
+import type { AccountType, PersonalPublishing, StepId } from "@halonicjs/google-setup";
 import { Button, CopyButton, Disclosure } from "@halonicjs/studio-kit";
 import { type ErrorAction, errorRows } from "./google-error-rows.ts";
 
 /** Props for {@link GoogleErrorList}. */
 export interface GoogleErrorListProps {
   readonly accountType: AccountType | null;
-  /** Whether step 3 asks for the "In production" tick, so the Testing row has a fix to point to. */
-  readonly canPublish: boolean;
+  /** How the personal app is published, so the Testing row has a fix to point to; `null` for Internal. */
+  readonly publishing: PersonalPublishing | null;
   /** The connector's address, for the row that says which account to choose. */
   readonly email: string;
   /** The note for the admin, for the row about an admin block. */
   readonly adminNote: string;
   readonly onOpenStep: (step: StepId) => void;
-  /** Clears the "In production" tick, so step 3 asks for it again. */
-  readonly onClearInProduction: () => void;
+  /** Clears step 3's required tick, so step 3 asks for it again. */
+  readonly onClearConsentTick: () => void;
 }
 
 /**
@@ -30,7 +30,7 @@ export function GoogleErrorList(props: GoogleErrorListProps) {
         props.onOpenStep(action.step);
         return;
       case "reopen-consent":
-        props.onClearInProduction();
+        props.onClearConsentTick();
         props.onOpenStep("consent");
         return;
       default:
@@ -40,7 +40,7 @@ export function GoogleErrorList(props: GoogleErrorListProps) {
   return (
     <Disclosure summary="Google showed an error instead?">
       <ul className="flex flex-col gap-3 p-4 text-body">
-        {errorRows(accountType, email, props.canPublish).map((row) => (
+        {errorRows(accountType, email, props.publishing).map((row) => (
           <li key={row.code} className="flex flex-col items-start gap-1">
             <strong className="text-body-strong">{row.code}</strong>
             <span>{row.fix}</span>

@@ -1,4 +1,10 @@
-import { isProjectId, type SetupEdit, type SetupStep, type StepId } from "@halonicjs/google-setup";
+import {
+  isProjectId,
+  type PersonalPublishing,
+  type SetupEdit,
+  type SetupStep,
+  type StepId,
+} from "@halonicjs/google-setup";
 import type { SetupFocus } from "@halonicjs/studio-feature-inbox/api";
 import { Button, Callout, type CalloutHandle, type SecretText } from "@halonicjs/studio-kit";
 import { failureLine } from "@halonicjs/studio-shell";
@@ -16,6 +22,7 @@ import { stepTitle } from "../step-names.ts";
 import { credentialSaves } from "./credential-saves.ts";
 import { useNotAnswering } from "./not-answering.tsx";
 import { ProblemBanner } from "./problem-banner.tsx";
+import { consentStepOf, isTicked, needsTick } from "./required-tick.ts";
 import { currentResultLines } from "./result-lines.ts";
 import { StepBody, type StepBodyProps } from "./step-body.tsx";
 import { StepMark, type StepState, stepStateWords } from "./step-mark.tsx";
@@ -136,6 +143,8 @@ export function Checklist(props: ChecklistProps) {
   }, [secretTyped]);
 
   if (current === undefined || open === undefined) return null;
+  const consent = consentStepOf(steps);
+  const consentTick = consent?.requiredTicks[0];
   const saves = credentialSaves(account, onEdit, props.onSaveSecret, (failure) => {
     setProgressFailed(
       failure === null ? undefined : failureLine("save your progress", failure.error),
@@ -145,7 +154,7 @@ export function Checklist(props: ChecklistProps) {
 
   async function doneNext() {
     if (!answering || busy || open === undefined) return;
-    if (needsTick(open, account)) return;
+    if (needsTick(open, account.record)) return;
     const projectId = open.id === "project" ? projectIdToSave() : undefined;
     if (projectId === "invalid") return;
     setBusy(true);
@@ -208,19 +217,23 @@ export function Checklist(props: ChecklistProps) {
                   account={account}
                   projectId={typedProjectId ?? account.record.projectId ?? ""}
                   projectIdError={projectIdError}
-                  canPublish={steps.some(
-                    (candidate) =>
-                      candidate.id === "consent" &&
-                      candidate.requiredTicks.includes("in-production"),
-                  )}
+                  publishing={consent?.publishing ?? null}
+                  consentTicked={consentTick !== undefined && isTicked(account.record, consentTick)}
                   onProjectId={(text) => {
                     setTypedProjectId(text);
                     setProjectIdError(null);
                   }}
-                  onInProduction={function tick(ticked: boolean) {
-                    onEdit({ kind: "in-production", ticked }).catch((error: unknown) => {
+                  onConsentTick={function tick(ticked: boolean) {
+                    if (consentTick === undefined) return;
+                    onEdit({ kind: consentTick, ticked }).catch((error: unknown) => {
                       setFailed(failureLine("save your progress", error));
                       retry.current = () => tick(ticked);
+                    });
+                  }}
+                  onPublishing={function publish(publishing: PersonalPublishing) {
+                    onEdit({ kind: "publishing", publishing }).catch((error: unknown) => {
+                      setFailed(failureLine("save your progress", error));
+                      retry.current = () => publish(publishing);
                     });
                   }}
                   onEditProject={() => setEditing("project")}
@@ -331,22 +344,16 @@ function StepRow(props: StepRowProps) {
   );
 }
 
-/** Whether the step needs a tick the account doesn't have yet: "In production". */
-function needsTick(step: SetupStep, account: GoogleSetupAccount): boolean {
-  return (
-    step.requiredTicks.includes("in-production") && account.record.inProductionTickedAt === null
-  );
-}
-
 interface OpenStepProps {
   readonly step: SetupStep;
   readonly account: GoogleSetupAccount;
   readonly projectId: string;
   readonly projectIdError: string | null;
-  /** Whether step 3 asks for the "In production" tick. */
-  readonly canPublish: boolean;
+  readonly publishing: StepBodyProps["publishing"];
+  readonly consentTicked: boolean;
   readonly onProjectId: (text: string) => void;
-  readonly onInProduction: (ticked: boolean) => void;
+  readonly onConsentTick: (ticked: boolean) => void;
+  readonly onPublishing: StepBodyProps["onPublishing"];
   readonly onEditProject: () => void;
   readonly onOpenStep: (step: StepId) => void;
   readonly credentials: StepBodyProps["credentials"];
@@ -365,6 +372,13 @@ interface OpenStepProps {
   readonly close: () => void;
 }
 
+/** Why **Done, next** waits in step 3: the tick it needs, named as the box says it. */
+function tickReason(step: SetupStep, email: string): string {
+  return step.requiredTicks.includes("test-user")
+    ? `Tick '${email} is listed under "Test users"' to go on.`
+    : "Tick 'In production' to go on.";
+}
+
 /** What an open step shows under its title: why, **Not now** and **Done, next**. */
 function OpenStep(props: OpenStepProps) {
   const { step, account, answering, busy, failed, onRetry, onDone, close } = props;
@@ -375,22 +389,23 @@ function OpenStep(props: OpenStepProps) {
   useEffect(() => {
     if (failed !== undefined) callout.current?.focus();
   }, [failed]);
-  const tickMissing = needsTick(step, account);
-  const unavailableText = answering ? "Tick 'In production' to go on." : notAnswering;
+  const tickMissing = needsTick(step, account.record);
+  const unavailableText = answering ? tickReason(step, account.email) : notAnswering;
   return (
     <div className="flex flex-col gap-3 pl-9 pt-2">
       <p className="text-body">{stepWhy(step)}</p>
       <StepBody
         step={step}
         accountType={account.record.accountType}
-        canPublish={props.canPublish}
-        inProduction={account.record.inProductionTickedAt !== null}
+        publishing={props.publishing}
+        consentTicked={props.consentTicked}
         projectId={props.projectId}
         projectIdError={props.projectIdError}
         answering={answering}
         serviceName={(id) => account.services.find((service) => service.id === id)?.label ?? id}
         onProjectId={props.onProjectId}
-        onInProduction={props.onInProduction}
+        onConsentTick={props.onConsentTick}
+        onPublishing={props.onPublishing}
         onEditProject={props.onEditProject}
         onOpenStep={props.onOpenStep}
         credentials={props.credentials}

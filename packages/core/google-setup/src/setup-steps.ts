@@ -1,6 +1,6 @@
 import { consoleUrl, enableAllApisUrl, isProjectId } from "./console-links.ts";
 import { mergeApis, mergeScopes } from "./service-rows.ts";
-import type { SetupInput } from "./setup-input.ts";
+import type { PersonalPublishing, SetupInput } from "./setup-input.ts";
 import type {
   CopyValue,
   CopyValueId,
@@ -30,7 +30,8 @@ type UnnumberedStep = Unnumbered<SetupStep>;
  *
  * @param input - the route, the account, the project ID if known, and the
  *   ticked services with their sheets' Google fields.
- * @returns the steps in order, numbered after step 4 is left in or out.
+ * @returns the steps in order, numbered after step 4 is left in or out: six
+ *   for a personal app in *Testing*, seven otherwise.
  * @throws RangeError when no service is ticked, two services share an id, or
  *   a sheet's API isn't a Google API host.
  *
@@ -54,7 +55,7 @@ export function setupSteps(input: SetupInput): SetupSteps {
     apisStep(input, projectId),
     consentStep(input, projectId),
   ];
-  if (input.listScopes ?? true) {
+  if (input.listScopes ?? personalPublishing(input) !== "testing") {
     steps.push(scopesStep(scopes, projectId));
   }
   steps.push(clientStep(projectId), credentialsStep(projectId), signInStep(input, scopes));
@@ -75,6 +76,11 @@ function checkServices(input: SetupInput): void {
   if (ids.size !== input.services.length) {
     throw new RangeError("Two ticked services share an id. Each service is listed once.");
   }
+}
+
+/** How the app is published for a personal account, or `null` for a Workspace one. */
+function personalPublishing(input: SetupInput): PersonalPublishing | null {
+  return input.accountType === "personal" ? (input.publishing ?? "testing") : null;
 }
 
 function copyValue(id: CopyValueId, value: string): CopyValue {
@@ -113,7 +119,8 @@ function apisStep(input: SetupInput, projectId: string | undefined): UnnumberedS
 }
 
 function consentStep(input: SetupInput, projectId: string | undefined): UnnumberedStep {
-  const personal = input.accountType === "personal";
+  const publishing = personalPublishing(input);
+  const testing = publishing === "testing";
   return {
     ...stepBase("consent"),
     links: [
@@ -124,10 +131,14 @@ function consentStep(input: SetupInput, projectId: string | undefined): Unnumber
       copyValue("app-name", appName),
       copyValue("support-email", input.account),
       copyValue("contact-email", input.account),
+      ...(testing ? [copyValue("test-user", input.account)] : []),
     ],
-    // An External app left in Testing loses its sign-in after 7 days.
-    requiredTicks: personal ? ["in-production"] : [],
-    audience: personal ? "external" : "internal",
+    // Google lets only listed test users into an app in Testing, and a
+    // published app must say it is in production (design 3.2).
+    requiredTicks: publishing === null ? [] : [testing ? "test-user" : "in-production"],
+    audience: publishing === null ? "internal" : "external",
+    publishing,
+    parts: testing && input.sharedApp === true ? "test-user-only" : "all",
   };
 }
 

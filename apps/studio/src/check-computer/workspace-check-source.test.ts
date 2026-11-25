@@ -294,6 +294,7 @@ verifies("studio.check-computer.source", () => {
       projectId: null,
       stepsDone: Object.fromEntries(done.map((id) => [id, started])),
       inProductionTickedAt: null,
+      personalApp: null,
       clientId: null,
       clientSecret: null,
       signInStartedAt: null,

@@ -15,10 +15,18 @@ const refusedAt = (daysAgo: number) =>
     },
   });
 const fine = { result: { kind: "works" as const }, checkedAt: "2026-11-12T02:10:00.000Z" };
+/** A personal app published with the user's own pages: seven steps, with Scopes. */
+const published = {
+  personalApp: { publishing: "production", testUserTickedAt: null, sharedApp: false },
+} as const;
 
 verifies("google-setup.setup-source", () => {
   it("names the next step of a setup under way", () => {
-    const entry = setupEntry(account(record(["project", "apis", "consent"])), clockTime, now);
+    const entry = setupEntry(
+      account(record(["project", "apis", "consent"], published)),
+      clockTime,
+      now,
+    );
     expect(entry).toMatchObject({
       account: "gaccount_1",
       title: "Set up Google for x@example.com",
@@ -26,8 +34,13 @@ verifies("google-setup.setup-source", () => {
     });
   });
 
+  it("counts six steps for a personal app in Testing, with no Scopes step", () => {
+    const entry = setupEntry(account(record(["project", "apis", "consent"])), clockTime, now);
+    expect(entry?.progress).toBe("Step 4 of 6 · Client");
+  });
+
   it("starts at the project step of a setup not begun", () => {
-    const entry = setupEntry(account(record([])), clockTime, now);
+    const entry = setupEntry(account(record([], published)), clockTime, now);
     expect(entry?.progress).toBe("Step 1 of 7 · Project");
   });
 
@@ -36,7 +49,7 @@ verifies("google-setup.setup-source", () => {
       services: { ledger: { result: { kind: "unreachable" }, checkedAt: fine.checkedAt } },
     });
     expect(setupEntry(account(failed), clockTime, now)?.progress).toBe(
-      "Step 7 of 7 · 1 service to fix",
+      "Step 6 of 6 · 1 service to fix",
     );
   });
 
@@ -111,11 +124,18 @@ verifies("google-setup.setup-source", () => {
   });
 
   it("offers the steps of a service added later", () => {
-    const done = record(allSteps, { services: { ledger: fine } });
+    const done = record(allSteps, { services: { ledger: fine }, ...published });
     expect(setupEntry(account(done, { adding: [atlas] }), clockTime, now)).toMatchObject({
       title: "Add Atlas to x@example.com",
       progress: "3 steps for Atlas",
     });
+  });
+
+  it("offers two steps for a service added to a personal app in Testing: APIs and sign-in", () => {
+    const done = record(allSteps, { services: { ledger: fine } });
+    expect(setupEntry(account(done, { adding: [atlas] }), clockTime, now)?.progress).toBe(
+      "2 steps for Atlas",
+    );
   });
 
   it("names every added service", () => {

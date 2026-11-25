@@ -1,7 +1,13 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { accountTypeFromAddress } from "./account-type.ts";
-import { atlasService, ledgerService, personalSetup } from "./services.test-helper.ts";
+import {
+  atlasService,
+  ledgerService,
+  personalSetup,
+  publishedSetup,
+} from "./services.test-helper.ts";
+import type { SetupInput } from "./setup-input.ts";
 import type { SetupStep, StepId } from "./setup-step.ts";
 import { setupSteps } from "./setup-steps.ts";
 
@@ -25,7 +31,7 @@ function copyValues(setupStep: SetupStep): Record<string, string> {
 
 verifies("google-setup.steps", () => {
   it("lists the seven steps in order with the flow's own values", () => {
-    const { steps } = setupSteps(personalSetup([ledgerService]));
+    const { steps } = setupSteps(publishedSetup([ledgerService]));
     expect(steps.map(({ id, number }) => `${number} ${id}`)).toEqual([
       "1 project",
       "2 apis",
@@ -54,7 +60,7 @@ verifies("google-setup.steps", () => {
   });
 
   it("lists one service's API and scope without a switch-on-all link", () => {
-    const { steps } = setupSteps(personalSetup([ledgerService]));
+    const { steps } = setupSteps(publishedSetup([ledgerService]));
     const apis = step(steps, "apis");
     expect(apis.apis.map((row) => row.name)).toEqual(["Ledger API"]);
     expect(apis.switchOnAllUrl).toBeUndefined();
@@ -64,7 +70,7 @@ verifies("google-setup.steps", () => {
   });
 
   it("joins the services' APIs and scopes, keeping each service's reason", () => {
-    const { steps, services } = setupSteps(personalSetup([ledgerService, atlasService]));
+    const { steps, services } = setupSteps(publishedSetup([ledgerService, atlasService]));
     expect(services).toEqual([
       { id: "ledger", label: "Ledger" },
       { id: "atlas", label: "Atlas" },
@@ -108,7 +114,7 @@ verifies("google-setup.steps", () => {
         { scope: "https://www.googleapis.com/auth/ledger", reason: "Writes your ledger" },
       ],
     };
-    const { steps } = setupSteps(personalSetup([repeated]));
+    const { steps } = setupSteps(publishedSetup([repeated]));
     expect(step(steps, "scopes").scopes).toEqual([
       {
         scope: "https://www.googleapis.com/auth/ledger",
@@ -119,13 +125,13 @@ verifies("google-setup.steps", () => {
   });
 
   it("refuses a setup with no services or with two services of one id", () => {
-    expect(() => setupSteps(personalSetup([]))).toThrow(RangeError);
-    expect(() => setupSteps(personalSetup([ledgerService, ledgerService]))).toThrow(RangeError);
+    expect(() => setupSteps(publishedSetup([]))).toThrow(RangeError);
+    expect(() => setupSteps(publishedSetup([ledgerService, ledgerService]))).toThrow(RangeError);
   });
 });
 
 verifies("google-setup.step-links", () => {
-  const twoServices = personalSetup([ledgerService, atlasService]);
+  const twoServices = publishedSetup([ledgerService, atlasService]);
 
   it("opens every Console link in the project when its ID is known", () => {
     const { steps, projectIdIgnored } = setupSteps({ ...twoServices, projectId: "halonic-x1" });
@@ -190,18 +196,19 @@ verifies("google-setup.step-links", () => {
       "LEDGER.googleapis.com",
     ]) {
       const service = { ...ledgerService, googleApis: [{ api, name: "Ledger API" }] };
-      expect(() => setupSteps(personalSetup([service])), api).toThrow(RangeError);
+      expect(() => setupSteps(publishedSetup([service])), api).toThrow(RangeError);
     }
   });
 });
 
 verifies("google-setup.workspace-or-personal", () => {
-  it("makes a personal account's app External, published and warned about", () => {
+  it("makes a personal account's app External, warned about, and in Testing by default", () => {
     const { steps, accountType } = setupSteps(personalSetup([ledgerService]));
     expect(accountType).toBe("personal");
     expect(step(steps, "project").location).toBe("any");
     expect(step(steps, "consent").audience).toBe("external");
-    expect(step(steps, "consent").requiredTicks).toEqual(["in-production"]);
+    expect(step(steps, "consent").publishing).toBe("testing");
+    expect(step(steps, "consent").requiredTicks).toEqual(["test-user"]);
     expect(step(steps, "sign-in").beforeSignIn).toBe("warning-preview");
   });
 
@@ -210,6 +217,7 @@ verifies("google-setup.workspace-or-personal", () => {
     const { steps } = setupSteps(setup);
     expect(step(steps, "project").location).toBe("inside-organisation");
     expect(step(steps, "consent").audience).toBe("internal");
+    expect(step(steps, "consent").publishing).toBeNull();
     expect(step(steps, "consent").requiredTicks).toEqual([]);
     expect(step(steps, "sign-in").beforeSignIn).toBe("admin-note");
   });
@@ -224,7 +232,7 @@ verifies("google-setup.workspace-or-personal", () => {
 
 verifies("google-setup.scopes-switch", () => {
   it("leaves step 4 out and renumbers the rest, keeping their ids", () => {
-    const { steps } = setupSteps({ ...personalSetup([ledgerService]), listScopes: false });
+    const { steps } = setupSteps({ ...publishedSetup([ledgerService]), listScopes: false });
     expect(steps.map(({ id, number }) => `${number} ${id}`)).toEqual([
       "1 project",
       "2 apis",
@@ -236,14 +244,21 @@ verifies("google-setup.scopes-switch", () => {
   });
 
   it("still lists the scopes to grant on step 7", () => {
-    const { steps } = setupSteps({ ...personalSetup([ledgerService]), listScopes: false });
+    const { steps } = setupSteps({ ...publishedSetup([ledgerService]), listScopes: false });
     expect(step(steps, "sign-in").scopesToGrant.map((row) => row.scope)).toEqual([
       "https://www.googleapis.com/auth/ledger",
     ]);
   });
 
-  it("lists step 4 when the switch isn't set", () => {
-    const { steps } = setupSteps(personalSetup([ledgerService]));
-    expect(steps.some((s) => s.id === "scopes")).toBe(true);
+  it("lists step 4 when the switch isn't set, except for a personal app in Testing", () => {
+    const listed = (input: SetupInput) => setupSteps(input).steps.some((s) => s.id === "scopes");
+    expect(listed(publishedSetup([ledgerService]))).toBe(true);
+    expect(listed({ ...personalSetup([ledgerService]), accountType: "workspace" })).toBe(true);
+    expect(listed(personalSetup([ledgerService]))).toBe(false);
+  });
+
+  it("brings step 4 back for a personal app in Testing when the switch is on", () => {
+    const { steps } = setupSteps({ ...personalSetup([ledgerService]), listScopes: true });
+    expect(steps.map((s) => s.id)).toContain("scopes");
   });
 });

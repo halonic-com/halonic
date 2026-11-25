@@ -365,7 +365,7 @@ verifies("google-setup.resume-and-start-over", () => {
     expect(fake.startOvers).toEqual(["gaccount_1"]);
     expect(dialog(container)).toBeNull();
     expect(document.activeElement?.tagName).toBe("H3");
-    expect(document.activeElement?.textContent).toContain("Step 1 of 7");
+    expect(document.activeElement?.textContent).toContain("Step 1 of 6");
     expect(container.textContent).not.toContain("You started this");
   });
 

@@ -1,18 +1,30 @@
 import type { Clock } from "@halonicjs/ports";
-import type { SetupRecord, SetupValues } from "./setup-record.ts";
+import {
+  type PersonalApp,
+  personalAppOf,
+  type SetupRecord,
+  type SetupValues,
+} from "./setup-record.ts";
 import { SetupRecordError } from "./setup-record-error.ts";
 import type { StepId } from "./setup-step.ts";
 import type { StoredSetups } from "./stored-setups.ts";
 
-/** The steps another account's app has already done for a shared client: 1 to 6. */
-const stepsDoneBySharedApp = [
-  "project",
-  "apis",
-  "consent",
-  "scopes",
-  "client",
-  "credentials",
-] as const satisfies readonly StepId[];
+/**
+ * The steps another account's app has already done for a shared client: 1 to
+ * 6. Step 3 opens again for an app in *Testing*, because Google lets in only
+ * the listed test users, so this address has to be added too (design 3.6).
+ */
+function stepsDoneBySharedApp(app: PersonalApp): readonly StepId[] {
+  const steps: StepId[] = ["project", "apis", "scopes", "client", "credentials"];
+  return app.publishing === "testing" ? steps : [...steps, "consent"];
+}
+
+/** Whether the app's step 3 is finished: the test user listed, or in production. */
+function hasWorkingConsent(app: PersonalApp, values: SetupValues): boolean {
+  return app.publishing === "testing"
+    ? app.testUserTickedAt !== null
+    : values.inProductionTickedAt !== null;
+}
 
 /**
  * Whether the setup already has a client of its own. Sharing would replace
@@ -38,18 +50,19 @@ export async function shareClient(
 ): Promise<SetupRecord> {
   const values = await stored.readExisting(accountRef);
   const from = await stored.readExisting(fromAccountRef);
+  const fromApp = personalAppOf(from);
   // Only a personal account's External app can be shared: a Workspace
   // Internal app doesn't work across organisations (design 3.6).
   const canShare =
     accountRef !== fromAccountRef &&
     values.accountType === "personal" &&
-    from.accountType === "personal" &&
-    from.inProductionTickedAt !== null &&
+    fromApp !== null &&
+    hasWorkingConsent(fromApp, from) &&
     from.clientId !== null &&
     from.clientSecret !== null &&
     from.lastSignInAt !== null &&
     !hasOwnClient(values);
-  if (!canShare) {
+  if (!canShare || fromApp === null) {
     throw new SetupRecordError("cannot-share");
   }
   const now = clock.now().toISOString();
@@ -59,11 +72,12 @@ export async function shareClient(
     {
       projectId: from.projectId,
       inProductionTickedAt: from.inProductionTickedAt,
+      personalApp: { publishing: fromApp.publishing, testUserTickedAt: null, sharedApp: true },
       clientId: from.clientId,
       clientSecret: from.clientSecret,
       stepsDone: {
         ...values.stepsDone,
-        ...Object.fromEntries(stepsDoneBySharedApp.map((step) => [step, now])),
+        ...Object.fromEntries(stepsDoneBySharedApp(fromApp).map((step) => [step, now])),
       },
     },
     now,

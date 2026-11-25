@@ -56,6 +56,10 @@ async function type(input: HTMLInputElement, text: string): Promise<void> {
 }
 
 const ticked = "2026-11-12T02:10:00.000Z";
+/** A personal app published with the user's own pages, so step 3 asks for "In production". */
+const published = {
+  personalApp: { publishing: "production", testUserTickedAt: null, sharedApp: false },
+} as const;
 
 verifies("google-setup.step-bodies", () => {
   it("shows step 1 with its link, the project name to copy and the Project ID field", async () => {
@@ -113,7 +117,7 @@ verifies("google-setup.step-bodies", () => {
   });
 
   it("holds Done, next in step 3 until In production is ticked, with its reason", async () => {
-    const { fake, container } = await open(account(record(["project", "apis"])));
+    const { fake, container } = await open(account(record(["project", "apis"], published)));
     const done = button(container, "Done, next");
     expect(done.getAttribute("aria-disabled")).toBe("true");
     const reason = document.getElementById(done.getAttribute("aria-describedby") ?? "");

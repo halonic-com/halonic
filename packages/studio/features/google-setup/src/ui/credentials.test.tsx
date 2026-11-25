@@ -316,7 +316,7 @@ verifies("google-setup.secret-field", () => {
   it("opens step 6 with the cursor in the empty secret field when asked for the secret", async () => {
     const { container } = await open(account(record(upToClient)), {}, "secret");
     const { secret } = inputs(container);
-    expect(container.textContent).toContain("Step 6 of 7");
+    expect(container.textContent).toContain("Step 5 of 6");
     expect(document.activeElement).toBe(secret);
     expect(secret.value).toBe("");
   });
@@ -336,7 +336,7 @@ verifies("google-setup.secret-field", () => {
     );
     await type(inputs(container).secret, fakeSecret);
     await press(button(container, "Save secret"));
-    expect(container.textContent).toContain("Step 7 of 7");
+    expect(container.textContent).toContain("Step 6 of 6");
   });
 
   it("opens at the current step as before when nothing was asked for", async () => {

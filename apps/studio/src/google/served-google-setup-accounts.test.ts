@@ -12,6 +12,7 @@ const setup = {
   projectId: null,
   stepsDone: { project: "2026-11-08T10:05:00.000Z" },
   inProductionTickedAt: null,
+  personalApp: null,
   clientId: null,
   clientSecretSavedAt: null,
   signInStartedAt: null,

@@ -1,4 +1,4 @@
-import { setupSteps } from "@halonicjs/google-setup";
+import { setupInputOf, setupSteps } from "@halonicjs/google-setup";
 import type { GoogleFact } from "@halonicjs/studio-feature-check-computer/api";
 import type { GoogleSetupAccount } from "@halonicjs/studio-feature-google-setup/api";
 
@@ -16,13 +16,7 @@ export function googleSetupFacts(accounts: readonly GoogleSetupAccount[]): Googl
   return accounts.flatMap((account) => {
     if (account.services.length === 0) return [];
     const { record } = account;
-    const steps = setupSteps({
-      route: record.route,
-      accountType: record.accountType,
-      account: account.email,
-      ...(record.projectId === null ? {} : { projectId: record.projectId }),
-      services: account.services,
-    }).steps;
+    const steps = setupSteps(setupInputOf(record, account.email, account.services)).steps;
     const next = steps.find((step) => record.stepsDone[step.id] === undefined);
     if (next === undefined) return [];
     return [
