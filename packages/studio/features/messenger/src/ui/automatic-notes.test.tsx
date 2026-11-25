@@ -4,7 +4,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { Messenger } from "../messenger.ts";
-import { openChat, openMessenger, settle } from "../test-support/page.tsx";
+import { openChat, openMessenger, said, settle } from "../test-support/page.tsx";
 import { unmountAll } from "../test-support/render.tsx";
 
 afterEach(unmountAll);
@@ -81,6 +81,24 @@ verifies("messenger.automatic-notes", () => {
       expect(row(page, "Chief")?.querySelector("[data-unread]")).toBeNull();
       await openChat(page, "Chief");
       expect(header(page)).toBe("Paperclip · Acme · Working");
+    });
+
+    it("isn't read out as Chief's reply, and Chief's answer after it is", async () => {
+      const { messaging, clock, chat } = acme();
+      const page = await openMessenger(messaging, [], false, noon);
+      await openChat(page, "Chief");
+      clock.now = new Date(2026, 10, 25, 9, 0, 2);
+      await act(async () => {
+        messaging.addMessage(chat.id, { body: "On it. Checking the build.", automatic: true });
+      });
+      await settle();
+      expect(said(page)).toBe("");
+      clock.now = new Date(2026, 10, 25, 9, 4);
+      await act(async () => {
+        messaging.addMessage(chat.id, { body: "Yes, 0.3 is built." });
+      });
+      await settle();
+      expect(said(page)).toBe("Chief: Yes, 0.3 is built.");
     });
 
     it("isn't the reply: the chat doesn't wait for the board until Chief answers", async () => {

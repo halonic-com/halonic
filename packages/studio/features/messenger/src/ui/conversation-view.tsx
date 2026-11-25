@@ -225,12 +225,18 @@ function reportRead(error: unknown): void {
   console.error("The chat couldn't be read:", error);
 }
 
-/** The newest message an agent wrote that wasn't in the chat at the last read. */
+/**
+ * The newest message an agent wrote that wasn't in the chat at the last read. An automatic note
+ * isn't the agent's reply, so it isn't read out as one (`messenger.automatic-notes`).
+ */
 function newestFromAgent(
   found: readonly Message[],
   before: ReadonlySet<Message["id"]>,
 ): Message | undefined {
-  return found.filter((message) => message.author.kind !== "me" && !before.has(message.id)).at(-1);
+  return found.findLast(
+    (message) =>
+      message.author.kind !== "me" && message.automatic !== true && !before.has(message.id),
+  );
 }
 
 /** The conversation's agent, its source and activity, and the search through its messages. */
