@@ -48,12 +48,16 @@ function chiefWithCards(cards: number) {
 }
 
 /** The timeline's entries in order, as text: a message, an open card, or an answered card's record. */
+/** The timeline's entries, without the day's label before them. */
 function timeline(page: HTMLElement): string[] {
-  return [...page.querySelectorAll("main ol > li")].map((entry) => entry.textContent ?? "");
+  return [...page.querySelectorAll("main ol > li:not([data-day])")].map(
+    (entry) => entry.textContent ?? "",
+  );
 }
 
+/** The bar's count, without its Next. */
 function bar(page: HTMLElement): string | undefined {
-  return page.querySelector("[data-cards-bar]")?.textContent ?? undefined;
+  return page.querySelector("[data-cards-bar] button")?.textContent ?? undefined;
 }
 
 verifies("messenger.inline-cards", () => {
@@ -98,7 +102,7 @@ verifies("messenger.inline-cards", () => {
       const page = await openMessenger(messaging);
       await openChat(page, "Chief");
       clock.now = new Date(2026, 10, 25, 12, 10);
-      await press(byText(page, "main ol > li:nth-child(2) button", "Approve"));
+      await press(byText(page, "main ol > li:nth-child(3) button", "Approve"));
       const entries = timeline(page);
       expect(entries[1]).toBe("Answered: Approve, 12:10");
       expect(entries[2]).toContain("Merge #2?");
@@ -121,7 +125,11 @@ verifies("messenger.inline-cards", () => {
       expect(bar(page)).toBe("1 card waiting");
       await press(byText(page, "main ol button", "Reject"));
       expect(bar(page)).toBeUndefined();
-      expect(timeline(page)).toEqual(["Chief: Morning", "Answered: Reject, 11:30", "Chief: Done"]);
+      expect(timeline(page)).toEqual([
+        "CChief · 09:00Chief: Morning",
+        "Answered: Reject, 11:30",
+        "CChief · 11:30Chief: Done",
+      ]);
     });
 
     it("in a channel with open cards, shows only the waiting bar, not the cards bar", async () => {

@@ -35,12 +35,20 @@ export const messengerWords = {
    */
   load: {
     chats: "Loading your chats",
+    chat: "Loading this chat",
     chatsFailed: "Couldn't load your chats",
+    chatFailed: "Couldn't load this chat",
     tryAgain: "Try again",
     /** After 10 seconds, the kit List's own words. */
     slow: "Still loading",
   },
-  /** A row's chip while its agent's cards wait (design review HAL-18481, improvement 4). */
+  /** The chat's times and markers (design review HAL-18481, improvements 1, 2 and 4). */
+  today: "Today",
+  yesterday: "Yesterday",
+  sending: "Sending…",
+  /** The pill over the box while replies came in below where the person reads. */
+  newMessages: (count: number) => (count === 1 ? "1 new message" : `${count} new messages`),
+  /** A row's chip while its agent's cards wait. */
   openCards: (count: number) => (count === 1 ? "1 card" : `${count} cards`),
   /** The unread dot, for a screen reader. */
   unread: "Unread",

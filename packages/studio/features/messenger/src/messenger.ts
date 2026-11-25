@@ -183,14 +183,20 @@ export class Messenger {
    * files: nothing is queued to send later (ADR, Offline). A refusal from the
    * source keeps them too; only a sent message clears them, and the draft only
    * while it still holds what was sent, so text typed during the send stays.
-   * In a channel it goes to the agents the person picked, or else the lead.
+   * In a channel it goes to the agents the person picked, or else the lead. `sending` hears the
+   * text once it is on its way, so the chat can show it at once (`messenger.chat-transcript`).
    */
-  async sendDraft(conversation: MessagingId, row?: ConversationRow): Promise<DraftOutcome> {
+  async sendDraft(
+    conversation: MessagingId,
+    row?: ConversationRow,
+    sending?: (body: string) => void,
+  ): Promise<DraftOutcome> {
     const body = this.draft(conversation);
     const files = this.files.of(conversation);
     if (body.trim() === "" && files.length === 0) return { outcome: "kept", reason: "blank" };
     const refusal = row === undefined ? undefined : refusalOf(row);
     if (refusal !== undefined) return { outcome: "kept", reason: refusal };
+    sending?.(body);
     const result = await this.send(conversation, body);
     if (result.outcome === "refused") return { outcome: "kept", reason: result.reason };
     if (this.draft(conversation) === body) this.drafts.delete(conversation);
