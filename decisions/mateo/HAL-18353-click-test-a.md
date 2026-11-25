@@ -3,6 +3,7 @@
 - Approval: the task asks for this change (HAL-18353, plan approved with changes on HAL-18317);
   Liam approves and signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:zZuYy+WYALx1IUs0ph9k8vzPJSobdIreYECNuwXQNP+7A8/+oTSaavlbLYZQht3L8U6Dty6QFF7pMRJ7sp0rCw==
 
 ## What changes
 
