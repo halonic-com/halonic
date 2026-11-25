@@ -209,18 +209,39 @@ fn number(text: &str) -> Result<usize, String> {
 }
 
 /// Matches the items against the characters, trying every count each item
-/// allows. Values are capped at [`MAX_VALUE_CHARS`] and patterns are short,
-/// so the search stays small.
+/// allows. Each (item, position) is tried at most once: one that failed is
+/// remembered, so stacked `*` items, such as `^a*a*a*b$`, can't make the
+/// search grow exponentially. It stays within items × characters ×
+/// [`MAX_VALUE_CHARS`] steps (Liam's review of HAL-17525).
 fn match_from(items: &[Item], characters: &[char]) -> bool {
-    let Some((item, rest)) = items.split_first() else {
-        return characters.is_empty();
+    let mut failed = vec![false; (items.len() + 1) * (characters.len() + 1)];
+    match_at(items, characters, 0, 0, &mut failed)
+}
+
+fn match_at(
+    items: &[Item],
+    characters: &[char],
+    item: usize,
+    at: usize,
+    failed: &mut [bool],
+) -> bool {
+    let Some(current) = items.get(item) else {
+        return at == characters.len();
     };
-    let longest = characters
+    let state = item * (characters.len() + 1) + at;
+    if failed[state] {
+        return false;
+    }
+    let longest = characters[at..]
         .iter()
-        .take(item.max)
-        .take_while(|&&character| item.set.matches(character))
+        .take(current.max)
+        .take_while(|&&character| current.set.matches(character))
         .count();
-    (item.min..=longest)
+    let found = (current.min..=longest)
         .rev()
-        .any(|count| match_from(rest, &characters[count..]))
+        .any(|count| match_at(items, characters, item + 1, at + count, failed));
+    if !found {
+        failed[state] = true;
+    }
+    found
 }

@@ -11,23 +11,29 @@
 //! - [`open_guided`] and [`open_page`]: a guided step's page, and a
 //!   `browser` block's address checked against the web origins.
 //! - [`account`]: where the token and the signed-in account are kept.
+//! - [`DeviceFlow::sign_in`]: GitHub's device-flow sign-in, which runs
+//!   only while its stepper is open and stores the token with [`account`].
 
 pub mod account;
 mod answer;
 mod call;
+mod device_flow;
 mod kinds;
 mod opens;
 mod pattern;
 mod routes;
 mod send;
 mod services;
+mod sign_in;
 mod template;
 mod web;
 
 pub use answer::{MAX_ERROR_CHARS, error_text};
 pub use call::{MAX_LIST_ITEMS, Refusal, SendRequest, StepRef};
+pub use device_flow::{DEVICE_PAGE, DeviceFlow, NEVER_EXPIRES, is_client_id};
 pub use opens::{ANY_PAGE_GAP_MS, OpenLimiter, SAME_PAGE_GAP_MS, open_guided, open_page};
 pub use pattern::{MAX_VALUE_CHARS, Pattern};
 pub use routes::{FORMAT, Risk, RouteList};
 pub use send::{Answer, ConfirmSheet, Dialogs, Outgoing, SendResult, Sender, Tokens, Transport};
 pub use services::{GITHUB, SERVICES, Service, service};
+pub use sign_in::{Clock, CodeScreen, Keychain, SignInCancel, SignInResult, UserCode};

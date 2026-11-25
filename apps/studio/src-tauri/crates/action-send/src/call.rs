@@ -69,9 +69,25 @@ pub struct PreparedCall<'a> {
     pub body: Option<Map<String, Value>>,
 }
 
+/// Whether the text holds a control character (C0, DEL or C1) or one
+/// that changes the direction text is shown in (U+200E, U+200F,
+/// U+202A–U+202E, U+2066–U+2069). The page's values end up in the native
+/// confirmation, where such characters could hide or reorder what the user
+/// reads, so they are refused whatever the route's pattern allows (Julian's
+/// review of HAL-17525).
+pub fn has_hidden_characters(text: &str) -> bool {
+    text.chars().any(|character| {
+        character.is_control()
+            || matches!(
+                character,
+                '\u{200E}' | '\u{200F}' | '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}'
+            )
+    })
+}
+
 /// Checks each placeholder value: exactly the route's names, none empty,
-/// `.` or `..`, none holding `/`, `\`, `?`, `#` or `%`, each matching its
-/// pattern.
+/// `.` or `..`, none holding `/`, `\`, `?`, `#`, `%` or a hidden character,
+/// each matching its pattern.
 pub fn check_placeholders(
     declared: &BTreeMap<String, Pattern>,
     given: &BTreeMap<String, String>,
@@ -83,7 +99,8 @@ pub fn check_placeholders(
         let one_segment = !value.is_empty()
             && value != "."
             && value != ".."
-            && !value.contains(['/', '\\', '?', '#', '%']);
+            && !value.contains(['/', '\\', '?', '#', '%'])
+            && !has_hidden_characters(value);
         one_segment
             && declared
                 .get(name)
@@ -99,7 +116,9 @@ pub fn check_placeholders(
 fn checked_value(field: &BodyField, value: Option<&Value>) -> Result<Option<Value>, Refusal> {
     let checked = match (&field.kind, value) {
         (BodyKind::Constant(constant), None) => constant.clone(),
-        (BodyKind::Text(pattern), Some(Value::String(text))) if pattern.matches(text) => {
+        (BodyKind::Text(pattern), Some(Value::String(text)))
+            if pattern.matches(text) && !has_hidden_characters(text) =>
+        {
             Value::String(text.clone())
         }
         (BodyKind::Integer, Some(number @ Value::Number(n))) if n.is_i64() || n.is_u64() => {

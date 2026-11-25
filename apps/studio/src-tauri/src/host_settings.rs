@@ -74,6 +74,17 @@ pub(crate) fn store<R: Runtime>(
     )))
 }
 
+/// One saved value, for the shell's own use, such as the GitHub App the
+/// stepper signs in with; `None` when it isn't saved. It reads the
+/// profile, so it runs off the UI thread.
+#[cfg(desktop)]
+pub(crate) fn saved_value<R: Runtime>(
+    app: &AppHandle<R>,
+    key: &str,
+) -> Result<Option<Value>, HostSettingsRefusal> {
+    Ok(store(app)?.read()?.remove(key))
+}
+
 /// Runs one call on a worker thread: it reads and writes the profile,
 /// which must not hold up the UI.
 async fn on_worker<R, T, F>(app: AppHandle<R>, call: F) -> Result<T, HostSettingsRefusal>

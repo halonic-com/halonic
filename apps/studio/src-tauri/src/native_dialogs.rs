@@ -5,7 +5,8 @@
 //! the one before it saves the yes to run plugins and integrations without
 //! the sandbox (HAL-16466), and the three before Settings › Remote turns
 //! remote on, lets phones answer risky approvals or allows a phone to pair
-//! (HAL-17795).
+//! (HAL-17795), and the confirmation before a stepper's `admin` step is
+//! sent (HAL-18084).
 //! They are shown with `rfd`, the library `tauri-plugin-dialog` uses, called
 //! from Rust only: registering the plugin would put its script in every
 //! page, the served Studio too, replacing `alert` and `confirm`.
@@ -105,6 +106,14 @@ Allow only if you just pressed Allow in Halonic and your phone shows the same co
 /// the page's own button says.
 #[cfg(desktop)]
 const REMOTE_ALLOW_BUTTON: &str = "Allow";
+
+/// The title of the confirmation before a stepper's `admin` step is sent.
+#[cfg(desktop)]
+const SEND_STEP_TITLE: &str = "Send this request?";
+
+/// The button that sends the step.
+#[cfg(desktop)]
+const SEND_STEP_BUTTON: &str = "Send";
 
 /// Shows the folder picker; `None` when the person cancels it.
 #[cfg(desktop)]
@@ -219,6 +228,14 @@ pub fn ask_to_allow_risky_remotely<R: Runtime>(app: &AppHandle<R>) -> bool {
 #[cfg(desktop)]
 pub fn ask_to_allow_pairing<R: Runtime>(app: &AppHandle<R>) -> bool {
     ask(app, PAIRING_TITLE, PAIRING_QUESTION, REMOTE_ALLOW_BUTTON)
+}
+
+/// Shows the confirmation before a stepper's `admin` step is sent, with
+/// the request the shell built; `true` only when the person presses Send,
+/// answered as [`ask_to_trust`] answers.
+#[cfg(desktop)]
+pub fn ask_to_send_step<R: Runtime>(app: &AppHandle<R>, question: &str) -> bool {
+    ask(app, SEND_STEP_TITLE, question, SEND_STEP_BUTTON)
 }
 
 /// Shows a warning with `yes` and Cancel; `true` only for `yes`.

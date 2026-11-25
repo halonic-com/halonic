@@ -18,6 +18,9 @@ use tauri::webview::{InvokeRequest, WebviewWindow};
 
 use crate::shell;
 
+#[cfg(desktop)]
+mod actions;
+mod capabilities;
 mod device_keys;
 mod engine;
 mod engine_lock;
@@ -301,32 +304,6 @@ fn served_page_test_sees_the_connect_page_allowed_the_blob_and_record_commands_o
     }
 }
 
-#[test]
-fn served_page_test_sees_blobs_and_records_granted_to_the_local_main_window_only() {
-    // A remote page must never reach the blobs or records: the served
-    // Studio could then read every opened workspace's data.
-    for (text, permissions) in [
-        (
-            include_str!("../capabilities/desktop-blobs.json"),
-            json!(["allow-blob-put", "allow-blob-get"]),
-        ),
-        (
-            include_str!("../capabilities/desktop-records.json"),
-            json!([
-                "allow-record-append",
-                "allow-record-read",
-                "allow-record-replace"
-            ]),
-        ),
-    ] {
-        let capability: Value = serde_json::from_str(text).expect("the capability is JSON");
-        assert_eq!(capability["local"], true);
-        assert_eq!(capability["windows"], json!(["main", "inbox", "messenger"]));
-        assert!(capability.get("remote").is_none(), "{capability}");
-        assert_eq!(capability["permissions"], permissions);
-    }
-}
-
 #[cfg(desktop)]
 #[test]
 fn served_page_test_sees_the_connect_page_allowed_the_agent_host_commands_on_desktop() {
@@ -382,52 +359,4 @@ fn served_page_test_sees_the_connect_page_allowed_the_file_commands_on_desktop()
     }
     let ended = invoke(&window, CONNECT_PAGE, "fs_unwatch", json!({"watchId": 7}));
     assert_eq!(ended, Ok(Value::Null));
-}
-
-#[test]
-fn served_page_test_sees_files_granted_to_the_local_main_window_only() {
-    // A remote page must never reach the files: the served Studio could
-    // then read and change every opened workspace.
-    let text = include_str!("../capabilities/desktop-files.json");
-    let capability: Value = serde_json::from_str(text).expect("the capability is JSON");
-    assert_eq!(capability["local"], true);
-    assert_eq!(capability["windows"], json!(["main", "inbox", "messenger"]));
-    assert!(capability.get("remote").is_none(), "{capability}");
-    assert_eq!(
-        capability["permissions"],
-        json!([
-            "allow-fs-list",
-            "allow-fs-read",
-            "allow-fs-write",
-            "allow-fs-remove",
-            "allow-fs-watch",
-            "allow-fs-unwatch",
-            "allow-folder-entries",
-            "allow-folder-read",
-            "allow-folder-location"
-        ])
-    );
-}
-
-#[test]
-fn served_page_test_sees_the_agent_host_granted_to_the_local_main_window_only() {
-    // A remote page must never reach the agent host: the served Studio could
-    // then open sandbox sessions and bridges on this computer.
-    let text = include_str!("../capabilities/desktop-agent-host.json");
-    let capability: Value = serde_json::from_str(text).expect("the capability is JSON");
-    assert_eq!(capability["local"], true);
-    assert_eq!(capability["windows"], json!(["main", "inbox", "messenger"]));
-    assert!(capability.get("remote").is_none(), "{capability}");
-    assert_eq!(
-        capability["permissions"],
-        json!([
-            "allow-agent-host-request",
-            "allow-agent-host-stream",
-            "allow-agent-host-stream-end",
-            "allow-agent-host-security-updates",
-            "allow-agent-host-sandbox-choice-save",
-            "allow-engine-ready",
-            "allow-start-status"
-        ])
-    );
 }

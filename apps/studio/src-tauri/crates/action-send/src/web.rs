@@ -145,7 +145,18 @@ fn has_path_trick(decoded: &str) -> bool {
         || decoded.contains("..")
         || decoded.contains("//")
         || decoded.contains('\\')
-        || decoded.to_ascii_lowercase().contains("%2f")
+        || has_encoded_trick(decoded)
+}
+
+/// A path is decoded once. Anything still encoded as `/`, `\` or `.` after
+/// that, as `%252F`, `%255C` or `%252e%252e` leave behind, could be decoded
+/// again by the site into a path trick, so it is refused too (Julian's
+/// review of HAL-17525).
+fn has_encoded_trick(decoded: &str) -> bool {
+    let lower = decoded.to_ascii_lowercase();
+    ["%2f", "%5c", "%2e"]
+        .iter()
+        .any(|encoded| lower.contains(encoded))
 }
 
 /// Whether the decoded path starts with the prefix, where a placeholder
