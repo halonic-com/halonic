@@ -30,7 +30,7 @@ Local check:
 
 ## UX
 
-- [ ] Feels human, intuitive and approachable ([product principles](docs/guides/product-principles.md)), or nothing a user sees or reads changes.
+- [ ] Feels human, intuitive and approachable ([product principles](https://github.com/halonic-com/halonic/blob/main/docs/guides/product-principles.md)), or nothing a user sees or reads changes.
 
 ## Docs
 
