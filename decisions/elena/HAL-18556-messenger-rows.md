@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-10 (the board approved the design review HAL-18481 in full on 25 Nov, 13:28 UTC; built on HAL-18556)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:G00mzuT8ISWiZ5f4kY18p1H/+TJMymkq9XjjdSLFdO7HPCf6zOPa158jpFKxY45JwHJHpeN4G61a5HpgUsLaBg==
 
 The design review's improvement 4 gives each chat row the newest message, its time, an unread dot
 and a "1 card" chip (new requirement `messenger.chat-rows`), and says the source's label shows once,
