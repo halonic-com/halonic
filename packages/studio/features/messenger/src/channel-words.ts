@@ -16,6 +16,8 @@ export const channelWords = {
   picker: "Members · ↑↓ to pick · Enter names them · Esc closes",
   /** An agent's message whose agent the source no longer lists ("An agent left the source"). */
   authorGone: (source: string) => `No longer in ${source}`,
+  /** The same, when the source itself is gone too, so it has no label to name. */
+  authorGoneNoSource: "No longer listed",
   /** A chip's remove button, as a file's in the box. */
   unname: (name: string) => `Remove ${name}`,
   work: {
