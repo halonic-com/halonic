@@ -113,10 +113,17 @@ export class UsageAccount {
     });
   }
 
-  /** Whether `actor` may take a step now. */
-  check(actor: string): UsageAnswer {
+  /**
+   * Whether `actor` may take a step now, or with `runStart` start a run: that also counts the
+   * running runs against the caps, as {@link startRun} does, but takes no slot.
+   */
+  check(actor: string, options: { readonly runStart?: boolean } = {}): UsageAnswer {
     checkId("actor", actor);
-    return this.#storage.transactionSync(() => answer(this.#refusal(actor, {})));
+    return this.#storage.transactionSync(() => {
+      const refusal = this.#refusal(actor, {});
+      if (refusal !== null || options.runStart !== true) return answer(refusal);
+      return answer(slotRefusal(this.#storage, actor, this.#now()));
+    });
   }
 
   /**
