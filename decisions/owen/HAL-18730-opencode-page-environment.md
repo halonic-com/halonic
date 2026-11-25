@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-18730 (follow-up from HAL-18718, agreed with Liam); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2YSc2pTT75Jj9w7zQrFCDkRWMS4//T1sZmna0jkK4eqyEX3ayxhdsytoxm+qDkpcTKanqRdoMJtoq+XqQBNAAQ==
 
 The agent host already runs OpenCode agents, but the Studio page had no `environment` function for them, because `opencodeFiles` imported `node:path`. It now joins with `pathBelow` from `@halonicjs/std`, so the adapter can offer a page-safe `./environment` entry point, the same way Claude Code and Codex already do.
 
