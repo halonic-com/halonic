@@ -109,7 +109,7 @@ export const runMessages = defineMessages("run", {
     phrase`With --json, print one line for each event as it happens, then the result.`,
   /** `--harness`'s line in the help. */
   harnessOption: () =>
-    phrase`The harness every agent of the run runs in, in place of its own: halonic, claude-code, codex or opencode.`,
+    phrase`The harness all agents in the run use instead of their own: halonic, claude-code, codex or opencode.`,
   /**
    * The reason after "Couldn't run support-reply:" when `--harness` names
    * no harness (exit 2). Words for HAL-189 6b, placeholders like doctor's

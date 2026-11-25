@@ -90,6 +90,8 @@ export const buildChatWords = {
   /** H18: neither an Assistant model nor a model alias, with **Settings ›**. */
   noModel:
     "The assistant has no model yet. Add a model alias or choose an Assistant model in Settings › Assistant.",
+  /** H18 while Settings hides its Assistant section (HAL-18099), with **Open Models ›**. */
+  noModelInModels: "The assistant has no model yet. Add a model alias in Models.",
   openSettings: "Settings ›",
   /** H19: the chat's model needs a key; the model's name sits between the two, as code. */
   noUsableModel: "The assistant has no model it can use:",

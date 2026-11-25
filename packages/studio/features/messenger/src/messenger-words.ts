@@ -37,7 +37,7 @@ export const messengerWords = {
     "not-found": () => "This chat is gone. Your message stays here and isn't sent.",
     "too-large": () => filesNotSent,
     "unsupported-type": () => filesNotSent,
-    "bad-answer": () => "This can't be sent here. Your message stays here.",
+    "bad-answer": () => "This can't be sent in this chat. Your message stays here and isn't sent.",
     // Sending from this box can't get these two yet: it sends no `to` and has no channels.
     // The channels composer (phase 2, S4) gives them their own words.
     "bad-members": () => "A channel needs at least 2 agents. Your message stays here.",
