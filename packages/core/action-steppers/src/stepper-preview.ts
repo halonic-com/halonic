@@ -82,6 +82,10 @@ function definitionLines(
   return parsed.ok ? definition.preview(parsed.value) : [`Runs \`${reference}\`.`];
 }
 
+function requesterText(names: PreviewNames, lines: readonly string[]): RequesterText {
+  return { heading: `Instructions from ${names.requester}, not checked by Halonic`, lines };
+}
+
 function previewBlock(
   block: RequestBlock,
   catalog: StepperCatalog,
@@ -100,14 +104,18 @@ function previewBlock(
     }
     case "browser": {
       const fromRequester: RequesterText = {
-        heading: `Instructions from ${names.requester}, not checked by Halonic`,
-        lines: block.instructions,
+        ...requesterText(names, block.instructions),
         ...(block.result === undefined ? {} : { resultLabel: block.result.label }),
       };
       return { lines: [`Opens ${block.url}`], fromRequester };
     }
     case "server-session":
-      return { lines: [`Opens Claude Code on your server for ${block.task}.`] };
+      // The block is irreversible, so the user reads the requester's steps and
+      // "Done when" here, before any confirm screen (Liam's review of #5866).
+      return {
+        lines: [`Opens Claude Code on your server for ${block.task}.`],
+        fromRequester: requesterText(names, [...block.steps, `Done when: ${block.doneWhen}`]),
+      };
   }
 }
 
@@ -121,7 +129,7 @@ function previewBlock(
  *
  * @example
  * const preview = previewStepperRequest(checked.value, catalog, { requester: "acme-bot", service: serviceName });
- * preview.touches; // "This stepper touches: GitHub repository `acme/app`, and opens 1 page on `github.com`."
+ * preview.touches; // "This stepper touches: GitHub repository `acme/app` and opens 1 page on `github.com`."
  */
 export function previewStepperRequest(
   validated: ValidatedStepperRequest,
