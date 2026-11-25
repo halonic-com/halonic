@@ -1,8 +1,12 @@
 import {
   type GatewayClientMessage,
+  gatewayMaxAddressees,
   gatewayMaxIdLength,
   gatewayMaxMessageBytes,
   gatewayMaxPromptLength,
+  gatewayMaxSearchLength,
+  gatewayMessagingLists,
+  gatewayTeamLists,
 } from "@halonicjs/ports";
 
 /** One frame as the transport received it: its bytes, and whether it was a binary one. */
@@ -19,17 +23,62 @@ export type GatewayParseResult =
 const idPattern = new RegExp(`^[A-Za-z0-9_-]{1,${gatewayMaxIdLength}}$`);
 const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
-/** The fields each message carries besides `type`, and how each is checked. */
-const fieldChecks: Record<
+type FieldCheck = (value: unknown) => boolean;
+type Fields = Readonly<Record<string, FieldCheck>>;
+
+/** The fields a message must carry besides `type`, and the ones it may carry. */
+interface FieldSpec {
+  readonly required: Fields;
+  readonly optional?: Fields;
+}
+
+const readMessages: FieldSpec = {
+  required: { id: isId, what: isOneOf(["messages"]), conversation: isId },
+  optional: { before: isCursor },
+};
+const readList: FieldSpec = {
+  required: { id: isId, what: isOneOf(gatewayMessagingLists) },
+  optional: { cursor: isCursor },
+};
+const readSpend: FieldSpec = {
+  required: { id: isId, what: isOneOf(["spend"]) },
+  optional: { range: isOneOf(["today", "week", "month"]) },
+};
+const readPullRequest: FieldSpec = {
+  required: { id: isId, what: isOneOf(["pull-request"]), pullRequest: isId },
+};
+const readTeamList: FieldSpec = { required: { id: isId, what: isOneOf(gatewayTeamLists) } };
+
+/** The fields of the version 3 messages, all required. */
+const sessionMessages = {
+  hello: { required: { id: isId, version: Number.isSafeInteger } },
+  "list-sessions": { required: { id: isId } },
+  watch: { required: { id: isId, sessionId: isId, afterSeq: isSequence } },
+  unwatch: { required: { id: isId, sessionId: isId } },
+  "answer-approval": {
+    required: { id: isId, sessionId: isId, approvalId: isId, decision: isDecision },
+  },
+  prompt: { required: { id: isId, sessionId: isId, text: isTextUpTo(gatewayMaxPromptLength) } },
+} satisfies Record<string, FieldSpec>;
+/** The fields of each message, by its `type`; for `msg-read` and `team-read` also by its `what`. */
+const fieldSpecs: Record<
   GatewayClientMessage["type"],
-  Readonly<Record<string, (value: unknown) => boolean>>
+  FieldSpec | ((message: Record<string, unknown>) => FieldSpec)
 > = {
-  hello: { id: isId, version: Number.isSafeInteger },
-  "list-sessions": { id: isId },
-  watch: { id: isId, sessionId: isId, afterSeq: isSequence },
-  unwatch: { id: isId, sessionId: isId },
-  "answer-approval": { id: isId, sessionId: isId, approvalId: isId, decision: isDecision },
-  prompt: { id: isId, sessionId: isId, text: isPromptText },
+  ...sessionMessages,
+  "msg-read": (message) => (message["what"] === "messages" ? readMessages : readList),
+  "msg-search": { required: { id: isId, text: isTextUpTo(gatewayMaxSearchLength) } },
+  "msg-answer": { required: { id: isId, item: isId, answer: isInboxAnswer, confirmed: isTrue } },
+  "msg-send": {
+    required: { id: isId, conversation: isId, body: isTextUpTo(gatewayMaxPromptLength) },
+    optional: { to: isAddressees },
+  },
+  "msg-watch": { required: { id: isId } },
+  "msg-unwatch": { required: { id: isId } },
+  "team-read": (message) => {
+    if (message["what"] === "spend") return readSpend;
+    return message["what"] === "pull-request" ? readPullRequest : readTeamList;
+  },
 };
 
 /**
@@ -48,15 +97,24 @@ export function parseGatewayClientMessage(frame: GatewayFrame): GatewayParseResu
   const value = decodeJsonObject(frame.bytes);
   if (value === undefined) return refused("malformed");
   const type = value["type"];
-  if (typeof type !== "string" || !Object.hasOwn(fieldChecks, type)) return refused("malformed");
-  const checks = fieldChecks[type as GatewayClientMessage["type"]];
-  const names = Object.keys(value).filter((name) => name !== "type");
-  const exact = names.length === Object.keys(checks).length;
-  const valid =
-    exact && names.every((name) => Object.hasOwn(checks, name) && checks[name]?.(value[name]));
-  return valid
+  if (typeof type !== "string" || !Object.hasOwn(fieldSpecs, type)) return refused("malformed");
+  const specOrPick = fieldSpecs[type as GatewayClientMessage["type"]];
+  const spec = typeof specOrPick === "function" ? specOrPick(value) : specOrPick;
+  const { type: _type, ...fields } = value;
+  return hasExactly(fields, spec)
     ? { ok: true, message: value as unknown as GatewayClientMessage }
     : refused("malformed");
+}
+
+/** Whether `value` has every required field, no field the spec doesn't name, and each one valid. */
+function hasExactly(value: Record<string, unknown>, spec: FieldSpec): boolean {
+  const optional = spec.optional ?? {};
+  const required = Object.keys(spec.required);
+  if (!required.every((name) => Object.hasOwn(value, name))) return false;
+  return Object.keys(value).every((name) => {
+    if (Object.hasOwn(spec.required, name)) return spec.required[name]?.(value[name]) === true;
+    return Object.hasOwn(optional, name) && optional[name]?.(value[name]) === true;
+  });
 }
 
 function refused(code: "malformed" | "too-large"): GatewayParseResult {
@@ -87,6 +145,43 @@ function isDecision(value: unknown): boolean {
   return value === "approve" || value === "deny";
 }
 
-function isPromptText(value: unknown): boolean {
-  return typeof value === "string" && value.length >= 1 && value.length <= gatewayMaxPromptLength;
+function isTextUpTo(maxLength: number): FieldCheck {
+  return (value) => typeof value === "string" && value.length >= 1 && value.length <= maxLength;
+}
+
+function isOneOf(allowed: readonly string[]): FieldCheck {
+  return (value) => typeof value === "string" && allowed.includes(value);
+}
+
+/** A page cursor the host made; the phone only hands it back, so an id's rule is enough. */
+function isCursor(value: unknown): boolean {
+  return isId(value);
+}
+
+function isTrue(value: unknown): boolean {
+  return value === true;
+}
+
+function isAddressees(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.length <= gatewayMaxAddressees &&
+    value.every(isId) &&
+    new Set(value).size === value.length
+  );
+}
+
+const optionAnswer: FieldSpec = {
+  required: { kind: isOneOf(["option"]), option: isId },
+  optional: { note: isTextUpTo(gatewayMaxPromptLength) },
+};
+const replyAnswer: FieldSpec = {
+  required: { kind: isOneOf(["reply"]), text: isTextUpTo(gatewayMaxPromptLength) },
+};
+
+/** An option or a written reply, with exactly its fields; never an action item's stepper result. */
+function isInboxAnswer(value: unknown): boolean {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const answer = value as Record<string, unknown>;
+  return hasExactly(answer, answer["kind"] === "reply" ? replyAnswer : optionAnswer);
 }

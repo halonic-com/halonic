@@ -33,12 +33,12 @@ verifies("remote-gateway.e2e-session", () => {
       await settle();
       expect(t.phone.read(t.sent[1] ?? new Uint8Array(0))).toEqual({ type: "paired" });
       expect(t.phones.connections).toEqual([]);
-      t.session.receive(t.phone.say({ type: "hello", id: "h1", version: 3 }));
+      t.session.receive(t.phone.say({ type: "hello", id: "h1", version: 4 }));
       await settle();
       expect(t.phone.read(t.sent[2] ?? new Uint8Array(0))).toEqual({
         type: "welcome",
         replyTo: "h1",
-        version: 3,
+        version: 4,
         maxMessageBytes: gatewayMaxMessageBytes,
       });
       expect(t.phones.connections).toHaveLength(1);
@@ -116,7 +116,7 @@ verifies("remote-gateway.e2e-session", () => {
       await settle();
       expect(t.phone.read(t.sent[1] ?? new Uint8Array(0))).toEqual({ type: "paired" });
       t.phones.revoke(t.phone.keys.publicKey);
-      t.session.receive(t.phone.say({ type: "hello", id: "h1", version: 3 }));
+      t.session.receive(t.phone.say({ type: "hello", id: "h1", version: 4 }));
       expect(t.phone.read(t.sent[2] ?? new Uint8Array(0))).toEqual({ type: "not-paired" });
       expect(t.phones.connections).toEqual([]);
       expect(t.wire.closed).toBe(true);
@@ -167,7 +167,7 @@ verifies("remote-gateway.e2e-session", () => {
     it("closes on any frame the phone sends before the person's answer", () => {
       const t = pairedUpToMessage2();
       t.session.receive(t.phone.pair3());
-      t.session.receive(t.phone.say({ type: "hello", id: "h1", version: 3 }));
+      t.session.receive(t.phone.say({ type: "hello", id: "h1", version: 4 }));
       expect(t.wire.closed).toBe(true);
     });
 

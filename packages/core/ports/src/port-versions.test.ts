@@ -28,6 +28,7 @@ const notPorts = new Set([
   "port-versions.ts",
   "provider-default-base-url.ts",
   "remote-gateway-protocol.ts",
+  "remote-gateway-messaging.ts",
   "remote-gateway-session.ts",
   "run-failure-error.ts",
   "run-target-not-found.ts",

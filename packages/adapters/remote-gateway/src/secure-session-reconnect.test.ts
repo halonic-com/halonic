@@ -5,7 +5,7 @@ import { encodeE2eFrame } from "./e2e-frames.ts";
 import { cleartext, keyPair, TestPhone } from "./e2e-phone.test-helper.ts";
 import { openSecureSession, settle } from "./e2e-session.test-helper.ts";
 
-const hello = { type: "hello", id: "h1", version: 3 };
+const hello = { type: "hello", id: "h1", version: 4 };
 
 /** A session, a paired phone and its reconnect, up to the host's message 2. */
 function reconnected(options: { paired?: boolean; helloTimeoutMs?: number } = {}) {

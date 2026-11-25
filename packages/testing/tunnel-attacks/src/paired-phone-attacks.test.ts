@@ -7,11 +7,11 @@ import { pairPhone } from "./pairing-steps.ts";
 import { keyPair, RigPhone } from "./rig-phone.ts";
 import { op, type WireClient, wireFrame } from "./wire-client.ts";
 
-const hello = { type: "hello", id: "h1", version: 3 };
+const hello = { type: "hello", id: "h1", version: 4 };
 const welcome = {
   type: "welcome",
   replyTo: "h1",
-  version: 3,
+  version: 4,
   maxMessageBytes: gatewayMaxMessageBytes,
 };
 

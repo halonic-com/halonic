@@ -22,7 +22,7 @@ verifies("remote-gateway.connection", () => {
       const t = openConnection();
       await t.hello();
       expect(t.sent).toEqual([
-        { type: "welcome", replyTo: "h1", version: 3, maxMessageBytes: gatewayMaxMessageBytes },
+        { type: "welcome", replyTo: "h1", version: 4, maxMessageBytes: gatewayMaxMessageBytes },
       ]);
     });
 
@@ -312,6 +312,15 @@ verifies("remote-gateway.connection", () => {
       await t.say({ type: "prompt", id: "p1", sessionId: "s1", text: "go on" });
       expect(t.sent.at(-1)).toEqual({ type: "ok", replyTo: "p1" });
       expect(t.source.prompts).toEqual([{ sessionId: "s1", text: "go on" }]);
+    });
+
+    it("refuses the Inbox, Messenger and team status as not supported yet, and stays open", async () => {
+      const t = openConnection();
+      await t.hello();
+      await t.say({ type: "msg-read", id: "r1", what: "inbox" });
+      expect(t.sent.at(-1)).toEqual({ type: "error", replyTo: "r1", code: "not-supported" });
+      await t.say({ type: "team-read", id: "t1", what: "seats" });
+      expect(t.sent.at(-1)).toEqual({ type: "error", replyTo: "t1", code: "not-supported" });
     });
 
     it("refuses a prompt for an unknown session", async () => {

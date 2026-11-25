@@ -14,7 +14,7 @@ import { keyPair, RigPhone } from "./rig-phone.ts";
 import { openTunnelRig } from "./tunnel-rig.ts";
 import { op, type WireClient, wireFrame } from "./wire-client.ts";
 
-const hello = { type: "hello", id: "h1", version: 3 };
+const hello = { type: "hello", id: "h1", version: 4 };
 
 /** Runs `attack` on a fresh host rig and stops the rig afterwards. */
 async function onHost(attack: (rig: HostRig) => Promise<void>): Promise<void> {
