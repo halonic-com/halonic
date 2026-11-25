@@ -3,6 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { chatTools } from "../../testing/call-tool.test-helper.ts";
 import { testWorkspace } from "../../testing/test-workspace.test-helper.ts";
+import { builtInAuthoringInstructions } from "../authoring-skill.ts";
 import { type DocsOptions, MemoryDocsSites } from "./docs-sites.ts";
 import { pageLimit } from "./page-text.ts";
 
@@ -113,11 +114,12 @@ verifies("assistant.build.read-docs", () => {
     });
 
     it("fetches nothing while the workspace isn't trusted", async () => {
-      const { read, sent } = docsChat(undefined, { trusted: false });
+      const { read, sent, sites } = docsChat(undefined, { trusted: false });
       expect(await read(page)).toBe(
         "Not trusted yet: docs can be read once the person trusts this workspace.",
       );
       expect(sent).toEqual([]);
+      expect(sites.entries.map((entry) => entry.outcome)).toEqual(["untrusted"]);
     });
   });
 
@@ -344,5 +346,13 @@ verifies("assistant.build.read-docs", () => {
   it("is offered only when the host gives a docs client", () => {
     const without = chatTools(testWorkspace(files));
     expect(() => without("read_docs", { url: page })).toThrow("no tool read_docs");
+  });
+
+  it("is named in the built-in skill: public docs only, the person allows each site, no query", () => {
+    const skill = builtInAuthoringInstructions;
+    expect(skill).toContain("`read_docs`");
+    expect(skill).toContain("public docs");
+    expect(skill).toContain("never with a query");
+    expect(skill).toContain("The person allows each site first");
   });
 });

@@ -11,6 +11,7 @@ import {
 } from "@halonicjs/studio-kit";
 import type { WorkspaceContext } from "@halonicjs/studio-shell";
 import { ProposalCard } from "../cards/proposal-card.tsx";
+import { DocsCall } from "../cards/site-card.tsx";
 import { toolInWords, buildChatWords as words } from "../chat/build-chat-words.ts";
 import { endLine, providerSentence, type ReplyStep, type Turn } from "../chat/turns.ts";
 import { openModelsCommand } from "./model-line.tsx";
@@ -97,5 +98,13 @@ function Step({ step, place }: { readonly step: ReplyStep; readonly place: CardP
     step.shown === undefined
       ? words.tool[step.state](toolInWords(step.name))
       : words.showed(step.shown.kind, step.shown.id);
-  return <ChatToolLine state={step.state}>{line}</ChatToolLine>;
+  const toolLine = <ChatToolLine state={step.state}>{line}</ChatToolLine>;
+  if (step.name !== "read_docs") return toolLine;
+  // `read_docs` adds its log line and, when it asked about a site, the site card under it.
+  return (
+    <>
+      {toolLine}
+      <DocsCall chatId={place.chatId} callId={step.callId} context={place.context} />
+    </>
+  );
 }

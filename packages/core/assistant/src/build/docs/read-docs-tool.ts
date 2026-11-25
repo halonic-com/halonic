@@ -37,7 +37,7 @@ export function readDocsTool(chat: BuildChat, docs: DocsOptions): ChatTool {
       const log = (entry: Omit<DocsLogEntry, "at" | "url">, url = loggedUrl(raw)) =>
         docs.sites.log({ at, url, ...entry });
       if (!chat.options.isTrusted()) {
-        await log({ outcome: "refused", bytes: 0 });
+        await log({ outcome: "untrusted", bytes: 0 });
         return docsTexts.untrusted;
       }
       const checked = checkDocsUrl(raw);
@@ -95,9 +95,12 @@ function logged(fetched: Fetched): Omit<DocsLogEntry, "at" | "url"> {
     case "not-text":
       return { outcome: "not-read", status: fetched.status, bytes: 0 };
     case "too-large":
+      return { outcome: "not-read", status: fetched.status, bytes: fetched.bytes };
+    // No status, even when one came before the body broke off: the log line reads a missing
+    // status as "couldn't load" and a 2xx as a page it wouldn't read (`assistant.build.site-card`).
     case "timeout":
     case "failed":
-      return { outcome: "not-read", status: fetched.status, bytes: fetched.bytes };
+      return { outcome: "not-read", bytes: fetched.bytes };
   }
 }
 

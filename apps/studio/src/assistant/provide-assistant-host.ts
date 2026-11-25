@@ -9,7 +9,7 @@ import {
   reviewServiceKey,
   type ServiceRegistry,
 } from "@halonicjs/app";
-import type { ChatSessions } from "@halonicjs/ports";
+import type { ChatSessions, HttpClient } from "@halonicjs/ports";
 import { AssistantHostService } from "@halonicjs/studio-feature-assistant/api";
 import { ModelKeysService } from "@halonicjs/studio-feature-models/api";
 import { HostSettingsService } from "@halonicjs/studio-feature-settings/api";
@@ -39,6 +39,11 @@ export interface AssistantHostParts {
   readonly chatSessions: ChatSessions;
   /** Opens the window's trust check for a message it refused. */
   readonly askTrust?: (() => Promise<"trusted" | "declined">) | undefined;
+  /**
+   * The shell's client for public addresses only, which a trusted Build chat's `read_docs` reads
+   * docs with (`studio.assistant-read-docs`). Absent: the chat has no `read_docs`.
+   */
+  readonly docsHttp?: HttpClient | undefined;
 }
 
 /**
@@ -77,6 +82,7 @@ export function provideAssistantHost(services: ServiceRegistry, parts: Assistant
       workspaceName: parts.name,
       chats: { sessions: parts.chatSessions, location: parts.location },
       askTrust: parts.askTrust,
+      docs: parts.docsHttp === undefined ? undefined : { http: parts.docsHttp },
     }),
   );
 }

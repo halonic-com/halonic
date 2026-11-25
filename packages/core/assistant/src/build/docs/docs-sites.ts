@@ -18,9 +18,17 @@ export type SiteAnswer = "asked" | "allowed" | "declined";
  * - `not-read`: another status, a type that isn't text, or a limit was hit;
  * - `waiting`: the site isn't allowed yet, and the person sees its card;
  * - `declined`: the person didn't allow the site;
- * - `refused`: the address or the workspace's trust refused it, before any request.
+ * - `refused`: the address was refused, before any request;
+ * - `untrusted`: the workspace isn't trusted, so nothing was fetched.
  */
-export type DocsOutcome = "read" | "moved" | "not-read" | "waiting" | "declined" | "refused";
+export type DocsOutcome =
+  | "read"
+  | "moved"
+  | "not-read"
+  | "waiting"
+  | "declined"
+  | "refused"
+  | "untrusted";
 
 /** One line of a chat's docs log. It never holds a request header or the page's text. */
 export interface DocsLogEntry {

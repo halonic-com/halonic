@@ -73,6 +73,56 @@ export interface SavedChat extends SavedChatSummary {
   model: SavedChatModel;
   /** The conversation, oldest first, as the model sees it. */
   messages: ChatMessage[];
+  /**
+   * A Build chat's docs sites and docs log, for its `read_docs` tool. Missing for a chat that
+   * read no docs. Kept with the chat, never in the workspace, so no workspace file can allow a site.
+   */
+  docs?: SavedChatDocs;
+}
+
+/** What the person said about one docs site in a chat: `asked` while its card waits. */
+export type SavedSiteAnswer = "asked" | "allowed" | "declined";
+
+/** One site a Build chat asked to read docs from, and the person's answer. */
+export interface SavedDocsSite {
+  /** The site's host, exactly as its card showed it, such as `docs.example.com`. */
+  host: string;
+  answer: SavedSiteAnswer;
+  /** The `read_docs` call whose card asked, so the card sits under it. */
+  cardId: string;
+}
+
+/** How one `read_docs` call ended, as `@halonicjs/assistant` names it. */
+export type SavedDocsOutcome =
+  | "read"
+  | "moved"
+  | "not-read"
+  | "waiting"
+  | "declined"
+  | "refused"
+  | "untrusted";
+
+/** One line of a Build chat's docs log: never a request header or the page's text. */
+export interface SavedDocsLogEntry {
+  /** The `read_docs` call it is for, so it shows under that call. */
+  callId: string;
+  /** When the call was made, as ISO text. */
+  at: string;
+  /** The address, without a query or fragment. */
+  url: string;
+  outcome: SavedDocsOutcome;
+  /** The site's status, when it answered. */
+  status?: number | undefined;
+  /** How many bytes of the page were read. */
+  bytes: number;
+  /** Where a `3xx` pointed, which wasn't followed. */
+  location?: string | undefined;
+}
+
+/** A Build chat's docs sites, in the order they were asked, and its docs log, oldest first. */
+export interface SavedChatDocs {
+  sites: SavedDocsSite[];
+  log: SavedDocsLogEntry[];
 }
 
 /** A saved chat's id: 1 to 64 lowercase letters, digits and `-`, starting with a letter or digit. */
@@ -133,7 +183,55 @@ export function isSavedChat(value: unknown): value is SavedChat {
     isModel(chat.model) &&
     (chat.about === undefined || isAbout(chat.about)) &&
     Array.isArray(chat.messages) &&
-    chat.messages.every(isMessage)
+    chat.messages.every(isMessage) &&
+    (chat.docs === undefined || isDocs(chat.docs))
+  );
+}
+
+const siteAnswers: ReadonlySet<unknown> = new Set(["asked", "allowed", "declined"]);
+const docsOutcomes: ReadonlySet<unknown> = new Set([
+  "read",
+  "moved",
+  "not-read",
+  "waiting",
+  "declined",
+  "refused",
+  "untrusted",
+]);
+
+function isDocs(value: unknown): boolean {
+  if (typeof value !== "object" || value === null) return false;
+  const docs = value as { sites?: unknown; log?: unknown };
+  return (
+    Array.isArray(docs.sites) &&
+    docs.sites.every(isDocsSite) &&
+    Array.isArray(docs.log) &&
+    docs.log.every(isDocsLogEntry)
+  );
+}
+
+function isDocsSite(value: unknown): boolean {
+  if (typeof value !== "object" || value === null) return false;
+  const site = value as { host?: unknown; answer?: unknown; cardId?: unknown };
+  return (
+    typeof site.host === "string" &&
+    site.host !== "" &&
+    siteAnswers.has(site.answer) &&
+    typeof site.cardId === "string"
+  );
+}
+
+function isDocsLogEntry(value: unknown): boolean {
+  if (typeof value !== "object" || value === null) return false;
+  const entry = value as { readonly [Field in keyof SavedDocsLogEntry]?: unknown };
+  return (
+    typeof entry.callId === "string" &&
+    typeof entry.at === "string" &&
+    typeof entry.url === "string" &&
+    docsOutcomes.has(entry.outcome) &&
+    (entry.status === undefined || typeof entry.status === "number") &&
+    typeof entry.bytes === "number" &&
+    (entry.location === undefined || typeof entry.location === "string")
   );
 }
 
