@@ -2,9 +2,9 @@ import { AGENT_NAME_PATTERN, ROUTING_ROLES } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
 import { type RoutedPull, reviewerFor, reviewerRoleFor } from "./reviewer-paths.ts";
+import { snapshotWith } from "./routing.test-helper.ts";
 import { agentNamePattern, areaOwnerFor, personFor, routingRoles } from "./routing.ts";
 import { routingOf } from "./routing-load.ts";
-import { snapshotWith } from "./routing.test-helper.ts";
 
 /** The routing that names today's people. */
 const today = routingOf(

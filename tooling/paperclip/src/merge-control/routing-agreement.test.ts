@@ -4,8 +4,8 @@ import type { PullFacts } from "../pr-watcher/decide.ts";
 import { fakeGitHub } from "../pr-watcher/fakes.test-helper.ts";
 import { gitHubRoute } from "../pr-watcher/route.ts";
 import { reviewerFor, reviewerRoleFor } from "../reviewer-paths.ts";
-import { routingOf } from "../routing-load.ts";
 import { snapshotWith } from "../routing.test-helper.ts";
+import { routingOf } from "../routing-load.ts";
 import { outsideJulianScope } from "./approval.ts";
 import { pull } from "./merge-control.test-helper.ts";
 

@@ -1,8 +1,8 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
 import { fakeGitHub, recording } from "../pr-watcher/fakes.test-helper.ts";
-import { routingOf } from "../routing-load.ts";
 import { snapshotWith } from "../routing.test-helper.ts";
+import { routingOf } from "../routing-load.ts";
 import { judgeApprovals, signedApprovals } from "./approvals.ts";
 import { branchPath, prStatus, statusText } from "./pr-status.ts";
 

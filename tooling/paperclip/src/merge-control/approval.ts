@@ -1,4 +1,9 @@
-import { isLiamPath, julianRebaseRefusal, overLineLimit, reviewerRoleFor } from "../reviewer-paths.ts";
+import {
+  isLiamPath,
+  julianRebaseRefusal,
+  overLineLimit,
+  reviewerRoleFor,
+} from "../reviewer-paths.ts";
 import { anySignedApproval, blockWords, fixedWords, signedApproval } from "./signed.ts";
 import type { GatePull, PullText } from "./snapshot.ts";
 
