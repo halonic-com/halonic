@@ -2,6 +2,7 @@
 
 - Approval: Liam chose option A on HAL-18230 (a `github.merge-queue` handler in the runtime), scoped on HAL-18231; this is a security pull request, reviewed by Liam with Julian signing security, and Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:oQlZK8Zgfl2YFOVJls6Sc76R9ChlezIAZP2OEvgu3Lx7zN/m2uM+BUFnENPpL77H75QVRGBapwSgdIC4mUArBQ==
 
 `runtime.tools` said the runtime reads GitHub only by GET requests to
 api.github.com. The merge queue exists only in GitHub's GraphQL API, and
