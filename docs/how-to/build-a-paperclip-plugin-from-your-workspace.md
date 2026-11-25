@@ -194,15 +194,16 @@ are.
    sha256sum dist/halonic-ws.acme-0.1.0.tar
    ```
 
-2. Unpack it. This makes a `package` folder with `package.json`,
-   `manifest.js`, `worker.js` and `snapshot.json`:
+2. Unpack it on the machine where Paperclip runs. This makes a `package`
+   folder with `package.json`, `manifest.js`, `worker.js` and `snapshot.json`:
 
    ```sh
    tar -xf dist/halonic-ws.acme-0.1.0.tar
    ```
 
 3. In Paperclip, open **Settings → Plugins** and install the plugin from the
-   `package` folder.
+   `package` folder, giving its full path. Paperclip installs from a folder,
+   not from the `.tar` file itself.
 4. If any of your tools uses a `github.` action, fill in **GitHub read token**
    with a Paperclip secret that holds a GitHub token. It needs read access
    to the repositories your tools list, and nothing more. Paperclip keeps
@@ -273,9 +274,21 @@ branch). It serves it only when:
 - the snapshot names that commit and passes the same checks the build runs on
   your tool files.
 
-The snapshot file is the `snapshot.json` from a plugin file built from that
-commit. It uses the GitHub read token, so the token also needs read access to
-the workspace repository.
+Halonic doesn't publish the snapshot file for you yet. To pin a commit:
+
+1. Build a plugin file from that commit and unpack it, as in step 4.
+2. Commit its `package/snapshot.json` to `snapshots/<commit>.json` on the
+   snapshot branch. Copy the file unchanged, byte for byte: no reformatting
+   and no change to its line endings, or its SHA-256 no longer matches.
+3. Set **Pinned snapshot sha-256** to that file's SHA-256:
+
+   ```sh
+   sha256sum package/snapshot.json
+   ```
+
+The same commit always gives the same `snapshot.json`, so anyone can rebuild
+it and compare. The plugin reads the file with the GitHub read token, so the
+token also needs read access to the workspace repository.
 
 ### When it can't load the pinned snapshot
 
