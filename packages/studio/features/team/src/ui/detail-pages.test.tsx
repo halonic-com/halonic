@@ -91,6 +91,34 @@ verifies("team.agent-and-seat-detail", () => {
       expect(section(page, "Agents by spend today")).toContain("Mateo");
     });
 
+    it("focuses a detail page's h1 when it opens, and the pressed seat row on Back", async () => {
+      const { spendAndSeats, details } = acme();
+      const page = render(<SpendAndSeatsPage spendAndSeats={spendAndSeats} details={details} />);
+      await settle();
+      await press(page, "Seat B", 'section[aria-label="Seats"]');
+      expect(document.activeElement).toBe(page.querySelector("h1"));
+
+      await press(page, "Back");
+      const seatRow = page.querySelector('section[aria-label="Seats"] li button');
+      expect(seatRow).not.toBeNull();
+      expect(document.activeElement).toBe(seatRow);
+    });
+
+    it("keeps a detail page's h1 the same element when its read lands", async () => {
+      const { spendAndSeats, details } = acme();
+      const page = render(<SpendAndSeatsPage spendAndSeats={spendAndSeats} details={details} />);
+      await settle();
+      const seatRow = page.querySelector<HTMLElement>('section[aria-label="Seats"] li button');
+      if (seatRow === null) throw new Error("No seat row");
+      act(() => seatRow.click());
+      const before = page.querySelector("h1");
+      expect(page.querySelector("main")?.getAttribute("aria-busy")).toBe("true");
+      await settle();
+      expect(page.textContent).toContain("84%");
+      expect(page.querySelector("h1")).toBe(before);
+      expect(document.activeElement).toBe(before);
+    });
+
     it("keeps seat rows opening AI seats where there are no detail pages", async () => {
       const { spendAndSeats } = acme();
       const opened: string[] = [];

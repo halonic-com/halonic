@@ -3,6 +3,7 @@ import { ListHeading, StatusChip } from "@halonicjs/studio-kit";
 import type { SeatProblem, SeatProblemKind } from "../seat-problems.ts";
 import { formatDayTime, formatTime, type TeamClock } from "../team-format.ts";
 import { type TeamLink, teamWords } from "../team-words.ts";
+import { pageKey } from "./detail-pages.tsx";
 import { LinkRow, RowChevron } from "./link-row.tsx";
 import { Amount, SmallLine, Tile } from "./money-tiles.tsx";
 import { StateIcon, stateTones } from "./seat-state.tsx";
@@ -229,7 +230,7 @@ export function SeatList(props: {
       </div>
       <ul className="flex flex-col gap-2">
         {props.seats.map((seat) => (
-          <li key={seat.id}>
+          <li key={seat.id} data-opens={pageKey({ kind: "seat", id: seat.id })}>
             <SeatRow
               seat={seat}
               clock={props.clock}

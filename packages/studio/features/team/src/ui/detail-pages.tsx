@@ -9,7 +9,8 @@ import {
   type TeamDetails,
 } from "../team-details.ts";
 import { formatDayTime, formatMoney, formatTime, formatTokens } from "../team-format.ts";
-import { LoadingPage, PageFrame, TryAgain } from "./page-frame.tsx";
+import { teamWords } from "../team-words.ts";
+import { LoadingBody, PageFrame, TryAgain } from "./page-frame.tsx";
 import { UsageMeter } from "./usage-meter.tsx";
 
 /** A page the Team place can show over Spend and seats. */
@@ -17,6 +18,11 @@ export type TeamPage =
   | { kind: "agent"; id: MessagingId }
   | { kind: "seat"; id: MessagingId }
   | { kind: "agents" };
+
+/** The `data-opens` key of the row that opens `page`, so Back can focus that row again. */
+export function pageKey(page: TeamPage): string {
+  return page.kind === "agents" ? "agents" : `${page.kind}:${page.id}`;
+}
 
 /** What a detail page holds while it reads: still loading, the answer, or a failed read. */
 type Read<Value> = { kind: "loading" } | { kind: "read"; value: Value } | { kind: "failed" };
@@ -44,7 +50,13 @@ function useDetail<Value>(details: TeamDetails, read: () => Promise<Value>, key:
   return { shown, readAgain };
 }
 
-/** The frame of a detail page: Back, then the page, or why there is none. */
+/** Opening a detail page focuses its h1, since the page replaces the one whose row was pressed. */
+const opened = { kind: "heading" } as const;
+
+/**
+ * The frame of a detail page: Back, then the page, or why there is none. One frame for every
+ * state, so the main and h1 stay the same elements when the read lands.
+ */
 function DetailFrame<Value>(props: {
   shown: Read<Value | undefined>;
   onBack: () => void;
@@ -52,12 +64,13 @@ function DetailFrame<Value>(props: {
   children: (value: Value) => ReactNode;
 }) {
   const { shown } = props;
-  if (shown.kind === "loading") return <LoadingPage />;
+  const loading = shown.kind === "loading";
   return (
-    <PageFrame>
+    <PageFrame busy={loading} freshness={loading ? teamWords.loading : undefined} arrival={opened}>
       <Button variant="secondary" size="sm" onClick={props.onBack}>
         {words.back}
       </Button>
+      {loading ? <LoadingBody /> : null}
       {shown.kind === "failed" ? <TryAgain onPress={props.onTryAgain} /> : null}
       {shown.kind === "read" && shown.value === undefined ? <p>{words.notFound}</p> : null}
       {shown.kind === "read" && shown.value !== undefined ? props.children(shown.value) : null}
@@ -99,7 +112,7 @@ export function AgentsBySpendList(props: {
       <ListHeading name={words.agentsBySpend} />
       <ul className="flex flex-col gap-2">
         {rows.map(({ agent, spend }) => (
-          <li key={agent.id}>
+          <li key={agent.id} data-opens={pageKey({ kind: "agent", id: agent.id })}>
             <OpenRow onOpen={() => props.onOpen({ kind: "agent", id: agent.id })}>
               {`${agent.name ?? words.unknownAgent} · ${formatMoney(spend.paid)} · ${formatTokens(spend.tokens.input + spend.tokens.cached + spend.tokens.output)}`}
             </OpenRow>
@@ -107,9 +120,11 @@ export function AgentsBySpendList(props: {
         ))}
       </ul>
       {rows.length < total ? (
-        <Button variant="secondary" size="sm" onClick={() => props.onOpen({ kind: "agents" })}>
-          {words.seeAll(total)}
-        </Button>
+        <div data-opens={pageKey({ kind: "agents" })} className="flex flex-col">
+          <Button variant="secondary" size="sm" onClick={() => props.onOpen({ kind: "agents" })}>
+            {words.seeAll(total)}
+          </Button>
+        </div>
       ) : null}
     </section>
   );

@@ -1,18 +1,26 @@
 import { Button, Card, SkeletonBar } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import { teamWords } from "../team-words.ts";
-import { useKeepFocus } from "./keep-focus.ts";
+import { type ArrivalFocus, useArrivalFocus, useKeepFocus } from "./keep-focus.ts";
 
 /**
  * The page's frame in every state: its padding, the title in the page-title style, and the
  * freshness slot on the right ("As of 13:00 · 2 min ago", or "Loading…"). On a phone the slot
  * wraps under the title. The screen keeps one frame mounted across loading, failed and read, so
  * the main and h1 stay the same elements, and focus lands on the h1 when what had it goes away.
+ * `arrival` says where focus goes when the page replaces another one.
  */
-export function PageFrame(props: { freshness?: ReactNode; busy?: boolean; children: ReactNode }) {
+export function PageFrame(props: {
+  freshness?: ReactNode;
+  busy?: boolean;
+  arrival?: ArrivalFocus | undefined;
+  children: ReactNode;
+}) {
   const { heading, remember } = useKeepFocus();
+  const page = useArrivalFocus(heading, props.arrival, props.busy === true);
   return (
     <main
+      ref={page}
       aria-busy={props.busy === true ? "true" : undefined}
       aria-label={props.busy === true ? teamWords.loadingSpoken : undefined}
       className="flex w-full flex-col gap-4 px-6 py-5 phone:px-4"
@@ -84,14 +92,5 @@ export function LoadingBody() {
         <RowSkeleton />
       </div>
     </>
-  );
-}
-
-/** Loading as a whole page: the frame with the skeletons, for a page that has no other states yet. */
-export function LoadingPage() {
-  return (
-    <PageFrame busy freshness={teamWords.loading}>
-      <LoadingBody />
-    </PageFrame>
   );
 }
