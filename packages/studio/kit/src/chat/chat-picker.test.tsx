@@ -110,6 +110,19 @@ verifies("kit.chat-composer-picker", () => {
       expect(document.activeElement).toBe(box);
     });
 
+    it("outlines the active option, so high contrast still shows it (HAL-18316 KT1)", () => {
+      const { container, box } = composer();
+      const id = box.getAttribute("aria-activedescendant") ?? "";
+      const classes = container.querySelector(`[id="${id}"]`)?.className.split(" ") ?? [];
+      expect(classes).toEqual(
+        expect.arrayContaining([
+          "outline-transparent",
+          "aria-selected:outline-solid",
+          "contrast-more:aria-selected:outline-border-control",
+        ]),
+      );
+    });
+
     it("leaves the keys to an input method that is composing", () => {
       const { props, container, box } = composer();
       press(box, "ArrowDown", { isComposing: true });

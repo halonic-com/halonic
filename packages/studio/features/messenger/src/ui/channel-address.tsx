@@ -22,14 +22,15 @@ export interface ChannelAddress {
  * Names agents in a channel's box (flow I): typing `@` opens a picker of the members, filtered
  * by what follows; the kit's `ChatComposer` moves through it with ↑↓, and Enter or a click names
  * one, and Esc closes it. A named agent becomes a
- * chip and the `@name` leaves the text. Text that wasn't picked stays text and names nobody
- * (requirement `messenger.channel-authority`).
+ * chip and the `@name` leaves the text, and `say` reads the new To line out. Text that wasn't
+ * picked stays text and names nobody (requirement `messenger.channel-authority`).
  */
 export function useChannelAddress(
   messenger: Messenger,
   row: ConversationRow,
   draft: string,
   type: (text: string) => void,
+  say: (text: string) => void,
 ): ChannelAddress {
   const id = row.conversation.id;
   const [named, setNamedState] = useState(() => messenger.named(id));
@@ -39,9 +40,11 @@ export function useChannelAddress(
   const query = pickerQuery(draft);
   const open = isChannel(row) && query !== undefined && closedAt !== draft;
   const options = open ? pickable(row, query ?? "", named) : [];
+  // Picking or removing someone says the new To line, as the chip appears silently (MS10).
   const setNamed = (agents: readonly MessagingId[]) => {
     messenger.setNamed(id, agents);
     setNamedState(agents);
+    say(toLine(row, agents).text);
   };
   const pick = (agent: MessagingAgent) => {
     setNamed([...named, agent.id]);
@@ -78,8 +81,17 @@ function MemberOption({ agent }: { readonly agent: MessagingAgent }) {
   );
 }
 
-/** The To line above a channel's box, and a chip with Remove per named agent. */
-export function ChannelAddressBar({ address }: { readonly address: ChannelAddress }) {
+/**
+ * The To line above a channel's box, and a chip with Remove per named agent. Remove takes its
+ * button away, so `onUnname` moves focus on (HAL-18316 MS9).
+ */
+export function ChannelAddressBar({
+  address,
+  onUnname,
+}: {
+  readonly address: ChannelAddress;
+  readonly onUnname: (index: number) => void;
+}) {
   return (
     <div className="flex flex-col gap-1">
       <div className="flex flex-wrap items-center gap-2 text-small">
@@ -89,9 +101,10 @@ export function ChannelAddressBar({ address }: { readonly address: ChannelAddres
         {address.line.waits === undefined ? null : (
           <span id={address.lineId}>{address.line.waits}</span>
         )}
-        {address.named.map((agent) => (
+        {address.named.map((agent, index) => (
           <span
             key={agent.id}
+            data-chip
             className="flex items-center gap-1 rounded-md border border-border py-0.5 ps-2"
           >
             <bdi>{agent.name}</bdi>
@@ -100,7 +113,7 @@ export function ChannelAddressBar({ address }: { readonly address: ChannelAddres
               size="sm"
               icon={<CloseIcon />}
               label={channelWords.unname(agent.name)}
-              onClick={() => address.unname(agent.id)}
+              onClick={() => onUnname(index)}
             />
           </span>
         ))}

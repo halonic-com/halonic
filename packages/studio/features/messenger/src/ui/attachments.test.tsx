@@ -189,5 +189,16 @@ verifies("messenger.files", () => {
       expect(document.activeElement).toBe(byText(page, "main button", "Attach a file"));
       expect(page.textContent).toContain("b.txt removed.");
     });
+
+    it("offline, keeps saying why Send won't work after a file is removed (HAL-18316 MS7)", async () => {
+      const { messaging, acme } = chiefChat();
+      messaging.goOffline(acme.id);
+      const page = await openMessenger(messaging);
+      await openChat(page, "Chief");
+      await attach(page, [new File(["x"], "notes.txt", { type: "text/plain" })]);
+      await press(page.querySelector('button[aria-label="Remove notes.txt"]'));
+      expect(page.textContent).toContain("Paperclip · Acme is offline. Your message stays here");
+      expect(page.textContent).not.toContain("notes.txt removed.");
+    });
   });
 });

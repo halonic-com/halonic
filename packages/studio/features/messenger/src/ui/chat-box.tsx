@@ -18,10 +18,15 @@ export interface ChatBoxProps {
   readonly onSent: () => Promise<void>;
 }
 
-/** The line under the box: why something wasn't sent or added, or that a file was removed. */
+/**
+ * The line under the box: why something wasn't sent or added, or a `muted` note of what just
+ * happened, such as a file removed. A note never hides why Send won't work (HAL-18316 MS7).
+ */
 interface BoxLine {
   readonly text: string;
   readonly tone: ChatBoxLineTone;
+  /** Only read out: the To line above the box already shows it. */
+  readonly unseen?: boolean;
 }
 
 /**
@@ -32,21 +37,28 @@ interface BoxLine {
  * `messenger.quick-actions` and `messenger.conversations`). Remove takes its
  * button away, so focus moves to the next file's Remove, else the one before,
  * else Attach a file, and the line says the file was removed (HAL-18074 MS3).
- * A channel's box has the To line and the `@` picker above it (`messenger.channel-messages`).
+ * A channel's box has the To line and the `@` picker above it (`messenger.channel-messages`); a
+ * chip's Remove moves focus the same way, ending on the box, and the line says the new To line
+ * (HAL-18316 MS9, MS10).
  */
 export function ChatBox({ messenger, row, onSent }: ChatBoxProps) {
   const box = useChatBox(messenger, row, onSent);
   const name = row.conversation.title;
   const channel = isChannel(row);
-  const address = useChannelAddress(messenger, row, box.draft, box.type);
+  const address = useChannelAddress(messenger, row, box.draft, box.type, box.say);
   const waits = channel && address.line.waits !== undefined;
   const report = (what: string) => (error: unknown) => console.error(what, error);
   const container = useRef<HTMLDivElement>(null);
   const attach = useRef<HTMLButtonElement>(null);
   const remove = (index: number) => {
     flushSync(() => box.removeFile(index));
-    const removes = container.current?.querySelectorAll<HTMLElement>("[data-draft-files] button");
-    (removes?.[index] ?? removes?.[index - 1] ?? attach.current)?.focus();
+    focusAfterRemove(container.current, "[data-draft-files] button", index, attach.current);
+  };
+  const unname = (index: number) => {
+    const agent = address.named[index];
+    if (agent === undefined) return;
+    flushSync(() => address.unname(agent.id));
+    focusAfterRemove(container.current, "[data-chip] button", index, "textarea");
   };
   return (
     <div
@@ -67,7 +79,7 @@ export function ChatBox({ messenger, row, onSent }: ChatBoxProps) {
         }}
       />
       <DraftFileList files={box.files} onRemove={remove} />
-      {channel ? <ChannelAddressBar address={address} /> : null}
+      {channel ? <ChannelAddressBar address={address} onUnname={unname} /> : null}
       <ChatComposer
         label={channel ? channelWords.composer(name) : messengerWords.composerLabel(name)}
         placeholder={
@@ -81,15 +93,27 @@ export function ChatBox({ messenger, row, onSent }: ChatBoxProps) {
         }}
         onStop={() => {}}
         answering={false}
-        line={
-          box.line === undefined ? undefined : (
-            <ChatBoxLine tone={box.line.tone}>{box.line.text}</ChatBoxLine>
-          )
-        }
+        line={boxLine(box.line)}
         picker={channel ? address.picker : undefined}
       />
     </div>
   );
+}
+
+/**
+ * Once the Remove at `index` under `container` is gone: the next Remove, else the one before, else
+ * `fallback` (an element, or a selector under `container`) takes focus.
+ */
+function focusAfterRemove(
+  container: HTMLElement | null,
+  removes: string,
+  index: number,
+  fallback: HTMLElement | string | null,
+): void {
+  const left = container?.querySelectorAll<HTMLElement>(removes);
+  const last =
+    typeof fallback === "string" ? container?.querySelector<HTMLElement>(fallback) : fallback;
+  (left?.[index] ?? left?.[index - 1] ?? last)?.focus();
 }
 
 /** The buttons above the box: "Attach a file" and "Ask for an update". */
@@ -127,7 +151,7 @@ function useChatBox(messenger: Messenger, row: ConversationRow, onSent: () => Pr
   return {
     draft,
     files,
-    line: notice ?? warn(keptLine(source, kept ?? refusalOf(row))),
+    line: lineOf(notice, warn(keptLine(source, kept ?? refusalOf(row)))),
     type(text: string) {
       setDraft(text);
       messenger.setDraft(id, text);
@@ -141,6 +165,7 @@ function useChatBox(messenger: Messenger, row: ConversationRow, onSent: () => Pr
       setFiles(messenger.files.of(id));
       setNotice(warn(refused));
     },
+    say: (text: string) => setNotice({ text, tone: "muted", unseen: true }),
     removeFile(index: number) {
       const removed = messenger.files.of(id)[index];
       messenger.files.remove(id, index);
@@ -170,6 +195,19 @@ function useChatBox(messenger: Messenger, row: ConversationRow, onSent: () => Pr
       } else setNotice(warn(messengerWords.notSent[outcome.reason](source)));
     },
   };
+}
+
+/** The line in the composer's status region; an unseen one only for a screen reader. */
+function boxLine(line: BoxLine | undefined) {
+  if (line === undefined) return undefined;
+  if (line.unseen === true) return <span className="sr-only">{line.text}</span>;
+  return <ChatBoxLine tone={line.tone}>{line.text}</ChatBoxLine>;
+}
+
+/** The notice, unless it's only a note and a message would stay in the box: then why. */
+function lineOf(notice: BoxLine | undefined, kept: BoxLine | undefined): BoxLine | undefined {
+  if (notice?.tone === "muted" && kept !== undefined) return kept;
+  return notice ?? kept;
 }
 
 /** Why a message would stay in the box, or nothing while the source takes messages. */

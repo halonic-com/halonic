@@ -145,6 +145,52 @@ verifies("messenger.channel-messages", () => {
     expect(toLine(page)).toBe("To Chief (lead) · Type @ to ask someone else");
   });
 
+  it("after a chip's Remove focuses the next Remove, else the one before, else the box (HAL-18316 MS9)", async () => {
+    const page = await openMessenger(engineering().messaging);
+    const box = await openChat(page, "Engineering");
+    for (const name of ["Chief", "Liam", "Elena"]) {
+      await typeAndPress(box, "@");
+      await press(byText(page, "[data-chat-picker] [role=option]", name));
+    }
+    const removeOf = (name: string) => page.querySelector(`button[aria-label="Remove ${name}"]`);
+    await press(removeOf("Chief"));
+    expect(document.activeElement).toBe(removeOf("Liam"));
+    await press(removeOf("Elena"));
+    expect(document.activeElement).toBe(removeOf("Liam"));
+    await press(removeOf("Liam"));
+    expect(document.activeElement).toBe(box);
+  });
+
+  it("reads out the To line on a pick and on a Remove, without showing it twice (HAL-18316 MS10)", async () => {
+    const page = await openMessenger(engineering().messaging);
+    const box = await openChat(page, "Engineering");
+    const spoken = (text: string) =>
+      [...page.querySelectorAll('main [role="status"] .sr-only')].find(
+        (each) => each.textContent === text,
+      );
+    await typeAndPress(box, "@");
+    await press(byText(page, "[data-chat-picker] [role=option]", "Elena"));
+    expect(spoken("To Elena")).toBeDefined();
+    await press(page.querySelector('button[aria-label="Remove Elena"]'));
+    expect(spoken("To Chief (lead) · Type @ to ask someone else")).toBeDefined();
+  });
+
+  it("reads an agent's name once before its message (HAL-18316 MS11)", async () => {
+    const { messaging, liam, channel } = engineering();
+    const author = { kind: "agent", agent: liam.id, name: "Liam" } as const;
+    messaging.addMessage(channel.id, { author, body: "Build is green" });
+    const page = await openMessenger(messaging);
+    await openChat(page, "Engineering");
+    const message = page.querySelector('main li[data-author="agent"]');
+    expect(message?.querySelector("[data-author-name]")?.getAttribute("aria-hidden")).toBe("true");
+    const read = [...(message?.childNodes ?? [])]
+      .filter((node) => !(node instanceof Element && node.getAttribute("aria-hidden") === "true"))
+      .map((node) => node.textContent)
+      .join("");
+    expect(read.startsWith("Liam: Build is green")).toBe(true);
+    expect(read.match(/Liam/g)).toHaveLength(1);
+  });
+
   it("shows the work lines under the person's message", async () => {
     const { messaging, liam, elena, channel } = engineering();
     const since = "2026-11-24T10:00:00.000Z";
