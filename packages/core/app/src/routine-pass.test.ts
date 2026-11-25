@@ -1,17 +1,14 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { passRoutineTick } from "./routine-pass.ts";
 import { TestCoordination } from "./testing/memory-coordination.ts";
-import { setUp, tickKey, workspace } from "./testing/routine-scheduler-harness.ts";
+import { setUp, tickKey } from "./testing/routine-scheduler-harness.ts";
 import { TestExecutor } from "./testing/test-executor.ts";
 
-/** Passes the workspace's tick with the clock at `iso`. */
-function passAt(coordination: TestCoordination, iso: string): Promise<boolean> {
-  return passRoutineTick({
-    workspaceId: workspace,
-    clock: { now: () => new Date(iso) },
-    coordination,
-  });
+/** Passes the workspace's tick with the clock at `iso`, on a scheduler of its own. */
+async function passAt(coordination: TestCoordination, iso: string): Promise<boolean> {
+  const { scheduler, at } = setUp([], { shared: { coordination, executor: new TestExecutor() } });
+  at(iso);
+  return (await scheduler.pass()).stored;
 }
 
 verifies("app.routine-pass", () => {

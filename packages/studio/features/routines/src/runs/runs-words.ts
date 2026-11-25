@@ -145,6 +145,7 @@ const skipReasons: Record<
   changed: "dropped because the routine was changed or turned off before it started",
   "signal-loop":
     "not started, because the signal may come from a loop of routines starting each other",
+  paused: "skipped while routines were paused",
 };
 
 /** The one line a skipped row says: the times, then why. */

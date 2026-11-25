@@ -28,7 +28,7 @@ import {
   workspaceTrustState,
 } from "@halonicjs/adapter-workspace-engine-node";
 import { workspaceModelSettings } from "@halonicjs/adapter-workspace-models";
-import { passRoutineTick, workspaceRoutineScheduler } from "@halonicjs/app";
+import { workspaceRoutineScheduler } from "@halonicjs/app";
 import { endStoppedRuns, noListedToolApproval } from "@halonicjs/engine";
 import { createEngineServer, type EngineServerPorts } from "@halonicjs/host-server";
 import type { ProfileEnvironment } from "@halonicjs/profile";
@@ -186,11 +186,7 @@ async function openEngine(
           policy: { ...DEFAULT_TICK_POLICY, timeZone: computerTimeZone() },
         });
         return schedule.ticks(
-          {
-            tick: () => scheduler.tick(),
-            pass: () => passRoutineTick({ workspaceId, clock, coordination }),
-            dispose: () => scheduler.dispose(),
-          },
+          scheduler,
           async () => (await engine.runs.list({ status: ["running", "waiting"] })).length,
         );
       },

@@ -12,6 +12,7 @@ import type { EventBus } from "./event-bus.ts";
 import { lastTickKey, queueKey, routineRunId, routineRunPrefix } from "./routine-ids.ts";
 import { LastRuns, type StoredLastRun } from "./routine-last-runs.ts";
 import { applyOverlap, type OverlapDecision, type RoutineOverlap } from "./routine-overlap.ts";
+import { notPassed, passOnce, type RoutinePassResult } from "./routine-pass.ts";
 import {
   fitQueue,
   type QueuedTimes,
@@ -22,6 +23,7 @@ import {
 import type { SignalTick } from "./routine-signals.ts";
 import { type SkipRecord, SkipRecords, type TargetUnavailableWhy } from "./routine-skips.ts";
 import { TargetChecks, type UnavailableTime } from "./routine-targets.ts";
+import { forgetTickAhead } from "./routine-tick-ahead.ts";
 import {
   asError,
   nothing,
@@ -120,13 +122,6 @@ export interface RoutineSchedulerOptions<
 }
 
 /**
- * How far ahead of the clock the stored last tick may be before the
- * scheduler counts the clock as set back. Hosts that tick one workspace
- * differ by seconds; a tick that far ahead was stored under a wrong clock.
- */
-export const clockSetBackMs = 10 * 60 * 1000;
-
-/**
  * Starts the routine runs that are due, on each tick of the `Scheduler`
  * port. It has no timer of its own: the host passes `onTick` to its
  * scheduler, and time comes from the `Clock`.
@@ -134,7 +129,7 @@ export const clockSetBackMs = 10 * 60 * 1000;
  * Ticks can be late, repeated, missed or overlap, and two hosts may tick the
  * same workspace. Each due run still starts once:
  * - the last tick time is kept in `Coordination`, per workspace; a tick at or before it does nothing,
- *   and one more than {@link clockSetBackMs} before it stores its own time, as the clock was set back
+ *   and one more than `clockSetBackMs` before it stores its own time, as the clock was set back
  * - the tick function catches up on missed ticks under its policy
  * - every run gets {@link routineRunId}, so a start that is repeated (a crash
  *   before the last tick was stored, a second host) returns the existing run
@@ -165,7 +160,8 @@ export class RoutineScheduler<
   private readonly queueKey: string;
   private readonly lastRuns: LastRuns;
   private readonly skipRecords: SkipRecords;
-  private current: Promise<RoutineTickResult> | null = null;
+  /** The tick or pass in progress, so one never overlaps another. */
+  private current: Promise<unknown> | null = null;
   private disposed = false;
 
   constructor(options: RoutineSchedulerOptions<Routine, Policy, Run>) {
@@ -191,10 +187,26 @@ export class RoutineScheduler<
    * @returns the runs started and the ones that failed to start
    */
   async tick(): Promise<RoutineTickResult> {
+    return this.alone(() => this.tickOnce(), nothing);
+  }
+
+  /**
+   * A tick that starts nothing, for a host whose user paused the routines:
+   * moves the last tick to now and records the times due in between as
+   * `paused` skips (see {@link passOnce}). Does nothing while another tick
+   * or pass of this scheduler runs, or after `dispose`.
+   */
+  async pass(): Promise<RoutinePassResult> {
+    const { options, lastTickKey, lastRuns, skipRecords } = this;
+    return this.alone(() => passOnce({ options, lastTickKey, lastRuns, skipRecords }), notPassed);
+  }
+
+  /** Runs `work` unless a tick or pass of this scheduler runs, or it was disposed; then `idle()`. */
+  private async alone<Result>(work: () => Promise<Result>, idle: () => Result): Promise<Result> {
     if (this.current !== null || this.disposed) {
-      return nothing();
+      return idle();
     }
-    const run = this.tickOnce();
+    const run = work();
     this.current = run;
     try {
       return await run;
@@ -248,7 +260,7 @@ export class RoutineScheduler<
     const stored = await coordination.read(this.lastTickKey);
     const lastTick = stored === null ? null : new Date(stored);
     if (lastTick !== null && now.getTime() <= lastTick.getTime()) {
-      await this.forgetTickAhead(stored, lastTick, now);
+      await forgetTickAhead(coordination, this.lastTickKey, stored, lastTick, now);
       return nothing();
     }
     const routineList = await routines();
@@ -299,19 +311,6 @@ export class RoutineScheduler<
     }
     events?.emit("routines.ticked", { at: now.toISOString(), ...result });
     return result;
-  }
-
-  /**
-   * Stores `now` as the last tick when the stored one is more than
-   * {@link clockSetBackMs} ahead of it: the clock was set back, and
-   * routines would otherwise wait, without a word, until it caught up. The
-   * times up to the old last tick may come due again; the run ids keep a
-   * time that already started from starting twice.
-   */
-  private async forgetTickAhead(stored: string | null, lastTick: Date, now: Date): Promise<void> {
-    if (lastTick.getTime() - now.getTime() <= clockSetBackMs) return;
-    // A lost race means another instance stored its tick; its value stays.
-    await this.options.coordination.compareAndSet(this.lastTickKey, stored, now.toISOString());
   }
 
   /**

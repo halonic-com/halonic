@@ -214,7 +214,8 @@ export type RoutineSkipReason =
   | "target-in-trash"
   | "target-not-found"
   | "start-refused"
-  | "signal-loop";
+  | "signal-loop"
+  | "paused";
 
 /** A range of due times that didn't start, as one quiet row of the Runs view. */
 export interface RoutineSkip {
