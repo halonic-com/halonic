@@ -24,7 +24,8 @@
 //! command (capabilities/desktop-resources.json) and the `lite_check` command, which
 //! makes and removes a probe file in the profile (capabilities/desktop-lite-check.json) and the `update_*` commands
 //! (capabilities/desktop-updates.json), in the main window only the
-//! `login_item_*` commands (capabilities/desktop-login-item.json), in the focused apps' windows only
+//! `login_item_*` commands (capabilities/desktop-login-item.json) and `keep_awake_set`
+//! (capabilities/desktop-keep-awake.json), in the focused apps' windows only
 //! `show_main_window` (capabilities/desktop-show-main-window.json), and the page's close request
 //! (capabilities/desktop-window.json), the title bar's `set_frame_colour` (capabilities/desktop-frame-colour.json), its notifications
 //! (capabilities/desktop-notifications.json) and the `wsl_*` commands of the sandbox
@@ -50,6 +51,8 @@ mod action_parts;
 #[cfg(desktop)]
 mod actions;
 mod agent_host;
+#[cfg(target_os = "android")]
+mod android_plugins;
 #[cfg(desktop)]
 mod background_start;
 mod blobs;
@@ -79,6 +82,8 @@ mod google_setups;
 mod host_settings;
 mod http_fetch;
 mod instruction_trust;
+#[cfg(desktop)]
+mod keep_awake;
 #[cfg(desktop)]
 mod last_quit;
 mod lite_check;
@@ -219,43 +224,16 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(updates::Updates::default())
         .manage(engines::EnginesState::default())
         .manage(tray::TrayShellState::default())
+        .manage(keep_awake::KeepAwakeState::default())
         // Registered only so the shell can use it from Rust: no capability
         // grants its commands, so no page can call them.
         .plugin(tauri_plugin_updater::Builder::new().build())
         // Notifications for the Inbox and the Messenger (HAL-17448): only
         // the app's own page is granted its commands.
         .plugin(tauri_plugin_notification::init());
-    // Asked from Rust only, for Android's local network permission: no
-    // capability grants its command, so no page can call it.
+    // The phone's own plugins, each used from Rust only (`android_plugins.rs`).
     #[cfg(target_os = "android")]
-    let builder = builder.plugin(local_network::plugin());
-    // The pairing scanner's camera, driven from Rust with fixed options: the
-    // connect page gets only `pair_scan` and `pair_scan_cancel`.
-    #[cfg(target_os = "android")]
-    let builder = builder.plugin(pair_scan::plugin());
-    // The phone's key for each paired computer, sealed by the Android
-    // Keystore. Used from Rust only: no capability grants its commands.
-    #[cfg(target_os = "android")]
-    let builder = builder.plugin(device_keys::plugin());
-    // The owner check before the phone answers an approval (HAL-15194):
-    // Android's own biometric prompt. Used from Rust only: no capability
-    // grants its commands, so no page can call it or pick its words. The
-    // phone's own page only asks whether it can ask (`owner_check_available`).
-    #[cfg(target_os = "android")]
-    let builder = builder.plugin(owner_check::plugin());
-    // Android's settings page for the app and the Tailscale app, which the
-    // connect page opens only through `phone_open_settings` and
-    // `phone_open_tailscale`: no capability grants the plugin's commands.
-    #[cfg(target_os = "android")]
-    let builder = builder.plugin(phone_screens::plugin());
-    // The phone tunnel, over the key store above, so registered after it.
-    #[cfg(target_os = "android")]
-    let builder = builder.plugin(phone_tunnel::plugin());
-    // The typed route's computer picker searches the Wi-Fi with Android's
-    // NsdManager (HAL-16824). Used from Rust only: no capability grants its
-    // commands; the page gets `phone_nearby_browse` and `phone_nearby_stop`.
-    #[cfg(target_os = "android")]
-    let builder = builder.plugin(phone_nearby::plugin());
+    let builder = android_plugins::register(builder);
     builder
         // The navigation guard hands outside links to the browser with the
         // opener. Its click script stays off. That script would run in
@@ -470,6 +448,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             login_item::login_item_get,
             #[cfg(desktop)]
             login_item::login_item_set,
+            #[cfg(desktop)]
+            keep_awake::keep_awake_set,
             #[cfg(desktop)]
             focused_apps::show_main_window,
             frame_colour::set_frame_colour,
