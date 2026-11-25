@@ -1,13 +1,14 @@
 // What a docs page can't do once it is loaded in a Build chat
 // (`assistant.build.loaded-page`). A page is loaded once a `read_docs`
-// result that holds one is in the chat's messages, and it stays loaded for
-// the rest of the chat. From then on the chat offers only the builder's own
+// result with anything a site sent, a page or a redirect, is in the chat's
+// messages, and it stays loaded for the rest of the chat. From then on the chat offers only the builder's own
 // tools, and `read_docs` asks only for sites the person named. Both are
 // read from the messages before each model turn and on each call, so a page
 // read in the middle of an answer counts from the next turn on.
 
 import { type ChatTool, fenceStart } from "@halonicjs/app";
 import type { ChatMessage, ToolCall } from "@halonicjs/ports";
+import { docsTexts } from "./docs-texts.ts";
 import { checkDocsUrl, loggedUrl } from "./docs-url.ts";
 
 /**
@@ -69,15 +70,31 @@ export function sitesReadBefore(
 }
 
 /**
- * The site of the page a `read_docs` call loaded, or `undefined` when its result holds none. A
- * result holds a page when it holds the untrusted fence, which only a page's text is put in.
+ * The site a `read_docs` call loaded something from, or `undefined` when nothing came from a site.
+ * Whatever a site sent counts, not only a page: a redirect names a target the site chose, outside
+ * the untrusted fence (Liam, HAL-18399), and a status or a failure is the site's doing too. So
+ * every result counts but the answers `read_docs` gives before any request: a refused address,
+ * an untrusted workspace, and a site that is waiting, declined or not named.
  */
 export function pageSiteOf(call: ToolCall, result: string): string | undefined {
-  if (call.name !== "read_docs" || !result.includes(fenceStart)) return undefined;
+  if (call.name !== "read_docs") return undefined;
   const url = call.arguments["url"];
   const raw = typeof url === "string" ? url : "";
   const checked = checkDocsUrl(raw);
-  // A page is only read from an address that passes the check, but a fenced result counts as
-  // loaded even if it somehow didn't, named by the address as the log keeps it.
-  return "refused" in checked ? loggedUrl(raw) : checked.host;
+  if ("refused" in checked) {
+    // A page is only read from an address that passes the check, but a fenced result counts as
+    // loaded even if it somehow didn't, named by the address as the log keeps it.
+    return result.includes(fenceStart) ? loggedUrl(raw) : undefined;
+  }
+  return beforeAnyRequest(checked.host).includes(result) ? undefined : checked.host;
+}
+
+/** The results `read_docs` gives for an address on `host` without sending any request. */
+function beforeAnyRequest(host: string): readonly string[] {
+  return [
+    docsTexts.untrusted,
+    docsTexts.waiting(host),
+    docsTexts.declined(host),
+    docsTexts.notNamed(host),
+  ];
 }
