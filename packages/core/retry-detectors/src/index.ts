@@ -21,6 +21,19 @@ export {
   type StartReason,
   type StopReason,
 } from "./decision-log.ts";
+export {
+  type EarlyHedgeOptions,
+  type HedgeAttempt,
+  type HedgeDecision,
+  type HedgeOutcome,
+  runEarlyHedge,
+} from "./early-hedge.ts";
+export {
+  defaultEarlyHedgeConfig,
+  type EarlyHedgeConfig,
+  earlyHedgeConfig,
+  hedgeApplies,
+} from "./early-hedge-config.ts";
 export { endOfRunFeatures, type FinishedAttempt, scoreFinishedAttempt } from "./end-of-run.ts";
 export { endOfRunSelftest } from "./end-of-run-selftest.ts";
 export {
@@ -44,4 +57,5 @@ export {
   type RoutingTask,
   routeForTask,
 } from "./routing-guard.ts";
+export { AttemptStepRecorder, type WriterEvent } from "./run-event-steps.ts";
 export { type WeekMetrics, weeklyMetrics, weekStart } from "./weekly-metrics.ts";

@@ -29,6 +29,7 @@ export function scoreIfCalibrated(
   return { kind: "scored", ...score() };
 }
 
-function isSameSetup(a: WriterSetup, b: WriterSetup): boolean {
+/** Whether two writer setups are the same agent, model and provider. */
+export function isSameSetup(a: WriterSetup, b: WriterSetup): boolean {
   return a.agent === b.agent && a.model === b.model && a.provider === b.provider;
 }
