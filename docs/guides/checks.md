@@ -1039,11 +1039,16 @@ and `cargo-deny check advisories` on the Tauri shell weekly, including every pul
 
 CI caches the pnpm store, Gradle, and the Rust registry and build folders
 (keyed on `Cargo.lock` and `rust-toolchain.toml`). Only runs on `main` save
-them; pull requests and the merge queue read `main`'s copy. Turbo's cache
-is the exception: a pull request saves its own copy for its next push, and
-only merge-queue entries never save. GitHub keeps 10 GB of cache per repo,
-and a queue entry's copy would never be read again, so saving there
-evicted `main`'s.
+them; pull requests and the merge queue read `main`'s copy. GitHub keeps
+10 GB of cache per repo, and a pull request's or queue entry's copy would
+never be read again, so saving there evicted `main`'s. Turbo's cache works the
+same way, one entry per build shard. On our own CI server `main` and the merge
+queue use the server's disk cache instead and save nothing to GitHub, so after
+a push to `main` the `pr-turbo-cache` job copies each shard's current task
+results from that disk cache into `main`'s GitHub copy, at most once per
+`CI_PR_TURBO_CACHE_MINUTES` (50 by default). It builds nothing: a dry run lists
+the task hashes, and it copies the entries that exist. Without it, pull
+requests on GitHub's runners hit about 1% of their tasks (HAL-17923).
 
 It also runs **mutation testing** every night: Stryker on
 `workflow`, `routines`, `schema-kit` and `yaml`, for each package that has

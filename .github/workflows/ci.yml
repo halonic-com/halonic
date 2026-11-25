@@ -912,7 +912,9 @@ jobs:
         if: steps.turbo-dir.outputs.disk != 'true'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ${{ env.TURBO_CACHE_DIR }}
+          # Relative, so the entries pr-turbo-cache saves on our server match:
+          # actions/cache keys an entry on its path strings (HAL-17923).
+          path: .turbo/cache
           key: turbo-${{ runner.os }}-${{ matrix.shard }}-${{ github.sha }}
           restore-keys: turbo-${{ runner.os }}-${{ matrix.shard }}-
       # Remote cache (Cloudflare, infra/turbo-cache). Only main and the merge
@@ -1128,17 +1130,185 @@ jobs:
       # request's or queue entry's copy is scoped to its own ref, so only a
       # re-run of the same pull request could read it, and the 155 copies
       # (2.5 GB) pushed main's Rust caches towards eviction. The remote cache
-      # above still serves pull requests main's task results. The server's
-      # disk cache needs no save: Turbo wrote to it during the run.
+      # never serves pull requests; pr-turbo-cache below fills main's copy
+      # from the server's disk cache (HAL-17923). The server's disk cache
+      # needs no save: Turbo wrote to it during the run.
       - name: Save the Turbo cache
         if: ${{ !cancelled() && github.ref == 'refs/heads/main' && steps.turbo-dir.outputs.disk != 'true' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ${{ env.TURBO_CACHE_DIR }}
+          path: .turbo/cache
           key: ${{ steps.turbo-cache.outputs.cache-primary-key }}
       # Peak memory and CPU time on our own CI server (HAL-14831).
       - if: always() && runner.environment == 'self-hosted'
         uses: $/.github/actions/runner-usage
+
+  pr-turbo-cache:
+    # Pull requests on GitHub's runners read GitHub's Turbo cache, which only
+    # main's scope can write. Since main's build runs on our own CI server
+    # (disk cache, no save, HAL-15467) and a push to main skips the build its
+    # merge group already ran (HAL-15465), nothing refreshed that cache, and
+    # pull requests hit about 1% of tasks against 80% in the merge queue
+    # (HAL-17923). After a push to main this job copies each shard's current
+    # task results from the server's disk cache, which only reviewed code
+    # writes, into GitHub's cache under the key the build job restores.
+    # Nothing is rebuilt: a dry run lists the task hashes and the job copies
+    # the entries that exist. At most about once an hour (CACHE_EVERY).
+    name: Turbo results for pull requests
+    needs: [merged, pick-runner]
+    if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ${{ github.event_name == 'pull_request' && vars.CI_RUNNER_FAST != '' && github.event.pull_request.head.repo.full_name == github.repository && needs.pick-runner.outputs.fast == 'true' && github.event.pull_request.user.type == 'User' && !endsWith(github.event.pull_request.user.login, '[bot]') && github.event.pull_request.user.login != 'dependabot' && github.event.pull_request.user.login != 'renovate' && github.event.pull_request.user.login != 'renovate-bot' && fromJSON(vars.CI_RUNNER_FAST) || vars.CI_RUNNER_LARGE != '' && contains(fromJSON(vars.CI_SELF_HOSTED_EVENTS || '[]'), github.event_name) && (github.event_name == 'merge_group' || github.event_name == 'push' && github.ref == 'refs/heads/main') && fromJSON(vars.CI_RUNNER_LARGE) || 'ubuntu-24.04' }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read # to see when this cache was last saved
+    steps:
+      - id: due
+        name: Is a new copy due
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SELF_HOSTED: ${{ runner.environment == 'self-hosted' }}
+          CACHE_EVERY: ${{ vars.CI_PR_TURBO_CACHE_MINUTES || '50' }}
+        run: |
+          if [ "$SELF_HOSTED" != true ] || [ ! -d /cache/turbo ]; then
+            echo "::notice title=Turbo results for pull requests::Not on our CI server, so there is no disk cache to copy."
+            exit 0
+          fi
+          last=$(gh api "repos/$REPO/actions/caches?key=turbo-Linux-core-&ref=refs/heads/main&sort=created_at&direction=desc&per_page=1" \
+            --jq '.actions_caches[0].created_at // empty' 2>/dev/null) || last=""
+          if [ -n "$last" ]; then
+            age=$(( ( $(date +%s) - $(date -d "$last" +%s) ) / 60 ))
+            if [ "$age" -lt "$CACHE_EVERY" ]; then
+              echo "::notice title=Turbo results for pull requests::The last copy is $age min old (every $CACHE_EVERY min)."
+              exit 0
+            fi
+          fi
+          echo "copy=true" >> "$GITHUB_OUTPUT"
+      - if: steps.due.outputs.copy == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - if: steps.due.outputs.copy == 'true'
+        uses: $/.github/actions/setup
+      # One cache per shard, as the build job restores it. The path must be
+      # the same string as the build job's: actions/cache keys each entry on
+      # its paths and compression, and our server has zstd like GitHub's runners.
+      - id: copy
+        if: steps.due.outputs.copy == 'true'
+        name: Copy each shard's task results
+        run: |
+          mkdir -p .turbo
+          root=$RUNNER_TEMP/pr-turbo-cache
+          rm -rf "$root"
+          while read -r name rest; do
+            [ -n "$name" ] || continue
+            read -ra words <<< "$rest"
+            dir=$root/$name
+            mkdir -p "$dir"
+            found=0 missing=0
+            for hash in $(pnpm exec turbo run typecheck lint test build "${words[@]/#/--filter=}" --dry=json | jq -r '.tasks[].hash'); do
+              if [ -e "/cache/turbo/$hash.tar.zst" ]; then
+                cp /cache/turbo/"$hash".tar.zst /cache/turbo/"$hash"-meta.json "$dir"/ 2>/dev/null || true
+                cp /cache/turbo/"$hash"-manifest.json "$dir"/ 2>/dev/null || true
+                found=$((found + 1))
+              else
+                missing=$((missing + 1))
+              fi
+            done
+            echo "$name: $found task results copied, $missing not in the disk cache (build and transit tasks keep none)"
+          done <<< "$BUILD_SHARDS"
+          echo "root=$root" >> "$GITHUB_OUTPUT"
+      - if: steps.due.outputs.copy == 'true'
+        name: Stage the adapters-a shard
+        env:
+          ROOT: ${{ steps.copy.outputs.root }}
+        run: rm -rf .turbo/cache && cp -r "$ROOT/adapters-a" .turbo/cache
+      - if: steps.due.outputs.copy == 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-adapters-a-${{ github.sha }}
+      - if: steps.due.outputs.copy == 'true'
+        name: Stage the adapters-b shard
+        env:
+          ROOT: ${{ steps.copy.outputs.root }}
+        run: rm -rf .turbo/cache && cp -r "$ROOT/adapters-b" .turbo/cache
+      - if: steps.due.outputs.copy == 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-adapters-b-${{ github.sha }}
+      - if: steps.due.outputs.copy == 'true'
+        name: Stage the features-a shard
+        env:
+          ROOT: ${{ steps.copy.outputs.root }}
+        run: rm -rf .turbo/cache && cp -r "$ROOT/features-a" .turbo/cache
+      - if: steps.due.outputs.copy == 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-features-a-${{ github.sha }}
+      - if: steps.due.outputs.copy == 'true'
+        name: Stage the features-b shard
+        env:
+          ROOT: ${{ steps.copy.outputs.root }}
+        run: rm -rf .turbo/cache && cp -r "$ROOT/features-b" .turbo/cache
+      - if: steps.due.outputs.copy == 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-features-b-${{ github.sha }}
+      - if: steps.due.outputs.copy == 'true'
+        name: Stage the core shard
+        env:
+          ROOT: ${{ steps.copy.outputs.root }}
+        run: rm -rf .turbo/cache && cp -r "$ROOT/core" .turbo/cache
+      - if: steps.due.outputs.copy == 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-core-${{ github.sha }}
+      - if: steps.due.outputs.copy == 'true'
+        name: Stage the studio-testing shard
+        env:
+          ROOT: ${{ steps.copy.outputs.root }}
+        run: rm -rf .turbo/cache && cp -r "$ROOT/studio-testing" .turbo/cache
+      - if: steps.due.outputs.copy == 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-studio-testing-${{ github.sha }}
+      - if: steps.due.outputs.copy == 'true'
+        name: Stage the apps-host shard
+        env:
+          ROOT: ${{ steps.copy.outputs.root }}
+        run: rm -rf .turbo/cache && cp -r "$ROOT/apps-host" .turbo/cache
+      - if: steps.due.outputs.copy == 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-apps-host-${{ github.sha }}
+      - if: steps.due.outputs.copy == 'true'
+        name: Stage the app-studio shard
+        env:
+          ROOT: ${{ steps.copy.outputs.root }}
+        run: rm -rf .turbo/cache && cp -r "$ROOT/app-studio" .turbo/cache
+      - if: steps.due.outputs.copy == 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-app-studio-${{ github.sha }}
+      - if: steps.due.outputs.copy == 'true'
+        name: Stage the tooling-targets shard
+        env:
+          ROOT: ${{ steps.copy.outputs.root }}
+        run: rm -rf .turbo/cache && cp -r "$ROOT/tooling-targets" .turbo/cache
+      - if: steps.due.outputs.copy == 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-tooling-targets-${{ github.sha }}
 
   # In the merge queue and on a push the change checks itself: trace reads
   # the result files every shard's tests wrote, also when a test failed (a
