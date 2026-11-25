@@ -44,7 +44,7 @@ export abstract class ProviderReplyReader implements ReplyReader {
 
   reading(): ReplyReading | undefined {
     if (this.#body === "json") {
-      this.readReply(parseJson(new TextDecoder().decode(Buffer.concat(this.#json))));
+      this.readReply(parseJson(decodeChunks(this.#json)));
       this.#forgetJson();
     }
     const usage = this.usage();
@@ -69,6 +69,16 @@ export abstract class ProviderReplyReader implements ReplyReader {
     this.#body = "none";
     this.#json.length = 0;
   }
+}
+
+/**
+ * The UTF-8 text of `chunks` read in order. Web-standard only, so the Worker can read a reply:
+ * it has no Node `Buffer`.
+ */
+function decodeChunks(chunks: readonly Uint8Array[]): string {
+  const decoder = new TextDecoder();
+  const parts = chunks.map((chunk) => decoder.decode(chunk, { stream: true }));
+  return parts.join("") + decoder.decode();
 }
 
 /** The object at `name` of `value`, when `value` is an object and that field is one too. */

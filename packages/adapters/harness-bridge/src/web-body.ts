@@ -48,7 +48,7 @@ export async function readWebBody(
     await reader.cancel(error).catch(() => undefined);
     throw error;
   } finally {
-    clearTimeout(timer);
+    if (timer !== undefined) clearTimeout(timer);
   }
 }
 

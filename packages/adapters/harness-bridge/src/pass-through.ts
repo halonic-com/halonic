@@ -280,7 +280,7 @@ class Deadline {
   }
 
   clear(): void {
-    clearTimeout(this.#timer);
+    if (this.#timer !== undefined) clearTimeout(this.#timer);
   }
 }
 
