@@ -19,17 +19,15 @@ import {
 
 /**
  * The chief line (board supervisor to Chief): one task per caller, assigned
- * to Chief, where the caller posts and Chief answers. Four board-only routes:
- * open the thread, send as the calling user, read the thread, subscribe a webhook. The reply signal lives in
- * src/plugin/chief-line-signal.ts.
+ * to Chief, where the caller posts and Chief answers. Three board-only routes:
+ * open the thread, read the thread, subscribe a webhook. Callers post on the
+ * thread as their own Paperclip user through the normal comments API. The
+ * wake and the reply signal live in src/plugin/chief-line-signal.ts.
  */
 
 /** What the chief line uses from the plugin context, so tests can fake it. */
 export interface ChiefLineApi {
-  readonly issues: Pick<
-    PluginIssuesClient,
-    "list" | "create" | "createComment" | "listComments" | "requestWakeup"
-  >;
+  readonly issues: Pick<PluginIssuesClient, "list" | "create" | "listComments" | "requestWakeup">;
   readonly agents: Pick<PluginAgentsClient, "list">;
   readonly state: Pick<PluginStateClient, "get" | "set">;
   readonly config: Pick<PluginConfigClient, "get">;
@@ -96,73 +94,29 @@ async function findOrCreateThread(
   return thread;
 }
 
-/** Counts one send (or wake) against the caller's hourly limit; false when the limit is reached. */
+/** Counts one wake against the caller's hourly limit; false when the limit is reached. */
 export async function takeSlot(
   ctx: Pick<ChiefLineApi, "state">,
   companyId: string,
-  record: "sends" | "wakes",
+  record: "wakes",
   caller: string,
   max: number,
   now: Date,
 ): Promise<boolean> {
-  const sends = await readRecords<string[]>(ctx, companyId, record);
+  const taken = await readRecords<string[]>(ctx, companyId, record);
   const hourAgo = now.getTime() - 3_600_000;
-  const recent = (sends[caller] ?? []).filter((at) => Date.parse(at) > hourAgo);
+  const recent = (taken[caller] ?? []).filter((at) => Date.parse(at) > hourAgo);
   if (recent.length >= max) {
     return false;
   }
   await ctx.state.set(chiefLineStateKey(companyId, record), {
-    ...sends,
+    ...taken,
     [caller]: [...recent, now.toISOString()],
   });
   return true;
 }
 
 const fail = (status: number, error: string): PluginApiResponse => ({ status, body: { error } });
-
-async function send(
-  ctx: ChiefLineApi,
-  input: { readonly companyId: string; readonly userId: string },
-  settings: ChiefLineSettings,
-  body: Records<unknown>,
-  now: Date,
-): Promise<PluginApiResponse> {
-  const { companyId, userId } = input;
-  const { caller, message } = body;
-  if (typeof caller !== "string" || !callerPattern.test(caller)) {
-    return fail(400, "caller must match ^[a-z0-9][a-z0-9-]{0,40}$.");
-  }
-  if (typeof message !== "string" || message.trim() === "") {
-    return fail(400, "message must be a non-empty string.");
-  }
-  if (settings.projectId === undefined) {
-    return fail(409, "The chief line has no project: set chiefLine.projectId.");
-  }
-  const chiefId = await chiefAgentId(ctx, companyId);
-  if (chiefId === undefined) {
-    return fail(409, "No agent named Chief in this company.");
-  }
-  if (!(await takeSlot(ctx, companyId, "sends", caller, settings.maxPerHour, now))) {
-    return fail(429, `Too many messages: ${caller} may send ${settings.maxPerHour} per hour.`);
-  }
-  const thread = await findOrCreateThread(ctx, companyId, caller, settings.projectId, chiefId);
-  // Posted as the calling board user (the caller's own Paperclip user), not as the plugin.
-  const comment = await ctx.issues.createComment(
-    thread.id,
-    `**From ${caller} (chief line)**\n\n${message}`,
-    companyId,
-    { actorUserId: userId },
-  );
-  // The host may also wake the assignee for a user's comment; the key keeps ours to one per comment.
-  await ctx.issues.requestWakeup(thread.id, companyId, {
-    reason: "chief_line",
-    idempotencyKey: `chief-line ${comment.id}`,
-  });
-  return {
-    status: 200,
-    body: { threadId: thread.id, identifier: thread.identifier, commentId: comment.id },
-  };
-}
 
 async function openThread(
   ctx: ChiefLineApi,
@@ -248,11 +202,10 @@ async function subscribe(
 export const isChiefLineRoute = (routeKey: string) =>
   (Object.values(chiefLineRouteKeys) as string[]).includes(routeKey);
 
-/** Answers the chief line's four routes, for a signed-in board user only. */
+/** Answers the chief line's three routes, for a signed-in board user only. */
 export async function handleChiefLineRequest(
   input: PluginApiRequestInput,
   ctx: ChiefLineApi,
-  now: Date = new Date(),
 ): Promise<PluginApiResponse> {
   const userId = input.actor.actorType === "user" ? input.actor.userId : undefined;
   if (typeof userId !== "string" || userId === "") {
@@ -264,8 +217,6 @@ export async function handleChiefLineRequest(
   }
   const body = (input.body ?? {}) as Records<unknown>;
   switch (input.routeKey) {
-    case chiefLineRouteKeys.send:
-      return await send(ctx, { companyId: input.companyId, userId }, settings, body, now);
     case chiefLineRouteKeys.openThread:
       return await openThread(ctx, input.companyId, settings, body);
     case chiefLineRouteKeys.thread:

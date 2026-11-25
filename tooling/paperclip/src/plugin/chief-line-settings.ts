@@ -1,5 +1,3 @@
-import type { PluginCapability } from "@paperclipai/plugin-sdk";
-
 /**
  * The chief line's settings and names: one `chiefLine` object in the plugin's
  * instance settings, read by src/plugin/chief-line.ts and
@@ -11,7 +9,6 @@ export const callerPattern = /^[a-z0-9][a-z0-9-]{0,40}$/;
 
 /** The route keys the manifest declares and the worker answers. */
 export const chiefLineRouteKeys = {
-  send: "chief-line-send",
   openThread: "chief-line-open-thread",
   thread: "chief-line-thread",
   subscribe: "chief-line-subscribe",
@@ -35,7 +32,7 @@ export const chiefLineConfigProperties = {
         type: "string",
         title: "Project",
         description:
-          "The id of the project the chief line's tasks ([chief-line] <caller>) are created in. Empty: sends are refused.",
+          "The id of the project the chief line's tasks ([chief-line] <caller>) are created in. Empty: threads are not created.",
       },
       webhookHosts: {
         type: "array",
@@ -47,8 +44,8 @@ export const chiefLineConfigProperties = {
       },
       maxPerHour: {
         type: "integer",
-        title: "Messages per hour per caller",
-        description: "A caller's sends above this in the last hour are refused.",
+        title: "Wakes per hour per caller",
+        description: "Chief is woken at most this many times per caller in the last hour.",
         minimum: 1,
         default: 20,
       },
@@ -105,18 +102,14 @@ export const threadTitle = (caller: string) => `[chief-line] ${caller}`;
 export const chiefLineStateKey = (companyId: string, key: ChiefLineRecord) =>
   ({ scopeKind: "company", scopeId: companyId, namespace: "chief-line", stateKey: key }) as const;
 
-/** The chief line's records in plugin state: threads, sends and wakes per hour, webhooks, signalled comments. */
-export type ChiefLineRecord = "threads" | "sends" | "wakes" | "hooks" | "signalled";
-
-/** Posting a comment as a board user, for the chief line's send route only. */
-export const humanComments = "issue.comments.create_human_attributed" as PluginCapability;
+/** The chief line's records in plugin state: threads, wakes per hour, webhooks, signalled comments. */
+export type ChiefLineRecord = "threads" | "wakes" | "hooks" | "signalled";
 
 /** The chief line's routes, board only (src/plugin/chief-line.ts). */
 export const chiefLineRoutes = (
   [
     [chiefLineRouteKeys.openThread, "POST", "/chief-line/thread"],
     [chiefLineRouteKeys.thread, "GET", "/chief-line/thread"],
-    [chiefLineRouteKeys.send, "POST", "/chief-line/send"],
     [chiefLineRouteKeys.subscribe, "POST", "/chief-line/subscribe"],
   ] as const
 ).map(([routeKey, method, path]) => ({
@@ -128,9 +121,8 @@ export const chiefLineRoutes = (
   companyResolution: { from: "query" as const, key: "companyId" },
 }));
 
-/** What the manifest takes from the chief line: its settings, routes and comment capability. */
+/** What the manifest takes from the chief line: its settings and routes. */
 export const chiefLine = {
   properties: chiefLineConfigProperties,
   routes: chiefLineRoutes,
-  capability: humanComments,
 };
