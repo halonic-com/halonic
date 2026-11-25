@@ -2,6 +2,7 @@
 
 - Approval: Liam approved the plan on HAL-18039 (follow-up to the HAL-18037 security review, S-9)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ciV9IhXvTgh6oKjrNoAl/SlD/QMNwv0Vgezr1WJRVUecbUHXMkc9bkp4kLs/nKmAjYUyQWgfv/pFXa5alYZmAA==
 
 The request-count store gains an optional scope, so the server can count each scope's share of
 the daily ceiling in a later pull request. Nothing calls it with a scope yet.
