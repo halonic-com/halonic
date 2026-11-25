@@ -46,6 +46,7 @@ fn secret_commands_refuse_halonic_names_before_the_backend() {
         "serve_password",
         "remote_host_key",
         "halonic_token_google_refresh_acme",
+        "action__github__acme-admin",
     ] {
         let name = SecretName::parse(stored).expect("a valid name");
         backend.set(&name, "stored-value").expect("stores");
@@ -60,6 +61,9 @@ fn secret_commands_refuse_halonic_names_before_the_backend() {
         "halonic_token_google_refresh_acme",
         "Halonic-Token-Google-Refresh-Acme",
         "halonic_token_",
+        "action__github",
+        "action__github__acme_admin",
+        "Action--GitHub--Acme-Admin",
     ] {
         assert_eq!(
             get_secret(&backend, name),

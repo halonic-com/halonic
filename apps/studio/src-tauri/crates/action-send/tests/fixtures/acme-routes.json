@@ -1,0 +1,90 @@
+{
+  "format": "halonic.action-routes/1",
+  "webOrigins": [
+    {
+      "service": "github",
+      "host": "github.com",
+      "pathPrefixes": ["/{owner}/{repo}/settings/variables/", "/{owner}/{repo}/settings/rules/"]
+    }
+  ],
+  "routes": [
+    {
+      "kind": "call",
+      "definition": "acme.approve-run",
+      "version": 1,
+      "step": 1,
+      "service": "github",
+      "risk": "routine",
+      "placeholders": { "owner": "^[A-Za-z0-9-]{1,39}$", "repo": "^[A-Za-z0-9._-]{1,100}$", "runId": "^[0-9]{1,20}$" },
+      "method": "POST",
+      "path": "/repos/{owner}/{repo}/actions/runs/{runId}/approve",
+      "body": [],
+      "keep": []
+    },
+    {
+      "kind": "call",
+      "definition": "acme.read-run",
+      "version": 1,
+      "step": 1,
+      "service": "github",
+      "risk": "routine",
+      "placeholders": { "owner": "^[A-Za-z0-9-]{1,39}$", "repo": "^[A-Za-z0-9._-]{1,100}$", "runId": "^[0-9]{1,20}$" },
+      "method": "GET",
+      "path": "/repos/{owner}/{repo}/actions/runs/{runId}",
+      "body": [],
+      "keep": ["status", "head_sha", "note"]
+    },
+    {
+      "kind": "call",
+      "definition": "acme.set-variable",
+      "version": 1,
+      "step": 2,
+      "service": "github",
+      "risk": "admin",
+      "placeholders": { "owner": "^[A-Za-z0-9-]{1,39}$", "repo": "^[A-Za-z0-9._-]{1,100}$", "name": "^[A-Z][A-Z0-9_]{0,63}$" },
+      "method": "PATCH",
+      "path": "/repos/{owner}/{repo}/actions/variables/{name}",
+      "body": [
+        { "name": "value", "kind": "string", "pattern": "^[A-Za-z0-9._-]{1,200}$" },
+        { "name": "visibility", "kind": "constant", "value": "all" }
+      ],
+      "keep": []
+    },
+    {
+      "kind": "call",
+      "definition": "acme.delete-repo",
+      "version": 1,
+      "step": 1,
+      "service": "github",
+      "risk": "irreversible",
+      "placeholders": { "owner": "^[A-Za-z0-9-]{1,39}$", "repo": "^[A-Za-z0-9._-]{1,100}$" },
+      "method": "DELETE",
+      "path": "/repos/{owner}/{repo}",
+      "body": [],
+      "keep": []
+    },
+    {
+      "kind": "call",
+      "definition": "acme.set-secret",
+      "version": 1,
+      "step": 1,
+      "service": "github",
+      "risk": "admin",
+      "placeholders": { "owner": "^[A-Za-z0-9-]{1,39}$", "repo": "^[A-Za-z0-9._-]{1,100}$", "name": "^[A-Z][A-Z0-9_]{0,63}$" },
+      "method": "PUT",
+      "path": "/repos/{owner}/{repo}/actions/secrets/{name}",
+      "body": [{ "name": "value", "kind": "secret-input" }],
+      "keep": []
+    },
+    {
+      "kind": "guided",
+      "definition": "acme.set-variable",
+      "version": 1,
+      "step": 1,
+      "service": "github",
+      "risk": "routine",
+      "placeholders": { "owner": "^[A-Za-z0-9-]{1,39}$", "repo": "^[A-Za-z0-9._-]{1,100}$" },
+      "address": "https://github.com/{owner}/{repo}/settings/variables/actions/new"
+    }
+  ]
+}

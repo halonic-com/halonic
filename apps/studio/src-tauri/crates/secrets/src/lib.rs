@@ -34,5 +34,7 @@ pub use contract::check_backend_contract;
 pub use error::SecretError;
 pub use host::{delete_host_secret, get_host_secret, set_host_secret};
 pub use memory::MemoryBackend;
-pub use name::{HALONIC_NAMES, HOST_NAMES, MAX_NAME_LENGTH, SecretName, TOKEN_PREFIX};
+pub use name::{
+    ACTION_PREFIX, HALONIC_NAMES, HOST_NAMES, MAX_NAME_LENGTH, SecretName, TOKEN_PREFIX,
+};
 pub use origins::{AllowOrigin, MAX_ALLOWED_ORIGINS, allow_origin, allowed_origins};
