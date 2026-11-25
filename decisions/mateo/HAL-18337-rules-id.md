@@ -2,6 +2,7 @@
 
 - Approval: HAL-18337, Liam's review of #6050 (two points for the next PR); Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jz+3RxKKiD3UG+DP04u4ytcyDjfUgU6TkFHRi7xOrGQsIezrFHt6TSolP34FViGBnAhk9eGQMR5y+Hu/xetrBw==
 
 ## What changes
 
