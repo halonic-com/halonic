@@ -399,6 +399,9 @@ importers:
       '@halonicjs/adapter-token-store':
         specifier: workspace:*
         version: link:../../packages/adapters/token-store
+      '@halonicjs/adapter-tunnel-tailscale':
+        specifier: workspace:*
+        version: link:../../packages/adapters/tunnel-tailscale
       '@halonicjs/adapter-workspace-engine-node':
         specifier: workspace:*
         version: link:../../packages/adapters/workspace-engine-node

@@ -41,6 +41,10 @@ export interface RemoteGatewayOptions {
   readonly risky: RiskySwitch;
   /** The loopback port to listen on; a free one each time when not given. */
   readonly port?: number;
+  /** The `Host` a request through the tunnel carries, asked for at each start; loopback names only when not given. */
+  readonly tunnelHosts?: () => Promise<readonly string[]>;
+  /** Headers the tunnel adds only to a public request; the listener refuses a request with one. */
+  readonly publicHeaders?: readonly string[];
   /** The ports the host listens on, which no provider's address may be: the gateway's joins while it listens. */
   readonly ownPorts: Set<number>;
   /** Where a listener that can't start, and a connection that fails, is reported; the host serves on. */
@@ -94,9 +98,10 @@ export class RemoteGateway implements GatewaySwitch {
   }
 
   async #listen(): Promise<GatewayListener | undefined> {
-    const { ledger, runs, risky, port, log } = this.#options;
+    const { ledger, runs, risky, port, publicHeaders, log } = this.#options;
     try {
       const { phones, pairing } = await this.#options.access();
+      const extraHosts = await this.#tunnelHosts();
       return await startGatewayListener({
         source: hostGatewaySource(ledger, runs),
         phones,
@@ -104,10 +109,22 @@ export class RemoteGateway implements GatewaySwitch {
         policy: gatewayPolicy(risky),
         onError: (error) => log(`A remote gateway connection failed: ${String(error)}\n`),
         ...(port === undefined ? {} : { port }),
+        extraHosts,
+        ...(publicHeaders === undefined ? {} : { publicHeaders }),
       });
     } catch (error) {
       log(`The remote gateway didn't start: ${String(error)}\n`);
       return undefined;
+    }
+  }
+
+  /** The tunnel's names for this start; none, said why, when they can't be read, so only loopback names pass. */
+  async #tunnelHosts(): Promise<readonly string[]> {
+    try {
+      return (await this.#options.tunnelHosts?.()) ?? [];
+    } catch (error) {
+      this.#options.log(`The remote gateway accepts no tunnel name: ${String(error)}\n`);
+      return [];
     }
   }
 

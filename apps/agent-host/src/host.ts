@@ -55,10 +55,12 @@ import { proxySetting } from "./proxy-setting.ts";
 import {
   openHostRemote,
   type RemoteOffer,
+  type RemoteProbe,
   remoteHomeFor,
   type ServedRemoteHome,
 } from "./remote/host-remote.ts";
 import { remoteRoutes } from "./remote/remote-routes.ts";
+import { tailscaleProbe } from "./remote/tailscale-offer.ts";
 import { noBuiltProfiles } from "./sandbox/built-profiles.ts";
 import { hostSandboxChoice } from "./sandbox/choice-host.ts";
 import { sandboxChoiceRoutes } from "./sandbox/choice-routes.ts";
@@ -151,7 +153,7 @@ export type FramedHandshake = Pick<Handshake, "token">;
  * crashed host left in the profile (see {@link sweepLeftOverBridges}).
  *
  * @param makeSandbox - makes the sandbox on this machine with the sweep roots it may sweep and the shared folders its sessions deny; tests make one on a fake machine
- * @param remote - the tunnel provider that lets the host offer remote, and run the remote gateway while remote is on (requirement `agent-host.remote-gateway`). The executable's `main.ts` passes none until phase C brings the real providers, so it offers no remote.
+ * @param remote - the tunnel provider that lets the host offer remote, and run the remote gateway while remote is on (requirement `agent-host.remote-gateway`), or a probe that finds one once the host serves. The executable gives the Tailscale probe ({@link runExecutable}); without either the host offers no remote.
  * @returns the exit code
  */
 export async function run(
@@ -168,7 +170,7 @@ export async function run(
       sharedFolders,
       ...inProfile,
     }),
-  remote?: RemoteOffer,
+  remote?: RemoteOffer | RemoteProbe,
 ): Promise<number> {
   if (args.includes("--version")) {
     io.write(`halonic-agent-host ${version}\n`);
@@ -211,7 +213,7 @@ export async function run(
     io.writeError(text),
   );
   const serving = { overStdio: args.includes("--stdio"), profile, holdsLock: lock !== null };
-  const home = remoteHomeFor(remote, serving, (text) => io.writeError(text));
+  const home = await remoteHomeFor(remote, serving, (text) => io.writeError(text));
   const host = await hostServices(
     version,
     sandbox,
@@ -246,6 +248,27 @@ export async function run(
       io.writeError(`The host lock couldn't be released: ${String(error)}\n`);
     });
   }
+}
+
+/** What a test may swap in {@link runExecutable}: what the executable itself never changes. */
+export interface ExecutableSeams {
+  readonly io?: HostIo;
+  /** Finds the provider; tests give the Tailscale probe a scripted `tailscale`. */
+  readonly probe?: RemoteProbe;
+  readonly makeSandbox?: Parameters<typeof run>[3];
+}
+
+/**
+ * The host as the executable's `main.ts` runs it: {@link run} with the
+ * Tailscale provider, offered only where `tailscale` is installed. Remote
+ * stays off until the person turns it on, and a phone pairs only after Allow.
+ */
+export function runExecutable(
+  args: readonly string[],
+  version: string,
+  seams: ExecutableSeams = {},
+): Promise<number> {
+  return run(args, version, seams.io, seams.makeSandbox, seams.probe ?? tailscaleProbe());
 }
 
 /** The `coding-tools` mode, which `main.ts` runs from the payload it checked (`coding-tools-mode.ts`). */

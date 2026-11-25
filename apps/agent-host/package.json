@@ -58,6 +58,7 @@
     "@halonicjs/adapter-memory": "workspace:*",
     "@halonicjs/adapter-program-copies-node": "workspace:*",
     "@halonicjs/adapter-remote-gateway": "workspace:*",
+    "@halonicjs/adapter-tunnel-tailscale": "workspace:*",
     "@halonicjs/adapter-sandbox-host": "workspace:*",
     "@halonicjs/adapter-sandbox-srt": "workspace:*",
     "@halonicjs/adapter-scheduler-node": "workspace:*",

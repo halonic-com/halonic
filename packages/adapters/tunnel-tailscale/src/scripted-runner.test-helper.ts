@@ -19,12 +19,16 @@ const done = (stdout = ""): TailscaleReply => ({ kind: "done", code: 0, stdout, 
 /**
  * A {@link TailscaleRunner} that answers from a script and records every
  * argument list it was given, so a test can check what the provider ran.
+ * Without a scripted `serve status`, it answers with the entry the last
+ * `serve --bg` added, until a `serve … off` removes it, as tailscaled does.
  */
 export class ScriptedRunner implements TailscaleRunner {
   readonly calls: string[][] = [];
   script: Script;
   /** When set, `serve --bg` waits for this before it answers. */
   holdAdd: Promise<void> | undefined;
+  /** The serve entry added and not yet removed: its `host:port` and the address it proxies to. */
+  served: { hostPort: string; target: string } | undefined;
 
   constructor(script: Script = {}) {
     this.script = script;
@@ -34,8 +38,28 @@ export class ScriptedRunner implements TailscaleRunner {
     this.calls.push([...args]);
     const kind = kindOf(args);
     if (kind === "serve-add" && this.holdAdd !== undefined) await this.holdAdd;
-    return this.script[kind] ?? defaults[kind];
+    const reply = this.script[kind] ?? defaults[kind];
+    if (reply.kind === "done" && reply.code === 0) this.#track(kind, args);
+    if (kind === "serve-status" && this.script["serve-status"] === undefined) {
+      return done(serveConfig(this.served));
+    }
+    return reply;
   }
+
+  #track(kind: keyof Script, args: readonly string[]): void {
+    if (kind === "serve-off") this.served = undefined;
+    if (kind !== "serve-add") return;
+    const port = args.find((arg) => arg.startsWith("--https="))?.slice("--https=".length);
+    this.served = { hostPort: `${nodeName}:${port}`, target: args.at(-1) ?? "" };
+  }
+}
+
+/** The `tailscale serve status --json` that holds `entry`, or no entry at all. */
+export function serveConfig(entry: { hostPort: string; target: string } | undefined): string {
+  if (entry === undefined) return "{}";
+  return JSON.stringify({
+    Web: { [entry.hostPort]: { Handlers: { "/": { Proxy: entry.target } } } },
+  });
 }
 
 const defaults: Record<keyof Script, TailscaleReply> = {
