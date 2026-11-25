@@ -627,6 +627,7 @@ jobs:
     # (HAL-11232).
     environment: ${{ github.event_name == 'pull_request' && 'pull-request' || 'leak-terms' }}
     permissions:
+      checks: read # the personal-terms result of leak-terms.yml
       contents: read
       pull-requests: read
     steps:
@@ -685,6 +686,51 @@ jobs:
                 --allow-file "$guard/tooling/check/leak-allow.txt"
             fi
           fi
+      # A pull request's own run has no terms: leak-terms.yml checks them with
+      # the base branch's code. Its result counts here, so a personal term
+      # turns `ci-ok` red before review, not first in the merge queue
+      # (HAL-18475). After a title or body edit leak-terms.yml runs again, and
+      # pr-details.yml re-runs this job. Forks and Dependabot get no terms.
+      - name: Personal terms (leak-terms.yml)
+        # The same pull requests leak-terms.yml runs for: same repo, not Dependabot, into main or release/*.
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.event.pull_request.user.login != 'dependabot[bot]' &&
+          (github.base_ref == 'main' || startsWith(github.base_ref, 'release/'))
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          latest() {
+            gh api -X GET "repos/$REPO/commits/$HEAD/check-runs" \
+              -f check_name="Personal terms (base branch's code)" -f filter=latest \
+              --jq '.check_runs | max_by(.id) // {} | "\(.status // "missing") \(.conclusion // "-") \(.html_url // "-")"'
+          }
+          # It usually ends within a minute. A cancelled run was replaced by a
+          # newer one (an edit), so wait for that one.
+          for _ in $(seq 1 20); do
+            read -r status conclusion url < <(latest || echo "unreadable")
+            if [ "$status" = completed ] && [ "$conclusion" != cancelled ]; then
+              break
+            fi
+            sleep 15
+          done
+          # A failure read just as an edit started a new run: read once more.
+          if [ "$conclusion" = failure ]; then
+            sleep 20
+            read -r status conclusion url < <(latest || echo "unreadable")
+          fi
+          case "$status $conclusion" in
+            "completed success" | "completed skipped" | "completed neutral")
+              echo "Personal terms: $conclusion ($url)." ;;
+            "completed failure" | "completed timed_out" | "completed action_required")
+              echo "::error title=Personal terms::The Leak terms workflow found a problem: $url. The merge queue would fail the same way. Fix it, then push (a commit) or edit (the title or body)."
+              exit 1 ;;
+            *)
+              echo "::warning title=Personal terms::No finished Leak terms result for this commit ($status $conclusion). The merge queue still checks the terms." ;;
+          esac
 
   coverage-floors:
     # Fails when a pull request lowers a package's coverage floor. Runs the

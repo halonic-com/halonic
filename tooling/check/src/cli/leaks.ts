@@ -63,9 +63,16 @@ function pullRequestTexts(): ChangeText[] {
     ["pull request title", pullRequest?.title],
     ["pull request body", pullRequest?.body],
   ];
-  return fields
+  const texts = fields
     .filter((field): field is [string, string] => field[1] !== undefined && field[1] !== "")
     .map(([label, text]) => ({ label, text, termsOnly: false }));
+  // The opener becomes the author of the merge queue's squash commit, which
+  // the queue scans like any commit author: check it here, so the pull
+  // request fails before review instead of in the queue (HAL-18475).
+  if (pullRequest !== undefined && pullRequest.author !== "") {
+    texts.push({ label: "pull request author", text: pullRequest.author, termsOnly: true });
+  }
+  return texts;
 }
 
 /** The options that take a file name, with the file names given. */

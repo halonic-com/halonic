@@ -75,7 +75,11 @@ check everything else. CI reads the terms from the `HALONIC_DENY_TERMS`
 secret of the `leak-terms` environment, which only `main`, `release/*` and the
 merge queue may use. A pull request's own CI run scans without them; the
 `Leak terms` workflow checks its terms with the base branch's code, and the
-merge queue checks them again before anything merges. A secret that is set
+merge queue checks them again before anything merges. The `Leak guard` job
+of the pull request's CI run reads the `Leak terms` result, so a term fails
+`ci-ok` before review. `Leak terms` also checks the login and name of the
+account that opened the pull request: the merge queue's squash commit is
+authored by that account, and the queue checks commit authors. A secret that is set
 but holds no term always fails. A missing secret passes with a warning
 until the repository variable `HALONIC_TERMS_ENFORCED` is `true`; from then
 on a missing secret fails (a pull request's own run never gets the
