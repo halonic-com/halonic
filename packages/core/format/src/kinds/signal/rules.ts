@@ -106,6 +106,38 @@ export const SIGNAL_RULES = {
       .strict()
       .prefault({}),
   },
+  "thin-spec": {
+    about:
+      "Adds a Clarify acceptance criteria task for a new code task whose thin-spec score is high or that has no checkable Done when line.",
+    writes: true,
+    settings: s
+      .object({
+        /** A thin-spec score above this flags the task. */
+        threshold: s.number().min(0).max(1).default(0.5),
+        /** The hardest difficulty tag (`D1` to `D5`) it checks. */
+        upTo: s.number().int().min(1).max(5).default(4),
+        /** How many hours after it was created a task still counts as new. */
+        newForHours: s.number().int().min(1).max(168).default(24),
+        /** Whether a missing checkable Done when line gets a comment and a clarify task. */
+        doneWhen: s.boolean().default(true),
+      })
+      .strict()
+      .prefault({}),
+  },
+  "rule-checks": {
+    about:
+      "Works out the 5 rule checks of the Worker agents page and saves them for it; it changes no task.",
+    writes: false,
+    settings: s
+      .object({
+        /** A monitor that fires more often than every this many minutes is a Check. */
+        shortestMonitorMinutes: s.number().int().min(1).max(120).default(15),
+        /** More tasks in progress than this is a Problem. */
+        inProgressLimit: s.number().int().min(1).max(100).default(10),
+      })
+      .strict()
+      .prefault({}),
+  },
 } as const;
 
 /** A rule's name, such as `pr-watcher`. */

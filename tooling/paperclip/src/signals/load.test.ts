@@ -63,6 +63,20 @@ verifies("paperclip.signals", () => {
     expect(loadSignals([looser]).plans.get("fast-track")).toBe("off");
   });
 
+  test("runs the thin-spec and rule-checks rules with today's settings", () => {
+    const { plans } = loadSignals(undefined);
+    expect(plans.get("thin-spec")).toMatchObject({
+      source: "default",
+      writes: true,
+      settings: { threshold: 0.5, upTo: 4, newForHours: 24, doneWhen: true },
+    });
+    expect(plans.get("rule-checks")).toMatchObject({
+      source: "default",
+      writes: false,
+      settings: { shortestMonitorMinutes: 15, inProgressLimit: 10 },
+    });
+  });
+
   test("takes a signal file's settings", () => {
     const signal = { ...watcher, rule: { run: "pr-watcher", with: { wakeOn: ["ci-red"] } } };
     expect(loadSignals([signal]).plans.get("pr-watcher")).toMatchObject({

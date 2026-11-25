@@ -11,7 +11,14 @@ import { canonicalJson } from "@halonicjs/std";
  */
 
 /** The rules this runtime has a pure rule for. */
-export const runtimeRules = ["pr-watcher", "board-ask", "task-effort", "fast-track"] as const;
+export const runtimeRules = [
+  "pr-watcher",
+  "board-ask",
+  "task-effort",
+  "fast-track",
+  "thin-spec",
+  "rule-checks",
+] as const;
 
 /** A rule this runtime runs. */
 export type RuntimeRule = (typeof runtimeRules)[number];

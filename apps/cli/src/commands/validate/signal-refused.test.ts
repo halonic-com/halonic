@@ -48,6 +48,8 @@ verifies("cli.commands.validate.signal-refused", () => {
     ["board-ask", "rule: { run: board-ask, with: { windowMinutes: 20, wake: false } }"],
     ["task-effort", "rule: { run: task-effort, with: { highFrom: 3, highAfterSendBack: false } }"],
     ["fast-track", "rule: { run: fast-track, with: { jumpAhead: 12, queueSlowMinutes: 45 } }"],
+    ["thin-spec", "rule: { run: thin-spec, with: { threshold: 0.6, upTo: 3, doneWhen: false } }"],
+    ["rule-checks", "rule: { run: rule-checks, with: { inProgressLimit: 12 } }"],
   ])("passes a signal file that picks the offered rule %s", async (_, line) => {
     withSignal(line);
 
@@ -60,6 +62,8 @@ verifies("cli.commands.validate.signal-refused", () => {
     ["board-ask", "rule: { run: board-ask, with: { wakeOn: [ci-red] } }"],
     ["task-effort", "rule: { run: task-effort, with: { effort: max } }"],
     ["fast-track", "rule: { run: fast-track, with: { labelAdder: someone } }"],
+    ["thin-spec", "rule: { run: thin-spec, with: { clarifier: pm } }"],
+    ["rule-checks", "rule: { run: rule-checks, with: { checks: [workload] } }"],
   ])("refuses a setting the rule %s doesn't know", async (_, line) => {
     withSignal(line);
 
