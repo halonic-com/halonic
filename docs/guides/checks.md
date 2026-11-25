@@ -729,9 +729,9 @@ Who may use what:
 | host | core; Web-standard APIs | Node APIs, adapters, third-party code, Studio packages |
 | targets | runtime and harness: core, host, adapters, its platform's APIs. Deploy: core, adapters, Node APIs, the runtime packages it ships | Studio packages; a runtime or harness never uses a deploy package or another target package |
 | studio | core, other Studio packages, React, Tauri, Vite | adapters (only `studio/services` may), Node APIs, a feature (shared Studio packages) |
-| apps | the public entry point of any package | the CLI (`halonic`): any target package other than `target-node-runtime` and `target-node-harness`, even in `devDependencies`. It loads a deploy target by name when the user deploys, so users install only the targets they use |
+| apps | the public entry point of any package | the CLI (`halonic`): any target package other than `target-node-runtime`, `target-node-harness` and `target-paperclip-runtime` (its plugin builder copies that runtime's `worker.js`), even in `devDependencies`. It loads a deploy target by name when the user deploys, so users install only the targets they use |
 | testing | anything | being a runtime dependency |
-| tooling | other tooling packages; core packages too for the packages listed under `toolingUsesCore` | being a runtime dependency; adapters, targets and Studio packages, even for a listed package |
+| tooling | other tooling packages; a target's `runtime` package as a dev dependency only; core packages too for the packages listed under `toolingUsesCore` | being a runtime dependency; adapters, Studio packages and other target packages, even for a listed package |
 
 `node:*` is allowed in adapters with `"runtime": "node"`, in
 `targets/node/runtime`, `targets/node/harness` and in every deploy package. `cloudflare:*` is allowed only in
