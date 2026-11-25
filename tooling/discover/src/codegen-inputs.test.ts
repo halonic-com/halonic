@@ -16,6 +16,7 @@ const workspaceSources: Record<string, string> = {
 };
 // Anchored to the start of a line, so an import inside a string or comment doesn't count.
 const importPattern = /^\s*(?:import|export)\b[^'"]*?from\s*["']([^"']+)["']/gm;
+const sideEffectImportPattern = /^\s*import\s*["']([^"']+)["']/gm;
 
 function importedFiles(file: string, seen: Set<string>): Set<string> {
   if (seen.has(file)) {
@@ -26,7 +27,10 @@ function importedFiles(file: string, seen: Set<string>): Set<string> {
   }
   seen.add(file);
   const text = readFileSync(join(root, file), "utf8");
-  for (const match of text.matchAll(importPattern)) {
+  for (const match of [
+    ...text.matchAll(importPattern),
+    ...text.matchAll(sideEffectImportPattern),
+  ]) {
     const specifier = match[1] ?? "";
     if (specifier.startsWith(".")) {
       importedFiles(relative(root, resolve(root, dirname(file), specifier)), seen);
