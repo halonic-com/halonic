@@ -17,6 +17,15 @@ A reply that uses `Query`, `Mutation`, a `$state` variable, an expression (opera
 
 A reply over a limit in `src/limits.ts` gives `too-large` or `too-deep`.
 
+## The chat's component list
+
+`chatLibrary(["card", "table", "form", "buttons"])` gives the library a chat reply is read
+against: a `Stack` holding `Card`, `Table`, `Form` and `Buttons`, and the parts only they may hold
+(`Fact`, `Link`, `Row`, `Field`, `Button`). A button has only a label, a form field is `text`,
+`longText`, `list`, `choice` or `tickBox`, and a link keeps only an `http:` or `https:` address.
+Anything else (an image, a style, a variant, a password field) is left out and reported.
+`promptFor(names)` gives the text that tells the model what it may draw, made from the same list.
+
 ## Example
 
 ```ts

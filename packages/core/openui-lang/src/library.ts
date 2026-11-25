@@ -3,14 +3,20 @@
 /** What a prop accepts. */
 export type OpenUiPropType =
   | { readonly kind: "string"; readonly oneOf?: readonly string[] }
+  /** A web address; only `http:` and `https:` fit. */
+  | { readonly kind: "link" }
   | { readonly kind: "number" }
   | { readonly kind: "boolean" }
   | { readonly kind: "object" }
   | { readonly kind: "any" }
-  /** A list of plain values. */
-  | { readonly kind: "list"; readonly maxItems?: number }
-  /** A list of components; any registered component fits (spec 8.4). */
-  | { readonly kind: "components"; readonly maxItems?: number }
+  /** A list of values; with `plainOnly`, a component, action, list or object item is left out and reported. */
+  | { readonly kind: "list"; readonly maxItems?: number; readonly plainOnly?: boolean }
+  /** A list of components; any registered component fits (spec 8.4) unless `only` names them. */
+  | {
+      readonly kind: "components";
+      readonly maxItems?: number;
+      readonly only?: readonly string[];
+    }
   /** What a click does: send a message to the agent or open a link. */
   | { readonly kind: "action" };
 
