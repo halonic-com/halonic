@@ -54,6 +54,9 @@ Read or report known problems in the [open issues](https://github.com/halonic-co
   `workspace.yaml` counts only those estimates, so set a limit at your
   provider too.
 - Studio doesn't start connectors (MCP servers) yet.
+- The Studio Assistant, the chat that proposes changes to your workspace for
+  you to review, is new after 0.1.1. What it can do, what it asks you for and
+  its limits: [The Studio Assistant](docs/guides/studio-assistant.md).
 - The command line bundles the Claude Code and Codex harnesses, so an agent can run on your Claude or ChatGPT subscription, and also supports `harness: opencode` at the one OpenCode version Halonic has tested. Studio doesn't offer them yet.
 - The command line starts connectors in the sandbox when the sandbox works on
   your computer. Otherwise it starts them on your computer, under the trust you
