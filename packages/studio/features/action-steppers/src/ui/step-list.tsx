@@ -34,8 +34,9 @@ export interface StepListProps {
  * The request's steps in order (`action-steppers.run`): each with its number, its risk, what it
  * does in plain words, a browser step's page and instructions, and, once it has started, how it
  * went. A failure names the service and its status, with the service's own message behind
- * **Copy details**; the stepper's status region reads each result out as it arrives. While the request is ready, each step not done has **Do it by hand**, and the next
- * browser step has its own controls.
+ * **Copy details**; the stepper's status region reads each result out as it arrives. While the
+ * request is ready, each step not done has **Do it by hand**, and the next browser step has its
+ * own controls.
  */
 export function StepList({ view, actions, active, reviewOnly = false, runningId }: StepListProps) {
   const headingId = useId();
