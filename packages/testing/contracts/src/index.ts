@@ -1,3 +1,10 @@
+export { actionRecordsContract, type MakeActionRecords } from "./action-records.ts";
+export {
+  type ActionSenderHarness,
+  type ActionSenderSetup,
+  actionSenderContract,
+  type MakeActionSender,
+} from "./action-sender.ts";
 export {
   type AgentPlacementStoreHarness,
   agentPlacement,
@@ -61,6 +68,14 @@ export {
   deployTargetContract,
   type MakeDeployTarget,
 } from "./deploy-target.ts";
+export { FakeActionRecords } from "./fake-action-records.ts";
+export {
+  FakeActionSender,
+  type FakeActionSenderOptions,
+  type SentActionCall,
+  type StandInAnswer,
+  type StandInUser,
+} from "./fake-action-sender.ts";
 export {
   FakeAgentMessaging,
   type FakeAgentMessagingOptions,
