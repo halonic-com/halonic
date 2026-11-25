@@ -22,6 +22,13 @@ fields checked like parameters) are in the new requirement
 `format.tool-parameter-shapes`; they only refuse more. None of this is
 released yet.
 
+Since HAL-18229 (#5989) the runtime also reads `blockedBy` as one text with
+commas and reads the flat `monitorInMinutes`, `monitorRef`, `monitorService`
+and `monitorMaxChecks`. So `blockedBy`'s list shape carries `orText`, and
+`parameter-type` takes it declared as a list of strings or as a string; the
+requirement has an example for the string form. The flat `monitor…`
+parameters stay flat, as #5989 left them.
+
 The format's generated JSON Schemas, `spec/tool.schema.json` and
 `spec/workspace-snapshot.schema.json`, change to match: each parameter's
 `oneOf` gains the object and list choices. The flat choices keep the same

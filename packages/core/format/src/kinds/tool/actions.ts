@@ -67,11 +67,13 @@ export type FlatValueType = "string" | "integer" | "number" | "boolean";
 
 /**
  * The shape of a parameter an action reads as more than a flat value: an
- * object with these fields, or a list of these items.
+ * object with these fields, or a list of these items. A list with `orText`
+ * is also read as one text with commas, such as `HAL-1, HAL-2`, so a tool
+ * file may declare it as either a list or a string.
  */
 export type ActionParameterShape =
   | { readonly type: "object"; readonly fields: readonly ActionParameter[] }
-  | { readonly type: "list"; readonly items: FlatValueType };
+  | { readonly type: "list"; readonly items: FlatValueType; readonly orText?: true };
 
 /** What one action is, for the people who write and review tool files. */
 export interface ToolActionInfo {
@@ -87,11 +89,14 @@ export interface ToolActionInfo {
 
 const none: readonly ActionParameter[] = [];
 
-/** The tasks a task waits on, as `paperclip.next-step` and `paperclip.finish-run` read them. */
+/**
+ * The tasks a task waits on, as `paperclip.next-step` and `paperclip.finish-run`
+ * read them: a list, or one text with commas (HAL-18229).
+ */
 const blockedBy: ActionParameter = {
   name: "blockedBy",
   required: false,
-  shape: { type: "list", items: "string" },
+  shape: { type: "list", items: "string", orText: true },
 };
 
 /** A monitor that wakes the caller, as `paperclip.next-step` reads it. */

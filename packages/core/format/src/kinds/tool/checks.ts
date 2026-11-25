@@ -25,8 +25,8 @@ const words = {
     }`,
   parameterOptional: (action: string, name: string) =>
     `The action ${action} can't run without '${name}', so a call that leaves it out would fail. Set 'required: true' on '${name}'.`,
-  parameterType: (action: string, name: string, expected: string) =>
-    `The action ${action} reads '${name}' as ${expected}. Declare it with ${expected === "a flat value" ? "type string, integer, number or boolean" : `that type`}.`,
+  parameterType: (action: string, name: string, expected: string, declareWith: string) =>
+    `The action ${action} reads '${name}' as ${expected}. Declare it with ${declareWith}.`,
 } as const;
 
 /** A parameter, or one field of an object parameter, with its name and where it sits. */
@@ -139,19 +139,26 @@ function ownProblems(placed: Placed): KindCheckProblem[] {
   ];
 }
 
-/** How an action reads a parameter, as words for a message. */
-function expectedWords(shape: ActionParameterShape | undefined): string {
-  if (shape === undefined) return "a flat value";
-  return shape.type === "object"
-    ? "an object (type object)"
-    : `a list of ${shape.items} (type list)`;
+/** How an action reads a parameter, and the types that fit, as words for a message. */
+function expectedWords(shape: ActionParameterShape | undefined) {
+  if (shape === undefined) {
+    return { expected: "a flat value", declareWith: "type string, integer, number or boolean" };
+  }
+  if (shape.type === "object") {
+    return { expected: "an object (type object)", declareWith: "that type" };
+  }
+  const list = `a list of ${shape.items} (type list)`;
+  return shape.orText === true
+    ? { expected: `${list} or one text with commas (type string)`, declareWith: "either type" }
+    : { expected: list, declareWith: "that type" };
 }
 
 /** Whether the declared parameter has the type the action reads it as. */
 function typeMatches(declared: ToolParameter, shape: ActionParameterShape | undefined): boolean {
   if (shape === undefined) return declared.type !== "object" && declared.type !== "list";
-  if (shape.type === "list") return declared.type === "list" && declared.items.type === shape.items;
-  return declared.type === "object";
+  if (shape.type === "object") return declared.type === "object";
+  if (shape.orText === true && declared.type === "string") return true;
+  return declared.type === "list" && declared.items.type === shape.items;
 }
 
 /** What one tool file's parameters, or one object's fields, are checked against. */
@@ -182,7 +189,8 @@ function checkDeclared(reading: Reading, read: ActionParameter): KindCheckProble
         ]
       : [];
   if (!typeMatches(declared, read.shape)) {
-    const message = words.parameterType(reading.action, name, expectedWords(read.shape));
+    const { expected, declareWith } = expectedWords(read.shape);
+    const message = words.parameterType(reading.action, name, expected, declareWith);
     return [
       ...optional,
       { severity: "error", code: "parameter-type", path: [...path, "type"], message },

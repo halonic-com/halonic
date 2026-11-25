@@ -67,7 +67,7 @@ verifies("format.tool-file", () => {
 });
 
 verifies("format.tool-parameter-shapes", () => {
-  it("records monitor as an object and blockedBy as a list of strings", () => {
+  it("records monitor as an object and blockedBy as a list of strings or a text", () => {
     const shapes = toolActionInfo("paperclip.next-step").parameters.map(
       ({ name, shape }) => `${name} ${shape?.type ?? "flat"}`,
     );
@@ -76,10 +76,14 @@ verifies("format.tool-parameter-shapes", () => {
       "status flat",
       "comment flat",
       "monitor object",
+      "monitorInMinutes flat",
+      "monitorRef flat",
+      "monitorService flat",
+      "monitorMaxChecks flat",
       "blockedBy list",
     ]);
     const blockedBy = toolActionInfo("paperclip.finish-run").parameters.at(-1);
-    expect(blockedBy?.shape).toEqual({ type: "list", items: "string" });
+    expect(blockedBy?.shape).toEqual({ type: "list", items: "string", orText: true });
   });
 
   it("takes a next-step tool with monitor as an object and blockedBy as a list of strings", () => {
@@ -94,6 +98,14 @@ verifies("format.tool-parameter-shapes", () => {
       "monitor",
       "blockedBy",
     ]);
+  });
+
+  it("takes blockedBy declared as one text with commas", () => {
+    const text = nextStepTool(
+      ...requiredLines,
+      "blockedBy: { type: string, description: The tasks with commas between them. }",
+    );
+    expect(parsedValue("tool", text).parameters["blockedBy"]?.type).toBe("string");
   });
 
   it("refuses a required parameter declared as optional, naming the action and the parameter", () => {
@@ -120,7 +132,9 @@ verifies("format.tool-parameter-shapes", () => {
       "parameters.blockedBy.type parameter-type 11",
     ]);
     expect(problems[0]?.message).toContain("an object (type object)");
-    expect(problems[1]?.message).toContain("a list of string (type list)");
+    expect(problems[1]?.message).toContain(
+      "a list of string (type list) or one text with commas (type string)",
+    );
   });
 
   it("refuses an object or list where the action reads a flat value", () => {
