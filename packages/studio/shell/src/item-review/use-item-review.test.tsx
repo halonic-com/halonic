@@ -3,9 +3,10 @@
 import type { ExpectedContent } from "@halonicjs/ports";
 import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
+import { act, useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, unmountAll } from "../test-support/render.tsx";
+import { changeMarkSelector } from "./change-mark.tsx";
 import { changesDecided } from "./changes-decided.ts";
 import { ItemChangeMark } from "./item-change-mark.tsx";
 import type { ItemChangeToReview, ItemReview, ItemReviewDecision } from "./item-review-api.ts";
@@ -43,15 +44,20 @@ const review: ItemReview = {
 };
 
 function Page() {
+  const title = useRef<HTMLHeadingElement>(null);
   const changes = useItemReview({
     host,
     item: { hubId: "acme", id: "reply" },
     name: "Support reply",
-    goTo: () => {},
+    title,
+    goTo: (change) => document.querySelector<HTMLElement>(changeMarkSelector(change.id))?.focus(),
   });
   const { marks } = changes;
   return (
     <>
+      <h1 ref={title} tabIndex={-1}>
+        Support reply
+      </h1>
       {changes.bar}
       {marks?.review.changes.map((change) => (
         <ItemChangeMark key={change.id} marks={marks} change={change} />
@@ -81,8 +87,18 @@ async function showPage() {
     act(async () =>
       container.querySelector<HTMLElement>(`[data-change-id="${id}"] button`)?.click(),
     );
-  return { container, toasts, acceptOn };
+  const press = (name: string) =>
+    act(async () =>
+      [...container.querySelectorAll("button")].find((one) => one.textContent === name)?.click(),
+    );
+  return { container, toasts, acceptOn, press };
 }
+
+/** The review after `decided` went, as the host reads it again. */
+const without = (...decided: ItemChangeToReview[]): ItemReview => ({
+  ...review,
+  changes: review.changes.filter((change) => !decided.includes(change)),
+});
 
 describe("useItemReview", () => {
   verifies("shell.item-review-decisions", () => {
@@ -150,6 +166,52 @@ describe("useItemReview", () => {
         "This change overlaps another, so you can't accept or reject it on its own. Use Accept all or Reject all.",
         "Couldn't save: The disk is full.",
       ]);
+    });
+  });
+
+  verifies("shell.item-review-focus", () => {
+    it("moves the focus to the next change's mark after a decision, then to the h1", async () => {
+      const undo = async () => "done" as const;
+      accept.mockResolvedValue({ status: "done", undo });
+      const { press, acceptOn } = await showPage();
+
+      changesIn.mockResolvedValueOnce(without(checkAdded));
+      await acceptOn("step:check");
+      expect(document.activeElement?.getAttribute("data-change-id")).toBe("step:start");
+
+      changesIn.mockResolvedValueOnce(without(checkAdded, startToCheck));
+      await acceptOn("step:start");
+      expect(document.activeElement?.getAttribute("data-change-id")).toBe("step:notify");
+
+      changesIn.mockResolvedValueOnce(null);
+      await press("Accept all");
+      expect(document.activeElement?.tagName).toBe("H1");
+      accept.mockReset();
+    });
+
+    it("says a held Accept all in a status region and moves the focus to Compare", async () => {
+      accept.mockResolvedValueOnce({ status: "held" });
+      const { container, press } = await showPage();
+
+      await press("Accept all");
+
+      expect(container.querySelector('[role="status"]')?.textContent).toBe(
+        "Changed outside Halonic",
+      );
+      expect(document.activeElement?.textContent).toBe("Compare");
+      const described = document.activeElement?.getAttribute("aria-describedby") ?? "";
+      expect(document.getElementById(described)?.textContent).toBe("Changed outside Halonic");
+    });
+
+    it("names an important change's mark with Important", async () => {
+      changesIn.mockResolvedValueOnce({
+        ...review,
+        changes: [{ ...checkAdded, sentence: "Model: small → large", important: true }],
+      });
+      const { container } = await showPage();
+      expect(container.querySelector("fieldset")?.getAttribute("aria-label")).toBe(
+        "Important, Model: small → large",
+      );
     });
   });
 });

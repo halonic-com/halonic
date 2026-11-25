@@ -105,6 +105,7 @@ export function WorkflowScreen({
     workflow: { hubId, id },
     name,
     page: body,
+    title,
     announce,
     load,
     openFileAt,

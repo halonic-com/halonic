@@ -105,12 +105,14 @@ export function FileView({ item, context }: ItemViewProps) {
   // in between did not come from this tab.
   const edits = useRef(0);
   const [reveal, setReveal] = useState<{ line: number; round: number } | undefined>();
+  const title = useRef<HTMLHeadingElement>(null);
   const review = useFileReview({
     services: context.services,
     path,
     editor: editorRef,
     toasts,
     onCompare: () => setComparing(true),
+    title,
   });
 
   // The problems are checked when the tab opens and again a moment after the files change, so
@@ -327,6 +329,7 @@ export function FileView({ item, context }: ItemViewProps) {
     >
       <FileHeader
         path={path}
+        titleRef={title}
         actions={{
           openAsItem: openAsItem(),
           rename: renameInTree,

@@ -31,6 +31,8 @@ export interface FileReviewParts {
   readonly toasts: ToastStore | null;
   /** Opens Compare, for a decision held because the file changed outside Halonic. */
   readonly onCompare: () => void;
+  /** The tab's `h1` (`tabIndex={-1}`): it takes the focus once the last part is decided. */
+  readonly title: RefObject<HTMLElement | null>;
 }
 
 /** The assistant's changes to review in a file's tab. */
@@ -56,7 +58,7 @@ function editorPartsOf(review: FileReview | null): readonly EditorReviewPart[] {
  * file and Reject file. Each decision says what it did in a toast with Undo (AI changes 1.3).
  */
 export function useFileReview(parts: FileReviewParts): FileReviewView {
-  const { services, path, editor, toasts, onCompare } = parts;
+  const { services, path, editor, toasts, onCompare, title } = parts;
   const host = services.find(FileReviewService);
   const [review, setReview] = useState<FileReview | null>(null);
   const [round, setRound] = useState(0);
@@ -66,6 +68,9 @@ export function useFileReview(parts: FileReviewParts): FileReviewView {
   const [held, setHeld] = useState(false);
   const latest = useRef<FileReview | null>(null);
   latest.current = review;
+  // After a decision: where among the parts the focus lands once they are read again.
+  const landAt = useRef<number>(undefined);
+  const [landing, setLanding] = useState<{ readonly at: number }>();
 
   useEffect(() => {
     if (host === undefined) return;
@@ -80,6 +85,9 @@ export function useFileReview(parts: FileReviewParts): FileReviewView {
           if (!current()) return;
           setReview(found);
           setPosition((was) => positionWithin(was, found?.parts.length ?? 0));
+          const at = landAt.current;
+          landAt.current = undefined;
+          if (at !== undefined) setLanding({ at });
         },
         // The file's own read says why it can't be read; the tab shows that, so no bar here.
         () => current() && setReview(null),
@@ -100,6 +108,21 @@ export function useFileReview(parts: FileReviewParts): FileReviewView {
     editor.current?.setReviewParts(editorPartsOf(review));
   }, [editor, review]);
 
+  // The pressed Accept or Reject is gone with its part, so the focus goes to the part that took its
+  // place, or the last one; with none left, to the tab's `h1` (a11y check RV1). Focus the person
+  // moved elsewhere while the decision ran stays where they put it.
+  useEffect(() => {
+    const lost = document.activeElement === null || document.activeElement === document.body;
+    if (landing === undefined || !lost) return;
+    const at = Math.min(landing.at, (latest.current?.parts.length ?? 0) - 1);
+    if (at < 0) {
+      title.current?.focus();
+      return;
+    }
+    setPosition(at);
+    editor.current?.goToReviewPart(at);
+  }, [editor, title, landing]);
+
   function failed(error: unknown): void {
     toasts?.show({ tone: "danger", title: errorReasonFor(error), sticky: true });
   }
@@ -113,7 +136,12 @@ export function useFileReview(parts: FileReviewParts): FileReviewView {
   }
 
   /** Says what a decision did: a toast with Undo, Compare in the bar, or the parts read again. */
-  function answered(outcome: FileReviewDecision, decision: "accept" | "reject", count: number) {
+  function answered(
+    outcome: FileReviewDecision,
+    decision: "accept" | "reject",
+    at: number,
+    count: number,
+  ) {
     if (outcome.status === "held") {
       setHeld(true);
       return;
@@ -123,6 +151,8 @@ export function useFileReview(parts: FileReviewParts): FileReviewView {
       setRound((was) => was + 1);
       return;
     }
+    landAt.current = at;
+    setRound((was) => was + 1);
     toasts?.show({
       tone: "success",
       title: filesWords.decided(decision, count, fileName(path)),
@@ -135,7 +165,7 @@ export function useFileReview(parts: FileReviewParts): FileReviewView {
     const count = target.kind === "part" ? 1 : (latest.current?.parts.length ?? 0);
     try {
       const outcome = await (decision === "accept" ? host.accept(target) : host.reject(target));
-      answered(outcome, decision, count);
+      answered(outcome, decision, target.kind === "part" ? target.part : 0, count);
     } catch (error) {
       failed(error);
     } finally {
