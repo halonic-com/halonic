@@ -124,9 +124,9 @@ function onTip(mainRuns: readonly MainRun[]): MergeSnapshot {
 }
 
 verifies("paperclip.merge-control-main-broken", () => {
-  test("24 Nov Leak guard: a group failing only on #5723's files is main broken, the freeze starts and no PR is held", () => {
+  test("24 Nov Leak guard: a group failing only on #5723's files is main broken, the freeze starts and only its own head is held", () => {
     const decision = pass(leakGuardDay([job("Leak guard", leakFiles)]));
-    expect(decision.state.failedHeads).toEqual({});
+    expect(decision.state.failedHeads).toEqual({ "5762": headOf(5762) });
     expect(decision.state.mainBroken).toEqual({
       since: now.toISOString(),
       run: "https://github.com/acme/tools/actions/runs/45489425553",
@@ -137,7 +137,7 @@ verifies("paperclip.merge-control-main-broken", () => {
       allowRe: "^revert\\b",
     });
     expect(actionsOf(decision, "dequeue")).toEqual([]);
-    expect(actionsOf(decision, "comment")).toEqual([]);
+    expect(actionsOf(decision, "comment").map((each) => each.number)).toEqual([5762]);
     expect(enqueued(decision)).toEqual([]);
     expect(decision.state.lastQueue).toEqual(unrelated);
     expect(logText(decision)).toContain(
@@ -232,7 +232,7 @@ verifies("paperclip.merge-control-main-broken", () => {
 
   test("HAL-18306: the same group with main's push run red is main broken", () => {
     const decision = pass(onTip([mainPush("failure")]));
-    expect(decision.state.failedHeads).toEqual({});
+    expect(decision.state.failedHeads).toEqual({ "5994": headOf(5994) });
     expect(decision.state.mainBroken?.files).toEqual([deviceCheck]);
     expect(decision.state.board.mainRed).not.toBeNull();
   });
@@ -263,7 +263,7 @@ verifies("paperclip.merge-control-main-broken", () => {
 
   test("a stacked group no PR explains, with main's push run red, is main broken", () => {
     const decision = pass(stackedDay([generated], [mainPush("failure")]));
-    expect(decision.state.failedHeads).toEqual({});
+    expect(decision.state.failedHeads).toEqual({ "5994": headOf(5994) });
     expect(decision.state.mainBroken?.files).toEqual([deviceCheck]);
     expect(decision.state.board.mainRed).not.toBeNull();
   });

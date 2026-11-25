@@ -7,8 +7,10 @@ import { texts } from "./texts.ts";
  * Main is broken, not the group's pull request (Chief, HAL-17875, 24 Nov
  * 22:20, as the Merger's `pass.js` does it): when every failed job's
  * annotations name files, and none of them is a file the pull request
- * touches, it isn't held. The main-red freeze starts instead (only reverts,
- * and the fix the board adds to its pattern, go in) and is said once. A job
+ * touches, the main-red freeze starts (only reverts, and the fix the board
+ * adds to its pattern, go in) and is said once. The pull request is still
+ * held on that head (HAL-18340): #5969 went back in on the same head after
+ * main was blamed, failed again and took #5994's group with it. A job
  * whose annotations name no file (typecheck, tests) keeps the culprit hold.
  *
  * A group stacked on other groups carries their pull requests too (HAL-18287,
@@ -97,7 +99,8 @@ function newestMainPush(snapshot: MergeSnapshot) {
 
 /**
  * Who failed `row`'s group: the row to hold (its own, or one ahead of it in
- * the group chain), or undefined when main is broken and the freeze is on.
+ * the group chain), or undefined when main is broken and the freeze is on
+ * (the caller still holds `row`'s head).
  */
 export function groupCulprit(
   context: PassContext,

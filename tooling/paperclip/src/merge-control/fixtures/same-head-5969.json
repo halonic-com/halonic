@@ -1,0 +1,80 @@
+{
+  "about": "HAL-18340, shared with the Merger's tests: #5969 on 25 Nov. Its first merge group failed on files it doesn't change, main was blamed, and the same head went back in at 07:30:41; the second group failed too. Rule: a head that failed a merge group is never queued again, whatever the main-broken verdict, until it has a new head. The PR head is a placeholder: the merge groups' commits don't record it.",
+  "pull": {
+    "number": 5969,
+    "head": "0596900000000000000000000000000000000000",
+    "files": [
+      "decisions/tomas/HAL-18198-catalog-local-parameters.md",
+      "docs/guides/checks.md",
+      "packages/core/action-catalog/README.md",
+      "packages/core/action-catalog/src/catalog.generated.ts",
+      "packages/core/action-catalog/src/catalog.test.ts",
+      "tooling/check/requirements/catalog-hashes.md",
+      "tooling/check/src/rules/catalog-hashes.ts",
+      "tooling/check/src/rules/catalog-source-hash.ts",
+      "tooling/check/src/test/catalog-hashes.test.ts",
+      "tooling/discover/README.md"
+    ]
+  },
+  "groupRuns": [
+    {
+      "id": 45566729803,
+      "conclusion": "cancelled",
+      "branch": "gh-readonly-queue/main/pr-5969-c766ccd2bbde7414fc2de123cb5efd2c1a295bec",
+      "url": "https://github.com/halonic-com/halonic/actions/runs/45566729803",
+      "createdAt": "2026-11-25T07:15:36Z",
+      "failedJobs": [
+        {
+          "id": 139043257215,
+          "name": "Typecheck, lint, test, build (adapters-core)",
+          "failedSteps": ["Run every task through the cache"],
+          "annotatedFiles": [
+            "packages/core/action-catalog/src/npm/renew-trusted-publisher.ts",
+            "packages/core/action-catalog/src/device-check.ts"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 45568738718,
+      "conclusion": "failure",
+      "branch": "gh-readonly-queue/main/pr-5969-00a588a7db3300e96474fb32a935289f49eff1d1",
+      "url": "https://github.com/halonic-com/halonic/actions/runs/45568738718",
+      "createdAt": "2026-11-25T07:30:57Z",
+      "failedJobs": [
+        {
+          "id": 139051286634,
+          "name": "Requirements and their tests (trace)",
+          "failedSteps": ["Requirements and their tests (trace)"],
+          "annotatedFiles": ["packages/core/action-catalog/src/catalog.test.ts"]
+        }
+      ]
+    }
+  ],
+  "passes": [
+    {
+      "at": "2026-11-25T07:23:00Z",
+      "why": "GitHub took #5969 out at 07:22:32 after the first group; main's newest push run is red, so main is blamed",
+      "groupRuns": [45566729803],
+      "mainPush": "failure",
+      "freezeEnded": false,
+      "expect": { "mainBroken": true, "held": true, "enqueue": false, "commentedOn": [5969] }
+    },
+    {
+      "at": "2026-11-25T07:30:30Z",
+      "why": "main is green again and the freeze is over: the Merger re-added the same head 11 seconds later",
+      "groupRuns": [45566729803],
+      "mainPush": "success",
+      "freezeEnded": true,
+      "expect": { "mainBroken": false, "held": true, "enqueue": false, "commentedOn": [] }
+    },
+    {
+      "at": "2026-11-25T07:36:00Z",
+      "why": "the second group, which that re-add caused, failed on a file #5969 changes: same head, nothing new to say",
+      "groupRuns": [45566729803, 45568738718],
+      "mainPush": "success",
+      "freezeEnded": false,
+      "expect": { "mainBroken": false, "held": true, "enqueue": false, "commentedOn": [] }
+    }
+  ]
+}
