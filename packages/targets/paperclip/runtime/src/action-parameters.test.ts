@@ -130,7 +130,13 @@ async function runRecording(
     }),
     github: refusingHost(requests, "github"),
     githubQuery: refusingHost(requests, "githubQuery"),
-    precheck: refusingHost(requests, "precheck"),
+    // Only the service refuses: a refusing clock or record would leave rejected promises unawaited.
+    precheck: {
+      service: refusingHost(requests, "precheck"),
+      sleep: async () => undefined,
+      clock: () => 0,
+      record: async () => undefined,
+    },
   };
   const result = await handler.run(call).catch((error: Error) => ({ error: error.message }));
   return { read, requests, result };
