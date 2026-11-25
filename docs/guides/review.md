@@ -76,6 +76,11 @@ Check these on every pull request. The guides for
 [the failure path](failure-path.md#checklist-for-reviewers) and
 [scenario tests](scenario-tests.md#checklist) add their own lists.
 
+- [ ] Every finding is in this one round, nits included, and so is the
+  decision note's `Kind` and `Covers` (run
+  `tooling/check/src/cli/guard-notes.ts` on the pull request before you
+  write the review). A second round is only for a problem the fix itself
+  brought in.
 - [ ] The change does what its task asks, and nothing the task doesn't ask.
 - [ ] Each requirement it adds or changes has a test linked with
   `verifies()`, and that test fails without the change.
