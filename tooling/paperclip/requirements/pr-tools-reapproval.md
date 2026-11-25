@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-16962; the rebase-only re-approval in HAL-14809 (board, 22 Nov)
+- Source: HAL-16962; the rebase-only re-approval in HAL-14809 (board, 22 Nov); HAL-18167, the Merger's forms (HAL-15553)
 
-When a reviewer's comment on a pull request reads "Julian: re-approved on head `<new>` (rebase only, range-diff vs `<old>`)", the Agent tools plugin's `pr_status` and `my_prs` shall read it as Julian's signed approval of `<new>`, and outside Julian's limits `pr_status` shall count it only if Liam's signed approval of `<old>` is on the pull request; a "re-approved on head" line without the range-diff part shall not be a signed approval.
+When a reviewer's comment on a pull request reads "Julian: re-approved on head `<new>` (rebase only, range-diff vs `<old>`)", the Agent tools plugin's `pr_status` and `my_prs` shall read it as Julian's signed approval of `<new>`, and outside Julian's limits `pr_status` shall count it only if Liam's signed approval of `<old>` is on the pull request. A reviewer's "re-approved on head `<sha>`" or "approved again on head `<sha>`" line without the range-diff part shall be read like "approved on head `<sha>`", as the Merger reads it; it doesn't let Julian's approval count outside his limits.
 
 ## Examples
 
@@ -14,6 +14,9 @@ When a reviewer's comment on a pull request reads "Julian: re-approved on head `
 - Given the same pull request with Liam's approval on `1111111` instead,
   when an agent asks `pr_status` about it,
   then Julian's re-approval doesn't count, because Liam didn't approve `0000000`.
-- Given a comment "Julian: re-approved on head `7651f8c`" without the range-diff part,
-  when the plugin reads the signed approvals,
-  then it finds none.
+- Given the same pull request with Liam's approval on `0000000` and "Julian: re-approved on head `7651f8c`" without the range-diff part,
+  when an agent asks `pr_status` about it,
+  then Julian's re-approval doesn't count, because it's outside his limits.
+- Given #5908 with "Liam: re-approved on head `bb12791`" on current head `bb12791`,
+  when an agent asks `pr_status` about it,
+  then Liam's approval counts.
