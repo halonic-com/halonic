@@ -1,22 +1,10 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test, vi } from "vitest";
 import { now, pull, repo } from "../fast-track/fast-track.test-helper.ts";
-import { passReader } from "../merge-control/read-client.ts";
-import { queueWriteClient } from "../merge-control/write-client.ts";
 import { fakeHost, fakeJobContext } from "../plugin/fake-host.test-helper.ts";
 import type { TaskRow } from "../pr-watcher/paperclip.ts";
 import type { Snapshot, SnapshotPull } from "../snapshot/shape.ts";
 import { readWatchersSettings, runMergeWatchers, type WatchersSettings } from "./run.ts";
-
-// Spies on merge control's GitHub clients: the watchers must never build one (HAL-18132 item 3).
-vi.mock("../merge-control/write-client.ts", async (actual) => ({
-  ...(await actual<typeof import("../merge-control/write-client.ts")>()),
-  queueWriteClient: vi.fn(),
-}));
-vi.mock("../merge-control/read-client.ts", async (actual) => ({
-  ...(await actual<typeof import("../merge-control/read-client.ts")>()),
-  passReader: vi.fn(),
-}));
 
 function at(minutes: number): Date {
   return new Date(now.getTime() + minutes * 60_000);
@@ -194,8 +182,8 @@ verifies("paperclip.merge-watchers-author-nudge", () => {
     }
     expect(context.sent).toEqual([]);
     expect(globalFetch).not.toHaveBeenCalled();
-    expect(queueWriteClient).not.toHaveBeenCalled();
-    expect(passReader).not.toHaveBeenCalled();
+    // Merge control's read and write clients need a resolved token: none was resolved.
+    expect(context.resolved).toEqual([]);
     expect(context.logs.filter((log) => log.level === "error")).toEqual([]);
     // Set to todo, then one comment and one wake, for the first pass only.
     expect(writes.map((write) => [write.kind, write.issueId])).toEqual([
