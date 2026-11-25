@@ -7,7 +7,7 @@ import type {
   PaperclipBinding,
   PaperclipConnectionNow,
   PaperclipKeys,
-} from "../paperclip/paperclip-keys.ts";
+} from "@halonicjs/host-agent-messaging-hub";
 
 /** What {@link paperclipProvider} needs for one connection the person connected. */
 export interface PaperclipProviderOptions {

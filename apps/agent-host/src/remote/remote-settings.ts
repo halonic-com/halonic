@@ -1,6 +1,6 @@
+import type { PrivateFile } from "@halonicjs/adapter-fs-node";
 import { isPlainObject } from "@halonicjs/std";
 import type { RiskySwitch } from "../gateway/remote-gateway.ts";
-import type { PrivateFile } from "./private-file.ts";
 
 /** The person's two remote switches, as Settings › Remote shows them. */
 export interface RemoteSettingsValues {

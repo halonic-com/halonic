@@ -1,5 +1,5 @@
 import type { PaperclipConnection } from "@halonicjs/format";
-import { paperclipOrigin } from "./paperclip-keys.ts";
+import { paperclipOrigin } from "@halonicjs/host-agent-messaging-hub";
 import type { PaperclipKeyStore, SavedKey, StoredPaperclipKey } from "./sign-in-calls.ts";
 
 /** What the host's key store reaches. */

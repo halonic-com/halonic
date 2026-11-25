@@ -1,5 +1,8 @@
+import { CachedAgentMessaging } from "@halonicjs/adapter-agent-messaging-cache";
 import { type PaperclipMessaging, paperclipSourceId } from "@halonicjs/adapter-paperclip-client";
 import type { PaperclipConnection } from "@halonicjs/format";
+import type { PaperclipConnectionNow, PaperclipKeys } from "@halonicjs/host-agent-messaging-hub";
+import { type MessagingFailure, MessagingHub } from "@halonicjs/host-agent-messaging-hub";
 import type {
   AgentMessaging,
   MessagingId,
@@ -7,11 +10,8 @@ import type {
   MessagingSourceState,
 } from "@halonicjs/ports";
 import { paperclipConnectionNamePattern } from "../paperclip/paperclip-key-routes.ts";
-import type { PaperclipConnectionNow, PaperclipKeys } from "../paperclip/paperclip-keys.ts";
-import { CachedAgentMessaging } from "./cached-agent-messaging.ts";
 import { ChangeLog, type ChangesSince } from "./change-log.ts";
 import { listConnectionFiles } from "./connection-file.ts";
-import { type MessagingFailure, MessagingHub } from "./messaging-hub.ts";
 import { paperclipProvider } from "./paperclip-provider.ts";
 
 /** What one workspace's messaging needs. */

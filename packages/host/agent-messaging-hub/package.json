@@ -1,0 +1,32 @@
+{
+  "name": "@halonicjs/host-agent-messaging-hub",
+  "private": true,
+  "type": "module",
+  "description": "The messaging hub that joins every AgentMessaging provider into one, and the guard that hands a Paperclip key only to a request for the address and company it was made for, on Web-standard APIs only.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/ports": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-contracts": "workspace:*",
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "host",
+    "owner": "tomas",
+    "coverage": {
+      "lines": 80
+    }
+  }
+}

@@ -1,11 +1,11 @@
 import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { MessagingFailure } from "@halonicjs/host-agent-messaging-hub";
 import type { MessagingId, TeamStatus } from "@halonicjs/ports";
 import { FakeTeamStatus } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { MessagingFailure } from "./messaging-hub.ts";
 import { TeamStatusHub } from "./team-status-hub.ts";
 
 const testKey = "pcp_board_acme-test-key-0000";

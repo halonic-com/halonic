@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { paperclipOrigin } from "@halonicjs/host-agent-messaging-hub";
 import { type Schema, s } from "@halonicjs/schema-kit";
 import { listConnectionFiles, type NamedConnection } from "../messaging/connection-file.ts";
 import { type HostRoute, sendError, sendErrorAndHangUp, sendJson } from "../server/host-server.ts";
@@ -7,7 +8,6 @@ import { namedWorkspace } from "../server/named-workspace.ts";
 import { isFromOtherSite } from "../server/other-site.ts";
 import { newConnectionName } from "./host-key-store.ts";
 import { paperclipConnectionNamePattern } from "./paperclip-key-routes.ts";
-import { paperclipOrigin } from "./paperclip-keys.ts";
 import type { PaperclipSignIn, SignInState, StartedSignIn } from "./paperclip-sign-in.ts";
 
 const workspace = s.string().min(1).max(4096);

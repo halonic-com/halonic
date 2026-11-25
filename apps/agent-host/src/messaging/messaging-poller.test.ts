@@ -1,9 +1,9 @@
 import { MemoryScheduler } from "@halonicjs/adapter-memory";
+import { type MessagingFailure, MessagingHub } from "@halonicjs/host-agent-messaging-hub";
 import type { MessagingId } from "@halonicjs/ports";
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { type MessagingFailure, MessagingHub } from "./messaging-hub.ts";
 import { MessagingPoller, messagingPollTimer } from "./messaging-poller.ts";
 
 /** A fake that, like the Paperclip provider, only sees what changed on its server when it is refreshed. */

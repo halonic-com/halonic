@@ -2,11 +2,11 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MemoryScheduler } from "@halonicjs/adapter-memory";
+import { MessagingHub } from "@halonicjs/host-agent-messaging-hub";
 import type { TeamStatus } from "@halonicjs/ports";
 import { FakeAgentMessaging, FakeTeamStatus } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
-import { MessagingHub } from "./messaging-hub.ts";
 import { MessagingPoller } from "./messaging-poller.ts";
 import { TeamStatusHub, teamStatusMaxAgeMs, teamStatusTickTimer } from "./team-status-hub.ts";
 

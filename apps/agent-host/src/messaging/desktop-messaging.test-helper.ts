@@ -7,8 +7,8 @@ import {
   type AgentHostTransport,
 } from "@halonicjs/adapter-agent-host-client";
 import { ManualClock, MemoryScheduler } from "@halonicjs/adapter-memory";
+import { PaperclipKeys } from "@halonicjs/host-agent-messaging-hub";
 import { paperclipKeyRoutes } from "../paperclip/paperclip-key-routes.ts";
-import { PaperclipKeys } from "../paperclip/paperclip-keys.ts";
 import { type HostServer, startHostServer } from "../server/host-server.ts";
 import { randomLaunchToken } from "../server/launch-token.ts";
 import { readConnectionFile } from "./connection-file.ts";

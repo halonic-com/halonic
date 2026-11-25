@@ -30,6 +30,7 @@ export {
   FileSystemPluginFolder,
   type FileSystemPluginFolderOptions,
 } from "./plugin-folder.ts";
+export { type PrivateFile, privateFileAt } from "./private-file.ts";
 export { makePrivateFolder, readUnlinkedFile } from "./private-files.ts";
 export { folderRecordLock, type RecordLock } from "./proposal-record-lock.ts";
 export { resolveRealPath } from "./real-path-resolver.ts";

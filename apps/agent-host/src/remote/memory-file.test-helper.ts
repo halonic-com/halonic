@@ -1,4 +1,4 @@
-import type { PrivateFile } from "./private-file.ts";
+import type { PrivateFile } from "@halonicjs/adapter-fs-node";
 
 /** A {@link PrivateFile} in memory that counts its writes, and can be told to fail them. */
 export class MemoryFile implements PrivateFile {
