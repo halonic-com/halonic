@@ -1,3 +1,5 @@
+import { type CloudProfile, checkCloudProfile } from "./cloud-profile.ts";
+
 /**
  * Who is asking in a multi-user deployment, and in which scope. A principal is built only from a
  * session's checked claims, or read back from a stored record with the same checks, never from a
@@ -64,6 +66,12 @@ export interface SessionClaims {
   readonly client?: unknown;
   /** The session's id, for revocation and sign-out; it grants nothing. */
   readonly sid?: unknown;
+  /** The customer's display name or email, from Halonic Cloud; it grants nothing. */
+  readonly name?: unknown;
+  /** The product's account page on Cloud, `https:`; it grants nothing. */
+  readonly account?: unknown;
+  /** The product's name, from Halonic Cloud; it grants nothing. */
+  readonly product_name?: unknown;
 }
 
 /** A session that passed the checks: who is asking, and the client, which grants nothing. */
@@ -75,6 +83,11 @@ export interface CheckedSession {
    * has none or one that isn't 1 to 128 printable ASCII characters. It grants nothing.
    */
   readonly sessionId: string | null;
+  /**
+   * The customer's name, account page and product name when the token carries all three, else
+   * `null`. Shown in the account menu only; it grants nothing.
+   */
+  readonly profile: CloudProfile | null;
 }
 
 /**
@@ -82,7 +95,9 @@ export interface CheckedSession {
  * `app`, an end-user id or scope that doesn't match its pattern, a personal scope that isn't
  * the actor's own or has a role other than `owner`, and an organisation scope with no known
  * role. The `client` claim never reaches the principal, so no permission can depend on it; it
- * must be 1 to 64 printable ASCII characters and is refused, never cleaned up, otherwise.
+ * must be 1 to 64 printable ASCII characters and is refused, never cleaned up, otherwise. The
+ * `name`, `account` and `product_name` claims are checked by {@link checkCloudProfile}: all three
+ * or none, and a wrong one refuses the session.
  *
  * The claims are untrusted input whatever verifier returned them: anything that isn't an object
  * of claims, a missing claim or a claim of the wrong type is refused. Extra claims are ignored.
@@ -101,10 +116,16 @@ export function checkClaims(claims: unknown): CheckedSession | null {
   const role = givenRole === undefined ? "owner" : givenRole;
   const sub = ownValue(claims, "sub");
   const principal = checkPrincipal(sub, ownValue(claims, "scope"), role, givenRole !== undefined);
-  if (principal === null) {
+  const profile = checkCloudProfile((name) => ownValue(claims, name));
+  if (principal === null || !profile.ok) {
     return null;
   }
-  return Object.freeze({ principal, client: client ?? null, sessionId: sessionIdOf(claims) });
+  return Object.freeze({
+    principal,
+    client: client ?? null,
+    sessionId: sessionIdOf(claims),
+    profile: profile.profile,
+  });
 }
 
 /** A key or session id as the token holds it: 1 to 128 printable ASCII characters. */

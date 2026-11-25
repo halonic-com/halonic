@@ -1,3 +1,8 @@
+import {
+  type AccountMenuParts,
+  accountMenuHandler,
+  accountMenuPath,
+} from "./account-menu-route.ts";
 import type { ServerConfig, ServerPorts } from "./api.ts";
 import {
   type CloudSessionRoutes,
@@ -25,7 +30,7 @@ import {
   waitingHandler,
 } from "./many-user-run-routes.ts";
 import type { ManyUserPorts } from "./many-users-api.ts";
-import { type Principal, scopeName } from "./principal.ts";
+import { type CheckedSession, scopeName } from "./principal.ts";
 import { matchRoute, type RouteEntry } from "./route-table.ts";
 import { unrecordedOwnership } from "./run-access.ts";
 import { createRunRoutes, runPathPrefix, waitingRunsPath } from "./run-routes.ts";
@@ -109,6 +114,13 @@ export const manyUserRouteTable: readonly ManyUserRoute[] = [
   },
   {
     method: "GET",
+    path: accountMenuPath,
+    access: "signed-in",
+    kind: "other",
+    handler: accountMenuHandler,
+  },
+  {
+    method: "GET",
     path: waitingRunsPath,
     access: "signed-in",
     kind: "run-list",
@@ -177,7 +189,19 @@ export function createManyUserRoutes(
           errorLog,
         });
 
-  function scopedRoutesOf(principal: Principal): ScopedRoutes {
+  /** The account menu's parts: only with Cloud sign-in and a session that carried a profile. */
+  function accountMenuOf({ principal, profile }: CheckedSession): AccountMenuParts | null {
+    if (manyUsers.cloudSignIn === undefined || profile === null) {
+      return null;
+    }
+    return {
+      profile,
+      usage: async () => (await manyUsers.accountUsage?.(principal)) ?? null,
+    };
+  }
+
+  function scopedRoutesOf(session: CheckedSession): ScopedRoutes {
+    const { principal } = session;
     const scopedRuns = manyUsers.scopedRuns(principal);
     const { runs, runStore } = scopedRuns;
     const shown = workspace === undefined ? {} : { workspace };
@@ -190,6 +214,7 @@ export function createManyUserRoutes(
         ownership: scopedRuns.ownership ?? unrecordedOwnership(principal),
         errorLog,
       },
+      accountMenu: accountMenuOf(session),
     };
   }
 
@@ -216,7 +241,7 @@ export function createManyUserRoutes(
       if (overCeiling !== null) {
         return overCeiling;
       }
-      const scoped = scopedRoutesOf(session.session.principal);
+      const scoped = scopedRoutesOf(session.session);
       return match.route.handler(request, body, scoped, match.params);
     },
   };

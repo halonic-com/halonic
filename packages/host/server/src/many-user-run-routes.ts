@@ -1,4 +1,5 @@
 import type { RunSummary } from "@halonicjs/events";
+import type { AccountMenuParts } from "./account-menu-route.ts";
 import type { ServerPorts } from "./api.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import type { RunOwnership, RunOwnershipStore, ScopedRunPorts } from "./many-users-api.ts";
@@ -18,6 +19,8 @@ export interface ScopedRoutes {
       ServerPorts,
       "errorLog"
     >;
+  /** The account menu's parts, or `null` without Cloud sign-in or a profile in the session. */
+  readonly accountMenu: AccountMenuParts | null;
 }
 
 /** Answers a request that has a principal. */
