@@ -6,7 +6,18 @@ import type {
   PluginSecretsClient,
 } from "@paperclipai/plugin-sdk";
 import { type ActResult, act, type MergeControlMode } from "../merge-control/act.ts";
+import {
+  type BudgetSettings,
+  isLow,
+  noCalls,
+  type PassCalls,
+  passBudget,
+  readBudgetSettings,
+  type StoredBudget,
+} from "../merge-control/budget.ts";
 import { decide } from "../merge-control/decide.ts";
+import type { ReadOptions } from "../merge-control/facts.ts";
+import { meteredWrites, type ReadFetch, ReadRefused } from "../merge-control/read-client.ts";
 import { keepSent } from "../merge-control/retry.ts";
 import {
   emptyShadowDay,
@@ -55,10 +66,22 @@ export interface MergeControlApi {
 export interface MergeFacts {
   readonly snapshot: MergeSnapshot;
   readonly observed: readonly ObservedAction[];
+  /** What the reads cost on the read token; none when the reader doesn't say. */
+  readonly reads?: PassCalls;
 }
 
-/** Reads a company's facts; `facts.ts` in the next pull request. */
-export type MergeFactsReader = (companyId: string, now: Date) => Promise<MergeFacts>;
+/** Reads a company's facts (`merge-control-reader.ts`), lean when the read budget is low. */
+export type MergeFactsReader = (
+  companyId: string,
+  now: Date,
+  options?: ReadOptions,
+) => Promise<MergeFacts>;
+
+/** What a pass ends with: whether it degraded, and its GitHub budget line. */
+export interface PassResult {
+  readonly degraded: boolean;
+  readonly summary: string;
+}
 
 /** A company's merge-control settings, as the board sets them. */
 export interface MergeControlSettings {
@@ -69,6 +92,8 @@ export interface MergeControlSettings {
   readonly diffTask: string;
   /** The repository it acts on: the PR watcher's first. */
   readonly repo: string;
+  /** The hourly GitHub call budgets of the read and write tokens (HAL-17913). */
+  readonly budget: BudgetSettings;
 }
 
 const modes: readonly MergeControlMode[] = ["off", "shadow", "act"];
@@ -77,7 +102,10 @@ const modes: readonly MergeControlMode[] = ["off", "shadow", "act"];
 export function readMergeControlSettings(
   config: Readonly<Record<string, unknown>>,
 ): MergeControlSettings {
-  const section = (config["mergeControl"] ?? {}) as { mode?: unknown; diffTask?: unknown };
+  const section = (config["mergeControl"] ?? {}) as Readonly<Record<string, unknown>> & {
+    readonly mode?: unknown;
+    readonly diffTask?: unknown;
+  };
   const token = config["mergeQueueToken"] as { type?: unknown; secretId?: unknown } | undefined;
   return {
     mode: modes.find((mode) => mode === section.mode) ?? "off",
@@ -87,6 +115,7 @@ export function readMergeControlSettings(
         : undefined,
     diffTask: typeof section.diffTask === "string" ? section.diffTask.trim() : "",
     repo: readSettings(config).repos[0] ?? "halonic-com/halonic",
+    budget: readBudgetSettings(section),
   };
 }
 
@@ -95,6 +124,8 @@ export interface StoredMergeControl {
   readonly version: 1;
   readonly state: MergeState;
   readonly shadow: ShadowDay | null;
+  /** The hour's GitHub calls per token; missing before the first counted pass. */
+  readonly budget?: StoredBudget;
 }
 
 function key(companyId: string) {
@@ -171,6 +202,7 @@ function writeClient(
   ctx: MergeControlApi,
   companyId: string,
   settings: MergeControlSettings,
+  fetch: ReadFetch,
 ): QueueWriteClient | undefined {
   const ref = settings.queueToken;
   if (settings.mode !== "act") {
@@ -183,8 +215,7 @@ function writeClient(
     return undefined;
   }
   return queueWriteClient({
-    fetch: (url, init) =>
-      ctx.http.fetch(url, { ...init, signal: AbortSignal.timeout(requestTimeoutMs) }),
+    fetch,
     // Resolved at each write, never kept (the SDK's secrets rule).
     token: () => ctx.secrets.resolve(ref, { companyId }),
     repos: [settings.repo],
@@ -203,20 +234,62 @@ function passLines(decision: Decision, results: readonly ActResult[]): string[] 
   ];
 }
 
-/** One pass for one company, under its pass lock. Off: reads and writes nothing. */
+/**
+ * One pass for one company, under its pass lock. Off: reads and writes
+ * nothing and returns undefined.
+ */
 export async function mergeControlPass(
   ctx: MergeControlApi,
   lock: PassLock,
   companyId: string,
   now: Date,
   readFacts: MergeFactsReader,
-): Promise<void> {
+): Promise<PassResult | undefined> {
   const config = await companyConfig(ctx.config, companyId);
   const settings = readMergeControlSettings(config ?? {});
   if (settings.mode === "off") {
-    return;
+    return undefined;
   }
-  await lock.run(companyId, (state) => lockedPass(ctx, state, companyId, now, readFacts, settings));
+  return await lock.run(companyId, (state) =>
+    lockedPass(ctx, state, companyId, now, readFacts, settings),
+  );
+}
+
+/**
+ * A pass the budget stops before it reads: a degraded pass's wait isn't
+ * over. Returns undefined when the pass may read.
+ */
+function waiting(stored: StoredMergeControl, now: Date): PassResult | undefined {
+  const until = stored.budget?.skipUntil ?? null;
+  if (until === null || Date.parse(until) <= now.getTime()) {
+    return undefined;
+  }
+  return {
+    degraded: true,
+    summary: `GitHub budget: degraded, this pass waits until ${until.slice(11, 16)} UTC`,
+  };
+}
+
+/** A pass whose read the reader refused: degraded, its budget kept, nothing decided. */
+async function refusedPass(
+  stateClient: MergeStateClient,
+  companyId: string,
+  stored: StoredMergeControl,
+  refused: ReadRefused,
+  settings: MergeControlSettings,
+  now: Date,
+): Promise<PassResult> {
+  const reads = refused.calls ?? noCalls;
+  const why = refused.message.replace(/\.$/, "");
+  const budget = passBudget(
+    stored.budget,
+    { read: reads, write: noCalls },
+    settings.budget,
+    now,
+    why,
+  );
+  await stateClient.set(key(companyId), { ...stored, budget: budget.stored });
+  return { degraded: true, summary: budget.summary };
 }
 
 async function lockedPass(
@@ -226,14 +299,36 @@ async function lockedPass(
   now: Date,
   readFacts: MergeFactsReader,
   settings: MergeControlSettings,
-): Promise<void> {
+): Promise<PassResult> {
   const stored = await loadMergeControl(stateClient, companyId);
-  const facts = await readFacts(companyId, now);
+  const info = (line: string) => ctx.logger.info(`Merge control: ${line}`, { companyId });
+  const wait = waiting(stored, now);
+  if (wait !== undefined) {
+    info(wait.summary);
+    return wait;
+  }
+  const lean = isLow(stored.budget?.read, settings.budget.read, now);
+  let facts: MergeFacts;
+  try {
+    facts = await readFacts(companyId, now, { lean });
+  } catch (error) {
+    if (!(error instanceof ReadRefused)) {
+      throw error;
+    }
+    const refused = await refusedPass(stateClient, companyId, stored, error, settings, now);
+    info(refused.summary);
+    return refused;
+  }
   const decision = decide(facts.snapshot, stored.state, defaultSettings, now);
-  const client = writeClient(ctx, companyId, settings);
+  const writes = meteredWrites((url, init) =>
+    ctx.http.fetch(url, { ...init, signal: AbortSignal.timeout(requestTimeoutMs) }),
+  );
+  const client = writeClient(ctx, companyId, settings, writes.fetch);
   const results = await act(decision.actions, { repo: settings.repo, client });
-  for (const line of passLines(decision, results)) {
-    ctx.logger.info(`Merge control: ${line}`, { companyId });
+  const calls = { read: facts.reads ?? noCalls, write: writes.calls() };
+  const budget = passBudget(stored.budget, calls, settings.budget, now);
+  for (const line of [...passLines(decision, results), budget.summary]) {
+    info(line);
   }
   let shadow = stored.shadow;
   if (settings.mode === "shadow") {
@@ -243,5 +338,6 @@ async function lockedPass(
     }
   }
   const state = keepSent(stored.state, decision.state, decision.actions, results);
-  await stateClient.set(key(companyId), { version: 1, state, shadow });
+  await stateClient.set(key(companyId), { version: 1, state, shadow, budget: budget.stored });
+  return { degraded: budget.degraded, summary: budget.summary };
 }

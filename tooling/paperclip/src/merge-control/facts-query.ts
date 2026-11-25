@@ -34,7 +34,7 @@ const rollup = `statusCheckRollup {
  * the runner wait.
  */
 export const factsPullsQuery = `query MergeFactsPulls($owner: String!, $name: String!, $after: String, $withQueue: Boolean!) {
-  rateLimit { cost remaining }
+  rateLimit { cost remaining resetAt }
   repository(owner: $owner, name: $name) {
     defaultBranchRef @include(if: $withQueue) { name target { oid } }
     mergeQueue @include(if: $withQueue) {
@@ -74,7 +74,7 @@ export const factsPullsQuery = `query MergeFactsPulls($owner: String!, $name: St
 
 /** Pull requests merged lately, newest first. */
 export const factsMergedQuery = `query MergeFactsMerged($owner: String!, $name: String!) {
-  rateLimit { cost remaining }
+  rateLimit { cost remaining resetAt }
   repository(owner: $owner, name: $name) {
     pullRequests(states: MERGED, first: 50, orderBy: { field: UPDATED_AT, direction: DESC }) {
       nodes { number mergedAt }
@@ -90,7 +90,7 @@ export function mainFilesQuery(count: number): string {
     .map((index) => `f${index}: object(expression: $e${index}) { ... on Blob { text isBinary } }`)
     .join("\n    ");
   return `query MergeFactsMainFiles($owner: String!, $name: String!${variables}) {
-  rateLimit { cost remaining }
+  rateLimit { cost remaining resetAt }
   repository(owner: $owner, name: $name) {
     ${objects}
   }

@@ -9,6 +9,7 @@ import {
   pull,
   snapshot,
 } from "../merge-control/merge-control.test-helper.ts";
+import { ReadRefused } from "../merge-control/read-client.ts";
 import type { ObservedAction } from "../merge-control/shadow.ts";
 import type { MergeSnapshot } from "../merge-control/snapshot.ts";
 import {
@@ -210,5 +211,61 @@ verifies("paperclip.merge-control-pass-lock", () => {
     await expect(fake.lock.state.set(key, { version: 1 })).rejects.toThrow(
       "Merge control: its state is written only under the pass lock.",
     );
+  });
+});
+
+verifies("paperclip.merge-control-api-budget", () => {
+  const minutesLater = (minutes: number) => new Date(now.getTime() + minutes * 60_000);
+
+  test("a pass that leaves the read budget low degrades, waits, then reads lean, without throwing", async () => {
+    const fake = fakeContext({ mergeControl: { mode: "shadow" } });
+    const read = vi.fn(async () => ({
+      snapshot: busyPass(),
+      observed: [],
+      reads: { calls: 10, remaining: 500, resetAt: "2026-11-24T12:41:00Z" },
+    }));
+    const first = await mergeControlPass(fake.ctx, fake.lock, companyId, now, read);
+    expect(first?.degraded).toBe(true);
+    expect(first?.summary).toContain("reads 10 this pass, 500 of 12000/h left, resets 12:41 UTC");
+    expect(fake.lines).toContain(`Merge control: ${first?.summary}`);
+
+    const waiting = await mergeControlPass(fake.ctx, fake.lock, companyId, minutesLater(1), read);
+    expect(waiting).toEqual({
+      degraded: true,
+      summary: "GitHub budget: degraded, this pass waits until 12:05 UTC",
+    });
+    expect(read).toHaveBeenCalledTimes(1);
+
+    await mergeControlPass(fake.ctx, fake.lock, companyId, minutesLater(6), read);
+    expect(read).toHaveBeenLastCalledWith(companyId, minutesLater(6), { lean: true });
+  });
+
+  test("a read the reader refuses gives a degraded pass, not a thrown one", async () => {
+    const fake = fakeContext({ mergeControl: { mode: "shadow" } });
+    const refused = new ReadRefused("GitHub refused the read token again after it was read anew.");
+    refused.calls = { calls: 2, remaining: null, resetAt: null };
+    const result = await mergeControlPass(fake.ctx, fake.lock, companyId, now, async () => {
+      throw refused;
+    });
+    expect(result?.degraded).toBe(true);
+    expect(result?.summary).toContain("reads 2 this pass");
+    expect(result?.summary).toContain("degraded (GitHub refused the read token again");
+  });
+
+  test("act mode counts its writes apart from the reads, and the write token reads nothing", async () => {
+    const fake = fakeContext({ mergeControl: { mode: "act" }, mergeQueueToken: token });
+    const result = await mergeControlPass(fake.ctx, fake.lock, companyId, now, async () => ({
+      snapshot: busyPass(),
+      observed: [],
+      reads: { calls: 7, remaining: null, resetAt: null },
+    }));
+    const writes = fake.fetch.mock.calls.length;
+    expect(writes).toBeGreaterThanOrEqual(3);
+    expect(result?.summary).toContain("reads 7 this pass");
+    expect(result?.summary).toContain(`writes ${writes} this pass`);
+    expect(result?.summary).not.toContain("ghs_queue_token_for_tests");
+    for (const [, init] of fake.fetch.mock.calls as unknown as [string, { method: string }][]) {
+      expect(init.method).toBe("POST");
+    }
   });
 });

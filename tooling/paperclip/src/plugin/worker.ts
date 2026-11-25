@@ -63,9 +63,10 @@ export const plugin = definePlugin({
     const readFacts = mergeFactsReader(ctx, (url, init) => fetch(url, init));
     // The worker's one pass lock: merge control's state is written only through it.
     const lock = passLock(ctx.state);
-    const mergeJob = scheduledPerCompany(ctx, roster, "merge-control", (companyId, now) =>
-      mergeControlPass(ctx, lock, companyId, now, readFacts),
-    );
+    const mergeJob = scheduledPerCompany(ctx, roster, "merge-control", async (companyId, now) => {
+      // The pass logs its own budget line; the job needs nothing back.
+      await mergeControlPass(ctx, lock, companyId, now, readFacts);
+    });
     ctx.jobs.register("merge-control", () => mergeJob.dispatch());
     ctx.events.on("issue.comment.created", async (event) => {
       roster.remember(event.companyId);

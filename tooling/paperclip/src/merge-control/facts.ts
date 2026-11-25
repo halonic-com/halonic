@@ -20,7 +20,7 @@ import {
   type PullsPage,
   type QueueNode,
 } from "./facts-query.ts";
-import { countedGitHub, requestCountLine } from "./facts-requests.ts";
+import { cachedGet, countedGitHub, type GetCache, requestCountLine } from "./facts-requests.ts";
 import {
   ciOkRunOf,
   groupRunsOf,
@@ -59,6 +59,8 @@ export interface FactsCaches extends ObservedCaches {
   readonly ciOkRuns: BoundedCache<CiOkRun | null>;
   readonly manifests: BoundedCache<GatePull["manifests"]>;
   readonly mainFiles: BoundedCache<{ readonly lines: number; readonly barrel: boolean } | null>;
+  /** Every GET's answer for 90 s. */
+  readonly gets: GetCache;
 }
 
 /** Empty caches, one set per company. */
@@ -69,6 +71,7 @@ export function factsCaches(): FactsCaches {
     ciOkRuns: boundedCache(),
     manifests: boundedCache(),
     mainFiles: boundedCache(),
+    gets: boundedCache(),
     seenQueued: boundedCache(),
     cancelledBy: boundedCache(),
     rerunBy: boundedCache(),
@@ -86,6 +89,15 @@ export interface FactsDeps {
   readonly settings: FactsSettings;
   readonly caches: FactsCaches;
   readonly log: (line: string) => void;
+}
+
+/**
+ * How a pass reads. `lean`, when the call budget is low (HAL-17913): it
+ * skips the reads only shadow mode and the known-flake check need, the
+ * Merger's writes and a red fast-track run's log.
+ */
+export interface ReadOptions {
+  readonly lean?: boolean;
 }
 
 /** What one read gives. */
@@ -180,7 +192,11 @@ async function readMainFiles(
 }
 
 /** The gate's pull requests, with their manifests and red fast-track run. */
-async function readGatePulls(deps: FactsDeps, pulls: readonly PullNode[]): Promise<GatePull[]> {
+async function readGatePulls(
+  deps: FactsDeps,
+  pulls: readonly PullNode[],
+  lean: boolean,
+): Promise<GatePull[]> {
   const { get, settings, caches } = deps;
   const gate: GatePull[] = [];
   for (const node of pulls.filter(isGatePull)) {
@@ -188,7 +204,7 @@ async function readGatePulls(deps: FactsDeps, pulls: readonly PullNode[]): Promi
     gate.push({
       ...pull,
       manifests: await manifestsOf(get, settings.repo, pull, caches.manifests),
-      ciOkRun: await ciOkRunOf(get, settings.repo, pull, caches.ciOkRuns),
+      ciOkRun: lean ? null : await ciOkRunOf(get, settings.repo, pull, caches.ciOkRuns),
     });
   }
   return gate;
@@ -213,29 +229,42 @@ async function readObserved(
 }
 
 /**
- * One pass's facts. A failed GitHub read fails the pass: `decide` never sees
- * half a snapshot. Either way the pass logs how many GitHub requests it sent.
+ * One pass's facts, from one read of the open pull requests, the queue and
+ * the runs: no rule reads GitHub again. A failed GitHub read fails the
+ * pass: `decide` never sees half a snapshot. Either way the pass logs how
+ * many GitHub requests it sent; a GET served from the 90 s cache isn't one.
  */
-export async function readMergeFacts(deps: FactsDeps, now: Date): Promise<ReadFacts> {
+export async function readMergeFacts(
+  deps: FactsDeps,
+  now: Date,
+  options: ReadOptions = {},
+): Promise<ReadFacts> {
   const counted = countedGitHub(deps.get, deps.query);
+  const get = cachedGet(counted.get, deps.caches.gets, now);
   try {
-    return await readCountedFacts({ ...deps, get: counted.get, query: counted.query }, now);
+    return await readCountedFacts(
+      { ...deps, get, query: counted.query },
+      now,
+      options.lean === true,
+    );
   } finally {
     deps.log(requestCountLine(counted.count));
   }
 }
 
-async function readCountedFacts(deps: FactsDeps, now: Date): Promise<ReadFacts> {
+async function readCountedFacts(deps: FactsDeps, now: Date, lean: boolean): Promise<ReadFacts> {
   const { get, settings } = deps;
   const read = await readPulls(deps);
-  const day = new Date(now.getTime() - 24 * 60 * 60_000).toISOString();
+  // On a 5-minute step, so the list's address stays the same and the GET cache can serve it.
+  const step = 5 * 60_000;
+  const day = new Date(Math.floor((now.getTime() - 24 * 60 * 60_000) / step) * step).toISOString();
   const groups = await listRuns(
     get,
     settings.repo,
     `event=merge_group&created=${encodeURIComponent(`>=${day}`)}`,
   );
   const queued = await listRuns(get, settings.repo, "event=pull_request&status=queued");
-  const gate = await readGatePulls(deps, read.pulls);
+  const gate = await readGatePulls(deps, read.pulls, lean);
   const capacity = await readCapacity(deps.plainGet, settings.capacity, groups, now);
   if (capacity.why !== undefined) {
     deps.log(`capacity unknown, counts as short: ${capacity.why}`);
@@ -261,5 +290,6 @@ async function readCountedFacts(deps: FactsDeps, now: Date): Promise<ReadFacts> 
     capacity: capacity.capacity,
     mainRuns: await mainRunsOf(get, settings.repo, deps.caches.mainRedJobs),
   };
-  return { snapshot, observed: await readObserved(deps, read, { groups, queued }) };
+  const observed = lean ? [] : await readObserved(deps, read, { groups, queued });
+  return { snapshot, observed };
 }

@@ -1,5 +1,6 @@
 import type { GitHubGet } from "../pr-watcher/github.ts";
 import type { GitHubQuery } from "../snapshot/graphql.ts";
+import type { BoundedCache } from "./facts-cache.ts";
 
 /**
  * Counts the GitHub requests one pass of the facts reader sends (HAL-17863).
@@ -61,4 +62,27 @@ export function requestCountLine(count: RequestCount): string {
   const remaining =
     count.graphqlRemaining === null ? "" : `, ${count.graphqlRemaining} points left`;
   return `GitHub requests this pass: ${count.restGets} REST GETs, ${count.graphqlQueries} GraphQL queries (cost ${count.graphqlCost}${remaining})`;
+}
+
+/** How long a read-only GET's answer is served again without asking GitHub (HAL-17913). */
+export const getCacheMs = 90_000;
+
+/** GET answers by path, with when they were read. */
+export type GetCache = BoundedCache<{ readonly at: number; readonly body: unknown }>;
+
+/**
+ * Serves a GET read less than 90 s before `now` from `cache`, so a pass
+ * every minute doesn't ask again; put in front of the counted reader, a
+ * served answer isn't a request and isn't counted. A failed read isn't kept.
+ */
+export function cachedGet(get: GitHubGet, cache: GetCache, now: Date): GitHubGet {
+  return async (path) => {
+    const kept = cache.get(path);
+    if (kept !== undefined && now.getTime() - kept.at < getCacheMs) {
+      return kept.body;
+    }
+    const body = await get(path);
+    cache.set(path, { at: now.getTime(), body });
+    return body;
+  };
 }
