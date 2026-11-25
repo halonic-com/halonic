@@ -210,6 +210,7 @@ jobs:
       sandbox-mxc: ${{ steps.diff.outputs.sandbox-mxc }}
       android: ${{ steps.diff.outputs.android }}
       agent_host: ${{ steps.diff.outputs.agent_host }}
+      toolscript_engine: ${{ steps.diff.outputs.toolscript_engine }}
       installer: ${{ steps.diff.outputs.installer }}
       studio: ${{ steps.diff.outputs.studio }}
       docs: ${{ steps.diff.outputs.docs }}
@@ -262,6 +263,9 @@ jobs:
             "studio=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/|packages/studio/)"
             "docs=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/docs/|docs/)"
             "workflows=^\.github/"
+            # The ToolScript isolate's QuickJS-ng build (HAL-17780): its pins,
+            # build scripts and outputs, and this workflow.
+            "toolscript_engine=^(\.github/workflows/ci\.yml$|packages/adapters/toolscript-quickjs/(engine/|src/generated/engine/))"
           )
           # The scaffold job runs a full `pnpm verify --full`. A pull request
           # needs it only when the templates or the tooling itself change;
@@ -2998,6 +3002,51 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Build time: ${BUILD_SECONDS} s" >> "$GITHUB_STEP_SUMMARY"
 
+  toolscript-engine:
+    # The QuickJS-ng engine of the ToolScript isolate (HAL-17780): rebuilds
+    # packages/adapters/toolscript-quickjs/src/generated/engine from the pins
+    # in engine/SOURCES.json, twice, and fails when the two builds or the
+    # committed files differ by a single byte. Only on GitHub's runners, never
+    # our own CI server: it runs Docker and downloads a third-party release,
+    # whose sha256 is checked before it is unpacked. It runs in drafts too,
+    # so a pin change can take its first build from this job's artifact.
+    name: ToolScript engine is its build
+    needs: changes
+    if: github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' && needs.changes.outputs.toolscript_engine == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build the engine twice
+        run: |
+          bash packages/adapters/toolscript-quickjs/engine/rebuild.sh "$RUNNER_TEMP/engine"
+          bash packages/adapters/toolscript-quickjs/engine/rebuild.sh "$RUNNER_TEMP/engine-again"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: toolscript-engine
+          path: ${{ runner.temp }}/engine
+          if-no-files-found: error
+          retention-days: 7
+      - name: Both builds and the committed files are the same bytes
+        env:
+          COMMITTED: packages/adapters/toolscript-quickjs/src/generated/engine
+        run: |
+          if ! diff --recursive --brief "$RUNNER_TEMP/engine" "$RUNNER_TEMP/engine-again"; then
+            echo "::error::Two builds from the same pins differ, so the engine build isn't reproducible."
+            exit 1
+          fi
+          if ! diff --recursive --brief "$RUNNER_TEMP/engine" "$COMMITTED"; then
+            echo "::error file=$COMMITTED::The committed engine is not what its pins build. Download the toolscript-engine artifact of this run and commit its files as $COMMITTED."
+            (cd "$RUNNER_TEMP/engine" && sha256sum ./*)
+            exit 1
+          fi
+          echo "The committed engine is its build:"
+          (cd "$COMMITTED" && sha256sum ./*) | tee -a "$GITHUB_STEP_SUMMARY"
+
   wsl-runtime:
     # The runtime Studio installs in Halonic's WSL distro (HAL-14644): the
     # Linux agent host executable packed for the distro's runtime updater,
@@ -4111,6 +4160,7 @@ jobs:
         sandbox-os,
         sandbox-windows,
         agent-host,
+        toolscript-engine,
         wsl-runtime,
         wsl-image,
         installer-windows,

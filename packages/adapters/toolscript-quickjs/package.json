@@ -9,11 +9,11 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
     "lint": "biome check .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:engine": "bash engine/rebuild.sh"
   },
   "dependencies": {
     "@halonicjs/ports": "workspace:*",
-    "@jitl/quickjs-ng-wasmfile-release-sync": "catalog:",
     "quickjs-emscripten-core": "catalog:"
   },
   "devDependencies": {

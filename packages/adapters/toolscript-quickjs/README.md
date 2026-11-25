@@ -26,8 +26,13 @@ Runs a Halonic ToolScript in a fresh QuickJS-ng isolate, compiled to WebAssembly
 Every isolate passes `@halonicjs/testing-toolscript-fence`. The worker wrappers that keep the isolate
 off the main thread (Node `worker_threads`, a Web Worker with its CSP) come in a follow-up.
 
-The two QuickJS packages are pinned to exactly 0.32.0; a bump reruns the fence suite and needs the
-maintainer's dependency review.
+## The engine
+
+The engine is our own build of quickjs-ng 0.18.0, made from the pins in `engine/SOURCES.json` with the
+wrapper's `interface.c` (quickjs-emscripten v0.32.0) and the emsdk 5.0.1 image. CI's
+`toolscript-engine` job rebuilds it twice and checks that the committed `src/generated/engine/` is
+exactly that build. `quickjs-emscripten-core` stays pinned to exactly 0.32.0 as its JavaScript API.
+A change to any pin reruns the fence suite and needs the maintainer's review; see `AGENTS.md`.
 
 ## Example
 

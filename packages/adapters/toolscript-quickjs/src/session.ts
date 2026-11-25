@@ -12,7 +12,7 @@ import { copyOut } from "./copy-out.ts";
 import type { CpuMeter } from "./cpu-meter.ts";
 import { buildCtx } from "./ctx.ts";
 import { HandleTable } from "./handles.ts";
-import { preludeHolds } from "./prelude.ts";
+import { preludeHolds, removedGlobalsAbsent } from "./prelude.ts";
 import { classifyThrown, type ScriptFailure } from "./script-errors.ts";
 
 /** What one run's parts share: the context, its built-ins, the handle table and the run's state. */
@@ -158,13 +158,19 @@ export class RunSession implements RunState {
 
   /** Runs the prelude on its own and checks every slot before any script code runs. */
   #installPrelude(): QuickJSHandle | undefined {
-    const installed = this.meter.inside(() => this.vm.evalCode(this.#prelude, "prelude.js"));
+    // The prelude is the host's own code, so it runs outside the CPU meter: a
+    // busy or paused machine could otherwise stretch it past a short `cpuMs`
+    // and end the run with `toolscript.failed` before the script starts.
+    const installed = this.vm.evalCode(this.#prelude, "prelude.js");
     if (installed.error) {
       installed.error.dispose();
       this.fail("toolscript.failed", "the eval prelude failed");
       return undefined;
     }
-    if (!preludeHolds(this.vm, this.builtins, installed.value)) {
+    if (
+      !preludeHolds(this.vm, this.builtins, installed.value) ||
+      !removedGlobalsAbsent(this.vm, this.builtins, installed.value)
+    ) {
       this.fail("toolscript.failed", "the eval prelude doesn't hold");
       return undefined;
     }

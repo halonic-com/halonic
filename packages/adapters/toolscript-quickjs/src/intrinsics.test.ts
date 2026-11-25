@@ -37,6 +37,10 @@ verifies("toolscript-quickjs.intrinsics", () => {
       "BigInt64Array",
       "BigFloat",
       "BigDecimal",
+      // QuickJS-ng 0.18 adds these; the prelude takes them away (HAL-17780).
+      "DisposableStack",
+      "AsyncDisposableStack",
+      "SuppressedError",
     ];
     const result = await createQuickJsToolScriptIsolate().run({
       runId: "acme-run",
@@ -48,8 +52,26 @@ verifies("toolscript-quickjs.intrinsics", () => {
     expect(result.ok && result.output).toEqual(names.map(() => "undefined"));
   });
 
-  it("pins both QuickJS packages to exactly 0.32.0", () => {
-    expect(workspace).toMatch(/^ {2}"@jitl\/quickjs-ng-wasmfile-release-sync": 0\.32\.0$/m);
+  it("hands a script no BigInt or SuppressedError through a bigint literal or a failed dispose", async () => {
+    const result = await createQuickJsToolScriptIsolate().run({
+      runId: "acme-run",
+      code: `export function run() {
+        let disposeError;
+        try {
+          { using acme = { [Symbol.dispose]() { throw new Error("dispose"); } }; throw new Error("body"); }
+        } catch (error) { disposeError = error; }
+        return [String((1n).constructor === Object), disposeError.constructor === Error, String(2n + 3n)];
+      }`,
+      input: null,
+      functions: {},
+      limits: createQuickJsToolScriptIsolate().limits,
+    });
+    expect(result.ok && result.output).toEqual(["true", true, "5"]);
+  });
+
+  it("pins the QuickJS API to exactly 0.32.0, with the engine built from engine/SOURCES.json", () => {
     expect(workspace).toMatch(/^ {2}quickjs-emscripten-core: 0\.32\.0$/m);
+    // The engine is our own build now (HAL-17780), not a variant package from npm.
+    expect(workspace).not.toMatch(/@jitl\/quickjs-ng-/);
   });
 });

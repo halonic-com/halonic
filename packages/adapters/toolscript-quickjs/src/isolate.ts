@@ -6,13 +6,10 @@ import {
   type ToolScriptLimits,
   toolScriptDefaultLimits,
 } from "@halonicjs/ports";
-import {
-  newQuickJSWASMModuleFromVariant,
-  newVariant,
-  type QuickJSSyncVariant,
-} from "quickjs-emscripten-core";
+import { newQuickJSWASMModuleFromVariant } from "quickjs-emscripten-core";
 import { captureBuiltins } from "./builtins.ts";
 import { CpuMeter } from "./cpu-meter.ts";
+import { engineForRun } from "./engine.ts";
 import { preludeSource, quickJsIntrinsics } from "./prelude.ts";
 import { RunSession } from "./session.ts";
 
@@ -69,13 +66,10 @@ export async function runInQuickJs(
   if (inputBytes > limits.inputBytes) {
     return { ok: false, reason: "limit.input", log: [], limits };
   }
-  // A module of its own per run, in a fresh WASM memory of a fixed size that
-  // is dropped whole afterwards. The fixed size is the hard memory limit:
-  // QuickJS's own limit doesn't count large strings (HAL-17776).
-  const variant = await quickJsVariant();
-  const module = await newQuickJSWASMModuleFromVariant(
-    newVariant(variant, { wasmMemory: fixedMemory(limits.memoryBytes) as never }),
-  );
+  // A module instance of its own per run, in a fresh WASM memory of a fixed
+  // size that is dropped whole afterwards. The fixed size is the hard memory
+  // limit: QuickJS's own limit doesn't count large strings (HAL-17776).
+  const module = await newQuickJSWASMModuleFromVariant(engineForRun(limits.memoryBytes).variant);
   const meter = new CpuMeter(limits.cpuMs);
   const runtime = module.newRuntime({
     memoryLimitBytes: limits.memoryBytes,
@@ -94,33 +88,4 @@ function jsonBytes(value: unknown): number | undefined {
   } catch {
     return undefined;
   }
-}
-
-/** A WebAssembly page. */
-const wasmPageBytes = 64 * 1024;
-
-/** The module's own memory beside the script's heap: the build declares 16 MiB to start. */
-export const moduleMemoryBytes = 16 * 1024 * 1024;
-
-/** The one part of `WebAssembly` the isolate uses; the host tsconfig has no WebAssembly types. */
-interface WasmMemoryConstructor {
-  new (descriptor: { readonly initial: number; readonly maximum: number }): unknown;
-}
-
-/** A WASM memory that can't grow: the module's own 16 MiB plus the script's heap. */
-function fixedMemory(heapBytes: number): unknown {
-  const { WebAssembly } = globalThis as unknown as {
-    readonly WebAssembly: { readonly Memory: WasmMemoryConstructor };
-  };
-  const pages = Math.ceil((moduleMemoryBytes + heapBytes) / wasmPageBytes);
-  return new WebAssembly.Memory({ initial: pages, maximum: pages });
-}
-
-/**
- * The pinned QuickJS-ng build. Its package types its default export as a
- * CommonJS namespace; at run time it is the variant object itself.
- */
-async function quickJsVariant(): Promise<QuickJSSyncVariant> {
-  const loaded: unknown = (await import("@jitl/quickjs-ng-wasmfile-release-sync")).default;
-  return loaded as QuickJSSyncVariant;
 }

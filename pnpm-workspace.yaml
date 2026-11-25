@@ -17,7 +17,6 @@ packages:
 catalog:
   "@anthropic-ai/sandbox-runtime": 0.0.82
   "@biomejs/biome": 2.6.5
-  "@jitl/quickjs-ng-wasmfile-release-sync": 0.32.0
   "@noble/hashes": 2.4.0
   "@paperclipai/plugin-sdk": 2026.1117.0
   "@codemirror/commands": ^6.11.1
