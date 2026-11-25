@@ -79,6 +79,25 @@ export interface StartLimits {
    * @throws when the scheduler doesn't take the timer
    */
   running(timeoutMs: number, timeUp: () => void): Promise<RunningLimit>;
+  /**
+   * Waits `ms` on a timer through the scheduler, for a caller that also
+   * waits for other things and gives up on this wait once one of them came
+   * first, as the early hedge does between its checkpoints (requirement
+   * `engine.harness-hedge-wait`).
+   */
+  wait(ms: number): TimedWait;
+}
+
+/** A wait {@link StartLimits.wait} started. */
+export interface TimedWait {
+  /**
+   * Resolves once the time is up. It never settles after `cancel()`.
+   *
+   * @throws when the scheduler doesn't take the timer
+   */
+  readonly done: Promise<void>;
+  /** Gives up on the wait and removes its timer. Calling it again, or after `done`, changes nothing. */
+  cancel(): void;
 }
 
 /** The running-time limit of a call that has started, as {@link StartLimits.running} set it. */
