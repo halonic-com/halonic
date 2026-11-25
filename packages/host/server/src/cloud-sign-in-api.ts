@@ -18,6 +18,16 @@ export type CodeExchangeOutcome =
   | { readonly ok: false; readonly refusal: string };
 
 /**
+ * What refreshing a session gave: the next session, the end of a session that ended with Cloud's
+ * reason, or a credential Cloud says nothing about. The reason is Cloud's text, so the routes read
+ * it against their own fixed list.
+ */
+export type RefreshOutcome =
+  | { readonly ok: true; readonly session: CloudAppSession }
+  | { readonly ok: false; readonly ended: string }
+  | { readonly ok: false; readonly ended: null };
+
+/**
  * What a many-user server needs to sign its customers in through Halonic Cloud. Every value
  * comes from the deployment's config, never from a request.
  */
@@ -33,6 +43,12 @@ export interface CloudSignInPorts {
    * refusal.
    */
   exchange(code: string, state: string): Promise<CodeExchangeOutcome>;
+  /**
+   * Refreshes a session with its refresh credential, server to server, signed with the
+   * deployment's key. It throws when Cloud can't be reached or can't answer (a 503), which uses
+   * nothing up, so the cookies stay.
+   */
+  refresh(refreshCredential: string): Promise<RefreshOutcome>;
   /** The current time in milliseconds; tests pass a fixed clock. */
   readonly now?: () => number;
 }

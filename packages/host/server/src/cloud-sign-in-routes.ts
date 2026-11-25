@@ -1,5 +1,11 @@
 import { constantTimeEqual, encodeBase64url } from "@halonicjs/std";
 import type { ErrorLog, ServerErrorBody } from "./api.ts";
+import {
+  cookieAttributes,
+  fitsInCookies,
+  hostOnlyCookiePrefix,
+  sessionCookies,
+} from "./cloud-cookies.ts";
 import type { CloudAppSession, CloudSignInPorts } from "./cloud-sign-in-api.ts";
 import { serverErrors } from "./errors.ts";
 import { isHttpsOrigin } from "./https-origin.ts";
@@ -12,8 +18,6 @@ export const cloudSignInReturnPath = "/api/sign-in/return";
 
 /** The cookie that holds the `state` of the one sign-in a browser is in the middle of. */
 export const signInStateCookieName = "__Host-halonic-sign-in-state";
-/** The cookie that holds Cloud's refresh credential. */
-export const refreshCookieName = "__Host-halonic-refresh";
 
 /** How long a sign-in may take, the same 10 minutes Cloud gives its own attempt. */
 const stateLifetimeSeconds = 10 * 60;
@@ -31,10 +35,6 @@ const endedReasonByRefusal: ReadonlyMap<string, string> = new Map([
   ["signin.user_deleted", "user_deleted"],
 ]);
 /**
- * What a token or refresh credential may hold to be written into a cookie: the base64url and
- * token characters, at most 8 KiB, so Cloud's answer can never add an attribute or a header.
- */
-/**
  * The other refusals on Cloud's fixed list, which the error answer may name. Anything else from
  * Cloud stays out of the answer.
  */
@@ -42,11 +42,6 @@ const namedRefusals: ReadonlySet<string> = new Set([
   "signin.link_expired",
   "signin.product_not_live",
 ]);
-/** Host-only cookies need this prefix; without it a sibling host could set the session cookie. */
-const hostOnlyCookiePrefix = "__Host-";
-const cookieValuePattern = /^[A-Za-z0-9\-._~+/]{1,8192}=*$/;
-/** Every cookie this flow sets is host-only, on every path, over HTTPS, out of scripts' reach. */
-const cookieAttributes = "Path=/; Secure; HttpOnly";
 
 /** The sign-in routes of a many-user server, before any session is needed. */
 export interface CloudSignInRoutes {
@@ -90,23 +85,9 @@ export function createCloudSignInRoutes(
   /** Keeps the new session in its two cookies, replacing any older session, and clears the `state`. */
   function signedIn(session: CloudAppSession): Response {
     const response = redirect(afterSignInPath);
-    const nowMs = now();
-    response.headers.append(
-      "Set-Cookie",
-      strictCookie(
-        options.sessionCookieName,
-        session.token,
-        secondsUntil(session.tokenEndsAt, nowMs),
-      ),
-    );
-    response.headers.append(
-      "Set-Cookie",
-      strictCookie(
-        refreshCookieName,
-        session.refreshCredential,
-        secondsUntil(session.sessionEndsAt, nowMs),
-      ),
-    );
+    for (const line of sessionCookies(session, options.sessionCookieName, now())) {
+      response.headers.append("Set-Cookie", line);
+    }
     response.headers.append("Set-Cookie", stateCookie("", 0));
     return response;
   }
@@ -148,8 +129,7 @@ export function createCloudSignInRoutes(
       const endedReason = endedReasonByRefusal.get(outcome.refusal);
       return endedReason === undefined ? signInFailed(outcome.refusal) : sendToSignIn(endedReason);
     }
-    const { token, refreshCredential } = outcome.session;
-    if (!cookieValuePattern.test(token) || !cookieValuePattern.test(refreshCredential)) {
+    if (!fitsInCookies(outcome.session)) {
       options.errorLog.record(new Error("Cloud's session answer can't be kept in a cookie."));
       return signInFailed();
     }
@@ -192,13 +172,4 @@ function redirect(location: string): Response {
 /** `Lax`, because the return is a top-level navigation from Cloud's host. */
 function stateCookie(value: string, maxAgeSeconds: number): string {
   return `${signInStateCookieName}=${value}; ${cookieAttributes}; SameSite=Lax; Max-Age=${maxAgeSeconds}`;
-}
-
-function strictCookie(name: string, value: string, maxAgeSeconds: number): string {
-  return `${name}=${value}; ${cookieAttributes}; SameSite=Strict; Max-Age=${maxAgeSeconds}`;
-}
-
-/** Whole seconds from `nowMs` to `endMs`, never below 0. */
-function secondsUntil(endMs: number, nowMs: number): number {
-  return Math.max(0, Math.floor((endMs - nowMs) / 1000));
 }

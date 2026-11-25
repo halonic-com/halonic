@@ -234,6 +234,16 @@ export const serverErrors = {
     code: "sign_in_failed",
     message: "Sign-in didn't finish. Start it again.",
   },
+  sessionEnded: {
+    status: 401,
+    code: "session_ended",
+    message: "Your session has ended. Sign in again.",
+  },
+  sessionRefreshUnavailable: {
+    status: 503,
+    code: "session_refresh_unavailable",
+    message: "The session couldn't be refreshed just now. Try again shortly.",
+  },
   internal: {
     status: 500,
     code: "internal_error",
