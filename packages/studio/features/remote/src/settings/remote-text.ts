@@ -6,6 +6,10 @@ export const DESCRIPTION =
 export const REACH_TITLE = "Let phones reach this computer";
 export const REACH_LINE = "Off until you turn it on. Your agents keep running either way.";
 
+// Wording row p08c (HAL-17514), checked on HAL-17547.
+export const KEEP_AWAKE_TITLE = "Keep this computer awake while it's plugged in";
+export const KEEP_AWAKE_LINE = "So your phone can reach it.";
+
 export const CONNECTION_TITLE = "Connection";
 export const CONNECTION_OFF_LINE = "Nothing reaches this computer";
 
@@ -31,6 +35,7 @@ export const CHECKING = "Checking…";
 export const TURN_ON_FAILED = "Couldn't turn remote on. Try again.";
 export const TURN_OFF_FAILED = "Couldn't turn remote off. Try again.";
 export const RISKY_FAILED = "Couldn't save the risky approvals setting. Try again.";
+export const KEEP_AWAKE_FAILED = "Couldn't save the keep-awake setting. Try again.";
 
 export const PHONES_TITLE = "Paired phones";
 export const CAN = "Can: view agents, approve, send prompts";

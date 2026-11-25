@@ -15,8 +15,10 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@halonicjs/app": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/std": "workspace:*",
+    "@halonicjs/studio-feature-settings": "workspace:*",
     "@halonicjs/studio-kit": "workspace:*",
     "@halonicjs/studio-shell": "workspace:*",
     "react": "catalog:",

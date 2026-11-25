@@ -1,5 +1,6 @@
+import { HostSettingsService } from "@halonicjs/studio-feature-settings/api";
 import { defineFeature, type WorkspaceContext } from "@halonicjs/studio-shell";
-import { RemoteControlService } from "./api.ts";
+import { KeepAwakeService, RemoteControlService } from "./api.ts";
 import { followRemote, remoteNow } from "./remote-state.ts";
 import { DESCRIPTION, summary } from "./settings/remote-text.ts";
 
@@ -7,12 +8,13 @@ import { DESCRIPTION, summary } from "./settings/remote-text.ts";
  * Remote: Settings › Remote, where a person lets phones reach this computer, pairs them and
  * revokes them, and the status bar item that says how remote is doing. Both show only while
  * the host's `RemoteControl` says remote is available, which stays false until the gateway
- * passes its attack suite (build plan decision 19).
+ * passes its attack suite (build plan decision 19). On the desktop it also keeps the computer
+ * awake while remote is on and it's plugged in, when the person turned that on (`remote.keep-awake`).
  */
 export const remoteFeature = defineFeature({
   id: "remote",
   title: "Remote",
-  wants: [RemoteControlService],
+  wants: [RemoteControlService, HostSettingsService, KeepAwakeService],
   register(studio) {
     studio.settings.add({
       id: "remote",
@@ -31,6 +33,12 @@ export const remoteFeature = defineFeature({
       order: 200,
       view: "RemoteStatusItem",
       load: () => import("./status/remote-status-item.tsx"),
+    });
+    studio.dialogs.add({
+      id: "remote.keep-awake",
+      order: 200,
+      view: "KeepAwakeFollower",
+      load: () => import("./keep-awake/keep-awake-follower.tsx"),
     });
   },
 });

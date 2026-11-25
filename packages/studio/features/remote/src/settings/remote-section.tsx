@@ -1,4 +1,5 @@
 import type { RemoteControl, RemoteState, TunnelStatus } from "@halonicjs/ports";
+import { HostSettingsService } from "@halonicjs/studio-feature-settings/api";
 import {
   Callout,
   type CalloutAction,
@@ -9,7 +10,8 @@ import {
 } from "@halonicjs/studio-kit";
 import type { SettingsSectionProps, SettingsSurface } from "@halonicjs/studio-shell";
 import { type ReactNode, useRef, useState } from "react";
-import { RemoteControlService } from "../api.ts";
+import { KeepAwakeService, RemoteControlService } from "../api.ts";
+import { type KeepAwakeParts, useKeepAwake } from "../keep-awake/use-keep-awake.ts";
 import { PairDialog } from "../pairing/pair-dialog.tsx";
 import { useRemoteState } from "../remote-state.ts";
 import { shellDeclined } from "../shell-declined.ts";
@@ -21,11 +23,18 @@ import * as text from "./remote-text.ts";
 export function RemoteSection({ context, surface }: SettingsSectionProps) {
   const remote = context.services.find(RemoteControlService);
   const state = useRemoteState(remote);
+  const settings = context.services.find(HostSettingsService);
+  const keepAwakeHost = context.services.find(KeepAwakeService);
   if (remote === undefined || state === undefined) return null;
   return (
     <RemoteSettingsView
       remote={remote}
       state={state}
+      keepAwake={
+        settings === undefined || keepAwakeHost === undefined
+          ? undefined
+          : { settings, host: keepAwakeHost }
+      }
       announce={(line) => context.announcer.announce(line)}
       surface={surface}
     />
@@ -40,11 +49,20 @@ export interface RemoteSettingsViewProps {
   readonly announce: (line: string) => void;
   /** Where the section shows, for its headings' level. Default the dialog. */
   readonly surface?: SettingsSurface | undefined;
+  /** The keep-awake switch's parts; without them (served Studio, the phone) the row doesn't show. */
+  readonly keepAwake?: KeepAwakeParts | undefined;
 }
 
 /** The section over one snapshot: the tunnel's problem, the switches, and the phones. */
-export function RemoteSettingsView({ remote, state, announce, surface }: RemoteSettingsViewProps) {
+export function RemoteSettingsView({
+  remote,
+  state,
+  announce,
+  surface,
+  keepAwake,
+}: RemoteSettingsViewProps) {
   const [failed, setFailed] = useState<string>();
+  const keepAwakeSwitch = useKeepAwake(keepAwake);
   const [pairing, setPairing] = useState(false);
   const openExternal = useOpenExternal();
   const fail = (failure: string) => {
@@ -60,8 +78,8 @@ export function RemoteSettingsView({ remote, state, announce, surface }: RemoteS
   };
   // A switch ignores a change while its own host call is out, so a quick second click doesn't
   // send a second call. A ref, not state: two clicks can land before React renders again.
-  const pending = useRef(new Set<"reach" | "risky">());
-  const change = (key: "reach" | "risky", action: () => Promise<void>, failure: string) => {
+  const pending = useRef(new Set<SwitchKey>());
+  const change = (key: SwitchKey, action: () => Promise<void>, failure: string) => {
     if (pending.current.has(key)) return;
     pending.current.add(key);
     void run(action(), failure).finally(() => pending.current.delete(key));
@@ -81,6 +99,21 @@ export function RemoteSettingsView({ remote, state, announce, surface }: RemoteS
         <Row title={text.REACH_TITLE} line={text.REACH_LINE}>
           <Switch label={text.REACH_TITLE} checked={state.on} onChange={turn} />
         </Row>
+        {keepAwakeSwitch === undefined ? null : (
+          <Row title={text.KEEP_AWAKE_TITLE} line={text.KEEP_AWAKE_LINE}>
+            <Switch
+              label={text.KEEP_AWAKE_TITLE}
+              checked={keepAwakeSwitch.keep}
+              onChange={(keep) =>
+                change(
+                  "keep-awake",
+                  () => keepAwakeSwitch.change(keep, state.on),
+                  text.KEEP_AWAKE_FAILED,
+                )
+              }
+            />
+          </Row>
+        )}
         <Row
           title={text.CONNECTION_TITLE}
           line={state.on ? providerName(state.tunnelProviderId) : text.CONNECTION_OFF_LINE}
@@ -119,6 +152,9 @@ export function RemoteSettingsView({ remote, state, announce, surface }: RemoteS
     </div>
   );
 }
+
+/** The section's switches, for the one call each may have out. */
+type SwitchKey = "reach" | "risky" | "keep-awake";
 
 /** One line of the settings box: its title and line, and its control at the end. */
 function Row({
