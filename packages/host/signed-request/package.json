@@ -4,7 +4,8 @@
   "type": "module",
   "description": "The signed-request format a deployment and Halonic Cloud use to talk to each other: Ed25519 signatures over the request, its product and customer, the time, a nonce, the body's hash and the direction, on Web-standard APIs only.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./golden": "./src/golden.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",

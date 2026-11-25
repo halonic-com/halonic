@@ -102,6 +102,9 @@
       "./routine",
       "./runtime-export"
     ],
+    "@halonicjs/host-signed-request": [
+      "./golden"
+    ],
     "@halonicjs/std": [
       "./error-kind"
     ],
