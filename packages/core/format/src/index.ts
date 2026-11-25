@@ -152,6 +152,8 @@ export { MAX_TEMPLATE_CHARS, Template } from "./kinds/template/schema.ts";
 export {
   type ActionKey,
   type ActionParameter,
+  type ActionParameterShape,
+  type FlatValueType,
   type ToolActionInfo,
   type ToolActionName,
   toolActionInfo,

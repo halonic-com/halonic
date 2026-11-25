@@ -49,34 +49,78 @@ const parameterBase = {
   required: s.boolean().default(false),
 };
 
-/** One parameter of a tool. Only flat values: no maps or lists. */
+/** The keys of a text value: the only values the agent may give, and how long it may be. */
+const textKeys = {
+  type: s.literal("string"),
+  /** The only values the agent may give. */
+  enum: s.array(label).min(1).max(50).optional(),
+  maxLength: s.number().int().min(1).max(10_000).default(1_000),
+};
+
+/** The keys of a whole number. */
+const integerKeys = {
+  type: s.literal("integer"),
+  minimum: s.number().int().optional(),
+  maximum: s.number().int().optional(),
+};
+
+/** The keys of any number. */
+const numberKeys = {
+  type: s.literal("number"),
+  minimum: s.number().optional(),
+  maximum: s.number().optional(),
+};
+
+/** The keys of a yes or no. */
+const booleanKeys = { type: s.literal("boolean") };
+
+/** One flat parameter: a text, a number or a yes or no. Also an object's field. */
+const FlatParameter = s.discriminatedUnion("type", [
+  s.object({ ...textKeys, ...parameterBase }).strict(),
+  s.object({ ...integerKeys, ...parameterBase }).strict(),
+  s.object({ ...numberKeys, ...parameterBase }).strict(),
+  s.object({ ...booleanKeys, ...parameterBase }).strict(),
+]);
+
+/** What a list holds: one flat value, without a description of its own. */
+const ListItem = s.discriminatedUnion("type", [
+  s.object(textKeys).strict(),
+  s.object(integerKeys).strict(),
+  s.object(numberKeys).strict(),
+  s.object(booleanKeys).strict(),
+]);
+
+/**
+ * One parameter of a tool: a flat value, an object whose fields are flat
+ * values, or a list of flat values. Nothing nests deeper, so an agent's
+ * call stays easy to read and to check.
+ */
 export const ToolParameter = s.discriminatedUnion("type", [
+  ...FlatParameter.options,
   s
     .object({
-      type: s.literal("string"),
+      type: s.literal("object"),
       ...parameterBase,
-      /** The only values the agent may give. */
-      enum: s.array(label).min(1).max(50).optional(),
-      maxLength: s.number().int().min(1).max(10_000).default(1_000),
+      /** The object's fields, each with its own description and `required`. */
+      fields: s
+        .record(parameterName, FlatParameter)
+        .refine((fields) => Object.keys(fields).length >= 1, "give the object at least one field")
+        .refine(
+          (fields) => Object.keys(fields).length <= MAX_TOOL_PARAMETERS,
+          `use at most ${MAX_TOOL_PARAMETERS} fields`,
+        ),
     })
     .strict(),
   s
     .object({
-      type: s.literal("integer"),
+      type: s.literal("list"),
       ...parameterBase,
-      minimum: s.number().int().optional(),
-      maximum: s.number().int().optional(),
+      /** What each item of the list is. */
+      items: ListItem,
+      /** The most items the agent may give. */
+      maxItems: s.number().int().min(1).max(100).default(20),
     })
     .strict(),
-  s
-    .object({
-      type: s.literal("number"),
-      ...parameterBase,
-      minimum: s.number().optional(),
-      maximum: s.number().optional(),
-    })
-    .strict(),
-  s.object({ type: s.literal("boolean"), ...parameterBase }).strict(),
 ]);
 
 /**

@@ -1,4 +1,10 @@
-import { type Tool, toolActionInfo, type WorkspaceSnapshot } from "@halonicjs/format";
+import {
+  type ActionParameter,
+  type Tool,
+  type ToolParameter,
+  toolActionInfo,
+  type WorkspaceSnapshot,
+} from "@halonicjs/format";
 import type { PaperclipEvent, ToolResult, ToolRunContext } from "./host.ts";
 import { snapshotPath } from "./pinned-snapshot.ts";
 import type { WorkspaceRuntimeApi } from "./register.ts";
@@ -15,14 +21,37 @@ export const runCtx: ToolRunContext = {
   projectId: "",
 };
 
-/** The parameters a tool file declares for an action: the ones it reads, as text. */
-export function parametersFor(action: Tool["action"]["run"]): Tool["parameters"] {
+type ObjectParameter = Extract<ToolParameter, { type: "object" }>;
+
+/** How a tool file declares a parameter its action reads: as the object or list it reads, else as text. */
+function declarationOf({ name, required, shape }: ActionParameter): ToolParameter {
+  const description = `The ${name}.`;
+  if (shape?.type === "object") {
+    return {
+      type: "object",
+      description,
+      required,
+      // An object's fields are flat in the actions, so each comes out as text.
+      fields: declarationsOf(shape.fields) as ObjectParameter["fields"],
+    };
+  }
+  if (shape?.type === "list") {
+    const items =
+      shape.items === "string" ? { type: "string", maxLength: 1000 } : { type: shape.items };
+    return { type: "list", description, required, items, maxItems: 20 } as ToolParameter;
+  }
+  return { type: "string", description, required, maxLength: 1000 };
+}
+
+function declarationsOf(parameters: readonly ActionParameter[]): Record<string, ToolParameter> {
   return Object.fromEntries(
-    toolActionInfo(action).parameters.map(({ name, required }) => [
-      name,
-      { type: "string", description: `The ${name}.`, required, maxLength: 1000 },
-    ]),
+    parameters.map((parameter) => [parameter.name, declarationOf(parameter)]),
   );
+}
+
+/** The parameters a tool file declares for an action: the ones it reads, flat ones as text. */
+export function parametersFor(action: Tool["action"]["run"]): Tool["parameters"] {
+  return declarationsOf(toolActionInfo(action).parameters);
 }
 
 /**
