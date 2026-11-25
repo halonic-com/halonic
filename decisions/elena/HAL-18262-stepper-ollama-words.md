@@ -2,6 +2,7 @@
 
 - Approval: HAL-18262, row W2 of Sofia's words check on HAL-18261, a small wording fix on an approved screen that the team decides (HAL-2282); Liam signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:DxBZDINPK8QYyCGhRimuKePSIC7dH4lOsEb/irvpkgTDdKCKpOyQFi+3Vj7/GYw5plngvO5pX6QlsiDKmah7AA==
 - Task: HAL-18262
 
 ## What changes
