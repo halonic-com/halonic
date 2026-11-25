@@ -204,4 +204,46 @@ describe("leak guard command", () => {
     expect(result.output).toContain("pull request body [agent-mention] Contains @liam");
     expect(run({}, "--all").code).toBe(0);
   });
+
+  // The merge queue's squash commit is authored by whoever opened the pull
+  // request, and the queue checks commit authors (HAL-18475).
+  it("fails a term in the login or name of the pull request's opener, and never prints it", () => {
+    const commit = (message: string) =>
+      execFileSync(
+        "git",
+        ["-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "-m", message],
+        { cwd: repo },
+      );
+    commit("chore: start");
+    writeAndStage("notes.md", "A second note.\n");
+    commit("docs: a second note");
+    const range = `${execFileSync("git", ["rev-parse", "HEAD^"], { cwd: repo, encoding: "utf8" }).trim()}..HEAD`;
+    const eventFor = (user: Record<string, string>) => {
+      const event = join(repo, "event.json");
+      writeFileSync(event, JSON.stringify({ pull_request: { title: "docs: a note", user } }));
+      return event;
+    };
+    const terms = { HALONIC_DENY_TERMS: "walrus" };
+
+    const byLogin = run(
+      { ...terms, GITHUB_EVENT_PATH: eventFor({ login: "walrus-dev" }) },
+      "--range",
+      range,
+    );
+    expect(byLogin.code).toBe(1);
+    expect(byLogin.output).toContain("pull request author [personal-term]");
+    expect(byLogin.output.toLowerCase()).not.toContain("walrus");
+
+    const byName = run(
+      { ...terms, GITHUB_EVENT_PATH: eventFor({ login: "someone", name: "Walrus" }) },
+      "--range",
+      range,
+    );
+    expect(byName.code).toBe(1);
+    expect(byName.output).toContain("pull request author [personal-term]");
+
+    expect(
+      run({ ...terms, GITHUB_EVENT_PATH: eventFor({ login: "someone" }) }, "--range", range).code,
+    ).toBe(0);
+  });
 });
