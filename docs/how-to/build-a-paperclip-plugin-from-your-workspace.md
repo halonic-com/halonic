@@ -18,23 +18,24 @@ You need:
 
 Each tool is one file in your workspace, `library/tools/<id>.tool.yaml`. The
 file name, without `.tool.yaml`, is the tool's id. This one, in
-`library/tools/pr-status.tool.yaml`, lets an agent read a pull request on
-Acme's website:
+`library/tools/pr-status.tool.yaml` of the `examples/acme` workspace, lets an
+agent read a pull request on Acme's shop website:
 
 ```yaml
+# Acme is an invented company: the repository below doesn't exist.
 name: pr_status
-description: Reads one pull request on Acme's website, with its checks, approvals and what its author does next.
-callers: everyone
+description: Reads one pull request on Acme's shop website, with its checks, whether it can merge and its place in the merge queue.
 parameters:
   pr:
-    type: string
-    description: The pull request's number, such as 12, or its GitHub URL.
+    type: integer
+    description: The pull request's number, such as 42.
     required: true
+    minimum: 1
+callers: everyone
 action:
   run: github.pull-request
   with:
-    repositories:
-      - acme/website
+    repositories: [acme/shop-website]
 ```
 
 | Field | What it holds |
