@@ -59,6 +59,10 @@ export function MessengerPage({ messenger, onConnect }: MessengerPageProps) {
   const { onePane, list, chat, select, back } = useOnePane(selected, setSelected);
   // In one pane, nothing connected shows the panel, so a narrow window still offers Connect.
   const panelFirst = open !== undefined || connected === false;
+  const left = () => {
+    setSelected(undefined);
+    setChanged((count) => count + 1);
+  };
   return (
     <div className="flex h-full min-h-0 gap-2">
       <h1 className="sr-only">{messengerWords.title}</h1>
@@ -92,6 +96,7 @@ export function MessengerPage({ messenger, onConnect }: MessengerPageProps) {
             open={open}
             changed={changed}
             onConnect={onConnect}
+            onLeft={left}
           />
         </main>
       )}
@@ -106,12 +111,14 @@ function Panel({
   open,
   changed,
   onConnect,
+  onLeft,
 }: {
   readonly messenger: Messenger;
   readonly connected: boolean | undefined;
   readonly open: ConversationRow | undefined;
   readonly changed: number;
   readonly onConnect: (() => void) | undefined;
+  readonly onLeft: () => void;
 }) {
   if (connected === false) return <NoConnections onConnect={onConnect} />;
   if (open === undefined) {
@@ -123,6 +130,7 @@ function Panel({
       messenger={messenger}
       row={open}
       changed={changed}
+      onLeft={onLeft}
     />
   );
 }

@@ -13,7 +13,12 @@ export function authorOf(message: Message, row: ConversationRow): string {
   const { author } = message;
   if (author.kind === "me") return messengerWords.you;
   if (author.kind === "person") return author.name;
-  return agentName(row, author.agent) ?? channelWords.authorGone(row.source?.label ?? "");
+  const name = agentName(row, author.agent);
+  if (name !== undefined) return name;
+  // With the source itself gone there is no label to name, so the line says only that.
+  return row.source === undefined
+    ? channelWords.authorGoneNoSource
+    : channelWords.authorGone(row.source.label);
 }
 
 /** Above the person's message in a channel: who it went to, "To Elena and Liam". */
@@ -24,9 +29,9 @@ export function MessageTo({
   readonly message: Message;
   readonly row: ConversationRow;
 }) {
-  const to = message.to ?? [];
-  if (to.length === 0) return null;
-  const names = to.flatMap((id) => agentName(row, id) ?? []);
+  const names = (message.to ?? []).flatMap((id) => agentName(row, id) ?? []);
+  // Nobody named, or only agents the source no longer lists: no "To " with nothing after it.
+  if (names.length === 0) return null;
   return <p className="text-small text-fg-muted">{channelWords.to(names)}</p>;
 }
 

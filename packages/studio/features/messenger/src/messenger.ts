@@ -10,6 +10,7 @@ import type {
   MessagingSource,
   SendResult,
 } from "@halonicjs/ports";
+import { ChannelAdmin } from "./channel-admin.ts";
 import { DraftFiles } from "./draft-files.ts";
 import { QuickActions } from "./quick-actions.ts";
 import { refusalOf } from "./refusal.ts";
@@ -55,6 +56,8 @@ export type DraftOutcome =
 export class Messenger {
   /** The chats' quick actions: answering the agent's cards, and asking for an update. */
   readonly quickActions: QuickActions;
+  /** Changing a channel's members, and leaving it. */
+  readonly channels: ChannelAdmin;
   /** The files waiting in each chat's box, sent with its next message. */
   readonly files = new DraftFiles();
   /** The time now, for how long an agent has been working on what the person asked. */
@@ -67,6 +70,7 @@ export class Messenger {
     this.messaging = messaging;
     this.now = now;
     this.quickActions = new QuickActions(messaging);
+    this.channels = new ChannelAdmin(messaging);
   }
 
   /** The conversations of a tab, newest first, each with its agents and its source's label. */

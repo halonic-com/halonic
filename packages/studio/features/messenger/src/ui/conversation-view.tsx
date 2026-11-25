@@ -5,9 +5,11 @@ import { isChannel } from "../channel.ts";
 import { activityOf, type ConversationRow, type Messenger } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import { AttachmentList } from "./attachment-list.tsx";
+import { ChannelHeaderActions } from "./channel-header-actions.tsx";
 import { authorOf, EmptyChannel, MessageTo, WorkLines } from "./channel-message.tsx";
 import { ChatBox } from "./chat-box.tsx";
 import { ChatCards } from "./chat-cards.tsx";
+import { MembersPanel } from "./members-panel.tsx";
 
 /** The props of {@link ConversationView}. */
 export interface ConversationViewProps {
@@ -15,6 +17,8 @@ export interface ConversationViewProps {
   readonly row: ConversationRow;
   /** Grows each time a source changes, so the messages are read again. */
   readonly changed: number;
+  /** The person left the channel; the page closes it. */
+  readonly onLeft?: () => void;
 }
 
 /**
@@ -31,10 +35,11 @@ export interface ConversationViewProps {
  * search or on opening the chat), the option that answered a card, and that no message matches the
  * search (HAL-18074 MS1, MS2 and MS4).
  */
-export function ConversationView({ messenger, row, changed }: ConversationViewProps) {
+export function ConversationView({ messenger, row, changed, onLeft }: ConversationViewProps) {
   const [search, setSearch] = useState("");
   // What the chat's status region reads out: a new message, or the option that answered a card.
   const [said, setSaid] = useState("");
+  const [membersOpen, setMembersOpen] = useState(false);
   const section = useRef<HTMLElement>(null);
   const { messages, questions, read } = useMessages(messenger, row, search, changed, setSaid);
 
@@ -53,28 +58,41 @@ export function ConversationView({ messenger, row, changed }: ConversationViewPr
       aria-label={row.conversation.title}
       className="flex min-h-0 flex-1 flex-col"
     >
-      <ConversationHeader row={row} search={search} onSearch={setSearch} />
+      <ConversationHeader row={row} search={search} onSearch={setSearch}>
+        {isChannel(row) ? (
+          <ChannelHeaderActions
+            messenger={messenger}
+            row={row}
+            membersOpen={membersOpen}
+            onMembers={() => setMembersOpen((before) => !before)}
+            onLeft={onLeft}
+          />
+        ) : null}
+      </ConversationHeader>
       <p role="status" className="sr-only">
         {said}
       </p>
       <p role="status" className={noMatch ? "px-4 pt-4 text-small text-fg-muted" : undefined}>
         {noMatch ? messengerWords.noMatches : ""}
       </p>
-      <Transcript
-        messenger={messenger}
-        row={row}
-        messages={messages}
-        questions={questions}
-        searching={search.trim() !== ""}
-      >
-        <ChatCards
-          quickActions={messenger.quickActions}
+      <div className="flex min-h-0 flex-1">
+        <Transcript
+          messenger={messenger}
           row={row}
-          changed={changed}
-          announce={setSaid}
-          afterAnswer={focusAfterAnswer}
-        />
-      </Transcript>
+          messages={messages}
+          questions={questions}
+          searching={search.trim() !== ""}
+        >
+          <ChatCards
+            quickActions={messenger.quickActions}
+            row={row}
+            changed={changed}
+            announce={setSaid}
+            afterAnswer={focusAfterAnswer}
+          />
+        </Transcript>
+        {membersOpen ? <MembersPanel messenger={messenger} row={row} /> : null}
+      </div>
       <ChatBox messenger={messenger} row={row} onSent={read} />
     </section>
   );
@@ -141,10 +159,13 @@ function ConversationHeader({
   row,
   search,
   onSearch,
+  children,
 }: {
   readonly row: ConversationRow;
   readonly search: string;
   readonly onSearch: (search: string) => void;
+  /** A channel's Members and Leave channel. */
+  readonly children: ReactNode;
 }) {
   const activity = messengerWords.activity[activityOf(row)];
   return (
@@ -157,6 +178,7 @@ function ConversationHeader({
           {[row.source?.label ?? "", activity].filter((part) => part !== "").join(" · ")}
         </p>
       </div>
+      {children}
       <div className="w-56">
         <Input
           size="sm"
