@@ -3,6 +3,7 @@
 - Task: HAL-17896 (the CI part of HAL-17893, under HAL-17891)
 - Approval: Chief decided on HAL-17893 (24 Nov) that Liam owns the sign-with-the-review flow and Mateo the CI part; HAL-17896 specifies this change, and Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:AEqxD5mDA3Z2NX4u/Kc5lNaGvm1Cw9DkR468lQ3LmpNE65QrK8r+lQ/wP8NVI7p3AOewzZTKBZOdJVN+sTknAA==
 
 ## What changes
 
