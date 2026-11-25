@@ -151,9 +151,20 @@ function checkTestSetup(context: CheckContext, pkg: WorkspacePackage, report: Re
 }
 
 function testSetupProblemsOf(context: CheckContext, pkg: WorkspacePackage): string[] {
-  const configPath = join(context.root, pkg.directory, "vitest.config.ts");
-  const configText = existsSync(configPath) ? readFileSync(configPath, "utf8") : undefined;
-  return testSetupProblems(pkg.manifest.scripts?.["test"], configText);
+  return testSetupProblems({
+    testScript: pkg.manifest.scripts?.["test"],
+    configText: packageFileText(context, pkg, "vitest.config.ts"),
+    mergeConfigText: packageFileText(context, pkg, "vitest.merge.config.ts"),
+  });
+}
+
+function packageFileText(
+  context: CheckContext,
+  pkg: WorkspacePackage,
+  file: string,
+): string | undefined {
+  const path = join(context.root, pkg.directory, file);
+  return existsSync(path) ? readFileSync(path, "utf8") : undefined;
 }
 
 /**

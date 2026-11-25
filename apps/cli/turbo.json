@@ -34,7 +34,7 @@
         "$TURBO_ROOT$/examples/**"
       ],
       "outputs": [
-        "test-results/blob/part-*.json"
+        "test-results/blob/part-1.json"
       ]
     },
     "test:part-2": {
@@ -55,7 +55,7 @@
         "$TURBO_ROOT$/examples/**"
       ],
       "outputs": [
-        "test-results/blob/part-*.json"
+        "test-results/blob/part-2.json"
       ]
     }
   }

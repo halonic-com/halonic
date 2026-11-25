@@ -7,14 +7,14 @@ import packageConfig from "./vitest.config.ts";
 /**
  * The merge of the CLI's test parts, run by `test` (see
  * `vitest.part.config.ts`): the package's own reporters write the result file
- * and check the coverage floor, and one more checks that every test file ran
+ * and check the floor, and one more checks that every test file ran
  * in one of the parts.
  */
 
 /**
  * Fails the merge when a test file of the package ran in neither part: a
  * part's blob is missing, or a file's worker never started. Without it, the
- * merge's only visible failure would be coverage below the floor.
+ * merge's only visible failure would be a floor it falls short of.
  */
 class AllTestFilesRanReporter implements Reporter {
   private readonly include: ReadonlyArray<string>;
