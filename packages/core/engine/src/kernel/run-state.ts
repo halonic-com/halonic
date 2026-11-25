@@ -1,5 +1,4 @@
 import type {
-  AgentResume,
   CantTryStep,
   RunEvent,
   RunKind,
@@ -9,6 +8,7 @@ import type {
   RunVersion,
 } from "@halonicjs/events";
 import type { RunEffort } from "@halonicjs/ports";
+import { type LimitWait, resumeAfterLimit, waitAtLimit } from "./limit-wait-state.ts";
 import {
   type RequestedEffect,
   type ResumeAfterEffect,
@@ -16,6 +16,12 @@ import {
   takeEffectRequest,
   takeEffectResult,
 } from "./requested-effect.ts";
+import {
+  type ResumeAfterApproval,
+  requestApproval,
+  resolveApproval,
+  type WaitingApproval,
+} from "./run-approvals.ts";
 import {
   type BranchEnd,
   branchOfCall,
@@ -45,31 +51,6 @@ export interface PendingCall {
 
 /** Where an agent goes on from after it stopped, and what answers the call it stopped at. */
 export type ResumeAfterStop = ResumeAfterApproval | ResumeAfterEffect;
-
-/** Where an agent stopped for a person's OK, and what the person answered. */
-export interface ResumeAfterApproval {
-  /** The conversation so far; the call that waited for the OK is `calls[0]`. */
-  readonly resume: AgentResume;
-  readonly approved: boolean;
-  /** What the person wrote with the answer, if anything. */
-  readonly comment?: string;
-  /** The connector the waiting call's tool comes from, as its approval names it; absent when it names none. */
-  readonly connector?: string;
-}
-
-/** A tool call waiting for a person's OK, as its `approval.requested` asked. */
-export interface WaitingApproval {
-  /** `call-<n>`, unique in the run. A `send` that names a call id must name one of these. */
-  readonly callId: string;
-  readonly state: string;
-  readonly agent: string;
-  readonly tool: string;
-  /** The prompt of the model call that stopped for it, for the call that goes on. */
-  readonly prompt: string;
-  readonly resume: AgentResume;
-  /** The connector the tool comes from, as `approval.requested` names it; absent in older logs. */
-  readonly connector?: string;
-}
 
 /** The child run a `workflow` state started and waits on: the one its `workflow.started` named. */
 export interface ChildRun {
@@ -149,6 +130,8 @@ export interface RunState {
   readonly parallel: ParallelBranches | null;
   /** The items of the `foreach` state the run is in, once one has started; `null` in any other state. */
   readonly foreach: ForeachItems | null;
+  /** Set while the run waits at a plan limit: what `continue` decides again. */
+  readonly limitWait: LimitWait | null;
   /** The `seq` of the last event folded in. The next append expects it. */
   readonly lastSeq: number;
 }
@@ -234,6 +217,7 @@ function startedState(event: RunEvent): RunState {
     child: null,
     parallel: null,
     foreach: null,
+    limitWait: null,
     lastSeq: event.seq,
   };
 }
@@ -247,6 +231,7 @@ const ended = {
   foreach: null,
   accepts: [],
   approvals: [],
+  limitWait: null,
 } as const;
 
 function applyEvent(state: RunState, event: RunEvent): RunState {
@@ -272,8 +257,12 @@ function applyEvent(state: RunState, event: RunEvent): RunState {
       return { ...state, context: { ...state.context, [event.key]: event.value } };
     case "run.waiting":
       return { ...state, status: "waiting", accepts: event.events, waitingAt: event.at };
+    case "run.limit-waiting":
+      return waitAtLimit(state, event);
     case "event.received":
-      return receiveEvent(state, event.event);
+      return state.limitWait === null
+        ? receiveEvent(state, event.event)
+        : resumeAfterLimit(state, state.limitWait);
     case "timer.fired":
     case "workflow.resumed":
       return { ...state, status: "running", accepts: [] };
@@ -410,61 +399,4 @@ function finishChild(
     return { ...state, foreach: finishItem(state.foreach, event.state, event.item, output) };
   }
   return { ...state, status: "running", accepts: [], child: null };
-}
-
-/**
- * An agent stopped at a tool call that needs a person's OK. The approval
- * takes a call id of its own, and the model call that stopped is over.
- */
-function requestApproval(
-  state: RunState,
-  event: Extract<RunEvent, { type: "approval.requested" }>,
-): RunState {
-  const { callId, state: stateId, agent, tool, resume, connector } = event;
-  const stopped = state.pendingCall?.state === stateId ? state.pendingCall : null;
-  const approval: WaitingApproval = {
-    callId,
-    state: stateId,
-    agent,
-    tool,
-    prompt: stopped?.prompt ?? "",
-    resume,
-    ...(connector === undefined ? {} : { connector }),
-  };
-  return {
-    ...state,
-    calls: state.calls + 1,
-    approvals: [...state.approvals, approval],
-    pendingCall: stopped === null ? state.pendingCall : null,
-  };
-}
-
-/**
- * A person answered an approval. When the run is still in the approval's
- * state, its agent goes on with the answer in a new model call.
- */
-function resolveApproval(
-  state: RunState,
-  event: Extract<RunEvent, { type: "approval.resolved" }>,
-): RunState {
-  const approval = state.approvals.find((waiting) => waiting.callId === event.callId);
-  const approvals = state.approvals.filter((waiting) => waiting.callId !== event.callId);
-  if (approval === undefined || approval.state !== state.state) {
-    return { ...state, approvals };
-  }
-  const calls = state.calls + 1;
-  const { approved, comment } = event;
-  const resume: ResumeAfterApproval = {
-    resume: approval.resume,
-    approved,
-    ...(comment === undefined ? {} : { comment }),
-    ...(approval.connector === undefined ? {} : { connector: approval.connector }),
-  };
-  const { state: stateId, agent, prompt } = approval;
-  return {
-    ...state,
-    approvals,
-    calls,
-    pendingCall: { callId: `call-${calls}`, state: stateId, agent, prompt, resume },
-  };
 }

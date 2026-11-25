@@ -27,8 +27,9 @@ import {
   type RequestedEffect,
   unknownOutcomeEvents,
 } from "./requested-effect.ts";
+import type { WaitingApproval } from "./run-approvals.ts";
 import { branchOfCall } from "./run-branches.ts";
-import { callOf, evolve, hasEnded, type RunState, type WaitingApproval } from "./run-state.ts";
+import { callOf, evolve, hasEnded, type RunState } from "./run-state.ts";
 import { foldableEvent } from "./saved-artifacts.ts";
 
 /**
@@ -217,14 +218,39 @@ function start(input: StartInput, definitions: RunDefinitions): Decision {
     // The whole item can't be tried, so the run enters no state at all.
     endCantTry(draft, null, []);
   } else {
-    // The initial context goes in the log, so a running or waiting run's
-    // summary holds it from the start.
-    for (const [key, value] of Object.entries(workflow.context)) {
-      emit(draft, { type: "context.updated", key, value });
-    }
-    enter(draft, workflow.initial);
+    begin(draft);
   }
   return decisionOf(draft, null);
+}
+
+/**
+ * What a run decides after its `run.started`, for a run whose first step a
+ * plan limit refused and that is now continued (requirement
+ * `engine.plan-limit-wait`): the same events and effects `start` decides, but
+ * without `run.started`, which is already stored.
+ *
+ * @param run - the run as it is with `continue` folded in
+ */
+export function startAgain(run: RunState, at: string, definitions: RunDefinitions): Decision {
+  const draft: Draft = {
+    run,
+    events: [],
+    effects: [],
+    at,
+    workflow: definitions.workflow,
+    agents: definitions.agents ?? {},
+    workflows: definitions.workflows ?? {},
+  };
+  begin(draft);
+  return decisionOf(draft, null);
+}
+
+/** Log the initial context, so a running or waiting run's summary holds it from the start, and enter the first state. */
+function begin(draft: Draft): void {
+  for (const [key, value] of Object.entries(draft.workflow.context)) {
+    emit(draft, { type: "context.updated", key, value });
+  }
+  enter(draft, draft.workflow.initial);
 }
 
 /**

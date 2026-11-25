@@ -15,12 +15,8 @@ import type {
 } from "../../kernel/decide-types.ts";
 import { InputRefused } from "../../kernel/input-refused.ts";
 import { nothing, type StateContext, type StateStep } from "../../kernel/registry.ts";
-import {
-  nextCallId,
-  type PendingCall,
-  type ResumeAfterApproval,
-  type WaitingApproval,
-} from "../../kernel/run-state.ts";
+import type { ResumeAfterApproval, WaitingApproval } from "../../kernel/run-approvals.ts";
+import { nextCallId, type PendingCall } from "../../kernel/run-state.ts";
 import { stoppedSubagentOf } from "../../kernel/stopped-subagent.ts";
 
 /** The events a run waiting for an approval takes. */

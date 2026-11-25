@@ -120,8 +120,8 @@ verifies("engine.meter-checks", () => {
     expect(meter.records).toEqual([{ kind: "run", runId: "run_1", status: "completed" }]);
   });
 
-  it("stops a run before its model call when the meter refuses, with the meter's cause", async () => {
-    for (const stop of [costStop, suspendedStop(), memberRemovedStop()]) {
+  it("stops a run before its model call when the meter refuses with a final stop, with the meter's cause", async () => {
+    for (const stop of [suspendedStop(), memberRemovedStop()]) {
       const { executor, model, runs, scheduler } = meteredRuns(
         refusing("model-call", stop).forAda(),
       );
@@ -149,12 +149,12 @@ verifies("engine.meter-checks", () => {
     });
 
     it("asks the meter before the monthly budget", async () => {
-      const { executor } = meteredRuns(refusing("model-call", costStop).forAda(), {
+      const { executor } = meteredRuns(refusing("model-call", suspendedStop()).forAda(), {
         currency: "EUR",
         monthly: 0.5,
       });
       const run = await executor.start(replyStart);
-      expect(run.cause).toMatchObject({ code: "plan.cost" });
+      expect(run.cause).toMatchObject({ code: "plan.suspended" });
     });
   });
 
