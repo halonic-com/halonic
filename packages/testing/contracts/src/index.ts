@@ -166,6 +166,7 @@ export { meterContract } from "./meter.ts";
 export {
   acmeMembers,
   acmeOrganisationId,
+  acmeRunId,
   ada,
   bea,
   codeOf,
@@ -175,11 +176,13 @@ export {
   type MeterHarness,
   type MeterPlan,
   type MeterPlanAmounts,
+  type MeterTestAnswer,
+  type MeterTestPrincipal,
+  type MeterTestReservation,
+  type MeterUnderTest,
+  type MeterUsageMakers,
   meterResetsAt,
   meterStart,
-  modelCall,
-  runEnd,
-  stepTimes,
 } from "./meter-harness.ts";
 export {
   type PasswordAndHash,

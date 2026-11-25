@@ -1,18 +1,22 @@
-// `ConfigMeter` is the reference backend: it runs the Meter suite here rather than in the engine's
-// own tests, since the suite imports the engine and the engine can't import the suite back.
+// `ConfigMeter` is the Meter suite's reference backend: every other meter is held to what it does.
 
-import { ConfigMeter, type RunningRuns } from "@halonicjs/engine";
 import type { UsageLimit } from "@halonicjs/format";
 import type { Coordination } from "@halonicjs/ports";
-import { meterContract } from "./meter.ts";
 import {
   acmeMembers,
   acmeOrganisationId,
+  acmeRunId,
   bea,
   type MeterPlan,
   type MeterPlanAmounts,
+  type MeterUsageMakers,
+  meterContract,
   meterStart,
-} from "./meter-harness.ts";
+} from "@halonicjs/testing-contracts";
+import type { RunState } from "../kernel/run-state.ts";
+import { ConfigMeter, type RunningRuns } from "./config-meter.ts";
+import type { MeterUsage, StepTimes } from "./meter.ts";
+import { modelCallUsageOf, runEndUsageOf } from "./metered-usage.ts";
 
 /** The value part of `Coordination` in memory: all the meter uses. */
 class MemoryValues implements Pick<Coordination, "read" | "compareAndSet"> {
@@ -30,6 +34,29 @@ class MemoryValues implements Pick<Coordination, "read" | "compareAndSet"> {
   }
 }
 
+/** The engine's own makers, as the suite asks for them. */
+const usage: MeterUsageMakers<MeterUsage, StepTimes> = {
+  modelCall: (cost, options = {}) =>
+    modelCallUsageOf({
+      type: "llm.response",
+      agent: "writer",
+      provider: "acme-ai",
+      model: "acme-1",
+      usage: { inputTokens: 1000, outputTokens: 200 },
+      latencyMs: 5,
+      text: "",
+      runId: acmeRunId,
+      seq: 2,
+      at: meterStart.toISOString(),
+      cost,
+      ...(options.cached === undefined ? {} : { cached: options.cached }),
+    }),
+  // Only the run's id and status are read.
+  runEnd: (runId, status) => runEndUsageOf({ runId, status } as RunState),
+  // The engine makes these from its clock; the suite only needs the amounts.
+  stepTimes: (harnessMs) => ({ wallMs: harnessMs, harnessMs }) as StepTimes,
+};
+
 /** The plan's amounts as the file's monthly `stop` limits. */
 function monthlyLimits(amounts: MeterPlanAmounts = {}): UsageLimit[] {
   return Object.entries(amounts).map(([unit, amount]) => ({
@@ -40,7 +67,24 @@ function monthlyLimits(amounts: MeterPlanAmounts = {}): UsageLimit[] {
   }));
 }
 
-meterContract("ConfigMeter", async (plan: MeterPlan) => {
+/** The acme organisation as a `users.config` file writes it. */
+function organisationOf(plan: MeterPlan) {
+  const members = acmeMembers.map((principal) => ({
+    actor: principal.actor,
+    role: principal.role,
+    ...(principal === bea && plan.beaShare !== undefined
+      ? { limits: monthlyLimits(plan.beaShare) }
+      : {}),
+  }));
+  return {
+    id: acmeOrganisationId,
+    limits: monthlyLimits(plan.pool),
+    members,
+    ...(plan.concurrency === undefined ? {} : { concurrency: plan.concurrency }),
+  };
+}
+
+meterContract("ConfigMeter", async (plan) => {
   const clock = {
     at: meterStart.getTime(),
     now: () => new Date(clock.at),
@@ -62,21 +106,8 @@ meterContract("ConfigMeter", async (plan: MeterPlan) => {
       actor: going.filter((run) => run.scope === scope && run.actor === actor).length,
     }),
   };
-  const members = acmeMembers.map((principal) => ({
-    actor: principal.actor,
-    role: principal.role,
-    ...(principal === bea && plan.beaShare !== undefined
-      ? { limits: monthlyLimits(plan.beaShare) }
-      : {}),
-  }));
-  const organisation = {
-    id: acmeOrganisationId,
-    limits: monthlyLimits(plan.pool),
-    members,
-    ...(plan.concurrency === undefined ? {} : { concurrency: plan.concurrency }),
-  };
   const meter = new ConfigMeter({
-    settings: { limits: [], organisations: [organisation] },
+    settings: { limits: [], organisations: [organisationOf(plan)] },
     coordination: new MemoryValues(),
     clock,
     ids,
@@ -84,6 +115,7 @@ meterContract("ConfigMeter", async (plan: MeterPlan) => {
   });
   return {
     meter,
+    usage,
     clock,
     startRun: async (principal) => {
       going.push({ scope: principal.scope, actor: principal.actor });

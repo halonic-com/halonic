@@ -2618,6 +2618,9 @@ importers:
         specifier: workspace:*
         version: link:../workflow
     devDependencies:
+      '@halonicjs/testing-contracts':
+        specifier: workspace:*
+        version: link:../../testing/contracts
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../testing/spec
@@ -5052,9 +5055,6 @@ importers:
 
   packages/testing/contracts:
     dependencies:
-      '@halonicjs/engine':
-        specifier: workspace:*
-        version: link:../../core/engine
       '@halonicjs/events':
         specifier: workspace:*
         version: link:../../core/events

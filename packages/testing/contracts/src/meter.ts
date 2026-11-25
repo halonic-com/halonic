@@ -7,14 +7,13 @@ import {
   dan,
   detailOf,
   type MakeMeter,
+  type MeterTestAnswer,
+  type MeterTestReservation,
   meterResetsAt,
-  modelCall,
-  runEnd,
-  stepTimes,
 } from "./meter-harness.ts";
 
 /** The contract every `Meter` backend passes, in the order of the port's methods. */
-export function meterContract(name: string, make: MakeMeter): void {
+export function meterContract<Usage, Times>(name: string, make: MakeMeter<Usage, Times>): void {
   verifies("contracts.meter", () => {
     describe(`Meter contract: ${name}`, () => {
       describeCheck(make);
@@ -25,7 +24,7 @@ export function meterContract(name: string, make: MakeMeter): void {
   });
 }
 
-function describeCheck(make: MakeMeter): void {
+function describeCheck<Usage, Times>(make: MakeMeter<Usage, Times>): void {
   describe("check", () => {
     it("allows a model call and a run start under the limits", async () => {
       const { meter } = await make({ pool: { cost: 10, runs: 5 }, concurrency: 2 });
@@ -40,8 +39,8 @@ function describeCheck(make: MakeMeter): void {
     });
 
     it("refuses once a unit is used up, saying how much and until when", async () => {
-      const { meter } = await make({ pool: { cost: 10 } });
-      await meter.record(ada, modelCall(10));
+      const { meter, usage } = await make({ pool: { cost: 10 } });
+      await meter.record(ada, usage.modelCall(10));
       const refused = await meter.check(ada, { kind: "model-call" });
       expect(codeOf(refused)).toBe("plan.cost");
       expect(detailOf(refused)).toMatchObject({
@@ -62,8 +61,8 @@ function describeCheck(make: MakeMeter): void {
     });
 
     it("refuses a member whose share is used up, and not the others", async () => {
-      const { meter } = await make({ pool: { steps: 10 }, beaShare: { steps: 1 } });
-      await meter.record(bea, modelCall(0));
+      const { meter, usage } = await make({ pool: { steps: 10 }, beaShare: { steps: 1 } });
+      await meter.record(bea, usage.modelCall(0));
       const refused = await meter.check(bea, { kind: "model-call" });
       expect(codeOf(refused)).toBe("plan.member.steps");
       expect(detailOf(refused)).toMatchObject({ used: "1", limit: "1" });
@@ -78,7 +77,7 @@ function describeCheck(make: MakeMeter): void {
   });
 }
 
-function describeReserve(make: MakeMeter): void {
+function describeReserve<Usage, Times>(make: MakeMeter<Usage, Times>): void {
   describe("reserve", () => {
     it("counts what a step holds back against the next step", async () => {
       const { meter } = await make({ pool: { cost: 10 } });
@@ -106,21 +105,19 @@ function describeReserve(make: MakeMeter): void {
   });
 }
 
-function describeSettle(make: MakeMeter): void {
+function describeSettle<Usage, Times>(make: MakeMeter<Usage, Times>): void {
   describe("settle", () => {
     it("lets go of what the step held back", async () => {
-      const { meter } = await make({ pool: { cost: 10 } });
+      const { meter, usage } = await make({ pool: { cost: 10 } });
       const held = await meter.reserve(ada, { cost: 6 });
-      if (!held.allowed) throw new Error("The first step should have been allowed.");
-      await meter.settle(held.reservation, stepTimes(0));
+      await meter.settle(reservationOf(held), usage.stepTimes(0));
       expect((await meter.reserve(ada, { cost: 6 })).allowed).toBe(true);
     });
 
     it("counts the step's harness time", async () => {
-      const { meter } = await make({ pool: { harnessMinutes: 1 } });
+      const { meter, usage } = await make({ pool: { harnessMinutes: 1 } });
       const held = await meter.reserve(ada, { minutes: 1 });
-      if (!held.allowed) throw new Error("The step should have been allowed.");
-      await meter.settle(held.reservation, stepTimes(60_000));
+      await meter.settle(reservationOf(held), usage.stepTimes(60_000));
       const refused = await meter.check(ada, { kind: "model-call" });
       expect(codeOf(refused)).toBe("plan.harnessMinutes");
       expect(detailOf(refused)).toMatchObject({ used: "1", limit: "1" });
@@ -128,45 +125,53 @@ function describeSettle(make: MakeMeter): void {
   });
 }
 
-function describeRecord(make: MakeMeter): void {
+function describeRecord<Usage, Times>(make: MakeMeter<Usage, Times>): void {
   describe("record", () => {
     it("counts a model call as one step", async () => {
-      const { meter } = await make({ pool: { steps: 1 } });
-      await meter.record(ada, modelCall(0));
+      const { meter, usage } = await make({ pool: { steps: 1 } });
+      await meter.record(ada, usage.modelCall(0));
       expect(codeOf(await meter.check(ada, { kind: "model-call" }))).toBe("plan.steps");
     });
 
     it("counts a model call's cost", async () => {
-      const { meter } = await make({ pool: { cost: 10 } });
-      await meter.record(ada, modelCall(4));
+      const { meter, usage } = await make({ pool: { cost: 10 } });
+      await meter.record(ada, usage.modelCall(4));
       const tooBig = await meter.reserve(ada, { cost: 7 });
       expect(detailOf(tooBig)).toMatchObject({ unit: "cost", needed: "7", left: "6" });
     });
 
     it("counts the tokens of a model call, input and output together", async () => {
-      const { meter } = await make({ pool: { tokens: 1_200 } });
-      await meter.record(ada, modelCall(0));
+      const { meter, usage } = await make({ pool: { tokens: 1_200 } });
+      await meter.record(ada, usage.modelCall(0));
       const refused = await meter.check(ada, { kind: "model-call" });
       expect(codeOf(refused)).toBe("plan.tokens");
       expect(detailOf(refused)).toMatchObject({ used: "1200", limit: "1200" });
     });
 
     it("counts nothing for an answer from the cache", async () => {
-      const { meter } = await make({ pool: { steps: 1 } });
-      await meter.record(ada, modelCall(0, { cached: true }));
+      const { meter, usage } = await make({ pool: { steps: 1 } });
+      await meter.record(ada, usage.modelCall(0, { cached: true }));
       expect(await meter.check(ada, { kind: "model-call" })).toEqual({ allowed: true });
     });
 
     // A run's end recorded twice should count once too; `ConfigMeter` counts it twice, so that case
-    // waits for its fix (HAL-18024's follow-up) before it joins the suite.
+    // waits for its fix (HAL-18110) before it joins the suite.
     it("counts a run's end against the runs, whichever way it ended", async () => {
-      const { meter } = await make({ pool: { runs: 2 } });
-      await meter.record(ada, runEnd("run_acme_1"));
+      const { meter, usage } = await make({ pool: { runs: 2 } });
+      await meter.record(ada, usage.runEnd("run_acme_1", "completed"));
       expect(await meter.check(ada, { kind: "run-start" })).toEqual({ allowed: true });
-      await meter.record(bea, runEnd("run_acme_2", "failed"));
+      await meter.record(bea, usage.runEnd("run_acme_2", "failed"));
       const refused = await meter.check(ada, { kind: "run-start" });
       expect(codeOf(refused)).toBe("plan.runs");
       expect(detailOf(refused)).toMatchObject({ used: "2", limit: "2" });
     });
   });
+}
+
+/** The reservation an allowed `reserve` gave. */
+function reservationOf(answer: MeterTestAnswer): MeterTestReservation {
+  if (!answer.allowed || answer.reservation === undefined) {
+    throw new Error("The step should have been allowed, with a reservation.");
+  }
+  return answer.reservation;
 }
