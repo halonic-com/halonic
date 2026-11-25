@@ -16,6 +16,8 @@ export interface PaperclipUser {
 export class SignedInUser {
   readonly #reader: PaperclipReader;
   #id: string | undefined;
+  /** Whether Paperclip gave a final answer, with or without a user: an agent key has none. */
+  #answered = false;
 
   /** `id` is the user the host named, if any; then no read is ever needed. */
   constructor(reader: PaperclipReader, id: string | undefined) {
@@ -28,9 +30,13 @@ export class SignedInUser {
     return this.#id;
   }
 
-  /** Reads the user's ID until one read gave it; a failed read leaves it unknown until the next call. */
+  /**
+   * Reads the user's ID until Paperclip gives a final answer. Offline, a refused key (401) or a
+   * server fault (5xx) is asked again on the next call; an answer without a user (an agent key)
+   * or another refusal is final, so `whoAmI` isn't read again on every read and send.
+   */
   async know(): Promise<void> {
-    if (this.#id === undefined) await this.read();
+    if (this.#id === undefined && !this.#answered) await this.read();
   }
 
   /**
@@ -45,8 +51,10 @@ export class SignedInUser {
       const serverFault = answer.status !== undefined && answer.status >= 500;
       const askLater =
         answer.failure === "offline" || answer.failure === "signed-out" || serverFault;
+      this.#answered = !askLater;
       return askLater ? undefined : {};
     }
+    this.#answered = true;
     const body = asRecord(answer.body);
     this.#id ??= text(body, "userId");
     const name = text(asRecord(field(body, "user")), "name");

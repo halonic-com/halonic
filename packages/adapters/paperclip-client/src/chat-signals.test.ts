@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { beforeEach, describe, expect, it } from "vitest";
-import { agentAda, agentBo, chatTask, company } from "./acme-data.test-helper.ts";
+import { acmeData, agentAda, agentBo, chatTask, company } from "./acme-data.test-helper.ts";
 import { connect, FakePaperclip, type Network } from "./fake-paperclip.test-helper.ts";
 import { findRequest, paperclipRequests } from "./requests.ts";
 
@@ -77,6 +77,24 @@ verifies("paperclip-client.agent-working", () => {
       runs.length = 0;
       await messaging.refresh();
       expect(await changes.next()).toEqual({ done: false, value: "paperclip:acme" });
+      await changes.return?.();
+    });
+
+    it("reports a new comment on the next poll, and nothing for another agent's run", async () => {
+      const data = acmeData();
+      paperclip.serveAcme(data).on("GET", liveRunsPath, { body: [] });
+      const messaging = client();
+      const changes = messaging.changes()[Symbol.asyncIterator]();
+      await messaging.refresh();
+      paperclip.on("GET", liveRunsPath, { body: [run(agentBo, "running")] });
+      await messaging.refresh();
+      // A change already queued would settle before the "none" that follows it in the race.
+      const next = changes.next();
+      expect(await Promise.race([next, Promise.resolve("none")])).toBe("none");
+      // Paperclip moves a chat's updatedAt when a comment is added to it.
+      for (const each of data.chats) each.updatedAt = "2026-11-24T10:09:00.000Z";
+      await messaging.refresh();
+      expect(await next).toEqual({ done: false, value: "paperclip:acme" });
       await changes.return?.();
     });
 
