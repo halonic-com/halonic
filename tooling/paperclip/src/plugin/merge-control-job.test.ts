@@ -16,6 +16,7 @@ import {
   mergeControlPass,
   readMergeControlSettings,
 } from "./merge-control-job.ts";
+import { mergeControlNamespace, passLock } from "./merge-control-lock.ts";
 
 const companyId = "company-1";
 
@@ -45,20 +46,21 @@ function fakeContext(config: Record<string, unknown>, failing: RegExp = /^$/) {
   const resolve = vi.fn(async () => "ghs_queue_token_for_tests");
   const createComment = vi.fn(async () => ({}));
   const lines: string[] = [];
+  const state = {
+    get: async (key: { stateKey: string }) => stored.get(key.stateKey) ?? null,
+    set: async (key: { stateKey: string }, value: unknown) => {
+      stored.set(key.stateKey, value);
+    },
+  };
   const ctx = {
     config: { get: async () => config },
     secrets: { resolve },
     http: { fetch },
     issues: { createComment },
     logger: { info: (line: string) => lines.push(line), error: (line: string) => lines.push(line) },
-    state: {
-      get: async (key: { stateKey: string }) => stored.get(key.stateKey) ?? null,
-      set: async (key: { stateKey: string }, value: unknown) => {
-        stored.set(key.stateKey, value);
-      },
-    },
   } as unknown as MergeControlApi;
-  return { ctx, fetch, resolve, createComment, lines };
+  const lock = passLock(state as never);
+  return { ctx, lock, stored, fetch, resolve, createComment, lines };
 }
 
 const token = { type: "secret_ref", secretId: "secret-1" };
@@ -66,7 +68,7 @@ const token = { type: "secret_ref", secretId: "secret-1" };
 verifies("paperclip.merge-control-shadow", () => {
   test("shadow mode over a busy pass sends no write and never resolves the queue token", async () => {
     const fake = fakeContext({ mergeControl: { mode: "shadow" }, mergeQueueToken: token });
-    await mergeControlPass(fake.ctx, companyId, now, async () => ({
+    await mergeControlPass(fake.ctx, fake.lock, companyId, now, async () => ({
       snapshot: busyPass(),
       observed: [],
     }));
@@ -94,10 +96,13 @@ verifies("paperclip.merge-control-shadow", () => {
       { kind: "enqueue", number: 30, jump: false, at: ago(1) },
       { kind: "cancel-run", runId: 777, at: ago(2) },
     ];
-    await mergeControlPass(fake.ctx, companyId, now, async () => ({ snapshot: facts, observed }));
+    await mergeControlPass(fake.ctx, fake.lock, companyId, now, async () => ({
+      snapshot: facts,
+      observed,
+    }));
     expect(fake.createComment).not.toHaveBeenCalled();
     const tomorrow = new Date(now.getTime() + 24 * 60 * 60_000);
-    await mergeControlPass(fake.ctx, companyId, tomorrow, async () => ({
+    await mergeControlPass(fake.ctx, fake.lock, companyId, tomorrow, async () => ({
       snapshot: snapshot(),
       observed: [],
     }));
@@ -115,7 +120,7 @@ verifies("paperclip.merge-control-shadow", () => {
   test("off, the default, reads no facts and keeps nothing", async () => {
     const fake = fakeContext({ mergeQueueToken: token });
     const read = vi.fn();
-    await mergeControlPass(fake.ctx, companyId, now, read);
+    await mergeControlPass(fake.ctx, fake.lock, companyId, now, read);
     expect(read).not.toHaveBeenCalled();
     expect(readMergeControlSettings({ mergeControl: { mode: "ACT" } }).mode).toBe("off");
   });
@@ -124,7 +129,7 @@ verifies("paperclip.merge-control-shadow", () => {
 verifies("paperclip.merge-control-write-scope", () => {
   test("act mode sends the pass's writes, resolving the token at each one", async () => {
     const fake = fakeContext({ mergeControl: { mode: "act" }, mergeQueueToken: token });
-    await mergeControlPass(fake.ctx, companyId, now, async () => ({
+    await mergeControlPass(fake.ctx, fake.lock, companyId, now, async () => ({
       snapshot: busyPass(),
       observed: [],
     }));
@@ -136,7 +141,7 @@ verifies("paperclip.merge-control-write-scope", () => {
 
   test("act mode without a queue token writes nothing and says so", async () => {
     const fake = fakeContext({ mergeControl: { mode: "act" } });
-    await mergeControlPass(fake.ctx, companyId, now, async () => ({
+    await mergeControlPass(fake.ctx, fake.lock, companyId, now, async () => ({
       snapshot: busyPass(),
       observed: [],
     }));
@@ -152,7 +157,7 @@ verifies("paperclip.merge-control-failed-writes", () => {
     fake.fetch.mock.calls.filter(([url]) => url.endsWith("/rerun")).length;
   const twoPasses = async (fake: ReturnType<typeof fakeContext>) => {
     for (const at of [now, new Date(now.getTime() + 60_000)]) {
-      await mergeControlPass(fake.ctx, companyId, at, async () => ({
+      await mergeControlPass(fake.ctx, fake.lock, companyId, at, async () => ({
         snapshot: busyPass(),
         observed: [],
       }));
@@ -172,5 +177,38 @@ verifies("paperclip.merge-control-failed-writes", () => {
     const fake = fakeContext({ mergeControl: { mode: "act" }, mergeQueueToken: token });
     await twoPasses(fake);
     expect(reruns(fake)).toBe(1);
+  });
+});
+
+verifies("paperclip.merge-control-pass-lock", () => {
+  test("a pass writes its state through the pass lock, and the plain state client is refused", async () => {
+    const fake = fakeContext({ mergeControl: { mode: "shadow" } });
+    let release: () => void = () => {};
+    const held = fake.lock.run(
+      companyId,
+      () =>
+        new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+    );
+    const read = vi.fn(async () => ({ snapshot: busyPass(), observed: [] }));
+    const pass = mergeControlPass(fake.ctx, fake.lock, companyId, now, read);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    // The lock is held elsewhere: the pass hasn't loaded, read or written yet.
+    expect(read).not.toHaveBeenCalled();
+    expect(fake.stored.has("pass")).toBe(false);
+    release();
+    await held;
+    await pass;
+    expect(fake.stored.get("pass")).toMatchObject({ version: 1 });
+    const key = {
+      scopeKind: "company",
+      scopeId: companyId,
+      namespace: mergeControlNamespace,
+      stateKey: "pass",
+    } as const;
+    await expect(fake.lock.state.set(key, { version: 1 })).rejects.toThrow(
+      "Merge control: its state is written only under the pass lock.",
+    );
   });
 });

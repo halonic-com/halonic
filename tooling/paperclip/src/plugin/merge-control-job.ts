@@ -25,19 +25,25 @@ import {
   type MergeState,
 } from "../merge-control/state.ts";
 import { type QueueWriteClient, queueWriteClient } from "../merge-control/write-client.ts";
-import type { StateApi } from "../snapshot/store.ts";
 import { companyConfig, readSettings, requestTimeoutMs } from "./job.ts";
+import {
+  type MergeStateClient,
+  mergeControlNamespace,
+  type PassLock,
+} from "./merge-control-lock.ts";
 
 /**
  * The `merge-control` job's pass for one company (ADR on HAL-17700): read
  * the facts, `decide`, then carry the actions out in `act` mode or only
  * compare them with the Merger's in `shadow` mode. The queue token is
  * resolved at each write and only in `act` mode; this is the only module
- * that builds the write client.
+ * that builds the write client. The pass loads, decides and writes with the
+ * company's pass lock held, and writes its state only through the lock's
+ * client (HAL-17884).
  */
 
-/** The part of the plugin context the pass uses, so tests can fake it. */
-export interface MergeControlApi extends StateApi {
+/** The part of the plugin context the pass uses, so tests can fake it; state comes from the lock. */
+export interface MergeControlApi {
   readonly config: PluginConfigClient;
   readonly secrets: Pick<PluginSecretsClient, "resolve">;
   readonly http: PluginHttpClient;
@@ -95,17 +101,17 @@ function key(companyId: string) {
   return {
     scopeKind: "company",
     scopeId: companyId,
-    namespace: "merge-control",
+    namespace: mergeControlNamespace,
     stateKey: "pass",
   } as const;
 }
 
 /** The stored entry, or a fresh one; another version is refused, not guessed at. */
 export async function loadMergeControl(
-  ctx: StateApi,
+  state: MergeStateClient,
   companyId: string,
 ): Promise<StoredMergeControl> {
-  const stored = (await ctx.state.get(key(companyId))) as StoredMergeControl | null;
+  const stored = (await state.get(key(companyId))) as StoredMergeControl | null;
   if (stored === null) {
     return { version: 1, state: emptyMergeState, shadow: null };
   }
@@ -197,9 +203,10 @@ function passLines(decision: Decision, results: readonly ActResult[]): string[] 
   ];
 }
 
-/** One pass for one company. Off: reads and writes nothing. */
+/** One pass for one company, under its pass lock. Off: reads and writes nothing. */
 export async function mergeControlPass(
   ctx: MergeControlApi,
+  lock: PassLock,
   companyId: string,
   now: Date,
   readFacts: MergeFactsReader,
@@ -209,7 +216,18 @@ export async function mergeControlPass(
   if (settings.mode === "off") {
     return;
   }
-  const stored = await loadMergeControl(ctx, companyId);
+  await lock.run(companyId, (state) => lockedPass(ctx, state, companyId, now, readFacts, settings));
+}
+
+async function lockedPass(
+  ctx: MergeControlApi,
+  stateClient: MergeStateClient,
+  companyId: string,
+  now: Date,
+  readFacts: MergeFactsReader,
+  settings: MergeControlSettings,
+): Promise<void> {
+  const stored = await loadMergeControl(stateClient, companyId);
   const facts = await readFacts(companyId, now);
   const decision = decide(facts.snapshot, stored.state, defaultSettings, now);
   const client = writeClient(ctx, companyId, settings);
@@ -225,5 +243,5 @@ export async function mergeControlPass(
     }
   }
   const state = keepSent(stored.state, decision.state, decision.actions, results);
-  await ctx.state.set(key(companyId), { version: 1, state, shadow });
+  await stateClient.set(key(companyId), { version: 1, state, shadow });
 }
