@@ -12,6 +12,10 @@ export const buildChatWords = {
   /** H1: an empty chat's heading and the line under it, at the top of the panel's transcript. */
   heading: "What should we build?",
   startLine: "I make changes in your files and mark them; you accept or reject each one.",
+  /** The empty chat about one item, on its page (flow-assistant 6.1): no halo. */
+  aboutHeading: (name: string) => `What should change in ${name}?`,
+  /** The status line of the chat on an item's page, while idle (flow-assistant 2.4). */
+  about: (name: string) => `About: ${name}`,
   /** The chat tab (flow-assistant 2.3): the panel's ⧉, the tab's way back, and its kind. */
   openAsTab: "Open as tab",
   continueInPanel: "Continue in the side panel",

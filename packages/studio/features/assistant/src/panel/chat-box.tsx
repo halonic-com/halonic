@@ -59,7 +59,7 @@ export function ChatBox(props: {
   /** Says whether the chat answers with the authoring tools only, before trust (H17). */
   readonly host: AssistantHost;
   readonly choices: ReadChoices;
-  readonly onChatWith: (kind: ChatKind) => void;
+  readonly onChatWith: ((kind: ChatKind) => void) | undefined;
   readonly announce: Announce;
 }) {
   const { view, chats, waitsOn, host } = props;

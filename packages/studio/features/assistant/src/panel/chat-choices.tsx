@@ -68,7 +68,8 @@ export function agentOf(chat: Chat, choices: ChatChoices): ChatAgent | undefined
 export interface ChatChipsProps {
   readonly chat: Chat;
   readonly choices: ChatChoices;
-  readonly onChatWith: (kind: ChatKind) => void;
+  /** Chat with: a new chat of that kind; without it there's no Chat with chip (flow-assistant 2.4). */
+  readonly onChatWith?: ((kind: ChatKind) => void) | undefined;
   readonly onModel: (model: ChatModel) => void;
 }
 
@@ -84,7 +85,7 @@ export function ChatChips({ chat, choices, onChatWith, onModel }: ChatChipsProps
       label: words.buildTheWorkspace,
       icon: <SparkIcon />,
       checked: chat.kind === "build",
-      onSelect: () => onChatWith("build"),
+      onSelect: () => onChatWith?.("build"),
     },
     ...(choices.agents.length === 0 ? [] : ["divider" as const]),
     ...choices.agents.map((each) => ({
@@ -92,17 +93,19 @@ export function ChatChips({ chat, choices, onChatWith, onModel }: ChatChipsProps
       label: each.name,
       icon: <ChatAgentOrb kind={each.kind} agents={choices.agents} size={16} />,
       checked: each.kind === chat.kind,
-      onSelect: () => onChatWith(each.kind),
+      onSelect: () => onChatWith?.(each.kind),
     })),
   ];
   return (
     <div className="flex flex-wrap items-center gap-1 px-4 pt-2">
-      <Menu
-        entries={chatWith}
-        trigger={(props) => (
-          <Chip trigger={props} label={words.chatWith} value={agent?.name ?? words.build} />
-        )}
-      />
+      {onChatWith === undefined ? null : (
+        <Menu
+          entries={chatWith}
+          trigger={(props) => (
+            <Chip trigger={props} label={words.chatWith} value={agent?.name ?? words.build} />
+          )}
+        />
+      )}
       {chat.kind === "build" ? (
         <Menu
           entries={modelEntries(chat.model, choices.models, onModel)}
