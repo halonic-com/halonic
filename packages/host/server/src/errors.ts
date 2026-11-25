@@ -250,6 +250,16 @@ export const serverErrors = {
     code: "session_refresh_unavailable",
     message: "The session couldn't be refreshed just now. Try again shortly.",
   },
+  tooManyRequests: {
+    status: 429,
+    code: "too_many_requests",
+    message: "Too many changes in a short time. Try again in a minute.",
+  },
+  messagingFailed: {
+    status: 502,
+    code: "messaging_failed",
+    message: "The agents' sources couldn't be reached. See the host's error log for the cause.",
+  },
   internal: {
     status: 500,
     code: "internal_error",

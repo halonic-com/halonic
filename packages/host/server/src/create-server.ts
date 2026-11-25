@@ -24,6 +24,7 @@ import { googleCallbackPath } from "./google-sign-in-routes.ts";
 import { helloResponse } from "./hello-route.ts";
 import { isHttpsOrigin } from "./https-origin.ts";
 import { createManyUserRoutes, type ManyUserRoutes } from "./many-user-routes.ts";
+import { createMessagingRoutes, messagingPathPrefix } from "./messaging-routes.ts";
 import {
   createModelChoiceRoutes,
   isModelChoiceKeyPath,
@@ -134,6 +135,9 @@ function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<Cr
   const chatTurnRoutes = createChatTurnRoutes(ports);
   const providerKeyRoutes = createProviderKeyRoutes(ports);
   const modelChoiceRoutes = createModelChoiceRoutes(ports);
+  // Mounted for one owner only: on a many-user server every user would act with the one Paperclip key.
+  const messagingRoutes =
+    ports.messaging === undefined ? null : createMessagingRoutes(ports.messaging, ports);
   const countRequest: CountRequest = () => checkDailyRequests(config, ports);
 
   /** `/api/runs/<runId>` and `/api/runs/<runId>/<action>`: the routes of one run, behind the sign-in. */
@@ -201,7 +205,7 @@ function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<Cr
     return modelChoiceRoutes.handle(request, context, body, rest, session);
   }
 
-  /** The routes that need a session: a chat turn, a connector call, the provider keys, the model choice and the routines' health and pause. `null` when the address is none of them. */
+  /** The routes that need a session: a chat turn, a connector call, the provider keys, the model choice, messaging and the routines' health and pause. `null` when the address is none of them. */
   async function signedInOnlyRoute(
     request: Request,
     context: RequestContext,
@@ -226,6 +230,10 @@ function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<Cr
     }
     if (pathname.startsWith(modelChoicePathPrefix)) {
       return modelChoiceRoute(request, context, body, pathname);
+    }
+    if (pathname.startsWith(messagingPathPrefix) && messagingRoutes !== null) {
+      const call = pathname.slice(messagingPathPrefix.length);
+      return messagingRoutes.handle(request, body, call, await signIn.session(request, context));
     }
     const schedule = ports.routineSchedule;
     if (schedule === undefined || !isRoutineSchedulePath(pathname)) return null;

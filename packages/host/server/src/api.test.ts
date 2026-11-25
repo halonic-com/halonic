@@ -34,6 +34,7 @@ verifies("server.api", () => {
       | "requestCounts"
       | "errorLog"
       | "connectors"
+      | "messaging"
       | "workspace"
       | "studioPage"
       | "google"

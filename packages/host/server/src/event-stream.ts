@@ -21,8 +21,8 @@ function parseAfter(request: Request): number | null {
   return Number.isSafeInteger(after) ? after : null;
 }
 
-/** One server-sent event: `id` is the event's `seq`, so a client resumes with the last id it saw. */
-function frame(name: string, data: unknown, id?: number): string {
+/** One server-sent event, also for the messaging changes: `id` is the event's `seq`, so a client resumes with the last id it saw. */
+export function frame(name: string, data: unknown, id?: number): string {
   const idLine = id === undefined ? "" : `id: ${id}\n`;
   // JSON.stringify never writes a raw newline, so the data is always one line.
   return `${idLine}event: ${name}\ndata: ${JSON.stringify(data)}\n\n`;

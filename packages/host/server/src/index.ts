@@ -69,6 +69,9 @@ export {
 } from "./launch-token-check.ts";
 export type { ManyUserPorts, ScopedRunPorts } from "./many-users-api.ts";
 export { MemoryRequestCountStore } from "./memory-request-count-store.ts";
+export type { MessagingFocus, MessagingPorts } from "./messaging-api.ts";
+export { messagingPathPrefix } from "./messaging-routes.ts";
+export { messagingRefusals } from "./messaging-wire.ts";
 export type { ModelChoicePort } from "./model-choice-api.ts";
 export {
   type CheckedSession,
