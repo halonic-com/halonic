@@ -27,6 +27,23 @@ verifies("runtime.paperclip-writes", () => {
       expect(await access.issues.get("HAL-16403", "acme")).toMatchObject({ id: "task-16403" });
     });
 
+    test("lists agents only for an action that declared agents.read, before the host", async () => {
+      const { host } = fakePaperclip();
+      let listed = 0;
+      const list = async () => {
+        listed += 1;
+        return [];
+      };
+      const counting = { ...host, agents: { ...host.agents, list } };
+      const access = paperclipAccess(counting, ["issues.read", "issues.update"], call);
+      expect(() => access.agents.list({ companyId: "acme" })).toThrow(
+        "this action doesn't declare agents.read, so it may not use it.",
+      );
+      expect(listed).toBe(0);
+      await paperclipAccess(counting, ["agents.read"], call).agents.list({ companyId: "acme" });
+      expect(listed).toBe(1);
+    });
+
     test("gives setDisposition only to an action that may update, on a host that has it", () => {
       const mayUpdate = paperclipAccess(fakePaperclip().host, ["issues.update"], call);
       expect(mayUpdate.issues.setDisposition).toBeTypeOf("function");

@@ -267,9 +267,9 @@ function writingAction(
 
 const taskChange: readonly Capability[] = ["issues.read", "issue.comments.create", "issues.update"];
 
-/** The writing actions' handlers, by action name. */
+/** The writing actions' handlers, by action name. Only finish_run finds an agent by name. */
 export const writeActionHandlers = {
   "paperclip.comment": writingAction(["issues.read", "issue.comments.create"], planComment),
   "paperclip.next-step": writingAction(taskChange, planNextStep),
-  "paperclip.finish-run": writingAction(taskChange, planFinishRun),
+  "paperclip.finish-run": writingAction([...taskChange, "agents.read"], planFinishRun),
 } as const;

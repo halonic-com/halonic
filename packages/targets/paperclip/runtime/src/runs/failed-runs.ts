@@ -91,7 +91,7 @@ async function failedRunsAnswer(call: ActionCall, since: Date): Promise<ToolResu
 /** Lists the failed runs since a time. A `since` that isn't a time goes back before anything is read. */
 export const failedRunsHandler: ActionHandler = {
   // The runtime keeps the record from `agent.run.failed` events; the answer names each run's task.
-  capabilities: ["events.subscribe", "issues.read"],
+  capabilities: ["events.subscribe", "issues.read", "agents.read"],
   run: async (call) => {
     const { tool } = call;
     if (tool.action.run !== "paperclip.failed-runs") {

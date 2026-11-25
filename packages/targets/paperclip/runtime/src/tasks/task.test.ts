@@ -197,6 +197,7 @@ verifies("runtime.paperclip-task", () => {
         "issue.comments.read",
         "issue.documents.read",
         "issue.relations.read",
+        "agents.read",
       ]);
     });
   });

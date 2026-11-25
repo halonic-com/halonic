@@ -88,8 +88,12 @@ export function paperclipAccess(
         return setDisposition.bind(host.issues);
       },
     },
-    // Every plugin holds `agents.read` (runtimeCapabilities); gating it per action is HAL-18170.
-    agents: { list: (input) => host.agents.list(input) },
+    agents: {
+      list: (...args) => {
+        allowed("agents.read");
+        return host.agents.list(...args);
+      },
+    },
     state: { get: (key) => host.state.get(key) },
   };
 }
