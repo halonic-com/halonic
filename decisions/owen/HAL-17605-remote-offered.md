@@ -2,7 +2,7 @@
 
 - Approval: HAL-17605, plan and decisions 1 and 2 approved by the maintainer on HAL-17607; merge waits for the phase 2 card, HAL-17544
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:u5iv1aJCMBAFY6Gd8pROKK/ycwWkV8C7l52zoqX1fkFP7zrLJOXs/eWYXHUWQZ+yzVRI+yORukra1o6Tzjw0BA==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Pr0QZAYWFYcKNj0ko/mEhMlg1rBdmKBI5/lmoP7wh89Wu9qIExCZQNmLODy2RnbsG/lskFGmMtjpQdLygSZNAg==
 
 ## What changes
 
