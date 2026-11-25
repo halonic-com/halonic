@@ -1,8 +1,8 @@
+import type { PrivateFile } from "@halonicjs/adapter-fs-node";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { lastSeenRefreshMs, PairedPhones } from "./paired-phones.ts";
 import type { PairingPhone } from "./pairing-types.ts";
-import type { PrivateFile } from "./private-file.ts";
 import { ManualTime, settled } from "./remote-time.test-helper.ts";
 
 /** A file in memory that counts its writes, and can be told to fail them. */

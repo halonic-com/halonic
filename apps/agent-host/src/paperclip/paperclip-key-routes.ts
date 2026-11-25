@@ -1,9 +1,9 @@
+import type { PaperclipBinding, PaperclipKeys } from "@halonicjs/host-agent-messaging-hub";
 import { s } from "@halonicjs/schema-kit";
 import { type HostRoute, sendError, sendErrorAndHangUp, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
 import { namedWorkspace } from "../server/named-workspace.ts";
 import { isFromOtherSite } from "../server/other-site.ts";
-import type { PaperclipBinding, PaperclipKeys } from "./paperclip-keys.ts";
 
 /**
  * A connection's name: its file name without `.yaml`. Studio keeps the key in

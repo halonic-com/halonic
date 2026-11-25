@@ -1,3 +1,4 @@
+import type { PrivateFile } from "@halonicjs/adapter-fs-node";
 import { gatewayFallbackPhoneName, gatewayReadableName, type PairedPhone } from "@halonicjs/ports";
 import type { PairingPhone } from "./pairing-types.ts";
 import {
@@ -6,7 +7,6 @@ import {
   readPhoneRecords,
   writePhoneRecords,
 } from "./phone-records.ts";
-import type { PrivateFile } from "./private-file.ts";
 import type { RemoteTime } from "./remote-time.ts";
 
 /** How often a phone's last seen is written while a session with it is open. */

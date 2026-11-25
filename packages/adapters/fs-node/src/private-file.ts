@@ -1,14 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { rm } from "node:fs/promises";
 import { dirname } from "node:path";
-import {
-  makePrivateFolder,
-  readUnlinkedFile,
-  renameOver,
-  writeFlushedFile,
-} from "@halonicjs/adapter-fs-node";
+import { writeFlushedFile } from "./flushed-write.ts";
+import { makePrivateFolder, readUnlinkedFile } from "./private-files.ts";
+import { renameOver } from "./rename-over.ts";
 
-/** One small text file the remote host keeps in the person's profile. */
+/** One small text file a store keeps in the person's profile, such as the remote host's paired phones or a messaging cache file. */
 export interface PrivateFile {
   /** Its text, or `undefined` when there is no file yet. */
   read(): Promise<string | undefined>;

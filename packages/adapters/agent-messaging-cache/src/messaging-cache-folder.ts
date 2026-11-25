@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { readdir, rm } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { privateFileAt } from "@halonicjs/adapter-fs-node";
 import type { MessagingId, SpendRange } from "@halonicjs/ports";
-import { privateFileAt } from "../remote/private-file.ts";
 
 /** A list a source's cache keeps in a file of its own; a conversation's messages each get one too. */
 export type CachedList = "agents" | "conversations" | "inbox" | "work";

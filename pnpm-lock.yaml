@@ -312,6 +312,9 @@ importers:
 
   apps/agent-host:
     dependencies:
+      '@halonicjs/adapter-agent-messaging-cache':
+        specifier: workspace:*
+        version: link:../../packages/adapters/agent-messaging-cache
       '@halonicjs/adapter-coding-tools':
         specifier: workspace:*
         version: link:../../packages/adapters/coding-tools
@@ -414,6 +417,9 @@ importers:
       '@halonicjs/google-setup':
         specifier: workspace:*
         version: link:../../packages/core/google-setup
+      '@halonicjs/host-agent-messaging-hub':
+        specifier: workspace:*
+        version: link:../../packages/host/agent-messaging-hub
       '@halonicjs/host-google-sign-in':
         specifier: workspace:*
         version: link:../../packages/host/google-sign-in
@@ -908,6 +914,34 @@ importers:
         specifier: workspace:*
         version: link:../../core/std
     devDependencies:
+      '@halonicjs/testing-spec':
+        specifier: workspace:*
+        version: link:../../testing/spec
+      '@halonicjs/tooling-config':
+        specifier: workspace:*
+        version: link:../../../tooling/config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.6
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(jsdom@30.1.3(@noble/hashes@2.4.0))(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+
+  packages/adapters/agent-messaging-cache:
+    dependencies:
+      '@halonicjs/adapter-fs-node':
+        specifier: workspace:*
+        version: link:../fs-node
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../../core/ports
+    devDependencies:
+      '@halonicjs/testing-contracts':
+        specifier: workspace:*
+        version: link:../../testing/contracts
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../testing/spec
@@ -3216,6 +3250,31 @@ importers:
       fast-check:
         specifier: 'catalog:'
         version: 4.10.2
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(jsdom@30.1.3(@noble/hashes@2.4.0))(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
+
+  packages/host/agent-messaging-hub:
+    dependencies:
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../../core/ports
+    devDependencies:
+      '@halonicjs/testing-contracts':
+        specifier: workspace:*
+        version: link:../../testing/contracts
+      '@halonicjs/testing-spec':
+        specifier: workspace:*
+        version: link:../../testing/spec
+      '@halonicjs/tooling-config':
+        specifier: workspace:*
+        version: link:../../../tooling/config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.6.6
       typescript:
         specifier: 'catalog:'
         version: 7.0.2

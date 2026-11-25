@@ -1,8 +1,8 @@
 import type { PaperclipConnection } from "@halonicjs/format";
+import { PaperclipKeys } from "@halonicjs/host-agent-messaging-hub";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { HostKeyStore, newConnectionLabel, newConnectionName } from "./host-key-store.ts";
-import { PaperclipKeys } from "./paperclip-keys.ts";
 import { fakeBoardKey } from "./sign-in-calls.test-helper.ts";
 import type { StoredPaperclipKey } from "./sign-in-calls.ts";
 

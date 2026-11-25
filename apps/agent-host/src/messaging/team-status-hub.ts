@@ -1,3 +1,9 @@
+import {
+  MessagingCacheFolder,
+  type TeamStatusRoute,
+} from "@halonicjs/adapter-agent-messaging-cache";
+import type { MessagingFailure } from "@halonicjs/host-agent-messaging-hub";
+import { joinChanges } from "@halonicjs/host-agent-messaging-hub";
 import type {
   AgentSpend,
   Clock,
@@ -11,7 +17,6 @@ import type {
   TeamStatus,
   TeamStatusParts,
 } from "@halonicjs/ports";
-import { joinChanges } from "./joined-changes.ts";
 import {
   keptMergeQueue,
   keptParts,
@@ -19,8 +24,6 @@ import {
   keptSeat,
   keptSpend,
 } from "./kept-team-status.ts";
-import { MessagingCacheFolder, type TeamStatusRoute } from "./messaging-cache-folder.ts";
-import type { MessagingFailure } from "./messaging-hub.ts";
 
 /** How old an answer may be before a read fetches it again. */
 export const teamStatusMaxAgeMs = 5 * 60_000;

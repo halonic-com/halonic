@@ -3,12 +3,13 @@ import { MemoryRecordStore } from "@halonicjs/adapter-memory";
 import { PaperclipSignInClient } from "@halonicjs/adapter-paperclip-client";
 import { NodeScheduler } from "@halonicjs/adapter-scheduler-node";
 import { systemSetTimer } from "@halonicjs/adapter-scheduler-node/node";
+import type { MessagingFailure } from "@halonicjs/host-agent-messaging-hub";
+import { PaperclipKeys } from "@halonicjs/host-agent-messaging-hub";
 import type { Scheduler } from "@halonicjs/ports";
 import type { ProfileFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { HostKeyStore } from "../paperclip/host-key-store.ts";
 import { paperclipKeyRoutes } from "../paperclip/paperclip-key-routes.ts";
-import { PaperclipKeys } from "../paperclip/paperclip-keys.ts";
 import { PaperclipSignIn } from "../paperclip/paperclip-sign-in.ts";
 import { paperclipSignInRoutes } from "../paperclip/paperclip-sign-in-routes.ts";
 import type { HostRoute } from "../server/host-server.ts";
@@ -18,7 +19,6 @@ import {
   writeConnectionFile,
 } from "./connection-file.ts";
 import { DesktopMessaging } from "./desktop-messaging.ts";
-import type { MessagingFailure } from "./messaging-hub.ts";
 import { MessagingPoller } from "./messaging-poller.ts";
 import { messagingRoutes } from "./messaging-routes.ts";
 

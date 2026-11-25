@@ -1,6 +1,7 @@
 import { mkdtemp, readdir, readFile, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { type PaperclipBinding, PaperclipKeys } from "@halonicjs/host-agent-messaging-hub";
 import type { DefinitionSource } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { readPaperclipConnections } from "@halonicjs/workspace";
@@ -8,7 +9,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { type HostServer, startHostServer } from "../server/host-server.ts";
 import { randomLaunchToken } from "../server/launch-token.ts";
 import { paperclipKeyRoutes } from "./paperclip-key-routes.ts";
-import { type PaperclipBinding, PaperclipKeys } from "./paperclip-keys.ts";
 
 // A fake key only these tests use, so its absence from answers and logs means something.
 const fakeKey = "pcp_board_fake-key-for-tests-only";

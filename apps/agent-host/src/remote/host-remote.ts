@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { hostname } from "node:os";
 import { join } from "node:path";
+import { privateFileAt } from "@halonicjs/adapter-fs-node";
 import type { RemoteControl, SecretStore, TunnelProvider } from "@halonicjs/ports";
 import type { ProfileFolder } from "@halonicjs/profile";
 import { deskAccess } from "../gateway/desk-access.ts";
@@ -11,7 +12,6 @@ import { sharedHostKey } from "./host-key.ts";
 import { HostRemoteControl } from "./host-remote-control.ts";
 import { PairedPhones } from "./paired-phones.ts";
 import { PairingDesk } from "./pairing-desk.ts";
-import { privateFileAt } from "./private-file.ts";
 import { RemoteNotOffered } from "./remote-not-offered.ts";
 import { RemoteSettings } from "./remote-settings.ts";
 import { systemTime } from "./remote-time.ts";

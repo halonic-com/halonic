@@ -35,6 +35,7 @@
   },
   "version": "0.0.0",
   "dependencies": {
+    "@halonicjs/adapter-agent-messaging-cache": "workspace:*",
     "@halonicjs/adapter-coding-tools": "workspace:*",
     "@halonicjs/adapter-connector-stdio-sandbox": "workspace:*",
     "@halonicjs/adapter-doctor-node": "workspace:*",
@@ -67,6 +68,7 @@
     "@halonicjs/events": "workspace:*",
     "@halonicjs/format": "workspace:*",
     "@halonicjs/google-setup": "workspace:*",
+    "@halonicjs/host-agent-messaging-hub": "workspace:*",
     "@halonicjs/host-google-sign-in": "workspace:*",
     "@halonicjs/host-harness-host": "workspace:*",
     "@halonicjs/host-integration-sign-in": "workspace:*",

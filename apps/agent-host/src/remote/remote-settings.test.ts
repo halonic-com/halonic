@@ -1,10 +1,10 @@
 import { mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { type PrivateFile, privateFileAt } from "@halonicjs/adapter-fs-node";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it } from "vitest";
 import { MemoryFile } from "./memory-file.test-helper.ts";
-import { type PrivateFile, privateFileAt } from "./private-file.ts";
 import { RemoteSettings, remoteSettingsOff } from "./remote-settings.ts";
 
 async function settingsOn(file: PrivateFile) {
