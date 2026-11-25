@@ -7,6 +7,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type AccountMenuFacts, type AccountMenuHost, AccountMenuHostService } from "../api.ts";
 import { AccountMenuItem } from "./account-menu-item.tsx";
+import { SignedOutDialog } from "./signed-out-dialog.tsx";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -50,19 +51,32 @@ function fakeHost(
 ) {
   // Like the served host, it remembers the sign-out, which outlives any one drawing of the item.
   let signedOutOf: string | null = null;
+  const listeners = new Set<() => void>();
   return {
     load: vi.fn(() => answer),
     signOut: vi.fn(async () => {
       await signOut();
       signedOutOf = (await answer)?.productName ?? null;
+      for (const listener of listeners) listener();
     }),
     signedOutOf: () => signedOutOf,
+    onSignedOut: (listener: () => void) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
     open: vi.fn<(address: string) => void>(),
     signInAddress: "/api/sign-in",
   } satisfies AccountMenuHost;
 }
 
-async function renderItem(host: AccountMenuHost | undefined): Promise<HTMLElement> {
+/**
+ * Draws the menu's title bar item, unless `withItem` is false, as a phone under a place does, and
+ * the feature's dialog host, which the window draws once in every layout.
+ */
+async function renderItem(
+  host: AccountMenuHost | undefined,
+  { withItem = true }: { readonly withItem?: boolean } = {},
+): Promise<HTMLElement> {
   const find = (key: unknown) => (key === AccountMenuHostService ? host : undefined);
   const context = { services: { find } } as unknown as WorkspaceContext;
   const container = document.createElement("div");
@@ -72,7 +86,8 @@ async function renderItem(host: AccountMenuHost | undefined): Promise<HTMLElemen
   await act(async () => {
     root.render(
       <PresentationProvider presentation="desktop">
-        <AccountMenuItem context={context} />
+        {withItem ? <AccountMenuItem context={context} /> : null}
+        <SignedOutDialog context={context} />
       </PresentationProvider>,
     );
   });
@@ -201,6 +216,18 @@ verifies("account-menu.sign-out", () => {
         "You've signed out of Acme Agents",
       );
       expect(host.load).toHaveBeenCalledOnce();
+    });
+
+    it("shows the signed-out page where the window draws no item, as a phone under a place", async () => {
+      const host = fakeHost(Promise.resolve(sofia));
+      const menu = await renderItem(host);
+      const underPlace = await renderItem(host, { withItem: false });
+      expect(underPlace.querySelector("dialog")).toBeNull();
+
+      await pick(menu, "Sign out");
+      expect(underPlace.querySelector("dialog[open] h1")?.textContent).toBe(
+        "You've signed out of Acme Agents",
+      );
     });
 
     it("puts its title back when the window names its page again", async () => {

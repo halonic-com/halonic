@@ -98,6 +98,22 @@ verifies("studio.served-account-menu", () => {
       expect(refused.menu.signedOutOf()).toBeNull();
     });
 
+    it("tells its listeners once the computer ended the session, and stops when asked", async () => {
+      const answers = {
+        "GET /api/account-menu": () => Response.json(sofia),
+        "POST /api/sign-out": () => new Response(null, { status: 204 }),
+      };
+      const { menu } = served(answers);
+      const told = vi.fn();
+      const stopped = vi.fn();
+      menu.onSignedOut(told);
+      menu.onSignedOut(stopped)();
+      await menu.load();
+      await menu.signOut();
+      expect(told).toHaveBeenCalledOnce();
+      expect(stopped).not.toHaveBeenCalled();
+    });
+
     it("signs in again at the computer's sign-in route, and opens addresses in the page", () => {
       const { menu, open } = served({});
       expect(menu.signInAddress).toBe("/api/sign-in");

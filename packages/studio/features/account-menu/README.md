@@ -3,7 +3,8 @@
 The account menu of a served Studio with many users signed in through Halonic Cloud (S2-25, flows
 B7): the customer's initials at the title bar's right end open their name, the plan and usage line
 (to the account page's plan), **Account** and **Sign out**, which shows "You've signed out of
-{Product}" with **Sign in again**.
+{Product}" with **Sign in again**. A dialog host draws that page, so it shows in every layout, also
+where a phone draws no title bar items.
 
 - **Layer:** studio
 - **Owner:** elena

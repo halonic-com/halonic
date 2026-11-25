@@ -3,34 +3,25 @@ import type { StatusBarItemProps } from "@halonicjs/studio-shell";
 import { useEffect, useState } from "react";
 import { type AccountMenuFacts, type AccountMenuHost, AccountMenuHostService } from "../api.ts";
 import { accountMenuWords, planItemWords } from "./account-menu-words.ts";
-import { SignedOutPage } from "./signed-out-page.tsx";
 
-/** What the item shows: nothing yet, nothing at all, the menu, or the signed-out page. */
+/** What the item shows: nothing yet, nothing at all, or the menu. */
 type MenuState =
   | { readonly kind: "loading" }
   | { readonly kind: "none" }
-  | { readonly kind: "shown"; readonly facts: AccountMenuFacts; readonly signOutFailed: boolean }
-  | { readonly kind: "signed-out"; readonly productName: string };
+  | { readonly kind: "shown"; readonly facts: AccountMenuFacts; readonly signOutFailed: boolean };
 
 /**
  * The account menu at the title bar's right end (`account-menu.menu`): the customer's initials,
  * opening "Signed in as {name}", the plan item with its usage (to AC-00 #plan), **Account** (to
- * AC-00) and **Sign out**, which shows B4's signed-out page (`account-menu.sign-out`). Without a
- * host, while loading, or when the computer has no menu or can't say, it draws nothing.
+ * AC-00) and **Sign out**, after which the feature's dialog host shows B4's signed-out page
+ * (`account-menu.sign-out`). Without a host, while loading, when the computer has no menu or
+ * can't say, or once signed out, it draws nothing.
  */
 export function AccountMenuItem({ context }: StatusBarItemProps) {
   const host = context.services.find(AccountMenuHostService);
   const state = useAccountMenu(host);
-  if (host === undefined || state.current.kind === "loading" || state.current.kind === "none") {
+  if (host === undefined || state.current.kind !== "shown") {
     return null;
-  }
-  if (state.current.kind === "signed-out") {
-    return (
-      <SignedOutPage
-        productName={state.current.productName}
-        onSignIn={() => host.open(host.signInAddress)}
-      />
-    );
   }
   return (
     <AccountMenu
@@ -80,12 +71,12 @@ function AccountMenu(props: {
   );
 }
 
-/** Loads the facts once, and signs out: the signed-out page on success, a note in the menu if not. */
+/** Loads the facts once, and signs out: no menu on success, a note in the menu if not. */
 function useAccountMenu(host: AccountMenuHost | undefined) {
   const [current, setCurrent] = useState<MenuState>(() => startState(host));
   useEffect(() => {
-    // After Sign out there is no session to load: the signed-out page stays, even when the
-    // window draws this item again in another place (desktop and phone).
+    // After Sign out there is no session to load, even when the window draws this item again in
+    // another place (desktop and phone): the dialog host shows the signed-out page instead.
     if (host === undefined || host.signedOutOf() !== null) {
       return;
     }
@@ -111,7 +102,7 @@ function useAccountMenu(host: AccountMenuHost | undefined) {
     }
     const { facts } = current;
     host.signOut().then(
-      () => setCurrent({ kind: "signed-out", productName: facts.productName }),
+      () => setCurrent({ kind: "none" }),
       () => setCurrent({ kind: "shown", facts, signOutFailed: true }),
     );
   };
@@ -119,8 +110,8 @@ function useAccountMenu(host: AccountMenuHost | undefined) {
 }
 
 function startState(host: AccountMenuHost | undefined): MenuState {
-  const productName = host?.signedOutOf() ?? null;
-  return productName === null ? { kind: "loading" } : { kind: "signed-out", productName };
+  const signedOut = host !== undefined && host.signedOutOf() !== null;
+  return signedOut ? { kind: "none" } : { kind: "loading" };
 }
 
 function shown(facts: AccountMenuFacts): MenuState {
