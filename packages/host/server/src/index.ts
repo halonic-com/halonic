@@ -14,7 +14,6 @@ export type {
   GoogleSignInStart,
   ModelSettingsGate,
   RequestContext,
-  RequestCountStore,
   RequestLog,
   RequestLogEntry,
   Server,
@@ -43,6 +42,7 @@ export type {
   CloudSignInPorts,
   CodeExchangeOutcome,
 } from "./cloud-sign-in-api.ts";
+export { CoordinationRequestCountStore } from "./coordination-request-count-store.ts";
 export { createServer } from "./create-server.ts";
 export type {
   EngineHelloBody,
@@ -85,6 +85,7 @@ export {
 } from "./principal.ts";
 export { ProviderKeysReadOnlyError, providerKeysOf } from "./provider-key-routes.ts";
 export type { ProviderKeyStore } from "./provider-key-store.ts";
+export type { RequestCountStore } from "./request-count-store-api.ts";
 export type { RunUpdates } from "./run-updates.ts";
 export {
   readSessionCredential,
