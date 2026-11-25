@@ -252,11 +252,6 @@ adds it; the Merger checks who added it and treats the label as missing if anyon
   description. A personal term can never be allowed: reword the text.
 - Before every release tag, public launch or anything new going public, run the full release
   review: see [docs/guides/release-review.md](docs/guides/release-review.md).
-- A release below 0.9 needs no board card when all four hold: the release review is green for the
-  exact head; Liam approved that head and it merges with `--match-head-commit`; it is a normal
-  release (version bump and changelog only, no change to the release workflow, signing or the
-  guard); and the board gets one notice for it. From 0.9 on, and for halonic.com, the board says
-  yes on a card first. Only Liam or the merge captain he names merges a release pull request.
 - **Never add a git remote to the old local copy of Halonic.** Its private history must never reach
   this repo. Copy files from it one by one, never by folder, and only when a task says so.
 
