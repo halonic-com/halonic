@@ -2,6 +2,7 @@
 
 export { checkBrowserAddress } from "./browser-address.ts";
 export { findKeyShapedText, type KeyShape } from "./key-shaped-text.ts";
+export { manualFormProblems, renderManualGuide } from "./manual-guide.ts";
 export {
   type AllowedRequester,
   type AttestedSource,
@@ -54,6 +55,7 @@ export type {
   BrowserOrigin,
   GuidedStep,
   InputStep,
+  ManualForm,
   ResultField,
   ScriptStep,
   Step,

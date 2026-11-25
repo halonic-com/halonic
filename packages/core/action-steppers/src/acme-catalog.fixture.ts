@@ -5,6 +5,7 @@ import { strictParameters } from "./strict-parameters.ts";
 
 const owner = { kind: "text", pattern: /^[A-Za-z0-9-]{1,39}$/ } as const;
 const repo = { kind: "text", pattern: /^[A-Za-z0-9._-]{1,100}$/ } as const;
+const name = { kind: "text", pattern: /^[A-Z][A-Z0-9_]{0,63}$/ } as const;
 
 /** A guided step type that sets a GitHub Actions variable on a repository. */
 export const setVariable: StepperDefinition<Record<string, string | number>> = {
@@ -14,11 +15,7 @@ export const setVariable: StepperDefinition<Record<string, string | number>> = {
   title: "Set a repository variable",
   summary: "Sets one Actions variable.",
   risk: "routine",
-  parameters: strictParameters({
-    owner,
-    repo,
-    name: { kind: "text", pattern: /^[A-Z][A-Z0-9_]{0,63}$/ },
-  }),
+  parameters: strictParameters({ owner, repo, name }),
   steps: [
     {
       kind: "guided",
@@ -47,19 +44,57 @@ export const addDnsRecord: StepperDefinition<Record<string, string | number>> = 
     zone: { kind: "text", pattern: /^[a-z0-9.-]{1,253}$/ },
     type: { kind: "choice", options: ["A", "CNAME", "TXT"] },
   }),
-  steps: [{ kind: "script", ref: "cloudflare/add-dns-record" }],
+  steps: [
+    {
+      kind: "script",
+      ref: "cloudflare/add-dns-record",
+      manual: {
+        url: "https://dash.cloudflare.com/",
+        instructions: [
+          "Open the zone {zone}, then DNS and Records.",
+          "Click Add record, choose {type} as the type and click Save.",
+        ],
+      },
+    },
+  ],
   targets: (parameters) => [
     { service: "cloudflare", kind: "zone", name: String(parameters["zone"]) },
   ],
   preview: (parameters) => [`Adds a ${parameters["type"]} record to ${parameters["zone"]}.`],
 };
 
-/** The invented catalog: two step types, no whole definitions, and GitHub's variables and rules pages. */
+/** A guided step type that adds an Actions secret, whose value the user types in a native dialog. */
+export const setSecret: StepperDefinition<Record<string, string | number>> = {
+  id: "github.set-secret",
+  version: 1,
+  service: "github",
+  title: "Set a repository secret",
+  summary: "Sets one Actions secret.",
+  risk: "admin",
+  parameters: strictParameters({ owner, repo, name }),
+  steps: [
+    { kind: "input", name: "value", label: "the value of {name}", secret: true },
+    {
+      kind: "guided",
+      address: "https://github.com/{owner}/{repo}/settings/secrets/actions/new",
+      instructions: ["Type {name} as the name, type the value and click Add secret."],
+      checkedOn: "2026-11-24",
+    },
+  ],
+  targets: setVariable.targets,
+  preview: (parameters) => [
+    `Sets the secret ${parameters["name"]} on ${parameters["owner"]}/${parameters["repo"]}.`,
+  ],
+};
+
+/** The invented catalog: three step types, no whole definitions, and GitHub's variables and rules pages. */
 export const acmeCatalog: StepperCatalog = {
   definition: (id, version) =>
     id === "github.approve-run" && version === 1 ? { ...setVariable, id } : undefined,
   stepType: (id, version) =>
-    [setVariable, addDnsRecord].find((type) => type.id === id && type.version === version),
+    [setVariable, addDnsRecord, setSecret].find(
+      (type) => type.id === id && type.version === version,
+    ),
   browserOrigins: [
     {
       service: "github",
