@@ -63,7 +63,8 @@ local, develop and production. No app knows which engine it is talking to.
   desktop can reach, and putting the key on the server instead of the
   keychain. Our estimate is about one week plus its own security review,
   after phase 1. With (b), no board key sits on a laptop, and the phone and
-  several desktops work through the same server.
+  several desktops work through the same server. How (b) is built is
+  [its own section](#server-engine-b-phase-2-25-nov-2026) below.
 
 **A connection** is one Paperclip instance and company, described in
 `connections/paperclip/<name>.yaml`. The file holds a label, the server's
@@ -265,3 +266,65 @@ the phase 2 architecture note (HAL-17511), with Julian's security read
 The new methods and the two new refusals break every implementer and every
 exhaustive `switch` on `MessagingRefusal`, so this is a version bump; the
 optional fields alone wouldn't be.
+
+## Server engine (b), phase 2 (25 Nov 2026)
+
+The plan is `server-engine` rev 2 on HAL-17512, with Julian's security note on
+HAL-17513 (findings S1 to S11). The build tracks its PRs on HAL-18490. Its
+requirements start as drafts here and become active in the PR that builds
+each one.
+
+- **What runs where.** `halonic serve` runs on the machine Paperclip runs on,
+  as its own service user, on `127.0.0.1` only. Its engine workspace holds
+  only the connection file, addressed to Paperclip's loopback address. The
+  Paperclip key is in the serve profile's secret store, never in an
+  environment variable, an argument, the workspace, the unit, an image or CI;
+  only the owner adds it after deploy (`server.paperclip-key-store`).
+- **Studio still talks to its desktop engine.** In (b) the desktop's hub joins
+  a client of the server's messaging routes in place of the local Paperclip
+  provider. So no app, not even `studio/services`, knows which engine it talks
+  to, and the offline cache and "never queue a write" stay on the desktop. The
+  choice is a per-workspace setting in the user's profile, "Messaging engine:
+  This computer | Server", never in the workspace file, so a `git pull` can't
+  point a desktop's session at another server.
+- **The messaging routes** (`server.messaging-routes`) are one route per port
+  call, plus `changes` on the event stream. They need a real session in every
+  mode, loopback included, are mounted in owner mode only, and `serve` won't
+  start the provider without `serve-password`
+  (`server.messaging-needs-session`). Writes are limited per session, and one
+  poll loop serves every client (`server.messaging-rate`).
+- **Signing in a desktop** is device pairing (`server.device-pairing`): a
+  one-time code from the console, or from a paired Studio only after the
+  password again, a check code shown on both sides, the owner's Allow, then a
+  per-device bearer token stored hashed, with idle and absolute expiry, listed
+  and revoked one device at a time. The desktop keeps the token in its
+  keychain and holds no Paperclip key.
+- **The public endpoint** (`server.public-endpoint`): TLS ends at the proxy
+  already in front of Paperclip, on its own hostname. `serve
+  --public-origin` refuses to start without a password, accepts only that name
+  in `Host`, never reads `X-Forwarded-*`, and sets HSTS. The hostname, and
+  public or private, are the board's choice (HAL-18503); an A0 delta review
+  runs before the name goes public.
+- **Routines and no-model steps** for the PR watcher (HAL-17974): `serve` runs
+  the workspace's routines with the desktop engine's scheduler
+  (`server.routines`), and a workflow `rule` step runs one pure ToolScript
+  function in the isolate with no model, network or files
+  (`workflow.rule-step`). The watcher's first deploy is loopback only (S9a on
+  HAL-18490), so it needs no hostname or pairing.
+- **Deploy and rollback** are a runbook (`docs/guides/server-engine.md`); only
+  the board's server session deploys. A rollback keeps the key, the device
+  sessions and the cache, and never revokes the key; Disconnect does.
+
+| Finding (HAL-17513) | Requirement |
+| --- | --- |
+| S1 key reachable only through the request list | `server.paperclip-key-store` |
+| S2 a real session for messaging in every mode | `server.messaging-needs-session` |
+| S3 public TLS endpoint | `server.public-endpoint` |
+| S4 pairing sign-in | `server.device-pairing` |
+| S5 expiry, bearer only, owner mode only | `server.device-pairing`, `server.messaging-needs-session` |
+| S6 write limits, one poll loop | `server.messaging-rate` |
+| S7 nothing private in logs | `server.messaging-routes`, `server.paperclip-key-store` |
+| S8 the server's cache | `server.paperclip-key-store` |
+| S9 key added after deploy, rollback keeps it | `server.paperclip-key-store`, `server.device-pairing` (unknown record version), and the runbook |
+| S10 no password, no public start; one `Host` | `server.public-endpoint` |
+| S11 a device can't add devices on its own | `server.device-pairing` |
