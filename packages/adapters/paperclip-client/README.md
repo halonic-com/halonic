@@ -58,6 +58,13 @@ Only `request_board_approval`, which just records the board's answer, is `normal
 The risk comes from Paperclip's type, never from the asking agent's title. A phone can't answer a risky
 item unless the desktop allows it (requirement `paperclip-client.approval-risk`).
 
+**Channels** (`paperclip-client.channels`, K1). A channel is an open parent task with the `channel` tag that a
+person made, never an agent, with a members line the provider writes (2 to 8 agents, the lead among them). A
+message in a channel is a comment on that task, and each agent in `to`, or the lead when `to` is empty, gets one
+child task assigned to it, holding only the person's text, quoted and labelled as the board's. In Paperclip only
+an assignment wakes an agent, and the provider never reads a name out of the text, so a typed `@Bo` wakes
+nobody. Starting a channel, members, browsing, joining and leaving aren't served yet.
+
 **Workflow task writes.** `PaperclipTasks` gives workflows (phase 3, step 4) two writes on the same connection:
 `wake` assigns a task to an agent with status `todo` and a comment, and `finish` sets status `done` with a
 comment. Both are Paperclip's task update, so their rows on the list also pin the body: exactly those fields,
@@ -107,6 +114,8 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `getTask` | `GET /api/issues/{task}` | before a task write: the task's ID and company |
 | `wakeTask` | `PATCH /api/issues/{task}` with exactly `{ assigneeAgentId, status: "todo", comment }` | a workflow wakes an agent on a task |
 | `finishTask` | `PATCH /api/issues/{task}` with exactly `{ status: "done", comment }` | a workflow closes a task as done |
+| `commentOnChannel` | `POST /api/issues/{task}/comments` | send a message in a channel: a comment on its parent task |
+| `createChildTask` | `POST /api/companies/{company}/issues` with exactly `{ title, description, parentId, assigneeAgentId, status: "todo" }` | one child task per agent a channel message is for |
 
 **No route that makes keys.** Nothing goes to Paperclip upstream (board, HAL-10, 24 Nov), so this list is the
 main protection. No entry makes, lists or deletes keys or tokens: not `/api/board-api-keys`, an agent's

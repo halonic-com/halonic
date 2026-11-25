@@ -20,7 +20,7 @@ export type SendOutcome =
   | { kind: "refused"; reason: MessagingRefusal };
 
 /** The port's refusal for a failed write, or `undefined` when the failure is one the port has no word for. */
-function refusalOf(answer: PaperclipAnswer): MessagingRefusal | undefined {
+export function refusalOf(answer: PaperclipAnswer): MessagingRefusal | undefined {
   if (answer.kind === "ok") {
     return undefined;
   }
