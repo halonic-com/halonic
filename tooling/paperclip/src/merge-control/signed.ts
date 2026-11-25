@@ -1,8 +1,8 @@
 /**
- * Julian's rule for a signed approval line (HAL-17946): the comment is
- * signed by the reviewer on its first non-empty line, holds exactly one
- * approval line for them outside code and quotes, and holds no change
- * request. The line may stand anywhere in the comment (#5758).
+ * Julian's rule for a signed approval line (HAL-17946): the comment holds
+ * exactly one approval line for the reviewer outside code and quotes, and
+ * no change request. The line may stand on any line of the comment, after
+ * notes, as in the live Merger's gate (#5758, HAL-17927).
  */
 
 /** A reviewer whose signed line the gate reads. */
@@ -38,12 +38,6 @@ export function plainLines(body: string): string[] {
   return lines;
 }
 
-/** Whether the comment's first non-empty line is signed by `reviewer`. */
-export function signedBy(body: string, reviewer: Reviewer): boolean {
-  const first = body.split(/\r?\n/).find((line) => line.trim() !== "") ?? "";
-  return new RegExp(`^ {0,3}${reviewer}:`).test(first);
-}
-
 /** Julian's pattern, with the backticks and spacing as loose as the Merger's own matching. */
 function approvalLine(reviewer: Reviewer): RegExp {
   return new RegExp(
@@ -59,13 +53,10 @@ export function requestsChanges(lines: readonly string[], reviewer: Reviewer): b
 
 /**
  * The signed approval `reviewer` gives in this comment, or null when it
- * gives none: unsigned, quoted or in code, a change request, or more than
- * one approval line (ambiguous).
+ * gives none: no approval line, quoted or in code, a change request, or
+ * more than one approval line (ambiguous).
  */
 export function signedApproval(body: string, reviewer: Reviewer): SignedApproval | null {
-  if (!signedBy(body, reviewer)) {
-    return null;
-  }
   const lines = plainLines(body);
   const pattern = approvalLine(reviewer);
   const matches = lines.flatMap((line) => {

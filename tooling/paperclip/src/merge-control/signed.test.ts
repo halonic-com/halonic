@@ -25,8 +25,15 @@ verifies("paperclip.merge-control-signed-approval", () => {
     expect(approved([fenced])).toBe(false);
     expect(approved([indented])).toBe(false);
 
-    const unsigned = said(`Mateo: rebased\nJulian: approved on head \`${h7}\``);
-    expect(approved([unsigned])).toBe(false);
+    // Notes above the signed line don't hide it (#5758, HAL-17927); the head check still holds.
+    const notes = said(
+      `Rebased on main.\nOne wording note left.\nJulian: approved on head \`${h7}\``,
+    );
+    expect(approved([notes])).toBe(true);
+    const staleNotes = said(
+      `Rebased on main.\nOne wording note left.\nJulian: approved on head \`${headOf(1, 1).slice(0, 7)}\``,
+    );
+    expect(approved([staleNotes])).toBe(false);
 
     const later = said(
       `Julian: checked the follow-up\n\n[nit] one wording note\nJulian: approved on head \`${h7}\``,

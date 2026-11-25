@@ -9,8 +9,8 @@ import type { GatePull, PullText } from "./snapshot.ts";
  * and open change requests. The texts follow the Merger's own matching,
  * which differs from `pr-tools/approvals.ts`: a bare "re-approved on head"
  * counts here (HAL-15553), and time after the last push matters. A signed
- * line counts on any line of a comment signed by its reviewer, outside code
- * and quotes, once, and never in a change request (`signed.ts`, HAL-17946).
+ * line counts on any line of a comment, outside code and quotes, once, and
+ * never in a change request (`signed.ts`, HAL-17946, HAL-17927).
  */
 
 const signedLine = /^[ \t]*(Liam|Julian):/im;
