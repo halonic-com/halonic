@@ -34,7 +34,9 @@ use download::start_download;
 
 #[path = "updates_check.rs"]
 mod check;
-use check::{ask_for_update, available, check_failure, installer_args, sets_up_again};
+use check::{
+    ask_for_update, available, check_failure, installer_args, on_track_key, sets_up_again,
+};
 
 #[path = "updates_managed.rs"]
 mod managed;
@@ -349,7 +351,7 @@ async fn check<R: Runtime>(app: &AppHandle<R>) {
 /// the installer, which ends Halonic on Windows. `relaunch` reopens Halonic
 /// afterwards. Answers why it couldn't, for the log.
 fn install<R: Runtime>(app: &AppHandle<R>, relaunch: bool) -> Result<(), String> {
-    let (update, bytes) = {
+    let (update, bytes, track) = {
         let mut inner = lock(app);
         let Some((update, bytes)) = inner.ready.take() else {
             return Err("no update is ready".to_owned());
@@ -358,11 +360,11 @@ fn install<R: Runtime>(app: &AppHandle<R>, relaunch: bool) -> Result<(), String>
         inner.record.before_install(&update.version, &current);
         inner.save();
         log_way_back(&inner, &update.version);
-        (update, bytes)
+        (update, bytes, inner.record.track)
     };
     let host_app = app.clone();
-    let update = app
-        .updater_builder()
+    let update = on_track_key(app.updater_builder(), track)
+        .map_err(|error| error.to_string())?
         .installer_args(installer_args(&update, relaunch))
         .on_before_exit(move || crate::agent_host::stop_host(&host_app))
         .build()

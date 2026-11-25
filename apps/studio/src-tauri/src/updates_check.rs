@@ -8,11 +8,11 @@ use std::ffi::OsString;
 
 use halonic_update_state::{
     CHECK_TIME_LIMIT, CheckFailure, UpdateState, UpdateTrack, UpdaterRecord, Version, notes_url,
-    raises_setup_version, this_build_setup_version, track_endpoint,
+    raises_setup_version, this_build_setup_version, track_endpoint, track_pubkey,
 };
 use serde_json::Value;
 use tauri::{AppHandle, Runtime, Url};
-use tauri_plugin_updater::{Error as UpdaterError, Update};
+use tauri_plugin_updater::{Error as UpdaterError, Update, UpdaterBuilder};
 
 use super::proxy::{ProxyFault, proxy_fault, updater_on_proxy_rules};
 
@@ -22,11 +22,29 @@ pub(super) async fn ask_for_update<R: Runtime>(
     app: &AppHandle<R>,
     track: UpdateTrack,
 ) -> Result<Option<Update>, UpdaterError> {
-    let updater = updater_on_proxy_rules(app, |client| client)?
+    let updater = on_track_key(updater_on_proxy_rules(app, |client| client)?, track)?
         .endpoints(track_endpoints(&configured_endpoints(app), track)?)?
         .timeout(CHECK_TIME_LIMIT)
         .build()?;
     updater.check().await
+}
+
+/// The public keys of the tracks whose builds are signed with a key of
+/// their own (HAL-18477).
+const UPDATER_KEYS: &str = include_str!("../updater-keys.json");
+
+/// `builder`, checking signatures with `track`'s key: Stable keeps the key
+/// in `tauri.conf.json`, Preview takes its own from `updater-keys.json`. The
+/// check, the download and the install each verify the installer, so all
+/// three build their updater through here.
+pub(super) fn on_track_key(
+    builder: UpdaterBuilder,
+    track: UpdateTrack,
+) -> Result<UpdaterBuilder, UpdaterError> {
+    Ok(match track_pubkey(UPDATER_KEYS, track)? {
+        Some(pubkey) => builder.pubkey(pubkey),
+        None => builder,
+    })
 }
 
 /// The updater's endpoints in `tauri.conf.json`, as written there.

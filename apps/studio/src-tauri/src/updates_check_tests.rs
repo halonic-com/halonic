@@ -1,16 +1,18 @@
-//! Tests for `studio.src-tauri.update-track`: the endpoint the shell asks on
-//! each track.
+//! Tests for `studio.src-tauri.update-track` (the endpoint the shell asks on
+//! each track) and `studio.src-tauri.update-track-key` (the key it checks).
 
-use halonic_update_state::{ENDPOINT, UpdateTrack};
+use halonic_update_state::{ENDPOINT, UpdateTrack, track_pubkey};
 use serde_json::Value;
 
-use super::track_endpoints;
+use super::{UPDATER_KEYS, track_endpoints};
+
+fn config() -> Value {
+    serde_json::from_str(include_str!("../tauri.conf.json")).expect("tauri.conf.json is JSON")
+}
 
 /// The updater's endpoints as `tauri.conf.json` writes them.
 fn configured() -> Vec<String> {
-    let config: Value =
-        serde_json::from_str(include_str!("../tauri.conf.json")).expect("tauri.conf.json is JSON");
-    config["plugins"]["updater"]["endpoints"]
+    config()["plugins"]["updater"]["endpoints"]
         .as_array()
         .expect("the updater's endpoints")
         .iter()
@@ -56,4 +58,21 @@ fn update_track_keeps_a_test_build_endpoint_without_a_track() {
     let local = vec!["http://127.0.0.1:8765/latest.json".to_owned()];
     let urls = track_endpoints(&local, UpdateTrack::Preview).expect("a URL");
     assert_eq!(urls[0].as_str(), local[0]);
+}
+
+#[test]
+fn update_track_key_preview_checks_its_own_key_and_stable_the_release_key() {
+    let release = config()["plugins"]["updater"]["pubkey"]
+        .as_str()
+        .expect("the release key")
+        .to_owned();
+    let preview = track_pubkey(UPDATER_KEYS, UpdateTrack::Preview)
+        .expect("updater-keys.json names the Preview key")
+        .expect("a Preview key");
+    assert!(!preview.is_empty());
+    assert_ne!(preview, release);
+    assert_eq!(
+        track_pubkey(UPDATER_KEYS, UpdateTrack::Stable).expect("no key"),
+        None
+    );
 }

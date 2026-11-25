@@ -6,11 +6,12 @@ use std::time::Instant;
 
 use halonic_update_state::{
     CHECK_TIME_LIMIT, DOWNLOAD_STALL_LIMIT, DownloadFailure, PROGRESS_EVERY, Unit, UpdateState,
-    Version, notes_url,
+    UpdateTrack, Version, notes_url,
 };
 use tauri::{AppHandle, Runtime};
 use tauri_plugin_updater::{Error as UpdaterError, Update};
 
+use super::check::on_track_key;
 use super::lock;
 use super::proxy::{ProxyFault, proxy_fault, updater_on_proxy_rules};
 
@@ -36,9 +37,10 @@ pub(super) fn start_download<R: Runtime>(app: &AppHandle<R>) {
         unit: Unit::Bytes,
     });
     inner.notify();
+    let track = inner.record.track;
     let task_app = app.clone();
     inner.download = Some(tauri::async_runtime::spawn(async move {
-        download(&task_app, &found).await;
+        download(&task_app, &found, track).await;
     }));
 }
 
@@ -46,13 +48,14 @@ pub(super) fn start_download<R: Runtime>(app: &AppHandle<R>) {
 /// 15-second limit would cap the whole download, so it is made again from
 /// the check's answer with a limit per read instead: no data for 60 s stops
 /// it as stalled.
-async fn download<R: Runtime>(app: &AppHandle<R>, found: &Update) {
+async fn download<R: Runtime>(app: &AppHandle<R>, found: &Update, track: UpdateTrack) {
     let version = found.version.clone();
     let update = updater_on_proxy_rules(app, |client| {
         client
             .connect_timeout(CHECK_TIME_LIMIT)
             .read_timeout(DOWNLOAD_STALL_LIMIT)
     })
+    .and_then(|builder| on_track_key(builder, track))
     .and_then(|builder| builder.build())
     .and_then(|updater| updater.restore_update(found.raw_json.clone()));
     let result = match update {
