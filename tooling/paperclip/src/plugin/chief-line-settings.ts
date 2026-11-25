@@ -106,8 +106,8 @@ export const threadTitlePattern = /^\[chief-line\] ([a-z0-9][a-z0-9-]{0,40})$/;
 export const chiefLineStateKey = (companyId: string, key: ChiefLineRecord) =>
   ({ scopeKind: "company", scopeId: companyId, namespace: "chief-line", stateKey: key }) as const;
 
-/** The chief line's records in plugin state: threads, wakes per hour, the plugin's own posts, webhooks, signalled comments. */
-export type ChiefLineRecord = "threads" | "wakes" | "posted" | "hooks" | "signalled";
+/** The chief line's records in plugin state: threads, wakes per hour, webhooks, signalled comments. */
+export type ChiefLineRecord = "threads" | "wakes" | "hooks" | "signalled";
 
 /** The chief line's routes, board only (src/plugin/chief-line.ts). */
 export const chiefLineRoutes = (

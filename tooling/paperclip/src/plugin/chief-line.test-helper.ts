@@ -33,6 +33,10 @@ export function fakeChiefLine(
   const created: unknown[] = [];
   const wakes: { issueId: string; options: unknown }[] = [];
   const posts: { url: string; body: unknown }[] = [];
+  const agents = [
+    { id: "agent-chief", name: "Chief", urlKey: "chief" },
+    { id: "agent-ravi", name: "Ravi", urlKey: "ravi" },
+  ];
   const createCommentOptions: unknown[] = [];
   const logs: string[] = [];
   const statuses = [...(options.hookStatuses ?? [])];
@@ -47,12 +51,7 @@ export function fakeChiefLine(
   const ctx = {
     state,
     config: { get: async () => config },
-    agents: {
-      list: async () => [
-        { id: "agent-chief", name: "Chief", urlKey: "chief" },
-        { id: "agent-ravi", name: "Ravi", urlKey: "ravi" },
-      ],
-    },
+    agents: { list: async () => agents },
     issues: {
       list: async (input: { projectId?: string }) =>
         issues.filter(
@@ -119,6 +118,7 @@ export function fakeChiefLine(
     created,
     wakes,
     posts,
+    agents,
     createCommentOptions,
     logs,
     addComment,

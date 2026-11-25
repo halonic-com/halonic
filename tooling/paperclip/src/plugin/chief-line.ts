@@ -158,20 +158,6 @@ async function findOrCreateThread(
   return thread;
 }
 
-/** How many of the plugin's own comment ids are kept per caller. */
-const keptPosted = 50;
-
-/** Whether the plugin posted this comment itself through the send route. */
-export async function postedByPlugin(
-  ctx: Pick<ChiefLineApi, "state">,
-  companyId: string,
-  caller: string,
-  commentId: string,
-): Promise<boolean> {
-  const posted = await readRecords<string[]>(ctx, companyId, "posted");
-  return (posted[caller] ?? []).includes(commentId);
-}
-
 /** Counts one wake against the caller's hourly limit; false when the limit is reached. */
 export async function takeSlot(
   ctx: Pick<ChiefLineApi, "state">,
@@ -229,11 +215,6 @@ async function send(
     `**From ${caller} (chief line)**\n\n${message}`,
     companyId,
   );
-  const posted = await readRecords<string[]>(ctx, companyId, "posted");
-  await ctx.state.set(chiefLineStateKey(companyId, "posted"), {
-    ...posted,
-    [caller]: [...(posted[caller] ?? []), comment.id].slice(-keptPosted),
-  });
   await ctx.issues.requestWakeup(thread.id, companyId, {
     reason: "chief_line",
     idempotencyKey: `chief-line ${comment.id}`,
@@ -268,6 +249,7 @@ async function openThread(
 async function readThread(
   ctx: ChiefLineApi,
   companyId: string,
+  settings: ChiefLineSettings,
   query: Records<string | string[]>,
 ): Promise<PluginApiResponse> {
   const caller = query["caller"];
@@ -279,7 +261,10 @@ async function readThread(
   if (Number.isNaN(since)) {
     return fail(400, "since must be an ISO time.");
   }
-  const thread = (await readRecords<ChiefLineThread>(ctx, companyId, "threads"))[caller];
+  if (settings.projectId === undefined) {
+    return fail(409, "The chief line has no project: set chiefLine.projectId.");
+  }
+  const thread = await findThread(ctx, companyId, caller, settings.projectId);
   if (thread === undefined) {
     return fail(404, `No chief line thread for ${caller} yet.`);
   }
@@ -349,7 +334,7 @@ export async function handleChiefLineRequest(
     case chiefLineRouteKeys.openThread:
       return await openThread(ctx, input.companyId, settings, body);
     case chiefLineRouteKeys.thread:
-      return await readThread(ctx, input.companyId, input.query);
+      return await readThread(ctx, input.companyId, settings, input.query);
     default:
       return await subscribe(ctx, input.companyId, settings, body);
   }
