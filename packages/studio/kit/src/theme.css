@@ -73,8 +73,10 @@
   --color-surface-subtle: light-dark(#f6f6fc, #1c1c2a); /* sidebar, table header, row hover */
   --color-surface-muted: light-dark(#ececf7, #272738); /* button and menu hover, neutral badge */
   --color-surface-raised: light-dark(#ffffff, #20202f); /* menus, dialogs, toasts */
-  /* The focused Halonic Inbox and Messenger windows (HAL-17358): slate-50 and white, slate-950 and slate-900. */
-  --color-app-frame: light-dark(#f8fafc, #020617); /* a focused app's window frame */
+  /* The focused Halonic Inbox and Messenger windows (HAL-17358): slate-75 and white, slate-950 and
+     slate-900. Slate-75 is halfway between slate-50 and slate-100, so the frame and the list on it
+     stand apart from the white panel (HAL-18691). */
+  --color-app-frame: light-dark(#f4f7fa, #020617); /* a focused app's window frame */
   --color-app-panel: light-dark(#ffffff, #0f172a); /* a focused app's one content panel */
   --color-overlay: light-dark(rgb(16 16 46 / 0.32), rgb(0 0 0 / 0.56)); /* behind a dialog */
 

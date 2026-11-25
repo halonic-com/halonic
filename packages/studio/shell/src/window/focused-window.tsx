@@ -28,8 +28,8 @@ import type { StudioWorkspace } from "./studio-workspace.ts";
 import { appName } from "./window-title.ts";
 
 /**
- * The approved frame of a focused app (HAL-17358): slate-50 behind a white panel in light, slate-950
- * behind a slate-900 panel in dark. Exported for a view that draws its own panel on the frame.
+ * The approved frame of a focused app (HAL-17358): slate-75 behind a white panel in light (HAL-18691),
+ * slate-950 behind a slate-900 panel in dark. Exported for a view that draws its own panel on the frame.
  */
 export const focusedFrameClass = "bg-app-frame";
 
