@@ -3,7 +3,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { findRequest } from "../src/requests.ts";
 import { PaperclipTeamStatus } from "../src/team-status.ts";
 
-// Run by `pnpm test:live`, never by `pnpm test`: it reads a real Paperclip server with a board key,
+// Run by `pnpm test:board`, never by `pnpm test`: it reads a real Paperclip server with a board key,
 // so CI never runs it. It checks that every route of the architecture note's section 1.5 answers
 // and maps with no error, as of the server's Paperclip version. The key comes from the environment
 // only, never a command-line argument, and nothing else it reads is printed: the run log names each

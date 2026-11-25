@@ -134,9 +134,10 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `updateChannel` | `PATCH /api/issues/{task}` with exactly `{ description }` | change a channel's members line: members, lead, who follows it |
 | `listTaskActivity` | `GET /api/issues/{task}/activity` | a channel child task's history: who passed it to whom |
 
-**Live check of `TeamStatus`.** `pnpm test:live` reads a real server with every `TeamStatus` method and
+**Live check of `TeamStatus`.** `pnpm test:board` reads a real server with every `TeamStatus` method and
 fails unless each of the rows from `spendSummary` to `pullRequestDetail` answers 200 and maps. It never runs
-in `pnpm test` or CI. The seats and GitHub routes answer only a board key, so a board user runs it, with
+in `pnpm test` or CI: it is not named `test:live`, the script the `live-cloud` workflow runs in every package
+a change reaches, because CI has no board key (HAL-18378). The seats and GitHub routes answer only a board key, so a board user runs it, with
 the key in the environment, never on the command line: `HALONIC_PAPERCLIP_LIVE_ADDRESS` (the server's
 address), `HALONIC_PAPERCLIP_LIVE_KEY` and `HALONIC_PAPERCLIP_LIVE_COMPANY` (the company ID). Its log names
 the Paperclip version, each request with its status, how many items mapped, and the public number of the
