@@ -44,14 +44,8 @@ const changesAnswer = s
   .strict();
 const nothing = s.object({}).strict();
 
-/** How often Studio asks its own agent host which sources changed. A local call: no network. */
-export const changesEveryMs = 2_000;
-
 /** What an {@link AgentHostMessaging} reads for. */
 type ListName = "sources" | "agents" | "conversations" | "messages" | "inbox" | "work" | "search";
-
-/** Waits `ms`; tests pass one that returns at once. */
-export type Wait = (ms: number) => Promise<void>;
 
 /**
  * The desktop engine's `AgentMessaging`, for one workspace (ADR 2026-11-24,
@@ -60,8 +54,9 @@ export type Wait = (ms: number) => Promise<void>;
  * it as `AgentMessagingService`, so no feature knows which engine it talks
  * to. The host is Halonic's own, so its lists are passed on as it sends them.
  *
- * `changes` asks the host every 2 seconds which sources changed: a call on
- * this computer, while the host polls Paperclip on its own schedule.
+ * `changes` asks the host which sources changed and the host holds the
+ * call until one has, or about 25 seconds pass (a long poll): a call on this
+ * computer, while the host polls Paperclip on its own schedule.
  *
  * @example
  * const messaging = new AgentHostMessaging(transport, "/work/acme");
@@ -70,12 +65,10 @@ export type Wait = (ms: number) => Promise<void>;
 export class AgentHostMessaging implements AgentMessaging {
   readonly #transport: AgentHostTransport;
   readonly #workspace: string;
-  readonly #wait: Wait;
 
-  constructor(transport: AgentHostTransport, workspace: string, wait: Wait = waitFor) {
+  constructor(transport: AgentHostTransport, workspace: string) {
     this.#transport = transport;
     this.#workspace = workspace;
-    this.#wait = wait;
   }
 
   listSources(): Promise<readonly MessagingSource[]> {
@@ -178,10 +171,9 @@ export class AgentHostMessaging implements AgentMessaging {
    * stream with its error, so the reader shows it rather than missing changes.
    */
   async *changes(): AsyncIterable<MessagingId> {
-    let after = (await this.#changesSince(0)).next;
+    let after = (await this.#changesSince(0, false)).next;
     for (;;) {
-      await this.#wait(changesEveryMs);
-      const { next, sources } = await this.#changesSince(after);
+      const { next, sources } = await this.#changesSince(after, true);
       after = next;
       yield* sources;
     }
@@ -193,9 +185,11 @@ export class AgentHostMessaging implements AgentMessaging {
     readAnswer(route, await this.#transport.request(route, { inFront }), nothing);
   }
 
-  async #changesSince(after: number) {
+  /** The host's changes after `after`; with `wait`, it answers once one has, or after about 25 seconds. */
+  async #changesSince(after: number, wait: boolean) {
     const route = "POST /v1/messaging/changes";
-    const answer = await this.#transport.request(route, { workspace: this.#workspace, after });
+    const body = { workspace: this.#workspace, after, ...(wait ? { wait } : {}) };
+    const answer = await this.#transport.request(route, body);
     return readAnswer(route, answer, changesAnswer);
   }
 
@@ -229,8 +223,4 @@ function bytesOf(route: string, base64url: string): Uint8Array {
 /** A channel call the host doesn't serve yet. */
 function noChannels(): Promise<ChannelResult> {
   return Promise.resolve({ outcome: "refused", reason: "not-supported" });
-}
-
-function waitFor(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

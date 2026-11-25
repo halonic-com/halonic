@@ -41,7 +41,9 @@ const sendBody = s
   .object({ workspace, conversation: id, body: s.string().min(1).max(20_000) })
   .strict();
 const attachmentBody = s.object({ workspace, attachment: id }).strict();
-const changesBody = s.object({ workspace, after: s.number().int().min(0) }).strict();
+const changesBody = s
+  .object({ workspace, after: s.number().int().min(0), wait: s.boolean().optional() })
+  .strict();
 const focusBody = s.object({ inFront: s.boolean() }).strict();
 const connectionsBody = s.object({ workspace }).strict();
 /** A time with its zone, as `toISOString` writes it: the bound of today's finished runs. */
@@ -78,7 +80,9 @@ type ReadBody = Infer<typeof readBody>;
  *   `{ result }`: the bytes as base64url with their type, or why they were
  *   refused (offline, the cache may not hold them).
  * - `POST /v1/messaging/changes` with `{ after }` answers `{ next, sources }`:
- *   the sources that changed since Studio's last look.
+ *   the sources that changed since Studio's last look. With `wait: true` it
+ *   answers as soon as one has, or with none after about 25 seconds: a long
+ *   poll, so Studio hears of a change at once without asking every few seconds.
  * - `POST /v1/messaging/focus` with `{ inFront }` tells the poller whether
  *   Studio's window is in front.
  * - `POST /v1/messaging/runs` with `{ agent?, since? }` answers `{ items }`:
@@ -148,9 +152,22 @@ export function messagingRoutes(deps: MessagingRouteDeps): HostRoute[] {
     inWorkspace("/v1/messaging/attachment", attachmentBody, async (messaging, body) => ({
       result: attachmentAnswer(await messaging.messaging.readAttachment(body.attachment)),
     })),
-    inWorkspace("/v1/messaging/changes", changesBody, async (messaging, body) =>
-      messaging.changesSince(body.after),
-    ),
+    route("/v1/messaging/changes", changesBody, async (body, response) => {
+      const messaging = await deps.messaging.of(body.workspace);
+      if (messaging === undefined) {
+        sendError(response, 404, "unknown_workspace", "The host serves no such workspace.");
+        return;
+      }
+      if (body.wait !== true) {
+        sendJson(response, 200, messaging.changesSince(body.after));
+        return;
+      }
+      // A caller that goes away (Studio closed the chat or quit) stops waiting at once.
+      const gone = new AbortController();
+      response.once("close", () => gone.abort());
+      const changes = await messaging.waitForChanges(body.after, gone.signal);
+      if (!response.writableEnded && !response.destroyed) sendJson(response, 200, changes);
+    }),
     inWorkspace("/v1/paperclip/connections", connectionsBody, async (messaging) => ({
       connections: await messaging.connections(),
     })),

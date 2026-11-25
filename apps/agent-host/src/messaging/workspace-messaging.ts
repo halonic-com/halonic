@@ -11,7 +11,7 @@ import type {
   TeamStatus,
 } from "@halonicjs/ports";
 import { paperclipConnectionNamePattern } from "../paperclip/paperclip-key-routes.ts";
-import { ChangeLog, type ChangesSince } from "./change-log.ts";
+import { ChangeLog, type ChangesSince, changesWaitMs } from "./change-log.ts";
 import { listConnectionFiles } from "./connection-file.ts";
 import {
   type PaperclipConnectionProvider,
@@ -224,9 +224,17 @@ export class WorkspaceMessaging {
     return this.#changes.since(after);
   }
 
-  /** Stops following the providers' changes, when the host stops. */
+  /**
+   * The sources that changed after `after`, as soon as one does, or none after
+   * {@link changesWaitMs} or when `signal` aborts: Studio's long poll.
+   */
+  waitForChanges(after: number, signal?: AbortSignal): Promise<ChangesSince> {
+    return this.#changes.waitSince(after, changesWaitMs, signal);
+  }
+
+  /** Stops following the providers' changes and answers every waiting look, when the host stops. */
   close(): void {
-    this.#changes.stop((error) => this.#failed("changes", error));
+    this.#changes.close((error) => this.#failed("changes", error));
   }
 
   /** Forgets the connection's key, drops its provider and deletes its cache. */

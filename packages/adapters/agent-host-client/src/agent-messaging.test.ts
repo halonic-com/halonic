@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { AgentHostMessaging, changesEveryMs } from "./agent-messaging.ts";
+import { AgentHostMessaging } from "./agent-messaging.ts";
 import { FakeHost, ok, refused } from "./fake-host.test-helper.ts";
 
 const workspace = "/work/acme";
@@ -95,7 +95,7 @@ verifies("agent-host-client.agent-messaging", () => {
   });
 
   describe("changes", () => {
-    it("names each source that changed after it started listening, asking every 2 seconds", async () => {
+    it("names each source that changed after it started listening, waiting on the host", async () => {
       const looks = [
         { next: 4, sources: ["paperclip:old"] },
         { next: 5, sources: ["paperclip:halonic"] },
@@ -103,20 +103,16 @@ verifies("agent-host-client.agent-messaging", () => {
       const host = new FakeHost().answer("POST /v1/messaging/changes", () =>
         ok(looks.shift() ?? { next: 5, sources: [] }),
       );
-      const waited: number[] = [];
-      const messaging = new AgentHostMessaging(host, workspace, async (ms) => {
-        waited.push(ms);
-      });
+      const messaging = new AgentHostMessaging(host, workspace);
 
       const changes = messaging.changes()[Symbol.asyncIterator]();
       const first = await changes.next();
       await changes.return?.();
 
       expect(first).toEqual({ done: false, value: "paperclip:halonic" });
-      expect(waited).toEqual([changesEveryMs]);
       expect(host.calls.map((call) => call.body)).toEqual([
         { workspace, after: 0 },
-        { workspace, after: 4 },
+        { workspace, after: 4, wait: true },
       ]);
     });
 
