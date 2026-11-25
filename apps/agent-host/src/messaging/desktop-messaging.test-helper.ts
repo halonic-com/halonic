@@ -6,15 +6,19 @@ import {
   AgentHostPaperclipKey,
   type AgentHostTransport,
 } from "@halonicjs/adapter-agent-host-client";
-import { ManualClock, MemoryScheduler } from "@halonicjs/adapter-memory";
+import { ManualClock, MemoryScheduler, MemorySecretStore } from "@halonicjs/adapter-memory";
 import { PaperclipKeys } from "@halonicjs/host-agent-messaging-hub";
 import { paperclipKeyRoutes } from "../paperclip/paperclip-key-routes.ts";
+import { profileOf } from "../profile-folder.ts";
+import { webCryptoDigest } from "../profile-token-key.ts";
 import { type HostServer, startHostServer } from "../server/host-server.ts";
 import { randomLaunchToken } from "../server/launch-token.ts";
 import { readConnectionFile } from "./connection-file.ts";
 import { DesktopMessaging } from "./desktop-messaging.ts";
+import { MessagingEngineSetting } from "./messaging-engine-setting.ts";
 import { MessagingPoller } from "./messaging-poller.ts";
 import { messagingRoutes } from "./messaging-routes.ts";
+import { ServerPairings } from "./server-engine.ts";
 
 // A fake key only these tests use, so its absence from answers and files means something.
 export const testKey = "pcp_board_fake-key-for-tests-only";
@@ -79,6 +83,30 @@ export class FakePaperclip {
   };
 }
 
+/** A Halonic server stand-in on Acme's address: one source and one agent; it answers 401 to another token. */
+export class FakeServer {
+  readonly address = "https://halonic.acme.test";
+  readonly seen: SeenRequest[] = [];
+  /** The device token it accepts. */
+  token = "acme-device-token-for-tests-only";
+
+  readonly fetch = async (request: Request): Promise<Response> => {
+    const authorization = request.headers.get("authorization");
+    this.seen.push({ url: request.url, method: request.method, authorization });
+    if (authorization !== `Bearer ${this.token}`) return json({ code: "signed-out" }, 401);
+    const path = new URL(request.url).pathname;
+    const source = "halonic-server:acme";
+    if (path === "/api/messaging/sources") {
+      const state = { kind: "online", asOf: "2026-11-24T14:00:00.000Z" };
+      return json({ items: [{ id: source, provider: "halonic", label: "Acme server", state }] });
+    }
+    if (path === "/api/messaging/agents") {
+      return json({ items: [{ id: "server-cy", source, name: "Cy", activity: "idle" }] });
+    }
+    return json({ items: [] });
+  };
+}
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -89,6 +117,12 @@ function json(body: unknown, status = 200): Response {
 /** Everything one test reaches: the host's parts, Studio's side of them, and the folders. */
 export interface Desktop {
   paperclip: FakePaperclip;
+  server: FakeServer;
+  /** The host's keychain, where a workspace's device token is kept. */
+  keychain: MemorySecretStore;
+  /** Each workspace's messaging engine setting, in {@link Desktop.profile}. */
+  setting: MessagingEngineSetting;
+  messaging: DesktopMessaging;
   keys: PaperclipKeys;
   /** Moves the scheduler's clock on by `ms` and delivers the timers that are due: no sleep. */
   wait(ms: number): Promise<void>;
@@ -126,6 +160,13 @@ export async function startDesktop(): Promise<Desktop> {
   const workspaceRoots = [workspace, otherWorkspace];
   const profile = await realpath(await mkdtemp(join(tmpdir(), "acme-profile-")));
   const paperclip = new FakePaperclip();
+  const server = new FakeServer();
+  const keychain = new MemorySecretStore();
+  const setting = new MessagingEngineSetting({
+    profile: profileOf(profile),
+    digest: webCryptoDigest,
+    warn: (message) => log(`${message}\n`),
+  });
   const keys = new PaperclipKeys();
   const clock = new ManualClock("2026-11-24T14:00:00.000Z");
   const logged: string[] = [];
@@ -137,7 +178,14 @@ export async function startDesktop(): Promise<Desktop> {
     readConnection: readConnectionFile,
     report: (failure) => log(`${failure.provider} ${failure.action}\n`),
     warn: log,
-    fetch: paperclip.fetch,
+    // Each request goes to the fake whose address it names.
+    fetch: (input, init) => {
+      const request = new Request(input, init);
+      return request.url.startsWith(server.address)
+        ? server.fetch(request)
+        : paperclip.fetch(request);
+    },
+    engines: { setting, pairings: new ServerPairings(keychain), warn: log },
     now: () => clock.now(),
   });
   const scheduler = new MemoryScheduler(
@@ -147,17 +195,18 @@ export async function startDesktop(): Promise<Desktop> {
   const poller = new MessagingPoller({ scheduler, clock, poll: () => messaging.refresh() });
   await poller.start();
   const token = randomLaunchToken();
-  const server: HostServer = await startHostServer(token, [
+  const host: HostServer = await startHostServer(token, [
     ...paperclipKeyRoutes({
       keys,
       workspaceRoots,
       kept: async (binding) => (await messaging.of(binding.workspace))?.connect(binding.connection),
       log,
+      usesServer: (folder) => messaging.usesServer(folder),
     }),
     ...messagingRoutes({ messaging, poller, log }),
   ]);
   const answers: string[] = [];
-  const transport = pageTransport(server.url, token, answers);
+  const transport = pageTransport(host.url, token, answers);
   const writeConnection = async (address: string, company = acme.company, into = workspace) => {
     await mkdir(join(into, "connections", "paperclip"), { recursive: true });
     const text = `label: Halonic\naddress: ${address}\ncompany: ${company}\n`;
@@ -167,6 +216,10 @@ export async function startDesktop(): Promise<Desktop> {
   await writeConnection(acme.address, acme.company, otherWorkspace);
   return {
     paperclip,
+    server,
+    keychain,
+    setting,
+    messaging,
     keys,
     wait: async (ms) => {
       clock.advance(ms);
@@ -186,7 +239,7 @@ export async function startDesktop(): Promise<Desktop> {
     close: async () => {
       await poller.stop();
       messaging.close();
-      await server.close();
+      await host.close();
       await rm(workspace, { recursive: true, force: true });
       await rm(otherWorkspace, { recursive: true, force: true });
       await rm(profile, { recursive: true, force: true });

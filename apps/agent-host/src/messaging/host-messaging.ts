@@ -5,13 +5,14 @@ import { NodeScheduler } from "@halonicjs/adapter-scheduler-node";
 import { systemSetTimer } from "@halonicjs/adapter-scheduler-node/node";
 import type { MessagingFailure } from "@halonicjs/host-agent-messaging-hub";
 import { PaperclipKeys } from "@halonicjs/host-agent-messaging-hub";
-import type { Scheduler } from "@halonicjs/ports";
+import type { Scheduler, SecretStore } from "@halonicjs/ports";
 import type { ProfileFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { HostKeyStore } from "../paperclip/host-key-store.ts";
 import { paperclipKeyRoutes } from "../paperclip/paperclip-key-routes.ts";
 import { PaperclipSignIn } from "../paperclip/paperclip-sign-in.ts";
 import { paperclipSignInRoutes } from "../paperclip/paperclip-sign-in-routes.ts";
+import { webCryptoDigest } from "../profile-token-key.ts";
 import type { HostRoute } from "../server/host-server.ts";
 import {
   readConnectionFile,
@@ -19,8 +20,10 @@ import {
   writeConnectionFile,
 } from "./connection-file.ts";
 import { DesktopMessaging } from "./desktop-messaging.ts";
+import { MessagingEngineSetting } from "./messaging-engine-setting.ts";
 import { MessagingPoller } from "./messaging-poller.ts";
 import { messagingRoutes } from "./messaging-routes.ts";
+import { ServerPairings } from "./server-engine.ts";
 
 /** The host's agent messaging: its routes, and what stops it. */
 export interface HostMessaging {
@@ -38,6 +41,10 @@ export const messagingCacheFolderName = "agent-messaging-cache";
  * the workspaces for the cache, so only the hand-over is served and no
  * provider ever starts.
  *
+ * Each workspace's messaging engine is read from the profile; a server's
+ * device token comes from `pairingSecrets`, the host's keychain, and
+ * without one a workspace set to a server reads as signed out.
+ *
  * Polling starts with the host but reads only connected sources, and none is
  * connected until Studio hands a key over, so a host that starts calls
  * nobody.
@@ -46,6 +53,7 @@ export function hostMessaging(
   profile: ProfileFolder | undefined,
   workspaceRoots: readonly string[],
   log: (text: string) => void,
+  pairingSecrets?: SecretStore,
 ): HostMessaging {
   const keys = new PaperclipKeys();
   if (profile === undefined) {
@@ -55,8 +63,14 @@ export function hostMessaging(
     log(
       `Agent messaging: ${failure.provider} failed ${failure.action}: ${describe(failure.error)}\n`,
     );
+  const warn = (message: string) => log(`Agent messaging engine: ${message}\n`);
   const messaging = new DesktopMessaging({
     keys,
+    engines: {
+      setting: new MessagingEngineSetting({ profile, digest: webCryptoDigest, warn }),
+      pairings: new ServerPairings(pairingSecrets),
+      warn,
+    },
     cacheRoot: join(profile.root, messagingCacheFolderName),
     workspaceRoots,
     readConnection: readConnectionFile,
@@ -86,6 +100,7 @@ export function hostMessaging(
     poll: () => messaging.refresh(),
   });
   const signIn = hostSignIn(keys, messaging, scheduler, poller);
+  const usesServer = (workspace: string) => messaging.usesServer(workspace);
   poller
     .start()
     .catch((error: unknown) => report({ provider: "scheduler", action: "start", error }));
@@ -97,9 +112,10 @@ export function hostMessaging(
         kept: async ({ workspace, connection }) =>
           (await messaging.of(workspace))?.connect(connection),
         log,
+        usesServer,
       }),
       ...messagingRoutes({ messaging, poller, log }),
-      ...paperclipSignInRoutes({ signIn, workspaceRoots, log }),
+      ...paperclipSignInRoutes({ signIn, workspaceRoots, log, usesServer }),
     ],
     stop: async () => {
       await poller.stop();

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { namedWorkspace } from "../server/named-workspace.ts";
+import { type JoinedEngine, joinedEngineOf, type ServerEngineOptions } from "./server-engine.ts";
 import {
   type Disconnected,
   WorkspaceMessaging,
@@ -9,9 +10,11 @@ import {
 
 /** What the desktop engine needs; each workspace gets its own messaging and cache folder. */
 export interface DesktopMessagingOptions
-  extends Omit<WorkspaceMessagingOptions, "workspace" | "cacheFolder"> {
+  extends Omit<WorkspaceMessagingOptions, "workspace" | "cacheFolder" | "engine"> {
   /** The messaging cache's folder in the app data folder; each workspace gets a folder inside it. */
   cacheRoot: string;
+  /** Each workspace's messaging engine setting and pairing; without them every workspace runs on this computer. */
+  engines?: Pick<ServerEngineOptions, "setting" | "pairings" | "warn">;
 }
 
 /**
@@ -34,13 +37,41 @@ export class DesktopMessaging {
     if (workspace === undefined) return undefined;
     const known = this.#workspaces.get(workspace);
     if (known !== undefined) return known;
+    const engine = await this.#engineOf(workspace);
+    // Another call may have made it while the setting was read.
+    const madeMeanwhile = this.#workspaces.get(workspace);
+    if (madeMeanwhile !== undefined) return madeMeanwhile;
     const made = new WorkspaceMessaging({
       ...this.#options,
       workspace,
       cacheFolder: join(this.#options.cacheRoot, folderNameOf(workspace)),
+      engine,
     });
     this.#workspaces.set(workspace, made);
     return made;
+  }
+
+  /**
+   * Whether the workspace at `folder` runs its messaging on a server, so
+   * Connect and Disconnect of local Paperclip are refused there
+   * (`agent-host.messaging-engine`); `false` for a folder that isn't one.
+   */
+  async usesServer(folder: string): Promise<boolean> {
+    return (await this.of(folder))?.engine.kind === "server";
+  }
+
+  /**
+   * Reads the setting and pairing of the workspace at `folder` again and
+   * joins what they say now, after the setting changed
+   * (`agent-host.messaging-engine`).
+   *
+   * @returns whether `folder` is the real path of a workspace the launcher named
+   */
+  async switchEngine(folder: string): Promise<boolean> {
+    const messaging = await this.of(folder);
+    if (messaging === undefined) return false;
+    messaging.switchEngine(await this.#engineOf(messaging.workspace));
+    return true;
   }
 
   /**
@@ -66,6 +97,17 @@ export class DesktopMessaging {
   /** Reads every workspace's connected sources again; the poller calls it. Failures are reported, never thrown. */
   async refresh(): Promise<void> {
     await Promise.all([...this.#workspaces.values()].map((workspace) => workspace.refresh()));
+  }
+
+  /** The workspace's engine as its setting says; "This computer" without a setting. */
+  #engineOf(workspace: string): Promise<JoinedEngine> {
+    const { engines, fetch, now } = this.#options;
+    if (engines === undefined) return Promise.resolve({ kind: "this-computer" });
+    return joinedEngineOf(workspace, {
+      ...engines,
+      ...(fetch === undefined ? {} : { fetch }),
+      ...(now === undefined ? {} : { now }),
+    });
   }
 
   /** Stops following every workspace's changes, when the host stops. */
