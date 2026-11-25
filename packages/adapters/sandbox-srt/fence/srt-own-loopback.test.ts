@@ -43,10 +43,11 @@ const withoutProxy = Object.fromEntries(
   Object.entries(process.env).filter(([name]) => !proxyNames.includes(name)),
 );
 // Asynchronous on purpose: the server below lives in this same process, and a
-// synchronous call would block it from answering curl.
+// synchronous call would block it from answering curl. --fail turns an error
+// page, such as srt's proxy refusing the address, into a curl error.
 const fetchWith = (args, env = process.env) =>
   new Promise((resolve) => {
-    execFile("curl", ["-s", "--max-time", "10", ...args, url], { encoding: "utf8", env }, (error, stdout) => {
+    execFile("curl", ["-s", "--fail", "--max-time", "10", ...args, url], { encoding: "utf8", env }, (error, stdout) => {
       resolve(error ? "refused: curl exit " + error.code : stdout);
     });
   });
