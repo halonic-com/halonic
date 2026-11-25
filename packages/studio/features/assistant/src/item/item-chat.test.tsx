@@ -126,7 +126,8 @@ verifies("assistant.chat.ask-about", () => {
     const root = createRoot(document.createElement("div"));
     await act(async () => root.render(page(triage)));
     const reads = chats.mock.calls.length;
-    expect(reads).toBe(1);
+    // One read finds the item's chat, and one fills its chat menu (flow-assistant 2.4).
+    expect(reads).toBe(2);
     await act(async () => root.render(page({ ...triage })));
     expect(chats.mock.calls.length).toBe(reads);
     act(() => root.unmount());
