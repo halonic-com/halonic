@@ -2390,6 +2390,12 @@ importers:
         specifier: 'catalog:'
         version: 0.32.0
     devDependencies:
+      '@halonicjs/adapter-memory':
+        specifier: workspace:*
+        version: link:../memory
+      '@halonicjs/engine':
+        specifier: workspace:*
+        version: link:../../core/engine
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../testing/spec
