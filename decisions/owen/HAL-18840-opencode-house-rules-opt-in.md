@@ -3,6 +3,7 @@
 - Task: HAL-18840 (found in the words and a11y check HAL-18822, on #6185)
 - Approval: HAL-18840, pending Liam's signature
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4qPqw/G9PosRvLAnzl8pHIGhW2dyKMqtRx70BeT1eD1ndD1fEzfeaueMUaKbSNIZwi2h0x/a/CWo1a48Qcp3AQ==
 
 ## What changes
 
