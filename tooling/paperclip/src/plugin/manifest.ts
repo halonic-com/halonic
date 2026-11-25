@@ -134,6 +134,35 @@ export const manifest: PaperclipPluginManifestV1 = {
           "The secret with a read-only GitHub token (PR_WATCHER_GITHUB_TOKEN). The watcher only sends GET requests and GraphQL queries to api.github.com with it.",
         format: "secret-ref",
       },
+      // Merge control's queue credential (ADR on HAL-17700): its own identity, never a board
+      // member's login. Read only by src/plugin/merge-control-job.ts, at each write, in act mode.
+      mergeQueueToken: {
+        type: "string",
+        title: "Merge queue token",
+        description:
+          "The secret with merge control's queue credential (a GitHub App or fine-grained token the board creates). Used only in act mode, only for the two merge-queue mutations, run reruns and cancels, and a pull request comment on the first repository, all to api.github.com.",
+        format: "secret-ref",
+      },
+      mergeControl: {
+        type: "object",
+        title: "Merge control",
+        properties: {
+          mode: {
+            type: "string",
+            title: "Mode",
+            description:
+              "off: nothing runs. shadow: it decides each minute and writes nothing, and posts a daily diff with the Merger's actions. act: it carries its actions out (only after the board's yes).",
+            enum: ["off", "shadow", "act"],
+            default: "off",
+          },
+          diffTask: {
+            type: "string",
+            title: "Shadow diff task",
+            description:
+              "The id of the task the daily shadow diff is posted on (HAL-17700). Empty: the diff is only logged.",
+          },
+        },
+      },
       repos: {
         type: "array",
         title: "Repositories",

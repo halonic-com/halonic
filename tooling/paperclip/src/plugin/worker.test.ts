@@ -29,6 +29,7 @@ verifies("paperclip.pr-watcher-plugin", () => {
     // Every new secret setting is listed here on purpose, so the guard's reviewer sees it (HAL-16876).
     expect(secrets.map(([key]) => key)).toEqual([
       "githubToken",
+      "mergeQueueToken",
       "paperclipApiKey",
       "taggerAnthropicKey",
       "trialResultsTokenRef",
