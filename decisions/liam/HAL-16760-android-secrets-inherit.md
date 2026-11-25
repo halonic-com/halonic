@@ -3,6 +3,7 @@
 - Task: HAL-16760 (board decision, 24 Nov 14:37 UTC: "go with (B), `secrets: inherit` on the `android` job")
 - Approval: the board chose this fix on HAL-16760; Julian reviewed the pull requests on HAL-17598 and signs this note, because Liam wrote them
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:bWK07+uViwSlA8jb5FKvpktU7opW7JiBvhGf58ixPN72VVp/xQ4g8IsnbZU+Ws9fxGi/9nl1c2vWAvuEPIYOBA==
 
 ## What changes
 
