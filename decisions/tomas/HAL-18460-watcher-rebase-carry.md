@@ -3,6 +3,7 @@
 - Task: HAL-18460
 - Approval: the board asked for both on HAL-18460 (25 Nov), via the board supervisor; Liam reviews this pull request and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Psmvr/qFnfvb/j7S8QPpXynzPBTk1X3IswicWWpNEsYkqgQZn9RZ1eiLcLJdLEsfF0/KIxT+2sYgJloatbFiBg==
 
 Review is the bottleneck, and two causes were mechanical:
 
