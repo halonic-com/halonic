@@ -1,5 +1,6 @@
 import {
   isProjectId,
+  isReminderDue,
   type PersonalPublishing,
   type SetupEdit,
   type SetupStep,
@@ -19,6 +20,7 @@ import type {
 } from "../api.ts";
 import { connectorProblem } from "../connector-problem.ts";
 import { stepTitle } from "../step-names.ts";
+import { shownWeeklySignIn } from "../weekly-words.ts";
 import { credentialSaves } from "./credential-saves.ts";
 import { useNotAnswering } from "./not-answering.tsx";
 import { ProblemBanner } from "./problem-banner.tsx";
@@ -90,9 +92,10 @@ function hasDoneButton(step: SetupStep): boolean {
  * titles. Each step's title is a heading and takes focus when the step opens.
  */
 export function Checklist(props: ChecklistProps) {
-  const { account, steps, answering, onEdit, close } = props;
+  const { account, steps, answering, onEdit } = props;
+  const now = new Date();
   const current = currentStep(account, steps);
-  const problem = connectorProblem(account);
+  const problem = connectorProblem(account, now);
   // A step opened with Edit, until **Done, next** goes on to the current one. An account Google
   // refused opens at the first step it needs again.
   const [editing, setEditing] = useState<StepId | null>(() => {
@@ -152,6 +155,15 @@ export function Checklist(props: ChecklistProps) {
     if (failure !== null) retry.current = failure.retry;
   });
 
+  /**
+   * **Not now**. Closing the "Sign in again" reminder keeps it out of the Inbox for this sign-in
+   * (design 5.2). The item closes even if that can't be saved: the reminder then just comes back.
+   */
+  function close() {
+    if (isReminderDue(account.record, now)) onEdit({ kind: "reminder-closed" }).catch(() => {});
+    props.close();
+  }
+
   async function doneNext() {
     if (!answering || busy || open === undefined) return;
     if (needsTick(open, account.record)) return;
@@ -190,7 +202,18 @@ export function Checklist(props: ChecklistProps) {
   return (
     <>
       {problem === undefined ? null : (
-        <ProblemBanner problem={problem} onAction={() => setEditing(problem.actionStep)} />
+        <ProblemBanner
+          problem={problem}
+          onAction={() => setEditing(problem.actionStep)}
+          onPublish={function publish() {
+            onEdit({ kind: "publishing", publishing: "production" })
+              .then(() => setEditing(null))
+              .catch((error: unknown) => {
+                setFailed(failureLine("save your progress", error));
+                retry.current = publish;
+              });
+          }}
+        />
       )}
       <ol className="flex flex-col gap-3">
         {steps.map((step) => {
@@ -279,6 +302,7 @@ export function Checklist(props: ChecklistProps) {
                     checkAgainEntry: props.checkAgainEntry,
                     accountRef: account.record.accountRef,
                     answering,
+                    weekly: shownWeeklySignIn(account.record, now),
                   }}
                   signInEnded={{ ending: account.record.lastSignInEnded?.kind ?? null }}
                   wrongAccount={{

@@ -1,4 +1,4 @@
-import { savedConnectorState } from "@halonicjs/google-setup";
+import { savedConnectorState, signInEndsSoon } from "@halonicjs/google-setup";
 import type { ConnectorFacts } from "@halonicjs/studio-feature-library/api";
 import type { GoogleSetupAccount } from "./api.ts";
 
@@ -9,10 +9,15 @@ import type { GoogleSetupAccount } from "./api.ts";
  * An API switched off during a run is not in the record, so `apiOn` stays true here; the run's
  * own problem tells it.
  *
+ * @param now - the time to judge whether a personal *Testing* app's sign-in ends within a day
+ *
  * @example
  * connectionStateOf(connectorFacts(account)); // "needs-sign-in"
  */
-export function connectorFacts(account: GoogleSetupAccount): ConnectorFacts {
+export function connectorFacts(
+  account: GoogleSetupAccount,
+  now: Date = new Date(),
+): ConnectorFacts {
   const { record } = account;
   const state = savedConnectorState(record);
   return {
@@ -20,5 +25,6 @@ export function connectorFacts(account: GoogleSetupAccount): ConnectorFacts {
     signedIn: record.lastSignInAt !== null && state?.kind !== "needs-sign-in-again",
     secretValid: state?.kind !== "needs-new-secret",
     apiOn: true,
+    signInEndsSoon: signInEndsSoon(record, now),
   };
 }

@@ -231,8 +231,14 @@ const setupValues = s
     clientSecret: s.object({ clientRef: ref, savedAt: time }).strict().nullable(),
     /** When a sign-in was started and hasn't come back, for "didn't finish". */
     signInStartedAt: time.nullable(),
-    /** When the last sign-in came back, for the 7-day hint. */
+    /** When the last sign-in came back, for the end date and the reminder of a *Testing* app. */
     lastSignInAt: time.nullable(),
+    /**
+     * When the user closed the "Sign in again" reminder with **Not now**. It
+     * hides the reminder for the sign-in it was closed for only (design 5.2).
+     */
+    // Records written before HAL-18664 have no such key: the reminder was never closed.
+    reminderClosedAt: time.nullable().default(null),
     /**
      * When a sign-in came back for another account than the connector's, and
      * nothing was saved. It holds no address: the host keeps that for a few

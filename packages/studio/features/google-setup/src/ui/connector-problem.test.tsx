@@ -80,25 +80,49 @@ verifies("google-setup.connector-problem", () => {
     const container = await open([refused("sign-in", { inProductionTickedAt: signedInAt })]);
     expect(openStepNumber(container)).toBe(7);
     expect(container.textContent).toContain(
-      "Google no longer accepts the sign-in for x@example.com. This happens when access is removed in your Google account or when the password changes. Nothing was sent.",
+      "Google no longer accepts Halonic's sign-in for x@example.com. This happens when access is removed in your Google account or when the password changes. Nothing ran.",
     );
     expect(buttonNames(container)).toContain("Sign in with Google");
   });
 
-  it("names the Testing cause unless In production was ticked, and leads with the hint at 7 days", async () => {
-    const hinted = await open([refused("sign-in")]);
-    expect(hinted.textContent).toContain("or when an app in Testing reaches 7 days");
-    expect(hinted.querySelector("strong.block")?.textContent).toBe(
-      "Your app is probably still in Testing. Google ends the sign-in after 7 days for those. Publish it, then sign in again.",
+  it("says the weekly sign-in ended for invalid_grant at day 7 on a Testing app, at step 7 only", async () => {
+    const container = await open([refused("sign-in")]);
+    expect(container.textContent).toContain(
+      "Your weekly sign-in ended. Google ends the sign-in after 7 days for apps in Testing. Sign in again; your setup is kept. Nothing ran.",
     );
-    expect(openStepNumber(hinted)).toBe(3);
+    expect(container.textContent).not.toContain("no longer accepts");
+    const summaries = [...container.querySelectorAll("details summary")].map((x) => x.textContent);
+    expect(summaries).toContain("Why not publish?");
+    // A personal app in Testing has six steps, so signing in is step 6.
+    expect(openStepNumber(container)).toBe(6);
   });
 
-  it("gives no hint on a Workspace account, which has no app in Testing", async () => {
+  it("gives the generic sentence for invalid_grant at day 3, or at day 7 on an app In production", async () => {
+    const early = await open([
+      refused("sign-in", { refreshRefused: { reason: "sign-in", at: "2026-11-08T02:10:00.000Z" } }),
+    ]);
+    expect(early.textContent).toContain(
+      "Google no longer accepts Halonic's sign-in for x@example.com. This happens when access is removed in your Google account, when the password changes, or when an app in Testing reaches 7 days. Nothing ran.",
+    );
+    expect(early.textContent).not.toContain("Your weekly sign-in ended.");
+    unmountAll();
+
+    const published = await open([
+      refused("sign-in", {
+        personalApp: { publishing: "production", testUserTickedAt: null, sharedApp: false },
+      }),
+    ]);
+    expect(published.textContent).toContain("Google no longer accepts Halonic's sign-in");
+    expect(published.textContent).not.toContain("Your weekly sign-in ended.");
+    expect(published.textContent).not.toContain("or when an app in Testing reaches 7 days");
+  });
+
+  it("never says the weekly sign-in ended on a Workspace account, which has no app in Testing", async () => {
     const container = await open([
       refused("sign-in", { accountType: "workspace", inProductionTickedAt: null }),
     ]);
-    expect(container.querySelector("strong.block")).toBeNull();
+    expect(container.textContent).toContain("Google no longer accepts Halonic's sign-in");
+    expect(container.textContent).not.toContain("Your weekly sign-in ended.");
     expect(openStepNumber(container)).toBe(7);
   });
 
@@ -149,16 +173,16 @@ verifies("google-setup.connector-problem", () => {
       "phone",
     );
     expect(container.querySelectorAll("button")).toHaveLength(0);
-    expect(container.textContent).toContain("Google no longer accepts the sign-in");
+    expect(container.textContent).toContain("Google no longer accepts Halonic's sign-in");
     expect(container.textContent).toContain("Fix this on your computer: Library › Connectors");
     expect(container.textContent).toContain(
       "Your client ID and secret are kept. Only the sign-in is needed.",
     );
   });
 
-  it("does not say the client is kept on a phone under the Testing hint, where the app must be published first", async () => {
+  it("does not say the client is kept again on a phone when the weekly sign-in ended, which says so", async () => {
     const container = await open([refused("sign-in")], "phone");
-    expect(container.querySelector("strong.block")?.textContent).toContain("Publish it");
+    expect(container.textContent).toContain("your setup is kept");
     expect(container.textContent).not.toContain("are kept");
   });
 

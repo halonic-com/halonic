@@ -36,6 +36,7 @@ async function setupView(
     signInStartedAt: record.signInStartedAt,
     refreshRefused: record.refreshRefused,
     lastSignInAt: record.lastSignInAt,
+    reminderClosedAt: record.reminderClosedAt,
     wrongAccountAt: record.wrongAccountAt,
     lastSignInEnded: record.lastSignInEnded,
     services: record.services,

@@ -299,6 +299,7 @@ verifies("studio.check-computer.source", () => {
       clientSecret: null,
       signInStartedAt: null,
       lastSignInAt: null,
+      reminderClosedAt: null,
       wrongAccountAt: null,
       lastSignInEnded: null,
       services: {},

@@ -104,7 +104,7 @@ export function PhoneView({
               ? "Fix this on the computer running Halonic: Library › Connectors"
               : "Fix this on your computer: Library › Connectors"}
           </ViewOnlyLine>
-          {problem.actionStep === "sign-in" && problem.lead === undefined ? (
+          {problem.actionStep === "sign-in" && problem.weekly !== "ended" ? (
             <ViewOnlyLine>
               Your client ID and secret are kept. Only the sign-in is needed.
             </ViewOnlyLine>

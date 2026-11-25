@@ -44,6 +44,8 @@ const setupSchema = s.object({
   clientSecretSavedAt: s.string().nullable(),
   signInStartedAt: s.string().nullable(),
   lastSignInAt: s.string().nullable(),
+  // Missing from a computer that runs an older Halonic: the reminder was never closed.
+  reminderClosedAt: s.string().nullable().default(null),
   wrongAccountAt: s.string().nullable(),
   lastSignInEnded: s.unknown(),
   refreshRefused: s.unknown(),
@@ -169,6 +171,7 @@ function recordOf(setup: Listed["setups"][number]): SetupRecord {
         : { clientRef: setup.accountRef, savedAt: setup.clientSecretSavedAt },
     signInStartedAt: setup.signInStartedAt,
     lastSignInAt: setup.lastSignInAt,
+    reminderClosedAt: setup.reminderClosedAt,
     wrongAccountAt: setup.wrongAccountAt,
     lastSignInEnded: setup.lastSignInEnded as SetupRecord["lastSignInEnded"],
     services: setup.services as SetupRecord["services"],

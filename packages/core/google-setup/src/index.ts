@@ -35,7 +35,6 @@ export {
   type ConnectorStateRecord,
   connectorState,
   savedConnectorState,
-  testingHintWindowMs,
 } from "./connector-state.ts";
 export { type ConsolePage, isApiHost, isProjectId } from "./console-links.ts";
 export { type GoogleTokenLocation, googleTokenFor } from "./google-token-for.ts";
@@ -117,3 +116,15 @@ export {
   type TokenAnswer,
   type TokenAnswerMeaning,
 } from "./token-answer.ts";
+export {
+  isInTesting,
+  isReminderDue,
+  isWeeklyEnd,
+  reminderBeforeEndMs,
+  signInEndsSoon,
+  type WeeklySignIn,
+  type WeeklySignInRecord,
+  weeklyEndWindowMs,
+  weeklySignIn,
+  weeklySignInMs,
+} from "./weekly-sign-in.ts";

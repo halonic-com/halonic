@@ -215,7 +215,8 @@ await setups.update(accountRef, { kind: "client-secret-saved", clientRef }); // 
 | `clientId` | the client ID from step 6 |
 | `clientSecret` | the secret's `clientRef` and when it was saved |
 | `signInStartedAt` | a sign-in that hasn't come back, for "didn't finish" |
-| `lastSignInAt` | the last sign-in, for the 7-day hint |
+| `lastSignInAt` | the last sign-in, for the end date and the reminder of a personal app in *Testing* |
+| `reminderClosedAt` | when the "Sign in again" reminder was closed with **Not now** |
 | `services` | per service: scope granted, last check result, and when |
 
 Every change is a `SetupEdit` named after what happened, stamped by the clock. The record is checked
@@ -335,10 +336,14 @@ When a token refresh is refused, a run must not ask Google again.
   `client` refusal; a `sign-in` or `client-gone` refusal stays.
 - `connectorState(record, problem, now)` turns a refusal, or an API switched off during a run
   (`ApiDisabled`), into the badge: **Needs sign-in again**, **Needs new secret** or **API off**, each
-  with the steps the setup item reopens at. A personal account without the "In production" tick
-  that is refused 6½ to 7½ days after its last sign-in (`testingHintWindowMs`) also gets the
-  Testing hint first. `savedConnectorState(record)` brings the badge back after a restart, or gives
+  with the steps the setup item reopens at. A personal app in *Testing* that is refused 6½ to 7½
+  days after its last sign-in (`weeklyEndWindowMs`) is the weekly end (`weeklyEnd`).
+  `savedConnectorState(record)` brings the badge back after a restart, or gives
   `null` when nothing is saved.
+- `weeklySignIn(record)` gives a personal *Testing* app's end date, 7 days after the last sign-in,
+  and the reminder a day before, from the record alone. `signInEndsSoon(record, now)` is the
+  **Sign-in ends soon** state, and `isReminderDue(record, now)` says whether the "Sign in again"
+  item belongs in the Inbox, until it is closed with **Not now** for that sign-in.
 
 ## Errors
 
