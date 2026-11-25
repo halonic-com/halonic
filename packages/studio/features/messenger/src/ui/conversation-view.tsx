@@ -158,6 +158,7 @@ function useMessages(
     if (thisRead !== reads.current) return;
     setMessages(found);
     setQuestions(asked);
+    if (search.trim() === "") messenger.markSeen(id, found);
     const before = search.trim() === "" ? seen.current : undefined;
     seen.current = search.trim() === "" ? new Set(found.map((message) => message.id)) : undefined;
     const fresh = before === undefined ? undefined : newestFromAgent(found, before);

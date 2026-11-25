@@ -29,6 +29,23 @@ export const messengerWords = {
   },
   searchLabel: "Search this chat",
   noMatches: "No message in this chat matches.",
+  /**
+   * Loading and failed reads, in the Inbox's words (design review HAL-18481, improvement 3,
+   * approved by the board on HAL-10, 25 Nov).
+   */
+  load: {
+    chats: "Loading your chats",
+    chatsFailed: "Couldn't load your chats",
+    tryAgain: "Try again",
+    /** After 10 seconds, the kit List's own words. */
+    slow: "Still loading",
+  },
+  /** A row's chip while its agent's cards wait (design review HAL-18481, improvement 4). */
+  openCards: (count: number) => (count === 1 ? "1 card" : `${count} cards`),
+  /** The unread dot, for a screen reader. */
+  unread: "Unread",
+  /** Before the person's own message in a row's preview. */
+  youSaid: "You: ",
   /** One pane at a time in a narrow window: back from the open chat to the list (HAL-18074). */
   backToChats: "Back to chats",
   /** Read out when the agent writes after the chat opened: its name and the message's start. */

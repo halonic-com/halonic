@@ -65,7 +65,7 @@ export class QuickActions {
 }
 
 /** Whether a card came from the chat's own agent, on the chat's own source. */
-function isFromAgentOf(item: InboxItem, row: ConversationRow): boolean {
+export function isFromAgentOf(item: InboxItem, row: ConversationRow): boolean {
   return (
     item.source === row.conversation.source &&
     item.from.kind === "agent" &&
