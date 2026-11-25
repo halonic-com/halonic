@@ -37,11 +37,7 @@ import {
 } from "../merge-control/state.ts";
 import { type QueueWriteClient, queueWriteClient } from "../merge-control/write-client.ts";
 import { companyConfig, readSettings, requestTimeoutMs } from "./job.ts";
-import {
-  type MergeStateClient,
-  mergeControlNamespace,
-  type PassLock,
-} from "./merge-control-lock.ts";
+import { type MergeStateClient, type PassLock, passStateKey } from "./merge-control-lock.ts";
 
 /**
  * The `merge-control` job's pass for one company (ADR on HAL-17700): read
@@ -128,28 +124,20 @@ export interface StoredMergeControl {
   readonly budget?: StoredBudget;
 }
 
-function key(companyId: string) {
-  return {
-    scopeKind: "company",
-    scopeId: companyId,
-    namespace: mergeControlNamespace,
-    stateKey: "pass",
-  } as const;
-}
-
 /** The stored entry, or a fresh one; another version is refused, not guessed at. */
 export async function loadMergeControl(
   state: MergeStateClient,
   companyId: string,
 ): Promise<StoredMergeControl> {
-  const stored = (await state.get(key(companyId))) as StoredMergeControl | null;
+  const stored = (await state.get(passStateKey(companyId))) as StoredMergeControl | null;
   if (stored === null) {
     return { version: 1, state: emptyMergeState, shadow: null };
   }
   if (stored.version !== 1 || stored.state?.version !== 1) {
     throw new Error("Merge control: its stored state has another version.");
   }
-  return stored;
+  // A state saved before a field was added (`heldRuns`, HAL-18147) gets its empty value.
+  return { ...stored, state: { ...emptyMergeState, ...stored.state } };
 }
 
 function costLine(action: MergeAction): string | undefined {
@@ -288,7 +276,7 @@ async function refusedPass(
     now,
     why,
   );
-  await stateClient.set(key(companyId), { ...stored, budget: budget.stored });
+  await stateClient.set(passStateKey(companyId), { ...stored, budget: budget.stored });
   return { degraded: true, summary: budget.summary };
 }
 
@@ -338,6 +326,11 @@ async function lockedPass(
     }
   }
   const state = keepSent(stored.state, decision.state, decision.actions, results);
-  await stateClient.set(key(companyId), { version: 1, state, shadow, budget: budget.stored });
+  await stateClient.set(passStateKey(companyId), {
+    version: 1,
+    state,
+    shadow,
+    budget: budget.stored,
+  });
   return { degraded: budget.degraded, summary: budget.summary };
 }

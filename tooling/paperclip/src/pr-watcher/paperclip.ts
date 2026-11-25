@@ -59,9 +59,14 @@ export interface Paperclip {
   /**
    * Comments and wakes the task's assignee. `key` makes a repeated wake-up a
    * no-op. A parked task is moved to `todo` only when Paperclip won't wake it
-   * as it is.
+   * as it is; with `todo`, any task not in `todo` is moved there first (HAL-18147).
    */
-  wake(taskId: string, body: string, key: string): Promise<WriteOutcome>;
+  wake(
+    taskId: string,
+    body: string,
+    key: string,
+    options?: { readonly todo?: boolean },
+  ): Promise<WriteOutcome>;
   markDone(taskId: string, body: string): Promise<WriteOutcome>;
   /**
    * Comments, then gives the task to the reviewer `to` with status `todo` and

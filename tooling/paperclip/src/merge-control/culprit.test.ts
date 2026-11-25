@@ -108,3 +108,35 @@ verifies("paperclip.merge-control-culprit-hold", () => {
     expect(groupPull("gh-readonly-queue/main/pr-5719-abc")).toBe(5719);
   });
 });
+
+verifies("paperclip.pr-watcher-held", () => {
+  test("a hold keeps its run, failed jobs and error line for the PR watcher, until a new head", () => {
+    const annotated = group(5, {
+      failedJobs: [
+        {
+          id: 1,
+          name: "Test (core)",
+          url: "https://github.com/acme/tools/job/1",
+          failedSteps: ["Run tests"],
+          annotationTitles: ["Process completed with exit code 1.", "Expected 3, received 4"],
+        },
+      ],
+    });
+    const held = pass(snapshot({ pulls: [pull(5)], groupRuns: [annotated] }));
+    expect(held.state.heldRuns).toEqual({
+      "5": {
+        head: headOf(5),
+        url: "https://github.com/acme/tools/actions/runs/7005",
+        jobs: ["Test (core)"],
+        error: "Expected 3, received 4",
+      },
+    });
+    const pushed = pass(snapshot({ pulls: [pull(5, { head: headOf(5, 1) })] }), held.state);
+    expect(pushed.state.heldRuns).toEqual({});
+  });
+
+  test("a run whose annotations say only an exit code has no error line", () => {
+    const plain = pass(snapshot({ pulls: [pull(5)], groupRuns: [group(5)] }));
+    expect(plain.state.heldRuns["5"]?.error).toBeNull();
+  });
+});

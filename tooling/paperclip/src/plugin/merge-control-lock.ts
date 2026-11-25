@@ -11,6 +11,16 @@ import type { PluginStateClient, ScopeKey } from "@paperclipai/plugin-sdk";
 /** Merge control's namespace in plugin state. */
 export const mergeControlNamespace = "merge-control";
 
+/** Where a company's merge-control pass keeps its state; the PR watcher reads it too (HAL-18147). */
+export function passStateKey(companyId: string) {
+  return {
+    scopeKind: "company",
+    scopeId: companyId,
+    namespace: mergeControlNamespace,
+    stateKey: "pass",
+  } as const;
+}
+
 /** The state client calls merge control uses. */
 export type MergeStateClient = Pick<PluginStateClient, "get" | "set">;
 

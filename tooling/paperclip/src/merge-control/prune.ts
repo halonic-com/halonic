@@ -24,6 +24,12 @@ export function pruneState(context: PassContext): void {
   for (const key of heldGone) {
     delete state.failedHeads[key];
   }
+  // A hold's run goes with its hold, and so does one whose hold was lifted by hand.
+  for (const key of Object.keys(state.heldRuns)) {
+    if (state.failedHeads[key] !== state.heldRuns[key]?.head) {
+      delete state.heldRuns[key];
+    }
+  }
   for (const key of cooldownGone) {
     delete state.cooldown[key];
   }

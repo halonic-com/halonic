@@ -34,6 +34,15 @@ function failed(run: GroupRun): boolean {
   return run.conclusion === "failure" || run.conclusion === "cancelled";
 }
 
+/** GitHub's own annotation on every failed step: it says nothing the job name doesn't. */
+const exitCodePattern = /^Process completed with exit code/i;
+
+/** The first failure annotation's title that says what failed, for the author's wake, or null. */
+export function errorLine(run: GroupRun): string | null {
+  const titles = run.failedJobs.flatMap((job) => job.annotationTitles ?? []);
+  return titles.find((title) => title.trim() !== "" && !exitCodePattern.test(title)) ?? null;
+}
+
 /** Sets the hold for a group's pull request that GitHub took out, or lets a cancelled group off once. */
 function holdCulprit(context: PassContext, run: GroupRun, row: GateRow, where: string): void {
   const { state } = context;
@@ -69,12 +78,13 @@ function holdCulprit(context: PassContext, run: GroupRun, row: GateRow, where: s
     return;
   }
   state.failedHeads[key] = head;
+  const jobs = run.failedJobs.map((job) => job.name);
+  state.heldRuns[key] = { head, url: run.url, jobs, error: errorLine(run) };
   logLine(
     context,
     "culprit",
     `failed group ${where} culprit #${number} (out of queue, held until a new head)`,
   );
-  const jobs = run.failedJobs.map((job) => job.name);
   commentOnce(context, "held", number, head, texts.culprit(jobs, run.url));
   wakeAuthor(context, row.pull, "group-failed", failedGroupFacts(row.pull, jobs, run.url));
 }

@@ -42,6 +42,15 @@ export interface PullFacts {
    * agents' shared one. It is also in `approvals`.
    */
   readonly githubApproval?: { readonly by: string; readonly head: string };
+  /**
+   * Open only: merge control holds this head because its merge group failed
+   * (HAL-18147), with the run, its failed jobs and an error line when one was read.
+   */
+  readonly held?: {
+    readonly url: string;
+    readonly jobs: readonly string[];
+    readonly error: string | null;
+  };
   /** Merged only: `ci-ok` passed on the merge commit, or a later base-branch commit is green. */
   readonly landed: boolean;
   /** Merged only: when it merged. */
@@ -71,7 +80,8 @@ export interface Reason {
     | "review"
     | "approved"
     | "merged"
-    | "stack-conflict";
+    | "stack-conflict"
+    | "held";
   readonly key: string;
   /** `stack-conflict` only: the keys of the reasons it answers, marked as reported with it. */
   readonly also?: readonly string[];
@@ -124,28 +134,34 @@ export function short(sha: string): string {
 /**
  * Everything about the open pull requests that may need the author, before
  * the watcher checks whether it already told them. A failed merge group is
- * not here: it belongs to the queue session, which finds the culprit.
+ * here only once merge control has found the culprit and holds its head.
  */
 export function candidates(pulls: readonly PullFacts[]): Reason[] {
+  return pulls.filter((each) => each.state === "open").flatMap(openReasons);
+}
+
+/** The states of one open pull request that may need its author. */
+function openReasons(pull: PullFacts): Reason[] {
   const found: Reason[] = [];
-  for (const pull of pulls.filter((each) => each.state === "open")) {
-    const at = `${pull.repo}#${pull.number} ${short(pull.head)}`;
-    if (pull.ciOkOnHead === "failure") {
-      found.push({ pull, kind: "ci-red", key: `${at} ci-red` });
-    }
-    if (pull.conflicting && !pull.inQueue && !pull.draft) {
-      found.push({ pull, kind: "conflict", key: `${at} conflict` });
-    }
-    if (pull.retargeted && !pull.inQueue && !pull.draft) {
-      found.push({ pull, kind: "retargeted", key: `${at} retargeted` });
-    }
-    if (pull.latestReview !== undefined) {
-      found.push({ pull, kind: "review", key: `${at} review ${pull.latestReview.id}` });
-    }
-    // Nobody queues on such a repository: whoever holds the task merges it.
-    if (pull.githubApproval !== undefined && !pull.draft && !pull.inQueue) {
-      found.push({ pull, kind: "approved", key: `${at} approved on GitHub` });
-    }
+  const at = `${pull.repo}#${pull.number} ${short(pull.head)}`;
+  if (pull.ciOkOnHead === "failure") {
+    found.push({ pull, kind: "ci-red", key: `${at} ci-red` });
+  }
+  if (pull.conflicting && !pull.inQueue && !pull.draft) {
+    found.push({ pull, kind: "conflict", key: `${at} conflict` });
+  }
+  if (pull.retargeted && !pull.inQueue && !pull.draft) {
+    found.push({ pull, kind: "retargeted", key: `${at} retargeted` });
+  }
+  if (pull.latestReview !== undefined) {
+    found.push({ pull, kind: "review", key: `${at} review ${pull.latestReview.id}` });
+  }
+  if (pull.held !== undefined) {
+    found.push({ pull, kind: "held", key: `${at} held` });
+  }
+  // Nobody queues on such a repository: whoever holds the task merges it.
+  if (pull.githubApproval !== undefined && !pull.draft && !pull.inQueue) {
+    found.push({ pull, kind: "approved", key: `${at} approved on GitHub` });
   }
   return found;
 }
@@ -236,19 +252,56 @@ function commentedSinceMerge(pulls: readonly PullFacts[], memory: Memory): Reaso
 }
 
 /**
- * The pull requests of a parked task that GitHub moved to the default branch:
- * the one thing the watcher tells its holder about (HAL-17869). #5737 sat
- * blocked for 2 hours on 24 Nov because its task was in `backlog`.
+ * The pull requests of a parked task that GitHub moved to the default branch
+ * (HAL-17869; #5737 sat blocked for 2 hours on 24 Nov because its task was in
+ * `backlog`), or whose head merge control holds (HAL-18147): the only states
+ * the watcher wakes its holder for.
  */
 export function parkedCandidates(pulls: readonly PullFacts[]): Reason[] {
-  return candidates(pulls).filter((reason) => reason.kind === "retargeted");
+  return candidates(pulls).filter(
+    (reason) => reason.kind === "retargeted" || reason.kind === "held",
+  );
 }
 
-/** A parked task: a wake for a retargeted pull request, and nothing else, not even done. */
-function parkedDecision(pulls: readonly PullFacts[], memory: Memory): Decision {
+/**
+ * Done, unless the author said more is coming after the last merge, a child
+ * task is open, or someone commented after the merge. That comment wakes the
+ * author once; on a parked task it doesn't, since a wake would pick the task
+ * up, and its holder put it aside on purpose (HAL-17897 waits on a live check).
+ */
+function doneDecision(
+  task: WatchedTask,
+  closed: Extract<Decision, { kind: "done" }>,
+  memory: Memory,
+): Decision {
+  if (heldAfterMerge(closed.pulls, memory)) {
+    return { kind: "skip", why: "its author said more pull requests are coming" };
+  }
+  if (task.openChildren) {
+    return { kind: "skip", why: "it has a child task that isn't done" };
+  }
+  const reason = commentedSinceMerge(closed.pulls, memory);
+  if (reason === undefined) {
+    return closed;
+  }
+  return task.parked === true || memory.reported.has(reason.key)
+    ? { kind: "skip", why: "it got comments after its merge; its author decides" }
+    : { kind: "wake", reasons: [reason] };
+}
+
+/**
+ * A parked task: done like any other once its pull requests landed (HAL-18147;
+ * a task blocked on a sign-off that has since come stayed open), else a wake
+ * only for a retargeted or held pull request.
+ */
+function parkedDecision(task: WatchedTask, pulls: readonly PullFacts[], memory: Memory): Decision {
+  const closed = closedOutcome(pulls);
+  if (closed?.kind === "done") {
+    return doneDecision(task, closed, memory);
+  }
   const reasons = newReasons(parkedCandidates(pulls), memory);
   return reasons.length === 0
-    ? { kind: "skip", why: "it is parked; only a retargeted pull request wakes it" }
+    ? { kind: "skip", why: "it is parked; only a retargeted or held pull request wakes it" }
     : { kind: "wake", reasons };
 }
 
@@ -258,7 +311,8 @@ function parkedDecision(pulls: readonly PullFacts[], memory: Memory): Decision {
  * or the branches name different agents, the watcher does nothing. Done
  * also waits for its child tasks and for the author's hold line, and a
  * comment after the last merge turns it into one wake for the author. A
- * parked task only hears about a retargeted pull request.
+ * parked task is done the same way, but hears only about a retargeted or
+ * held pull request.
  */
 export function decide(
   task: WatchedTask,
@@ -273,23 +327,11 @@ export function decide(
     return { kind: "skip", why: "its author is already running on it" };
   }
   if (task.parked === true) {
-    return parkedDecision(pulls, memory);
+    return parkedDecision(task, pulls, memory);
   }
   const closed = closedOutcome(pulls);
-  if (closed?.kind === "done" && heldAfterMerge(closed.pulls, memory)) {
-    return { kind: "skip", why: "its author said more pull requests are coming" };
-  }
-  if (closed?.kind === "done" && task.openChildren) {
-    return { kind: "skip", why: "it has a child task that isn't done" };
-  }
   if (closed?.kind === "done") {
-    const reason = commentedSinceMerge(closed.pulls, memory);
-    if (reason === undefined) {
-      return closed;
-    }
-    return memory.reported.has(reason.key)
-      ? { kind: "skip", why: "it got comments after its merge; its author decides" }
-      : { kind: "wake", reasons: [reason] };
+    return doneDecision(task, closed, memory);
   }
   if (closed !== undefined) {
     return closed;

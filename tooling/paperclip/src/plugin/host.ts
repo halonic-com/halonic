@@ -18,8 +18,9 @@ import {
  * only file that changes a task through the SDK: `doneOnly` lets the watcher
  * set `done`, `handoffOnly` lets it give a task to one agent with status
  * `todo` (its reviewer, HAL-17675), `todoOnly` lets its unblock sweep set `todo`
- * on a blocked task (HAL-17692) and a wake pick up a parked task Paperclip
- * won't wake as it is (HAL-17869), `highOnly` lets a long review wait raise
+ * on a blocked task (HAL-17692), a wake pick up a parked task Paperclip
+ * won't wake as it is (HAL-17869) and a held head's task in any status
+ * (HAL-18147), `highOnly` lets a long review wait raise
  * a task to `high` (HAL-17920), and nothing else; `setTaskLabels` lets the difficulty tagger
  * set labels and nothing else, and `assignTaskBack` lets the hand-off limit
  * set the task's agent and nothing else, because the manifest can't narrow
@@ -181,9 +182,13 @@ export function paperclipHost(host: HostApi, companyId: string): Paperclip {
       const agents = await host.agents.list({ companyId, limit: pageSize });
       return agents.map((agent): AgentRow => ({ id: agent.id, urlKey: agent.urlKey }));
     },
-    async wake(taskId, body, key) {
-      if (!(await stillWatched(host, taskId, companyId, wakeStatuses))) {
+    async wake(taskId, body, key, options = {}) {
+      const issue = await host.issues.get(taskId, companyId);
+      if (issue === null || !wakeStatuses.has(issue.status)) {
         return "closed";
+      }
+      if (options.todo === true && issue.status !== "todo") {
+        await host.issues.update(taskId, todoOnly({ status: "todo" }), companyId);
       }
       await host.issues.createComment(taskId, body, companyId);
       // A plugin's comment wakes nobody, so the wake-up is its own call.
@@ -196,7 +201,8 @@ export function paperclipHost(host: HostApi, companyId: string): Paperclip {
       return wakeAssignee(host, taskId, companyId, key);
     },
     async markDone(taskId, body) {
-      if (!(await stillWatched(host, taskId, companyId))) {
+      // A parked task is done too once its pull requests landed (HAL-18147).
+      if (!(await stillWatched(host, taskId, companyId, wakeStatuses))) {
         return "closed";
       }
       await host.issues.update(taskId, doneOnly({ status: "done" }), companyId);

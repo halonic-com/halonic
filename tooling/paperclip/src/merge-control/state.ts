@@ -44,6 +44,16 @@ export interface MainBroken {
   readonly files: readonly string[];
 }
 
+/** Why a head is held: the failed merge group's run, for the PR watcher's wake (HAL-18147). */
+export interface HeldRun {
+  readonly head: string;
+  readonly url: string;
+  /** The failed jobs' names; empty when the run named none. */
+  readonly jobs: readonly string[];
+  /** The first failure annotation's title that says more than an exit code, or null. */
+  readonly error: string | null;
+}
+
 /** Everything kept between passes, keyed by pull request number. */
 export interface MergeState {
   readonly version: 1;
@@ -53,6 +63,8 @@ export interface MergeState {
   readonly cooldown: Readonly<Record<string, Cooldown>>;
   /** Culprit holds: the head that failed in a merge group. */
   readonly failedHeads: Readonly<Record<string, string>>;
+  /** The run behind each culprit hold, pruned with it. A state saved before HAL-18147 has none. */
+  readonly heldRuns: Readonly<Record<string, HeldRun>>;
   /** Holds lifted for a flake, by head. */
   readonly flakeLifted: Readonly<Record<string, string>>;
   /** The head whose cancelled group was let back in once. */
@@ -81,6 +93,7 @@ export const emptyMergeState: MergeState = {
   unmergeableSince: {},
   cooldown: {},
   failedHeads: {},
+  heldRuns: {},
   flakeLifted: {},
   autoFlaked: {},
   readySince: {},

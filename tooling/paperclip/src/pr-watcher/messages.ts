@@ -1,3 +1,4 @@
+import { commandForJob, rebaseCommand } from "../merge-control/author-wake.ts";
 import { type ConflictFileMap, conflictFilesText } from "./conflict-files.ts";
 import { marker, type PullFacts, type Reason } from "./decide.ts";
 import { pullKey } from "./facts.ts";
@@ -9,6 +10,19 @@ import type { PullSummary } from "./wake-status.ts";
  * limit (HAL-17922).
  */
 
+/** A held head's line: the failed jobs, the run, the error line when read, and what to run. */
+function heldText(head: string, { pull }: Reason): string {
+  const jobs = pull.held?.jobs ?? [];
+  const names =
+    jobs.length > 0 ? jobs.map((job) => `\`${job}\``).join(", ") : "a job (see the run)";
+  const commands = [...new Set((jobs.length > 0 ? jobs : [""]).map(commandForJob))];
+  const error = pull.held?.error == null ? "" : ` Error: \`${pull.held.error}\`.`;
+  return [
+    `its merge group failed in ${names}, so the queue manager holds head \`${head}\` out of the queue until it has a new head: ${pull.held?.url ?? ""}.${error}`,
+    `What to run: \`${rebaseCommand}\`, then ${commands.map((command) => `\`${command}\``).join(", then ")}. Fix what fails and push. If the failure isn't from this PR's code, say so on the PR and push a rebase.`,
+  ].join(" ");
+}
+
 const reasonText: Record<Reason["kind"], (head: string, reason: Reason) => string> = {
   "ci-red": (head) => `\`ci-ok\` failed on its head \`${head}\`.`,
   conflict: () => "it conflicts with its base branch and isn't in the merge queue.",
@@ -19,6 +33,7 @@ const reasonText: Record<Reason["kind"], (head: string, reason: Reason) => strin
     `it has an approving GitHub review on its head \`${head}\`, which its base branch needs. Merge it on that head once \`ci-ok\` is green (\`--match-head-commit\`); nobody queues it for you.`,
   merged: () =>
     "it merged and `ci-ok` is green, but the task has comments since. Mark it done if nothing else is left.",
+  held: heldText,
   "stack-conflict": (head, { base }) =>
     `#${base?.number} below it merged, and GitHub couldn't rebase it on \`main\` (head \`${head}\`). Rebase it without #${base?.number}'s old commits: \`git rebase --onto origin/main ${base?.head.slice(0, 7)}\`, then push.`,
 };
