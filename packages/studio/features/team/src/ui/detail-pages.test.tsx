@@ -26,11 +26,28 @@ function acme() {
     team.addAgentSpend(source, { agent: `agent-${name}`, range: "today", paid: usd(20 - index) });
   }
   team.addAgentSpend(source, { agent: "agent-Mateo", range: "week", paid: usd(61.3) });
-  team.addAgentSpend(source, { agent: "agent-Mateo", range: "month", paid: usd(402.1) });
+  team.addAgentSpend(source, {
+    agent: "agent-Mateo",
+    range: "month",
+    paid: usd(702.1),
+    budget: usd(1000),
+  });
+  team.addAgentSpend(source, { agent: "agent-Di", range: "week", paid: usd(90) });
   team.addSeat(source, {
     label: "Seat B",
+    plan: "Max",
+    state: "near-limit",
     agents: ["agent-Mateo", "agent-Owen"],
-    windows: [{ kind: "week", label: "This week", usedPercent: 84 }],
+    windows: [
+      {
+        kind: "week",
+        label: "This week",
+        usedPercent: 84,
+        resetsAt: "2026-11-26T09:00:00.000Z",
+        reaches90At: "2026-11-24T16:40:00.000Z",
+      },
+    ],
+    manualReset: "available",
     proposal: { text: "Move Owen to Seat C", at: "2026-11-24T12:55:00.000Z" },
   });
   const spendAndSeats = new SpendAndSeats(team, clock);
@@ -47,7 +64,7 @@ async function settle(): Promise<void> {
 async function press(page: HTMLElement, text: string, within = "main"): Promise<void> {
   const target = [
     ...(page.querySelector(within) ?? page).querySelectorAll<HTMLElement>(
-      "button, [role=button], a",
+      "button, [role=button], [role=radiogroup] label, a",
     ),
   ].find((each) => each.textContent?.includes(text));
   if (target === undefined) throw new Error(`Nothing to press says "${text}"`);
@@ -65,11 +82,29 @@ verifies("team.agent-and-seat-detail", () => {
       const page = render(<SpendAndSeatsPage spendAndSeats={spendAndSeats} details={details} />);
       await settle();
       const list = section(page, "Agents by spend today");
-      expect(list).toContain("Mateo · $20.00");
-      expect(list).toContain("Ben");
+      expect(list).toContain("Mateo · $20.00 · Seat B");
+      expect(list).toContain("Ben · $16.00");
       expect(list).not.toContain("Cy");
-      await press(page, "See all 7");
-      expect(section(page, "Agents by spend today")).toContain("Di");
+      expect(list).toContain("Work on subscription seats is counted at API prices.");
+      // "See all ›" sits in the heading, before the rows.
+      const seeAll = page.querySelector('[data-opens="agents"] button');
+      expect(seeAll?.textContent).toBe("See all");
+      expect(
+        seeAll?.compareDocumentPosition(
+          page.querySelector('section[aria-label="Agents by spend today"] li') as Node,
+        ),
+      ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+
+      await press(page, "See all");
+      expect(page.querySelector("h1")?.textContent).toBe("Agents by spend");
+      const head = [...page.querySelectorAll("thead th")].map((each) => each.textContent);
+      expect(head).toEqual(["Agent", "Today", "This week", "This month", "Seat"]);
+      expect(page.querySelectorAll("tbody tr")).toHaveLength(7);
+      expect(page.querySelector("tbody tr")?.textContent).toContain("Mateo");
+      expect(page.textContent).toContain("Work on subscription seats is counted at API prices.");
+
+      await press(page, "This week");
+      expect(page.querySelector("tbody tr")?.textContent).toContain("Di");
     });
 
     it("opens a seat from its row, then an agent from the seat", async () => {
@@ -77,17 +112,31 @@ verifies("team.agent-and-seat-detail", () => {
       const page = render(<SpendAndSeatsPage spendAndSeats={spendAndSeats} details={details} />);
       await settle();
       await press(page, "Seat B", 'section[aria-label="Seats"]');
-      expect(page.textContent).toContain("84%");
+      expect(page.querySelector("h1")?.textContent).toBe("Seat B · Pool · Max");
+      // The back link comes before the title.
+      const back = page.querySelector('nav button[aria-label="Back to Spend and seats"]');
+      expect(back?.compareDocumentPosition(page.querySelector("h1") as Node)).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+      expect(page.textContent).toContain("Near limit: reaches 90% around 16:40");
+      expect(page.textContent).toContain("84% · resets Thu 09:00 · ↗ reaches 90% around 16:40");
+      expect(page.textContent).toContain("Manual resetAvailable");
       expect(section(page, "Agents on Seat B (2)")).toContain("Owen · Working");
-      expect(section(page, "Seat Supervisor proposes")).toContain("(from 12:55, not done)");
+      const proposal = section(page, "The Seat Supervisor proposes");
+      expect(proposal).toContain("From 12:55 · not done yet");
+      expect(proposal).toContain(
+        "The app only shows this. The Seat Supervisor or Paperclip makes the move.",
+      );
 
       await press(page, "Mateo");
+      expect(page.querySelector("h1")?.textContent).toBe("Mateo");
+      expect(page.textContent).toContain("No task right now · Working");
       expect(page.textContent).toContain("$20.00");
       expect(page.textContent).toContain("$61.30");
-      expect(page.textContent).toContain("$402.10");
-      expect(page.textContent).toContain("On: Seat B");
+      expect(page.textContent).toContain("$702.10 of $1,000 · 70%");
+      expect(page.textContent).toContain("On Seat B");
 
-      await press(page, "Back");
+      await press(page, "Spend and seats");
       expect(section(page, "Agents by spend today")).toContain("Mateo");
     });
 
@@ -98,7 +147,7 @@ verifies("team.agent-and-seat-detail", () => {
       await press(page, "Seat B", 'section[aria-label="Seats"]');
       expect(document.activeElement).toBe(page.querySelector("h1"));
 
-      await press(page, "Back");
+      await press(page, "Spend and seats");
       const seatRow = page.querySelector('section[aria-label="Seats"] li button');
       expect(seatRow).not.toBeNull();
       expect(document.activeElement).toBe(seatRow);

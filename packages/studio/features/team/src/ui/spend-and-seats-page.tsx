@@ -3,13 +3,9 @@ import type { SpendAndSeats, SpendAndSeatsState } from "../spend-and-seats.ts";
 import type { TeamDetails } from "../team-details.ts";
 import type { TeamClock } from "../team-format.ts";
 import { type TeamLink, teamWords } from "../team-words.ts";
-import {
-  AgentDetailPage,
-  AllAgentsPage,
-  pageKey,
-  SeatDetailPage,
-  type TeamPage,
-} from "./detail-pages.tsx";
+import { AllAgentsPage } from "./agents-by-spend.tsx";
+import { pageKey, type TeamPage } from "./detail-frame.tsx";
+import { AgentDetailPage, SeatDetailPage } from "./detail-pages.tsx";
 import type { ArrivalFocus } from "./keep-focus.ts";
 import { LinkButton, TeamLinks, type TeamLinksState } from "./money-tiles.tsx";
 import { LoadingBody, PageFrame, TryAgain } from "./page-frame.tsx";

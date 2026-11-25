@@ -3,7 +3,7 @@ import { ListHeading, StatusChip, usePresentation } from "@halonicjs/studio-kit"
 import type { SeatProblem, SeatProblemKind } from "../seat-problems.ts";
 import { formatDayTime, formatTime, type TeamClock } from "../team-format.ts";
 import { type TeamLink, teamWords } from "../team-words.ts";
-import { pageKey } from "./detail-pages.tsx";
+import { pageKey } from "./detail-frame.tsx";
 import { LinkRow, RowChevron, RowList } from "./link-row.tsx";
 import { SmallLine, Tile } from "./money-tiles.tsx";
 import { StateIcon, stateTones } from "./seat-state.tsx";

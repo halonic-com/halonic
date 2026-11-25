@@ -9,11 +9,13 @@ import { type ArrivalFocus, useArrivalFocus, useKeepFocus } from "./keep-focus.t
  * "Open AI seats in Paperclip ↗"). On a phone they wrap under the title. The screen keeps one frame mounted across loading, failed and read, so
  * the main and h1 stay the same elements, and focus lands on the h1 when what had it goes away.
  * `arrival` says where focus goes when the page replaces another one. `title` and `loadingSpoken`
- * default to Spend and seats' own.
+ * default to Spend and seats' own. A detail page passes its own `title` and the `back` link that
+ * goes above it.
  */
 export function PageFrame(props: {
   title?: ReactNode;
   loadingSpoken?: string;
+  back?: ReactNode;
   freshness?: ReactNode;
   action?: ReactNode;
   busy?: boolean;
@@ -32,8 +34,9 @@ export function PageFrame(props: {
       className="flex w-full flex-col gap-4 px-6 py-5 phone:px-4"
       onFocus={remember}
     >
+      {props.back}
       <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h1 ref={heading} tabIndex={-1} className="text-title">
+        <h1 ref={heading} tabIndex={-1} className="min-w-0 wrap-anywhere text-title">
           {props.title ?? teamWords.title}
         </h1>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
