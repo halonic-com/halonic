@@ -55,10 +55,13 @@ verifies("paperclip.merge-control-queue-first", () => {
       queue: [entry(1, 1)],
       groupRuns: [failedGroup],
     });
-    const kinds = pass(facts).actions.map(
-      (action) => `${action.kind}#${"number" in action ? action.number : "-"}`,
+    const kinds = pass(facts).actions.map((action) =>
+      action.kind === "wake"
+        ? `wake ${action.task}`
+        : `${action.kind}#${"number" in action ? action.number : "-"}`,
     );
-    expect(kinds).toEqual(["dequeue#1", "enqueue#6", "comment#5"]);
+    // The authors' wakes (HAL-17907) come after the queue writes too.
+    expect(kinds).toEqual(["dequeue#1", "enqueue#6", "wake HAL-1", "comment#5", "wake HAL-5"]);
   });
 
   test("dequeues go first and enqueues second, each kind keeping its order", () => {

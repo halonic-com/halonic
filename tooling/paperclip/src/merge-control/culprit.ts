@@ -1,3 +1,4 @@
+import { failedGroupFacts, wakeAuthor } from "./author-wake.ts";
 import { commentOnce, logLine, minutesSince, type PassContext } from "./context.ts";
 import type { GateRow } from "./gate.ts";
 import { mainBroken } from "./main-broken.ts";
@@ -65,6 +66,7 @@ function holdCulprit(context: PassContext, run: GroupRun, row: GateRow, where: s
   );
   const jobs = run.failedJobs.map((job) => job.name);
   commentOnce(context, "held", number, head, texts.culprit(jobs, run.url));
+  wakeAuthor(context, row.pull, "group-failed", failedGroupFacts(row.pull, jobs, run.url));
 }
 
 /** Judges one failed group; returns whether it is seen for good. */
