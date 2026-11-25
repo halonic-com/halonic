@@ -65,6 +65,19 @@ export function teamAlerts(
   ];
 }
 
+/**
+ * The reading the next one is compared with: `after`, except that a seat it
+ * couldn't read keeps how it was in `before`, so a seat at 90% that isn't read
+ * once and then is again doesn't notify a second time.
+ */
+export function teamBaseline(before: TeamReading, after: TeamReading): TeamReading {
+  const was = new Map(before.seats.map((seat) => [seat.id, seat]));
+  const seats = after.seats.map((seat) =>
+    seat.state === "not-read" ? (was.get(seat.id) ?? seat) : seat,
+  );
+  return { seats, queues: after.queues };
+}
+
 function seatAlerts(
   before: readonly Seat[],
   after: readonly Seat[],
@@ -92,23 +105,24 @@ function alertLevel(kind: SeatProblemKind): "ninety" | "full" | "signed-out" | u
   return undefined;
 }
 
+/** A notification opens a source's merge queue, so a source notifies once, however many of its repos are held up. */
 function queueAlerts(before: readonly MergeQueue[], after: readonly MergeQueue[]): TeamAlert[] {
-  const heldBefore = new Set(before.filter(isHeldUp).map(queueId));
-  return after
-    .filter((queue) => isHeldUp(queue) && !heldBefore.has(queueId(queue)))
-    .map((queue) => ({
-      about: { kind: "merge-queue", id: queue.source },
-      title: teamWords.notice.queueHeld,
-      body: teamWords.notice.queueHeldLine(queue.runnerWaitMinutes ?? 0, pullRequestsIn(queue)),
-    }));
+  const heldBefore = new Set(before.filter(isHeldUp).map((queue) => queue.source));
+  const firstHeld = new Map<MessagingId, MergeQueue>();
+  for (const queue of after.filter(isHeldUp)) {
+    if (!heldBefore.has(queue.source) && !firstHeld.has(queue.source)) {
+      firstHeld.set(queue.source, queue);
+    }
+  }
+  return [...firstHeld.values()].map((queue) => ({
+    about: { kind: "merge-queue", id: queue.source },
+    title: teamWords.notice.queueHeld,
+    body: teamWords.notice.queueHeldLine(queue.runnerWaitMinutes ?? 0, pullRequestsIn(queue)),
+  }));
 }
 
 function isHeldUp(queue: MergeQueue): boolean {
   return queue.health === "runners-busy" && (queue.runnerWaitMinutes ?? 0) >= heldUpMinutes;
-}
-
-function queueId(queue: MergeQueue): string {
-  return `${queue.source} ${queue.repo}`;
 }
 
 function pullRequestsIn(queue: MergeQueue): number {

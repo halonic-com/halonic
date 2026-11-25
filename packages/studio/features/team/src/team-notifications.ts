@@ -1,7 +1,7 @@
 import type { MessagingId, TeamStatus } from "@halonicjs/ports";
 import type { AgentNotice, NoticeTarget, Notifier } from "@halonicjs/studio-services";
 import type { TeamClock } from "./team-format.ts";
-import { type TeamAlert, type TeamReading, teamAlerts } from "./team-notices.ts";
+import { type TeamAlert, type TeamReading, teamAlerts, teamBaseline } from "./team-notices.ts";
 
 /** What {@link watchTeamNotifications} needs besides the port and the notifier. */
 export interface TeamNotificationsOptions {
@@ -64,13 +64,36 @@ async function follow(
   let last = await first;
   for (let change = await nextChange(); change.done !== true; change = await nextChange()) {
     const next = await readOrReport(team, options);
-    if (last !== undefined && next !== undefined) {
-      for (const alert of teamAlerts(last, next, options.clock)) {
-        const notice = toNotice(alert);
-        await notifier.show(notice, () => options.open(notice.target)).catch(options.onError);
-      }
+    if (last === undefined || next === undefined) {
+      last = next ?? last;
+      continue;
     }
-    last = next ?? last;
+    await notifyChanges(last, next, notifier, options);
+    last = teamBaseline(last, next);
+  }
+}
+
+/** Shows what changed; a failure is reported, never left to end the watch. */
+async function notifyChanges(
+  last: TeamReading,
+  next: TeamReading,
+  notifier: Notifier,
+  options: TeamNotificationsOptions,
+): Promise<void> {
+  let alerts: readonly TeamAlert[];
+  try {
+    alerts = teamAlerts(last, next, options.clock);
+  } catch (error) {
+    options.onError(error);
+    return;
+  }
+  for (const alert of alerts) {
+    const notice = toNotice(alert);
+    try {
+      await notifier.show(notice, () => options.open(notice.target));
+    } catch (error) {
+      options.onError(error);
+    }
   }
 }
 

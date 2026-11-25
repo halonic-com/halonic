@@ -82,7 +82,6 @@ export const teamWords = {
     reaches90: (seat: string, time: string) => `${seat} reaches 90% around ${time}`,
     /** After the agents, as in "4 agents on it · resets Thu 09:00". */
     resets: (at: string) => `resets ${at}`,
-    clearsByItself: "Clears by itself",
     queueHeld: "Runners busy · pushes are on hold",
     queueHeldLine: (minutes: number, pullRequests: number) =>
       `Longest wait ${minutes} min · ${pullRequests === 1 ? "1 PR" : `${pullRequests} PRs`} in the queue`,
