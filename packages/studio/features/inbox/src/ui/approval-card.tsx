@@ -273,7 +273,7 @@ export function ApprovalCard(props: ApprovalCardProps) {
           guard={guard}
           engine={props}
           onDecide={decide}
-          onReviewTrust={props.trust?.review}
+          trust={props.trust}
           approve={approve}
           onOpenRun={
             props.onOpenRun === undefined ? undefined : () => props.onOpenRun?.(item.runId)
@@ -336,7 +336,7 @@ interface DecisionBarProps {
   readonly onDecide: (decision: Decision) => void;
   readonly onAskForChanges: () => void;
   readonly onOpenRun: (() => void) | undefined;
-  readonly onReviewTrust: ((opener: HTMLElement | null) => void) | undefined;
+  readonly trust: TrustReview | undefined;
   readonly approve: RefObject<HTMLButtonElement | null>;
 }
 
@@ -353,7 +353,7 @@ function DecisionBar({
   onDecide,
   onAskForChanges,
   onOpenRun,
-  onReviewTrust,
+  trust,
   approve,
 }: DecisionBarProps) {
   const reasonId = useId();
@@ -379,7 +379,9 @@ function DecisionBar({
         detail={state.kind === "open" ? state.detail : null}
         manual={state.kind === "open" ? state.manual : null}
         elsewhere={state.kind === "open" && state.elsewhere ? { openRun: onOpenRun } : null}
-        untrusted={state.kind === "open" && state.untrusted ? { review: onReviewTrust } : null}
+        untrusted={
+          state.kind === "open" && state.untrusted ? (trust ?? { review: undefined }) : null
+        }
       />
       <div className="flex flex-wrap justify-end gap-2">
         <Button

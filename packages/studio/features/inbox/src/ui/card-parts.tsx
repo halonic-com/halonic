@@ -283,6 +283,8 @@ export interface RefusedUntrusted {
    * Without it the line has no **Review**.
    */
   readonly review: ((opener: HTMLElement | null) => void) | undefined;
+  /** Where to fix it on the computer, in place of **Review**, when the window can't open the check. */
+  readonly fixElsewhere?: string | undefined;
 }
 
 interface FailedLineProps {
@@ -375,11 +377,12 @@ function ShownLine({ shown }: { readonly shown: Shown }) {
     case "too-old":
       return <Callout tone="info">{shown.tooOld}</Callout>;
     case "untrusted": {
-      const { review } = shown.untrusted;
+      const { review, fixElsewhere } = shown.untrusted;
       return (
         <span className="flex flex-wrap items-center gap-2">
           {untrustedText}
           {review === undefined ? null : <ReviewTrustButton review={review} />}
+          {fixElsewhere === undefined ? null : <span className="basis-full">{fixElsewhere}</span>}
         </span>
       );
     }
