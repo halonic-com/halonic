@@ -1,4 +1,4 @@
-import { Button, Tabs } from "@halonicjs/studio-kit";
+import { Button, Tabs, usePresentation } from "@halonicjs/studio-kit";
 import { useEffect, useRef, useState } from "react";
 import type { QueueView } from "../merge-queue.ts";
 import { mergeQueueWords } from "../merge-queue-words.ts";
@@ -22,7 +22,8 @@ function worstFirst(a: PullRequestRow, b: PullRequestRow): number {
 /**
  * Needs attention, All open, Queue and Merged today as the kit's tabs, each with its count: the
  * selected list is shown by more than colour, read as selected, and moved through with the arrow
- * keys. Every tab but Queue starts with the queue's health line (HAL-17515 P1).
+ * keys. Every tab but Queue starts with the queue's health line (HAL-17515 P1). A phone draws
+ * three chips, Stuck, All open and Queue, with no Merged today (P24).
  */
 export function PullRequestLists(props: {
   rows: readonly PullRequestRow[];
@@ -31,7 +32,7 @@ export function PullRequestLists(props: {
   clock: TeamClock;
   opener: WebLinkOpener;
 }) {
-  const [tab, setTab] = useState<Tab>("attention");
+  const { tab, setTab, onPhone } = useListTab();
   const tabList = useRef<HTMLDivElement>(null);
   // See all open removes itself, so focus moves to the All open tab instead of the page.
   const focusAllOpen = useRef(false);
@@ -45,12 +46,12 @@ export function PullRequestLists(props: {
     setTab("open");
   };
   const stuck = props.rows.filter((row) => row.stuck.length > 0).sort(worstFirst);
-  const tabs = [
-    { id: "attention", label: pullRequestWords.tabs.attention, count: counted(stuck.length) },
-    { id: "open", label: pullRequestWords.tabs.open, count: counted(props.rows.length) },
-    { id: "queue", label: mergeQueueWords.tabs.queue, count: counted(props.queue?.total ?? 0) },
-    { id: "merged", label: mergeQueueWords.tabs.merged, count: counted(props.merged.length) },
-  ] as const;
+  const tabs = listTabs(onPhone, {
+    attention: stuck.length,
+    open: props.rows.length,
+    queue: props.queue?.total ?? 0,
+    merged: props.merged.length,
+  });
   const coming = comingUp(props.rows);
   // The rows no state group names have no heading.
   const allOpenGroup = (title: string, rows: readonly PullRequestRow[]) => {
@@ -99,6 +100,32 @@ export function PullRequestLists(props: {
       </Tabs>
     </div>
   );
+}
+
+/**
+ * The selected tab, and whether this is a phone. Merged today chosen on a desktop window that
+ * then narrowed to a phone falls back to Stuck, as a phone has no Merged today chip.
+ */
+function useListTab() {
+  const [chosen, setTab] = useState<Tab>("attention");
+  const onPhone = usePresentation() === "phone";
+  const tab: Tab = onPhone && chosen === "merged" ? "attention" : chosen;
+  return { tab, setTab, onPhone };
+}
+
+/**
+ * The tabs and their counts: Needs attention, All open, Queue and Merged today; on a phone the
+ * chips Stuck, All open and Queue (P24).
+ */
+function listTabs(onPhone: boolean, counts: Record<Tab, number>) {
+  const attention = onPhone ? pullRequestWords.stuck : pullRequestWords.tabs.attention;
+  const tabs = [
+    { id: "attention", label: attention, count: counted(counts.attention) },
+    { id: "open", label: pullRequestWords.tabs.open, count: counted(counts.open) },
+    { id: "queue", label: mergeQueueWords.tabs.queue, count: counted(counts.queue) },
+    { id: "merged", label: mergeQueueWords.tabs.merged, count: counted(counts.merged) },
+  ] as const;
+  return onPhone ? tabs.filter((each) => each.id !== "merged") : tabs;
 }
 
 /** A tab's count: the number on the chip, and the same number for screen readers. */
