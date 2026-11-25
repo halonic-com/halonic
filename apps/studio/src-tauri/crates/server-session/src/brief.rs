@@ -56,16 +56,22 @@ const FORMAT_CHARACTERS: [(u32, u32); 21] = [
     (0xE0020, 0xE007F),
 ];
 
+/// The variation selectors. They are `Mn`, not `Cf`, but they draw nothing
+/// themselves, and a run of them after an emoji can carry hidden bytes.
+const VARIATION_SELECTORS: [(u32, u32); 2] = [(0xFE00, 0xFE0F), (0xE0100, 0xE01EF)];
+
 /// Whether `character` may not be in a brief: a control character other
-/// than a line break or a tab, a format character, or a line or paragraph
-/// separator. `isPlainLine` in `packages/core/action-steppers` refuses the
-/// same ones, against the same shared cases.
+/// than a line break or a tab, a format character, a variation selector, or
+/// a line or paragraph separator. `isPlainLine` in
+/// `packages/core/action-steppers` refuses the same ones, against the same
+/// shared cases.
 fn is_hidden(character: char) -> bool {
     let code = u32::from(character);
     (character.is_control() && !matches!(character, '\n' | '\t'))
         || matches!(character, '\u{2028}' | '\u{2029}')
         || FORMAT_CHARACTERS
             .iter()
+            .chain(&VARIATION_SELECTORS)
             .any(|(first, last)| (*first..=*last).contains(&code))
 }
 
