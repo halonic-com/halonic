@@ -1,5 +1,7 @@
 import { MemoryHostSettingsStore } from "@halonicjs/adapter-memory";
 import { HostSettings, ServiceRegistry } from "@halonicjs/app";
+import { accountMenuFeature } from "@halonicjs/studio-feature-account-menu";
+import { AccountMenuHostService } from "@halonicjs/studio-feature-account-menu/api";
 import { servedFirstRunFeature } from "@halonicjs/studio-feature-first-run";
 import { ModelChoiceHostService } from "@halonicjs/studio-feature-first-run/api";
 import { servedGoogleSetupFeature } from "@halonicjs/studio-feature-google-setup";
@@ -28,6 +30,7 @@ import {
   type StudioHost,
   StudioWorkspace,
 } from "@halonicjs/studio-shell";
+import { ServedAccountMenu } from "../account/served-account-menu.ts";
 import { ServedGoogleSetupAccounts } from "../google/served-google-setup-accounts.ts";
 import { ServedModelChoice } from "../models/served-model-choice.ts";
 import { type PageFetch, ServedInboxRuns } from "../runs/served-inbox-runs.ts";
@@ -51,7 +54,8 @@ interface ServedStudioOptions {
  * Its Settings has the sections this browser keeps, Appearance and Formats, and no host section
  * (`studio.served-settings`) until the page has the computer's host settings, plus the
  * workspace's Models, whose Model row opens Pick a model on the computer's model choice
- * (`studio.served-model-choice`).
+ * (`studio.served-model-choice`). With many users and a Cloud session, the title bar has the
+ * customer's account menu (`studio.served-account-menu`).
  */
 export function startServedStudio(
   page: StudioPage,
@@ -59,19 +63,30 @@ export function startServedStudio(
 ): StartedStudio {
   const pageFetch: PageFetch = page.fetch ?? ((path, init) => fetch(path, init));
   const shell = createShell({
-    features: [inboxFeature, settingsFeature, servedGoogleSetupFeature, servedFirstRunFeature],
+    features: [
+      inboxFeature,
+      settingsFeature,
+      servedGoogleSetupFeature,
+      servedFirstRunFeature,
+      accountMenuFeature,
+    ],
     hostServices: [
       InboxRunsService,
       DisplaySettingsService,
       HostSettingsService,
       GoogleSetupAccountsService,
       ModelChoiceHostService,
+      AccountMenuHostService,
     ],
     host,
     platform,
   });
   const stopAppearance = watchAppearance(display, page.element.ownerDocument.documentElement);
   const services = servedServices(pageFetch, windowFocus(page.window));
+  services.provide(
+    AccountMenuHostService,
+    new ServedAccountMenu(pageFetch, pageOpener(page.window)),
+  );
   services.provide(DisplaySettingsService, display);
   shell.services.instantiate(services);
   const load = () => loadServedWorkspace(pageFetch);
@@ -144,4 +159,10 @@ function windowFocus(page: object): (listener: () => void) => () => void {
     target.addEventListener("focus", listener);
     return () => target.removeEventListener("focus", listener);
   };
+}
+
+/** Opens an address in the page's own tab, as the account menu's links do. */
+function pageOpener(page: object): (address: string) => void {
+  const target = page as Pick<Window, "location">;
+  return (address) => target.location.assign(address);
 }

@@ -1,0 +1,21 @@
+# studio.served-account-menu
+
+- Status: active
+- Since: unreleased
+- Source: HAL-18216 (S2-25 PR 4, plan on HAL-14151); `account-menu.menu`, `account-menu.sign-out`
+
+The served Studio shall give the account menu (`account-menu.menu`) through the computer, on the
+page's own address and session: `GET /api/account-menu` for the signed-in customer, where a 404
+means there is no menu, and `POST /api/sign-out` to sign out; **Sign in again** goes to
+`/api/sign-in`. Any other refusal shall reject with the method, the path and the status only. An
+answer that isn't exactly `name`, `productName`, `plan`, `usedPercent`, `accountUrl` and `planUrl`,
+or whose two addresses aren't `https:` without a user or password, shall reject too, so a wrong
+answer never becomes a link.
+
+## Examples
+
+- Given the computer answers 404 to `GET /api/account-menu`, then the menu's facts are `null`.
+- Given it answers Sofia Marin on Pro at 62%, then the facts are exactly that answer.
+- Given the answer's `accountUrl` is `http://account.example.com/acme`, then loading rejects.
+- Given **Sign out**, then `POST /api/sign-out` is sent; a 500 rejects with "The computer
+  answered 500 to POST /api/sign-out."
