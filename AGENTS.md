@@ -33,7 +33,7 @@ Each package declares its layer and owner in `package.json` (`"halonic": { "laye
 | Command | What it does |
 | --- | --- |
 | `pnpm install` | install dependencies (Node and pnpm versions are pinned; don't override them) |
-| `pnpm check:enqueue` | the check before you queue a pull request: your branch merged with the latest `main` |
+| `pnpm check:enqueue` | the full check before review: your branch merged with the latest `main` |
 | `pnpm check [rule …]` | only the repo checks; takes seconds |
 | `pnpm new package <layer>/<name> --owner <agent> --purpose "<one line>"` | create a package, with its own `AGENTS.md`, that passes every check |
 | `pnpm new feature <name> --owner <agent> --purpose "<one line>"` | create a Studio feature and add it to the Studio's feature list |
@@ -60,7 +60,7 @@ Local checks (never plain `pnpm verify` or `pnpm verify --full` on your machine;
   `find /`, `bfs /`, or `rg` / `grep -r` from `/`, and never search the Paperclip folders or another
   agent's workspace. A whole-disk search fills the shared memory. For a file from another repo, use
   `git ls-files` in a clone of it, or ask on the task (HAL-7399).
-- Before you queue a pull request, typecheck every package on top of the latest `main`:
+- Before you ask for review, you can typecheck every package on top of the latest `main`:
   `pnpm exec turbo run typecheck`, or run `pnpm check:enqueue`: it merges the latest
   `origin/main`, then checks the lockfile, typechecks every package, runs the `@halonicjs/format`
   spec tests, the process-starts guard and the requirement guard.
@@ -73,6 +73,8 @@ whose owner matches `package.json`; `pnpm check` fails otherwise.
 - You need an assigned Paperclip task. Work only in the packages it names.
 - One task, one worktree, one branch: `<agent>/<task-id>-<short-name>`, e.g. `alex/HAL-42-agent-explorer-filter`.
 - Run `pnpm who-touches <package>` for each package. If an open pull request touches it, coordinate on the task first.
+- First fix your own open pull requests that conflict with `main` or have a red `ci-ok`. Being behind
+  `main` is fine: the merge queue tests every pull request on top of current `main`.
 - Commit only as the shared `halonic-dev` account
   (`halonic-dev <353861737+halonic-dev@users.noreply.github.com>`). Never commit under a personal
   or company email address. Check the author of every commit before you push.
@@ -80,14 +82,15 @@ whose owner matches `package.json`; `pnpm check` fails otherwise.
   worktree, run `git config user.name halonic-dev` and
   `git config user.email 353861737+halonic-dev@users.noreply.github.com` before your first commit.
   Never add a `Signed-off-by` line: the `dco` check fails a `halonic-dev` pull request that holds a
-  commit by any other author, signed off or not. The one exception is a pull request the product
-  owner opened (see Product owner's pull requests).
+  commit by any other author, signed off or not. The board's pull requests are opened and committed
+  as `halonic-dev` too, so the same holds for them.
 
 ## Plan first
 
-Anything that spans more than one package or about 200 lines starts with a short plan on the task.
-The maintainer approves it before you write code. When two features must talk, the interface in
-`api.ts` lands first as its own small pull request.
+Anything that spans more than one package or about 200 lines starts with a short plan comment on
+the task; go ahead without waiting for an answer. Changes to `packages/core/*`, the guard or a
+package's public interface wait for the maintainer's OK on the plan. When two features must talk,
+the interface in `api.ts` lands first as its own small pull request.
 
 ## Requirements and tests
 
@@ -149,7 +152,8 @@ you spot become a new task.
 
 ## Pull requests
 
-- Under about 400 changed lines (generated files, the lockfile and fixtures don't count).
+- About 400 changed lines is a guide, not a limit (generated files, the lockfile and fixtures don't
+  count). Bundle small related fixes for one area into one pull request.
 - Title in the form `type(scope): summary`; CI checks it.
 - Rebase on `main` before review. Locally, run the targeted checks for what you changed (a single
   package's tests, `pnpm check`, or the turbo command under Commands). Then push and let CI (`ci-ok`)
@@ -190,8 +194,8 @@ Stacks stay short, so a closed pull request never strands work above it:
   `packages/host`, the guard (`tooling/check`, `testing/spec`, `.github/workflows`), a new package,
   and any change to a package's public interface (what its `src/index.ts` exports; an API report
   replaces this once we generate one). Everything else merges on the teammates' approvals.
-- The last required reviewer merges, in order: the bottom of a stack first, up to date with `main`
-  and CI green.
+- Nobody queues or merges a pull request by hand (no `gh pr merge`). The Merger queues approved
+  pull requests with `ci-ok` green on their head, the bottom of a stack first.
 - The security reviewer also reviews tests, requirements, dependencies and `tooling/check`. The
   CI reviewer reviews build, CI and releases. The docs reviewer reviews docs and community files.
 - When a CI job fails on `main`, its area's owner gets the task to fix or revert it within
@@ -201,32 +205,27 @@ Stacks stay short, so a closed pull request never strands work above it:
   one finding per line, on the pull request and on the Paperclip task alike. Untagged findings
   aren't counted. What each tag means, and the reviewer's checklist:
   [docs/guides/review.md](docs/guides/review.md).
-- Agents record approvals in Paperclip, not on GitHub. Outside contributors get a normal GitHub
-  review.
-- Agents never add a `Signed-off-by` line; the `halonic-dev` account's signed statement covers them,
-  except in a pull request the product owner opened (below).
+- An agent's approval is a signed pull request comment, `<Name>: approved on head <sha>`, never a
+  GitHub review. Outside contributors get a normal GitHub review.
+- Agents never add a `Signed-off-by` line; the `halonic-dev` account's signed statement covers them.
 
-## Product owner's pull requests
+## The board's pull requests
 
-A pull request opened by the product owner's own GitHub account is the owner's decision. That
-account is the required reviewer of the `release` environment (GitHub user ID `348154030`). Every
-agent pushes as `halonic-dev`, so the account that opened the pull request is the only signal; a
-label, a trailer or a commit author doesn't count. Check it by ID, not by name, since a freed name
-can be registered by anyone: `gh api repos/{owner}/{repo}/pulls/<n> -q .user.id`.
+The board opens its pull requests as `halonic-dev`, like every agent, and marks them with the
+`product-owner` label. That label is the board's decision on the change. Only the board's session
+adds it; the Merger checks who added it and treats the label as missing if anyone else did.
 
 - Review it like any other pull request: code quality, tests, CI, accessibility and these rules.
   Ask for technical fixes, or push them yourself in a follow-up commit.
 - Don't reject or rework the choice itself. If you think it's a real problem, such as a security
   or accessibility failure, say so on the pull request and on the linked Paperclip task; the board
-  supervisor takes it to the owner.
-- The owner approves nothing on GitHub. Once it's reviewed and `ci-ok` is green, queue it as usual.
-- It carries its rule in words: a decision note saying what changed, the rule, why, and "Product
-  owner's decision". If the note is missing, add it in your review commit rather than block the
+  supervisor takes it to the board.
+- The board approves nothing on GitHub. Once it's reviewed and `ci-ok` is green, the Merger queues
+  it like any other pull request.
+- It carries its rule in words: a decision note saying what changed, the rule, why, and "The
+  board's decision". If the note is missing, add it in your review commit rather than block the
   pull request. The guard's rules don't change: the maintainer signs the note, and a trust-root
   change needs both guardians.
-- The owner's account isn't covered by the standing statement, so their commits carry a
-  `Signed-off-by` line, and so does any commit you push into their pull request
-  (`git commit -s`): the `dco` check waives the sign-off only in pull requests `halonic-dev` opened.
 - A merge alone wakes nobody. When it merges, the board supervisor posts one Paperclip task saying
   who applies the new rule where. Agents follow the docs and the kit, not the diff.
 
