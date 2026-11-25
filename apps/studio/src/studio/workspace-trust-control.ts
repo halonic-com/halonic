@@ -50,6 +50,7 @@ export class WorkspaceTrustView implements WorkspaceTrustControl {
   #builtFor: unknown;
   #builtWith: IntegrationRuns;
   #builtForPlugins: unknown;
+  #builtForMarks: unknown;
   #built: TrustReview | undefined;
 
   /**
@@ -145,10 +146,18 @@ export class WorkspaceTrustView implements WorkspaceTrustControl {
     const check = this.#trust.check;
     const plugins = this.#plugins()?.current();
     const pluginsChanged = plugins !== this.#builtForPlugins;
-    if (check !== this.#builtFor || this.#runs !== this.#builtWith || pluginsChanged) {
+    const marks = this.#trust.assistantAdded;
+    const marksChanged = marks !== this.#builtForMarks;
+    if (
+      check !== this.#builtFor ||
+      this.#runs !== this.#builtWith ||
+      pluginsChanged ||
+      marksChanged
+    ) {
       this.#builtFor = check;
       this.#builtWith = this.#runs;
       this.#builtForPlugins = plugins;
+      this.#builtForMarks = marks;
       this.#built =
         check === undefined || this.needsNoTrust ? undefined : this.#reviewOf(check, plugins);
     }
@@ -163,6 +172,7 @@ export class WorkspaceTrustView implements WorkspaceTrustControl {
       name: this.#trust.name ?? this.#folder,
       folder: this.#folder,
       runs: this.#runs,
+      assistantAdded: this.#trust.assistantAdded,
       ...(plugins === undefined ? {} : { pluginHosts: pluginHostsOf(plugins) }),
     });
     const asking = this.#asking();

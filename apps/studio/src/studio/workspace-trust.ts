@@ -1,4 +1,5 @@
 import {
+  type AssistantAddedHosts,
   commandPaths,
   connectorFiles,
   readLocalIntegrations,
@@ -58,6 +59,7 @@ export class WorkspaceTrust {
   readonly #listeners = new Set<() => void>();
   #name: string | undefined;
   #latest = 0;
+  #assistantAdded: AssistantAddedHosts = new Map();
 
   constructor(sources: WorkspaceTrustSources) {
     this.#sources = sources;
@@ -219,6 +221,37 @@ export class WorkspaceTrust {
       }
     }
     if (mine === this.#latest) this.#changed();
+  }
+
+  /**
+   * The hosts the assistant added to local integrations' sheets that the person didn't name
+   * (HAL-525), for the Reaches row's mark. Empty until {@link followAssistantAdded} reads them.
+   */
+  get assistantAdded(): AssistantAddedHosts {
+    return this.#assistantAdded;
+  }
+
+  /**
+   * Reads the assistant-added hosts with `read` now and each time `onChange` fires, as after an
+   * Accept. The check stays as it is: only the listeners hear of it. A read that fails counts as
+   * none.
+   *
+   * @returns the way to stop
+   */
+  followAssistantAdded(
+    read: () => Promise<AssistantAddedHosts>,
+    onChange: (listener: () => void) => () => void,
+  ): () => void {
+    let latest = 0;
+    const reread = async () => {
+      const mine = ++latest;
+      const marks = await read().catch(() => new Map());
+      if (mine !== latest) return;
+      this.#assistantAdded = marks;
+      this.#changed();
+    };
+    void reread();
+    return onChange(() => void reread());
   }
 
   #changed(): void {

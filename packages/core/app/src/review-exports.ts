@@ -1,6 +1,14 @@
 // The review part of the public API of @halonicjs/app, re-exported by
 // `index.ts` to keep that file under the size limit.
 export {
+  type AcceptedText,
+  type AssistantAddedHosts,
+  AssistantHosts,
+  assistantAddedIn,
+  assistantHostsFile,
+  type HostsNamedIn,
+} from "./assistant-hosts.ts";
+export {
   isCredentialFile,
   isNeverWritten,
   type ProposalRefusal,
