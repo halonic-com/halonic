@@ -94,7 +94,7 @@ off again when they change. It doesn't stop a tool from asking before each use.
 
 ## Turn a tool on, or off again
 
-A tool its server lists is off until you review it: agents aren't offered it until you have read its name, description and arguments and approved it. This applies to MCP and built-in connectors only. For a plugin's connector, trusting the plugin covers its tools, and for an integration's connector there is nothing to approve, so `halonic tools review` and `halonic tools approve` say so and exit 0.
+A tool its server lists is off until you review it: agents aren't offered it until you have read its name, description and arguments and approved it. This applies to MCP connectors only. For a plugin's connector, trusting the plugin covers its tools, for an integration's connector, and for a built-in connector such as Gmail, there is nothing to approve, so `halonic tools review` and `halonic tools approve` say so and exit 0.
 Approving is the review's yes. It doesn't change whether the tool asks before
 each use: that is the rule above.
 
