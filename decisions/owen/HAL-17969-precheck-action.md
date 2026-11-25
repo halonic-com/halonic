@@ -2,7 +2,6 @@
 
 - Approval: HAL-17969 (Liam, CTO: the plan for the `halonic.precheck` action and its seven security conditions)
 - Kind: internal
-- Signature:
 
 The format's action list gains `halonic.precheck`, the runtime port of Agent tools'
 `ready_for_review`. It writes nothing, needs no key, reads the optional parameters `branch`,

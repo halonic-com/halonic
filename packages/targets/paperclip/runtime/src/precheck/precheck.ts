@@ -28,7 +28,8 @@ interface CheckView {
   readonly id: string;
   readonly status: "queued" | "running" | "done";
   readonly pass?: boolean;
-  readonly failed?: readonly string[];
+  // Checked before use: the service's answer is data.
+  readonly failed?: unknown;
   readonly summary?: string;
   readonly error?: string;
   readonly durationS?: number;
@@ -142,9 +143,14 @@ function verdictOf(check: CheckView): PrecheckResult {
   return {
     ...done,
     verdict: "fail",
-    failed: check.failed ?? [],
+    failed: failedSteps(check.failed),
     ...(error === undefined ? {} : { error }),
   };
+}
+
+/** The failed steps the service named; anything but a list of names counts as none. */
+function failedSteps(failed: unknown): readonly string[] {
+  return Array.isArray(failed) && failed.every((step) => typeof step === "string") ? failed : [];
 }
 
 /** The first line of a FAIL answer: the failed steps, or why no step ran. */

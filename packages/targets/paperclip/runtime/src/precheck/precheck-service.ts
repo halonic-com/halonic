@@ -77,6 +77,23 @@ async function cappedText(response: Response): Promise<string> {
   return new TextDecoder().decode(bytes);
 }
 
+/**
+ * The capped body. A service that stalls or drops the connection after its headers is
+ * unavailable like one that can't be reached, so a failed read isn't an error for the agent.
+ */
+async function answerText(response: Response): Promise<string> {
+  try {
+    return await cappedText(response);
+  } catch (error) {
+    if (error instanceof PrecheckUnavailable) {
+      throw error;
+    }
+    throw new PrecheckUnavailable(
+      `the precheck service's answer couldn't be read (${(error as Error).message})`,
+    );
+  }
+}
+
 /** The body as a JSON object, or `{}`: an answer that isn't one is judged by its status. */
 function jsonObject(text: string): Readonly<Record<string, unknown>> {
   try {
@@ -118,7 +135,7 @@ export function precheckService(origin: string, fetch: PrecheckFetch): PrecheckS
       await response.body?.cancel();
       throw new PrecheckUnavailable(`the precheck service answered ${response.status}`);
     }
-    return { status: response.status, body: jsonObject(await cappedText(response)) };
+    return { status: response.status, body: jsonObject(await answerText(response)) };
   };
   return {
     start: (input) =>

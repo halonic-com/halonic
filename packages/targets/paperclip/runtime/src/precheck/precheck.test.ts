@@ -67,6 +67,14 @@ verifies("runtime.precheck-action", () => {
       expect(result.content).toMatch(/\[cut after 4000 characters\]$/);
     });
 
+    test("ignores failed steps that aren't a list of names", async () => {
+      const odd = { id: "0123456789ab", status: "done", pass: false, failed: "lint" };
+      const { call } = precheckPlugin([answer(202, odd)]);
+      const result = await call("ready_for_review", { branch: "mateo/HAL-1-x" });
+      expect(result.content).toMatch(/^FAIL: the check couldn't run on this branch\./);
+      expect(result.data).toMatchObject({ verdict: "fail", failed: [] });
+    });
+
     test("answers FAIL with the service's reason when no step ran", async () => {
       const stopped = { id: "0123456789ab", status: "done", pass: false, error: "wrong sha" };
       const { call } = precheckPlugin([answer(202, stopped)]);
@@ -105,6 +113,16 @@ verifies("runtime.precheck-action", () => {
         [
           new TypeError("fetch failed: redirect mode is set to error"),
           /redirect mode is set to error/,
+        ],
+        [
+          // Headers arrive, then the body stalls until the request's timeout aborts it.
+          new Response(
+            new ReadableStream({
+              start: (controller) => controller.error(timeout),
+            }),
+            { status: 202 },
+          ),
+          /answer couldn't be read \(The operation was aborted due to timeout\)/,
         ],
         [answer(500, { oops: true }), /answered 500/],
         [answer(202, { status: "running" }), /answered 202/],
