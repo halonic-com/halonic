@@ -41,17 +41,23 @@ ADD --checksum=sha256:313f926920874118c5bb7263604dd58790fdd3fe321d397f94014ffc55
   https://registry.npmjs.org/@pondwader/socks5-server/-/socks5-server-1.0.10.tgz /build/srt/
 COPY patches/@anthropic-ai__sandbox-runtime@0.0.82.patch /build/srt/srt.patch
 
-# --ignore-scripts and --offline: npm only unpacks the checked tarballs, runs nothing from them and
-# fetches nothing else.
+# The tarballs are unpacked by hand, one flat node_modules folder, instead of `npm install`: npm
+# resolves srt's dependencies against the registry even when their tarballs are given, and the
+# build has no npm cache to answer it. Nothing from the tarballs runs at build time.
 RUN tar -xzf /build/claude-code.tgz -C /build package/claude \
   && install -m 0755 /build/package/claude /usr/local/bin/claude \
   && rm -rf /build/package \
   && tar -xzf /build/codex.tgz -C /build package/vendor/x86_64-unknown-linux-musl/bin/codex \
   && install -m 0755 /build/package/vendor/x86_64-unknown-linux-musl/bin/codex /usr/local/bin/codex \
-  && mkdir -p /opt/srt \
+  && unpack() { mkdir -p "/opt/srt/node_modules/$2" && tar -xzf "/build/srt/$1" --strip-components=1 -C "/opt/srt/node_modules/$2"; } \
+  && unpack sandbox-runtime-0.0.82.tgz @anthropic-ai/sandbox-runtime \
+  && unpack zod-4.6.7.tgz zod \
+  && unpack commander-12.1.0.tgz commander \
+  && unpack node-forge-1.4.3.tgz node-forge \
+  && unpack socks5-server-1.0.10.tgz @pondwader/socks5-server \
   && cd /opt/srt \
-  && npm install --offline --ignore-scripts --no-audit --no-fund --omit=optional --cache /build/npm-cache /build/srt/*.tgz \
   && patch --directory=node_modules/@anthropic-ai/sandbox-runtime --strip=1 < /build/srt/srt.patch \
+  && chmod 0755 node_modules/@anthropic-ai/sandbox-runtime/dist/cli.js \
   && ln -s /opt/srt/node_modules/@anthropic-ai/sandbox-runtime/dist/cli.js /usr/local/bin/srt \
   && rm -rf /build \
   && apt-get purge --yes patch
