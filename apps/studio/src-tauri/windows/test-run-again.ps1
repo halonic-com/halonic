@@ -1,7 +1,8 @@
 # Walks the run-again page (HAL-1202, flow 2.5) with the same version already
 # installed in -InstallFolder, and saves a picture of each page:
 #   - the page opens with Continue, and Continue is disabled while no box is ticked;
-#   - without Repair it copies nothing, with Repair it copies Halonic again;
+#   - without Repair it copies nothing, with Repair it copies Halonic again
+#     and makes the Inbox and Messenger shortcuts (HAL-18322);
 #   - with the sandbox box ticked, Microsoft's licence page comes before the
 #     steps, and the runtime the sandbox needs is copied even without Repair;
 #   - both end on the finish page.
@@ -17,6 +18,7 @@ param(
   [Parameter(Mandatory)][string]$OutFolder
 )
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'focused-apps.ps1')
 New-Item -ItemType Directory -Force $OutFolder | Out-Null
 Add-Type -AssemblyName System.Drawing
 Add-Type @'
@@ -135,7 +137,9 @@ try {
     $p.WaitForExit(20000) | Out-Null
   }
 
-  # 2. Repair alone copies Halonic again.
+  # 2. Repair alone copies Halonic again, and puts back the focused apps'
+  # shortcuts an install of a version without them didn't make (HAL-18322).
+  Remove-FocusedAppShortcuts
   $p, $h = Open-RunAgain '8-run-again-repair'
   $sandbox = Find-Control $h 'Set up the agent sandbox (recommended)'
   if ($sandbox -ne [IntPtr]::Zero) { Click $sandbox }
@@ -143,6 +147,7 @@ try {
   Assert-Continue $h $true
   Finish $p $h '9-run-again-repair-finish'
   if (-not (Test-Path $uninstaller)) { throw 'Repair did not copy Halonic again' }
+  Assert-FocusedAppShortcuts $InstallFolder 'Repair'
 } finally {
   Get-Process -Name ([IO.Path]::GetFileNameWithoutExtension($Setup)) -ErrorAction SilentlyContinue | Stop-Process -Force
   if (-not (Test-Path $uninstaller)) { Move-Item $kept $uninstaller -Force }
