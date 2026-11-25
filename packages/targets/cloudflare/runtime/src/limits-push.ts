@@ -166,17 +166,19 @@ async function applyPushed(
 
 /**
  * The pushed document as the usage object keeps it. Cloud names the customer's plan in `plan`
- * (`{ state, name, … }`, as in its `limits.customer` documents); the object keeps only the name, as
- * `planName`, and only from there, so a push can't set it any other way. A plan in state `none`,
- * or a document without a plan, keeps no name: documents pushed before Cloud sent plans keep
- * working as they are. The object checks the name, so one that isn't text is a `bad_limits`.
+ * (`{ state, id, version, name }`, as in its `limits.customer` documents); the object keeps its
+ * id, version and name, and only from there, so a pushed `planName` is dropped and a push can't
+ * name the plan any other way. A plan in state `none`, or a document without a plan, keeps no plan:
+ * documents pushed before Cloud sent plans keep working as they are. The object checks the plan,
+ * so a malformed one is a `bad_limits`.
  */
 function limitsOfPush(document: Record<string, unknown>): UsageLimits {
   const { plan, planName: _pushedName, ...limits } = document;
-  if (!isPlainObject(plan) || plan["state"] === "none" || plan["name"] === undefined) {
-    return limits as unknown as UsageLimits;
-  }
-  return { ...limits, planName: plan["name"] } as unknown as UsageLimits;
+  if (plan === undefined) return limits as unknown as UsageLimits;
+  if (!isPlainObject(plan)) return { ...limits, plan } as unknown as UsageLimits;
+  if (plan["state"] === "none") return limits as unknown as UsageLimits;
+  const kept = { id: plan["id"], version: plan["version"], name: plan["name"] };
+  return { ...limits, plan: kept } as unknown as UsageLimits;
 }
 
 function variable(env: object, name: string): string | undefined {

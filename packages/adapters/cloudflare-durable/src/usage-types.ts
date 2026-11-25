@@ -37,6 +37,16 @@ export interface MemberLimits {
   readonly maxRunning?: number;
 }
 
+/** The plan a limits document is for, so a stop can name it. */
+export interface UsagePlan {
+  /** The plan's machine id, such as `pro`. */
+  readonly id: string;
+  /** Goes up when the plan's terms change. */
+  readonly version: number;
+  /** What the customer calls the plan, such as `Pro`. */
+  readonly name: string;
+}
+
 /** The limits Cloud sends for one scope. Only a newer version replaces the one an account has. */
 export interface UsageLimits {
   /** Goes up with every document Cloud sends for this customer. */
@@ -54,10 +64,10 @@ export interface UsageLimits {
   /** An organisation's members by actor id; a personal scope has none. */
   readonly members?: Readonly<Record<string, MemberLimits>>;
   /**
-   * The plan's name as Cloud names it, at most {@link maxPlanNameLength} characters; none when the
-   * customer has no plan. Text to show, never markup.
+   * The plan these limits come from, taken from Cloud's `plan` when its state isn't `none`; a stop
+   * and the account menu name it. Its name is text to show, never markup.
    */
-  readonly planName?: string;
+  readonly plan?: UsagePlan;
 }
 
 /** The longest plan name a limits document may carry. */
@@ -68,7 +78,7 @@ export const maxPlanNameLength = 200;
  * this period's use took. Only what was spent counts, not what running steps still hold.
  */
 export interface UsageSummary {
-  /** The plan's name, or `null` when the account knows no limits or Cloud sent no plan name. */
+  /** The plan's name, or `null` when the account knows no limits or Cloud sent no plan. */
   readonly planName: string | null;
   /**
    * What was spent of the cost limit, as a whole percent rounded down and at most 100; `null`
@@ -97,6 +107,8 @@ export type UsageRefusal =
       readonly needed: number;
       readonly left: number;
       readonly resetsAt: number;
+      /** The limits document's plan, when it has one. */
+      readonly plan?: UsagePlan;
     }
   | { readonly code: "usage.outbox-full" }
   | {

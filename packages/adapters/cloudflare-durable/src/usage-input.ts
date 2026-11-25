@@ -4,6 +4,7 @@ import {
   maxPlanNameLength,
   type UsageAmounts,
   type UsageLimits,
+  type UsagePlan,
   type UsageUnit,
   usageUnits,
 } from "./usage-types.ts";
@@ -81,7 +82,8 @@ export function checkAmounts(amounts: UsageAmounts): UsageAmounts {
 }
 
 /**
- * @throws RangeError when a limits document has an amount, a member id or a period that isn't valid
+ * @throws RangeError when a limits document has an amount, a member id, a period or a plan that
+ * isn't valid
  */
 export function checkLimits(limits: UsageLimits): UsageLimits {
   const { version, maxRunning, period } = limits;
@@ -94,6 +96,7 @@ export function checkLimits(limits: UsageLimits): UsageLimits {
   if (period.end <= period.start) throw new RangeError("A period ends after it starts.");
   checkAmounts(limits.limits);
   checkAmounts(limits.defaultReserve);
+  if (limits.plan !== undefined) checkPlan(limits.plan);
   for (const [actor, member] of Object.entries(limits.members ?? {})) {
     checkId("actor", actor);
     checkAmounts(member.shares ?? {});
@@ -101,16 +104,32 @@ export function checkLimits(limits: UsageLimits): UsageLimits {
       throw new RangeError("A member's cap is a safe whole number of 0 or more.");
     }
   }
-  checkPlanName(limits.planName);
   return limits;
 }
 
-function checkPlanName(planName: unknown): void {
-  if (planName === undefined) return;
+/**
+ * A plan is a machine id, a version of 0 or more and a name to show: at most 200 characters, not
+ * only blanks, and no control or format characters, since it reaches a stop's detail and the
+ * account menu as it is.
+ */
+function checkPlan(plan: UsagePlan): void {
+  if (!isObject(plan)) {
+    throw new RangeError("A limits document's plan has an id, version and name.");
+  }
+  checkId("plan.id", plan.id);
+  if (!isCap(plan.version)) {
+    throw new RangeError("A plan's version is a safe whole number of 0 or more.");
+  }
+  const { name } = plan;
   const fits =
-    typeof planName === "string" && planName.trim() !== "" && planName.length <= maxPlanNameLength;
+    typeof name === "string" &&
+    name.trim() !== "" &&
+    name.length <= maxPlanNameLength &&
+    !/[\p{Cc}\p{Cf}]/u.test(name);
   if (!fits) {
-    throw new RangeError(`A plan's name is 1 to ${maxPlanNameLength} characters of text.`);
+    throw new RangeError(
+      `A plan's name is 1 to ${maxPlanNameLength} characters with no control characters.`,
+    );
   }
 }
 

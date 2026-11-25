@@ -21,7 +21,7 @@ function starterLimits(): UsageLimits {
     limits: { cost: 1_000 },
     defaultReserve: { cost: 100 },
     maxRunning: 1,
-    planName: "Starter",
+    plan: { id: "starter", version: 1, name: "Starter" },
   };
 }
 

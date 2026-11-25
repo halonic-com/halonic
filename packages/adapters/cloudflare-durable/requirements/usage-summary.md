@@ -2,11 +2,11 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-14151 (selling layer S2-25, the account menu); flows B7 and screen map 3.1 and 4.1 (HAL-12484, HAL-12684); the plan on HAL-14151 as approved
+- Source: HAL-14151 (selling layer S2-25, the account menu); flows B7 and screen map 3.1 and 4.1 (HAL-12484, HAL-12684); the plan on HAL-14151 as approved; the plan's shape from HAL-18243
 
-The usage account shall keep a limits document's plan name, `planName`, only when it is 1 to 200 characters of text, and refuse a document with any other name; a document may carry none.
+The usage account shall keep a limits document's plan, whose `name` is the plan's name, only when that name is 1 to 200 characters, not only blanks, with no control or format characters, and refuse a document with any other name; a document may carry no plan.
 
-The usage object shall answer a summary of its scope for the account menu: the kept plan name, the share of the cost limit the scope spent this period as a whole percent rounded down and at most 100, and when the kept period ends. Only what was charged counts, not what running steps still hold. With no cost limit the percent shall be `null`; with a cost limit of 0 it shall be 100; with no plan name the name shall be `null`. While the object knows no limits, or only limits whose period has ended, all three shall be `null`, as a step counts such limits as none. A summary shall change nothing: it notes no scope, pulls nothing from Cloud and takes no rate slot.
+The usage object shall answer a summary of its scope for the account menu: the kept plan's name, the share of the cost limit the scope spent this period as a whole percent rounded down and at most 100, and when the kept period ends. Only what was charged counts, not what running steps still hold. With no cost limit the percent shall be `null`; with a cost limit of 0 it shall be 100; with no plan the name shall be `null`. While the object knows no limits, or only limits whose period has ended, all three shall be `null`, as a step counts such limits as none. A summary shall change nothing: it notes no scope, pulls nothing from Cloud and takes no rate slot.
 
 Rationale: the account menu shows "62% of this month's usage" from the customer's own usage object, which knows the use before Cloud does; opening a menu must not start an empty object, ask Cloud or use up the customer's calls.
 
@@ -25,5 +25,5 @@ Rationale: the account menu shows "62% of this month's usage" from the customer'
   then the summary is all `null`, and the object still notes no scope.
 - Given 1,000 charged of a limit of 1,000 and a clock past the period's end, before Cloud sends the next period,
   then the summary is all `null`, not 100% of the old period.
-- Given a document whose plan name is empty, or over 200 characters,
+- Given a document whose plan's name is blank, over 200 characters or has a control character,
   then the account refuses it.

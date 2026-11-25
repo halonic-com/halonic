@@ -1,6 +1,7 @@
 import type {
   UsageAmounts,
   UsageLimits,
+  UsagePlan,
   UsageRefusal,
   UsageSummary,
   UsageUnit,
@@ -33,6 +34,7 @@ export function firstOver(
   taken: UsageAmounts,
   needed: UsageAmounts,
   resetsAt: number,
+  plan?: UsagePlan,
 ): UsageRefusal | null {
   for (const unit of usageUnits) {
     const limit = limits[unit];
@@ -41,7 +43,8 @@ export function firstOver(
     const need = needed[unit] ?? 0;
     if (used >= limit || used + need > limit) {
       const left = Math.max(0, limit - used);
-      return { code: `${prefix}.${unit}`, unit, used, limit, needed: need, left, resetsAt };
+      const reached = { unit, used, limit, needed: need, left, resetsAt };
+      return { code: `${prefix}.${unit}`, ...reached, ...(plan === undefined ? {} : { plan }) };
     }
   }
   return null;
@@ -59,7 +62,7 @@ export function summaryOf(limits: UsageLimits | undefined, spent: UsageAmounts):
   if (limit !== undefined) {
     costPercent = limit === 0 ? 100 : Math.min(100, Math.floor((used * 100) / limit));
   }
-  return { planName: limits.planName ?? null, costPercent, periodEnd: limits.period.end };
+  return { planName: limits.plan?.name ?? null, costPercent, periodEnd: limits.period.end };
 }
 
 /** The 80% and 100% marks the pool has reached this period and not reported yet. */
