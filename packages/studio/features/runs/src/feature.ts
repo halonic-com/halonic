@@ -2,6 +2,7 @@ import { sandboxStartCheckKey, shortRunId } from "@halonicjs/app";
 import { escapeHidden } from "@halonicjs/std";
 import { defineFeature } from "@halonicjs/studio-shell";
 import {
+  AllRunsService,
   InstructionTrustHostService,
   RunFileSaveService,
   RunFilesService,
@@ -31,6 +32,7 @@ export const runsFeature = defineFeature({
   title: "Runs",
   needs: [RunsSourceService],
   wants: [
+    AllRunsService,
     InstructionTrustHostService,
     RunFileSaveService,
     RunFilesService,

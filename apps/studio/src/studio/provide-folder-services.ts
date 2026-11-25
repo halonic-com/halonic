@@ -94,6 +94,7 @@ import { WorkspaceNoLimit } from "../models/workspace-no-limit.ts";
 import { WorkspaceProviderCheck } from "../models/workspace-provider-check.ts";
 import { providePlugins } from "../plugins/provide-plugins.ts";
 import { WorkspaceRoutines } from "../routines/workspace-routines.ts";
+import { provideAllRuns } from "../runs/all-runs-sources.ts";
 import { WorkspaceWorkflowReview } from "../workflows/workspace-workflow-review.ts";
 import { WorkspaceWorkflows } from "../workflows/workspace-workflows.ts";
 import { folderEngine } from "./folder-engine.ts";
@@ -220,6 +221,7 @@ export function provideFolderServices(
     );
   provideEngineAutoOpen(services, { ipc, files, trust, location, scope, remoteEngine, window });
   provideAgentMessaging(services, transport, location, window);
+  provideAllRuns(services, name);
   provideAgentConnections(services, transport, location);
   // Settings › New agents run and the Harness page share the agent host's choices.
   // One store for the workspace's chats: the Assistant's Build chats and the agents' Try it chats.
