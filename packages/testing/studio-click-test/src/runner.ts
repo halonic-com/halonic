@@ -37,6 +37,11 @@ export interface Step {
    * `messenger.not-connected`, shown in the results table (HAL-18862).
    */
   readonly requirements: readonly string[];
+  /**
+   * Part of the short check every build runs, whatever it changed: the app
+   * installs, starts and its engine answers (HAL-18716 point 3).
+   */
+  readonly shortCheck?: boolean;
   /** The ids of earlier steps it can't do without; it is skipped when one didn't pass. */
   readonly needs?: readonly string[];
   /** Clicks through the step and says whether the right screen showed. */

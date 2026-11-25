@@ -9,12 +9,18 @@
 // CLICK_TEST_OUT     where results.json, results.md and screenshots/ go
 // CLICK_TEST_BUILD   the build's name for the table, such as the commit
 // EDGE_DRIVER_URL    msedgedriver's address (http://127.0.0.1:9515 by default)
+// CLICK_TEST_CHANGED a file listing, one per line, the paths the build changed
+//                    since CLICK_TEST_SINCE; then only the short check and the
+//                    steps those touched run (HAL-18863). Unset: every step.
 import { spawn } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
+import { fileURLToPath } from "node:url";
+import { chooseSteps } from "./affected.ts";
 import { startPaperclipBoard } from "./paperclip-board.ts";
-import { allPassed, resultsMarkdown } from "./results.ts";
+import { requirementFiles } from "./requirement-files.ts";
+import { allPassed, type LeftOut, resultsMarkdown } from "./results.ts";
 import { runSteps, type StepContext } from "./runner.ts";
 import { clickTestSteps } from "./steps.ts";
 import { type Driver, openSession } from "./webdriver.ts";
@@ -24,13 +30,22 @@ const out = required("CLICK_TEST_OUT");
 const screenshots = join(out, "screenshots");
 await mkdir(screenshots, { recursive: true });
 
+const changed = await changedPaths();
+const repo = fileURLToPath(new URL("../../../../", import.meta.url));
+const requirementIds = clickTestSteps.flatMap((step) => step.requirements);
+const choice = chooseSteps(clickTestSteps, changed, await requirementFiles(repo, requirementIds));
+const leftOut: LeftOut | undefined =
+  changed === undefined
+    ? undefined
+    : { since: (environment["CLICK_TEST_SINCE"] ?? "").slice(0, 7), steps: choice.notAffected };
+
 const board = await startPaperclipBoard(required("PAPERCLIP_URL"));
 const sleep = (milliseconds: number) => delay(milliseconds);
 const devTools = required("HALONIC_DEVTOOLS");
 let driver = await startApp();
 try {
   const results = await runSteps(
-    clickTestSteps,
+    choice.run,
     await contextFor(driver),
     (fileName, png) => writeFile(join(screenshots, fileName), png),
     async () => {
@@ -42,7 +57,7 @@ try {
   await writeFile(join(out, "results.json"), `${JSON.stringify(results, null, 2)}\n`);
   await writeFile(
     join(out, "results.md"),
-    resultsMarkdown(results, environment["CLICK_TEST_BUILD"] ?? "unnamed build"),
+    resultsMarkdown(results, environment["CLICK_TEST_BUILD"] ?? "unnamed build", leftOut),
   );
   process.exitCode = allPassed(results) ? 0 : 1;
 } finally {
@@ -84,6 +99,17 @@ async function contextFor(current: Driver): Promise<StepContext> {
     mainWindow,
     approveSignIn: () => board.approveSignIn(30_000, sleep),
   };
+}
+
+/** The paths CLICK_TEST_CHANGED's file lists, or undefined when it isn't set: every step runs. */
+async function changedPaths(): Promise<string[] | undefined> {
+  const file = environment["CLICK_TEST_CHANGED"];
+  if (file === undefined || file === "") return undefined;
+  const text = await readFile(file, "utf8");
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line !== "");
 }
 
 function required(name: string): string {
