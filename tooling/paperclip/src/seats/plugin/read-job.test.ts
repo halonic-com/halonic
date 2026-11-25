@@ -1,7 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { PLUGIN_RPC_ERROR_CODES } from "@paperclipai/plugin-sdk";
+import { PLUGIN_RPC_ERROR_CODES, type ScopeKey } from "@paperclipai/plugin-sdk";
 import { expect, test } from "vitest";
-import { type ReadJobApi, runSeatsRead } from "./read-job.ts";
+import { runSeatsRead, type SeatsReadJobApi } from "./read-job.ts";
 import { SeatsReader } from "./seats-reader.ts";
 import type { SeatsStore } from "./store.ts";
 
@@ -14,7 +14,8 @@ const configs: Record<string, Record<string, unknown>> = {
 
 function api(companyIds: readonly string[]) {
   const logs: string[] = [];
-  const ctx: ReadJobApi = {
+  const state = new Map<string, unknown>();
+  const ctx: SeatsReadJobApi = {
     companies: { list: async () => companyIds.map((id) => ({ id }) as never) },
     config: {
       get: async (companyId) => {
@@ -31,11 +32,15 @@ function api(companyIds: readonly string[]) {
       info: (message) => void logs.push(message),
       error: (message) => void logs.push(`error: ${message}`),
     },
+    state: {
+      set: async (key: ScopeKey, value) =>
+        void state.set(`${key.scopeId}/${key.namespace}/${key.stateKey}`, value),
+    },
   };
-  return { ctx, logs };
+  return { ctx, logs, state };
 }
 
-function readerReading(read: string[]) {
+function readerReading(read: string[], signInExpiresAt?: string) {
   const store: SeatsStore = {
     recordEvent: async () => undefined,
     recordReading: async () => undefined,
@@ -55,7 +60,10 @@ function readerReading(read: string[]) {
           week: undefined,
           weekByModel: {},
         },
-        signIn: undefined,
+        signIn:
+          signInExpiresAt === undefined
+            ? undefined
+            : { state: "signed-in", account: "matches", plan: "max", expiresAt: signInExpiresAt },
       };
     },
     store,
@@ -86,5 +94,20 @@ verifies("paperclip.seats-read-store", () => {
     await runSeatsRead(ctx, readerReading(read).reader);
     expect(read).toEqual([]);
     expect(logs).toEqual([]);
+  });
+
+  test("stores each seat's sign-in expiry and read status, with seat ids only", async () => {
+    const { ctx, state } = api(["acme"]);
+    const { reader, later } = readerReading([], "2026-11-24T08:00:00.000Z");
+
+    await runSeatsRead(ctx, reader);
+    later();
+    await runSeatsRead(ctx, reader);
+
+    const stored = state.get("acme/seats-read/status");
+    expect(stored).toEqual([
+      expect.objectContaining({ seatId: "seat-a", signInExpiresAt: "2026-11-24T08:00:00.000Z" }),
+    ]);
+    expect(JSON.stringify(stored)).not.toContain("/srv/");
   });
 });
