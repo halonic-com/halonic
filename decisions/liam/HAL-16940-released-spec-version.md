@@ -3,6 +3,7 @@
 - Task: HAL-16940
 - Approval: a trust-root change written by Liam, a follow-up to HAL-16929; Mateo checks it on HAL-16940, then Julian and Liam sign as the two guardians
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:fCX/5SHnFnlW/I8XIaZZPrxiSxN3DBUu/mwnKuEjO+QVUebhlcXjGmIuws7DPNvkLAWSoSkKlqDczOfapZuBBw==
 
 ## What changes
 
