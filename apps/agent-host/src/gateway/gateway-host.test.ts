@@ -1,5 +1,5 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { connect, createServer } from "node:net";
+import { connect, createServer, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
@@ -9,6 +9,40 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type HostIo, run } from "../host.ts";
 import type { RemoteOffer } from "../remote/host-remote.ts";
+
+/** What a port held by `heldPort` answers, so a reply from anyone else shows. */
+const held = "held by the test";
+
+/**
+ * A port the test keeps listening on until the test ends. The "listens on no
+ * port" checks hold theirs instead of borrowing a free number: another test
+ * file's host may take a borrowed number, and its reply would look like this
+ * host's. A host that tried this port would fail and say so.
+ */
+async function heldPort(): Promise<number> {
+  const sockets = new Set<Socket>();
+  const holder = createServer((socket) => {
+    sockets.add(socket);
+    socket.on("close", () => sockets.delete(socket));
+    socket.end(held);
+  });
+  await new Promise<void>((resolve) => holder.listen(0, "127.0.0.1", resolve));
+  const { port } = holder.address() as { port: number };
+  holders.push(() => {
+    const closed = new Promise<void>((resolve) => holder.close(() => resolve()));
+    for (const socket of sockets) socket.destroy();
+    return closed;
+  });
+  return port;
+}
+
+const holders: (() => Promise<void>)[] = [];
+
+/** Checks the host never tried to listen on `port`: the test still holds it and the host said nothing about it. */
+async function expectNoGateway(port: number, errors: readonly string[]): Promise<void> {
+  expect(await requestTo(port)).toBe(held);
+  expect(errors.join("")).not.toContain("The remote gateway didn't start");
+}
 
 /** A port nothing listens on now. */
 function freePort(): Promise<number> {
@@ -66,6 +100,7 @@ function requestTo(port: number): Promise<string> {
 const profiles: string[] = [];
 
 afterEach(async () => {
+  for (const release of holders.splice(0)) await release();
   for (const profile of profiles.splice(0)) await rm(profile, { recursive: true, force: true });
 });
 
@@ -87,34 +122,34 @@ async function eventually(check: () => Promise<boolean>): Promise<void> {
 verifies("agent-host.remote-gateway", () => {
   describe("the host's switch for the remote gateway", () => {
     it("listens on no port for the gateway without a tunnel provider, as the executable where tailscale isn't installed", async () => {
-      const port = await freePort();
+      const port = await heldPort();
       const host = startHost(["--profile-folder", await profileWithRemote(true)]);
       await host.handshake;
-      expect(await requestTo(port)).toBe("refused");
       host.input.end();
       expect(await host.running).toBe(0);
+      await expectNoGateway(port, host.errors);
     });
 
     it("ignores --remote-gateway on the command line: the launch arguments can't turn it on", async () => {
-      const port = await freePort();
+      const port = await heldPort();
       const host = startHost(["--remote-gateway", "--remote-gateway-port", String(port)]);
       await host.handshake;
-      expect(await requestTo(port)).toBe("refused");
       host.input.end();
       expect(await host.running).toBe(0);
+      await expectNoGateway(port, host.errors);
     });
 
     it("listens on no port while remote is off, even with a provider", async () => {
-      const port = await freePort();
+      const port = await heldPort();
       const profile = await profileWithRemote(false);
       const host = startHost(["--profile-folder", profile], {
         tunnel: new FakeTunnelProvider(),
         gatewayPort: port,
       });
       await host.handshake;
-      expect(await requestTo(port)).toBe("refused");
       host.input.end();
       expect(await host.running).toBe(0);
+      await expectNoGateway(port, host.errors);
     });
 
     it("listens on the gateway's port while remote is on with a provider, and closes it at the end", async () => {
@@ -152,27 +187,27 @@ verifies("agent-host.remote-gateway", () => {
     });
 
     it("offers no remote over --stdio, and says why", async () => {
-      const port = await freePort();
+      const port = await heldPort();
       const profile = await profileWithRemote(true);
       const host = startHost(
         ["--stdio", "--relay-host", "127.0.0.1:4999", "--profile-folder", profile],
         { tunnel: new FakeTunnelProvider(), gatewayPort: port },
       );
       await host.handshake;
-      expect(await requestTo(port)).toBe("refused");
       expect(host.errors.join("")).toContain("over --stdio the host listens on none");
       host.input.end();
       await host.running;
+      await expectNoGateway(port, host.errors);
     });
 
     it("offers no remote without a profile folder, and says why", async () => {
-      const port = await freePort();
+      const port = await heldPort();
       const host = startHost([], { tunnel: new FakeTunnelProvider(), gatewayPort: port });
       await host.handshake;
-      expect(await requestTo(port)).toBe("refused");
       expect(host.errors.join("")).toContain("no profile folder");
       host.input.end();
       expect(await host.running).toBe(0);
+      await expectNoGateway(port, host.errors);
     });
   });
 });
