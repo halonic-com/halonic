@@ -91,7 +91,7 @@ function containerSession(): SandboxSession & { started: SandboxCommand[] } {
 
 verifies("harness-kit.session-settings-folder", () => {
   it.runIf(posixShell)(
-    "writes a file through the session and reads it back, leaving nothing aside",
+    "[platform:win32] the scripts run on a POSIX sh: writes a file through the session and reads it back, leaving nothing aside",
     async () => {
       const session = localSession();
       const writer = sessionSettingsFolder(session);
@@ -111,7 +111,7 @@ verifies("harness-kit.session-settings-folder", () => {
   );
 
   it.runIf(posixShell)(
-    "gives null for a missing file, and says whether a path exists",
+    "[platform:win32] the scripts run on a POSIX sh: gives null for a missing file, and says whether a path exists",
     async () => {
       const writer = sessionSettingsFolder(localSession());
 
@@ -122,7 +122,7 @@ verifies("harness-kit.session-settings-folder", () => {
   );
 
   it.runIf(posixShell)(
-    "lists every name in a folder, hidden ones too, and none for a missing folder",
+    "[platform:win32] the scripts run on a POSIX sh: lists every name in a folder, hidden ones too, and none for a missing folder",
     async () => {
       await mkdir(settingsFolder, { recursive: true });
       await writeFile(join(settingsFolder, ".credentials.json"), "{}");
@@ -138,7 +138,7 @@ verifies("harness-kit.session-settings-folder", () => {
   );
 
   it.runIf(posixShell)(
-    "removes a folder inside the settings folder with everything in it",
+    "[platform:win32] the scripts run on a POSIX sh: removes a folder inside the settings folder with everything in it",
     async () => {
       await mkdir(join(settingsFolder, "projects", "deep"), { recursive: true });
       const writer = sessionSettingsFolder(localSession());
@@ -165,25 +165,31 @@ verifies("harness-kit.session-settings-folder", () => {
     expect(session.started).toEqual([]);
   });
 
-  it.runIf(posixShell)("fails a write it can't make, leaving no temporary file", async () => {
-    await mkdir(settingsFolder, { recursive: true });
-    await chmod(join(root, "home"), 0o555);
-    await chmod(settingsFolder, 0o555);
-    const writer = sessionSettingsFolder(localSession());
+  it.runIf(posixShell)(
+    "[platform:win32] the scripts run on a POSIX sh: fails a write it can't make, leaving no temporary file",
+    async () => {
+      await mkdir(settingsFolder, { recursive: true });
+      await chmod(join(root, "home"), 0o555);
+      await chmod(settingsFolder, 0o555);
+      const writer = sessionSettingsFolder(localSession());
 
-    await expect(writer.write(join(settingsFolder, "settings.json"), "{}")).rejects.toThrow(
-      /write .* failed with exit code/,
-    );
-    await chmod(settingsFolder, 0o755);
-    expect(await readdir(settingsFolder)).toEqual([]);
-  });
+      await expect(writer.write(join(settingsFolder, "settings.json"), "{}")).rejects.toThrow(
+        /write .* failed with exit code/,
+      );
+      await chmod(settingsFolder, 0o755);
+      expect(await readdir(settingsFolder)).toEqual([]);
+    },
+  );
 
-  it.runIf(posixShell)("refuses to read a file over the limit", async () => {
-    await writeFile(join(tempFolder, "big.txt"), "x".repeat(sessionReadLimitBytes + 1));
-    const writer = sessionSettingsFolder(localSession());
+  it.runIf(posixShell)(
+    "[platform:win32] the scripts run on a POSIX sh: refuses to read a file over the limit",
+    async () => {
+      await writeFile(join(tempFolder, "big.txt"), "x".repeat(sessionReadLimitBytes + 1));
+      const writer = sessionSettingsFolder(localSession());
 
-    await expect(writer.read(join(tempFolder, "big.txt"))).rejects.toThrow(/over/);
-  });
+      await expect(writer.read(join(tempFolder, "big.txt"))).rejects.toThrow(/over/);
+    },
+  );
 
   it("reports a script's own failure when it closed its input before the text was sent", async () => {
     const session = containerSession();
