@@ -51,6 +51,25 @@ export async function everyPage(get: GitHubGet, path: string): Promise<unknown[]
   }
 }
 
+/**
+ * What `read` gets from one of a tool's repositories, or undefined for one
+ * after the first that the token doesn't reach: GitHub answers 404 for a
+ * private repository it can't see. The first repository has to answer.
+ */
+export async function readUnlessHidden<T>(
+  read: () => Promise<T>,
+  first: boolean,
+): Promise<T | undefined> {
+  try {
+    return await read();
+  } catch (error) {
+    if (first || !/ answered 404\b/.test((error as Error).message)) {
+      throw error;
+    }
+    return undefined;
+  }
+}
+
 /** The `ci-ok` that applies to the pull request: the light run's while it's a draft. */
 export function ciOkOf(get: GitHubGet, repo: string, pull: PullDetails): Promise<CheckState> {
   return checkState(get, repo, pull.head.sha, pull.draft === true ? draftCiOkName : ciOkName);

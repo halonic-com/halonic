@@ -40,6 +40,13 @@ the plugin was built with, is off. So is a tool whose action has no handler in t
 | `github.open-pull-requests` | the caller's open pull requests (branches starting with its `urlKey`), the ones out of sync first |
 | `paperclip.failed-runs` | the runs that failed or timed out since a time, per agent, with cause codes and tasks, from the record the runtime keeps |
 | `paperclip.task` | one task: status, holder, parent, blockers, documents and its newest comments (5 unless asked for up to 20), trimmed as `task_get` does |
+| `github.merge-times` | merges into the default branch over the tool's `days`, per day, and the median and longest time from opened to merged |
+
+`github.merge-times` measures from when a pull request was opened to when it merged, read from
+GitHub's closed pull request list, and every answer says so. Paperclip's own `merge_speed` measures
+time in the merge queue from the PR watcher's snapshots, which the runtime doesn't have, so the two
+figures differ. It reads at most 1,000 closed pull requests per repository and says when that left
+older merges out.
 
 An approval counts on the current head when the repository's team signed it ("Name: approved on
 head `abc1234`") and it isn't the author's own: the signer is compared with the author's `urlKey`,

@@ -6,6 +6,7 @@ import {
   type Mergeable,
   mergeableOf,
   type PullDetails,
+  readUnlessHidden,
   repositoriesOf,
   shownTitle,
   taskOfBranch,
@@ -42,26 +43,6 @@ export interface OpenPullRequest {
 interface ListedPull {
   readonly number: number;
   readonly head: { readonly ref: string; readonly repo: { readonly full_name: string } | null };
-}
-
-/**
- * A repository's open pull requests, or undefined for one after the first
- * that the token doesn't reach: GitHub answers 404 for a private repository
- * it can't see.
- */
-async function openPulls(
-  get: GitHubGet,
-  repo: string,
-  first: boolean,
-): Promise<ListedPull[] | undefined> {
-  try {
-    return (await everyPage(get, `/repos/${repo}/pulls?state=open`)) as ListedPull[];
-  } catch (error) {
-    if (first || !/ answered 404\b/.test((error as Error).message)) {
-      throw error;
-    }
-    return undefined;
-  }
 }
 
 /** One of the agent's pull requests: about 3 GitHub requests. */
@@ -106,7 +87,10 @@ export async function openPullRequests(
   const author = agent.urlKey.toLowerCase();
   const found: OpenPullRequest[] = [];
   for (const [index, repo] of repos.entries()) {
-    const open = await openPulls(get, repo, index === 0);
+    const open = await readUnlessHidden(
+      () => everyPage(get, `/repos/${repo}/pulls?state=open`) as Promise<ListedPull[]>,
+      index === 0,
+    );
     if (open === undefined) {
       unread.push(repo);
       continue;
