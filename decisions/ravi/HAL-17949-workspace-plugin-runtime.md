@@ -3,6 +3,7 @@
 - Task: HAL-17949
 - Approval: Liam's decision on HAL-17993 (option A, narrowed), following his layout decision on HAL-17985 (the plugin runtime is a generic target package that the CLI's plugin builder ships); signed in review of the security PR. It changes files under `tooling/check/`, which is part of the requirement guard, so it may need both guardians' signatures (Liam and Julian)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Cp1Oq/J/k5IvhK+hy+WX4auFTJ1VSwTJMtTnve29EA5DUYbYTwE02NiEUog/DXDk3yRBu4Fa+V54GpWmBdduBA==
 
 ## What changes
 
