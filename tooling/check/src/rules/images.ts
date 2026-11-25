@@ -3,6 +3,7 @@ import {
   type DockerInstruction,
   isDockerfile,
   readDockerInstructions,
+  toInstruction,
   words,
 } from "../lib/dockerfile.ts";
 import type { ApprovedImage } from "../lib/image-list.ts";
@@ -16,15 +17,24 @@ const coveredFolder = "packages/";
 
 /**
  * Downloads and installs in a `RUN` line that bypass the checksums. `npm install --offline` only
- * unpacks tarballs an `ADD --checksum` already fetched, so it is allowed.
+ * unpacks tarballs an `ADD --checksum` already fetched, so it is allowed. This list catches
+ * mistakes, not a determined author: a reviewer still reads every `RUN`.
  */
 const fetchingCommands: readonly { readonly pattern: RegExp; readonly name: string }[] = [
   { pattern: /\bcurl\b/, name: "curl" },
   { pattern: /\bwget\b/, name: "wget" },
-  { pattern: /\b(pnpm|yarn)\s+(add|install|i)\b/, name: "pnpm or yarn install" },
-  { pattern: /\bpip3?\s+install\b/, name: "pip install" },
+  { pattern: /\b(pnpm|yarn|bun)\s+(add|install|i|dlx)\b/, name: "pnpm, yarn or bun install" },
+  { pattern: /\bnpx\b|\bnpm\s+(exec|x)\b/, name: "npx or npm exec" },
+  { pattern: /\bpip[0-9.]*\s+install\b/, name: "pip install" },
+  { pattern: /\bgit\s+(clone|fetch|pull)\b/, name: "git clone" },
+  { pattern: /\bapk\s+add\b/, name: "apk add" },
+  { pattern: /\bdpkg\s+(-i|--install)\b/, name: "dpkg -i" },
+  { pattern: /\b(gem|cargo)\s+install\b/, name: "gem or cargo install" },
+  { pattern: /\bgo\s+(install|get)\b/, name: "go install" },
 ];
-const npmInstall = /\bnpm\s+(install|i|ci)\b([^&|;]*)/g;
+const npmInstall = /\bnpm\s+(install|i|ci|add)\b([^&|;]*)/g;
+/** Flags that undo `--offline` when they come with it. */
+const onlineFlags = new Set(["--no-offline", "--offline=false", "--prefer-online"]);
 const aptInstall = /\bapt(?:-get)?\s+install\b([^&|;]*)/g;
 
 /**
@@ -68,7 +78,9 @@ function checkDockerfile(
 ): void {
   const stages = new Set<string>();
   const used = new Set<string>();
-  for (const instruction of instructions) {
+  for (const found of instructions) {
+    const instruction = unwrapOnBuild(found);
+    checkFromOtherImage(report, file, instruction, stages);
     if (instruction.keyword === "FROM") {
       checkFrom(report, file, instruction, approved, stages);
     } else if (instruction.keyword === "ADD") {
@@ -88,6 +100,39 @@ function checkDockerfile(
   }
 }
 
+/** `ONBUILD RUN …` runs in an image built on this one; check it as the instruction it wraps. */
+function unwrapOnBuild(instruction: DockerInstruction): DockerInstruction {
+  if (instruction.keyword !== "ONBUILD") {
+    return instruction;
+  }
+  return toInstruction(instruction.argument, instruction.line) ?? instruction;
+}
+
+/**
+ * `COPY --from=` and `RUN --mount=…,from=` may name only an earlier stage, by name or number:
+ * naming an image would pull it unpinned and unlisted.
+ */
+function checkFromOtherImage(
+  report: Report,
+  file: string,
+  instruction: DockerInstruction,
+  stages: ReadonlySet<string>,
+): void {
+  const sources = [
+    ...instruction.argument.matchAll(/(?:^|\s)--from=(\S+)/g),
+    ...instruction.argument.matchAll(/--mount=\S*?\bfrom=([^,\s]+)/g),
+  ].map((match) => match[1] ?? "");
+  for (const source of sources) {
+    if (!stages.has(source)) {
+      report.error(
+        file,
+        `${instruction.keyword} takes files from "${source}", which is not an earlier stage of this Dockerfile. Name a stage (FROM … AS <name>); an image named here is pulled unpinned and unlisted.`,
+        instruction.line,
+      );
+    }
+  }
+}
+
 function checkFrom(
   report: Report,
   file: string,
@@ -99,6 +144,8 @@ function checkFrom(
   const image = parts[0] ?? "";
   // A later stage built on an earlier one carries no image of its own.
   const onEarlierStage = stages.has(image);
+  // Stages count from 0, and `--from=` may name one by its number.
+  stages.add(String([...stages].filter((stage) => /^\d+$/.test(stage)).length));
   if (parts[1]?.toUpperCase() === "AS" && parts[2] !== undefined) {
     stages.add(parts[2]);
   }
@@ -186,7 +233,10 @@ function checkRun(
     .filter(({ pattern }) => pattern.test(command))
     .map(({ name }) => name);
   for (const match of command.matchAll(npmInstall)) {
-    if (!words(match[2] ?? "").includes("--offline")) found.push("npm install without --offline");
+    const flags = words(match[2] ?? "");
+    if (!flags.includes("--offline") || flags.some((flag) => onlineFlags.has(flag))) {
+      found.push("npm install without --offline");
+    }
   }
   for (const name of found) {
     report.error(

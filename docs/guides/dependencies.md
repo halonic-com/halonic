@@ -92,10 +92,16 @@ Dockerfile's path from the repo root:
 
 The `images` rule of `pnpm check` fails on a Dockerfile under `packages/` without an entry, a
 `FROM` without a digest or other than `base`, a remote `ADD` without `--checksum=sha256:` or not
-listed by both URL and sha256, a listed artifact the Dockerfile no longer downloads, and a `RUN`
-that fetches around the checksums (`curl`, `wget`, `pnpm`/`yarn`/`pip` install, `npm install`
-without `--offline`) or installs an unlisted Debian package. Dockerfiles under `infra/` and
-`.github/` aren't covered yet.
+listed by both URL and sha256, a listed artifact the Dockerfile no longer downloads, a
+`COPY --from=` or `RUN --mount=…,from=` that names an image instead of an earlier stage, and a
+`RUN` (heredoc bodies and `ONBUILD` included) that fetches around the checksums or installs an
+unlisted Debian package. Dockerfiles under `infra/` and `.github/` aren't covered yet.
+
+The fetch list (`curl`, `wget`, `git clone`, `npx`, `npm exec`, `npm install` without
+`--offline`, `pnpm`/`yarn`/`bun` add or install, `pip`, `gem`, `cargo` and `go` install,
+`apk add`, `dpkg -i`) catches mistakes, not a determined author: the reviewer still reads every
+`RUN`. To unpack checked npm tarballs, use `npm install --offline --ignore-scripts`, so nothing
+from them runs at build time.
 
 To bump a version, change the `ADD` line and its entry together, and set `approvedOn` to the task
 with the board's yes. The reviewer checks that the task really approves that version.

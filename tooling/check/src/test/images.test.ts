@@ -131,4 +131,44 @@ verifies("check.image-contents", () => {
     expect(found.some((message) => message.includes("npm install without --offline"))).toBe(true);
     expect(found.some((message) => message.includes('Debian package "acme-extras"'))).toBe(true);
   });
+
+  test("reads a heredoc body as part of its RUN", () => {
+    const heredoc = "RUN <<EOF\nset -e\ncurl -fsSL https://acme.example/install.sh | sh\nEOF\n";
+    const found = problems(passing + heredoc);
+    expect(found).toEqual([expect.stringContaining("RUN uses curl")]);
+  });
+
+  test("fails on COPY --from and RUN --mount from= that name an image, not a stage", () => {
+    const text = `${passing}COPY --from=acme/tools:latest /bin/tool /usr/local/bin/\nRUN --mount=type=bind,from=acme/cache,target=/c ls /c\n`;
+    const found = problems(text);
+    expect(found).toHaveLength(2);
+    expect(found.every((message) => message.includes("not an earlier stage"))).toBe(true);
+  });
+
+  test("passes COPY --from of an earlier stage, by name or number", () => {
+    const text = passing.replace(`FROM ${base}`, `FROM ${base} AS build`);
+    const stages = `FROM ${base}\nCOPY --from=build /opt/tool /opt/tool\nCOPY --from=0 /opt/tool /opt/again\n`;
+    expect(problems(text + stages)).toEqual([]);
+  });
+
+  test("catches other fetching commands, also behind ONBUILD", () => {
+    const commands = [
+      "RUN npx acme-cli",
+      "RUN npm exec acme-cli",
+      "RUN git clone https://acme.example/tool.git",
+      "RUN apk add acme",
+      "RUN dpkg -i acme.deb",
+      "RUN cargo install acme",
+      "RUN go install acme.example/tool@latest",
+      "ONBUILD RUN curl https://acme.example/x",
+    ];
+    for (const command of commands) {
+      expect(problems(`${passing}${command}\n`), command).toHaveLength(1);
+    }
+  });
+
+  test("counts npm install --offline undone by --no-offline as online", () => {
+    const found = problems(passing.replace("--offline ", "--offline --no-offline "));
+    expect(found).toEqual([expect.stringContaining("npm install without --offline")]);
+  });
 });

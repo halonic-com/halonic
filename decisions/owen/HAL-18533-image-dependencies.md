@@ -15,9 +15,12 @@
 - A new rule, `images`, fails on a Dockerfile under `packages/` without an entry, and for a listed
   one on: a `FROM` without a digest or other than `base`; a remote `ADD` without
   `--checksum=sha256:`, not listed by URL, with a different sha256, or whose URL doesn't contain the
-  listed version; a listed artifact no longer downloaded; a `RUN` with `curl`, `wget`,
-  `pnpm`/`yarn`/`pip` install or `npm install` without `--offline`; a `RUN` that installs an
-  unlisted Debian package. Dockerfiles under `infra/` and `.github/` are out of scope for now.
+  listed version; a listed artifact no longer downloaded; a `COPY --from=` or
+  `RUN --mount=…,from=` naming anything but an earlier stage; a `RUN` (heredoc bodies and
+  `ONBUILD` included) with a command from the fetch list (`curl`, `wget`, `git clone`, `npx`,
+  `npm exec`, `pnpm`/`yarn`/`bun`/`pip`/`gem`/`cargo`/`go` install, `apk add`, `dpkg -i`, or
+  `npm install` without `--offline` or with a flag undoing it); a `RUN` that installs an unlisted
+  Debian package. The fetch list catches mistakes, not a determined author. Dockerfiles under `infra/` and `.github/` are out of scope for now.
 - `tooling/check/src/lib/config-files.ts` reads the new section. Its strict-reading helper `Place`
   moves unchanged to `tooling/check/src/lib/place.ts` so the new `image-list.ts` can use it. Both new
   files join the trust roots in `tooling/check/src/guard/note-check.ts`, because the guard commands
@@ -33,7 +36,7 @@ unpack the tarballs an `ADD --checksum` already fetched, and with `--offline` it
 
 ## Tests
 
-No test was skipped, weakened or deleted. `tooling/check/src/test/images.test.ts` adds eleven tests
+No test was skipped, weakened or deleted. `tooling/check/src/test/images.test.ts` adds sixteen tests
 on invented `acme` Dockerfiles: one passing fixture, and one for each failure above.
 
 ## Covers
