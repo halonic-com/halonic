@@ -262,3 +262,18 @@ test("fast lower: only an idle fast slot leaves a stale snapshot, and only once 
   );
   assert.match(slot, /release_idle_runner\(\) \{[^}]*curl -fsS -o \/dev\/null -X DELETE/);
 });
+
+test("fast lower: a busy slot remounts the current generation between two jobs (HAL-18424)", () => {
+  const slot = read("vm/halonic-runner-slot.sh");
+  // One JIT runner per cycle: its container ends with its one job, and systemd starts a new cycle.
+  assert.match(read("vm/halonic-runner@.service"), /^Restart=always$/m);
+  assert.ok(read("vm/entry.sh").includes('exec ./run.sh --jitconfig "$JIT"'));
+  // The cycle's exit unmounts its overlays, and every cycle mounts what is current when it starts,
+  // before it starts the container whose runner takes the next job.
+  const cleanup = slot.slice(slot.indexOf("cleanup() {"), slot.indexOf("trap cleanup EXIT"));
+  assert.ok(cleanup.includes('[ "$LABEL" != halonic-ci-fast ] || unmount_caches'));
+  assert.ok(
+    slot.indexOf('LOWER_GEN=$("$FAST_LOWER" current)') <
+      slot.indexOf('docker run --rm --name "hci-$SLOT"'),
+  );
+});
