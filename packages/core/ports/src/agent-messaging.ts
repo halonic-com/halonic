@@ -174,6 +174,14 @@ export interface FullAnswer {
 export interface InboxItemOption {
   id: string;
   label: string;
+  /** Picking it needs a note that isn't blank, such as the reason for a reject. */
+  noteRequired?: boolean;
+}
+
+/** Where an item that can't be answered here is answered instead. */
+export interface InboxAnswerElsewhere {
+  /** The `https:` page in the source, such as the task's page in Paperclip. Apps open it, nothing more. */
+  link: string;
 }
 
 /**
@@ -216,10 +224,17 @@ export interface InboxItem {
   options: readonly InboxItemOption[];
   /**
    * Set only when the item asks several questions, or one answered with several
-   * options; then `options` is empty. A single single-select question stays in
-   * `options` (requirement `ports.agent-messaging-questions`).
+   * options; then `options` holds only whole-item choices, such as Reject, next to
+   * the questions. A single single-select question stays in `options`
+   * (requirement `ports.agent-messaging-questions`).
    */
   questions?: readonly InboxQuestion[];
+  /**
+   * Set when the source can't take an answer to this item here: it takes no answer,
+   * and apps show the link instead of options or a reply field
+   * (requirement `ports.agent-messaging-answer-elsewhere`).
+   */
+  answerElsewhere?: InboxAnswerElsewhere;
   /** For an action item, the request: a reviewed definition and its parameters, never a call. */
   action?: InboxActionRequest;
   /**
