@@ -50,8 +50,9 @@ function AllAgentsHeading({ onOpen }: { onOpen: () => void }) {
 
 /**
  * Agents by spend today on Spend and seats (S1): the top 5, each opening its agent, with
- * "See all ›" in the heading when more agents spent. On a phone the heading itself,
- * "Agents by spend ›", opens every agent instead (S24). Nothing while it reads.
+ * "See all ›" in the heading when more agents spent. On a phone only the heading,
+ * "Agents by spend ›", which opens every agent: no list on the first screen (S24, HAL-17640).
+ * Nothing while it reads.
  */
 export function AgentsBySpendSection(props: {
   details: TeamDetails;
@@ -63,27 +64,30 @@ export function AgentsBySpendSection(props: {
   if (shown.kind !== "read" || shown.value.total === 0) return null;
   const { rows, total } = shown.value;
   const openAll = () => props.onOpen({ kind: "agents" });
+  if (onPhone) {
+    return (
+      <section aria-label={words.agentsBySpend} className="flex flex-col gap-2">
+        <AllAgentsHeading onOpen={openAll} />
+      </section>
+    );
+  }
   return (
     <section aria-label={words.agentsBySpend} className="flex flex-col gap-2">
-      {onPhone ? (
-        <AllAgentsHeading onOpen={openAll} />
-      ) : (
-        <div className="flex items-baseline justify-between gap-3">
-          <ListHeading name={words.agentsBySpend} />
-          {rows.length < total ? (
-            <span data-opens={pageKey({ kind: "agents" })} className="pe-4">
-              <button
-                type="button"
-                onClick={openAll}
-                className="inline-flex items-center gap-1 rounded-xs text-small text-fg-muted underline-offset-2 hover:text-fg hover:underline focus-ring"
-              >
-                {words.seeAll}
-                <Chevron />
-              </button>
-            </span>
-          ) : null}
-        </div>
-      )}
+      <div className="flex items-baseline justify-between gap-3">
+        <ListHeading name={words.agentsBySpend} />
+        {rows.length < total ? (
+          <span data-opens={pageKey({ kind: "agents" })} className="pe-4">
+            <button
+              type="button"
+              onClick={openAll}
+              className="inline-flex items-center gap-1 rounded-xs text-small text-fg-muted underline-offset-2 hover:text-fg hover:underline focus-ring"
+            >
+              {words.seeAll}
+              <Chevron />
+            </button>
+          </span>
+        ) : null}
+      </div>
       <ul className="flex flex-col gap-2">
         {rows.map((row) => (
           <li key={row.agent.id} data-opens={pageKey({ kind: "agent", id: row.agent.id })}>

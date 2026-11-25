@@ -109,3 +109,22 @@ verifies("team.spend-and-seats", () => {
     });
   });
 });
+
+verifies("team.phone-screens", () => {
+  describe("SpendAndSeatsPage's first screen on a phone (HAL-17515 S24)", () => {
+    it("shows the Agents by spend heading but no list of agents", async () => {
+      const page = await openOnPhone();
+      expect(headings(page)).toContain("Agents by spend›");
+      const agents = section(page, "Agents by spend today");
+      for (const name of ["Mateo", "Owen", "Kim", "Ada", "Ben", "Cy"]) {
+        expect(agents).not.toContain(name);
+      }
+    });
+
+    it("stacks the tiles as rows under Money and seats", async () => {
+      const page = await openOnPhone();
+      const tiles = page.querySelectorAll('[aria-label="Money and seats"] h3');
+      expect(tiles).toHaveLength(3);
+    });
+  });
+});
