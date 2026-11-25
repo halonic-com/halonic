@@ -65,6 +65,8 @@ export {
   type ChatToolState,
 } from "./chat/chat-tool-line.tsx";
 export { ChatTranscript, type ChatTranscriptProps } from "./chat/chat-transcript.tsx";
+export { ChatUi, type ChatUiProps } from "./chat/chat-ui.tsx";
+export { CHAT_UI_ROWS_SHOWN } from "./chat/chat-ui-parts.tsx";
 export {
   Checkbox,
   type CheckboxProps,

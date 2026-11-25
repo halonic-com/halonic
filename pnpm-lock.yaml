@@ -4765,6 +4765,9 @@ importers:
 
   packages/studio/kit:
     dependencies:
+      '@halonicjs/openui-lang':
+        specifier: workspace:*
+        version: link:../../core/openui-lang
       react:
         specifier: 'catalog:'
         version: 19.3.1
