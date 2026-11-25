@@ -91,7 +91,7 @@ verifies("action-steppers.server-session-launch", () => {
 
     it("sweep only old briefs in the brief folder, after the copy worked", () => {
       expect(remoteUploadCommand("HAL-1234")).toMatch(
-        /&& cat > \.halonic\/briefs\/HAL-1234\.md && find \.halonic\/briefs -maxdepth 1 -type f -name "HAL-\*\.md" -mmin \+60 -delete$/,
+        /&& cat > \.halonic\/briefs\/HAL-1234\.md && \{ find \.halonic\/briefs -maxdepth 1 -type f -name "HAL-\*\.md" -mmin \+60 -delete \|\| true; \}$/,
       );
     });
   });
@@ -100,11 +100,17 @@ verifies("action-steppers.server-session-launch", () => {
     it("tells the user how to do it by hand, with the server when it's known", () => {
       const guide = renderServerSessionGuide("Task: …", { ...target, port: 2222 });
       expect(guide.split("\n").slice(0, 3)).toEqual([
-        "1. Open a terminal and run: ssh -p 2222 ops@build.acme.example",
+        "1. Open a terminal and run: ssh -p 2222 -- ops@build.acme.example",
         "2. On the server, run: claude",
         "3. Paste the brief below as your first message.",
       ]);
       expect(renderServerSessionGuide("Task: …")).toContain("ssh <user>@<your server>");
+    });
+
+    it("never names a refused server, so the user can't copy it into a command", () => {
+      const guide = renderServerSessionGuide("Task: …", { host: "-oProxyCommand=sh", user: "ops" });
+      expect(guide).toContain("ssh <user>@<your server>");
+      expect(guide).not.toContain("ProxyCommand");
     });
   });
 });

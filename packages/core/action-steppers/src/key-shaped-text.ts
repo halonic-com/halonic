@@ -18,7 +18,9 @@ const passwordInAddress = /[a-z][a-z0-9+.-]*:\/\/[^\s:/@]+:[^\s:/@]+@/i;
  * capital letter in it: the shape of access keys, tokens and the parts of a
  * signed token. Lower-case hex, such as a commit, has no capital, and
  * names joined with `-`, `_`, `.` or `/` are separate runs, so task ids,
- * branch names and paths don't count.
+ * branch names and paths don't count. The price: a key made only of lower
+ * case and digits, or one split by `-` or `_`, isn't caught here, only by
+ * `findSecretShape` when it knows the key's prefix.
  */
 const randomRun = /[A-Za-z0-9+=]{20,}/g;
 

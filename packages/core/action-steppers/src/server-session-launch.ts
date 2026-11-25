@@ -26,15 +26,17 @@ export function serverSessionPrompt(task: string): string {
 
 /**
  * What the server runs to receive the brief on its input. The sweep runs only
- * after the copy worked and only touches old briefs in the brief folder.
+ * after the copy worked and only touches old briefs in the brief folder. A
+ * sweep that fails doesn't fail the upload: the copy has already worked.
  */
 export function remoteUploadCommand(task: string): string {
   const file = `${serverSessionBriefFolder}/${task}.md`;
+  const sweep = `find ${serverSessionBriefFolder} -maxdepth 1 -type f -name "HAL-*.md" -mmin +60 -delete`;
   return [
     "umask 077",
     `mkdir -p ${serverSessionBriefFolder}`,
     `cat > ${file}`,
-    `find ${serverSessionBriefFolder} -maxdepth 1 -type f -name "HAL-*.md" -mmin +60 -delete`,
+    `{ ${sweep} || true; }`,
   ].join(" && ");
 }
 
@@ -56,7 +58,8 @@ function sshOptions(target: ServerTarget): string {
  * into its own folder through `$0` and uses relative names, so a profile
  * folder with a quote or a `%` in its name can't change what runs. Every
  * value in it has passed `validateServerTarget` and the task pattern, and is
- * single-quoted anyway.
+ * single-quoted anyway. The remote commands assume a POSIX-like login shell
+ * on the server (sh, bash, zsh), not csh or tcsh.
  *
  * @returns the script, or why the target or task id is refused
  *
@@ -91,16 +94,22 @@ export function renderServerSessionLauncher(
   );
 }
 
+function guideServer(target: ServerTarget | undefined): string {
+  if (target === undefined) return "<user>@<your server>";
+  const checked = validateServerTarget(target);
+  if (!checked.ok) return "<user>@<your server>";
+  return `${sshOptions(checked.value)}-- ${checked.value.user}@${checked.value.host}`;
+}
+
 /**
  * The manual guide for a `server-session` block: what to do by hand where
  * the desktop app can't open a terminal (Windows in v1, no terminal found,
- * or Paperclip without Halonic). It names the server only when it's known.
+ * or Paperclip without Halonic). It names the server only when it's known
+ * and passes `validateServerTarget`, so a refused setting is never put in a
+ * command the user copies.
  */
 export function renderServerSessionGuide(brief: string, target?: ServerTarget): string {
-  const server =
-    target === undefined
-      ? "<user>@<your server>"
-      : `${sshOptions(target)}${target.user}@${target.host}`;
+  const server = guideServer(target);
   return [
     `1. Open a terminal and run: ssh ${server}`,
     "2. On the server, run: claude",

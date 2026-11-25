@@ -82,6 +82,31 @@
       "ACME-1"
     ]
   },
+  "characters": {
+    "$comment": "Characters a brief may never hold: they break a line, or hide or reorder text in the dialog the person reads. Each is put inside a step.",
+    "refused": [
+      "\u001b",
+      "\u007f",
+      "\u0085",
+      "\u00ad",
+      "\u061c",
+      "\u200b",
+      "\u200d",
+      "\u200e",
+      "\u200f",
+      "\u202a",
+      "\u202e",
+      "\u2028",
+      "\u2029",
+      "\u2060",
+      "\u2066",
+      "\u2069",
+      "\ufeff",
+      "\udb40\udc01",
+      "\udb40\udc41",
+      "\udb40\udc7f"
+    ]
+  },
   "launcher": {
     "target": {
       "host": "build.acme.example",
@@ -92,7 +117,7 @@
     "script": [
       "#!/bin/sh",
       "cd -- \"$(dirname -- \"$0\")\" || exit 1",
-      "ssh -p 2222 -- 'ops@build.acme.example' 'umask 077 && mkdir -p .halonic/briefs && cat > .halonic/briefs/HAL-1234.md && find .halonic/briefs -maxdepth 1 -type f -name \"HAL-*.md\" -mmin +60 -delete' < ./brief-HAL-1234.md",
+      "ssh -p 2222 -- 'ops@build.acme.example' 'umask 077 && mkdir -p .halonic/briefs && cat > .halonic/briefs/HAL-1234.md && { find .halonic/briefs -maxdepth 1 -type f -name \"HAL-*.md\" -mmin +60 -delete || true; }' < ./brief-HAL-1234.md",
       "upload=$?",
       "rm -f -- ./brief-HAL-1234.md ./run-HAL-1234.command ./run-HAL-1234.sh",
       "if [ \"$upload\" -ne 0 ]; then",

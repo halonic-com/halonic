@@ -1,0 +1,15 @@
+{
+  "identifier": "desktop-server-session",
+  "description": "On macOS and Linux, the app's own page may open Claude Code on the user's own server for one task, through server_session_open (\"Run with Claude\", HAL-17843). The page gives only the task id, the brief it showed and the request's hash: the shell reads the server from the profile's settings itself, checks everything again, shows the whole brief in its own dialog, and starts nothing unless the person presses Start there. It is local only, so the Studio the computer serves gets none of it.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS"
+  ],
+  "permissions": [
+    "allow-server-session-open"
+  ]
+}

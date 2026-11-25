@@ -22,12 +22,19 @@ function isRequesterName(name: string): boolean {
   return name.length >= 1 && name.length <= 100 && isPlainLine(name);
 }
 
-function refuseKeys(block: ServerSessionBlock): Result<undefined, string> {
+/**
+ * Refuses a step or "Done when" that isn't one plain line or holds text
+ * shaped like a key. The schema checks the lines too, but a caller may pass
+ * a block it never validated, and a new line would add lines of its own to
+ * the brief.
+ */
+function refuseFields(block: ServerSessionBlock): Result<undefined, string> {
   const fields: [string, string][] = [
     ...block.steps.map((step, index): [string, string] => [`step ${index + 1}`, step]),
     ["Done when", block.doneWhen],
   ];
   for (const [name, text] of fields) {
+    if (!isPlainLine(text)) return err(`${name} isn't one line of plain text`);
     const shape = findKeyShapedText(text);
     // Name the field and the kind only: the text holds the key.
     if (shape !== undefined) return err(`${name} holds text shaped like a key (${shape})`);
@@ -59,8 +66,8 @@ export function buildServerSessionBrief(
   if (!serverSessionTaskPattern.test(block.task)) return err("the task id isn't like HAL-1234");
   if (!originPattern.test(origin)) return err("the Paperclip address isn't an https origin");
   if (!isRequesterName(requester)) return err("the requester's name isn't one short line");
-  const keys = refuseKeys(block);
-  if (!keys.ok) return keys;
+  const fields = refuseFields(block);
+  if (!fields.ok) return fields;
   const brief = [
     `Task: ${origin}/HAL/issues/${block.task}`,
     `This brief was written by ${requester}, not checked by Halonic.`,

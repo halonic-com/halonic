@@ -65,7 +65,9 @@ impl From<HostSettingsError> for HostSettingsRefusal {
 }
 
 /// The settings in the profile the CLI uses.
-fn store<R: Runtime>(app: &AppHandle<R>) -> Result<FileHostSettingsStore, HostSettingsRefusal> {
+pub(crate) fn store<R: Runtime>(
+    app: &AppHandle<R>,
+) -> Result<FileHostSettingsStore, HostSettingsRefusal> {
     let profile = cli_profile(app).map_err(HostSettingsRefusal::from)?;
     Ok(FileHostSettingsStore::new(PathBuf::from(
         profile.settings_folder(),

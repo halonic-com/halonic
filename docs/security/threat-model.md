@@ -102,6 +102,7 @@ them.
 | B7 | owner to cloud deployment | deploy credentials, workspace files, runtime data | [6](#6-cloud-deployments-b7) |
 | B8 | agent sandbox to host | model calls, tool calls, approvals, blocked access | [4.6](#46-agents-in-a-sandbox-b8), [4.7](#47-sandbox-backends-on-windows-b8) |
 | B9 | plugin to Halonic | a plugin's files, its backend's calls, its local tools' programs, the text Studio draws | [4.8](#48-plugins-b9) |
+| B10 | an agent's brief to Claude Code on your server | the brief an agent wrote, your server's host and user, a terminal on your computer | [4.9](#49-run-with-claude-on-your-server-b10) |
 
 ## 4. Threats per boundary
 
@@ -1016,6 +1017,36 @@ folders or a second name for a file (a hard link). A backend that loads a file
 in the middle of a call reads it then; the next call or start sees a change.
 [Plugins and security](plugins.md#what-this-does-not-protect-against) lists
 these with the rest of what trust doesn't cover.
+
+### 4.9 Run with Claude on your server (B10)
+
+"Run with Claude" (HAL-17834) opens Claude Code on your own server for one
+task, with a brief an agent wrote. Claude Code there runs with your access to
+that server, so the brief is untrusted content that steers it (B2), and the
+person who presses the button is the only check. On the desktop the page asks
+the shell's `server_session_open` command; nothing else can reach it.
+
+| Threat | Mitigation | Mark |
+| --- | --- | --- |
+| A served Studio, another window or an agent starts a session | The capability `desktop-server-session.json` grants `server_session_open` to the app's own local `main` window, on macOS and Linux only; the served Studio and other platforms are refused. No agent tool, engine or bridge names the command | **In review** (`studio.src-tauri.served-page`, #5804) |
+| A compromised page starts a session without asking | The shell asks "Start Claude Code on your server?" in its own native dialog, which the page can't draw or answer, naming the user, the host and the task and showing the whole brief. Cancel, closing it, or a dialog that can't open writes nothing. A second launch of one request within 60 s is ignored, but that only stops a double click: the dialog is the check | **In review** (`studio.src-tauri.crates.server-session.launch`, #5804) |
+| The dialog shows one brief and Claude Code reads another | The shell refuses a brief with a control or format character (zero-width characters, U+FEFF, the bidi controls, the tag characters) or a line or paragraph separator; the page's builder refuses the same characters, against shared cases | **In review** (`action-steppers.server-session-brief`, `studio.src-tauri.crates.server-session.launch`, #5804) |
+| The brief, the host or the user reaches a command line | The page gives only the task id, the brief and a hash. The shell reads the host, user and port from the profile's settings itself and checks them (no leading `-`, no shell character; `--` before the destination). The launcher it writes holds no path and no brief text: the brief goes to the server only over ssh's input, into a file named from the task id, and `claude` starts with a constant prompt and no flag | **In review** (`action-steppers.server-session-launch`, `studio.src-tauri.crates.server-session.launch`, #5804) |
+| Another program swaps the brief or the launcher on disk | Both are made new (`O_CREAT` with `O_EXCL`, which refuses a link) with modes `0600` and `0700` set as they're made, in a `0700` folder in the app's data that may not be a link or open to others. The launcher deletes both once the brief is copied | **In review** (#5804) |
+| A program named like a terminal in `~/bin` runs instead | The terminal is looked for in `/usr/bin` first (only `/usr/bin/open` on macOS) and started with fixed arguments and the launcher's path as one argument. It gets only `PATH` and a short list of variables, not Studio's whole environment | **In review** (#5804) |
+
+**Known limits.**
+
+- **The dialog is a message box.** A long brief makes it tall, and on a small
+  screen its end may be cut off. A scrolling view is the follow-up; until it
+  lands, nothing in Studio calls the command.
+- **Whatever the person allows, Claude Code does with their access.** The
+  brief is written by an agent and not checked by Halonic; Claude Code still
+  asks for its own permissions as it always does.
+- **`terminal-opened` means only that the terminal started.** A failed upload
+  shows in the terminal, and Claude Code doesn't start.
+- **The server's shell must be POSIX-like** (sh, bash, zsh), not csh or tcsh.
+- **Windows has no launcher in v1.** The page shows the manual steps instead.
 
 ## 5. `serve` (B6)
 
