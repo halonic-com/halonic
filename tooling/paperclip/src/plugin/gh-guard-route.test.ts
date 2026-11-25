@@ -90,6 +90,10 @@ verifies("paperclip.gh-guard-route", () => {
         ["worker-agents", "board"],
         ["github-summary", "board"],
         ["github-pull", "board"],
+        ["chief-line-open-thread", "board"],
+        ["chief-line-thread", "board"],
+        ["chief-line-send", "board"],
+        ["chief-line-subscribe", "board"],
       ]);
       expect(manifest.capabilities).toContain("api.routes.register");
       const onApiRequest = plugin.definition.onApiRequest;

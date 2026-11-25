@@ -4,6 +4,8 @@ import { workerAgentsRouteKey } from "../worker-agents/keys.ts";
 import { databaseWorkerTables } from "../worker-agents/tables.ts";
 import { boardCheck } from "./board-check.ts";
 import { registerBoardTools } from "./board-tools.ts";
+import { handleChiefLineRequest, isChiefLineRoute } from "./chief-line.ts";
+import { onChiefLineComment } from "./chief-line-signal.ts";
 import { companyRoster } from "./companies.ts";
 import { difficultyTagger } from "./difficulty-tagger.ts";
 import { lifecycleRunner } from "./fast-track-lifecycle-job.ts";
@@ -71,7 +73,10 @@ export const plugin = definePlugin({
     ctx.jobs.register("merge-control", () => mergeJob.dispatch());
     ctx.events.on("issue.comment.created", async (event) => {
       roster.remember(event.companyId);
-      await board.onCommentCreated(event, new Date());
+      await Promise.all([
+        board.onCommentCreated(event, new Date()),
+        onChiefLineComment(ctx, event),
+      ]);
     });
     ctx.events.on("agent.run.failed", async (event) => {
       roster.remember(event.companyId);
@@ -118,6 +123,9 @@ export const plugin = definePlugin({
         input,
         workerAgentsDeps(context, databaseWorkerTables(context.db)),
       );
+    }
+    if (isChiefLineRoute(input.routeKey)) {
+      return await handleChiefLineRequest(input, context);
     }
     if (input.routeKey === githubSummaryRouteKey) {
       return await handleGitHubSummary(input, context);

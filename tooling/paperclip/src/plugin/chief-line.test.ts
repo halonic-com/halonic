@@ -1,0 +1,194 @@
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, test } from "vitest";
+import { commentEvent, fakeChiefLine, lineRequest } from "./chief-line.test-helper.ts";
+import { handleChiefLineRequest } from "./chief-line.ts";
+import { chiefLineRouteKeys as keys } from "./chief-line-settings.ts";
+import { onChiefLineComment } from "./chief-line-signal.ts";
+import { manifest } from "./manifest.ts";
+
+const now = new Date("2026-11-25T10:00:00.000Z");
+
+verifies("paperclip.chief-line", () => {
+  test("the manifest declares the four routes board-only", () => {
+    const routes = manifest.apiRoutes?.filter((route) => route.routeKey.startsWith("chief-line"));
+    expect(routes?.map((route) => [route.method, route.path, route.auth])).toEqual([
+      ["POST", "/chief-line/thread", "board"],
+      ["GET", "/chief-line/thread", "board"],
+      ["POST", "/chief-line/send", "board"],
+      ["POST", "/chief-line/subscribe", "board"],
+    ]);
+  });
+
+  test("an agent's key is refused, and so is every call while the line is off", async () => {
+    const agent = { actorType: "agent", actorId: "a1", agentId: "a1" };
+    const on = fakeChiefLine();
+    expect(
+      (await handleChiefLineRequest(lineRequest(keys.send, {}, {}, agent), on.ctx)).status,
+    ).toBe(403);
+    const off = fakeChiefLine({ config: {} });
+    const sent = await handleChiefLineRequest(
+      lineRequest(keys.send, { caller: "sup", message: "hi" }),
+      off.ctx,
+    );
+    expect(sent.status).toBe(409);
+    expect(off.created).toEqual([]);
+  });
+
+  test("send creates the caller's thread once, posts the header as the caller and wakes Chief", async () => {
+    const line = fakeChiefLine();
+    const send = (message: string) =>
+      handleChiefLineRequest(
+        lineRequest(keys.send, { caller: "board-sup", message }),
+        line.ctx,
+        now,
+      );
+    const first = await send("How is the queue?");
+    const second = await send("And the seats?");
+    expect(line.created).toEqual([
+      expect.objectContaining({
+        title: "[chief-line] board-sup",
+        assigneeAgentId: "agent-chief",
+        projectId: "proj-1",
+      }),
+    ]);
+    expect(first.body).toEqual({ threadId: "issue-1", identifier: "ACME-1", commentId: "c1" });
+    expect(second.body).toMatchObject({ threadId: "issue-1", commentId: "c2" });
+    const [comment] = line.comments["issue-1"] ?? [];
+    expect(comment?.body).toBe("**From board-sup (chief line)**\n\nHow is the queue?");
+    expect(comment?.authorUserId).toBe("user-1");
+    expect(line.wakes).toEqual([
+      { issueId: "issue-1", options: { reason: "chief_line", idempotencyKey: "chief-line c1" } },
+      { issueId: "issue-1", options: { reason: "chief_line", idempotencyKey: "chief-line c2" } },
+    ]);
+  });
+
+  test("POST thread finds or creates the thread, and a bad caller name is refused", async () => {
+    const line = fakeChiefLine();
+    const open = await handleChiefLineRequest(
+      lineRequest(keys.openThread, { caller: "studio" }),
+      line.ctx,
+    );
+    expect(open.body).toEqual({ threadId: "issue-1", identifier: "ACME-1" });
+    await handleChiefLineRequest(lineRequest(keys.openThread, { caller: "studio" }), line.ctx);
+    expect(line.created).toHaveLength(1);
+    const bad = await handleChiefLineRequest(
+      lineRequest(keys.openThread, { caller: "Bad Name" }),
+      line.ctx,
+    );
+    expect(bad.status).toBe(400);
+  });
+
+  test("sends above the hourly limit are refused with a clear error", async () => {
+    const line = fakeChiefLine();
+    const send = () =>
+      handleChiefLineRequest(
+        lineRequest(keys.send, { caller: "sup", message: "x" }),
+        line.ctx,
+        now,
+      );
+    for (let index = 0; index < 3; index += 1) {
+      expect((await send()).status).toBe(200);
+    }
+    const refused = await send();
+    expect(refused).toEqual({
+      status: 429,
+      body: { error: "Too many messages: sup may send 3 per hour." },
+    });
+    const later = new Date(now.getTime() + 3_601_000);
+    const again = await handleChiefLineRequest(
+      lineRequest(keys.send, { caller: "sup", message: "x" }),
+      line.ctx,
+      later,
+    );
+    expect(again.status).toBe(200);
+  });
+
+  test("subscribe accepts only an allowed host", async () => {
+    const line = fakeChiefLine();
+    const subscribe = (url: string) =>
+      handleChiefLineRequest(lineRequest(keys.subscribe, { caller: "sup", url }), line.ctx);
+    expect((await subscribe("https://evil.test/hook")).status).toBe(400);
+    expect((await subscribe("https://user:pw@hooks.acme.test/x")).status).toBe(400);
+    expect((await subscribe("https://hooks.acme.test/chief")).status).toBe(200);
+    const none = fakeChiefLine({ config: { chiefLine: { enabled: true, projectId: "p" } } });
+    const refused = await handleChiefLineRequest(
+      lineRequest(keys.subscribe, { caller: "sup", url: "https://hooks.acme.test/chief" }),
+      none.ctx,
+    );
+    expect(refused.status).toBe(400);
+  });
+
+  test("GET thread lists comments after since, with author kind and time", async () => {
+    const line = fakeChiefLine();
+    await handleChiefLineRequest(lineRequest(keys.openThread, { caller: "sup" }), line.ctx);
+    line.addComment("issue-1", "first", null, "user-1");
+    line.addComment("issue-1", "answer", "agent-chief", null);
+    const read = await handleChiefLineRequest(
+      lineRequest(keys.thread, undefined, { caller: "sup", since: "2026-11-25T10:00:30.000Z" }),
+      line.ctx,
+    );
+    expect(read.body).toMatchObject({
+      comments: [
+        { id: "c2", authorKind: "agent", createdAt: "2026-11-25T10:01:00.000Z", body: "answer" },
+      ],
+    });
+  });
+
+  test("the signal fires only for Chief's comments on a chief-line thread, without the body, retrying once", async () => {
+    const line = fakeChiefLine({ hookStatuses: [500, 200] });
+    await handleChiefLineRequest(lineRequest(keys.openThread, { caller: "sup" }), line.ctx);
+    await handleChiefLineRequest(
+      lineRequest(keys.subscribe, { caller: "sup", url: "https://hooks.acme.test/c" }),
+      line.ctx,
+    );
+    const other = await line.ctx.issues.create({ companyId: "acme", title: "elsewhere" });
+    const offThread = line.addComment(other.id, "secret", "agent-chief", null);
+    await onChiefLineComment(line.ctx, commentEvent(other.id, offThread.id));
+    const ravi = line.addComment("issue-1", "secret", "agent-ravi", null);
+    await onChiefLineComment(line.ctx, commentEvent("issue-1", ravi.id));
+    expect(line.posts).toEqual([]);
+    const chief = line.addComment("issue-1", "secret answer", "agent-chief", null);
+    await onChiefLineComment(line.ctx, commentEvent("issue-1", chief.id));
+    const signal = {
+      thread: "ACME-1",
+      caller: "sup",
+      commentId: chief.id,
+      at: "2026-11-25T10:01:00.000Z",
+    };
+    expect(line.posts).toEqual([
+      { url: "https://hooks.acme.test/c", body: signal },
+      { url: "https://hooks.acme.test/c", body: signal },
+    ]);
+    expect(JSON.stringify(line.posts)).not.toContain("secret");
+  });
+
+  test("a failed signal is retried once, then logged, never thrown", async () => {
+    const line = fakeChiefLine({ hookStatuses: [500, 502, 200] });
+    await handleChiefLineRequest(lineRequest(keys.openThread, { caller: "sup" }), line.ctx);
+    await handleChiefLineRequest(
+      lineRequest(keys.subscribe, { caller: "sup", url: "https://hooks.acme.test/c" }),
+      line.ctx,
+    );
+    const chief = line.addComment("issue-1", "answer", "agent-chief", null);
+    await expect(
+      onChiefLineComment(line.ctx, commentEvent("issue-1", chief.id)),
+    ).resolves.toBeUndefined();
+    expect(line.posts).toHaveLength(2);
+    expect(line.logs).toContain("Chief line: the reply signal failed twice.");
+  });
+
+  test("a comment the caller posts itself wakes Chief, within the hourly limit", async () => {
+    const line = fakeChiefLine();
+    await handleChiefLineRequest(lineRequest(keys.openThread, { caller: "sup" }), line.ctx);
+    for (let index = 0; index < 4; index += 1) {
+      const posted = line.addComment("issue-1", "q", null, "user-1");
+      await onChiefLineComment(line.ctx, commentEvent("issue-1", posted.id));
+    }
+    expect(line.wakes.map((wake) => wake.options)).toEqual(
+      ["c1", "c2", "c3"].map((id) => ({
+        reason: "chief_line",
+        idempotencyKey: `chief-line ${id}`,
+      })),
+    );
+  });
+});
