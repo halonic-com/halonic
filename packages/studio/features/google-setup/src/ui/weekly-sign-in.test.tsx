@@ -55,7 +55,7 @@ afterEach(() => {
 });
 
 verifies("google-setup.weekly-reminder", () => {
-  describe("step 7 after a sign-in", () => {
+  describe("the sign-in step after a sign-in", () => {
     it("shows the date Google ends the sign-in of a personal Testing app, and the reminder day", async () => {
       vi.setSystemTime(dayAfter);
       const { container } = await open(personalInTesting());
@@ -99,7 +99,7 @@ verifies("google-setup.weekly-reminder", () => {
       expect(setupEntry(workspace(), inboxTime, reminderTime)).toBeUndefined();
     });
 
-    it("opens the item at step 7 with the reminder and Sign in with Google", async () => {
+    it("opens the item at the sign-in step with the reminder and Sign in with Google", async () => {
       vi.setSystemTime(reminderTime);
       const { container } = await open(personalInTesting());
       expect(container.textContent).toContain(

@@ -11,8 +11,8 @@ function time(at: Date): string {
 }
 
 /**
- * The weekly sign-in step 7 tells about: a personal *Testing* app's current sign-in, while Google
- * hasn't refused it and it hasn't ended yet. `null` otherwise, so no date in the past is shown.
+ * The weekly sign-in the sign-in step tells about: a personal *Testing* app's current sign-in,
+ * while Google hasn't refused it and it hasn't ended yet. `null` otherwise, so no date in the past is shown.
  */
 export function shownWeeklySignIn(record: SetupRecord, now: Date): WeeklySignIn | null {
   const weekly = weeklySignIn(record);
@@ -25,10 +25,10 @@ export function shownWeeklySignIn(record: SetupRecord, now: Date): WeeklySignIn 
  * never a countdown, which would read as a deadline the user missed.
  */
 export const weeklyWords = {
-  /** Step 7 after a sign-in: "Google ends this sign-in on 15 Nov at 10:42." */
+  /** The sign-in step after a sign-in: "Google ends this sign-in on 15 Nov at 10:42." */
   endsOn: (weekly: WeeklySignIn) =>
     `Google ends this sign-in on ${day(weekly.endsAt)} at ${time(weekly.endsAt)}.`,
-  /** Added to step 7's finished line: "Studio reminds you on 14 Nov to sign in again." */
+  /** Added to the sign-in step's finished line: "Studio reminds you on 14 Nov to sign in again." */
   remindsOn: (weekly: WeeklySignIn) =>
     `Studio reminds you on ${day(weekly.remindFrom)} to sign in again.`,
   /** The reminder's progress line in the Inbox: "Google ends the sign-in on 15 Nov, 10:42". */
