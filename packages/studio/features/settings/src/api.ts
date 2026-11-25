@@ -11,6 +11,7 @@ import type {
 } from "./agent-sandbox/sandbox-state.ts";
 import type { AssistantProvider } from "./assistant/assistant-providers.ts";
 import type { DisplaySettings } from "./display-settings.ts";
+import type { LoginItemHost } from "./startup/login-item-host.ts";
 import type { RestartRunsHost } from "./updater/restart-runs.ts";
 import type { UpdaterHost } from "./updater/updater-host.ts";
 
@@ -256,6 +257,19 @@ export type { RestartRuns, RestartRunsHost } from "./updater/restart-runs.ts";
  */
 export const RestartRunsService: ServiceKey<RestartRunsHost> =
   serviceKey<RestartRunsHost>("settings.restart-runs");
+
+export type {
+  LoginItemAnswer,
+  LoginItemHost,
+  LoginItemRefusal,
+} from "./startup/login-item-host.ts";
+
+/**
+ * Halonic's login item, for Settings › Startup's "Start Halonic when I log in". Only the desktop
+ * app gives it; without it the section doesn't show (`settings.startup-section`).
+ */
+export const LoginItemService: ServiceKey<LoginItemHost> =
+  serviceKey<LoginItemHost>("settings.login-item");
 
 export { BrowserDisplayPrefs } from "./browser-display-prefs.ts";
 export type { SandboxChoiceHost } from "./sandbox-choice/sandbox-choice-host.ts";
