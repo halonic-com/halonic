@@ -2,6 +2,7 @@
 
 - Approval: Liam reviews this on HAL-18226; the change is built in HAL-13552
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xGYZ7UsoG9HqIMcogwJ1ePpz2Ec9Jm3Sfc7sI1ttQI4Qw0EwJ/eUjmHHO4bgn4mbXGx2AZsSA1zcJ1ZvXZMYAw==
 - Task: HAL-13552
 
 ## What changes
