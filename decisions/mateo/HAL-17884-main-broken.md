@@ -3,6 +3,7 @@
 - Task: HAL-17884
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-17884 (the board session asked for this on HAL-17762, from HAL-17875, 24 Nov 21:10 and 21:33 UTC; Liam approves this note in review)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:HLnW1lyLm8C+WTyYq3J9U55Q8fFot5efbmFLp2pZisIhTEKIfrnMD1NtSaGsgoB5DcXXjBSbvqlSqtfr1qi4Dw==
 
 `paperclip.merge-control-culprit-hold` gets one exception: when a merge group fails only on files the blamed pull request doesn't touch, main is broken and nobody is held.
 
