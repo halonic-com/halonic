@@ -7,7 +7,8 @@ import {
   type ItemChat,
   sameAbout,
 } from "../api.ts";
-import { type Announce, buildChatsOf, type Shown } from "../chat/build-chats.ts";
+import { buildChatWords } from "../chat/build-chat-words.ts";
+import { type Announce, type BoxAsk, buildChatsOf, type Shown } from "../chat/build-chats.ts";
 import { ChatBody } from "../panel/assistant-panel.tsx";
 import { useChatChoices } from "../panel/chat-choices.tsx";
 import { SkillLink } from "../panel/skill-link.tsx";
@@ -26,27 +27,28 @@ export const itemChat: ItemChat = {
     };
   },
   async askAbout(about, name, context) {
-    await openInPanel(context, about, undefined);
+    // The item-page chat's placeholder, with the item's name in it (HAL-18155, point 4).
+    await openInPanel(context, about, { placeholder: buildChatWords.itemPlaceholder(name) });
     // The chip under "Shown:" keeps what the chat is about in sight after a tab switch (5.7).
     const chats = buildChatsOf(context.services.get(AssistantHostService));
     await chats.showItem({ item: about, name });
   },
   async describe(text, context) {
-    await openInPanel(context, undefined, text);
+    await openInPanel(context, undefined, { text });
   },
 };
 
 /**
  * Shows a new Build chat (or the empty draft there is) in the side panel, opening a closed panel,
- * with focus in its box and `text` in it when given.
+ * with focus in its box and what `ask` gives in it.
  */
 async function openInPanel(
   context: WorkspaceContext,
   about: ChatAbout | undefined,
-  text: string | undefined,
+  ask: BoxAsk,
 ): Promise<void> {
   const chats = buildChatsOf(context.services.get(AssistantHostService));
-  await chats.newChatAsking(about, text);
+  await chats.newChatAsking(about, ask);
   const panel = context.panelWindow;
   if (panel !== undefined && !panel.isOpen()) panel.show();
 }

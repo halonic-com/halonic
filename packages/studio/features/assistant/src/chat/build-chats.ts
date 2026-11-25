@@ -30,6 +30,16 @@ export interface ChatView {
    * object asks again; the box asks once per object.
    */
   readonly boxRequest?: { readonly text?: string | undefined } | undefined;
+  /** The box's own placeholder for this chat, such as "Ask about this <kind>…" gives it (HAL-18155). */
+  readonly placeholder?: string | undefined;
+}
+
+/** What {@link BuildChats.newChatAsking} puts in the new chat's box. */
+export interface BoxAsk {
+  /** The text the box holds. */
+  readonly text?: string | undefined;
+  /** The box's placeholder for as long as this session shows the chat. */
+  readonly placeholder?: string | undefined;
 }
 
 /** What else {@link BuildChats.send} is given. */
@@ -145,12 +155,17 @@ export class BuildChats {
 
   /**
    * Shows a new Build chat (or the empty draft there is) about `about`, or about no item when
-   * absent, and asks its box for focus, holding `text` when given.
+   * absent, and asks its box for focus, holding `ask.text` when given; `ask.placeholder` becomes
+   * the box's placeholder when given.
    */
-  async newChatAsking(about: ChatAbout | undefined, text?: string): Promise<void> {
+  async newChatAsking(about: ChatAbout | undefined, ask: BoxAsk = {}): Promise<void> {
     await this.newChat("build", about);
     if (this.state.kind !== "chat") return;
-    this.update(this.state.view.chat.id, () => ({ boxRequest: { text } }));
+    const { text, placeholder } = ask;
+    this.update(this.state.view.chat.id, (view) => ({
+      boxRequest: { text },
+      placeholder: placeholder ?? view.placeholder,
+    }));
   }
 
   /** The box did what {@link newChatAsking} asked: a box drawn again later doesn't do it again. */

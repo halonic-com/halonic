@@ -33,6 +33,8 @@ export const buildChatWords = {
   said: "The assistant said",
   boxLabel: "Message the assistant",
   placeholder: "Ask for a change…",
+  /** The item-page chat's placeholder (flow-assistant 1), also for "Ask about this <kind>…" (HAL-18155). */
+  itemPlaceholder: (name: string) => `What should change in ${name}?`,
   /** The status line while it answers: H9 before the first word, then the tool it runs. */
   thinking: "Running · thinking",
   reading: (file: string) => `Running · reading ${file}`,
