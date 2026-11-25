@@ -1,9 +1,11 @@
 # Ask for a stepper from a Paperclip task
 
-How an agent in Paperclip asks the person to do something only they can do, such as setting a
-secret on GitHub, so it shows up as a stepper in their Halonic Inbox. The request is a task
-document; a confirmation card points at its exact revision. Design: architecture note on
-HAL-17491, section 7.
+How an agent in Paperclip asks the person to do something only they can do, such as adding a
+trusted publisher to an npm package, so it shows up as a stepper in their Halonic Inbox. The
+request is a task document; a confirmation card points at its exact revision. Requirements:
+[the request format](../../packages/core/action-steppers/requirements/stepper-request.md) and
+[the Paperclip provider](../../packages/adapters/paperclip-client/requirements/stepper-requests.md);
+background in the [ActionSender ADR](../adr/2026-11-24-action-sender.md).
 
 ## 1. Write the request as the task document `stepper-request`
 
@@ -13,21 +15,24 @@ format `halonic.stepper-request/1`, at most 16 KB and at most 20 blocks:
 ```json
 {
   "format": "halonic.stepper-request/1",
-  "title": "Set up the deploy for acme/app",
-  "reason": "The release job needs a region and a deploy key.",
+  "title": "Get acme/app ready for its first release",
+  "reason": "The release job publishes @acme/app without an npm token.",
   "blocks": [
-    { "kind": "step", "ref": "github.set-variable@1",
-      "parameters": { "owner": "acme", "repo": "app", "name": "REGION" } },
-    { "kind": "step", "ref": "github.set-secret@1",
-      "parameters": { "owner": "acme", "repo": "app", "name": "DEPLOY_KEY" } },
-    { "kind": "browser", "url": "https://github.com/acme/app/settings/variables/actions",
-      "instructions": ["Check that REGION is listed."] }
+    { "kind": "use", "ref": "npm.set-trusted-publisher@1",
+      "parameters": { "scope": "acme", "package": "app", "owner": "acme", "repo": "app",
+                      "workflow": "release.yml", "environment": "npm" } },
+    { "kind": "use", "ref": "github.upload-social-preview@1",
+      "parameters": { "owner": "acme", "repo": "app" } }
   ]
 }
 ```
 
 - `use` runs a whole reviewed definition, `step` one reviewed step type, `browser` opens a page on
   an allowed GitHub, Cloudflare or other service page and shows your numbered instructions.
+- A `ref` is a definition's `id@version` from `packages/core/action-catalog/src`, such as
+  `npm.set-trusted-publisher@1` or `cloudflare.enable-email-routing@1`; its `parameters` are that
+  definition's parameters. This Halonic ships no step types and no browser pages yet, so for now
+  only `use` blocks can be read: a `step` or `browser` block makes the stepper unreadable.
 - Never put a secret value in the document. A step that takes a secret asks the person for it in a
   native dialog.
 - Note the `latestRevisionId` that Paperclip answers with.
@@ -43,8 +48,8 @@ revision you just wrote:
   "idempotencyKey": "stepper:<task id>:<revision id>",
   "payload": {
     "version": 1,
-    "prompt": "The release needs the deploy region and key for acme/app.",
-    "detailsMarkdown": "1. Open https://github.com/acme/app/settings/variables/actions ...",
+    "prompt": "The release needs npm to trust the release workflow of acme/app.",
+    "detailsMarkdown": "1. Open https://www.npmjs.com/package/@acme/app/access ...",
     "target": { "type": "issue_document", "issueId": "<task id>",
                 "key": "stepper-request", "revisionId": "<revision id>" }
   }
