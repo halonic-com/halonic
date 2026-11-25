@@ -95,18 +95,45 @@ export const paperclipRequests = {
       status: "todo",
     },
   },
+  // Starting a channel and its members (`paperclip-client.channel-membership`, HAL-18121). The
+  // parent is made with the channel tag, unassigned and in `backlog`, so a comment on it wakes
+  // no agent. Paperclip has no followers on a task, so who follows a channel is kept in its
+  // members line, and every change rewrites only the parent's description. The label row can
+  // make only the `channel` tag. Nothing here adds, hires or changes an agent.
+  listLabels: { method: "GET", path: "/api/companies/:company/labels" },
+  createChannelLabel: {
+    method: "POST",
+    path: "/api/companies/:company/labels",
+    body: { fields: ["name", "color"], pinned: { name: "channel", color: "#6366f1" } },
+  },
+  createChannel: {
+    method: "POST",
+    path: "/api/companies/:company/issues",
+    body: {
+      fields: ["title", "description", "labelIds", "status"],
+      status: "backlog",
+      idLists: ["labelIds"],
+    },
+  },
+  updateChannel: {
+    method: "PATCH",
+    path: "/api/issues/:task",
+    body: { fields: ["description"] },
+  },
 } as const satisfies Record<string, RequestRule>;
 
 /**
  * What a write's body must be: an object with exactly `fields`, every field
- * a non-empty string (or `null` for one listed in `nullable`), its `status`
- * field set to `status` and each `pinned` field set to its value.
+ * a non-empty string (or `null` for one listed in `nullable`, or a list of
+ * exactly one safe ID for one listed in `idLists`), its `status` field set to
+ * `status` and each `pinned` field set to its value.
  */
 interface BodyRule {
   fields: readonly string[];
   status?: string;
   pinned?: Readonly<Record<string, string>>;
   nullable?: readonly string[];
+  idLists?: readonly string[];
 }
 
 /** One row of the fixed list. */
@@ -217,16 +244,27 @@ export function fitsBody(name: PaperclipRequestName, body: unknown): boolean {
   const fields = new Map<string, unknown>(Object.entries(body));
   const onlyRuleFields =
     fields.size === rule.fields.length && rule.fields.every((field) => fields.has(field));
-  const allText = [...fields].every(
-    ([field, value]) =>
-      (typeof value === "string" && value !== "") ||
-      (value === null && rule.nullable?.includes(field) === true),
+  const allText = [...fields].every(([field, value]) =>
+    rule.idLists?.includes(field) === true
+      ? isOneIdList(value)
+      : (typeof value === "string" && value !== "") ||
+        (value === null && rule.nullable?.includes(field) === true),
   );
   const pinned = Object.entries({
     ...(rule.status === undefined ? {} : { status: rule.status }),
     ...rule.pinned,
   });
   return onlyRuleFields && allText && pinned.every(([field, value]) => fields.get(field) === value);
+}
+
+/** Whether `value` is a list of exactly one ID that is a safe segment, such as one label. */
+function isOneIdList(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.length === 1 &&
+    typeof value[0] === "string" &&
+    isSafeSegment(value[0])
+  );
 }
 
 /**

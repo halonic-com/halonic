@@ -15,6 +15,10 @@ export interface ChannelTask {
   title: string;
   lead: string;
   members: readonly string[];
+  /** The people who follow the channel: it shows in their conversations, not in Browse. */
+  people: readonly string[];
+  /** The parent task's whole description, the members line in it. */
+  description: string;
   updatedAt: string;
 }
 
@@ -22,9 +26,35 @@ export interface ChannelTask {
 // A quoted line ("> …") never matches, so text of the person's can't pass for it.
 const membersLine = /^<!-- halonic-channel (\{[^\n]*\}) -->$/m;
 
-/** The members line for a parent task's description, which `readChannel` reads back. */
-export function channelMembersLine(members: readonly string[], lead: string): string {
-  return `<!-- halonic-channel ${JSON.stringify({ lead, members })} -->`;
+/**
+ * The members line for a parent task's description, which `readChannel` reads back. `people`
+ * are who follow the channel; a line without it is followed by the person who made the task.
+ */
+export function channelMembersLine(
+  members: readonly string[],
+  lead: string,
+  people?: readonly string[],
+): string {
+  return `<!-- halonic-channel ${JSON.stringify({ lead, members, ...(people && { people }) })} -->`;
+}
+
+/** `description` with its members line replaced by `line`, everything else as it was. */
+export function withMembersLine(description: string, line: string): string {
+  return description.replace(membersLine, () => line);
+}
+
+/** The longest channel title. */
+const channelTitleLength = 80;
+
+/**
+ * A channel's title as one line of at most 80 characters, so the name it puts into a child
+ * task's title and label line can't add a line of its own. A blank one reads "Channel".
+ */
+export function channelTitle(title: string): string {
+  const line = title.replace(/\s+/g, " ").trim();
+  const cut =
+    line.length <= channelTitleLength ? line : `${line.slice(0, channelTitleLength - 1)}…`;
+  return cut === "" ? "Channel" : cut;
 }
 
 /** Whether a task carries the channel tag. */
@@ -45,8 +75,16 @@ function madeByThePerson(record: JsonRecord, userId: string | undefined): boolea
   return !agentMade && creator !== undefined && (userId === undefined || creator === userId);
 }
 
-/** The lead and members from a members line, when they make a channel; otherwise `undefined`. */
-function parseMembers(description: string): { lead: string; members: string[] } | undefined {
+/** The IDs in `value` that are safe segments. */
+function idsIn(value: unknown): string[] {
+  return asList(value).filter((id): id is string => typeof id === "string" && isSafeSegment(id));
+}
+
+/** The lead, members and people from a members line, when they make a channel; otherwise `undefined`. */
+function parseMembers(
+  description: string,
+  creator: string,
+): Pick<ChannelTask, "lead" | "members" | "people"> | undefined {
   const match = membersLine.exec(description)?.[1];
   let parsed: unknown;
   try {
@@ -57,14 +95,15 @@ function parseMembers(description: string): { lead: string; members: string[] } 
   }
   const record = asRecord(parsed);
   const lead = text(record, "lead");
-  const members = asList(field(record, "members")).filter(
-    (member): member is string => typeof member === "string" && isSafeSegment(member),
-  );
+  const members = idsIn(field(record, "members"));
+  const people = field(record, "people") === undefined ? [creator] : idsIn(field(record, "people"));
   const fits =
     members.length >= channelMembersMin &&
     members.length <= channelMembersMax &&
     new Set(members).size === members.length;
-  return lead !== undefined && fits && members.includes(lead) ? { lead, members } : undefined;
+  return lead !== undefined && fits && members.includes(lead)
+    ? { lead, members, people }
+    : undefined;
 }
 
 /**
@@ -77,17 +116,25 @@ export function readChannel(
   userId: string | undefined,
 ): ChannelTask | undefined {
   const id = text(record, "id");
-  if (id === undefined || !hasChannelTag(record) || !madeByThePerson(record, userId)) {
+  const creator = text(record, "createdByUserId");
+  if (
+    id === undefined ||
+    creator === undefined ||
+    !hasChannelTag(record) ||
+    !madeByThePerson(record, userId)
+  ) {
     return undefined;
   }
-  const members = parseMembers(text(record, "description") ?? "");
+  const description = text(record, "description") ?? "";
+  const members = parseMembers(description, creator);
   if (members === undefined) {
     return undefined;
   }
   return {
     id,
-    title: text(record, "title") ?? "",
+    title: channelTitle(text(record, "title") ?? ""),
     ...members,
+    description,
     updatedAt: timeOf(record, "updatedAt"),
   };
 }

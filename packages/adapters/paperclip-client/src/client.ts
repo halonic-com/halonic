@@ -20,6 +20,7 @@ import {
   type WorkItem,
 } from "@halonicjs/ports";
 import { ChangeFeed } from "./changes.ts";
+import { PaperclipChannelMembers } from "./channel-members.ts";
 import { PaperclipChannelSender } from "./channel-send.ts";
 import { readChannel, toChannel } from "./channels.ts";
 import { PaperclipIds } from "./ids.ts";
@@ -75,6 +76,7 @@ export class PaperclipMessaging implements AgentMessaging {
   readonly #inbox: PaperclipInbox;
   readonly #writer: PaperclipWriter;
   readonly #channels: PaperclipChannelSender;
+  readonly #members: PaperclipChannelMembers;
   readonly #feed = new ChangeFeed<MessagingId>();
   #agentNames = new Map<string, string>();
   /** The Inbox as last read, which search matches without reading every task's cards again. */
@@ -93,6 +95,7 @@ export class PaperclipMessaging implements AgentMessaging {
     this.#inbox = new PaperclipInbox(this.#reader, options.company, steppers);
     this.#writer = new PaperclipWriter(this.#reader, now, steppers);
     this.#channels = new PaperclipChannelSender(this.#reader, options.company, options.userId, now);
+    this.#members = new PaperclipChannelMembers(this.#reader, options.company, options.userId);
   }
 
   async listSources(): Promise<readonly MessagingSource[]> {
@@ -231,36 +234,44 @@ export class PaperclipMessaging implements AgentMessaging {
     return { outcome: "sent", message };
   }
 
-  // Channels are listed and take messages (`paperclip-client.channels`). Starting one, changing
-  // its members, browsing, joining and leaving come in their own PR, so until then they list
-  // nothing and are refused before any request (AgentMessaging version 4).
+  // Starting a channel, its members, browsing, joining and leaving
+  // (`paperclip-client.channel-membership`): writes, so offline each is refused, never queued.
 
-  startChannel(
-    _title: string,
-    _members: readonly MessagingId[],
-    _lead: MessagingId,
+  async startChannel(
+    title: string,
+    members: readonly MessagingId[],
+    lead: MessagingId,
   ): Promise<ChannelResult> {
-    return noChannels();
+    const result = await this.#members.start(this.#context(), title, members, lead);
+    this.#changedAfter(result.outcome === "done");
+    return result;
   }
 
   setMembers(
-    _channel: MessagingId,
-    _members: readonly MessagingId[],
-    _lead: MessagingId,
+    channel: MessagingId,
+    members: readonly MessagingId[],
+    lead: MessagingId,
   ): Promise<ChannelResult> {
-    return noChannels();
+    return this.#changeChannel(channel, (context, task) =>
+      this.#members.setMembers(context, task, members, lead),
+    );
   }
 
   async browseChannels(): Promise<readonly Conversation[]> {
-    return [];
+    const channels = this.#members.browse(this.#context(), await this.#inbox.openTasks());
+    return newestFirst(channels, (conversation) => conversation.updatedAt);
   }
 
-  joinChannel(_channel: MessagingId): Promise<ChannelResult> {
-    return noChannels();
+  joinChannel(channel: MessagingId): Promise<ChannelResult> {
+    return this.#changeChannel(channel, (context, task) =>
+      this.#members.follow(context, task, true),
+    );
   }
 
-  leaveChannel(_channel: MessagingId): Promise<ChannelResult> {
-    return noChannels();
+  leaveChannel(channel: MessagingId): Promise<ChannelResult> {
+    return this.#changeChannel(channel, (context, task) =>
+      this.#members.follow(context, task, false),
+    );
   }
 
   changes(): AsyncIterable<MessagingId> {
@@ -303,6 +314,20 @@ export class PaperclipMessaging implements AgentMessaging {
     }
   }
 
+  /** Runs `change` on channel `channel`'s task; an ID that names no channel is `not-found`. */
+  async #changeChannel(
+    channel: MessagingId,
+    change: (context: MapContext, task: string) => Promise<ChannelResult>,
+  ): Promise<ChannelResult> {
+    const [task] = this.#ids.read(channel, "channel") ?? [];
+    if (task === undefined || !isSafeSegment(task)) {
+      return { outcome: "refused", reason: "not-found" };
+    }
+    const result = await change(this.#context(), task);
+    this.#changedAfter(result.outcome === "done");
+    return result;
+  }
+
   async #sendInChannel(
     channel: string,
     body: string,
@@ -319,9 +344,11 @@ export class PaperclipMessaging implements AgentMessaging {
   /** The person's chats and the channels among `tasks`, newest first. */
   async #conversationsFrom(tasks: readonly JsonRecord[]): Promise<Conversation[]> {
     const context = this.#context();
+    // A channel the person left shows in Browse instead.
     const channels = tasks.flatMap((record) => {
       const channel = readChannel(record, this.#userId);
-      return channel === undefined ? [] : [toChannel(context, channel)];
+      const left = this.#userId !== undefined && !channel?.people.includes(this.#userId);
+      return channel === undefined || left ? [] : [toChannel(context, channel)];
     });
     const answer = await this.#reader.send("listChats", { path: { company: this.#company } });
     // Paperclip answers 404 when Agent Chat is off: there are no chats, which isn't an error.
@@ -383,9 +410,4 @@ export class PaperclipMessaging implements AgentMessaging {
       ...(this.#userId === undefined ? {} : { userId: this.#userId }),
     };
   }
-}
-
-/** A channel call Paperclip can't serve. */
-function noChannels(): Promise<ChannelResult> {
-  return Promise.resolve({ outcome: "refused", reason: "not-supported" });
 }
