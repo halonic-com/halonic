@@ -49,6 +49,9 @@ export const toolTexts = {
   /** A sheet asks for more new secrets than the sign-ins the person named. */
   secretsNotNamed: (path: string, secrets: number, named: number) =>
     `Couldn't change ${path}: it adds ${secrets} ${secrets === 1 ? "secret" : "secrets"}, but the person named ${named === 0 ? "no sign-in" : `only ${named} ${named === 1 ? "sign-in" : "sign-ins"}`} (an API key or a token) in this chat. Ask them how they sign in, and add at most one secret for each.`,
+  /** A sheet asks for more secrets in all than it had and than the sign-ins the person named. */
+  tooManySecrets: (path: string, secrets: number, named: number) =>
+    `Couldn't change ${path}: it asks for ${secrets} secrets in all, but the person named ${named === 0 ? "no sign-in" : `only ${named} ${named === 1 ? "sign-in" : "sign-ins"}`} (an API key or a token) in this chat. Ask them how they sign in, and keep at most one secret for each.`,
   /** A sheet adds an OAuth sign-in, which the person can't name in the Build chat. */
   oauthNotNamed: (path: string) =>
     `Couldn't change ${path}: the Build chat can't add an OAuth sign-in (signIns). Use an API key or a token the person names, or tell them the service needs a sign-in Halonic doesn't build here.`,

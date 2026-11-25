@@ -66,6 +66,24 @@ verifies("assistant.build.named-hosts-secrets", () => {
       );
     });
 
+    it("refuses secrets that grow one edit at a time past the sign-ins named", async () => {
+      const workspace = testWorkspace({});
+      const call = chatTools(workspace, [request]);
+      const keyless = notesSheet.replace(/secrets:\n(?: {2,}.*\n)+/u, "");
+      expect(await call("propose_file", { path: sheet, content: keyless, why: "x" })).toMatch(
+        /^Changed /u,
+      );
+      // One named sign-in: the first edit adds the one secret it allows.
+      expect(await call("propose_file", { path: sheet, content: notesSheet, why: "x" })).toMatch(
+        /^Changed /u,
+      );
+      // The second edit adds one new secret again, but the sheet would hold two.
+      expect(await call("propose_file", { path: sheet, content: twoSecrets, why: "x" })).toBe(
+        `Couldn't change ${sheet}: it asks for 2 secrets in all, but the person named only 1 sign-in (an API key or a token) in this chat. Ask them how they sign in, and keep at most one secret for each.`,
+      );
+      expect(workspace.store.files.get(sheet)).toBe(notesSheet);
+    });
+
     it("refuses an edit of an existing sheet that adds a host, and keeps the file", async () => {
       const workspace = testWorkspace({ [sheet]: notesSheet });
       const call = chatTools(workspace, ["Add a tool that lists my notebooks."]);

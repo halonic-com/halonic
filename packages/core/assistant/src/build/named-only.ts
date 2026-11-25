@@ -33,7 +33,8 @@ type GatedKind = "integration" | "connector";
  * checked, however the path spells their names. Each must parse, and what
  * it asks for beyond what the file at `path` asks for now must be named:
  * each host exactly, no OAuth sign-in, and no more new secrets than the
- * sign-ins the person named.
+ * sign-ins the person named. In all, the file keeps no more secrets than
+ * it has now or than the sign-ins named, whichever is more.
  *
  * @param current - the file at `path` now, `null` when there is none
  * @param messages - the person's own messages in this chat
@@ -70,6 +71,11 @@ export function namedOnlyRefusal(
   const secrets = asks.secrets.filter((name) => !kept.secrets.includes(name));
   if (secrets.length > named.signIns.size) {
     return toolTexts.secretsNotNamed(path, secrets.length, named.signIns.size);
+  }
+  // The file at `path` may hold what the model wrote earlier in this chat, so a cap on new
+  // secrets alone would let them grow one edit at a time. The total is capped too.
+  if (asks.secrets.length > Math.max(kept.secrets.length, named.signIns.size)) {
+    return toolTexts.tooManySecrets(path, asks.secrets.length, named.signIns.size);
   }
   return null;
 }
