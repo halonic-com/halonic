@@ -40,26 +40,34 @@ export function chooseSource(
 
 /**
  * An {@link ActiveAccount} kept in the host settings (`messaging.active-account`), which every
- * window reads and watches.
+ * window reads and watches. Given a store, it loads and closes its own settings; given the
+ * window's already loaded {@link HostSettings}, it shares them, so opening another folder reads
+ * nothing again and closing one leaves them open.
  *
  * @throws the store's error from `load` when the settings can't be read
  */
 export class HostActiveAccount implements ActiveAccount {
   readonly #settings: HostSettings;
+  readonly #shared: boolean;
   readonly #listeners = new Set<() => void>();
+  readonly #stopWatching: () => void;
 
-  constructor(store: HostSettingsStore) {
-    this.#settings = new HostSettings(store, {
-      onRefreshError: (error) => console.error("Reading the active account again", error),
-    });
-    this.#settings.onChange((keys) => {
+  constructor(source: HostSettingsStore | HostSettings) {
+    this.#shared = source instanceof HostSettings;
+    this.#settings =
+      source instanceof HostSettings
+        ? source
+        : new HostSettings(source, {
+            onRefreshError: (error) => console.error("Reading the active account again", error),
+          });
+    this.#stopWatching = this.#settings.onChange((keys) => {
       if (keys.includes(preferredSetting.key)) this.#tell();
     });
   }
 
-  /** Reads the saved pick; call once before use. */
-  load(): Promise<void> {
-    return this.#settings.load();
+  /** Reads the saved pick; call once before use. Shared settings were loaded by their owner. */
+  async load(): Promise<void> {
+    if (!this.#shared) await this.#settings.load();
   }
 
   preferred(): MessagingId | undefined {
@@ -79,7 +87,8 @@ export class HostActiveAccount implements ActiveAccount {
 
   /** Stops watching the saved settings; the folder's registry calls it when the folder closes. */
   dispose(): void {
-    this.#settings.close();
+    this.#stopWatching();
+    if (!this.#shared) this.#settings.close();
     this.#listeners.clear();
   }
 

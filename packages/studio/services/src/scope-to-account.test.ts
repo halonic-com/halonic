@@ -1,3 +1,4 @@
+import { HostSettings } from "@halonicjs/app";
 import type { AgentMessaging, HostSettingsStore, HostSettingValue } from "@halonicjs/ports";
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
@@ -114,6 +115,20 @@ verifies("services.active-account", () => {
   });
 
   describe("HostActiveAccount", () => {
+    it("over the window's loaded settings, reads nothing again and leaves them open", async () => {
+      const file = new SharedFile();
+      const read = vi.fn(file.store().read);
+      const settings = new HostSettings({ ...file.store(), read });
+      await settings.load();
+      const account = new HostActiveAccount(settings);
+      await account.load();
+      expect(read).toHaveBeenCalledTimes(1);
+      await account.select("paperclip:a");
+      expect(account.preferred()).toBe("paperclip:a");
+      account.dispose();
+      expect(settings.loaded).toBe(true);
+    });
+
     it("has no pick before it is loaded, and stops after dispose", async () => {
       const file = new SharedFile();
       const account = new HostActiveAccount(file.store());

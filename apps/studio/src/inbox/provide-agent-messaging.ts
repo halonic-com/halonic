@@ -3,11 +3,11 @@ import { MemoryHostSettingsStore } from "@halonicjs/adapter-memory";
 import type { Disposable, ServiceRegistry } from "@halonicjs/app";
 import { OverviewMessagingService } from "@halonicjs/studio-feature-overview/api";
 import { SearchMessagingService } from "@halonicjs/studio-feature-search/api";
+import { HostSettingsService } from "@halonicjs/studio-feature-settings/api";
 import {
   ActiveAccountService,
   AgentMessagingService,
   HostActiveAccount,
-  hostSettingsStoreKey,
   scopeToAccount,
 } from "@halonicjs/studio-services";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
@@ -41,13 +41,10 @@ export function provideAgentMessaging(
   if (transport === undefined) return;
   const messaging = new AgentHostMessaging(transport, location);
   const active = new HostActiveAccount(
-    services.has(hostSettingsStoreKey)
-      ? services.get(hostSettingsStoreKey)
+    services.has(HostSettingsService)
+      ? services.get(HostSettingsService)
       : new MemoryHostSettingsStore(),
   );
-  active.load().catch((error: unknown) => {
-    console.error("Reading the active account", error);
-  });
   services.provide(ActiveAccountService, active);
   // One account at a time, for every reader of the port: the Inbox and Messenger in every window,
   // search and the overview, and so the desktop notifications, which follow the active account.
