@@ -50,7 +50,9 @@ With #6071 and #6142 on `main`, the workflow also runs on pushes to `main`, and 
 
 `apps/studio/src/studio/installer-preview-version.test.ts` now expects the paths the workflow uses
 after the `build-ref` split (the script from the workflow's ref, the older setup from the checkout).
-The test checks the same things as before.
+The test checks the same things as before. `apps/studio/src/studio/preview-auto-build.test.ts`
+expects the Rust cache save's stricter condition (`!inputs.build-ref` added); it still checks one
+save, only on `main`.
 
 ## Why
 
