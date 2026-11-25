@@ -118,7 +118,11 @@ export class PaperclipSteppers {
   async serve(task: string, record: JsonRecord, item: InboxItem): Promise<InboxItem> {
     const revision = pinnedRevision(record);
     if (revision === undefined || item.state.kind !== "open") return item;
-    const pinned = await this.read(task, revision);
+    // An item runs one request: a definition or a stepper, never both at once.
+    const pinned: PinnedStepper =
+      item.action === undefined
+        ? await this.read(task, revision)
+        : { kind: "unreadable", reason: "the card already names an action" };
     if (pinned.kind === "readable") return { ...item, options: [], stepper: pinned.stepper };
     return {
       ...item,

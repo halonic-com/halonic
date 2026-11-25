@@ -1,8 +1,9 @@
 import type { ActionResultAnswer, InboxItem } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { confirmCard, plainTask } from "./acme-data.test-helper.ts";
 import { cardId, connect, FakePaperclip, type Network } from "./fake-paperclip.test-helper.ts";
+import type { PaperclipReader } from "./reader.ts";
 import { findRequest, fitsBody, paperclipRequests } from "./requests.ts";
 import {
   connectWithSteppers,
@@ -12,8 +13,11 @@ import {
   resultRevision,
   serveStepper,
   stepperCard,
+  stepperCardRecord,
+  stepperCatalog,
   stepperPaths,
 } from "./stepper-fixtures.test-helper.ts";
+import { PaperclipSteppers } from "./steppers.ts";
 
 let paperclip: FakePaperclip;
 const network: Network = { offline: false };
@@ -115,6 +119,33 @@ verifies("paperclip-client.stepper-requests", () => {
       expect(items.filter((item) => item.stepper !== undefined)).toEqual([]);
       expect(await reasonOf()).toMatch(/^This card has a stepper Halonic can't read: .*script/);
     });
+  });
+
+  it("never serves a stepper on an item that already names an action, and reads no document", async () => {
+    const send = vi.fn();
+    const steppers = new PaperclipSteppers({ send } as unknown as PaperclipReader, stepperCatalog);
+    const item: InboxItem = {
+      id: "item-1",
+      source: "paperclip",
+      from: { kind: "agent", agent: "agent-1", name: "Bo" },
+      question: "Set the region.",
+      options: [],
+      action: {
+        definition: "github.set-variable",
+        version: 1,
+        parameters: {},
+        expires: "2026-11-25T13:00:00.000Z",
+      },
+      attachments: [],
+      createdAt: "2026-11-24T13:00:00.000Z",
+      state: { kind: "open" },
+    };
+    const served = await steppers.serve(plainTask, stepperCardRecord(), item);
+    expect(served.stepper).toBeUndefined();
+    expect(served.question.split("\n\n").at(-1)).toBe(
+      "This card has a stepper Halonic can't read: the card already names an action",
+    );
+    expect(send).not.toHaveBeenCalled();
   });
 
   it("leaves every card as it was without a catalog, and reads no document", async () => {
