@@ -189,9 +189,14 @@ interface ReplyFieldProps {
   readonly onSend: () => void;
 }
 
+/** Why **Send answer** is off while the field is empty (a11y IN2, HAL-18073). */
+export const emptyAnswerHint = "Write an answer to send it.";
+
 /** A question with no options takes a written answer. */
 function ReplyField({ value, onChange, unavailable, busy, onSend }: ReplyFieldProps) {
   const fieldId = useId();
+  const hintId = useId();
+  const empty = value.trim() === "";
   return (
     <div className="flex flex-col gap-2">
       <label htmlFor={fieldId} className="text-small text-fg-muted">
@@ -204,15 +209,20 @@ function ReplyField({ value, onChange, unavailable, busy, onSend }: ReplyFieldPr
         onChange={(event) => onChange(event.target.value)}
         className="focus-ring rounded-sm border border-border bg-surface px-3 py-2 text-body text-fg"
       />
-      <div>
+      <div className="flex flex-wrap items-center gap-3">
         <Button
           variant="primary"
-          unavailable={unavailable ?? (value.trim() === "" ? { reason: fieldId } : undefined)}
+          unavailable={unavailable ?? (empty ? { reason: hintId } : undefined)}
           busy={busy}
           onClick={onSend}
         >
           Send answer
         </Button>
+        {unavailable === undefined && empty ? (
+          <p id={hintId} className="text-small text-fg-muted">
+            {emptyAnswerHint}
+          </p>
+        ) : null}
       </div>
     </div>
   );

@@ -42,20 +42,28 @@ export function listPaneClass(onePane: boolean, itemOpen: boolean): string {
 }
 
 /**
+ * The open item's column: beside the list, else (one pane at a time) the whole page while an
+ * item or an agent's card is open, and gone while none is.
+ */
+export function itemPaneClass(onePane: boolean, itemOpen: boolean): string {
+  return `${onePane && !itemOpen ? "hidden" : "flex"} min-w-0 flex-1 justify-center overflow-y-auto`;
+}
+
+/**
  * The bar over the open item on a phone or in a narrow window, which is pushed like a page (HAL-11945 Q12): **Back to Inbox**
  * and, while the item waits, where it is among what waits ("1 of 4"). A decided or done item
- * isn't counted, so it shows no place.
+ * isn't counted, so it shows no place, and nor does an agent's card (`open` is `null`).
  */
 export function ItemPageBar({
   open,
   items,
   close,
 }: {
-  readonly open: InboxItem;
+  readonly open: InboxItem | null;
   readonly items: readonly InboxItem[];
   readonly close: () => void;
 }) {
-  const index = items.findIndex((item) => item.key === open.key);
+  const index = open === null ? -1 : items.findIndex((item) => item.key === open.key);
   return (
     <div className="flex items-center justify-between gap-3 px-2 pt-2">
       <Button variant="ghost" size="touch" onClick={close}>
