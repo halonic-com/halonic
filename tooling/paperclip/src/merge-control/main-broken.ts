@@ -27,7 +27,24 @@ import { texts } from "./texts.ts";
 /** The freeze's pattern until the board adds the fix pull request. */
 export const mainBrokenAllowRe = "^revert\\b";
 
-/** The files every failed job names, or undefined when a job names none or wasn't read. */
+/**
+ * The parts of a change the leak guard names in place of a file
+ * (`tooling/check`'s leak scan). They belong to the group's own pull request,
+ * never to main: #6052's `commit author` froze the shadow's queue (HAL-18537).
+ */
+export const ownChangeLabels: readonly string[] = [
+  "commit message",
+  "commit author",
+  "commit committer",
+  "pull request title",
+  "pull request body",
+  "pushed ref name",
+];
+
+/**
+ * The files every failed job names, or undefined when a job names none,
+ * wasn't read, or names a part of the group's own change.
+ */
 export function brokenFiles(run: GroupRun): string[] | undefined {
   if (run.failedJobs.length === 0) {
     return undefined;
@@ -35,6 +52,9 @@ export function brokenFiles(run: GroupRun): string[] | undefined {
   const files = new Set<string>();
   for (const job of run.failedJobs) {
     if (job.annotatedFiles === undefined || job.annotatedFiles.length === 0) {
+      return undefined;
+    }
+    if (job.annotatedFiles.some((file) => ownChangeLabels.includes(file))) {
       return undefined;
     }
     for (const file of job.annotatedFiles) {

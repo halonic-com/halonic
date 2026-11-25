@@ -52,5 +52,5 @@ export const texts = {
     `Runner wait ${minutes} min on merge-group jobs: please hold pushes.`,
   brakeOff: "Runner wait cleared.",
   mainBroken: (files: string, url: string) =>
-    `MAIN_BROKEN in ${files} (${url}): no PR held; main-red freeze on until a push run on main is green or red only in known-flaky jobs, or a merge group is green.`,
+    `MAIN_BROKEN in ${files} (${url}): the group's PR stays held on its head; main-red freeze on until a push run on main is green or red only in known-flaky jobs, or a merge group is green.`,
 } as const;
