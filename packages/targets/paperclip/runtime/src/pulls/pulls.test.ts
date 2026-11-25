@@ -1,4 +1,4 @@
-import { toolActionInfo, toolActionNames } from "@halonicjs/format";
+import { type Tool, toolActionInfo, toolActionNames } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
 import { acmeTool } from "../fake-host.test-helper.ts";
@@ -86,13 +86,21 @@ function run(
   params: unknown,
   github: GitHubGet,
   caller: ActionCall["caller"] = { agentId: "agent-mateo", urlKey: "mateo", name: "Mateo" },
+  extra: { reviewerRules?: unknown; routing?: ActionCall["routing"] } = {},
 ) {
   const handler = runtimeHandlers[action];
   if (handler === undefined) throw new Error(`no handler for ${action}`);
   const call: ActionCall = {
     tool: acmeTool(action === "github.pull-request" ? "pr_status" : "my_prs", {
-      action: { run: action, with: { repositories: [repo] } },
+      action: {
+        run: action,
+        with: {
+          repositories: [repo],
+          ...(extra.reviewerRules ? { reviewerRules: extra.reviewerRules } : {}),
+        },
+      } as Tool["action"],
     }),
+    ...(extra.routing === undefined ? {} : { routing: extra.routing }),
     params,
     templates: [],
     caller,
@@ -128,9 +136,36 @@ verifies("runtime.github-pulls", () => {
         "head 7651f8c: ci-ok success; mergeable yes; behind base by 3",
         "merge queue: queued; approvals: Liam on 0000000 (doesn't count): names an older head; Julian on 7651f8c",
         "150 changed lines",
+        "reviewer: none (no path rules for this repository)",
         "next: nothing for the author right now",
       ]);
       expect(result.data).toMatchObject({ approvedOnHead: true, inQueue: true, behindBase: 3 });
+    });
+
+    test("names the reviewer by the tool's path rules and the snapshot's routing", async () => {
+      const github = fakeGitHub({
+        ...pr12([]),
+        [`${pulls}/12/files?${page}`]: [{ filename: "infra/deploy.ts" }],
+      });
+      // As the tool file's parser gives them: every default filled in.
+      const reviewerRules = {
+        [repo]: {
+          default: "second-reviewer",
+          escalateTo: "code-reviewer",
+          files: [],
+          folders: ["infra/"],
+          words: [],
+          wordsSkip: [],
+          nestedPackageJson: false,
+        },
+      };
+      const routing = { roles: { "code-reviewer": "priya" }, areas: {} };
+      const result = await run("github.pull-request", { pr: 12 }, github.get, undefined, {
+        reviewerRules,
+        routing,
+      });
+      expect(result.data).toMatchObject({ reviewer: { role: "code-reviewer", person: "priya" } });
+      expect(result.content).toContain("reviewer: priya as code-reviewer (by paths;");
     });
 
     test("doesn't count the author's own approval or one from outside the repository's team", async () => {

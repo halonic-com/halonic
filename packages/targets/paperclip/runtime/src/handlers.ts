@@ -1,4 +1,4 @@
-import type { Template, Tool, ToolActionName } from "@halonicjs/format";
+import type { Routing, Template, Tool, ToolActionName } from "@halonicjs/format";
 import { budgetsHandler } from "./budgets/budgets.ts";
 import type { GitHubGet, GitHubQuery } from "./github.ts";
 import type { Capability, ToolResult } from "./host.ts";
@@ -27,6 +27,8 @@ export interface ActionCall {
   readonly params: unknown;
   /** The served snapshot's templates, sorted by id; none when it has no list. */
   readonly templates: readonly Template[];
+  /** The served snapshot's routing: who covers each role. Left out when it has none. */
+  readonly routing?: Routing;
   /** The calling agent: its id, url key and display name. */
   readonly caller: { readonly agentId: string; readonly urlKey: string; readonly name: string };
   /** The company the call runs in. */
