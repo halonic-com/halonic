@@ -3,6 +3,7 @@
 - Task: HAL-18492 (S1 of the server engine plan, HAL-17512 `server-engine` rev 2, section 7)
 - Approval: Liam signs this note and approves the two new packages in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:hxEKuBoJEM+giCnN8J6vq4pvLFtkOumGljkhGdS2/mpbiHnwUY7m3Fjg8gGjbRnV33+EN4x0TGQ1pm3JwCbxDg==
 
 ## What changes
 
