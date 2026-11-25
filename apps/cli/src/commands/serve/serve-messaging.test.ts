@@ -172,8 +172,10 @@ verifies("agent-host.agent-messaging-offline", () => {
 
     const cached = await filesUnder(cacheFolder);
     expect(cached.length).toBeGreaterThan(0);
+    // Windows has no Unix modes: Node reports every writable file as 0o666 there.
+    const fileMode = process.platform === "win32" ? 0o666 : 0o600;
     for (const file of cached) {
-      expect((await stat(file)).mode & 0o777, file).toBe(0o600);
+      expect((await stat(file)).mode & 0o777, file).toBe(fileMode);
       const text = await readFile(file, "utf8");
       expect(text).not.toContain(canaryKey);
       expect(text.toLowerCase()).not.toContain("authorization");
