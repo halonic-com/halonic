@@ -5,7 +5,7 @@
 //!
 //! The shell checks the task id and the brief, reads the server from the
 //! profile's settings itself and checks it, asks the person in its own
-//! dialog with the whole brief in it, writes the brief and a launcher into
+//! window with the whole brief in it (`server_session_brief.rs`), writes the brief and a launcher into
 //! a private folder, and opens the launcher in a terminal. The rules are
 //! in the `halonic-server-session` crate; this file wires them to the
 //! profile, the dialog and the app's data folder. macOS and Linux only in
@@ -140,35 +140,54 @@ fn read_target<R: Runtime>(app: &AppHandle<R>) -> Result<ServerTarget, ServerSes
     .map_err(|refusal| refused(refusal.reason()))
 }
 
-/// The title of the shell's own question before Claude Code starts.
-const DIALOG_TITLE: &str = "Start Claude Code on your server?";
+/// The title of the shell's own window before Claude Code starts.
+pub(crate) const DIALOG_TITLE: &str = "Start Claude Code on your server?";
 
 /// The button that opens the terminal.
-const DIALOG_BUTTON: &str = "Start";
+pub(crate) const DIALOG_BUTTON: &str = "Start";
 
-/// Asks in the shell's own dialog, which the page can't draw; `true` only
-/// when the person presses Start.
-#[cfg(desktop)]
-fn ask_to_start<R: Runtime>(app: &AppHandle<R>, question: &str) -> bool {
-    crate::native_dialogs::ask(app, DIALOG_TITLE, question, DIALOG_BUTTON)
+/// Asks in the shell's own window, which the page can't draw, with the
+/// whole brief in a box that scrolls; `true` only when the person presses
+/// Start.
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+fn ask_to_start<R: Runtime>(
+    app: &AppHandle<R>,
+    target: &ServerTarget,
+    task: &str,
+    brief: &str,
+) -> bool {
+    crate::server_session_brief::ask(app, &heading(target, task), BRIEF_INTRO, brief)
 }
 
-/// The phone has no dialog and no launcher.
-#[cfg(mobile)]
-fn ask_to_start<R: Runtime>(_app: &AppHandle<R>, _question: &str) -> bool {
-    let _ = (DIALOG_TITLE, DIALOG_BUTTON);
+/// Windows and the phone have no launcher, so the command never asks.
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
+fn ask_to_start<R: Runtime>(
+    _app: &AppHandle<R>,
+    target: &ServerTarget,
+    task: &str,
+    _brief: &str,
+) -> bool {
+    let _ = (
+        DIALOG_TITLE,
+        DIALOG_BUTTON,
+        BRIEF_INTRO,
+        heading(target, task),
+    );
     false
 }
 
-/// The dialog's text: who, where, which task, and the whole brief.
-fn question(target: &ServerTarget, task: &str, brief: &str) -> String {
+/// The line above the brief: who, where and which task.
+fn heading(target: &ServerTarget, task: &str) -> String {
     format!(
-        "Start Claude Code on {}@{} for {task}?\n\n\
-It will follow this brief, written by an agent and not checked by Halonic:\n\n{brief}",
+        "Start Claude Code on {}@{} for {task}?",
         target.user(),
         target.host()
     )
 }
+
+/// The line that says whose brief it is.
+const BRIEF_INTRO: &str =
+    "It will follow this brief, written by an agent and not checked by Halonic:";
 
 /// Asks, writes the files and opens the terminal, for checked input.
 fn open<R: Runtime>(
@@ -188,7 +207,7 @@ fn open<R: Runtime>(
     if !state.take_turn(hash, Instant::now()) {
         return refused("this request was started a moment ago");
     }
-    if !ask_to_start(app, &question(&target, task, brief)) {
+    if !ask_to_start(app, &target, task, brief) {
         state.forget(hash);
         return ServerSessionAnswer::Cancelled;
     }

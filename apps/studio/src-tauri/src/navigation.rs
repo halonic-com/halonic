@@ -54,6 +54,11 @@ pub fn guard<R: Runtime>() -> TauriPlugin<R> {
     Builder::new("navigation-guard")
         .on_navigation(on_navigation)
         .on_page_load(|webview, payload| {
+            #[cfg(any(target_os = "macos", target_os = "linux"))]
+            if webview.label() == crate::server_session_brief::WINDOW {
+                crate::server_session_brief::on_page_load(webview, payload.url());
+                return;
+            }
             // A page the guard was never asked about, such as a form sent
             // with POST on Android. It can't be sent again to the browser,
             // so the window goes back to the connect screen.
@@ -67,6 +72,11 @@ pub fn guard<R: Runtime>() -> TauriPlugin<R> {
 
 /// Decides one navigation: true lets it load in the window.
 pub(crate) fn on_navigation<R: Runtime>(webview: &Webview<R>, url: &Url) -> bool {
+    // The brief window loads only its own page (`server_session_brief.rs`).
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    if webview.label() == crate::server_session_brief::WINDOW {
+        return crate::server_session_brief::on_navigation(webview, url);
+    }
     let confirmed = webview.state::<ConfirmedAddress>().get();
     let going_to = target(url);
     match navigation_destination(&going_to, confirmed.as_ref()) {

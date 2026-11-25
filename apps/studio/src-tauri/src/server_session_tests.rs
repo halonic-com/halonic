@@ -1,12 +1,12 @@
 //! The command's own rules: what it answers for input it refuses, the
-//! double-click guard, and the dialog's text.
+//! double-click guard, and the line above the brief.
 
 use std::time::{Duration, Instant};
 
 use halonic_server_session::validate_target;
 use serde_json::json;
 
-use super::{ServerSessionAnswer, ServerSessionState, check_input, question};
+use super::{ServerSessionAnswer, ServerSessionState, check_input, heading};
 
 const BRIEF: &str =
     "Task: https://paperclip.acme.example/HAL/issues/HAL-1234\nSteps:\n1. Restart the worker\n";
@@ -82,14 +82,15 @@ fn a_second_launch_within_a_minute_is_ignored_and_a_cancel_frees_it() {
 }
 
 #[test]
-fn the_dialog_names_the_server_and_task_and_shows_the_whole_brief() {
+fn the_window_names_the_server_and_task() {
     let target = validate_target(
         Some(&json!("build.acme.example")),
         Some(&json!("ops")),
         None,
     )
     .expect("a valid target");
-    let text = question(&target, "HAL-1234", BRIEF);
-    assert!(text.starts_with("Start Claude Code on ops@build.acme.example for HAL-1234?"));
-    assert!(text.ends_with(BRIEF));
+    assert_eq!(
+        heading(&target, "HAL-1234"),
+        "Start Claude Code on ops@build.acme.example for HAL-1234?"
+    );
 }

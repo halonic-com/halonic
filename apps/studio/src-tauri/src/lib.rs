@@ -38,7 +38,9 @@
 //! and `phone_open_settings` and
 //! `phone_open_tailscale` (capabilities/phone-screens.json); the Studio it then opens is
 //! served by the computer and gets no command at all. The navigation guard keeps
-//! everything but the confirmed address out of the window.
+//! everything but the confirmed address out of the window. On macOS and Linux,
+//! `server_session_open` shows the brief in a second window whose page no
+//! capability names, so it gets no command either (`server_session_brief.rs`).
 
 mod agent_host;
 mod blobs;
@@ -97,6 +99,8 @@ mod sandbox_elevate;
 mod sandbox_wsl_setup;
 mod secrets;
 mod server_session;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+mod server_session_brief;
 mod system_region;
 mod trust;
 #[cfg(desktop)]
@@ -166,6 +170,18 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(phone_tunnel_events::TunnelWatchers::default())
         .manage(server_session::ServerSessionState::default())
         .manage(phone_nearby::NearbyState::default());
+    // The window that shows the whole brief before Claude Code starts on
+    // the user's server, and its page, served to that window only.
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    let builder = builder
+        .manage(server_session_brief::BriefState::default())
+        .register_uri_scheme_protocol(server_session_brief::SCHEME, |context, request| {
+            server_session_brief::serve(
+                context.app_handle(),
+                context.webview_label(),
+                request.uri().path(),
+            )
+        });
     #[cfg(windows)]
     let builder = builder
         .manage(sandbox_elevate::ElevateState::default())
