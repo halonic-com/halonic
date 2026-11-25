@@ -11,8 +11,9 @@ heading "You've signed out of {Product}", with the product's name as text, and *
 which opens the host's sign-in address (`/api/sign-in`). The heading shall take the focus, the
 page's title shall read "Signed out · {Product}" even when the window names its page again,
 Escape shall not close the page, and it shall never go to sign-in by itself. The page shall stay
-when the window draws the menu again in another place, as on a resize from desktop to phone. When the session wasn't ended, the menu shall stay, with "Couldn't
-sign out. Try again." under **Sign out**.
+in every layout, as on a resize from desktop to phone, also on a phone page under a place, where
+the window draws no menu. When the session wasn't ended, the menu shall stay, with "Couldn't sign
+out. Try again." under **Sign out**.
 
 ## Examples
 

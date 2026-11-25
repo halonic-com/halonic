@@ -34,6 +34,7 @@ export class ServedAccountMenu implements AccountMenuHost {
   /** The product's name from the last answer, kept for the signed-out page. */
   #productName: string | null = null;
   #signedOut = false;
+  readonly #signedOutListeners = new Set<() => void>();
 
   /**
    * @param fetchPage reads and posts a path on the page's own address
@@ -70,10 +71,18 @@ export class ServedAccountMenu implements AccountMenuHost {
       throw new Error(`The computer answered ${response.status} to POST ${signOutPath}.`);
     }
     this.#signedOut = true;
+    for (const listener of [...this.#signedOutListeners]) {
+      listener();
+    }
   }
 
   signedOutOf(): string | null {
     return this.#signedOut ? this.#productName : null;
+  }
+
+  onSignedOut(listener: () => void): () => void {
+    this.#signedOutListeners.add(listener);
+    return () => this.#signedOutListeners.delete(listener);
   }
 
   open(address: string): void {

@@ -35,9 +35,14 @@ export interface AccountMenuHost {
   signOut(): Promise<void>;
   /**
    * The product's name once this page has signed out, else `null`. The host outlives the menu,
-   * which the window draws again when it changes layout, so the signed-out page stays.
+   * which a phone draws only at the top of a place, so the signed-out page stays.
    */
   signedOutOf(): string | null;
+  /**
+   * Calls `listener` once this page has signed out, so the signed-out page shows in every layout,
+   * even where the window draws no menu. Returns a function that stops it.
+   */
+  onSignedOut(listener: () => void): () => void;
   /** Opens an address from the facts, in this tab. */
   open(address: string): void;
   /** Where **Sign in again** goes: the computer's sign-in route. */
