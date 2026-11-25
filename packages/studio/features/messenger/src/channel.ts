@@ -33,6 +33,18 @@ export function agentName(row: ConversationRow, id: MessagingId): string | undef
   return row.sourceAgents.find((agent) => agent.id === id)?.name;
 }
 
+/**
+ * An agent's name as its source lists it, or else that it is gone: "No longer in" and the source's
+ * label, or "No longer listed" when the source itself is gone too.
+ */
+export function memberName(row: ConversationRow, id: MessagingId): string {
+  const name = agentName(row, id);
+  if (name !== undefined) return name;
+  return row.source === undefined
+    ? channelWords.authorGoneNoSource
+    : channelWords.authorGone(row.source.label);
+}
+
 /** What the To line says, and whether Send may send to it (flow I, K2). */
 export interface ToLine {
   readonly text: string;

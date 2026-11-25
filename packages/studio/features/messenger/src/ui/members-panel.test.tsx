@@ -38,6 +38,9 @@ verifies("messenger.members", () => {
     it("shows the history notice before a member is added, and calls setMembers only on Add", async () => {
       const { messaging, channel, writer } = acme();
       const setMembers = vi.spyOn(messaging, "setMembers");
+      // A source that never reports its own writes: the panel must refresh by itself.
+      const silent = { next: () => new Promise<IteratorResult<string>>(() => undefined) };
+      vi.spyOn(messaging, "changes").mockReturnValue({ [Symbol.asyncIterator]: () => silent });
       const page = await openMessenger(messaging);
       const panel = await openMembers(page);
       expect(panel.querySelector("h3")?.textContent).toBe("Members · 3");
@@ -53,6 +56,7 @@ verifies("messenger.members", () => {
       const [after] = await messaging.listConversations();
       expect(after?.members).toContain(writer.id);
       expect(after?.id).toBe(channel.id);
+      expect(page.querySelector("aside h3")?.textContent).toBe("Members · 4");
     });
 
     it("adds nobody when the person cancels the notice", async () => {

@@ -56,7 +56,7 @@ export type DraftOutcome =
 export class Messenger {
   /** The chats' quick actions: answering the agent's cards, and asking for an update. */
   readonly quickActions: QuickActions;
-  /** Changing a channel's members, and leaving it. */
+  /** Starting, browsing, joining and leaving channels, and changing their members. */
   readonly channels: ChannelAdmin;
   /** The files waiting in each chat's box, sent with its next message. */
   readonly files = new DraftFiles();
