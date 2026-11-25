@@ -190,6 +190,9 @@ interface MessagesRequest {
   readonly model?: string;
 }
 
+/** What the fake provider says each call used, so the run log's usage can be checked against it. */
+const fakeUsage = { input_tokens: 1200, output_tokens: 1, cache_read_input_tokens: 800 };
+
 /** A streamed reply of one text block that ends the turn. */
 function endTurn(model: string): Response {
   const message = {
@@ -200,7 +203,7 @@ function endTurn(model: string): Response {
     content: [],
     stop_reason: null,
     stop_sequence: null,
-    usage: { input_tokens: 1, output_tokens: 1 },
+    usage: fakeUsage,
   };
   const events: [string, unknown][] = [
     ["message_start", { type: "message_start", message }],
@@ -250,7 +253,7 @@ function fakeProvider(): { requests: MessagesRequest[]; http: HttpClient } {
         content: [{ type: "text", text: "done" }],
         stop_reason: "end_turn",
         stop_sequence: null,
-        usage: { input_tokens: 1, output_tokens: 1 },
+        usage: fakeUsage,
       });
     },
   };
@@ -302,6 +305,19 @@ describe("the real Claude Code in the real srt sandbox", () => {
       expect(listed.map((tool) => tool.name).sort()).toEqual(codingTools);
       expect(listed.filter((tool) => "defer_loading" in tool)).toEqual([]);
       expect(reported).toEqual([]);
+      // The run log keeps each call and what it used (HAL-17262): the CI log
+      // shows them, with the effort Claude Code itself sent, as a recorded run.
+      const calls = run.events.filter(
+        (event) => event.type === "llm.request" || event.type === "llm.response",
+      );
+      process.stdout.write(
+        `Claude Code's model calls:\n${calls.map((call) => JSON.stringify(call)).join("\n")}\n`,
+      );
+      const responses = calls.filter((call) => call.type === "llm.response");
+      expect(responses.length).toBe(provider.requests.length);
+      for (const response of responses) {
+        expect(response.usage).toMatchObject({ inputTokens: 1200, cacheReadTokens: 800 });
+      }
     },
     runTimeout,
   );
