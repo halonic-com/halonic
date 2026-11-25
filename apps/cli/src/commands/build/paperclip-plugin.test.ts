@@ -4,6 +4,7 @@ import { join, sep } from "node:path";
 import { GitRunner, GitVcs } from "@halonicjs/adapter-git";
 import { testGit } from "@halonicjs/adapter-git/testing";
 import type { PluginRuntime } from "@halonicjs/app";
+import { readPreviousBuild } from "@halonicjs/plugin-build";
 import { encodeUtf8 } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,6 +13,7 @@ import { shippedPluginRuntime } from "../../paperclip-runtime.ts";
 import { runCli } from "../../run-cli.ts";
 import { captureIo } from "../../test/capture-io.ts";
 import { removeTestFolder } from "../../test/remove-folder.ts";
+import { webCryptoDigest } from "../../workspace-runs.ts";
 import { buildCommandWith } from "./command.ts";
 
 /** A runtime that can run the GitHub pull request action only. */
@@ -99,6 +101,40 @@ verifies("cli.commands.build.paperclip-plugin", () => {
       `  SHA-256        ${release.sha256}`,
       "  Changes        added pr_status",
     ]);
+  });
+
+  it("puts the workspace's templates in the plugin's snapshot", async () => {
+    await mkdir(join(folder, "library", "templates"), { recursive: true });
+    await writeFile(
+      join(folder, "library", "templates", "task.md"),
+      "---\ntitle: Task\n---\nDone when:\n",
+    );
+    await vcs.stage(["library/templates/task.md"]);
+    await vcs.commit("Add a template");
+    const { code } = await build();
+
+    expect(code).toBe(exitCode.ok);
+    const read = await readPreviousBuild(
+      {
+        releaseFile: await readFile(join(folder, "halonic-ws.acme-0.1.0.release.json"), "utf8"),
+        archive: await readFile(join(folder, "halonic-ws.acme-0.1.0.tar")),
+      },
+      webCryptoDigest,
+    );
+    expect(read.ok && read.value.snapshot).toMatchObject({
+      templates: [{ id: "task", title: "Task", body: "Done when:" }],
+    });
+  });
+
+  it("refuses a template file that isn't committed", async () => {
+    await mkdir(join(folder, "library", "templates"), { recursive: true });
+    await writeFile(join(folder, "library", "templates", "task.md"), "Done when:\n");
+    const { code, io } = await build();
+
+    expect(code).toBe(exitCode.conflict);
+    expect(io.stderr[0]).toBe(
+      "✕ Couldn't build the plugin: library/templates/task.md has changes that aren't committed.",
+    );
   });
 
   it("gives the same bytes when built again, and leaves the files as they are", async () => {

@@ -1,4 +1,5 @@
-import type { Tool } from "@halonicjs/format";
+import type { Template, Tool } from "@halonicjs/format";
+import { readPreviousBuild } from "@halonicjs/plugin-build";
 import { encodeUtf8, type Sha256, unwrap } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
@@ -73,6 +74,39 @@ verifies("app.plugin-build", () => {
       workspaceCommit: commit,
       changes: { added: ["pr_status"], removed: [], changed: [] },
     });
+  });
+
+  it("puts the workspace's templates in the snapshot, sorted by id", async () => {
+    const templates: Template[] = [
+      { id: "task", title: "Task", body: "Done when:" },
+      { id: "pr-body", body: "## Changeset" },
+    ];
+    const asked = request([tool("pr_status")]);
+    const built = unwrap(
+      await buildWorkspacePlugin(
+        { ...asked, workspace: { ...asked.workspace, templates } },
+        digest,
+      ),
+    );
+    const read = unwrap(
+      await readPreviousBuild({ releaseFile: built.releaseText, archive: built.archive }, digest),
+    );
+
+    expect(read.snapshot).toMatchObject({
+      templates: [
+        { id: "pr-body", body: "## Changeset" },
+        { id: "task", title: "Task", body: "Done when:" },
+      ],
+    });
+  });
+
+  it("serves no templates when the workspace has none", async () => {
+    const built = unwrap(await buildWorkspacePlugin(request([tool("pr_status")]), digest));
+    const read = unwrap(
+      await readPreviousBuild({ releaseFile: built.releaseText, archive: built.archive }, digest),
+    );
+
+    expect(read.snapshot).not.toHaveProperty("templates");
   });
 
   it("takes the capabilities from the runtime and the used actions only", async () => {

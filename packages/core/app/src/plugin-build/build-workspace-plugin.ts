@@ -1,12 +1,14 @@
 // Builds a Paperclip plugin from one workspace commit (plan HAL-17950, with
-// Liam's conditions on HAL-17985): the snapshot of its tools, the four fixed
-// files, the archive, its sha-256 and the release file. Bytes in, bytes out:
+// Liam's conditions on HAL-17985): the snapshot of its tools and templates
+// (HAL-18153), the four fixed files, the archive, its sha-256 and the release
+// file. Bytes in, bytes out:
 // the caller reads the workspace, the runtime and the previous build, and
 // writes what comes back. Nothing here reaches a disk, a network or Paperclip.
 
 import {
   makeSnapshot,
   type SnapshotProblem,
+  type Template,
   type Tool,
   type WorkspaceSnapshot,
 } from "@halonicjs/format";
@@ -57,7 +59,7 @@ export interface PluginRuntime {
 }
 
 /**
- * The git commit the tool files were read at, as the caller found it. The
+ * The git commit the tool and template files were read at, as the caller found it. The
  * release file names the commit, so it must hold every file the build read.
  */
 export type WorkspaceCommit =
@@ -73,7 +75,10 @@ export type WorkspaceCommit =
 
 /** What one plugin is built from. */
 export interface WorkspacePluginRequest {
-  /** The workspace: its id (the plugin id's last part), name, errors, commit and parsed tool files. */
+  /**
+   * The workspace: its id (the plugin id's last part), name, errors, commit
+   * and parsed tool and template files.
+   */
   readonly workspace: {
     readonly id: string;
     readonly name: string;
@@ -81,6 +86,8 @@ export interface WorkspacePluginRequest {
     readonly errors: number;
     readonly commit: WorkspaceCommit;
     readonly tools: readonly Tool[];
+    /** The templates the plugin serves; none when left out. */
+    readonly templates?: readonly Template[];
   };
   readonly runtime: PluginRuntime;
   /** The previous build's release file and archive, for the change list and the version. */
@@ -192,6 +199,7 @@ function checkedWorkspace(
     name: workspace.name,
     commit: commit.id,
     tools: workspace.tools,
+    ...(workspace.templates === undefined ? {} : { templates: workspace.templates }),
   });
   if (!snapshot.ok) return err({ code: "snapshot", problems: snapshot.error });
   const unavailable = unavailableTools(snapshot.value.tools, runtime.actions);
