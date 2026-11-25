@@ -1,5 +1,6 @@
 import type { AssistantAddedHosts, TrustCheck, TrustService } from "@halonicjs/app";
 import type { DefinitionSource, Digest, FolderReader } from "@halonicjs/ports";
+import type { TrustRowView } from "@halonicjs/studio-feature-workspace";
 import { verifies } from "@halonicjs/testing-spec";
 import type { IntegrationTrustContent } from "@halonicjs/workspace";
 import { expect, it } from "vitest";
@@ -27,7 +28,7 @@ const marks: AssistantAddedHosts = new Map([
 
 const facts = { name: "Acme", folder: "/work/acme", assistantAdded: marks };
 
-function reachesOf(check: TrustCheck): readonly (readonly string[])[] | undefined {
+function reachesOf(check: TrustCheck): TrustRowView["lines"] | undefined {
   const section = trustReviewOf(check, facts)?.sections.find((each) =>
     each.heading.startsWith("Integrations"),
   );
