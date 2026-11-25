@@ -45,6 +45,20 @@ function group(jobs: readonly FailedJob[]): GroupRun {
   };
 }
 
+const mainTip = "25041db".padEnd(40, "0");
+
+/** The newest push run on main, finished with `conclusion`. */
+function mainPush(conclusion: string): MainRun {
+  return {
+    id: 45571446177,
+    headSha: mainTip,
+    status: "completed",
+    conclusion,
+    createdAt: ago(30),
+    branch: "main",
+  };
+}
+
 /** Twelve pull requests that have nothing to do with it, queued. */
 const unrelated = Array.from({ length: 12 }, (_, index) => 5763 + index);
 
@@ -53,13 +67,13 @@ function leakGuardDay(jobs: readonly FailedJob[]) {
     pulls: [pull(5762), ...unrelated.map((number) => pull(number))],
     queue: unrelated.map((number, index) => entry(number, index + 1)),
     groupRuns: [group(jobs)],
+    mainRuns: [mainPush("failure")],
   });
 }
 
 /** 25 Nov: #5994's group, built on #5969's failed group, failed where the catalog's importer is. */
 const deviceCheck = "packages/core/action-catalog/src/device-check.ts";
 const generated = "packages/core/action-catalog/src/catalog.generated.ts";
-const mainTip = "25041db".padEnd(40, "0");
 const head5969Group = "22c474c".padEnd(40, "0");
 const studioShell = Array.from(
   { length: 6 },
@@ -75,18 +89,6 @@ function group5994(base: string, id = 45568740658): GroupRun {
     url: `https://github.com/acme/tools/actions/runs/${id}`,
     createdAt: ago(20),
     failedJobs: [job("Typecheck (adapters-core)", [deviceCheck]), job("trace", [deviceCheck])],
-  };
-}
-
-/** The newest push run on main, finished with `conclusion`. */
-function mainPush(conclusion: string): MainRun {
-  return {
-    id: 45571446177,
-    headSha: mainTip,
-    status: "completed",
-    conclusion,
-    createdAt: ago(30),
-    branch: "main",
   };
 }
 
@@ -108,6 +110,15 @@ function stackedDay(files5969: readonly string[], mainRuns: readonly MainRun[]):
         branch: `gh-readonly-queue/main/pr-5969-${mainTip}`,
       },
     ],
+    mainRuns,
+  });
+}
+
+/** #5994's failed group directly on main's tip, no pull request touching the named file. */
+function onTip(mainRuns: readonly MainRun[]): MergeSnapshot {
+  return snapshot({
+    pulls: [pull(5994, { files: studioShell, filesTotal: studioShell.length })],
+    groupRuns: [group5994(mainTip)],
     mainRuns,
   });
 }
@@ -138,7 +149,10 @@ verifies("paperclip.merge-control-main-broken", () => {
   test("main broken is said once, and a green push run on main ends it with the freeze", () => {
     const first = pass(leakGuardDay([job("Leak guard", leakFiles)]));
     const nextGroup = { ...group([job("Leak guard", leakFiles)]), id: 45489975089 };
-    const again = pass(snapshot({ pulls: [pull(5762)], groupRuns: [nextGroup] }), first.state);
+    const again = pass(
+      snapshot({ pulls: [pull(5762)], groupRuns: [nextGroup], mainRuns: [mainPush("failure")] }),
+      first.state,
+    );
     expect(again.log.filter((line) => line.rule === "main-broken")).toEqual([]);
     expect(again.state.mainBroken).toEqual(first.state.mainBroken);
     const green = pass(
@@ -203,17 +217,32 @@ verifies("paperclip.merge-control-main-broken", () => {
     expect(logText(decision)).toContain("culprit #5969(ahead of #5994 in the group chain)");
   });
 
-  test("the same failure on a group directly on main's tip, no PR touching the file, is main broken", () => {
-    const decision = pass(
-      snapshot({
-        pulls: [pull(5994, { files: studioShell, filesTotal: studioShell.length })],
-        groupRuns: [group5994(mainTip)],
-        mainRuns: [mainPush("success")],
-      }),
-    );
+  test("HAL-18306: a group directly on main's tip no PR explains, with main's push run green, is only suspected, said once", () => {
+    const facts = onTip([mainPush("success")]);
+    const first = pass(facts);
+    expect(first.state.mainBroken).toBeNull();
+    expect(first.state.board.mainRed).toBeNull();
+    expect(first.state.failedHeads).toEqual({ "5994": headOf(5994) });
+    const suspected = `main-broken suspected, not frozen (main push ${mainTip.slice(0, 9)} green)`;
+    expect(first.log.filter((line) => line.text === suspected)).toHaveLength(1);
+    const again = pass({ ...facts, groupRuns: [group5994(mainTip, 45568740999)] }, first.state);
+    expect(again.log.filter((line) => line.rule === "main-broken")).toEqual([]);
+    expect(again.state.mainBroken).toBeNull();
+  });
+
+  test("HAL-18306: the same group with main's push run red is main broken", () => {
+    const decision = pass(onTip([mainPush("failure")]));
     expect(decision.state.failedHeads).toEqual({});
     expect(decision.state.mainBroken?.files).toEqual([deviceCheck]);
     expect(decision.state.board.mainRed).not.toBeNull();
+  });
+
+  test("HAL-18306: the same group with main's push run not read freezes nothing", () => {
+    const decision = pass(onTip([]));
+    expect(decision.state.mainBroken).toBeNull();
+    expect(decision.state.board.mainRed).toBeNull();
+    expect(decision.state.failedHeads).toEqual({ "5994": headOf(5994) });
+    expect(logText(decision)).toContain("main-broken suspected, not frozen (main push not read)");
   });
 
   test("a stacked group no PR explains, with main's push run green, is only suspected, said once", () => {

@@ -13,9 +13,12 @@ import { texts } from "./texts.ts";
  *
  * A group stacked on other groups carries their pull requests too (HAL-18287,
  * #5969/#5994): the files of every pull request ahead of it in the chain
- * count as its own, and one of them touching a named file is the culprit. A
- * stacked group freezes only while main's newest finished push run is red;
- * otherwise main broken is only suspected, said once, and the group's own
+ * count as its own, and one of them touching a named file is the culprit.
+ *
+ * Any group, stacked or directly on main's tip, freezes only while main's
+ * newest finished push run is red (HAL-18306): an annotation can name a file
+ * that imports the one a pull request changed, so no file matches it.
+ * Otherwise main broken is only suspected, said once, and the group's own
  * pull request is held as before.
  */
 
@@ -127,7 +130,7 @@ export function groupCulprit(
   const { state } = context;
   const push = newestMainPush(context.snapshot);
   // Not read counts as green: a freeze stalls the whole queue, a hold only this pull request.
-  if (ahead.length > 0 && (push === undefined || push.conclusion === "success")) {
+  if (push === undefined || push.conclusion === "success") {
     const sha = push?.headSha.slice(0, 9) ?? "not read";
     if (state.noted["main-broken-suspected"] !== sha) {
       state.noted["main-broken-suspected"] = sha;
