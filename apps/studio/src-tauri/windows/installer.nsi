@@ -1136,11 +1136,6 @@ Section Install
     WriteRegStr SHCTX "${UNINSTKEY}" "HelpLink" "${HOMEPAGE}"
   !endif
 
-  ; Create start menu shortcut (always, in the "Halonic" folder)
-  Call CreateOrUpdateStartMenuShortcut
-  ; Halonic change (HAL-17903): and the focused apps' shortcuts beside it.
-  Call CreateFocusedAppShortcuts
-
   ; Halonic change (HAL-1202): the desktop shortcut is a box on our page; a
   ; silent or passive install keeps it, as before.
   ${If} $ShortcutState == ${BST_CHECKED}
@@ -1154,6 +1149,14 @@ Section Install
   SetDetailsPrint both
   !insertmacro SetStep $LineCopy "✓ Copied Halonic"
   copy_done:
+
+  ; Halonic change (HAL-18322, board direction on HAL-10): every install, an
+  ; update, Repair and run again without Repair too, takes away the Start menu
+  ; shortcuts an earlier Halonic made and makes the current set: Halonic, in
+  ; the "Halonic" folder, and the focused apps' shortcuts beside it (HAL-17903).
+  Call RemoveOldStartMenuShortcuts
+  Call CreateOrUpdateStartMenuShortcut
+  Call CreateFocusedAppShortcuts
 
   ; Halonic change (HAL-17810): Microsoft's vcruntime140.dll, under a name
   ; nothing loads, only for the sandbox step, whose helper puts it beside
@@ -1791,36 +1794,28 @@ Function SkipLicence
 FunctionEnd
 !endif
 
-Function CreateOrUpdateStartMenuShortcut
-  ; We used to use product name as MAINBINARYNAME
-  ; migrate old shortcuts to target the new MAINBINARYNAME
-  StrCpy $R0 0
-
-  !insertmacro IsShortcutTarget "$SMPROGRAMS\$AppStartMenuFolder\${PRODUCTNAME}.lnk" "$INSTDIR\$OldMainBinaryName"
-  Pop $0
-  ${If} $0 = 1
-    !insertmacro SetShortcutTarget "$SMPROGRAMS\$AppStartMenuFolder\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe"
-    StrCpy $R0 1
-  ${EndIf}
-
-  !insertmacro IsShortcutTarget "$SMPROGRAMS\${PRODUCTNAME}.lnk" "$INSTDIR\$OldMainBinaryName"
-  Pop $0
-  ${If} $0 = 1
-    !insertmacro SetShortcutTarget "$SMPROGRAMS\${PRODUCTNAME}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe"
-    StrCpy $R0 1
-  ${EndIf}
-
-  ${If} $R0 = 1
+; Halonic change (HAL-18322, board direction on HAL-10): every install takes
+; away every Start menu shortcut an earlier Halonic made before it makes the
+; current set, so a renamed or dropped one never stays: all of them in
+; Halonic's own folder, whatever their name, and Halonic's at the top of the
+; Start menu, where Tauri put it before the folder (HAL-1202). An install that
+; makes no shortcuts (`/NS`) leaves them as they are.
+Function RemoveOldStartMenuShortcuts
+  ${If} $NoShortcutMode = 1
     Return
   ${EndIf}
+  !if "${STARTMENUFOLDER}" != ""
+    Delete "$SMPROGRAMS\$AppStartMenuFolder\*.lnk"
+  !endif
+  Delete "$SMPROGRAMS\${PRODUCTNAME}.lnk"
+FunctionEnd
 
-  ; Skip creating shortcut if in update mode or no shortcut mode
-  ; but always create if migrating from wix
-  ${If} $WixMode = 0
-    ${If} $UpdateMode = 1
-    ${OrIf} $NoShortcutMode = 1
-      Return
-    ${EndIf}
+Function CreateOrUpdateStartMenuShortcut
+  ; Halonic change (HAL-18322): RemoveOldStartMenuShortcuts took the old one
+  ; away, whatever it started, so there is nothing to move to the new
+  ; MAINBINARYNAME and it is made on an update too.
+  ${If} $NoShortcutMode = 1
+    Return
   ${EndIf}
 
   !if "${STARTMENUFOLDER}" != ""
