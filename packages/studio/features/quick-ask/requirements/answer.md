@@ -9,7 +9,9 @@ chat again each time the agent's source changes, never on a timer, and say wheth
 working, has answered (with its messages since the question) or asks the person to choose with a
 card made since the question. When the box closes, the feature shall stop reading. When an answer
 came after the box closed, the next opening shall offer it as the last answer, with the agent's name
-and the time, until the person sees it or forgets it.
+and the time, until the person sees it or forgets it, and only where the chat it was asked in is
+open, so a question asked in another workspace doesn't show there. The feature shall compare times
+as instants, whatever precision or offset a source writes them with.
 
 ## Examples
 

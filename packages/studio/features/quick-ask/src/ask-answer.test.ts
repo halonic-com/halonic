@@ -1,10 +1,10 @@
 import type { Message } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it, vi } from "vitest";
-import type { AnswerState } from "./ask-answer.ts";
+import { type AnswerState, answerState } from "./ask-answer.ts";
 import { AskMemory, memoryStorage } from "./ask-memory.ts";
 import { type AskAgent, AskSession } from "./ask-session.ts";
-import { agent, card, chat, FakeMessenger } from "./test-support/fake-messenger.ts";
+import { agent, card, chat, FakeMessenger, message } from "./test-support/fake-messenger.ts";
 
 /** Lets the session's reads, which wait on the fake's promises, finish. */
 async function settle(): Promise<void> {
@@ -136,5 +136,32 @@ verifies("quick-ask.answer", () => {
 
     const opening = await new AskSession(messenger, new AskMemory(storage)).open();
     expect(opening.kind === "ready" ? opening.lastAnswer : "none").toBeUndefined();
+  });
+
+  it("compares times as instants, whatever their precision or offset", () => {
+    const chief = agent("Chief");
+    const facts = { agent: chief, cards: [], sentAt: "2026-11-25T13:40:00.000Z" };
+    // 13:30 UTC, before the question, though its text sorts after it.
+    const older = message("chat-Chief", "Earlier news.", "2026-11-25T14:30:00+01:00", chief);
+    expect(answerState({ ...facts, messages: [older] })).toEqual({ kind: "waiting" });
+
+    // 14:39 UTC, after the question, though its text sorts before it.
+    const newCard = card(chief, "Ship it?", "2026-11-25T13:39:00-01:00");
+    expect(answerState({ ...facts, messages: [], cards: [newCard] }).kind).toBe("card");
+
+    const reply = message("chat-Chief", "Friday.", "2026-11-25T13:40:01Z", chief);
+    expect(answerState({ ...facts, messages: [reply] }).kind).toBe("answer");
+  });
+
+  it("keeps another workspace's waiting question out of this one's last answer", async () => {
+    const { messenger, storage, chief } = await asked();
+    messenger.reply(chief, "The release is on Friday.", "2026-11-25T13:41:00.000Z");
+    const elsewhere = new FakeMessenger([chat(agent("Liam"))]);
+
+    const there = await new AskSession(elsewhere, new AskMemory(storage)).open();
+    expect(there.kind === "ready" ? there.lastAnswer : "none").toBeUndefined();
+
+    const back = await new AskSession(messenger, new AskMemory(storage)).open();
+    expect(back.kind === "ready" ? back.lastAnswer?.agentName : undefined).toBe("Chief");
   });
 });

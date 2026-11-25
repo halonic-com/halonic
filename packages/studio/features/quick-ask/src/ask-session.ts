@@ -10,7 +10,7 @@ import type {
   DraftOutcome,
   Messenger,
 } from "@halonicjs/studio-feature-messenger/api";
-import { type AnswerState, answerState, isAnswered } from "./ask-answer.ts";
+import { type AnswerState, answerState, isAnswered, isLater } from "./ask-answer.ts";
 import type { AskMemory } from "./ask-memory.ts";
 
 /**
@@ -20,8 +20,7 @@ import type { AskMemory } from "./ask-memory.ts";
 export interface AskMessenger {
   rows(): Promise<readonly ConversationRow[]>;
   messages(conversation: MessagingId): Promise<readonly Message[]>;
-  setDraft(conversation: MessagingId, text: string): void;
-  sendDraft(conversation: MessagingId, row?: ConversationRow): Promise<DraftOutcome>;
+  sendText(conversation: MessagingId, body: string, row?: ConversationRow): Promise<DraftOutcome>;
   watch(listener: (source: MessagingId) => void): () => void;
   readonly quickActions: { cards(row: ConversationRow): Promise<readonly InboxItem[]> };
 }
@@ -88,7 +87,7 @@ export class AskSession {
     if (first === undefined) return { kind: "no-agents" };
     const last = this.#memory.lastAgent();
     const agent = agents.find((each) => each.row.conversation.id === last) ?? first;
-    const lastAnswer = await this.#lastAnswer();
+    const lastAnswer = await this.#lastAnswer(agents);
     const ready = { kind: "ready" as const, agents, agent, text: this.#memory.unsent() };
     return lastAnswer === undefined ? ready : { ...ready, lastAnswer };
   }
@@ -109,8 +108,8 @@ export class AskSession {
    */
   async ask(agent: AskAgent, text: string): Promise<AskOutcome> {
     const conversation = agent.row.conversation.id;
-    this.#messenger.setDraft(conversation, text);
-    const outcome = await this.#messenger.sendDraft(conversation, agent.row);
+    if (text.trim() === "") return { kind: "not-sent", reason: "blank" };
+    const outcome = await this.#messenger.sendText(conversation, text, agent.row);
     if (outcome.outcome === "kept") return { kind: "not-sent", reason: outcome.reason };
     this.#memory.setUnsent("");
     this.#memory.setLastAgent(conversation);
@@ -175,9 +174,11 @@ export class AskSession {
    * The agent's newest message since the waiting question, when it came after the box closed. A
    * chat that can't be read is logged and shows no **Last answer ›**, so the box still opens.
    */
-  async #lastAnswer(): Promise<LastAnswer | undefined> {
+  async #lastAnswer(agents: readonly AskAgent[]): Promise<LastAnswer | undefined> {
     const pending = this.#memory.pending();
     if (pending === undefined) return undefined;
+    // A question asked in another workspace's chat is that workspace's: kept, but not shown here.
+    if (!agents.some((each) => each.row.conversation.id === pending.conversation)) return undefined;
     let messages: readonly Message[];
     try {
       messages = await this.#messenger.messages(pending.conversation);
@@ -186,7 +187,7 @@ export class AskSession {
       return undefined;
     }
     const reply = messages.findLast(
-      (message) => message.author.kind === "agent" && message.sentAt > pending.sentAt,
+      (message) => message.author.kind === "agent" && isLater(message.sentAt, pending.sentAt),
     );
     if (reply === undefined || reply.author.kind !== "agent") return undefined;
     return {

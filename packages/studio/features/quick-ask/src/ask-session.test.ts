@@ -115,4 +115,14 @@ verifies("quick-ask.session", () => {
     expect(opening.text).toBe("");
     expect(logged).toHaveBeenCalled();
   });
+
+  it("sends nothing for a blank question, without asking Messenger", async () => {
+    const messenger = new FakeMessenger([chat(chief)]);
+    const sendText = vi.spyOn(messenger, "sendText");
+    const { session } = sessionWith(messenger);
+    const opening = await ready(session);
+
+    expect(await session.ask(opening.agent, "  ")).toEqual({ kind: "not-sent", reason: "blank" });
+    expect(sendText).not.toHaveBeenCalled();
+  });
 });

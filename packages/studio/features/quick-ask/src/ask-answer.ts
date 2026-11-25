@@ -36,9 +36,9 @@ export interface AnswerFacts {
  */
 export function answerState(facts: AnswerFacts): AnswerState {
   const replies = facts.messages.filter(
-    (message) => message.author.kind === "agent" && message.sentAt > facts.sentAt,
+    (message) => message.author.kind === "agent" && isLater(message.sentAt, facts.sentAt),
   );
-  const card = facts.cards.find((each) => each.createdAt >= facts.sentAt);
+  const card = facts.cards.find((each) => !isLater(facts.sentAt, each.createdAt));
   if (card !== undefined) return { kind: "card", card, messages: replies };
   if (replies.length > 0) return { kind: "answer", messages: replies };
   return facts.agent.activity === "working" ? { kind: "working" } : { kind: "waiting" };
@@ -47,4 +47,12 @@ export function answerState(facts: AnswerFacts): AnswerState {
 /** Whether a state is an answer the person has now seen, so the box stops waiting for one. */
 export function isAnswered(state: AnswerState): boolean {
   return state.kind === "answer" || state.kind === "card";
+}
+
+/**
+ * Whether ISO time `time` is after `than`. Compared as instants, not as text, because messages and
+ * cards come from different sources, which may write times with another precision or offset.
+ */
+export function isLater(time: string, than: string): boolean {
+  return Date.parse(time) > Date.parse(than);
 }

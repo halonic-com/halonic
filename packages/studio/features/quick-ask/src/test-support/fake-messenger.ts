@@ -77,7 +77,6 @@ export class FakeMessenger implements AskMessenger {
   /** Sending is refused with this while set. */
   refuse: MessagingRefusal | undefined;
   sentAt = "2026-11-25T13:40:00.000Z";
-  readonly drafts = new Map<MessagingId, string>();
   readonly listeners = new Set<(source: MessagingId) => void>();
   readonly quickActions = {
     cards: async (row: ConversationRow) =>
@@ -98,17 +97,11 @@ export class FakeMessenger implements AskMessenger {
     return this.messagesOf.get(conversation) ?? [];
   }
 
-  setDraft(conversation: MessagingId, text: string): void {
-    this.drafts.set(conversation, text);
-  }
-
-  async sendDraft(conversation: MessagingId): Promise<DraftOutcome> {
-    const body = this.drafts.get(conversation) ?? "";
+  async sendText(conversation: MessagingId, body: string): Promise<DraftOutcome> {
     if (body.trim() === "") return { outcome: "kept", reason: "blank" };
     if (this.refuse !== undefined) return { outcome: "kept", reason: this.refuse };
     const sent = message(conversation, body, this.sentAt);
     this.messagesOf.set(conversation, [...(this.messagesOf.get(conversation) ?? []), sent]);
-    this.drafts.delete(conversation);
     return { outcome: "sent", message: sent };
   }
 
