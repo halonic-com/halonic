@@ -4,7 +4,7 @@
 //! [`SignInCancel`], and nothing it hasn't stored yet is kept.
 
 use std::future::Future;
-use std::sync::{Mutex, PoisonError};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use halonic_secrets::{SecretBackend, SecretError};
 use serde::Serialize;
@@ -15,36 +15,27 @@ use crate::account::Account;
 /// and cancels it when the stepper or its window closes.
 #[derive(Debug, Default)]
 pub struct SignInCancel {
-    cancelled: Mutex<bool>,
+    cancelled: AtomicBool,
 }
 
 impl SignInCancel {
-    /// Cancels the sign-in. If it is storing its token right now, this
-    /// waits until that is done, so afterwards nothing more is written.
+    /// Cancels the sign-in. It never waits: the shell cancels from its UI
+    /// thread, and a keychain write can be held up by an unlock prompt for
+    /// as long as the user leaves it open (Liam's review of HAL-18084). A
+    /// write already under way still finishes; none starts after this.
     pub fn cancel(&self) {
-        *self
-            .cancelled
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner) = true;
+        self.cancelled.store(true, Ordering::SeqCst);
     }
 
     /// Whether the sign-in was cancelled.
     pub fn is_cancelled(&self) -> bool {
-        *self
-            .cancelled
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
+        self.cancelled.load(Ordering::SeqCst)
     }
 
-    /// Runs `write` unless the sign-in was cancelled, holding the flag so a
-    /// cancel can't come in between the check and the write. `None` when it
-    /// was cancelled and nothing ran.
+    /// Runs `write` unless the sign-in was cancelled. `None` when it was
+    /// cancelled and nothing ran.
     pub fn unless_cancelled<T>(&self, write: impl FnOnce() -> T) -> Option<T> {
-        let cancelled = self
-            .cancelled
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner);
-        (!*cancelled).then(write)
+        (!self.is_cancelled()).then(write)
     }
 }
 
@@ -101,29 +92,5 @@ impl SignInResult {
         Self::Failed {
             reason: reason.to_owned(),
         }
-    }
-}
-
-/// Text that held a token or a device code: its bytes are overwritten with
-/// zeros when it is dropped, so they don't linger in freed memory (note,
-/// 6.7).
-#[derive(Default)]
-pub(crate) struct Wiped(pub(crate) Vec<u8>);
-
-impl Drop for Wiped {
-    fn drop(&mut self) {
-        self.0.fill(0);
-        // Keeps the zeros from being optimised away as a dead write.
-        std::hint::black_box(&self.0);
-    }
-}
-
-impl Wiped {
-    pub(crate) fn text(text: String) -> Self {
-        Self(text.into_bytes())
-    }
-
-    pub(crate) fn as_str(&self) -> &str {
-        std::str::from_utf8(&self.0).unwrap_or_default()
     }
 }

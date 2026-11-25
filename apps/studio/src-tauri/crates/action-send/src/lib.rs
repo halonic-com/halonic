@@ -27,6 +27,7 @@ mod services;
 mod sign_in;
 mod template;
 mod web;
+mod wipe;
 
 pub use answer::{MAX_ERROR_CHARS, error_text};
 pub use call::{MAX_LIST_ITEMS, Refusal, SendRequest, StepRef};

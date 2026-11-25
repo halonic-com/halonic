@@ -21,7 +21,8 @@ use url::form_urlencoded::Serializer;
 use crate::account::{self, Account, is_account_name};
 use crate::send::{Answer, Outgoing, Transport};
 use crate::services::GITHUB;
-use crate::sign_in::{Clock, CodeScreen, Keychain, SignInCancel, SignInResult, UserCode, Wiped};
+use crate::sign_in::{Clock, CodeScreen, Keychain, SignInCancel, SignInResult, UserCode};
+use crate::wipe::Wiped;
 
 /// The page where the user types the code. Fixed here: the address in
 /// GitHub's answer isn't used.

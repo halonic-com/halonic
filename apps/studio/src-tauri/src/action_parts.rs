@@ -58,6 +58,9 @@ pub fn action_client() -> reqwest::ClientBuilder {
     // reqwest is built without a crypto provider, and only the updater
     // installs one; a stepper call can come first.
     if rustls::crypto::CryptoProvider::get_default().is_none() {
+        // An error here only means another thread installed a provider
+        // between the check and this call, and any provider will do: the
+        // updater installs this same one.
         let _ = rustls::crypto::ring::default_provider().install_default();
     }
     reqwest::Client::builder()
@@ -85,22 +88,24 @@ async fn send_call(call: Outgoing, proxy: &ProxySetting) -> Result<Answer, Strin
 }
 
 /// Sends one call with `client` and reads its answer, at most
-/// [`MAX_ANSWER_BYTES`] of it.
+/// [`MAX_ANSWER_BYTES`] of it. The call is dropped, and so its token and
+/// device code wiped, as soon as the request has gone.
 pub async fn send_with(client: &reqwest::Client, call: Outgoing) -> Result<Answer, String> {
     let method = reqwest::Method::from_bytes(call.method.as_bytes())
         .map_err(|_| "not a method".to_owned())?;
-    let mut request = client.request(method, call.address);
+    let mut request = client.request(method, call.address.clone());
     for (name, value) in &call.headers {
         request = request.header(name, value);
     }
-    if let Some(body) = call.body {
-        request = request.body(body);
+    // reqwest gets its own copy of the body, as of each header, which this
+    // shell can't wipe; the call keeps the one it can.
+    if let Some(body) = &call.body {
+        request = request.body(body.clone());
     }
+    let sent = request.send().await;
+    drop(call);
     // reqwest's error names the address, never the headers.
-    let mut response = request
-        .send()
-        .await
-        .map_err(|error| error.without_url().to_string())?;
+    let mut response = sent.map_err(|error| error.without_url().to_string())?;
     let header = |name: &str| {
         response
             .headers()

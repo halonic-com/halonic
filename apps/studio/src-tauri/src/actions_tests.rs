@@ -2,7 +2,9 @@
 //! confirmation's text and the running sign-in, without a keychain or the
 //! network.
 
-use std::sync::Arc;
+use std::sync::{Arc, mpsc};
+use std::thread;
+use std::time::Duration;
 
 use halonic_action_send::{ConfirmSheet, SignInCancel};
 
@@ -62,4 +64,38 @@ fn a_new_sign_in_cancels_the_one_before_it() {
     let cancel = running(&state, "inbox");
     state.cancel_sign_in(None);
     assert!(cancel.is_cancelled());
+}
+
+#[test]
+fn a_cancel_returns_while_a_keychain_write_holds_the_sign_in() {
+    // Liam's review of HAL-18084: `action_sign_in_cancel` and `end_page`
+    // run on the UI thread, so a cancel that waited for an unlock prompt
+    // would freeze the window.
+    let state = Arc::new(ActionState::default());
+    let cancel = running(&state, "main");
+    let (writing, write_started) = mpsc::channel();
+    let (release, released) = mpsc::channel::<()>();
+    // The sign-in's store, with a keychain that blocks until released.
+    let write = thread::spawn(move || {
+        cancel.unless_cancelled(|| {
+            writing.send(()).expect("the test waits");
+            released.recv().expect("the test releases it");
+        })
+    });
+    write_started.recv().expect("the write started");
+    let (cancelled, cancel_returned) = mpsc::channel();
+    let cancelling = Arc::clone(&state);
+    thread::spawn(move || {
+        cancelling.cancel_sign_in(Some("main"));
+        cancelled.send(()).expect("the test waits");
+    });
+    // Only a failing cancel takes this long: a passing one returns at once.
+    cancel_returned
+        .recv_timeout(Duration::from_secs(30))
+        .expect("the cancel returned while the write was still held");
+    assert!(!write.is_finished());
+    assert!(state.sign_in.lock().expect("not poisoned").is_none());
+    release.send(()).expect("the write waits");
+    // The write that was under way finishes; none starts after the cancel.
+    assert!(write.join().expect("the write ran").is_some());
 }

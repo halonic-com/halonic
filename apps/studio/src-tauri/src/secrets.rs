@@ -46,8 +46,11 @@ impl SecretsState {
         Arc::clone(&self.backend)
     }
 
-    /// The keychain a stepper's sign-in is kept in, for the `action_*`
-    /// commands only, which reach just the `action__` names (HAL-18084).
+    /// The keychain a stepper's sign-in is kept in, handed only to the
+    /// `action_*` commands (HAL-18084). It is the same backend as
+    /// [`Self::host_keychain`], not one narrowed to the `action__` names:
+    /// those commands stay on them because `halonic-action-send` builds
+    /// every name they use.
     #[cfg(desktop)]
     pub(crate) fn action_keychain(&self) -> Arc<dyn SecretBackend> {
         Arc::clone(&self.backend)
