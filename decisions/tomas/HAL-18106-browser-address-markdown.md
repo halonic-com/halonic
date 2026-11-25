@@ -3,6 +3,7 @@
 - Task: HAL-18106
 - Approval: Liam approves this change on HAL-18106 (https://paperclip.halonic.com/HAL/issues/HAL-18106), a follow-up to his review finding on #5877 (HAL-17550). A team decision with no board card (HAL-2282 rule).
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:WPHuGrGegVoM4+JiwMqAiPC9N1E/FUJ6S6u6c8hrD5MplfGv2vvA6ssCcvlnf1X9bJ3Rhm1WRn80A9x+76KCBA==
 
 ## What changes
 
