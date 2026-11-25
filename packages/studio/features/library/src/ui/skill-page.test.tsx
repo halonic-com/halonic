@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import type { ItemUsage } from "@halonicjs/app";
+import { type ItemChat, ItemChatService } from "@halonicjs/studio-feature-assistant/api";
 import { PresentationProvider, settlePendingSaves } from "@halonicjs/studio-kit";
 import { type ItemViewProps, limitedLookup, PhoneTopBarSlot } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
@@ -37,6 +38,7 @@ function setup(
   source: SkillSource | undefined = { text, files: [] },
   usage: ItemUsage = nobody,
   missing = false,
+  itemChat?: Pick<ItemChat, "askAbout">,
 ) {
   const write = vi.fn(async () => {});
   const openItem = vi.fn();
@@ -59,12 +61,16 @@ function setup(
       return () => listeners.delete(listener);
     },
   };
+  const services = new Map<unknown, unknown>([
+    [SkillHostService, host],
+    [ItemChatService, itemChat],
+  ]);
   const props = {
     item: { kind: "skill", hub: "~workspace", id: "refunds" },
     context: {
       services: limitedLookup(libraryFeature, {
         get: (key: unknown) => (key === SkillHostService ? host : undefined),
-        find: (key: unknown) => (key === SkillHostService ? host : undefined),
+        find: (key: unknown) => services.get(key),
       }),
       announcer: { announce, announceState: vi.fn() },
       openItem,
@@ -321,5 +327,29 @@ verifies("library.library-phone", () => {
     expect(title?.className).toBe("sr-only");
     expect(title?.tabIndex).toBe(-1);
     topBar.remove();
+  });
+});
+
+verifies("assistant.chat.ask-about", () => {
+  it("asks the Assistant about the skill, by its name, from Ask about this skill…", async () => {
+    const askAbout = vi.fn(async () => {});
+    const { props } = setup(undefined, nobody, false, { askAbout });
+    const root = render(<SkillPage {...props} />);
+    await settled();
+    const ask = [...root.querySelectorAll("button")].find(
+      (button) => button.textContent === "Ask about this skill…",
+    );
+    act(() => ask?.click());
+    expect(askAbout).toHaveBeenCalledWith(
+      { kind: "skill", hub: "~workspace", id: "refunds" },
+      "Refunds",
+      props.context,
+    );
+  });
+
+  it("offers no Ask about this skill… without the Assistant", async () => {
+    const root = render(<SkillPage {...setup().props} />);
+    await settled();
+    expect(root.textContent).not.toContain("Ask about this skill…");
   });
 });

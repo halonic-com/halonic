@@ -1,4 +1,4 @@
-import { ShowInChatService } from "@halonicjs/studio-feature-assistant/api";
+import { ItemChatService, ShowInChatService } from "@halonicjs/studio-feature-assistant/api";
 import {
   type BrokenFileActions,
   brokenFileActions,
@@ -35,6 +35,7 @@ import {
   WorkflowsHostService,
 } from "../api.ts";
 import { NewWorkflowDialog } from "../new/new-workflow-dialog.tsx";
+import { newWorkflowWords } from "../new/new-workflow-words.ts";
 import { listWords } from "./list-words.ts";
 import { takeNewWorkflowRequests } from "./new-request.ts";
 import { brokenRowId, rowId, workflowHubs } from "./workflow-rows.tsx";
@@ -74,6 +75,10 @@ export function WorkflowsPage({ context }: PlaceViewProps) {
     show: ({ hubId: hub, id, name }: WorkflowListing) =>
       void assistant.show({ item: { kind: "workflow", hub, id }, name }, context),
   };
+  const itemChat = context.services.find(ItemChatService);
+  const describe =
+    itemChat &&
+    ((name: string) => void itemChat.describe(newWorkflowWords.describeStart(name), context));
   return (
     <WorkflowsView
       announceState={(key, text) => context.announcer.announceState(key, text)}
@@ -84,6 +89,7 @@ export function WorkflowsPage({ context }: PlaceViewProps) {
       {...(open ? { open } : {})}
       {...(openInNewTab ? { openInNewTab } : {})}
       {...(showInChat ? { showInChat } : {})}
+      {...(describe ? { describe } : {})}
     />
   );
 }
@@ -108,6 +114,8 @@ export interface WorkflowsViewProps {
     readonly label: string;
     readonly show: (workflow: WorkflowListing) => void;
   };
+  /** New workflow's Describe link: asks the Assistant with the typed name; no link without it. */
+  readonly describe?: ((name: string) => void) | undefined;
 }
 
 /**
@@ -128,6 +136,7 @@ export function WorkflowsView({
   filesWithErrors,
   brokenActions = {},
   showInChat,
+  describe,
 }: WorkflowsViewProps) {
   const words = engine ?? engineWordsOf({});
   const phone = usePresentation() === "phone";
@@ -292,6 +301,13 @@ export function WorkflowsView({
             open?.(ref);
           }}
           onCancel={() => setCreating(false)}
+          onDescribe={
+            describe &&
+            ((name) => {
+              setCreating(false);
+              describe(name);
+            })
+          }
           returnFocus={() => null}
         />
       )}

@@ -2,6 +2,7 @@
 import type { WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
+import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { buildChatsOf } from "../chat/build-chats.ts";
 import { AssistantPanel } from "../panel/assistant-panel.tsx";
@@ -33,6 +34,13 @@ function windowOf(fake: ReturnType<typeof fakeHost>) {
 
 const box = () => document.querySelector("textarea") as HTMLTextAreaElement;
 
+function type(area: HTMLTextAreaElement, value: string): void {
+  act(() => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(area, value);
+    area.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
 verifies("assistant.chat.describe", () => {
   it("opens the panel on a new Build chat about no item, with the text in the box, unsent", async () => {
     const fake = fakeHost();
@@ -59,6 +67,16 @@ verifies("assistant.chat.describe", () => {
     expect(document.activeElement).toBe(box());
     expect((await fake.host.chats()).length).toBe(before);
   });
+
+  it("keeps text typed and not sent, putting its own after it in a new paragraph", async () => {
+    const fake = fakeHost();
+    const context = windowOf(fake);
+    await show(<AssistantPanel context={context} title="Assistant" onClose={() => {}} />);
+    type(box(), "Watch the inbox");
+    await act(() => itemChat.describe("Make a workflow that ", context));
+    expect(box().value).toBe("Watch the inbox\n\nMake a workflow that ");
+    expect(box().selectionStart).toBe(box().value.length);
+  });
 });
 
 verifies("assistant.chat.ask-about", () => {
@@ -72,6 +90,9 @@ verifies("assistant.chat.ask-about", () => {
     expect(shown.kind === "chat" && shown.view.chat.about).toEqual(summarize);
     expect(box().value).toBe("");
     expect(document.activeElement).toBe(box());
+    expect(shown.kind === "chat" && shown.view.shown).toEqual([
+      { item: summarize, name: "Summarize" },
+    ]);
   });
 
   it("shows the item's kept chat on the left of its page, and the panel doesn't open on it", async () => {
@@ -94,5 +115,20 @@ verifies("assistant.chat.ask-about", () => {
     await act(async () => {});
     const draft = (await fake.host.newChat("build", triage)).id;
     expect(buildChatsOf(fake.host).inTab(draft)).toBe(true);
+  });
+
+  it("doesn't read the chat again when the page is drawn with a new object for the same item", async () => {
+    const fake = fakeHost();
+    const context = windowOf(fake);
+    const chats = vi.spyOn(fake.host, "chats");
+    const page = (about: typeof triage) =>
+      itemChat.chatFor(about, "Triage", context).render(() => {}, false);
+    const root = createRoot(document.createElement("div"));
+    await act(async () => root.render(page(triage)));
+    const reads = chats.mock.calls.length;
+    expect(reads).toBe(1);
+    await act(async () => root.render(page({ ...triage })));
+    expect(chats.mock.calls.length).toBe(reads);
+    act(() => root.unmount());
   });
 });

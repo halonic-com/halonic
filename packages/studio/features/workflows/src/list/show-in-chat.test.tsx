@@ -4,13 +4,23 @@ import { PresentationProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
+import { newWorkflowWords } from "../new/new-workflow-words.ts";
 import { reply } from "../page/page-fixtures.ts";
 import { WorkflowScreen } from "../page/workflow-page.tsx";
-import { listing, memoryHost, memoryRuns, show, unmount } from "../test-support.tsx";
+import {
+  buttonNamed,
+  listing,
+  memoryHost,
+  memoryRuns,
+  openDialogsInJsdom,
+  show,
+  unmount,
+} from "../test-support.tsx";
 import { WorkflowsView } from "./workflows-page.tsx";
 
 // jsdom has no popover: a menu closes itself after a pick by hiding it.
 beforeAll(() => {
+  openDialogsInJsdom();
   HTMLElement.prototype.showPopover ??= () => {};
   HTMLElement.prototype.hidePopover ??= () => {};
 });
@@ -102,5 +112,25 @@ verifies("assistant.chat.show-in-chat", () => {
     expect(entries.map((entry) => entry.textContent)).toEqual(["Show in chat", "Delete"]);
     act(() => entries[0]?.click());
     expect(showItem).toHaveBeenCalledWith("Support reply");
+  });
+});
+
+verifies("assistant.chat.describe", () => {
+  it("closes New workflow and hands the typed name to the Assistant from the Describe link", async () => {
+    const describe = vi.fn();
+    const { host } = memoryHost([{ id: "support", name: "Support" }], [support]);
+    const page = await show(<WorkflowsView host={host} describe={describe} />);
+    await settled();
+    act(() => buttonNamed(page, "New workflow")?.click());
+    act(() => buttonNamed(document.body, newWorkflowWords.describe)?.click());
+    expect(describe).toHaveBeenCalledWith("");
+    expect(buttonNamed(document.body, newWorkflowWords.describe)).toBeUndefined();
+  });
+
+  it("starts the Assistant's text with the name when one is typed", () => {
+    expect(newWorkflowWords.describeStart("")).toBe("Make a workflow that ");
+    expect(newWorkflowWords.describeStart("Invoice intake")).toBe(
+      "Make a workflow called Invoice intake that ",
+    );
   });
 });

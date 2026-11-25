@@ -25,8 +25,11 @@ export const itemChat: ItemChat = {
       render: () => <ItemPageChatBody about={about} context={context} />,
     };
   },
-  async askAbout(about, _name, context) {
+  async askAbout(about, name, context) {
     await openInPanel(context, about, undefined);
+    // The chip under "Shown:" keeps what the chat is about in sight after a tab switch (5.7).
+    const chats = buildChatsOf(context.services.get(AssistantHostService));
+    await chats.showItem({ item: about, name });
   },
   async describe(text, context) {
     await openInPanel(context, undefined, text);
@@ -57,7 +60,8 @@ function ItemPageChatBody(props: {
   readonly about: ChatAbout;
   readonly context: WorkspaceContext;
 }) {
-  const { about, context } = props;
+  const { context } = props;
+  const about = useSameAbout(props.about);
   const host = context.services.get(AssistantHostService);
   const [chatId, setChatId] = useState<string>();
   const [failed, setFailed] = useState<string>();
@@ -82,6 +86,16 @@ function ItemPageChatBody(props: {
   return (
     <ChatOnPage context={context} shown={shown} onRetry={() => setAttempt((count) => count + 1)} />
   );
+}
+
+/**
+ * `about` as first given, until it names another item: a page drawn again with a new object for
+ * the same item doesn't read its chat again.
+ */
+function useSameAbout(about: ChatAbout): ChatAbout {
+  const kept = useRef(about);
+  if (!sameAbout(kept.current, about)) kept.current = about;
+  return kept.current;
 }
 
 /** The kept Build chat about `about` used most recently, else a new draft about it. */

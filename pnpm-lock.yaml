@@ -3927,6 +3927,9 @@ importers:
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../../core/ports
+      '@halonicjs/studio-feature-assistant':
+        specifier: workspace:*
+        version: link:../assistant
       '@halonicjs/studio-feature-files':
         specifier: workspace:*
         version: link:../files

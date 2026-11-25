@@ -11,6 +11,9 @@ export const newWorkflowWords = {
   file: (path: string) => `File: ${path}`,
   folder: (path: string) => `Folder: ${path}`,
   describe: "Describe it to the Assistant instead ›",
+  /** What the Describe link puts in the Assistant's box, unsent (flow-workflows 2.2). */
+  describeStart: (name: string) =>
+    name === "" ? "Make a workflow that " : `Make a workflow called ${name} that `,
   createFailed: (reason: string) => `Couldn't create the workflow: ${reason}.`,
   defaultHubUnreadable: (file: string, line: number) =>
     `${file} can't be read right now (line ${line}). Fix it in the file, then try again`,

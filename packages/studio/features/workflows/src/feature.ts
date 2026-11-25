@@ -1,6 +1,6 @@
 import { sandboxStartCheckKey } from "@halonicjs/app";
 import { AgentsHostService } from "@halonicjs/studio-feature-agents/api";
-import { ShowInChatService } from "@halonicjs/studio-feature-assistant/api";
+import { ItemChatService, ShowInChatService } from "@halonicjs/studio-feature-assistant/api";
 import { FilesHostService } from "@halonicjs/studio-feature-files/api";
 import { InboxService } from "@halonicjs/studio-feature-inbox/api";
 import { RunsListService, RunsSourceService } from "@halonicjs/studio-feature-runs/api";
@@ -33,6 +33,8 @@ export const workflowsFeature = defineFeature({
     FilesHostService,
     // Show in chat in a row's and the page's ⋮ (assistant.chat.show-in-chat).
     ShowInChatService,
+    // New workflow's "Describe it to the Assistant instead ›" (assistant.chat.describe).
+    ItemChatService,
     // The assistant's changes to review; where the app has none, the page shows no bar.
     WorkflowReviewService,
   ],
