@@ -9,6 +9,7 @@ import { type ConversationRow, type Messenger, refusalOf } from "../messenger.ts
 import { messengerWords } from "../messenger-words.ts";
 import { ChannelAddressBar, useChannelAddress } from "./channel-address.tsx";
 import { AttachFileButton, DraftFileList, pastedFiles } from "./draft-files-bar.tsx";
+import { useMembers } from "./use-members.ts";
 
 /** The props of {@link ChatBox}. */
 export interface ChatBoxProps {
@@ -16,6 +17,8 @@ export interface ChatBoxProps {
   readonly row: ConversationRow;
   /** Called once something was sent, so the chat reads its messages again. */
   readonly onSent: () => Promise<void>;
+  /** The picker's **Add** changed the channel's members; the page reads the list again. */
+  readonly onChanged: () => void;
 }
 
 /** The line under the box: why something wasn't sent or added, or that a file was removed. */
@@ -34,11 +37,12 @@ interface BoxLine {
  * else Attach a file, and the line says the file was removed (HAL-18074 MS3).
  * A channel's box has the To line and the `@` picker above it (`messenger.channel-messages`).
  */
-export function ChatBox({ messenger, row, onSent }: ChatBoxProps) {
+export function ChatBox({ messenger, row, onSent, onChanged }: ChatBoxProps) {
   const box = useChatBox(messenger, row, onSent);
   const name = row.conversation.title;
   const channel = isChannel(row);
   const address = useChannelAddress(messenger, row, box.draft, box.type);
+  const members = useMembers(messenger, row, onChanged);
   const waits = channel && address.line.waits !== undefined;
   const report = (what: string) => (error: unknown) => console.error(what, error);
   const container = useRef<HTMLDivElement>(null);
@@ -67,7 +71,7 @@ export function ChatBox({ messenger, row, onSent }: ChatBoxProps) {
         }}
       />
       <DraftFileList files={box.files} onRemove={remove} />
-      {channel ? <ChannelAddressBar address={address} /> : null}
+      {channel ? <ChannelAddressBar row={row} address={address} members={members} /> : null}
       {/* The picker's keys come first, so Enter names an agent instead of sending. */}
       <div onKeyDownCapture={address.onKeyDownCapture}>
         <ChatComposer

@@ -92,6 +92,7 @@ export function ConversationView({
           messages={messages}
           questions={questions}
           searching={search.trim() !== ""}
+          onAsked={read}
         >
           <ChatCards
             quickActions={messenger.quickActions}
@@ -109,7 +110,12 @@ export function ConversationView({
           />
         ) : null}
       </div>
-      <ChatBox messenger={messenger} row={row} onSent={read} />
+      <ChatBox
+        messenger={messenger}
+        row={row}
+        onSent={read}
+        onChanged={onChanged ?? (() => undefined)}
+      />
     </section>
   );
 }
@@ -223,6 +229,7 @@ function Transcript({
   messages,
   questions,
   searching,
+  onAsked,
   children,
 }: {
   readonly messenger: Messenger;
@@ -230,12 +237,22 @@ function Transcript({
   readonly messages: readonly Message[];
   readonly questions: ReadonlyMap<MessagingId, string>;
   readonly searching: boolean;
+  /** **Ask again** sent a message: the chat reads its messages again. */
+  readonly onAsked: () => Promise<void>;
   /** What follows the messages: the agent's open cards. */
   readonly children: ReactNode;
 }) {
   const openLink = useOpenExternal();
   const channel = isChannel(row);
   const now = messenger.now();
+  const askAgain = async (message: Message, agent: MessagingId) => {
+    const result = await messenger.askAgain(row, message, agent);
+    if (result.outcome === "refused") {
+      return messengerWords.notSent[result.reason](row.source?.label ?? "");
+    }
+    await onAsked();
+    return undefined;
+  };
   return (
     <ol className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-4 py-4">
       {channel && messages.length === 0 && !searching ? <EmptyChannel row={row} /> : null}
@@ -255,7 +272,13 @@ function Transcript({
           <ChatText openLink={openLink}>{message.body}</ChatText>
           <AttachmentList messenger={messenger} attachments={message.attachments} />
           {channel ? (
-            <WorkLines message={message} row={row} questions={questions} now={now} />
+            <WorkLines
+              message={message}
+              row={row}
+              questions={questions}
+              now={now}
+              askAgain={askAgain}
+            />
           ) : null}
         </li>
       ))}

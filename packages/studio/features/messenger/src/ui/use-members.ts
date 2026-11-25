@@ -69,3 +69,6 @@ export function useMembers(messenger: Messenger, row: ConversationRow, onChanged
   };
   return { pending, failure, busy, change, confirm, cancel, add, remove };
 }
+
+/** The Members panel's changes, as {@link useMembers} gives them. */
+export type MemberChanges = ReturnType<typeof useMembers>;

@@ -105,7 +105,7 @@ verifies("messenger.channel-messages", () => {
         { symbol: "◔", text: "Liam · working · 4 min" },
         { symbol: "✓", text: "Owen answered" },
         { symbol: "!", text: "Chief asks you: Which hostname?" },
-        { symbol: "✕", text: "Writer's task was closed without an answer." },
+        { symbol: "✕", text: "Writer's task was closed without an answer.", askAgain: writer.id },
         { symbol: "→", text: "Chief passed this to Liam" },
       ]);
     });
