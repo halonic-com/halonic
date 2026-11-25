@@ -1,5 +1,10 @@
 import { LetterTile, StatusChip } from "@halonicjs/studio-kit";
-import type { OverviewHub, OverviewItem } from "@halonicjs/studio-shell";
+import {
+  brokenFileItem,
+  type FileWithErrors,
+  type OverviewHub,
+  type OverviewItem,
+} from "@halonicjs/studio-shell";
 import type { RoutineHub, RoutineListing, RoutineRef } from "../api.ts";
 import { cantStartReason, cantStartWords } from "../cant-start.ts";
 import { listWords, nextWhen, refusedWhen } from "./list-words.ts";
@@ -7,6 +12,11 @@ import { listWords, nextWhen, refusedWhen } from "./list-words.ts";
 /** The row id of a routine: unique across hubs, because two hubs can both have a `daily`. */
 export function rowId(ref: RoutineRef): string {
   return `${ref.hubId ?? ""}/${ref.id}`;
+}
+
+/** The row id of a routine file that didn't load: its path, which no routine's row id can be. */
+export function brokenRowId(file: FileWithErrors): string {
+  return `file:${file.path}`;
 }
 
 /**
@@ -106,18 +116,28 @@ function itemOf(listing: RoutineListing, now: Date): OverviewItem {
   };
 }
 
-/** The hubs of the overview page: every hub in the workspace's order, with its routines by name. */
+function brokenItemOf(file: FileWithErrors): OverviewItem {
+  return { ...brokenFileItem(file, brokenRowId(file)), avatar: <LetterTile name={file.name} /> };
+}
+
+/**
+ * The hubs of the overview page: every hub in the workspace's order, with its routines by name. A
+ * routine file that didn't load keeps its row in its hub, in the error state (C348 ST4).
+ */
 export function routineHubs(
   hubs: readonly RoutineHub[],
   listings: readonly RoutineListing[],
+  broken: readonly FileWithErrors[] = [],
   now: Date = new Date(),
 ): readonly OverviewHub[] {
   return hubs.map((hub) => ({
     id: hub.id,
     name: hub.name,
-    items: listings
-      .filter((listing) => listing.hubId === hub.id)
-      .toSorted((a, b) => a.name.localeCompare(b.name))
-      .map((listing) => itemOf(listing, now)),
+    items: [
+      ...listings
+        .filter((listing) => listing.hubId === hub.id)
+        .map((listing) => itemOf(listing, now)),
+      ...broken.filter((file) => file.hub === hub.id).map(brokenItemOf),
+    ].toSorted((a, b) => a.name.localeCompare(b.name)),
   }));
 }
