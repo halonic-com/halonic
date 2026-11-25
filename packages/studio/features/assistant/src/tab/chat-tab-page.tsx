@@ -135,10 +135,10 @@ export function ChatTabPage({ item, context }: ItemViewProps) {
 }
 
 /**
- * The tab's chat: it moves into the tab as the tab opens (also when Ctrl Shift T brings the tab
- * back), then shows as it's read, or why it couldn't be, with Try again.
+ * The tab's chat, or an item page's: it moves into the tab as the tab opens (also when Ctrl Shift
+ * T brings the tab back), then shows as it's read, or why it couldn't be, with Try again.
  */
-function useTabChat(chats: BuildChats, chatId: string): readonly [Shown, () => void] {
+export function useTabChat(chats: BuildChats, chatId: string): readonly [Shown, () => void] {
   const view = useSyncExternalStore(chats.subscribe, () => chats.viewOf(chatId));
   const [failed, setFailed] = useState<string>();
   const [attempt, setAttempt] = useState(0);

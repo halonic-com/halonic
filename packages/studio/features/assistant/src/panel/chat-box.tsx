@@ -96,6 +96,8 @@ export function ChatBox(props: {
         onSendHeld={waitsOn === undefined ? modelBox.onSendHeld : undefined}
         onGoToKeyField={runCommand && (() => void runCommand(openModelsCommand))}
         glow={props.glow}
+        request={view?.boxRequest}
+        onRequestDone={view && (() => chats.clearBoxRequest(view.chat.id))}
         authoringOnly={authoringOnly}
         onReviewTrust={host.askTrust && (() => void host.askTrust?.())}
       />

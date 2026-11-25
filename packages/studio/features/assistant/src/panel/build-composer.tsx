@@ -5,7 +5,7 @@ import {
   ChatComposer,
 } from "@halonicjs/studio-kit";
 import { type ChatSecretHold, chatSecretHold } from "@halonicjs/studio-shell";
-import { type ReactNode, type RefObject, useState } from "react";
+import { type ReactNode, type RefObject, useEffect, useState } from "react";
 import { buildChatWords as words } from "../chat/build-chat-words.ts";
 
 /** The props of {@link BuildComposer}. */
@@ -36,6 +36,10 @@ export interface BuildComposerProps {
   readonly placeholder?: string;
   /** The start screen's glow round the box (`assistant.start-screen.halo`). */
   readonly glow?: boolean | undefined;
+  /** Asks the box for focus, holding `text` when given, with the caret at its end. */
+  readonly request?: { readonly text?: string | undefined } | undefined;
+  /** The box did what `request` asked. */
+  readonly onRequestDone?: (() => void) | undefined;
 }
 
 /**
@@ -54,6 +58,7 @@ export function BuildComposer(props: BuildComposerProps) {
   const { label = words.boxLabel, placeholder = words.placeholder } = props;
   const [draft, setDraft] = useState("");
   const [held, setHeld] = useState<ChatSecretHold | undefined>(undefined);
+  useBoxRequest(props, setDraft);
   const putBack = (message: string) => setDraft((current) => (current === "" ? message : current));
   const send = ({ keyChecked = false } = {}) => {
     if (props.onSendHeld !== undefined) {
@@ -112,6 +117,29 @@ export function BuildComposer(props: BuildComposerProps) {
       </div>
     </div>
   );
+}
+
+/**
+ * Does what the box is asked once: puts the text in when there is one, then moves focus into the
+ * box with the caret at the end, once the text is drawn (flow-workflows 2.2).
+ */
+function useBoxRequest(
+  { request, onRequestDone, box }: BuildComposerProps,
+  setDraft: (text: string) => void,
+): void {
+  const [caretToEnd, setCaretToEnd] = useState(0);
+  useEffect(() => {
+    if (request === undefined) return;
+    if (request.text !== undefined) setDraft(request.text);
+    setCaretToEnd((count) => count + 1);
+    onRequestDone?.();
+  }, [request, onRequestDone, setDraft]);
+  useEffect(() => {
+    const area = box.current;
+    if (caretToEnd === 0 || area === null) return;
+    area.focus();
+    area.setSelectionRange(area.value.length, area.value.length);
+  }, [caretToEnd, box]);
 }
 
 /** The H17 line, or nothing once the workspace is trusted or the chat is on another model. */
