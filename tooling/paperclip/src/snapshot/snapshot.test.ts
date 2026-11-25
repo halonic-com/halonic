@@ -89,6 +89,7 @@ verifies("paperclip.github-snapshot", () => {
   test("keeps checks, finding, approvals, labels and the queue, and no comment text", async () => {
     const { query } = fakeQuery();
     const snapshot = await takeSnapshot({
+      token: "shared",
       query,
       repos,
       now: new Date("2026-11-22T14:10:00Z"),
@@ -183,6 +184,7 @@ verifies("paperclip.github-snapshot", () => {
   test("reads closed pull requests until one is older than the window", async () => {
     const recent = fakeQuery();
     const all = await takeSnapshot({
+      token: "shared",
       query: recent.query,
       repos,
       now: new Date("2026-11-22T14:10:00Z"),
@@ -196,6 +198,7 @@ verifies("paperclip.github-snapshot", () => {
     // Three days later only the four updated after 13:50 on 22 Nov are left, and page 2 isn't read.
     const later = fakeQuery();
     const window = await takeSnapshot({
+      token: "shared",
       query: later.query,
       repos,
       now: new Date("2026-11-25T13:50:00Z"),
@@ -225,8 +228,10 @@ verifies("paperclip.github-snapshot", () => {
       }
     }
     const asked: string[] = [];
+    const fake = fakeQuery(answers);
     const snapshot = await takeSnapshot({
-      query: fakeQuery(answers).query,
+      token: "shared",
+      query: fake.query,
       repos,
       now: new Date("2026-11-22T14:10:00Z"),
       fallback: async (_repo, sha, name) => {
@@ -235,6 +240,8 @@ verifies("paperclip.github-snapshot", () => {
       },
     });
     expect(asked).toEqual(["0d237fd ci-ok", "0d237fd ci-ok (draft, light run)"]);
+    // The fallbacks count as calls too (HAL-17933).
+    expect(snapshot.githubCalls).toBe(fake.calls.length + asked.length);
     expect(snapshot.repos[0]?.pulls.find((pull) => pull.number === 5114)?.open?.ciOk).toBe(
       "pending",
     );
@@ -309,6 +316,7 @@ verifies("paperclip.queue-state", () => {
     const asked: unknown[] = [];
     const base = fakeQuery(answers).query;
     const snapshot = await takeSnapshot({
+      token: "shared",
       query: async (document, variables) => {
         if (document.includes("query OpenPulls")) {
           asked.push(variables["withQueue"]);
@@ -360,6 +368,7 @@ verifies("paperclip.github-routes", () => {
     );
     const { query } = fakeQuery(answers);
     const snapshot = await takeSnapshot({
+      token: "shared",
       query,
       repos,
       now: new Date("2026-11-22T14:10:00Z"),

@@ -22,7 +22,18 @@ export interface Snapshot {
   /** Closed pull requests updated within this many days before `takenAt` are in `pulls`. */
   readonly closedWindowDays: number;
   readonly repos: readonly SnapshotRepo[];
+  /**
+   * The GitHub calls taking it cost: GraphQL queries and REST fallbacks,
+   * failed ones included (HAL-17933). Added after version 1 shipped: a
+   * snapshot saved before it has none.
+   */
+  readonly githubCalls?: number;
+  /** Which token made those calls, so a move to the read-only GitHub App shows. Added like `githubCalls`. */
+  readonly githubToken?: GitHubTokenKind;
 }
+
+/** The read-only GitHub App's token (`halonic-pr-reader`), or the older token the jobs share. */
+export type GitHubTokenKind = "app" | "shared";
 
 /** One watched repository. */
 export interface SnapshotRepo {

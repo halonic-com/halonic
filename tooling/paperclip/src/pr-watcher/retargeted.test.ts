@@ -99,6 +99,7 @@ async function factsOf(shape: Shape) {
         }
       : { repository: { pullRequests: page([]) } };
   const snapshot = await takeSnapshot({
+    token: "shared",
     query,
     repos: [repo],
     now: new Date("2026-11-22T17:00:00Z"),

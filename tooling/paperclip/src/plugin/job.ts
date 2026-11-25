@@ -21,7 +21,7 @@ import { snapshotSummary } from "../pr-watcher/wake-status.ts";
 import { type TickSummary, tick } from "../pr-watcher/watch.ts";
 import { gitHubQueryReader } from "../snapshot/graphql.ts";
 import { takeSnapshot } from "../snapshot/read.ts";
-import type { Snapshot } from "../snapshot/shape.ts";
+import type { GitHubTokenKind, Snapshot } from "../snapshot/shape.ts";
 import { type StateApi, saveSnapshot } from "../snapshot/store.ts";
 import { type CompanySource, listedCompanies } from "./companies.ts";
 import { type HostApi, paperclipHost, unblockHost } from "./host.ts";
@@ -114,12 +114,28 @@ async function companySettings(
   return config === undefined ? undefined : readSettings(config);
 }
 
+/** The pass's GitHub calls, by the step that made them, and the token they went out on (HAL-17933). */
+export interface CallCounts {
+  readonly token: GitHubTokenKind;
+  readonly snapshot: number;
+  /** The watcher's own reads beyond the snapshot: merge commits' checks, base runs, routes, rebases. */
+  readonly watcher: number;
+  readonly thinSpec: number;
+}
+
 /** What one pass for one company counted. */
 interface PassCounts {
   readonly summary: TickSummary;
   readonly monitors: MonitorCounts;
-  readonly requests: number;
+  readonly calls: CallCounts;
   readonly durationMs: number;
+}
+
+/** `42 GitHub calls on the shared token (snapshot 20, watcher 21, thin-spec 1)`. */
+export function callsText(calls: CallCounts): string {
+  const total = calls.snapshot + calls.watcher + calls.thinSpec;
+  const token = calls.token === "app" ? "the GitHub App's token" : "the shared token";
+  return `${total} GitHub calls on ${token} (snapshot ${calls.snapshot}, watcher ${calls.watcher}, thin-spec ${calls.thinSpec})`;
 }
 
 /**
@@ -130,7 +146,7 @@ async function recordPass(
   ctx: JobApi,
   companyId: string,
   dryRun: boolean,
-  { summary, monitors, requests, durationMs }: PassCounts,
+  { summary, monitors, calls, durationMs }: PassCounts,
 ): Promise<void> {
   const failure = await writeMetrics(
     ctx,
@@ -143,7 +159,8 @@ async function recordPass(
       "pr_watcher.warned_after_approval": summary.warned,
       "pr_watcher.review_waits": summary.reviewWaits,
       "pr_watcher.review_priority_raised": summary.priorityRaised,
-      "pr_watcher.github_requests": requests,
+      "pr_watcher.github_requests": calls.snapshot + calls.watcher + calls.thinSpec,
+      "pr_watcher.github_requests_snapshot": calls.snapshot,
       "pr_watcher.duration_ms": durationMs,
       "monitors.set": monitors.set,
       "monitors.fired": monitors.fired,
@@ -158,7 +175,7 @@ async function recordPass(
     ctx.logger.error(`PR watcher: couldn't save its metrics: ${failure.message}`, { companyId });
   }
   ctx.logger.info(
-    `PR watcher: ${summary.checked} tasks with a pull request, ${summary.done} done, ${summary.woken} woken, ${summary.handedOff} handed to review, ${summary.warned} warned after approval, ${summary.reviewWaits} waiting for review over 1 h, ${summary.priorityRaised} raised to high, ${summary.failed.length} failed, ${requests} GitHub requests, ${monitors.firedOnPrTasks} monitors fired on those tasks, ${summary.postponed} moved later${dryRun ? " (dry run)" : ""}.`,
+    `PR watcher: ${summary.checked} tasks with a pull request, ${summary.done} done, ${summary.woken} woken, ${summary.handedOff} handed to review, ${summary.warned} warned after approval, ${summary.reviewWaits} waiting for review over 1 h, ${summary.priorityRaised} raised to high, ${summary.failed.length} failed, ${callsText(calls)}, ${monitors.firedOnPrTasks} monitors fired on those tasks, ${summary.postponed} moved later${dryRun ? " (dry run)" : ""}.`,
     { companyId },
   );
   // The top 5, so Chief's team check can list the longest review waits (HAL-17920).
@@ -208,6 +225,7 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
   }
   // Read at run time and never logged or kept (the SDK's secrets rule).
   const token = await ctx.secrets.resolve(settings.token, { companyId });
+  const tokenKind: GitHubTokenKind = "shared";
   const { fetch, requests } = countingFetch((url, init) =>
     ctx.http.fetch(url, { ...init, signal: AbortSignal.timeout(requestTimeoutMs) }),
   );
@@ -216,6 +234,8 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
   const fallback = (repo: string, sha: string, name: string) => ciOk(get, repo, sha, name);
   const started = Date.now();
   const snapshot = await takeSnapshot({
+    // Only the shared token today; the read-only GitHub App's token replaces it here (HAL-16003).
+    token: tokenKind,
     query,
     repos: settings.repos,
     now,
@@ -231,6 +251,7 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
       companyId,
     });
   });
+  const snapshotCalls = requests();
   await runFastTrack(ctx, companyId, snapshot, settings, now);
   const found = discoverPulls(snapshot);
   const paperclip = paperclipHost(ctx, companyId);
@@ -261,6 +282,7 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
     dryRun: settings.dryRun,
     log: (line) => ctx.logger.info(line, { companyId }),
   });
+  const watcherCalls = requests() - snapshotCalls;
   // After the watcher's own work, so a failure here never holds up a task.
   await recordThinSpecOutcomes(ctx, { companyId, snapshot, found, get, now }).catch(
     (error: unknown) => {
@@ -278,7 +300,12 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
       prTasks,
       now,
     ),
-    requests: requests(),
+    calls: {
+      token: tokenKind,
+      snapshot: snapshotCalls,
+      watcher: watcherCalls,
+      thinSpec: requests() - snapshotCalls - watcherCalls,
+    },
     durationMs: Date.now() - started,
   });
   return summary.failed.length + unblocked.failed.length;

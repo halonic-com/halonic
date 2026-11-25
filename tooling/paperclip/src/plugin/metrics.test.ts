@@ -2,6 +2,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
 import { countMonitors } from "../pr-watcher/monitors.ts";
 import type { TaskRow } from "../pr-watcher/paperclip.ts";
+import { loadSnapshot } from "../snapshot/store.ts";
 import {
   type FakeIssue,
   fakeHost,
@@ -86,6 +87,29 @@ verifies("paperclip.agent-tools-metrics", () => {
     expect(logs.map((log) => log.message)).toContainEqual(
       "PR watcher: couldn't save its metrics: metrics store is down",
     );
+  });
+});
+
+verifies("paperclip.github-call-counts", () => {
+  test("a pass logs its GitHub calls by step and keeps the snapshot's count with the snapshot", async () => {
+    const { ctx, logs, metrics, sent } = setUp();
+    await runWatcher(ctx, now);
+    const line = logs.map((log) => log.message).find((message) => message.includes("GitHub calls"));
+    const counts =
+      /(\d+) GitHub calls on the shared token \(snapshot (\d+), watcher (\d+), thin-spec (\d+)\)/
+        .exec(line ?? "")
+        ?.slice(1)
+        .map(Number);
+    expect(counts).toHaveLength(4);
+    const [total, snapshot, watcher, thinSpec] = counts ?? [];
+    expect(total).toBe(sent.length);
+    expect((snapshot ?? 0) + (watcher ?? 0) + (thinSpec ?? 0)).toBe(sent.length);
+    expect(snapshot).toBeGreaterThan(0);
+    const saved = await loadSnapshot(ctx, "acme");
+    expect(saved?.githubCalls).toBe(snapshot);
+    expect(saved?.githubToken).toBe("shared");
+    const metric = metrics.find((each) => each.name === "pr_watcher.github_requests_snapshot");
+    expect(metric?.value).toBe(snapshot);
   });
 });
 

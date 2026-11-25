@@ -14,6 +14,7 @@ import { closedPullsQuery, commitBatchSize, commitChecksQuery, openPullsQuery } 
 import { missingRequired } from "./required-checks.ts";
 import { capped, severityCounts } from "./severity.ts";
 import {
+  type GitHubTokenKind,
   type OpenFacts,
   type QueueEntry,
   type Snapshot,
@@ -410,13 +411,25 @@ export async function takeSnapshot(options: {
   repos: readonly string[];
   now: Date;
   fallback: CheckFallback;
+  /** Which token `query` and `fallback` send. */
+  token: GitHubTokenKind;
   unread?: (repo: string, reason: string) => void;
 }): Promise<Snapshot> {
   const since = options.now.getTime() - closedWindowDays * 24 * 60 * 60 * 1000;
+  // Every GraphQL query and REST fallback, failed ones too, so the pass can report them (HAL-17933).
+  let githubCalls = 0;
+  const query: GitHubQuery = (document, variables) => {
+    githubCalls += 1;
+    return options.query(document, variables);
+  };
+  const fallback: CheckFallback = (repo, sha, name) => {
+    githubCalls += 1;
+    return options.fallback(repo, sha, name);
+  };
   const repos: SnapshotRepo[] = [];
   for (const [index, repo] of options.repos.entries()) {
     try {
-      repos.push(await readRepo(options.query, repo, since, options.fallback));
+      repos.push(await readRepo(query, repo, since, fallback));
     } catch (error) {
       const reason = (error as Error).message;
       if (index === 0 || !unseenRepository.test(reason)) {
@@ -430,6 +443,8 @@ export async function takeSnapshot(options: {
     takenAt: options.now.toISOString(),
     closedWindowDays,
     repos,
+    githubCalls,
+    githubToken: options.token,
   };
 }
 
