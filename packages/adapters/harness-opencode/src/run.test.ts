@@ -99,11 +99,13 @@ async function filesUnder(folder: string): Promise<string[]> {
 verifies("harness-opencode.run", () => {
   describe("OpenCodeRun", () => {
     it("starts `opencode run` with the prompt on standard input and ends with agent.finished", async () => {
-      let prompt = "";
+      const promptLines: string[] = [];
       const session = new FakeSandboxSession({
         profile,
         program: async (io) => {
-          prompt = (await io.readLine()) ?? "";
+          for (let line = await io.readLine(); line !== null; line = await io.readLine()) {
+            promptLines.push(line);
+          }
           return recorded("opencode-2.3.0-ok.jsonl")(io);
         },
       });
@@ -112,7 +114,8 @@ verifies("harness-opencode.run", () => {
 
       expect(error).toBeUndefined();
       expect(session.started).toEqual([opencodeCommand(task)]);
-      expect(prompt).toBe(task.prompt);
+      // The house rules come first (harness-opencode.house-rules); the task's prompt ends it.
+      expect(promptLines.at(-1)).toBe(task.prompt);
       expect(events.filter((event) => event.type === "tool.called")).toHaveLength(2);
       expect(events.at(-1)).toEqual({
         type: "agent.finished",

@@ -23,6 +23,7 @@ import {
   opencodeUpdatePolicyText,
 } from "./config.ts";
 import { type OpenCodeFiles, opencodeFiles } from "./files.ts";
+import { withHouseRules } from "./house-rules.ts";
 import { opencodeRefusal } from "./refusals.ts";
 import { OpenCodeEventReader } from "./run-events.ts";
 
@@ -96,7 +97,7 @@ export class OpenCodeRun implements HarnessRun {
     const process = await session.start(opencodeCommand(this.#task));
     // Not awaited: the write settles only once OpenCode reads it. One that
     // ends before reading its prompt ends the run by its exit, which says more.
-    sendPrompt(process, this.#task.prompt).catch(() => undefined);
+    sendPrompt(process, withHouseRules(this.#task.prompt)).catch(() => undefined);
     return process;
   }
 
