@@ -39,18 +39,32 @@ async function askTasks(ctx: BoardCheckApi, companyId: string, now: Date, scope:
   );
 }
 
-/** Spots new asks; plans the `board-asks` document and one wake of the Board Checker for the batch. */
+/** The Board Checker's task, and the task an ask wakes when the board's settings name another one (HAL-18857). */
+export interface AskTasks {
+  readonly checkerTaskId: string;
+  readonly wakeTaskId: string | undefined;
+}
+
+/**
+ * Spots new asks; plans the `board-asks` document and one wake for the batch,
+ * on the wake task when the settings name one, else on the Board Checker's.
+ */
 export async function planAsks(
   ctx: BoardCheckApi,
   companyId: string,
-  checkerTaskId: string,
+  targets: AskTasks,
   now: Date,
   scope: AskScope,
 ): Promise<PartPlan & { readonly found: number }> {
-  const checkerTask = await ctx.issues.get(checkerTaskId, companyId);
+  const checkerTask = await ctx.issues.get(targets.checkerTaskId, companyId);
+  const wakeTask =
+    targets.wakeTaskId === undefined
+      ? undefined
+      : await ctx.issues.get(targets.wakeTaskId, companyId);
   const agents = await ctx.agents.list({ companyId, limit: 500 });
   const rules = {
     boardCheckerAgentId: checkerTask?.assigneeAgentId ?? undefined,
+    askWakeAgentId: wakeTask?.assigneeAgentId ?? undefined,
     mergerAgentId: agents.find((agent) => agent.urlKey === "merger")?.id,
   };
   const seen = readSeenAsks(await ctx.state.get(stateKey(companyId, "asks")));
@@ -73,7 +87,7 @@ export async function planAsks(
       { kind: "document", key: "board-asks", body: asksDocument(remembered, names, now) },
       {
         kind: "wake",
-        taskId: checkerTaskId,
+        taskId: targets.wakeTaskId ?? targets.checkerTaskId,
         reason: "board_check_ask",
         key: `board-check ask ${first.commentId}`,
       },

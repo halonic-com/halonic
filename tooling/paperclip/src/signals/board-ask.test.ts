@@ -90,7 +90,15 @@ async function todayActions(
     comments: { [`task-${number}`]: comments },
     config: () => ({}),
   });
-  const plan = await planAsks(fake.ctx, "acme", checkerTask.id, now, { only: `task-${number}` });
+  const plan = await planAsks(
+    fake.ctx,
+    "acme",
+    { checkerTaskId: checkerTask.id, wakeTaskId: undefined },
+    now,
+    {
+      only: `task-${number}`,
+    },
+  );
   await plan.save(new Set());
   const actions: BoardAskAction[] = [];
   for (const write of plan.writes) {

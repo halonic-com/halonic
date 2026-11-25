@@ -7,6 +7,11 @@
 export interface BoardCheckSettings {
   /** The Board Checker's task: its two documents live there, and an ask wakes it there. */
   readonly boardCheckerTaskId: string | undefined;
+  /**
+   * The task where a new board ask wakes its holder instead of the Board
+   * Checker's task (HAL-18857), or undefined to keep waking the Board Checker.
+   */
+  readonly askWakeTaskId: string | undefined;
   /** Chief's task, where a change in the team load gets one comment. */
   readonly chiefTaskId: string | undefined;
   /** The Seat Supervisor's setup task, where spend-limit failures get one line. */
@@ -29,6 +34,7 @@ export function readBoardCheckSettings(
 ): BoardCheckSettings {
   return {
     boardCheckerTaskId: text(config["boardCheckerTask"]),
+    askWakeTaskId: text(config["boardAskWakeTask"]),
     chiefTaskId: text(config["chiefTask"]),
     seatSupervisorTaskId: text(config["seatSupervisorTask"]),
     writesForVersion: text(config["boardCheckWritesForVersion"]),
