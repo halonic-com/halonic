@@ -46,12 +46,27 @@ export async function onWorkspace(context: StepContext): Promise<StepOutcome> {
  * opens (run 45675354530), unless that list or Settings is open already.
  */
 export async function openConnections(context: StepContext): Promise<boolean> {
-  const { settings } = buttonLabels;
-  const opened =
-    (await clickWhenShown(context, settings.text, 2_000)) ||
-    ((await clickWhenShown(context, screenText.places.text, 10_000)) &&
-      (await clickWhenShown(context, settings.text, 10_000)));
-  if (!opened) return false;
+  if (!(await openSettings(context))) return false;
   await clickWhenShown(context, words.connectionsSection, 10_000);
   return true;
+}
+
+/**
+ * Opens a section of Settings, such as Appearance, by its row, and returns
+ * whether the row was clicked. A Settings left open by an earlier step is
+ * used as it is: the main window's Places button is behind it.
+ */
+export async function openSettingsSection(context: StepContext, row: string): Promise<boolean> {
+  if (await clickWhenShown(context, row, 2_000)) return true;
+  if (!(await openSettings(context))) return false;
+  return clickWhenShown(context, row, 10_000);
+}
+
+async function openSettings(context: StepContext): Promise<boolean> {
+  const { settings } = buttonLabels;
+  return (
+    (await clickWhenShown(context, settings.text, 2_000)) ||
+    ((await clickWhenShown(context, screenText.places.text, 10_000)) &&
+      (await clickWhenShown(context, settings.text, 10_000)))
+  );
 }

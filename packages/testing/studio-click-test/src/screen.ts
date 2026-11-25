@@ -60,10 +60,41 @@ export async function clickOrWhyNot(
   text: string,
   waitMs: number,
 ): Promise<string | undefined> {
+  return clickXPathOrWhyNot(context, buttonNamed(text), waitMs);
+}
+
+/**
+ * An XPath for an option of a native select, by its whole text, or by how it
+ * starts when `startsWith` is set (a Format option that names the computer's own format).
+ */
+export function optionNamed(text: string, startsWith = false): string {
+  const named = startsWith
+    ? `starts-with(normalize-space(),${xpathString(text)})`
+    : `normalize-space()=${xpathString(text)}`;
+  return `//option[${named} and not(@disabled)]`;
+}
+
+/**
+ * Picks an option of a native select, as a click on it does, waiting at most
+ * `waitMs` for it to show. Returns whether the pick landed.
+ */
+export async function pickWhenShown(
+  context: StepContext,
+  option: string,
+  waitMs: number,
+): Promise<boolean> {
+  return (await clickXPathOrWhyNot(context, option, waitMs)) === undefined;
+}
+
+async function clickXPathOrWhyNot(
+  context: StepContext,
+  xpath: string,
+  waitMs: number,
+): Promise<string | undefined> {
   let whyNot = "never tried";
   const reads = Math.max(1, Math.ceil(waitMs / pollEveryMs));
   for (let read = 0; read < reads; read += 1) {
-    const failed = await context.driver.click(buttonNamed(text)).then(
+    const failed = await context.driver.click(xpath).then(
       () => undefined,
       (error: unknown) => (error instanceof Error ? error.message : String(error)),
     );
