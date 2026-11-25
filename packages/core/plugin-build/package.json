@@ -1,0 +1,30 @@
+{
+  "name": "@halonicjs/plugin-build",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "description": "Builds a Paperclip plugin's bytes: a reproducible ustar archive, its sha-256, the release file and the change list between two snapshots.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "core",
+    "owner": "noah",
+    "coverage": {
+      "lines": 90,
+      "branches": 85
+    }
+  }
+}
