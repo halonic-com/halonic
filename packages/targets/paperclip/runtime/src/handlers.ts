@@ -1,6 +1,7 @@
 import type { Template, Tool, ToolActionName } from "@halonicjs/format";
 import type { GitHubGet } from "./github.ts";
 import type { Capability, RuntimeHost, ToolResult } from "./host.ts";
+import { mergeTimesHandler } from "./pulls/merge-times.ts";
 import { openPullRequestsHandler } from "./pulls/open-pull-requests.ts";
 import { pullRequestHandler } from "./pulls/pull-request.ts";
 import { failedRunsHandler } from "./runs/failed-runs.ts";
@@ -60,4 +61,5 @@ export const runtimeHandlers: ActionHandlers = {
   "paperclip.task": taskHandler,
   "paperclip.template": templateHandler,
   "paperclip.failed-runs": failedRunsHandler,
+  "github.merge-times": mergeTimesHandler,
 };

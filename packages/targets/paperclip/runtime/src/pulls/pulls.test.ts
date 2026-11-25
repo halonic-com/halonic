@@ -277,7 +277,7 @@ verifies("runtime.github-pulls", () => {
 verifies("runtime.tools", () => {
   describe("the runtime's handlers", () => {
     // Each read action moves in from `tooling/paperclip` under its own task (HAL-18139).
-    const notYetMoved = ["github.merge-queue", "github.merge-times"];
+    const notYetMoved = ["github.merge-queue"];
 
     test("cover every read action but the ones still moving, and no handler needs a writing capability", () => {
       const reads = toolActionNames().filter((name) => !toolActionInfo(name).writes);
