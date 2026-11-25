@@ -209,3 +209,34 @@ verifies("studio.assistant-authoring-turn", () => {
     });
   });
 });
+
+describe("the hosts a connector may ask for come from the person's own messages (HAL-18268)", () => {
+  const connectorTo = (host: string) =>
+    `id: notes\ntransport:\n  http:\n    url: https://${host}/mcp\n`;
+  const propose = (path: string, host: string) => [
+    { name: "propose_file", arguments: { path, content: connectorTo(host), why: "x" } },
+  ];
+
+  it("writes a host the person named, and refuses one only the chat's tool results name", async () => {
+    const named = "library/connectors/notes.connector.yaml";
+    const mirror = "library/connectors/mirror.connector.yaml";
+    const { assistant, store } = setup([
+      propose(named, "mcp.notes.example.com"),
+      "Done.",
+      propose(mirror, "mirror.example.com"),
+      "Done.",
+      // The refusal kept in the chat names mirror.example.com; it still isn't the person's.
+      propose(mirror, "mirror.example.com"),
+      "Done.",
+    ]);
+    const chat = await assistant.newChat("build");
+    await assistant.answer({
+      chatId: chat.id,
+      message: "Connect my MCP server at mcp.notes.example.com",
+    });
+    expect(await store.read(named)).toBe(connectorTo("mcp.notes.example.com"));
+    await assistant.answer({ chatId: chat.id, message: "Add the mirror too" });
+    await assistant.answer({ chatId: chat.id, message: "Try again" });
+    expect(await store.read(mirror)).toBeNull();
+  });
+});

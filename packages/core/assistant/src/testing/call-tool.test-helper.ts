@@ -12,14 +12,17 @@ export interface ToolWorkspace {
 /**
  * The Build chat's tools for chat "c1" over `workspace`, and a function that
  * calls one by name as the chat service would, numbering the calls.
+ *
+ * @param said - the person's own messages in the chat, for a scripted turn
  */
-export function chatTools(workspace: ToolWorkspace) {
+export function chatTools(workspace: ToolWorkspace, said: readonly string[] = []) {
   const tools = buildChatTools({
     chatId: "c1",
     files: workspace.store,
     review: workspace.review,
     isTrusted: () => workspace.trust.trusted,
     digest,
+    personMessages: async () => said,
   });
   let calls = 0;
   return (name: string, args: Record<string, unknown> = {}): Promise<string> => {

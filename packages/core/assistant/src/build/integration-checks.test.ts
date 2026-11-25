@@ -5,10 +5,13 @@ import { notesCode, notesPaths, notesSheet } from "../testing/notes-integration.
 import { testWorkspace } from "../testing/test-workspace.test-helper.ts";
 
 const saved = { "workspace.yaml": "id: acme\nname: Acme\n" };
+/** The person's request: it names the sheet's host and sign-in (`assistant.build.named-hosts-secrets`). */
+const request =
+  "Build an integration for my notes service at api.notes.example.com. I have an API key.";
 
 /** What `validate` says after the model proposes this sheet and code. */
 async function validated(sheet: string, code: string): Promise<string> {
-  const call = chatTools(testWorkspace(saved));
+  const call = chatTools(testWorkspace(saved), [request]);
   await call("propose_file", { path: notesPaths.sheet, content: sheet, why: "Notes" });
   await call("propose_file", { path: notesPaths.code, content: code, why: "Notes" });
   return call("validate");
@@ -25,9 +28,21 @@ verifies("assistant.build.validate-integrations", () => {
   });
 
   it("reports a sheet that doesn't parse, as halonic validate does", async () => {
+    // The person's own file: `propose_file` refuses a sheet that doesn't parse
+    // (`assistant.build.named-hosts-secrets`), with the same problem.
     const sheet = notesSheet.replace("    untrusted: false\n", "");
-    expect(await validated(sheet, notesCode)).toMatch(
+    const workspace = testWorkspace({ ...saved, [notesPaths.sheet]: sheet });
+    expect(await chatTools(workspace)("validate")).toMatch(
       /^error integrations\/notes\/integration\.yaml: [^\n]*untrusted/u,
+    );
+    expect(
+      await chatTools(testWorkspace(saved), [request])("propose_file", {
+        path: notesPaths.sheet,
+        content: sheet,
+        why: "Notes",
+      }),
+    ).toMatch(
+      /^Couldn't change integrations\/notes\/integration\.yaml: it isn't valid \(line \d+: [^)]*untrusted/u,
     );
   });
 
