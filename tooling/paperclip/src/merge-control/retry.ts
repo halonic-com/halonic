@@ -32,6 +32,7 @@ function restoreRun(
 function undo(before: MergeState, state: MergeState, action: MergeAction): MergeState {
   switch (action.kind) {
     case "comment":
+    case "add-label":
       // The action's key is `<kind>#<number>@<head>`; the state's is the part before `@`.
       return {
         ...state,

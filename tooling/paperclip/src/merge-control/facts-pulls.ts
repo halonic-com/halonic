@@ -138,9 +138,28 @@ function filesOf(node: PullNode): Pick<GatePull, "files" | "filesTotal" | "fileN
   return { files: files.map((file) => file.path), filesTotal: node.changedFiles, fileNet };
 }
 
-/** Whether the gate looks at it: queued, or labelled `built-on:paperclip` or `built-on:halonic`. */
-export function isGatePull(node: PullNode): boolean {
-  return node.isInMergeQueue || isBuiltOn(node.labels.nodes.map((label) => label.name));
+/** Whether one of the labels is a `built-on:*` label, a known one or not. */
+export function hasBuiltOnLabel(labels: readonly string[]): boolean {
+  return labels.some((label) => label.startsWith("built-on:"));
+}
+
+/**
+ * Whether the gate looks at it: queued, labelled `built-on:paperclip` or
+ * `built-on:halonic`, or a non-draft one by one of `autoLabelAuthors` with
+ * no `built-on:*` label, which the auto-label rule may label (HAL-18506).
+ */
+export function isGatePull(node: PullNode, autoLabelAuthors: readonly string[] = []): boolean {
+  const labels = node.labels.nodes.map((label) => label.name);
+  if (node.isInMergeQueue || isBuiltOn(labels)) {
+    return true;
+  }
+  const author = node.author?.login;
+  return (
+    !node.isDraft &&
+    !hasBuiltOnLabel(labels) &&
+    author !== undefined &&
+    autoLabelAuthors.includes(author)
+  );
 }
 
 /** A gate pull request without its manifests and red fast-track run, which need REST reads. */
@@ -153,6 +172,7 @@ export function gatePullOf(node: PullNode): GatePull {
     number: node.number,
     id: node.id,
     title: node.title,
+    author: node.author?.login ?? null,
     branch: node.headRefName,
     base: node.baseRefName,
     head: node.headRefOid,

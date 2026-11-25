@@ -2,13 +2,13 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-17706; the merge controller ADR (HAL-17700, board 24 Nov 17:47: its own queue credential); HAL-18470 (close and reopen for the label-noop self-fix)
+- Source: HAL-17706; the merge controller ADR (HAL-17700, board 24 Nov 17:47: its own queue credential); HAL-18470 (close and reopen for the label-noop self-fix); HAL-18506 (the `built-on:paperclip` label)
 
-When merge control writes to GitHub, the plugin shall send only the `enqueuePullRequest`, `dequeuePullRequest`, `closePullRequest` and `reopenPullRequest` mutations, a workflow run's rerun, rerun of failed jobs and cancel, and a comment on a pull request, only as POST requests to `https://api.github.com` and only on the repository it acts on, refusing anything else before it is sent; it shall resolve the queue token at each write, only in `act` mode, keep it out of its state, logs and errors, and build the write client only in the merge-control job.
+When merge control writes to GitHub, the plugin shall send only the `enqueuePullRequest`, `dequeuePullRequest`, `closePullRequest` and `reopenPullRequest` mutations, a workflow run's rerun, rerun of failed jobs and cancel, a comment on a pull request, and adding the label `built-on:paperclip` and no other, only as POST requests to `https://api.github.com` and only on the repository it acts on, refusing anything else before it is sent; it shall resolve the queue token at each write, only in `act` mode, keep it out of its state, logs and errors, and build the write client only in the merge-control job.
 
 ## Examples
 
-- Given each of the eight allowed writes,
+- Given each of the nine allowed writes,
   when the client sends them,
   then each goes as a POST to its one address on `https://api.github.com` and the token is asked for once per write.
 - Given a request to another host, another mutation or query, a mutation with another variable, another REST path or method, or another repository,

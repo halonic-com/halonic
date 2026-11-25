@@ -98,8 +98,9 @@ function keysOf(action: MergeAction | ObservedAction): string[] {
       return [`${action.kind} #${action.number}`];
     case "dequeue":
       return [`dequeue #${action.number}`, `comment #${action.number}`];
-    // The Merger's close and reopen are read only as its comment.
+    // The Merger's close and reopen, and its added label, are read only as its comment.
     case "reopen":
+    case "add-label":
       return [`comment #${action.number}`];
     case "rerun":
     case "rerun-failed-jobs":

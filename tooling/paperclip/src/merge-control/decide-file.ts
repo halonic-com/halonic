@@ -18,8 +18,12 @@ import {
  * so a rule fix reaches it with the next plugin version.
  */
 
-/** The shape of the call; a change that breaks the Merger's side raises it (2: the `reopen` action, HAL-18470). */
-export const decideFileFormat = 2;
+/**
+ * The shape of the call; a change that breaks the Merger's side raises it
+ * (2: the `reopen` action, HAL-18470; 3: the `add-label` action and a
+ * dequeue with an empty comment, which posts none, HAL-18506).
+ */
+export const decideFileFormat = 3;
 
 /**
  * Stands for the bundle's own hash until `build:plugin` writes the file:

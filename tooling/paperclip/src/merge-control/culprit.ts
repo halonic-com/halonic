@@ -1,5 +1,6 @@
 import { lastPushOf } from "./approval.ts";
 import { failedGroupFacts, wakeAuthor } from "./author-wake.ts";
+import { dequeueCost } from "./capacity.ts";
 import { commentOnce, logLine, minutesSince, type PassContext } from "./context.ts";
 import type { GateRow } from "./gate.ts";
 import { groupCulprit } from "./main-broken.ts";
@@ -18,7 +19,10 @@ import { texts } from "./texts.ts";
  * request's head (HAL-18340: #5969 went back in on the same head); one that
  * failed on files a pull request ahead of it in the group chain touches holds
  * that one. A group whose jobs the runner hook refused holds nothing
- * (`refused.ts`).
+ * (`refused.ts`). A queued pull request whose own group ends `failure` is
+ * taken out at once and judged in the same pass, without waiting for GitHub
+ * to take it out (HAL-18506, the live Merger's since 25 Nov 12:16 UTC); a
+ * cancelled or hook-refused group still waits.
  */
 
 /** Failed groups are read this far back. */
@@ -125,8 +129,60 @@ function hold(context: PassContext, run: GroupRun, row: GateRow, where: string):
   wakeAuthor(context, row.pull, "group-failed", failedGroupFacts(row.pull, jobs, run.url));
 }
 
-/** Judges one failed group; returns whether it is seen for good. */
-function judgeGroup(context: PassContext, run: GroupRun, rows: readonly GateRow[]): boolean {
+/** Whether a queued pull request comes out at once for its own group's run (HAL-18506). */
+function dequeuesAtFailure(context: PassContext, run: GroupRun, row: GateRow): boolean {
+  return (
+    run.conclusion === "failure" &&
+    !refusedOnly(run) &&
+    !context.actions.some(
+      (action) => action.kind === "dequeue" && action.number === row.pull.number,
+    )
+  );
+}
+
+/**
+ * Takes a queued pull request out for its failed group and judges the group
+ * as for one GitHub took out. The hold's own comment says why; a pull
+ * request the hold doesn't name gets a short one with the dequeue.
+ */
+function dequeueAtFailure(
+  context: PassContext,
+  run: GroupRun,
+  row: GateRow,
+  rows: readonly GateRow[],
+  where: string,
+): void {
+  const { number, head, id } = row.pull;
+  const out = { ...row, entry: undefined };
+  holdCulprit(
+    context,
+    run,
+    out,
+    rows.map((each) => (each === row ? out : each)),
+    where,
+  );
+  const held = context.state.failedHeads[String(number)] === head;
+  context.actions.push({
+    kind: "dequeue",
+    number,
+    pullId: id,
+    head,
+    reason: "group-failed",
+    comment: held ? "" : texts.dequeuedAtFailure(run.url),
+    cost: dequeueCost(context, row.entry?.position ?? 0),
+  });
+  logLine(context, "culprit", `DEQUEUE_AT_FAILURE #${number} (${where})${held ? ", held" : ""}`);
+}
+
+/**
+ * Judges one failed group; returns whether it is seen for good, and the
+ * queued pull request it took out, if any.
+ */
+function judgeGroup(
+  context: PassContext,
+  run: GroupRun,
+  rows: readonly GateRow[],
+): { readonly seen: boolean; readonly out?: GateRow } {
   const number = groupPull(run.branch);
   const row = rows.find((each) => each.pull.number === number);
   const fresh = minutesSince(context, run.createdAt) < culpritWindowMinutes;
@@ -138,7 +194,11 @@ function judgeGroup(context: PassContext, run: GroupRun, rows: readonly GateRow[
     if (loud) {
       logLine(context, "culprit", `failed group ${where}`);
     }
-    return true;
+    return { seen: true };
+  }
+  if (row.entry !== undefined && fresh && dequeuesAtFailure(context, run, row)) {
+    dequeueAtFailure(context, run, row, rows, where);
+    return { seen: true, out: row };
   }
   if (row.entry !== undefined && fresh) {
     // GitHub hasn't taken it out yet: look again next pass, or it would be re-added on the same head (#4445).
@@ -149,12 +209,12 @@ function judgeGroup(context: PassContext, run: GroupRun, rows: readonly GateRow[
         `failed group ${where} culprit #${row.pull.number}(still queued)`,
       );
     }
-    return false;
+    return { seen: false };
   }
   if (row.entry === undefined && fresh) {
     holdCulprit(context, run, row, rows, where);
   }
-  return true;
+  return { seen: true };
 }
 
 /** With no group run of it in the snapshot, a removal waits this long for its run to show up. */
@@ -218,8 +278,11 @@ export function unjudgedHolds(
   }
 }
 
-/** Reads the failed groups not seen before, and sets or lifts culprit holds. */
-export function failedGroups(context: PassContext, rows: readonly GateRow[]): void {
+/**
+ * Reads the failed groups not seen before, and sets or lifts culprit holds.
+ * Returns the queued pull requests it took out.
+ */
+export function failedGroups(context: PassContext, rows: readonly GateRow[]): GateRow[] {
   const seen = new Set(context.state.seenFailedRuns);
   const recent = context.snapshot.groupRuns.filter(
     (run) =>
@@ -227,10 +290,16 @@ export function failedGroups(context: PassContext, rows: readonly GateRow[]): vo
       !seen.has(run.id) &&
       minutesSince(context, run.createdAt) < failedGroupHours * 60,
   );
+  const out: GateRow[] = [];
   for (const run of recent) {
-    if (judgeGroup(context, run, rows)) {
+    const judged = judgeGroup(context, run, rows);
+    if (judged.seen) {
       seen.add(run.id);
+    }
+    if (judged.out !== undefined) {
+      out.push(judged.out);
     }
   }
   context.state.seenFailedRuns = [...seen].slice(-keptSeenRuns);
+  return out;
 }

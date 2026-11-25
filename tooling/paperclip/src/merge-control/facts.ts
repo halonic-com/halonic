@@ -50,6 +50,11 @@ export interface FactsSettings {
   readonly repo: string;
   /** The Merger's GitHub login; empty: nothing is observed. */
   readonly mergerLogin: string;
+  /**
+   * Whose open pull requests without a `built-on:*` label are read too, for
+   * the auto-label rule (HAL-18506); missing: none.
+   */
+  readonly autoLabelAuthors?: readonly string[];
   readonly capacity: CapacitySources;
 }
 
@@ -196,6 +201,11 @@ async function readMainFiles(
   return files;
 }
 
+/** The open pull requests the gate looks at. */
+function gateNodes(deps: FactsDeps, pulls: readonly PullNode[]): PullNode[] {
+  return pulls.filter((node) => isGatePull(node, deps.settings.autoLabelAuthors));
+}
+
 /**
  * The gate's pull requests, with every check run of their head, their
  * manifests and red fast-track run.
@@ -208,7 +218,7 @@ async function readGatePulls(
   const { get, settings, caches } = deps;
   const checks = { query: deps.query, ...ownerAndName(settings.repo), log: deps.log };
   const gate: GatePull[] = [];
-  for (const node of pulls.filter(isGatePull)) {
+  for (const node of gateNodes(deps, pulls)) {
     const pull = gatePullOf(await withAllChecks(checks, node));
     gate.push({
       ...pull,
@@ -290,7 +300,7 @@ async function readCountedFacts(deps: FactsDeps, now: Date, lean: boolean): Prom
     })),
     merged: await readMerged(deps),
     tasks: await deps.tasks(),
-    mainFiles: await readMainFiles(deps, read.pulls.filter(isGatePull), read.main.sha),
+    mainFiles: await readMainFiles(deps, gateNodes(deps, read.pulls), read.main.sha),
     patchIds: await readPatchIds(
       { get, repo: settings.repo, cache: deps.caches.patchIds, log: deps.log },
       gate,

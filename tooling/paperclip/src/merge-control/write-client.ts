@@ -1,11 +1,13 @@
 import { type Fetch, gitHubApi } from "../pr-watcher/github.ts";
 import { gitHubGraphql } from "../snapshot/graphql.ts";
+import { autoLabel } from "./state.ts";
 
 /**
  * Merge control's one way to change GitHub, with the queue credential only
  * (ADR on HAL-17700): the two merge-queue mutations, a workflow run's rerun,
- * rerun of its failed jobs and cancel, a comment on a pull request, and
- * closing and reopening one for the label-noop self-fix (HAL-18470), all
+ * rerun of its failed jobs and cancel, a comment on a pull request,
+ * closing and reopening one for the label-noop self-fix (HAL-18470), and
+ * adding `built-on:paperclip` and no other label (HAL-18506), all
  * to `https://api.github.com` and only on the configured repositories.
  * Every request is checked against that list before it is sent; anything
  * else is refused and nothing goes out. The token is asked for at each send,
@@ -33,6 +35,12 @@ export type QueueWrite =
       readonly repo: string;
       readonly number: number;
       readonly body: string;
+    }
+  | {
+      readonly kind: "add-label";
+      readonly repo: string;
+      readonly number: number;
+      readonly label: typeof autoLabel;
     };
 
 /** The enqueue mutation, the only document of its kind the client sends. */
@@ -59,12 +67,16 @@ const documents: ReadonlyMap<string, readonly string[]> = new Map([
   [reopenDocument, ["id"]],
 ]);
 
+/** Adding labels: only with the body `autoLabel` gives, see `labelsReason`. */
+const labelsPath = /^\/issues\/[1-9]\d*\/labels$/;
+
 /** The REST paths a POST may go to, after `/repos/<owner>/<name>`. */
 const restPaths = [
   /^\/actions\/runs\/[1-9]\d*\/rerun$/,
   /^\/actions\/runs\/[1-9]\d*\/rerun-failed-jobs$/,
   /^\/actions\/runs\/[1-9]\d*\/cancel$/,
   /^\/issues\/[1-9]\d*\/comments$/,
+  labelsPath,
 ];
 
 /** A request as the client would send it, for the check. */
@@ -93,10 +105,28 @@ function graphqlReason(body: string | undefined): string | undefined {
   return undefined;
 }
 
+/** Why a labels body isn't exactly `{"labels":["built-on:paperclip"]}`, or undefined. */
+function labelsReason(body: string | undefined): string | undefined {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body ?? "");
+  } catch {
+    return "a labels body that isn't JSON";
+  }
+  const { labels, ...other } = (parsed ?? {}) as Record<string, unknown>;
+  const only =
+    Array.isArray(labels) &&
+    labels.length === 1 &&
+    labels[0] === autoLabel &&
+    Object.keys(other).length === 0;
+  return only ? undefined : `a label other than ${autoLabel}`;
+}
+
 /**
  * Why a request is outside the list, or undefined when it is allowed: a POST
  * to the GraphQL endpoint with one of the four mutations, or a POST to one of
- * the REST paths on one of `repos`.
+ * the REST paths on one of `repos`; to the labels path only with
+ * `built-on:paperclip` as the one label.
  */
 export function refusal(request: WriteRequest, repos: readonly string[]): string | undefined {
   let url: URL;
@@ -122,7 +152,10 @@ export function refusal(request: WriteRequest, repos: readonly string[]): string
     return "a repository merge control doesn't act on";
   }
   const path = url.pathname.slice(`/repos/${repo}`.length);
-  return restPaths.some((pattern) => pattern.test(path)) ? undefined : `the path ${url.pathname}`;
+  if (!restPaths.some((pattern) => pattern.test(path))) {
+    return `the path ${url.pathname}`;
+  }
+  return labelsPath.test(path) ? labelsReason(request.body) : undefined;
 }
 
 /** Sends merge control's writes. */
@@ -165,6 +198,12 @@ function requestOf(write: QueueWrite): WriteRequest {
         url: `${gitHubApi}/repos/${write.repo}/issues/${write.number}/comments`,
         method: "POST",
         body: JSON.stringify({ body: write.body }),
+      };
+    case "add-label":
+      return {
+        url: `${gitHubApi}/repos/${write.repo}/issues/${write.number}/labels`,
+        method: "POST",
+        body: JSON.stringify({ labels: [write.label] }),
       };
   }
 }

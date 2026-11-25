@@ -1,3 +1,4 @@
+import { autoLabels } from "./auto-label.ts";
 import { logLine, type PassContext, workCopy } from "./context.ts";
 import { failedGroups, unjudgedHolds } from "./culprit.ts";
 import { fill, fillOrder, trackReady, verifiedFastTrack } from "./fill.ts";
@@ -50,15 +51,17 @@ export function decide(
 
   const removed = removals(context, rows);
   const seenBefore = new Set(state.seenFailedRuns);
-  failedGroups(context, rows);
+  const failedOut = failedGroups(context, rows);
   unjudgedHolds(context, rows, seenBefore);
   labelNoopReopens(context, rows);
+  autoLabels(context, rows);
   const fast = verifiedFastTrack(context, rows);
   trackReady(context, rows);
   const pauseOn = fillPauseOn(context, rows);
   const waitFor = state.board.fillPause?.waitFor ?? [];
   const freeze = mainRedFreeze(context);
-  const still = rows.filter((row) => row.entry !== undefined && !removed.includes(row));
+  const out = [...removed, ...failedOut];
+  const still = rows.filter((row) => row.entry !== undefined && !out.includes(row));
   const added = fill(context, fillOrder(context, rows, fast, still), still, fast, {
     pauseOn,
     waitFor,
@@ -80,7 +83,7 @@ export function decide(
   logLine(
     context,
     "pass",
-    `queued=${state.lastQueue.length} removed=${removed.map((row) => `#${row.pull.number}`).join(",") || "-"} added=${added.map((number) => `#${number}`).join(",") || "-"} candidatesPassing=${rows.filter((row) => row.entry === undefined && row.pass).length}`,
+    `queued=${state.lastQueue.length} removed=${out.map((row) => `#${row.pull.number}`).join(",") || "-"} added=${added.map((number) => `#${number}`).join(",") || "-"} candidatesPassing=${rows.filter((row) => row.entry === undefined && row.pass).length}`,
   );
   return { actions: queueFirst(context.actions), state, log: context.log };
 }

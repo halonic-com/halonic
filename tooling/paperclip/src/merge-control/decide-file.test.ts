@@ -84,7 +84,7 @@ verifies("paperclip.merge-control-decide-file", () => {
       const answer = loaded.decidePass(input());
       const direct = decide(input().snapshot, input().state ?? emptyMergeState, testSettings, now);
       expect(answer.rules).toBe(`halonic.agent-tools@${manifest.version}+${rules.hash}`);
-      expect(answer.format).toBe(2);
+      expect(answer.format).toBe(3);
       expect(
         JSON.parse(JSON.stringify({ ...answer, rules: undefined, format: undefined })),
       ).toEqual(JSON.parse(JSON.stringify(direct)));

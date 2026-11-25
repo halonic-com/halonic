@@ -35,6 +35,7 @@ import {
   defaultSettings,
   emptyMergeState,
   type MergeAction,
+  type MergeSettings,
   type MergeState,
 } from "../merge-control/state.ts";
 import { type QueueWriteClient, queueWriteClient } from "../merge-control/write-client.ts";
@@ -92,9 +93,30 @@ export interface MergeControlSettings {
   readonly repo: string;
   /** The hourly GitHub call budgets of the read and write tokens (HAL-17913). */
   readonly budget: BudgetSettings;
+  /** The rules' settings: today's, with the board's queue login from config (HAL-18506). */
+  readonly rules: MergeSettings;
 }
 
 const modes: readonly MergeControlMode[] = ["off", "shadow", "act"];
+
+/** The Merger's GitHub login, the board's queue login, from config; empty when unset or odd. */
+export function queueLoginOf(config: Readonly<Record<string, unknown>>): string {
+  const section = (config["mergeControl"] ?? {}) as Readonly<Record<string, unknown>>;
+  const value = section["mergerLogin"];
+  return typeof value === "string" && /^[A-Za-z0-9-]{1,39}$/.test(value.trim()) ? value.trim() : "";
+}
+
+/** `defaultSettings` with the queue login added to the auto-label authors, never written in code. */
+export function rulesOf(config: Readonly<Record<string, unknown>>): MergeSettings {
+  const login = queueLoginOf(config);
+  return {
+    ...defaultSettings,
+    autoLabelAuthors: [
+      ...defaultSettings.autoLabelAuthors,
+      ...(login === "" || defaultSettings.autoLabelAuthors.includes(login) ? [] : [login]),
+    ],
+  };
+}
 
 /** Reads the settings; anything missing or odd is `off`, the safe default. */
 export function readMergeControlSettings(
@@ -114,6 +136,7 @@ export function readMergeControlSettings(
     diffTask: typeof section.diffTask === "string" ? section.diffTask.trim() : "",
     repo: readSettings(config).repos[0] ?? "halonic-com/halonic",
     budget: readBudgetSettings(section),
+    rules: rulesOf(config),
   };
 }
 
@@ -310,7 +333,7 @@ async function lockedPass(
     info(refused.summary);
     return refused;
   }
-  const decision = decide(facts.snapshot, stored.state, defaultSettings, now);
+  const decision = decide(facts.snapshot, stored.state, settings.rules, now);
   const writes = meteredWrites((url, init) =>
     ctx.http.fetch(url, { ...init, signal: AbortSignal.timeout(requestTimeoutMs) }),
   );
@@ -325,7 +348,7 @@ async function lockedPass(
   if (settings.mode === "shadow") {
     const day = await shadowDay(ctx, companyId, settings, stored.shadow, now);
     if (day !== undefined) {
-      const view = passView(facts.snapshot, decision, defaultSettings);
+      const view = passView(facts.snapshot, decision, settings.rules);
       shadow = recordShadow(day, decision.actions, facts.observed, now, view);
     }
   }

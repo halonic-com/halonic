@@ -51,7 +51,7 @@ export const factsPullsQuery = `query MergeFactsPulls($owner: String!, $name: St
     pullRequests(states: OPEN, first: ${factsPageSize}, after: $after, orderBy: { field: UPDATED_AT, direction: DESC }) {
       pageInfo { hasNextPage endCursor }
       nodes {
-        id number title createdAt isDraft isCrossRepository isInMergeQueue
+        id number title createdAt isDraft isCrossRepository isInMergeQueue author { login }
         headRefName headRefOid baseRefName headRepositoryOwner { login }
         additions deletions changedFiles mergeable mergeStateStatus
         labels(first: 20) { nodes { name } }
@@ -165,6 +165,8 @@ export interface PullNode {
   readonly id: string;
   readonly number: number;
   readonly title: string;
+  /** Who opened it (HAL-18506); missing in a recorded answer from before. */
+  readonly author?: Login;
   readonly createdAt: string;
   readonly isDraft: boolean;
   readonly isCrossRepository: boolean;

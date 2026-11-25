@@ -77,7 +77,7 @@ export const mergeControlConfigProperties = {
         type: "string",
         title: "The Merger's GitHub login",
         description:
-          "The account the Merger queues, dequeues, reruns, cancels and comments as; shadow mode compares with what it did. Empty: the diff lists only merge control's side.",
+          "The account the Merger queues, dequeues, reruns, cancels and comments as; shadow mode compares with what it did, and its unlabelled pull requests get `built-on:paperclip` like the team account's. Empty: the diff lists only merge control's side.",
       },
       ciStatusUrl: {
         type: "string",
