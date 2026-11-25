@@ -1,3 +1,4 @@
+import type { ActionRoute } from "@halonicjs/ports";
 import type { Schema } from "@halonicjs/schema-kit";
 import type { StepperRisk } from "./stepper-risk.ts";
 
@@ -111,4 +112,11 @@ export interface StepperCatalog {
   /** A reviewed step type, or `undefined` when there is none of that id and version. */
   stepType(id: string, version: number): StepperDefinition | undefined;
   browserOrigins: readonly BrowserOrigin[];
+  /**
+   * The route of one step of a definition or step type (`step` from 1), from the same generated
+   * route list the desktop shell compiles; `undefined` for a step with no route, such as an
+   * `input` step. The page uses it only to sort a request's values into the route's placeholders
+   * and body: the shell checks everything again against its own list (architecture note, 2.4).
+   */
+  route(id: string, version: number, step: number): ActionRoute | undefined;
 }

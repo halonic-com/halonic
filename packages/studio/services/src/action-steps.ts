@@ -1,5 +1,5 @@
 import type { ActionUserCode } from "@halonicjs/adapter-action-send-tauri";
-import type { ActionRecordEvent } from "@halonicjs/events";
+import type { ActionKeptValue, ActionOutcome, ActionRecordEvent } from "@halonicjs/events";
 import type {
   ActionAccount,
   ActionOpenResult,
@@ -31,6 +31,14 @@ export type ActionStepResult = ActionSendResult | DesktopOnly | RequestClosed;
 /** What opening a guided step's page did. */
 export type ActionPageResult = ActionOpenResult | DesktopOnly | RequestClosed;
 
+/** The request's record took the event. */
+export interface Recorded {
+  outcome: "recorded";
+}
+
+/** What recording a step the stepper didn't send, or the request's end, did. */
+export type ActionRecordResult = Recorded | DesktopOnly | RequestClosed;
+
 /**
  * The app service the stepper screen calls to run a request's steps with
  * the user's own sign-in (requirement `studio-services.action-steps`). It
@@ -57,6 +65,20 @@ export interface ActionSteps {
   runStep(request: string, step: ActionSendRequest): Promise<ActionStepResult>;
   /** Opens one guided step's page of `request`, and records that it started, or that it was refused. */
   openGuidedStep(request: string, step: ActionStepRef): Promise<ActionPageResult>;
+  /**
+   * Records that the user did step `step` themselves, on the page a guided step opened or by
+   * hand, with what they pasted back as `kept` (never a secret). Nothing was sent, so the event
+   * has no status.
+   */
+  confirmStep(
+    request: string,
+    step: number,
+    kept?: Readonly<Record<string, ActionKeptValue>>,
+  ): Promise<ActionRecordResult>;
+  /** Records that a check showed step `step` was done already, so it wasn't sent. */
+  skipStep(request: string, step: number): Promise<ActionRecordResult>;
+  /** Records how the request ended: after this, nothing of it runs or is recorded again. */
+  finish(request: string, outcome: ActionOutcome): Promise<ActionRecordResult>;
 }
 
 /** The sender the desktop app gives: the port, plus the device code and the cancel a sign-in needs. */
@@ -118,6 +140,21 @@ export function createActionSteps(options: ActionStepsOptions): ActionSteps {
       if (ended !== undefined) await records.append(ended);
       return result;
     },
+    async confirmStep(request, step, kept = {}) {
+      if (await isClosed(request)) return { outcome: "closed" };
+      await records.append({ type: "action.step.succeeded", request, at: at(), step, kept });
+      return recorded;
+    },
+    async skipStep(request, step) {
+      if (await isClosed(request)) return { outcome: "closed" };
+      await records.append({ type: "action.step.skipped", request, at: at(), step });
+      return recorded;
+    },
+    async finish(request, outcome) {
+      if (await isClosed(request)) return { outcome: "closed" };
+      await records.append({ type: "action.finished", request, at: at(), outcome });
+      return recorded;
+    },
     async openGuidedStep(request, step) {
       if (await isClosed(request)) return { outcome: "closed" };
       const result = await sender.openGuided(step);
@@ -165,12 +202,14 @@ function answeredEvent(
   return failed;
 }
 
+const recorded: Recorded = { outcome: "recorded" };
+
 const desktopOnly: DesktopOnly = { outcome: "desktop-only" };
 
 /**
  * The {@link ActionSteps} of a Studio outside the desktop app, such as the
  * one the computer serves to a browser: it has no sign-in, so it runs
- * nothing, writes nothing, and answers every run with `desktop-only`.
+ * nothing, writes nothing, and answers every run and record with `desktop-only`.
  */
 export const desktopOnlyActionSteps: ActionSteps = {
   canRun: false,
@@ -180,4 +219,7 @@ export const desktopOnlyActionSteps: ActionSteps = {
   signOut: () => Promise.resolve(),
   runStep: () => Promise.resolve(desktopOnly),
   openGuidedStep: () => Promise.resolve(desktopOnly),
+  confirmStep: () => Promise.resolve(desktopOnly),
+  skipStep: () => Promise.resolve(desktopOnly),
+  finish: () => Promise.resolve(desktopOnly),
 };

@@ -67,6 +67,11 @@ verifies("events.action-events", () => {
     for (const event of valid) expect(checkActionEvent(event)).toEqual({ ok: true, event });
   });
 
+  it("takes a step the user did on the page or by hand, which has no HTTP status", () => {
+    const byHand = { type: "action.step.succeeded", request: "req-1", at, step: 1, kept: {} };
+    expect(checkActionEvent(byHand)).toEqual({ ok: true, event: byHand });
+  });
+
   describe("refuses every field outside its kind's allow-list", () => {
     const smuggled = ["authorization", "token", "headers", "input", "body", "answer", "cookie"];
     for (const event of valid) {

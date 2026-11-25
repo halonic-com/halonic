@@ -88,6 +88,7 @@ export const acmeCatalog: StepperCatalog = {
     definitions.find((each) => each.id === id && each.version === version),
   stepType: () => undefined,
   browserOrigins: [],
+  route: () => undefined,
 };
 
 /** The source "Paperclip · Acme", as its provider attests it. */

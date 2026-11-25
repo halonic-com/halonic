@@ -99,7 +99,12 @@ const schemas: { readonly [T in ActionEventType]: SpecsFor<Extract<ActionEvent, 
   },
   "action.signed-in": { ...base, service: { kind: "id" }, account: { kind: "id" } },
   "action.step.started": { ...base, step },
-  "action.step.succeeded": { ...base, step, status: { kind: "status" }, kept: { kind: "kept" } },
+  "action.step.succeeded": {
+    ...base,
+    step,
+    status: { kind: "status", optional: true },
+    kept: { kind: "kept" },
+  },
   "action.step.failed": {
     ...base,
     step,

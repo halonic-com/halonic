@@ -156,7 +156,12 @@ verifies("action-steppers.manual-guide", () => {
         }),
         acmeCatalog,
       );
-      const empty = { definition: () => undefined, stepType: () => undefined, browserOrigins: [] };
+      const empty = {
+        definition: () => undefined,
+        stepType: () => undefined,
+        browserOrigins: [],
+        route: () => undefined,
+      };
       expect(checked.ok).toBe(true);
       if (checked.ok) expect(() => renderManualGuide(checked.value, empty)).toThrow(/catalog/);
     });
