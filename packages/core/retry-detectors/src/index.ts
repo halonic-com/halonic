@@ -5,6 +5,22 @@ export {
   type SelftestCase,
   type TrainedModel,
 } from "./coefficients.ts";
+export {
+  type AttemptFinished,
+  type AttemptStarted,
+  type AttemptStopped,
+  type CheckpointScored,
+  type DecisionEntry,
+  type DecisionLog,
+  decisionLine,
+  MemoryDecisionLog,
+  type Outcome,
+  type OutcomeKnown,
+  readDecisionLines,
+  type ShipChosen,
+  type StartReason,
+  type StopReason,
+} from "./decision-log.ts";
 export { endOfRunFeatures, type FinishedAttempt, scoreFinishedAttempt } from "./end-of-run.ts";
 export { endOfRunSelftest } from "./end-of-run-selftest.ts";
 export {
@@ -20,3 +36,4 @@ export {
   type LogisticModel,
   scoreWith,
 } from "./logistic-model.ts";
+export { type WeekMetrics, weeklyMetrics, weekStart } from "./weekly-metrics.ts";
