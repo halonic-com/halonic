@@ -1,5 +1,6 @@
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expect, expectTypeOf, it } from "vitest";
+import type { PhoneMessaging } from "./remote-gateway-messaging.ts";
 import {
   type GatewayClientMessage,
   type GatewayHostMessage,
@@ -83,6 +84,30 @@ verifies("ports.remote-gateway-protocol", () => {
     expect(gatewayMaxMessageBytes).toBe(65_519);
     expect(gatewayErrorCodes).toContain("too-large");
     expect(gatewayErrorCodes).toContain("not-allowed-remotely");
+  });
+
+  it("refuses a search or send over the phone's rate with its own code, the connection left open", () => {
+    expect(gatewayRefusalCodes).toContain("rate-limited");
+    expect(gatewayClosingErrorCodes).not.toContain("rate-limited");
+  });
+
+  typeTest("gives the phone only the allowed port members, none that changes a channel", () => {
+    expectTypeOf<keyof PhoneMessaging>().toEqualTypeOf<
+      | "listSources"
+      | "listAgents"
+      | "listConversations"
+      | "listMessages"
+      | "listInboxItems"
+      | "listWork"
+      | "search"
+      | "answer"
+      | "send"
+      | "changes"
+      | "team"
+    >();
+    expectTypeOf<keyof PhoneMessaging["team"]>().toEqualTypeOf<
+      "parts" | "spend" | "seats" | "pullRequests" | "pullRequest" | "mergeQueue" | "changes"
+    >();
   });
 
   typeTest("lists sessions with the risky switch, as an answer or as a push", () => {
