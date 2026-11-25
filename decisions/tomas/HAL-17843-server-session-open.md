@@ -3,6 +3,7 @@
 - Task: HAL-17843
 - Approval: Liam approved the plan's architecture on HAL-17834, including the `server_session_open` command and its entry in `served-page.md` (plan section 4), and Julian gave the security OK on HAL-17837; Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:gnt+YZ6S0jA6n2NZPOk6VFxCUMQLpAvnmSL8/w7CEReQIxolgWJAsNoa4qWVsTbqE38clu/AyUryqOWGqjH6BQ==
 
 ## What changes
 
