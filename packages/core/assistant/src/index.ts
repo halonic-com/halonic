@@ -18,6 +18,7 @@ export {
 } from "./build/docs/docs-sites.ts";
 export {
   builderToolNames,
+  pageSiteOf,
   sitesRead,
   sitesReadBefore,
   toolsWhilePageLoaded,

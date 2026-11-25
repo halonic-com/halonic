@@ -72,7 +72,7 @@ export function sitesReadBefore(
  * The site of the page a `read_docs` call loaded, or `undefined` when its result holds none. A
  * result holds a page when it holds the untrusted fence, which only a page's text is put in.
  */
-function pageSiteOf(call: ToolCall, result: string): string | undefined {
+export function pageSiteOf(call: ToolCall, result: string): string | undefined {
   if (call.name !== "read_docs" || !result.includes(fenceStart)) return undefined;
   const url = call.arguments["url"];
   const raw = typeof url === "string" ? url : "";

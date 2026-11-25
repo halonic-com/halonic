@@ -1,5 +1,5 @@
 import type { RunFailure } from "@halonicjs/app/run-failure";
-import { sitesReadBefore, toolTexts } from "@halonicjs/assistant";
+import { pageSiteOf, toolTexts } from "@halonicjs/assistant";
 import type { ChatMessage, ToolCall } from "@halonicjs/ports";
 import { chatFailureLine } from "@halonicjs/studio-feature-runs/api";
 import type { ChatToolState } from "@halonicjs/studio-kit";
@@ -55,7 +55,7 @@ export interface Turn {
  * The chat's turns from its messages, oldest first. A tool call shows as running until its result
  * arrives, and as failed when the result is the chat service's "Error: …". A call that got no
  * result and isn't running any more did nothing, so it isn't shown. `ends` holds how each turn
- * ended, by its place.
+ * ended, by its place. A card names the sites of the docs pages read before it.
  */
 export function turnsOf(
   messages: readonly ChatMessage[],
@@ -64,6 +64,7 @@ export function turnsOf(
 ): readonly Turn[] {
   const turns: { message: string; steps: ReplyStep[] }[] = [];
   const calls = new Map<string, ToolCall>();
+  const sitesRead = new Set<string>();
   for (const message of messages) {
     for (const call of message.role === "assistant" ? (message.toolCalls ?? []) : []) {
       calls.set(call.id, call);
@@ -73,7 +74,8 @@ export function turnsOf(
       continue;
     }
     const steps = turns.at(-1)?.steps;
-    if (steps !== undefined) addStep(steps, message, calls, messages);
+    if (steps !== undefined) addStep(steps, message, calls, [...sitesRead]);
+    addPageSite(sitesRead, message, calls);
   }
   return turns.map((turn, index) => {
     const live = answering && index === turns.length - 1;
@@ -92,7 +94,7 @@ function addStep(
   steps: ReplyStep[],
   message: ChatMessage,
   calls: ReadonlyMap<string, ToolCall>,
-  messages: readonly ChatMessage[],
+  afterReading: readonly string[],
 ): void {
   if (message.role === "assistant") {
     if (message.content.trim() !== "") steps.push({ kind: "text", text: message.content });
@@ -109,12 +111,21 @@ function addStep(
   const step = steps[index];
   if (step?.kind !== "tool") return;
   const call = calls.get(step.callId);
-  const card =
-    call === undefined
-      ? undefined
-      : proposalOf(call, message.content, sitesReadBefore(messages, call.id));
+  const card = call === undefined ? undefined : proposalOf(call, message.content, afterReading);
   const shown = state === "done" && call?.name === "show" ? shownBy(call) : undefined;
   steps[index] = card ?? (shown === undefined ? { ...step, state } : { ...step, state, shown });
+}
+
+/** Adds the site of the docs page a `read_docs` result holds, when `message` is one. */
+function addPageSite(
+  sitesRead: Set<string>,
+  message: ChatMessage,
+  calls: ReadonlyMap<string, ToolCall>,
+): void {
+  if (message.role !== "tool") return;
+  const call = calls.get(message.toolCallId);
+  const site = call === undefined ? undefined : pageSiteOf(call, message.content);
+  if (site !== undefined) sitesRead.add(site);
 }
 
 /** The item a `show` call names, when it names its kind and id. */

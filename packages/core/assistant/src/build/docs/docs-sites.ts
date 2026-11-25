@@ -66,8 +66,9 @@ export interface DocsOptions {
   readonly http: HttpClient;
   readonly sites: DocsSites;
   /**
-   * The chat's messages as kept so far, tool results of the answer in progress included, read on
-   * every call. Once they hold a page, a site is asked for only when the person named it
+   * The chat's messages as kept so far, read on every call. They must include the tool results of
+   * the answer in progress as each arrives, as the Studio keeps them, so a page read in turn 1
+   * counts in turn 2. Once they hold a page, a site is asked for only when the person named it
    * (`assistant.build.loaded-page`).
    */
   readonly messages: () => Promise<readonly ChatMessage[]>;
