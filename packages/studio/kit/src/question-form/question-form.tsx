@@ -23,8 +23,18 @@ export const questionFormWords = {
 /** The props of `QuestionForm`. */
 export interface QuestionFormProps {
   readonly questions: readonly FormQuestion[];
-  /** Once the card is answered: what was picked and when. The form then only shows it. */
-  readonly answered?: { readonly answers: readonly FormAnswer[]; readonly at: Date } | undefined;
+  /**
+   * Once the card is answered: what was picked and when. The form then only shows it. With
+   * `reason`, the `id` of a line the card already shows about the answer, the form drops its own
+   * "Answered" line and points its controls at that one instead.
+   */
+  readonly answered?:
+    | {
+        readonly answers: readonly FormAnswer[];
+        readonly at: Date;
+        readonly reason?: string | undefined;
+      }
+    | undefined;
   /** Called with one entry per question that has a pick. Not called while Submit is off. */
   readonly onSubmit: (answers: readonly FormAnswer[]) => void;
   /** While the answer is on its way. */
@@ -55,7 +65,7 @@ export function QuestionForm({
   const answeredId = useId();
   const hintId = useId();
   const picked = answered === undefined ? picking : pickedFrom(answered.answers);
-  const readOnly = answered === undefined ? undefined : { reason: answeredId };
+  const readOnly = answered === undefined ? undefined : { reason: answered.reason ?? answeredId };
   const ready = everyRequiredPicked(questions, picked);
 
   const pick = (question: string, options: ReadonlySet<string>) => {
@@ -82,6 +92,7 @@ export function QuestionForm({
           onPick={(options) => pick(question.id, options)}
         />
       ))}
+      {answered === undefined ? null : <AnsweredLine id={answeredId} answered={answered} />}
       {answered === undefined ? (
         <div className="flex flex-wrap items-center gap-3">
           <Button
@@ -98,12 +109,24 @@ export function QuestionForm({
             </p>
           ) : null}
         </div>
-      ) : (
-        <p id={answeredId} className="text-small text-fg-muted">
-          {questionFormWords.answered(calendarDay(answered.at))}
-        </p>
-      )}
+      ) : null}
     </form>
+  );
+}
+
+/** "Answered 24 Nov" where Submit was, unless the card already says it on a line of its own. */
+function AnsweredLine({
+  id,
+  answered,
+}: {
+  readonly id: string;
+  readonly answered: { readonly at: Date; readonly reason?: string | undefined };
+}) {
+  if (answered.reason !== undefined) return null;
+  return (
+    <p id={id} className="text-small text-fg-muted">
+      {questionFormWords.answered(calendarDay(answered.at))}
+    </p>
   );
 }
 
@@ -120,7 +143,11 @@ function QuestionFieldset({
   readonly onPick: (options: ReadonlySet<string>) => void;
 }) {
   return (
-    <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0" data-question={question.id}>
+    // On a phone or touch screen the rows are tall enough on their own, as in the radio stack.
+    <fieldset
+      className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0 phone:gap-0 touch:gap-0"
+      data-question={question.id}
+    >
       <legend className="mb-2 p-0 text-body font-medium text-fg">
         {promptText(question.prompt)}
         {question.required ? null : (
@@ -129,6 +156,7 @@ function QuestionFieldset({
       </legend>
       {question.selection === "single" ? (
         <RadioGroup
+          label={promptText(question.prompt)}
           value={[...chosen][0] ?? null}
           onChange={(option) => onPick(new Set([option]))}
           options={question.options.map(

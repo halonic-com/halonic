@@ -54,6 +54,9 @@ verifies("kit.question-form", () => {
       expect(legends).toEqual(["Where does ToolScript live?", "Which looks? (optional)"]);
       expect(labelled(container, "Separate repo").type).toBe("radio");
       expect(labelled(container, "Dark").type).toBe("checkbox");
+      expect(container.querySelector('[role="radiogroup"]')?.getAttribute("aria-label")).toBe(
+        "Where does ToolScript live?",
+      );
     });
 
     it("keeps Submit off until every required question has a pick, then sends every pick", async () => {
@@ -98,6 +101,28 @@ verifies("kit.question-form", () => {
       expect(labelled(container, "Wide").checked).toBe(false);
       expect(container.querySelector("button")).toBeNull();
       expect(container.textContent).toContain("Answered 24 Nov");
+    });
+
+    it("leaves the answered line to the card when it names one of its own", () => {
+      const { container } = render(
+        <>
+          <p id="card-line">Answered at 18:43: Separate repo, Dark.</p>
+          <QuestionForm
+            questions={questions}
+            onSubmit={vi.fn()}
+            answered={{
+              answers: [
+                { question: "repo", options: ["separate"] },
+                { question: "look", options: ["dark"] },
+              ],
+              at: new Date(2026, 10, 24, 18, 43),
+              reason: "card-line",
+            }}
+          />
+        </>,
+      );
+      expect(container.textContent).not.toContain("Answered 24 Nov");
+      expect(labelled(container, "Dark").getAttribute("aria-describedby")).toContain("card-line");
     });
 
     it("names each picked option by its label, and by its ID once the card no longer offers it", () => {

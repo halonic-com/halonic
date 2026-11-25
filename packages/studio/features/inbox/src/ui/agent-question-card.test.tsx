@@ -115,7 +115,8 @@ verifies("inbox.question-cards", () => {
         ],
       });
       expect(root.textContent).toContain("Answered at 18:43: In the monorepo, Compact, Wide.");
-      expect(root.textContent).toContain("Answered 24 Nov");
+      // The callout is the Inbox's answered line (render 5f), so the form doesn't say it again.
+      expect(root.textContent).not.toContain("Answered 24 Nov");
       expect(option(root, "Wide").getAttribute("aria-disabled")).toBe("true");
     });
 
@@ -141,10 +142,13 @@ verifies("inbox.question-cards", () => {
       expect(option(root, "Separate repo").disabled).toBe(true);
       expect(option(root, "Dark").getAttribute("aria-disabled")).toBe("true");
       expect(submit(root)).toBeUndefined();
-      expect(root.textContent).toContain("Answered 24 Nov");
-      expect(root.textContent).toContain(
-        "Answered elsewhere by Liam at 18:43: Separate repo, Dark, Compact.",
+      expect(root.textContent).not.toContain("Answered 24 Nov");
+      const callout = [...root.querySelectorAll("span[id]")].find(
+        (each) =>
+          each.textContent === "Answered elsewhere by Liam at 18:43: Separate repo, Dark, Compact.",
       );
+      expect(callout).toBeDefined();
+      expect(option(root, "Dark").getAttribute("aria-describedby")).toContain(callout?.id);
     });
   });
 });

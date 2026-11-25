@@ -153,6 +153,7 @@ export function AgentItemCard({
           item={item}
           sent={sent}
           unavailable={unavailable}
+          answeredReason={reasonId}
           busy={busy}
           send={(chosen) => void send(chosen)}
         />
@@ -165,6 +166,8 @@ interface AnswerControlsProps {
   readonly item: AgentItem;
   readonly sent: Sent;
   readonly unavailable: { readonly reason: string } | undefined;
+  /** The `id` of the callout that says how the item was answered. */
+  readonly answeredReason: string;
   readonly busy: (chosen: InboxAnswer) => boolean;
   readonly send: (chosen: InboxAnswer) => void;
 }
@@ -173,14 +176,21 @@ interface AnswerControlsProps {
  * How the person answers an item that isn't an action request: a form of its questions when it
  * asks several (`inbox.question-cards`), else a button per option, else a written reply.
  */
-function AnswerControls({ item, sent, unavailable, busy, send }: AnswerControlsProps) {
+function AnswerControls({
+  item,
+  sent,
+  unavailable,
+  answeredReason,
+  busy,
+  send,
+}: AnswerControlsProps) {
   const [reply, setReply] = useState("");
   if (item.action !== undefined) return null;
   if (item.questions !== undefined) {
     return (
       <QuestionForm
         questions={item.questions}
-        answered={answeredWith(item, sent)}
+        answered={answeredWith(item, sent, answeredReason)}
         busy={sent.kind === "sending"}
         unavailable={unavailable}
         onSubmit={(answers) => send({ kind: "answers", answers })}
@@ -245,16 +255,26 @@ function sentAfter(result: AnswerResult, chosen: InboxAnswer): Sent {
   }
 }
 
-/** What a card that asks several questions was answered with, by this card or as the source last said. */
+/**
+ * What a card that asks several questions was answered with, by this card or as the source last
+ * said. `reason` is the card's own answered line, which then stands in for the form's (render 5f).
+ */
 function answeredWith(
   item: AgentItem,
   sent: Sent,
-): { readonly answers: InboxQuestionsAnswer["answers"]; readonly at: Date } | undefined {
+  reason: string,
+):
+  | {
+      readonly answers: InboxQuestionsAnswer["answers"];
+      readonly at: Date;
+      readonly reason: string;
+    }
+  | undefined {
   if (sent.kind === "answered" && sent.answer.kind === "answers") {
-    return { answers: sent.answer.answers, at: new Date(sent.answeredAt) };
+    return { answers: sent.answer.answers, at: new Date(sent.answeredAt), reason };
   }
   if (item.state.kind === "answered" && item.state.answer.kind === "answers") {
-    return { answers: item.state.answer.answers, at: new Date(item.state.answeredAt) };
+    return { answers: item.state.answer.answers, at: new Date(item.state.answeredAt), reason };
   }
   return undefined;
 }
