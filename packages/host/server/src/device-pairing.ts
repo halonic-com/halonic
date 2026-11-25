@@ -246,12 +246,20 @@ function hasText(value: unknown, fields: readonly string[]): boolean {
 
 function isStoredCode(value: unknown): value is StoredCode {
   const request = (value as { request?: unknown } | null)?.request;
-  const requestFields = ["id", "pendingHash", "deviceName", "checkCode", "expiresAt"];
   const generation = (value as { generation?: unknown } | null)?.generation;
   return (
     hasText(value, ["codeHash", "expiresAt", "password"]) &&
     (generation === null || typeof generation === "string") &&
-    (request === undefined || hasText(request, requestFields))
+    (request === undefined || isWaitingRequest(request))
+  );
+}
+
+/** A request's text fields, and `allowedBy` only as text, so a record can't allow on a number. */
+function isWaitingRequest(value: unknown): value is WaitingRequest {
+  const allowedBy = (value as { allowedBy?: unknown } | null)?.allowedBy;
+  return (
+    hasText(value, ["id", "pendingHash", "deviceName", "checkCode", "expiresAt"]) &&
+    (allowedBy === undefined || typeof allowedBy === "string")
   );
 }
 

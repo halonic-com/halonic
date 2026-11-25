@@ -1,6 +1,6 @@
 # server.device-pairing
 
-- Status: draft
+- Status: active
 - Since: unreleased
 - Source: HAL-17512 `server-engine` rev 2, §2 and §6 (PR S6); Julian's security note on HAL-17513, findings S4, S5, S9 and S11; check code as in HAL-17363's phone pairing
 
