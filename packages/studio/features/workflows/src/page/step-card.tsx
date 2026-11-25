@@ -1,4 +1,5 @@
 import { StatusChip } from "@halonicjs/studio-kit";
+import { type ChangeMarkKind, itemReviewWords } from "@halonicjs/studio-shell";
 import { useEffect, useId, useRef } from "react";
 import type { WorkflowStep } from "../api.ts";
 import type { Box } from "../canvas/geometry.ts";
@@ -43,8 +44,8 @@ export interface StepCardProps {
  * click selects it; the docked card that edits it lands with Configuration.
  *
  * A screen reader hears its title first, then its kind, the Start chip, its agent and how it stood
- * in the shown run and its problem line; then, as its description, its problems' full messages and
- * where it leads (`waysOn`). The card looks the same: only the order it
+ * in the shown run and its problem line; then, as its description, the assistant's change to
+ * review, its problems' full messages and where it leads (`waysOn`). The card looks the same: only the order it
  * is read in changes (a11y check E1, E3).
  */
 export function StepCard({
@@ -63,20 +64,23 @@ export function StepCard({
   connectTarget,
 }: StepCardProps) {
   const button = useRef<HTMLButtonElement>(null);
+  const change = useStepChange(step.id);
   const { part, nameParts, descriptionParts } = cardParts(useId(), {
     step,
     first,
     mark,
     problems,
     waysOn,
+    change,
   });
   useEffect(() => {
     if (focusOnMount) button.current?.focus();
   }, [focusOnMount]);
   const ring = ringOf(failed === true, selected, problems?.severity, outlined === true);
   const outline = outlineOf(connectTarget);
-  // The assistant's change to the step: an edge in its colour, as the mark above the canvas has.
-  const changed = changeEdges[useStepChange(step.id) ?? "none"];
+  // The assistant's change to the step: an edge in its colour, as the mark above the canvas has,
+  // and the same in words in its description (a11y check RV3).
+  const changed = changeEdges[change ?? "none"];
   return (
     <>
       <button
@@ -158,6 +162,11 @@ export function StepCard({
           {waysOn}
         </span>
       )}
+      {change !== undefined && (
+        <span id={part.change} hidden>
+          {itemReviewWords.stepToReview[change]}
+        </span>
+      )}
     </>
   );
 }
@@ -174,7 +183,8 @@ export function stepCardIn(
 /**
  * The ids of the card's parts, unique to this card on the page, and which of them it is named and
  * described by: its name is read from the title, kind, Start chip, agent, run mark and problem
- * line; its description from its problems' full messages, then where it leads.
+ * line; its description from the assistant's change to review, its problems' full messages, then
+ * where it leads.
  */
 function cardParts(
   id: string,
@@ -184,7 +194,10 @@ function cardParts(
     mark,
     problems,
     waysOn,
-  }: Pick<StepCardProps, "step" | "first" | "mark" | "problems" | "waysOn">,
+    change,
+  }: Pick<StepCardProps, "step" | "first" | "mark" | "problems" | "waysOn"> & {
+    readonly change: ChangeMarkKind | undefined;
+  },
 ) {
   const part = {
     title: `${id}-title`,
@@ -195,6 +208,7 @@ function cardParts(
     problems: `${id}-problems`,
     detail: `${id}-detail`,
     waysOn: `${id}-ways-on`,
+    change: `${id}-change`,
   };
   const present = (partId: string | false): partId is string => partId !== false;
   const nameParts = [
@@ -206,6 +220,7 @@ function cardParts(
     problems !== undefined && part.problems,
   ].filter(present);
   const descriptionParts = [
+    change !== undefined && part.change,
     problems !== undefined && part.detail,
     waysOn !== undefined && part.waysOn,
   ].filter(present);

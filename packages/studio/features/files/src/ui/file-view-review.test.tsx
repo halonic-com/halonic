@@ -222,3 +222,26 @@ describe("the assistant's changes to review in a file's tab", () => {
     });
   });
 });
+
+describe("the focus after a decision in a file's tab", () => {
+  verifies("files.ui.file-review-focus", () => {
+    it("goes to the part now in the decided one's place, then to the h1", async () => {
+      const answers: (FileReview | null)[] = [twoParts, onePart, null];
+      const host = {
+        ...reviewHostOf(twoParts, { status: "done", undo: async () => "done" }),
+        changesIn: vi.fn(async () => (answers.length > 1 ? answers.shift() : answers[0]) ?? null),
+      } satisfies FileReviewHost;
+      const { page } = show(host);
+      await settle();
+
+      await act(async () => opened.at(-1)?.options.review?.onDecide(0, "accept"));
+      await settle();
+      expect(opened.at(-1)?.goneToParts).toEqual([0]);
+
+      await act(async () => buttonNamed(page, "Accept file")?.click());
+      await settle();
+      expect(document.activeElement?.tagName).toBe("H1");
+      expect(document.activeElement?.textContent).toBe(path);
+    });
+  });
+});

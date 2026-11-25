@@ -211,3 +211,26 @@ verifies("workflows.review.changes-to-review", () => {
     expect(page.querySelector("[data-change-id]")).toBeNull();
   });
 });
+
+/** What a screen reader hears after an element's name: its description, read from its ids. */
+const description = (element: Element | null) =>
+  (element?.getAttribute("aria-describedby") ?? "")
+    .split(" ")
+    .map((id) => document.getElementById(id)?.textContent)
+    .join(" ");
+
+verifies("workflows.review.step-card-words", () => {
+  it("says in a step card's description that the assistant changed or added it", async () => {
+    const { page } = await showPage(fakeReview(reviewOf([writeChange])).host);
+    expect(description(card(page, "write"))).toContain("Changed by the assistant, to review");
+    unmount();
+
+    const added = await showPage(fakeReview(reviewOf([writeAdded])).host);
+    expect(description(card(added.page, "write"))).toContain("Added by the assistant, to review");
+  });
+
+  it("says nothing of the kind on a card the assistant didn't change", async () => {
+    const { page } = await showPage(fakeReview(reviewOf([writeChange])).host);
+    expect(description(card(page, "start"))).not.toContain("by the assistant");
+  });
+});

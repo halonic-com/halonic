@@ -68,9 +68,10 @@ export function ChangeMark({
 }: ChangeMarkProps) {
   // A fieldset's min-inline-size defaults to min-content and Tailwind's preflight keeps it, so
   // without min-w-0 a long unbroken value inside the mark widens the page instead of wrapping.
+  // The name says "Important" too, as the label before the sentence shows it (a11y check RV5).
   return (
     <fieldset
-      aria-label={sentence}
+      aria-label={important ? words.importantChange(sentence) : sentence}
       tabIndex={-1}
       data-change-id={id}
       className={`focus-ring flex min-w-0 flex-col gap-2 rounded-md border-s-2 py-1 ps-3 ${edgeClasses[kind]}`}

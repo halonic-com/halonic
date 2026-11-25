@@ -1,5 +1,5 @@
 import { useToastStore } from "@halonicjs/studio-kit";
-import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import type { ChangeMarkBusy } from "./change-mark.tsx";
 import { decidedCount } from "./changes-decided.ts";
 import type {
@@ -28,6 +28,8 @@ export interface ItemReviewParts<Ref extends ReviewedItem> {
   readonly name: string;
   /** Shows the change on the page and moves the focus to its mark, for Previous and Next. */
   readonly goTo: (change: ItemChangeToReview) => void;
+  /** The page's `h1` (`tabIndex={-1}`): it takes the focus once the last change is decided. */
+  readonly title?: RefObject<HTMLElement | null> | undefined;
   /** Opens the item's file, where Files offers Compare (review panel note 4). */
   readonly openFile?: ((path: string) => void) | undefined;
   readonly announce?: ((text: string, politeness?: "polite" | "assertive") => void) | undefined;
@@ -84,6 +86,11 @@ export function useItemReview<Ref extends ReviewedItem>(
   const ref = useRef(item);
   ref.current = item;
   const reads = useRef(0);
+  // After a decision: where among the changes the focus lands once the review is read again.
+  const landAt = useRef<number>(undefined);
+  const [landing, setLanding] = useState<{ readonly at: number }>();
+  const landNow = useRef({ goTo, title: parts.title });
+  landNow.current = { goTo, title: parts.title };
 
   const read = useCallback(async () => {
     if (host === undefined) return;
@@ -100,6 +107,9 @@ export function useItemReview<Ref extends ReviewedItem>(
       setReview(found);
       setHeld(false);
       setPosition((at) => positionWithin(at, count));
+      const at = landAt.current;
+      landAt.current = undefined;
+      if (at !== undefined) setLanding({ at });
     } catch (error) {
       console.error(`Reading the changes to review in ${hubId}/${id}`, error);
     }
@@ -110,6 +120,22 @@ export function useItemReview<Ref extends ReviewedItem>(
     void read();
     return host.subscribe(ref.current, () => void read());
   }, [host, read]);
+
+  // The pressed Accept or Reject is gone with its change, so the focus goes to the change that took
+  // its place, or the last one; with none left, to the page's `h1` (a11y check RV1). Focus the
+  // person moved elsewhere while the decision ran stays where they put it.
+  useEffect(() => {
+    if (landing === undefined || !focusLost()) return;
+    const changes = shown.current?.changes ?? [];
+    const at = Math.min(landing.at, changes.length - 1);
+    const next = changes[at];
+    if (next === undefined) {
+      landNow.current.title?.current?.focus();
+      return;
+    }
+    setPosition(at);
+    landNow.current.goTo(next);
+  }, [landing]);
 
   const failed = (error: unknown) =>
     toasts?.show({
@@ -125,8 +151,16 @@ export function useItemReview<Ref extends ReviewedItem>(
     }
   };
 
-  const settle = (outcome: ItemReviewDecision, verb: ChangeMarkBusy, count: number) => {
+  const settle = (
+    outcome: ItemReviewDecision,
+    verb: ChangeMarkBusy,
+    count: number,
+    target: ItemReviewTarget,
+  ) => {
     if (outcome.status === "done") {
+      landAt.current =
+        target.kind === "all" ? 0 : Math.max(target.review.changes.indexOf(target.change), 0);
+      void read();
       toasts?.show({
         tone: "success",
         title: words.decided(verb, count, name),
@@ -156,6 +190,7 @@ export function useItemReview<Ref extends ReviewedItem>(
         verb === "accept" ? await host.accept(target) : await host.reject(target),
         verb,
         count,
+        target,
       );
     } catch (error) {
       failed(error);
@@ -196,6 +231,11 @@ export function useItemReview<Ref extends ReviewedItem>(
       countBeforeEdit.current = shown.current?.changes.length;
     },
   };
+}
+
+/** Whether the focus fell to the page's body, as it does when the focused button is removed. */
+function focusLost(): boolean {
+  return document.activeElement === null || document.activeElement === document.body;
 }
 
 const busyAll = (verb: ChangeMarkBusy) => (verb === "accept" ? "accept-all" : "reject-all");

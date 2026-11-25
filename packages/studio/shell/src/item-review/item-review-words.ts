@@ -28,6 +28,17 @@ export const itemReviewWords = {
   /** Reject on the only change of a file the assistant created, which deletes the file (note 3). */
   rejectAndDelete: "Reject and delete file",
   important: "Important",
+  /** A mark's name when its change is Important: "Important, Model: small → large". */
+  importantChange: (sentence: string): string => `Important, ${sentence}`,
+  /**
+   * What a screen reader hears for a step card the assistant changed, since its edge shows it
+   * only in colour (a11y check RV3).
+   */
+  stepToReview: {
+    added: "Added by the assistant, to review",
+    removed: "Removed by the assistant, to review",
+    changed: "Changed by the assistant, to review",
+  },
   /** The file changed outside Halonic, so Accept and Reject wait for Compare (note 4). */
   changedOutside: "Changed outside Halonic",
   compare: "Compare",

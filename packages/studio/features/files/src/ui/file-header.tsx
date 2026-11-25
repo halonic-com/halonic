@@ -1,4 +1,5 @@
 import { Button, Menu, MoreIcon } from "@halonicjs/studio-kit";
+import type { RefObject } from "react";
 import { fileName } from "../file-item.ts";
 import { type FileMenuActions, fileMenuEntries } from "../file-menu.ts";
 import { filesWords } from "../files-words.ts";
@@ -14,6 +15,8 @@ export interface FileHeaderProps {
   readonly path: string;
   /** What the ⋮ menu's items do. The tab is open already, so it has no Open items but Open as *kind*. */
   readonly actions: Pick<FileMenuActions, "openAsItem" | "rename" | "remove" | "copyPath">;
+  /** The `h1`, for the focus once the assistant's last change in the file is decided. */
+  readonly titleRef?: RefObject<HTMLHeadingElement | null> | undefined;
 }
 
 /**
@@ -21,11 +24,11 @@ export interface FileHeaderProps {
  * Open as *kind* for an agent's, a workflow's or a routine's file, Rename, Copy path and Delete
  * (`files.ui.file-tab-header`). The name is the page's `h1`.
  */
-export function FileHeader({ path, actions }: FileHeaderProps) {
+export function FileHeader({ path, actions, titleRef }: FileHeaderProps) {
   const folder = folderOf(path);
   return (
     <header className="flex items-center gap-2 px-4 py-2">
-      <h1 className="min-w-0 truncate text-body-strong" title={path}>
+      <h1 ref={titleRef} tabIndex={-1} className="min-w-0 truncate text-body-strong" title={path}>
         {fileName(path)}
       </h1>
       {folder !== "" && <span className="min-w-0 truncate text-small text-fg-muted">{folder}</span>}

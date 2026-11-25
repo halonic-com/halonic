@@ -1,4 +1,5 @@
 import { BackIcon, Button, ForwardIcon, SparkIcon } from "@halonicjs/studio-kit";
+import { useEffect, useId, useRef } from "react";
 import { itemReviewWords as words } from "./item-review-words.ts";
 import { steppedPosition } from "./review-position.ts";
 
@@ -34,6 +35,10 @@ export interface ItemReviewBarProps {
  * Previous and Next wrap around, so neither ever waits; with one change there's nowhere to step,
  * so they and the count aren't shown. Nothing shows without changes to review.
  *
+ * When a decision waits because the file changed outside Halonic, "Changed outside Halonic" is
+ * said through a status region that is always there, and the focus moves to Compare, which the
+ * line describes (a11y check RV2).
+ *
  * @example
  * <ItemReviewBar count={3} position={0} onStep={focusChange} onAcceptAll={acceptAll} onRejectAll={rejectAll} />
  */
@@ -47,6 +52,12 @@ export function ItemReviewBar({
   heldOutside,
   labels = words,
 }: ItemReviewBarProps) {
+  const held = heldOutside !== undefined;
+  const outsideId = useId();
+  const compare = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (held) compare.current?.focus();
+  }, [held]);
   if (count <= 0) return null;
   return (
     <section
@@ -59,6 +70,10 @@ export function ItemReviewBar({
       <span className="font-medium">{words.changedHere(count)}</span>
       {count > 1 && <Stepper count={count} position={position} onStep={onStep} />}
       <span className="ms-auto flex flex-wrap items-center gap-2">
+        {/* Off the layout, so it takes no gap while empty; the line shown is for the eye. */}
+        <span role="status" className="sr-only">
+          {held && words.changedOutside}
+        </span>
         {heldOutside === undefined ? (
           <>
             <Button
@@ -80,8 +95,16 @@ export function ItemReviewBar({
           </>
         ) : (
           <>
-            <span className="text-warning">{words.changedOutside}</span>
-            <Button variant="secondary" size="sm" onClick={heldOutside.onCompare}>
+            <span id={outsideId} aria-hidden="true" className="text-warning">
+              {words.changedOutside}
+            </span>
+            <Button
+              ref={compare}
+              variant="secondary"
+              size="sm"
+              aria-describedby={outsideId}
+              onClick={heldOutside.onCompare}
+            >
               {words.compare}
             </Button>
           </>

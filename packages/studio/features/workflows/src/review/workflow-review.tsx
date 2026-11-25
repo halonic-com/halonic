@@ -35,6 +35,8 @@ export interface WorkflowReviewParts {
   readonly showStep: (stepId: string | undefined) => void;
   /** Where the page draws its marks, so Previous and Next can focus one. */
   readonly page: RefObject<HTMLElement | null>;
+  /** The page's `h1`, for the focus once the last change is decided. */
+  readonly title: RefObject<HTMLElement | null>;
   /** Opens a file at a line, for Compare: Files offers it there (review panel note 4). */
   readonly openFileAt?: ((path: string, line: number) => void) | undefined;
   readonly announce?: ((text: string) => void) | undefined;
@@ -63,6 +65,7 @@ export function useWorkflowReview(parts: WorkflowReviewParts): WorkflowReviewSta
     name: parts.name,
     openFile: openFileAt && ((path) => openFileAt(path, 1)),
     announce: parts.announce,
+    title: parts.title,
     goTo: (change) => {
       flushSync(() => showStep(stepOfChange(change, stepIds)));
       page.current?.querySelector<HTMLElement>(changeMarkSelector(change.id))?.focus();

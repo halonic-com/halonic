@@ -248,6 +248,7 @@ export function AgentScreen({
     name,
     openFile,
     announce,
+    title,
     goTo: (change) =>
       openView(
         "configuration",
