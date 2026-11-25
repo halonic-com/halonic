@@ -1,8 +1,9 @@
 // The owner's routes to the served workspace's routines (`server.routines`):
 // their health, and pausing or resuming them, as the desktop's tray does
 // over the engine role's control pipe (`agent-host.engine-routine-pause`).
-import type { RoutineSchedule } from "./api.ts";
+
 import { errorResponse, serverErrors } from "./errors.ts";
+import type { RoutineSchedule } from "./routine-schedule-api.ts";
 import { isJsonRequest } from "./run-routes.ts";
 
 /** `GET` gives the routines' health. */

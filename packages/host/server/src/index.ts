@@ -16,7 +16,6 @@ export type {
   RequestContext,
   RequestLog,
   RequestLogEntry,
-  RoutineSchedule,
   Server,
   ServerConfig,
   ServerErrorBody,
@@ -31,6 +30,22 @@ export type {
   WorkspaceFacts,
   WorkspaceInfo,
 } from "./api.ts";
+export { cloudCommandsPath } from "./cloud-commands.ts";
+export type {
+  CloudCommand,
+  CloudCommandClaim,
+  CloudCommandHandler,
+  CloudCommandLedger,
+  CloudCommandProgress,
+  CloudCommandWork,
+  CloudInboxPorts,
+  CloudLink,
+  CloudLinkState,
+  CloudLinkStore,
+  CloudSignedRequest,
+  VerifiedCloudRequest,
+  VerifyCloudRequest,
+} from "./cloud-inbox-api.ts";
 export {
   type CloudKey,
   type CloudKeySet,
@@ -118,6 +133,7 @@ export {
 export { ProviderKeysReadOnlyError, providerKeysOf } from "./provider-key-routes.ts";
 export type { ProviderKeyStore } from "./provider-key-store.ts";
 export type { RequestCountStore } from "./request-count-store-api.ts";
+export type { RoutineSchedule } from "./routine-schedule-api.ts";
 export type { RunUpdates } from "./run-updates.ts";
 export {
   readSessionCredential,

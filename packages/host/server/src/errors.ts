@@ -275,6 +275,21 @@ export const serverErrors = {
     code: "paperclip_sign_in_failed",
     message: "The Paperclip sign-in failed. See the host's error log for the cause.",
   },
+  cloudNotSigned: {
+    status: 401,
+    code: "unauthorized",
+    message: "The request isn't signed by Halonic Cloud.",
+  },
+  cloudCommandRunning: {
+    status: 409,
+    code: "command_running",
+    message: "This command is still running. Try again later.",
+  },
+  appPaused: {
+    status: 503,
+    code: "app_paused",
+    message: "This app is paused by its owner.",
+  },
   internal: {
     status: 500,
     code: "internal_error",

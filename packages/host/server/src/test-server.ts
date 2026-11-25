@@ -15,7 +15,6 @@ import type {
   GoogleSetupReadPorts,
   ModelSettingsGate,
   RequestLog,
-  RoutineSchedule,
   Server,
   ServerConfig,
   ServerPorts,
@@ -24,6 +23,7 @@ import type {
   WebhookRoutines,
   WorkspaceInfo,
 } from "./api.ts";
+import type { CloudInboxPorts } from "./cloud-inbox-api.ts";
 import { createServerForTests } from "./create-server.ts";
 import type { ManyUserPorts } from "./many-users-api.ts";
 import type { MessagingPorts } from "./messaging-api.ts";
@@ -31,6 +31,7 @@ import type { ModelChoicePort } from "./model-choice-api.ts";
 import type { PaperclipKeyPorts } from "./paperclip-key-api.ts";
 import type { ProviderKeyStore } from "./provider-key-store.ts";
 import type { RequestCountStore } from "./request-count-store-api.ts";
+import type { RoutineSchedule } from "./routine-schedule-api.ts";
 
 /** A port the test doesn't expect the server to touch: any call fails the test loudly. */
 export function unusedPort<Port extends object>(name: string): Port {
@@ -127,10 +128,12 @@ function optionalPorts(
     | "studioPage"
     | "requestLog"
     | "routineSchedule"
+    | "cloudInbox"
   >,
 ): Partial<ServerPorts> {
   const { google, googleRead, providerKeys, modelChoice, connectors } = options;
   const { workspace, studioPage, requestLog, routineSchedule, messaging, paperclipKeys } = options;
+  const { cloudInbox } = options;
   return {
     ...(google === undefined ? {} : { google }),
     ...(googleRead === undefined ? {} : { googleRead }),
@@ -143,6 +146,7 @@ function optionalPorts(
     ...(routineSchedule === undefined ? {} : { routineSchedule }),
     ...(messaging === undefined ? {} : { messaging }),
     ...(paperclipKeys === undefined ? {} : { paperclipKeys }),
+    ...(cloudInbox === undefined ? {} : { cloudInbox }),
   };
 }
 
@@ -172,6 +176,7 @@ export function testServer(options: {
   workspace?: WorkspaceInfo;
   studioPage?: StudioPage;
   routineSchedule?: RoutineSchedule;
+  cloudInbox?: CloudInboxPorts;
   /** Builds a many-user server; the stub session verifier is allowed here. */
   manyUsers?: ManyUserPorts;
 }): Server {
