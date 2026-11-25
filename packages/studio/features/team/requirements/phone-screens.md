@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-17640 (phase 2 G4); the board's approval of the phase 2 card (HAL-17544, 24 Nov); Sofia's flows on HAL-17509 and HAL-17510; Noah's renders and `wording` table on HAL-17515 (S22–S28, P24–P27), checked by Nina on HAL-17547; Julian's security notes on HAL-17513 and HAL-17540.
 
-On a phone, the Pull requests screen shall offer the chips Stuck, All open and Queue, each with its count, and list the stuck pull requests worst first with their state chips under Stuck. On a phone, the Spend and seats screen shall draw its tiles as stacked rows and show only the "Agents by spend ›" heading, with no list of agents, on its first screen. On a phone, titles and reasons shall show as plain text, and a web link shall open only when `isAllowedWebLink` passes it, with its full address shown first.
+Where the Studio is drawn for a phone, the Pull requests screen shall offer the chips Stuck, All open and Queue, each with its count, and list the stuck pull requests worst first with their state chips under Stuck; the Spend and seats screen shall draw its tiles as stacked rows and show only the "Agents by spend ›" heading, with no list of agents, on its first screen; and both shall show titles and reasons as plain text and open a web link only when `isAllowedWebLink` passes it, with its full address shown first.
 
 ## Examples
 
