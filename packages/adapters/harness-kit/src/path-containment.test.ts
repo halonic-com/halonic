@@ -27,16 +27,26 @@ const cases: ReadonlyArray<readonly [string, string, boolean, boolean, boolean]>
   ["/a/b", "/a/bc", false, false, false],
   ["/a/b/../bc", "/a/b", false, false, false],
   ["/a/./b/c", "/a/b", true, true, true],
-  ["//a//b//c", "/a/b", true, true, true],
   ["/", "/", true, false, true],
   ["/anything", "/", true, true, true],
   ["/a/..b", "/a", true, true, true],
   ["/a/../b", "/a", false, false, false],
 ];
 
+/**
+ * Cases only POSIX rules read as written: on Windows a leading `//` starts a
+ * UNC path (`\\a\b\c` is share `b` on server `a`), so it is not under `/a/b`.
+ */
+const posixOnlyCases: typeof cases = [["//a//b//c", "/a/b", true, true, true]];
+
+/** The cases for one rule set: all of them, unless it reads paths the Windows way. */
+function casesFor(paths: HostPaths): typeof cases {
+  return paths.sep === "/" ? [...cases, ...posixOnlyCases] : cases;
+}
+
 verifies("harness-kit.path-containment", () => {
   describe.each(ruleSets)("under %s", (_name, paths) => {
-    it.each(cases)(
+    it.each(casesFor(paths))(
       "checks %j against %j",
       (path, folder, insideOrSame, strictlyInside, overlap) => {
         expect(isInsideOrSameOn(paths, path, folder)).toBe(insideOrSame);
