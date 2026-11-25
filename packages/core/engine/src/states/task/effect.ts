@@ -59,12 +59,25 @@ export function requestEffect(
 export function takeToolResult(
   { run, stateId }: StateContext<"task">,
   input: EffectDoneInput,
-  { result, outcome, risk, noun, verb, cause }: ToolResult,
+  toolResult: ToolResult,
 ): StateStep {
   const effect = run.effect;
   if (effect === null || effect.unknown || effect.callId !== input.callId) return nothing;
   if (effect.state !== stateId) return nothing;
-  const logged: DecidedEvent = {
+  const logged = loggedToolResult(effect, toolResult);
+  const { result, outcome } = toolResult;
+  if (outcome === "unknown") {
+    return { events: [logged, unknownOutcomeWait(stateId)], effects: [] };
+  }
+  return { events: [logged], effects: [goOn(nextCallId(run), effect, result, outcome)] };
+}
+
+/** The call's `tool.result`, naming the agent whose call it is, or the tool step that made it. */
+export function loggedToolResult(
+  effect: RequestedEffect,
+  { result, outcome, risk, noun, verb, cause }: ToolResult,
+): DecidedEvent {
+  return {
     type: "tool.result",
     agent: effectCallerOf(effect),
     tool: effect.tool,
@@ -75,20 +88,16 @@ export function takeToolResult(
     ...(verb === undefined ? {} : { verb }),
     ...(cause === undefined ? {} : { cause }),
   };
-  if (outcome === "unknown") {
-    const waiting: DecidedEvent = {
-      type: "run.waiting",
-      state: stateId,
-      events: [...unknownOutcomeEvents],
-    };
-    return { events: [logged, waiting], effects: [] };
-  }
-  return { events: [logged], effects: [goOn(nextCallId(run), effect, result, outcome)] };
+}
+
+/** The wait for a person to `retry` or `skip` a call whose outcome is unknown. */
+export function unknownOutcomeWait(stateId: string): DecidedEvent {
+  return { type: "run.waiting", state: stateId, events: [...unknownOutcomeEvents] };
 }
 
 /** Whether a send answers a call whose outcome is unknown in this state. */
 export function answersUnknownEffect(
-  { run, stateId }: StateContext<"task">,
+  { run, stateId }: Pick<StateContext, "run" | "stateId">,
   input: SendInput,
 ): boolean {
   const effect = run.effect;
@@ -123,10 +132,11 @@ export function answerUnknownEffect({ run }: StateContext<"task">, input: SendIn
 
 /**
  * The record before the call, the start of the call, and the effect that
- * makes it, in that order: the effect runs only once both are stored.
+ * makes it, in that order: the effect runs only once both are stored. A
+ * tool step's call is marked as one (requirement `events.tool-step-marker`).
  */
-function makeCall(effect: RequestedEffect): StateStep {
-  const { callId, idempotencyKey, state, agent, connector, tool, args, resume } = effect;
+export function makeCall(effect: RequestedEffect): StateStep {
+  const { callId, idempotencyKey, state, agent, connector, tool, args, resume, step } = effect;
   const timeoutMs = connectorCallTimeoutMs;
   const events: DecidedEvent[] = [
     {
@@ -140,6 +150,7 @@ function makeCall(effect: RequestedEffect): StateStep {
       idempotencyKey,
       resume,
       ...stoppedSubagentOf(resume),
+      ...(step === undefined ? {} : { step }),
     },
     { type: "connector.started", state, agent, connector, timeoutMs },
     { type: "tool.called", agent: effectCallerOf(effect), tool, args },

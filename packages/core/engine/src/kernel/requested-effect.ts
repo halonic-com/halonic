@@ -34,6 +34,8 @@ export interface RequestedEffect {
   readonly resume: AgentResume;
   /** True once the call broke off without an answer: the run waits for `retry` or `skip`. */
   readonly unknown: boolean;
+  /** `"tool"` when a tool step makes the call: no agent goes on with its result. */
+  readonly step?: "tool";
 }
 
 /**
@@ -72,7 +74,17 @@ export function takeEffectRequest(
   state: RunState,
   event: Extract<RunEvent, { type: "effect.requested" }>,
 ): RunState {
-  const { callId, idempotencyKey, state: stateId, agent, connector, tool, args, resume } = event;
+  const {
+    callId,
+    idempotencyKey,
+    state: stateId,
+    agent,
+    connector,
+    tool,
+    args,
+    resume,
+    step,
+  } = event;
   const retried = state.effect?.callId === callId ? state.effect : null;
   const stopped = state.pendingCall?.state === stateId ? state.pendingCall : null;
   const prompt = retried?.prompt ?? stopped?.prompt ?? "";
@@ -90,6 +102,7 @@ export function takeEffectRequest(
       prompt,
       resume,
       unknown: false,
+      ...(step === undefined ? {} : { step }),
     },
     pendingCall: stopped === null ? state.pendingCall : null,
   };
@@ -128,7 +141,8 @@ export function takeEffectResult(
 
 /**
  * The call is over. When the run is still in its state, its agent goes on
- * with the result in a new model call.
+ * with the result in a new model call; a tool step's call has no agent, so
+ * its state decides what the result means.
  */
 function goOnAfterEffect(
   state: RunState,
@@ -136,7 +150,7 @@ function goOnAfterEffect(
   result: string,
   outcome: ToolOutcome,
 ): RunState {
-  if (effect.state !== state.state) {
+  if (effect.state !== state.state || effect.step === "tool") {
     return { ...state, effect: null };
   }
   const calls = state.calls + 1;

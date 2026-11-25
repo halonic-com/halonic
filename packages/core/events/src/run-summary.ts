@@ -21,6 +21,8 @@ export interface PendingApproval {
   tool: string;
   /** The connector the tool comes from (requirement `events.approval-requested-connector`); absent for a built-in tool and in older logs. */
   connector?: string;
+  /** `"tool"` when a tool step asks, with no agent: `agent` then names the step (requirement `events.tool-step-marker`). */
+  step?: "tool";
   args: unknown;
   callId: string;
   /** ISO time the approval was asked for. */

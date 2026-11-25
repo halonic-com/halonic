@@ -6,7 +6,7 @@ import type {
   RunFailureReason,
   RunStatus,
 } from "@halonicjs/events";
-import type { Agent, Workflow } from "@halonicjs/format";
+import type { Agent, Connector, Workflow } from "@halonicjs/format";
 import { acceptedEvents, getState, type Scope, selectTransition } from "@halonicjs/workflow";
 import { states } from "../generated/states.ts";
 import type {
@@ -44,6 +44,26 @@ interface Draft {
   readonly workflow: Workflow;
   readonly agents: Readonly<Record<string, Agent>>;
   readonly workflows: Readonly<Record<string, Workflow>>;
+  readonly connectorTools: Readonly<Record<string, Connector["tools"]>>;
+}
+
+/** A draft of the run as it is, with the definitions it started with. */
+function draftOf(
+  run: RunState,
+  at: string,
+  definitions: RunDefinitions,
+  events: DecidedEvent[] = [],
+): Draft {
+  return {
+    run,
+    events,
+    effects: [],
+    at,
+    workflow: definitions.workflow,
+    agents: definitions.agents ?? {},
+    workflows: definitions.workflows ?? {},
+    connectorTools: definitions.connectorTools ?? {},
+  };
 }
 
 /**
@@ -74,15 +94,7 @@ export function decide(
       `Run "${run.runId}" has entered no state, so it takes no ${input.type} input.`,
     );
   }
-  const draft: Draft = {
-    run,
-    events: [],
-    effects: [],
-    at: input.at,
-    workflow: definitions.workflow,
-    agents: definitions.agents ?? {},
-    workflows: definitions.workflows ?? {},
-  };
+  const draft = draftOf(run, input.at, definitions);
   const stateId = run.state;
   const handler = handlerFor(draft, stateId);
   if (handler !== undefined) {
@@ -180,7 +192,6 @@ function checkRunTakesSend(run: RunState, input: SendInput): void {
 }
 
 function start(input: StartInput, definitions: RunDefinitions): Decision {
-  const workflow = definitions.workflow;
   const {
     type: _type,
     at,
@@ -205,15 +216,9 @@ function start(input: StartInput, definitions: RunDefinitions): Decision {
     ...(version === undefined ? {} : { version }),
     ...(task === undefined ? {} : { task }),
   };
-  const draft: Draft = {
-    run: evolve(null, { ...started, runId, seq: 1, at }),
-    events: [started],
-    effects: [],
-    at,
-    workflow,
-    agents: definitions.agents ?? {},
-    workflows: definitions.workflows ?? {},
-  };
+  const draft = draftOf(evolve(null, { ...started, runId, seq: 1, at }), at, definitions, [
+    started,
+  ]);
   if (cantTry.some((found) => found.step === null)) {
     // The whole item can't be tried, so the run enters no state at all.
     endCantTry(draft, null, []);
@@ -232,15 +237,7 @@ function start(input: StartInput, definitions: RunDefinitions): Decision {
  * @param run - the run as it is with `continue` folded in
  */
 export function startAgain(run: RunState, at: string, definitions: RunDefinitions): Decision {
-  const draft: Draft = {
-    run,
-    events: [],
-    effects: [],
-    at,
-    workflow: definitions.workflow,
-    agents: definitions.agents ?? {},
-    workflows: definitions.workflows ?? {},
-  };
+  const draft = draftOf(run, at, definitions);
   begin(draft);
   return decisionOf(draft, null);
 }
@@ -452,6 +449,7 @@ function contextOf(draft: Draft, stateId: string): StateContext {
     workflow: draft.workflow,
     agents: draft.agents,
     workflows: draft.workflows,
+    connectorTools: draft.connectorTools,
     scope: scopeOf(draft),
     at: draft.at,
   };

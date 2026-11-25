@@ -330,6 +330,8 @@ verifies("events.run-log-contract", () => {
       subagent?: string;
       // Added after the reference by events.approval-requested-connector (HAL-11701).
       connector?: string;
+      // Added after the reference by events.tool-step-marker (HAL-18635).
+      step?: "tool";
     }>();
     expectTypeOf<EventOf<"approval.resolved">>().toEqualTypeOf<{
       type: "approval.resolved";

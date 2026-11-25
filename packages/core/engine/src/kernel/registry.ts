@@ -5,7 +5,7 @@ import type {
   RunFailureCause,
   RunFailureReason,
 } from "@halonicjs/events";
-import type { Agent, StateType, Workflow } from "@halonicjs/format";
+import type { Agent, Connector, StateType, Workflow } from "@halonicjs/format";
 import type { Scope, StateOf } from "@halonicjs/workflow";
 import type { DecidedEvent, DecideInput, Effect } from "./decide-types.ts";
 import type { RunState } from "./run-state.ts";
@@ -17,7 +17,7 @@ import type { RunState } from "./run-state.ts";
  */
 export type BuiltStateType = Extract<
   StateType,
-  "task" | "wait" | "final" | "workflow" | "parallel" | "foreach" | "rule"
+  "task" | "wait" | "final" | "workflow" | "parallel" | "foreach" | "rule" | "tool"
 >;
 
 /**
@@ -34,6 +34,11 @@ export interface StateContext<Type extends StateType = BuiltStateType> {
   readonly agents: Readonly<Record<string, Agent>>;
   /** The hub's workflows by id, as the run started with them; empty for runs kept without them. */
   readonly workflows: Readonly<Record<string, Workflow>>;
+  /**
+   * The `tools` lists of the connector files the hub can see by connector id, as the run started
+   * with them; empty for runs kept without them.
+   */
+  readonly connectorTools: Readonly<Record<string, Connector["tools"]>>;
   /** The run's input and context (the workflow's initial context, with what the run wrote over it). */
   readonly scope: Scope;
   /** ISO time of the input being decided. */

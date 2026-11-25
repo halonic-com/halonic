@@ -69,7 +69,8 @@
               "workflow",
               "parallel",
               "foreach",
-              "rule"
+              "rule",
+              "tool"
             ]
           },
           "description": {
@@ -82,6 +83,12 @@
             "type": "string"
           },
           "rule": {
+            "type": "string"
+          },
+          "connector": {
+            "type": "string"
+          },
+          "tool": {
             "type": "string"
           },
           "input": {

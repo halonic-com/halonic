@@ -12,7 +12,7 @@ code disagree, that is a bug: fix one of them in the same pull request.
 
 | Term | Meaning |
 | --- | --- |
-| **state** | one step of a workflow: `task`, `wait`, `final`, `workflow`, `parallel` or `foreach` |
+| **state** | one step of a workflow: `task`, `wait`, `final`, `workflow`, `parallel`, `foreach`, `rule` or `tool` |
 | **transition** | a rule that moves a run from one state to another, with an event and an optional guard |
 | **guard** | a condition on a transition; the transition fires only if it passes |
 | **context** | the data a run carries from state to state |
@@ -211,6 +211,24 @@ A state with `type: foreach` runs once for each item of a list.
   can't pause for an approval.
 - **Log.** An event from an item carries `item`.
 
+## Tool steps
+
+A state with `type: tool` calls one tool of a connector, with no model
+(`engine.tool-state`).
+
+- **What it calls.** `connector` names the connector, `tool` the tool as its
+  server lists it, and `with` the arguments, rendered against the scope.
+- **Checks.** The call gets the same checks as an agent's call to that tool:
+  a tool the connector's `tools.allow` doesn't name fails the run before
+  anything is listed or called, and a tool that isn't marked `read`, or that
+  `approve` names, waits for a person's OK.
+- **Results.** The tool's result goes to `output`, as JSON when it reads as
+  JSON, and the step ends with `done`. A call that fails fails the run.
+- **Other endings.** A person's no ends the step with `rejected`, and a
+  skipped call whose outcome is unknown with `skipped`. A tool step whose tool
+  may ask for a person's OK should have a transition for `rejected`;
+  without one, a no fails the run with "no transition".
+
 ## Static checks
 
 `validateWorkflow` checks one workflow before it runs, and the Studio shows the
@@ -238,6 +256,9 @@ workflows, for example) belong to the workspace loader.
 | `parallel-without-branches` | error | a parallel step has no branches |
 | `unknown-agent` | error | a step or a branch uses an agent that doesn't exist |
 | `task-without-agent` | error | a task has no agent, so every run fails there |
+| `tool-without-connector` | error | a tool step names no connector |
+| `tool-without-name` | error | a tool step names no tool |
+| `tool-without-output` | error | a tool step has no `output`, so its result goes nowhere |
 | `unknown-item-name` | error | a for-each step's `input` or `with` reads a name that isn't its item, `index`, `input` or `context` |
 | `items-not-a-list` | error | a for-each step's `items` is a text, or a name that gives nothing |
 | `no-done-transition` | error | a step that ends with `done` only has transitions on other events |

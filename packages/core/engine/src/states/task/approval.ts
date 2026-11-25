@@ -129,7 +129,7 @@ export function answerApproval(
 }
 
 /** The approval a send answers: the one it names, or else the state's oldest. */
-function approvalAnswered(
+export function approvalAnswered(
   approvals: readonly WaitingApproval[],
   stateId: string,
   callId: string | undefined,
@@ -139,7 +139,7 @@ function approvalAnswered(
 }
 
 /** The person's comment, when the payload is `{ comment: "…" }`. */
-function commentOf(payload: unknown): string | undefined {
+export function commentOf(payload: unknown): string | undefined {
   if (!isPlainObject(payload)) return undefined;
   const comment = payload["comment"];
   return typeof comment === "string" ? comment : undefined;

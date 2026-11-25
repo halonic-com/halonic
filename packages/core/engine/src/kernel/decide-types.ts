@@ -31,6 +31,7 @@ import type {
 import type { DeclaredTools } from "../agent/offer-listed-tools.ts";
 import type { RuleResult, RunRuleEffect } from "./rule-call.ts";
 import type { ResumeAfterStop, RunState } from "./run-state.ts";
+import type { CheckToolEffect, ToolCheckResult } from "./tool-step-call.ts";
 
 // `decide` does no input or output and reads no clock. Everything it needs
 // from outside comes in here: the time with every input, and a new id with
@@ -161,7 +162,7 @@ export interface EffectDoneInput extends InputBase {
   readonly type: "effect-done";
   /** The `callId` of the effect that finished. */
   readonly callId: string;
-  readonly result: ModelCallResult | HarnessResult | ToolResult | RuleResult;
+  readonly result: ModelCallResult | HarnessResult | ToolResult | RuleResult | ToolCheckResult;
 }
 
 /**
@@ -370,7 +371,8 @@ export type Effect =
   | TellParentEffect
   | CancelChildEffect
   | SetTimerEffect
-  | RunRuleEffect;
+  | RunRuleEffect
+  | CheckToolEffect;
 
 /**
  * An event as the run log keeps it, before `step` adds `runId`, `seq` and

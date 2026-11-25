@@ -268,6 +268,11 @@ export type RunEventBody =
       resume: AgentResume;
       /** The subagent whose call it is (requirement `events.agent-resume-inner`); absent for the state's own agent. */
       subagent?: string;
+      /**
+       * `"tool"` when a tool step makes the call, with no agent: `agent` then names the step
+       * (requirement `events.tool-step-marker`). Absent for an agent's call and in older logs.
+       */
+      step?: "tool";
     }
   /** A knowledge source in "auto" mode was searched with the task before the first model call. */
   | { type: "knowledge.searched"; agent: string; source: string; query: string; refs: string[] }
@@ -309,6 +314,11 @@ export type RunEventBody =
       subagent?: string;
       /** The connector the tool comes from (requirement `events.approval-requested-connector`); absent in older logs. `tool` stays the bare name. */
       connector?: string;
+      /**
+       * `"tool"` when a tool step asks, with no agent: `agent` then names the step
+       * (requirement `events.tool-step-marker`). Absent for an agent's call and in older logs.
+       */
+      step?: "tool";
     }
   | {
       type: "approval.resolved";

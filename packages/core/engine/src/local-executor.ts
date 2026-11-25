@@ -41,6 +41,7 @@ import { runAgentTools } from "./run/run-agent-tools.ts";
 import { RunsConnectors } from "./run/run-connectors.ts";
 import { runModelCall } from "./run/run-model-call.ts";
 import { runTurnLogOf } from "./run/run-store-turn-log.ts";
+import { checkRunToolStep } from "./run/tool-step-checks.ts";
 import { knowledgeTools } from "./tools/knowledge/knowledge-tools.ts";
 
 /** The round limit of a chat turn when the options don't set one. */
@@ -110,6 +111,16 @@ export class LocalExecutor implements RunExecutor {
                     options.listedToolApproval,
                   ),
             this.runConnectors,
+            connectorCalls === undefined
+              ? undefined
+              : async (call, run) =>
+                  checkRunToolStep(
+                    () => this.connectorsOfRun(run),
+                    await this.keptDefinitions(run),
+                    effectBoundary(connectorCalls),
+                    call,
+                    options.listedToolApproval,
+                  ),
           );
     this.chatHarnesses =
       runs?.harnesses === undefined
