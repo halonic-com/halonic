@@ -7,6 +7,7 @@
 actions, `paperclip.comment`, `paperclip.next-step` and `paperclip.finish-run`, each with
 one setting, `mode`, which is `dry-run` unless the tool file says `write`. The list test
 names the nine actions and the three that write instead of checking that none does.
+The JSON spec files for tools and the workspace snapshot are regenerated to match.
 
 `runtime.tools`' action-list test said no action was available until it had a handler;
 the three writing actions now have one, so it names them.
@@ -21,3 +22,5 @@ approved adding them on HAL-17956, starting in dry run for one pass.
 
 - format.tool-actions
 - runtime.tools
+- packages/core/format/spec/tool.schema.json
+- packages/core/format/spec/workspace-snapshot.schema.json
