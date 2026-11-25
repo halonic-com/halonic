@@ -52,6 +52,8 @@ struct Workspace<P> {
     /// Crashed too often: left stopped until a window opens it again or
     /// the user picks Try again.
     problem: bool,
+    /// When it last started, as a count: the highest is the newest.
+    opened: u64,
 }
 
 /// The engines by the workspace's real path.
@@ -64,6 +66,10 @@ pub struct EngineTable<P> {
     /// The tray's Pause routines, for every workspace and the ones opened
     /// after it.
     pause_all: RoutinePause,
+    /// The locations a start at login has yet to start or give up.
+    waiting: Vec<String>,
+    /// The latest workspace's `opened`.
+    opened: u64,
 }
 
 impl<P> Default for EngineTable<P> {
@@ -73,6 +79,8 @@ impl<P> Default for EngineTable<P> {
             host: None,
             closed: false,
             pause_all: RoutinePause::default(),
+            waiting: Vec::new(),
+            opened: 0,
         }
     }
 }
@@ -102,6 +110,9 @@ impl<P> EngineTable<P> {
         if self.closed {
             return Err(engine);
         }
+        self.waiting.retain(|waiting| *waiting != location);
+        self.opened += 1;
+        let opened = self.opened;
         let pause = self.pause_all;
         let entry = self
             .workspaces
@@ -114,7 +125,9 @@ impl<P> EngineTable<P> {
                 restarts: RestartLimit::default(),
                 pause,
                 problem: false,
+                opened,
             });
+        entry.opened = opened;
         entry.location = location;
         entry.engine = Some(engine);
         entry.launch += 1;
@@ -275,21 +288,39 @@ impl<P> EngineTable<P> {
             .filter_map(|entry| entry.engine.as_ref())
     }
 
+    /// A start at login is about to start `locations`.
+    pub fn waiting_to_start(&mut self, locations: &[String]) {
+        self.waiting = locations.to_vec();
+    }
+
+    /// The start at login gave up `location`, or it started.
+    pub fn not_waiting(&mut self, location: &str) {
+        self.waiting.retain(|waiting| waiting != location);
+    }
+
     /// The location of every workspace an engine was started for, running
-    /// or in the problem state, sorted, for the start at login to start
-    /// again (`studio.src-tauri.background-start`). `None` once Quit closed
-    /// the table, so a second stop doesn't record an empty list over it.
-    pub fn open_at_quit(&self) -> Option<Vec<String>> {
+    /// or in the problem state, and of those a start at login has yet to
+    /// start, for the next start at login to start again
+    /// (`studio.src-tauri.background-start`). At most `limit`, the newest
+    /// first, the ones waiting counting as oldest, then sorted. `None` once
+    /// Quit closed the table, so a second stop doesn't record an empty list
+    /// over it.
+    pub fn open_at_quit(&self, limit: usize) -> Option<Vec<String>> {
         if self.closed {
             return None;
         }
-        let mut locations: Vec<String> = self
-            .workspaces
-            .values()
-            .map(|entry| entry.location.clone())
+        let mut newest_first: Vec<&Workspace<P>> = self.workspaces.values().collect();
+        newest_first.sort_by_key(|entry| std::cmp::Reverse(entry.opened));
+        let mut seen = HashSet::new();
+        let mut locations: Vec<String> = newest_first
+            .into_iter()
+            .map(|entry| &entry.location)
+            .chain(&self.waiting)
+            .filter(|location| seen.insert(*location))
+            .take(limit)
+            .cloned()
             .collect();
         locations.sort();
-        locations.dedup();
         Some(locations)
     }
 
@@ -299,6 +330,7 @@ impl<P> EngineTable<P> {
     /// windows each served.
     pub fn take_all(&mut self) -> Vec<(P, HashSet<String>)> {
         self.closed = true;
+        self.waiting.clear();
         self.workspaces
             .drain()
             .filter_map(|(_, entry)| entry.engine.map(|engine| (engine, entry.windows)))

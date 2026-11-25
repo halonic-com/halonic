@@ -22,6 +22,7 @@ use halonic_agent_host::{Handshake, engine_command::engine_command, executable_b
 use halonic_engine_pipe::SandboxHost;
 use halonic_engine_supervisor::{EngineProcess, LinkEnd, LinkWatcher, STOP_KILL_AFTER, Stopped};
 use halonic_secret_broker::{SecretBroker, TrustRecord};
+use halonic_trust_grant::MAX_PICKED_FOLDERS;
 use halonic_trust_store::FileTrustStore;
 use serde::Serialize;
 use tauri::{AppHandle, Manager, Runtime, Webview};
@@ -107,7 +108,26 @@ pub fn start_in_background<R: Runtime>(
     workspace: &Path,
     location: &str,
 ) -> Result<(), EngineOpenRefusal> {
-    running_engine(app, workspace, location, None).map(|_| ())
+    let started = running_engine(app, workspace, location, None).map(|_| ());
+    // Started, running already or failed, it waits no more: a running
+    // engine is in the table, and a failed one isn't open.
+    not_waiting(app, location);
+    started
+}
+
+/// A start at login is about to start the engines of `locations`: until
+/// each has started or been given up, Quit records it as open.
+pub fn waiting_to_start<R: Runtime>(app: &AppHandle<R>, locations: &[String]) {
+    if let Some(state) = app.try_state::<EnginesState>() {
+        lock(&state.table).waiting_to_start(locations);
+    }
+}
+
+/// The start at login gave up `location`, or it started.
+pub fn not_waiting<R: Runtime>(app: &AppHandle<R>, location: &str) {
+    if let Some(state) = app.try_state::<EnginesState>() {
+        lock(&state.table).not_waiting(location);
+    }
 }
 
 /// The handshake of the engine of `workspace`, which now also serves
@@ -411,7 +431,7 @@ pub fn stop_all<R: Runtime>(app: &AppHandle<R>) {
         return;
     };
     let mut table = lock(&state.table);
-    let open = table.open_at_quit();
+    let open = table.open_at_quit(MAX_PICKED_FOLDERS);
     let engines = table.take_all();
     drop(table);
     if let Some(locations) = open {

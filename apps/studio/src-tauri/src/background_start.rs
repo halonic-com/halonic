@@ -88,13 +88,19 @@ fn start_recorded<R: Runtime>(app: &AppHandle<R>) {
         }
     };
     let locations = crate::last_quit::read(Path::new(&open_at_quit_file(&profile)));
+    // A Quit before they all started records the ones still waiting too.
+    crate::engines::waiting_to_start(app, &locations);
     let folders = app.state::<GitState>().folders();
     let state = app.state::<TrustState>();
     start_each(
         &locations,
         |location| {
             let place = |real: &Path| crate::profile_place::folder_place(app, real);
-            reopen_workspace(&state, &folders, &list, place, location)
+            let reopened = reopen_workspace(&state, &folders, &list, place, location);
+            if reopened.is_err() {
+                crate::engines::not_waiting(app, location);
+            }
+            reopened
         },
         |workspace, location| {
             if let Err(refusal) = crate::engines::start_in_background(app, workspace, location) {
@@ -142,16 +148,26 @@ pub fn reopen_workspace(
     place: impl FnOnce(&Path) -> FolderPlace,
     location: &str,
 ) -> Result<PathBuf, TrustRefusal> {
+    // A first look, so a folder that plainly isn't a workspace doesn't move
+    // up the picked list as a reopen moves it.
     if !Path::new(location).join(WORKSPACE_MARKER).is_file() {
-        return Err(TrustRefusal::new(
-            "not_workspace",
-            format!("{location:?} isn't a workspace"),
-        ));
+        return Err(not_workspace(location));
     }
     state.reopen(folders, list, place, location)?;
-    folders
-        .check(Path::new(location))
-        .map_err(|_| TrustRefusal::new("folder_unreadable", format!("{location:?} can't be read")))
+    let real = folders.check(Path::new(location)).map_err(|_| {
+        TrustRefusal::new("folder_unreadable", format!("{location:?} can't be read"))
+    })?;
+    // What decides is the folder that opened, which may have changed since
+    // the first look. It stays open, as a picked folder Studio reopens does;
+    // only its engine doesn't start.
+    if !real.join(WORKSPACE_MARKER).is_file() {
+        return Err(not_workspace(location));
+    }
+    Ok(real)
+}
+
+fn not_workspace(location: &str) -> TrustRefusal {
+    TrustRefusal::new("not_workspace", format!("{location:?} isn't a workspace"))
 }
 
 /// Quit: records `locations` for the next start at login. A list that can't
