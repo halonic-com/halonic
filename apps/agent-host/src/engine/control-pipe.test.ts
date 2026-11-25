@@ -78,7 +78,9 @@ verifies("agent-host.engine-control-pipe", () => {
         scheduling: true,
         paused: false,
         activeRuns: 0,
+        runsWaiting: 0,
         lastTick: null,
+        nextRoutineAt: null,
       } as const;
       expect(() => pipe.send(health)).toThrow(/handshake/);
       pipe.send(handshake);

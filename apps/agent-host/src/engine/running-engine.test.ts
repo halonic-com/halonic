@@ -141,7 +141,9 @@ verifies("agent-host.engine-role-lifecycle", () => {
         scheduling: true,
         paused: false,
         activeRuns: 3,
+        runsWaiting: 1,
         lastTick: "2026-11-23T08:00:00Z",
+        nextRoutineAt: "2026-11-23T14:00:00.000Z",
       });
       schedule.stop();
       await ticks.onTick("2026-11-23T08:01:00Z");
@@ -152,7 +154,10 @@ verifies("agent-host.engine-role-lifecycle", () => {
   });
 });
 
-/** An `EngineSchedule` over a scheduler that records its calls, with 3 runs going. */
+/**
+ * An `EngineSchedule` over a scheduler that records its calls, with 3 runs
+ * going, 1 of them waiting, and a routine due at 14:00.
+ */
 function scheduleWithFakes() {
   const schedule = new EngineSchedule();
   const heard: string[] = [];
@@ -166,7 +171,10 @@ function scheduleWithFakes() {
       pass: async () => heard.push("pass"),
       dispose: async () => {},
     },
-    async () => 3,
+    {
+      countRuns: async () => ({ active: 3, waiting: 1 }),
+      nextRoutineAt: async () => "2026-11-23T14:00:00.000Z",
+    },
   );
   return { schedule, ticks, heard, changes: () => changes };
 }
@@ -190,8 +198,9 @@ verifies("agent-host.engine-routine-pause", () => {
     await ticks.onTick("2026-11-23T08:02:00Z");
     expect(heard).toEqual(["pass", "pass", "tick"]);
     expect(schedule.health().lastTick).toBe("2026-11-23T08:02:00Z");
-    // Paused from the start, so the first pause changed nothing: the resume and the tick did.
-    expect(changes()).toBe(2);
+    // Paused from the start, so the first pause changed nothing: the first
+    // pass counted the runs, then the resume and the tick changed it.
+    expect(changes()).toBe(3);
   });
 
   it("does nothing on a tick after the stop, paused or not", async () => {
@@ -219,5 +228,47 @@ verifies("agent-host.engine-routine-pause", () => {
     expect(running.health().paused).toBe(false);
     running.pauseRoutines(true);
     expect(running.health().paused).toBe(true);
+  });
+});
+
+verifies("agent-host.engine-health-next-routine", () => {
+  it("reads the next routine after a tick, and forgets it while paused or stopping", async () => {
+    const { schedule, ticks } = scheduleWithFakes();
+    schedule.pause(false);
+    await ticks.onTick("2026-11-23T09:00:00Z");
+    expect(schedule.health()).toMatchObject({
+      activeRuns: 3,
+      runsWaiting: 1,
+      nextRoutineAt: "2026-11-23T14:00:00.000Z",
+    });
+    schedule.pause(true);
+    expect(schedule.health().nextRoutineAt).toBe(null);
+    schedule.pause(false);
+    // Only the next tick reads it again: the one read before the pause may have passed.
+    expect(schedule.health().nextRoutineAt).toBe(null);
+    await ticks.onTick("2026-11-23T09:01:00Z");
+    expect(schedule.health().nextRoutineAt).toBe("2026-11-23T14:00:00.000Z");
+    schedule.stop();
+    expect(schedule.health().nextRoutineAt).toBe(null);
+  });
+
+  it("counts the runs on a paused tick, without reading the next routine", async () => {
+    const { schedule, ticks, heard } = scheduleWithFakes();
+    schedule.pause(true);
+    await ticks.onTick("2026-11-23T09:00:00Z");
+    expect(heard).toEqual(["pass"]);
+    expect(schedule.health()).toMatchObject({
+      activeRuns: 3,
+      runsWaiting: 1,
+      nextRoutineAt: null,
+    });
+  });
+
+  it("reports a tick only when it changed the health", async () => {
+    const { schedule, ticks, changes } = scheduleWithFakes();
+    schedule.pause(true);
+    await ticks.onTick("2026-11-23T09:00:00Z");
+    await ticks.onTick("2026-11-23T09:01:00Z");
+    expect(changes()).toBe(1);
   });
 });
