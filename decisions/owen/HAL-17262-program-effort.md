@@ -3,6 +3,7 @@
 - Task: HAL-17262
 - Approval: Liam decided this follow-up on HAL-17250 (#5580); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:0sswDBnCtdCLyrtaDNDmehrFmJA3/4fXCgIPsW6fGahfo++CbAAkcO07GEfUJBBCU13Bj03JbWKeRQvHngKHBQ==
 
 ## What changes
 
