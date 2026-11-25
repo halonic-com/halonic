@@ -39,6 +39,22 @@ verifies("cloudflare-durable.usage-summary", () => {
     expect(account.summary()).toEqual({ planName: null, costPercent: null, periodEnd: null });
   });
 
+  it("is all null once the kept period has ended, until the next one arrives", () => {
+    const { account, clock } = openAccount(acmeLimits({ planName: "Starter" }));
+    account.record("call_1", owner, "model_call", { cost: 1_000 });
+    clock.nowMs = period.end - 1;
+    expect(account.summary().costPercent).toBe(100);
+    clock.nowMs = period.end;
+    expect(account.summary()).toEqual({ planName: null, costPercent: null, periodEnd: null });
+    const nextPeriod = { start: period.end, end: Date.UTC(2027, 0, 1) };
+    account.applyLimits(acmeLimits({ version: 2, planName: "Starter", period: nextPeriod }));
+    expect(account.summary()).toEqual({
+      planName: "Starter",
+      costPercent: 0,
+      periodEnd: nextPeriod.end,
+    });
+  });
+
   it("refuses a document whose plan name is empty, too long or not text", () => {
     const { account } = openAccount();
     const wrong = [" ", "x".repeat(201), 42 as unknown as string];
