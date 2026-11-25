@@ -7,15 +7,57 @@ import type { ValidatedStepperRequest } from "./validate-stepper-request.ts";
 type Values = Readonly<Record<string, unknown>>;
 type Reference = { ref: string; parameters: unknown };
 
+/**
+ * Whether a character could make text look like a line of its own or
+ * reorder what's shown: a control character (line breaks and the terminal's
+ * escape included), a Unicode line or paragraph separator, or a bidirectional
+ * override.
+ */
+function isUnsafe(code: number): boolean {
+  return (
+    code <= 0x1f ||
+    (code >= 0x7f && code <= 0x9f) ||
+    code === 0x2028 ||
+    code === 0x2029 ||
+    (code >= 0x202a && code <= 0x202e) ||
+    (code >= 0x2066 && code <= 0x2069)
+  );
+}
+
+const oneLine = (text: string) =>
+  Array.from(text, (character) => (isUnsafe(character.codePointAt(0) ?? 0) ? " " : character)).join(
+    "",
+  );
+
+const backtickRun = /`+/g;
+
+/**
+ * Quotes text the requester chose as one Markdown code span. The guide is
+ * pasted into a Markdown card, so unquoted text could start a numbered line
+ * of its own, hide a link's target or load an image. The fence is longer
+ * than any backtick run inside, so the text can't close it.
+ */
+function quoted(text: string): string {
+  const line = oneLine(text);
+  const longestRun = Math.max(0, ...(line.match(backtickRun) ?? []).map((run) => run.length));
+  const fence = "`".repeat(longestRun + 1);
+  // A span may not start or end with a backtick; Markdown strips one padding space on each side.
+  const padding = line.startsWith("`") || line.endsWith("`") ? " " : "";
+  return `${fence}${padding}${line}${padding}${fence}`;
+}
+
+const requesterLabel = "(from the requester, not checked by Halonic)";
+
 /** Marks a line the requester wrote, which Halonic didn't check. */
-const fromRequester = (line: string) => `(from the requester, not checked by Halonic) ${line}`;
+const fromRequester = (line: string) => `${requesterLabel} ${quoted(line)}`;
 
 const placeholder = /\{([A-Za-z][A-Za-z0-9_]*)\}/g;
 
 /**
  * Fills `{name}` placeholders with checked parameter values. In an address
- * each value is percent-encoded, as the shell builds it. A placeholder with
- * no value stays as written, so the guide never hides a gap in a definition.
+ * each value is percent-encoded, as the shell builds it; in text it's quoted,
+ * because the requester chose it. A placeholder with no value stays as
+ * written, so the guide never hides a gap in a definition.
  */
 function fill(template: string, values: Values, encode: (value: string) => string): string {
   return template.replace(placeholder, (whole, name: string) => {
@@ -24,7 +66,7 @@ function fill(template: string, values: Values, encode: (value: string) => strin
   });
 }
 
-const fillText = (template: string, values: Values) => fill(template, values, (value) => value);
+const fillText = (template: string, values: Values) => fill(template, values, quoted);
 const fillAddress = (template: string, values: Values) =>
   fill(template, values, encodeURIComponent);
 
@@ -85,7 +127,7 @@ function browserLines(
   const result =
     block.result === undefined
       ? []
-      : [`Copy ${block.result.label} from the page and paste it back on the card.`];
+      : [`Copy ${quoted(block.result.label)} from the page and paste it back on the card.`];
   const check =
     block.check === undefined
       ? []
@@ -100,7 +142,7 @@ function serverSessionLines(block: ServerSessionBlock): string[] {
   return [
     "Open a terminal and sign in to your server with ssh.",
     ...block.steps.map(fromRequester),
-    fromRequester(`Check that it's done: ${block.doneWhen}`),
+    `${requesterLabel} Check that it's done: ${quoted(block.doneWhen)}`,
     `Report back on ${block.task}. Never paste a key, token or password into the task.`,
   ];
 }
@@ -140,7 +182,7 @@ export function renderManualGuide(
 ): string {
   const steps = validated.request.blocks.flatMap((block) => blockLines(block, catalog));
   return [
-    validated.request.title,
+    quoted(validated.request.title),
     "",
     "Do these steps in order, signed in with your own account:",
     ...steps.map((line, index) => `${index + 1}. ${line}`),

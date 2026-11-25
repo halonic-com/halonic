@@ -45,12 +45,12 @@ verifies("cli.commands.stepper.guide", () => {
       const { code, io } = await guide(file);
       expect(code).toBe(exitCode.ok);
       expect(io.stdout).toEqual([
-        "Restart acme",
+        "`Restart acme`",
         "",
         "Do these steps in order, signed in with your own account:",
         "1. Open a terminal and sign in to your server with ssh.",
-        "2. (from the requester, not checked by Halonic) Restart the acme worker.",
-        "3. (from the requester, not checked by Halonic) Check that it's done: the worker answers",
+        "2. (from the requester, not checked by Halonic) `Restart the acme worker.`",
+        "3. (from the requester, not checked by Halonic) Check that it's done: `the worker answers`",
         "4. Report back on HAL-1234. Never paste a key, token or password into the task.",
       ]);
     });
