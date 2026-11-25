@@ -21,7 +21,7 @@ import { defaultSettings } from "../merge-control/state.ts";
 import type { PrioTask, TaskPriority } from "../rules/queue-prio.ts";
 import { everyIssue } from "./host.ts";
 import { companyConfig, readSettings, requestTimeoutMs } from "./job.ts";
-import type { MergeFactsReader } from "./merge-control-job.ts";
+import { type MergeFactsReader, queueLoginOf, rulesOf } from "./merge-control-job.ts";
 
 /**
  * Builds merge control's facts reader from the plugin context: the
@@ -65,7 +65,8 @@ export function readFactsSettings(config: Readonly<Record<string, unknown>>) {
   const watcher = readSettings(config);
   const settings: FactsSettings = {
     repo: watcher.repos[0] ?? "halonic-com/halonic",
-    mergerLogin: text("mergerLogin", /^[A-Za-z0-9-]{1,39}$/),
+    mergerLogin: queueLoginOf(config),
+    autoLabelAuthors: rulesOf(config).autoLabelAuthors,
     capacity: {
       statusUrl: text("ciStatusUrl", /^https?:\/\/[\w.-]+(:\d+)?(\/[\w./-]*)?$/),
       prometheusUrl: text("prometheusUrl", /^https?:\/\/[\w.-]+(:\d+)?$/),

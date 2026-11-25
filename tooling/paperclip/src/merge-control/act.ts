@@ -29,6 +29,13 @@ export function writesOf(action: MergeAction, repo: string): QueueWrite[] {
     case "dequeue":
       return [
         { kind: "dequeue", pullId: action.pullId },
+        ...(action.comment === ""
+          ? []
+          : [{ kind: "comment" as const, repo, number: action.number, body: action.comment }]),
+      ];
+    case "add-label":
+      return [
+        { kind: "add-label", repo, number: action.number, label: action.label },
         { kind: "comment", repo, number: action.number, body: action.comment },
       ];
     case "rerun":
@@ -59,6 +66,7 @@ export function actionName(action: MergeAction): string {
     case "update-branch":
     case "comment":
     case "reopen":
+    case "add-label":
       return `${action.kind} #${action.number}`;
     case "rerun":
     case "rerun-failed-jobs":

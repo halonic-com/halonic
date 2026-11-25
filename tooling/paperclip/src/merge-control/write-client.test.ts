@@ -46,6 +46,7 @@ verifies("paperclip.merge-control-write-scope", () => {
       { kind: "comment", repo, number: 7, body: "Taken out of the queue." },
       { kind: "close", pullId: "PR_3" },
       { kind: "reopen", pullId: "PR_3" },
+      { kind: "add-label", repo, number: 8, label: "built-on:paperclip" },
     ];
     for (const write of writes) {
       await queue.send(write);
@@ -59,7 +60,11 @@ verifies("paperclip.merge-control-write-scope", () => {
       `POST https://api.github.com/repos/${repo}/issues/7/comments`,
       `POST ${graphql}`,
       `POST ${graphql}`,
+      `POST https://api.github.com/repos/${repo}/issues/8/labels`,
     ]);
+    expect(JSON.parse(fetch.mock.calls[8]?.[1].body ?? "")).toEqual({
+      labels: ["built-on:paperclip"],
+    });
     expect(JSON.parse(fetch.mock.calls[0]?.[1].body ?? "")).toEqual({
       query: enqueueDocument,
       variables: { pullRequestId: "PR_1", expectedHeadOid: "abc", jump: true },

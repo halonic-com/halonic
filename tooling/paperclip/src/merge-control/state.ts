@@ -128,6 +128,12 @@ export interface MergeSettings {
    * plugin's config, never from code (HAL-16851).
    */
   readonly fastTrackLabellers: readonly string[];
+  /**
+   * Authors whose open pull requests without a `built-on:*` label get
+   * `built-on:paperclip` once approved and green (HAL-18506). The board's
+   * queue login comes from the plugin's config, never from code (HAL-16851).
+   */
+  readonly autoLabelAuthors: readonly string[];
   readonly fillTarget: number;
   /** A fast-track pull request jumps only with more than this many entries queued. */
   readonly jumpAhead: number;
@@ -150,6 +156,7 @@ export const defaultSettings: MergeSettings = {
   owner: "halonic-com",
   teamLogin: "halonic-dev",
   fastTrackLabellers: ["halonic-dev"],
+  autoLabelAuthors: ["halonic-dev"],
   fillTarget: 15,
   jumpAhead: 8,
   rerunsPerPass: 8,
@@ -159,6 +166,9 @@ export const defaultSettings: MergeSettings = {
   // Goes once HAL-18065 fixes the emulator flake.
   knownFlakyPushJobs: ["Android device keys (emulator)"],
 };
+
+/** The one label merge control adds, and the write client allows (HAL-18506). */
+export const autoLabel = "built-on:paperclip";
 
 /** Why a queued pull request comes out (MERGER.md §4, a–e and the board's additions). */
 export type RemovalReason =
@@ -196,8 +206,12 @@ export type MergeAction =
       readonly number: number;
       readonly pullId: string;
       readonly head: string;
-      readonly reason: RemovalReason;
-      /** Posted after the dequeue; for a conflict also when GitHub already took it out. */
+      /** `group-failed`: its own merge group failed, taken out at once (HAL-18506). */
+      readonly reason: RemovalReason | "group-failed";
+      /**
+       * Posted after the dequeue; for a conflict also when GitHub already took
+       * it out. Empty when the culprit hold posts its own comment.
+       */
       readonly comment: string;
       readonly cost: ActionCost;
     }
@@ -226,6 +240,17 @@ export type MergeAction =
       readonly pullId: string;
       readonly head: string;
       /** Posted before the close. */
+      readonly comment: string;
+    }
+  | {
+      /** Adds `built-on:paperclip` to an approved, green pull request without one (HAL-18506). */
+      readonly kind: "add-label";
+      readonly number: number;
+      readonly head: string;
+      readonly label: typeof autoLabel;
+      /** `auto-label#<number>@<head>`, like a comment's key. */
+      readonly key: string;
+      /** Posted after the label. */
       readonly comment: string;
     }
   | { readonly kind: "rerun"; readonly runId: number; readonly why: string }
