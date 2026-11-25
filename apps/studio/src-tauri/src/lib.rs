@@ -224,7 +224,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(updates::Updates::default())
         .manage(engines::EnginesState::default())
         .manage(tray::TrayShellState::default())
-        .manage(notification_clicks::PendingClick::default())
+        .manage(notification_clicks::pending_click::PendingClick::default())
         .manage(keep_awake::KeepAwakeState::default())
         // Registered only so the shell can use it from Rust: no capability
         // grants its commands, so no page can call them.
@@ -454,7 +454,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             #[cfg(desktop)]
             focused_apps::show_main_window,
             #[cfg(desktop)]
-            notification_clicks::take_pending_notification_click,
+            notification_clicks::pending_click::take_pending_notification_click,
             frame_colour::set_frame_colour,
         ])
 }

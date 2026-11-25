@@ -23,9 +23,9 @@ use tauri_plugin_notification::{ActionPerformed, NotificationExt};
 
 use crate::focused_apps;
 
+// Public to the crate, since `generate_handler!` needs the command at its own path.
 #[path = "pending_click.rs"]
-mod pending_click;
-pub use pending_click::{PendingClick, take_pending_notification_click};
+pub mod pending_click;
 
 /// The event the page listens for.
 pub const NOTIFICATION_CLICKED_EVENT: &str = "notification-clicked";
