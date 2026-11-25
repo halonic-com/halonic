@@ -65,6 +65,10 @@ export class PaperclipKeys {
    * stays inside that function and never comes out. `undefined` when no key
    * was held.
    *
+   * The function puts the earlier key back only while this call's key is
+   * still the one held: a later sign-in or a Disconnect within the hand-over
+   * minute must not lose its key to a late undo (Liam, HAL-18103).
+   *
    * @throws RangeError when the entry's address isn't `https`, or plain `http` to this computer; nothing is changed then
    */
   replace(binding: PaperclipBinding, entry: PaperclipKeyEntry): (() => void) | undefined {
@@ -74,9 +78,13 @@ export class PaperclipKeys {
     }
     const name = nameOf(binding);
     const before = this.#entries.get(name);
-    this.#entries.set(name, { key: entry.key, origin, company: entry.company });
+    const replacement = { key: entry.key, origin, company: entry.company };
+    this.#entries.set(name, replacement);
     if (before === undefined) return undefined;
-    return () => void this.#entries.set(name, before);
+    return () => {
+      if (this.#entries.get(name) !== replacement) return;
+      this.#entries.set(name, before);
+    };
   }
 
   /** Drops the key held for `binding`. */
