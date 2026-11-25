@@ -1,6 +1,12 @@
 // The account's input rules. Each check throws a RangeError before anything is read or changed,
 // and only what passes them is stored, so no free text from a run can reach a usage record.
-import { type UsageAmounts, type UsageLimits, type UsageUnit, usageUnits } from "./usage-types.ts";
+import {
+  maxPlanNameLength,
+  type UsageAmounts,
+  type UsageLimits,
+  type UsageUnit,
+  usageUnits,
+} from "./usage-types.ts";
 
 /** Ids are machine ids: letters, digits and `_ . : -`, at most 128 characters. */
 const idPattern = /^[A-Za-z0-9_.:-]{1,128}$/;
@@ -95,7 +101,17 @@ export function checkLimits(limits: UsageLimits): UsageLimits {
       throw new RangeError("A member's cap is a safe whole number of 0 or more.");
     }
   }
+  checkPlanName(limits.planName);
   return limits;
+}
+
+function checkPlanName(planName: unknown): void {
+  if (planName === undefined) return;
+  const fits =
+    typeof planName === "string" && planName.trim() !== "" && planName.length <= maxPlanNameLength;
+  if (!fits) {
+    throw new RangeError(`A plan's name is 1 to ${maxPlanNameLength} characters of text.`);
+  }
 }
 
 function isCap(cap: number): boolean {

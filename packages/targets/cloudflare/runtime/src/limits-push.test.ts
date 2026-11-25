@@ -304,3 +304,28 @@ verifies("runtime.limits-push", () => {
     });
   });
 });
+
+verifies("runtime.limits-push-plan", () => {
+  const scope = "u/eu_acme0123456789abcdef";
+
+  async function keptAfter(document: unknown) {
+    const { command, usage, context } = await setUp();
+    const answer = await answerLimitsPush(await signedPush(command, { document }), context);
+    expect(answer.status).toBe(200);
+    return usage.kept.get(scope);
+  }
+
+  it("keeps the name of Cloud's plan as the plan name, without the plan itself", async () => {
+    const plan = { state: "active", id: "plan_starter", version: 3, name: "Starter" };
+    expect(await keptAfter({ ...limits, plan })).toEqual({ ...limits, planName: "Starter" });
+  });
+
+  it("takes the name only from a plan that isn't none", async () => {
+    const document = { ...limits, plan: { state: "none" }, planName: "Pro" };
+    expect(await keptAfter(document)).toEqual(limits);
+  });
+
+  it("keeps a push sent before Cloud sent plans as it is", async () => {
+    expect(await keptAfter(limits)).toEqual(limits);
+  });
+});

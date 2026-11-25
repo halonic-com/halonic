@@ -3,7 +3,7 @@ import type { Clock } from "@halonicjs/ports";
 import { systemClock } from "@halonicjs/std";
 import type { SettleOutcome } from "./usage-account.ts";
 import { type StepReservation, type UsagePrincipal, UsageScope } from "./usage-scope.ts";
-import type { UsageAmounts, UsageAnswer, UsageLimits } from "./usage-types.ts";
+import type { UsageAmounts, UsageAnswer, UsageLimits, UsageSummary } from "./usage-types.ts";
 
 /**
  * The Durable Object of one scope's usage: its limits, reservations, running runs and the outbox
@@ -100,6 +100,11 @@ export class UsageObject extends DurableObject {
 
   outboxSize(scope: string): number {
     return this.#scope.outboxSize(scope);
+  }
+
+  /** The plan's name and the share of its cost limit spent, for the account menu; changes nothing. */
+  summary(scope: string): UsageSummary {
+    return this.#scope.summary(scope);
   }
 
   /**

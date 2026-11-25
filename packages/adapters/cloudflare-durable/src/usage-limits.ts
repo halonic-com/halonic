@@ -1,4 +1,10 @@
-import type { UsageAmounts, UsageLimits, UsageRefusal, UsageUnit } from "./usage-types.ts";
+import type {
+  UsageAmounts,
+  UsageLimits,
+  UsageRefusal,
+  UsageSummary,
+  UsageUnit,
+} from "./usage-types.ts";
 import { usageUnits } from "./usage-types.ts";
 
 /** Where an account keeps the limits Cloud sent. */
@@ -39,6 +45,21 @@ export function firstOver(
     }
   }
   return null;
+}
+
+/**
+ * The account menu's figures from the kept limits and the pool's spending this period. A cost
+ * limit of 0 counts as used up, so it reads 100 rather than dividing by zero.
+ */
+export function summaryOf(limits: UsageLimits | undefined, spent: UsageAmounts): UsageSummary {
+  if (limits === undefined) return { planName: null, costPercent: null, periodEnd: null };
+  const limit = limits.limits.cost;
+  const used = spent.cost ?? 0;
+  let costPercent: number | null = null;
+  if (limit !== undefined) {
+    costPercent = limit === 0 ? 100 : Math.min(100, Math.floor((used * 100) / limit));
+  }
+  return { planName: limits.planName ?? null, costPercent, periodEnd: limits.period.end };
 }
 
 /** The 80% and 100% marks the pool has reached this period and not reported yet. */
