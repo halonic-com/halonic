@@ -8,6 +8,7 @@ import { contentDigest } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { assistantAddedIn, assistantHostsFile } from "./assistant-hosts.ts";
+import type { ReviewServiceOptions } from "./review-files.ts";
 import { ReviewService } from "./review-service.ts";
 import { TestDefinitionStore } from "./testing/memory-definition-store.ts";
 
@@ -34,10 +35,10 @@ tools:
 }
 
 /** A workspace, its review folder in the profile and its review service. */
-function setUp(files: Record<string, string> = {}) {
+function setUp(files: Record<string, string> = {}, options: Partial<ReviewServiceOptions> = {}) {
   const store = new TestDefinitionStore(files, digest);
   const records = new TestDefinitionStore({}, digest);
-  const review = new ReviewService({ store, records, digest, isTrusted: () => true });
+  const review = new ReviewService({ store, records, digest, isTrusted: () => true, ...options });
   return { store, records, review };
 }
 
@@ -127,6 +128,43 @@ verifies("app.review-assistant-added-hosts", () => {
     await setup.review.accept({ kind: "file", path });
 
     expect(await marked(setup.review, "api.example.com")).toEqual(["api.example.com"]);
+  });
+
+  it("marks the sheet however the path spells its names, as macOS and Windows open them", async () => {
+    const setup = setUp();
+    const outcome = await setup.review.propose({
+      path: "Integrations/Notes/Integration.yaml",
+      content: sheet("api.example.com"),
+      expected: "absent",
+      card,
+    });
+    expect(outcome.status).toBe("written");
+
+    await setup.review.accept({ kind: "card", card });
+
+    expect(await marked(setup.review, "api.example.com")).toEqual(["api.example.com"]);
+    const marks = await setup.review.assistantAddedHosts();
+    expect([...assistantAddedIn(marks, "integrations/Notes", ["api.example.com"])]).toEqual([
+      "api.example.com",
+    ]);
+  });
+
+  it("still accepts, and reports the error, when the marks can't be written", async () => {
+    const errors: [unknown, string][] = [];
+    const setup = setUp(
+      { [path]: sheet("notes.example.com") },
+      { onListenerError: (error, name) => errors.push([error, name]) },
+    );
+    await propose(setup, sheet("notes.example.com", "api.example.com"));
+    setup.records.failOn = assistantHostsFile;
+
+    const outcome = await setup.review.accept({ kind: "card", card });
+
+    expect(outcome.status).toBe("done");
+    expect(await setup.review.changesIn(path)).toBeNull();
+    expect(errors).toEqual([
+      [new Error(`cannot write ${assistantHostsFile}`), "review.assistant-hosts"],
+    ]);
   });
 
   it("marks nothing for a file that isn't a local integration's sheet", async () => {

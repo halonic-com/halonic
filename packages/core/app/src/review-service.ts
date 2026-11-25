@@ -4,6 +4,7 @@
 // baseline back. Nothing here commits, pushes or makes anything live.
 
 import { type AssistantAddedHosts, AssistantHosts, type HostsNamedIn } from "./assistant-hosts.ts";
+import type { ListenerErrorHandler } from "./event-bus.ts";
 import { catchUp } from "./review-catch-up.ts";
 import { ReviewFiles, type ReviewServiceOptions } from "./review-files.ts";
 import { isNeverWritten } from "./review-gate.ts";
@@ -62,11 +63,13 @@ export class ReviewService {
 
   private readonly hosts: AssistantHosts;
   private hostsNamedIn: HostsNamedIn = noneNamed;
+  private readonly onListenerError: ListenerErrorHandler | undefined;
 
   constructor(options: ReviewServiceOptions) {
     this.files = new ReviewFiles(options);
     this.writer = new ReviewWriteHook(this.files);
     this.hosts = new AssistantHosts(options.records);
+    this.onListenerError = options.onListenerError;
   }
 
   /**
@@ -114,7 +117,9 @@ export class ReviewService {
    * Accepts what the target covers. The files aren't touched: for a part
    * or a change the baseline takes it over; for whole files the baseline
    * becomes the file, so the record goes. For a card or a chat, a record
-   * that can't be read is removed without telling the listeners.
+   * that can't be read is removed without telling the listeners. If the
+   * "added by the assistant" marks can't be written afterwards, that error
+   * goes to `onListenerError` and the outcome is still returned.
    */
   async accept(target: ReviewTarget): Promise<ReviewOutcome> {
     const outcome = isInFile(target)
@@ -124,7 +129,10 @@ export class ReviewService {
           return { path: record.path, record: { before: record, after: null } };
         });
     if (outcome.status === "done") {
-      await this.markAssistantHosts(outcome.step);
+      await this.markAssistantHosts(outcome.step).catch((error: unknown) => {
+        // The Accept itself is done, so it still reports its outcome.
+        this.onListenerError?.(error, assistantHostsEvent);
+      });
     }
     return outcome;
   }
@@ -383,6 +391,9 @@ export class ReviewService {
     );
   }
 }
+
+/** The name the error of recording the assistant's hosts is reported under. */
+const assistantHostsEvent = "review.assistant-hosts";
 
 /** A person who named no host. */
 const nothingNamed = (_host: string): boolean => false;

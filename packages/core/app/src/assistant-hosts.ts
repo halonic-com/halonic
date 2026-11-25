@@ -15,12 +15,15 @@
 // apart.
 
 import { parseFile } from "@halonicjs/format";
-import type { DefinitionStore } from "@halonicjs/ports";
+import { type DefinitionStore, segmentAsOpened } from "@halonicjs/ports";
 
 /** The file in the review folder that holds the marks; a review record is never named like it. */
 export const assistantHostsFile = "assistant-hosts.json";
 
-/** The marks, by integration folder, such as `integrations/notes`, then host. */
+/**
+ * The marks, by integration folder as {@link folderKey} gives it, such as
+ * `integrations/notes`, then host.
+ */
 export type AssistantAddedHosts = ReadonlyMap<string, ReadonlySet<string>>;
 
 /**
@@ -108,16 +111,32 @@ export function assistantAddedIn(
   folder: string,
   hosts: Iterable<string>,
 ): ReadonlySet<string> {
-  const recorded = marks.get(folder) ?? new Set();
+  const recorded = marks.get(folderKey(folder)) ?? new Set();
   return new Set([...hosts].filter((host) => recorded.has(host)));
 }
 
 /**
- * The integration folder of a local integration's sheet, such as
- * `integrations/notes` for `integrations/notes/integration.yaml`.
+ * The integration folder of a local integration's sheet, as {@link folderKey}
+ * gives it, such as `integrations/notes` for `integrations/notes/integration.yaml`.
+ * The names compare the way macOS and Windows open them, as the Build chat's
+ * gate reads the path, so `Integrations/Notes/Integration.yaml` is that sheet too.
  */
 function integrationFolderOf(path: string): string | undefined {
-  return /^(integrations\/[^/]+)\/integration\.yaml$/u.exec(path)?.[1];
+  const segments = path.split("/").map(segmentAsOpened);
+  if (segments.length !== 3) return undefined;
+  const [integrations, name, file] = segments;
+  if (integrations !== "integrations" || name === "" || file !== "integration.yaml") {
+    return undefined;
+  }
+  return `${integrations}/${name}`;
+}
+
+/**
+ * An integration folder as the marks are keyed: each name as a file system
+ * opens it, so `integrations/Notes` and `integrations/notes` are one folder.
+ */
+function folderKey(folder: string): string {
+  return folder.split("/").map(segmentAsOpened).join("/");
 }
 
 /** The fixed hosts of a sheet; none for no sheet or one that doesn't parse. */
