@@ -19,8 +19,8 @@ Because the engine is separate:
 - It can't be reached from a web page or from another computer. Only Halonic
   talks to it.
 
-Halonic appears as **Halonic** in Task Manager (Windows) and Activity Monitor
-(macOS).
+In Task Manager (Windows) and Activity Monitor (macOS), the window shows as
+**Halonic** and each engine as `halonic-agent-host`.
 
 ## What closing the window does
 
@@ -45,7 +45,7 @@ The Halonic ring shows the state in its centre:
 | Nothing | Engines are running and no run is in progress. |
 | A dot | At least one run is in progress. |
 | Pause bars | You paused routines. |
-| `!` | An engine stopped after 3 restarts in 5 minutes. See [the engine won't start](#the-engine-wont-start). |
+| `!` | An engine stopped after 3 restarts in 5 minutes. The menu's first line says "The background engine stopped 3 times". See [the engine won't start](#the-engine-wont-start). |
 
 The first line of the tray menu says what is going on, for example
 `2 runs in progress`, `Routines paused` or `Nothing running`. Choosing it
@@ -53,8 +53,10 @@ opens Halonic. The menu also has:
 
 - **Open Halonic**.
 - **Pause routines**, which stops routines from starting a run in every
-  workspace until you choose **Resume routines** or quit.
-- **Try again**, only in the `!` state.
+  workspace until you choose **Resume routines** or quit. In the `!` state the
+  menu has no **Pause routines**.
+- **Try again**, only in the `!` state, where the menu has just **Try again**
+  and **Open Halonic**.
 - **Quit Halonic**.
 
 ## What Quit does
