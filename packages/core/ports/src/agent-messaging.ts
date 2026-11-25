@@ -108,6 +108,12 @@ export interface Conversation {
   updatedAt: string;
   /** Whether the agent's last message waits for the person's reply. */
   waitingForMe: boolean;
+  /**
+   * Whether the conversation's own agent is working on it now: a run of that agent on the
+   * conversation's work has started and not ended. A queued run doesn't count, and neither does
+   * another agent's run on the same work. Absent when the source can't tell; apps read it as `false`.
+   */
+  agentWorking?: boolean;
 }
 
 /**
@@ -131,6 +137,13 @@ export interface Message {
   to?: readonly MessagingId[];
   /** One line per agent the person's message went to. */
   work?: readonly MessageWork[];
+  /**
+   * Only on the person's own messages: when the conversation's agent first picked it up, as ISO
+   * text. That is the start of the first run of that agent on the conversation's work that either
+   * names this message as one that woke it or started after it was sent. A queued run never counts.
+   * Absent while unread, or when the source can't tell.
+   */
+  readAt?: string;
 }
 
 /** One answer an inbox item offers. */
