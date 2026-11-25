@@ -20,6 +20,9 @@ export const liamFiles: readonly string[] = [
   "tooling/paperclip/src/reviewer-paths.ts",
   "tooling/paperclip/src/reviewer-paths.test.ts",
   "tooling/paperclip/requirements/reviewer-paths.md",
+  // What the live Merger's loader needs from them (HAL-18282).
+  "tooling/paperclip/src/reviewer-paths-standalone.test.ts",
+  "tooling/paperclip/requirements/reviewer-paths-standalone.md",
   // Who covers each role: the routing is a trust root (HAL-17982).
   "tooling/paperclip/src/routing.ts",
   "tooling/paperclip/src/routing-load.ts",
