@@ -4,6 +4,7 @@
   approved on HAL-18716; HAL-18889, the [minor] finding on #6228); Liam approves and signs this
   note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ShOu9/fsGlycMyOlM0Am8h+sJtgEFFwXPljMsWRqOWSDE0DJ6kt4fJNpgboqe7nh3f6nK1pwzTtT1RQLM4FSBQ==
 
 ## What changes
 
