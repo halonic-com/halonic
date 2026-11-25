@@ -56,7 +56,8 @@ export async function startScriptedBridge(
   ];
   const requests: BridgeRequest[] = [];
   const server = createServer((request, response) => {
-    requests.push({ method: request.method ?? "", path: request.url ?? "" });
+    // Through srt's proxy the request line holds the whole URL; keep only its path.
+    requests.push({ method: request.method ?? "", path: pathOf(request) });
     answer(request, response, script).catch((error: unknown) => {
       response.statusCode = 500;
       response.end(error instanceof Error ? error.message : String(error));
@@ -78,7 +79,7 @@ async function answer(
   script: readonly ScriptedTurn[],
 ): Promise<void> {
   const body = await readBody(request);
-  const path = new URL(request.url ?? "/", "http://bridge").pathname;
+  const path = pathOf(request);
   if (request.method === "POST" && path === "/v1/messages") {
     const call = JSON.parse(body) as { messages?: { role?: string }[] };
     const turnsSoFar = (call.messages ?? []).filter((message) => message.role === "assistant");
@@ -173,6 +174,11 @@ function writeStream(response: ServerResponse, turn: ScriptedTurn, index: number
   response.end(
     events.map(([event, data]) => `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`).join(""),
   );
+}
+
+/** The request's path without its query, whether the request line holds a path or a whole URL. */
+function pathOf(request: IncomingMessage): string {
+  return new URL(request.url ?? "/", `http://${bridgeName}`).pathname;
 }
 
 async function readBody(request: IncomingMessage): Promise<string> {
