@@ -37,10 +37,17 @@ export function followRunNotices(
   context: () => WorkspaceContext,
 ): () => void {
   let stopped = false;
+  // A click waiting for the runs' first load; a newer click, or stopping, cancels it.
+  let cancelWait: () => void = () => undefined;
   const open = (target: NoticeTarget) => {
     const { services, openItem, openPlace } = context();
     if (stopped || openItem === undefined || openPlace === undefined) return;
-    openRunNotice(target, { list: services.get(RunsListService), openItem, openPlace });
+    cancelWait();
+    cancelWait = openRunNotice(target, {
+      list: services.get(RunsListService),
+      openItem,
+      openPlace,
+    });
   };
   void clicks.takePending().then((pending) => {
     if (pending === undefined || stopped || pendingOpened.has(clicks)) return;
@@ -50,6 +57,7 @@ export function followRunNotices(
   const stopHearing = clicks.subscribe(open);
   return () => {
     stopped = true;
+    cancelWait();
     stopHearing();
   };
 }

@@ -29,20 +29,41 @@ export interface RunNoticeOpeners {
 /**
  * Opens what a run notification's click names: the run's page when the workspace lists it, Runs
  * when it doesn't (the run may belong to another source), and Runs on the Failed group for
- * `runs-failed`. Any other kind opens nothing.
+ * `runs-failed`. Any other kind opens nothing. A run waits for the list's first load, or its
+ * failure, before it's looked up, so a click that opened the window finds it. Returns a function
+ * that cancels a wait that hasn't ended.
  *
  * @example
- * openRunNotice({ kind: "run", id: "run-acme-7" }, { list, openItem, openPlace });
+ * const cancel = openRunNotice({ kind: "run", id: "run-acme-7" }, { list, openItem, openPlace });
  */
-export function openRunNotice(target: NoticeTarget, openers: RunNoticeOpeners): void {
-  const { list, openItem, openPlace } = openers;
+export function openRunNotice(target: NoticeTarget, openers: RunNoticeOpeners): () => void {
+  const { list, openPlace } = openers;
   if (target.kind === "runs-failed") {
     list.showFailed();
     openPlace("runs");
-    return;
+    return () => undefined;
   }
-  if (target.kind !== "run") return;
-  const run = list.state.runs.find(({ summary }) => summary.id === target.id);
+  if (target.kind !== "run") return () => undefined;
+  return afterFirstLoad(list, () => openRun(target.id, openers));
+}
+
+/** Calls `then` once `list` has loaded or failed to load, now when it already has. */
+function afterFirstLoad(list: RunsList, then: () => void): () => void {
+  const settled = () => list.state.loaded || list.state.error !== undefined;
+  if (settled()) {
+    then();
+    return () => undefined;
+  }
+  const stop = list.subscribe(() => {
+    if (!settled()) return;
+    stop();
+    then();
+  });
+  return stop;
+}
+
+function openRun(id: string, { list, openItem, openPlace }: RunNoticeOpeners): void {
+  const run = list.state.runs.find(({ summary }) => summary.id === id);
   if (run === undefined) {
     openPlace("runs");
     return;

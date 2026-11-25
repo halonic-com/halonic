@@ -18,6 +18,26 @@ const failed = summaryWith({ id: "run_d_9x8y7z", status: "failed" });
 const done = summaryWith({ id: "run_c_4f2a1b", status: "completed" });
 
 /** A list that has loaded `failed` and `done`. */
+/** A list whose first load ends only when the test says, with the runs or with an error. */
+function waitingList() {
+  const { source } = fakeSource([failed, done]);
+  const real = source.list.bind(source);
+  let finish: (outcome: "load" | "fail") => void = () => undefined;
+  const first = new Promise<"load" | "fail">((resolve) => {
+    finish = resolve;
+  });
+  let loads = 0;
+  const list = new RunsList({
+    ...source,
+    list: async () => {
+      loads += 1;
+      if (loads === 1 && (await first) === "fail") throw new Error("the agent host didn't answer");
+      return real();
+    },
+  });
+  return { list, finish };
+}
+
 async function loadedList(): Promise<RunsList> {
   const list = new RunsList(fakeSource([failed, done]).source);
   await list.refresh();
@@ -81,6 +101,36 @@ async function settled(): Promise<void> {
 
 verifies("runs.run-notification-open", () => {
   describe("openRunNotice", () => {
+    it("waits for the list's first load, then opens the run's page once", async () => {
+      const { list, finish } = waitingList();
+      const opened = openers(list);
+      openRunNotice({ kind: "run", id: "run_d_9x8y7z" }, opened);
+      expect(opened).toMatchObject({ items: [], places: [] });
+      finish("load");
+      await settled();
+      await list.refresh();
+      expect(opened.items).toEqual([{ kind: "run", hub: "acme", id: "run_d_9x8y7z" }]);
+      expect(opened.places).toEqual([]);
+    });
+
+    it("opens Runs when the first load fails", async () => {
+      const { list, finish } = waitingList();
+      const opened = openers(list);
+      openRunNotice({ kind: "run", id: "run_d_9x8y7z" }, opened);
+      finish("fail");
+      await settled();
+      expect(opened).toMatchObject({ items: [], places: ["runs"] });
+    });
+
+    it("opens nothing once its wait is cancelled", async () => {
+      const { list, finish } = waitingList();
+      const opened = openers(list);
+      openRunNotice({ kind: "run", id: "run_d_9x8y7z" }, opened)();
+      finish("load");
+      await settled();
+      expect(opened).toMatchObject({ items: [], places: [] });
+    });
+
     it("opens the run's page when the workspace lists it", async () => {
       const list = await loadedList();
       const opened = openers(list);
