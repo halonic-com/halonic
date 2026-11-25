@@ -1,6 +1,7 @@
 import type {
   ComputerTunnelOf,
   mountPhoneApp,
+  NearbyComputers,
   OwnerCheckAvailable,
   PhoneTunnel,
 } from "@halonicjs/studio-feature-remote/phone";
@@ -18,6 +19,8 @@ export interface PageOptions extends ConnectPageOptions {
   /** The shell's `owner_check_available`; without it `risky` approvals stay on the computer. */
   readonly ownerCheckAvailable?: OwnerCheckAvailable;
   readonly scanner: PairingScanner;
+  /** The shell's list of computers on this Wi-Fi, for the typed route's picker. */
+  readonly nearby?: NearbyComputers;
   readonly window: Window;
   /** Android's settings for Halonic. */
   readonly openSettings: () => void;
@@ -66,6 +69,7 @@ export async function startPage(options: PageOptions): Promise<void> {
       ? {}
       : { ownerCheckAvailable: options.ownerCheckAvailable }),
     scanner: options.scanner,
+    ...(options.nearby === undefined ? {} : { nearby: options.nearby }),
     window: options.window,
     report: options.report,
     onOpenSettings: options.openSettings,

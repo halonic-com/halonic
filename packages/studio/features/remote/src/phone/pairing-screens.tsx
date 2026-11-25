@@ -34,7 +34,7 @@ export function PairingScreens({
   onFocusTitle,
 }: {
   readonly flow: PhonePairingFlow;
-  /** The typed route, until its screen with the computer picker is in this package. */
+  /** The typed route's screen with the computer picker (`TypedStep`), which needs the app's lists. */
   readonly typed: (step: TypedStep) => ReactNode;
   /** Android's settings for Halonic, to allow the camera (G8) or Nearby devices (microcopy 28). */
   readonly onOpenSettings: () => void;

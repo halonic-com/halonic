@@ -2,6 +2,7 @@ import { decodePairingQr, type PairingQrPayload } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { FakePhoneTunnel } from "../test-support/phone-tunnel.ts";
+import type { NearbyId } from "./nearby-computers.ts";
 import { NOT_HALONIC_MS, PhonePairingFlow, type PhoneScanner, RESCAN_MS } from "./pairing-flow.ts";
 import type {
   ComputerId,
@@ -297,5 +298,20 @@ verifies("remote.phone-pairing-problems", () => {
       route: "qr",
       computerName: "Tim's laptop",
     });
+  });
+});
+
+verifies("remote.phone-typed-picker", () => {
+  it("sends a computer found on this Wi-Fi by its id, and keeps the draft for a wrong code", async () => {
+    const tunnel = new FakePhoneTunnel();
+    tunnel.nextStep = { kind: "wrong-code", triesLeft: 4 };
+    const flow = new PhonePairingFlow(tunnel, new ScriptedScanner([]));
+    const picked = { name: "Tim's laptop", nearby: "nearby-1" as NearbyId };
+    flow.typeInstead();
+    flow.pairTyped("7kq2 m4xd 9th6", picked);
+    await settle();
+    expect(tunnel.started).toEqual([{ route: "typed", code: "7KQ2M4XD9TH6", nearby: "nearby-1" }]);
+    expect(flow.view).toEqual({ step: "typed", triesLeft: 4 });
+    expect(flow.typedDraft).toEqual({ code: "7kq2 m4xd 9th6", computer: picked });
   });
 });

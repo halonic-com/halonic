@@ -1,4 +1,5 @@
 import { encodePairingQr, type PairingQrPayload } from "@halonicjs/ports";
+import type { NearbyId } from "./nearby-computers.ts";
 import {
   isPhoneKeyProblem,
   type PairingFrom,
@@ -28,11 +29,23 @@ export interface PhoneScanner {
   close(): Promise<void>;
 }
 
-/** A computer picked on the typed route: its name, `host[:port]`, and whether it is on this Wi-Fi. */
-export interface PickedComputer {
-  readonly name: string;
-  readonly endpoint: string;
-  readonly wifi: boolean;
+/**
+ * A computer picked on the typed route: one found on this Wi-Fi by its {@link NearbyId}, whose
+ * address only the shell holds, or one by its `host[:port]` and whether it is on this Wi-Fi.
+ */
+export type PickedComputer =
+  | { readonly name: string; readonly nearby: NearbyId }
+  | { readonly name: string; readonly endpoint: string; readonly wifi: boolean };
+
+/** What the typed route sent last, so Type a code shows it again after a wrong code (`p-m9`). */
+export interface TypedDraft {
+  readonly code: string;
+  readonly computer: PickedComputer;
+}
+
+/** The typed code as the computer reads it: without spaces or the middle dots, in capitals. */
+export function cleanTypedCode(code: string): string {
+  return code.replaceAll(/\s|·/g, "").toUpperCase();
 }
 
 /**
@@ -99,6 +112,7 @@ export class PhonePairingFlow {
   private attempt = 0;
   private pairing: PairingId | undefined;
   private last: { start: TunnelPairingStart; from: PairingFrom; name: string } | undefined;
+  private draft: TypedDraft | undefined;
   private clearNotHalonic: (() => void) | undefined;
   private readonly setTimer: NonNullable<PairingFlowOptions["setTimer"]>;
   private readonly tunnel: PhoneTunnel;
@@ -147,15 +161,25 @@ export class PhonePairingFlow {
     this.next({ step: "typed" });
   }
 
-  /** Pair on the typed route. The field accepts the code with or without spaces. */
+  /** The code and computer the typed route sent last, if any. */
+  get typedDraft(): TypedDraft | undefined {
+    return this.draft;
+  }
+
+  /**
+   * Pair on the typed route. The field accepts the code with or without spaces. A computer found
+   * on this Wi-Fi goes by its id: the shell turns it into the address (HAL-16829).
+   */
   pairTyped(code: string, computer: PickedComputer): void {
-    const start: TunnelPairingStart = {
-      route: "typed",
-      code: code.replaceAll(/\s|·/g, "").toUpperCase(),
-      endpoint: computer.endpoint,
-      ...(this.options.again === undefined ? {} : { again: this.options.again }),
-    };
-    this.begin({ start, from: { route: "typed", wifi: computer.wifi }, name: computer.name });
+    this.draft = { code, computer };
+    const again = this.options.again === undefined ? {} : { again: this.options.again };
+    const cleaned = cleanTypedCode(code);
+    const start: TunnelPairingStart =
+      "nearby" in computer
+        ? { route: "typed", code: cleaned, nearby: computer.nearby, ...again }
+        : { route: "typed", code: cleaned, endpoint: computer.endpoint, ...again };
+    const wifi = "nearby" in computer || computer.wifi;
+    this.begin({ start, from: { route: "typed", wifi }, name: computer.name });
   }
 
   /** Try again on Can't reach and Too many tries: the same code, the same computer. */
