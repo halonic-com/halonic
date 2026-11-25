@@ -1,0 +1,25 @@
+/*
+ * Inter, the Studio's typeface, shipped with the app (HAL-18694). Without these faces `--font-sans`
+ * only found Inter on a computer that had it installed; a Windows PC fell back to Segoe UI.
+ *
+ * The two files are the variable fonts of the official Inter 4.1 release (web/InterVariable*.woff2),
+ * under the SIL Open Font License 1.1 (fonts/LICENSE.txt). Vite copies them into the app bundle, so
+ * the Studio never fetches a font over the network and works offline. The kit exports this file
+ * on its own, as `@halonicjs/studio-kit/fonts`, and only the desktop Studio imports it: the
+ * phone's connect page has a size limit the two files (about 740 KB) would break. The family is named
+ * "Inter Variable", the first name in `--font-sans`, so an installed Inter can't take its place.
+ */
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/InterVariable.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter Variable";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/InterVariable-Italic.woff2") format("woff2");
+}

@@ -113,6 +113,9 @@
       "./phone",
       "./phone-client"
     ],
+    "@halonicjs/studio-kit": [
+      "./fonts"
+    ],
     "@halonicjs/studio-services": [
       "./tauri-ipc",
       "./tauri-channel"
