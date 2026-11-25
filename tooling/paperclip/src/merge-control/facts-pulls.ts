@@ -1,3 +1,4 @@
+import { fastTrackLabel } from "../pr-tools/queue-state.ts";
 import type { FactsRollup, PullNode, QueueNode, RollupRun } from "./facts-query.ts";
 import type { CheckFact, GatePull, PullText, QueueEntry, QueueEntryState } from "./snapshot.ts";
 
@@ -9,6 +10,12 @@ import type { CheckFact, GatePull, PullText, QueueEntry, QueueEntryState } from 
 
 /** The label that makes an open pull request one the gate looks at. */
 export const paperclipLabel = "built-on:paperclip";
+
+/**
+ * Built in Halonic: the gate looks at it only with `fast-track` too, and the
+ * gate checks who added that label (board, HAL-18304).
+ */
+export const halonicLabel = "built-on:halonic";
 
 const checkStatuses: Readonly<Record<string, CheckFact["status"]>> = {
   COMPLETED: "completed",
@@ -112,9 +119,18 @@ function filesOf(node: PullNode): Pick<GatePull, "files" | "filesTotal" | "fileN
   return { files: files.map((file) => file.path), filesTotal: node.changedFiles, fileNet };
 }
 
-/** Whether the gate looks at it: queued, or labelled `built-on:paperclip`. */
+/**
+ * Whether the gate looks at it: queued, labelled `built-on:paperclip`, or
+ * labelled `built-on:halonic` and `fast-track`. Who added `fast-track` needs
+ * the settings, so the gate checks that.
+ */
 export function isGatePull(node: PullNode): boolean {
-  return node.isInMergeQueue || node.labels.nodes.some((label) => label.name === paperclipLabel);
+  const labels = node.labels.nodes.map((label) => label.name);
+  return (
+    node.isInMergeQueue ||
+    labels.includes(paperclipLabel) ||
+    (labels.includes(halonicLabel) && labels.includes(fastTrackLabel))
+  );
 }
 
 /** A gate pull request without its manifests and red fast-track run, which need REST reads. */

@@ -3,7 +3,7 @@ import { queuePrio } from "../rules/queue-prio.ts";
 import { capacityShort, jumpCost, noCost } from "./capacity.ts";
 import { liveCloudOf } from "./checks.ts";
 import { commentOnce, logLine, type PassContext } from "./context.ts";
-import type { GateRow } from "./gate.ts";
+import { fastTrackVerified, type GateRow } from "./gate.ts";
 import { texts } from "./texts.ts";
 
 /**
@@ -27,11 +27,10 @@ export function verifiedFastTrack(context: PassContext, rows: readonly GateRow[]
   const fast = new Set<number>();
   const unverified: string[] = [];
   for (const row of rows.filter((each) => each.pull.labels.includes(fastTrackLabel))) {
-    const by = row.pull.fastTrackBy;
-    if (by !== null && context.settings.fastTrackLabellers.includes(by)) {
+    if (fastTrackVerified(row.pull, context.settings)) {
       fast.add(row.pull.number);
     } else {
-      unverified.push(`#${row.pull.number}(${by ?? "?"})`);
+      unverified.push(`#${row.pull.number}(${row.pull.fastTrackBy ?? "?"})`);
     }
   }
   if (unverified.length > 0) {
@@ -75,7 +74,7 @@ export function fillOrder(
 ): GateRow[] {
   const { snapshot, state, now } = context;
   const candidates = rows.filter(
-    (row) => row.entry === undefined && row.pass && row.paperclip && !row.pull.draft,
+    (row) => row.entry === undefined && row.pass && row.candidate && !row.pull.draft,
   );
   const ranked = queuePrio({
     ranked: candidates.map((row) => ({

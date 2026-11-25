@@ -1034,6 +1034,11 @@ default. Otherwise each pass reads the facts (`src/merge-control/facts.ts`),
 runs `decide`, and in `shadow` mode writes nothing and posts a daily diff with
 the Merger's actions on `mergeControl.diffTask`. `act` needs the board's yes.
 
+It queues open `built-on:paperclip` pull requests. A `built-on:halonic` one
+is queued only when it also has `fast-track` added by a login in
+`fastTrackLabellers` (board, HAL-18304); then it's a fast-track pull request
+under the normal jump rule. The `built-on:halonic` label alone never queues it.
+
 The facts reader uses the PR watcher's read-only token and its two readers
 (GET-only REST, query-only GraphQL), so `pr-watcher-read-only` still holds.
 A pass reads the open pull requests 10 per page (about 6 seconds and 2

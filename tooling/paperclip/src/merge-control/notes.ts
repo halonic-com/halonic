@@ -8,7 +8,7 @@ import { texts } from "./texts.ts";
  */
 
 function waitingOutside(row: GateRow): boolean {
-  return row.entry === undefined && row.paperclip && !row.pull.draft;
+  return row.entry === undefined && row.candidate && !row.pull.draft;
 }
 
 const approvalOnly = /^(no approval from Liam|waiting for re-review|Liam's latest review)/;
