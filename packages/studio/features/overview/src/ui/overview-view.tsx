@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore } from "react";
-import type { Blocker, OverviewAgent, OverviewWork } from "../overview.ts";
+import type { Blocker, Overview, OverviewAgent, OverviewWork } from "../overview.ts";
 import type { OverviewStore } from "../overview-store.ts";
 
 /** Props for {@link OverviewView}. */
@@ -19,13 +19,25 @@ export function OverviewView({ store }: OverviewViewProps) {
   }, [store]);
   const state = useSyncExternalStore(store.subscribe, store.snapshot);
 
-  if (state.kind === "loading") return <p className="px-4 py-3 text-fg-muted">Loading…</p>;
-  if (state.kind === "failed") {
-    return <p className="px-4 py-3 text-danger">The overview couldn't be read.</p>;
-  }
-  const { agents, blocked } = state.overview;
   return (
     <div className="flex flex-col gap-4 px-4 py-3">
+      <p role="status" className="text-fg-muted">
+        {state.kind === "loading" ? "Loading…" : ""}
+      </p>
+      {state.kind === "failed" ? (
+        <p role="alert" className="text-danger">
+          The overview couldn't be read.
+        </p>
+      ) : null}
+      {state.kind === "ready" ? <OverviewSections overview={state.overview} /> : null}
+    </div>
+  );
+}
+
+function OverviewSections({ overview }: { readonly overview: Overview }) {
+  const { agents, blocked } = overview;
+  return (
+    <>
       <section aria-labelledby="overview-agents">
         <h2 id="overview-agents" className="text-heading">
           Agents
@@ -48,7 +60,7 @@ export function OverviewView({ store }: OverviewViewProps) {
           ))}
         </ul>
       </section>
-    </div>
+    </>
   );
 }
 

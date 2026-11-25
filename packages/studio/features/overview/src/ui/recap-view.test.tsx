@@ -66,6 +66,30 @@ verifies("overview.daily-recap", () => {
     expect(text).toBe("Nothing changed since your last recap.");
   });
 
+  it("announces loading in a status region and a failed read as an alert", async () => {
+    const messaging = new FakeAgentMessaging();
+    let failRead: (error: Error) => void = () => {};
+    messaging.listWork = () =>
+      new Promise((_, reject) => {
+        failRead = reject;
+      });
+    const store = new RecapStore(messaging, memoryRecapMark("2026-11-23T10:00:00.000Z"), () => now);
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<RecapView store={store} />));
+    expect(container.querySelector('[role="status"]')?.textContent).toBe("Loading…");
+
+    await act(async () => failRead(new Error("source is down")));
+    expect(container.querySelector('[role="status"]')?.textContent).toBe("");
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe(
+      "The recap couldn't be read.",
+    );
+    act(() => root.unmount());
+    container.remove();
+  });
+
   it("words a wait in its largest whole unit", () => {
     expect([
       waitingWords(90_000),

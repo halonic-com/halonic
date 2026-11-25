@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore } from "react";
-import type { RecapWork } from "../recap.ts";
+import type { Recap, RecapWork } from "../recap.ts";
 import type { RecapStore } from "../recap-store.ts";
 
 /** Props for {@link RecapView}. */
@@ -18,16 +18,27 @@ export function RecapView({ store }: RecapViewProps) {
   }, [store]);
   const state = useSyncExternalStore(store.subscribe, store.snapshot);
 
-  if (state.kind === "loading") return <p className="px-4 py-3 text-fg-muted">Loading…</p>;
-  if (state.kind === "failed") {
-    return <p className="px-4 py-3 text-danger">The recap couldn't be read.</p>;
-  }
-  const { recap } = state;
+  return (
+    <div className="flex flex-col gap-2 px-4 py-3">
+      <p role="status" className="text-fg-muted">
+        {state.kind === "loading" ? "Loading…" : ""}
+      </p>
+      {state.kind === "failed" ? (
+        <p role="alert" className="text-danger">
+          The recap couldn't be read.
+        </p>
+      ) : null}
+      {state.kind === "ready" ? <RecapSections recap={state.recap} /> : null}
+    </div>
+  );
+}
+
+function RecapSections({ recap }: { readonly recap: Recap }) {
   if (recap.empty) {
-    return <p className="px-4 py-3 text-fg-muted">Nothing changed since your last recap.</p>;
+    return <p className="text-fg-muted">Nothing changed since your last recap.</p>;
   }
   return (
-    <section aria-labelledby="overview-recap" className="flex flex-col gap-2 px-4 py-3">
+    <section aria-labelledby="overview-recap" className="flex flex-col gap-2">
       <h2 id="overview-recap" className="text-heading">
         Recap
       </h2>
