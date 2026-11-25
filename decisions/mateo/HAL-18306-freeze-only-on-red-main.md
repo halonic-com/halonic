@@ -3,6 +3,7 @@
 - Task: HAL-18306
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-18306 (Liam asked for this follow-up on HAL-18287, 25 Nov 08:24 UTC; Liam approves this note in review)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:b4m34AfYhcIonMVdztPSK7UZrlgHMQPmbxL46S6p7QTQYGLLO4Dx4osql5VJBWw5OUOo9qPWFLrkIQjw2MG3Cg==
 
 `paperclip.merge-control-main-broken` changes for a merge group directly on `main`'s tip.
 
