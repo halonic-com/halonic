@@ -100,6 +100,9 @@ export const manifest: PaperclipPluginManifestV1 = {
     // Part (b): how many tasks each task waiting on the board blocks. The PR watcher's
     // unblock sweep reads a blocked task's blockers (HAL-17692).
     "issue.relations.read",
+    // Only `removeBlockers`, only for a blocker that is the task's own parent or a task above
+    // it (`parent_block`, the unblock sweep in src/plugin/host.ts). Nothing adds or sets blockers.
+    "issue.relations.write",
     // Part (b): whether a task in review waits on a pending board card.
     "issue.interactions.read",
     // The gh guard's route (HAL-16401): agents' runs only; it counts and answers, nothing else.
