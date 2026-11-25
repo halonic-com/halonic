@@ -11,8 +11,9 @@ export interface UsageRateLimits {
 
 /**
  * One minute, at most 600 calls a scope and 120 an organisation member. A run calls once per step
- * and model call, so a busy scope stays well inside it, while a loop is stopped within a minute
- * instead of spending the deployment's daily request ceiling for every other customer.
+ * and model call, so a busy scope stays well inside it, while a loop's runs and model calls are
+ * stopped within a minute. This caps the usage object's load and limit pulls; it doesn't guard the
+ * deployment's daily request ceiling, which `host/server` counts before the route runs (HAL-18039).
  */
 export const defaultUsageRateLimits: UsageRateLimits = {
   windowMs: 60_000,

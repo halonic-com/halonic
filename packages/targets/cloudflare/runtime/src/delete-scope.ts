@@ -39,7 +39,9 @@ export interface ScopeStores {
 /**
  * Erases every store of one scope. The run list is read first and erased last, so a delete that
  * fails halfway finds the same runs when it is run again; running it again is always safe. The
- * usage object goes first: while its rows haven't gone to Cloud, nothing is erased.
+ * usage object goes first: while its rows haven't gone to Cloud, nothing is erased. Erasing it also
+ * wipes the pushed limits, so a run left in a half-deleted scope fails closed with `noLimits`; keep
+ * this order.
  *
  * @throws UsageUnsentError when usage rows wait to go to Cloud
  */
