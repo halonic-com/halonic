@@ -10,7 +10,7 @@ Rationale: the program's machine is reachable only through the session, and the 
 
 ## Examples
 
-- Given a session whose settings folder is `/home/halonic/.claude`, when `settings.json` is written there and read back, then the read gives its text and the folder holds no temporary file. <!-- leak-guard: allow absolute-path a folder in the container -->
-- Given the same session, when `/work/notes.md` or `/home/halonic/.claude/../../../work` is removed, then the writer refuses it and starts nothing. <!-- leak-guard: allow absolute-path a folder in the container -->
+- Given a session whose settings folder is `/halonic/home/.claude`, when `settings.json` is written there and read back, then the read gives its text and the folder holds no temporary file.
+- Given the same session, when `/work/notes.md` or `/halonic/home/.claude/../../../work` is removed, then the writer refuses it and starts nothing.
 - Given a settings folder holding `.credentials.json` and `old.md`, when it is listed, then both names come back.
 - Given a folder that can't be written, when a file is written there, then the write fails and leaves no temporary file.

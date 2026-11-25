@@ -106,7 +106,7 @@ async function sendInput(
  *
  * @example
  * const settings = sessionSettingsFolder(session);
- * await settings.write("/home/halonic/.claude/settings.json", "{}\n"); // leak-guard: allow absolute-path a folder in the container, not on this computer
+ * await settings.write("/halonic/home/.claude/settings.json", "{}\n");
  */
 export function sessionSettingsFolder(session: SandboxSession): SettingsFolderWriter {
   const { settingsFolder, tempFolder } = session.profile;
