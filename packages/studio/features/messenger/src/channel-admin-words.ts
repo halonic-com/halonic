@@ -49,6 +49,8 @@ export const channelAdminWords = {
     confirm: "Leave",
     busy: "Leaving…",
     failed: (channel: string, reason: string) => `Couldn't leave ${channel}: ${reason}.`,
+    /** Read out once the channel is gone from the list (HAL-18835). */
+    left: (channel: string) => `You left ${channel}.`,
   },
   members: {
     title: (count: number) => `Members · ${count}`,
@@ -74,6 +76,10 @@ export const channelAdminWords = {
     },
     busy: "Saving…",
     failed: (reason: string) => `Couldn't change the members: ${reason}.`,
+    /** Read out after each change, as focus moves on (HAL-18835). */
+    removed: (agent: string, channel: string) => `Removed ${agent} from ${channel}.`,
+    madeLead: (agent: string) => `${agent} is now the lead.`,
+    added: (agent: string, channel: string) => `Added ${agent} to ${channel}.`,
   },
   /** With 8 agents, Add an agent can't be used and no ninth can be picked. */
   tooMany: "A channel can have up to 8 agents.",
@@ -89,7 +95,7 @@ export const channelAdminWords = {
     "too-large": refusedBy,
     "unsupported-type": refusedBy,
     "bad-answer": refusedBy,
-    "bad-members": () => "a channel needs 2 to 8 agents from one source",
+    "bad-members": (source: string) => `a channel needs 2 to 8 agents from ${source}`,
     "not-supported": (source: string) => `${source} doesn't have channels`,
   } satisfies Record<MessagingRefusal, (source: string) => string>,
   /** The reason once the channel's source itself is gone, so it has no label to name (HAL-18224). */

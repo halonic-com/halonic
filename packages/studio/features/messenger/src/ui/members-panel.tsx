@@ -1,6 +1,6 @@
 import type { MessagingAgent, MessagingId } from "@halonicjs/ports";
 import { Button, Dialog, Field, Menu, Select } from "@halonicjs/studio-kit";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { memberName } from "../channel.ts";
 import {
   addable,
@@ -9,7 +9,6 @@ import {
   type Membership,
   membersOf,
   withAgent,
-  withLead,
   withoutAgent,
 } from "../channel-admin.ts";
 import { channelAdminWords } from "../channel-admin-words.ts";
@@ -25,6 +24,8 @@ export interface MembersPanelProps {
   readonly row: ConversationRow;
   /** A change went through: the page reads the channel again. */
   readonly onChanged: () => void;
+  /** Says what changed in the page's status region. */
+  readonly announce: (line: string) => void;
 }
 
 /**
@@ -32,24 +33,32 @@ export interface MembersPanelProps {
  * it is doing, the lead marked, **Make lead** and **Remove from channel**, and **Add an agent**.
  * Adding to a channel with messages first says the new member will read them, and `setMembers`
  * waits for **Add …** (Julian's M5). Removing the lead asks for a new lead first. A channel keeps 2
- * to 8 agents, so Remove and Add say why they can't be used outside that.
+ * to 8 agents, so Remove and Add say why they can't be used outside that. After each change focus
+ * moves to what took the pressed button's place, and `announce` says what changed (HAL-18835).
  */
-export function MembersPanel({ messenger, row, onChanged }: MembersPanelProps) {
+export function MembersPanel({ messenger, row, onChanged, announce }: MembersPanelProps) {
   const tooFewId = useId();
+  const panel = useRef<HTMLElement>(null);
   const members = membersOf(row);
   const source = row.source?.label;
-  const { pending, failure, busy, change, confirm, cancel, add, remove } = useMembers(
+  const { pending, failure, busy, makeLead, confirm, cancel, add, remove } = useMembers(
     messenger,
     row,
     onChanged,
+    announce,
+    panel,
   );
 
   return (
     <aside
+      ref={panel}
       aria-label={words.title(members.length)}
       className="flex w-72 flex-col gap-2 border-s border-border p-3"
     >
-      <h3 className="text-body-strong">{words.title(members.length)}</h3>
+      {/* Takes focus after a remove when no button took the removed one's place. */}
+      <h3 tabIndex={-1} className="text-body-strong">
+        {words.title(members.length)}
+      </h3>
       {/* With its source gone there is no label to name, so no hint either. */}
       {source === undefined ? null : (
         <p className="text-small text-fg-muted">{words.hint(source)}</p>
@@ -64,7 +73,7 @@ export function MembersPanel({ messenger, row, onChanged }: MembersPanelProps) {
             row={row}
             member={member}
             tooFewId={tooFewId}
-            onMakeLead={() => change(withLead(row, member))}
+            onMakeLead={() => makeLead(member)}
             onRemove={() => remove(member)}
           />
         ))}

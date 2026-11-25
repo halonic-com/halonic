@@ -17,6 +17,7 @@ import { ConversationList } from "./conversation-list.tsx";
 import { ConversationView } from "./conversation-view.tsx";
 import { ChatsLoad, useFadeIn } from "./load-states.tsx";
 import { NewMenu } from "./new-menu.tsx";
+import { useLeft } from "./use-left.ts";
 
 /** The props of {@link MessengerPage}. */
 export interface MessengerPageProps {
@@ -40,6 +41,9 @@ export interface MessengerPageProps {
  *
  * With nothing connected, the panel says so and offers Connect Paperclip, instead
  * of an empty list that looks like a Paperclip with no chats.
+ *
+ * Leaving a channel says so in the page's status region and puts focus on the row that took its
+ * place in the list (`useLeft`, HAL-18835).
  */
 export function MessengerPage({
   messenger,
@@ -90,13 +94,18 @@ export function MessengerPage({
     setChanged((count) => count + 1);
     select(channel);
   };
+  const { said, leave } = useLeft(list, rows, tab);
   const left = () => {
+    if (open !== undefined) leave(open);
     setSelected(undefined);
     setChanged((count) => count + 1);
   };
   return (
     <div className="flex h-full min-h-0 gap-2">
       <h1 className="sr-only">{messengerWords.title}</h1>
+      <p role="status" className="sr-only" data-page-status>
+        <span key={said.count}>{said.text}</span>
+      </p>
       {onePane && panelFirst ? null : (
         <ListColumn listRef={list} onePane={onePane} connected={connected}>
           {/* Also while the chats load, so the list doesn't move once they arrive (motion 7); not over

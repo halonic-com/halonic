@@ -127,7 +127,12 @@ verifies("messenger.channel-source-gone", () => {
     if (row === undefined) throw new Error("no channel");
     const gone = { ...row, source: undefined };
     const page = render(
-      <MembersPanel messenger={messenger} row={gone} onChanged={() => undefined} />,
+      <MembersPanel
+        messenger={messenger}
+        row={gone}
+        onChanged={() => undefined}
+        announce={() => undefined}
+      />,
     );
     await press(button("Make lead", page));
     expect(page.querySelector('[role="alert"]')?.textContent).toBe(
