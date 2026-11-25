@@ -26,6 +26,7 @@ import { PaperclipChannelSender } from "./channel-send.ts";
 import { PaperclipChannelWork } from "./channel-work.ts";
 import { readChannel, toChannel } from "./channels.ts";
 import { readWorkingChats, withAgentWorking, withReadAt } from "./chat-signals.ts";
+import { PaperclipFullAnswers } from "./full-answers.ts";
 import { PaperclipIds } from "./ids.ts";
 import { PaperclipInbox } from "./inbox.ts";
 import { asRecords, type JsonRecord, text } from "./json.ts";
@@ -56,6 +57,11 @@ export interface PaperclipMessagingOptions extends TransportOptions {
   /** The catalog stepper requests are checked against; without one, cards that pin one stay plain cards. */
   stepperCatalog?: StepperCatalog;
   now?: () => Date;
+  /**
+   * Where a read that need not fail a list is reported, such as a chat's full answers. Without
+   * it, that read's failure fails the list.
+   */
+  warn?: (message: string) => void;
 }
 
 export type { PaperclipUser } from "./signed-in-user.ts";
@@ -86,6 +92,7 @@ export class PaperclipMessaging implements AgentMessaging {
   readonly #channels: PaperclipChannelSender;
   readonly #members: PaperclipChannelMembers;
   readonly #channelWork: PaperclipChannelWork;
+  readonly #fullAnswers: PaperclipFullAnswers;
   readonly #feed = new ChangeFeed<MessagingId>();
   #agentNames = new Map<string, string>();
   /** Each chat task's agent, as the chats were last read, for its messages' `readAt`. */
@@ -109,6 +116,7 @@ export class PaperclipMessaging implements AgentMessaging {
     this.#channels = new PaperclipChannelSender(this.#reader, options.company, options.userId, now);
     this.#members = new PaperclipChannelMembers(this.#reader, options.company, options.userId);
     this.#channelWork = new PaperclipChannelWork(this.#reader, options.company, options.userId);
+    this.#fullAnswers = new PaperclipFullAnswers(this.#reader, options.warn);
   }
 
   async listSources(): Promise<readonly MessagingSource[]> {
@@ -145,7 +153,8 @@ export class PaperclipMessaging implements AgentMessaging {
   /**
    * A chat's or a channel's messages: the comments on its task, oldest first. A channel's also
    * hold the agents' replies on its child tasks, and work lines under the person's messages
-   * (`paperclip-client.channel-work`).
+   * (`paperclip-client.channel-work`). A chat's agent replies carry the full answer they link
+   * (`paperclip-client.full-answers`).
    */
   async listMessages(conversation: MessagingId): Promise<readonly Message[]> {
     const [channel] = this.#ids.read(conversation, "channel") ?? [];
@@ -167,11 +176,12 @@ export class PaperclipMessaging implements AgentMessaging {
     if (channel !== undefined) {
       return this.#channelWork.add(context, channel, conversation, messages);
     }
+    const answered = await this.#fullAnswers.add(task, messages);
     // A chat not yet listed has no known agent, so its messages wait for the next read for `readAt`.
     const agent = this.#chatAgents.get(task);
     return agent === undefined
-      ? messages
-      : withReadAt(this.#reader, this.#ids, { task, agent }, messages);
+      ? answered
+      : withReadAt(this.#reader, this.#ids, { task, agent }, answered);
   }
 
   async listInboxItems(): Promise<readonly InboxItem[]> {

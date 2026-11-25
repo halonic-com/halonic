@@ -60,6 +60,10 @@ export function keptMessage(message: Message): Message {
   if (message.to !== undefined) kept.to = [...message.to];
   if (message.work !== undefined) kept.work = message.work.map(keptMessageWork);
   if (message.automatic === true) kept.automatic = true;
+  if (message.fullAnswer !== undefined) {
+    const { key, title, markdown } = message.fullAnswer;
+    kept.fullAnswer = { key, title, markdown };
+  }
   return kept;
 }
 

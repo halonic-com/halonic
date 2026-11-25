@@ -124,7 +124,7 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `seatsSummary` | `GET /api/plugins/halonic.seats/api/seats/summary?companyId=`, with `&from=` for spend | seats by label, windows, the pool's proposal, when a failed read ran; with `from=`, the range's runs with no seat (left out if that read fails; `refresh` doesn't ask for it) |
 | `pullRequestsSummary` | `GET /api/plugins/halonic.agent-tools/api/github/summary?companyId=` | pull requests and the merge queue |
 | `pullRequestDetail` | `GET /api/plugins/halonic.agent-tools/api/github/pr/{number}?repo=&companyId=` | one pull request; `{number}` a positive integer |
-| `getTask` | `GET /api/issues/{task}` | before a task write: the task's ID and company |
+| `getTask` | `GET /api/issues/{task}` | before a task write: the task's ID and company; once per chat whose full answer is linked by identifier: that identifier |
 | `wakeTask` | `PATCH /api/issues/{task}` with exactly `{ assigneeAgentId, status: "todo", comment }` | a workflow wakes an agent on a task |
 | `finishTask` | `PATCH /api/issues/{task}` with exactly `{ status: "done", comment }` | a workflow closes a task as done |
 | `getRun` | `GET /api/heartbeat-runs/{run}`, `{run}` a UUID | before Stop or Run again: the run's company, agent, task and `canStop`, read again (nothing else kept) |
@@ -136,6 +136,7 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `createChannel` | `POST /api/companies/{company}/issues` with exactly `{ title, description, labelIds: [one], status: "backlog" }` | start a channel: its parent task, unassigned |
 | `updateChannel` | `PATCH /api/issues/{task}` with exactly `{ description }` | change a channel's members line: members, lead, who follows it |
 | `listTaskActivity` | `GET /api/issues/{task}/activity` | a channel child task's history: who passed it to whom |
+| `readFullAnswer` | `GET /api/issues/{task}/documents/full-answer` | a chat's full answer: read once per list, only when an agent's reply links that chat's `full-answer` document; kept only as Markdown of at most 64 KB. No other document key, and not the document list |
 | `createFeedbackTask` | `POST /api/companies/{company}/issues` with exactly `{ title, description, projectId, assigneeAgentId, status: "todo", idempotencyKey }`, the key starting `halonic-feedback:` | screenshot feedback: one task; a repeated key gets the task already made |
 | `listTaskAttachments` | `GET /api/issues/{task}/attachments` | before an upload: whether the feedback's screenshot is already there |
 | `attachScreenshot` | `POST /api/companies/{company}/issues/{task}/attachments`, multipart, one `file` part | the feedback's screenshot: a PNG of at most 10 MB, the only file any row sends |

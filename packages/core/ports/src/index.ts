@@ -27,6 +27,7 @@ export {
   type AttachmentRead,
   agentMessagingVersion,
   type Conversation,
+  type FullAnswer,
   type InboxAnswer,
   type InboxItem,
   type InboxItemOption,

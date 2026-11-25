@@ -134,8 +134,15 @@ export interface Network {
   offline: boolean;
 }
 
-/** A client for the Acme connection on `paperclip`, whose network goes down with `network.offline`. */
-export function connect(paperclip: FakePaperclip, network: Network): PaperclipMessaging {
+/**
+ * A client for the Acme connection on `paperclip`, whose network goes down with `network.offline`,
+ * reporting the reads that fail without failing a list to `warn` when given.
+ */
+export function connect(
+  paperclip: FakePaperclip,
+  network: Network,
+  warn?: (message: string) => void,
+): PaperclipMessaging {
   return new PaperclipMessaging({
     address: paperclip.address,
     key: testKey,
@@ -144,6 +151,7 @@ export function connect(paperclip: FakePaperclip, network: Network): PaperclipMe
     label: "Paperclip · Acme",
     userId: me,
     now: () => testNow,
+    ...(warn === undefined ? {} : { warn }),
     fetch: (input, init) =>
       network.offline
         ? Promise.reject(new TypeError("fetch failed"))

@@ -201,6 +201,16 @@ verifies("agent-host.agent-messaging-cache", () => {
       expect(await messaging.listMessages(chat.id)).toEqual(live);
     });
 
+    it("keeps a reply's full answer for an offline read", async () => {
+      const { source, chat } = await readAcme();
+      const fullAnswer = { key: "full-answer", title: "Release 0.3", markdown: "1. Build: passed" };
+      fake.addMessage(chat.id, { body: "0.3 is ready.", fullAnswer });
+      const live = await messaging.listMessages(chat.id);
+      fake.goOffline(source.id);
+      expect(live.at(-1)?.fullAnswer).toEqual(fullAnswer);
+      expect(await messaging.listMessages(chat.id)).toEqual(live);
+    });
+
     it("keeps a channel's members, who a message was for and its work lines for an offline read", async () => {
       const { source } = await readAcme();
       const [chief] = await messaging.listAgents();
