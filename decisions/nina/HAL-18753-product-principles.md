@@ -3,6 +3,7 @@
 - Task: HAL-18753 (parent HAL-18752, the board's product principle)
 - Approval: the board's direction on HAL-18752; Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:wyTsvbVW2kqhQDnS5LAJAhd5/f4Hr+VqHZBX10fVHVA+Zwutx/PQM7FlnJtvQDeEM2pMiIOxowPNgnBCA/aHCA==
 
 ## What changes
 
