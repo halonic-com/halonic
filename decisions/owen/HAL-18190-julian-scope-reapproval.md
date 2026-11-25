@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-18190; Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:7I4zxhW8j+R619VS5R5K23944rI/BfvZ9I4DYDU7cHtgTCN6sP4Fq3w/OHG+GxXhvbOM31irbog/w8wxUhZBCw==
 - Task: HAL-18190
 
 `pr_status` and `my_prs` no longer count Julian's "re-approved on head `<new>` (rebase only,
