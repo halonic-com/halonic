@@ -23,6 +23,12 @@ pub(crate) const PAPERCLIP_ROUTES: &[(&str, Route)] = &[
         "POST /v1/paperclip/connections",
         route(Method::Post, "/v1/paperclip/connections", Answer::Json),
     ),
+    // Screenshot feedback (HAL-18969): the host sends it with the key it
+    // holds and answers only the outcome, never Paperclip's words or a key.
+    (
+        "POST /v1/paperclip/feedback",
+        route(Method::Post, "/v1/paperclip/feedback", Answer::Json),
+    ),
     (
         "POST /v1/paperclip/sign-in/start",
         route(Method::Post, "/v1/paperclip/sign-in/start", Answer::Json),

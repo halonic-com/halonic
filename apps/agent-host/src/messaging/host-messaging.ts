@@ -4,10 +4,11 @@ import { PaperclipSignInClient } from "@halonicjs/adapter-paperclip-client";
 import { NodeScheduler } from "@halonicjs/adapter-scheduler-node";
 import { systemSetTimer } from "@halonicjs/adapter-scheduler-node/node";
 import type { MessagingFailure } from "@halonicjs/host-agent-messaging-hub";
-import { PaperclipKeys } from "@halonicjs/host-agent-messaging-hub";
+import { type PaperclipBinding, PaperclipKeys } from "@halonicjs/host-agent-messaging-hub";
 import type { Scheduler, SecretStore } from "@halonicjs/ports";
 import type { ProfileFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
+import { feedbackRoutes } from "../paperclip/feedback-routes.ts";
 import { HostKeyStore } from "../paperclip/host-key-store.ts";
 import { paperclipKeyRoutes } from "../paperclip/paperclip-key-routes.ts";
 import { PaperclipSignIn } from "../paperclip/paperclip-sign-in.ts";
@@ -23,6 +24,7 @@ import { DesktopMessaging } from "./desktop-messaging.ts";
 import { MessagingEngineSetting } from "./messaging-engine-setting.ts";
 import { MessagingPoller } from "./messaging-poller.ts";
 import { messagingRoutes } from "./messaging-routes.ts";
+import { paperclipFeedback } from "./paperclip-provider.ts";
 import { ServerPairings } from "./server-engine.ts";
 
 /** The host's agent messaging: its routes, and what stops it. */
@@ -37,9 +39,9 @@ export const messagingCacheFolderName = "agent-messaging-cache";
 /**
  * The desktop engine's agent messaging, for the agent host: the key
  * hand-over, Paperclip's sign-in, Studio's messaging routes and Disconnect,
- * and the poller and the sign-ins' time limits on a scheduler of its own. Without a profile folder there is nowhere outside
- * the workspaces for the cache, so only the hand-over is served and no
- * provider ever starts.
+ * feedback's sender, and the poller and the sign-ins' time limits on a scheduler of its own. Without a profile folder there is nowhere outside
+ * the workspaces for the cache, so only the hand-over and feedback's sender
+ * are served and no provider ever starts.
  *
  * Each workspace's messaging engine is read from the profile; a server's
  * device token comes from `pairingSecrets`, the host's keychain, and
@@ -56,8 +58,21 @@ export function hostMessaging(
   pairingSecrets?: SecretStore,
 ): HostMessaging {
   const keys = new PaperclipKeys();
+  const feedback = feedbackRoutes({
+    workspaceRoots,
+    senderFor: (binding: PaperclipBinding) =>
+      paperclipFeedback({
+        binding,
+        keys,
+        readNow: () => readConnectionFile(binding.workspace, binding.connection),
+      }),
+    log,
+  });
   if (profile === undefined) {
-    return { routes: paperclipKeyRoutes({ keys, workspaceRoots, log }), stop: async () => {} };
+    return {
+      routes: [...paperclipKeyRoutes({ keys, workspaceRoots, log }), ...feedback],
+      stop: async () => {},
+    };
   }
   const report = (failure: MessagingFailure) =>
     log(
@@ -116,6 +131,7 @@ export function hostMessaging(
       }),
       ...messagingRoutes({ messaging, poller, log }),
       ...paperclipSignInRoutes({ signIn, workspaceRoots, log, usesServer }),
+      ...feedback,
     ],
     stop: async () => {
       await poller.stop();
