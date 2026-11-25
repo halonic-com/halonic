@@ -3,6 +3,7 @@
 - Task: HAL-18664
 - Approval: the board chose option 1 on HAL-18554 (25 Nov): personal apps stay in *Testing*, with the flow in google-setup-flow revision 12 (HAL-621). Liam approves this build of it on HAL-18664 and signs this note in review.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:b02NB0psvPNdpIiUgd8f7QsRfXyH53/jQB/pRpp8DeIZcq/7memsZeRuDs4gUW7V6PQMEZDC3fUBnTgxQkguDQ==
 
 ## What changes
 
