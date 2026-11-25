@@ -7,7 +7,18 @@ import type { Chat, ModelOption, ModelProblem } from "../api.ts";
 import { buttonNamed, chatOf, fakeHost, sendMessage, show, unmount } from "../test-support.tsx";
 import { AssistantPanel } from "./assistant-panel.tsx";
 
-afterEach(unmount);
+// Settings › Assistant is hidden until it works (HAL-12643); these tests turn it on, as Settings' own do.
+const settings = vi.hoisted(() => ({ showUnfinished: true }));
+vi.mock("@halonicjs/studio-feature-settings/api", () => ({
+  get showUnfinishedSettings() {
+    return settings.showUnfinished;
+  },
+}));
+
+afterEach(() => {
+  unmount();
+  settings.showUnfinished = true;
+});
 
 function panel(fake: ReturnType<typeof fakeHost>) {
   const runCommand = vi.fn(() => true);
@@ -50,6 +61,21 @@ verifies("assistant.chat.model-line", () => {
       expect(document.activeElement).toBe(link);
       await act(async () => link?.click());
       expect(openSettings).toHaveBeenCalledWith("assistant");
+    });
+
+    it("has no Settings › while Settings hides its Assistant section, so Send waits on the line", async () => {
+      settings.showUnfinished = false;
+      const fake = fakeHost([chatOf("c1")], { models: [] });
+      const page = await show(panel(fake).node);
+      expect(status(page)).toContain("The assistant has no model yet.");
+      expect(buttonNamed(page, "Settings ›")).toBeUndefined();
+      await sendMessage(page, "Add a routine");
+      expect(fake.requests).toEqual([]);
+      expect(box(page).value).toBe("Add a routine");
+      const reason = buttonNamed(page, "Send")?.getAttribute("aria-describedby") ?? "";
+      expect(document.getElementById(reason)?.textContent).toContain(
+        "The assistant has no model yet.",
+      );
     });
 
     it("names the model and its provider's missing key, with Set the key › (H19)", async () => {

@@ -1,3 +1,4 @@
+import { showUnfinishedSettings } from "@halonicjs/studio-feature-settings/api";
 import { type ChatAction, ChatBoxLine } from "@halonicjs/studio-kit";
 import type { WorkspaceContext } from "@halonicjs/studio-shell";
 import { type ReactNode, type RefObject, useEffect, useId, useState } from "react";
@@ -105,12 +106,14 @@ function sentenceOf(line: ModelLine): ReactNode {
 }
 
 /**
- * **Settings ›** opens Settings › Assistant. **Set the key ›** opens Models, where keys are kept,
- * until the models feature offers the provider's key block (models flow 3.3).
+ * **Settings ›** opens Settings › Assistant, so it shows only while Settings shows that section
+ * (HAL-17857); without it the line has no link and Send waits on it. **Set the key ›** opens
+ * Models, where keys are kept, until the models feature offers the provider's key block (models
+ * flow 3.3).
  */
 function linkOf(line: ModelLine, context: WorkspaceContext): ChatAction | undefined {
   const { openSettings, runCommand } = context;
-  if (line.kind === "no-model" && openSettings !== undefined) {
+  if (line.kind === "no-model" && openSettings !== undefined && showUnfinishedSettings) {
     return { label: words.openSettings, onClick: () => openSettings("assistant"), look: "link" };
   }
   if (line.kind === "needs-key" && runCommand !== undefined) {
