@@ -2,6 +2,7 @@
 
 - Approval: Chief's team decision on HAL-18474 and HAL-18480 (a saved choice wins; with none saved, a Preview build follows Preview and a stable build Stable), and the board's approval of the Update track setting on HAL-18478; Liam approves and signs this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:RKSPQYGSqzcx2acvzQb40g/wK7D+Sx9Kq0vJ2FnMVhTBE4sdPTcSJFOs5SKUZhztzIqPWGl52txyUUF8LK2CBQ==
 
 ## What changes
 
