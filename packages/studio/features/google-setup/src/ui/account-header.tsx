@@ -50,6 +50,18 @@ export function AccountHeader(props: AccountHeaderProps) {
     }
   }, [changing]);
 
+  // **Publish with my own pages** under **Why?** goes away once the change is saved. Step 3, when
+  // it is open, moves focus to its first new part first; otherwise it comes to the title.
+  const title = useRef<HTMLHeadingElement>(null);
+  const publishedBefore = useRef(props.publishing);
+  useEffect(() => {
+    if (publishedBefore.current === props.publishing) return;
+    publishedBefore.current = props.publishing;
+    if (document.activeElement === null || document.activeElement === document.body) {
+      title.current?.focus();
+    }
+  }, [props.publishing]);
+
   // A failure that appears because of what you did takes focus, so a screen reader reads it.
   useEffect(() => {
     if (failed !== undefined) callout.current?.focus();
@@ -88,7 +100,9 @@ export function AccountHeader(props: AccountHeaderProps) {
       <div className="flex items-baseline justify-between gap-3">
         <div className="flex items-baseline gap-2">
           <StatusChip tone="outline">Setup</StatusChip>
-          <h2 className="text-title">Google for {email}</h2>
+          <h2 ref={title} tabIndex={-1} className="text-title">
+            Google for {email}
+          </h2>
         </div>
         {progress === undefined ? null : (
           <span className="shrink-0 text-body text-fg-muted">{progress}</span>

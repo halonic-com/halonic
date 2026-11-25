@@ -122,6 +122,71 @@ verifies("google-setup.personal-testing-step", () => {
     expect(container.textContent).toContain("Step 3 of 6");
   });
 
+  it("moves focus to the first new part after each publishing choice", async () => {
+    const testing = account(record(["project", "apis"]));
+    const published = account(record(["project", "apis"], personalApp("production")));
+    const { fake, container } = await open(testing);
+    const publish = button(
+      container.querySelector("details") as HTMLElement,
+      "Publish with my own pages",
+    );
+    publish.focus();
+    await press(publish);
+    await act(async () => fake.change([published]));
+    await settled();
+    expect(document.activeElement?.tagName).toBe("LI");
+    expect(document.activeElement?.textContent).toMatch(/^On "Branding", fill in/);
+
+    const stay = button(container, "Stay in Testing instead");
+    stay.focus();
+    await press(stay);
+    await act(async () => fake.change([testing]));
+    await settled();
+    expect(document.activeElement?.textContent).toMatch(/^On "Audience", under "Test users"/);
+  });
+
+  it("leaves focus to the failure, not a part, when the publishing choice isn't saved", async () => {
+    const fake = fakeAccounts([account(record(["project", "apis"]))], {
+      edit: async () => {
+        throw new Error("disk full");
+      },
+    });
+    const container = render(
+      <GoogleSetupView item={item} answering close={vi.fn()} accounts={fake.source} />,
+    );
+    await settled();
+    const publish = button(
+      container.querySelector("details") as HTMLElement,
+      "Publish with my own pages",
+    );
+    publish.focus();
+    await press(publish);
+    expect(publish.isConnected).toBe(true);
+    expect(document.activeElement?.textContent).toContain("Couldn't save your progress");
+  });
+
+  it("moves focus to step 3's Branding part after the header's Publish, or to the title", async () => {
+    const atConsent = await open(account(record(["project", "apis"])));
+    const header = atConsent.container.querySelector("header") as HTMLElement;
+    const publish = button(header, "Publish with my own pages");
+    publish.focus();
+    await press(publish);
+    await act(async () =>
+      atConsent.fake.change([account(record(["project", "apis"], personalApp("production")))]),
+    );
+    await settled();
+    expect(document.activeElement?.textContent).toMatch(/^On "Branding", fill in/);
+    unmountAll();
+
+    const atStart = await open(account(record([])));
+    const early = button(atStart.container.querySelector("header") as HTMLElement, "Publish");
+    early.focus();
+    await press(early);
+    await act(async () => atStart.fake.change([account(record([], personalApp("production")))]));
+    await settled();
+    expect(document.activeElement?.textContent).toBe("Google for x@example.com");
+  });
+
   it("opens the same panel from the header's Why?", async () => {
     const { fake, container } = await open(account(record([])));
     const header = container.querySelector("header") as HTMLElement;

@@ -1,5 +1,5 @@
 import type { OpenUiComponent } from "@halonicjs/openui-lang";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "../button/button.tsx";
 import { Card } from "../card/card.tsx";
 import { ExternalLink } from "../external-link/external-link.tsx";
@@ -91,6 +91,11 @@ function AgentCard({ part }: { readonly part: OpenUiComponent }) {
 function AgentTable({ part }: { readonly part: OpenUiComponent }) {
   const captionId = useId();
   const [all, setAll] = useState(false);
+  // **Show all** removes itself, so focus moves to the first row it showed instead of the page.
+  const firstNewRow = useRef<HTMLTableRowElement>(null);
+  useEffect(() => {
+    if (all) firstNewRow.current?.focus();
+  }, [all]);
   const columns = list(prop(part, "columns"));
   const rows = list<OpenUiComponent>(prop(part, "rows")).map((row) => list(prop(row, "cells")));
   const shown = all ? rows : rows.slice(0, CHAT_UI_ROWS_SHOWN);
@@ -127,7 +132,12 @@ function AgentTable({ part }: { readonly part: OpenUiComponent }) {
           </thead>
           <tbody>
             {shown.map((cells, row) => (
-              <tr key={row} className="border-t border-border">
+              <tr
+                key={row}
+                ref={row === CHAT_UI_ROWS_SHOWN ? firstNewRow : undefined}
+                tabIndex={row === CHAT_UI_ROWS_SHOWN ? -1 : undefined}
+                className="border-t border-border"
+              >
                 {columns.map((_, index) => (
                   <td key={index} className={`px-3 py-1.5 align-top ${align[index]}`}>
                     {text(cells[index])}

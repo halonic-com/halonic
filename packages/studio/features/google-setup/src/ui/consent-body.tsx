@@ -1,6 +1,6 @@
 import type { ConsentStep, PersonalPublishing } from "@halonicjs/google-setup";
 import { Button, Checkbox, Disclosure } from "@halonicjs/studio-kit";
-import { type ReactNode, useId } from "react";
+import { type ReactNode, type RefObject, useId, useLayoutEffect, useRef } from "react";
 import { ConsoleLink } from "./console-link.tsx";
 import { CopyLine } from "./copy-line.tsx";
 import { useNotAnswering } from "./not-answering.tsx";
@@ -45,6 +45,7 @@ function testUser(step: ConsentStep): string {
  */
 export function ConsentBody(props: ConsentBodyProps) {
   const { step } = props;
+  const firstNewPart = useFocusOnPublishing(step.publishing);
   if (step.publishing === null) return <InternalConsent {...props} />;
   if (step.parts === "test-user-only") {
     return (
@@ -61,7 +62,11 @@ export function ConsentBody(props: ConsentBodyProps) {
     <div className="flex flex-col gap-3">
       <Actions>
         <WizardParts step={step} external />
-        {testing ? <TestUserPart step={step} /> : <PublishParts step={step} />}
+        {testing ? (
+          <TestUserPart step={step} partRef={firstNewPart} />
+        ) : (
+          <PublishParts step={step} partRef={firstNewPart} />
+        )}
       </Actions>
       <RequiredTick {...props} />
       {testing ? (
@@ -103,10 +108,42 @@ function WizardParts({
   );
 }
 
+/**
+ * The part to focus once a publishing choice is saved: the pressed button (**Publish with my own
+ * pages**, **Stay in Testing instead**, or the header's **Why?**) goes away with the parts it
+ * swapped, so focus moves to the first new part instead of falling to the page. A layout effect,
+ * so it runs before the header's own fallback. A failed save changes nothing, and focus stays on
+ * the button; a change made elsewhere, while focus is on something still there, doesn't move it.
+ */
+function useFocusOnPublishing(
+  publishing: PersonalPublishing | null,
+): RefObject<HTMLLIElement | null> {
+  const part = useRef<HTMLLIElement>(null);
+  const before = useRef(publishing);
+  useLayoutEffect(() => {
+    if (before.current === publishing) return;
+    before.current = publishing;
+    if (document.activeElement === null || document.activeElement === document.body) {
+      part.current?.focus();
+    }
+  }, [publishing]);
+  return part;
+}
+
 /** Part c in *Testing*: the account's own address under Test users. */
-function TestUserPart({ step }: { readonly step: ConsentStep }) {
+function TestUserPart({
+  step,
+  partRef,
+}: {
+  readonly step: ConsentStep;
+  readonly partRef?: RefObject<HTMLLIElement | null>;
+}) {
   return (
-    <li className="flex flex-col gap-1">
+    <li
+      ref={partRef}
+      tabIndex={partRef === undefined ? undefined : -1}
+      className="flex flex-col gap-1"
+    >
       <span>
         On "Audience", under "Test users", click "Add users", add your address and click "Save".{" "}
         <ConsoleLink step={step} page="audience" />
@@ -121,7 +158,13 @@ function TestUserPart({ step }: { readonly step: ConsentStep }) {
 }
 
 /** Parts c and d with the user's own pages: Branding, then **Publish app**. Nothing to copy. */
-function PublishParts({ step }: { readonly step: ConsentStep }) {
+function PublishParts({
+  step,
+  partRef,
+}: {
+  readonly step: ConsentStep;
+  readonly partRef: RefObject<HTMLLIElement | null>;
+}) {
   const rows = [
     ["Application home page", "a page on your site"],
     ["Application privacy policy link", "a page on your site"],
@@ -129,7 +172,7 @@ function PublishParts({ step }: { readonly step: ConsentStep }) {
   ] as const;
   return (
     <>
-      <li className="flex flex-col gap-1">
+      <li ref={partRef} tabIndex={-1} className="flex flex-col gap-1">
         <span>
           On "Branding", fill in, then click "Save". <ConsoleLink step={step} page="branding" />
         </span>
