@@ -1,8 +1,9 @@
 import type { Tool, ToolActionName } from "@halonicjs/format";
 import type { GitHubGet } from "./github.ts";
-import type { Capability, ToolResult } from "./host.ts";
+import type { Capability, RuntimeHost, ToolResult } from "./host.ts";
 import { openPullRequestsHandler } from "./pulls/open-pull-requests.ts";
 import { pullRequestHandler } from "./pulls/pull-request.ts";
+import { taskHandler } from "./tasks/task.ts";
 
 /**
  * The code behind each action a workspace tool can name (`TOOL_ACTIONS` in
@@ -19,6 +20,13 @@ export interface ActionCall {
   readonly params: unknown;
   /** The calling agent: its id and url key. */
   readonly caller: { readonly agentId: string; readonly urlKey: string };
+  /** The company the call runs in. */
+  readonly companyId: string;
+  /**
+   * Paperclip's read clients. A handler may call only those its
+   * `capabilities` cover: Paperclip refuses the rest.
+   */
+  readonly paperclip: Pick<RuntimeHost, "agents" | "issues">;
   /** The GitHub reader with the plugin's read token: GET to api.github.com only. */
   readonly github: () => Promise<GitHubGet>;
 }
@@ -40,4 +48,5 @@ export type ActionHandlers = Readonly<Partial<Record<ToolActionName, ActionHandl
 export const runtimeHandlers: ActionHandlers = {
   "github.pull-request": pullRequestHandler,
   "github.open-pull-requests": openPullRequestsHandler,
+  "paperclip.task": taskHandler,
 };

@@ -133,6 +133,8 @@ async function serve(
     tool: served,
     params: call.params,
     caller: { agentId: runCtx.agentId, urlKey: agent.urlKey },
+    companyId: runCtx.companyId,
+    paperclip: ctx,
     github,
   });
 }

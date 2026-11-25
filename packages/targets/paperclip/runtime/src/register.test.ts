@@ -149,12 +149,13 @@ verifies("runtime.tools", () => {
       expect(actions.filter((action) => action.available).map((action) => action.name)).toEqual([
         "github.pull-request",
         "github.open-pull-requests",
+        "paperclip.task",
       ]);
       expect(actions[0]).toMatchObject({ name: "github.pull-request", keys: ["github-read"] });
       const withHandler = pluginActions({
-        "paperclip.task": { capabilities: ["issues.read"], run: async () => ({}) },
+        "paperclip.failed-runs": { capabilities: ["issues.read"], run: async () => ({}) },
       });
-      expect(withHandler.find((action) => action.name === "paperclip.task")).toMatchObject({
+      expect(withHandler.find((action) => action.name === "paperclip.failed-runs")).toMatchObject({
         available: true,
         capabilities: ["issues.read"],
       });
