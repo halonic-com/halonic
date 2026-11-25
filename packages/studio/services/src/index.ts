@@ -93,4 +93,11 @@ export {
 export { TauriChannel } from "./tauri-channel.ts";
 export { onWindowCloseRequested } from "./tauri-close.ts";
 export { type TauriCallbacks, type TauriIpc, tauriChannelIpc, tauriIpc } from "./tauri-ipc.ts";
+export {
+  runAgainFailureWords,
+  runAgainNotice,
+  runControlWords,
+  stopFailureWords,
+  TeamRunControlService,
+} from "./team-run-control.ts";
 export { TeamStatusService } from "./team-status.ts";
