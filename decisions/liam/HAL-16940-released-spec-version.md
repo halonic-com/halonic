@@ -14,6 +14,8 @@
   differs from the merge base's. Only the Version packages pull request bumps it. Any other copy is
   reported as an added golden file again.
 - Requirement `check.guard-golden-files` says so, with an example.
+- `tooling/check/src/guard/note-check.ts`: `tooling/check/src/lib/app-version.ts` joins the trust
+  roots, because the guard now imports it to read the app version.
 - `tooling/check/src/test/guard-fixture.ts`: a guard case can give the fixture package a `version`
   on the merge base and in the pull request.
 
