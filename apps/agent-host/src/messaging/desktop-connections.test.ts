@@ -110,3 +110,64 @@ verifies("agent-host.paperclip-signed-in-user", () => {
     });
   });
 });
+
+verifies("agent-host.paperclip-user-read-again", () => {
+  describe("a user read that failed on Paperclip's side or threw", () => {
+    const handOver = (on: Desktop) =>
+      on.paperclipKey.handOver({
+        workspace: on.workspace,
+        connection: "halonic",
+        key: testKey,
+        ...acme,
+      });
+    const reads = (on: Desktop, path: string) =>
+      on.paperclip.seen.filter((request) => new URL(request.url).pathname === path).length;
+    const rowOf = async (on: Desktop) => {
+      const [row] = await new AgentHostPaperclipSignIn(on.transport, on.workspace).connections();
+      return row;
+    };
+
+    it("reads the user again at the next poll after a 5xx, and then names them", async () => {
+      desktop = await startDesktop();
+      const on = desktop;
+      on.paperclip.meAnswer = () => Response.json({ error: "unavailable" }, { status: 503 });
+      await handOver(on);
+      expect((await rowOf(on))?.label).toBe("Paperclip · Halonic");
+      on.paperclip.meAnswer = undefined;
+      on.paperclip.me = { user: { name: "Board Supervisor" } };
+      await on.wait(30_000);
+      expect(reads(on, "/api/cli-auth/me")).toBe(2);
+      expect(await rowOf(on)).toMatchObject({
+        label: "Paperclip · Halonic · Board Supervisor",
+        userName: "Board Supervisor",
+      });
+    });
+
+    it("reports a read that throws during a poll, and the rest of the poll still runs", async () => {
+      desktop = await startDesktop();
+      const on = desktop;
+      // Paperclip answering with a redirect makes the client throw: it never follows one.
+      on.paperclip.meAnswer = () =>
+        new Response(null, { status: 302, headers: { location: `${acme.address}/elsewhere` } });
+      await handOver(on);
+      const agentsPath = `/api/companies/${acme.company}/agents`;
+      expect(reads(on, agentsPath)).toBe(0);
+      await on.wait(30_000);
+      expect(on.logged.filter((line) => line === "paperclip:halonic read user\n")).toHaveLength(2);
+      expect(reads(on, agentsPath)).toBeGreaterThan(0);
+      expect((await rowOf(on))?.state.kind).toBe("online");
+    });
+
+    it("shortens a long user name in the label, and keeps it whole on its own", async () => {
+      desktop = await startDesktop();
+      const on = desktop;
+      const longName = `Board Supervisor of ${"the Acme Company ".repeat(4).trim()}`;
+      on.paperclip.me = { user: { name: longName } };
+      await handOver(on);
+      const row = await rowOf(on);
+      expect(row?.label).toBe("Paperclip · Halonic · Board Supervisor of the Acme Company th…");
+      expect(row?.userName).toBe(longName);
+      expect(await on.studio.listSources()).toMatchObject([{ label: row?.label }]);
+    });
+  });
+});

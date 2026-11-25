@@ -330,14 +330,16 @@ export class PaperclipMessaging implements AgentMessaging {
   /**
    * Reads who the key belongs to (`GET /api/cli-auth/me`), so two connections
    * to one Paperclip can be told apart. Answers only the user's name, never
-   * their email; `undefined` while Paperclip can't be reached or refuses the
-   * key, so it is worth asking again, and no `name` when Paperclip has none
-   * to give.
+   * their email; `undefined` while Paperclip can't be reached, refuses the
+   * key or fails on its side (a 5xx), so it is worth asking again, and no
+   * `name` when Paperclip has none to give.
    */
   async signedInUser(): Promise<PaperclipUser | undefined> {
     const answer = await this.#reader.send("whoAmI");
     if (answer.kind === "failed") {
-      const askLater = answer.failure === "offline" || answer.failure === "signed-out";
+      const serverFault = answer.status !== undefined && answer.status >= 500;
+      const askLater =
+        answer.failure === "offline" || answer.failure === "signed-out" || serverFault;
       return askLater ? undefined : {};
     }
     const name = text(asRecord(field(asRecord(answer.body), "user")), "name");

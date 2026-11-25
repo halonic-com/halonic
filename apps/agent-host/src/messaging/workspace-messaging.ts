@@ -12,7 +12,11 @@ import type {
 import { paperclipConnectionNamePattern } from "../paperclip/paperclip-key-routes.ts";
 import { ChangeLog, type ChangesSince } from "./change-log.ts";
 import { listConnectionFiles } from "./connection-file.ts";
-import { type PaperclipConnectionProvider, paperclipProvider } from "./paperclip-provider.ts";
+import {
+  type PaperclipConnectionProvider,
+  paperclipProvider,
+  withUserName,
+} from "./paperclip-provider.ts";
 
 /** What one workspace's messaging needs. */
 export interface WorkspaceMessagingOptions {
@@ -106,11 +110,13 @@ export class WorkspaceMessaging {
             keys: this.#options.keys,
             label: file.label,
             readNow: () => this.#options.readConnection(binding.workspace, connection),
+            reportUserRead: (error) => {
+              const provider = paperclipSourceId(connection);
+              this.#options.report({ provider, action: "read user", error });
+            },
             ...this.#network(),
           });
-    await provider?.readUser().catch((error: unknown) => {
-      this.#options.report({ provider: paperclipSourceId(connection), action: "read user", error });
-    });
+    await provider?.readUser();
     if (provider === undefined) this.#providers.delete(connection);
     else this.#providers.set(connection, provider);
     this.#rejoin();
@@ -175,7 +181,7 @@ export class WorkspaceMessaging {
       return {
         id,
         name,
-        label: userName === undefined ? label : `${label} · ${userName}`,
+        label: userName === undefined ? label : withUserName(label, userName),
         address: connection.address,
         state: provider === undefined ? { kind: "signed-out" } : stateOf(id, sources, asOf),
         ...(userName === undefined ? {} : { userName }),
