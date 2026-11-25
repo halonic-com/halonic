@@ -8,6 +8,7 @@ import { type ConversationRow, inTab, type Messenger, type MessengerTab } from "
 import { messengerWords } from "../messenger-words.ts";
 import { ConversationList } from "./conversation-list.tsx";
 import { ConversationView } from "./conversation-view.tsx";
+import { NewMenu } from "./new-menu.tsx";
 
 /** The props of {@link MessengerPage}. */
 export interface MessengerPageProps {
@@ -59,6 +60,11 @@ export function MessengerPage({ messenger, onConnect }: MessengerPageProps) {
   const { onePane, list, chat, select, back } = useOnePane(selected, setSelected);
   // In one pane, nothing connected shows the panel, so a narrow window still offers Connect.
   const panelFirst = open !== undefined || connected === false;
+  // A channel made or joined is read into the list, then opened.
+  const openChannel = (channel: MessagingId) => {
+    setChanged((count) => count + 1);
+    select(channel);
+  };
   const left = () => {
     setSelected(undefined);
     setChanged((count) => count + 1);
@@ -72,6 +78,11 @@ export function MessengerPage({ messenger, onConnect }: MessengerPageProps) {
           aria-label={messengerWords.title}
           className={onePane ? "flex min-w-0 flex-1 flex-col" : "flex w-80 shrink-0 flex-col"}
         >
+          {connected === true ? (
+            <div className="flex justify-end px-2 pt-2">
+              <NewMenu messenger={messenger} onOpen={openChannel} />
+            </div>
+          ) : null}
           <ConversationList
             tab={tab}
             onTab={setTab}
