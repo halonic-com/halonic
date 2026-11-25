@@ -3,6 +3,7 @@
 - Approval: HAL-17561 (stream HAL-17488, steppers architecture note on HAL-17491, revision 13, sections 1.2 and 4.2) names the package `packages/core/action-catalog`, owner Tomas, right after `core/action-steppers` in `coreOrder`, and a `pnpm check` rule that fails when its generated hash file is out of date. It changes `tooling/check/`, a trust root, so both guardians sign: Julian, then Liam
 - Kind: internal
 - Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:vehj32yCU/IGuzAWT9lTvpA+RGAMDvSGDpDI4txRtTbjSvpnUekQwAl9n6rKFILEPoTEGbGOT1YLovjgVYOoBg==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:QYrTiIh4c0x0DnZx++amWFuDnk6z9Gzp535QwsYZVTk61vCMCpUnDE1Pvm7Z3h7VOzG1+Ol3FwSieStRCsmPDQ==
 
 ## What changes
 
