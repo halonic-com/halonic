@@ -231,7 +231,7 @@ export function WaitCard(props: WaitCardProps) {
           engine={props}
           onAnswer={answer}
           onOpenRun={openRun}
-          onReviewTrust={props.trust?.review}
+          trust={props.trust}
           bar={bar}
         />
       ) : null}
@@ -275,7 +275,7 @@ interface AnswerBarProps {
   readonly engine: EngineState;
   readonly onAnswer: (event: string) => void;
   readonly onOpenRun: (() => void) | undefined;
-  readonly onReviewTrust: ((opener: HTMLElement | null) => void) | undefined;
+  readonly trust: TrustReview | undefined;
   readonly bar: RefObject<HTMLDivElement | null>;
 }
 
@@ -297,7 +297,7 @@ function AnswerBar({
   engine,
   onAnswer,
   onOpenRun,
-  onReviewTrust,
+  trust,
   bar,
 }: AnswerBarProps) {
   const reasonId = useId();
@@ -344,7 +344,9 @@ function AnswerBar({
             ? (engine.words ?? engineWords["desktop-app"]).tooOldToAnswer
             : null
         }
-        untrusted={state.kind === "open" && state.untrusted ? { review: onReviewTrust } : null}
+        untrusted={
+          state.kind === "open" && state.untrusted ? (trust ?? { review: undefined }) : null
+        }
       />
       {first === undefined ? null : answerButton(first, true)}
       {others.length === 0 ? null : (

@@ -199,6 +199,25 @@ verifies("studio.served-inbox-runs", () => {
       expect(error.message).not.toContain("secret text");
     });
 
+    it("fails as the trust refusal when the computer says the workspace isn't trusted", async () => {
+      const refused = (code: string) =>
+        new ServedInboxRuns({
+          fetch: async () => Response.json({ code, message: "secret text" }, { status: 403 }),
+        });
+      const untrusted = (await errorOf(refused("workspace_not_trusted").send("a", "approve"))) as {
+        kind: string;
+        code?: string;
+        message: string;
+      };
+      expect(untrusted.kind).toBe("denied");
+      expect(untrusted.code).toBe("workspace.untrusted");
+      expect(untrusted.message).not.toContain("secret text");
+      const other = (await errorOf(refused("origin_not_allowed").send("a", "approve"))) as {
+        code?: string;
+      };
+      expect(other.code).toBeUndefined();
+    });
+
     it("fails when the answer is another run's", async () => {
       const runs = new ServedInboxRuns({ fetch: async () => Response.json(waitingRun("other")) });
       expect(((await errorOf(runs.send("a", "approve"))) as KindedError).kind).toBe("unavailable");

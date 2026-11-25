@@ -171,5 +171,27 @@ verifies("inbox.page", () => {
       act(() => remove());
       expect(granted()).toBe(2);
     });
+
+    it("gives a served window or a phone no Review, but where to fix it on the computer", () => {
+      const seen = new Map<string, TrustReview>();
+      for (const host of ["served", "phone", "desktop-app"] as const) {
+        function Probe() {
+          seen.set(
+            host,
+            useTrustReview({ badges: createBadgeRegistry(), runCommand: () => true, host }),
+          );
+          return null;
+        }
+        render(<Probe />);
+      }
+      expect(seen.get("served")?.review).toBeUndefined();
+      expect(seen.get("served")?.fixElsewhere).toBe(
+        "Fix this on the computer running Halonic: Settings › Trust",
+      );
+      expect(seen.get("phone")?.review).toBeUndefined();
+      expect(seen.get("phone")?.fixElsewhere).toBe("Fix this on your computer: Settings › Trust");
+      expect(seen.get("desktop-app")?.review).toBeDefined();
+      expect(seen.get("desktop-app")?.fixElsewhere).toBeUndefined();
+    });
   });
 });

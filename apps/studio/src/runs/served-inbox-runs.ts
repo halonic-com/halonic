@@ -2,7 +2,7 @@ import type { RunSummary } from "@halonicjs/events";
 import type { SendOptions } from "@halonicjs/ports";
 import { type ErrorKind, KindedError } from "@halonicjs/std";
 import type { InboxRuns } from "@halonicjs/studio-feature-inbox/api";
-import { unreachableWords } from "@halonicjs/studio-shell";
+import { unreachableWords, WorkspaceUntrusted } from "@halonicjs/studio-shell";
 import { type PollTimer, runsPollInterval, systemTimer } from "./workspace-runs.ts";
 
 /** The page's own `fetch`: same address, same session. */
@@ -63,6 +63,30 @@ function refusal(status: number, doing: string, listing: boolean): KindedError {
   return new KindedError(kind, why[kind]);
 }
 
+/** The code the computer gives an answer it refuses because the workspace isn't trusted. */
+const workspaceNotTrustedCode = "workspace_not_trusted";
+
+/**
+ * The refusal of an answer: a {@link WorkspaceUntrusted} when the computer's 403 says the
+ * workspace isn't trusted, so the card says so and where to fix it (HAL-18926); else
+ * {@link refusal}. Only the body's `code` is read, never its text.
+ */
+async function answerRefusal(response: Response, doing: string): Promise<KindedError> {
+  if (response.status === 403) {
+    const body: unknown = await response.json().catch(() => null);
+    if (
+      typeof body === "object" &&
+      body !== null &&
+      (body as { code?: unknown }).code === workspaceNotTrustedCode
+    ) {
+      return new WorkspaceUntrusted(
+        `The computer refused to ${doing}. The workspace isn't trusted yet.`,
+      );
+    }
+  }
+  return refusal(response.status, doing, false);
+}
+
 /** Whether `value` is a run summary the Inbox can read: it is what the Inbox reads first. */
 function isWaitingSummary(value: unknown): value is RunSummary {
   if (typeof value !== "object" || value === null) return false;
@@ -105,7 +129,9 @@ async function ask(
       cause,
     });
   }
-  if (!response.ok) throw refusal(response.status, doing, listing);
+  if (!response.ok) {
+    throw listing ? refusal(response.status, doing, listing) : await answerRefusal(response, doing);
+  }
   try {
     return await response.json();
   } catch (cause) {

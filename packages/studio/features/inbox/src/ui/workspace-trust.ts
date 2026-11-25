@@ -1,5 +1,5 @@
 import { useModalOpen } from "@halonicjs/studio-kit";
-import type { BadgeRegistry, WorkspaceContext } from "@halonicjs/studio-shell";
+import type { BadgeRegistry, StudioHost, WorkspaceContext } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 const openTrustCommand = "workspace.open-trust";
@@ -13,6 +13,11 @@ export interface TrustReview {
    * without it that line has no button.
    */
   readonly review: ((opener: HTMLElement | null) => void) | undefined;
+  /**
+   * Where to fix it, for a window that can't open the trust check (a served window or a phone):
+   * "Fix this on your computer: Settings › Trust", said after the line in place of **Review**.
+   */
+  readonly fixElsewhere?: string | undefined;
   /**
    * How often the workspace became trusted while the Inbox was open: when it changes, a card that
    * said the workspace isn't trusted drops that line (HAL-14007 TU2).
@@ -40,13 +45,33 @@ export function trustReviewOf({
 }
 
 /**
+ * Where a window that can't open the trust check tells you to fix it, in the words the run pages
+ * and the Google setup use: "your computer" on a phone, "the computer running Halonic" in a
+ * served browser window (HAL-18926). `undefined` for the desktop app, which has **Review**.
+ */
+export function trustFixElsewhere(host: StudioHost | undefined): string | undefined {
+  switch (host) {
+    case "phone":
+      return "Fix this on your computer: Settings › Trust";
+    case "served":
+      return "Fix this on the computer running Halonic: Settings › Trust";
+    default:
+      return undefined;
+  }
+}
+
+/**
  * The window's {@link TrustReview}: **Review** as {@link trustReviewOf}, and a count that goes up
- * each time the trust badge leaves the header, which it does once the workspace is trusted.
+ * each time the trust badge leaves the header, which it does once the workspace is trusted. A
+ * served window or a phone has no trust check, so it gets no **Review**, which would open nothing,
+ * but the place to fix it on the computer.
  */
 export function useTrustReview(
-  context: Pick<WorkspaceContext, "badges" | "runCommand">,
+  context: Pick<WorkspaceContext, "badges" | "runCommand" | "host">,
 ): TrustReview {
   const granted = useTrustGranted(context.badges);
+  const fixElsewhere = trustFixElsewhere(context.host);
+  if (fixElsewhere !== undefined) return { review: undefined, fixElsewhere, granted };
   return { review: trustReviewOf(context), granted };
 }
 
