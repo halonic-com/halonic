@@ -20,7 +20,8 @@ export class ConsoleNotRunningError extends Error {
  * Sends one request to the console socket at `path` and gives the server's reply, parsed.
  *
  * @throws ConsoleSocketError when the system has no Unix sockets or the path is too long
- * @throws ConsoleNotRunningError when nothing listens there, or it closes without a whole reply
+ * @throws ConsoleNotRunningError when nothing listens there, or it closes without a whole reply,
+ *   or its reply isn't JSON
  */
 export async function callConsoleSocket(path: string, request: unknown): Promise<unknown> {
   checkConsolePlace(path);
@@ -39,5 +40,10 @@ export async function callConsoleSocket(path: string, request: unknown): Promise
   const line = await readOneLine(socket, maxReplyBytes);
   socket.destroy();
   if (line === null) throw new ConsoleNotRunningError();
-  return JSON.parse(line) as unknown;
+  try {
+    return JSON.parse(line) as unknown;
+  } catch {
+    // What answered isn't a `halonic serve`, or it broke off; either way no console is there.
+    throw new ConsoleNotRunningError();
+  }
 }

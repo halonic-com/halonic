@@ -79,21 +79,28 @@ export async function openServeConsole(
     const place = await consolePlace(setup, dir);
     // A failed console request goes to `--debug`, as a failed HTTP request does.
     const logError = (error: unknown): void =>
-      context.debug(
-        serveMessages.requestFailed(
-          printable(error instanceof Error ? error.message : String(error)),
-        ).phrase,
-      );
+      context.debug(serveMessages.requestFailed(messageOf(error)).phrase);
     const open = await transport.listen(place, (request) => console.answer(request), logError);
     return { warning: null, close: () => open.close() };
   } catch (error) {
-    if (!(error instanceof ConsoleSocketError)) throw error;
-    const warning =
-      error.reason === "windows"
-        ? null
-        : serveDevicesMessages.consoleNotOpened(plainText(reasonOf(error).phrase)).phrase;
-    return { warning, close: async () => undefined };
+    // Any failure here, a refused folder or one the system won't let `serve` make (`EACCES`,
+    // `ENOTDIR`), costs only the console: `serve` goes on serving and says why.
+    return { warning: notOpenedWarning(error), close: async () => undefined };
   }
+}
+
+/** The `!` line for a console that couldn't open, or `null` on Windows. */
+function notOpenedWarning(error: unknown): Phrase | null {
+  if (!(error instanceof ConsoleSocketError)) {
+    return serveDevicesMessages.consoleNotOpened(messageOf(error)).phrase;
+  }
+  if (error.reason === "windows") return null;
+  return serveDevicesMessages.consoleNotOpened(plainText(reasonOf(error).phrase)).phrase;
+}
+
+/** An error's own message, safe to print. */
+function messageOf(error: unknown): string {
+  return printable(error instanceof Error ? error.message : String(error));
 }
 
 /** Why the console can't be used, as the end of a "Couldn't …:" line. */

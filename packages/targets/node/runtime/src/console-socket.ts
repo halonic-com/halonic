@@ -1,5 +1,5 @@
 import { chmod } from "node:fs/promises";
-import { createServer, type Socket } from "node:net";
+import { createServer, type Server, type Socket } from "node:net";
 import { dirname, join } from "node:path";
 import {
   ConsoleSocketError,
@@ -14,9 +14,9 @@ export { ConsoleSocketError } from "./console-folder.ts";
 /**
  * The console channel of `halonic serve` (`server.device-pairing`, Julian on HAL-18561): a Unix
  * socket that only the user who runs the server can open, so `halonic serve pair` and `halonic
- * serve devices` reach the running server without HTTP. The socket is 0600 in the profile's
- * `console` folder, which is 0700, both made under a umask of 077 before the bind, so neither is ever open to
- * anyone else, even for a moment. The folder is the guard on every Unix: macOS ignores a
+ * serve devices` reach the running server without HTTP. The socket is 0600, bound under a umask
+ * of 077, in the profile's `console` folder, made 0700, so neither is ever open to anyone else,
+ * even for a moment. The folder is the guard on every Unix: macOS ignores a
  * socket's own mode, but nobody else can reach a socket in a folder they can't enter.
  */
 
@@ -107,20 +107,9 @@ export async function listenOnConsoleSocket(
     });
   });
   server.maxConnections = maxConnections;
-  const umask = process.umask(0o077);
-  try {
-    await makeOwnFolder(dirname(path), path, uid);
-    await removeLeftoverSocket(path, uid);
-    await new Promise<void>((resolve, reject) => {
-      server.once("error", reject);
-      server.listen(path, () => {
-        server.off("error", reject);
-        resolve();
-      });
-    });
-  } finally {
-    process.umask(umask);
-  }
+  await makeOwnFolder(dirname(path), path, uid);
+  await removeLeftoverSocket(path, uid);
+  await listenPrivately(server, path);
   const close = async (): Promise<void> => {
     await new Promise<void>((resolve) => {
       server.close(() => resolve());
@@ -136,6 +125,26 @@ export async function listenOnConsoleSocket(
     throw error;
   }
   return { path, close };
+}
+
+/**
+ * Binds `server` to the socket at `path` under a umask of 077, so the socket is 0600 from the
+ * moment it exists. The umask is the whole process's, and the engine already runs beside it, so
+ * it is set only around `listen`, which binds the socket before it returns, and put back at once.
+ */
+function listenPrivately(server: Server, path: string): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    const umask = process.umask(0o077);
+    try {
+      server.listen(path, () => {
+        server.off("error", reject);
+        resolve();
+      });
+    } finally {
+      process.umask(umask);
+    }
+  });
 }
 
 /**
