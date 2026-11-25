@@ -1119,7 +1119,11 @@ reaches the Merger by copying in the next one.
 ## Reviewer path list
 
 `reviewerFor({ files, changedLines, sensitive })` answers `julian` or `liam`
-by the rules of HAL-14809 (widened on 22 Nov). Pass each changed
+by the rules of HAL-14809 (widened on 22 Nov and on HAL-18459). Pass each
+changed file's lines in `fileLines`, so tests, Markdown and wording don't count
+toward the 1500-line limit and the 800-line limit in the kernel and event
+types; without them the whole pull request's lines count once it changes any
+code. Pass each changed
 `package.json`'s text at the merge base and the head in `manifests`, or that
 manifest counts as Liam's; `pr_status` reads them from the contents API. Scripts
 that route pull requests import it from here, so there is only one list.

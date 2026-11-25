@@ -1,4 +1,4 @@
-import { type ChangedFile, readManifests } from "../pr-tools/manifests.ts";
+import { type ChangedFile, linesByFile, readManifests } from "../pr-tools/manifests.ts";
 import { branchPath, type PullDetails } from "../pr-tools/pr-status.ts";
 import { isSecurityPath, reviewerFor } from "../reviewer-paths.ts";
 import { everyPage, type GitHubGet } from "./github.ts";
@@ -33,6 +33,7 @@ export function gitHubRoute(get: GitHubGet): ReviewerRoute {
       changedLines: (pull.additions ?? 0) + (pull.deletions ?? 0),
       sensitive: false,
       manifests,
+      fileLines: linesByFile(files),
     });
     return { reviewer, security: paths.some(isSecurityPath) };
   };

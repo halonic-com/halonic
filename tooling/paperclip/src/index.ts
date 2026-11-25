@@ -60,6 +60,8 @@ export {
   tick,
 } from "./pr-watcher/watch.ts";
 export {
+  coreFolders,
+  coreLineLimit,
   isLiamPath,
   isSecurityPath,
   isTestPath,
@@ -70,6 +72,7 @@ export {
   liamPackageScripts,
   liamWords,
   type ManifestChange,
+  overLineLimit,
   type RoutedPull,
   reviewerFor,
   reviewerRoleFor,

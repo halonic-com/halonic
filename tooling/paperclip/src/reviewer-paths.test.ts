@@ -4,6 +4,7 @@ import {
   isLiamPath,
   isSecurityPath,
   type ManifestChange,
+  overLineLimit,
   reviewerFor,
   touchesPackageFields,
 } from "./reviewer-paths.ts";
@@ -69,16 +70,61 @@ verifies("paperclip.reviewer-paths", () => {
     expect(isLiamPath(path)).toBe(false);
   });
 
-  test("more than 1200 lines, or a security or release change, goes to Liam", () => {
+  test("more than 1500 lines of code, or a security or release change, goes to Liam", () => {
     const files = ["packages/core/app/src/a.ts"];
-    expect(reviewerFor({ files, changedLines: 1201, sensitive: false })).toBe("liam");
-    expect(reviewerFor({ files, changedLines: 1200, sensitive: false })).toBe("julian");
+    expect(reviewerFor({ files, changedLines: 1400, sensitive: false })).toBe("julian");
+    expect(reviewerFor({ files, changedLines: 1500, sensitive: false })).toBe("julian");
+    expect(reviewerFor({ files, changedLines: 1501, sensitive: false })).toBe("liam");
+    expect(reviewerFor({ files, changedLines: 1600, sensitive: false })).toBe("liam");
     expect(reviewerFor({ files, changedLines: 5, sensitive: true })).toBe("liam");
   });
 
   test("only tests and Markdown have no line limit", () => {
     const files = ["packages/core/app/src/a.test.ts", "docs/guides/a.md", "apps/cli/test/b.ts"];
     expect(reviewerFor({ files, changedLines: 2000, sensitive: false })).toBe("julian");
+  });
+
+  test("tests, Markdown and wording don't count toward the 1500 lines", () => {
+    const files = ["packages/core/app/src/a.ts", "packages/core/app/src/a.test.ts", "docs/a.md"];
+    const pull = { files, changedLines: 2400, sensitive: false };
+    const fileLines = { [files[0] ?? ""]: 1400, [files[1] ?? ""]: 700, [files[2] ?? ""]: 300 };
+    expect(reviewerFor({ ...pull, fileLines })).toBe("julian");
+    expect(reviewerFor({ ...pull, fileLines: { ...fileLines, [files[0] ?? ""]: 1600 } })).toBe(
+      "liam",
+    );
+    // Without each file's count, the whole pull request's lines count.
+    expect(reviewerFor(pull)).toBe("liam");
+  });
+
+  test.each(["packages/core/events/src/run-events.ts", "packages/core/engine/src/kernel/step.ts"])(
+    "more than 800 lines of code in %s goes to Liam",
+    (path) => {
+      const files = [path, "packages/core/app/src/a.ts"];
+      const pull = { files, changedLines: 1000, sensitive: false };
+      expect(reviewerFor({ ...pull, fileLines: { [path]: 900, [files[1] ?? ""]: 100 } })).toBe(
+        "liam",
+      );
+      expect(reviewerFor({ ...pull, fileLines: { [path]: 800, [files[1] ?? ""]: 200 } })).toBe(
+        "julian",
+      );
+      expect(reviewerFor({ files: [path], changedLines: 900, sensitive: false })).toBe("liam");
+    },
+  );
+
+  test("tests in the kernel or the event types don't count toward its 800 lines", () => {
+    const files = ["packages/core/events/src/run-events.test.ts", "packages/core/events/README.md"];
+    expect(reviewerFor({ files, changedLines: 2000, sensitive: false })).toBe("julian");
+  });
+
+  test("the line limit says why a pull request is too big for Julian", () => {
+    const files = ["packages/core/events/src/a.ts"];
+    expect(overLineLimit({ files, changedLines: 1600, sensitive: false })).toBe(
+      "1600 changed lines outside tests, Markdown and wording (limit 1500)",
+    );
+    expect(overLineLimit({ files, changedLines: 900, sensitive: false })).toBe(
+      "900 changed lines in the kernel or the event types (limit 800)",
+    );
+    expect(overLineLimit({ files, changedLines: 800, sensitive: false })).toBeUndefined();
   });
 
   test("a word in a messages/ folder outside the CLI still counts", () => {

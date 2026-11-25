@@ -14,6 +14,15 @@ export interface ChangedFile {
   readonly status?: string;
   /** The old path of a renamed file. */
   readonly previous_filename?: string;
+  /** Additions plus deletions. */
+  readonly changes?: number;
+}
+
+/** Changed lines per file, for `reviewerFor`'s line limits; a file without a count is left out. */
+export function linesByFile(files: readonly ChangedFile[]): Record<string, number> {
+  return Object.fromEntries(
+    files.flatMap((file) => (file.changes === undefined ? [] : [[file.filename, file.changes]])),
+  );
 }
 
 /** The refs to compare: undefined `base` when the merge base isn't known. */

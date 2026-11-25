@@ -10,7 +10,7 @@ import {
 } from "../pr-watcher/github.ts";
 import { reviewerFor } from "../reviewer-paths.ts";
 import { type Approval, approvals, type PullComment } from "./approvals.ts";
-import { type ChangedFile, readManifests } from "./manifests.ts";
+import { type ChangedFile, linesByFile, readManifests } from "./manifests.ts";
 
 /**
  * The `pr_status` tool: everything an agent asks GitHub when it checks a
@@ -144,6 +144,7 @@ export async function prStatus(get: GitHubGet, repo: string, number: number): Pr
     changedLines,
     sensitive: false,
     manifests,
+    fileLines: linesByFile(files),
   });
   const found = approvals(comments, { head, author, reviewer });
   const title = shownTitle(pull);
