@@ -17,6 +17,7 @@ Studio's desktop shell hears a second system-wide key, quick ask's (Ctrl+Alt+Spa
   - The box itself can't change its keys.
 - **Linux with Wayland:** the desktop gives a key only to the focused window, so the shell doesn't register the keys there. It reports `wayland`, and the person adds a desktop shortcut that runs `halonic-studio --app ask`.
 - **The tray menu gets Ask…**, so the box opens even where the keys don't work. That changes the tray's menu texts and their tests (the board card's menu plus one line), and the tray requirement says so.
+- **A focused app's icon is optional now,** because the box has none. `app-icons.test.ts` still checks that Inbox and Messenger set theirs; it now reads the new `if let Some(icon) = app.icon()` form of that call.
 - **macOS:** Tauri makes a window transparent there only with its private-API feature, which this PR doesn't turn on. So on macOS the margin around the box shows the page's background. Turning that feature on is Liam's call, in a later PR.
 
 The box's own screen is PR 2 (HAL-18625). Settings › Shortcuts and Open in Messenger come in their own PRs. Until the page shows the box, this PR doesn't merge, so users don't see an empty window.
@@ -38,3 +39,4 @@ The box's own screen is PR 2 (HAL-18625). Settings › Shortcuts and Open in Mes
 - apps/studio/src-tauri/src/sandbox_elevate.rs
 - apps/studio/src-tauri/src/sandbox_wsl_setup.rs
 - apps/studio/src-tauri/src/workspace_key_tests.rs
+- apps/studio/src/studio/app-icons.test.ts
