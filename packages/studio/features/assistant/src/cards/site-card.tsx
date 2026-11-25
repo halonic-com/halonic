@@ -1,10 +1,10 @@
 // What a Build chat shows under a `read_docs` call (`assistant.build.site-card`): the docs log's
 // line for it, and the site card when that call asked about a site.
 
-import type { SavedChatDocs, SavedDocsSite } from "@halonicjs/ports";
-import { Button } from "@halonicjs/studio-kit";
+import type { SavedChatDocs, SavedDocsLogEntry, SavedDocsSite } from "@halonicjs/ports";
+import { AlertIcon, Button } from "@halonicjs/studio-kit";
 import type { WorkspaceContext } from "@halonicjs/studio-shell";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { type AssistantHost, AssistantHostService } from "../api.ts";
 import { cardElementId } from "./card-end.tsx";
 import { docsLogLine, siteCardWords as words } from "./site-card-words.ts";
@@ -25,12 +25,30 @@ export function DocsCall({ chatId, callId, context }: DocsCallProps) {
   const site = docs?.sites.find((each) => each.cardId === callId);
   return (
     <>
-      {entry === undefined ? null : (
+      {entry === undefined || !stillTrue(entry, docs?.sites ?? []) ? null : (
         <p className="pl-6 text-small text-fg-subtle wrap-break-word">{docsLogLine(entry)}</p>
       )}
       {site === undefined ? null : <SiteCard chatId={chatId} site={site} host={host} />}
     </>
   );
+}
+
+/**
+ * Whether a log line still says what is true: a call's "waiting" line goes once its site has an
+ * answer, because the card's answered line then says what happened (design check, HAL-18543).
+ */
+function stillTrue(entry: SavedDocsLogEntry, sites: readonly SavedDocsSite[]): boolean {
+  if (entry.outcome !== "waiting") return true;
+  const host = hostOf(entry.url);
+  return sites.some((site) => site.host === host && site.answer === "asked");
+}
+
+function hostOf(url: string): string | undefined {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -49,13 +67,17 @@ function SiteCard({
   const questionId = useId();
   const [busy, setBusy] = useState<"allowed" | "declined">();
   const [failure, setFailure] = useState<string>();
+  const line = useAnswerFocus(site.answer);
   const answer = async (choice: "allowed" | "declined") => {
     if (busy !== undefined) return;
     setBusy(choice);
     setFailure(undefined);
+    // Set before the call: the host may report the new answer before the call returns.
+    line.answeredHere.current = true;
     try {
       await host.answerSite(chatId, site.cardId, choice);
     } catch (error) {
+      line.answeredHere.current = false;
       setFailure(words.cantAnswer(error instanceof Error ? error.message : String(error)));
     } finally {
       setBusy(undefined);
@@ -67,7 +89,7 @@ function SiteCard({
       aria-labelledby={questionId}
       className="flex flex-col gap-1 rounded-md border border-border bg-surface p-3 text-body"
     >
-      <p id={questionId} className="font-medium wrap-break-word">
+      <p id={questionId} className="text-body-strong wrap-break-word">
         {words.question(site.host)}
       </p>
       <p className="text-small text-fg-muted">{words.line}</p>
@@ -91,15 +113,35 @@ function SiteCard({
           </Button>
         </div>
       ) : (
-        <p className="text-small">{site.answer === "allowed" ? words.allowed : words.declined}</p>
+        <p ref={line.ref} tabIndex={-1} className="text-small focus-ring">
+          {site.answer === "allowed" ? words.allowed : words.declined}
+        </p>
       )}
       {failure === undefined ? null : (
-        <p role="alert" className="text-small text-danger">
+        <p role="alert" className="flex items-start gap-1 text-caption text-danger">
+          <span className="inline-grid size-icon-sm shrink-0 place-items-center *:size-full">
+            <AlertIcon />
+          </span>
           {failure}
         </p>
       )}
     </article>
   );
+}
+
+/**
+ * Once the card is answered from its own buttons, focus moves to the line that replaced them, so a
+ * keyboard user isn't left on the page's body (component specs 21.2, as the proposal card does).
+ */
+function useAnswerFocus(answer: SavedDocsSite["answer"]) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const answeredHere = useRef(false);
+  useEffect(() => {
+    if (answer === "asked" || !answeredHere.current) return;
+    answeredHere.current = false;
+    ref.current?.focus();
+  }, [answer]);
+  return { ref, answeredHere };
 }
 
 /** A chat's docs sites and log, read again each time the host says the chat changed. */

@@ -73,6 +73,8 @@ verifies("assistant.build.site-card", () => {
     ]);
     expect(card(shown)?.textContent).toContain("Allowed for this chat.");
     expect(buttonNamed(shown, "Allow")).toBeUndefined();
+    expect(document.activeElement?.textContent).toBe("Allowed for this chat.");
+    expect(shown.textContent).not.toContain("Waiting for your answer");
   });
 
   it("records declined on Don't allow", async () => {
@@ -80,6 +82,16 @@ verifies("assistant.build.site-card", () => {
     await act(async () => buttonNamed(shown, "Don't allow")?.click());
     expect(fake.docsOf("c1")?.sites[0]?.answer).toBe("declined");
     expect(card(shown)?.textContent).toContain("Not allowed in this chat.");
+    expect(document.activeElement?.textContent).toBe("Not allowed in this chat.");
+  });
+
+  it("keeps the buttons and shows an error line with its icon when the answer can't be saved", async () => {
+    const { fake, page: shown } = await panel();
+    vi.spyOn(fake.host, "answerSite").mockRejectedValue(new Error("engine stopped"));
+    await act(async () => buttonNamed(shown, "Allow")?.click());
+    const alert = shown.querySelector('[role="alert"]');
+    expect(alert?.querySelector("svg")).not.toBeNull();
+    expect(buttonNamed(shown, "Allow")).toBeDefined();
   });
 
   it("shows a read page's line with its status and size", async () => {
