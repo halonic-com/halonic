@@ -24,6 +24,7 @@ export {
 export { isInsideOrSameOn, isStrictlyInsideOn, overlapsOn } from "./path-containment.ts";
 export { programEnvironment } from "./program-environment.ts";
 export { type ReadLinesOptions, readLines } from "./read-lines.ts";
+export { sessionReadLimitBytes, sessionSettingsFolder } from "./session-settings-folder.ts";
 export {
   resetSettingsFolderWith,
   type SettingsFolderContents,

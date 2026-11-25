@@ -82,13 +82,15 @@ export class RunContainerLogic<Handler> implements RunContainer {
 
   /**
    * Destroys the container and revokes the run's bridge credential, even when destroying throws.
-   * Safe to call twice.
+   * Safe to call twice. The credential revoked is always this object's own run's, never the one
+   * `runId` names: an end refused for another run's id must not reach that run's object.
    */
   async end(runId: string): Promise<void> {
+    const { objectName } = this.#parts;
     try {
       await this.#running().end(runId);
     } finally {
-      await this.#parts.revokeBridge(runId);
+      if (objectName !== undefined) await this.#parts.revokeBridge(objectName);
     }
   }
 
