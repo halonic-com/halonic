@@ -47,7 +47,8 @@ export interface PluginBuildSetup {
  * `.release.json` into `--out`.
  *
  * @throws UsageError for a `--plugin-version` that isn't `x.y.z`
- * @throws DetailedError when the workspace, its commit, the runtime or the previous build stops the build
+ * @throws DetailedError when the build service refuses the workspace, its commit or the previous build,
+ *   or the runtime's worker isn't built
  */
 export async function buildPaperclipPlugin(
   input: CommandInput,
@@ -61,13 +62,6 @@ export async function buildPaperclipPlugin(
   const workspace = await openWorkspaceDir(input, context);
   const loaded = await loadWorkspace(workspace.store);
   const errors = workspaceProblemsOf(loaded).filter((issue) => issue.severity === "error");
-  if (errors.length > 0) {
-    throw new DetailedError(
-      "invalid_input",
-      buildMessages.workspaceErrors(errors.length),
-      buildMessages.workspaceErrorsFix(),
-    );
-  }
   const tools = filesOf(loaded, "tool");
   const commit = await workspaceCommit(
     workspace.root,
@@ -85,6 +79,7 @@ export async function buildPaperclipPlugin(
       workspace: {
         id: settings.id,
         name: settings.name,
+        errors: errors.length,
         commit,
         tools: tools.map((file) => file.value),
       },
@@ -160,6 +155,23 @@ async function writeOnce(folder: string, name: string, bytes: Uint8Array, cwd: s
 /** A refusal from the build service, in the CLI's words. */
 function refusalOf(problem: PluginBuildProblem, since: string): Error {
   switch (problem.code) {
+    case "workspace-errors":
+      return new DetailedError(
+        "invalid_input",
+        buildMessages.workspaceErrors(problem.errors),
+        buildMessages.workspaceErrorsFix(),
+      );
+    case "no-repository":
+      return new DetailedError("conflict", buildMessages.notInGit(), buildMessages.commitFix());
+    case "no-commit":
+      return new DetailedError("conflict", buildMessages.noCommit(), buildMessages.commitFix());
+    case "uncommitted":
+      return new DetailedError(
+        "conflict",
+        buildMessages.uncommitted(problem.files),
+        buildMessages.commitFix(),
+        { files: problem.files },
+      );
     case "bad-plugin-id":
       return new DetailedError(
         "invalid_input",

@@ -11,6 +11,7 @@ import { exitCode } from "../../exit-code.ts";
 import { shippedPluginRuntime } from "../../paperclip-runtime.ts";
 import { runCli } from "../../run-cli.ts";
 import { captureIo } from "../../test/capture-io.ts";
+import { removeTestFolder } from "../../test/remove-folder.ts";
 import { buildCommandWith } from "./command.ts";
 
 /** A runtime that can run the GitHub pull request action only. */
@@ -60,7 +61,7 @@ beforeEach(async () => {
   await commitAll();
 }, 20_000);
 
-afterEach(() => rm(folder, { recursive: true, force: true }));
+afterEach(() => removeTestFolder(folder));
 
 async function build(...args: string[]) {
   const io = captureIo(folder);

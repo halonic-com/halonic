@@ -4,7 +4,12 @@
 // the caller reads the workspace, the runtime and the previous build, and
 // writes what comes back. Nothing here reaches a disk, a network or Paperclip.
 
-import { makeSnapshot, type SnapshotProblem, type Tool } from "@halonicjs/format";
+import {
+  makeSnapshot,
+  type SnapshotProblem,
+  type Tool,
+  type WorkspaceSnapshot,
+} from "@halonicjs/format";
 import {
   archiveFileName,
   archiveSha256,
@@ -51,13 +56,30 @@ export interface PluginRuntime {
   readonly settings: Readonly<Record<string, unknown>>;
 }
 
+/**
+ * The git commit the tool files were read at, as the caller found it. The
+ * release file names the commit, so it must hold every file the build read.
+ */
+export type WorkspaceCommit =
+  | {
+      readonly kind: "commit";
+      /** The full commit id. */
+      readonly id: string;
+      /** The files the build read that differ from the commit or aren't in it, sorted. */
+      readonly uncommitted: readonly string[];
+    }
+  | { readonly kind: "no-repository" }
+  | { readonly kind: "no-commit" };
+
 /** What one plugin is built from. */
 export interface WorkspacePluginRequest {
-  /** The workspace's id (the plugin id's last part), name, commit and parsed tool files. */
+  /** The workspace: its id (the plugin id's last part), name, errors, commit and parsed tool files. */
   readonly workspace: {
     readonly id: string;
     readonly name: string;
-    readonly commit: string;
+    /** How many errors loading the workspace found. */
+    readonly errors: number;
+    readonly commit: WorkspaceCommit;
     readonly tools: readonly Tool[];
   };
   readonly runtime: PluginRuntime;
@@ -86,6 +108,9 @@ export interface UnavailableTool {
 
 /** Why a plugin wasn't built. Nothing is built in part. */
 export type PluginBuildProblem =
+  | { readonly code: "workspace-errors"; readonly errors: number }
+  | { readonly code: "no-repository" | "no-commit" }
+  | { readonly code: "uncommitted"; readonly files: readonly string[] }
   | PluginIdProblem
   | PluginVersionProblem
   | { readonly code: "snapshot"; readonly problems: readonly SnapshotProblem[] }
@@ -109,13 +134,10 @@ export async function buildWorkspacePlugin(
   digest: Sha256,
 ): Promise<Result<BuiltPlugin, PluginBuildProblem>> {
   const { workspace, runtime } = request;
-  const pluginId = pluginIdFor(workspace.id);
-  if (!pluginId.ok) return pluginId;
-  const snapshot = makeSnapshot(workspace);
-  if (!snapshot.ok) return err({ code: "snapshot", problems: snapshot.error });
-  const unavailable = unavailableTools(snapshot.value.tools, runtime.actions);
-  if (unavailable.length > 0) return err({ code: "action-unavailable", tools: unavailable });
-  const previous = await previousBuild(request.previous, pluginId.value, digest);
+  const checked = checkedWorkspace(workspace, runtime);
+  if (!checked.ok) return checked;
+  const { pluginId, snapshot } = checked.value;
+  const previous = await previousBuild(request.previous, pluginId, digest);
   if (!previous.ok) return previous;
   const version = nextPluginVersion({
     ...(request.version === undefined ? {} : { requested: request.version }),
@@ -124,32 +146,57 @@ export async function buildWorkspacePlugin(
   if (!version.ok) return version;
 
   const archive = buildPluginArchive({
-    packageJson: pluginPackageJsonText(pluginId.value, version.value),
+    packageJson: pluginPackageJsonText(pluginId, version.value),
     manifest: pluginManifestText({
-      pluginId: pluginId.value,
+      pluginId,
       version: version.value,
-      snapshot: snapshot.value,
-      capabilities: capabilitiesFor(snapshot.value.tools, runtime),
+      snapshot,
+      capabilities: capabilitiesFor(snapshot.tools, runtime),
       settings: runtime.settings,
     }),
     worker: runtime.worker,
-    snapshot: snapshot.value,
+    snapshot,
   });
   const fields = {
-    pluginId: pluginId.value,
+    pluginId,
     version: version.value,
     sha256: await archiveSha256(archive, digest),
-    workspaceCommit: workspace.commit,
+    workspaceCommit: snapshot.workspace.commit,
     halonicVersion: request.halonicVersion,
-    changes: changeList(previous.value?.snapshot, snapshot.value),
+    changes: changeList(previous.value?.snapshot, snapshot),
   };
   return ok({
-    archiveName: archiveFileName(pluginId.value, version.value),
+    archiveName: archiveFileName(pluginId, version.value),
     archive,
-    releaseName: releaseFileName(pluginId.value, version.value),
+    releaseName: releaseFileName(pluginId, version.value),
     releaseText: releaseFileText(fields),
-    release: { ...fields, archive: archiveFileName(pluginId.value, version.value) },
+    release: { ...fields, archive: archiveFileName(pluginId, version.value) },
   });
+}
+
+/**
+ * The plugin id and snapshot, once the workspace has no errors, its commit
+ * holds every file the build read, and the runtime can run every tool.
+ */
+function checkedWorkspace(
+  workspace: WorkspacePluginRequest["workspace"],
+  runtime: PluginRuntime,
+): Result<{ pluginId: string; snapshot: WorkspaceSnapshot }, PluginBuildProblem> {
+  if (workspace.errors > 0) return err({ code: "workspace-errors", errors: workspace.errors });
+  const { commit } = workspace;
+  if (commit.kind !== "commit") return err({ code: commit.kind });
+  if (commit.uncommitted.length > 0) return err({ code: "uncommitted", files: commit.uncommitted });
+  const pluginId = pluginIdFor(workspace.id);
+  if (!pluginId.ok) return pluginId;
+  const snapshot = makeSnapshot({
+    name: workspace.name,
+    commit: commit.id,
+    tools: workspace.tools,
+  });
+  if (!snapshot.ok) return err({ code: "snapshot", problems: snapshot.error });
+  const unavailable = unavailableTools(snapshot.value.tools, runtime.actions);
+  if (unavailable.length > 0) return err({ code: "action-unavailable", tools: unavailable });
+  return ok({ pluginId: pluginId.value, snapshot: snapshot.value });
 }
 
 /** The tools whose action the runtime doesn't list as available, in the snapshot's order. */

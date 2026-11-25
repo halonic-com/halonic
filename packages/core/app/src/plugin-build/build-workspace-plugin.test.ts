@@ -15,6 +15,7 @@ const digest: Sha256 = {
 };
 
 const commit = "0123456789abcdef0123456789abcdef01234567";
+const committed = { kind: "commit", id: commit, uncommitted: [] } as const;
 
 /** An invented classic GitHub token. */
 const githubToken = `ghp_${"Q7x2Lm9K3".repeat(4)}`;
@@ -50,7 +51,7 @@ function request(
   more: Partial<WorkspacePluginRequest> = {},
 ): WorkspacePluginRequest {
   return {
-    workspace: { id: "acme", name: "Acme", commit, tools },
+    workspace: { id: "acme", name: "Acme", errors: 0, commit: committed, tools },
     runtime,
     halonicVersion: "0.1.0",
     ...more,
@@ -82,6 +83,24 @@ verifies("app.plugin-build", () => {
     expect(text).not.toContain("issues.read");
   });
 
+  it.each([
+    [{ errors: 2 }, { code: "workspace-errors", errors: 2 }],
+    [{ commit: { kind: "no-repository" } }, { code: "no-repository" }],
+    [{ commit: { kind: "no-commit" } }, { code: "no-commit" }],
+    [
+      { commit: { ...committed, uncommitted: ["library/tools/pr-status.tool.yaml"] } },
+      { code: "uncommitted", files: ["library/tools/pr-status.tool.yaml"] },
+    ],
+  ] as const)("refuses a workspace with %o", async (workspace, error) => {
+    const asked = request([tool("pr_status")]);
+    const built = await buildWorkspacePlugin(
+      { ...asked, workspace: { ...asked.workspace, ...workspace } },
+      digest,
+    );
+
+    expect(built).toEqual({ ok: false, error });
+  });
+
   it("refuses a tool whose action the runtime can't run", async () => {
     const built = await buildWorkspacePlugin(
       request([tool("pr_status"), tool("task_get", "paperclip.task")]),
@@ -108,7 +127,7 @@ verifies("app.plugin-build", () => {
 
   it("refuses a workspace id that gives no plugin id", async () => {
     const built = await buildWorkspacePlugin(
-      { ...request([]), workspace: { id: "Acme_Shop", name: "Acme", commit, tools: [] } },
+      { ...request([]), workspace: { ...request([]).workspace, id: "Acme_Shop" } },
       digest,
     );
 
@@ -154,7 +173,7 @@ verifies("app.plugin-build", () => {
     it("refuses a previous build of another plugin", async () => {
       const other = unwrap(
         await buildWorkspacePlugin(
-          { ...request([]), workspace: { id: "other", name: "Other", commit, tools: [] } },
+          { ...request([]), workspace: { ...request([]).workspace, id: "other", name: "Other" } },
           digest,
         ),
       );

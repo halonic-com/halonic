@@ -290,6 +290,7 @@ export {
   type PluginRuntime,
   type RuntimeAction,
   type UnavailableTool,
+  type WorkspaceCommit,
   type WorkspacePluginRequest,
 } from "./plugin-build/build-workspace-plugin.ts";
 export {
