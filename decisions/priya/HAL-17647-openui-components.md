@@ -3,6 +3,7 @@
 - Requirements: `openui-lang.components` (`packages/core/openui-lang/requirements/components.md`)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-17647 (OpenUI A2, which asks for "`promptFor(["card", "table"])` lists exactly those two with their arguments, checked by a snapshot test"; from the OpenUI plan the board approved on HAL-17107)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:V1QRcHUSzWUOK/Obb8JY8eCJUjnXoGmI+lkN3zA0LeL+k06DeiV0+SvJdLkY4Ty2Bju70mvysOL2dThegEDdCQ==
 
 ## What changes
 
