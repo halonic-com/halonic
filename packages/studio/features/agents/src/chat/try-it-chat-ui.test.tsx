@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-import { EARLIER_LINE } from "@halonicjs/studio-kit";
+import type { SandboxStartResult } from "@halonicjs/app";
+import { createToastStore, EARLIER_LINE, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
-import { buttonNamed, show, typeInto, unmount } from "../test-support.tsx";
+import { buttonNamed, redraw, show, typeInto, typeIntoArea, unmount } from "../test-support.tsx";
 import { Chat, said, scriptedHost, sendMessage } from "./try-it-test-support.tsx";
 
 afterEach(() => {
@@ -115,5 +116,40 @@ verifies("agents.chat.chat-ui", () => {
     distrust();
     await act(async () => buttonNamed(page, "Not now")?.click());
     expect(requests).toHaveLength(1);
+  });
+
+  it("keeps the person's own words in the box when a click looks like it holds a key", async () => {
+    const key = `sk-${"a1B2".repeat(6)}`;
+    const { page, requests } = await replied(`root = Stack([Buttons([Button("${key}")])])`);
+    const box = page.querySelector("textarea") as HTMLTextAreaElement;
+    await typeIntoArea(box, "My own words");
+    await act(async () => buttonNamed(page, key)?.click());
+    expect(requests).toHaveLength(1);
+    expect(box.value).toBe("My own words");
+    expect(page.textContent).not.toContain("This looks like an API key.");
+  });
+
+  it("lets no control send while the sandbox can't start, as Send waits", async () => {
+    const script = scriptedHost();
+    const store = createToastStore();
+    const chat = (result: SandboxStartResult) => (
+      <ToastStoreProvider store={store}>
+        <Chat
+          host={script.host}
+          announce={vi.fn()}
+          chatUi={["buttons"]}
+          sandboxStartCheck={{ check: async () => result }}
+        />
+      </ToastStoreProvider>
+    );
+    const page = await show(chat({ ok: true }));
+    await sendMessage(page, "Sort this mail");
+    await answer(script, 0, 'root = Stack([Buttons([Button("Not now")])])');
+    await redraw(chat({ ok: false, reason: "bubblewrap-missing" }));
+    expect(buttonNamed(page, "Send")?.getAttribute("aria-disabled")).toBe("true");
+    const control = buttonNamed(page, "Not now");
+    expect(control?.getAttribute("aria-disabled")).toBe("true");
+    await act(async () => control?.click());
+    expect(script.requests).toHaveLength(1);
   });
 });

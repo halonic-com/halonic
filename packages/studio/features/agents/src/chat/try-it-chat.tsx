@@ -106,11 +106,13 @@ export function TryItChatView(props: TryItChatViewProps) {
     if (await chat.mayStart()) sendNow(draft);
   };
   // A reply's button or form sends its words as if they were typed: the key check and trust hold
-  // them as they hold Send, and a message that looks like it holds a key waits in the box (H29).
+  // them as they hold Send, and a message that looks like it holds a key waits in the box (H29),
+  // unless the person already wrote another there.
   const sendFromReply = async (message: string) => {
-    if (chat.engineQuiet || chat.answering) return;
+    if (chat.engineQuiet || chat.answering || makesSendWait(problem)) return;
     const hold = chatSecretHold(message);
     if (hold !== undefined) {
+      if (draft !== "") return;
       setDraft(message);
       setHeld(hold);
       return;
@@ -119,12 +121,13 @@ export function TryItChatView(props: TryItChatViewProps) {
     // Not trusted: the words wait in an empty box, as a typed message does (H16).
     else setDraft((current) => (current === "" ? message : current));
   };
-  // Only the newest reply's controls work, once it ended; older ones show what was sent after them.
+  // Only the newest reply's controls work, once it ended and while Send could; older ones show
+  // what was sent after them.
   const replyUi = (index: number): ReplyUi | undefined => {
     if (props.chatUi === undefined) return undefined;
     const newest = index === turns.length - 1;
     const ended = turns[index]?.end !== undefined;
-    const live = newest && ended && !chat.answering && !chat.engineQuiet;
+    const live = newest && ended && !chat.answering && !chat.engineQuiet && !makesSendWait(problem);
     return {
       components: props.chatUi,
       sender: name,

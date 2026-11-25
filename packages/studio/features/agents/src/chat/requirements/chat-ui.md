@@ -1,10 +1,10 @@
 # agents.chat.chat-ui
 
-- Status: draft
+- Status: active
 - Since: unreleased
 - Source: HAL-17649 (OpenUI A5); OpenUI plan approved by the board on 23 Nov and the look on 24 Nov (HAL-17107); Liam's review HAL-16863
 
-When the agent's `chatUi` is off, a Try it reply shall show its text as written, OpenUI Lang included. When it is on, a reply's text from the line that starts `root =`, or the fence that line sits in, shall be drawn with the kit's `ChatUi`, with the words before and after it as text; while the reply is written, what is still open shall be drawn as far as it got. Drawing a reply shall send nothing. Only the newest reply's buttons and form shall work, once it has ended: a button shall send its own words, and a form its answers as one message, as the person's next message, shown in their bubble, through the same checks as Send, so the key check holds a message that looks like it has a key in the box, and in a workspace that isn't trusted nothing is sent and the words wait in an empty box. An older reply's controls shall show what was sent after it (`kit.chat-ui-answered`).
+When the agent's `chatUi` is off, a Try it reply shall show its text as written, OpenUI Lang included. When it is on, a reply's text from the line that starts `root =`, or the fence that line sits in, shall be drawn with the kit's `ChatUi`, with the words before and after it as text; while the reply is written, what is still open shall be drawn as far as it got. Drawing a reply shall send nothing. Only the newest reply's buttons and form shall work, once it has ended: a button shall send its own words, and a form its answers as one message, as the person's next message, shown in their bubble, through the same checks as Send, so the key check holds a message that looks like it has a key in an empty box, and in a workspace that isn't trusted nothing is sent and the words wait in an empty box; a message the person already wrote in the box stays. While Send waits for the harness or the sandbox, the controls shall not work. An older reply's controls shall show what was sent after it (`kit.chat-ui-answered`).
 
 ## Examples
 
