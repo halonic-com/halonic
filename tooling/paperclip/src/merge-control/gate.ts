@@ -56,7 +56,8 @@ export function gateRow(snapshot: MergeSnapshot, pull: GatePull, settings: Merge
   }
   const ci = ciOkOf(pull);
   if (ci.state !== "success") {
-    reasons.push(`ci-ok ${ci.state} on head ${h9}`);
+    const why = ci.state === "label-noop" && ci.why !== undefined ? `: ${ci.why}` : "";
+    reasons.push(`ci-ok ${ci.state} on head ${h9}${why}`);
   }
   for (const problem of requiredWorkflowProblems(pull)) {
     reasons.push(`required workflow ${problem} on head ${h9}`);

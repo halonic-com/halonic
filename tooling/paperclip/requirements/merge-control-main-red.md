@@ -14,3 +14,6 @@ While the board's main-red freeze holds, the plugin shall add only pull requests
 - Given a green push run after the freeze began,
   when a pass runs,
   then the freeze ends; a pattern that doesn't compile lets nothing in.
+- Given a red push run after the freeze began, or a newer cancelled one,
+  when a pass runs,
+  then the freeze holds.

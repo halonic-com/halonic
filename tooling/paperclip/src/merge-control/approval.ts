@@ -1,4 +1,5 @@
 import { isLiamPath, julianLineLimit, reviewerFor } from "../reviewer-paths.ts";
+import { anySignedApproval, blockWords, fixedWords, signedApproval } from "./signed.ts";
 import type { GatePull, PullText } from "./snapshot.ts";
 
 /**
@@ -8,23 +9,13 @@ import type { GatePull, PullText } from "./snapshot.ts";
  * and open change requests. The texts follow the Merger's own matching,
  * which differs from `pr-tools/approvals.ts`: a bare "re-approved on head"
  * counts here (HAL-15553), and time after the last push matters. A signed
- * line counts on any line of a comment, after notes too (#5758, HAL-17933),
- * as in the Merger's `gate.js` and `pr-tools/approvals.ts`.
+ * line counts on any line of a comment signed by its reviewer, outside code
+ * and quotes, once, and never in a change request (`signed.ts`, HAL-17946).
  */
 
-const liamLine = /^[ \t]*Liam:[ \t]*(?:re-)?approved(?: again)? on head[ \t]*`?([0-9a-f]{7,40})/im;
-const julianLine =
-  /^[ \t]*Julian:[ \t]*(re-approved|approved(?: again)?) on head[ \t]*`?([0-9a-f]{7,40})/im;
 const signedLine = /^[ \t]*(Liam|Julian):/im;
-
-/** A change request in words (board, 20 Nov 21:25). */
-export const blockWords =
-  /(changes requested|request(?:ing|s)? changes|needs? a fix|please fix|(?<!non-)(?<!no )\bblocking\b|do not merge|don't merge)/i;
 const rejectWords =
   /\b(changes requested|request(ing)? changes|blocking|not approved|do not merge|don't merge|needs? (a )?(fix|rework|changes)|reject)/i;
-/** "The blocking point is fixed" is not a change request (#4309). */
-const fixedWords =
-  /\bblock(ing|er)\s+(point|issue|comment|finding|item)s?\s+(is|are|was|were|has been|have been)\s+(now\s+)?(fixed|resolved|addressed|gone)/gi;
 
 /** How a pull request's approval stands on its head. */
 export interface ApprovalVerdict {
@@ -82,10 +73,10 @@ function carriedOver(patchIds: Readonly<Record<string, string | null>>, from: st
 export function liamApproval(pull: GatePull, teamLogin: string): ApprovalVerdict | null {
   let verdict: ApprovalVerdict | null = null;
   for (const text of teamTexts(pull, teamLogin)) {
-    if (ours(text) || /^\s*Julian:/i.test(text.body)) {
+    if (ours(text)) {
       continue;
     }
-    const sha = liamLine.exec(text.body)?.[1];
+    const sha = signedApproval(text.body, "Liam")?.sha;
     if (sha === undefined) {
       if (
         text.reviewState === "APPROVED" &&
@@ -110,9 +101,9 @@ export function julianApproval(
   patchIds: Readonly<Record<string, string | null>>,
 ): (ApprovalVerdict & { readonly authorLiam: boolean }) | null {
   const text = teamTexts(pull, teamLogin)
-    .filter((each) => julianLine.test(each.body))
+    .filter((each) => !ours(each) && signedApproval(each.body, "Julian") !== null)
     .pop();
-  const sha = text === undefined ? undefined : julianLine.exec(text.body)?.[2];
+  const sha = text === undefined ? undefined : signedApproval(text.body, "Julian")?.sha;
   if (text === undefined || sha === undefined) {
     return null;
   }
@@ -269,12 +260,11 @@ export interface ChangeRequest {
 function approves(body: string): boolean {
   const first = body.split("\n")[0] ?? "";
   const firstApproves = /\bapprov/i.test(first) && !/\b(not|un)\s*approv/i.test(first);
-  return firstApproves || liamLine.test(body) || julianLine.test(body);
+  return firstApproves || anySignedApproval(body) !== null;
 }
 
 function approvesHead(text: PullText, head: string): boolean {
-  const match = liamLine.exec(text.body) ?? julianLine.exec(text.body);
-  const sha = match?.[match.length - 1];
+  const sha = anySignedApproval(text.body)?.sha;
   return sha !== undefined && sameHead(head, sha);
 }
 
@@ -307,7 +297,7 @@ export function changeRequestOf(
   const signed = texts
     .filter((text) => signedLine.test(text.body) && /\b[0-9a-f]{7,40}\b/.test(text.body))
     .pop();
-  if (signed === undefined || liamLine.test(signed.body) || julianLine.test(signed.body)) {
+  if (signed === undefined || anySignedApproval(signed.body) !== null) {
     return null;
   }
   const words = signed.body.slice(0, 600).replace(fixedWords, "");

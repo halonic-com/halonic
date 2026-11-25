@@ -54,13 +54,24 @@ export function trackReady(context: PassContext, rows: readonly GateRow[]): void
 }
 
 /**
+ * Predicted to conflict in the queue (report item 11): it changes a file a
+ * queued pull request changes too. Without git in the plugin this is the
+ * file overlap; it only ranks, it never keeps a pull request out.
+ */
+export function predictsConflict(row: GateRow, queued: readonly GateRow[]): boolean {
+  return queued.some((each) => each.pull.files.some((path) => row.pull.files.includes(path)));
+}
+
+/**
  * Candidates, fast-track first whatever the board's boost, then highest
- * score (board boost plus `queue.prio`); ties go to the oldest.
+ * score (board boost plus `queue.prio`), then the ones predicted not to
+ * conflict with the queue; ties go to the oldest.
  */
 export function fillOrder(
   context: PassContext,
   rows: readonly GateRow[],
   fast: ReadonlySet<number>,
+  queued: readonly GateRow[],
 ): GateRow[] {
   const { snapshot, state, now } = context;
   const candidates = rows.filter(
@@ -81,9 +92,19 @@ export function fillOrder(
   const score = (row: GateRow) =>
     (state.board.prio[String(row.pull.number)] ?? 0) +
     (ranked.find((each) => each.number === row.pull.number)?.score ?? 0);
+  const clash = new Set(
+    candidates.filter((row) => predictsConflict(row, queued)).map((row) => row.pull.number),
+  );
+  if (clash.size > 0) {
+    logLine(context, "fill", `CONFLICT_PREDICTED ${[...clash].map((n) => `#${n}`).join(" ")}`);
+  }
+  const risk = (row: GateRow) => (clash.has(row.pull.number) ? 1 : 0);
   return candidates.sort(
     (a, b) =>
-      tier(b) - tier(a) || score(b) - score(a) || a.pull.createdAt.localeCompare(b.pull.createdAt),
+      tier(b) - tier(a) ||
+      score(b) - score(a) ||
+      risk(a) - risk(b) ||
+      a.pull.createdAt.localeCompare(b.pull.createdAt),
   );
 }
 

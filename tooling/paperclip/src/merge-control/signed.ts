@@ -1,0 +1,85 @@
+/**
+ * Julian's rule for a signed approval line (HAL-17946): the comment is
+ * signed by the reviewer on its first non-empty line, holds exactly one
+ * approval line for them outside code and quotes, and holds no change
+ * request. The line may stand anywhere in the comment (#5758).
+ */
+
+/** A reviewer whose signed line the gate reads. */
+export type Reviewer = "Liam" | "Julian";
+
+/** A change request in words (board, 20 Nov 21:25). */
+export const blockWords =
+  /(changes requested|request(?:ing|s)? changes|needs? a fix|please fix|(?<!non-)(?<!no )(?<!not )\bblocking\b|do not merge|don't merge)/i;
+/** "The blocking point is fixed" is not a change request (#4309). */
+export const fixedWords =
+  /\bblock(ing|er)\s+(point|issue|comment|finding|item)s?\s+(is|are|was|were|has been|have been)\s+(now\s+)?(fixed|resolved|addressed|gone)/gi;
+
+/** A signed approval: the head it names, and whether it says "re-approved". */
+export interface SignedApproval {
+  readonly sha: string;
+  readonly reapproved: boolean;
+}
+
+/** The lines that count: outside fenced code, not indented code, not quoted. */
+export function plainLines(body: string): string[] {
+  const lines: string[] = [];
+  let fence: string | null = null;
+  for (const line of body.split(/\r?\n/)) {
+    const marker = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1]?.slice(0, 3);
+    if (marker !== undefined && (fence === null || fence === marker)) {
+      fence = fence === null ? marker : null;
+      continue;
+    }
+    if (fence === null && !/^( {4}|\t)/.test(line) && !/^\s*>/.test(line)) {
+      lines.push(line.trimStart());
+    }
+  }
+  return lines;
+}
+
+/** Whether the comment's first non-empty line is signed by `reviewer`. */
+export function signedBy(body: string, reviewer: Reviewer): boolean {
+  const first = body.split(/\r?\n/).find((line) => line.trim() !== "") ?? "";
+  return new RegExp(`^ {0,3}${reviewer}:`).test(first);
+}
+
+/** Julian's pattern, with the backticks and spacing as loose as the Merger's own matching. */
+function approvalLine(reviewer: Reviewer): RegExp {
+  return new RegExp(
+    `^${reviewer}:[ \\t]*(re-approved|approved(?: again)?) on head[ \\t]*\`?([0-9a-f]{7,40})`,
+  );
+}
+
+/** Whether a plain line of the comment requests changes. */
+export function requestsChanges(lines: readonly string[], reviewer: Reviewer): boolean {
+  const own = new RegExp(`^${reviewer}: changes requested`, "i");
+  return lines.some((line) => own.test(line) || blockWords.test(line.replace(fixedWords, "")));
+}
+
+/**
+ * The signed approval `reviewer` gives in this comment, or null when it
+ * gives none: unsigned, quoted or in code, a change request, or more than
+ * one approval line (ambiguous).
+ */
+export function signedApproval(body: string, reviewer: Reviewer): SignedApproval | null {
+  if (!signedBy(body, reviewer)) {
+    return null;
+  }
+  const lines = plainLines(body);
+  const pattern = approvalLine(reviewer);
+  const matches = lines.flatMap((line) => {
+    const match = pattern.exec(line);
+    return match === null ? [] : [match];
+  });
+  const only = matches.length === 1 ? matches[0] : undefined;
+  if (only === undefined || requestsChanges(lines, reviewer)) {
+    return null;
+  }
+  return { sha: only[2] ?? "", reapproved: only[1] === "re-approved" };
+}
+
+/** The approval Liam or Julian gives in this comment, the first that counts. */
+export function anySignedApproval(body: string): SignedApproval | null {
+  return signedApproval(body, "Liam") ?? signedApproval(body, "Julian");
+}
