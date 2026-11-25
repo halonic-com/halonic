@@ -183,6 +183,14 @@ export const manifest: PaperclipPluginManifestV1 = {
         description:
           "The id of the task where problems open 6 hours on the same head are reported once as UNHANDLED, waking its holder (Chat with Chief). Empty: it only logs.",
       },
+      handQueueBranches: {
+        type: "array",
+        title: "Branches merge control can't queue",
+        description:
+          "Branch prefixes, such as a workspace company's or the board session's, whose approved, green pull requests merge control can't queue. Their task is told once per head to merge by hand (HAL-17929). Empty: none.",
+        items: { type: "string" },
+        default: [],
+      },
       precheckUrl: {
         type: "string",
         title: "Precheck service",

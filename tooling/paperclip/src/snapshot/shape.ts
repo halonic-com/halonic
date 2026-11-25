@@ -131,6 +131,13 @@ export interface OpenFacts {
    * again. Added after version 1 shipped: a snapshot saved before it has none.
    */
   readonly baseChangedSincePush?: boolean;
+  /**
+   * The base before its newest base change, such as the branch of the pull
+   * request it was stacked on before GitHub moved it to the default branch
+   * (HAL-17929). Absent without a base change, and in a snapshot saved
+   * before the field.
+   */
+  readonly previousBase?: string;
   /** The GitHub login that opened it, null when the account is gone. Added like `baseChangedSincePush`. */
   readonly author?: string | null;
   /**
