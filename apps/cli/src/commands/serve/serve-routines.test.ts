@@ -1,16 +1,22 @@
+import { readdir } from "node:fs/promises";
+import { join, relative } from "node:path";
+import { GitRunner, GitVcs } from "@halonicjs/adapter-git";
+import { testGit } from "@halonicjs/adapter-git/testing";
 import { RunHistory } from "@halonicjs/app";
 import type { RoutineHealth } from "@halonicjs/app/routines";
 import { verifies, waitUntil } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { runCli } from "../../run-cli.ts";
+import { openGitHistory } from "../../run-workspace.ts";
 import {
   type AcmeRuns,
   acmeRunsSetup,
   makeAcmeRuns,
   removeAcmeRuns,
+  trustAcmeRuns,
   writeFiles,
 } from "../../test/acme-runs.ts";
-import { captureIo } from "../../test/capture-io.ts";
+import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
 import { fakeSignals } from "../../test/fake-signals.ts";
 import { type FakeTime, fakeTime, wokenUp } from "../../test/fake-time.ts";
 import { engineStart } from "../../test/run-setup.ts";
@@ -44,6 +50,9 @@ function everyTenMinutes(workflow: string): string {
 /** The first start opens the engine and the listener from cold imports. */
 const slow = { timeout: 10_000 };
 
+/** Each git test's time, with git on a busy runner (HAL-5244). */
+const gitTimeout = 60_000;
+
 let acmeRuns: AcmeRuns;
 
 /** The server the test started, which `afterEach` stops if the test failed before it did. */
@@ -65,14 +74,21 @@ afterEach(async () => {
 
 /**
  * Starts `halonic serve` on the fake time and gives its address once its
- * scheduler's first tick, which only records the time, has settled.
+ * scheduler's first tick, which only records the time, has settled. With
+ * `git`, the live version is the workspace's last commit.
  */
-async function startServe(time: FakeTime): Promise<string> {
+async function startServe(
+  time: FakeTime,
+  options: { io?: CapturedIo; git?: boolean } = {},
+): Promise<string> {
   const setup = acmeRunsSetup(acmeRuns);
-  const io = captureIo(acmeRuns.acme);
+  const io = options.io ?? captureIo(acmeRuns.acme);
   const signals = fakeSignals();
   const command = serveCommandWith({
     ...setup,
+    ...(options.git === true
+      ? { history: async (root: string) => openGitHistory(root, { git: await testGit() }) }
+      : {}),
     studioFolder: null,
     engine: { ...setup.engine, clock: time.clock, setTimer: time.setTimer },
   });
@@ -124,6 +140,42 @@ async function passTo(time: FakeTime, ...times: string[]): Promise<void> {
 /** The routines' health, as `GET /api/routines/health` answers it. */
 async function healthOf(address: string): Promise<RoutineHealth> {
   return (await (await fetch(`${address}/api/routines/health`)).json()) as RoutineHealth;
+}
+
+/** Commits every file in the workspace folder as a new version. */
+async function makeLive(message: string): Promise<void> {
+  const runner = await GitRunner.create({ git: await testGit() });
+  try {
+    const vcs = new GitVcs(acmeRuns.acme, {
+      runner,
+      author: { name: "Test", email: "test@example.com" },
+    });
+    const entries = await readdir(acmeRuns.acme, { recursive: true, withFileTypes: true });
+    const files = entries
+      .filter((entry) => entry.isFile())
+      .map((entry) => relative(acmeRuns.acme, join(entry.parentPath, entry.name)))
+      .map((path) => path.replaceAll("\\", "/"))
+      .filter((path) => !path.startsWith(".git/"));
+    if (!(await vcs.status()).isRepo) await vcs.init();
+    await vcs.stage(files);
+    await vcs.commit(message);
+  } finally {
+    await runner.close();
+  }
+}
+
+/** Moves the time to `HH:MM:SS` of 10 Nov 2026 and waits for the scheduler's tick, which may start nothing. */
+async function tickAt(time: FakeTime, address: string, at: string): Promise<void> {
+  time.set(`2026-11-10T${at}.000Z`);
+  const minute = `2026-11-10T${at.slice(0, 5)}`;
+  await waitUntil(
+    `the tick at ${at}`,
+    async () => {
+      wokenUp(time);
+      return ((await healthOf(address)).lastTick ?? "") >= minute;
+    },
+    slow,
+  );
 }
 
 async function setPaused(address: string, paused: boolean): Promise<Response> {
@@ -194,4 +246,50 @@ verifies("server.routines", () => {
 
     expect((await listedRuns()).map((run) => run.status)).toEqual(["failed", "failed"]);
   }, 30_000);
+
+  it("leaves out a routine that can't start, with the watch's ✕ line, and starts the others", async () => {
+    await writeFiles(acmeRuns.acme, {
+      "hubs/support/workflows/routines/check.routine.yaml": everyTenMinutes("support-reply"),
+      "hubs/support/workflows/routines/gone.routine.yaml": everyTenMinutes("gone")
+        .replace("id: check", "id: gone")
+        .replace("name: Check", "name: Gone"),
+    });
+    const io = captureIo(acmeRuns.acme);
+    const time = fakeTime(engineStart);
+    await startServe(time, { io });
+
+    await passTo(time, "14:10:05");
+
+    expect((await listedRuns()).map((run) => run.trigger)).toEqual([
+      expect.objectContaining({ routineId: "support/check" }),
+    ]);
+    expect(io.stdout).toContain("✕ Gone can't start until its file is fixed · halonic validate");
+  }, 30_000);
+
+  it("starts no routine run from a live version that changed since it was trusted", {
+    timeout: gitTimeout,
+  }, async () => {
+    // Ollama makes this Acme reach more than the test model, so it needs trust.
+    await writeFiles(acmeRuns.acme, {
+      "providers/ollama.yaml": "id: ollama\ntype: ollama\nlocal: true\n",
+      "hubs/support/workflows/routines/check.routine.yaml": everyTenMinutes("support-reply"),
+    });
+    await makeLive("First version");
+    await trustAcmeRuns(acmeRuns);
+    const time = fakeTime(engineStart);
+    const address = await startServe(time, { git: true });
+    await passTo(time, "14:10:05");
+
+    // A second provider changes what the trust check covers, and nobody trusts it.
+    await writeFiles(acmeRuns.acme, {
+      "providers/ollama-two.yaml": "id: ollama-two\ntype: ollama\nlocal: true\n",
+    });
+    await makeLive("Add a second Ollama");
+    await tickAt(time, address, "14:20:05");
+    await tickAt(time, address, "14:30:05");
+
+    expect((await listedRuns()).map((run) => run.trigger)).toEqual([
+      expect.objectContaining({ at: "2026-11-10T14:10:00.000Z" }),
+    ]);
+  });
 });

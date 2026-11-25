@@ -225,7 +225,7 @@ async function serveVersions(
 
   // The port the server takes, then the one it got: a run's bridge never calls it (HAL-15251).
   let servePort = listen.port;
-  const routines = servedRoutines(setup, workspace, versions, dir.name);
+  const routines = await servedRoutines(context, setup, dir, typedDir, workspace, versions);
   const engine = await openWorkspaceEngine(context, setup, {
     holder: "serve",
     dir,
@@ -233,8 +233,9 @@ async function serveVersions(
     integrations: first.integrations,
     versions,
     trust: grant,
-    // Each served run is checked as it starts, in `versions`; none is known before.
-    runs: [],
+    // The routines' workflows, as `routines watch` checks them; every served run is also checked
+    // as it starts, in `versions`.
+    runs: routines.runs,
     ending: serveMessages.nothingServed(),
     ownPorts: () => [servePort],
     routines: (parts) => routines.ticks(parts),
