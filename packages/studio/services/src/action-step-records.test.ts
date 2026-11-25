@@ -32,16 +32,18 @@ function setUp() {
 
 verifies("services.action-step-records", () => {
   describe("the stepper's own records", () => {
-    it("records a step the user did on the page as succeeded with no status, and only what they pasted", async () => {
+    it("records a step the user did on the page as succeeded with no status, and reads the record back", async () => {
       const { records, steps } = setUp();
       expect(await steps.confirmStep("req-1", 1, { runId: 123456 })).toEqual({
         outcome: "recorded",
       });
       expect(await steps.skipStep("req-1", 2)).toEqual({ outcome: "recorded" });
-      expect(await records.read("req-1")).toEqual([
+      const written = [
         { type: "action.step.succeeded", request: "req-1", at, step: 1, kept: { runId: 123456 } },
         { type: "action.step.skipped", request: "req-1", at, step: 2 },
-      ]);
+      ];
+      expect(await records.read("req-1")).toEqual(written);
+      expect(await steps.history("req-1")).toEqual(written);
     });
 
     it("ends a request once: after action.finished nothing runs, opens or is recorded", async () => {
@@ -67,6 +69,7 @@ verifies("services.action-step-records", () => {
       expect(await desktopOnlyActionSteps.finish("req-1", "declined")).toEqual({
         outcome: "desktop-only",
       });
+      expect(await desktopOnlyActionSteps.history("req-1")).toEqual([]);
     });
   });
 });

@@ -79,6 +79,8 @@ export interface ActionSteps {
   skipStep(request: string, step: number): Promise<ActionRecordResult>;
   /** Records how the request ended: after this, nothing of it runs or is recorded again. */
   finish(request: string, outcome: ActionOutcome): Promise<ActionRecordResult>;
+  /** The request's record, oldest first, so a request opened again resumes where it stopped. */
+  history(request: string): Promise<readonly ActionRecordEvent[]>;
 }
 
 /** The sender the desktop app gives: the port, plus the device code and the cancel a sign-in needs. */
@@ -140,6 +142,7 @@ export function createActionSteps(options: ActionStepsOptions): ActionSteps {
       if (ended !== undefined) await records.append(ended);
       return result;
     },
+    history: (request) => records.read(request),
     async confirmStep(request, step, kept = {}) {
       if (await isClosed(request)) return { outcome: "closed" };
       await records.append({ type: "action.step.succeeded", request, at: at(), step, kept });
@@ -222,4 +225,5 @@ export const desktopOnlyActionSteps: ActionSteps = {
   confirmStep: () => Promise.resolve(desktopOnly),
   skipStep: () => Promise.resolve(desktopOnly),
   finish: () => Promise.resolve(desktopOnly),
+  history: () => Promise.resolve([]),
 };
