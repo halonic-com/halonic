@@ -41,6 +41,17 @@ function button(root: ParentNode, name: string): HTMLButtonElement {
   return found;
 }
 
+/** The element with `role="group"` whose `aria-labelledby` text is `name`, as a screen reader names it. */
+function groupNamed(root: HTMLElement, name: string): HTMLElement {
+  const found = [...root.querySelectorAll<HTMLElement>('[role="group"]')].find((group) => {
+    const ids = group.getAttribute("aria-labelledby")?.split(" ") ?? [];
+    const label = ids.map((id) => document.getElementById(id)?.textContent ?? "").join(" ");
+    return label === name;
+  });
+  if (found === undefined) throw new Error(`no group named "${name}"`);
+  return found;
+}
+
 /** A keyboard press: the button has focus, then it's activated. */
 async function press(target: HTMLElement) {
   await act(async () => {
@@ -160,6 +171,16 @@ verifies("action-steppers.results", () => {
       const code = document.activeElement?.querySelector('[role="img"]');
       expect(code?.getAttribute("aria-label")).toBe("Sign-in code: W, D, J, B, M, J, H, T");
       expect(statusRegion(root)?.textContent).toBe("Waiting for you to finish on GitHub…");
+    });
+
+    it("puts the code in a group named by the visible line, which holds focus", async () => {
+      const github = (code: string | null) =>
+        inStage({ kind: "sign-in", signIn: { service: "github", code } }, { account: null });
+      const { root, next } = show(github(null));
+      await press(button(root, "Sign in to GitHub"));
+      next(github("WDJBMJHT"));
+      const group = groupNamed(root, "Enter this code on the GitHub page that opened.");
+      expect(document.activeElement).toBe(group);
     });
 
     it("goes to the title after Sign in again", async () => {
