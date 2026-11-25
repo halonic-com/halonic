@@ -7,6 +7,8 @@ import type {
   Seat,
   SpendRange,
   SpendSummary,
+  TeamRuns,
+  TeamRunsQuery,
   TeamStatus,
   TeamStatusParts,
 } from "@halonicjs/ports";
@@ -15,7 +17,7 @@ import { ChangeFeed } from "./changes.ts";
 import { PaperclipIds } from "./ids.ts";
 import { asRecords, text } from "./json.ts";
 import { PaperclipReader } from "./reader.ts";
-import { fitsSegment, type PaperclipRequestName } from "./requests.ts";
+import { fitsSegment, isSafeSegment, type PaperclipRequestName } from "./requests.ts";
 import {
   type KnownAgent,
   type PullContext,
@@ -23,6 +25,7 @@ import {
   toPullRequestDetail,
   toPullRequestLists,
 } from "./team-pulls.ts";
+import { finishedRunsLimit, pickRuns, type TaskName, toTaskName, toTeamRun } from "./team-runs.ts";
 import { toSeats } from "./team-seats.ts";
 import { rangeStart, type SpendContext, toAgentSpend, toSpendSummary } from "./team-spend.ts";
 import {
@@ -63,6 +66,8 @@ export class PaperclipTeamStatus implements TeamStatus {
   readonly #feed = new ChangeFeed<MessagingId>();
   readonly #missing = new Set<PluginPart>();
   #agents = new Map<string, KnownAgent>();
+  /** Runs' task names, read once each: a run's task keeps its identifier. */
+  readonly #taskNames = new Map<string, TaskName | undefined>();
   #lastSeen: string | undefined;
 
   constructor(options: PaperclipTeamStatusOptions) {
@@ -124,6 +129,46 @@ export class PaperclipTeamStatus implements TeamStatus {
   async mergeQueue(): Promise<readonly MergeQueue[]> {
     const answer = await this.#pluginRead("pullRequests", "pullRequestsSummary", {});
     return answer === undefined ? [] : toMergeQueues(await this.#pullContext(), answer);
+  }
+
+  /**
+   * The live runs, and with `since` the finished ones since then
+   * (`paperclip-client.team-runs`). An agent of another connection has no runs here.
+   */
+  async runs(query: TeamRunsQuery): Promise<readonly TeamRuns[]> {
+    const agent = query.agent === undefined ? undefined : this.#ids.read(query.agent, "agent")?.[0];
+    if (query.agent !== undefined && (agent === undefined || !isSafeSegment(agent))) {
+      return [];
+    }
+    const path = { company: this.#company };
+    const live = asRecords(await this.#reader.read("listLiveRuns", { path }));
+    const agentQuery = agent === undefined ? {} : { agentId: agent };
+    const finished =
+      query.since === undefined
+        ? []
+        : asRecords(
+            await this.#reader.read("listRuns", {
+              path,
+              query: { ...agentQuery, limit: String(finishedRunsLimit) },
+            }),
+          );
+    const picked = pickRuns(
+      { live, finished },
+      {
+        ...(agent === undefined ? {} : { agent }),
+        ...(query.since === undefined ? {} : { since: query.since }),
+      },
+    );
+    await this.#readTaskNames(picked.runs.flatMap((run) => text(run, "issueId") ?? []));
+    const context = { ids: this.#ids, tasks: this.#taskNames };
+    return [
+      {
+        source: this.#ids.source(),
+        asOf: this.#now().toISOString(),
+        runs: picked.runs.flatMap((run) => toTeamRun(context, run) ?? []),
+        complete: picked.complete,
+      },
+    ];
   }
 
   changes(): AsyncIterable<MessagingId> {
@@ -201,6 +246,21 @@ export class PaperclipTeamStatus implements TeamStatus {
     const body = bodyOf(name, answer);
     this.#missing.delete(part);
     return body;
+  }
+
+  /**
+   * Reads the name of each task not read yet. A task the key can't see
+   * (404) has no name; any other failure is thrown, as every read's is.
+   */
+  async #readTaskNames(tasks: readonly string[]): Promise<void> {
+    for (const task of new Set(tasks)) {
+      if (this.#taskNames.has(task) || !isSafeSegment(task)) {
+        continue;
+      }
+      const answer = await this.#reader.send("getTask", { path: { task } });
+      const missing = answer.kind === "failed" && answer.failure === "not-found";
+      this.#taskNames.set(task, missing ? undefined : toTaskName(bodyOf("getTask", answer)));
+    }
   }
 
   #costDetails(range: SpendRange): RequestDetails {
