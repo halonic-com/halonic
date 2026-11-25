@@ -3,11 +3,14 @@ import type { Clock } from "@halonicjs/ports";
 import { systemClock } from "@halonicjs/std";
 import type { SettleOutcome } from "./usage-account.ts";
 import { type StepReservation, type UsagePrincipal, UsageScope } from "./usage-scope.ts";
+import { usageStorageOf } from "./usage-storage.ts";
 import type { UsageAmounts, UsageAnswer, UsageLimits, UsageSummary } from "./usage-types.ts";
+import { UserSecretShelf } from "./user-secret-shelf.ts";
 
 /**
  * The Durable Object of one scope's usage: its limits, reservations, running runs and the outbox
- * to Cloud, in the object's own storage. The Worker names it from the principal's scope on the
+ * to Cloud, in the object's own storage. A person's object also keeps their sealed secrets, which
+ * it can't open (see {@link UserSecretShelf}). The Worker names it from the principal's scope on the
  * server, never from a request field. It does nothing itself: each method is a method of
  * {@link UsageScope}.
  *
@@ -24,9 +27,11 @@ export class UsageObject extends DurableObject {
   /** The time reservations and leases run out by. Only a test replaces it. */
   protected clock: Clock = systemClock;
   readonly #scope: UsageScope;
+  readonly #secrets: UserSecretShelf;
 
   constructor(ctx: DurableObjectState, env: Cloudflare.Env) {
     super(ctx, env);
+    this.#secrets = new UserSecretShelf(usageStorageOf(ctx.storage));
     // Read through `this` on every call, so a subclass's clock and pull count.
     this.#scope = new UsageScope({
       storage: ctx.storage,
@@ -106,6 +111,42 @@ export class UsageObject extends DurableObject {
   /** The plan's name and the share of its cost limit spent, for the account menu; changes nothing. */
   summary(scope: string): UsageSummary {
     return this.#scope.summary(scope);
+  }
+
+  /** The person's wrapped data key, or `null` before their first secret. */
+  userSecretDataKey(scope: string): string | null {
+    this.#scope.checkSecretScope(scope, "read");
+    return this.#secrets.dataKey();
+  }
+
+  /** Keeps the person's first wrapped data key, and gives the one stored afterwards. */
+  keepUserSecretDataKey(scope: string, wrapped: string): string {
+    this.#scope.checkSecretScope(scope, "write");
+    return this.#secrets.keepDataKey(wrapped);
+  }
+
+  /** Saves one of the person's sealed secrets under its name in `secretKey` form. */
+  putUserSecret(scope: string, name: string, sealed: string): void {
+    this.#scope.checkSecretScope(scope, "write");
+    this.#secrets.put(name, sealed);
+  }
+
+  /** One of the person's sealed secrets, or `null`; the object can't open it. */
+  userSecret(scope: string, name: string): string | null {
+    this.#scope.checkSecretScope(scope, "read");
+    return this.#secrets.get(name);
+  }
+
+  /** The names of the person's secrets, sorted; never a value. */
+  userSecretNames(scope: string): readonly string[] {
+    this.#scope.checkSecretScope(scope, "read");
+    return this.#secrets.names();
+  }
+
+  /** Removes one of the person's secrets; removing one that isn't stored changes nothing. */
+  removeUserSecret(scope: string, name: string): void {
+    this.#scope.checkSecretScope(scope, "read");
+    this.#secrets.remove(name);
   }
 
   /**
