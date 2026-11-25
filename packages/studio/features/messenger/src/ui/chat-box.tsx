@@ -37,9 +37,9 @@ interface BoxLine {
  * `messenger.quick-actions` and `messenger.conversations`). Remove takes its
  * button away, so focus moves to the next file's Remove, else the one before,
  * else Attach a file, and the line says the file was removed (HAL-18074 MS3).
- * A channel's box has the To line and the `@` picker above it (`messenger.channel-messages`); a
- * chip's Remove moves focus the same way, ending on the box, and the line says the new To line
- * (HAL-18316 MS9, MS10).
+ * A channel's box has the To line and its chips inside its frame, and the `@` picker above it
+ * (`messenger.channel-messages`); a chip's Remove moves focus the same way, ending on the box,
+ * and the line says the new To line (HAL-18316 MS9, MS10).
  */
 export function ChatBox({ messenger, row, onSent }: ChatBoxProps) {
   const box = useChatBox(messenger, row, onSent);
@@ -79,7 +79,6 @@ export function ChatBox({ messenger, row, onSent }: ChatBoxProps) {
         }}
       />
       <DraftFileList files={box.files} onRemove={remove} />
-      {channel ? <ChannelAddressBar address={address} onUnname={unname} /> : null}
       <ChatComposer
         label={channel ? channelWords.composer(name) : messengerWords.composerLabel(name)}
         placeholder={
@@ -95,6 +94,7 @@ export function ChatBox({ messenger, row, onSent }: ChatBoxProps) {
         answering={false}
         line={boxLine(box.line)}
         picker={channel ? address.picker : undefined}
+        header={channel ? <ChannelAddressBar address={address} onUnname={unname} /> : undefined}
       />
     </div>
   );

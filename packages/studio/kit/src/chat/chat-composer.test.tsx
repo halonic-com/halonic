@@ -46,6 +46,15 @@ verifies("kit.chat-composer", () => {
     expect(container.querySelector("button")?.textContent).toBe("Send");
   });
 
+  it("draws its header inside the box's frame, above the text", () => {
+    const header = <span data-header>To Elena</span>;
+    const { container } = render(composer({ header }).element);
+    const box = container.querySelector("textarea") as HTMLTextAreaElement;
+    const line = container.querySelector("[data-header]") as HTMLElement;
+    expect(box.parentElement?.contains(line)).toBe(true);
+    expect(line.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("sends once on Enter, and on Send", async () => {
     const { props, element } = composer();
     const { container } = render(element);

@@ -89,7 +89,7 @@ verifies("messenger.channel-messages", () => {
   });
 
   describe("workLines", () => {
-    it("shows each of the six states with its symbol and words", () => {
+    it("shows each of the six states with its kind and words", () => {
       const message = sent([
         { agent: elena.id, state: "starting", since },
         { agent: liam.id, state: "working", since },
@@ -101,12 +101,12 @@ verifies("messenger.channel-messages", () => {
       ]);
       const questions = new Map([["w1", "Which hostname?"]]);
       expect(workLines(message, engineering(), questions, now)).toEqual([
-        { symbol: "◔", text: "Elena · starting…" },
-        { symbol: "◔", text: "Liam · working · 4 min" },
-        { symbol: "✓", text: "Owen answered" },
-        { symbol: "!", text: "Chief asks you: Which hostname?" },
-        { symbol: "✕", text: "Writer's task was closed without an answer." },
-        { symbol: "→", text: "Chief passed this to Liam" },
+        { kind: "running", text: "Elena · starting…" },
+        { kind: "running", text: "Liam · working · 4 min" },
+        { kind: "answered", text: "Owen answered" },
+        { kind: "asks-you", text: "Chief asks you: Which hostname?" },
+        { kind: "failed", text: "Writer's task was closed without an answer." },
+        { kind: "passed-on", text: "Chief passed this to Liam" },
       ]);
     });
 
@@ -117,9 +117,9 @@ verifies("messenger.channel-messages", () => {
         { agent: owen.id, state: "failed", reason: "  ", since },
       ]);
       expect(workLines(message, engineering(), new Map(), now)).toEqual([
-        { symbol: "✕", text: "Elena couldn't finish: Build broke" },
-        { symbol: "✕", text: "Liam's task was closed without an answer." },
-        { symbol: "✕", text: "Owen's task was closed without an answer." },
+        { kind: "failed", text: "Elena couldn't finish: Build broke" },
+        { kind: "failed", text: "Liam's task was closed without an answer." },
+        { kind: "failed", text: "Owen's task was closed without an answer." },
       ]);
     });
 
@@ -147,7 +147,7 @@ verifies("messenger.channel-messages", () => {
         handOff(elena.id, owen.id),
       ]);
       expect(workLines(message, engineering(), new Map(), now).at(-1)).toEqual({
-        symbol: "✕",
+        kind: "limit",
         text: "Stopped after 3 hand-offs. Name who should answer.",
       });
     });
@@ -160,7 +160,7 @@ verifies("messenger.channel-messages", () => {
         { agent: "a6", state: "answered", since },
       ]);
       expect(workLines(message, engineering(), new Map(), now)).toEqual([
-        { symbol: "✓", text: "Gone answered" },
+        { kind: "answered", text: "Gone answered" },
       ]);
     });
   });

@@ -214,6 +214,7 @@ export {
 export { PlusIcon } from "./icons/plus-icon.tsx";
 export { RefreshIcon } from "./icons/refresh-icon.tsx";
 export { RestoreIcon } from "./icons/restore-icon.tsx";
+export { RunningIcon } from "./icons/running-icon.tsx";
 export { SearchIcon } from "./icons/search-icon.tsx";
 export {
   SectionIcon,

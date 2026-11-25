@@ -85,9 +85,16 @@ export function pickable(
   );
 }
 
-/** One work line: a symbol and words, never colour alone (flow J). */
+/**
+ * What a work line says about the work, which picks its icon and tone: `running` while it starts
+ * or works, then `answered`, `asks-you`, `failed`, `passed-on`, or `limit` once it stopped after
+ * the hand-off limit (k11b).
+ */
+export type WorkLineKind = "running" | "answered" | "asks-you" | "failed" | "passed-on" | "limit";
+
+/** One work line: an icon and words, never colour alone (flow J). */
 export interface WorkLine {
-  readonly symbol: string;
+  readonly kind: WorkLineKind;
   readonly text: string;
 }
 
@@ -109,7 +116,7 @@ export function workLines(
   const work = message.work ?? [];
   const lines = work.flatMap((share) => lineOf(share, row, questions, now) ?? []);
   const handOffs = work.filter((share) => share.state === "passed-on").length;
-  if (handOffs >= handOffLimit) lines.push({ symbol: "✕", text: channelWords.work.handOffLimit });
+  if (handOffs >= handOffLimit) lines.push({ kind: "limit", text: channelWords.work.handOffLimit });
   return lines;
 }
 
@@ -124,25 +131,25 @@ function lineOf(
   const words = channelWords.work;
   switch (share.state) {
     case "starting":
-      return { symbol: "◔", text: words.starting(agent) };
+      return { kind: "running", text: words.starting(agent) };
     case "working": {
       const minutes = Math.max(0, Math.floor((now.getTime() - Date.parse(share.since)) / 60_000));
-      return { symbol: "◔", text: words.working(agent, minutes) };
+      return { kind: "running", text: words.working(agent, minutes) };
     }
     case "answered":
-      return { symbol: "✓", text: words.answered(agent) };
+      return { kind: "answered", text: words.answered(agent) };
     case "asks-you": {
       const question = share.work === undefined ? undefined : questions.get(share.work);
-      return { symbol: "!", text: words.asksYou(agent, question) };
+      return { kind: "asks-you", text: words.asksYou(agent, question) };
     }
     case "failed": {
       const reason = shownReason(share.reason);
       const text = reason === undefined ? words.closed(agent) : words.couldntFinish(agent, reason);
-      return { symbol: "✕", text };
+      return { kind: "failed", text };
     }
     case "passed-on": {
       const to = share.passedTo === undefined ? undefined : agentName(row, share.passedTo);
-      return to === undefined ? undefined : { symbol: "→", text: words.passedOn(agent, to) };
+      return to === undefined ? undefined : { kind: "passed-on", text: words.passedOn(agent, to) };
     }
     default:
       return undefined;

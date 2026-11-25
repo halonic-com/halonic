@@ -1,6 +1,7 @@
 import {
   type CSSProperties,
   type KeyboardEvent,
+  type ReactNode,
   type Ref,
   type TextareaHTMLAttributes,
   useEffect,
@@ -37,6 +38,11 @@ export interface TextAreaProps
   readonly submitOnCtrlEnter?: boolean;
   /** The `id` of a line outside the Field that also describes the control, read after the Field's own. */
   readonly describedBy?: string;
+  /**
+   * A line inside the box's frame, above the text, such as a channel's To line with its chips. A
+   * press on it outside a button puts the caret in the text, as a press on the padding does.
+   */
+  readonly header?: ReactNode;
   readonly ref?: Ref<HTMLTextAreaElement>;
 }
 
@@ -62,6 +68,7 @@ export function TextArea({
   minRows = 1,
   submitOnCtrlEnter = false,
   describedBy: extraDescription,
+  header,
   ref,
   onKeyDown,
   onInput,
@@ -114,32 +121,44 @@ export function TextArea({
     onKeyDown?.(event);
   }
 
+  const text = (
+    <textarea
+      {...native}
+      ref={element}
+      id={field?.id}
+      rows={minRows}
+      data-field-text=""
+      data-text-entry=""
+      className={`${fieldTextClasses} max-h-rows resize-none overflow-y-auto`}
+      // The limit in lines of the text's own height, so it follows the text size
+      // (theme-utilities.css).
+      style={{ "--max-rows": maxRows } as CSSProperties}
+      aria-describedby={describedBy(field?.describedBy, extraDescription)}
+      aria-invalid={invalid || undefined}
+      aria-required={field?.required || undefined}
+      onKeyDown={handleKeyDown}
+      onInput={(event) => {
+        fitToText(event.currentTarget);
+        onInput?.(event);
+      }}
+    />
+  );
+
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: a mouse convenience only; the keyboard reaches the text itself.
     <div
       className={`${fieldBoxClasses(state, "md", "start")} py-2 phone:py-3`}
       onMouseDown={focusTextOnPress}
     >
-      <textarea
-        {...native}
-        ref={element}
-        id={field?.id}
-        rows={minRows}
-        data-field-text=""
-        data-text-entry=""
-        className={`${fieldTextClasses} max-h-rows resize-none overflow-y-auto`}
-        // The limit in lines of the text's own height, so it follows the text size
-        // (theme-utilities.css).
-        style={{ "--max-rows": maxRows } as CSSProperties}
-        aria-describedby={describedBy(field?.describedBy, extraDescription)}
-        aria-invalid={invalid || undefined}
-        aria-required={field?.required || undefined}
-        onKeyDown={handleKeyDown}
-        onInput={(event) => {
-          fitToText(event.currentTarget);
-          onInput?.(event);
-        }}
-      />
+      {header === undefined ? (
+        text
+      ) : (
+        // A grid, so the text keeps the height it fits itself to under the header.
+        <div className="grid min-w-0 flex-1 gap-1">
+          {header}
+          {text}
+        </div>
+      )}
     </div>
   );
 }

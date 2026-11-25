@@ -32,6 +32,8 @@ export interface ChatComposerProps {
    * picker's while it's open.
    */
   readonly picker?: ChatComposerPicker | undefined;
+  /** A line inside the box's frame, above the text: a channel's To line and its chips. */
+  readonly header?: ReactNode;
 }
 
 /** The box grows to this many lines, then scrolls. */
@@ -95,6 +97,7 @@ export function ChatComposer(props: ChatComposerProps) {
             maxRows={MAX_ROWS}
             onChange={(event) => props.onChange(event.target.value)}
             onKeyDown={handleKeyDown}
+            header={props.header}
             {...picker.boxAttributes}
           />
         </div>
