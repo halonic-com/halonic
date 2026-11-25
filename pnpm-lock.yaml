@@ -2559,9 +2559,6 @@ importers:
       '@halonicjs/action-steppers':
         specifier: workspace:*
         version: link:../action-steppers
-      '@halonicjs/std':
-        specifier: workspace:*
-        version: link:../std
     devDependencies:
       '@halonicjs/schema-kit':
         specifier: workspace:*

@@ -12,14 +12,15 @@ the steppers architecture note (HAL-17491, sections 1.2, 4.1, 7.8 and 7.9); the 
 ## Example
 
 ```ts
-const definition = shippedCatalog.definition("github.upload-social-preview", 1);
-const guide = renderDefinitionGuide(definition, { owner: "acme", repo: "app" });
-// ok("1. Open https://github.com/acme/app/settings\n2. Under **Social preview** …")
+const checked = validateStepperRequest(requestJson, shippedCatalog); // from @halonicjs/action-steppers
+if (checked.ok) cardBody = renderManualGuide(checked.value, shippedCatalog);
+// "…\n1. Open https://github.com/acme/app/settings\n2. Under **Social preview** …"
 const hash = sourceHashOf("github.upload-social-preview", 1); // goes into the request's record
 ```
 
 Only declarative steps (`guided`, `input`) ship for now. API steps (`call`, `check`) wait for the ToolScript ADR
-(HAL-17560); until then a definition with one can't render a manual guide.
+(HAL-17560). The manual guide is `renderManualGuide` from `@halonicjs/action-steppers`, built from the same
+definitions; the catalog's tests check that every definition can be done by hand (`manualFormProblems`).
 
 ## Adding a guided definition
 
@@ -38,6 +39,6 @@ A definition widens what a user can be asked to do, so it's a security pull requ
 4. **Preview:** one plain sentence per step that names the target. A guided step Halonic can't check says so.
 5. **Requirement:** `requirements/<service>-<name>.md` in EARS form, `Since: unreleased`.
 6. **Tests:** `src/<service>/<name>.test.ts`, wrapped in `verifies("action-catalog.<service>-<name>", …)`, pinning the
-   preview, the targets and the whole manual guide for `acme` parameters, and refusing a path trick in a parameter.
+   preview, the targets and the whole manual guide (`renderManualGuide`) for `acme` parameters, and refusing a path trick in a parameter.
 7. **Generate:** run `pnpm discover --fix` and commit `src/catalog.generated.ts`. `pnpm check` (rule `catalog-hashes`)
    fails until you do, and again whenever the definition changes.

@@ -1,10 +1,27 @@
+import {
+  renderManualGuide,
+  stepperRequestFormat,
+  validateStepperRequest,
+} from "@halonicjs/action-steppers";
 import { parse } from "@halonicjs/schema-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { renderDefinitionGuide } from "../manual-guide.ts";
+import { shippedCatalog } from "../catalog.ts";
 import { definition } from "./upload-social-preview.ts";
 
 const parameters = { owner: "acme", repo: "app" };
+
+function manualGuide(): string {
+  const request = JSON.stringify({
+    format: stepperRequestFormat,
+    title: "Upload the acme/app preview",
+    reason: "The launch post links the repository.",
+    blocks: [{ kind: "use", ref: "github.upload-social-preview@1", parameters }],
+  });
+  const checked = validateStepperRequest(request, shippedCatalog);
+  if (!checked.ok) throw new Error(checked.error.join("; "));
+  return renderManualGuide(checked.value, shippedCatalog);
+}
 
 verifies("action-catalog.github-upload-social-preview", () => {
   describe("github.upload-social-preview@1", () => {
@@ -26,17 +43,18 @@ verifies("action-catalog.github-upload-social-preview", () => {
     });
 
     it("gives a numbered manual guide that opens the settings page", () => {
-      expect(renderDefinitionGuide(definition, parameters)).toEqual({
-        ok: true,
-        value: [
+      expect(manualGuide()).toBe(
+        [
+          "`Upload the acme/app preview`",
+          "",
+          "Do these steps in order, signed in with your own account:",
           "1. Open https://github.com/acme/app/settings",
           "2. Under **Social preview**, click **Edit**, then **Upload an image…**.",
           "3. Choose the image: a PNG, JPG or GIF file under 1 MB, at least 640 × 320 pixels (1280 × 640 looks best).",
           "4. Check that the new image now shows under **Social preview**.",
           "",
-          "Halonic can't check this: it's recorded as done by hand, not checked.",
         ].join("\n"),
-      });
+      );
     });
 
     it.each(["../secrets", "app%2Fsecrets", "app?x=1"])("refuses the repo %s", (repo) => {

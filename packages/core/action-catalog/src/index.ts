@@ -6,4 +6,3 @@ export {
   shippedDefinitions,
   sourceHashOf,
 } from "./catalog.ts";
-export { notCheckedLine, renderDefinitionGuide } from "./manual-guide.ts";

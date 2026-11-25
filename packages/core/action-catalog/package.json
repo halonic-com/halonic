@@ -12,8 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@halonicjs/action-steppers": "workspace:*",
-    "@halonicjs/std": "workspace:*"
+    "@halonicjs/action-steppers": "workspace:*"
   },
   "devDependencies": {
     "@halonicjs/schema-kit": "workspace:*",

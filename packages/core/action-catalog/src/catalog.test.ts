@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { manualFormProblems } from "@halonicjs/action-steppers";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { shippedCatalog, shippedDefinitions, sourceHashOf } from "./catalog.ts";
@@ -39,6 +40,10 @@ verifies("action-catalog.discovery", () => {
       const [service, name] = entry.key.split("/");
       expect(entry.definition.service).toBe(service);
       expect(entry.definition.id).toBe(`${service}.${name}`);
+    });
+
+    it.each(shippedDefinitions)("$key can be done by hand", (entry) => {
+      expect(manualFormProblems(entry.definition)).toEqual([]);
     });
 
     it("has one entry per id and version", () => {
