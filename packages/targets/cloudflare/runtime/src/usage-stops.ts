@@ -21,8 +21,8 @@ export const costBase = 1_000_000;
 export const minuteBase = 60_000;
 
 /**
- * The plan a stop names when the limits document carries none. Every stop says it can't be
- * upgraded: the document doesn't say whether a bigger plan exists.
+ * The plan a stop names when the limits document carries none. A stop says it can be upgraded only
+ * when the object's refusal says so; a document that doesn't say counts as no bigger plan.
  */
 export const cloudPlan: StopPlan = { id: "cloud", version: 0, name: "" };
 
@@ -78,7 +78,7 @@ function limitStop(
       : {}),
   };
   if (refusal.code.startsWith("plan.member.")) return memberLimitStop(reached);
-  return planLimitStop({ ...reached, canUpgrade: false });
+  return planLimitStop({ ...reached, canUpgrade: refusal.canUpgrade ?? false });
 }
 
 function fromBase(unit: keyof UsageAmounts, amount: number): number {
