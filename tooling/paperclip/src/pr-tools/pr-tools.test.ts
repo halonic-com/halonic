@@ -1,6 +1,8 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
 import { fakeGitHub, recording } from "../pr-watcher/fakes.test-helper.ts";
+import { routingOf } from "../routing-load.ts";
+import { snapshotWith } from "../routing.test-helper.ts";
 import { judgeApprovals, signedApprovals } from "./approvals.ts";
 import { branchPath, prStatus, statusText } from "./pr-status.ts";
 
@@ -144,6 +146,37 @@ verifies("paperclip.pr-tools", () => {
       );
       const status = await prStatus(github.get, repo, 4588);
       expect(status.behindBase).toBe(5);
+    });
+
+    test("names the reviewer the active snapshot's routing sets, and today's people without one (HAL-18296)", async () => {
+      const routing = routingOf(
+        snapshotWith({ roles: { "code-reviewer": "owen", "second-reviewer": "kim" } }),
+      );
+      const ci = [".github/workflows/ci.yml"];
+      expect((await prStatus(pr4588([], ci).get, repo, 4588, routing)).reviewer).toBe("owen");
+      expect((await prStatus(pr4588([]).get, repo, 4588, routing)).reviewer).toBe("kim");
+      const none = routingOf(snapshotWith(undefined));
+      expect(none).toBeUndefined();
+      expect((await prStatus(pr4588([], ci).get, repo, 4588, none)).reviewer).toBe("liam");
+      expect((await prStatus(pr4588([]).get, repo, 4588, none)).reviewer).toBe("julian");
+    });
+
+    test("a routing never widens who may approve: only Liam's or Julian's signature counts (HAL-18296)", async () => {
+      const routing = routingOf(snapshotWith({ roles: { "code-reviewer": "owen" } }));
+      const owen = await prStatus(
+        pr4588(["Owen: approved on head `7651f8c`"], [".github/workflows/ci.yml"]).get,
+        repo,
+        4588,
+        routing,
+      );
+      expect(owen).toMatchObject({ reviewer: "owen", approvedOnHead: false });
+      const julian = await prStatus(
+        pr4588(["Julian: approved on head `7651f8c`"], [".github/workflows/ci.yml"]).get,
+        repo,
+        4588,
+        routing,
+      );
+      expect(julian.approvedOnHead).toBe(false);
     });
   });
 });

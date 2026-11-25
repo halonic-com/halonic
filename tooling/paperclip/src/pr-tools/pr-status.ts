@@ -9,7 +9,8 @@ import {
   inMergeQueue,
   latestReview,
 } from "../pr-watcher/github.ts";
-import { julianRebaseRefusal, reviewerFor } from "../reviewer-paths.ts";
+import { julianRebaseRefusal, type RoutedPull, reviewerFor } from "../reviewer-paths.ts";
+import type { Routing } from "../routing.ts";
 import { type Approval, approvals, type PullComment } from "./approvals.ts";
 import { type ChangedFile, linesByFile, readManifests } from "./manifests.ts";
 
@@ -40,8 +41,13 @@ export interface PrStatus {
   readonly inQueue: boolean;
   readonly approvals: readonly Approval[];
   readonly approvedOnHead: boolean;
-  /** The reviewer by the path rules (HAL-14809), from the changed files and lines. */
-  readonly reviewer: "julian" | "liam";
+  /**
+   * The reviewer by the path rules (HAL-14809), from the changed files and
+   * lines: the agent the routing names for the role, or today's person
+   * without a routing. Whose signed approval counts doesn't follow the
+   * routing: a routing never widens who may approve.
+   */
+  readonly reviewer: string;
   readonly changedLines: number;
   /** The newest review finding on the head, as `<id> at <time>`. */
   readonly latestReviewFinding: string | undefined;
@@ -111,8 +117,17 @@ export function branchPath(branch: string): string {
   return branch.split("/").map(encodeURIComponent).join("/");
 }
 
-/** Reads one pull request's whole status: about 10 GitHub requests, plus 2 per changed package manifest. */
-export async function prStatus(get: GitHubGet, repo: string, number: number): Promise<PrStatus> {
+/**
+ * Reads one pull request's whole status: about 10 GitHub requests, plus 2 per changed package manifest.
+ *
+ * @param routing - the active workspace snapshot's routing (`routingOf`), or `undefined` for today's people
+ */
+export async function prStatus(
+  get: GitHubGet,
+  repo: string,
+  number: number,
+  routing?: Routing,
+): Promise<PrStatus> {
   const pull = (await get(`/repos/${repo}/pulls/${number}`)) as PullDetails;
   const head = pull.head.sha;
   const state = stateOf(pull);
@@ -141,15 +156,17 @@ export async function prStatus(get: GitHubGet, repo: string, number: number): Pr
   const author = ours ? branchOwner(pull.head.ref) : undefined;
   // The author says whether it's a security or release pull request; the paths can't tell.
   const paths = files.map((file) => file.filename);
-  const reviewer = reviewerFor({
+  const routed: RoutedPull = {
     files: paths,
     changedLines,
     sensitive: false,
     manifests,
     fileLines: linesByFile(files),
-  });
+  };
   const rebaseRefusal = julianRebaseRefusal({ files: paths, branch: pull.head.ref });
-  const found = approvals(comments, { head, author, reviewer, rebaseRefusal });
+  // Approvals are judged against the people in code (HAL-14809), never the routing's.
+  const found = approvals(comments, { head, author, reviewer: reviewerFor(routed), rebaseRefusal });
+  const reviewer = reviewerFor(routed, routing);
   const title = shownTitle(pull);
   return {
     repo,

@@ -1,11 +1,11 @@
-import { isLiamPath, julianRebaseRefusal, overLineLimit, reviewerFor } from "../reviewer-paths.ts";
+import { isLiamPath, julianRebaseRefusal, overLineLimit, reviewerRoleFor } from "../reviewer-paths.ts";
 import { anySignedApproval, blockWords, fixedWords, signedApproval } from "./signed.ts";
 import type { GatePull, PullText } from "./snapshot.ts";
 
 /**
  * The approval rules of the gate (MERGER.md §4, rules 1–6): signed
  * approvals on the current head after the last push, carry-over across a
- * rebase with an identical diff, Julian within `reviewerFor` or re-approving
+ * rebase with an identical diff, Julian within `reviewerRoleFor` or re-approving
  * after a rebase-only push (HAL-18459), "Author: Liam", and open change
  * requests. The texts follow the Merger's own matching,
  * which differs from `pr-tools/approvals.ts`: a bare "re-approved on head"
@@ -170,7 +170,8 @@ export function outsideJulianScope(pull: GatePull): string | null {
     sensitive: false,
     ...(pull.manifests === undefined ? {} : { manifests: pull.manifests }),
   };
-  if (reviewerFor(routed) === "julian") {
+  // By role, as the PR watcher routes (`reviewerRoleFor`): a routing never widens Julian's limits.
+  if (reviewerRoleFor(routed) === "second-reviewer") {
     return null;
   }
   const bad = pull.files.filter(isLiamPath);
