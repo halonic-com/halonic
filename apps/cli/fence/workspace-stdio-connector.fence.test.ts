@@ -131,8 +131,14 @@ async function trust(): Promise<void> {
   if (!granted.ok) throw new Error(`The workspace couldn't be trusted: ${granted.error.kind}`);
 }
 
-/** Runs Weekly report with this computer's real connectors, and returns the tool's answers in call order. */
-async function runReport(): Promise<string[]> {
+/** What one run saw: the tool's answers in call order, and the other events, to show when the answers are missing. */
+interface RunOutcome {
+  readonly results: readonly string[];
+  readonly others: string;
+}
+
+/** Runs Weekly report with this computer's real connectors. */
+async function runReport(): Promise<RunOutcome> {
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
   const version = await savedVersionOf(dir);
   const grant = await trustedGrant(
@@ -180,7 +186,10 @@ async function runReport(): Promise<string[]> {
   } finally {
     await engine.close();
   }
-  return events.flatMap((event) => (event.type === "tool.result" ? [event.result] : []));
+  return {
+    results: events.flatMap((event) => (event.type === "tool.result" ? [event.result] : [])),
+    others: JSON.stringify(events.filter((event) => event.type !== "tool.result")),
+  };
 }
 
 describe("a workspace's stdio connector, started by a run through openWorkspaceEngine", () => {
@@ -189,8 +198,10 @@ describe("a workspace's stdio connector, started by a run through openWorkspaceE
     async () => {
       await trust();
 
-      const [wrote, sshKey, profileKeys] = await runReport();
+      const { results, others } = await runReport();
 
+      expect(results, others).toHaveLength(3);
+      const [wrote, sshKey, profileKeys] = results;
       // It ran in its session and writes in its own working folder, so the refusals come from the fence.
       expect(wrote).toBe("wrote");
       expect(sshKey).toMatch(/^refused:/);
