@@ -24,6 +24,7 @@ import {
   assertLedgerFits,
   fromBase,
   type Holder,
+  hasEnded,
   heldOf,
   type Ledger,
   LedgerStore,
@@ -34,6 +35,7 @@ import {
   type UnitAmounts,
   usedOf,
   withoutPast,
+  withRunEnded,
   withUse,
 } from "./usage-ledger.ts";
 
@@ -166,16 +168,27 @@ export class ConfigMeter implements Meter {
     });
   }
 
-  /** Counts a model call's step, tokens and cost, or a run's end. An answer from the cache counts nothing. */
+  /**
+   * Counts a model call's step, tokens and cost, or a run's end. An answer
+   * from the cache counts nothing, and so does a run's end recorded again
+   * while its id is kept: the engine can't promise one record per run end,
+   * since an answer lost after the change is tried again and two hosts can
+   * both end a run.
+   */
   async record(principal: MeterPrincipal, usage: MeterUsage): Promise<void> {
     const amounts = amountsOf(usage);
     if (amounts === null) return;
     const member = this.#shareHolderOf(principal);
     const now = this.#clock.now();
-    await this.#ledgers.change(principal.scope, (stored) => ({
-      next: withUse(withoutPast(stored, now), member, amounts, now),
-      answer: undefined,
-    }));
+    await this.#ledgers.change(principal.scope, (stored) => {
+      const ledger = withoutPast(stored, now);
+      if (usage.kind !== "run")
+        return { next: withUse(ledger, member, amounts, now), answer: undefined };
+      if (hasEnded(ledger, usage.runId)) return { next: null, answer: undefined };
+      // The id and the count change together, so a retry can't count it twice.
+      const next = withUse(withRunEnded(ledger, usage.runId, now), member, amounts, now);
+      return { next, answer: undefined };
+    });
   }
 
   /**

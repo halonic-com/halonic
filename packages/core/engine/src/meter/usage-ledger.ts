@@ -10,6 +10,11 @@
 // small however many people use the scope: it keeps a member's own counters
 // only for the limits of their share, which the file bounds, and refuses a
 // change that would grow past the cap rather than lose the scope's counts.
+//
+// It also keeps the ids of the runs that ended lately, so a run's end that is
+// recorded again, such as after a lost answer or by a second host, counts
+// once. They are kept for as long as a hold lasts and within a fixed number of
+// bytes, newest first, so a busy scope forgets its oldest ends first.
 
 import type { UsageLimit } from "@halonicjs/format";
 import type { Coordination } from "@halonicjs/ports";
@@ -34,7 +39,12 @@ export interface Ledger {
   readonly pool: Readonly<Record<string, number>>;
   readonly members: Readonly<Record<string, Readonly<Record<string, number>>>>;
   readonly held: Readonly<Record<string, Held>>;
+  /** The runs that ended lately: each run's id, and when its end was counted, in milliseconds. */
+  readonly ended: Readonly<Record<string, number>>;
 }
+
+/** A ledger as stored; one stored before the meter kept run ends has no `ended`. */
+type StoredLedger = Omit<Ledger, "ended"> & { readonly ended?: Ledger["ended"] };
 
 /** Whose counters: the whole scope's, or one member's. */
 export type Holder = { readonly pool: true } | { readonly actor: string };
@@ -72,11 +82,15 @@ const units: readonly MeteredUnit[] = ["runs", "steps", "tokens", "cost", "harne
 /** The most a stored ledger may take, as `Coordination` allows a value. */
 const maxLedgerBytes = 64 * 1024;
 
-/**
- * The most the counters may take at their largest. The rest is kept for what
- * steps hold back, about 290 holds at once in one scope.
- */
+/** The most the counters may take at their largest. */
 const maxCounterBytes = maxLedgerBytes / 2;
+
+/**
+ * The most the ids of ended runs may take, measured in bytes because a run id
+ * can be any length. The rest of the cap, after the counters and these, is
+ * kept for what steps hold back, about 220 holds at once in one scope.
+ */
+const maxEndedBytes = 8 * 1024;
 
 /** `amount` of `unit`, as a limit writes it, in the unit's base. */
 export function toBase(unit: MeteredUnit, amount: number): number {
@@ -158,7 +172,41 @@ export function withoutPast(ledger: Ledger, at: Date): Ledger {
     held: Object.fromEntries(
       Object.entries(ledger.held).filter(([, held]) => at.getTime() - held.at < heldForMs),
     ),
+    ended: recentEnded(ledger.ended, at),
   };
+}
+
+/** True when the run's end is counted already and its id is still kept. */
+export function hasEnded(ledger: Ledger, runId: string): boolean {
+  return Object.hasOwn(ledger.ended, runId);
+}
+
+/** `ledger` with the run's end kept at `at`, dropping the oldest ends that no longer fit. */
+export function withRunEnded(ledger: Ledger, runId: string, at: Date): Ledger {
+  return { ...ledger, ended: recentEnded({ ...ledger.ended, [runId]: at.getTime() }, at) };
+}
+
+/**
+ * The ends of runs no older than a hold lasts, newest first while they fit in
+ * their bytes. Among ends at the same moment, the one added last is kept first.
+ */
+function recentEnded(
+  ended: Readonly<Record<string, number>>,
+  at: Date,
+): Readonly<Record<string, number>> {
+  const newestFirst = Object.entries(ended)
+    .filter(([, endedAt]) => at.getTime() - endedAt < heldForMs)
+    .reverse()
+    .sort(([, left], [, right]) => right - left);
+  const kept: [string, number][] = [];
+  let bytes = 0;
+  for (const [runId, endedAt] of newestFirst) {
+    // As stored: `"<id>":<time>,`.
+    bytes += byteLengthOf(JSON.stringify(runId)) + String(endedAt).length + 2;
+    if (bytes > maxEndedBytes) break;
+    kept.push([runId, endedAt]);
+  }
+  return Object.fromEntries(kept.reverse());
 }
 
 /**
@@ -175,6 +223,7 @@ export function assertLedgerFits(scope: string, members: readonly ShareHolder[])
     pool: {},
     members: {},
     held: {},
+    ended: {},
   });
   if (byteLengthOf(JSON.stringify(full)) > maxCounterBytes) {
     throw new RangeError(
@@ -234,15 +283,16 @@ function keyOf(scope: string): string {
 
 /** @throws Error when the stored value isn't a ledger, rather than counting from 0 */
 function parsedLedger(scope: string, text: string | null): Ledger {
-  if (text === null) return { pool: {}, members: {}, held: {} };
+  if (text === null) return { pool: {}, members: {}, held: {}, ended: {} };
   const value: unknown = JSON.parse(text);
   if (!isLedger(value)) throw new Error(`The meter's stored usage of "${scope}" isn't readable.`);
-  return value;
+  return { ...value, ended: value.ended ?? {} };
 }
 
-function isLedger(value: unknown): value is Ledger {
+function isLedger(value: unknown): value is StoredLedger {
   if (!isRecord(value) || !isCounters(value["pool"])) return false;
   if (!isRecord(value["members"]) || !isRecord(value["held"])) return false;
+  if (value["ended"] !== undefined && !isCounters(value["ended"])) return false;
   return (
     Object.values(value["members"]).every(isCounters) && Object.values(value["held"]).every(isHeld)
   );

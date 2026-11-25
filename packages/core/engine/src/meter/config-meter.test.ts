@@ -133,7 +133,7 @@ verifies("engine.config-meter", () => {
     it("counts runs only against starting one", async () => {
       const { meter } = meterWith({ limits: [limit("runs", 2, { period: "day" })] });
       await meter.record(ada, runEnd);
-      await meter.record(ada, runEnd);
+      await meter.record(ada, runEndUsageOf({ runId: "r-acme-2", status: "failed" } as RunState));
       expect(codeOf(await meter.check(ada, { kind: "run-start" }))).toBe("plan.runs");
       expect(await meter.check(ada, { kind: "model-call" })).toEqual({ allowed: true });
     });
