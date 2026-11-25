@@ -95,14 +95,9 @@ export function WorkflowFrame(props: WorkflowFrameProps) {
       icon={<PlaceIcon name="workflows" />}
       kind={pageWords.kindWord}
       name={name}
-      // Where the host can't rename, the name stays a title (`workflows.page.rename`).
-      onRename={
-        rename &&
-        ((next: string) => {
-          // Until the workflow is read there's no name to change.
-          if (ready) rename.apply(next);
-        })
-      }
+      // Where the host can't rename, the name stays a title (`workflows.page.rename`), and so it
+      // does until the workflow is read: there's no name to change yet (HAL-18315, AS11).
+      onRename={rename && ready ? (next: string) => rename.apply(next) : undefined}
       check={rename?.check}
       titleRef={title}
       actions={props.actions}

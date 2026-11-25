@@ -79,6 +79,19 @@ verifies("assistant.chat.item-page", () => {
     await act(async () => {});
     // The chat menu's button names the chat the page shows.
     expect(page.querySelector("button[aria-haspopup=menu]")?.textContent).toBe("Rename it");
+    // Focus goes to the box, as a pick in the panel's menu puts it (HAL-18315, AS9).
+    expect(document.activeElement).toBe(page.querySelector("textarea"));
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Message the assistant");
+  });
+
+  it("puts focus in the new chat's box after New chat", async () => {
+    const page = await triagePage(fakeHost([aboutTriage]));
+    const rows = await openMenu(page, "Add a step");
+    await act(async () => rows.find((row) => row.textContent === "New chat")?.click());
+    await act(async () => {});
+    expect(page.querySelector("h3")?.textContent).toBe("What should change in Triage?");
+    expect(document.activeElement).toBe(page.querySelector("textarea"));
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Message the assistant");
   });
 
   it("opens a kept chat as a tab from its ⋮, and the page shows a new chat about the item", async () => {
