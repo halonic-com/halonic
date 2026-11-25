@@ -34,7 +34,7 @@ const innerBody = "inner-body";
  */
 const innerProgram = `
 const { createServer } = require("node:http");
-const { execFileSync } = require("node:child_process");
+const { execFile } = require("node:child_process");
 const port = Number(process.argv[2]);
 const url = "http://127.0.0.1:" + port + "/";
 // curl reads srt's HTTP_PROXY from the environment, so a direct request needs it removed.
@@ -42,24 +42,25 @@ const proxyNames = ["HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy", "A
 const withoutProxy = Object.fromEntries(
   Object.entries(process.env).filter(([name]) => !proxyNames.includes(name)),
 );
-const fetchWith = (args, env = process.env) => {
-  try {
-    return execFileSync("curl", ["-s", "--max-time", "10", ...args, url], { encoding: "utf8", env });
-  } catch (error) {
-    return "refused: curl exit " + error.status;
-  }
-};
+// Asynchronous on purpose: the server below lives in this same process, and a
+// synchronous call would block it from answering curl.
+const fetchWith = (args, env = process.env) =>
+  new Promise((resolve) => {
+    execFile("curl", ["-s", "--max-time", "10", ...args, url], { encoding: "utf8", env }, (error, stdout) => {
+      resolve(error ? "refused: curl exit " + error.code : stdout);
+    });
+  });
 const server = createServer((request, response) => response.end(${JSON.stringify(innerBody)}));
 server.on("error", (error) => {
   console.log(JSON.stringify({ bindError: error.code }));
   process.exit(1);
 });
-server.listen(port, "127.0.0.1", () => {
+server.listen(port, "127.0.0.1", async () => {
   const proxy = process.env.HTTP_PROXY || process.env.http_proxy || "";
   const got = {
-    direct: fetchWith([], withoutProxy),
-    noProxy: fetchWith(["--noproxy", "*"]),
-    throughProxy: proxy === "" ? "no HTTP_PROXY" : fetchWith(["--proxy", proxy, "--noproxy", ""]),
+    direct: await fetchWith([], withoutProxy),
+    noProxy: await fetchWith(["--noproxy", "*"]),
+    throughProxy: proxy === "" ? "no HTTP_PROXY" : await fetchWith(["--proxy", proxy, "--noproxy", ""]),
   };
   console.log(JSON.stringify(got));
   server.close();
