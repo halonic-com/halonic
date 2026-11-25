@@ -43,6 +43,16 @@ pub fn hold<R: Runtime>(app: &AppHandle<R>, clicked: NotificationClicked) {
     }
 }
 
+/// Drops the waiting click, if any: Studio's window it was kept for didn't open.
+pub fn forget<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(pending) = app.try_state::<PendingClick>() {
+        match pending.0.lock() {
+            Ok(mut waiting) => *waiting = None,
+            Err(_) => halonic_shell_log::record("notifications", "the waiting click was lost"),
+        }
+    }
+}
+
 /// The `take_pending_notification_click` command: the click that opened
 /// Studio's window, once, then `None`. It takes nothing from the page. Only
 /// Studio's window is granted it

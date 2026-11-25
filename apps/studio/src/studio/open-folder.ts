@@ -157,8 +157,10 @@ export async function openFolder(
     const reportNotifications = (error: unknown) => console.error("A run notification", error);
     provideRunNotifications(services, {
       notifier: new ShellNotifier(ipc, reportNotifications),
-      // The shell brought this window forward (HAL-18844); Runs shows the run's group.
-      open: () => workspace.tabs.openHere({ key: "runs", title: placeNames.runs.label }),
+      // Does nothing on purpose: Runs' notice host opens the run, or the Failed group, from the
+      // click's kind (`runs.run-notification-open`). Don't wire it again: two openers race, and
+      // the Runs list would cover the run's page.
+      open: () => undefined,
       onError: reportNotifications,
       trust,
     });

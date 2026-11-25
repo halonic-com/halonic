@@ -107,6 +107,7 @@ export function RunsView({
   const state = useSyncExternalStore(subscribe, () => list.state);
   const [filters, setFilters] = useState<RunsFilters>(() => ({
     ...startFilters,
+    ...(list.requestedFailed ? { status: "failed" } : {}),
     workflow: list.requestedWorkflow,
   }));
   // A request is taken once, by the page open when it comes or the next to open, so a later plain
@@ -114,9 +115,13 @@ export function RunsView({
   useEffect(() => {
     const take = () => {
       const workflow = list.requestedWorkflow;
-      if (workflow === undefined) return;
+      const failed = list.requestedFailed;
+      if (workflow === undefined && !failed) return;
       list.clearRequest();
-      setFilters((current) => ({ ...current, workflow }));
+      // The Failed group shows every workflow's failures, unless a workflow was asked for too.
+      setFilters((current) =>
+        failed ? { ...current, status: "failed", workflow } : { ...current, workflow },
+      );
     };
     take();
     return list.subscribe(take);

@@ -114,9 +114,10 @@ fn report_run_click<R: Runtime>(
         .get_webview_window(focused_apps::STUDIO_WINDOW)
         .is_some();
     if !was_open {
-        // Kept before the window opens, so its page can't start before it.
+        // Kept before the window opens, so its page can't start before it. A window that
+        // didn't open drops it, so it can't open that run the next time Studio opens.
         pending_click::hold(app, clicked);
-        return focused_apps::show(app, None);
+        return focused_apps::show(app, None).inspect_err(|_| pending_click::forget(app));
     }
     focused_apps::show(app, None)?;
     app.emit_to(

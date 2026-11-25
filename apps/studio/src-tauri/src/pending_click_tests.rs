@@ -8,7 +8,7 @@ use tauri::test::{MockRuntime, mock_builder};
 use tauri::webview::WebviewWindowBuilder;
 use tauri::{App, Listener, Manager, WebviewUrl};
 
-use super::{PendingClick, hold, take_pending_notification_click};
+use super::{PendingClick, forget, hold, take_pending_notification_click};
 use crate::notification_clicks::{NOTIFICATION_CLICKED_EVENT, NotificationClicked, report_click};
 
 /// The shell on the mock runtime, with only the windows labelled `open`.
@@ -102,4 +102,12 @@ fn the_command_is_granted_to_studios_window_only_and_never_served() {
         capability["permissions"],
         json!(["allow-take-pending-notification-click"])
     );
+}
+
+#[test]
+fn a_forgotten_click_is_never_taken() {
+    let app = shell_with(&[]);
+    hold(app.handle(), clicked("run-acme-7", "run"));
+    forget(app.handle());
+    assert_eq!(take(&app), None);
 }
