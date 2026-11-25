@@ -2,6 +2,7 @@
 
 - Approval: Liam reviews this on HAL-18245 (from the B1 security review, HAL-14212)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:wrhG0e0skHp8FM847SubmCtiFQE73v7X4pbBTava4gELE5yzcoTW7yQArokKtQotjjJywhrtc9xCDiMRQe3FCQ==
 
 The Linux Rust job in `.github/workflows/ci.yml` (`Tauri shell (Rust checks)`) gets one step,
 `cargo test --locked -p halonic-engine-supervisor --test engine_stderr -- --ignored`, right after the gateway test's
