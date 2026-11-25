@@ -1,0 +1,17 @@
+{
+  "identifier": "desktop-show-main-window",
+  "description": "On desktop, a focused app's window (Halonic Inbox or Halonic Messenger) may bring Studio's main window forward, or open it when it was closed, through show_main_window, which its \"Open Halonic\" button calls while it has no workspace to open (HAL-18188). The command takes nothing and shows only Studio's window. Studio's own window doesn't get it, and it is local only, so the Studio the computer serves gets nothing.",
+  "local": true,
+  "windows": [
+    "inbox",
+    "messenger"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "allow-show-main-window"
+  ]
+}

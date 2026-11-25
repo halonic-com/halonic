@@ -59,11 +59,13 @@ async function mount(name: string | undefined) {
   const [app] = shell.contributions.focusedApps.list();
   if (app === undefined) throw new Error("The Acme Inbox added no focused app.");
   let focused: ReturnType<typeof mountFocusedWindow> | undefined;
+  const studioShown: number[] = [];
+  const openStudio = () => studioShown.push(1);
   await act(async () => {
-    focused = mountFocusedWindow(element, { shell, app, workspace, language: "en" });
+    focused = mountFocusedWindow(element, { shell, app, workspace, language: "en", openStudio });
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
-  return { unmount: () => act(() => focused?.unmount()) };
+  return { studioShown, unmount: () => act(() => focused?.unmount()) };
 }
 
 verifies("shell.focused-apps", () => {
@@ -84,6 +86,21 @@ verifies("shell.focused-apps", () => {
 
     expect(element.textContent).toContain("Open Halonic to choose a workspace.");
     expect(document.title).toBe("Inbox · Halonic Inbox");
+  });
+
+  it("brings Studio's window forward from its Open Halonic button while there is no workspace", async () => {
+    const focused = await mount(undefined);
+    const buttons = [...element.querySelectorAll("button")];
+
+    expect(buttons.map((button) => button.textContent)).toEqual(["Open Halonic"]);
+    act(() => buttons[0]?.click());
+    expect(focused.studioShown).toHaveLength(1);
+  });
+
+  it("has no Open Halonic button once a workspace is open", async () => {
+    await mount("Acme");
+
+    expect(element.textContent).not.toContain("Open Halonic");
   });
 
   it("names the app's page, the workspace and the app in the title", () => {

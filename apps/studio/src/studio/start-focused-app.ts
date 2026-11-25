@@ -44,8 +44,8 @@ export function focusedAppOf(
 /**
  * Starts a focused app's window (`studio.focused-app-window`): only that app, on the approved
  * frame, for the workspace Studio last had open, opened as a Recent row opens it. With no
- * workspace in Recent, or one that can't be opened, the window says to open Halonic, and the
- * reason it couldn't open goes to the console. It never opens the workspace's engine for routines:
+ * workspace in Recent, or one that can't be opened, the window says to open Halonic, its button
+ * brings Studio's window forward, and the reason it couldn't open goes to the console. It never opens the workspace's engine for routines:
  * Studio's window does, and engine locks are held per window.
  */
 export function startFocusedApp(page: StudioPage, parts: FocusedAppParts): StartedStudio {
@@ -70,6 +70,7 @@ export function startFocusedApp(page: StudioPage, parts: FocusedAppParts): Start
       app,
       workspace: opened?.workspace,
       language,
+      openStudio: () => showStudio(ipc),
     });
     return opened;
   });
@@ -82,6 +83,13 @@ export function startFocusedApp(page: StudioPage, parts: FocusedAppParts): Start
       await opened?.dispose();
     },
   };
+}
+
+/** Brings Studio's window forward through the shell; a window that can't show says why in the console. */
+function showStudio(ipc: TauriIpc): void {
+  ipc.invoke("show_main_window").catch((error: unknown) => {
+    console.error("Halonic's window didn't show:", error);
+  });
 }
 
 /** Opens the last workspace again, or `undefined` when it can't, saying why in the console. */

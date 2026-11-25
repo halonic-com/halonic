@@ -37,6 +37,7 @@ export const focusedPanelClass = "overflow-hidden rounded-lg border border-borde
 /** What a focused app's window says while Halonic has no workspace to open in it. */
 export const focusedWindowWords = {
   noWorkspace: "Open Halonic to choose a workspace.",
+  openHalonic: "Open Halonic",
 } as const;
 
 /**
@@ -63,15 +64,17 @@ export interface FocusedWindowProps {
   readonly workspace: StudioWorkspace | undefined;
   /** The language of the Studio's words, such as `en`, set on `<html lang>`. */
   readonly language: string;
+  /** Brings Studio's window forward, for the "Open Halonic" button while there is no workspace. */
+  readonly openStudio: () => void;
 }
 
 /**
  * A focused app's window (`shell.focused-apps`): the app's one view on the approved frame, given
  * its feature's context for the open workspace, and none of Studio's tabs, places or status bar.
- * With no workspace it says to open Halonic. Its title is the app's, then the workspace's, then the
+ * With no workspace it says to open Halonic, with a button that does. Its title is the app's, then the workspace's, then the
  * app's own name: "Inbox · Acme · Halonic Inbox".
  */
-export function FocusedWindow({ shell, app, workspace, language }: FocusedWindowProps) {
+export function FocusedWindow({ shell, app, workspace, language, openStudio }: FocusedWindowProps) {
   const { announcer, closeStack, toasts } = shell;
   const presentation = usePresentationFromWidth();
   useDocumentLanguage(language);
@@ -91,7 +94,7 @@ export function FocusedWindow({ shell, app, workspace, language }: FocusedWindow
               className={`relative flex h-dvh flex-col p-2 text-fg ${focusedFrameClass}`}
             >
               {workspace === undefined ? (
-                <NoWorkspace app={app} />
+                <NoWorkspace app={app} openStudio={openStudio} />
               ) : (
                 <FocusedPage shell={shell} app={app} workspace={workspace} />
               )}
@@ -105,11 +108,20 @@ export function FocusedWindow({ shell, app, workspace, language }: FocusedWindow
   );
 }
 
-function NoWorkspace({ app }: { readonly app: FocusedAppContribution }) {
+function NoWorkspace({
+  app,
+  openStudio,
+}: {
+  readonly app: FocusedAppContribution;
+  readonly openStudio: () => void;
+}) {
   return (
     <main className={`flex flex-1 items-center justify-center ${focusedPanelClass}`}>
       <h1 className="sr-only">{`${appName} ${app.title}`}</h1>
-      <EmptyState title={focusedWindowWords.noWorkspace} />
+      <EmptyState
+        title={focusedWindowWords.noWorkspace}
+        action={{ label: focusedWindowWords.openHalonic, onClick: openStudio }}
+      />
     </main>
   );
 }
@@ -158,8 +170,8 @@ export interface MountedFocusedWindow {
  * page, so `apps/studio` only starts it.
  *
  * @example
- * const focused = mountFocusedWindow(root, { shell, app, workspace: undefined, language: "en" });
- * focused.update({ shell, app, workspace: opened.workspace, language: "en" });
+ * const focused = mountFocusedWindow(root, { shell, app, workspace: undefined, language: "en", openStudio });
+ * focused.update({ shell, app, workspace: opened.workspace, language: "en", openStudio });
  */
 export function mountFocusedWindow(
   element: Element,

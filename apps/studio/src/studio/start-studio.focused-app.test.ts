@@ -20,8 +20,9 @@ function desktopMediaQueries(query: string): MediaQueryList {
 }
 
 /** The desktop app's webview in the window the shell labelled `label`, over the Acme folder. */
-function webviewLabelled(label: string) {
+function webviewLabelled(label: string, called: string[] = []) {
   const invoke = async (command: string) => {
+    called.push(command);
     if (command === "resource_report") {
       return { engineMemoryBytes: 0, childProcesses: [], dataBytes: 0, freeDiskBytes: 0 };
     }
@@ -72,10 +73,10 @@ afterEach(async () => {
   element.remove();
 });
 
-function start(label: string, remembered = true) {
+function start(label: string, remembered = true, called: string[] = []) {
   started = startStudio({
     element,
-    window: webviewLabelled(label),
+    window: webviewLabelled(label, called),
     userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
     storage: storageWithAcme(remembered),
   });
@@ -120,6 +121,22 @@ verifies("studio.focused-app-window", () => {
       expect(element.textContent).toContain("Open Halonic to choose a workspace."),
     );
     expect(studioFrame(element)).toBe(false);
+  });
+
+  it("brings Studio's window forward from the Open Halonic button with no workspace", async () => {
+    const called: string[] = [];
+    start("messenger", false, called);
+
+    const button = await vi.waitFor(() => {
+      const found = [...element.querySelectorAll("button")].find(
+        (candidate) => candidate.textContent === "Open Halonic",
+      );
+      if (found === undefined) throw new Error("No Open Halonic button yet.");
+      return found;
+    });
+    expect(called).not.toContain("show_main_window");
+    button.click();
+    expect(called.filter((command) => command === "show_main_window")).toHaveLength(1);
   });
 
   it("still shows Studio in Studio's own window", async () => {
