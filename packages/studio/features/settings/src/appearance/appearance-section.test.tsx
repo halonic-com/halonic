@@ -16,7 +16,7 @@ function setup() {
   const prefs = new MemoryDisplayPrefs();
   const settings = new DisplaySettings(prefs);
   const announce = vi.fn();
-  const view = render(<AppearanceView settings={settings} announce={announce} />);
+  const view = render(<AppearanceView settings={settings} announce={announce} showUnfinished />);
   return { prefs, settings, announce, view };
 }
 
@@ -150,7 +150,7 @@ describe("a failed save", () => {
         const toasts = createToastStore();
         const view = render(
           <ToastStoreProvider store={toasts}>
-            <AppearanceView settings={settings} announce={announce} />
+            <AppearanceView settings={settings} announce={announce} showUnfinished />
           </ToastStoreProvider>,
         );
         prefs.holdWrites();
@@ -176,7 +176,13 @@ describe("on the phone's Settings page", () => {
     const view = render(
       <PresentationProvider presentation="phone">
         <ToastStoreProvider store={toasts}>
-          <AppearanceView settings={settings} announce={announce} place={place} surface="phone" />
+          <AppearanceView
+            settings={settings}
+            announce={announce}
+            place={place}
+            surface="phone"
+            showUnfinished
+          />
         </ToastStoreProvider>
       </PresentationProvider>,
     );

@@ -10,7 +10,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HostSettingsService } from "../api.ts";
-import { settingsFeature, settingsSections } from "../feature.ts";
+import { settingsFeature, settingsSectionsFor } from "../feature.ts";
 import { change, control, typeAndLeave } from "../test-support/controls.ts";
 import { MemoryHostSettingsStore } from "../test-support/memory-host-settings-store.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -60,7 +60,7 @@ verifies("settings.ai-agent-section", () => {
   });
 
   it("registers its first line as the description the container draws, by place", async () => {
-    const section = settingsSections.find(({ id }) => id === "assistant");
+    const section = settingsSectionsFor(true).find(({ id }) => id === "assistant");
     const describe = section?.description;
     if (typeof describe !== "function") throw new Error("no description function");
     const context = {} as WorkspaceContext;
