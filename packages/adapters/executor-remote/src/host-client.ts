@@ -24,6 +24,16 @@ function sessionCookieOf(response: Response): string | null {
   return null;
 }
 
+/**
+ * Keeps a request alive for as long as its caller's signal can still abort it. Node's `Request`
+ * follows the caller's signal only through a weak reference, and `fetch` copies the request and
+ * drops it, so a garbage collection while the call waits used to cut the abort off from `fetch`:
+ * the call then never ended (HAL-18853).
+ */
+function keepReachable(request: Request, signal: AbortSignal): void {
+  signal.addEventListener("abort", () => request.signal, { once: true });
+}
+
 /** How long a sign-in may take before it is given up as a failed try. */
 const defaultLoginTimeoutMs = 30_000;
 
@@ -74,7 +84,11 @@ export class HostClient {
     const init: RequestInit = { method, headers: sent, redirect: "error" };
     if (body !== undefined) init.body = JSON.stringify(body);
     if (signal !== undefined) init.signal = signal;
-    return this.#fetch(new Request(`${this.#baseUrl}${path}`, init));
+    const request = new Request(`${this.#baseUrl}${path}`, init);
+    if (signal !== undefined) {
+      keepReachable(request, signal);
+    }
+    return this.#fetch(request);
   }
 
   #signIn(): Promise<void> {
