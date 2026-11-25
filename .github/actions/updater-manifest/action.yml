@@ -14,8 +14,14 @@ inputs:
     description: File name of the installer in `dir`.
     required: true
   dry-run:
-    description: "true: sign with a throwaway key made here and deleted right after. false: sign with `private-key` and check it is the key whose public half is in tauri.conf.json."
+    description: "true: sign with a throwaway key made here and deleted right after. false: sign with `private-key` and check it is the key whose public half is in tauri.conf.json, or the one `key` names."
     required: true
+  key:
+    description: "Real runs: which public key the signature must match. Empty: the release key in tauri.conf.json. preview: the Preview key in apps/studio/src-tauri/updater-keys.json (HAL-18477)."
+    default: ""
+  repo:
+    description: The repository whose release gets the installer, for the manifest's url and notes. Empty means this one.
+    default: ""
   private-key:
     description: The updater private key (the text `tauri signer generate` writes). Real runs only.
     default: ""
@@ -37,7 +43,8 @@ runs:
         DRY_RUN: ${{ inputs.dry-run }}
         PRIVATE_KEY: ${{ inputs.private-key }}
         KEY_PASSWORD: ${{ inputs.password }}
-        REPO: ${{ github.repository }}
+        KEY_NAME: ${{ inputs.key }}
+        REPO: ${{ inputs.repo || github.repository }}
       run: |
         $ErrorActionPreference = "Stop"
         $utf8 = New-Object System.Text.UTF8Encoding $false
@@ -62,8 +69,13 @@ runs:
           if (-not $env:PRIVATE_KEY) { throw "No updater private key. It is a secret of the release environment." }
           $env:TAURI_SIGNING_PRIVATE_KEY = $env:PRIVATE_KEY
           $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = $env:KEY_PASSWORD
-          $pubkey = (Get-Content -Raw apps/studio/src-tauri/tauri.conf.json | ConvertFrom-Json).plugins.updater.pubkey
-          if (-not $pubkey) { throw "tauri.conf.json has no plugins.updater.pubkey" }
+          if ($env:KEY_NAME) {
+            $pubkey = (Get-Content -Raw apps/studio/src-tauri/updater-keys.json | ConvertFrom-Json).$($env:KEY_NAME).pubkey
+            if (-not $pubkey) { throw "updater-keys.json has no $env:KEY_NAME key" }
+          } else {
+            $pubkey = (Get-Content -Raw apps/studio/src-tauri/tauri.conf.json | ConvertFrom-Json).plugins.updater.pubkey
+            if (-not $pubkey) { throw "tauri.conf.json has no plugins.updater.pubkey" }
+          }
         }
 
         # --app-version puts the version in the signed trusted comment. The
