@@ -13,4 +13,5 @@ export { detectOpenCode, opencodeProgram, supportedVersions, testedVersions } fr
 export { disableSwitches, opencodeEnvironment, opencodeStandInKey } from "./environment.ts";
 export { type OpenCodeFiles, type OpenCodeFolders, opencodeFiles } from "./files.ts";
 export { type OpenCodeStartCheck, opencodeRefusal, supportedPlatforms } from "./refusals.ts";
+export { OpenCodeRun, type OpenCodeRunOptions } from "./run.ts";
 export { modelTools, OpenCodeEventReader, type OpenCodeEventReaderOptions } from "./run-events.ts";
