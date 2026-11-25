@@ -126,5 +126,24 @@ verifies("inbox.agent-action-items", () => {
       });
       expect(root.textContent).toContain("You declined this request. Nothing more will run.");
     });
+
+    it("keeps focus on the bundle's first card when the action request is its second", async () => {
+      let now = new Date(2026, 10, 24, 9, 0);
+      const messaging = new FakeAgentMessaging({ now: () => now });
+      const source = messaging.addSource({ label: "Paperclip · Acme", provider: "paperclip" });
+      const chief = messaging.addAgent(source.id, { name: "Chief" });
+      const from = { kind: "agent", agent: chief.id, name: "Chief" } as const;
+      messaging.addInboxItem(source.id, { question: "Ship the release?", from });
+      now = asked;
+      messaging.addInboxItem(source.id, {
+        question: "The release of acme/app is ready.",
+        from,
+        action: approveAcmeApp,
+      });
+      const root = await openAction(messaging);
+      const titles = [...root.querySelectorAll("section h2")].map((h) => h.textContent);
+      expect(titles).toEqual(["Ship the release?", "Approve a deployment"]);
+      expect(document.activeElement).toBe(card(root, "Ship the release?").querySelector("h2"));
+    });
   });
 });

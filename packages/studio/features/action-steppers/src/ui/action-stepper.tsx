@@ -18,6 +18,8 @@ import { runWords, serviceDownText, stageText } from "./stepper-words.ts";
 export interface ActionStepperProps {
   readonly view: StepperView;
   readonly actions: StepperActions;
+  /** Whether its title takes the focus when it opens: in an Inbox bundle, only the first card's does. */
+  readonly focusOnOpen?: boolean | undefined;
 }
 
 /** The colour of a stage's line: a finished run is good news, the rest only say why nothing runs. */
@@ -63,16 +65,19 @@ function useFollowChanges(
  * `.browser`, `.by-hand`, `.end`, `.results`), drawn from its {@link StepperView} in the Inbox's
  * one content panel. It holds no rules of its own beyond the confirmation it asks for: the view
  * model says what stage the request is in, and every button calls one of `actions`. Opening it
- * focuses the title, never a button. Every result is said through one status region, which is
- * there from the start because a region that appears already holding its words is often not read.
+ * focuses the title, never a button, unless `focusOnOpen` is off because a card above it in a
+ * bundle has the focus. Every result is said through one status region, which is there from the
+ * start because a region that appears already holding its words is often not read.
  */
-export function ActionStepper({ view, actions }: ActionStepperProps) {
+export function ActionStepper({ view, actions, focusOnOpen = true }: ActionStepperProps) {
   const titleId = useId();
   // The running step's "Running…" line: the reason every button that waits for it points at.
   const runningId = useId();
   const stepper = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
-  useEffect(() => heading.current?.focus({ preventScroll: true }), []);
+  useEffect(() => {
+    if (focusOnOpen) heading.current?.focus({ preventScroll: true });
+  }, [focusOnOpen]);
   const said = useFollowChanges(view, stepper, heading);
   const stage = view.stage;
   const line = stageText(stage);
