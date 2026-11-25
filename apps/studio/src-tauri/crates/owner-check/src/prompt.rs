@@ -25,7 +25,7 @@ impl PromptWords {
         let description = match decision {
             Decision::Approve => "Approve this request for Halonic on your computer.",
             Decision::Deny => "Reject this request for Halonic on your computer.",
-            Decision::Answer => "Send this answer from Halonic on your computer.",
+            Decision::Answer => "Send this answer through Halonic on your computer.",
         };
         Self {
             title: "Confirm it's you",

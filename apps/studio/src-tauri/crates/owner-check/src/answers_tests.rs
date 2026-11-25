@@ -96,3 +96,14 @@ fn owner_check_prompt_names_the_decision_in_fixed_words() {
     assert_eq!(approve.cancel, "Cancel");
     assert_eq!(approve.cancel, reject.cancel);
 }
+
+#[test]
+fn owner_check_prompt_sends_an_answer_through_halonic() {
+    let answer = PromptWords::for_decision(Decision::Answer);
+    assert_eq!(
+        answer.description,
+        "Send this answer through Halonic on your computer."
+    );
+    assert_eq!(answer.title, "Confirm it's you");
+    assert_eq!(answer.cancel, "Cancel");
+}
