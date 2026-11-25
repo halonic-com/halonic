@@ -22,6 +22,12 @@ runner, after the `installer` job:
    of the installed WebView2, and runs `pnpm --filter @halonicjs/testing-studio-click-test click-test`,
    which starts Halonic through `Halonic.lnk` and attaches to it.
 
+No installer artifact unless the click test passed on this build: only a passing run keeps the
+preview setup as the `halonic-studio-preview-windows` artifact (HAL-18356). There is no override;
+a flaky run is fixed, not bypassed. Every night `scheduled.yml` also runs it on `main`, when
+`apps/studio/`, `apps/agent-host/` or `packages/studio/` changed since the last nightly run, and a
+failure there opens "Failing on main: Desktop app" (`docs/guides/area-owners.md`).
+
 The shell gives WebView2 its own browser arguments, which beat the variable `msedgedriver` (and
 so `tauri-driver`) would use to open that port, so the driver attaches instead of starting the app.
 

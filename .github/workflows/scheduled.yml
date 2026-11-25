@@ -129,7 +129,8 @@ jobs:
     # reads the newest finished run of each, opens or updates
     # one issue per failing area and closes the issue of an area that is green
     # again. Then it starts the Android screen captures, the one check the
-    # push runs leave out, so the next night reads their result.
+    # push runs leave out, and the click test of the installed Studio when it
+    # changed (HAL-18356), so the next night reads their results.
     name: Failures on main, by area
     if: github.event.schedule != '47 4 * * 1'
     runs-on: ubuntu-24.04
@@ -157,6 +158,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: gh workflow run android-screens.yml --ref main
+      - name: Start the click test for the next night, if the desktop app changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: node tooling/check/src/cli/nightly-click-test.ts --apply
 
   report:
     name: Open an issue on failure

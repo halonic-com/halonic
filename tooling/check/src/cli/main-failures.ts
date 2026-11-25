@@ -12,6 +12,7 @@ import {
   type Run,
   testsEveryPackage,
 } from "../lib/main-failures.ts";
+import { nightlyClickTestTitle } from "../lib/nightly-click-test.ts";
 import { findRepoRoot } from "../lib/workspace.ts";
 
 /**
@@ -19,7 +20,8 @@ import { findRepoRoot } from "../lib/workspace.ts";
  *
  * Reads the newest finished push run of `ci.yml` on main, its newest
  * finished hourly or manual run (the macOS and Windows jobs, HAL-15889) and
- * the newest finished `android-screens.yml` run, maps each failed job to an area with
+ * the newest finished `android-screens.yml` run and the jobs of the newest
+ * nightly click test (`studio-preview.yml`, HAL-18356), maps each failed job to an area with
  * `docs/guides/area-owners.md` and prints one report per area. With
  * `--apply` it opens or updates one issue per failing area (label
  * `nightly:<area>`) and closes the issue of an area that is green again.
@@ -31,6 +33,7 @@ interface RunSummary {
   readonly created_at: string;
   readonly conclusion: string | null;
   readonly html_url: string;
+  readonly display_title: string;
 }
 
 /** The night before: the newest run at least this much older than the newest one. */
@@ -47,9 +50,14 @@ function jsonLines<T>(text: string): T[] {
     .map((line) => JSON.parse(line) as T);
 }
 
-/** Finished runs on main of the last 3 days, newest first, cancelled ones left out. */
-function finishedRuns(repo: string, workflow: string, ...events: string[]): RunSummary[] {
-  const since = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+/** Finished runs on main of the last `days` days, newest first, cancelled ones left out. */
+function finishedRuns(
+  repo: string,
+  workflow: string,
+  events: readonly string[],
+  days = 3,
+): RunSummary[] {
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const runs = events.flatMap((event) =>
     jsonLines<RunSummary>(
       gh(
@@ -57,7 +65,7 @@ function finishedRuns(repo: string, workflow: string, ...events: string[]): RunS
         "--paginate",
         `repos/${repo}/actions/workflows/${workflow}/runs?branch=main&event=${event}&status=completed&created=>=${since}&per_page=100`,
         "--jq",
-        ".workflow_runs[] | {id, created_at, conclusion, html_url}",
+        ".workflow_runs[] | {id, created_at, conclusion, html_url, display_title}",
       ),
     ),
   );
@@ -78,6 +86,17 @@ function latestAndEarlier(
           (run) => Date.parse(latest.created_at) - Date.parse(run.created_at) >= nightBefore,
         );
   return [latest, earlier];
+}
+
+/**
+ * The nightly click tests, newest first. One runs only when the desktop app
+ * changed, so the last one stands for 30 days, not 3: a failing one keeps its
+ * area's issue open until a change runs it again.
+ */
+function nightlyClickTests(repo: string): RunSummary[] {
+  return finishedRuns(repo, "studio-preview.yml", ["workflow_dispatch"], 30).filter((run) =>
+    run.display_title.startsWith(nightlyClickTestTitle),
+  );
 }
 
 function ciRun(repo: string, summary: RunSummary): Run {
@@ -175,9 +194,9 @@ if (import.meta.main) {
   const table = parseAreaTable(
     readFileSync(join(findRepoRoot(), "docs/guides/area-owners.md"), "utf8"),
   );
-  const [latestCi, earlierCi] = latestAndEarlier(finishedRuns(repo, "ci.yml", "push"));
+  const [latestCi, earlierCi] = latestAndEarlier(finishedRuns(repo, "ci.yml", ["push"]));
   const [latestHourly, earlierHourly] = latestAndEarlier(
-    finishedRuns(repo, "ci.yml", "schedule", "workflow_dispatch"),
+    finishedRuns(repo, "ci.yml", ["schedule", "workflow_dispatch"]),
   );
   if (latestCi === undefined) {
     console.error("main-failures: no finished push run of ci.yml on main in 3 days.");
@@ -189,17 +208,22 @@ if (import.meta.main) {
       );
     }
     const [latestAndroid, earlierAndroid] = latestAndEarlier(
-      finishedRuns(repo, "android-screens.yml", "workflow_dispatch"),
+      finishedRuns(repo, "android-screens.yml", ["workflow_dispatch"]),
     );
     const ciRunOf = (summary: RunSummary | undefined) =>
       summary === undefined ? undefined : ciRun(repo, summary);
     const latestCiRun = ciRun(repo, latestCi);
+    const [latestClickTest, earlierClickTest] = latestAndEarlier(nightlyClickTests(repo));
     const latest = withWorkflow(
-      combinedRun([latestCiRun, ciRunOf(latestHourly)]) ?? latestCiRun,
+      combinedRun([latestCiRun, ciRunOf(latestHourly), ciRunOf(latestClickTest)]) ?? latestCiRun,
       "android-screens.yml",
       latestAndroid,
     );
-    const earlierRun = combinedRun([ciRunOf(earlierCi), ciRunOf(earlierHourly)]);
+    const earlierRun = combinedRun([
+      ciRunOf(earlierCi),
+      ciRunOf(earlierHourly),
+      ciRunOf(earlierClickTest),
+    ]);
     const earlier =
       earlierRun === undefined
         ? undefined
