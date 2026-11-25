@@ -2,7 +2,7 @@ import type { Conversation, MessagingId } from "@halonicjs/ports";
 import { Button, Dialog } from "@halonicjs/studio-kit";
 import { useEffect, useState } from "react";
 import type { SourceChannels } from "../channel-admin.ts";
-import { channelAdminWords } from "../channel-admin-words.ts";
+import { channelAdminWords, failureReason } from "../channel-admin-words.ts";
 import type { Messenger } from "../messenger.ts";
 
 const words = channelAdminWords.browse;
@@ -34,7 +34,7 @@ export function BrowseChannels({ messenger, onClose, onJoined }: BrowseChannelsP
       <div className="flex flex-col gap-4">
         {unread ? (
           <p role="alert" className="text-small text-danger">
-            {words.unread(channelAdminWords.noAnswer)}
+            {words.unread}
           </p>
         ) : null}
         {found.map(({ source, channels }) => (
@@ -85,10 +85,7 @@ function ChannelItem({
     });
     setJoining(false);
     if (result?.outcome === "done") return onJoined(channel.id);
-    const reason =
-      result === undefined
-        ? channelAdminWords.noAnswer
-        : channelAdminWords.reason[result.reason](source);
+    const reason = failureReason(result, source);
     setFailed(words.joinFailed(channel.title, reason));
   };
   return (

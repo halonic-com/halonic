@@ -2,7 +2,7 @@ import { channelMembersMax, type MessagingId } from "@halonicjs/ports";
 import { Checkbox, Dialog, Field, Input, Select } from "@halonicjs/studio-kit";
 import { useEffect, useId, useState } from "react";
 import { checkNewChannel, type SourceAgents } from "../channel-admin.ts";
-import { channelAdminWords } from "../channel-admin-words.ts";
+import { channelAdminWords, failureReason } from "../channel-admin-words.ts";
 import type { Messenger } from "../messenger.ts";
 
 /** The props of {@link NewChannelDialog}. */
@@ -48,7 +48,7 @@ export function NewChannelDialog({ messenger, onCancel, onCreated }: NewChannelD
     const result = await messenger.channels.start(name.trim(), picked, leadNow);
     setBusy(false);
     if (result.outcome === "done") return onCreated(result.conversation.id);
-    setFailure(words.failed(channelAdminWords.reason[result.reason](from.source.label)));
+    setFailure(words.failed(failureReason(result, from.source.label, "start")));
   };
 
   const agentOptions = picked.map((id) => ({
@@ -68,7 +68,13 @@ export function NewChannelDialog({ messenger, onCancel, onCreated }: NewChannelD
       retryLabel={channelAdminWords.tryAgain}
       busy={busy}
       {...(failure === undefined ? {} : { error: failure })}
-      onConfirm={() => void submit().catch((error: unknown) => fail(error, setBusy, setFailure))}
+      onConfirm={() =>
+        void submit().catch((error: unknown) => {
+          console.error("Starting the channel failed:", error);
+          setBusy(false);
+          setFailure(words.failed(failureReason(undefined, from.source?.label ?? "")));
+        })
+      }
       onCancel={onCancel}
     >
       <div className="flex flex-col gap-3">
@@ -103,17 +109,6 @@ export function NewChannelDialog({ messenger, onCancel, onCreated }: NewChannelD
       </div>
     </Dialog>
   );
-}
-
-/** A start that threw: the dialog stays open and says so, as a refusal does. */
-function fail(
-  error: unknown,
-  setBusy: (busy: boolean) => void,
-  setFailure: (failure: string) => void,
-): void {
-  console.error("Starting the channel failed:", error);
-  setBusy(false);
-  setFailure(words.failed(channelAdminWords.noAnswer));
 }
 
 /** The agents of every source, as checkboxes; only one source's, and at most 8, can be picked. */
@@ -178,7 +173,7 @@ function useSources(messenger: Messenger, picked: readonly MessagingId[]) {
   useEffect(() => {
     messenger.channels.sources().then(setSources, (error: unknown) => {
       console.error("New channel couldn't read the sources:", error);
-      setUnread(words.unread(channelAdminWords.noAnswer));
+      setUnread(words.unread);
     });
   }, [messenger]);
   const pickedFrom = sources.find((each) => each.agents.some((agent) => agent.id === picked[0]));
@@ -188,7 +183,7 @@ function useSources(messenger: Messenger, picked: readonly MessagingId[]) {
     if (sourceId === undefined) return;
     messenger.channels.takenNames(sourceId).then(setTaken, (error: unknown) => {
       console.error("New channel couldn't read the channels' names:", error);
-      setUnread(channelAdminWords.browse.unread(channelAdminWords.noAnswer));
+      setUnread(channelAdminWords.browse.unread);
     });
   }, [messenger, sourceId]);
   return { sources, from, taken, unread };

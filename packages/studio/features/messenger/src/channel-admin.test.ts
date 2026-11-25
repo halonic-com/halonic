@@ -9,6 +9,7 @@ import {
   withLead,
   withoutAgent,
 } from "./channel-admin.ts";
+import { failureReason } from "./channel-admin-words.ts";
 import { Messenger } from "./messenger.ts";
 
 const online: MessagingSource = {
@@ -69,6 +70,24 @@ verifies("messenger.channel-create", () => {
       expect(
         checkNewChannel({ name: "", picked: [] }, { ...from, agents: agents(1) }, []).blocked,
       ).toBe("A channel needs at least 2 agents. Paperclip · Acme has 1.");
+    });
+  });
+
+  describe("failureReason", () => {
+    const acme = "Paperclip · Acme";
+    const refused = (reason: "not-found" | "bad-members" | "bad-answer") =>
+      ({ outcome: "refused", reason }) as const;
+
+    it("names the source, and reads a missing channel as a plain refusal when starting one", () => {
+      expect(failureReason(undefined, acme)).toBe("Paperclip · Acme didn't answer");
+      expect(failureReason(refused("bad-answer"), acme)).toBe("Paperclip · Acme refused it");
+      expect(failureReason(refused("bad-members"), acme)).toBe(
+        "a channel needs 2 to 8 agents from one source",
+      );
+      expect(failureReason(refused("not-found"), acme)).toBe("the channel is gone");
+      expect(failureReason(refused("not-found"), acme, "start")).toBe(
+        "Paperclip · Acme refused it",
+      );
     });
   });
 
