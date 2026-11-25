@@ -260,3 +260,77 @@ verifies("cli.commands.build.paperclip-plugin", () => {
     });
   });
 });
+
+verifies("cli.commands.build.paperclip-plugin-signals", () => {
+  const signalPath = "library/signals/watcher.signal.yaml";
+
+  /** Writes the PR watcher signal with these wake reasons and commits it. */
+  async function commitSignal(wakeOn: string): Promise<void> {
+    await mkdir(join(folder, "library", "signals"), { recursive: true });
+    await writeFile(
+      join(folder, signalPath),
+      `rule: { run: pr-watcher, with: { wakeOn: [${wakeOn}] } }\n`,
+    );
+    await vcs.stage([signalPath]);
+    await vcs.commit("A signal");
+  }
+
+  async function snapshotOf(version: string) {
+    const name = `halonic-ws.acme-${version}`;
+    const read = await readPreviousBuild(
+      {
+        releaseFile: await readFile(join(folder, `${name}.release.json`), "utf8"),
+        archive: await readFile(join(folder, `${name}.tar`)),
+      },
+      webCryptoDigest,
+    );
+    return read.ok ? read.value : expect.fail(JSON.stringify(read.error));
+  }
+
+  it("puts a signal file in the snapshot, lists it as added, then as changed after a settings change", async () => {
+    await commitSignal("ci-red");
+    const first = await build();
+
+    expect(first.code, first.io.stderr.join("\n")).toBe(exitCode.ok);
+    const built = await snapshotOf("0.1.0");
+    expect(built.snapshot.signals).toEqual([
+      {
+        version: 1,
+        id: "watcher",
+        rule: { run: "pr-watcher", with: expect.objectContaining({ wakeOn: ["ci-red"] }) },
+        dryRun: false,
+      },
+    ]);
+    expect(built.release.changes.signals).toEqual({ added: ["watcher"], removed: [], changed: [] });
+    expect(first.io.stdout).toContain("  Changes        added pr_status · signals added watcher");
+
+    await commitSignal("ci-red, conflict");
+    const second = await build("--since", "halonic-ws.acme-0.1.0.release.json");
+
+    expect(second.code, second.io.stderr.join("\n")).toBe(exitCode.ok);
+    expect((await snapshotOf("0.2.0")).release.changes).toEqual({
+      added: [],
+      removed: [],
+      changed: [],
+      signals: { added: [], removed: [], changed: ["watcher"] },
+    });
+    expect(second.io.stdout).toContain("  Changes        signals changed watcher");
+  });
+
+  it("refuses a signal file that isn't committed", async () => {
+    await mkdir(join(folder, "library", "signals"), { recursive: true });
+    await writeFile(join(folder, signalPath), "rule: { run: pr-watcher }\n");
+    const { code, io } = await build();
+
+    expect(code).toBe(exitCode.conflict);
+    expect(io.stderr[0]).toBe(
+      `✕ Couldn't build the plugin: ${signalPath} has changes that aren't committed.`,
+    );
+  });
+
+  it("leaves signals out of the release file when the workspace has none", async () => {
+    await build();
+    const release = await readFile(join(folder, "halonic-ws.acme-0.1.0.release.json"), "utf8");
+    expect("signals" in JSON.parse(release).changes).toBe(false);
+  });
+});

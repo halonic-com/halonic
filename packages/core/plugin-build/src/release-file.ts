@@ -8,7 +8,7 @@ import { canonicalJson, err, ok, type Result, readVersion } from "@halonicjs/std
 import { type ChangeList, maxRoutingChanges } from "./change-list.ts";
 import { archiveFileName, pluginIdPattern } from "./plugin-id.ts";
 import { pluginVersionPattern } from "./plugin-version.ts";
-import { maxToolNameLength } from "./snapshot.ts";
+import { maxSnapshotSignals, maxToolNameLength } from "./snapshot.ts";
 
 /** The largest release file a build reads back. Ours are well under 1 KiB plus the change list. */
 export const maxReleaseFileBytes = 256 * 1024;
@@ -21,6 +21,9 @@ const toolName = s.string().min(1).max(maxToolNameLength);
  * free text. Roles and areas are slugs, as the format's `AREA_NAME_PATTERN`.
  */
 const routingEntry = s.string().regex(/^(?:roles|areas)\.[a-z][a-z0-9-]{0,63}$/);
+
+/** Signal ids in the change list: the format's id pattern, as long as a tool name, at most one per signal. */
+const signalIds = s.array(s.string().regex(/^[a-z0-9][a-z0-9-_]{0,127}$/)).max(maxSnapshotSignals);
 
 const releaseFileSchema = s
   .object({
@@ -42,6 +45,10 @@ const releaseFileSchema = s
           s.object({ tool: toolName, fields: s.array(s.string().max(maxToolNameLength)) }).strict(),
         ),
         routing: s.array(routingEntry).max(maxRoutingChanges).optional(),
+        signals: s
+          .object({ added: signalIds, removed: signalIds, changed: signalIds })
+          .strict()
+          .optional(),
       })
       .strict(),
   })

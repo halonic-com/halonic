@@ -83,4 +83,36 @@ verifies("plugin-build.change-list", () => {
     expect("routing" in changeList({ tools: [], routing }, { tools: [], routing })).toBe(false);
     expect("routing" in changeList({ tools: [] }, { tools: [] })).toBe(false);
   });
+
+  it("lists the signals added, removed and changed, comparing each as canonical JSON", () => {
+    const watcher = { id: "watcher", rule: { run: "pr-watcher", with: { wakeOn: ["ci-red"] } } };
+    const previous = {
+      tools: [],
+      signals: [watcher, { id: "old", dryRun: false }, { id: "same", rule: { a: 1, b: 2 } }],
+    };
+    const current = {
+      tools: [],
+      signals: [
+        { id: "same", rule: { b: 2, a: 1 } },
+        { ...watcher, rule: { run: "pr-watcher", with: { wakeOn: ["conflict"] } } },
+        { id: "new", dryRun: true },
+      ],
+    };
+    expect(changeList(previous, current).signals).toEqual({
+      added: ["new"],
+      removed: ["old"],
+      changed: ["watcher"],
+    });
+  });
+
+  it("lists every signal of a first build as added, and leaves signals out when none changed", () => {
+    const signals = [{ id: "b" }, { id: "a" }];
+    expect(changeList(undefined, { tools: [], signals }).signals).toEqual({
+      added: ["a", "b"],
+      removed: [],
+      changed: [],
+    });
+    expect("signals" in changeList({ tools: [], signals }, { tools: [], signals })).toBe(false);
+    expect("signals" in changeList({ tools: [] }, { tools: [], signals: [] })).toBe(false);
+  });
 });

@@ -1,6 +1,6 @@
 import { MAX_ROUTING_AREAS, ROUTING_ROLES, type Routing } from "@halonicjs/format";
 import { canonicalJson } from "@halonicjs/std";
-import type { PluginSnapshot, SnapshotTool } from "./snapshot.ts";
+import type { PluginSnapshot, SnapshotSignal, SnapshotTool } from "./snapshot.ts";
 
 /** One tool whose fields changed between two builds. */
 export interface ChangedTool {
@@ -12,6 +12,16 @@ export interface ChangedTool {
 
 /** The most routing entries a change list names: every role, and every area of both builds. */
 export const maxRoutingChanges = ROUTING_ROLES.length + 2 * MAX_ROUTING_AREAS;
+
+/** The signals that changed between two builds, by id, each list sorted. */
+export interface SignalChanges {
+  /** Signals only the new snapshot has. */
+  readonly added: readonly string[];
+  /** Signals only the previous snapshot has. */
+  readonly removed: readonly string[];
+  /** Signals both have, whose rule, settings or `dryRun` differ. */
+  readonly changed: readonly string[];
+}
 
 /** What changed between two snapshots, each list sorted, for the release file. */
 export interface ChangeList {
@@ -28,16 +38,22 @@ export interface ChangeList {
    * file as before routing existed.
    */
   readonly routing?: readonly string[] | undefined;
+  /**
+   * The signals added, removed and changed. Left out when none changed, so a
+   * build without signal files writes the same release file as before
+   * signals existed.
+   */
+  readonly signals?: SignalChanges | undefined;
 }
 
 /**
  * Compares a new snapshot with the previous build's. Without a previous
- * build every tool is added, and so is every routing entry. Fields are compared as canonical JSON, so the
- * order of keys inside a field never counts as a change.
+ * build every tool and signal is added, and so is every routing entry. Fields and signals are compared
+ * as canonical JSON, so the order of keys inside a field never counts as a change.
  *
  * @param previous - the previous build's snapshot, or `undefined` for a first build
  * @param current - the snapshot being built
- * @returns the added, removed and changed tools and the changed routing entries, each list sorted
+ * @returns the added, removed and changed tools and signals and the changed routing entries, each list sorted
  *
  * @example
  * changeList(undefined, { tools: [{ name: "pr_status" }] });
@@ -60,12 +76,33 @@ export function changeList(
     }
   }
   const routing = routingChanges(previous?.routing, current.routing);
+  const signals = signalChanges(previous?.signals ?? [], current.signals ?? []);
   return {
     added: added.sort(byCodeUnit),
     removed: removed.sort(byCodeUnit),
     changed: changed.sort((left, right) => byCodeUnit(left.tool, right.tool)),
     ...(routing.length > 0 ? { routing } : {}),
+    ...(signals === undefined ? {} : { signals }),
   };
+}
+
+/** The signal ids added, removed and changed (as canonical JSON), or `undefined` when none did. */
+function signalChanges(
+  before: readonly SnapshotSignal[],
+  after: readonly SnapshotSignal[],
+): SignalChanges | undefined {
+  const old = new Map(before.map((signal) => [signal.id, canonicalJson(signal)]));
+  const now = new Map(after.map((signal) => [signal.id, canonicalJson(signal)]));
+  const added = [...now.keys()].filter((id) => !old.has(id)).sort(byCodeUnit);
+  const removed = [...old.keys()].filter((id) => !now.has(id)).sort(byCodeUnit);
+  const changed = [...now]
+    .filter(([id, text]) => old.has(id) && old.get(id) !== text)
+    .map(([id]) => id)
+    .sort(byCodeUnit);
+  if (added.length + removed.length + changed.length === 0) {
+    return undefined;
+  }
+  return { added, removed, changed };
 }
 
 /** The `roles.<role>` and `areas.<area>` entries whose agent differs, sorted. */

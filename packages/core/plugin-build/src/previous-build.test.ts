@@ -99,6 +99,12 @@ verifies("plugin-build.previous-build", () => {
     ["names a tool twice", '{"tools":[{"name":"a"},{"name":"a"}]}'],
     ["has no tool list", '{"tool":[]}'],
     ["has a tool without a name", '{"tools":[{"description":"x"}]}'],
+    ["names a signal twice", '{"tools":[],"signals":[{"id":"a"},{"id":"a"}]}'],
+    ["has a signal without an id", '{"tools":[],"signals":[{"dryRun":true}]}'],
+    [
+      "has more signals than a snapshot may",
+      `{"tools":[],"signals":[${'{"id":"a"},'.repeat(50)}{"id":"b"}]}`,
+    ],
     ["is nested too deep", `{"tools":[{"name":"a","x":${"[".repeat(300)}${"]".repeat(300)}}]}`],
   ])("refuses a snapshot that %s", async (_name, text) => {
     const archive = archiveWithSnapshot(text);

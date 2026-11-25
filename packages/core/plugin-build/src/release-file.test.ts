@@ -91,4 +91,28 @@ verifies("plugin-build.release-file", () => {
       ).toMatchObject({ ok: false, error: { code: "invalid" } });
     }
   });
+
+  it("writes and reads back the signals that changed, and refuses ids that aren't ids", () => {
+    const signals = {
+      ...fields,
+      changes: {
+        ...fields.changes,
+        signals: { added: ["watcher"], removed: [], changed: ["a_b"] },
+      },
+    };
+    expect(parseReleaseFile(releaseFileText(signals))).toEqual({
+      ok: true,
+      value: { ...signals, archive: "halonic-ws.acme-0.3.0.tar" },
+    });
+    for (const bad of [
+      { added: ["Watcher"], removed: [], changed: [] },
+      { added: ["../x"], removed: [], changed: [] },
+      { added: [], removed: [] },
+      { added: [], removed: [], changed: [], moved: [] },
+    ]) {
+      expect(
+        parseReleaseFile(edited({ changes: { ...fields.changes, signals: bad } })),
+      ).toMatchObject({ ok: false, error: { code: "invalid" } });
+    }
+  });
 });
