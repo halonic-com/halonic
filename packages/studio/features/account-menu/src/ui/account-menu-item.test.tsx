@@ -75,10 +75,13 @@ function fakeHost(
  */
 async function renderItem(
   host: AccountMenuHost | undefined,
-  { withItem = true }: { readonly withItem?: boolean } = {},
+  {
+    withItem = true,
+    announce = vi.fn(),
+  }: { readonly withItem?: boolean; readonly announce?: (text: string) => void } = {},
 ): Promise<HTMLElement> {
   const find = (key: unknown) => (key === AccountMenuHostService ? host : undefined);
-  const context = { services: { find } } as unknown as WorkspaceContext;
+  const context = { services: { find }, announcer: { announce } } as unknown as WorkspaceContext;
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
@@ -195,11 +198,14 @@ verifies("account-menu.sign-out", () => {
       const host = fakeHost(Promise.resolve(sofia), async () => {
         throw new Error("500");
       });
-      const container = await renderItem(host);
+      const announce = vi.fn();
+      const container = await renderItem(host, { announce });
       await pick(container, "Sign out");
 
       expect(container.querySelector("dialog")).toBeNull();
       expect(item(container, "Sign out")?.textContent).toContain("Couldn't sign out. Try again.");
+      // The menu has closed, so the note is read out as well (WCAG 4.1.3).
+      expect(announce).toHaveBeenCalledExactlyOnceWith("Couldn't sign out. Try again.", "polite");
     });
 
     it("keeps the signed-out page when the window draws the item again elsewhere", async () => {

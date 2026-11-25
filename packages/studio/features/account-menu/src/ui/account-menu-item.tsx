@@ -1,5 +1,5 @@
 import { Avatar, Button, Menu, type MenuEntry } from "@halonicjs/studio-kit";
-import type { StatusBarItemProps } from "@halonicjs/studio-shell";
+import type { Announcer, StatusBarItemProps } from "@halonicjs/studio-shell";
 import { useEffect, useState } from "react";
 import { type AccountMenuFacts, type AccountMenuHost, AccountMenuHostService } from "../api.ts";
 import { accountMenuWords, planItemWords } from "./account-menu-words.ts";
@@ -19,7 +19,7 @@ type MenuState =
  */
 export function AccountMenuItem({ context }: StatusBarItemProps) {
   const host = context.services.find(AccountMenuHostService);
-  const state = useAccountMenu(host);
+  const state = useAccountMenu(host, context.announcer);
   if (host === undefined || state.current.kind !== "shown") {
     return null;
   }
@@ -71,8 +71,11 @@ function AccountMenu(props: {
   );
 }
 
-/** Loads the facts once, and signs out: no menu on success, a note in the menu if not. */
-function useAccountMenu(host: AccountMenuHost | undefined) {
+/**
+ * Loads the facts once, and signs out: no menu on success, a note in the menu if not. The menu has
+ * closed by then, so the note is also read out, or a screen reader would hear nothing.
+ */
+function useAccountMenu(host: AccountMenuHost | undefined, announcer: Announcer) {
   const [current, setCurrent] = useState<MenuState>(() => startState(host));
   useEffect(() => {
     // After Sign out there is no session to load, even when the window draws this item again in
@@ -103,7 +106,10 @@ function useAccountMenu(host: AccountMenuHost | undefined) {
     const { facts } = current;
     host.signOut().then(
       () => setCurrent({ kind: "none" }),
-      () => setCurrent({ kind: "shown", facts, signOutFailed: true }),
+      () => {
+        setCurrent({ kind: "shown", facts, signOutFailed: true });
+        announcer.announce(accountMenuWords.signOutFailed, "polite");
+      },
     );
   };
   return { current, signOut };

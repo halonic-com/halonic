@@ -120,6 +120,18 @@ verifies("kit.chat-ui", () => {
     expect(container.textContent).not.toContain("Showing");
   });
 
+  it("moves focus to the first row Show all adds, since the button goes away", () => {
+    const rows = Array.from({ length: 24 }, (_, index) => `Row(["Order ${index}", ${index}])`);
+    const { container } = draw(`root = Stack([Table(["Order", "Amount"], [${rows.join(", ")}])])`);
+    const showAll = buttonNamed(container, "Show all 24") as HTMLButtonElement;
+    showAll.focus();
+    click(showAll);
+    const row21 = container.querySelectorAll("tbody tr")[20];
+    expect(document.activeElement).toBe(row21);
+    expect(row21?.textContent).toBe("Order 2020");
+    expect(row21?.getAttribute("tabindex")).toBe("-1");
+  });
+
   it("draws the agent's buttons small, outlined and grey, never like the approval button", () => {
     const { container, onSend } = draw(
       'root = Stack([Buttons([Button("Approve"), Button("Not now")])])',
