@@ -2,6 +2,7 @@
 
 - Approval: the task HAL-18196 asks for more signal rules (plan HAL-17450 rev 5, step 2, accepted by the board on 24 Nov); a security PR, so Liam signs this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:yI+s2Zc59klt5MxHYWRPXbOAvGstPWANMQPceGUc/cnoZla1NHgWqUo78O1gmbfJMpuddW/zKMvU7udWCtTHAg==
 
 ## What changes
 
