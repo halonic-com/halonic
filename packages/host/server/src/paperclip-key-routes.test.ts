@@ -73,7 +73,7 @@ function call(
   method = "POST",
 ): Promise<Response> {
   return server.handle(
-    new Request(`http://localhost/api/paperclip/${path}`, {
+    new Request(`http://localhost/api/paperclip-keys/${path}`, {
       method,
       headers: { host: "localhost", "content-type": "application/json", ...headers },
       ...(method === "GET" ? {} : { body: JSON.stringify(body) }),
@@ -112,7 +112,7 @@ verifies("server.paperclip-sign-in", () => {
       });
 
       const response = await server.handle(
-        new Request(`http://${host}/api/paperclip/disconnect`, {
+        new Request(`http://${host}/api/paperclip-keys/disconnect`, {
           method: "POST",
           headers: {
             host,

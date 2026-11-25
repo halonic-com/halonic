@@ -294,8 +294,12 @@ async function connectionFor(
 
 /** Revokes a key whose user isn't in the connection's company; nothing is stored. */
 async function refuseKey(open: OpenSignIn): Promise<PaperclipSignInState> {
-  await open.calls.revokeCurrent(open.key);
-  return { status: "wrong-company" };
+  const revoked = await open.calls.revokeCurrent(open.key).then(
+    () => true,
+    () => false,
+  );
+  // Nobody holds the key, so a failed revoke is said, as a cancel says it, not thrown.
+  return revoked ? { status: "wrong-company" } : { status: "wrong-company", keyMayWork: true };
 }
 
 /**

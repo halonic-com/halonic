@@ -435,7 +435,7 @@ export interface ServerPorts {
   readonly errorLog: ErrorLog;
   /** The messaging routes' ports, for one owner only. Without them `/api/messaging/…` answers 404. */
   readonly messaging?: MessagingPorts;
-  /** Paperclip sign-in and Disconnect, for one owner only. Without them `/api/paperclip/…` answers 404. */
+  /** Paperclip sign-in and Disconnect, for one owner only. Without them `/api/paperclip-keys/…` answers 404. */
   readonly paperclipKeys?: PaperclipKeyPorts;
   /** The connector-call route's ports. Without them `/api/connector-calls` answers 404. */
   readonly connectors?: ConnectorCallPorts;

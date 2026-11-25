@@ -6,8 +6,8 @@ import type { PaperclipKeyPorts } from "./paperclip-key-api.ts";
 import { isJsonRequest } from "./run-routes.ts";
 import { thisComputerSession } from "./sign-in.ts";
 
-/** The address of every Paperclip key route: `/api/paperclip/<call>`. */
-export const paperclipKeyPathPrefix = "/api/paperclip/";
+/** The address of every Paperclip key route: `/api/paperclip-keys/<call>`. */
+export const paperclipKeyPathPrefix = "/api/paperclip-keys/";
 
 /** A connection's name: its file name without `.yaml`, as the desktop host allows it. */
 const connection = s.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/u);
@@ -65,7 +65,7 @@ function routesOf(port: PaperclipKeyPorts): Readonly<Record<string, PaperclipKey
 /** The Paperclip key routes as the server mounts them, behind the security layer and the daily ceiling. */
 export interface PaperclipKeyRoutes {
   /**
-   * Answers `/api/paperclip/<call>`. `session` is the request's session as
+   * Answers `/api/paperclip-keys/<call>`. `session` is the request's session as
    * the sign-in gives it, `null` when it has none.
    */
   handle(

@@ -34,7 +34,8 @@ export type PaperclipSignInState =
     }
   /** With `keyMayWork`, Paperclip couldn't say how the challenge ended and the key couldn't be revoked. */
   | { readonly status: "cancelled" | "expired"; readonly keyMayWork?: true }
-  | { readonly status: "wrong-company" }
+  /** The key's user isn't in the connection file's company; with `keyMayWork`, its revoke failed. */
+  | { readonly status: "wrong-company"; readonly keyMayWork?: true }
   | { readonly status: "unknown" };
 
 /** What Disconnect did. The stored key and the cache are gone either way. */

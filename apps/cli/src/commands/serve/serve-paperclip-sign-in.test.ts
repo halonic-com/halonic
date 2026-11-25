@@ -179,6 +179,16 @@ verifies("server.paperclip-sign-in", () => {
       expect(store.size).toBe(0);
       expect(paperclip.revoked()).toEqual([canaryKey]);
     });
+
+    it("says the refused key may work when its revoke fails, and stores nothing", async () => {
+      paperclip.companyIds = ["globex-company"];
+      paperclip.revokeFails = true;
+      const id = await started();
+      paperclip.status = "approved";
+
+      expect(await signIn.poll(id)).toEqual({ status: "wrong-company", keyMayWork: true });
+      expect(store.size).toBe(0);
+    });
   });
 
   describe("cancel and expiry", () => {
