@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
     "lint": "biome check .",
     "test": "vitest run",
-    "test:live": "vitest run --config vitest.live.config.ts"
+    "test:board": "vitest run --config vitest.live.config.ts"
   },
   "dependencies": {
     "@halonicjs/action-steppers": "workspace:*",
