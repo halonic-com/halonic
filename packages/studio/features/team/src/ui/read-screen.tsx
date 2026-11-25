@@ -1,9 +1,10 @@
 import { Callout } from "@halonicjs/studio-kit";
+import { useContext, useId } from "react";
 import { notReadAfterMs } from "../seat-problems.ts";
 import type { SpendAndSeatsState } from "../spend-and-seats.ts";
 import { formatTime, minutesSince, type TeamClock } from "../team-format.ts";
 import { type TeamLink, teamWords } from "../team-words.ts";
-import { LinkButton, SpentTodayTile, ThisMonthTile } from "./money-tiles.tsx";
+import { LinkButton, SpentTodayTile, TeamLinks, ThisMonthTile } from "./money-tiles.tsx";
 import { NeedsYou } from "./needs-you.tsx";
 import { PageFrame, TryAgain } from "./page-frame.tsx";
 import { SeatList, SeatsHeading, SeatsTile } from "./seat-parts.tsx";
@@ -33,51 +34,60 @@ export function ReadScreen(props: {
     state.asOf === undefined
       ? undefined
       : `${seatsAreOld ? "⚠ " : ""}${teamWords.asOf(formatTime(state.asOf, clock), minutesSince(state.asOf, clock))}`;
+  // Offline when a read failed after a good one, or when the engine answered from its cache.
+  const offline = failed || state.offlineAsOf !== undefined;
+  // The banner's time is the last good read: the newest cached answer's, else the screen's last read.
+  const lastGood = state.offlineAsOf ?? props.readAt;
+  const links = useContext(TeamLinks);
+  const bannerId = useId();
   return (
-    <PageFrame freshness={freshness}>
-      {/* Always on the page, so the offline words are read out when a later read fails. */}
-      <Callout tone="warning" announce="polite">
-        {failed ? (
-          <span className="flex flex-col items-start gap-2">
-            <span>{teamWords.offline(formatTime(props.readAt, clock))}</span>
-            <TryAgain onPress={props.onTryAgain} />
-          </span>
-        ) : null}
-      </Callout>
-      {seatsAreOld && oldest !== undefined ? (
-        <Callout tone="warning">
-          <span className="flex flex-col items-start gap-2">
-            <span>{teamWords.oldReadings(minutesSince(oldest, clock))}</span>
-            <LinkButton link="ai-seats" onLink={onLink} />
-          </span>
+    <TeamLinks.Provider value={offline && links === "on" ? { offBecause: bannerId } : links}>
+      <PageFrame freshness={freshness}>
+        {/* Always on the page, so the offline words are read out when a later read fails. */}
+        <Callout tone="warning" announce="polite">
+          {offline ? (
+            <span className="flex flex-col items-start gap-2">
+              {/* The off link buttons name these words as their reason. */}
+              <span id={bannerId}>{teamWords.offline(formatTime(lastGood, clock))}</span>
+              <TryAgain onPress={props.onTryAgain} />
+            </span>
+          ) : null}
         </Callout>
-      ) : null}
-      {state.hasSeats && state.seats.length > 0 ? (
-        <NeedsYou problems={state.problems} clock={clock} onLink={onLink} />
-      ) : null}
-      <div className="flex gap-3 phone:flex-col">
-        {state.canReadSpend ? (
-          <>
-            <SpentTodayTile today={state.today} />
-            <ThisMonthTile month={state.month} clock={clock} onLink={onLink} />
-          </>
-        ) : (
-          <div className="min-w-0 flex-2">
-            <Callout tone="warning">
-              <span className="flex flex-col items-start gap-2">
-                <span>{teamWords.cantReadSpend}</span>
-                <LinkButton link="connect-again" onLink={onLink} />
-              </span>
-            </Callout>
-          </div>
-        )}
-        <SeatsTile seats={state.seats} problems={state.problems} clock={clock} />
-      </div>
-      <section aria-label={teamWords.seatsHeading} className="flex flex-col gap-2">
-        <SeatsHeading />
-        <SeatsBody state={state} clock={clock} onLink={onLink} />
-      </section>
-    </PageFrame>
+        {seatsAreOld && oldest !== undefined ? (
+          <Callout tone="warning">
+            <span className="flex flex-col items-start gap-2">
+              <span>{teamWords.oldReadings(minutesSince(oldest, clock))}</span>
+              <LinkButton link="ai-seats" onLink={onLink} />
+            </span>
+          </Callout>
+        ) : null}
+        {state.hasSeats && state.seats.length > 0 ? (
+          <NeedsYou problems={state.problems} clock={clock} onLink={onLink} />
+        ) : null}
+        <div className="flex gap-3 phone:flex-col">
+          {state.canReadSpend ? (
+            <>
+              <SpentTodayTile today={state.today} />
+              <ThisMonthTile month={state.month} clock={clock} onLink={onLink} />
+            </>
+          ) : (
+            <div className="min-w-0 flex-2">
+              <Callout tone="warning">
+                <span className="flex flex-col items-start gap-2">
+                  <span>{teamWords.cantReadSpend}</span>
+                  <LinkButton link="connect-again" onLink={onLink} />
+                </span>
+              </Callout>
+            </div>
+          )}
+          <SeatsTile seats={state.seats} problems={state.problems} clock={clock} />
+        </div>
+        <section aria-label={teamWords.seatsHeading} className="flex flex-col gap-2">
+          <SeatsHeading />
+          <SeatsBody state={state} clock={clock} onLink={onLink} />
+        </section>
+      </PageFrame>
+    </TeamLinks.Provider>
   );
 }
 

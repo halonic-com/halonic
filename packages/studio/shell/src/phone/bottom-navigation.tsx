@@ -1,6 +1,7 @@
-import { MenuIcon, PlaceIcon, StatusChip } from "@halonicjs/studio-kit";
+import { MenuIcon, PlaceIcon } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import type { PlaceSignal, ShownPlace } from "../points/frame.ts";
+import { SignalCount } from "../sidebar/signal-count.tsx";
 import { LocationLink } from "../tabs/location-link.tsx";
 
 /** One of the bottom navigation's four items, in its order (component specs 15.2). */
@@ -130,15 +131,13 @@ function NavigationPill({ current, signal, children }: NavigationPillProps) {
  * doesn't show through its soft fill. The link's name already says it, so it's hidden here.
  */
 function IconSignal({ signal }: { readonly signal: PlaceSignal }) {
-  if (signal.mark === "count") {
+  if (signal.mark !== "running") {
     return (
       <span
         aria-hidden="true"
         className="absolute start-3.5 -top-2 rounded-full bg-surface ring-2 ring-surface"
       >
-        <StatusChip tone="accent" shape="count" name={signal.spoken}>
-          {signal.value}
-        </StatusChip>
+        <SignalCount signal={signal} />
       </span>
     );
   }

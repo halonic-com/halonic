@@ -4,7 +4,13 @@ import { defineFeature } from "../feature.ts";
 import { createShell } from "../shell.ts";
 import { ShellError } from "../shell-error.ts";
 import type { Studio } from "../studio.ts";
-import { type PlaceContribution, placeNames, type SidebarPlace, showPlace } from "./frame.ts";
+import {
+  type PlaceContribution,
+  placeGroupNames,
+  placeNames,
+  type SidebarPlace,
+  showPlace,
+} from "./frame.ts";
 
 const load = async () => ({ View: () => "view" });
 
@@ -65,6 +71,7 @@ verifies("shell.sidebar-places", () => {
       "library",
       "runs",
       "changes",
+      "team",
     ]);
     expect(Object.values(placeNames).map((name) => name.label)).toEqual([
       "Home",
@@ -75,6 +82,7 @@ verifies("shell.sidebar-places", () => {
       "Library",
       "Runs",
       "Changes",
+      "Spend and seats",
     ]);
     expect(showPlace("agents", undefined)).toEqual({
       id: "agents",
@@ -83,6 +91,20 @@ verifies("shell.sidebar-places", () => {
       signal: undefined,
       spokenName: "Agents",
     });
+  });
+
+  it("puts Spend and seats in the Team group, whose heading the shell names", () => {
+    expect(placeNames.team).toEqual({ label: "Spend and seats", icon: "team", group: "team" });
+    expect(placeGroupNames.team).toBe("Team");
+    expect(Object.values(placeNames).filter((name) => name.group !== undefined)).toHaveLength(1);
+  });
+
+  it("speaks a problems signal after the name, as 2 problems", () => {
+    const problems = { mark: "problems", value: 2, spoken: "2 problems" } as const;
+    const shown = showPlace("team", problems);
+    expect(shown.signal).toEqual(problems);
+    expect(shown.spokenName).toBe("Spend and seats, 2 problems");
+    expect(showPlace("team", { ...problems, value: 0 }).spokenName).toBe("Spend and seats");
   });
 
   it("shows a signal above zero after the place's name", () => {

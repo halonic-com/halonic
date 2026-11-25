@@ -1,14 +1,18 @@
 import { useEffect, useState } from "react";
 import type { SpendAndSeats, SpendAndSeatsState } from "../spend-and-seats.ts";
 import { type TeamLink, teamWords } from "../team-words.ts";
+import { TeamLinks, type TeamLinksState } from "./money-tiles.tsx";
 import { LoadingPage, PageFrame, TryAgain } from "./page-frame.tsx";
 import { NoSeatsLine, ReadScreen } from "./read-screen.tsx";
 
 /** The props of {@link SpendAndSeatsPage}. */
 export interface SpendAndSeatsPageProps {
   readonly spendAndSeats: SpendAndSeats;
-  /** Opens a Paperclip page in the system browser, or the connection flow for "Connect again". */
-  readonly onLink: (link: TeamLink) => void;
+  /**
+   * Opens a Paperclip page in the system browser, or the connection flow for
+   * "Connect again". Without it, the screen draws no link buttons.
+   */
+  readonly onLink?: ((link: TeamLink) => void) | undefined;
 }
 
 /**
@@ -28,7 +32,23 @@ type Shown =
  * 1.6 that `TeamStatus` can tell apart. It only shows: every action opens
  * Paperclip.
  */
-export function SpendAndSeatsPage({ spendAndSeats, onLink }: SpendAndSeatsPageProps) {
+export function SpendAndSeatsPage(props: SpendAndSeatsPageProps) {
+  const links: TeamLinksState = props.onLink === undefined ? "none" : "on";
+  return (
+    <TeamLinks.Provider value={links}>
+      <SpendAndSeatsScreen spendAndSeats={props.spendAndSeats} onLink={props.onLink ?? noLink} />
+    </TeamLinks.Provider>
+  );
+}
+
+/** Never called: with no `onLink`, no link button is drawn. */
+function noLink(): void {}
+
+function SpendAndSeatsScreen(props: {
+  spendAndSeats: SpendAndSeats;
+  onLink: (link: TeamLink) => void;
+}) {
+  const { spendAndSeats, onLink } = props;
   const [shown, setShown] = useState<Shown>({ kind: "loading" });
   // Grows on each change a source reports and on Try again, so the page reads again.
   const [changed, setChanged] = useState(0);

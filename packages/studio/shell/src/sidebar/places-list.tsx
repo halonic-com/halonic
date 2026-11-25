@@ -1,18 +1,17 @@
-import {
-  HelpIcon,
-  Menu,
-  type MenuEntry,
-  PlaceIcon,
-  SettingsIcon,
-  StatusChip,
-} from "@halonicjs/studio-kit";
-import { useCallback, useSyncExternalStore } from "react";
+import { HelpIcon, Menu, type MenuEntry, PlaceIcon, SettingsIcon } from "@halonicjs/studio-kit";
+import { type ReactNode, useCallback, useId, useSyncExternalStore } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
-import type { PlaceSignal, ShownPlace } from "../points/frame.ts";
+import {
+  type PlaceGroup,
+  type PlaceSignal,
+  placeGroupNames,
+  type ShownPlace,
+} from "../points/frame.ts";
 import { usePageHeadingFocus } from "../tabs/history-moves.ts";
 import { LocationLink } from "../tabs/location-link.tsx";
 import { openLocation } from "../tabs/open-location.ts";
 import { currentLocation, type TabLocation, type TabSet } from "../tabs/tab-set.ts";
+import { SignalCount } from "./signal-count.tsx";
 
 /** Props for {@link PlacesList}. */
 export interface PlacesListProps {
@@ -39,6 +38,9 @@ export interface PlacesListProps {
  * on the halo tint, and is `aria-current="page"`; the others show the outline in `fg-muted`. A
  * signal shows after the name: a count, or the still running dot, and a screen reader hears it
  * after the name ("Inbox, 2 waiting").
+ *
+ * A grouped place shows under its group's heading from the shell's `placeGroupNames`, such as
+ * "Team" over Spend and seats (HAL-17510 flows, Choice P1); the places of one group stay together.
  *
  * A click opens the place in the active tab and moves focus to the page's `h1`. A Ctrl-click or a
  * middle-click opens it in a new tab next to it and says so.
@@ -72,30 +74,42 @@ export function PlacesList({
     }
   };
 
+  const placeLinks = (shown: readonly ShownPlace[]) => (
+    <ul className="flex flex-col gap-0.5">
+      {shown.map((place) => {
+        const current = place.id === here;
+        return (
+          <li key={place.id}>
+            <LocationLink
+              location={{ key: place.id, title: place.label }}
+              onOpen={open}
+              current={current}
+              className={current ? placeClasses.current : placeClasses.other}
+            >
+              <span className={iconClasses(current)}>
+                {/* The kit names each place icon by the place's key, as `placeNames` does. */}
+                <PlaceIcon name={place.id} filled={current} />
+              </span>
+              <span className="min-w-0 flex-1 truncate">{place.label}</span>
+              {place.signal === undefined ? null : <Signal signal={place.signal} />}
+            </LocationLink>
+          </li>
+        );
+      })}
+    </ul>
+  );
+
   return (
     <nav aria-label="Places">
-      <ul className="flex flex-col gap-0.5">
-        {places.map((place) => {
-          const current = place.id === here;
-          return (
-            <li key={place.id}>
-              <LocationLink
-                location={{ key: place.id, title: place.label }}
-                onOpen={open}
-                current={current}
-                className={current ? placeClasses.current : placeClasses.other}
-              >
-                <span className={iconClasses(current)}>
-                  {/* The kit names each place icon by the place's key, as `placeNames` does. */}
-                  <PlaceIcon name={place.id} filled={current} />
-                </span>
-                <span className="min-w-0 flex-1 truncate">{place.label}</span>
-                {place.signal === undefined ? null : <Signal signal={place.signal} />}
-              </LocationLink>
-            </li>
-          );
-        })}
-      </ul>
+      {placeRuns(places).map((run) =>
+        run.group === undefined ? (
+          <div key="top">{placeLinks(run.places)}</div>
+        ) : (
+          <PlaceGroupSection key={run.group} group={run.group}>
+            {placeLinks(run.places)}
+          </PlaceGroupSection>
+        ),
+      )}
       {onSettings === undefined && help.length === 0 ? null : (
         // 1px `border`, 8px above and below (component specs 24.4).
         <hr className="my-2 border-border" />
@@ -133,15 +147,43 @@ function placeOf(location: TabLocation, parentsOf: PlacesListProps["parentsOf"])
   return parentsOf?.(location)[0]?.key ?? location.key;
 }
 
+/** The places in a row that share a group (or none), in the order they came. */
+interface PlaceRun {
+  readonly group: PlaceGroup | undefined;
+  readonly places: readonly ShownPlace[];
+}
+
+/** Splits the places where the group changes; the sidebar's order already keeps a group together. */
+function placeRuns(places: readonly ShownPlace[]): readonly PlaceRun[] {
+  const runs: { group: PlaceGroup | undefined; places: ShownPlace[] }[] = [];
+  for (const place of places) {
+    const last = runs.at(-1);
+    if (last !== undefined && last.group === place.group) {
+      last.places.push(place);
+    } else {
+      runs.push({ group: place.group, places: [place] });
+    }
+  }
+  return runs;
+}
+
+/** A group's places under its heading, which names the list for a screen reader. */
+function PlaceGroupSection(props: { readonly group: PlaceGroup; readonly children: ReactNode }) {
+  const headingId = useId();
+  return (
+    <section aria-labelledby={headingId} className="mt-3">
+      {/* Shown in capitals as the flows draw it ("TEAM"); a screen reader hears the word. */}
+      <h2 id={headingId} className="px-2 pb-1 text-caption uppercase text-fg-subtle">
+        {placeGroupNames[props.group]}
+      </h2>
+      {props.children}
+    </section>
+  );
+}
+
 /** A place's signal after its name. Its words are read after the name; the mark isn't. */
 function Signal({ signal }: { readonly signal: PlaceSignal }) {
-  if (signal.mark === "count") {
-    return (
-      <StatusChip tone="accent" shape="count" name={signal.spoken}>
-        {signal.value}
-      </StatusChip>
-    );
-  }
+  if (signal.mark !== "running") return <SignalCount signal={signal} />;
   return (
     <>
       {/* Still, never breathing (UX settled values). In forced colours it keeps its fill. */}

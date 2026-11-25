@@ -53,10 +53,15 @@ function wordsOf(button: HTMLButtonElement): string {
   return copy.textContent ?? "";
 }
 
+function button(page: HTMLElement, label: string): HTMLButtonElement {
+  const found = [...page.querySelectorAll("button")].find((each) => wordsOf(each) === label);
+  if (found === undefined) throw new Error(`no button ${label}`);
+  return found;
+}
+
 function press(page: HTMLElement, label: string): void {
-  const button = [...page.querySelectorAll("button")].find((each) => wordsOf(each) === label);
-  if (button === undefined) throw new Error(`no button ${label}`);
-  act(() => button.click());
+  const found = button(page, label);
+  act(() => found.click());
 }
 
 verifies("team.spend-and-seats", () => {
@@ -356,6 +361,83 @@ verifies("team.spend-and-seats", () => {
       expect(heading).toMatch(/^Needs you.*2 problems$/);
       expect(text(page)).not.toContain("None near their limit");
       expect(text(page)).toContain("2 near their limit");
+    });
+
+    it("shows the offline banner as of the newest cached answer, with its links off", async () => {
+      const fake = acme();
+      fake.setNow("2026-11-24T12:10:00.000Z");
+      fake.team.setSpend(fake.source, { range: "month", paid: usd(977) });
+      fake.setNow("2026-11-24T12:20:00.000Z");
+      fake.team.addSeat(fake.source, { label: "Seat A" });
+      fake.team.goOffline(fake.source);
+      const opened: TeamLink[] = [];
+      const page = await open(fake, opened);
+      expect(text(page)).toContain("Offline, as of 12:20. Numbers stay as they were;");
+      expect(text(page)).toContain("$977 this month");
+      press(page, "Set one in Paperclip");
+      expect(opened).toEqual([]);
+      const off = button(page, "Set one in Paperclip");
+      expect(off.getAttribute("aria-disabled")).toBe("true");
+      const reasonIds = off.getAttribute("aria-describedby")?.split(" ") ?? [];
+      const reasons = reasonIds.map((id) => document.getElementById(id)?.textContent);
+      expect(reasons).toContain(
+        "Offline, as of 12:20. Numbers stay as they were; opening things in Paperclip is off until Paperclip answers again.",
+      );
+      expect(button(page, "Try again").hasAttribute("aria-disabled")).toBe(false);
+    });
+
+    it("turns the links off under the banner when a later read fails", async () => {
+      const fake = acme();
+      fake.team.setSpend(fake.source, { range: "month", paid: usd(977) });
+      const page = await open(fake);
+      expect(button(page, "Set one in Paperclip").hasAttribute("aria-disabled")).toBe(false);
+      fake.team.parts = () => Promise.reject(new Error("no answer"));
+      const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+      fake.team.setSpend(fake.source, { range: "month", paid: usd(980) });
+      await settle();
+      expect(button(page, "Set one in Paperclip").getAttribute("aria-disabled")).toBe("true");
+      errors.mockRestore();
+    });
+
+    it("says why a seat's read failed, with its last good time and numbers, greyed", async () => {
+      const fake = acme();
+      fake.setNow("2026-11-24T12:20:00.000Z");
+      fake.team.addSeat(fake.source, {
+        label: "Seat C",
+        failedRead: { cause: "rate-limited", at: "2026-11-24T12:55:00.000Z" },
+        windows: [{ kind: "week", label: "This week", usedPercent: 61 }],
+      });
+      fake.setNow("2026-11-24T13:00:00.000Z");
+      const page = await open(fake);
+      const row = [...page.querySelectorAll("li .grid")].find((each) =>
+        each.textContent?.includes("Seat C"),
+      );
+      expect(row?.textContent).toContain("? Not read · rate-limited · last good 12:20");
+      expect(row?.textContent).toContain("61%");
+      expect(row?.className).toContain("text-fg-muted");
+    });
+
+    it("says how many of today's runs have no known seat under Spent today", async () => {
+      const fake = acme();
+      fake.team.setSpend(fake.source, { range: "today", paid: usd(41.2), unknownSeatRuns: 3 });
+      const page = await open(fake);
+      expect(text(page)).toContain("Seat unknown for 3 runs");
+    });
+
+    it("leaves out the seat line when every run's seat is known", async () => {
+      const fake = acme();
+      fake.team.setSpend(fake.source, { range: "today", paid: usd(41.2), unknownSeatRuns: 0 });
+      const page = await open(fake);
+      expect(text(page)).not.toContain("Seat unknown");
+    });
+
+    it("draws no link buttons when nothing can open a Paperclip page", async () => {
+      const fake = acme({ seats: false });
+      const spendAndSeats = new SpendAndSeats(fake.team, { now: fake.clock, timeZone: "UTC" });
+      const page = render(<SpendAndSeatsPage spendAndSeats={spendAndSeats} />);
+      await settle();
+      expect(text(page)).toContain("Seat use isn't available on this Paperclip yet.");
+      expect(text(page)).not.toContain("Open Paperclip");
     });
 
     it("shows a seat's label as plain text", async () => {
