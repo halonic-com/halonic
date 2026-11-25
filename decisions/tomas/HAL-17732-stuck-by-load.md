@@ -3,6 +3,7 @@
 - Task: HAL-17732
 - Approval: the board asks for this on HAL-17732 (25 Nov comment: make the stuck threshold depend on the owner's load; no flag for a task with an open pull request, a blocker or a pending review). Liam signs it as the code reviewer.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:evG8kACKv6Ro+7GMUU2HUcT7ojCoV5CNeI9grFiQmYaZCBy7t/vlL9sYUJ4SNkZMTb81Ubgu55xdza7ip8d0Cg==
 
 ## What changes
 
