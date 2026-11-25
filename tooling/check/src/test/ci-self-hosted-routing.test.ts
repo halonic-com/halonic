@@ -36,66 +36,8 @@ function routing(variable: "CI_RUNNER_LARGE" | "CI_RUNNER_SMALL"): string {
   return `\${{ ${FAST} || ${pool(variable)} || 'ubuntu-24.04' }}`;
 }
 
-/** A label run that does nothing (HAL-17672): any label but fast-track. */
-const NOOP = "github.event.action == 'labeled' && github.event.label.name != 'fast-track'";
-/** What a job's condition holds so that it skips in such a run. */
-const GUARD = "(github.event.action != 'labeled' || github.event.label.name == 'fast-track')";
-/** Whether a job's condition skips it in such a run: the guard, or the guard alone (`changes`). */
-const holdsGuard = (condition: string) =>
-  condition.includes(GUARD) || condition === GUARD.slice(1, -1);
-/** The name such a run gets, so the workflows that look for a pull request's CI run pass it over. */
+/** The name of an old label run that did nothing (HAL-17672), still on some pull requests' heads. */
 const NOOP_TITLE = "A label was added: nothing to run";
-
-/** Every job's lines in ci.yml, by job key. */
-function jobBlocks(text: string): Map<string, string> {
-  const result = new Map<string, string>();
-  let job = "";
-  for (const line of text.slice(text.indexOf("\njobs:\n")).split("\n")) {
-    const jobKey = /^ {2}([a-z][a-z0-9-]*):$/.exec(line);
-    if (jobKey?.[1]) job = jobKey[1];
-    if (job) result.set(job, `${result.get(job) ?? ""}${line}\n`);
-  }
-  return result;
-}
-
-/** A job's top-level `key: value` line, such as its `if`. */
-function field(block: string, key: string): string {
-  return new RegExp(`^ {4}${key}: (.+)$`, "m").exec(block)?.[1] ?? "";
-}
-
-/** The jobs a job needs, from `needs: a` or `needs: [a, b]`. */
-function needsOf(block: string): string[] {
-  return field(block, "needs")
-    .replace(/[[\]]/g, "")
-    .split(",")
-    .map((job) => job.trim())
-    .filter(Boolean);
-}
-
-/** Why a job skips in a label run that does nothing, or "" when nothing makes it skip. */
-function whyItSkips(block: string, guarded: Set<string>): string {
-  const condition = field(block, "if");
-  const needs = needsOf(block);
-  if (holdsGuard(condition)) return "its condition holds the guard";
-  if (
-    /github\.event_name == '(push|merge_group)'|github\.event_name != 'pull_request'/.test(
-      condition,
-    )
-  ) {
-    return "it never runs for a pull request";
-  }
-  // A job whose condition has no status check skips when a job it needs skipped.
-  if (!/cancelled\(\)|always\(\)/.test(condition)) {
-    return needs.some((need) => guarded.has(need)) ? "it needs a job that skips" : "";
-  }
-  // One that runs after a skipped job still asks for an output `changes` didn't give.
-  const asksForChanges =
-    guarded.has("changes") &&
-    needs.includes("changes") &&
-    !condition.includes("||") &&
-    / && needs\.changes\.outputs\.[a-z_-]+ == 'true'/.test(condition);
-  return asksForChanges ? "it asks for an output of changes, which skipped" : "";
-}
 
 /** The lines of one job in ci.yml, from its key to the next job's. */
 function jobBlock(text: string, job: string): string {
@@ -212,7 +154,6 @@ verifies("check.ci-self-hosted-routing", () => {
         "github.event.pull_request.user.type == 'User'",
         "!endsWith(github.event.pull_request.user.login, '[bot]')",
         ...BOTS.map((bot) => `github.event.pull_request.user.login != '${bot}'`),
-        GUARD,
       ]);
       expect(runsOn.get("pick-runner")).toBe("ubuntu-24.04");
       // Only a read-only runners token: the App's one permission, never a write.
@@ -221,32 +162,39 @@ verifies("check.ci-self-hosted-routing", () => {
       expect(block).toContain("continue-on-error: true");
     });
 
-    test("a label starts a run only for fast-track; removing one starts none (HAL-17672)", () => {
+    test("no label starts a run of ci.yml (HAL-17990)", () => {
+      // GitHub counts only a commit's newest run of a workflow: a run for a label, even one that
+      // skips every job, hid the real ci-ok and left the required check "expected".
       const triggers = workflow.slice(workflow.indexOf("\non:\n"), workflow.indexOf("\njobs:\n"));
       expect(triggers).toContain(
-        "  pull_request:\n    types: [opened, synchronize, reopened, ready_for_review, labeled]\n",
+        "  pull_request:\n    types: [opened, synchronize, reopened, ready_for_review]\n",
       );
-      expect(triggers).toContain(`run-name: "\${{ ${NOOP} && '${NOOP_TITLE}' || '' }}"\n`);
-      // Any other label gets a group of its own run, so it cancels nothing; fast-track joins the
-      // pull request's group and replaces the run in progress, like a push.
-      expect(triggers).toContain(
-        `  group: ci-\${{ ${NOOP} && format('label-{0}', github.run_id) || github.event.pull_request.number || `,
+      expect(workflow).not.toContain("github.event.action == 'labeled'");
+      expect(workflow).not.toContain("github.event.action != 'labeled'");
+      expect(triggers).not.toMatch(/^run-name:/m);
+    });
+
+    test("pick-runner reads the labels as they are now, so a re-run sees fast-track (HAL-17990)", () => {
+      const block = jobBlock(workflow, "pick-runner");
+      expect(block).toContain("      pull-requests: read\n");
+      expect(block).toMatch(
+        /- id: labels\n {8}name: Read the pull request's current labels\n {8}continue-on-error: true\n/,
+      );
+      // A failed read falls back to the event's labels, never to an error.
+      expect(block).toContain(
+        "PR_LABELS: ${{ steps.labels.outputs.labels || toJSON(github.event.pull_request.labels.*.name) }}",
       );
     });
 
-    test("in a run for any other label every job skips, and ci-ok reports under another name", () => {
-      const jobs = jobBlocks(workflow);
-      expect(field(jobs.get("changes") ?? "", "if")).toBe(GUARD.slice(1, -1));
-      const guarded = new Set(
-        [...jobs].filter(([, block]) => holdsGuard(field(block, "if"))).map(([job]) => job),
+    test("adding fast-track re-runs the pull request's newest CI run in full (HAL-17990)", () => {
+      const details = read("pr-details.yml");
+      expect(details).toContain(
+        "if: github.event.action == 'labeled' && github.event.label.name == 'fast-track' && github.event.pull_request.head.repo.full_name == github.repository",
       );
-      for (const [job, block] of jobs) {
-        if (job === "ci-ok") continue;
-        expect(whyItSkips(block, guarded), job).not.toBe("");
-      }
-      // A skipped required check counts as passed, and a green one would stand in for the real run.
-      expect(field(jobs.get("ci-ok") ?? "", "name")).toBe(
-        `\${{ ${NOOP} && 'ci-ok (label added, nothing to run)' || github.event.pull_request.draft && 'ci-ok (draft, light run)' || 'ci-ok' }}`,
+      expect(details).toMatch(/\n {10}gh run rerun "\$run"\n/);
+      // Its own concurrency group: another label added at once doesn't cancel it.
+      expect(details).toContain(
+        "group: pr-details-${{ github.event.pull_request.number || github.event.workflow_run.id }}${{ github.event.label.name == 'fast-track' && '-fast-track' || '' }}",
       );
     });
 

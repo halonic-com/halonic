@@ -1,9 +1,10 @@
-# A title, body or label change on a pull request. CI (ci.yml) tests nothing
+# A title, body or label change on a pull request. CI (ci.yml) doesn't start
 # on these: a new CI run would cancel the one in progress and build
-# everything again. The one exception is the `fast-track` label (HAL-17672);
-# any other label gets a CI run that skips every job, named "A label was
-# added: nothing to run", which this workflow passes over. This workflow
-# checks the new title instead and, when one of CI's title, leak or
+# everything again, and a CI run for a label hid the real `ci-ok` (HAL-17990).
+# Adding `fast-track` re-runs CI's newest run in full, so it goes to the fast
+# pool (ci.yml's `pick-runner` reads the labels as they are then). Old label
+# runs, named "A label was added: nothing to run" (HAL-17672), are passed
+# over. Otherwise this workflow checks the new title and, when one of CI's title, leak or
 # coverage-floor jobs failed, re-runs CI's failed jobs. Those jobs read the pull request's current text and labels, so a fixed title
 # or an added `coverage-floor-lowered` label turns `ci-ok` green. The merge
 # queue checks the title and runs the leak guard again before anything merges.
@@ -27,7 +28,9 @@ on:
 permissions: {}
 
 concurrency:
-  group: pr-details-${{ github.event.pull_request.number || github.event.workflow_run.id }}
+  # Adding fast-track has a group of its own, so another label added at the
+  # same moment doesn't cancel its re-run.
+  group: pr-details-${{ github.event.pull_request.number || github.event.workflow_run.id }}${{ github.event.label.name == 'fast-track' && '-fast-track' || '' }}
   cancel-in-progress: true
 
 jobs:
@@ -43,6 +46,35 @@ jobs:
       - name: New base
         if: github.event.changes.base
         run: echo "::notice title=New base::CI ran against the old base. Push a commit to run it against the new one; the merge queue checks against main either way. The required note check, which blocks the merge, runs again only on a push or when the pull request is closed and reopened (a reopen keeps the head and its approvals)."
+      # Re-runs CI in full, where pick-runner reads the labels as they are now
+      # and sends the run to the fast pool when it has room. A run in progress
+      # started without the label: cancel it first, as a push would. Only for
+      # our own branches: a fork's token can't re-run, and forks never use the pool.
+      - name: Re-run CI for fast-track
+        id: fast-track
+        if: github.event.action == 'labeled' && github.event.label.name == 'fast-track' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          run=$(gh run list --workflow ci.yml --commit "$HEAD_SHA" --event pull_request --limit 20 \
+            --json databaseId,displayTitle \
+            --jq '[.[] | select(.displayTitle != "A label was added: nothing to run")][0].databaseId // empty')
+          if [ -z "$run" ]; then
+            echo "No CI run for this commit yet; it will read the label when it starts."
+            exit 0
+          fi
+          if [ "$(gh run view "$run" --json status --jq .status)" != "completed" ]; then
+            echo "Cancelling CI run $run, which started without the label."
+            gh run cancel "$run" || true
+            for _ in $(seq 1 18); do
+              [ "$(gh run view "$run" --json status --jq .status)" = "completed" ] && break
+              sleep 10
+            done
+          fi
+          echo "Re-running CI run $run in full."
+          gh run rerun "$run"
       # The base's title check, not the pull request's own: this job holds a token
       # that can re-run workflows.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -58,6 +90,7 @@ jobs:
       - name: Pull request title
         run: node tooling/check/src/cli/pr-title.ts
       - name: Re-run CI's failed jobs
+        if: steps.fast-track.outcome != 'success'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}

@@ -23,9 +23,10 @@ server by the board supervisor after it merges; the server doesn't pull from the
    and the pool has at least `vars.CI_FAST_MIN_IDLE` (14 when unset) online, idle runners right
    now. Otherwise the whole run stays on `ubuntu-24.04`, and so does every fork's and bot's pull
    request (a `Bot` account, a login ending in `[bot]`, `dependabot`, `renovate`,
-   `renovate-bot`), labelled or not. Adding the label starts a run (HAL-17672), which the picker
-   routes like a push's; adding any other label starts a run that skips every job, `pick-runner`
-   too, and cancels nothing. The hook and the gate need nothing for it: they read the pull request
+   `renovate-bot`), labelled or not. Adding the label re-runs the pull request's newest CI run in
+   full (`pr-details.yml`, HAL-17990), and the picker reads the labels as they are then; no label
+   starts a `ci.yml` run of its own, because GitHub counts only a commit's newest run and a label
+   run hid the real `ci-ok`. The hook and the gate need nothing for it: they read the pull request
    as it is when the job starts, whatever event started the run. This is routing, not security: a
    pull request runs its own copy of `ci.yml`.
 2. **The runner group** `halonic-ci` serves only `halonic-com/halonic`.
