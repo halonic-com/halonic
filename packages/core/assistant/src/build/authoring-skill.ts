@@ -24,6 +24,7 @@ Files and where they go (a hub is a folder \`hubs/<id>/\` with a \`hub.yaml\`; "
 - \`library/knowledge/<id>.yaml\`, root or hub: a knowledge source.
 - \`library/collections/<id>.collection.yaml\` at the root: a collection of records.
 - \`library/connectors/<id>.connector.yaml\`, root or hub: a connector and the tools it allows.
+- \`integrations/<folder>/\` at the root: an integration that connects Halonic to an outside service. Before you write or change one, read the integration guide with \`integration_guide\`, starting with its Contents, and follow it.
 
 How to work:
 - Read before you change: use \`list_files\` and \`read_file\`, and \`schema\` for a kind's fields.
