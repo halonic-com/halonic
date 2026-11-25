@@ -124,9 +124,11 @@ verifies("executor-remote.runs", () => {
         signal: controller.signal,
       });
       let settled = false;
-      const ended = turn.finally(() => {
+      const settle = () => {
         settled = true;
-      });
+      };
+      // Handles the rejection too, so it isn't unhandled while the waits below run.
+      turn.then(settle, settle);
       // Every wait is bounded well inside the 30 s test timeout, and the first also ends when the turn
       // fails before it reaches the engine, so a stall names its step instead of hitting that timeout.
       await waitUntil(
@@ -137,7 +139,7 @@ verifies("executor-remote.runs", () => {
       controller.abort(new Error("stopped"));
       await waitUntil("the aborted turn to end", () => settled, { timeout: stepTimeoutMs });
 
-      await expect(ended).rejects.toThrow("stopped");
+      await expect(turn).rejects.toThrow("stopped");
       await waitUntil(
         "engine.lastTurnSignal?.aborted to be true",
         () => engine.lastTurnSignal?.aborted === true,
