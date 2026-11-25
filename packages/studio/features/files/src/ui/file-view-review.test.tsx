@@ -245,3 +245,23 @@ describe("the focus after a decision in a file's tab", () => {
     });
   });
 });
+
+describe("the names of the parts in a file's editor", () => {
+  verifies("files.ui.file-review-part-names", () => {
+    it("names each part with what it changed and where", async () => {
+      show(reviewHostOf(twoParts, { status: "stale" }));
+      await settle();
+      const label = opened.at(-1)?.options.review?.partLabel;
+
+      expect(label?.(2, 2, { line: 7, added: 1, removed: 0 })).toBe(
+        "Change 2 of 2: 1 line added at line 7",
+      );
+      expect(label?.(1, 2, { line: 4, added: 0, removed: 2 })).toBe(
+        "Change 1 of 2: 2 lines removed at line 4",
+      );
+      expect(label?.(1, 1, { line: 2, added: 1, removed: 1 })).toBe(
+        "Change 1 of 1: 1 line added and 1 line removed at line 2",
+      );
+    });
+  });
+});

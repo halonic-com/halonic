@@ -14,7 +14,8 @@ function editorWith(onDecide: EditorReviewActions["onDecide"] = () => {}): TestE
       accept: "Accept",
       reject: "Reject",
       rejectAndDelete: "Reject and delete file",
-      partLabel: (at, count) => `Change ${at} of ${count}`,
+      partLabel: (at, count, { line, added, removed }) =>
+        `Change ${at} of ${count}: ${added} added, ${removed} removed at line ${line}`,
       onDecide,
     },
   });
@@ -44,7 +45,7 @@ describe("the assistant's changes to review in the editor", () => {
       expect(markedLines(editor)).toEqual(["model: large"]);
       const [group] = groups(editor);
       expect(group?.getAttribute("role")).toBe("group");
-      expect(group?.getAttribute("aria-label")).toBe("Change 1 of 1");
+      expect(group?.getAttribute("aria-label")).toBe("Change 1 of 1: 1 added, 1 removed at line 2");
       expect(group?.querySelector("del")?.textContent).toBe("model: small");
       expect([...(group?.querySelectorAll("button") ?? [])].map((b) => b.textContent)).toEqual([
         "Accept",
@@ -123,8 +124,10 @@ describe("the assistant's changes to review in the editor", () => {
       );
       editor.destroy();
     });
+  });
 
-    it("goes to a part's first line and takes focus", () => {
+  verifies("code-editor.review-part-focus", () => {
+    it("goes to a part's first line and moves the focus to its named group", () => {
       const editor = editorWith();
       editor.setReviewParts([
         { line: 1, added: 1, removed: [] },
@@ -133,7 +136,10 @@ describe("the assistant's changes to review in the editor", () => {
       editor.goToReviewPart(1);
       const { state } = editor.view;
       expect(state.doc.lineAt(state.selection.main.head).number).toBe(3);
-      expect(editor.view.hasFocus).toBe(true);
+      expect(document.activeElement).toBe(groups(editor)[1]);
+      expect(document.activeElement?.getAttribute("aria-label")).toBe(
+        "Change 2 of 2: 1 added, 0 removed at line 3",
+      );
       editor.destroy();
     });
   });

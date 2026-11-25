@@ -1,3 +1,5 @@
+import type { EditorReviewPartFacts } from "@halonicjs/studio-code-editor";
+
 /** The words the file tree shows (microcopy for the Files frames). */
 export const filesWords = {
   treeLabel: "Files",
@@ -133,6 +135,15 @@ export const filesWords = {
   /** The file's review bar decides all of the assistant's changes in it (AI changes 1.2). */
   acceptFile: "Accept file",
   rejectFile: "Reject file",
+  /** What a part in the editor changed, after "Change 2 of 2: " in its name: "1 line added at line 7". */
+  reviewPartFacts: ({ line, added, removed }: EditorReviewPartFacts): string => {
+    const lines = (count: number) => (count === 1 ? "1 line" : `${count} lines`);
+    if (added > 0 && removed > 0)
+      return `${lines(added)} added and ${lines(removed)} removed at line ${line}`;
+    return added > 0
+      ? `${lines(added)} added at line ${line}`
+      : `${lines(removed)} removed at line ${line}`;
+  },
   /** The toast after an Accept or Reject in a file, Undo follows (AI changes 1.3): "Accepted 3 changes in models.yaml". */
   decided: (decision: "accept" | "reject", count: number, name: string): string =>
     `${decision === "accept" ? "Accepted" : "Rejected"} ${count} ${count === 1 ? "change" : "changes"} in ${name}`,
