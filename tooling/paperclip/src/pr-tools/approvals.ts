@@ -3,8 +3,9 @@ import { byReviewer } from "../pr-watcher/github.ts";
 /**
  * Signed approvals on a pull request, by the HAL-14809 rules: a comment
  * "<Name>: approved on head `abc1234`" (7 or more characters) on the current
- * head. Julian's counts only within his limits, or on a pull request Liam
- * wrote; nobody approves their own. After a rebase-only push to a pull request
+ * head, or the same with "re-approved" or "approved again", as the Merger reads
+ * them (HAL-15553). Julian's counts only within his limits, or on a pull
+ * request Liam wrote; nobody approves their own. After a rebase-only push to a pull request
  * Liam approved, Julian's "re-approved on head `<new>` (rebase only,
  * range-diff vs `<old>`)" counts outside his limits too, when Liam approved
  * `<old>`.
@@ -24,9 +25,10 @@ export interface Approval {
   readonly note?: string;
 }
 
-// A re-approval counts only with the range-diff part, which names the head it was compared with.
+// The same forms as the Merger's gate (`LIAM_RE`, `JULIAN_RE`). The optional range-diff part names
+// the head Liam approved, which lets Julian's re-approval count outside his limits.
 const approvalLine =
-  /^[ \t]*(?:\*\*)?([A-Z][a-z]+)(?:\*\*)?:[ \t]*(?:approved on head[ \t]*`?([0-9a-f]{7,40})`?|re-approved on head[ \t]*`?([0-9a-f]{7,40})`?[ \t]*\(rebase only, range-diff vs[ \t]*`?([0-9a-f]{7,40})`?\))/gm;
+  /^[ \t]*(?:\*\*)?([A-Z][a-z]+)(?:\*\*)?:[ \t]*(?:re-)?approved(?: again)? on head[ \t]*`?([0-9a-f]{7,40})`?(?:[ \t]*\(rebase only, range-diff vs[ \t]*`?([0-9a-f]{7,40})`?\))?/gm;
 
 /** One signed approval line, before deciding whether it counts. */
 export interface SignedApproval {
@@ -49,19 +51,12 @@ export interface PullComment {
  */
 export function signedApprovals(comments: readonly PullComment[]): SignedApproval[] {
   return comments.filter(byReviewer).flatMap(({ body }) =>
-    [...(body ?? "").matchAll(approvalLine)].flatMap(
-      ([, by, approved, reapproved, rebaseOf]): SignedApproval[] => {
-        if (by === undefined || !reviewers.includes(by)) {
-          return [];
-        }
-        if (approved !== undefined) {
-          return [{ by, head: approved }];
-        }
-        return reapproved !== undefined && rebaseOf !== undefined
-          ? [{ by, head: reapproved, rebaseOf }]
-          : [];
-      },
-    ),
+    [...(body ?? "").matchAll(approvalLine)].flatMap(([, by, head, rebaseOf]): SignedApproval[] => {
+      if (by === undefined || head === undefined || !reviewers.includes(by)) {
+        return [];
+      }
+      return rebaseOf === undefined ? [{ by, head }] : [{ by, head, rebaseOf }];
+    }),
   );
 }
 

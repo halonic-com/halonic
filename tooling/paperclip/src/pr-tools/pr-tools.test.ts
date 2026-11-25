@@ -1,7 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
 import { fakeGitHub, recording } from "../pr-watcher/fakes.test-helper.ts";
-import { signedApprovals } from "./approvals.ts";
+import { judgeApprovals, signedApprovals } from "./approvals.ts";
 import { myPrs, myPrsText } from "./my-prs.ts";
 import { branchPath, prStatus, statusText } from "./pr-status.ts";
 
@@ -202,8 +202,13 @@ verifies("paperclip.pr-tools-reapproval", () => {
     });
 
     test("doesn't count a re-approval without Liam's approval on the named head or without the range-diff", async () => {
-      const bare = "Julian: re-approved on head `7651f8c`";
-      expect(signedApprovals([{ body: bare, author_association: "MEMBER" }])).toEqual([]);
+      const bare = pr4588(
+        ["Liam: approved on head `0000000`", "Julian: re-approved on head `7651f8c`"],
+        ["pnpm-lock.yaml"],
+      );
+      const bareStatus = await prStatus(bare.get, repo, 4588);
+      expect(bareStatus.approvedOnHead).toBe(false);
+      expect(bareStatus.approvals[1]?.note).toBe("outside Julian's limits (HAL-14809)");
       const github = pr4588(
         [
           "Liam: approved on head `1111111`",
@@ -216,6 +221,26 @@ verifies("paperclip.pr-tools-reapproval", () => {
       expect(status.approvals[1]?.note).toBe(
         "re-approval after a rebase, but Liam didn't approve 0000000 (HAL-14809)",
       );
+    });
+
+    test("counts the reviewer's re-approved and approved-again lines as the Merger does (#5908)", () => {
+      const body = "Rebased, range-diff clean.\nLiam: re-approved on head `bb12791`\n";
+      const again = "Liam: approved again on head `bb12791`";
+      expect(
+        signedApprovals([
+          { body, author_association: "MEMBER" },
+          { body: again, author_association: "MEMBER" },
+        ]),
+      ).toEqual([
+        { by: "Liam", head: "bb12791" },
+        { by: "Liam", head: "bb12791" },
+      ]);
+      const judged = judgeApprovals(signedApprovals([{ body, author_association: "MEMBER" }]), {
+        head: "bb12791aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        author: "owen",
+        reviewer: "liam",
+      });
+      expect(judged).toEqual([{ by: "Liam", head: "bb12791", counts: true }]);
     });
   });
 });
