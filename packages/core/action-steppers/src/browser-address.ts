@@ -46,6 +46,9 @@ function hasPathTrick(decoded: string): boolean {
     decoded.includes("..") ||
     decoded.includes("//") ||
     decoded.includes("\\") ||
+    // `%3F` and `%23` decode to `?` and `#`, so the preview would show a query or fragment.
+    decoded.includes("?") ||
+    decoded.includes("#") ||
     /%2f/i.test(decoded)
   );
 }
@@ -56,8 +59,8 @@ function hasPathTrick(decoded: string): boolean {
  * user name, password or port, only printable characters, none of
  * `[ ] ( ) ! < >` or a backtick (also once decoded), a host on the allow-list,
  * no query or fragment, and a path that, decoded once, holds no `.` or `..`
- * segment, `..`, `//`, `\`, `%2F` or unprintable character and starts with
- * one of the origin's prefixes. Returns the page it touches, or why not.
+ * segment, `..`, `//`, `\`, `?`, `#`, `%2F` or unprintable character and
+ * starts with one of the origin's prefixes. Returns the page it touches, or why not.
  *
  * @example
  * checkBrowserAddress("https://github.com/acme/app/settings/variables/actions", origins);
