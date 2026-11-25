@@ -1,3 +1,4 @@
+import { Callout } from "@halonicjs/studio-kit";
 import { type EngineWords, errorMessageFor } from "@halonicjs/studio-shell";
 
 /** The title when the Inbox's first load fails. */
@@ -51,26 +52,32 @@ function staleReason(error: unknown, words: EngineWords): string {
 }
 
 /**
- * The line over the list while its last load failed, in a polite status that is always there, so
- * a screen reader reads the line once when it appears or changes, not on every poll that fails
- * the same way (HAL-13801 SO2). On a phone the page's heading is for screen readers only, so the
- * line takes the list's own top space rather than sitting against the top bar (SO3).
+ * The line over the list while its last load failed, as a Callout with **Try again**, so it is
+ * noticed (design review HAL-18481, 8; `inbox.stale-callout`). It sits in a polite status that is
+ * always there, so a screen reader reads the line once when it appears or changes, not on every
+ * poll that fails the same way (HAL-13801 SO2). On a phone the page's heading is for screen
+ * readers only, so the line takes the list's own top space rather than sitting against the top
+ * bar (SO3).
  */
 export function StaleLine({
   error,
   words,
   phone,
+  onRetry,
 }: {
   readonly error: unknown;
   readonly words: EngineWords;
   readonly phone: boolean;
+  readonly onRetry: () => Promise<void>;
 }) {
   return (
     <div role="status">
       {error === undefined ? null : (
-        <p className={`px-4 pb-2 text-small text-fg-muted ${phone ? "pt-4" : ""}`}>
-          {staleReason(error, words)}
-        </p>
+        <div className={phone ? "px-4 pt-4 pb-2" : "px-4 pb-2"}>
+          <Callout tone="info" action={{ label: "Try again", onClick: onRetry }}>
+            {staleReason(error, words)}
+          </Callout>
+        </div>
       )}
     </div>
   );

@@ -24,11 +24,17 @@ import {
 import { agentItemShows, type ProjectFilter } from "../agent/project-filter.ts";
 import { ActionItemCard } from "./action-item-card.tsx";
 import { AgentItemCard, type AgentItemCardProps } from "./agent-item-card.tsx";
+import { agentMark } from "./row-marks.tsx";
 
 /** What the Inbox page shows of the agents' items, next to its own. */
 export interface AgentItems {
   /** How many items wait, for the Needs you count. */
   readonly waiting: number;
+  /**
+   * Each row that waits, in list order, with how many items it holds, so the open item's place
+   * ("2 of 6") counts as the heading does (`inbox.one-count`).
+   */
+  readonly order: readonly { readonly key: string; readonly items: number }[];
   /** The items that wait, for the project filter's chips. */
   readonly waitingItems: readonly AgentItem[];
   /**
@@ -50,6 +56,7 @@ export interface AgentItems {
 const nothing: AgentInboxState = {
   loaded: true,
   sources: [],
+  agents: [],
   items: [],
   work: [],
   error: undefined,
@@ -120,6 +127,7 @@ export function useAgentItems(
 
   return {
     waiting: waiting.length,
+    order: bundles.map((bundle) => ({ key: bundle.key, items: bundle.items.length })),
     waitingItems: waiting,
     rows: (now, filter) =>
       bundles
@@ -152,6 +160,7 @@ export function useAgentItems(
               item={item}
               source={sourceOf(item)}
               work={workOf(item)}
+              agents={state.agents}
               now={now}
               answer={(answer) => inbox.answer(item.id, answer)}
               readAttachment={(attachment) => inbox.readAttachment(attachment)}
@@ -180,6 +189,7 @@ function bundleRow(bundle: AgentBundle, state: AgentInboxState, now: Date): List
   if (bundle.items.length === 1) return agentRow(oldest, source, now);
   const work = state.work.find((each) => each.id === bundle.work);
   const row = {
+    ...agentMark(oldest),
     id: bundle.key,
     title: bundleTitle(bundle, work),
     meta: bundleMeta(bundle, source, now),
@@ -194,6 +204,7 @@ function bundleRow(bundle: AgentBundle, state: AgentInboxState, now: Date): List
 /** An agent item's row: its title, then its source, who asks and how long it has waited. */
 function agentRow(item: AgentItem, source: MessagingSource | undefined, now: Date): ListRow {
   const row = {
+    ...agentMark(item),
     id: agentItemKey(item),
     title: agentItemTitle(item),
     meta: agentItemMeta(item, source, now),

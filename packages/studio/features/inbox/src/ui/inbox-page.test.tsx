@@ -326,7 +326,7 @@ verifies("inbox.page", () => {
       fake.fail(new KindedError("unauthenticated", "Sign in again to list what waits for you."));
       await act(() => inbox.refresh());
       expect(root.querySelector('[data-pane="list"] [role="status"]')).toBe(status);
-      expect(status?.textContent).toBe("Sign in again to list what waits for you.");
+      expect(status?.textContent).toBe("Sign in again to list what waits for you.Try again");
     });
 
     it("checks again when it opens over a failed load, so it doesn't say the old failure (HAL-13801 SO4)", async () => {
@@ -418,7 +418,7 @@ verifies("inbox.page", () => {
       const { root, inbox } = await openPhone(fake.runs);
       fake.fail(new Error("fetch failed"));
       await act(() => inbox.refresh());
-      const line = root.querySelector('[data-pane="list"] [role="status"] p');
+      const line = root.querySelector('[data-pane="list"] [role="status"] > div');
       expect(line?.classList.contains("pt-4")).toBe(true);
     });
 
