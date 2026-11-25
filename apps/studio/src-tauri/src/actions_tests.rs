@@ -75,12 +75,12 @@ fn a_cancel_returns_while_a_keychain_write_holds_the_sign_in() {
     let cancel = running(&state, "main");
     let (writing, write_started) = mpsc::channel();
     let (release, released) = mpsc::channel::<()>();
-    // The sign-in's store, with a keychain that blocks until released.
+    // The sign-in's store, with a keychain that blocks until released; it
+    // then looks whether it was cancelled meanwhile, as the device flow does.
     let write = thread::spawn(move || {
-        cancel.unless_cancelled(|| {
-            writing.send(()).expect("the test waits");
-            released.recv().expect("the test releases it");
-        })
+        writing.send(()).expect("the test waits");
+        released.recv().expect("the test releases it");
+        cancel.is_cancelled()
     });
     write_started.recv().expect("the write started");
     let (cancelled, cancel_returned) = mpsc::channel();
@@ -96,6 +96,7 @@ fn a_cancel_returns_while_a_keychain_write_holds_the_sign_in() {
     assert!(!write.is_finished());
     assert!(state.sign_in.lock().expect("not poisoned").is_none());
     release.send(()).expect("the write waits");
-    // The write that was under way finishes; none starts after the cancel.
-    assert!(write.join().expect("the write ran").is_some());
+    // Once through, the write sees the cancel; the device flow then takes
+    // it back (`a_cancel_while_the_token_is_written_takes_it_back`).
+    assert!(write.join().expect("the write ran"));
 }

@@ -22,7 +22,8 @@ impl SignInCancel {
     /// Cancels the sign-in. It never waits: the shell cancels from its UI
     /// thread, and a keychain write can be held up by an unlock prompt for
     /// as long as the user leaves it open (Liam's review of HAL-18084). A
-    /// write already under way still finishes; none starts after this.
+    /// write already under way still finishes, and the device flow then
+    /// takes it back; none starts after this.
     pub fn cancel(&self) {
         self.cancelled.store(true, Ordering::SeqCst);
     }
@@ -30,12 +31,6 @@ impl SignInCancel {
     /// Whether the sign-in was cancelled.
     pub fn is_cancelled(&self) -> bool {
         self.cancelled.load(Ordering::SeqCst)
-    }
-
-    /// Runs `write` unless the sign-in was cancelled. `None` when it was
-    /// cancelled and nothing ran.
-    pub fn unless_cancelled<T>(&self, write: impl FnOnce() -> T) -> Option<T> {
-        (!self.is_cancelled()).then(write)
     }
 }
 

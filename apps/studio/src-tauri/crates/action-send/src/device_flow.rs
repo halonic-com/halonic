@@ -267,16 +267,25 @@ impl<T: Transport, K: Keychain, C: Clock, S: CodeScreen> DeviceFlow<'_, T, K, C,
     }
 
     /// Stores the token and its account, unless the stepper closed first.
+    /// A cancel doesn't wait for the keychain, so it can come while the
+    /// write is held up by an unlock prompt: then the write is taken back
+    /// once it is through, and the sign-in is cancelled (Liam's review of
+    /// HAL-18145).
     async fn store(&self, login: String, token: Wiped, expires: u64) -> SignInResult {
         let cancel = Arc::clone(self.cancel);
         let name = login.clone();
         let stored = self
             .keychain
             .with_backend(move |backend| {
-                let stored = cancel.unless_cancelled(|| {
-                    account::store(backend, GITHUB.name, &name, token.as_str(), expires)
-                });
-                stored.transpose()
+                if cancel.is_cancelled() {
+                    return Ok(None);
+                }
+                account::store(backend, GITHUB.name, &name, token.as_str(), expires)?;
+                if cancel.is_cancelled() {
+                    account::take_back(backend, GITHUB.name, &name)?;
+                    return Ok(None);
+                }
+                Ok(Some(()))
             })
             .await;
         match stored {
