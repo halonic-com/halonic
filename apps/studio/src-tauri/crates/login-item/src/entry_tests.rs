@@ -44,6 +44,12 @@ fn login_item_refuses_a_path_it_cant_write_safely() {
         run_value(Path::new("/opt/Halonic")),
         Err(LoginItemError::UnsafePath)
     );
+    let windows_path = Path::new(r"D:\Acme\Halonic.exe"); // leak-guard: allow absolute-path made-up install paths under test
+    assert_eq!(desktop_entry(windows_path), Err(LoginItemError::UnsafePath));
+    assert_eq!(
+        launch_agent("l", windows_path),
+        Err(LoginItemError::UnsafePath)
+    );
     for path in [
         "Halonic.exe",
         "/opt/Halonic\n--other",

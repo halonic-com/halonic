@@ -13,21 +13,24 @@ fn unsafe_character(character: char) -> bool {
     character.is_control() || character == '"'
 }
 
-fn checked(executable: &Path) -> Result<&str, LoginItemError> {
-    checked_as(executable, executable.is_absolute())
-}
-
-fn checked_as(executable: &Path, absolute: bool) -> Result<&str, LoginItemError> {
+/// The path as text, if it is absolute by `absolute` and holds no unsafe
+/// character. Each system's entry passes its own rule, read from the text
+/// rather than `Path::is_absolute` (which follows the computer the code runs
+/// on), so every entry is checked the same way on any computer.
+fn checked(executable: &Path, absolute: fn(&str) -> bool) -> Result<&str, LoginItemError> {
     let text = executable.to_str().ok_or(LoginItemError::UnsafePath)?;
-    if !absolute || text.chars().any(unsafe_character) {
+    if !absolute(text) || text.chars().any(unsafe_character) {
         return Err(LoginItemError::UnsafePath);
     }
     Ok(text)
 }
 
-/// A Windows absolute path, read from the text rather than `Path::is_absolute`,
-/// so the `Run` value is checked the same way on any computer: a drive
-/// (`D:\`) or a UNC share (`\\server\`).
+/// A macOS or Linux absolute path: it starts at the root.
+fn unix_absolute(text: &str) -> bool {
+    text.starts_with('/')
+}
+
+/// A Windows absolute path: a drive (`D:\`) or a UNC share (`\\server\`).
 fn windows_absolute(text: &str) -> bool {
     let bytes = text.as_bytes();
     let drive =
@@ -38,10 +41,9 @@ fn windows_absolute(text: &str) -> bool {
 /// Windows: the `Run` value's data, the path in double quotes, so a path with
 /// spaces (`…\Acme Tools\Halonic.exe`) can't be read as a shorter program.
 pub fn run_value(executable: &Path) -> Result<String, LoginItemError> {
-    let absolute = executable.to_str().is_some_and(windows_absolute);
     Ok(format!(
         "\"{}\" {BACKGROUND_ARGUMENT}",
-        checked_as(executable, absolute)?
+        checked(executable, windows_absolute)?
     ))
 }
 
@@ -51,7 +53,7 @@ pub fn run_value(executable: &Path) -> Result<String, LoginItemError> {
 /// and `%` is doubled because it starts a field code.
 pub fn desktop_entry(executable: &Path) -> Result<String, LoginItemError> {
     let mut quoted = String::new();
-    for character in checked(executable)?.chars() {
+    for character in checked(executable, unix_absolute)?.chars() {
         match character {
             '`' | '$' => quoted.push_str(&format!("\\\\{character}")),
             '\\' => quoted.push_str("\\\\\\\\"),
@@ -67,7 +69,7 @@ pub fn desktop_entry(executable: &Path) -> Result<String, LoginItemError> {
 /// macOS: the LaunchAgent plist, with the path and the argument as separate
 /// `ProgramArguments` strings, so no shell reads them, and XML-escaped.
 pub fn launch_agent(label: &str, executable: &Path) -> Result<String, LoginItemError> {
-    let path = xml_text(checked(executable)?);
+    let path = xml_text(checked(executable, unix_absolute)?);
     Ok(format!(
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\
          <!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n\
