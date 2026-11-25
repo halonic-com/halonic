@@ -86,6 +86,8 @@ function run(
     }),
     params,
     caller: { agentId: "agent-mateo", urlKey: "mateo" },
+    companyId: "acme",
+    paperclip: {} as ActionCall["paperclip"],
     github: async () => github,
   };
   return handler.run(call);
@@ -234,12 +236,7 @@ verifies("runtime.github-pulls", () => {
 verifies("runtime.tools", () => {
   describe("the runtime's handlers", () => {
     // Each read action moves in from `tooling/paperclip` under its own task (HAL-18139).
-    const notYetMoved = [
-      "github.merge-queue",
-      "github.merge-times",
-      "paperclip.task",
-      "paperclip.failed-runs",
-    ];
+    const notYetMoved = ["github.merge-queue", "github.merge-times", "paperclip.failed-runs"];
 
     test("cover every read action but the ones still moving, and no handler needs a writing capability", () => {
       const reads = toolActionNames().filter((name) => !toolActionInfo(name).writes);

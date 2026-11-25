@@ -38,6 +38,7 @@ the plugin was built with, is off. So is a tool whose action has no handler in t
 | --- | --- |
 | `github.pull-request` | one pull request on the tool's `repositories`: `ci-ok`, mergeability, merge queue, signed approvals on the head, the newest review finding, what the author does next |
 | `github.open-pull-requests` | the caller's open pull requests (branches starting with its `urlKey`), the ones out of sync first |
+| `paperclip.task` | one task: status, holder, parent, blockers, documents and its newest comments (5 unless asked for up to 20), trimmed as `task_get` does |
 
 An approval counts on the current head when the repository's team signed it ("Name: approved on
 head `abc1234`") and it isn't the author's own. Which reviewer may approve which paths is a
@@ -52,6 +53,11 @@ never counts, because two agents can share one.
 The runtime reads GitHub only with the read token the installer sets as the `githubToken` secret
 reference, and only by GET requests to `api.github.com` that don't follow redirects. It never mints
 a token and never takes a key from the workspace.
+
+`paperclip.task` reads Paperclip only through the plugin's own read clients (`issues.get`,
+`issues.listComments`, `issues.relations.get`, `issues.documents.list` and `get`, `agents.list`).
+Only that action asks for `issues.read`, `issue.comments.read`, `issue.documents.read` and
+`issue.relations.read`, so a plugin without a task tool doesn't get them.
 
 ## Example
 

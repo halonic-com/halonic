@@ -42,6 +42,63 @@ export interface ToolDeclaration {
   readonly parametersSchema: Readonly<Record<string, unknown>>;
 }
 
+/** A task as the SDK's `issues.get` gives it: only the fields the runtime reads. */
+export interface PaperclipTask {
+  readonly id: string;
+  readonly identifier: string | null;
+  readonly title: string;
+  readonly status: string;
+  readonly priority: string;
+  readonly assigneeAgentId: string | null;
+  readonly assigneeUserId: string | null;
+  readonly parentId: string | null;
+  readonly description: string | null;
+  readonly monitorNextCheckAt?: Date | string | null;
+}
+
+/** Another task as the SDK's `issues.relations.get` names it. */
+export interface PaperclipTaskSummary {
+  readonly id: string;
+  readonly identifier: string | null;
+  readonly status: string;
+}
+
+/** A task's comment as the SDK's `issues.listComments` gives it. */
+export interface PaperclipComment {
+  readonly id: string;
+  readonly authorAgentId: string | null;
+  readonly authorUserId: string | null;
+  readonly createdAt: Date | string;
+  readonly body: string;
+}
+
+/** A task's document as the SDK's `issues.documents.list` lists it. */
+export interface PaperclipDocumentSummary {
+  readonly key: string;
+  readonly title: string | null;
+  readonly updatedAt: Date | string;
+}
+
+/** The SDK's read clients for tasks, their comments, blockers and documents. Read-only. */
+export interface PaperclipTaskReads {
+  get(issueId: string, companyId: string): Promise<PaperclipTask | null>;
+  listComments(issueId: string, companyId: string): Promise<readonly PaperclipComment[]>;
+  readonly relations: {
+    get(
+      issueId: string,
+      companyId: string,
+    ): Promise<{ readonly blockedBy: readonly PaperclipTaskSummary[] }>;
+  };
+  readonly documents: {
+    list(issueId: string, companyId: string): Promise<readonly PaperclipDocumentSummary[]>;
+    get(
+      issueId: string,
+      key: string,
+      companyId: string,
+    ): Promise<{ readonly key: string; readonly body: string } | null>;
+  };
+}
+
 /** The plugin host's clients the runtime calls. */
 export interface RuntimeHost {
   readonly tools: {
@@ -56,7 +113,12 @@ export interface RuntimeHost {
       agentId: string,
       companyId: string,
     ): Promise<{ readonly urlKey: string; readonly name: string } | null>;
+    list(input: {
+      readonly companyId: string;
+      readonly limit?: number;
+    }): Promise<readonly { readonly id: string; readonly name: string }[]>;
   };
+  readonly issues: PaperclipTaskReads;
   readonly config: { get(companyId: string): Promise<Record<string, unknown>> };
   readonly secrets: {
     resolve(ref: SecretRef, options: { readonly companyId: string }): Promise<string>;
@@ -86,4 +148,5 @@ export type Capability =
   | "secrets.read-ref"
   | "issues.read"
   | "issue.comments.read"
-  | "issue.documents.read";
+  | "issue.documents.read"
+  | "issue.relations.read";
