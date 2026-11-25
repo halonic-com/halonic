@@ -31,6 +31,10 @@
 - **The refused input is kept in the log** (`run.limit-waiting`'s `input`), because the refused
   decision isn't stored and `continue` has to decide it again. It holds what the log already holds
   elsewhere (a model's answer, a person's sent event), never a key.
+- **A run with another call in flight doesn't wait.** When the refused decision leaves a
+  `parallel` branch, a `foreach` item, a child run, a connector call or an approval open, the stop
+  stays final, as before. Such a call's result could arrive while the run waited, and the run can
+  only decide one refused input again. Holding those results until `continue` is left for later.
 - **Out of scope:** `plan.concurrency` (asked only before a run starts, so nothing can wait), and a
   model call cut off partway by a reservation, left to the reservation work.
 

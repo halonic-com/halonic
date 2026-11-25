@@ -11,6 +11,7 @@ When a meter is set and a step decides on a model call or a harness run that the
 - A customer who isn't active gets `plan.suspended`: a waiting run they continue fails, and a running run fails at its next paid step.
 - A waiting run nobody continues shall fail with the reason `budget` and the stop's cause 7 days after it started waiting, through one `Scheduler` timer. A timer delivered after `continue` shall change nothing.
 - A waiting child run shall not tell its parent, which stays running; `continue` goes to the child.
+- A run with another call in flight once the refused decision is made (a `parallel` branch, a `foreach` item, a child run, a connector call or an approval) shall not wait: the stop stays final, as before.
 - `plan.concurrency` comes only from the check before a run starts, where no run exists that could wait: it stays a refusal. A model call cut off partway by a reservation is left to the reservation work.
 
 ## Examples
@@ -39,6 +40,9 @@ When a meter is set and a step decides on a model call or a harness run that the
 - Given a run that waits at `plan.cost`,
   when its timer comes due and nobody continued it,
   then it fails with the reason `budget` and `plan.cost`; after `continue`, the same timer changes nothing.
+- Given a meter that refuses model calls with `plan.cost`,
+  when a run enters a `parallel` state whose branches each ask for a model call,
+  then it fails with the reason `budget` and `plan.cost`, and doesn't wait.
 - Given a run in an organisation's scope,
   when `continue` is sent,
   then the meter is asked for the principal of the run's top-level run.

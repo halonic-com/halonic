@@ -169,6 +169,30 @@ verifies("engine.plan-limit-wait", () => {
     });
   });
 
+  it("doesn't wait while another call is in flight, as in a parallel state, and fails as before", async () => {
+    const research: Workflow = {
+      ...replyWorkflow,
+      initial: "gather",
+      states: {
+        gather: {
+          type: "parallel",
+          branches: {
+            web: { agent: "writer", input: "Search the web" },
+            notes: { agent: "writer", input: "Read the notes" },
+          },
+          output: "findings",
+          on: [{ to: "sent", event: "done" }],
+        },
+        sent: { type: "final", on: [] },
+      } as Workflow["states"],
+    };
+    const { executor, model, runs } = limitedRuns(new SwitchMeter(costStop), undefined, research);
+    const run = await executor.start(replyStart);
+    expect(run).toMatchObject({ status: "failed", reason: "budget", cause: costStop.cause });
+    expect(waitingEvents(runs.logs.get("run_1"))).toEqual([]);
+    expect(model.requests).toHaveLength(0);
+  });
+
   describe("a customer who isn't active", () => {
     it("fails a waiting run they continue", async () => {
       const meter = new SwitchMeter(costStop);

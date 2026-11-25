@@ -13,6 +13,7 @@ import type { DecidedEvent, DecideInput, Decision, Effect } from "../kernel/deci
 import { foldRun, type RunState } from "../kernel/run-state.ts";
 import { foldableEvent } from "../kernel/saved-artifacts.ts";
 import type { MeterCheckKind } from "../meter/meter.ts";
+import { isUnitLimitStop } from "../meter/plan-stops.ts";
 import type { StepMeter } from "../meter/run-meter.ts";
 import { type Budget, type BudgetStop, budgetStopOf, type Spend } from "./budget.ts";
 import { waitAtLimit, waitsAt } from "./limit-wait.ts";
@@ -68,7 +69,7 @@ export async function keepToLimits(
   const after = fold(run, decision.events);
   const stop = await firstStop(limits, after, kind, input.at);
   if (stop === null) return decision;
-  if (waitsAt(stop, limits.meter !== undefined)) {
+  if (waitsAt(stop, limits.meter !== undefined, after)) {
     return waitAtLimit(run, decision, input, stop, fold);
   }
   return stoppedByBudget(decision, after, stop);
@@ -88,7 +89,9 @@ async function firstStop(
   const budgetStop = await budgetStopFor(limits.budget, after, at);
   if (budgetStop?.cause.code === "budget.run") return budgetStop;
   const planStop = (await limits.meter?.stopOf(after, kind)) ?? null;
-  if (planStop !== null && budgetStop !== null && waitsAt(planStop, true)) return budgetStop;
+  if (planStop !== null && budgetStop !== null && isUnitLimitStop(planStop.cause)) {
+    return budgetStop;
+  }
   return planStop ?? budgetStop;
 }
 

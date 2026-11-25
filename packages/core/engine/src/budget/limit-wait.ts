@@ -19,10 +19,29 @@ const dayMs = 24 * 60 * 60 * 1000;
 
 /**
  * Whether a stop makes the run wait: a unit's limit, `plan.<unit>` or
- * `plan.member.<unit>`, while a meter is set. Every other stop is final.
+ * `plan.member.<unit>`, while a meter is set, in a run with no other call in
+ * flight. Every other stop is final.
+ *
+ * @param after - the run as the refused decision would have left it
  */
-export function waitsAt(stop: BudgetStop, metered: boolean): boolean {
-  return metered && isUnitLimitStop(stop.cause);
+export function waitsAt(stop: BudgetStop, metered: boolean, after: RunState): boolean {
+  return metered && isUnitLimitStop(stop.cause) && !hasOtherCallsInFlight(after);
+}
+
+/**
+ * Whether the run has a call in flight besides the paid ones just refused:
+ * a `parallel` branch, a `foreach` item, a child run, a connector call or an
+ * approval. Its result could arrive while the run waited, and the run can
+ * only decide one refused input again, so such a run doesn't wait.
+ */
+function hasOtherCallsInFlight(after: RunState): boolean {
+  return (
+    after.parallel !== null ||
+    after.foreach !== null ||
+    after.child !== null ||
+    after.effect !== null ||
+    after.approvals.length > 0
+  );
 }
 
 /**
@@ -43,7 +62,7 @@ export function waitAtLimit(
   stop: BudgetStop,
   fold: (run: RunState | null, events: readonly DecidedEvent[]) => RunState,
 ): Decision {
-  const kept = run === null ? refused.events.slice(0, 1) : [];
+  const kept = run === null ? [startedOf(refused)] : [];
   const before = run ?? fold(null, kept);
   const wait = before.limitWait;
   const until = wait?.until ?? addDays(input.at, limitWaitDays);
@@ -111,6 +130,15 @@ export function limitTimerDecision(run: RunState, input: TimerInput): Decision |
     ],
     effects: tellParent({ ...run, status: "failed" }),
   };
+}
+
+/** The `run.started` a start decision begins with; anything else is a change to `start` this file must follow. */
+function startedOf(refused: Decision): DecidedEvent {
+  const [started] = refused.events;
+  if (started?.type !== "run.started") {
+    throw new Error(`A start decision begins with run.started, not ${started?.type ?? "nothing"}.`);
+  }
+  return started;
 }
 
 function addDays(at: string, days: number): string {
