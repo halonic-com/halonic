@@ -1,5 +1,6 @@
 // Enforces the start limits of harness calls, their running time once
-// started, and the time limit of a connector call a run makes, with the
+// started, the time limit of a connector call a run makes and the waits of
+// the early hedge between its checkpoints, with the
 // `Scheduler` port: each wait sets a
 // timer for when its time is up, and the timer ends the wait if it is
 // still going. Core has no timers of its own, and the
@@ -7,7 +8,7 @@
 // same on every runtime.
 
 import type { Clock, ScheduledTimer, Scheduler } from "@halonicjs/ports";
-import type { RunningLimit, StartLimit, StartLimits } from "../harness/start-limits.ts";
+import type { RunningLimit, StartLimit, StartLimits, TimedWait } from "../harness/start-limits.ts";
 
 /**
  * The prefix of a limit's timer id: `start:<phase>:<callId>`, `start:step:<callId>` for a
@@ -37,10 +38,16 @@ export class StartDeadlines {
 
   /** The limits of one harness call of a run. */
   of(runId: string, callId: string): StartLimits {
+    // Each wait has a timer of its own, so one given up on can't end the next.
+    let waits = 0;
     return {
       within: (limit) => this.#within(runId, `${startTimer}${limit.phase}:${callId}`, limit),
       running: (timeoutMs, timeUp) =>
         this.#running(runId, `${startTimer}step:${callId}`, timeoutMs, timeUp),
+      wait: (ms) => {
+        waits += 1;
+        return this.#wait(runId, `${startTimer}wait:${callId}:${waits}`, ms);
+      },
     };
   }
 
@@ -113,6 +120,44 @@ export class StartDeadlines {
       end: async () => {
         over = true;
         await stopCounting();
+      },
+    };
+  }
+
+  /**
+   * A wait of `ms` on one timer. Once given up on, its timer is removed, and
+   * one that still arrives finds no wait and changes nothing.
+   */
+  #wait(runId: string, timerId: string, ms: number): TimedWait {
+    const timerSlot = slot(runId, timerId);
+    let timeUp = () => {};
+    const arrived = new Promise<void>((resolve) => {
+      timeUp = resolve;
+    });
+    let cancelled = false;
+    this.#waiting.set(timerSlot, () => {
+      this.#waiting.delete(timerSlot);
+      timeUp();
+    });
+    const due = new Date(this.#clock.now().getTime() + ms).toISOString();
+    const done = this.#scheduler.schedule(runId, timerId, due).then(
+      () => arrived,
+      (error: unknown) => {
+        this.#waiting.delete(timerSlot);
+        // A caller that gave up on the wait no longer reads `done`, so the failure would go unhandled.
+        if (cancelled) return new Promise<void>(() => {});
+        throw error;
+      },
+    );
+    return {
+      done,
+      cancel: () => {
+        if (cancelled) return;
+        cancelled = true;
+        if (!this.#waiting.delete(timerSlot)) return;
+        this.#scheduler.cancel(runId, timerId).catch(() => {
+          // A timer left set finds no wait when it arrives, and changes nothing.
+        });
       },
     };
   }

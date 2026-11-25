@@ -9,33 +9,26 @@
 
 import type { RunEventBody, RunVersion } from "@halonicjs/events";
 import type { Agent } from "@halonicjs/format";
-import {
-  type BridgeRecorder,
-  type Harness,
-  type HarnessEvent,
-  type HarnessRun,
-  type HarnessTask,
-  ModelCallError,
-  type RunEffort,
-  RunFailureError,
-  type Sandbox,
-  type SandboxSession,
+import type {
+  BridgeRecorder,
+  Harness,
+  HarnessEvent,
+  HarnessRun,
+  HarnessTask,
+  RunEffort,
+  Sandbox,
+  SandboxSession,
 } from "@halonicjs/ports";
 import { type StopSignal, StopSource } from "@halonicjs/std";
 import { type CallBudget, noCallBudget } from "../budget/call-budget.ts";
 import type { RunHarnessEffect } from "../kernel/decide-types.ts";
-import { SandboxNotReadyError } from "../run/sandbox-not-ready-error.ts";
 import { StartFailedError } from "../run/start-failed-error.ts";
 import { BlockedAccesses } from "./blocked-accesses.ts";
 import { bridgeRecorderOf } from "./bridge-recorder.ts";
-import type {
-  HarnessAgent,
-  HarnessRunsOptions,
-  OpenInstructions,
-  PlacementAnswer,
-} from "./harness-host.ts";
+import type { HarnessRunsOptions, OpenInstructions, PlacementAnswer } from "./harness-host.ts";
 import { logHarnessStart } from "./log-harness-start.ts";
 import { openSandbox, type StartedCall, startTimeoutOf } from "./open-harness-sandbox.ts";
+import { type PreparedHarnessCall, prepareHarnessCall } from "./prepare-harness-call.ts";
 import { harnessCauseOf } from "./start-failure-causes.ts";
 import { type StartLimits, seconds } from "./start-limits.ts";
 import { type HarnessLimitError, StepLimits } from "./step-limits.ts";
@@ -153,37 +146,29 @@ export async function runHarnessCall(
   limits: StartLimits,
   stop: StopSignal,
 ): Promise<unknown> {
+  const prepared = await prepareHarnessCall(options, call);
+  return await runPreparedHarnessCall(options, call, prepared, log, approvals, limits, stop);
+}
+
+/**
+ * Runs one attempt of a harness call that {@link prepareHarnessCall} has
+ * settled, as {@link runHarnessCall} says from its bridge on. The early hedge
+ * runs several of them on one prepared call, each with a log, files folder
+ * and stop of its own.
+ *
+ * @returns the `output` of the agent's own `agent.finished`
+ * @throws what {@link runHarnessCall} throws once the sandbox check has passed
+ */
+export async function runPreparedHarnessCall(
+  options: HarnessRunsOptions,
+  call: HarnessCall,
+  { harness, agent, placement, sandbox }: PreparedHarnessCall,
+  log: HarnessEventLog,
+  approvals: HarnessApprovals,
+  limits: StartLimits,
+  stop: StopSignal,
+): Promise<unknown> {
   const { effect } = call;
-  if (options.localOnly === true) {
-    throw new ModelCallError(
-      "local-only",
-      `Agent "${effect.agent}" runs in ${effect.harness}, which sends its work to its own cloud model, and the workspace is local only, so Halonic didn't start it.`,
-    );
-  }
-  const harness = options.harnesses[effect.harness];
-  if (harness === undefined) {
-    throw new RunFailureError(
-      "harness-start-failed",
-      `Halonic can't start ${effect.harness} on this computer: the host offers no such harness.`,
-    );
-  }
-  const agent: HarnessAgent = {
-    runId: call.runId,
-    hubId: call.hubId,
-    agentId: effect.agent,
-    harness: effect.harness,
-    file: call.agent,
-    version: call.version,
-    ...(call.effort === undefined ? {} : { effort: call.effort }),
-    filesFolder: call.filesFolder,
-  };
-  const placement = await options.placement.where(agent);
-  const sandbox = options.sandboxes[placement.runsOn];
-  const check = await sandbox.check();
-  if (!check.ok) {
-    const onHold = placement.runsOn === "sandbox" && placement.onHold === true;
-    throw new SandboxNotReadyError(check.reason, effect.agent, { onHold });
-  }
   // What stops the call from here on: the engine, the budget once it refused a model call, or a step limit.
   const callStop = new StopSource();
   const stepLimits = new StepLimits(
