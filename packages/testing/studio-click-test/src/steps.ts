@@ -6,6 +6,7 @@ import { accountSwitcher, connectionRow, httpsOnly } from "./steps/connections.t
 import { demoWorkspace } from "./steps/demo-workspace.ts";
 import { engineAnswers } from "./steps/engine-answers.ts";
 import { messengerEmpty } from "./steps/messenger-empty.ts";
+import { placesOpen } from "./steps/places-open.ts";
 import { settingsFormats, settingsTheme } from "./steps/settings-display.ts";
 import { settingsHostSections } from "./steps/settings-host.ts";
 import { chatComesBack, keyHeld } from "./steps/try-it.ts";
@@ -16,9 +17,9 @@ import { windowTabs } from "./steps/window-tabs.ts";
  * Connections (HAL-18868) straight after Connect Paperclip, then the Studio basics (HAL-18866),
  * with Close workspace last of them because it leaves the window on Welcome, then Settings
  * (HAL-18867), whose steps open the demo again first, then the Try it steps (HAL-18869), which
- * read step 1's chat in the reopened demo. Connections comes first because the app restart after
- * a failing step signs step 3's connection out (the agent host keeps its key only in memory), so
- * a failure in between would fail these steps too.
+ * read step 1's chat in the reopened demo, then the other places (HAL-18870). Connections comes
+ * first because the app restart after a failing step signs step 3's connection out (the agent host
+ * keeps its key only in memory), so a failure in between would fail these steps too.
  */
 export const clickTestSteps: readonly Step[] = [
   engineAnswers,
@@ -36,4 +37,5 @@ export const clickTestSteps: readonly Step[] = [
   settingsHostSections,
   chatComesBack,
   keyHeld,
+  placesOpen,
 ];

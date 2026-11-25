@@ -53,8 +53,11 @@ function holdsTheKey(studio: FakeStudio) {
 }
 
 verifies("studio-click-test.try-it-steps", () => {
-  it("come last, after the Settings steps reopened the demo", () => {
-    expect(clickTestSteps.slice(-3).map((step) => step.id)).toEqual([
+  // Straight after them, as the requirement says; the places step (HAL-18870) may follow.
+  it("come straight after the Settings steps reopened the demo", () => {
+    const ids = clickTestSteps.map((step) => step.id);
+    const lastSettings = ids.indexOf("settings-host-sections");
+    expect(ids.slice(lastSettings, lastSettings + 3)).toEqual([
       "settings-host-sections",
       "try-it-saved",
       "try-it-key",

@@ -64,6 +64,7 @@ The steps, in `src/steps/`:
 | 13 | Agent sandbox and About Halonic | `settings.agent-sandbox-section`, `settings.agent-sandbox-state`, `settings.about-section` | Agent sandbox shows a state chip without a button pressed, and About Halonic shows Check now and Update Halonic automatically |
 | 14 | Writer's Try it chat comes back | `agents.chat.saved`, `agents.chat.first-load` | in the demo the Settings steps opened again, Writer opened from the Agents list shows step 1's message |
 | 15 | A key in a Try it message is held | `agents.chat.box-lines` | a message with a made-up key stays out of the chat while the key line shows, and Send anyway sends it |
+| 16 | The places open | `shell.sidebar-places`, `inbox.page`, `inbox.request`, `runs.app-list`, `library.library-place`, `library.library-page`, `source-control.changes-page` | with Settings closed, Inbox, Runs, Library and Changes each open from Places and show their own text (New request, the Runs app's "No runs yet today.", the Skills sentence, a Changes state); every place is tried, and the note names each that failed |
 
 Steps 4 to 7 cover the Connections requirements (`requirements/connections-steps.md`, HAL-18868).
 They come straight after Connect Paperclip: the restart after a failing step signs step 3's
@@ -74,8 +75,9 @@ failing (`connections.list-retry`), a signed-out or expiring key, and a keychain
 Steps 8 to 10 are the Studio basics (HAL-18866), steps 11 to 13 Settings (HAL-18867). Close workspace
 ends the basics because it leaves the window on Welcome; a later step that needs a workspace, such
 as each Settings step, opens the demo again from there. Steps 14 and 15 are Try it (HAL-18869);
-they come last so they find step 1's chat in that reopened demo. The Build chat has no step: the
-desktop app doesn't load the Assistant feature.
+they come straight after Settings so they find step 1's chat in that reopened demo. The Build chat
+has no step: the desktop app doesn't load the Assistant feature. Step 16 opens the other places
+(HAL-18870) last, so its page visits come after Try it has read the chat.
 
 Each step names, in its file, the requirement ids it checks (`requirements`), and the results table
 shows them in its Requirements column. The package's tests fail when a step names none, or an id
