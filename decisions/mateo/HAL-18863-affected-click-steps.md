@@ -3,6 +3,7 @@
 - Approval: the task asks for this change (HAL-18863, point 3 of the click-test plan the board
   approved on HAL-18716); Liam approves and signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:MVSQXTlyTagzrs62UrlA2S3oIymy6HLl2z2Jmev06V0HGxvOB37mMhd7JwqKQUsnO2GHk/Ug691YPaXNabI3Ag==
 
 ## What changes
 
