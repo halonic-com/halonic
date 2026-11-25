@@ -36,7 +36,7 @@ function withProject(item: InboxItem, project: MessagingProject | undefined): In
 }
 
 /** Runs `work` on every item, at most `limit` at a time. */
-async function eachLimited<T>(
+export async function eachLimited<T>(
   items: readonly T[],
   limit: number,
   work: (item: T) => Promise<void>,

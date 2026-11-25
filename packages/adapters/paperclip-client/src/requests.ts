@@ -120,6 +120,9 @@ export const paperclipRequests = {
     path: "/api/issues/:task",
     body: { fields: ["description"] },
   },
+  // Channel work lines (HAL-18120): a child task's history, read for its hand-offs. The child
+  // tasks themselves come from listTasks with `parentId=`, and replies from listComments.
+  listTaskActivity: { method: "GET", path: "/api/issues/:task/activity" },
 } as const satisfies Record<string, RequestRule>;
 
 /**

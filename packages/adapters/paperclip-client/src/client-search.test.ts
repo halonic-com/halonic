@@ -145,6 +145,8 @@ verifies("agent-host.paperclip-key", () => {
         "createChannelLabel",
         "createChannel",
         "updateChannel",
+        // Channel work lines (HAL-18120), pinned in channel-work.test.ts.
+        "listTaskActivity",
       ]);
     });
   });

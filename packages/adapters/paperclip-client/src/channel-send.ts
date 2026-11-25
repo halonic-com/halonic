@@ -143,7 +143,9 @@ export class PaperclipChannelSender {
     });
     const child = text(created.kind === "ok" ? asRecord(created.body) : undefined, "id");
     if (child === undefined) {
-      return { state: "failed", since };
+      // Paperclip's own reason, when it gave one, so the line can say why (HAL-17514, k11b).
+      const reason = created.kind === "failed" ? created.detail : undefined;
+      return { state: "failed", since, ...(reason === undefined ? {} : { reason }) };
     }
     return { state: "starting", work: context.ids.make("task", child), since };
   }
