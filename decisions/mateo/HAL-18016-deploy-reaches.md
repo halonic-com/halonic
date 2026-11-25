@@ -2,6 +2,7 @@
 
 - Approval: the reviewer approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:0xfQ9Q9i9oN0yu+6Ko7mHbcT07HSX1L76wJeTmfMcE0gG0in9eqTBiEVomZx1ReRZuycZho1JzF+ujkpQpOLDQ==
 
 ## What changes
 
