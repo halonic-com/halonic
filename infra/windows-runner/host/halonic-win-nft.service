@@ -1,0 +1,19 @@
+[Unit]
+Description=Halonic Windows runner VM network rules (nft table inet halonic_win)
+# libvirtd requires this unit (RequiredBy= below): if the rules don't load, libvirtd doesn't
+# start and neither VM runs, the same fail-closed model as halonic-ci-nft.service.
+After=network-pre.target
+Before=libvirtd.service
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/nft -f /etc/halonic-win/halonic-win.nft
+ExecReload=/usr/sbin/nft -f /etc/halonic-win/halonic-win.nft
+# No ExecStop: the VM keeps running without libvirtd, so the rules must stay. The file swaps the
+# table atomically (its own `delete table`), and a load that fails keeps the old one.
+
+[Install]
+WantedBy=multi-user.target
+RequiredBy=libvirtd.service

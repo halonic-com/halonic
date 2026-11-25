@@ -1,0 +1,15 @@
+# sshd in the Windows runner VM: the host's key only, no passwords, no forwarding.
+Port 22
+AuthenticationMethods publickey
+PubkeyAuthentication yes
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitEmptyPasswords no
+AllowUsers halonic
+AllowTcpForwarding no
+GatewayPorts no
+PermitTunnel no
+X11Forwarding no
+Subsystem sftp sftp-server.exe
+Match Group administrators
+  AuthorizedKeysFile __PROGRAMDATA__/ssh/administrators_authorized_keys
