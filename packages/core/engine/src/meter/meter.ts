@@ -62,6 +62,12 @@ interface MadeByEngine {
 export type ModelCallUsage = MadeByEngine & {
   readonly kind: "model_call";
   readonly runId: string;
+  /**
+   * `<runId>:<seq>` of the call's logged `llm.response`. The same call always
+   * gets the same id, so a meter that keeps the ids it has recorded counts a
+   * call recorded twice once.
+   */
+  readonly callId: string;
   /** `null` for an answer from the cache, which called no model. */
   readonly usage: Usage | null;
   /** In the budget's currency; 0 for a call a subscription paid, an unpriced one and a cached one. */

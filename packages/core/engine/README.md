@@ -443,7 +443,8 @@ holds back the most a harness step may use; `settle(reservation, times)` records
 lets go of the rest; `record(principal, usage)` counts a model call or a run's end. The principal is `{ actor, scope, role }`, and only the host that verified it gives it;
 an organisation's scope (`o/…`) shares one pool. The meter only takes what the engine makes:
 `modelCallUsageOf` counts a logged `llm.response` with `modelCallCharge`, the rule a run's summary
-adds calls up with, `stepTimesOf` times a step by the engine's `Clock`, and `runEndUsageOf` takes an
+adds calls up with, and names the call `<runId>:<seq>` of that response, so a meter that keeps the
+ids it has recorded counts a call recorded twice once (requirement `engine.meter-call-id`); `stepTimesOf` times a step by the engine's `Clock`, and `runEndUsageOf` takes an
 ended run's state. Their types carry a mark no other package can write, so a step can't report its
 own use (requirement `engine.meter-port`). `NoMeter` allows everything and records nothing.
 

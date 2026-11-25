@@ -14,11 +14,18 @@ export type LoggedModelResponse = Extract<RunEvent, { type: "llm.response" }>;
 /**
  * What a logged model call counts for, by the rule a run's summary adds calls
  * up with (`events.summary-cost`): a call a subscription paid, an unpriced one
- * and a cached one cost 0, and a cached one has no tokens.
+ * and a cached one cost 0, and a cached one has no tokens. Its `callId` is
+ * the response's place in the run log (requirement `engine.meter-call-id`),
+ * so it never changes for that call.
  */
 export function modelCallUsageOf(response: LoggedModelResponse): ModelCallUsage {
   const charge = modelCallCharge(response);
-  const usage = { kind: "model_call", runId: response.runId, ...charge };
+  const usage = {
+    kind: "model_call",
+    runId: response.runId,
+    callId: `${response.runId}:${response.seq}`,
+    ...charge,
+  };
   // The cast adds the mark only this package may add.
   return usage as ModelCallUsage;
 }
