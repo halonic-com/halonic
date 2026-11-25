@@ -3,6 +3,14 @@ export {
   CoordinationRequestCountStore,
   type RequestCountStore as DailyRequestCounter,
 } from "@halonicjs/host-server";
+export { ConsoleNotRunningError, callConsoleSocket } from "./console-call.ts";
+export {
+  type ConsoleListening,
+  ConsoleSocketError,
+  type ConsoleSocketOptions,
+  consoleSocketPath,
+  listenOnConsoleSocket,
+} from "./console-socket.ts";
 export { openDiskRequestCountStore } from "./disk-request-count-store.ts";
 export type { NetworkInterfaces } from "./lan-address.ts";
 export {

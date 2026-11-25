@@ -74,8 +74,8 @@ export interface DevicePairing {
     deviceName: string,
     passwordHash: string,
   ): Promise<{ pendingId: string; checkCode: string } | null>;
-  /** The requests waiting for Allow. */
-  waiting(passwordHash: string): Promise<readonly PairingRequestView[]>;
+  /** The requests waiting for Allow; with `code`, only the one made with that code. */
+  waiting(passwordHash: string, code?: string): Promise<readonly PairingRequestView[]>;
   /** Allows the waiting request with this id; `false` when there is none. */
   allow(requestId: string, allowedBy: AllowedBy, passwordHash: string): Promise<boolean>;
   /** Polls a pending ID; once allowed, starts the device's session and gives its token once. */
@@ -157,8 +157,12 @@ export function createDevicePairing(ports: PairingPorts, devices: DeviceSessions
       return accepted ? { pendingId, checkCode: request.checkCode } : null;
     },
 
-    async waiting(passwordHash) {
-      return (await read(passwordHash)).flatMap(({ request }) =>
+    async waiting(passwordHash, code) {
+      const codeHash = code === undefined ? undefined : await sha256Hex(plainCode(code));
+      const live = await read(passwordHash);
+      const asked =
+        codeHash === undefined ? live : live.filter((entry) => sameHash(entry.codeHash, codeHash));
+      return asked.flatMap(({ request }) =>
         request === undefined || request.allowedBy !== undefined
           ? []
           : [
@@ -246,12 +250,20 @@ function hasText(value: unknown, fields: readonly string[]): boolean {
 
 function isStoredCode(value: unknown): value is StoredCode {
   const request = (value as { request?: unknown } | null)?.request;
-  const requestFields = ["id", "pendingHash", "deviceName", "checkCode", "expiresAt"];
   const generation = (value as { generation?: unknown } | null)?.generation;
   return (
     hasText(value, ["codeHash", "expiresAt", "password"]) &&
     (generation === null || typeof generation === "string") &&
-    (request === undefined || hasText(request, requestFields))
+    (request === undefined || isWaitingRequest(request))
+  );
+}
+
+/** A request's text fields, and `allowedBy` only as text, so a record can't allow on a number. */
+function isWaitingRequest(value: unknown): value is WaitingRequest {
+  const allowedBy = (value as { allowedBy?: unknown } | null)?.allowedBy;
+  return (
+    hasText(value, ["id", "pendingHash", "deviceName", "checkCode", "expiresAt"]) &&
+    (allowedBy === undefined || typeof allowedBy === "string")
   );
 }
 

@@ -45,6 +45,15 @@ export type {
 } from "./cloud-sign-in-api.ts";
 export { CoordinationRequestCountStore } from "./coordination-request-count-store.ts";
 export { createServer } from "./create-server.ts";
+export {
+  type ConsoleRefusal,
+  type ConsoleReply,
+  type ConsoleRequest,
+  createDeviceConsole,
+  type DeviceConsole,
+} from "./device-console.ts";
+export { type PairingRequestView, pairingLifetimeMs } from "./device-pairing.ts";
+export type { DeviceView } from "./device-sessions.ts";
 export type {
   EngineHelloBody,
   EngineRoutines,

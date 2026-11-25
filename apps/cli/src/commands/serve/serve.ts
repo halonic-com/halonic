@@ -66,6 +66,7 @@ import { workspaceAgentNames } from "./agent-names.ts";
 import { openChoiceHistory } from "./choice-files.ts";
 import { workspaceGoogleRead } from "./google-read.ts";
 import { startsOnLiveVersion } from "./live-version-runs.ts";
+import { type ConsoleTransport, openServeConsole, type ServeConsole } from "./serve-console.ts";
 import { type ServedRoutines, servedRoutines } from "./serve-routines.ts";
 import { servedModelChoice } from "./served-model-choice.ts";
 import { studioPageIsOutdated } from "./studio-page-age.ts";
@@ -87,6 +88,8 @@ export interface ServeSetup extends RunSetup {
    * command by default, and none when only `studioFolder` is given.
    */
   readonly studioApp?: string;
+  /** How `serve` offers its console to `serve pair` and `serve devices`; the Unix socket by default. */
+  readonly console?: ConsoleTransport;
 }
 
 /** Where the built Studio page is and the app it is built from. */
@@ -249,18 +252,18 @@ async function serveVersions(
     });
     servePort = server.port;
     try {
-      const name = printable(workspaceNameOf(workspace, dir));
-      const address = listen.publicOrigin ?? `http://localhost:${server.port}`;
-      context.printAhead(serveMessages.serving(name, address).phrase);
-      if (!(await passwordIsSet(context))) context.printAhead(serveMessages.noPassword().phrase);
-      const studioLine = await studioPageLine(setup);
-      if (studioLine !== null) context.printAhead(studioLine);
-      // Each webhook routine's address, so a routine that never starts says why (HAL-14299).
-      const loaded = await versions.routines.listLoaded();
-      for (const line of await webhookRoutineLines(loaded, context.secrets, address)) {
-        context.printAhead(line);
+      // The console for `serve pair` and `serve devices`, over the engine's own coordination;
+      // open before the "Serving" line, so both commands work once it shows.
+      const deviceConsole = await openServeConsole(context, setup, dir, engine);
+      try {
+        await printServing(context, setup, versions, deviceConsole, {
+          name: printable(workspaceNameOf(workspace, dir)),
+          address: listen.publicOrigin ?? `http://localhost:${server.port}`,
+        });
+        await stopped(engine.signal);
+      } finally {
+        await deviceConsole.close();
       }
-      await stopped(engine.signal);
     } finally {
       await server.close();
     }
@@ -269,6 +272,26 @@ async function serveVersions(
   }
   if (engine.stuck.aborted) throw engine.stuck.reason;
   return { stopped: true, json: {} };
+}
+
+/** The "Serving" line and the lines under it, and on stderr why the console didn't open. */
+async function printServing(
+  context: CommandContext,
+  setup: ServeSetup,
+  versions: WatchedVersions,
+  deviceConsole: ServeConsole,
+  served: { readonly name: string; readonly address: string },
+): Promise<void> {
+  context.printAhead(serveMessages.serving(served.name, served.address).phrase);
+  if (!(await passwordIsSet(context))) context.printAhead(serveMessages.noPassword().phrase);
+  if (deviceConsole.warning !== null) context.warn(deviceConsole.warning);
+  const studioLine = await studioPageLine(setup);
+  if (studioLine !== null) context.printAhead(studioLine);
+  // Each webhook routine's address, so a routine that never starts says why (HAL-14299).
+  const loaded = await versions.routines.listLoaded();
+  for (const line of await webhookRoutineLines(loaded, context.secrets, served.address)) {
+    context.printAhead(line);
+  }
 }
 
 function studioFolderOf(setup: ServeSetup): string | null {

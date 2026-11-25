@@ -6,8 +6,11 @@ import { errorResponse, serverErrors } from "./errors.ts";
 import { isJsonRequest } from "./run-routes.ts";
 import { countLoginAttempt, passwordSecretName, type SignIn, tooManyAttempts } from "./sign-in.ts";
 
-/** The fields of a JSON body the device routes read, each with the pattern its text must match. */
-const fieldPatterns = {
+/**
+ * The fields of a JSON body the device routes read, each with the pattern its text must match.
+ * The console channel reads `requestId` and `deviceId` with the same patterns.
+ */
+export const fieldPatterns = {
   code: /^[\w -]{1,32}$/,
   // No control or format characters (bidi or zero-width ones), so a name can't pass for another's.
   deviceName: /^[^\p{Cc}\p{Cf}]{1,80}$/u,
