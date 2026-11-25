@@ -2,6 +2,7 @@ import { cp, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { nodeCommandSearch } from "@halonicjs/adapter-doctor-node";
 import { FileTrustStore } from "@halonicjs/adapter-fs-node";
 import { WorkflowRuns } from "@halonicjs/app";
 import type { RunEvent } from "@halonicjs/events";
@@ -42,7 +43,8 @@ const hostileServer = fileURLToPath(
 const acmeExample = fileURLToPath(new URL("../../../examples/acme", import.meta.url));
 const runTimeout = 120_000;
 const clock = fixedClock(Date.UTC(2026, 10, 25, 9));
-const noCommands = { path: undefined, endings: [] };
+// The trust names the program `node` resolves to, as the start gate checks it.
+const commands = nodeCommandSearch();
 
 let base: string;
 let acme: string;
@@ -115,7 +117,7 @@ function trustMachine(): WorkspaceTrustMachine {
   return {
     trustStore: new FileTrustStore(trustFolder(profileFolder(profileEnvironment()))),
     clock,
-    commandSearch: noCommands,
+    commandSearch: commands,
   };
 }
 
@@ -123,7 +125,7 @@ function trustMachine(): WorkspaceTrustMachine {
 async function trust(): Promise<void> {
   const machine = trustMachine();
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
-  const read = await readWorkspaceTrust(dir, noCommands, await savedVersionOf(dir));
+  const read = await readWorkspaceTrust(dir, commands, await savedVersionOf(dir));
   const service = cliTrustService(machine.trustStore, machine.clock);
   const check = await service.check(read.subject);
   assertTrustable(check, read);
@@ -131,7 +133,7 @@ async function trust(): Promise<void> {
   if (!granted.ok) throw new Error(`The workspace couldn't be trusted: ${granted.error.kind}`);
 }
 
-/** What one run saw: the tool's answers in call order, and the other events, to show when the answers are missing. */
+/** What one run saw: the tool's answers in call order, and its warnings and other events, to show when the answers are missing. */
 interface RunOutcome {
   readonly results: readonly string[];
   readonly others: string;
@@ -139,6 +141,7 @@ interface RunOutcome {
 
 /** Runs Weekly report with this computer's real connectors. */
 async function runReport(): Promise<RunOutcome> {
+  const warnings: string[] = [];
   const dir = await openWorkspaceDir({ positionals: [], options: {} }, { cwd: acme });
   const version = await savedVersionOf(dir);
   const grant = await trustedGrant(
@@ -153,7 +156,7 @@ async function runReport(): Promise<RunOutcome> {
     secrets: { get: async () => null },
     signal: new AbortController().signal,
     debug: () => undefined,
-    warn: () => undefined,
+    warn: (line: unknown) => warnings.push(JSON.stringify(line)),
   } as unknown as CommandContext;
   const engine = await openWorkspaceEngine(
     context,
@@ -188,7 +191,10 @@ async function runReport(): Promise<RunOutcome> {
   }
   return {
     results: events.flatMap((event) => (event.type === "tool.result" ? [event.result] : [])),
-    others: JSON.stringify(events.filter((event) => event.type !== "tool.result")),
+    others: JSON.stringify({
+      warnings,
+      events: events.filter((event) => event.type !== "tool.result"),
+    }),
   };
 }
 
