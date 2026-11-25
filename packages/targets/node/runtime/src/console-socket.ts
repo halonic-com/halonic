@@ -1,7 +1,15 @@
-import { chmod, lstat, mkdir, unlink } from "node:fs/promises";
+import { chmod } from "node:fs/promises";
 import { createServer, type Socket } from "node:net";
 import { dirname, join } from "node:path";
+import {
+  ConsoleSocketError,
+  expectOwn,
+  makeOwnFolder,
+  removeLeftoverSocket,
+} from "./console-folder.ts";
 import { readOneLine } from "./console-line.ts";
+
+export { ConsoleSocketError } from "./console-folder.ts";
 
 /**
  * The console channel of `halonic serve` (`server.device-pairing`, Julian on HAL-18561): a Unix
@@ -30,6 +38,9 @@ const maxRequestBytes = 4096;
 /** A connection that sends no whole request in this long is closed. */
 const idleMs = 10_000;
 
+/** The most connections open at once; one person at a terminal needs one. */
+const maxConnections = 8;
+
 /**
  * Where the console socket of a workspace is: in one `console` folder of the profile, named by
  * the start of the workspace's key. Not in the workspace's own folder, whose path is too long
@@ -37,20 +48,6 @@ const idleMs = 10_000;
  */
 export function consoleSocketPath(profileRoot: string, workspaceKey: string): string {
   return join(profileRoot, folderName, `${workspaceKey.slice(0, keyCharacters)}.sock`);
-}
-
-/** Why the console socket can't be opened or reached here. */
-export class ConsoleSocketError extends Error {
-  readonly reason: "windows" | "path-too-long" | "folder-not-private" | "not-our-socket";
-  /** The socket's path. */
-  readonly path: string;
-
-  constructor(reason: ConsoleSocketError["reason"], path: string) {
-    super(`The console socket can't be used at ${path} (${reason}).`);
-    this.name = "ConsoleSocketError";
-    this.reason = reason;
-    this.path = path;
-  }
 }
 
 /** Refuses a place the socket can't safely be at, before anything is made there. */
@@ -67,6 +64,11 @@ export interface ConsoleSocketOptions {
   readonly answer: (request: unknown) => Promise<unknown>;
   /** Where the cause of a failed request goes; the caller only sees the connection close. */
   readonly logError: (error: unknown) => void;
+  /**
+   * The user the socket and its folders must belong to; this process's by default. Tests give
+   * another, to stand for folders someone else owns.
+   */
+  readonly uid?: number;
 }
 
 /** An open console socket. */
@@ -90,8 +92,13 @@ export async function listenOnConsoleSocket(
 ): Promise<ConsoleListening> {
   const { path } = options;
   checkConsolePlace(path);
+  const uid = options.uid ?? process.getuid?.() ?? -1;
   const connections = new Set<Socket>();
   const server = createServer((socket) => {
+    if (!peerIsAllowed(socket)) {
+      socket.destroy();
+      return;
+    }
     connections.add(socket);
     socket.once("close", () => connections.delete(socket));
     answerConnection(socket, options).catch((error: unknown) => {
@@ -99,10 +106,11 @@ export async function listenOnConsoleSocket(
       socket.destroy();
     });
   });
+  server.maxConnections = maxConnections;
   const umask = process.umask(0o077);
   try {
-    await makeOwnFolder(dirname(path), path);
-    await removeLeftoverSocket(path);
+    await makeOwnFolder(dirname(path), path, uid);
+    await removeLeftoverSocket(path, uid);
     await new Promise<void>((resolve, reject) => {
       server.once("error", reject);
       server.listen(path, () => {
@@ -118,16 +126,26 @@ export async function listenOnConsoleSocket(
       server.close(() => resolve());
       for (const socket of connections) socket.destroy();
     });
-    await removeLeftoverSocket(path).catch(() => undefined);
+    await removeLeftoverSocket(path, uid).catch(() => undefined);
   };
   try {
     await chmod(path, 0o600);
-    await expectOwn(path, "socket", 0o600);
+    await expectOwn(path, "socket", 0o600, uid);
   } catch (error) {
     await close();
     throw error;
   }
   return { path, close };
+}
+
+/**
+ * Whether the user at the other end of a connection may use the console. Node can't read a
+ * connection's user id (`SO_PEERCRED`, `getpeereid`) without native code, so every connection
+ * passes here and the folder is the guard (Julian, HAL-18620: option 3). A native check, should
+ * it ever be wanted, goes in this one place.
+ */
+function peerIsAllowed(_socket: Socket): boolean {
+  return true;
 }
 
 /** Reads one request, answers it, and closes the connection. */
@@ -146,42 +164,4 @@ async function answerConnection(socket: Socket, options: ConsoleSocketOptions): 
   }
   const reply = await options.answer(request);
   socket.end(`${JSON.stringify(reply)}\n`);
-}
-
-/** Makes the socket's folder 0700, or checks the one there is: this user's, a folder, 0700. */
-async function makeOwnFolder(folder: string, path: string): Promise<void> {
-  await mkdir(folder, { recursive: true, mode: 0o700 });
-  // An existing folder isn't made private here: a folder someone else could open may already
-  // hold their socket or link, so it is refused, and the person sees why.
-  await expectOwn(folder, "folder", 0o700, path);
-}
-
-/** Removes a socket of this user's at `path`; refuses anything else there. */
-async function removeLeftoverSocket(path: string): Promise<void> {
-  const found = await lstat(path).catch((error: NodeJS.ErrnoException) => {
-    if (error.code === "ENOENT") return null;
-    throw error;
-  });
-  if (found === null) return;
-  if (!found.isSocket() || found.uid !== process.getuid?.()) {
-    throw new ConsoleSocketError("not-our-socket", path);
-  }
-  await unlink(path);
-}
-
-/**
- * Checks that `place` is, without following a link, this user's `kind` with exactly `mode`. The
- * error names the socket's `path`.
- */
-async function expectOwn(
-  place: string,
-  kind: "folder" | "socket",
-  mode: number,
-  path = place,
-): Promise<void> {
-  const found = await lstat(place);
-  const isKind = kind === "folder" ? found.isDirectory() : found.isSocket();
-  if (!isKind || found.uid !== process.getuid?.() || (found.mode & 0o777) !== mode) {
-    throw new ConsoleSocketError(kind === "folder" ? "folder-not-private" : "not-our-socket", path);
-  }
 }

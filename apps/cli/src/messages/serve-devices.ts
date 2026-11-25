@@ -38,6 +38,13 @@ export const serveDevicesMessages = defineMessages("serveDevices", {
    */
   consoleNotPrivate: (folder: string) =>
     phrase`${folder} isn't private to you, or holds a file Halonic didn't put there. Remove that folder, then start halonic serve again.`,
+  /**
+   * A folder above the console's isn't this user's or root's, or others may write to it, so they
+   * could swap the console's folder. `folder` is that folder. In the words of
+   * {@link consoleNotPrivate}, which the copy check approved (HAL-18645).
+   */
+  consoleParentNotPrivate: (folder: string) =>
+    phrase`${folder} isn't private to you: other users can change it. Make it writable only by you, then start halonic serve again.`,
   /** The line on stderr when `serve`'s console channel couldn't open; it serves on. */
   consoleNotOpened: (reason: string) =>
     phrase`${markPart("needsYou")} halonic serve pair and halonic serve devices won't work: ${reason}`,

@@ -5,7 +5,6 @@
 // server's routes see.
 
 import { realpath } from "node:fs/promises";
-import { dirname } from "node:path";
 import type { RoutineEngine } from "@halonicjs/engine";
 import { createDeviceConsole } from "@halonicjs/host-server";
 import { profileFolder, workspaceFolders } from "@halonicjs/profile";
@@ -106,7 +105,9 @@ function reasonOf(error: ConsoleSocketError): Message {
       return serveDevicesMessages.consolePathTooLong();
     case "folder-not-private":
     case "not-our-socket":
-      return serveDevicesMessages.consoleNotPrivate(printable(dirname(error.path)));
+      return serveDevicesMessages.consoleNotPrivate(printable(error.folder));
+    case "parent-not-private":
+      return serveDevicesMessages.consoleParentNotPrivate(printable(error.folder));
   }
 }
 

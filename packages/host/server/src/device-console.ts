@@ -93,19 +93,31 @@ export function createDeviceConsole(ports: ConsolePorts): DeviceConsole {
 
 /** `raw` as a {@link ConsoleRequest}, or `null` when it is none: no other field is read. */
 function consoleRequestOf(raw: unknown): ConsoleRequest | null {
-  const fields = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
-  const { op, code, requestId, deviceId } = fields;
-  if (op === "code" || op === "devices") {
-    return { op };
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return null;
   }
-  if (op === "waiting" && typeof code === "string" && fieldPatterns.code.test(code)) {
-    return { op, code };
+  const fields = raw as Record<string, unknown>;
+  const op = fields["op"];
+  const field = typeof op === "string" && Object.hasOwn(opFields, op) ? opFields[op] : undefined;
+  // An unknown operation, or any field the operation doesn't take, refuses the whole request.
+  const names = Object.keys(fields);
+  if (field === undefined || names.length !== (field === null ? 1 : 2)) {
+    return null;
   }
-  if (op === "allow" && typeof requestId === "string" && fieldPatterns.requestId.test(requestId)) {
-    return { op, requestId };
+  if (field === null) {
+    return { op } as ConsoleRequest;
   }
-  if (op === "revoke" && typeof deviceId === "string" && fieldPatterns.deviceId.test(deviceId)) {
-    return { op, deviceId };
-  }
-  return null;
+  const value = fields[field];
+  return typeof value === "string" && fieldPatterns[field].test(value)
+    ? ({ op, [field]: value } as ConsoleRequest)
+    : null;
 }
+
+/** The one field each operation takes besides `op`, or `null` for none. */
+const opFields: Readonly<Record<string, "code" | "requestId" | "deviceId" | null>> = {
+  code: null,
+  devices: null,
+  waiting: "code",
+  allow: "requestId",
+  revoke: "deviceId",
+};
