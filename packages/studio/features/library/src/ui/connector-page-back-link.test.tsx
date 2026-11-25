@@ -18,11 +18,11 @@ import { render, unmountAll } from "../test-support/render.tsx";
 
 const original = { matchMedia: window.matchMedia };
 
-// The connector page loads lazily. On a busy CI machine the first import (transforming the page and
-// everything behind it) can take longer than the test's own 5 s, so do it up front under the hook's
-// longer limit; the test then only waits for the already loaded page to draw.
+// The connector page and the Library place load lazily. On a busy CI machine the first import
+// (transforming the page and everything behind it) can take longer than the test's own 5 s, so do
+// it up front under the hook's longer limit; the test then only waits for the already loaded pages to draw.
 beforeAll(async () => {
-  await import("./connector-page.tsx");
+  await Promise.all([import("./connector-page.tsx"), import("./library-place.tsx")]);
 }, 60_000);
 
 beforeEach(() => {
@@ -115,5 +115,10 @@ verifies("shell.page-back-link", () => {
 
     act(() => link?.click());
     expect(workspace.tabs.active.history.at(-1)?.key).toBe("library");
+    await settle(container);
+    // The Library place loads lazily too. Test files share their modules here (`isolate: false`), so
+    // an import still running when this file's environment is torn down fails every later file that
+    // imports library-place.tsx (HAL-18843): wait for the place to draw before the test ends.
+    expect(container.querySelector("main h1")?.textContent).toBe("Library");
   });
 });
