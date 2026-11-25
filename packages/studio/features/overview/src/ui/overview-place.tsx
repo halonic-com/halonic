@@ -1,12 +1,16 @@
-import type { PlaceViewProps } from "@halonicjs/studio-shell";
+import { connectFrom, NoConnections, type PlaceViewProps } from "@halonicjs/studio-shell";
 import { OverviewMessagingService, OverviewService, RecapService } from "../api.ts";
 import { OverviewView } from "./overview-view.tsx";
 import { RecapView } from "./recap-view.tsx";
 
+/** What connecting Paperclip gives Overview (Sofia's team wording decision on HAL-18954). */
+const connectLine = "Connect Paperclip to see who works on what and which work is blocked.";
+
 /**
  * The Overview place under the sidebar's Team group: the recap since the person last opened it,
  * then who works on what and which work is blocked. Without `AgentMessaging` (no source
- * connected in this Studio) it reads nothing and says there are no agents yet.
+ * connected in this Studio) it reads nothing and shows the shell's No connections, as the
+ * Messenger does, so it doesn't read as a Paperclip with no agents.
  */
 export function OverviewPlace({ context }: PlaceViewProps) {
   const connected = context.services.find(OverviewMessagingService) !== undefined;
@@ -21,7 +25,7 @@ export function OverviewPlace({ context }: PlaceViewProps) {
           <OverviewView store={context.services.get(OverviewService)} />
         </>
       ) : (
-        <p className="px-4 text-fg-muted">No agents yet.</p>
+        <NoConnections line={connectLine} onConnect={connectFrom(context)} />
       )}
     </div>
   );
