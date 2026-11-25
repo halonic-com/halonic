@@ -6,6 +6,7 @@
 ## What changes
 
 - `app.deploy-service`: the service gets `plan`, for `halonic deploy <deployment> --plan` (deploy flow 2.11). It gives the target's plan and what of it is new against what's live. It doesn't deploy, take the lock or ask anything, and a held lock is in the plan, not an error. It also gets `deploymentRef`, so the command makes the request's deployment through the same account check `status` uses.
+- `app.deploy-service`: the lock and missing-answers refusals no longer start with "Couldn't deploy web:". The command line already puts that before every error of `halonic deploy`, so it showed twice.
 - New `app.deploy-reaches`: what a deployment on Cloudflare would reach, read from the workspace's providers, connectors and agents, as the summary's "Reaches" row (2.7). The list is complete or there is none: anything that can't be placed on an internet address is listed with its file and a reason, as the 3.6 lines show it.
 
 ## Why

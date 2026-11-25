@@ -159,7 +159,7 @@ verifies("app.deploy-service", () => {
     await expect(failure).rejects.toMatchObject({
       kind: "conflict",
       message:
-        "Couldn't deploy web: a deploy of web by sam@example.com is still running, started 2 min ago. Nothing changed on Cloudflare.",
+        "a deploy of web by sam@example.com is still running, started 2 min ago. Nothing changed on Cloudflare.",
       fix: "Wait for it to finish, then run again. If it was stopped without finishing, run again after 14:42, when its lock runs out.",
     });
     expect(asked).toEqual([]);
@@ -200,7 +200,7 @@ verifies("app.deploy-service", () => {
       await expect(race(holder).failure).rejects.toMatchObject({
         kind: "conflict",
         message:
-          "Couldn't deploy web: a deploy of web by kim@example.com is still running, started 1 min ago. Nothing changed on Cloudflare.",
+          "a deploy of web by kim@example.com is still running, started 1 min ago. Nothing changed on Cloudflare.",
       });
       const started: DeployEvent = {
         step: "upload",
@@ -232,7 +232,7 @@ verifies("app.deploy-service", () => {
     await expect(failure).rejects.toMatchObject({
       kind: "invalid_input",
       message:
-        "Couldn't deploy web: 2 answers are missing, and there's no terminal to ask you. Nothing changed on Cloudflare.",
+        "2 answers are missing, and there's no terminal to ask you. Nothing changed on Cloudflare.",
       fix: "Pass them: --yes for the deploy question, and anthropic-key on --secrets-stdin.",
     });
     expect(deployed).toEqual([]);

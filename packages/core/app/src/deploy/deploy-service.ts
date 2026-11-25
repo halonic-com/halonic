@@ -82,8 +82,7 @@ export function createDeployService(deps: DeployServiceDeps) {
       const missing = input.secretNames.filter((name) => !input.secrets.has(name));
       const { questions } = input;
       if (questions === undefined) {
-        if (ask || missing.length > 0)
-          throw missingAnswersError(input.deployment.name, ask, missing);
+        if (ask || missing.length > 0) throw missingAnswersError(ask, missing);
         return deployNamingHolder(target, request, onEvent, deps);
       }
       const secrets = new Map(input.secrets);
@@ -183,14 +182,14 @@ function lockedError(name: string, holder: DeployLockHolder, deps: DeployService
   });
   return new KindedError(
     "conflict",
-    `Couldn't deploy ${name}: a deploy of ${name} by ${holder.who} is still running, started ${started}. Nothing changed on Cloudflare.`,
+    `a deploy of ${name} by ${holder.who} is still running, started ${started}. Nothing changed on Cloudflare.`,
     {
       fix: `Wait for it to finish, then run again. If it was stopped without finishing, run again after ${until}, when its lock runs out.`,
     },
   );
 }
 
-function missingAnswersError(name: string, ask: boolean, secrets: readonly string[]): KindedError {
+function missingAnswersError(ask: boolean, secrets: readonly string[]): KindedError {
   const count = (ask ? 1 : 0) + secrets.length;
   const parts = [
     ...(ask ? ["--yes for the deploy question"] : []),
@@ -199,7 +198,7 @@ function missingAnswersError(name: string, ask: boolean, secrets: readonly strin
   const answers = count === 1 ? "1 answer is" : `${count} answers are`;
   return new KindedError(
     "invalid_input",
-    `Couldn't deploy ${name}: ${answers} missing, and there's no terminal to ask you. Nothing changed on Cloudflare.`,
+    `${answers} missing, and there's no terminal to ask you. Nothing changed on Cloudflare.`,
     { fix: `Pass ${count === 1 ? "it" : "them"}: ${parts.join(", and ")}.` },
   );
 }
