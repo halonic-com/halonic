@@ -9,8 +9,11 @@ one setting, `mode`, which is `dry-run` unless the tool file says `write`. The l
 names the nine actions and the three that write instead of checking that none does.
 The JSON spec files for tools and the workspace snapshot are regenerated to match.
 
-`runtime.tools`' action-list test said no action was available until it had a handler;
-the three writing actions now have one, so it names them.
+`runtime.tools`' action-list test names the available actions; the three writing actions
+are added to it. Its handler-list test said no handler asks for a writing capability; it now
+says no read action's handler does, since the writing actions must. The new
+`runtime.paperclip-writes` tests check the other side: only writing actions declare one, and an
+action can't reach a client it didn't declare.
 
 ## Why
 
