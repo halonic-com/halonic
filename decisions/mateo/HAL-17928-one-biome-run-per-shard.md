@@ -3,6 +3,7 @@
 - Task: HAL-17928 (item C of the merge-time report on HAL-17891, routed on HAL-17926)
 - Approval: Liam decided on HAL-17928 (24 Nov) to replace the per-package lint task in a shard with one Biome run per shard; Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Nk0gJo0A+PyuQVaGlnZ5QT9HC1fBFeEgrxpua0G6/ycqACLJDHfpYt1iqvXsSUr8wbgwF+7clt8I+3PMss41BQ==
 
 ## What changes
 
