@@ -1,5 +1,5 @@
 {
-  "//": "Every external dependency, why we have it and where it may be used. Adding one needs Liam's approval. A package may use it when its name matches allowedIn (* matches any text) and its layer is in layers. cloudRuntime: true lets a library ship inside a cloud runtime bundle; only the user can approve one. See docs/guides/dependencies.md.",
+  "//": "Every external dependency, why we have it and where it may be used. Adding one needs Liam's approval. A package may use it when its name matches allowedIn (* matches any text) and its layer is in layers. cloudRuntime: true lets a library ship inside a cloud runtime bundle; only the user can approve one. The images section lists what each Dockerfile under packages/ may put in its image: its base image by digest, every file it downloads by URL and sha256, and the Debian packages it installs. Image contents follow the cloud-runtime rule: only the board approves a new one or a version bump, and approvedOn names the task with that approval. See docs/guides/dependencies.md.",
   "dependencies": {
     "@anthropic-ai/sandbox-runtime": {
       "category": "outside-world",
@@ -520,5 +520,6 @@
       "useInstead": "@halonicjs/schema-kit for validation",
       "cloudRuntime": true
     }
-  }
+  },
+  "images": {}
 }

@@ -13,6 +13,7 @@ import { checkDependencies } from "./dependencies.ts";
 import { checkEnvironmentSecrets } from "./environment-secrets.ts";
 import { checkFeatures } from "./features.ts";
 import { checkFileSize } from "./file-size.ts";
+import { checkImages } from "./images.ts";
 import { checkInvisibleCharacters } from "./invisible-characters.ts";
 import { checkLayers } from "./layers.ts";
 import { checkLockfile } from "./lockfile.ts";
@@ -35,6 +36,7 @@ export const rules: Readonly<Record<string, (context: CheckContext) => Report>> 
   "agents-md": checkAgentsMd,
   layers: checkLayers,
   dependencies: checkDependencies,
+  images: checkImages,
   advisories: (context) => checkAdvisories(context),
   "deny-toml": (context) => checkDeny(context),
   "migrations-additive": checkMigrationsAdditive,
