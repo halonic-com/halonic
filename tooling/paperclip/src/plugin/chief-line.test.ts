@@ -7,13 +7,14 @@ import { onChiefLineComment } from "./chief-line-signal.ts";
 import { manifest } from "./manifest.ts";
 
 verifies("paperclip.chief-line", () => {
-  test("the manifest declares the four routes board-only", () => {
+  test("the manifest declares the five routes board-only", () => {
     const routes = manifest.apiRoutes?.filter((route) => route.routeKey.startsWith("chief-line"));
     expect(routes?.map((route) => [route.method, route.path, route.auth])).toEqual([
       ["POST", "/chief-line/thread", "board"],
       ["GET", "/chief-line/thread", "board"],
       ["POST", "/chief-line/send", "board"],
       ["POST", "/chief-line/subscribe", "board"],
+      ["POST", "/chief-line/track", "board"],
     ]);
   });
 

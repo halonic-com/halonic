@@ -31,6 +31,8 @@ import { takeSnapshot } from "../snapshot/read.ts";
 import type { GitHubTokenKind, Snapshot } from "../snapshot/shape.ts";
 import { type StateApi, saveSnapshot } from "../snapshot/store.ts";
 import { readWatchersSettings, runMergeWatchers, type WatchersSettings } from "../watchers/run.ts";
+import { chiefLinePrPass } from "./chief-line-prs.ts";
+import { readChiefLineSettings } from "./chief-line-settings.ts";
 import { type CompanySource, listedCompanies } from "./companies.ts";
 import type { LifecycleRunner } from "./fast-track-lifecycle-job.ts";
 import { type HostApi, paperclipHost, unblockHost } from "./host.ts";
@@ -363,6 +365,17 @@ async function watchCompany(
     tasks,
     found,
     now,
+  });
+  // Server sessions' pull requests on their chief lines (HAL-18586); a failure is logged.
+  await chiefLinePrPass(ctx, {
+    companyId,
+    settings: readChiefLineSettings(await companyConfig(ctx.config, companyId)),
+    snapshot,
+    get,
+    watched: settings.repos,
+    dryRun: settings.dryRun,
+  }).catch((error: unknown) => {
+    ctx.logger.error(`Chief line PRs: couldn't run: ${(error as Error).message}`, { companyId });
   });
   // After the watcher's own work, so a failure here never holds up a task.
   await recordThinSpecOutcomes(ctx, { companyId, snapshot, found, get, now }).catch(

@@ -14,6 +14,7 @@ export const chiefLineRouteKeys = {
   thread: "chief-line-thread",
   subscribe: "chief-line-subscribe",
   boardPost: "board-post",
+  track: "chief-line-track",
 } as const;
 
 /** The chief line's settings, spread into the manifest's instance settings. */
@@ -136,6 +137,7 @@ export const chiefLineRoutes = (
     [chiefLineRouteKeys.send, "POST", "/chief-line/send"],
     [chiefLineRouteKeys.subscribe, "POST", "/chief-line/subscribe"],
     [chiefLineRouteKeys.boardPost, "POST", "/board/post"],
+    [chiefLineRouteKeys.track, "POST", "/chief-line/track"],
   ] as const
 ).map(([routeKey, method, path]) => ({
   routeKey,

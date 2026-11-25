@@ -7,6 +7,7 @@ import type {
   PluginStateClient,
 } from "@paperclipai/plugin-sdk";
 import { boardPost } from "./board-post.ts";
+import { trackPull } from "./chief-line-prs.ts";
 import {
   type ChiefLineRecord,
   type ChiefLineSettings,
@@ -433,6 +434,8 @@ export async function handleChiefLineRequest(
       return await readThread(ctx, input.companyId, settings, input.query);
     case chiefLineRouteKeys.boardPost:
       return await boardPost(ctx, input.companyId, settings, body, now);
+    case chiefLineRouteKeys.track:
+      return await trackPull(ctx, input.companyId, settings, body);
     default:
       return await subscribe(ctx, input.companyId, settings, body);
   }
