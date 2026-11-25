@@ -57,6 +57,9 @@ pub(super) async fn running_host<R: Runtime>(app: &AppHandle<R>) -> Result<Hands
         *state.start_checks.lock().map_err(|_| poisoned())? = updates;
         let handshake = started.handshake().clone();
         *host = Some(started);
+        // The background engines run harness steps through this host too.
+        #[cfg(desktop)]
+        crate::engines::sandbox_host_changed(&app, Some(&handshake));
         Ok(handshake)
     })
     .await

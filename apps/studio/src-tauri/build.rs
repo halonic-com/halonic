@@ -58,6 +58,7 @@ fn main() {
         "engine_stream",
         "engine_chat_stream",
         "engine_stream_end",
+        "engine_open",
         "http_fetch",
         "http_fetch_abort",
         "fs_list",

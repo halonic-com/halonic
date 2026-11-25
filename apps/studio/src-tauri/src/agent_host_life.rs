@@ -18,8 +18,11 @@ pub fn end_page_streams<R: Runtime>(app: &AppHandle<R>, page: &str) {
 
 /// Stops the host, as dropping it does, before the updater's installer
 /// replaces its file: the updater ends the shell with `exit`, which drops
-/// nothing (HAL-1206).
+/// nothing (HAL-1206). The background engines stop first, as Quit stops
+/// them, since their harness steps use the host.
 pub fn stop_host<R: Runtime>(app: &AppHandle<R>) {
+    #[cfg(desktop)]
+    crate::engines::stop_all(app);
     let Some(state) = app.try_state::<AgentHostState>() else {
         return;
     };

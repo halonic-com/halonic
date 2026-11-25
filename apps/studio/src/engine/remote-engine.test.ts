@@ -9,7 +9,7 @@ import {
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import type { RoutineRunStart } from "./engine-service.ts";
-import { openRemoteEngine, RemoteEngine } from "./remote-engine.ts";
+import { openRemoteEngine, openShellEngine, RemoteEngine } from "./remote-engine.ts";
 
 interface EngineCall {
   readonly route: string;
@@ -85,6 +85,59 @@ const nightly: RoutineRunStart = {
   workflow: { hubId: "acme", workflowId: "digest", input: {} },
 };
 const nightlyTrigger = { routineKey: "@workspace/nightly", at: "2026-11-21T08:00:00.000Z" };
+
+/**
+ * The shell's `engine_open`, which `opened` answers (a refusal when it throws), in front of
+ * {@link engineShell}. `asked` holds the commands in the order the page sent them.
+ */
+function openingShell(
+  opened: (args: Record<string, unknown>) => unknown,
+  routes: Record<string, (call: EngineCall) => EngineAnswer> = {},
+) {
+  const { ipc } = engineShell(routes);
+  const asked: string[] = [];
+  return {
+    asked,
+    ipc: {
+      ...ipc,
+      invoke: async (command: string, args?: Record<string, unknown>) => {
+        asked.push(command);
+        if (command === "engine_open") return opened(args ?? {});
+        return ipc.invoke(command, args);
+      },
+    },
+  };
+}
+
+verifies("studio.src-tauri.engine-lifetime", () => {
+  describe("openShellEngine", () => {
+    it("asks the shell for the workspace's engine before it looks for one", async () => {
+      const opened = vi.fn(() => null);
+      const { ipc, asked } = openingShell(opened, {
+        "GET /api/hello": () => ({ status: 200, body: { runExecutorVersion } }),
+      });
+
+      const engine = await openShellEngine(ipc, "acme", vi.fn());
+
+      expect(engine).toBeInstanceOf(RemoteEngine);
+      expect(opened).toHaveBeenCalledWith({ workspace: "acme" });
+      expect(asked).toEqual(["engine_open", "engine_request"]);
+    });
+
+    it("reports a refusal and gives none, so the page runs its own engine", async () => {
+      const reportError = vi.fn();
+      const refused = { kind: "engine_failed", message: "The engine didn't answer in time." };
+      const { ipc } = openingShell(() => {
+        throw refused;
+      });
+
+      const engine = await openShellEngine(ipc, "acme", reportError);
+
+      expect(engine).toBeUndefined();
+      expect(reportError).toHaveBeenCalledWith(refused);
+    });
+  });
+});
 
 verifies("studio.remote-engine", () => {
   describe("openRemoteEngine", () => {

@@ -62,6 +62,10 @@ mod engine;
 mod engine_lock;
 mod engine_routes;
 mod engine_sse;
+#[cfg(desktop)]
+mod engine_table;
+#[cfg(desktop)]
+mod engines;
 mod file_answers;
 mod file_arguments;
 mod files;
@@ -136,6 +140,9 @@ pub fn run() {
         .expect("the Studio shell could not start")
         .run(|app, event| {
             if matches!(event, RunEvent::Exit) {
+                // Each engine releases its own `engine.lock` as it stops.
+                #[cfg(desktop)]
+                engines::stop_all(app);
                 app.state::<engine_lock::EngineLockState>().release_all();
                 #[cfg(desktop)]
                 updates::install_at_quit(app);
@@ -199,6 +206,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
     let builder = builder
         .manage(actions::ActionState::default())
         .manage(updates::Updates::default())
+        .manage(engines::EnginesState::default())
         // Registered only so the shell can use it from Rust: no capability
         // grants its commands, so no page can call them.
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -292,6 +300,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
                     .release_window(window.label());
                 agent_host::end_page_streams(window.app_handle(), window.label());
                 engine::end_page(window.app_handle(), window.label());
+                #[cfg(desktop)]
+                engines::window_closed(window.app_handle(), window.label());
                 http_fetch::end_page_calls(window.app_handle(), window.label());
                 #[cfg(desktop)]
                 actions::end_page(window.app_handle(), window.label());
@@ -355,6 +365,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             engine::engine_stream,
             engine::chat_stream::engine_chat_stream,
             engine::engine_stream_end,
+            #[cfg(desktop)]
+            engines::engine_open,
             http_fetch::http_fetch,
             http_fetch::http_fetch_abort,
             files::fs_list,

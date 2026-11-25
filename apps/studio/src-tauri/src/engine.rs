@@ -82,11 +82,8 @@ impl EngineState {
     /// which `read_handshake` has checked: a loopback address and a token.
     /// A lock an earlier failure left broken is refused, not skipped.
     #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "the shell starts engines in B1 step 5 (HAL-14220)"
-        )
+        all(mobile, not(test)),
+        expect(dead_code, reason = "background engines run on desktop only")
     )]
     pub fn connect(&self, window: &str, handshake: Handshake) -> Result<(), EngineRefusal> {
         let mut connections = self.connections.lock().map_err(|_| poisoned())?;
@@ -98,11 +95,8 @@ impl EngineState {
     /// the window had open on it. The streams end even when an earlier
     /// failure left the lock broken; that is then refused.
     #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "the shell starts engines in B1 step 5 (HAL-14220)"
-        )
+        all(mobile, not(test)),
+        expect(dead_code, reason = "background engines run on desktop only")
     )]
     pub fn disconnect(&self, window: &str) -> Result<(), EngineRefusal> {
         let forgotten = self

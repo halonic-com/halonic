@@ -134,7 +134,7 @@ export async function openFolder(
       platform: device.platform ?? "linux",
       name,
       scope,
-      remoteEngine: await openShellEngine(ipc),
+      remoteEngine: await openShellEngine(ipc, location),
       engineConnection: shell.engine,
       // Run waits through the workspace's own save, which is made below, once the workspace is.
       settle: async () => {

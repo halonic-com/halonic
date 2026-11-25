@@ -8,7 +8,7 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::{Duration, Instant};
 
-use halonic_engine_pipe::{PipeFault, read_frame};
+use halonic_engine_pipe::{PipeFault, RoutinePause, SandboxHost, read_frame, sandbox_host_json};
 use halonic_engine_supervisor::{
     EngineChild, EngineProcess, LinkEnd, LinkWatcher, OpenError, RESTART_WINDOW, RestartLimit,
     StartError, Stopped,
@@ -313,6 +313,41 @@ fn engine_process_answers_busy_beyond_the_queue() {
     let engine = attached.engine_done.recv_timeout(WAIT).unwrap();
     engine.exited.store(true, Ordering::SeqCst);
     drop(gate);
+}
+
+/// HAL-17184: every launch, a first start's or a restart's, hears where the
+/// sandbox host is and the user's Pause routines right after its handshake.
+#[test]
+fn engine_process_sends_the_host_and_the_pause_after_every_handshake() {
+    let host = SandboxHost {
+        url: "http://127.0.0.1:4200",
+        token: TOKEN,
+    };
+    let mut paused = RoutinePause::default();
+    let _frame = paused.set(true);
+    let launches = [
+        (
+            Some(host),
+            RoutinePause::default(),
+            sandbox_host_json(Some(host)),
+        ),
+        (None, paused, sandbox_host_json(None)),
+    ];
+    for (host, pause, host_frame) in launches {
+        let expected = [
+            String::from_utf8(host_frame).unwrap(),
+            String::from_utf8(pause.after_handshake()).unwrap(),
+        ];
+        let attached = attach(acme_broker(), WAIT, move |engine| {
+            engine.handshake();
+            assert_eq!(engine.read().as_deref(), Some(expected[0].as_str()));
+            assert_eq!(engine.read().as_deref(), Some(expected[1].as_str()));
+        });
+        let process = attached.started.unwrap();
+        process.link().send_after_handshake(host, pause).unwrap();
+        let engine = attached.engine_done.recv_timeout(WAIT).unwrap();
+        engine.exited.store(true, Ordering::SeqCst);
+    }
 }
 
 #[test]
