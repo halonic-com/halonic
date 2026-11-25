@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { createDeviceConsole } from "./device-console.ts";
 import { password, setup } from "./device-pairing.test-helper.ts";
 import type { PaperclipKeyPorts } from "./paperclip-key-api.ts";
+import { keyChangesKey } from "./paperclip-key-changes.ts";
 
 const canaryKey = "pcp_board_canary-key-for-password-tests-only";
 const address = "https://paperclip.acme.test";
@@ -45,13 +46,14 @@ function keyPort(options: { stored?: boolean } = {}) {
 /** A server with the key routes and one paired device, `Laptop`, with its bearer header and id. */
 async function withDevice(options: { stored?: boolean } = {}) {
   const keys = keyPort(options);
-  const server = setup(keys.port);
+  const errors: string[] = [];
+  const server = setup(keys.port, { record: (error: Error) => errors.push(error.message) });
   const laptop = await server.pairDevice("Laptop", { cookie: await server.browserCookie() });
   const listed = await server.send("/api/devices", { auth: laptop });
   const laptopId = listed.json.devices?.find((device) => device.name === "Laptop")?.id ?? "";
   const keyRoute = (call: string, body: object, auth = laptop) =>
     server.send(`/api/paperclip-keys/${call}`, { auth, body });
-  return { ...keys, server, laptop, laptopId, keyRoute };
+  return { ...keys, server, laptop, laptopId, keyRoute, errors };
 }
 
 /** The raw answer, status and body, so two can be compared byte for byte. */
@@ -150,6 +152,53 @@ verifies("server.paperclip-key-password", () => {
         expect(JSON.stringify(answer.json)).not.toContain(canaryKey);
         expect(JSON.stringify(answer.json)).not.toContain(canaryKey.slice(-12));
       }
+    });
+  });
+});
+
+verifies("server.paperclip-key-record", () => {
+  describe("the record of who changed the key", () => {
+    it("names the device that started the sign-in, not the one that polled", async () => {
+      const { keyRoute, server, laptop, laptopId } = await withDevice();
+      const phone = await server.pairDevice("Phone", { cookie: await server.browserCookie() });
+      const at = server.clock.now().toISOString();
+
+      await keyRoute("sign-in/start", { address, password }, laptop);
+      await keyRoute("sign-in/poll", { signInId: "sign-in-1" }, phone);
+
+      const listed = await server.send("/api/devices", { auth: laptop });
+      expect(listed.json.keyChanges).toEqual([
+        { connection: "halonic", change: "connected", by: laptopId, at },
+      ]);
+    });
+
+    it("adds one record for a sign-in however often it is polled after connecting", async () => {
+      const { keyRoute, server, laptop } = await withDevice();
+
+      await keyRoute("sign-in/start", { address, password });
+      for (let polls = 0; polls < 25; polls += 1) {
+        expect((await keyRoute("sign-in/poll", { signInId: "sign-in-1" })).status).toBe(200);
+      }
+
+      const listed = await server.send("/api/devices", { auth: laptop });
+      expect(listed.json.keyChanges).toHaveLength(1);
+    });
+
+    it("answers success when the key is stored but writing the record fails, and logs it", async () => {
+      const { keyRoute, server, store, errors } = await withDevice();
+      const compareAndSet = server.coordination.compareAndSet.bind(server.coordination);
+      server.coordination.compareAndSet = async (key, expected, next) => {
+        if (key === keyChangesKey) throw new TypeError("the store is down");
+        return compareAndSet(key, expected, next);
+      };
+
+      await keyRoute("sign-in/start", { address, password });
+      const poll = await keyRoute("sign-in/poll", { signInId: "sign-in-1" });
+
+      expect(poll.status).toBe(200);
+      expect(poll.json).toMatchObject({ status: "connected", connection: "halonic" });
+      expect(store.get("halonic")).toBe(canaryKey);
+      expect(errors).toEqual(["Paperclip key record failed at sign-in/poll: TypeError"]);
     });
   });
 });
