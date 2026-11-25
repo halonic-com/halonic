@@ -35,7 +35,10 @@ pub fn open_focused<R: Runtime, M: Manager<R>>(
     let window = open_from(manager, config)?;
     // Without its own icon the window still works, with Studio's.
     if let Err(error) = window.set_icon(app.icon()) {
-        halonic_shell_log::record("window", format!("{}'s icon didn't set: {error}", app.title()));
+        halonic_shell_log::record(
+            "window",
+            format!("{}'s icon didn't set: {error}", app.title()),
+        );
     }
     #[cfg(windows)]
     {
