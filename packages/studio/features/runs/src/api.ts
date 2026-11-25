@@ -314,6 +314,7 @@ export { notifiableRun } from "./notify/notifiable-run.ts";
  * The switches under Settings › Notifications › Runs: Settings saves them, the background
  * service's run notifications read them.
  */
+export { RunNoticeClicksService } from "./notify/run-notice-open.ts";
 export { runNotificationSettingWords } from "./notify/run-notices.ts";
 export {
   runNotificationPrefs,

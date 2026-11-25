@@ -41,7 +41,11 @@ import {
   ProviderCheckService,
 } from "@halonicjs/studio-feature-models/api";
 import { RoutinesHostService } from "@halonicjs/studio-feature-routines/api";
-import { InstructionTrustHostService, RunsSourceService } from "@halonicjs/studio-feature-runs/api";
+import {
+  InstructionTrustHostService,
+  RunNoticeClicksService,
+  RunsSourceService,
+} from "@halonicjs/studio-feature-runs/api";
 import { HostSettingsService } from "@halonicjs/studio-feature-settings/api";
 import { VersionDialogService } from "@halonicjs/studio-feature-source-control/api";
 import {
@@ -52,8 +56,10 @@ import {
   ShellHttpClient,
   shellKeychain,
   shellKeyOrigins,
+  shellRunNoticeClicks,
   type TauriIpc,
   tauriAgentHostTransport,
+  tauriChannelIpc,
 } from "@halonicjs/studio-services";
 import {
   EngineNotAnswering,
@@ -334,6 +340,12 @@ export function provideFolderServices(
     }),
   );
   provideRunStart(services, { workflows, engine, askTrust, trust });
+  // A click on a run notification opens the run (`runs.run-notification-open`).
+  const channelIpc = tauriChannelIpc(window);
+  if (channelIpc !== undefined) {
+    const onError = (error: unknown) => console.error("Opening a run notification", error);
+    services.provide(RunNoticeClicksService, shellRunNoticeClicks(channelIpc, onError));
+  }
   services.provide(
     InboxRequestsService,
     new WorkspaceRequests({

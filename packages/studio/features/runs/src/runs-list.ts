@@ -40,6 +40,7 @@ export class RunsList {
   /** The last load started, which the earlier ones wait for. */
   #latest: Promise<void> = Promise.resolve();
   #requested: WorkflowRef | undefined;
+  #failedRequested = false;
   #toReview: string | undefined;
   readonly #opened = new Set<string>();
   #disposed = false;
@@ -79,9 +80,24 @@ export class RunsList {
     for (const listener of [...this.#listeners]) listener();
   }
 
-  /** Forgets the request once the page has read it, so a later plain open shows every workflow. */
+  /** Whether the Runs page should open on the Failed group, as {@link showFailed} asks. */
+  get requestedFailed(): boolean {
+    return this.#failedRequested;
+  }
+
+  /**
+   * Asks for the Runs page to show the Failed group, as a click on "3 runs failed" does. Call it,
+   * then open the Runs place; the page takes it as it takes {@link showWorkflow}'s.
+   */
+  showFailed(): void {
+    this.#failedRequested = true;
+    for (const listener of [...this.#listeners]) listener();
+  }
+
+  /** Forgets the requests once the page has read them, so a later plain open shows every run. */
   clearRequest(): void {
     this.#requested = undefined;
+    this.#failedRequested = false;
   }
 
   /**

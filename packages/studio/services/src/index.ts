@@ -93,6 +93,7 @@ export {
   QuietHoursNotifier,
   type QuietHoursOptions,
 } from "./quiet-hours.ts";
+export { type RunNoticeClicks, shellRunNoticeClicks } from "./run-notice-clicks.ts";
 export { scopeToAccount } from "./scope-to-account.ts";
 export { actionStepsKey, provideActionSteps } from "./shell-actions.ts";
 export { hostSettingsStoreKey, provideShellHostSettings } from "./shell-host-settings.ts";
