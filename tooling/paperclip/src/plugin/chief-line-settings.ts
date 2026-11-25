@@ -13,6 +13,7 @@ export const chiefLineRouteKeys = {
   openThread: "chief-line-open-thread",
   thread: "chief-line-thread",
   subscribe: "chief-line-subscribe",
+  boardPost: "board-post",
 } as const;
 
 /** The chief line's settings, spread into the manifest's instance settings. */
@@ -96,18 +97,36 @@ export function webhookAllowed(url: string, hosts: readonly string[]): boolean {
   }
 }
 
-/** The title of a caller's task. */
-export const threadTitle = (caller: string) => `[chief-line] ${caller}`;
+/**
+ * The title of a caller's task with an agent: `[chief-line] <caller>` for Chief (no agent name),
+ * `[line] <caller> → <agent>` for any other agent.
+ */
+export const threadTitle = (caller: string, agentName?: string) =>
+  agentName === undefined ? `[chief-line] ${caller}` : `[line] ${caller} → ${agentName}`;
 
-/** A thread's title, with the caller as its first group. */
-export const threadTitlePattern = /^\[chief-line\] ([a-z0-9][a-z0-9-]{0,40})$/;
+const chiefTitlePattern = /^\[chief-line\] ([a-z0-9][a-z0-9-]{0,40})$/;
+const agentTitlePattern = /^\[line\] ([a-z0-9][a-z0-9-]{0,40}) → (\S(?:.*\S)?)$/;
+
+/** A thread's caller and agent name (none for Chief) from its title, or undefined. */
+export function parseThreadTitle(
+  title: string,
+): { caller: string; agentName?: string } | undefined {
+  const chief = title.match(chiefTitlePattern);
+  if (chief?.[1] !== undefined) {
+    return { caller: chief[1] };
+  }
+  const line = title.match(agentTitlePattern);
+  return line?.[1] === undefined || line[2] === undefined
+    ? undefined
+    : { caller: line[1], agentName: line[2] };
+}
 
 /** Where the chief line keeps its records: one entry per company. */
 export const chiefLineStateKey = (companyId: string, key: ChiefLineRecord) =>
   ({ scopeKind: "company", scopeId: companyId, namespace: "chief-line", stateKey: key }) as const;
 
-/** The chief line's records in plugin state: threads, wakes per hour, webhooks, signalled comments. */
-export type ChiefLineRecord = "threads" | "wakes" | "hooks" | "signalled";
+/** The chief line's records in plugin state: threads, wakes and board posts per hour, webhooks, signalled comments. */
+export type ChiefLineRecord = "threads" | "wakes" | "posts" | "hooks" | "signalled";
 
 /** The chief line's routes, board only (src/plugin/chief-line.ts). */
 export const chiefLineRoutes = (
@@ -116,6 +135,7 @@ export const chiefLineRoutes = (
     [chiefLineRouteKeys.thread, "GET", "/chief-line/thread"],
     [chiefLineRouteKeys.send, "POST", "/chief-line/send"],
     [chiefLineRouteKeys.subscribe, "POST", "/chief-line/subscribe"],
+    [chiefLineRouteKeys.boardPost, "POST", "/board/post"],
   ] as const
 ).map(([routeKey, method, path]) => ({
   routeKey,

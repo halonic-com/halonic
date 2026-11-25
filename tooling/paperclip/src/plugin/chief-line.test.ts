@@ -106,6 +106,7 @@ verifies("paperclip.chief-line", () => {
       caller: "sup",
       commentId: chief.id,
       at: "2026-11-25T10:01:00.000Z",
+      agent: "Chief",
     };
     expect(line.posts).toEqual([
       { url: "https://hooks.acme.test/c", body: signal },
@@ -181,6 +182,7 @@ verifies("paperclip.chief-line", () => {
           caller: "sup",
           commentId: chief.id,
           at: "2026-11-25T10:00:00.000Z",
+          agent: "Chief",
         },
       },
     ]);
@@ -340,7 +342,7 @@ verifies("paperclip.chief-line", () => {
       status: 200,
       body: { threadId: "issue-1", identifier: "ACME-1", commentId: "c1", woke: false },
     });
-    expect(line.logs).toContain("Chief line: couldn't wake Chief.");
+    expect(line.logs).toContain("Chief line: couldn't wake the task's agent.");
   });
 
   test("a human's comment on a backlog thread reopens it and wakes Chief", async () => {
