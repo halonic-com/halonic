@@ -20,11 +20,16 @@ import {
   engineWordsOf,
   FilesWithErrorsService,
   type FilesWithErrorsSource,
+  type FileWithErrors,
+  type FocusTarget,
+  focusRow,
   isUnexplained,
   OverviewPage,
   type PlaceViewProps,
+  targetAfterRemoving,
   useBrokenFiles,
   useCopyDetails,
+  visibleRowIds,
 } from "@halonicjs/studio-shell";
 import { defaultHub } from "@halonicjs/workspace";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -143,6 +148,8 @@ export function WorkflowsView({
   const [load, setLoad] = useState<Load>({ kind: "loading" });
   const [creating, setCreating] = useState(false);
   const title = useRef<HTMLHeadingElement>(null);
+  const page = useRef<HTMLDivElement>(null);
+  const emptyTitle = useRef<HTMLHeadingElement>(null);
 
   // Each read takes a number; only the newest read's result is shown, so a slow older read never
   // overwrites a newer one, and nothing is set after unmount.
@@ -206,6 +213,43 @@ export function WorkflowsView({
       { id: "show-in-chat", label: showInChat.label, onSelect: () => showInChat.show(listing) },
     ];
   };
+  // Where focus goes once it can, after Delete on a broken row or its Undo: the shared list of
+  // broken files has to be read again before the row leaves or comes back, so the target waits for
+  // the next read of that list, and after a delete also until the deleted row has left.
+  const pendingFocus = useRef<
+    | { target: FocusTarget; brokenAtStart: readonly FileWithErrors[]; gone?: string | undefined }
+    | undefined
+  >(undefined);
+  const latestBroken = useRef(broken);
+  latestBroken.current = broken;
+  const applyFocus = useCallback(() => {
+    const pending = pendingFocus.current;
+    if (pending === undefined || page.current === null) return;
+    const { target, gone } = pending;
+    const listReadAgain = latestBroken.current !== pending.brokenAtStart;
+    if (gone !== undefined && visibleRowIds(page.current).includes(gone)) {
+      // A read that still shows the row leaves focus where it is.
+      if (listReadAgain) pendingFocus.current = undefined;
+      return;
+    }
+    const shown = focusTarget(page.current, target, emptyTitle.current);
+    if (shown || listReadAgain) pendingFocus.current = undefined;
+  }, []);
+  // Runs after every render, to catch the row when it appears or the deleted one when it goes.
+  useEffect(applyFocus);
+  const focusOn = (target: FocusTarget, gone?: string) => {
+    pendingFocus.current = { target, brokenAtStart: latestBroken.current, gone };
+    applyFocus();
+  };
+  const brokenMenu = (file: FileWithErrors, id: string) =>
+    brokenFileMenu(file, brokenActions, {
+      removed: () => {
+        if (page.current === null) return;
+        // The row is still drawn until the shared list reads again, so the next one is found now.
+        focusOn(targetAfterRemoving(visibleRowIds(page.current), id), id);
+      },
+      restored: () => focusOn({ row: id }),
+    });
   const openRowInNewTab = (id: string) => {
     const listing = listings.find((each) => rowId(each) === id);
     if (listing !== undefined) (openInNewTab ?? open)?.(listing);
@@ -227,7 +271,7 @@ export function WorkflowsView({
   }, [offersNew, phone]);
 
   return (
-    <div className="flex w-full flex-col gap-4 px-6 py-5">
+    <div ref={page} className="flex w-full flex-col gap-4 px-6 py-5">
       <header className={phone ? "sr-only" : "flex flex-col gap-1"}>
         <h1 ref={title} tabIndex={-1} className="text-title">
           {listWords.title}
@@ -271,9 +315,10 @@ export function WorkflowsView({
           }}
           loading={load.kind === "loading"}
           quietWhenEmpty
+          emptyTitleRef={emptyTitle}
           itemMenu={(row) => {
             const file = brokenOf(row.id);
-            return file === undefined ? rowMenu(row.id) : brokenFileMenu(file, brokenActions);
+            return file === undefined ? rowMenu(row.id) : brokenMenu(file, row.id);
           }}
           {...(offersNew
             ? { newButton: { label: listWords.newWorkflow, onClick: startCreating } }
@@ -313,6 +358,17 @@ export function WorkflowsView({
       )}
     </div>
   );
+}
+
+/** Focuses a row, or the empty state's title when no row is left; false while it isn't drawn. */
+function focusTarget(
+  page: HTMLElement,
+  target: FocusTarget,
+  emptyTitle: HTMLHeadingElement | null,
+): boolean {
+  if (target !== "empty") return focusRow(page, target.row);
+  emptyTitle?.focus();
+  return emptyTitle !== null;
 }
 
 /**
