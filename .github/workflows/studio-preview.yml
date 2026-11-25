@@ -85,6 +85,8 @@ jobs:
           $app = Start-Process $exe -PassThru
           Start-Sleep -Seconds 20
           if ($app.HasExited) { throw "Halonic closed by itself with exit code $($app.ExitCode)" }
+          Get-Process | Where-Object { $_.Path -like "$env:LOCALAPPDATA\Programs\Halonic\*" } | Format-Table Id, ProcessName, Path -AutoSize | Out-String
+          Get-ChildItem $env:LOCALAPPDATA -Recurse -Filter shell.log -ErrorAction SilentlyContinue | ForEach-Object { "== $($_.FullName)"; Get-Content $_.FullName -Tail 200 }
           Stop-Process -Id $app.Id -Force
           $mb = [math]::Round((Get-Item $setup).Length / 1MB)
           "### Studio preview`n`n$(Split-Path -Leaf $setup), $mb MB, unsigned. Updated the release version to $installed, and still running after 20 s." >> $env:GITHUB_STEP_SUMMARY
