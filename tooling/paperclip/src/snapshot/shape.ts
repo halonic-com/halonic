@@ -108,8 +108,16 @@ export interface OpenFacts {
   readonly inQueue: boolean;
   /** Its labels now, each with who added it last and when (null when older than the 20 newest label events). */
   readonly labels: readonly SnapshotLabel[];
-  /** The newest review finding on this head, by the PR watcher's rule (`newestFinding`), or null. */
-  readonly finding: { readonly id: string; readonly at: string } | null;
+  /**
+   * The newest review finding on this head, by the PR watcher's rule
+   * (`newestFinding`), or null; `by` is the reviewer its text names, added
+   * after version 1 shipped (HAL-18460).
+   */
+  readonly finding: { readonly id: string; readonly at: string; readonly by?: string } | null;
+  /** When the head commit was committed, so a push after a finding shows. Added like `by` (HAL-18460). */
+  readonly headCommittedAt?: string;
+  /** GitHub committed the head itself (a rebase or update it made, such as the stack rebase), not the author. Added like `by`. */
+  readonly headCommittedByGitHub?: true;
   /**
    * Signed approvals by our reviewers on any head, oldest first. Whether one counts depends on the head and the paths.
    * `rebaseOf` is the head a re-approval after a rebase-only push names (HAL-14809), added after version 1 shipped.

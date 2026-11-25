@@ -40,18 +40,26 @@ function patch(start: number) {
 }
 
 verifies("paperclip.pr-watcher-rereview", () => {
-  test("sends a rebase-only push after Liam's approval on Liam's paths back to Liam (HAL-18201)", async () => {
+  test("records a rebase-only push after Liam's approval on Liam's paths as carried over, with no review round (HAL-18460)", async () => {
     const rebased = watcher(async () => true, ["pnpm-lock.yaml"]);
-    expect(await rebased.run()).toMatchObject({ handedOff: 1, failed: [] });
+    expect(await rebased.run()).toMatchObject({ handedOff: 0, warned: 0, failed: [] });
     expect(rebased.compared).toEqual(["4999bbb"]);
-    expect(rebased.handoffs.map(({ to }) => to)).toEqual([agents.liam]);
-    const body = handoffBody(rebased.comments);
-    expect(body).toContain("#5701: only a rebase since Liam's approval on `4999bbb`");
-    expect(body).not.toContain("Julian: re-approved");
+    expect(rebased.handoffs).toEqual([]);
+    const [note] = rebased.comments["task-5701"] ?? [];
+    expect(note?.body).toContain(
+      "PR watcher: only a rebase since the approval, so no new review round.",
+    );
+    expect(note?.body).not.toContain("this voids the approval");
   });
 
-  test("sends a rebase-only push after Liam's approval within Julian's limits to Julian, with the re-approval line", async () => {
-    const rebased = watcher(async () => true, ["packages/x/src/a.ts"], "julian");
+  test("sends a rebase-only push on Liam's own pull request after Julian's approval to Julian, with the re-approval line", async () => {
+    const liamBranch = "liam/HAL-5701-work";
+    const rebased = setup({
+      tasks: [task(5701, agents.liam, { branch: liamBranch })],
+      pulls: [open(5701, liamBranch, { approvals: [{ by: "Julian", head: "4999bbb" }] })],
+      byPaths: "liam",
+      rebaseOnly: async () => true,
+    });
     expect(await rebased.run()).toMatchObject({ handedOff: 1, failed: [] });
     expect(rebased.handoffs.map(({ to }) => to)).toEqual([agents.julian]);
     expect(handoffBody(rebased.comments)).toContain(

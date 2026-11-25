@@ -60,7 +60,7 @@ export const openPullsQuery = `query OpenPulls($owner: String!, $name: String!, 
             ... on HeadRefForcePushedEvent { createdAt }
           }
         }
-        commits(last: 1) { nodes { commit { committedDate statusCheckRollup { ${checkRuns} } } } }
+        commits(last: 1) { nodes { commit { committedDate committer { email } statusCheckRollup { ${checkRuns} } } } }
         reviews(last: 50) {
           nodes {
             databaseId state body submittedAt authorAssociation commit { oid } author { login }

@@ -144,6 +144,7 @@ export function readMemory(comments: readonly CommentRow[], ownerId: string): Me
     seenUntil,
     heldAt: holdPattern.test(authorLast?.body ?? "") ? authorLast?.createdAt : undefined,
     ownReview: ownReviewPattern.test(authorLast?.body ?? ""),
+    authorLastAt: newestAt(comments.filter((comment) => comment.authorAgentId === ownerId)),
     lastCommentAt: newestAt(comments.filter((comment) => !isSelf(comment))),
   };
 }
