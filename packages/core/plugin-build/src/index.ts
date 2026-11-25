@@ -1,47 +1,9 @@
 // The public API of @halonicjs/plugin-build. Everything else in src/ is internal.
 
-export { type ChangedTool, type ChangeList, changeList } from "./change-list.ts";
 export {
-  archiveSha256,
-  buildPluginArchive,
-  type PluginFiles,
-  packageFolder,
-  pluginFileNames,
-  snapshotPath,
-  snapshotText,
-} from "./plugin-archive.ts";
-export {
-  archiveFileName,
-  isPluginId,
-  type PluginIdProblem,
-  pluginIdFor,
-  pluginIdPattern,
-  pluginIdPrefix,
-  releaseFileName,
-} from "./plugin-id.ts";
-export {
-  firstPluginVersion,
-  isPluginVersion,
-  nextPluginVersion,
-  type PluginVersionProblem,
-  pluginVersionPattern,
-  type VersionChoice,
-} from "./plugin-version.ts";
-export {
-  maxPreviousArchiveBytes,
-  maxPreviousSnapshotBytes,
-  type PreviousBuild,
-  type PreviousBuildFiles,
-  type PreviousBuildProblem,
-  readPreviousBuild,
-} from "./previous-build.ts";
-export {
-  maxReleaseFileBytes,
-  parseReleaseFile,
-  type ReleaseFile,
-  type ReleaseFileFields,
-  type ReleaseFileProblem,
-  releaseFileText,
-} from "./release-file.ts";
-export type { PluginSnapshot, SnapshotTool } from "./snapshot.ts";
-export type { TarReadProblem } from "./tar-read.ts";
+  type TarFile,
+  TarNameError,
+  type TarNameReason,
+  tarNameProblem,
+  writeTar,
+} from "./tar-write.ts";

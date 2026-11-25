@@ -1,8 +1,7 @@
 {
   "extends": "@halonicjs/tooling-config/tsconfig/core.json",
   "include": [
-    "src",
-    "examples"
+    "src"
   ],
   "exclude": [
     "src/**/*.test.ts",
