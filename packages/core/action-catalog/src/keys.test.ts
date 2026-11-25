@@ -4,6 +4,9 @@ import { shippedKeys } from "./keys.ts";
 describe("shippedKeys", () => {
   it("lists every definition file under src/<service>/", () => {
     expect(shippedKeys).toEqual([
+      "device/check-android-build",
+      "device/check-phone-pairing",
+      "device/check-windows-build",
       "github/upload-social-preview",
       "google/configure-oauth-consent",
       "google/create-cloud-project",
