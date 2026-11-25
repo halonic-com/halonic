@@ -160,6 +160,7 @@ export async function openFolder(
       // The shell brought this window forward (HAL-18844); Runs shows the run's group.
       open: () => workspace.tabs.openHere({ key: "runs", title: placeNames.runs.label }),
       onError: reportNotifications,
+      trust,
     });
   }
   shell.services.instantiate(services);

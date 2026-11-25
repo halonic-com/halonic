@@ -1,5 +1,6 @@
 import type { Disposable, ServiceRegistry } from "@halonicjs/app";
 import {
+  type RunNotificationsWatch,
   type RunsReader,
   runNotificationSettingsOf,
   watchRunNotifications,
@@ -26,29 +27,46 @@ export interface RunNotificationsParts {
   readonly open: (target: NoticeTarget) => void;
   /** Hears a read or a notification that failed; the watch goes on. */
   readonly onError: (error: unknown) => void;
+  /** The folder's trust: an untrusted folder asks the agent host nothing, so the watch waits for it. */
+  readonly trust: {
+    mayStartNow(): boolean;
+    subscribe(listener: () => void): () => void;
+  };
   readonly now?: () => Date;
 }
 
 /**
  * Starts the run notifications (`runs.run-notifications`) for the open folder, over the Runs app's
  * runs of the workspace and its teams, with the switches saved under Settings › Notifications ›
- * Runs (requirement `studio.run-notifications-watch`). Without the Runs app's runs, which need the
- * agent host, nothing starts.
+ * Runs (requirement `studio.run-notifications-watch`), once the folder is trusted. Without the
+ * Runs app's runs, which need the agent host, nothing starts.
  */
 export function provideRunNotifications(
   services: ServiceRegistry,
-  { notifier, open, onError, now = () => new Date() }: RunNotificationsParts,
+  { notifier, open, onError, trust, now = () => new Date() }: RunNotificationsParts,
 ): void {
   if (!services.has(AllRunsService) || !services.has(HostSettingsService)) return;
   const host = services.get(HostSettingsService);
-  const watch = watchRunNotifications(allRunsReader(services.get(AllRunsService)), notifier, {
-    // Read on every change, so a switch turned off in Settings counts from the next run on.
-    settings: () => runNotificationSettingsOf(host),
-    now,
-    open,
-    onError,
+  const runs = services.get(AllRunsService);
+  let watch: RunNotificationsWatch | undefined;
+  const startOnceTrusted = () => {
+    if (watch !== undefined || !trust.mayStartNow()) return;
+    watch = watchRunNotifications(allRunsReader(runs), notifier, {
+      // Read on every change, so a switch turned off in Settings counts from the next run on.
+      settings: () => runNotificationSettingsOf(host),
+      now,
+      open,
+      onError,
+    });
+  };
+  const unsubscribe = trust.subscribe(startOnceTrusted);
+  startOnceTrusted();
+  services.provide(runNotificationsWatchKey, {
+    dispose: async () => {
+      unsubscribe();
+      await watch?.stop();
+    },
   });
-  services.provide(runNotificationsWatchKey, { dispose: () => watch.stop() });
 }
 
 /**

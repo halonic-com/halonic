@@ -72,7 +72,31 @@ class FakeNotifier implements Notifier {
   }
 }
 
-async function openFolder(rows: readonly AllRunsRow[]) {
+/** The folder's trust, which a test gives once the person trusts the folder. */
+class FakeTrust {
+  readonly #listeners = new Set<() => void>();
+  trusted: boolean;
+
+  constructor(trusted: boolean) {
+    this.trusted = trusted;
+  }
+
+  mayStartNow(): boolean {
+    return this.trusted;
+  }
+
+  subscribe(listener: () => void): () => void {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
+  }
+
+  give(): void {
+    this.trusted = true;
+    for (const listener of this.#listeners) listener();
+  }
+}
+
+async function openFolder(rows: readonly AllRunsRow[], trust = new FakeTrust(true)) {
   const services = new ServiceRegistry();
   const runs = new FakeRuns(rows);
   const settings = new HostSettings(new MemoryHostSettingsStore());
@@ -86,9 +110,10 @@ async function openFolder(rows: readonly AllRunsRow[]) {
     notifier,
     open: (target) => opened.push(target),
     onError: (error) => errors.push(error),
+    trust,
     now: () => now,
   });
-  return { services, runs, settings, notifier, opened, errors };
+  return { services, runs, settings, notifier, opened, errors, trust };
 }
 
 const failedYesterday = row("w0", "Nightly report", {
@@ -132,6 +157,16 @@ verifies("studio.run-notifications-watch", () => {
       await folder.services.dispose();
     });
 
+    it("waits for the folder to be trusted before it reads any runs", async () => {
+      const folder = await openFolder([supportReply], new FakeTrust(false));
+      expect(folder.runs.listeners.size).toBe(0);
+
+      folder.trust.give();
+      expect(folder.runs.listeners.size).toBe(1);
+      await folder.services.dispose();
+      expect(folder.runs.listeners.size).toBe(0);
+    });
+
     it("stops listening to the runs when the folder closes", async () => {
       const folder = await openFolder([supportReply]);
       await folder.services.dispose();
@@ -145,6 +180,7 @@ verifies("studio.run-notifications-watch", () => {
         notifier: new FakeNotifier(),
         open: () => undefined,
         onError: () => undefined,
+        trust: new FakeTrust(true),
       });
       expect(services.has(runNotificationsWatchKey)).toBe(false);
     });
