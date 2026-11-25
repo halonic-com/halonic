@@ -41,6 +41,13 @@ verifies("agent-host.paperclip-connection", () => {
   });
 });
 
+/** The one request Connect makes, to read whom the key belongs to (`agent-host.paperclip-signed-in-user`). */
+const meOnConnect = {
+  url: `${acme.address}/api/cli-auth/me`,
+  method: "GET",
+  authorization: `Bearer ${testKey}`,
+};
+
 verifies("agent-host.paperclip-key", () => {
   describe("from a fake Paperclip through the hub to Studio's read", () => {
     it("reads the agents with the key, only at the connection's address", async () => {
@@ -54,6 +61,7 @@ verifies("agent-host.paperclip-key", () => {
         { id: "paperclip:halonic", label: "Paperclip · Halonic", state: { kind: "online" } },
       ]);
       expect(on.paperclip.seen).toEqual([
+        meOnConnect,
         {
           url: `${acme.address}/api/companies/${acme.company}/agents`,
           method: "GET",
@@ -85,7 +93,7 @@ verifies("agent-host.paperclip-key", () => {
       await expect(on.studio.listAgents()).rejects.toMatchObject({ kind: "messaging_failed" });
       await on.wait(30_000);
 
-      expect(on.paperclip.seen).toHaveLength(1);
+      expect(on.paperclip.seen).toHaveLength(2);
       expect(on.paperclip.seen.map((request) => request.url).join()).not.toContain("evil.test");
       expect(await on.studio.listSources()).toMatchObject([{ state: { kind: "signed-out" } }]);
     });
@@ -97,7 +105,7 @@ verifies("agent-host.paperclip-key", () => {
 
       await expect(on.studio.listAgents()).rejects.toMatchObject({ kind: "messaging_failed" });
 
-      expect(on.paperclip.seen).toEqual([]);
+      expect(on.paperclip.seen).toEqual([meOnConnect]);
     });
   });
 

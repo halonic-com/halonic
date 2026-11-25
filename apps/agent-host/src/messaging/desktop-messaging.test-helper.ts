@@ -31,6 +31,8 @@ export interface SeenRequest {
 export class FakePaperclip {
   readonly seen: SeenRequest[] = [];
   offline = false;
+  /** What `/api/cli-auth/me` answers; without it, a Paperclip that doesn't know the route. */
+  me: unknown;
 
   readonly fetch = async (input: Request | string | URL, init?: RequestInit): Promise<Response> => {
     const request = new Request(input, init);
@@ -61,6 +63,7 @@ export class FakePaperclip {
     // The open tasks, where the provider finds channels (`paperclip-client.channels`): none here.
     if (path === `/api/companies/${acme.company}/issues`) return json([]);
     if (path === "/api/cli-auth/revoke-current") return json({ revoked: true });
+    if (path === "/api/cli-auth/me" && this.me !== undefined) return json(this.me);
     return json({ error: "API route not found" }, 404);
   };
 }

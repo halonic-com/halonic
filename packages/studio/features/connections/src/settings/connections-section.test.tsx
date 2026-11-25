@@ -250,3 +250,24 @@ verifies("connections.list-retry", () => {
     reported.mockRestore();
   });
 });
+
+verifies("connections.connection-user", () => {
+  it("names the user each connection to one Paperclip is signed in as", async () => {
+    const asBoard: AgentConnection = {
+      ...connected,
+      label: "Paperclip · Halonic · Board Supervisor",
+      userName: "Board Supervisor",
+    };
+    const asAda: AgentConnection = {
+      ...connected,
+      id: "paperclip:halonic-ada",
+      label: "Paperclip · Halonic · Ada",
+      userName: "Ada",
+    };
+    const { view } = await showSection(new FakeAgentConnections({ connections: [asBoard, asAda] }));
+    const names = [...view.querySelectorAll("li p.text-body-strong")].map(
+      (name) => name.textContent,
+    );
+    expect(names).toEqual(["Paperclip · Halonic · Board Supervisor", "Paperclip · Halonic · Ada"]);
+  });
+});
