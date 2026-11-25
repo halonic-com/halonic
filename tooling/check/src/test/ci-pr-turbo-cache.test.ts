@@ -70,6 +70,17 @@ verifies("check.ci-pr-turbo-cache", () => {
       expect(copy).toContain("/cache/turbo/");
     });
 
+    test("a pull request first restores the entry of the main it was merged with", () => {
+      expect(build).toContain("run: echo \"sha=$(git rev-parse HEAD^1)\" >> \"$GITHUB_OUTPUT\"");
+      expect(build).toContain(
+        "if: steps.turbo-dir.outputs.disk != 'true' && github.event_name == 'pull_request'",
+      );
+      expect(build).toContain(
+        `restore-keys: |\n            \${{ steps.turbo-parent.outputs.sha && format('turbo-{0}-{1}-{2}', runner.os, matrix.shard, steps.turbo-parent.outputs.sha) || '' }}\n            turbo-\${{ runner.os }}-\${{ matrix.shard }}-\n`,
+      );
+      expect(build.indexOf("id: turbo-parent")).toBeLessThan(build.indexOf("id: turbo-cache"));
+    });
+
     test("ci-ok doesn't need it", () => {
       expect(field(jobs.get("ci-ok") ?? "", "needs") ?? "").not.toContain("pr-turbo-cache");
     });
