@@ -2,7 +2,7 @@ import type { Step, StepContext, StepOutcome } from "../runner.ts";
 import { lastWords, missingParts, waitForText } from "../screen.ts";
 import { keys } from "../webdriver.ts";
 import { basicsText } from "../words.ts";
-import { onWorkspace } from "./open-demo.ts";
+import { onWorkspaceWithoutSettings } from "./open-demo.ts";
 
 /**
  * The sidebar's workspace switcher, a button named "Workspace: *name*". The demo's name comes from
@@ -28,7 +28,7 @@ export const demoWorkspace: Step = {
     "shell.window-title",
   ],
   run: async (context) => {
-    const workspace = await onWorkspace(context);
+    const workspace = await onWorkspaceWithoutSettings(context);
     if (!workspace.passed) return workspace;
     const title = await windowTitleParts(context);
     if (title.parts.length !== 3 || title.parts[2] !== basicsText.appName.text) {

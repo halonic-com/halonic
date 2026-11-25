@@ -6,7 +6,7 @@ import { demoWorkspace, switcherXpath } from "./steps/demo-workspace.ts";
 import { tabXpath, windowTabs } from "./steps/window-tabs.ts";
 import { clickTestSteps } from "./steps.ts";
 import { keys } from "./webdriver.ts";
-import { basicsText, buttonLabels } from "./words.ts";
+import { basicsText, buttonLabels, closeSettingsLabel } from "./words.ts";
 
 const { recent, demoFolder, demoTag, openFolderRow, welcomeTitle, welcomeLine } = basicsText;
 const demoRow = `${recent.text} Acme ~/Documents/${demoFolder.text} ${demoTag.text}`;
@@ -70,6 +70,21 @@ verifies("studio-click-test.basics-steps", () => {
       expect(outcome.passed ? "" : outcome.note).toContain(
         `no "${demoFolder.text}", "${demoTag.text}".`,
       );
+    });
+
+    // HAL-19005: Connect Paperclip leaves Settings open, and the switcher is behind it.
+    it("closes a Settings left open by an earlier step before it uses the switcher", async () => {
+      const studio = fakeStudio("Support reply Settings Connections");
+      studio.title = "Support reply · Acme · Halonic";
+      button(studio, "main", closeSettingsLabel, () => {
+        setText(studio, "Support reply");
+        button(studio, "main", switcherXpath, () =>
+          setText(studio, `${demoRow} ${openFolderRow.text}`),
+        );
+        button(studio, "main", keys.escape);
+      });
+      await expect(demoWorkspace.run(studio.context)).resolves.toEqual({ passed: true });
+      expect(studio.clicks).toEqual([closeSettingsLabel, switcherXpath, keys.escape]);
     });
 
     it("fails as NO_SWITCHER when no workspace switcher shows", async () => {

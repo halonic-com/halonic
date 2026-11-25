@@ -63,7 +63,14 @@ export const basicsText = {
   openTabs: { text: "Open tabs", file: "packages/studio/shell/src/tabs/window-tab-strip.tsx" },
   appName: { text: "Halonic", file: windowTitleFile },
   titleSeparator: { text: " · ", file: windowTitleFile },
+  settingsTitle: {
+    text: "Settings",
+    file: "packages/studio/shell/src/settings/settings-dialog.tsx",
+  },
 } as const;
+
+/** Settings' × button: the kit's Dialog names it "Close" and the dialog's title. */
+export const closeSettingsLabel = `Close ${basicsText.settingsTitle.text}`;
 
 const tryItFile = "packages/studio/features/agents/src/chat/try-it-words.ts";
 

@@ -2,7 +2,7 @@ import type { Step } from "../runner.ts";
 import { clickWhenShown, lastWords, missingParts, waitForText } from "../screen.ts";
 import { basicsText, buttonLabels } from "../words.ts";
 import { openWorkspaceMenu } from "./demo-workspace.ts";
-import { onWorkspace } from "./open-demo.ts";
+import { onWorkspaceWithoutSettings } from "./open-demo.ts";
 
 /**
  * Step 6: the workspace menu's Close workspace closes the demo, the only open workspace, so the
@@ -19,7 +19,7 @@ export const closeWorkspace: Step = {
     "shell.welcome-sample",
   ],
   run: async (context) => {
-    const workspace = await onWorkspace(context);
+    const workspace = await onWorkspaceWithoutSettings(context);
     if (!workspace.passed) return workspace;
     const menu = await openWorkspaceMenu(context);
     if (!menu.passed) return menu;

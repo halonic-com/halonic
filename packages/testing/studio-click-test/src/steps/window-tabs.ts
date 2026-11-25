@@ -2,7 +2,7 @@ import type { Step, StepContext } from "../runner.ts";
 import { clickWhenShown, pollEveryMs } from "../screen.ts";
 import { keys } from "../webdriver.ts";
 import { basicsText, buttonLabels } from "../words.ts";
-import { onWorkspace } from "./open-demo.ts";
+import { onWorkspaceWithoutSettings } from "./open-demo.ts";
 
 /** Every tab in the title bar's strip. */
 export const tabXpath = `//*[@role='tablist' and @aria-label='${basicsText.openTabs.text}']//*[@role='tab']`;
@@ -19,7 +19,7 @@ export const windowTabs: Step = {
   title: "New tab, Ctrl W and Ctrl Shift T in the Open tabs strip",
   requirements: ["shell.window-tab-strip", "shell.tab-set", "shell.window-keys"],
   run: async (context) => {
-    const workspace = await onWorkspace(context);
+    const workspace = await onWorkspaceWithoutSettings(context);
     if (!workspace.passed) return workspace;
     const before = await context.driver.count(tabXpath);
     if (before === 0) return { passed: false, code: "NO_TABS", note: "No Open tabs strip." };
