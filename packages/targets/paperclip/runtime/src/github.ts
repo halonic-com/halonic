@@ -7,7 +7,7 @@
 /** The part of `fetch` the reader uses, so tests can answer from fixtures. */
 export type Fetch = (
   url: string,
-  init: { method: "GET"; headers: Record<string, string> },
+  init: { method: "GET"; headers: Record<string, string>; redirect: "error" },
 ) => Promise<Pick<Response, "ok" | "status" | "json">>;
 
 /** Sends one GET and returns the parsed JSON body. */
@@ -32,7 +32,9 @@ export function gitHubReader(options: { fetch: Fetch; token?: string | undefined
     if (url.origin !== gitHubApi) {
       throw new Error(`GitHub: refusing to send the token to ${url.origin}.`);
     }
-    const response = await options.fetch(url.href, { method: "GET", headers });
+    // A redirect would carry the token to wherever GitHub's answer points, past the origin
+    // check above, so the request fails instead of following it.
+    const response = await options.fetch(url.href, { method: "GET", headers, redirect: "error" });
     if (!response.ok) {
       throw new Error(`GitHub: GET ${url.pathname} answered ${response.status}.`);
     }

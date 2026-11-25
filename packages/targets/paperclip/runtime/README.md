@@ -32,11 +32,14 @@ The plugin builder (`halonic build paperclip-plugin`, a later step) writes three
 A tool the served snapshot doesn't define, or defines with another action or other parameters than
 the plugin was built with, is off. So is a tool whose action has no handler in this runtime.
 
+A tool's `callers` name agents by their `urlKey`, compared without case. An agent's display name
+never counts, because two agents can share one.
+
 ## Keys
 
 The runtime reads GitHub only with the read token the installer sets as the `githubToken` secret
-reference, and only by GET requests to `api.github.com`. It never mints a token and never takes a
-key from the workspace.
+reference, and only by GET requests to `api.github.com` that don't follow redirects. It never mints
+a token and never takes a key from the workspace.
 
 ## Example
 

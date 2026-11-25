@@ -74,6 +74,7 @@ type Handler = (params: unknown, runCtx: ToolRunContext) => Promise<ToolResult>;
  * A plugin context whose GitHub answers from `answers` (a request with no
  * answer gets 404; with `github.down`, every request fails), with plugin
  * state in memory, the metrics written and the tool handlers registered.
+ * The caller is always `agent-mateo`, as `agent` describes it.
  */
 export function fakeHost(config: Record<string, unknown>, answers: Record<string, unknown>) {
   const handlers = new Map<string, Handler>();
@@ -81,6 +82,7 @@ export function fakeHost(config: Record<string, unknown>, answers: Record<string
   const saved = new Map<string, unknown>();
   const metrics: { name: string; value: number; tags: unknown }[] = [];
   const github = { down: false };
+  const agent = { urlKey: "mateo", name: "Mateo" };
   const ctx = {
     metrics: {
       write: async (name: string, value: number, tags?: unknown) => {
@@ -100,8 +102,7 @@ export function fakeHost(config: Record<string, unknown>, answers: Record<string
       register: (name: string, _declaration: unknown, fn: Handler) => handlers.set(name, fn),
     },
     agents: {
-      get: async (id: string) =>
-        id === "agent-mateo" ? { id, urlKey: "mateo", name: "Mateo" } : null,
+      get: async (id: string) => (id === "agent-mateo" ? { id, ...agent } : null),
     },
     config: { get: async () => config },
     secrets: { resolve: async () => "test-token" },
@@ -124,5 +125,5 @@ export function fakeHost(config: Record<string, unknown>, answers: Record<string
     if (handler === undefined) throw new Error(`${name} isn't registered`);
     return handler(params, runCtx);
   };
-  return { ctx, call, sent, saved, metrics, github };
+  return { ctx, call, sent, saved, metrics, github, agent };
 }

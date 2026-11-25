@@ -10,7 +10,7 @@ import {
   githubToken,
   publishedSnapshot,
 } from "./fake-host.test-helper.ts";
-import { gitHubReader } from "./github.ts";
+import { type Fetch, gitHubReader } from "./github.ts";
 import type { ActionCall, ActionHandlers } from "./handlers.ts";
 import type { ToolDeclaration } from "./host.ts";
 import { registerWorkspaceTools } from "./register.ts";
@@ -95,6 +95,36 @@ verifies("paperclip-runtime.tools", () => {
         error: "pr_status: this tool isn't offered to the calling agent.",
       });
       expect(calls).toEqual([]);
+    });
+
+    test("matches callers by the agent's urlKey, ignoring case, never by its display name", async () => {
+      const onlyPriya = acmeTool("pr_status", { callers: { agents: ["priya"] } });
+      const host = await plugin(acmeSnapshot({ tools: [acmeTool("my_prs"), onlyPriya] }));
+      host.agent.name = "priya";
+      expect(await host.call("pr_status", {})).toEqual({
+        error: "pr_status: this tool isn't offered to the calling agent.",
+      });
+      expect(host.calls).toEqual([]);
+
+      const offeredToMateo = acmeTool("pr_status", { callers: { agents: ["Mateo"] } });
+      const { call } = await plugin(acmeSnapshot({ tools: [acmeTool("my_prs"), offeredToMateo] }));
+      expect(await call("pr_status", {})).toEqual({ content: "ran github.pull-request" });
+    });
+
+    test("doesn't follow a redirect with the token", async () => {
+      const sent: string[] = [];
+      // Follows a redirect the way `fetch` does unless the request says `redirect: "error"`.
+      const fetch: Fetch = async (url, init) => {
+        sent.push(url);
+        if (init.redirect === "error") {
+          throw new TypeError("fetch failed: redirect mode is set to error");
+        }
+        sent.push("https://example.com/steal");
+        return new Response("{}", { status: 200 });
+      };
+      const get = gitHubReader({ fetch, token: "test-token" });
+      await expect(get("/repos/acme/website")).rejects.toThrow("redirect mode is set to error");
+      expect(sent).toEqual(["https://api.github.com/repos/acme/website"]);
     });
 
     test("reads GitHub only with the read token set in the settings", async () => {

@@ -84,13 +84,17 @@ function offReason(served: Tool | undefined, built: Tool | undefined, commit: st
   return undefined;
 }
 
-/** May this agent call the tool? */
-function mayCall(tool: Tool, agent: { readonly urlKey: string; readonly name: string }) {
-  return (
-    tool.callers === "everyone" ||
-    tool.callers.agents.includes(agent.urlKey) ||
-    tool.callers.agents.includes(agent.name)
-  );
+/**
+ * May this agent call the tool? Only the agent's `urlKey` counts, ignoring
+ * case: it is unique in a company, while a display name isn't, so another
+ * agent with the same display name must not get through.
+ */
+function mayCall(tool: Tool, agent: { readonly urlKey: string }) {
+  if (tool.callers === "everyone") {
+    return true;
+  }
+  const urlKey = agent.urlKey.toLowerCase();
+  return tool.callers.agents.some((caller) => caller.toLowerCase() === urlKey);
 }
 
 /** One call: picks the snapshot, checks the tool and the caller, then runs the action. */
