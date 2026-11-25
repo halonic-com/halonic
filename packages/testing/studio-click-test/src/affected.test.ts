@@ -24,10 +24,12 @@ verifies("studio-click-test.affected-steps", () => {
   describe("chooseSteps on the real steps and requirement files", () => {
     it("runs the short check and the Messenger step for a change only to Messenger", () => {
       const changed = ["packages/studio/features/messenger/src/view.tsx"];
-      expect(idsRun(changed)).toEqual([...shortCheck, "messenger-empty"]);
+      const run = [...shortCheck, "messenger-empty"];
+      expect(idsRun(changed)).toEqual(run);
+      // Every other step is named as left out, whatever steps main has added since.
       expect(
         chooseSteps(clickTestSteps, changed, requirements).notAffected.map((step) => step.id),
-      ).toEqual(["connect-paperclip"]);
+      ).toEqual(everyStep.filter((id) => !run.includes(id)));
     });
 
     it("runs only the short check for a change that touches no covered requirement", () => {
