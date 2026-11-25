@@ -107,12 +107,22 @@ async function pictureOf(
 /**
  * The decoded picture on a canvas: no `<img>`, so no address and no load of its own. The Show
  * button is gone once it's drawn, so focus moves to the picture instead of falling to the page.
+ * It's drawn once: strict mode runs the effect again after its cleanup has closed the bitmap,
+ * and the canvas keeps its pixels. The size is set there too, since a closed bitmap has none.
  */
 function DrawnPicture({ name, picture }: { readonly name: string; readonly picture: ImageBitmap }) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const drawn = useRef<ImageBitmap>(undefined);
   useEffect(() => {
-    canvas.current?.getContext("2d")?.drawImage(picture, 0, 0);
-    canvas.current?.focus();
+    const target = canvas.current;
+    if (target === null) return;
+    if (drawn.current !== picture) {
+      target.width = picture.width;
+      target.height = picture.height;
+      target.getContext("2d")?.drawImage(picture, 0, 0);
+      drawn.current = picture;
+    }
+    target.focus();
     return () => picture.close();
   }, [picture]);
   return (
@@ -121,9 +131,7 @@ function DrawnPicture({ name, picture }: { readonly name: string; readonly pictu
       role="img"
       aria-label={name}
       tabIndex={-1}
-      width={picture.width}
-      height={picture.height}
-      className="h-auto max-w-full rounded-md border border-border"
+      className="h-auto max-w-full rounded-md border border-border focus-ring"
     />
   );
 }

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { useNarrow } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it } from "vitest";
@@ -14,11 +15,13 @@ import { focusedWindowTitle, mountFocusedWindow } from "./focused-window.tsx";
 import type { PlaceViewProps } from "./studio-page.tsx";
 import { StudioWorkspace } from "./studio-workspace.ts";
 
+let media: FakeMediaQueries;
 let restoreMedia: () => void;
 let element: HTMLDivElement;
 
 beforeEach(() => {
-  restoreMedia = new FakeMediaQueries(1280).install();
+  media = new FakeMediaQueries(1280);
+  restoreMedia = media.install();
   element = document.createElement("div");
   document.body.append(element);
 });
@@ -28,9 +31,13 @@ afterEach(() => {
   restoreMedia();
 });
 
-/** The Acme Inbox's view: it names the feature whose context it got. */
+/**
+ * The Acme Inbox's view: it names the feature whose context it got, and shows one pane in a narrow
+ * window, as the Messenger and the Inbox do.
+ */
 function AcmeInbox({ context }: PlaceViewProps) {
-  return <h1>{`Inbox for ${String(context.host)}`}</h1>;
+  const panes = useNarrow() ? 1 : 2;
+  return <h1 data-panes={panes}>{`Inbox for ${String(context.host)}`}</h1>;
 }
 
 const inboxApp: FocusedAppContribution = {
@@ -79,6 +86,16 @@ verifies("shell.focused-apps", () => {
     expect(document.title).toBe("Inbox · Acme · Halonic Inbox");
     focused.unmount();
     expect(element.childElementCount).toBe(0);
+  });
+
+  it("shows its app in one pane in a window 640px wide, and in two once it's widened", async () => {
+    media.resize(640);
+    await mount("Acme");
+    const panes = () => element.querySelector("main h1")?.getAttribute("data-panes");
+
+    expect(panes()).toBe("1");
+    act(() => media.resize(1280));
+    expect(panes()).toBe("2");
   });
 
   it("says to open Halonic while there is no workspace", async () => {

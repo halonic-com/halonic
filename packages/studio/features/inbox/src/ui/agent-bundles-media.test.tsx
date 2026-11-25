@@ -3,7 +3,7 @@
 import type { MessagingAuthor } from "@halonicjs/ports";
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
+import { act, StrictMode } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { fakeRuns } from "../fake-runs.test-helper.ts";
 import { Inbox } from "../inbox.ts";
@@ -49,7 +49,12 @@ function acme() {
 /** The Inbox with no runs waiting and the agents' items from `messaging`, at 13:00. */
 async function openInbox(messaging: FakeAgentMessaging) {
   const inbox = new Inbox(fakeRuns([]).runs);
-  const root = render(<InboxView inbox={inbox} now={() => oneOClock} agentMessaging={messaging} />);
+  // Strict mode, as Studio renders every page: the picture's effect runs twice.
+  const root = render(
+    <StrictMode>
+      <InboxView inbox={inbox} now={() => oneOClock} agentMessaging={messaging} />
+    </StrictMode>,
+  );
   await settled();
   return root;
 }
@@ -131,12 +136,20 @@ verifies("inbox.agent-item-bundles", () => {
   });
 });
 
-/** Draws nothing for real: jsdom has no image decoder or canvas, so the test plays both. */
+/**
+ * Draws nothing for real: jsdom has no image decoder or canvas, so the test plays both. A closed
+ * picture refuses to be drawn, as a browser's does.
+ */
 function fakePictures() {
-  const picture = { width: 40, height: 30, close: vi.fn() };
+  const picture = { width: 40, height: 30, closed: false, close: vi.fn() };
+  picture.close.mockImplementation(() => {
+    picture.closed = true;
+  });
   const decode = vi.fn(async (_blob: Blob) => picture);
   vi.stubGlobal("createImageBitmap", decode);
-  const drawImage = vi.fn();
+  const drawImage = vi.fn((drawn: { readonly closed: boolean }) => {
+    if (drawn.closed) throw new Error("The picture was closed before it was drawn.");
+  });
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
     drawImage,
   } as unknown as CanvasRenderingContext2D);
@@ -169,6 +182,7 @@ verifies("inbox.agent-item-media", () => {
     expect(decode.mock.calls[0]?.[0].type).toBe("image/png");
     const shown = root.querySelector('canvas[role="img"]');
     expect(shown?.getAttribute("aria-label")).toBe("login.png");
+    expect(drawImage).toHaveBeenCalledTimes(1);
     expect(drawImage).toHaveBeenCalledWith(picture, 0, 0);
     expect(buttons(root, "Show image")).toHaveLength(0);
     // The button is gone, so focus moves to the picture rather than falling to the page.

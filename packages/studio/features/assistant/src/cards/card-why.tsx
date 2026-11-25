@@ -35,7 +35,7 @@ export function CardWhy({ why }: { readonly why: string }) {
         id={textId}
         ref={text}
         tabIndex={-1}
-        className={`text-small text-fg-muted wrap-anywhere ${opened ? "" : "line-clamp-3"}`}
+        className={`text-small text-fg-muted wrap-anywhere focus-ring ${opened ? "" : "line-clamp-3"}`}
       >
         “{why}”
       </p>
@@ -44,7 +44,8 @@ export function CardWhy({ why }: { readonly why: string }) {
           type="button"
           aria-expanded={false}
           aria-controls={textId}
-          className={`self-start text-small font-medium ${standaloneLinkClasses}`}
+          // On a phone the 48px tap area grows down from the text, not around it (flow-assistant 11.3).
+          className={`self-start text-small font-medium ${standaloneLinkClasses} phone:items-start`}
           onClick={() => setOpened(true)}
         >
           {words.more}
