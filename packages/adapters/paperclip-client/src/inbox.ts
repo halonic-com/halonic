@@ -1,4 +1,5 @@
 import type { InboxItem, MessagingProject } from "@halonicjs/ports";
+import { PaperclipBoardRequests } from "./board-requests.ts";
 import { approvalToItem, cardToItem } from "./cards.ts";
 import { decisionToItem } from "./decisions.ts";
 import { asRecords, type JsonRecord, text } from "./json.ts";
@@ -72,6 +73,7 @@ export class PaperclipInbox {
   readonly #reader: PaperclipReader;
   readonly #company: string;
   readonly #steppers: PaperclipSteppers | undefined;
+  readonly #boardRequests: PaperclipBoardRequests;
   #cards = new Map<string, TaskCards>();
   /** Each pending approval's first linked task, read once: an approval's links don't change. */
   #approvalTasks = new Map<string, JsonRecord | undefined>();
@@ -81,6 +83,7 @@ export class PaperclipInbox {
     this.#reader = reader;
     this.#company = company;
     this.#steppers = steppers;
+    this.#boardRequests = new PaperclipBoardRequests(reader, company);
   }
 
   /** The company's open tasks. */
@@ -106,12 +109,16 @@ export class PaperclipInbox {
     const projectOf = await this.#projects(context);
     const approvals = await this.#approvals(context, projectOf);
     const decisions = await this.#decisions(context);
+    const boardRequests = await this.#boardRequests.list(context);
     const read = await this.#allCards(context, projectOf, tasks ?? (await this.openTasks()));
     const cards =
       this.#steppers === undefined
         ? read
         : await this.#steppers.refresh(read, (item) => context.ids.read(item.id, "card")?.[0]);
-    return newestFirst([...approvals, ...decisions, ...cards], (item) => item.createdAt);
+    return newestFirst(
+      [...approvals, ...decisions, ...boardRequests, ...cards],
+      (item) => item.createdAt,
+    );
   }
 
   /** The company's projects, read once per list, as a lookup. */

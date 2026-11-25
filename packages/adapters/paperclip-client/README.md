@@ -120,6 +120,9 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `approve`, `rejectApproval` | `POST /api/approvals/{approval}/approve`, `/reject` | decide an approval |
 | `listDecisions` | `GET /api/companies/{company}/decisions?status=open&limit=100`, and `?status=decided` before an answer | the board's open decisions; who decided one first |
 | `decide` | `POST /api/decisions/{decision}/decide` with `{ optionId, idempotencyKey }` | pick one option of a decision |
+| `listSecretProposals`, `listJoinRequests` | `GET /api/companies/{company}/secret-proposals?status=pending`, `/join-requests?status=pending_approval` (no filter before an answer) | what agents propose as secrets or bindings, and who asks to join; never a value |
+| `approveSecretProposal`, `rejectSecretProposal` | `POST /api/companies/{company}/secret-proposals/{id}/approve` with `{}`, `/reject` with `{ reason }` | decide a secret proposal; no overrides, no cascade |
+| `approveJoinRequest`, `rejectJoinRequest` | `POST /api/companies/{company}/join-requests/{id}/approve`, `/reject`, each with `{}` | decide a join request |
 | `requestApprovalRevision` | `POST /api/approvals/{approval}/request-revision` with `{ decisionNote }` | Request changes: send an approval back to the agent that asked |
 | `whoAmI`, `revokeKey` | `GET /api/cli-auth/me`, `POST /api/cli-auth/revoke-current` | whom a connection is signed in as (its name only); disconnect (track A4) |
 | `spendSummary`, `spendByProvider` | `GET /api/companies/{company}/costs/summary?from=`, `/costs/by-provider?from=` | paid money, the budget, and tokens of every billing type |

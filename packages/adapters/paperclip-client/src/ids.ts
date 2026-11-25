@@ -9,6 +9,8 @@ export type PaperclipItemKind =
   | "card"
   | "approval"
   | "decision"
+  | "secret-proposal"
+  | "join-request"
   | "task"
   | "project"
   | "seat"
@@ -26,6 +28,8 @@ const partCounts: Readonly<Record<PaperclipItemKind, number>> = {
   card: 2,
   approval: 1,
   decision: 1,
+  "secret-proposal": 1,
+  "join-request": 1,
   task: 1,
   project: 1,
   seat: 1,

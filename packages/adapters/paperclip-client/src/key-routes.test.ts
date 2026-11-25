@@ -30,6 +30,9 @@ verifies("agent-host.paperclip-key", () => {
       ["POST", "/api/board-claim/t1/claim"],
       ["POST", `/api/companies/${company}/secrets`],
       ["POST", "/api/secrets/s1/rotate"],
+      // An agent's own proposal carries the secret's value (HAL-18873).
+      ["POST", "/api/agents/me/secret-proposals"],
+      ["GET", "/api/agents/me/secret-proposals"],
     ];
 
     it("are on no entry of the fixed list", () => {
@@ -37,9 +40,15 @@ verifies("agent-host.paperclip-key", () => {
         expect(findRequest(method, path), `${method} ${path}`).toBeUndefined();
       }
       const paths = Object.values(paperclipRequests).map((request) => request.path);
-      expect(paths.filter((path) => /keys|token|secret|challenges|board-claim/.test(path))).toEqual(
-        [],
-      );
+      // The board's own secret-proposal routes are the one exception: they list and decide
+      // proposals and never carry a value (`paperclip-client.board-requests`, HAL-18873).
+      const boardProposals =
+        /^\/api\/companies\/:company\/secret-proposals(\/:proposal\/(approve|reject))?$/;
+      const others = paths.filter((path) => !boardProposals.test(path));
+      expect(
+        others.filter((path) => /keys|token|secret|challenges|board-claim/.test(path)),
+      ).toEqual([]);
+      expect(paths.length - others.length).toBe(3);
     });
 
     it("can't be sent: a request off the list is refused before any request goes out", async () => {

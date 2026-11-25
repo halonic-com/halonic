@@ -125,5 +125,8 @@ export function acmeData() {
     ],
     // Standalone decisions; Acme has none open unless a test adds one.
     decisions: [] as { status: string }[],
+    // Secret proposals and join requests; none unless a test adds one.
+    secretProposals: [] as { status: string }[],
+    joinRequests: [] as { status: string }[],
   };
 }

@@ -93,4 +93,32 @@ verifies("inbox.agent-inbox-items", () => {
     const buttons = [...root.querySelectorAll("button")].map((button) => button.textContent);
     expect(buttons).toEqual(["Approve", "Reject", "Request changes"]);
   });
+
+  it("shows a Paperclip secret proposal's name and reason with Approve and Reject", async () => {
+    const messaging = new FakeAgentMessaging({ now: () => asked });
+    const source = messaging.addSource({ label: "Paperclip · Acme", provider: "paperclip" });
+    // The question as the Paperclip provider maps a secret proposal (paperclip-client.board-requests).
+    const item = messaging.addInboxItem(source.id, {
+      question:
+        "New secret: Acme deploy token\n\n- Key: ACME_DEPLOY_TOKEN\n\n**Why**\n\nThe website deploy needs it.",
+      options: [
+        { id: "approve", label: "Approve" },
+        { id: "reject", label: "Reject" },
+      ],
+    });
+    const [read] = await messaging.listSources();
+    const root = await render(
+      <AgentItemCard
+        item={item}
+        source={read}
+        now={() => asked}
+        answer={(answer) => messaging.answer(item.id, answer)}
+        readAttachment={(attachment) => messaging.readAttachment(attachment)}
+      />,
+    );
+    expect(root.querySelector("h2, h3")?.textContent).toBe("New secret: Acme deploy token");
+    expect(root.textContent).toContain("The website deploy needs it.");
+    const buttons = [...root.querySelectorAll("button")].map((button) => button.textContent);
+    expect(buttons).toEqual(["Approve", "Reject"]);
+  });
 });

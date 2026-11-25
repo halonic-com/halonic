@@ -123,6 +123,13 @@ verifies("agent-host.paperclip-key", () => {
         // Standalone decisions (HAL-18872), pinned in decisions.test.ts.
         "listDecisions",
         "decide",
+        // Secret proposals and join requests (HAL-18873), pinned in board-requests.test.ts.
+        "listSecretProposals",
+        "approveSecretProposal",
+        "rejectSecretProposal",
+        "listJoinRequests",
+        "approveJoinRequest",
+        "rejectJoinRequest",
         "whoAmI",
         "revokeKey",
         // TeamStatus's reads (HAL-17606), pinned in team-requests.test.ts.
