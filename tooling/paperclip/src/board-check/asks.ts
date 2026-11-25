@@ -1,3 +1,4 @@
+import { amsterdamTime } from "../amsterdam-time.ts";
 import { signature } from "./writes.ts";
 
 /**
@@ -131,12 +132,12 @@ export function asksDocument(
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .map(
       (ask) =>
-        `| ${ask.identifier} | ${ask.commentId} | ${names.get(ask.authorAgentId) ?? ask.authorAgentId} | ${ask.createdAt} | [open](${askLink(ask)}) |`,
+        `| ${ask.identifier} | ${ask.commentId} | ${names.get(ask.authorAgentId) ?? ask.authorAgentId} | ${amsterdamTime(ask.createdAt)} | [open](${askLink(ask)}) |`,
     );
   return [
     "# Board asks",
     "",
-    `Agents' comments that ask the board, from the last 24 hours, newest first. Updated ${now.toISOString()}.`,
+    `Agents' comments that ask the board, from the last 24 hours, newest first. Updated ${amsterdamTime(now)}.`,
     "The list carries no text from the comments: open the link to read an ask. An entry here never answers or covers an ask.",
     "",
     "| Task | Comment | Author | Time | Link |",

@@ -1,3 +1,4 @@
+import { amsterdamTime } from "../amsterdam-time.ts";
 import type { Snapshot, SnapshotPull } from "../snapshot/shape.ts";
 
 /**
@@ -248,7 +249,7 @@ export function planTrend(record: MergeSpeedRecord, snapshot: Snapshot, now: Dat
     comment: [
       `Merge speed changed (${changes.join(", ")}), last ${trendHours} hours:`,
       ...speedLines(speed),
-      `Before: ${record.reported.mergesPerHour} merges per hour, ${percent(record.reported.dropRate)} dropped, median ${inQueue(record.reported.medianMinutes)}. Queue exits counted since ${record.trackingSince}.`,
+      `Before: ${record.reported.mergesPerHour} merges per hour, ${percent(record.reported.dropRate)} dropped, median ${inQueue(record.reported.medianMinutes)}. Queue exits counted since ${amsterdamTime(record.trackingSince)}.`,
     ].join("\n"),
     record: { ...record, reported: speed },
   };

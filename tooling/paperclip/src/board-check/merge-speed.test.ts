@@ -1,5 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
+import { amsterdamTime } from "../amsterdam-time.ts";
 import { at, pull, snapshot } from "./merge-speed.test-helper.ts";
 import { mergeSpeed, planTrend, readMergeSpeedRecord, trackQueue } from "./merge-speed.ts";
 
@@ -95,7 +96,7 @@ verifies("paperclip.board-check-merge-speed", () => {
         "- Merges: 0 (0 per hour).",
         "- Dropped from the queue without merging: 50% of 4 exits.",
         "- Time in queue of the merged ones: median 60 min, longest 60 min.",
-        `Before: 0 merges per hour, 0% dropped, median 20 min. Queue exits counted since ${at("04:00")}.`,
+        `Before: 0 merges per hour, 0% dropped, median 20 min. Queue exits counted since ${amsterdamTime(at("04:00"))}.`,
       ].join("\n"),
     );
     expect(slow.record.reported?.medianMinutes).toBe(60);

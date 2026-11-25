@@ -1,3 +1,4 @@
+import { amsterdamTime } from "../amsterdam-time.ts";
 import { type CheckState, checkState, type GitHubGet, type GitHubQuery } from "../github.ts";
 import type { ActionHandler } from "../handlers.ts";
 import { mergeQueueQuery, type QueueRepository, type Rollup } from "./merge-queue-query.ts";
@@ -258,7 +259,7 @@ function fastTrackLine(row: FastTrackRow): string {
   const by =
     row.addedBy === null
       ? "unknown (GitHub doesn't say; never counts as allowed)"
-      : `${row.addedBy} at ${row.addedAt ?? "unknown time"}`;
+      : `${row.addedBy} at ${amsterdamTime(row.addedAt ?? "unknown time")}`;
   return `fast-track #${row.number} (${row.task ?? "no task"}): added by ${by}; ${row.draft ? "draft" : "ready"}, ci-ok ${row.ciOk}, ${row.inQueue ? "queued" : "not queued"}`;
 }
 
@@ -271,7 +272,7 @@ function waitText(wait: RepoQueueState["runnerWait"]): string {
 
 /** The queue state in lines an agent reads, as `queue_state` writes them. */
 export function queueStateText(state: QueueState): string {
-  const lines = [`Merge queue read from GitHub at ${state.takenAt}.`];
+  const lines = [`Merge queue read from GitHub at ${amsterdamTime(state.takenAt)}.`];
   for (const repo of state.repos) {
     lines.push(`${repo.repo}: ${repo.entries.length} in the queue; ${waitText(repo.runnerWait)}.`);
     lines.push(...repo.entries.map(entryLine));

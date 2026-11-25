@@ -1,5 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
+import { amsterdamTime } from "../amsterdam-time.ts";
 import {
   agentLoad,
   emptyStale,
@@ -107,7 +108,7 @@ verifies("paperclip.board-check-stale", () => {
       {
         kind: "comment",
         taskId: "task-chief",
-        body: `Todos with no owner for 4 hours or more; please pick one:\n- HAL-9: missing assignee, no owner since ${hoursAgo(5).toISOString()}`,
+        body: `Todos with no owner for 4 hours or more; please pick one:\n- HAL-9: missing assignee, no owner since ${amsterdamTime(hoursAgo(5))}`,
       },
       expect.objectContaining({
         kind: "wake",

@@ -1,3 +1,4 @@
+import { amsterdamTime } from "../amsterdam-time.ts";
 /**
  * Part (d) of the board check: approvals waiting for the board. Each pass
  * lists the pending approvals that weren't pending at the last pass, in one
@@ -41,7 +42,7 @@ export function planApprovals(
       approval.requestedByAgentId === null
         ? "a board user"
         : (names.get(approval.requestedByAgentId) ?? approval.requestedByAgentId);
-    return `- ${approval.id}: ${approval.type}, asked by ${by} at ${new Date(approval.createdAt).toISOString()}`;
+    return `- ${approval.id}: ${approval.type}, asked by ${by} at ${amsterdamTime(approval.createdAt)}`;
   });
   return {
     comment:

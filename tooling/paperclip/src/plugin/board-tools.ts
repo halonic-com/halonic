@@ -7,6 +7,7 @@ import type {
   ToolResult,
   ToolRunContext,
 } from "@paperclipai/plugin-sdk";
+import { amsterdamTime } from "../amsterdam-time.ts";
 import { askLink, readSeenAsks, type SeenAsk } from "../board-check/asks.ts";
 import { type FailedRun, readRecord } from "../board-check/failed-runs.ts";
 import {
@@ -110,11 +111,11 @@ async function boardAsks(ctx: BoardToolsApi, companyId: string, since: Date): Pr
   }
   const lines = rows.map(
     (row) =>
-      `- ${row.identifier}, comment ${row.commentId} by ${row.author} at ${row.createdAt}: ${row.answered ? "answered" : "open"} (${row.link})`,
+      `- ${row.identifier}, comment ${row.commentId} by ${row.author} at ${amsterdamTime(row.createdAt)}: ${row.answered ? "answered" : "open"} (${row.link})`,
   );
   return {
     content: [
-      `Board asks since ${since.toISOString()}: ${rows.length}. No comment text: open the link to read one.`,
+      `Board asks since ${amsterdamTime(since)}: ${rows.length}. No comment text: open the link to read one.`,
       ...lines,
     ].join("\n"),
     data: rows,
@@ -151,12 +152,12 @@ async function failedRuns(ctx: BoardToolsApi, companyId: string, since: Date): P
   const pileText = pileLine(piles.piles, names);
   return {
     content: [
-      `Failed and timed-out runs since ${since.toISOString()}: ${runs.length}. Counting since ${counting}; runs that failed while the plugin was down are missing.`,
+      `Failed and timed-out runs since ${amsterdamTime(since)}: ${runs.length}. Counting since ${amsterdamTime(counting)}; runs that failed while the plugin was down are missing.`,
       ...lines,
       ...(pileText === undefined
         ? []
         : [
-            `Queued piles at ${piles.at}${piles.partial ? " (some tasks not read)" : ""}: ${pileText}.`,
+            `Queued piles at ${amsterdamTime(piles.at ?? "unknown time")}${piles.partial ? " (some tasks not read)" : ""}: ${pileText}.`,
           ]),
     ].join("\n"),
     data: {
@@ -210,9 +211,9 @@ async function mergeSpeedTool(
   const stale = now.getTime() - Date.parse(snapshot.takenAt) > staleMinutes * 60_000;
   return {
     content: [
-      `Merge speed, last ${hours} hours, from the snapshot of ${snapshot.takenAt}${stale ? " (stale: older than 30 minutes)" : ""}:`,
+      `Merge speed, last ${hours} hours, from the snapshot of ${amsterdamTime(snapshot.takenAt)}${stale ? " (stale: older than 30 minutes)" : ""}:`,
       ...speedLines(speed),
-      `Queue exits counted since ${record.trackingSince}; earlier ones are missing.`,
+      `Queue exits counted since ${amsterdamTime(record.trackingSince)}; earlier ones are missing.`,
     ].join("\n"),
     data: { ...speed, snapshotAt: snapshot.takenAt, stale, trackingSince: record.trackingSince },
   };

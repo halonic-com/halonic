@@ -180,7 +180,7 @@ verifies("runtime.github-merge-queue", () => {
       const host = queueHost({ data: { repository: emptyQueue } });
       const result = await host.call("queue_state", {});
       expect(result.content?.split("\n")).toEqual([
-        "Merge queue read from GitHub at 2026-11-24T15:05:00.000Z.",
+        "Merge queue read from GitHub at 24 Nov 16:05 CET.",
         "acme/website: 0 in the queue; no merge-group job waits for a runner.",
         "no open pull request carries fast-track",
       ]);
@@ -272,13 +272,13 @@ verifies("runtime.github-merge-queue", () => {
         ],
       });
       expect(result.content?.split("\n")).toEqual([
-        "Merge queue read from GitHub at 2026-11-24T15:05:00.000Z.",
+        "Merge queue read from GitHub at 24 Nov 16:05 CET.",
         "acme/website: 4 in the queue; 2 merge-group jobs wait for a runner, the longest 7 min.",
         "1. #41 (ACME-41): AWAITING_CHECKS, group ci-ok success; queued 20 min ago by acme-queue, GitHub estimates 10 min",
         "2. #42 (ACME-42): AWAITING_CHECKS, group ci-ok success; queued 20 min ago by acme-queue, GitHub estimates 10 min",
         "3. #43 (ACME-43): QUEUED, group ci-ok not formed; queued 20 min ago by acme-queue",
         "4. #44 (no task): QUEUED, group ci-ok not formed; queued 20 min ago by acme-queue",
-        "fast-track #50 (ACME-50): added by acme-lead at 2026-11-24T14:00:00Z; ready, ci-ok pending, not queued",
+        "fast-track #50 (ACME-50): added by acme-lead at 24 Nov 15:00 CET; ready, ci-ok pending, not queued",
         "fast-track #51 (ACME-51): added by unknown (GitHub doesn't say; never counts as allowed); draft, ci-ok missing, not queued",
       ]);
     });

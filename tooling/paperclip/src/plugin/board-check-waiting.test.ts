@@ -50,10 +50,10 @@ verifies("paperclip.board-check-waiting", () => {
     const { key, body } = (writes[0]?.args[0] ?? {}) as { key?: string; body?: string };
     expect(key).toBe("board-waiting");
     expect(body).toContain(
-      "1. HAL-2: blocked on the board, holds up 2 tasks, waiting since 2026-11-22T09:00:00.000Z, held by the board",
+      "1. HAL-2: blocked on the board, holds up 2 tasks, waiting since 22 Nov 10:00 CET, held by the board",
     );
     expect(body).toContain(
-      "2. HAL-3: board card pending, holds up 0 tasks, waiting since 2026-11-22T10:00:00.000Z, held by Mateo",
+      "2. HAL-3: board card pending, holds up 0 tasks, waiting since 22 Nov 11:00 CET, held by Mateo",
     );
     expect(body).not.toContain("HAL-4:");
     expect(body).not.toContain("A title");
