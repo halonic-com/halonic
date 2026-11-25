@@ -1,14 +1,15 @@
 import { AgentMessagingService, TeamStatusService } from "@halonicjs/studio-services";
 import { defineFeature } from "@halonicjs/studio-shell";
-import { PullRequestsService, SpendAndSeatsService } from "./api.ts";
+import { PullRequestsService, SpendAndSeatsService, TeamDetailsService } from "./api.ts";
 import { PullRequests } from "./pull-requests.ts";
 import { SpendAndSeats } from "./spend-and-seats.ts";
+import { TeamDetails } from "./team-details.ts";
 
 /**
  * The Team feature (requirements `team.spend-and-seats` and
  * `team.pull-request-stuck`). It offers the Spend and seats screen's reads as
  * `SpendAndSeatsService` and the Pull requests screen's as
- * `PullRequestsService`, built on the engine's `TeamStatus`; it never sees a
+ * `PullRequestsService`, and the detail pages' as `TeamDetailsService`, built on the engine's `TeamStatus`; it never sees a
  * provider's own types. It adds the Spend and seats place, which the shell
  * shows under its Team heading, with the problems in Needs you as its signal.
  */
@@ -17,7 +18,7 @@ export const teamFeature = defineFeature({
   title: "Team",
   // Wanted, not needed: until the engine serves TeamStatus, Studio still opens.
   wants: [TeamStatusService, AgentMessagingService],
-  provides: [SpendAndSeatsService, PullRequestsService],
+  provides: [SpendAndSeatsService, PullRequestsService, TeamDetailsService],
   register(studio) {
     studio.services.provide(
       SpendAndSeatsService,
@@ -28,6 +29,13 @@ export const teamFeature = defineFeature({
       PullRequestsService,
       (services) =>
         new PullRequests(services.find(TeamStatusService), services.find(AgentMessagingService), {
+          now: () => new Date(),
+        }),
+    );
+    studio.services.provide(
+      TeamDetailsService,
+      (services) =>
+        new TeamDetails(services.find(TeamStatusService), services.find(AgentMessagingService), {
           now: () => new Date(),
         }),
     );

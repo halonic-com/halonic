@@ -1,4 +1,4 @@
-import type { Seat } from "@halonicjs/ports";
+import type { MessagingId, Seat } from "@halonicjs/ports";
 import { Card, ChevronRightIcon, ListHeading, StatusChip } from "@halonicjs/studio-kit";
 import type { SeatProblem, SeatProblemKind } from "../seat-problems.ts";
 import { formatDayTime, formatTime, type TeamClock } from "../team-format.ts";
@@ -173,10 +173,16 @@ function SeatName({ seat }: { seat: Seat }) {
 }
 
 /** A seat's row: its name, State chip, week meter, five hours and agents, then ›. */
-function SeatRow(props: { seat: Seat; clock: TeamClock; onLink: (link: TeamLink) => void }) {
-  const { seat, clock, onLink } = props;
+function SeatRow(props: {
+  seat: Seat;
+  clock: TeamClock;
+  onLink: (link: TeamLink) => void;
+  onOpenSeat: ((seat: MessagingId) => void) | undefined;
+}) {
+  const { seat, clock, onLink, onOpenSeat } = props;
+  const open = onOpenSeat === undefined ? () => onLink("ai-seats") : () => onOpenSeat(seat.id);
   return (
-    <Card onClick={() => onLink("ai-seats")}>
+    <Card onClick={open}>
       {/* A failed read keeps the last good numbers, greyed (Sofia's table 1.6). */}
       <span className={seat.failedRead === undefined ? rowGrid : `${rowGrid} text-fg-muted`}>
         <span className="min-w-0 w-full wrap-anywhere text-body-strong">
@@ -198,13 +204,14 @@ function SeatRow(props: { seat: Seat; clock: TeamClock; onLink: (link: TeamLink)
 
 /**
  * The seats, worst first, under the "Seats · worst first" heading, with the column names above
- * them on a desktop. Each row opens AI seats in Paperclip. A paid-API seat shows money's words
+ * them on a desktop. Each row opens the seat's page, or AI seats in Paperclip where there is none. A paid-API seat shows money's words
  * instead of a weekly limit.
  */
 export function SeatList(props: {
   seats: readonly Seat[];
   clock: TeamClock;
   onLink: (link: TeamLink) => void;
+  onOpenSeat?: ((seat: MessagingId) => void) | undefined;
 }) {
   return (
     <div className="flex flex-col gap-2">
@@ -222,7 +229,12 @@ export function SeatList(props: {
       <ul className="flex flex-col gap-2">
         {props.seats.map((seat) => (
           <li key={seat.id}>
-            <SeatRow seat={seat} clock={props.clock} onLink={props.onLink} />
+            <SeatRow
+              seat={seat}
+              clock={props.clock}
+              onLink={props.onLink}
+              onOpenSeat={props.onOpenSeat}
+            />
           </li>
         ))}
       </ul>
