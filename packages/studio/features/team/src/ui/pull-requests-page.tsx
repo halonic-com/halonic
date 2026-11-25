@@ -6,7 +6,8 @@ import { formatTime, minutesSince, type TeamClock } from "../team-format.ts";
 import { type TeamLink, teamWords } from "../team-words.ts";
 import { LinkButton } from "./money-tiles.tsx";
 import { PageFrame, TryAgain } from "./page-frame.tsx";
-import { listBox, PullRequestLists } from "./pull-request-lists.tsx";
+import { listBox } from "./pr-list-parts.tsx";
+import { PullRequestLists } from "./pull-request-lists.tsx";
 import type { WebLinkOpener } from "./pull-request-row.tsx";
 
 /** The props of {@link PullRequestsPage}. */
@@ -29,8 +30,8 @@ const oldAfterMinutes = 30;
 
 /**
  * The Pull requests screen (requirement `team.pull-requests`, HAL-17515
- * renders P1–P10): Needs attention with the stuck PRs worst first and those
- * coming up, and All open grouped by state. It reads when it opens, when a
+ * renders P1–P10, P18–P22): Needs attention with the stuck PRs worst first and
+ * those coming up, All open grouped by state, the merge queue and Merged today. It reads when it opens, when a
  * source says it changed and on **Try again**. It only shows: nothing merges,
  * queues or approves from here, and links open outside the app.
  */
@@ -141,7 +142,13 @@ function ShownBody(props: {
       {state?.kind === "read" ? (
         <>
           <OldSnapshot asOf={state.asOf} clock={clock} />
-          <PullRequestLists rows={state.rows} clock={clock} opener={props.opener} />
+          <PullRequestLists
+            rows={state.rows}
+            merged={state.merged}
+            queue={state.queue}
+            clock={clock}
+            opener={props.opener}
+          />
         </>
       ) : null}
     </>

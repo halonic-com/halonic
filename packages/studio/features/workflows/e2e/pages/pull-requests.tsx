@@ -5,9 +5,10 @@ import { createRoot } from "react-dom/client";
 
 /*
  * The Pull requests screen (HAL-17515 P1–P10) from a made-up repo: stuck PRs, one with a very long
- * title, and two coming up. `?state=` picks what the reads answer: `attention` (P1, the default),
- * `old` (P7, a snapshot 43 min old), `loading` (P9), `failed` (the first read fails),
- * `no-snapshot` (P8) and `no-access` (P10). The spec presses All open itself (P4). The clock is
+ * title, some coming up, a merge queue and two merged today. `?state=` picks what the reads answer:
+ * `attention` (P1, the default), `old` (P7, a snapshot 43 min old), `loading` (P9), `failed` (the
+ * first read fails), `no-snapshot` (P8), `no-access` (P10), `runners-busy` (P20) and `queue-empty`
+ * (P22). The spec presses All open (P4), Queue (P18) and Merged today (P6) itself. The clock is
  * fixed at 24 Nov 13:00 UTC, so the times never change.
  */
 
@@ -71,6 +72,29 @@ const open: PullRequest[] = [
     state: "in-queue",
     queue: { position: 1, group: 1 },
   }),
+  pullRequest(5651, "fix(cli): quieter test output", {
+    author: agent("Owen"),
+    state: "in-queue",
+    queue: { position: 2, group: 2 },
+    fastTrack: true,
+  }),
+  pullRequest(5652, "docs(guide): merge queue", {
+    author: agent("Mara"),
+    state: "in-queue",
+    queue: { position: 3, group: 2 },
+  }),
+  pullRequest(5653, "feat(team): seat rows", {
+    author: agent("Priya"),
+    state: "in-queue",
+    queue: { position: 4 },
+    since: minutesAgo(31),
+  }),
+  pullRequest(5655, "feat(inbox): notice order", {
+    author: agent("Kim"),
+    state: "dequeued",
+    reason: "group failed",
+    since: minutesAgo(20),
+  }),
   pullRequest(5647, "fix(ui): focus ring on chips", {
     author: agent("Elena"),
     state: "approved",
@@ -85,15 +109,44 @@ const open: PullRequest[] = [
   ),
 ];
 
-const queue: MergeQueue = {
-  source,
-  repo: "acme",
-  asOf,
-  health: "running",
-  groups: [{ position: 1, state: "building", since: minutesAgo(9), pullRequests: ["pr-5650"] }],
-  waiting: [],
-  removedToday: [],
-};
+const recent: PullRequest[] = [
+  pullRequest(5630, "fix(engine): resume after sleep", {
+    author: agent("Owen"),
+    state: "merged",
+    since: minutesAgo(160),
+  }),
+  pullRequest(5638, "feat(studio): Team sidebar group", {
+    author: agent("Elena"),
+    state: "merged",
+    since: minutesAgo(40),
+  }),
+];
+
+const busy = state === "runners-busy";
+const queue: MergeQueue =
+  state === "queue-empty"
+    ? { source, repo: "acme", asOf, health: "empty", groups: [], waiting: [], removedToday: [] }
+    : {
+        source,
+        repo: "acme",
+        asOf,
+        health: busy ? "runners-busy" : "running",
+        runnerWaitMinutes: busy ? 12 : 0,
+        medianMinutesToMerge: 22,
+        groups: [
+          { position: 1, state: "passed", since: minutesAgo(14), pullRequests: ["pr-5650"] },
+          {
+            position: 2,
+            state: "building",
+            since: minutesAgo(9),
+            pullRequests: ["pr-5651", "pr-5652"],
+          },
+        ],
+        waiting: ["pr-5653"],
+        removedToday: [
+          { pullRequest: "pr-5655", at: minutesAgo(20), reason: "Group failed: typecheck" },
+        ],
+      };
 
 const never = new Promise<never>(() => {});
 
@@ -111,7 +164,7 @@ const team: TeamStatus = {
   agentSpend: async () => [],
   seats: async () => [],
   pullRequests: async () =>
-    state === "no-snapshot" ? [] : [{ source, repo: "acme", asOf, open, recent: [] }],
+    state === "no-snapshot" ? [] : [{ source, repo: "acme", asOf, open, recent }],
   pullRequest: async () => undefined,
   mergeQueue: async () => [queue],
   changes: async function* () {},

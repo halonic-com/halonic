@@ -1,15 +1,16 @@
-import { Button, ListHeading, Tabs } from "@halonicjs/studio-kit";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { Button, Tabs } from "@halonicjs/studio-kit";
+import { useEffect, useRef, useState } from "react";
+import type { QueueView } from "../merge-queue.ts";
+import { mergeQueueWords } from "../merge-queue-words.ts";
 import { pullRequestWords } from "../pull-request-words.ts";
 import type { PullRequestRow } from "../pull-requests.ts";
 import type { TeamClock } from "../team-format.ts";
-import { PullRequestRowView, type WebLinkOpener } from "./pull-request-row.tsx";
+import { QueueHealth, QueueTab } from "./merge-queue-tab.tsx";
+import { MergedToday } from "./merged-today.tsx";
+import { Note, RowList, Section } from "./pr-list-parts.tsx";
+import type { WebLinkOpener } from "./pull-request-row.tsx";
 
-type Tab = "attention" | "open";
-
-/** One bordered list per section, its rows split by lines, as the lists on Spend and seats. */
-export const listBox =
-  "flex flex-col divide-y divide-border rounded-md border border-border bg-surface";
+type Tab = "attention" | "open" | "queue" | "merged";
 
 /** Failing and conflicting first, then the oldest waits. */
 function worstFirst(a: PullRequestRow, b: PullRequestRow): number {
@@ -19,11 +20,14 @@ function worstFirst(a: PullRequestRow, b: PullRequestRow): number {
 }
 
 /**
- * Needs attention and All open as the kit's tabs, each with its count: the selected list is shown
- * by more than colour, read as selected, and moved through with the arrow keys.
+ * Needs attention, All open, Queue and Merged today as the kit's tabs, each with its count: the
+ * selected list is shown by more than colour, read as selected, and moved through with the arrow
+ * keys. Every tab but Queue starts with the queue's health line (HAL-17515 P1).
  */
 export function PullRequestLists(props: {
   rows: readonly PullRequestRow[];
+  merged: readonly PullRequestRow[];
+  queue: QueueView | undefined;
   clock: TeamClock;
   opener: WebLinkOpener;
 }) {
@@ -44,6 +48,8 @@ export function PullRequestLists(props: {
   const tabs = [
     { id: "attention", label: pullRequestWords.tabs.attention, count: counted(stuck.length) },
     { id: "open", label: pullRequestWords.tabs.open, count: counted(props.rows.length) },
+    { id: "queue", label: mergeQueueWords.tabs.queue, count: counted(props.queue?.total ?? 0) },
+    { id: "merged", label: mergeQueueWords.tabs.merged, count: counted(props.merged.length) },
   ] as const;
   const coming = comingUp(props.rows);
   // The rows no state group names have no heading.
@@ -60,7 +66,12 @@ export function PullRequestLists(props: {
     <div ref={tabList}>
       <Tabs label={pullRequestWords.listsLabel} tabs={tabs} selected={tab} onSelect={setTab}>
         <div className="flex flex-col gap-2">
-          {props.rows.length === 0 ? <Note>{pullRequestWords.noOpen}</Note> : null}
+          {tab !== "queue" && props.queue !== undefined ? (
+            <QueueHealth view={props.queue} where="list" />
+          ) : null}
+          {props.rows.length === 0 && (tab === "attention" || tab === "open") ? (
+            <Note>{pullRequestWords.noOpen}</Note>
+          ) : null}
           {props.rows.length > 0 && tab === "attention" ? (
             <>
               {stuck.length === 0 ? (
@@ -78,6 +89,12 @@ export function PullRequestLists(props: {
           {tab === "open"
             ? byState(props.rows).map(([title, rows]) => allOpenGroup(title, rows))
             : null}
+          {tab === "queue" ? (
+            <QueueTab view={props.queue} clock={props.clock} opener={props.opener} />
+          ) : null}
+          {tab === "merged" ? (
+            <MergedToday rows={props.merged} clock={props.clock} opener={props.opener} />
+          ) : null}
         </div>
       </Tabs>
     </div>
@@ -94,27 +111,6 @@ function SeeAllOpen({ onPress }: { onPress: () => void }) {
     <Button variant="secondary" size="sm" onClick={onPress}>
       {pullRequestWords.seeAllOpen}
     </Button>
-  );
-}
-
-/** A section of rows under its List heading: "Stuck · worst first", "Failing · 1". */
-function Section(props: { name: string; detail: string | undefined; children: ReactNode }) {
-  const label = props.detail === undefined ? props.name : `${props.name} · ${props.detail}`;
-  return (
-    <section aria-label={label} className="flex flex-col">
-      <ListHeading name={props.name} detail={props.detail} />
-      {props.children}
-    </section>
-  );
-}
-
-/** One line in a bordered box where rows would be, with an optional button on its right. */
-function Note(props: { children: ReactNode; action?: ReactNode }) {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-surface px-4 py-3">
-      <p>{props.children}</p>
-      {props.action}
-    </div>
   );
 }
 
@@ -139,24 +135,5 @@ function byState(rows: readonly PullRequestRow[]): readonly [string, readonly Pu
   const rest = rows.filter((row) => !named.has(row.pullRequest.state));
   return [...groups, ["", rest] as [string, readonly PullRequestRow[]]].filter(
     ([, each]) => each.length > 0,
-  );
-}
-
-function RowList(props: {
-  rows: readonly PullRequestRow[];
-  clock: TeamClock;
-  opener: WebLinkOpener;
-}) {
-  return (
-    <ul className={listBox}>
-      {props.rows.map((row) => (
-        <PullRequestRowView
-          key={row.pullRequest.id}
-          row={row}
-          clock={props.clock}
-          opener={props.opener}
-        />
-      ))}
-    </ul>
   );
 }

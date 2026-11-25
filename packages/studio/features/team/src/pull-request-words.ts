@@ -4,6 +4,8 @@ import type { PullRequestState } from "@halonicjs/ports";
 export interface StateFacts {
   /** "2 d", "3 h", "20 min". */
   readonly age: string;
+  /** When it entered this state as a clock time, "14:20". */
+  readonly time: string;
   readonly reviewer: string | undefined;
   readonly reason: string | undefined;
   readonly queue: { readonly position: number; readonly total: number } | undefined;
@@ -104,8 +106,8 @@ export const pullRequestWords = {
     failing: (facts) => ({ chip: withReason("✕ Failing", facts), detail: facts.age }),
     conflicting: (facts) => ({ chip: "✕ Conflicts with main", detail: facts.age }),
     dequeued: (facts) => ({ chip: withReason("⊘ Taken out", facts), detail: facts.age }),
-    // Merged and closed PRs are only in Merged today, which comes with the PR detail.
-    merged: () => ({ chip: "", detail: undefined }),
+    merged: (facts) => ({ chip: `Merged ${facts.time}`, detail: undefined }),
+    // Closed PRs aren't on any list.
     closed: () => ({ chip: "", detail: undefined }),
     other: (facts) => ({ chip: "", detail: facts.age }),
   } satisfies Record<PullRequestState, (facts: StateFacts) => StateWords>,

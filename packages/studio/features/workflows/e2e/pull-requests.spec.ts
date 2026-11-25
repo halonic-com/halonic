@@ -1,8 +1,8 @@
 import { expect, type Page, test } from "@playwright/test";
 
 /**
- * The Pull requests screen (HAL-18328), from a made-up repo, for the design check against
- * HAL-17515's P1–P10: `pull-requests-<state>-<width>-<look>.png`, on a desktop and a 390 px phone,
+ * The Pull requests screen (HAL-18328, HAL-18341), from a made-up repo, for the design check
+ * against HAL-17515's P1–P10 and P18–P22: `pull-requests-<state>-<width>-<look>.png`, on a desktop and a 390 px phone,
  * in light, dark and high contrast (docs/guides/e2e-screenshots.md). On the phone nothing scrolls
  * sideways, however long a title is.
  */
@@ -12,10 +12,14 @@ const sizes = [
 ] as const;
 const looks = ["light", "dark", "high-contrast"] as const;
 
-/** Each state, the page's `?state=` and words it shows once it has drawn. */
+/** Each state, the page's `?state=`, the tab the spec presses, and words it shows once drawn. */
 const states = [
-  { name: "attention", query: "attention", shows: "Stuck" },
-  { name: "all-open", query: "attention", shows: "Conflicting" },
+  { name: "attention", query: "attention", shows: "Merge queue: Running" },
+  { name: "all-open", query: "attention", tab: /All open/, shows: "Conflicting" },
+  { name: "queue", query: "attention", tab: /Queue/, shows: "Waiting to enter" },
+  { name: "merged", query: "attention", tab: /Merged today/, shows: "Merged 12:20" },
+  { name: "runners-busy", query: "runners-busy", shows: "Runners busy" },
+  { name: "queue-empty", query: "queue-empty", tab: /Queue/, shows: "The merge queue is empty." },
   { name: "old", query: "old", shows: "The PR watcher may have stopped." },
   { name: "loading", query: "loading", shows: "Loading…" },
   { name: "failed", query: "failed", shows: "Paperclip isn't answering." },
@@ -41,9 +45,7 @@ for (const size of sizes) {
       for (const state of states) {
         await page.goto(`/pull-requests.html?state=${state.query}`);
         await expect(page.getByRole("heading", { level: 1 })).toContainText("Pull requests");
-        if (state.name === "all-open") {
-          await page.getByRole("tab", { name: /All open/ }).click();
-        }
+        if ("tab" in state) await page.getByRole("tab", { name: state.tab }).click();
         await expect(page.getByText(state.shows, { exact: false }).first()).toBeVisible();
         expect(await scrollsSideways(page), "nothing scrolls sideways").toBe(false);
         await page.screenshot({

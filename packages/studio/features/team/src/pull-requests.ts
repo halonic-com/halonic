@@ -6,6 +6,7 @@ import type {
   TeamStatus,
   WorkItem,
 } from "@halonicjs/ports";
+import { type QueueView, queueView } from "./merge-queue.ts";
 import { type StuckReason, stuckReasons } from "./stuck-reasons.ts";
 import type { TeamClock } from "./team-format.ts";
 import { watchTeamStatus } from "./team-watch.ts";
@@ -35,6 +36,10 @@ export type PullRequestsState =
       readonly asOf: string;
       /** Every open PR, in the source's order. */
       readonly rows: readonly PullRequestRow[];
+      /** The PRs merged in the last day, newest first. */
+      readonly merged: readonly PullRequestRow[];
+      /** The repo's merge queue, when the source sent one. */
+      readonly queue: QueueView | undefined;
     };
 
 /**
@@ -80,7 +85,15 @@ export class PullRequests {
     const list = lists.find((each) => each.source === part.source);
     if (list === undefined) return { kind: "no-snapshot" };
     const queue = queues.find((each) => each.source === list.source && each.repo === list.repo);
-    return { kind: "read", repo: list.repo, asOf: list.asOf, rows: this.rows(list, queue, work) };
+    const rows = this.rows(list, queue, work);
+    return {
+      kind: "read",
+      repo: list.repo,
+      asOf: list.asOf,
+      rows,
+      merged: mergedRows(list.recent, work),
+      queue: queue === undefined ? undefined : queueView(queue, rows, list.recent),
+    };
   }
 
   /** Calls `listener` whenever a source says its team status changed. Returns a function that stops it. */
@@ -96,7 +109,7 @@ export class PullRequests {
     const now = this.clock.now();
     const inQueue = list.open.filter((each) => each.state === "in-queue").length;
     return list.open.map((pullRequest) => {
-      const task = work.find((each) => each.id === pullRequest.work);
+      const task = taskOf(pullRequest, work);
       const blockedByDone =
         task?.blockedBy.some((id) => work.find((each) => each.id === id)?.state === "done") ??
         false;
@@ -124,4 +137,24 @@ export class PullRequests {
       return [];
     }
   }
+}
+
+function taskOf(pullRequest: PullRequest, work: readonly WorkItem[]): WorkItem | undefined {
+  return work.find((each) => each.id === pullRequest.work);
+}
+
+/** Merged today's rows (HAL-17515 P6): only merged PRs, not closed ones, newest first. */
+function mergedRows(
+  recent: readonly PullRequest[],
+  work: readonly WorkItem[],
+): readonly PullRequestRow[] {
+  return recent
+    .filter((pullRequest) => pullRequest.state === "merged")
+    .sort((a, b) => Date.parse(b.since) - Date.parse(a.since))
+    .map((pullRequest) => ({
+      pullRequest,
+      stuck: [],
+      task: taskOf(pullRequest, work),
+      queue: undefined,
+    }));
 }
