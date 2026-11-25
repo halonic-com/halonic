@@ -91,10 +91,12 @@ verifies("app.deploy-reaches", () => {
           {
             path: "connectors/files.connector.yaml",
             reason: "The connector files starts a program, and Cloudflare can't start programs.",
+            cause: "this-computer",
           },
           {
             path: "providers/ollama.yaml",
             reason: "The provider ollama is at localhost, which Cloudflare can't reach.",
+            cause: "address",
           },
         ],
       });
@@ -121,7 +123,8 @@ verifies("app.deploy-reaches", () => {
         problems: [
           {
             reason:
-              "The provider gw names no address, so Halonic can't tell where it sends requests.",
+              "The provider gw gives no address, so Halonic can't tell where it sends requests.",
+            cause: "address",
           },
         ],
       });
@@ -137,8 +140,16 @@ verifies("app.deploy-reaches", () => {
       };
       expect(deployReaches(workspace(plugin, coder))).toMatchObject({
         problems: [
-          { reason: "The agent coder starts claude-code, and Cloudflare can't start programs." },
-          { reason: "The connector notes runs on this computer, and Cloudflare can't run it." },
+          {
+            reason:
+              "The agent coder starts the program claude-code, and Cloudflare can't start programs.",
+            cause: "this-computer",
+          },
+          {
+            reason:
+              "The connector notes works only on this computer, so it can't run on Cloudflare.",
+            cause: "this-computer",
+          },
         ],
       });
     });

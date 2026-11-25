@@ -8,6 +8,12 @@ export interface CloudflareProblem {
   readonly path: string;
   /** One sentence, such as "The connector files starts a program, and Cloudflare can't start programs." */
   readonly reason: string;
+  /**
+   * `address` when it needs an internet address instead (a provider or
+   * connector at localhost or without one), `this-computer` when it only runs
+   * here (a program, a plugin, an integration), so the fix can fit it.
+   */
+  readonly cause: "address" | "this-computer";
 }
 
 /**
@@ -45,8 +51,8 @@ const providerHosts: Readonly<Record<string, string>> = {
 export function deployReaches(workspace: LoadedWorkspace): DeployReaches {
   const reaches: DeployReach[] = [];
   const problems: CloudflareProblem[] = [];
-  const place = (path: string, found: DeployReach | string) => {
-    if (typeof found === "string") problems.push({ path, reason: found });
+  const place = (path: string, found: Found) => {
+    if ("reason" in found) problems.push({ path, ...found });
     else reaches.push(found);
   };
   for (const file of filesOf(workspace, "provider")) {
@@ -59,7 +65,9 @@ export function deployReaches(workspace: LoadedWorkspace): DeployReaches {
     for (const agent of agentsTrustContent([file.value])) {
       place(
         file.path,
-        `The agent ${agent.id} starts ${agent.harness}, and Cloudflare can't start programs.`,
+        thisComputer(
+          `The agent ${agent.id} starts the program ${agent.harness}, and Cloudflare can't start programs.`,
+        ),
       );
     }
   }
@@ -77,37 +85,58 @@ export function deployReaches(workspace: LoadedWorkspace): DeployReaches {
   };
 }
 
-function providerReach(provider: Provider): DeployReach | string {
+type Found = DeployReach | Omit<CloudflareProblem, "path">;
+
+function providerReach(provider: Provider): Found {
   const where = provider.baseUrl ?? defaultUrl(provider.type);
   if (where === undefined) {
-    return `The provider ${provider.id} names no address, so Halonic can't tell where it sends requests.`;
+    return address(
+      `The provider ${provider.id} gives no address, so Halonic can't tell where it sends requests.`,
+    );
   }
   const host = hostOf(where);
   if (host === undefined) {
-    return `The provider ${provider.id} has an address Halonic can't read.`;
+    return address(
+      `The provider ${provider.id}'s address isn't a complete web address, so Halonic can't tell where it sends requests.`,
+    );
   }
   if (provider.local || isLocalHost(host)) {
-    return `The provider ${provider.id} is at ${host}, which Cloudflare can't reach.`;
+    return address(`The provider ${provider.id} is at ${host}, which Cloudflare can't reach.`);
   }
   return { address: host, secret: provider.secret };
 }
 
-function connectorReach(connector: Connector): DeployReach | string {
+function connectorReach(connector: Connector): Found {
   const { transport } = connector;
   if ("stdio" in transport) {
-    return `The connector ${connector.id} starts a program, and Cloudflare can't start programs.`;
+    return thisComputer(
+      `The connector ${connector.id} starts a program, and Cloudflare can't start programs.`,
+    );
   }
   if (!("http" in transport)) {
-    return `The connector ${connector.id} runs on this computer, and Cloudflare can't run it.`;
+    // A plugin, an integration or Google: they run in Halonic on this computer.
+    return thisComputer(
+      `The connector ${connector.id} works only on this computer, so it can't run on Cloudflare.`,
+    );
   }
   const host = hostOf(transport.http.url);
   if (host === undefined) {
-    return `The connector ${connector.id} has an address Halonic can't read.`;
+    return address(
+      `The connector ${connector.id}'s address isn't a complete web address, so Halonic can't tell where it sends requests.`,
+    );
   }
   if (connector.local === true || isLocalHost(host)) {
-    return `The connector ${connector.id} is at ${host}, which Cloudflare can't reach.`;
+    return address(`The connector ${connector.id} is at ${host}, which Cloudflare can't reach.`);
   }
   return { address: host, secret: connector.secret };
+}
+
+function address(reason: string): Omit<CloudflareProblem, "path"> {
+  return { reason, cause: "address" };
+}
+
+function thisComputer(reason: string): Omit<CloudflareProblem, "path"> {
+  return { reason, cause: "this-computer" };
 }
 
 /** The address a provider type uses on its own; `ollama` and `lmstudio` are on this computer. */
