@@ -17,6 +17,8 @@ import {
 import { findRepoRoot } from "./workspace.ts";
 
 const halonicDev = "353861737+halonic-dev@users.noreply.github.com";
+const sessionBot = "halonic-session-bot[bot]";
+const sessionBotEmail = "361236096+halonic-session-bot[bot]@users.noreply.github.com";
 
 function commit(overrides: Partial<CommitFacts>): CommitFacts {
   return {
@@ -87,6 +89,33 @@ verifies("check.dco-sign-off", () => {
 
   test("fails anyone else's unsigned commit in a pull request halonic-dev opened", () => {
     expect(dcoProblem(commit({}), "halonic-dev")).toContain("must be authored as halonic-dev");
+  });
+
+  test("passes an unsigned session bot commit by its noreply address in a pull request it opened", () => {
+    const unsigned = commit({ authorName: sessionBot, authorEmail: sessionBotEmail });
+    expect(dcoProblem(unsigned, sessionBot)).toBeUndefined();
+  });
+
+  test("fails an unsigned commit under the session bot's name with another address", () => {
+    for (const authorEmail of ["halonic-session-bot[bot]@users.noreply.github.com", halonicDev]) {
+      const borrowed = commit({ authorName: sessionBot, authorEmail });
+      expect(dcoProblem(borrowed, sessionBot)).toContain(
+        `must be authored as ${sessionBot} <${sessionBotEmail}>`,
+      );
+      expect(dcoProblem(borrowed, "someone")).toContain('has no "Signed-off-by:" line');
+    }
+  });
+
+  test("fails an unsigned session bot commit in a pull request another account opened", () => {
+    const unsigned = commit({ authorName: sessionBot, authorEmail: sessionBotEmail });
+    expect(dcoProblem(unsigned, "halonic-dev")).toContain("must be authored as halonic-dev");
+    expect(dcoProblem(unsigned, "someone")).toContain('has no "Signed-off-by:" line');
+  });
+
+  test("names every covered account by the noreply address of its id and login", () => {
+    for (const { login, id, email } of coveredAccounts) {
+      expect(email).toBe(`${id}+${login}@users.noreply.github.com`);
+    }
   });
 
   test("skips merge commits", () => {

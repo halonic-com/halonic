@@ -21,6 +21,9 @@ export interface CommitFacts {
 /** A GitHub account whose commits a standing statement signs off. */
 export interface CoveredAccount {
   readonly login: string;
+  /** GitHub's numeric user id, which a renamed or re-created account can't keep. */
+  readonly id: number;
+  /** Its noreply address, `<id>+<login>@users.noreply.github.com`. */
   readonly email: string;
 }
 
@@ -30,7 +33,13 @@ export interface CoveredAccount {
  * no `Signed-off-by` line. Change this list only together with that file.
  */
 export const coveredAccounts: readonly CoveredAccount[] = [
-  { login: "halonic-dev", email: "353861737+halonic-dev@users.noreply.github.com" },
+  { login: "halonic-dev", id: 353861737, email: "353861737+halonic-dev@users.noreply.github.com" },
+  {
+    // The GitHub App the server's sessions write as (HAL-18707).
+    login: "halonic-session-bot[bot]",
+    id: 361236096,
+    email: "361236096+halonic-session-bot[bot]@users.noreply.github.com",
+  },
 ];
 
 /**

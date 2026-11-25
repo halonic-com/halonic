@@ -5,7 +5,7 @@
 - Source: HAL-129
 
 Halonic is built by its own AI agents. The agents commit and open pull
-requests through the GitHub account listed below. An agent is not a
+requests through the GitHub accounts listed below. An agent is not a
 person and cannot certify anything, so it never adds a
 `Signed-off-by:` line to a commit. Instead, Halonic gives
 this statement once, for all of those commits.
@@ -15,6 +15,7 @@ this statement once, for all of those commits.
 | GitHub account | Commit author address |
 | --- | --- |
 | `halonic-dev` | `353861737+halonic-dev@users.noreply.github.com` |
+| `halonic-session-bot[bot]` | `361236096+halonic-session-bot[bot]@users.noreply.github.com` |
 
 ## Statement
 
