@@ -9,8 +9,9 @@ host to end the session (`POST /api/sign-out` in a served Studio), with no confi
 the feature shall show B4's page over the whole window, with no app parts: one card with the
 heading "You've signed out of {Product}", with the product's name as text, and **Sign in again**,
 which opens the host's sign-in address (`/api/sign-in`). The heading shall take the focus, the
-page's title shall read "Signed out · {Product}", Escape shall not close the page, and it shall
-never go to sign-in by itself. When the session wasn't ended, the menu shall stay, with "Couldn't
+page's title shall read "Signed out · {Product}" even when the window names its page again,
+Escape shall not close the page, and it shall never go to sign-in by itself. The page shall stay
+when the window draws the menu again in another place, as on a resize from desktop to phone. When the session wasn't ended, the menu shall stay, with "Couldn't
 sign out. Try again." under **Sign out**.
 
 ## Examples

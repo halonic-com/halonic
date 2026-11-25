@@ -78,6 +78,26 @@ verifies("studio.served-account-menu", () => {
       );
     });
 
+    it("remembers the product it signed out of, and only once the computer ended the session", async () => {
+      const answers = {
+        "GET /api/account-menu": () => Response.json(sofia),
+        "POST /api/sign-out": () => new Response(null, { status: 204 }),
+      };
+      const { menu } = served(answers);
+      await menu.load();
+      expect(menu.signedOutOf()).toBeNull();
+      await menu.signOut();
+      expect(menu.signedOutOf()).toBe("Acme Agents");
+
+      const refused = served({
+        "GET /api/account-menu": () => Response.json(sofia),
+        "POST /api/sign-out": () => new Response(null, { status: 500 }),
+      });
+      await refused.menu.load();
+      await expect(refused.menu.signOut()).rejects.toThrow();
+      expect(refused.menu.signedOutOf()).toBeNull();
+    });
+
     it("signs in again at the computer's sign-in route, and opens addresses in the page", () => {
       const { menu, open } = served({});
       expect(menu.signInAddress).toBe("/api/sign-in");

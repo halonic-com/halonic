@@ -116,7 +116,8 @@ export interface StudioWindowProps {
 /**
  * The whole Studio window, put together from the shell's parts. On the desktop
  * (`shell.studio-window`): the Halonic Studio mark, Back, Forward and the window tabs in the title
- * bar, with the features' items at its right end (`shell.title-bar-items`), the sidebar, the active tab's page with the last five kept mounted, the
+ * bar, with the features' items at its right end (`shell.title-bar-items`), the sidebar, the
+ * active tab's page with the last five kept mounted, the
  * status bar items with the save note at its right end, and the Ctrl K palette, opened from the Search box, Mod K, **+** and Ctrl T.
  * Settings opens over it (`shell.settings-window`) from the context's `openSettings`, the
  * sidebar's Settings row and, in the desktop app, Mod ,.

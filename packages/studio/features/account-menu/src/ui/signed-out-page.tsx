@@ -31,8 +31,8 @@ export function SignedOutPage({ productName, onSignIn }: SignedOutPageProps) {
     }
     // The heading, not the button, takes the focus, so the page is read before anything is done.
     heading.current?.focus();
-    document.title = accountMenuWords.signedOutTitle(productName);
-  }, [productName]);
+  }, []);
+  useKeptTitle(accountMenuWords.signedOutTitle(productName));
   return (
     <dialog
       ref={dialog}
@@ -50,4 +50,20 @@ export function SignedOutPage({ productName, onSignIn }: SignedOutPageProps) {
       </div>
     </dialog>
   );
+}
+
+/**
+ * Sets the page's title and puts it back whenever something else changes it: the window still
+ * names its active page behind the signed-out page, for instance after a resize.
+ */
+function useKeptTitle(title: string): void {
+  useEffect(() => {
+    const keep = () => {
+      if (document.title !== title) document.title = title;
+    };
+    keep();
+    const observer = new MutationObserver(keep);
+    observer.observe(document.head, { childList: true, characterData: true, subtree: true });
+    return () => observer.disconnect();
+  }, [title]);
 }

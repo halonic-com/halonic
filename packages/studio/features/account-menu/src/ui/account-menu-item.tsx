@@ -82,9 +82,11 @@ function AccountMenu(props: {
 
 /** Loads the facts once, and signs out: the signed-out page on success, a note in the menu if not. */
 function useAccountMenu(host: AccountMenuHost | undefined) {
-  const [current, setCurrent] = useState<MenuState>({ kind: "loading" });
+  const [current, setCurrent] = useState<MenuState>(() => startState(host));
   useEffect(() => {
-    if (host === undefined) {
+    // After Sign out there is no session to load: the signed-out page stays, even when the
+    // window draws this item again in another place (desktop and phone).
+    if (host === undefined || host.signedOutOf() !== null) {
       return;
     }
     let live = true;
@@ -94,7 +96,8 @@ function useAccountMenu(host: AccountMenuHost | undefined) {
       },
       // The computer couldn't say whether this Studio has an account menu: none is shown, as
       // for a 404, since a menu that can't name the customer can't be drawn either.
-      () => {
+      (error: unknown) => {
+        console.error("Couldn't read the account menu.", error);
         if (live) setCurrent({ kind: "none" });
       },
     );
@@ -113,6 +116,11 @@ function useAccountMenu(host: AccountMenuHost | undefined) {
     );
   };
   return { current, signOut };
+}
+
+function startState(host: AccountMenuHost | undefined): MenuState {
+  const productName = host?.signedOutOf() ?? null;
+  return productName === null ? { kind: "loading" } : { kind: "signed-out", productName };
 }
 
 function shown(facts: AccountMenuFacts): MenuState {

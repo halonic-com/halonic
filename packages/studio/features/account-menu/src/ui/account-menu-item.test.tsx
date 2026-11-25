@@ -48,9 +48,15 @@ function fakeHost(
   answer: Promise<AccountMenuFacts | null>,
   signOut: () => Promise<void> = async () => {},
 ) {
+  // Like the served host, it remembers the sign-out, which outlives any one drawing of the item.
+  let signedOutOf: string | null = null;
   return {
     load: vi.fn(() => answer),
-    signOut: vi.fn(signOut),
+    signOut: vi.fn(async () => {
+      await signOut();
+      signedOutOf = (await answer)?.productName ?? null;
+    }),
+    signedOutOf: () => signedOutOf,
     open: vi.fn<(address: string) => void>(),
     signInAddress: "/api/sign-in",
   } satisfies AccountMenuHost;
@@ -90,11 +96,15 @@ verifies("account-menu.menu", () => {
       expect(container.innerHTML).toBe("");
     });
 
-    it("shows nothing when the computer can't answer, or nothing provides the host", async () => {
-      const failing = await renderItem(fakeHost(Promise.reject(new Error("503"))));
+    it("shows nothing when the computer can't answer, saying why, or nothing provides the host", async () => {
+      const report = vi.spyOn(console, "error").mockImplementation(() => {});
+      const failure = new Error("503");
+      const failing = await renderItem(fakeHost(Promise.reject(failure)));
       const desktop = await renderItem(undefined);
       expect(failing.innerHTML).toBe("");
       expect(desktop.innerHTML).toBe("");
+      expect(report).toHaveBeenCalledWith("Couldn't read the account menu.", failure);
+      report.mockRestore();
     });
 
     it("names the customer and opens the answer's addresses from the usage line and Account", async () => {
@@ -175,6 +185,31 @@ verifies("account-menu.sign-out", () => {
 
       expect(container.querySelector("dialog")).toBeNull();
       expect(item(container, "Sign out")?.textContent).toContain("Couldn't sign out. Try again.");
+    });
+
+    it("keeps the signed-out page when the window draws the item again elsewhere", async () => {
+      const host = fakeHost(Promise.resolve(sofia));
+      const before = await renderItem(host);
+      await pick(before, "Sign out");
+      const first = mounted.shift();
+      act(() => first?.root.unmount());
+      first?.container.remove();
+
+      // The phone's top bar draws a new item after a resize or a rotation.
+      const after = await renderItem(host);
+      expect(after.querySelector("dialog[open] h1")?.textContent).toBe(
+        "You've signed out of Acme Agents",
+      );
+      expect(host.load).toHaveBeenCalledOnce();
+    });
+
+    it("puts its title back when the window names its page again", async () => {
+      const container = await renderItem(fakeHost(Promise.resolve(sofia)));
+      await pick(container, "Sign out");
+      await act(async () => {
+        document.title = "Agents · Acme";
+      });
+      expect(document.title).toBe("Signed out · Acme Agents");
     });
 
     it("doesn't close the signed-out page on Escape", async () => {

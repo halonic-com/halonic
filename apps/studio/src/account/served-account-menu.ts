@@ -31,6 +31,9 @@ export class ServedAccountMenu implements AccountMenuHost {
   readonly signInAddress = signInPath;
   readonly #fetch: PageFetch;
   readonly #open: (address: string) => void;
+  /** The product's name from the last answer, kept for the signed-out page. */
+  #productName: string | null = null;
+  #signedOut = false;
 
   /**
    * @param fetchPage reads and posts a path on the page's own address
@@ -57,6 +60,7 @@ export class ServedAccountMenu implements AccountMenuHost {
     if (!answer.ok || !addressesOk) {
       throw new Error(`The computer's ${accountMenuPath} answer isn't an account menu.`);
     }
+    this.#productName = answer.value.productName;
     return answer.value;
   }
 
@@ -65,6 +69,11 @@ export class ServedAccountMenu implements AccountMenuHost {
     if (!response.ok) {
       throw new Error(`The computer answered ${response.status} to POST ${signOutPath}.`);
     }
+    this.#signedOut = true;
+  }
+
+  signedOutOf(): string | null {
+    return this.#signedOut ? this.#productName : null;
   }
 
   open(address: string): void {

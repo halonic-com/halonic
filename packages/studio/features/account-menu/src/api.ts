@@ -33,6 +33,11 @@ export interface AccountMenuHost {
   load(): Promise<AccountMenuFacts | null>;
   /** Ends the session here and at Cloud. Rejects when the computer didn't end it. */
   signOut(): Promise<void>;
+  /**
+   * The product's name once this page has signed out, else `null`. The host outlives the menu,
+   * which the window draws again when it changes layout, so the signed-out page stays.
+   */
+  signedOutOf(): string | null;
   /** Opens an address from the facts, in this tab. */
   open(address: string): void;
   /** Where **Sign in again** goes: the computer's sign-in route. */
