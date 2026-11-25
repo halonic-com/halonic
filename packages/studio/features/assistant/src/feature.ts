@@ -3,8 +3,8 @@ import { AssistantHostService, ItemChatService, ShowInChatService } from "./api.
 import { buildChatWords } from "./chat/build-chat-words.ts";
 import { buildChatsOf } from "./chat/build-chats.ts";
 import { chatTabKind } from "./chat/chat-tab-item.ts";
-import { showInChat } from "./chat/show-in-chat.ts";
-import { itemChat } from "./item/item-chat.tsx";
+import { showInChatOf } from "./chat/show-in-chat.ts";
+import { itemChatOf } from "./item/item-chat.tsx";
 
 /** Shows or hides the panel, from Ctrl+Alt+I and Ctrl K's "Assistant". */
 export const togglePanelCommand = "assistant.panel";
@@ -22,8 +22,9 @@ export const assistantFeature = defineFeature({
   needs: [AssistantHostService],
   provides: [ShowInChatService, ItemChatService],
   register(studio) {
-    studio.services.provide(ShowInChatService, () => showInChat);
-    studio.services.provide(ItemChatService, () => itemChat);
+    // Both keep the Assistant's own lookup: the features that call them can't reach the host.
+    studio.services.provide(ShowInChatService, (services) => showInChatOf(services));
+    studio.services.provide(ItemChatService, (services) => itemChatOf(services));
     studio.panelWindows.add({
       id: "assistant.panel",
       title: "Assistant",

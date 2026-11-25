@@ -114,6 +114,12 @@ export interface ConfirmingDialogProps extends DialogCommonProps {
    * "Cancel" · "Close anyway" · "Try again". On a phone it sits between them too.
    */
   readonly alternative?: DialogAlternative;
+  /**
+   * A text link at the start of the footer, across from Cancel and the confirming button, for a
+   * way out of the Dialog that isn't one of its answers: New workflow's "Describe it to the
+   * Assistant instead ›" (flow-workflows 2.2). On a phone it comes last, under Cancel.
+   */
+  readonly startLink?: DialogAlternative;
   /** Runs on the confirming button or a submit. The screen checks its fields first (23 A1). */
   readonly onConfirm: () => void;
   /** "Cancel", or what cancelling does: "Not now". */

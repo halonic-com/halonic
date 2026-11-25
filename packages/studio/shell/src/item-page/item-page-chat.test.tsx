@@ -173,6 +173,7 @@ verifies("shell.item-page-chat", () => {
     expect(panel(container)?.textContent).toBe("flow view");
     expect(viewsNav(container)).not.toBeNull();
     expect(container.firstElementChild?.className).toContain("min-h-full");
+    expectFillsTheTab(container);
 
     press(container, "Chat");
     expect(shown(panelBox(container))).toBe(false);
@@ -247,5 +248,17 @@ verifies("shell.item-page-chat", () => {
       (candidate) => candidate.getAttribute("aria-label") ?? candidate.textContent,
     );
     expect(buttons.filter((name) => /Ask about|Close|Chat/.test(name ?? ""))).toEqual([]);
+    expectFillsTheTab(container);
   });
 });
+
+/**
+ * The panel alone grows to the rest of the tab, and its view with it, so a view drawn at full
+ * size (the workflow canvas) isn't left at its own small height (HAL-18325).
+ */
+function expectFillsTheTab(container: HTMLElement): void {
+  expect(panelBox(container).className.split(" ")).toEqual(
+    expect.arrayContaining(["flex", "flex-1", "flex-col", "min-h-0"]),
+  );
+  expect(panel(container)?.className.split(" ")).toContain("flex-1");
+}

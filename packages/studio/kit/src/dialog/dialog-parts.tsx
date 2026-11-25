@@ -1,5 +1,6 @@
 import type { RefObject } from "react";
 import { Button } from "../button/button.tsx";
+import { standaloneLinkClasses } from "../external-link/external-link.tsx";
 import { CloseIcon } from "../icons/close-icon.tsx";
 import type { ConfirmingDialogProps, DialogProps } from "./dialog-props.ts";
 
@@ -122,15 +123,47 @@ export function DialogFooter({
         {alternative.label}
       </Button>
     );
+  const startLink = startLinkOf(props, busy);
   return (
     <footer
       className={
         phone ? "flex flex-col gap-2 px-6 pt-3 pb-4" : "flex justify-end gap-2 px-6 pt-3 pb-4"
       }
     >
-      {phone ? confirmButton : cancelButtonElement}
-      {alternativeButton}
-      {phone ? cancelButtonElement : confirmButton}
+      {phone ? (
+        <>
+          {confirmButton}
+          {alternativeButton}
+          {cancelButtonElement}
+          {startLink}
+        </>
+      ) : (
+        <>
+          {startLink}
+          {cancelButtonElement}
+          {alternativeButton}
+          {confirmButton}
+        </>
+      )}
     </footer>
+  );
+}
+
+/**
+ * The footer's start link, pushed to the start with `me-auto` so the buttons keep the end. While
+ * the Dialog is busy it does nothing, as Cancel and the alternative don't.
+ */
+function startLinkOf(props: ConfirmingDialogProps, busy: boolean) {
+  const link = props.startLink;
+  if (link === undefined) return null;
+  return (
+    <button
+      type="button"
+      className={`me-auto self-center text-small font-medium ${standaloneLinkClasses}`}
+      aria-disabled={busy || undefined}
+      onClick={busy ? undefined : link.onClick}
+    >
+      {link.label}
+    </button>
   );
 }

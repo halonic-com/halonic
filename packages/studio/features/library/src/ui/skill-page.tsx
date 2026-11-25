@@ -44,7 +44,7 @@ function AskAboutSkill({
   const shownName = name || item.id;
   return (
     <Button
-      variant="ghost"
+      variant="secondary"
       size="sm"
       onClick={() =>
         void itemChat.askAbout({ kind: "skill", hub: item.hub, id: item.id }, shownName, context)

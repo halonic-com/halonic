@@ -1,4 +1,4 @@
-import type { ItemPageChat, WorkspaceContext } from "@halonicjs/studio-shell";
+import type { ItemPageChat, ServiceLookup, WorkspaceContext } from "@halonicjs/studio-shell";
 import { type ReactNode, type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import {
   type AssistantHost,
@@ -7,6 +7,7 @@ import {
   type ItemChat,
   sameAbout,
 } from "../api.ts";
+import { withAssistantServices } from "../chat/assistant-context.ts";
 import { buildChatWords } from "../chat/build-chat-words.ts";
 import { type Announce, type BoxAsk, buildChatsOf, type Shown } from "../chat/build-chats.ts";
 import { chatTabItem } from "../chat/chat-tab-item.ts";
@@ -39,6 +40,19 @@ export const itemChat: ItemChat = {
     await openInPanel(context, undefined, { text });
   },
 };
+
+/**
+ * The item chat for another feature's context, reading the host through the Assistant's own
+ * `services`: the workflows and library features don't list `AssistantHostService`.
+ */
+export function itemChatOf(services: ServiceLookup): ItemChat {
+  const ours = (context: WorkspaceContext) => withAssistantServices(context, services);
+  return {
+    chatFor: (about, name, context) => itemChat.chatFor(about, name, ours(context)),
+    askAbout: (about, name, context) => itemChat.askAbout(about, name, ours(context)),
+    describe: (text, context) => itemChat.describe(text, ours(context)),
+  };
+}
 
 /**
  * Shows a new Build chat (or the empty draft there is) in the side panel, opening a closed panel,
