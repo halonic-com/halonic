@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: the board's decision on HAL-10 (25 Nov), HAL-18471; HAL-18473.
+- Source: the board's decision on HAL-10 (25 Nov), HAL-18471; HAL-18473; one bar per channel, HAL-18483.
 
-The Messenger shall show each card of a conversation (the cards `messenger.quick-actions` shows, open or answered) in the conversation's timeline, where its `createdAt` falls among the messages, and no card above or below the messages. When a card is answered, it shall stay in its place as a record of the choice and the time, such as "Approve, 12:10". While any of the conversation's cards is open, the Messenger shall show a bar under the messages saying "3 cards waiting", or "1 card waiting" for one; it shall show no bar while none is open. When the person presses the bar, the Messenger shall scroll to the oldest open card and put focus on its first option. When the person opens a conversation, the Messenger shall show its latest message or card. The Inbox shall keep listing every agent's cards.
+The Messenger shall show each card of a conversation (the cards `messenger.quick-actions` shows, open or answered) in the conversation's timeline, where its `createdAt` falls among the messages, and no card above or below the messages. When a card is answered, it shall stay in its place as a record of the choice and the time, such as "Approve, 12:10". While any of a direct chat's cards is open, the Messenger shall show a bar under the messages saying "3 cards waiting", or "1 card waiting" for one; it shall show no bar while none is open, and none in a channel, which shows the bar of `messenger.channel-waiting` instead. When the person presses the bar, the Messenger shall scroll to the oldest open card and put focus on its first option. When the person opens a conversation, the Messenger shall show its latest message or card. The Inbox shall keep listing every agent's cards.
 
 ## Examples
 
@@ -23,3 +23,6 @@ The Messenger shall show each card of a conversation (the cards `messenger.quick
 - Given Chief's chat with one open card,
   when the board answers it,
   then the bar is gone.
+- Given a channel with 2 open questions,
+  when the board opens it,
+  then it shows "2 waiting for you" and no "cards waiting" bar.

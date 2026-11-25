@@ -114,5 +114,39 @@ verifies("messenger.inline-cards", () => {
       expect(bar(page)).toBeUndefined();
       expect(timeline(page)).toEqual(["Chief: Morning", "Reject, 11:30", "Chief: Done"]);
     });
+
+    it("in a channel with open cards, shows only the waiting bar, not the cards bar", async () => {
+      const messaging = new FakeAgentMessaging();
+      const acme = messaging.addSource({ label: "Paperclip · Acme" });
+      const chief = messaging.addAgent(acme.id, { name: "Chief" });
+      const elena = messaging.addAgent(acme.id, { name: "Elena" });
+      const channel = messaging.addConversation(chief.id, {
+        title: "Engineering",
+        members: [chief.id, elena.id],
+      });
+      messaging.addMessage(channel.id, {
+        author: { kind: "me" },
+        body: "Can you set up the server?",
+        to: [elena.id],
+        work: [
+          { agent: elena.id, state: "asks-you", work: "w1", since: "2026-11-24T10:00:00.000Z" },
+        ],
+      });
+      messaging.addInboxItem(acme.id, {
+        question: "Which hostname?",
+        work: "w1",
+        createdAt: "2026-11-24T10:01:00.000Z",
+        from: { kind: "agent", agent: elena.id, name: "Elena" },
+      });
+      // The lead's own card from its direct chat, which the cards bar would count too.
+      messaging.addInboxItem(acme.id, {
+        question: "Merge #1?",
+        from: { kind: "agent", agent: chief.id, name: "Chief" },
+      });
+      const page = await openMessenger(messaging);
+      await openChat(page, "Engineering");
+      expect(page.querySelector("[data-waiting-bar]")).not.toBeNull();
+      expect(bar(page)).toBeUndefined();
+    });
   });
 });

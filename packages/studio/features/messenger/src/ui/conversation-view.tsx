@@ -29,8 +29,8 @@ export interface ConversationViewProps {
 /**
  * One open conversation (HAL-17421 render 4a): its agent and activity in the
  * header, a search through its messages, the messages and the agent's cards
- * oldest first, "3 cards waiting" while any card waits (`messenger.inline-cards`), and the
- * box. While its source is offline or signed out, the box keeps the text and
+ * oldest first, "3 cards waiting" in a direct chat while any card waits
+ * (`messenger.inline-cards`), and the box. While its source is offline or signed out, the box keeps the text and
  * Send sends nothing (requirement `messenger.conversations`). Files picked or
  * pasted wait in the box and go with the message (`messenger.files`); the
  * agent's cards and "Ask for an update" are its quick actions
@@ -114,7 +114,8 @@ export function ConversationView({
           />
         ) : null}
       </div>
-      <CardsBar cards={cards ?? []} section={section} />
+      {/* A channel has the waiting bar at the top instead: one count per screen (HAL-18483). */}
+      {isChannel(row) ? null : <CardsBar cards={cards ?? []} section={section} />}
       <ChatBox messenger={messenger} row={row} onSent={read} />
     </section>
   );
