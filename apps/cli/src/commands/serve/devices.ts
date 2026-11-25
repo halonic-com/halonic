@@ -72,7 +72,10 @@ export async function serveDevices(
       }
     }
   } else if (allowed.length > 0) {
-    lines.push(...allowedLines(device, allowed), serveDevicesMessages.allowedStay().phrase);
+    lines.push(
+      ...allowedLines(device, allowed),
+      serveDevicesMessages.allowedStay(allowed.length).phrase,
+    );
   }
   return {
     exitCode: exitCode.ok,
@@ -110,7 +113,7 @@ function allowedLines(device: DeviceView, allowed: readonly DeviceView[]): Phras
   ];
 }
 
-/** "Pixel 9 · last seen 25 Nov · allowed by console · device_…". */
+/** "Pixel 9 · last seen 25 Nov · allowed by this computer · device_…". */
 function deviceLine(device: DeviceView, devices: readonly DeviceView[]): Phrase {
   return serveDevicesMessages.deviceLine(
     printable(device.name),

@@ -245,7 +245,7 @@ verifies("cli.commands.serve.pair", () => {
       expect((await fetch(`${address}/api/hello`)).status).toBe(200);
       await waitUntil("the warning", () => (running?.io.stderr.length ?? 0) >= 1, slowStart);
       expect(running?.io.stderr).toContain(
-        "! halonic serve pair and halonic serve devices won't work: the path to your Halonic profile folder is too long for the console channel.",
+        "! halonic serve pair and halonic serve devices won't work: the path to your Halonic profile folder is too long.",
       );
     },
     slowTest,
@@ -274,7 +274,7 @@ verifies("cli.commands.serve.pair", () => {
 
 verifies("cli.commands.serve.devices", () => {
   it(
-    "lists a paired device with when it was last seen and that the console allowed it",
+    "lists a paired device with when it was last seen and that this computer allowed it",
     async () => {
       const address = await startServe();
       await pairFromConsole(address, "Pixel 9");
@@ -283,7 +283,7 @@ verifies("cli.commands.serve.devices", () => {
       expect(await list.done).toBe(0);
       expect(list.io.stdout).toEqual([
         expect.stringMatching(
-          /^Pixel 9 · last seen \d{1,2} \w{3} · allowed by console · device_[0-9a-f]{24}$/u,
+          /^Pixel 9 · last seen \d{1,2} \w{3} · allowed by this computer · device_[0-9a-f]{24}$/u,
         ),
       ]);
     },
@@ -318,7 +318,7 @@ verifies("cli.commands.serve.devices", () => {
       expect(revoke.asked()).toContain("Device A allowed these devices:");
       expect(revoke.asked()).toContain(`Device C · ${idOfC}`);
       expect(revoke.io.stdout[0]).toBe("✓ Device A is signed out.");
-      expect(revoke.io.stdout.join("\n")).toContain("The devices it allowed stay signed in.");
+      expect(revoke.io.stdout.join("\n")).toContain("The device it allowed stays signed in.");
       expect(await signedIn(address, deviceA)).toBe(401);
       expect(await signedIn(address, deviceB)).toBe(200);
       expect(await idOf("Device C")).toBe(idOfC);
@@ -352,7 +352,12 @@ verifies("cli.commands.serve.devices", () => {
       const revoke = startCommand(["devices", "--revoke", `device_${"0".repeat(24)}`]);
 
       expect(await revoke.done).toBe(4);
-      expect(revoke.io.stderr.join("\n")).toContain("There's no paired device");
+      expect(revoke.io.stderr.join("\n")).toContain(
+        `There's no paired device with the id device_${"0".repeat(24)}.`,
+      );
+      expect(revoke.io.stderr.join("\n")).toContain(
+        "See the paired devices with: halonic serve devices",
+      );
     },
     slowTest,
   );
