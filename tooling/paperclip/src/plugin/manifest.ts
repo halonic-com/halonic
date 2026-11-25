@@ -9,6 +9,7 @@ import {
   trialResultsConfigProperties,
   trialResultsDeclaration,
 } from "./trial-results-declaration.ts";
+import { pluginVersion } from "./version.ts";
 
 /**
  * The capability of our local server patch (HAL-16413). Paperclip's shared
@@ -35,7 +36,7 @@ const dispositionWrite = "issues.disposition.write" as PluginCapability;
 export const manifest: PaperclipPluginManifestV1 = {
   id: "halonic.agent-tools",
   apiVersion: 1,
-  version: "0.10.0",
+  version: pluginVersion,
   displayName: "Agent tools",
   description:
     "Halonic's tools beside Paperclip. The PR watcher marks a task done once its pull requests merged with a green ci-ok, and wakes the author for a red ci-ok, a conflict or a new review finding.",

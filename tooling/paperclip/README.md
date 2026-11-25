@@ -247,7 +247,8 @@ writes `dist/worker.js` (the SDK bundled in, with our patch
 `patches/@paperclipai__plugin-sdk@2026.1117.0.patch`, which adds
 `ctx.issues.monitors.postpone`), `dist/manifest.js` and the page's
 `dist/ui/index.js`, which
-`package.json`'s `paperclipPlugin` block names. The board installs it from
+`package.json`'s `paperclipPlugin` block names, and the Merger's rules file
+`dist/merge-control-decide-<version>.js` (see Merge control). The board installs it from
 that folder of a `main` checkout on Halonic Server (Settings → Plugins);
 publishing it to npm would be a release. Run it in dry run first, read the
 job log, then turn `dryRun` off.
@@ -1091,6 +1092,27 @@ pass with the read budget low skips what only shadow mode and the
 known-flake check read. Settings under `mergeControl`: `readBudgetPerHour`
 (12000), `readLowAt` (1000), `writeBudgetPerHour` (3500), `writeLowAt` (350)
 and `degradedIntervalMinutes` (5).
+
+**One set of rules for the Merger (HAL-18337).** `build:plugin` also writes
+`dist/merge-control-decide-<version>.js`: `decide` and the rules behind it,
+bundled into one ES module with nothing from Node, so it can't read the
+clock, network or files. The Merger keeps its own reads, writes and
+schedule, and on each pass calls
+
+```js
+const { decidePass } = await import("./merge-control-decide-0.10.0.js");
+const answer = decidePass({ snapshot, state, settings: { fastTrackLabellers }, now });
+// answer: { actions, state, log, rules: "halonic.agent-tools@0.10.0", format: 1 }
+```
+
+with the snapshot as `src/merge-control/snapshot.ts` describes it, the state
+the previous answer returned (null the first time), only the settings that
+differ from `defaultSettings`, and the time as an ISO string. It carries out
+`actions` and logs `rules`, so its log says which plugin version decided. A
+bad time, an unknown setting, another state version or a snapshot missing a
+list throws; the Merger then falls back to its own rules for that pass. The
+file is named for its version, so older copies can stay beside it, and a
+rule fix reaches the Merger by copying in the next one.
 
 ## Reviewer path list
 
