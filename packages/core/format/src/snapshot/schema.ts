@@ -12,6 +12,15 @@ import { toolFields } from "../kinds/tool/schema.ts";
 /** The snapshot format this version of Halonic writes and reads. */
 export const SNAPSHOT_FORMAT = 1 as const;
 
+/**
+ * The most bytes a tool file may have. A real one is well under 4 KiB; the
+ * cap keeps a huge file from being parsed at all.
+ */
+export const MAX_TOOL_FILE_BYTES = 64 * 1024;
+
+/** The most bytes a snapshot may have: 500 tools of a few KiB each, with room to spare. */
+export const MAX_SNAPSHOT_BYTES = 4 * 1024 * 1024;
+
 /** A git commit id: 40 hex digits (SHA-1), or 64 (SHA-256). */
 const COMMIT_PATTERN = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 

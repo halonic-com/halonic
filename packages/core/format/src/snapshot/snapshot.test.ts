@@ -3,7 +3,12 @@ import { describe, expect, it } from "vitest";
 import { yaml } from "../test/parse.spec.ts";
 import { buildSnapshot, type SnapshotInput, type ToolFile } from "./build.ts";
 import { readSnapshot, snapshotJson } from "./read.ts";
-import type { SnapshotProblem, WorkspaceSnapshot } from "./schema.ts";
+import {
+  MAX_SNAPSHOT_BYTES,
+  MAX_TOOL_FILE_BYTES,
+  type SnapshotProblem,
+  type WorkspaceSnapshot,
+} from "./schema.ts";
 
 /** A made-up key in a known key format, built at run time so no key-shaped text sits in the repo. */
 const fakeKey = `sk-${"Q7x2Lm9K".repeat(4)}`;
@@ -113,6 +118,13 @@ verifies("format.workspace-snapshot", () => {
       ]);
     });
 
+    it("refuses a tool file over the size cap without parsing it", () => {
+      const huge = { ...prStatus, text: `${prStatus.text}# ${"x".repeat(MAX_TOOL_FILE_BYTES)}\n` };
+      expect(summary(refused({ toolFiles: [huge] }))).toEqual([
+        "tools/pr_status.tool.yaml  tool-file-too-large",
+      ]);
+    });
+
     it("refuses a short commit id", () => {
       expect(summary(refused({ commit: "0123456" }))).toEqual(["- commit invalid_format"]);
     });
@@ -160,6 +172,7 @@ verifies("format.workspace-snapshot", () => {
         "snapshot-not-canonical",
       ],
       ["text that isn't JSON", text.slice(0, -3), "snapshot-not-json"],
+      ["text over the size cap", text + " ".repeat(MAX_SNAPSHOT_BYTES), "snapshot-too-large"],
     ])("refuses %s", (_what, changed, code) => {
       const result = readSnapshot(changed, actions);
       expect(result.ok ? [] : result.error.map((problem) => problem.code)).toEqual([code]);

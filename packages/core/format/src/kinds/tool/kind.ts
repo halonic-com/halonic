@@ -1,3 +1,4 @@
+import { findSecretShape } from "@halonicjs/std";
 import type { FileKind, KindCheckProblem } from "../../kind.ts";
 import { checkKeysIn } from "../../shared/key-in-value.ts";
 import { MAX_TOOL_PARAMETERS, Tool, type ToolEntry } from "./schema.ts";
@@ -19,7 +20,8 @@ export const toolKind: FileKind<Tool> = {
 
 /**
  * The checks over several fields: callers given one way, a sane number of
- * parameters, choices only on text, and no key anywhere in the file. A
+ * parameters, choices only on text, and no key anywhere in the file, in a
+ * parameter's name as much as in a value. A
  * tool file is data that ships in a public plugin, so a key in any field,
  * a description included, fails it. The snapshot runs the same checks on
  * each tool it reads.
@@ -44,6 +46,15 @@ export function checkTool(tool: ToolEntry): KindCheckProblem[] {
     });
   }
   for (const [name, parameter] of parameters) {
+    // A key fits the name pattern too, and a name ships in the plugin like any value.
+    if (findSecretShape(name) !== undefined) {
+      problems.push({
+        severity: "error",
+        code: "value-looks-like-key",
+        path: ["parameters", name],
+        message: "This parameter name looks like an API key. Give the parameter a plain name.",
+      });
+    }
     if (parameter.choices !== undefined && parameter.type !== "string") {
       problems.push({
         severity: "error",

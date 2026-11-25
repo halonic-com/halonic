@@ -26,7 +26,9 @@ the builder (a test checks that).
 The plugin plan (HAL-17450, step 1a) moves tool definitions into the workspace as files. A file
 kind gives them the same parsing, positions, key check and JSON Schema as every other workspace
 file, and `halonic validate` can use it. The kind has no place yet, so the workspace loader and
-Studio's library don't change: the plugin builder names the folder it reads tools from, in its own
+Studio's library don't change. Studio's source control maps every kind name to a label and an
+icon, so `packages/studio/features/source-control/src/changes-words.ts` and `src/ui/item-icon.tsx`
+each gain a `tool` entry ("Tool", the plugins icon); no screen shows it until tools have a place. the plugin builder names the folder it reads tools from, in its own
 task.
 
 ## Covers
@@ -36,3 +38,5 @@ task.
 - apps/cli/src/commands/schema/golden/schema-output.json
 - packages/core/format/spec/tool.schema.json
 - tooling/check/policy.json
+- packages/studio/features/source-control/src/changes-words.ts
+- packages/studio/features/source-control/src/ui/item-icon.tsx

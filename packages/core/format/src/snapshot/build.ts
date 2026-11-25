@@ -1,9 +1,10 @@
 import { parse } from "@halonicjs/schema-kit";
-import { err, ok, type Result } from "@halonicjs/std";
+import { encodeUtf8, err, ok, type Result } from "@halonicjs/std";
 import { parseFile } from "../parse-file.ts";
 import { checkSnapshotTools, type PlacedTool } from "./check-tools.ts";
 import {
   type KnownActions,
+  MAX_TOOL_FILE_BYTES,
   SNAPSHOT_FORMAT,
   type SnapshotProblem,
   WorkspaceSnapshot,
@@ -41,6 +42,15 @@ export function buildSnapshot(input: SnapshotInput): Result<WorkspaceSnapshot, S
   const problems: SnapshotProblem[] = [];
   const placed: PlacedTool[] = [];
   for (const file of input.toolFiles) {
+    if (encodeUtf8(file.text).length > MAX_TOOL_FILE_BYTES) {
+      problems.push({
+        file: file.path,
+        code: "tool-file-too-large",
+        path: [],
+        message: `A tool file may have at most ${MAX_TOOL_FILE_BYTES} bytes; this one isn't read.`,
+      });
+      continue;
+    }
     const parsed = parseFile("tool", file.text);
     if (!parsed.ok) {
       for (const { severity, code, path, message } of parsed.error) {

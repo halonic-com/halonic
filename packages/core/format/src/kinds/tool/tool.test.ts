@@ -144,4 +144,49 @@ verifies("format.tool-file", () => {
     ]);
     expect(JSON.stringify(problems)).not.toContain(fakeKey);
   });
+
+  describe("refuses a character a person can't see", () => {
+    it.each([
+      ["a zero-width space (U+200B)", "\\u200B"],
+      ["a tag character (U+E0041)", "\\U000E0041"],
+      ["a line separator (U+2028)", "\\u2028"],
+      ["a byte-order mark (U+FEFF)", "\\uFEFF"],
+    ])("%s in the description", (_what, escaped) => {
+      const text = yaml("name: n", `description: "Show a PR.${escaped}"`, "action: a.b");
+      expect(problemsOf("tool", text).map((problem) => problem.path.join("."))).toEqual([
+        "description",
+      ]);
+    });
+
+    it("in a choice, which agents read too", () => {
+      const text = toolWith(
+        "parameters:",
+        "  view:",
+        "    type: string",
+        "    description: n",
+        '    choices: ["short\\U000E0041"]',
+      );
+      expect(problemsOf("tool", text).map((problem) => problem.path.join("."))).toEqual([
+        "parameters.view.choices.0",
+      ]);
+    });
+  });
+
+  it.each(["constructor", "toString", "valueOf", "hasOwnProperty"])(
+    "refuses %s as a parameter name, which every object already has",
+    (name) => {
+      const text = toolWith("parameters:", `  ${name}: { type: string, description: n }`);
+      expect(problemsOf("tool", text).map((problem) => problem.path.join("."))).toEqual([
+        `parameters.${name}`,
+      ]);
+    },
+  );
+
+  it("refuses a parameter name that is a key, without repeating it", () => {
+    const keyName = `ghp_${"a1B2c3D4e5".repeat(3)}a1B2c3`;
+    const text = toolWith("parameters:", `  ${keyName}: { type: string, description: n }`);
+    const problems = problemsOf("tool", text);
+    expect(problems.map((problem) => problem.code)).toEqual(["value-looks-like-key"]);
+    expect(problems.map((problem) => problem.message).join(" ")).not.toContain(keyName);
+  });
 });

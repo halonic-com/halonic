@@ -151,17 +151,19 @@ parameters:
   view: { type: string, description: How much to show., choices: [short, full] }
 ```
 
-Unknown keys, a description with a line break or a text-direction mark, and a key pasted into any
-field fail the file.
+Unknown keys, a description or choice with a character a person can't see (line breaks,
+zero-width and tag characters, text-direction marks), a parameter named like an object's own
+member (`constructor`), and a key pasted into any field or parameter name fail the file.
 
 `buildSnapshot({ commit, toolFiles, actions })` turns a workspace commit's tool files into a
 snapshot, `{ snapshot: 1, commit, tools }`, plain data with nothing engine-specific in it
 (requirement `workspace-snapshot`). `actions` is the set of actions the runtime that will serve it
-has. One bad file, an unknown action or a name used twice refuses the whole build and names every
+has. A tool file over 64 KiB isn't parsed. One bad file, an unknown action or a name used twice refuses the whole build and names every
 problem with its file. `snapshotJson(snapshot)` writes it as canonical JSON, so the same files in
 any order give the same bytes and the same checksum. `readSnapshot(text, actions)` is the
-runtime's side: it refuses anything the build would refuse, and any text not written exactly as
-`snapshotJson` writes it.
+runtime's side: it refuses text over 4 MiB, anything the build would refuse, and any text not
+written exactly as `snapshotJson` writes it. It checks what a snapshot says, not who made it: its
+trust comes from how the runtime gets it.
 
 ## Subpath exports
 

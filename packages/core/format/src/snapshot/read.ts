@@ -1,7 +1,12 @@
 import { parse } from "@halonicjs/schema-kit";
-import { canonicalJson, err, ok, type Result } from "@halonicjs/std";
+import { canonicalJson, encodeUtf8, err, ok, type Result } from "@halonicjs/std";
 import { checkSnapshotTools } from "./check-tools.ts";
-import { type KnownActions, type SnapshotProblem, WorkspaceSnapshot } from "./schema.ts";
+import {
+  type KnownActions,
+  MAX_SNAPSHOT_BYTES,
+  type SnapshotProblem,
+  WorkspaceSnapshot,
+} from "./schema.ts";
 
 /**
  * Writes a snapshot as the one text it has: canonical JSON (keys sorted,
@@ -18,7 +23,7 @@ export function snapshotJson(snapshot: WorkspaceSnapshot): string {
 
 /**
  * Reads a snapshot an engine is about to serve, and refuses it unless
- * every rule holds: the schema with no unknown field, only actions this
+ * every rule holds: at most {@link MAX_SNAPSHOT_BYTES}, the schema with no unknown field, only actions this
  * Halonic has, each tool name once, no key in any field, and the text
  * written exactly as {@link snapshotJson} writes it. A refused snapshot is
  * served as nothing: the caller keeps its last good one.
@@ -31,6 +36,15 @@ export function readSnapshot(
   text: string,
   actions: KnownActions,
 ): Result<WorkspaceSnapshot, SnapshotProblem[]> {
+  if (encodeUtf8(text).length > MAX_SNAPSHOT_BYTES) {
+    return err([
+      {
+        code: "snapshot-too-large",
+        path: [],
+        message: `The snapshot is larger than ${MAX_SNAPSHOT_BYTES} bytes, so it isn't read.`,
+      },
+    ]);
+  }
   const data = parseJson(text);
   if (!data.ok) {
     return data;

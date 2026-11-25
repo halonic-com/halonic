@@ -142,6 +142,7 @@ export {
 export { checkTool } from "./kinds/tool/kind.ts";
 export {
   ACTION_NAME_PATTERN,
+  MAX_TOOL_CHOICES,
   MAX_TOOL_DESCRIPTION_LENGTH,
   MAX_TOOL_NAME_LENGTH,
   MAX_TOOL_PARAMETERS,

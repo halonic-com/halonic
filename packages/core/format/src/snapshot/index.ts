@@ -6,6 +6,8 @@
 export { readSnapshot, snapshotJson } from "./read.ts";
 export {
   type KnownActions,
+  MAX_SNAPSHOT_BYTES,
+  MAX_TOOL_FILE_BYTES,
   SNAPSHOT_FORMAT,
   type SnapshotProblem,
   SnapshotTool,
