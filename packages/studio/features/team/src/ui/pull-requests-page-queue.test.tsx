@@ -43,6 +43,43 @@ const text = (page: HTMLElement) => page.textContent ?? "";
 const sectionNames = (page: HTMLElement) =>
   [...page.querySelectorAll("section")].map((each) => each.getAttribute("aria-label"));
 
+/** The element whose own text, without its children's markup, is `words`. */
+function withText(page: HTMLElement, words: string): HTMLElement {
+  const found = [...page.querySelectorAll<HTMLElement>("*")].find(
+    (each) => each.textContent === words,
+  );
+  if (found === undefined) throw new Error(`no element says ${words}`);
+  return found;
+}
+
+/** The queue list's rows, header rows (with a heading) or PR rows. */
+function queueListRows(page: HTMLElement, header: boolean): Element[] {
+  const queue = page.querySelector('ul[aria-label="Queue"]');
+  return [...(queue?.children ?? [])].filter(
+    (row) => (row.querySelector("h2") !== null) === header,
+  );
+}
+
+/** The queue list's header rows: their heading, and their chip's words and tone fill. */
+function headerRows(page: HTMLElement) {
+  return queueListRows(page, true).map((row) => {
+    const chip = row.querySelector("h2 + span");
+    return {
+      name: row.querySelector("h2")?.textContent,
+      chip: chip?.textContent,
+      fill: chip?.className.match(/bg-[a-z]+-soft/)?.[0],
+    };
+  });
+}
+
+/** The queue's PR rows as their first cell (the position) and their number. */
+function queueRows(page: HTMLElement) {
+  return queueListRows(page, false).map((row) => [
+    row.firstElementChild?.textContent,
+    row.querySelector(".font-mono")?.textContent,
+  ]);
+}
+
 /** Presses the tab whose spoken words are `label`, such as "Queue, 7". */
 function pressTab(page: HTMLElement, label: string): void {
   const tab = [...page.querySelectorAll<HTMLElement>('[role="tab"]')].find((each) => {
@@ -92,6 +129,19 @@ verifies("team.merge-queue", () => {
       expect(text(page)).toContain("Merge queue: Running · 7 PRs");
     });
 
+    it("draws the health line in its own bordered band (P1)", async () => {
+      const fake = acme();
+      sevenInTheQueue(fake);
+      const page = await open(fake);
+      const band = withText(page, "Running").closest("div");
+      expect(band?.textContent).toBe(
+        "Merge queue: Running · 7 PRs · group 2 of 3 building · no runner wait",
+      );
+      expect(band?.className.split(" ")).toEqual(
+        expect.arrayContaining(["rounded-md", "border", "bg-surface-subtle", "px-4", "py-3"]),
+      );
+    });
+
     it("says when runners are busy and when the queue has stopped", async () => {
       const fake = acme();
       fake.add("#8", { state: "draft" });
@@ -113,12 +163,17 @@ verifies("team.merge-queue", () => {
       expect(text(page)).toContain(
         "Running · 7 PRs · no runner wait · median 22 min to merge today",
       );
-      expect(sectionNames(page)).toEqual([
-        "Group 1 · ci-ok passed · merging",
-        "Group 2 · Building · 9 min",
-        "Group 3 · Building · 4 min",
-        "Waiting to enter",
+      expect(headerRows(page)).toEqual([
+        { name: "Group 1", chip: "ci-ok passed · merging", fill: "bg-success-soft" },
+        { name: "Group 2", chip: "Building · 9 min", fill: "bg-running-soft" },
+        { name: "Group 3", chip: "Building · 4 min", fill: "bg-running-soft" },
+        { name: "Waiting to enter", chip: undefined, fill: undefined },
       ]);
+      expect(queueRows(page)).toEqual(
+        ["1", "2", "3", "4", "5", "6", "7"].map((position) => [position, `#${position}`]),
+      );
+      expect(text(page)).not.toContain("In the queue ·");
+      expect(text(page)).toContain("queued ");
       expect(text(page)).toContain("Numbers are real positions.");
     });
 
@@ -144,14 +199,19 @@ verifies("team.merge-queue", () => {
       });
       const page = await open(fake);
       pressTab(page, "Queue, 4");
-      expect(sectionNames(page)).toContain(
-        "Group failed: #5655 · the 3 PRs behind it are being tested again",
-      );
+      expect(headerRows(page)[0]).toEqual({
+        name: "Group 1",
+        chip: "Group failed: #5655",
+        fill: "bg-danger-soft",
+      });
+      expect(text(page)).toContain("the 3 PRs behind it are being tested again");
       expect(text(page)).toContain(
         "The queue session named #5655 as the cause and took it out at 12:40.",
       );
       expect(sectionNames(page)).toContain("Taken out today (1)");
-      expect(text(page)).toContain("Group failed: typecheck · 12:40 · Kim");
+      const takenOut = page.querySelector('section[aria-label="Taken out today (1)"] li');
+      expect(takenOut?.textContent).toBe("#5655 · Group failed: typecheck · 12:40 · Kim");
+      expect(withText(page, "Group failed: typecheck").className).toContain("bg-danger-soft");
     });
 
     it("says the merge queue is empty, and when PRs show up there", async () => {

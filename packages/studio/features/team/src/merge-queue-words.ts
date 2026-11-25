@@ -77,6 +77,8 @@ export const mergeQueueWords = {
   culprit: (label: string, time: string) =>
     `The queue session named ${label} as the cause and took it out at ${time}.`,
   waiting: "Waiting to enter",
+  /** How long a PR has been in the queue, at the end of its row (P18): "queued 31 min". */
+  queued: (age: string) => `queued ${age}`,
   hint: "Numbers are real positions. A time to merge shows only when GitHub gives one; it is never guessed.",
   takenOut: (count: number) => `Taken out today (${count})`,
   merged: "Merged today",
