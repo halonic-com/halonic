@@ -126,6 +126,10 @@ export type UsageAnswer =
  * A record of use, as it goes to Cloud: ids, an enum, whole numbers and a time, nothing else. A
  * `correction` (id `<reservation>:late`) is the only kind whose units may be below 0: it takes a
  * step charged in full after its reservation ran out back to what it used.
+ *
+ * Cloud prices a model call from its own table by `model`, and charges a step at most its
+ * `reservedMax`, never trusting the `cost` a record reports (requirement
+ * `cloudflare-durable.usage-record-pricing`).
  */
 export interface UsageRecord {
   readonly id: string;
@@ -134,6 +138,13 @@ export interface UsageRecord {
   readonly runId: string;
   readonly kind: "model_call" | "step" | "run" | "correction";
   readonly units: UsageAmounts;
+  /**
+   * A `model_call`'s model as `<provider>/<model>`, such as `anthropic/claude-opus-5-5`. Absent on
+   * other kinds, and on a call whose model isn't a machine id: Cloud holds such a call unpriced.
+   */
+  readonly model?: string;
+  /** A `step`'s reservation: the most it may be charged per unit, defaults included. Absent on other kinds. */
+  readonly reservedMax?: UsageAmounts;
   /** The period the use is billed in; a correction's is its step's, which may be the one before. */
   readonly periodStart: number;
   readonly at: number;

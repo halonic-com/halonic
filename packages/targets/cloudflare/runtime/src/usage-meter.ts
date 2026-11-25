@@ -49,6 +49,7 @@ export interface UsageObjectCalls {
     runId: string,
     kind: "model_call" | "run",
     used: UsageAmounts,
+    model?: string,
   ): Promise<void>;
   stopRunning(scope: string, runId: string): Promise<void>;
 }
@@ -131,7 +132,8 @@ export class UsageObjectMeter implements Meter {
     }
     if (usage.counted === "cached") return;
     const { topRunId } = this.#options;
-    await object.record(owner, usage.callId, topRunId, "model_call", amountsOfCall(usage));
+    const used = amountsOfCall(usage);
+    await object.record(owner, usage.callId, topRunId, "model_call", used, usage.model);
   }
 }
 

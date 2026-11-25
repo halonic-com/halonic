@@ -49,6 +49,18 @@ export function checkId(name: string, id: string): string {
 /** A step's or a record's id leaves room for {@link correctionSuffix} within the 128 characters. */
 const maxChargeIdLength = 128 - correctionSuffix.length;
 
+/** A model as `<provider>/<model>`: a machine id with one `/`, at most 128 characters. */
+const modelPattern = /^[A-Za-z0-9_.:-]+\/[A-Za-z0-9_.:-]+$/;
+
+/**
+ * The model a call record names, or `undefined` when there is none or it isn't a model id. It never
+ * throws: a call is still charged without its model, and Cloud holds it unpriced.
+ */
+export function modelOrNone(model: string | undefined): string | undefined {
+  const fits = typeof model === "string" && model.length <= 128 && modelPattern.test(model);
+  return fits ? model : undefined;
+}
+
 /**
  * @throws RangeError when one of a step's ids isn't a machine id, or its id ends like a
  * correction's or leaves no room for one

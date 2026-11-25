@@ -36,7 +36,7 @@ async function causeOf(refusal: UsageRefusal) {
 
 verifies("runtime.usage-meter", () => {
   describe("UsageObjectMeter's calls", () => {
-    it("holds and records a child run's step and call under the top-level run", async () => {
+    it("holds and records a child run's step and call, with its model, under the top-level run", async () => {
       const { meter, seen } = fakeObject();
       await meter.reserve(ada, { cost: 0.5 });
       const call = modelCallUsageOf({
@@ -58,7 +58,7 @@ verifies("runtime.usage-meter", () => {
       const amounts = { steps: 1, tokens: 15, cacheTokens: 3, cost: 100_000 };
       expect(seen).toEqual([
         ["reserve", principal, expect.objectContaining(step)],
-        ["record", principal, "run_child:4", "run_top", "model_call", amounts],
+        ["record", principal, "run_child:4", "run_top", "model_call", amounts, "acme-ai/acme-1"],
       ]);
     });
 

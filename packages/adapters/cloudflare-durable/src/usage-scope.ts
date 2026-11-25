@@ -127,15 +127,17 @@ export class UsageScope {
     return this.#account(scope).settle(id, used);
   }
 
-  /** Charges a model call or a run's end once per id. */
+  /** Charges a model call, with its model, or a run's end once per id. */
   record(
     principal: UsagePrincipal,
     id: string,
     runId: string,
     kind: "model_call" | "run",
     used: UsageAmounts,
+    model?: string,
   ): void {
-    this.#account(principal.scope).record(id, { runId, actor: principal.actor }, kind, used);
+    const owner = { runId, actor: principal.actor };
+    this.#account(principal.scope).record(id, owner, kind, used, model);
   }
 
   /** Lets a run start or wake within the caps; the alarm frees its slot if it is lost. */

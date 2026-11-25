@@ -68,6 +68,11 @@ export type ModelCallUsage = MadeByEngine & {
    * call recorded twice once.
    */
   readonly callId: string;
+  /**
+   * The model that answered, as `<provider>/<model>` (`anthropic/claude-opus-5-5`), so a meter
+   * can price the call from its own table instead of trusting `cost`.
+   */
+  readonly model: string;
   /** `null` for an answer from the cache, which called no model. */
   readonly usage: Usage | null;
   /** In the budget's currency; 0 for a call a subscription paid, an unpriced one and a cached one. */
