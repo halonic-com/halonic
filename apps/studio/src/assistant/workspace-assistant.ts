@@ -434,8 +434,10 @@ export class WorkspaceAssistant implements AssistantHost {
       tools = buildChatTools({ chatId, files, review, isTrusted, digest, show });
       this.#tools.set(chatId, tools);
     }
-    // Before trust a turn offers exactly the six authoring tools (`studio.assistant-authoring-turn`).
-    return isTrusted() ? tools : tools.filter((tool) => tool.definition.name !== "show");
+    // Before trust a turn offers exactly the six authoring tools (`studio.assistant-authoring-turn`),
+    // so `show` and `integration_guide` wait for trust.
+    const afterTrust = ["show", "integration_guide"];
+    return isTrusted() ? tools : tools.filter((tool) => !afterTrust.includes(tool.definition.name));
   }
 
   #add(chatId: string, message: ChatMessage): void {
