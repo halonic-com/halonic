@@ -216,6 +216,7 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "update_cancel",
         "update_restart",
         "update_set_automatic",
+        "update_set_track",
         "plugin:updater|check",
     ] {
         assert!(

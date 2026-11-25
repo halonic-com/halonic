@@ -48,6 +48,10 @@ mod proxy;
 mod file;
 use file::{read_file, write_over};
 
+#[path = "updates_track.rs"]
+mod track;
+pub use track::update_set_track;
+
 #[path = "updates_way_back.rs"]
 mod way_back;
 use way_back::{log_way_back, prove_started};
@@ -95,7 +99,7 @@ impl Inner {
             last_checked: self.record.last_checked,
             just_updated: self.just_updated.clone(),
             managed: self.managed.clone(),
-            track: self.record.track,
+            track: self.track(),
             sandbox_setup_again: self
                 .ready
                 .as_ref()
@@ -301,7 +305,7 @@ async fn check<R: Runtime>(app: &AppHandle<R>) {
         inner.record.last_attempt = Some(now());
         inner.save();
         inner.notify();
-        (inner.managed.is_some(), inner.record.track)
+        (inner.managed.is_some(), inner.track())
     };
     if is_managed {
         return managed::check(app).await;
@@ -360,7 +364,7 @@ fn install<R: Runtime>(app: &AppHandle<R>, relaunch: bool) -> Result<(), String>
         inner.record.before_install(&update.version, &current);
         inner.save();
         log_way_back(&inner, &update.version);
-        (update, bytes, inner.record.track)
+        (update, bytes, inner.track())
     };
     let host_app = app.clone();
     let update = on_track_key(app.updater_builder(), track)

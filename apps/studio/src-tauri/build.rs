@@ -127,6 +127,7 @@ fn main() {
         "update_cancel",
         "update_restart",
         "update_set_automatic",
+        "update_set_track",
         "server_session_open",
         "login_item_get",
         "login_item_set",
