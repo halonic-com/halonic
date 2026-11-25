@@ -3,6 +3,7 @@
 - Task: HAL-18110 (found while writing the Meter contract suite, HAL-18024)
 - Approval: Liam chose this fix on HAL-18110 (option 1: keep the ids of recently ended runs in the ledger); Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:x06Mupc/SmUEOpkaqXbj1uo2xta1qQEtd8TpH//kpQsZYJwC+Selinwn0cdnpgLF8JI2jgSkOGaKuBKH/y7AAg==
 
 ## What changes
 
