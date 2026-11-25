@@ -38,6 +38,9 @@ pub trait SleepLock {
     fn hold(&mut self) -> io::Result<()>;
     /// Releases the lock. Called only while it is held.
     fn release(&mut self);
+    /// Whether a held lock is still held: the system may end it by itself,
+    /// such as `systemd-inhibit` without logind. Called only while it is held.
+    fn held(&mut self) -> bool;
 }
 
 /// Holds the lock exactly while the setting and remote are on and the
@@ -72,8 +75,14 @@ impl<P: PowerSource, L: SleepLock> KeepAwake<P, L> {
 
     /// Reads the power source again and holds or releases the lock to match;
     /// answers whether it is held now. The power is read only while both
-    /// switches are on, so an unused setting runs nothing.
+    /// switches are on, so an unused setting runs nothing. A lock that ended
+    /// by itself is reported as an error and held again on the next check.
     pub fn check(&mut self) -> io::Result<bool> {
+        if self.holding && !self.lock.held() {
+            self.lock.release();
+            self.holding = false;
+            return Err(io::Error::other("the sleep lock ended by itself"));
+        }
         let wanted = self.setting && self.remote && self.power.power() == Power::Mains;
         if wanted && !self.holding {
             self.lock.hold()?;

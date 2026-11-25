@@ -17,11 +17,13 @@ impl PowerSource for FakePower {
     }
 }
 
-/// A lock that records "hold" and "release", and can refuse to hold.
+/// A lock that records "hold" and "release", can refuse to hold, and can
+/// end by itself.
 #[derive(Clone, Default)]
 struct FakeLock {
     calls: Rc<RefCell<Vec<&'static str>>>,
     refuse: Rc<Cell<bool>>,
+    ended: Rc<Cell<bool>>,
 }
 
 impl SleepLock for FakeLock {
@@ -34,7 +36,12 @@ impl SleepLock for FakeLock {
     }
 
     fn release(&mut self) {
+        self.ended.set(false);
         self.calls.borrow_mut().push("release");
+    }
+
+    fn held(&mut self) -> bool {
+        !self.ended.get()
     }
 }
 
@@ -104,6 +111,17 @@ fn keep_awake_says_when_the_lock_cant_be_held_and_tries_again() {
     assert!(!keep.holding());
     lock.refuse.set(false);
     assert_eq!(keep.check().ok(), Some(true));
+}
+
+#[test]
+fn keep_awake_says_when_the_lock_ended_by_itself_and_holds_it_again() {
+    let (mut keep, _, lock) = keep_awake(Power::Mains);
+    assert_eq!(keep.set(true, true).ok(), Some(true));
+    lock.ended.set(true);
+    assert!(keep.check().is_err());
+    assert!(!keep.holding());
+    assert_eq!(keep.check().ok(), Some(true));
+    assert_eq!(*lock.calls.borrow(), ["hold", "release", "hold"]);
 }
 
 #[test]

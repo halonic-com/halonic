@@ -144,6 +144,14 @@ impl SleepLock for SystemSleepLock {
             let _reaped = child.wait();
         }
     }
+
+    /// Spawning proves little: `systemd-inhibit` exits at once without
+    /// logind. So the helper must still be running.
+    fn held(&mut self) -> bool {
+        self.holder
+            .as_mut()
+            .is_some_and(|child| matches!(child.try_wait(), Ok(None)))
+    }
 }
 
 #[cfg(windows)]
@@ -155,6 +163,11 @@ impl SleepLock for SystemSleepLock {
 
     fn release(&mut self) {
         self.holder = None;
+    }
+
+    /// Windows keeps the state until the holding thread clears it.
+    fn held(&mut self) -> bool {
+        self.holder.is_some()
     }
 }
 
@@ -219,12 +232,17 @@ mod windows {
                     let set =
                         unsafe { SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED) };
                     let _answered = held.send(set != 0);
+                    if set == 0 {
+                        return;
+                    }
                     // Waits until released, or until the Holder is dropped.
                     let _ = released.recv();
                     // SAFETY: plain flags, no pointers.
                     unsafe { SetThreadExecutionState(ES_CONTINUOUS) };
                 })?;
             if holding.recv() != Ok(true) {
+                // Ends the thread's wait too, so the join can't hang.
+                drop(release);
                 let _ = thread.join();
                 return Err(io::Error::other("SetThreadExecutionState failed"));
             }
