@@ -32,10 +32,7 @@ export function PullRequestLists(props: {
   clock: TeamClock;
   opener: WebLinkOpener;
 }) {
-  const [chosen, setTab] = useState<Tab>("attention");
-  const onPhone = usePresentation() === "phone";
-  // Merged today chosen on a desktop window that then narrowed to a phone falls back to Stuck.
-  const tab = onPhone && chosen === "merged" ? "attention" : chosen;
+  const { tab, setTab, onPhone } = useListTab();
   const tabList = useRef<HTMLDivElement>(null);
   // See all open removes itself, so focus moves to the All open tab instead of the page.
   const focusAllOpen = useRef(false);
@@ -103,6 +100,17 @@ export function PullRequestLists(props: {
       </Tabs>
     </div>
   );
+}
+
+/**
+ * The selected tab, and whether this is a phone. Merged today chosen on a desktop window that
+ * then narrowed to a phone falls back to Stuck, as a phone has no Merged today chip.
+ */
+function useListTab() {
+  const [chosen, setTab] = useState<Tab>("attention");
+  const onPhone = usePresentation() === "phone";
+  const tab: Tab = onPhone && chosen === "merged" ? "attention" : chosen;
+  return { tab, setTab, onPhone };
 }
 
 /**
