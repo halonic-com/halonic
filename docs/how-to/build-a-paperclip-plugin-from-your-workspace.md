@@ -43,9 +43,26 @@ action:
 | `name` | the name agents call the tool by: lowercase words joined by `_`, at most 48 characters |
 | `description` | what the tool does, in 1 to 500 characters. Agents read it to choose a tool, so keep it short |
 | `callers` | who may call it: `everyone`, or a list of agents (see below). There is no default, so a tool without `callers` is refused |
-| `parameters` | what the agent passes, at most 16. Each has a `type` (`string`, `integer`, `number` or `boolean`), a `description` of 1 to 300 characters and `required` (`false` by default). A string may list its choices under `enum` and set `maxLength` (1,000 by default); a number may set `minimum` and `maximum` |
+| `parameters` | what the agent passes, at most 16. Each has a `type` (`string`, `integer`, `number`, `boolean`, `object` or `list`), a `description` of 1 to 300 characters and `required` (`false` by default). A string may list its choices under `enum` and set `maxLength` (1,000 by default); a number may set `minimum` and `maximum`. An object and a list are described below |
 | `action.run` | the built-in action that does the work (see the next section) |
 | `action.with` | that action's settings, such as the repositories it may read |
+
+An `object` lists its `fields`, 1 to 16 of them, by name. A `list` says what
+each of its `items` is and may set `maxItems` (20 by default, at most 100).
+A field or an item is a `string`, `integer`, `number` or `boolean`, with the
+same keys as a parameter of that type; nothing goes deeper. A field has its
+own `description` and `required`; an item has neither:
+
+```yaml
+parameters:
+  blockedBy:
+    type: list
+    description: The tasks this one waits on, such as ACME-12.
+    items:
+      type: string
+      maxLength: 40
+    maxItems: 10
+```
 
 To offer a tool only to some agents, name them by their URL key in Paperclip.
 Case doesn't matter, and an agent's display name never counts, because two
@@ -109,9 +126,11 @@ This version of Halonic can build a plugin with these actions that read:
 | --- | --- | --- | --- |
 | `github.pull-request` | one pull request: its checks, whether it can merge, its place in the merge queue, approvals on its newest commit, the newest review finding and what its author does next | `pr` (a number or the pull request's GitHub URL); optional: `repo`, when the tool lists more than one repository | `repositories`: 1 to 20, each `owner/name` |
 | `github.open-pull-requests` | the caller's open pull requests (branches that start with the agent's URL key), listed with the ones that need attention first | none | `repositories` |
+| `github.merge-queue` | each repository's merge queue: every entry's place, state and wait, the `ci-ok` of its merge group, the merge-group jobs waiting for a runner, and the open pull requests labelled `fast-track` | none | `repositories` |
 | `github.merge-times` | how long pull requests took from being opened to being merged, per repository | none | `repositories`, and `days`: 1 to 90, 7 by default |
 | `paperclip.task` | one Paperclip task: status, holder, blockers, documents and its newest comments | `task` (its identifier, such as `ACME-12`, or its id); optional: `comments` (0 to 20, 5 by default) and `document` (a document key) | none |
 | `paperclip.failed-runs` | the agent runs that failed or timed out, counted from when the plugin started watching | `since` (optional: a time such as `2026-11-22T12:00:00Z`; when left out, the last `hours` from the settings) | `hours`: 1 to 168, 24 by default |
+| `paperclip.budgets` | each agent's monthly budget in Paperclip beside the one your tool file sets, with every difference flagged. It changes nothing | none | `agents`: each agent's URL key with its monthly budget in dollars, at most two decimals; at most 500 agents |
 | `paperclip.template` | one of the workspace's templates, or the list of them | `id` (optional: leave it out for the list) | none |
 
 And these that write to Paperclip, each as the agent that calls the tool:
@@ -131,6 +150,17 @@ that isn't marked optional), or declares one its action never reads.
 
 The `paperclip.template` action reads the Markdown files in your workspace's
 `library/templates/` folder, one template per file.
+
+The `paperclip.budgets` action reads the budgets from its settings:
+
+```yaml
+action:
+  run: paperclip.budgets
+  with:
+    agents:
+      reporter: 50
+      sorter: 12.5
+```
 
 ### Say who reviews: `routing.yaml`
 
@@ -165,10 +195,6 @@ dryRun: true
 
 `dryRun: true` makes the rule only log what it would do. `halonic validate`
 refuses an unknown rule, an action, and a field named like a key.
-
-The format also knows `github.merge-queue`, but a plugin from this version of
-Halonic can't run it. `halonic validate` accepts it; the build refuses it (see
-below).
 
 ### Writing actions start in dry run
 
@@ -262,16 +288,13 @@ The build stops, and writes nothing, when:
   ```
 
 - `halonic validate` finds errors in the workspace;
-- a tool uses an action this version of Halonic can't run yet:
+- `--out` already holds a different plugin file with the same name and
+  version:
 
   ```text
-  ✕ Couldn't build the plugin: merge_queue uses github.merge-queue, which a plugin from this version of Halonic can't run yet.
-    Take the file for merge_queue out of library/tools and commit, then build again.
+  ✕ Couldn't build the plugin: ./dist/halonic-ws.acme-0.1.0.tar is already there, and it isn't this build.
+    Build with --since and that build's release file, or give another version with --plugin-version.
   ```
-
-- `--out` already holds a different plugin file with the same name and
-  version. Build with `--since` and the last build's release file, or give
-  another version with `--plugin-version`.
 
 Building the same commit again into the same folder leaves the files as they
 are.
