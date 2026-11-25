@@ -4,7 +4,7 @@
 // canonical JSON, so no workspace text is ever written as code and the same
 // inputs always give the same bytes.
 
-import type { Tool, WorkspaceSnapshot } from "@halonicjs/format";
+import type { Tool, ToolParameter, WorkspaceSnapshot } from "@halonicjs/format";
 import { canonicalJson } from "@halonicjs/std";
 import { pluginFileNames } from "./plugin-archive.ts";
 
@@ -36,6 +36,8 @@ export interface ToolDeclaration {
 /**
  * A tool's parameters as the JSON Schema an agent sees: an object with each
  * parameter's own keywords, the required ones listed, and no others allowed.
+ * An object parameter becomes the same kind of object of its fields, and a
+ * list parameter an `array` of its items.
  *
  * @example
  * toolParametersSchema({ parameters: { pr: { type: "integer", description: "The PR.", required: true } } });
@@ -43,16 +45,33 @@ export interface ToolDeclaration {
  * //   required: ["pr"], additionalProperties: false }
  */
 export function toolParametersSchema(tool: Pick<Tool, "parameters">): Record<string, unknown> {
-  const parameters = Object.entries(tool.parameters);
+  return objectSchema(tool.parameters);
+}
+
+/** Parameters, or an object parameter's fields, as one JSON Schema object. */
+function objectSchema(
+  parameters: Readonly<Record<string, ToolParameter>>,
+): Record<string, unknown> {
+  const entries = Object.entries(parameters);
   // `fromEntries` defines each key, so a parameter named like an object's own member stays a parameter.
   const properties = Object.fromEntries(
-    parameters.map(([name, { required: _required, ...keywords }]) => [
-      name,
-      withoutUndefined(keywords),
-    ]),
+    entries.map(([name, parameter]) => [name, parameterSchema(parameter)]),
   );
-  const required = parameters.filter(([, parameter]) => parameter.required).map(([name]) => name);
+  const required = entries.filter(([, parameter]) => parameter.required).map(([name]) => name);
   return { type: "object", properties, required: required.sort(), additionalProperties: false };
+}
+
+/** One parameter's JSON Schema: its own keywords, without `required`, which its object lists. */
+function parameterSchema(parameter: ToolParameter): Record<string, unknown> {
+  if (parameter.type === "object") {
+    return { ...objectSchema(parameter.fields), description: parameter.description };
+  }
+  if (parameter.type === "list") {
+    const { items, maxItems, description } = parameter;
+    return { type: "array", description, items: withoutUndefined(items), maxItems };
+  }
+  const { required: _required, ...keywords } = parameter;
+  return withoutUndefined(keywords);
 }
 
 /** Each tool of a snapshot as the manifest declares it, in the snapshot's order. */

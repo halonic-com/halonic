@@ -1,4 +1,9 @@
-import { type Tool, type ToolActionName, toolActionInfo } from "@halonicjs/format";
+import {
+  type ActionParameter,
+  type Tool,
+  type ToolActionName,
+  toolActionInfo,
+} from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
 import { acmeTool } from "./fake-host.test-helper.ts";
@@ -7,8 +12,8 @@ import { paperclipAccess } from "./paperclip-access.ts";
 
 /**
  * Holds every handler to the parameters its action declares in the format,
- * so the list `halonic validate` checks tool files against can't drift from
- * what the code reads.
+ * an object's fields included, so the list `halonic validate` checks tool
+ * files against can't drift from what the code reads.
  */
 
 /**
@@ -73,6 +78,30 @@ function refusingHost(requests: string[], path = "host"): never {
 }
 
 /**
+ * `value` behind a proxy that adds each name read to `read`, with `prefix`
+ * before it; an object inside is recorded the same way, as `<name>.<field>`.
+ */
+function recording<Value extends object>(value: Value, read: Set<string>, prefix: string): Value {
+  return new Proxy(value, {
+    get: (target, key, receiver) => {
+      const found: unknown = Reflect.get(target, key, receiver);
+      if (typeof key !== "string") return found;
+      read.add(`${prefix}${key}`);
+      const isObject = typeof found === "object" && found !== null && !Array.isArray(found);
+      return isObject ? recording(found, read, `${prefix}${key}.`) : found;
+    },
+  });
+}
+
+/** Each declared name, with an object's fields as `<name>.<field>`. */
+function declaredNames(parameters: readonly ActionParameter[]): string[] {
+  return parameters.flatMap(({ name, shape }) => [
+    name,
+    ...(shape?.type === "object" ? shape.fields.map((field) => `${name}.${field.name}`) : []),
+  ]);
+}
+
+/**
  * Runs the handler with `params` behind a proxy that records every name it
  * reads, with Paperclip cut down to its capabilities as the runtime does.
  */
@@ -83,14 +112,7 @@ async function runRecording(
 ) {
   const read = new Set<string>();
   const requests: string[] = [];
-  const recorded = new Proxy(params, {
-    get: (target, key, receiver) => {
-      if (typeof key === "string") {
-        read.add(key);
-      }
-      return Reflect.get(target, key, receiver);
-    },
-  });
+  const recorded = recording(params, read, "");
   const call: ActionCall = {
     tool: acmeTool("tool_under_test", {
       action: { run: name, with: { repositories: ["acme/website"] } } as Tool["action"],
@@ -126,7 +148,7 @@ verifies("runtime.action-parameters", () => {
         for (const key of run.read) read.add(key);
       }
       for (const refused of readOnlyToRefuse[name] ?? []) read.delete(refused);
-      expect([...read].sort()).toEqual(declared.map((parameter) => parameter.name).sort());
+      expect([...read].sort()).toEqual(declaredNames(declared).sort());
     });
 
     test.each(declared.filter((parameter) => parameter.required))(

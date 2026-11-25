@@ -1,7 +1,7 @@
 import type { Tool, WorkspaceSnapshot } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { pluginManifestText, pluginPackageJsonText } from "./manifest.ts";
+import { pluginManifestText, pluginPackageJsonText, toolParametersSchema } from "./manifest.ts";
 import { acmeCommit } from "./test/acme.test-helper.ts";
 
 const prStatus: Tool = {
@@ -82,6 +82,51 @@ verifies("plugin-build.manifest", () => {
         type: "object",
         properties: { githubToken: { type: "string", format: "secret-ref" } },
       },
+    });
+  });
+
+  it("declares an object parameter as an object of its fields and a list as an array", () => {
+    const parameters: Tool["parameters"] = {
+      monitor: {
+        type: "object",
+        description: "When to wake you.",
+        required: false,
+        fields: {
+          ref: { type: "string", description: "What you wait on.", required: true, maxLength: 200 },
+          inMinutes: { type: "integer", description: "Minutes.", required: true, minimum: 15 },
+        },
+      },
+      blockedBy: {
+        type: "list",
+        description: "The tasks.",
+        required: true,
+        items: { type: "string", maxLength: 40 },
+        maxItems: 10,
+      },
+    };
+
+    expect(toolParametersSchema({ parameters })).toEqual({
+      type: "object",
+      properties: {
+        monitor: {
+          type: "object",
+          description: "When to wake you.",
+          properties: {
+            ref: { type: "string", description: "What you wait on.", maxLength: 200 },
+            inMinutes: { type: "integer", description: "Minutes.", minimum: 15 },
+          },
+          required: ["inMinutes", "ref"],
+          additionalProperties: false,
+        },
+        blockedBy: {
+          type: "array",
+          description: "The tasks.",
+          items: { type: "string", maxLength: 40 },
+          maxItems: 10,
+        },
+      },
+      required: ["blockedBy"],
+      additionalProperties: false,
     });
   });
 

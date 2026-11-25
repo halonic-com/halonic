@@ -84,8 +84,9 @@ the Paperclip clients its handler declares capabilities for.
 
 Their parameters: `task` and `body` for `paperclip.comment`; `task`, `status`, `comment`, `monitor`
 and `blockedBy` for `paperclip.next-step`; `task`, `outcome`, `comment`, `to` and `blockedBy` for
-`paperclip.finish-run`. `monitor` and `blockedBy` aren't flat values, so a tool file can't declare
-them yet.
+`paperclip.finish-run`. A tool file declares `monitor` as `type: object` with the fields `inMinutes`
+and `ref` (both required), `service` and `maxChecks`, and `blockedBy` as `type: list` with string
+`items`; `halonic validate` refuses another type, and the drift test holds the handlers to the fields too.
 
 ## How the worker talks to Paperclip
 

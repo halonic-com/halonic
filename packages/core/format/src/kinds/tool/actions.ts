@@ -49,9 +49,29 @@ const writeSettings = s
 export interface ActionParameter {
   /** Its name, such as `pr`. */
   readonly name: string;
-  /** Whether the action can't run without it, so every tool file for the action must declare it. */
+  /**
+   * Whether the action can't run without it, so every tool file for the
+   * action must declare it, and declare it as required.
+   */
   readonly required: boolean;
+  /**
+   * The object or list the action reads it as. Left out, the action reads a
+   * flat value (a text, a number or a yes or no), and the tool file picks
+   * which one.
+   */
+  readonly shape?: ActionParameterShape;
 }
+
+/** The type of a flat value, as a tool file writes it. */
+export type FlatValueType = "string" | "integer" | "number" | "boolean";
+
+/**
+ * The shape of a parameter an action reads as more than a flat value: an
+ * object with these fields, or a list of these items.
+ */
+export type ActionParameterShape =
+  | { readonly type: "object"; readonly fields: readonly ActionParameter[] }
+  | { readonly type: "list"; readonly items: FlatValueType };
 
 /** What one action is, for the people who write and review tool files. */
 export interface ToolActionInfo {
@@ -66,6 +86,28 @@ export interface ToolActionInfo {
 }
 
 const none: readonly ActionParameter[] = [];
+
+/** The tasks a task waits on, as `paperclip.next-step` and `paperclip.finish-run` read them. */
+const blockedBy: ActionParameter = {
+  name: "blockedBy",
+  required: false,
+  shape: { type: "list", items: "string" },
+};
+
+/** A monitor that wakes the caller, as `paperclip.next-step` reads it. */
+const monitor: ActionParameter = {
+  name: "monitor",
+  required: false,
+  shape: {
+    type: "object",
+    fields: [
+      { name: "inMinutes", required: true },
+      { name: "ref", required: true },
+      { name: "service", required: false },
+      { name: "maxChecks", required: false },
+    ],
+  },
+};
 
 /**
  * Every action, with the settings a tool file gives it under `action.with`.
@@ -156,12 +198,12 @@ export const TOOL_ACTIONS = {
       { name: "task", required: true },
       { name: "status", required: true },
       { name: "comment", required: true },
-      { name: "monitor", required: false },
+      monitor,
       { name: "monitorInMinutes", required: false },
       { name: "monitorRef", required: false },
       { name: "monitorService", required: false },
       { name: "monitorMaxChecks", required: false },
-      { name: "blockedBy", required: false },
+      blockedBy,
     ],
     settings: writeSettings,
   },
@@ -174,7 +216,7 @@ export const TOOL_ACTIONS = {
       { name: "outcome", required: true },
       { name: "comment", required: true },
       { name: "to", required: false },
-      { name: "blockedBy", required: false },
+      blockedBy,
     ],
     settings: writeSettings,
   },

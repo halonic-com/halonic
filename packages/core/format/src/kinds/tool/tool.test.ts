@@ -95,9 +95,23 @@ verifies("format.tool-file", () => {
     expect(summary(problemsOf("tool", settings))).toEqual(["action.with unrecognized_keys 7"]);
   });
 
-  it("refuses a nested parameter type", () => {
-    const text = withParameters("filter: { type: object, description: Anything. }");
-    expect(summary(problemsOf("tool", text))).toEqual(["parameters.filter.type invalid_union 9"]);
+  it("refuses an object without fields, a list without items, and anything nested deeper", () => {
+    const refused = (line: string) => summary(problemsOf("tool", withParameters(line)));
+    expect(refused("filter: { type: object, description: Anything. }")).toEqual([
+      "parameters.filter.fields invalid_type 9",
+    ]);
+    expect(refused("filter: { type: object, description: Anything., fields: {} }")).toEqual([
+      "parameters.filter.fields custom 9",
+    ]);
+    expect(refused("tags: { type: list, description: Tags. }")).toEqual([
+      "parameters.tags.items invalid_type 9",
+    ]);
+    const deeper =
+      "filter: { type: object, description: A., fields: { inner: { type: list, description: B., items: { type: string } } } }";
+    expect(refused(deeper)).toEqual(["parameters.filter.fields.inner.type invalid_union 9"]);
+    expect(refused("tags: { type: list, description: Tags., items: { type: object } }")).toEqual([
+      "parameters.tags.items.type invalid_union 9",
+    ]);
   });
 
   it("refuses a tool name, parameter name or repository in another form", () => {
