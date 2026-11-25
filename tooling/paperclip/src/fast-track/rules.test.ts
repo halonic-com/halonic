@@ -13,8 +13,15 @@ import {
   repo,
 } from "./fast-track.test-helper.ts";
 import { fastTrackRules, type Tracked } from "./rules.ts";
+import type { SharedLabelScope } from "./scope.ts";
 
 const seen: Tracked = { labelledAt: ago(60), readySince: null, queuedAt: null };
+
+/** `halonic-dev`'s scope in these tests: #5659, and HAL-501, a child of a listed task. */
+const sharedScope: SharedLabelScope = {
+  pulls: new Set(["acme/tools#5659"]),
+  tasks: new Set(["HAL-501"]),
+};
 
 function run(
   snapshot: SnapshotRepo,
@@ -24,7 +31,7 @@ function run(
   unblocks: ReadonlySet<number> = new Set(),
   labelAdder = boardLogin,
 ) {
-  return fastTrackRules({ repo: snapshot, now, tracked, unblocks, labelAdder });
+  return fastTrackRules({ repo: snapshot, now, tracked, unblocks, labelAdder, sharedScope });
 }
 
 function stages(snapshot: SnapshotRepo, tracked?: ReadonlyMap<number, Tracked>): string[] {
@@ -57,10 +64,41 @@ verifies("paperclip.fast-track-rules", () => {
     ]);
   });
 
-  test("counts a label added as halonic-dev, with or without the board's login set", () => {
-    const shared = pull(121, { ...liamApproved, ...labelBy("halonic-dev") }, { base: "x" });
+  test("counts a label added as halonic-dev on a listed task's child, with or without the board's login set", () => {
+    const shared = pull(
+      121,
+      { ...liamApproved, ...labelBy("halonic-dev") },
+      { base: "x", branch: "mateo/HAL-501-apps" },
+    );
     expect(stages(repo([shared]))).toEqual([]);
     expect(run(repo([shared]), undefined, new Set(), "").events).toEqual([]);
+  });
+
+  test("counts a label added as halonic-dev on a listed pull request", () => {
+    const listed = pull(5659, { ...liamApproved, ...labelBy("halonic-dev") }, { base: "x" });
+    expect(stages(repo([listed]))).toEqual([]);
+  });
+
+  test("flags a label added as halonic-dev on any other pull request", () => {
+    const other = pull(123, { ...liamApproved, ...labelBy("halonic-dev") }, { base: "x" });
+    const fork = pull(
+      124,
+      { ...liamApproved, ...labelBy("halonic-dev") },
+      { base: "x", branch: "mateo/HAL-501-apps", headRepo: "someone/tools" },
+    );
+    const events = run(repo([other, fork])).events;
+    expect(events.map((event) => event.key)).toEqual([
+      "acme/tools#123 wrong_label:halonic-dev",
+      "acme/tools#124 wrong_label:halonic-dev",
+    ]);
+    expect(events[0]?.text).toMatch(
+      /counts only on the pull requests in fastTrackSharedLabelScope/,
+    );
+  });
+
+  test("counts the board's login on any pull request", () => {
+    const board = pull(125, liamApproved, { base: "x", branch: "mateo/HAL-999-other" });
+    expect(stages(repo([board]))).toEqual([]);
   });
 
   test("counts no label while the board's login isn't set", () => {
@@ -207,6 +245,19 @@ verifies("paperclip.fast-track-rules", () => {
         ?.text;
     expect(ask(8)).toMatch(/without a jump \(8 in the queue\)/);
     expect(ask(9)).toMatch(/with a jump: 9 pull requests are ahead/);
+  });
+
+  test("jumps for a label added as halonic-dev only within its scope, for the board's anywhere", () => {
+    const queue = Array.from({ length: 9 }, (_, i) => entry(900 + i, i + 1));
+    const ask = (number: number, by: string, branch = `mateo/HAL-${number}-thing`) => {
+      const ready = pull(number, { ...liamApproved, ...labelBy(by) }, { branch });
+      const later = new Map([[number, { ...seen, readySince: { head: ready.head, at: ago(11) } }]]);
+      return run(repo([ready], queue), later).events.find((e) => e.stage === "enqueue_ask")?.text;
+    };
+    expect(ask(126, "halonic-dev", "mateo/HAL-501-apps")).toMatch(/with a jump: 9 pull requests/);
+    expect(ask(5659, "halonic-dev")).toMatch(/with a jump: 9 pull requests/);
+    expect(ask(127, "halonic-dev")).toMatch(/without a jump \(9 in the queue\)/);
+    expect(ask(128, boardLogin)).toMatch(/with a jump: 9 pull requests/);
   });
 
   test("restarts the 10 minutes when the head changes", () => {

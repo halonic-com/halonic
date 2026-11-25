@@ -1,6 +1,7 @@
 import { fastTrackLabel, taskOf } from "../pr-tools/queue-state.ts";
 import type { OpenFacts, SnapshotLabel, SnapshotPull, SnapshotRepo } from "../snapshot/shape.ts";
 import { approvedOnHead, failingToNudge, isBot, isGreen, pendingOf, reviewerOf } from "./checks.ts";
+import type { SharedLabelScope } from "./scope.ts";
 
 /**
  * The fast-track rules (HAL-15971), worked out from one snapshot: what the
@@ -58,12 +59,13 @@ export interface RuleInput {
   /** Pull requests the board or Chief said unblock the queue or CI for everyone. */
   readonly unblocks: ReadonlySet<number>;
   /**
-   * The board's GitHub login, whose `fast-track` label counts for a jump next
-   * to `halonic-dev`'s (the board and Chief label through it, MERGER.md
-   * rule 3), from the plugin setting `fastTrackLabelAdder`. Empty: only
-   * `halonic-dev`'s counts.
+   * The board's GitHub login, whose `fast-track` label counts for a jump on
+   * any pull request, from the plugin setting `fastTrackLabelAdder`. Empty:
+   * only `halonic-dev`'s counts, and only within `sharedScope`.
    */
   readonly labelAdder: string;
+  /** Where a label added as `halonic-dev` counts (HAL-16003 scope note, `scope.ts`). */
+  readonly sharedScope: SharedLabelScope;
 }
 
 /** The events of one repository and what to remember for the next pass. */
@@ -115,23 +117,37 @@ function eventOf(
 /** The account the board and Chief add the label through (MERGER.md rule 3). */
 export const sharedLabelAdder = "halonic-dev";
 
-/** Whether the board or Chief added the label: as `halonic-dev`, or as the board's login when it is set. */
-function labelVerified(subject: Pick<Subject, "input" | "label">): boolean {
+/** Whether a label added as `halonic-dev` counts here: a listed pull request, or one of a listed task's children. */
+function inSharedScope(subject: Pick<Subject, "input" | "pull">): boolean {
+  const { repo, sharedScope } = subject.input;
+  const task = taskOf(repo.repo, subject.pull);
+  return (
+    sharedScope.pulls.has(`${repo.repo}#${subject.pull.number}`) ||
+    (task !== undefined && sharedScope.tasks.has(task))
+  );
+}
+
+/** Whether the board or Chief added the label: as the board's login when it is set, or as `halonic-dev` within its scope. */
+function labelVerified(subject: Pick<Subject, "input" | "pull" | "label">): boolean {
   const by = subject.label.addedBy;
   if (by === null) {
     return false;
   }
-  return (
-    by === sharedLabelAdder || (subject.input.labelAdder !== "" && by === subject.input.labelAdder)
-  );
+  if (by === sharedLabelAdder) {
+    return inSharedScope(subject);
+  }
+  return subject.input.labelAdder !== "" && by === subject.input.labelAdder;
 }
 
 function wrongLabelText(by: string | null, labelAdder: string): string {
   if (by === null) {
     return "GitHub doesn't say who added fast-track, so it never counts as allowed: queued without a jump.";
   }
+  if (by === sharedLabelAdder) {
+    return `fast-track was added as ${sharedLabelAdder}, which counts only on the pull requests in fastTrackSharedLabelScope: queued without a jump.`;
+  }
   if (labelAdder === "") {
-    return `the board's login isn't set (fastTrackLabelAdder), so only a fast-track label added as ${sharedLabelAdder} counts, not ${by}'s: queued without a jump.`;
+    return `the board's login isn't set (fastTrackLabelAdder), so only a fast-track label added as ${sharedLabelAdder} on a listed pull request counts, not ${by}'s: queued without a jump.`;
   }
   return `fast-track was added by ${by}, not by the board or as ${sharedLabelAdder}: queued without a jump.`;
 }

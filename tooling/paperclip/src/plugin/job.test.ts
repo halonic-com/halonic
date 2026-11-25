@@ -174,6 +174,10 @@ describe("the job", () => {
       fastTrackUnblocks: new Set(),
       fastTrackLabelAdder: "",
       watchers: { dryRun: true, wakeTasks: { Liam: "", Julian: "" }, unhandledTask: "" },
+      fastTrackSharedLabelScope: {
+        parents: ["HAL-17422"],
+        pulls: ["halonic-com/halonic#5659", "halonic-com/halonic#5674"],
+      },
     });
     expect(readSettings({ fastTrackLabelAdder: " board-member " }).fastTrackLabelAdder).toBe(
       "board-member",

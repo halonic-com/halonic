@@ -188,7 +188,15 @@ export const manifest: PaperclipPluginManifestV1 = {
         type: "string",
         title: "The board's GitHub login",
         description:
-          "The board's GitHub account, whose fast-track label counts for a jump next to halonic-dev's (HAL-15971, HAL-17722). Empty: only halonic-dev's counts.",
+          "The board's GitHub account, whose fast-track label counts for a jump on any pull request (HAL-15971, HAL-17722). Empty: only halonic-dev's counts, within the scope below.",
+      },
+      fastTrackSharedLabelScope: {
+        type: "array",
+        items: { type: "string" },
+        title: "Where halonic-dev's fast-track label counts",
+        description:
+          "A fast-track label added as halonic-dev counts only here (HAL-16003 scope note): a task identifier such as HAL-17422 lets the pull requests of its child tasks count, and owner/name#123 lets that pull request count. Unset: the board's list of 24 Nov; an empty list: nowhere.",
+        default: ["HAL-17422", "halonic-com/halonic#5659", "halonic-com/halonic#5674"],
       },
       mergeWatchersDryRun: {
         type: "boolean",

@@ -72,7 +72,7 @@ function linesOf(events: readonly FastTrackEvent[]): string[] {
 export function fastTrackPass(
   snapshot: Snapshot,
   before: FastTrackState,
-  settings: Pick<RuleInput, "unblocks" | "labelAdder">,
+  settings: Pick<RuleInput, "unblocks" | "labelAdder" | "sharedScope">,
   now: Date,
 ): FastTrackPass {
   const fresh: FastTrackEvent[] = [];
