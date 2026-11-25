@@ -12,7 +12,8 @@ export type PaperclipItemKind =
   | "project"
   | "seat"
   | "pull"
-  | "avatar";
+  | "avatar"
+  | "run";
 
 const provider = "paperclip";
 const partCounts: Readonly<Record<PaperclipItemKind, number>> = {
@@ -30,6 +31,7 @@ const partCounts: Readonly<Record<PaperclipItemKind, number>> = {
   pull: 2,
   // An agent's picture: its file's segment under `/api/agent-avatars/`, never the path itself.
   avatar: 1,
+  run: 1,
 };
 
 /**

@@ -148,6 +148,9 @@ verifies("agent-host.paperclip-key", () => {
         // Channel work lines (HAL-18120), pinned in channel-work.test.ts.
         "listTaskActivity",
         "readAgentAvatar",
+        // Runs (HAL-18650), pinned in team-runs.test.ts.
+        "listLiveRuns",
+        "listRuns",
       ]);
     });
   });
