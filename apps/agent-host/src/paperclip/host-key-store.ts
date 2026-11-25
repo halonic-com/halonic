@@ -1,6 +1,6 @@
 import type { PaperclipConnection } from "@halonicjs/format";
 import { paperclipOrigin } from "./paperclip-keys.ts";
-import type { PaperclipKeyStore, StoredPaperclipKey } from "./sign-in-calls.ts";
+import type { PaperclipKeyStore, SavedKey, StoredPaperclipKey } from "./sign-in-calls.ts";
 
 /** What the host's key store reaches. */
 export interface HostKeyStoreDeps {
@@ -10,6 +10,9 @@ export interface HostKeyStoreDeps {
   connect(workspace: string, name: string): Promise<void>;
   readConnection(workspace: string, name: string): Promise<PaperclipConnection | undefined>;
   writeConnection(workspace: string, name: string, connection: PaperclipConnection): Promise<void>;
+  /** Drops the key kept for the workspace's connection and stops its provider. */
+  forget(workspace: string, name: string): Promise<void>;
+  removeConnection(workspace: string, name: string): Promise<void>;
 }
 
 /**
@@ -17,7 +20,8 @@ export interface HostKeyStoreDeps {
  * file, written first for a new connection, then the host's memory, then the
  * connection's provider. The key reaches Studio's keychain only through the
  * approved poll's answer (Liam's option 1, HAL-17439). Any failure throws, and
- * the sign-in flow then revokes the key.
+ * the sign-in flow then revokes the key. When Studio couldn't keep the key,
+ * {@link drop} undoes the save, a new connection's file included.
  */
 export class HostKeyStore implements PaperclipKeyStore {
   readonly #deps: HostKeyStoreDeps;
@@ -26,9 +30,10 @@ export class HostKeyStore implements PaperclipKeyStore {
     this.#deps = deps;
   }
 
-  async save(entry: StoredPaperclipKey): Promise<void> {
+  async save(entry: StoredPaperclipKey): Promise<SavedKey> {
     const { workspace, name, address, companyId } = entry;
     const file = await this.#deps.readConnection(workspace, name);
+    const createdFile = file === undefined;
     if (file === undefined) {
       await this.#deps.writeConnection(workspace, name, {
         label: newConnectionLabel(address),
@@ -41,6 +46,13 @@ export class HostKeyStore implements PaperclipKeyStore {
     }
     this.#deps.keep(entry);
     await this.#deps.connect(workspace, name);
+    return { createdFile };
+  }
+
+  async drop(entry: StoredPaperclipKey, saved: SavedKey): Promise<void> {
+    await this.#deps.forget(entry.workspace, entry.name);
+    // Only the file this sign-in wrote: an existing connection keeps its file, signed out.
+    if (saved.createdFile) await this.#deps.removeConnection(entry.workspace, entry.name);
   }
 }
 

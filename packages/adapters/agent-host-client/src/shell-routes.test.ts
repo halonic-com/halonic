@@ -4,14 +4,28 @@ import { expect, it } from "vitest";
 import { agentHostRequestRoutes, agentHostStreamRoutes } from "./transport.ts";
 
 /**
- * The shell's allow-list of the routes a page may call (`ROUTES`). Its path
- * is also a test input in this package's `turbo.json`, so a change to it
- * re-runs this test.
+ * The shell's allow-list of the routes a page may call: `ROUTES`, and the
+ * Paperclip ones in `PAPERCLIP_ROUTES`. Their paths are also test inputs in
+ * this package's `turbo.json`, so a change to them re-runs this test.
  */
-const shellRoutes = new URL(
-  "../../../../apps/studio/src-tauri/crates/agent-host/src/routes.rs",
-  import.meta.url,
-);
+const shellFolder = "../../../../apps/studio/src-tauri/crates/agent-host/src/";
+const shellTables = [
+  { file: new URL(`${shellFolder}routes.rs`, import.meta.url), table: "ROUTES" },
+  {
+    file: new URL(`${shellFolder}paperclip_routes.rs`, import.meta.url),
+    table: "PAPERCLIP_ROUTES",
+  },
+];
+
+/** Each table's text, between its `= &[` and its closing `];`. */
+function tableTexts(): string[] {
+  return shellTables.map(({ file, table }) => {
+    const pattern = new RegExp(
+      `const ${table}: &\\[\\(&str, Route\\)\\] = &\\[([\\s\\S]*?)\\n\\];`,
+    );
+    return pattern.exec(readFileSync(file, "utf8"))?.[1] ?? "";
+  });
+}
 
 interface ShellRoute {
   readonly name: string;
@@ -22,11 +36,10 @@ interface ShellRoute {
 
 /**
  * Each `("<name>", route(Method::<method>, "<path>", Answer::<answer>))` entry
- * of `ROUTES`, also when rustfmt puts a long one over several lines.
+ * of the tables, also when rustfmt puts a long one over several lines.
  */
 function readShellRoutes(): ShellRoute[] {
-  const text = readFileSync(shellRoutes, "utf8");
-  const table = /const ROUTES: &\[\(&str, Route\)\] = &\[([\s\S]*?)\n\];/.exec(text)?.[1] ?? "";
+  const table = tableTexts().join("\n");
   const entry =
     /\(\s*"([^"]+)",\s*route\(\s*Method::(\w+),\s*"([^"]+)",\s*Answer::(\w+),?\s*\),?\s*\)/g;
   return [...table.matchAll(entry)].map(([, name = "", method = "", path = "", answer = ""]) => ({
@@ -55,9 +68,9 @@ verifies("agent-host-client.shell-routes", () => {
 
   it("finds every entry of the shell's table, each named by its own method and path", () => {
     const routes = readShellRoutes();
-    const entries = /const ROUTES[\s\S]*?\n\];/.exec(readFileSync(shellRoutes, "utf8"))?.[0];
+    const entries = tableTexts().join("\n");
     expect(routes.length).toBeGreaterThan(0);
-    expect(routes.length).toBe(entries?.match(/route\(\s*Method::/g)?.length);
+    expect(routes.length).toBe(entries.match(/route\(\s*Method::/g)?.length);
     for (const route of routes) {
       expect(route.name).toBe(`${route.method.toUpperCase()} ${route.path}`);
     }

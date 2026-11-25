@@ -5,6 +5,7 @@ import type {
   CreatedChallenge,
   KeyOwner,
   PaperclipKeyStore,
+  SavedKey,
   SignInCalls,
   StoredPaperclipKey,
 } from "./sign-in-calls.ts";
@@ -77,10 +78,16 @@ export class FakeSignInCalls implements SignInCalls {
 /** A keychain store in memory, for tests; it can be made to fail. */
 export class FakeKeyStore implements PaperclipKeyStore {
   readonly saved: StoredPaperclipKey[] = [];
+  readonly dropped: { entry: StoredPaperclipKey; saved: SavedKey }[] = [];
   failWith: Error | undefined;
 
-  async save(entry: StoredPaperclipKey): Promise<void> {
+  async save(entry: StoredPaperclipKey): Promise<SavedKey> {
     if (this.failWith !== undefined) throw this.failWith;
     this.saved.push(entry);
+    return { createdFile: false };
+  }
+
+  async drop(entry: StoredPaperclipKey, saved: SavedKey): Promise<void> {
+    this.dropped.push({ entry, saved });
   }
 }

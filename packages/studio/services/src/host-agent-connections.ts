@@ -23,7 +23,10 @@ export const signInPollMs = 2000;
 /** What {@link HostAgentConnections} needs. */
 export interface HostAgentConnectionsOptions {
   /** The agent host's sign-in and connection list for the open workspace. */
-  readonly signIn: Pick<AgentHostPaperclipSignIn, "connections" | "start" | "poll" | "cancel">;
+  readonly signIn: Pick<
+    AgentHostPaperclipSignIn,
+    "connections" | "start" | "poll" | "confirm" | "cancel"
+  >;
   /** The agent host's Disconnect, which revokes the key and forgets it. */
   readonly host: {
     disconnect(ref: PaperclipConnectionRef): Promise<{ revoked: boolean }>;
@@ -36,7 +39,7 @@ export interface HostAgentConnectionsOptions {
   readonly wait: (ms: number) => Promise<void>;
   /** The time now, in milliseconds; tests pass a clock of their own. */
   readonly now: () => number;
-  /** Hears a failure nobody else is told about, such as a failed revoke after a failed keychain write. */
+  /** Hears a failure nobody else is told about, such as a failed keychain write or cancel. */
   readonly report: (error: unknown) => void;
 }
 
@@ -46,7 +49,8 @@ export interface HostAgentConnectionsOptions {
  * sign-in; the approved poll's answer is the one answer that holds the key
  * (Liam's option 1, HAL-17439). This class writes that key straight to the
  * keychain and passes on no key: no feature, React state or view ever sees
- * it. When the keychain write fails, the host revokes the key and forgets it,
+ * it, then confirms the write to the host. When the write or the confirm
+ * fails, it cancels the sign-in, so the host revokes the key and undoes it,
  * and the sign-in ends as `key-not-saved`.
  */
 export class HostAgentConnections implements AgentConnections {
@@ -115,18 +119,21 @@ export class HostAgentConnections implements AgentConnections {
         if (this.#now() > deadline + signInPollMs) return { outcome: "expired" };
         continue;
       }
-      const result = await this.#resultOf(state);
+      const result = await this.#resultOf(signInId, state);
       if (result !== undefined) return result;
     }
   }
 
   /** The sign-in's end, or `undefined` while it waits. */
-  async #resultOf(state: PaperclipSignInState): Promise<SignInResult | undefined> {
+  async #resultOf(
+    signInId: string,
+    state: PaperclipSignInState,
+  ): Promise<SignInResult | undefined> {
     switch (state.status) {
       case "pending":
         return undefined;
       case "connected":
-        return this.#keep(state);
+        return this.#keep(signInId, state);
       case "expired":
         return { outcome: "expired" };
       case "wrong-company":
@@ -136,22 +143,21 @@ export class HostAgentConnections implements AgentConnections {
     }
   }
 
-  /** Writes the approved key to the keychain, and drops it; a failed write revokes it. */
+  /** Writes the approved key to the keychain, and drops it; a failed write or confirm revokes it. */
   async #keep(
+    signInId: string,
     state: Extract<PaperclipSignInState, { status: "connected" }>,
   ): Promise<SignInResult> {
-    const { tokens, host, workspace } = this.#options;
+    const { tokens, signIn, report } = this.#options;
     const { connection: name, key, address, company } = state;
-    try {
-      await tokens.set(
-        paperclipKeyTokenName(name),
-        paperclipKeyEntryText({ key, address, company }),
-      );
-    } catch (error) {
-      this.#options.report(error);
-      await host.disconnect({ workspace, connection: name }).catch((revokeError: unknown) => {
-        this.#options.report(revokeError);
-      });
+    const tokenName = paperclipKeyTokenName(name);
+    const entry = paperclipKeyEntryText({ key, address, company });
+    const written = await tokens.set(tokenName, entry).then(() => true, failed(report));
+    const confirmed = written && (await signIn.confirm(signInId).catch(failed(report)));
+    if (!confirmed) {
+      // The host revokes a key it has no confirm for, so the keychain keeps no dead key.
+      if (written) await tokens.remove(tokenName).catch(report);
+      await signIn.cancel(signInId).catch(report);
       this.#changed();
       return { outcome: "key-not-saved" };
     }
@@ -178,6 +184,14 @@ export class HostAgentConnections implements AgentConnections {
   #changed(): void {
     for (const listener of this.#listeners) listener();
   }
+}
+
+/** Reports a failure and answers `false`, for a step whose failure ends the sign-in. */
+function failed(report: (error: unknown) => void): (error: unknown) => false {
+  return (error) => {
+    report(error);
+    return false;
+  };
 }
 
 /** Paperclip's sign-in keys expire after 30 days (HAL-17423). */
