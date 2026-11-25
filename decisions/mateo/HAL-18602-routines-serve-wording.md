@@ -3,6 +3,7 @@
 - Task: HAL-18602
 - Approval: HAL-18602; team wording on an approved line of command output (HAL-2282), follow-up from HAL-18499; the reviewer signs this note as the CTO
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:NCgzSXogbLKrUmfy/qRdu5P8gKNzgGYAbZjEWR5UAsZuOyw4kFQUFPQ4AQc8KqTFTo9Cb65o95zHMeJFUUvfAQ==
 
 ## What changes
 
