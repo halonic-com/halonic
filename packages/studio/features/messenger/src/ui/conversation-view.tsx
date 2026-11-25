@@ -125,6 +125,7 @@ export function ConversationView({
             messenger={messenger}
             row={row}
             onChanged={onChanged ?? (() => undefined)}
+            announce={say}
           />
         ) : null}
       </div>

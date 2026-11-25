@@ -3,6 +3,7 @@ import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { button, openDialog, polyfillModals } from "../test-support/modal.ts";
 import {
   byText,
   openChat,
@@ -33,6 +34,31 @@ function twoChiefs() {
   messaging.addConversation(globexChief.id);
   messaging.addMessage(acmeChat.id, { body: "Shall I merge #12?" });
   return { messaging, acme, acmeChat };
+}
+
+/** Acme with a chat with Chief, and the channels Engineering and Design. */
+function acmeChannels() {
+  const messaging = new FakeAgentMessaging({ now: ticking() });
+  const acme = messaging.addSource({ label: "Paperclip · Acme" });
+  const [chief, liam] = ["Chief", "Liam"].map((name) => messaging.addAgent(acme.id, { name }));
+  if (chief === undefined || liam === undefined) throw new Error("no agents");
+  const members = [chief.id, liam.id];
+  messaging.addConversation(chief.id);
+  messaging.addConversation(chief.id, { title: "Engineering", members });
+  messaging.addConversation(chief.id, { title: "Design", members });
+  return messaging;
+}
+
+/** Leaves the channel whose row holds `name`, through its header and the dialog. */
+async function leaveChannel(page: HTMLElement, name: string): Promise<void> {
+  await openChat(page, name);
+  await press(byText(page, "header button", "Leave channel"));
+  await press(button("Leave", openDialog() ?? document));
+}
+
+/** What the page's own status region last read out, such as "You left Engineering.". */
+function pageSaid(page: HTMLElement): string | null | undefined {
+  return page.querySelector("[data-page-status]")?.textContent;
 }
 
 function rows(page: HTMLElement): string[] {
@@ -163,6 +189,32 @@ verifies("messenger.conversations", () => {
       await press(byText(page, "main button", "Back to chats"));
       expect(rows(page)).toEqual([]);
       expect(document.activeElement).toBe(byText(page, '[role="tab"]', "Waiting for me"));
+    });
+
+    it("after Leave, focuses the row that took the channel's place and says it left (HAL-18835)", async () => {
+      polyfillModals();
+      const page = await openMessenger(acmeChannels());
+      const before = [...page.querySelectorAll("nav li button")].map((row) => row.textContent);
+      const index = before.findIndex((row) => row?.includes("Engineering"));
+      await leaveChannel(page, "Engineering");
+      const after = [...page.querySelectorAll<HTMLElement>("nav li button")];
+      expect(after.map((row) => row.textContent)).toEqual(before.filter((_, at) => at !== index));
+      expect(document.activeElement).toBe(after[index] ?? after.at(-1));
+      expect(pageSaid(page)).toBe("You left Engineering.");
+    });
+
+    it("after leaving the tab's last chat, focuses the tab", async () => {
+      polyfillModals();
+      const messaging = new FakeAgentMessaging({ now: ticking() });
+      const acme = messaging.addSource({ label: "Paperclip · Acme" });
+      const [chief, liam] = ["Chief", "Liam"].map((name) => messaging.addAgent(acme.id, { name }));
+      const members = [chief?.id ?? "", liam?.id ?? ""];
+      messaging.addConversation(chief?.id ?? "", { title: "Engineering", members });
+      const page = await openMessenger(messaging);
+      await leaveChannel(page, "Engineering");
+      expect(rows(page)).toEqual([]);
+      expect(document.activeElement).toBe(byText(page, '[role="tab"]', "All"));
+      expect(pageSaid(page)).toBe("You left Engineering.");
     });
 
     it("never lets a search's late answer replace a newer one's", async () => {

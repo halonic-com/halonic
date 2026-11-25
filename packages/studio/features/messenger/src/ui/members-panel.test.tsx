@@ -3,7 +3,7 @@ import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { button, openDialog, polyfillModals } from "../test-support/modal.ts";
-import { byText, openChat, openMessenger, press } from "../test-support/page.tsx";
+import { byText, openChat, openMessenger, press, said } from "../test-support/page.tsx";
 import { unmountAll } from "../test-support/render.tsx";
 
 beforeEach(polyfillModals);
@@ -23,6 +23,11 @@ function acme(options: { withMessage?: boolean; members?: number } = {}) {
   const channel = messaging.addConversation(chief.id, { title: "Engineering", members });
   if (options.withMessage ?? true) messaging.addMessage(channel.id, { body: "Plan for today" });
   return { messaging, source, chief, liam, elena, writer, channel };
+}
+
+/** The `label` button in `member`'s row of the panel. */
+function rowButton(panel: HTMLElement, member: string, label: string): HTMLElement | undefined {
+  return button(label, panel.querySelector(`[data-member="${member}"]`) ?? panel);
 }
 
 async function openMembers(page: HTMLElement): Promise<HTMLElement> {
@@ -102,6 +107,55 @@ verifies("messenger.members", () => {
       );
       await press(remove);
       expect(setMembers).not.toHaveBeenCalled();
+    });
+
+    it("after a remove, focuses the next row's Remove from channel and says who left", async () => {
+      const { messaging, liam, elena } = acme();
+      const page = await openMessenger(messaging);
+      const panel = await openMembers(page);
+      await press(rowButton(panel, liam.id, "Remove from channel"));
+      expect(panel.querySelector(`[data-member="${liam.id}"]`)).toBeNull();
+      expect(document.activeElement).toBe(rowButton(panel, elena.id, "Remove from channel"));
+      expect(said(page)).toBe("Removed Liam from Engineering.");
+    });
+
+    it("after removing the last row, focuses Add an agent", async () => {
+      const { messaging, elena } = acme();
+      const page = await openMessenger(messaging);
+      const panel = await openMembers(page);
+      await press(rowButton(panel, elena.id, "Remove from channel"));
+      expect(document.activeElement).toBe(button("Add an agent", panel));
+      expect(said(page)).toBe("Removed Elena from Engineering.");
+    });
+
+    it("after removing the lead, focuses the next row and says who left", async () => {
+      const { messaging, chief, liam } = acme();
+      const page = await openMessenger(messaging);
+      const panel = await openMembers(page);
+      await press(rowButton(panel, chief.id, "Remove from channel"));
+      await press(button("Remove Chief", openDialog() ?? document));
+      expect(document.activeElement).toBe(rowButton(panel, liam.id, "Remove from channel"));
+      expect(said(page)).toBe("Removed Chief from Engineering.");
+    });
+
+    it("after Make lead, focuses the new lead's row and says so", async () => {
+      const { messaging, liam } = acme();
+      const page = await openMessenger(messaging);
+      const panel = await openMembers(page);
+      await press(rowButton(panel, liam.id, "Make lead"));
+      expect(rowButton(panel, liam.id, "Make lead")).toBeUndefined();
+      expect(document.activeElement).toBe(rowButton(panel, liam.id, "Remove from channel"));
+      expect(said(page)).toBe("Liam is now the lead.");
+    });
+
+    it("after an add, focuses the added agent's row and says so", async () => {
+      const { messaging, writer } = acme();
+      const page = await openMessenger(messaging);
+      const panel = await openMembers(page);
+      await press(button("Writer", panel));
+      await press(button("Add Writer", openDialog() ?? document));
+      expect(document.activeElement).toBe(rowButton(panel, writer.id, "Make lead"));
+      expect(said(page)).toBe("Added Writer to Engineering.");
     });
 
     it("asks Leave Engineering? once, then the channel leaves the list", async () => {

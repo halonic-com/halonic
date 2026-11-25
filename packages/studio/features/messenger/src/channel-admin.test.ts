@@ -82,7 +82,7 @@ verifies("messenger.channel-create", () => {
       expect(failureReason(undefined, acme)).toBe("Paperclip · Acme didn't answer");
       expect(failureReason(refused("bad-answer"), acme)).toBe("Paperclip · Acme refused it");
       expect(failureReason(refused("bad-members"), acme)).toBe(
-        "a channel needs 2 to 8 agents from one source",
+        "a channel needs 2 to 8 agents from Paperclip · Acme",
       );
       expect(failureReason(refused("not-found"), acme)).toBe("the channel is gone");
       expect(failureReason(refused("not-found"), acme, "start")).toBe(
