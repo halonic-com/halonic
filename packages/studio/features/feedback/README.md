@@ -7,7 +7,7 @@ screen, write a line, and Studio sends it to Paperclip as a task.
 - **Owner:** tomas
 - **Public API:** `@halonicjs/studio-feature-feedback` (the feature) and `@halonicjs/studio-feature-feedback/api`
 
-This package holds the parts with no screen or native code:
+This package holds the feedback windows' pages and the parts with no screen or native code:
 
 - `crop.ts`: the selection box on one screen, the 8 × 8 minimum, the crop in device pixels and
   the size label (`feedback.crop`).
@@ -22,8 +22,15 @@ This package holds the parts with no screen or native code:
 The sender is `PaperclipFeedback` from `@halonicjs/adapter-paperclip-client`; Studio's services
 hand it in, with the key behind its guard.
 
-The overlay, the Send feedback window, the shortcut and the screen capture come in later pull
-requests; the native part is a security change with its own review.
+- `feedback-windows.tsx`: the pages Studio mounts in the shell's feedback windows, with no
+  workspace. `overlay/` is one screen's selection overlay: its still from
+  `plugin:feedback|still`, dimmed, the hint, the box and its size; letting go of a box calls
+  `plugin:feedback|select` and Esc `plugin:feedback|end` (`feedback.overlay`). `unavailable/` is
+  the window a press opens where no still can be taken yet, macOS and Wayland
+  (`feedback.unavailable`).
+
+The shortcut and the screen capture are the shell's (`apps/studio/src-tauri/src/feedback_*.rs`).
+The Send feedback window comes in a later pull request.
 
 ## Example
 
