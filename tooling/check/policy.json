@@ -7,6 +7,7 @@
     "@halonicjs/events",
     "@halonicjs/ports",
     "@halonicjs/action-steppers",
+    "@halonicjs/action-catalog",
     "@halonicjs/profile",
     "@halonicjs/format",
     "@halonicjs/workflow",

@@ -4,6 +4,7 @@ import { checkAbsolutePaths } from "./absolute-paths.ts";
 import { checkAdvisories } from "./advisories.ts";
 import { checkAgentsMd } from "./agents-md.ts";
 import { checkApiSpecs } from "./api-specs.ts";
+import { checkCatalogHashes } from "./catalog-hashes.ts";
 import { checkChangesets } from "./changesets.ts";
 import { checkConflictMarkers } from "./conflict-markers.ts";
 import { checkDco } from "./dco.ts";
@@ -39,6 +40,7 @@ export const rules: Readonly<Record<string, (context: CheckContext) => Report>> 
   "migrations-additive": checkMigrationsAdditive,
   names: checkNames,
   features: checkFeatures,
+  "catalog-hashes": checkCatalogHashes,
   "file-size": checkFileSize,
   lockfile: checkLockfile,
   "absolute-paths": checkAbsolutePaths,
