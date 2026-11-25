@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { companyRoster } from "./companies.ts";
 import { fakeHost, fakeJobContext, mergedGreenOnGitHub } from "./fake-host.test-helper.ts";
 import { type JobApi, runWatcher } from "./job.ts";
@@ -8,6 +8,16 @@ import { withScopeRule } from "./scoped-host.test-helper.ts";
 
 const now = new Date("2026-11-23T11:30:00Z");
 const token = { type: "secret_ref", secretId: "secret-pr-watcher" };
+
+// A job's pass reads the clock itself, and the fixture's merge leaves the
+// watcher's 3-day window on 24 Nov 20:48 UTC (HAL-17848): pin the clock.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(now);
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 /** The PR watcher of HAL-4485 (see job.test.ts) on a host that applies the scope rule. */
 function setUp(configured: readonly string[] = ["acme"]) {
