@@ -41,6 +41,7 @@ export {
   sha256Hex,
   snapshotPath,
 } from "./pinned-snapshot.ts";
+export { precheckSettingProperties } from "./precheck/precheck-origin.ts";
 export {
   callTimeoutMs,
   type RuntimeSetup,

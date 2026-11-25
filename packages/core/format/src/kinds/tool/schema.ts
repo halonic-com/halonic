@@ -155,6 +155,7 @@ export const ToolActionChoice = s.discriminatedUnion("run", [
   actionChoice("paperclip.comment"),
   actionChoice("paperclip.next-step"),
   actionChoice("paperclip.finish-run"),
+  actionChoice("halonic.precheck"),
 ]);
 
 /** A workspace tool, as `library/tools/<id>.tool.yaml` holds it. */

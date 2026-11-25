@@ -36,6 +36,7 @@ verifies("format.tool-action-parameters", () => {
       "paperclip.comment task!,body!",
       "paperclip.next-step task!,status!,comment!,monitor?,monitorInMinutes?,monitorRef?,monitorService?,monitorMaxChecks?,blockedBy?",
       "paperclip.finish-run task!,outcome!,comment!,to?,blockedBy?",
+      "halonic.precheck branch?,sha?,checkId?",
     ]);
   });
 

@@ -162,6 +162,7 @@ verifies("runtime.tools", () => {
         "paperclip.comment",
         "paperclip.next-step",
         "paperclip.finish-run",
+        "halonic.precheck",
       ]);
       expect(actions[0]).toMatchObject({ name: "github.pull-request", keys: ["github-read"] });
       expect(actions.find((action) => action.name === "paperclip.template")).toMatchObject({

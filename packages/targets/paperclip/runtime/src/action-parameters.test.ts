@@ -47,6 +47,7 @@ const sampleCalls: Readonly<Record<ToolActionName, readonly Readonly<Record<stri
       { task: "HAL-1", outcome: "handoff", comment: "Ready.", to: "Liam" },
       { task: "HAL-1", outcome: "blocked", comment: "Waits.", blockedBy: ["HAL-2"] },
     ],
+    "halonic.precheck": [{ branch: "mateo/HAL-1-x", sha: "a".repeat(40) }],
   };
 
 /**
@@ -129,6 +130,13 @@ async function runRecording(
     }),
     github: refusingHost(requests, "github"),
     githubQuery: refusingHost(requests, "githubQuery"),
+    // Only the service refuses: a refusing clock or record would leave rejected promises unawaited.
+    precheck: {
+      service: refusingHost(requests, "precheck"),
+      sleep: async () => undefined,
+      clock: () => 0,
+      record: async () => undefined,
+    },
   };
   const result = await handler.run(call).catch((error: Error) => ({ error: error.message }));
   return { read, requests, result };

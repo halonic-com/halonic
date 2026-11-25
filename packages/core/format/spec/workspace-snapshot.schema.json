@@ -907,6 +907,25 @@
                   "run"
                 ],
                 "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "run": {
+                    "type": "string",
+                    "const": "halonic.precheck"
+                  },
+                  "with": {
+                    "default": {},
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "run"
+                ],
+                "additionalProperties": false
               }
             ]
           }
