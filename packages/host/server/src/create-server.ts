@@ -205,7 +205,7 @@ function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<Cr
     return modelChoiceRoutes.handle(request, context, body, rest, session);
   }
 
-  /** The routes that need a session: a chat turn, a connector call, the provider keys, the model choice, messaging and the routines' health and pause. `null` when the address is none of them. */
+  /** The routes that need a session: a chat turn, a connector call, the provider keys, the model choice and the routines' health and pause. `null` when the address is none of them. */
   async function signedInOnlyRoute(
     request: Request,
     context: RequestContext,
@@ -231,15 +231,23 @@ function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<Cr
     if (pathname.startsWith(modelChoicePathPrefix)) {
       return modelChoiceRoute(request, context, body, pathname);
     }
-    if (pathname.startsWith(messagingPathPrefix) && messagingRoutes !== null) {
-      const call = pathname.slice(messagingPathPrefix.length);
-      return messagingRoutes.handle(request, body, call, await signIn.session(request, context));
-    }
     const schedule = ports.routineSchedule;
     if (schedule === undefined || !isRoutineSchedulePath(pathname)) return null;
     return whenSignedIn(request, context, () =>
       routineScheduleRoute(schedule, request, pathname, body),
     );
+  }
+
+  /** The messaging routes, which check the session themselves; `null` when the address isn't theirs or the host runs no messaging. */
+  async function messagingRoute(
+    request: Request,
+    context: RequestContext,
+    body: Uint8Array,
+    pathname: string,
+  ): Promise<Response | null> {
+    if (messagingRoutes === null || !pathname.startsWith(messagingPathPrefix)) return null;
+    const call = pathname.slice(messagingPathPrefix.length);
+    return messagingRoutes.handle(request, body, call, await signIn.session(request, context));
   }
 
   /** Counts a signed-in request against the daily ceiling; one nobody signed isn't counted, so it can't use up the day. */
@@ -264,6 +272,7 @@ function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<Cr
     const earlyAnswer =
       (await countIfSignedIn(request, context)) ??
       (await deviceRoutes.route(request, context, body)) ??
+      (await messagingRoute(request, context, body, pathname)) ??
       (await signedInOnlyRoute(request, context, body, pathname));
     if (earlyAnswer !== null) {
       return earlyAnswer;
