@@ -3,7 +3,7 @@
 A small Worker that speaks Turborepo's remote-cache API (`/v8/artifacts`) and
 stores artifacts in the R2 bucket `halonic-turbo-cache`. One team, bearer-token
 auth, no database. Objects expire after 30 days, and the merge queue's
-objects (`q/`) after 7 days (lifecycle rules on the bucket, below).
+objects (`q/`) after 1 day (lifecycle rules on the bucket, below).
 
 - **Fails closed.** If a secret binding is missing or `get()` fails, the
   request gets 401.
@@ -28,7 +28,8 @@ objects (`q/`) after 7 days (lifecycle rules on the bucket, below).
   entry reuses what the entries ahead of it built. Write and read tokens
   never see `q/`: a hash can't contain `/`, so no request names a `q/` key,
   and `main` stays exactly as it was. Uploads from groups that fail and never
-  merge stay in `q/` until the 7-day rule deletes them. Older `r.` read
+  merge stay in `q/` until the 1-day rule deletes them, so a dequeued
+  change's uploads can't be read by later queue entries for long. Older `r.` read
   tokens (no longer handed out) still read until they expire.
 - **Signed artifacts.** `turbo.json` sets `remoteCache.signature`, so a
   poisoned cache entry fails verification on download.
@@ -42,8 +43,13 @@ Workers edit rights). The deployed copy is also kept in sync by hand, so change
 this folder in a pull request and deploy it afterwards.
 
 The bucket's lifecycle rules are set by hand too. The `q/` rule goes on
-before or with the Worker that hands out `q.` tokens:
+before or with the Worker that hands out `q.` tokens. A queue run takes about
+15 minutes, so a day leaves room for retries (HAL-18566):
 
 ```
-wrangler r2 bucket lifecycle add halonic-turbo-cache expire-queue-7d q/ --expire-days 7
+wrangler r2 bucket lifecycle add halonic-turbo-cache expire-queue-1d q/ --expire-days 1
+wrangler r2 bucket lifecycle list halonic-turbo-cache
 ```
+
+The list shows `expire-30d` (prefix empty, 30 days) and `expire-queue-1d`
+(prefix `q/`, 1 day).
