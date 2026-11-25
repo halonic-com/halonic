@@ -245,4 +245,64 @@ verifies("paperclip.chief-line", () => {
     });
     expect(line.wakes).toHaveLength(3);
   });
+
+  test("a comment with no author or by another agent doesn't wake Chief; a human's does", async () => {
+    const line = fakeChiefLine();
+    await handleChiefLineRequest(lineRequest(keys.openThread, { caller: "sup" }), line.ctx);
+    const system = line.addComment("issue-1", "status changed", null, null);
+    await onChiefLineComment(line.ctx, commentEvent("issue-1", system.id));
+    const ravi = line.addComment("issue-1", "note", "agent-ravi", null);
+    await onChiefLineComment(line.ctx, commentEvent("issue-1", ravi.id));
+    expect(line.wakes).toEqual([]);
+    const human = line.addComment("issue-1", "q", null, "user-1");
+    await onChiefLineComment(line.ctx, commentEvent("issue-1", human.id));
+    expect(line.wakes).toHaveLength(1);
+  });
+
+  test("without an agent named Chief, comments wake nothing and signal nothing, logged once", async () => {
+    const line = fakeChiefLine();
+    await handleChiefLineRequest(lineRequest(keys.openThread, { caller: "sup" }), line.ctx);
+    await handleChiefLineRequest(
+      lineRequest(keys.subscribe, { caller: "sup", url: "https://hooks.acme.test/c" }),
+      line.ctx,
+    );
+    line.agents.splice(0, line.agents.length, { id: "agent-ravi", name: "Ravi", urlKey: "ravi" });
+    const ctx = {
+      ...line.ctx,
+      config: {
+        get: async () => ({
+          chiefLine: {
+            enabled: true,
+            projectId: "proj-1",
+            webhookHosts: ["hooks.acme.test"],
+            maxPerHour: 3,
+          },
+        }),
+      },
+    };
+    const event = (issueId: string, commentId: string) => ({
+      ...commentEvent(issueId, commentId),
+      companyId: "no-chief",
+    });
+    const human = line.addComment("issue-1", "q", null, "user-1");
+    await onChiefLineComment(ctx as typeof line.ctx, event("issue-1", human.id));
+    const old = line.addComment("issue-1", "a", "agent-chief", null);
+    await onChiefLineComment(ctx as typeof line.ctx, event("issue-1", old.id));
+    expect(line.wakes).toEqual([]);
+    expect(line.posts).toEqual([]);
+    expect(line.logs.filter((log) => log.includes("no agent named Chief"))).toHaveLength(1);
+  });
+
+  test("GET thread skips a cancelled or renamed stored thread, rediscovers, or answers 404", async () => {
+    const line = fakeChiefLine();
+    await handleChiefLineRequest(lineRequest(keys.openThread, { caller: "sup" }), line.ctx);
+    const [old] = line.issues;
+    if (old === undefined) throw new Error("no thread");
+    old.status = "cancelled";
+    const read = () =>
+      handleChiefLineRequest(lineRequest(keys.thread, undefined, { caller: "sup" }), line.ctx);
+    expect((await read()).status).toBe(404);
+    await line.ctx.issues.create({ title: "[chief-line] sup", projectId: "proj-1" } as never);
+    expect((await read()).body).toMatchObject({ threadId: "issue-2", identifier: "ACME-2" });
+  });
 });
