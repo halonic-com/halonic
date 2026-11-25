@@ -38,6 +38,9 @@ export function fakeChiefLine(
   /** Like the live host: only these statuses can be woken (not blocked); others throw. */
   const wakeable = new Set(["todo", "in_progress"]);
   let wakeFails = false;
+  /** Blocked-by links: task id to its blockers. */
+  const blockers: Record<string, { id: string; identifier: string; status: string }[]> = {};
+  const removedBlockers: { issueId: string; ids: string[] }[] = [];
   const agents = [
     { id: "agent-chief", name: "Chief", urlKey: "chief" },
     { id: "agent-ravi", name: "Ravi", urlKey: "ravi" },
@@ -101,8 +104,19 @@ export function fakeChiefLine(
         if (wakeFails || status === undefined || !wakeable.has(status)) {
           throw new Error("Issue is not wakeable");
         }
+        if ((blockers[issueId] ?? []).some((b) => !["done", "cancelled"].includes(b.status))) {
+          throw new Error("Issue is blocked by unresolved blockers");
+        }
         wakes.push({ issueId, options: opts });
         return {};
+      },
+      relations: {
+        get: async (issueId: string) => ({ blockedBy: blockers[issueId] ?? [], blocks: [] }),
+        removeBlockers: async (issueId: string, ids: string[]) => {
+          removedBlockers.push({ issueId, ids });
+          blockers[issueId] = (blockers[issueId] ?? []).filter((b) => !ids.includes(b.id));
+          return { blockedBy: blockers[issueId], blocks: [] };
+        },
       },
     },
     http: {
@@ -147,6 +161,8 @@ export function fakeChiefLine(
     createCommentOptions,
     logs,
     addComment,
+    blockers,
+    removedBlockers,
   };
 }
 

@@ -107,7 +107,7 @@ async function wakeChief(
     });
     return;
   }
-  await wakeThread(ctx, companyId, thread.id, commentId);
+  await wakeThread(ctx, companyId, thread.id, commentId, { unblock: true });
 }
 
 /** The comment's thread id and comment id, from the event's payload. */
