@@ -14,6 +14,10 @@ export interface FakeStudio {
   readonly typed: string[];
   readonly shortcuts: string[];
   current: string;
+  /** The window title the driver reads. */
+  title: string;
+  /** How many elements each XPath finds; one it doesn't name finds none. */
+  readonly elements: Map<string, number>;
   approval: string | undefined;
   readonly context: StepContext;
 }
@@ -26,6 +30,8 @@ export function fakeStudio(text = ""): FakeStudio {
     typed: [],
     shortcuts: [],
     current: "main",
+    title: "",
+    elements: new Map(),
     approval: undefined,
     context: undefined as unknown as StepContext,
   };
@@ -50,6 +56,8 @@ export function fakeStudio(text = ""): FakeStudio {
       press();
     },
     pageText: async () => window().text,
+    title: async () => studio.title,
+    count: async (xpath) => studio.elements.get(xpath) ?? 0,
     describePage: async () => `buttons [${[...window().buttons.keys()].join(" | ")}]`,
     screenshot: async () => new Uint8Array([137, 80, 78, 71]),
     windowHandles: async () => [...studio.windows.keys()],

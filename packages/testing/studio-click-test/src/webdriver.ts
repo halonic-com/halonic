@@ -5,7 +5,12 @@
 const elementKey = "element-6066-11e4-a52e-4f735466cecf";
 
 /** The W3C key values for the keys that have no character of their own. */
-export const keys = { enter: "\uE007" } as const;
+export const keys = {
+  enter: "\uE007",
+  escape: "\uE00C",
+  shift: "\uE008",
+  control: "\uE009",
+} as const;
 
 /** One open WebDriver session on the installed Studio. */
 export interface Driver {
@@ -17,6 +22,10 @@ export interface Driver {
   pressKeys(keys: readonly string[]): Promise<void>;
   /** The visible text of the current window's page. */
   pageText(): Promise<string>;
+  /** The current window's title, as the task bar shows it. */
+  title(): Promise<string>;
+  /** How many elements the XPath finds, shown or not. */
+  count(xpath: string): Promise<number>;
   /** A one-line summary of the page for a failing step: its size, focus, buttons and alerts. */
   describePage(): Promise<string>;
   /** A PNG of the current window. */
@@ -84,6 +93,14 @@ export async function openSession(serverUrl: string, debuggerAddress: string): P
         args: [],
       });
       return typeof text === "string" ? text : "";
+    },
+    title: async () => {
+      const title = await call("GET", "/title");
+      return typeof title === "string" ? title : "";
+    },
+    count: async (xpath) => {
+      const found = await call("POST", "/elements", { using: "xpath", value: xpath });
+      return Array.isArray(found) ? found.length : 0;
     },
     describePage: async () => {
       const summary = await call("POST", "/execute/sync", { script: describeScript, args: [] });
