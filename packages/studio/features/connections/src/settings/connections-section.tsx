@@ -23,11 +23,22 @@ export function ConnectionsSection({ context }: SettingsSectionProps) {
   );
 }
 
-/** The connections as they are now, read again whenever the engine says they changed. */
-function useConnectionList(
-  connections: AgentConnections,
-): readonly AgentConnection[] | "failed" | undefined {
+/** The connections as they are now, and a way to read them again after a failed read. */
+interface ConnectionList {
+  readonly list: readonly AgentConnection[] | "failed" | undefined;
+  readonly retry: () => void;
+}
+
+/**
+ * The connections as they are now, read again whenever the engine says they
+ * changed, and when the person asks after a failed read
+ * (`connections.list-retry`). A failed read goes to the console with its
+ * error, so it is reported, not only shown.
+ */
+function useConnectionList(connections: AgentConnections): ConnectionList {
   const [list, setList] = useState<readonly AgentConnection[] | "failed">();
+  // Try again counts up `attempt`, which runs the effect again.
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let current = true;
     const read = () => {
@@ -35,7 +46,8 @@ function useConnectionList(
         (next) => {
           if (current) setList(next);
         },
-        () => {
+        (error: unknown) => {
+          console.error("Settings › Connections couldn't read the connections", error);
           if (current) setList("failed");
         },
       );
@@ -46,8 +58,8 @@ function useConnectionList(
       current = false;
       stop();
     };
-  }, [connections]);
-  return list;
+  }, [connections, attempt]);
+  return { list, retry: () => setAttempt((count) => count + 1) };
 }
 
 /** What the dialog is open for: a new connection, or signing in again to a signed-out one. */
@@ -97,7 +109,7 @@ function NoteCallout({ note }: { readonly note: DisconnectNote }) {
 
 /** The section's view: what happened last, a row per connection, and Connect Paperclip. */
 export function ConnectionsView({ connections, announce, now }: ConnectionsViewProps) {
-  const list = useConnectionList(connections);
+  const { list, retry } = useConnectionList(connections);
   const [connecting, setConnecting] = useState<Connecting>();
   const [disconnecting, setDisconnecting] = useState<AgentConnection>();
   const [note, setNote] = useState<DisconnectNote>();
@@ -152,7 +164,16 @@ export function ConnectionsView({ connections, announce, now }: ConnectionsViewP
   };
 
   if (list === undefined) return null;
-  if (list === "failed") return <p className="m-0 text-danger">{words.LIST_FAILED}</p>;
+  if (list === "failed") {
+    return (
+      <div className="flex flex-col items-start gap-3">
+        <p className="m-0 text-danger">{words.LIST_FAILED}</p>
+        <Button variant="secondary" onClick={retry}>
+          {words.TRY_AGAIN}
+        </Button>
+      </div>
+    );
+  }
   return (
     <div ref={root} className="flex flex-col gap-4">
       {note === undefined ? null : <NoteCallout note={note} />}

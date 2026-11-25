@@ -31,6 +31,7 @@ The build puts the payload's manifest (each file's SHA-256, size and executable 
 halonic-agent-host --profile-folder <folder> [--version | --sandbox-check | --sandbox-setup | --sandbox-remove | --sandbox-take-back]
 halonic-agent-host --profile-folder <folder> [--keychain-relay] [--sweep-root <folder> …]
 halonic-agent-host --profile-folder <folder> --stdio --relay-host 127.0.0.1:<port> [--keychain-relay] [--sweep-root <folder> …]
+halonic-agent-host --profile-folder <folder> --messaging-only [--keychain-relay] [--sweep-root <folder> …]
 halonic-agent-host <unpacked program> [arguments]
 ```
 
@@ -194,6 +195,11 @@ The host first prints one line, `{"token":"<43 characters>"}` (no `url`: the rel
 The host keeps secrets of its own: today `remote-host-key`, the static key paired phones pin. Started by the CLI, it keeps them in the profile's secrets file. Started by Studio with `--keychain-relay`, it keeps them in the OS keychain through Studio's shell, because the host can't reach the keychain itself (on Windows it runs inside Halonic's WSL distro). Requirement `agent-host.keychain-secrets`.
 
 - **The channel.** After the handshake the host sends its requests on connection id 0: over the relay's frame stream with `--stdio`, and otherwise as the same frames on standard input and output, which then carry nothing else (anything else that prints goes to standard error). A request is one `data` frame holding `{"op":"get"|"set"|"delete","name":"remote_host_key"}` (with `"value"` for `set`); the shell answers on id 0 with `{"ok":true,"value":…}` or `{"ok":false,"kind":…,"message":…}`. The host sends one request at a time, never names anything but its own secrets, and stops when the shell sends anything but the answer it waits for. The shell's side is `studio.src-tauri.crates.agent-host.host-secrets-channel`.
+- **Folders opened later.** The shell also sends, unasked, `{"op":"open_workspace","folder":…}` on id 0 when the person opens a folder after the host started. The host adds the folder's real path to its workspaces (as a `--sweep-root` would have, without a sweep) until it stops, and answers nothing; a folder that doesn't exist, isn't a folder or is the profile folder is refused, and standard error says why, without the path. A notice has exactly those two fields and an answer never has `op`, so neither is taken for the other. No route adds a workspace. Requirement `agent-host.opened-workspaces`.
+
+## Messaging only
+
+With `--messaging-only` the host serves `GET /v1/health` and the routes under `/v1/messaging/` and `/v1/paperclip/`, and answers `404 not_found` for every other path: no run, harness, sandbox, bridge, connector, model, plugin, file, Google or remote route. It takes no lock, sweeps nothing and makes no sandbox. Studio's shell runs it beside itself on Windows while the harnesses run in Halonic's WSL distro, so agent messaging keeps Windows paths and the Windows keychain. Requirement `agent-host.messaging-only`.
 - **No fallback.** When the keychain can't be used, the host fails with the shell's reason; it never writes the secrets file instead.
 - **The move out of the file.** When it starts serving, and before the first use, the host moves each of its secrets out of the secrets file: written to the keychain, read back and compared, and only then removed from the file. When both hold the same value, the file's copy goes. When they differ, neither changes, the host says that the keychain's value wins, and it refuses to use the secret until only one is left. What it says never holds a value or a hash of one.
 

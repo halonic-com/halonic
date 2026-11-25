@@ -39,10 +39,12 @@ import {
   hostSecretsOf,
   logToError,
   sharedFoldersOf,
+  shellChannelOf,
   wslRemoverOf,
 } from "./host-parts.ts";
 import { stopHost } from "./host-stop.ts";
 import { hostMessaging } from "./messaging/host-messaging.ts";
+import { messagingOnlyArgument, serveMessagingOnly } from "./messaging-only.ts";
 import { hostModelRoutes } from "./model/host-model-routes.ts";
 import { modelRoutes } from "./model/model-routes.ts";
 import { hostPluginRoutes, hostPlugins } from "./plugin/host-plugins.ts";
@@ -129,6 +131,7 @@ export type FramedHandshake = Pick<Handshake, "token">;
  * - `--wsl-shared-folders` (with serving) is how Studio's launcher says the host runs in Halonic's WSL distro: every session then denies the distro's shared folders (see `WSL_SHARED_FOLDERS`, security review W1);
  * - `--keychain-relay` (with serving) is how Studio says it keeps the host's own secrets in the OS keychain and answers for them on connection id 0 (see {@link hostKeychainOf});
  * - `--engine --profile-folder <folder> --workspace <folder>` runs the workspace's engine for Studio's shell (see {@link engineCommand});
+ * - `--messaging-only` serves agent messaging and Paperclip's sign-in only (see {@link serveMessagingOnly});
  * - `--stdio --relay-host 127.0.0.1:<port>` serves over standard input and output (see `serveOverFrames` in `serving-modes.ts`);
  * - otherwise it serves on loopback (see `serveOnLoopback` in `serving-modes.ts`).
  *
@@ -195,6 +198,9 @@ export async function run(
   const places = connectorPlaces(given.roots, profileFolder);
   const profile = optionalProfileOf(profileFolder);
   const keychain = hostKeychainOf(args, profile, (text) => io.writeError(text));
+  const channel = shellChannelOf(keychain, places.workspaceRoots, profileFolder, (text) =>
+    io.writeError(text),
+  );
   const serving = { overStdio: args.includes("--stdio"), profile, holdsLock: lock !== null };
   const home = remoteHomeFor(remote, serving, (text) => io.writeError(text));
   const host = await hostServices(
@@ -224,7 +230,7 @@ export async function run(
   // Waits for the frame stream to run; a move that fails has said why, and is tried again on use.
   keychain?.secrets.moveOutOfFile().catch(() => undefined);
   try {
-    return await serveHost(args, io, host, keychain?.channel);
+    return await serveHost(args, io, host, channel);
   } finally {
     // After serving: its sessions are closed by then.
     await lock?.release().catch((error: unknown) => {
@@ -236,7 +242,7 @@ export async function run(
 /** The `coding-tools` mode, which `main.ts` runs from the payload it checked (`coding-tools-mode.ts`). */
 export const serveCodingTools = serveAgentHostCodingTools;
 
-/** The engine role or a sandbox command, when `args` ask for one; `undefined` when the host serves. */
+/** The engine role, a sandbox command or messaging-only serving, when `args` ask for one; `undefined` when the full host serves. */
 function roleCommand(
   args: readonly string[],
   version: string,
@@ -244,6 +250,7 @@ function roleCommand(
   sandbox: () => SrtSandbox,
 ) {
   const profileFolder = argumentAfter(args, "--profile-folder");
+  if (args.includes(messagingOnlyArgument)) return serveMessagingOnly(args, version, io);
   return engineCommand(args, version, io) ?? sandboxCommand(args, profileFolder, io, sandbox);
 }
 

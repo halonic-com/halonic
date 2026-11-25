@@ -19,6 +19,7 @@ mod handshake;
 mod held_backend;
 mod host_secrets;
 mod loopback_secrets;
+mod opened_workspaces;
 mod paperclip_routes;
 mod relay;
 mod route_kinds;
@@ -44,6 +45,7 @@ use console_window::{new_command, without_console_window};
 pub use default_distro::halonic_is_default;
 pub use error::{AgentHostError, StartCause};
 use halonic_secrets::SecretBackend;
+use handshake::{FirstLine, read_first_line};
 pub use handshake::{Handshake, read_handshake};
 use loopback_secrets::LoopbackSecrets;
 use relay::Relay;
@@ -66,10 +68,6 @@ pub use wsl_setup::{
 
 /// The host's executable name, without the `.exe` Windows adds.
 pub const EXECUTABLE_NAME: &str = "halonic-agent-host";
-
-/// The longest handshake line read. A real one is under 100 bytes; a host
-/// that prints more without a newline is refused, not read without end.
-const HANDSHAKE_LINE_LIMIT: u64 = 4096;
 
 /// The most a host serving over standard input and output may print before
 /// its handshake line: `wsl.exe`'s own messages, such as an update notice.
@@ -139,6 +137,8 @@ pub struct AgentHost {
     /// answers for its secrets; the channel holds its input then.
     secrets: Option<LoopbackSecrets>,
     handshake: Handshake,
+    /// The folders already named to the host (`opened_workspaces.rs`).
+    named: Vec<PathBuf>,
 }
 
 impl AgentHost {
@@ -215,6 +215,7 @@ impl AgentHost {
             relay: None,
             secrets,
             handshake,
+            named: Vec::new(),
         })
     }
 
@@ -293,6 +294,7 @@ impl AgentHost {
                     relay: Some(relay),
                     secrets: None,
                     handshake,
+                    named: Vec::new(),
                 })
             }
             Err(error) => {
@@ -362,41 +364,6 @@ impl std::fmt::Debug for AgentHost {
             .field("handshake", &self.handshake)
             .finish_non_exhaustive()
     }
-}
-
-/// What the host printed first.
-#[derive(Debug, PartialEq, Eq)]
-enum FirstLine {
-    /// A line of text, with its newline if it had one.
-    Text(String),
-    /// A line that isn't UTF-8: the host runs, but this is no handshake.
-    NotText,
-    /// Nothing: the output ended, or couldn't be read, before a line.
-    Ended,
-}
-
-/// Reads the first line of `output` on a thread of its own, and gives it
-/// with the rest of the output, which the caller reads or drains.
-fn read_first_line<R: Read + Send + 'static>(
-    output: R,
-) -> mpsc::Receiver<(FirstLine, BufReader<R>)> {
-    let (sender, receiver) = mpsc::channel();
-    std::thread::spawn(move || {
-        let mut reader = BufReader::new(output);
-        let mut line = String::new();
-        let read = reader
-            .by_ref()
-            .take(HANDSHAKE_LINE_LIMIT)
-            .read_line(&mut line);
-        let first = match read {
-            Ok(length) if length > 0 => FirstLine::Text(line),
-            Err(error) if error.kind() == std::io::ErrorKind::InvalidData => FirstLine::NotText,
-            _ => FirstLine::Ended,
-        };
-        // The shell may have stopped waiting; then the host is killed.
-        let _ = sender.send((first, reader));
-    });
-    receiver
 }
 
 /// Reads and drops `output` on a thread of its own until the host closes

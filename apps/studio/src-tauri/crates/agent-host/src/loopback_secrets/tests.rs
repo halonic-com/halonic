@@ -183,3 +183,25 @@ fn lifetime_stopping_the_loopback_channel_closes_the_host_input() {
     assert!(host.input_closed());
     assert!(secrets.is_stopped());
 }
+
+#[test]
+fn opened_workspaces_notice_reaches_the_host_and_answers_still_follow() {
+    let (secrets, mut host) = serve(Arc::new(MemoryBackend::new()));
+    let notice = json!({ "op": "open_workspace", "folder": "/work/acme" });
+
+    assert!(secrets.notify(notice.to_string().into_bytes()));
+    assert_eq!(host.answer(), notice);
+    host.request(&json!({ "op": "get", "name": "remote_host_key" }));
+    assert_eq!(host.answer(), json!({ "ok": true, "value": null }));
+
+    assert!(!secrets.is_stopped());
+}
+
+#[test]
+fn opened_workspaces_notice_isnt_sent_once_the_channel_stopped() {
+    let (secrets, host) = serve(Arc::new(MemoryBackend::new()));
+    secrets.stop();
+
+    assert!(!secrets.notify(b"{}".to_vec()));
+    assert!(host.input_closed());
+}

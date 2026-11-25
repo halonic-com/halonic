@@ -26,6 +26,8 @@ use crate::relay::{DATA, HostFrame, frame, read_host_frame};
 enum ToHost {
     /// A request to answer.
     Request(Vec<u8>),
+    /// A notice to pass on unasked (`opened_workspaces.rs`).
+    Notice(Vec<u8>),
     /// Close the host's input, so it stops.
     Close,
 }
@@ -70,6 +72,12 @@ impl LoopbackSecrets {
     /// output ended. Its input is closed then, so it stops.
     pub(crate) fn is_stopped(&self) -> bool {
         self.stopped.load(Ordering::SeqCst)
+    }
+
+    /// Queues `notice` for the host's input, after any answer being
+    /// written. False once the channel stopped.
+    pub(crate) fn notify(&self, notice: Vec<u8>) -> bool {
+        !self.is_stopped() && self.to_host.send(ToHost::Notice(notice)).is_ok()
     }
 
     /// Closes the host's input once any answer being written is. Stopping
@@ -133,8 +141,15 @@ impl Answering {
     /// failed write, then drops `input`, which closes it.
     fn run(self, mut input: impl Write, received: &Receiver<ToHost>) {
         for message in received {
-            let ToHost::Request(request) = message else {
-                break;
+            let request = match message {
+                ToHost::Request(request) => request,
+                ToHost::Notice(notice) => {
+                    if write_frame(&mut input, &notice).is_err() {
+                        break;
+                    }
+                    continue;
+                }
+                ToHost::Close => break,
             };
             let Ok(answer) = answer(self.backend.as_ref(), &request) else {
                 break;
@@ -147,16 +162,19 @@ impl Answering {
             // Cleared first: the host may send its next request as soon as
             // it has this answer.
             self.in_flight.store(false, Ordering::SeqCst);
-            let written = input
-                .write_all(&frame(HOST_SECRETS_ID, DATA, &answer))
-                .and_then(|()| input.flush());
-            if written.is_err() {
+            if write_frame(&mut input, &answer).is_err() {
                 break;
             }
         }
         self.stopped.store(true, Ordering::SeqCst);
         drop(input);
     }
+}
+
+/// Writes `bytes` to the host's input as one `data` frame on id 0.
+fn write_frame(input: &mut impl Write, bytes: &[u8]) -> std::io::Result<()> {
+    input.write_all(&frame(HOST_SECRETS_ID, DATA, bytes))?;
+    input.flush()
 }
 
 fn spawn(name: &str, work: impl FnOnce() + Send + 'static) {
