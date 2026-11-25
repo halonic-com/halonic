@@ -1,6 +1,7 @@
 # An early, unsigned Windows build of the Studio for the board to try
-# (HAL-5379). Not a release of halonic: no tag or GitHub Release here. Run it
-# by hand on main:
+# (HAL-5379). Not a release of halonic: no tag or GitHub Release here. It
+# starts by itself after a merge to main that touches the Studio or a package
+# (HAL-18706); to run it by hand:
 #
 #   gh workflow run studio-preview.yml --ref main
 #
@@ -20,19 +21,28 @@
 name: Studio preview (Windows, unsigned)
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - apps/studio/**
+      - packages/**
+      - pnpm-lock.yaml
+      - .github/workflows/studio-preview.yml
   workflow_dispatch:
 
 permissions: {}
-
-concurrency:
-  group: studio-preview
-  cancel-in-progress: false
 
 jobs:
   installer:
     name: Build and start the unsigned Windows installer
     runs-on: windows-2025
     timeout-minutes: 45
+    # One build per branch at a time. A newer merge replaces a build still
+    # waiting, but a running one finishes: main takes about 18 merges an hour,
+    # so cancelling running builds would let none finish (HAL-18706).
+    concurrency:
+      group: studio-preview-build-${{ github.ref }}
+      cancel-in-progress: false
     permissions:
       contents: read
     outputs:
@@ -53,6 +63,22 @@ jobs:
       - name: Install the pinned Rust toolchain
         working-directory: apps/studio/src-tauri
         run: rustup toolchain install
+      # The same release build folder CI's installer-windows job keeps
+      # (rust-installer key), so a preview starts warm from the hourly main
+      # run. Only main saves it; a run on any other branch only reads main's
+      # copy, so a branch can't put anything into a build main publishes. The
+      # publish job restores no cache: it signs the installer this job built.
+      - name: Restore the Rust release cache
+        id: rust-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            apps/studio/src-tauri/target
+          key: rust-installer-${{ runner.os }}-${{ hashFiles('apps/studio/src-tauri/Cargo.lock', 'apps/studio/src-tauri/rust-toolchain.toml') }}
+          restore-keys: rust-installer-${{ runner.os }}-
       # Each preview gets its own, higher version, so the installer updates
       # the one before it instead of offering to run again (HAL-18308).
       - name: Choose the preview version
@@ -67,6 +93,16 @@ jobs:
       - name: Build the installer
         working-directory: apps/studio/src-tauri
         run: pwsh windows/build-installer.ps1 -Config "$env:RUNNER_TEMP/preview.conf.json"
+      - name: Save the Rust release cache
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            apps/studio/src-tauri/target
+          key: ${{ steps.rust-cache.outputs.cache-primary-key }}
       # An installer with the release version, as every preview before
       # HAL-18308 had, from the same build. The upgrade check installs it first.
       - name: Pack an installer with the release version
@@ -114,6 +150,10 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    # One publish at a time, and a running one is never cancelled.
+    concurrency:
+      group: studio-preview-publish
+      cancel-in-progress: false
     environment: preview-publish
     permissions:
       contents: read
