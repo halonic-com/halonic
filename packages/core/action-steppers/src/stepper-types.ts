@@ -36,13 +36,26 @@ export interface InputStep {
 }
 
 /**
+ * How to do an API step by hand on the service's own web page, for the
+ * manual guide (architecture note, 7.8). For a `call` it's the page that
+ * makes the same change; for a `check`, how to see the result on the page.
+ */
+export interface ManualForm {
+  /** The page with `{name}` placeholders, such as `https://github.com/{owner}/{repo}/settings/variables/actions`. */
+  url: string;
+  instructions: readonly string[];
+}
+
+/**
  * An API step (`call` or `check`). Its shape comes from the ToolScript ADR
  * (HAL-17560); until then a step names only the script it will run, and the
- * stepper can't run it (architecture note, 7.9).
+ * stepper can't run it (architecture note, 7.9). Its manual form is required,
+ * so the manual guide can always say how to do it by hand.
  */
 export interface ScriptStep {
   kind: "script";
   ref: string;
+  manual: ManualForm;
 }
 
 /** One step of a stepper definition. */

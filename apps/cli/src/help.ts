@@ -33,6 +33,7 @@ export const commandOrder: readonly string[] = [
   "doctor",
   "sandbox",
   "schema",
+  "stepper",
 ];
 
 /** The help for `halonic` on its own (cli-output 1.9): what it is, the commands, the options, the exit codes. */

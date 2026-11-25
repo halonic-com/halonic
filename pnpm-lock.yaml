@@ -481,6 +481,9 @@ importers:
 
   apps/cli:
     dependencies:
+      '@halonicjs/action-steppers':
+        specifier: workspace:*
+        version: link:../../packages/core/action-steppers
       '@halonicjs/adapter-coding-tools':
         specifier: workspace:*
         version: link:../../packages/adapters/coding-tools
