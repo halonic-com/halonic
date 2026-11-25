@@ -987,6 +987,32 @@ bundle in `ui/`, the migrations and the folder's own `package.json`, which the b
 (Settings → Plugins). It isn't installed, and no seat's sign-in moves into
 it, until HAL-16015 is done.
 
+## Merge control
+
+The `merge-control` job (ADR `docs/adr/2026-11-24-merge-controller-is-tested-code.md`)
+runs every minute and does nothing while `mergeControl.mode` is `off`, the
+default. Otherwise each pass reads the facts (`src/merge-control/facts.ts`),
+runs `decide`, and in `shadow` mode writes nothing and posts a daily diff with
+the Merger's actions on `mergeControl.diffTask`. `act` needs the board's yes.
+
+The facts reader uses the PR watcher's read-only token and its two readers
+(GET-only REST, query-only GraphQL), so `pr-watcher-read-only` still holds.
+A pass reads the open pull requests 10 per page (about 6 seconds and 2
+points a page on 24 Nov), the merge-group runs of the last day, the queued
+pull request runs and `main`'s CI runs. What never changes once read (a
+finished run's failed jobs, a head's manifests, a file on one `main` commit,
+who reran or cancelled a run) is kept in the worker's memory. Patch-ids need
+git, so they are null and an approval never carries over a rebase here.
+
+Settings under `mergeControl`, all empty by default:
+
+- `ciStatusUrl` and `prometheusUrl`: where Paperclip's server reaches the CI
+  server's `ci-status.json` (free merge-queue slots) and Prometheus
+  (`halonic_ci_live_jobs_waiting`). Unset, unreachable or older than 5 minutes,
+  capacity is unknown and nothing jumps.
+- `mergerLogin`: the account the Merger acts as, so shadow mode can read what
+  it did. It lives only in the settings, never in the repo.
+
 ## Reviewer path list
 
 `reviewerFor({ files, changedLines, sensitive })` answers `julian` or `liam`

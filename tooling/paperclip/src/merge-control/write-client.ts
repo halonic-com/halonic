@@ -210,6 +210,8 @@ export function queueWriteClient(options: {
           "user-agent": "halonic-agent-tools",
           authorization: `Bearer ${token}`,
         },
+        // A redirect would carry the token to an address the check never saw.
+        redirect: "manual",
         ...(request.body === undefined ? {} : { body: request.body }),
       });
       const failure = await failureOf(response, request.url === gitHubGraphql);

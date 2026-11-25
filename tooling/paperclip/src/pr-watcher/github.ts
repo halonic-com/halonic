@@ -9,7 +9,7 @@ import type { CheckState, PullFacts } from "./decide.ts";
 /** The part of `fetch` the readers use, so tests can answer from recordings. */
 export type Fetch = (
   url: string,
-  init: { method: string; headers: Record<string, string>; body?: string },
+  init: { method: string; headers: Record<string, string>; body?: string; redirect?: "manual" },
 ) => Promise<Pick<Response, "ok" | "status" | "json">>;
 
 /** Sends one GET and returns the parsed JSON body. */

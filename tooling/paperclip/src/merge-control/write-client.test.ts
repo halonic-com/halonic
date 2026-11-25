@@ -15,11 +15,13 @@ const repo = "halonic-com/halonic";
 const secret = "ghs_queue_token_for_tests";
 
 function client(answer: { status: number; body: unknown } = { status: 200, body: { data: {} } }) {
-  const fetch = vi.fn(async (_url: string, _init: { method: string; body?: string }) => ({
-    ok: answer.status < 300,
-    status: answer.status,
-    json: async () => answer.body,
-  }));
+  const fetch = vi.fn(
+    async (_url: string, _init: { method: string; body?: string; redirect?: string }) => ({
+      ok: answer.status < 300,
+      status: answer.status,
+      json: async () => answer.body,
+    }),
+  );
   const token = vi.fn(async () => secret);
   return { fetch, token, client: queueWriteClient({ fetch, token, repos: [repo] }) };
 }
@@ -153,5 +155,19 @@ verifies("paperclip.merge-control-write-scope", () => {
       "merge-control/act.ts",
       "plugin/merge-control-job.ts",
     ]);
+  });
+});
+
+verifies("paperclip.merge-control-failed-writes", () => {
+  test("a write never follows a redirect: a 302 answer is a failed write", async () => {
+    const { fetch, client: queue } = client({
+      status: 302,
+      body: { message: "Moved", location: "https://evil.example/comments" },
+    });
+    await expect(
+      queue.send({ kind: "comment", repo, number: 7, body: "Taken out of the queue." }),
+    ).rejects.toThrow("the comment write answered 302: Moved.");
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch.mock.calls[0]?.[1].redirect).toBe("manual");
   });
 });
