@@ -30,6 +30,13 @@ export {
 } from "./server-session-launch.ts";
 export { type ServerTarget, validateServerTarget } from "./server-target.ts";
 export {
+  type BlockPreview,
+  type PreviewNames,
+  previewStepperRequest,
+  type RequesterText,
+  type StepperPreview,
+} from "./stepper-preview.ts";
+export {
   maxBrowserInstructionLength,
   maxBrowserInstructions,
   maxStepperBlocks,
