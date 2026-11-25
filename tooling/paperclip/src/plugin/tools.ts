@@ -6,6 +6,7 @@ import type {
   ToolResult,
   ToolRunContext,
 } from "@paperclipai/plugin-sdk";
+import { type CiTarget, ciFailures, ciFailuresText } from "../pr-tools/ci-failures.ts";
 import { prStatus, statusText } from "../pr-tools/pr-status.ts";
 import { queueState, queueStateText } from "../pr-tools/queue-state.ts";
 import { type GitHubGet, gitHubReader } from "../pr-watcher/github.ts";
@@ -16,8 +17,8 @@ import { manifest } from "./manifest.ts";
 import { countingGet, type MetricsApi, writeMetrics } from "./metrics.ts";
 
 /**
- * The agent tools `pr_status` and `queue_state`. Like the watcher,
- * `pr_status` reads GitHub with GET requests only, through `ctx.http`, with
+ * The agent tools `pr_status`, `ci_failures` and `queue_state`. Like the watcher,
+ * `pr_status` and `ci_failures` read GitHub with GET requests only, through `ctx.http`, with
  * the company's read-only token. `queue_state` reads the watcher's last
  * snapshot from plugin state and sends no request at all. `my_prs` moved to
  * the workspace plugin (HAL-17968).
@@ -72,6 +73,25 @@ export function readPrParams(
     return `repo must be one of: ${repos.join(", ")}.`;
   }
   return { repo: chosen, number };
+}
+
+/**
+ * `ci_failures`' commit: a full 40-character `sha` on one of the watched
+ * repositories, or else `pr` as `pr_status` reads it.
+ */
+export function readCiParams(params: unknown, repos: readonly string[]): CiTarget | string {
+  const { sha, repo } = (params ?? {}) as { sha?: unknown; repo?: unknown };
+  if (sha === undefined || sha === "") {
+    return readPrParams(params, repos);
+  }
+  if (typeof sha !== "string" || !/^[0-9a-f]{40}$/i.test(sha)) {
+    return "sha must be a full 40-character commit.";
+  }
+  const chosen = typeof repo === "string" && repo !== "" ? repo : repos[0];
+  if (chosen === undefined || !repos.includes(chosen)) {
+    return `repo must be one of: ${repos.join(", ")}.`;
+  }
+  return { repo: chosen, sha: sha.toLowerCase() };
 }
 
 /** A company's GitHub reader for one call, counting its requests, and its watched repositories. */
@@ -163,7 +183,7 @@ async function fromSnapshot(
   return recordCall(ctx, name, runCtx, result, 0);
 }
 
-/** Registers `pr_status` and `queue_state` as the manifest declares them. */
+/** Registers `pr_status`, `ci_failures` and `queue_state` as the manifest declares them. */
 export function registerTools(ctx: ToolsApi): void {
   const declared = new Map((manifest.tools ?? []).map((tool) => [tool.name, tool]));
   const declaration = (name: string) => {
@@ -182,6 +202,17 @@ export function registerTools(ctx: ToolsApi): void {
       }
       const status = await prStatus(get, target.repo, target.number);
       return { content: statusText(status), data: status };
+    }),
+  );
+
+  ctx.tools.register("ci_failures", declaration("ci_failures"), (params, runCtx) =>
+    run(ctx, "ci_failures", runCtx, async (get, repos) => {
+      const target = readCiParams(params, repos);
+      if (typeof target === "string") {
+        return { error: `ci_failures: ${target}` };
+      }
+      const failures = await ciFailures(get, target);
+      return { content: ciFailuresText(failures), data: failures };
     }),
   );
 

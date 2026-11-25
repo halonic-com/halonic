@@ -85,6 +85,7 @@ verifies("paperclip.pr-tools", () => {
       await plugin.definition.setup(harness.ctx);
       expect(manifest.tools?.map((tool) => tool.name)).toEqual([
         "pr_status",
+        "ci_failures",
         "queue_state",
         "ready_for_review",
         "board_asks",
