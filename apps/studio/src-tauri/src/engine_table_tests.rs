@@ -5,7 +5,7 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use super::{AfterCrash, EngineTable, EnginesSummary};
+use super::{AfterCrash, EngineTable, EnginesSummary, PauseSet};
 
 fn acme() -> PathBuf {
     PathBuf::from("acme")
@@ -146,7 +146,7 @@ fn engine_lifetime_the_pause_stays_through_crashes_and_restarts() {
         .unwrap();
     assert_eq!(
         table.set_pause(&acme(), true),
-        Some(&1),
+        PauseSet::Sent(&1),
         "the running engine hears it"
     );
 
@@ -175,14 +175,20 @@ fn engine_lifetime_the_pause_stays_through_crashes_and_restarts() {
         "opening it again keeps it"
     );
 
-    assert_eq!(table.set_pause(&acme(), false), Some(&9));
+    assert_eq!(table.set_pause(&acme(), false), PauseSet::Sent(&9));
     assert!(!table.pause(&acme()).is_paused());
 }
 
+/// HAL-18433: a caller can tell a dropped pause (no launch yet) from a kept
+/// one (crashed, restart pending).
 #[test]
 fn engine_lifetime_pausing_with_no_engine_running() {
     let mut table = EngineTable::default();
-    assert_eq!(table.set_pause(&acme(), true), None, "no launch yet");
+    assert_eq!(
+        table.set_pause(&acme(), true),
+        PauseSet::NoWorkspace,
+        "no launch yet"
+    );
     assert!(!table.pause(&acme()).is_paused(), "nothing to keep it on");
 
     let launch = table
@@ -191,7 +197,7 @@ fn engine_lifetime_pausing_with_no_engine_running() {
     let _ = table.crashed(&acme(), launch, Instant::now());
     assert_eq!(
         table.set_pause(&acme(), true),
-        None,
+        PauseSet::Kept,
         "between a crash and its restart"
     );
     table.restarted(&acme(), 2).unwrap();
