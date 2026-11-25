@@ -4,6 +4,7 @@ import type { MessagingId } from "@halonicjs/ports";
 export type PaperclipItemKind =
   | "agent"
   | "chat"
+  | "channel"
   | "comment"
   | "card"
   | "approval"
@@ -16,6 +17,8 @@ const provider = "paperclip";
 const partCounts: Readonly<Record<PaperclipItemKind, number>> = {
   agent: 1,
   chat: 1,
+  // A channel: its parent task.
+  channel: 1,
   comment: 2,
   card: 2,
   approval: 1,

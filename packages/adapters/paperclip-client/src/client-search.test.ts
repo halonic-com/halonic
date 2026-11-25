@@ -137,6 +137,9 @@ verifies("agent-host.paperclip-key", () => {
         "readStepperRequest",
         "latestStepperRequest",
         "writeStepperResult",
+        // Channels (HAL-17637), pinned in channels.test.ts.
+        "commentOnChannel",
+        "createChildTask",
       ]);
     });
   });

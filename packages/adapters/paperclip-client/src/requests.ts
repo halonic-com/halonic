@@ -82,6 +82,19 @@ export const paperclipRequests = {
       nullable: ["baseRevisionId"],
     },
   },
+  // Channels (`paperclip-client.channels`, K1, HAL-17637): the person's message is a comment
+  // on the channel's parent task, and each agent it is addressed to gets one child task,
+  // assigned to that agent, because in Paperclip only an assignment wakes an agent. The
+  // create row pins its body, so it sets no project, label, blocker or budget, and only `todo`.
+  commentOnChannel: { method: "POST", path: "/api/issues/:task/comments" },
+  createChildTask: {
+    method: "POST",
+    path: "/api/companies/:company/issues",
+    body: {
+      fields: ["title", "description", "parentId", "assigneeAgentId", "status"],
+      status: "todo",
+    },
+  },
 } as const satisfies Record<string, RequestRule>;
 
 /**

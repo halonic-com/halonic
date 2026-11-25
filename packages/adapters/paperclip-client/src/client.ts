@@ -20,6 +20,8 @@ import {
   type WorkItem,
 } from "@halonicjs/ports";
 import { ChangeFeed } from "./changes.ts";
+import { PaperclipChannelSender } from "./channel-send.ts";
+import { readChannel, toChannel } from "./channels.ts";
 import { PaperclipIds } from "./ids.ts";
 import { PaperclipInbox } from "./inbox.ts";
 import { asRecords, type JsonRecord, text } from "./json.ts";
@@ -72,6 +74,7 @@ export class PaperclipMessaging implements AgentMessaging {
   readonly #reader: PaperclipReader;
   readonly #inbox: PaperclipInbox;
   readonly #writer: PaperclipWriter;
+  readonly #channels: PaperclipChannelSender;
   readonly #feed = new ChangeFeed<MessagingId>();
   #agentNames = new Map<string, string>();
   /** The Inbox as last read, which search matches without reading every task's cards again. */
@@ -89,6 +92,7 @@ export class PaperclipMessaging implements AgentMessaging {
       options.stepperCatalog && new PaperclipSteppers(this.#reader, options.stepperCatalog);
     this.#inbox = new PaperclipInbox(this.#reader, options.company, steppers);
     this.#writer = new PaperclipWriter(this.#reader, now, steppers);
+    this.#channels = new PaperclipChannelSender(this.#reader, options.company, options.userId, now);
   }
 
   async listSources(): Promise<readonly MessagingSource[]> {
@@ -117,21 +121,15 @@ export class PaperclipMessaging implements AgentMessaging {
     return records.flatMap((record) => toAgent(context, record) ?? []);
   }
 
+  /** Chats and channels, newest first. A channel is an open parent task (`paperclip-client.channels`). */
   async listConversations(): Promise<readonly Conversation[]> {
-    const answer = await this.#reader.send("listChats", { path: { company: this.#company } });
-    // Paperclip answers 404 when Agent Chat is off: there are no chats, which isn't an error.
-    if (answer.kind === "failed" && answer.failure === "not-found") {
-      return [];
-    }
-    const context = this.#context();
-    const chats = asRecords(bodyOf("listChats", answer)).flatMap(
-      (record) => toConversation(context, record) ?? [],
-    );
-    return newestFirst(chats, (chat) => chat.updatedAt);
+    return this.#conversationsFrom(await this.#inbox.openTasks());
   }
 
+  /** A chat's or a channel's messages: the comments on its task, oldest first. */
   async listMessages(conversation: MessagingId): Promise<readonly Message[]> {
-    const [task] = this.#ids.read(conversation, "chat") ?? [];
+    const [task] =
+      this.#ids.read(conversation, "chat") ?? this.#ids.read(conversation, "channel") ?? [];
     if (task === undefined) {
       return [];
     }
@@ -143,6 +141,7 @@ export class PaperclipMessaging implements AgentMessaging {
     const context = this.#context();
     return asRecords(body)
       .flatMap((record) => toMessage(context, task, record) ?? [])
+      .map((message) => ({ ...message, conversation }))
       .reverse();
   }
 
@@ -202,6 +201,10 @@ export class PaperclipMessaging implements AgentMessaging {
     if (attachments.length > 0) {
       return { outcome: "refused", reason: "unsupported-type" };
     }
+    const [channel] = this.#ids.read(conversation, "channel") ?? [];
+    if (channel !== undefined) {
+      return this.#sendInChannel(channel, body, options.to ?? []);
+    }
     const [task] = this.#ids.read(conversation, "chat") ?? [];
     // An unsafe ID is refused before any request, the chat check's read included.
     if (task === undefined || !isSafeSegment(task)) {
@@ -228,8 +231,9 @@ export class PaperclipMessaging implements AgentMessaging {
     return { outcome: "sent", message };
   }
 
-  // Paperclip has no channels: every chat is one agent's. So it lists none to browse and refuses
-  // every channel call before any request (AgentMessaging version 4).
+  // Channels are listed and take messages (`paperclip-client.channels`). Starting one, changing
+  // its members, browsing, joining and leaving come in their own PR, so until then they list
+  // nothing and are refused before any request (AgentMessaging version 4).
 
   startChannel(
     _title: string,
@@ -272,7 +276,7 @@ export class PaperclipMessaging implements AgentMessaging {
     const tasks = await this.#inbox.openTasks();
     const seen = JSON.stringify([
       await this.#inboxFrom(tasks),
-      await this.listConversations(),
+      await this.#conversationsFrom(tasks),
       this.#workFrom(tasks),
     ]);
     const changed = this.#lastSeen !== undefined && seen !== this.#lastSeen;
@@ -297,6 +301,37 @@ export class PaperclipMessaging implements AgentMessaging {
       this.#lastSeen = undefined;
       this.#feed.push(this.#ids.source());
     }
+  }
+
+  async #sendInChannel(
+    channel: string,
+    body: string,
+    to: readonly MessagingId[],
+  ): Promise<SendResult> {
+    if (!isSafeSegment(channel)) {
+      return { outcome: "refused", reason: "not-found" };
+    }
+    const result = await this.#channels.send(this.#context(), channel, body, to);
+    this.#changedAfter(result.outcome === "sent");
+    return result;
+  }
+
+  /** The person's chats and the channels among `tasks`, newest first. */
+  async #conversationsFrom(tasks: readonly JsonRecord[]): Promise<Conversation[]> {
+    const context = this.#context();
+    const channels = tasks.flatMap((record) => {
+      const channel = readChannel(record, this.#userId);
+      return channel === undefined ? [] : [toChannel(context, channel)];
+    });
+    const answer = await this.#reader.send("listChats", { path: { company: this.#company } });
+    // Paperclip answers 404 when Agent Chat is off: there are no chats, which isn't an error.
+    const chats =
+      answer.kind === "failed" && answer.failure === "not-found"
+        ? []
+        : asRecords(bodyOf("listChats", answer)).flatMap(
+            (record) => toConversation(context, record) ?? [],
+          );
+    return newestFirst([...chats, ...channels], (conversation) => conversation.updatedAt);
   }
 
   /**
