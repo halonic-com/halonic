@@ -2,7 +2,14 @@ import type { RepositoryReviewerRules, Routing } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
 import type { GitHubGet } from "../github.ts";
-import { changedPaths, reviewerByPaths, reviewerText, reviewRoleByPaths } from "./reviewer-role.ts";
+import {
+  changedPaths,
+  defaultReviewerNote,
+  noteDefaultReviewer,
+  reviewerByPaths,
+  reviewerText,
+  reviewRoleByPaths,
+} from "./reviewer-role.ts";
 
 /**
  * Rules shaped like the ones Liam asked for on HAL-18289, written for the
@@ -91,6 +98,36 @@ verifies("runtime.github-reviewer-rules", () => {
       const paths = await changedPaths(get, "acme/website", 12);
       expect(paths).toEqual(["scripts/deploy.ts", "infra/deploy.ts"]);
       expect(reviewerByPaths(rules, paths, 3, routing).person).toBe("priya");
+    });
+  });
+});
+
+verifies("runtime.github-reviewer-approval-note", () => {
+  describe("the default reviewer's note", () => {
+    const mateo = { by: "Mateo", head: "7651f8c", counts: true };
+    const liam = { by: "Liam", head: "7651f8c", counts: true };
+    const signedByMateo = (by: string) => by.toLowerCase() === "mateo";
+
+    test("notes the default reviewer's counting approval, and no one else's", () => {
+      const reviewer = reviewerByPaths(rules, ["src/cart.ts"], 3, routing);
+      expect(noteDefaultReviewer([mateo, liam], rules, reviewer, signedByMateo)).toEqual([
+        { ...mateo, note: defaultReviewerNote },
+        liam,
+      ]);
+    });
+
+    test("adds no note when the paths escalate, no one covers the role or there are no rules", () => {
+      const escalated = reviewerByPaths(rules, ["infra/deploy.ts"], 3, routing);
+      const uncovered = reviewerByPaths(rules, ["src/cart.ts"], 3, undefined);
+      expect(noteDefaultReviewer([mateo], rules, escalated, signedByMateo)).toEqual([mateo]);
+      expect(noteDefaultReviewer([mateo], rules, uncovered, signedByMateo)).toEqual([mateo]);
+      expect(noteDefaultReviewer([mateo], undefined, undefined, signedByMateo)).toEqual([mateo]);
+    });
+
+    test("leaves an approval that doesn't count as it is", () => {
+      const older = { ...mateo, head: "0000000", counts: false, note: "names an older head" };
+      const reviewer = reviewerByPaths(rules, ["src/cart.ts"], 3, routing);
+      expect(noteDefaultReviewer([older], rules, reviewer, signedByMateo)).toEqual([older]);
     });
   });
 });

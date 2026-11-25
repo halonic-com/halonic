@@ -1,6 +1,7 @@
 import type { RepositoryReviewerRules, Routing, Tool } from "@halonicjs/format";
 import type { GitHubGet } from "../github.ts";
 import { everyPage } from "./reads.ts";
+import type { Approval } from "./reviews.ts";
 
 /**
  * Which role reviews a pull request by the company's path rules (the tool's
@@ -114,6 +115,31 @@ export function reviewerByPaths(
 ): ReviewerByPaths {
   const role = reviewRoleByPaths(rules, paths, changedLines);
   return { role, person: routing?.roles[role] };
+}
+
+/** What an approval by the `default` reviewer can't see: the author's word that the PR is security or release. */
+export const defaultReviewerNote = "unless it's a security or release pull request";
+
+/**
+ * The approvals, with the note on a counting one signed by the agent who
+ * covers the rules' `default` role when the paths pick that role: the paths
+ * let that reviewer approve, but a security or release pull request still
+ * goes to the `escalateTo` role. `signedBy` matches a signature to the agent.
+ */
+export function noteDefaultReviewer(
+  found: readonly Approval[],
+  rules: RepositoryReviewerRules | undefined,
+  reviewer: ReviewerByPaths | undefined,
+  signedBy: (by: string) => boolean,
+): Approval[] {
+  if (rules === undefined || reviewer?.person === undefined || reviewer.role !== rules.default) {
+    return [...found];
+  }
+  return found.map((approval) =>
+    approval.counts && signedBy(approval.by)
+      ? { ...approval, note: defaultReviewerNote }
+      : approval,
+  );
 }
 
 /** The `reviewer` line an agent reads. */

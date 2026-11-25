@@ -19,12 +19,13 @@ import {
 } from "./reads.ts";
 import {
   changedPaths,
+  noteDefaultReviewer,
   type ReviewerByPaths,
   reviewerByPaths,
   reviewerRulesOf,
   reviewerText,
 } from "./reviewer-role.ts";
-import { type Approval, approvals, latestFinding, type Review } from "./reviews.ts";
+import { type Approval, approvals, latestFinding, type Review, signedByAuthor } from "./reviews.ts";
 
 /**
  * The `github.pull-request` action: everything an agent asks GitHub when it
@@ -130,10 +131,19 @@ export async function pullRequestStatus(
   // A fork's branch can be named like ours, so it names no author or task.
   const ours = fromRepo(pull, repo);
   const author = ours ? branchOwner(pull.head.ref) : undefined;
-  const found = approvals(comments, {
-    head,
-    author: author === undefined ? undefined : { urlKey: author, name: await nameOf(author) },
-  });
+  const reviewer =
+    sources.rules === undefined
+      ? undefined
+      : reviewerByPaths(sources.rules, paths, changedLines, sources.routing);
+  const found = await withReviewerNote(
+    approvals(comments, {
+      head,
+      author: author === undefined ? undefined : { urlKey: author, name: await nameOf(author) },
+    }),
+    sources.rules,
+    reviewer,
+    nameOf,
+  );
   const title = shownTitle(pull);
   return {
     repo,
@@ -154,11 +164,20 @@ export async function pullRequestStatus(
     approvedOnHead: found.some((approval) => approval.counts),
     changedLines,
     latestReviewFinding: finding === undefined ? undefined : `${finding.id} at ${finding.at}`,
-    reviewer:
-      sources.rules === undefined
-        ? undefined
-        : reviewerByPaths(sources.rules, paths, changedLines, sources.routing),
+    reviewer,
   };
+}
+
+/** The approvals with the `default` reviewer's note, matching signatures by the agent's url key and display name. */
+async function withReviewerNote(
+  found: readonly Approval[],
+  rules: RepositoryReviewerRules | undefined,
+  reviewer: ReviewerByPaths | undefined,
+  nameOf: AgentName,
+): Promise<Approval[]> {
+  const person = reviewer?.person;
+  const agent = person === undefined ? undefined : { urlKey: person, name: await nameOf(person) };
+  return noteDefaultReviewer(found, rules, reviewer, (by) => signedByAuthor(by, agent));
 }
 
 /** What the author has to do next, in words. */
