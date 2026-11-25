@@ -30,7 +30,8 @@ export type RoutingDecision =
  * Labels that keep a task on Opus by themselves: the `opus-only` tag and the
  * triage step's risk areas. The same list as Paperclip's effort table
  * (`opusOnlyAreas` in tooling/paperclip) and the engine's run effort; the
- * layer rules keep core from importing either, so a change goes to all three.
+ * layer rules keep core from importing either, so a change goes to all three;
+ * a test in tooling/paperclip fails when they differ.
  */
 export const opusOnlyLabels: ReadonlySet<string> = new Set([
   "opus-only",

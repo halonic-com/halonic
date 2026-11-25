@@ -25,6 +25,7 @@
     "@halonicjs/events": "workspace:*",
     "@halonicjs/format": "workspace:*",
     "@halonicjs/ports": "workspace:*",
+    "@halonicjs/retry-detectors": "workspace:*",
     "@halonicjs/std": "workspace:*",
     "@halonicjs/target-paperclip-runtime": "workspace:*",
     "@halonicjs/testing-contracts": "workspace:*",

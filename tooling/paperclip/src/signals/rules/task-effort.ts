@@ -86,7 +86,7 @@ export interface RememberAction {
 export type TaskEffortAction = SetEffortAction | ForeignEffortAction | RememberAction;
 
 /** `opus-only` and the area tags that make a task opus-only by themselves, as `opusOnlyAreas`. */
-const opusOnlyTags = [
+export const opusOnlyTags = [
   "opus-only",
   "security",
   "trust",
