@@ -124,7 +124,7 @@ verifies("settings.startup-section", () => {
     expect(theSwitch(view).checked).toBe(false);
     const line = view.querySelector('[role="status"]');
     expect(line?.textContent).toBe(
-      "Only an installed Halonic can start when you log in. Install Halonic, then try again.",
+      "Couldn't turn this on: only an installed Halonic can start when you log in. Install Halonic, then try again.",
     );
     expect(line?.className).toContain("text-danger");
   });
@@ -138,7 +138,7 @@ verifies("settings.startup-section", () => {
     expect(host.set).toHaveBeenCalledWith(false);
     expect(theSwitch(view).checked).toBe(true);
     expect(view.querySelector('[role="status"]')?.textContent).toBe(
-      "Halonic couldn't change this setting. Try again.",
+      "Couldn't save this setting. Try again.",
     );
   });
 
@@ -149,7 +149,7 @@ verifies("settings.startup-section", () => {
 
     expect(theSwitch(view).checked).toBe(false);
     expect(view.querySelector('[role="status"]')?.textContent).toBe(
-      "Halonic couldn't read this setting.",
+      "Couldn't read whether Halonic starts when you log in.",
     );
   });
 });

@@ -19,4 +19,4 @@ Where the app gives a login item (the desktop app), the Settings window shall li
   then the shell was asked to turn it on and the switch shows on.
 - Given Halonic doesn't run from where it was installed,
   when the person presses the switch,
-  then the shell refuses with `not_installed`, the line "Only an installed Halonic can start when you log in. Install Halonic, then try again." shows under the switch, and the switch stays off.
+  then the shell refuses with `not_installed`, the line "Couldn't turn this on: only an installed Halonic can start when you log in. Install Halonic, then try again." shows under the switch, and the switch stays off.

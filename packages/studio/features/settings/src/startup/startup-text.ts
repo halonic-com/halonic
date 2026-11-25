@@ -30,9 +30,9 @@ export function hint(iconIn: LoginItemHost["iconIn"]): string {
 /** The line under the switch when the shell refused. */
 export const REFUSED: Readonly<Record<LoginItemRefusal, string>> = {
   not_installed:
-    "Only an installed Halonic can start when you log in. Install Halonic, then try again.",
-  failed: "Halonic couldn't change this setting. Try again.",
+    "Couldn't turn this on: only an installed Halonic can start when you log in. Install Halonic, then try again.",
+  failed: "Couldn't save this setting. Try again.",
 };
 
 /** The line under the switch when the shell couldn't say whether the login item is on. */
-export const READ_FAILED = "Halonic couldn't read this setting.";
+export const READ_FAILED = "Couldn't read whether Halonic starts when you log in.";
