@@ -3,12 +3,16 @@
 pub enum Decision {
     Approve,
     Deny,
+    /// An answer to an inbox item: an option or a written reply
+    /// (`msg-answer`, gateway message version 4).
+    Answer,
 }
 
 /// The words Android's prompt shows. They are fixed here, one set per
 /// [`Decision`], so neither the page nor the host can make the prompt say
 /// something other than what is being answered. The verb is the one on the
-/// approval card's button the person just pressed: Approve or Reject.
+/// approval card's button the person just pressed: Approve or Reject, or
+/// Send for an answer to an inbox item.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PromptWords {
     pub title: &'static str,
@@ -21,6 +25,7 @@ impl PromptWords {
         let description = match decision {
             Decision::Approve => "Approve this request for Halonic on your computer.",
             Decision::Deny => "Reject this request for Halonic on your computer.",
+            Decision::Answer => "Send this answer from Halonic on your computer.",
         };
         Self {
             title: "Confirm it's you",

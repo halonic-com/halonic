@@ -186,3 +186,59 @@ fn phone_tunnel_messages_answer_with_exactly_their_fields() {
         );
     }
 }
+
+/// Message version 4 (HAL-17634): the Inbox, Messenger and team status
+/// messages pass with their required keys and any of their optional ones.
+#[test]
+fn phone_tunnel_messages_allow_the_version_4_messages() {
+    let plain = [
+        json!({ "type": "msg-read", "id": "r1", "what": "inbox" }),
+        json!({ "type": "msg-read", "id": "r2", "what": "agents", "cursor": "p2" }),
+        json!({ "type": "msg-read", "id": "r3", "what": "messages", "conversation": "c1", "before": "m9" }),
+        json!({ "type": "msg-search", "id": "s1", "text": "deploy" }),
+        json!({ "type": "msg-send", "id": "m1", "conversation": "c1", "body": "hi" }),
+        json!({ "type": "msg-send", "id": "m2", "conversation": "c1", "body": "hi", "to": ["b"] }),
+        json!({ "type": "msg-watch", "id": "w1" }),
+        json!({ "type": "msg-unwatch", "id": "w2" }),
+        json!({ "type": "team-read", "id": "t1", "what": "seats" }),
+        json!({ "type": "team-read", "id": "t2", "what": "spend", "range": "week" }),
+        json!({ "type": "team-read", "id": "t3", "what": "pull-request", "pullRequest": "pr1" }),
+    ];
+    for message in plain {
+        assert_eq!(check_message(&message.to_string()), PLAIN, "{message}");
+    }
+    let answer = json!({
+        "type": "msg-answer",
+        "id": "a1",
+        "item": "i1",
+        "answer": { "kind": "option", "option": "approve" },
+        "confirmed": true,
+    });
+    assert_eq!(
+        check_message(&answer.to_string()),
+        Ok(CheckedMessage::Answer(Decision::Answer))
+    );
+}
+
+#[test]
+fn phone_tunnel_messages_refuse_other_version_4_types_and_keys() {
+    let refused = [
+        json!({ "type": "msg-read", "id": "r1" }),
+        json!({ "type": "msg-read", "id": "r1", "what": "inbox", "token": "x" }),
+        json!({ "type": "msg-answer", "id": "a1", "item": "i1", "answer": {} }),
+        json!({ "type": "msg-send", "id": "m1", "conversation": "c1" }),
+        json!({ "type": "msg-watch", "id": "w1", "source": "s" }),
+        json!({ "type": "team-read", "id": "t1", "what": "seats", "account": "a" }),
+        json!({ "type": "msg-start-channel", "id": "x" }),
+        json!({ "type": "msg-join", "id": "x", "channel": "c1" }),
+        json!({ "type": "team-agent-spend", "id": "x" }),
+        json!({ "type": "msg-data", "replyTo": "x", "what": "inbox", "items": [] }),
+    ];
+    for message in refused {
+        assert_eq!(
+            check_message(&message.to_string()),
+            NOT_ALLOWED,
+            "{message}"
+        );
+    }
+}
