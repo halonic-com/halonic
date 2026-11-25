@@ -3,6 +3,7 @@
 - Task: HAL-18001
 - Approval: Liam's decision W1 on HAL-18000 (our own worker protocol client in `packages/targets/paperclip/runtime`, with its conditions); a security PR, so Liam signs this note in his code review and Julian gives the security sign-off, both on HAL-18001
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:AShaDxBDUdz2kZ43Q9+y+0zGQQK59Q1lO0EMhFhVCxNSC53URKht4ImhOmlyLzMnCzZAHd/A3l/vtmaVSH0ZAA==
 
 ## What changes
 
