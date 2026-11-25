@@ -1,6 +1,6 @@
 import { agentAda, agentBo, company, plainTask, testKey } from "./acme-data.test-helper.ts";
 import type { FakePaperclip } from "./fake-paperclip.test-helper.ts";
-import { PaperclipTeamStatus } from "./team-status.ts";
+import { PaperclipTeamStatus, type PaperclipTeamStatusOptions } from "./team-status.ts";
 
 // Answers of `live-runs`, `heartbeat-runs` and `getTask`, recorded from our
 // server's Paperclip (25 Nov) with every value replaced by Acme's. Each run keeps
@@ -108,8 +108,11 @@ export function serveRuns(paperclip: FakePaperclip): FakePaperclip {
     });
 }
 
-/** A run tests' provider on `paperclip`. */
-export function connectRuns(paperclip: FakePaperclip): PaperclipTeamStatus {
+/** A run tests' provider on `paperclip`, with `options` in place of the defaults. */
+export function connectRuns(
+  paperclip: FakePaperclip,
+  options: Partial<PaperclipTeamStatusOptions> = {},
+): PaperclipTeamStatus {
   return new PaperclipTeamStatus({
     address: paperclip.address,
     key: testKey,
@@ -117,5 +120,6 @@ export function connectRuns(paperclip: FakePaperclip): PaperclipTeamStatus {
     company,
     now: () => runsNow,
     fetch: paperclip.fetch,
+    ...options,
   });
 }
