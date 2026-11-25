@@ -38,13 +38,17 @@ nft list table inet halonic_win >/dev/null || fail "nft table halonic_win isn't 
 if systemctl is-active -q halonic-win-runner.service; then fail "halonic-win-runner.service is running; stop it first"; fi
 if virsh dominfo "$VM" >/dev/null 2>&1 && ! vm_off; then fail "$VM is running; stop it first"; fi
 
+# Everything written from here on (the password, the answer file and ISO) is root's alone; libvirt
+# hands the disk and answer.iso to qemu's user itself (Julian, HAL-18584).
+umask 077
+
 # --- Fresh SSH key pair, admin password and known_hosts for this build.
 install -d -m 0700 "$ETC/ssh"
 # qemu (libvirt's own user) must reach the disk and NVRAM, so the folder is traversable, not listable.
 install -d -m 0711 "$LIB"
 [[ -f $ETC/ssh/id_ed25519 ]] || ssh-keygen -q -t ed25519 -N '' -C halonic-win-host -f "$ETC/ssh/id_ed25519"
 rm -f "$ETC/ssh/known_hosts"
-(umask 077 && openssl rand -base64 24 | tr -d '\n' >"$ETC/admin-password")
+openssl rand -base64 24 | tr -d '\n' >"$ETC/admin-password"
 
 # --- Answer ISO. The password goes in with bash's own substitution, never on a command line.
 WORK=$(mktemp -d /run/halonic-win-build.XXXXXX)

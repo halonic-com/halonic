@@ -96,7 +96,9 @@ to the repo root unless it starts with `/`).
    `install -m 0400 -o root -g root /dev/stdin /etc/halonic-win/product-key` (paste, then
    Ctrl-D). Never in the repo, a command line or a backup that leaves the host.
 7. **Build:** `infra/windows-runner/host/build-image.sh`. It checks all of the above, installs
-   Windows (watch it with a VNC client through `ssh -L 5979:127.0.0.1:5979` to the host), then
+   Windows (to watch it, `virsh domdisplay halonic-win` prints the console's socket; tunnel to it
+   as root with `ssh -L 5979:<socket path> root@<host>` and point a VNC client at
+   `127.0.0.1:5979` on your side), then
    prints `done: base image …`. It fails with the reason if a step does. The licence line in its
    output must say `status 1`.
 8. **Check a clean boot:** `infra/windows-runner/host/restore-vm.sh --start`, then after a minute or so:
