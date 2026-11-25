@@ -68,28 +68,26 @@ export function ChatBox({ messenger, row, onSent }: ChatBoxProps) {
       />
       <DraftFileList files={box.files} onRemove={remove} />
       {channel ? <ChannelAddressBar address={address} /> : null}
-      {/* The picker's keys come first, so Enter names an agent instead of sending. */}
-      <div onKeyDownCapture={address.onKeyDownCapture}>
-        <ChatComposer
-          label={channel ? channelWords.composer(name) : messengerWords.composerLabel(name)}
-          placeholder={
-            channel ? channelWords.composer(name) : messengerWords.composerPlaceholder(name)
-          }
-          value={box.draft}
-          onChange={box.type}
-          sendUnavailable={waits ? { reason: address.lineId } : undefined}
-          onSend={() => {
-            void box.send().then(address.refresh, report("The message couldn't be sent:"));
-          }}
-          onStop={() => {}}
-          answering={false}
-          line={
-            box.line === undefined ? undefined : (
-              <ChatBoxLine tone={box.line.tone}>{box.line.text}</ChatBoxLine>
-            )
-          }
-        />
-      </div>
+      <ChatComposer
+        label={channel ? channelWords.composer(name) : messengerWords.composerLabel(name)}
+        placeholder={
+          channel ? channelWords.composer(name) : messengerWords.composerPlaceholder(name)
+        }
+        value={box.draft}
+        onChange={box.type}
+        sendUnavailable={waits ? { reason: address.lineId } : undefined}
+        onSend={() => {
+          void box.send().then(address.refresh, report("The message couldn't be sent:"));
+        }}
+        onStop={() => {}}
+        answering={false}
+        line={
+          box.line === undefined ? undefined : (
+            <ChatBoxLine tone={box.line.tone}>{box.line.text}</ChatBoxLine>
+          )
+        }
+        picker={channel ? address.picker : undefined}
+      />
     </div>
   );
 }

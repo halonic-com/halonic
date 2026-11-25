@@ -1,6 +1,7 @@
 import type { KeyboardEvent, ReactNode, Ref } from "react";
 import { Button, type ButtonUnavailable } from "../button/button.tsx";
 import { TextArea } from "../input/text-area.tsx";
+import { type ChatComposerPicker, ChatPickerList, useChatPicker } from "./chat-picker.tsx";
 
 /** The props of `ChatComposer`. */
 export interface ChatComposerProps {
@@ -25,6 +26,12 @@ export interface ChatComposerProps {
   readonly line?: ReactNode;
   /** The box itself, so the feature can put focus in it after Try again or New chat. */
   readonly textRef?: Ref<HTMLTextAreaElement>;
+  /**
+   * A list the box opens above itself while the person types, such as a channel's `@` members.
+   * With it, the box is a combobox that names the active row, and ↑↓, Enter and Esc are the
+   * picker's while it's open.
+   */
+  readonly picker?: ChatComposerPicker | undefined;
 }
 
 /** The box grows to this many lines, then scrolls. */
@@ -38,6 +45,9 @@ const MAX_ROWS = 8;
  *
  * While `answering`, the button is **Stop**. It's the same button, so focus stays on it, and
  * after the reply it's **Send** again, still focused.
+ *
+ * With a `picker` open, ↑↓ move its active row, Enter picks it instead of sending, and Esc
+ * closes it. The box stays focused and points at the active row with `aria-activedescendant`.
  *
  * The line under the box sits in a status region that's always there, so a screen reader reads
  * the line once when it appears or changes.
@@ -56,6 +66,7 @@ const MAX_ROWS = 8;
 export function ChatComposer(props: ChatComposerProps) {
   const { value, answering, sendUnavailable } = props;
   const canSend = !answering && sendUnavailable === undefined && value.trim() !== "";
+  const picker = useChatPicker(props.picker);
 
   function send() {
     if (canSend) {
@@ -64,7 +75,7 @@ export function ChatComposer(props: ChatComposerProps) {
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key !== "Enter" || event.shiftKey) {
+    if (picker.handleKey(event) || event.key !== "Enter" || event.shiftKey) {
       return;
     }
     event.preventDefault();
@@ -73,6 +84,7 @@ export function ChatComposer(props: ChatComposerProps) {
 
   return (
     <div className="flex flex-col gap-2">
+      {props.picker === undefined ? null : <ChatPickerList picker={props.picker} state={picker} />}
       <div className="flex items-end gap-2">
         <div className="min-w-0 flex-1">
           <TextArea
@@ -83,6 +95,7 @@ export function ChatComposer(props: ChatComposerProps) {
             maxRows={MAX_ROWS}
             onChange={(event) => props.onChange(event.target.value)}
             onKeyDown={handleKeyDown}
+            {...picker.boxAttributes}
           />
         </div>
         {/* One key for both, so React keeps the one button and focus stays on it. */}

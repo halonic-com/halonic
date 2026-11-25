@@ -53,6 +53,10 @@ export {
 } from "./chat/chat-end-line.tsx";
 export { ChatLoading, type ChatLoadingProps } from "./chat/chat-loading.tsx";
 export { ChatMessage, type ChatMessageProps } from "./chat/chat-message.tsx";
+export type {
+  ChatComposerPicker,
+  ChatPickerOption,
+} from "./chat/chat-picker.tsx";
 export { ChatStart, type ChatStartProps } from "./chat/chat-start.tsx";
 export { ChatText, type ChatTextProps } from "./chat/chat-text.tsx";
 export {
