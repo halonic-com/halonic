@@ -56,7 +56,10 @@ verifies("cloudflare-durable.usage-overrides", () => {
         { unit: "cost", amount: 1, until: null },
       ];
       for (const overrides of wrong) {
-        const limits = acmeLimits({ version: 2, overrides: overrides as NonNullable<UsageLimits["overrides"]> });
+        const limits = acmeLimits({
+          version: 2,
+          overrides: overrides as NonNullable<UsageLimits["overrides"]>,
+        });
         expect(() => account.applyLimits(limits)).toThrow(RangeError);
       }
       const upgradable = acmeLimits({ version: 2, upgradable: ["minutes"] as never });
