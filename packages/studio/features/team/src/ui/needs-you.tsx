@@ -1,8 +1,9 @@
 import type { SeatState } from "@halonicjs/ports";
-import { Card, ChevronRightIcon, ListHeading } from "@halonicjs/studio-kit";
+import { ListHeading } from "@halonicjs/studio-kit";
 import type { SeatProblem } from "../seat-problems.ts";
 import { formatDayTime, formatTime, type TeamClock } from "../team-format.ts";
 import { type TeamLink, teamWords } from "../team-words.ts";
+import { LinkRow, RowChevron } from "./link-row.tsx";
 import { StateIcon } from "./seat-state.tsx";
 
 /**
@@ -54,7 +55,7 @@ function ProblemIcon({ kind }: { kind: SeatProblem["kind"] }) {
 
 /**
  * Needs you: one bordered row per seat problem, worst first, or one line when nothing needs the
- * board. Each row opens AI seats in Paperclip, where the seat is fixed. Only for a team with seats.
+ * board. Each row opens AI seats in Paperclip, where the seat is fixed, when links are on. Only for a team with seats.
  */
 export function NeedsYou(props: {
   problems: readonly SeatProblem[];
@@ -74,22 +75,19 @@ export function NeedsYou(props: {
             const [title, line] = problemLines(problem, clock);
             return (
               <li key={problem.seat.id}>
-                <Card onClick={() => onLink("ai-seats")}>
-                  <span className="flex items-start gap-3">
-                    <ProblemIcon kind={problem.kind} />
-                    <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="text-body-strong wrap-anywhere">{title}</span>
-                      <span className="sr-only">, </span>
-                      <span className="text-small text-fg-muted">{line}</span>
+                <LinkRow link="ai-seats" onLink={onLink}>
+                  {(opens) => (
+                    <span className="flex items-start gap-3">
+                      <ProblemIcon kind={problem.kind} />
+                      <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="text-body-strong wrap-anywhere">{title}</span>
+                        <span className="sr-only">, </span>
+                        <span className="text-small text-fg-muted">{line}</span>
+                      </span>
+                      {opens ? <RowChevron className="shrink-0 self-center" /> : null}
                     </span>
-                    <span
-                      aria-hidden="true"
-                      className="inline-grid size-icon-sm shrink-0 self-center text-fg-muted *:size-full"
-                    >
-                      <ChevronRightIcon />
-                    </span>
-                  </span>
-                </Card>
+                  )}
+                </LinkRow>
               </li>
             );
           })}

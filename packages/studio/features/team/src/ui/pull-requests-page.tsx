@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { Tabs } from "@halonicjs/studio-kit";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { pullRequestWords } from "../pull-request-words.ts";
 import type { PullRequestRow, PullRequests, PullRequestsState } from "../pull-requests.ts";
 import { formatTime, minutesSince, type TeamClock } from "../team-format.ts";
 import { type TeamLink, teamWords } from "../team-words.ts";
+import { useKeepFocus } from "./keep-focus.ts";
 import { LinkButton } from "./money-tiles.tsx";
 import { PullRequestRowView, type WebLinkOpener } from "./pull-request-row.tsx";
 
@@ -61,43 +63,79 @@ export function PullRequestsPage({ pullRequests, opener, onLink }: PullRequestsP
     };
   }, [pullRequests, changed]);
 
-  if (shown.kind === "loading") {
-    return (
-      <main aria-busy="true" aria-label={pullRequestWords.loadingSpoken}>
-        <h1>{pullRequestWords.place}</h1>
-        <p>{pullRequestWords.loading}</p>
-      </main>
-    );
-  }
+  // One frame for every state, so the main and h1 stay put when a read lands.
+  return (
+    <PullRequestsFrame shown={shown} clock={pullRequests.timeClock}>
+      <ShownBody
+        shown={shown}
+        clock={pullRequests.timeClock}
+        opener={opener}
+        onLink={onLink}
+        onTryAgain={readAgain}
+      />
+    </PullRequestsFrame>
+  );
+}
+
+/** The page's main and h1 in every state, with the snapshot's freshness once there is a read. */
+function PullRequestsFrame(props: { shown: Shown; clock: TeamClock; children: ReactNode }) {
+  const { shown, clock } = props;
+  const { heading, remember } = useKeepFocus();
+  const busy = shown.kind === "loading";
+  const read = shown.kind === "read" && shown.state.kind === "read" ? shown.state : undefined;
+  return (
+    <main
+      aria-busy={busy ? "true" : undefined}
+      aria-label={busy ? pullRequestWords.loadingSpoken : undefined}
+      className="flex flex-col gap-3 p-3"
+      onFocus={remember}
+    >
+      <header className="flex flex-wrap justify-between gap-x-4">
+        <h1 ref={heading} tabIndex={-1} className="outline-none">
+          {read === undefined ? pullRequestWords.place : pullRequestWords.title(read.repo)}
+        </h1>
+        {read === undefined ? null : <Freshness asOf={read.asOf} clock={clock} />}
+      </header>
+      {props.children}
+    </main>
+  );
+}
+
+/** What the frame holds: loading, a failed first read, why there are no rows, or the lists. */
+function ShownBody(props: {
+  shown: Shown;
+  clock: TeamClock;
+  opener: WebLinkOpener;
+  onLink: (link: TeamLink) => void;
+  onTryAgain: () => void;
+}) {
+  const { shown, clock } = props;
+  if (shown.kind === "loading") return <p>{pullRequestWords.loading}</p>;
   if (shown.kind === "failed") {
     return (
-      <main>
-        <h1>{pullRequestWords.place}</h1>
-        <p role="alert">
-          {teamWords.notAnswering} <TryAgain onPress={readAgain} />
-        </p>
-      </main>
+      <p role="alert">
+        {teamWords.notAnswering} <TryAgain onPress={props.onTryAgain} />
+      </p>
     );
   }
   const { state } = shown;
-  if (state.kind !== "read") return <Unavailable state={state} onLink={onLink} />;
+  if (state.kind !== "read") return <Unavailable state={state} onLink={props.onLink} />;
   return (
-    <main className="flex flex-col gap-3 p-3">
-      <Freshness asOf={state.asOf} repo={state.repo} clock={pullRequests.timeClock} />
+    <>
       {shown.failed ? (
         <p role="alert">
-          {pullRequestWords.offline(formatTime(state.asOf, pullRequests.timeClock))}{" "}
-          <TryAgain onPress={readAgain} />
+          {pullRequestWords.offline(formatTime(state.asOf, clock))}{" "}
+          <TryAgain onPress={props.onTryAgain} />
         </p>
       ) : null}
-      <Tabs rows={state.rows} clock={pullRequests.timeClock} opener={opener} />
-    </main>
+      <Lists rows={state.rows} clock={clock} opener={props.opener} />
+    </>
   );
 }
 
 function TryAgain({ onPress }: { onPress: () => void }) {
   return (
-    <button type="button" className="text-small text-accent" onClick={onPress}>
+    <button type="button" className="focus-ring text-small text-accent" onClick={onPress}>
       {teamWords.tryAgain}
     </button>
   );
@@ -110,35 +148,26 @@ function Unavailable(props: {
 }) {
   if (props.state.kind === "no-access") {
     return (
-      <main>
-        <h1>{pullRequestWords.place}</h1>
-        <p>
-          {pullRequestWords.cantRead} <LinkButton link="connect-again" onLink={props.onLink} />
-        </p>
-      </main>
+      <p>
+        {pullRequestWords.cantRead} <LinkButton link="connect-again" onLink={props.onLink} />
+      </p>
     );
   }
   return (
-    <main>
-      <h1>{pullRequestWords.place}</h1>
+    <>
       <p>{pullRequestWords.notAvailable}</p>
       {props.state.kind === "no-snapshot" ? <p>{pullRequestWords.noSnapshot}</p> : null}
-    </main>
+    </>
   );
 }
 
-function Freshness({ asOf, repo, clock }: { asOf: string; repo: string; clock: TeamClock }) {
+function Freshness({ asOf, clock }: { asOf: string; clock: TeamClock }) {
   const minutes = minutesSince(asOf, clock);
   const line = teamWords.asOf(formatTime(asOf, clock), minutes);
-  return (
-    <header className="flex justify-between">
-      <h1>{pullRequestWords.title(repo)}</h1>
-      {minutes > oldAfterMinutes ? (
-        <p role="status">{pullRequestWords.oldSnapshot(line)}</p>
-      ) : (
-        <p className="text-small text-fg-muted">{line}</p>
-      )}
-    </header>
+  return minutes > oldAfterMinutes ? (
+    <p role="status">{pullRequestWords.oldSnapshot(line)}</p>
+  ) : (
+    <p className="text-small text-fg-muted">{line}</p>
   );
 }
 
@@ -149,49 +178,66 @@ function worstFirst(a: PullRequestRow, b: PullRequestRow): number {
   return rank(a) - rank(b) || Date.parse(a.pullRequest.since) - Date.parse(b.pullRequest.since);
 }
 
-function Tabs(props: { rows: readonly PullRequestRow[]; clock: TeamClock; opener: WebLinkOpener }) {
+/**
+ * Needs attention and All open as the kit's tabs: the selected list is shown by more than colour,
+ * read as selected, and moved through with the arrow keys.
+ */
+function Lists(props: {
+  rows: readonly PullRequestRow[];
+  clock: TeamClock;
+  opener: WebLinkOpener;
+}) {
   const [tab, setTab] = useState<Tab>("attention");
+  const tabList = useRef<HTMLDivElement>(null);
+  // See all open removes itself, so focus moves to the All open tab instead of the page.
+  const focusAllOpen = useRef(false);
+  useEffect(() => {
+    if (!focusAllOpen.current) return;
+    focusAllOpen.current = false;
+    tabList.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus();
+  });
+  const seeAllOpen = () => {
+    focusAllOpen.current = true;
+    setTab("open");
+  };
   const stuck = props.rows.filter((row) => row.stuck.length > 0).sort(worstFirst);
-  const tabButton = (which: Tab, count: number) => (
-    <button type="button" aria-pressed={tab === which} onClick={() => setTab(which)}>
-      {pullRequestWords.tabs[which]} {count}
-    </button>
-  );
+  const tabs = [
+    { id: "attention", label: `${pullRequestWords.tabs.attention} ${stuck.length}` },
+    { id: "open", label: `${pullRequestWords.tabs.open} ${props.rows.length}` },
+  ] as const;
   const list = (title: string, rows: readonly PullRequestRow[]) => (
     <RowList key={title} title={title} rows={rows} clock={props.clock} opener={props.opener} />
   );
   return (
-    <>
-      <nav className="flex gap-2">
-        {tabButton("attention", stuck.length)}
-        {tabButton("open", props.rows.length)}
-      </nav>
-      {props.rows.length === 0 ? <p>{pullRequestWords.noOpen}</p> : null}
-      {props.rows.length > 0 && tab === "attention" ? (
-        <>
-          {stuck.length === 0 ? (
-            <p>
-              {pullRequestWords.nothingStuck(props.rows.length)}{" "}
-              <button
-                type="button"
-                className="text-small text-accent"
-                onClick={() => setTab("open")}
-              >
-                {pullRequestWords.seeAllOpen}
-              </button>
-            </p>
-          ) : (
-            list(pullRequestWords.stuckHeading, stuck)
-          )}
-          {list(pullRequestWords.comingUp, comingUp(props.rows))}
-        </>
-      ) : null}
-      {tab === "open"
-        ? byState(props.rows).map(([title, rows]) =>
-            list(title === "" ? "" : `${title} · ${rows.length}`, rows),
-          )
-        : null}
-    </>
+    <div ref={tabList}>
+      <Tabs label={pullRequestWords.listsLabel} tabs={tabs} selected={tab} onSelect={setTab}>
+        {props.rows.length === 0 ? <p>{pullRequestWords.noOpen}</p> : null}
+        {props.rows.length > 0 && tab === "attention" ? (
+          <>
+            {stuck.length === 0 ? (
+              <p>
+                {pullRequestWords.nothingStuck(props.rows.length)}{" "}
+                <button
+                  type="button"
+                  className="focus-ring text-small text-accent"
+                  onClick={seeAllOpen}
+                >
+                  {pullRequestWords.seeAllOpen}
+                </button>
+              </p>
+            ) : (
+              list(pullRequestWords.stuckHeading, stuck)
+            )}
+            {list(pullRequestWords.comingUp, comingUp(props.rows))}
+          </>
+        ) : null}
+        {tab === "open"
+          ? byState(props.rows).map(([title, rows]) =>
+              list(title === "" ? "" : `${title} · ${rows.length}`, rows),
+            )
+          : null}
+      </Tabs>
+    </div>
   );
 }
 

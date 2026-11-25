@@ -1,8 +1,9 @@
 import type { MessagingId, Seat } from "@halonicjs/ports";
-import { Card, ChevronRightIcon, ListHeading, StatusChip } from "@halonicjs/studio-kit";
+import { ListHeading, StatusChip } from "@halonicjs/studio-kit";
 import type { SeatProblem, SeatProblemKind } from "../seat-problems.ts";
 import { formatDayTime, formatTime, type TeamClock } from "../team-format.ts";
 import { type TeamLink, teamWords } from "../team-words.ts";
+import { LinkRow, RowChevron } from "./link-row.tsx";
 import { Amount, SmallLine, Tile } from "./money-tiles.tsx";
 import { StateIcon, stateTones } from "./seat-state.tsx";
 import { UsageMeter } from "./usage-meter.tsx";
@@ -180,25 +181,25 @@ function SeatRow(props: {
   onOpenSeat: ((seat: MessagingId) => void) | undefined;
 }) {
   const { seat, clock, onLink, onOpenSeat } = props;
-  const open = onOpenSeat === undefined ? () => onLink("ai-seats") : () => onOpenSeat(seat.id);
+  const openSeat = onOpenSeat === undefined ? undefined : () => onOpenSeat(seat.id);
   return (
-    <Card onClick={open}>
-      {/* A failed read keeps the last good numbers, greyed (Sofia's table 1.6). */}
-      <span className={seat.failedRead === undefined ? rowGrid : `${rowGrid} text-fg-muted`}>
-        <span className="min-w-0 w-full wrap-anywhere text-body-strong">
-          <Spoken column={seatColumn ?? ""} />
-          <SeatName seat={seat} />
+    <LinkRow link="ai-seats" onLink={onLink} onOpenInApp={openSeat}>
+      {(opens) => (
+        // A failed read keeps the last good numbers, greyed (Sofia's table 1.6).
+        <span className={seat.failedRead === undefined ? rowGrid : `${rowGrid} text-fg-muted`}>
+          <span className="min-w-0 w-full wrap-anywhere text-body-strong">
+            <Spoken column={seatColumn ?? ""} />
+            <SeatName seat={seat} />
+          </span>
+          <SeatMiddle seat={seat} clock={clock} />
+          <span className={desktopNumberCell}>
+            <Spoken column={agentsColumn ?? ""} />
+            {seat.agents.length}
+          </span>
+          {opens ? <RowChevron /> : <span />}
         </span>
-        <SeatMiddle seat={seat} clock={clock} />
-        <span className={desktopNumberCell}>
-          <Spoken column={agentsColumn ?? ""} />
-          {seat.agents.length}
-        </span>
-        <span aria-hidden="true" className="inline-grid size-icon-sm text-fg-muted *:size-full">
-          <ChevronRightIcon />
-        </span>
-      </span>
-    </Card>
+      )}
+    </LinkRow>
   );
 }
 

@@ -1,21 +1,27 @@
 import { Button, Card, SkeletonBar } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import { teamWords } from "../team-words.ts";
+import { useKeepFocus } from "./keep-focus.ts";
 
 /**
  * The page's frame in every state: its padding, the title in the page-title style, and the
  * freshness slot on the right ("As of 13:00 · 2 min ago", or "Loading…"). On a phone the slot
- * wraps under the title.
+ * wraps under the title. The screen keeps one frame mounted across loading, failed and read, so
+ * the main and h1 stay the same elements, and focus lands on the h1 when what had it goes away.
  */
 export function PageFrame(props: { freshness?: ReactNode; busy?: boolean; children: ReactNode }) {
+  const { heading, remember } = useKeepFocus();
   return (
     <main
       aria-busy={props.busy === true ? "true" : undefined}
       aria-label={props.busy === true ? teamWords.loadingSpoken : undefined}
       className="flex w-full flex-col gap-4 px-6 py-5 phone:px-4"
+      onFocus={remember}
     >
       <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h1 className="text-title">{teamWords.title}</h1>
+        <h1 ref={heading} tabIndex={-1} className="text-title outline-none">
+          {teamWords.title}
+        </h1>
         {props.freshness === undefined ? null : (
           <p className="text-small text-fg-muted">{props.freshness}</p>
         )}
@@ -63,10 +69,10 @@ function RowSkeleton() {
   );
 }
 
-/** Loading (HAL-17515 s08): the page's frame, with skeleton tiles and rows where the numbers go. */
-export function LoadingPage() {
+/** Loading (HAL-17515 s08): skeleton tiles and rows where the numbers go, inside the page's frame. */
+export function LoadingBody() {
   return (
-    <PageFrame busy freshness={teamWords.loading}>
+    <>
       <div className="flex gap-3 phone:flex-col">
         <TileSkeleton />
         <TileSkeleton />
@@ -77,6 +83,15 @@ export function LoadingPage() {
         <RowSkeleton />
         <RowSkeleton />
       </div>
+    </>
+  );
+}
+
+/** Loading as a whole page: the frame with the skeletons, for a page that has no other states yet. */
+export function LoadingPage() {
+  return (
+    <PageFrame busy freshness={teamWords.loading}>
+      <LoadingBody />
     </PageFrame>
   );
 }

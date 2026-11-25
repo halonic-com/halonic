@@ -216,3 +216,20 @@ verifies("kit.switch-row-target", () => {
     expect(header.className).not.toContain("min-h-touch");
   });
 });
+
+verifies("kit.card", () => {
+  it("keeps an unavailable card in the Tab order, names its reason and ignores clicks", () => {
+    const onClick = vi.fn();
+    const { container } = render(
+      <Card onClick={onClick} unavailable={{ reason: "why" }}>
+        Seat A
+      </Card>,
+    );
+    const button = container.querySelector("button") as HTMLButtonElement;
+    click(button);
+    expect(onClick).not.toHaveBeenCalled();
+    expect(button.getAttribute("aria-disabled")).toBe("true");
+    expect(button.getAttribute("aria-describedby")).toBe("why");
+    expect(button.disabled).toBe(false);
+  });
+});

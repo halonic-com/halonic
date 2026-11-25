@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import type { SpendAndSeats, SpendAndSeatsState } from "../spend-and-seats.ts";
 import type { TeamDetails } from "../team-details.ts";
+import type { TeamClock } from "../team-format.ts";
 import { type TeamLink, teamWords } from "../team-words.ts";
 import { AgentDetailPage, AllAgentsPage, SeatDetailPage, type TeamPage } from "./detail-pages.tsx";
 import { TeamLinks, type TeamLinksState } from "./money-tiles.tsx";
-import { LoadingPage, PageFrame, TryAgain } from "./page-frame.tsx";
-import { NoSeatsLine, ReadScreen } from "./read-screen.tsx";
+import { LoadingBody, PageFrame, TryAgain } from "./page-frame.tsx";
+import { NoSeatsLine, ReadBody, readFreshness } from "./read-screen.tsx";
 
 /** The props of {@link SpendAndSeatsPage}. */
 export interface SpendAndSeatsPageProps {
@@ -76,10 +77,13 @@ function DetailPage(props: {
 /** Never called: with no `onLink`, no link button is drawn. */
 function noLink(): void {}
 
+/** Where the detail pages are, for the screen's Agents by spend and seat rows. */
+type Pages = { details: TeamDetails; onOpen: (page: TeamPage) => void } | undefined;
+
 function SpendAndSeatsScreen(props: {
   spendAndSeats: SpendAndSeats;
   onLink: (link: TeamLink) => void;
-  pages: { details: TeamDetails; onOpen: (page: TeamPage) => void } | undefined;
+  pages: Pages;
 }) {
   const { spendAndSeats, onLink } = props;
   const [shown, setShown] = useState<Shown>({ kind: "loading" });
@@ -107,33 +111,56 @@ function SpendAndSeatsScreen(props: {
   }, [spendAndSeats, changed]);
 
   const clock = spendAndSeats.timeClock;
-  if (shown.kind === "loading") return <LoadingPage />;
+  // One frame for every state, so the main and h1 stay put when a read lands.
+  if (shown.kind === "loading") {
+    return (
+      <PageFrame busy freshness={teamWords.loading}>
+        <LoadingBody />
+      </PageFrame>
+    );
+  }
+  const state = shown.kind === "read" ? shown.state : undefined;
+  return (
+    <PageFrame freshness={state === undefined ? undefined : readFreshness(state, clock)}>
+      <ShownBody
+        shown={shown}
+        clock={clock}
+        onLink={onLink}
+        onTryAgain={readAgain}
+        pages={props.pages}
+      />
+    </PageFrame>
+  );
+}
+
+/** What the frame holds once loading is over: the read, or why there is none. */
+function ShownBody(props: {
+  shown: Exclude<Shown, { kind: "loading" }>;
+  clock: TeamClock;
+  onLink: (link: TeamLink) => void;
+  onTryAgain: () => void;
+  pages: Pages;
+}) {
+  const { shown, onLink } = props;
   if (shown.kind === "failed") {
     return (
-      <PageFrame>
-        <div role="alert" className="flex flex-col items-start gap-2">
-          <p>{teamWords.notAnswering}</p>
-          <TryAgain onPress={readAgain} />
-        </div>
-      </PageFrame>
+      <div role="alert" className="flex flex-col items-start gap-2">
+        <p>{teamWords.notAnswering}</p>
+        <TryAgain onPress={props.onTryAgain} />
+      </div>
     );
   }
-  const state = shown.state;
-  if (state === undefined) {
-    return (
-      <PageFrame>
-        <NoSeatsLine words={teamWords.seatsMissing} link="paperclip" onLink={onLink} />
-      </PageFrame>
-    );
+  if (shown.state === undefined) {
+    return <NoSeatsLine words={teamWords.seatsMissing} link="paperclip" onLink={onLink} />;
   }
   return (
-    <ReadScreen
-      state={state}
+    <ReadBody
+      state={shown.state}
       failed={shown.failed}
       readAt={shown.readAt}
-      clock={clock}
+      clock={props.clock}
       onLink={onLink}
-      onTryAgain={readAgain}
+      onTryAgain={props.onTryAgain}
       pages={props.pages}
     />
   );

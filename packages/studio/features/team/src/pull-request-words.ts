@@ -38,6 +38,8 @@ export const pullRequestWords = {
   offline: (time: string) => `Offline, as of ${time}. Rows stay as they were.`,
   oldSnapshot: (asOf: string) => `⚠ ${asOf}. The PR watcher may have stopped.`,
   tabs: { attention: "Needs attention", open: "All open" },
+  /** The name of the list switcher (a11y check TM4). */
+  listsLabel: "Pull request lists",
   stuckHeading: "Stuck · worst first",
   comingUp: "Coming up",
   nothingStuck: (open: number) =>
