@@ -1,0 +1,49 @@
+# The PR watcher's lifecycle of one pull request (HAL-18197), run by the engine inside the
+# Agent tools plugin beside today's watcher, in dry run. The plugin's pass works out each
+# watched pull request's stage from what the watcher read and the signal rule's actions
+# (rules/pr-watcher-lifecycle.ts) and sends it as the event `stage`; the guards read only
+# that event's data. No state calls a model, and the run writes nothing.
+id: pr-watcher
+name: Watched pull request
+description: A watched pull request from open to its task marked done.
+initial: open
+states:
+  open:
+    type: wait
+    description: Open; the watcher wakes its author on a new state.
+    on:
+      - to: merged
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", merged] }
+      - to: green
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", green] }
+      - to: done
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", done] }
+      - to: closed
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", closed] }
+  merged:
+    type: wait
+    description: Merged; waiting for `ci-ok` to pass on the merge.
+    on:
+      - to: green
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", green] }
+      - to: done
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", done] }
+  green:
+    type: wait
+    description: Merged with `ci-ok` green; the task waits for its other pull requests, its hold line or its author.
+    on:
+      - to: done
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", done] }
+  done:
+    type: final
+    description: The signal rule marks its task done.
+  closed:
+    type: final
+    description: Closed without a merge.

@@ -34,6 +34,7 @@
     "@paperclipai/plugin-sdk": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
+    "@typescript/typescript6": "catalog:",
     "esbuild": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

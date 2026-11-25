@@ -10,6 +10,7 @@ import type { Clock, IdGenerator } from "@halonicjs/ports";
 import fastTrackWorkflowText from "./fast-track.workflow.yaml";
 import { PluginStateBlobStore } from "./plugin-blob-store.ts";
 import { PluginStateRunStore, type RunStateClient } from "./plugin-run-store.ts";
+import prWatcherWorkflowText from "./pr-watcher.workflow.yaml";
 import { TickScheduler } from "./tick-scheduler.ts";
 
 /**
@@ -29,16 +30,23 @@ const maxDrainRounds = 50;
 
 type DefinitionsOf = (hubId: string, workflowId: string) => Promise<RunDefinitions>;
 
+/** The plugin's workflows, by id, as their YAML text. */
+const workflowTexts: Readonly<Record<string, string>> = {
+  "fast-track": fastTrackWorkflowText,
+  "pr-watcher": prWatcherWorkflowText,
+};
+
 /** The plugin's workflows, parsed once per engine, by id. */
 function pluginDefinitions(): DefinitionsOf {
-  const parsed = parseFile("workflow", fastTrackWorkflowText, { id: "fast-track" });
-  if (!parsed.ok) {
-    const problems = parsed.error.map((problem) => problem.message).join("; ");
-    throw new Error(`The fast-track workflow doesn't parse: ${problems}`);
+  const workflows: Record<string, RunDefinitions["workflow"]> = {};
+  for (const [id, text] of Object.entries(workflowTexts)) {
+    const parsed = parseFile("workflow", text, { id });
+    if (!parsed.ok) {
+      const problems = parsed.error.map((problem) => problem.message).join("; ");
+      throw new Error(`The ${id} workflow doesn't parse: ${problems}`);
+    }
+    workflows[id] = parsed.value.value;
   }
-  const workflows: Readonly<Record<string, RunDefinitions["workflow"]>> = {
-    "fast-track": parsed.value.value,
-  };
   return async (_hubId, workflowId) => {
     const workflow = workflows[workflowId];
     if (workflow === undefined) {

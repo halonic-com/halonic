@@ -38,6 +38,7 @@ import type { LifecycleRunner } from "./fast-track-lifecycle-job.ts";
 import { type HostApi, paperclipHost, unblockHost } from "./host.ts";
 import { passStateKey } from "./merge-control-lock.ts";
 import { countingFetch, type MetricsApi, writeMetrics } from "./metrics.ts";
+import { prWatcherSignalPass, watcherRecorder } from "./signal-pass-job.ts";
 import {
   readStackRebaseSettings,
   type StackRebaseSettings,
@@ -328,6 +329,8 @@ async function watchCompany(
   const paperclip = paperclipHost(ctx, companyId);
   // Kept from the pass, so the monitors are counted without reading the tasks twice.
   let tasks: TaskRow[] = [];
+  // What the watcher decided from, for the signal rule beside it (HAL-18197).
+  const recorder = watcherRecorder();
   const summary = await tick({
     paperclip: {
       ...paperclip,
@@ -347,6 +350,7 @@ async function watchCompany(
     rebaseOnly: gitHubRebaseOnly(get, stackRebase?.tried.baseOf),
     conflictFiles: gitHubConflictFiles(get),
     held: await heldOf(ctx, companyId, settings.repos[0] ?? defaultRepos[0] ?? ""),
+    observe: recorder.observe,
     ...(stackRebase === undefined ? {} : { stackRebase }),
   });
   // After the watcher's tick, so a task it just marked done unblocks its dependents in the same pass.
@@ -356,6 +360,11 @@ async function watchCompany(
     log: (line) => ctx.logger.info(line, { companyId }),
   });
   const watcherCalls = requests() - snapshotCalls;
+  // In dry run beside the watcher's tick, from what it read: logs only, and a failure is logged.
+  const signalled = await prWatcherSignalPass(ctx, companyId, recorder.tasks(), now);
+  if (signalled !== undefined) {
+    await lifecycle?.runPrWatcher(companyId, signalled);
+  }
   // After the watcher's tick, from the tasks it read; a failure is logged inside.
   await runMergeWatchers(ctx, {
     companyId,

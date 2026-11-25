@@ -48,7 +48,21 @@ export interface TickOptions {
   readonly stackRebase?: StackRebase;
   /** The heads merge control holds after a failed merge group (HAL-18147); none when unset. */
   readonly held?: readonly HeldHead[];
+  /**
+   * Hears each task the watcher decided on from its pull requests, with the
+   * facts and memory it decided from, so the signal pass reads the same
+   * (HAL-18197); nothing when unset.
+   */
+  readonly observe?: TaskObserver;
 }
+
+/** Called with what the watcher read about one task its author holds. */
+export type TaskObserver = (
+  task: TaskRow,
+  ownerId: string | undefined,
+  pulls: readonly PullFacts[],
+  memory: Memory,
+) => void;
 
 /** How a tick went: counts, and the tasks it couldn't check. */
 export interface TickSummary {
@@ -239,6 +253,7 @@ async function decideTask(
     ownerId !== undefined && ownerId === task.assigneeAgentId && needsMemory(task, pulls)
       ? readMemory(await options.paperclip.comments(task.id), ownerId)
       : emptyMemory;
+  options.observe?.(task, ownerId, pulls, memory);
   return stackStep(options, task, decide(task, ownerId, pulls, memory));
 }
 
