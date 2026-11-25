@@ -21,6 +21,13 @@ export const probeMessage = "Click test: are you there?";
 export const engineAnswers: Step = {
   id: "engine-answers",
   title: "The engine answers",
+  requirements: [
+    "shell.welcome-start",
+    "shell.welcome-sample",
+    "agents.chat.try-it",
+    "agents.chat.engine-quiet",
+    "studio.workspace-agents-chat",
+  ],
   run: async (context) => {
     const opened = await openDemo(context);
     if (!opened.passed) return withShellLog(context, opened);

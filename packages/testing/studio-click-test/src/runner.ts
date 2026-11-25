@@ -32,6 +32,11 @@ export interface Step {
   readonly id: string;
   /** What the step checks, as the results table says it. */
   readonly title: string;
+  /**
+   * The repo's requirement ids the step checks on the installed app, such as
+   * `messenger.not-connected`, shown in the results table (HAL-18862).
+   */
+  readonly requirements: readonly string[];
   /** The ids of earlier steps it can't do without; it is skipped when one didn't pass. */
   readonly needs?: readonly string[];
   /** Clicks through the step and says whether the right screen showed. */
@@ -43,6 +48,7 @@ export interface StepResult {
   readonly number: number;
   readonly id: string;
   readonly title: string;
+  readonly requirements: readonly string[];
   readonly verdict: "passed" | "failed" | "skipped" | "not run";
   readonly code?: string;
   readonly note?: string;
@@ -72,7 +78,7 @@ export async function runSteps(
   let broken: string | undefined;
   for (const [index, step] of steps.entries()) {
     const number = index + 1;
-    const row = { number, id: step.id, title: step.title };
+    const row = { number, id: step.id, title: step.title, requirements: step.requirements };
     const missing = results.find(
       (result) => step.needs?.includes(result.id) && result.verdict !== "passed",
     );
@@ -99,7 +105,7 @@ export async function runSteps(
 
 async function runAndRecord(
   step: Step,
-  row: Pick<StepResult, "number" | "id" | "title">,
+  row: Pick<StepResult, "number" | "id" | "title" | "requirements">,
   context: StepContext,
   saveScreenshot: SaveScreenshot,
 ): Promise<StepResult> {
