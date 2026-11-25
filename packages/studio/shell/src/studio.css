@@ -6,6 +6,9 @@
 
 @import "tailwindcss";
 @import "@halonicjs/studio-kit";
+/* Inter, bundled with the app. Only the desktop window takes it: the phone's connect page has a
+   size limit the two font files would break (HAL-18694). */
+@import "@halonicjs/studio-kit/fonts";
 
 /* Required, not optional: the kit and the Studio packages reach the app through node_modules
    links, and Tailwind skips node_modules. The paths are relative to this file. */

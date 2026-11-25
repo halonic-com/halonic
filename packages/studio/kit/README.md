@@ -50,8 +50,10 @@ Code that needs a value outside CSS (a canvas, a code editor theme) reads the CS
 
 The kit ships Inter (the variable fonts of the official 4.1 release, upright and italic, SIL Open
 Font License 1.1) in `src/fonts/`, with `@font-face` rules in `src/theme-font.css` under the family
-name "Inter Variable", the first name in `--font-sans`. The app's Vite build copies the two files
-into the bundle, so every computer shows Inter and nothing is fetched over the network. Both files
+name "Inter Variable", the first name in `--font-sans`. The theme doesn't import them: the desktop
+Studio's entry CSS adds `@import "@halonicjs/studio-kit/fonts";` after the kit, and the app's
+Vite build copies the two files into the bundle, so every computer shows Inter and nothing is
+fetched over the network. The phone's connect page leaves them out, because of its size limit. Both files
 are listed under `vendored` in `tooling/check/licences.json`, so the release notices credit them.
 
 ## Light and dark

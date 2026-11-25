@@ -7,6 +7,9 @@
     ".": {
       "style": "./src/theme.css",
       "default": "./src/index.ts"
+    },
+    "./fonts": {
+      "style": "./src/theme-font.css"
     }
   },
   "scripts": {
