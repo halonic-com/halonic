@@ -84,6 +84,20 @@ verifies("kit.chat-composer-picker", () => {
       expect(active(container, box)).toBe("Elena");
     });
 
+    it("sets option names in body type, at a 48px row on a phone", () => {
+      const { container } = composer();
+      const option = container.querySelector("[role=option]");
+      const classes = option?.className.split(" ") ?? [];
+      expect(classes).toEqual(
+        expect.arrayContaining([
+          "text-body",
+          "min-h-control-md",
+          "phone:min-h-touch",
+          "touch:min-h-touch",
+        ]),
+      );
+    });
+
     it("picks the active option on Enter and sends nothing", () => {
       const { props, box } = composer();
       press(box, "ArrowDown");

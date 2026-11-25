@@ -6,7 +6,7 @@
 
 import type { AgentMessaging } from "@halonicjs/ports";
 import { NarrowProvider, OpenExternalProvider } from "@halonicjs/studio-kit";
-import { act } from "react";
+import { act, StrictMode } from "react";
 import { Messenger } from "../messenger.ts";
 import { MessengerPage } from "../ui/messenger-page.tsx";
 import { render } from "./render.tsx";
@@ -20,7 +20,8 @@ export async function settle(): Promise<void> {
 
 /**
  * Renders the Messenger and lets its first reads land; links it opens go to `opened`. `narrow`
- * renders it in a window narrower than 900px.
+ * renders it in a window narrower than 900px. Strict mode, as Studio renders every page, so an
+ * effect that can't run twice fails here too.
  */
 export async function openMessenger(
   messaging: AgentMessaging,
@@ -28,11 +29,13 @@ export async function openMessenger(
   narrow = false,
 ): Promise<HTMLElement> {
   const page = render(
-    <NarrowProvider narrow={narrow}>
-      <OpenExternalProvider openExternal={async (address) => void opened.push(await address)}>
-        <MessengerPage messenger={new Messenger(messaging)} />
-      </OpenExternalProvider>
-    </NarrowProvider>,
+    <StrictMode>
+      <NarrowProvider narrow={narrow}>
+        <OpenExternalProvider openExternal={async (address) => void opened.push(await address)}>
+          <MessengerPage messenger={new Messenger(messaging)} />
+        </OpenExternalProvider>
+      </NarrowProvider>
+    </StrictMode>,
   );
   await settle();
   return page;

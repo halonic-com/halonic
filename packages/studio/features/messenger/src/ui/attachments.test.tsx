@@ -6,15 +6,25 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { byText, openChat, openMessenger, press, typeAndSend } from "../test-support/page.tsx";
 import { unmountAll } from "../test-support/render.tsx";
 
-/** The picture decoder and canvas jsdom lacks; the test only checks what was drawn and from what. */
+/**
+ * The picture decoder and canvas jsdom lacks; the test only checks what was drawn and from what. A
+ * closed bitmap refuses to be drawn, as a browser's does.
+ */
 const drawn: unknown[] = [];
 
 beforeEach(() => {
-  vi.stubGlobal("createImageBitmap", (blob: Blob) =>
-    Promise.resolve({ width: 2, height: 1, close: () => {}, blob }),
-  );
+  vi.stubGlobal("createImageBitmap", (blob: Blob) => {
+    const picture = { width: 2, height: 1, closed: false, close: () => {}, blob };
+    picture.close = () => {
+      picture.closed = true;
+    };
+    return Promise.resolve(picture);
+  });
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
-    drawImage: (picture: unknown) => drawn.push(picture),
+    drawImage: (picture: { readonly closed: boolean }) => {
+      if (picture.closed) throw new Error("The picture was closed before it was drawn.");
+      drawn.push(picture);
+    },
   } as unknown as CanvasRenderingContext2D);
 });
 

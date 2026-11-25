@@ -107,7 +107,8 @@ export function useChatPicker(picker: ChatComposerPicker | undefined): ChatPicke
  * contrast shows it as an edge as well (HAL-18316 KT1).
  */
 const optionClasses = [
-  "cursor-pointer rounded-md px-2 py-1 text-start aria-selected:bg-surface-muted",
+  "flex min-h-control-md cursor-pointer items-center rounded-md px-2 py-1 text-start text-body",
+  "phone:min-h-touch touch:min-h-touch aria-selected:bg-surface-muted",
   "outline-2 -outline-offset-2 outline-transparent aria-selected:outline-solid",
   "contrast-more:aria-selected:outline-border-control",
 ].join(" ");

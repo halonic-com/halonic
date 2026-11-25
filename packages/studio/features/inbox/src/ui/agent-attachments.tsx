@@ -107,16 +107,22 @@ function ImageAttachment({
 
 /**
  * Draws the decoded picture at its own size, never wider than the card. **Show image** is gone
- * once it's drawn, so focus moves to the picture instead of falling to the page.
+ * once it's drawn, so focus moves to the picture instead of falling to the page. It's drawn once:
+ * strict mode runs the effect again after its cleanup has closed the bitmap, and the canvas keeps
+ * its pixels.
  */
 function Picture({ picture, name }: { readonly picture: ImageBitmap; readonly name: string }) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const drawn = useRef<ImageBitmap>(undefined);
   useEffect(() => {
     const target = canvas.current;
     if (target === null) return;
-    target.width = picture.width;
-    target.height = picture.height;
-    target.getContext("2d")?.drawImage(picture, 0, 0);
+    if (drawn.current !== picture) {
+      target.width = picture.width;
+      target.height = picture.height;
+      target.getContext("2d")?.drawImage(picture, 0, 0);
+      drawn.current = picture;
+    }
     target.focus();
     return () => picture.close();
   }, [picture]);
@@ -126,7 +132,7 @@ function Picture({ picture, name }: { readonly picture: ImageBitmap; readonly na
       role="img"
       aria-label={markHiddenName(name)}
       tabIndex={-1}
-      className="h-auto max-w-full self-start rounded-sm border border-border"
+      className="h-auto max-w-full self-start rounded-sm border border-border focus-ring"
     />
   );
 }
