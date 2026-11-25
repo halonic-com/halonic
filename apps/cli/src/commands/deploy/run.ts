@@ -43,10 +43,11 @@ import {
   deploySummary,
 } from "../../output/deploy-plan.ts";
 import { deployStopped } from "../../output/deploy-stop.ts";
-import { openGitHistory } from "../../run-workspace.ts";
+import { HistoryUnavailableError } from "../../run-workspace.ts";
 import { halonicVersion } from "../../version.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
+import { openDeployHistory } from "./history.ts";
 
 /** Thrown where nobody can answer `Deploy? [y/N]`, so the service lists every missing answer. */
 class NobodyToAsk extends Error {
@@ -61,6 +62,7 @@ class NobodyToAsk extends Error {
  * @throws UsageError with more than one name, none and no Cloudflare deployment (or no
  *   deployment at all), or `--exit-code` without `--plan`
  * @throws KindedError `invalid_input` when the workspace isn't in a git repository with a commit
+ * @throws HistoryUnavailableError when git doesn't start or drops Halonic's git settings
  * @throws KindedError from the gate, and from the deploy app service through `deployFailure`
  */
 export async function runDeploy(
@@ -75,7 +77,10 @@ export async function runDeploy(
   if (extra.length > 0) throw new UsageError(words.oneDeployment());
   const dir = await openWorkspaceDir(input, context);
   const here = workspaceNameOf(await loadWorkspace(dir.store), dir);
-  const history = await (setup.openHistory ?? openGitHistory)(dir.root);
+  // A git that drops Halonic's git settings, or doesn't start, says so and its fix (HAL-18200).
+  const history = await (setup.openHistory ?? openDeployHistory)(dir.root).catch((error: unknown) =>
+    Promise.reject(new HistoryUnavailableError(deployMessages.nothingChanged(), error)),
+  );
   if (history === null) throw notARepository(here);
   try {
     const [head] = await history.vcs.log(1).catch(() => []);
