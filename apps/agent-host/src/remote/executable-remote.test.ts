@@ -21,7 +21,11 @@ class FakeTailscale implements TailscaleRunner {
   /** Where the serve entry proxies to, while there is one. */
   target: string | undefined;
 
-  constructor(readonly installed = true) {}
+  readonly installed: boolean;
+
+  constructor(installed = true) {
+    this.installed = installed;
+  }
 
   async run(args: readonly string[]): Promise<TailscaleReply> {
     this.calls.push([...args]);
