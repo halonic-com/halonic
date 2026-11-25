@@ -12,9 +12,9 @@
 #      proves it starts, so after 180 s the installer kept for 0.1.1 puts
 #      0.1.1 back, which then reports that 0.1.2 didn't install.
 #   5. The 0.1.2 installer run by hand (`/S`) installs over 0.1.1.
-# The fresh install, the update in 1 and the install in 5 each leave the
-# Halonic Inbox and Halonic Messenger shortcuts; before 1 and 5 they are
-# taken away, as a version without them leaves the Start menu (HAL-18322).
+# The fresh install, the update in 1 and the install in 5 each leave exactly
+# Halonic, Halonic Inbox and Halonic Messenger in the Start menu; before 1
+# and 5 it gets an older version's shortcuts (HAL-18322).
 # The updater is driven through the Studio page's own update_* commands
 # (update-driver.mjs), so the test takes the path a person takes.
 param(
@@ -26,7 +26,7 @@ param(
   [Parameter(Mandatory)][string]$Serve
 )
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot 'focused-apps.ps1')
+. (Join-Path $PSScriptRoot 'start-menu.ps1')
 $port = 8765
 $devtools = 9222
 $address = "http://127.0.0.1:$port"
@@ -197,8 +197,8 @@ try {
   $p = Start-Process $OldSetup -ArgumentList '/S' -Wait -PassThru
   if ($p.ExitCode -ne 0) { throw "the 0.1.0 installer exited with $($p.ExitCode)" }
   if ((Get-InstalledVersion) -ne '0.1.0') { throw "installed $(Get-InstalledVersion), not 0.1.0" }
-  Assert-FocusedAppShortcuts $dir 'a fresh install'
-  Remove-FocusedAppShortcuts
+  Assert-StartMenu $dir 'a fresh install'
+  Set-OlderStartMenu $dir
   $workspace = Join-Path $env:RUNNER_TEMP 'update-workspace'
   $seeded = @{
     (Join-Path $profileFolder 'settings\host.json')                      = '{"version":1,"values":{}}'
@@ -238,7 +238,7 @@ try {
   }
   $entry = Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Halonic'
   if ($entry.DisplayVersion -ne '0.1.1') { throw "the uninstall entry says $($entry.DisplayVersion)" }
-  Assert-FocusedAppShortcuts $dir 'the update to 0.1.1'
+  Assert-StartMenu $dir 'the update to 0.1.1'
   # The new version's first start reads the install record and clears it,
   # then proves it starts, and the installer kept for 0.1.0 goes.
   Wait-Until { $saved = Get-Record; $saved -and -not $saved.install } 60 "0.1.1 clearing the install record"
@@ -314,11 +314,11 @@ try {
   # last one (HAL-18308). Halonic and the way back are closed first.
   Stop-Halonic
   Get-Process -Name ([IO.Path]::GetFileNameWithoutExtension($BrokenSetup)) -ErrorAction SilentlyContinue | Stop-Process -Force
-  Remove-FocusedAppShortcuts
+  Set-OlderStartMenu $dir
   $p = Start-Process $BrokenSetup -ArgumentList '/S' -Wait -PassThru
   if ($p.ExitCode -ne 0) { throw "the 0.1.2 installer over 0.1.1 exited with $($p.ExitCode)" }
   if ((Get-InstalledVersion) -ne '0.1.2') { throw "installed $(Get-InstalledVersion) by hand, not 0.1.2" }
-  Assert-FocusedAppShortcuts $dir 'an install over 0.1.1'
+  Assert-StartMenu $dir 'an install over 0.1.1'
   Write-Output 'update test passed'
 } finally {
   Stop-Halonic
