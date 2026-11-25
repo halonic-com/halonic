@@ -54,6 +54,7 @@ export interface PaperclipTask {
   readonly parentId: string | null;
   readonly description: string | null;
   readonly monitorNextCheckAt?: Date | string | null;
+  readonly executionState?: { readonly monitor?: { readonly attemptCount?: number } | null } | null;
 }
 
 /** Another task as the SDK's `issues.relations.get` names it. */
@@ -109,6 +110,87 @@ export interface PaperclipEvent {
   readonly payload: unknown;
 }
 
+/** A task as the host's issue client returns it: only the fields the actions read. */
+export interface IssueRecord {
+  readonly id: string;
+  readonly identifier?: string | null;
+  readonly status: string;
+  readonly assigneeAgentId?: string | null;
+  readonly monitorNextCheckAt?: Date | string | null;
+  readonly executionState?: { readonly monitor?: { readonly attemptCount?: number } | null } | null;
+}
+
+/** The change the plain issue update takes, as far as the actions use it. */
+export interface IssuePatch {
+  readonly status?: string;
+  readonly assigneeAgentId?: string;
+  readonly blockedByIssueIds?: string[];
+}
+
+/** Who a plain update is made for: the calling agent and its run. */
+export interface IssueActor {
+  readonly actorAgentId: string;
+  readonly actorRunId: string;
+}
+
+/** A monitor as Paperclip's update route stores it. */
+export interface MonitorPolicy {
+  readonly nextCheckAt: string;
+  readonly notes: string | null;
+  readonly scheduledBy: "assignee";
+  readonly kind: "external_service";
+  readonly serviceName: string;
+  readonly externalRef: string;
+  readonly timeoutAt: string;
+  readonly maxAttempts: number;
+}
+
+/** The change `issues.setDisposition` takes: the plain change plus the comment and the monitor. */
+export interface DispositionPatch extends IssuePatch {
+  readonly comment: string;
+  readonly monitor?: MonitorPolicy | null;
+}
+
+/** `issues.setDisposition`'s answer: the route's status and body. */
+export interface DispositionResult {
+  readonly ok: boolean;
+  readonly status: number;
+  readonly body: unknown;
+}
+
+/** The host's issue client: the reads, a comment, a plain update and, on some hosts, `setDisposition`. */
+export interface IssuesClient extends PaperclipTaskReads {
+  createComment(
+    issueId: string,
+    body: string,
+    companyId: string,
+    options?: { readonly authorAgentId?: string },
+  ): Promise<{ readonly id: string }>;
+  update(
+    issueId: string,
+    patch: IssuePatch,
+    companyId: string,
+    actor?: IssueActor,
+  ): Promise<IssueRecord>;
+  /**
+   * Halonic's server only (halonic-com/server#31): the change sent through
+   * Paperclip's own update route as the calling run, with its disposition
+   * guard. Another Paperclip has no such method.
+   */
+  setDisposition?(
+    issueId: string,
+    companyId: string,
+    patch: DispositionPatch,
+  ): Promise<DispositionResult>;
+}
+
+/** An agent as the host's agent list returns it. */
+export interface AgentRecord {
+  readonly id: string;
+  readonly name: string;
+  readonly urlKey: string;
+}
+
 /** The plugin host's clients the runtime calls. */
 export interface RuntimeHost {
   readonly tools: {
@@ -126,9 +208,9 @@ export interface RuntimeHost {
     list(input: {
       readonly companyId: string;
       readonly limit?: number;
-    }): Promise<readonly { readonly id: string; readonly urlKey: string; readonly name: string }[]>;
+    }): Promise<readonly AgentRecord[]>;
   };
-  readonly issues: PaperclipTaskReads;
+  readonly issues: IssuesClient;
   readonly config: { get(companyId: string): Promise<Record<string, unknown>> };
   readonly secrets: {
     resolve(ref: SecretRef, options: { readonly companyId: string }): Promise<string>;
@@ -163,4 +245,9 @@ export type Capability =
   | "issue.comments.read"
   | "issue.documents.read"
   | "issue.relations.read"
-  | "events.subscribe";
+  | "events.subscribe"
+  | "issue.comments.create"
+  | "issues.update";
+
+/** The capabilities that let an action change something; only a writing action may have them. */
+export const writeCapabilities: readonly Capability[] = ["issue.comments.create", "issues.update"];

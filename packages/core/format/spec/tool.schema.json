@@ -384,6 +384,90 @@
             "run"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "run": {
+              "type": "string",
+              "const": "paperclip.comment"
+            },
+            "with": {
+              "default": {},
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "default": "dry-run",
+                  "type": "string",
+                  "enum": [
+                    "dry-run",
+                    "write"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "run"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "run": {
+              "type": "string",
+              "const": "paperclip.next-step"
+            },
+            "with": {
+              "default": {},
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "default": "dry-run",
+                  "type": "string",
+                  "enum": [
+                    "dry-run",
+                    "write"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "run"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "run": {
+              "type": "string",
+              "const": "paperclip.finish-run"
+            },
+            "with": {
+              "default": {},
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "default": "dry-run",
+                  "type": "string",
+                  "enum": [
+                    "dry-run",
+                    "write"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "run"
+          ],
+          "additionalProperties": false
         }
       ]
     }

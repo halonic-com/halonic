@@ -64,6 +64,16 @@ while the plugin is down are missing, and the answer says since when it has been
 A tool's `callers` name agents by their `urlKey`, compared without case. An agent's display name
 never counts, because two agents can share one.
 
+## Writing actions
+
+`paperclip.comment`, `paperclip.next-step` and `paperclip.finish-run` are the only actions that
+change anything. Each checks everything first, then writes only when the tool file sets
+`mode: write`; otherwise (`dry-run`, the default) it answers the writes it would make. The agent's
+parameters never pick the mode. A task change goes through `issues.setDisposition` when the host
+has it (Halonic's server), and through the comment and the plain issue update otherwise; without
+`setDisposition` no monitor can be set, so `in_progress` is refused there. Each action reaches only
+the Paperclip clients its handler declares capabilities for.
+
 ## Keys
 
 The runtime reads GitHub only with the read token the installer sets as the `githubToken` secret

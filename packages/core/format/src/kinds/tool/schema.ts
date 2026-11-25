@@ -107,6 +107,9 @@ export const ToolActionChoice = s.discriminatedUnion("run", [
   actionChoice("paperclip.task"),
   actionChoice("paperclip.failed-runs"),
   actionChoice("paperclip.template"),
+  actionChoice("paperclip.comment"),
+  actionChoice("paperclip.next-step"),
+  actionChoice("paperclip.finish-run"),
 ]);
 
 /** A workspace tool, as `library/tools/<id>.tool.yaml` holds it. */

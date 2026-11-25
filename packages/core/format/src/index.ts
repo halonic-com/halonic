@@ -146,6 +146,7 @@ export {
   type ToolActionName,
   toolActionInfo,
   toolActionNames,
+  type WriteModeName,
 } from "./kinds/tool/actions.ts";
 export { checkTool } from "./kinds/tool/checks.ts";
 export type { Tool, ToolCallers, ToolParameter } from "./kinds/tool/schema.ts";

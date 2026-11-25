@@ -4,6 +4,7 @@ import { describe, expect, test } from "vitest";
 import { acmeTool } from "../fake-host.test-helper.ts";
 import type { GitHubGet } from "../github.ts";
 import { type ActionCall, runtimeHandlers } from "../handlers.ts";
+import { paperclipAccess } from "../paperclip-access.ts";
 import { branchPath } from "./reads.ts";
 
 /** The invented `acme` repository and a pull request on it. */
@@ -96,9 +97,16 @@ function run(
     templates: [],
     caller,
     companyId: "acme",
-    now: new Date("2026-11-24T12:00:00Z"),
-    paperclip: { agents: { list: async () => agents } } as unknown as ActionCall["paperclip"],
     github: async () => github,
+    paperclip: paperclipAccess(
+      { agents: { list: async () => agents } } as never,
+      handler.capabilities,
+      {
+        companyId: "acme",
+        runId: "run-1",
+      },
+    ),
+    now: new Date("2026-11-24T12:00:00Z"),
   };
   return handler.run(call);
 }
@@ -279,12 +287,10 @@ verifies("runtime.tools", () => {
     // Each read action moves in from `tooling/paperclip` under its own task (HAL-18139).
     const notYetMoved = ["github.merge-queue"];
 
-    test("cover every read action but the ones still moving, and no handler needs a writing capability", () => {
+    test("cover every read action but the ones still moving, and no read handler needs a writing capability", () => {
       const reads = toolActionNames().filter((name) => !toolActionInfo(name).writes);
       expect(reads.filter((name) => runtimeHandlers[name] === undefined)).toEqual(notYetMoved);
-      const asked = Object.values(runtimeHandlers).flatMap(
-        (handler) => handler?.capabilities ?? [],
-      );
+      const asked = reads.flatMap((name) => runtimeHandlers[name]?.capabilities ?? []);
       expect(asked.filter((capability) => /create|update|write|delete/.test(capability))).toEqual(
         [],
       );
