@@ -2,6 +2,7 @@
 
 - Approval: Liam reviews this on HAL-18013; the design was confirmed on HAL-18023
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:KoNjRcYX2YdMfOoDPJSxqJnSB5/0aZ01+RUqgxqa91mbac0NVSrcann2YFd2eirsI97rtOcsSYLrfR1FIV2EBw==
 
 `@halonicjs/adapter-harness-kit`, `@halonicjs/adapter-harness-claude-code` and `@halonicjs/adapter-harness-codex`
 each get a `./web` entry that reaches no `node:` or third-party code, so the Cloudflare Worker can run harness
