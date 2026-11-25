@@ -4,7 +4,8 @@
   "type": "module",
   "description": "Tools that run beside Paperclip without a model: the Agent tools plugin with its PR watcher, and the reviewer path list.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./routing": "./src/routing-load.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",

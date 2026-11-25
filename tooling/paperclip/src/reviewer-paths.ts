@@ -4,6 +4,8 @@
  * other script that routes work import it from here, so they can't drift
  * apart.
  */
+import type { Routing } from "@halonicjs/format";
+import { personFor } from "./routing.ts";
 
 /** Exact files only Liam reviews. The root `package.json` counts too. */
 export const liamFiles: readonly string[] = [
@@ -18,6 +20,13 @@ export const liamFiles: readonly string[] = [
   "tooling/paperclip/src/reviewer-paths.ts",
   "tooling/paperclip/src/reviewer-paths.test.ts",
   "tooling/paperclip/requirements/reviewer-paths.md",
+  // Who covers each role: the routing is a trust root (HAL-17982).
+  "tooling/paperclip/src/routing.ts",
+  "tooling/paperclip/src/routing-load.ts",
+  "tooling/paperclip/src/routing.test.ts",
+  "tooling/paperclip/requirements/reviewer-routing.md",
+  "packages/core/format/src/snapshot/routing.ts",
+  "packages/core/format/requirements/workspace-routing.md",
   // The Paperclip provider's fixed request list: a new entry widens what the board key may do (HAL-17467).
   "packages/adapters/paperclip-client/src/requests.ts",
   // Its sign-in list: starting a sign-in makes a board key (board exception, HAL-17439).
@@ -235,13 +244,29 @@ function isLiamPackageChange(pull: RoutedPull): boolean {
   );
 }
 
-/** `julian` when the pull request fits all of Julian's limits, otherwise `liam`. */
-export function reviewerFor(pull: RoutedPull): "julian" | "liam" {
+/**
+ * The role that reviews a pull request: `second-reviewer` when it fits all
+ * of the second reviewer's limits (Julian's, HAL-14809), otherwise
+ * `code-reviewer`. The paths, words and sizes stay here; who covers each
+ * role comes from the routing (`routing.ts`).
+ */
+export function reviewerRoleFor(pull: RoutedPull): "second-reviewer" | "code-reviewer" {
   const overLimit =
     pull.changedLines > julianLineLimit &&
     !pull.files.every((path) => isTestPath(path) || path.endsWith(".md"));
   if (pull.sensitive || overLimit || pull.files.some(isLiamPath) || isLiamPackageChange(pull)) {
-    return "liam";
+    return "code-reviewer";
   }
-  return "julian";
+  return "second-reviewer";
+}
+
+/**
+ * The agent who reviews a pull request: its role (`reviewerRoleFor`),
+ * covered by the person the routing names. Without a routing that is
+ * `julian` or `liam`, as before; a refused routing is no routing.
+ */
+export function reviewerFor(pull: RoutedPull): "julian" | "liam";
+export function reviewerFor(pull: RoutedPull, routing: Routing | undefined): string;
+export function reviewerFor(pull: RoutedPull, routing?: Routing): string {
+  return personFor(reviewerRoleFor(pull), routing);
 }
