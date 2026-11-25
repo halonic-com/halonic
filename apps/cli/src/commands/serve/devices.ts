@@ -1,9 +1,10 @@
 // `halonic serve devices [--revoke <device-id> [--yes]]`: on the computer that runs `halonic
-// serve`, lists the paired devices with when each was last seen and who allowed it, or signs one
-// out and offers to sign out the devices it allowed (`server.device-pairing`). It talks to the
-// running server over its console channel.
+// serve`, lists the paired devices with when each was last seen and who allowed it, and who
+// connected or disconnected a Paperclip key when, or signs one device out and offers to sign out
+// the devices it allowed (`server.device-pairing`). It talks to the running server over its
+// console channel.
 
-import type { DeviceView } from "@halonicjs/host-server";
+import type { DeviceView, KeyChange } from "@halonicjs/host-server";
 import { passwordSecretName } from "@halonicjs/host-server";
 import {
   type CommandContext,
@@ -16,6 +17,7 @@ import { type Phrase, plainText } from "../../messages/phrase.ts";
 import { serveDevicesMessages } from "../../messages/serve-devices.ts";
 import { printable } from "../../output/printable.ts";
 import { shownDate } from "../../output/trust-check.ts";
+import { clockTime } from "../../run-times.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import type { ServeSetup } from "./serve.ts";
 import { askServe, consolePlace, noPasswordError } from "./serve-console.ts";
@@ -39,16 +41,20 @@ export async function serveDevices(
   const dir = await openWorkspaceDir(input, context);
   const place = await consolePlace(setup, dir);
   const ask = (request: object) => askServe(setup, place, request);
-  const devices = devicesOf(await ask({ op: "devices" }));
+  const listed = await ask({ op: "devices" });
+  const devices = devicesOf(listed);
   const revoke = input.options["revoke"];
   if (typeof revoke !== "string") {
+    const keyChanges = keyChangesOf(listed);
     return {
       exitCode: exitCode.ok,
-      lines:
-        devices.length === 0
+      lines: [
+        ...(devices.length === 0
           ? [serveDevicesMessages.noDevices().phrase]
-          : devices.map((device) => deviceLine(device, devices)),
-      json: { devices },
+          : devices.map((device) => deviceLine(device, devices))),
+        ...keyChanges.map((change) => keyChangeLine(change, devices)),
+      ],
+      json: { devices, keyChanges },
     };
   }
 
@@ -123,6 +129,27 @@ function deviceLine(device: DeviceView, devices: readonly DeviceView[]): Phrase 
   ).phrase;
 }
 
+/** "Paperclip key for halonic connected · 25 Nov 10:31 · by Pixel 9 (device_…)". */
+function keyChangeLine(change: KeyChange, devices: readonly DeviceView[]): Phrase {
+  const when = `${shownDate(change.at)} ${clockTime(change.at, { now: new Date(change.at) })}`;
+  const connection = printable(change.connection);
+  const by = changedByOf(change.by, devices);
+  return change.change === "connected"
+    ? serveDevicesMessages.keyConnected(connection, when, by).phrase
+    : serveDevicesMessages.keyDisconnected(connection, when, by).phrase;
+}
+
+/** Who changed a key, in words: a browser, or the device by its name and id. */
+function changedByOf(by: string, devices: readonly DeviceView[]): string {
+  if (by === "browser") return plainText(serveDevicesMessages.byBrowser().phrase);
+  const device = devices.find((each) => each.id === by);
+  const name =
+    device === undefined
+      ? plainText(serveDevicesMessages.byGoneDevice().phrase)
+      : printable(device.name);
+  return `${name} (${printable(by)})`;
+}
+
 /** Who allowed a device, in words: the console, a browser, or the device by its name. */
 function allowedByOf(allowedBy: string, devices: readonly DeviceView[]): string {
   if (allowedBy === "console") return plainText(serveDevicesMessages.byConsole().phrase);
@@ -146,5 +173,22 @@ function devicesOf(reply: {
       ["id", "name", "allowedBy", "startedAt", "lastSeenAt"].every(
         (field) => typeof (each as Record<string, unknown>)[field] === "string",
       ),
+  );
+}
+
+/** The key changes in a reply; an entry without the fields a line needs is left out. */
+function keyChangesOf(reply: {
+  readonly ok: boolean;
+  readonly [field: string]: unknown;
+}): KeyChange[] {
+  const listed = reply.ok && Array.isArray(reply["keyChanges"]) ? reply["keyChanges"] : [];
+  return listed.filter(
+    (each): each is KeyChange =>
+      typeof each === "object" &&
+      each !== null &&
+      ["connection", "by", "at"].every(
+        (field) => typeof (each as Record<string, unknown>)[field] === "string",
+      ) &&
+      ["connected", "disconnected"].includes(String((each as Record<string, unknown>)["change"])),
   );
 }

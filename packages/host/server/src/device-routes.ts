@@ -1,8 +1,10 @@
 import type { RequestContext, ServerPorts } from "./api.ts";
 import { createDevicePairing } from "./device-pairing.ts";
 import type { DeviceSessions } from "./device-sessions.ts";
-import { deviceSessionPrefix } from "./device-sign-in.ts";
+import { deviceSessionPrefix, sessionHolder } from "./device-sign-in.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
+import { keyChanges } from "./paperclip-key-changes.ts";
+import { checkPasswordAgain } from "./password-again.ts";
 import { isJsonRequest } from "./run-routes.ts";
 import { countLoginAttempt, passwordSecretName, type SignIn, tooManyAttempts } from "./sign-in.ts";
 
@@ -134,13 +136,17 @@ export function createDeviceRoutes(
       : errorResponse(serverErrors.notFound);
   }
 
-  /** `GET /api/devices`: the live devices and the requests waiting for Allow. */
+  /**
+   * `GET /api/devices`: the live devices, the requests waiting for Allow, and who connected or
+   * disconnected a Paperclip key when (`server.paperclip-key-password`).
+   */
   async function list(call: DeviceCall): Promise<Response> {
-    const [live, waiting] = await Promise.all([
+    const [live, waiting, changes] = await Promise.all([
       devices.list(call.passwordHash),
       pairing.waiting(call.passwordHash),
+      keyChanges(ports.coordination),
     ]);
-    return Response.json({ devices: live, waiting });
+    return Response.json({ devices: live, waiting, keyChanges: changes });
   }
 
   /** `POST /api/devices/revoke`: ends one device and names the devices it allowed. */
@@ -176,10 +182,7 @@ export function createDeviceRoutes(
     return new Response(null, { status: 204 });
   }
 
-  /**
-   * Runs `then` only when the body's `password` is the current one, checked like a sign-in:
-   * counted against the login limit first, so a stolen device token can't guess it freely.
-   */
+  /** Runs `then` only when the body's `password` is the current one ({@link checkPasswordAgain}). */
   async function withPassword(
     call: DeviceCall,
     then: (fields: Record<string, string>) => Promise<Response>,
@@ -189,19 +192,18 @@ export function createDeviceRoutes(
     if (fields === null) {
       return errorResponse(serverErrors.badRequest);
     }
-    const refusal = await overLimit(call.context);
-    if (refusal !== null) {
-      return refusal;
-    }
-    const isRight = await ports.passwordHasher.verify(fields.password, call.passwordHash);
-    return isRight ? then(fields) : errorResponse(serverErrors.wrongPassword);
+    const refusal = await checkPasswordAgain(
+      ports,
+      call.context,
+      fields.password,
+      call.passwordHash,
+    );
+    return refusal ?? then(fields);
   }
 
   /** `POST /api/devices/allow`: the device whose session asks is the one that allowed. */
   async function allow(call: DeviceCall, session: string): Promise<Response> {
-    const allowedBy = session.startsWith(deviceSessionPrefix)
-      ? session.slice(deviceSessionPrefix.length)
-      : "browser";
+    const allowedBy = sessionHolder(session);
     return withPassword(
       call,
       async ({ requestId = "" }) =>

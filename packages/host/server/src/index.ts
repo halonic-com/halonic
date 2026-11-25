@@ -98,6 +98,7 @@ export type {
   PaperclipSignInStart,
   PaperclipSignInState,
 } from "./paperclip-key-api.ts";
+export type { KeyChange } from "./paperclip-key-changes.ts";
 export { paperclipKeyPathPrefix } from "./paperclip-key-routes.ts";
 export {
   type CheckedSession,

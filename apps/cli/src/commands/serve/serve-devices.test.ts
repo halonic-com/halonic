@@ -386,3 +386,52 @@ verifies("cli.commands.serve.devices", () => {
     slowTest,
   );
 });
+
+verifies("server.paperclip-key-password", () => {
+  it(
+    "shows who connected or disconnected a Paperclip key and when, by device id",
+    async () => {
+      // The server's record, as its console answers it once a sign-in stored a key and a
+      // browser removed it; `server.paperclip-key-password` tests that the routes write it.
+      const inner = memoryConsole();
+      transport = {
+        listen: inner.listen,
+        async call(place, request) {
+          const reply = (await inner.call(place, request)) as { devices?: { id: string }[] };
+          const by = reply.devices?.[0]?.id ?? "";
+          return {
+            ...reply,
+            keyChanges: [
+              { connection: "halonic", change: "connected", by, at: "2026-11-25T10:31:00Z" },
+              {
+                connection: "halonic",
+                change: "disconnected",
+                by: "browser",
+                at: "2026-11-25T11:02:00Z",
+              },
+            ],
+          };
+        },
+      };
+      const address = await startServe();
+      await pairFromConsole(address, "Laptop");
+      const idOfLaptop = await idOf("Laptop");
+
+      const list = startCommand(["devices"]);
+      expect(await list.done).toBe(0);
+
+      expect(list.io.stdout.slice(1)).toEqual([
+        expect.stringMatching(
+          new RegExp(
+            `^Paperclip key for halonic connected · 25 Nov \\d\\d:\\d\\d · by Laptop \\(${idOfLaptop}\\)$`,
+            "u",
+          ),
+        ),
+        expect.stringMatching(
+          /^Paperclip key for halonic disconnected · 25 Nov \d\d:\d\d · by a browser$/u,
+        ),
+      ]);
+    },
+    slowTest,
+  );
+});

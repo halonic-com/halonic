@@ -1,12 +1,16 @@
 import type { Coordination } from "@halonicjs/ports";
+import type { PaperclipKeyPorts } from "./paperclip-key-api.ts";
 import { FakeCoordination, FakePasswordHasher, TestClock, testServer } from "./test-server.ts";
 
 const host = "halonic.acme.example";
 /** The `serve-password` of every test server here. */
 export const password = "correct horse";
 
-/** A test server with a password, and helpers to pair devices with it the way a client would. */
-export function setup() {
+/**
+ * A test server with a password, and helpers to pair devices with it the way a client would;
+ * with `paperclipKeys`, it serves the Paperclip key routes too.
+ */
+export function setup(paperclipKeys?: PaperclipKeyPorts) {
   const clock = new TestClock();
   const coordination = new FakeCoordination(clock);
   const secret = { hash: `hash:${password}` };
@@ -16,6 +20,7 @@ export function setup() {
     clock,
     coordination: coordination as unknown as Coordination,
     passwordHasher: new FakePasswordHasher(),
+    ...(paperclipKeys === undefined ? {} : { paperclipKeys }),
   });
 
   async function send(path: string, init: { body?: object; auth?: string; cookie?: string } = {}) {
@@ -81,5 +86,6 @@ export interface Answer {
   token?: string;
   devices?: { id: string; name: string; allowedBy: string }[];
   waiting?: { id: string; deviceName: string; checkCode: string }[];
+  keyChanges?: { connection: string; change: string; by: string; at: string }[];
   allowedDevices?: { id: string; name: string }[];
 }

@@ -136,12 +136,17 @@ verifies("server.paperclip-sign-in", () => {
       const start = await call(
         server,
         "sign-in/start",
-        { address: "https://paperclip.acme.test" },
+        { address: "https://paperclip.acme.test", password: "pw" },
         session,
       );
       const poll = await call(server, "sign-in/poll", { signInId: "sign-in-1" }, session);
       const cancel = await call(server, "sign-in/cancel", { signInId: "sign-in-1" }, session);
-      const disconnect = await call(server, "disconnect", { connection: "halonic" }, session);
+      const disconnect = await call(
+        server,
+        "disconnect",
+        { connection: "halonic", password: "pw" },
+        session,
+      );
 
       expect(port.calls).toEqual([
         ["start", { address: "https://paperclip.acme.test" }],

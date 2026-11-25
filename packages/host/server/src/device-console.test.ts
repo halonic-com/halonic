@@ -103,6 +103,7 @@ describe("device console", () => {
       expect(await console.answer({ op: "devices" })).toEqual({
         ok: true,
         devices: [expect.objectContaining({ name: "Pixel 9", allowedBy: "console" })],
+        keyChanges: [],
       });
     });
 

@@ -2,6 +2,7 @@ import type { Clock, Coordination, Secrets } from "@halonicjs/ports";
 import { createDevicePairing } from "./device-pairing.ts";
 import { fieldPatterns } from "./device-routes.ts";
 import { createDeviceSessions } from "./device-sessions.ts";
+import { keyChanges } from "./paperclip-key-changes.ts";
 import { passwordSecretName } from "./sign-in.ts";
 
 /**
@@ -66,7 +67,11 @@ export function createDeviceConsole(ports: ConsolePorts): DeviceConsole {
           ? { ok: true }
           : { ok: false, reason: "not-found" };
       case "devices":
-        return { ok: true, devices: await devices.list(passwordHash) };
+        return {
+          ok: true,
+          devices: await devices.list(passwordHash),
+          keyChanges: await keyChanges(ports.coordination),
+        };
       case "revoke": {
         const result = await devices.revoke(request.deviceId, passwordHash);
         return result.revoked
