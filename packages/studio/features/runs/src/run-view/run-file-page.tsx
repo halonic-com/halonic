@@ -7,7 +7,7 @@ import {
   type ItemViewProps,
   PageBackLinkSlot,
 } from "@halonicjs/studio-shell";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { type RunFiles, RunFilesService, type RunsSource } from "../api.ts";
 import { FailureReason } from "../load-failure.tsx";
 import { runPageWords } from "../run-words.ts";
@@ -57,16 +57,26 @@ export function RunFileView({
   const phone = usePresentation() === "phone";
   const [read, retry] = useRunFile(source, files, runId, name);
   const shown = escapeHidden(name);
+  const headingId = useId();
+  const heading = useRef<HTMLHeadingElement>(null);
+  // Try again goes away while the file loads again, so focus moves to the heading first and stays
+  // there; a new failure is then read out by its alert (2.4.3, 4.1.3).
+  const tryAgain = () => {
+    heading.current?.focus();
+    retry();
+  };
   return (
     <div className={`flex w-full min-w-0 flex-col gap-4 ${phone ? "px-4 py-4" : "px-6 py-5"}`}>
       <PageBackLinkSlot />
       <header className="flex flex-col gap-1">
-        <h1 className="text-title wrap-anywhere">{shown}</h1>
+        <h1 ref={heading} id={headingId} tabIndex={-1} className="text-title wrap-anywhere">
+          {shown}
+        </h1>
         <p className="text-small text-fg-muted">
           {runFileWords.savedBy(runPageWords.title(shortRunId(runId)))}
         </p>
       </header>
-      <FileBody read={read} retry={retry} name={shown} engine={engine} />
+      <FileBody read={read} retry={tryAgain} name={shown} headingId={headingId} engine={engine} />
     </div>
   );
 }
@@ -75,11 +85,14 @@ function FileBody({
   read,
   retry,
   name,
+  headingId,
   engine,
 }: {
   readonly read: FileRead;
   readonly retry: () => void;
   readonly name: string;
+  /** The page's h1, which names the text frame. */
+  readonly headingId: string;
   readonly engine: EngineWords;
 }) {
   switch (read.state) {
@@ -102,27 +115,33 @@ function FileBody({
       );
     case "failed":
       return (
-        <EmptyState
-          tone="error"
-          align="start"
-          title={runFileWords.loadFailed(name)}
-          description={
-            <FailureReason
-              what={runFileWords.loadFailed(name)}
-              error={read.error}
-              engine={engine}
-            />
-          }
-          action={{ label: "Try again", onClick: retry }}
-        />
+        <div role="alert">
+          <EmptyState
+            tone="error"
+            align="start"
+            title={runFileWords.loadFailed(name)}
+            description={
+              <FailureReason
+                what={runFileWords.loadFailed(name)}
+                error={read.error}
+                engine={engine}
+              />
+            }
+            action={{ label: "Try again", onClick: retry }}
+          />
+        </div>
       );
     case "read":
       return (
         // A `pre` holds no field to type in. It takes focus so a keyboard can scroll it; it holds no
-        // control, so Tab moves on.
+        // control, so Tab moves on. As a region named by the h1, a screen reader says the file's
+        // name rather than reading all of its text as the name (4.1.2).
+        // biome-ignore lint/a11y/useSemanticElements: the `pre` keeps the file's spaces and line breaks; a `section` around it would add a second box to scroll and focus
         <pre
           // biome-ignore lint/a11y/noNoninteractiveTabindex: a scroll area must take focus to scroll by keyboard
           tabIndex={0}
+          role="region"
+          aria-labelledby={headingId}
           className="focus-ring max-w-full overflow-auto rounded-sm border border-border p-3 font-mono text-small whitespace-pre-wrap wrap-anywhere"
         >
           {read.text}
