@@ -76,6 +76,36 @@ builds it. The test harness, `packages/targets/cloudflare/testing`, never ships.
   use. Mark a package that way only if none of its modules does work at
   import time (a registration, a top-level call with an effect, a polyfill).
 
+## Container images
+
+A Dockerfile under `packages/` builds an image that runs at a cloud provider, so its contents
+follow the cloud-runtime rule above: **only the board approves a new image artifact or a version
+bump**. Each one has an entry under `images` in `tooling/check/dependencies.json`, keyed by the
+Dockerfile's path from the repo root:
+
+- `base`: the full `FROM` reference, digest included (`name:tag@sha256:<digest>`), and a `reason`.
+- `artifacts`: one entry per downloaded file, with `version`, `sha256`, `url`, `reason` and
+  `approvedOn`, the task holding the board's approval. A file that comes with another one, such as
+  a library's own dependencies, may give `partOf: "<name>"` instead of repeating its reason.
+- `aptPackages` (only if the Dockerfile runs `apt-get install`): each Debian package's `name`
+  and `reason`.
+
+The `images` rule of `pnpm check` fails on a Dockerfile under `packages/` without an entry, a
+`FROM` without a digest or other than `base`, a remote `ADD` without `--checksum=sha256:` or not
+listed by both URL and sha256, a listed artifact the Dockerfile no longer downloads, a
+`COPY --from=` or `RUN --mount=…,from=` that names an image instead of an earlier stage, and a
+`RUN` (heredoc bodies and `ONBUILD` included) that fetches around the checksums or installs an
+unlisted Debian package. Dockerfiles under `infra/` and `.github/` aren't covered yet.
+
+The fetch list (`curl`, `wget`, `git clone`, `npx`, `npm exec`, `npm install` without
+`--offline`, `pnpm`/`yarn`/`bun` add or install, `pip`, `gem`, `cargo` and `go` install,
+`apk add`, `dpkg -i`) catches mistakes, not a determined author: the reviewer still reads every
+`RUN`. To unpack checked npm tarballs, use `npm install --offline --ignore-scripts`, so nothing
+from them runs at build time.
+
+To bump a version, change the `ADD` line and its entry together, and set `approvedOn` to the task
+with the board's yes. The reviewer checks that the task really approves that version.
+
 ## Adding one
 
 1. Add an entry to `tooling/check/dependencies.json`:
