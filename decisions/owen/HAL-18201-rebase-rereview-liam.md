@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-18201; Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:rOJoCTlIg4sY5EQiwJxV+Um30wKq5AJUB1bC+3aYl/HtIrqRU8vVm+cx1ZCJSHM5Io8ZMmHQ2/e0/zEr1F64Ag==
 - Task: HAL-18201
 
 The PR watcher sent every pull request Liam approved and that was only rebased since to Julian
