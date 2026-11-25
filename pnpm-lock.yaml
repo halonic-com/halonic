@@ -4939,6 +4939,9 @@ importers:
       '@halonicjs/format':
         specifier: workspace:*
         version: link:../../../core/format
+      '@halonicjs/host-harness-host':
+        specifier: workspace:*
+        version: link:../../../host/harness-host
       '@halonicjs/host-server':
         specifier: workspace:*
         version: link:../../../host/server
