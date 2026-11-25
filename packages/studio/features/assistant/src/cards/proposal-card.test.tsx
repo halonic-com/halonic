@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { FileReview, ReviewOutcome, ReviewTarget } from "@halonicjs/app";
-import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
+import { createToastStore, standaloneLinkClasses, ToastStoreProvider } from "@halonicjs/studio-kit";
 import type { WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -110,8 +110,10 @@ verifies("assistant.build.proposal-card", () => {
         );
         expect(why?.className).toContain("line-clamp-3");
         expect(buttonNamed(page, "more")?.getAttribute("aria-controls")).toBe(why?.id);
+        expect(buttonNamed(page, "more")?.className).toContain(standaloneLinkClasses);
         await press(page, "more");
         expect(why?.className).not.toContain("line-clamp-3");
+        expect(document.activeElement).toBe(why);
         expect(why?.textContent).toBe("“Pages on-call”");
         expect(buttonNamed(page, "more")).toBeUndefined();
       } finally {
