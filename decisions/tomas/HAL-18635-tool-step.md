@@ -2,6 +2,7 @@
 
 - Approval: Liam approves the plan rev 1 of HAL-18635 (https://paperclip.halonic.com/HAL/issues/HAL-18635), and signs this note on the pull request's review. A team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Jo7vXN99bmnCmo0QKWzbQWfiagxm2/mYtoLHiIJ4KAWE2fpvA98ZW3zC98aOOdXGf4CJid/+xLyVclOZysKnDw==
 
 ## What changes
 
