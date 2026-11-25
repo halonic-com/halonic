@@ -22,8 +22,8 @@ Don't run `pnpm verify` by default: CI runs the full suite (HAL-2418).
 
 ## Local rules
 
-- A plugin archive holds four fixed names and nothing else. Never put a name that comes from a
-  workspace into an archive, and never loosen `tarNameProblem`.
+- The archive holds the four fixed names in `pluginFileNames` and nothing else. Never add a name
+  that comes from a workspace, and never loosen `tarNameProblem`.
 - Anything read back from disk (a release file, an archive, its snapshot) is untrusted: check its
   size and sha-256 before reading it, and parse it with a strict schema.
 - No Node or browser APIs: the caller passes the sha-256 in, and UTF-8 comes from `@halonicjs/std`.

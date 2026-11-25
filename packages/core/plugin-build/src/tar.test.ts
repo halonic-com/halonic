@@ -1,14 +1,12 @@
+import { encodeUtf8, unwrap } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { blockSize, field } from "./tar-header.ts";
-import { type TarFile, TarNameError, type TarNameReason, writeTar } from "./tar-write.ts";
+import { blockSize, field, headerChecksum } from "./tar-header.ts";
+import { maxTarEntries, readTarFile } from "./tar-read.ts";
+import { TarNameError, type TarNameReason, writeTar } from "./tar-write.ts";
 
-// Tests may use TextEncoder; the package itself may not (core layer).
-const encoder = new TextEncoder();
-const decoder = new TextDecoder();
-
-function file(name: string, text = "x"): TarFile {
-  return { name, bytes: encoder.encode(text) };
+function file(name: string, text = "x"): { name: string; bytes: Uint8Array } {
+  return { name, bytes: encodeUtf8(text) };
 }
 
 function refusal(name: string): TarNameReason | undefined {
@@ -21,11 +19,6 @@ function refusal(name: string): TarNameReason | undefined {
     throw error;
   }
   return undefined;
-}
-
-/** A header field's text, as the writer put it. */
-function fieldText(header: Uint8Array, at: { offset: number; length: number }): string {
-  return decoder.decode(header.subarray(at.offset, at.offset + at.length));
 }
 
 verifies("plugin-build.tar-names", () => {
@@ -48,48 +41,96 @@ verifies("plugin-build.tar-names", () => {
   });
 });
 
-describe("the tar writer", () => {
-  it("gives identical bytes for the same files in any order", () => {
-    const one = writeTar([file("package/b.js", "2"), file("package/a.js", "1")]);
-    const two = writeTar([file("package/a.js", "1"), file("package/b.js", "2")]);
-    expect(one).toEqual(two);
+describe("the tar writer and reader", () => {
+  it("writes whole blocks and ends with two empty blocks", () => {
+    const archive = writeTar([file("a", "hello")]);
+    expect(archive.length).toBe(4 * blockSize);
+    expect(archive.subarray(2 * blockSize).every((byte) => byte === 0)).toBe(true);
   });
 
-  it("writes whole blocks, sorted, and ends with two empty blocks", () => {
-    const archive = writeTar([file("b", "second"), file("a", "hello")]);
-    expect(archive.length).toBe(6 * blockSize);
-    expect(fieldText(archive, field.name).replace(/\0+$/, "")).toBe("a");
-    expect(decoder.decode(archive.subarray(blockSize, blockSize + 5))).toBe("hello");
-    expect(archive.subarray(4 * blockSize).every((byte) => byte === 0)).toBe(true);
+  it("reads back each file it wrote, whatever order they came in", () => {
+    const archive = writeTar([file("b", "second"), file("a", "first")]);
+    expect(unwrap(readTarFile(archive, "a", 100))).toEqual(encodeUtf8("first"));
+    expect(unwrap(readTarFile(archive, "b", 100))).toEqual(encodeUtf8("second"));
   });
 
-  it("writes mtime 0, mode 0644, uid and gid 0, the size and no owner names", () => {
-    const header = writeTar([file("a", "hello")]).subarray(0, blockSize);
-    expect(fieldText(header, field.mode)).toBe("0000644\0");
-    expect(fieldText(header, field.uid)).toBe("0000000\0");
-    expect(fieldText(header, field.gid)).toBe("0000000\0");
-    expect(fieldText(header, field.size)).toBe("00000000005\0");
-    expect(fieldText(header, field.mtime)).toBe("00000000000\0");
-    expect(fieldText(header, field.magic)).toBe("ustar\0");
-    expect(header.subarray(265, 329).every((byte) => byte === 0)).toBe(true);
+  it("reads an empty file", () => {
+    expect(unwrap(readTarFile(writeTar([file("a", "")]), "a", 0))).toEqual(new Uint8Array());
   });
 
-  it("writes the checksum tar checks: the header's byte sum, the checksum counted as spaces", () => {
-    const header = writeTar([file("a", "hello")]).subarray(0, blockSize);
-    let sum = 0;
-    header.forEach((byte, index) => {
-      const inChecksum = index >= field.checksum.offset && index < field.checksum.offset + 8;
-      sum += inChecksum ? 0x20 : byte;
+  it("refuses a missing file and one over the size cap", () => {
+    const archive = writeTar([file("a", "hello")]);
+    expect(readTarFile(archive, "b", 100)).toEqual({
+      ok: false,
+      error: { code: "missing", fileName: "b" },
     });
-    expect(fieldText(header, field.checksum)).toBe(`${sum.toString(8).padStart(6, "0")}\0 `);
+    expect(readTarFile(archive, "a", 4)).toEqual({
+      ok: false,
+      error: { code: "too-large", fileName: "a", maxBytes: 4 },
+    });
   });
 
-  it("writes an empty file as a header alone", () => {
-    expect(writeTar([file("a", "")]).length).toBe(3 * blockSize);
+  it("refuses a file that comes twice", () => {
+    const one = writeTar([file("a", "first")]);
+    const twice = new Uint8Array(one.length + 2 * blockSize);
+    twice.set(one.subarray(0, 2 * blockSize), 0);
+    twice.set(one.subarray(0, 2 * blockSize), 2 * blockSize);
+    expect(readTarFile(twice, "a", 100)).toEqual({
+      ok: false,
+      error: { code: "duplicate", fileName: "a" },
+    });
   });
 
-  it("refuses a file too large for the size field", () => {
-    const huge = { name: "a", bytes: { length: 0o100000000000 } as Uint8Array };
-    expect(() => writeTar([huge])).toThrow(RangeError);
+  it.each([
+    ["a header with a wrong checksum", (archive: Uint8Array) => archive.set([0x41], 0)],
+    [
+      "a header that isn't ustar",
+      (archive: Uint8Array) => resign(archive, field.magic.offset, "gnu "),
+    ],
+    [
+      "a link instead of a file",
+      (archive: Uint8Array) => resign(archive, field.typeflag.offset, "2"),
+    ],
+    [
+      "a name in the prefix field",
+      (archive: Uint8Array) => resign(archive, field.prefix.offset, "x"),
+    ],
+    [
+      "a size past the archive's end",
+      (archive: Uint8Array) => resign(archive, field.size.offset, "77777"),
+    ],
+    ["a size that isn't octal", (archive: Uint8Array) => resign(archive, field.size.offset, "9")],
+  ])("refuses %s", (_name, damage) => {
+    const archive = writeTar([file("a", "hello")]);
+    damage(archive);
+    expect(readTarFile(archive, "a", 100)).toMatchObject({
+      ok: false,
+      error: { code: "not-our-tar" },
+    });
+  });
+
+  it("refuses an archive cut off before its end blocks", () => {
+    const archive = writeTar([file("a", "hello")]).subarray(0, 2 * blockSize);
+    expect(readTarFile(archive, "a", 100)).toEqual({
+      ok: false,
+      error: { code: "not-our-tar", detail: "it ends before its end blocks" },
+    });
+  });
+
+  it("refuses an archive with more files than a plugin has", () => {
+    const names = Array.from({ length: maxTarEntries + 1 }, (_, index) => `f${index}`);
+    const archive = writeTar(names.map((name) => file(name)));
+    expect(readTarFile(archive, "f0", 100)).toEqual({
+      ok: false,
+      error: { code: "not-our-tar", detail: `more than ${maxTarEntries} files` },
+    });
   });
 });
+
+/** Writes text into the first header, then fixes its checksum so only that change counts. */
+function resign(archive: Uint8Array, offset: number, text: string): void {
+  archive.set(encodeUtf8(text), offset);
+  const header = archive.subarray(0, blockSize);
+  const checksum = headerChecksum(header).toString(8).padStart(6, "0");
+  archive.set(encodeUtf8(`${checksum}\0 `), field.checksum.offset);
+}
