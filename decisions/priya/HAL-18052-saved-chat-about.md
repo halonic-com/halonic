@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-18051 (Liam's approval of the HAL-16809 plan, PR 17a)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:W4dXgsm8elj6l74JjkeohsMlQbXZw5Gq/6MNn66Z3Lo3+gApOFoRw5asrvXVZi5+dkgNw6ptgLc+Ie0TWpSNAQ==
 
 A saved chat gets an optional `about { kind, hub, id }`, on the summary that `list` returns too,
 so the item page chat can show only that item's chats after a restart. It holds only the
