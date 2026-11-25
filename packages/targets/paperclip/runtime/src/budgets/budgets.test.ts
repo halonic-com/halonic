@@ -85,8 +85,8 @@ verifies("runtime.paperclip-budgets", () => {
       });
     });
 
-    test("asks Paperclip for no capability beyond the runtime's own", () => {
-      expect(runtimeHandlers["paperclip.budgets"]?.capabilities).toEqual([]);
+    test("asks Paperclip only for agents.read, to list the agents", () => {
+      expect(runtimeHandlers["paperclip.budgets"]?.capabilities).toEqual(["agents.read"]);
     });
   });
 });

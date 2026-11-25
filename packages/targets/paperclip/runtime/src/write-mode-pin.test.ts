@@ -1,6 +1,12 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
-import { acmeSnapshot, fakeHost, githubToken, publishedSnapshot } from "./fake-host.test-helper.ts";
+import {
+  acmeSnapshot,
+  fakeHost,
+  githubToken,
+  parametersFor,
+  publishedSnapshot,
+} from "./fake-host.test-helper.ts";
 import type { ActionCall, ActionHandlers } from "./handlers.ts";
 import { writingTool } from "./paperclip-writes.test-helper.ts";
 import { writeMode } from "./paperclip-writes.ts";
@@ -12,7 +18,8 @@ const declarations = [
 
 /** A comment tool in `mode`, or with no mode when `mode` is null. */
 function commentTool(mode: "dry-run" | "write" | null) {
-  return writingTool("paperclip.comment", mode === null ? null : { mode });
+  const tool = writingTool("paperclip.comment", mode === null ? null : { mode });
+  return { ...tool, parameters: parametersFor("paperclip.comment") };
 }
 
 /**

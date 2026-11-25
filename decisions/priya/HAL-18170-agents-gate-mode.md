@@ -8,10 +8,10 @@
 1. An action lists agents only when its handler declares `agents.read`, like the issue
    clients. The four actions that list agents now declare it: `paperclip.finish-run`
    (finds the assignee by name), `paperclip.task` (names the task's assignee),
-   `paperclip.failed-runs` and `github.pull-request` (show an agent's display name).
+   `paperclip.failed-runs` and `github.pull-request` (show an agent's display name), and `paperclip.budgets` (lists every agent's budget).
    The `paperclip.task` and `paperclip.failed-runs` capability tests list it. The list
    is always of the call's company, whatever company the action asks for (Liam,
-   re-review of halonic#5932).
+   re-review of halonic#5932). Plugin state reads are scoped the same way: `state.get` always uses the call's company as the key's `scopeId`.
 2. `mode` is a tool setting, so a newer pinned snapshot could turn a tool from dry run
    to write with no new plugin build. The runtime now treats that like a change of
    action: the tool is off until the plugin is rebuilt with `mode: write`. Going the

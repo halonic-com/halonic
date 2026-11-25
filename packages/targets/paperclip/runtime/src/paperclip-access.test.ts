@@ -56,6 +56,24 @@ verifies("runtime.paperclip-writes", () => {
       expect(asked).toEqual([{ companyId: "acme", limit: 5 }]);
     });
 
+    test("reads the call's company's state, whatever company the action asks for", async () => {
+      const keys: unknown[] = [];
+      const host = {
+        ...fakePaperclip().host,
+        state: { get: async (key: unknown) => (keys.push(key), null) },
+      };
+      const access = paperclipAccess(host, [], call);
+      await access.state.get({
+        scopeKind: "company",
+        scopeId: "globex",
+        namespace: "runs",
+        stateKey: "failed-runs",
+      });
+      expect(keys).toEqual([
+        { scopeKind: "company", scopeId: "acme", namespace: "runs", stateKey: "failed-runs" },
+      ]);
+    });
+
     test("gives setDisposition only to an action that may update, on a host that has it", () => {
       const mayUpdate = paperclipAccess(fakePaperclip().host, ["issues.update"], call);
       expect(mayUpdate.issues.setDisposition).toBeTypeOf("function");

@@ -95,6 +95,9 @@ export function paperclipAccess(
         return host.agents.list({ ...input, companyId: call.companyId });
       },
     },
-    state: { get: (key) => host.state.get(key) },
+    state: {
+      // Likewise the state key's company is always the call's.
+      get: (key) => host.state.get({ ...key, scopeId: call.companyId }),
+    },
   };
 }
