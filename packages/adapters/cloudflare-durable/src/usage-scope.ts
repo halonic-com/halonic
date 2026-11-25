@@ -198,6 +198,28 @@ export class UsageScope {
     return this.#account(scope).summary();
   }
 
+  /**
+   * Checks a call on a person's sealed secrets: only a person's scope (`u/`) keeps them, never an
+   * organisation's, and only in that person's own object. A write notes the scope like any other
+   * call; a read notes none, so listing names never starts an empty object.
+   *
+   * @throws RangeError when `scope` isn't a person's, or isn't this object's
+   */
+  checkSecretScope(scope: string, access: "read" | "write"): void {
+    if (!checkScope(scope).startsWith("u/")) {
+      throw new RangeError("Only a person's scope (u/) keeps secrets.");
+    }
+    if (access === "write") {
+      this.#account(scope);
+      return;
+    }
+    this.#checkName(scope);
+    const noted = this.#storage.get<string>(scopeKey);
+    if (noted !== undefined && noted !== scope) {
+      throw new RangeError("This usage object counts another scope.");
+    }
+  }
+
   async #holdRun(principal: UsagePrincipal, runId: string): Promise<UsageAnswer> {
     const account = this.#account(principal.scope);
     if (!(await this.#hasCurrentLimits(principal.scope))) return noLimits;
