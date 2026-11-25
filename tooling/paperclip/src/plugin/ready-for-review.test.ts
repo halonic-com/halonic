@@ -1,73 +1,15 @@
 import { verifies } from "@halonicjs/testing-spec";
-import type { ToolResult, ToolRunContext } from "@paperclipai/plugin-sdk";
 import { describe, expect, test } from "vitest";
-import { fakeMetrics } from "./fake-host.test-helper.ts";
 import {
-  precheckUrl,
-  type ReadyForReviewApi,
-  type ReadyForReviewDeps,
-  readCheckParams,
-  registerReadyForReview,
-} from "./ready-for-review.ts";
-
-const runCtx: ToolRunContext = {
-  agentId: "agent-mateo",
-  runId: "run-1",
-  companyId: "acme",
-  projectId: "",
-};
-const branch = "mateo/HAL-1-acme-widget";
-const sha = "a".repeat(40);
-const checkId = "3f9c0a1b2c4d";
-
-type Handler = (params: unknown, runCtx: ToolRunContext) => Promise<ToolResult>;
-type Answer = { status: number; body?: unknown } | Error;
-
-/**
- * A precheck service that gives `answers` in order and a clock that only
- * moves when the tool sleeps, so no test waits for real time.
- */
-function fakePrecheck(answers: Answer[], config: Record<string, unknown> = {}) {
-  const sent: { method: string; url: string; body?: unknown }[] = [];
-  let clock = 0;
-  const deps: ReadyForReviewDeps = {
-    fetch: async (input, init) => {
-      const body = typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
-      sent.push({ method: init?.method ?? "GET", url: String(input), body });
-      const answer = answers.shift();
-      if (answer === undefined) throw new Error("no answer left");
-      if (answer instanceof Error) throw answer;
-      return new Response(JSON.stringify(answer.body ?? {}), { status: answer.status });
-    },
-    sleep: async (ms) => {
-      clock += ms;
-    },
-    now: () => clock,
-  };
-  const handlers = new Map<string, Handler>();
-  const { metrics: client, written: metrics } = fakeMetrics();
-  const ctx = {
-    metrics: client,
-    tools: {
-      register: (name: string, _declaration: unknown, fn: Handler) => handlers.set(name, fn),
-    },
-    config: { get: async () => config },
-  };
-  registerReadyForReview(ctx as unknown as ReadyForReviewApi, deps);
-  const call = (params: unknown) => {
-    const handler = handlers.get("ready_for_review");
-    if (handler === undefined) throw new Error("ready_for_review isn't registered");
-    return handler(params, runCtx);
-  };
-  return { call, sent, metrics };
-}
-
-const queued = { status: 202, body: { id: checkId, status: "queued" } };
-const running = { status: 200, body: { id: checkId, status: "running" } };
-const passed = {
-  status: 200,
-  body: { id: checkId, status: "done", pass: true, failed: [], durationS: 176 },
-};
+  branch,
+  checkId,
+  fakePrecheck,
+  passed,
+  queued,
+  running,
+  sha,
+} from "./ready-for-review.test-helper.ts";
+import { precheckUrl, readCheckParams } from "./ready-for-review.ts";
 
 verifies("paperclip.ready-for-review", () => {
   describe("ready_for_review", () => {
@@ -219,7 +161,7 @@ verifies("paperclip.ready-for-review", () => {
       );
       expect(precheckUrl({ precheckUrl: "http://x/../y" })).toBe("http://halonic-precheck:8787");
       const { call, sent } = fakePrecheck([queued, passed], {
-        precheckUrl: "http://precheck.internal:9000",
+        config: { precheckUrl: "http://precheck.internal:9000" },
       });
       await call({ branch });
       expect(sent[0]?.url).toBe("http://precheck.internal:9000/check");

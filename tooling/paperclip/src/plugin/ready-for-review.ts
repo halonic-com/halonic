@@ -6,6 +6,7 @@ import type {
 } from "@paperclipai/plugin-sdk";
 import { manifest } from "./manifest.ts";
 import { type MetricsApi, writeMetrics } from "./metrics.ts";
+import type { CallWaits, PrecheckWaits } from "./precheck-waits.ts";
 
 /**
  * The agent tool `ready_for_review` (L5b, HAL-16437). It asks the precheck
@@ -18,6 +19,11 @@ import { type MetricsApi, writeMetrics } from "./metrics.ts";
  * for the next call: an agent that never sees the id would start a new check
  * on every retry. When the service can't run the check, the answer is "check
  * unavailable", never a block.
+ *
+ * Since HAL-18980 a RUNNING answer for a branch that names a task the agent
+ * holds says the plugin wakes that task with the result (precheck-waits.ts),
+ * and a second call for the same check gives the same answer without a
+ * request, so agents stop polling with the check's id.
  */
 
 /** The part of the plugin context the tool uses, so tests can fake it. */
@@ -53,7 +59,7 @@ const shaPattern = /^[0-9a-f]{40}$/;
 const checkIdPattern = /^[0-9a-f]{12}$/;
 
 /** A check as the service reports it (only the fields the tool reads). */
-interface CheckView {
+export interface CheckView {
   readonly id: string;
   readonly status: "queued" | "running" | "done";
   readonly pass?: boolean;
@@ -77,12 +83,15 @@ export interface ReadyForReviewResult {
   /** Why the service stopped the check before any step ran (wrong sha, fetch, time limit). */
   readonly error?: string;
   readonly durationS?: number;
+  /** For RUNNING: the task the plugin wakes with the result, so the agent doesn't call again. */
+  readonly wakeTask?: string;
 }
 
+/** What a call asks for: a new check of a pushed branch, or an earlier check by its id. */
+export type CheckInput = { branch: string; sha?: string } | { checkId: string };
+
 /** The check's input, or the reason it is refused before any request. */
-export function readCheckParams(
-  params: unknown,
-): { branch: string; sha?: string } | { checkId: string } | string {
+export function readCheckParams(params: unknown): CheckInput | string {
   const { branch, sha, checkId } = (params ?? {}) as Record<string, unknown>;
   if (checkId !== undefined) {
     return typeof checkId === "string" && checkIdPattern.test(checkId)
@@ -107,7 +116,7 @@ export function precheckUrl(config: Readonly<Record<string, unknown>>): string {
 }
 
 /** Thrown when the service can't take or report a check; the agent goes on. */
-class Unavailable extends Error {}
+export class Unavailable extends Error {}
 
 async function request(deps: ReadyForReviewDeps, url: string, init?: RequestInit) {
   let response: Response;
@@ -143,7 +152,8 @@ async function startCheck(
   throw new Unavailable(`the precheck service answered ${status}`);
 }
 
-async function readCheck(
+/** Reads a check once; a check the service doesn't know is a message, a failed request `Unavailable`. */
+export async function readCheck(
   deps: ReadyForReviewDeps,
   base: string,
   checkId: string,
@@ -183,7 +193,8 @@ function capped(text: string): string {
     : text;
 }
 
-function verdictOf(check: CheckView): ReadyForReviewResult {
+/** The verdict a check's state gives. */
+export function verdictOf(check: CheckView): ReadyForReviewResult {
   const base = { checkId: check.id };
   if (check.status !== "done") {
     return { ...base, verdict: "running" };
@@ -223,10 +234,36 @@ export function verdictText(result: ReadyForReviewResult): string {
         result.summary ?? "",
       ].join("\n");
     case "running":
+      if (result.wakeTask !== undefined) {
+        return `RUNNING: check ${result.checkId} isn't done yet (checks take 1 to 5 minutes). Don't call ready_for_review again for it: when it is done, the plugin posts the answer on ${result.wakeTask} and wakes you there. Meanwhile go on with other work or end the run as usual; don't push to CI meanwhile.`;
+      }
       return `RUNNING: check ${result.checkId} isn't done yet (checks take 1 to 5 minutes). Call ready_for_review again with checkId "${result.checkId}" in about a minute; don't push to CI meanwhile.`;
     default:
       return `CHECK UNAVAILABLE: ${result.summary}. Go on without it: open or update the pull request as usual and let CI decide.`;
   }
+}
+
+/** The answer for a check the plugin will wake a task for: the same on every call. */
+function waitingAnswer(checkId: string, wakeTask: string) {
+  const result: ReadyForReviewResult = { verdict: "running", checkId, wakeTask };
+  return { content: verdictText(result), data: result };
+}
+
+/**
+ * Remembers a running check of a branch so its task is woken; a check read
+ * by its id, or a branch that names no task the agent holds, keeps the old
+ * RUNNING answer.
+ */
+async function waitOn(
+  waits: CallWaits,
+  input: CheckInput,
+  result: ReadyForReviewResult,
+): Promise<ReadyForReviewResult> {
+  if (result.verdict !== "running" || result.checkId === undefined || "checkId" in input) {
+    return result;
+  }
+  const wakeTask = await waits.remember(result.checkId, input);
+  return wakeTask === undefined ? result : { ...result, wakeTask };
 }
 
 /** Runs one check request within the call's budget. */
@@ -234,10 +271,15 @@ export async function readyForReview(
   deps: ReadyForReviewDeps,
   base: string,
   params: unknown,
+  waits: CallWaits,
 ): Promise<ToolResult & { data?: ReadyForReviewResult }> {
   const input = readCheckParams(params);
   if (typeof input === "string") {
     return { error: `ready_for_review: ${input}` };
+  }
+  const waiting = await waits.pending(input);
+  if (waiting !== undefined) {
+    return waitingAnswer(waiting.checkId, waiting.task);
   }
   const startedAt = deps.now();
   try {
@@ -250,7 +292,7 @@ export async function readyForReview(
     if (typeof check === "string") {
       return { error: `ready_for_review: ${check}` };
     }
-    const result = verdictOf(check);
+    const result = await waitOn(waits, input, verdictOf(check));
     return { content: verdictText(result), data: result };
   } catch (error) {
     if (!(error instanceof Unavailable)) {
@@ -287,7 +329,8 @@ async function recordCheck(
   );
 }
 
-const realDeps: ReadyForReviewDeps = {
+/** The real service, clock and pause, for the tool and the `precheck-wake` job. */
+export const realDeps: ReadyForReviewDeps = {
   fetch: (url, init) => fetch(url, init),
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   now: () => Date.now(),
@@ -296,6 +339,7 @@ const realDeps: ReadyForReviewDeps = {
 /** Registers `ready_for_review` as the manifest declares it. */
 export function registerReadyForReview(
   ctx: ReadyForReviewApi,
+  waits: PrecheckWaits,
   deps: ReadyForReviewDeps = realDeps,
 ): void {
   const declaration = manifest.tools?.find((tool) => tool.name === "ready_for_review");
@@ -307,7 +351,7 @@ export function registerReadyForReview(
     let result: ToolResult & { data?: ReadyForReviewResult };
     try {
       const base = precheckUrl(await ctx.config.get(runCtx.companyId));
-      result = await readyForReview(deps, base, params);
+      result = await readyForReview(deps, base, params, waits.forCall(runCtx));
     } catch (error) {
       result = { error: `ready_for_review: ${(error as Error).message}` };
     }

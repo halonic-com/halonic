@@ -23,7 +23,8 @@ import { passLock } from "./merge-control-lock.ts";
 import { mergeFactsReader } from "./merge-control-reader.ts";
 import { type PassNudge, passTrigger } from "./merge-control-trigger.ts";
 import { registerNextStepTools } from "./next-step-tools.ts";
-import { registerReadyForReview } from "./ready-for-review.ts";
+import { precheckWaits } from "./precheck-waits.ts";
+import { realDeps, registerReadyForReview } from "./ready-for-review.ts";
 import { scheduledPerCompany } from "./scheduled.ts";
 import { registerStatePacket } from "./state-packet-data.ts";
 import { taskEffort } from "./task-effort.ts";
@@ -40,7 +41,7 @@ import {
 /**
  * The Agent tools plugin's worker. The host starts it as `dist/worker.js`
  * (bundled by `pnpm run build:plugin`), runs the `pr-watch`,
- * `board-check` and `merge-control` jobs on their schedules, looks at each new comment for a
+ * `board-check`, `merge-control` and `precheck-wake` jobs on their schedules, looks at each new comment for a
  * board ask, keeps each failed run, labels a created or changed task's
  * difficulty, sets its effort from its tags, assigns a channel's child task
  * back after 3 hand-offs, asks for acceptance criteria on a
@@ -81,6 +82,12 @@ export const plugin = definePlugin({
       (companyId, error) =>
         ctx.logger.error(`merge-control: couldn't start a pass: ${error.message}`, { companyId }),
     );
+    // ready_for_review remembers a running check; the job wakes its task once it is done.
+    const waits = precheckWaits(ctx, realDeps, (companyId) => roster.remember(companyId));
+    const precheckJob = scheduledPerCompany(ctx, roster, "precheck-wake", (companyId) =>
+      waits.pass(companyId),
+    );
+    ctx.jobs.register("precheck-wake", () => precheckJob.dispatch());
     ctx.events.on("issue.comment.created", async (event) => {
       roster.remember(event.companyId);
       await Promise.all([
@@ -117,7 +124,7 @@ export const plugin = definePlugin({
       });
     }
     registerTools(ctx);
-    registerReadyForReview(ctx);
+    registerReadyForReview(ctx, waits);
     registerBoardTools(ctx);
     registerTaskTools(ctx);
     registerNextStepTools(ctx);

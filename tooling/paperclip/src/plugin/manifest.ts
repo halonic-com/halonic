@@ -5,6 +5,7 @@ import { chiefLine } from "./chief-line-settings.ts";
 import { mergeControlJob } from "./merge-control-declaration.ts";
 import { ciFailuresDeclaration, prStatusDeclaration } from "./pr-tool-declarations.ts";
 import { fastTrackConfigProperties, mergeControlConfigProperties } from "./queue-settings.ts";
+import { precheckWakeJob, readyForReviewDeclaration } from "./ready-for-review-declaration.ts";
 import { stackRebaseConfigProperties } from "./stack-rebase-settings.ts";
 import { statePacketConfigProperties } from "./state-packet-declaration.ts";
 import { taskToolDeclarations } from "./task-tool-declarations.ts";
@@ -58,6 +59,7 @@ export const manifest: PaperclipPluginManifestV1 = {
     // because the SDK's update leaves that field out. The difficulty tagger sends only a task's
     // labelIds, through setTaskLabels in the same file, changing only its D1–D4 and opus-only labels.
     "issues.update",
+    // The PR watcher, the board check and, once a check is done, the precheck-wake job (HAL-18980).
     "issues.wakeup",
     "issue.comments.read",
     "issue.comments.create",
@@ -86,8 +88,9 @@ export const manifest: PaperclipPluginManifestV1 = {
     // Task effort (HAL-16876): a created or changed task's tags and effort.
     // Difficulty tagger (HAL-16901): a created task, or one whose title or description changed.
     "events.subscribe",
-    // Each job emits only its own `pr-watch`, `board-check` or `merge-control` event, once per company, so its
-    // pass runs in a call the host scopes to that company (HAL-16941, src/plugin/scheduled.ts).
+    // Each job emits only its own event (`pr-watch`, `board-check`, `merge-control`, `precheck-wake`),
+    // once per company, so its pass runs in a call the host scopes to that company (HAL-16941,
+    // src/plugin/scheduled.ts).
     "events.emit",
     // Only `board-waiting` and `board-asks` on the Board Checker's task.
     "issue.documents.write",
@@ -97,6 +100,7 @@ export const manifest: PaperclipPluginManifestV1 = {
     // The pass's GitHub snapshot, one entry per company, for queue_state and merge_speed.
     // Ids, states, names and times only, no comment text. The board check also keeps
     // the asks already handled, by comment id, and which tasks were woken for a failed run.
+    // ready_for_review keeps the checks agents wait on: ids, branch, task and agent (HAL-18980).
     "plugin.state.read",
     "plugin.state.write",
     // Part (d): lists new pending approvals, never decides them.
@@ -321,6 +325,7 @@ export const manifest: PaperclipPluginManifestV1 = {
       schedule: "*/10 * * * *",
     },
     mergeControlJob,
+    precheckWakeJob,
   ],
   apiRoutes: [
     {
@@ -381,31 +386,7 @@ export const manifest: PaperclipPluginManifestV1 = {
         "The merge queue from the PR watcher's last snapshot (at most about 10 minutes old, and it says when it's older): each entry's position, state, group ci-ok, time in the queue and who queued it; merge-group jobs waiting for a runner and the longest wait; open pull requests labelled fast-track with who added the label (unknown never counts as allowed). Sends no GitHub request.",
       parametersSchema: { type: "object", properties: {} },
     },
-    {
-      name: "ready_for_review",
-      displayName: "Ready for review",
-      description:
-        "Call before you open or update a pull request on halonic-com/halonic: checks your pushed branch merged into current main (repo checks, format, generated files, typecheck and lint, affected tests, coverage floors) and answers PASS, FAIL with a short summary per failed step, RUNNING with a checkId to pass on the next call, or CHECK UNAVAILABLE. On FAIL, fix, push and call it again; on PASS or CHECK UNAVAILABLE, go on. CI still has the final say.",
-      parametersSchema: {
-        type: "object",
-        properties: {
-          branch: {
-            type: "string",
-            description: "The branch you pushed, for example mateo/HAL-16437-ready-for-review.",
-          },
-          sha: {
-            type: "string",
-            description:
-              "Optional: the full 40-character commit you pushed, so a stale push fails at once.",
-          },
-          checkId: {
-            type: "string",
-            description:
-              "The id from an earlier RUNNING answer: reads that check instead of starting a new one.",
-          },
-        },
-      },
-    },
+    readyForReviewDeclaration,
     {
       name: "board_asks",
       displayName: "Board asks",
