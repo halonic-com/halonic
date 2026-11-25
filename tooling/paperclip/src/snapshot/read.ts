@@ -8,6 +8,7 @@ import {
   newestFinding,
   type Review,
 } from "../pr-watcher/github.ts";
+import { type BaseChangeNode, baseChangedSincePush, previousBaseOf } from "./base-change.ts";
 import { githubApprovals } from "./github-approvals.ts";
 import type { GitHubQuery } from "./graphql.ts";
 import { closedPullsQuery, commitBatchSize, commitChecksQuery, openPullsQuery } from "./queries.ts";
@@ -91,10 +92,8 @@ interface OpenNode extends PullNode {
       readonly actor?: { readonly login: string } | null;
     }[];
   };
-  /** The newest base change, by hand or by GitHub when the base branch was deleted. Absent in recordings made before the field. */
-  readonly baseChanges?: { readonly nodes: readonly { readonly createdAt?: string }[] };
-  /** The newest reopen or force push. Absent in recordings made before the field. */
-  readonly reopens?: { readonly nodes: readonly { readonly createdAt?: string }[] };
+  readonly baseChanges?: NonNullable<BaseChangeNode["baseChanges"]>;
+  readonly reopens?: NonNullable<BaseChangeNode["reopens"]>;
   readonly commits: {
     readonly nodes: readonly {
       readonly commit: {
@@ -222,29 +221,6 @@ function labelsOf(node: OpenNode): SnapshotLabel[] {
   });
 }
 
-/**
- * Its base became the default branch, or changed on it, after it was last
- * reopened or pushed to. GitHub runs a ruleset's required workflow only on
- * opened, synchronize and reopened, never on a base change, so such a pull
- * request stays blocked with its checks green until it is reopened or pushed
- * to (HAL-16394). It compares with the reopen or push, not with the note
- * check: the repository's own copy of that workflow also runs on `edited`,
- * under the same name, and that run doesn't clear the block. A push is read
- * from the head commit's date, so pushing an older commit wakes the author
- * once too often, never once too few.
- */
-function baseChangedSincePush(node: OpenNode, defaultBranch: string): boolean {
-  const changedAt = node.baseChanges?.nodes.at(-1)?.createdAt;
-  if (changedAt === undefined || node.baseRefName !== defaultBranch) {
-    return false;
-  }
-  const touches = [
-    node.reopens?.nodes.at(-1)?.createdAt,
-    node.commits.nodes[0]?.commit.committedDate,
-  ].flatMap((at) => (at === undefined ? [] : [Date.parse(at)]));
-  return touches.every((at) => at < Date.parse(changedAt));
-}
-
 async function openFacts(
   node: OpenNode,
   repo: string,
@@ -279,6 +255,7 @@ async function openFacts(
     approvals: signedApprovals(conversation),
     githubApprovals: githubApprovals(reviews),
     baseChangedSincePush: baseChangedSincePush(node, defaultBranch),
+    ...previousBaseOf(node),
     ...(node.author === undefined ? {} : { author: node.author?.login ?? null }),
     ...checksOf(rollup),
     missingChecks: missingRequired(rollup),

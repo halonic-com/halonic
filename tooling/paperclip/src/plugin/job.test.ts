@@ -173,7 +173,12 @@ describe("the job", () => {
       dryRun: true,
       fastTrackUnblocks: new Set(),
       fastTrackLabelAdder: "",
-      watchers: { dryRun: true, wakeTasks: { Liam: "", Julian: "" }, unhandledTask: "" },
+      watchers: {
+        dryRun: true,
+        wakeTasks: { Liam: "", Julian: "" },
+        unhandledTask: "",
+        handQueueBranches: [],
+      },
       fastTrackSharedLabelScope: {
         parents: ["HAL-17422"],
         pulls: ["halonic-com/halonic#5659", "halonic-com/halonic#5674"],

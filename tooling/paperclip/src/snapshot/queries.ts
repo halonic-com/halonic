@@ -50,8 +50,8 @@ export const openPullsQuery = `query OpenPulls($owner: String!, $name: String!, 
         }
         baseChanges: timelineItems(itemTypes: [BASE_REF_CHANGED_EVENT, AUTOMATIC_BASE_CHANGE_SUCCEEDED_EVENT], last: 1) {
           nodes {
-            ... on BaseRefChangedEvent { createdAt }
-            ... on AutomaticBaseChangeSucceededEvent { createdAt }
+            ... on BaseRefChangedEvent { createdAt previousRefName }
+            ... on AutomaticBaseChangeSucceededEvent { createdAt oldBase }
           }
         }
         reopens: timelineItems(itemTypes: [REOPENED_EVENT, HEAD_REF_FORCE_PUSHED_EVENT], last: 1) {

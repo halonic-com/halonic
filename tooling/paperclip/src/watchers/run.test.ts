@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { now, pull, repo } from "../fast-track/fast-track.test-helper.ts";
 import { fakeHost, fakeJobContext } from "../plugin/fake-host.test-helper.ts";
 import type { TaskRow } from "../pr-watcher/paperclip.ts";
@@ -42,6 +42,7 @@ const live: WatchersSettings = {
   dryRun: false,
   wakeTasks: { Liam: "task-liam-chat", Julian: "task-julian-chat" },
   unhandledTask: "task-chief-chat",
+  handQueueBranches: [],
 };
 
 function setup() {
@@ -88,6 +89,7 @@ verifies("paperclip.merge-watchers-reviewer-wake", () => {
       dryRun: true,
       wakeTasks: { Liam: "", Julian: "" },
       unhandledTask: "",
+      handQueueBranches: [],
     });
     expect(
       readWatchersSettings({
@@ -95,8 +97,14 @@ verifies("paperclip.merge-watchers-reviewer-wake", () => {
         liamWakeTask: " a ",
         julianWakeTask: "b",
         unhandledTask: 7,
+        handQueueBranches: [" board/ ", 3, ""],
       }),
-    ).toEqual({ dryRun: false, wakeTasks: { Liam: "a", Julian: "b" }, unhandledTask: "" });
+    ).toEqual({
+      dryRun: false,
+      wakeTasks: { Liam: "a", Julian: "b" },
+      unhandledTask: "",
+      handQueueBranches: ["board/"],
+    });
   });
 });
 
@@ -129,5 +137,62 @@ verifies("paperclip.merge-watchers-unhandled", () => {
       "Reviewer wake for Julian (dry run)",
       "UNHANDLED report (dry run)",
     ]);
+  });
+});
+
+/** #600 merged; #601 above it moved to `main` with a conflict, its task blocked. */
+const stacked: Snapshot = {
+  ...snapshot,
+  repos: [
+    repo([
+      pull(
+        601,
+        {
+          labels: [],
+          mergeable: "no",
+          baseChangedSincePush: true,
+          previousBase: "mateo/HAL-600-base",
+        },
+        { branch: "mateo/HAL-601-thing" },
+      ),
+      { ...pull(600), branch: "mateo/HAL-600-base", state: "merged", open: null },
+    ] satisfies SnapshotPull[]),
+  ],
+};
+
+verifies("paperclip.merge-watchers-author-nudge", () => {
+  test("watcher pass makes zero read calls on the write client", async () => {
+    const { host, writes } = fakeHost([
+      { id: "task-601", identifier: "HAL-601", status: "blocked", assigneeAgentId: "agent-mateo" },
+    ]);
+    const context = fakeJobContext({ host, configs: { acme: {} }, answers: {} });
+    const globalFetch = vi.spyOn(globalThis, "fetch");
+    for (const minutes of [0, 10]) {
+      await runMergeWatchers(context.ctx, {
+        companyId: "acme",
+        snapshot: stacked,
+        repo: "acme/tools",
+        settings: live,
+        tasks: [{ ...blockedTask, id: "task-601", identifier: "HAL-601" }],
+        found: new Map([
+          ["HAL-601", [{ repo: "acme/tools", number: 601, branch: "mateo/HAL-601-thing" }]],
+        ]),
+        now: at(minutes),
+      });
+    }
+    expect(context.sent).toEqual([]);
+    expect(globalFetch).not.toHaveBeenCalled();
+    // Merge control's read and write clients need a resolved token: none was resolved.
+    expect(context.resolved).toEqual([]);
+    expect(context.logs.filter((log) => log.level === "error")).toEqual([]);
+    // Set to todo, then one comment and one wake, for the first pass only.
+    expect(writes.map((write) => [write.kind, write.issueId])).toEqual([
+      ["update", "task-601"],
+      ["comment", "task-601"],
+      ["wake", "task-601"],
+    ]);
+    const comment = writes.find((write) => write.kind === "comment");
+    expect(comment?.kind === "comment" ? comment.body : "").toContain("conflict with `main`");
+    globalFetch.mockRestore();
   });
 });

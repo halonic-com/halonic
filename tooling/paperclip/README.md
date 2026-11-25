@@ -897,6 +897,19 @@ they only log what they would write.
   waiting for a runner, and two exits from the queue without merging.
   Drafts and pull requests whose task is blocked with a blocker set are left
   out. A fix or a new head starts the 6 hours over.
+- **Author nudges** (HAL-17929, `merge-watchers`/`author-nudge`): on the
+  watcher's first repository, the task a branch names is woken once per head
+  and kind, one comment per task, when the agent the branch names holds it:
+  `stack_base_merged` (the pull request below merged and GitHub moved it to
+  `main` with no push since; set to `todo` from any status; names a conflict
+  and, when approved on the head, a range-diff re-approval), `conflict`
+  (conflicting, out of the queue, task in `backlog` or `blocked`; set to
+  `todo`; the PR watcher covers unparked tasks), `review_ready` (green, no
+  signed approval on the head, unparked task: hand it to the reviewer) and
+  `needs_hand_queue` (approved and green on a branch prefix in
+  `handQueueBranches`: merge it by hand). The snapshot's `previousBase`
+  comes from the base-change event the open pull requests query already
+  reads, so it costs no extra call.
 
 ## Leaving a task the watcher watches
 
