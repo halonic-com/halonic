@@ -108,6 +108,12 @@ export interface Conversation {
   updatedAt: string;
   /** Whether the agent's last message waits for the person's reply. */
   waitingForMe: boolean;
+  /**
+   * Whether the conversation's own agent ({@link Conversation.agent}) has a started run on the
+   * conversation's work right now, so apps can show it typing. Another agent's run on the same
+   * work, or a run that is only queued, doesn't count. Absent when the source can't tell.
+   */
+  agentWorking?: boolean;
 }
 
 /**
@@ -131,6 +137,14 @@ export interface Message {
   to?: readonly MessagingId[];
   /** One line per agent the person's message went to. */
   work?: readonly MessageWork[];
+  /**
+   * Only on the person's own messages: when the conversation's agent first picked it up, as ISO
+   * text. That is the start of the agent's first run on the conversation's work that either names
+   * this message among the ones that woke it (for Paperclip, `wakeCommentIds`) or started after the
+   * message was sent. A queued run that hasn't started doesn't count. Absent while unread, or when
+   * the source can't tell.
+   */
+  readAt?: string;
 }
 
 /** One answer an inbox item offers. */
