@@ -1,0 +1,8 @@
+# Acme is an invented company: the repository below doesn't exist.
+name: my_prs
+description: Lists your open pull requests on Acme's shop website, the ones whose branch starts with your name.
+callers: everyone
+action:
+  run: github.open-pull-requests
+  with:
+    repositories: [acme/shop-website]

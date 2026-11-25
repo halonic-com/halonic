@@ -34,9 +34,33 @@ is plain text, ready to send, and signed "Acme support".
 The Reporter has no real support data. On the test model its weekly report is
 a scripted text, so don't expect a real report.
 
+## Its tools
+
+`library/tools` holds three tools that `halonic build paperclip-plugin` turns
+into a Paperclip plugin for the workspace's agents. Each one only picks an
+action the plugin runtime ships with; the repository they read,
+`acme/shop-website`, is made up like the rest.
+
+| Tool | What it does | Who may call it | File |
+| --- | --- | --- | --- |
+| `pr_status` | Reads one pull request: its checks, whether it can merge, its place in the merge queue | Everyone | `library/tools/pr-status.tool.yaml` |
+| `my_prs` | Lists the caller's open pull requests | Everyone | `library/tools/my-prs.tool.yaml` |
+| `task_get` | Reads one task: status, holder, blockers, documents and newest comments | The Reporter | `library/tools/task-get.tool.yaml` |
+
+The build needs the workspace in a git repository with everything committed:
+
+```sh
+git init && git add . && git commit -m "First version"
+halonic build paperclip-plugin --out dist
+```
+
 ## Keeping the example working
 
 A test in the workspace package (`packages/core/workspace/src/acme-example.test.ts`)
 loads this folder in CI and fails on any error or warning, so it stays valid
 when the workspace format changes. When you change a name here, also change
 the docs and the demo scripts that use it.
+
+A second test (`apps/cli/src/commands/build/acme-plugin.test.ts`) builds this
+folder's plugin in CI, then builds the same commit again from another folder
+and fails unless both builds have the same bytes and the same SHA-256.

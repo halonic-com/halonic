@@ -1,0 +1,12 @@
+name: task_get
+description: Reads one task, with its status, holder, blockers, documents and newest comments.
+parameters:
+  task:
+    type: string
+    description: The task's identifier, such as ACME-12.
+    required: true
+    maxLength: 64
+callers:
+  agents: [reporter]
+action:
+  run: paperclip.task

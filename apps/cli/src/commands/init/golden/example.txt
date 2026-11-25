@@ -48,6 +48,9 @@ stdout:
       "hubs/support/hub.yaml",
       "hubs/support/workflows/support-reply.test.yaml",
       "hubs/support/workflows/support-reply.workflow.yaml",
+      "library/tools/my-prs.tool.yaml",
+      "library/tools/pr-status.tool.yaml",
+      "library/tools/task-get.tool.yaml",
       "models.yaml",
       "providers/mock.yaml",
       "workspace.yaml"
