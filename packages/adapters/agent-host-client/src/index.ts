@@ -1,3 +1,4 @@
+export { AgentHostActivity } from "./agent-activity.ts";
 export { AgentHostMessaging } from "./agent-messaging.ts";
 export type {
   BridgeCallServices,

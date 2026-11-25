@@ -14,6 +14,8 @@ import type {
   Seat,
   SpendRange,
   SpendSummary,
+  TeamRuns,
+  TeamRunsQuery,
   TeamStatus,
   TeamStatusParts,
 } from "@halonicjs/ports";
@@ -24,6 +26,7 @@ import {
   keptSeat,
   keptSpend,
 } from "./kept-team-status.ts";
+import { type TeamAnswer, TeamRunsMemory } from "./team-runs-memory.ts";
 
 /** How old an answer may be before a read fetches it again. */
 export const teamStatusMaxAgeMs = 5 * 60_000;
@@ -52,18 +55,15 @@ export interface TeamStatusHubOptions {
   report: (failure: MessagingFailure) => void;
 }
 
-/** One provider's answer to one read: its items, or the error when it has none to give. */
-type Answer<Item> = { ok: true; items: readonly Item[] } | { ok: false; error: unknown };
-
 /** What the hub knows of one read from one provider. Times are in milliseconds. */
 interface RouteState<Item> {
-  answer?: Answer<Item>;
+  answer?: TeamAnswer<Item>;
   /** When the provider last answered this read. */
   fetchedAt?: number;
   /** When the hub last asked, answered or not. */
   triedAt?: number;
   /** The fetch under way, which every read meanwhile waits for. */
-  fetching?: Promise<Answer<Item>>;
+  fetching?: Promise<TeamAnswer<Item>>;
 }
 
 /**
@@ -80,7 +80,9 @@ function servedFromCache<Item extends object>(item: Item): Item {
  * Spend, seats, pull requests and the queue are read on the 5-minute tick
  * and when a screen opens: a read whose answer is older than 5 minutes
  * fetches it again, at most once a minute per read and provider, and every
- * read meanwhile shares the one fetch. Each answer's port fields are kept in
+ * read meanwhile shares the one fetch. Runs are read on request only and
+ * kept in memory, never on disk, at most once every 10 seconds per query and
+ * provider (`agent-host.team-activity-routes`). Each other answer's port fields are kept in
  * the app data cache, under the same rules as the messaging cache. A
  * provider that fails is reported, and its last answer stands in, with the
  * source's own `asOf`; only when no provider has an answer does the read
@@ -99,6 +101,7 @@ export class TeamStatusHub implements TeamStatus {
   /** One map per provider, by read. */
   readonly #routes: Map<TeamStatusRoute, RouteState<unknown>>[];
   readonly #spendRanges = new Set<SpendRange>(["today"]);
+  readonly #runs: TeamRunsMemory;
 
   constructor(options: TeamStatusHubOptions) {
     this.#providers = options.providers;
@@ -106,6 +109,7 @@ export class TeamStatusHub implements TeamStatus {
     this.#cache = new MessagingCacheFolder(options.folder, options.workspaceRoots, options.warn);
     this.#report = options.report;
     this.#routes = options.providers.map(() => new Map());
+    this.#runs = new TeamRunsMemory(options.clock, options.providers.length);
   }
 
   parts(): Promise<readonly TeamStatusParts[]> {
@@ -152,6 +156,23 @@ export class TeamStatusHub implements TeamStatus {
     return this.#joined("pullRequest", answers)[0];
   }
 
+  /** Every provider's runs for `query`; a provider that serves none answers none. */
+  async runs(query: TeamRunsQuery): Promise<readonly TeamRuns[]> {
+    const answers = await Promise.all(
+      this.#providers.map((_, index) =>
+        this.#runs.answerOf(index, query, () =>
+          this.#fetchOnce(index, "runs", (status) => status.runs?.(query) ?? Promise.resolve([])),
+        ),
+      ),
+    );
+    return this.#joined("runs", answers);
+  }
+
+  /** Deletes the answers kept for the provider named `name`, which Disconnect dropped. */
+  async clear(name: string): Promise<void> {
+    await this.#cache.clearTeamStatus(name);
+  }
+
   changes(): AsyncIterable<MessagingId> {
     const streams = this.#providers.map((provider) => provider.status.changes());
     return joinChanges(streams, (index, error) => this.#failed(index, "changes", error));
@@ -191,7 +212,7 @@ export class TeamStatusHub implements TeamStatus {
     route: TeamStatusRoute,
     read: (status: TeamStatus) => Promise<readonly Item[]>,
     keep: (item: Item) => Item,
-  ): Promise<Answer<Item>> {
+  ): Promise<TeamAnswer<Item>> {
     const routes = this.#routes[index] ?? new Map();
     // Every read of a route stores the same item type, so the map's entry is this read's.
     const state = (routes.get(route) ?? {}) as RouteState<Item>;
@@ -214,7 +235,7 @@ export class TeamStatusHub implements TeamStatus {
     state: RouteState<Item>,
     read: (status: TeamStatus) => Promise<readonly Item[]>,
     keep: (item: Item) => Item,
-  ): Promise<Answer<Item>> {
+  ): Promise<TeamAnswer<Item>> {
     const name = this.#providers[index]?.name ?? "unknown";
     const fetched = await this.#fetchOnce(index, route, read);
     if (fetched.ok) {
@@ -243,7 +264,7 @@ export class TeamStatusHub implements TeamStatus {
     index: number,
     action: string,
     read: (status: TeamStatus) => Promise<readonly Item[]>,
-  ): Promise<Answer<Item>> {
+  ): Promise<TeamAnswer<Item>> {
     const provider = this.#providers[index];
     if (provider === undefined) return { ok: true, items: [] };
     try {
@@ -255,7 +276,7 @@ export class TeamStatusHub implements TeamStatus {
   }
 
   /** The providers' items one after the other; throws when every provider failed with nothing to show. */
-  #joined<Item>(action: string, answers: readonly Answer<Item>[]): Item[] {
+  #joined<Item>(action: string, answers: readonly TeamAnswer<Item>[]): Item[] {
     const errors = answers.flatMap((answer) => (answer.ok ? [] : [answer.error]));
     if (errors.length > 0 && errors.length === answers.length) {
       throw new AggregateError(errors, `Every team status provider failed ${action}.`);

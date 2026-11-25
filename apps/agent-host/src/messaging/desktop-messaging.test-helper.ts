@@ -35,6 +35,10 @@ export class FakePaperclip {
   me: unknown;
   /** When set, answers `/api/cli-auth/me` in place of {@link FakePaperclip.me}: a fault or a redirect. */
   meAnswer: (() => Response) | undefined;
+  /** What `live-runs` answers: the runs going now. */
+  liveRuns: unknown[] = [];
+  /** What `heartbeat-runs` answers: the newest runs, finished ones included. */
+  runs: unknown[] = [];
 
   readonly fetch = async (input: Request | string | URL, init?: RequestInit): Promise<Response> => {
     const request = new Request(input, init);
@@ -64,6 +68,10 @@ export class FakePaperclip {
     }
     // The open tasks, where the provider finds channels (`paperclip-client.channels`): none here.
     if (path === `/api/companies/${acme.company}/issues`) return json([]);
+    if (path === `/api/companies/${acme.company}/live-runs`) return json(this.liveRuns);
+    if (path === `/api/companies/${acme.company}/heartbeat-runs`) return json(this.runs);
+    if (path === "/api/issues/task-1")
+      return json({ identifier: "ACME-7", title: "Chat with Ada" });
     if (path === "/api/cli-auth/revoke-current") return json({ revoked: true });
     if (path === "/api/cli-auth/me" && this.meAnswer !== undefined) return this.meAnswer();
     if (path === "/api/cli-auth/me" && this.me !== undefined) return json(this.me);

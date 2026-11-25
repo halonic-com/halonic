@@ -59,6 +59,15 @@ pub(crate) const PAPERCLIP_ROUTES: &[(&str, Route)] = &[
         "POST /v1/messaging/changes",
         route(Method::Post, "/v1/messaging/changes", Answer::Json),
     ),
+    // The Messenger's activity panel (HAL-18567): read-only, no log or output.
+    (
+        "POST /v1/messaging/runs",
+        route(Method::Post, "/v1/messaging/runs", Answer::Json),
+    ),
+    (
+        "POST /v1/messaging/pull-requests",
+        route(Method::Post, "/v1/messaging/pull-requests", Answer::Json),
+    ),
     (
         "POST /v1/messaging/focus",
         route(Method::Post, "/v1/messaging/focus", Answer::Json),

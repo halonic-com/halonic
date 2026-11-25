@@ -86,6 +86,8 @@ export const agentHostRequestRoutes = [
   "POST /v1/messaging/attachment",
   "POST /v1/messaging/changes",
   "POST /v1/messaging/focus",
+  "POST /v1/messaging/runs",
+  "POST /v1/messaging/pull-requests",
   "POST /v1/plugins/run-state",
   "POST /v1/plugins/run-state/check-again",
   "GET /v1/plugins/tools",
