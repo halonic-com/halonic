@@ -3,6 +3,7 @@ import { type BoundedCache, cached } from "./facts-cache.ts";
 import type { PullNode, QueueNode } from "./facts-query.ts";
 import type { RestRun } from "./facts-runs.ts";
 import type { ObservedAction } from "./shadow.ts";
+import { noteKindOf } from "./shadow-reasons.ts";
 
 /**
  * What the Merger did, read from GitHub, for shadow mode's diff. The
@@ -13,7 +14,8 @@ import type { ObservedAction } from "./shadow.ts";
  *   "added to merge queue" by that login. GitHub doesn't record a jump, so
  *   an entry ahead of one queued before it counts as a jump;
  * - dequeue: the timeline's "removed from merge queue" by that login;
- * - comment: the pull request comments by that login;
+ * - comment: the pull request comments by that login; a queue-manager note
+ *   on the current head also carries its kind, for the diff's reasons;
  * - rerun: a run whose newest attempt that login started, from the Actions
  *   runs; only the failed jobs if some of its jobs kept their first attempt;
  * - cancel-run: a run seen queued that ended cancelled, when its job's
@@ -81,10 +83,36 @@ function pullActionsOf(merger: string, pull: PullNode): ObservedAction[] {
   }
   for (const comment of pull.comments.nodes) {
     if (comment.author?.login === merger) {
-      actions.push({ kind: "comment", number: pull.number, at: comment.createdAt });
+      const note = noteOf(pull, comment);
+      actions.push({
+        kind: "comment",
+        number: pull.number,
+        at: comment.createdAt,
+        ...(note === undefined ? {} : { note }),
+      });
     }
   }
   return actions;
+}
+
+/**
+ * A queue-manager note's kind, when it is on the pull request's current
+ * head: it names that head in backticks, or names none and came after the
+ * head's commit.
+ */
+function noteOf(
+  pull: PullNode,
+  comment: PullNode["comments"]["nodes"][number],
+): { kind: string; head: string } | undefined {
+  const kind = noteKindOf(comment.body);
+  if (kind === undefined) {
+    return undefined;
+  }
+  const named = [...comment.body.matchAll(/`([0-9a-f]{7,40})`/g)].pop()?.[1];
+  const committed = pull.commits.nodes[0]?.commit.committedDate ?? pull.createdAt;
+  const onHead =
+    named === undefined ? comment.createdAt >= committed : pull.headRefOid.startsWith(named);
+  return onHead ? { kind, head: pull.headRefOid } : undefined;
 }
 
 const cancelledLine = /cancel+ed by @?([\w-]+)/i;
