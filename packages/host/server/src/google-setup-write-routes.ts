@@ -108,6 +108,8 @@ function readEdit(fields: Fields): SetupEdit | null {
         : null;
     case "address-changed":
       return { kind: "address-changed" };
+    case "reminder-closed":
+      return { kind: "reminder-closed" };
     case "client-id": {
       const clientId = readId(fields["clientId"]);
       return clientId === null ? null : { kind: "client-id", clientId };

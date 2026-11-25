@@ -31,6 +31,15 @@ verifies("library.connection-state", () => {
     expect(connectionStateOf({ ...allWrong, secretValid: true, signedIn: true })).toBe("api-off");
   });
 
+  it("says the sign-in ends soon only when nothing else is wrong", () => {
+    expect(connectionStateOf({ ...healthy, signInEndsSoon: true })).toBe("sign-in-ends-soon");
+    expect(connectionStateOf({ ...healthy, apiOn: false, signInEndsSoon: true })).toBe("api-off");
+    expect(connectionStateTable["sign-in-ends-soon"]).toEqual({
+      label: "Sign-in ends soon",
+      tone: "attention",
+    });
+  });
+
   it("gives every state a label and a tone", () => {
     expect(connectionStateTable.connected).toEqual({ label: "Connected", tone: "success" });
     expect(connectionStateTable["needs-sign-in"].label).toBe("Needs sign-in again");

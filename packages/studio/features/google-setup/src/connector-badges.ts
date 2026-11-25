@@ -15,6 +15,7 @@ import { connectorFacts } from "./connector-facts.ts";
 const priorities: Partial<Record<ConnectionState, number>> = {
   "needs-new-secret": trustBadgePriority - 100,
   "needs-sign-in": trustBadgePriority - 200,
+  "sign-in-ends-soon": trustBadgePriority - 300,
 };
 
 /**
@@ -29,8 +30,9 @@ const priorities: Partial<Record<ConnectionState, number>> = {
 export function connectorBadge(
   account: GoogleSetupAccount,
   open: (accountRef: string, opener: HTMLElement | null) => void,
+  now: Date = new Date(),
 ): BadgeState | undefined {
-  const state = connectionStateOf(connectorFacts(account));
+  const state = connectionStateOf(connectorFacts(account, now));
   const priority = priorities[state];
   if (priority === undefined) return undefined;
   const { label, tone } = connectionStateTable[state];

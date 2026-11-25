@@ -152,6 +152,7 @@ export function setupRecords(options: SetupRecordsOptions): SetupRecords {
         clientSecret: null,
         signInStartedAt: null,
         lastSignInAt: null,
+        reminderClosedAt: null,
         wrongAccountAt: null,
         lastSignInEnded: null,
         services: {},

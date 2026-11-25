@@ -1,20 +1,18 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import {
-  type ConnectorStateRecord,
-  connectorState,
-  testingHintWindowMs,
-} from "./connector-state.ts";
+import { type ConnectorStateRecord, connectorState } from "./connector-state.ts";
 import { readRefreshAnswer } from "./refresh-answer.ts";
+import { weeklyEndWindowMs } from "./weekly-sign-in.ts";
 
 const lastSignInAt = "2026-11-01T12:00:00.000Z";
 const signedInMs = Date.parse(lastSignInAt);
 const day = 24 * 60 * 60 * 1000;
 
-/** A personal account's app that was never ticked "In production". */
+/** A personal account's app in *Testing*, as step 3 sets it up. */
 const personalInTesting: ConnectorStateRecord = {
   accountType: "personal",
   inProductionTickedAt: null,
+  personalApp: { publishing: "testing", testUserTickedAt: lastSignInAt, sharedApp: false },
   lastSignInAt,
   projectId: "acme-mail",
   refreshRefused: null,
@@ -32,53 +30,68 @@ verifies("google-setup.connector-state", () => {
     it("needs sign-in again at step 7, keeping the client ID and secret", () => {
       expect(connectorState(personalInTesting, signInRefused, afterSignIn(2 * day))).toEqual({
         kind: "needs-sign-in-again",
-        testingHint: false,
+        weeklyEnd: false,
         reopenAt: ["sign-in"],
       });
     });
 
-    it("leads with the Testing hint and opens Publish first, 7 days after sign-in", () => {
+    it("is the weekly end 7 days after the sign-in of a Testing app, still at step 7 only", () => {
       expect(connectorState(personalInTesting, signInRefused, afterSignIn(7 * day))).toEqual({
         kind: "needs-sign-in-again",
-        testingHint: true,
-        reopenAt: ["consent", "sign-in"],
-      });
-    });
-
-    it("gives the hint on both edges of the 6½ to 7½ day window and not a millisecond outside", () => {
-      const hint = (ms: number) =>
-        connectorState(personalInTesting, signInRefused, afterSignIn(ms));
-
-      expect(hint(testingHintWindowMs.from)).toMatchObject({ testingHint: true });
-      expect(hint(testingHintWindowMs.to)).toMatchObject({ testingHint: true });
-      expect(hint(testingHintWindowMs.from - 1)).toMatchObject({ testingHint: false });
-      expect(hint(testingHintWindowMs.to + 1)).toMatchObject({ testingHint: false });
-      expect(testingHintWindowMs).toEqual({ from: 6.5 * day, to: 7.5 * day });
-    });
-
-    it("gives no hint when the user ticked In production: the timing is then a coincidence", () => {
-      const ticked = { ...personalInTesting, inProductionTickedAt: "2026-10-30T09:00:00.000Z" };
-
-      expect(connectorState(ticked, signInRefused, afterSignIn(7 * day))).toMatchObject({
-        testingHint: false,
+        weeklyEnd: true,
         reopenAt: ["sign-in"],
       });
     });
 
-    it("gives no hint to a Workspace account, whose Internal app never has the In production tick", () => {
+    it("is the weekly end on both edges of the 6½ to 7½ day window and not a millisecond outside", () => {
+      const weeklyEnd = (ms: number) =>
+        connectorState(personalInTesting, signInRefused, afterSignIn(ms));
+
+      expect(weeklyEnd(weeklyEndWindowMs.from)).toMatchObject({ weeklyEnd: true });
+      expect(weeklyEnd(weeklyEndWindowMs.to)).toMatchObject({ weeklyEnd: true });
+      expect(weeklyEnd(weeklyEndWindowMs.from - 1)).toMatchObject({ weeklyEnd: false });
+      expect(weeklyEnd(weeklyEndWindowMs.to + 1)).toMatchObject({ weeklyEnd: false });
+      expect(weeklyEndWindowMs).toEqual({ from: 6.5 * day, to: 7.5 * day });
+    });
+
+    it("isn't the weekly end when the record says In production: the timing is then a coincidence", () => {
+      const published = {
+        ...personalInTesting,
+        personalApp: { publishing: "production", testUserTickedAt: null, sharedApp: false },
+      } as const;
+
+      expect(connectorState(published, signInRefused, afterSignIn(7 * day))).toMatchObject({
+        weeklyEnd: false,
+        reopenAt: ["sign-in"],
+      });
+    });
+
+    it("isn't the weekly end for a record from before HAL-18663 that was ticked In production", () => {
+      const ticked = {
+        ...personalInTesting,
+        personalApp: null,
+        inProductionTickedAt: "2026-10-30T09:00:00.000Z",
+      };
+
+      expect(connectorState(ticked, signInRefused, afterSignIn(7 * day))).toMatchObject({
+        weeklyEnd: false,
+      });
+    });
+
+    it("isn't the weekly end for a Workspace account, whose Internal app is never in Testing", () => {
       const workspace = { ...personalInTesting, accountType: "workspace" } as const;
 
       expect(connectorState(workspace, signInRefused, afterSignIn(7 * day))).toMatchObject({
-        testingHint: false,
+        weeklyEnd: false,
         reopenAt: ["sign-in"],
       });
     });
 
-    it("gives no hint when the record has no sign-in time", () => {
+    it("isn't the weekly end when the record has no sign-in time", () => {
       const neverSignedIn = { ...personalInTesting, lastSignInAt: null };
 
       expect(connectorState(neverSignedIn, signInRefused, afterSignIn(7 * day))).toMatchObject({
-        testingHint: false,
+        weeklyEnd: false,
       });
     });
   });

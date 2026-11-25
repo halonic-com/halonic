@@ -4,6 +4,8 @@ export type ConnectionState =
   | "needs-sign-in"
   | "needs-new-secret"
   | "api-off"
+  /** Still connected, but the sign-in ends within a day, so the user signs in again now. */
+  | "sign-in-ends-soon"
   | "not-connected"
   /** Nothing has read the connector's sign-in or secret yet, so nothing is claimed. */
   | "not-checked"
@@ -26,17 +28,21 @@ export interface ConnectorFacts {
   readonly secretValid: boolean;
   /** The service's API is switched on for the connector. */
   readonly apiOn: boolean;
+  /** The sign-in still works but ends within a day, as the service is known to end it. */
+  readonly signInEndsSoon?: boolean;
 }
 
 /**
  * The one place that decides the state. When several things are wrong it names the one
- * the user must fix first: the secret, then the sign-in, then the API.
+ * the user must fix first: the secret, then the sign-in, then the API. A sign-in that ends soon
+ * comes last, because everything still works.
  */
 export function connectionStateOf(facts: ConnectorFacts): ConnectionState {
   if (!facts.configured) return "not-connected";
   if (!facts.secretValid) return "needs-new-secret";
   if (!facts.signedIn) return "needs-sign-in";
   if (!facts.apiOn) return "api-off";
+  if (facts.signInEndsSoon === true) return "sign-in-ends-soon";
   return "connected";
 }
 
@@ -48,6 +54,7 @@ export const connectionStateTable: Readonly<
   "needs-sign-in": { label: "Needs sign-in again", tone: "attention" },
   "needs-new-secret": { label: "Needs new secret", tone: "attention" },
   "api-off": { label: "API off", tone: "attention" },
+  "sign-in-ends-soon": { label: "Sign-in ends soon", tone: "attention" },
   "not-connected": { label: "Not connected", tone: "attention" },
   "not-checked": { label: "Not checked yet", tone: "neutral" },
   unreadable: { label: "Can't read the file", tone: "attention" },

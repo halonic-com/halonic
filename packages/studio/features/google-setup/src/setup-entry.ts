@@ -1,8 +1,14 @@
-import type { SetupService, SetupStep } from "@halonicjs/google-setup";
+import {
+  isReminderDue,
+  type SetupService,
+  type SetupStep,
+  weeklySignIn,
+} from "@halonicjs/google-setup";
 import type { SetupEntry } from "@halonicjs/studio-feature-inbox/api";
 import { accountSteps } from "./account-steps.ts";
 import type { GoogleSetupAccount } from "./api.ts";
 import { stepNames } from "./step-names.ts";
+import { weeklyWords } from "./weekly-words.ts";
 
 /** The steps a service added later needs: its APIs, its scopes and a new sign-in. */
 const addServiceSteps: readonly SetupStep["id"][] = ["apis", "scopes", "sign-in"];
@@ -75,6 +81,11 @@ export function setupEntry(
       `Sign in to Google again for ${email}`,
       `Needs sign-in since ${time(new Date(record.refreshRefused.at), now)}${onHold(account)}`,
     );
+  }
+  // A day before a personal Testing app's sign-in ends, until it ends or **Not now** (design 5.2).
+  const weekly = weeklySignIn(record);
+  if (weekly !== null && isReminderDue(record, now)) {
+    return entry(`Sign in again for ${email}`, weeklyWords.inboxLine(weekly));
   }
 
   const all = accountSteps(account, account.services);

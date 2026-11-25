@@ -3,6 +3,7 @@ import type { RefreshRefusal } from "./refresh-answer.ts";
 import { refusalReason } from "./refresh-refused.ts";
 import type { SetupRecord } from "./setup-record.ts";
 import type { StepId } from "./setup-step.ts";
+import { isWeeklyEnd } from "./weekly-sign-in.ts";
 
 /**
  * Google answered a run's request with 403 `SERVICE_DISABLED`. The host makes
@@ -29,10 +30,11 @@ export type ConnectorState =
   | {
       readonly kind: "needs-sign-in-again";
       /**
-       * True when Studio leads with "Your app is probably still in Testing".
-       * The item then opens at step 3 (Publish) before step 7.
+       * True when this is a personal *Testing* app's weekly end (design 5.2):
+       * Studio then says "Your weekly sign-in ended." instead of listing the
+       * causes. Either way the item opens at step 7 only.
        */
-      readonly testingHint: boolean;
+      readonly weeklyEnd: boolean;
       readonly reopenAt: readonly StepId[];
     }
   | {
@@ -58,17 +60,13 @@ export type ConnectorState =
 /** The parts of a setup record the connector state reads. */
 export type ConnectorStateRecord = Pick<
   SetupRecord,
-  "accountType" | "inProductionTickedAt" | "lastSignInAt" | "projectId" | "refreshRefused"
+  | "accountType"
+  | "inProductionTickedAt"
+  | "personalApp"
+  | "lastSignInAt"
+  | "projectId"
+  | "refreshRefused"
 >;
-
-const hourMs = 60 * 60 * 1000;
-
-/**
- * Google ends a Testing app's sign-in 7 days after it was given. The window
- * is 6½ to 7½ days after the last sign-in, both ends included, so a refresh a
- * little early or late still counts.
- */
-export const testingHintWindowMs = { from: 156 * hourMs, to: 180 * hourMs } as const;
 
 /** A project number, as Google names a project in its errors. */
 const projectNumberPattern = /^[0-9]{1,30}$/;
@@ -104,7 +102,7 @@ export function connectorState(
 
 /**
  * The state a saved refusal stands for, so the badge comes back after Studio
- * restarts. `null` when no refusal is saved. The Testing hint is judged at
+ * restarts. `null` when no refusal is saved. The weekly end is judged at
  * the time of the refusal.
  *
  * @param record - the account's setup record
@@ -132,29 +130,16 @@ function needsNewSecret(clientGone: boolean): ConnectorState {
   return { kind: "needs-new-secret", clientGone, reopenAt: ["credentials"] };
 }
 
-function needsSignInAgain(record: ConnectorStateRecord, now: Date): ConnectorState {
-  if (shouldLeadWithTestingHint(record, now)) {
-    return { kind: "needs-sign-in-again", testingHint: true, reopenAt: ["consent", "sign-in"] };
-  }
-  return { kind: "needs-sign-in-again", testingHint: false, reopenAt: ["sign-in"] };
-}
-
 /**
- * Whether the timing points at an app left in Testing. Only a personal
- * account's app can be in Testing: a Workspace app is Internal and never has
- * the "In production" tick. If the user ticked it, the timing is taken as a
- * coincidence, because telling someone who did it right that they did it
- * wrong costs more trust than the hint saves (design 5.2).
+ * A refused sign-in. Signing in again keeps the client ID and the secret, so
+ * the item reopens at step 7 only, whatever the cause.
  */
-function shouldLeadWithTestingHint(record: ConnectorStateRecord, now: Date): boolean {
-  if (record.accountType !== "personal" || record.inProductionTickedAt !== null) {
-    return false;
-  }
-  if (record.lastSignInAt === null) {
-    return false;
-  }
-  const sinceSignIn = now.getTime() - Date.parse(record.lastSignInAt);
-  return sinceSignIn >= testingHintWindowMs.from && sinceSignIn <= testingHintWindowMs.to;
+function needsSignInAgain(record: ConnectorStateRecord, refusedAt: Date): ConnectorState {
+  return {
+    kind: "needs-sign-in-again",
+    weeklyEnd: isWeeklyEnd(record, refusedAt),
+    reopenAt: ["sign-in"],
+  };
 }
 
 /**

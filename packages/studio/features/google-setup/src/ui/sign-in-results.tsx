@@ -1,3 +1,4 @@
+import type { WeeklySignIn } from "@halonicjs/google-setup";
 import { Button, Callout, CommandBox, ExternalLink } from "@halonicjs/studio-kit";
 import { failureLine } from "@halonicjs/studio-shell";
 import { useEffect, useId, useRef, useState } from "react";
@@ -10,6 +11,7 @@ import {
   resultText,
   type ServiceResultLine,
 } from "./result-lines.ts";
+import { weeklyWords } from "../weekly-words.ts";
 import { signInCommand } from "./sign-in-elsewhere.tsx";
 
 /**
@@ -58,6 +60,8 @@ export interface SignInResultsProps {
   /** The setup record's ref, which `halonic google sign-in` takes. */
   readonly accountRef: string;
   readonly answering: boolean;
+  /** A personal *Testing* app's sign-in: when Google ends it, and when Studio reminds you. */
+  readonly weekly: WeeklySignIn | null;
 }
 
 /**
@@ -66,9 +70,12 @@ export interface SignInResultsProps {
  * that hasn't been checked since the sign-in shows nothing, so it can't be counted as passed.
  * **Check again** is under the lines while one of them can change by itself (an API switched on).
  * Where the host can't check yet, it is unavailable, with the command to sign in again under it.
+ * For a personal app in *Testing*, the date Google ends the sign-in comes first, and the finished
+ * line says when Studio reminds you (design 3.5, items 3 and 4).
  */
 export function SignInResults(props: SignInResultsProps) {
-  const { email, ticked, lines, onCheckAgain, checkAgainEntry, accountRef, answering } = props;
+  const { email, ticked, lines, onCheckAgain, checkAgainEntry, accountRef, answering, weekly } =
+    props;
   const reason = useId();
   const button = useRef<HTMLButtonElement>(null);
   const region = useRef<HTMLDivElement>(null);
@@ -84,7 +91,8 @@ export function SignInResults(props: SignInResultsProps) {
     }
   });
 
-  if (lines.length === 0) return null;
+  const endsOn = weekly === null ? null : <p className="text-body">{weeklyWords.endsOn(weekly)}</p>;
+  if (lines.length === 0) return endsOn;
 
   async function checkAgain() {
     if (checking || !answering || checkAgainEntry.kind !== "here") return;
@@ -107,8 +115,12 @@ export function SignInResults(props: SignInResultsProps) {
   return (
     // Polite, so the new result is read after a check without stealing focus.
     <div ref={region} tabIndex={-1} aria-live="polite" className="flex flex-col gap-2 outline-none">
+      {endsOn}
       {allPassed ? (
-        <Callout tone="info">{allPassedText(email, lines)}</Callout>
+        <Callout tone="info">
+          {allPassedText(email, lines)}
+          {weekly === null ? null : ` ${weeklyWords.remindsOn(weekly)}`}
+        </Callout>
       ) : (
         <ul className="flex flex-col gap-1 text-body">
           {lines.map((line) => {

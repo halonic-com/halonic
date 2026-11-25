@@ -41,6 +41,8 @@ export type SetupEdit =
   | { readonly kind: "address-changed" }
   /** Google answered the sign-in. It clears a saved refresh refusal. */
   | { readonly kind: "signed-in" }
+  /** The "Sign in again" reminder was closed with **Not now**, for this sign-in (design 5.2). */
+  | { readonly kind: "reminder-closed" }
   /** The check after sign-in for one service (design 3.5, plan D5 rev. 5). */
   | {
       readonly kind: "service-checked";
@@ -101,6 +103,8 @@ export function editedValues(
         lastSignInEnded: null,
         refreshRefused: null,
       };
+    case "reminder-closed":
+      return { reminderClosedAt: now };
     case "service-checked":
       return {
         services: {

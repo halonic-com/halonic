@@ -1,10 +1,22 @@
-import { type ConnectorState, type StepId, savedConnectorState } from "@halonicjs/google-setup";
+import {
+  type ConnectorState,
+  personalAppOf,
+  type StepId,
+  savedConnectorState,
+  signInEndsSoon,
+  weeklySignIn,
+} from "@halonicjs/google-setup";
 import type { GoogleSetupAccount } from "./api.ts";
+import { listNames } from "./ui/account-labels.ts";
+import { weeklyWords } from "./weekly-words.ts";
 
 /** What the item says when Google refused the account, and where it opens. */
 export interface ConnectorProblem {
-  /** A bold first line, only when the sign-in sentence has a hint to lead with. */
-  readonly lead?: string;
+  /**
+   * The weekly sign-in of a personal *Testing* app: it ends within a day, or it ended. The item
+   * then folds "Why not publish?" under the banner (design 5.2 rows 2 and 3).
+   */
+  readonly weekly?: "ends-soon" | "ended";
   readonly text: string;
   /** The button's words. It opens the step in `actionStep`, never Google itself. */
   readonly action: string;
@@ -13,15 +25,17 @@ export interface ConnectorProblem {
   readonly reopenAt: readonly StepId[];
 }
 
-const signInLead =
-  "Your app is probably still in Testing. Google ends the sign-in after 7 days for those. Publish it, then sign in again.";
-
-function signInText(email: string, inProduction: boolean): string {
-  // The "Testing" clause goes when "In production" was ticked: the user did it right (UX checklists 8.4).
-  const causes = inProduction
+function signInText(email: string, published: boolean): string {
+  // The "Testing" clause goes when the app was published: the user did it right (UX checklists 8.4).
+  const causes = published
     ? "when access is removed in your Google account or when the password changes"
     : "when access is removed in your Google account, when the password changes, or when an app in Testing reaches 7 days";
-  return `Google no longer accepts the sign-in for ${email}. This happens ${causes}. Nothing was sent.`;
+  return `Google no longer accepts Halonic's sign-in for ${email}. This happens ${causes}. Nothing ran.`;
+}
+
+/** The services the account's workflows use, by name, such as "Gmail and Drive". */
+function serviceNames(account: GoogleSetupAccount): string {
+  return listNames(account.services.map((service) => service.label));
 }
 
 function describe(
@@ -31,8 +45,10 @@ function describe(
   switch (state.kind) {
     case "needs-sign-in-again":
       return {
-        ...(state.testingHint ? { lead: signInLead } : {}),
-        text: signInText(account.email, account.record.inProductionTickedAt !== null),
+        ...(state.weeklyEnd ? { weekly: "ended" } : {}),
+        text: state.weeklyEnd
+          ? weeklyWords.ended
+          : signInText(account.email, personalAppOf(account.record)?.publishing === "production"),
         action: "Sign in with Google",
         actionStep: "sign-in",
         reopenAt: state.reopenAt,
@@ -53,13 +69,33 @@ function describe(
 }
 
 /**
- * The refusal the account's setup record keeps, as the item words it (design 5.2), or `undefined`
- * when Google has refused nothing.
+ * A personal *Testing* app whose sign-in ends within a day (design 5.2 row 2): still signed in,
+ * so it isn't a refusal, but the item opens at step 7 the same way.
+ */
+function endsSoon(account: GoogleSetupAccount, now: Date): ConnectorProblem | undefined {
+  const weekly = weeklySignIn(account.record);
+  if (weekly === null || !signInEndsSoon(account.record, now)) return undefined;
+  return {
+    weekly: "ends-soon",
+    text: weeklyWords.endsSoon(weekly, serviceNames(account)),
+    action: "Sign in with Google",
+    actionStep: "sign-in",
+    reopenAt: ["sign-in"],
+  };
+}
+
+/**
+ * The refusal the account's setup record keeps, as the item words it (design 5.2), or a sign-in
+ * that ends within a day, or `undefined` when nothing needs the user.
  *
+ * @param now - the time to judge "ends within a day" at
  * @example
  * connectorProblem(account)?.action; // "Sign in with Google"
  */
-export function connectorProblem(account: GoogleSetupAccount): ConnectorProblem | undefined {
+export function connectorProblem(
+  account: GoogleSetupAccount,
+  now: Date = new Date(),
+): ConnectorProblem | undefined {
   const state = savedConnectorState(account.record);
-  return state === null ? undefined : describe(state, account);
+  return state === null ? endsSoon(account, now) : describe(state, account);
 }

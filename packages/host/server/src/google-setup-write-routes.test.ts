@@ -165,6 +165,16 @@ describe("google setup write routes", () => {
       expect(refused.status).toBe(400);
     });
 
+    it("keeps when the weekly reminder was closed with Not now", async () => {
+      const state = setup();
+      const accountRef = await started(state);
+      const response = await send(state, "PATCH", `/${accountRef}`, { kind: "reminder-closed" });
+      expect(response.status).toBe(200);
+      expect(await state.google.setups.read(accountRef)).toMatchObject({
+        reminderClosedAt: expect.any(String),
+      });
+    });
+
     it("refuses the edits the server records itself", async () => {
       const state = setup();
       const accountRef = await started(state);
