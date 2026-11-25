@@ -140,7 +140,7 @@ verifies("harness-claude-code.settings", () => {
 
 verifies("harness-claude-code.settings-reset", () => {
   it("leaves only Halonic's files and the sign-in in the settings folder", async () => {
-    const signIn = '{ "account": "acme" }\n';
+    const signIn = '{ "oauthAccount": { "emailAddress": "agent@acme.example" } }\n';
     await writeFile(join(folder, ".credentials.json"), signIn);
     await writeFile(join(folder, ".claude.json"), signIn);
     await writeFile(join(folder, "CLAUDE.md"), "notes\n");
@@ -160,5 +160,58 @@ verifies("harness-claude-code.settings-reset", () => {
     ]);
     expect(await readFile(join(folder, ".credentials.json"), "utf8")).toBe(signIn);
     expect(await readFile(join(folder, ".claude.json"), "utf8")).toBe(signIn);
+  });
+});
+
+verifies("harness-claude-code.settings-reset-claude-json", () => {
+  const signIn = {
+    oauthAccount: { emailAddress: "agent@acme.example" },
+    primaryApiKey: "acme-stand-in",
+    customApiKeyResponses: { approved: ["stand-in"], rejected: [] },
+    userID: "acme-user",
+    hasCompletedOnboarding: true,
+  };
+
+  it("keeps only the sign-in keys of .claude.json, dropping projects and the rest", async () => {
+    const planted = {
+      ...signIn,
+      projects: { "/acme/repo": { allowedTools: ["Bash"] } },
+      mcpServers: { acme: { type: "stdio", command: "acme" } },
+    };
+    await writeFile(join(folder, ".claude.json"), JSON.stringify(planted));
+
+    await writeClaudeCodeSettings(folder, diskSettingsFolder, thisComputer);
+
+    expect(await readJson(".claude.json")).toEqual(signIn);
+  });
+
+  it("writes the cut-down .claude.json for its owner only", async () => {
+    await writeFile(join(folder, ".claude.json"), JSON.stringify({ ...signIn, projects: {} }), {
+      mode: 0o644,
+    });
+
+    await writeClaudeCodeSettings(folder, diskSettingsFolder, thisComputer);
+
+    expect(await readJson(".claude.json")).toEqual(signIn);
+    // Windows has no POSIX file modes to check; the file still has to be cut down there.
+    if (process.platform === "win32") return;
+    expect((await stat(join(folder, ".claude.json"))).mode & 0o777).toBe(0o600);
+  });
+
+  it("leaves a .claude.json that holds only sign-in keys as it is", async () => {
+    const text = JSON.stringify(signIn);
+    await writeFile(join(folder, ".claude.json"), text);
+
+    await writeClaudeCodeSettings(folder, diskSettingsFolder, thisComputer);
+
+    expect(await readFile(join(folder, ".claude.json"), "utf8")).toBe(text);
+  });
+
+  it("removes a .claude.json that isn't a JSON object", async () => {
+    await writeFile(join(folder, ".claude.json"), "[1, 2");
+
+    await writeClaudeCodeSettings(folder, diskSettingsFolder, thisComputer);
+
+    expect(await readdir(folder)).not.toContain(".claude.json");
   });
 });

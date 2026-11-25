@@ -9,6 +9,7 @@ import {
 } from "@halonicjs/adapter-harness-kit/web";
 import { harnessBridgeTokenHeader } from "@halonicjs/ports";
 import { bridgeServerName, permissionServerName } from "./bridge-tools.ts";
+import { claudeJsonFile, keepClaudeJsonSignIn } from "./claude-json.ts";
 import { claudeCodeRunTokenVariable } from "./environment.ts";
 
 /** The file in the settings folder that names the bridge's MCP server; Claude Code reads it with `--mcp-config`. */
@@ -156,15 +157,17 @@ function jsonFile(value: object): string {
  * The files in the settings folder that hold the agent's own Claude Code
  * sign-in: the stored sign-in (on macOS it is in the keychain instead) and
  * Claude Code's own file, which holds the account and a Console key. They
- * stay when the folder is reset before a run (`harness-claude-code.settings-reset`).
+ * stay when the folder is reset before a run (`harness-claude-code.settings-reset`);
+ * the second keeps only its sign-in keys.
  */
-export const claudeCodeSignInFiles: readonly string[] = [".credentials.json", ".claude.json"];
+export const claudeCodeSignInFiles: readonly string[] = [".credentials.json", claudeJsonFile];
 
 /**
  * Resets `folder` to {@link claudeCodeSettingsFiles} and
  * {@link claudeCodeSignInFiles}: everything else in it goes, such as a
  * user-level `CLAUDE.md`, `skills/`, `agents/` or `commands/` a run left
- * there. A settings file that already holds the same text is left alone.
+ * there, and `.claude.json` keeps only its sign-in keys. A settings file
+ * that already holds the same text is left alone.
  */
 export async function writeClaudeCodeSettings(
   folder: string,
@@ -173,4 +176,5 @@ export async function writeClaudeCodeSettings(
 ): Promise<void> {
   const contents = { files: claudeCodeSettingsFiles(), signIn: claudeCodeSignInFiles };
   await resetSettingsFolderWith(paths, folder, contents, writer);
+  await keepClaudeJsonSignIn(paths, folder, writer);
 }

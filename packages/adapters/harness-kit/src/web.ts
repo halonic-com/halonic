@@ -27,6 +27,7 @@ export { type ReadLinesOptions, readLines } from "./read-lines.ts";
 export { sessionReadLimitBytes, sessionSettingsFolder } from "./session-settings-folder.ts";
 export {
   resetSettingsFolderWith,
+  type SettingsFileOptions,
   type SettingsFolderContents,
   type SettingsFolderWriter,
   writeSettingsFilesWith,

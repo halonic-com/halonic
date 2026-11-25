@@ -8,7 +8,11 @@ import {
   writeSettingsFilesWith,
 } from "./settings-files.ts";
 
-export type { SettingsFolderContents, SettingsFolderWriter } from "./settings-files.ts";
+export type {
+  SettingsFileOptions,
+  SettingsFolderContents,
+  SettingsFolderWriter,
+} from "./settings-files.ts";
 
 /**
  * {@link resetSettingsFolderWith} under this computer's path rules
@@ -50,11 +54,12 @@ export const diskSettingsFolder: SettingsFolderWriter = {
       throw error;
     }
   },
-  async write(path, text) {
+  async write(path, text, options = {}) {
     const temporary = `${path}.${randomUUID()}.tmp`;
     await mkdir(dirname(path), { recursive: true });
     try {
-      await writeFile(temporary, text, "utf8");
+      // The aside file is new, so `mode` applies to it, and the rename keeps it.
+      await writeFile(temporary, text, { encoding: "utf8", mode: options.mode });
       await rename(temporary, path);
     } catch (error) {
       await rm(temporary, { force: true });
