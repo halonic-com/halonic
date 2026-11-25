@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-18693 (board report on HAL-10: every app showed the same ring, without its own icon); the app logo set HAL-17379, approved with the Halonic apps card HAL-17358; the kit's `kit.app-logo`
 
-Halonic's native icons shall be the approved app logos, drawn from the same glyphs as the kit's `AppLogo`: the slate tile with the brand ring and the app's glyph. Halonic's own icon (the exe, the installer and the Halonic shortcut) shall carry Studio's point of light. Each focused app's window shall carry its app's icon, and on Windows the installer shall install each focused app's icon (`icons\inbox.ico`, `icons\messenger.ico`) and give that app's Start menu shortcut that icon, so its Start menu entry and taskbar entry show the app's glyph: a tray for Halonic Inbox, a message bubble for Halonic Messenger. Each icon file shall hold the sizes 16, 24, 32, 48, 64 and 256 px.
+The native icons of Halonic shall be the approved app logos, drawn from the same glyphs as the kit's `AppLogo`: the slate tile with the brand ring and the app's glyph. Halonic's own icon (the exe, the installer and the Halonic shortcut) shall carry Studio's point of light. Each focused app's window shall carry its app's icon, and on Windows the installer shall install each focused app's icon (`icons\inbox.ico`, `icons\messenger.ico`) and give that app's Start menu shortcut that icon, so its Start menu entry and taskbar entry show the app's glyph: a tray for Halonic Inbox, a message bubble for Halonic Messenger. Each icon file shall hold the sizes 16, 24, 32, 48, 64 and 256 px.
 
 ## Examples
 
