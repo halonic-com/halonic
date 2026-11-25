@@ -3,6 +3,7 @@
 - Task: HAL-18008
 - Approval: Liam's decision W1 on HAL-18000 (condition 1: `@paperclipai/plugin-sdk` stays `dev-tooling` and appears only in tests); Liam signs this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:pYnu0dBZsdT1C61g1FkvgdzlDT9DkvoScd+bN9mwrpESfdZ68dJUOeLyeNAj0m81sDW8wOKuTQTO0LGvNwU6Cw==
 
 ## What changes
 
