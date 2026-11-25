@@ -3,6 +3,7 @@
 - Approval: the task asks for this change (HAL-1204, Liam's decision on the Node floor from
   HAL-1198); Liam approves and signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:3xXnrlF4Dfm3SO1sf/BBDRUMt4vZHS4Idtw9BU/8QY9cIGCWx2aByilufzkMtWuON9Npb9pLQr+7eqm11BZRCw==
 
 ## What changes
 
