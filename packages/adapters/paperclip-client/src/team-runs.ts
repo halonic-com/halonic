@@ -54,7 +54,8 @@ export function runState(record: JsonRecord): TeamRunState | undefined {
   return status === undefined ? undefined : states[status];
 }
 
-function isLive(record: JsonRecord): boolean {
+/** Whether run `record` is queued or running. */
+export function isLive(record: JsonRecord): boolean {
   const state = runState(record);
   return state === "queued" || state === "running";
 }

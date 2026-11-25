@@ -57,5 +57,21 @@ verifies("runs.costs", () => {
         "2026-03-28T23:00:00.000Z",
       );
     });
+
+    it("starts a day with no midnight when the clocks jump, not an hour before", () => {
+      // America/Santiago springs from 00:00 straight to 01:00 on 6 September 2026.
+      const noon = new Date("2026-09-06T12:00:00Z");
+      expect(costPeriodStart("today", noon, "America/Santiago").toISOString()).toBe(
+        "2026-09-06T04:00:00.000Z",
+      );
+    });
+
+    it("starts a day whose midnight comes after the clocks go back at its one midnight", () => {
+      // America/Santiago falls back from 00:00 to 23:00 on 5 April 2026.
+      const noon = new Date("2026-04-05T12:00:00Z");
+      expect(costPeriodStart("today", noon, "America/Santiago").toISOString()).toBe(
+        "2026-04-05T04:00:00.000Z",
+      );
+    });
   });
 });

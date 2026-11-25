@@ -54,15 +54,26 @@ function calendarDayBefore(day: CalendarDay, count: number): CalendarDay {
 }
 
 /**
- * The instant of 00:00 on `day` in `timeZone`. The zone's offset is read at a
- * first guess and read again at the result, because the guess can sit on the
- * other side of a daylight saving change from midnight itself.
+ * The first instant of `day` in `timeZone`: 00:00, or the moment the clocks
+ * jump when they skip midnight (America/Santiago springs from 00:00 to 01:00).
+ * Midnight is tried with the zone's offset from the evening before and from
+ * the morning after, so a daylight saving change on either side of it is
+ * seen, and the earliest try that lands on `day` itself wins.
  */
 function localMidnight(day: CalendarDay, timeZone: string): Date {
   const wallClock = Date.UTC(day.year, day.month - 1, day.day);
-  const firstGuess = wallClock - offsetAt(new Date(wallClock), timeZone);
-  const settled = wallClock - offsetAt(new Date(firstGuess), timeZone);
-  return new Date(settled);
+  const halfDay = millisecondsPerDay / 2;
+  const tries = [wallClock - halfDay, wallClock + halfDay].map(
+    (around) => wallClock - offsetAt(new Date(around), timeZone),
+  );
+  const onTheDay = tries.filter((instant) =>
+    sameDay(calendarDayIn(new Date(instant), timeZone), day),
+  );
+  return new Date(Math.min(...(onTheDay.length > 0 ? onTheDay : tries)));
+}
+
+function sameDay(left: CalendarDay, right: CalendarDay): boolean {
+  return left.year === right.year && left.month === right.month && left.day === right.day;
 }
 
 /** How far the zone's wall clock is ahead of UTC at an instant, in milliseconds. */

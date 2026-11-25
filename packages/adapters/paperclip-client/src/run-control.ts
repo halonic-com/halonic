@@ -9,7 +9,7 @@ import type {
 import { PaperclipIds } from "./ids.ts";
 import { asRecord, asRecords, type JsonRecord, text } from "./json.ts";
 import { UnsafeIdError } from "./requests.ts";
-import { canStopNow } from "./team-runs.ts";
+import { canStopNow, isLive } from "./team-runs.ts";
 import { type PaperclipAnswer, PaperclipTransport, type TransportOptions } from "./transport.ts";
 
 /** One Paperclip connection, as the engine hands it in. The key stays in memory only. */
@@ -25,6 +25,12 @@ export const runAgainComment = "Run again, asked for in Halonic's Runs app.";
 
 /** Task statuses after which there is nothing to run again. */
 const closedStatuses = new Set(["done", "cancelled"]);
+
+/**
+ * Task statuses that wait on someone else. The wake sets `todo`, so running
+ * again would clear the block or the review; Run again isn't offered.
+ */
+const waitingStatuses = new Set(["blocked", "in_review"]);
 
 type Failed = PaperclipAnswer & { kind: "failed" };
 
@@ -42,6 +48,8 @@ interface FreshRun {
   agent: string;
   task: string | undefined;
   canStop: boolean;
+  /** Whether the run is still queued or running, so there is nothing to run again yet. */
+  live: boolean;
 }
 
 /** Whether Run again may go ahead, with the agent to wake on which task when it may. */
@@ -122,7 +130,13 @@ export class PaperclipRunControl implements TeamRunControl {
     ) {
       return "not-found";
     }
-    return { id, agent, task: text(record, "issueId"), canStop: canStopNow(record) };
+    return {
+      id,
+      agent,
+      task: text(record, "issueId"),
+      canStop: canStopNow(record),
+      live: isLive(record),
+    };
   }
 
   /** Whether the run's task is open, of this company, and still with the run's agent. */
@@ -133,6 +147,10 @@ export class PaperclipRunControl implements TeamRunControl {
     }
     if (fresh.task === undefined) {
       return { offered: false, why: "no-task" };
+    }
+    if (fresh.live) {
+      // Only an ended run is run again; the Runs app offers it for no other.
+      return { offered: false, why: "not-allowed" };
     }
     const answer = await this.#send("getTask", { task: fresh.task });
     if (answer.kind === "failed") {
@@ -147,6 +165,9 @@ export class PaperclipRunControl implements TeamRunControl {
     if (closedStatuses.has(text(task, "status") ?? "")) {
       return { offered: false, why: "task-done", ...named };
     }
+    if (waitingStatuses.has(text(task, "status") ?? "")) {
+      return { offered: false, why: "not-allowed", ...named };
+    }
     const holder = text(task, "assigneeAgentId");
     if (holder !== fresh.agent) {
       return { offered: false, why: "reassigned", ...named, ...(await this.#holderName(holder)) };
@@ -157,6 +178,8 @@ export class PaperclipRunControl implements TeamRunControl {
   /**
    * The display name of the agent holding the task, when it is an agent the
    * company lists. A person holding it isn't named: only an agent's name is read.
+   * A failed `listAgents` read leaves the name out on purpose, so the pane says
+   * "someone else" rather than failing the whole check over a name.
    */
   async #holderName(agent: string | undefined): Promise<{ holder?: string }> {
     if (agent === undefined) {

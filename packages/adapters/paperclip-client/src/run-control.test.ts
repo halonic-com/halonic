@@ -23,6 +23,9 @@ const adaRun = {
   execution: { canStop: true },
 };
 
+/** The same run once it has failed: only an ended run is run again. */
+const failedRun = { ...adaRun, status: "failed" };
+
 const openTask = {
   id: plainTask,
   companyId: company,
@@ -138,7 +141,7 @@ verifies("paperclip-client.team-run-control", () => {
 
   describe("run again", () => {
     it("wakes the run's agent on the same task", async () => {
-      serve({ ...adaRun, status: "failed" });
+      serve(failedRun);
       await expect(control().runAgainCheck(run)).resolves.toEqual({ offered: true });
       await expect(control().runAgain(run)).resolves.toEqual({ outcome: "woken" });
       expect(writes().map((request) => [request.path, request.body])).toEqual([
@@ -147,9 +150,9 @@ verifies("paperclip-client.team-run-control", () => {
     });
 
     it("checks again on the write: a task done since the check gets no wake", async () => {
-      serve({ ...adaRun, status: "failed" });
+      serve(failedRun);
       await expect(control().runAgainCheck(run)).resolves.toEqual({ offered: true });
-      serve({ ...adaRun, status: "failed" }, { ...openTask, status: "done" });
+      serve(failedRun, { ...openTask, status: "done" });
       await expect(control().runAgain(run)).resolves.toEqual({
         outcome: "refused",
         reason: "task-done",
@@ -158,14 +161,14 @@ verifies("paperclip-client.team-run-control", () => {
     });
 
     it("names the agent holding a moved task by display name, and a person not at all", async () => {
-      serve(adaRun, { ...openTask, assigneeAgentId: agentBo });
+      serve(failedRun, { ...openTask, assigneeAgentId: agentBo });
       await expect(control().runAgainCheck(run)).resolves.toEqual({
         offered: false,
         why: "reassigned",
         task: "ACME-7",
         holder: "Bo",
       });
-      serve(adaRun, { ...openTask, assigneeAgentId: null, assigneeUserId: "u-made-up" });
+      serve(failedRun, { ...openTask, assigneeAgentId: null, assigneeUserId: "u-made-up" });
       await expect(control().runAgainCheck(run)).resolves.toEqual({
         offered: false,
         why: "reassigned",
@@ -175,12 +178,12 @@ verifies("paperclip-client.team-run-control", () => {
     });
 
     it("isn't offered for a run without a task or a task of another company", async () => {
-      serve({ ...adaRun, issueId: undefined });
+      serve({ ...failedRun, issueId: undefined });
       await expect(control().runAgainCheck(run)).resolves.toEqual({
         offered: false,
         why: "no-task",
       });
-      serve(adaRun, { ...openTask, companyId: "c-other" });
+      serve(failedRun, { ...openTask, companyId: "c-other" });
       await expect(control().runAgain(run)).resolves.toEqual({
         outcome: "refused",
         reason: "not-found",
@@ -189,11 +192,46 @@ verifies("paperclip-client.team-run-control", () => {
     });
 
     it("never returns Paperclip's own text", async () => {
-      serve(adaRun);
+      serve(failedRun);
       paperclip.on("PATCH", taskPath, { status: 403, body: { error: "made-up error" } });
       const result = await control().runAgain(run);
       expect(result).toEqual({ outcome: "refused", reason: "not-allowed" });
       expect(JSON.stringify(result)).not.toContain("made-up");
+    });
+  });
+});
+
+verifies("paperclip-client.team-run-again-ended", () => {
+  describe("run again on an ended run only", () => {
+    it("isn't offered for a run still queued or running, and wakes nothing", async () => {
+      for (const status of ["queued", "running"]) {
+        serve({ ...adaRun, status });
+        await expect(control().runAgainCheck(run)).resolves.toEqual({
+          offered: false,
+          why: "not-allowed",
+        });
+        await expect(control().runAgain(run)).resolves.toEqual({
+          outcome: "refused",
+          reason: "not-allowed",
+        });
+      }
+      expect(writes()).toEqual([]);
+    });
+
+    it("isn't offered on a blocked task or one in review, so the wake can't clear it", async () => {
+      for (const status of ["blocked", "in_review"]) {
+        serve(failedRun, { ...openTask, status });
+        await expect(control().runAgainCheck(run)).resolves.toEqual({
+          offered: false,
+          why: "not-allowed",
+          task: "ACME-7",
+        });
+        await expect(control().runAgain(run)).resolves.toEqual({
+          outcome: "refused",
+          reason: "not-allowed",
+        });
+      }
+      expect(writes()).toEqual([]);
     });
   });
 });
