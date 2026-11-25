@@ -38,7 +38,7 @@ first, as for `needs`, but nobody providing it is no error.
 | `StatusBarItems` | the status bar's items, state only | `shell.status-bar` |
 | `shell.announcer` | read text to screen readers, once per window | `shell.announcer` |
 | `shell.closeStack` | close the right layer on Esc and Android's Back | `shell.close-stack` |
-| `TitleBarBrand`, `HistoryButtons` | the Halonic Studio mark, and Back and Forward, in the title bar | `shell.title-bar` |
+| `TitleBarBrand`, `HistoryButtons` | Studio's logo (`AppLogo`, the ring with its point of light), and Back and Forward, in the title bar | `shell.title-bar` |
 | `shell.engine` | send and announce when the engine is lost and back | `shell.engine-connection` |
 | `EngineLine` | the one line while the engine isn't answering | `shell.engine-line` |
 | `shell.engine.supervise` | start the engine process, restart it once, report why it failed; unused in 0.1 | `shell.engine-start` (parked), `shell.engine-report-interrupted-runs` |
@@ -213,7 +213,7 @@ layers. An Esc that ends an input method's composition is ignored. `phoneQuery` 
 `usePresentationFromWidth` are the width check the frame uses.
 
 In a narrow window (600 to 899px, `useNarrowWindow`) the sidebar folds into a Places button at the
-title bar's far left, before the Halonic mark, with `aria-expanded`, `aria-controls` and a tooltip. It opens the same sidebar as a 264px drawer over the scrim, with focus on the
+title bar's far left, before Studio's logo, with `aria-expanded`, `aria-controls` and a tooltip. It opens the same sidebar as a 264px drawer over the scrim, with focus on the
 current place; a pick, Esc, the scrim or the button closes it again (component specs 24.4). The
 drawer is a `drawer` layer in the close stack. The sidebar fills the drawer there, and
 `SidebarResizeEdge` hides itself. Widening the window docks the sidebar again without remounting
@@ -258,7 +258,7 @@ There are no window tabs and no status bar.
 ## The title bar
 
 There's no toolbar row: the panel starts with the page. The title bar holds, from the left,
-`TitleBarBrand` (the Halonic mark and "Halonic Studio", not a link; under 900px only the mark, named
+`TitleBarBrand` (Studio's logo and "Halonic Studio", not a link; under 900px only the logo, named
 "Halonic Studio"), `HistoryButtons` and the window tabs. Back and Forward move focus to the new
 page's `h1`. With nowhere to go, they stay in the Tab order as unavailable, and screen readers hear
 "Nothing to go back to" or "Nothing to go forward to". The window-wide Back and Forward keys come

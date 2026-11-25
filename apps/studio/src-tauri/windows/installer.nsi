@@ -1856,7 +1856,9 @@ FunctionEnd
 ; apps (board direction HAL-17358), each get a Start menu shortcut beside
 ; Halonic's, so Windows search finds them. Each starts the same exe with
 ; `--app <name>` and carries its own AppUserModelID, the one its window sets
-; (src/focused_apps.rs), so each has its own taskbar entry. Unlike Halonic's
+; (src/focused_apps.rs), so each has its own taskbar entry, and its own icon
+; (HAL-18693): the halo with the app's glyph, `icons\<app>.ico`, a resource
+; tauri.installer.conf.json installs. Unlike Halonic's
 ; own shortcut they are made on an update too, so an update from a version
 ; without them adds them. src/studio/installer-focused-apps.test.ts checks them.
 ; ---------------------------------------------------------------------------
@@ -1898,7 +1900,7 @@ FunctionEnd
 
 ; The shortcut `${title}.lnk` for the focused app `${app}`.
 !macro FocusedAppShortcut title app
-  CreateShortcut "${FOCUSEDAPPFOLDER}\${title}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe" "--app ${app}"
+  CreateShortcut "${FOCUSEDAPPFOLDER}\${title}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe" "--app ${app}" "$INSTDIR\icons\${app}.ico" 0
   !insertmacro SetLnkAppUserModelIdTo "${FOCUSEDAPPFOLDER}\${title}.lnk" "${BUNDLEID}.${app}"
 !macroend
 

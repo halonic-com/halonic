@@ -20,7 +20,8 @@ pub fn open<R: Runtime, M: Manager<R>>(manager: &M) -> tauri::Result<WebviewWind
 
 #[cfg(desktop)]
 /// Opens `app`'s own window (HAL-17903): the same page as Studio's, under
-/// the app's label and title, and on Windows with its own taskbar entry.
+/// the app's label, title and icon, and on Windows with its own taskbar
+/// entry.
 pub fn open_focused<R: Runtime, M: Manager<R>>(
     manager: &M,
     app: FocusedApp,
@@ -32,6 +33,13 @@ pub fn open_focused<R: Runtime, M: Manager<R>>(
     // Halonic's own entry first.
     config.visible = false;
     let window = open_from(manager, config)?;
+    // Without its own icon the window still works, with Studio's.
+    if let Err(error) = window.set_icon(app.icon()) {
+        halonic_shell_log::record(
+            "window",
+            format!("{}'s icon didn't set: {error}", app.title()),
+        );
+    }
     #[cfg(windows)]
     {
         let app_id = app.app_user_model_id(&manager.config().identifier);

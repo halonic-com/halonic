@@ -10,7 +10,8 @@
     },
     "./fonts": {
       "style": "./src/theme-font.css"
-    }
+    },
+    "./app-glyphs": "./src/app-logo/app-glyphs.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",

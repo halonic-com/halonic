@@ -29,6 +29,11 @@ verifies("shell.title-bar", () => {
       expect(container.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
     });
 
+    it("draws Studio's logo, the ring with its point of light", () => {
+      const container = render(<TitleBarBrand />);
+      expect(container.querySelector('svg [data-app-glyph="studio"]')).not.toBeNull();
+    });
+
     it("keeps only the mark, named Halonic Studio, under 900px", () => {
       const container = render(<TitleBarBrand />);
       act(() => media.resize(800));

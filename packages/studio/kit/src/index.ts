@@ -19,6 +19,14 @@ export {
   type AgentOrbState,
   characterPairOf,
 } from "./agent-orb/agent-orb.tsx";
+export {
+  type AppGlyphShape,
+  type AppLogoId,
+  appGlyphScale,
+  appGlyphs,
+  appLogoIds,
+} from "./app-logo/app-glyphs.ts";
+export { AppLogo, type AppLogoProps } from "./app-logo/app-logo.tsx";
 export { Avatar, type AvatarProps } from "./avatar/avatar.tsx";
 export {
   Button,

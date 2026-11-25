@@ -114,6 +114,7 @@
       "./phone-client"
     ],
     "@halonicjs/studio-kit": [
+      "./app-glyphs",
       "./fonts"
     ],
     "@halonicjs/studio-services": [

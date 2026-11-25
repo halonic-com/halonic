@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { type ReactNode, useId } from "react";
 
 /** The props of `HalonicMark`. */
 export interface HalonicMarkProps {
@@ -9,6 +9,11 @@ export interface HalonicMarkProps {
   readonly label?: string | undefined;
   /** Its size: `size-icon-md` (20px) unless you give another. */
   readonly className?: string;
+  /**
+   * What sits in the ring, on its 100-unit box: an app's glyph, drawn by the kit's `AppLogo`.
+   * Without it the ring is bare.
+   */
+  readonly children?: ReactNode;
 }
 
 /**
@@ -22,7 +27,7 @@ export interface HalonicMarkProps {
  * @example
  * <HalonicMark label={narrow ? "Halonic Studio" : undefined} />
  */
-export function HalonicMark({ label, className = "size-icon-md" }: HalonicMarkProps) {
+export function HalonicMark({ label, className = "size-icon-md", children }: HalonicMarkProps) {
   const gradientId = useId();
   return (
     <svg
@@ -39,6 +44,7 @@ export function HalonicMark({ label, className = "size-icon-md" }: HalonicMarkPr
         </linearGradient>
       </defs>
       <circle cx="50" cy="50" r="42" fill="none" stroke={`url(#${gradientId})`} strokeWidth="16" />
+      {children}
     </svg>
   );
 }
