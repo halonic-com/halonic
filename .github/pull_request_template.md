@@ -28,6 +28,10 @@ Either way, run `pnpm check:enqueue` once before queueing.
 
 Local check:
 
+## UX
+
+- [ ] Feels human, intuitive and approachable ([product principles](docs/guides/product-principles.md)), or nothing a user sees or reads changes.
+
 ## Docs
 
 <!-- Which docs did you update? Or say why none are needed. -->

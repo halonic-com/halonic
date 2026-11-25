@@ -2,6 +2,8 @@
 
 How we write documentation for Halonic: the docs site, package READMEs, the
 community files and doc comments. Read it before you write or change a page.
+For how the product itself should feel, see
+[Product principles](product-principles.md).
 
 ## The four rules
 
