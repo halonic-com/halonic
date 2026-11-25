@@ -5,6 +5,7 @@ import type {
   InboxItemState,
   MessagingId,
 } from "@halonicjs/ports";
+import { approvalRisk } from "./approval-risk.ts";
 import { asList, asRecord, asRecords, field, type JsonRecord, text } from "./json.ts";
 import { authorOf, type MapContext, timeOf } from "./map.ts";
 import type { PaperclipRequestName } from "./requests.ts";
@@ -113,6 +114,8 @@ export function cardToItem(
     question: questionOf(kind, payload),
     options: optionsOf(kind, payload),
     work: context.ids.make("task", task),
+    // A card asks a question in words; answering it spends nothing and changes no one's rights.
+    risk: "normal",
     createdAt: timeOf(record, "createdAt"),
     // The provider lists no files yet; it reads none, so it makes no request for them.
     attachments: [],
@@ -188,7 +191,8 @@ export function approvalToItem(
   const payload = asRecord(field(record, "payload"));
   // The type comes from Paperclip and says what approving does (hire an agent, change a budget).
   // The title and summary come from the agent that asks, so they never stand in for the type.
-  const kind = `Approval: ${text(record, "type") ?? "request"}`;
+  const type = text(record, "type");
+  const kind = `Approval: ${type ?? "request"}`;
   const agentTitle = text(payload, "title");
   const title = agentTitle === undefined ? kind : `${kind}\n\n${agentTitle}`;
   const summary = text(payload, "summary");
@@ -201,6 +205,7 @@ export function approvalToItem(
     question: summary === undefined ? title : `${title}\n\n${summary}`,
     options: approvalOptions,
     ...(work === undefined ? {} : { work }),
+    risk: approvalRisk(type),
     createdAt: timeOf(record, "createdAt"),
     // The provider lists no files yet; it reads none, so it makes no request for them.
     attachments: [],
