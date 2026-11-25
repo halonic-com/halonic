@@ -34,7 +34,7 @@ impl SecretName {
     /// found under the same entry.
     pub fn token(name: &str) -> Result<Self, SecretError> {
         let token = Self::parse(name)?;
-        if token.0.starts_with(SERVER_PAIRING_PREFIX) {
+        if token.0.starts_with(SERVER_PAIRING_PREFIX) || token.0.starts_with(OWNER_SESSION_PREFIX) {
             return Err(SecretError::ReservedName);
         }
         if TOKEN_PREFIX.len() + token.0.len() > MAX_NAME_LENGTH {
@@ -45,7 +45,8 @@ impl SecretName {
 
     /// Whether the name belongs to Halonic: one of [`HALONIC_NAMES`], a
     /// token under [`TOKEN_PREFIX`], a stepper's sign-in under
-    /// [`ACTION_PREFIX`] or a server pairing under [`SERVER_PAIRING_PREFIX`].
+    /// [`ACTION_PREFIX`], a server pairing under [`SERVER_PAIRING_PREFIX`] or
+    /// an owner server's session under [`OWNER_SESSION_PREFIX`].
     /// The same rule as `isHalonicSecretName` in `@halonicjs/ports`, which
     /// doesn't know the stepper prefix yet: a workspace secret named like one
     /// is refused here. The canonical form folds case and `-`, so every
@@ -56,6 +57,22 @@ impl SecretName {
             || self.0.starts_with(TOKEN_PREFIX)
             || self.0.starts_with(ACTION_PREFIX)
             || self.0.starts_with(SERVER_PAIRING_PREFIX)
+            || self.0.starts_with(OWNER_SESSION_PREFIX)
+    }
+
+    /// The keychain name of the session the shell keeps for one owner
+    /// server: [`OWNER_SESSION_PREFIX`] and `key`, exactly 32 lower-case hex
+    /// digits that the caller derives from the server's origin. Only the
+    /// shell's `owner_*` commands build it; the page's commands refuse it.
+    pub fn owner_session(key: &str) -> Result<Self, SecretError> {
+        let is_key = key.len() == 32
+            && key
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte));
+        if !is_key {
+            return Err(SecretError::InvalidName);
+        }
+        Ok(Self(format!("{OWNER_SESSION_PREFIX}{key}")))
     }
 
     /// Whether the agent host may reach the name through its secrets
@@ -88,6 +105,13 @@ pub const ACTION_PREFIX: &str = "action__";
 /// exact form [`is_server_pairing_name`] accepts; the page's secret and
 /// token commands refuse every spelling of the prefix.
 pub const SERVER_PAIRING_PREFIX: &str = "server_pairing__";
+
+/// The canonical prefix of the session the shell keeps for an owner server
+/// it signed in to with the server's password (HAL-18944). Only the shell's
+/// `owner_*` commands reach these, in Rust: the page's secret and token
+/// commands, the engine and the agent host never do, so no page or agent
+/// sees the session.
+pub const OWNER_SESSION_PREFIX: &str = "owner_session__";
 
 /// Whether `name`, as the host sent it, is a server pairing's name in its
 /// one exact form: `server-pairing__` and the workspace's key, exactly 32
