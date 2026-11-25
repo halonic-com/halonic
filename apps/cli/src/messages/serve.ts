@@ -116,6 +116,9 @@ export const serveMessages = defineMessages("serve", {
       : phrase`  Start halonic serve again with --debug to see the details, and report it: ${issuesLink}`,
   /** The runtime's own line with the address for the phone, as it words it. */
   address: (line: string) => phrase`${line}`,
+  /** Written to the debug log when a Paperclip key the server couldn't store couldn't be revoked either. */
+  paperclipKeyNotRevoked: () =>
+    phrase`The Paperclip sign-in failed after the approval, and its key couldn't be revoked. Revoke it in Paperclip.`,
   /** The line under {@link serving} when the sign-in password is not set, so only this computer can open it. */
   noPassword: () =>
     phrase`No sign-in password is set, so only this computer can open it. Set one with: halonic secret set serve-password`,

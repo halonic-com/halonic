@@ -21,6 +21,7 @@ export {
   runAgainComment,
 } from "./run-control.ts";
 export {
+  approvalPageUrl,
   PaperclipSignInClient,
   type PaperclipSignInClientOptions,
   type SignInChallenge,
@@ -28,7 +29,9 @@ export {
   type SignInChallengeRequest,
   type SignInChallengeStatus,
   type SignInKeyOwner,
+  signInClientName,
 } from "./sign-in.ts";
+export { newSignInPhrase, phraseWordCount, signInPhraseWords } from "./sign-in-phrase.ts";
 export {
   type PaperclipSignInRequestName,
   paperclipSignInRequests,

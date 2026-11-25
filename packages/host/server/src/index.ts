@@ -91,6 +91,14 @@ export {
 export { messagingPathPrefix } from "./messaging-routes.ts";
 export { messagingRefusals } from "./messaging-wire.ts";
 export type { ModelChoicePort } from "./model-choice-api.ts";
+export type {
+  PaperclipDisconnected,
+  PaperclipKeyPorts,
+  PaperclipSignInRequest,
+  PaperclipSignInStart,
+  PaperclipSignInState,
+} from "./paperclip-key-api.ts";
+export { paperclipKeyPathPrefix } from "./paperclip-key-routes.ts";
 export {
   type CheckedSession,
   checkClaims,

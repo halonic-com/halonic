@@ -1,11 +1,11 @@
 import { readFile } from "node:fs/promises";
 import { ManualClock, MemoryScheduler } from "@halonicjs/adapter-memory";
+import { phraseWordCount, signInPhraseWords } from "@halonicjs/adapter-paperclip-client";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { PaperclipSignIn, signInLimitMs } from "./paperclip-sign-in.ts";
 import { FakeKeyStore, FakeSignInCalls, fakeBoardKey } from "./sign-in-calls.test-helper.ts";
 import { signInRequests } from "./sign-in-calls.ts";
-import { phraseWordCount, signInPhraseWords } from "./sign-in-phrase.ts";
 
 const connection = {
   address: "https://paperclip.acme.test",

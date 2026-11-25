@@ -35,6 +35,7 @@ verifies("server.api", () => {
       | "errorLog"
       | "connectors"
       | "messaging"
+      | "paperclipKeys"
       | "workspace"
       | "studioPage"
       | "google"

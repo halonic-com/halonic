@@ -28,6 +28,7 @@ import { createServerForTests } from "./create-server.ts";
 import type { ManyUserPorts } from "./many-users-api.ts";
 import type { MessagingPorts } from "./messaging-api.ts";
 import type { ModelChoicePort } from "./model-choice-api.ts";
+import type { PaperclipKeyPorts } from "./paperclip-key-api.ts";
 import type { ProviderKeyStore } from "./provider-key-store.ts";
 import type { RequestCountStore } from "./request-count-store-api.ts";
 
@@ -121,6 +122,7 @@ function optionalPorts(
     | "modelChoice"
     | "connectors"
     | "messaging"
+    | "paperclipKeys"
     | "workspace"
     | "studioPage"
     | "requestLog"
@@ -128,7 +130,7 @@ function optionalPorts(
   >,
 ): Partial<ServerPorts> {
   const { google, googleRead, providerKeys, modelChoice, connectors } = options;
-  const { workspace, studioPage, requestLog, routineSchedule, messaging } = options;
+  const { workspace, studioPage, requestLog, routineSchedule, messaging, paperclipKeys } = options;
   return {
     ...(google === undefined ? {} : { google }),
     ...(googleRead === undefined ? {} : { googleRead }),
@@ -140,6 +142,7 @@ function optionalPorts(
     ...(requestLog === undefined ? {} : { requestLog }),
     ...(routineSchedule === undefined ? {} : { routineSchedule }),
     ...(messaging === undefined ? {} : { messaging }),
+    ...(paperclipKeys === undefined ? {} : { paperclipKeys }),
   };
 }
 
@@ -164,6 +167,7 @@ export function testServer(options: {
   modelChoice?: ModelChoicePort;
   connectors?: ConnectorCallPorts;
   messaging?: MessagingPorts;
+  paperclipKeys?: PaperclipKeyPorts;
   requestLog?: RequestLog;
   workspace?: WorkspaceInfo;
   studioPage?: StudioPage;
