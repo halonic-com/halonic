@@ -99,8 +99,9 @@ export function MessengerPage({
       <h1 className="sr-only">{messengerWords.title}</h1>
       {onePane && panelFirst ? null : (
         <ListColumn listRef={list} onePane={onePane} connected={connected}>
-          {/* Also while the chats load, so the list doesn't move once they arrive (motion 7). */}
-          {connected === false ? null : (
+          {/* Also while the chats load, so the list doesn't move once they arrive (motion 7); not over
+              "Couldn't load your chats", where nothing can be made yet. */}
+          {connected === false || (rows === undefined && failure !== undefined) ? null : (
             <div className="flex justify-end px-2 pt-2">
               <NewMenu messenger={messenger} onOpen={openChannel} />
             </div>

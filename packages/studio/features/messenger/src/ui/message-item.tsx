@@ -81,7 +81,10 @@ export function MessageItem({
   );
 }
 
-/** The person's message still on its way: at full strength, "Sending…" where its time goes. */
+/**
+ * The person's message still on its way, with the names of its files: at full strength, "Sending…"
+ * where its time goes.
+ */
 export function PendingItem({
   pending,
   follows,
@@ -98,6 +101,16 @@ export function PendingItem({
     >
       <span className="sr-only">{messengerWords.you}: </span>
       <ChatText openLink={openLink}>{pending.body}</ChatText>
+      {(pending.files ?? []).length === 0 ? null : (
+        // The names only, as the sent message's file lines start; two files may share a name.
+        <ul className="mt-2 flex flex-col gap-2 text-small">
+          {(pending.files ?? []).map((name, index) => (
+            <li key={index}>
+              <bdi>{name}</bdi>
+            </li>
+          ))}
+        </ul>
+      )}
     </Bubble>
   );
 }
