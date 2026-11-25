@@ -2,7 +2,7 @@ import type { ChannelResult, MessagingAgent, MessagingId } from "@halonicjs/port
 import { useState } from "react";
 import { memberName } from "../channel.ts";
 import { type Membership, withAgent, withoutAgent } from "../channel-admin.ts";
-import { channelAdminWords } from "../channel-admin-words.ts";
+import { channelAdminWords, failureReason } from "../channel-admin-words.ts";
 import type { ConversationRow, Messenger } from "../messenger.ts";
 
 /** A change that waits for the person to confirm it in a dialog. */
@@ -37,10 +37,7 @@ export function useMembers(messenger: Messenger, row: ConversationRow, onChanged
       onChanged();
       return true;
     }
-    const reason =
-      result === undefined
-        ? channelAdminWords.noAnswer
-        : channelAdminWords.reason[result.reason](source);
+    const reason = failureReason(result, source);
     setFailure(channelAdminWords.members.failed(reason));
     return false;
   };
@@ -61,7 +58,7 @@ export function useMembers(messenger: Messenger, row: ConversationRow, onChanged
         history ? setPending({ kind: "add", agent }) : change(withAgent(row, agent.id)),
       (error: unknown) => {
         failed(error);
-        setFailure(channelAdminWords.members.failed(channelAdminWords.noAnswer));
+        setFailure(channelAdminWords.members.failed(failureReason(undefined, source)));
       },
     );
   };

@@ -1,6 +1,6 @@
 import { Dialog } from "@halonicjs/studio-kit";
 import { useState } from "react";
-import { channelAdminWords } from "../channel-admin-words.ts";
+import { channelAdminWords, failureReason } from "../channel-admin-words.ts";
 import type { ConversationRow, Messenger } from "../messenger.ts";
 
 /** The props of {@link LeaveChannel}. */
@@ -28,10 +28,7 @@ export function LeaveChannel({ messenger, row, onCancel, onLeft }: LeaveChannelP
     setBusy(false);
     if (result?.outcome === "done") return onLeft();
     const source = row.source?.label ?? "";
-    const reason =
-      result === undefined
-        ? channelAdminWords.noAnswer
-        : channelAdminWords.reason[result.reason](source);
+    const reason = failureReason(result, source);
     setFailure(leave.failed(title, reason));
   };
   return (
