@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-18140 (from the UX check C805 on HAL-18136, section A)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:eE4kvciLmA+gdEgZQwQetKNW8sYyvEtTfqUAsCGlalk9rFeSnHrxxfxAR8I11IDEaE6AYVtsuJ+Hhn4rrWkpDA==
 - Task: HAL-18140
 
 ## What changes
