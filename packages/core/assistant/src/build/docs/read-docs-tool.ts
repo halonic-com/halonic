@@ -93,7 +93,7 @@ function resultOf(fetched: Fetched, url: string): string {
     case "status":
       return docsTexts.status(fetched.status);
     case "not-text":
-      return docsTexts.notText(fetched.type);
+      return docsTexts.notText(plainMediaType(fetched.type));
     case "too-large":
       return docsTexts.tooLarge;
     case "timeout":
@@ -101,6 +101,18 @@ function resultOf(fetched: Fetched, url: string): string {
     case "failed":
       return docsTexts.failed;
   }
+}
+
+/** A short `type/subtype` in the letters media types use. */
+const mediaType = /^[a-z0-9][a-z0-9.+-]{0,40}\/[a-z0-9][a-z0-9.+-]{0,40}$/u;
+
+/**
+ * The page's `Content-Type` as the model may read it. The site writes it, and
+ * the "not text" result sits outside the untrusted fence, so only a plain
+ * media type such as `application/pdf` is named.
+ */
+function plainMediaType(type: string): string | undefined {
+  return mediaType.test(type) ? type : undefined;
 }
 
 /**

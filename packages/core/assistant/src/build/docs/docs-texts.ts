@@ -30,8 +30,9 @@ export const docsTexts = {
   movedUnreadable: (status: number) =>
     `The page moved (${status}) to an address read_docs can't read; nothing was read.`,
   status: (status: number) => `The site answered ${status}; nothing was read.`,
-  notText: (type: string) =>
-    `The page is ${type === "" ? "of no stated type" : type}, not HTML, text or Markdown; nothing was read.`,
+  /** `type` is a plain media type such as `application/pdf`, or undefined when the site's isn't one. */
+  notText: (type: string | undefined) =>
+    `The page is ${type ?? "of no type read_docs can name"}, not HTML, text or Markdown; nothing was read.`,
   tooLarge: "The page is larger than 1 MiB; nothing was read.",
   timeout: "The site took longer than 15 seconds; nothing was read.",
   failed: "The site couldn't be reached; nothing was read.",
