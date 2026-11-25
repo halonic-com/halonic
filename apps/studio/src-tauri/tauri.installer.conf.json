@@ -16,7 +16,9 @@
       "windows/sandbox-remove.ps1": "sandbox-remove.ps1",
       "../../../LICENSE": "LICENSE",
       "../../../NOTICE": "NOTICE",
-      "legal/THIRD-PARTY-NOTICES.txt": "THIRD-PARTY-NOTICES.txt"
+      "legal/THIRD-PARTY-NOTICES.txt": "THIRD-PARTY-NOTICES.txt",
+      "icons/apps/inbox.ico": "icons/inbox.ico",
+      "icons/apps/messenger.ico": "icons/messenger.ico"
     },
     "windows": {
       "allowDowngrades": false,

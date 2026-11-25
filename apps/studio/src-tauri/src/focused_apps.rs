@@ -9,8 +9,10 @@
 //! A focused app's window loads the same page as Studio's, under its own
 //! label; the page tells which app it is from that label. Each has its own
 //! title and, on Windows, its own taskbar entry: its AppUserModelID is the
-//! one its Start menu shortcut carries.
+//! one its Start menu shortcut carries, and its own icon: the halo with the
+//! app's glyph (HAL-18693), drawn by icons/draw-app-icons.mjs.
 
+use tauri::image::Image;
 use tauri::{AppHandle, Manager, Runtime, WebviewWindow};
 
 /// The argument that names the app to open.
@@ -43,6 +45,20 @@ impl FocusedApp {
         match self {
             FocusedApp::Inbox => "Halonic Inbox",
             FocusedApp::Messenger => "Halonic Messenger",
+        }
+    }
+
+    /// Its window's icon, 32 by 32 raw RGBA like the tray's: the halo with
+    /// the app's glyph, from the same drawing as its shortcut's icon
+    /// (`icons/apps/<name>.ico`).
+    pub fn icon(self) -> Image<'static> {
+        Image::new(self.icon_bytes(), 32, 32)
+    }
+
+    fn icon_bytes(self) -> &'static [u8] {
+        match self {
+            FocusedApp::Inbox => include_bytes!("../icons/apps/inbox.rgba"),
+            FocusedApp::Messenger => include_bytes!("../icons/apps/messenger.rgba"),
         }
     }
 
@@ -170,6 +186,18 @@ mod tests {
     fn each_app_is_titled_as_its_shortcut() {
         assert_eq!(FocusedApp::Inbox.title(), "Halonic Inbox");
         assert_eq!(FocusedApp::Messenger.title(), "Halonic Messenger");
+    }
+
+    #[test]
+    fn each_app_has_its_own_32_by_32_icon() {
+        for app in FocusedApp::ALL {
+            assert_eq!(app.icon_bytes().len(), 32 * 32 * 4, "{}", app.name());
+            assert_eq!((app.icon().width(), app.icon().height()), (32, 32));
+        }
+        assert_ne!(
+            FocusedApp::Inbox.icon_bytes(),
+            FocusedApp::Messenger.icon_bytes()
+        );
     }
 
     #[test]
