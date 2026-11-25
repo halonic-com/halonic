@@ -3,6 +3,7 @@
 - Task: HAL-18014
 - Approval: Liam asks for this change on HAL-18014 (https://paperclip.halonic.com/HAL/issues/HAL-18014#comment-1283e8b7-db91-4e5a-8e74-76ab2a847081), from his approval of #5804.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ow1gPCyevWYh5uAhrkzLCqHqgDXQjQVz2ZaB5djpNY6TgqQAF72dIzkdTuM1TQe76Z7/i29yclNiS5jkstKLDQ==
 
 ## What changes
 
