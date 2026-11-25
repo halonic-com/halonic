@@ -3,6 +3,7 @@
 - Task: HAL-18873
 - Approval: Liam reviews this change on HAL-18873 after Julian's security review, part of the board's ask on HAL-18861 (every Paperclip approval works in Inbox and Messenger).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:FYk2bfNnnH6MtYJYQ6MGy+7jDQssJZv0cvEq6NWulZqK6m68qtgrrPwDzxz0UY0yjgrTUd3XjSNCZojX8cdxCQ==
 
 ## What changes
 
