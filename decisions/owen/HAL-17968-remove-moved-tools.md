@@ -3,6 +3,7 @@
 - Task: HAL-17968
 - Approval: Liam approves this change on HAL-17968, for HAL-17968. A team decision with no board card (HAL-2282 rule).
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:VlluQhdnjLT/hAYphyrjFi9ifgbiBHdf8EDbYauAfGZxd1dff1CisFul7ODZu/yczmEDQmX7lqlwfM8M06beBg==
 
 ## What changes
 
