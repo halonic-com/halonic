@@ -8,6 +8,7 @@ import {
 } from "@halonicjs/ports";
 import type { ComputerTunnel, ComputerTunnelEvent } from "./computer-tunnel.ts";
 import { parseHostMessage } from "./host-message.ts";
+import { MessagingClient } from "./messaging-client.ts";
 import { OpenSession, type Pending, type PendingSend } from "./open-session.ts";
 import type { PhoneState } from "./phone-status.ts";
 import type { PhoneRemote, RemoteSendOutcome, RemoteView } from "./remote-view.ts";
@@ -64,6 +65,11 @@ export class GatewayClient implements PhoneRemote {
   private snapshot: RemoteView;
   private readonly listeners = new Set<() => void>();
   private readonly unsubscribe: () => void;
+  /** The Inbox and Messenger over message version 4; it sends nothing while the computer speaks version 3. */
+  readonly messaging = new MessagingClient(() => {
+    if (this.olderComputer) return "older";
+    return this.session?.welcomed === true ? this.session : undefined;
+  });
 
   private readonly tunnel: ComputerTunnel;
   /** The computer's name, for the header label. */
@@ -183,6 +189,10 @@ export class GatewayClient implements PhoneRemote {
         // The host closes after any error without `replyTo`; this one says why.
         if (message.code === "unsupported-version") this.versionRefused();
         return true;
+      case "msg-data":
+      case "msg-result":
+      case "msg-changed":
+        return this.messaging.received(message);
       default:
         // Pairing messages come only while pairing, which isn't this client's.
         return false;
@@ -194,6 +204,7 @@ export class GatewayClient implements PhoneRemote {
     this.session.welcomed = true;
     this.updateNeeded = false;
     this.olderComputer = this.speaking === gatewayFallbackProtocolVersion;
+    this.messaging.welcomed();
     this.listSessions();
     this.planListing();
     return true;
@@ -274,6 +285,11 @@ export class GatewayClient implements PhoneRemote {
       case "unwatch":
         this.watches.unwatched(pending.sessionId);
         return true;
+      case "messaging":
+        return this.messaging.answered(
+          pending,
+          outcome.kind === "refused" ? outcome : { type: "ok", replyTo },
+        );
       default:
         if (outcome.kind === "refused") this.notSent(pending, outcome);
         else pending.settle(outcome);
