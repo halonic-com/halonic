@@ -2,8 +2,7 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-18216 (S2-25 PR 4, plan on HAL-14151); look and words decided on HAL-18213; flows
-  B7; screen map 3.1 and 4.1
+- Source: HAL-18216 (S2-25 PR 4, plan on HAL-14151); look and words on HAL-18213; flows B7; screen map 3.1 and 4.1
 
 Where the app provides the account menu host, the Account Menu feature shall ask it for the
 signed-in customer's facts (`GET /api/account-menu` in a served Studio). When it answers, the
