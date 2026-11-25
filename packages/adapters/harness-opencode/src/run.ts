@@ -23,7 +23,7 @@ import {
   opencodeUpdatePolicyText,
 } from "./config.ts";
 import { type OpenCodeFiles, opencodeFiles } from "./files.ts";
-import { withHouseRules } from "./house-rules.ts";
+import { opencodePrompt } from "./house-rules.ts";
 import { opencodeRefusal } from "./refusals.ts";
 import { OpenCodeEventReader } from "./run-events.ts";
 
@@ -47,7 +47,8 @@ export interface OpenCodeRunOptions {
  * - Before anything starts, it refuses with {@link opencodeRefusal}.
  * - It resets the agent's settings folder to the update policy and the
  *   model catalog, writes the session's instructions file, and starts
- *   `opencode run` in the session with the task's prompt on standard input.
+ *   `opencode run` in the session with the task's prompt on standard input,
+ *   after the house rules only when the task asks for them.
  * - It turns each line OpenCode prints into run events with the
  *   {@link OpenCodeEventReader}. OpenCode prints no final line: the run ends
  *   with `agent.finished` once it has exited with code 0.
@@ -97,7 +98,7 @@ export class OpenCodeRun implements HarnessRun {
     const process = await session.start(opencodeCommand(this.#task));
     // Not awaited: the write settles only once OpenCode reads it. One that
     // ends before reading its prompt ends the run by its exit, which says more.
-    sendPrompt(process, withHouseRules(this.#task.prompt)).catch(() => undefined);
+    sendPrompt(process, opencodePrompt(this.#task)).catch(() => undefined);
     return process;
   }
 

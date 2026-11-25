@@ -103,6 +103,14 @@ export interface HarnessTask {
    */
   asks?: "in-sandbox";
   /**
+   * True when the run's caller asks for the house rules: a coding writer
+   * that should keep existing tests and wording. A harness that has house
+   * rules puts them before the prompt only then; absent, the program gets
+   * the prompt unchanged, so a person's own agent (one writing a summary,
+   * for example) never reads Halonic's coding rules.
+   */
+  houseRules?: true;
+  /**
    * How the program starts Halonic's coding tools server inside its fence,
    * when the host has one and the profile builder checked from outside that
    * the program can't change its code. Absent otherwise. A harness names
