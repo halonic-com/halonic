@@ -279,7 +279,9 @@ class Evaluator {
       if (!Array.isArray(arg)) return undefined;
       if (arg.length > (expected.maxItems ?? OPENUI_MAX_ROWS))
         throw new OpenUiLimitError("too-large");
-      return expected.kind === "list" ? arg : this.componentsOnly(type, prop.name, arg);
+      if (expected.kind === "components")
+        return this.componentsOnly(type, prop.name, arg, expected.only);
+      return expected.plainOnly ? this.plainOnly(type, prop.name, arg) : arg;
     }
     return this.fits(expected, arg) ? arg : undefined;
   }
@@ -289,6 +291,8 @@ class Evaluator {
       case "string":
         // Choice checks wait for the end of the stream (spec 8.2).
         return typeof arg === "string" && (!this.final || (expected.oneOf?.includes(arg) ?? true));
+      case "link":
+        return typeof arg === "string" && isWebLink(arg);
       case "number":
       case "boolean":
         return typeof arg === expected.kind;
@@ -301,10 +305,28 @@ class Evaluator {
     }
   }
 
-  /** In a slot for components, data is left out and reported; an explicit null stays. */
-  private componentsOnly(type: string, name: string, items: readonly OpenUiValue[]): OpenUiValue[] {
+  /**
+   * In a slot for components, data and components the slot doesn't name are left out and
+   * reported; an explicit null stays.
+   */
+  private componentsOnly(
+    type: string,
+    name: string,
+    items: readonly OpenUiValue[],
+    only: readonly string[] | undefined,
+  ): OpenUiValue[] {
     return items.filter((item, index) => {
-      if (item === null || item instanceof OpenUiComponent) return true;
+      if (item === null) return true;
+      if (item instanceof OpenUiComponent && (only?.includes(item.type) ?? true)) return true;
+      this.report("type-mismatch", type, `/${name}/${index}`);
+      return false;
+    });
+  }
+
+  /** In a list of plain values, anything but a string, number, boolean or null is left out and reported. */
+  private plainOnly(type: string, name: string, items: readonly OpenUiValue[]): OpenUiValue[] {
+    return items.filter((item, index) => {
+      if (item === null || typeof item !== "object") return true;
       this.report("type-mismatch", type, `/${name}/${index}`);
       return false;
     });
@@ -328,4 +350,16 @@ class Evaluator {
 function isPlainObject(value: OpenUiValue): boolean {
   if (value instanceof OpenUiComponent || value instanceof OpenUiAction) return false;
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Only `http:` and `https:` addresses with a host open (HAL-16863). Core has no `URL`, so the
+ * check is on the text: the scheme, `//`, then a host, and no space or control character.
+ */
+function isWebLink(value: string): boolean {
+  if (!/^https?:\/\/[^\s/?#\\]+(?:[/?#]\S*)?$/i.test(value)) return false;
+  return [...value].every((character) => {
+    const code = character.charCodeAt(0);
+    return code > 0x1f && code !== 0x7f;
+  });
 }
