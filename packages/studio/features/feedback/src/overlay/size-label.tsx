@@ -1,4 +1,5 @@
 import { deviceCrop, type Rect, type Screen, sizeLabel, sizeLabelPlacement } from "../crop.ts";
+import { pill } from "./overlay-colours.ts";
 
 /** Gap between the box's corner and the label, in CSS pixels. */
 const gap = 4;
@@ -21,9 +22,10 @@ export function SizeLabel({ screen, box }: { readonly screen: Screen; readonly b
   const bottom = box.y + box.height;
   return (
     <span
-      className="absolute -translate-x-full rounded bg-black/75 px-1.5 py-0.5 font-mono text-white text-xs"
+      className="absolute -translate-x-full rounded px-1.5 py-0.5 font-mono text-caption"
       data-feedback-size=""
       style={{
+        ...pill,
         left: box.x + box.width - (inside ? gap : 0),
         top: inside ? bottom - labelSize(text).height : bottom + gap,
       }}

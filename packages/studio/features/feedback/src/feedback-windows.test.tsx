@@ -150,7 +150,7 @@ verifies("feedback.unavailable", () => {
   it("says capture isn't available here, and Not now or Esc closes it", async () => {
     const shell = await mount("unavailable");
     expect(element.textContent).toContain(
-      "Screen capture for feedback isn't available on this system yet.",
+      "Studio can't take a screenshot for feedback on this system yet.",
     );
     const notNow = [...element.querySelectorAll("button")].find(
       (button) => button.textContent === "Not now",

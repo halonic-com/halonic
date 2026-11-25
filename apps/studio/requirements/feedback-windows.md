@@ -13,4 +13,4 @@ When the desktop app's page loads in a window the shell labelled `feedback-overl
   then it shows the overlay, asks the shell for that screen's still and opens no workspace.
 - Given the page in the window labelled `feedback-unavailable`,
   when it loads,
-  then it says "Screen capture for feedback isn't available on this system yet." and nothing else of Studio.
+  then it says "Studio can't take a screenshot for feedback on this system yet." and nothing else of Studio.

@@ -11,7 +11,7 @@ export const feedbackWords = {
    * Where no still can be taken yet, such as macOS or Linux on Wayland. The one string no
    * sketch had; Sofia checks it on HAL-18970.
    */
-  unavailable: "Screen capture for feedback isn't available on this system yet.",
+  unavailable: "Studio can't take a screenshot for feedback on this system yet.",
   /** Closes the not-available window. */
   notNow: "Not now",
   /** Under the text field when Send is pressed with nothing written. */

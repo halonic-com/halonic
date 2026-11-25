@@ -4,6 +4,7 @@ import { endFeedback, type FeedbackIpc, feedbackCommands } from "../feedback-ipc
 import { feedbackWords } from "../feedback-words.ts";
 import { useEscapeEnds } from "../use-escape-ends.ts";
 import { type Drag, overlayScreen, releasedArea } from "./drag.ts";
+import { boxEdge, dim, keyEdge, overlayBackground, pill } from "./overlay-colours.ts";
 import { SizeLabel } from "./size-label.tsx";
 import { useStill } from "./use-still.ts";
 
@@ -12,9 +13,6 @@ export interface FeedbackOverlayProps {
   /** The shell, for this overlay's still and the box the person drew. */
   readonly ipc: FeedbackIpc;
 }
-
-/** Black at 40% over the still, the same in light and dark: it lies on someone else's screen. */
-const dim = "rgb(0 0 0 / 0.4)";
 
 /**
  * One screen's selection overlay (`feedback.overlay`, sketch on HAL-18562 §1): the still of that
@@ -59,7 +57,8 @@ export function FeedbackOverlay({ ipc }: FeedbackOverlayProps) {
 
   return (
     <div
-      className="fixed inset-0 cursor-crosshair select-none overflow-hidden bg-black"
+      className="fixed inset-0 cursor-crosshair select-none overflow-hidden"
+      style={overlayBackground}
       data-feedback-overlay=""
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -87,9 +86,10 @@ function SelectionBox({ screen, box }: { readonly screen: Screen; readonly box: 
   return (
     <>
       <div
-        className="absolute border border-white"
+        className="absolute border"
         data-feedback-box=""
         style={{
+          borderColor: boxEdge,
           left: box.x,
           top: box.y,
           width: box.width,
@@ -105,10 +105,15 @@ function SelectionBox({ screen, box }: { readonly screen: Screen; readonly box: 
 /** "Drag to select an area · Esc to cancel", in a dark pill at the top centre of the screen. */
 function Hint() {
   return (
-    <p className="absolute top-6 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/75 px-3 py-1.5 text-sm text-white transition-[opacity,translate] duration-(--duration-base) ease-(--ease-enter) starting:-translate-y-2 starting:opacity-0">
+    <p
+      className="absolute top-6 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full px-3 py-1.5 text-body transition-[opacity,translate] duration-(--duration-base) ease-(--ease-enter) starting:-translate-y-2 starting:opacity-0"
+      style={pill}
+    >
       <span>{feedbackWords.dragHint}</span>
       <span aria-hidden="true">·</span>
-      <kbd className="rounded border border-white/40 px-1 font-mono text-xs">Esc</kbd>
+      <kbd className="rounded border px-1 font-mono text-caption" style={keyEdge}>
+        Esc
+      </kbd>
       <span>{feedbackWords.escHint}</span>
     </p>
   );
