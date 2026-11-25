@@ -68,13 +68,17 @@ export function MessengerPage({ messenger, onConnect }: MessengerPageProps) {
           aria-label={messengerWords.title}
           className={onePane ? "flex min-w-0 flex-1 flex-col" : "flex w-80 shrink-0 flex-col"}
         >
-          <ConversationList
-            tab={tab}
-            onTab={setTab}
-            rows={inTab(rows, tab)}
-            selected={selected}
-            onSelect={select}
-          />
+          {/* With nothing connected the panel's No connections is the one message; the column
+              stays, so the layout doesn't move once a source connects. */}
+          {connected === false ? null : (
+            <ConversationList
+              tab={tab}
+              onTab={setTab}
+              rows={inTab(rows, tab)}
+              selected={selected}
+              onSelect={select}
+            />
+          )}
         </nav>
       )}
       {onePane && !panelFirst ? null : (

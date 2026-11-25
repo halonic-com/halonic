@@ -81,7 +81,9 @@ export function ChatHeading(
       trigger={(trigger) => (
         <Button {...trigger} variant="ghost" size="sm" name={heading}>
           <span className="truncate">{heading}</span>
-          <ChevronDownIcon />
+          <span className="ml-0.5 inline-flex size-3.5 text-fg-subtle">
+            <ChevronDownIcon />
+          </span>
         </Button>
       )}
       entries={[

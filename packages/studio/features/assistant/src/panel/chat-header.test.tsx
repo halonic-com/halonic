@@ -83,6 +83,14 @@ verifies("assistant.chat.menu", () => {
     );
   });
 
+  it("keeps the title button's ▾ small, in a size-3.5 box, so the chat's name has the room", async () => {
+    const page = await show(panel(fakeHost([routine])));
+    const button = buttonNamed(page, "Add a routine");
+    const chevron = button?.querySelector("svg");
+    expect(chevron?.parentElement?.className).toContain("size-3.5");
+    expect(chevron?.parentElement).not.toBe(button);
+  });
+
   it("shows the chat picked, checked, with focus in the box", async () => {
     const page = await show(panel(fakeHost([routine, alias])));
     await pick(page, "Fix the triage alias");

@@ -39,6 +39,15 @@ verifies("messenger.not-connected", () => {
       messaging.addSource({ label: "Paperclip · Acme" });
       const page = await openMessenger(messaging);
       expect(page.querySelector("main")?.textContent).toBe("Pick a chat to read it.");
+      expect(page.querySelector("nav")?.textContent).toContain("No chats yet.");
+    });
+
+    it("leaves the list empty, without tabs or No chats yet., so No connections is the one message", async () => {
+      const page = await openMessenger(new FakeAgentMessaging());
+      const list = page.querySelector("nav");
+      expect(list).not.toBeNull();
+      expect(list?.textContent).not.toContain("No chats yet.");
+      expect(list?.querySelector("[role=tablist]")).toBeNull();
     });
   });
 });
