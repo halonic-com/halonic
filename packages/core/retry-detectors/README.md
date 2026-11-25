@@ -29,3 +29,13 @@ The end-of-run and 3-minute models are trained (held-out AUC 0.785 and 0.720 on 
 The 6- and 10-minute models are placeholders (`trained: false`: every attempt scores 0.5 and
 none is flagged) until there are enough live runs to fit them; on today's data they scored
 0.68 and 0.50.
+
+## Decision log and weekly metrics
+
+`DecisionEntry` is one line of the retry policy's decision log: an attempt's start, each
+checkpoint score (features, thresholds, spawn, stop), a stop, an end-of-run score, the ship
+choice (attempt, attempts, cost, wait) and the shipped change's later outcome, pass or rework.
+Entries hold numbers and choices only, never the prompt, the diff or check output. The policy
+writes them through a `DecisionLog` (one JSON line each, `decisionLine`); `readDecisionLines`
+reads a log back for retraining, and `weeklyMetrics` counts passes, reworks and fallbacks per
+week (Monday, UTC).
