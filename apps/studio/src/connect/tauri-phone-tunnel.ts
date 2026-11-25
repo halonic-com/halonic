@@ -135,15 +135,25 @@ type ShellPairingStart =
       readonly code: string;
       readonly endpoints: readonly string[];
       readonly again?: string;
+    }
+  | {
+      readonly route: "nearby";
+      readonly code: string;
+      readonly nearby: string;
+      readonly again?: string;
     };
 
 /**
  * What the shell starts from: a scanned text is decoded here with `decodePairingQr`, and the
- * shell reads the code, the key and the endpoints again. A text that doesn't decode is
- * `undefined`, which the port answers as `bad-start`.
+ * shell reads the code, the key and the endpoints again. A computer the picker found goes by its
+ * id, and the shell looks up its address (HAL-16824). A text that doesn't decode is `undefined`,
+ * which the port answers as `bad-start`.
  */
 export function shellPairingStart(start: TunnelPairingStart): ShellPairingStart | undefined {
   const again = start.again === undefined ? {} : { again: start.again };
+  if (start.route === "typed" && "nearby" in start) {
+    return { route: "nearby", code: start.code, nearby: start.nearby, ...again };
+  }
   if (start.route === "typed") {
     return {
       route: "typed",

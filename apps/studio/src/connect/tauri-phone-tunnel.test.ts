@@ -1,5 +1,10 @@
 import { encodePairingQr } from "@halonicjs/ports";
-import type { ComputerId, PairingId, PhoneStatus } from "@halonicjs/studio-feature-remote/phone";
+import type {
+  ComputerId,
+  NearbyId,
+  PairingId,
+  PhoneStatus,
+} from "@halonicjs/studio-feature-remote/phone";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { FakeShell } from "./fake-phone-shell.test-helper.ts";
@@ -72,6 +77,22 @@ verifies("studio.connect.phone-tunnel", () => {
       expect(shell.calls.map((call) => call.args)).toEqual([
         { start: { route: "typed", code: "7KQ2M9XF4HTA", endpoints: ["tcp://192.168.1.20:4100"] } },
         { start: { route: "typed", code: "7KQ2M9XF4HTA", endpoints: [endpoint] } },
+      ]);
+    });
+
+    it("names a computer the picker found by its id only, so the shell looks up its address", async () => {
+      const { shell, tunnel } = tunnelWith({ phone_pair_start: check });
+      const nearby = "nearby-AAAAAAAAAAAAAAAAAAAAAA" as NearbyId;
+      await tunnel.startPairing({ route: "typed", code: "7KQ2M9XF4HTA", nearby });
+      await tunnel.startPairing({
+        route: "typed",
+        code: "7KQ2M9XF4HTA",
+        nearby,
+        again: "c1" as ComputerId,
+      });
+      expect(shell.calls.map((call) => call.args)).toEqual([
+        { start: { route: "nearby", code: "7KQ2M9XF4HTA", nearby } },
+        { start: { route: "nearby", code: "7KQ2M9XF4HTA", nearby, again: "c1" } },
       ]);
     });
 

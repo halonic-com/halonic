@@ -33,10 +33,15 @@ export class FakeShell implements TauriIpc, TauriCallbacks {
 
   /** Sends `event` as the `index`th message on the channel the last watch handed in. */
   sendEvent(index: number, event: object): void {
-    const watch = this.calls.findLast((call) => call.command === "phone_tunnel_watch");
-    const argument = String(watch?.args?.["onEvent"]);
+    this.sendOn("phone_tunnel_watch", index, event);
+  }
+
+  /** Sends `message` as the `index`th message on the channel the last `command` handed in. */
+  sendOn(command: string, index: number, message: object): void {
+    const call = this.calls.findLast((made) => made.command === command);
+    const argument = String(call?.args?.["onEvent"]);
     const id = Number(argument.slice("__CHANNEL__:".length));
-    this.#callbacks.get(id)?.({ index, message: event });
+    this.#callbacks.get(id)?.({ index, message });
   }
 
   /** Sends a computer's status as the `index`th message. */
