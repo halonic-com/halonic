@@ -464,6 +464,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             updates::update_restart,
             #[cfg(desktop)]
             updates::update_set_automatic,
+            #[cfg(desktop)]
             updates::track::update_set_track,
             server_session::server_session_open,
             #[cfg(desktop)]
