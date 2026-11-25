@@ -92,6 +92,7 @@ export function pull(number: number, changes: Partial<GatePull> = {}): GatePull 
     headCommittedAt: ago(60),
     forcePushedAt: [],
     retargetedAt: [],
+    queueExit: null,
     texts: [said(`Liam: approved on head \`${head.slice(0, 7)}\``)],
     checks: greenChecks(),
     liveCloud: [],

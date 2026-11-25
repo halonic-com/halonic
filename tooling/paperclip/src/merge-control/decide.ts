@@ -1,5 +1,5 @@
 import { logLine, type PassContext, workCopy } from "./context.ts";
-import { failedGroups } from "./culprit.ts";
+import { failedGroups, unjudgedHolds } from "./culprit.ts";
 import { fill, fillOrder, trackReady, verifiedFastTrack } from "./fill.ts";
 import { gateRow, withSizeHolds } from "./gate.ts";
 import { notes } from "./notes.ts";
@@ -48,7 +48,9 @@ export function decide(
   }
 
   const removed = removals(context, rows);
+  const seenBefore = new Set(state.seenFailedRuns);
   failedGroups(context, rows);
+  unjudgedHolds(context, rows, seenBefore);
   const fast = verifiedFastTrack(context, rows);
   trackReady(context, rows);
   const pauseOn = fillPauseOn(context, rows);

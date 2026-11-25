@@ -59,6 +59,7 @@ function gatePull(
     headCommittedAt: at(30),
     forcePushedAt: [],
     retargetedAt: [],
+    queueExit: null,
     texts: [
       {
         kind: "comment",

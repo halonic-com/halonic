@@ -64,7 +64,7 @@ export const factsPullsQuery = `query MergeFactsPulls($owner: String!, $name: St
             ... on BaseRefChangedEvent { createdAt }
             ... on AutomaticBaseChangeSucceededEvent { createdAt }
             ... on AddedToMergeQueueEvent { createdAt actor { login } }
-            ... on RemovedFromMergeQueueEvent { createdAt actor { login } }
+            ... on RemovedFromMergeQueueEvent { createdAt actor { login } reason }
           }
         }
         commits(last: 1) { nodes { commit { committedDate ${rollup} } } }
@@ -156,6 +156,8 @@ export interface TimelineItem {
   readonly createdAt?: string;
   readonly label?: { readonly name: string };
   readonly actor?: Login;
+  /** `RemovedFromMergeQueueEvent` only, such as `failed_checks`. */
+  readonly reason?: string | null;
 }
 
 /** One open pull request. */

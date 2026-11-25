@@ -1,3 +1,4 @@
+import { lastPushOf } from "./approval.ts";
 import { failedGroupFacts, wakeAuthor } from "./author-wake.ts";
 import { commentOnce, logLine, minutesSince, type PassContext } from "./context.ts";
 import type { GateRow } from "./gate.ts";
@@ -154,6 +155,67 @@ function judgeGroup(context: PassContext, run: GroupRun, rows: readonly GateRow[
     holdCulprit(context, run, row, rows, where);
   }
   return true;
+}
+
+/** With no group run of it in the snapshot, a removal waits this long for its run to show up. */
+export const unjudgedWaitMinutes = 10;
+
+/**
+ * Whether a pass before this one judged one of the pull request's groups up
+ * to its removal, or this pass's failed-group rules still can (a fresh run).
+ */
+function judgedOrJudgeable(
+  context: PassContext,
+  number: number,
+  exitAt: string,
+  seenBefore: ReadonlySet<number>,
+): boolean {
+  const runs = context.snapshot.groupRuns.filter(
+    (run) => groupPull(run.branch) === number && run.createdAt <= exitAt,
+  );
+  if (runs.some((run) => seenBefore.has(run.id))) {
+    return true;
+  }
+  if (runs.length === 0) {
+    return minutesSince(context, exitAt) < unjudgedWaitMinutes;
+  }
+  return runs.some((run) => minutesSince(context, run.createdAt) < culpritWindowMinutes);
+}
+
+/**
+ * A head GitHub took out for failed checks after its last push, whose
+ * groups no pass judged and none can judge any more: the pass wasn't
+ * running, or its state was lost or reset (#5768, HAL-18324, HAL-18340). It
+ * is held as the Merger holds it, in the same pass, before the fill.
+ * `seenBefore` is the state's seen runs before this pass: a run this pass
+ * only marked as seen, too old to judge, doesn't count as judged.
+ */
+export function unjudgedHolds(
+  context: PassContext,
+  rows: readonly GateRow[],
+  seenBefore: ReadonlySet<number>,
+): void {
+  const { state } = context;
+  for (const row of rows) {
+    const { number, head, queueExit } = row.pull;
+    const key = String(number);
+    if (
+      row.entry !== undefined ||
+      queueExit?.reason !== "FAILED_CHECKS" ||
+      queueExit.at < lastPushOf(row.pull) ||
+      state.failedHeads[key] === head ||
+      state.flakeLifted[key] === head ||
+      judgedOrJudgeable(context, number, queueExit.at, seenBefore)
+    ) {
+      continue;
+    }
+    state.failedHeads[key] = head;
+    logLine(
+      context,
+      "culprit",
+      `UNJUDGED_HOLD #${number} (GitHub took it out for failed checks at ${queueExit.at.slice(11, 16)} on this head; no pass judged its group)`,
+    );
+  }
 }
 
 /** Reads the failed groups not seen before, and sets or lifts culprit holds. */
