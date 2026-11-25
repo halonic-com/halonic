@@ -173,18 +173,28 @@ export class MessagingClient {
       this.onChanged?.(message.source);
       return true;
     }
-    const pending = session.take(message.replyTo);
-    return pending?.kind === "messaging" && this.answered(pending, message);
+    // Anything else that waits stays waiting, so the drop that follows settles it.
+    const pending = session.waiting(message.replyTo);
+    if (pending?.kind !== "messaging") return false;
+    session.take(message.replyTo);
+    return this.answered(pending, message);
   }
 
-  /** Settles `pending` with the host's answer or refusal; `false` when the answer doesn't fit it. */
+  /**
+   * Settles `pending`, which no longer waits, with the host's answer or
+   * refusal. An answer that doesn't fit it settles it as cut off, since the
+   * session ends on it, and gives `false`.
+   */
   answered(
     pending: PendingMessaging,
     answer: MessagingAnswer | { readonly kind: "refused"; readonly code: RemoteRefusal },
   ): boolean {
     if ("kind" in answer) pending.settle(answer);
     else if (pending.answers(answer)) pending.settle({ kind: "answered" });
-    else return false;
+    else {
+      pending.settle({ kind: "cut-off" });
+      return false;
+    }
     return true;
   }
 
@@ -211,7 +221,8 @@ export class MessagingClient {
 
   private sendWatch(): void {
     const session = this.session();
-    if (session === undefined || session === "older") return;
+    // One watch per session: the host keeps it until `msg-unwatch` or the session ends.
+    if (session === undefined || session === "older" || this.watchedIn === session) return;
     this.watchedIn = session;
     const settle = (settled: MessagingSettled) => {
       if (settled.kind !== "answered" && this.watchedIn === session) this.watchedIn = undefined;
@@ -229,8 +240,10 @@ export class MessagingClient {
       this.watchedIn = undefined;
       return;
     }
+    // A watch asked for while this waited goes out once the host has stopped the old one.
     const settle = () => {
-      if (this.onChanged === undefined) this.watchedIn = undefined;
+      if (this.watchedIn === session) this.watchedIn = undefined;
+      if (this.onChanged !== undefined) this.sendWatch();
     };
     session.send(
       { kind: "messaging", answers: (message) => message.type === "ok", settle },

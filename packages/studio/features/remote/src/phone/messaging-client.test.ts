@@ -133,16 +133,26 @@ verifies("remote.phone-messaging-client", () => {
       expect(scene.tunnel.ended).toEqual([1]);
     });
 
-    it("ends it on a msg-data for nothing the phone asked, or for another list", () => {
+    it("ends it on a msg-data for nothing the phone asked, or for another list", async () => {
       const scene = new GatewayScene();
       scene.connect();
       scene.host({ type: "msg-data", replyTo: "p-99", what: "inbox", items: [] });
       expect(scene.tunnel.ended).toEqual([1]);
       scene.connect();
-      void scene.client.messaging.readList("inbox");
+      const read = scene.client.messaging.readList("inbox");
       const replyTo = scene.tunnel.lastOf("msg-read").id;
       scene.host({ type: "msg-data", replyTo, what: "work", items: [] });
       expect(scene.tunnel.ended).toEqual([1, 2]);
+      expect(await read).toEqual({ kind: "cut-off" });
+    });
+
+    it("ends it on an ok to a read, and settles the read as cut off", async () => {
+      const scene = new GatewayScene();
+      scene.connect();
+      const read = scene.client.messaging.readList("inbox");
+      scene.ok(scene.tunnel.lastOf("msg-read").id);
+      expect(scene.tunnel.ended).toEqual([1]);
+      expect(await read).toEqual({ kind: "cut-off" });
     });
 
     it("ends it on a msg-changed while it doesn't watch", () => {
@@ -161,8 +171,22 @@ verifies("remote.phone-messaging-client", () => {
       scene.host({ type: "msg-changed", source: "acme" });
       expect(changed).toEqual(["acme"]);
       expect(scene.tunnel.ended).toEqual([]);
+      scene.client.messaging.watch((source) => changed.push(`again ${source}`));
+      expect(scene.tunnel.sentOf("msg-watch")).toHaveLength(1);
       scene.drop();
       scene.connect();
+      expect(scene.tunnel.sentOf("msg-watch")).toHaveLength(2);
+    });
+
+    it("watches again after the unwatch's ok when asked while it waited", () => {
+      const scene = new GatewayScene();
+      scene.connect();
+      const stop = scene.client.messaging.watch(() => undefined);
+      scene.ok(scene.tunnel.lastOf("msg-watch").id);
+      stop();
+      scene.client.messaging.watch(() => undefined);
+      expect(scene.tunnel.sentOf("msg-watch")).toHaveLength(1);
+      scene.ok(scene.tunnel.lastOf("msg-unwatch").id);
       expect(scene.tunnel.sentOf("msg-watch")).toHaveLength(2);
     });
   });

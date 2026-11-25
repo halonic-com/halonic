@@ -95,6 +95,11 @@ export class OpenSession {
     return [...this.pending.values()].some((pending) => pending.kind === kind);
   }
 
+  /** The message `replyTo` names, still waiting; `undefined` when none waits. */
+  waiting(replyTo: string): Pending | undefined {
+    return this.pending.get(replyTo);
+  }
+
   /** The message `replyTo` names, no longer waiting; `undefined` when none waits. */
   take(replyTo: string): Pending | undefined {
     const pending = this.pending.get(replyTo);

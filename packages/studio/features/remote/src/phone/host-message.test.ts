@@ -182,6 +182,15 @@ verifies("remote.phone-host-messages", () => {
 
 verifies("remote.phone-messaging-client", () => {
   const page = { type: "msg-data", replyTo: "p-3", what: "inbox", items: [{ id: "i1" }] };
+  const sent = {
+    id: "m1",
+    conversation: "c1",
+    author: { kind: "me" },
+    body: "Ship it",
+    attachments: [],
+    sentAt: "2026-11-25T10:00:00.000Z",
+    to: ["writer"],
+  };
 
   it("reads the Inbox and Messenger answers of version 4", () => {
     for (const message of [
@@ -193,7 +202,7 @@ verifies("remote.phone-messaging-client", () => {
         replyTo: "p-4",
         result: { outcome: "already-answered", by: { kind: "me" }, answeredAt: "now" },
       },
-      { type: "msg-result", replyTo: "p-4", result: { outcome: "sent", message: { id: "m1" } } },
+      { type: "msg-result", replyTo: "p-4", result: { outcome: "sent", message: sent } },
       { type: "msg-changed", source: "acme" },
     ]) {
       expect(problemOf(JSON.stringify(message))).toBeUndefined();
@@ -204,7 +213,14 @@ verifies("remote.phone-messaging-client", () => {
     expect(problemOf(JSON.stringify({ ...page, extra: 1 }))).toBe("malformed");
     expect(problemOf(JSON.stringify({ ...page, items: ["i1"] }))).toBe("malformed");
     expect(problemOf(JSON.stringify({ ...page, what: "seats" }))).toBe("malformed");
-    const result = parseHostMessage(JSON.stringify(page), gatewayFallbackProtocolVersion);
-    expect(result).toEqual({ ok: false, problem: "malformed" });
+    const result = (message: object) => ({
+      type: "msg-result",
+      replyTo: "p-4",
+      result: { outcome: "sent", message },
+    });
+    expect(problemOf(JSON.stringify(result({ id: "m1" })))).toBe("malformed");
+    expect(problemOf(JSON.stringify(result({ ...sent, extra: 1 })))).toBe("malformed");
+    const older = parseHostMessage(JSON.stringify(page), gatewayFallbackProtocolVersion);
+    expect(older).toEqual({ ok: false, problem: "malformed" });
   });
 });

@@ -135,12 +135,34 @@ const isAuthor = anyOf(
   exactly({ kind: oneOf("person"), name: isText }),
 );
 
+/**
+ * The `Message` a send made, with exactly its own fields. Its nested work
+ * lines and full answer are objects the screens read field by field.
+ */
+const isSentMessage = exactly(
+  {
+    id: isMessagingId,
+    conversation: isMessagingId,
+    author: isAuthor,
+    body: isText,
+    attachments: listOf(exactly({ id: isMessagingId, name: isText, type: isText, size: isWhole })),
+    sentAt: isText,
+  },
+  {
+    to: listOf(isMessagingId),
+    work: listOf(isObject),
+    readAt: isText,
+    automatic: isBoolean,
+    fullAnswer: isObject,
+  },
+);
+
 /** An `AnswerResult` or a `SendResult`; the client checks it fits what it asked. */
 const isMessagingResult = anyOf(
   exactly({ outcome: oneOf("answered"), answeredAt: isText }),
   exactly({ outcome: oneOf("already-answered"), by: isAuthor, answeredAt: isText }),
   exactly({ outcome: oneOf("refused"), reason: isMessagingRefusal }),
-  exactly({ outcome: oneOf("sent"), message: isObject }),
+  exactly({ outcome: oneOf("sent"), message: isSentMessage }),
 );
 
 /** A page of port values: each item one object, its fields the port's own. */
