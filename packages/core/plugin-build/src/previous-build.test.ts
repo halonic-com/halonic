@@ -21,6 +21,8 @@ async function previousBuild(archive: Uint8Array): Promise<{
     pluginId: "halonic-ws.acme",
     version: "0.1.0",
     sha256: await archiveSha256(archive, digest),
+    // Reading a previous build checks the archive's sha-256, which covers the snapshot too.
+    snapshotSha256: "c".repeat(64),
     workspaceCommit: acmeCommit,
     halonicVersion: "0.2.0",
     changes: { added: ["order_status", "refund"], removed: [], changed: [] },

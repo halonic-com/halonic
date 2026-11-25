@@ -97,12 +97,14 @@ verifies("cli.commands.build.paperclip-plugin", () => {
       workspaceCommit: await head(),
       changes: { added: ["pr_status"], removed: [], changed: [] },
     });
+    expect(release.snapshotSha256).toMatch(/^[0-9a-f]{64}$/);
     expect(io.stdout).toEqual([
       `✓ Built halonic-ws.acme 0.1.0 from commit ${(await head()).slice(0, 7)}`,
-      `  Plugin file    .${sep}dist${sep}halonic-ws.acme-0.1.0.tar`,
-      `  Release file   .${sep}dist${sep}halonic-ws.acme-0.1.0.release.json`,
-      `  SHA-256        ${release.sha256}`,
-      "  Changes        added pr_status",
+      `  Plugin file        .${sep}dist${sep}halonic-ws.acme-0.1.0.tar`,
+      `  Release file       .${sep}dist${sep}halonic-ws.acme-0.1.0.release.json`,
+      `  SHA-256            ${release.sha256}`,
+      `  Snapshot SHA-256   ${release.snapshotSha256}`,
+      "  Changes            added pr_status",
     ]);
   });
 
@@ -170,7 +172,7 @@ verifies("cli.commands.build.paperclip-plugin", () => {
 
     expect(code).toBe(exitCode.ok);
     expect(io.stdout[0]).toMatch(/^✓ Built halonic-ws\.acme 0\.4\.0 /);
-    expect(io.stdout).toContain("  Changes        changed pr_status");
+    expect(io.stdout).toContain("  Changes            changed pr_status");
   });
 
   it("says so when the plugin file isn't next to the --since release file", async () => {
@@ -302,7 +304,9 @@ verifies("cli.commands.build.paperclip-plugin-signals", () => {
       },
     ]);
     expect(built.release.changes.signals).toEqual({ added: ["watcher"], removed: [], changed: [] });
-    expect(first.io.stdout).toContain("  Changes        added pr_status · signals added watcher");
+    expect(first.io.stdout).toContain(
+      "  Changes            added pr_status · signals added watcher",
+    );
 
     await commitSignal("ci-red, conflict");
     const second = await build("--since", "halonic-ws.acme-0.1.0.release.json");
@@ -314,7 +318,7 @@ verifies("cli.commands.build.paperclip-plugin-signals", () => {
       changed: [],
       signals: { added: [], removed: [], changed: ["watcher"] },
     });
-    expect(second.io.stdout).toContain("  Changes        signals changed watcher");
+    expect(second.io.stdout).toContain("  Changes            signals changed watcher");
   });
 
   it("refuses a signal file that isn't committed", async () => {

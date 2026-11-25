@@ -42,6 +42,8 @@ export const buildMessages = defineMessages("build", {
   archiveLabel: () => phrase`Plugin file`,
   releaseLabel: () => phrase`Release file`,
   sha256Label: () => phrase`SHA-256`,
+  /** The row for the SHA-256 the plugin's **Pinned snapshot SHA-256** setting asks for. */
+  snapshotSha256Label: () => phrase`Snapshot SHA-256`,
   changesLabel: () => phrase`Changes`,
   noChanges: () => phrase`none`,
   /**

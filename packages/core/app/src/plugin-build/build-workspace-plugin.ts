@@ -19,6 +19,7 @@ import {
   archiveSha256,
   buildPluginArchive,
   changeList,
+  type NewReleaseFile,
   nextPluginVersion,
   type PluginIdProblem,
   type PluginVersionProblem,
@@ -28,10 +29,10 @@ import {
   pluginIdFor,
   pluginManifestText,
   pluginPackageJsonText,
-  type ReleaseFile,
   readPreviousBuild,
   releaseFileName,
   releaseFileText,
+  snapshotSha256,
 } from "@halonicjs/plugin-build";
 import { err, ok, type Result, type Sha256 } from "@halonicjs/std";
 
@@ -110,7 +111,7 @@ export interface BuiltPlugin {
   readonly archive: Uint8Array;
   readonly releaseName: string;
   readonly releaseText: string;
-  readonly release: ReleaseFile;
+  readonly release: NewReleaseFile;
 }
 
 /** A tool whose action the runtime can't run. */
@@ -174,6 +175,7 @@ export async function buildWorkspacePlugin(
     pluginId,
     version: version.value,
     sha256: await archiveSha256(archive, digest),
+    snapshotSha256: await snapshotSha256(snapshot, digest),
     workspaceCommit: snapshot.workspace.commit,
     halonicVersion: request.halonicVersion,
     changes: changeList(previous.value?.snapshot, snapshot),

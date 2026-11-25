@@ -22,6 +22,7 @@ export {
   packageFolder,
   pluginFileNames,
   snapshotPath,
+  snapshotSha256,
   snapshotText,
 } from "./plugin-archive.ts";
 export {
@@ -51,6 +52,7 @@ export {
 } from "./previous-build.ts";
 export {
   maxReleaseFileBytes,
+  type NewReleaseFile,
   parseReleaseFile,
   type ReleaseFile,
   type ReleaseFileFields,

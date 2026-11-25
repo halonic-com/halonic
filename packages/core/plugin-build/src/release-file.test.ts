@@ -1,18 +1,27 @@
-import { canonicalJson } from "@halonicjs/std";
+import { bytesToHex, canonicalJson, unwrap } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
+import {
+  archiveSha256,
+  buildPluginArchive,
+  snapshotPath,
+  snapshotSha256,
+} from "./plugin-archive.ts";
 import {
   maxReleaseFileBytes,
   parseReleaseFile,
   type ReleaseFileFields,
   releaseFileText,
 } from "./release-file.ts";
-import { acmeCommit } from "./test/acme.test-helper.ts";
+import { readTarFile } from "./tar-read.ts";
+import { acmeCommit, acmeFiles } from "./test/acme.test-helper.ts";
+import { digest } from "./test/web-crypto.test-helper.ts";
 
 const fields: ReleaseFileFields = {
   pluginId: "halonic-ws.acme",
   version: "0.3.0",
   sha256: "a".repeat(64),
+  snapshotSha256: "c".repeat(64),
   workspaceCommit: acmeCommit,
   halonicVersion: "0.2.0-beta.1",
   changes: {
@@ -40,12 +49,32 @@ verifies("plugin-build.release-file", () => {
     expect(parseReleaseFile(edited({ workspaceCommit: "b".repeat(64) })).ok).toBe(true);
   });
 
+  it("holds the SHA-256 of the snapshot.json bytes in the archive", async () => {
+    const files = acmeFiles();
+    const archive = buildPluginArchive(files);
+    const text = releaseFileText({
+      ...fields,
+      sha256: await archiveSha256(archive, digest),
+      snapshotSha256: await snapshotSha256(files.snapshot, digest),
+    });
+    const packed = unwrap(readTarFile(archive, snapshotPath, 64 * 1024));
+    const release = unwrap(parseReleaseFile(text));
+    expect(release.snapshotSha256).toBe(bytesToHex(await digest.sha256(packed)));
+    expect(release.snapshotSha256).not.toBe(release.sha256);
+  });
+
+  it("reads a release file from an earlier build, without the snapshot's SHA-256", () => {
+    const { snapshotSha256: _left, ...earlier } = written;
+    expect(parseReleaseFile(`${canonicalJson(earlier)}\n`)).toEqual({ ok: true, value: earlier });
+  });
+
   it.each([
     ["an archive name with a path", { archive: "../other.tar" }],
     ["an archive name for another version", { archive: "halonic-ws.acme-0.2.0.tar" }],
     ["a plugin id outside the pattern", { pluginId: "halonic-ws.../x", archive: "x.tar" }],
     ["a version that isn't strict", { version: "v0.3.0" }],
     ["a sha-256 in capitals", { sha256: "A".repeat(64) }],
+    ["a snapshot sha-256 that's too short", { snapshotSha256: "c".repeat(63) }],
     ["a short commit", { workspaceCommit: "0123456" }],
     ["a Halonic version that isn't one", { halonicVersion: "latest" }],
     ["an extra field", { install: true }],

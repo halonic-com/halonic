@@ -105,7 +105,10 @@ export async function buildPaperclipPlugin(
   return builtResult(built.value, out, context.cwd);
 }
 
-/** The result: the heading, then the archive, release file, sha-256 and changes, lined up. */
+/**
+ * The result: the heading, then the archive, release file, sha-256, the
+ * snapshot's sha-256 and changes, lined up.
+ */
 function builtResult(built: BuiltPlugin, out: string, cwd: string): CommandResult {
   const { release } = built;
   const { added, removed, changed, routing = [], signals } = release.changes;
@@ -125,6 +128,7 @@ function builtResult(built: BuiltPlugin, out: string, cwd: string): CommandResul
     [buildMessages.archiveLabel().phrase, phrase`${archive}`],
     [buildMessages.releaseLabel().phrase, phrase`${releaseFile}`],
     [buildMessages.sha256Label().phrase, phrase`${release.sha256}`],
+    [buildMessages.snapshotSha256Label().phrase, phrase`${release.snapshotSha256}`],
     [buildMessages.changesLabel().phrase, changes.phrase],
   ];
   return {

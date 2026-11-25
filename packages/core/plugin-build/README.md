@@ -30,6 +30,7 @@ import {
   pluginIdFor,
   readPreviousBuild,
   releaseFileText,
+  snapshotSha256,
 } from "@halonicjs/plugin-build";
 
 /**
@@ -61,6 +62,7 @@ export async function runExample(digest: Sha256): Promise<{
     pluginId: pluginId.value,
     version: version.value,
     sha256: await archiveSha256(archive, digest),
+    snapshotSha256: await snapshotSha256(snapshot, digest), // what the pin settings ask for
     workspaceCommit: "0123456789abcdef0123456789abcdef01234567",
     halonicVersion: "0.2.0",
     changes,
@@ -85,6 +87,7 @@ export async function runExample(digest: Sha256): Promise<{
 | `nextPluginVersion({ requested, previous })` | `--version` if given, otherwise the previous version with the minor raised, otherwise `0.1.0`. Only strict `x.y.z`. |
 | `buildPluginArchive(files)` | The archive: `package/manifest.js`, `package/package.json`, `package/snapshot.json` and `package/worker.js`, sorted, mtime 0, mode 0644, uid and gid 0, empty owner names. Uncompressed, because gzip's bytes depend on the zlib version. |
 | `archiveSha256(archive, digest)` | The archive's sha-256, as 64 lowercase hex characters. |
+| `snapshotSha256(snapshot, digest)` | The sha-256 of `package/snapshot.json` as the archive holds it: the release file's `snapshotSha256`, which the plugin's pin settings ask for. |
 | `changeList(previous, current)` | The tools added, removed and changed (with the changed fields), each list sorted. |
 | `releaseFileText(fields)`, `parseReleaseFile(text)` | Write and strictly read the release file (canonical JSON, a line break at the end). |
 | `readPreviousBuild(files, digest)` | Reads a previous build for `--since`: the release file strictly, the archive's sha-256 before any header, then only `package/snapshot.json`, size-capped and checked as untrusted data. |

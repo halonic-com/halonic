@@ -149,7 +149,7 @@ verifies("cli.commands.build.paperclip-plugin-routing", () => {
       "roles.code-reviewer",
     ]);
     expect(io.stdout.at(-1)).toBe(
-      "  Changes        added my_prs, pr_status and task_get · routing areas.engine-and-cli and roles.code-reviewer",
+      "  Changes            added my_prs, pr_status and task_get · routing areas.engine-and-cli and roles.code-reviewer",
     );
   });
 });
