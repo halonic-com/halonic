@@ -157,8 +157,9 @@ function arrive(element: HTMLElement | null): void {
 /**
  * Keeps the chat at its newest entry (motions 3 and 4 of the design review): it opens there, and
  * then follows new entries while the person is within 24px of the end, or sent something.
- * Scrolled up, a new message only counts toward the pill. Each new entry rises into view, except a
- * search's results and the person's own message that took its pending one's place.
+ * Scrolled up, a new message from someone else only counts toward the pill. Each new entry rises
+ * into view, except a search's results and the person's own message that took its pending one's
+ * place.
  */
 function useStickToEnd(
   scroller: RefObject<HTMLDivElement | null>,
@@ -201,7 +202,7 @@ function useStickToEnd(
     if (swapped || added.length === 0) return;
     riseIntoView(list.current, lines, added);
     if (added.some((line) => line.kind === "pending") || pinned.current) toEnd(false);
-    else setUnseen((count) => count + added.filter((line) => line.kind === "message").length);
+    else setUnseen((count) => count + added.filter(isNewToThePerson).length);
   }, [keys, ready, searching]);
 
   const onScroll = () => {
@@ -213,6 +214,11 @@ function useStickToEnd(
   };
 
   return { unseen, onScroll, toEnd: () => toEnd(true) };
+}
+
+/** A message the person didn't write: their own, sent while scrolled up, is no news to them. */
+function isNewToThePerson(line: ChatLine): boolean {
+  return line.kind === "message" && line.message.author.kind !== "me";
 }
 
 /** Each added line's element rises into view; the person's sent message already did as pending. */

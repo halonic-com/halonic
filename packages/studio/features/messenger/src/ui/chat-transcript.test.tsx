@@ -115,6 +115,24 @@ verifies("messenger.chat-transcript", () => {
       expect(page.querySelector("[data-new-messages]")).toBeNull();
     });
 
+    it("counts no message of the person's own toward 1 new message ↓", async () => {
+      const { messaging } = chiefsChat();
+      const send = messaging.send.bind(messaging);
+      let land = () => undefined as unknown;
+      vi.spyOn(messaging, "send").mockImplementation(
+        (...args) => new Promise<SendResult>((done) => (land = () => done(send(...args)))),
+      );
+      const page = await openMessenger(messaging, [], false, noon);
+      const box = await openChat(page, "Chief");
+      await typeAndSend(box, "On it");
+      // The person scrolls up while it is on its way; it lands out of view.
+      scrolledUp(page).scrollTo = vi.fn();
+      await act(async () => void land());
+      await settle();
+      expect(lines(page).at(-1)).toBe("You: On it09:05");
+      expect(page.querySelector("[data-new-messages]")).toBeNull();
+    });
+
     it("says it couldn't load the chat, with Try again, when its first read fails", async () => {
       const { messaging } = chiefsChat();
       const page = await openMessenger(messaging, [], false, noon);

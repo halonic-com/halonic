@@ -53,6 +53,40 @@ verifies("messenger.load-states", () => {
       expect(page.textContent).not.toContain("Couldn't load your chats");
     });
 
+    it("shows no New button over Couldn't load your chats", async () => {
+      const { messaging } = acme();
+      vi.spyOn(messaging, "listConversations").mockRejectedValue(new Error("socket closed"));
+      vi.spyOn(console, "error").mockImplementation(() => undefined);
+      const page = await openMessenger(messaging);
+      expect(page.textContent).toContain("Couldn't load your chats");
+      expect(byText(page, "nav button", "New")).toBeUndefined();
+    });
+
+    it("breathes the loading rows three times, and not at all under reduced motion", async () => {
+      vi.useFakeTimers();
+      const { messaging } = acme();
+      vi.spyOn(messaging, "listConversations").mockReturnValue(new Promise(() => undefined));
+      const animate = vi.fn(() => ({ finished: Promise.resolve() }) as unknown as Animation);
+      HTMLElement.prototype.animate = animate;
+      try {
+        await openMessenger(messaging);
+        await act(async () => vi.advanceTimersByTime(300));
+        expect(animate).toHaveBeenCalledWith(
+          [{ opacity: 1 }, { opacity: 0.55 }, { opacity: 1 }],
+          expect.objectContaining({ duration: 1600, iterations: 3 }),
+        );
+        animate.mockClear();
+        vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("reduce") }));
+        unmountAll();
+        await openMessenger(messaging);
+        await act(async () => vi.advanceTimersByTime(300));
+        expect(animate).not.toHaveBeenCalled();
+      } finally {
+        Reflect.deleteProperty(HTMLElement.prototype, "animate");
+        vi.unstubAllGlobals();
+      }
+    });
+
     it("keeps the chats it showed under the Inbox's stale line when a later read fails", async () => {
       const { messaging, chat } = acme();
       const page = await openMessenger(messaging);

@@ -103,7 +103,7 @@ export class Messenger {
     const items = await this.messaging.listInboxItems();
     return Promise.all(
       rows.map(async (row) => {
-        const messages = await this.messaging.listMessages(row.conversation.id);
+        const messages = await this.newestOf(row);
         const last = messages.at(-1);
         const facts = last === undefined ? row : { ...row, last };
         if (row.conversation.members !== undefined) {
@@ -113,6 +113,19 @@ export class Messenger {
         return { ...facts, openCards: open.length };
       }),
     );
+  }
+
+  /**
+   * A row's messages, for its preview. One whose read fails costs only that row its preview (and
+   * a channel its questions); the rest of the list still shows.
+   */
+  private async newestOf(row: ConversationRow): Promise<readonly Message[]> {
+    try {
+      return await this.messaging.listMessages(row.conversation.id);
+    } catch (error: unknown) {
+      console.error(`The Messenger couldn't read the messages of ${row.conversation.id}:`, error);
+      return [];
+    }
   }
 
   /** Notes that the person saw a chat's messages up to the newest of `messages`. */
@@ -184,19 +197,23 @@ export class Messenger {
    * source keeps them too; only a sent message clears them, and the draft only
    * while it still holds what was sent, so text typed during the send stays.
    * In a channel it goes to the agents the person picked, or else the lead. `sending` hears the
-   * text once it is on its way, so the chat can show it at once (`messenger.chat-transcript`).
+   * text and the files' names once they are on their way, so the chat can show them at once
+   * (`messenger.chat-transcript`).
    */
   async sendDraft(
     conversation: MessagingId,
     row?: ConversationRow,
-    sending?: (body: string) => void,
+    sending?: (body: string, files: readonly string[]) => void,
   ): Promise<DraftOutcome> {
     const body = this.draft(conversation);
     const files = this.files.of(conversation);
     if (body.trim() === "" && files.length === 0) return { outcome: "kept", reason: "blank" };
     const refusal = row === undefined ? undefined : refusalOf(row);
     if (refusal !== undefined) return { outcome: "kept", reason: refusal };
-    sending?.(body);
+    sending?.(
+      body,
+      files.map((file) => file.name),
+    );
     const result = await this.send(conversation, body);
     if (result.outcome === "refused") return { outcome: "kept", reason: result.reason };
     if (this.draft(conversation) === body) this.drafts.delete(conversation);

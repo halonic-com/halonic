@@ -197,10 +197,10 @@ function useMessages(
 function usePending() {
   const [pending, setPending] = useState<readonly PendingMessage[]>([]);
   const count = useRef(0);
-  const sending = useCallback((body: string) => {
+  const sending = useCallback((body: string, files: readonly string[]) => {
     count.current += 1;
     const key = count.current;
-    setPending((before) => [...before, { key, body }]);
+    setPending((before) => [...before, { key, body, files }]);
     return () => setPending((before) => before.filter((each) => each.key !== key));
   }, []);
   return { pending, sending };

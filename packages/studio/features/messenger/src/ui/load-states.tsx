@@ -75,8 +75,9 @@ const lineHeight = String.fromCharCode(0x200b);
 
 /**
  * The chats while their first read is on its way (`messenger.load-states`, motion 7): nothing for
- * 300 ms, so a fast load doesn't flash, then three still rows in the real rows' shape (padding,
- * picture, name and preview lines), so nothing moves when the chats arrive. Hidden from screen
+ * 300 ms, so a fast load doesn't flash, then three rows in the real rows' shape (padding, picture,
+ * name and preview lines), so nothing moves when the chats arrive. They breathe three times, then
+ * rest; under reduced motion they stay still. Hidden from screen
  * readers, which hear "Loading your chats" instead. After 10 seconds "Still loading" and **Try
  * again** show under them, as under the kit's List.
  */
@@ -93,7 +94,7 @@ export function ChatsSkeleton({ onRetry }: { readonly onRetry: () => void }) {
       </span>
       <div aria-busy="true">
         {wait === "early" ? null : (
-          <ul aria-hidden="true" className="flex flex-col gap-1">
+          <ul ref={breathe} aria-hidden="true" className="flex flex-col gap-1">
             {skeletonWidths.map((widths) => (
               <li key={widths.name} className="flex items-center gap-3 px-3 py-2">
                 <SkeletonBar kind="avatar" />
@@ -124,6 +125,26 @@ export function ChatsSkeleton({ onRetry }: { readonly onRetry: () => void }) {
       </div>
     </div>
   );
+}
+
+/** One breath of the skeleton rows (motion 7): three of them take 4.8 s, under the 5 s rule. */
+const BREATH_MS = 1600;
+
+/**
+ * The skeleton rows breathe, opacity 1 → 0.55 → 1, three times, then rest (motion 7 of the design
+ * review). Nothing moves for longer than 5 seconds without a control, and under reduced motion
+ * nothing breathes. jsdom has no `element.animate`, so there they stay still too.
+ */
+function breathe(element: HTMLElement | null): void {
+  if (element === null || typeof element.animate !== "function") return;
+  if (globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true) return;
+  element
+    .animate([{ opacity: 1 }, { opacity: 0.55 }, { opacity: 1 }], {
+      duration: BREATH_MS,
+      easing: "ease-in-out",
+      iterations: 3,
+    })
+    .finished.catch(reportMotion);
 }
 
 /** Where a wait is, counted from the first render: too early to show anything, showing, or long. */

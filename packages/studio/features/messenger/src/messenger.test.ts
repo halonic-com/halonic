@@ -47,6 +47,24 @@ verifies("messenger.conversations", () => {
       expect(rows.map((row) => row.conversation.id)).toEqual([acmeChat.id]);
     });
 
+    it("lists every chat when one chat's messages can't be read, that one with no preview", async () => {
+      const { messaging, acmeChat, globexChat } = twoChiefs();
+      messaging.addMessage(acmeChat.id, { body: "Shall I merge #12?" });
+      messaging.addMessage(globexChat.id, { body: "Done." });
+      const read = messaging.listMessages.bind(messaging);
+      vi.spyOn(messaging, "listMessages").mockImplementation((conversation) =>
+        conversation === globexChat.id ? Promise.reject(new Error("gone")) : read(conversation),
+      );
+      const failed = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      const rows = await new Messenger(messaging).rows();
+      expect(rows.map((row) => [row.conversation.id, row.last?.body])).toEqual([
+        [globexChat.id, undefined],
+        [acmeChat.id, "Shall I merge #12?"],
+      ]);
+      expect(failed).toHaveBeenCalledOnce();
+      failed.mockRestore();
+    });
+
     it("shows `other` for a conversation whose agent it doesn't know", () => {
       const { acmeChat } = twoChiefs();
       expect(

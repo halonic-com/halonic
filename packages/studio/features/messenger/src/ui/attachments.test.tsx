@@ -210,5 +210,15 @@ verifies("messenger.files", () => {
       expect(page.textContent).toContain("Paperclip · Acme is offline. Your message stays here");
       expect(page.textContent).not.toContain("notes.txt removed.");
     });
+
+    it("shows a message's files by their names while it is Sending…", async () => {
+      const { messaging } = chiefChat();
+      vi.spyOn(messaging, "send").mockReturnValue(new Promise(() => undefined));
+      const page = await openMessenger(messaging);
+      const box = await openChat(page, "Chief");
+      await attach(page, [new File(["x"], "notes.txt", { type: "text/plain" })]);
+      await typeAndSend(box, "Here");
+      expect(page.querySelector("[data-pending]")?.textContent).toBe("You: Herenotes.txtSending…");
+    });
   });
 });

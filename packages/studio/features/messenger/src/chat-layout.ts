@@ -6,6 +6,8 @@ import { messengerWords } from "./messenger-words.ts";
 export interface PendingMessage {
   readonly key: number;
   readonly body: string;
+  /** The names of the files sent with it, so a message of files only isn't an empty bubble. */
+  readonly files?: readonly string[];
 }
 
 /** One line of the transcript as it shows: a day's label, a timeline entry, or a pending message. */
@@ -89,12 +91,17 @@ export function chatLines(
   return lines;
 }
 
-/** "Today", "Yesterday", else the day itself, "Mon 23 Nov", by the local calendar. */
+/**
+ * "Today", "Yesterday", else the day itself, "Mon 23 Nov", by the local calendar; a day in another
+ * year than `now` has its year too, "Mon 24 Nov 2025".
+ */
 export function dayLabel(at: Date, now: Date): string {
   const days = Math.round((startOfDay(now) - startOfDay(at)) / 86_400_000);
   if (days === 0) return messengerWords.today;
   if (days === 1) return messengerWords.yesterday;
-  return at.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  const day = at.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  // Added by hand: with `year`, en-GB puts a comma after the weekday ("Mon, 24 Nov 2025").
+  return at.getFullYear() === now.getFullYear() ? day : `${day} ${at.getFullYear()}`;
 }
 
 function startOfDay(at: Date): number {

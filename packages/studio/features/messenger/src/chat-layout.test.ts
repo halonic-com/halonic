@@ -95,5 +95,10 @@ verifies("messenger.chat-transcript", () => {
       expect(shape(chatLines([], [{ key: 1, body: "Hi" }], now))).toEqual(["Today", "pending"]);
       expect(dayLabel(new Date(2026, 10, 24, 23, 59), now)).toBe("Yesterday");
     });
+
+    it("gives a day in another year its year", () => {
+      expect(dayLabel(new Date(2025, 10, 24, 9, 0), now)).toBe("Mon 24 Nov 2025");
+      expect(dayLabel(new Date(2026, 10, 23, 9, 0), now)).toBe("Mon 23 Nov");
+    });
   });
 });

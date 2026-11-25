@@ -19,7 +19,7 @@ export interface ChatBoxProps {
    * Called with the text once it is on its way, so the chat shows it at once; gives the function
    * that takes it away again once it was sent and read, or wasn't sent.
    */
-  readonly onSending: (body: string) => () => void;
+  readonly onSending: (body: string, files: readonly string[]) => () => void;
   /** Called once something was sent, so the chat reads its messages again. */
   readonly onSent: () => Promise<void>;
 }
@@ -147,7 +147,7 @@ function BoxButtons({
 function useChatBox(
   messenger: Messenger,
   row: ConversationRow,
-  onSending: (body: string) => () => void,
+  onSending: (body: string, files: readonly string[]) => () => void,
   onSent: () => Promise<void>,
 ) {
   const id = row.conversation.id;
@@ -189,10 +189,10 @@ function useChatBox(
     async send() {
       // Once it's on its way the box empties and the chat shows the message "Sending…".
       const shown: { body?: string; done?: () => void } = {};
-      const sending = (body: string) => {
+      const sending = (body: string, files: readonly string[]) => {
         setDraft("");
         shown.body = body;
-        shown.done = onSending(body);
+        shown.done = onSending(body, files);
       };
       // Not sent: the text goes back in the box, before anything typed since (`messenger.conversations`).
       const putBack = () => {
