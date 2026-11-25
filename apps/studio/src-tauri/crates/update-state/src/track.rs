@@ -43,6 +43,36 @@ pub fn track_endpoint(configured: &str, track: UpdateTrack) -> String {
         .replace("%7B%7Btrack%7D%7D", track.name())
 }
 
+/// `updater-keys.json`: the public keys of the tracks whose builds are
+/// signed with a key of their own (HAL-18477).
+#[derive(Deserialize)]
+struct UpdaterKeys {
+    preview: TrackKey,
+}
+
+#[derive(Deserialize)]
+struct TrackKey {
+    pubkey: String,
+}
+
+/// The public key `track`'s builds are signed with, read from `keys`, the
+/// text of `updater-keys.json`. `None` for Stable, which keeps the `pubkey`
+/// in `tauri.conf.json`. Preview builds have their own key, so a release
+/// signed with the release key never verifies on the Preview track.
+///
+/// # Errors
+///
+/// When `keys` isn't JSON or names no Preview key, on the Preview track only.
+pub fn track_pubkey(keys: &str, track: UpdateTrack) -> Result<Option<String>, serde_json::Error> {
+    match track {
+        UpdateTrack::Stable => Ok(None),
+        UpdateTrack::Preview => {
+            let keys: UpdaterKeys = serde_json::from_str(keys)?;
+            Ok(Some(keys.preview.pubkey))
+        }
+    }
+}
+
 /// Reads the record's `track`. Anything but `preview` is Stable, so a value
 /// a newer Halonic wrote, or a broken one, never makes the whole record
 /// unreadable and never moves an install off the released builds.

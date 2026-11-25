@@ -1,6 +1,7 @@
-//! Tests for `studio.src-tauri.update-track`.
+//! Tests for `studio.src-tauri.update-track` and
+//! `studio.src-tauri.update-track-key`.
 
-use super::{ENDPOINT, UpdateTrack, track_endpoint};
+use super::{ENDPOINT, UpdateTrack, track_endpoint, track_pubkey};
 use crate::record::{RecordRead, UpdaterRecord, read_record, record_text};
 
 fn read(text: &str) -> UpdaterRecord {
@@ -66,5 +67,34 @@ fn update_track_unknown_or_broken_value_is_stable_and_keeps_the_rest_of_the_reco
         ));
         assert_eq!(record.track, UpdateTrack::Stable, "{track}");
         assert!(!record.automatic, "{track}");
+    }
+}
+
+#[test]
+fn update_track_preview_checks_signatures_with_the_preview_key() {
+    let keys = r#"{"preview":{"keyId":"ACME","pubkey":"preview-key"}}"#;
+    assert_eq!(
+        track_pubkey(keys, UpdateTrack::Preview).expect("a key"),
+        Some("preview-key".to_owned())
+    );
+}
+
+#[test]
+fn update_track_stable_keeps_the_release_key() {
+    let keys = r#"{"preview":{"pubkey":"preview-key"}}"#;
+    assert_eq!(
+        track_pubkey(keys, UpdateTrack::Stable).expect("no key"),
+        None
+    );
+    assert_eq!(
+        track_pubkey("not JSON", UpdateTrack::Stable).expect("no key"),
+        None
+    );
+}
+
+#[test]
+fn update_track_preview_without_its_key_fails_instead_of_using_the_release_key() {
+    for keys in ["", "{}", r#"{"preview":{}}"#, r#"{"preview":{"pubkey":3}}"#] {
+        assert!(track_pubkey(keys, UpdateTrack::Preview).is_err(), "{keys}");
     }
 }

@@ -25,7 +25,7 @@ pub use setup_version::{raises_setup_version, this_build_setup_version};
 pub use status::{
     CheckFailure, DownloadFailure, JustUpdated, Unit, UpdateState, UpdateStatus, notes_url,
 };
-pub use track::{ENDPOINT, UpdateTrack, track_endpoint};
+pub use track::{ENDPOINT, UpdateTrack, track_endpoint, track_pubkey};
 pub use version::Version;
 
 /// The first automatic check waits this long after the window is ready, so
