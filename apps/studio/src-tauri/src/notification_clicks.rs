@@ -7,11 +7,17 @@
 //! The item's kind, when the notification names one, goes along unread, so
 //! the page knows where to open it. [`listen`] hands the plugin's taps to
 //! [`report_click`] (HAL-17458).
+//! The click goes to the window the item belongs to when it is open: an
+//! Inbox item to Halonic Inbox, a conversation to Halonic Messenger. Otherwise
+//! it goes to Studio's window, or to whichever app window is open, so a click
+//! is never lost while only one app runs (HAL-17915).
 
 use serde::Serialize;
 use serde_json::{Map, Value};
 use tauri::{AppHandle, Emitter, Runtime};
 use tauri_plugin_notification::{ActionPerformed, NotificationExt};
+
+use crate::focused_apps;
 
 /// The event the page listens for.
 pub const NOTIFICATION_CLICKED_EVENT: &str = "notification-clicked";
@@ -24,9 +30,6 @@ const KIND_KEY: &str = "kind";
 
 /// The plugin's action ID for a click on the notification itself.
 const TAP_ACTION: &str = "tap";
-
-/// The one window the shell opens (`capabilities`).
-const WINDOW_LABEL: &str = "main";
 
 /// What the page gets for a click: the clicked notification's item.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -56,14 +59,28 @@ fn clicked_item(extra: &Map<String, Value>) -> Option<NotificationClicked> {
     })
 }
 
-/// Tells the app window that the notification with `extra` was clicked.
-/// A notification without an item sends nothing.
+/// The windows that can open an item of `kind`, the one it belongs to first.
+fn windows_for(kind: Option<&str>) -> [&'static str; 3] {
+    let [studio, inbox, messenger] = focused_apps::window_labels();
+    match kind {
+        Some("inbox-item" | "inbox") => [inbox, studio, messenger],
+        Some("conversation") => [messenger, studio, inbox],
+        _ => [studio, inbox, messenger],
+    }
+}
+
+/// Tells the open window the clicked item belongs to that the notification
+/// with `extra` was clicked. A notification without an item, or a click
+/// while no window is open, sends nothing.
 pub fn report_click<R: Runtime>(
     app: &AppHandle<R>,
     extra: &Map<String, Value>,
 ) -> tauri::Result<()> {
-    match clicked_item(extra) {
-        Some(clicked) => app.emit_to(WINDOW_LABEL, NOTIFICATION_CLICKED_EVENT, clicked),
+    let Some(clicked) = clicked_item(extra) else {
+        return Ok(());
+    };
+    match focused_apps::first_open(app, &windows_for(clicked.kind.as_deref())) {
+        Some(window) => app.emit_to(window.label(), NOTIFICATION_CLICKED_EVENT, clicked),
         None => Ok(()),
     }
 }

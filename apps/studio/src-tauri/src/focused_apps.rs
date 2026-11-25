@@ -78,6 +78,22 @@ pub fn requested<S: AsRef<str>>(arguments: &[S]) -> Option<FocusedApp> {
     None
 }
 
+/// Every window the shell opens, by label: Studio's first, then each app's.
+pub fn window_labels() -> [&'static str; 3] {
+    [
+        STUDIO_WINDOW,
+        FocusedApp::Inbox.name(),
+        FocusedApp::Messenger.name(),
+    ]
+}
+
+/// The first of `labels` whose window is open, or `None` when none is.
+pub fn first_open<R: Runtime>(handle: &AppHandle<R>, labels: &[&str]) -> Option<WebviewWindow<R>> {
+    labels
+        .iter()
+        .find_map(|label| handle.get_webview_window(label))
+}
+
 /// Opens the window `app` asks for (Studio's for `None`), or brings it
 /// forward when it is already open.
 pub fn show<R: Runtime>(handle: &AppHandle<R>, app: Option<FocusedApp>) -> tauri::Result<()> {

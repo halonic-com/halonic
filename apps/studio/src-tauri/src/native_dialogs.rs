@@ -106,11 +106,6 @@ Allow only if you just pressed Allow in Halonic and your phone shows the same co
 #[cfg(desktop)]
 const REMOTE_ALLOW_BUTTON: &str = "Allow";
 
-/// The label of the shell's only window. tauri.conf.json gives the window
-/// no label, so Tauri names it `main`, as the capabilities do.
-#[cfg(desktop)]
-const SHELL_WINDOW: &str = "main";
-
 /// Shows the folder picker; `None` when the person cancels it.
 #[cfg(desktop)]
 pub fn pick_folder<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
@@ -260,10 +255,10 @@ fn ask<R: Runtime>(
     }
 }
 
-/// Makes the dialog on the main thread, as macOS and GTK require, with the
-/// shell's window as its parent, and waits on this thread for the person's
-/// answer. The parent is `None` once the window is closed; the dialog then
-/// opens on its own. `None` when the main thread no longer runs, as when
+/// Makes the dialog on the main thread, as macOS and GTK require, with
+/// [`dialog_parent`] as its parent, and waits on this thread for the
+/// person's answer. The parent is `None` once every window is closed; the
+/// dialog then opens on its own. `None` when the main thread no longer runs, as when
 /// the app is closing.
 #[cfg(desktop)]
 fn show_and_wait<R, D, F>(app: &AppHandle<R>, dialog: D) -> Option<F::Output>
@@ -277,7 +272,7 @@ where
     let shell = app.clone();
     app.run_on_main_thread(move || {
         // macOS hands out the window's handle only on the main thread.
-        let shown = dialog(shell_window(&shell).as_ref());
+        let shown = dialog(dialog_parent(&shell).as_ref());
         // The answer is awaited off the main thread, which must keep
         // running for the dialog to work.
         std::thread::spawn(move || {
@@ -289,10 +284,21 @@ where
     answered.recv().ok()
 }
 
-/// The shell's window, the dialogs' parent; `None` once it is closed.
+/// The dialogs' parent: the shell's window that has the keyboard focus, as
+/// the one the person just used to ask; otherwise Studio's window, or
+/// whichever app window is open (HAL-17915). `None` once every window is
+/// closed.
 #[cfg(desktop)]
-fn shell_window<R: Runtime>(app: &AppHandle<R>) -> Option<WebviewWindow<R>> {
-    app.get_webview_window(SHELL_WINDOW)
+fn dialog_parent<R: Runtime>(app: &AppHandle<R>) -> Option<WebviewWindow<R>> {
+    let open: Vec<WebviewWindow<R>> = crate::focused_apps::window_labels()
+        .iter()
+        .filter_map(|label| app.get_webview_window(label))
+        .collect();
+    let focused = open
+        .iter()
+        .position(|window| window.is_focused().unwrap_or(false))
+        .unwrap_or(0);
+    open.into_iter().nth(focused)
 }
 
 #[cfg(mobile)]
@@ -351,7 +357,8 @@ mod tests {
     use tauri::webview::WebviewWindowBuilder;
     use tauri::{App, WebviewUrl};
 
-    use super::{SHELL_WINDOW, shell_window};
+    use super::dialog_parent;
+    use crate::focused_apps::{FocusedApp, STUDIO_WINDOW};
 
     fn shell_app() -> App<MockRuntime> {
         crate::shell(mock_builder())
@@ -364,7 +371,7 @@ mod tests {
         let app = shell_app();
         let windows = &app.config().app.windows;
         assert_eq!(windows.len(), 1, "the shell opens one window");
-        assert_eq!(windows[0].label, SHELL_WINDOW);
+        assert_eq!(windows[0].label, STUDIO_WINDOW);
     }
 
     #[test]
@@ -376,13 +383,36 @@ mod tests {
         WebviewWindowBuilder::new(&app, label.clone(), WebviewUrl::default())
             .build()
             .expect("the shell's window opens");
-        let parent = shell_window(app.handle()).expect("the shell's window is the parent");
+        let parent = dialog_parent(app.handle()).expect("the shell's window is the parent");
         assert_eq!(parent.label(), label);
+    }
+
+    fn open_window(app: &App<MockRuntime>, label: &str) {
+        WebviewWindowBuilder::new(app, label, WebviewUrl::default())
+            .build()
+            .expect("the window opens");
+    }
+
+    #[test]
+    fn the_dialogs_get_the_app_window_while_only_it_is_open() {
+        let app = shell_app();
+        open_window(&app, FocusedApp::Inbox.name());
+        let parent = dialog_parent(app.handle()).expect("the Inbox's window is the parent");
+        assert_eq!(parent.label(), FocusedApp::Inbox.name());
+    }
+
+    #[test]
+    fn studios_window_is_the_parent_when_no_window_has_the_focus() {
+        let app = shell_app();
+        open_window(&app, FocusedApp::Messenger.name());
+        open_window(&app, STUDIO_WINDOW);
+        let parent = dialog_parent(app.handle()).expect("a window is the parent");
+        assert_eq!(parent.label(), STUDIO_WINDOW);
     }
 
     #[test]
     fn the_dialogs_open_without_parent_once_the_window_is_gone() {
         let app = shell_app();
-        assert!(shell_window(app.handle()).is_none());
+        assert!(dialog_parent(app.handle()).is_none());
     }
 }
