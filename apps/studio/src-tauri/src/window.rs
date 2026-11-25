@@ -2,21 +2,63 @@
 //! and doesn't copy `document.title` into the native title, so the task bar
 //! and the window switcher would keep showing "Halonic". The shell opens
 //! the window itself, from the same configuration (`create` is off in
-//! tauri.conf.json), and the native title follows the page's title.
+//! tauri.conf.json), and the native title follows the page's title. A
+//! focused app's window (`focused_apps`) is opened from it too.
 
+use tauri::utils::config::WindowConfig;
 use tauri::webview::{WebviewWindow, WebviewWindowBuilder};
 use tauri::{Manager, Runtime};
+
+#[cfg(desktop)]
+use crate::focused_apps::FocusedApp;
 
 /// Opens the window tauri.conf.json describes, with its native title
 /// following the page's title.
 pub fn open<R: Runtime, M: Manager<R>>(manager: &M) -> tauri::Result<WebviewWindow<R>> {
-    let config = manager
+    open_from(manager, app_window_config(manager))
+}
+
+#[cfg(desktop)]
+/// Opens `app`'s own window (HAL-17903): the same page as Studio's, under
+/// the app's label and title, and on Windows with its own taskbar entry.
+pub fn open_focused<R: Runtime, M: Manager<R>>(
+    manager: &M,
+    app: FocusedApp,
+) -> tauri::Result<WebviewWindow<R>> {
+    let mut config = app_window_config(manager);
+    config.label = app.name().to_owned();
+    config.title = app.title().to_owned();
+    // Shown once it has its taskbar ID, so the taskbar never shows it in
+    // Halonic's own entry first.
+    config.visible = false;
+    let window = open_from(manager, config)?;
+    #[cfg(windows)]
+    {
+        let app_id = app.app_user_model_id(&manager.config().identifier);
+        // Without its own ID the window still works, in Halonic's entry.
+        if let Err(error) = halonic_window_app_id::set(window.hwnd()?.0, &app_id) {
+            halonic_shell_log::record("window", error);
+        }
+    }
+    window.show()?;
+    Ok(window)
+}
+
+/// The app window tauri.conf.json describes.
+fn app_window_config<R: Runtime, M: Manager<R>>(manager: &M) -> WindowConfig {
+    manager
         .config()
         .app
         .windows
         .first()
         .cloned()
-        .expect("tauri.conf.json describes the app window");
+        .expect("tauri.conf.json describes the app window")
+}
+
+fn open_from<R: Runtime, M: Manager<R>>(
+    manager: &M,
+    config: WindowConfig,
+) -> tauri::Result<WebviewWindow<R>> {
     let app_title = config.title.clone();
     WebviewWindowBuilder::from_config(manager, &config)?
         .on_document_title_changed(move |window, page_title| {
@@ -62,5 +104,15 @@ mod tests {
             .expect("the shell builds on the mock runtime");
         let window = open(&app).expect("the app window opens");
         assert_eq!(window.label(), "main");
+    }
+
+    #[cfg(desktop)]
+    #[test]
+    fn opens_a_focused_app_under_its_own_label() {
+        let app = crate::shell(tauri::test::mock_builder())
+            .build(tauri::generate_context!())
+            .expect("the shell builds on the mock runtime");
+        let window = open_focused(&app, FocusedApp::Messenger).expect("the Messenger opens");
+        assert_eq!(window.label(), "messenger");
     }
 }

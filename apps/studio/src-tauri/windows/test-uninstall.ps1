@@ -8,7 +8,9 @@
 #     and, as this removal has administrator rights, that it may still have
 #     access to the user's folders and how to end that;
 #   - with those rights it starts nothing from -InstallFolder but the helper:
-#     a sandbox-remove.ps1 swapped in there doesn't run.
+#     a sandbox-remove.ps1 swapped in there doesn't run;
+#   - the Start menu's Halonic Inbox and Halonic Messenger (HAL-17903), there
+#     after the install and each starting Halonic with its --app, are gone.
 # The runner is an administrator, so the removal needs no prompt here; the
 # refused prompt needs a desktop Windows machine.
 param(
@@ -132,6 +134,19 @@ New-Item -ItemType Directory -Force $keptFolder | Out-Null
   & $srtWin acl grant --holder-pid $PID --sandbox-user-sid $sandboxSid --persistent
 if ($LASTEXITCODE -ne 0) { throw "srt-win acl grant --persistent ended with $LASTEXITCODE" }
 
+# The focused apps' Start menu shortcuts, beside Halonic's (HAL-17903).
+$startMenu = Join-Path ([Environment]::GetFolderPath('Programs')) 'Halonic'
+$focusedApps = @{ 'Halonic Inbox' = '--app inbox'; 'Halonic Messenger' = '--app messenger' }
+$halonicExe = [IO.Path]::GetFullPath((Join-Path $InstallFolder 'Halonic.exe'))
+$links = New-Object -ComObject WScript.Shell
+foreach ($name in $focusedApps.Keys) {
+  $path = Join-Path $startMenu "$name.lnk"
+  if (-not (Test-Path $path)) { throw "The Start menu has no $name after the install" }
+  $link = $links.CreateShortcut($path)
+  if ([IO.Path]::GetFullPath($link.TargetPath) -ne $halonicExe) { throw "$name starts $($link.TargetPath), not $halonicExe" }
+  if ($link.Arguments -ne $focusedApps[$name]) { throw "$name starts Halonic with '$($link.Arguments)', not '$($focusedApps[$name])'" }
+}
+
 # 1. The page; Enter cancels and removes nothing.
 $h = Open-Uninstaller '10-uninstall'
 Must-Find $h "Your workspaces are folders of plain files. Halonic doesn't touch them." 'Static' | Out-Null
@@ -184,4 +199,7 @@ if (Test-Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Halonic
 if (Test-Path (Join-Path $profileFolder 'trust')) { throw 'The trust records are still there' }
 if (Test-Path (Join-Path $profileFolder 'workspaces\k1\harness-settings')) { throw 'The harness settings are still there' }
 if (-not (Test-Path (Join-Path $profileFolder 'workspaces\k1\runs\r1.log'))) { throw 'The settings box removed the runs' }
-Write-Output 'uninstall: Enter cancelled; Uninstall removed Halonic, the sandbox and the settings, kept the runs, and said how to end the kept access'
+foreach ($name in $focusedApps.Keys) {
+  if (Test-Path (Join-Path $startMenu "$name.lnk")) { throw "$name is still in the Start menu after uninstalling" }
+}
+Write-Output 'uninstall: Enter cancelled; Uninstall removed Halonic, the sandbox and the settings, kept the runs, removed the Inbox and Messenger shortcuts, and said how to end the kept access'

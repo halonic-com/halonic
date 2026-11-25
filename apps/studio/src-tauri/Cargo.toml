@@ -96,6 +96,13 @@ tauri-plugin-updater = { version = "=2.14.1", default-features = false, features
 # Granted to the app's own page only (`capabilities/desktop-notifications.json`),
 # never to the Studio the computer serves.
 tauri-plugin-notification = "=2.8.1"
+# Halonic Inbox and Halonic Messenger as their own apps (HAL-17903): a
+# second start of Halonic, such as the Start menu's Halonic Inbox, hands its
+# arguments to the running one, which opens or brings forward that app's
+# window, so every window shares one connection, engine lock and cache.
+# Tauri's official plugin, pinned with tauri: 2.5.5 needs tauri ^2.12. Rust
+# only: it has no commands, so no page can call it.
+tauri-plugin-single-instance = "=2.5.5"
 # The updater's own reqwest, named only so src/updates_proxy.rs can give its
 # client a proxy and a redirect policy; the bucket check for a Scoop install
 # uses the same client type on the same rules. Pinned to the version the updater
@@ -112,6 +119,8 @@ rustls = { version = "=0.23.46", default-features = false, features = ["ring"] }
 # window (HAL-14841). Windows only: no other system has the sandbox setup.
 [target.'cfg(windows)'.dependencies]
 halonic-elevate-start = { path = "crates/elevate-start" }
+# Each focused app's window gets its own taskbar entry (HAL-17903).
+halonic-window-app-id = { path = "crates/window-app-id" }
 
 # The pairing scanner (HAL-12246, build plan decision 16 on HAL-12232): the
 # official barcode-scanner plugin, approved in board decision 4c. The shell

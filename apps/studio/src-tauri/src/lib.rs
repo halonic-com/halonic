@@ -1,7 +1,10 @@
 //! The Studio shell. It opens one window: the Studio page on desktop
 //! (tauri.conf.json) and the connect page on Android
 //! (tauri.android.conf.json). `window::open` opens it, so its native title
-//! follows the page's title. The page may call the `connect` command
+//! follows the page's title. On desktop, `--app inbox` or `--app messenger`
+//! opens that focused app's window on the same page instead, and a second
+//! start hands its arguments to the running shell (`focused_apps`); the
+//! desktop capabilities below grant those windows what they grant `main`. The page may call the `connect` command
 //! (capabilities/connect-page.json) and, on desktop, `git`
 //! (capabilities/desktop-git.json), the `secret_*` and `token_*` commands
 //! (capabilities/desktop-secrets.json) and `pick_folder`, `documents_folder`,
@@ -50,6 +53,8 @@ mod engine_sse;
 mod file_answers;
 mod file_arguments;
 mod files;
+#[cfg(desktop)]
+mod focused_apps;
 mod git;
 mod google_setups;
 mod host_settings;
@@ -108,7 +113,7 @@ pub fn run() {
     if raised_start::refused() {
         return;
     }
-    shell(Builder::default())
+    shell(single_instance(Builder::default()))
         .build(tauri::generate_context!())
         .expect("the Studio shell could not start")
         .run(|app, event| {
@@ -120,6 +125,18 @@ pub fn run() {
                 let _ = app;
             }
         });
+}
+
+/// On desktop, Halonic runs once (HAL-17903): a second start, such as the
+/// Start menu's Halonic Inbox, hands its arguments to the running Halonic
+/// and quits. Registered first, so the second start sets nothing else up.
+/// Not in `shell`, so the tests' apps don't claim the one instance.
+fn single_instance<R: Runtime>(builder: Builder<R>) -> Builder<R> {
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(
+        |app, arguments, _folder| focused_apps::started_again(app, &arguments),
+    ));
+    builder
 }
 
 /// The shell's state, plugins and commands, on any runtime, so the tests
@@ -195,6 +212,13 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .plugin(navigation::guard())
         .setup(|app| {
             profile::start_shell_log(app.handle());
+            // Studio's window, or the focused app's that `--app` names.
+            #[cfg(desktop)]
+            {
+                let arguments: Vec<String> = std::env::args().collect();
+                focused_apps::show(app.handle(), focused_apps::requested(&arguments))?;
+            }
+            #[cfg(mobile)]
             window::open(app.handle())?;
             #[cfg(desktop)]
             updates::start(app.handle());

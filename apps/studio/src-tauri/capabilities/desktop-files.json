@@ -3,7 +3,9 @@
   "description": "On desktop, the app's own page may list, read, write, remove and watch the files of a workspace the person opened through the fs_* commands, as the CLI keeps them (crates/workspace-files). Every path is checked in Rust: no private path and no link. The folder_* commands only read: they list every entry with its kind, read exact bytes and give real locations, hiding no name but following no link. It is local only, so the Studio the computer serves gets no files.",
   "local": true,
   "windows": [
-    "main"
+    "main",
+    "inbox",
+    "messenger"
   ],
   "platforms": [
     "linux",

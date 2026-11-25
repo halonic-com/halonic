@@ -3,7 +3,9 @@
   "description": "On Windows, the app's own page may ask whether the WSL setup of the agent sandbox is offered (sandbox_wsl_setup_offered) and run it (sandbox_wsl_setup), for Settings › Agent sandbox (HAL-16765). The page names nothing: the shell starts the halonic-agent-host.exe beside the app once with --wsl-setup, the profile folder, the halonic-wsl.tar.gz image beside the app and the app itself as the command that resumes the setup after a restart, waits at most five minutes, and then starts the host in the new distro. It is local only, so the Studio the computer serves gets none of it.",
   "local": true,
   "windows": [
-    "main"
+    "main",
+    "inbox",
+    "messenger"
   ],
   "platforms": [
     "windows"

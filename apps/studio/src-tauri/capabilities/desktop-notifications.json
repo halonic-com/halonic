@@ -3,7 +3,9 @@
   "description": "On desktop, the app's own page may ask whether it may show notifications, ask the person once, and show one: for a new card, a new question or done work the person asked for (HAL-17448). A notification only opens Studio; it never answers anything. It is local only, so the Studio the computer serves gets none of it.",
   "local": true,
   "windows": [
-    "main"
+    "main",
+    "inbox",
+    "messenger"
   ],
   "platforms": [
     "linux",

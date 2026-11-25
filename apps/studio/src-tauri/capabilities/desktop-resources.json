@@ -3,7 +3,9 @@
   "description": "On desktop, the app's own page may read the resource report, through the read-only resource_report command, so the status bar can show the app's memory and the free disk space (HAL-11118). The command takes nothing from the page and answers sizes only, no path. It is local only, so the Studio the computer serves gets nothing through the shell.",
   "local": true,
   "windows": [
-    "main"
+    "main",
+    "inbox",
+    "messenger"
   ],
   "platforms": [
     "linux",
