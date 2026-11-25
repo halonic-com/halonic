@@ -1,6 +1,6 @@
 # Decision: the srt own-loopback canary runs only on Linux
 
-- Approval: Liam approved the Linux-only skip on HAL-18176 ([comment](/HAL/issues/HAL-18176#comment-a9fd2f04-6e31-425c-8ec9-971be232cd19)); Liam signs this note in review
+- Approval: Liam approved the Linux-only skip on HAL-18176; Liam signs this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:dV8bpG6CmlDwm3Py8dQsrTewk2a1rYTq+VClYAGUroKhBa5Lp2M491bUIbHSc1MSgKeiIPmmXzF1f0ekEeo5BA==
 
