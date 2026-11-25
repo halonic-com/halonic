@@ -30,6 +30,7 @@
     "@halonicjs/format": "workspace:*",
     "@halonicjs/google-setup": "workspace:*",
     "@halonicjs/host-harness-host": "workspace:*",
+    "@halonicjs/openui-lang": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/routines": "workspace:*",
     "@halonicjs/schema-kit": "workspace:*",

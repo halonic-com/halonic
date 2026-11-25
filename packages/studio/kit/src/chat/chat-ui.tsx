@@ -20,6 +20,12 @@ export interface ChatUiProps {
    * buttons and its form's send button can't be used.
    */
   readonly onSend?: ChatUiSend;
+  /**
+   * The message the person sent after this reply. Its buttons and form are then a record: the one
+   * the message came from keeps a tick and says what was sent, the others say they were for an
+   * earlier reply. Only the newest reply's controls work, so only it leaves this out.
+   */
+  readonly answered?: string | undefined;
 }
 
 /**
@@ -40,7 +46,7 @@ export function ChatUi(props: ChatUiProps) {
   );
 }
 
-function ChatUiTree({ result, source, sender, onSend }: ChatUiProps) {
+function ChatUiTree({ result, source, sender, onSend, answered }: ChatUiProps) {
   if (result.kind !== "tree" || result.root === null) {
     const missing = result.kind === "tree" && !result.incomplete && result.errors.length > 0;
     return result.kind !== "tree" || missing ? (
@@ -53,7 +59,7 @@ function ChatUiTree({ result, source, sender, onSend }: ChatUiProps) {
   return (
     <div className="flex flex-col gap-4" data-chat-ui="">
       {((result.root.props["children"] ?? []) as OpenUiComponent[]).map((part, index) => (
-        <ChatUiPart key={index} part={part} onSend={onSend} />
+        <ChatUiPart key={index} part={part} onSend={onSend} answered={answered} />
       ))}
       {images === 0 ? null : (
         <LineFrame icon={<FileIcon />} muted>

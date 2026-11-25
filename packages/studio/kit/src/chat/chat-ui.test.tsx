@@ -13,7 +13,13 @@ import { Button } from "../button/button.tsx";
 import { type OpenExternal, OpenExternalProvider } from "../external-link/open-external.tsx";
 import { render, unmountAll } from "../test/render.tsx";
 import { ChatUi } from "./chat-ui.tsx";
-import { BUTTONS_LINE, FORM_LINE } from "./chat-ui-controls.tsx";
+import {
+  BUTTONS_LINE,
+  buttonSentLine,
+  EARLIER_LINE,
+  FORM_LINE,
+  FORM_SENT_LINE,
+} from "./chat-ui-controls.tsx";
 
 afterEach(() => {
   unmountAll();
@@ -208,5 +214,73 @@ verifies("kit.chat-ui", () => {
     const source = 'root = Stack([Card("Now complete")])';
     rerender(<ChatUi result={readOpenUi(source, library)} source={source} sender="Support desk" />);
     expect(container.textContent).toBe("Now complete");
+  });
+});
+
+verifies("kit.chat-ui-answered", () => {
+  function answered(source: string, message: string) {
+    const onSend = vi.fn<(message: string) => void>();
+    const { container } = render(
+      <ChatUi
+        result={readOpenUi(source, library)}
+        source={source}
+        sender="Support desk"
+        onSend={onSend}
+        answered={message}
+      />,
+    );
+    return { container, onSend };
+  }
+
+  const ticked = (button: Element | undefined) => button?.querySelector("svg") !== null;
+
+  it("keeps a tick on the button the message came from, and says what was sent", () => {
+    const { container, onSend } = answered(
+      'root = Stack([Buttons([Button("Draft replies for all 4"), Button("Only those under €100"), Button("Not now")])])',
+      "Only those under €100",
+    );
+    const buttons = [...container.querySelectorAll("button")];
+    expect(buttons.map((button) => button.getAttribute("aria-disabled"))).toEqual([
+      "true",
+      "true",
+      "true",
+    ]);
+    expect(buttons.map(ticked)).toEqual([false, true, false]);
+    expect(container.querySelector("p")?.textContent).toBe("You sent “Only those under €100”.");
+    expect(buttonSentLine("Not now")).toBe("You sent “Not now”.");
+    click(buttons[2]);
+    expect(onSend).not.toHaveBeenCalled();
+  });
+
+  it("keeps a sent form's answers, unchangeable, with a tick on its send button", () => {
+    const { container, onSend } = answered(
+      'root = Stack([Form("Reply", [Field("Note", "text"), Field("Ask a manager", "tickBox")], "Draft the reply")])',
+      "Draft the reply\nNote: Sorry\nAsk a manager: yes",
+    );
+    const note = container.querySelector("input:not([type])") as HTMLInputElement;
+    expect(note.value).toBe("Sorry");
+    expect(note.matches(":disabled")).toBe(true);
+    expect((container.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(
+      true,
+    );
+    const send = buttonNamed(container, "Draft the reply");
+    expect(send?.getAttribute("aria-disabled")).toBe("true");
+    expect(ticked(send)).toBe(true);
+    expect(FORM_SENT_LINE).toBe("You sent your answers.");
+    expect(container.textContent).toContain(FORM_SENT_LINE);
+    click(send);
+    expect(onSend).not.toHaveBeenCalled();
+  });
+
+  it("says controls the message didn't come from were for an earlier reply", () => {
+    const { container } = answered(
+      'root = Stack([Buttons([Button("Yes"), Button("No")]), Form("F", [Field("Name", "text")], "Send")])',
+      "Maybe later",
+    );
+    expect(EARLIER_LINE).toBe("These were for an earlier reply. Type your answer instead.");
+    expect(
+      [...container.querySelectorAll("p")].filter((line) => line.textContent === EARLIER_LINE),
+    ).toHaveLength(2);
+    expect([...container.querySelectorAll("button")].some(ticked)).toBe(false);
   });
 });

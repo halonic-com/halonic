@@ -4,6 +4,7 @@
  * dialogs and page read it, and the Workflows feature reads `referencesTo` for its "used by" line.
  */
 import type { ChatAnswer, ChatAnswerListener } from "@halonicjs/app";
+import type { ChatComponentName } from "@halonicjs/openui-lang";
 import type { ChatMessage, ChatSessions } from "@halonicjs/ports";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import type { TryItChanges } from "./chat/try-it-changes.ts";
@@ -130,6 +131,8 @@ export interface AgentSettings extends AgentListing {
   readonly subagents: readonly string[];
   /** Its agent steps (`methods` in its file), in the file's order. */
   readonly agentSteps: readonly AgentStep[];
+  /** The components its `chatUi` lets it draw in chat replies; absent when the file has none. */
+  readonly chatUi?: readonly ChatComponentName[] | undefined;
 }
 
 /**

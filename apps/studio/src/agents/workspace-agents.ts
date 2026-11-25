@@ -1,4 +1,5 @@
 import { type ChatAnswer, maxTurnLimit } from "@halonicjs/app";
+import { promptFor } from "@halonicjs/openui-lang";
 import { KindedError, slugify, uniqueName } from "@halonicjs/std";
 import type {
   AgentChange,
@@ -134,6 +135,7 @@ export class WorkspaceAgents implements AgentsHost {
       knowledge: agent.knowledge,
       connectors: agent.connectors,
       subagents: agent.subagents,
+      ...(agent.chatUi !== undefined && { chatUi: agent.chatUi.components }),
       agentSteps: Object.entries(agent.methods).map(([stepId, method]) => ({
         id: stepId,
         description: method.description,
@@ -234,7 +236,9 @@ export class WorkspaceAgents implements AgentsHost {
 
   /**
    * Answers a Try it message on the engine. The engine reads the agent by its id, so the answer
-   * uses the agent as it's saved, with its own tools; the chat adds none of its own.
+   * uses the agent as it's saved, with its own tools; the chat adds none of its own. An agent whose
+   * `chatUi` is on is first told which components it may draw (`promptFor`); a click on one is
+   * then a message like any other, so trust, `asks`, `allowedSites` and approvals stay as they are.
    */
   async answer(ref: AgentRef, request: AgentChatRequest): Promise<ChatAnswer> {
     const { agent } = await this.#find(ref);
@@ -244,7 +248,10 @@ export class WorkspaceAgents implements AgentsHost {
     }
     return answerChat({
       settings: { hubId: ref.hubId, agentId: ref.id },
-      messages: request.messages,
+      messages:
+        agent.chatUi === undefined
+          ? request.messages
+          : [{ role: "system", content: promptFor(agent.chatUi.components) }, ...request.messages],
       tools: [],
       // The file allows up to 200 model calls; a chat answer stops at 64 turns.
       turnLimit: Math.min(agent.maxSteps, maxTurnLimit),

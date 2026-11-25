@@ -713,6 +713,9 @@ importers:
       '@halonicjs/host-harness-host':
         specifier: workspace:*
         version: link:../../packages/host/harness-host
+      '@halonicjs/openui-lang':
+        specifier: workspace:*
+        version: link:../../packages/core/openui-lang
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../packages/core/ports
@@ -3567,6 +3570,9 @@ importers:
       '@halonicjs/assistant':
         specifier: workspace:*
         version: link:../../../core/assistant
+      '@halonicjs/openui-lang':
+        specifier: workspace:*
+        version: link:../../../core/openui-lang
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../../core/ports

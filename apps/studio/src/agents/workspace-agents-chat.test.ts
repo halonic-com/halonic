@@ -1,4 +1,5 @@
 import type { ChatAnswerRequest } from "@halonicjs/app";
+import { promptFor } from "@halonicjs/openui-lang";
 import { RefusalsFeed } from "@halonicjs/studio-feature-library/api";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
@@ -103,6 +104,42 @@ verifies("studio.workspace-agents-chat", () => {
         kind: "not_found",
       });
     });
+  });
+});
+
+verifies("studio.workspace-agents-chat-ui", () => {
+  const ref = { hubId: "acme", id: "writer" };
+  const messages = [{ role: "user", content: "Sort this mail" }] as const;
+
+  function answering() {
+    const requests: ChatAnswerRequest[] = [];
+    const parts = setup({
+      answerChat: async (request) => {
+        requests.push(request);
+        return { messages: [], end: { reason: "answered" } };
+      },
+    });
+    return { ...parts, requests };
+  }
+
+  it("tells an agent with chatUi which components it may draw, before the conversation", async () => {
+    const { host, store, requests } = answering();
+    store["hubs/acme/agents/writer.agent.yaml"] =
+      `${writerFile}chatUi: { components: [card, buttons] }\n`;
+    await host.answer(ref, { messages });
+    expect(requests[0]?.messages).toEqual([
+      { role: "system", content: promptFor(["card", "buttons"]) },
+      ...messages,
+    ]);
+    expect(requests[0]?.tools).toEqual([]);
+    expect((await host.settings(ref)).chatUi).toEqual(["card", "buttons"]);
+  });
+
+  it("sends only the conversation for an agent without chatUi", async () => {
+    const { host, requests } = answering();
+    await host.answer(ref, { messages });
+    expect(requests[0]?.messages).toEqual(messages);
+    expect(await host.settings(ref)).not.toHaveProperty("chatUi");
   });
 });
 
