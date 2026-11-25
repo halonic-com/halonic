@@ -124,6 +124,7 @@ export async function callAction(
     params,
     caller: { agentId: "agent-tomas", urlKey: "tomas" },
     companyId: "acme",
+    templates: [],
     github: async () => {
       throw new Error("a writing action never reads GitHub");
     },
