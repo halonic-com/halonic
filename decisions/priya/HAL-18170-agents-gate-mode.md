@@ -2,6 +2,7 @@
 
 - Approval: HAL-18170 (the review minors from Liam and Julian on halonic#5932)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:gCXCHXZySZOFeKNzJo788bpzvEvn7WKWrFwrqod+0YalxHaCXmMu6SE3wgWUpreVXkduHpgP9fwa73KZ1vrsCQ==
 
 `runtime.paperclip-writes` gets two more rules.
 
