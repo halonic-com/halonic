@@ -15,6 +15,11 @@ import { AttachFileButton, DraftFileList, pastedFiles } from "./draft-files-bar.
 export interface ChatBoxProps {
   readonly messenger: Messenger;
   readonly row: ConversationRow;
+  /**
+   * Called with the text once it is on its way, so the chat shows it at once; gives the function
+   * that takes it away again once it was sent and read, or wasn't sent.
+   */
+  readonly onSending: (body: string) => () => void;
   /** Called once something was sent, so the chat reads its messages again. */
   readonly onSent: () => Promise<void>;
 }
@@ -42,8 +47,8 @@ interface BoxLine {
  * (`messenger.channel-messages`); a chip's Remove moves focus the same way, ending on the box,
  * and the line says the new To line (HAL-18316 MS9, MS10).
  */
-export function ChatBox({ messenger, row, onSent }: ChatBoxProps) {
-  const box = useChatBox(messenger, row, onSent);
+export function ChatBox({ messenger, row, onSending, onSent }: ChatBoxProps) {
+  const box = useChatBox(messenger, row, onSending, onSent);
   // A chat is named by its agent alone, "Message Liam"; a channel by its title (`messenger.agent-names`).
   const name = chatAgent(row)?.name ?? row.conversation.title;
   const channel = isChannel(row);
@@ -65,7 +70,7 @@ export function ChatBox({ messenger, row, onSent }: ChatBoxProps) {
   return (
     <div
       ref={container}
-      className="flex flex-col gap-2 px-4 pb-4"
+      className="mx-auto flex w-full max-w-[800px] flex-col gap-2 px-4 pb-4"
       onPaste={(event) => {
         const pasted = pastedFiles(event.clipboardData);
         if (pasted.length === 0) return;
@@ -139,7 +144,12 @@ function BoxButtons({
 }
 
 /** The box's state, kept in the Messenger so it survives switching chats, and its actions. */
-function useChatBox(messenger: Messenger, row: ConversationRow, onSent: () => Promise<void>) {
+function useChatBox(
+  messenger: Messenger,
+  row: ConversationRow,
+  onSending: (body: string) => () => void,
+  onSent: () => Promise<void>,
+) {
   const id = row.conversation.id;
   const [draft, setDraft] = useState(() => messenger.draft(id));
   const [files, setFiles] = useState(() => messenger.files.of(id));
@@ -177,8 +187,29 @@ function useChatBox(messenger: Messenger, row: ConversationRow, onSent: () => Pr
       }
     },
     async send() {
-      const outcome = await messenger.sendDraft(id, row);
+      // Once it's on its way the box empties and the chat shows the message "Sending…".
+      const shown: { body?: string; done?: () => void } = {};
+      const sending = (body: string) => {
+        setDraft("");
+        shown.body = body;
+        shown.done = onSending(body);
+      };
+      // Not sent: the text goes back in the box, before anything typed since (`messenger.conversations`).
+      const putBack = () => {
+        const { body, done } = shown;
+        if (body === undefined) return;
+        done?.();
+        const typed = messenger.draft(id);
+        const text = typed === "" || typed === body ? body : `${body}\n${typed}`;
+        messenger.setDraft(id, text);
+        setDraft(text);
+      };
+      const outcome = await messenger.sendDraft(id, row, sending).catch((error: unknown) => {
+        putBack();
+        throw error;
+      });
       if (outcome.outcome === "kept") {
+        putBack();
         if (outcome.reason !== "blank") setKept(outcome.reason);
         return;
       }
@@ -187,7 +218,7 @@ function useChatBox(messenger: Messenger, row: ConversationRow, onSent: () => Pr
       // The Messenger cleared the draft only if nothing was typed during the send.
       setDraft(messenger.draft(id));
       setFiles(messenger.files.of(id));
-      await onSent();
+      await onSent().finally(() => shown.done?.());
     },
     async askForUpdate() {
       const outcome = await messenger.quickActions.askForUpdate(row);

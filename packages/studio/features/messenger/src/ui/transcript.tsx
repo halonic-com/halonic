@@ -1,12 +1,19 @@
 import type { InboxItem, Message, MessagingId } from "@halonicjs/ports";
-import { ChatText, useOpenExternal } from "@halonicjs/studio-kit";
-import { useLayoutEffect, useRef } from "react";
+import { Button, ChatLoading, EmptyState, enter } from "@halonicjs/studio-kit";
+import type { EngineWords } from "@halonicjs/studio-shell";
+import { type RefObject, useLayoutEffect, useRef, useState } from "react";
 import { isChannel } from "../channel.ts";
+import { type ChatLine, chatLines, type PendingMessage } from "../chat-layout.ts";
 import { chatTimeline } from "../chat-timeline.ts";
 import type { ConversationRow, Messenger } from "../messenger.ts";
-import { AttachmentList } from "./attachment-list.tsx";
-import { authorOf, EmptyChannel, MessageTo, WorkLines } from "./channel-message.tsx";
+import { messengerWords } from "../messenger-words.ts";
+import { EmptyChannel } from "./channel-message.tsx";
 import { ChatCardItem } from "./chat-cards.tsx";
+import { failureReason, reportMotion } from "./load-states.tsx";
+import { DayItem, MessageItem, PendingItem } from "./message-item.tsx";
+
+/** Within this many pixels of the end, the person reads the newest entry and the chat stays there. */
+const PINNED_WITHIN_PX = 24;
 
 /** The props of {@link Transcript}. */
 export interface TranscriptProps {
@@ -16,103 +23,210 @@ export interface TranscriptProps {
   readonly messages: readonly Message[] | undefined;
   /** The chat's cards, open and answered; undefined until the first read landed. */
   readonly cards: readonly InboxItem[] | undefined;
+  /** The person's messages on their way. */
+  readonly pending: readonly PendingMessage[];
   readonly questions: ReadonlyMap<MessagingId, string>;
   readonly searching: boolean;
+  /** Why the last read of the messages failed; none once one landed. */
+  readonly failure: unknown;
+  readonly words: EngineWords;
+  /** Reads the messages again. */
+  readonly onRetry: () => void;
+  /** The chat agent's picture beside each run of its messages. */
+  readonly picture: ImageBitmap | undefined;
   /** Called with an option's label once it answered a card. */
   readonly onAnswered: (option: string) => Promise<void>;
 }
 
 /**
  * The messages and the agent's cards, oldest first, each card where it was made
- * (`messenger.inline-cards`); the chat opens at its latest entry. The person's messages are on the
- * end side. Each message says who wrote it to a screen reader; in a channel it shows it too, and
- * the person's say who they went to and what each agent did with them
- * (`messenger.channel-messages`). An agent writes a message, so whoever can steer that agent does
+ * (`messenger.inline-cards`), in a column at most 800px wide in the middle of the pane, with the
+ * day's label before each day and the person's messages in bubbles (`messenger.chat-transcript`).
+ * The chat opens at its latest entry and stays there while the person reads it; scrolled up, it
+ * doesn't move, and "1 new message ↓" brings the person down. While the first read is on its way
+ * it shows the kit's loading lines, and if it fails "Couldn't load this chat" with **Try again**
+ * (`messenger.load-states`). An agent writes a message, so whoever can steer that agent does
  * (ADR 2026-11-24, agent-written content): the kit's `ChatText` keeps HTML, images and any link
- * that isn't a web address as plain text, and a web link opens outside the app with its address
- * after it.
+ * that isn't a web address as plain text.
  */
-export function Transcript({
-  messenger,
-  row,
-  messages,
-  cards,
-  questions,
-  searching,
-  onAnswered,
-}: TranscriptProps) {
-  const channel = isChannel(row);
+export function Transcript(props: TranscriptProps) {
+  const { messenger, row, messages, cards, pending, failure, words, onRetry } = props;
+  const scroller = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLOListElement>(null);
-  const opened = useRef(false);
   const ready = messages !== undefined && cards !== undefined;
+  const lines = chatLines(
+    chatTimeline(messages ?? [], cards ?? []),
+    pending,
+    messenger.now(),
+    isChannel(row),
+  );
+  const { unseen, onScroll, toEnd } = useStickToEnd(scroller, list, lines, ready, props.searching);
 
-  // Once both reads landed, the chat shows its latest entry; later reads leave the scroll alone.
-  useLayoutEffect(() => {
-    if (opened.current || !ready) return;
-    opened.current = true;
-    list.current?.lastElementChild?.scrollIntoView?.({ block: "end" });
-  }, [ready]);
-
-  const shown = messages ?? [];
+  if (messages === undefined && failure !== undefined) {
+    const title = messengerWords.load.chatFailed;
+    return (
+      // The state's own padding puts its text on the transcript's edge.
+      <div className="mx-auto w-full max-w-[800px] py-4">
+        <EmptyState
+          tone="error"
+          align="start"
+          title={title}
+          description={failureReason(failure, title, words)}
+          action={{ label: messengerWords.load.tryAgain, onClick: onRetry }}
+        />
+      </div>
+    );
+  }
+  if (messages === undefined) {
+    return (
+      // The loading lines fill the transcript's column, as the messages will.
+      <div className="mx-auto w-full max-w-[800px] *:max-w-none">
+        <ChatLoading label={messengerWords.load.chat} onRetry={onRetry} />
+      </div>
+    );
+  }
   return (
-    <ol ref={list} className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-4 py-4">
-      {channel && messages?.length === 0 && !searching ? <EmptyChannel row={row} /> : null}
-      {chatTimeline(shown, cards ?? []).map((entry) =>
-        entry.kind === "message" ? (
-          <MessageItem
-            key={entry.message.id}
-            messenger={messenger}
-            row={row}
-            message={entry.message}
-            questions={questions}
-          />
-        ) : (
-          <ChatCardItem
-            key={entry.card.id}
-            quickActions={messenger.quickActions}
-            row={row}
-            card={entry.card}
-            now={messenger.now()}
-            onAnswered={onAnswered}
-          />
-        ),
+    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+      <div ref={scroller} onScroll={onScroll} className="min-h-0 flex-1 overflow-auto">
+        <div role="status">
+          {failure === undefined ? null : (
+            <p className="mx-auto max-w-[800px] px-4 pt-4 text-small text-fg-muted">
+              {words.showingLast}
+            </p>
+          )}
+        </div>
+        {/* A run's messages sit 4px apart, a new run 24px, anything else 16px. */}
+        <ol
+          ref={list}
+          className="mx-auto flex w-full max-w-[800px] flex-col px-4 py-4 [&>li+li]:mt-4 [&>li+li[data-follows]]:mt-1 [&>li+li[data-head]]:mt-6"
+        >
+          {isChannel(row) && messages.length === 0 && !props.searching ? (
+            <EmptyChannel row={row} />
+          ) : null}
+          {lines.map((line) => (
+            <Line key={line.key} line={line} {...props} />
+          ))}
+        </ol>
+      </div>
+      {unseen === 0 ? null : (
+        <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center">
+          <span ref={arrive} data-new-messages className="pointer-events-auto">
+            <Button size="sm" variant="secondary" onClick={toEnd}>
+              {messengerWords.newMessages(unseen)}
+              <span aria-hidden="true"> ↓</span>
+            </Button>
+          </span>
+        </div>
       )}
-    </ol>
+    </div>
   );
 }
 
-/** One message: who wrote it, its text and files, and in a channel who it went to. */
-function MessageItem({
-  messenger,
-  row,
-  message,
-  questions,
-}: {
-  readonly messenger: Messenger;
-  readonly row: ConversationRow;
-  readonly message: Message;
-  readonly questions: ReadonlyMap<MessagingId, string>;
-}) {
-  const openLink = useOpenExternal();
-  const channel = isChannel(row);
+function Line({ line, ...props }: TranscriptProps & { readonly line: ChatLine }) {
+  if (line.kind === "day") return <DayItem label={line.label} />;
+  if (line.kind === "pending") return <PendingItem pending={line.pending} follows={line.follows} />;
+  if (line.kind === "card") {
+    return (
+      <ChatCardItem
+        quickActions={props.messenger.quickActions}
+        row={props.row}
+        card={line.card}
+        now={props.messenger.now()}
+        onAnswered={props.onAnswered}
+      />
+    );
+  }
   return (
-    <li
-      data-author={message.author.kind}
-      className={message.author.kind === "me" ? "ms-auto max-w-[80%]" : "max-w-[80%]"}
-    >
-      {channel && message.author.kind !== "me" ? (
-        // The sr-only "<name>: " below says it, so a screen reader reads it once (MS11).
-        <p className="text-small text-fg-muted" data-author-name aria-hidden="true">
-          <bdi>{authorOf(message, row)}</bdi>
-        </p>
-      ) : null}
-      {channel ? <MessageTo message={message} row={row} /> : null}
-      <span className="sr-only">{authorOf(message, row)}: </span>
-      <ChatText openLink={openLink}>{message.body}</ChatText>
-      <AttachmentList messenger={messenger} attachments={message.attachments} />
-      {channel ? (
-        <WorkLines message={message} row={row} questions={questions} now={messenger.now()} />
-      ) : null}
-    </li>
+    <MessageItem
+      messenger={props.messenger}
+      row={props.row}
+      message={line.message}
+      head={line.head}
+      follows={line.follows}
+      picture={props.picture}
+      questions={props.questions}
+    />
   );
+}
+
+/** Rises into view once, as it mounts: the "new message" pill. */
+function arrive(element: HTMLElement | null): void {
+  if (element !== null) enter(element).catch(reportMotion);
+}
+
+/**
+ * Keeps the chat at its newest entry (motions 3 and 4 of the design review): it opens there, and
+ * then follows new entries while the person is within 24px of the end, or sent something.
+ * Scrolled up, a new message only counts toward the pill. Each new entry rises into view, except a
+ * search's results and the person's own message that took its pending one's place.
+ */
+function useStickToEnd(
+  scroller: RefObject<HTMLDivElement | null>,
+  list: RefObject<HTMLOListElement | null>,
+  lines: readonly ChatLine[],
+  ready: boolean,
+  searching: boolean,
+) {
+  const [unseen, setUnseen] = useState(0);
+  const pinned = useRef(true);
+  const known = useRef<ReadonlySet<string> | undefined>(undefined);
+  const wasSearching = useRef(searching);
+  const keys = lines.map((line) => line.key).join("\n");
+
+  const toEnd = (smooth: boolean) => {
+    const element = scroller.current;
+    // The person asked for the end, so new entries follow it there.
+    pinned.current = true;
+    setUnseen(0);
+    if (element === null) return;
+    const reduced = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    const behavior = smooth && !reduced ? "smooth" : "auto";
+    element.scrollTo?.({ top: element.scrollHeight, behavior });
+  };
+
+  // It runs once per change of the lines' keys, not on each render's new `lines` array.
+  useLayoutEffect(() => {
+    if (!ready) return;
+    const before = known.current;
+    known.current = new Set(lines.map((line) => line.key));
+    if (before === undefined) {
+      // The chat opens at its latest entry, with no scroll to watch.
+      list.current?.lastElementChild?.scrollIntoView?.({ block: "end" });
+      return;
+    }
+    // A search, and the end of one, swaps the lines: nothing in them is new.
+    const swapped = searching || wasSearching.current;
+    wasSearching.current = searching;
+    const added = lines.filter((line) => !before.has(line.key) && line.kind !== "day");
+    if (swapped || added.length === 0) return;
+    riseIntoView(list.current, lines, added);
+    if (added.some((line) => line.kind === "pending") || pinned.current) toEnd(false);
+    else setUnseen((count) => count + added.filter((line) => line.kind === "message").length);
+  }, [keys, ready, searching]);
+
+  const onScroll = () => {
+    const element = scroller.current;
+    if (element === null) return;
+    const left = element.scrollHeight - element.scrollTop - element.clientHeight;
+    pinned.current = left <= PINNED_WITHIN_PX;
+    if (pinned.current) setUnseen(0);
+  };
+
+  return { unseen, onScroll, toEnd: () => toEnd(true) };
+}
+
+/** Each added line's element rises into view; the person's sent message already did as pending. */
+function riseIntoView(
+  list: HTMLOListElement | null,
+  lines: readonly ChatLine[],
+  added: readonly ChatLine[],
+): void {
+  if (list === null) return;
+  // A channel's empty line may come before the lines.
+  const offset = list.children.length - lines.length;
+  for (const line of added) {
+    if (line.kind === "message" && line.message.author.kind === "me") continue;
+    const element = list.children[lines.indexOf(line) + offset];
+    if (element instanceof HTMLElement) enter(element).catch(reportMotion);
+  }
 }
