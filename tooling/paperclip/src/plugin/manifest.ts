@@ -161,6 +161,31 @@ export const manifest: PaperclipPluginManifestV1 = {
         description:
           "The board's GitHub account, whose fast-track label counts for a jump next to halonic-dev's (HAL-15971, HAL-17722). Empty: only halonic-dev's counts.",
       },
+      mergeWatchersDryRun: {
+        type: "boolean",
+        title: "Reviewer wake and UNHANDLED: dry run",
+        description:
+          "Only log the reviewer wakes and UNHANDLED reports (HAL-17938). Turn off once the logged ones look right.",
+        default: true,
+      },
+      liamWakeTask: {
+        type: "string",
+        title: "Liam's wake task",
+        description:
+          "The id of the task where a green pull request that waits only for Liam's review wakes him (Chat with Liam). Empty: it only logs.",
+      },
+      julianWakeTask: {
+        type: "string",
+        title: "Julian's wake task",
+        description:
+          "The id of the task where a pull request Liam wrote that waits only for its review wakes Julian (Chat with Julian). Empty: it only logs.",
+      },
+      unhandledTask: {
+        type: "string",
+        title: "UNHANDLED task",
+        description:
+          "The id of the task where problems open 6 hours on the same head are reported once as UNHANDLED, waking its holder (Chat with Chief). Empty: it only logs.",
+      },
       precheckUrl: {
         type: "string",
         title: "Precheck service",

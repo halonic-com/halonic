@@ -173,6 +173,7 @@ describe("the job", () => {
       dryRun: true,
       fastTrackUnblocks: new Set(),
       fastTrackLabelAdder: "",
+      watchers: { dryRun: true, wakeTasks: { Liam: "", Julian: "" }, unhandledTask: "" },
     });
     expect(readSettings({ fastTrackLabelAdder: " board-member " }).fastTrackLabelAdder).toBe(
       "board-member",

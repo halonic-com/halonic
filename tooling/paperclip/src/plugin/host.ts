@@ -162,6 +162,7 @@ export function paperclipHost(host: HostApi, companyId: string): Paperclip {
             monitorLastTriggeredAt: isoOrNull(issue.monitorLastTriggeredAt),
             parked: parkedStatuses.has(issue.status),
             priority: issue.priority,
+            blocked: issue.status === "blocked",
           }),
         );
     },

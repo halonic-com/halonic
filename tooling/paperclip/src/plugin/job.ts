@@ -23,6 +23,7 @@ import { gitHubQueryReader } from "../snapshot/graphql.ts";
 import { takeSnapshot } from "../snapshot/read.ts";
 import type { GitHubTokenKind, Snapshot } from "../snapshot/shape.ts";
 import { type StateApi, saveSnapshot } from "../snapshot/store.ts";
+import { readWatchersSettings, runMergeWatchers, type WatchersSettings } from "../watchers/run.ts";
 import { type CompanySource, listedCompanies } from "./companies.ts";
 import { type HostApi, paperclipHost, unblockHost } from "./host.ts";
 import { countingFetch, type MetricsApi, writeMetrics } from "./metrics.ts";
@@ -48,6 +49,8 @@ export interface WatcherSettings {
   readonly fastTrackUnblocks: ReadonlySet<number>;
   /** The board's GitHub login, whose `fast-track` label counts for a jump next to `halonic-dev`'s; empty: only `halonic-dev`'s counts. */
   readonly fastTrackLabelAdder: string;
+  /** The reviewer wake and the 6-hour escalation (HAL-17938). */
+  readonly watchers: WatchersSettings;
 }
 
 /** `halonic` first: tools without a `repo` argument answer for the first one. */
@@ -83,6 +86,7 @@ export function readSettings(config: Readonly<Record<string, unknown>>): Watcher
     ),
     fastTrackLabelAdder:
       typeof config["fastTrackLabelAdder"] === "string" ? config["fastTrackLabelAdder"].trim() : "",
+    watchers: readWatchersSettings(config),
   };
 }
 
@@ -283,6 +287,16 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
     log: (line) => ctx.logger.info(line, { companyId }),
   });
   const watcherCalls = requests() - snapshotCalls;
+  // After the watcher's tick, from the tasks it read; a failure is logged inside.
+  await runMergeWatchers(ctx, {
+    companyId,
+    snapshot,
+    repo: settings.repos[0] ?? defaultRepos[0] ?? "",
+    settings: settings.watchers,
+    tasks,
+    found,
+    now,
+  });
   // After the watcher's own work, so a failure here never holds up a task.
   await recordThinSpecOutcomes(ctx, { companyId, snapshot, found, get, now }).catch(
     (error: unknown) => {
