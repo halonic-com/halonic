@@ -1,8 +1,12 @@
 export {
   type ActionEventCheck,
+  actionKeptProblem,
+  actionOutcomes,
+  actionStepFailures,
   checkActionEvent,
   maxActionErrorLength,
   maxActionReasonLength,
+  maxActionStep,
 } from "./action-event-check.ts";
 export type {
   ActionEvent,

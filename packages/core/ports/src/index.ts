@@ -46,6 +46,15 @@ export {
   type WorkState,
 } from "./agent-messaging.ts";
 export {
+  type ActionResultAnswer,
+  type ActionResultCheck,
+  type ActionResultStep,
+  answerFitsItem,
+  checkActionResultAnswer,
+  type InboxActionRequest,
+  type UntrustedText,
+} from "./agent-messaging-actions.ts";
+export {
   type AgentPlacementKey,
   type AgentPlacementRecord,
   type AgentPlacementStore,

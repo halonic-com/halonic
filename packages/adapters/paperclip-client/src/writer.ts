@@ -68,6 +68,10 @@ export class PaperclipWriter {
     target: AnswerTarget,
     answer: InboxAnswer,
   ): Promise<AnswerResult> {
+    // This provider serves no action items yet (HAL-17536), so no `action-result` fits any of its items.
+    if (answer.kind === "action-result") {
+      return refused("bad-answer");
+    }
     try {
       if (target.card !== undefined) {
         return await this.#answerCard(context, target.card, answer);

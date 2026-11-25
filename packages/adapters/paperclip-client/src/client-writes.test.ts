@@ -94,6 +94,17 @@ verifies("ports.agent-messaging", () => {
       expect(seenRoutes()).toEqual([`GET /api/issues/${plainTask}/interactions`]);
     });
 
+    it("refuses an action-result answer with bad-answer and sends nothing", async () => {
+      paperclip.serveAcme();
+      const result = await client().answer(card(plainTask, confirmCard), {
+        kind: "action-result",
+        outcome: "declined",
+        steps: [],
+      });
+      expect(result).toEqual({ outcome: "refused", reason: "bad-answer" });
+      expect(paperclip.seen).toEqual([]);
+    });
+
     it("answers an approval, and says already-answered when it was decided", async () => {
       paperclip
         .on("POST", `/api/approvals/${approvalId}/approve`, {

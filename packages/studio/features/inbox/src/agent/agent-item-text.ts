@@ -82,9 +82,13 @@ export function sourceDownLine(source: MessagingSource | undefined, now: Date): 
   return source.state.kind === "signed-out" ? "Sign in again to send your answer." : null;
 }
 
-/** How an item was answered: the option's label, or the reply in quotes. */
+/**
+ * How an item was answered: the option's label, the reply in quotes, or how an action request
+ * ended ("succeeded") until the Inbox shows action items in full.
+ */
 export function answerText(item: AgentItem, answer: InboxAnswer): string {
   if (answer.kind === "reply") return `“${answer.text}”`;
+  if (answer.kind === "action-result") return answer.outcome;
   return item.options.find((option) => option.id === answer.option)?.label ?? answer.option;
 }
 

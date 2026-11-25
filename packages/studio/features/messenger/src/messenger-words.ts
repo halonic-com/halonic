@@ -37,6 +37,7 @@ export const messengerWords = {
     "not-found": () => "This chat is gone. Your message stays here and isn't sent.",
     "too-large": () => filesNotSent,
     "unsupported-type": () => filesNotSent,
+    "bad-answer": () => "This can't be sent here. Your message stays here.",
   } satisfies Record<MessagingRefusal, (source: string) => string>,
   you: "You",
   /** An agent's open card in its chat (HAL-17421 render 4e, approved by the board, 24 Nov). */
@@ -73,5 +74,6 @@ export const messengerWords = {
     "not-found": () => "This is gone, so nothing was sent.",
     "too-large": () => filesNotSent,
     "unsupported-type": () => filesNotSent,
+    "bad-answer": () => "This can't be sent here, so nothing was sent.",
   } satisfies Record<MessagingRefusal, (source: string) => string>,
 } as const;

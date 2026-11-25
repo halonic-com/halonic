@@ -1,6 +1,9 @@
 import type {
+  ActionResultAnswer,
+  ActionResultStep,
   Attachment,
   Conversation,
+  InboxActionRequest,
   InboxAnswer,
   InboxItem,
   InboxItemState,
@@ -62,6 +65,7 @@ export function keptInboxItem(item: InboxItem): InboxItem {
     state: keptState(item.state),
     attachments: item.attachments.map(keptAttachment),
   };
+  if (item.action !== undefined) kept.action = keptAction(item.action);
   if (item.project !== undefined) kept.project = { id: item.project.id, name: item.project.name };
   if (item.work !== undefined) kept.work = item.work;
   return kept;
@@ -110,7 +114,32 @@ function keptState(state: InboxItemState): InboxItemState {
 
 function keptAnswer(answer: InboxAnswer): InboxAnswer {
   if (answer.kind === "reply") return { kind: "reply", text: answer.text };
+  if (answer.kind === "action-result") return keptActionResult(answer);
   const kept: InboxAnswer = { kind: "option", option: answer.option };
   if (answer.note !== undefined) kept.note = answer.note;
+  return kept;
+}
+
+function keptAction(action: InboxActionRequest): InboxActionRequest {
+  const kept: InboxActionRequest = {
+    definition: action.definition,
+    version: action.version,
+    parameters: { ...action.parameters },
+    expires: action.expires,
+  };
+  if (action.expect !== undefined) kept.expect = { ...action.expect };
+  return kept;
+}
+
+function keptActionResult(answer: ActionResultAnswer): ActionResultAnswer {
+  return { kind: "action-result", outcome: answer.outcome, steps: answer.steps.map(keptStep) };
+}
+
+function keptStep(step: ActionResultStep): ActionResultStep {
+  const kept: ActionResultStep = { step: step.step, outcome: step.outcome };
+  if (step.status !== undefined) kept.status = step.status;
+  if (step.kept !== undefined) kept.kept = { ...step.kept };
+  if (step.failure !== undefined) kept.failure = step.failure;
+  if (step.error !== undefined) kept.error = { untrusted: true, text: step.error.text };
   return kept;
 }
