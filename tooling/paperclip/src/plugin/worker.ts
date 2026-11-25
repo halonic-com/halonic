@@ -21,6 +21,7 @@ import { runWatcher } from "./job.ts";
 import { mergeControlPass } from "./merge-control-job.ts";
 import { passLock } from "./merge-control-lock.ts";
 import { mergeFactsReader } from "./merge-control-reader.ts";
+import { type PassNudge, passTrigger } from "./merge-control-trigger.ts";
 import { registerNextStepTools } from "./next-step-tools.ts";
 import { registerReadyForReview } from "./ready-for-review.ts";
 import { scheduledPerCompany } from "./scheduled.ts";
@@ -50,6 +51,8 @@ import {
 let context: PluginContext | undefined;
 /** The companies the jobs dispatch to, learnt from scoped calls (see companies.ts). */
 const roster = companyRoster();
+/** Starts a merge control pass for an approval or a green `ci-ok` (HAL-18729); set in `setup`. */
+let nudgeMergeControl: PassNudge | undefined;
 
 export const plugin = definePlugin({
   async setup(ctx) {
@@ -73,6 +76,11 @@ export const plugin = definePlugin({
       mergeControlPass(ctx, lock, companyId, now, readFacts).then(() => undefined),
     );
     ctx.jobs.register("merge-control", () => mergeJob.dispatch());
+    nudgeMergeControl = passTrigger(
+      (companyId) => mergeJob.request(companyId),
+      (companyId, error) =>
+        ctx.logger.error(`merge-control: couldn't start a pass: ${error.message}`, { companyId }),
+    );
     ctx.events.on("issue.comment.created", async (event) => {
       roster.remember(event.companyId);
       await Promise.all([
@@ -128,7 +136,7 @@ export const plugin = definePlugin({
       );
     }
     if (isChiefLineRoute(input.routeKey)) {
-      return await handleChiefLineRequest(input, context);
+      return await handleChiefLineRequest(input, context, new Date(), nudgeMergeControl);
     }
     if (input.routeKey === githubSummaryRouteKey) {
       return await handleGitHubSummary(input, context);

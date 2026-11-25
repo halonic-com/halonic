@@ -16,6 +16,7 @@ import {
   verdicts,
 } from "./chief-line-prs.ts";
 import { type ChiefLineSettings, callerPattern, threadTitle } from "./chief-line-settings.ts";
+import type { PassNudge } from "./merge-control-trigger.ts";
 
 /**
  * The chief line's two pull request routes (HAL-18586): `track` registers a
@@ -27,6 +28,7 @@ import { type ChiefLineSettings, callerPattern, threadTitle } from "./chief-line
  * new, so an event the webhook posted is never posted again by the pass.
  * The tracked pull request index (src/plugin/chief-line-pr-index.ts) lets
  * `pr-event` skip an untracked pull request without reading Paperclip.
+ * An approval or a green `ci-ok` also starts a merge control pass (HAL-18729).
  */
 
 const repoPattern = /^[\w.-]+\/[\w.-]+$/;
@@ -156,21 +158,32 @@ function eventNews(event: PrEvent, pull: TrackedPull): News[] {
   return stateNews({ state: event.merged ? "merged" : "closed", head: "", ciOk: "missing" }, pull);
 }
 
+/** Whether the event can make a pull request ready to queue: a signed approval or a green `ci-ok`. */
+function startsPass(event: PrEvent): boolean {
+  if (event.kind === "ci-ok") {
+    return event.conclusion === "success";
+  }
+  return (
+    event.kind === "comment" &&
+    verdicts([event.comment]).some((verdict) => !/: changes requested on /i.test(verdict.text))
+  );
+}
+
 /**
  * `POST /chief-line/pr-event` {repo, pr, kind, …}: posts the event on the
  * chief line of every caller tracking the pull request, unless a marker shows
  * it was already posted. Answers how many comments it posted; an untracked
- * pull request posts nothing.
+ * pull request posts nothing. An event that `startsPass` nudges merge
+ * control first, also while pull request outcomes are off: merge control's
+ * own mode decides whether the pass does anything.
  */
 export async function prEvent(
   ctx: PrOutcomesApi,
   companyId: string,
   settings: ChiefLineSettings,
   body: Record<string, unknown>,
+  nudge?: PassNudge,
 ): Promise<PluginApiResponse> {
-  if (!settings.prOutcomes) {
-    return fail(409, "Pull request outcomes are off: set chiefLine.prOutcomes.");
-  }
   const { repo, pr } = body;
   if (typeof repo !== "string" || !repoPattern.test(repo)) {
     return fail(400, "repo must be owner/name.");
@@ -181,6 +194,12 @@ export async function prEvent(
   const event = parseEvent(body);
   if (typeof event === "string") {
     return fail(400, event);
+  }
+  if (nudge !== undefined && startsPass(event)) {
+    nudge(companyId);
+  }
+  if (!settings.prOutcomes) {
+    return fail(409, "Pull request outcomes are off: set chiefLine.prOutcomes.");
   }
   if (settings.projectId === undefined) {
     return fail(409, "The chief line has no project: set chiefLine.projectId.");
