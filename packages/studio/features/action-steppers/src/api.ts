@@ -41,6 +41,7 @@ export const emptyActionCatalog: StepperCatalog = {
   definition: () => undefined,
   stepType: () => undefined,
   browserOrigins: [],
+  route: () => undefined,
 };
 
 export { defaultRequesterPolicy, type RequesterPolicy, type StepperCatalog };

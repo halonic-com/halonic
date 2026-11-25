@@ -51,6 +51,7 @@ export const acmeActionCatalog: StepperCatalog = {
       : undefined,
   stepType: () => undefined,
   browserOrigins: [],
+  route: () => undefined,
 };
 
 /** Approve the deployment of `acme/app` to `release`, expiring 25 Nov 2026 at noon UTC. */

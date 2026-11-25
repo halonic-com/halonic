@@ -1,11 +1,14 @@
+export type { ActionUserCode } from "@halonicjs/adapter-action-send-tauri";
 export {
   type ActionPageResult,
+  type ActionRecordResult,
   type ActionStepResult,
   type ActionSteps,
   type ActionStepsOptions,
   createActionSteps,
   type DesktopOnly,
   desktopOnlyActionSteps,
+  type Recorded,
   type RequestClosed,
   type StepSender,
 } from "./action-steps.ts";

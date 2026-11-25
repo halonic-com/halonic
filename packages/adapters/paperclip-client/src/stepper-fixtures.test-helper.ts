@@ -65,6 +65,7 @@ export const stepperCatalog: StepperCatalog = {
       pathPrefixes: ["/{owner}/{repo}/settings/variables/"],
     },
   ],
+  route: () => undefined,
 };
 
 const parameters = { owner: "acme", repo: "app" };

@@ -1,3 +1,4 @@
+import type { ActionRoute } from "@halonicjs/ports";
 import type { StepperCatalog, StepperDefinition } from "./stepper-types.ts";
 import { strictParameters } from "./strict-parameters.ts";
 
@@ -87,6 +88,45 @@ export const setSecret: StepperDefinition<Record<string, string | number>> = {
   ],
 };
 
+const repoPlaceholders = { owner: "^[A-Za-z0-9-]{1,39}$", repo: "^[A-Za-z0-9._-]{1,100}$" };
+
+/** The routes the generated list would hold for the steps above, as the shell compiles them. */
+export const acmeRoutes: readonly ActionRoute[] = [
+  {
+    kind: "guided",
+    definition: "github.set-variable",
+    version: 1,
+    step: 1,
+    service: "github",
+    risk: "routine",
+    address: "https://github.com/{owner}/{repo}/settings/variables/actions/new",
+    placeholders: repoPlaceholders,
+  },
+  {
+    kind: "call",
+    definition: "cloudflare.add-dns-record",
+    version: 1,
+    step: 1,
+    service: "cloudflare",
+    risk: "admin",
+    method: "POST",
+    path: "/client/v4/zones/{zone}/dns_records",
+    placeholders: { zone: "^[a-z0-9.-]{1,253}$" },
+    body: [{ name: "type", kind: "string", pattern: "^(A|CNAME|TXT)$" }],
+    keep: ["id"],
+  },
+  {
+    kind: "guided",
+    definition: "github.set-secret",
+    version: 1,
+    step: 2,
+    service: "github",
+    risk: "admin",
+    address: "https://github.com/{owner}/{repo}/settings/secrets/actions/new",
+    placeholders: repoPlaceholders,
+  },
+];
+
 /** The invented catalog: three step types, no whole definitions, and GitHub's variables and rules pages. */
 export const acmeCatalog: StepperCatalog = {
   definition: (id, version) =>
@@ -102,4 +142,8 @@ export const acmeCatalog: StepperCatalog = {
       pathPrefixes: ["/{owner}/{repo}/settings/variables/", "/{owner}/{repo}/settings/rules/"],
     },
   ],
+  route: (id, version, step) =>
+    acmeRoutes.find(
+      (route) => route.definition === id && route.version === version && route.step === step,
+    ),
 };

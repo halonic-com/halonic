@@ -11,4 +11,5 @@ export const installedStepperCatalog: StepperCatalog = {
   definition: () => undefined,
   stepType: () => undefined,
   browserOrigins: [],
+  route: () => undefined,
 };

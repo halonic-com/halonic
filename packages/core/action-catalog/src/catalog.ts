@@ -28,10 +28,12 @@ export function sourceHashOf(id: string, version: number): string | undefined {
 /**
  * The catalog shipped with this Halonic. It holds whole definitions only:
  * no step types and no browser origins yet, so a request can name a shipped
- * definition but can't build an on-demand stepper from blocks.
+ * definition but can't build an on-demand stepper from blocks. It has no
+ * routes yet either: the generated route list lives in the desktop shell.
  */
 export const shippedCatalog: StepperCatalog = {
   definition: (id, version) => findEntry(id, version)?.definition,
   stepType: () => undefined,
   browserOrigins: [],
+  route: () => undefined,
 };

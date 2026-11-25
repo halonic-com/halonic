@@ -62,11 +62,15 @@ export interface ActionStepStartedEvent extends ActionEventBase {
   step: number;
 }
 
-/** A step succeeded with the HTTP `status`; `kept` holds only the fields the definition keeps. */
+/**
+ * A step succeeded with the HTTP `status`; `kept` holds only the fields the definition keeps.
+ * Without `status`, Studio sent nothing: the user did the step on the page a guided step opened,
+ * or by hand, and said so.
+ */
 export interface ActionStepSucceededEvent extends ActionEventBase {
   type: "action.step.succeeded";
   step: number;
-  status: number;
+  status?: number;
   kept: Readonly<Record<string, ActionKeptValue>>;
 }
 
