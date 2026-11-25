@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13277 (selling layer design, sections 16.1 and 16.3, approved by the board on HAL-45)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:kf7pZvY8HpKusUwAb9hRSLsUzZKTlX+X/nnrkYCZaLIjjqRlS58kd18Yg33A9w/i7lzmf7G3ar0gFqZzR9MfAg==
 
 `server.many-users` said the Studio page answers without a session on a many-user server. The
 board's requirement of 19 Nov makes the end-user client read-only: an end user may not change the
