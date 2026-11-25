@@ -1,3 +1,8 @@
+import {
+  approvalPageUrl,
+  newSignInPhrase,
+  signInClientName,
+} from "@halonicjs/adapter-paperclip-client";
 import type { Clock, ScheduledTimer, Scheduler } from "@halonicjs/ports";
 import type {
   ChallengeRef,
@@ -7,7 +12,6 @@ import type {
   SignInCalls,
   StoredPaperclipKey,
 } from "./sign-in-calls.ts";
-import { newSignInPhrase } from "./sign-in-phrase.ts";
 
 /** How long a sign-in lasts: Paperclip's challenge lifetime (HAL-17423). */
 export const signInLimitMs = 10 * 60 * 1000;
@@ -22,9 +26,6 @@ export const handOverLimitMs = 60 * 1000;
 
 /** The scheduler key every sign-in's time limit is set under; the timer ID is the sign-in's ID. */
 export const signInTimerKey = "paperclip-sign-in";
-
-/** The name Paperclip shows on the approval page and gives the key. */
-export const signInClientName = "Halonic Studio";
 
 /** The connection a sign-in is for. */
 export interface SignInConnection {
@@ -157,7 +158,7 @@ export class PaperclipSignIn {
     });
     let approvalUrl: string;
     try {
-      approvalUrl = approvalUrlFor(connection.address, created.approvalPath);
+      approvalUrl = approvalPageUrl(connection.address, created.approvalPath);
       await this.#options.scheduler.schedule(signInTimerKey, signInId, expiresAt);
     } catch (error) {
       // Without a page to open or a time limit the sign-in can't go on: drop the key and end the challenge.
@@ -405,20 +406,4 @@ async function cleanUpAfterFailure(
   } catch (cleanUpError) {
     throw new AggregateError([cause, cleanUpError], message);
   }
-}
-
-/**
- * The approval page on the connection's own address. Only a path under
- * `/cli-auth/` is taken from Paperclip's answer, so the page Studio opens is
- * always on the address the board chose.
- */
-function approvalUrlFor(address: string, approvalPath: string): string {
-  if (!approvalPath.startsWith("/cli-auth/") || approvalPath.includes("..")) {
-    throw new Error("Paperclip answered with an approval path outside /cli-auth/");
-  }
-  const url = new URL(approvalPath, address);
-  if (url.origin !== new URL(address).origin) {
-    throw new Error("Paperclip answered with an approval page on another address");
-  }
-  return url.toString();
 }

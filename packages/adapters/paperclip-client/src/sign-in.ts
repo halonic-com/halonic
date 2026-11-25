@@ -47,6 +47,9 @@ export interface PaperclipSignInClientOptions {
   fetch?: typeof fetch;
 }
 
+/** The name Paperclip shows on the approval page and gives the key, followed by "(board)". */
+export const signInClientName = "Halonic Studio";
+
 const statuses: readonly string[] = ["pending", "approved", "cancelled", "expired"];
 
 /**
@@ -164,6 +167,24 @@ export class PaperclipSignInClient {
       throw badAnswer(name);
     }
   }
+}
+
+/**
+ * The approval page on the connection's own address. Only a path under
+ * `/cli-auth/` is taken from Paperclip's answer, so the page the board opens
+ * is always on the address the board chose, even when Paperclip names another.
+ *
+ * @throws Error when the path is outside `/cli-auth/` or leads to another address
+ */
+export function approvalPageUrl(address: string, approvalPath: string): string {
+  if (!approvalPath.startsWith("/cli-auth/") || approvalPath.includes("..")) {
+    throw new Error("Paperclip answered with an approval path outside /cli-auth/");
+  }
+  const url = new URL(approvalPath, address);
+  if (url.origin !== new URL(address).origin) {
+    throw new Error("Paperclip answered with an approval page on another address");
+  }
+  return url.toString();
 }
 
 function readChallenge(body: unknown): SignInChallenge {

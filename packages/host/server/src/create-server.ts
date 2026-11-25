@@ -30,6 +30,7 @@ import {
   isModelChoiceKeyPath,
   modelChoicePathPrefix,
 } from "./model-choice-routes.ts";
+import { createPaperclipKeyRoutes, paperclipKeyPathPrefix } from "./paperclip-key-routes.ts";
 import {
   createProviderKeyRoutes,
   isProviderKeyPath,
@@ -138,6 +139,8 @@ function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<Cr
   // Mounted for one owner only: on a many-user server every user would act with the one Paperclip key.
   const messagingRoutes =
     ports.messaging === undefined ? null : createMessagingRoutes(ports.messaging, ports);
+  const paperclipKeyRoutes =
+    ports.paperclipKeys === undefined ? null : createPaperclipKeyRoutes(ports.paperclipKeys, ports);
   const countRequest: CountRequest = () => checkDailyRequests(config, ports);
 
   /** `/api/runs/<runId>` and `/api/runs/<runId>/<action>`: the routes of one run, behind the sign-in. */
@@ -250,6 +253,19 @@ function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<Cr
     return messagingRoutes.handle(request, body, call, await signIn.session(request, context));
   }
 
+  /** The Paperclip sign-in and Disconnect routes, which check the session themselves; `null` when the address isn't theirs or the host has none. */
+  async function paperclipKeyRoute(
+    request: Request,
+    context: RequestContext,
+    body: Uint8Array,
+    pathname: string,
+  ): Promise<Response | null> {
+    if (paperclipKeyRoutes === null || !pathname.startsWith(paperclipKeyPathPrefix)) return null;
+    const call = pathname.slice(paperclipKeyPathPrefix.length);
+    const session = await signIn.session(request, context);
+    return paperclipKeyRoutes.handle(request, context, body, call, session);
+  }
+
   /** Counts a signed-in request against the daily ceiling; one nobody signed isn't counted, so it can't use up the day. */
   async function countIfSignedIn(
     request: Request,
@@ -273,6 +289,7 @@ function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<Cr
       (await countIfSignedIn(request, context)) ??
       (await deviceRoutes.route(request, context, body)) ??
       (await messagingRoute(request, context, body, pathname)) ??
+      (await paperclipKeyRoute(request, context, body, pathname)) ??
       (await signedInOnlyRoute(request, context, body, pathname));
     if (earlyAnswer !== null) {
       return earlyAnswer;

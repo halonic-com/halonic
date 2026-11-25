@@ -265,6 +265,11 @@ export const serverErrors = {
     code: "messaging_failed",
     message: "The agents' sources couldn't be reached. See the host's error log for the cause.",
   },
+  paperclipSignInFailed: {
+    status: 502,
+    code: "paperclip_sign_in_failed",
+    message: "The Paperclip sign-in failed. See the host's error log for the cause.",
+  },
   internal: {
     status: 500,
     code: "internal_error",

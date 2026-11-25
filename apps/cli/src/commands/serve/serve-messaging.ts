@@ -104,12 +104,12 @@ async function storedKeyProvider(
   connection: string,
 ): Promise<PaperclipMessaging | undefined> {
   const { workspace, keys } = options;
-  const madeFor = await storedKey(keys, connection);
+  const madeFor = await readStoredKey(keys, connection);
   const file = await readConnectionFile(workspace, connection);
   if (madeFor === undefined || file === undefined) return undefined;
   const binding = { workspace, connection };
   const guard: PaperclipKeyGuard = async (request) => {
-    const entry = await storedKey(keys, connection);
+    const entry = await readStoredKey(keys, connection);
     const now = await readConnectionFile(workspace, connection);
     if (entry === undefined || now === undefined) return signedOut;
     // A guard of its own for this one request, holding only the record read just now.
@@ -137,7 +137,7 @@ async function storedKeyProvider(
  * its address isn't one a key may go to (`https`, or plain `http` to this computer). Never
  * throws with the stored text.
  */
-async function storedKey(
+export async function readStoredKey(
   keys: Pick<SecretStore, "get">,
   connection: string,
 ): Promise<PaperclipKeyEntry | undefined> {
@@ -158,7 +158,7 @@ async function storedKey(
 }
 
 /** The names of the workspace's connection files that the name rule allows, sorted. */
-async function connectionNames(workspace: string): Promise<string[]> {
+export async function connectionNames(workspace: string): Promise<string[]> {
   let entries: string[];
   try {
     entries = await readdir(join(workspace, PAPERCLIP_CONNECTIONS_FOLDER));
@@ -174,7 +174,7 @@ async function connectionNames(workspace: string): Promise<string[]> {
 }
 
 /** The connection file as it is now, or `undefined` when it is gone or fails its checks. */
-async function readConnectionFile(
+export async function readConnectionFile(
   workspace: string,
   connection: string,
 ): Promise<(PaperclipConnectionNow & { label: string }) | undefined> {

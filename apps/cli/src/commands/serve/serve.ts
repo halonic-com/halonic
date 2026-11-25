@@ -67,7 +67,7 @@ import { openChoiceHistory } from "./choice-files.ts";
 import { workspaceGoogleRead } from "./google-read.ts";
 import { startsOnLiveVersion } from "./live-version-runs.ts";
 import { type ConsoleTransport, openServeConsole, type ServeConsole } from "./serve-console.ts";
-import { openServeMessaging } from "./serve-messaging.ts";
+import { openServePaperclip } from "./serve-paperclip-sign-in.ts";
 import { type ServedRoutines, servedRoutines } from "./serve-routines.ts";
 import { servedModelChoice } from "./served-model-choice.ts";
 import { studioPageIsOutdated } from "./studio-page-age.ts";
@@ -360,16 +360,15 @@ async function listenOnComputer(
   const trust = workspaceTrustGate(dir, setup.trust(), () => versions.liveVersion());
   const keys = openSecretStore(environment);
   // The profile's secrets file only, never the environment: no unit, image or CI holds the key.
-  const messaging = await openServeMessaging({
+  const paperclip = await openServePaperclip({
     workspace: root,
     keys,
-    cacheFolder: join(folders.folder, "agent-messaging-cache"),
-    report: (failure) => logRequestFailure(failure.error),
-    warn: logRequestFailure,
+    profileFolder: folders.folder,
+    log: logRequestFailure,
     ...(setup.paperclipFetch === undefined ? {} : { fetch: setup.paperclipFetch }),
   });
   // With no password, everyone who reaches the port would act with the board's key.
-  if (messaging.connected.length > 0 && !(await passwordIsSet(context))) {
+  if (paperclip.connected.length > 0 && !(await passwordIsSet(context))) {
     const message = plainText(serveMessages.paperclipNeedsPassword().phrase);
     throw new KindedError("invalid_input", message);
   }
@@ -379,6 +378,8 @@ async function listenOnComputer(
     runStore: parts.runs,
     secrets: context.secrets,
     providerKeys: providerKeysOf(keys),
+    // Signing in and Disconnect need a signed-in session; a many-user server never mounts them.
+    paperclipKeys: paperclip.signIn,
     // Pick a model in a served window: saves the key and commits the choice, never trust (HAL-14808).
     modelChoice: servedModelChoice({
       files: { store: dir.store, root, openHistory: openChoiceHistory },
