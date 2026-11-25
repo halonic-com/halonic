@@ -122,6 +122,15 @@ verifies("services.paperclip-restore", () => {
       expect(handedOver).toHaveLength(1);
     });
 
+    it("hands nothing over when the file's address isn't one", async () => {
+      const unreadable = { ...halonicRow, address: "not an address" };
+      const { handedOver } = await restoreWith({
+        stored: { "paperclip-halonic": signedInHere },
+        rows: [unreadable],
+      });
+      expect(handedOver).toEqual([]);
+    });
+
     it("hands nothing over with no entry, one it can't read, or one saved before it named workspaces", async () => {
       const old = JSON.stringify({ key: fakeKey, address, company });
       const notListed = JSON.stringify({

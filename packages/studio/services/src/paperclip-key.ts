@@ -50,7 +50,7 @@ export function paperclipKeyEntryText(entry: PaperclipKeyEntry): string {
  * never throws with the text. A `workspaces` that isn't a list of texts
  * counts as none, so the entry restores nothing.
  */
-export function paperclipKeyEntryOf(text: string): PaperclipKeyEntry | undefined {
+export function paperclipKeyEntryOf(text: string): Required<PaperclipKeyEntry> | undefined {
   let value: unknown;
   try {
     value = JSON.parse(text);

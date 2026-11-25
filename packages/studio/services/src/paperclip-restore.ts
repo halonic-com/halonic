@@ -74,11 +74,11 @@ async function restoreOne(
 
 /** Whether `entry` was signed in from `realWorkspace`, for the address and company `row`'s file names. */
 function fitsRow(
-  entry: PaperclipKeyEntry,
+  entry: Required<PaperclipKeyEntry>,
   row: PaperclipConnectionRow,
   realWorkspace: string,
 ): boolean {
-  const signedInHere = (entry.workspaces ?? []).some((each) => sameWorkspace(each, realWorkspace));
+  const signedInHere = entry.workspaces.some((each) => sameWorkspace(each, realWorkspace));
   return signedInHere && sameOrigin(entry.address, row.address) && entry.company === row.company;
 }
 

@@ -78,7 +78,7 @@ class FakeSignIn {
   }
 }
 
-function setUp(options: { setFails?: boolean; revoked?: boolean } = {}) {
+function setUp(options: { getFails?: boolean; setFails?: boolean; revoked?: boolean } = {}) {
   const signIn = new FakeSignIn();
   const kept = new Map<string, string>();
   const disconnected: PaperclipConnectionRef[] = [];
@@ -94,7 +94,10 @@ function setUp(options: { setFails?: boolean; revoked?: boolean } = {}) {
       },
     },
     tokens: {
-      get: async (name) => kept.get(name) ?? null,
+      get: async (name) => {
+        if (options.getFails) throw new Error("The keychain is locked.");
+        return kept.get(name) ?? null;
+      },
       set: async (name, value) => {
         if (options.setFails) throw new Error("The keychain is locked.");
         kept.set(name, value);
@@ -217,6 +220,17 @@ verifies("services.host-agent-connections", () => {
       expect(kept.get("paperclip-acme")).toBe("old-entry");
       expect(signIn.confirms).toEqual([]);
       expect(signIn.cancels).toEqual(["sign-in-1"]);
+    });
+
+    it("writes nothing and cancels when the keychain can't be read first", async () => {
+      const { signIn, kept, reported, connections } = setUp({ getFails: true });
+      signIn.states = [connected];
+      const { result } = await resultOf(connections);
+      expect(result).toEqual({ outcome: "key-not-saved" });
+      expect(kept.size).toBe(0);
+      expect(signIn.confirms).toEqual([]);
+      expect(signIn.cancels).toEqual(["sign-in-1"]);
+      expect(reported).toHaveLength(1);
     });
 
     it("sends a confirm whose answer got lost once more, and connects when the host has the key", async () => {

@@ -248,7 +248,7 @@ export class HostAgentConnections implements AgentConnections {
       old !== undefined &&
       sameOrigin(old.address, madeFor.address) &&
       old.company === madeFor.company;
-    const kept = sameKeyPlace ? (old.workspaces ?? []) : [];
+    const kept = sameKeyPlace ? old.workspaces : [];
     const others = kept.filter((each) => !sameWorkspace(each, here));
     return [...others, here];
   }
