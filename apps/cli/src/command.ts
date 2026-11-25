@@ -191,6 +191,12 @@ export interface StoppedResult {
    * ran." Left out, the line is only "Stopped.".
    */
   readonly meaning?: Phrase;
+  /**
+   * The command's own lines in place of "Stopped." and its meaning, for a
+   * stop whose words name the step on line 1, such as deploy's "Stopped
+   * after uploading version 2. Version 1 is still live." (deploy flow 3.7).
+   */
+  readonly lines?: readonly Phrase[];
   /** The command's own `--json` fields, such as the run's status. */
   readonly json: JsonFields;
 }

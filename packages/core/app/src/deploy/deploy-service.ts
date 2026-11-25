@@ -48,6 +48,8 @@ export interface DeployInput {
   /** `undefined` without a terminal: then nothing is asked. */
   readonly questions: DeployQuestions | undefined;
   readonly signal?: AbortSignal;
+  /** Hears the plan once it's read, before any question, such as for the count of database changes. */
+  readonly onPlan?: (plan: DeployPlan) => void;
 }
 
 /** How a deploy ended: the target's result, or `declined` when the user said no. */
@@ -74,6 +76,7 @@ export function createDeployService(deps: DeployServiceDeps) {
       const target = await deps.loadTarget(input.host);
       const request = requestOf(input);
       const plan = await target.plan(request);
+      input.onPlan?.(plan);
       if (plan.lockedBy !== undefined) {
         throw lockedError(input.deployment.name, plan.lockedBy, deps);
       }

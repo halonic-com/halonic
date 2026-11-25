@@ -69,7 +69,8 @@ export interface Printer {
   warn(line: Phrase): void;
   /**
    * A command that Ctrl C or SIGTERM stopped (cli-output 1.5): the live line
-   * goes away, then "Stopped." and what that meant go to stderr, since
+   * goes away, then "Stopped." and what that meant (or the command's own
+   * stop lines) go to stderr, since
    * they aren't a result. With `--json`, stdout gets the command's document
    * with `"ok": false` instead, and stderr stays empty. A second signal
    * prints this with no result: only "Stopped.", or `{ "outputVersion": 1,
@@ -201,6 +202,8 @@ export function printerFor(io: CliIo, options: PrinterOptions): Printer {
       liveLine?.close();
       if (options.json) {
         writeDocument(resultDocument(result));
+      } else if (result.lines !== undefined) {
+        printLines(err, result.lines);
       } else {
         err(stopMessages.stopped(result.meaning).phrase);
       }

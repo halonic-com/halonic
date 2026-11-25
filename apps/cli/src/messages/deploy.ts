@@ -9,7 +9,8 @@ import { markPart, phrase } from "./phrase.ts";
  */
 export const deployMessages = defineMessages("deploy", {
   /** What `halonic deploy <deployment>` does, for line 1's "Couldn't …:". */
-  action: (deployment: string) => phrase`deploy ${deployment}`,
+  action: (deployment?: string) =>
+    deployment === undefined ? phrase`deploy` : phrase`deploy ${deployment}`,
 
   /** One thing a deploy creates, for "Creating …" and "Created …". */
   address: (name: string) => phrase`the workers.dev address ${name}`,
@@ -95,6 +96,52 @@ export const deployMessages = defineMessages("deploy", {
     phrase`Run halonic deploy ${deployment} again to finish. It picks up what's already there.`,
   /** The fix after a lost lock, when the target gives none of its own (C759 row 3). */
   runAgain: () => phrase`Run halonic deploy again.`,
+
+  /** What `halonic deploy` without a name says when no deployment is on Cloudflare yet. */
+  needsName: () => phrase`Say which deployment to deploy.`,
+  yesOption: () => phrase`Answer Deploy? [y/N] with yes`,
+  /** A deploy takes its files from a commit (3.6). Exit 2. */
+  notARepository: (workspace: string) =>
+    phrase`${workspace} isn't in a git repository, and a deploy takes its files from a commit.`,
+  notARepositoryFix: () =>
+    phrase`Make one and commit: git init && git add . && git commit -m "First version"`,
+
+  /** The summary before the one question (2.7), with the rows the deploy can fill so far. */
+  summary: (workspace: string, host: string) => phrase`Deploy ${workspace} to ${host}?`,
+  accountRow: (account: string) => phrase`  Account     ${account}`,
+  addressRow: (url: string) => phrase`  Address     ${url}`,
+  filesRow: (files: number, commit: string, subject: string) =>
+    phrase`  Files       ${files} from commit ${commit} "${subject}"`,
+  createsRow: (what: string) => phrase`  Creates     ${what}`,
+  question: () => phrase`Deploy?`,
+  /** After no to `Deploy? [y/N]` (exit 1), and after "Stopped." before anything changed (3.7). */
+  nothingChanged: () => phrase`Nothing changed on Cloudflare.`,
+
+  /**
+   * A stop (Ctrl C, SIGTERM, a closed terminal) is the person's own choice,
+   * so it's no "Couldn't" (deploy flow 3.7, words check C787 row 1): line 1
+   * names the step and says what still serves.
+   */
+  stoppedAfterStep: (step: string, still: string) => phrase`Stopped after ${step}. ${still}`,
+  stoppedAfterChanges: (done: number, of: number, still: string) =>
+    phrase`Stopped after ${done} of ${of} database changes. ${still}`,
+  stoppedInSelfTest: (version: number, still: string) =>
+    phrase`Stopped. Version ${version} is uploaded but not live. ${still}`,
+  /** Under a first deploy's stop after the yes, before the fix when there is one (3.6, 3.7). */
+  answersKept: (fix?: string) =>
+    fix === undefined ? phrase`  Your answers are kept.` : phrase`  Your answers are kept. ${fix}`,
+  stopFixLine: (fix: string) => phrase`  ${fix}`,
+
+  /**
+   * A self-test that failed (3.6), a result with exit 1 rather than an error.
+   * `still` is left out when no older version serves for sure.
+   */
+  selfTestFailed: (deployment: string, version: number, still?: string) =>
+    still === undefined
+      ? phrase`${markPart("failed")} Couldn't deploy ${deployment}: version ${version} failed its self-test.`
+      : phrase`${markPart("failed")} Couldn't deploy ${deployment}: version ${version} failed its self-test. ${still}`,
+  selfTestFailedFix: () =>
+    phrase`  Run again. If it fails again, run it with --debug and report it: https://github.com/halonic-com/halonic/issues`,
 
   /** A line from the target the user must see, such as the lock lost after the switch. The deploy is live. */
   warning: (message: string) => phrase`${markPart("needsYou")} ${message}`,
