@@ -416,7 +416,6 @@ async function listenOnComputer(
     ...(studioFolder === null ? {} : { studioPage: openStudioPageFolder(studioFolder) }),
     requestCounts: openDiskRequestCountStore(countFolder, parts.clock),
     errorLog: { record: logRequestFailure },
-    agentMessaging: messaging.messaging,
     clock: parts.clock,
     ids: randomIds((count) => crypto.getRandomValues(new Uint8Array(count)), parts.clock),
   };

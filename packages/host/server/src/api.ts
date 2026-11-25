@@ -9,7 +9,6 @@ import type {
   SetupValues,
 } from "@halonicjs/google-setup";
 import type {
-  AgentMessaging,
   ChatAgentSettings,
   Clock,
   Coordination,
@@ -450,8 +449,6 @@ export interface ServerPorts {
   readonly googleRead?: GoogleSetupReadPorts;
   /** Where finished requests are logged by path. Without it nothing is logged. */
   readonly requestLog?: RequestLog;
-  /** The server engine's agent messaging; its Paperclip key stays in the profile's secret store. */
-  readonly agentMessaging?: AgentMessaging;
   /** The time; replaced in tests to cross a UTC day. */
   readonly clock: Clock;
   /**
