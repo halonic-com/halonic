@@ -218,7 +218,7 @@ export function provideFolderServices(
         onEngineLockLost,
       }),
     );
-  provideEngineAutoOpen(services, { ipc, files, trust, location, scope, remoteEngine });
+  provideEngineAutoOpen(services, { ipc, files, trust, location, scope, remoteEngine, window });
   provideAgentMessaging(services, transport, location, window);
   provideAgentConnections(services, transport, location);
   // Settings › New agents run and the Harness page share the agent host's choices.

@@ -1,5 +1,7 @@
 import type { MessagingId } from "@halonicjs/ports";
+import { focusedPanelClass, type PlaceViewProps } from "@halonicjs/studio-shell";
 import { useEffect, useState } from "react";
+import { MessengerService } from "../api.ts";
 import { type ConversationRow, inTab, type Messenger, type MessengerTab } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import { ConversationList } from "./conversation-list.tsx";
@@ -40,7 +42,7 @@ export function MessengerPage({ messenger }: MessengerPageProps) {
 
   const open = rows.find((row) => row.conversation.id === selected);
   return (
-    <div className="flex h-full min-h-0 gap-2 bg-surface-subtle p-2">
+    <div className="flex h-full min-h-0 gap-2">
       <nav aria-label={messengerWords.title} className="flex w-80 shrink-0 flex-col">
         <h1 className="sr-only">{messengerWords.title}</h1>
         <ConversationList
@@ -51,7 +53,7 @@ export function MessengerPage({ messenger }: MessengerPageProps) {
           onSelect={setSelected}
         />
       </nav>
-      <main className="flex min-w-0 flex-1 flex-col rounded-lg border border-border bg-surface">
+      <main className={`flex min-w-0 flex-1 flex-col ${focusedPanelClass}`}>
         {open === undefined ? (
           <p className="m-auto text-small text-fg-muted">{messengerWords.pickChat}</p>
         ) : (
@@ -65,4 +67,12 @@ export function MessengerPage({ messenger }: MessengerPageProps) {
       </main>
     </div>
   );
+}
+
+/**
+ * The Messenger's focused app, Halonic Messenger (`shell.focused-apps`): the open workspace's
+ * Messenger, with its list on the window's frame and the open chat as the one panel.
+ */
+export function MessengerWindow({ context }: PlaceViewProps) {
+  return <MessengerPage messenger={context.services.get(MessengerService)} />;
 }

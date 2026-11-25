@@ -22,7 +22,8 @@ import { sandboxSetup } from "./sandbox/sandbox-setup-source.ts";
  * The Inbox feature. It builds one {@link Inbox} per open workspace from the
  * runs the app provides (`InboxRunsService`), and offers it to the other
  * features as `InboxService`. It adds the Inbox place, whose count in the
- * sidebar reads that same Inbox and changes with it.
+ * sidebar reads that same Inbox and changes with it, and the same page as the
+ * focused app Halonic Inbox.
  */
 export const inboxFeature = defineFeature({
   id: "inbox",
@@ -78,6 +79,14 @@ export const inboxFeature = defineFeature({
       signal: (context) => context.services.get(InboxService).signal(),
       subscribeSignal: (context, listener) =>
         context.services.get(InboxService).subscribe(listener),
+    });
+    // The Inbox's own window, Halonic Inbox (shell.focused-apps): the same page, in the frame's panel.
+    studio.focusedApps.add({
+      id: "inbox",
+      title: "Inbox",
+      view: "InboxPage",
+      load: () => import("./ui/inbox-page.tsx"),
+      panel: true,
     });
     studio.dialogs.add({
       id: "inbox.needs-you-news",

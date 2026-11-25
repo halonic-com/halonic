@@ -2,6 +2,7 @@ import { AgentMessagingService } from "@halonicjs/studio-services";
 import { defineFeature } from "@halonicjs/studio-shell";
 import { MessengerService } from "./api.ts";
 import { Messenger } from "./messenger.ts";
+import { messengerWords } from "./messenger-words.ts";
 
 /**
  * The Messenger feature (requirement `messenger.conversations`). It offers
@@ -20,5 +21,11 @@ export const messengerFeature = defineFeature({
       MessengerService,
       (services) => new Messenger(services.get(AgentMessagingService)),
     );
+    studio.focusedApps.add({
+      id: "messenger",
+      title: messengerWords.title,
+      view: "MessengerWindow",
+      load: () => import("./ui/messenger-page.tsx"),
+    });
   },
 });

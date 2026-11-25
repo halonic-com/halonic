@@ -1,0 +1,100 @@
+import { TauriPickedFolders } from "@halonicjs/adapter-fs-tauri";
+import { type DisplaySettings, watchAppearance } from "@halonicjs/studio-feature-settings";
+import { type OpenedWorkspace, RecentWorkspaces } from "@halonicjs/studio-feature-workspace";
+import type { TauriIpc } from "@halonicjs/studio-services";
+import {
+  type FocusedAppContribution,
+  type KeyboardPlatform,
+  type MountedFocusedWindow,
+  mountFocusedWindow,
+  type Registered,
+  type Shell,
+} from "@halonicjs/studio-shell";
+import type { DeviceMemory } from "./device-memory.ts";
+import { noStorage, openFolder } from "./open-folder.ts";
+import type { StartedStudio, StudioPage } from "./start-studio.ts";
+import { windowLabelOf } from "./window-label.ts";
+
+/** What a focused app's window is started with, besides its page. */
+export interface FocusedAppParts {
+  /** The shell, with every desktop feature registered. */
+  readonly shell: Shell;
+  readonly ipc: TauriIpc;
+  readonly platform: KeyboardPlatform;
+  readonly app: Registered<FocusedAppContribution>;
+  readonly language: string;
+  /** The window's display settings, as Studio's window keeps them. */
+  readonly display: DisplaySettings;
+}
+
+/**
+ * The focused app a page's window is (`studio.focused-app-window`): the one a feature added under
+ * the window's label, such as `inbox`, or `undefined` for Studio's own window. The desktop shell
+ * gives the page no query, so the label comes from Tauri's metadata about the window.
+ */
+export function focusedAppOf(
+  window: object,
+  shell: Shell,
+): Registered<FocusedAppContribution> | undefined {
+  const label = windowLabelOf(window);
+  if (label === undefined) return undefined;
+  return shell.contributions.focusedApps.list().find((app) => app.id === label);
+}
+
+/**
+ * Starts a focused app's window (`studio.focused-app-window`): only that app, on the approved
+ * frame, for the workspace Studio last had open, opened as a Recent row opens it. With no
+ * workspace in Recent, or one that can't be opened, the window says to open Halonic, and the
+ * reason it couldn't open goes to the console. It never opens the workspace's engine for routines:
+ * Studio's window does, and engine locks are held per window.
+ */
+export function startFocusedApp(page: StudioPage, parts: FocusedAppParts): StartedStudio {
+  const { shell, ipc, app, language, display } = parts;
+  const stopAppearance = watchAppearance(display, page.element.ownerDocument.documentElement);
+  const device: DeviceMemory = {
+    recent: new RecentWorkspaces(page.storage ?? noStorage),
+    storage: page.storage ?? noStorage,
+    platform: parts.platform,
+  };
+  const last = device.recent.list()[0];
+  let mounted: MountedFocusedWindow | undefined;
+  const opening =
+    last === undefined
+      ? Promise.resolve(undefined)
+      : openLast(ipc, last.location, (location) =>
+          openFolder(shell, page.window, location, display, device),
+        );
+  const shown = opening.then((opened) => {
+    mounted = mountFocusedWindow(page.element, {
+      shell,
+      app,
+      workspace: opened?.workspace,
+      language,
+    });
+    return opened;
+  });
+  return {
+    host: "desktop-app",
+    stop: async () => {
+      const opened = await shown;
+      mounted?.unmount();
+      stopAppearance();
+      await opened?.dispose();
+    },
+  };
+}
+
+/** Opens the last workspace again, or `undefined` when it can't, saying why in the console. */
+async function openLast(
+  ipc: TauriIpc,
+  location: string,
+  open: (location: string) => Promise<OpenedWorkspace>,
+): Promise<OpenedWorkspace | undefined> {
+  try {
+    await new TauriPickedFolders(ipc).reopen(location);
+    return await open(location);
+  } catch (error) {
+    console.error(`The focused app couldn't open the workspace at ${location}:`, error);
+    return undefined;
+  }
+}

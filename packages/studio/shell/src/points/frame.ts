@@ -281,3 +281,28 @@ export function showPlace(id: SidebarPlace, signal: PlaceSignal | undefined): Sh
     spokenName: shown === undefined ? name.label : `${name.label}, ${shown.spoken}`,
   };
 }
+
+/**
+ * The focused apps Halonic starts in a window of their own (`shell.focused-apps`), as the desktop
+ * shell names their windows. The Start menu's Halonic Inbox and Halonic Messenger open them.
+ */
+export const focusedAppIds = ["inbox", "messenger"] as const;
+
+/** One of the {@link focusedAppIds}. */
+export type FocusedAppId = (typeof focusedAppIds)[number];
+
+/**
+ * A feature's focused app: the one view a focused app's window shows, on the approved frame,
+ * without Studio's tabs, places or status bar (`shell.focused-apps`). Its view gets
+ * `PlaceViewProps`, with the feature's context for the open workspace.
+ */
+export interface FocusedAppContribution extends ViewRef {
+  readonly id: FocusedAppId;
+  /** The app's page name, first in the window's title: "Inbox". */
+  readonly title: string;
+  /**
+   * Draws the view inside the frame's one white panel. Leave it out for a view that draws its own
+   * list on the frame and its own panel beside it, as the Messenger does.
+   */
+  readonly panel?: boolean;
+}
