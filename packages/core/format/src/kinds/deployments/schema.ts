@@ -71,8 +71,33 @@ export const DeploymentLimits = s
   .object({
     /** The most requests the deployment answers per UTC day; beyond it, it refuses them. */
     dailyRequests: s.number().int().positive().optional(),
+    /**
+     * The most of `dailyRequests` one scope may use per UTC day, so one customer can't spend the
+     * day for the others. The server uses a tenth of `dailyRequests` when it's left out.
+     */
+    scopeDailyRequests: s.number().int().positive().optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((limits, context) => {
+    const problem = scopeShareProblem(limits.dailyRequests, limits.scopeDailyRequests);
+    if (problem !== null) {
+      context.addIssue({ code: "custom", path: ["scopeDailyRequests"], message: problem });
+    }
+  });
+
+/** Why a scope's share doesn't fit the daily ceiling, or null when it does or isn't set. */
+function scopeShareProblem(
+  dailyRequests: number | undefined,
+  scopeDailyRequests: number | undefined,
+): string | null {
+  if (scopeDailyRequests === undefined) {
+    return null;
+  }
+  if (dailyRequests === undefined) {
+    return "set dailyRequests too: a scope's share is a share of the daily ceiling";
+  }
+  return scopeDailyRequests > dailyRequests ? "use at most dailyRequests" : null;
+}
 
 /** One place the workspace runs, with its own data (runs, Inbox, records, simulations). */
 export const Deployment = s
