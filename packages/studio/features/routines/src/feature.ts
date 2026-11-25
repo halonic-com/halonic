@@ -1,5 +1,6 @@
 import { sandboxStartCheckKey } from "@halonicjs/app";
-import { defineFeature } from "@halonicjs/studio-shell";
+import { FilesHostService } from "@halonicjs/studio-feature-files/api";
+import { defineFeature, FilesWithErrorsService } from "@halonicjs/studio-shell";
 import { RoutinesHostService } from "./api.ts";
 import { listWords, searchWords } from "./list/list-words.ts";
 import { requestNewRoutine } from "./list/new-request.ts";
@@ -17,7 +18,8 @@ export const routinesFeature = defineFeature({
   needs: [RoutinesHostService],
   // Run now is unavailable while the sandbox can't start, for a routine whose target needs it.
   // The Agents feature notes an agent Run now starts whose On this computer choice is on hold.
-  wants: [sandboxStartCheckKey, RoutineRunAgentsService],
+  // A routine file that didn't load keeps its row, which opens and deletes the file itself (C348).
+  wants: [sandboxStartCheckKey, RoutineRunAgentsService, FilesWithErrorsService, FilesHostService],
   register(studio) {
     studio.places.add({
       id: "routines",

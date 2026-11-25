@@ -17,6 +17,7 @@
     "@halonicjs/format": "workspace:*",
     "@halonicjs/routines": "workspace:*",
     "@halonicjs/std": "workspace:*",
+    "@halonicjs/studio-feature-files": "workspace:*",
     "@halonicjs/studio-feature-runs": "workspace:*",
     "@halonicjs/studio-kit": "workspace:*",
     "@halonicjs/studio-shell": "workspace:*",

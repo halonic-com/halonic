@@ -1,12 +1,21 @@
+import {
+  type BrokenFileActions,
+  brokenFileActions,
+  brokenFileMenu,
+} from "@halonicjs/studio-feature-files/api";
 import { Button, EmptyState, usePresentation, useToastStore } from "@halonicjs/studio-kit";
 import {
   type EngineWords,
   engineWordsOf,
+  FilesWithErrorsService,
+  type FilesWithErrorsSource,
+  type FileWithErrors,
   type FocusTarget,
   focusRow,
   OverviewPage,
   type PlaceViewProps,
   targetAfterRemoving,
+  useBrokenFiles,
   visibleRowIds,
 } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -21,7 +30,7 @@ import { TRIGGER_STEP } from "../page/trigger-step.ts";
 import { OnTimeHint } from "../when/on-time-hint.tsx";
 import { listWords, rowMenuWords } from "./list-words.ts";
 import { dropNewRoutineRequest, takeNewRoutineRequests } from "./new-request.ts";
-import { routineHubs, rowId } from "./routine-rows.tsx";
+import { brokenRowId, routineHubs, rowId } from "./routine-rows.tsx";
 import { trashRoutine } from "./trash-routine.ts";
 
 /**
@@ -44,6 +53,8 @@ export function RoutinesPage({ context }: PlaceViewProps) {
   const { openItem, openItemInNewTab } = context;
   // A phone doesn't edit workflows (UX 10.15), so New routine offers no New workflow there.
   const runCommand = usePresentation() === "phone" ? undefined : context.runCommand;
+  const filesWithErrors = context.services.find(FilesWithErrorsService);
+  const toasts = useToastStore();
   // Only a routine in a hub is listed, so a row's hub is always there; a root routine has no tab.
   const itemOf = (ref: RoutineRef) =>
     ref.hubId === null ? undefined : { kind: "routine", hub: ref.hubId, id: ref.id };
@@ -68,6 +79,8 @@ export function RoutinesPage({ context }: PlaceViewProps) {
       announceState={(key, text) => context.announcer.announceState(key, text)}
       host={context.services.get(RoutinesHostService)}
       engine={engineWordsOf(context)}
+      brokenActions={brokenFileActions(context, toasts)}
+      {...(filesWithErrors ? { filesWithErrors } : {})}
       {...(runCommand ? { newWorkflow: () => void runCommand("workflows.new") } : {})}
       {...(open ? { open } : {})}
       {...(openInNewTab ? { openInNewTab } : {})}
@@ -91,6 +104,10 @@ export interface RoutinesViewProps {
   readonly announceState?: ((key: string, text: string) => void) | undefined;
   /** Opens the New workflow dialog, for a hub with nothing to run; absent where the app can't, so the dialog has no such link. */
   readonly newWorkflow?: () => void;
+  /** The workspace's files with errors: a routine file that didn't load keeps its row (C348 ST4). */
+  readonly filesWithErrors?: FilesWithErrorsSource;
+  /** What a broken file's row and its ⋮ menu do; without it the row opens nothing and has no menu. */
+  readonly brokenActions?: BrokenFileActions;
 }
 
 /**
@@ -109,6 +126,8 @@ export function RoutinesView({
   engine,
   newWorkflow,
   announceState,
+  filesWithErrors,
+  brokenActions = {},
 }: RoutinesViewProps) {
   const words = engine ?? engineWordsOf({});
   const phone = usePresentation() === "phone";
@@ -164,13 +183,20 @@ export function RoutinesView({
 
   const listings = load.kind === "ready" ? load.listings : [];
   const listingOf = (id: string) => listings.find((each) => rowId(each) === id);
+  const broken = useBrokenFiles(filesWithErrors, "routine");
+  const brokenOf = (id: string) => broken.find((file) => brokenRowId(file) === id);
+  // A broken file has no page: its row opens the file at its first problem.
   const openRow = (id: string) => {
     const listing = listingOf(id);
     if (listing !== undefined) open?.(listing);
+    const file = brokenOf(id);
+    if (file !== undefined) brokenActions.open?.(file);
   };
   const openRowInNewTab = (id: string) => {
     const listing = listingOf(id);
     if (listing !== undefined) (openInNewTab ?? open)?.(listing);
+    const file = brokenOf(id);
+    if (file !== undefined) brokenActions.open?.(file);
   };
 
   // Where focus goes once it can: a restored row only shows when the list is read again, so the
@@ -202,6 +228,24 @@ export function RoutinesView({
     });
   };
 
+  // A broken row's Delete moves focus as a routine's does: to the next row, and back on Undo.
+  const brokenMenu = (file: FileWithErrors, id: string) =>
+    brokenFileMenu(file, brokenActions, {
+      removed: () => {
+        if (page.current !== null) focusOn(targetAfterRemoving(visibleRowIds(page.current), id));
+      },
+      restored: () => focusOn({ row: id }),
+    });
+  const routineMenu = (id: string) => [
+    { id: "open", label: rowMenuWords.open, onSelect: () => openRow(id) },
+    {
+      id: "open-in-new-tab",
+      label: rowMenuWords.openInNewTab,
+      onSelect: () => openRowInNewTab(id),
+    },
+    { id: "delete", label: rowMenuWords.delete, danger: true, onSelect: () => trashRow(id) },
+  ];
+
   const startCreating = () => setCreating(true);
   // A routine needs a hub to live in, and the hubs are known only once the first read is done.
   const canCreate = load.kind === "ready" && host.hubs().length > 0;
@@ -218,7 +262,8 @@ export function RoutinesView({
         <h1 ref={title} tabIndex={-1} className="text-title">
           {listWords.title}
         </h1>
-        {(listings.length > 0 || load.kind !== "ready") && (
+        {/* A list of only broken files still has rows, so it keeps its sentence. */}
+        {(listings.length > 0 || broken.length > 0 || load.kind !== "ready") && (
           <p className="text-body text-fg-muted">
             {listWords.sentence} <OnTimeHint of="routines" />
           </p>
@@ -247,7 +292,7 @@ export function RoutinesView({
       ) : (
         <OverviewPage
           announceState={announceState}
-          hubs={routineHubs(host.hubs(), listings)}
+          hubs={routineHubs(host.hubs(), listings, broken)}
           words={{
             searchLabel: listWords.searchLabel,
             loadingLabel: listWords.loadingLabel,
@@ -272,20 +317,10 @@ export function RoutinesView({
           {...(canCreate
             ? { newButton: { label: listWords.newRoutine, onClick: startCreating } }
             : {})}
-          itemMenu={(row) => [
-            { id: "open", label: rowMenuWords.open, onSelect: () => openRow(row.id) },
-            {
-              id: "open-in-new-tab",
-              label: rowMenuWords.openInNewTab,
-              onSelect: () => openRowInNewTab(row.id),
-            },
-            {
-              id: "delete",
-              label: rowMenuWords.delete,
-              danger: true,
-              onSelect: () => trashRow(row.id),
-            },
-          ]}
+          itemMenu={(row) => {
+            const file = brokenOf(row.id);
+            return file === undefined ? routineMenu(row.id) : brokenMenu(file, row.id);
+          }}
           onOpen={openRow}
           onOpenInNewTab={openRowInNewTab}
         />
