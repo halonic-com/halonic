@@ -12,6 +12,9 @@ import type { RemoteTime } from "./remote-time.ts";
 /** How often a phone's last seen is written while a session with it is open. */
 export const lastSeenRefreshMs = 60_000;
 
+/** How long a paired phone may go unused before it counts as unpaired (Julian's P4, HAL-17540). */
+export const phoneIdleExpiryMs = 30 * 24 * 60 * 60 * 1000;
+
 /** One open session with a paired phone, as the gateway (B3) holds it. */
 export interface PhoneSession {
   /** The session ended: the phone is last seen now. Does nothing the second time. */
@@ -76,10 +79,22 @@ export class PairedPhones {
     return () => this.#listeners.delete(listener);
   }
 
-  /** The paired phone with this static key, if there is one. */
+  /**
+   * The paired phone with this static key, if there is one. A phone unused
+   * for longer than {@link phoneIdleExpiryMs} is revoked here instead, so a
+   * lost phone nobody unpaired stops working on its own
+   * (requirement `agent-host.gateway-idle-expiry`).
+   */
   find(publicKey: Uint8Array): PairedPhone | undefined {
     const record = this.#records.find((phone) => phone.id === deviceId(publicKey));
-    return record === undefined ? undefined : this.#shown(record);
+    if (record === undefined) return undefined;
+    if (this.#idleTooLong(record)) {
+      this.revoke(record.id).catch((error: unknown) => {
+        this.#log(`An idle phone's removal couldn't be saved: ${String(error)}\n`);
+      });
+      return undefined;
+    }
+    return this.#shown(record);
   }
 
   /**
@@ -181,6 +196,13 @@ export class PairedPhones {
     await this.#change(
       this.#records.map((record) => (record.id === phoneId ? { ...record, lastSeenAt } : record)),
     );
+  }
+
+  /** Whether the phone went unused too long: no open session, and last seen (or paired) over the limit ago. */
+  #idleTooLong(record: PhoneRecord): boolean {
+    if (this.#sessions.has(record.id)) return false;
+    const lastUsedMs = Date.parse(record.lastSeenAt ?? record.pairedAt);
+    return this.#time.now().getTime() - lastUsedMs > phoneIdleExpiryMs;
   }
 
   /** Cuts every session of these phones, each on its own, so one that fails stops no other. */
