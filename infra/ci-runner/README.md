@@ -117,7 +117,7 @@ copied half-written; a missing entry is only a cache miss), and points `/cache/f
 generation once it's published, and refresh deletes the old ones no overlay mounts any more. The
 copy and the clean-up run as the runner's uid (`setpriv`), never as root, so a link a job swaps in
 mid-copy reaches only what jobs could read anyway. `vm/halonic-ci-fast-lower.timer` refreshes it every
-5 minutes once fast slots are listed in `/etc/halonic-ci/slots` (HAL-18424: hourly, a fast pull
+5 minutes, off the hour (xx:02, :07, …) once fast slots are listed in `/etc/halonic-ci/slots` (HAL-18424: hourly, a fast pull
 request missed nearly every typecheck and test entry, whose hashes change with most pushes to main).
 It skips a round while the weekly cleanup or the hourly check holds their lock and logs why
 (`journalctl -t halonic-ci-fast-lower`); the unit fails when the current generation is over 30 minutes
@@ -358,7 +358,8 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
   shared caches and starts the slots again.
 - **Hourly** (`vm/halonic-ci-cache-check.timer`): the same pause-and-empty as soon as the shared
   caches pass 80 % of their 20 GB quota (or `/cache` passes 75 %), so a full quota never fails
-  every install. It shares a lock with the weekly cleanup and skips its hour while that runs.
+  every install. It shares a lock with the weekly cleanup and skips its hour while that runs; a
+  snapshot refresh holding the lock it waits out (up to 10 minutes), so it never loses its hour to one.
 - **Every 5 minutes** (`vm/halonic-ci-fast-lower.timer`): refreshes the fast slots' snapshot
   (HAL-16032, HAL-18424) once fast slots are deployed, skipping a round while either job above runs.
 - **Firewall first:** `host/halonic-ci-nft.service` is required by `libvirtd.service`. If the rules

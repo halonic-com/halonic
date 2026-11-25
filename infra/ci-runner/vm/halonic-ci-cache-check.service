@@ -2,6 +2,7 @@
 Description=halonic-ci hourly check of the shared caches' quota
 [Service]
 Type=oneshot
-# -n -E 0: skip this hour (without failing) while the weekly cleanup or the last check still runs.
-ExecStart=/usr/bin/flock -n -E 0 /run/lock/halonic-ci-maint.lock /usr/local/sbin/halonic-ci-maint.sh --caches
+# -w 600 -E 0: wait up to 10 minutes for the lock, so a fast-lower refresh holding it never makes
+# this check lose its hour (HAL-18424); skip (without failing) only while the weekly cleanup runs longer.
+ExecStart=/usr/bin/flock -w 600 -E 0 /run/lock/halonic-ci-maint.lock /usr/local/sbin/halonic-ci-maint.sh --caches
 TimeoutStartSec=3h

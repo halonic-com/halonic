@@ -188,7 +188,12 @@ test("fast lower: fast slots mount a generation, never /cache/trusted", () => {
 });
 
 test("fast lower: refreshed every 5 minutes on its own timer, by the script's timer command (HAL-18424)", () => {
-  assert.match(read("vm/halonic-ci-fast-lower.timer"), /^OnCalendar=\*:0\/5$/m);
+  assert.match(read("vm/halonic-ci-fast-lower.timer"), /^OnCalendar=\*:02\/5$/m);
+  // The hourly quota check waits for the lock instead of losing its hour to a refresh.
+  assert.match(
+    read("vm/halonic-ci-cache-check.service"),
+    /^ExecStart=\/usr\/bin\/flock -w 600 -E 0 \/run\/lock\/halonic-ci-maint\.lock \/usr\/local\/sbin\/halonic-ci-maint\.sh --caches$/m,
+  );
   assert.match(
     read("vm/halonic-ci-fast-lower.service"),
     /^ExecStart=\/usr\/local\/sbin\/halonic-ci-fast-lower\.sh timer$/m,
