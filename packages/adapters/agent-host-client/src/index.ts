@@ -95,6 +95,13 @@ export {
   type WslRemoveOutcome,
 } from "./sandbox-setup.ts";
 export {
+  AgentHostServerEngine,
+  type ServerEngineLeft,
+  type ServerEngineState,
+  type ServerPairStart,
+  type ServerPairState,
+} from "./server-engine.ts";
+export {
   AgentHostThisComputer,
   type AgentHostThisComputerOptions,
   thisComputerOffered,

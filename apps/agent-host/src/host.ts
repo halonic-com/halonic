@@ -11,6 +11,7 @@ import {
 } from "@halonicjs/adapter-sandbox-srt";
 import type { SandboxChoiceService } from "@halonicjs/app";
 import type { GoogleSetupPorts } from "@halonicjs/host-server";
+import type { SecretStore } from "@halonicjs/ports";
 import type { ProfileFolder } from "@halonicjs/profile";
 import { BridgeTable, bridgeRoutes } from "./bridge/bridge-routes.ts";
 import { bridgeProviderFetches } from "./bridge/provider-fetches.ts";
@@ -237,6 +238,7 @@ export async function run(
           log: (text) => io.writeError(text),
         },
     sharedFolders.length > 0,
+    keychain?.pairings,
   );
   // Waits for the frame stream to run; a move that fails has said why, and is tried again on use.
   keychain?.secrets.moveOutOfFile().catch(() => undefined);
@@ -310,6 +312,7 @@ async function hostServices(
   wslRemover: WslRemover | undefined,
   remote: ServedRemoteHome | undefined,
   onWsl: boolean,
+  pairings: SecretStore | undefined,
 ): Promise<HostServices> {
   const sessions = new SessionTable();
   // The sessions opened without the sandbox, whose runs start only with the host's environment.
@@ -323,7 +326,7 @@ async function hostServices(
   const ledger = remote === undefined ? undefined : new RunLedger();
   const runs = new RunTable(ledger);
   // Built before remote, so the gateway serves a paired phone the messaging Studio reads.
-  const messaging = hostMessaging(profile, connectors.workspaceRoots, logToError);
+  const messaging = hostMessaging(profile, connectors.workspaceRoots, logToError, pairings);
   const hostRemote = await openHostRemote(
     remote === undefined || ledger === undefined
       ? undefined

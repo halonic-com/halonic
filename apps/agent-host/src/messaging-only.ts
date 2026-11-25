@@ -48,7 +48,7 @@ export async function serveMessagingOnly(
   const log = (text: string) => io.writeError(text);
   const keychain = hostKeychainOf(args, profile, log);
   const channel = shellChannelOf(keychain, workspaceRoots, profileFolder, log);
-  const messaging = hostMessaging(profile, workspaceRoots, logToError);
+  const messaging = hostMessaging(profile, workspaceRoots, logToError, keychain?.pairings);
   const host = {
     routes: messagingOnlyRoutes(version, messaging.routes),
     stop: () => messaging.stop(),

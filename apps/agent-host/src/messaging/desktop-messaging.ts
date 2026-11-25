@@ -98,6 +98,15 @@ export class DesktopMessaging {
   }
 
   /**
+   * Joins "This computer" in the workspace at `folder` and deletes its
+   * messaging cache, once its setting is gone
+   * (`agent-host.server-engine-pairing`).
+   */
+  async leaveServer(folder: string): Promise<void> {
+    await (await this.of(folder))?.leaveServer();
+  }
+
+  /**
    * Disconnect (`agent-host.paperclip-key`) in the workspace at `folder`, then
    * in every other open workspace that holds the same key for a connection of
    * the same name: Studio deletes the one keychain entry for that name, and

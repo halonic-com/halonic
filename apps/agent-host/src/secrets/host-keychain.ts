@@ -10,6 +10,8 @@ export interface HostKeychain {
   channel: ShellSecretsChannel;
   /** What the host's own secrets are read from and saved to; the remote control's key comes from here. */
   secrets: KeychainHostSecrets;
+  /** The server pairings' device tokens: the keychain only, never the secrets file. */
+  pairings: ShellKeychainSecretStore;
 }
 
 /**
@@ -30,6 +32,6 @@ export function hostKeychainOf(
   if (!args.includes("--keychain-relay")) return undefined;
   const channel = new ShellSecretsChannel();
   const file = profile === undefined ? undefined : new FileSecretStore(secretsFile(profile));
-  const secrets = new KeychainHostSecrets(new ShellKeychainSecretStore(channel), file, log);
-  return { channel, secrets };
+  const keychain = new ShellKeychainSecretStore(channel);
+  return { channel, secrets: new KeychainHostSecrets(keychain, file, log), pairings: keychain };
 }
