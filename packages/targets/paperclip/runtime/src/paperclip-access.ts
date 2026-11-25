@@ -89,9 +89,10 @@ export function paperclipAccess(
       },
     },
     agents: {
-      list: (...args) => {
+      // The company is always the call's: an action can't list another company's agents.
+      list: (input) => {
         allowed("agents.read");
-        return host.agents.list(...args);
+        return host.agents.list({ ...input, companyId: call.companyId });
       },
     },
     state: { get: (key) => host.state.get(key) },

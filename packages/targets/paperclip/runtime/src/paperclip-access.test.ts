@@ -11,6 +11,17 @@ import { registerWorkspaceTools } from "./register.ts";
 
 const call = { companyId: "acme", runId: "run-1" };
 
+/** A fake host whose agent list records what reaches it. */
+function recordingAgentList() {
+  const { host } = fakePaperclip();
+  const asked: unknown[] = [];
+  const list = async (input: unknown) => {
+    asked.push(input);
+    return [];
+  };
+  return { recording: { ...host, agents: { ...host.agents, list } }, asked };
+}
+
 verifies("runtime.paperclip-writes", () => {
   describe("a call's Paperclip access", () => {
     test("refuses the write clients to an action that didn't declare them, before the host", async () => {
@@ -28,20 +39,21 @@ verifies("runtime.paperclip-writes", () => {
     });
 
     test("lists agents only for an action that declared agents.read, before the host", async () => {
-      const { host } = fakePaperclip();
-      let listed = 0;
-      const list = async () => {
-        listed += 1;
-        return [];
-      };
-      const counting = { ...host, agents: { ...host.agents, list } };
-      const access = paperclipAccess(counting, ["issues.read", "issues.update"], call);
+      const { recording, asked } = recordingAgentList();
+      const access = paperclipAccess(recording, ["issues.read", "issues.update"], call);
       expect(() => access.agents.list({ companyId: "acme" })).toThrow(
         "this action doesn't declare agents.read, so it may not use it.",
       );
-      expect(listed).toBe(0);
-      await paperclipAccess(counting, ["agents.read"], call).agents.list({ companyId: "acme" });
-      expect(listed).toBe(1);
+      expect(asked).toEqual([]);
+      await paperclipAccess(recording, ["agents.read"], call).agents.list({ companyId: "acme" });
+      expect(asked).toEqual([{ companyId: "acme" }]);
+    });
+
+    test("lists the call's company's agents, whatever company the action asks for", async () => {
+      const { recording, asked } = recordingAgentList();
+      const access = paperclipAccess(recording, ["agents.read"], call);
+      await access.agents.list({ companyId: "globex", limit: 5 });
+      expect(asked).toEqual([{ companyId: "acme", limit: 5 }]);
     });
 
     test("gives setDisposition only to an action that may update, on a host that has it", () => {
