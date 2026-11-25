@@ -74,7 +74,12 @@ export type UsageRefusal =
       readonly left: number;
       readonly resetsAt: number;
     }
-  | { readonly code: "usage.outbox-full" };
+  | { readonly code: "usage.outbox-full" }
+  | {
+      readonly code: "usage.rate" | "usage.member.rate";
+      readonly limit: number;
+      readonly resetsAt: number;
+    };
 
 /** What a check, a reservation or a start answers. */
 export type UsageAnswer =

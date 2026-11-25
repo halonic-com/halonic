@@ -14,7 +14,8 @@ import type { UsageAmounts, UsageAnswer, UsageLimits } from "./usage-types.ts";
  * The Worker names it with `idFromName(scope)`, and the object refuses a call for any scope other
  * than its name. That check needs the name: an object made with `newUniqueId` or `idFromString`
  * has none, so only the scope its first call noted is checked. The Worker may subclass it and
- * override {@link UsageObject.pullLimits} to ask Cloud; until then an object that was pushed no limits refuses every step.
+ * override {@link UsageObject.pullLimits} to ask Cloud; until then an object that was pushed no
+ * limits refuses every step.
  *
  * Never rename or delete this class: Cloudflare deletes a Durable Object class's data with it.
  * Its name is in `durableObjectClassNames`, with a migration in the Worker's configuration.
@@ -96,6 +97,19 @@ export class UsageObject extends DurableObject {
 
   outboxSize(scope: string): number {
     return this.#scope.outboxSize(scope);
+  }
+
+  /**
+   * Erases the object for a scope delete, but only once no row waits to go to Cloud: with rows
+   * waiting it erases nothing and answers how many, so the delete is run again after they are sent.
+   * It is an RPC method only: no `fetch` route reaches it. Erasing twice is safe.
+   */
+  async eraseIfSent(scope: string): Promise<{ readonly unsent: number }> {
+    const unsent = this.#scope.unsentRows(scope);
+    if (unsent > 0) return { unsent };
+    // No await between the count and the erase starting, so no call adds a row in between.
+    await Promise.all([this.ctx.storage.deleteAlarm(), this.ctx.storage.deleteAll()]);
+    return { unsent: 0 };
   }
 
   /** Cloudflare calls this at the alarm time, and never twice at once. */
