@@ -4,7 +4,7 @@ import { pullRequestWords } from "../pull-request-words.ts";
 import type { PullRequests, PullRequestsState } from "../pull-requests.ts";
 import { formatTime, minutesSince, type TeamClock } from "../team-format.ts";
 import { type TeamLink, teamWords } from "../team-words.ts";
-import { LinkButton } from "./money-tiles.tsx";
+import { LinkButton, TeamLinks } from "./money-tiles.tsx";
 import { PageFrame, TryAgain } from "./page-frame.tsx";
 import { listBox } from "./pr-list-parts.tsx";
 import { PullRequestLists } from "./pull-request-lists.tsx";
@@ -15,8 +15,8 @@ export interface PullRequestsPageProps {
   readonly pullRequests: PullRequests;
   /** Opens a PR's GitHub page or a Paperclip page in the system browser. */
   readonly opener: WebLinkOpener;
-  /** Opens the connection flow for "Connect again". */
-  readonly onLink: (link: TeamLink) => void;
+  /** Opens the connection flow for "Connect again". Without it, the screen draws no link buttons. */
+  readonly onLink?: ((link: TeamLink) => void) | undefined;
 }
 
 /** Still loading, the last good read (marked failed when a later read failed), or a failed first read. */
@@ -67,22 +67,27 @@ export function PullRequestsPage({ pullRequests, opener, onLink }: PullRequestsP
   const read = shown.kind === "read" && shown.state.kind === "read" ? shown.state : undefined;
   // One frame for every state, so the main and h1 stay put when a read lands.
   return (
-    <PageFrame
-      title={<PageTitle repo={read?.repo} />}
-      loadingSpoken={pullRequestWords.loadingSpoken}
-      busy={shown.kind === "loading"}
-      freshness={freshness(shown, read, clock)}
-    >
-      <ShownBody
-        shown={shown}
-        clock={clock}
-        opener={opener}
-        onLink={onLink}
-        onTryAgain={readAgain}
-      />
-    </PageFrame>
+    <TeamLinks.Provider value={onLink === undefined ? "none" : "on"}>
+      <PageFrame
+        title={<PageTitle repo={read?.repo} />}
+        loadingSpoken={pullRequestWords.loadingSpoken}
+        busy={shown.kind === "loading"}
+        freshness={freshness(shown, read, clock)}
+      >
+        <ShownBody
+          shown={shown}
+          clock={clock}
+          opener={opener}
+          onLink={onLink ?? noLink}
+          onTryAgain={readAgain}
+        />
+      </PageFrame>
+    </TeamLinks.Provider>
   );
 }
+
+/** Never called: with no `onLink`, no link button is drawn. */
+function noLink(): void {}
 
 /** "Pull requests · halonic", the repo muted; the place's name alone before a repo is known. */
 function PageTitle({ repo }: { repo: string | undefined }) {

@@ -189,6 +189,7 @@ export const sidebarPlaces = [
   "changes",
   // Grouped places come last, so each group's places stay together under its heading.
   "team",
+  "pull-requests",
 ] as const;
 
 /** One of the sidebar's places. */
@@ -231,11 +232,13 @@ export const placeNames: Readonly<Record<SidebarPlace, PlaceName>> = {
   runs: { label: "Runs", icon: "runs" },
   changes: { label: "Changes", icon: "changes" },
   team: { label: "Spend and seats", icon: "team", group: "team" },
+  "pull-requests": { label: "Pull requests", icon: "pull-requests", group: "team" },
 };
 
 /**
  * What a place shows next to its name. Nothing shows at zero. A `count` shows the number (the
- * Inbox, Changes); `problems` shows it after "!" in the warning colour (Spend and seats);
+ * Inbox, Changes); `problems` shows it after "!" in the warning colour (Spend and seats, Pull
+ * requests);
  * `running` shows the still 6px running dot (Runs).
  */
 export interface PlaceSignal {
