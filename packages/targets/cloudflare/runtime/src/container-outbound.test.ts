@@ -63,4 +63,19 @@ verifies("runtime.run-container-object", () => {
     expect(fetched).toEqual(["https://registry.npmjs.org/"]);
     expect(bridged).toEqual([]);
   });
+
+  it("hands an allowed site's redirect back to the container instead of following it", async () => {
+    const redirects: string[] = [];
+    const answer = await answerOutbound(new Request("https://registry.npmjs.org/"), props, {
+      bridge: async () => new Response("bridge"),
+      site: async (request) => {
+        redirects.push(request.redirect);
+        return new Response(null, { status: 302, headers: { location: "https://example.com/" } });
+      },
+    });
+
+    expect(redirects).toEqual(["manual"]);
+    expect(answer.status).toBe(302);
+    expect(answer.headers.get("location")).toBe("https://example.com/");
+  });
 });

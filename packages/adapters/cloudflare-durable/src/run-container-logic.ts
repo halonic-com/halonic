@@ -80,18 +80,27 @@ export class RunContainerLogic<Handler> implements RunContainer {
     return this.#running().exec(runId, command);
   }
 
-  /** Destroys the container and revokes the run's bridge credential. Safe to call twice. */
+  /**
+   * Destroys the container and revokes the run's bridge credential, even when destroying throws.
+   * Safe to call twice.
+   */
   async end(runId: string): Promise<void> {
-    await this.#running().end(runId);
-    await this.#parts.revokeBridge(runId);
+    try {
+      await this.#running().end(runId);
+    } finally {
+      await this.#parts.revokeBridge(runId);
+    }
   }
 
   /** The run's time limit has come: the container is destroyed and the credential revoked. */
   async alarm(): Promise<void> {
     const { objectName } = this.#parts;
     if (this.#state === undefined || objectName === undefined) return;
-    await this.#state.alarm();
-    await this.#parts.revokeBridge(objectName);
+    try {
+      await this.#state.alarm();
+    } finally {
+      await this.#parts.revokeBridge(objectName);
+    }
   }
 
   #running(): RunContainerState<Handler> {

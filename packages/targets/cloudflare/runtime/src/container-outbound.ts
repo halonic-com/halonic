@@ -15,7 +15,9 @@ export interface OutboundTargets {
 /**
  * Answers one request a run's container sent out (requirement `runtime.run-container-object`):
  * through `outboundGate` with the rules in `props`, a bridge request to the run's own run object,
- * an allowed site out to the internet, and anything else 403.
+ * an allowed site out to the internet, and anything else 403. A site's redirect comes back to the
+ * container instead of being followed here, so an open redirect on an allowed site can't take the
+ * request to a host the rules don't allow; the container's next request goes through the gate again.
  */
 export function answerOutbound(
   request: Request,
@@ -24,7 +26,7 @@ export function answerOutbound(
 ): Promise<Response> {
   const gate = outboundGate(props.rules, {
     bridge: (bridgeRequest) => targets.bridge(props.runObjectName, bridgeRequest),
-    site: (siteRequest) => targets.site(siteRequest),
+    site: (siteRequest) => targets.site(new Request(siteRequest, { redirect: "manual" })),
   });
   return gate(request);
 }

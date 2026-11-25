@@ -132,6 +132,19 @@ verifies("cloudflare-durable.run-container-object", () => {
     expect(revoked).toEqual([objectName]);
   });
 
+  it("still revokes the credential when destroying the container throws", async () => {
+    const container = new RecordedContainer();
+    container.destroy = async () => {
+      throw new Error("destroy failed");
+    };
+    const { logic, revoked } = containerObject(container);
+    await logic.begin(setup);
+
+    await expect(logic.end(objectName)).rejects.toThrow("destroy failed");
+    await expect(logic.alarm()).rejects.toThrow("destroy failed");
+    expect(revoked).toEqual([objectName, objectName]);
+  });
+
   it("refuses to start where the deployment gives the class no container", async () => {
     const { logic, revoked } = containerObject(undefined);
 
