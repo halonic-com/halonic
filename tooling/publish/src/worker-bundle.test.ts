@@ -44,7 +44,7 @@ verifies("publish.worker-bundle", () => {
       expect(hash).toBe(createHash("sha256").update(Buffer.from(script, "utf8")).digest("hex"));
     });
 
-    it("exports the Worker and the four Durable Object classes, and leaves cloudflare:workers to workerd", async () => {
+    it("exports the Worker, its Durable Object classes and its container outbound entrypoint, and leaves cloudflare:workers to workerd", async () => {
       const { script } = await buildWorkerBundle(entryPoint);
       const exported = /^export \{([^}]*)\};?$/m.exec(script)?.[1] ?? "";
       // Cloudflare finds each class by the name it's exported under. esbuild renames a local binding
@@ -57,7 +57,15 @@ verifies("publish.worker-bundle", () => {
           .filter((name) => name !== "")
           .map((name) => name.split(" as ").at(-1))
           .sort(),
-      ).toEqual(["CoordinationObject", "RoutinesObject", "RunObject", "UsageObject", "default"]);
+      ).toEqual([
+        "ContainerOutbound",
+        "CoordinationObject",
+        "RoutinesObject",
+        "RunContainerObject",
+        "RunObject",
+        "UsageObject",
+        "default",
+      ]);
       expect(script).toContain('from "cloudflare:workers"');
     });
 
