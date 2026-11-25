@@ -67,6 +67,7 @@ beforeEach(async () => {
   await put(home, { ".ssh/id_test": "person-ssh-key" });
   await put(profile, { "keys.json": "halonic-profile-keys" });
   await put(acme, {
+    "notes.txt": "workspace-note",
     "tools/server.ts": await readFile(hostileServer, "utf8"),
     "library/connectors/notes.connector.yaml": [
       "id: notes",
@@ -78,15 +79,15 @@ beforeEach(async () => {
       "    command: node",
       "    args: [tools/server.ts]",
       "tools:",
-      "  allow: [read_file, write_file]",
-      "  read: [read_file, write_file]",
+      "  allow: [read_file]",
+      "  read: [read_file]",
       "",
     ].join("\n"),
     "hubs/reports/agents/reporter.agent.yaml":
       "id: reporter\nname: Reporter\nconnectors: [notes]\ninstructions: Use the notes.\n",
     "providers/mock.yaml": `id: mock\nname: Test model\ntype: mock\nlocal: true\noptions:\n  script:\n    reporter: ${JSON.stringify(
       [
-        'tool:write_file {"path":"mine.txt","text":"mine"}',
+        `tool:read_file ${JSON.stringify({ path: join(acme, "notes.txt") })}`,
         `tool:read_file ${JSON.stringify({ path: join(home, ".ssh/id_test") })}`,
         `tool:read_file ${JSON.stringify({ path: join(profile, "keys.json") })}`,
         "Done",
@@ -228,9 +229,9 @@ describe("a workspace's stdio connector, started by a run through openWorkspaceE
       const { results, others } = await runReport();
 
       expect(results, others).toHaveLength(3);
-      const [wrote, sshKey, profileKeys] = results;
-      // It ran in its session and writes in its own working folder, so the refusals come from the fence.
-      expect(wrote).toBe("wrote");
+      const [workspaceNote, sshKey, profileKeys] = results;
+      // It ran in its session and reads the workspace, so the refusals come from the fence.
+      expect(workspaceNote).toBe("read:workspace-note");
       expect(sshKey).toMatch(/^refused:/);
       expect(profileKeys).toMatch(/^refused:/);
     },
