@@ -124,8 +124,8 @@ verifies("messenger.typing", () => {
       expect(dots).toHaveLength(3);
       for (const dot of dots) {
         const classes = dot.className.split(" ");
-        expect(classes).toContain("motion-safe:animate-pulse");
-        expect(classes).not.toContain("animate-pulse");
+        expect(classes).toContain("motion-safe:animate-typing");
+        expect(classes).not.toContain("animate-typing");
       }
     });
   });

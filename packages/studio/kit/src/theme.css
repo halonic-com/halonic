@@ -250,8 +250,9 @@
   /* ---------------------------------------------------------------- Motion (ease-*, animate-*) */
   /* Colour changes and short fades, plus three movements (design review HAL-18481): things that
      arrive rise --motion-rise, list rows that move glide, and panes in a one-pane window slide
-     --motion-slide. Nothing scales, bounces or moves on its own; the busy spinner is the one
-     exception, because it tells you something is happening. Under reduced motion only fades. */
+     --motion-slide. Nothing scales, bounces or moves on its own; the busy spinner and the typing
+     dots are the exceptions, because they tell you something is happening. Under reduced motion
+     only fades. */
   --ease-standard: cubic-bezier(0.2, 0, 0, 1); /* things that move on screen */
   --ease-enter: cubic-bezier(0.22, 1, 0.36, 1); /* things that appear */
   --ease-exit: cubic-bezier(0.4, 0, 1, 1); /* things that leave */
@@ -263,6 +264,19 @@
   @keyframes spin {
     to {
       transform: rotate(360deg);
+    }
+  }
+
+  --animate-typing: typing 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite; /* the "is typing…" dots */
+
+  /* A fade, not a bounce (design check HAL-18816). */
+  @keyframes typing {
+    0%,
+    100% {
+      opacity: 0.3;
+    }
+    50% {
+      opacity: 1;
     }
   }
 }

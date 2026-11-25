@@ -38,12 +38,13 @@ export function TypingLine({
   return (
     <div role="status" className="mx-auto w-full max-w-[800px] px-4">
       {typing ? (
-        <p data-typing className="flex items-center gap-2 pb-4 ps-9 text-small text-fg-muted">
+        // pt-2: the agent's reply opens a new run 24px under your bubble, so the line sits there too.
+        <p data-typing className="flex items-center gap-2 pt-2 pb-4 ps-9 text-small text-fg-muted">
           <span aria-hidden="true" className="flex gap-1">
             {["", "[animation-delay:200ms]", "[animation-delay:400ms]"].map((delay) => (
               <span
                 key={delay}
-                className={`size-1.5 rounded-full bg-fg-muted forced-color-adjust-none forced-colors:bg-[CanvasText] motion-safe:animate-pulse ${delay}`}
+                className={`size-1.5 rounded-full bg-fg-muted forced-color-adjust-none forced-colors:bg-[CanvasText] motion-safe:animate-typing ${delay}`}
               />
             ))}
           </span>
