@@ -1,45 +1,40 @@
-import type { OpenUiComponent, OpenUiValue } from "@halonicjs/openui-lang";
+import type { OpenUiComponent } from "@halonicjs/openui-lang";
 import { useId, useState } from "react";
 import { Button } from "../button/button.tsx";
 import { Card } from "../card/card.tsx";
 import { ExternalLink } from "../external-link/external-link.tsx";
+import { AgentButtons, AgentForm, type ChatUiSend } from "./chat-ui-controls.tsx";
+import { list, prop, text } from "./chat-ui-values.ts";
 
 /**
  * The components an agent may draw in a reply (HAL-17107 design), in grey: none of its parts gets
  * a status colour or an icon, so it can't draw something that looks like Studio's own approval,
- * warning or failure. Card and table are here; buttons and the form, which send a message, come
- * with their own task.
+ * warning or failure. Buttons and the form, which send a message, are in `chat-ui-controls.tsx`.
  */
 
 /** A table shows this many rows until the person asks for all of them. */
 export const CHAT_UI_ROWS_SHOWN = 20;
 
 /** One part of a reply's `Stack`, by its type. A part it can't draw throws, for the boundary. */
-export function ChatUiPart({ part }: { readonly part: OpenUiComponent }) {
+export function ChatUiPart({
+  part,
+  onSend,
+}: {
+  readonly part: OpenUiComponent;
+  readonly onSend: ChatUiSend;
+}) {
   switch (part.type) {
     case "Card":
       return <AgentCard part={part} />;
     case "Table":
       return <AgentTable part={part} />;
+    case "Form":
+      return <AgentForm part={part} onSend={onSend} />;
+    case "Buttons":
+      return <AgentButtons part={part} onSend={onSend} />;
     default:
-      throw new TypeError(`Chat can't draw a ${part.type} yet.`);
+      throw new TypeError(`Chat can't draw a ${part.type}.`);
   }
-}
-
-/** A prop's value: the reader leaves out an empty prop, so it may be missing. */
-function prop(part: OpenUiComponent, name: string): OpenUiValue | undefined {
-  return part.props[name];
-}
-
-/** A plain value as words; the reader keeps only text, numbers and true or false here. */
-function text(value: OpenUiValue | undefined): string {
-  if (value === undefined || value === null) return "";
-  if (typeof value === "boolean") return value ? "Yes" : "No";
-  return typeof value === "object" ? "" : String(value);
-}
-
-function list<Item extends OpenUiValue>(value: OpenUiValue | undefined): readonly Item[] {
-  return (value ?? []) as readonly Item[];
 }
 
 /** A link: its words, ↗, then the host from the address itself, never from the agent's words. */

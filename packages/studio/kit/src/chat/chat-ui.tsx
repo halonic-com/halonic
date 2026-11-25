@@ -4,6 +4,7 @@ import { Disclosure } from "../disclosure/disclosure.tsx";
 import { FileIcon } from "../icons/file-icon.tsx";
 import { WarningIcon } from "../icons/warning-icon.tsx";
 import { LineFrame } from "../line-frame/line-frame.tsx";
+import type { ChatUiSend } from "./chat-ui-controls.tsx";
 import { ChatUiPart } from "./chat-ui-parts.tsx";
 
 /** The props of `ChatUi`. */
@@ -14,10 +15,15 @@ export interface ChatUiProps {
   readonly source: string;
   /** The agent's name: "Support desk sent a chart that couldn't be shown." */
   readonly sender: string;
+  /**
+   * Sends a button's words or a form's answers as the person's message. Without it, the reply's
+   * buttons and its form's send button can't be used.
+   */
+  readonly onSend?: ChatUiSend;
 }
 
 /**
- * The components an agent drew in one reply, such as cards and tables, 16px apart, as a
+ * The components an agent drew in one reply (cards, tables, a form, buttons), 16px apart, as a
  * step of a `ChatMessage` reply. A reply that can't be drawn (broken, too large, a part of the
  * language Studio leaves out) shows the "couldn't be shown" line with the text it sent, closed.
  * A part that fails while it draws does the same, for this reply only. An image is never drawn
@@ -34,7 +40,7 @@ export function ChatUi(props: ChatUiProps) {
   );
 }
 
-function ChatUiTree({ result, source, sender }: ChatUiProps) {
+function ChatUiTree({ result, source, sender, onSend }: ChatUiProps) {
   if (result.kind !== "tree" || result.root === null) {
     const missing = result.kind === "tree" && !result.incomplete && result.errors.length > 0;
     return result.kind !== "tree" || missing ? (
@@ -47,7 +53,7 @@ function ChatUiTree({ result, source, sender }: ChatUiProps) {
   return (
     <div className="flex flex-col gap-4" data-chat-ui="">
       {((result.root.props["children"] ?? []) as OpenUiComponent[]).map((part, index) => (
-        <ChatUiPart key={index} part={part} />
+        <ChatUiPart key={index} part={part} onSend={onSend} />
       ))}
       {images === 0 ? null : (
         <LineFrame icon={<FileIcon />} muted>
