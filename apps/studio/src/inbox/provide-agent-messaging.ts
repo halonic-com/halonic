@@ -1,4 +1,8 @@
-import { AgentHostMessaging, type AgentHostTransport } from "@halonicjs/adapter-agent-host-client";
+import {
+  AgentHostActivity,
+  AgentHostMessaging,
+  type AgentHostTransport,
+} from "@halonicjs/adapter-agent-host-client";
 import { MemoryHostSettingsStore } from "@halonicjs/adapter-memory";
 import type { Disposable, ServiceRegistry } from "@halonicjs/app";
 import { OverviewMessagingService } from "@halonicjs/studio-feature-overview/api";
@@ -6,6 +10,7 @@ import { SearchMessagingService } from "@halonicjs/studio-feature-search/api";
 import { HostSettingsService } from "@halonicjs/studio-feature-settings/api";
 import {
   ActiveAccountService,
+  AgentActivityService,
   AgentMessagingService,
   HostActiveAccount,
   scopeToAccount,
@@ -24,6 +29,8 @@ export const agentMessagingFocusKey: ServiceKey<Disposable> = serviceKey<Disposa
  * it through `AgentMessagingService` without knowing which engine serves it.
  * Search and the overview with its daily recap read the same one through
  * their own keys. All of them see only the active account's sources.
+ * The Messenger's activity panel reads the same host's runs and pull
+ * requests through `AgentActivityService`.
  * It also tells the host when the window comes to the front or goes to the
  * back, so the host polls every 30 seconds or every 5 minutes. Without an
  * agent host nothing is provided, and the features show no agent items.
@@ -52,6 +59,7 @@ export function provideAgentMessaging(
   services.provide(AgentMessagingService, scoped);
   services.provide(SearchMessagingService, scoped);
   services.provide(OverviewMessagingService, scoped);
+  services.provide(AgentActivityService, new AgentHostActivity(transport, location));
   if (!(window instanceof EventTarget)) return;
   const tell = (inFront: boolean) => () => {
     messaging.setInFront(inFront).catch((error: unknown) => {

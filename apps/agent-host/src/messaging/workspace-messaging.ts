@@ -1,5 +1,5 @@
 import { CachedAgentMessaging } from "@halonicjs/adapter-agent-messaging-cache";
-import { paperclipSourceId } from "@halonicjs/adapter-paperclip-client";
+import { type PaperclipTeamStatus, paperclipSourceId } from "@halonicjs/adapter-paperclip-client";
 import type { PaperclipConnection } from "@halonicjs/format";
 import type { PaperclipConnectionNow, PaperclipKeys } from "@halonicjs/host-agent-messaging-hub";
 import { type MessagingFailure, MessagingHub } from "@halonicjs/host-agent-messaging-hub";
@@ -8,15 +8,19 @@ import type {
   MessagingId,
   MessagingSource,
   MessagingSourceState,
+  TeamStatus,
 } from "@halonicjs/ports";
 import { paperclipConnectionNamePattern } from "../paperclip/paperclip-key-routes.ts";
 import { ChangeLog, type ChangesSince } from "./change-log.ts";
 import { listConnectionFiles } from "./connection-file.ts";
 import {
   type PaperclipConnectionProvider,
+  type PaperclipProviderOptions,
   paperclipProvider,
+  paperclipTeamStatus,
   withUserName,
 } from "./paperclip-provider.ts";
+import { TeamStatusHub } from "./team-status-hub.ts";
 
 /** What one workspace's messaging needs. */
 export interface WorkspaceMessagingOptions {
@@ -40,6 +44,10 @@ export interface WorkspaceMessagingOptions {
   fetch?: typeof fetch;
   now?: () => Date;
 }
+
+/** What the Messenger's activity panel reads: each connected source's runs and pull requests. */
+export type WorkspaceActivity = Required<Pick<TeamStatus, "runs">> &
+  Pick<TeamStatus, "pullRequests">;
 
 /** What Disconnect did: whether Paperclip revoked the key. The key and the cache are gone either way. */
 export interface Disconnected {
@@ -72,14 +80,18 @@ export class WorkspaceMessaging {
   readonly #options: WorkspaceMessagingOptions;
   /** Each connected connection's provider, by the connection's name. */
   readonly #providers = new Map<string, PaperclipConnectionProvider>();
+  /** Each connected connection's team status, by the connection's name. */
+  readonly #teams = new Map<string, PaperclipTeamStatus>();
   readonly #changes = new ChangeLog();
   #hub: MessagingHub;
   #served: CachedAgentMessaging;
+  #team: TeamStatusHub;
 
   constructor(options: WorkspaceMessagingOptions) {
     this.#options = options;
     this.#hub = this.#joined();
     this.#served = this.#cached(this.#hub);
+    this.#team = this.#teamJoined();
     this.#follow();
   }
 
@@ -94,6 +106,15 @@ export class WorkspaceMessaging {
   }
 
   /**
+   * What the activity panel reads (`agent-host.team-activity-routes`): every
+   * connected source's runs, kept in memory only, and its pull requests,
+   * under the team hub's freshness rules and cache.
+   */
+  get activity(): WorkspaceActivity {
+    return this.#team;
+  }
+
+  /**
    * Starts the provider of a connection whose key Studio just handed over,
    * replacing the one before. Its one request reads whom the key belongs to
    * (`agent-host.paperclip-signed-in-user`); when that fails, the next poll
@@ -102,10 +123,10 @@ export class WorkspaceMessaging {
   async connect(connection: string): Promise<void> {
     const binding = { workspace: this.#options.workspace, connection };
     const file = await this.#options.readConnection(binding.workspace, connection);
-    const provider =
+    const made: PaperclipProviderOptions | undefined =
       file === undefined
         ? undefined
-        : paperclipProvider({
+        : {
             binding,
             keys: this.#options.keys,
             label: file.label,
@@ -115,10 +136,14 @@ export class WorkspaceMessaging {
               this.#options.report({ provider, action: "read user", error });
             },
             ...this.#network(),
-          });
+          };
+    const provider = made === undefined ? undefined : paperclipProvider(made);
+    const team = made === undefined ? undefined : paperclipTeamStatus(made);
     await provider?.readUser();
     if (provider === undefined) this.#providers.delete(connection);
     else this.#providers.set(connection, provider);
+    if (team === undefined) this.#teams.delete(connection);
+    else this.#teams.set(connection, team);
     this.#rejoin();
     this.#changes.note(paperclipSourceId(connection));
   }
@@ -209,15 +234,36 @@ export class WorkspaceMessaging {
     const source = paperclipSourceId(connection);
     this.#options.keys.forget({ workspace: this.#options.workspace, connection });
     this.#providers.delete(connection);
+    this.#teams.delete(connection);
     this.#rejoin();
     await this.#served.clear(source);
+    await this.#team.clear(source);
     this.#changes.note(source);
   }
 
   #rejoin(): void {
     this.#hub = this.#joined();
     this.#served = this.#cached(this.#hub);
+    this.#team = this.#teamJoined();
     this.#follow();
+  }
+
+  /** The team hub over each connected connection's team status, named as its source, as the messaging hub's providers are. */
+  #teamJoined(): TeamStatusHub {
+    const { cacheFolder, workspaceRoots, warn, report, now } = this.#options;
+    const providers = [...this.#teams].map(([connection, status]) => ({
+      name: paperclipSourceId(connection),
+      status,
+    }));
+    const clock = { now: () => now?.() ?? new Date() };
+    return new TeamStatusHub({
+      providers,
+      clock,
+      folder: cacheFolder,
+      workspaceRoots,
+      warn,
+      report,
+    });
   }
 
   #joined(): MessagingHub {

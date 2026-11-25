@@ -18,6 +18,7 @@ export {
   chooseSource,
   HostActiveAccount,
 } from "./active-account.ts";
+export { type AgentActivity, AgentActivityService } from "./agent-activity.ts";
 export {
   type AgentConnection,
   type AgentConnections,

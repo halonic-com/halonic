@@ -3,6 +3,7 @@ import {
   type PaperclipKeyGuard,
   PaperclipMessaging,
   type PaperclipMessagingOptions,
+  PaperclipTeamStatus,
 } from "@halonicjs/adapter-paperclip-client";
 import type {
   PaperclipBinding,
@@ -40,6 +41,32 @@ const signedOut: PaperclipAnswer = { kind: "failed", failure: "signed-out" };
 export function paperclipProvider(
   options: PaperclipProviderOptions,
 ): PaperclipConnectionProvider | undefined {
+  const guarded = guardedKey(options);
+  if (guarded === undefined) return undefined;
+  return new PaperclipConnectionProvider(options.reportUserRead, {
+    ...guarded,
+    label: `Paperclip · ${options.label}`,
+    ...network(options),
+  });
+}
+
+/**
+ * The connection's `TeamStatus` (`agent-host.team-activity-routes`), or
+ * `undefined` when the host holds no key for it. It sends through the same
+ * key guard as {@link paperclipProvider}, so it too reads only at the address
+ * and company the key was made for.
+ */
+export function paperclipTeamStatus(
+  options: PaperclipProviderOptions,
+): PaperclipTeamStatus | undefined {
+  const guarded = guardedKey(options);
+  return guarded === undefined
+    ? undefined
+    : new PaperclipTeamStatus({ ...guarded, ...network(options) });
+}
+
+/** Where the key was made for, and the guard that checks the connection file before each request. */
+function guardedKey(options: PaperclipProviderOptions) {
   const { binding, keys } = options;
   const madeFor = keys.madeFor(binding);
   if (madeFor === undefined) return undefined;
@@ -50,15 +77,21 @@ export function paperclipProvider(
       use.origin === madeFor.address ? request(use.key) : Promise.resolve(signedOut),
     );
   };
-  return new PaperclipConnectionProvider(options.reportUserRead, {
+  return {
     address: madeFor.address,
     key: guard,
     connection: binding.connection,
     company: madeFor.company,
-    label: `Paperclip · ${options.label}`,
+  };
+}
+
+function network(
+  options: PaperclipProviderOptions,
+): Pick<PaperclipProviderOptions, "fetch" | "now"> {
+  return {
     ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
     ...(options.now === undefined ? {} : { now: options.now }),
-  });
+  };
 }
 
 /**

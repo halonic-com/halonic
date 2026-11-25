@@ -144,6 +144,11 @@ export class MessagingCacheFolder {
     );
   }
 
+  /** Deletes every answer kept for the team status provider, as Disconnect does for its source. */
+  async clearTeamStatus(provider: string): Promise<void> {
+    await rm(this.#teamFolder(provider), { recursive: true, force: true });
+  }
+
   /** Deletes everything cached for the source. */
   async clear(source: MessagingId): Promise<void> {
     await rm(this.#sourceFolder(source), { recursive: true, force: true });

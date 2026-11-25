@@ -1,5 +1,5 @@
 import type { ServerResponse } from "node:http";
-import type { AgentMessaging, AttachmentRead, InboxAnswer } from "@halonicjs/ports";
+import type { AgentMessaging, AttachmentRead, InboxAnswer, TeamRunsQuery } from "@halonicjs/ports";
 import { type Infer, type Schema, s } from "@halonicjs/schema-kit";
 import { paperclipConnectionNamePattern } from "../paperclip/paperclip-key-routes.ts";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
@@ -44,6 +44,11 @@ const attachmentBody = s.object({ workspace, attachment: id }).strict();
 const changesBody = s.object({ workspace, after: s.number().int().min(0) }).strict();
 const focusBody = s.object({ inFront: s.boolean() }).strict();
 const connectionsBody = s.object({ workspace }).strict();
+/** A time with its zone, as `toISOString` writes it: the bound of today's finished runs. */
+const isoTime = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/;
+const runsBody = s
+  .object({ workspace, agent: id.optional(), since: s.string().regex(isoTime).optional() })
+  .strict();
 const disconnectBody = s
   .object({ workspace, connection: s.string().regex(paperclipConnectionNamePattern) })
   .strict();
@@ -76,6 +81,11 @@ type ReadBody = Infer<typeof readBody>;
  *   the sources that changed since Studio's last look.
  * - `POST /v1/messaging/focus` with `{ inFront }` tells the poller whether
  *   Studio's window is in front.
+ * - `POST /v1/messaging/runs` with `{ agent?, since? }` answers `{ items }`:
+ *   each source's `TeamRuns`, the live runs and the finished ones since
+ *   `since`, kept in memory only (`agent-host.team-activity-routes`).
+ * - `POST /v1/messaging/pull-requests` answers `{ items }`: each source's
+ *   `PullRequestList`, under the team hub's freshness rules.
  * - `POST /v1/paperclip/connections` answers `{ connections }`: the
  *   workspace's connection files with their labels, addresses and states,
  *   for Settings › Connections. No key.
@@ -123,6 +133,12 @@ export function messagingRoutes(deps: MessagingRouteDeps): HostRoute[] {
     inWorkspace("/v1/messaging/read", readBody, async (messaging, body) => ({
       items: await readList(messaging.messaging, body),
     })),
+    inWorkspace("/v1/messaging/runs", runsBody, async (messaging, body) => ({
+      items: await messaging.activity.runs(runsQueryOf(body)),
+    })),
+    inWorkspace("/v1/messaging/pull-requests", connectionsBody, async (messaging) => ({
+      items: await messaging.activity.pullRequests(),
+    })),
     inWorkspace("/v1/messaging/answer", answerBody, async (messaging, body) => ({
       result: await messaging.messaging.answer(body.item, inboxAnswerOf(body.answer)),
     })),
@@ -158,6 +174,14 @@ function inboxAnswerOf(answer: Infer<typeof answerBody>["answer"]): InboxAnswer 
   if (answer.kind === "reply") return answer;
   const { option, note } = answer;
   return note === undefined ? { kind: "option", option } : { kind: "option", option, note };
+}
+
+/** The port's runs query, without a field the body left out. */
+function runsQueryOf(body: Infer<typeof runsBody>): TeamRunsQuery {
+  return {
+    ...(body.agent === undefined ? {} : { agent: body.agent }),
+    ...(body.since === undefined ? {} : { since: body.since }),
+  };
 }
 
 /** One of the port's lists; `messages` without a conversation and `search` without text are empty. */
