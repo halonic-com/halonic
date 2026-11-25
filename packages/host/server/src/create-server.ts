@@ -101,10 +101,10 @@ function manyUserRoutesOf(
   if (isTestOnlyVerifier(manyUsers.verifier) && !checks.allowTestOnlyVerifier) {
     throw new RangeError("a many-user server can't start with a session verifier made for tests");
   }
-  const { trust, errorLog, workspace, studioPage } = ports;
+  // The Studio page isn't handed on: an end user never gets the pages that set a project up.
+  const { trust, errorLog, workspace } = ports;
   const shown = { ...(workspace === undefined ? {} : { workspace }) };
-  const page = { ...(studioPage === undefined ? {} : { studioPage }) };
-  return createManyUserRoutes(config, { trust, errorLog, ...shown, ...page }, manyUsers);
+  return createManyUserRoutes(config, { trust, errorLog, ...shown }, manyUsers);
 }
 
 export const createServer: CreateServer = (options) =>

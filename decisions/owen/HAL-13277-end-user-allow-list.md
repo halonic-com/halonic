@@ -1,0 +1,20 @@
+# Decision: a many-user server no longer serves the Studio page or starts agent runs
+
+- Approval: https://paperclip.halonic.com/HAL/issues/HAL-13277 (selling layer design, sections 16.1 and 16.3, approved by the board on HAL-45)
+- Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:kf7pZvY8HpKusUwAb9hRSLsUzZKTlX+X/nnrkYCZaLIjjqRlS58kd18Yg33A9w/i7lzmf7G3ar0gFqZzR9MfAg==
+
+`server.many-users` said the Studio page answers without a session on a many-user server. The
+board's requirement of 19 Nov makes the end-user client read-only: an end user may not change the
+project or see how it is set up, and the deployment enforces it. A many-user server now answers 404
+for the Studio page and for `POST /api/agent-runs`; the new `server.end-user-routes` lists what it
+does answer. The route-table test's list of run routes loses `POST /api/agent-runs` for the same
+reason. The tests of `server.route-table` and `server.run-access` walk every run route of the table,
+so with one route fewer they make fewer `expect` calls (17 instead of 18, 35 instead of 37). No
+assertion was removed from either, and no other test is weakened.
+
+## Covers
+
+- server.many-users
+- server.route-table
+- server.run-access
