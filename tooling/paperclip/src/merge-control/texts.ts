@@ -46,6 +46,8 @@ export const texts = {
     `Queue manager: this PR is clean and green but not queued: ${reason}. It goes in on the next pass after Liam's approval names head \`${head.slice(0, 9)}\`.`,
   blocked: (head: string) =>
     `Queue manager: approved and \`ci-ok\` is green on \`${head.slice(0, 9)}\`, but GitHub shows this PR as blocked, so I can't queue it. If its base changed (a stacked PR whose lower PR merged), rebase it on \`main\` and push (or push an empty commit) so the required note check runs against \`main\`: an identical diff keeps the approval (carry-over). Closing and reopening also reruns the check; a reopen with an unchanged head keeps the approval.`,
+  labelNoopReopen: (head: string) =>
+    `Queue manager: approved, but a label run came after CI on head \`${head.slice(0, 9)}\`, so GitHub sees no \`ci-ok\` and can't queue this PR. Closing and reopening it once to run CI again: the head stays the same, so the approval stays. Nothing to do; it is queued once \`ci-ok\` is green.`,
   brakeOn: (minutes: number) =>
     `Runner wait ${minutes} min on merge-group jobs: please hold pushes.`,
   brakeOff: "Runner wait cleared.",

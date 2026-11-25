@@ -2,6 +2,7 @@ import { logLine, type PassContext, workCopy } from "./context.ts";
 import { failedGroups, unjudgedHolds } from "./culprit.ts";
 import { fill, fillOrder, trackReady, verifiedFastTrack } from "./fill.ts";
 import { gateRow, withSizeHolds } from "./gate.ts";
+import { labelNoopReopens } from "./label-noop.ts";
 import { notes } from "./notes.ts";
 import { queueFirst } from "./order.ts";
 import { pruneState } from "./prune.ts";
@@ -51,6 +52,7 @@ export function decide(
   const seenBefore = new Set(state.seenFailedRuns);
   failedGroups(context, rows);
   unjudgedHolds(context, rows, seenBefore);
+  labelNoopReopens(context, rows);
   const fast = verifiedFastTrack(context, rows);
   trackReady(context, rows);
   const pauseOn = fillPauseOn(context, rows);

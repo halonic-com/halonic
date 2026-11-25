@@ -49,8 +49,7 @@ export interface NoteSeen {
 
 const notAdded = "not added this pass: the queue at its target, a fill pause or a main-red freeze";
 
-const notCandidate =
-  "not a candidate: no built-on:paperclip label, or built-on:halonic without a verified fast-track";
+const notCandidate = "not a candidate: no built-on:paperclip or built-on:halonic label";
 
 /**
  * Each candidate's wait reason, from the fill's `waiting=#n(why) …` log

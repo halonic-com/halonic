@@ -54,6 +54,12 @@ export interface HeldRun {
   readonly error: string | null;
 }
 
+/** A close and reopen sent for a label-noop head (HAL-18470). */
+export interface LabelNoopReopen {
+  readonly head: string;
+  readonly at: string;
+}
+
 /** Everything kept between passes, keyed by pull request number. */
 export interface MergeState {
   readonly version: 1;
@@ -74,6 +80,8 @@ export interface MergeState {
   readonly noted: Readonly<Record<string, string>>;
   readonly reran: Readonly<Record<string, Rerun>>;
   readonly reranFlake: Readonly<Record<string, Rerun>>;
+  /** Label-noop reopens of the last 2 days, oldest first. A state saved before HAL-18470 has none. */
+  readonly labelNoopReopened: Readonly<Record<string, readonly LabelNoopReopen[]>>;
   readonly runnerAlertOn: string | null;
   readonly lowWaitSince: string | null;
   /** A lower fill target while runners are short; null is the full target. */
@@ -100,6 +108,7 @@ export const emptyMergeState: MergeState = {
   noted: {},
   reran: {},
   reranFlake: {},
+  labelNoopReopened: {},
   runnerAlertOn: null,
   lowWaitSince: null,
   fillTarget: null,
@@ -210,6 +219,14 @@ export type MergeAction =
       readonly key: string;
       /** What happened, for the wake comment. */
       readonly facts: readonly string[];
+    }
+  | {
+      readonly kind: "reopen";
+      readonly number: number;
+      readonly pullId: string;
+      readonly head: string;
+      /** Posted before the close. */
+      readonly comment: string;
     }
   | { readonly kind: "rerun"; readonly runId: number; readonly why: string }
   | { readonly kind: "rerun-failed-jobs"; readonly runId: number; readonly why: string }
