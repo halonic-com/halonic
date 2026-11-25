@@ -1,6 +1,7 @@
 import { checkedOrigin } from "./address.ts";
 import { asRecord, asRecords, type JsonRecord, text } from "./json.ts";
 import { isSafeSegment, UnsafeIdError } from "./requests.ts";
+import { taskPageLink } from "./task-page.ts";
 import {
   type PaperclipAnswer,
   PaperclipClientError,
@@ -153,10 +154,7 @@ export class PaperclipFeedback {
 
   /** The task's page in Paperclip: by its identifier, such as `/HAL/issues/HAL-42`, when it has one. */
   #taskUrl(id: string, identifier: string | undefined): string {
-    const match = identifier === undefined ? null : /^([A-Z][A-Z0-9]*)-\d+$/.exec(identifier);
-    const path =
-      match === null ? `/issues/${encodeURIComponent(id)}` : `/${match[1]}/issues/${identifier}`;
-    return new URL(path, this.#origin).href;
+    return taskPageLink(this.#origin, id, identifier);
   }
 }
 

@@ -18,6 +18,8 @@ export interface MapContext {
   agentNames: ReadonlyMap<string, string>;
   /** The Paperclip user the key belongs to, when the engine knows it. */
   userId?: string;
+  /** The connection's origin, for links to Paperclip's own pages. */
+  origin?: string;
 }
 
 const activities: Readonly<Record<string, AgentActivity>> = {

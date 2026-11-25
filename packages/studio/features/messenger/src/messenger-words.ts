@@ -101,6 +101,8 @@ export const messengerWords = {
     alsoInInbox: "Also in your Inbox. Answering here answers it there.",
     answeredBy: (name: string) => `${name} answered this first.`,
     answeredByYou: "You already answered this.",
+    /** A card its source can't take an answer to here links there (Nina's wording, HAL-18923). */
+    answerElsewhere: (source: string) => `Answer in ${source}`,
     /** Read out once an option answered the card, which then leaves the chat. */
     answered: (option: string) => `Answered: ${option}.`,
     /** Before an answered card's record, for a screen reader only: "Answered: Approve, 12:10". */

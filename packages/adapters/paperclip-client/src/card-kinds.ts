@@ -96,7 +96,31 @@ export function listCardQuestions(
   }
   const options = labelled(asRecords(field(payload, "options")), "id", "label");
   const required = Number(field(payload, "minSelected") ?? 0) > 0;
-  return [{ id: checkboxQuestion, prompt, selection: "multiple", options, required }];
+  // Paperclip's defaults are only ticked in advance: the accept sends what the person ticked.
+  const preselected = strings(field(payload, "defaultSelectedOptionIds"));
+  const question = {
+    id: checkboxQuestion,
+    prompt,
+    selection: "multiple",
+    options,
+    required,
+  } as const;
+  return [preselected.length === 0 ? question : { ...question, preselected }];
+}
+
+/**
+ * The whole-card choices a checkbox or task card offers next to its question:
+ * Reject, which needs a note when the card sets `rejectRequiresReason`. A
+ * verdict card has none, since each item is rejected on its own.
+ */
+export function listCardOptions(kind: string, payload: JsonRecord | undefined): InboxItemOption[] {
+  if (kind === "request_item_verdicts") {
+    return [];
+  }
+  const label = text(payload, "rejectLabel") ?? "Reject";
+  return field(payload, "rejectRequiresReason") === true
+    ? [{ id: "reject", label, noteRequired: true }]
+    : [{ id: "reject", label }];
 }
 
 /** What a resolved checkbox, verdict or task card was answered with. */

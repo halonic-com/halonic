@@ -31,6 +31,14 @@ interface TaskCards {
 }
 
 /** Looks up a Paperclip project ID in the projects read for this list. */
+/** A task whose cards are read again in this poll. */
+interface TaskRead {
+  id: string;
+  updatedAt: string | undefined;
+  projectId: string | undefined;
+  identifier: string | undefined;
+}
+
 type ProjectOf = (projectId: string | undefined) => MessagingProject | undefined;
 
 /** `item` with `project`, or as it is when there is none. */
@@ -183,12 +191,12 @@ export class PaperclipInbox {
     tasks: readonly JsonRecord[],
   ): Promise<InboxItem[]> {
     const next = new Map<string, TaskCards>();
-    const changed: { id: string; updatedAt: string | undefined; projectId: string | undefined }[] =
-      [];
+    const changed: TaskRead[] = [];
     for (const task of tasks) {
       const id = text(task, "id");
       const updatedAt = text(task, "updatedAt");
       const projectId = text(task, "projectId");
+      const identifier = text(task, "identifier");
       if (id === undefined) {
         continue;
       }
@@ -196,21 +204,25 @@ export class PaperclipInbox {
       if (known !== undefined && updatedAt !== undefined && known.updatedAt === updatedAt) {
         next.set(id, { ...known, projectId });
       } else {
-        changed.push({ id, updatedAt, projectId });
+        changed.push({ id, updatedAt, projectId, identifier });
       }
     }
-    await eachLimited(changed, cardReadsAtOnce, async ({ id, updatedAt, projectId }) => {
-      const items: InboxItem[] = [];
-      for (const record of await this.cardsOf(id)) {
-        const item = cardToItem(context, id, record);
-        if (item !== undefined) {
-          items.push(
-            this.#steppers === undefined ? item : await this.#steppers.serve(id, record, item),
-          );
+    await eachLimited(
+      changed,
+      cardReadsAtOnce,
+      async ({ id, updatedAt, projectId, identifier }) => {
+        const items: InboxItem[] = [];
+        for (const record of await this.cardsOf(id)) {
+          const item = cardToItem(context, id, record, identifier);
+          if (item !== undefined) {
+            items.push(
+              this.#steppers === undefined ? item : await this.#steppers.serve(id, record, item),
+            );
+          }
         }
-      }
-      next.set(id, { updatedAt, projectId, items });
-    });
+        next.set(id, { updatedAt, projectId, items });
+      },
+    );
     // Closed tasks drop out here, so their cards leave the Inbox with them.
     this.#cards = next;
     return [...next.values()].flatMap((entry) => {

@@ -167,3 +167,27 @@ verifies("messenger.inline-cards", () => {
     });
   });
 });
+
+verifies("messenger.answer-elsewhere", () => {
+  it("links a card its source can't take an answer to, with no option buttons", async () => {
+    const messaging = new FakeAgentMessaging({ now: () => new Date(2026, 10, 25, 9, 0) });
+    const acme = messaging.addSource({ label: "Paperclip · Acme" });
+    const chief = messaging.addAgent(acme.id, { name: "Chief" });
+    messaging.addConversation(chief.id);
+    const link = "https://paperclip.acme.test/ACME/issues/ACME-7";
+    messaging.addInboxItem(acme.id, {
+      question: "Sign the launch plan",
+      from: { kind: "agent", agent: chief.id, name: "Chief" },
+      options: [],
+      answerElsewhere: { link },
+    });
+    const opened: string[] = [];
+    const page = await openMessenger(messaging, opened);
+    await openChat(page, "Chief");
+    const card = byText(page, "main ol > li", "Sign the launch plan");
+    expect(card?.querySelector("a")?.textContent).toContain("Answer in Paperclip · Acme");
+    expect(card?.querySelectorAll("button")).toHaveLength(0);
+    await press(card?.querySelector("a") ?? null);
+    expect(opened).toEqual([link]);
+  });
+});

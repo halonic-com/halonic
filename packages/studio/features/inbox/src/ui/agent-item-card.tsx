@@ -9,10 +9,11 @@ import type {
   MessagingSource,
   WorkItem,
 } from "@halonicjs/ports";
-import { Avatar, Button, Callout, waitingSince } from "@halonicjs/studio-kit";
+import { Avatar, Button, Callout, ExternalLink, waitingSince } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef, useState } from "react";
 import {
   agentItemTitle,
+  answerElsewhereLine,
   answeredLine,
   answerText,
   askerLine,
@@ -67,7 +68,8 @@ type Sent =
 /**
  * An agent's card or question (`inbox.agent-inbox-items`): its title, its source and since when it
  * waits, the question as safe Markdown, and one button per option, or a reply field when it has
- * none. Once answered, here or elsewhere, a line says by whom and how, and the buttons stay, off
+ * none, or a link to answer it in its source when the source can't take an answer here
+ * (`inbox.agent-inbox-items`). Once answered, here or elsewhere, a line says by whom and how, and the buttons stay, off
  * (render 5f). It names the work it came from, whatever made it (`inbox.every-waiting-item`), and
  * lists its files, showing a picture only once asked (`inbox.agent-item-media`). While its source
  * is offline or signed out the buttons are off and say why; nothing is kept to send later.
@@ -112,6 +114,8 @@ export function AgentItemCard({
     sent.kind === "sending" && JSON.stringify(sent.answer) === JSON.stringify(chosen);
   const since = item.state.kind === "open" ? waitingSince(new Date(item.createdAt), now()) : null;
   const label = source?.label;
+  // An item the source can't take an answer to here links to where it is answered instead.
+  const elsewhere = item.state.kind === "open" ? item.answerElsewhere : undefined;
 
   return (
     <section aria-labelledby={titleId} className={cardClasses}>
@@ -150,7 +154,14 @@ export function AgentItemCard({
             onDecline={() => void send(declined)}
           />
         )}
-        {item.action === undefined && item.options.length === 0 ? (
+        {elsewhere === undefined ? null : (
+          <p>
+            <ExternalLink href={elsewhere.link}>{answerElsewhereLine(source)}</ExternalLink>
+          </p>
+        )}
+        {item.action === undefined &&
+        item.options.length === 0 &&
+        item.answerElsewhere === undefined ? (
           <ReplyField
             value={reply}
             onChange={setReply}

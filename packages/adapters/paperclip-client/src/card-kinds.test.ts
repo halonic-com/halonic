@@ -1,4 +1,4 @@
-import type { InboxAnswer } from "@halonicjs/ports";
+import type { InboxAnswer, InboxItem } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { beforeEach, expect, it } from "vitest";
 import { agentBo, me, plainTask } from "./acme-data.test-helper.ts";
@@ -107,11 +107,13 @@ const verdictOptions = [
 ];
 
 verifies("paperclip-client.card-kinds", () => {
-  it("maps checkbox, verdict and task cards into questions with no options", async () => {
+  it("maps checkbox, verdict and task cards into questions, with Reject next to them", async () => {
     serve();
     const items = await client().listInboxItems();
     const byId = (id: string) => items.find((item) => item.id === card(plainTask, id));
-    expect(byId(checkbox)?.options).toEqual([]);
+    expect(byId(checkbox)?.options).toEqual([
+      { id: "reject", label: "Reject", noteRequired: true },
+    ]);
     expect(byId(checkbox)?.questions).toEqual([
       {
         id: "options",
@@ -123,8 +125,11 @@ verifies("paperclip-client.card-kinds", () => {
           { id: "export", label: "tmp/export.csv" },
           { id: "notes", label: "notes.txt" },
         ],
+        preselected: ["draft"],
       },
     ]);
+    expect(byId(verdicts)?.options).toEqual([]);
+    expect(byId(tasks)?.options).toEqual([{ id: "reject", label: "Reject" }]);
     expect(byId(verdicts)?.questions).toEqual([
       {
         id: "intro",
@@ -259,4 +264,38 @@ verifies("paperclip-client.card-kinds", () => {
       },
     });
   });
+
+  it("links a kind Halonic can't answer to its task's page, with nothing to answer", async () => {
+    const unknown = {
+      id: "f0000000-0000-4000-8000-000000000023",
+      kind: "request_signature",
+      status: "pending",
+      createdByAgentId: agentBo,
+      createdAt: "2026-11-25T09:30:00.000Z",
+      payload: { version: 1, prompt: "Sign the launch plan" },
+    };
+    paperclip
+      .serveAcme()
+      .on("GET", `/api/issues/${plainTask}/interactions`, { body: [...listCards(), unknown] });
+    const items = await client().listInboxItems();
+    const item = items.find((each) => each.id === card(plainTask, unknown.id));
+    expect(item?.answerElsewhere).toEqual({
+      link: "https://paperclip.acme.test/ACME/issues/ACME-7",
+    });
+    expect(item?.options).toEqual([]);
+    expect(item?.questions).toBeUndefined();
+    expect(byKind(items, checkbox)?.answerElsewhere).toBeUndefined();
+  });
+
+  it("leaves out a card that doesn't hold together, such as a default it doesn't offer", async () => {
+    const payload = { ...(listCards()[0]?.payload ?? {}), defaultSelectedOptionIds: ["gone"] };
+    serve({ [checkbox]: { payload } });
+    const items = await client().listInboxItems();
+    expect(byKind(items, checkbox)).toBeUndefined();
+    expect(byKind(items, verdicts)).toBeDefined();
+  });
 });
+
+function byKind(items: readonly InboxItem[], id: string): InboxItem | undefined {
+  return items.find((item) => item.id === card(plainTask, id));
+}

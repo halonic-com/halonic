@@ -198,6 +198,8 @@ one `respondToCard` request (`paperclip-client.question-cards`); one with a sing
 keeps plain `options`. Checkbox, item-verdict and task-suggestion cards also become items with `questions`
 (`paperclip-client.card-kinds`): a checkbox or task card is one multiple-select question, accepted with
 `acceptCard` and the options or tasks picked, and rejected with the `reject` option and its reason; a verdict
-card asks one optional question per item still open, and each answer goes out with `submitVerdicts`.
+card asks one optional question per item still open, and each answer goes out with `submitVerdicts`. A card
+of any other kind links to its task's page (`answerElsewhere`), so Inbox and Messenger offer "Answer in
+Paperclip" instead of a dead card. Every card's item passes `inboxItemFits`, or it is left out.
 Cards addressed to an agent aren't listed. A chat waits on the person when Paperclip marks it `waiting`.
 Tasks' blockers aren't read yet (`blockedBy` is empty).

@@ -1,10 +1,11 @@
-import type {
-  InboxAnswer,
-  InboxItem,
-  InboxItemOption,
-  InboxItemState,
-  InboxQuestion,
-  MessagingId,
+import {
+  type InboxAnswer,
+  type InboxItem,
+  type InboxItemOption,
+  type InboxItemState,
+  type InboxQuestion,
+  inboxItemFits,
+  type MessagingId,
 } from "@halonicjs/ports";
 import { approvalRisk } from "./approval-risk.ts";
 import { approvalQuestion, asksToRunTool, confirmationQuestion } from "./approval-text.ts";
@@ -13,6 +14,7 @@ import {
   listCardAnswerOf,
   listCardAnswerRequest,
   listCardKinds,
+  listCardOptions,
   listCardQuestions,
 } from "./card-kinds.ts";
 import {
@@ -24,6 +26,7 @@ import {
 import { asList, asRecord, asRecords, field, type JsonRecord, text } from "./json.ts";
 import { authorOf, type MapContext, timeOf } from "./map.ts";
 import type { PaperclipRequestName } from "./requests.ts";
+import { taskPageLink } from "./task-page.ts";
 
 /** The request that answers a card or an approval, and its body. */
 export interface AnswerRequest {
@@ -55,7 +58,24 @@ function questionOf(kind: string, record: JsonRecord, payload: JsonRecord | unde
   return confirmationQuestion(payload);
 }
 
-function optionsOf(kind: string, payload: JsonRecord | undefined): InboxItemOption[] {
+/** The card kinds Halonic can answer; any other shows a link to answer it in Paperclip. */
+const answerableKinds: ReadonlySet<string> = new Set([
+  "request_confirmation",
+  "ask_user_questions",
+  ...listCardKinds,
+]);
+
+function optionsOf(
+  kind: string,
+  payload: JsonRecord | undefined,
+  asksQuestions: boolean,
+): InboxItemOption[] {
+  if (listCardKinds.has(kind)) {
+    return listCardOptions(kind, payload);
+  }
+  if (asksQuestions) {
+    return [];
+  }
   if (kind === "request_confirmation") {
     return [
       { id: "accept", label: text(payload, "acceptLabel") ?? "Accept" },
@@ -65,7 +85,6 @@ function optionsOf(kind: string, payload: JsonRecord | undefined): InboxItemOpti
   if (kind === "ask_user_questions") {
     return questionOptions(onlyQuestion(payload));
   }
-  // Checkbox, verdict and task cards ask `questions` instead (`card-kinds.ts`).
   return [];
 }
 
@@ -118,12 +137,15 @@ export function answeredState(
 
 /**
  * A card on task `task` as an inbox item, or `undefined` when it isn't the
- * person's to answer: addressed to an agent, or cancelled, expired or failed.
+ * person's to answer (addressed to an agent, or cancelled, expired or failed)
+ * or doesn't hold together (`inboxItemFits`). A kind Halonic can't answer
+ * links to the task's page, by its `identifier` when known, to answer it there.
  */
 export function cardToItem(
   context: MapContext,
   task: string,
   record: JsonRecord,
+  identifier?: string,
 ): InboxItem | undefined {
   const id = text(record, "id");
   const kind = text(record, "kind") ?? "";
@@ -137,13 +159,15 @@ export function cardToItem(
   const payload = asRecord(field(record, "payload"));
   const result = asRecord(field(record, "result"));
   const questions = questionsOf(kind, record, payload, result);
-  return {
+  const elsewhere = answerableKinds.has(kind) ? undefined : elsewhereOf(context, task, identifier);
+  const item: InboxItem = {
     id: context.ids.make("card", task, id),
     source: context.ids.source(),
     from: authorOf(context, text(record, "createdByAgentId"), text(record, "createdByUserId")),
     question: questionOf(kind, record, payload),
-    options: questions === undefined ? optionsOf(kind, payload) : [],
+    options: elsewhere === undefined ? optionsOf(kind, payload, questions !== undefined) : [],
     ...(questions === undefined ? {} : { questions }),
+    ...(elsewhere === undefined ? {} : { answerElsewhere: elsewhere }),
     work: context.ids.make("task", task),
     // A card asks a question in words and changes no one's rights, unless it lets an agent run a tool.
     risk: asksToRunTool(payload) ? "risky" : "normal",
@@ -155,6 +179,23 @@ export function cardToItem(
         ? { kind: "open" }
         : answeredState(context, record, answerOf(kind, status, result, questions !== undefined)),
   };
+  return inboxItemFits(item) ? item : undefined;
+}
+
+/**
+ * Where a card Halonic can't answer is answered: its task's page. A Paperclip
+ * on this computer over plain `http` gets no link, since the port takes only
+ * `https` ones; its card then shows no way to answer, as before.
+ */
+function elsewhereOf(
+  context: MapContext,
+  task: string,
+  identifier: string | undefined,
+): { link: string } | undefined {
+  if (context.origin === undefined || !context.origin.startsWith("https:")) {
+    return undefined;
+  }
+  return { link: taskPageLink(context.origin, task, identifier) };
 }
 
 /** A card's `questions`: a question card's when it asks several, a checkbox, verdict or task card's always. */
@@ -242,7 +283,7 @@ function oneQuestionRequest(
       body: { answers: [{ questionId, optionIds: [], otherText: answer.text }] },
     };
   }
-  const offered = optionsOf("ask_user_questions", payload).some(
+  const offered = questionOptions(onlyQuestion(payload)).some(
     (option) => option.id === answer.option,
   );
   if (!offered) {

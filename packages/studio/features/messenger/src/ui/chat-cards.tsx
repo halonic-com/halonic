@@ -3,6 +3,7 @@ import {
   Button,
   type ButtonVariant,
   ChatText,
+  ExternalLink,
   enter,
   leave,
   StatusChip,
@@ -183,6 +184,13 @@ function ChatCard({
         {waitingSince(new Date(card.createdAt), now)}
       </p>
       <ChatText openLink={openLink}>{card.question}</ChatText>
+      {card.answerElsewhere === undefined ? null : (
+        <p>
+          <ExternalLink href={card.answerElsewhere.link}>
+            {messengerWords.card.answerElsewhere(row.source?.label ?? "Paperclip")}
+          </ExternalLink>
+        </p>
+      )}
       <div className="flex flex-wrap gap-2">
         {chosen === undefined ? null : (
           <StatusChip tone="success">

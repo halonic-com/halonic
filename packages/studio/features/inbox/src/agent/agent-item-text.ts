@@ -139,3 +139,11 @@ export function answeredLine(
   const at = decidedAt(new Date(answeredAt));
   return how === undefined ? `${who} at ${at}.` : `${who} at ${at}: ${how}.`;
 }
+
+/**
+ * The link on an item its source can't take an answer to here, which opens the item in the
+ * source (Nina's wording, HAL-18923): "Answer in Paperclip · Acme".
+ */
+export function answerElsewhereLine(source: MessagingSource | undefined): string {
+  return `Answer in ${source?.label ?? "Paperclip"}`;
+}

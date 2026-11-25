@@ -94,3 +94,30 @@ verifies("inbox.agent-inbox-items", () => {
     expect(buttons).toEqual(["Approve", "Reject", "Request changes"]);
   });
 });
+
+verifies("inbox.answer-elsewhere", () => {
+  it("links an item its source can't take an answer to, with no reply field", async () => {
+    const messaging = new FakeAgentMessaging({ now: () => asked });
+    const source = messaging.addSource({ label: "Paperclip · Acme", provider: "paperclip" });
+    const item = messaging.addInboxItem(source.id, {
+      question: "Sign the launch plan",
+      options: [],
+      answerElsewhere: { link: "https://paperclip.acme.test/ACME/issues/ACME-7" },
+    });
+    const [read] = await messaging.listSources();
+    const root = render(
+      <AgentItemCard
+        item={item}
+        source={read}
+        now={() => asked}
+        answer={(answer) => messaging.answer(item.id, answer)}
+        readAttachment={(attachment) => messaging.readAttachment(attachment)}
+      />,
+    );
+    const link = root.querySelector("a");
+    expect(link?.getAttribute("href")).toBe("https://paperclip.acme.test/ACME/issues/ACME-7");
+    expect(link?.textContent).toContain("Answer in Paperclip · Acme");
+    expect(root.querySelector("textarea")).toBeNull();
+    expect(root.querySelectorAll("button")).toHaveLength(0);
+  });
+});
