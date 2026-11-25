@@ -1,6 +1,7 @@
 import { agentsFeature } from "@halonicjs/studio-feature-agents";
 import { AgentReviewService, AgentsHostService } from "@halonicjs/studio-feature-agents/api";
 import { checkComputerFeature } from "@halonicjs/studio-feature-check-computer";
+import { connectionsFeature } from "@halonicjs/studio-feature-connections";
 import { filesFeature } from "@halonicjs/studio-feature-files";
 import { FilesHostService } from "@halonicjs/studio-feature-files/api";
 import { firstRunFeature } from "@halonicjs/studio-feature-first-run";
@@ -26,12 +27,14 @@ import {
   NewSkillHostService,
   SkillHostService,
 } from "@halonicjs/studio-feature-library/api";
+import { messengerFeature } from "@halonicjs/studio-feature-messenger";
 import { modelsFeature } from "@halonicjs/studio-feature-models";
 import {
   ModelKeysService,
   ModelsFilesService,
   NoLimitMemoryService,
 } from "@halonicjs/studio-feature-models/api";
+import { overviewFeature } from "@halonicjs/studio-feature-overview";
 import { pluginsFeature } from "@halonicjs/studio-feature-plugins";
 import { PluginsHostService } from "@halonicjs/studio-feature-plugins/api";
 import { remoteFeature } from "@halonicjs/studio-feature-remote";
@@ -39,6 +42,7 @@ import { routinesFeature } from "@halonicjs/studio-feature-routines";
 import { RoutinesHostService } from "@halonicjs/studio-feature-routines/api";
 import { runsFeature } from "@halonicjs/studio-feature-runs";
 import { RunsSourceService, SampleHintService } from "@halonicjs/studio-feature-runs/api";
+import { searchFeature } from "@halonicjs/studio-feature-search";
 import { settingsFeature } from "@halonicjs/studio-feature-settings";
 import {
   AssistantWorkspaceService,
@@ -68,15 +72,19 @@ import { FilesWithErrorsService, type ShellOptions } from "@halonicjs/studio-she
 export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = {
   features: [
     checkComputerFeature,
+    connectionsFeature,
     filesFeature,
     firstRunFeature,
     googleSetupFeature,
     inboxFeature,
     libraryFeature,
+    messengerFeature,
     modelsFeature,
+    overviewFeature,
     pluginsFeature,
     remoteFeature,
     runsFeature,
+    searchFeature,
     settingsFeature,
     sourceControlFeature,
     agentsFeature,
