@@ -3,6 +3,7 @@
 - Task: HAL-18010
 - Approval: Liam decided on HAL-18009 (option 1) that the Agent tools plugin may embed the Halonic engine through a `toolingUsesCore` exception in the layer table; HAL-18010 specifies it
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:GgAmbAAB3VDKXvHOQyFt6ojyS+WuhftEUmAcLE8mU6ABtwp5q7ZIELMZ0gRpwEgMhNlzNCP05g7MyrmVXajQBw==
 
 ## What changes
 
