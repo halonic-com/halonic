@@ -16,7 +16,9 @@ said: "Nothing shall hand a key over when a workspace opens." So nothing gave th
 - `services.paperclip-restore` (new): the keychain entry lists the real paths of the workspaces
   the person signed in from; opening one of them hands the key back, quietly, only when the
   address and company match the file now. A clone, a changed file and an entry saved before this
-  change get nothing. Disconnect deletes the whole entry.
+  change get nothing. Disconnect deletes the whole entry. Nothing is restored, and the agent host
+  isn't asked anything, until the person has trusted the workspace, so an untrusted folder still
+  starts nothing (`studio.untrusted-starts-nothing`).
 - The agent host's `POST /v1/paperclip/connections` answer also carries the workspace's real path
   and each connection's company, so Studio compares paths the way the host resolves them and
   compares the company with the file.
@@ -37,6 +39,8 @@ the new fields as well:
   test lists the workspace through a link and gets its real path.
 - `apps/agent-host/src/host.opened-workspaces.test.ts`: the connections answer for a folder the
   shell named now also holds its real path.
+- `apps/studio/src/studio/desktop-connections.test.ts`: `provideAgentConnections` now takes the
+  workspace's trust, so the test passes one; what it checks is unchanged.
 
 New tests: `paperclip-restore.test.ts` and `host-agent-connections-restore.test.ts` in
 `packages/studio/services/src/`.

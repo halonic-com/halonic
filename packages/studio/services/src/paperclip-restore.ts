@@ -57,6 +57,37 @@ export async function restorePaperclipKeys(options: PaperclipRestoreOptions): Pr
   return restored;
 }
 
+/** The open workspace's trust, as {@link restoreWhenTrusted} reads it. */
+export interface RestoreTrust {
+  /** Whether the last trust check found that the person trusted the workspace. */
+  isTrusted(): boolean;
+  /** Calls `listener` whenever a trust check starts or ends; returns the way to stop. */
+  subscribe(listener: () => void): () => void;
+}
+
+/**
+ * Runs `restore` once, as soon as the person has trusted the open workspace:
+ * at once when it is trusted already, else when a later check finds it
+ * trusted. Until then it asks the agent host nothing, so opening a folder
+ * nobody trusted starts nothing, the host included
+ * (`services.paperclip-restore`, `studio.untrusted-starts-nothing`).
+ *
+ * @param restore - never rejects, as `HostAgentConnections.restore` reports its own failures
+ * @returns the way to stop waiting
+ */
+export function restoreWhenTrusted(trust: RestoreTrust, restore: () => Promise<void>): () => void {
+  let started = false;
+  const startOnceTrusted = () => {
+    if (started || !trust.isTrusted()) return;
+    started = true;
+    stop();
+    void restore();
+  };
+  const stop = trust.subscribe(startOnceTrusted);
+  startOnceTrusted();
+  return stop;
+}
+
 /** Hands one connection's key back when its entry fits; whether it did. */
 async function restoreOne(
   options: PaperclipRestoreOptions,

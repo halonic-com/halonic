@@ -6,7 +6,7 @@ import type {
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import { paperclipKeyEntryText } from "./paperclip-key.ts";
-import { restorePaperclipKeys, sameWorkspace } from "./paperclip-restore.ts";
+import { restorePaperclipKeys, restoreWhenTrusted, sameWorkspace } from "./paperclip-restore.ts";
 
 // A made-up key: no real one appears in tests.
 const fakeKey = "acme-test-board-key";
@@ -200,6 +200,56 @@ verifies("services.paperclip-restore", () => {
       });
       expect(restored).toBe(0);
       expect(reported).toEqual([locked]);
+    });
+  });
+
+  describe("restoreWhenTrusted", () => {
+    /** A trust that a test sets, telling its listeners as a finished check does. */
+    function trustOf(trusted: boolean) {
+      const listeners = new Set<() => void>();
+      return {
+        trusted,
+        isTrusted() {
+          return this.trusted;
+        },
+        subscribe(listener: () => void) {
+          listeners.add(listener);
+          return () => void listeners.delete(listener);
+        },
+        set(value: boolean) {
+          this.trusted = value;
+          for (const listener of [...listeners]) listener();
+        },
+        listening: () => listeners.size,
+      };
+    }
+
+    it("restores at once in a workspace the person trusted", () => {
+      const trust = trustOf(true);
+      const restore = vi.fn(async () => {});
+      restoreWhenTrusted(trust, restore);
+      expect(restore).toHaveBeenCalledTimes(1);
+      expect(trust.listening()).toBe(0);
+    });
+
+    it("asks nothing while the workspace isn't trusted, and restores once when it is", () => {
+      const trust = trustOf(false);
+      const restore = vi.fn(async () => {});
+      restoreWhenTrusted(trust, restore);
+      trust.set(false);
+      expect(restore).not.toHaveBeenCalled();
+      trust.set(true);
+      trust.set(true);
+      expect(restore).toHaveBeenCalledTimes(1);
+      expect(trust.listening()).toBe(0);
+    });
+
+    it("stops waiting when told to", () => {
+      const trust = trustOf(false);
+      const restore = vi.fn(async () => {});
+      restoreWhenTrusted(trust, restore)();
+      trust.set(true);
+      expect(restore).not.toHaveBeenCalled();
     });
   });
 

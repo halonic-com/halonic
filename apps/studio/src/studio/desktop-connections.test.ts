@@ -65,7 +65,8 @@ verifies("studio.desktop-connections", () => {
   it("gives a page without the agent host no connections", () => {
     const services = new ServiceRegistry();
 
-    provideAgentConnections(services, undefined, "/work/acme");
+    const trusted = { isTrusted: () => true, subscribe: () => () => {} };
+    provideAgentConnections(services, undefined, "/work/acme", trusted);
 
     expect(services.has(AgentConnectionsService)).toBe(false);
   });
