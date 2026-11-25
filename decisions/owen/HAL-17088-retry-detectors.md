@@ -1,0 +1,22 @@
+# Decision: a new core package for the retry detectors
+
+- Approval: Liam approves the new package on HAL-17088 (step 1 of HAL-17073, the retry policy service). It changes `tooling/check/policy.json`, a trust root, so both guardians sign: Julian, then Liam
+- Kind: user-visible
+
+## What changes
+
+A new core package, `@halonicjs/retry-detectors`, scores a writer attempt's chance of failing
+without a model call: once at the end of the run and at minute 3 while it runs. `pnpm new package`
+added `@halonicjs/retry-detectors` at the end of `coreOrder` in `tooling/check/policy.json`. The
+package depends on no other core package, so its place in the order doesn't matter yet. Nothing
+else in the guard changes.
+
+## Tests
+
+No test is weakened. The package's own tests check the TypeScript port against the scores the
+Python model gave the export's sample attempts, under the new requirements
+`retry-detectors.end-of-run`, `retry-detectors.in-run` and `retry-detectors.calibration`.
+
+## Covers
+
+- tooling/check/
