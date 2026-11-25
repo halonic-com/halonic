@@ -39,3 +39,10 @@ Entries hold numbers and choices only, never the prompt, the diff or check outpu
 writes them through a `DecisionLog` (one JSON line each, `decisionLine`); `readDecisionLines`
 reads a log back for retraining, and `weeklyMetrics` counts passes, reworks and fallbacks per
 week (Monday, UTC).
+
+## Routing guard
+
+`routeForTask` runs before the retry policy: a task with the `opus-only` label or a risk-area
+label (security, trust, sandbox, schema, secrets, sign-in, oauth, keychain), or one touching a
+repository that isn't public, stays on Opus and never goes to an open model. It fails closed:
+an unknown visibility or no repository at all also keeps the task on Opus.

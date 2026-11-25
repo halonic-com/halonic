@@ -36,4 +36,12 @@ export {
   type LogisticModel,
   scoreWith,
 } from "./logistic-model.ts";
+export {
+  type OpusOnlyReason,
+  opusOnlyLabels,
+  type RepositoryVisibility,
+  type RoutingDecision,
+  type RoutingTask,
+  routeForTask,
+} from "./routing-guard.ts";
 export { type WeekMetrics, weeklyMetrics, weekStart } from "./weekly-metrics.ts";
