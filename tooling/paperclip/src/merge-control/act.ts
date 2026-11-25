@@ -37,6 +37,12 @@ export function writesOf(action: MergeAction, repo: string): QueueWrite[] {
       return [{ kind: action.kind, repo, runId: action.runId }];
     case "comment":
       return [{ kind: "comment", repo, number: action.number, body: action.body }];
+    case "reopen":
+      return [
+        { kind: "comment", repo, number: action.number, body: action.comment },
+        { kind: "close", pullId: action.pullId },
+        { kind: "reopen", pullId: action.pullId },
+      ];
     // The branch credential and the wake path come in later pull requests (ADR).
     case "update-branch":
     case "wake":
@@ -52,6 +58,7 @@ export function actionName(action: MergeAction): string {
     case "dequeue":
     case "update-branch":
     case "comment":
+    case "reopen":
       return `${action.kind} #${action.number}`;
     case "rerun":
     case "rerun-failed-jobs":
@@ -59,6 +66,18 @@ export function actionName(action: MergeAction): string {
       return `${action.kind} run ${action.runId}`;
     case "wake":
       return `wake ${action.agent} on ${action.task}`;
+  }
+}
+
+/** Sends one write; a reopen is tried twice, as a failed one leaves the pull request closed. */
+async function sendOf(client: QueueWriteClient, write: QueueWrite): Promise<void> {
+  try {
+    await client.send(write);
+  } catch (error) {
+    if (write.kind !== "reopen") {
+      throw error;
+    }
+    await client.send(write);
   }
 }
 
@@ -84,7 +103,7 @@ export async function act(
     }
     try {
       for (const write of writes) {
-        await options.client.send(write);
+        await sendOf(options.client, write);
       }
       results.push({ action: name, outcome: "sent" });
     } catch (error) {

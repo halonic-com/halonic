@@ -6,7 +6,7 @@ import {
   changeRequestOf,
 } from "./approval.ts";
 import { type CiOk, ciOkOf, requiredWorkflowProblems } from "./checks.ts";
-import { halonicLabel, paperclipLabel } from "./facts-pulls.ts";
+import { isBuiltOn } from "./facts-pulls.ts";
 import type { GatePull, MergeSnapshot, QueueEntry } from "./snapshot.ts";
 import type { MergeSettings } from "./state.ts";
 
@@ -25,8 +25,9 @@ export interface GateRow {
   readonly changeRequest: ChangeRequest | null;
   readonly ci: CiOk;
   readonly foreign: boolean;
+  /** Labelled `built-on:paperclip` or `built-on:halonic` (HAL-18470); the flake reruns read it. */
   readonly paperclip: boolean;
-  /** One the fill may add: `built-on:paperclip`, or `built-on:halonic` with a verified `fast-track`. */
+  /** One the fill may add: labelled like `paperclip`. */
   readonly candidate: boolean;
   readonly reasons: readonly string[];
   readonly pass: boolean;
@@ -52,17 +53,6 @@ export function fastTrackVerified(pull: GatePull, settings: MergeSettings): bool
   const by = pull.fastTrackBy;
   return (
     pull.labels.includes(fastTrackLabel) && by !== null && settings.fastTrackLabellers.includes(by)
-  );
-}
-
-/**
- * Built in Halonic, it's a candidate only with a verified `fast-track`
- * (board, HAL-18304); the label alone never is.
- */
-function isCandidate(pull: GatePull, settings: MergeSettings): boolean {
-  return (
-    pull.labels.includes(paperclipLabel) ||
-    (pull.labels.includes(halonicLabel) && fastTrackVerified(pull, settings))
   );
 }
 
@@ -108,8 +98,8 @@ export function gateRow(snapshot: MergeSnapshot, pull: GatePull, settings: Merge
     changeRequest,
     ci,
     foreign,
-    paperclip: pull.labels.includes(paperclipLabel),
-    candidate: isCandidate(pull, settings),
+    paperclip: isBuiltOn(pull.labels),
+    candidate: isBuiltOn(pull.labels),
     reasons,
     pass: reasons.length === 0 && pull.mergeable === "MERGEABLE",
   };

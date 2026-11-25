@@ -4,7 +4,8 @@ import { gitHubGraphql } from "../snapshot/graphql.ts";
 /**
  * Merge control's one way to change GitHub, with the queue credential only
  * (ADR on HAL-17700): the two merge-queue mutations, a workflow run's rerun,
- * rerun of its failed jobs and cancel, and a comment on a pull request, all
+ * rerun of its failed jobs and cancel, a comment on a pull request, and
+ * closing and reopening one for the label-noop self-fix (HAL-18470), all
  * to `https://api.github.com` and only on the configured repositories.
  * Every request is checked against that list before it is sent; anything
  * else is refused and nothing goes out. The token is asked for at each send,
@@ -21,7 +22,7 @@ export type QueueWrite =
       readonly head: string;
       readonly jump: boolean;
     }
-  | { readonly kind: "dequeue"; readonly pullId: string }
+  | { readonly kind: "dequeue" | "close" | "reopen"; readonly pullId: string }
   | {
       readonly kind: "rerun" | "rerun-failed-jobs" | "cancel-run";
       readonly repo: string;
@@ -42,10 +43,20 @@ export const enqueueDocument =
 export const dequeueDocument =
   "mutation Dequeue($id: ID!) { dequeuePullRequest(input: { id: $id }) { mergeQueueEntry { position } } }";
 
+/** Closes a pull request, right before `reopenDocument` (HAL-18470). */
+export const closeDocument =
+  "mutation Close($id: ID!) { closePullRequest(input: { pullRequestId: $id }) { pullRequest { state } } }";
+
+/** Reopens a pull request. */
+export const reopenDocument =
+  "mutation Reopen($id: ID!) { reopenPullRequest(input: { pullRequestId: $id }) { pullRequest { state } } }";
+
 /** Each allowed GraphQL document with the variables it takes, no others. */
 const documents: ReadonlyMap<string, readonly string[]> = new Map([
   [enqueueDocument, ["expectedHeadOid", "jump", "pullRequestId"]],
   [dequeueDocument, ["id"]],
+  [closeDocument, ["id"]],
+  [reopenDocument, ["id"]],
 ]);
 
 /** The REST paths a POST may go to, after `/repos/<owner>/<name>`. */
@@ -73,7 +84,7 @@ function graphqlReason(body: string | undefined): string | undefined {
   const { query, variables, ...other } = (parsed ?? {}) as Record<string, unknown>;
   const allowed = typeof query === "string" ? documents.get(query) : undefined;
   if (allowed === undefined || Object.keys(other).length > 0) {
-    return "a GraphQL document that isn't the enqueue or dequeue mutation";
+    return "a GraphQL document that isn't the enqueue, dequeue, close or reopen mutation";
   }
   const names = Object.keys((variables ?? {}) as object).sort();
   if (names.join(",") !== allowed.join(",")) {
@@ -84,7 +95,7 @@ function graphqlReason(body: string | undefined): string | undefined {
 
 /**
  * Why a request is outside the list, or undefined when it is allowed: a POST
- * to the GraphQL endpoint with one of the two mutations, or a POST to one of
+ * to the GraphQL endpoint with one of the four mutations, or a POST to one of
  * the REST paths on one of `repos`.
  */
 export function refusal(request: WriteRequest, repos: readonly string[]): string | undefined {
@@ -119,6 +130,8 @@ export interface QueueWriteClient {
   send(write: QueueWrite): Promise<void>;
 }
 
+const mutations = { dequeue: dequeueDocument, close: closeDocument, reopen: reopenDocument };
+
 function requestOf(write: QueueWrite): WriteRequest {
   switch (write.kind) {
     case "enqueue":
@@ -131,10 +144,12 @@ function requestOf(write: QueueWrite): WriteRequest {
         }),
       };
     case "dequeue":
+    case "close":
+    case "reopen":
       return {
         url: gitHubGraphql,
         method: "POST",
-        body: JSON.stringify({ query: dequeueDocument, variables: { id: write.pullId } }),
+        body: JSON.stringify({ query: mutations[write.kind], variables: { id: write.pullId } }),
       };
     case "rerun":
     case "rerun-failed-jobs":

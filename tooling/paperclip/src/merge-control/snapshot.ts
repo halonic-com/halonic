@@ -78,7 +78,7 @@ export interface CiOkRun {
   readonly failedJobs: readonly FailedJob[];
 }
 
-/** One open pull request the gate looks at: queued, or labelled `built-on:paperclip`. */
+/** One open pull request the gate looks at: queued, or labelled `built-on:paperclip` or `built-on:halonic`. */
 export interface GatePull {
   readonly number: number;
   /** GraphQL node id, for the queue mutations. */
@@ -176,7 +176,7 @@ export interface RunnerCapacity {
 export interface MergeSnapshot {
   readonly takenAt: string;
   readonly queue: readonly QueueEntry[];
-  /** Queued pull requests and open `built-on:paperclip` ones. */
+  /** Queued pull requests and open `built-on:paperclip` or `built-on:halonic` ones. */
   readonly pulls: readonly GatePull[];
   /**
    * Every open pull request: stacks for the fill order, heads for stale runs

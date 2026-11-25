@@ -57,6 +57,15 @@ function undo(before: MergeState, state: MergeState, action: MergeAction): Merge
       };
     case "enqueue":
       return { ...state, lastQueue: state.lastQueue.filter((number) => number !== action.number) };
+    case "reopen":
+      return {
+        ...state,
+        labelNoopReopened: restore(
+          before.labelNoopReopened,
+          state.labelNoopReopened,
+          String(action.number),
+        ),
+      };
     case "cancel-run":
     case "update-branch":
     case "wake":

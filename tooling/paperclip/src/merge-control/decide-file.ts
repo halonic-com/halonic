@@ -18,8 +18,8 @@ import {
  * so a rule fix reaches it with the next plugin version.
  */
 
-/** The shape of the call; a change that breaks the Merger's side raises it. */
-export const decideFileFormat = 1;
+/** The shape of the call; a change that breaks the Merger's side raises it (2: the `reopen` action, HAL-18470). */
+export const decideFileFormat = 2;
 
 /**
  * Stands for the bundle's own hash until `build:plugin` writes the file:
@@ -72,7 +72,9 @@ export function decidePass(input: DecideFileInput): DecideFileAnswer {
   if (Number.isNaN(now.getTime())) {
     throw new Error(`merge rules: "now" isn't a time: ${JSON.stringify(input.now)}`);
   }
-  const state = input.state ?? emptyMergeState;
+  // A state saved by older rules lacks the fields added since (such as
+  // `labelNoopReopened`); fill them in, as `merge-control-job.ts` does.
+  const state: MergeState = { ...emptyMergeState, ...input.state };
   if (state.version !== emptyMergeState.version) {
     throw new Error(
       `merge rules: state version ${String(state.version)}, expected ${emptyMergeState.version}`,
