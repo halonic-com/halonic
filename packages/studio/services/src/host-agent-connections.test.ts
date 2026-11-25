@@ -17,10 +17,11 @@ const acmeRow: PaperclipConnectionRow = {
   name: "acme",
   label: "Paperclip · Acme",
   address,
+  company: "acme",
   state: { kind: "online", asOf: "2026-11-24T14:00:00.000Z" },
 };
-/** The row as Settings gets it: no file name. */
-const { name: _name, ...acmeListed } = acmeRow;
+/** The row as Settings gets it: no file name or company. */
+const { name: _name, company: _company, ...acmeListed } = acmeRow;
 const connected: PaperclipSignInState = {
   status: "connected",
   connection: "acme",
@@ -48,8 +49,8 @@ class FakeSignIn {
     expiresAt: new Date(startedAt + 600_000).toISOString(),
   };
 
-  async connections() {
-    return this.rows;
+  async listed() {
+    return { workspace: "/work/acme", connections: this.rows };
   }
   async start(atAddress: string, connection?: string, options?: { newConnection?: boolean }) {
     this.starts.push({ address: atAddress, connection, ...options });
@@ -86,6 +87,7 @@ function setUp(options: { setFails?: boolean; revoked?: boolean } = {}) {
   const connections = new HostAgentConnections({
     signIn,
     host: {
+      handOver: async () => {},
       disconnect: async (ref) => {
         disconnected.push(ref);
         return { revoked: options.revoked ?? true };
@@ -152,6 +154,7 @@ verifies("services.host-agent-connections", () => {
         key: fakeKey,
         address,
         company: "acme",
+        workspaces: ["/work/acme"],
       });
       expect(signIn.confirms).toEqual(["sign-in-1"]);
       expect(signIn.cancels).toEqual([]);
@@ -231,7 +234,7 @@ verifies("services.host-agent-connections", () => {
     it("still connects when the list fails after the key is kept", async () => {
       const { signIn, connections } = setUp();
       signIn.states = [connected];
-      signIn.connections = async () => {
+      signIn.listed = async () => {
         throw new Error("The host can't be reached.");
       };
       const { result } = await resultOf(connections);

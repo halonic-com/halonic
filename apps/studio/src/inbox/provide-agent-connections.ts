@@ -14,8 +14,11 @@ import {
  * Provides the desktop engine's connections for the open workspace, so
  * Settings › Connections shows and the Connect dialog signs in through the
  * agent host (ADR 2026-11-24, agent messaging, "Sign-in"). The approved key
- * goes straight to the keychain's tokens. Without an agent host nothing is
- * provided, and Settings shows no Connections section.
+ * goes straight to the keychain's tokens. Once provided, it gives the host
+ * back the keys the person signed in with in this workspace, quietly, so a
+ * restart doesn't ask them to sign in again (`services.paperclip-restore`).
+ * Without an agent host nothing is provided, and Settings shows no
+ * Connections section.
  *
  * @param location - the workspace's real path, which the host binds keys to
  */
@@ -31,16 +34,16 @@ export function provideAgentConnections(
     set: (name: string, value: string) => services.get(tokenStoreKey).set(name, value),
     remove: (name: string) => services.get(tokenStoreKey).remove(name),
   };
-  services.provide(
-    AgentConnectionsService,
-    new HostAgentConnections({
-      signIn: new AgentHostPaperclipSignIn(transport, location),
-      host: new AgentHostPaperclipKey(transport),
-      tokens,
-      workspace: location,
-      wait: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-      now: Date.now,
-      report: (error) => console.error("Paperclip sign-in", error),
-    }),
-  );
+  const connections = new HostAgentConnections({
+    signIn: new AgentHostPaperclipSignIn(transport, location),
+    host: new AgentHostPaperclipKey(transport),
+    tokens,
+    workspace: location,
+    wait: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    now: Date.now,
+    report: (error) => console.error("Paperclip sign-in", error),
+  });
+  services.provide(AgentConnectionsService, connections);
+  // Not awaited: the workspace opens at once, and a row shows Sign in again until its key is back.
+  void connections.restore();
 }

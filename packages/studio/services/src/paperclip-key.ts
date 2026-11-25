@@ -11,6 +11,12 @@ export interface PaperclipKeyEntry {
   readonly address: string;
   /** The Paperclip company's ID the key was made for. */
   readonly company: string;
+  /**
+   * The real paths of the workspaces the person signed in from with this key,
+   * as the agent host resolved them; only these get it back when they open
+   * (`services.paperclip-restore`). An entry saved before this list existed has none.
+   */
+  readonly workspaces?: readonly string[];
 }
 
 /**
@@ -28,17 +34,23 @@ export function paperclipKeyTokenName(connection: string): string {
 }
 
 /**
- * The text the keychain keeps for `entry`: the key with the address and company it was made for.
+ * The text the keychain keeps for `entry`: the key with the address and company it was made for,
+ * and the workspaces it was signed in from.
  *
  * @example
  * await tokens.set(paperclipKeyTokenName("halonic"), paperclipKeyEntryText(entry));
  */
 export function paperclipKeyEntryText(entry: PaperclipKeyEntry): string {
-  return JSON.stringify({ key: entry.key, address: entry.address, company: entry.company });
+  const { key, address, company, workspaces = [] } = entry;
+  return JSON.stringify({ key, address, company, workspaces });
 }
 
-/** The entry the keychain's `text` holds, or `undefined` when it isn't one; never throws with the text. */
-function entryOf(text: string): PaperclipKeyEntry | undefined {
+/**
+ * The entry the keychain's `text` holds, or `undefined` when it isn't one;
+ * never throws with the text. A `workspaces` that isn't a list of texts
+ * counts as none, so the entry restores nothing.
+ */
+export function paperclipKeyEntryOf(text: string): PaperclipKeyEntry | undefined {
   let value: unknown;
   try {
     value = JSON.parse(text);
@@ -46,11 +58,15 @@ function entryOf(text: string): PaperclipKeyEntry | undefined {
     return undefined;
   }
   if (typeof value !== "object" || value === null) return undefined;
-  const { key, address, company } = value as Record<string, unknown>;
+  const { key, address, company, workspaces } = value as Record<string, unknown>;
   if (typeof key !== "string" || typeof address !== "string" || typeof company !== "string") {
     return undefined;
   }
-  return { key, address, company };
+  const listed =
+    Array.isArray(workspaces) && workspaces.every((each) => typeof each === "string")
+      ? (workspaces as string[])
+      : [];
+  return { key, address, company, workspaces: listed };
 }
 
 /** What Connect did: handed the key to the engine, or found none the person signed in with. */
@@ -60,9 +76,9 @@ export type PaperclipConnectResult = "connected" | "sign-in-needed";
  * Connect, the person's own action for one Paperclip connection
  * (`services.paperclip-connect`): reads the connection's key from the
  * keychain and hands it, with the address and company it was made for, to
- * the agent host, which keeps it in memory only. Opening a workspace never
- * calls this, so a connection file alone sends nothing anywhere. The key
- * never comes back from it.
+ * the agent host, which keeps it in memory only. Opening a workspace hands a
+ * key over only through `restorePaperclipKeys`, so a connection file
+ * alone sends nothing anywhere. The key never comes back from it.
  *
  * The host binds the key to the workspace it is handed over for, so
  * another workspace with a file of the same name gets no key until the
@@ -80,9 +96,16 @@ export async function connectPaperclip(
   ref: PaperclipConnectionRef,
 ): Promise<PaperclipConnectResult> {
   const text = await tokens.get(paperclipKeyTokenName(ref.connection));
-  const entry = text === null ? undefined : entryOf(text);
+  const entry = text === null ? undefined : paperclipKeyEntryOf(text);
   if (entry === undefined) return "sign-in-needed";
-  await host.handOver({ workspace: ref.workspace, connection: ref.connection, ...entry });
+  const { key, address, company } = entry;
+  await host.handOver({
+    workspace: ref.workspace,
+    connection: ref.connection,
+    key,
+    address,
+    company,
+  });
   return "connected";
 }
 

@@ -91,9 +91,10 @@ type ReadBody = Infer<typeof readBody>;
  *   `since`, kept in memory only (`agent-host.team-activity-routes`).
  * - `POST /v1/messaging/pull-requests` answers `{ items }`: each source's
  *   `PullRequestList`, under the team hub's freshness rules.
- * - `POST /v1/paperclip/connections` answers `{ connections }`: the
- *   workspace's connection files with their labels, addresses and states,
- *   for Settings › Connections. No key.
+ * - `POST /v1/paperclip/connections` answers `{ workspace, connections }`:
+ *   the workspace's real path, as the host binds keys to it, and its
+ *   connection files with their labels, addresses, companies and states,
+ *   for Settings › Connections and Studio's restore of a saved sign-in. No key.
  * - `POST /v1/paperclip/disconnect` with `{ connection }` revokes the key,
  *   then forgets it and deletes the cache even if the revoke failed, in this
  *   workspace and every other one that holds the same key, and answers
@@ -171,6 +172,7 @@ export function messagingRoutes(deps: MessagingRouteDeps): HostRoute[] {
       if (!response.writableEnded && !response.destroyed) sendJson(response, 200, changes);
     }),
     inWorkspace("/v1/paperclip/connections", connectionsBody, async (messaging) => ({
+      workspace: messaging.workspace,
       connections: await messaging.connections(),
     })),
     route("/v1/paperclip/disconnect", disconnectBody, async (body, response) => {

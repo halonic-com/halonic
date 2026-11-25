@@ -15,22 +15,24 @@ const started = {
 
 verifies("agent-host-client.paperclip-sign-in", () => {
   describe("AgentHostPaperclipSignIn", () => {
-    it("lists the workspace's connections", async () => {
+    it("lists the workspace's connections, with the real path the host resolved", async () => {
       const row = {
         id: "paperclip:acme",
         name: "acme",
         label: "Paperclip · Acme",
         address,
+        company: "acme-company",
         state: { kind: "signed-out" },
       };
-      const host = new FakeHost().answer(
-        "POST /v1/paperclip/connections",
-        ok({ connections: [row] }),
-      );
-      expect(await new AgentHostPaperclipSignIn(host, workspace).connections()).toEqual([row]);
-      expect(host.calls).toEqual([
-        { route: "POST /v1/paperclip/connections", body: { workspace } },
-      ]);
+      const listed = { workspace: "/real/acme", connections: [row] };
+      const host = new FakeHost().answer("POST /v1/paperclip/connections", ok(listed));
+      const signIn = new AgentHostPaperclipSignIn(host, workspace);
+      expect(await signIn.listed()).toEqual(listed);
+      expect(await signIn.connections()).toEqual([row]);
+      expect(host.calls).toContainEqual({
+        route: "POST /v1/paperclip/connections",
+        body: { workspace },
+      });
     });
 
     it("starts with the workspace and the address only, and answers the host's start", async () => {

@@ -1,6 +1,8 @@
 import type {
   AgentHostPaperclipSignIn,
+  PaperclipConnectionList,
   PaperclipConnectionRef,
+  PaperclipKeyHandOver,
   PaperclipSignInState,
 } from "@halonicjs/adapter-agent-host-client";
 import type { MessagingId, TokenStore } from "@halonicjs/ports";
@@ -13,9 +15,11 @@ import type {
 } from "./agent-connections.ts";
 import {
   disconnectPaperclip,
+  paperclipKeyEntryOf,
   paperclipKeyEntryText,
   paperclipKeyTokenName,
 } from "./paperclip-key.ts";
+import { restorePaperclipKeys, sameOrigin, sameWorkspace } from "./paperclip-restore.ts";
 
 /** How often a waiting sign-in asks the engine whether the board approved it. */
 export const signInPollMs = 2000;
@@ -25,15 +29,16 @@ export interface HostAgentConnectionsOptions {
   /** The agent host's sign-in and connection list for the open workspace. */
   readonly signIn: Pick<
     AgentHostPaperclipSignIn,
-    "connections" | "start" | "poll" | "confirm" | "cancel"
+    "listed" | "start" | "poll" | "confirm" | "cancel"
   >;
-  /** The agent host's Disconnect, which revokes the key and forgets it. */
+  /** The agent host's hand-over, for a restored key, and its Disconnect, which revokes the key and forgets it. */
   readonly host: {
+    handOver(entry: PaperclipKeyHandOver): Promise<void>;
     disconnect(ref: PaperclipConnectionRef): Promise<{ revoked: boolean }>;
   };
   /** The keychain's tokens, where each connection's key is kept. */
   readonly tokens: Pick<TokenStore, "get" | "set" | "remove">;
-  /** The open workspace's real path. */
+  /** The open workspace's path, as Studio names it to the host. */
   readonly workspace: string;
   /** Waits between two polls: a timer in the app; tests pass one they move on themselves. */
   readonly wait: (ms: number) => Promise<void>;
@@ -54,20 +59,25 @@ export interface HostAgentConnectionsOptions {
  * the write or the confirm fails, it puts back the keychain entry held
  * before, if any, and cancels the sign-in, so the host revokes the new key
  * and puts back its old one, and the sign-in ends as `key-not-saved`.
+ *
+ * The keychain entry names the workspaces the person signed in from, so
+ * {@link HostAgentConnections.restore} can give the key back when one of them
+ * opens again (`services.paperclip-restore`).
  */
 export class HostAgentConnections implements AgentConnections {
   readonly #options: HostAgentConnectionsOptions;
   readonly #listeners = new Set<() => void>();
   /** Each listed connection's file name, by its ID, for Sign in again and Disconnect. */
   readonly #names = new Map<MessagingId, string>();
+  /** The workspace's real path, as the host last listed it. */
+  #realWorkspace: string | undefined;
 
   constructor(options: HostAgentConnectionsOptions) {
     this.#options = options;
   }
 
   async list(): Promise<readonly AgentConnection[]> {
-    const rows = await this.#options.signIn.connections();
-    for (const row of rows) this.#names.set(row.id, row.name);
+    const { connections: rows } = await this.#listed();
     return rows.map(({ id, label, address, state, userName }) => ({
       id,
       provider: "paperclip",
@@ -76,6 +86,18 @@ export class HostAgentConnections implements AgentConnections {
       state,
       ...(userName === undefined ? {} : { userName }),
     }));
+  }
+
+  /**
+   * Gives the host back the keys the person signed in with in this workspace,
+   * once, when it opens (`services.paperclip-restore`). It never throws or
+   * asks anything; a failure is reported and leaves that row on Sign in again.
+   */
+  async restore(): Promise<void> {
+    const { tokens, host, workspace, report } = this.#options;
+    const listed = () => this.#listed();
+    const restored = await restorePaperclipKeys({ listed, tokens, host, workspace, report });
+    if (restored > 0) this.#changed();
   }
 
   subscribe(listener: () => void): () => void {
@@ -158,9 +180,10 @@ export class HostAgentConnections implements AgentConnections {
     const { tokens, signIn, report } = this.#options;
     const { connection: name, key, address, company } = state;
     const tokenName = paperclipKeyTokenName(name);
-    const entry = paperclipKeyEntryText({ key, address, company });
     // Read first, so a Sign in again that fails leaves the connection its old key (Julian, HAL-18048).
     const before = await tokens.get(tokenName).catch(failed(report));
+    const workspaces = before === false ? [] : this.#workspacesWith(before, { address, company });
+    const entry = paperclipKeyEntryText({ key, address, company, workspaces });
     const written =
       before !== false && (await tokens.set(tokenName, entry).then(() => true, failed(report)));
     const confirmed = written && (await this.#confirm(signInId));
@@ -199,6 +222,32 @@ export class HostAgentConnections implements AgentConnections {
     });
     if (first !== undefined) return first;
     return await signIn.confirm(signInId).catch(failed(report));
+  }
+
+  /** The host's list, keeping each row's file name and the workspace's real path. */
+  async #listed(): Promise<PaperclipConnectionList> {
+    const listed = await this.#options.signIn.listed();
+    this.#realWorkspace = listed.workspace;
+    for (const row of listed.connections) this.#names.set(row.id, row.name);
+    return listed;
+  }
+
+  /**
+   * The workspaces a new key's entry names: this one, and those the entry
+   * held `before` named when it was made for the same address and company.
+   * A key for another address or company starts the list again.
+   */
+  #workspacesWith(before: string | null, madeFor: { address: string; company: string }): string[] {
+    // Settings lists the connections before any sign-in, so the real path is known by now.
+    const here = this.#realWorkspace ?? this.#options.workspace;
+    const old = before === null ? undefined : paperclipKeyEntryOf(before);
+    const sameKeyPlace =
+      old !== undefined &&
+      sameOrigin(old.address, madeFor.address) &&
+      old.company === madeFor.company;
+    const kept = sameKeyPlace ? (old.workspaces ?? []) : [];
+    const others = kept.filter((each) => !sameWorkspace(each, here));
+    return [...others, here];
   }
 
   #now(): number {
