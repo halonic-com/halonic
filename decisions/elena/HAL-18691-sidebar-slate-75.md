@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-10 (the board asked on 25 Nov, 16:38 UTC for the sidebar a little darker, "slate-75 for instance", including the frame; built on HAL-18691)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4Cwn6Ulgi9GTrUBSfIDEP22PU5tteftthiFy+iV3YcYFLV5QxZt4vztqGI6KbbKE2NX5f6dus8lOh29/1yjFBQ==
 
 `shell.focused-apps` said a focused app's window sits on the approved frame, slate-50 in light.
 The board asked for the sidebar, frame included, a little darker: slate-75, halfway between
