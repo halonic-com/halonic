@@ -222,6 +222,26 @@ export class Messenger {
     return { outcome: "sent", message: result.message };
   }
 
+  /**
+   * Sends exactly `body` to a conversation's lead, for a box outside the Messenger, such as quick
+   * ask (requirement `messenger.send-text`). It leaves the conversation's draft, its waiting files
+   * and its picked agents as they are, so what the person typed in the Messenger stays theirs.
+   * Blank text, or a source that is offline or signed out, sends nothing, as with
+   * {@link Messenger.sendDraft}.
+   */
+  async sendText(
+    conversation: MessagingId,
+    body: string,
+    row?: ConversationRow,
+  ): Promise<DraftOutcome> {
+    if (body.trim() === "") return { outcome: "kept", reason: "blank" };
+    const refusal = row === undefined ? undefined : refusalOf(row);
+    if (refusal !== undefined) return { outcome: "kept", reason: refusal };
+    const result = await this.messaging.send(conversation, body);
+    if (result.outcome === "refused") return { outcome: "kept", reason: result.reason };
+    return { outcome: "sent", message: result.message };
+  }
+
   private async send(conversation: MessagingId, body: string): Promise<SendResult> {
     const outgoing = await this.files.outgoing(conversation);
     const to = this.named(conversation);
