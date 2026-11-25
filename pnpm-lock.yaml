@@ -303,9 +303,6 @@ importers:
       '@changesets/git':
         specifier: 'catalog:'
         version: 4.0.1(patch_hash=21dc06947411909ed9f92f895278221e717d5caeca25628e1eea1821604c9173)
-      '@halonicjs/target-cloudflare-deploy':
-        specifier: workspace:*
-        version: link:packages/targets/cloudflare/deploy
       node:
         specifier: runtime:^26.12.0
         version: runtime:26.13.0

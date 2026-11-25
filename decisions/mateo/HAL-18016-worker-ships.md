@@ -6,7 +6,7 @@
 ## What changes
 
 - `check.tooling-dev-uses-target-runtimes`: the repository's root package (`@halonicjs/root`) may list a target's `deploy` package as a dev dependency. Every other tooling package still may not, and the root still may not take one as a runtime dependency.
-- The root `package.json` dev-depends on `@halonicjs/target-cloudflare-deploy`.
+- The root `package.json` dev-depends on `@halonicjs/target-cloudflare-deploy` in the next pull request, once this rule is on `main` (the base commit's copy of the rules checks each pull request).
 
 ## Why
 
@@ -19,3 +19,4 @@ HAL-18016: `halonic deploy` loads a target by package name (`import("@halonicjs/
 ## Covers
 
 - check.tooling-dev-uses-target-runtimes
+- tooling/check/
