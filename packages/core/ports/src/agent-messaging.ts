@@ -152,6 +152,22 @@ export interface Message {
    * unread, a preview or a notification.
    */
   automatic?: boolean;
+  /**
+   * Only on an agent's message: the full answer its short reply links, a document on the
+   * conversation's own work. Absent when the reply links none, or when the source couldn't read it.
+   */
+  fullAnswer?: FullAnswer;
+}
+
+/**
+ * The full answer behind an agent's short reply. `markdown` is written by the agent, so apps
+ * render it under the same rules as {@link Message.body}.
+ */
+export interface FullAnswer {
+  /** The document's key on the conversation's work, such as `full-answer`. */
+  key: string;
+  title: string;
+  markdown: string;
 }
 
 /** One answer an inbox item offers. */

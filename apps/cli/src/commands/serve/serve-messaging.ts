@@ -54,7 +54,7 @@ export interface ServeMessagingOptions {
   cacheFolder: string;
   /** Hears every provider failure the server carries on past. */
   report: (failure: MessagingFailure) => void;
-  /** Says which cache file was broken and read as missing. */
+  /** Says which cache file was broken and read as missing, and which optional read failed. */
   warn: (message: string) => void;
   /** The `fetch` the providers send with; the global one by default. */
   fetch?: typeof fetch;
@@ -127,6 +127,7 @@ async function storedKeyProvider(
     connection,
     company: madeFor.company,
     label: `Paperclip · ${file.label}`,
+    warn: options.warn,
     ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
     ...(options.now === undefined ? {} : { now: options.now }),
   });

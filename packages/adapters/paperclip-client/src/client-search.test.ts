@@ -147,6 +147,8 @@ verifies("agent-host.paperclip-key", () => {
         "updateChannel",
         // Channel work lines (HAL-18120), pinned in channel-work.test.ts.
         "listTaskActivity",
+        // Full answers (HAL-18756), pinned in full-answers.test.ts.
+        "readFullAnswer",
         "readAgentAvatar",
         // Runs (HAL-18650), pinned in team-runs.test.ts; run control (HAL-18695) in run-control.test.ts.
         "listLiveRuns",
