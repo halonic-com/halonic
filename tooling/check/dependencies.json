@@ -520,6 +520,5 @@
       "useInstead": "@halonicjs/schema-kit for validation",
       "cloudRuntime": true
     }
-  },
-  "images": {}
+  }
 }

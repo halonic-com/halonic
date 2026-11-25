@@ -2,14 +2,16 @@
 
 - Task: HAL-18533
 - Approval: a trust-root change written by Owen on Liam's decision (option A) on HAL-18533; Julian reviews first, then Julian and Liam sign as the two guardians
-- Kind: internal
+- Kind: user-visible
 
 ## What changes
 
 - `tooling/check/dependencies.json` gets an `images` section, keyed by a Dockerfile's path from the
   repo root: its `base` image (full `FROM` reference with digest, and a reason), its `artifacts`
   (`version`, `sha256`, `url`, `reason` or `partOf`, `approvedOn`) and, optionally, the Debian
-  packages it installs (`aptPackages`). It is empty on `main`: no Dockerfile under `packages/` yet.
+  packages it installs (`aptPackages`). The section is optional and left out here (no Dockerfile
+  under `packages/` yet): the merge base's copy of the guard reads this file strictly and would
+  refuse a key it doesn't know. #5907 adds the first entry.
 - A new rule, `images`, fails on a Dockerfile under `packages/` without an entry, and for a listed
   one on: a `FROM` without a digest or other than `base`; a remote `ADD` without
   `--checksum=sha256:`, not listed by URL, with a different sha256, or whose URL doesn't contain the
