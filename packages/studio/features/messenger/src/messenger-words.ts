@@ -51,8 +51,8 @@ export const messengerWords = {
     "too-large": () => filesNotSent,
     "unsupported-type": () => filesNotSent,
     "bad-answer": () => "This can't be sent in this chat. Your message stays here and isn't sent.",
-    // Sending from this box can't get these two yet: it sends no `to` and has no channels.
-    // The channels composer (phase 2, S4) gives them their own words.
+    // Sending from this box can't get these two: its `to` holds only the channel's members, and
+    // a source without channels lists none to send in.
     "bad-members": () => "A channel needs at least 2 agents. Your message stays here.",
     "not-supported": (source: string) =>
       `${source} doesn't have channels. Your message stays here and isn't sent.`,

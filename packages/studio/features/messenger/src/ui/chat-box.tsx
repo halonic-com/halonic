@@ -1,10 +1,13 @@
 import type { MessagingRefusal } from "@halonicjs/ports";
 import { Button, ChatBoxLine, type ChatBoxLineTone, ChatComposer } from "@halonicjs/studio-kit";
-import { useRef, useState } from "react";
+import { type Ref, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import { isChannel } from "../channel.ts";
+import { channelWords } from "../channel-words.ts";
 import type { DraftFile } from "../draft-files.ts";
 import { type ConversationRow, type Messenger, refusalOf } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
+import { ChannelAddressBar, useChannelAddress } from "./channel-address.tsx";
 import { AttachFileButton, DraftFileList, pastedFiles } from "./draft-files-bar.tsx";
 
 /** The props of {@link ChatBox}. */
@@ -29,10 +32,14 @@ interface BoxLine {
  * `messenger.quick-actions` and `messenger.conversations`). Remove takes its
  * button away, so focus moves to the next file's Remove, else the one before,
  * else Attach a file, and the line says the file was removed (HAL-18074 MS3).
+ * A channel's box has the To line and the `@` picker above it (`messenger.channel-messages`).
  */
 export function ChatBox({ messenger, row, onSent }: ChatBoxProps) {
   const box = useChatBox(messenger, row, onSent);
   const name = row.conversation.title;
+  const channel = isChannel(row);
+  const address = useChannelAddress(messenger, row, box.draft, box.type);
+  const waits = channel && address.line.waits !== undefined;
   const report = (what: string) => (error: unknown) => console.error(what, error);
   const container = useRef<HTMLDivElement>(null);
   const attach = useRef<HTMLButtonElement>(null);
@@ -52,35 +59,57 @@ export function ChatBox({ messenger, row, onSent }: ChatBoxProps) {
         box.addFiles(pasted);
       }}
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <AttachFileButton onAdd={box.addFiles} buttonRef={attach} />
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => {
-            void box.askForUpdate().catch(report("The chat couldn't ask for an update:"));
-          }}
-        >
-          {messengerWords.askForUpdate}
-        </Button>
-      </div>
-      <DraftFileList files={box.files} onRemove={remove} />
-      <ChatComposer
-        label={messengerWords.composerLabel(name)}
-        placeholder={messengerWords.composerPlaceholder(name)}
-        value={box.draft}
-        onChange={box.type}
-        onSend={() => {
-          void box.send().catch(report("The message couldn't be sent:"));
+      <BoxButtons
+        onAdd={box.addFiles}
+        attach={attach}
+        onAskForUpdate={() => {
+          void box.askForUpdate().catch(report("The chat couldn't ask for an update:"));
         }}
-        onStop={() => {}}
-        answering={false}
-        line={
-          box.line === undefined ? undefined : (
-            <ChatBoxLine tone={box.line.tone}>{box.line.text}</ChatBoxLine>
-          )
-        }
       />
+      <DraftFileList files={box.files} onRemove={remove} />
+      {channel ? <ChannelAddressBar address={address} /> : null}
+      {/* The picker's keys come first, so Enter names an agent instead of sending. */}
+      <div onKeyDownCapture={address.onKeyDownCapture}>
+        <ChatComposer
+          label={channel ? channelWords.composer(name) : messengerWords.composerLabel(name)}
+          placeholder={
+            channel ? channelWords.composer(name) : messengerWords.composerPlaceholder(name)
+          }
+          value={box.draft}
+          onChange={box.type}
+          sendUnavailable={waits ? { reason: address.lineId } : undefined}
+          onSend={() => {
+            void box.send().then(address.refresh, report("The message couldn't be sent:"));
+          }}
+          onStop={() => {}}
+          answering={false}
+          line={
+            box.line === undefined ? undefined : (
+              <ChatBoxLine tone={box.line.tone}>{box.line.text}</ChatBoxLine>
+            )
+          }
+        />
+      </div>
+    </div>
+  );
+}
+
+/** The buttons above the box: "Attach a file" and "Ask for an update". */
+function BoxButtons({
+  onAdd,
+  attach,
+  onAskForUpdate,
+}: {
+  readonly onAdd: (files: readonly DraftFile[]) => void;
+  readonly attach: Ref<HTMLButtonElement>;
+  readonly onAskForUpdate: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <AttachFileButton onAdd={onAdd} buttonRef={attach} />
+      <Button variant="secondary" size="sm" onClick={onAskForUpdate}>
+        {messengerWords.askForUpdate}
+      </Button>
     </div>
   );
 }
