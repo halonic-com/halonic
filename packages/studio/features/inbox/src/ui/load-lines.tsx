@@ -53,8 +53,8 @@ function staleReason(error: unknown, words: EngineWords): string {
 
 /**
  * The line over the list while its last load failed, as a Callout with **Try again**, so it is
- * noticed (design review HAL-18481, 8; `inbox.stale-callout`). It sits in a polite status that is
- * always there, so a screen reader reads the line once when it appears or changes, not on every
+ * noticed (design review HAL-18481, 8; `inbox.stale-callout`). The Callout is polite and always
+ * there, so a screen reader reads the line once when it appears or changes, not on every
  * poll that fails the same way (HAL-13801 SO2). On a phone the page's heading is for screen
  * readers only, so the line takes the list's own top space rather than sitting against the top
  * bar (SO3).
@@ -70,15 +70,18 @@ export function StaleLine({
   readonly phone: boolean;
   readonly onRetry: () => Promise<void>;
 }) {
+  // The Callout's own polite region holds the message alone, so Try again isn't read with every
+  // change; it stays on the page while empty.
   return (
-    <div role="status">
-      {error === undefined ? null : (
-        <div className={phone ? "px-4 pt-4 pb-2" : "px-4 pb-2"}>
-          <Callout tone="info" action={{ label: "Try again", onClick: onRetry }}>
-            {staleReason(error, words)}
-          </Callout>
-        </div>
-      )}
+    <div className={error === undefined ? undefined : linePadding(phone)}>
+      <Callout tone="info" announce="polite" action={{ label: "Try again", onClick: onRetry }}>
+        {error === undefined ? "" : staleReason(error, words)}
+      </Callout>
     </div>
   );
+}
+
+/** The stale line's padding: on a phone it takes the list's own top space (SO3). */
+function linePadding(phone: boolean): string {
+  return phone ? "px-4 pt-4 pb-2" : "px-4 pb-2";
 }

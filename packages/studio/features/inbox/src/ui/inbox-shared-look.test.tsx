@@ -83,9 +83,7 @@ verifies("inbox.row-marks", () => {
     const { messaging } = acme("Ship 0.2 today?");
     const { root } = await openInbox(fakeRuns([notes, review]).runs, messaging);
     const mark = (title: string) => rowTitled(root, title).querySelector('[aria-hidden="true"]');
-    expect(mark("create_note")?.querySelector("svg path")?.getAttribute("d")).toBe(
-      "M9.5 4.5h5l-1 6.5h-3z",
-    );
+    expect(mark("create_note")?.querySelector("svg rect")).not.toBeNull();
     expect(mark("Approve this reply?")?.querySelectorAll("svg path")).toHaveLength(2);
     expect(mark("Ship 0.2 today?")?.textContent).toBe("C");
   });
@@ -163,7 +161,8 @@ verifies("inbox.stale-callout", () => {
     expect(status.textContent).toContain("Showing what it said last.");
 
     fake.answer();
-    const retry = [...status.querySelectorAll("button")].find((button) =>
+    const list = root.querySelector('[data-pane="list"]') as HTMLElement;
+    const retry = [...list.querySelectorAll("button")].find((button) =>
       button.textContent?.includes("Try again"),
     );
     await act(async () => retry?.click());

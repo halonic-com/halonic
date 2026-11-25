@@ -1,37 +1,52 @@
 import type { InboxItem as AgentItem } from "@halonicjs/ports";
-import { Avatar, HelpIcon, type ListRow } from "@halonicjs/studio-kit";
+import { Avatar, HelpIcon, type ListRow, SettingsIcon } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import type { InboxItem } from "../inbox-items.ts";
 
 /*
  * The mark that leads each Needs you row, so an approval, a question, a person step and an agent's
- * card read apart at a glance (design review HAL-18481, 5; `inbox.row-marks`). The marks are
- * decoration: the row's title and meta line say what it is.
+ * card read apart at a glance (design review HAL-18481, 5; `inbox.row-marks`). Each mark sits on
+ * the agent Avatar's 28px round tile, so every row's title starts at the same place (HAL-18617).
+ * The marks are decoration: the row's title and meta line say what it is.
  */
 
-/** The mark of a row's own item: a stamp for an approval, a pause for a person step, else none. */
-export function itemMark(item: InboxItem): Pick<ListRow, "icon"> {
-  if (item.kind === "approval") return { icon: <StampIcon /> };
-  if (item.kind === "wait") return { icon: <PauseIcon /> };
-  return {};
+/** The mark of a row's own item: a stamp for an approval, a pause for a person step, a gear for setup. */
+export function itemMark(item: InboxItem): Pick<ListRow, "avatar"> {
+  if (item.kind === "approval") return { avatar: <MarkTile glyph={<StampIcon />} /> };
+  if (item.kind === "wait") return { avatar: <MarkTile glyph={<PauseIcon />} /> };
+  return { avatar: <MarkTile glyph={<SettingsIcon />} /> };
 }
 
 /** The mark of an agent's row: the agent's picture (its initials for now), else a question mark. */
-export function agentMark(item: AgentItem | undefined): Pick<ListRow, "icon" | "avatar"> {
+export function agentMark(item: AgentItem | undefined): Pick<ListRow, "avatar"> {
   if (item?.from.kind === "agent") return { avatar: <Avatar name={item.from.name} /> };
-  return { icon: <HelpIcon /> };
+  return { avatar: <MarkTile glyph={<HelpIcon />} /> };
+}
+
+/** A glyph centred on the Avatar's round tile, in its colours. */
+function MarkTile({ glyph }: { readonly glyph: ReactNode }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-muted text-fg-muted [&>svg]:size-4"
+    >
+      {glyph}
+    </span>
+  );
 }
 
 /**
- * The approval mark: a stamp, since a tick already means "done" in the status colours, so it can't
+ * The approval mark: a stamp (knob, neck, pad and ink line), since a tick already means "done" in the status colours, so it can't
  * also mean "waiting for your OK" (Noah's pass on HAL-18481).
  */
 function StampIcon() {
   return (
     <MarkSvg>
-      <path d="M9.5 4.5h5l-1 6.5h-3z" />
-      <path d="M5 14.5h14v3H5z" />
-      <path d="M7 20.5h10" />
+      <circle cx="12" cy="6" r="2.5" />
+      <path d="M10.5 8.3 10 13" />
+      <path d="M13.5 8.3 14 13" />
+      <rect x="5" y="13" width="14" height="4.5" rx="1" />
+      <path d="M7 21h10" />
     </MarkSvg>
   );
 }
