@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { GitRunner, GitVcs } from "@halonicjs/adapter-git";
 import { testGit } from "@halonicjs/adapter-git/testing";
 import type { PluginRuntime } from "@halonicjs/app";
@@ -94,8 +94,8 @@ verifies("cli.commands.build.paperclip-plugin", () => {
     });
     expect(io.stdout).toEqual([
       `✓ Built halonic-ws.acme 0.1.0 from commit ${(await head()).slice(0, 7)}`,
-      "  Plugin file    ./dist/halonic-ws.acme-0.1.0.tar",
-      "  Release file   ./dist/halonic-ws.acme-0.1.0.release.json",
+      `  Plugin file    .${sep}dist${sep}halonic-ws.acme-0.1.0.tar`,
+      `  Release file   .${sep}dist${sep}halonic-ws.acme-0.1.0.release.json`,
       `  SHA-256        ${release.sha256}`,
       "  Changes        added pr_status",
     ]);
@@ -169,7 +169,7 @@ verifies("cli.commands.build.paperclip-plugin", () => {
 
     expect(code).toBe(exitCode.conflict);
     expect(io.stderr[0]).toBe(
-      "✕ Couldn't build the plugin: ./halonic-ws.acme-0.1.0.tar is already there, and it isn't this build.",
+      `✕ Couldn't build the plugin: .${sep}halonic-ws.acme-0.1.0.tar is already there, and it isn't this build.`,
     );
     expect(await readFile(join(folder, "halonic-ws.acme-0.1.0.tar"), "utf8")).toBe(
       "something else",
