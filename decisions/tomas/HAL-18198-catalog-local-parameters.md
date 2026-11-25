@@ -2,6 +2,7 @@
 
 - Approval: HAL-18198 (Liam's [minor] finding on #5903, HAL-17561) asks that changing what a definition accepts, through any file it depends on, changes its `sourceHash` or fails a check. Option 1 of that task, since option 2 (no shared files) no longer fits the catalog on `main`. It changes `tooling/check/` and a requirement, so Liam signs
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4MRMmCQS0xpUh1UYUVAmrK6GfbSTGrgzHX9/BZHpaiFOjvTTQWWucuqWUPzxCwxyiaeZmIDBNQbygfPdNSoDDg==
 
 ## What changes
 
