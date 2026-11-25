@@ -20,6 +20,10 @@ class_name = "RoutinesObject"
 name = "USAGE"
 class_name = "UsageObject"
 
+[[durable_objects.bindings]]
+name = "RUN_CONTAINER"
+class_name = "RunContainerObject"
+
 # Cloudflare keys an object's data by its class name: never rename or remove a class listed here.
 # A new class gets a new [[migrations]] entry, and a name in durableObjectClassNames.
 [[migrations]]
@@ -29,6 +33,10 @@ new_sqlite_classes = ["CoordinationObject", "RunObject", "RoutinesObject"]
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["UsageObject"]
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["RunContainerObject"]
 
 # The cron: every minute, the routine tick and the watchdog (scheduled() in src/worker.ts).
 [triggers]

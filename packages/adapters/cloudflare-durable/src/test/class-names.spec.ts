@@ -11,6 +11,7 @@ import * as adapter from "../index.ts";
 
 export { CoordinationObject } from "../coordination-object.ts";
 export { RoutinesObject } from "../routines-object.ts";
+export { RunContainerObject } from "../run-container-object.ts";
 export { RunObject } from "../run-object.ts";
 export { UsageObject } from "../usage-object.ts";
 
@@ -28,6 +29,7 @@ describe("Durable Object class names", () => {
       "RunObject",
       "RoutinesObject",
       "UsageObject",
+      "RunContainerObject",
     ]);
   });
 

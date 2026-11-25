@@ -10,4 +10,5 @@ export const durableObjectClassNames = [
   "RunObject",
   "RoutinesObject",
   "UsageObject",
+  "RunContainerObject",
 ] as const;

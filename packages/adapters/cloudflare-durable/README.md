@@ -23,6 +23,8 @@ from the first deploy and must not change:
 | `CoordinationObject` | leases, values, counters and windows of one deployment |
 | `RunObject` | one run's event log and timers (HAL-6796) |
 | `RoutinesObject` | the routine tick and its backup alarm (HAL-6797) |
+| `UsageObject` | one scope's usage, limits and outbox to Cloud |
+| `RunContainerObject` | one run's container, its time limit and teardown (HAL-18020) |
 
 `durableObjectClassNames` lists them, and `src/test/class-names.spec.ts` (run
 inside workerd by `class-names.test.ts`) fails when the list changes or a
@@ -83,6 +85,17 @@ port over it.
   with the run, the attempt and the time to the next try. By default that is one line in the
   Worker's log with the error's name and message, never its stack. A Worker that exports
   `RunObject` itself, with no run list, gets that line on every try.
+
+## The run container object
+
+`RunContainerObject` owns one run's container, named as the run's run object is (`scope/` and
+the run id), so two scopes never share one. Its logic, `RunContainerLogic`, is
+`RunContainerState` from `adapter-sandbox-cloudflare-container` with two hooks the Worker fills:
+the handler the container's intercepts go to, made with the rules and the run object's name by
+this object alone, and the way to revoke the run's bridge credential in its run object. The run's
+end and the alarm at its time limit both destroy the container, then revoke the credential. Where
+the Worker's configuration gives the class no container, it reports itself unavailable and starts
+nothing. The rule is `cloudflare-durable.run-container-object`.
 
 ## The routines object
 
