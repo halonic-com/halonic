@@ -2,6 +2,7 @@
 
 - Approval: HAL-18156, from Liam's review of #5922 (HAL-17631) and the work-line row of HAL-17514's wording table, approved with the phase 2 card (HAL-17544)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BvtTZHZ9TWjR0U4WWF1Anut93U2MoUsHZ0CbJamFYE1UPt8v6UXuwDI+8T4JPDHELnbXOIo/cQXecsuoFgKfAA==
 
 HAL-17514's wording table has "✕ Elena couldn't finish: *reason*" for a
 failed work line, but `MessageWork` had no reason, so the Messenger said
