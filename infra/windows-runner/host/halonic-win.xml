@@ -1,0 +1,87 @@
+<!-- The Windows runner VM. The SMBIOS UUID and the MAC address are pinned: both count toward
+     Windows' activation hardware ID, so a rebuilt VM keeps its licence. The UUID also fixes the
+     vTPM's state folder, /var/lib/libvirt/swtpm/<uuid>/. -->
+<domain type="kvm">
+  <name>halonic-win</name>
+  <uuid>7b0c3c2e-5d1a-4f6e-9a79-1c2d3e4f5a10</uuid>
+  <memory unit="GiB">16</memory>
+  <currentMemory unit="GiB">16</currentMemory>
+  <vcpu placement="static">8</vcpu>
+  <os firmware="efi">
+    <type arch="x86_64" machine="q35">hvm</type>
+    <firmware>
+      <feature enabled="yes" name="enrolled-keys"/>
+      <feature enabled="yes" name="secure-boot"/>
+    </firmware>
+    <loader secure="yes"/>
+    <nvram>/var/lib/halonic-win/nvram.fd</nvram>
+    <boot dev="hd"/>
+    <boot dev="cdrom"/>
+  </os>
+  <features>
+    <acpi/>
+    <apic/>
+    <smm state="on"/>
+    <!-- Hyper-V enlightenments: Windows runs much better with them, and WSL 2 runs inside. -->
+    <hyperv mode="custom">
+      <relaxed state="on"/>
+      <vapic state="on"/>
+      <spinlocks state="on" retries="8191"/>
+      <vpindex state="on"/>
+      <runtime state="on"/>
+      <synic state="on"/>
+      <stimer state="on"/>
+      <frequencies state="on"/>
+      <tlbflush state="on"/>
+      <ipi state="on"/>
+    </hyperv>
+  </features>
+  <!-- host-passthrough gives the guest VMX, which WSL 2 needs (nested virtualisation). One socket:
+       Windows 11 Pro uses at most two. -->
+  <cpu mode="host-passthrough" check="none" migratable="off">
+    <topology sockets="1" dies="1" cores="8" threads="1"/>
+  </cpu>
+  <clock offset="utc">
+    <timer name="rtc" tickpolicy="catchup"/>
+    <timer name="pit" tickpolicy="delay"/>
+    <timer name="hpet" present="no"/>
+    <timer name="hypervclock" present="yes"/>
+  </clock>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>destroy</on_crash>
+  <devices>
+    <!-- SATA and e1000e: Windows has drivers for both, so no virtio-win ISO is needed. -->
+    <disk type="file" device="disk">
+      <driver name="qemu" type="qcow2" discard="unmap"/>
+      <source file="/var/lib/halonic-win/run.qcow2"/>
+      <target dev="sda" bus="sata"/>
+    </disk>
+    <!-- Empty except during the image build (Windows ISO, answer ISO). -->
+    <disk type="file" device="cdrom">
+      <driver name="qemu" type="raw"/>
+      <target dev="sdb" bus="sata"/>
+      <readonly/>
+    </disk>
+    <disk type="file" device="cdrom">
+      <driver name="qemu" type="raw"/>
+      <target dev="sdc" bus="sata"/>
+      <readonly/>
+    </disk>
+    <interface type="network">
+      <mac address="52:54:00:79:00:10"/>
+      <source network="win-net"/>
+      <model type="e1000e"/>
+    </interface>
+    <tpm model="tpm-crb">
+      <backend type="emulator" version="2.0"/>
+    </tpm>
+    <input type="tablet" bus="usb"/>
+    <!-- Console for the operator only, on the host's loopback (reach it with an SSH tunnel). -->
+    <graphics type="vnc" listen="127.0.0.1" port="5979" autoport="no"/>
+    <video>
+      <model type="vga"/>
+    </video>
+    <memballoon model="none"/>
+  </devices>
+</domain>

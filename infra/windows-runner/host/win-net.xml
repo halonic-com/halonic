@@ -1,0 +1,9 @@
+<!-- NAT network for the Windows runner VM. No <dhcp> and no DNS on the bridge: the VM has a
+     static address and uses 1.1.1.1 (answer file), so nothing in the VM talks to the host. -->
+<network>
+  <name>win-net</name>
+  <forward mode="nat"/>
+  <bridge name="virbr-win" stp="on" delay="0"/>
+  <dns enable="no"/>
+  <ip address="10.79.0.1" netmask="255.255.255.0"/>
+</network>
