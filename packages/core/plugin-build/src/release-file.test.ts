@@ -74,4 +74,21 @@ verifies("plugin-build.release-file", () => {
       "Can't write a release file with these fields: sha256.",
     );
   });
+
+  it("writes and reads back the routing entries that changed, and refuses free text there", () => {
+    const routing = {
+      ...fields,
+      changes: { ...fields.changes, routing: ["areas.docs", "roles.code-reviewer"] },
+    };
+    const text = releaseFileText(routing);
+    expect(parseReleaseFile(text)).toEqual({
+      ok: true,
+      value: { ...routing, archive: "halonic-ws.acme-0.3.0.tar" },
+    });
+    for (const entry of ["login", "roles.Liam", "areas.docs; rm -rf"]) {
+      expect(
+        parseReleaseFile(edited({ changes: { ...fields.changes, routing: [entry] } })),
+      ).toMatchObject({ ok: false, error: { code: "invalid" } });
+    }
+  });
 });

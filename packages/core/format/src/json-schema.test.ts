@@ -69,7 +69,7 @@ verifies("format.spec-id-version", () => {
       const properties = readSpecFile(kind)["properties"] as Record<string, unknown>;
       return !("version" in properties);
     });
-    expect(withoutVersion).toEqual(["skill", "template"]);
+    expect(withoutVersion).toEqual(["skill", "template", "routing"]);
     expect(idVersion(readSpecFile("skill"))).toBe(SCHEMA_VERSION);
   });
 

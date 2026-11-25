@@ -75,6 +75,7 @@ export const itemWords = {
     tool: "Tool",
     template: "Template",
     signal: "Signal",
+    routing: "Routing",
     hub: "Hub",
     provider: "Provider",
     runtime: "Runtime",

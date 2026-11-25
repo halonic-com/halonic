@@ -54,4 +54,33 @@ verifies("plugin-build.change-list", () => {
     const current = { tools: [{ name: "a", parameters: { required: ["id"], type: "object" } }] };
     expect(changeList(previous, current).changed).toEqual([]);
   });
+
+  it("names the routing entries whose agent differs, added and removed ones included, sorted", () => {
+    const previous = {
+      tools: [],
+      routing: { roles: { "code-reviewer": "liam", clarifier: "liam" }, areas: { docs: "maya" } },
+    };
+    const current = {
+      tools: [],
+      routing: {
+        roles: { "code-reviewer": "julian", clarifier: "liam" },
+        areas: { studio: "elena" },
+      },
+    };
+    expect(changeList(previous, current).routing).toEqual([
+      "areas.docs",
+      "areas.studio",
+      "roles.code-reviewer",
+    ]);
+  });
+
+  it("names every routing entry of a first build, and leaves routing out when it didn't change", () => {
+    const routing = { roles: { "code-reviewer": "liam" }, areas: { docs: "maya" } };
+    expect(changeList(undefined, { tools: [], routing }).routing).toEqual([
+      "areas.docs",
+      "roles.code-reviewer",
+    ]);
+    expect("routing" in changeList({ tools: [], routing }, { tools: [], routing })).toBe(false);
+    expect("routing" in changeList({ tools: [] }, { tools: [] })).toBe(false);
+  });
 });

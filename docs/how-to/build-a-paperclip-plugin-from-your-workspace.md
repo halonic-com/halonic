@@ -132,6 +132,25 @@ that isn't marked optional), or declares one its action never reads.
 The `paperclip.template` action reads the Markdown files in your workspace's
 `library/templates/` folder, one template per file.
 
+### Say who reviews: `routing.yaml`
+
+A `routing.yaml` at your workspace's root says which agent covers each review
+role and who owns each area. The build puts it in the plugin's snapshot.
+
+```yaml
+roles:
+  code-reviewer: liam
+  second-reviewer: julian
+areas:
+  engine-and-cli: priya
+```
+
+The roles are `code-reviewer`, `second-reviewer`, `clarifier` and
+`merge-captain`; an area is a slug, such as `engine-and-cli`, at most 50 of
+them. Name each agent by its url key only. `halonic validate` refuses another
+role or field, an email, a GitHub login, a key, and an area named like an
+account, such as `github-login`.
+
 The format also knows `github.merge-queue`, but a plugin from this version of
 Halonic can't run it. `halonic validate` accepts it; the build refuses it (see
 below).
@@ -197,7 +216,7 @@ workspaces can each have a plugin in one Paperclip.
 | `sha256` | the plugin file's SHA-256 |
 | `workspaceCommit` | the workspace commit the tools come from |
 | `halonicVersion` | the version of Halonic that built it |
-| `changes` | the tools `added`, `removed` and `changed` since the previous build, with the fields that changed |
+| `changes` | the tools `added`, `removed` and `changed` since the previous build, with the fields that changed, and the `routing` entries (`roles.<role>`, `areas.<area>`) whose agent changed |
 
 The same workspace commit and the same version of Halonic always give the
 same plugin file, byte for byte. To check a plugin file someone else built,
@@ -218,8 +237,9 @@ and never asks for a key.
 
 The build stops, and writes nothing, when:
 
-- a tool file or `workspace.yaml` has changes that aren't committed, because
-  the release file has to name the commit the tools come from:
+- a tool or template file, `routing.yaml` or `workspace.yaml` has changes
+  that aren't committed, because the release file has to name the commit the
+  tools come from:
 
   ```text
   ✕ Couldn't build the plugin: library/tools/pr-status.tool.yaml has changes that aren't committed.

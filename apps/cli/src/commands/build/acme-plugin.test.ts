@@ -3,12 +3,13 @@
 // from a second copy in another folder and checks that both builds have the
 // same bytes and the same sha-256 (plan HAL-17450 rev 5, step 1a-4).
 
-import { cp, mkdtemp, readdir, readFile } from "node:fs/promises";
+import { cp, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { GitRunner, GitVcs } from "@halonicjs/adapter-git";
 import { testGit } from "@halonicjs/adapter-git/testing";
 import type { PluginRuntime } from "@halonicjs/app";
+import { readPreviousBuild } from "@halonicjs/plugin-build";
 import { encodeUtf8 } from "@halonicjs/std";
 import { pluginActions, runtimeCapabilities } from "@halonicjs/target-paperclip-runtime/actions";
 import { verifies } from "@halonicjs/testing-spec";
@@ -17,6 +18,7 @@ import { exitCode } from "../../exit-code.ts";
 import { runCli } from "../../run-cli.ts";
 import { captureIo } from "../../test/capture-io.ts";
 import { removeTestFolder } from "../../test/remove-folder.ts";
+import { webCryptoDigest } from "../../workspace-runs.ts";
 import { buildCommandWith } from "./command.ts";
 
 /** The repository's example workspace. */
@@ -55,9 +57,12 @@ async function exampleFiles(folder: string): Promise<string[]> {
     .sort();
 }
 
-/** Copies the example into `folder` and commits all of it as one commit. */
-async function commitExample(folder: string): Promise<GitVcs> {
+/** Copies the example and any extra files into `folder` and commits all of it as one commit. */
+async function commitExample(folder: string, extra: Record<string, string> = {}): Promise<GitVcs> {
   await cp(acmeFolder, folder, { recursive: true });
+  for (const [path, text] of Object.entries(extra)) {
+    await writeFile(join(folder, path), text);
+  }
   // Listed before `init`, so the repository's own `.git` files aren't in the list.
   const files = await exampleFiles(folder);
   const vcs = new GitVcs(folder, {
@@ -118,6 +123,33 @@ verifies("cli.commands.build.paperclip-plugin", () => {
     expect(secondRelease).toEqual(firstRelease);
     expect(await readFile(join(second, "dist", archiveName))).toEqual(
       await readFile(join(first, "dist", archiveName)),
+    );
+  });
+});
+
+verifies("cli.commands.build.paperclip-plugin-routing", () => {
+  it("puts the acme example's routing.yaml in the snapshot and names it in the changes", async () => {
+    const folder = join(root, "acme");
+    const routing = "roles:\n  code-reviewer: liam\nareas:\n  engine-and-cli: priya\n";
+    await commitExample(folder, { "routing.yaml": routing });
+    const { code, io } = await build(folder, "dist");
+
+    expect(code, io.stderr.join("\n")).toBe(exitCode.ok);
+    const releaseFile = await readFile(join(folder, "dist", releaseName), "utf8");
+    const read = await readPreviousBuild(
+      { releaseFile, archive: await readFile(join(folder, "dist", archiveName)) },
+      webCryptoDigest,
+    );
+    expect(read.ok && read.value.snapshot.routing).toEqual({
+      roles: { "code-reviewer": "liam" },
+      areas: { "engine-and-cli": "priya" },
+    });
+    expect(JSON.parse(releaseFile).changes.routing).toEqual([
+      "areas.engine-and-cli",
+      "roles.code-reviewer",
+    ]);
+    expect(io.stdout.at(-1)).toBe(
+      "  Changes        added my_prs, pr_status and task_get · routing areas.engine-and-cli and roles.code-reviewer",
     );
   });
 });

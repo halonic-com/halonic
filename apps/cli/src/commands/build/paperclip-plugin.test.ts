@@ -129,6 +129,16 @@ verifies("cli.commands.build.paperclip-plugin", () => {
     });
   });
 
+  it("refuses a routing.yaml that isn't committed", async () => {
+    await writeFile(join(folder, "routing.yaml"), "roles:\n  code-reviewer: liam\n");
+    const { code, io } = await build();
+
+    expect(code).toBe(exitCode.conflict);
+    expect(io.stderr[0]).toBe(
+      "✕ Couldn't build the plugin: routing.yaml has changes that aren't committed.",
+    );
+  });
+
   it("refuses a template file that isn't committed", async () => {
     await mkdir(join(folder, "library", "templates"), { recursive: true });
     await writeFile(join(folder, "library", "templates", "task.md"), "Done when:\n");

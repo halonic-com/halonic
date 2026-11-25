@@ -5,7 +5,7 @@
 
 import { type Issue, parse, s } from "@halonicjs/schema-kit";
 import { canonicalJson, err, ok, type Result, readVersion } from "@halonicjs/std";
-import type { ChangeList } from "./change-list.ts";
+import { type ChangeList, maxRoutingChanges } from "./change-list.ts";
 import { archiveFileName, pluginIdPattern } from "./plugin-id.ts";
 import { pluginVersionPattern } from "./plugin-version.ts";
 import { maxToolNameLength } from "./snapshot.ts";
@@ -15,6 +15,12 @@ export const maxReleaseFileBytes = 256 * 1024;
 
 /** A tool name in the change list, as long as the snapshot allows. */
 const toolName = s.string().min(1).max(maxToolNameLength);
+
+/**
+ * A routing entry in the change list: `roles.<role>` or `areas.<area>`, never
+ * free text. Roles and areas are slugs, as the format's `AREA_NAME_PATTERN`.
+ */
+const routingEntry = s.string().regex(/^(?:roles|areas)\.[a-z][a-z0-9-]{0,63}$/);
 
 const releaseFileSchema = s
   .object({
@@ -35,6 +41,7 @@ const releaseFileSchema = s
         changed: s.array(
           s.object({ tool: toolName, fields: s.array(s.string().max(maxToolNameLength)) }).strict(),
         ),
+        routing: s.array(routingEntry).max(maxRoutingChanges).optional(),
       })
       .strict(),
   })

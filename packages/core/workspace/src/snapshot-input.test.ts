@@ -1,7 +1,7 @@
 import { makeSnapshot } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { loadWorkspace, snapshotInputOf } from "./index.ts";
+import { filesOf, loadWorkspace, snapshotInputOf } from "./index.ts";
 import { MemorySource } from "./test/memory-source.ts";
 
 const commit = "0123456789abcdef0123456789abcdef01234567";
@@ -46,4 +46,48 @@ verifies("workspace.snapshot-input", () => {
       },
     ]);
   });
+
+  it("gives no routing when the workspace has no routing.yaml", async () => {
+    const workspace = await loadWorkspace(new MemorySource(fixture));
+    expect("routing" in snapshotInputOf(workspace, commit)).toBe(false);
+  });
+});
+
+verifies("workspace.routing-file", () => {
+  const routing = [
+    "roles:",
+    "  code-reviewer: liam",
+    "  second-reviewer: julian",
+    "areas:",
+    "  engine-and-cli: priya",
+    "",
+  ].join("\n");
+
+  it("puts the routing of routing.yaml in the snapshot input and the snapshot", async () => {
+    const workspace = await loadWorkspace(
+      new MemorySource({ ...fixture, "routing.yaml": routing }),
+    );
+    expect(workspace.issues).toEqual([]);
+    const input = snapshotInputOf(workspace, commit);
+    expect(input.routing).toEqual({
+      roles: { "code-reviewer": "liam", "second-reviewer": "julian" },
+      areas: { "engine-and-cli": "priya" },
+    });
+    const snapshot = makeSnapshot(input);
+    expect(snapshot.ok && snapshot.value.routing).toEqual(input.routing);
+  });
+
+  it.each([
+    ["an email", "roles:\n  code-reviewer: liam@example.com\n", ["roles", "code-reviewer"]],
+    ["an unknown role", "roles:\n  approver: liam\n", ["roles"]],
+    ["an area named like an account", "areas:\n  github-login: liam\n", ["areas", "github-login"]],
+  ])(
+    "refuses a routing.yaml with %s as an error, so it never reaches the snapshot",
+    async (_, text, path) => {
+      const workspace = await loadWorkspace(new MemorySource({ ...fixture, "routing.yaml": text }));
+      expect(workspace.issues).toMatchObject([{ file: "routing.yaml", severity: "error", path }]);
+      expect(filesOf(workspace, "routing")).toEqual([]);
+      expect("routing" in snapshotInputOf(workspace, commit)).toBe(false);
+    },
+  );
 });
