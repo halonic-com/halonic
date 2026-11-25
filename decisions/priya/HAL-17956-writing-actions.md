@@ -2,7 +2,7 @@
 
 - Approval: HAL-17956 (Liam, CTO: decisions A and B and the security requirements for PR 1)
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:hpzSpp1vxbWBuslxmuNj57zIa9WNH84x97BRce5an6URu+FBdC+KMvvwqH4uKOsbCibklVLolSwkqKgDaBXNDQ==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:n1Zsfj6rwKwZvISpmOKHYyIkcWw7f+9EBU+8XUYrsWbpTwB1I9DnKMRsSVyZaE4TSf3KbyOQl2am2ygbx5+JAg==
 
 `format.tool-actions` said that none of the actions writes. It now lists three writing
 actions, `paperclip.comment`, `paperclip.next-step` and `paperclip.finish-run`, each with
