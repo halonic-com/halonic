@@ -1,6 +1,7 @@
 use super::{
     CheckFailure, DownloadFailure, JustUpdated, Unit, UpdateState, UpdateStatus, notes_url,
 };
+use crate::track::UpdateTrack;
 use serde_json::json;
 
 #[test]
@@ -17,6 +18,7 @@ fn update_state_sends_the_status_in_the_agreed_shape() {
         }),
         managed: None,
         sandbox_setup_again: true,
+        track: UpdateTrack::Preview,
         state: UpdateState::Downloading {
             version: "0.1.1".to_owned(),
             done: 12,
@@ -34,6 +36,7 @@ fn update_state_sends_the_status_in_the_agreed_shape() {
             "justUpdated": { "from": "0.1.0", "to": "0.1.1", "notCarriedOver": [] },
             "managed": null,
             "sandboxSetupAgain": true,
+            "track": "preview",
             "state": { "kind": "downloading", "version": "0.1.1", "done": 12, "total": null, "unit": "bytes" }
         })
     );
@@ -108,4 +111,18 @@ fn update_state_names_the_proxy_reasons_as_the_page_reads_them() {
         .expect("JSON"),
         json!({ "kind": "download-failed", "version": "0.1.1", "reason": "proxy-setting" })
     );
+}
+
+#[test]
+fn update_state_links_a_preview_build_to_the_preview_releases() {
+    assert_eq!(
+        notes_url("0.1.1-preview.42"),
+        "https://github.com/halonic-com/halonic-preview/releases/tag/v0.1.1-preview.42"
+    );
+    for version in ["0.1.1", "0.2.0-test.1", "0.2.0-previewed.1"] {
+        assert_eq!(
+            notes_url(version),
+            format!("https://github.com/halonic-com/halonic/releases/tag/v{version}")
+        );
+    }
 }

@@ -5,6 +5,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::Managed;
+use crate::track::UpdateTrack;
 
 /// Everything About Halonic and the status bar need, in one value.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -28,6 +29,8 @@ pub struct UpdateStatus {
     /// installing it asks for administrator rights once more where the agent
     /// sandbox is set up (HAL-5404). Always false off Windows.
     pub sandbox_setup_again: bool,
+    /// Which builds this install updates to (HAL-18480).
+    pub track: UpdateTrack,
     pub state: UpdateState,
 }
 
@@ -130,7 +133,21 @@ pub enum Unit {
 
 /// The release page of `version`, where its notes are.
 pub fn notes_url(version: &str) -> String {
-    format!("https://github.com/halonic-com/halonic/releases/tag/v{version}")
+    format!(
+        "https://github.com/halonic-com/{}/releases/tag/v{version}",
+        releases_repo(version)
+    )
+}
+
+/// Preview builds (`0.1.1-preview.42`, HAL-18308) are published in their own
+/// repository, so the main Releases page shows only stable versions
+/// (HAL-18474).
+fn releases_repo(version: &str) -> &'static str {
+    if version.contains("-preview.") {
+        "halonic-preview"
+    } else {
+        "halonic"
+    }
 }
 
 #[cfg(test)]
