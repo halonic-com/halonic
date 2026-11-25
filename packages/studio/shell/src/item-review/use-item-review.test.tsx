@@ -66,7 +66,7 @@ function Page() {
   );
 }
 
-const changesIn = vi.fn(async () => review);
+const changesIn = vi.fn(async (): Promise<ItemReview | null> => review);
 const accept = vi.fn<() => Promise<ItemReviewDecision>>();
 const host = {
   changesIn,
