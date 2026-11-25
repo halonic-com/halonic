@@ -1,6 +1,6 @@
-import type { HarnessBridge, HarnessTask } from "@halonicjs/ports";
+import type { HarnessBridge, HarnessTask, SandboxProfile } from "@halonicjs/ports";
 import { opencodeConfig, opencodeRunTokenVariable } from "./config.ts";
-import type { OpenCodeFiles } from "./files.ts";
+import { type OpenCodeFiles, opencodeFiles } from "./files.ts";
 
 /**
  * What OpenCode gets as its Anthropic key when the bridge serves Anthropic
@@ -69,4 +69,20 @@ export function opencodeEnvironment(
       ? { ANTHROPIC_API_KEY: opencodeStandInKey }
       : {}),
   };
+}
+
+/**
+ * The harness's `environment` for an agent with this run's folders: the
+ * environment of {@link opencodeEnvironment} with the files of
+ * {@link opencodeFiles}. It imports nothing from Node, so the Studio page
+ * gives it to the agent host's OpenCode stand-in (`harnessEnvironments`).
+ *
+ * @throws Error when the profile has no settings folder: OpenCode always needs one
+ */
+export function opencodeHarnessEnvironment(
+  bridge: HarnessBridge,
+  folders: Pick<SandboxProfile, "workingFolder" | "tempFolder" | "settingsFolder">,
+  model?: Pick<HarnessTask, "model">,
+): Record<string, string> {
+  return opencodeEnvironment(bridge, model ?? {}, opencodeFiles(folders));
 }

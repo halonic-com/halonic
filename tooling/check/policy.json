@@ -66,6 +66,9 @@
     "@halonicjs/adapter-harness-kit": [
       "./web"
     ],
+    "@halonicjs/adapter-harness-opencode": [
+      "./environment"
+    ],
     "@halonicjs/adapter-integration-kit": [
       "./integration"
     ],

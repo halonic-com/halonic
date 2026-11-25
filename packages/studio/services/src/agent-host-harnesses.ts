@@ -7,16 +7,19 @@ import {
 } from "@halonicjs/adapter-agent-host-client";
 import { claudeCodeEnvironment } from "@halonicjs/adapter-harness-claude-code/environment";
 import { codexEnvironment } from "@halonicjs/adapter-harness-codex/environment";
+import { opencodeHarnessEnvironment } from "@halonicjs/adapter-harness-opencode/environment";
 
 /**
  * Each harness's own `environment` function, by the id the agent host lists
  * it under. These run on the page, not in the host: they only read the
  * bridge and the profile's folders. A harness without an entry here runs
- * without extra environment variables.
+ * without extra environment variables. OpenCode has one so a run works,
+ * though the Studio's harness picker still hides it in v1.
  */
 export const harnessEnvironments: Readonly<Record<string, HarnessEnvironment>> = {
   "claude-code": claudeCodeEnvironment,
   codex: codexEnvironment,
+  opencode: opencodeHarnessEnvironment,
 };
 
 /**
