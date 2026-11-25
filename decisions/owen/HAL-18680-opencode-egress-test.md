@@ -3,6 +3,7 @@
 - Task: HAL-18680
 - Approval: plan approved by Liam on HAL-16826 (PR 3c: the egress test in the Linux sandbox CI job); Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:+1om37J5ENto+0KpuTRV9fwjlys5M5WxczV/J8yYuptq3sV9FLjebHbsrQCzJiD2gyrVX4ls3UJzHT7ZNoZJCw==
 
 ## What changes
 
