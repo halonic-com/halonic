@@ -360,6 +360,7 @@ export function restKey(url: URL): string {
 export function graphqlAnswer(document: string): unknown {
   if (document.includes("MergeFactsPulls")) {
     return {
+      rateLimit: { cost: 2, remaining: 4990 },
       repository: {
         defaultBranchRef: { name: "main", target: { oid: "main-sha" } },
         mergeQueue: { entries: { nodes: queueNodes } },

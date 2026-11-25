@@ -210,3 +210,33 @@ verifies("paperclip.merge-control-facts", () => {
     expect(observed).toEqual([]);
   });
 });
+
+verifies("paperclip.merge-control-request-count", () => {
+  test("the pass logs as many REST GETs and GraphQL queries as GitHub received, and their cost", async () => {
+    const { deps, sent, lines } = recorded();
+    await readMergeFacts(deps, now);
+    const gitHub = sent.filter((request) => request.url.startsWith("https://api.github.com/"));
+    const queries = gitHub.filter((request) => request.method === "POST").length;
+    const gets = gitHub.length - queries;
+    expect(gets).toBeGreaterThan(5);
+    expect(queries).toBeGreaterThan(2);
+    // Only the pulls page's recorded answer names its cost: 2 points, 4990 left.
+    expect(lines).toContain(
+      `GitHub requests this pass: ${gets} REST GETs, ${queries} GraphQL queries (cost 2, 4990 points left)`,
+    );
+  });
+
+  test("a pass that fails still logs what it sent before the failure", async () => {
+    const { deps, lines } = recorded();
+    const failing = {
+      ...deps,
+      get: async () => {
+        throw new Error("GitHub: GET /runs answered 502.");
+      },
+    };
+    await expect(readMergeFacts(failing, now)).rejects.toThrow("502");
+    expect(lines).toContain(
+      "GitHub requests this pass: 1 REST GETs, 1 GraphQL queries (cost 2, 4990 points left)",
+    );
+  });
+});

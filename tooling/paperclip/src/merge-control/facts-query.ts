@@ -1,8 +1,9 @@
 /**
  * The GraphQL documents merge control's facts reader sends, and the shapes
  * of their answers. Every document is a single `query`, so the query-only
- * reader (`snapshot/graphql.ts`) accepts it. Review threads, the expensive
- * part of the PR watcher's page, aren't read.
+ * reader (`snapshot/graphql.ts`) accepts it, and asks for its `rateLimit`
+ * so the pass can log what it cost. Review threads, the expensive part of
+ * the PR watcher's page, aren't read.
  */
 
 /**
@@ -33,6 +34,7 @@ const rollup = `statusCheckRollup {
  * the runner wait.
  */
 export const factsPullsQuery = `query MergeFactsPulls($owner: String!, $name: String!, $after: String, $withQueue: Boolean!) {
+  rateLimit { cost remaining }
   repository(owner: $owner, name: $name) {
     defaultBranchRef @include(if: $withQueue) { name target { oid } }
     mergeQueue @include(if: $withQueue) {
@@ -72,6 +74,7 @@ export const factsPullsQuery = `query MergeFactsPulls($owner: String!, $name: St
 
 /** Pull requests merged lately, newest first. */
 export const factsMergedQuery = `query MergeFactsMerged($owner: String!, $name: String!) {
+  rateLimit { cost remaining }
   repository(owner: $owner, name: $name) {
     pullRequests(states: MERGED, first: 50, orderBy: { field: UPDATED_AT, direction: DESC }) {
       nodes { number mergedAt }
@@ -87,6 +90,7 @@ export function mainFilesQuery(count: number): string {
     .map((index) => `f${index}: object(expression: $e${index}) { ... on Blob { text isBinary } }`)
     .join("\n    ");
   return `query MergeFactsMainFiles($owner: String!, $name: String!${variables}) {
+  rateLimit { cost remaining }
   repository(owner: $owner, name: $name) {
     ${objects}
   }
