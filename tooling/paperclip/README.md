@@ -352,7 +352,9 @@ inside the about 15 s the tool bridge gives a call.
   commit) gives the same answer without a request. The `precheck-wake` job
   reads each kept check every minute; once it is done, or still running after
   30 minutes (then `CHECK UNAVAILABLE`), it posts the answer on the task and
-  wakes it once, only if the same agent still holds it. A new check of the
+  wakes it once, only if the same agent still holds it. Once the answer is
+  posted the check is dropped, even if the wake fails; a check whose answer
+  can't be posted is dropped after 60 minutes. A new check of the
   same branch replaces the kept one. Other branches keep the old answer:
   `RUNNING` with the id for the next call.
 

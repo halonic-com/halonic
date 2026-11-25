@@ -110,6 +110,8 @@ export function fakePrecheck(
     wakes,
     logs,
     tasks,
+    /** The host's task calls, so a test can make one fail. */
+    issues: ctx.issues,
     /** Runs the `precheck-wake` job's pass for the test company. */
     pass: () => waits.pass(runCtx.companyId),
     /** Queues more answers of the service. */

@@ -70,6 +70,9 @@ export interface PrecheckWaits {
 /** A check still running after this long gets a CHECK UNAVAILABLE answer instead. */
 export const waitTimeoutMs = 30 * 60_000;
 
+/** A check kept this long is dropped, answered or not, so a task that can't take the answer isn't retried forever. */
+export const dropAfterMs = 2 * waitTimeoutMs;
+
 /** The task a branch names by the `<agent>/<task>-<words>` rule, such as HAL-1. */
 export function taskOfBranch(branch: string): string | undefined {
   return /^[a-z0-9-]+\/([A-Z][A-Z0-9]*-\d+)-/.exec(branch)?.[1];
@@ -166,24 +169,39 @@ export function precheckWaits(
     });
   }
 
-  /** Posts the answer on the task, and wakes it if the same agent still holds it. */
-  async function deliver(companyId: string, wait: PrecheckWait, result: ReadyForReviewResult) {
+  /** Posts the answer on the task; a failure throws, so the next pass posts it again. */
+  async function post(companyId: string, wait: PrecheckWait, result: ReadyForReviewResult) {
     const body = `ready_for_review on \`${wait.branch}\`, check ${wait.checkId}:\n\n${verdictText(result)}`;
     await ctx.issues.createComment(wait.taskId, body, companyId);
-    const issue = await ctx.issues.get(wait.taskId, companyId);
-    const woken = issue?.assigneeAgentId === wait.agentId;
-    if (woken) {
-      // The key makes a second wake for the same check a no-op on the host.
-      await ctx.issues.requestWakeup(wait.taskId, companyId, {
-        reason: "ready_for_review",
-        idempotencyKey: `ready-for-review ${wait.checkId}`,
-      });
+  }
+
+  /**
+   * Wakes the task if the same agent still holds it. Runs after the answer is
+   * posted, so a failure here only costs the wake and is logged: throwing
+   * would keep the check and post the same answer again every minute.
+   */
+  async function wakeIfHeld(companyId: string, wait: PrecheckWait, result: ReadyForReviewResult) {
+    try {
+      const issue = await ctx.issues.get(wait.taskId, companyId);
+      const woken = issue?.assigneeAgentId === wait.agentId;
+      if (woken) {
+        // The key makes a second wake for the same check a no-op on the host.
+        await ctx.issues.requestWakeup(wait.taskId, companyId, {
+          reason: "ready_for_review",
+          idempotencyKey: `ready-for-review ${wait.checkId}`,
+        });
+      }
+      await writeMetrics(
+        ctx,
+        { "precheck.answers": 1 },
+        { companyId, job: "precheck-wake", result: result.verdict, woken: woken ? "yes" : "no" },
+      );
+    } catch (error) {
+      ctx.logger.error(
+        `precheck-wake: posted check ${wait.checkId} on ${wait.task} but couldn't wake it: ${(error as Error).message}`,
+        { companyId },
+      );
     }
-    await writeMetrics(
-      ctx,
-      { "precheck.answers": 1 },
-      { companyId, job: "precheck-wake", result: result.verdict, woken: woken ? "yes" : "no" },
-    );
   }
 
   async function pass(companyId: string): Promise<void> {
@@ -194,11 +212,21 @@ export function precheckWaits(
     const base = precheckUrl(await ctx.config.get(companyId));
     const done = new Set<string>();
     for (const wait of waits) {
+      if (deps.now() - wait.startedAt >= dropAfterMs) {
+        // Posting kept failing (a deleted task, a refusing host): stop trying.
+        ctx.logger.error(
+          `precheck-wake: dropped check ${wait.checkId} for ${wait.task}: no answer posted within ${dropAfterMs / 60_000} minutes`,
+          { companyId },
+        );
+        done.add(wait.checkId);
+        continue;
+      }
       try {
         const result = await finished(deps, base, wait);
         if (result !== undefined) {
-          await deliver(companyId, wait, result);
+          await post(companyId, wait, result);
           done.add(wait.checkId);
+          await wakeIfHeld(companyId, wait, result);
         }
       } catch (error) {
         ctx.logger.error(

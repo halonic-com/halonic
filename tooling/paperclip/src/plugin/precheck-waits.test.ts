@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
-import { taskOfBranch, waitTimeoutMs } from "./precheck-waits.ts";
+import { dropAfterMs, taskOfBranch, waitTimeoutMs } from "./precheck-waits.ts";
 import {
   branch,
   checkId,
@@ -132,6 +132,49 @@ verifies("paperclip.ready-for-review-wake", () => {
       await pass();
       expect(comments).toHaveLength(1);
       expect(wakes).toEqual([]);
+    });
+
+    test("a failed holder read or wake after the answer is posted doesn't post it again", async () => {
+      const failures = ["holder read", "wake"] as const;
+      for (const failure of failures) {
+        const { pass, answer, comments, wakes, logs, issues, sent } = await keptCheck();
+        const refuse = async () => {
+          throw new Error("host refused");
+        };
+        if (failure === "holder read") issues.get = refuse;
+        else issues.requestWakeup = refuse;
+        answer(passed);
+        await pass();
+        expect(comments).toHaveLength(1);
+        expect(wakes).toEqual([]);
+        expect(logs).toEqual([
+          `precheck-wake: posted check ${checkId} on HAL-1 but couldn't wake it: host refused`,
+        ]);
+
+        await pass();
+        expect(sent).toHaveLength(1);
+        expect(comments).toHaveLength(1);
+      }
+    });
+
+    test("a check whose answer can't be posted is dropped after 60 minutes", async () => {
+      const { pass, answer, advance, issues, logs, sent } = await keptCheck();
+      issues.createComment = async () => {
+        throw new Error("task not found");
+      };
+      answer(passed, passed);
+      await pass();
+      advance(dropAfterMs - 1);
+      await pass();
+      expect(sent).toHaveLength(2);
+
+      advance(1);
+      await pass();
+      await pass();
+      expect(sent).toHaveLength(2);
+      expect(logs.at(-1)).toBe(
+        `precheck-wake: dropped check ${checkId} for HAL-1: no answer posted within 60 minutes`,
+      );
     });
 
     test("a new check of the same branch replaces the kept one", async () => {
