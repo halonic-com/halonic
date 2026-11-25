@@ -1,6 +1,12 @@
 import type { LibraryItemKind } from "@halonicjs/app";
 import { ItemChatService } from "@halonicjs/studio-feature-assistant/api";
-import { defineFeature, type ItemRef, type WorkspaceContext } from "@halonicjs/studio-shell";
+import { FilesHostService } from "@halonicjs/studio-feature-files/api";
+import {
+  defineFeature,
+  FilesWithErrorsService,
+  type ItemRef,
+  type WorkspaceContext,
+} from "@halonicjs/studio-shell";
 import { CollectionHostService } from "./collection-host.ts";
 import { ConnectorSecretsService } from "./connector-secrets-host.ts";
 import { ConnectorStatusHostService } from "./connector-status-host.ts";
@@ -62,6 +68,9 @@ export const libraryFeature = defineFeature({
     NewSkillHostService,
     // The skill page's "Ask about this skill…" (assistant.chat.ask-about).
     ItemChatService,
+    // A connector file that didn't load keeps its row, which opens and deletes the file itself (C348).
+    FilesWithErrorsService,
+    FilesHostService,
   ],
   register(studio) {
     studio.places.add({

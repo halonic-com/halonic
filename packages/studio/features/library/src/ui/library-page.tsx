@@ -1,4 +1,5 @@
 import type { LibraryItemKind } from "@halonicjs/app";
+import { type BrokenFileActions, brokenFileMenu } from "@halonicjs/studio-feature-files/api";
 import {
   Button,
   TabList,
@@ -8,17 +9,26 @@ import {
   useToastStore,
 } from "@halonicjs/studio-kit";
 import {
+  brokenFileWords,
   errorMessageFor,
+  type FilesWithErrorsSource,
+  type FileWithErrors,
   type FocusTarget,
   focusRow,
   OverviewPage,
   targetAfterRemoving,
+  useBrokenFiles,
   visibleRowIds,
 } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { deleteWords, phoneCanDelete } from "../delete-words.ts";
 import type { LibraryEntry, LibraryItemsHost, LibraryListing } from "../library-items-host.ts";
-import { entryOfRow, type LibraryEntryPlace, libraryOverview } from "../library-overview.ts";
+import {
+  brokenRowId,
+  entryOfRow,
+  type LibraryEntryPlace,
+  libraryOverview,
+} from "../library-overview.ts";
 import {
   couldntLoad,
   libraryKinds,
@@ -48,6 +58,10 @@ export interface LibraryPageProps {
   readonly onOpenDocsFolder?: () => void;
   /** Reads how many items a search or hub change left (`announcer.announceState`); absent in tests that don't listen. */
   readonly announceState?: ((key: string, text: string) => void) | undefined;
+  /** The workspace's files with errors: a connector file that didn't load keeps its row (C348 ST4). */
+  readonly filesWithErrors?: FilesWithErrorsSource;
+  /** What a broken file's row and its ⋮ menu do; without it the row opens nothing and has no menu. */
+  readonly brokenActions?: BrokenFileActions;
 }
 
 type Load =
@@ -136,6 +150,29 @@ function findEntry(listing: LibraryListing, place: LibraryEntryPlace): LibraryEn
   return entries.find((entry) => entry.id === place.id);
 }
 
+/** The broken rows of a tab other than Connectors: none, kept the same so the rows aren't made again. */
+const noBrokenFiles: readonly FileWithErrors[] = [];
+
+/**
+ * The tabs, Connectors with the count of its files that didn't load: "Connectors 1", read
+ * "Connectors, 1 problem" (C348 ST4).
+ */
+function libraryTabs(brokenConnectors: number) {
+  return libraryKinds.map((each) => ({
+    id: each,
+    label: tabLabel(each),
+    ...(each === "connector" && brokenConnectors > 0
+      ? {
+          count: {
+            value: brokenConnectors,
+            tone: "danger" as const,
+            name: brokenFileWords.problems(brokenConnectors),
+          },
+        }
+      : {}),
+  }));
+}
+
 /**
  * The Library: one sentence, four tabs (Skills, Knowledge, Collections, Connectors) and, under
  * them, the shell's overview page with that tab's items and their "Used by". The Library
@@ -151,14 +188,20 @@ export function LibraryPage({
   onNew,
   onOpenDocsFolder,
   announceState,
+  filesWithErrors,
+  brokenActions = {},
 }: LibraryPageProps) {
   const phone = usePresentation() === "phone";
   const ids = useTabIds();
-  const tabs = useMemo(() => libraryKinds.map((each) => ({ id: each, label: tabLabel(each) })), []);
+  const brokenConnectors = useBrokenFiles(filesWithErrors, "connector");
+  const tabs = useMemo(() => libraryTabs(brokenConnectors.length), [brokenConnectors.length]);
   const { load, retry } = useListing(host, kind);
+  // Only connectors are files the shared check reads; the other tabs have no broken rows.
+  const broken = kind === "connector" ? brokenConnectors : noBrokenFiles;
+  const brokenOf = (row: string) => broken.find((file) => brokenRowId(file) === row);
   const overview = useMemo(
-    () => (load.state === "loaded" ? libraryOverview(load.listing) : { hubs: [] }),
-    [load],
+    () => (load.state === "loaded" ? libraryOverview(load.listing, broken) : { hubs: [] }),
+    [load, broken],
   );
   const label = newLabel(kind);
   const toasts = useToastStore();
@@ -199,6 +242,56 @@ export function LibraryPage({
       { onRemoved: () => focusOn(after), onRestored: () => focusOn({ row }) },
     );
   };
+  // A broken file has no page: its row opens the file at its first problem.
+  const open = (row: string, inNewTab: boolean) => {
+    const file = brokenOf(row);
+    if (file !== undefined) brokenActions.open?.(file);
+    else if (inNewTab) onOpenInNewTab(kind, entryOfRow(row));
+    else onOpen(kind, entryOfRow(row));
+  };
+  // A broken row's Delete moves focus as an item's does: to the next row, and back on Undo.
+  const brokenMenu = (file: FileWithErrors, row: string) =>
+    brokenFileMenu(file, brokenActions, {
+      removed: () => {
+        if (page.current !== null) focusOn(targetAfterRemoving(visibleRowIds(page.current), row));
+      },
+      restored: () => focusOn({ row }),
+    });
+
+  // An item's ⋮: Open, Open in new tab, and Open as file and Delete where the window can.
+  const itemMenu = (row: { readonly id: string; readonly name: string }) => [
+    {
+      id: "open",
+      label: deleteWords.open,
+      onSelect: () => onOpen(kind, entryOfRow(row.id)),
+    },
+    {
+      id: "open-in-new-tab",
+      label: deleteWords.openInNewTab,
+      onSelect: () => onOpenInNewTab(kind, entryOfRow(row.id)),
+    },
+    // On a phone only the kinds whose rows keep a ⋮ for Delete offer it (flow-library 8.3).
+    ...(onOpenAsFile === undefined || (phone && !phoneCanDelete(kind))
+      ? []
+      : [
+          {
+            id: "open-as-file",
+            label: deleteWords.openAsFile,
+            onSelect: () => onOpenAsFile(kind, entryOfRow(row.id), row.name),
+          },
+        ]),
+    // A phone can't remove what it can't make again, so only some kinds keep Delete.
+    ...(phone && !phoneCanDelete(kind)
+      ? []
+      : [
+          {
+            id: "delete",
+            label: deleteWords.delete,
+            danger: true,
+            onSelect: () => remove(row.id),
+          },
+        ]),
+  ];
 
   // A phone shows one kind's list on its own page, with no tabs to be a panel of.
   const content = (
@@ -237,41 +330,12 @@ export function LibraryPage({
               },
             }
           : {})}
-        itemMenu={(row) => [
-          {
-            id: "open",
-            label: deleteWords.open,
-            onSelect: () => onOpen(kind, entryOfRow(row.id)),
-          },
-          {
-            id: "open-in-new-tab",
-            label: deleteWords.openInNewTab,
-            onSelect: () => onOpenInNewTab(kind, entryOfRow(row.id)),
-          },
-          // On a phone only the kinds whose rows keep a ⋮ for Delete offer it (flow-library 8.3).
-          ...(onOpenAsFile === undefined || (phone && !phoneCanDelete(kind))
-            ? []
-            : [
-                {
-                  id: "open-as-file",
-                  label: deleteWords.openAsFile,
-                  onSelect: () => onOpenAsFile(kind, entryOfRow(row.id), row.name),
-                },
-              ]),
-          // A phone can't remove what it can't make again, so only some kinds keep Delete.
-          ...(phone && !phoneCanDelete(kind)
-            ? []
-            : [
-                {
-                  id: "delete",
-                  label: deleteWords.delete,
-                  danger: true,
-                  onSelect: () => remove(row.id),
-                },
-              ]),
-        ]}
-        onOpen={(row) => onOpen(kind, entryOfRow(row))}
-        onOpenInNewTab={(row) => onOpenInNewTab(kind, entryOfRow(row))}
+        itemMenu={(row) => {
+          const file = brokenOf(row.id);
+          return file === undefined ? itemMenu(row) : brokenMenu(file, row.id);
+        }}
+        onOpen={(row) => open(row, false)}
+        onOpenInNewTab={(row) => open(row, true)}
         {...(onNew !== undefined && label !== undefined
           ? { newButton: { label, onClick: () => onNew(kind) } }
           : {})}
