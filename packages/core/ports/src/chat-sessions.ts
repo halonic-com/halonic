@@ -93,7 +93,14 @@ export interface SavedDocsSite {
 }
 
 /** How one `read_docs` call ended, as `@halonicjs/assistant` names it. */
-export type SavedDocsOutcome = "read" | "moved" | "not-read" | "waiting" | "declined" | "refused";
+export type SavedDocsOutcome =
+  | "read"
+  | "moved"
+  | "not-read"
+  | "waiting"
+  | "declined"
+  | "refused"
+  | "untrusted";
 
 /** One line of a Build chat's docs log: never a request header or the page's text. */
 export interface SavedDocsLogEntry {
@@ -189,6 +196,7 @@ const docsOutcomes: ReadonlySet<unknown> = new Set([
   "waiting",
   "declined",
   "refused",
+  "untrusted",
 ]);
 
 function isDocs(value: unknown): boolean {

@@ -2,9 +2,10 @@
 // line for it, and the site card when that call asked about a site.
 
 import type { SavedChatDocs, SavedDocsLogEntry, SavedDocsSite } from "@halonicjs/ports";
+import { errorKindOf } from "@halonicjs/std";
 import { AlertIcon, Button } from "@halonicjs/studio-kit";
-import type { WorkspaceContext } from "@halonicjs/studio-shell";
-import { useEffect, useId, useRef, useState } from "react";
+import { failureLine, type WorkspaceContext } from "@halonicjs/studio-shell";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { type AssistantHost, AssistantHostService } from "../api.ts";
 import { cardElementId } from "./card-end.tsx";
 import { docsLogLine, siteCardWords as words } from "./site-card-words.ts";
@@ -20,7 +21,7 @@ export interface DocsCallProps {
 /** The log line under one `read_docs` call, and its site card when it asked about a site. */
 export function DocsCall({ chatId, callId, context }: DocsCallProps) {
   const host = context.services.get(AssistantHostService);
-  const docs = useChatDocs(host, chatId);
+  const { docs, reread } = useChatDocs(host, chatId);
   const entry = docs?.log.findLast((each) => each.callId === callId);
   const site = docs?.sites.find((each) => each.cardId === callId);
   return (
@@ -28,7 +29,9 @@ export function DocsCall({ chatId, callId, context }: DocsCallProps) {
       {entry === undefined || !stillTrue(entry, docs?.sites ?? []) ? null : (
         <p className="pl-6 text-small text-fg-subtle wrap-break-word">{docsLogLine(entry)}</p>
       )}
-      {site === undefined ? null : <SiteCard chatId={chatId} site={site} host={host} />}
+      {site === undefined ? null : (
+        <SiteCard chatId={chatId} site={site} host={host} reread={reread} />
+      )}
     </>
   );
 }
@@ -59,10 +62,13 @@ function SiteCard({
   chatId,
   site,
   host,
+  reread,
 }: {
   readonly chatId: string;
   readonly site: SavedDocsSite;
   readonly host: AssistantHost;
+  /** Reads the chat's docs again, for a card answered elsewhere. */
+  readonly reread: () => void;
 }) {
   const questionId = useId();
   const [busy, setBusy] = useState<"allowed" | "declined">();
@@ -78,7 +84,9 @@ function SiteCard({
       await host.answerSite(chatId, site.cardId, choice);
     } catch (error) {
       line.answeredHere.current = false;
-      setFailure(words.cantAnswer(error instanceof Error ? error.message : String(error)));
+      // Answered already, such as in another window: the card shows the kept answer instead.
+      if (errorKindOf(error) === "conflict") reread();
+      else setFailure(failureLine(words.saveAnswer, error));
     } finally {
       setBusy(undefined);
     }
@@ -144,9 +152,17 @@ function useAnswerFocus(answer: SavedDocsSite["answer"]) {
   return { ref, answeredHere };
 }
 
-/** A chat's docs sites and log, read again each time the host says the chat changed. */
-function useChatDocs(host: AssistantHost, chatId: string): SavedChatDocs | undefined {
+/**
+ * A chat's docs sites and log, read again each time the host says the chat changed, and
+ * `reread` to read them again now.
+ */
+function useChatDocs(
+  host: AssistantHost,
+  chatId: string,
+): { readonly docs: SavedChatDocs | undefined; readonly reread: () => void } {
   const [docs, setDocs] = useState<SavedChatDocs>();
+  const readNow = useRef<() => void>(() => undefined);
+  const reread = useCallback(() => readNow.current(), []);
   useEffect(() => {
     let live = true;
     let latest = 0;
@@ -161,6 +177,7 @@ function useChatDocs(host: AssistantHost, chatId: string): SavedChatDocs | undef
         () => undefined,
       );
     };
+    readNow.current = read;
     read();
     const stop = host.onDidChange((change) => {
       if (change.kind === "chat" && change.chatId === chatId) read();
@@ -170,5 +187,5 @@ function useChatDocs(host: AssistantHost, chatId: string): SavedChatDocs | undef
       stop();
     };
   }, [host, chatId]);
-  return docs;
+  return { docs, reread };
 }

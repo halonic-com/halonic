@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
-import type { SavedChatDocs } from "@halonicjs/ports";
+import type { SavedChatDocs, SavedDocsLogEntry } from "@halonicjs/ports";
+import { KindedError } from "@halonicjs/std";
 import type { WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { AssistantPanel } from "../panel/assistant-panel.tsx";
 import { buttonNamed, chatOf, fakeHost, show, unmount } from "../test-support.tsx";
+import { docsLogLine } from "./site-card-words.ts";
 
 afterEach(unmount);
 
@@ -94,10 +96,64 @@ verifies("assistant.build.site-card", () => {
     expect(buttonNamed(shown, "Allow")).toBeDefined();
   });
 
-  it("shows a read page's line with its status and size", async () => {
+  it("shows a read page's line with its size", async () => {
     const { fake, page: shown } = await panel();
     const read = { ...asked, outcome: "read", status: 200, bytes: 12_288 } as const;
     await fake.setDocs("c1", { ...waiting, log: [read] });
-    expect(shown.textContent).toContain(`Read ${page} (200), 12 KB`);
+    expect(shown.textContent).toContain(`Read ${page}, 12 KB`);
+  });
+
+  it("says in words why a page wasn't read, without where a 3xx pointed", () => {
+    const line = (entry: Omit<SavedDocsLogEntry, "callId" | "at" | "url">) =>
+      docsLogLine({ ...asked, ...entry });
+    expect(line({ outcome: "read", status: 200, bytes: 1 })).toBe(`Read ${page}, 1 byte`);
+    expect(line({ outcome: "read", status: 200, bytes: 512 })).toBe(`Read ${page}, 512 bytes`);
+    expect(
+      line({ outcome: "moved", status: 301, bytes: 0, location: "https://docs.example.com/v2" }),
+    ).toBe(`Not read: ${page} moved to another address (301)`);
+    expect(line({ outcome: "moved", status: 0, bytes: 0 })).toBe(
+      `Not read: ${page} moved to another address`,
+    );
+    expect(line({ outcome: "not-read", bytes: 0 })).toBe(`Not read: couldn't load ${page}`);
+    expect(line({ outcome: "not-read", status: 200, bytes: 0 })).toBe(
+      `Not read: ${page} isn't a web page or text file under 1 MB`,
+    );
+    expect(line({ outcome: "not-read", status: 404, bytes: 0 })).toBe(
+      `Not read: the site sent an error for ${page} (404)`,
+    );
+    expect(line({ outcome: "declined", bytes: 0 })).toBe(
+      `Not read: ${page}, because you didn't allow this site`,
+    );
+    expect(line({ outcome: "refused", bytes: 0 })).toBe(
+      `Not read: ${page}. The assistant reads only public https pages, without a query.`,
+    );
+    expect(line({ outcome: "untrusted", bytes: 0 })).toBe(
+      `Not read: ${page}, because this workspace isn't trusted`,
+    );
+  });
+
+  it("keeps its buttons and says why when saving the answer fails", async () => {
+    const { fake, page: shown } = await panel();
+    vi.spyOn(fake.host, "answerSite").mockRejectedValue(new Error("ENOENT"));
+    await act(async () => buttonNamed(shown, "Allow")?.click());
+    expect(shown.querySelector('[role="alert"]')?.textContent).toBe(
+      "Couldn't save your answer: Halonic ran into a problem it can't explain yet.",
+    );
+    expect(buttonNamed(shown, "Allow")).toBeDefined();
+  });
+
+  it("shows the kept answer, without an error, for a card answered elsewhere", async () => {
+    const { fake, page: shown } = await panel();
+    // The other window's answer, which the host doesn't announce here: only a fresh read shows it.
+    vi.spyOn(fake.host, "chatDocs").mockResolvedValue({
+      ...waiting,
+      sites: [{ host: "docs.example.com", answer: "allowed", cardId: "d1" }],
+    });
+    vi.spyOn(fake.host, "answerSite").mockRejectedValue(
+      new KindedError("conflict", "That card was answered already."),
+    );
+    await act(async () => buttonNamed(shown, "Don't allow")?.click());
+    expect(card(shown)?.textContent).toContain("Allowed for this chat.");
+    expect(shown.querySelector('[role="alert"]')).toBeNull();
   });
 });

@@ -114,11 +114,12 @@ verifies("assistant.build.read-docs", () => {
     });
 
     it("fetches nothing while the workspace isn't trusted", async () => {
-      const { read, sent } = docsChat(undefined, { trusted: false });
+      const { read, sent, sites } = docsChat(undefined, { trusted: false });
       expect(await read(page)).toBe(
         "Not trusted yet: docs can be read once the person trusts this workspace.",
       );
       expect(sent).toEqual([]);
+      expect(sites.entries.map((entry) => entry.outcome)).toEqual(["untrusted"]);
     });
   });
 
