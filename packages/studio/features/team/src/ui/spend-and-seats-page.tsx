@@ -3,7 +3,14 @@ import type { SpendAndSeats, SpendAndSeatsState } from "../spend-and-seats.ts";
 import type { TeamDetails } from "../team-details.ts";
 import type { TeamClock } from "../team-format.ts";
 import { type TeamLink, teamWords } from "../team-words.ts";
-import { AgentDetailPage, AllAgentsPage, SeatDetailPage, type TeamPage } from "./detail-pages.tsx";
+import {
+  AgentDetailPage,
+  AllAgentsPage,
+  pageKey,
+  SeatDetailPage,
+  type TeamPage,
+} from "./detail-pages.tsx";
+import type { ArrivalFocus } from "./keep-focus.ts";
 import { TeamLinks, type TeamLinksState } from "./money-tiles.tsx";
 import { LoadingBody, PageFrame, TryAgain } from "./page-frame.tsx";
 import { NoSeatsLine, ReadBody, readFreshness } from "./read-screen.tsx";
@@ -40,9 +47,15 @@ type Shown =
 export function SpendAndSeatsPage(props: SpendAndSeatsPageProps) {
   const links: TeamLinksState = props.onLink === undefined ? "none" : "on";
   const [page, setPage] = useState<TeamPage | undefined>(undefined);
+  // The row pressed on Spend and seats, so Back can focus it again once the screen has read.
+  const [cameBack, setCameBack] = useState<ArrivalFocus | undefined>(undefined);
   const details = props.details;
+  const open = (opened: TeamPage) => {
+    setCameBack({ kind: "row", opens: pageKey(opened) });
+    setPage(opened);
+  };
   const back = () => setPage(undefined);
-  const pages = details === undefined ? undefined : { details, onOpen: setPage };
+  const pages = details === undefined ? undefined : { details, onOpen: open };
   return (
     <TeamLinks.Provider value={links}>
       {details === undefined || page === undefined ? (
@@ -50,6 +63,7 @@ export function SpendAndSeatsPage(props: SpendAndSeatsPageProps) {
           spendAndSeats={props.spendAndSeats}
           onLink={props.onLink ?? noLink}
           pages={pages}
+          arrival={cameBack}
         />
       ) : (
         <DetailPage details={details} page={page} onOpen={setPage} onBack={back} />
@@ -84,6 +98,7 @@ function SpendAndSeatsScreen(props: {
   spendAndSeats: SpendAndSeats;
   onLink: (link: TeamLink) => void;
   pages: Pages;
+  arrival: ArrivalFocus | undefined;
 }) {
   const { spendAndSeats, onLink } = props;
   const [shown, setShown] = useState<Shown>({ kind: "loading" });
@@ -114,14 +129,17 @@ function SpendAndSeatsScreen(props: {
   // One frame for every state, so the main and h1 stay put when a read lands.
   if (shown.kind === "loading") {
     return (
-      <PageFrame busy freshness={teamWords.loading}>
+      <PageFrame busy freshness={teamWords.loading} arrival={props.arrival}>
         <LoadingBody />
       </PageFrame>
     );
   }
   const state = shown.kind === "read" ? shown.state : undefined;
   return (
-    <PageFrame freshness={state === undefined ? undefined : readFreshness(state, clock)}>
+    <PageFrame
+      freshness={state === undefined ? undefined : readFreshness(state, clock)}
+      arrival={props.arrival}
+    >
       <ShownBody
         shown={shown}
         clock={clock}
