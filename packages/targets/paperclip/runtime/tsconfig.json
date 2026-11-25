@@ -1,0 +1,11 @@
+{
+  "//": "The worker runs in Paperclip's Node process, so it is checked with Node's types; the layer rule still keeps node:* imports out.",
+  "extends": "@halonicjs/tooling-config/tsconfig/node.json",
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx"
+  ]
+}

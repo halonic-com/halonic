@@ -1,0 +1,33 @@
+{
+  "name": "@halonicjs/target-paperclip-runtime",
+  "private": true,
+  "type": "module",
+  "description": "The Paperclip plugin runtime: serves a workspace snapshot's tools inside Paperclip through reviewed actions, with a pinned snapshot and a fallback.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./actions": "./src/actions.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/format": "workspace:*",
+    "@halonicjs/std": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "targets",
+    "owner": "ravi",
+    "coverage": {
+      "lines": 80
+    }
+  }
+}
