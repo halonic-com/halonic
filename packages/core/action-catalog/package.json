@@ -1,0 +1,31 @@
+{
+  "name": "@halonicjs/action-catalog",
+  "private": true,
+  "type": "module",
+  "description": "The reviewed stepper definitions, one file each under src/<service>/, found by discovery, with each definition's source hash.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "core",
+    "owner": "tomas",
+    "coverage": {
+      "lines": 90,
+      "branches": 85
+    },
+    "catalog": {
+      "export": "definition"
+    }
+  }
+}
