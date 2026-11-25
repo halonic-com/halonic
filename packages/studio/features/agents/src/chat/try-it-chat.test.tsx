@@ -10,7 +10,7 @@ import type { HarnessStrip } from "../configuration/harness-strip.ts";
 import { buttonNamed, show, typeIntoArea, unmount } from "../test-support.tsx";
 import { Chat, said, scriptedHost, sendMessage } from "./try-it-test-support.tsx";
 
-const ways = { goToKeyField: vi.fn(), openHarness: vi.fn() };
+const ways = { goToKeyField: vi.fn(), openHarness: vi.fn(), setTheKey: vi.fn() };
 
 afterEach(() => {
   unmount();
@@ -185,7 +185,7 @@ verifies("agents.chat.reply-ends", () => {
   it("offers Open Models › before Try again when the model's key was the cause, and only then", async () => {
     const { host, finish } = scriptedHost();
     const goToKeyField = vi.fn();
-    const ways = { goToKeyField, openHarness: () => {} };
+    const ways = { goToKeyField, openHarness: () => {}, setTheKey: () => {} };
     const page = await show(<Chat host={host} announce={vi.fn()} ways={ways} />);
     await sendMessage(page, "Sort this mail");
     await finish({

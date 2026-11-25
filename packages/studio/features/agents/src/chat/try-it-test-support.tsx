@@ -6,6 +6,7 @@ import type { HarnessStrip } from "../configuration/harness-strip.ts";
 import { type MemoryAgentsHostOptions, memoryAgentsHost } from "../memory-host.ts";
 import { buttonNamed, typeIntoArea } from "../test-support.tsx";
 import { TryItChatView, type TryItChatViewProps } from "./try-it-chat.tsx";
+import { useModelKey } from "./use-model-key.ts";
 import { useTryItChat } from "./use-try-it-chat.ts";
 
 export const sorter = {
@@ -22,7 +23,8 @@ export const sorter = {
 export function scriptedHost({
   savedChats,
   trust,
-}: Pick<MemoryAgentsHostOptions, "savedChats" | "trust"> = {}) {
+  missingKeys,
+}: Pick<MemoryAgentsHostOptions, "savedChats" | "trust" | "missingKeys"> = {}) {
   const requests: AgentChatRequest[] = [];
   const pending: ((answer: ChatAnswer | Error) => void)[] = [];
   const host = memoryAgentsHost({
@@ -30,6 +32,7 @@ export function scriptedHost({
     agents: [sorter],
     savedChats,
     trust,
+    missingKeys,
     answer: (_ref, request) => {
       // A copy, since the chat's conversation grows after the request.
       requests.push({ ...request, messages: [...request.messages] });
@@ -46,7 +49,7 @@ export function scriptedHost({
 }
 
 /** The ways out of the line under the box, for a test that doesn't follow them. */
-const noWays = { goToKeyField: () => {}, openHarness: () => {} };
+const noWays = { goToKeyField: () => {}, openHarness: () => {}, setTheKey: () => {} };
 
 /** An agent's Try it chat as the tests draw it: *Sorter*, on Claude Code unless they say. */
 export function Chat({
@@ -67,6 +70,7 @@ export function Chat({
   readonly chatUi?: TryItChatViewProps["chatUi"];
 }) {
   const chat = useTryItChat({ host, agent: sorter, name: "Sorter", announce });
+  const modelKey = useModelKey(host, sorter);
   return (
     <TryItChatView
       chat={chat}
@@ -75,6 +79,7 @@ export function Chat({
       harness={harness}
       harnessStrip={harnessStrip}
       ways={ways}
+      modelKey={modelKey}
       sandboxStartCheck={sandboxStartCheck}
       announce={announce}
       chatUi={chatUi}

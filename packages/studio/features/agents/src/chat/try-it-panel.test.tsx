@@ -14,7 +14,7 @@ const host = memoryAgentsHost({
   hubs: [{ id: "acme", name: "Acme" }],
   agents: [{ ...sorter, name: "Sorter", description: "Sorts incoming mail by topic" }],
 });
-const ways = { goToKeyField: vi.fn(), openHarness: vi.fn() };
+const ways = { goToKeyField: vi.fn(), openHarness: vi.fn(), setTheKey: vi.fn() };
 
 function panel(settings: Load<AgentSettings>) {
   return (

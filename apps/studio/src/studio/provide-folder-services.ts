@@ -254,6 +254,12 @@ export function provideFolderServices(
       trust: { mayStart: () => trust.mayStartNow(), askTrust, workspaceName: name },
       tryItChanges,
       savedChats: { sessions: chatSessions, location },
+      // As the Assistant's Model menu asks: only whether a key is stored, never the key.
+      hasKey: (secret) =>
+        services
+          .get(ModelKeysService)
+          .stored(secret)
+          .catch(() => false),
     }),
   );
   provideAssistantHost(services, {

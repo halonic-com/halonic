@@ -4,7 +4,7 @@ import type { ReplyEnd } from "./transcript.ts";
 type BadEnd = Extract<ReplyEnd, { readonly kind: "failed" | "engine-stopped" }>;
 
 /**
- * The Try it chat's words (microcopy 8.3, 14.1 and 19.5; states H2, H9, H12, H13, H16,
+ * The Try it chat's words (microcopy 8.3, 14.1 and 19.5; states H2, H9, H12, H13, H16, H19,
  * H23, H24). The agent's name is the one it has now.
  */
 export const tryItWords = {
@@ -57,6 +57,10 @@ export const tryItWords = {
   /** H29: the line itself comes with the held message, from `chatSecretHold` in the shell. */
   goToKeyField: "Go to the key field ›",
   sendAnyway: "Send anyway",
+  /** H19: the agent's model needs a key; the model's name goes between, as code. */
+  noUsableModel: (agent: string) => `${agent} has no model it can use:`,
+  needsKey: (provider: string) => `needs an API key for ${provider}.`,
+  setTheKey: "Set the key ›",
   /** H27: the harness line's way to fix it. */
   openHarness: "Open Harness settings ›",
   /** A tool call's line, with the tool's name in words: "send reply". */

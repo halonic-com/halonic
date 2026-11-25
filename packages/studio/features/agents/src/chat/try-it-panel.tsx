@@ -7,6 +7,7 @@ import type { Load } from "../page/use-load.ts";
 import type { BoxLineActions } from "./box-line.tsx";
 import { TryItChangesLine, type WatchTryItChanges } from "./try-it-changes-line.tsx";
 import { TryItChatView } from "./try-it-chat.tsx";
+import { useModelKey } from "./use-model-key.ts";
 import { useTryItChat } from "./use-try-it-chat.ts";
 
 /** The props of {@link TryItPanel}. */
@@ -23,7 +24,7 @@ export interface TryItPanelProps {
    * the agent's read, else that same state, so the page never shows it twice.
    */
   readonly waiting: ReactNode;
-  readonly ways: Pick<BoxLineActions, "goToKeyField" | "openHarness">;
+  readonly ways: Pick<BoxLineActions, "goToKeyField" | "openHarness" | "setTheKey">;
   readonly sandboxStartCheck?: SandboxStartCheck | undefined;
   /** Reads a sentence out through the shell's announcer. */
   readonly announce: (text: string, politeness?: "polite" | "assertive") => void;
@@ -51,6 +52,7 @@ function ReadyChat({
   const chat = useTryItChat({ host, agent, name: settings.name, announce });
   const { found } = useHarnessCheck(host, agent.hubId, agent.id);
   const watchChanges = useWatchTryItChanges(host, agent);
+  const modelKey = useModelKey(host, agent);
   return (
     <div className="flex size-full min-h-0 flex-col">
       <div className="mx-auto w-full max-w-reading px-4 pt-3 empty:hidden">
@@ -64,6 +66,7 @@ function ReadyChat({
           harness={settings.harness}
           harnessStrip={harnessStrip(settings.harness, found[settings.harness])}
           ways={ways}
+          modelKey={modelKey}
           sandboxStartCheck={sandboxStartCheck}
           announce={announce}
           chatUi={settings.chatUi}

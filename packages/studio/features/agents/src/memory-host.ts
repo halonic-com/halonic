@@ -21,6 +21,7 @@ import type {
   AgentUser,
   HarnessReadiness,
   HarnessSignIn,
+  MissingModelKey,
   SavedChatsPlace,
   SavedFilePlacement,
 } from "./api.ts";
@@ -62,6 +63,11 @@ export interface MemoryAgentsHostOptions {
    * A test that drives a chat step by step gives its own.
    */
   readonly answer?: ((ref: AgentRef, request: AgentChatRequest) => Promise<ChatAnswer>) | undefined;
+  /**
+   * What `missingModelKey` answers for each agent, keyed by `hubId/id`, read on each ask so a test
+   * can store the key meanwhile; every model can be used when left out.
+   */
+  readonly missingKeys?: Readonly<Record<string, MissingModelKey>> | undefined;
   /** The workflows that run each agent, keyed by `hubId/id` of the agent. */
   readonly users?: Readonly<Record<string, readonly AgentUser[]>> | undefined;
   /** The routines that start each agent, keyed by `hubId/id` of the agent. */
@@ -265,6 +271,10 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
       const message = { role: "assistant", content: "Done." } as const;
       request.listener?.onMessage?.(message);
       return { messages: [message], end: { reason: "answered" } };
+    },
+    missingModelKey: async (ref) => {
+      found(ref);
+      return options.missingKeys?.[keyOf(ref)];
     },
     ...(options.savedChats && { savedChats: options.savedChats }),
     ...(options.trust && {

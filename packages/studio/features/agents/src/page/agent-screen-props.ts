@@ -22,8 +22,11 @@ export interface AgentScreenProps extends AgentRef {
   readonly openLibrary?: ((list: AgentToolList) => void) | undefined;
   /** Opens the Runs page, for **Open the Runs page ›**; absent where the app can't open a place. */
   readonly openRuns?: (() => void) | undefined;
-  /** Opens where keys are kept, for the Try it chat's **Go to the key field ›** and **Open Models**. */
-  readonly openKeyField?: (() => void) | undefined;
+  /**
+   * Opens where keys are kept, for the Try it chat's **Go to the key field ›** and **Open Models**;
+   * with a secret name, that provider's key block, for **Set the key ›**.
+   */
+  readonly openKeyField?: ((secretName?: string) => void) | undefined;
   /** The window's close stack, so Esc closes the top card; a page of its own without one. */
   readonly closeStack?: CloseStack | undefined;
   /** Reads a sentence to screen readers, such as "*Writer* was removed." when its card drops. */

@@ -27,6 +27,7 @@ import { type BoxLineActions, boxProblem, makesSendWait, TryItBoxLine } from "./
 import { ReplyText, type ReplyUi } from "./reply-ui.tsx";
 import { type ChatTurn, type ReplyEnd, type ReplyStep, shownSteps } from "./transcript.ts";
 import { toolInWords, tryItWords } from "./try-it-words.ts";
+import type { ModelKeyCheck } from "./use-model-key.ts";
 import type { TryItChat } from "./use-try-it-chat.ts";
 
 /** The props of {@link TryItChatView}. */
@@ -42,7 +43,9 @@ export interface TryItChatViewProps {
   readonly harness: AgentHarnessId;
   readonly harnessStrip: HarnessStrip | null;
   /** The ways to the places the line under the box points to. */
-  readonly ways: Pick<BoxLineActions, "goToKeyField" | "openHarness">;
+  readonly ways: Pick<BoxLineActions, "goToKeyField" | "openHarness" | "setTheKey">;
+  /** Whether the agent's model is missing its key (H19); absent where the host can't tell. */
+  readonly modelKey?: ModelKeyCheck | undefined;
   /**
    * Checks whether the sandbox can start, for an agent whose harness is a program; where it is
    * absent, Send never waits for the sandbox (the engine still refuses such a reply).
@@ -75,7 +78,23 @@ export function TryItChatView(props: TryItChatViewProps) {
     harness: props.harness,
     strip: props.harnessStrip,
     sandboxRefused: sandbox.refused !== undefined,
+    missingKey: props.modelKey?.missing,
   });
+  // A model without its key keeps every message, as a harness that isn't ready does (H19).
+  const keyMissing = props.modelKey?.missing !== undefined;
+  // Send on a model without its key asks for the key again; still missing, the line's link takes
+  // focus once the answer has rendered, so Send is never dead (flow-assistant 7).
+  const [focusLink, setFocusLink] = useState(0);
+  useEffect(() => {
+    if (focusLink === 0) return;
+    document.getElementById(lineId)?.querySelector("button")?.focus();
+  }, [focusLink, lineId]);
+  const keyStillMissing = async () => {
+    if (props.modelKey === undefined || !keyMissing) return false;
+    if ((await props.modelKey.again()) === undefined) return false;
+    setFocusLink((count) => count + 1);
+    return true;
+  };
 
   const sendNow = (message: string, { fromBox = true } = {}) => {
     chat.send(message, refused);
@@ -102,6 +121,11 @@ export function TryItChatView(props: TryItChatViewProps) {
       setHeld(hold);
       return;
     }
+    // Send anyway takes the held line away, so the model's line shows in its place.
+    if (await keyStillMissing()) {
+      setHeld(undefined);
+      return;
+    }
     // A workspace that isn't trusted keeps the message in the box (H16).
     if (await chat.mayStart()) sendNow(draft);
   };
@@ -109,7 +133,7 @@ export function TryItChatView(props: TryItChatViewProps) {
   // them as they hold Send, and a message that looks like it holds a key waits in the box (H29),
   // unless the person already wrote another there.
   const sendFromReply = async (message: string) => {
-    if (chat.engineQuiet || chat.answering || makesSendWait(problem)) return;
+    if (chat.engineQuiet || chat.answering || makesSendWait(problem) || keyMissing) return;
     const hold = chatSecretHold(message);
     if (hold !== undefined) {
       if (draft !== "") return;
@@ -127,7 +151,13 @@ export function TryItChatView(props: TryItChatViewProps) {
     if (props.chatUi === undefined) return undefined;
     const newest = index === turns.length - 1;
     const ended = turns[index]?.end !== undefined;
-    const live = newest && ended && !chat.answering && !chat.engineQuiet && !makesSendWait(problem);
+    const live =
+      newest &&
+      ended &&
+      !chat.answering &&
+      !chat.engineQuiet &&
+      !makesSendWait(problem) &&
+      !keyMissing;
     return {
       components: props.chatUi,
       sender: name,
