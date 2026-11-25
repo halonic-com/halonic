@@ -1,7 +1,7 @@
 import type { Tool, WorkspaceSnapshot } from "@halonicjs/format";
 import { deepEqual } from "@halonicjs/std";
 import { activeSnapshot } from "./active-snapshot.ts";
-import { type GitHubGet, gitHubReader } from "./github.ts";
+import { type GitHubGet, type GitHubQuery, gitHubQueryReader, gitHubReader } from "./github.ts";
 import type { ActionHandlers } from "./handlers.ts";
 import type { RuntimeHost, ToolDeclaration, ToolResult, ToolRunContext } from "./host.ts";
 import { paperclipAccess } from "./paperclip-access.ts";
@@ -45,33 +45,39 @@ function withTimeout<T>(promise: Promise<T>, ms: number, what: string): Promise<
 }
 
 /**
- * A GitHub reader for one call, made only when the call needs GitHub, with
- * the read token the installer set as `githubToken`. The runtime never
- * mints a token and never reads a key from the workspace.
+ * The GitHub readers for one call, made only when the call needs GitHub,
+ * with the read token the installer set as `githubToken`, resolved once.
+ * The runtime never mints a token and never reads a key from the workspace.
  */
-function callReader(
+function callReaders(
   ctx: WorkspaceRuntimeApi,
   config: Readonly<Record<string, unknown>>,
   companyId: string,
 ) {
-  let reader: GitHubGet | undefined;
-  return async (): Promise<GitHubGet> => {
-    if (reader === undefined) {
+  let token: Promise<string> | undefined;
+  const readToken = (): Promise<string> => {
+    token ??= (async () => {
       const binding = config["githubToken"] as { type?: unknown; secretId?: unknown } | undefined;
       if (binding?.type !== "secret_ref" || typeof binding.secretId !== "string") {
         throw new Error("no GitHub read token is set in the plugin's settings.");
       }
-      const token = await ctx.secrets.resolve(
-        { type: "secret_ref", secretId: binding.secretId },
-        { companyId },
-      );
-      reader = gitHubReader({
-        fetch: (url, init) =>
-          ctx.http.fetch(url, { ...init, signal: AbortSignal.timeout(requestTimeoutMs) }),
-        token,
-      });
-    }
-    return reader;
+      return ctx.secrets.resolve({ type: "secret_ref", secretId: binding.secretId }, { companyId });
+    })();
+    return token;
+  };
+  const fetch = <T extends object>(url: string, init: T) =>
+    ctx.http.fetch(url, { ...init, signal: AbortSignal.timeout(requestTimeoutMs) });
+  let reader: GitHubGet | undefined;
+  let queryReader: GitHubQuery | undefined;
+  return {
+    github: async (): Promise<GitHubGet> => {
+      reader ??= gitHubReader({ fetch, token: await readToken() });
+      return reader;
+    },
+    githubQuery: async (): Promise<GitHubQuery> => {
+      queryReader ??= gitHubQueryReader({ fetch, token: await readToken() });
+      return queryReader;
+    },
   };
 }
 
@@ -107,7 +113,7 @@ async function serve(
 ): Promise<ToolResult> {
   const { name, runCtx } = call;
   const config = await ctx.config.get(runCtx.companyId);
-  const github = callReader(ctx, config, runCtx.companyId);
+  const { github, githubQuery } = callReaders(ctx, config, runCtx.companyId);
   const now = (setup.now ?? (() => new Date()))();
   const { builtIn } = setup;
   const active = await activeSnapshot(ctx, {
@@ -138,6 +144,7 @@ async function serve(
     caller: { agentId: runCtx.agentId, urlKey: agent.urlKey, name: agent.name },
     companyId: runCtx.companyId,
     github,
+    githubQuery,
     paperclip: paperclipAccess(ctx, handler.capabilities, {
       companyId: runCtx.companyId,
       runId: runCtx.runId,

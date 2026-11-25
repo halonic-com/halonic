@@ -153,6 +153,7 @@ verifies("runtime.tools", () => {
       expect(actions.filter((action) => action.available).map((action) => action.name)).toEqual([
         "github.pull-request",
         "github.open-pull-requests",
+        "github.merge-queue",
         "github.merge-times",
         "paperclip.task",
         "paperclip.failed-runs",

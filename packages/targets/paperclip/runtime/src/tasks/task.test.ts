@@ -87,6 +87,9 @@ function run(params: unknown, paperclip: Pick<RuntimeHost, "agents" | "issues">)
     github: async () => {
       throw new Error("paperclip.task doesn't read GitHub");
     },
+    githubQuery: async () => {
+      throw new Error("paperclip.task doesn't read GitHub");
+    },
   };
   return handler.run(call);
 }

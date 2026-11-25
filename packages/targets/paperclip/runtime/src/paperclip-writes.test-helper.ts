@@ -129,6 +129,9 @@ export async function callAction(
     github: async () => {
       throw new Error("a writing action never reads GitHub");
     },
+    githubQuery: async () => {
+      throw new Error("a writing action never reads GitHub");
+    },
     paperclip: paperclipAccess(host, handler.capabilities, { companyId: "acme", runId: "run-1" }),
     now: new Date("2026-11-23T14:00:00Z"),
   };

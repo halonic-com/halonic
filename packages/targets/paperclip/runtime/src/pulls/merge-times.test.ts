@@ -80,6 +80,9 @@ function run(tool: Tool, get: GitHubGet) {
     companyId: "acme",
     paperclip: {} as ActionCall["paperclip"],
     github: async () => get,
+    githubQuery: async () => {
+      throw new Error("github.merge-times reads GitHub's REST API only");
+    },
   });
 }
 

@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-17949, step 1a of the phase 3 plan on HAL-17450 (rev 5, "Safety": the workspace can rearrange and reword but never grant itself a new power); Liam on HAL-17985 (the action list as data, from its own entry point)
+- Source: HAL-17949, step 1a of the phase 3 plan on HAL-17450 (rev 5, "Safety": the workspace can rearrange and reword but never grant itself a new power); Liam on HAL-17985 (the action list as data, from its own entry point); HAL-18231 (read-only GraphQL queries, for the merge queue)
 
-When an agent calls a tool the plugin's manifest declares, the runtime shall run the tool's action handler with the settings of the snapshot it serves, under the tool's short name; it shall answer that the tool is off, and run nothing, when the served snapshot doesn't define the tool, changes its action or parameters from the built-in snapshot, or names an action the runtime has no handler for; it shall refuse a caller whose `urlKey` the tool's `callers` don't name, comparing without case and never by the agent's display name; it shall read GitHub only with the read token set in its settings, by GET requests to api.github.com that don't follow redirects; and the runtime shall list every action of the format, with whether it can run it and the Paperclip capabilities it needs, from an entry point without the worker.
+When an agent calls a tool the plugin's manifest declares, the runtime shall run the tool's action handler with the settings of the snapshot it serves, under the tool's short name; it shall answer that the tool is off, and run nothing, when the served snapshot doesn't define the tool, changes its action or parameters from the built-in snapshot, or names an action the runtime has no handler for; it shall refuse a caller whose `urlKey` the tool's `callers` don't name, comparing without case and never by the agent's display name; it shall read GitHub only with the read token set in its settings, by GET requests to api.github.com and by GraphQL documents that are a single `query` posted to api.github.com/graphql, never following a redirect; and the runtime shall list every action of the format, with whether it can run it and the Paperclip capabilities it needs, from an entry point without the worker.
 
 ## Examples
 
@@ -32,3 +32,6 @@ When an agent calls a tool the plugin's manifest declares, the runtime shall run
 - Given a GitHub answer that redirects,
   when the reader gets it,
   then the request fails and nothing is sent to the redirect's target.
+- Given a GraphQL document that holds a mutation or a subscription,
+  when a handler sends it through the query reader,
+  then the reader refuses it and sends nothing.

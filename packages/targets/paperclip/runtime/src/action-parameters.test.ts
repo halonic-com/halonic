@@ -21,7 +21,7 @@ const sampleCalls: Readonly<Record<ToolActionName, readonly Readonly<Record<stri
   {
     "github.pull-request": [{ pr: 7, repo: "acme/website" }],
     "github.open-pull-requests": [{}],
-    "github.merge-queue": [],
+    "github.merge-queue": [{}],
     "github.merge-times": [{}],
     "paperclip.task": [{ task: "HAL-1", comments: 2, document: "plan" }],
     "paperclip.failed-runs": [{ since: "2026-11-24T00:00:00Z" }],
@@ -105,6 +105,7 @@ async function runRecording(
       runId: "run-1",
     }),
     github: refusingHost(requests, "github"),
+    githubQuery: refusingHost(requests, "githubQuery"),
   };
   const result = await handler.run(call).catch((error: Error) => ({ error: error.message }));
   return { read, requests, result };
