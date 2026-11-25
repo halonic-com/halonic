@@ -3,6 +3,7 @@
 - Task: HAL-18470
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-18424 (Chief's yes to the label-noop self-fix, 25 Nov 11:30 UTC; the live Merger runs both changes since 12:02 UTC; Julian's OK for the close and reopen writes on HAL-18482; the reviewer approves this note in review)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:PS64/y1GLJcbHxTuQxPMdO/4DradDdQoKqWznol8dQoNwKITY/uLfUMiNAPSaqABAF+eAWmEpJ7VZckfAb1wBg==
 
 Merge control now decides like the live Merger has since 25 Nov 12:02 UTC. A pull request labelled `built-on:halonic` is a candidate exactly like one labelled `built-on:paperclip`, and an approved pull request stuck on a label-only CI run is closed and reopened once per head. The requirement `paperclip.merge-control-merge-state` and its tests change, `paperclip.merge-control-write-scope` grows by two writes, and `paperclip.merge-control-label-noop-reopen` is new.
 
