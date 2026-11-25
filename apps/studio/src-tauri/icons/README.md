@@ -12,7 +12,7 @@ fails while the files draw another glyph than the kit's.
   points at the first two.
 - `apps/<app>.ico` and `apps/<app>.svg` for each focused app (Inbox, Messenger): the installer installs the .ico
   as `icons\<app>.ico` and gives the app's Start menu shortcut that icon, so its taskbar entry shows it too.
-  `apps/<app>.rgba` is its window's icon, 32 by 32 raw RGBA like the tray's.
+  `apps/<app>.rgba` is its window's icon, 64 by 64 raw RGBA, so it stays sharp at high display scaling.
 - Android's launcher icon is in `../gen/android/app/src/main/res`: three vector layers (`drawable/ic_launcher_*.xml`,
   the last one the single-colour themed icon), tied together in `mipmap-anydpi-v26/ic_launcher.xml`, and plain
   PNGs for Android 7.0 and 7.1. Don't regenerate them with `pnpm tauri icon`: it would put back a flat picture

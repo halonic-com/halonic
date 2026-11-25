@@ -48,11 +48,12 @@ impl FocusedApp {
         }
     }
 
-    /// Its window's icon, 32 by 32 raw RGBA like the tray's: the halo with
-    /// the app's glyph, from the same drawing as its shortcut's icon
+    /// Its window's icon, 64 by 64 raw RGBA like the tray's (so it stays
+    /// sharp on the taskbar at 125–200% scaling): the halo with the app's
+    /// glyph, from the same drawing as its shortcut's icon
     /// (`icons/apps/<name>.ico`).
     pub fn icon(self) -> Image<'static> {
-        Image::new(self.icon_bytes(), 32, 32)
+        Image::new(self.icon_bytes(), 64, 64)
     }
 
     fn icon_bytes(self) -> &'static [u8] {
@@ -189,10 +190,10 @@ mod tests {
     }
 
     #[test]
-    fn each_app_has_its_own_32_by_32_icon() {
+    fn each_app_has_its_own_64_by_64_icon() {
         for app in FocusedApp::ALL {
-            assert_eq!(app.icon_bytes().len(), 32 * 32 * 4, "{}", app.name());
-            assert_eq!((app.icon().width(), app.icon().height()), (32, 32));
+            assert_eq!(app.icon_bytes().len(), 64 * 64 * 4, "{}", app.name());
+            assert_eq!((app.icon().width(), app.icon().height()), (64, 64));
         }
         assert_ne!(
             FocusedApp::Inbox.icon_bytes(),

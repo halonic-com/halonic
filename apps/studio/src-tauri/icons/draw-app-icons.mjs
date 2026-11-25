@@ -10,7 +10,7 @@
 // The page is the script's own, with no network, so Chromium's sandbox (which containers often can't
 // start) guards nothing. The last step writes, next to this script: icon.svg, icon.png (512) and
 // icon.ico (Studio's, which the exe and the installer carry), and for each focused app apps/<app>.svg,
-// apps/<app>.ico (its Start menu shortcut) and apps/<app>.rgba (its window, 32 by 32 raw RGBA like
+// apps/<app>.ico (its Start menu shortcut) and apps/<app>.rgba (its window, 64 by 64 raw RGBA like
 // the tray's, so the shell needs no image decoder).
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -19,7 +19,7 @@ import { appGlyphScale, appGlyphs } from "@halonicjs/studio-kit/app-glyphs";
 const here = import.meta.dirname;
 const focusedApps = ["inbox", "messenger"];
 const icoSizes = [16, 24, 32, 48, 64, 256];
-const windowIconSize = 32;
+const windowIconSize = 64;
 
 const blue = "#3175f2";
 const cyan = "#1bc6c8";

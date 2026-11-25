@@ -27,7 +27,7 @@ export type AppGlyphShape =
 /**
  * Each app's glyph, where the ring's point of light sits: centred on 50,50, about the play shape's
  * 29 by 33. Copied from the masters' `icons.mjs` on HAL-17379, the one source for the kit's
- * `AppLogo` and the Studio's native icons (`apps/studio/scripts/draw-app-icons.mjs`).
+ * `AppLogo` and the Studio's native icons (`apps/studio/src-tauri/icons/draw-app-icons.mjs`).
  */
 export const appGlyphs: Readonly<Record<AppLogoId, readonly AppGlyphShape[]>> = {
   studio: [{ kind: "dot", cx: 50, cy: 50, r: 7 }],

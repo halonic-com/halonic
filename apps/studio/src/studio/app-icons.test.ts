@@ -62,10 +62,10 @@ verifies("studio.app-icons", () => {
     },
   );
 
-  it("gives each focused app's window its own 32 by 32 icon", () => {
+  it("gives each focused app's window its own 64 by 64 icon", () => {
     const shell = text("src/focused_apps.rs");
     for (const app of focusedApps) {
-      expect(read(`icons/apps/${app}.rgba`)).toHaveLength(32 * 32 * 4);
+      expect(read(`icons/apps/${app}.rgba`)).toHaveLength(64 * 64 * 4);
       expect(shell).toContain(`include_bytes!("../icons/apps/${app}.rgba")`);
     }
     expect(read("icons/apps/inbox.rgba").equals(read("icons/apps/messenger.rgba"))).toBe(false);

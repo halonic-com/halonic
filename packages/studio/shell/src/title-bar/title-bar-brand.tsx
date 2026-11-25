@@ -2,9 +2,10 @@ import { AppLogo } from "@halonicjs/studio-kit";
 import { useNarrowWindow } from "../frame/frame-effects.ts";
 
 /**
- * Studio's logo (the ring with its point of light, HAL-17379) and the words "Halonic Studio" at the far left of the title bar (design
- * decision HAL-8416). It is not a link and not a button. Under 900px the words go and the mark
- * stays, so the tabs keep their room; the mark then carries the name "Halonic Studio".
+ * Studio's logo (the ring with its point of light, HAL-17379) and the words "Halonic Studio" at
+ * the far left of the title bar (design decision HAL-8416). It is not a link and not a button.
+ * Under 900px the words go and the logo stays, so the tabs keep their room; the logo then carries
+ * the name "Halonic Studio".
  *
  * @example
  * <ShellFrame titleBar={<><TitleBarBrand /><HistoryButtons tabs={workspace.tabs} /></>} …>
