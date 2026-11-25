@@ -1,11 +1,14 @@
 import { type GatewayHostMessage, gatewayProtocolVersion } from "@halonicjs/ports";
 import { FakeSource } from "./fake-source.test-helper.ts";
 import { GatewayConnection } from "./gateway-connection.ts";
+import type { GatewayMessaging } from "./messaging-dispatch.ts";
 
 const encoder = new TextEncoder();
 
 /** A connection on a fake source and a fake transport that records what it is sent. */
-export function openConnection(options: { allowRisky?: boolean } = {}) {
+export function openConnection(
+  options: { allowRisky?: boolean; messaging?: GatewayMessaging } = {},
+) {
   const source = new FakeSource();
   const sent: GatewayHostMessage[] = [];
   const transport = { closed: false, buffered: 0, failSends: false };
@@ -14,6 +17,7 @@ export function openConnection(options: { allowRisky?: boolean } = {}) {
   const connection = new GatewayConnection({
     source,
     policy: { allowRiskyRemotely: () => risky.allowed },
+    ...(options.messaging === undefined ? {} : { messaging: options.messaging }),
     transport: {
       send: (json) => {
         if (transport.failSends) throw new Error("socket gone");

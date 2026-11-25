@@ -19,8 +19,8 @@ import { type E2eWire, SecureChannel } from "./secure-channel.ts";
 
 export interface SecureSessionDeps extends HandshakeDeps {
   readonly wire: E2eWire;
-  /** Makes the gateway connection that runs inside the session once it is open. */
-  openConnection(transport: GatewayTransport): GatewayConnection;
+  /** Makes the gateway connection that runs inside the session once it is open, for the phone with this key. */
+  openConnection(transport: GatewayTransport, phoneKey: Uint8Array): GatewayConnection;
   /** How long an open session may go without the phone's `hello`. */
   readonly helloTimeoutMs: number;
   /** How long the handshake may take; the ADR's 10 seconds unless a test shortens it. */
@@ -186,11 +186,14 @@ export class SecureSession {
 
   /** The session is open: the gateway protocol runs inside it, starting with `hello`. */
   #open(phoneKey: Uint8Array): void {
-    const connection = this.#deps.openConnection({
-      send: (json) => this.#send(json),
-      bufferedBytes: () => this.#deps.wire.bufferedBytes(),
-      close: () => this.close(),
-    });
+    const connection = this.#deps.openConnection(
+      {
+        send: (json) => this.#send(json),
+        bufferedBytes: () => this.#deps.wire.bufferedBytes(),
+        close: () => this.close(),
+      },
+      phoneKey,
+    );
     this.#state = { name: "open", connection, phoneKey };
     this.#after(this.#deps.helloTimeoutMs, () => {
       if (!connection.hasGreeted()) this.close();
