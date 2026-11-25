@@ -30,6 +30,11 @@ verifies("action-catalog.discovery", () => {
       expect(sourceHashOf("github.unknown", 1)).toBeUndefined();
     });
 
+    it("has no step types and no routes yet, since the shell holds the route list", () => {
+      expect(shippedCatalog.stepType("github.upload-social-preview", 1)).toBeUndefined();
+      expect(shippedCatalog.route("github.upload-social-preview", 1, 1)).toBeUndefined();
+    });
+
     it("carries the SHA-256 of each definition's source", () => {
       expect(sourceHashOf("github.upload-social-preview", 1)).toBe(
         sha256Of("github/upload-social-preview"),
