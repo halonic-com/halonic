@@ -13,7 +13,8 @@ import { passwordSecretName } from "./sign-in.ts";
  */
 export type ConsoleRequest =
   | { readonly op: "code" }
-  | { readonly op: "waiting" }
+  /** The request made with `code`, which `halonic serve pair` got from `code` and shows. */
+  | { readonly op: "waiting"; readonly code: string }
   | { readonly op: "allow"; readonly requestId: string }
   | { readonly op: "devices" }
   | { readonly op: "revoke"; readonly deviceId: string };
@@ -59,7 +60,7 @@ export function createDeviceConsole(ports: ConsolePorts): DeviceConsole {
       case "code":
         return { ok: true, ...(await pairing.newCode(passwordHash)) };
       case "waiting":
-        return { ok: true, waiting: await pairing.waiting(passwordHash) };
+        return { ok: true, waiting: await pairing.waiting(passwordHash, request.code) };
       case "allow":
         return (await pairing.allow(request.requestId, "console", passwordHash))
           ? { ok: true }
@@ -93,9 +94,12 @@ export function createDeviceConsole(ports: ConsolePorts): DeviceConsole {
 /** `raw` as a {@link ConsoleRequest}, or `null` when it is none: no other field is read. */
 function consoleRequestOf(raw: unknown): ConsoleRequest | null {
   const fields = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
-  const { op, requestId, deviceId } = fields;
-  if (op === "code" || op === "waiting" || op === "devices") {
+  const { op, code, requestId, deviceId } = fields;
+  if (op === "code" || op === "devices") {
     return { op };
+  }
+  if (op === "waiting" && typeof code === "string" && fieldPatterns.code.test(code)) {
+    return { op, code };
   }
   if (op === "allow" && typeof requestId === "string" && fieldPatterns.requestId.test(requestId)) {
     return { op, requestId };

@@ -1,5 +1,6 @@
 // `halonic serve pair`: on the computer that runs `halonic serve`, shows a one-time pairing code,
-// then asks Allow for each device that sends a code, showing its name and check code
+// then asks Allow for the device that sends that code, showing its name and check code. A request
+// made with another code, such as one from Studio's "Add a device", isn't shown here
 // (`server.device-pairing`). It talks to the running server over its console channel, so a
 // device it allows is allowed by `console`.
 
@@ -69,7 +70,7 @@ export async function pairDevice(
   const asked = new Set<string>();
   while (Date.now() < waitUntil) {
     if (!(await pause(context.signal))) return { stopped: true, json: { allowed: false } };
-    const waiting = waitingOf(await askServe(setup, place, { op: "waiting" }));
+    const waiting = waitingOf(await askServe(setup, place, { op: "waiting", code }));
     for (const request of waiting.filter((each) => !asked.has(each.id))) {
       asked.add(request.id);
       const answered = await answerRequest(context, setup, place, request);

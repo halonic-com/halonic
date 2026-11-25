@@ -40,7 +40,7 @@ function setup() {
   async function pairFromConsole(name: string): Promise<string> {
     const made = (await console.answer({ op: "code" })) as unknown as { code: string };
     const pending = await send("/api/pair", { code: made.code, deviceName: name });
-    const waiting = (await console.answer({ op: "waiting" })) as unknown as {
+    const waiting = (await console.answer({ op: "waiting", code: made.code })) as unknown as {
       waiting: { id: string }[];
     };
     await console.answer({ op: "allow", requestId: waiting.waiting[0]?.id });
@@ -67,7 +67,7 @@ describe("device console", () => {
 
       const pending = await send("/api/pair", { code: made["code"], deviceName: "Pixel 9" });
       expect(pending.status).toBe(200);
-      const waiting = await console.answer({ op: "waiting" });
+      const waiting = await console.answer({ op: "waiting", code: made["code"] });
       expect(waiting).toEqual({
         ok: true,
         waiting: [
@@ -81,6 +81,19 @@ describe("device console", () => {
       expect(first.json.token).toMatch(/^[0-9a-f]{64}$/u);
       const second = await send("/api/pair/status", { pendingId: pending.json.pendingId });
       expect(second.status).toBe(404);
+    });
+
+    it("shows only the request made with its own code, not one waiting on another code", async () => {
+      const { console, send } = setup();
+      const earlier = (await console.answer({ op: "code" })) as unknown as { code: string };
+      await send("/api/pair", { code: earlier.code, deviceName: "Old phone" });
+      const made = (await console.answer({ op: "code" })) as unknown as { code: string };
+      await send("/api/pair", { code: made.code, deviceName: "New phone" });
+
+      expect(await console.answer({ op: "waiting", code: made.code })).toEqual({
+        ok: true,
+        waiting: [expect.objectContaining({ deviceName: "New phone" })],
+      });
     });
 
     it("lists a device it allowed as allowed by console", async () => {
@@ -152,7 +165,10 @@ describe("device console", () => {
       for (const entry of record.codes) entry.request = { ...entry.request, allowedBy: 7 };
       await coordination.compareAndSet(pairingKey, stored, JSON.stringify(record));
 
-      expect(await console.answer({ op: "waiting" })).toEqual({ ok: true, waiting: [] });
+      expect(await console.answer({ op: "waiting", code: made.code })).toEqual({
+        ok: true,
+        waiting: [],
+      });
       expect((await send("/api/pair/status", { pendingId: pending.json.pendingId })).status).toBe(
         404,
       );
@@ -166,6 +182,8 @@ describe("device console", () => {
         null,
         "code",
         { op: "token" },
+        { op: "waiting" },
+        { op: "waiting", code: "x".repeat(40) },
         { op: "allow" },
         { op: "allow", requestId: "../../etc" },
         { op: "revoke", deviceId: "console" },

@@ -52,7 +52,7 @@ export const serveDevicesMessages = defineMessages("serveDevices", {
   /** The question for one waiting request. */
   allowQuestion: (device: string) => phrase`Allow ${device}?`,
   /** Nobody can answer: no terminal, `CI` or `--json`. */
-  allowNoTerminal: () => phrase`there's no terminal here to allow the device in.`,
+  allowNoTerminal: () => phrase`There's no terminal here to allow the device in.`,
   /** The fix under {@link allowNoTerminal}. */
   allowNoTerminalFix: () => phrase`Run halonic serve pair in a terminal.`,
   /** The device was allowed and can collect its session. */

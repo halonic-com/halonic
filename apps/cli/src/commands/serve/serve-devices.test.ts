@@ -215,6 +215,23 @@ verifies("cli.commands.serve.pair", () => {
   );
 
   it(
+    "never offers a request made with another code",
+    async () => {
+      const address = await startServe();
+      const deviceA = await pairFromConsole(address, "Device A");
+      // A request waiting on a code Device A made, as Studio's "Add a device" makes one.
+      const other = await post(address, "/api/devices/code", { password }, deviceA);
+      await post(address, "/api/pair", { code: other.json.code, deviceName: "Other phone" });
+
+      await pairFromConsole(address, "Pixel 9");
+
+      expect(await idOf("Pixel 9")).toMatch(/^device_/u);
+      expect(await idOf("Other phone")).toBe("");
+    },
+    slowTest,
+  );
+
+  it(
     "still serves when the console can't open, and says pairing won't work and why",
     async () => {
       transport = {
