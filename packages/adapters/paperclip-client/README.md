@@ -51,6 +51,13 @@ on a chat only when the person does so in Halonic (`answer` and `send`). It neve
 retry. An approval always shows its type, which says what approving does (such as `hire_agent`), above
 the title the asking agent wrote.
 
+**Workflow task writes.** `PaperclipTasks` gives workflows (phase 3, step 4) two writes on the same connection:
+`wake` assigns a task to an agent with status `todo` and a comment, and `finish` sets status `done` with a
+comment. Both are Paperclip's task update, so their rows on the list also pin the body: exactly those fields,
+each a non-empty string, and that one status. The client refuses any other body before anything goes out, so
+neither can change a title, a blocker, a budget or another status. It reads the task first and writes only to a
+task of the connection's company. Like the person's writes, a task write is sent once or refused, never queued.
+
 The key goes only in the `Authorization` header. Errors name the request and why it failed, never the key,
 a header or the body of a failed answer.
 
@@ -81,6 +88,9 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `seatsSummary` | `GET /api/plugins/halonic.seats/api/seats/summary?companyId=` | seats by label, windows, the pool's proposal |
 | `pullRequestsSummary` | `GET /api/plugins/halonic.agent-tools/api/github/summary?companyId=` | pull requests and the merge queue |
 | `pullRequestDetail` | `GET /api/plugins/halonic.agent-tools/api/github/pr/{number}?repo=&companyId=` | one pull request; `{number}` a positive integer |
+| `getTask` | `GET /api/issues/{task}` | before a task write: the task's ID and company |
+| `wakeTask` | `PATCH /api/issues/{task}` with exactly `{ assigneeAgentId, status: "todo", comment }` | a workflow wakes an agent on a task |
+| `finishTask` | `PATCH /api/issues/{task}` with exactly `{ status: "done", comment }` | a workflow closes a task as done |
 
 **No route that makes keys.** Nothing goes to Paperclip upstream (board, HAL-10, 24 Nov), so this list is the
 main protection. No entry makes, lists or deletes keys or tokens: not `/api/board-api-keys`, an agent's

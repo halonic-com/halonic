@@ -1,6 +1,7 @@
 import { checkedOrigin } from "./address.ts";
 import {
   buildPath,
+  fitsBody,
   matchesRequest,
   type PaperclipRequestName,
   type PathValues,
@@ -100,6 +101,10 @@ export class PaperclipTransport {
     // The last gate before the network: the exact method and path must match the list.
     if (!matchesRequest(name, method, url.pathname)) {
       throw new PaperclipClientError(`${method} ${name} isn't on the request list.`, "refused");
+    }
+    // A row that pins its body sends that body or nothing.
+    if (!fitsBody(name, details.body)) {
+      throw new PaperclipClientError(`${method} ${name} can't send that body.`, "refused");
     }
     return this.#guard((key) => this.#sendWith(key, name, url, details.body));
   }
