@@ -4,7 +4,7 @@ Owner: owen · Layer: core · Read the root `AGENTS.md` first; this file adds lo
 
 ## Scope
 
-No-AI failure scores for a writer attempt: one at the end of the run and one at the 3, 6 and 10 minute checkpoints while it runs.
+No-AI failure scores for a writer attempt: one at the end of the run and one at the 3, 6 and 10 minute checkpoints while it runs. The early-hedge retry policy that uses them for the DeepSeek pilot, behind a flag that is off by default.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.
