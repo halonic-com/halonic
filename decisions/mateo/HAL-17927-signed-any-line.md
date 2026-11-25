@@ -3,6 +3,7 @@
 - Task: HAL-17927 (under HAL-17891)
 - Approval: the board asked for it through Chief on HAL-17912 (25 Nov), to match the live Merger's gate; Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:FQoA/Y9dPJTz+yhI57ea/VnLCXcPFD3vxcqZduUjwsG2QJ4TqSZspZCn+1IHajHeV8uJ1e16z3ej/8IOT8RNAA==
 
 ## What changes
 
