@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-16021 (the board's rules from the Supervisor's SUPERVISOR.md, 25 Nov, passed on by Liam)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:H3AEdeDgxD0TZk9P1x1E91m6RNt7/g6YTc7bLmIzbKpHW3HwbYSSUGPVprKWzatVpAg3XDBBnv5lj3a6IX9vDw==
 - Task: HAL-16008
 
 ## What changes
