@@ -23,6 +23,8 @@ import { routineKind } from "./kinds/routine/kind.ts";
 import type { Routine } from "./kinds/routine/schema.ts";
 import { runtimeKind } from "./kinds/runtime/kind.ts";
 import type { Runtime } from "./kinds/runtime/schema.ts";
+import { signalKind } from "./kinds/signal/kind.ts";
+import type { Signal } from "./kinds/signal/schema.ts";
 import { skillKind } from "./kinds/skill/kind.ts";
 import type { Skill } from "./kinds/skill/schema.ts";
 import { templateKind } from "./kinds/template/kind.ts";
@@ -49,6 +51,7 @@ export interface KindValues {
   skill: Skill;
   tool: Tool;
   template: Template;
+  signal: Signal;
   hub: Hub;
   agent: Agent;
   workflow: Workflow;
@@ -78,6 +81,7 @@ export const fileKinds: { readonly [Name in KindName]: FileKind<KindValues[Name]
   skill: skillKind,
   tool: toolKind,
   template: templateKind,
+  signal: signalKind,
   hub: hubKind,
   agent: agentKind,
   workflow: workflowKind,

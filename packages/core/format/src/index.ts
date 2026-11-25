@@ -133,6 +133,15 @@ export {
 export type { Routine, RoutineTarget, RoutineTrigger } from "./kinds/routine/schema.ts";
 export { WEBHOOK_REFUSED_HEADERS } from "./kinds/routine/webhook-headers.ts";
 export type { Runtime } from "./kinds/runtime/schema.ts";
+export { checkSignal } from "./kinds/signal/checks.ts";
+export {
+  PR_WATCHER_WAKES,
+  type SignalRuleInfo,
+  type SignalRuleName,
+  signalRuleInfo,
+  signalRuleNames,
+} from "./kinds/signal/rules.ts";
+export type { Signal } from "./kinds/signal/schema.ts";
 export type { Skill } from "./kinds/skill/schema.ts";
 export {
   type PathLookup,
@@ -187,6 +196,7 @@ export {
   snapshotJsonSchema,
   WorkspaceSnapshot,
 } from "./snapshot/schema.ts";
+export { readSignal } from "./snapshot/signals.ts";
 export {
   makeSnapshot,
   readSnapshot,

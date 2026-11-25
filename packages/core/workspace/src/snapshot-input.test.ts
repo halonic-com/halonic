@@ -6,7 +6,7 @@ import { MemorySource } from "./test/memory-source.ts";
 
 const commit = "0123456789abcdef0123456789abcdef01234567";
 
-/** A workspace with one tool that reads templates, and two templates. */
+/** A workspace with one tool that reads templates, two templates and a signal. */
 const fixture = {
   "workspace.yaml": "id: acme\nname: Acme\n",
   "library/tools/template-get.tool.yaml": [
@@ -20,10 +20,11 @@ const fixture = {
   ].join("\n"),
   "library/templates/task-spec.md": "---\ntitle: Task\n---\n\n## Goal\n\nDone when: …\n",
   "library/templates/card.md": "Question, options and a recommendation.\n",
+  "library/signals/watcher.signal.yaml": "rule: { run: pr-watcher, with: { wakeOn: [ci-red] } }\n",
 };
 
 verifies("workspace.snapshot-input", () => {
-  it("makes the snapshot of a fixture workspace with its templates sorted by id", async () => {
+  it("makes the snapshot of a fixture workspace with its templates sorted by id and its signal", async () => {
     const workspace = await loadWorkspace(new MemorySource(fixture));
     expect(workspace.issues).toEqual([]);
     const snapshot = makeSnapshot(snapshotInputOf(workspace, commit));
@@ -35,6 +36,14 @@ verifies("workspace.snapshot-input", () => {
     expect(snapshot.value.templates).toEqual([
       { id: "card", body: "Question, options and a recommendation." },
       { id: "task-spec", title: "Task", body: "## Goal\n\nDone when: …" },
+    ]);
+    expect(snapshot.value.signals).toEqual([
+      {
+        version: 1,
+        id: "watcher",
+        rule: { run: "pr-watcher", with: { done: true, wakeOn: ["ci-red"] } },
+        dryRun: false,
+      },
     ]);
   });
 });

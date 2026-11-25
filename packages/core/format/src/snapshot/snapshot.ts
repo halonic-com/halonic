@@ -1,5 +1,6 @@
 import { type Path, parse } from "@halonicjs/schema-kit";
 import { canonicalJson, encodeUtf8, err, ok, type Result } from "@halonicjs/std";
+import type { Signal } from "../kinds/signal/schema.ts";
 import { templateKind } from "../kinds/template/kind.ts";
 import type { Template } from "../kinds/template/schema.ts";
 import { checkTool } from "../kinds/tool/checks.ts";
@@ -7,6 +8,7 @@ import type { Tool } from "../kinds/tool/schema.ts";
 import { checkKeysIn } from "../shared/key-in-value.ts";
 import { checkRouting, type Routing } from "./routing.ts";
 import { MAX_SNAPSHOT_BYTES, WorkspaceSnapshot } from "./schema.ts";
+import { signalProblems } from "./signals.ts";
 
 /**
  * Why a snapshot is refused. A refused snapshot is never used in part:
@@ -21,7 +23,7 @@ export interface SnapshotProblem {
   readonly message: string;
 }
 
-/** What a snapshot is made from: the workspace, its commit, its parsed tool and template files and its routing. */
+/** What a snapshot is made from: the workspace, its commit, its parsed tool, template and signal files and its routing. */
 export interface SnapshotInput {
   readonly name: string;
   readonly commit: string;
@@ -29,6 +31,8 @@ export interface SnapshotInput {
   /** The workspace's templates; none when left out. */
   readonly templates?: readonly Template[];
   readonly routing?: Routing;
+  /** The workspace's signals; none when left out. */
+  readonly signals?: readonly Signal[];
 }
 
 /** One of the snapshot's lists, by the name it has in the snapshot and what one item is called. */
@@ -112,10 +116,12 @@ function sortedBy<Item extends Readonly<Record<Key, string>>, Key extends string
  * (`tool-name-twice`, `tool-id-twice`), tools out of name order
  * (`tools-not-sorted`), a key in a template (`value-looks-like-key`), a
  * template id used twice (`template-id-twice`), templates out of id order
- * (`templates-not-sorted`), and in the routing a key in an agent's name
+ * (`templates-not-sorted`), in the routing a key in an agent's name
  * (`value-looks-like-key`) or an area named like an account or credential
- * field (`routing-area-looks-like-account`). The schema already refuses an
- * unknown role, an unknown field and a name that isn't an agent's url key.
+ * field (`routing-area-looks-like-account`), and the signals' problems from
+ * `signalProblems` (a signal's own refusals, an id or rule used twice,
+ * signals out of id order). The schema already refuses an unknown role, an
+ * unknown field and a name that isn't an agent's url key.
  *
  * @param data - the snapshot as JSON data
  * @returns the snapshot, or every problem found
@@ -152,6 +158,7 @@ export function readSnapshot(data: unknown): Result<WorkspaceSnapshot, SnapshotP
     ...repeated(templates, "id", "template-id-twice"),
     ...outOfOrder(templates, "id"),
     ...(parsed.value.routing === undefined ? [] : checkRouting(parsed.value.routing, ["routing"])),
+    ...signalProblems(parsed.value.signals ?? []),
   ];
   return problems.length > 0 ? err(problems) : ok(parsed.value);
 }
@@ -186,23 +193,25 @@ export function readSnapshotText(text: string): Result<WorkspaceSnapshot, Snapsh
 
 /**
  * Makes the snapshot of one workspace commit from its parsed tool files,
- * sorted by name, and its templates, sorted by id, and checks it with {@link readSnapshot}, so the builder
+ * sorted by name, and its templates and signals, each sorted by id, and checks it with {@link readSnapshot}, so the builder
  * can't write a snapshot the plugin would refuse.
  *
- * The `templates` list is left out when there are none, so a workspace
- * without templates gets the same snapshot as before templates existed.
+ * The `templates` and `signals` lists are left out when there are none, so
+ * a workspace without them gets the same snapshot as before they existed.
  *
  * @param input - the workspace's name, the commit, its tools and its templates
  * @returns the snapshot, or every problem found
  */
 export function makeSnapshot(input: SnapshotInput): Result<WorkspaceSnapshot, SnapshotProblem[]> {
   const templates = sortedBy(input.templates ?? [], "id");
+  const signals = sortedBy(input.signals ?? [], "id");
   return readSnapshot({
     format: 1,
     workspace: { name: input.name, commit: input.commit },
     tools: sortedBy(input.tools, "name"),
     ...(templates.length > 0 ? { templates } : {}),
     ...(input.routing === undefined ? {} : { routing: input.routing }),
+    ...(signals.length > 0 ? { signals } : {}),
   });
 }
 

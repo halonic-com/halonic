@@ -74,6 +74,7 @@ export const itemWords = {
     skill: "Skill",
     tool: "Tool",
     template: "Template",
+    signal: "Signal",
     hub: "Hub",
     provider: "Provider",
     runtime: "Runtime",
