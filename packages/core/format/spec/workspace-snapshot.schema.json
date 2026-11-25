@@ -394,6 +394,25 @@
                   "run"
                 ],
                 "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "run": {
+                    "type": "string",
+                    "const": "paperclip.template"
+                  },
+                  "with": {
+                    "default": {},
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "run"
+                ],
+                "additionalProperties": false
               }
             ]
           }
@@ -404,6 +423,36 @@
           "description",
           "callers",
           "action"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "templates": {
+      "maxItems": 100,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[a-z0-9][a-z0-9-_]*$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32000
+          }
+        },
+        "required": [
+          "id",
+          "body"
         ],
         "additionalProperties": false
       }

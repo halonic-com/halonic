@@ -133,7 +133,8 @@ function hubOutsideHubs(folder: string): string {
 /**
  * The places whose file name tells their kind apart, such as
  * `<id>.agent.yaml`: an `<id>` and a suffix of the kind's own before
- * `.yaml`, in a folder.
+ * `.yaml`, in a folder. A bare `<id>.yaml` or `<id>.md`, such as a
+ * provider's or a template's, could be any file, so it isn't one.
  */
 function namedPlaces(): FilePlace[] {
   return kindNames().flatMap((kind) =>
@@ -141,10 +142,15 @@ function namedPlaces(): FilePlace[] {
       (place) =>
         place.folder !== "" &&
         place.name.startsWith(`${idToken}.`) &&
-        place.name !== `${idToken}.yaml` &&
+        hasKindSuffix(place.name) &&
         !place.name.includes("/"),
     ),
   );
+}
+
+/** Whether a place's name has a suffix of its own before the extension, as `<id>.agent.yaml` has. */
+function hasKindSuffix(name: string): boolean {
+  return name.slice(idToken.length).split(".").length > 2;
 }
 
 /** Whether a file name is an id followed by the place's suffix, as `clerk.agent.yaml` is for `<id>.agent.yaml`. */

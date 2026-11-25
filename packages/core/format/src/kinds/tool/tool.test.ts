@@ -132,6 +132,7 @@ verifies("format.tool-actions", () => {
       "github.merge-times github-read",
       "paperclip.task paperclip-api",
       "paperclip.failed-runs paperclip-api",
+      "paperclip.template ",
     ]);
     expect(toolActionNames().some((name) => toolActionInfo(name).writes)).toBe(false);
   });

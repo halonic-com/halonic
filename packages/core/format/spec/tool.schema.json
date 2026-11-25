@@ -365,6 +365,25 @@
             "run"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "run": {
+              "type": "string",
+              "const": "paperclip.template"
+            },
+            "with": {
+              "default": {},
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "run"
+          ],
+          "additionalProperties": false
         }
       ]
     }

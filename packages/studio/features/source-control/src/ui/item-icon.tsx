@@ -14,6 +14,7 @@ const kindIcons: { readonly [Kind in ItemKind]: () => ReactNode } = {
   routine: () => <PlaceIcon name="routines" />,
   skill: () => <PlaceIcon name="library" />,
   tool: () => <PlaceIcon name="library" />,
+  template: () => <PlaceIcon name="library" />,
   knowledge: () => <PlaceIcon name="library" />,
   collection: () => <PlaceIcon name="library" />,
   provider: () => <SectionIcon name="models" />,

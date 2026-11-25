@@ -1,5 +1,7 @@
 import { type Path, parse } from "@halonicjs/schema-kit";
 import { canonicalJson, encodeUtf8, err, ok, type Result } from "@halonicjs/std";
+import { templateKind } from "../kinds/template/kind.ts";
+import type { Template } from "../kinds/template/schema.ts";
 import { checkTool } from "../kinds/tool/checks.ts";
 import type { Tool } from "../kinds/tool/schema.ts";
 import { checkKeysIn } from "../shared/key-in-value.ts";
@@ -18,43 +20,80 @@ export interface SnapshotProblem {
   readonly message: string;
 }
 
-/** What a snapshot is made from: the workspace, its commit and its parsed tool files. */
+/** What a snapshot is made from: the workspace, its commit and its parsed tool and template files. */
 export interface SnapshotInput {
   readonly name: string;
   readonly commit: string;
   readonly tools: readonly Tool[];
+  /** The workspace's templates; none when left out. */
+  readonly templates?: readonly Template[];
 }
 
-/** Each place where a name is used a second time, as `code` at `tools[i].<key>`. */
-function repeated(tools: readonly Tool[], key: "name" | "id", code: string): SnapshotProblem[] {
+/** One of the snapshot's lists, by the name it has in the snapshot and what one item is called. */
+interface SnapshotList<Item> {
+  readonly list: "tools" | "templates";
+  readonly item: "tool" | "template";
+  readonly items: readonly Item[];
+}
+
+/** Each place where a value is used a second time, as `code` at `<list>[i].<key>`. */
+function repeated<Item extends Readonly<Record<Key, string>>, Key extends string>(
+  { list, item, items }: SnapshotList<Item>,
+  key: Key,
+  code: string,
+): SnapshotProblem[] {
   const seen = new Set<string>();
-  return tools.flatMap((tool, index) => {
-    if (!seen.has(tool[key])) {
-      seen.add(tool[key]);
+  return items.flatMap((entry, index) => {
+    if (!seen.has(entry[key])) {
+      seen.add(entry[key]);
       return [];
     }
     return [
       {
         code,
-        path: ["tools", index, key],
-        message: `another tool already has the ${key} '${tool[key]}'`,
+        path: [list, index, key],
+        message: `another ${item} already has the ${key} '${entry[key]}'`,
       },
     ];
   });
 }
 
-/** The first tool that is out of name order, so two equal snapshots are always written alike. */
-function outOfOrder(tools: readonly Tool[]): SnapshotProblem[] {
-  const index = tools.findIndex((tool, at) => at > 0 && (tools[at - 1]?.name ?? "") > tool.name);
+/** The first item out of `key` order, so two equal snapshots are always written alike. */
+function outOfOrder<Item extends Readonly<Record<Key, string>>, Key extends string>(
+  { list, items }: SnapshotList<Item>,
+  key: Key,
+): SnapshotProblem[] {
+  const index = items.findIndex((entry, at) => at > 0 && (items[at - 1]?.[key] ?? "") > entry[key]);
   return index === -1
     ? []
     : [
         {
-          code: "tools-not-sorted",
-          path: ["tools", index],
-          message: "list the tools sorted by name",
+          code: `${list}-not-sorted`,
+          path: [list, index],
+          message: `list the ${list} sorted by ${key}`,
         },
       ];
+}
+
+/** Each template's own refusals (a key in its title or text), at `templates[i]`. */
+function templateProblems(templates: readonly Template[]): SnapshotProblem[] {
+  return templates.flatMap((template, index) =>
+    (templateKind.check?.(template) ?? []).map(({ code, path, message }) => ({
+      code,
+      path: ["templates", index, ...path],
+      message,
+    })),
+  );
+}
+
+/** The items sorted by `key`, without changing the list given. */
+function sortedBy<Item extends Readonly<Record<Key, string>>, Key extends string>(
+  items: readonly Item[],
+  key: Key,
+): Item[] {
+  return [...items].sort((first, second) =>
+    first[key] < second[key] ? -1 : Number(first[key] > second[key]),
+  );
 }
 
 /**
@@ -68,8 +107,10 @@ function outOfOrder(tools: readonly Tool[]): SnapshotProblem[] {
  * name included (`value-looks-like-key`),
  * a parameter that asks for a key (`parameter-asks-for-key`), an empty
  * number range (`parameter-range-empty`), a tool name or id used twice
- * (`tool-name-twice`, `tool-id-twice`) and tools out of name order
- * (`tools-not-sorted`).
+ * (`tool-name-twice`, `tool-id-twice`), tools out of name order
+ * (`tools-not-sorted`), a key in a template (`value-looks-like-key`), a
+ * template id used twice (`template-id-twice`) and templates out of id
+ * order (`templates-not-sorted`).
  *
  * @param data - the snapshot as JSON data
  * @returns the snapshot, or every problem found
@@ -82,12 +123,17 @@ export function readSnapshot(data: unknown): Result<WorkspaceSnapshot, SnapshotP
   if (!parsed.ok) {
     return err(parsed.error.map(({ code, path, message }) => ({ code, path, message })));
   }
-  const { tools } = parsed.value;
+  const tools: SnapshotList<Tool> = { list: "tools", item: "tool", items: parsed.value.tools };
+  const templates: SnapshotList<Template> = {
+    list: "templates",
+    item: "template",
+    items: parsed.value.templates ?? [],
+  };
   const problems: SnapshotProblem[] = [
     ...checkKeysIn(parsed.value.workspace.name, ["workspace", "name"], "setting").map(
       ({ code, path, message }) => ({ code, path, message }),
     ),
-    ...tools.flatMap((tool, index) =>
+    ...tools.items.flatMap((tool, index) =>
       checkTool(tool).map(({ code, path, message }) => ({
         code,
         path: ["tools", index, ...path],
@@ -96,7 +142,10 @@ export function readSnapshot(data: unknown): Result<WorkspaceSnapshot, SnapshotP
     ),
     ...repeated(tools, "name", "tool-name-twice"),
     ...repeated(tools, "id", "tool-id-twice"),
-    ...outOfOrder(tools),
+    ...outOfOrder(tools, "name"),
+    ...templateProblems(templates.items),
+    ...repeated(templates, "id", "template-id-twice"),
+    ...outOfOrder(templates, "id"),
   ];
   return problems.length > 0 ? err(problems) : ok(parsed.value);
 }
@@ -131,20 +180,22 @@ export function readSnapshotText(text: string): Result<WorkspaceSnapshot, Snapsh
 
 /**
  * Makes the snapshot of one workspace commit from its parsed tool files,
- * sorted by name, and checks it with {@link readSnapshot}, so the builder
+ * sorted by name, and its templates, sorted by id, and checks it with {@link readSnapshot}, so the builder
  * can't write a snapshot the plugin would refuse.
  *
- * @param input - the workspace's name, the commit and its tools
+ * The `templates` list is left out when there are none, so a workspace
+ * without templates gets the same snapshot as before templates existed.
+ *
+ * @param input - the workspace's name, the commit, its tools and its templates
  * @returns the snapshot, or every problem found
  */
 export function makeSnapshot(input: SnapshotInput): Result<WorkspaceSnapshot, SnapshotProblem[]> {
-  const tools = [...input.tools].sort((first, second) =>
-    first.name < second.name ? -1 : Number(first.name > second.name),
-  );
+  const templates = sortedBy(input.templates ?? [], "id");
   return readSnapshot({
     format: 1,
     workspace: { name: input.name, commit: input.commit },
-    tools,
+    tools: sortedBy(input.tools, "name"),
+    ...(templates.length > 0 ? { templates } : {}),
   });
 }
 

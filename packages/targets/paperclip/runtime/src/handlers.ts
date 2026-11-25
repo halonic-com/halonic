@@ -1,9 +1,10 @@
-import type { Tool, ToolActionName } from "@halonicjs/format";
+import type { Template, Tool, ToolActionName } from "@halonicjs/format";
 import type { GitHubGet } from "./github.ts";
 import type { Capability, RuntimeHost, ToolResult } from "./host.ts";
 import { openPullRequestsHandler } from "./pulls/open-pull-requests.ts";
 import { pullRequestHandler } from "./pulls/pull-request.ts";
 import { taskHandler } from "./tasks/task.ts";
+import { templateHandler } from "./template-action.ts";
 
 /**
  * The code behind each action a workspace tool can name (`TOOL_ACTIONS` in
@@ -18,6 +19,8 @@ export interface ActionCall {
   readonly tool: Tool;
   /** The parameters the agent sent, unchecked. */
   readonly params: unknown;
+  /** The served snapshot's templates, sorted by id; none when it has no list. */
+  readonly templates: readonly Template[];
   /** The calling agent: its id and url key. */
   readonly caller: { readonly agentId: string; readonly urlKey: string };
   /** The company the call runs in. */
@@ -49,4 +52,5 @@ export const runtimeHandlers: ActionHandlers = {
   "github.pull-request": pullRequestHandler,
   "github.open-pull-requests": openPullRequestsHandler,
   "paperclip.task": taskHandler,
+  "paperclip.template": templateHandler,
 };

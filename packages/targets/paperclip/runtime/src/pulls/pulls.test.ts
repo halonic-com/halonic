@@ -85,6 +85,7 @@ function run(
       action: { run: action, with: { repositories: [repo] } },
     }),
     params,
+    templates: [],
     caller: { agentId: "agent-mateo", urlKey: "mateo" },
     companyId: "acme",
     paperclip: {} as ActionCall["paperclip"],

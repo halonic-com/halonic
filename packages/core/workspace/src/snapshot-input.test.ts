@@ -1,0 +1,40 @@
+import { makeSnapshot } from "@halonicjs/format";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it } from "vitest";
+import { loadWorkspace, snapshotInputOf } from "./index.ts";
+import { MemorySource } from "./test/memory-source.ts";
+
+const commit = "0123456789abcdef0123456789abcdef01234567";
+
+/** A workspace with one tool that reads templates, and two templates. */
+const fixture = {
+  "workspace.yaml": "id: acme\nname: Acme\n",
+  "library/tools/template-get.tool.yaml": [
+    "name: template_get",
+    "description: Reads one of the workspace's templates.",
+    "parameters:",
+    "  id: { type: string, description: The template's id. }",
+    "callers: everyone",
+    "action: { run: paperclip.template }",
+    "",
+  ].join("\n"),
+  "library/templates/task-spec.md": "---\ntitle: Task\n---\n\n## Goal\n\nDone when: …\n",
+  "library/templates/card.md": "Question, options and a recommendation.\n",
+};
+
+verifies("workspace.snapshot-input", () => {
+  it("makes the snapshot of a fixture workspace with its templates sorted by id", async () => {
+    const workspace = await loadWorkspace(new MemorySource(fixture));
+    expect(workspace.issues).toEqual([]);
+    const snapshot = makeSnapshot(snapshotInputOf(workspace, commit));
+    if (!snapshot.ok) {
+      expect.fail(JSON.stringify(snapshot.error));
+    }
+    expect(snapshot.value.workspace).toEqual({ name: "Acme", commit });
+    expect(snapshot.value.tools.map((tool) => tool.action.run)).toEqual(["paperclip.template"]);
+    expect(snapshot.value.templates).toEqual([
+      { id: "card", body: "Question, options and a recommendation." },
+      { id: "task-spec", title: "Task", body: "## Goal\n\nDone when: …" },
+    ]);
+  });
+});

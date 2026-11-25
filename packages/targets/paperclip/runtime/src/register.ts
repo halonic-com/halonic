@@ -132,6 +132,7 @@ async function serve(
   return handler.run({
     tool: served,
     params: call.params,
+    templates: active.snapshot.templates ?? [],
     caller: { agentId: runCtx.agentId, urlKey: agent.urlKey },
     companyId: runCtx.companyId,
     paperclip: ctx,
