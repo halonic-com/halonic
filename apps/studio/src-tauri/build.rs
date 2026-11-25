@@ -133,6 +133,7 @@ fn main() {
         "login_item_set",
         "keep_awake_set",
         "show_main_window",
+        "take_pending_notification_click",
         "set_frame_colour",
     ]);
     let attributes = tauri_build::Attributes::new()

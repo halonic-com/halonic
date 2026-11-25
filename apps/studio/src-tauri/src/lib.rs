@@ -26,7 +26,7 @@
 //! (capabilities/desktop-updates.json), in the main window only the
 //! `login_item_*` commands (capabilities/desktop-login-item.json) and `keep_awake_set`
 //! (capabilities/desktop-keep-awake.json), in the focused apps' windows only
-//! `show_main_window` (capabilities/desktop-show-main-window.json), and the page's close request
+//! `show_main_window` (capabilities/desktop-show-main-window.json), in the main window only `take_pending_notification_click` (capabilities/desktop-pending-notification-click.json), and the page's close request
 //! (capabilities/desktop-window.json), the title bar's `set_frame_colour` (capabilities/desktop-frame-colour.json), its notifications
 //! (capabilities/desktop-notifications.json) and the `wsl_*` commands of the sandbox
 //! backup (capabilities/desktop-sandbox-backup.json) and the `action_*` commands of
@@ -223,6 +223,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(updates::Updates::default())
         .manage(engines::EnginesState::default())
         .manage(tray::TrayShellState::default())
+        .manage(notification_clicks::pending_click::PendingClick::default())
         .manage(keep_awake::KeepAwakeState::default())
         // Registered only so the shell can use it from Rust: no capability
         // grants its commands, so no page can call them.
@@ -453,6 +454,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             keep_awake::keep_awake_set,
             #[cfg(desktop)]
             focused_apps::show_main_window,
+            #[cfg(desktop)]
+            notification_clicks::pending_click::take_pending_notification_click,
             frame_colour::set_frame_colour,
         ])
 }
