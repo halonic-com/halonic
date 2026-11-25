@@ -276,12 +276,13 @@
     "@typescript/typescript6": {
       "category": "dev-tooling",
       "allowedIn": [
-        "@halonicjs/tooling-check"
+        "@halonicjs/tooling-check",
+        "@halonicjs/tooling-paperclip"
       ],
       "layers": [
         "tooling"
       ],
-      "reason": "The TypeScript parser API for tooling/check until TypeScript 7.1 ships its own API (D9). Remove then."
+      "reason": "The TypeScript parser API until TypeScript 7.1 ships its own API (D9). Remove then. tooling/check uses it for its rules; tooling-paperclip only in tests, to check that signal and workflow rules stay pure (HAL-18987)."
     },
     "@vitest/coverage-v8": {
       "category": "dev-tooling",
