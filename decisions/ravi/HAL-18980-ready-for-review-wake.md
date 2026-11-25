@@ -3,6 +3,7 @@
 - Task: HAL-18980
 - Approval: the board's go for Track B of the token plan (proposal on HAL-18938), given on HAL-18980; Liam approves and signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:al8B8kdxGZ3n9OgTPmgzQb8dsi9cDWPSXu1hwCV/xA06GqsYIIEHOSs1yeTevo4enTq77OCknF+nzfBbb0gdAg==
 
 ## What changes
 
