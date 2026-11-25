@@ -42,6 +42,7 @@ export type {
   UsageAnswer,
   UsageLimits,
   UsageRefusal,
+  UsageSummary,
   UsageUnit,
 } from "./usage-types.ts";
 export {

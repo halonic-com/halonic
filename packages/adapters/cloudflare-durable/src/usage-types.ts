@@ -53,6 +53,30 @@ export interface UsageLimits {
   readonly maxRunning: number;
   /** An organisation's members by actor id; a personal scope has none. */
   readonly members?: Readonly<Record<string, MemberLimits>>;
+  /**
+   * The plan's name as Cloud names it, at most {@link maxPlanNameLength} characters; none when the
+   * customer has no plan. Text to show, never markup.
+   */
+  readonly planName?: string;
+}
+
+/** The longest plan name a limits document may carry. */
+export const maxPlanNameLength = 200;
+
+/**
+ * What the account menu shows of a scope's usage: the plan's name and how much of its cost limit
+ * this period's use took. Only what was spent counts, not what running steps still hold.
+ */
+export interface UsageSummary {
+  /** The plan's name, or `null` when the account knows no limits or Cloud sent no plan name. */
+  readonly planName: string | null;
+  /**
+   * What was spent of the cost limit, as a whole percent rounded down and at most 100; `null`
+   * when the account knows no cost limit.
+   */
+  readonly costPercent: number | null;
+  /** When the kept limits' period ends, in ms since 1970; `null` when the account knows no limits. */
+  readonly periodEnd: number | null;
 }
 
 /** Why an account refused, with what the app needs to word it. */

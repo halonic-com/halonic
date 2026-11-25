@@ -6,11 +6,17 @@ import {
   type UsageAccountOptions,
 } from "./usage-account.ts";
 import { checkScope } from "./usage-input.ts";
-import { usageLimitsKey } from "./usage-limits.ts";
+import { summaryOf, usageLimitsKey } from "./usage-limits.ts";
 import { rememberNonce } from "./usage-nonces.ts";
 import { takeRateSlot, type UsageRateLimits } from "./usage-rate.ts";
 import { type KvStorageOwner, usageStorageOf } from "./usage-storage.ts";
-import type { UsageAmounts, UsageAnswer, UsageLimits, UsageStorage } from "./usage-types.ts";
+import type {
+  UsageAmounts,
+  UsageAnswer,
+  UsageLimits,
+  UsageStorage,
+  UsageSummary,
+} from "./usage-types.ts";
 
 /** Who a call is for: the signed-in person and the scope their use counts in, from the host. */
 export interface UsagePrincipal {
@@ -175,6 +181,19 @@ export class UsageScope {
     const noted = this.#storage.get<string>(scopeKey);
     if (noted === undefined) return 0;
     return this.#account(scope).outboxSize();
+  }
+
+  /**
+   * The plan's name and the share of its cost limit spent this period, for the account menu. A
+   * read: like {@link unsentRows} it notes no scope, it pulls nothing from Cloud and isn't rate
+   * limited, so opening a menu never starts an empty object or asks Cloud.
+   */
+  summary(scope: string): UsageSummary {
+    checkScope(scope);
+    this.#checkName(scope);
+    const noted = this.#storage.get<string>(scopeKey);
+    if (noted === undefined) return summaryOf(undefined, {});
+    return this.#account(scope).summary();
   }
 
   async #holdRun(principal: UsagePrincipal, runId: string): Promise<UsageAnswer> {

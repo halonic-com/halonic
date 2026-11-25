@@ -18,7 +18,13 @@ import {
   checkScope,
   correctionSuffix,
 } from "./usage-input.ts";
-import { firstOver, newThresholds, usageLimitsKey, withDefaults } from "./usage-limits.ts";
+import {
+  firstOver,
+  newThresholds,
+  summaryOf,
+  usageLimitsKey,
+  withDefaults,
+} from "./usage-limits.ts";
 import { defaultOutboxCap, UsageOutbox } from "./usage-outbox.ts";
 import type {
   UsageAmounts,
@@ -27,6 +33,7 @@ import type {
   UsageRecord,
   UsageRefusal,
   UsageStorage,
+  UsageSummary,
 } from "./usage-types.ts";
 
 /** Use in the current period, for the pool and for each actor. */
@@ -266,6 +273,13 @@ export class UsageAccount {
   /** How many rows wait to go to Cloud. */
   outboxSize(): number {
     return this.#outbox.size();
+  }
+
+  /** The plan's name and the share of its cost limit spent this period; it changes nothing. */
+  summary(): UsageSummary {
+    return this.#storage.transactionSync(() =>
+      summaryOf(this.#storage.get<UsageLimits>(keys.limits), this.#spent().pool),
+    );
   }
 
   #refusal(actor: string, needed: UsageAmounts): UsageRefusal | null {
