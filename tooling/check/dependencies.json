@@ -521,5 +521,86 @@
       "useInstead": "@halonicjs/schema-kit for validation",
       "cloudRuntime": true
     }
+  },
+  "images": {
+    "packages/targets/cloudflare/runtime/container/Dockerfile": {
+      "base": {
+        "image": "node:22.21.1-bookworm-slim@sha256:25b3eb23a00590b7499f2a2ce939322727fcce1b15fdd69754fcd09536a3ae2c",
+        "reason": "Node 22 for srt, on Debian slim for bubblewrap; pinned by digest."
+      },
+      "artifacts": {
+        "claude-code": {
+          "version": "2.1.332",
+          "sha256": "1c89f2f1e0bee93742cff8de9181fc07c702ce0651f1492bb3b97487d3a84af1",
+          "url": "https://registry.npmjs.org/@anthropic-ai/claude-code-linux-x64/-/claude-code-linux-x64-2.1.332.tgz",
+          "reason": "Runs the claude-code harness step inside the run container; the native Linux binary only, without the npm wrapper's install script.",
+          "approvedOn": "HAL-18117"
+        },
+        "codex": {
+          "version": "0.172.0",
+          "sha256": "48a5ee5dba98c7745a48b8d72af84f91880fec5856269627328fd564f60d41a7",
+          "url": "https://registry.npmjs.org/@openai/codex/-/codex-0.172.0-linux-x64.tgz",
+          "reason": "Runs the codex harness step inside the run container; the native Linux binary only, without the npm wrapper.",
+          "approvedOn": "HAL-18117"
+        },
+        "srt": {
+          "version": "0.0.82",
+          "sha256": "fb9bf9502715525e5bf366cc8454c8e6c43c2506b544beb8079a1a508c398f89",
+          "url": "https://registry.npmjs.org/@anthropic-ai/sandbox-runtime/-/sandbox-runtime-0.0.82.tgz",
+          "reason": "Sandboxes each harness command inside the run container, with Halonic's patch from patches/.",
+          "approvedOn": "HAL-18117"
+        },
+        "zod": {
+          "version": "4.6.7",
+          "sha256": "84efd155bed93270286e793fc951be270b536cbd5b0eeb111f0fa3967201d698",
+          "url": "https://registry.npmjs.org/zod/-/zod-4.6.7.tgz",
+          "partOf": "srt",
+          "approvedOn": "HAL-18117"
+        },
+        "commander": {
+          "version": "12.1.0",
+          "sha256": "56affc6ddafe486f94b428ae2823d059cf60d4dae2f33eaaf1b1ec4306f73173",
+          "url": "https://registry.npmjs.org/commander/-/commander-12.1.0.tgz",
+          "partOf": "srt",
+          "approvedOn": "HAL-18117"
+        },
+        "node-forge": {
+          "version": "1.4.3",
+          "sha256": "0a872d932911012524495ab07dbf49351bd8ac23f12ea4766dc400f29ffc3356",
+          "url": "https://registry.npmjs.org/node-forge/-/node-forge-1.4.3.tgz",
+          "partOf": "srt",
+          "approvedOn": "HAL-18117"
+        },
+        "socks5-server": {
+          "version": "1.0.10",
+          "sha256": "313f926920874118c5bb7263604dd58790fdd3fe321d397f94014ffc557348f1",
+          "url": "https://registry.npmjs.org/@pondwader/socks5-server/-/socks5-server-1.0.10.tgz",
+          "partOf": "srt",
+          "approvedOn": "HAL-18117"
+        }
+      },
+      "aptPackages": [
+        {
+          "name": "ca-certificates",
+          "reason": "update-ca-certificates trusts the Containers CA at start."
+        },
+        {
+          "name": "bubblewrap",
+          "reason": "srt's sandbox on Linux."
+        },
+        {
+          "name": "socat",
+          "reason": "srt's network proxy bridge on Linux."
+        },
+        {
+          "name": "ripgrep",
+          "reason": "srt uses it on Linux to find the files it must protect."
+        },
+        {
+          "name": "patch",
+          "reason": "Applies Halonic's srt patch at build time, then is removed."
+        }
+      ]
+    }
   }
 }
