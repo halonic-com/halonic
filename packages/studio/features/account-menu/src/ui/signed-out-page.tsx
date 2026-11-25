@@ -41,7 +41,7 @@ export function SignedOutPage({ productName, onSignIn }: SignedOutPageProps) {
       className="m-0 flex h-dvh max-h-none w-dvw max-w-none items-center justify-center bg-canvas p-4 text-fg"
     >
       <div className="flex w-full max-w-100 flex-col items-start gap-6 rounded-md border border-border bg-surface p-8 phone:items-stretch phone:p-6">
-        <h1 ref={heading} id={headingId} tabIndex={-1} className="text-title outline-none">
+        <h1 ref={heading} id={headingId} tabIndex={-1} className="text-title">
           {accountMenuWords.signedOut(productName)}
         </h1>
         <Button variant="primary" onClick={onSignIn}>
