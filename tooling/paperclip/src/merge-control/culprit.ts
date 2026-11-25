@@ -2,6 +2,7 @@ import { failedGroupFacts, wakeAuthor } from "./author-wake.ts";
 import { commentOnce, logLine, minutesSince, type PassContext } from "./context.ts";
 import type { GateRow } from "./gate.ts";
 import { mainBroken } from "./main-broken.ts";
+import { refusedOnly } from "./refused.ts";
 import type { GroupRun } from "./snapshot.ts";
 import { texts } from "./texts.ts";
 
@@ -12,7 +13,8 @@ import { texts } from "./texts.ts";
  * new head (rule 13), and told once which job failed. A cancelled group with
  * no failed job lets its pull request back in once (Chief, HAL-10, 24 Nov);
  * a second one holds it. A group that failed only on files its pull request
- * doesn't touch holds nothing: main is broken (`main-broken.ts`).
+ * doesn't touch holds nothing: main is broken (`main-broken.ts`). Nor does a
+ * group whose jobs the runner hook refused (`refused.ts`).
  */
 
 /** Failed groups are read this far back. */
@@ -52,6 +54,14 @@ function holdCulprit(context: PassContext, run: GroupRun, row: GateRow, where: s
       context,
       "culprit",
       `cancelled group ${run.url} #${number}(cancelled run, re-queued once)`,
+    );
+    return;
+  }
+  if (refusedOnly(run)) {
+    logLine(
+      context,
+      "culprit",
+      `failed group ${where} culprit #${number}(runner hook refused a rebuilt group's jobs; not a failure)`,
     );
     return;
   }
