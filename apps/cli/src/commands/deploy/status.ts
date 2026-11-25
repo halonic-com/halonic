@@ -45,7 +45,11 @@ export async function showDeployStatus(
   );
   if (chosen.kind === "none") throw new UsageError(deployStatusMessages.statusNeedsName());
   const { host } = chosen.deployment;
-  const status = await deployServiceOf(setup).status(host, chosen.id, chosen.deployment);
+  const status = await deployServiceOf(setup, chosen.deployment.cloudflare?.worker).status(
+    host,
+    chosen.id,
+    chosen.deployment,
+  );
   return deployStatusResult(status, {
     deployment: chosen.id,
     host: host === "cloudflare" ? "Cloudflare" : host,

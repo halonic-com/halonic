@@ -4,11 +4,18 @@
 // version down, so line 1 ends by saying which version is still live, the line
 // under it names the step it stopped after, and `--json` has both as fields.
 
-import type { DeployedVersion, DeployFailure, DeployStep } from "@halonicjs/ports";
+import type {
+  DeployedVersion,
+  DeployFailure,
+  DeployPlan,
+  DeploySelfTestFailed,
+  DeployStep,
+} from "@halonicjs/ports";
 import { errorKindOf } from "@halonicjs/std";
-import { DetailedError } from "../command.ts";
+import { type CommandResult, DetailedError } from "../command.ts";
+import { exitCode } from "../exit-code.ts";
 import { deployMessages } from "../messages/deploy.ts";
-import { plainText } from "../messages/phrase.ts";
+import { type Phrase, plainText } from "../messages/phrase.ts";
 import { resourceList } from "./deploy-output.ts";
 
 /** A deploy failure that says what still serves. */
@@ -48,6 +55,56 @@ export function deployFailure(error: unknown, deployment: string): unknown {
       ? undefined
       : { lines: [deployMessages.stoppedAfter(stepWords(stoppedAfter)).phrase], fix },
   );
+}
+
+/**
+ * What a deploy whose new version failed its self-test says (3.6): what
+ * still serves when the target says, or nothing on a first deploy, under the
+ * steps it printed. It ran to its end, so it's a result with exit 1; `--json`
+ * has the failed checks.
+ */
+export function selfTestFailedResult(
+  outcome: DeploySelfTestFailed,
+  deployment: string,
+  plan: DeployPlan | undefined,
+  stepLines: readonly Phrase[],
+): CommandResult {
+  const { version, stillLive, failedChecks, restoreFailed } = outcome;
+  const line = deployMessages.selfTestFailed(
+    deployment,
+    version.number,
+    stillAfterSelfTest(outcome, deployment, plan),
+  );
+  const fix = deployMessages.selfTestFailedFix();
+  return {
+    exitCode: exitCode.failed,
+    lines: [...stepLines, line.phrase, fix.phrase],
+    json: { deployment, version: version.number, stillLive, failedChecks, restoreFailed },
+    failure: {
+      kind: "internal",
+      message: plainText(line.phrase).replace(/^✕ /u, ""),
+      fix: plainText(fix.phrase).trim(),
+    },
+  };
+}
+
+/**
+ * Which version still serves after a failed self-test, when that's known: the
+ * target's, or nothing on a first deploy. Left out when the new version went
+ * live before its test, or putting the old one back failed.
+ */
+function stillAfterSelfTest(
+  outcome: DeploySelfTestFailed,
+  deployment: string,
+  plan: DeployPlan | undefined,
+): string | undefined {
+  if (outcome.stillLive !== undefined) {
+    return plainText(deployMessages.stillLive(outcome.stillLive.number).phrase);
+  }
+  if (plan !== undefined && plan.live === undefined) {
+    return plainText(deployMessages.nothingLive(deployment).phrase);
+  }
+  return undefined;
 }
 
 /** The target's own fix, else the stop's (3.7), else run again (C759 row 3). */

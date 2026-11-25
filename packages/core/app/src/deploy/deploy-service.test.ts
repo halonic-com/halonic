@@ -308,6 +308,27 @@ verifies("app.deploy-service", () => {
     expect(outcome.outcome).toBe("deployed");
     expect(deployed).toHaveLength(1);
   });
+
+  it("hands the plan to onPlan before any question", async () => {
+    const { deploys } = service(firstPlan);
+    const { ask } = questions(false);
+    const heard: string[] = [];
+    await deploys.deploy(
+      {
+        ...input,
+        onPlan: (plan) => heard.push(`plan ${plan.creates.length}`),
+        questions: {
+          ...ask,
+          confirm: async () => {
+            heard.push("Deploy?");
+            return false;
+          },
+        },
+      },
+      () => {},
+    );
+    expect(heard).toEqual(["plan 1", "Deploy?"]);
+  });
 });
 
 function catchError(run: () => unknown): unknown {
