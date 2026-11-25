@@ -62,6 +62,11 @@ fn refusal(kind: &'static str, message: impl std::fmt::Display) -> EngineOpenRef
 /// the shell has opened (by any window) or a folder inside one, starting
 /// the engine first when none runs. Answers once the engine's handshake is
 /// in, or with a refusal.
+///
+/// One engine serves each real folder. A second window that opens the same
+/// folder through another location (a link, another spelling) joins the
+/// running engine, whose broker keeps checking the trust record of the
+/// location the first window gave.
 #[tauri::command]
 pub async fn engine_open<R: Runtime>(
     webview: Webview<R>,
@@ -167,10 +172,13 @@ fn start<R: Runtime>(
     let executable = executable_beside(&shell).map_err(|error| refusal("engine_failed", error))?;
     let command = engine_command(&executable, Path::new(&profile.root), workspace);
     // The broker answers only while this location has a trust record, as
-    // the window's trust dialog writes it.
-    let trust = TrustRecord::new(
+    // the window's trust dialog writes it, and still leads to the folder the
+    // engine runs in: a link pointed elsewhere later lends its trust to
+    // nothing.
+    let trust = TrustRecord::for_workspace(
         FileTrustStore::new(PathBuf::from(profile.trust_folder())),
         location.to_owned(),
+        workspace.to_owned(),
     );
     let broker = SecretBroker::new(app.state::<SecretsState>().host_keychain(), Arc::new(trust));
     let watcher = Arc::new(Watcher {
