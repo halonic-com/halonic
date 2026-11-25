@@ -55,6 +55,11 @@ impl Transport for ShellTransport {
 /// redirect, to any host: a `3xx` comes back as it is, so the token's
 /// header never goes anywhere else.
 pub fn action_client() -> reqwest::ClientBuilder {
+    // reqwest is built without a crypto provider, and only the updater
+    // installs one; a stepper call can come first.
+    if rustls::crypto::CryptoProvider::get_default().is_none() {
+        let _ = rustls::crypto::ring::default_provider().install_default();
+    }
     reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
         .timeout(CALL_TIMEOUT)
