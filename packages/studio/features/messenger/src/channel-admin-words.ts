@@ -92,20 +92,27 @@ export const channelAdminWords = {
     "bad-members": () => "a channel needs 2 to 8 agents from one source",
     "not-supported": (source: string) => `${source} doesn't have channels`,
   } satisfies Record<MessagingRefusal, (source: string) => string>,
+  /** The reason once the channel's source itself is gone, so it has no label to name (HAL-18224). */
+  sourceGone: "the channel's connection is gone",
 } as const;
 
 /**
  * Why a channel call didn't go through, named by the source's label: its refusal, or for a call
  * that threw, "Paperclip · Acme didn't answer". Starting a channel has no channel to be gone yet, so
- * there `not-found` reads as a plain refusal.
+ * there `not-found` reads as a plain refusal. With no source (`undefined`), every reason but a gone
+ * channel says the source is gone, so no line has a hole where the label goes.
  */
 export function failureReason(
   result: ChannelResult | undefined,
-  source: string,
+  source: string | undefined,
   call: "start" | "change" = "change",
 ): string {
+  if (result?.outcome === "done") return "";
+  if (source === undefined) {
+    const channelGone = result?.reason === "not-found" && call === "change";
+    return channelGone ? channelAdminWords.reason["not-found"]() : channelAdminWords.sourceGone;
+  }
   if (result === undefined) return `${source} didn't answer`;
-  if (result.outcome === "done") return "";
   if (call === "start" && result.reason === "not-found") return refusedBy(source);
   return channelAdminWords.reason[result.reason](source);
 }

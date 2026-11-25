@@ -28,13 +28,17 @@ export class QuickActions {
   }
 
   /**
-   * The chat agent's open cards, oldest first, as the chat shows them. A card
-   * is the same item the Inbox lists, so answering it here answers it there.
+   * The chat agent's open cards, and in a channel the questions its members asked the person
+   * there, oldest first, as the chat shows them. A card is the same item the Inbox lists, so
+   * answering it here answers it there.
    */
   async cards(row: ConversationRow): Promise<readonly InboxItem[]> {
     const items = await this.messaging.listInboxItems();
+    const asked = new Set((row.questions ?? []).map((question) => question.item.id));
     return items
-      .filter((item) => item.state.kind === "open" && isFromAgentOf(item, row))
+      .filter(
+        (item) => item.state.kind === "open" && (isFromAgentOf(item, row) || asked.has(item.id)),
+      )
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
 

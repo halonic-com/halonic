@@ -19,7 +19,8 @@ export function useMembers(messenger: Messenger, row: ConversationRow, onChanged
   const [pending, setPending] = useState<Pending | undefined>(undefined);
   const [failure, setFailure] = useState<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
-  const source = row.source?.label ?? "";
+  // None once the source is gone: the failure then says so instead of naming it.
+  const source = row.source?.label;
 
   const failed = (error: unknown) => {
     console.error("Changing the channel's members failed:", error);
