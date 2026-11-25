@@ -2,6 +2,7 @@
 
 - Approval: the task HAL-18320 asks for the fast-track rules as a signal rule (plan HAL-17450 rev 5, step 2, accepted by the board on 24 Nov; split from HAL-18196); a security PR, so Liam signs this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:wmn4ho9M+paOTUYJ31LfTyOzv51ZKux+SZPng3aOn4OCKlmZAJr3N5RWxDNZqlJbXduYF8vB39UUpU139CjuBg==
 
 ## What changes
 
