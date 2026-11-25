@@ -49,11 +49,17 @@ interface HeaderActions {
 type StaticCard = CardBase &
   ((TitleHeader & HeaderActions) | (LabelHeader & HeaderActions) | NoHeader) & {
     readonly onClick?: never;
+    readonly unavailable?: never;
   };
 
 /** A card that is one button as a whole: one target, so nothing clickable inside. */
 type InteractiveCard = CardBase & {
   readonly onClick: () => void;
+  /**
+   * The card can't be opened now: it stays in the Tab order with `aria-disabled`, names the
+   * element that says why (`reason`, an element id) and ignores clicks, as `Button` does.
+   */
+  readonly unavailable?: { readonly reason: string } | undefined;
   readonly title?: never;
   readonly label?: never;
   readonly headingLevel?: never;
@@ -101,6 +107,25 @@ const headerClasses = "flex items-center gap-3 border-b border-border px-4 py-3"
  */
 const headerWithActionsClasses = `${headerClasses} relative phone:min-h-touch`;
 
+/** A card that is one button as a whole; an unavailable one stays focusable but opens nothing. */
+function CardButton(props: InteractiveCard) {
+  const { onClick, unavailable } = props;
+  const state = unavailable === undefined ? (props.state ?? "default") : "disabled";
+  const faded = state === "disabled" ? ` ${fadedClasses}` : "";
+  const classes = `${box} ${stateClasses[state]}${faded} ${interactiveClasses[state]} p-4`;
+  return (
+    <button
+      type="button"
+      className={classes}
+      aria-disabled={unavailable === undefined ? undefined : true}
+      aria-describedby={unavailable?.reason}
+      onClick={unavailable === undefined ? onClick : undefined}
+    >
+      {props.children}
+    </button>
+  );
+}
+
 /**
  * A self-contained summary on a page: a routine, a model provider, a stat. Never a card inside a
  * card. With `onClick` the whole card is one `<button>`; it then holds no buttons of its own, and
@@ -115,15 +140,7 @@ export function Card(props: CardProps) {
   const state = props.state ?? "default";
   const headerId = useId();
 
-  if (props.onClick !== undefined) {
-    const faded = state === "disabled" ? ` ${fadedClasses}` : "";
-    const classes = `${box} ${stateClasses[state]}${faded} ${interactiveClasses[state]} p-4`;
-    return (
-      <button type="button" className={classes} onClick={props.onClick}>
-        {props.children}
-      </button>
-    );
-  }
+  if (props.onClick !== undefined) return <CardButton {...props} />;
 
   const header = cardHeader(props, headerId, state === "disabled");
   const actions = isShown(props.actions) ? (

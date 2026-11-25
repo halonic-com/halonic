@@ -59,10 +59,22 @@ async function settle(): Promise<void> {
 const text = (page: HTMLElement) => page.textContent ?? "";
 const rows = (page: HTMLElement) => [...page.querySelectorAll("li")].map((li) => li.textContent);
 
+/** A button's words without what's hidden from screen readers, such as a tab's width copy. */
+function wordsOf(button: HTMLButtonElement): string {
+  const copy = button.cloneNode(true) as HTMLElement;
+  for (const hidden of copy.querySelectorAll('[aria-hidden="true"]')) hidden.remove();
+  return copy.textContent ?? "";
+}
+
+function button(page: HTMLElement, label: string): HTMLButtonElement {
+  const found = [...page.querySelectorAll("button")].find((each) => wordsOf(each) === label);
+  if (found === undefined) throw new Error(`no button ${label}`);
+  return found;
+}
+
 function press(page: HTMLElement, label: string): void {
-  const button = [...page.querySelectorAll("button")].find((each) => each.textContent === label);
-  if (button === undefined) throw new Error(`no button ${label}`);
-  act(() => button.click());
+  const found = button(page, label);
+  act(() => found.click());
 }
 
 verifies("team.pull-requests", () => {
@@ -249,6 +261,63 @@ verifies("team.pull-requests", () => {
       );
       expect(page.querySelectorAll("button")).toHaveLength(0);
       expect(open).not.toHaveBeenCalled();
+    });
+  });
+});
+
+verifies("team.pull-requests", () => {
+  describe("PullRequestsPage keyboard and screen readers (a11y check TM1, TM4–TM6)", () => {
+    it("keeps the same h1 across a failed read and Try again, and focuses it", async () => {
+      const fake = acme();
+      fake.add("#40", { state: "draft" });
+      const read = fake.team.pullRequests.bind(fake.team);
+      let failing = true;
+      fake.team.pullRequests = () => (failing ? Promise.reject(new Error("no answer")) : read());
+      const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+      const page = await open(fake);
+      const heading = page.querySelector("h1");
+      button(page, "Try again").focus();
+      failing = false;
+      press(page, "Try again");
+      await settle();
+      expect(text(page)).toContain("Pull requests · app");
+      expect(page.querySelector("h1")).toBe(heading);
+      expect(document.activeElement).toBe(heading);
+      errors.mockRestore();
+    });
+
+    it("names the lists and shows which one is selected", async () => {
+      const fake = acme();
+      fake.add("#41", { state: "failing", reason: "typecheck", since: minutesAgo(120) });
+      const page = await open(fake);
+      const lists = page.querySelector('[role="tablist"]');
+      expect(lists?.getAttribute("aria-label")).toBe("Pull request lists");
+      expect(button(page, "Needs attention 1").getAttribute("aria-selected")).toBe("true");
+      expect(button(page, "All open 1").getAttribute("aria-selected")).toBe("false");
+      press(page, "All open 1");
+      expect(button(page, "All open 1").getAttribute("aria-selected")).toBe("true");
+    });
+
+    it("moves focus to All open after See all open", async () => {
+      const fake = acme();
+      fake.add("#42", { state: "draft" });
+      const page = await open(fake);
+      button(page, "See all open").focus();
+      press(page, "See all open");
+      expect(document.activeElement).toBe(button(page, "All open 1"));
+    });
+
+    it("wraps a long title instead of cutting it off", async () => {
+      const fake = acme();
+      const title = `feat(app): ${"a very long change name ".repeat(12)}`;
+      fake.add("#43", { state: "draft", title });
+      const page = await open(fake);
+      press(page, "See all open");
+      const line = [...page.querySelectorAll("li p")].find((each) =>
+        each.textContent?.includes(title.trim()),
+      );
+      expect(line?.className).toContain("wrap-anywhere");
+      expect(line?.className).not.toContain("truncate");
     });
   });
 });

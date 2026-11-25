@@ -30,7 +30,7 @@ export function WebLinkButton(props: {
   };
   return (
     <span title={link}>
-      <button type="button" className="text-small text-accent" onClick={open}>
+      <button type="button" className="focus-ring text-small text-accent" onClick={open}>
         {props.children}
       </button>{" "}
       <bdi dir="ltr" className="text-small text-fg-muted wrap-anywhere">
@@ -76,7 +76,7 @@ export function PullRequestRowView(props: {
   const { pullRequest, task } = row;
   return (
     <li className="flex flex-col gap-0.5 border-b border-border py-2">
-      <p className="truncate">
+      <p className="wrap-anywhere">
         {pullRequest.label} {pullRequest.title}
       </p>
       <p className="text-small">{stateLine(row, clock)}</p>
