@@ -80,7 +80,8 @@ function stateWords(row: PullRequestRow, clock: TeamClock): StateWords {
 
 /** A "·" between two parts of a line, which screen readers hear as a pause. */
 function Dot() {
-  return <span className="text-fg-muted"> · </span>;
+  // Kept as written: a flex row would drop the spaces around the dot.
+  return <span className="whitespace-pre text-fg-muted"> · </span>;
 }
 
 /**

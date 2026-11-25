@@ -288,6 +288,14 @@ verifies("team.pull-requests", () => {
       expect(status?.closest(".bg-attention-soft")).not.toBeNull();
       expect(button(page, "Try again").className).not.toContain("text-accent");
     });
+
+    it("draws no attention box while nothing failed, keeping the live region", async () => {
+      const fake = acme();
+      fake.add("#82", { state: "draft" });
+      const page = await open(fake);
+      expect(page.querySelector(".bg-attention-soft")).toBeNull();
+      expect(page.querySelector('[role="status"]')?.textContent).toBe("");
+    });
   });
 });
 

@@ -121,11 +121,18 @@ function ShownBody(props: {
 }) {
   const { shown, clock } = props;
   const state = shown.kind === "read" ? shown.state : undefined;
+  const words = failedWords(shown, clock);
   return (
     <>
       {/* Always on the page, so the failed and offline words are read out when a read fails. */}
+      {/* Empty while nothing failed, so the kit draws no box; the region stays for the words. */}
       <Callout tone="attention" announce="polite">
-        <FailedWords shown={shown} clock={clock} onTryAgain={props.onTryAgain} />
+        {words === undefined ? null : (
+          <span className="flex flex-col items-start gap-2">
+            <span>{words}</span>
+            <TryAgain onPress={props.onTryAgain} />
+          </span>
+        )}
       </Callout>
       {shown.kind === "loading" ? <LoadingRows /> : null}
       {state !== undefined && state.kind !== "read" ? (
@@ -145,20 +152,12 @@ function ShownBody(props: {
  * The words in the attention Callout: Paperclip isn't answering when the first read failed, or
  * offline as of the last good read when a later one did; nothing otherwise.
  */
-function FailedWords(props: { shown: Shown; clock: TeamClock; onTryAgain: () => void }) {
-  const { shown } = props;
-  let words: string | undefined;
-  if (shown.kind === "failed") words = teamWords.notAnswering;
+function failedWords(shown: Shown, clock: TeamClock): string | undefined {
+  if (shown.kind === "failed") return teamWords.notAnswering;
   if (shown.kind === "read" && shown.failed && shown.state.kind === "read") {
-    words = pullRequestWords.offline(formatTime(shown.state.asOf, props.clock));
+    return pullRequestWords.offline(formatTime(shown.state.asOf, clock));
   }
-  if (words === undefined) return null;
-  return (
-    <span className="flex flex-col items-start gap-2">
-      <span>{words}</span>
-      <TryAgain onPress={props.onTryAgain} />
-    </span>
-  );
+  return undefined;
 }
 
 /** Loading (HAL-17515 P9): three skeleton rows in one bordered list where the PRs go. */
