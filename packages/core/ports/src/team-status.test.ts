@@ -98,7 +98,7 @@ verifies("ports.team-status", () => {
   });
 });
 
-verifies("ports.team-status.agent-detail", () => {
+verifies("ports.team-status-agent-detail", () => {
   typeTest("has an optional agent read that takes an ID and a range", () => {
     expectTypeOf<TeamStatus["agent"]>().toEqualTypeOf<
       ((id: MessagingId, range: SpendRange) => Promise<AgentDetail | undefined>) | undefined
@@ -136,7 +136,7 @@ verifies("ports.team-status.agent-detail", () => {
   });
 });
 
-verifies("ports.team-status.seat-detail", () => {
+verifies("ports.team-status-seat-detail", () => {
   it("keeps the seat detail fields optional, and still has no account", () => {
     const detailed: Seat = {
       ...seat,
