@@ -5,6 +5,7 @@ import { waitingLine } from "../channel-waiting.ts";
 import { chatAgent, chatName } from "../chat-name.ts";
 import { activityOf, type ConversationRow, type MessengerTab } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
+import { type AgentPictures, pictureOf } from "./agent-pictures.ts";
 
 /** The props of {@link ConversationList}. */
 export interface ConversationListProps {
@@ -14,6 +15,8 @@ export interface ConversationListProps {
   readonly rows: readonly ConversationRow[];
   readonly selected: MessagingId | undefined;
   readonly onSelect: (conversation: MessagingId) => void;
+  /** Each chat agent's picture, read once; a row without one shows its initial. */
+  readonly pictures: AgentPictures;
 }
 
 const tabs = [
@@ -26,7 +29,14 @@ const tabs = [
  * me, then one row per conversation with its name, its source's label and its
  * agent's activity. The open conversation's row is marked current.
  */
-export function ConversationList({ tab, onTab, rows, selected, onSelect }: ConversationListProps) {
+export function ConversationList({
+  tab,
+  onTab,
+  rows,
+  selected,
+  onSelect,
+  pictures,
+}: ConversationListProps) {
   const ids = useTabIds();
   return (
     <div className="flex min-h-0 flex-col gap-2">
@@ -51,6 +61,7 @@ export function ConversationList({ tab, onTab, rows, selected, onSelect }: Conve
                   tab={tab}
                   current={row.conversation.id === selected}
                   onSelect={onSelect}
+                  picture={pictureOf(pictures, row)}
                 />
               </li>
             ))}
@@ -77,11 +88,13 @@ function Row({
   tab,
   current,
   onSelect,
+  picture,
 }: {
   readonly row: ConversationRow;
   readonly tab: MessengerTab;
   readonly current: boolean;
   readonly onSelect: (conversation: MessagingId) => void;
+  readonly picture: ImageBitmap | undefined;
 }) {
   const activity = rowLine(row, tab);
   // A channel's row says how many agents it has (k14a); a chat's, its source.
@@ -94,7 +107,7 @@ function Row({
       onClick={() => onSelect(row.conversation.id)}
       className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-start hover:bg-surface-muted focus-ring aria-[current=true]:bg-surface-muted"
     >
-      <Avatar name={chatAgent(row)?.name ?? row.conversation.title} />
+      <Avatar name={chatAgent(row)?.name ?? row.conversation.title} picture={picture} />
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-body">
           <bdi>{chatName(row)}</bdi>

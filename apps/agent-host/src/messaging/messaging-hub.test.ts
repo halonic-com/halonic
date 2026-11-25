@@ -272,6 +272,16 @@ verifies("agent-host.messaging-hub-attachments", () => {
     expect(readA).not.toHaveBeenCalled();
   });
 
+  it("finds an inbox item's file it hasn't listed yet, even while listing agents fails", async () => {
+    const { a, b, sourceA, hub } = twoSources();
+    const item = a.addInboxItem(sourceA.id, { question: "Looks right?", files: [screenshot] });
+    for (const each of [a, b]) vi.spyOn(each, "listAgents").mockRejectedValue(new Error("down"));
+
+    const read = await hub.readAttachment(item.attachments[0]?.id ?? "");
+
+    expect(read.outcome).toBe("read");
+  });
+
   it("finds an inbox item's file it hasn't listed yet", async () => {
     const { a, sourceA, hub } = twoSources();
     const item = a.addInboxItem(sourceA.id, { question: "Looks right?", files: [screenshot] });

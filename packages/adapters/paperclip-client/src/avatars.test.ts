@@ -140,6 +140,20 @@ verifies("ports.agent-messaging-avatars", () => {
       expect(read.outcome === "read" && read.bytes.byteLength).toBe(avatarMaxBytes);
     });
 
+    it("is refused as offline when the line drops partway through the body", async () => {
+      const broken = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(png);
+          controller.error(new TypeError("terminated"));
+        },
+      });
+      servePicture({ body: broken, headers: { "content-type": "image/png" } });
+      expect(await client().readAttachment(pictureId)).toEqual({
+        outcome: "refused",
+        reason: "offline",
+      });
+    });
+
     it("is refused when missing, offline or signed out, and a redirect throws", async () => {
       expect(await client().readAttachment(pictureId)).toMatchObject({ reason: "not-found" });
       servePicture({ status: 401 });

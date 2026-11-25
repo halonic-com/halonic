@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import { verifies } from "@halonicjs/testing-spec";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { render, unmountAll } from "../test/render.tsx";
 import { Avatar } from "./avatar.tsx";
 
 afterEach(() => {
   unmountAll();
+  vi.restoreAllMocks();
 });
 
 const avatarOf = (name: string) =>
@@ -25,5 +26,31 @@ verifies("kit.avatar", () => {
     expect(avatarOf("Sofia").textContent).toBe("S");
     expect(avatarOf("   ").textContent).toBe("?");
     expect(avatarOf("🦊 fox").textContent).toBe("🦊F");
+  });
+});
+
+verifies("kit.avatar-picture", () => {
+  it("draws a picture's centre square on a hidden round canvas instead of the initials", () => {
+    const calls: unknown[][] = [];
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      drawImage: (...args: unknown[]) => calls.push(args),
+    } as unknown as CanvasRenderingContext2D);
+    const picture = { width: 4, height: 2 } as ImageBitmap;
+
+    const avatar = render(<Avatar name="Ada" picture={picture} />).container
+      .firstElementChild as HTMLElement;
+    const canvas = avatar.querySelector("canvas") as HTMLCanvasElement;
+
+    expect(avatar.textContent).toBe("");
+    expect(avatar.getAttribute("aria-hidden")).toBe("true");
+    expect(avatar.className.split(" ")).toEqual(
+      expect.arrayContaining(["size-7", "rounded-full", "bg-surface-muted"]),
+    );
+    expect([canvas.width, canvas.height]).toEqual([2, 2]);
+    expect(calls).toEqual([[picture, 1, 0, 2, 2, 0, 0, 2, 2]]);
+  });
+
+  it("shows the initials when it has no picture", () => {
+    expect(avatarOf("Ada Lovelace").textContent).toBe("AL");
   });
 });

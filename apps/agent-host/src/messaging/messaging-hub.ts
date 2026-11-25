@@ -147,7 +147,11 @@ export class MessagingHub implements AgentMessaging {
     const owner = await this.#ownerOf(
       attachment,
       (id) => this.#attachmentOwners(id),
-      () => Promise.all([this.listInboxItems(), this.listAgents()]),
+      async () => {
+        // The Inbox first, so an agent list that fails never breaks reading a card's file.
+        await this.listInboxItems();
+        if (this.#attachmentOwners(attachment).length === 0) await this.listAgents();
+      },
     );
     if (owner === undefined) return { outcome: "refused", reason: "not-found" };
     return owner.messaging.readAttachment(attachment);

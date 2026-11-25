@@ -6,6 +6,7 @@ import { flushSync } from "react-dom";
 import { MessengerService } from "../api.ts";
 import { type ConversationRow, inTab, type Messenger, type MessengerTab } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
+import { type AgentPictures, pictureOf, useAgentPictures } from "./agent-pictures.ts";
 import { ConversationList } from "./conversation-list.tsx";
 import { ConversationView } from "./conversation-view.tsx";
 import { NewMenu } from "./new-menu.tsx";
@@ -57,6 +58,7 @@ export function MessengerPage({ messenger, onConnect }: MessengerPageProps) {
     };
   }, [messenger, changed]);
 
+  const pictures = useAgentPictures(messenger, rows);
   const open = rows.find((row) => row.conversation.id === selected);
   const { onePane, list, chat, select, back } = useOnePane(selected, setSelected);
   // In one pane, nothing connected shows the panel, so a narrow window still offers Connect.
@@ -86,6 +88,7 @@ export function MessengerPage({ messenger, onConnect }: MessengerPageProps) {
             rows={inTab(rows, tab)}
             selected={selected}
             onSelect={select}
+            pictures={pictures}
           />
         </ListColumn>
       )}
@@ -103,6 +106,7 @@ export function MessengerPage({ messenger, onConnect }: MessengerPageProps) {
             connected={connected}
             open={open}
             changed={changed}
+            pictures={pictures}
             onConnect={onConnect}
             onLeft={left}
             onChanged={() => setChanged((count) => count + 1)}
@@ -144,6 +148,7 @@ function Panel({
   connected,
   open,
   changed,
+  pictures,
   onConnect,
   onLeft,
   onChanged,
@@ -152,6 +157,7 @@ function Panel({
   readonly connected: boolean | undefined;
   readonly open: ConversationRow | undefined;
   readonly changed: number;
+  readonly pictures: AgentPictures;
   readonly onConnect: (() => void) | undefined;
   readonly onLeft: () => void;
   readonly onChanged: () => void;
@@ -166,6 +172,7 @@ function Panel({
       messenger={messenger}
       row={open}
       changed={changed}
+      picture={pictureOf(pictures, open)}
       onLeft={onLeft}
       onChanged={onChanged}
     />
