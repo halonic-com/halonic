@@ -95,7 +95,9 @@ The `images` rule of `pnpm check` fails on a Dockerfile under `packages/` withou
 listed by both URL and sha256, a listed artifact the Dockerfile no longer downloads, a
 `COPY --from=` or `RUN --mount=…,from=` that names an image instead of an earlier stage, and a
 `RUN` (heredoc bodies and `ONBUILD` included) that fetches around the checksums or installs an
-unlisted Debian package. Dockerfiles under `infra/` and `.github/` aren't covered yet.
+unlisted Debian package. Dockerfiles under `infra/` and `.github/` aren't covered yet. A
+`Containerfile` counts as a Dockerfile. An `ADD` whose source holds a variable (`ADD ${URL} /x`)
+fails too: the check can't read what the variable holds, so write the URL out.
 
 The fetch list (`curl`, `wget`, `git clone`, `npx`, `npm exec`, `npm install` without
 `--offline`, `pnpm`/`yarn`/`bun` add or install, `pip`, `gem`, `cargo` and `go` install,

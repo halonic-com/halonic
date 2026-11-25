@@ -91,11 +91,16 @@ export function words(argument: string): string[] {
   return argument.split(/\s+/).filter((word) => word !== "");
 }
 
-/** True for a path that names a Dockerfile (`Dockerfile`, `Dockerfile.dev`, `run.Dockerfile`), not its ignore file. */
+/**
+ * True for a path that names a Dockerfile (`Dockerfile`, `Dockerfile.dev`, `run.Dockerfile`) or
+ * its Podman name (`Containerfile`, `Containerfile.dev`, `run.Containerfile`), not an ignore file.
+ */
 export function isDockerfile(path: string): boolean {
   const name = path.split("/").at(-1) ?? "";
-  if (name.endsWith(".dockerignore")) {
+  if (name.endsWith(".dockerignore") || name.endsWith(".containerignore")) {
     return false;
   }
-  return name === "Dockerfile" || name.startsWith("Dockerfile.") || name.endsWith(".Dockerfile");
+  return ["Dockerfile", "Containerfile"].some(
+    (base) => name === base || name.startsWith(`${base}.`) || name.endsWith(`.${base}`),
+  );
 }
