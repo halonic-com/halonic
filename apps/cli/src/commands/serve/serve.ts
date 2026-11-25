@@ -67,6 +67,7 @@ import { openChoiceHistory } from "./choice-files.ts";
 import { workspaceGoogleRead } from "./google-read.ts";
 import { startsOnLiveVersion } from "./live-version-runs.ts";
 import { type ConsoleTransport, openServeConsole, type ServeConsole } from "./serve-console.ts";
+import { openServeMessaging } from "./serve-messaging.ts";
 import { type ServedRoutines, servedRoutines } from "./serve-routines.ts";
 import { servedModelChoice } from "./served-model-choice.ts";
 import { studioPageIsOutdated } from "./studio-page-age.ts";
@@ -90,6 +91,8 @@ export interface ServeSetup extends RunSetup {
   readonly studioApp?: string;
   /** How `serve` offers its console to `serve pair` and `serve devices`; the Unix socket by default. */
   readonly console?: ConsoleTransport;
+  /** The `fetch` the Paperclip providers send with; the global one by default. */
+  readonly paperclipFetch?: typeof fetch;
 }
 
 /** Where the built Studio page is and the app it is built from. */
@@ -138,6 +141,8 @@ const maxBodyBytes = 1024 * 1024;
  * @throws NetworkNeedsPasswordError when `--network` is given and no sign-in password is set
  * @throws NoNetworkAddressError when `--network` is given and the computer has no network address
  * @throws KindedError `invalid_input` when `--public-origin` is given and no sign-in password is set
+ * @throws KindedError `invalid_input` when a Paperclip key is stored for one of the workspace's
+ *   connections and no sign-in password is set
  * @throws KindedError `conflict` when another engine is open on the workspace,
  *   or another program listens on the port
  */
@@ -354,6 +359,20 @@ async function listenOnComputer(
   // The version served runs start from, as `halonic trust` reviews it.
   const trust = workspaceTrustGate(dir, setup.trust(), () => versions.liveVersion());
   const keys = openSecretStore(environment);
+  // The profile's secrets file only, never the environment: no unit, image or CI holds the key.
+  const messaging = await openServeMessaging({
+    workspace: root,
+    keys,
+    cacheFolder: join(folders.folder, "agent-messaging-cache"),
+    report: (failure) => logRequestFailure(failure.error),
+    warn: logRequestFailure,
+    ...(setup.paperclipFetch === undefined ? {} : { fetch: setup.paperclipFetch }),
+  });
+  // With no password, everyone who reaches the port would act with the board's key.
+  if (messaging.connected.length > 0 && !(await passwordIsSet(context))) {
+    const message = plainText(serveMessages.paperclipNeedsPassword().phrase);
+    throw new KindedError("invalid_input", message);
+  }
   const studioFolder = studioFolderOf(setup);
   const ports: ServerPorts = {
     runs: startsOnLiveVersion(parts.executor, () => versions.routines.runVersion()),

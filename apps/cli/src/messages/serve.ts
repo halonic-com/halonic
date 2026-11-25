@@ -119,6 +119,9 @@ export const serveMessages = defineMessages("serve", {
   /** The line under {@link serving} when the sign-in password is not set, so only this computer can open it. */
   noPassword: () =>
     phrase`No sign-in password is set, so only this computer can open it. Set one with: halonic secret set serve-password`,
+  /** Why `serve` didn't start: a Paperclip key is stored for a connection and no sign-in password is set. */
+  paperclipNeedsPassword: () =>
+    phrase`Serving a Paperclip connection needs a sign-in password, so nobody else can act with its key. Set one with: halonic secret set serve-password`,
   /** The line under {@link serving} when the Studio page isn't built, so the address shows no page. */
   studioNotBuilt: () =>
     phrase`The Studio page isn't built, so the address shows no page yet. Build it with: pnpm --filter @halonicjs/app-studio build`,
