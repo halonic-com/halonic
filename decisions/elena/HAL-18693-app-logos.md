@@ -2,7 +2,7 @@
 
 - Approval: Liam reviews this on HAL-18693, where the change is built
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:uw/ec+QIwlMQLMxDvHlmG1v0kKI+SFeHn3fvS9DLl7p8cIaojatXu55Z9oA/n16aB75Al2HmtYSRywgHfqlBDQ==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:LZAW++VR621cZk9Uw1tHWgAmY5uml9cnW+QL1yXfbGUIA7+j6jEAatpPSlDbGmi76pwBRmaUVfoJ8aKUXvX3Bg==
 
 `@halonicjs/studio-kit` gets a second entry point, `./app-glyphs` (`src/app-logo/app-glyphs.ts`): the apps'
 glyph data, with no React and no imports. `apps/studio/src-tauri/icons/draw-app-icons.mjs` draws the
