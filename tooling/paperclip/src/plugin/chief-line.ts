@@ -27,6 +27,7 @@ import {
   targetKey,
   targetTitle,
 } from "./line-target.ts";
+import type { PassNudge } from "./merge-control-trigger.ts";
 
 /**
  * The chief line (board supervisor to Chief): one task per caller, assigned
@@ -416,6 +417,7 @@ export async function handleChiefLineRequest(
   input: PluginApiRequestInput,
   ctx: ChiefLineSignalApi,
   now: Date = new Date(),
+  nudge?: PassNudge,
 ): Promise<PluginApiResponse> {
   const userId = input.actor.actorType === "user" ? input.actor.userId : undefined;
   if (typeof userId !== "string" || userId === "") {
@@ -438,7 +440,7 @@ export async function handleChiefLineRequest(
     case chiefLineRouteKeys.track:
       return await trackPull(ctx, input.companyId, settings, body);
     case chiefLineRouteKeys.prEvent:
-      return await prEvent(ctx, input.companyId, settings, body);
+      return await prEvent(ctx, input.companyId, settings, body, nudge);
     default:
       return await subscribe(ctx, input.companyId, settings, body);
   }

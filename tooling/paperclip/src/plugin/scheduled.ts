@@ -11,6 +11,11 @@ export interface ScheduledApi extends CompaniesApi {
 export interface ScheduledJob {
   /** The job's handler: asks for one pass per company the roster knows. */
   dispatch(): Promise<void>;
+  /**
+   * Asks for one pass for one company outside the schedule (HAL-18729). If
+   * a pass is running, one more runs after it instead of none.
+   */
+  request(companyId: string): Promise<void>;
 }
 
 /**
@@ -26,6 +31,8 @@ export interface ScheduledJob {
  * every host call it makes carries that scope.
  *
  * A pass still running when the next one is asked for is not started twice.
+ * A `request` that finds a pass running gets one more pass after it, since
+ * the running one may have read the facts before the event behind it.
  */
 export function scheduledPerCompany(
   ctx: ScheduledApi,
@@ -34,22 +41,36 @@ export function scheduledPerCompany(
   pass: (companyId: string, now: Date) => Promise<void>,
 ): ScheduledJob {
   const running = new Set<string>();
+  const again = new Set<string>();
   ctx.events.on(`plugin.${manifest.id}.${name}`, async (event: PluginEvent) => {
     const { companyId } = event;
     if (running.has(companyId)) {
-      ctx.logger.info(`${name}: the last pass is still running, skipped.`, { companyId });
+      const followUp = (event.payload as { followUp?: unknown } | null)?.followUp === true;
+      if (followUp) {
+        again.add(companyId);
+      }
+      const then = followUp ? "one more runs after it" : "skipped";
+      ctx.logger.info(`${name}: the last pass is still running, ${then}.`, { companyId });
       return;
     }
     running.add(companyId);
     try {
-      await pass(companyId, new Date());
-    } catch (error) {
-      ctx.logger.error(`${name}: ${(error as Error).message}`, { companyId });
+      do {
+        again.delete(companyId);
+        try {
+          await pass(companyId, new Date());
+        } catch (error) {
+          ctx.logger.error(`${name}: ${(error as Error).message}`, { companyId });
+        }
+      } while (again.has(companyId));
     } finally {
       running.delete(companyId);
     }
   });
   return {
+    async request(companyId) {
+      await ctx.events.emit(name, companyId, { followUp: true });
+    },
     async dispatch() {
       let failed = 0;
       for (const companyId of await roster.ids(ctx)) {
