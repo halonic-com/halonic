@@ -245,7 +245,7 @@ jobs:
           fi
           areas=(
             "tauri=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/src-tauri/|tooling/check/licence-texts/crates/|packages/adapters/e2e-noise/src/noise\.wasm$|packages/adapters/remote-gateway/src/|packages/core/ports/src/remote-gateway-)"
-            "sandbox-fence=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-srt|harness-bridge|system-node|integration-runner|integration-kit|connector-stdio-sandbox|git)/|apps/cli/(fence/|src/(local-harness-host|open-local-integration|local-integration-machine|integration-connector-factory|workspace-engine))|apps/agent-host/(fence/|scripts/|src/(main|coding-tools-mode)\.ts$)|packages/adapters/coding-tools/|packages/core/ports/|pnpm-lock\.yaml$)"
+            "sandbox-fence=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-srt|harness-bridge|harness-opencode|system-node|integration-runner|integration-kit|connector-stdio-sandbox|git)/|apps/cli/(fence/|src/(local-harness-host|open-local-integration|local-integration-machine|integration-connector-factory|workspace-engine))|apps/agent-host/(fence/|scripts/|src/(main|coding-tools-mode)\.ts$)|packages/adapters/coding-tools/|packages/core/ports/|pnpm-lock\.yaml$)"
             "sandbox=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/(sandbox-[^/]+|system-node|git)/|packages/core/ports/)"
             "windows=^(\.github/workflows/ci\.yml$|\.github/actions/|pnpm-lock\.yaml$|apps/(cli|agent-host)/|packages/adapters/(fs-node|harness-kit|harness-claude-code|harness-codex|mcp|memory|system-node|http-kit|integration-kit)/|packages/core/(workspace|app|events|format|ports|profile|routines|schema-kit|std|workflow|yaml)/|packages/testing/(contracts|spec|parity|integration)/|tooling/(config|publish)/)"
             "sandbox-mxc=^(\.github/workflows/ci\.yml$|\.github/actions/|packages/adapters/sandbox-mxc/|packages/adapters/integration-runner/|packages/core/app/(src|requirements)/sandbox-|packages/core/ports/|pnpm-lock\.yaml$)"
@@ -2793,7 +2793,7 @@ jobs:
         timeout-minutes: 8
         uses: $/.github/actions/apt-install
         with:
-          packages: bubblewrap socat ripgrep
+          packages: bubblewrap socat ripgrep strace
       - name: Allow user namespaces for bubblewrap (AppArmor profile)
         # The AppArmor profile for bwrap that docs/security/sandbox.md points
         # users to; the guide gets this exact text in HAL-6007. The restriction
@@ -2848,6 +2848,34 @@ jobs:
         # host runs in the real sandbox: the profile root is hidden, only the
         # run's own folders are writable and the file lands in the proposal.
         working-directory: apps/cli
+        run: pnpm test:fence
+      - name: Install OpenCode (pinned, this job only)
+        # The OpenCode egress test runs the real program (HAL-18680): the
+        # official Linux binary package at the one version the adapter
+        # supports, checked against its integrity hash and unpacked without
+        # running any of its scripts, never a package.json dependency
+        # (docs/adr/2026-11-24-opencode-harness-program.md). A bump changes
+        # both values and src/detect.ts in its own security pull request.
+        env:
+          OPENCODE_VERSION: "2.3.0"
+          OPENCODE_INTEGRITY: "sha512-8T3K8L6Nd4fSG5BSgofqhmIDQ1ZvzDZZ2J7bFVB9RK1d5Hjqh24IcxgbcwpgGKkdvItrayi4Rl+wrSmhl17FFg=="
+        run: | # zizmor: ignore[adhoc-packages]
+          folder="$RUNNER_TEMP/opencode"
+          mkdir -p "$folder"
+          # From the empty folder: in the repo, npm would check the root package.json's devEngines.
+          cd "$folder"
+          tarball=$(npm pack "@opencode/cli-linux-x64@$OPENCODE_VERSION" --loglevel warn | tail -n 1)
+          found="sha512-$(openssl dgst -sha512 -binary "$folder/$tarball" | base64 -w0)"
+          test "$found" = "$OPENCODE_INTEGRITY"
+          tar -xzf "$folder/$tarball" -C "$folder"
+          echo "$folder/package/bin" >> "$GITHUB_PATH"
+          "$folder/package/bin/opencode" --version | grep -Fx "opencode v$OPENCODE_VERSION"
+      - name: OpenCode egress through the fence
+        # The pinned OpenCode runs real tools in the real fence against a
+        # scripted bridge. srt's proxy and strace record every attempt, and
+        # nothing but the bridge may be asked for; the negative control must
+        # show models.opencode.ai.
+        working-directory: packages/adapters/harness-opencode
         run: pnpm test:fence
       - name: Build the agent host executable
         run: pnpm --filter @halonicjs/app-agent-host build:sea

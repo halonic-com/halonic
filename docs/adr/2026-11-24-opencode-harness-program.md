@@ -50,10 +50,12 @@ must have:
    Linux sandbox against a scripted bridge, with a recorder that refuses
    everything but the bridge, sees zero other attempts, and sees
    `models.opencode.ai` in its negative control.
-2. **The config diff:** the output of the `tooling/` script that lists, between
-   the old and the new version, every `OPENCODE_*` environment name in the
+2. **The config diff:** the output of
+   `pnpm --filter @halonicjs/tooling-opencode-diff diff <old> <new>`, which lists,
+   between the old and the new version, every `OPENCODE_*` environment name in the
    shipped code and every key of the config schema, so new network features or
-   renamed flags show up.
+   renamed flags show up. It also prints the new program package's integrity,
+   which goes into the sandbox fence job's `OPENCODE_INTEGRITY` with the version.
 3. **An eval smoke:** 1–2 hard-v2 tasks on the trial server with the new
    version, linked in the pull request.
 

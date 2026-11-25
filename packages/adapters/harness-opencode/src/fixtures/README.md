@@ -16,7 +16,7 @@ the model is the made-up `acme-model`.
 
 After the runs, the made-up run token was in no file of the settings folder
 (`opencode.db`, the log, the data and state folders). The check that runs
-the binary in CI comes with the egress test (PR 3c).
+the binary in CI is the egress test (`fence/opencode-egress.test.ts`).
 
 Record a new version the same way, and replace every id, path, address,
 name and token with a made-up one before you commit it.
