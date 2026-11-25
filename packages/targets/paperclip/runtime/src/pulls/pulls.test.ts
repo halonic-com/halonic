@@ -97,13 +97,15 @@ function run(
     templates: [],
     caller,
     companyId: "acme",
-    now: new Date("2026-11-24T12:00:00Z"),
-    paperclip: { agents: { list: async () => agents } } as unknown as ActionCall["paperclip"],
     github: async () => github,
-    paperclip: paperclipAccess({} as never, handler.capabilities, {
-      companyId: "acme",
-      runId: "run-1",
-    }),
+    paperclip: paperclipAccess(
+      { agents: { list: async () => agents } } as never,
+      handler.capabilities,
+      {
+        companyId: "acme",
+        runId: "run-1",
+      },
+    ),
     now: new Date("2026-11-24T12:00:00Z"),
   };
   return handler.run(call);

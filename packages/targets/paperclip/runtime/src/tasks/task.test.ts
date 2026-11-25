@@ -87,7 +87,6 @@ function run(params: unknown, paperclip: Pick<RuntimeHost, "agents" | "issues">)
     github: async () => {
       throw new Error("paperclip.task doesn't read GitHub");
     },
-    now: new Date("2026-11-23T14:00:00Z"),
   };
   return handler.run(call);
 }

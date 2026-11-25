@@ -96,6 +96,14 @@ export function fakeHost(config: Record<string, unknown>, answers: Record<string
     },
     issues: {
       get: async (id: string) => (id === "task-7" ? { id, identifier: "ACME-7" } : null),
+      createComment: async (issueId: string) => {
+        writes.push(`createComment ${issueId}`);
+        return { id: "comment-new" };
+      },
+      update: async (issueId: string) => {
+        writes.push(`update ${issueId}`);
+        return { id: issueId, status: "todo" };
+      },
     },
     metrics: {
       write: async (name: string, value: number, tags?: unknown) => {
@@ -117,17 +125,6 @@ export function fakeHost(config: Record<string, unknown>, answers: Record<string
     agents: {
       get: async (id: string) => (id === "agent-mateo" ? { id, ...agent } : null),
       list: async () => [{ id: "agent-mateo", ...agent }],
-    },
-    issues: {
-      get: async () => null,
-      createComment: async (issueId: string) => {
-        writes.push(`createComment ${issueId}`);
-        return { id: "comment-new" };
-      },
-      update: async (issueId: string) => {
-        writes.push(`update ${issueId}`);
-        return { id: issueId, status: "todo" };
-      },
     },
     config: { get: async () => config },
     secrets: { resolve: async () => "test-token" },

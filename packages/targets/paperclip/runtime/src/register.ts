@@ -4,8 +4,8 @@ import { activeSnapshot } from "./active-snapshot.ts";
 import { type GitHubGet, gitHubReader } from "./github.ts";
 import type { ActionHandlers } from "./handlers.ts";
 import type { RuntimeHost, ToolDeclaration, ToolResult, ToolRunContext } from "./host.ts";
-import { keepFailedRun } from "./runs/failed-runs-record.ts";
 import { paperclipAccess } from "./paperclip-access.ts";
+import { keepFailedRun } from "./runs/failed-runs-record.ts";
 
 /**
  * Registers a plugin's tools under their short names (`pr_status`), each
