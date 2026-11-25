@@ -2,15 +2,9 @@ import { AGENT_NAME_PATTERN, ROUTING_ROLES } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
 import { type RoutedPull, reviewerFor, reviewerRoleFor } from "./reviewer-paths.ts";
+import { snapshotWith } from "./routing.test-helper.ts";
 import { agentNamePattern, areaOwnerFor, personFor, routingRoles } from "./routing.ts";
 import { routingOf } from "./routing-load.ts";
-
-const commit = "0123456789abcdef0123456789abcdef01234567";
-
-/** A snapshot with no tools and this routing, as JSON data. */
-function snapshotWith(routing: unknown): unknown {
-  return { format: 1, workspace: { name: "Acme", commit }, tools: [], routing };
-}
 
 /** The routing that names today's people. */
 const today = routingOf(
