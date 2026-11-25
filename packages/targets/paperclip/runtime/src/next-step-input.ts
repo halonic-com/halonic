@@ -75,6 +75,54 @@ export function readNextStepComment(params: unknown): string {
   return comment;
 }
 
+/** Where a monitor's four fields are read from, and the names refusals use for them. */
+interface MonitorFields {
+  readonly inMinutes: string;
+  readonly ref: string;
+  readonly service: string;
+  readonly maxChecks: string;
+}
+
+const nestedMonitorNames: MonitorFields = {
+  inMinutes: "monitor.inMinutes",
+  ref: "monitor.ref",
+  service: "monitor.service",
+  maxChecks: "monitor.maxChecks",
+};
+
+/**
+ * The monitor as flat parameters, for a tool file: its parameters can only be
+ * plain values, never an object (`format.tool-file`).
+ */
+const flatMonitorKeys: MonitorFields = {
+  inMinutes: "monitorInMinutes",
+  ref: "monitorRef",
+  service: "monitorService",
+  maxChecks: "monitorMaxChecks",
+};
+
+function readMonitorFields(
+  read: (key: keyof MonitorFields) => unknown,
+  names: MonitorFields,
+): MonitorRequest {
+  const service = read("service");
+  const maxChecks = read("maxChecks");
+  return {
+    inMinutes: wholeNumber(
+      read("inMinutes"),
+      names.inMinutes,
+      monitorLimits.minMinutes,
+      monitorLimits.maxMinutes,
+    ),
+    ref: shortText(read("ref"), names.ref, "halonic-com/halonic#5486"),
+    service: service === undefined ? "github" : shortText(service, names.service, "github"),
+    maxChecks:
+      maxChecks === undefined
+        ? monitorLimits.defaultChecks
+        : wholeNumber(maxChecks, names.maxChecks, 1, monitorLimits.maxChecks),
+  };
+}
+
 /** `monitor` as { inMinutes, ref, service?, maxChecks? }; throws for anything outside the bounds. */
 export function readMonitor(value: unknown): MonitorRequest {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -83,29 +131,43 @@ export function readMonitor(value: unknown): MonitorRequest {
     );
   }
   const monitor = value as Params;
-  return {
-    inMinutes: wholeNumber(
-      monitor["inMinutes"],
-      "monitor.inMinutes",
-      monitorLimits.minMinutes,
-      monitorLimits.maxMinutes,
-    ),
-    ref: shortText(monitor["ref"], "monitor.ref", "halonic-com/halonic#5486"),
-    service:
-      monitor["service"] === undefined
-        ? "github"
-        : shortText(monitor["service"], "monitor.service", "github"),
-    maxChecks:
-      monitor["maxChecks"] === undefined
-        ? monitorLimits.defaultChecks
-        : wholeNumber(monitor["maxChecks"], "monitor.maxChecks", 1, monitorLimits.maxChecks),
-  };
+  return readMonitorFields((key) => monitor[key], nestedMonitorNames);
 }
 
-/** `blockedBy` as one or more task identifiers or ids, without repeats. */
+/** Whether the parameters ask for a monitor, as `monitor` or as any of the flat `monitor…` fields. */
+function hasMonitor(params: Params): boolean {
+  return (
+    params["monitor"] !== undefined ||
+    Object.values(flatMonitorKeys).some((key) => params[key] !== undefined)
+  );
+}
+
+/** The monitor from `monitor`, or from `monitorInMinutes`, `monitorRef`, `monitorService` and `monitorMaxChecks`; not both. */
+function readMonitorParams(params: Params): MonitorRequest {
+  if (params["monitor"] === undefined) {
+    return readMonitorFields((key) => params[flatMonitorKeys[key]], flatMonitorKeys);
+  }
+  if (Object.values(flatMonitorKeys).some((key) => params[key] !== undefined)) {
+    throw new ToolInputError(
+      "give the monitor either as monitor or as monitorInMinutes and monitorRef, not both.",
+    );
+  }
+  return readMonitor(params["monitor"]);
+}
+
+function blockedByList(value: unknown): readonly unknown[] {
+  if (typeof value === "string") {
+    return value.split(",");
+  }
+  return Array.isArray(value) ? value : [];
+}
+
+/**
+ * `blockedBy` as one or more task identifiers or ids, without repeats: a list,
+ * or one text with commas between them, as a tool file's parameter can only be.
+ */
 export function readBlockedBy(value: unknown): readonly string[] {
-  const list = Array.isArray(value) ? value : [];
-  const tasks = list.map((one) => (typeof one === "string" ? one.trim() : ""));
+  const tasks = blockedByList(value).map((one) => (typeof one === "string" ? one.trim() : ""));
   if (tasks.length === 0 || tasks.length > 10 || !tasks.every(isTaskRef)) {
     throw new ToolInputError(
       "blockedBy must list 1 to 10 tasks that hold the work, such as ['HAL-16989'], never a parent epic.",
@@ -136,7 +198,7 @@ export function readSetNextStepParams(params: unknown): {
   refuseHandoff(read);
   const comment = readNextStepComment(params);
   if (read["status"] === "in_progress") {
-    if (read["monitor"] === undefined) {
+    if (!hasMonitor(read)) {
       throw new ToolInputError(
         "in_progress needs a monitor: nothing else wakes you once this run ends.",
       );
@@ -144,11 +206,11 @@ export function readSetNextStepParams(params: unknown): {
     return {
       task,
       comment,
-      step: { status: "in_progress", monitor: readMonitor(read["monitor"]) },
+      step: { status: "in_progress", monitor: readMonitorParams(read) },
     };
   }
   if (read["status"] === "blocked") {
-    if (read["monitor"] !== undefined) {
+    if (hasMonitor(read)) {
       throw new ToolInputError(
         "a blocked task's monitor never fires: name the blockers and leave out monitor.",
       );
