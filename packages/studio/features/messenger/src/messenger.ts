@@ -13,7 +13,7 @@ import type {
 import { ChannelAdmin } from "./channel-admin.ts";
 import { type ChannelQuestion, channelQuestions } from "./channel-waiting.ts";
 import { DraftFiles } from "./draft-files.ts";
-import { QuickActions } from "./quick-actions.ts";
+import { isFromAgentOf, QuickActions } from "./quick-actions.ts";
 import { refusalOf } from "./refusal.ts";
 
 export { refusalOf } from "./refusal.ts";
@@ -34,6 +34,10 @@ export interface ConversationRow {
   readonly source: MessagingSource | undefined;
   /** A channel's questions still waiting for the person, oldest first; none for a chat. */
   readonly questions?: readonly ChannelQuestion[];
+  /** The newest message, for the row's preview and time; none in an empty chat. */
+  readonly last?: Message;
+  /** How many of the chat agent's cards are open, for the row's "1 card" chip. */
+  readonly openCards?: number;
 }
 
 /** What sending a conversation's draft did. A draft that wasn't sent stays as it was. */
@@ -68,6 +72,8 @@ export class Messenger {
   private readonly messaging: AgentMessaging;
   private readonly drafts = new Map<MessagingId, string>();
   private readonly picks = new Map<MessagingId, readonly MessagingId[]>();
+  /** When the newest message the person saw in each chat was sent, while this Messenger lives. */
+  private readonly seen = new Map<MessagingId, string>();
 
   constructor(messaging: AgentMessaging, now: () => Date = () => new Date()) {
     this.messaging = messaging;
@@ -86,22 +92,45 @@ export class Messenger {
     const rows = [...conversations]
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       .map((conversation) => rowOf(conversation, sources, agents));
-    return inTab(await this.withQuestions(rows), tab);
+    return inTab(await this.withFacts(rows), tab);
   }
 
-  /** Each channel's row with the questions it holds for the person; a chat's row as it is. */
-  private async withQuestions(
-    rows: readonly ConversationRow[],
-  ): Promise<readonly ConversationRow[]> {
-    if (!rows.some((row) => row.conversation.members !== undefined)) return rows;
+  /**
+   * Each row with its newest message and its open cards (`messenger.chat-rows`), and a channel's
+   * with the questions it holds for the person.
+   */
+  private async withFacts(rows: readonly ConversationRow[]): Promise<readonly ConversationRow[]> {
     const items = await this.messaging.listInboxItems();
     return Promise.all(
       rows.map(async (row) => {
-        if (row.conversation.members === undefined) return row;
         const messages = await this.messaging.listMessages(row.conversation.id);
-        return { ...row, questions: channelQuestions(row, messages, items) };
+        const last = messages.at(-1);
+        const facts = last === undefined ? row : { ...row, last };
+        if (row.conversation.members !== undefined) {
+          return { ...facts, questions: channelQuestions(row, messages, items) };
+        }
+        const open = items.filter((item) => item.state.kind === "open" && isFromAgentOf(item, row));
+        return { ...facts, openCards: open.length };
       }),
     );
+  }
+
+  /** Notes that the person saw a chat's messages up to the newest of `messages`. */
+  markSeen(conversation: MessagingId, messages: readonly Message[]): void {
+    const newest = messages.at(-1)?.sentAt;
+    if (newest !== undefined && newest > (this.seen.get(conversation) ?? "")) {
+      this.seen.set(conversation, newest);
+    }
+  }
+
+  /**
+   * Whether a row's newest message is an agent's that the person hasn't seen open since this
+   * Messenger started: the row's unread dot.
+   */
+  unread(row: ConversationRow): boolean {
+    const { last } = row;
+    if (last === undefined || last.author.kind === "me") return false;
+    return last.sentAt > (this.seen.get(row.conversation.id) ?? "");
   }
 
   /** Whether anything is connected, so the Messenger can tell "nothing connected" from "no chats". */

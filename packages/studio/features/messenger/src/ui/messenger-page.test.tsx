@@ -56,20 +56,21 @@ async function searchFor(page: HTMLElement, text: string): Promise<void> {
 
 verifies("messenger.conversations", () => {
   describe("MessengerPage", () => {
-    it("shows two conversations named Chief, each with its source's label and activity", async () => {
+    it("shows two conversations named Chief, each with its source's label, and the activity in the header", async () => {
       const { messaging } = twoChiefs();
       const page = await openMessenger(messaging);
-      expect(rows(page)).toEqual([
-        "CChief · Paperclip · AcmeWaiting",
-        "CChief · Paperclip · GlobexIdle",
-      ]);
+      const [acme, globex] = rows(page);
+      expect(acme).toMatch(/^CChief · Paperclip · Acme.*Shall I merge #12\?Unread$/);
+      expect(globex).toBe("CChief · Paperclip · Globex");
+      await openAcmeChat(page);
+      expect(page.querySelector("main header p")?.textContent).toBe("Paperclip · Acme · Waiting");
     });
 
     it("lists under Waiting for me only the conversation whose agent wrote last", async () => {
       const { messaging } = twoChiefs();
       const page = await openMessenger(messaging);
       await press(byText(page, '[role="tab"]', "Waiting for me"));
-      expect(rows(page)).toEqual(["CChief · Paperclip · AcmeWaiting"]);
+      expect(rows(page)).toEqual([expect.stringMatching(/^CChief · Paperclip · Acme/)]);
       await press(byText(page, '[role="tab"]', "All"));
       expect(rows(page)).toHaveLength(2);
     });

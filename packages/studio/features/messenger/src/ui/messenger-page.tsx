@@ -1,6 +1,12 @@
 import type { MessagingId } from "@halonicjs/ports";
 import { Button, EmptyState, useNarrow } from "@halonicjs/studio-kit";
-import { focusedPanelClass, type PlaceViewProps } from "@halonicjs/studio-shell";
+import {
+  type EngineWords,
+  engineWords,
+  engineWordsOf,
+  focusedPanelClass,
+  type PlaceViewProps,
+} from "@halonicjs/studio-shell";
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { MessengerService } from "../api.ts";
@@ -9,6 +15,7 @@ import { messengerWords } from "../messenger-words.ts";
 import { type AgentPictures, pictureOf, useAgentPictures } from "./agent-pictures.ts";
 import { ConversationList } from "./conversation-list.tsx";
 import { ConversationView } from "./conversation-view.tsx";
+import { ChatsLoad, useFadeIn } from "./load-states.tsx";
 import { NewMenu } from "./new-menu.tsx";
 
 /** The props of {@link MessengerPage}. */
@@ -16,6 +23,8 @@ export interface MessengerPageProps {
   readonly messenger: Messenger;
   /** Opens Settings › Connections; without it, the page with nothing connected has no button. */
   readonly onConnect?: () => void;
+  /** How a failed read says the engine isn't answering, worded for where the Studio runs. */
+  readonly words?: EngineWords;
 }
 
 /**
@@ -32,11 +41,18 @@ export interface MessengerPageProps {
  * With nothing connected, the panel says so and offers Connect Paperclip, instead
  * of an empty list that looks like a Paperclip with no chats.
  */
-export function MessengerPage({ messenger, onConnect }: MessengerPageProps) {
+export function MessengerPage({
+  messenger,
+  onConnect,
+  words = engineWords["desktop-app"],
+}: MessengerPageProps) {
   const [tab, setTab] = useState<MessengerTab>("all");
-  const [rows, setRows] = useState<readonly ConversationRow[]>([]);
+  // Undefined until the first read lands, so the page shows its skeleton, not "No chats yet".
+  const [rows, setRows] = useState<readonly ConversationRow[] | undefined>(undefined);
   // Unknown until the first read lands, so the page never flashes "No connections".
   const [connected, setConnected] = useState<boolean | undefined>(undefined);
+  // The last read's failure; a read that lands clears it.
+  const [failure, setFailure] = useState<unknown>(undefined);
   const [selected, setSelected] = useState<MessagingId | undefined>(undefined);
   // Grows on each change a source reports, so the list and the open conversation read again.
   const [changed, setChanged] = useState(0);
@@ -50,17 +66,23 @@ export function MessengerPage({ messenger, onConnect }: MessengerPageProps) {
         if (!current) return;
         setRows(read);
         setConnected(hasSources);
+        setFailure(undefined);
       },
-      (error: unknown) => console.error("The Messenger couldn't read its chats:", error),
+      (error: unknown) => {
+        console.error("The Messenger couldn't read its chats:", error);
+        if (current) setFailure(error);
+      },
     );
     return () => {
       current = false;
     };
   }, [messenger, changed]);
 
-  const pictures = useAgentPictures(messenger, rows);
-  const open = rows.find((row) => row.conversation.id === selected);
+  const pictures = useAgentPictures(messenger, rows ?? []);
+  const open = rows?.find((row) => row.conversation.id === selected);
   const { onePane, list, chat, select, back } = useOnePane(selected, setSelected);
+  useFadeIn(chat, open?.conversation.id);
+  const readAgain = () => setChanged((count) => count + 1);
   // In one pane, nothing connected shows the panel, so a narrow window still offers Connect.
   const panelFirst = open !== undefined || connected === false;
   // A channel made or joined is read into the list, then opened.
@@ -77,19 +99,33 @@ export function MessengerPage({ messenger, onConnect }: MessengerPageProps) {
       <h1 className="sr-only">{messengerWords.title}</h1>
       {onePane && panelFirst ? null : (
         <ListColumn listRef={list} onePane={onePane} connected={connected}>
-          {connected === true ? (
+          {/* Also while the chats load, so the list doesn't move once they arrive (motion 7). */}
+          {connected === false ? null : (
             <div className="flex justify-end px-2 pt-2">
               <NewMenu messenger={messenger} onOpen={openChannel} />
             </div>
-          ) : null}
-          <ConversationList
-            tab={tab}
-            onTab={setTab}
-            rows={inTab(rows, tab)}
-            selected={selected}
-            onSelect={select}
-            pictures={pictures}
-          />
+          )}
+          <div className="flex min-h-0 flex-col">
+            <ChatsLoad
+              loaded={rows !== undefined}
+              error={failure}
+              words={words}
+              onRetry={readAgain}
+            >
+              <ConversationList
+                tab={tab}
+                onTab={setTab}
+                rows={rows === undefined ? undefined : inTab(rows, tab)}
+                onRetry={readAgain}
+                selected={selected}
+                onSelect={select}
+                pictures={pictures}
+                now={messenger.now()}
+                unread={(row) => messenger.unread(row)}
+                manySources={new Set(rows?.map((row) => row.conversation.source)).size > 1}
+              />
+            </ChatsLoad>
+          </div>
         </ListColumn>
       )}
       {onePane && !panelFirst ? null : (
@@ -103,6 +139,7 @@ export function MessengerPage({ messenger, onConnect }: MessengerPageProps) {
           ) : null}
           <Panel
             messenger={messenger}
+            loaded={rows !== undefined}
             connected={connected}
             open={open}
             changed={changed}
@@ -145,6 +182,7 @@ function ListColumn({
 /** The panel: nothing connected, no chat picked yet, or the open chat. */
 function Panel({
   messenger,
+  loaded,
   connected,
   open,
   changed,
@@ -154,6 +192,7 @@ function Panel({
   onChanged,
 }: {
   readonly messenger: Messenger;
+  readonly loaded: boolean;
   readonly connected: boolean | undefined;
   readonly open: ConversationRow | undefined;
   readonly changed: number;
@@ -163,6 +202,8 @@ function Panel({
   readonly onChanged: () => void;
 }) {
   if (connected === false) return <NoConnections onConnect={onConnect} />;
+  // While the chats load, or failed to, the list's column says so; the panel stays empty.
+  if (!loaded) return null;
   if (open === undefined) {
     return <p className="m-auto text-small text-fg-muted">{messengerWords.pickChat}</p>;
   }
@@ -232,6 +273,7 @@ export function MessengerWindow({ context }: PlaceViewProps) {
   return (
     <MessengerPage
       messenger={context.services.get(MessengerService)}
+      words={engineWordsOf(context)}
       {...(openSettings === undefined ? {} : { onConnect: () => openSettings("connections") })}
     />
   );
