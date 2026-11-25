@@ -519,6 +519,7 @@ export {
   workspaceSecretWriter,
 } from "./secrets.ts";
 export {
+  type AgentDetail,
   type AgentSpend,
   type AsOf,
   type MergeGroup,
@@ -529,7 +530,9 @@ export {
   type PullRequestEvent,
   type PullRequestList,
   type PullRequestState,
+  type RunFailCause,
   type Seat,
+  type SeatMover,
   type SeatReadCause,
   type SeatState,
   type SeatWindow,
