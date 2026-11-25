@@ -62,7 +62,13 @@ async function readPicture(response: Response): Promise<AttachmentRead> {
     await response.body?.cancel();
     return refused("too-large");
   }
-  const bytes = await readAtMost(response, avatarMaxBytes);
+  let bytes: Uint8Array | undefined;
+  try {
+    bytes = await readAtMost(response, avatarMaxBytes);
+  } catch {
+    // The line dropped partway through the body: as for a request that never got through.
+    return refused("offline");
+  }
   return bytes === undefined ? refused("too-large") : { outcome: "read", bytes, type };
 }
 

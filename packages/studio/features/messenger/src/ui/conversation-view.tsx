@@ -1,8 +1,8 @@
 import type { Message, MessagingId } from "@halonicjs/ports";
-import { Input } from "@halonicjs/studio-kit";
+import { Avatar, Input } from "@halonicjs/studio-kit";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { isChannel } from "../channel.ts";
-import { chatName } from "../chat-name.ts";
+import { chatAgent, chatName } from "../chat-name.ts";
 import { activityOf, type ConversationRow, type Messenger } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import { CardsBar } from "./cards-bar.tsx";
@@ -24,6 +24,8 @@ export interface ConversationViewProps {
   readonly onLeft?: () => void;
   /** The channel's members changed; the page reads the list again. */
   readonly onChanged?: () => void;
+  /** The chat agent's picture for the header; without one, its initial shows. */
+  readonly picture?: ImageBitmap | undefined;
 }
 
 /**
@@ -47,6 +49,7 @@ export function ConversationView({
   changed,
   onLeft,
   onChanged,
+  picture,
 }: ConversationViewProps) {
   const [search, setSearch] = useState("");
   // What the chat's status region reads out: a new message, or the option that answered a card.
@@ -78,7 +81,7 @@ export function ConversationView({
   const noMatch = messages?.length === 0 && search.trim() !== "";
   return (
     <section ref={section} aria-label={chatName(row)} className="flex min-h-0 flex-1 flex-col">
-      <ConversationHeader row={row} search={search} onSearch={setSearch}>
+      <ConversationHeader row={row} picture={picture} search={search} onSearch={setSearch}>
         {isChannel(row) ? (
           <ChannelHeaderActions
             messenger={messenger}
@@ -180,11 +183,13 @@ function newestFromAgent(
 /** The conversation's agent, its source and activity, and the search through its messages. */
 function ConversationHeader({
   row,
+  picture,
   search,
   onSearch,
   children,
 }: {
   readonly row: ConversationRow;
+  readonly picture: ImageBitmap | undefined;
   readonly search: string;
   readonly onSearch: (search: string) => void;
   /** A channel's Members and Leave channel. */
@@ -193,6 +198,7 @@ function ConversationHeader({
   const activity = messengerWords.activity[activityOf(row)];
   return (
     <header className="flex items-center gap-3 border-b border-border px-4 py-3">
+      <Avatar name={chatAgent(row)?.name ?? row.conversation.title} picture={picture} />
       <div className="flex min-w-0 flex-1 flex-col">
         <h2 className="truncate text-body-strong">
           <bdi>{chatName(row)}</bdi>
