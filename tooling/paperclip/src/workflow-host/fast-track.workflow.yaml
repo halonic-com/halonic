@@ -1,0 +1,110 @@
+# The fast-track pull request lifecycle (HAL-17774), run by the engine inside the
+# Agent tools plugin in dry run. The plugin's pass works out each pull request's
+# stage from the GitHub snapshot (rules/fast-track-lifecycle.ts) and sends it as the
+# event `stage`; the guards read only that event's data. No state calls a model.
+id: fast-track
+name: Fast-track pull request
+description: A fast-track pull request from its label to its merge.
+initial: ready
+states:
+  ready:
+    type: wait
+    description: Labelled fast-track; not ready for review yet (a draft, or checks still running or red).
+    on:
+      - to: review
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", review] }
+      - to: approved
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", approved] }
+      - to: queued
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", queued] }
+      - to: merged
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", merged] }
+      - to: closed
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", closed] }
+  review:
+    type: wait
+    description: Ready for review and not approved on its head; after 15 minutes the board hears of it.
+    on:
+      - to: ready
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", ready] }
+      - to: approved
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", approved] }
+      - to: queued
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", queued] }
+      - to: merged
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", merged] }
+      - to: closed
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", closed] }
+      - to: review_late
+        after: 15m
+  review_late:
+    type: wait
+    description: Still not approved 15 minutes after it was ready for review, so the board hears of it.
+    on:
+      - to: ready
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", ready] }
+      - to: approved
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", approved] }
+      - to: queued
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", queued] }
+      - to: merged
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", merged] }
+      - to: closed
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", closed] }
+  approved:
+    type: wait
+    description: Approved on its head and not in the merge queue yet.
+    on:
+      - to: ready
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", ready] }
+      - to: review
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", review] }
+      - to: queued
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", queued] }
+      - to: merged
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", merged] }
+      - to: closed
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", closed] }
+  queued:
+    type: wait
+    description: In the merge queue.
+    on:
+      - to: ready
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", ready] }
+      - to: review
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", review] }
+      - to: approved
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", approved] }
+      - to: merged
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", merged] }
+      - to: closed
+        event: stage
+        when: { equals: ["{{event.payload.stage}}", closed] }
+  merged:
+    type: final
+  closed:
+    type: final

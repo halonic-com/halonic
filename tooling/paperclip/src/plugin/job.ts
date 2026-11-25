@@ -31,6 +31,7 @@ import type { GitHubTokenKind, Snapshot } from "../snapshot/shape.ts";
 import { type StateApi, saveSnapshot } from "../snapshot/store.ts";
 import { readWatchersSettings, runMergeWatchers, type WatchersSettings } from "../watchers/run.ts";
 import { type CompanySource, listedCompanies } from "./companies.ts";
+import type { LifecycleRunner } from "./fast-track-lifecycle-job.ts";
 import { type HostApi, paperclipHost, unblockHost } from "./host.ts";
 import { countingFetch, type MetricsApi, writeMetrics } from "./metrics.ts";
 import {
@@ -245,7 +246,12 @@ async function runFastTrack(
 }
 
 /** One watcher pass for one company. Returns how many tasks it couldn't check. */
-async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<number> {
+async function watchCompany(
+  ctx: JobApi,
+  companyId: string,
+  now: Date,
+  lifecycle: LifecycleRunner | undefined,
+): Promise<number> {
   const settings = await companySettings(ctx, companyId);
   if (settings === undefined) {
     ctx.logger.info("PR watcher: no settings saved for this company, skipped.", { companyId });
@@ -294,6 +300,7 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
     repo: settings.repos[0] ?? defaultRepos[0] ?? "",
   });
   await runFastTrack(ctx, companyId, snapshot, settings, now);
+  await lifecycle?.run(companyId, snapshot);
   const found = discoverPulls(snapshot);
   const paperclip = paperclipHost(ctx, companyId);
   // Kept from the pass, so the monitors are counted without reading the tasks twice.
@@ -373,11 +380,12 @@ export async function runWatcher(
   ctx: JobApi,
   now: Date,
   companies: CompanySource = listedCompanies,
+  lifecycle?: LifecycleRunner,
 ): Promise<void> {
   let failed = 0;
   for (const companyId of await companies(ctx)) {
     try {
-      failed += await watchCompany(ctx, companyId, now);
+      failed += await watchCompany(ctx, companyId, now, lifecycle);
     } catch (error) {
       failed += 1;
       ctx.logger.error(`PR watcher: couldn't run: ${(error as Error).message}`, { companyId });

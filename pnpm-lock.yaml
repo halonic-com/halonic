@@ -5425,9 +5425,30 @@ importers:
 
   tooling/paperclip:
     devDependencies:
+      '@halonicjs/app':
+        specifier: workspace:*
+        version: link:../../packages/core/app
+      '@halonicjs/engine':
+        specifier: workspace:*
+        version: link:../../packages/core/engine
+      '@halonicjs/events':
+        specifier: workspace:*
+        version: link:../../packages/core/events
+      '@halonicjs/format':
+        specifier: workspace:*
+        version: link:../../packages/core/format
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../../packages/core/ports
+      '@halonicjs/std':
+        specifier: workspace:*
+        version: link:../../packages/core/std
       '@halonicjs/target-paperclip-runtime':
         specifier: workspace:*
         version: link:../../packages/targets/paperclip/runtime
+      '@halonicjs/testing-contracts':
+        specifier: workspace:*
+        version: link:../../packages/testing/contracts
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../packages/testing/spec
