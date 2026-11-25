@@ -15,6 +15,9 @@ pub const HEALTH_EVERY: Duration = Duration::from_secs(1);
 pub struct EngineHealth {
     /// Whether the routine scheduler ticks; `false` once a stop began.
     pub scheduling: bool,
+    /// Whether routines are paused: by the shell's `pause_routines`, or
+    /// because none has reached the engine yet.
+    pub paused: bool,
     /// The runs going now, running or waiting.
     pub active_runs: u32,
     /// When the scheduler last ticked, as an ISO time.
@@ -77,9 +80,18 @@ impl PipeSession {
             }
             EngineFrame::Health {
                 scheduling,
+                paused,
                 active_runs,
                 last_tick,
-            } => Ok(self.health(now, scheduling, active_runs, last_tick)),
+            } => Ok(self.health(
+                now,
+                EngineHealth {
+                    scheduling,
+                    paused,
+                    active_runs,
+                    last_tick,
+                },
+            )),
             EngineFrame::Stopped { interrupted } if self.stop_sent => {
                 self.stopped = true;
                 Ok(EngineEvent::Stopped { interrupted })
@@ -116,13 +128,7 @@ impl PipeSession {
         Ok(EngineEvent::Request { id, request })
     }
 
-    fn health(
-        &mut self,
-        now: Instant,
-        scheduling: bool,
-        active_runs: u32,
-        last_tick: Option<String>,
-    ) -> EngineEvent {
+    fn health(&mut self, now: Instant, health: EngineHealth) -> EngineEvent {
         let too_soon = self
             .last_health
             .is_some_and(|last| now.saturating_duration_since(last) < HEALTH_EVERY);
@@ -130,10 +136,6 @@ impl PipeSession {
             return EngineEvent::Dropped;
         }
         self.last_health = Some(now);
-        EngineEvent::Health(EngineHealth {
-            scheduling,
-            active_runs,
-            last_tick,
-        })
+        EngineEvent::Health(health)
     }
 }

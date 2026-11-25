@@ -96,7 +96,11 @@ verifies("agent-host.engine-role-lifecycle", () => {
       });
       expect(hello.status).toBe(200);
       expect((await fetch(`${url}/api/hello`)).status).toBe(401);
-      expect(await engine.frame("health")).toMatchObject({ scheduling: true, activeRuns: 0 });
+      expect(await engine.frame("health")).toMatchObject({
+        scheduling: true,
+        paused: true,
+        activeRuns: 0,
+      });
       engine.input.write(shellFrame('{"kind":"stop"}'));
       expect(await engine.exit).toBe(0);
       expect(await engine.frame("stopped")).toEqual({ kind: "stopped", interrupted: 0 });
@@ -116,8 +120,9 @@ verifies("agent-host.engine-role-lifecycle", () => {
       const abandoned: RunningEngine = {
         url: "http://127.0.0.1:49152",
         token: "a".repeat(43),
-        health: () => ({ scheduling: true, activeRuns: 1, lastTick: null }),
+        health: () => ({ scheduling: true, paused: false, activeRuns: 1, lastTick: null }),
         useSandboxHost: () => {},
+        pauseRoutines: () => {},
         followHealth: () => () => {},
         stopScheduling: () => {},
         settle: async () => 1,

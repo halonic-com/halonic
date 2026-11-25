@@ -28,7 +28,7 @@ import {
   workspaceTrustState,
 } from "@halonicjs/adapter-workspace-engine-node";
 import { workspaceModelSettings } from "@halonicjs/adapter-workspace-models";
-import { workspaceRoutineScheduler } from "@halonicjs/app";
+import { passRoutineTick, workspaceRoutineScheduler } from "@halonicjs/app";
 import { endStoppedRuns, noListedToolApproval } from "@halonicjs/engine";
 import { createEngineServer, type EngineServerPorts } from "@halonicjs/host-server";
 import type { ProfileEnvironment } from "@halonicjs/profile";
@@ -171,21 +171,29 @@ async function openEngine(
         ),
       listedToolApproval: () => noListedToolApproval,
       reportError,
-      routines: (engine) =>
-        schedule.ticks(
-          workspaceRoutineScheduler({
-            workspaceId: filesOf(versions.latest(), "workspace")[0]?.value.id ?? dir.name,
-            clock: engine.clock,
-            coordination: engine.coordination,
-            executor: engine.executor,
-            runs: engine.runs,
-            routines: () => versions.routines.list(),
-            targetUnavailable: (run) => versions.routines.targetUnavailable(run),
-            runVersion: () => versions.routines.runVersion(),
-            policy: { ...DEFAULT_TICK_POLICY, timeZone: computerTimeZone() },
-          }),
+      routines: (engine) => {
+        const workspaceId = filesOf(versions.latest(), "workspace")[0]?.value.id ?? dir.name;
+        const { clock, coordination } = engine;
+        const scheduler = workspaceRoutineScheduler({
+          workspaceId,
+          clock,
+          coordination,
+          executor: engine.executor,
+          runs: engine.runs,
+          routines: () => versions.routines.list(),
+          targetUnavailable: (run) => versions.routines.targetUnavailable(run),
+          runVersion: () => versions.routines.runVersion(),
+          policy: { ...DEFAULT_TICK_POLICY, timeZone: computerTimeZone() },
+        });
+        return schedule.ticks(
+          {
+            tick: () => scheduler.tick(),
+            pass: () => passRoutineTick({ workspaceId, clock, coordination }),
+            dispose: () => scheduler.dispose(),
+          },
           async () => (await engine.runs.list({ status: ["running", "waiting"] })).length,
-        ),
+        );
+      },
     });
     const opened = local;
     const token = randomLaunchToken();

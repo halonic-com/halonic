@@ -31,12 +31,14 @@ function openPipe(overrides: Partial<ControlPipeHandlers> = {}) {
   const output = new PassThrough();
   const heard = {
     sandboxHosts: [] as unknown[],
+    pauses: [] as boolean[],
     stops: 0,
     faults: [] as ControlPipeFault[],
     ends: 0,
   };
   const handlers: ControlPipeHandlers = {
     sandboxHost: (connection) => heard.sandboxHosts.push(connection),
+    pauseRoutines: (paused) => heard.pauses.push(paused),
     stop: () => heard.stops++,
     fault: (error) => heard.faults.push(error),
     end: () => heard.ends++,
@@ -71,7 +73,13 @@ verifies("agent-host.engine-control-pipe", () => {
 
     it("sends the handshake before anything else", async () => {
       const { pipe, written } = openPipe();
-      const health = { kind: "health", scheduling: true, activeRuns: 0, lastTick: null } as const;
+      const health = {
+        kind: "health",
+        scheduling: true,
+        paused: false,
+        activeRuns: 0,
+        lastTick: null,
+      } as const;
       expect(() => pipe.send(health)).toThrow(/handshake/);
       pipe.send(handshake);
       pipe.send(health);
@@ -207,4 +215,33 @@ verifies("agent-host.engine-control-pipe", () => {
       await expect(pipe.ask("secret_get", "acme_key")).rejects.toThrow(/closed/);
     });
   });
+});
+
+verifies("agent-host.engine-routine-pause", () => {
+  it("passes on each pause_routines", async () => {
+    const { input, heard } = openPipe();
+    input.write(shellFrame('{"kind":"pause_routines","paused":true}'));
+    input.write(shellFrame('{"kind":"pause_routines","paused":false}'));
+    await settle();
+    expect(heard.pauses).toEqual([true, false]);
+    expect(heard.faults).toEqual([]);
+  });
+
+  const faults: [string, string][] = [
+    ["a paused that isn't true or false", '{"kind":"pause_routines","paused":"yes"}'],
+    ["no paused", '{"kind":"pause_routines"}'],
+    ["a null paused", '{"kind":"pause_routines","paused":null}'],
+    ["an extra field", '{"kind":"pause_routines","paused":true,"until":"canary"}'],
+  ];
+
+  for (const [name, json] of faults) {
+    it(`stops at ${name} and pauses nothing`, async () => {
+      const { input, heard } = openPipe();
+      input.write(shellFrame(json));
+      await settle();
+      expect(heard.faults).toHaveLength(1);
+      expect(heard.faults[0]?.message).not.toContain("canary");
+      expect(heard.pauses).toEqual([]);
+    });
+  }
 });

@@ -29,6 +29,7 @@ interface EngineLog {
   steps: string[];
   graceMs: number[];
   sandboxHosts: SandboxHostConnection[];
+  pauses: boolean[];
 }
 
 interface FakeEngineOptions {
@@ -39,14 +40,15 @@ interface FakeEngineOptions {
 
 /** An engine that records what it is asked, with its health changes under the test's control. */
 function fakeEngine(options: FakeEngineOptions = {}) {
-  const log: EngineLog = { steps: [], graceMs: [], sandboxHosts: [] };
-  let health: EngineHealth = { scheduling: true, activeRuns: 0, lastTick: null };
+  const log: EngineLog = { steps: [], graceMs: [], sandboxHosts: [], pauses: [] };
+  let health: EngineHealth = { scheduling: true, paused: true, activeRuns: 0, lastTick: null };
   const listeners = new Set<() => void>();
   const engine: RunningEngine = {
     url: "http://127.0.0.1:41234",
     token,
     health: () => health,
     useSandboxHost: (connection) => log.sandboxHosts.push(connection),
+    pauseRoutines: (paused) => log.pauses.push(paused),
     followHealth(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -100,7 +102,7 @@ function startRole(open: EngineRoleParts["open"]) {
   return { input, exit, written, errors, ticks, tick };
 }
 
-const healthy = { kind: "health", scheduling: true, activeRuns: 0, lastTick: null };
+const healthy = { kind: "health", scheduling: true, paused: true, activeRuns: 0, lastTick: null };
 
 verifies("agent-host.engine-role-lifecycle", () => {
   describe("while it runs", () => {
@@ -111,7 +113,12 @@ verifies("agent-host.engine-role-lifecycle", () => {
         { kind: "handshake", protocol: 1, url: "http://127.0.0.1:41234", token },
         healthy,
       ]);
-      const busy = { scheduling: true, activeRuns: 2, lastTick: "2026-11-20T08:00:00.000Z" };
+      const busy = {
+        scheduling: true,
+        paused: false,
+        activeRuns: 2,
+        lastTick: "2026-11-20T08:00:00.000Z",
+      };
       changeHealth(busy);
       role.tick();
       expect(await role.written()).toEqual([
@@ -206,5 +213,23 @@ verifies("agent-host.engine-role-lifecycle", () => {
       expect(await role.written()).toEqual([{ kind: "stopped", interrupted: 2 }]);
       expect(role.errors.join("")).toMatch(/routine scheduler: The scheduler's timer is gone/);
     });
+  });
+});
+
+verifies("agent-host.engine-routine-pause", () => {
+  it("hands the engine each pause, also one that came while it opened", async () => {
+    const { engine, log } = fakeEngine();
+    let opened: (value: RunningEngine) => void = () => {};
+    const role = startRole(() => new Promise((resolve) => (opened = resolve)));
+    role.input.write(shellFrame('{"kind":"pause_routines","paused":true}'));
+    await settle();
+    expect(log.pauses).toEqual([]);
+    opened(engine);
+    await settle();
+    role.input.write(shellFrame('{"kind":"pause_routines","paused":false}'));
+    await settle();
+    expect(log.pauses).toEqual([true, false]);
+    role.input.end();
+    await role.exit;
   });
 });

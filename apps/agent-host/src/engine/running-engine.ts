@@ -16,23 +16,32 @@ export const engineStoppedCause: RunFailureCause = {
 /** The routine scheduler, as `workspaceRoutineScheduler` makes it. */
 export interface TickingScheduler {
   tick(): Promise<unknown>;
+  /** A tick that starts nothing and moves the last tick to now, as `passRoutineTick` does. */
+  pass(): Promise<unknown>;
   dispose(): Promise<void>;
 }
 
 /**
- * Whether the routine scheduler ticks, when it last did and how many runs
- * are going, for the role's `health` frames. Made before the engine opens,
- * as the engine's `routines` option needs it.
+ * Whether the routine scheduler ticks, whether routines are paused, when it
+ * last ticked and how many runs are going, for the role's `health` frames.
+ * Made before the engine opens, as the engine's `routines` option needs it.
  */
 export class EngineSchedule {
   #scheduling = true;
+  /** The shell's newest `pause_routines`, `null` until its first. */
+  #paused: boolean | null = null;
   #lastTick: string | null = null;
   #activeRuns = 0;
   readonly #listeners = new Set<() => void>();
 
   /** The health now. */
   health(): EngineHealth {
-    return { scheduling: this.#scheduling, activeRuns: this.#activeRuns, lastTick: this.#lastTick };
+    return {
+      scheduling: this.#scheduling,
+      paused: this.#paused !== false,
+      activeRuns: this.#activeRuns,
+      lastTick: this.#lastTick,
+    };
   }
 
   /** Calls `listener` whenever the health changes, until the returned function is called. */
@@ -42,8 +51,10 @@ export class EngineSchedule {
   }
 
   /**
-   * The engine's routine ticks on `scheduler`: a tick after {@link stop}
-   * starts nothing. After each tick it counts the runs that are going.
+   * The engine's routine ticks on `scheduler`: a tick after {@link stop}, or
+   * before the shell's first `pause_routines`, does nothing; one while paused
+   * passes, so the times due during the pause are skipped, not caught up after
+   * it. After each tick it counts the runs that are going.
    */
   ticks(
     scheduler: TickingScheduler,
@@ -51,7 +62,13 @@ export class EngineSchedule {
   ): { onTick(at: string): Promise<void>; dispose(): Promise<void> } {
     return {
       onTick: async (at) => {
-        if (!this.#scheduling) return;
+        // Before the shell's word nothing is stored either: if it says resume,
+        // the times due since the last tick are caught up as after any start.
+        if (!this.#scheduling || this.#paused === null) return;
+        if (this.#paused) {
+          await scheduler.pass();
+          return;
+        }
         await scheduler.tick();
         this.#lastTick = at;
         this.#activeRuns = await countActiveRuns();
@@ -59,6 +76,14 @@ export class EngineSchedule {
       },
       dispose: () => scheduler.dispose(),
     };
+  }
+
+  /** Pauses routines, or resumes them, from the next tick on. */
+  pause(paused: boolean): void {
+    // Before the first one the health already says paused.
+    const wasPaused = this.#paused !== false;
+    this.#paused = paused;
+    if (paused !== wasPaused) this.#changed();
   }
 
   /** No tick starts a run from now on. */
@@ -118,6 +143,7 @@ export function runningEngine(input: RunningEngineInput): RunningEngine {
     // Harness steps run in this process's own srt sandbox for now; the
     // shell's sandbox host is taken up once the harness host can use it.
     useSandboxHost: () => {},
+    pauseRoutines: (paused) => schedule.pause(paused),
     followHealth: (listener) => schedule.follow(listener),
     stopScheduling: () => schedule.stop(),
     async settle(graceMs) {

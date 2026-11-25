@@ -10,11 +10,13 @@ interface Fields {
   readonly origins?: unknown;
   readonly reason?: unknown;
   readonly connection?: unknown;
+  readonly paused?: unknown;
 }
 
 /** The fields each kind has, besides `kind`: a frame with any other field is refused. */
 const fieldsOf: Record<ShellMessage["kind"], readonly string[]> = {
   sandbox_host: ["connection"],
+  pause_routines: ["paused"],
   stop: [],
   secret_answer: ["id", "result"],
 };
@@ -73,6 +75,8 @@ function fieldsAreValid(kind: ShellMessage["kind"], fields: Fields): boolean {
   switch (kind) {
     case "sandbox_host":
       return fields.connection === null || isConnection(fields.connection);
+    case "pause_routines":
+      return typeof fields.paused === "boolean";
     case "stop":
       return true;
     case "secret_answer":

@@ -17,6 +17,8 @@ import { parseShellMessage } from "./shell-messages.ts";
 export interface ControlPipeHandlers {
   /** The sandbox host's newest connection, or `null` when none runs. */
   sandboxHost(connection: SandboxHostMessage["connection"]): void;
+  /** The shell paused routines, or resumed them. */
+  pauseRoutines(paused: boolean): void;
   /** The shell asked the engine to stop. */
   stop(): void;
   /**
@@ -129,6 +131,9 @@ export class ControlPipe {
     switch (message.kind) {
       case "sandbox_host":
         this.#handlers.sandboxHost(message.connection);
+        return;
+      case "pause_routines":
+        this.#handlers.pauseRoutines(message.paused);
         return;
       case "stop":
         this.#handlers.stop();
