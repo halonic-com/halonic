@@ -59,6 +59,11 @@ function isLive(record: JsonRecord): boolean {
   return state === "queued" || state === "running";
 }
 
+/** Whether Paperclip would stop run `record` now: it is queued or running, and Paperclip says so. */
+export function canStopNow(record: JsonRecord): boolean {
+  return isLive(record) && field(asRecord(field(record, "execution")), "canStop") === true;
+}
+
 /** When the run started, or was made while it is still queued, in milliseconds. */
 function startTime(record: JsonRecord): number {
   return Date.parse(text(record, "startedAt") ?? text(record, "createdAt") ?? "") || 0;
@@ -162,7 +167,7 @@ export function toTeamRun(context: RunContext, record: JsonRecord): TeamRun | un
   if (id === undefined || agent === undefined || state === undefined) {
     return undefined;
   }
-  const canStop = isLive(record) && field(asRecord(field(record, "execution")), "canStop") === true;
+  const canStop = canStopNow(record);
   return {
     id: context.ids.make("run", id),
     source: context.ids.source(),
