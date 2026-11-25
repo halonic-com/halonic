@@ -17,6 +17,11 @@ export interface AgentInboxState {
   readonly sources: readonly MessagingSource[];
   /** The sources' agents, so a card says who asks: "Chief · Chief of Staff asks". */
   readonly agents: readonly MessagingAgent[];
+  /**
+   * Why the last read of the agents failed. It doesn't hide the items: their cards keep the agents
+   * last read, or say only the name ("Chief asks").
+   */
+  readonly agentsError?: unknown;
   /** Every item, open and answered, newest first, so an open card still finds its item once answered. */
   readonly items: readonly AgentItem[];
   /** The sources' work, so each item can say which work it came from (`inbox.every-waiting-item`). */
@@ -70,14 +75,24 @@ export class AgentInbox {
     try {
       const [sources, agents, items, work] = await Promise.all([
         this.messaging.listSources(),
-        this.messaging.listAgents(),
+        this.readAgents(),
         this.messaging.listInboxItems(),
         this.messaging.listWork(),
       ]);
-      if (read === this.reads)
-        this.set({ loaded: true, sources, agents, items, work, error: undefined });
+      if (read === this.reads) {
+        this.set({ loaded: true, sources, ...agents, items, work, error: undefined });
+      }
     } catch (error) {
       if (read === this.reads) this.set({ ...this.state, loaded: true, error });
+    }
+  }
+
+  /** The agents, or the ones last read and why the read failed, so the items still show. */
+  private async readAgents(): Promise<Pick<AgentInboxState, "agents" | "agentsError">> {
+    try {
+      return { agents: await this.messaging.listAgents(), agentsError: undefined };
+    } catch (agentsError) {
+      return { agents: this.state.agents, agentsError };
     }
   }
 
