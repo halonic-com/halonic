@@ -171,7 +171,7 @@ test("fast lower: current makes the first generation, and refuses a current that
   assert.equal(run("nonsense").status, 2);
 });
 
-test("fast lower: fast slots mount a generation, never /cache/trusted, and it's refreshed hourly", () => {
+test("fast lower: fast slots mount a generation, never /cache/trusted", () => {
   const slot = read("vm/halonic-runner-slot.sh");
   assert.ok(slot.includes('"lowerdir=$LOWER_GEN/$c,upperdir=$OVL/$c/upper,workdir=$OVL/$c/work"'));
   assert.doesNotMatch(slot, /lowerdir=\$TRUSTED/);
@@ -180,7 +180,39 @@ test("fast lower: fast slots mount a generation, never /cache/trusted, and it's 
   assert.ok(slot.includes(') 9>"$FAST_LOWER_LOCK"'));
   assert.ok(slot.includes("FAST_LOWER_LOCK=/cache/fast-lower/.lock"));
   assert.ok(shipped.includes('9>"$LOWER/.lock"'));
+});
+
+test("fast lower: refreshed every 5 minutes on its own timer, never while the cache check runs (HAL-18424)", () => {
+  assert.match(read("vm/halonic-ci-fast-lower.timer"), /^OnCalendar=\*:0\/5$/m);
+  const unit = read("vm/halonic-ci-fast-lower.service");
   assert.ok(
-    read("vm/halonic-ci-maint.sh").includes("/usr/local/sbin/halonic-ci-fast-lower.sh refresh"),
+    unit.includes(
+      "ExecStart=/usr/bin/flock -n -E 0 /run/lock/halonic-ci-maint.lock /usr/local/sbin/halonic-ci-fast-lower.sh refresh",
+    ),
   );
+  assert.match(
+    unit,
+    /^ExecCondition=\/bin\/grep -q halonic-runner@fast- \/etc\/halonic-ci\/slots$/m,
+  );
+  // One refresher only: the hourly check no longer copies too.
+  assert.doesNotMatch(read("vm/halonic-ci-maint.sh"), /fast-lower\.sh refresh/);
+});
+
+test("fast lower: only an idle fast slot leaves a stale snapshot, and only once GitHub let its runner go (HAL-18424)", () => {
+  const slot = read("vm/halonic-runner-slot.sh");
+  const check = slot.slice(
+    slot.indexOf("idle_on_stale_snapshot() {"),
+    slot.indexOf("release_idle_runner() {"),
+  );
+  assert.ok(check.includes('[ "$LABEL" = halonic-ci-fast ] && [ "$JOB_START" = 0 ] || return 1'));
+  assert.ok(check.includes('[ $((now - MOUNTED_GEN)) -gt "$STALE_GEN_S" ] || return 1'));
+  assert.ok(check.includes('[ "$cur" -gt "$MOUNTED_GEN" ]'));
+  assert.ok(slot.includes("STALE_GEN_S=600;"));
+  // The runner is deleted first (GitHub refuses while it holds a job); the container stops only after.
+  assert.ok(
+    slot.includes(
+      'if idle_on_stale_snapshot && release_idle_runner; then\n    echo "slot $SLOT: idle on snapshot $MOUNTED_GEN, restarting on a newer one"\n    docker rm -f "hci-$SLOT"',
+    ),
+  );
+  assert.match(slot, /release_idle_runner\(\) \{[^}]*curl -fsS -o \/dev\/null -X DELETE/);
 });
