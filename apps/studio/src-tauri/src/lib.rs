@@ -26,7 +26,7 @@
 //! (capabilities/desktop-updates.json), in the main window only the
 //! `login_item_*` commands (capabilities/desktop-login-item.json), in the focused apps' windows only
 //! `show_main_window` (capabilities/desktop-show-main-window.json), and the page's close request
-//! (capabilities/desktop-window.json), its notifications
+//! (capabilities/desktop-window.json), the title bar's `set_frame_colour` (capabilities/desktop-frame-colour.json), its notifications
 //! (capabilities/desktop-notifications.json) and the `wsl_*` commands of the sandbox
 //! backup (capabilities/desktop-sandbox-backup.json) and the `action_*` commands of
 //! user-only action steppers (capabilities/desktop-actions.json) and, on macOS and
@@ -73,6 +73,7 @@ mod file_arguments;
 mod files;
 #[cfg(desktop)]
 mod focused_apps;
+mod frame_colour;
 mod git;
 mod google_setups;
 mod host_settings;
@@ -471,6 +472,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             login_item::login_item_set,
             #[cfg(desktop)]
             focused_apps::show_main_window,
+            frame_colour::set_frame_colour,
         ])
 }
 

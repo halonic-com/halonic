@@ -198,6 +198,7 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "folder_entries",
         "folder_read",
         "folder_location",
+        "set_frame_colour",
         "plugin:opener|open_url",
         "plugin:event|listen",
     ] {

@@ -1,0 +1,29 @@
+[package]
+name = "halonic-window-caption"
+description = "Colours one window's Windows title bar like the Studio's frame, with title text that stays readable on it."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# The Windows call needs `unsafe`. As in window-app-id, this crate turns the
+# workspace's `unsafe_code = "forbid"` off in its own Cargo.toml, every block
+# has a `// SAFETY:` comment, and nothing unsafe leaves the `platform`
+# module. These are the workspace lints with that one change.
+[lints.rust]
+unsafe_code = "allow"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+undocumented_unsafe_blocks = "deny"
+
+# Pinned to the version already in Cargo.lock (tauri's own), so this crate
+# adds no new code to the build. Only the features it calls are turned on:
+# Win32_Graphics_Dwm for DwmSetWindowAttribute and its caption and text
+# colour attributes (HAL-18698).
+[target.'cfg(windows)'.dependencies]
+windows = { version = "=0.62.2", features = [
+  "Win32_Foundation",
+  "Win32_Graphics_Dwm",
+] }
