@@ -40,19 +40,65 @@ verifies("check.guard-golden-files", () => {
 
   // HAL-16929: `pnpm version:sync` freezes a changed spec in the Version
   // packages pull request; that copy is the current spec, which is golden itself.
+  const released = (version: string): string => `spec/released/${version}/agent.schema.json`;
+  const reported = (file: string): string[] => [
+    `${workflowDirectory}/${file}: The golden file ${workflowDirectory}/${file} was added.`,
+  ];
+  const bump = { base: "0.3.0", head: "0.4.0" };
+
   test("passes an added released spec that copies the package's current spec", async () => {
     const current = { "spec/agent.schema.json": '{"a":1}\n' };
-    const head = { ...current, "spec/released/0.4.0/agent.schema.json": '{"a":1}\n' };
-    expect(await errorsOf({ base: current, head, checks })).toEqual([]);
+    const head = { ...current, [released("0.4.0")]: '{"a":1}\n' };
+    expect(await errorsOf({ base: current, head, checks, version: bump })).toEqual([]);
   });
 
   test("fails an added released spec that differs from the current spec", async () => {
     const current = { "spec/agent.schema.json": '{"a":1}\n' };
-    const released = "spec/released/0.4.0/agent.schema.json";
-    const head = { ...current, [released]: "{}\n" };
-    expect(await errorsOf({ base: current, head, checks })).toEqual([
-      `${workflowDirectory}/${released}: The golden file ${workflowDirectory}/${released} was added.`,
-    ]);
+    const head = { ...current, [released("0.4.0")]: "{}\n" };
+    expect(await errorsOf({ base: current, head, checks, version: bump })).toEqual(
+      reported(released("0.4.0")),
+    );
+  });
+
+  // HAL-16940: a released copy can never be deleted, so one planted under
+  // another version would block the real release of that version for good.
+  test("fails a copy of the current spec under a version other than the package's", async () => {
+    const current = { "spec/agent.schema.json": '{"a":1}\n' };
+    const head = { ...current, [released("9.9.9")]: '{"a":1}\n' };
+    expect(await errorsOf({ base: current, head, checks, version: bump })).toEqual(
+      reported(released("9.9.9")),
+    );
+  });
+
+  // HAL-16940: on an ordinary pull request the version is the one already
+  // released; a copy there would claim it shipped an API it didn't.
+  test("fails a copy under the package's version when the pull request doesn't change it", async () => {
+    const current = {
+      "spec/agent.schema.json": '{"a":1}\n',
+      [released("0.3.0")]: '{"a":0}\n',
+    };
+    const head = { ...current, [released("0.4.0")]: '{"a":1}\n' };
+    const version = { base: "0.4.0", head: "0.4.0" };
+    expect(await errorsOf({ base: current, head, checks, version })).toEqual(
+      reported(released("0.4.0")),
+    );
+  });
+
+  test("takes the app version for a package without its own, as version:sync does", async () => {
+    const current = { "spec/agent.schema.json": '{"a":1}\n' };
+    const app = (version: string): Record<string, string> => ({
+      "apps/studio/package.json": `{"name":"@halonicjs/app-studio","version":"${version}"}`,
+    });
+    const guardCase = (copy: string, baseApp: string): GuardCase => ({
+      base: current,
+      head: { ...current, [released(copy)]: '{"a":1}\n' },
+      baseOutside: app(baseApp),
+      headOutside: app("0.2.0"),
+      checks,
+    });
+    expect(await errorsOf(guardCase("0.2.0", "0.1.0"))).toEqual([]);
+    expect(await errorsOf(guardCase("0.1.0", "0.1.0"))).toHaveLength(1);
+    expect(await errorsOf(guardCase("0.2.0", "0.2.0"))).toHaveLength(1);
   });
 
   test("leaves other files under a spec folder alone", async () => {

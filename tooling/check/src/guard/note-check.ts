@@ -46,6 +46,7 @@ export const trustRoots: readonly string[] = [
   // them could switch the guard off. A test walks the imports to keep this
   // list whole.
   "tooling/check/src/lib/affected-tests.ts",
+  "tooling/check/src/lib/app-version.ts",
   "tooling/check/src/lib/bundle.ts",
   "tooling/check/src/lib/config-files.ts",
   "tooling/check/src/lib/context.ts",
