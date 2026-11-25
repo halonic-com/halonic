@@ -7,7 +7,7 @@
 Where no screen still can be taken yet, such as on macOS or Linux on Wayland, the feedback
 shortcut's window shall say "Screen capture for feedback isn't available on this system yet." with
 a "Not now" button. When the person chooses "Not now" or presses Esc, the window shall call
-`plugin:feedback|end`. It shall never ask for a still.
+`plugin:feedback|end`. The window shall never ask for a still.
 
 ## Examples
 

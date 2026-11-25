@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-18970 (plan on HAL-18919); the windows in `studio.src-tauri.feedback-capture`; what they show in `feedback.overlay` and `feedback.unavailable`
 
-When the desktop app's page loads in a window the shell labelled `feedback-overlay-<n>`, it shall show only the feedback selection overlay; in the window labelled `feedback-unavailable`, only the window that says screen capture isn't available. Neither shall open a workspace or show Studio's window: no Welcome, title bar tabs, places or status bar.
+When the desktop app's page loads in a window the shell labelled `feedback-overlay-<n>`, it shall show only the feedback selection overlay; in the window labelled `feedback-unavailable`, only the window that says screen capture isn't available. The feedback windows shall open no workspace and show none of Studio's window: no Welcome, title bar tabs, places or status bar.
 
 ## Examples
 

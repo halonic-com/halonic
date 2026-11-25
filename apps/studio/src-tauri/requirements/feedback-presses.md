@@ -8,7 +8,7 @@ The feedback shortcut shall hold Ctrl, Alt or Super (⌘ on macOS). The command 
 
 While a press's stills are being taken and its overlays opened, another press shall do nothing, and when taking them fails or panics, the next press shall take a capture again. While the Send feedback window is open, a press shall bring that window forward and take no capture; once that window was asked to close, a press shall take a new capture. Where no still can be taken, such as on macOS or Linux on Wayland, a press shall open the `feedback-unavailable` window, or bring it forward when it is open. When an overlay or the Send feedback window closes after a later press took its stills, the shell shall leave the later press's stills alone.
 
-When `plugin:feedback|shortcut_set` has registered the new keys and can't save them, it shall register the old keys again, let go of the new ones and be refused as `failed`. If another app took the old keys in between, or the new keys won't let go, the new keys shall stay registered and the old keys shall be let go. One change shall run at a time, from registering its keys until they are saved or put back.
+When `plugin:feedback|shortcut_set` has registered the new keys and can't save them, it shall register the old keys again, let go of the new ones and be refused as `failed`. If another app took the old keys in between, or the new keys won't let go, the new keys shall stay registered and the old keys shall be let go. The shell shall run one change at a time, from registering its keys until they are saved or put back.
 
 ## Examples
 
