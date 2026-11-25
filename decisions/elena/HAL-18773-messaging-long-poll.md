@@ -3,6 +3,7 @@
 - Task: HAL-18773 (part B of HAL-18736)
 - Approval: HAL-18736, where Liam approved the plan (25 Nov, 19:02 UTC), with a hard timeout of about 25 seconds and a test that one waiting request doesn't hold back another
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:+meNpe3ueELV1rZkMOm22TYlxIB2uTWCyduHMha03wJ0UbMVjo6rDfvSxfKC/KZhsNZJmNj66Z5oqqX7BZ0+Dg==
 
 ## What changes
 
