@@ -20,7 +20,7 @@ import { definition as registrarSetNameservers } from "./registrar/set-nameserve
 export const catalogEntries = {
   "cloudflare/enable-email-routing": {
     definition: cloudflareEnableEmailRouting,
-    sourceHash: "02e640065c5e2137f823b49528de8bf7ed659cb8de4a81811c7a3da80a353363",
+    sourceHash: "c2be680d6a60926b9b28fea96d3599030f5ae1e3a2c3494fb3e185bd5c40d986",
   },
   "device/check-android-build": {
     definition: deviceCheckAndroidBuild,
@@ -48,7 +48,7 @@ export const catalogEntries = {
   },
   "google/create-test-account": {
     definition: googleCreateTestAccount,
-    sourceHash: "454d6a1839d163900e648d296f837b0a510b96a2348ab71bb9bb0e3d9ba68af6",
+    sourceHash: "bd7491a8c12e6c71e862b6a86481a3104d0241421453af505126a28372309d73",
   },
   "npm/claim-placeholder": {
     definition: npmClaimPlaceholder,
@@ -64,7 +64,7 @@ export const catalogEntries = {
   },
   "openrouter/add-credit": {
     definition: openrouterAddCredit,
-    sourceHash: "ba61867a3fb259ff1a59f50fa21514b54459c12713357a2763aeadf398d2bf14",
+    sourceHash: "76e5859453dfc2e0422ebe3314ded7ebe9c25e7d9ba8c7bf30c35dbde552f443",
   },
   "play/fill-data-safety": {
     definition: playFillDataSafety,
@@ -76,6 +76,6 @@ export const catalogEntries = {
   },
   "registrar/set-nameservers": {
     definition: registrarSetNameservers,
-    sourceHash: "f4f5dcec1f7225742eaae1553366bd2353fcd3de66366d3b2c1f8527d590146a",
+    sourceHash: "ea8a30fb1a5d751179b880ea828be3c4982a327cba04d2bc2532f7aa9055d496",
   },
 } as const;
