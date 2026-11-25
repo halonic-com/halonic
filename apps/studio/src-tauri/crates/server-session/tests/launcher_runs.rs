@@ -11,6 +11,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::{Mutex, PoisonError};
 
 use halonic_server_session::{
     TERMINALS, prepare_folder, render_launcher, terminal_command, validate_target,
@@ -19,6 +20,11 @@ use halonic_server_session::{
 use serde_json::json;
 
 static NEXT_FOLDER: AtomicU32 = AtomicU32::new(0);
+
+/// One launch at a time. A test that writes a program while another starts
+/// a process can have that process inherit the open file for a moment, and
+/// Linux then refuses to run the program ("Text file busy").
+static ONE_LAUNCH: Mutex<()> = Mutex::new(());
 
 /// A parent folder with `'`, a space, `&`, `%`, `"` and `^` in its name.
 const AWKWARD_NAME: &str = "acme's data & 100% \"x\" ^y";
@@ -72,6 +78,7 @@ struct Launch {
 /// folder with an awkward name, and runs the launcher as a terminal would:
 /// by its path, with the stand-in `ssh` first on `PATH`.
 fn launch(scratch: &Scratch, ssh_exit: u8) -> Launch {
+    let _turn = ONE_LAUNCH.lock().unwrap_or_else(PoisonError::into_inner);
     let bin = scratch.0.join("bin");
     let log = scratch.0.join("log");
     fs::create_dir_all(&bin).expect("make bin");
