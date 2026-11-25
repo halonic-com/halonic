@@ -35,9 +35,10 @@ describe("settingsFeature", () => {
     expect(appearance?.summary?.(context("dark", false))).toBe("Dark theme · characters off");
   });
 
-  it("puts Your server after Trusted sources (order 40), with an order no other section of its own has", () => {
+  it("gives Your server its icon and puts it after Trusted sources (order 40), with an order of its own", () => {
     const host = settingsSectionsFor(true).filter(({ scope }) => scope === "host");
     const serverSession = host.find(({ id }) => id === "server-session");
+    expect(serverSession?.icon).toBe("server-session");
     expect(serverSession?.order).toBeGreaterThan(40);
     const orders = host.map(({ order }) => order);
     expect(new Set(orders).size).toBe(orders.length);

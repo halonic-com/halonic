@@ -78,6 +78,7 @@ export function settingsSectionsFor(showUnfinished: boolean): SettingsSectionCon
     },
     {
       id: "server-session",
+      icon: "server-session",
       title: serverSessionText.TITLE,
       scope: "host",
       // After Trusted sources (40), before Plugins and About (60).

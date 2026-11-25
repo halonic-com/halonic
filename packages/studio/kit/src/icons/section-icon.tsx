@@ -9,6 +9,7 @@ export const sectionIconNames = [
   "trusted-sources",
   "plugins",
   "remote",
+  "server-session",
   "about",
 ] as const;
 
@@ -46,6 +47,10 @@ const drawings: Readonly<Record<SectionIconName, SectionDrawing>> = {
   plugins: { outline: "M9 3v4M15 3v4M6 7h12v4a6 6 0 01-12 0zM12 17v4" },
   // A phone: a rounded outline with a short bar at its foot.
   remote: { outline: "M9 3h6a2 2 0 012 2v14a2 2 0 01-2 2H9a2 2 0 01-2-2V5a2 2 0 012-2zM11 18h2" },
+  // A server: two stacked units, each with a light, as the machine Run with Claude reaches.
+  "server-session": {
+    outline: "M5 4h14v7H5zM5 13h14v7H5zM8 7.5h.01M8 16.5h.01M12 7.5h4M12 16.5h4",
+  },
   // The info mark.
   about: { outline: "M12 4a8 8 0 110 16 8 8 0 010-16zM12 11v5M12 8v.01" },
 };
