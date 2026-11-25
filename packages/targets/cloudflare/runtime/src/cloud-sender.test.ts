@@ -80,6 +80,26 @@ verifies("runtime.cloud-sender", () => {
     expect((await verifyAt("https://cloud.example.com/v1/usage")).ok).toBe(false);
   });
 
+  it("keeps a query the path already has when it adds the self-test mark", async () => {
+    const { sender, sent } = await goldenSender(answering(200));
+
+    await sender.send("/v1/usage?batch=7", goldenRequest.body, { selfTest: true });
+
+    expect(sent[0]?.url).toBe("https://cloud.example.com/v1/usage?batch=7&self-test=1");
+  });
+
+  it("refuses a path on another host, before it signs or sends anything", async () => {
+    const { sender, sent } = await goldenSender(answering(200));
+
+    await expect(
+      sender.send("https://elsewhere.example.com/v1/usage", goldenRequest.body),
+    ).rejects.toThrow("not on Cloud's origin");
+    await expect(
+      sender.send("//elsewhere.example.com/v1/usage", goldenRequest.body),
+    ).rejects.toThrow();
+    expect(sent).toHaveLength(0);
+  });
+
   describe("says what came of a send", () => {
     const cases: readonly [number, CloudAnswer][] = [
       [200, { kind: "delivered" }],

@@ -70,11 +70,18 @@ export class CloudSender {
    * @param path - a path on Cloud, such as `/v1/usage`
    * @param body - the exact bytes to send
    * @returns what came of it; never throws for a failed send
+   * @throws if `path` points outside Cloud's origin, or if signing itself fails (a bad key is a
+   *   setup error, not a failed send)
    */
   async send(path: string, body: Uint8Array, options: SendOptions = {}): Promise<CloudAnswer> {
     const url = new URL(path, this.#options.cloudUrl);
+    // An absolute `path` would send a request signed with the deployment key to another host.
+    if (url.origin !== new URL(this.#options.cloudUrl).origin) {
+      throw new Error(`Cloud sender: ${path} is not on Cloud's origin.`);
+    }
     if (options.selfTest === true) {
-      url.search = selfTestQuery;
+      const [name = "", value = ""] = selfTestQuery.split("=");
+      url.searchParams.append(name, value);
     }
     const headers = await signRequest(
       {
