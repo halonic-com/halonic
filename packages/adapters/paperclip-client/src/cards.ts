@@ -3,9 +3,16 @@ import type {
   InboxItem,
   InboxItemOption,
   InboxItemState,
+  InboxQuestion,
   MessagingId,
 } from "@halonicjs/ports";
 import { approvalRisk } from "./approval-risk.ts";
+import {
+  listCardAnswerOf,
+  listCardAnswerRequest,
+  listCardKinds,
+  listCardQuestions,
+} from "./card-kinds.ts";
 import {
   cardQuestions,
   questionOptions,
@@ -31,7 +38,12 @@ function onlyQuestion(payload: JsonRecord | undefined): JsonRecord | undefined {
   return questions.length === 1 ? questions[0] : undefined;
 }
 
-function questionOf(kind: string, payload: JsonRecord | undefined): string {
+function questionOf(kind: string, record: JsonRecord, payload: JsonRecord | undefined): string {
+  if (kind === "suggest_tasks") {
+    const title = text(record, "title") ?? "";
+    const summary = text(record, "summary");
+    return summary === undefined ? title : `${title}\n\n${summary}`;
+  }
   if (kind === "ask_user_questions") {
     const prompts = asRecords(field(payload, "questions")).flatMap(
       (question) => text(question, "prompt") ?? [],
@@ -53,7 +65,7 @@ function optionsOf(kind: string, payload: JsonRecord | undefined): InboxItemOpti
   if (kind === "ask_user_questions") {
     return questionOptions(onlyQuestion(payload));
   }
-  // Task suggestions, checklists and verdicts are answered in Paperclip; Inbox shows them.
+  // Checkbox, verdict and task cards ask `questions` instead (`card-kinds.ts`).
   return [];
 }
 
@@ -62,10 +74,14 @@ function optionsOf(kind: string, payload: JsonRecord | undefined): InboxItemOpti
  * that asks `questions` reads back as an `answers` answer with every question's options.
  */
 function answerOf(
+  kind: string,
   status: string,
   result: JsonRecord | undefined,
   asksQuestions: boolean,
 ): InboxAnswer {
+  if (listCardKinds.has(kind)) {
+    return listCardAnswerOf(kind, status, result);
+  }
   if (asksQuestions) {
     return questionsAnswerOf(result);
   }
@@ -119,13 +135,13 @@ export function cardToItem(
     return undefined;
   }
   const payload = asRecord(field(record, "payload"));
-  const questions = kind === "ask_user_questions" ? cardQuestions(payload) : undefined;
   const result = asRecord(field(record, "result"));
+  const questions = questionsOf(kind, record, payload, result);
   return {
     id: context.ids.make("card", task, id),
     source: context.ids.source(),
     from: authorOf(context, text(record, "createdByAgentId"), text(record, "createdByUserId")),
-    question: questionOf(kind, payload),
+    question: questionOf(kind, record, payload),
     options: questions === undefined ? optionsOf(kind, payload) : [],
     ...(questions === undefined ? {} : { questions }),
     work: context.ids.make("task", task),
@@ -137,8 +153,24 @@ export function cardToItem(
     state:
       status === "pending"
         ? { kind: "open" }
-        : answeredState(context, record, answerOf(status, result, questions !== undefined)),
+        : answeredState(context, record, answerOf(kind, status, result, questions !== undefined)),
   };
+}
+
+/** A card's `questions`: a question card's when it asks several, a checkbox, verdict or task card's always. */
+function questionsOf(
+  kind: string,
+  record: JsonRecord,
+  payload: JsonRecord | undefined,
+  result: JsonRecord | undefined,
+): InboxQuestion[] | undefined {
+  if (listCardKinds.has(kind)) {
+    const prompt = text(payload, "prompt") ?? text(record, "title") ?? "";
+    // An answered card keeps every item, so its record can name each verdict by its item.
+    const partial = text(record, "status") === "pending" ? result : undefined;
+    return listCardQuestions(kind, payload, partial, prompt);
+  }
+  return kind === "ask_user_questions" ? cardQuestions(payload) : undefined;
 }
 
 /**
@@ -146,14 +178,18 @@ export function cardToItem(
  * card can't take that answer here: a written reply to a confirmation, an
  * option the card doesn't offer, an `action-result`, an `answers` answer to a
  * card without `questions` (or an option or reply to one with them, or answers
- * that don't fit them), or a kind answered only in Paperclip.
+ * that don't fit them), a checkbox, verdict or task answer that doesn't fit
+ * (`card-kinds.ts`), or a kind answered only in Paperclip.
  */
 export function cardAnswerRequest(
   record: JsonRecord,
   answer: InboxAnswer,
 ): AnswerRequest | undefined {
-  const kind = text(record, "kind");
+  const kind = text(record, "kind") ?? "";
   const payload = asRecord(field(record, "payload"));
+  if (listCardKinds.has(kind)) {
+    return listCardAnswerRequest(kind, payload, asRecord(field(record, "result")), answer);
+  }
   const questions = kind === "ask_user_questions" ? cardQuestions(payload) : undefined;
   if (questions !== undefined || answer.kind === "answers") {
     const body =

@@ -116,6 +116,7 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `commentOnChat` | `POST /api/issues/{task}/comments` | send a message, with a `clientRequestId` |
 | `acceptCard`, `rejectCard` | `POST /api/issues/{task}/interactions/{card}/accept`, `/reject` | answer a confirmation |
 | `respondToCard` | `POST /api/issues/{task}/interactions/{card}/respond` | answer a question card, every question at once |
+| `submitVerdicts` | `POST /api/issues/{task}/interactions/{card}/verdicts` | approve, reject or defer a verdict card's items, some or all |
 | `approve`, `rejectApproval` | `POST /api/approvals/{approval}/approve`, `/reject` | decide an approval |
 | `whoAmI`, `revokeKey` | `GET /api/cli-auth/me`, `POST /api/cli-auth/revoke-current` | whom a connection is signed in as (its name only); disconnect (track A4) |
 | `spendSummary`, `spendByProvider` | `GET /api/companies/{company}/costs/summary?from=`, `/costs/by-provider?from=` | paid money, the budget, and tokens of every billing type |
@@ -193,7 +194,9 @@ no cards. Messages and documents aren't searched in phase 1. A blank query makes
 **Card kinds:** confirmations and question cards can be answered here. A question card with several
 questions, or a multiple-select one, becomes an item with `questions` and takes an `answers` answer, sent as
 one `respondToCard` request (`paperclip-client.question-cards`); one with a single single-select question
-keeps plain `options`. Task suggestions, checklists and verdicts show in the Inbox with no options and are
-answered in Paperclip.
+keeps plain `options`. Checkbox, item-verdict and task-suggestion cards also become items with `questions`
+(`paperclip-client.card-kinds`): a checkbox or task card is one multiple-select question, accepted with
+`acceptCard` and the options or tasks picked, and rejected with the `reject` option and its reason; a verdict
+card asks one optional question per item still open, and each answer goes out with `submitVerdicts`.
 Cards addressed to an agent aren't listed. A chat waits on the person when Paperclip marks it `waiting`.
 Tasks' blockers aren't read yet (`blockedBy` is empty).
