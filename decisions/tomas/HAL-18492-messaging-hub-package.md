@@ -41,6 +41,16 @@ No test was weakened, skipped or edited. Moved, byte for byte:
 
 `apps/agent-host`'s messaging, Paperclip and remote tests pass (136 files, 1301 tests).
 
+The guard sees two more differences, both from the move alone:
+
+- `agent-host.paperclip-key-hand-over` makes one `expect` call fewer (80, not 81). The test "keeps
+  the key in memory only" in `paperclip-key-routes.test.ts` makes one call for each source file in
+  `apps/agent-host/src/paperclip/`, and `paperclip-keys.ts` is no longer there. The moved file is
+  held to more now: in a `host` package, the linter refuses every `node:` import, not only
+  `node:fs` and `node:child`.
+- `private-file.test.ts` carries its two `skipIf(process.platform === "win32")` tests (file modes
+  mean nothing on Windows) to its new path, where the guard counts them as new.
+
 ## Covers
 
 - agent-host.messaging-hub
@@ -54,3 +64,4 @@ No test was weakened, skipped or edited. Moved, byte for byte:
 - apps/agent-host/src/messaging/cached-agent-messaging.test.ts
 - apps/agent-host/src/messaging/cached-agent-messaging-broken.test.ts
 - apps/agent-host/src/remote/private-file.test.ts
+- packages/adapters/fs-node/src/private-file.test.ts
