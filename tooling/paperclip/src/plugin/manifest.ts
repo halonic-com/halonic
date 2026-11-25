@@ -58,8 +58,6 @@ export const manifest: PaperclipPluginManifestV1 = {
     "issues.wakeup",
     "issue.comments.read",
     "issue.comments.create",
-    // The chief line's send route posts as the calling board user (src/plugin/chief-line.ts).
-    chiefLine.capability,
     // The task tool `comment` posts as the calling agent, from the run's context (HAL-16403).
     // Only GET requests to api.github.com and GraphQL queries to its /graphql (both readers'
     // guards); the manifest can't list hosts. ready_for_review also calls the precheck service

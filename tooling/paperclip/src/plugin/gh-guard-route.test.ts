@@ -92,7 +92,6 @@ verifies("paperclip.gh-guard-route", () => {
         ["github-pull", "board"],
         ["chief-line-open-thread", "board"],
         ["chief-line-thread", "board"],
-        ["chief-line-send", "board"],
         ["chief-line-subscribe", "board"],
       ]);
       expect(manifest.capabilities).toContain("api.routes.register");

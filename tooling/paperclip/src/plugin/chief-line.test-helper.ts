@@ -56,12 +56,6 @@ export function fakeChiefLine(
         issues.push(issue);
         return issue;
       },
-      createComment: async (
-        issueId: string,
-        body: string,
-        _companyId: string,
-        opts?: { actorUserId?: string },
-      ) => addComment(issueId, body, null, opts?.actorUserId ?? null),
       listComments: async (issueId: string) => comments[issueId] ?? [],
       requestWakeup: async (issueId: string, _companyId: string, opts: unknown) => {
         wakes.push({ issueId, options: opts });

@@ -6,15 +6,12 @@ import { chiefLineRouteKeys as keys } from "./chief-line-settings.ts";
 import { onChiefLineComment } from "./chief-line-signal.ts";
 import { manifest } from "./manifest.ts";
 
-const now = new Date("2026-11-25T10:00:00.000Z");
-
 verifies("paperclip.chief-line", () => {
   test("the manifest declares the four routes board-only", () => {
     const routes = manifest.apiRoutes?.filter((route) => route.routeKey.startsWith("chief-line"));
     expect(routes?.map((route) => [route.method, route.path, route.auth])).toEqual([
       ["POST", "/chief-line/thread", "board"],
       ["GET", "/chief-line/thread", "board"],
-      ["POST", "/chief-line/send", "board"],
       ["POST", "/chief-line/subscribe", "board"],
     ]);
   });
@@ -23,43 +20,15 @@ verifies("paperclip.chief-line", () => {
     const agent = { actorType: "agent", actorId: "a1", agentId: "a1" };
     const on = fakeChiefLine();
     expect(
-      (await handleChiefLineRequest(lineRequest(keys.send, {}, {}, agent), on.ctx)).status,
+      (await handleChiefLineRequest(lineRequest(keys.openThread, {}, {}, agent), on.ctx)).status,
     ).toBe(403);
     const off = fakeChiefLine({ config: {} });
     const sent = await handleChiefLineRequest(
-      lineRequest(keys.send, { caller: "sup", message: "hi" }),
+      lineRequest(keys.openThread, { caller: "sup" }),
       off.ctx,
     );
     expect(sent.status).toBe(409);
     expect(off.created).toEqual([]);
-  });
-
-  test("send creates the caller's thread once, posts the header as the caller and wakes Chief", async () => {
-    const line = fakeChiefLine();
-    const send = (message: string) =>
-      handleChiefLineRequest(
-        lineRequest(keys.send, { caller: "board-sup", message }),
-        line.ctx,
-        now,
-      );
-    const first = await send("How is the queue?");
-    const second = await send("And the seats?");
-    expect(line.created).toEqual([
-      expect.objectContaining({
-        title: "[chief-line] board-sup",
-        assigneeAgentId: "agent-chief",
-        projectId: "proj-1",
-      }),
-    ]);
-    expect(first.body).toEqual({ threadId: "issue-1", identifier: "ACME-1", commentId: "c1" });
-    expect(second.body).toMatchObject({ threadId: "issue-1", commentId: "c2" });
-    const [comment] = line.comments["issue-1"] ?? [];
-    expect(comment?.body).toBe("**From board-sup (chief line)**\n\nHow is the queue?");
-    expect(comment?.authorUserId).toBe("user-1");
-    expect(line.wakes).toEqual([
-      { issueId: "issue-1", options: { reason: "chief_line", idempotencyKey: "chief-line c1" } },
-      { issueId: "issue-1", options: { reason: "chief_line", idempotencyKey: "chief-line c2" } },
-    ]);
   });
 
   test("POST thread finds or creates the thread, and a bad caller name is refused", async () => {
@@ -69,6 +38,13 @@ verifies("paperclip.chief-line", () => {
       line.ctx,
     );
     expect(open.body).toEqual({ threadId: "issue-1", identifier: "ACME-1" });
+    expect(line.created).toEqual([
+      expect.objectContaining({
+        title: "[chief-line] studio",
+        assigneeAgentId: "agent-chief",
+        projectId: "proj-1",
+      }),
+    ]);
     await handleChiefLineRequest(lineRequest(keys.openThread, { caller: "studio" }), line.ctx);
     expect(line.created).toHaveLength(1);
     const bad = await handleChiefLineRequest(
@@ -76,31 +52,6 @@ verifies("paperclip.chief-line", () => {
       line.ctx,
     );
     expect(bad.status).toBe(400);
-  });
-
-  test("sends above the hourly limit are refused with a clear error", async () => {
-    const line = fakeChiefLine();
-    const send = () =>
-      handleChiefLineRequest(
-        lineRequest(keys.send, { caller: "sup", message: "x" }),
-        line.ctx,
-        now,
-      );
-    for (let index = 0; index < 3; index += 1) {
-      expect((await send()).status).toBe(200);
-    }
-    const refused = await send();
-    expect(refused).toEqual({
-      status: 429,
-      body: { error: "Too many messages: sup may send 3 per hour." },
-    });
-    const later = new Date(now.getTime() + 3_601_000);
-    const again = await handleChiefLineRequest(
-      lineRequest(keys.send, { caller: "sup", message: "x" }),
-      line.ctx,
-      later,
-    );
-    expect(again.status).toBe(200);
   });
 
   test("subscribe accepts only an allowed host", async () => {
