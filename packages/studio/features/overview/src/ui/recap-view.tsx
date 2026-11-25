@@ -18,9 +18,14 @@ export function RecapView({ store }: RecapViewProps) {
   }, [store]);
   const state = useSyncExternalStore(store.subscribe, store.snapshot);
 
+  // The heading stays in every state, so the place reads "Recap" also while nothing changed.
   return (
-    <div className="flex flex-col gap-2 px-4 py-3">
-      <p role="status" className="text-fg-muted">
+    <section aria-labelledby="overview-recap" className="flex flex-col gap-2 px-4 py-3">
+      <h2 id="overview-recap" className="text-heading">
+        Recap
+      </h2>
+      {/* Empty, the live region stays for screen readers only, so it adds no gap under "Recap". */}
+      <p role="status" className={state.kind === "loading" ? "text-fg-muted" : "sr-only"}>
         {state.kind === "loading" ? "Loading…" : ""}
       </p>
       {state.kind === "failed" ? (
@@ -29,7 +34,7 @@ export function RecapView({ store }: RecapViewProps) {
         </p>
       ) : null}
       {state.kind === "ready" ? <RecapSections recap={state.recap} /> : null}
-    </div>
+    </section>
   );
 }
 
@@ -38,10 +43,7 @@ function RecapSections({ recap }: { readonly recap: Recap }) {
     return <p className="text-fg-muted">Nothing changed since your last recap.</p>;
   }
   return (
-    <section aria-labelledby="overview-recap" className="flex flex-col gap-2">
-      <h2 id="overview-recap" className="text-heading">
-        Recap
-      </h2>
+    <div className="flex flex-col gap-2">
       <p>{countLine(recap.answered, "item answered", "items answered")}</p>
       <p>{countLine(recap.open.length, "item still open", "items still open")}</p>
       <ul className="ps-4">
@@ -51,7 +53,7 @@ function RecapSections({ recap }: { readonly recap: Recap }) {
       </ul>
       <WorkList heading="Done" work={recap.done} />
       <WorkList heading="Newly blocked" work={recap.newlyBlocked} />
-    </section>
+    </div>
   );
 }
 

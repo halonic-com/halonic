@@ -188,6 +188,7 @@ export const sidebarPlaces = [
   "runs",
   "changes",
   // Grouped places come last, so each group's places stay together under its heading.
+  "overview",
   "team",
   "pull-requests",
 ] as const;
@@ -231,6 +232,7 @@ export const placeNames: Readonly<Record<SidebarPlace, PlaceName>> = {
   library: { label: "Library", icon: "library" },
   runs: { label: "Runs", icon: "runs" },
   changes: { label: "Changes", icon: "changes" },
+  overview: { label: "Overview", icon: "overview", group: "team" },
   team: { label: "Spend and seats", icon: "team", group: "team" },
   "pull-requests": { label: "Pull requests", icon: "pull-requests", group: "team" },
 };

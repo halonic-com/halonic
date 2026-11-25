@@ -60,10 +60,10 @@ verifies("overview.daily-recap", () => {
     expect(text).not.toContain("Nothing changed");
   });
 
-  it("says nothing changed when the recap is empty", async () => {
+  it("says nothing changed under its Recap heading when the recap is empty", async () => {
     const { text } = await drawRecap(new FakeAgentMessaging({ now: () => now }));
 
-    expect(text).toBe("Nothing changed since your last recap.");
+    expect(text).toBe("RecapNothing changed since your last recap.");
   });
 
   it("announces loading in a status region and a failed read as an alert", async () => {

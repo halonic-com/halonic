@@ -23,6 +23,7 @@ verifies("kit.place-icon", () => {
       "library",
       "runs",
       "changes",
+      "overview",
       "team",
       "pull-requests",
     ]);

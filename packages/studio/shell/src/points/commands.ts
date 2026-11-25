@@ -1,4 +1,5 @@
 import type { WorkspaceContext } from "../workspace-context.ts";
+import type { SidebarPlace } from "./frame.ts";
 import type { ItemRef } from "./item-kinds.ts";
 import type { Ordered } from "./point-store.ts";
 
@@ -79,6 +80,17 @@ export interface SearchResult {
   readonly hubName?: string;
   /** The item's description, which the Search page also searches and shows under the name. */
   readonly description?: string;
+  /**
+   * The place that lists the item, opened in place of the item's own page, for an item that has
+   * no page of its own, such as a Paperclip task the Overview lists. Leave it out for an item a
+   * feature's item kind opens.
+   */
+  readonly place?: SidebarPlace;
+  /**
+   * The item's kind as a screen reader hears it after the name, such as "work", for an item no
+   * feature's item kind names, such as one with a `place`. A registered kind's own name wins.
+   */
+  readonly kindName?: string;
 }
 
 /** Offers a feature's items to search. Ids are unique. */
