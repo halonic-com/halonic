@@ -12,4 +12,4 @@ The reviewer path list shall pick a role for a pull request, `second-reviewer` w
 - Given the routing `code-reviewer: owen, second-reviewer: kim`, when a 120-line Studio change is routed, then it goes to `kim`; a root `package.json` change goes to `owen`.
 - Given a routing with only `code-reviewer: owen`, when a 120-line Studio change is routed, then it goes to `owen`.
 - Given a snapshot whose routing names the role `approver`, an empty person, a `login` field, an email, an area `api-token` or a key, when it is read, then it gives no routing and every pull request goes to today's reviewer.
-- Given no routing, when the nightly names the owner of Integrations, then it is `Tomas, with Ravi` from the area table; given a routing with `docs: maya` and `code-reviewer: owen`, Docs goes to `maya` and Studio to `owen`.
+- Given no routing, when the resolver names the owner of Integrations, then it is `Tomas, with Ravi` from the area table; given a routing with `docs: maya` and `code-reviewer: owen`, Docs goes to `maya` and Studio to `owen`.
