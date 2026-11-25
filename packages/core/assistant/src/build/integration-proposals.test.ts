@@ -24,7 +24,7 @@ const request =
 
 /** The scripted turn: the three files proposed, then `validate`. */
 async function buildNotes(workspace: ReturnType<typeof testWorkspace>): Promise<string> {
-  const call = chatTools(workspace);
+  const call = chatTools(workspace, [request]);
   await call("propose_file", { path: notesPaths.sheet, content: notesSheet, why: request });
   await call("propose_file", { path: notesPaths.code, content: notesCode, why: request });
   await call("propose_file", { path: notesPaths.connector, content: notesConnector, why: request });
@@ -117,7 +117,7 @@ verifies("assistant.build.integration-proposals", () => {
 
     it("asks first for a send tool too", async () => {
       const workspace = testWorkspace(saved);
-      const call = chatTools(workspace);
+      const call = chatTools(workspace, [request]);
       const sending = notesSheet.replace(
         "    risk: write\n",
         "    risk: send\n    noun: { one: note, many: notes }\n",

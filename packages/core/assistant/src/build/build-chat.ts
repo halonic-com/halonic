@@ -1,9 +1,12 @@
 // What every Build chat tool shares: the workspace, the review service, the
-// trust check and what the model last read in this chat (HAL-3247).
+// trust check and what the model last read in this chat (HAL-3247), and the
+// one way to write content, past the gate on what a permission sheet or
+// connector may ask for (`assistant.build.named-hosts-secrets`).
 
-import type { ReviewService } from "@halonicjs/app";
+import type { ProposedWrite, ProposeOutcome, ReviewService } from "@halonicjs/app";
 import type { DefinitionSource, Digest, ExpectedContent } from "@halonicjs/ports";
 import { contentDigest } from "@halonicjs/std";
+import { isGatedPath, namedOnlyRefusal } from "./named-only.ts";
 
 /** What the Build chat's tools need from the host, for one chat. */
 export interface BuildToolsOptions {
@@ -22,6 +25,12 @@ export interface BuildToolsOptions {
    * Absent: there is nowhere to show items, and `show` says so.
    */
   readonly show?: ((item: ItemToShow) => Promise<ShowOutcome>) | undefined;
+  /**
+   * The person's own messages in this chat, read on every write: only what they sent, never
+   * tool results, the model's text or notes Halonic adds. A sheet or connector may ask only
+   * for the hosts and sign-ins in them (`assistant.build.named-hosts-secrets`).
+   */
+  readonly personMessages: () => Promise<readonly string[]>;
 }
 
 /** An item the `show` tool shows, as the model names it. */
@@ -45,11 +54,14 @@ export type ShowOutcome = "shown" | "unknown" | "nowhere";
  * is still what the model saw.
  */
 export class BuildChat {
-  readonly options: BuildToolsOptions;
+  /** The host's options, without `review.propose`: a tool writes content through {@link propose}. */
+  readonly options: ToolOptions;
+  private readonly review: BuildToolsOptions["review"];
   private readonly lastRead = new Map<string, ExpectedContent>();
 
   constructor(options: BuildToolsOptions) {
     this.options = options;
+    this.review = options.review;
   }
 
   /** The file as the model last saw it in this chat; `undefined` if it never did. */
@@ -64,6 +76,38 @@ export class BuildChat {
       text === null ? "absent" : await contentDigest(text, this.options.digest),
     );
   }
+
+  /**
+   * Writes a whole file as a change to review: the one way a Build chat tool writes content, so
+   * every write meets the gate on what a permission sheet or connector may ask for
+   * (`assistant.build.named-hosts-secrets`). A refused write is `not-named`, with the answer for
+   * the model, and nothing is written.
+   */
+  async propose(write: ProposedWrite): Promise<ProposeOutcome | NotNamed> {
+    if (isGatedPath(write.path)) {
+      const current = await unlessRefused(() => this.options.files.read(write.path));
+      if (current === "not-allowed") {
+        return { status: "refused", reason: "not-allowed" };
+      }
+      const messages = await this.options.personMessages();
+      const answer = namedOnlyRefusal(write.path, write.content, current, messages);
+      if (answer !== null) {
+        return { status: "not-named", answer };
+      }
+    }
+    return this.review.propose(write);
+  }
+}
+
+/** What the tools see of the host's options: the review service only to delete. */
+type ToolOptions = Omit<BuildToolsOptions, "review"> & {
+  readonly review: Pick<ReviewService, "proposeDelete">;
+};
+
+/** A write the gate refused, and what the model reads. */
+export interface NotNamed {
+  readonly status: "not-named";
+  readonly answer: string;
 }
 
 /**

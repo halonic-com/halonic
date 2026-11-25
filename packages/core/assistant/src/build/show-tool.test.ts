@@ -19,6 +19,7 @@ async function callShow(args: Record<string, unknown>, show?: BuildToolsOptions[
     isTrusted: () => trust.trusted,
     digest,
     show,
+    personMessages: async () => [],
   });
   const tool = tools.find((each) => each.definition.name === "show");
   if (tool === undefined) throw new Error("no show tool");

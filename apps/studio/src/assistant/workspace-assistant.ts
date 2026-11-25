@@ -431,7 +431,12 @@ export class WorkspaceAssistant implements AssistantHost {
     if (tools === undefined) {
       const show = async (item: ItemRef): Promise<ShowOutcome> =>
         this.#shows.get(chatId)?.(item) ?? "nowhere";
-      tools = buildChatTools({ chatId, files, review, isTrusted, digest, show });
+      // The message sent is kept before the first model turn, so a write in it reads it.
+      const personMessages = async () =>
+        (await this.#chats.get(chatId)).messages.flatMap((m) =>
+          m.role === "user" ? [m.content] : [],
+        );
+      tools = buildChatTools({ chatId, files, review, isTrusted, digest, show, personMessages });
       this.#tools.set(chatId, tools);
     }
     // Before trust a turn offers exactly the six authoring tools (`studio.assistant-authoring-turn`),

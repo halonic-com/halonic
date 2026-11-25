@@ -1,6 +1,10 @@
 // The Build chat's write tools (`assistant.build.proposals-change-nothing`,
 // AI changes 1.1): `propose_file` and `propose_delete` write at once,
-// through `ReviewService`, as changes to review. A write checks the file is
+// through `ReviewService`, as changes to review. `propose_file` writes
+// through `BuildChat.propose`, which keeps a permission sheet or connector
+// to the hosts and sign-ins the person named
+// (`assistant.build.named-hosts-secrets`); a delete asks for nothing new.
+// A write checks the file is
 // still what the model last read in this chat (HAL-3247), and the service
 // refuses the paths of `app.assistant-no-git-or-halonic` and
 // `app.assistant-untrusted-items-only`; the tool words its answer.
@@ -13,7 +17,7 @@ import {
   type ReviewCard,
 } from "@halonicjs/app";
 import type { ExpectedContent, ToolCall } from "@halonicjs/ports";
-import { type BuildChat, textArgument, unlessRefused } from "./build-chat.ts";
+import { type BuildChat, type NotNamed, textArgument, unlessRefused } from "./build-chat.ts";
 import { toolTexts } from "./tool-texts.ts";
 
 /** `propose_file`: writes a whole file as a change to review. */
@@ -40,7 +44,7 @@ export function proposeFileTool(chat: BuildChat): ChatTool {
       if ("answer" in start) {
         return start.answer;
       }
-      const outcome = await chat.options.review.propose({
+      const outcome = await chat.propose({
         path,
         content,
         expected: start.expected,
@@ -134,9 +138,14 @@ async function deleteOfMissing(chat: BuildChat, path: string): Promise<string> {
   return text === null ? toolTexts.doesNotExist(path) : toolTexts.changedSinceRead;
 }
 
-/** The answer for a write `ReviewService` didn't make. */
-function notWritten(path: string, outcome: Exclude<ProposeOutcome, { status: "written" }>): string {
+/** The answer for a write that wasn't made. */
+function notWritten(
+  path: string,
+  outcome: Exclude<ProposeOutcome | NotNamed, { status: "written" }>,
+): string {
   switch (outcome.status) {
+    case "not-named":
+      return outcome.answer;
     case "changed-on-disk":
       return toolTexts.changedSinceRead;
     case "held":
