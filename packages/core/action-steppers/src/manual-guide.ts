@@ -66,9 +66,19 @@ function fill(template: string, values: Values, encode: (value: string) => strin
   });
 }
 
+/**
+ * `encodeURIComponent`, plus the `! ' ( ) *` it leaves as they are: a `)` or
+ * `!` in a value could otherwise close or start a link or image in the card.
+ * A server reads `%28` in a path as `(`, so the page is the same.
+ */
+const encodeForGuide = (value: string) =>
+  encodeURIComponent(value).replace(
+    /[!'()*]/g,
+    (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+
 const fillText = (template: string, values: Values) => fill(template, values, quoted);
-const fillAddress = (template: string, values: Values) =>
-  fill(template, values, encodeURIComponent);
+const fillAddress = (template: string, values: Values) => fill(template, values, encodeForGuide);
 
 function inputLines(step: InputStep, values: Values): string[] {
   const label = fillText(step.label, values);
