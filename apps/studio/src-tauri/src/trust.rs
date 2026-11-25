@@ -35,7 +35,9 @@ pub(crate) fn trust_store<R: Runtime>(app: &AppHandle<R>) -> Result<FileTrustSto
 /// The folders the person picked, which the shell remembers in the profile
 /// so it can open them again after a restart (HAL-6637). Only the shell
 /// reads and writes this file; the CLI has no use for it.
-fn picked_folders<R: Runtime>(app: &AppHandle<R>) -> Result<PickedFolders, TrustRefusal> {
+pub(crate) fn picked_folders<R: Runtime>(
+    app: &AppHandle<R>,
+) -> Result<PickedFolders, TrustRefusal> {
     let profile = cli_profile(app).map_err(TrustRefusal::from)?;
     let file = join_path(
         profile.platform,

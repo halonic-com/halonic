@@ -36,12 +36,13 @@ pub struct TrayShellState {
     view: Mutex<Option<TrayView>>,
 }
 
-/// Shows the tray icon, at start. A desktop with no tray is logged, and
-/// Halonic then quits when its window closes.
-pub fn start<R: Runtime>(app: &AppHandle<R>) {
+/// Shows the tray icon, at start, and answers whether it was built. A
+/// desktop with no tray is logged, and Halonic then quits when its window
+/// closes.
+pub fn start<R: Runtime>(app: &AppHandle<R>) -> bool {
     // The tests' apps run on the mock runtime, which has no tray.
     if cfg!(test) {
-        return;
+        return false;
     }
     let view = tray_view(crate::engines::summary(app), false);
     // On Linux the tray library panics when neither appindicator library is
@@ -56,11 +57,15 @@ pub fn start<R: Runtime>(app: &AppHandle<R>) {
             let background = keeps_running_in_tray(std::env::consts::OS);
             state.background.store(background, Ordering::SeqCst);
             *lock(&state.view) = Some(view);
+            true
         }
-        Err(error) => halonic_shell_log::record(
-            "tray",
-            format_args!("no tray icon, so closing the window quits: {error}"),
-        ),
+        Err(error) => {
+            halonic_shell_log::record(
+                "tray",
+                format_args!("no tray icon, so closing the window quits: {error}"),
+            );
+            false
+        }
     }
 }
 
