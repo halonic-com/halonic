@@ -12,7 +12,6 @@ import {
   type Refused,
   type ReviewerRoute,
   readyKey,
-  reviewerAfter,
   reviewerOf,
   type SinceApproval,
   type SinceApprovals,
@@ -151,11 +150,9 @@ async function handOff(
     return false;
   }
   const since = await sinceOf(options, task, waiting, routeOf);
-  const byPull = await Promise.all(
-    waiting.map(async (pull) =>
-      reviewerAfter((await routeOf(pull)).reviewer, since.get(pullId(pull))),
-    ),
-  );
+  // A rebase-only push after Liam's approval goes to the reviewer of its paths too:
+  // outside Julian's limits his re-approval doesn't count (HAL-18190), so only Liam's would.
+  const byPull = await Promise.all(waiting.map(async (pull) => (await routeOf(pull)).reviewer));
   const reviewer = reviewerOf(branchOwner(first.branch), byPull);
   const to = options.owners.get(reviewer);
   if (to === undefined) {

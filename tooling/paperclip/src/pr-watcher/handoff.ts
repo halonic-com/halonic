@@ -179,15 +179,6 @@ export interface SinceApproval {
 /** `SinceApproval` by `pullId`, for the pull requests approved on an older head. */
 export type SinceApprovals = ReadonlyMap<string, SinceApproval>;
 
-/**
- * The reviewer of one pull request: by its paths, except that a rebase-only
- * push after Liam's approval goes to Julian, who may re-approve it on any
- * path (HAL-14809).
- */
-export function reviewerAfter(byPaths: Reviewer, since: SinceApproval | undefined): Reviewer {
-  return since?.rebaseOnly === true && since.by === "Liam" ? "julian" : byPaths;
-}
-
 function sinceLine(
   pull: PullFacts,
   since: SinceApproval | undefined,
