@@ -116,6 +116,15 @@ verifies("action-steppers.run-with-claude", () => {
       );
     });
 
+    it("has Run with Claude as the confirm screen's one primary button, as the stepper's Run step", async () => {
+      const { root } = show(acmeServer, fakeShell({ kind: "cancelled" }).shell);
+      await press(root, "Run with Claude");
+      const primary = [...root.querySelectorAll("button")].filter((each) =>
+        each.classList.contains("bg-primary"),
+      );
+      expect(primary.map((each) => each.textContent)).toEqual(["Run with Claude"]);
+    });
+
     it("goes back to the button on Cancel, and says nothing started when the shell's window was cancelled", async () => {
       const { shell } = fakeShell({ kind: "cancelled" });
       const { root } = show(acmeServer, shell);

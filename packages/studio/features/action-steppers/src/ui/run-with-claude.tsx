@@ -245,14 +245,14 @@ function ConfirmScreen({
           tabIndex={0}
           role="region"
           aria-labelledby={captionId}
-          className="focus-ring max-h-80 overflow-y-auto rounded-sm bg-surface-subtle p-3 font-mono text-small text-fg whitespace-pre-wrap wrap-anywhere"
+          className="focus-ring max-h-80 overflow-y-auto rounded-sm border border-border bg-surface-subtle p-3 font-mono text-small text-fg whitespace-pre-wrap wrap-anywhere"
         >
           {offer.brief}
         </pre>
       </figure>
       {showLauncher && launcher.ok ? (
         <Disclosure summary={words.showCommands} openSummary={words.hideCommands}>
-          <pre className="mx-4 mb-4 rounded-sm bg-surface-subtle p-3 font-mono text-small text-fg whitespace-pre-wrap wrap-anywhere">
+          <pre className="mx-4 mb-4 rounded-sm border border-border bg-surface-subtle p-3 font-mono text-small text-fg whitespace-pre-wrap wrap-anywhere">
             {launcher.value}
           </pre>
         </Disclosure>
@@ -322,7 +322,7 @@ function Outcome({
       ) : null}
       <p className="text-small text-fg-muted">{words.askedAgain}</p>
       <div className="flex flex-wrap gap-2">
-        <Button busy={phase.kind === "starting"} onClick={start}>
+        <Button variant="primary" busy={phase.kind === "starting"} onClick={start}>
           {words.runWithClaude}
         </Button>
         <CancelButton cancel={cancel} />
