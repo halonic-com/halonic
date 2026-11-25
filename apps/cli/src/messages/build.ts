@@ -37,12 +37,21 @@ export const buildMessages = defineMessages("build", {
   sha256Label: () => phrase`SHA-256`,
   changesLabel: () => phrase`Changes`,
   noChanges: () => phrase`none`,
-  /** What changed since the previous build, or every tool as added without one. */
-  changes: (added: readonly string[], removed: readonly string[], changed: readonly string[]) =>
+  /**
+   * What changed since the previous build, or every tool as added without one,
+   * then the routing entries (`roles.<role>`, `areas.<area>`) whose agent changed.
+   */
+  changes: (
+    added: readonly string[],
+    removed: readonly string[],
+    changed: readonly string[],
+    routing: readonly string[] = [],
+  ) =>
     phrase`${[
       added.length > 0 ? `added ${listInWords(added)}` : "",
       removed.length > 0 ? `removed ${listInWords(removed)}` : "",
       changed.length > 0 ? `changed ${listInWords(changed)}` : "",
+      routing.length > 0 ? `routing ${listInWords(routing)}` : "",
     ]
       .filter((part) => part !== "")
       .join(" · ")}`,

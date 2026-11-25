@@ -21,6 +21,7 @@ import { providerKind } from "./kinds/provider/kind.ts";
 import type { Provider } from "./kinds/provider/schema.ts";
 import { routineKind } from "./kinds/routine/kind.ts";
 import type { Routine } from "./kinds/routine/schema.ts";
+import { routingKind } from "./kinds/routing/kind.ts";
 import { runtimeKind } from "./kinds/runtime/kind.ts";
 import type { Runtime } from "./kinds/runtime/schema.ts";
 import { signalKind } from "./kinds/signal/kind.ts";
@@ -37,6 +38,7 @@ import { workflowTestKind } from "./kinds/workflow-test/kind.ts";
 import type { WorkflowTest } from "./kinds/workflow-test/schema.ts";
 import { workspaceKind } from "./kinds/workspace/kind.ts";
 import type { WorkspaceSettings } from "./kinds/workspace/schema.ts";
+import type { Routing } from "./snapshot/routing.ts";
 
 /** The value each file kind parses to, by kind name. */
 export interface KindValues {
@@ -52,6 +54,7 @@ export interface KindValues {
   tool: Tool;
   template: Template;
   signal: Signal;
+  routing: Routing;
   hub: Hub;
   agent: Agent;
   workflow: Workflow;
@@ -82,6 +85,7 @@ export const fileKinds: { readonly [Name in KindName]: FileKind<KindValues[Name]
   tool: toolKind,
   template: templateKind,
   signal: signalKind,
+  routing: routingKind,
   hub: hubKind,
   agent: agentKind,
   workflow: workflowKind,

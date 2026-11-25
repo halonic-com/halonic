@@ -16,6 +16,7 @@ const kindIcons: { readonly [Kind in ItemKind]: () => ReactNode } = {
   tool: () => <PlaceIcon name="library" />,
   template: () => <PlaceIcon name="library" />,
   signal: () => <PlaceIcon name="library" />,
+  routing: () => <SettingsIcon />,
   knowledge: () => <PlaceIcon name="library" />,
   collection: () => <PlaceIcon name="library" />,
   provider: () => <SectionIcon name="models" />,

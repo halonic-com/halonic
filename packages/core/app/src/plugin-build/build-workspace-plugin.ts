@@ -1,12 +1,13 @@
 // Builds a Paperclip plugin from one workspace commit (plan HAL-17950, with
-// Liam's conditions on HAL-17985): the snapshot of its tools and templates
-// (HAL-18153), the four fixed files, the archive, its sha-256 and the release
+// Liam's conditions on HAL-17985): the snapshot of its tools, templates
+// (HAL-18153) and routing (HAL-18263), the four fixed files, the archive, its sha-256 and the release
 // file. Bytes in, bytes out:
 // the caller reads the workspace, the runtime and the previous build, and
 // writes what comes back. Nothing here reaches a disk, a network or Paperclip.
 
 import {
   makeSnapshot,
+  type Routing,
   type SnapshotProblem,
   type Template,
   type Tool,
@@ -76,8 +77,8 @@ export type WorkspaceCommit =
 /** What one plugin is built from. */
 export interface WorkspacePluginRequest {
   /**
-   * The workspace: its id (the plugin id's last part), name, errors, commit
-   * and parsed tool and template files.
+   * The workspace: its id (the plugin id's last part), name, errors, commit,
+   * parsed tool and template files and its routing.
    */
   readonly workspace: {
     readonly id: string;
@@ -88,6 +89,8 @@ export interface WorkspacePluginRequest {
     readonly tools: readonly Tool[];
     /** The templates the plugin serves; none when left out. */
     readonly templates?: readonly Template[];
+    /** Its `routing.yaml`; left out, the plugin keeps its own defaults. */
+    readonly routing?: Routing;
   };
   readonly runtime: PluginRuntime;
   /** The previous build's release file and archive, for the change list and the version. */
@@ -200,6 +203,7 @@ function checkedWorkspace(
     commit: commit.id,
     tools: workspace.tools,
     ...(workspace.templates === undefined ? {} : { templates: workspace.templates }),
+    ...(workspace.routing === undefined ? {} : { routing: workspace.routing }),
   });
   if (!snapshot.ok) return err({ code: "snapshot", problems: snapshot.error });
   const unavailable = unavailableTools(snapshot.value.tools, runtime.actions);

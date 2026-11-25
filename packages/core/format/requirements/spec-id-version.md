@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-1664; `template` from HAL-18141
+- Source: HAL-1664; `template` from HAL-18141; `routing` from HAL-18263
 
-The `$id` of each spec file `spec/<kind>.schema.json` shall have the form `https://halonic.com/spec/format/<kind>/v<N>.schema.json`, where `<N>` equals the `const` of the kind's `version` key. For a kind without a `version` key, which today are `skill` and `template` (Markdown files with optional front matter), `<N>` shall equal the format's `SCHEMA_VERSION` instead. If the two numbers differ, then the test shall fail. The `$id` only names the schema; nothing is hosted at that address.
+The `$id` of each spec file `spec/<kind>.schema.json` shall have the form `https://halonic.com/spec/format/<kind>/v<N>.schema.json`, where `<N>` equals the `const` of the kind's `version` key. For a kind without a `version` key, which today are `skill` and `template` (Markdown files with optional front matter) and `routing` (the snapshot's `routing` part as a file, which has no `version` key either), `<N>` shall equal the format's `SCHEMA_VERSION` instead. If the two numbers differ, then the test shall fail. The `$id` only names the schema; nothing is hosted at that address.
 
 ## Examples
 

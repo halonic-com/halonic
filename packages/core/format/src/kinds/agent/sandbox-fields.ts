@@ -49,6 +49,7 @@ export const PROTECTED_TOP_NAMES: readonly string[] = [
   "library",
   "models.yaml",
   "providers",
+  "routing.yaml",
   "runtimes",
   "workflows",
   "workspace.yaml",

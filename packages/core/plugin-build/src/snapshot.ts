@@ -2,6 +2,7 @@
 // snapshot schema comes with 1a-1 (HAL-17948); once it is on `main`, this file
 // takes its type instead and keeps the untrusted-input check below.
 
+import { Routing } from "@halonicjs/format";
 import { s } from "@halonicjs/schema-kit";
 
 /** The most tools a snapshot read back from an earlier build may hold. */
@@ -18,10 +19,12 @@ export interface SnapshotTool {
   readonly [field: string]: unknown;
 }
 
-/** What a build serves, as data: for now only its tools. */
+/** What a build serves, as data: its tools and, when it has one, its routing. */
 export interface PluginSnapshot {
   /** The tools the plugin serves. */
   readonly tools: readonly SnapshotTool[];
+  /** Who covers each role and who owns each area; none in a build without `routing.yaml`. */
+  readonly routing?: Routing | undefined;
 }
 
 /**
@@ -41,5 +44,7 @@ export const untrustedSnapshot = s
           context.addIssue({ code: "custom", message: `The tool "${duplicate}" comes twice.` });
         }
       }),
+    // Checked like the snapshot's own routing, so the change list compares agent names only.
+    routing: Routing.optional(),
   })
   .passthrough();

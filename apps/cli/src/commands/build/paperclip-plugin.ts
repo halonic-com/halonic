@@ -1,8 +1,9 @@
 // `halonic build paperclip-plugin`: builds a Paperclip plugin of the
-// workspace's tools and templates (plan HAL-17950, HAL-18153). A thin command over the plugin build
-// app service: this file reads the workspace, its commit, the runtime and
-// the previous build, and writes the archive and the release file. It never
-// installs anything and never reaches Paperclip or the network.
+// workspace's tools, templates and routing (plan HAL-17950, HAL-18153,
+// HAL-18263). A thin command over the plugin build app service: this file
+// reads the workspace, its commit, the runtime and the previous build, and
+// writes the archive and the release file. It never installs anything and
+// never reaches Paperclip or the network.
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -64,9 +65,10 @@ export async function buildPaperclipPlugin(
   const errors = workspaceProblemsOf(loaded).filter((issue) => issue.severity === "error");
   const tools = filesOf(loaded, "tool");
   const templates = filesOf(loaded, "template");
+  const routing = filesOf(loaded, "routing");
   const commit = await workspaceCommit(
     workspace.root,
-    [...tools, ...templates].map((file) => file.path),
+    [...tools, ...templates, ...routing].map((file) => file.path),
     setup.git,
   );
   const since = textOption(input, "since");
@@ -84,6 +86,7 @@ export async function buildPaperclipPlugin(
         commit,
         tools: tools.map((file) => file.value),
         templates: templates.map((file) => file.value),
+        ...(routing[0] === undefined ? {} : { routing: routing[0].value }),
       },
       runtime,
       ...(previous === undefined ? {} : { previous }),
@@ -103,14 +106,15 @@ export async function buildPaperclipPlugin(
 /** The result: the heading, then the archive, release file, sha-256 and changes, lined up. */
 function builtResult(built: BuiltPlugin, out: string, cwd: string): CommandResult {
   const { release } = built;
-  const { added, removed, changed } = release.changes;
+  const { added, removed, changed, routing = [] } = release.changes;
   const changes =
-    added.length + removed.length + changed.length === 0
+    added.length + removed.length + changed.length + routing.length === 0
       ? buildMessages.noChanges()
       : buildMessages.changes(
           added,
           removed,
           changed.map((tool) => tool.tool),
+          routing,
         );
   const archive = shownPath(cwd, join(out, built.archiveName));
   const releaseFile = shownPath(cwd, join(out, built.releaseName));
