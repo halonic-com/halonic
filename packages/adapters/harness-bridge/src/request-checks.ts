@@ -1,5 +1,13 @@
-import type { IncomingMessage } from "node:http";
 import type { BridgeRefusal } from "./bridge-error.ts";
+
+/**
+ * What the checks read of a request: its target and the headers they look
+ * at. Node's `IncomingMessage` is one; so the checks need no Node API.
+ */
+export interface CheckedRequest {
+  url?: string | undefined;
+  headers: { host?: string | undefined; origin?: string | undefined };
+}
 
 /**
  * The requests the bridge turns away before it checks the run token. The
@@ -28,7 +36,7 @@ export const refusals = {
  * (`http://bridge.halonic.invalid/v1/messages`), must name one of them too.
  */
 export function refusalOf(
-  request: IncomingMessage,
+  request: CheckedRequest,
   hosts: ReadonlySet<string>,
 ): BridgeRefusal | undefined {
   const host = request.headers.host?.toLowerCase();
@@ -44,7 +52,7 @@ export function refusalOf(
  * `Origin` checks are those of any request.
  */
 export function connectRefusalOf(
-  request: IncomingMessage,
+  request: CheckedRequest,
   hosts: ReadonlySet<string>,
   tunnelTarget: string,
 ): BridgeRefusal | undefined {

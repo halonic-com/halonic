@@ -8,15 +8,17 @@ import {
   harnessBridgeTokenHeader,
   type OpenHarnessBridge,
 } from "@halonicjs/ports";
-import { errorKindOf, KindedError } from "@halonicjs/std";
+import { KindedError } from "@halonicjs/std";
 import { bridgeErrorReply, bridgeRefusalReply } from "./bridge-error.ts";
+import { reportFailure, reportUnnamedFailure } from "./failure-report.ts";
 import { type BridgePlace, listenAt } from "./listener.ts";
 import { webRequestOf, writeReply } from "./node-exchange.ts";
-import { type BodyLimits, bodyTooLarge, readRequestBody } from "./read-body.ts";
+import { readRequestBody } from "./read-body.ts";
 import { refusalOf } from "./request-checks.ts";
 import type { BridgeRoute } from "./route.ts";
 import { randomRunToken, runTokenMatches } from "./run-token.ts";
 import { serveTunnels } from "./tunnel.ts";
+import { type BodyLimits, bodyTooLarge } from "./web-body.ts";
 
 /** How one bridge is set up: its limits and the paths it serves. */
 export interface BridgeSettings {
@@ -206,29 +208,6 @@ async function answerWith(reply: Response, response: ServerResponse, signal: Abo
     await writeReply(reply, response, signal);
   } catch {
     response.destroy();
-  }
-}
-
-/**
- * Tells the run about a failure the program was only told "the run log has the
- * details" for, so that sentence is true. A failure the bridge named (a
- * {@link KindedError} other than `internal`) is already in the reply.
- */
-function reportUnnamedFailure(run: HarnessBridgeOptions, token: string, error: unknown) {
-  if (error instanceof KindedError && errorKindOf(error) !== "internal") return;
-  reportFailure(run, token, error);
-}
-
-/** Tells the run about a failure through its `reportError` hook, without the run token. */
-function reportFailure(run: HarnessBridgeOptions, token: string, error: unknown) {
-  const text = error instanceof Error ? error.message : String(error);
-  try {
-    run.reportError?.({
-      kind: errorKindOf(error),
-      message: text.replaceAll(token, "[run token]"),
-    });
-  } catch {
-    // The hook is told not to throw; if it does, the failure it was told of is all the bridge can lose.
   }
 }
 

@@ -5,29 +5,12 @@ import type {
   Secrets,
 } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
-import { anthropicRoute } from "./anthropic-route.ts";
 import { openBridge } from "./bridge.ts";
+import { bridgeRoutes, defaultBridgeLimits } from "./bridge-routes.ts";
 import type { BridgePlace } from "./listener.ts";
-import { mcpRoutes } from "./mcp-route.ts";
-import { openAiRoute } from "./openai-route.ts";
 import type { Fetch, UpstreamLimits } from "./pass-through.ts";
-import type { BodyLimits } from "./read-body.ts";
 import type { BridgeRoute } from "./route.ts";
-
-/** The limits a bridge uses unless it is given others. */
-export const defaultBridgeLimits: Readonly<BodyLimits> = Object.freeze({
-  // Model requests carry the whole conversation, images and PDFs included, so they can be large.
-  maxBytes: 32 * 1024 * 1024,
-  timeoutMs: 60_000,
-});
-
-/** How long a bridge waits for a provider unless it is given other limits. */
-export const defaultUpstreamLimits: Readonly<UpstreamLimits> = Object.freeze({
-  // Anthropic allows a reply that doesn't stream up to ten minutes.
-  responseTimeoutMs: 10 * 60_000,
-  // A streaming reply sends events, pings included, well within this.
-  idleTimeoutMs: 2 * 60_000,
-});
+import type { BodyLimits } from "./web-body.ts";
 
 /**
  * How long `close()` waits for requests still being handled unless it is
@@ -97,16 +80,7 @@ export class NodeHarnessBridgeServer implements HarnessBridgeServer {
       options.socketFolder === undefined
         ? { kind: "loopback" }
         : { kind: "socket", folder: options.socketFolder };
-    const upstream = {
-      fetch: options.fetch,
-      compatibleFetch: options.compatibleFetch,
-      limits: { ...defaultUpstreamLimits, ...options.upstreamLimits },
-    };
-    this.#routes = [
-      anthropicRoute({ secrets: options.secrets, ...upstream }),
-      openAiRoute({ secrets: options.secrets, ...upstream }),
-      ...mcpRoutes(),
-    ];
+    this.#routes = bridgeRoutes(options);
   }
 
   /** Starts serving one run. */

@@ -1,3 +1,4 @@
+export { defaultBridgeLimits, defaultUpstreamLimits } from "./bridge-routes.ts";
 export {
   defaultGitHubReadLimits,
   type GitHubReadLimits,
@@ -19,11 +20,8 @@ export {
 } from "./paperclip-write-tools.ts";
 export type { Fetch, UpstreamLimits } from "./pass-through.ts";
 export { providerHostClass } from "./provider-hosts.ts";
-export type { BodyLimits } from "./read-body.ts";
 export {
-  defaultBridgeLimits,
   defaultCloseTimeoutMs,
-  defaultUpstreamLimits,
   NodeHarnessBridgeServer,
   type NodeHarnessBridgeServerOptions,
 } from "./server.ts";
@@ -32,3 +30,4 @@ export {
   maxSocketPathBytes,
   sweepRunSocketFolders,
 } from "./socket-folder.ts";
+export type { BodyLimits } from "./web-body.ts";

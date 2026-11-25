@@ -34,7 +34,7 @@ export async function writeReply(
   response: ServerResponse,
   signal: AbortSignal,
 ): Promise<void> {
-  response.writeHead(reply.status, Object.fromEntries(reply.headers));
+  response.writeHead(reply.status, nodeHeadersOf(reply.headers));
   response.flushHeaders();
   if (reply.body === null) {
     response.end();
@@ -57,4 +57,15 @@ export async function writeReply(
     throw error;
   }
   response.end();
+}
+
+/**
+ * A reply's headers as Node writes them. `Headers` joins a repeated header
+ * into one value; `set-cookie` can't be joined, so each one stays apart.
+ */
+function nodeHeadersOf(headers: Headers): Record<string, string | string[]> {
+  const written: Record<string, string | string[]> = Object.fromEntries(headers);
+  const cookies = headers.getSetCookie();
+  if (cookies.length > 0) written["set-cookie"] = cookies;
+  return written;
 }
