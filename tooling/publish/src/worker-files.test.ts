@@ -63,6 +63,7 @@ verifies("publish.worker-files", () => {
         expect(config.durableObjects.map(({ class_name }) => class_name).sort()).toEqual([
           "CoordinationObject",
           "RoutinesObject",
+          "RunContainerObject",
           "RunObject",
           "UsageObject",
         ]);
