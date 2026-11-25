@@ -354,7 +354,7 @@ external-link handling as the rest of Studio.
 Checks inside the manifest: every command and card names a declared tool, and
 that tool is `read` (a command or card can't call a tool that changes or
 sends), a `secret` field and an `env` secret name a declared
-secret, and tool names and local tool ids are unique across the plugin.
+secret, and tool names and local tool ids are unique across the plugin. A tool name is one word, such as `find-order`; `halonic plugin add` refuses one with a space and names the line and field of `plugin.yaml` that is wrong.
 
 ## The SDK
 
