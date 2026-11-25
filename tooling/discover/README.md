@@ -58,7 +58,9 @@ declares `"halonic": { "catalog": { "export": "definition" } }`. Every
 `src/<group>/<name>.ts` (not a `.test.ts` or other dotted file, not
 `src/generated/`) must export `definition`. `pnpm discover --fix` writes
 `src/catalog.generated.ts`, which imports each one as `catalogEntries["<group>/<name>"]`
-with its `sourceHash`. The file is **committed**, so a reviewer sees every added
+with its `sourceHash`: the SHA-256 of the entry file and of every file it reaches
+through relative imports, so a change to a shared file changes the hash of each
+entry that uses it. The file is **committed**, so a reviewer sees every added
 or changed entry, and only `--fix` writes it: plain `pnpm discover` runs in CI
 before `pnpm check`, which fails (rule `catalog-hashes`) when the file is out of
 date. The stepper catalog, `packages/core/action-catalog`, is the one user.

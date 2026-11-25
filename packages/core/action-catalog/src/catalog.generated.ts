@@ -16,7 +16,7 @@ import { definition as playFillDataSafety } from "./play/fill-data-safety.ts";
 import { definition as playSetUpClosedTest } from "./play/set-up-closed-test.ts";
 import { definition as registrarSetNameservers } from "./registrar/set-nameservers.ts";
 
-/** Every `src/<group>/<name>.ts`, by `<group>/<name>`, with the SHA-256 of its source. */
+/** Every `src/<group>/<name>.ts`, by `<group>/<name>`, with the SHA-256 of its source and its imports. */
 export const catalogEntries = {
   "cloudflare/enable-email-routing": {
     definition: cloudflareEnableEmailRouting,
@@ -24,27 +24,27 @@ export const catalogEntries = {
   },
   "device/check-android-build": {
     definition: deviceCheckAndroidBuild,
-    sourceHash: "31158a4b512740171da79a82394a9139cc45fa34c3c4a395d6911c57c1e46b80",
+    sourceHash: "0360b115f0e244bc769856dfea3b2eb15e13a7a7a4fd79092868cf94103b28eb",
   },
   "device/check-phone-pairing": {
     definition: deviceCheckPhonePairing,
-    sourceHash: "c0e212e8bcf5f60bc236fb9f4116788f48329dcef7ea0cd2cd23d6870fe66cfd",
+    sourceHash: "9cec75ae65cb92ed4911d92ed24f6f96b6e9f354d67f366eaf34b3948f7d2c11",
   },
   "device/check-windows-build": {
     definition: deviceCheckWindowsBuild,
-    sourceHash: "8c31df5889ae37a04219e5659faddb4e3b95d2701fded874e6422be88a8cc2a8",
+    sourceHash: "a4494faef076963a8e580e44ab9dfe5f5399c00e45803a35575ae88b86259ca0",
   },
   "github/upload-social-preview": {
     definition: githubUploadSocialPreview,
-    sourceHash: "17b2e0732d680d850285e0d3e9e9d4d3dc5b94914960ddc6bebdcb31aa5ea9f0",
+    sourceHash: "4acd17705d5af03ab432831313e88495ec55ca2b40ceff74ebfbf02242291c17",
   },
   "google/configure-oauth-consent": {
     definition: googleConfigureOauthConsent,
-    sourceHash: "68537ebba391bb2267b77a3b901a08a213b9bf113ee8bff1adeab3e7bc6018c0",
+    sourceHash: "5507ad9dc72e0cd512d91e1b53135ed05d8c2fe097eb0de4955eadb8214ff517",
   },
   "google/create-cloud-project": {
     definition: googleCreateCloudProject,
-    sourceHash: "11e1e6e5413c519add3dd5480f3b99156f9961a212cc3cd48af7340fb154ef5a",
+    sourceHash: "99607a206d109096b6baa65190ff2d19011616c48d058e8712b81785c58acc05",
   },
   "google/create-test-account": {
     definition: googleCreateTestAccount,
@@ -52,15 +52,15 @@ export const catalogEntries = {
   },
   "npm/claim-placeholder": {
     definition: npmClaimPlaceholder,
-    sourceHash: "e2dcbe0e19bcd87e0d05826b42505df4c5a07a4c09cfaf5de21760940e7893e0",
+    sourceHash: "7b46a6d31153e177600dea78a2050a5d6a4075d244c8f9b0681ccaca18bb3f1d",
   },
   "npm/renew-trusted-publisher": {
     definition: npmRenewTrustedPublisher,
-    sourceHash: "e7dacb21bbd4a1f760baace253109f15f24599a003df47dc84d119bb6a8c772f",
+    sourceHash: "132acdded133ddb236f335df2b45d28d06622e62d476c43d869d33adc85ed1a5",
   },
   "npm/set-trusted-publisher": {
     definition: npmSetTrustedPublisher,
-    sourceHash: "4fa8cc66c04d32d72f3e021ee03bba2985c497c60956bfe624f12ebc1dcc66be",
+    sourceHash: "69a1e6a10f85fa67d1677289f8e3586c04caca2bc49f0ee0eec929ce95f9df87",
   },
   "openrouter/add-credit": {
     definition: openrouterAddCredit,
@@ -68,11 +68,11 @@ export const catalogEntries = {
   },
   "play/fill-data-safety": {
     definition: playFillDataSafety,
-    sourceHash: "ceb21580e79b998bae71421f84f22b1d321c8ddbba49501e06ec8a670550abb6",
+    sourceHash: "46fd81736c0c8b90738f5f460cba832871080ff992bece238b4170146ce1ab25",
   },
   "play/set-up-closed-test": {
     definition: playSetUpClosedTest,
-    sourceHash: "2e0fbef42cee1ffb1ce68b38e8082dd8cbe273b7e483ffef6c28d1e41aae7fa7",
+    sourceHash: "3d7c3616544d02fed73a4f93a185e4bbab4a895877957fd9cf2c9e7368c0344e",
   },
   "registrar/set-nameservers": {
     definition: registrarSetNameservers,
