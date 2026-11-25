@@ -4,6 +4,7 @@ import { activeSnapshot } from "./active-snapshot.ts";
 import { type GitHubGet, gitHubReader } from "./github.ts";
 import type { ActionHandlers } from "./handlers.ts";
 import type { RuntimeHost, ToolDeclaration, ToolResult, ToolRunContext } from "./host.ts";
+import { keepFailedRun } from "./runs/failed-runs-record.ts";
 
 /**
  * Registers a plugin's tools under their short names (`pr_status`), each
@@ -133,8 +134,9 @@ async function serve(
     tool: served,
     params: call.params,
     templates: active.snapshot.templates ?? [],
-    caller: { agentId: runCtx.agentId, urlKey: agent.urlKey },
+    caller: { agentId: runCtx.agentId, urlKey: agent.urlKey, name: agent.name },
     companyId: runCtx.companyId,
+    now,
     paperclip: ctx,
     github,
   });
@@ -156,8 +158,27 @@ async function counted(
   return result;
 }
 
+/**
+ * Keeps a record of failed runs when a built-in tool lists them, the only
+ * case the builder asks for `events.subscribe`. Events are kept one at a
+ * time, so two runs failing together don't overwrite each other's entry.
+ */
+function keepFailedRuns(ctx: WorkspaceRuntimeApi, setup: RuntimeSetup): void {
+  const listed = setup.builtIn.tools.some((tool) => tool.action.run === "paperclip.failed-runs");
+  if (!listed || setup.handlers["paperclip.failed-runs"] === undefined) {
+    return;
+  }
+  let queue: Promise<void> = Promise.resolve();
+  ctx.events.on("agent.run.failed", (event) => {
+    const now = (setup.now ?? (() => new Date()))();
+    queue = queue.catch(() => undefined).then(() => keepFailedRun(ctx.state, event, now));
+    return queue;
+  });
+}
+
 /** Registers each declared tool. A tool the built-in snapshot doesn't define is off, never open. */
 export function registerWorkspaceTools(ctx: WorkspaceRuntimeApi, setup: RuntimeSetup): void {
+  keepFailedRuns(ctx, setup);
   for (const declaration of setup.declarations) {
     const name = declaration.name;
     ctx.tools.register(name, declaration, async (params, runCtx) => {

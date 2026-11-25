@@ -53,7 +53,11 @@ verifies("runtime.tools", () => {
       expect(await call("pr_status", { pr: 7 })).toEqual({ content: "ran github.pull-request" });
       expect(calls[0]?.tool).toEqual(builtIn.tools[1]);
       expect(calls[0]?.params).toEqual({ pr: 7 });
-      expect(calls[0]?.caller).toEqual({ agentId: "agent-mateo", urlKey: "mateo" });
+      expect(calls[0]?.caller).toEqual({
+        agentId: "agent-mateo",
+        urlKey: "mateo",
+        name: "Mateo",
+      });
       expect(sent).toEqual(["https://api.github.com/repos/acme/website"]);
       expect(metrics).toEqual([
         {
@@ -150,6 +154,7 @@ verifies("runtime.tools", () => {
         "github.pull-request",
         "github.open-pull-requests",
         "paperclip.task",
+        "paperclip.failed-runs",
         "paperclip.template",
       ]);
       expect(actions[0]).toMatchObject({ name: "github.pull-request", keys: ["github-read"] });

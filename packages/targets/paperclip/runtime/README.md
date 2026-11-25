@@ -38,12 +38,21 @@ the plugin was built with, is off. So is a tool whose action has no handler in t
 | --- | --- |
 | `github.pull-request` | one pull request on the tool's `repositories`: `ci-ok`, mergeability, merge queue, signed approvals on the head, the newest review finding, what the author does next |
 | `github.open-pull-requests` | the caller's open pull requests (branches starting with its `urlKey`), the ones out of sync first |
+| `paperclip.failed-runs` | the runs that failed or timed out since a time, per agent, with cause codes and tasks, from the record the runtime keeps |
 | `paperclip.task` | one task: status, holder, parent, blockers, documents and its newest comments (5 unless asked for up to 20), trimmed as `task_get` does |
 
 An approval counts on the current head when the repository's team signed it ("Name: approved on
-head `abc1234`") and it isn't the author's own. Which reviewer may approve which paths is a
+head `abc1234`") and it isn't the author's own: the signer is compared with the author's `urlKey`,
+display name and its first word, so "Liam" is the own approval of `liam-cto` named Liam. Which reviewer may approve which paths is a
 company's routing, so it isn't in the runtime. The other actions of the format are off until their
 handlers move in.
+
+## Failed runs
+
+The SDK can't list runs, so when a built-in tool runs `paperclip.failed-runs` the runtime subscribes
+to `agent.run.failed` (the `events.subscribe` capability) and keeps each failed run in plugin state:
+ids, a cause code and a time, never the error text, for a week and at most 500 runs. Runs that fail
+while the plugin is down are missing, and the answer says since when it has been counting.
 
 A tool's `callers` name agents by their `urlKey`, compared without case. An agent's display name
 never counts, because two agents can share one.

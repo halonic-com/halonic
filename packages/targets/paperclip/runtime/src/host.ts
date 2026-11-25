@@ -99,6 +99,16 @@ export interface PaperclipTaskReads {
   };
 }
 
+/** A Paperclip event as the SDK's `events.on` delivers it: only the fields the runtime reads. */
+export interface PaperclipEvent {
+  readonly eventType: string;
+  readonly occurredAt: string;
+  readonly actorId?: string;
+  readonly entityId?: string;
+  readonly companyId: string;
+  readonly payload: unknown;
+}
+
 /** The plugin host's clients the runtime calls. */
 export interface RuntimeHost {
   readonly tools: {
@@ -116,7 +126,7 @@ export interface RuntimeHost {
     list(input: {
       readonly companyId: string;
       readonly limit?: number;
-    }): Promise<readonly { readonly id: string; readonly name: string }[]>;
+    }): Promise<readonly { readonly id: string; readonly urlKey: string; readonly name: string }[]>;
   };
   readonly issues: PaperclipTaskReads;
   readonly config: { get(companyId: string): Promise<Record<string, unknown>> };
@@ -131,6 +141,9 @@ export interface RuntimeHost {
     get(key: StateKey): Promise<unknown>;
     set(key: StateKey, value: unknown): Promise<void>;
     delete(key: StateKey): Promise<void>;
+  };
+  readonly events: {
+    on(name: "agent.run.failed", fn: (event: PaperclipEvent) => Promise<void>): () => void;
   };
 }
 
@@ -149,4 +162,5 @@ export type Capability =
   | "issues.read"
   | "issue.comments.read"
   | "issue.documents.read"
-  | "issue.relations.read";
+  | "issue.relations.read"
+  | "events.subscribe";

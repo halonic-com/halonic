@@ -72,11 +72,19 @@ function pr12(
   };
 }
 
-/** Runs an action's handler as Mateo would call it, with the tool reading `acme/website`. */
+/** The acme company's agents; Liam's `urlKey` isn't his first name. */
+const agents = [
+  { id: "agent-mateo", urlKey: "mateo", name: "Mateo" },
+  { id: "agent-priya", urlKey: "priya", name: "Priya" },
+  { id: "agent-liam", urlKey: "liam-cto", name: "Liam" },
+];
+
+/** Runs an action's handler as Mateo (or `caller`) would call it, with the tool reading `acme/website`. */
 function run(
   action: "github.pull-request" | "github.open-pull-requests",
   params: unknown,
   github: GitHubGet,
+  caller: ActionCall["caller"] = { agentId: "agent-mateo", urlKey: "mateo", name: "Mateo" },
 ) {
   const handler = runtimeHandlers[action];
   if (handler === undefined) throw new Error(`no handler for ${action}`);
@@ -86,9 +94,10 @@ function run(
     }),
     params,
     templates: [],
-    caller: { agentId: "agent-mateo", urlKey: "mateo" },
+    caller,
     companyId: "acme",
-    paperclip: {} as ActionCall["paperclip"],
+    now: new Date("2026-11-24T12:00:00Z"),
+    paperclip: { agents: { list: async () => agents } } as unknown as ActionCall["paperclip"],
     github: async () => github,
   };
   return handler.run(call);
@@ -126,6 +135,19 @@ verifies("runtime.github-pulls", () => {
         "approvals: Priya on 7651f8c (doesn't count): the author's own pull request",
       );
       expect(result.content).toContain("next: get a review on this head");
+    });
+
+    test("doesn't count an approval its author signed with a name other than the urlKey", async () => {
+      const github = fakeGitHub(
+        pr12(["Liam: approved on head `7651f8c`"], {
+          head: { sha: head, ref: "liam-cto/ACME-9-billing", repo: ours },
+        }),
+      );
+      const result = await run("github.pull-request", { pr: 12 }, github.get);
+      expect(result.data).toMatchObject({ author: "liam-cto", approvedOnHead: false });
+      expect(result.content).toContain(
+        "approvals: Liam on 7651f8c (doesn't count): the author's own pull request",
+      );
     });
 
     test("names no author or task for a fork's branch, and quotes its title and branch as data", async () => {
@@ -223,6 +245,24 @@ verifies("runtime.github-pulls", () => {
       expect(github.paths.some((path) => path.startsWith(`${pulls}/30`))).toBe(false);
     });
 
+    test("doesn't count the caller's own approval when its urlKey isn't its name", async () => {
+      const github = fakeGitHub({
+        [`${pulls}?state=open&${page}`]: [
+          { number: 23, head: { ref: "liam-cto/ACME-9-billing", repo: ours } },
+        ],
+        [`${pulls}/23`]: pull(23, {
+          head: { sha: head, ref: "liam-cto/ACME-9-billing", repo: ours },
+        }),
+        ...ciOk("success"),
+        [`${issues}/23/comments?${page}`]: [
+          { body: "Liam: approved on head `7651f8c`", author_association: "MEMBER" },
+        ],
+      });
+      const liam = { agentId: "agent-liam", urlKey: "liam-cto", name: "Liam" };
+      const result = await run("github.open-pull-requests", {}, github.get, liam);
+      expect(result.data).toMatchObject([{ number: 23, approvedOnHead: false }]);
+    });
+
     test("says so when the caller has none", async () => {
       const github = fakeGitHub({ [`${pulls}?state=open&${page}`]: [] });
       const result = await run("github.open-pull-requests", {}, github.get);
@@ -237,7 +277,7 @@ verifies("runtime.github-pulls", () => {
 verifies("runtime.tools", () => {
   describe("the runtime's handlers", () => {
     // Each read action moves in from `tooling/paperclip` under its own task (HAL-18139).
-    const notYetMoved = ["github.merge-queue", "github.merge-times", "paperclip.failed-runs"];
+    const notYetMoved = ["github.merge-queue", "github.merge-times"];
 
     test("cover every read action but the ones still moving, and no handler needs a writing capability", () => {
       const reads = toolActionNames().filter((name) => !toolActionInfo(name).writes);

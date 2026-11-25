@@ -1,5 +1,5 @@
 import type { Tool, WorkspaceSnapshot } from "@halonicjs/format";
-import type { ToolResult, ToolRunContext } from "./host.ts";
+import type { PaperclipEvent, ToolResult, ToolRunContext } from "./host.ts";
 import { snapshotPath } from "./pinned-snapshot.ts";
 import type { WorkspaceRuntimeApi } from "./register.ts";
 
@@ -73,8 +73,9 @@ type Handler = (params: unknown, runCtx: ToolRunContext) => Promise<ToolResult>;
 /**
  * A plugin context whose GitHub answers from `answers` (a request with no
  * answer gets 404; with `github.down`, every request fails), with plugin
- * state in memory, the metrics written and the tool handlers registered.
- * The caller is always `agent-mateo`, as `agent` describes it.
+ * state in memory, the metrics written, the tool handlers registered and
+ * `deliver` handing an event to the worker's subscriptions. The caller is
+ * always `agent-mateo`, as `agent` describes it; the one task is `ACME-7`.
  */
 export function fakeHost(config: Record<string, unknown>, answers: Record<string, unknown>) {
   const handlers = new Map<string, Handler>();
@@ -83,7 +84,17 @@ export function fakeHost(config: Record<string, unknown>, answers: Record<string
   const metrics: { name: string; value: number; tags: unknown }[] = [];
   const github = { down: false };
   const agent = { urlKey: "mateo", name: "Mateo" };
+  const subscribed = new Map<string, ((event: PaperclipEvent) => Promise<void>)[]>();
   const ctx = {
+    events: {
+      on: (name: string, fn: (event: PaperclipEvent) => Promise<void>) => {
+        subscribed.set(name, [...(subscribed.get(name) ?? []), fn]);
+        return () => undefined;
+      },
+    },
+    issues: {
+      get: async (id: string) => (id === "task-7" ? { id, identifier: "ACME-7" } : null),
+    },
     metrics: {
       write: async (name: string, value: number, tags?: unknown) => {
         metrics.push({ name, value, tags });
@@ -103,6 +114,7 @@ export function fakeHost(config: Record<string, unknown>, answers: Record<string
     },
     agents: {
       get: async (id: string) => (id === "agent-mateo" ? { id, ...agent } : null),
+      list: async () => [{ id: "agent-mateo", ...agent }],
     },
     config: { get: async () => config },
     secrets: { resolve: async () => "test-token" },
@@ -125,5 +137,8 @@ export function fakeHost(config: Record<string, unknown>, answers: Record<string
     if (handler === undefined) throw new Error(`${name} isn't registered`);
     return handler(params, runCtx);
   };
-  return { ctx, call, sent, saved, metrics, github, agent };
+  const deliver = async (event: PaperclipEvent) => {
+    await Promise.all((subscribed.get(event.eventType) ?? []).map((fn) => fn(event)));
+  };
+  return { ctx, call, deliver, subscribed, sent, saved, metrics, github, agent };
 }

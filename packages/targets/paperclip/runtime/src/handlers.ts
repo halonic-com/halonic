@@ -3,6 +3,7 @@ import type { GitHubGet } from "./github.ts";
 import type { Capability, RuntimeHost, ToolResult } from "./host.ts";
 import { openPullRequestsHandler } from "./pulls/open-pull-requests.ts";
 import { pullRequestHandler } from "./pulls/pull-request.ts";
+import { failedRunsHandler } from "./runs/failed-runs.ts";
 import { taskHandler } from "./tasks/task.ts";
 import { templateHandler } from "./template-action.ts";
 
@@ -21,15 +22,20 @@ export interface ActionCall {
   readonly params: unknown;
   /** The served snapshot's templates, sorted by id; none when it has no list. */
   readonly templates: readonly Template[];
-  /** The calling agent: its id and url key. */
-  readonly caller: { readonly agentId: string; readonly urlKey: string };
+  /** The calling agent: its id, url key and display name. */
+  readonly caller: { readonly agentId: string; readonly urlKey: string; readonly name: string };
   /** The company the call runs in. */
   readonly companyId: string;
+  /** When the call started. */
+  readonly now: Date;
   /**
-   * Paperclip's read clients. A handler may call only those its
-   * `capabilities` cover: Paperclip refuses the rest.
+   * Paperclip's read clients, and reading the runtime's own plugin state. A
+   * handler may call only those its `capabilities` cover: Paperclip refuses
+   * the rest.
    */
-  readonly paperclip: Pick<RuntimeHost, "agents" | "issues">;
+  readonly paperclip: Pick<RuntimeHost, "agents" | "issues"> & {
+    readonly state: Pick<RuntimeHost["state"], "get">;
+  };
   /** The GitHub reader with the plugin's read token: GET to api.github.com only. */
   readonly github: () => Promise<GitHubGet>;
 }
@@ -53,4 +59,5 @@ export const runtimeHandlers: ActionHandlers = {
   "github.open-pull-requests": openPullRequestsHandler,
   "paperclip.task": taskHandler,
   "paperclip.template": templateHandler,
+  "paperclip.failed-runs": failedRunsHandler,
 };
