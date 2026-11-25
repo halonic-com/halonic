@@ -2,6 +2,7 @@
 
 - Approval: Liam reviews the new relation write and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Ax8H734Ii7rCm7v/vtNaMvPAVTVWfVciKRoLE/oRR46jI6HSqKiztYRibn6TGe8ifG9h5ioVmapT5/G3lQ+ACQ==
 
 The board asked (25 Nov, via HAL-16194) that the plugin fix a task blocked by
 its own parent or a task above it (`parent_block`). The PR watcher's unblock
