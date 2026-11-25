@@ -2,7 +2,6 @@
 
 - Approval: the board approved the phase 2 card on HAL-17544 (24 Nov); the protocol is section 2.2 of the architecture note on HAL-17511; task HAL-17634. Liam approves this note in review
 - Kind: user-visible
-- Signature:
 
 The requirement `ports.remote-gateway-protocol` changes from message version 3 to 4. Nothing is weakened: sessions, approvals and prompts stay exactly as in version 3, and every version 3 example still holds except the version number.
 
