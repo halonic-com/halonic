@@ -2036,6 +2036,12 @@ jobs:
       - name: Phone against the remote gateway
         timeout-minutes: 5
         run: cargo test --locked -p halonic-tunnel --test gateway -- --ignored
+      # The background engine in Node prints a secret the broker gave it on
+      # stderr, and the shell's log must not hold it (HAL-18245). Ignored in
+      # plain `cargo test` for the same reason as the gateway test above.
+      - name: Engine stderr never logs a broker secret
+        timeout-minutes: 5
+        run: cargo test --locked -p halonic-engine-supervisor --test engine_stderr -- --ignored
       # The agent host's Noise session in WebAssembly (HAL-12236): clippy
       # for the target, since the exports only compile there, and the build
       # @halonicjs/adapter-e2e-noise ships. Paths are remapped so the file

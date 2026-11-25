@@ -10,4 +10,6 @@ Running the background engine from the shell (B1 step 5, HAL-14220; decisions D2
 
 Not here: one engine per workspace, the window's engine commands, the sandbox host's connection and the updater's stop (the shell's wiring, next in B1 step 5); the tray.
 
-The requirement in `requirements/` is a draft until the trace check reads `cargo test` results. Until then, each test's name starts with the last part of the requirement it proves, `engine_process_`.
+The requirements in `requirements/` are drafts until the trace check reads `cargo test` results. Until then, each test's name starts with the last part of the requirement it proves: `engine_process_` or `engine_stderr_`.
+
+`tests/engine_stderr.rs` runs the real engine role in Node (`apps/agent-host/src/engine/engine-stderr-canary.test-helper.ts`), which prints a secret the broker handed it on stderr, and checks that `shell.log` never holds it. It needs pnpm and the workspace's packages, so plain `cargo test` skips it; CI's Rust job runs it with `--ignored`. It covers what `record_printed` leaves out, which is text shaped like a key: the engine doesn't redact its own stderr, and a value with no known shape would reach the log.
