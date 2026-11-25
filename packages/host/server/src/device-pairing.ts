@@ -19,6 +19,17 @@ const codeLength = 8;
 const checkCodeLength = 6;
 /** A code, and a request made with it, lasts this long. */
 export const pairingLifetimeMs = 10 * 60 * 1000;
+/**
+ * A request that ended is kept this long after its own end, so its device can still poll why it
+ * ended (`server.device-pairing-answers`); after that its pending ID gives nothing.
+ */
+const endedKeptMs = pairingLifetimeMs;
+
+/**
+ * Why a request ended before its token was collected: the device cancelled it, the owner denied
+ * it, or a second request used the same code.
+ */
+export type PairingEnding = "cancelled" | "refused" | "taken-over";
 
 /** A request for a code, waiting for the owner. Only hashes of the code and the pending ID are kept. */
 interface WaitingRequest {
@@ -29,6 +40,7 @@ interface WaitingRequest {
   readonly checkCode: string;
   readonly expiresAt: string;
   readonly allowedBy?: AllowedBy;
+  readonly ended?: PairingEnding;
 }
 
 interface StoredCode {
@@ -55,29 +67,44 @@ export interface PairingRequestView {
   readonly expiresAt: string;
 }
 
-/** What polling a pending ID found: still waiting, the token (given once), or nothing. */
+/**
+ * What polling a pending ID found: still waiting (until `expiresAt`), the token (given once, with
+ * the session's absolute end), why the request ended, or nothing.
+ */
 export type PairingPoll =
-  | { readonly kind: "waiting" }
-  | { readonly kind: "allowed"; readonly token: string }
+  | { readonly kind: "waiting"; readonly expiresAt: string }
+  | { readonly kind: "allowed"; readonly token: string; readonly sessionEndsAt: string }
+  | { readonly kind: "ended"; readonly why: PairingEnding | "expired" }
   | { readonly kind: "unknown" };
+
+/** A device's request, as `POST /api/pair` answers it. */
+export interface PendingRequest {
+  readonly pendingId: string;
+  readonly checkCode: string;
+  /** When the request ends unless it is allowed, for the device's countdown. */
+  readonly expiresAt: string;
+}
 
 /** The pairing steps of one server. Every call takes the current `serve-password` hash. */
 export interface DevicePairing {
   /** A new one-time code, for the owner to give to the device. */
   newCode(passwordHash: string): Promise<{ readonly code: string; readonly expiresAt: string }>;
   /**
-   * A device's request with a code: its pending ID and check code, or `null` when the code isn't
-   * a live, unused one. A second request with a code that has one waiting cancels both.
+   * A device's request with a code, or `null` when the code isn't a live, unused one. A second
+   * request with a code that has one waiting is refused and ends the first as `taken-over`.
    */
-  request(
-    code: string,
-    deviceName: string,
-    passwordHash: string,
-  ): Promise<{ pendingId: string; checkCode: string } | null>;
+  request(code: string, deviceName: string, passwordHash: string): Promise<PendingRequest | null>;
   /** The requests waiting for Allow; with `code`, only the one made with that code. */
   waiting(passwordHash: string, code?: string): Promise<readonly PairingRequestView[]>;
   /** Allows the waiting request with this id; `false` when there is none. */
   allow(requestId: string, allowedBy: AllowedBy, passwordHash: string): Promise<boolean>;
+  /** Denies the waiting request with this id, so it ends as `refused`; `false` when there is none. */
+  deny(requestId: string, passwordHash: string): Promise<boolean>;
+  /**
+   * The device cancels its own request, allowed or not, before it collected the token; `false`
+   * when the pending ID names no open request.
+   */
+  cancel(pendingId: string, passwordHash: string): Promise<boolean>;
   /** Polls a pending ID; once allowed, starts the device's session and gives its token once. */
   poll(pendingId: string, passwordHash: string): Promise<PairingPoll>;
 }
@@ -99,8 +126,8 @@ export function createDevicePairing(ports: PairingPorts, devices: DeviceSessions
   }
 
   /**
-   * Changes the live codes. Codes and requests past their time, or made under another password
-   * or generation, are dropped on every write.
+   * Changes the live codes. Codes and requests past their keeping time (`keptUntil`), or made
+   * under another password or generation, are dropped on every write.
    */
   async function change(
     passwordHash: string,
@@ -121,6 +148,56 @@ export function createDevicePairing(ports: PairingPorts, devices: DeviceSessions
       currentGrant(passwordHash),
     ]);
     return liveCodes(stored, clock.now().getTime(), grant);
+  }
+
+  /** Whether a request may still be allowed, denied, cancelled or collected. */
+  function isOpen(request: WaitingRequest): boolean {
+    return request.ended === undefined && clock.now().getTime() < Date.parse(request.expiresAt);
+  }
+
+  /**
+   * Changes the first open request that `matches` picks into `next(request)`, and tells whether
+   * there was one.
+   */
+  async function changeOpen(
+    passwordHash: string,
+    matches: (request: WaitingRequest) => boolean,
+    next: (request: WaitingRequest) => WaitingRequest,
+  ): Promise<boolean> {
+    let changed = false;
+    await change(passwordHash, (live) => {
+      const found = live.find(
+        ({ request }) => request !== undefined && isOpen(request) && matches(request),
+      );
+      changed = found?.request !== undefined;
+      if (found?.request === undefined) return null;
+      const request = next(found.request);
+      return live.map((entry) => (entry === found ? { ...found, request } : entry));
+    });
+    return changed;
+  }
+
+  /** What a poll answers for the code it `found`, once the record is written. */
+  async function answer(
+    found: StoredCode | undefined,
+    collected: boolean,
+    passwordHash: string,
+  ): Promise<PairingPoll> {
+    const request = found?.request;
+    if (found === undefined || request === undefined) return { kind: "unknown" };
+    if (request.ended !== undefined) return { kind: "ended", why: request.ended };
+    if (collected && request.allowedBy !== undefined) {
+      // The session starts in the code's generation, so a revoke since this poll read it still ends it.
+      const device = {
+        name: request.deviceName,
+        allowedBy: request.allowedBy,
+        generation: found.generation,
+      };
+      const session = await devices.start(device, passwordHash);
+      return { kind: "allowed", token: session.token, sessionEndsAt: session.endsAt };
+    }
+    if (!isOpen(request)) return { kind: "ended", why: "expired" };
+    return { kind: "waiting", expiresAt: request.expiresAt };
   }
 
   return {
@@ -150,11 +227,18 @@ export function createDevicePairing(ports: PairingPorts, devices: DeviceSessions
         const found = live.find((entry) => sameHash(entry.codeHash, codeHash));
         accepted = found !== undefined && found.request === undefined;
         if (found === undefined) return null;
-        // A second request means someone else has the code too: the code and the first request end.
-        const rest = live.filter((entry) => entry !== found);
-        return accepted ? [...rest, { ...found, request }] : rest;
+        const first = found.request;
+        if (first === undefined) {
+          return live.map((entry) => (entry === found ? { ...found, request } : entry));
+        }
+        // A second request means someone else has the code too: the first request ends, and the
+        // code stays used, so a third one is refused as well.
+        if (!isOpen(first)) return null;
+        const takenOver: WaitingRequest = { ...first, ended: "taken-over" };
+        return live.map((entry) => (entry === found ? { ...found, request: takenOver } : entry));
       });
-      return accepted ? { pendingId, checkCode: request.checkCode } : null;
+      if (!accepted) return null;
+      return { pendingId, checkCode: request.checkCode, expiresAt: request.expiresAt };
     },
 
     async waiting(passwordHash, code) {
@@ -163,7 +247,7 @@ export function createDevicePairing(ports: PairingPorts, devices: DeviceSessions
       const asked =
         codeHash === undefined ? live : live.filter((entry) => sameHash(entry.codeHash, codeHash));
       return asked.flatMap(({ request }) =>
-        request === undefined || request.allowedBy !== undefined
+        request === undefined || !isOpen(request) || request.allowedBy !== undefined
           ? []
           : [
               {
@@ -176,51 +260,57 @@ export function createDevicePairing(ports: PairingPorts, devices: DeviceSessions
       );
     },
 
-    async allow(requestId, allowedBy, passwordHash) {
-      let allowed = false;
-      await change(passwordHash, (live) => {
-        const found = live.find(
-          (entry) => entry.request?.id === requestId && entry.request.allowedBy === undefined,
-        );
-        allowed = found?.request !== undefined;
-        if (found?.request === undefined) return null;
-        const request = { ...found.request, allowedBy };
-        return live.map((entry) => (entry === found ? { ...found, request } : entry));
-      });
-      return allowed;
+    allow(requestId, allowedBy, passwordHash) {
+      return changeOpen(
+        passwordHash,
+        (request) => request.id === requestId && request.allowedBy === undefined,
+        (request) => ({ ...request, allowedBy }),
+      );
+    },
+
+    deny(requestId, passwordHash) {
+      return changeOpen(
+        passwordHash,
+        (request) => request.id === requestId && request.allowedBy === undefined,
+        (request) => ({ ...request, ended: "refused" }),
+      );
+    },
+
+    async cancel(pendingId, passwordHash) {
+      const pendingHash = await sha256Hex(pendingId);
+      return changeOpen(
+        passwordHash,
+        (request) => sameHash(request.pendingHash, pendingHash),
+        (request) => ({ ...request, ended: "cancelled" }),
+      );
     },
 
     async poll(pendingId, passwordHash) {
       const pendingHash = await sha256Hex(pendingId);
       let found: StoredCode | undefined;
+      let collected = false;
       await change(passwordHash, (live) => {
-        const entry = live.find(
+        found = live.find(
           (code) => code.request !== undefined && sameHash(code.request.pendingHash, pendingHash),
         );
-        found = entry;
+        const request = found?.request;
+        collected = request !== undefined && isOpen(request) && request.allowedBy !== undefined;
         // Collected: the code and its request end before the token exists, so only one poll gets it.
-        return entry?.request?.allowedBy === undefined
-          ? null
-          : live.filter((code) => code !== entry);
+        return collected ? live.filter((code) => code !== found) : null;
       });
-      const request = found?.request;
-      if (found === undefined || request === undefined) return { kind: "unknown" };
-      if (request.allowedBy === undefined) return { kind: "waiting" };
-      // The session starts in the code's generation, so a revoke since this poll read it still ends it.
-      const device = {
-        name: request.deviceName,
-        allowedBy: request.allowedBy,
-        generation: found.generation,
-      };
-      return { kind: "allowed", token: await devices.start(device, passwordHash) };
+      return answer(found, collected, passwordHash);
     },
   };
 }
 
-const recordVersion = 1;
+/**
+ * Version 2 added `ended`. A build that knows only version 1 would read an ended request as still
+ * waiting, so it reads this record as holding no codes instead, and pairings in flight start over.
+ */
+const recordVersion = 2;
 
 /**
- * The codes in a stored record that haven't run out and were made under `grant`. Another version,
+ * The codes in a stored record that are still kept and were made under `grant`. Another version,
  * or text that doesn't read, holds none.
  */
 function liveCodes(stored: string | null, now: number, grant: Grant): StoredCode[] {
@@ -231,13 +321,23 @@ function liveCodes(stored: string | null, now: number, grant: Grant): StoredCode
     }
     return record.codes
       .filter(isStoredCode)
-      .filter((entry) => now < Date.parse(entry.request?.expiresAt ?? entry.expiresAt))
+      .filter((entry) => now < keptUntil(entry))
       .filter(
         (entry) => entry.password === grant.password && entry.generation === grant.generation,
       );
   } catch {
     return [];
   }
+}
+
+/**
+ * Until when a code is kept: an unused one until it runs out, one with a request a while longer,
+ * so the device can still poll why it ended.
+ */
+function keptUntil({ expiresAt, request }: StoredCode): number {
+  return request === undefined
+    ? Date.parse(expiresAt)
+    : Date.parse(request.expiresAt) + endedKeptMs;
 }
 
 function hasText(value: unknown, fields: readonly string[]): boolean {
@@ -258,13 +358,29 @@ function isStoredCode(value: unknown): value is StoredCode {
   );
 }
 
-/** A request's text fields, and `allowedBy` only as text, so a record can't allow on a number. */
+/**
+ * A request's text fields, `allowedBy` only as text, so a record can't allow on a number, and an
+ * `ended` this build knows.
+ */
 function isWaitingRequest(value: unknown): value is WaitingRequest {
   const allowedBy = (value as { allowedBy?: unknown } | null)?.allowedBy;
   return (
     hasText(value, ["id", "pendingHash", "deviceName", "checkCode", "expiresAt"]) &&
-    (allowedBy === undefined || typeof allowedBy === "string")
+    (allowedBy === undefined || typeof allowedBy === "string") &&
+    isEnding(value)
   );
+}
+
+const endings: readonly unknown[] = [
+  "cancelled",
+  "refused",
+  "taken-over",
+] satisfies PairingEnding[];
+
+/** Whether a stored request's `ended`, if it has one, is one this build knows. */
+function isEnding(request: unknown): boolean {
+  const ended = (request as { ended?: unknown }).ended;
+  return ended === undefined || endings.includes(ended);
 }
 
 function sameHash(first: string, second: string): boolean {

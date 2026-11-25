@@ -64,8 +64,8 @@ export interface DeviceRoutes {
 type DeviceRoutePorts = Pick<ServerPorts, "secrets" | "passwordHasher" | "coordination" | "clock">;
 
 /**
- * Builds the device routes. A device pairs with `POST /api/pair` and collects its token with
- * `POST /api/pair/status`, signed in to neither. The owner's routes need a session; making a code
+ * Builds the device routes. A device pairs with `POST /api/pair`, collects its token with
+ * `POST /api/pair/status` or cancels with `POST /api/pair/cancel`, signed in to none of them. The owner's routes need a session; making a code
  * and Allow also need the password again, so a device session alone can't add a device.
  */
 export function createDeviceRoutes(
@@ -97,19 +97,41 @@ export function createDeviceRoutes(
       : Response.json(pending);
   }
 
-  /** `POST /api/pair/status`: a used, cancelled, expired or guessed pending ID gets nothing. */
+  /**
+   * `POST /api/pair/status`: what the request with this pending ID came to. A used or guessed
+   * pending ID gets nothing (`server.device-pairing-answers`).
+   */
   async function status(call: DeviceCall): Promise<Response> {
     const fields = readFields(call, ["pendingId"]);
     if (fields === null) {
       return errorResponse(serverErrors.badRequest);
     }
     const poll = await pairing.poll(fields.pendingId, call.passwordHash);
-    if (poll.kind === "unknown") {
-      return errorResponse(serverErrors.notFound);
+    switch (poll.kind) {
+      case "unknown":
+        return errorResponse(serverErrors.notFound);
+      case "waiting":
+        return Response.json({ state: "waiting", expiresAt: poll.expiresAt }, { status: 202 });
+      case "ended":
+        return Response.json({ state: poll.why });
+      case "allowed":
+        return Response.json({
+          state: "allowed",
+          token: poll.token,
+          sessionEndsAt: poll.sessionEndsAt,
+        });
     }
-    return poll.kind === "waiting"
-      ? Response.json({ waiting: true }, { status: 202 })
-      : Response.json({ token: poll.token });
+  }
+
+  /** `POST /api/pair/cancel`: the device drops its own request, so Allow can't start a session. */
+  async function cancel(call: DeviceCall): Promise<Response> {
+    const fields = readFields(call, ["pendingId"]);
+    if (fields === null) {
+      return errorResponse(serverErrors.badRequest);
+    }
+    return (await pairing.cancel(fields.pendingId, call.passwordHash))
+      ? new Response(null, { status: 204 })
+      : errorResponse(serverErrors.notFound);
   }
 
   /** `GET /api/devices`: the live devices and the requests waiting for Allow. */
@@ -129,6 +151,29 @@ export function createDeviceRoutes(
     }
     const result = await devices.revoke(fields.deviceId, call.passwordHash);
     return result.revoked ? Response.json(result) : errorResponse(serverErrors.deviceNotFound);
+  }
+
+  /** `POST /api/devices/deny`: the owner refuses a waiting request, whose device then hears so. */
+  async function deny(call: DeviceCall): Promise<Response> {
+    const fields = readFields(call, ["requestId"]);
+    if (fields === null) {
+      return errorResponse(serverErrors.badRequest);
+    }
+    return (await pairing.deny(fields.requestId, call.passwordHash))
+      ? new Response(null, { status: 204 })
+      : errorResponse(serverErrors.notFound);
+  }
+
+  /**
+   * `POST /api/devices/sign-out`: a device ends its own session, signed in with its own token; the
+   * other devices stay signed in. A password session isn't a device, so it is refused.
+   */
+  async function signOut(call: DeviceCall, session: string): Promise<Response> {
+    if (!session.startsWith(deviceSessionPrefix)) {
+      return errorResponse(serverErrors.notADevice);
+    }
+    await devices.revoke(session.slice(deviceSessionPrefix.length), call.passwordHash);
+    return new Response(null, { status: 204 });
   }
 
   /**
@@ -171,6 +216,7 @@ export function createDeviceRoutes(
   const pairRoutes: Record<string, (call: DeviceCall) => Promise<Response>> = {
     "POST /api/pair": pair,
     "POST /api/pair/status": status,
+    "POST /api/pair/cancel": cancel,
   };
 
   /** The owner's routes, for a request with a session. */
@@ -180,6 +226,8 @@ export function createDeviceRoutes(
     "POST /api/devices/code": (call) =>
       withPassword(call, async () => Response.json(await pairing.newCode(call.passwordHash))),
     "POST /api/devices/allow": allow,
+    "POST /api/devices/deny": deny,
+    "POST /api/devices/sign-out": signOut,
   };
 
   return {

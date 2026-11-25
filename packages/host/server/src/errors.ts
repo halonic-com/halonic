@@ -31,6 +31,11 @@ export const serverErrors = {
     message: "That pairing code isn't valid any more. Ask for a new one.",
   },
   deviceNotFound: { status: 404, code: "device_not_found", message: "There is no such device." },
+  notADevice: {
+    status: 403,
+    code: "not_a_device",
+    message: "Only a paired device can end its own pairing here.",
+  },
   tooManyAttempts: {
     status: 429,
     code: "too_many_attempts",
