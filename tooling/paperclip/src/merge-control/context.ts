@@ -1,3 +1,4 @@
+import type { Wait } from "./fill.ts";
 import type { MergeSnapshot } from "./snapshot.ts";
 import type { BoardSwitches, LogLine, MergeAction, MergeSettings, MergeState } from "./state.ts";
 
@@ -28,6 +29,8 @@ export interface PassContext {
   readonly log: LogLine[];
   /** Queue entries whose merge group an action of this pass already cancels, counted once. */
   readonly cancelled: Set<number>;
+  /** Why the fill left each candidate out this pass, for the not-queued note. */
+  readonly waits: Map<number, Wait>;
 }
 
 /** A copy of the state the pass may change; the caller's stays as it was. */

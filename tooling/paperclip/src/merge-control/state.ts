@@ -60,6 +60,12 @@ export interface LabelNoopReopen {
   readonly at: string;
 }
 
+/** An approved, green head waiting out of the queue, and since when. */
+export interface NotQueued {
+  readonly head: string;
+  readonly at: string;
+}
+
 /** Everything kept between passes, keyed by pull request number. */
 export interface MergeState {
   readonly version: 1;
@@ -76,6 +82,12 @@ export interface MergeState {
   /** The head whose cancelled group was let back in once. */
   readonly autoFlaked: Readonly<Record<string, string>>;
   readonly readySince: Readonly<Record<string, string>>;
+  /**
+   * Since when each approved, green pull request has waited out of the
+   * queue on its head, for the not-queued note (HAL-18735). A state saved
+   * before it has none.
+   */
+  readonly notQueuedSince: Readonly<Record<string, NotQueued>>;
   /** Comments and other once-per-head actions already sent, `<kind>#<number>` to head. */
   readonly noted: Readonly<Record<string, string>>;
   readonly reran: Readonly<Record<string, Rerun>>;
@@ -105,6 +117,7 @@ export const emptyMergeState: MergeState = {
   flakeLifted: {},
   autoFlaked: {},
   readySince: {},
+  notQueuedSince: {},
   noted: {},
   reran: {},
   reranFlake: {},

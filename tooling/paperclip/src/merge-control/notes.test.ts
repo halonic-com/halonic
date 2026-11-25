@@ -51,6 +51,7 @@ verifies("paperclip.merge-control-comments", () => {
       texts.fileSize(hold, 500),
       texts.waitingApproval("x", "abc"),
       texts.blocked("abc"),
+      texts.notQueued("abc", 31, ["x"]),
       texts.brakeOn(6),
       texts.brakeOff,
     ];

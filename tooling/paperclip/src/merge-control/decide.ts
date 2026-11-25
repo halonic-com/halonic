@@ -4,6 +4,7 @@ import { failedGroups, unjudgedHolds } from "./culprit.ts";
 import { fill, fillOrder, trackReady, verifiedFastTrack } from "./fill.ts";
 import { gateRow, withSizeHolds } from "./gate.ts";
 import { labelNoopReopens } from "./label-noop.ts";
+import { notQueuedNotes } from "./not-queued.ts";
 import { notes } from "./notes.ts";
 import { queueFirst } from "./order.ts";
 import { pruneState } from "./prune.ts";
@@ -32,6 +33,7 @@ export function decide(
     actions: [],
     log: [],
     cancelled: new Set(),
+    waits: new Map(),
   };
   const { state } = context;
   pruneState(context);
@@ -69,6 +71,7 @@ export function decide(
   });
   staleRuns(context);
   notes(context, rows, added);
+  notQueuedNotes(context, rows, added);
   runnerBrake(context);
   const pause = rerunPause(context);
   if (pause === undefined) {
