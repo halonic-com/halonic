@@ -3,17 +3,20 @@ import type {
   AnswerResult,
   AttachmentRead,
   InboxAnswer,
+  MessagingAgent,
   MessagingAuthor,
   MessagingId,
   MessagingSource,
   WorkItem,
 } from "@halonicjs/ports";
-import { Button, Callout, waitingSince } from "@halonicjs/studio-kit";
+import { Avatar, Button, Callout, waitingSince } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef, useState } from "react";
 import {
   agentItemTitle,
   answeredLine,
   answerText,
+  askerLine,
+  questionIsTitle,
   sourceDownLine,
   workLine,
 } from "../agent/agent-item-text.ts";
@@ -35,6 +38,8 @@ export interface AgentItemCardProps {
   readonly source: MessagingSource | undefined;
   /** The work it came from, when the source names one and has it. */
   readonly work?: WorkItem | undefined;
+  /** The sources' agents, so the card says who asks with their title; without them, the name alone. */
+  readonly agents?: readonly MessagingAgent[] | undefined;
   readonly now: () => Date;
   readonly answer: (answer: InboxAnswer) => Promise<AnswerResult>;
   /** Reads one of its files through the engine, only when the person asks to see it. */
@@ -71,6 +76,7 @@ export function AgentItemCard({
   item,
   source,
   work,
+  agents = [],
   now,
   answer,
   readAttachment,
@@ -110,6 +116,7 @@ export function AgentItemCard({
   return (
     <section aria-labelledby={titleId} className={cardClasses}>
       <div className={cardBodyClasses}>
+        <Asker from={item.from} agents={agents} />
         <CardHeader
           titleId={titleId}
           title={agentItemTitle(item)}
@@ -117,7 +124,7 @@ export function AgentItemCard({
           since={[label, since].filter((part) => part != null).join(" · ")}
         />
         {work === undefined ? null : <p className="text-small text-fg-muted">{workLine(work)}</p>}
-        <AgentMarkdown text={item.question} />
+        {questionIsTitle(item) ? null : <AgentMarkdown text={item.question} />}
         <AgentAttachments attachments={item.attachments} read={readAttachment} />
       </div>
       <div className="flex flex-col gap-3 border-t border-border p-4">
@@ -169,6 +176,23 @@ export function AgentItemCard({
         )}
       </div>
     </section>
+  );
+}
+
+/** Who asks, with their picture, over the title; nothing for an item you wrote yourself. */
+function Asker({
+  from,
+  agents,
+}: {
+  readonly from: MessagingAuthor;
+  readonly agents: readonly MessagingAgent[];
+}) {
+  if (from.kind === "me") return null;
+  return (
+    <p className="flex items-center gap-2 text-small text-fg-muted">
+      <Avatar name={from.name} />
+      {askerLine(from, agents)}
+    </p>
   );
 }
 

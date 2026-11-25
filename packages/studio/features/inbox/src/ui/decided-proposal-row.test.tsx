@@ -127,7 +127,7 @@ verifies("inbox.proposal-decided-row", () => {
     expect(first?.getAttribute("aria-current")).toBe("true");
     expect(first?.textContent).toContain("Run 01JD8Q proposes 3 changes to Support triage");
     expect(first?.textContent).toContain("Accepted 3 changes");
-    expect(first?.querySelector(".text-fg-muted")?.textContent).toBe(
+    expect(first?.querySelector(".text-fg-muted:not([aria-hidden])")?.textContent).toBe(
       "Run 01JD8Q proposes 3 changes to Support triage",
     );
     expect(second?.textContent).toContain("Run 01JD7A");

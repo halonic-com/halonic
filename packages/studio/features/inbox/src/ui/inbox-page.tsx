@@ -32,7 +32,7 @@ import {
   ProposalDecisionsService,
 } from "../api.ts";
 import type { Inbox } from "../inbox.ts";
-import { waitingCount } from "../inbox-count.ts";
+import { waits } from "../inbox-count.ts";
 import type { InboxItem } from "../inbox-items.ts";
 import type { InboxNotices } from "../notices/inbox-notices.ts";
 import { mergeNotices } from "../notices/merge-notices.ts";
@@ -44,7 +44,9 @@ import {
   itemPaneClass,
   ListHeader,
   listPaneClass,
+  needsYouCount,
   nextItem,
+  placeOf,
 } from "./inbox-page-parts.tsx";
 import { countDetail, inboxRow, lateCount } from "./inbox-row.tsx";
 import { failureReason, isSignedOut, loadFailed, StaleLine } from "./load-lines.tsx";
@@ -53,6 +55,7 @@ import { NothingOpen, nothingWaiting } from "./nothing-open.tsx";
 import { NoticesSection } from "./notices-section.tsx";
 import { OpenCard } from "./open-card.tsx";
 import { ProposalsElsewhere } from "./proposals-elsewhere.tsx";
+import { itemMark } from "./row-marks.tsx";
 import type { RunFactsOf } from "./run-facts.ts";
 import { type AgentItems, useAgentItems } from "./use-agent-items.tsx";
 import { useOpenItem } from "./use-open-item.ts";
@@ -257,6 +260,10 @@ export function InboxView({
   const itemPage = onePane && anyOpen;
   const requestSheetOpen = useRef(false);
   const itemPane = useRef<HTMLDivElement>(null);
+  const waitingOrder = [
+    ...state.items.filter(waits).map((item) => ({ key: item.key, items: 1 })),
+    ...agent.order,
+  ];
   const sentCard = useSentRequestCard({
     items: state.items,
     openItem,
@@ -283,7 +290,12 @@ export function InboxView({
     <div className="flex h-full min-h-0 w-full">
       <div data-pane="list" className={listPaneClass(onePane, itemPage)}>
         <ListHeader phone={phone} onePane={onePane} newRequest={request.newRequest} />
-        <StaleLine error={state.loaded ? state.error : undefined} words={words} phone={phone} />
+        <StaleLine
+          error={state.loaded ? state.error : undefined}
+          words={words}
+          phone={phone}
+          onRetry={() => inbox.refresh()}
+        />
         {agent.lines(now())}
         {project.chips}
         <div ref={list} className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
@@ -300,13 +312,12 @@ export function InboxView({
               heading={{
                 name: "Needs you",
                 headingRef: needsYouHeading,
-                ...countDetail(
-                  waitingCount(state.items) + agent.waiting,
-                  lateCount(state.items, now()),
-                ),
+                ...countDetail(needsYouCount(waitingOrder), lateCount(state.items, now())),
               }}
               rows={[
-                ...project.own(listed).map((item) => inboxRow(item, now(), runFacts)),
+                ...project
+                  .own(listed)
+                  .map((item) => ({ ...inboxRow(item, now(), runFacts), ...itemMark(item) })),
                 ...agent.rows(now(), project.filter),
               ]}
               onOpen={(key) => openRow(key, agent, listed, openItem)}
@@ -349,7 +360,13 @@ export function InboxView({
       {request.sheet}
       <div ref={itemPane} data-pane="item" className={itemPaneClass(onePane, anyOpen)}>
         <div className="flex w-full max-w-190 flex-col">
-          {itemPage ? <ItemPageBar open={open} items={state.items} close={close} /> : null}
+          {anyOpen ? (
+            <ItemPageBar
+              back={onePane}
+              place={placeOf(open?.key ?? agent.openKey, waitingOrder)}
+              close={close}
+            />
+          ) : null}
           {open === null ? (
             agent.card(
               now,

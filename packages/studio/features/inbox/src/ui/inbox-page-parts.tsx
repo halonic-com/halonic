@@ -49,29 +49,51 @@ export function itemPaneClass(onePane: boolean, itemOpen: boolean): string {
   return `${onePane && !itemOpen ? "hidden" : "flex"} min-w-0 flex-1 justify-center overflow-y-auto`;
 }
 
+/** A row that waits, in list order, with how many items it holds (an agents' bundle holds several). */
+export interface WaitingRow {
+  readonly key: string;
+  readonly items: number;
+}
+
+/** How many items wait for you: the heading's count and the "of 6" in the open item's place. */
+export function needsYouCount(order: readonly WaitingRow[]): number {
+  return order.reduce((sum, row) => sum + row.items, 0);
+}
+
 /**
- * The bar over the open item on a phone or in a narrow window, which is pushed like a page (HAL-11945 Q12): **Back to Inbox**
- * and, while the item waits, where it is among what waits ("1 of 4"). A decided or done item
- * isn't counted, so it shows no place, and nor does an agent's card (`open` is `null`).
+ * Where the open row is among what waits, "2 of 6", counted as the heading counts: every item,
+ * agents' cards included (`inbox.one-count`). `null` for a row that doesn't wait, such as a
+ * decided or done item. A bundle reads as the place of its first item.
+ */
+export function placeOf(key: string | undefined, order: readonly WaitingRow[]): string | null {
+  const index = order.findIndex((row) => row.key === key);
+  if (index === -1) return null;
+  return `${needsYouCount(order.slice(0, index)) + 1} of ${needsYouCount(order)}`;
+}
+
+/**
+ * The bar over the open item: with one pane at a time, which is pushed like a page (HAL-11945
+ * Q12), **Back to Inbox**; and, while the item waits, where it is among what waits ("2 of 6"), on
+ * the desktop too (design review HAL-18481, 7).
  */
 export function ItemPageBar({
-  open,
-  items,
+  back,
+  place,
   close,
 }: {
-  readonly open: InboxItem | null;
-  readonly items: readonly InboxItem[];
+  readonly back: boolean;
+  readonly place: string | null;
   readonly close: () => void;
 }) {
-  const index = open === null ? -1 : items.findIndex((item) => item.key === open.key);
+  if (!back && place === null) return null;
   return (
     <div className="flex items-center justify-between gap-3 px-2 pt-2">
-      <Button variant="ghost" size="touch" onClick={close}>
-        Back to Inbox
-      </Button>
-      {index === -1 ? null : (
-        <p className="pe-2 text-small text-fg-muted">{`${index + 1} of ${items.length}`}</p>
-      )}
+      {back ? (
+        <Button variant="ghost" size="touch" onClick={close}>
+          Back to Inbox
+        </Button>
+      ) : null}
+      {place === null ? null : <p className="ms-auto pe-2 text-small text-fg-muted">{place}</p>}
     </div>
   );
 }

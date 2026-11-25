@@ -418,8 +418,8 @@ verifies("inbox.page", () => {
       const { root, inbox } = await openPhone(fake.runs);
       fake.fail(new Error("fetch failed"));
       await act(() => inbox.refresh());
-      const line = root.querySelector('[data-pane="list"] [role="status"] p');
-      expect(line?.classList.contains("pt-4")).toBe(true);
+      const status = root.querySelector('[data-pane="list"] [role="status"]');
+      expect(status?.closest(".pt-4")).not.toBeNull();
     });
 
     it("has Next take the card's width and wrap its label as one run of text (HAL-13801 IN1, HAL-13830 IN2)", async () => {

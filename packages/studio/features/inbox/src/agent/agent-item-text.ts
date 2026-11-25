@@ -1,6 +1,7 @@
 import type {
   InboxItem as AgentItem,
   InboxAnswer,
+  MessagingAgent,
   MessagingAuthor,
   MessagingSource,
   WorkItem,
@@ -31,6 +32,29 @@ export function agentItemTitle(item: AgentItem): string {
   if (first.kind === "code") return markHiddenName(first.text);
   const inlines = first.kind === "list" ? (first.items[0] ?? []) : first.inlines;
   return markHiddenName(plainText(inlines).split("\n")[0] ?? "");
+}
+
+/**
+ * Who asks, over the card's title (design review HAL-18481, 7): "Chief · Chief of Staff asks" as
+ * Messenger names the agent, and "Chief asks" when the source gives no title.
+ */
+export function askerLine(
+  from: Exclude<MessagingAuthor, { kind: "me" }>,
+  agents: readonly MessagingAgent[],
+): string {
+  const agent = from.kind === "agent" ? agents.find((each) => each.id === from.agent) : undefined;
+  const title = agent?.title?.trim() ?? "";
+  const name = markHiddenName(from.name);
+  return title === "" ? `${name} asks` : `${name} · ${markHiddenName(title)} asks`;
+}
+
+/**
+ * Whether the question is no more than its title, one line in one block, so the card shows it
+ * once, as its title, and not again as its body.
+ */
+export function questionIsTitle(item: AgentItem): boolean {
+  const blocks = readMarkdown(item.question);
+  return blocks.length <= 1 && !item.question.trim().includes("\n");
 }
 
 function plainText(inlines: readonly MarkdownInline[]): string {

@@ -4,6 +4,7 @@ import type {
   AnswerResult,
   AttachmentRead,
   InboxAnswer,
+  MessagingAgent,
   MessagingId,
   MessagingSource,
   WorkItem,
@@ -14,6 +15,8 @@ export interface AgentInboxState {
   /** Whether a first read has ended, well or not. */
   readonly loaded: boolean;
   readonly sources: readonly MessagingSource[];
+  /** The sources' agents, so a card says who asks: "Chief · Chief of Staff asks". */
+  readonly agents: readonly MessagingAgent[];
   /** Every item, open and answered, newest first, so an open card still finds its item once answered. */
   readonly items: readonly AgentItem[];
   /** The sources' work, so each item can say which work it came from (`inbox.every-waiting-item`). */
@@ -25,6 +28,7 @@ export interface AgentInboxState {
 const notRead: AgentInboxState = {
   loaded: false,
   sources: [],
+  agents: [],
   items: [],
   work: [],
   error: undefined,
@@ -64,12 +68,14 @@ export class AgentInbox {
     this.reads += 1;
     const read = this.reads;
     try {
-      const [sources, items, work] = await Promise.all([
+      const [sources, agents, items, work] = await Promise.all([
         this.messaging.listSources(),
+        this.messaging.listAgents(),
         this.messaging.listInboxItems(),
         this.messaging.listWork(),
       ]);
-      if (read === this.reads) this.set({ loaded: true, sources, items, work, error: undefined });
+      if (read === this.reads)
+        this.set({ loaded: true, sources, agents, items, work, error: undefined });
     } catch (error) {
       if (read === this.reads) this.set({ ...this.state, loaded: true, error });
     }
