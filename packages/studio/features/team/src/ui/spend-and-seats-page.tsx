@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useId, useState } from "react";
 import type { SpendAndSeats, SpendAndSeatsState } from "../spend-and-seats.ts";
 import type { TeamDetails } from "../team-details.ts";
 import type { TeamClock } from "../team-format.ts";
@@ -11,9 +11,9 @@ import {
   type TeamPage,
 } from "./detail-pages.tsx";
 import type { ArrivalFocus } from "./keep-focus.ts";
-import { TeamLinks, type TeamLinksState } from "./money-tiles.tsx";
+import { LinkButton, TeamLinks, type TeamLinksState } from "./money-tiles.tsx";
 import { LoadingBody, PageFrame, TryAgain } from "./page-frame.tsx";
-import { NoSeatsLine, ReadBody, readFreshness } from "./read-screen.tsx";
+import { lastGoodRead, NoSeatsLine, ReadBody, readFreshness } from "./read-screen.tsx";
 
 /** The props of {@link SpendAndSeatsPage}. */
 export interface SpendAndSeatsPageProps {
@@ -105,6 +105,8 @@ function SpendAndSeatsScreen(props: {
   // Grows on each change a source reports and on Try again, so the page reads again.
   const [changed, setChanged] = useState(0);
   const readAgain = () => setChanged((count) => count + 1);
+  const links = useContext(TeamLinks);
+  const bannerId = useId();
 
   useEffect(() => spendAndSeats.watch(readAgain), [spendAndSeats]);
 
@@ -126,29 +128,49 @@ function SpendAndSeatsScreen(props: {
   }, [spendAndSeats, changed]);
 
   const clock = spendAndSeats.timeClock;
-  // One frame for every state, so the main and h1 stay put when a read lands.
-  if (shown.kind === "loading") {
-    return (
-      <PageFrame busy freshness={teamWords.loading} arrival={props.arrival}>
-        <LoadingBody />
-      </PageFrame>
-    );
-  }
-  const state = shown.kind === "read" ? shown.state : undefined;
+  const loading = shown.kind === "loading";
+  // One frame and one links provider for every state, so the main and h1 stay put when a read lands.
   return (
-    <PageFrame
-      freshness={state === undefined ? undefined : readFreshness(state, clock)}
-      arrival={props.arrival}
-    >
-      <ShownBody
-        shown={shown}
-        clock={clock}
-        onLink={onLink}
-        onTryAgain={readAgain}
-        pages={props.pages}
-      />
-    </PageFrame>
+    <TeamLinks.Provider value={linksWhile(shown, links, bannerId)}>
+      <PageFrame
+        busy={loading}
+        freshness={loading ? teamWords.loading : freshnessOf(shown, clock)}
+        action={
+          <LinkButton link="ai-seats" label={teamWords.openAiSeatsInPaperclip} onLink={onLink} />
+        }
+        arrival={props.arrival}
+      >
+        {shown.kind === "loading" ? (
+          <LoadingBody />
+        ) : (
+          <ShownBody
+            shown={shown}
+            clock={clock}
+            onLink={onLink}
+            onTryAgain={readAgain}
+            pages={props.pages}
+            bannerId={bannerId}
+          />
+        )}
+      </PageFrame>
+    </TeamLinks.Provider>
   );
+}
+
+/** The freshness slot once a read landed: "As of 13:00 · 2 min ago", or offline's words. */
+function freshnessOf(shown: Shown, clock: TeamClock): string | undefined {
+  if (shown.kind !== "read" || shown.state === undefined) return undefined;
+  return readFreshness(shown.state, clock, shown);
+}
+
+/**
+ * The link buttons' state: offline, every link button and row is off, the header's too, naming
+ * the banner as why.
+ */
+function linksWhile(shown: Shown, links: TeamLinksState, bannerId: string): TeamLinksState {
+  if (links !== "on" || shown.kind !== "read" || shown.state === undefined) return links;
+  const offline = lastGoodRead(shown.state, shown.failed, shown.readAt) !== undefined;
+  return offline ? { offBecause: bannerId } : links;
 }
 
 /** What the frame holds once loading is over: the read, or why there is none. */
@@ -158,6 +180,7 @@ function ShownBody(props: {
   onLink: (link: TeamLink) => void;
   onTryAgain: () => void;
   pages: Pages;
+  bannerId: string;
 }) {
   const { shown, onLink } = props;
   if (shown.kind === "failed") {
@@ -180,6 +203,7 @@ function ShownBody(props: {
       onLink={onLink}
       onTryAgain={props.onTryAgain}
       pages={props.pages}
+      bannerId={props.bannerId}
     />
   );
 }

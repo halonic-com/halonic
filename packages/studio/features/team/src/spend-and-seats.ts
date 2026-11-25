@@ -72,8 +72,11 @@ export class SpendAndSeats {
       month: ofSource(month)[0],
       seats: [...troubled, ...rest],
     };
-    // A signed-out seat's stamp says since when it is signed out, not how fresh the read is.
-    const readSeats = seats.filter((seat) => seat.state !== "signed-out");
+    // A signed-out seat's stamp says since when it is signed out, and a failed read's is its last
+    // good one; neither says how fresh the read is (Sofia's table 1.6: a row-only state).
+    const readSeats = seats.filter(
+      (seat) => seat.state !== "signed-out" && seat.failedRead === undefined,
+    );
     const answers: AsOf[] = [shown.today, shown.month, ...readSeats].flatMap((each) =>
       each === undefined ? [] : [each],
     );
@@ -90,7 +93,7 @@ export class SpendAndSeats {
 
   /**
    * The sidebar's signal for Spend and seats: the problems in Needs you,
-   * leaving out the quiet 80% ones (HAL-17510 flows 1.2), shown as "! 2".
+   * leaving out the quiet 80% ones (HAL-17510 flows 1.2), shown as "⚠ 2".
    */
   signal(): PlaceSignal {
     return {

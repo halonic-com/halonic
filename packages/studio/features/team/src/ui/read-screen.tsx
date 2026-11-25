@@ -1,14 +1,12 @@
 import { Callout } from "@halonicjs/studio-kit";
-import { useContext, useId } from "react";
 import { notReadAfterMs } from "../seat-problems.ts";
 import type { SpendAndSeatsState } from "../spend-and-seats.ts";
 import type { TeamDetails } from "../team-details.ts";
 import { formatTime, minutesSince, type TeamClock } from "../team-format.ts";
 import { type TeamLink, teamWords } from "../team-words.ts";
 import { AgentsBySpendSection, type TeamPage } from "./detail-pages.tsx";
-import { LinkButton, SpentTodayTile, TeamLinks, ThisMonthTile } from "./money-tiles.tsx";
+import { LinkButton, SpentTodayTile, ThisMonthTile } from "./money-tiles.tsx";
 import { NeedsYou } from "./needs-you.tsx";
-import { TryAgain } from "./page-frame.tsx";
 import { SeatList, SeatsHeading, SeatsTile } from "./seat-parts.tsx";
 
 /** The time of the oldest of these readings, compared as times, not as text. */
@@ -18,16 +16,36 @@ function oldestOf(times: readonly string[]): string | undefined {
 
 /** The oldest seat reading, and whether it is old enough to warn about. */
 function oldReadings(state: SpendAndSeatsState, clock: TeamClock) {
-  // A signed-out seat's stamp is when it signed out, not a reading's age.
-  const readSeats = state.seats.filter((seat) => seat.state !== "signed-out");
+  // A signed-out seat's stamp is when it signed out, not a reading's age. One seat's failed read
+  // shows in its own row only (Sofia's table 1.6): the page warns when all readings are old.
+  const readSeats = state.seats.filter(
+    (seat) => seat.state !== "signed-out" && seat.failedRead === undefined,
+  );
   const oldest = oldestOf(readSeats.map((seat) => seat.asOf));
   const seatsAreOld =
     oldest !== undefined && clock.now().getTime() - Date.parse(oldest) >= notReadAfterMs;
   return { oldest, seatsAreOld };
 }
 
-/** The frame's freshness slot for a read: "As of 13:00 · 2 min ago", with ⚠ when seats are old. */
-export function readFreshness(state: SpendAndSeatsState, clock: TeamClock): string | undefined {
+/** When the last good read landed, the screen being offline: the screen's offline banner's time. */
+export function lastGoodRead(state: SpendAndSeatsState, failed: boolean, readAt: string) {
+  // Offline when a read failed after a good one, or when the engine answered from its cache.
+  if (!failed && state.offlineAsOf === undefined) return undefined;
+  // The newest cached answer's time, else the screen's last read.
+  return state.offlineAsOf ?? readAt;
+}
+
+/**
+ * The frame's freshness slot for a read: "As of 13:00 · 2 min ago", with ⚠ when seats are old;
+ * offline, "As of 12:58 · offline" with the last good read's time (wording, Shared).
+ */
+export function readFreshness(
+  state: SpendAndSeatsState,
+  clock: TeamClock,
+  read: { failed: boolean; readAt: string },
+): string | undefined {
+  const lastGood = lastGoodRead(state, read.failed, read.readAt);
+  if (lastGood !== undefined) return teamWords.asOfOffline(formatTime(lastGood, clock));
   if (state.asOf === undefined) return undefined;
   const warn = oldReadings(state, clock).seatsAreOld ? "⚠ " : "";
   return `${warn}${teamWords.asOf(formatTime(state.asOf, clock), minutesSince(state.asOf, clock))}`;
@@ -42,6 +60,8 @@ export function ReadBody(props: {
   failed: boolean;
   /** When the last successful read landed: the offline banner's time. */
   readAt: string;
+  /** The offline banner's words' id, which the page's off link buttons name as their reason. */
+  bannerId: string;
   clock: TeamClock;
   onLink: (link: TeamLink) => void;
   onTryAgain: () => void;
@@ -50,26 +70,23 @@ export function ReadBody(props: {
 }) {
   const { state, failed, clock, onLink, pages } = props;
   const { oldest, seatsAreOld } = oldReadings(state, clock);
-  // Offline when a read failed after a good one, or when the engine answered from its cache.
-  const offline = failed || state.offlineAsOf !== undefined;
-  // The banner's time is the last good read: the newest cached answer's, else the screen's last read.
-  const lastGood = state.offlineAsOf ?? props.readAt;
-  const links = useContext(TeamLinks);
-  const bannerId = useId();
+  const lastGood = lastGoodRead(state, failed, props.readAt);
   return (
-    <TeamLinks.Provider value={offline && links === "on" ? { offBecause: bannerId } : links}>
-      {/* Always on the page, so the offline words are read out when a later read fails. */}
-      <Callout tone="warning" announce="polite">
-        {offline ? (
-          <span className="flex flex-col items-start gap-2">
-            {/* The off link buttons name these words as their reason. */}
-            <span id={bannerId}>{teamWords.offline(formatTime(lastGood, clock))}</span>
-            <TryAgain onPress={props.onTryAgain} />
-          </span>
-        ) : null}
+    <>
+      {/* Always on the page, so the offline words are read out when a later read fails. The
+          kit draws Try again only while the banner has words. */}
+      <Callout
+        tone="attention"
+        announce="polite"
+        action={{ label: teamWords.tryAgain, onClick: props.onTryAgain }}
+      >
+        {/* The off link buttons name these words as their reason. */}
+        {lastGood === undefined ? null : (
+          <span id={props.bannerId}>{teamWords.offline(formatTime(lastGood, clock))}</span>
+        )}
       </Callout>
       {seatsAreOld && oldest !== undefined ? (
-        <Callout tone="warning">
+        <Callout tone="attention">
           <span className="flex flex-col items-start gap-2">
             <span>{teamWords.oldReadings(minutesSince(oldest, clock))}</span>
             <LinkButton link="ai-seats" onLink={onLink} />
@@ -87,7 +104,7 @@ export function ReadBody(props: {
           </>
         ) : (
           <div className="min-w-0 flex-2">
-            <Callout tone="warning">
+            <Callout tone="attention">
               <span className="flex flex-col items-start gap-2">
                 <span>{teamWords.cantReadSpend}</span>
                 <LinkButton link="connect-again" onLink={onLink} />
@@ -102,7 +119,7 @@ export function ReadBody(props: {
         <SeatsBody state={state} clock={clock} onLink={onLink} pages={pages} />
       </section>
       {state.canReadSpend ? <AgentsBySpendSlot pages={pages} /> : null}
-    </TeamLinks.Provider>
+    </>
   );
 }
 

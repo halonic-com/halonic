@@ -15,14 +15,17 @@ import { UsageMeter } from "./usage-meter.tsx";
 const dayMs = 24 * 60 * 60 * 1000;
 
 /**
- * A tile of the Spend and seats screen: a Card with its title as the caption, then its lines. The
- * Card fills the tile, so every tile in a row ends at the same height (s01).
+ * A tile of the Spend and seats screen: a Card with its title as a plain small caption, then its
+ * lines (s01). The Card fills the tile, so every tile in a row ends at the same height.
  */
 export function Tile({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="flex min-w-0 flex-1 *:min-w-0 *:flex-1">
-      <Card label={title} headingLevel={2}>
-        <div className="flex flex-col gap-1">{children}</div>
+      <Card>
+        <section className="flex flex-col gap-1" aria-label={title}>
+          <h2 className="text-small text-fg-muted">{title}</h2>
+          {children}
+        </section>
       </Card>
     </div>
   );
@@ -43,9 +46,18 @@ export function SmallLine({ children }: { children: ReactNode }) {
   return <p className="text-small text-fg-muted">{children}</p>;
 }
 
-/** A line that warns (amber) or says something stopped (red), with the tone's icon before it. */
-export function ToneLine({ tone, children }: { tone: "warning" | "danger"; children: ReactNode }) {
-  const colour = tone === "danger" ? "text-danger" : "text-warning";
+/**
+ * A line that asks for a look (amber, the kit's `attention`) or says something stopped (red), with
+ * the tone's icon before it.
+ */
+export function ToneLine({
+  tone,
+  children,
+}: {
+  tone: "attention" | "danger";
+  children: ReactNode;
+}) {
+  const colour = tone === "danger" ? "text-danger" : "text-attention";
   return (
     <p className={`flex items-start gap-1.5 text-small ${colour}`}>
       <span aria-hidden="true" className="mt-0.5 inline-grid size-icon-sm shrink-0 *:size-full">
@@ -67,8 +79,16 @@ export type TeamLinksState = "on" | "none" | { readonly offBecause: string };
 /** The link buttons' state for everything under it; `on` unless a screen says otherwise. */
 export const TeamLinks = createContext<TeamLinksState>("on");
 
-/** A button that opens a page outside the app, or the connection flow; ↗ marks a page outside. */
-export function LinkButton({ link, onLink }: { link: TeamLink; onLink: (link: TeamLink) => void }) {
+/**
+ * A button that opens a page outside the app, or the connection flow; ↗ marks a page outside.
+ * `label` names it where the link's usual name isn't the one, such as the page header's.
+ */
+export function LinkButton(props: {
+  link: TeamLink;
+  onLink: (link: TeamLink) => void;
+  label?: string;
+}) {
+  const { link, onLink } = props;
   const state = useContext(TeamLinks);
   if (state === "none") return null;
   const leaves = link !== "connect-again";
@@ -80,7 +100,7 @@ export function LinkButton({ link, onLink }: { link: TeamLink; onLink: (link: Te
       unavailable={state === "on" ? undefined : { reason: state.offBecause }}
       onClick={() => onLink(link)}
     >
-      {teamWords.links[link]}
+      {props.label ?? teamWords.links[link]}
     </Button>
   );
 }
@@ -98,7 +118,7 @@ export function SpentTodayTile({ today }: { today: SpendSummary | undefined }) {
     <Tile title={teamWords.spentToday}>
       <Amount value={unpriced ? teamWords.atLeast(money) : money} />
       {unpriced ? (
-        <ToneLine tone="warning">{teamWords.notPriced(today.unpricedRuns)}</ToneLine>
+        <ToneLine tone="attention">{teamWords.notPriced(today.unpricedRuns)}</ToneLine>
       ) : null}
       <SmallLine>{teamWords.tokensToday(formatTokens(allTokens(today.tokens)))}</SmallLine>
       {today.unknownSeatRuns === undefined || today.unknownSeatRuns === 0 ? null : (
@@ -154,7 +174,7 @@ export function ThisMonthTile(props: {
         {teamWords.left(left)} · {teamWords.daysToGo(daysInMonth - day)}
       </SmallLine>
       {pace.passes ? (
-        <ToneLine tone="warning">{pace.words}</ToneLine>
+        <ToneLine tone="attention">{pace.words}</ToneLine>
       ) : (
         <SmallLine>{pace.words}</SmallLine>
       )}

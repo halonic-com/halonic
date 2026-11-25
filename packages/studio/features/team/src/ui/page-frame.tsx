@@ -4,14 +4,15 @@ import { teamWords } from "../team-words.ts";
 import { type ArrivalFocus, useArrivalFocus, useKeepFocus } from "./keep-focus.ts";
 
 /**
- * The page's frame in every state: its padding, the title in the page-title style, and the
- * freshness slot on the right ("As of 13:00 · 2 min ago", or "Loading…"). On a phone the slot
- * wraps under the title. The screen keeps one frame mounted across loading, failed and read, so
+ * The page's frame in every state: its padding, the title in the page-title style, the freshness
+ * slot ("As of 13:00 · 2 min ago", or "Loading…") and the header's action on the right (s01, s09:
+ * "Open AI seats in Paperclip ↗"). On a phone they wrap under the title. The screen keeps one frame mounted across loading, failed and read, so
  * the main and h1 stay the same elements, and focus lands on the h1 when what had it goes away.
  * `arrival` says where focus goes when the page replaces another one.
  */
 export function PageFrame(props: {
   freshness?: ReactNode;
+  action?: ReactNode;
   busy?: boolean;
   arrival?: ArrivalFocus | undefined;
   children: ReactNode;
@@ -30,9 +31,12 @@ export function PageFrame(props: {
         <h1 ref={heading} tabIndex={-1} className="text-title">
           {teamWords.title}
         </h1>
-        {props.freshness === undefined ? null : (
-          <p className="text-small text-fg-muted">{props.freshness}</p>
-        )}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          {props.freshness === undefined ? null : (
+            <p className="text-small text-fg-muted">{props.freshness}</p>
+          )}
+          {props.action}
+        </div>
       </header>
       {props.children}
     </main>

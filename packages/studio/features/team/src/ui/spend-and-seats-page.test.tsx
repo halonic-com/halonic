@@ -145,7 +145,9 @@ verifies("team.spend-and-seats", () => {
       fake.setNow("2026-11-24T12:50:00.000Z");
       fake.team.addSeat(fake.source, { label: "Seat A" });
       const page = await open(fake);
-      expect(text(page)).toContain("? Not read · last good 12:20");
+      expect(text(page)).toContain("Not read");
+      expect(text(page)).not.toContain("? Not read");
+      expect(text(page)).toContain("last good 12:20");
     });
 
     it("shows a signed-out seat in its row and under Needs you", async () => {
@@ -155,7 +157,8 @@ verifies("team.spend-and-seats", () => {
       fake.setNow("2026-11-24T09:50:00.000Z");
       const page = await open(fake);
       expect(text(page)).toContain("Signed out · since 09:40");
-      expect(text(page)).not.toContain("last read");
+      // The chip says since when; the time under the week's greyed bar says "last read" (S1, S6).
+      expect(text(page)).not.toContain("Signed out · since 09:40 · last read");
       expect(text(page)).toContain("Seat D is signed out");
       expect(text(page)).toContain("Since 09:40 · 2 agents on it");
       // Signed out stops the seat's agents, as full does: the chip and the Needs you icon are both red.
@@ -412,7 +415,10 @@ verifies("team.spend-and-seats", () => {
       const row = [...page.querySelectorAll("li .grid")].find((each) =>
         each.textContent?.includes("Seat C"),
       );
-      expect(row?.textContent).toContain("? Not read · rate-limited · last good 12:20");
+      // One symbol, the chip's ⓘ; "last good 12:20" sits under the greyed bar (S6).
+      expect(row?.textContent).toContain("Not read · rate-limited");
+      expect(row?.textContent).not.toContain("?");
+      expect(row?.textContent).toContain("last good 12:20");
       expect(row?.textContent).toContain("61%");
       expect(row?.className).toContain("text-fg-muted");
     });
