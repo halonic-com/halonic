@@ -1,7 +1,9 @@
+import { AGENT_NAME_PATTERN, ROUTING_ROLES } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
 import { type RoutedPull, reviewerFor, reviewerRoleFor } from "./reviewer-paths.ts";
-import { areaOwnerFor, personFor, routingOf } from "./routing.ts";
+import { agentNamePattern, areaOwnerFor, personFor, routingRoles } from "./routing.ts";
+import { routingOf } from "./routing-load.ts";
 
 const commit = "0123456789abcdef0123456789abcdef01234567";
 
@@ -112,6 +114,11 @@ verifies("paperclip.reviewer-routing", () => {
       expect(reviewerFor(cases[0]?.[0] as RoutedPull, unchecked)).toBe("liam");
       expect(areaOwnerFor("docs", "Maya", unchecked)).toBe("liam");
     });
+  });
+
+  test("knows the same roles and names as the snapshot loader", () => {
+    expect(routingRoles).toEqual(ROUTING_ROLES);
+    expect(agentNamePattern.source).toBe(AGENT_NAME_PATTERN.source);
   });
 
   describe("areaOwnerFor", () => {

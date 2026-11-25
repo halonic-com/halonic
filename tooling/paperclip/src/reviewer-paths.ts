@@ -22,6 +22,7 @@ export const liamFiles: readonly string[] = [
   "tooling/paperclip/requirements/reviewer-paths.md",
   // Who covers each role: the routing is a trust root (HAL-17982).
   "tooling/paperclip/src/routing.ts",
+  "tooling/paperclip/src/routing-load.ts",
   "tooling/paperclip/src/routing.test.ts",
   "tooling/paperclip/requirements/reviewer-routing.md",
   "packages/core/format/src/snapshot/routing.ts",
