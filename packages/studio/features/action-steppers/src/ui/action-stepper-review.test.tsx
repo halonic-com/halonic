@@ -68,6 +68,15 @@ verifies("action-steppers.review", () => {
       expect(document.activeElement).toBe(root.querySelector("h2"));
     });
 
+    it("leaves focus where it is when it opens with focusOnOpen off, as a later card in a bundle", () => {
+      const before = document.activeElement;
+      const root = render(
+        <ActionStepper view={routineRequest()} actions={recordingActions()} focusOnOpen={false} />,
+      );
+      expect(document.activeElement).not.toBe(root.querySelector("h2"));
+      expect(document.activeElement).toBe(before);
+    });
+
     it("lists each step in plain words with its risk", () => {
       const { root } = show(routineRequest());
       const step = section(root, "Steps")?.querySelectorAll(":scope > ol > li")[1];

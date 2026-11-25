@@ -70,7 +70,7 @@ function ActionRun({ reviewed, card, catalog, policy, steps }: ActionRunProps) {
         onRetry={failed ? run.retry : null}
         detail={failed ? failureDetailOf(run.failure) : null}
       />
-      <ActionStepper view={run.view} actions={run.actions} />
+      <ActionStepper view={run.view} actions={run.actions} focusOnOpen={card.focusOnOpen} />
     </div>
   );
 }
