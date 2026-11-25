@@ -108,6 +108,7 @@ export function MessengerPage({ messenger, onConnect }: MessengerPageProps) {
             changed={changed}
             onConnect={onConnect}
             onLeft={left}
+            onChanged={() => setChanged((count) => count + 1)}
           />
         </main>
       )}
@@ -123,6 +124,7 @@ function Panel({
   changed,
   onConnect,
   onLeft,
+  onChanged,
 }: {
   readonly messenger: Messenger;
   readonly connected: boolean | undefined;
@@ -130,6 +132,7 @@ function Panel({
   readonly changed: number;
   readonly onConnect: (() => void) | undefined;
   readonly onLeft: () => void;
+  readonly onChanged: () => void;
 }) {
   if (connected === false) return <NoConnections onConnect={onConnect} />;
   if (open === undefined) {
@@ -142,6 +145,7 @@ function Panel({
       row={open}
       changed={changed}
       onLeft={onLeft}
+      onChanged={onChanged}
     />
   );
 }

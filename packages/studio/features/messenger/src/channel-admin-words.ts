@@ -2,8 +2,8 @@ import type { MessagingRefusal } from "@halonicjs/ports";
 
 /**
  * The words for starting, browsing, joining and leaving channels and changing their members. Each
- * is a row of HAL-17514's `wording` table (flows G and H), approved with the phase 2 card on HAL-17544; the "adding shows
- * history" notice is Noah's on HAL-18165.
+ * is a row of HAL-17514's `wording` table (flows G and H), approved with the phase 2 card on
+ * HAL-17544; the "adding shows history" notice is Noah's on HAL-18165.
  */
 export const channelAdminWords = {
   menu: {
@@ -22,6 +22,8 @@ export const channelAdminWords = {
     busy: "Creating…",
     oneSource: (source: string) => `Agents from ${source} only. A channel stays in one place.`,
     tooFew: "Pick at least 2 agents.",
+    nameNeeded: "Give the channel a name.",
+    unread: (reason: string) => `Couldn't read the agents: ${reason}.`,
     sourceTooSmall: (source: string, count: number) =>
       `A channel needs at least 2 agents. ${source} has ${count}.`,
     nameTaken: (name: string) => `There's already a channel called ${name}.`,
@@ -34,6 +36,7 @@ export const channelAdminWords = {
     subtitle: (source: string) => `Channels in ${source} you aren't in.`,
     empty: (source: string) => `No other channels in ${source}.`,
     join: "Join",
+    unread: (reason: string) => `Couldn't read the channels: ${reason}.`,
     joinFailed: (channel: string, reason: string) => `Couldn't join ${channel}: ${reason}.`,
   },
   leave: {

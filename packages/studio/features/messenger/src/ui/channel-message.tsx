@@ -1,5 +1,5 @@
 import type { Message, MessagingId } from "@halonicjs/ports";
-import { agentName, leadOf, workLines } from "../channel.ts";
+import { agentName, leadOf, memberName, workLines } from "../channel.ts";
 import { channelWords } from "../channel-words.ts";
 import type { ConversationRow } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
@@ -13,12 +13,7 @@ export function authorOf(message: Message, row: ConversationRow): string {
   const { author } = message;
   if (author.kind === "me") return messengerWords.you;
   if (author.kind === "person") return author.name;
-  const name = agentName(row, author.agent);
-  if (name !== undefined) return name;
-  // With the source itself gone there is no label to name, so the line says only that.
-  return row.source === undefined
-    ? channelWords.authorGoneNoSource
-    : channelWords.authorGone(row.source.label);
+  return memberName(row, author.agent);
 }
 
 /** Above the person's message in a channel: who it went to, "To Elena and Liam". */

@@ -1,6 +1,7 @@
 import type { MessagingAgent, MessagingId } from "@halonicjs/ports";
 import { Button, Dialog, Field, Menu, Select } from "@halonicjs/studio-kit";
 import { useId, useState } from "react";
+import { memberName } from "../channel.ts";
 import {
   addable,
   canAdd,
@@ -12,7 +13,6 @@ import {
   withoutAgent,
 } from "../channel-admin.ts";
 import { channelAdminWords } from "../channel-admin-words.ts";
-import { channelWords } from "../channel-words.ts";
 import type { ConversationRow, Messenger } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import { type Pending, useMembers } from "./use-members.ts";
@@ -23,6 +23,8 @@ const words = channelAdminWords.members;
 export interface MembersPanelProps {
   readonly messenger: Messenger;
   readonly row: ConversationRow;
+  /** A change went through: the page reads the channel again. */
+  readonly onChanged: () => void;
 }
 
 /**
@@ -32,13 +34,14 @@ export interface MembersPanelProps {
  * waits for **Add …** (Julian's M5). Removing the lead asks for a new lead first. A channel keeps 2
  * to 8 agents, so Remove and Add say why they can't be used outside that.
  */
-export function MembersPanel({ messenger, row }: MembersPanelProps) {
+export function MembersPanel({ messenger, row, onChanged }: MembersPanelProps) {
   const tooFewId = useId();
   const members = membersOf(row);
   const source = row.source?.label ?? "";
   const { pending, failure, busy, change, confirm, cancel, add, remove } = useMembers(
     messenger,
     row,
+    onChanged,
   );
 
   return (
@@ -98,7 +101,7 @@ function MemberRow({
 }) {
   const agent = row.sourceAgents.find((each) => each.id === member);
   const isLead = member === row.conversation.agent;
-  const name = agent?.name ?? channelWords.authorGone(row.source?.label ?? "");
+  const name = memberName(row, member);
   return (
     <li data-member={member} className="flex flex-col gap-1">
       <span className="text-body">
@@ -182,6 +185,7 @@ function PendingDialog({
   readonly onConfirm: (membership: Membership) => void;
   readonly onCancel: () => void;
 }) {
+  const lineId = useId();
   const others = row.agents.filter((agent) => agent.id !== row.conversation.agent);
   const [newLead, setNewLead] = useState<MessagingId>(others[0]?.id ?? "");
   const shared = {
@@ -215,10 +219,14 @@ function PendingDialog({
         label: removeLead.confirm(pending.lead),
         variant: "danger",
         busyLabel: words.busy,
+        // With no other member the source lists, there is no one to make the lead.
+        ...(others.length === 0 ? { unavailable: { reason: lineId } } : {}),
       }}
       onConfirm={() => onConfirm(withoutAgent(row, row.conversation.agent, newLead))}
     >
-      <p className="text-body">{removeLead.line(pending.lead)}</p>
+      <p id={lineId} className="text-body">
+        {removeLead.line(pending.lead)}
+      </p>
       <Field label={removeLead.newLead}>
         <Select
           options={others.map((agent) => ({ value: agent.id, label: agent.name }))}

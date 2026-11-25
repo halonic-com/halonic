@@ -19,7 +19,7 @@ const words = channelAdminWords.create;
  * New channel (flow G, render k09b): a name, 2 to 8 agents of one source, and the lead who answers
  * when the person names nobody. **Create channel** stays off, with a line that says why, until the
  * channel can be made (requirement `messenger.channel-create`). The first agent picked fixes the
- * source; agents of other sources can't be picked then.
+ * source; agents of other sources can't be picked then. With one source, it is fixed from the start.
  */
 export function NewChannelDialog({ messenger, onCancel, onCreated }: NewChannelDialogProps) {
   const reasonId = useId();
@@ -29,7 +29,7 @@ export function NewChannelDialog({ messenger, onCancel, onCreated }: NewChannelD
   const [lead, setLead] = useState<MessagingId | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | undefined>(undefined);
-  const { sources, from, taken } = useSources(messenger, picked);
+  const { sources, from, taken, unread } = useSources(messenger, picked);
 
   const check =
     from.source === undefined
@@ -43,8 +43,6 @@ export function NewChannelDialog({ messenger, onCancel, onCreated }: NewChannelD
 
   const submit = async () => {
     if (check.blocked !== undefined || leadNow === undefined || from.source === undefined) return;
-    // The name field is required, so the browser asks for a name before the form submits.
-    if (name.trim() === "") return;
     setBusy(true);
     setFailure(undefined);
     const result = await messenger.channels.start(name.trim(), picked, leadNow);
@@ -75,6 +73,11 @@ export function NewChannelDialog({ messenger, onCancel, onCreated }: NewChannelD
     >
       <div className="flex flex-col gap-3">
         <p className="text-small text-fg-muted">{words.subtitle}</p>
+        {unread === undefined ? null : (
+          <p role="alert" className="text-small text-danger">
+            {unread}
+          </p>
+        )}
         <Field label={words.name} error={check.nameTaken ?? null} required>
           <Input value={name} onChange={(event) => setName(event.target.value)} />
         </Field>
@@ -137,7 +140,7 @@ function AgentPicker({
   return (
     <fieldset className="flex flex-col gap-1">
       <legend className="text-body-strong">{words.agents}</legend>
-      {sources.length > 1 && from.source !== undefined ? (
+      {sources.length > 1 && picked.length > 0 && from.source !== undefined ? (
         <p id={sourceLineId} className="text-small text-fg-muted">
           {words.oneSource(from.source.label)}
         </p>
@@ -145,7 +148,8 @@ function AgentPicker({
       {sources.flatMap((each) =>
         each.agents.map((agent) => {
           const on = picked.includes(agent.id);
-          const otherSource = each.source.id !== from.source?.id;
+          // Before the first pick no source is fixed, so every source's agents can be picked.
+          const otherSource = from.source !== undefined && each.source.id !== from.source.id;
           const closed = !on && (full || otherSource);
           return (
             <Checkbox
@@ -164,25 +168,28 @@ function AgentPicker({
 }
 
 /**
- * The sources and their agents, the one the first pick fixes (else the first source), and the
- * names of that source's channels.
+ * The sources and their agents, the source the first pick fixes (the only one, with one source;
+ * none before a pick, with several), the names of that source's channels, and why a read failed.
  */
 function useSources(messenger: Messenger, picked: readonly MessagingId[]) {
   const [sources, setSources] = useState<readonly SourceAgents[]>([]);
   const [taken, setTaken] = useState<readonly string[]>([]);
+  const [unread, setUnread] = useState<string | undefined>(undefined);
   useEffect(() => {
     messenger.channels.sources().then(setSources, (error: unknown) => {
       console.error("New channel couldn't read the sources:", error);
+      setUnread(words.unread(channelAdminWords.noAnswer));
     });
   }, [messenger]);
-  const from: Partial<SourceAgents> =
-    sources.find((each) => each.agents.some((agent) => agent.id === picked[0])) ?? sources[0] ?? {};
+  const pickedFrom = sources.find((each) => each.agents.some((agent) => agent.id === picked[0]));
+  const from: Partial<SourceAgents> = pickedFrom ?? (sources.length === 1 ? sources[0] : {}) ?? {};
   const sourceId = from.source?.id;
   useEffect(() => {
     if (sourceId === undefined) return;
     messenger.channels.takenNames(sourceId).then(setTaken, (error: unknown) => {
       console.error("New channel couldn't read the channels' names:", error);
+      setUnread(channelAdminWords.browse.unread(channelAdminWords.noAnswer));
     });
   }, [messenger, sourceId]);
-  return { sources, from, taken };
+  return { sources, from, taken, unread };
 }

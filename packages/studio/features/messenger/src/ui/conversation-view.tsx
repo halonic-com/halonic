@@ -19,6 +19,8 @@ export interface ConversationViewProps {
   readonly changed: number;
   /** The person left the channel; the page closes it. */
   readonly onLeft?: () => void;
+  /** The channel's members changed; the page reads the list again. */
+  readonly onChanged?: () => void;
 }
 
 /**
@@ -35,7 +37,13 @@ export interface ConversationViewProps {
  * search or on opening the chat), the option that answered a card, and that no message matches the
  * search (HAL-18074 MS1, MS2 and MS4).
  */
-export function ConversationView({ messenger, row, changed, onLeft }: ConversationViewProps) {
+export function ConversationView({
+  messenger,
+  row,
+  changed,
+  onLeft,
+  onChanged,
+}: ConversationViewProps) {
   const [search, setSearch] = useState("");
   // What the chat's status region reads out: a new message, or the option that answered a card.
   const [said, setSaid] = useState("");
@@ -91,7 +99,13 @@ export function ConversationView({ messenger, row, changed, onLeft }: Conversati
             afterAnswer={focusAfterAnswer}
           />
         </Transcript>
-        {membersOpen ? <MembersPanel messenger={messenger} row={row} /> : null}
+        {membersOpen ? (
+          <MembersPanel
+            messenger={messenger}
+            row={row}
+            onChanged={onChanged ?? (() => undefined)}
+          />
+        ) : null}
       </div>
       <ChatBox messenger={messenger} row={row} onSent={read} />
     </section>
