@@ -12,13 +12,13 @@ export {
   type RequestClosed,
   type StepSender,
 } from "./action-steps.ts";
-export { type AgentActivity, AgentActivityService } from "./agent-activity.ts";
 export {
   type ActiveAccount,
   ActiveAccountService,
   chooseSource,
   HostActiveAccount,
 } from "./active-account.ts";
+export { type AgentActivity, AgentActivityService } from "./agent-activity.ts";
 export {
   type AgentConnection,
   type AgentConnections,
