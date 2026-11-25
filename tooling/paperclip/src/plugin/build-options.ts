@@ -1,5 +1,7 @@
+import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import type { BuildOptions } from "esbuild";
+import { rulesHashPlaceholder } from "../merge-control/decide-file.ts";
 import { pluginVersion } from "./version.ts";
 
 /**
@@ -23,9 +25,9 @@ export const workerBuildOptions = {
   },
 } satisfies BuildOptions;
 
-/** The merge rules file's name for a plugin version (HAL-18337). */
-export function decideFileName(version: string): string {
-  return `merge-control-decide-${version}.js`;
+/** The merge rules file's name for a plugin version and the bundle's hash (HAL-18337). */
+export function decideFileName(version: string, hash: string): string {
+  return `merge-control-decide-${version}-${hash}.js`;
 }
 
 /**
@@ -41,5 +43,21 @@ export const decideFileBuildOptions = {
   format: "esm",
   target: "es2022",
   mainFields: ["module", "main"],
-  outfile: decideFileName(pluginVersion),
+  write: false,
 } satisfies BuildOptions;
+
+/**
+ * The rules file from the bundle's text: the first 8 hex digits of the
+ * SHA-256 of that text name the file and replace the placeholder in
+ * `rulesVersion`, so the same rules always get the same name.
+ */
+export function rulesFile(bundle: string): { name: string; text: string; hash: string } {
+  const parts = bundle.split(rulesHashPlaceholder);
+  if (parts.length !== 2) {
+    throw new Error(
+      `the rules bundle holds the hash placeholder ${parts.length - 1} times, expected once`,
+    );
+  }
+  const hash = createHash("sha256").update(bundle).digest("hex").slice(0, 8);
+  return { name: decideFileName(pluginVersion, hash), text: parts.join(hash), hash };
+}

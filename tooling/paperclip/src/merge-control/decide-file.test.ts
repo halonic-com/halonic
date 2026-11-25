@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 import { verifies } from "@halonicjs/testing-spec";
 import { build } from "esbuild";
 import { expect, test } from "vitest";
-import { decideFileBuildOptions, decideFileName } from "../plugin/build-options.ts";
+import { decideFileBuildOptions, decideFileName, rulesFile } from "../plugin/build-options.ts";
 import { manifest } from "../plugin/manifest.ts";
 import { decide } from "./decide.ts";
 import { type DecideFileInput, decidePass } from "./decide-file.ts";
@@ -21,9 +21,9 @@ import {
 } from "./merge-control.test-helper.ts";
 import { emptyMergeState } from "./state.ts";
 
-/** The rules file as `build:plugin` writes it, as text. */
+/** The rules bundle before `build:plugin` names it, as text. */
 async function bundled(): Promise<string> {
-  const result = await build({ ...decideFileBuildOptions, write: false, logLevel: "silent" });
+  const result = await build({ ...decideFileBuildOptions, logLevel: "silent" });
   return result.outputFiles[0]?.text ?? "";
 }
 
@@ -71,17 +71,19 @@ verifies("paperclip.merge-control-decide-file", () => {
     ).rejects.toThrow(/node:fs/);
   });
 
-  test("the loaded file answers as decide does, named for the plugin version", async () => {
-    expect(decideFileBuildOptions.outfile).toBe(`merge-control-decide-${manifest.version}.js`);
-    expect(decideFileName("0.11.0")).toBe("merge-control-decide-0.11.0.js");
+  test("the loaded file answers as decide does, named for the plugin version and its own hash", async () => {
+    const rules = rulesFile(await bundled());
+    expect(rules.hash).toMatch(/^[0-9a-f]{8}$/);
+    expect(rules.name).toBe(`merge-control-decide-${manifest.version}-${rules.hash}.js`);
+    expect(decideFileName("0.11.0", "0123abcd")).toBe("merge-control-decide-0.11.0-0123abcd.js");
     const folder = await mkdtemp(join(tmpdir(), "merge-rules-"));
     try {
-      const file = join(folder, decideFileBuildOptions.outfile);
-      await writeFile(file, await bundled());
+      const file = join(folder, rules.name);
+      await writeFile(file, rules.text);
       const loaded: { decidePass: typeof decidePass } = await import(pathToFileURL(file).href);
       const answer = loaded.decidePass(input());
       const direct = decide(input().snapshot, input().state ?? emptyMergeState, testSettings, now);
-      expect(answer.rules).toBe(`halonic.agent-tools@${manifest.version}`);
+      expect(answer.rules).toBe(`halonic.agent-tools@${manifest.version}+${rules.hash}`);
       expect(answer.format).toBe(1);
       expect(
         JSON.parse(JSON.stringify({ ...answer, rules: undefined, format: undefined })),
@@ -93,6 +95,13 @@ verifies("paperclip.merge-control-decide-file", () => {
     } finally {
       await rm(folder, { recursive: true, force: true });
     }
+  });
+
+  test("the same rules get the same name, and other rules another", async () => {
+    const text = await bundled();
+    expect(rulesFile(text).name).toBe(rulesFile(await bundled()).name);
+    expect(rulesFile(`${text}\n// a rule fix`).hash).not.toBe(rulesFile(text).hash);
+    expect(() => rulesFile("no placeholder")).toThrow(/placeholder 0 times/);
   });
 
   test("a first pass starts from the empty state, and the board's labeller comes only from the input", () => {
@@ -130,6 +139,17 @@ verifies("paperclip.merge-control-decide-file", () => {
       "a setting named like an object's own key",
       { settings: { toString: [] } },
       /unknown setting toString/,
+    ],
+    ["a number setting given as text", { settings: { fillTarget: "15" } }, /wrong type fillTarget/],
+    [
+      "a list setting holding something other than logins",
+      { settings: { fastTrackLabellers: ["halonic-dev", 7] } },
+      /wrong type fastTrackLabellers/,
+    ],
+    [
+      "a text setting given as a list",
+      { settings: { owner: ["halonic-com"] } },
+      /wrong type owner/,
     ],
   ])("refuses %s, so the Merger falls back to its own rules", (_case, change, error) => {
     expect(() => decidePass({ ...input(), ...change } as DecideFileInput)).toThrow(error);
