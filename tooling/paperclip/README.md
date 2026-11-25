@@ -1107,7 +1107,7 @@ and on each pass calls
 ```js
 const { decidePass } = await import("./merge-control-decide-0.10.0-8c09f745.js");
 const answer = decidePass({ snapshot, state, settings: { fastTrackLabellers }, now });
-// answer: { actions, state, log, rules: "halonic.agent-tools@0.10.0+8c09f745", format: 1 }
+// answer: { actions, state, log, rules: "halonic.agent-tools@0.10.0+8c09f745", format: 2 }
 ```
 
 with the snapshot as `src/merge-control/snapshot.ts` describes it, the state
@@ -1116,7 +1116,10 @@ differ from `defaultSettings`, and the time as an ISO string. It carries out
 `actions` and logs `rules`, so its log says which rules decided. A bad time,
 an unknown setting or one of the wrong type, another state version or a
 snapshot missing a list throws; the Merger then falls back to its own rules
-for that pass. Older files can stay beside the new one, and a rule fix
+for that pass. A state saved by older rules gets the fields added since
+from the empty state. `format` 2 (HAL-18470) adds the `reopen` action: a
+Merger that knows only format 1 should fall back to its own rules for an answer
+of another format. Older files can stay beside the new one, and a rule fix
 reaches the Merger by copying in the next one.
 
 ## Reviewer path list

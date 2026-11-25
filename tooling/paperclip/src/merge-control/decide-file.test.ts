@@ -84,7 +84,7 @@ verifies("paperclip.merge-control-decide-file", () => {
       const answer = loaded.decidePass(input());
       const direct = decide(input().snapshot, input().state ?? emptyMergeState, testSettings, now);
       expect(answer.rules).toBe(`halonic.agent-tools@${manifest.version}+${rules.hash}`);
-      expect(answer.format).toBe(1);
+      expect(answer.format).toBe(2);
       expect(
         JSON.parse(JSON.stringify({ ...answer, rules: undefined, format: undefined })),
       ).toEqual(JSON.parse(JSON.stringify(direct)));
@@ -116,6 +116,14 @@ verifies("paperclip.merge-control-decide-file", () => {
     );
     // Without the board's login, #3's fast-track label counts for nothing: it waits its turn.
     expect(enqueued(decidePass(first))).toEqual([1, 3]);
+  });
+
+  test("a state saved by older rules, without the fields added since, gets them from the empty state", () => {
+    const { labelNoopReopened: _added, ...older } = emptyMergeState;
+    const passed = { ...input(), state: { ...older, readySince: { "9": "2026-11-24T10:00:00Z" } } };
+    const answer = decidePass(passed as unknown as DecideFileInput);
+    expect(answer.state).toEqual(decidePass(input()).state);
+    expect(answer.state.labelNoopReopened).toEqual({});
   });
 
   test.each([

@@ -10,6 +10,7 @@ Merge control now decides like the live Merger has since 25 Nov 12:02 UTC. A pul
 
 - `paperclip.merge-control-merge-state`: a non-draft pull request labelled `built-on:halonic` no longer needs `fast-track` to be looked at. The HAL-18304 example ("enqueued only when `fast-track` was added by a configured labeller") is replaced by two. Both labels get the same verdict and actions in six states. A `built-on:halonic` pull request with `fast-track` goes first only when a configured labeller added it; from anyone else it is queued normally and logged.
 - `built-on-halonic.test.ts` goes from 7 tests to 5. The HAL-18304 cases that expected a plain `built-on:halonic` pull request to stay out now expect it to be queued. The two `fast-track` cases (configured labeller, and other or unknown labeller) and the draft case are merged into the new cases: the draft is one of the six states, and the jump rule is still tested. The `built-on:paperclip` case became the six-state comparison.
+- `paperclip.merge-control-decide-file` (Liam's review of #6069): the rules file answers with `format` 2, since the new `reopen` action is one a format-1 Merger doesn't carry out. `decidePass` fills a saved state's missing fields from the empty state, as the plugin's own job already does, instead of throwing on a state saved before `labelNoopReopened` existed. One new example; the format test expects 2.
 - `paperclip.merge-control-write-scope`: the write client may also send the `closePullRequest` and `reopenPullRequest` mutations, each with only the pull request's id, as POSTs to the GraphQL endpoint. "Six allowed writes" becomes eight.
 
 ## Why
@@ -23,4 +24,5 @@ Approved pull requests sat out of the queue for hours after a label-only CI run:
 - paperclip.merge-control-merge-state
 - paperclip.merge-control-write-scope
 - paperclip.merge-control-label-noop-reopen
+- paperclip.merge-control-decide-file
 - tooling/paperclip/src/merge-control/built-on-halonic.test.ts
