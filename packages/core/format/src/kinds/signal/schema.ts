@@ -25,6 +25,7 @@ export const SignalRuleChoice = s.discriminatedUnion("run", [
   ruleChoice("pr-watcher"),
   ruleChoice("board-ask"),
   ruleChoice("task-effort"),
+  ruleChoice("fast-track"),
 ]);
 
 /** A workspace signal, as `library/signals/<id>.signal.yaml` holds it. */

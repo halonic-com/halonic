@@ -85,6 +85,27 @@ export const SIGNAL_RULES = {
       .strict()
       .prefault({}),
   },
+  "fast-track": {
+    about:
+      "Follows each pull request with the fast-track label: asks its reviewer and the Merger, and tells the board when it waits.",
+    writes: true,
+    settings: s
+      .object({
+        /** Minutes ready for review and not approved before the board hears of it. */
+        reviewEscalateMinutes: s.number().int().min(5).max(120).default(15),
+        /** Minutes approved and green, and not queued, before the Merger is asked. */
+        enqueueAfterMinutes: s.number().int().min(1).max(60).default(10),
+        /** Minutes first in the merge queue before the task is asked to look. */
+        queueSlowMinutes: s.number().int().min(10).max(240).default(30),
+        /**
+         * More pull requests than this ahead, and it jumps. Never below the
+         * board's 8 (HAL-15971): a signal may make jumps rarer, never more common.
+         */
+        jumpAhead: s.number().int().min(8).max(50).default(8),
+      })
+      .strict()
+      .prefault({}),
+  },
 } as const;
 
 /** A rule's name, such as `pr-watcher`. */
