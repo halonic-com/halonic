@@ -77,8 +77,12 @@
       <backend type="emulator" version="2.0"/>
     </tpm>
     <input type="tablet" bus="usb"/>
-    <!-- Console for the operator only, on the host's loopback (reach it with an SSH tunnel). -->
-    <graphics type="vnc" listen="127.0.0.1" port="5979" autoport="no"/>
+    <!-- Console for the operator only: a VNC socket in libvirt's private folder for this VM, which
+         only root and qemu's user can open, instead of a loopback port any host user could reach
+         (Julian, HAL-18584). `virsh domdisplay halonic-win` prints its path. -->
+    <graphics type="vnc">
+      <listen type="socket"/>
+    </graphics>
     <video>
       <model type="vga"/>
     </video>

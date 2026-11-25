@@ -1,0 +1,20 @@
+[Unit]
+Description=Halonic Windows runner (a clean VM and one just-in-time runner per job)
+# No rules, no VM: the same fail-closed model as libvirtd's own dependency on them.
+Requires=libvirtd.service halonic-win-nft.service
+After=libvirtd.service halonic-win-nft.service network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+ExecStart=/usr/local/lib/halonic-win/win-runner-cycle.sh
+# Runs after every cycle and on stop: destroys the VM, deletes its overlay, removes idle runners.
+ExecStopPost=-/usr/local/lib/halonic-win/win-runner-cycle.sh --cleanup
+Restart=always
+# A cycle that fails (no SSH, GitHub down) restores the VM again; don't do that every few seconds.
+RestartSec=30
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target

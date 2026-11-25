@@ -581,7 +581,7 @@ jobs:
       - name: Licences
         run: pnpm check:licences
       - name: Infra tests (spend guard, turbo-cache, CI runner hook, picker and signature reuse)
-        run: node --test infra/spend-guard/test/guard.test.mjs infra/turbo-cache/test.mjs infra/ci-runner/hook.test.mjs infra/ci-runner/pick-runner.test.mjs infra/ci-runner/signature-reuse.test.mjs
+        run: node --test infra/spend-guard/test/guard.test.mjs infra/turbo-cache/test.mjs infra/ci-runner/hook.test.mjs infra/ci-runner/pick-runner.test.mjs infra/ci-runner/signature-reuse.test.mjs infra/windows-runner/hook.test.mjs
       - name: Formatting
         run: pnpm exec biome ci --linter-enabled=false .
       - name: Feature list and generated files

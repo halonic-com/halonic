@@ -12,6 +12,10 @@ Start-Transcript -Path "$state\setup-1.log" -Force | Out-Null
 $winlogon = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon'
 Set-ItemProperty $winlogon -Name AutoAdminLogon -Value '0'
 Remove-ItemProperty $winlogon -Name DefaultPassword -ErrorAction SilentlyContinue
+# Setup keeps a copy of the answer file under Panther, and every job VM would start with it: delete
+# it, so no cached copy can hold the admin password (Liam, HAL-18572; the README's build checks it).
+Get-ChildItem "$env:SystemRoot\Panther" -Recurse -File -Filter 'unattend*.xml' |
+  Remove-Item -Force
 
 # A throwaway VM shouldn't spend each job downloading patches: the base image is rebuilt monthly
 # instead (README). Defender and its signature updates stay on.
