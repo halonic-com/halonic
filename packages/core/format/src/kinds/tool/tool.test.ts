@@ -178,7 +178,10 @@ verifies("format.tool-actions", () => {
     const budgets = toolFile().replace("github.open-pull-requests", "paperclip.budgets");
     const none = budgets.replace("  with: { repositories: [acme/website] }\n", "");
     expect(summary(problemsOf("tool", none))).toEqual(["action.with invalid_type 5"]);
-    const cents = budgets.replace("{ repositories: [acme/website] }", "{ agents: { mateo: 12.5 } }");
+    const cents = budgets.replace(
+      "{ repositories: [acme/website] }",
+      "{ agents: { mateo: 12.5 } }",
+    );
     expect(parsedValue("tool", cents).action).toEqual({
       run: "paperclip.budgets",
       with: { agents: { mateo: 12.5 } },
