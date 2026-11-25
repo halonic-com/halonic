@@ -71,13 +71,13 @@ verifies("settings.startup-section", () => {
     expect(startup?.available).toBe(startupAvailable);
   });
 
-  it("stays hidden until the background start lands", () => {
+  it("is listed in the Settings everyone gets, not hidden with the unfinished ones", () => {
     const shell = createShell({
       features: [settingsFeature],
       hostServices: [DisplaySettingsService, HostSettingsService],
     });
 
-    expect(shell.contributions.settings.list().map(({ id }) => id)).not.toContain("startup");
+    expect(shell.contributions.settings.list().map(({ id }) => id)).toContain("startup");
   });
 
   it("describes the tray, or the menu bar on macOS", () => {
@@ -142,14 +142,35 @@ verifies("settings.startup-section", () => {
     );
   });
 
-  it("shows the failure, with the switch off, when the shell can't say", async () => {
+  it("shows the failure, with the switch off, when the shell can't say, and reports why", async () => {
+    const reported = vi.spyOn(console, "error").mockImplementation(() => {});
     const host = fakeHost(false);
-    host.get.mockRejectedValueOnce(new Error("no answer"));
+    const why = new Error("no answer");
+    host.get.mockRejectedValueOnce(why);
     const view = await show(host);
 
     expect(theSwitch(view).checked).toBe(false);
     expect(view.querySelector('[role="status"]')?.textContent).toBe(
       "Couldn't read whether Halonic starts when you log in.",
     );
+    expect(reported).toHaveBeenCalledWith(expect.any(String), why);
+    reported.mockRestore();
+  });
+
+  it("reports a change the shell rejects unexpectedly, and keeps the switch as it was", async () => {
+    const reported = vi.spyOn(console, "error").mockImplementation(() => {});
+    const host = fakeHost(false);
+    const why = new Error("not allowed");
+    host.set.mockRejectedValueOnce(why);
+    const view = await show(host);
+
+    await click(theSwitch(view));
+
+    expect(theSwitch(view).checked).toBe(false);
+    expect(view.querySelector('[role="status"]')?.textContent).toBe(
+      "Couldn't save this setting. Try again.",
+    );
+    expect(reported).toHaveBeenCalledWith(expect.any(String), why);
+    reported.mockRestore();
   });
 });

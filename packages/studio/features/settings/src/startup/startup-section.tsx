@@ -64,12 +64,16 @@ export function StartupView({ host }: { readonly host: LoginItemHost }) {
   );
 }
 
-/** The shell's answer, with an unexpected rejection read as `failed` so the switch never sticks. */
+/**
+ * The shell's answer, with an unexpected rejection read as `failed` so the switch never sticks.
+ * The app's host only rethrows what it didn't expect, so it is reported here before the switch
+ * shows the short line.
+ */
 async function ask(call: () => Promise<LoginItemAnswer>): Promise<LoginItemAnswer> {
   try {
     return await call();
-  } catch {
-    // The app's host already reports what it didn't expect; here it only says the change failed.
+  } catch (error) {
+    console.error("Couldn't read or change whether Halonic starts when you log in.", error);
     return { refused: "failed" };
   }
 }
