@@ -12,6 +12,15 @@ export const serveMessages = defineMessages("serve", {
   summary: () => phrase`Serve the workspace to your phone or browser until you stop it`,
   /** `--network`'s line in `halonic serve --help`. */
   networkOption: () => phrase`Also open it on your home network; needs a sign-in password.`,
+  /** `--public-origin`'s line in `halonic serve --help`. */
+  publicOriginOption: () =>
+    phrase`The https address a proxy on this computer serves it at; needs a sign-in password.`,
+  /** `--public-origin` isn't an https origin. */
+  publicOriginInvalid: () =>
+    phrase`--public-origin needs an https address with no path, such as https://engine.example.com.`,
+  /** `--public-origin` and `--network` were both given. */
+  publicOriginWithNetwork: () =>
+    phrase`--public-origin can't go with --network: the proxy on this computer is the only way in.`,
   /** `--port`'s line in `halonic serve --help`. */
   portOption: () => phrase`The port to listen on (default 4747; 0 lets the system choose).`,
   /** What `serve` was doing, for "✕ Couldn't serve acme: …". */

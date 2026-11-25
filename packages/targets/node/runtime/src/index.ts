@@ -11,5 +11,6 @@ export {
   listenOnNode,
   NetworkNeedsPasswordError,
   NoNetworkAddressError,
+  PublicOriginNeedsPasswordError,
 } from "./listen.ts";
 export { openStudioPageFolder } from "./studio-page-folder.ts";

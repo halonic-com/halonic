@@ -21,14 +21,20 @@ const securityHeaders: Readonly<Record<string, string>> = {
  * `localhost`, but it can't make the browser send a `Host` we allow.
  *
  * A server with no password answers only loopback names, whatever
- * `allowedHosts` holds. A loopback name matches on any port. Any other name
- * must be in `allowedHosts` lowercased, including its port.
+ * `allowedHosts` holds. A loopback name matches on any port, unless the server
+ * has a public origin: behind a proxy on the same computer, a loopback name
+ * could come from anyone. Any other name must be in `allowedHosts` lowercased,
+ * including its port.
  *
  * @returns `null` when the request may go on, otherwise the error to send
  */
 export function checkHost(
   request: Request,
-  options: { readonly allowedHosts: readonly string[]; readonly hasPassword: boolean },
+  options: {
+    readonly allowedHosts: readonly string[];
+    readonly hasPassword: boolean;
+    readonly loopbackAllowed: boolean;
+  },
 ): ServerError | null {
   const hostHeader = request.headers.get("host")?.toLowerCase();
   if (hostHeader === undefined) {
@@ -39,7 +45,7 @@ export function checkHost(
     return serverErrors.hostNotAllowed;
   }
   if (loopbackNames.has(parsed.groups["name"] ?? "")) {
-    return null;
+    return options.loopbackAllowed ? null : serverErrors.hostNotAllowed;
   }
   if (!options.hasPassword) {
     return serverErrors.hostNotAllowed;
@@ -88,8 +94,16 @@ export function checkOrigin(
   return origin.toLowerCase() === ownOrigin ? null : serverErrors.originNotAllowed;
 }
 
-/** The headers every response carries, so a browser never sniffs, frames, caches or leaks a reply. */
-export function withSecurityHeaders(response: Response, request: Request): Response {
+/**
+ * The headers every response carries, so a browser never sniffs, frames,
+ * caches or leaks a reply. A response over HTTPS, as
+ * {@link isSecureConnection} tells it, also carries HSTS.
+ */
+export function withSecurityHeaders(
+  response: Response,
+  request: Request,
+  context: { readonly secure?: boolean } = {},
+): Response {
   const headers = new Headers(response.headers);
   // A route that serves a page brings its own policy, because the default allows nothing.
   const contentSecurityPolicy = headers.get("Content-Security-Policy");
@@ -99,7 +113,7 @@ export function withSecurityHeaders(response: Response, request: Request): Respo
   if (contentSecurityPolicy !== null) {
     headers.set("Content-Security-Policy", contentSecurityPolicy);
   }
-  if (new URL(request.url).protocol === "https:") {
+  if (isSecureConnection(request, context)) {
     headers.set("Strict-Transport-Security", "max-age=31536000");
   }
   return new Response(response.body, {
