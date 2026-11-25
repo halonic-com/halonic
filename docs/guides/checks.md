@@ -54,7 +54,7 @@ queue.
 
 | Rule | Fails when |
 | --- | --- |
-| `packages` | a package's name doesn't follow from its folder; it isn't `private` (unless listed under `published` in `tooling/check/policy.json`); it doesn't declare `"halonic": { "layer", "owner", "coverage" }` or its coverage floor is below its layer's (see below); its `exports` expose more than `.` (and `./api` for features, and the subpaths listed for it under `extraExports` in `policy.json`) or point at a test file; an internal dependency isn't `workspace:*`; a core package is missing from `coreOrder`; `apiTypes` lists a package that isn't core |
+| `packages` | a package's name doesn't follow from its folder; it isn't `private` (unless listed under `published` in `tooling/check/policy.json`); it doesn't declare `"halonic": { "layer", "owner", "coverage" }` or its coverage floor is below its layer's (see below); its `exports` expose more than `.` (and `./api` for features, and the subpaths listed for it under `extraExports` in `policy.json`) or point at a test file; an internal dependency isn't `workspace:*`; a core package is missing from `coreOrder`; `apiTypes` lists a package that isn't core; `toolingUsesCore` lists a package that isn't a tooling package in this repo |
 | `agents-md` | a package has no `AGENTS.md`, its `Owner:` or `Layer:` line differs from `package.json`, or its purpose line is still the `pnpm new` placeholder |
 | `layers` | a dependency or an import breaks the layer table below; a relative import leaves its package; an import goes past another package's `exports`; core, host or Studio code uses Node APIs; non-test code imports a test file; core, host or Studio code loads code the check can't follow (`import(x)` or `require(x)` with a computed name, `createRequire`, `process.getBuiltinModule`, `/// <reference types\|lib>`, `eval(…)` or `Function(…)`, a global object's `process`, `require`, `Buffer`, `eval` or `Function`, and `process.binding`, `process._linkedBinding` or `process.dlopen`); a feature uses another feature other than through its `/api` |
 | `dependencies` | an external dependency isn't in `tooling/check/dependencies.json`, is used outside its `allowedIn` packages or `layers`, doesn't use a `catalog:` version, or is dev tooling outside `devDependencies`; an entry doesn't fit its category; a catalog version isn't a plain version (`1.2.3`, `^1.2.3`, `~1.2.3`); an `overrides:` key isn't in `overrides-allowed.json` (or isn't `parent>child` at the catalog version, or has no override); `resolutions`, `packageExtensions`, `patchedDependencies` or named catalogs are used. See [dependencies.md](dependencies.md) |
@@ -731,13 +731,15 @@ Who may use what:
 | studio | core, other Studio packages, React, Tauri, Vite | adapters (only `studio/services` may), Node APIs, a feature (shared Studio packages) |
 | apps | the public entry point of any package | the CLI (`halonic`): any target package other than `target-node-runtime` and `target-node-harness`, even in `devDependencies`. It loads a deploy target by name when the user deploys, so users install only the targets they use |
 | testing | anything | being a runtime dependency |
-| tooling | other tooling packages | being a runtime dependency |
+| tooling | other tooling packages; core packages too for the packages listed under `toolingUsesCore` | being a runtime dependency; adapters, targets and Studio packages, even for a listed package |
 
 `node:*` is allowed in adapters with `"runtime": "node"`, in
 `targets/node/runtime`, `targets/node/harness` and in every deploy package. `cloudflare:*` is allowed only in
 `targets/cloudflare/runtime` and `cloudflare-*` adapters with `"runtime": "workers"` or `"any"`. The API
 types packages, listed under `apiTypes` in `policy.json`, use only each other and no third-party code
-([decision](../adr/2026-11-09-api-types-stand-alone.md)). A core package
+([decision](../adr/2026-11-09-api-types-stand-alone.md)). The tooling packages listed under
+`toolingUsesCore` in `policy.json` may also use core packages. It exists for the Agent tools plugin
+(`@halonicjs/tooling-paperclip`), whose workflow host runs on our own engine (HAL-18009). A core package
 may not be named `root` or `host`, or start with another layer's prefix
 (`app-`, `adapter-`, `host-`, `target-`, `studio-`, `testing-`, `tooling-`).
 

@@ -109,7 +109,7 @@ below it:
 | studio | `packages/studio/*` | core, React, Tauri, Vite, approved UI libraries | adapters directly, another feature's internals |
 | apps | `apps/*` | the public interface of any package | the CLI: a target other than the Node runtime and the Node harness |
 | testing | `packages/testing/*` | anything | being a runtime dependency |
-| tooling | `tooling/*` | other tooling packages | being a runtime dependency |
+| tooling | `tooling/*` | other tooling packages; core too for those listed under `toolingUsesCore` in `tooling/check/policy.json` (the Agent tools plugin, which runs our engine) | being a runtime dependency |
 
 The targets are `packages/targets/node` and `packages/targets/cloudflare`. A check
 (`tooling/check`) enforces this on every pull request and explains how

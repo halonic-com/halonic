@@ -56,7 +56,7 @@ export interface FixtureOptions {
   readonly extraDependencies?: Record<string, unknown>;
   /** Changes the real dependencies.json (the whole parsed file) before it is written. */
   readonly editDependencyList?: (list: { dependencies: Record<string, unknown> }) => unknown;
-  /** Changes the real policy.json (with `coreOrder` set, `apiTypes` and `extraExports` empty) before it is written. */
+  /** Changes the real policy.json (with `coreOrder` set, `apiTypes`, `toolingUsesCore` and `extraExports` empty) before it is written. */
   readonly policy?: (policy: Record<string, unknown>) => unknown;
   /** Changes the real pnpm-workspace.yaml before it is written. */
   readonly workspaceYaml?: (yaml: string) => string;
@@ -154,8 +154,8 @@ function writeTreeRewriteLists(
 /** The real policy.json with `coreOrder` set, for a fixture repo. */
 function fixturePolicy(coreOrder: string[]): Record<string, unknown> {
   const realPolicy = JSON.parse(readFileSync(join(realRoot, "tooling/check/policy.json"), "utf8"));
-  // The real apiTypes and extraExports name real packages, which a fixture may not have.
-  return { ...realPolicy, coreOrder, apiTypes: [], extraExports: {} };
+  // The real apiTypes, toolingUsesCore and extraExports name real packages, which a fixture may not have.
+  return { ...realPolicy, coreOrder, apiTypes: [], toolingUsesCore: [], extraExports: {} };
 }
 
 /** Removes a repo from `writeFixtureRepo`. */

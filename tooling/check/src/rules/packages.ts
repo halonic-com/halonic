@@ -37,6 +37,7 @@ export function checkPackages(context: CheckContext): Report {
     }
   }
   checkCoreOrder(context, report);
+  checkToolingUsesCore(context, report);
   return report;
 }
 
@@ -385,6 +386,27 @@ function checkCoreOrder(context: CheckContext, report: Report): void {
       report.error(
         context.policyPath,
         `"apiTypes" lists "${name}", which is not a core package. API types packages are core packages; remove it or move the package into packages/core.`,
+      );
+    }
+  }
+}
+
+/** Every "toolingUsesCore" entry names a tooling package here, so the list can't go stale quietly. */
+function checkToolingUsesCore(context: CheckContext, report: Report): void {
+  for (const name of context.policy.toolingUsesCore) {
+    const pkg = context.packagesByName.get(name);
+    if (pkg === undefined) {
+      report.error(
+        context.policyPath,
+        `"toolingUsesCore" lists "${name}", which is not a package in this repo. Remove it.`,
+      );
+      continue;
+    }
+    const layer = context.placeOf(pkg)?.layer;
+    if (layer !== "tooling") {
+      report.error(
+        context.policyPath,
+        `"toolingUsesCore" lists "${name}", a package in ${layer ?? "no layer"}. It is only for tooling packages; remove it.`,
       );
     }
   }
