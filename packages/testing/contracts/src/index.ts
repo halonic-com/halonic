@@ -162,6 +162,25 @@ export {
   llmProviderContract,
   type MakeLlmProvider,
 } from "./llm-provider.ts";
+export { meterContract } from "./meter.ts";
+export {
+  acmeMembers,
+  acmeOrganisationId,
+  ada,
+  bea,
+  codeOf,
+  dan,
+  detailOf,
+  type MakeMeter,
+  type MeterHarness,
+  type MeterPlan,
+  type MeterPlanAmounts,
+  meterResetsAt,
+  meterStart,
+  modelCall,
+  runEnd,
+  stepTimes,
+} from "./meter-harness.ts";
 export {
   type PasswordAndHash,
   type PasswordHashFormatCases,

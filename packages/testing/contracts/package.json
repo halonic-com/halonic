@@ -13,6 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@halonicjs/engine": "workspace:*",
     "@halonicjs/events": "workspace:*",
     "@halonicjs/format": "workspace:*",
     "@halonicjs/ports": "workspace:*",
