@@ -3,6 +3,7 @@
 - Task: HAL-18565
 - Approval: a trust-root change by Owen, following Liam's review of #6090 (HAL-18533); Julian and Liam sign as the two guardians
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:EX73gWWxfq+iFvIKt7XqKZ4V6ekKR9m5o8SAJSqCEyPG6kZn80Da8YF8ZABu2HvcHk4UpJ3r2/fz0zY/xgiYAQ==
 
 ## What changes
 
