@@ -318,6 +318,17 @@ verifies("inbox.page", () => {
       expect(card.textContent).not.toContain("Sign in again");
     });
 
+    it("says the line over the list in a polite status that was there before it (HAL-13801 SO2)", async () => {
+      const fake = fakeRuns([notes]);
+      const { root, inbox } = await openPage(fake.runs);
+      const status = root.querySelector('[data-pane="list"] [role="status"]');
+      expect(status?.textContent).toBe("");
+      fake.fail(new KindedError("unauthenticated", "Sign in again to list what waits for you."));
+      await act(() => inbox.refresh());
+      expect(root.querySelector('[data-pane="list"] [role="status"]')).toBe(status);
+      expect(status?.textContent).toBe("Sign in again to list what waits for you.");
+    });
+
     it("checks again when it opens over a failed load, so it doesn't say the old failure (HAL-13801 SO4)", async () => {
       const fake = fakeRuns([notes]);
       const inbox = new Inbox(fake.runs);
@@ -400,6 +411,15 @@ verifies("inbox.page", () => {
       await settled();
       expect(root.textContent).toContain("Halonic on your computer isn't answering.");
       expect(root.textContent).not.toContain("The engine isn't answering.");
+    });
+
+    it("gives the line over the list the list's top space, under the top bar (HAL-13801 SO3)", async () => {
+      const fake = fakeRuns([notes]);
+      const { root, inbox } = await openPhone(fake.runs);
+      fake.fail(new Error("fetch failed"));
+      await act(() => inbox.refresh());
+      const status = root.querySelector('[data-pane="list"] [role="status"]');
+      expect(status?.closest(".pt-4")).not.toBeNull();
     });
 
     it("has Next take the card's width and wrap its label as one run of text (HAL-13801 IN1, HAL-13830 IN2)", async () => {
