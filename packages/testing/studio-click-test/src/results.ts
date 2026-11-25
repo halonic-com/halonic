@@ -20,6 +20,7 @@ export function resultsMarkdown(results: readonly StepResult[], build: string): 
     [
       String(result.number),
       cell(result.title),
+      cell(result.requirements.join(", ")),
       verdictMark[result.verdict],
       cell(result.code ?? ""),
       cell(result.note ?? ""),
@@ -31,8 +32,8 @@ export function resultsMarkdown(results: readonly StepResult[], build: string): 
     "",
     headline,
     "",
-    "| # | Step | Verdict | Code | Note | Screenshot |",
-    "| --- | --- | --- | --- | --- | --- |",
+    "| # | Step | Requirements | Verdict | Code | Note | Screenshot |",
+    "| --- | --- | --- | --- | --- | --- | --- |",
     ...rows.map((row) => `| ${row} |`),
     "",
   ].join("\n");

@@ -13,6 +13,12 @@ const connectedWaitMs = 60_000;
 export const connectPaperclip: Step = {
   id: "connect-paperclip",
   title: "Settings › Connections › Connect Paperclip, approve, Connected",
+  requirements: [
+    "studio.desktop-connections",
+    "connections.connect-dialog",
+    "connections.connection-row",
+    "services.paperclip-connect",
+  ],
   run: async (context) => {
     const { driver } = context;
     const workspace = await onWorkspace(context);

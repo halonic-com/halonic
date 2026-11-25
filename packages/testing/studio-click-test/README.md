@@ -33,11 +33,15 @@ so `tauri-driver`) would use to open that port, so the driver attaches instead o
 
 The steps, in `src/steps/`:
 
-| # | Step | Passes when |
-| --- | --- | --- |
-| 1 | The engine answers | Open demo turns on, and the demo's Writer agent answers a message in its Try it chat ("Writer replied."; the demo's mock model needs no key) with no "The engine isn't answering" line |
-| 2 | Messenger shows its empty state | the Halonic Messenger shortcut opens a window with No connections |
-| 3 | Connect Paperclip | Settings › Connections › Connect Paperclip, approved on the test Paperclip, shows Connected |
+| # | Step | Requirements | Passes when |
+| --- | --- | --- | --- |
+| 1 | The engine answers | `shell.welcome-start`, `shell.welcome-sample`, `agents.chat.try-it`, `agents.chat.engine-quiet`, `studio.workspace-agents-chat` | Open demo turns on, and the demo's Writer agent answers a message in its Try it chat ("Writer replied."; the demo's mock model needs no key) with no "The engine isn't answering" line |
+| 2 | Messenger shows its empty state | `studio.installer-focused-apps`, `studio.focused-app-window`, `messenger.not-connected` | the Halonic Messenger shortcut opens a window with No connections |
+| 3 | Connect Paperclip | `studio.desktop-connections`, `connections.connect-dialog`, `connections.connection-row`, `services.paperclip-connect` | Settings › Connections › Connect Paperclip, approved on the test Paperclip, shows Connected |
+
+Each step names, in its file, the requirement ids it checks (`requirements`), and the results table
+shows them in its Requirements column. The package's tests fail when a step names none, or an id
+that isn't a requirement file in the repo (HAL-18862). A new step names its requirements the same way.
 
 After a failing step the suite restarts the app (it stops every Halonic process, starts Halonic from
 its shortcut again and attaches) and goes on, so one run lists every failure. A step that needs an

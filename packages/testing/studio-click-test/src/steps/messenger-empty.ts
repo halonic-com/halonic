@@ -15,6 +15,11 @@ const emptyStateWaitMs = 45_000;
 export const messengerEmpty: Step = {
   id: "messenger-empty",
   title: "Messenger shows its empty state",
+  requirements: [
+    "studio.installer-focused-apps",
+    "studio.focused-app-window",
+    "messenger.not-connected",
+  ],
   run: async (context) => {
     const before = await context.driver.windowHandles();
     await context.openShortcut("Halonic Messenger");

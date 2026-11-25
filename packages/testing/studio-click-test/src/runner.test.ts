@@ -8,6 +8,7 @@ function step(id: string, outcome: StepOutcome | Error, needs?: string[]): Step 
   return {
     id,
     title: `Step ${id}`,
+    requirements: [`acme.${id}`],
     ...(needs === undefined ? {} : { needs }),
     run: async () => {
       if (outcome instanceof Error) throw outcome;
@@ -109,7 +110,7 @@ verifies("studio-click-test.results", () => {
         "2 of 2 steps failed: step 1 (Step a): ENGINE_NOT_ANSWERING; step 2 (Step b): LIST_FAILED.",
       );
       expect(table).toContain(
-        "| 1 | Step a | ❌ failed | ENGINE_NOT_ANSWERING | a \\| b<br>c | 01-a.png |",
+        "| 1 | Step a | acme.a | ❌ failed | ENGINE_NOT_ANSWERING | a \\| b<br>c | 01-a.png |",
       );
     });
 
