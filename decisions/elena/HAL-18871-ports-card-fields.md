@@ -3,6 +3,7 @@
 - Task: HAL-18871
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-18871 (Liam approved the three port proposals, 25 Nov)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:vpuih0EMMABOfDnISn4exr/3TPsM37kAnCZTiYGYEUAAZ0AwMxROJdAXGBSzn3mWB6++d5Hptn1LOJHfTo1kBw==
 
 ## What changes
 
