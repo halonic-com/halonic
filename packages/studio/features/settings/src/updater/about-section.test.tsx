@@ -44,6 +44,7 @@ function fakeHost(first: UpdateStatus) {
       now = { ...now, automatic: on };
       return now;
     }),
+    setTrack: vi.fn(async () => now),
   } satisfies UpdaterHost;
   return {
     host,

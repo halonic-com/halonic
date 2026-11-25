@@ -15,6 +15,9 @@ export const openTaskStates = "backlog,todo,in_progress,in_review,blocked";
  */
 const taskPage = "1000";
 
+/** Approval states the Inbox shows: waiting on the person, or on the agent after Request changes. */
+const waitingApprovalStates = ["pending", "revision_requested"] as const;
+
 /** How many card reads run at once, so a first read of a big company doesn't flood the server. */
 const cardReadsAtOnce = 4;
 
@@ -125,13 +128,9 @@ export class PaperclipInbox {
   }
 
   async #approvals(context: MapContext, projectOf: ProjectOf): Promise<InboxItem[]> {
-    const body = await this.#reader.read("listApprovals", {
-      path: { company: this.#company },
-      query: { status: "pending" },
-    });
     const items: InboxItem[] = [];
     const known = new Map<string, JsonRecord | undefined>();
-    for (const record of asRecords(body)) {
+    for (const record of await this.#approvalRecords()) {
       const approval = text(record, "id");
       if (approval === undefined) {
         continue;
@@ -149,9 +148,25 @@ export class PaperclipInbox {
         items.push(withProject(item, projectOf(text(linked, "projectId"))));
       }
     }
-    // Decided approvals drop out, so the cache holds only pending ones.
+    // Decided approvals drop out, so the cache holds only open ones.
     this.#approvalTasks = known;
     return items;
+  }
+
+  /**
+   * Pending approvals, then those sent back with Request changes, which wait on the agent that
+   * asked and show as answered. Each read keeps only its own status, whatever the server sends.
+   */
+  async #approvalRecords(): Promise<JsonRecord[]> {
+    const records: JsonRecord[] = [];
+    for (const status of waitingApprovalStates) {
+      const body = await this.#reader.read("listApprovals", {
+        path: { company: this.#company },
+        query: { status },
+      });
+      records.push(...asRecords(body).filter((record) => text(record, "status") === status));
+    }
+    return records;
   }
 
   async #taskOfApproval(approval: string): Promise<JsonRecord | undefined> {

@@ -26,6 +26,7 @@ function row(id: string, changes: Partial<AllRunsRow> = {}): AllRunsRow {
     by: { kind: "workflow" },
     chip: { word: "Done", tone: "success" },
     label: `Run ${id}, Support reply, finished.`,
+    notice: { startedByMe: false },
     ...changes,
   };
 }

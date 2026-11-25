@@ -86,9 +86,9 @@ verifies("paperclip.board-tools", () => {
     const result = await call("board_asks", { since: "2026-11-22T13:00:00Z" });
     expect(result?.content).toBe(
       [
-        "Board asks since 2026-11-22T13:00:00.000Z: 2. No comment text: open the link to read one.",
-        "- HAL-16003, comment comment-2 by Mateo at 2026-11-22T13:40:00.000Z: open (/HAL/issues/HAL-16003#comment-comment-2)",
-        "- HAL-16003, comment comment-1 by Mateo at 2026-11-22T13:10:00.000Z: answered (/HAL/issues/HAL-16003#comment-comment-1)",
+        "Board asks since 22 Nov 14:00 CET: 2. No comment text: open the link to read one.",
+        "- HAL-16003, comment comment-2 by Mateo at 22 Nov 14:40 CET: open (/HAL/issues/HAL-16003#comment-comment-2)",
+        "- HAL-16003, comment comment-1 by Mateo at 22 Nov 14:10 CET: answered (/HAL/issues/HAL-16003#comment-comment-1)",
       ].join("\n"),
     );
     expect(JSON.stringify(result)).not.toContain("never repeat");
@@ -117,7 +117,7 @@ verifies("paperclip.board-tools", () => {
     const result = await call("failed_runs", { since: "2026-11-21T14:00:00Z" });
     expect(result?.content).toBe(
       [
-        "Failed and timed-out runs since 2026-11-21T14:00:00.000Z: 3. Counting since 2026-11-22T09:00:00.000Z; runs that failed while the plugin was down are missing.",
+        "Failed and timed-out runs since 21 Nov 15:00 CET: 3. Counting since 22 Nov 10:00 CET; runs that failed while the plugin was down are missing.",
         "- Mateo: 2 (timeout 1, no_identity 1) on HAL-16003",
         "- Priya: 1 (timeout 1) on HAL-16003",
       ].join("\n"),

@@ -86,7 +86,7 @@ verifies("paperclip.board-check-approvals", () => {
     expect(comments(fake.sent, checkerTask.id)).toEqual([
       [
         "New pending approvals: 1. Listed only; the board decides them.",
-        "- approval-2: hire_agent, asked by Mateo at 2026-11-22T14:25:00.000Z",
+        "- approval-2: hire_agent, asked by Mateo at 22 Nov 15:25 CET",
         "",
         "Board check (plugin)",
       ].join("\n"),

@@ -1,3 +1,4 @@
+import { amsterdamTime } from "../amsterdam-time.ts";
 import type { CheckState } from "../pr-watcher/decide.ts";
 import { taskOfBranch } from "../pr-watcher/discover.ts";
 import type { Snapshot, SnapshotPull, SnapshotRepo } from "../snapshot/shape.ts";
@@ -153,7 +154,7 @@ function fastTrackLine(row: FastTrackRow): string {
   const by =
     row.addedBy === null
       ? "unknown (GitHub doesn't say; never counts as allowed)"
-      : `${row.addedBy} at ${row.addedAt ?? "unknown time"}`;
+      : `${row.addedBy} at ${amsterdamTime(row.addedAt ?? "unknown time")}`;
   return `fast-track #${row.number} (${row.task ?? "no task"}): added by ${by}; ${row.draft ? "draft" : "ready"}, ci-ok ${row.ciOk}, ${row.inQueue ? "queued" : "not queued"}`;
 }
 
@@ -169,7 +170,7 @@ function waitText(wait: RepoQueueState["runnerWait"]): string {
 
 /** The queue state in lines an agent reads. */
 export function queueStateText(state: QueueState): string {
-  const age = `from the PR watcher's snapshot at ${state.takenAt} (${state.ageMinutes} min ago)`;
+  const age = `from the PR watcher's snapshot at ${amsterdamTime(state.takenAt)} (${state.ageMinutes} min ago)`;
   const lines = [
     state.stale
       ? `Merge queue ${age}. STALE: the watcher missed its last passes; check GitHub before acting on it.`

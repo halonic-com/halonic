@@ -32,6 +32,37 @@ export const buttonLabels = {
     file: "packages/studio/features/workspace/src/trust/trust-check-dialog.tsx",
   },
   settings: { text: "Settings", file: "packages/studio/shell/src/sidebar/places-list.tsx" },
+  newTab: { text: "New tab", file: "packages/studio/shell/src/tabs/window-tab-strip.tsx" },
+  closeWorkspace: {
+    text: "Close workspace",
+    file: "packages/studio/features/workspace/src/switcher/workspace-menu.ts",
+  },
+} as const;
+
+const welcomeFile = "packages/studio/shell/src/welcome/welcome.tsx";
+const windowTitleFile = "packages/studio/shell/src/window/window-title.ts";
+
+/**
+ * Text the Studio basics steps read (HAL-18866): Welcome, the workspace switcher and its menu,
+ * the window tabs and the window title. `words.test.ts` checks each is still in its file.
+ */
+export const basicsText = {
+  welcomeTitle: { text: "Halonic Studio", file: welcomeFile },
+  welcomeLine: { text: "Local first, private, and yours.", file: welcomeFile },
+  recent: { text: "Recent", file: "packages/studio/shell/src/welcome/welcome-recent.tsx" },
+  demoTag: { text: "Demo", file: "packages/studio/shell/src/welcome/welcome-recent.tsx" },
+  demoFolder: { text: "Acme sample", file: "apps/studio/src/studio/sample-host.ts" },
+  switcher: {
+    text: "Workspace: ",
+    file: "packages/studio/shell/src/sidebar/workspace-switcher.tsx",
+  },
+  openFolderRow: {
+    text: "Open a folder…",
+    file: "packages/studio/features/workspace/src/switcher/workspace-menu.ts",
+  },
+  openTabs: { text: "Open tabs", file: "packages/studio/shell/src/tabs/window-tab-strip.tsx" },
+  appName: { text: "Halonic", file: windowTitleFile },
+  titleSeparator: { text: " · ", file: windowTitleFile },
 } as const;
 
 const tryItFile = "packages/studio/features/agents/src/chat/try-it-words.ts";

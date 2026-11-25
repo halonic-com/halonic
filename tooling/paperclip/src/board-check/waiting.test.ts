@@ -110,10 +110,10 @@ verifies("paperclip.board-check-waiting", () => {
       names,
     );
     expect(document).toContain(
-      "1. HAL-3: blocked on the board, holds up 4+ tasks, waiting since 2026-11-22T07:00:00.000Z, held by Mateo",
+      "1. HAL-3: blocked on the board, holds up 4+ tasks, waiting since 22 Nov 08:00 CET, held by Mateo",
     );
     expect(document).toContain(
-      "2. HAL-2: blocked on the board, holds up 1 task, waiting since 2026-11-22T09:00:00.000Z, held by the board",
+      "2. HAL-2: blocked on the board, holds up 1 task, waiting since 22 Nov 10:00 CET, held by the board",
     );
     expect(waitingDocument([], names)).toContain("Nothing waits on the board.");
   });

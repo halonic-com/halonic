@@ -103,7 +103,7 @@ verifies("paperclip.board-check-failed-runs", () => {
         call: "createComment",
         args: [
           "task-seats",
-          "Spend-limit failures: 1 runs since 2026-11-22T13:55:00.000Z (Mateo).\n\nBoard check (plugin)",
+          "Spend-limit failures: 1 runs since 22 Nov 14:55 CET (Mateo).\n\nBoard check (plugin)",
           "acme",
         ],
       },

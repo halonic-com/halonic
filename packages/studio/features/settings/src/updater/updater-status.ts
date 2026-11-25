@@ -58,6 +58,22 @@ export interface JustUpdated {
   readonly notCarriedOver: readonly string[];
 }
 
+/** Which builds an install updates to (HAL-18480): released versions, or every passing build. */
+export type UpdateTrack = "stable" | "preview";
+
+/** Whether `version` is a Preview build, `0.1.1-preview.42` (HAL-18308). */
+export function isPreviewBuild(version: string): boolean {
+  return version.includes("-preview.");
+}
+
+/**
+ * The track the install follows. The shell sends it since HAL-18480; a shell that doesn't counts
+ * as the build's own track, as the shell's rule for an install with no choice saved.
+ */
+export function trackOf(status: UpdateStatus): UpdateTrack {
+  return status.track ?? (isPreviewBuild(status.current) ? "preview" : "stable");
+}
+
 /** Everything About Halonic and the status bar need, in one value. */
 export interface UpdateStatus {
   /** The version that runs. */
@@ -76,5 +92,7 @@ export interface UpdateStatus {
    * false.
    */
   readonly sandboxSetupAgain?: boolean;
+  /** The track the install follows: the person's choice, or with none saved, its build's. */
+  readonly track?: UpdateTrack;
   readonly state: UpdateState;
 }

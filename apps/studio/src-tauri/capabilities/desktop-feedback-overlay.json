@@ -1,0 +1,25 @@
+{
+  "identifier": "desktop-feedback-overlay",
+  "description": "On desktop, each feedback overlay window (one per screen, at most eight, each named because no capability may use a wildcard; opened only by a press of the feedback shortcut) may read its own screen's still through plugin:feedback|still, hand the box the person drew to plugin:feedback|select, or end the feedback with plugin:feedback|end (HAL-18778). No command takes a capture: only the key press does. It is local only, so the Studio the computer serves gets nothing.",
+  "local": true,
+  "windows": [
+    "feedback-overlay-0",
+    "feedback-overlay-1",
+    "feedback-overlay-2",
+    "feedback-overlay-3",
+    "feedback-overlay-4",
+    "feedback-overlay-5",
+    "feedback-overlay-6",
+    "feedback-overlay-7"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "feedback:allow-still",
+    "feedback:allow-select",
+    "feedback:allow-end"
+  ]
+}

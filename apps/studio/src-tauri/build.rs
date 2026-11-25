@@ -133,10 +133,21 @@ fn main() {
         "login_item_set",
         "keep_awake_set",
         "show_main_window",
+        "take_pending_notification_click",
         "set_frame_colour",
+    ]);
+    // The feedback shortcut's windows' commands (HAL-18778), as the
+    // `feedback` plugin: `plugin:feedback|still` needs `feedback:allow-still`.
+    let feedback = tauri_build::InlinedPlugin::new().commands(&[
+        "still",
+        "select",
+        "crop",
+        "end",
+        "shortcut_set",
     ]);
     let attributes = tauri_build::Attributes::new()
         .app_manifest(commands)
+        .plugin("feedback", feedback)
         .windows_attributes(tauri_build::WindowsAttributes::new_without_app_manifest());
     tauri_build::try_build(attributes).expect("the shell's build step failed");
     embed_windows_manifest();

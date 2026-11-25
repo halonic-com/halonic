@@ -133,6 +133,7 @@ export function paletteOptionName(row: PaletteRow, kinds: PaletteKindNames): str
 }
 
 function rowKind(row: PaletteRow, kinds: PaletteKindNames): string | undefined {
+  if (row.kind !== undefined) return row.kind;
   switch (row.target.kind) {
     case "location":
       return row.target.location.kind;

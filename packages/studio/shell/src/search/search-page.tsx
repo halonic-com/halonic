@@ -10,7 +10,7 @@ import {
 import { type FormEvent, type ReactNode, useId, useRef, useState } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
 import { MarkedText } from "../palette/marked-text.tsx";
-import { itemLocation } from "../palette/palette-groups.ts";
+import { foundLocation } from "../palette/palette-groups.ts";
 import type { PaletteKindNames } from "../palette/palette-options.ts";
 import { usePaletteSearch } from "../palette/use-palette-search.ts";
 import type { SearchProviderContribution } from "../points/commands.ts";
@@ -173,7 +173,7 @@ export function SearchPage(props: SearchPageProps) {
         renderResult={(result) => (
           <ResultRow
             result={result}
-            location={itemLocation(result.item, result.label, kinds)}
+            location={foundLocation(result, kinds)}
             icon={props.iconFor?.(result.item)}
             onOpen={open}
           />

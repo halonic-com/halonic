@@ -1,4 +1,5 @@
 import type { RepositoryReviewerRules, Routing } from "@halonicjs/format";
+import { amsterdamTime } from "../amsterdam-time.ts";
 import type { CheckState, GitHubGet } from "../github.ts";
 import type { ActionCall, ActionHandler } from "../handlers.ts";
 import {
@@ -196,6 +197,12 @@ function nextSteps(status: PullRequestStatus): string[] {
   return steps;
 }
 
+/** A review finding, `<id> at <ISO time>`, with its time in Amsterdam time. */
+function findingText(finding: string): string {
+  const at = finding.lastIndexOf(" at ");
+  return at === -1 ? finding : `${finding.slice(0, at)} at ${amsterdamTime(finding.slice(at + 4))}`;
+}
+
 function approvalsText(found: readonly Approval[]): string {
   if (found.length === 0) {
     return "none";
@@ -225,7 +232,7 @@ export function pullRequestText(status: PullRequestStatus): string {
     reviewerText(status.reviewer),
     ...(status.latestReviewFinding === undefined
       ? []
-      : [`newest review finding on this head: ${status.latestReviewFinding}`]),
+      : [`newest review finding on this head: ${findingText(status.latestReviewFinding)}`]),
     `next: ${steps.length === 0 ? "nothing for the author right now" : steps.join("; ")}`,
   ].join("\n");
 }

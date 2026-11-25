@@ -134,6 +134,15 @@ reqwest = { version = "=0.13.5", default-features = false }
 # the proxy tests. Pinned to the version the updater resolves, so it adds
 # nothing to the build.
 rustls = { version = "=0.23.46", default-features = false, features = ["ring"] }
+# The feedback shortcut (HAL-18778, board request on HAL-10; approved by
+# Liam on HAL-18781): Tauri's official plugin, pinned with tauri: 2.4.1
+# needs tauri ^2.12. Registered from Rust only, with the one feedback
+# shortcut; no capability grants its commands, so no page can register a
+# key or hear one. It brings global-hotkey, keyboard-types 0.7 and, on
+# Linux only, x11rb, x11rb-protocol, xkeysym and gethostname.
+tauri-plugin-global-shortcut = "=2.4.1"
+# One still of a screen for the feedback shortcut, in memory only.
+halonic-screen-still = { path = "crates/screen-still" }
 
 # The agent sandbox's administrator prompt, asked for from the shell's own
 # window (HAL-14841). Windows only: no other system has the sandbox setup.

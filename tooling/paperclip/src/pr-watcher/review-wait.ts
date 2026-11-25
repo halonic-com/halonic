@@ -1,3 +1,4 @@
+import { amsterdamTime } from "../amsterdam-time.ts";
 import { marker, type PullFacts, short } from "./decide.ts";
 import { approvedOnHead, readyKey } from "./handoff.ts";
 import type { CommentRow, Paperclip, TaskRow } from "./paperclip.ts";
@@ -82,11 +83,6 @@ export function reviewWaits(
   );
 }
 
-/** `2026-11-24T16:05:12.000Z` as `2026-11-24 16:05 UTC`. */
-function utcMinute(iso: string): string {
-  return `${new Date(iso).toISOString().slice(0, 16).replace("T", " ")} UTC`;
-}
-
 /** What else the queue will miss on the head: `; no \`Guard notes\` run on this head`, or nothing. */
 function missingText(pull: PullFacts): string {
   const missing = pull.missingChecks ?? [];
@@ -101,7 +97,7 @@ export function reviewWaitMessage(waits: readonly ReviewWait[]): string {
   return [
     ...waits.map(
       ({ pull, handedAt }) =>
-        `PR watcher: waiting for review for over 1 h: #${pull.number}, head \`${short(pull.head)}\`, handed over at ${utcMinute(handedAt)}${missingText(pull)}.`,
+        `PR watcher: waiting for review for over 1 h: #${pull.number}, head \`${short(pull.head)}\`, handed over at ${amsterdamTime(handedAt)}${missingText(pull)}.`,
     ),
     ...waits.map(({ pull }) => marker(reviewWaitKey(pull))),
   ].join("\n");

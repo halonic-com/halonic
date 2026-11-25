@@ -64,4 +64,33 @@ verifies("inbox.agent-inbox-items", () => {
     expect(sendAnswer(root).getAttribute("aria-disabled")).not.toBe("true");
     expect(root.textContent).not.toContain("Write an answer to send it.");
   });
+
+  it("titles a Paperclip hire approval in words and shows the hire's name and role", async () => {
+    const messaging = new FakeAgentMessaging({ now: () => asked });
+    const source = messaging.addSource({ label: "Paperclip · Acme", provider: "paperclip" });
+    // The question as the Paperclip provider maps a `hire_agent` approval (paperclip-client.approval-fields).
+    const item = messaging.addInboxItem(source.id, {
+      question: "Hire an agent\n\n- Name: Iris\n- Role: designer\n- Monthly budget: $50.00",
+      options: [
+        { id: "approve", label: "Approve" },
+        { id: "reject", label: "Reject" },
+        { id: "request-changes", label: "Request changes" },
+      ],
+    });
+    const [read] = await messaging.listSources();
+    const root = await render(
+      <AgentItemCard
+        item={item}
+        source={read}
+        now={() => asked}
+        answer={(answer) => messaging.answer(item.id, answer)}
+        readAttachment={(attachment) => messaging.readAttachment(attachment)}
+      />,
+    );
+    expect(root.querySelector("h2, h3")?.textContent).toBe("Hire an agent");
+    const fields = [...root.querySelectorAll("li")].map((line) => line.textContent);
+    expect(fields).toEqual(["Name: Iris", "Role: designer", "Monthly budget: $50.00"]);
+    const buttons = [...root.querySelectorAll("button")].map((button) => button.textContent);
+    expect(buttons).toEqual(["Approve", "Reject", "Request changes"]);
+  });
 });

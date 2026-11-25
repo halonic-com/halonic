@@ -140,20 +140,21 @@ const hostMessages: Readonly<Record<GatewayHostMessage["type"], readonly Check[]
 /**
  * Reads one message from the host, as the shell delivered its text. The size
  * comes first: a text over `gatewayMaxMessageBytes` bytes of UTF-8 is never
- * parsed. A `welcome` of another version is `other-version` whatever else it
- * holds, since the phone closes on it either way.
+ * parsed. A `welcome` of another version than `version`, the one the phone's
+ * `hello` named, is `other-version` whatever else it holds, since the phone
+ * closes on it either way. Version 3 lists the same messages the phone takes
+ * of version 4, so one table reads both.
  */
-export function parseHostMessage(text: string): HostMessageResult {
+export function parseHostMessage(
+  text: string,
+  version: number = gatewayProtocolVersion,
+): HostMessageResult {
   if (utf8BytesOver(text, gatewayMaxMessageBytes)) return refused("too-large");
   const value = jsonObject(text);
   if (value === undefined) return refused("malformed");
   const type = value["type"];
   if (typeof type !== "string" || !Object.hasOwn(hostMessages, type)) return refused("malformed");
-  if (
-    type === "welcome" &&
-    isWhole(value["version"]) &&
-    value["version"] !== gatewayProtocolVersion
-  ) {
+  if (type === "welcome" && isWhole(value["version"]) && value["version"] !== version) {
     return refused("other-version");
   }
   const shapes = hostMessages[type as GatewayHostMessage["type"]];

@@ -12,6 +12,7 @@ import { routeOf } from "../computers-words.ts";
 import type { ReachRoute } from "../connection-check.ts";
 import { ConnectionCheckSheet } from "../connection-check-sheet.tsx";
 import { CantReachPanel, ReachingLine } from "../first-reach.tsx";
+import { OlderComputerNote } from "../older-computer-note.tsx";
 import type { PhoneState } from "../phone-status.ts";
 import type { PairedComputer, PhoneStatus } from "../phone-tunnel.ts";
 import { PromptBox } from "../prompt-box.tsx";
@@ -34,7 +35,8 @@ export interface PhoneOutside {
  * can't reach it, the status sheet the label opens, and Removed or Can't confirm in place of the
  * body. Until the computer first answers, the body is the first reach's waiting line or its
  * give-up, which open Check this connection (first-run-progress 6). After that it is the
- * computer's agents from its gateway client, with the prompt box docked under them; a tapped
+ * computer's agents from its gateway client, under "Update Halonic on…" while that computer speaks
+ * only version 3, with the prompt box docked under them; a tapped
  * agent's run detail shows in place of the whole screen. The computer's name is the screen's h1
  * on every state, hidden while the label shows; focus goes to it when the screen opens, and back
  * to the agent's row when its run detail closes (C48).
@@ -261,6 +263,7 @@ function ComputerBody({
   return (
     <>
       {banner}
+      {view?.olderComputer === true ? <OlderComputerNote computer={computer.name} /> : null}
       {remote === undefined || view === undefined ? null : (
         <AgentsList
           view={view}

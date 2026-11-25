@@ -93,8 +93,6 @@ verifies("paperclip.board-check-piles", () => {
       {},
       { agentId: "agent-checker", runId: "run-1", companyId: "acme", projectId: "" },
     );
-    expect(result?.content?.split("\n").at(-1)).toBe(
-      "Queued piles at 2026-11-22T14:00:00.000Z: Mateo 6.",
-    );
+    expect(result?.content?.split("\n").at(-1)).toBe("Queued piles at 22 Nov 15:00 CET: Mateo 6.");
   });
 });

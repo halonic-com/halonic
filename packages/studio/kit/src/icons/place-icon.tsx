@@ -75,6 +75,11 @@ const drawings = {
     solid: "M7 4h10a2 2 0 012 2v12a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2z",
     cuts: [{ path: "M12 7.5v5M9.5 10h5M9.5 15.5h5" }],
   },
+  overview: {
+    // Who works on what: four tiles, one per agent, read like a dashboard at a glance.
+    outline: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z",
+    solid: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z",
+  },
   team: {
     // Spend and seats: a half dial with its needle, read like a fuel gauge.
     outline: "M4 17a8 8 0 0116 0zM12 17l3.5-5",

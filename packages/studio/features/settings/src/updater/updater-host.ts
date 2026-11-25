@@ -1,4 +1,4 @@
-import type { UpdateStatus } from "./updater-status.ts";
+import type { UpdateStatus, UpdateTrack } from "./updater-status.ts";
 
 /**
  * What About Halonic, the status bar item and the restart dialog need of the updater. The app
@@ -27,4 +27,9 @@ export interface UpdaterHost {
   restart(): Promise<void>;
   /** The "Update Halonic automatically" switch. */
   setAutomatic(on: boolean): Promise<UpdateStatus>;
+  /**
+   * The "Update track" choice: saves it, and on a change drops an update the other track found or
+   * downloaded. It doesn't check; the section asks for the check itself.
+   */
+  setTrack(track: UpdateTrack): Promise<UpdateStatus>;
 }

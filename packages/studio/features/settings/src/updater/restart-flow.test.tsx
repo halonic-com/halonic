@@ -59,6 +59,7 @@ function fakeUpdater(first: UpdateStatus) {
     cancel: vi.fn(async () => first),
     restart: vi.fn(async () => undefined),
     setAutomatic: vi.fn(async () => first),
+    setTrack: vi.fn(async () => first),
   } satisfies UpdaterHost;
   const set = (next: UpdateStatus) =>
     act(() => {

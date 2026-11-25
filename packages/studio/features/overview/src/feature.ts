@@ -9,7 +9,8 @@ import { memoryRecapMark, RecapStore, storageRecapMark } from "./recap-store.ts"
  * (requirement `overview.daily-recap`). It builds an
  * {@link OverviewStore} from `AgentMessaging` and offers it as
  * `OverviewService`, and a {@link RecapStore} as `RecapService`;
- * `OverviewView` and `RecapView` draw them.
+ * `OverviewView` and `RecapView` draw them, together on the Overview place
+ * under the sidebar's Team group.
  */
 export const overviewFeature = defineFeature({
   id: "overview",
@@ -28,6 +29,11 @@ export const overviewFeature = defineFeature({
           ? memoryRecapMark()
           : storageRecapMark(globalThis.localStorage);
       return new RecapStore(services.get(OverviewMessagingService), mark);
+    });
+    studio.places.add({
+      id: "overview",
+      view: "OverviewPlace",
+      load: () => import("./ui/overview-place.tsx"),
     });
   },
 });

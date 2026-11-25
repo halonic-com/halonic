@@ -12,6 +12,7 @@ import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 export { type AllRunsFeed, type AllRunsFeedState, AllRunsService } from "./app/all-runs-feed.ts";
 export {
   type AllRunsRow,
+  type RowNotice,
   type TeamRowContext,
   type TeamRunFields,
   teamAppRun,
@@ -307,6 +308,8 @@ export const RunFilesService: ServiceKey<RunFiles> = serviceKey<RunFiles>("runs.
 export const VersionHistoryHostService: ServiceKey<VersionHistoryHost> =
   serviceKey<VersionHistoryHost>("runs.version-history-host");
 
+/** A Runs app row as the background service's run notifications read it. */
+export { notifiableRun } from "./notify/notifiable-run.ts";
 /**
  * The switches under Settings › Notifications › Runs: Settings saves them, the background
  * service's run notifications read them.

@@ -1,3 +1,4 @@
+import { amsterdamTime } from "../amsterdam-time.ts";
 import type { BoardWrite } from "./writes.ts";
 
 /**
@@ -187,7 +188,7 @@ export function planFailedRuns(
     writes.push({
       kind: "comment",
       taskId: seatTask,
-      body: `Spend-limit failures: ${spend.length} runs since ${spend[0]?.at ?? ""} (${agents.join(", ")}).`,
+      body: `Spend-limit failures: ${spend.length} runs since ${amsterdamTime(spend[0]?.at ?? "")} (${agents.join(", ")}).`,
     });
   }
   return {

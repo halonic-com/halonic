@@ -1,6 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import type { ToolResult, ToolRunContext } from "@paperclipai/plugin-sdk";
 import { afterEach, expect, test, vi } from "vitest";
+import { amsterdamTime } from "../amsterdam-time.ts";
 import { at, pull, snapshot } from "../board-check/merge-speed.test-helper.ts";
 import type { MergeSpeedRecord } from "../board-check/merge-speed.ts";
 import type { AgentMergeRecord } from "../snapshot/agent-merges.ts";
@@ -132,11 +133,11 @@ verifies("paperclip.merge-speed-tool", () => {
     const result = await mergeSpeedTool(fake)({ hours: 2 }, runCtx);
     expect(result.content).toBe(
       [
-        `Merge speed, last 2 hours, from the snapshot of ${at("14:55")}:`,
+        `Merge speed, last 2 hours, from the snapshot of ${amsterdamTime(at("14:55"))}:`,
         "- Merges: 1 (0.5 per hour).",
         "- Dropped from the queue without merging: 0% of 4 exits.",
         "- Time in queue of the merged ones: median 60 min, longest 60 min.",
-        `Queue exits counted since ${at("08:00")}; earlier ones are missing.`,
+        `Queue exits counted since ${amsterdamTime(at("08:00"))}; earlier ones are missing.`,
       ].join("\n"),
     );
   });

@@ -48,6 +48,8 @@ verifies("studio-click-test.steps", () => {
         "/session/s1/execute/sync": "Halonic Studio",
         "/session/s1/screenshot": "iVBORw==",
         "/session/s1/window/handles": ["main", 7],
+        "/session/s1/title": "Home · Acme · Halonic",
+        "/session/s1/elements": [element, element],
       };
       const driverServer = await fakeServer((request) => ({
         status: 200,
@@ -59,6 +61,8 @@ verifies("studio-click-test.steps", () => {
       expect(await driver.pageText()).toBe("Halonic Studio");
       expect([...(await driver.screenshot()).slice(0, 4)]).toEqual([137, 80, 78, 71]);
       expect(await driver.windowHandles()).toEqual(["main"]);
+      expect(await driver.title()).toBe("Home · Acme · Halonic");
+      expect(await driver.count("//*[@role='tab']")).toBe(2);
       await driver.switchToWindow("main");
       await driver.close();
       const sent = driverServer.requests.map((request) => `${request.method} ${request.url}`);

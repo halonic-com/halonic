@@ -13,7 +13,7 @@
 //! app's glyph (HAL-18693), drawn by icons/draw-app-icons.mjs.
 
 use tauri::image::Image;
-use tauri::{AppHandle, Manager, Runtime, WebviewWindow};
+use tauri::{AppHandle, Builder, Manager, Runtime, WebviewWindow};
 
 /// The argument that names the app to open.
 const APP_ARGUMENT: &str = "--app";
@@ -122,6 +122,16 @@ pub fn show<R: Runtime>(handle: &AppHandle<R>, app: Option<FocusedApp>) -> tauri
         None => crate::window::open(handle).map(|_| ()),
         Some(app) => crate::window::open_focused(handle, app).map(|_| ()),
     }
+}
+
+/// Halonic runs once (HAL-17903): a second start, such as the Start menu's
+/// Halonic Inbox, hands its arguments to the running Halonic and quits.
+/// Registered first, so the second start sets nothing else up. Not in
+/// `shell`, so the tests' apps don't claim the one instance.
+pub fn single_instance<R: Runtime>(builder: Builder<R>) -> Builder<R> {
+    builder.plugin(tauri_plugin_single_instance::init(
+        |app, arguments, _folder| started_again(app, &arguments),
+    ))
 }
 
 /// What the running Halonic does when it is started again with `arguments`.

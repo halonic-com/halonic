@@ -26,7 +26,7 @@
 //! (capabilities/desktop-updates.json), in the main window only the
 //! `login_item_*` commands (capabilities/desktop-login-item.json) and `keep_awake_set`
 //! (capabilities/desktop-keep-awake.json), in the focused apps' windows only
-//! `show_main_window` (capabilities/desktop-show-main-window.json), and the page's close request
+//! `show_main_window` (capabilities/desktop-show-main-window.json), in the main window only `take_pending_notification_click` (capabilities/desktop-pending-notification-click.json), and the page's close request
 //! (capabilities/desktop-window.json), the title bar's `set_frame_colour` (capabilities/desktop-frame-colour.json), its notifications
 //! (capabilities/desktop-notifications.json) and the `wsl_*` commands of the sandbox
 //! backup (capabilities/desktop-sandbox-backup.json) and the `action_*` commands of
@@ -44,6 +44,8 @@
 //! everything but the confirmed address out of the window. On macOS and Linux,
 //! `server_session_open` shows the brief in a second window whose page no
 //! capability names, so it gets no command either (`server_session_brief.rs`).
+//! The feedback shortcut's windows get only the `feedback` plugin's
+//! commands (capabilities/desktop-feedback-*.json, `feedback_capture.rs`).
 
 #[cfg(desktop)]
 mod action_parts;
@@ -70,6 +72,8 @@ mod engine_sse;
 mod engine_table;
 #[cfg(desktop)]
 mod engines;
+#[cfg(desktop)]
+mod feedback_capture;
 mod file_answers;
 mod file_arguments;
 mod files;
@@ -148,7 +152,12 @@ pub fn run() {
     if raised_start::refused() {
         return;
     }
-    shell(single_instance(Builder::default()))
+    // Outside `shell`, so the tests' apps claim neither: one instance, and the feedback keys.
+    #[cfg(desktop)]
+    let builder = feedback_capture::keys(focused_apps::single_instance(Builder::default()));
+    #[cfg(mobile)]
+    let builder = Builder::default();
+    shell(builder)
         .build(tauri::generate_context!())
         .expect("the Studio shell could not start")
         .run(|app, event| {
@@ -165,18 +174,6 @@ pub fn run() {
                 let _ = app;
             }
         });
-}
-
-/// On desktop, Halonic runs once (HAL-17903): a second start, such as the
-/// Start menu's Halonic Inbox, hands its arguments to the running Halonic
-/// and quits. Registered first, so the second start sets nothing else up.
-/// Not in `shell`, so the tests' apps don't claim the one instance.
-fn single_instance<R: Runtime>(builder: Builder<R>) -> Builder<R> {
-    #[cfg(desktop)]
-    let builder = builder.plugin(tauri_plugin_single_instance::init(
-        |app, arguments, _folder| focused_apps::started_again(app, &arguments),
-    ));
-    builder
 }
 
 /// The shell's state, plugins and commands, on any runtime, so the tests
@@ -223,13 +220,15 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(updates::Updates::default())
         .manage(engines::EnginesState::default())
         .manage(tray::TrayShellState::default())
+        .manage(notification_clicks::pending_click::PendingClick::default())
         .manage(keep_awake::KeepAwakeState::default())
         // Registered only so the shell can use it from Rust: no capability
         // grants its commands, so no page can call them.
         .plugin(tauri_plugin_updater::Builder::new().build())
         // Notifications for the Inbox and the Messenger (HAL-17448): only
         // the app's own page is granted its commands.
-        .plugin(tauri_plugin_notification::init());
+        .plugin(tauri_plugin_notification::init())
+        .plugin(feedback_capture::commands());
     // The phone's own plugins, each used from Rust only (`android_plugins.rs`).
     #[cfg(target_os = "android")]
     let builder = android_plugins::register(builder);
@@ -453,6 +452,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             keep_awake::keep_awake_set,
             #[cfg(desktop)]
             focused_apps::show_main_window,
+            #[cfg(desktop)]
+            notification_clicks::pending_click::take_pending_notification_click,
             frame_colour::set_frame_colour,
         ])
 }

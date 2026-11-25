@@ -44,6 +44,8 @@ export interface ClientHolding {
   readonly ownerCheckAvailable: boolean;
   /** The last connection found the two sides on different message versions. */
   readonly updateNeeded: boolean;
+  /** The last `welcome` was version 3's, after the computer refused version 4. */
+  readonly olderComputer: boolean;
 }
 
 /** The view of `holding`: live only while connected and listed since the last `welcome`. */
@@ -60,6 +62,7 @@ export function viewOf(holding: ClientHolding): RemoteView {
     offReason: live ? undefined : notLiveReason,
     answersRisky: holding.answersRisky,
     updateNeeded: holding.updateNeeded,
+    olderComputer: holding.olderComputer,
   };
 }
 

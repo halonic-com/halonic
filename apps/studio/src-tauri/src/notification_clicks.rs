@@ -13,14 +13,19 @@
 //! is never lost while only one app runs (HAL-17915).
 //! A run (`run`) or Runs' Failed group (`runs-failed`) opens only in Studio's
 //! window, where Runs lives until the Runs window exists, so the click brings
-//! that window forward, or opens it, before telling it (HAL-18844).
+//! that window forward, or opens it, before telling it (HAL-18844). A window
+//! it had to open takes the click itself once its page starts (HAL-18882).
 
 use serde::Serialize;
 use serde_json::{Map, Value};
-use tauri::{AppHandle, Emitter, Runtime};
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tauri_plugin_notification::{ActionPerformed, NotificationExt};
 
 use crate::focused_apps;
+
+// Public to the crate, since `generate_handler!` needs the command at its own path.
+#[path = "pending_click.rs"]
+pub mod pending_click;
 
 /// The event the page listens for.
 pub const NOTIFICATION_CLICKED_EVENT: &str = "notification-clicked";
@@ -78,7 +83,8 @@ fn opens_in_runs(kind: Option<&str>) -> bool {
 }
 
 /// Tells the open window the clicked item belongs to that the notification
-/// with `extra` was clicked. A run's click first shows Studio's window. A
+/// with `extra` was clicked. A run's click first shows Studio's window, and
+/// waits for its page when that window was closed. A
 /// notification without an item, or a click while no window is open, sends
 /// nothing.
 pub fn report_click<R: Runtime>(
@@ -89,17 +95,35 @@ pub fn report_click<R: Runtime>(
         return Ok(());
     };
     if opens_in_runs(clicked.kind.as_deref()) {
-        focused_apps::show(app, None)?;
-        return app.emit_to(
-            focused_apps::STUDIO_WINDOW,
-            NOTIFICATION_CLICKED_EVENT,
-            clicked,
-        );
+        return report_run_click(app, clicked);
     }
     match focused_apps::first_open(app, &windows_for(clicked.kind.as_deref())) {
         Some(window) => app.emit_to(window.label(), NOTIFICATION_CLICKED_EVENT, clicked),
         None => Ok(()),
     }
+}
+
+/// Shows Studio's window and tells it about a run's click. When the window
+/// was closed its page isn't listening yet, so the click waits for the page
+/// to take it instead (`pending_click.rs`).
+fn report_run_click<R: Runtime>(
+    app: &AppHandle<R>,
+    clicked: NotificationClicked,
+) -> tauri::Result<()> {
+    let was_open = app
+        .get_webview_window(focused_apps::STUDIO_WINDOW)
+        .is_some();
+    if !was_open {
+        // Kept before the window opens, so its page can't start before it.
+        pending_click::hold(app, clicked);
+        return focused_apps::show(app, None);
+    }
+    focused_apps::show(app, None)?;
+    app.emit_to(
+        focused_apps::STUDIO_WINDOW,
+        NOTIFICATION_CLICKED_EVENT,
+        clicked,
+    )
 }
 
 /// Reports a tap from the plugin; a click on one of a notification's

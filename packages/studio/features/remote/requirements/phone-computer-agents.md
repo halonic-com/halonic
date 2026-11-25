@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-15180 (tunnel D7d; D7 design on HAL-15159, sections 2 and 3)
 
-When a paired computer's screen opens, the phone shall show that computer's agents from a gateway client over the shell's tunnel to that computer, in place of a fake, and shall keep that client in memory only until the computer removes this phone or the person forgets it. Once the computer has answered, the screen shall show the Agents list with the prompt box docked under it, and tapping an agent shall show its run detail in place of the screen, with Back to Agents and Android back returning to the list. The stale banner and the status sheet shall say "as of" with the time the last session list or event arrived. When the computer removes this phone, the phone shall close the run detail and drop the computer's agents before the Removed screen shows.
+When a paired computer's screen opens, the phone shall show that computer's agents from a gateway client over the shell's tunnel to that computer, in place of a fake, and shall keep that client in memory only until the computer removes this phone or the person forgets it. Once the computer has answered, the screen shall show the Agents list with the prompt box docked under it, and tapping an agent shall show its run detail in place of the screen, with Back to Agents and Android back returning to the list. The stale banner and the status sheet shall say "as of" with the time the last session list or event arrived. While that computer runs an older Halonic that speaks only version 3 of the gateway's messages, the screen shall show "Update Halonic on Tim's laptop", "Update Halonic on Tim's laptop to use Inbox and Messenger from your phone." and "Agents still works." over the Agents list. When the computer removes this phone, the phone shall close the run detail and drop the computer's agents before the Removed screen shows.
 
 ## Examples
 
@@ -26,3 +26,6 @@ When a paired computer's screen opens, the phone shall show that computer's agen
 - Given Reporter's run detail shows,
   when the computer removes this phone,
   then the Removed screen shows and Reporter's run detail and agents are gone.
+- Given Tim's laptop runs an older Halonic that speaks only message version 3,
+  when the phone falls back to version 3 and the computer lists its agents,
+  then the screen shows "Update Halonic on Tim's laptop to use Inbox and Messenger from your phone." and "Agents still works." over the Agents list.
