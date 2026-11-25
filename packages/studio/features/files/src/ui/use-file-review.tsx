@@ -184,7 +184,8 @@ export function useFileReview(parts: FileReviewParts): FileReviewView {
             accept: itemReviewWords.accept,
             reject: itemReviewWords.reject,
             rejectAndDelete: itemReviewWords.rejectAndDelete,
-            partLabel: itemReviewWords.spokenPosition,
+            partLabel: (at, count, facts) =>
+              `${itemReviewWords.spokenPosition(at, count)}: ${filesWords.reviewPartFacts(facts)}`,
             onDecide: (part, decision) => {
               const shown = latest.current;
               if (shown !== null)

@@ -20,14 +20,25 @@ export type EditorReviewPart = {
   readonly deletesFile?: boolean;
 };
 
+/** What a part's name says about it, as the text is now: where it starts and how many lines changed. */
+export type EditorReviewPartFacts = {
+  /** The 1-based line where the part starts now. */
+  readonly line: number;
+  readonly added: number;
+  readonly removed: number;
+};
+
 /** What a part's Accept and Reject say and do; the owner gives the words. */
 export type EditorReviewActions = {
   readonly accept: string;
   readonly reject: string;
   /** Reject on a part that deletes the file: "Reject and delete file". */
   readonly rejectAndDelete: string;
-  /** The name a screen reader hears for part `at` of `count`, both from 1: "Change 1 of 3". */
-  readonly partLabel: (at: number, count: number) => string;
+  /**
+   * The name a screen reader hears for part `at` of `count`, both from 1, with what it changed:
+   * "Change 2 of 2: 1 line added at line 7". The green of added lines is not seen by everyone.
+   */
+  readonly partLabel: (at: number, count: number, facts: EditorReviewPartFacts) => string;
   /** Called with the part's index in the list last set, and the decision. */
   readonly onDecide: (part: number, decision: "accept" | "reject") => void;
 };
@@ -63,31 +74,33 @@ function place(state: EditorState, part: EditorReviewPart, index: number): Place
 /** The removed lines struck through, then Accept and Reject, above the part's added lines. */
 class PartWidget extends WidgetType {
   readonly part: Placed;
-  readonly count: number;
+  readonly label: string;
   readonly actions: EditorReviewActions;
 
-  constructor(part: Placed, count: number, actions: EditorReviewActions) {
+  constructor(part: Placed, label: string, actions: EditorReviewActions) {
     super();
     this.part = part;
-    this.count = count;
+    this.label = label;
     this.actions = actions;
   }
 
   override eq(other: PartWidget): boolean {
     return (
       other.part.index === this.part.index &&
-      other.count === this.count &&
+      other.label === this.label &&
       other.part.deletesFile === this.part.deletesFile &&
       other.part.removed.join("\n") === this.part.removed.join("\n")
     );
   }
 
   override toDOM(): HTMLElement {
-    const { part, count, actions } = this;
+    const { part, label, actions } = this;
     const group = document.createElement("div");
     group.className = "cm-review-part";
     group.setAttribute("role", "group");
-    group.setAttribute("aria-label", actions.partLabel(part.index + 1, count));
+    group.setAttribute("aria-label", label);
+    // Focusable by code, so Previous and Next land on the part and Tab goes on to its Accept.
+    group.tabIndex = -1;
     group.dataset["reviewPart"] = String(part.index);
     for (const line of part.removed) {
       const removed = document.createElement("del");
@@ -123,9 +136,11 @@ function decorationsOf(state: EditorState): DecorationSet {
   for (const part of placed) {
     if (actions !== undefined) {
       const atEnd = !part.added && part.from === state.doc.length && part.from > 0;
+      const facts = factsOf(state, part, atEnd);
+      const label = actions.partLabel(part.index + 1, placed.length, facts);
       ranges.push(
         Decoration.widget({
-          widget: new PartWidget(part, placed.length, actions),
+          widget: new PartWidget(part, label, actions),
           block: true,
           side: atEnd ? 1 : -1,
         }).range(part.from),
@@ -139,6 +154,15 @@ function decorationsOf(state: EditorState): DecorationSet {
     }
   }
   return Decoration.set(ranges, true);
+}
+
+/** Where a part starts now and how many lines it changed; one after the text sits past its end. */
+function factsOf(state: EditorState, part: Placed, atEnd: boolean): EditorReviewPartFacts {
+  const line = state.doc.lineAt(part.from).number + (atEnd ? 1 : 0);
+  const added = part.added
+    ? state.doc.lineAt(part.to).number - state.doc.lineAt(part.from).number + 1
+    : 0;
+  return { line, added, removed: part.removed.length };
 }
 
 /** The owner's words and handler for the parts' Accept and Reject. */
@@ -191,10 +215,16 @@ export function showReviewParts(view: EditorView, parts: readonly EditorReviewPa
   view.dispatch({ effects: setParts.of(parts) });
 }
 
-/** Puts the cursor on the first line of part `index`, scrolls to it and focuses the editor. */
+/**
+ * Puts the cursor on the first line of part `index`, scrolls to it and moves the focus to the
+ * part's group, so a screen reader says which change it is and Tab goes on to its Accept (a11y
+ * check RV4). Without the review's words there is no group, and the editor takes the focus.
+ */
 export function goToReviewPart(view: EditorView, index: number): void {
   const part = view.state.field(partsField, false)?.[index];
   if (part === undefined) return;
   view.dispatch({ selection: { anchor: part.from }, scrollIntoView: true });
-  view.focus();
+  const group = view.contentDOM.querySelector<HTMLElement>(`[data-review-part="${index}"]`);
+  if (group === null) view.focus();
+  else group.focus();
 }

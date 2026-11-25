@@ -72,6 +72,11 @@ const frame = EditorView.theme({
     paddingInlineStart: "4px",
   },
   ".cm-review-part": { padding: "2px 0" },
+  // Previous and Next move the focus to the part: it wears the ring as its buttons do.
+  ".cm-review-part:focus-visible": {
+    outline: "2px solid transparent",
+    boxShadow: "var(--focus-ring)",
+  },
   ".cm-review-removed": {
     display: "block",
     whiteSpace: "pre",
