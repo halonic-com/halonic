@@ -25,6 +25,7 @@ const sampleCalls: Readonly<Record<ToolActionName, readonly Readonly<Record<stri
     "github.merge-times": [{}],
     "paperclip.task": [{ task: "HAL-1", comments: 2, document: "plan" }],
     "paperclip.failed-runs": [{ since: "2026-11-24T00:00:00Z" }],
+    "paperclip.budgets": [{}],
     "paperclip.template": [{ id: "card" }],
     "paperclip.comment": [{ task: "HAL-1", body: "Done." }],
     "paperclip.next-step": [

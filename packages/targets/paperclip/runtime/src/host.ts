@@ -189,6 +189,8 @@ export interface AgentRecord {
   readonly id: string;
   readonly name: string;
   readonly urlKey: string;
+  /** Its monthly budget in cents, as Paperclip's agent list gives it. */
+  readonly budgetMonthlyCents?: number;
 }
 
 /**

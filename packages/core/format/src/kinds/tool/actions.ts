@@ -29,6 +29,36 @@ const repository = s
 /** The repositories a GitHub action may read. Any other is refused at run time. */
 const repositories = s.array(repository).min(1).max(20);
 
+/** The most agents one budget list names. */
+export const MAX_BUDGET_AGENTS = 500;
+
+/** An agent's url key in Paperclip, such as `mateo` or `ravi-2`. */
+const agentUrlKey = s
+  .string()
+  .regex(/^[a-z0-9][a-z0-9-]{0,63}$/, "write the agent's url key, such as 'mateo'");
+
+/**
+ * A monthly budget in dollars, such as `50` or `12.5`: whole cents, at
+ * most 100,000 dollars. Paperclip keeps budgets in cents, so a third
+ * decimal couldn't be compared.
+ */
+const monthlyDollars = s
+  .number()
+  .min(0)
+  .max(100_000)
+  .refine(
+    (dollars) => Math.abs(Math.round(dollars * 100) - dollars * 100) < 1e-6,
+    "give at most two decimals, such as 50 or 12.5",
+  );
+
+/** What each agent's monthly budget should be, by url key. */
+const agentBudgets = s
+  .record(agentUrlKey, monthlyDollars)
+  .refine(
+    (budgets) => Object.keys(budgets).length <= MAX_BUDGET_AGENTS,
+    `name at most ${MAX_BUDGET_AGENTS} agents`,
+  );
+
 /**
  * Whether a writing action writes (`write`) or only answers what it would
  * write (`dry-run`, the default). Only the tool file sets it, never the
@@ -128,6 +158,14 @@ export const TOOL_ACTIONS = {
       .object({ hours: s.number().int().min(1).max(168).default(24) })
       .strict()
       .prefault({}),
+  },
+  "paperclip.budgets": {
+    about:
+      "Compares each agent's monthly budget in Paperclip with the one the workspace sets, and flags the differences. Changes nothing.",
+    writes: false,
+    keys: ["paperclip-api"],
+    parameters: none,
+    settings: s.object({ agents: agentBudgets }).strict(),
   },
   "paperclip.template": {
     about:

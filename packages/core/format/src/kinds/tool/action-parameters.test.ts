@@ -31,6 +31,7 @@ verifies("format.tool-action-parameters", () => {
       "github.merge-times ",
       "paperclip.task task!,comments?,document?",
       "paperclip.failed-runs since?",
+      "paperclip.budgets ",
       "paperclip.template id?",
       "paperclip.comment task!,body!",
       "paperclip.next-step task!,status!,comment!,monitor?,monitorInMinutes?,monitorRef?,monitorService?,monitorMaxChecks?,blockedBy?",
