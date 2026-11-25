@@ -34,6 +34,7 @@
     "@halonicjs/routines": "workspace:*",
     "@halonicjs/schema-kit": "workspace:*",
     "@halonicjs/std": "workspace:*",
+    "@halonicjs/studio-feature-account-menu": "workspace:*",
     "@halonicjs/studio-feature-action-steppers": "workspace:*",
     "@halonicjs/studio-feature-agents": "workspace:*",
     "@halonicjs/studio-feature-assistant": "workspace:*",

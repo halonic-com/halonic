@@ -18,7 +18,6 @@ import type { MorePageSwitcher } from "../phone/more-page.tsx";
 import { usePhoneBackButton } from "../phone/phone-back.ts";
 import { PhoneTopBarSlot } from "../phone/phone-top-bar-actions.tsx";
 import { usePhonePlaces } from "../phone/use-phone-places.ts";
-import { placeNames, type SidebarPlace } from "../points/frame.ts";
 import type { ItemRef } from "../points/item-kinds.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
 import type { ResourceWatch } from "../resources/resource-watch.ts";
@@ -31,13 +30,13 @@ import { useHelpMenu } from "../sidebar/help-menu.ts";
 import { studioTab } from "../sidebar/sidebar-views.tsx";
 import type { WorkspaceSwitcherProps } from "../sidebar/workspace-switcher.tsx";
 import { usePageHeadingFocus, usePageHeadingFocusAfterDialog } from "../tabs/history-moves.ts";
-import { openLocation } from "../tabs/open-location.ts";
 import { TabPages } from "../tabs/tab-pages.tsx";
-import { currentLocation, type TabLocation } from "../tabs/tab-set.ts";
+import { currentLocation } from "../tabs/tab-set.ts";
 import { useWindowKeys } from "../tabs/use-window-keys.ts";
 import { WindowTabStrip } from "../tabs/window-tab-strip.tsx";
 import { HistoryButtons } from "../title-bar/history-buttons.tsx";
 import { TitleBarBrand } from "../title-bar/title-bar-brand.tsx";
+import { TitleBarItems } from "../title-bar/title-bar-items.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import { shownPageOf } from "./active-item.ts";
 import { DesktopResourceItem } from "./desktop-resource-item.tsx";
@@ -51,6 +50,7 @@ import { StudioPage } from "./studio-page.tsx";
 import { StudioPhonePage, StudioPhoneTopBar } from "./studio-phone.tsx";
 import { StudioSidebar } from "./studio-sidebar.tsx";
 import type { StudioWorkspace } from "./studio-workspace.ts";
+import { useWindowOpeners } from "./window-openers.ts";
 import { windowPanelParts } from "./window-panel.tsx";
 import { useOpenSettings } from "./window-settings.ts";
 import { useActiveTabPage, useActiveTabTitle, useWindowTitle } from "./window-title.ts";
@@ -116,7 +116,8 @@ export interface StudioWindowProps {
 /**
  * The whole Studio window, put together from the shell's parts. On the desktop
  * (`shell.studio-window`): the Halonic Studio mark, Back, Forward and the window tabs in the title
- * bar, the sidebar, the active tab's page with the last five kept mounted, the
+ * bar, with the features' items at its right end (`shell.title-bar-items`), the sidebar, the
+ * active tab's page with the last five kept mounted, the
  * status bar items with the save note at its right end, and the Ctrl K palette, opened from the Search box, Mod K, **+** and Ctrl T.
  * Settings opens over it (`shell.settings-window`) from the context's `openSettings`, the
  * sidebar's Settings row and, in the desktop app, Mod ,.
@@ -188,26 +189,13 @@ function StudioWindowBody(props: StudioWindowProps) {
   // before the page's `h1` takes it, at every width (C383 SP1).
   const focusOpenedPage = () =>
     settings.opening === undefined ? focusNewPage() : focusPageOpenedFromDialog();
-  // Read when a view opens a place, so the context stays the same as the window narrows or widens.
-  const openPlaceHere = useRef<(place: SidebarPlace) => void>(phone.openPlace);
-  openPlaceHere.current = desktop
-    ? (place) => {
-        tabs.openHere({ key: place, title: placeNames[place].label });
-        focusOpenedPage();
-      }
-    : phone.openPlace;
-  // Read when a view opens an item, for the same reason.
-  const openHere = useRef<(location: TabLocation) => void>(phone.open);
-  openHere.current = desktop
-    ? (location) => {
-        tabs.openHere(location);
-        focusOpenedPage();
-      }
-    : (location) => phone.open(location);
-  const openItemInNewTab = useRef<(location: TabLocation) => void>(phone.open);
-  openItemInNewTab.current = desktop
-    ? (location) => openLocation(tabs, announcer, location, true)
-    : (location) => phone.open(location);
+  const { openPlaceHere, openHere, openItemInNewTab } = useWindowOpeners({
+    desktop,
+    tabs,
+    phone,
+    announcer,
+    focusOpenedPage,
+  });
   const readers = useShownReaders(tabs, phone.topBar.title);
   // The pages that take items as cards, which `showItem` asks first.
   const cardTakers = useMemo(() => new ItemCardTakers(), []);
@@ -346,6 +334,7 @@ function StudioWindowBody(props: StudioWindowProps) {
           </span>
           <WindowTabStrip tabs={tabs} onNewTab={palette.show} windowKeys={{ host, platform }} />
           {panel.button}
+          <TitleBarItems items={contributions.titleBar.list()} contextFor={contextFor} />
         </>
       }
       badges={headerBadges}
@@ -381,6 +370,7 @@ function StudioWindowBody(props: StudioWindowProps) {
           places={phone}
           slot={setTopBarSlot}
           panelButton={panel.phoneButton}
+          items={<StatusBarItems items={contributions.titleBar.list()} contextFor={contextFor} />}
           search={{
             recent: workspace.recent,
             providers: contributions.search.providers(),
