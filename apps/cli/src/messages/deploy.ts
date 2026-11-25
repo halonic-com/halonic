@@ -99,6 +99,10 @@ export const deployMessages = defineMessages("deploy", {
 
   /** What `halonic deploy` without a name says when no deployment is on Cloudflare yet. */
   needsName: () => phrase`Say which deployment to deploy.`,
+  /** What `halonic deploy` without a name says when the workspace has no deployment at all. */
+  noDeployments: (workspace: string) => phrase`${workspace} has no deployments yet.`,
+  noDeploymentsFix: () =>
+    phrase`Add one to deployments.yaml in the workspace folder, then run halonic deploy again.`,
   yesOption: () => phrase`Answer Deploy? [y/N] with yes`,
   /** A deploy takes its files from a commit (3.6). Exit 2. */
   notARepository: (workspace: string) =>

@@ -44,7 +44,8 @@ class NobodyToAsk extends Error {
  * Deploys the workspace's last commit to the named deployment, or to its one
  * Cloudflare deployment when none is named.
  *
- * @throws UsageError with more than one name, or none and no Cloudflare deployment
+ * @throws UsageError with more than one name, or none and no Cloudflare deployment (or no
+ *   deployment at all)
  * @throws KindedError `invalid_input` when the workspace isn't in a git repository with a commit
  * @throws KindedError from the deploy app service, through `deployFailure`
  */
@@ -60,7 +61,7 @@ export async function runDeploy(
   const workspaceName = workspaceNameOf(workspace, dir);
   const deployments = filesOf(workspace, "deployments")[0]?.value.deployments ?? {};
   const chosen = chooseDeployment(workspaceName, deployments, name, workspace.files);
-  if (chosen.kind === "none") throw new UsageError(deployMessages.needsName());
+  if (chosen.kind === "none") throw nothingChosen(workspaceName, deployments);
   const history = await (setup.openHistory ?? openGitHistory)(dir.root);
   if (history === null) throw notARepository(workspaceName);
   try {
@@ -209,6 +210,12 @@ function confirm(context: CommandContext, facts: DeployFacts, plan: DeployPlan):
     yes: false,
     refusal: () => new NobodyToAsk(),
   });
+}
+
+/** Why no deployment was picked: the workspace has none yet, or the user has to name one. */
+function nothingChosen(workspace: string, deployments: Record<string, Deployment>): UsageError {
+  if (Object.keys(deployments).length > 0) return new UsageError(deployMessages.needsName());
+  return new UsageError(deployMessages.noDeployments(workspace), deployMessages.noDeploymentsFix());
 }
 
 /** "Acme isn't in a git repository, and a deploy takes its files from a commit." Exit 2. */

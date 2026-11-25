@@ -212,6 +212,19 @@ verifies("cli.commands.deploy.run", () => {
     );
   });
 
+  it("says the workspace has no deployments and how to add one, with exit 2", async () => {
+    await rm(join(folder, "deployments.yaml"));
+    const { setup, asked } = targetWith(livePlan, uploadAndGoLive, deployed);
+    const io = captureIo(folder);
+    const code = await runCli(["deploy"], io, [deployCommandWith(setup)]);
+    expect(code).toBe(exitCode.usage);
+    expect(io.stderr).toEqual([
+      "✕ Acme has no deployments yet.",
+      "  Add one to deployments.yaml in the workspace folder, then run halonic deploy again.",
+    ]);
+    expect(asked).toEqual([]);
+  });
+
   it("shows the summary and asks Deploy? [y/N] on a first deploy", async () => {
     const { setup, asked } = targetWith(firstPlan, uploadAndGoLive, deployed);
     const io = captureIo(folder);
