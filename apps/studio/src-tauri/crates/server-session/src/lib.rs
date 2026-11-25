@@ -23,4 +23,4 @@ pub use launcher::{brief_file_name, launcher_file_name, render_launcher};
 pub use target::{ServerTarget, TargetRefusal, is_host, is_task_id, is_user, validate_target};
 #[cfg(unix)]
 pub use terminal::terminal_command;
-pub use terminal::{TERMINALS, Terminal, find_terminal};
+pub use terminal::{KEPT_VARIABLES, TERMINALS, Terminal, find_terminal, terminal_environment};

@@ -1,6 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import type { ServerSessionBlock } from "./server-session-block.ts";
+import cases from "./golden/server-session-cases.json" with { type: "json" };
+import { isPlainLine, type ServerSessionBlock } from "./server-session-block.ts";
 import { buildServerSessionBrief } from "./server-session-brief.ts";
 
 const origin = "https://paperclip.acme.example";
@@ -78,6 +79,28 @@ verifies("action-steppers.server-session-brief", () => {
         ok: false,
         error: "Done when isn't one line of plain text",
       });
+    });
+
+    it.each(
+      cases.characters.refused.map((character) => [
+        character.codePointAt(0)?.toString(16),
+        character,
+      ]),
+    )(
+      "refuses U+%s in a step, Done when or the requester, so the dialog can't hide text",
+      (_code, character) => {
+        expect(isPlainLine(`Restart${character} the worker`)).toBe(false);
+        const steps = [`Restart${character} the worker`];
+        expect(buildServerSessionBrief({ ...block, steps }, "Chief", origin).ok).toBe(false);
+        const doneWhen = `Done${character}`;
+        expect(buildServerSessionBrief({ ...block, doneWhen }, "Chief", origin).ok).toBe(false);
+        expect(buildServerSessionBrief(block, `Chief${character}`, origin).ok).toBe(false);
+      },
+    );
+
+    it("takes plain text in any script, accents and emoji included", () => {
+      const steps = ["Redémarre le worker ✓", "ワーカーを再起動する", "Перезапусти 🚀"];
+      expect(buildServerSessionBrief({ ...block, steps }, "Chief", origin).ok).toBe(true);
     });
 
     it("refuses a Done when shaped like a key, naming the field but not the text", () => {

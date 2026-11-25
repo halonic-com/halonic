@@ -42,7 +42,10 @@ fn a_brief_for_another_task_or_a_hash_that_is_text_is_refused() {
 #[test]
 fn the_answers_are_kinds_the_page_knows_and_hold_no_path() {
     let answers = [
-        (ServerSessionAnswer::Started, json!({"kind": "started"})),
+        (
+            ServerSessionAnswer::TerminalOpened,
+            json!({"kind": "terminal-opened"}),
+        ),
         (ServerSessionAnswer::Cancelled, json!({"kind": "cancelled"})),
         (
             ServerSessionAnswer::NoTerminal,

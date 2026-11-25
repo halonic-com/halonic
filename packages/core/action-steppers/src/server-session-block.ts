@@ -15,15 +15,21 @@ export const maxServerSessionStepLength = 300;
 export const maxServerSessionDoneWhenLength = 500;
 
 /**
- * Whether `text` is one line of plain text: no control character, so a step
- * can't add a line of its own to the brief.
+ * A control character (Unicode `Cc`), a format character (`Cf`: zero-width
+ * characters, U+FEFF, the bidi controls, the tag characters) or a line or
+ * paragraph separator. Each either breaks a line or hides or reorders text,
+ * so the person could read one brief while Claude Code reads another.
+ */
+const hiddenCharacter = /[\p{Cc}\p{Cf}\u2028\u2029]/u;
+
+/**
+ * Whether `text` is one line of plain text: no control or format character
+ * and no line separator, so a step can't add a line of its own to the brief
+ * or hide text from the person who reads it. The shell refuses the same
+ * characters in the brief it shows (`server-session-cases.json`, `characters`).
  */
 export function isPlainLine(text: string): boolean {
-  for (const character of text) {
-    const code = character.codePointAt(0) ?? 0;
-    if (code <= 0x1f || code === 0x7f) return false;
-  }
-  return true;
+  return !hiddenCharacter.test(text);
 }
 
 const plainText = (max: number) =>

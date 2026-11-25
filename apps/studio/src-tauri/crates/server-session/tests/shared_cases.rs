@@ -147,9 +147,30 @@ fn launch_refuses_a_brief_with_a_control_character_or_over_8_kb() {
         let brief = BRIEF.replace("worker", &format!("worker{control}"));
         assert_eq!(
             check_brief("HAL-1234", &brief),
-            Err(BriefRefusal::ControlCharacter)
+            Err(BriefRefusal::HiddenCharacter)
         );
     }
     let long = format!("{BRIEF}{}", "x".repeat(MAX_BRIEF_BYTES));
     assert_eq!(check_brief("HAL-1234", &long), Err(BriefRefusal::TooLarge));
+}
+
+#[test]
+fn launch_refuses_the_shared_characters_that_hide_or_reorder_text() {
+    let cases = cases();
+    for character in list(&cases, "characters", "refused") {
+        let character = character.as_str().expect("text");
+        let brief = BRIEF.replace("worker", &format!("worker{character}"));
+        assert_eq!(
+            check_brief("HAL-1234", &brief),
+            Err(BriefRefusal::HiddenCharacter),
+            "{:?}",
+            character.chars().map(u32::from).collect::<Vec<_>>()
+        );
+    }
+}
+
+#[test]
+fn launch_takes_plain_text_in_any_script() {
+    let brief = BRIEF.replace("worker", "worker ✓ ワーカー Перезапусти 🚀");
+    assert_eq!(check_brief("HAL-1234", &brief), Ok(()));
 }

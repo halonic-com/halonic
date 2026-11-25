@@ -7,7 +7,7 @@ use std::process::Child;
 
 use halonic_server_session::{
     ServerTarget, find_terminal, prepare_folder, render_launcher, terminal_command,
-    write_session_files,
+    terminal_environment, write_session_files,
 };
 use tauri::{AppHandle, Manager, Runtime};
 
@@ -51,19 +51,20 @@ pub fn start<R: Runtime>(
         Ok(files) => files,
         Err(error) => return stopped("the brief can't be written", error),
     };
-    let started =
-        find_terminal(&crate::command_paths::search_path()).and_then(|(program, terminal)| {
-            terminal_command(&program, &terminal, files.launcher())
-                .spawn()
-                .map_err(|error| {
-                    halonic_shell_log::record("server_session", format!("the terminal: {error}"));
-                })
-                .ok()
-        });
+    let path = crate::command_paths::search_path();
+    let environment = terminal_environment(path.clone(), |name| std::env::var_os(name));
+    let started = find_terminal(&path).and_then(|(program, terminal)| {
+        terminal_command(&program, &terminal, files.launcher(), &environment)
+            .spawn()
+            .map_err(|error| {
+                halonic_shell_log::record("server_session", format!("the terminal: {error}"));
+            })
+            .ok()
+    });
     match started {
         Some(child) => {
             reap(child);
-            ServerSessionAnswer::Started
+            ServerSessionAnswer::TerminalOpened
         }
         None => match files.remove() {
             Ok(()) => ServerSessionAnswer::NoTerminal,

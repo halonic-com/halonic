@@ -7,6 +7,8 @@
     reason = "a test's programs share its console"
 )]
 
+use std::collections::HashMap;
+use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -14,8 +16,8 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Mutex, PoisonError};
 
 use halonic_server_session::{
-    TERMINALS, prepare_folder, render_launcher, terminal_command, validate_target,
-    write_session_files,
+    TERMINALS, find_terminal, prepare_folder, render_launcher, terminal_command,
+    terminal_environment, validate_target, write_session_files,
 };
 use serde_json::json;
 
@@ -178,9 +180,9 @@ fn launch_never_starts_claude_when_the_upload_fails() {
 
 #[test]
 fn launch_passes_only_the_launchers_path_to_the_terminal() {
-    let launcher = Path::new("/data/acme/server-session/run-HAL-1234.sh");
+    let launcher = Path::new("/data/acme data/server-session/run-HAL-1234.sh");
     for terminal in TERMINALS {
-        let command = terminal_command(Path::new("/usr/bin/terminal"), terminal, launcher);
+        let command = terminal_command(Path::new("/usr/bin/terminal"), terminal, launcher, &[]);
         assert_eq!(command.get_program(), "/usr/bin/terminal");
         let arguments: Vec<_> = command.get_args().collect();
         let (last, fixed) = arguments.split_last().expect("the launcher is last");
@@ -192,5 +194,86 @@ fn launch_passes_only_the_launchers_path_to_the_terminal() {
                 assert!(!argument.contains(line), "{argument} holds brief text");
             }
         }
+    }
+}
+
+#[test]
+fn launch_pins_each_terminals_arguments() {
+    let pinned: Vec<(&str, Vec<&str>)> = TERMINALS
+        .iter()
+        .map(|terminal| (terminal.program, terminal.arguments.to_vec()))
+        .collect();
+    let expected: Vec<(&str, Vec<&str>)> = if cfg!(target_os = "macos") {
+        vec![("open", vec!["-a", "Terminal"])]
+    } else {
+        vec![
+            ("gnome-terminal", vec!["--", "/bin/sh"]),
+            ("konsole", vec!["-e", "/bin/sh"]),
+            ("x-terminal-emulator", vec!["-e", "/bin/sh"]),
+            ("xterm", vec!["-e", "/bin/sh"]),
+        ]
+    };
+    assert_eq!(pinned, expected);
+}
+
+#[test]
+fn launch_gives_the_terminal_only_path_and_the_kept_variables() {
+    let studio: HashMap<&str, &str> = [
+        ("HOME", "~ops"),
+        ("DISPLAY", ":0"),
+        ("SSH_AUTH_SOCK", "agent.sock"),
+        ("ACME_TOKEN", "studio-only"),
+        ("LD_PRELOAD", "acme.so"),
+    ]
+    .into_iter()
+    .collect();
+    let environment = terminal_environment(OsString::from("/usr/bin:/bin"), |name| {
+        studio.get(name).map(OsString::from)
+    });
+    let names: Vec<_> = environment
+        .iter()
+        .map(|(name, _)| name.to_str().expect("a name"))
+        .collect();
+    assert_eq!(names, ["PATH", "HOME", "DISPLAY", "SSH_AUTH_SOCK"]);
+    let launcher = Path::new("/data/acme/server-session/run-HAL-1234.sh");
+    let command = terminal_command(
+        Path::new("/usr/bin/xterm"),
+        &TERMINALS[0],
+        launcher,
+        &environment,
+    );
+    let set: Vec<_> = command
+        .get_envs()
+        .filter(|(_, value)| value.is_some())
+        .collect();
+    assert_eq!(set.len(), 4);
+    assert!(
+        set.iter()
+            .all(|(name, _)| *name != "ACME_TOKEN" && *name != "LD_PRELOAD")
+    );
+}
+
+#[test]
+fn launch_looks_for_terminals_in_usr_bin_before_the_path() {
+    // A program named like a terminal in a folder on PATH, as in ~/bin.
+    let scratch = Scratch::new("terminal");
+    let fake = scratch.0.join("xterm");
+    fs::write(&fake, "#!/bin/sh\n").expect("write the fake terminal");
+    fs::set_permissions(&fake, std::os::unix::fs::PermissionsExt::from_mode(0o755))
+        .expect("make it runnable");
+    let found = find_terminal(scratch.0.as_os_str()).map(|(program, _)| program);
+    let system = TERMINALS
+        .iter()
+        .any(|terminal| Path::new("/usr/bin").join(terminal.program).is_file());
+    if system || cfg!(target_os = "macos") {
+        // The system's terminal wins; macOS never looks on PATH at all.
+        assert!(
+            found
+                .as_ref()
+                .is_none_or(|program| program.starts_with("/usr/bin")),
+            "{found:?}"
+        );
+    } else {
+        assert_eq!(found, Some(fake));
     }
 }

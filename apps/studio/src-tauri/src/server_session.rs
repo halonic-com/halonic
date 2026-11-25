@@ -67,12 +67,13 @@ impl ServerSessionState {
 #[derive(Debug, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
 pub enum ServerSessionAnswer {
-    /// The terminal opened with the launcher.
+    /// The terminal program started with the launcher. It says nothing
+    /// about the upload or Claude Code: the terminal shows how those went.
     #[cfg_attr(
         not(any(target_os = "macos", target_os = "linux")),
         allow(dead_code, reason = "only the macOS and Linux launch opens a terminal")
     )]
-    Started,
+    TerminalOpened,
     /// The person pressed Cancel; nothing was written.
     Cancelled,
     /// No terminal was found; the page shows the manual guide.
