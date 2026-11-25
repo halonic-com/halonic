@@ -280,3 +280,40 @@ verifies("agent-host.remote-paired-phones", () => {
     });
   });
 });
+
+verifies("agent-host.gateway-idle-expiry", () => {
+  describe("PairedPhones: idle expiry", () => {
+    const day = 24 * 60 * 60 * 1000;
+
+    it("refuses and removes a phone paired 31 days ago and never seen", async () => {
+      const { file, time, phones } = await store();
+      await phones.add(phone("Pixel 8", 1));
+      await time.advance(31 * day);
+      expect(phones.find(new Uint8Array(32).fill(1))).toBeUndefined();
+      await settled();
+      expect(phones.phones).toEqual([]);
+      expect(JSON.parse(file.text ?? "").phones).toEqual([]);
+    });
+
+    it("keeps a phone last seen 29 days ago", async () => {
+      const { time, phones } = await store();
+      const added = await phones.add(phone("Pixel 8", 1));
+      await time.advance(5 * day);
+      await phones.connect(added.id, () => undefined).end();
+      await time.advance(29 * day);
+      expect(phones.find(new Uint8Array(32).fill(1))?.id).toBe(added.id);
+    });
+
+    it("never expires a phone while its session is open", async () => {
+      const { time, phones } = await store();
+      const added = await phones.add(phone("Pixel 8", 1));
+      let cut = false;
+      phones.connect(added.id, () => {
+        cut = true;
+      });
+      await time.advance(31 * day);
+      expect(phones.find(new Uint8Array(32).fill(1))?.id).toBe(added.id);
+      expect(cut).toBe(false);
+    });
+  });
+});
