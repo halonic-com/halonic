@@ -1,3 +1,9 @@
 // The public API of @halonicjs/action-catalog. Everything else in src/ is internal.
 
-export { shippedKeys } from "./keys.ts";
+export {
+  type CatalogEntry,
+  shippedCatalog,
+  shippedDefinitions,
+  sourceHashOf,
+} from "./catalog.ts";
+export { notCheckedLine, renderDefinitionGuide } from "./manual-guide.ts";
