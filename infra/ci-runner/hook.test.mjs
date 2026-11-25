@@ -424,7 +424,8 @@ test("the weekly cleanup prunes, and empties the caches when /cache passes 75 %"
 
 test("the cache check runs hourly and never alongside the weekly cleanup", () => {
   assert.match(read("vm/halonic-ci-cache-check.timer"), /^OnCalendar=hourly$/m);
-  const lock = "/usr/bin/flock -n -E 0 /run/lock/halonic-ci-maint.lock";
+  // Waits up to 10 minutes rather than lose its hour to a snapshot refresh (HAL-18424).
+  const lock = "/usr/bin/flock -w 600 -E 0 /run/lock/halonic-ci-maint.lock";
   assert.ok(
     read("vm/halonic-ci-cache-check.service").includes(
       `${lock} /usr/local/sbin/halonic-ci-maint.sh --caches`,

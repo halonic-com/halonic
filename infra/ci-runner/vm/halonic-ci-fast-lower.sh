@@ -6,6 +6,9 @@
 # generation under $LOWER/<n>, which nothing changes once it's published.
 #   refresh  copy /cache/trusted into a new generation and make it current (hourly, after the cache check)
 #   current  print the current generation's folder, making the first one if there is none
+#   timer    what the 5-minute timer runs (HAL-18424): refresh unless no fast slot is deployed or the
+#            weekly cleanup or hourly check holds their lock, log why a round was skipped, and fail
+#            loudly when the current generation is older than MAX_AGE
 # A slot holds $LOWER/.lock shared from reading `current` until its overlays are mounted; refresh
 # holds it exclusive only to switch and to delete generations no overlay mounts any more. One refresh
 # at a time ($LOWER/.refresh.lock): the hourly one and a slot making the first one may meet.
@@ -18,6 +21,10 @@ CACHES="pnpm-store turbo ms-playwright"
 # A file whose inode changed less than this long before the copy started may still be being
 # written. ctime, not mtime: tar and pnpm set mtime, nothing in user space sets ctime.
 SETTLE=120
+SLOTS=/etc/halonic-ci/slots
+MAINT_LOCK=/run/lock/halonic-ci-maint.lock
+# Fast slots should never read a snapshot older than this; past it the timer's unit fails (HAL-18424).
+MAX_AGE=1800
 
 # Jobs write /cache/trusted as the runner's uid, so they can swap a folder for a link to any VM file
 # while it's being copied. Copy and clean up as that uid, never as root: a link then reaches only
@@ -103,8 +110,28 @@ current() {
   echo "$LOWER/$cur"
 }
 
+timer() {
+  local cur age
+  if ! grep -q 'halonic-runner@fast-' "$SLOTS" 2>/dev/null; then
+    echo "fast-lower: refresh skipped: no fast slot in $SLOTS"; return 0
+  fi
+  # 75 (EX_TEMPFAIL) means the lock was taken; any other failure is the copy's own, and fails the unit.
+  if ( flock -n 9 || exit 75; refresh ) 9>"$MAINT_LOCK"; then :; else
+    [ $? -eq 75 ] || return 1
+    echo "fast-lower: refresh skipped: the weekly cleanup or the hourly cache check holds $MAINT_LOCK"
+  fi
+  cur=$(readlink "$LOWER/current" 2>/dev/null || true)
+  [[ "$cur" =~ ^[0-9]+$ ]] || { echo "fast-lower: no current generation" >&2; return 1; }
+  age=$(( $(date +%s) - cur ))
+  if [ "$age" -gt "$MAX_AGE" ]; then
+    echo "fast-lower: the current generation is ${age}s old (limit ${MAX_AGE}s): fast jobs read stale caches" >&2
+    return 1
+  fi
+}
+
 case "${1:-}" in
   refresh) refresh ;;
   current) current ;;
-  *) echo "usage: $0 refresh|current" >&2; exit 2 ;;
+  timer) timer ;;
+  *) echo "usage: $0 refresh|current|timer" >&2; exit 2 ;;
 esac

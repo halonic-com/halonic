@@ -33,13 +33,6 @@ if [ "${use:-0}" -gt 75 ] || [ "$tuse" -ge 80 ]; then
   systemctl start $(cat /etc/halonic-ci/slots)
   logger -t halonic-ci-maint "emptied the shared caches, /cache was ${use}%, caches ${tuse}% of quota"
 fi
-# The fast slots' snapshot of the shared caches (HAL-16032), once they're deployed. A failed copy
-# keeps the last snapshot, so fast jobs only read older caches until it's fixed.
-if grep -q 'halonic-runner@fast-' /etc/halonic-ci/slots 2>/dev/null; then
-  if out=$(/usr/local/sbin/halonic-ci-fast-lower.sh refresh 2>&1); then
-    logger -t halonic-ci-maint "$out"
-  else
-    logger -t halonic-ci-maint "the fast slots' cache snapshot was not refreshed: ${out: -500}"
-  fi
-fi
+# The fast slots' snapshot of the shared caches is refreshed by its own 5-minute timer
+# (vm/halonic-ci-fast-lower.timer, HAL-18424), which skips its round while this script holds the lock.
 logger -t halonic-ci-maint "done, /cache was ${use}%, caches ${tuse}% of quota"

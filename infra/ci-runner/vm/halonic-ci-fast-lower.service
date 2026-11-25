@@ -1,0 +1,9 @@
+[Unit]
+Description=halonic-ci refresh of the fast slots' cache snapshot (HAL-16032, HAL-18424)
+[Service]
+Type=oneshot
+# The script logs why a round was skipped (no fast slot, or the weekly cleanup or hourly check holding
+# their lock) and fails the unit when the current snapshot is over 30 minutes old (HAL-18424).
+ExecStart=/usr/local/sbin/halonic-ci-fast-lower.sh timer
+SyslogIdentifier=halonic-ci-fast-lower
+TimeoutStartSec=10min

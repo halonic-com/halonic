@@ -116,9 +116,17 @@ leaves out every file whose inode changed from 2 minutes before the copy on (it 
 copied half-written; a missing entry is only a cache miss), and points `/cache/fast-lower/current` at it. A slot mounts the current generation; nothing changes a
 generation once it's published, and refresh deletes the old ones no overlay mounts any more. The
 copy and the clean-up run as the runner's uid (`setpriv`), never as root, so a link a job swaps in
-mid-copy reaches only what jobs could read anyway. The hourly cache check refreshes it once fast
-slots are listed in `/etc/halonic-ci/slots`, so fast jobs read caches at most an hour old; a slot
-that finds no generation makes the first one. A failed copy keeps the last generation and is
+mid-copy reaches only what jobs could read anyway. `vm/halonic-ci-fast-lower.timer` refreshes it every
+5 minutes, off the hour (xx:02, :07, …) once fast slots are listed in `/etc/halonic-ci/slots` (HAL-18424: hourly, a fast pull
+request missed nearly every typecheck and test entry, whose hashes change with most pushes to main).
+It skips a round while the weekly cleanup or the hourly check holds their lock and logs why
+(`journalctl -t halonic-ci-fast-lower`); the unit fails when the current generation is over 30 minutes
+old. A slot mounts the
+generation current when it starts and may then wait long for a job, so an idle fast slot whose
+generation is over 10 minutes old, with a newer one published, deletes its runner and restarts on the
+new one. GitHub refuses to delete a runner that has taken a job, so a slot with a job is never
+restarted. An idle slot whose generation passes 30 minutes logs a warning every minute. A slot that
+finds no generation makes the first one. A failed copy keeps the last generation and is
 logged (`journalctl -t halonic-ci-maint`).
 
 ## One job, one container
@@ -239,7 +247,8 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
      (one per fast slot; a fast slot refuses to start without its own).
      `PollLimitBurst` needs systemd 255 or later (older ones ignore it).
   4. **Snapshot:** install `vm/halonic-ci-fast-lower.sh` to `/usr/local/sbin/` (root, `0755`)
-     with the new `vm/halonic-ci-maint.sh`. `/cache` must be XFS with reflinks
+     with the new `vm/halonic-ci-maint.sh`, and `vm/halonic-ci-fast-lower.{service,timer}` like the
+     other units (`systemctl enable --now halonic-ci-fast-lower.timer`). `/cache` must be XFS with reflinks
      (`xfs_info /cache | grep -o 'reflink=1'`); without them the copy fails and so does the slot.
      Run `/usr/local/sbin/halonic-ci-fast-lower.sh refresh` once and check that it prints a
      generation.
@@ -349,8 +358,10 @@ e2e job's apt step is skipped on this runner (Playwright's libraries are preinst
   shared caches and starts the slots again.
 - **Hourly** (`vm/halonic-ci-cache-check.timer`): the same pause-and-empty as soon as the shared
   caches pass 80 % of their 20 GB quota (or `/cache` passes 75 %), so a full quota never fails
-  every install. It shares a lock with the weekly cleanup and skips its hour while that runs. Both
-  then refresh the fast slots' snapshot (HAL-16032), once fast slots are deployed.
+  every install. It shares a lock with the weekly cleanup and skips its hour while that runs; a
+  snapshot refresh holding the lock it waits out (up to 10 minutes), so it never loses its hour to one.
+- **Every 5 minutes** (`vm/halonic-ci-fast-lower.timer`): refreshes the fast slots' snapshot
+  (HAL-16032, HAL-18424) once fast slots are deployed, skipping a round while either job above runs.
 - **Firewall first:** `host/halonic-ci-nft.service` is required by `libvirtd.service`. If the rules
   don't load (a missing `/etc/halonic-ci/site.nft`, say), libvirtd and the CI VM don't start.
   The unit has no stop command: stopping it leaves the rules in place, because the VM keeps

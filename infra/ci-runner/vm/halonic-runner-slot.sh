@@ -182,6 +182,14 @@ hdr=$(printf '{"alg":"RS256","typ":"JWT"}' | b64url)
 pl=$(printf '{"iat":%d,"exp":%d,"iss":"%s"}' $((now-60)) $((now+540)) "$APP_ID" | b64url)
 sig=$(printf '%s.%s' "$hdr" "$pl" | openssl dgst -sha256 -sign "$KEY" -binary | b64url)
 JWT="$hdr.$pl.$sig"
+# An installation token, minted from a fresh JWT (the first one may have expired by the job's end).
+app_token() {
+  local now pl sig
+  now=$(date +%s)
+  pl=$(printf '{"iat":%d,"exp":%d,"iss":"%s"}' $((now-60)) $((now+540)) "$APP_ID" | b64url)
+  sig=$(printf '%s.%s' "$hdr" "$pl" | openssl dgst -sha256 -sign "$KEY" -binary | b64url)
+  api -X POST -H "Authorization: Bearer $hdr.$pl.$sig" "https://api.github.com/app/installations/$INSTALLATION_ID/access_tokens" | jq -r .token
+}
 api() { curl -fsS -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "$@"; }
 TOKEN=$(api -X POST -H "Authorization: Bearer $JWT" \
   "https://api.github.com/app/installations/$INSTALLATION_ID/access_tokens" | jq -r .token)
@@ -234,6 +242,9 @@ if [ "$LABEL" = halonic-ci-fast ]; then
       [ "$(findmnt -n -o FSTYPE --mountpoint "$OVL_MNT/$c")" = overlay ] || fail "$OVL_MNT/$c is not an overlay"
     done
   ) 9>"$FAST_LOWER_LOCK"
+  # The generation this slot mounted, for the idle check below (HAL-18424).
+  MOUNTED_GEN=$(findmnt -n -o OPTIONS --mountpoint "$OVL_MNT/turbo" | grep -o 'lowerdir=[^,]*' | sed 's|^lowerdir=||; s|/turbo$||; s|.*/||')
+  [[ "$MOUNTED_GEN" =~ ^[0-9]+$ ]] || fail "can't tell which snapshot $OVL_MNT/turbo mounts"
   CACHE_SRC=$OVL_MNT
 fi
 # What only a fast slot's container gets: gVisor, its own network and its own gate socket, which
@@ -294,6 +305,30 @@ ANON_PEAK=0
 # the reserve check is the only thing that stops growth from doing that.
 LIMIT_B=$(numfmt --from=iec "${MEM_START^^}"); MAX_B=$(numfmt --from=iec "${MEM^^}")
 STEP_B=4294967296; HEAD_B=2147483648; GROWS=0; HIGH_SET=""  # RESERVE_B: memory admission, above
+# An idle fast slot on a snapshot older than STALE_GEN_S, with a newer one published, gives up its
+# runner and restarts on the new one (HAL-18424): a slot can wait an hour for a job, and its job would
+# miss every cache entry written since. Only while no job runs: GitHub refuses to delete a runner that
+# has taken one (422), and only after that refusal can't happen is the container stopped.
+# Past WARN_GEN_S an idle slot says so every check: the restart isn't happening (no newer snapshot, or
+# GitHub won't delete the runner), and its next job would read old caches.
+STALE_GEN_S=600; WARN_GEN_S=1800; GEN_CHECKED=0
+idle_on_stale_snapshot() {
+  local now cur
+  [ "$LABEL" = halonic-ci-fast ] && [ "$JOB_START" = 0 ] || return 1
+  now=$(date +%s); [ $((now - GEN_CHECKED)) -ge 60 ] || return 1; GEN_CHECKED=$now
+  if [ $((now - MOUNTED_GEN)) -gt "$WARN_GEN_S" ]; then
+    echo "slot $SLOT: warning: idle on snapshot $MOUNTED_GEN, $(( (now - MOUNTED_GEN) / 60 )) minutes old" >&2
+  fi
+  [ $((now - MOUNTED_GEN)) -gt "$STALE_GEN_S" ] || return 1
+  cur=$(readlink /cache/fast-lower/current 2>/dev/null) || return 1
+  [[ "$cur" =~ ^[0-9]+$ ]] && [ "$cur" -gt "$MOUNTED_GEN" ]
+}
+release_idle_runner() {
+  local t
+  t=$(app_token) && [ -n "$t" ] && [ "$t" != null ] || return 1
+  curl -fsS -o /dev/null -X DELETE -H "Authorization: Bearer $t" -H "Accept: application/vnd.github+json" \
+    "https://api.github.com/orgs/$ORG/actions/runners/$RUNNER_ID"
+}
 write_state() {
   local now; now=$(date +%s)
   jq -nc --arg slot "$SLOT" --arg runner "$NAME" --arg label "$LABEL" --argjson up "$STARTED" \
@@ -350,6 +385,11 @@ while kill -0 "$DPID" 2>/dev/null; do
     fi
   fi
   write_state
+  if idle_on_stale_snapshot && release_idle_runner; then
+    echo "slot $SLOT: idle on snapshot $MOUNTED_GEN, restarting on a newer one"
+    docker rm -f "hci-$SLOT" >/dev/null 2>&1 || true
+    RUNNER_ID=""
+  fi
   sleep 2
 done
 RC=0; wait "$DPID" || RC=$?
@@ -368,10 +408,7 @@ if [ "$JOB_START" != 0 ]; then
 fi
 # A JIT runner removes itself after its job; if the container died early, remove it here.
 if [ -n "${RUNNER_ID:-}" ] && [ "$RUNNER_ID" != null ]; then
-  now=$(date +%s)
-  pl=$(printf '{"iat":%d,"exp":%d,"iss":"%s"}' $((now-60)) $((now+540)) "$APP_ID" | b64url)
-  sig=$(printf '%s.%s' "$hdr" "$pl" | openssl dgst -sha256 -sign "$KEY" -binary | b64url)
-  T=$(api -X POST -H "Authorization: Bearer $hdr.$pl.$sig" "https://api.github.com/app/installations/$INSTALLATION_ID/access_tokens" | jq -r .token) || T=
+  T=$(app_token) || T=
   [ -n "$T" ] && curl -sS -o /dev/null -X DELETE -H "Authorization: Bearer $T" -H "Accept: application/vnd.github+json" \
     "https://api.github.com/orgs/$ORG/actions/runners/$RUNNER_ID" || true
 fi

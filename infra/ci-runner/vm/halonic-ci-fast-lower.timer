@@ -1,0 +1,9 @@
+[Unit]
+Description=halonic-ci refresh of the fast slots' cache snapshot every 5 minutes (HAL-18424)
+[Timer]
+# Hourly was too stale: a fast pull request missed every typecheck and test entry a merge group had
+# written in the last hour (HAL-18424). A reflink copy costs only metadata, so every 5 minutes.
+# xx:02, :07, ...: off the hour, where the hourly cache check starts and must win the lock.
+OnCalendar=*:02/5
+[Install]
+WantedBy=timers.target
