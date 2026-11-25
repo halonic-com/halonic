@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
 import { areaReports, parseAreaTable } from "./main-failures.ts";
-import { needsClickTest, nightlyClickTestTitle } from "./nightly-click-test.ts";
+import { needsClickTest, nightlyClickTestTitle, testedCommit } from "./nightly-click-test.ts";
 import { findRepoRoot } from "./workspace.ts";
 
 const read = (path: string) => readFileSync(join(findRepoRoot(), path), "utf8");
@@ -34,10 +34,26 @@ verifies("check.nightly-click-test", () => {
     });
   });
 
+  describe("the commit the last click test built", () => {
+    const sha = "abc1234def5678abc1234def5678abc1234def56";
+
+    test("is read from the run name, not the run's head_sha", () => {
+      expect(testedCommit(`Nightly click test of ${sha}`)).toBe(sha);
+      expect(testedCommit("Nightly click test of abc1234")).toBe("abc1234");
+    });
+
+    test("is undefined when the run name carries no commit", () => {
+      expect(testedCommit(nightlyClickTestTitle)).toBeUndefined();
+      expect(testedCommit("Studio preview (Windows, unsigned)")).toBeUndefined();
+      expect(testedCommit("Nightly click test of main")).toBeUndefined();
+    });
+  });
+
   describe("the workflows", () => {
-    test("the preview workflow names a nightly run as the scripts look for it", () => {
-      expect(read(".github/workflows/studio-preview.yml")).toContain(
-        `run-name: \${{ inputs.nightly && '${nightlyClickTestTitle}' || '' }}`,
+    test("the preview workflow names a nightly run, with its build commit, as the scripts look for it", () => {
+      const workflow = read(".github/workflows/studio-preview.yml");
+      expect(workflow).toContain(
+        `run-name: \${{ inputs.nightly && format('${nightlyClickTestTitle} of {0}', inputs.build-ref) || '' }}`,
       );
     });
 
