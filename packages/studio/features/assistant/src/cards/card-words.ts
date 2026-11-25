@@ -14,6 +14,8 @@ export const cardWords = {
   cardName: (tag: string, sentence: string) => `${tag}: ${sentence}`,
   /** Under a why cut at 3 lines: shows the rest (flow-assistant 3.2). */
   more: "more",
+  /** New (HAL-18399): the change was written after the assistant read docs pages from these sites. */
+  writtenAfterReading: (sites: readonly string[]) => `Written after reading ${sites.join(", ")}`,
   showDiff: "Show the diff",
   wholeFileDeleted: "The whole file is deleted.",
   review: "Review",

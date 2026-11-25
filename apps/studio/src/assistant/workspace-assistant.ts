@@ -21,6 +21,7 @@ import {
   ownAuthoringSkill,
   type ShowOutcome,
   sheetHostsNamedIn,
+  toolsWhilePageLoaded,
 } from "@halonicjs/assistant";
 import type { ChatMessage, DefinitionStore, Digest } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
@@ -47,6 +48,7 @@ import { type ChatStore, type KeptChat, KeptChats } from "./kept-chats.ts";
 import {
   assistantModelOf,
   authoringTurnLimitOf,
+  type ChatModelParts,
   chatSettingsOf,
   deviceModelOf,
   localOnlyOf,
@@ -100,13 +102,6 @@ export interface WorkspaceAssistantParts {
 export interface WorkspaceAssistantEngine {
   readonly answering: () => boolean;
   readonly onChange: (listener: (answering: boolean) => void) => () => void;
-}
-
-/** One answer's model and tools; an agent chat also brings its own model call limit. */
-interface ChatModelParts {
-  readonly settings: ChatSettings;
-  readonly tools: readonly ChatTool[];
-  readonly turnLimit?: number | undefined;
 }
 
 /**
@@ -418,6 +413,7 @@ export class WorkspaceAssistant implements AssistantHost {
       return {
         settings: chatSettingsOf(chat.model, loaded, this.#parts.settings),
         tools: this.#toolsOf(chat.id),
+        offerTools: toolsWhilePageLoaded,
       };
     }
     const file = filesOf(loaded, "agent").find(

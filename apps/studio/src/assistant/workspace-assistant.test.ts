@@ -1,5 +1,5 @@
 import { MemoryChatSessions } from "@halonicjs/adapter-memory";
-import { builtInAuthoringInstructions } from "@halonicjs/assistant";
+import { builtInAuthoringInstructions, toolsWhilePageLoaded } from "@halonicjs/assistant";
 import type { ChatTurnResponse, ToolCall } from "@halonicjs/ports";
 import { errorKindOf } from "@halonicjs/std";
 import { EngineNotAnswering, isUntrustedRefusal } from "@halonicjs/studio-shell";
@@ -71,6 +71,8 @@ verifies("studio.workspace-assistant", () => {
         "show",
       ]);
       expect(requests[0]?.turnLimit).toBe(9);
+      // A docs page loaded mid-answer narrows the tools from the next turn on (HAL-18399).
+      expect(requests[0]?.offerTools).toBe(toolsWhilePageLoaded);
       expect(turnRequests[0]).toMatchObject({ hubId: "support", alias: "default" });
       const kept = await assistant.chat(chat.id);
       expect(kept).toMatchObject({ title: "Add a routine", draft: false, answering: false });

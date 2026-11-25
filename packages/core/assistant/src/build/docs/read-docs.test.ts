@@ -39,6 +39,7 @@ function docsChat(
   const docs: DocsOptions = {
     http,
     sites,
+    messages: async () => [],
     timeLimit: (delayMs) => {
       const limit = new AbortController();
       const timer = setTimeout(() => limit.abort(), delayMs);

@@ -42,14 +42,15 @@ export class AnswerInProgress {
   /** Whether a tool was called, even one that then failed: it may have changed something. */
   toolsRan = false;
   private readonly request: ChatAnswerRequest;
-  private readonly tools: Map<string, ChatTool>;
+  /** The tools the current model turn offers, by name: the only ones its calls may run. */
+  private offered: Map<string, ChatTool>;
   private readonly added: ChatMessage[] = [];
   /** The first error a listener's method threw, kept in case an executor catches it. */
   private listenerFailure: ListenerFailed | undefined;
 
   constructor(request: ChatAnswerRequest) {
     this.request = request;
-    this.tools = new Map(request.tools.map((tool) => [tool.definition.name, tool]));
+    this.offered = byName(request.tools);
   }
 
   /** Whether the person stopped the answer. */
@@ -57,17 +58,21 @@ export class AnswerInProgress {
     return this.request.signal?.aborted === true;
   }
 
-  /** Tells the listener that model turn `turn` starts. */
+  /**
+   * Starts model turn `turn`: picks the tools it offers, which its calls are then held to, and
+   * tells the listener.
+   */
   startTurn(turn: number): void {
+    this.offered = byName(this.toolsFor(this.messages()));
     this.tell((listener) => listener.onTurn?.(turn));
   }
 
-  /** The request for the next model turn: the conversation with everything added so far. */
+  /** The request for the turn started last: the conversation so far and the tools it offers. */
   turnRequest(): ChatTurnRequest {
     const request: ChatTurnRequest = {
       ...this.request.settings,
-      messages: [...this.request.messages, ...this.added],
-      tools: this.request.tools.map((tool) => tool.definition),
+      messages: this.messages(),
+      tools: [...this.offered.values()].map((tool) => tool.definition),
     };
     if (this.request.signal !== undefined) {
       request.signal = this.request.signal;
@@ -131,6 +136,22 @@ export class AnswerInProgress {
     return this.end({ reason: "stopped", toolsRan: this.toolsRan });
   }
 
+  /** The conversation with everything this answer added so far. */
+  private messages(): ChatMessage[] {
+    return [...this.request.messages, ...this.added];
+  }
+
+  /**
+   * The tools a turn on `messages` offers: what `offerTools` picks, and only from the request's
+   * own `tools`, so it can leave tools out but never add one.
+   */
+  private toolsFor(messages: readonly ChatMessage[]): readonly ChatTool[] {
+    const { tools, offerTools } = this.request;
+    if (offerTools === undefined) return tools;
+    const picked = offerTools(tools, messages);
+    return tools.filter((tool) => picked.includes(tool));
+  }
+
   /** Passes the model's text on as it is written; nothing once the person stopped the answer. */
   private text(text: ChatTurnText): void {
     if (this.stopped) return;
@@ -163,10 +184,10 @@ export class AnswerInProgress {
   /**
    * Runs one tool call and returns its result text. A failure becomes the
    * result, so the model can react to it and every tool call in the history
-   * keeps a result, which providers require.
+   * keeps a result, which providers require. A tool the turn didn't offer isn't run.
    */
   private async runTool(toolCall: ToolCall): Promise<string> {
-    const tool = this.tools.get(toolCall.name);
+    const tool = this.offered.get(toolCall.name);
     if (tool === undefined) {
       return `Error: there is no tool named "${toolCall.name}".`;
     }
@@ -177,6 +198,10 @@ export class AnswerInProgress {
       return `Error: ${asError(error).message}`;
     }
   }
+}
+
+function byName(tools: readonly ChatTool[]): Map<string, ChatTool> {
+  return new Map(tools.map((tool) => [tool.definition.name, tool]));
 }
 
 /** The assistant message for a model turn, keeping the provider's `replay` unchanged. */

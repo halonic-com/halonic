@@ -5,10 +5,12 @@
 
 import type { ChatTool } from "@halonicjs/app";
 import { type BuildChat, textArgument } from "../build-chat.ts";
+import { isNamed, namedIn } from "../named-hosts.ts";
 import { type Fetched, fetchDocsPage } from "./docs-fetch.ts";
 import type { DocsLogEntry, DocsOptions } from "./docs-sites.ts";
 import { docsTexts } from "./docs-texts.ts";
 import { checkDocsUrl, loggedUrl } from "./docs-url.ts";
+import { sitesRead } from "./loaded-page.ts";
 import { pageText } from "./page-text.ts";
 
 /** `read_docs`: reads one public docs page as text, once the person allows its site. */
@@ -54,6 +56,10 @@ export function readDocsTool(chat: BuildChat, docs: DocsOptions): ChatTool {
           await log({ outcome: "waiting", bytes: 0 }, url);
           return docsTexts.waiting(host);
         case undefined:
+          if (!(await mayAsk(chat, docs, host))) {
+            await log({ outcome: "refused", bytes: 0 }, url);
+            return docsTexts.notNamed(host);
+          }
           await docs.sites.ask(host, toolCall.id);
           await log({ outcome: "waiting", bytes: 0 }, url);
           return docsTexts.waiting(host);
@@ -63,6 +69,17 @@ export function readDocsTool(chat: BuildChat, docs: DocsOptions): ChatTool {
       return resultOf(fetched, url);
     },
   };
+}
+
+/**
+ * Whether the person may be asked about `host`: always until a page is loaded in the chat, then
+ * only when they named it in their own messages (`assistant.build.loaded-page`), so a page can't
+ * make the assistant ask for a site of its choosing.
+ */
+async function mayAsk(chat: BuildChat, docs: DocsOptions, host: string): Promise<boolean> {
+  if (sitesRead(await docs.messages()).length === 0) return true;
+  const named = namedIn(await chat.options.personMessages());
+  return isNamed(named, { name: host, port: undefined, scheme: "https" });
 }
 
 /** The log's line for a fetch: its status, bytes and where a `3xx` pointed, never the page. */

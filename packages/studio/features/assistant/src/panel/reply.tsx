@@ -82,9 +82,16 @@ function endActions(
 function Step({ step, place }: { readonly step: ReplyStep; readonly place: CardPlace }) {
   if (step.kind === "text") return <ChatText>{step.text}</ChatText>;
   if (step.kind === "proposal") {
-    const { callId, path, content, why } = step;
+    const { callId, path, content, why, afterReading } = step;
     const proposal = { chatId: place.chatId, callId, path, content };
-    return <ProposalCard proposal={proposal} why={why} context={place.context} />;
+    return (
+      <ProposalCard
+        proposal={proposal}
+        why={why}
+        afterReading={afterReading}
+        context={place.context}
+      />
+    );
   }
   const line =
     step.shown === undefined
