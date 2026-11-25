@@ -2,6 +2,7 @@
 
 - Approval: the board narrowed the `halonic-dev` label rule on 24 Nov (the HAL-16003 scope note, the board's OK on HAL-10 at 22:04 UTC); the work is HAL-18007, and Liam reviews it and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:gurFwGasCqtgG3dRv5TZCVVBKrHjS2fnKa4FISKyFFOQWbk43wYCXSV/Grnwv1XO7FNhEimbP+TrvBEl3/b3AA==
 
 Every agent pushes and labels as `halonic-dev`, so a `fast-track` label
 added through it says little about who asked for it. The board narrowed it
