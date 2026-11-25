@@ -28,6 +28,19 @@ export const AUTOMATIC_OFF_NOTE = "Automatic updates are off.";
 export const UPDATER_DIDNT_ANSWER = "Halonic's updater didn't answer.";
 export const LOADING_STATUS = "Loading update status";
 
+/** The Update track setting, as the board approved it on HAL-18478. */
+export const TRACK = "Update track";
+export const STABLE = "Stable";
+export const STABLE_NOTE = "Released versions. Recommended.";
+export const PREVIEW = "Preview";
+export const PREVIEW_NOTE =
+  "Every build that passes our tests, sometimes several a day. Not for general use.";
+/** The chip beside the version while a Preview build runs. */
+export const PREVIEW_CHIP = "Preview";
+/** Stable picked while a Preview build runs: Halonic never installs an older version. */
+export const stayOnPreview = (version: string) =>
+  `You stay on Halonic ${version} until the next Stable version is out. Halonic then updates to it.`;
+
 /** Mc 20.6: the Scoop block, the switch that takes the place of the automatic one, and its line. */
 export const MANAGED_HEADING = "Updates are managed by Scoop";
 export const MANAGED_SENTENCE =

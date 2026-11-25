@@ -39,6 +39,7 @@ function updaterOf(status: UpdateStatus): UpdaterHost {
     cancel: async () => status,
     restart: async () => undefined,
     setAutomatic: async () => status,
+    setTrack: async () => status,
   };
 }
 
