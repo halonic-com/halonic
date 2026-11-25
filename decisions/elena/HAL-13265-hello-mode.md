@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-13348 (Liam's item 4 decision, carried onto HAL-13265)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:PoKdbcTTSuH2HRTSX6td6oVyOG9P6sNBZ4HAbMi0fFSUs/x8fOZ5nIcMlaYyMPYSdTvs6TgdqGS8sMtAoqpBBA==
 
 `GET /api/hello` gets two more keys, so it has six instead of four. `mode` is `owner` or
 `many`, so Studio attaches only to an owner's server and refuses a product's many-user
