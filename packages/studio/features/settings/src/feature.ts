@@ -78,9 +78,11 @@ export function settingsSectionsFor(showUnfinished: boolean): SettingsSectionCon
     },
     {
       id: "server-session",
+      icon: "server-session",
       title: serverSessionText.TITLE,
       scope: "host",
-      order: 40,
+      // After Trusted sources (40), before Plugins and About (60).
+      order: 50,
       description: serverSessionText.FIRST_LINE,
       view: "ServerSessionSection",
       load: () => import("./server-session/server-session-section.tsx"),

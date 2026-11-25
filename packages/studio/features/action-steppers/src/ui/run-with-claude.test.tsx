@@ -63,6 +63,12 @@ async function press(root: HTMLElement, name: string) {
   await act(async () => button(root, name).click());
 }
 
+/** Presses the button as a keyboard does: focus on it first, so it can lose focus with the answer. */
+async function pressFocused(root: HTMLElement, name: string) {
+  button(root, name).focus();
+  await press(root, name);
+}
+
 verifies("action-steppers.run-with-claude", () => {
   describe("RunWithClaude", () => {
     it("reads Set up your server in Settings first with no host set, and opens Settings", async () => {
@@ -108,6 +114,15 @@ verifies("action-steppers.run-with-claude", () => {
       expect(root.textContent).toContain(
         "Claude Code is starting in a terminal. It reports back on HAL-1234.",
       );
+    });
+
+    it("has Run with Claude as the confirm screen's one primary button, as the stepper's Run step", async () => {
+      const { root } = show(acmeServer, fakeShell({ kind: "cancelled" }).shell);
+      await press(root, "Run with Claude");
+      const primary = [...root.querySelectorAll("button")].filter((each) =>
+        each.classList.contains("bg-primary"),
+      );
+      expect(primary.map((each) => each.textContent)).toEqual(["Run with Claude"]);
     });
 
     it("goes back to the button on Cancel, and says nothing started when the shell's window was cancelled", async () => {
@@ -174,6 +189,57 @@ verifies("action-steppers.run-with-claude", () => {
       expect(root.textContent).toContain(
         "Halonic didn't start it: the desktop app couldn't open the session.",
       );
+    });
+
+    it("moves focus to the started line and says it when the terminal opened", async () => {
+      const { root } = show(acmeServer, fakeShell({ kind: "terminal-opened" }).shell);
+      await press(root, "Run with Claude");
+      await pressFocused(root, "Run with Claude");
+      const started = "Claude Code is starting in a terminal. It reports back on HAL-1234.";
+      expect(document.activeElement?.getAttribute("role")).toBe("group");
+      expect(document.activeElement?.textContent).toBe(started);
+      expect(root.querySelector('[role="status"]')?.textContent).toBe(started);
+      expect(root.querySelector('[role="alert"]')?.textContent).toBe("");
+    });
+
+    it("moves focus to the guide's title and says why when the shell found no terminal", async () => {
+      const { root } = show(acmeServer, fakeShell({ kind: "no-terminal" }).shell);
+      await press(root, "Run with Claude");
+      await pressFocused(root, "Run with Claude");
+      expect(document.activeElement?.textContent).toBe("Start it yourself");
+      expect(document.activeElement?.getAttribute("tabindex")).toBe("-1");
+      expect(root.querySelector('[role="status"]')?.textContent).toBe(
+        "Halonic found no terminal on this computer.",
+      );
+    });
+
+    it("moves focus to the heading when the shell finds no server set", async () => {
+      const { root } = show(acmeServer, fakeShell({ kind: "not-configured" }).shell);
+      await press(root, "Run with Claude");
+      await pressFocused(root, "Run with Claude");
+      expect(document.activeElement).toBe(root.querySelector("h3"));
+    });
+
+    it("keeps focus on Run with Claude and says Nothing was started when the shell's window was cancelled", async () => {
+      const { root } = show(acmeServer, fakeShell({ kind: "cancelled" }).shell);
+      await press(root, "Run with Claude");
+      await pressFocused(root, "Run with Claude");
+      expect(document.activeElement).toBe(button(root, "Run with Claude"));
+      expect(root.querySelector('[role="status"]')?.textContent).toBe("Nothing was started.");
+    });
+
+    it("keeps focus on Run with Claude and says a refusal as an alert", async () => {
+      const { root } = show(
+        acmeServer,
+        fakeShell({ kind: "refused", reason: "the brief is over 8 KB" }).shell,
+      );
+      await press(root, "Run with Claude");
+      await pressFocused(root, "Run with Claude");
+      expect(document.activeElement).toBe(button(root, "Run with Claude"));
+      expect(root.querySelector('[role="alert"]')?.textContent).toBe(
+        "Halonic didn't start it: the brief is over 8 KB.",
+      );
+      expect(root.querySelector('[role="status"]')?.textContent).toBe("");
     });
 
     it("says why the shell refused", async () => {
