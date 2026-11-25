@@ -2,6 +2,7 @@
 
 - Approval: HAL-17107 (the board approved the OpenUI plan on 23 Nov and its look on 24 Nov); built on HAL-18068; the reviewer signs this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:WxSaaSf5LQZdM20uXRWPHrWePvGTO9154497MiclZR6yRPxBKfbiG94fCiF7QICDVTdBvaG+AiNF1L9vjstvBg==
 
 ## What changes
 
