@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@halonicjs/action-steppers": "workspace:*",
+    "@halonicjs/adapter-agent-messaging-cache": "workspace:*",
     "@halonicjs/adapter-coding-tools": "workspace:*",
     "@halonicjs/adapter-connector-stdio-sandbox": "workspace:*",
     "@halonicjs/adapter-coordination-node": "workspace:*",
@@ -39,6 +40,7 @@
     "@halonicjs/adapter-model-anthropic": "workspace:*",
     "@halonicjs/adapter-model-mock": "workspace:*",
     "@halonicjs/adapter-model-openai": "workspace:*",
+    "@halonicjs/adapter-paperclip-client": "workspace:*",
     "@halonicjs/adapter-password-scrypt": "workspace:*",
     "@halonicjs/adapter-sandbox-host": "workspace:*",
     "@halonicjs/adapter-sandbox-srt": "workspace:*",
@@ -54,6 +56,7 @@
     "@halonicjs/format": "workspace:*",
     "@halonicjs/google-setup": "workspace:*",
     "@halonicjs/host-google-sign-in": "workspace:*",
+    "@halonicjs/host-agent-messaging-hub": "workspace:*",
     "@halonicjs/host-harness-host": "workspace:*",
     "@halonicjs/host-integration-sign-in": "workspace:*",
     "@halonicjs/host-server": "workspace:*",

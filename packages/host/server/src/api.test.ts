@@ -40,6 +40,7 @@ verifies("server.api", () => {
       | "google"
       | "googleRead"
       | "requestLog"
+      | "agentMessaging"
       | "clock"
       | "ids"
     >();

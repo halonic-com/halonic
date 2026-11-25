@@ -487,6 +487,9 @@ importers:
       '@halonicjs/action-steppers':
         specifier: workspace:*
         version: link:../../packages/core/action-steppers
+      '@halonicjs/adapter-agent-messaging-cache':
+        specifier: workspace:*
+        version: link:../../packages/adapters/agent-messaging-cache
       '@halonicjs/adapter-coding-tools':
         specifier: workspace:*
         version: link:../../packages/adapters/coding-tools
@@ -544,6 +547,9 @@ importers:
       '@halonicjs/adapter-model-openai':
         specifier: workspace:*
         version: link:../../packages/adapters/model-openai
+      '@halonicjs/adapter-paperclip-client':
+        specifier: workspace:*
+        version: link:../../packages/adapters/paperclip-client
       '@halonicjs/adapter-password-scrypt':
         specifier: workspace:*
         version: link:../../packages/adapters/password-scrypt
@@ -586,6 +592,9 @@ importers:
       '@halonicjs/google-setup':
         specifier: workspace:*
         version: link:../../packages/core/google-setup
+      '@halonicjs/host-agent-messaging-hub':
+        specifier: workspace:*
+        version: link:../../packages/host/agent-messaging-hub
       '@halonicjs/host-google-sign-in':
         specifier: workspace:*
         version: link:../../packages/host/google-sign-in
