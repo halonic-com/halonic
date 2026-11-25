@@ -12,6 +12,7 @@ import {
   rowDisconnect,
   switcherTrigger,
 } from "./steps/connections.ts";
+import { clickTestSteps } from "./steps.ts";
 import { buttonLabels, screenText, words } from "./words.ts";
 
 const userLabel = "Paperclip · Acme Click Test · Board";
@@ -48,6 +49,17 @@ function withConnectDialog(studio: FakeStudio, afterContinue: string) {
 }
 
 verifies("studio-click-test.connections-steps", () => {
+  it("come straight after Connect Paperclip, so no restart signs its connection out first", () => {
+    // Run 45721379968: after the basics failed, the restart left step 3's connection signed out.
+    expect(clickTestSteps.slice(2, 7).map((step) => step.id)).toEqual([
+      "connect-paperclip",
+      "account-switcher",
+      "connection-row",
+      "connect-https-only",
+      "add-account",
+    ]);
+  });
+
   describe("the account switcher", () => {
     it("opens its menu, then Settings › Connections with the row", async () => {
       const studio = studioWithConnections([row(userLabel)]);

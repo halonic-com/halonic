@@ -19,7 +19,7 @@ export function menuRowNamed(text: string): string {
 }
 
 /**
- * Step 10: the account switcher at the sidebar's bottom left opens a menu with
+ * Step 4: the account switcher at the sidebar's bottom left opens a menu with
  * its lead and Settings › Connections, which opens the Connections section with
  * the connected row. The sidebar may sit behind ☰ Places on a narrow window.
  */
@@ -50,7 +50,7 @@ export const accountSwitcher: Step = {
 };
 
 /**
- * Step 11: Settings › Connections shows the connection as a read-only,
+ * Step 5: Settings › Connections shows the connection as a read-only,
  * connected row, named after the user it is signed in as, with what its key
  * can do and without Sign in again.
  */
@@ -84,7 +84,7 @@ export const connectionRow: Step = {
 };
 
 /**
- * Step 12: the Connect dialog refuses a plain http address that isn't on this
+ * Step 6: the Connect dialog refuses a plain http address that isn't on this
  * computer, on the field, and closes again with its close button.
  */
 export const httpsOnly: Step = {

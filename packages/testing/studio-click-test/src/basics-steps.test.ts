@@ -39,8 +39,8 @@ function studioWithTabs(counts: { newTab: number; close: number; reopen: number 
 
 verifies("studio-click-test.basics-steps", () => {
   it("come after the phase 1 steps, with Close workspace last", () => {
-    // Steps 4 to 6; the Settings steps (HAL-18867) come after them.
-    expect(clickTestSteps.slice(3, 6).map((step) => step.id)).toEqual([
+    // Steps 8 to 10, after the Connections steps (HAL-18868); the Settings steps (HAL-18867) come after them.
+    expect(clickTestSteps.slice(7, 10).map((step) => step.id)).toEqual([
       "demo-workspace",
       "window-tabs",
       "close-workspace",

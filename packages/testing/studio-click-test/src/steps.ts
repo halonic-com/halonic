@@ -11,23 +11,25 @@ import { settingsHostSections } from "./steps/settings-host.ts";
 import { windowTabs } from "./steps/window-tabs.ts";
 
 /**
- * The click test's steps, in the order a person takes them: HAL-17897's phase 1 list, then the
- * Studio basics (HAL-18866), with Close workspace last of them because it leaves the window on
- * Welcome, then Settings (HAL-18867), whose steps open the demo again first, then Connections
- * (HAL-18868), which leave step 3's one connection as it was.
+ * The click test's steps, in the order a person takes them: HAL-17897's phase 1 list, then
+ * Connections (HAL-18868) straight after Connect Paperclip, then the Studio basics (HAL-18866),
+ * with Close workspace last of them because it leaves the window on Welcome, then Settings
+ * (HAL-18867), whose steps open the demo again first. Connections comes first because the app
+ * restart after a failing step signs step 3's connection out (the agent host keeps its key only
+ * in memory), so a failure in between would fail these steps too.
  */
 export const clickTestSteps: readonly Step[] = [
   engineAnswers,
   messengerEmpty,
   connectPaperclip,
+  accountSwitcher,
+  connectionRow,
+  httpsOnly,
+  addAccount,
   demoWorkspace,
   windowTabs,
   closeWorkspace,
   settingsTheme,
   settingsFormats,
   settingsHostSections,
-  accountSwitcher,
-  connectionRow,
-  httpsOnly,
-  addAccount,
 ];
