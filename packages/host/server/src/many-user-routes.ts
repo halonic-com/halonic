@@ -14,34 +14,30 @@ import {
 import type { CountRequest } from "./daily-requests.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { helloResponse } from "./hello-route.ts";
-import type { ManyUserPorts, ScopedRunPorts } from "./many-users-api.ts";
-import { type Principal, scopeName } from "./principal.ts";
-import { matchRoute, type RouteEntry, type RouteParams } from "./route-table.ts";
-import { type RunEndpointRequest, serveRunEndpoint } from "./run-endpoint.ts";
 import {
-  createRunRoutes,
-  isJsonRequest,
-  type RunRoutes,
-  runPathPrefix,
-  waitingRunsPath,
-} from "./run-routes.ts";
+  cancelHandler,
+  eventsHandler,
+  type ScopedRoutes,
+  type SignedInHandler,
+  sendHandler,
+  startHandler,
+  summaryHandler,
+  waitingHandler,
+} from "./many-user-run-routes.ts";
+import type { ManyUserPorts } from "./many-users-api.ts";
+import { type Principal, scopeName } from "./principal.ts";
+import { matchRoute, type RouteEntry } from "./route-table.ts";
+import { unrecordedOwnership } from "./run-access.ts";
+import { createRunRoutes, runPathPrefix, waitingRunsPath } from "./run-routes.ts";
 import { verifySession } from "./session-verifier.ts";
 import { createStudioPageRoutes } from "./studio-page-routes.ts";
-import { createTrustRoutes, type TrustRoutes } from "./trust-routes.ts";
+import { createTrustRoutes } from "./trust-routes.ts";
 
 /**
  * The deployment-wide ports the routes of a many-user server may use. It has no run ports on
  * purpose: a route gets those only from {@link ManyUserPorts.scopedRuns}, for the principal.
  */
 export type DeploymentPorts = Pick<ServerPorts, "trust" | "errorLog" | "workspace" | "studioPage">;
-
-/** What a signed-in request works with: its principal and the routes over that scope's runs. */
-interface ScopedRoutes {
-  readonly principal: Principal;
-  readonly runRoutes: RunRoutes;
-  readonly trustRoutes: TrustRoutes;
-  readonly ports: ScopedRunPorts & Pick<ServerPorts, "errorLog">;
-}
 
 /** What a route open to anyone works with: the config and the Cloud sign-in routes, when set up. */
 interface PublicParts {
@@ -52,14 +48,6 @@ interface PublicParts {
 
 /** Answers a request open to anyone; `null` hands it on to the Studio page, then 404. */
 type PublicHandler = (request: Request, parts: PublicParts) => Promise<Response> | Response | null;
-
-/** Answers a request that has a principal. */
-type SignedInHandler = (
-  request: Request,
-  body: Uint8Array,
-  scoped: ScopedRoutes,
-  params: RouteParams,
-) => Promise<Response>;
 
 /** A route of a many-user server: open to anyone, or behind a session. */
 type ManyUserRoute =
@@ -77,24 +65,6 @@ const sessionResponse: SignedInHandler = async (_request, _body, { principal }) 
   const { scope, role } = principal;
   return Response.json({ signedIn: true, scope: scopeName(scope), role });
 };
-
-/** Starts a run in the principal's scope. A cross-site form can only send a non-JSON type, so it never starts one. */
-function startHandler(isWorkflow: boolean): SignedInHandler {
-  return async (request, body, { trustRoutes }) => {
-    if (!isJsonRequest(request)) {
-      return errorResponse(serverErrors.unsupportedMediaType);
-    }
-    return isWorkflow ? trustRoutes.startWorkflow(body) : trustRoutes.startAgent(body);
-  };
-}
-
-/** One endpoint of the run named by the path's `:runId`. */
-function runHandler(endpoint: RunEndpointRequest["endpoint"]): SignedInHandler {
-  return async (request, body, scoped, { runId }) =>
-    runId === undefined
-      ? errorResponse(serverErrors.notFound)
-      : serveRunEndpoint({ runId, endpoint }, request, body, scoped);
-}
 
 const runPath = `${runPathPrefix}:runId`;
 
@@ -142,7 +112,7 @@ export const manyUserRouteTable: readonly ManyUserRoute[] = [
     path: waitingRunsPath,
     access: "signed-in",
     kind: "run-list",
-    handler: async (_request, _body, { runRoutes }) => runRoutes.waiting(),
+    handler: waitingHandler,
   },
   {
     method: "POST",
@@ -163,28 +133,28 @@ export const manyUserRouteTable: readonly ManyUserRoute[] = [
     path: runPath,
     access: "signed-in",
     kind: "run-read",
-    handler: runHandler("GET "),
+    handler: summaryHandler,
   },
   {
     method: "GET",
     path: `${runPath}/events`,
     access: "signed-in",
     kind: "run-read",
-    handler: runHandler("GET events"),
+    handler: eventsHandler,
   },
   {
     method: "POST",
     path: `${runPath}/events`,
     access: "signed-in",
     kind: "run-write",
-    handler: runHandler("POST events"),
+    handler: sendHandler,
   },
   {
     method: "POST",
     path: `${runPath}/cancel`,
     access: "signed-in",
     kind: "run-write",
-    handler: runHandler("POST cancel"),
+    handler: cancelHandler,
   },
 ];
 
@@ -217,13 +187,18 @@ export function createManyUserRoutes(
         });
 
   function scopedRoutesOf(principal: Principal): ScopedRoutes {
-    const { runs, runStore } = manyUsers.scopedRuns(principal);
+    const scopedRuns = manyUsers.scopedRuns(principal);
+    const { runs, runStore } = scopedRuns;
     const shown = workspace === undefined ? {} : { workspace };
     return {
       principal,
       runRoutes: createRunRoutes({ runs, runStore, trust, errorLog, ...shown }),
       trustRoutes: createTrustRoutes({ trust, runs }),
-      ports: { runs, runStore, errorLog },
+      ports: {
+        ...scopedRuns,
+        ownership: scopedRuns.ownership ?? unrecordedOwnership(principal),
+        errorLog,
+      },
     };
   }
 

@@ -10,6 +10,8 @@ export const runPathPrefix = "/api/runs/";
 export interface RunRoutes {
   /** `GET /api/waiting-runs`: the summaries of the runs that wait for an answer, and their agents' names. */
   waiting(): Promise<Response>;
+  /** The names of the agents the runs' approvals name, by id; empty when the workspace can't say. */
+  agentNames(runs: readonly RunSummary[]): Promise<Record<string, string>>;
   /** `GET /api/runs/<runId>`: the run's summary. */
   summary(runId: string): Promise<Response>;
   /** `POST /api/runs/<runId>/events`: delivers an event to a waiting run. */
@@ -144,6 +146,10 @@ export function createRunRoutes({
         runs: waiting,
         agents: await agentNamesOf(waiting, workspace, errorLog),
       });
+    },
+
+    agentNames(listed) {
+      return agentNamesOf(listed, workspace, errorLog);
     },
 
     async summary(runId) {

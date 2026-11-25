@@ -73,6 +73,11 @@ export const serverErrors = {
     message: "This address takes only a JSON body, sent as application/json.",
   },
   runNotFound: { status: 404, code: "run_not_found", message: "There is no such run." },
+  runActionForbidden: {
+    status: 403,
+    code: "run_action_forbidden",
+    message: "Only whoever started this run can do that.",
+  },
   routineNotFound: {
     status: 404,
     code: "routine_not_found",
