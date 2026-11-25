@@ -88,11 +88,11 @@ export const ruleWithoutFileOrOutput: StateCheck = ({ id, state }): WorkflowIssu
   }
   const issues: WorkflowIssue[] = [];
   if (!state.rule) {
-    const message = `Rule "${id}" names no file, so every run fails there. Give it one (rule: rules/<name>.rule.js).`;
+    const message = `Rule step "${id}" names no file, so every run fails there. Give it one (rule: rules/<name>.rule.js).`;
     issues.push(issue("error", "rule-without-file", message, stateKey(id), id));
   }
   if (!state.output) {
-    const message = `Rule "${id}" has no output, so its result goes nowhere. Name the context key it writes (output: <key>).`;
+    const message = `Rule step "${id}" has no output, so its result goes nowhere. Name the context key it writes (output: <key>).`;
     issues.push(issue("error", "rule-without-output", message, stateKey(id), id));
   }
   return issues;

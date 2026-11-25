@@ -159,7 +159,8 @@ verifies("engine.rule-state", () => {
     expect(failed).toMatchObject({ status: "failed", state: "match" });
     expect(runs.logs.get("run_1")?.at(-1)).toMatchObject({
       type: "run.failed",
-      error: expect.stringContaining("This engine can't run rule steps"),
+      error:
+        'Step "match" is a rule step, and rule steps can\'t run here yet. Remove the step to run this workflow.',
     });
     expect(scheduler.timers.size).toBe(0);
   });

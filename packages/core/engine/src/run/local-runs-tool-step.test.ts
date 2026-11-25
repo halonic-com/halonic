@@ -287,7 +287,8 @@ verifies("engine.tool-state", () => {
     expect(runs.logs.get("run_1")?.at(-1)).toMatchObject({
       type: "run.failed",
       state: "merge",
-      error: 'This engine makes no connector calls, so tool step "merge" can\'t run.',
+      error:
+        'Step "merge" is a tool step, and tool steps can\'t call connectors here yet. Remove the step to run this workflow.',
     });
   });
 });
