@@ -3,6 +3,7 @@
 - Task: HAL-18910
 - Approval: Liam approved the plan on HAL-18911 (25 Nov, 21:29 UTC), option (a); he reviews this PR and signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:lg1zIeSaWVNlJtZoQcZ5A3Ar8D+bH7RbR0nKsocIMANoKi6mNAids8UwCaQ0eSC9q0PgF7Pt+X6/sX9ULrveAg==
 
 ## What changes
 
