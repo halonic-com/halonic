@@ -38,7 +38,8 @@ fn served_page_test_sees_the_updater_plugin_granted_to_no_page() {
             "allow-update-download",
             "allow-update-cancel",
             "allow-update-restart",
-            "allow-update-set-automatic"
+            "allow-update-set-automatic",
+            "allow-update-set-track"
         ])
     );
 }
