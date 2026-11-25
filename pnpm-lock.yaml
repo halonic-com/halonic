@@ -5592,6 +5592,9 @@ importers:
 
   tooling/publish:
     devDependencies:
+      '@halonicjs/target-cloudflare-runtime':
+        specifier: workspace:*
+        version: link:../../packages/targets/cloudflare/runtime
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../packages/testing/spec

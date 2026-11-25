@@ -11,9 +11,11 @@
     "lint": "biome check .",
     "test": "vitest run",
     "stage": "node src/cli/stage.ts",
-    "stage-cli": "node src/cli/stage-cli.ts"
+    "stage-cli": "node src/cli/stage-cli.ts",
+    "build-worker": "node src/cli/build-worker.ts"
   },
   "devDependencies": {
+    "@halonicjs/target-cloudflare-runtime": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-check": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",

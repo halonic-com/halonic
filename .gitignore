@@ -19,6 +19,9 @@ test-results/
 # a lint running at the same time doesn't check it.
 tsconfig.stage-*.json
 
+# The Worker in a clone, written by `pnpm --filter @halonicjs/tooling-publish run build-worker`.
+packages/targets/cloudflare/deploy/worker/
+
 # Rust build output. Only target/: Tauri keeps generated sources in gen/.
 apps/studio/src-tauri/target/
 

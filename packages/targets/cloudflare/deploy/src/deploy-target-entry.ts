@@ -39,6 +39,7 @@ import {
   provision,
 } from "./provision.ts";
 import { rollback } from "./rollback.ts";
+import { shippedWorker } from "./shipped-worker.ts";
 import { status } from "./status.ts";
 import type { UploadAndSwitchOptions } from "./upload.ts";
 import { startsLike } from "./version-note.ts";
@@ -52,8 +53,8 @@ export interface CloudflareDeployTargetOptions {
   /** Builds the API for a token; defaults to the real client over the context's HTTP client. */
   readonly api?: (token: string) => CloudflareApi;
   /**
-   * The Worker `deploy` uploads. Tests and the live suite give it; until the
-   * package ships its built Worker (HAL-16060), `deploy` rejects without it.
+   * The Worker `deploy` uploads. Tests and the live suite give it; without it,
+   * `deploy` uploads the Worker this package ships (`shippedWorker`).
    */
   readonly worker?: () => Promise<WorkerScript>;
   /** Tests make the self-test quick with these. */
@@ -123,18 +124,10 @@ export function createCloudflareDeployTarget(
     deploy: (request, onEvent) =>
       guard(async () => {
         const cloudflare = await api();
-        const { worker } = options;
-        if (worker === undefined) {
-          throw portFailure(
-            "unexpected",
-            "internal",
-            "This Halonic has no Cloudflare Worker to upload yet.",
-          );
-        }
         return deployThroughPort(cloudflare, request, onEvent, {
           label,
           fetch: fetchOver,
-          worker,
+          worker: options.worker ?? shippedWorker(),
           ...(options.upload ? { upload: options.upload } : {}),
         });
       }),

@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-17949; Liam's decision on HAL-17993 (option A, narrowed: `tooling/paperclip` tests the Paperclip plugin runtime against today's Agent tools)
+- Source: HAL-17949; Liam's decision on HAL-17993 (option A, narrowed: `tooling/paperclip` tests the Paperclip plugin runtime against today's Agent tools); HAL-18016 (the CLI in a clone loads the Cloudflare target)
 
-When a tooling package lists or imports a package outside the tooling layer, the `layers` check shall pass it only if that package is a target's `runtime` package and the edge is a dev dependency, and otherwise fail and say that tooling packages use only other tooling packages, and that a target's runtime package is allowed as a dev dependency only. A package listed under `toolingUsesCore` may also use core packages, by that rule.
+When a tooling package lists or imports a package outside the tooling layer, the `layers` check shall pass it only if that package is a target's `runtime` package and the edge is a dev dependency, or if the tooling package is the repository's root package (`@halonicjs/root`), that package is a target's `deploy` package and the edge is a dev dependency, and otherwise fail and say that tooling packages use only other tooling packages, and that a target's runtime package is allowed as a dev dependency only. A package listed under `toolingUsesCore` may also use core packages, by that rule.
 
 ## Examples
 
@@ -15,5 +15,11 @@ When a tooling package lists or imports a package outside the tooling layer, the
   when the check runs,
   then it fails.
 - Given `tooling/paperclip` listing the `halonic` CLI in `devDependencies`,
+  when the check runs,
+  then it fails.
+- Given the root package listing `@halonicjs/target-cloudflare-deploy` in `devDependencies`,
+  when the check runs,
+  then it passes.
+- Given the root package listing `@halonicjs/target-cloudflare-deploy` in `dependencies`, or `tooling/paperclip` listing it in `devDependencies`,
   when the check runs,
   then it fails.

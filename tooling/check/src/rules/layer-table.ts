@@ -81,7 +81,10 @@ function layerRule(
  *   Paperclip plugin runtime against today's Agent tools (HAL-17949). Nothing
  *   wider, because apps and Studio packages dev-depend on tooling and would make cycles;
  * - core packages for the packages listed under "toolingUsesCore": the Agent
- *   tools plugin runs its workflow host on our own engine (HAL-18009).
+ *   tools plugin runs its workflow host on our own engine (HAL-18009);
+ * - a target's deploy package as a dev dependency of the root package only, so
+ *   the CLI in a clone finds it where a user installs it (HAL-18016). The root
+ *   is never published, and nothing depends on it.
  */
 function toolingRule(
   context: CheckContext,
@@ -93,7 +96,11 @@ function toolingRule(
   if (toLayer === "tooling") {
     return undefined;
   }
-  if (kind === "dev" && context.placeOf(to)?.target?.kind === "runtime") {
+  const toKind = context.placeOf(to)?.target?.kind;
+  if (kind === "dev" && toKind === "runtime") {
+    return undefined;
+  }
+  if (kind === "dev" && toKind === "deploy" && from.manifest.name === rootPackageName) {
     return undefined;
   }
   const fromName = from.manifest.name ?? from.directory;
@@ -104,6 +111,9 @@ function toolingRule(
     ? undefined
     : `${fromName} is listed under "toolingUsesCore" (${context.policyPath}), so it may use core and tooling packages only.`;
 }
+
+/** The repository's own `package.json`: tooling, never published. */
+const rootPackageName = "@halonicjs/root";
 
 /**
  * The target packages the `halonic` CLI ships with: the Node runtime behind
