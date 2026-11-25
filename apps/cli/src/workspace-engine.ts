@@ -22,6 +22,7 @@ import { type EngineHolder, type LocalEngineInput, openLocalEngine } from "./cli
 import { closeAfterStop, stoppedCloseLimitMs } from "./close-after-stop.ts";
 import type { CommandContext } from "./command.ts";
 import { openConnectionSettings } from "./connection-settings-host.ts";
+import { connectorDeniedPaths } from "./connector-fence.ts";
 import {
   cliConnectorFactories,
   connectorSessionLimitMs,
@@ -212,6 +213,16 @@ export async function openWorkspaceEngine(
           onGaveUp,
         },
   );
+  const environment = setup.profile ?? nodeProfileEnvironment();
+  // Only for this computer's connectors: a setup with its own needs no look at the home folder.
+  const deniedPaths =
+    setup.runConnectors === undefined
+      ? await connectorDeniedPaths(
+          profileFolder(environment),
+          environment.homeFolder,
+          process.platform,
+        )
+      : [];
   const engine = await openLocalEngine({
     workspace: target.workspace,
     ...(target.integrations === undefined ? {} : { integrations: target.integrations }),
@@ -227,7 +238,8 @@ export async function openWorkspaceEngine(
           target,
           { warn: (line) => context.warn(line), debug: (line) => context.debug(line) },
           context.secrets,
-          setup.profile,
+          deniedPaths,
+          environment,
         ))
     )(target.trust, target),
     secrets: context.secrets,
@@ -322,7 +334,8 @@ function computerRunConnectors(
   target: Pick<WorkspaceEngineTarget, "dir" | "workspace">,
   lines: RunConnectorLines,
   secrets: Secrets,
-  environment: ProfileEnvironment = nodeProfileEnvironment(),
+  deniedPaths: readonly string[],
+  environment: ProfileEnvironment,
 ): LocalRunConnectorsInput {
   const profile = profileFolder(environment);
   const machine = nodeConnectorMachine(environment);
@@ -339,7 +352,8 @@ function computerRunConnectors(
   const fence = {
     // Records each session's folders, so a sweep on this profile never takes a live one's grant (HAL-6780).
     sandbox: recordingSrtSandbox(profile),
-    deniedPaths: [profile.root],
+    // Halonic's profile and the person's credential folders, as for a plugin's local tool.
+    deniedPaths,
   };
   const pluginSources = pluginConnectorSources(
     plugins,

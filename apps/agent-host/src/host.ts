@@ -1,6 +1,7 @@
+import { homedir } from "node:os";
 import type { Readable, Writable } from "node:stream";
 import { NodeHarnessBridgeServer } from "@halonicjs/adapter-harness-bridge";
-import { resolveRealPath } from "@halonicjs/adapter-harness-kit";
+import { realPathOnDisk, resolveRealPath } from "@halonicjs/adapter-harness-kit";
 import {
   keptGrantsRecordFolder,
   removalAfterHelper,
@@ -22,6 +23,7 @@ import { serveAgentHostCodingTools } from "./coding-tools-mode.ts";
 import { hostConnectorRoutes } from "./connector/connector-factory.ts";
 import { connectorRoutes } from "./connector/connector-routes.ts";
 import { ConnectorTable } from "./connector/connector-table.ts";
+import { connectorPlaces } from "./connector-places.ts";
 import { hostDoctorRoutes } from "./doctor/host-doctor-routes.ts";
 import { type EngineIo, engineCommand } from "./engine/engine-command.ts";
 import { redactStandardError } from "./engine/secret-redactor.ts";
@@ -35,7 +37,6 @@ import { RunTable } from "./harness/run-table.ts";
 import { signInRoute } from "./harness/sign-in-route.ts";
 import {
   argumentAfter,
-  connectorPlaces,
   hostHarnesses,
   hostSecretsOf,
   logToError,
@@ -199,7 +200,11 @@ export async function run(
   if (lock !== null && socketFolder !== undefined) {
     await sweepLeftOverBridges(socketFolder, (text) => io.writeError(text));
   }
-  const places = connectorPlaces(given.roots, profileFolder);
+  const places = await connectorPlaces(given.roots, profileFolder, {
+    folder: homedir(),
+    platform: process.platform,
+    realPath: realPathOnDisk,
+  });
   const profile = optionalProfileOf(profileFolder);
   const keychain = hostKeychainOf(args, profile, (text) => io.writeError(text));
   const channel = shellChannelOf(keychain, places.workspaceRoots, profileFolder, (text) =>
@@ -274,7 +279,7 @@ async function hostServices(
   version: string,
   sandbox: SrtSandbox,
   socketFolder: string | undefined,
-  connectors: ReturnType<typeof connectorPlaces>,
+  connectors: Awaited<ReturnType<typeof connectorPlaces>>,
   google: GoogleSetupPorts | undefined,
   profile: ProfileFolder | undefined,
   relayPort: number | undefined,

@@ -5,7 +5,6 @@ import { WSL_SHARED_FOLDERS } from "@halonicjs/adapter-sandbox-srt";
 import { FileSecretStore } from "@halonicjs/adapter-secrets-file";
 import type { Harness, SecretStore } from "@halonicjs/ports";
 import { type ProfileFolder, secretsFile } from "@halonicjs/profile";
-import { profileTrustStore } from "./profile-folder.ts";
 import { hostWslRemover, type WslRemover } from "./sandbox/wsl-remove-host.ts";
 import type { HostKeychain } from "./secrets/host-keychain.ts";
 import { openWorkspaceReporting } from "./server/opened-workspaces.ts";
@@ -26,19 +25,6 @@ export function wslRemoverOf(
 /** The folders every session denies: the WSL distro's shared ones when the launcher says the host runs there. */
 export function sharedFoldersOf(args: readonly string[]): readonly string[] {
   return args.includes("--wsl-shared-folders") ? WSL_SHARED_FOLDERS : [];
-}
-
-/**
- * What workspace connectors may use and never reach: Halonic's own profile folder is never a workspace, and is denied.
- * The host checks every connector's trust grant against the trust records of that same folder.
- */
-export function connectorPlaces(roots: readonly string[], profileFolder: string | undefined) {
-  // A list of its own, which grows as the shell names opened folders (`shellChannelOf`).
-  return {
-    workspaceRoots: roots.filter((root) => root !== profileFolder),
-    deniedPaths: profileFolder === undefined ? [] : [profileFolder],
-    trustStore: profileFolder === undefined ? undefined : profileTrustStore(profileFolder),
-  };
 }
 
 /** The value after `name` in `args`, when there is one. */

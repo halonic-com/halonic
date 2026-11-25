@@ -1,7 +1,8 @@
-import { cp, mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, realpath, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { homeDeniedPaths, realPathOnDisk } from "@halonicjs/adapter-harness-kit";
 import { MemoryTokenStore } from "@halonicjs/adapter-memory";
 import { ConnectorFactories, WorkflowRuns } from "@halonicjs/app";
 import type { ConnectorFactory, TrustGrant } from "@halonicjs/ports";
@@ -10,6 +11,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import type { CommandContext } from "./command.ts";
+import { connectorDeniedPaths } from "./connector-fence.ts";
 import { engineErrorReporter } from "./engine-error-reporter.ts";
 import { plainText } from "./messages/phrase.ts";
 import { runMessages } from "./messages/run.ts";
@@ -260,3 +262,18 @@ async function runReportWithNotes(trust: TrustGrant | null): Promise<NotesRun> {
   }
   return { trusts, debugLines, stuck: engine.stuck.aborted };
 }
+
+verifies("cli.connector-sandbox", () => {
+  it("denies a fenced workspace connector the profile and the person's credential folders, as a plugin's local tool", async () => {
+    const home = await realpath(await mkdtemp(join(folder, "home-")));
+    const profile = { root: join(folder, "profile") };
+
+    const denied = await connectorDeniedPaths(profile, home, "linux");
+
+    expect(denied).toEqual([
+      profile.root,
+      ...(await homeDeniedPaths(home, "linux", { realPath: realPathOnDisk })),
+    ]);
+    expect(denied).toEqual(expect.arrayContaining([join(home, ".ssh"), join(home, ".aws")]));
+  });
+});
