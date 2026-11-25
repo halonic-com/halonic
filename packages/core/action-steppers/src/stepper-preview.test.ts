@@ -6,7 +6,10 @@ import { stepperRequestFormat } from "./stepper-request.ts";
 import { validateStepperRequest } from "./validate-stepper-request.ts";
 
 const serviceNames: Record<string, string> = { github: "GitHub", cloudflare: "Cloudflare" };
-const names = { requester: "acme-bot", service: (service: string) => serviceNames[service] ?? service };
+const names = {
+  requester: "acme-bot",
+  service: (service: string) => serviceNames[service] ?? service,
+};
 
 const setVariable = {
   kind: "step",
