@@ -1,4 +1,5 @@
 import type { SandboxStartCheck } from "@halonicjs/app";
+import type { ChatComponentName } from "@halonicjs/openui-lang";
 import {
   cantRunWords,
   SandboxCantRunCallout,
@@ -10,7 +11,6 @@ import {
   ChatEndLine,
   ChatMessage,
   ChatStart,
-  ChatText,
   ChatToolLine,
   ChatTranscript,
 } from "@halonicjs/studio-kit";
@@ -24,6 +24,7 @@ import { Fragment, type ReactNode, useEffect, useId, useRef, useState } from "re
 import type { AgentHarnessId } from "../api.ts";
 import type { HarnessStrip } from "../configuration/harness-strip.ts";
 import { type BoxLineActions, boxProblem, makesSendWait, TryItBoxLine } from "./box-line.tsx";
+import { ReplyText, type ReplyUi } from "./reply-ui.tsx";
 import { type ChatTurn, type ReplyEnd, type ReplyStep, shownSteps } from "./transcript.ts";
 import { toolInWords, tryItWords } from "./try-it-words.ts";
 import type { TryItChat } from "./use-try-it-chat.ts";
@@ -49,6 +50,8 @@ export interface TryItChatViewProps {
   readonly sandboxStartCheck?: SandboxStartCheck | undefined;
   /** Reads a sentence out through the shell's announcer, for the sandbox's **Check again**. */
   readonly announce?: ((text: string) => void) | undefined;
+  /** The components the agent's `chatUi` lets it draw in its replies; absent when it's off. */
+  readonly chatUi?: readonly ChatComponentName[] | undefined;
 }
 
 /**
@@ -74,8 +77,9 @@ export function TryItChatView(props: TryItChatViewProps) {
     sandboxRefused: sandbox.refused !== undefined,
   });
 
-  const sendNow = (message = draft) => {
+  const sendNow = (message: string, { fromBox = true } = {}) => {
     chat.send(message, refused);
+    if (!fromBox) return;
     setDraft("");
     setHeld(undefined);
   };
@@ -99,7 +103,35 @@ export function TryItChatView(props: TryItChatViewProps) {
       return;
     }
     // A workspace that isn't trusted keeps the message in the box (H16).
-    if (await chat.mayStart()) sendNow();
+    if (await chat.mayStart()) sendNow(draft);
+  };
+  // A reply's button or form sends its words as if they were typed: the key check and trust hold
+  // them as they hold Send, and a message that looks like it holds a key waits in the box (H29).
+  const sendFromReply = async (message: string) => {
+    if (chat.engineQuiet || chat.answering) return;
+    const hold = chatSecretHold(message);
+    if (hold !== undefined) {
+      setDraft(message);
+      setHeld(hold);
+      return;
+    }
+    if (await chat.mayStart()) sendNow(message, { fromBox: false });
+    // Not trusted: the words wait in an empty box, as a typed message does (H16).
+    else setDraft((current) => (current === "" ? message : current));
+  };
+  // Only the newest reply's controls work, once it ended; older ones show what was sent after them.
+  const replyUi = (index: number): ReplyUi | undefined => {
+    if (props.chatUi === undefined) return undefined;
+    const newest = index === turns.length - 1;
+    const ended = turns[index]?.end !== undefined;
+    const live = newest && ended && !chat.answering && !chat.engineQuiet;
+    return {
+      components: props.chatUi,
+      sender: name,
+      onSend: live ? (message) => void sendFromReply(message) : undefined,
+      answered: turns[index + 1]?.message,
+      ended,
+    };
   };
   const edit = (text: string) => {
     setDraft(text);
@@ -158,6 +190,7 @@ export function TryItChatView(props: TryItChatViewProps) {
               <Reply
                 turn={turn}
                 name={name}
+                ui={replyUi(index)}
                 openModels={props.ways.goToKeyField}
                 // Try again waits until the engine answers again (H13).
                 tryAgain={index === turns.length - 1 && !chat.engineQuiet ? tryAgain : undefined}
@@ -197,11 +230,13 @@ export function TryItChatView(props: TryItChatViewProps) {
 function Reply({
   turn,
   name,
+  ui,
   openModels,
   tryAgain,
 }: {
   readonly turn: ChatTurn;
   readonly name: string;
+  readonly ui: ReplyUi | undefined;
   /** Opens Models, where keys are kept, for a failure because of the model's key. */
   readonly openModels: () => void;
   /** Only the last reply offers Try again: it sends its message again. */
@@ -211,7 +246,7 @@ function Reply({
     <ChatMessage from="reply" heading={tryItWords.said(name)} busy={turn.end === undefined}>
       {shownSteps(turn).map((step, index) => (
         // Steps are only added at the end, so their place is their key.
-        <Step key={index} step={step} />
+        <Step key={index} step={step} ui={ui} />
       ))}
       {turn.end === undefined ? null : (
         <EndLine end={turn.end} name={name} openModels={openModels} tryAgain={tryAgain} />
@@ -220,8 +255,8 @@ function Reply({
   );
 }
 
-function Step({ step }: { readonly step: ReplyStep }) {
-  if (step.kind === "text") return <ChatText>{step.text}</ChatText>;
+function Step({ step, ui }: { readonly step: ReplyStep; readonly ui: ReplyUi | undefined }) {
+  if (step.kind === "text") return <ReplyText text={step.text} {...(ui && { ui })} />;
   const tool = toolInWords(step.name);
   return <ChatToolLine state={step.state}>{tryItWords.tool[step.state](tool)}</ChatToolLine>;
 }

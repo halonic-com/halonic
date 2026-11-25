@@ -66,7 +66,14 @@ export {
 } from "./chat/chat-tool-line.tsx";
 export { ChatTranscript, type ChatTranscriptProps } from "./chat/chat-transcript.tsx";
 export { ChatUi, type ChatUiProps } from "./chat/chat-ui.tsx";
-export { BUTTONS_LINE, type ChatUiSend, FORM_LINE } from "./chat/chat-ui-controls.tsx";
+export {
+  BUTTONS_LINE,
+  buttonSentLine,
+  type ChatUiSend,
+  EARLIER_LINE,
+  FORM_LINE,
+  FORM_SENT_LINE,
+} from "./chat/chat-ui-controls.tsx";
 export { CHAT_UI_ROWS_SHOWN } from "./chat/chat-ui-parts.tsx";
 export {
   Checkbox,

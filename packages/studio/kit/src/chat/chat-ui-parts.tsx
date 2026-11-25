@@ -19,9 +19,11 @@ export const CHAT_UI_ROWS_SHOWN = 20;
 export function ChatUiPart({
   part,
   onSend,
+  answered,
 }: {
   readonly part: OpenUiComponent;
   readonly onSend: ChatUiSend;
+  readonly answered: string | undefined;
 }) {
   switch (part.type) {
     case "Card":
@@ -29,9 +31,9 @@ export function ChatUiPart({
     case "Table":
       return <AgentTable part={part} />;
     case "Form":
-      return <AgentForm part={part} onSend={onSend} />;
+      return <AgentForm part={part} onSend={onSend} answered={answered} />;
     case "Buttons":
-      return <AgentButtons part={part} onSend={onSend} />;
+      return <AgentButtons part={part} onSend={onSend} answered={answered} />;
     default:
       throw new TypeError(`Chat can't draw a ${part.type}.`);
   }

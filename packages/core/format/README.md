@@ -371,3 +371,7 @@ ones. `chatUi` only says how a reply may be shown; `output` still says what
 the answer's data is, and neither changes the other. A component never
 changes what a run may do: a button or a form sends a chat message the user
 can see, as if they had typed it.
+
+In Studio's Try it chat, an agent with `chatUi` is told which components it
+may draw, and only those. Only the newest reply's buttons and form work; once
+one is used, it keeps a tick as a record of what was sent.

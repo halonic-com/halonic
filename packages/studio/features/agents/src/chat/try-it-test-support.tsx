@@ -19,13 +19,17 @@ export const sorter = {
  * A host whose answers the test gives one by one, and what each request held; `savedChats` is
  * where it keeps Try it chats, if anywhere.
  */
-export function scriptedHost({ savedChats }: Pick<MemoryAgentsHostOptions, "savedChats"> = {}) {
+export function scriptedHost({
+  savedChats,
+  trust,
+}: Pick<MemoryAgentsHostOptions, "savedChats" | "trust"> = {}) {
   const requests: AgentChatRequest[] = [];
   const pending: ((answer: ChatAnswer | Error) => void)[] = [];
   const host = memoryAgentsHost({
     hubs: [{ id: "acme", name: "Acme" }],
     agents: [sorter],
     savedChats,
+    trust,
     answer: (_ref, request) => {
       // A copy, since the chat's conversation grows after the request.
       requests.push({ ...request, messages: [...request.messages] });
@@ -52,6 +56,7 @@ export function Chat({
   harnessStrip = null,
   harness = "claude-code",
   sandboxStartCheck,
+  chatUi,
 }: {
   readonly host: ReturnType<typeof memoryAgentsHost>;
   readonly announce: (text: string, politeness?: "polite" | "assertive") => void;
@@ -59,6 +64,7 @@ export function Chat({
   readonly harness?: AgentHarnessId;
   readonly sandboxStartCheck?: SandboxStartCheck;
   readonly ways?: TryItChatViewProps["ways"];
+  readonly chatUi?: TryItChatViewProps["chatUi"];
 }) {
   const chat = useTryItChat({ host, agent: sorter, name: "Sorter", announce });
   return (
@@ -71,6 +77,7 @@ export function Chat({
       ways={ways}
       sandboxStartCheck={sandboxStartCheck}
       announce={announce}
+      chatUi={chatUi}
     />
   );
 }

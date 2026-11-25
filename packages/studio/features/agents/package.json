@@ -15,6 +15,7 @@
   "dependencies": {
     "@halonicjs/app": "workspace:*",
     "@halonicjs/assistant": "workspace:*",
+    "@halonicjs/openui-lang": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/std": "workspace:*",
     "@halonicjs/studio-feature-assistant": "workspace:*",

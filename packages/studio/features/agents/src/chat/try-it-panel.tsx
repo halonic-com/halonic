@@ -66,6 +66,7 @@ function ReadyChat({
           ways={ways}
           sandboxStartCheck={sandboxStartCheck}
           announce={announce}
+          chatUi={settings.chatUi}
         />
       </div>
     </div>
