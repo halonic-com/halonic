@@ -72,7 +72,7 @@ export function NewChannelDialog({ messenger, onCancel, onCreated }: NewChannelD
         void submit().catch((error: unknown) => {
           console.error("Starting the channel failed:", error);
           setBusy(false);
-          setFailure(words.failed(failureReason(undefined, from.source?.label ?? "")));
+          setFailure(words.failed(failureReason(undefined, from.source?.label)));
         })
       }
       onCancel={onCancel}

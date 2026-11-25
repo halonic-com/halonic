@@ -11,6 +11,7 @@ import type {
   SendResult,
 } from "@halonicjs/ports";
 import { ChannelAdmin } from "./channel-admin.ts";
+import { type ChannelQuestion, channelQuestions } from "./channel-waiting.ts";
 import { DraftFiles } from "./draft-files.ts";
 import { QuickActions } from "./quick-actions.ts";
 import { refusalOf } from "./refusal.ts";
@@ -31,6 +32,8 @@ export interface ConversationRow {
   readonly sourceAgents: readonly MessagingAgent[];
   /** The conversation's source, with its label and whether it is online; none once it is gone. */
   readonly source: MessagingSource | undefined;
+  /** A channel's questions still waiting for the person, oldest first; none for a chat. */
+  readonly questions?: readonly ChannelQuestion[];
 }
 
 /** What sending a conversation's draft did. A draft that wasn't sent stays as it was. */
@@ -83,7 +86,22 @@ export class Messenger {
     const rows = [...conversations]
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       .map((conversation) => rowOf(conversation, sources, agents));
-    return inTab(rows, tab);
+    return inTab(await this.withQuestions(rows), tab);
+  }
+
+  /** Each channel's row with the questions it holds for the person; a chat's row as it is. */
+  private async withQuestions(
+    rows: readonly ConversationRow[],
+  ): Promise<readonly ConversationRow[]> {
+    if (!rows.some((row) => row.conversation.members !== undefined)) return rows;
+    const items = await this.messaging.listInboxItems();
+    return Promise.all(
+      rows.map(async (row) => {
+        if (row.conversation.members === undefined) return row;
+        const messages = await this.messaging.listMessages(row.conversation.id);
+        return { ...row, questions: channelQuestions(row, messages, items) };
+      }),
+    );
   }
 
   /** Whether anything is connected, so the Messenger can tell "nothing connected" from "no chats". */
@@ -194,12 +212,16 @@ export class Messenger {
   }
 }
 
-/** The rows a tab lists: all of them, or only those whose agent wrote last. */
+/**
+ * The rows a tab lists: all of them, or only those whose agent wrote last and the channels where
+ * a question waits for the person.
+ */
 export function inTab(
   rows: readonly ConversationRow[],
   tab: MessengerTab,
 ): readonly ConversationRow[] {
-  return tab === "waiting" ? rows.filter((row) => row.conversation.waitingForMe) : rows;
+  if (tab === "all") return rows;
+  return rows.filter((row) => row.conversation.waitingForMe || (row.questions ?? []).length > 0);
 }
 
 /** The activity a conversation shows: its agent's, or `other` when no agent is known. */

@@ -139,3 +139,15 @@ function lineOf(
       return undefined;
   }
 }
+
+/** A channel row's size: "3 agents", counting members its source no longer lists too. */
+export function channelSize(row: ConversationRow): string {
+  return channelWords.row.size((row.conversation.members ?? []).length);
+}
+
+/** "2 working · Elena, Liam" once two or more members are working; else nothing. */
+export function workingMembers(row: ConversationRow): string | undefined {
+  const working = row.agents.filter((agent) => agent.activity === "working");
+  if (working.length < 2) return undefined;
+  return channelWords.row.working(working.map((agent) => agent.name));
+}

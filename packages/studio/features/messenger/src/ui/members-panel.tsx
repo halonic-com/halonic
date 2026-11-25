@@ -37,7 +37,7 @@ export interface MembersPanelProps {
 export function MembersPanel({ messenger, row, onChanged }: MembersPanelProps) {
   const tooFewId = useId();
   const members = membersOf(row);
-  const source = row.source?.label ?? "";
+  const source = row.source?.label;
   const { pending, failure, busy, change, confirm, cancel, add, remove } = useMembers(
     messenger,
     row,
@@ -50,7 +50,10 @@ export function MembersPanel({ messenger, row, onChanged }: MembersPanelProps) {
       className="flex w-72 flex-col gap-2 border-s border-border p-3"
     >
       <h3 className="text-body-strong">{words.title(members.length)}</h3>
-      <p className="text-small text-fg-muted">{words.hint(source)}</p>
+      {/* With its source gone there is no label to name, so no hint either. */}
+      {source === undefined ? null : (
+        <p className="text-small text-fg-muted">{words.hint(source)}</p>
+      )}
       <p id={tooFewId} className="text-small text-fg-muted">
         {canRemove(row) ? "" : words.tooFewLeft}
       </p>

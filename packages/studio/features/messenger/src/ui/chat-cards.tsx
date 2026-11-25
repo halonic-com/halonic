@@ -8,6 +8,8 @@ import {
   waitingSince,
 } from "@halonicjs/studio-kit";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { isChannel } from "../channel.ts";
+import { channelWords } from "../channel-words.ts";
 import type { ConversationRow } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import type { QuickActions } from "../quick-actions.ts";
@@ -59,7 +61,7 @@ export function ChatCards({ quickActions, row, changed, announce, afterAnswer }:
   }
 
   return cards.map((card) => (
-    <li key={card.id} data-chat-card className="max-w-[80%]">
+    <li key={card.id} data-chat-card={card.id} className="max-w-[80%]">
       <ChatCard quickActions={quickActions} row={row} card={card} onAnswered={onAnswered} />
     </li>
   ));
@@ -120,10 +122,17 @@ function ChatCard({
         ))}
       </div>
       <p className="text-small text-fg-muted" role="status">
-        {line ?? messengerWords.card.alsoInInbox}
+        {line ?? alsoInInbox(row)}
       </p>
     </article>
   );
+}
+
+/** Where else the card shows: in a channel, also where it was asked (k13a). */
+function alsoInInbox(row: ConversationRow): string {
+  return isChannel(row)
+    ? channelWords.waiting.alsoInInbox(row.conversation.title)
+    : messengerWords.card.alsoInInbox;
 }
 
 /** What the card says after an answer that didn't land; nothing more once it did. */
