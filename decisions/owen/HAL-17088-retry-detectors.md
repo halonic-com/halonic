@@ -2,6 +2,7 @@
 
 - Approval: Liam approves the new package on HAL-17088 (step 1 of HAL-17073, the retry policy service). It changes `tooling/check/policy.json`, a trust root, so both guardians sign: Julian, then Liam
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:IISzTfQ9yhJhi4VFXaKHr1JhfzKvjCaoRuiaQZidhODJkNusIdJHvdM9FAktmIJ0uhIkz2OQjRCaRqOEaoo6Ag==
 
 ## What changes
 
