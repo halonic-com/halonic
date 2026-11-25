@@ -36,7 +36,7 @@ const harnessRoutes: ReadonlyMap<string, { route: BridgeProvider; name: string }
 
 /**
  * Whether the harness's program can call a provider of this type through
- * the bridge: Claude Code one of type anthropic, Codex one of type openai or
+ * the bridge: Claude Code and OpenCode one of type anthropic, Codex one of type openai or
  * openai-compatible. {@link harnessModelAccess} refuses any other pair, so
  * `halonic doctor` asks this to warn only about models a run can reach.
  *

@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { nodeDoctorMachine, sandboxKindName } from "./doctor-machine.ts";
 
 describe("nodeDoctorMachine", () => {
-  it("names this computer's system and its Claude Code and Codex harnesses", () => {
+  it("names this computer's system and its Claude Code, Codex and OpenCode harnesses", () => {
     const computer = nodeDoctorMachine();
 
     expect(computer.system).toMatch(/^(Linux|macOS|Windows|\w+) \w+$/);
-    expect(computer.harnesses.map((harness) => harness.id)).toEqual(["claude-code", "codex"]);
+    expect(computer.harnesses.map((harness) => harness.id)).toEqual(["claude-code", "codex", "opencode"]);
   });
 });
 
