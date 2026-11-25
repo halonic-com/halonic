@@ -1,7 +1,7 @@
 import type { SearchHit } from "@halonicjs/ports";
 import { useSyncExternalStore } from "react";
 import type { SearchKindGroup } from "../search-results.ts";
-import type { SearchStore } from "../search-store.ts";
+import type { SearchState, SearchStore } from "../search-store.ts";
 
 /** Props for {@link SearchView}. */
 export interface SearchViewProps {
@@ -26,10 +26,13 @@ export function SearchView({ store, onOpen }: SearchViewProps) {
         className="rounded border border-border px-2 py-1"
         onChange={(event) => void store.search(event.currentTarget.value)}
       />
-      {state.kind === "searching" ? <p className="text-fg-muted">Searching…</p> : null}
-      {state.kind === "failed" ? <p className="text-danger">The search didn't work.</p> : null}
-      {state.kind === "ready" && state.groups.length === 0 ? (
-        <p className="text-fg-muted">{`Nothing matches “${state.query}”.`}</p>
+      <p role="status" className="text-fg-muted">
+        {statusWords(state)}
+      </p>
+      {state.kind === "failed" ? (
+        <p role="alert" className="text-danger">
+          The search didn't work.
+        </p>
       ) : null}
       {state.kind === "ready"
         ? state.groups.map((group) => (
@@ -38,6 +41,27 @@ export function SearchView({ store, onOpen }: SearchViewProps) {
         : null}
     </div>
   );
+}
+
+/**
+ * What the status region says. It stays on the page in every state so a
+ * screen reader announces each change: searching, the results count, or no
+ * match. A failure goes to its own alert instead.
+ */
+function statusWords(state: SearchState): string {
+  if (state.kind === "searching") return "Searching…";
+  if (state.kind !== "ready") return "";
+  const count = hitCount(state.groups);
+  if (count === 0) return `Nothing matches “${state.query}”.`;
+  return `${count} ${count === 1 ? "result" : "results"} for “${state.query}”`;
+}
+
+function hitCount(groups: readonly SearchKindGroup[]): number {
+  let count = 0;
+  for (const group of groups) {
+    for (const source of group.sources) count += source.hits.length;
+  }
+  return count;
 }
 
 function KindSection(props: {

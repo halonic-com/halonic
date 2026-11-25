@@ -30,6 +30,9 @@ verifies("search.across-sources", () => {
     );
 
     await act(async () => store.search("chief"));
+    const status = container.querySelector('[role="status"]');
+    expect(status?.textContent).toBe("2 results for “chief”");
+    expect(status?.classList.contains("sr-only")).toBe(false);
 
     const headings = [...container.querySelectorAll("h2")].map((heading) => heading.textContent);
     expect(headings).toEqual(["Agents", "Work"]);
@@ -40,7 +43,26 @@ verifies("search.across-sources", () => {
     expect(opened.map((hit) => hit.id)).toEqual([chief.id]);
 
     await act(async () => store.search("nobody"));
-    expect(container.textContent).toContain("Nothing matches “nobody”.");
+    expect(container.querySelector('[role="status"]')?.textContent).toBe(
+      "Nothing matches “nobody”.",
+    );
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  it("announces a search that didn't work as an alert", async () => {
+    const messaging = new FakeAgentMessaging();
+    messaging.search = () => Promise.reject(new Error("source is down"));
+    const store = new SearchStore(messaging);
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    await act(async () => root.render(<SearchView store={store} onOpen={() => {}} />));
+
+    await act(async () => store.search("chief"));
+
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe("The search didn't work.");
+    expect(container.querySelector('[role="status"]')).not.toBeNull();
     act(() => root.unmount());
     container.remove();
   });
