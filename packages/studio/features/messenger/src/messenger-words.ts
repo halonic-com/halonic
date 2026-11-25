@@ -67,6 +67,8 @@ export const messengerWords = {
     /** Read out once an option answered the card, which then leaves the chat. */
     answered: (option: string) => `Answered: ${option}.`,
   },
+  /** The bar under the chat while cards wait (board decision on HAL-18471, 25 Nov). */
+  cardsWaiting: (count: number) => (count === 1 ? "1 card waiting" : `${count} cards waiting`),
   askForUpdate: "Ask for an update",
   /** Files and screenshots in a chat: picked, pasted, or sent by the agent. */
   files: {
