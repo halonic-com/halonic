@@ -24,6 +24,7 @@ import { mergeFactsReader } from "./merge-control-reader.ts";
 import { registerNextStepTools } from "./next-step-tools.ts";
 import { registerReadyForReview } from "./ready-for-review.ts";
 import { scheduledPerCompany } from "./scheduled.ts";
+import { registerStatePacket } from "./state-packet-data.ts";
 import { taskEffort } from "./task-effort.ts";
 import { registerTaskTools } from "./task-tools.ts";
 import { thinSpecCheck } from "./thin-spec-check.ts";
@@ -43,7 +44,8 @@ import {
  * difficulty, sets its effort from its tags, assigns a channel's child task
  * back after 3 hand-offs, asks for acceptance criteria on a
  * new code task whose text looks thin, and answers the agent tools, the `gh` wrapper's route,
- * the board's Worker agents page and the board's GitHub summary routes.
+ * the board's Worker agents page and the board's GitHub summary routes, and
+ * builds the state packet the server asks for before a monitor wake's run.
  */
 let context: PluginContext | undefined;
 /** The companies the jobs dispatch to, learnt from scoped calls (see companies.ts). */
@@ -112,6 +114,7 @@ export const plugin = definePlugin({
     registerTaskTools(ctx);
     registerNextStepTools(ctx);
     registerTrialResults(ctx);
+    registerStatePacket(ctx);
     registerWorkerAgentsData(ctx, workerAgentsDeps(ctx, databaseWorkerTables(ctx.db)));
   },
   async onApiRequest(input) {
