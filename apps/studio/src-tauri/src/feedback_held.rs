@@ -16,7 +16,7 @@ use std::time::{Duration, Instant};
 use halonic_screen_still::{CropBox, Still};
 use serde::Deserialize;
 use serde_json::Value;
-use tauri_plugin_global_shortcut::Shortcut;
+use tauri_plugin_global_shortcut::{Modifiers, Shortcut};
 
 /// Ctrl+Alt+F, or ⌘⌥F on macOS. Not Ctrl+Shift+F: that is "Find in files"
 /// in VS Code and JetBrains, and a global shortcut would take it from them.
@@ -41,6 +41,29 @@ pub struct Held {
     crop: Option<Still>,
     /// Counts the presses, so a timer set for one never drops a later one.
     press: u64,
+    /// A press's stills are being taken and its overlays opened: another
+    /// press now would start a second capture whose windows clash.
+    capturing: bool,
+}
+
+/// Which of the feedback's windows are open when the shortcut is pressed.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct OpenWindows {
+    pub overlays: bool,
+    pub send_feedback: bool,
+}
+
+/// What a press of the shortcut does.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Press {
+    /// Nothing: the last press is still taking its stills.
+    Ignore,
+    /// Closes the overlays and keeps nothing, as Esc does.
+    End,
+    /// Brings the Send feedback window forward, keeping what is typed in it.
+    ShowSendFeedback,
+    /// Takes the stills and opens the overlays; `capture_done` follows.
+    Capture,
 }
 
 impl Held {
@@ -52,8 +75,37 @@ impl Held {
             taken: Some(now),
             crop: None,
             press: self.press + 1,
+            capturing: self.capturing,
         };
         self.press
+    }
+
+    /// The number of the last press, which its windows keep so that
+    /// closing late never drops what a later press holds.
+    pub fn press(&self) -> u64 {
+        self.press
+    }
+
+    /// What a press of the shortcut does while `open` windows are open.
+    /// A capture marks the stills as being taken until `capture_done`, so
+    /// a press in between is ignored instead of starting a second one.
+    pub fn on_press(&mut self, open: OpenWindows) -> Press {
+        if self.capturing {
+            return Press::Ignore;
+        }
+        if open.overlays {
+            return Press::End;
+        }
+        if open.send_feedback {
+            return Press::ShowSendFeedback;
+        }
+        self.capturing = true;
+        Press::Capture
+    }
+
+    /// The press's capture ended, with its overlays open or not.
+    pub fn capture_done(&mut self) {
+        self.capturing = false;
     }
 
     /// Drops the stills of press `press` when no box was selected from them
@@ -67,19 +119,30 @@ impl Held {
         expired
     }
 
-    /// Drops the stills and keeps the crop: an overlay closed some other
-    /// way, such as Alt+F4.
-    pub fn drop_stills(&mut self) {
-        self.stills.clear();
+    /// Drops the stills of press `press` and keeps the crop: one of its
+    /// overlays closed some other way, such as Alt+F4.
+    pub fn drop_stills_of(&mut self, press: u64) {
+        if self.press == press {
+            self.stills.clear();
+        }
     }
 
-    /// Drops everything: the feedback ended. Later presses keep counting.
+    /// Drops everything: the feedback ended. Later presses keep counting,
+    /// and a capture under way is still under way.
     pub fn clear(&mut self) {
-        let press = self.press;
         *self = Held {
-            press,
+            press: self.press,
+            capturing: self.capturing,
             ..Held::default()
         };
+    }
+
+    /// Drops everything held for press `press`: its Send feedback window
+    /// closed. A later press's stills are left alone.
+    pub fn clear_press(&mut self, press: u64) {
+        if self.press == press {
+            self.clear();
+        }
     }
 
     /// Screen `index`'s still, while it is younger than STILL_LIFETIME.
@@ -131,13 +194,22 @@ impl From<SelectedBox> for CropBox {
     }
 }
 
+/// The shortcut `text` names, when it holds Ctrl, Alt or Super (⌘). Shift
+/// alone isn't enough: a global Shift+F would take every capital F typed
+/// in any app.
+pub fn shortcut_of(text: &str) -> Option<Shortcut> {
+    let shortcut = Shortcut::from_str(text).ok()?;
+    let holding = Modifiers::CONTROL | Modifiers::ALT | Modifiers::SUPER;
+    shortcut.mods.intersects(holding).then_some(shortcut)
+}
+
 /// The shortcut the saved `value` names, or the default when nothing is
-/// saved or the value isn't a shortcut.
+/// saved or the value isn't a shortcut `shortcut_of` takes.
 pub fn saved_shortcut(value: Option<&Value>) -> Shortcut {
     value
         .and_then(Value::as_str)
-        .and_then(|text| Shortcut::from_str(text).ok())
-        .unwrap_or_else(|| Shortcut::from_str(DEFAULT_SHORTCUT).expect("the default parses"))
+        .and_then(shortcut_of)
+        .unwrap_or_else(|| shortcut_of(DEFAULT_SHORTCUT).expect("the default holds Ctrl and Alt"))
 }
 
 /// The screen number of an overlay window's label, below `MAX_SCREENS`.
