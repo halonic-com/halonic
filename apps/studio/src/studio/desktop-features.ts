@@ -38,6 +38,8 @@ import {
 import { overviewFeature } from "@halonicjs/studio-feature-overview";
 import { pluginsFeature } from "@halonicjs/studio-feature-plugins";
 import { PluginsHostService } from "@halonicjs/studio-feature-plugins/api";
+import { quickAskFeature } from "@halonicjs/studio-feature-quick-ask";
+import { AskWindowService } from "@halonicjs/studio-feature-quick-ask/api";
 import { remoteFeature } from "@halonicjs/studio-feature-remote";
 import { routinesFeature } from "@halonicjs/studio-feature-routines";
 import { RoutinesHostService } from "@halonicjs/studio-feature-routines/api";
@@ -85,6 +87,7 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
     modelsFeature,
     overviewFeature,
     pluginsFeature,
+    quickAskFeature,
     remoteFeature,
     runsFeature,
     searchFeature,
@@ -133,5 +136,6 @@ export const desktopFeatures: Pick<ShellOptions, "features" | "hostServices"> = 
     FirstRunDeviceService,
     SampleHintService,
     TrustedSourcesService,
+    AskWindowService,
   ],
 };

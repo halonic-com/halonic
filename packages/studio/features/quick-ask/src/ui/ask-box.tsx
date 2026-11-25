@@ -1,0 +1,287 @@
+import {
+  Avatar,
+  copyText,
+  EmptyState,
+  enter,
+  isComposing,
+  Kbd,
+  leave,
+  standaloneLinkClasses,
+} from "@halonicjs/studio-kit";
+import {
+  type KeyboardEvent,
+  type MouseEvent,
+  type RefObject,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import type { AskWindow } from "../api.ts";
+import type { AskSession } from "../ask-session.ts";
+import { quickAskWords } from "../quick-ask-words.ts";
+import { AgentPicker, type PickerExit } from "./agent-picker.tsx";
+import { answerText, ExchangeView } from "./exchange-view.tsx";
+import { type AskBoxModel, useAskBox } from "./use-ask-box.ts";
+
+/** The props of {@link AskBox}. */
+export interface AskBoxProps {
+  readonly session: AskSession;
+  readonly window: AskWindow;
+  /** Called once the box has faded out on Esc or a click beside it. */
+  readonly onClosed: () => void;
+}
+
+/**
+ * The 640 px box, 16 px corners and the dialogs' shadow; in dark it lifts by its strong border.
+ * On a screen narrower than the box and its 32 px margin, the margin is 16 px.
+ */
+const boxClasses = [
+  "flex w-full max-w-[640px] flex-col overflow-hidden rounded-lg bg-surface-raised text-fg shadow-3",
+  "border border-[light-dark(var(--color-border),var(--color-border-strong))]",
+].join(" ");
+
+/**
+ * Quick ask's box (requirement `quick-ask.box`, design HAL-18594 sections 4–6): a `dialog`
+ * labelled "Ask an agent" with the picked agent, the text box and **Ask**, the questions asked and
+ * their answers below, and one footer: the keys, or **Copy** once there's an answer. It fades in
+ * and rises 8 px as it opens; Esc or a click beside it fades it out and hides the window.
+ */
+export function AskBox({ session, window, onClosed }: AskBoxProps) {
+  const model = useAskBox(session);
+  const box = useRef<HTMLElement>(null);
+  const closing = useRef(false);
+
+  useEffect(() => {
+    if (box.current !== null) void enter(box.current);
+  }, []);
+
+  if (model.state.kind === "failed") throw model.state.error;
+
+  const close = async () => {
+    if (closing.current) return;
+    closing.current = true;
+    if (box.current !== null) await leave(box.current);
+    window.hide().catch((error: unknown) => {
+      console.error("Quick ask couldn't hide its window:", error);
+    });
+    onClosed();
+  };
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (event.key !== "Escape" || isComposing(event)) return;
+    event.preventDefault();
+    void close();
+  };
+  const onBeside = (event: MouseEvent) => {
+    if (event.target === event.currentTarget) void close();
+  };
+
+  return (
+    // A click beside the box closes it, as Esc does from the keyboard.
+    // biome-ignore lint/a11y/noStaticElementInteractions: the see-through margin round the box, not a control.
+    <div className="flex h-dvh flex-col items-center p-8 max-[703px]:p-4" onMouseDown={onBeside}>
+      <section
+        ref={box}
+        role="dialog"
+        aria-modal="true"
+        aria-label={quickAskWords.label}
+        className={boxClasses}
+        onKeyDown={onKeyDown}
+      >
+        {model.state.kind === "no-agents" ? <NoAgents window={window} /> : null}
+        {model.state.kind === "ready" ? <Ready model={model} /> : null}
+      </section>
+    </div>
+  );
+}
+
+function NoAgents({ window }: { readonly window: AskWindow }) {
+  const openStudio = () =>
+    window.openStudio().catch((error: unknown) => {
+      console.error("Quick ask couldn't bring Studio's window forward:", error);
+    });
+  return (
+    <div className="p-6">
+      <EmptyState
+        title={quickAskWords.noAgents}
+        description={quickAskWords.noAgentsHint}
+        action={{ label: quickAskWords.openStudio, onClick: () => void openStudio() }}
+      />
+    </div>
+  );
+}
+
+function Ready({ model }: { readonly model: AskBoxModel }) {
+  const [picking, setPicking] = useState(false);
+  const text = useRef<HTMLTextAreaElement>(null);
+  const ask = useRef<HTMLButtonElement>(null);
+  if (model.state.kind !== "ready") return null;
+  const { agent, agents, exchanges } = model.state;
+  const name = agent.agent.name;
+  const last = exchanges.at(-1);
+  const answer = last?.status === "sent" ? answerText(last.answer) : undefined;
+
+  const closePicker = (exit: PickerExit) => {
+    setPicking(false);
+    focus(exit === "forward" ? ask : text);
+  };
+  const onTextKey = textKeys(model, () => setPicking(true));
+  const placeholder =
+    answer === undefined ? quickAskWords.placeholder(name) : quickAskWords.reply(name);
+
+  return (
+    <>
+      <QuestionRow
+        name={name}
+        placeholder={placeholder}
+        model={model}
+        picking={picking}
+        onKeyDown={onTextKey}
+        onAgent={() => setPicking((open) => !open)}
+        text={text}
+        ask={ask}
+      />
+      {picking ? (
+        <AgentPicker
+          agents={agents}
+          picked={agent}
+          onPick={(chosen) => {
+            model.pick(chosen);
+            closePicker("back");
+          }}
+          onClose={closePicker}
+        />
+      ) : null}
+      {exchanges.length > 0 ? (
+        <ol aria-live="polite" className="flex flex-col gap-3 border-t border-border px-3.5 py-3">
+          {exchanges.map((exchange) => (
+            <ExchangeView key={exchange.id} exchange={exchange} onRetry={model.retry} />
+          ))}
+        </ol>
+      ) : null}
+      <Footer answer={answer} />
+    </>
+  );
+}
+
+/** The props of {@link QuestionRow}. */
+interface QuestionRowProps {
+  readonly name: string;
+  readonly placeholder: string;
+  readonly model: AskBoxModel;
+  readonly picking: boolean;
+  readonly onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
+  readonly onAgent: () => void;
+  readonly text: RefObject<HTMLTextAreaElement | null>;
+  readonly ask: RefObject<HTMLButtonElement | null>;
+}
+
+/**
+ * The box's top row: the text box first, so the focus starts there, then the picked agent's
+ * button, drawn before it, and **Ask** with its drawn arrow.
+ */
+function QuestionRow({
+  name,
+  placeholder,
+  model,
+  picking,
+  onKeyDown,
+  onAgent,
+  text,
+  ask,
+}: QuestionRowProps) {
+  const value = model.state.kind === "ready" ? model.state.text : "";
+  return (
+    <div className="flex items-start gap-2 px-3.5 py-3">
+      <textarea
+        ref={text}
+        // biome-ignore lint/a11y/noAutofocus: the box opens to type a question, and the focus starts here.
+        autoFocus
+        rows={1}
+        aria-label={placeholder}
+        placeholder={placeholder}
+        value={value}
+        onChange={(event) => model.type(event.target.value)}
+        onKeyDown={onKeyDown}
+        className="max-h-40 min-h-control-md flex-1 resize-none bg-transparent py-1.5 text-heading font-normal text-fg outline-none [field-sizing:content] placeholder:text-fg-subtle"
+      />
+      <button
+        type="button"
+        aria-label={quickAskWords.agentButton(name)}
+        aria-haspopup="listbox"
+        aria-expanded={picking}
+        onClick={onAgent}
+        className="order-first flex shrink-0 items-center rounded-full p-0.5 hover:bg-surface-muted focus-ring"
+      >
+        <Avatar name={name} />
+      </button>
+      <button
+        ref={ask}
+        type="button"
+        aria-label={quickAskWords.ask}
+        aria-keyshortcuts="Enter"
+        onClick={() => model.send()}
+        className="grid size-control-md shrink-0 place-items-center rounded-sm border border-transparent bg-primary text-on-primary focus-ring"
+      >
+        <ArrowUp />
+      </button>
+    </div>
+  );
+}
+
+/** The one footer of every state, on the hint row's tint: the keys, or Copy once there's an answer. */
+function Footer({ answer }: { readonly answer: string | undefined }) {
+  const copy = (text: string) =>
+    copyText(text).then((copied) => {
+      if (!copied) console.error("Quick ask couldn't put the answer on the clipboard.");
+    });
+  return (
+    <footer className="flex items-center gap-4 border-t border-border bg-surface-subtle px-3.5 py-3 text-caption text-fg-muted">
+      {answer === undefined ? (
+        // The keys are shown for the eye; each control names its own key for screen readers.
+        <p aria-hidden="true" className="flex flex-wrap items-center gap-4">
+          {quickAskWords.hints.map((hint) => (
+            <span key={hint.key} className="inline-flex items-center gap-1.5">
+              <Kbd keys={[hint.key]} />
+              {hint.does}
+            </span>
+          ))}
+        </p>
+      ) : (
+        <button type="button" className={standaloneLinkClasses} onClick={() => void copy(answer)}>
+          {quickAskWords.copy}
+        </button>
+      )}
+    </footer>
+  );
+}
+
+/** The send button's drawn 16 px arrow, which doesn't change with the system font. */
+function ArrowUp() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 16 16" className="size-4" fill="none">
+      <path
+        d="M8 13V3M8 3 3.5 7.5M8 3l4.5 4.5"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** The text box's keys: Enter sends, Tab opens the picker, and Shift keeps them for a new line or going back. */
+function textKeys(model: AskBoxModel, openPicker: () => void) {
+  return (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (isComposing(event) || event.shiftKey) return;
+    if (event.key === "Enter") model.send();
+    else if (event.key === "Tab") openPicker();
+    else return;
+    event.preventDefault();
+  };
+}
+
+/** Moves the focus once the picker has gone, so it lands on the box's own controls. */
+function focus(target: RefObject<HTMLElement | null>): void {
+  queueMicrotask(() => target.current?.focus());
+}

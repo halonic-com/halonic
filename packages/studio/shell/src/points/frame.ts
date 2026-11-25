@@ -289,9 +289,10 @@ export function showPlace(id: SidebarPlace, signal: PlaceSignal | undefined): Sh
 
 /**
  * The focused apps Halonic starts in a window of their own (`shell.focused-apps`), as the desktop
- * shell names their windows. The Start menu's Halonic Inbox and Halonic Messenger open them.
+ * shell names their windows. The Start menu's Halonic Inbox and Halonic Messenger open them; quick
+ * ask's keys open `ask`, its box over other apps.
  */
-export const focusedAppIds = ["inbox", "messenger"] as const;
+export const focusedAppIds = ["inbox", "messenger", "ask"] as const;
 
 /** One of the {@link focusedAppIds}. */
 export type FocusedAppId = (typeof focusedAppIds)[number];
@@ -310,4 +311,9 @@ export interface FocusedAppContribution extends ViewRef {
    * list on the frame and its own panel beside it, as the Messenger does.
    */
   readonly panel?: boolean;
+  /**
+   * Draws the view straight on a see-through window, without the frame or its panel: quick ask's
+   * box, which floats over other apps and draws its own edge and shadow.
+   */
+  readonly floating?: boolean;
 }

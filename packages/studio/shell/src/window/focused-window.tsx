@@ -75,7 +75,8 @@ export interface FocusedWindowProps {
  * its feature's context for the open workspace, and none of Studio's tabs, places or status bar.
  * With no workspace it says to open Halonic, with a button that does. Its title is the app's, then the workspace's, then the
  * app's own name: "Inbox · Acme · Halonic Inbox". Below 900px wide its app shows one pane at a
- * time, as in Studio's window, through the kit's `NarrowProvider`.
+ * time, as in Studio's window, through the kit's `NarrowProvider`. A `floating` app, quick ask's
+ * box, draws on the see-through window itself, with no frame.
  */
 export function FocusedWindow({ shell, app, workspace, language, openStudio }: FocusedWindowProps) {
   const { announcer, closeStack, toasts } = shell;
@@ -96,7 +97,7 @@ export function FocusedWindow({ shell, app, workspace, language, openStudio }: F
             <ToastStoreProvider store={toasts}>
               <div
                 data-focused-app={app.id}
-                className={`relative flex h-dvh flex-col p-2 text-fg ${focusedFrameClass}`}
+                className={`relative flex h-dvh flex-col text-fg ${frameClassOf(app)}`}
               >
                 {workspace === undefined ? (
                   <NoWorkspace app={app} openStudio={openStudio} />
@@ -112,6 +113,11 @@ export function FocusedWindow({ shell, app, workspace, language, openStudio }: F
       </NarrowProvider>
     </PresentationProvider>
   );
+}
+
+/** The frame round a focused app's view; a floating app's window is see-through, so it has none. */
+function frameClassOf(app: FocusedAppContribution): string {
+  return app.floating === true ? "" : `p-2 ${focusedFrameClass}`;
 }
 
 function NoWorkspace({
