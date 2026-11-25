@@ -3,6 +3,7 @@
 - Approval: HAL-18954 (Sofia's team wording decision on an approved screen, under HAL-2282, from
   the post-merge words check of #6235); Liam approves and signs this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:TwzT8qkezJ+UTIubWQlCbhYXronfQa+KwKOvElu9ExaEopZ2Pk80nytJb3xGccfB5F2DKTZYz/hRbeD2ZtSvAg==
 
 ## What changes
 
