@@ -2,6 +2,7 @@ import type { MessagingId } from "@halonicjs/ports";
 import { Avatar, TabList, TabPanel, useTabIds } from "@halonicjs/studio-kit";
 import { channelSize, isChannel, workingMembers } from "../channel.ts";
 import { waitingLine } from "../channel-waiting.ts";
+import { chatAgent, chatName } from "../chat-name.ts";
 import { activityOf, type ConversationRow, type MessengerTab } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 
@@ -93,10 +94,10 @@ function Row({
       onClick={() => onSelect(row.conversation.id)}
       className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-start hover:bg-surface-muted focus-ring aria-[current=true]:bg-surface-muted"
     >
-      <Avatar name={row.conversation.title} />
+      <Avatar name={chatAgent(row)?.name ?? row.conversation.title} />
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-body">
-          <bdi>{row.conversation.title}</bdi>
+          <bdi>{chatName(row)}</bdi>
           {after === undefined ? null : (
             <span className="text-small text-fg-muted"> · {after}</span>
           )}

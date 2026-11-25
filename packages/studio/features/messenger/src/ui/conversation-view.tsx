@@ -2,6 +2,7 @@ import type { Message, MessagingId } from "@halonicjs/ports";
 import { Input } from "@halonicjs/studio-kit";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { isChannel } from "../channel.ts";
+import { chatName } from "../chat-name.ts";
 import { activityOf, type ConversationRow, type Messenger } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import { CardsBar } from "./cards-bar.tsx";
@@ -76,11 +77,7 @@ export function ConversationView({
 
   const noMatch = messages?.length === 0 && search.trim() !== "";
   return (
-    <section
-      ref={section}
-      aria-label={row.conversation.title}
-      className="flex min-h-0 flex-1 flex-col"
-    >
+    <section ref={section} aria-label={chatName(row)} className="flex min-h-0 flex-1 flex-col">
       <ConversationHeader row={row} search={search} onSearch={setSearch}>
         {isChannel(row) ? (
           <ChannelHeaderActions
@@ -197,7 +194,7 @@ function ConversationHeader({
     <header className="flex items-center gap-3 border-b border-border px-4 py-3">
       <div className="flex min-w-0 flex-1 flex-col">
         <h2 className="truncate text-body-strong">
-          <bdi>{row.conversation.title}</bdi>
+          <bdi>{chatName(row)}</bdi>
         </h2>
         <p className="text-small text-fg-muted">
           {[row.source?.label ?? "", activity].filter((part) => part !== "").join(" · ")}
