@@ -1,6 +1,7 @@
 import type { RemoteControl } from "@halonicjs/ports";
 import { Dialog } from "@halonicjs/studio-kit";
 import { useState } from "react";
+import { shellDeclined } from "../shell-declined.ts";
 import { type CheckEvent, type PairingView, usePairing } from "./pairing-flow.ts";
 import { CheckStep, CodeStep, EndedStep, FailedStep, PairedStep } from "./pairing-steps.tsx";
 import * as words from "./pairing-words.ts";
@@ -48,12 +49,14 @@ export function PairDialog(props: PairDialogProps) {
     setBusy(true);
     setFailed(undefined);
     (allow ? pairing.allow() : pairing.deny())
-      .catch(() =>
+      .catch((error: unknown) => {
+        // A no in the shell's own window sent nothing: the check still waits, with no error.
+        if (shellDeclined(error)) return;
         setFailed({
           check,
           error: allow ? words.allowFailed(phoneName) : words.denyFailed(phoneName),
-        }),
-      )
+        });
+      })
       .finally(() => setBusy(false));
   };
 
