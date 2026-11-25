@@ -55,7 +55,8 @@ export interface ItemPageProps<Id extends string> {
   /** The kind as a word: "Workflow". */
   readonly kind: string;
   readonly name: string;
-  readonly onRename: (name: string) => void;
+  /** Renames the item. Without it, where the host can't rename, the name is plain text in the title. */
+  readonly onRename?: ((name: string) => void) | undefined;
   /** Checks a new name as it is typed: why it can't be kept, or `undefined` when it can. */
   readonly check?: ((name: string) => string | undefined) | undefined;
   /** The page's `h1`, for a page that moves the focus to its title. */

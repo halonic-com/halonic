@@ -17,7 +17,8 @@ export interface ItemHeaderProps<Id extends string> {
   /** The kind as a word, "Workflow": shown in small caps, and it names the views and the name field. */
   readonly kind: string;
   readonly name: string;
-  readonly onRename: (name: string) => void;
+  /** Renames the item. Without it the name is plain text in the title, with no field to edit. */
+  readonly onRename?: ((name: string) => void) | undefined;
   /** Checks a new name as it is typed (`NameField`'s `check`); without it every name is kept. */
   readonly check?: ((name: string) => string | undefined) | undefined;
   /** The `h1`, for a page that gives it the focus, such as once **Try again** has read the item. */
@@ -39,7 +40,8 @@ export interface ItemHeaderProps<Id extends string> {
 /**
  * The item page's tab header (UX checklist 1.10, VK T7-F5 and F9): 52px across the tab, at the top
  * of the page while its view scrolls, with the
- * kind's icon, the kind in small caps and the name as a rename field, then its ⋮ at the left; the
+ * kind's icon, the kind in small caps and the name (a rename field when the host can rename, plain
+ * text when it can't), then its ⋮ at the left; the
  * views nav centred; the item's own controls at the right. The kind and the name are the page's
  * `h1`, where focus goes when the tab opens.
  */
@@ -73,7 +75,12 @@ export function ItemHeader<Id extends string>({
             {icon}
           </span>
           <span className={kindClasses}>{kind}</span>
-          <NameField name={name} label={`${kind} name`} onRename={onRename} check={check} />
+          {onRename === undefined ? (
+            // Where the host can't rename, the name stays a title: no field the user can't use.
+            <span className={plainNameClasses}>{name}</span>
+          ) : (
+            <NameField name={name} label={`${kind} name`} onRename={onRename} check={check} />
+          )}
         </h1>
         {actions.length === 0 ? null : (
           <Menu
@@ -115,3 +122,6 @@ const headerClasses = [
 
 // The kind label of the step cards and the run receipt (component specs 24.1).
 const kindClasses = "shrink-0 text-label uppercase text-fg-subtle";
+
+// The name where it can't be renamed: the field's text, with its 4px inset so it lines up the same.
+const plainNameClasses = "min-w-0 truncate px-1 text-fg";
