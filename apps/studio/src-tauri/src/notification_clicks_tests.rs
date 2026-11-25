@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use serde_json::{Map, Value, json};
 use tauri::test::{mock_builder, mock_context, noop_assets};
 use tauri::webview::WebviewWindowBuilder;
-use tauri::{Listener, WebviewUrl};
+use tauri::{Listener, Manager, WebviewUrl};
 
 use super::{NOTIFICATION_CLICKED_EVENT, report_action, report_click};
 use tauri_plugin_notification::ActionPerformed;
@@ -145,4 +145,26 @@ fn a_button_or_an_undescribed_tap_sends_nothing() {
         report_action(app, &bare).expect("nothing to send");
     });
     assert!(events.is_empty(), "{events:?}");
+}
+
+#[test]
+fn a_click_on_a_run_goes_to_studio_even_with_the_apps_open() {
+    let all = ["main", "inbox", "messenger"];
+    assert_eq!(receivers_of("run", &all), ["main"]);
+    assert_eq!(receivers_of("runs-failed", &["inbox", "main"]), ["main"]);
+}
+
+#[test]
+fn a_click_on_a_run_opens_studio_while_only_an_app_is_open() {
+    let app = crate::shell(mock_builder())
+        .build(tauri::generate_context!())
+        .expect("the shell builds on the mock runtime");
+    WebviewWindowBuilder::new(&app, "inbox", WebviewUrl::default())
+        .build()
+        .expect("the window opens");
+    let failed = extra(json!({ "messagingId": "runs-failed-acme", "kind": "runs-failed" }));
+    report_click(app.handle(), &failed).expect("Studio opens");
+    let mut labels: Vec<String> = app.webview_windows().into_keys().collect();
+    labels.sort();
+    assert_eq!(labels, ["inbox", "main"]);
 }

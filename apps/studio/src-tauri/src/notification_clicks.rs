@@ -11,6 +11,9 @@
 //! Inbox item to Halonic Inbox, a conversation to Halonic Messenger. Otherwise
 //! it goes to Studio's window, or to whichever app window is open, so a click
 //! is never lost while only one app runs (HAL-17915).
+//! A run (`run`) or Runs' Failed group (`runs-failed`) opens only in Studio's
+//! window, where Runs lives until the Runs window exists, so the click brings
+//! that window forward, or opens it, before telling it (HAL-18844).
 
 use serde::Serialize;
 use serde_json::{Map, Value};
@@ -69,9 +72,15 @@ fn windows_for(kind: Option<&str>) -> [&'static str; 3] {
     }
 }
 
+/// Whether an item of `kind` opens in Runs, which only Studio's window shows.
+fn opens_in_runs(kind: Option<&str>) -> bool {
+    matches!(kind, Some("run" | "runs-failed"))
+}
+
 /// Tells the open window the clicked item belongs to that the notification
-/// with `extra` was clicked. A notification without an item, or a click
-/// while no window is open, sends nothing.
+/// with `extra` was clicked. A run's click first shows Studio's window. A
+/// notification without an item, or a click while no window is open, sends
+/// nothing.
 pub fn report_click<R: Runtime>(
     app: &AppHandle<R>,
     extra: &Map<String, Value>,
@@ -79,6 +88,14 @@ pub fn report_click<R: Runtime>(
     let Some(clicked) = clicked_item(extra) else {
         return Ok(());
     };
+    if opens_in_runs(clicked.kind.as_deref()) {
+        focused_apps::show(app, None)?;
+        return app.emit_to(
+            focused_apps::STUDIO_WINDOW,
+            NOTIFICATION_CLICKED_EVENT,
+            clicked,
+        );
+    }
     match focused_apps::first_open(app, &windows_for(clicked.kind.as_deref())) {
         Some(window) => app.emit_to(window.label(), NOTIFICATION_CLICKED_EVENT, clicked),
         None => Ok(()),
