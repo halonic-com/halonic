@@ -16,6 +16,11 @@ The `halonic schema` golden (`apps/cli/src/commands/schema/golden/schema-output.
 or weakened; the parity test leaves `tool` out like `integration` and `plugin`, because the old
 app had no such file to compare with.
 
+The new kind's JSON Schema golden, `packages/core/format/spec/tool.schema.json`, is added, as
+every kind has one. `tooling/check/policy.json` gains `./snapshot` in `@halonicjs/format`'s
+`extraExports`: the entry a runtime reads snapshots with, which loads neither the YAML parser nor
+the builder (a test checks that).
+
 ## Why
 
 The plugin plan (HAL-17450, step 1a) moves tool definitions into the workspace as files. A file
@@ -29,3 +34,5 @@ task.
 - format.kind-registry
 - packages/core/format/src/registry.test.ts
 - apps/cli/src/commands/schema/golden/schema-output.json
+- packages/core/format/spec/tool.schema.json
+- tooling/check/policy.json
