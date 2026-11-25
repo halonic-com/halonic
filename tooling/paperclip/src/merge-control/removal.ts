@@ -1,3 +1,4 @@
+import { removalFacts, wakeAuthor } from "./author-wake.ts";
 import { dequeueCost } from "./capacity.ts";
 import { minutesSince, type PassContext } from "./context.ts";
 import type { GateRow } from "./gate.ts";
@@ -69,6 +70,29 @@ function commentOf(context: PassContext, row: GateRow, reason: RemovalReason): s
   }
 }
 
+/** The first gate reason the comment names, for the author's wake (the live Merger's `reasons[0]`). */
+function whyOf(
+  context: PassContext,
+  row: GateRow,
+  reason: Exclude<RemovalReason, "foreign">,
+): string {
+  const key = String(row.pull.number);
+  switch (reason) {
+    case "board-hold":
+      return `held out by the board: ${context.state.board.hold[key] ?? ""}`;
+    case "head-moved":
+      return row.reasons.find((each) => each.startsWith("waiting for re-review")) ?? "";
+    case "change-request":
+      return row.reasons.find((each) => each.startsWith("changes requested")) ?? "";
+    case "no-signed-approval":
+      return row.reasons[0] ?? "";
+    case "conflict":
+      return texts.conflict;
+    case "unmergeable":
+      return texts.unmergeableSince(context.state.unmergeableSince[key] ?? "");
+  }
+}
+
 /** Tracks how long queued entries are unmergeable, and returns the ones that come out. */
 export function removals(context: PassContext, rows: readonly GateRow[]): GateRow[] {
   const queued = rows.filter((row) => row.entry !== undefined);
@@ -107,6 +131,15 @@ export function removals(context: PassContext, rows: readonly GateRow[]): GateRo
       comment: commentOf(context, row, reason),
       cost: dequeueCost(context, position),
     });
+    // A branch from a fork can be named like ours, so a foreign pull request wakes nobody.
+    if (reason !== "foreign") {
+      wakeAuthor(
+        context,
+        row.pull,
+        "removed",
+        removalFacts(row.pull, reason, whyOf(context, row, reason)),
+      );
+    }
     if (reason === "unmergeable") {
       context.state.cooldown[key] = {
         head: row.pull.head,
