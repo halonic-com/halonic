@@ -46,6 +46,12 @@ export const messengerWords = {
   today: "Today",
   yesterday: "Yesterday",
   sending: "Sending…",
+  /** Under the chat while its agent has a run on it (the board's request on HAL-18736). */
+  typing: (name: string) => `${name} is typing…`,
+  /** The person's sent message: one tick (the board's request on HAL-18736, 19:00 UTC). */
+  sent: "Sent",
+  /** The person's message the chat's agent picked up: two ticks. */
+  readAt: (time: string) => `Read ${time}`,
   /** The pill over the box while replies came in below where the person reads. */
   newMessages: (count: number) => (count === 1 ? "1 new message" : `${count} new messages`),
   /** A row's chip while its agent's cards wait. */

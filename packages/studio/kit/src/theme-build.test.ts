@@ -109,6 +109,15 @@ describe("theme.css built by Tailwind: lines", () => {
   });
 });
 
+describe("theme.css built by Tailwind: motion", () => {
+  it("writes the typing dots' fade, while Tailwind's own pulse is gone with its defaults (HAL-18816)", async () => {
+    const css = await buildCss(["motion-safe:animate-typing", "motion-safe:animate-pulse"]);
+    expect(css).toContain("animation: var(--animate-typing);");
+    expect(css).toMatch(/@keyframes typing\s*\{/);
+    expect(css).not.toContain("animate-pulse");
+  });
+});
+
 describe("theme.css built by Tailwind: more contrast", () => {
   it("keeps the raised tokens and their media query in the output", async () => {
     const css = await buildCss([]);

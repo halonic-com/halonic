@@ -33,8 +33,13 @@ function chiefsChat() {
 
 const noon = () => new Date(2026, 10, 25, 12, 0);
 
+/** Each line's text, without the tooltips that repeat what a line says already. */
 function lines(page: HTMLElement): string[] {
-  return [...page.querySelectorAll("main ol > li")].map((line) => line.textContent ?? "");
+  return [...page.querySelectorAll("main ol > li")].map((line) => {
+    const copy = line.cloneNode(true) as HTMLElement;
+    for (const tooltip of copy.querySelectorAll('[role="tooltip"]')) tooltip.remove();
+    return copy.textContent ?? "";
+  });
 }
 
 /** The transcript's scrolling box, scrolled up by the person: 800px above the end. */
@@ -58,7 +63,7 @@ verifies("messenger.chat-transcript", () => {
         "Today",
         "CChief · 09:00Chief: Morning",
         "Chief: Build is green",
-        "You: Thanks09:05",
+        "You: Thanks09:05Sent",
       ]);
     });
 
@@ -77,7 +82,7 @@ verifies("messenger.chat-transcript", () => {
       expect(box.value).toBe("");
       await act(async () => void land());
       await settle();
-      expect(lines(page).at(-1)).toBe("You: On it09:30");
+      expect(lines(page).at(-1)).toBe("You: On it09:30Sent");
       expect(page.querySelector("[data-pending]")).toBeNull();
     });
 
@@ -129,7 +134,7 @@ verifies("messenger.chat-transcript", () => {
       scrolledUp(page).scrollTo = vi.fn();
       await act(async () => void land());
       await settle();
-      expect(lines(page).at(-1)).toBe("You: On it09:05");
+      expect(lines(page).at(-1)).toBe("You: On it09:05Sent");
       expect(page.querySelector("[data-new-messages]")).toBeNull();
     });
 

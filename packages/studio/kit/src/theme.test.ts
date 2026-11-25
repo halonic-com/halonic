@@ -390,8 +390,12 @@ describe("theme.css scales", () => {
       "--shadow-2",
       "--shadow-3",
     ]);
-    expect(namesStartingWith(themeTokens, "--animate-")).toEqual(["--animate-spin"]);
+    expect(namesStartingWith(themeTokens, "--animate-")).toEqual([
+      "--animate-spin",
+      "--animate-typing",
+    ]);
     expect(css).toMatch(/@keyframes spin\s*\{/);
+    expect(css).toMatch(/@keyframes typing\s*\{/);
   });
 
   it("keeps the sizes the shell's layout is built on", () => {
