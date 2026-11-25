@@ -2,18 +2,18 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-16962; the rebase-only re-approval in HAL-14809 (board, 22 Nov); HAL-18167, the Merger's forms (HAL-15553)
+- Source: HAL-16962; the rebase-only re-approval in HAL-14809 (board, 22 Nov); HAL-18167, the Merger's forms (HAL-15553); HAL-18190, the Merger's scope rule
 
-When a reviewer's comment on a pull request reads "Julian: re-approved on head `<new>` (rebase only, range-diff vs `<old>`)", the Agent tools plugin's `pr_status` and `my_prs` shall read it as Julian's signed approval of `<new>`, and outside Julian's limits `pr_status` shall count it only if Liam's signed approval of `<old>` is on the pull request. A reviewer's "re-approved on head `<sha>`" or "approved again on head `<sha>`" line without the range-diff part shall be read like "approved on head `<sha>`", as the Merger reads it; it doesn't let Julian's approval count outside his limits.
+When a reviewer's comment on a pull request reads "Julian: re-approved on head `<new>` (rebase only, range-diff vs `<old>`)", the Agent tools plugin's `pr_status` and `my_prs` shall read it as Julian's signed approval of `<new>`, and outside Julian's limits `pr_status` shall not count it, as the Merger's gate (`outsideJulianScope`) doesn't; its note shall say whether Liam approved `<old>` and that the Merger waits for Liam. A reviewer's "re-approved on head `<sha>`" or "approved again on head `<sha>`" line without the range-diff part shall be read like "approved on head `<sha>`", as the Merger reads it; it doesn't let Julian's approval count outside his limits.
 
 ## Examples
 
-- Given #4588 touching `pnpm-lock.yaml`, with "Liam: approved on head `0000000`" and "Julian: re-approved on head `7651f8c` (rebase only, range-diff vs `0000000`)" on current head `7651f8c`,
+- Given #5676 touching `packages/host/server/src/cloud-sign-in-api.ts`, with "Liam: approved on head `0000000`" and "Julian: re-approved on head `7651f8c` (rebase only, range-diff vs `0000000`)" on current head `7651f8c`,
   when an agent asks `pr_status` about it,
-  then Julian's re-approval counts and names `0000000` as the head Liam approved.
-- Given the same pull request with Liam's approval on `1111111` instead,
+  then Julian's re-approval doesn't count, and its note names `0000000` as the head Liam approved and says the Merger waits for Liam.
+- Given #4588 touching `pnpm-lock.yaml` with Liam's approval on `1111111` and the same re-approval,
   when an agent asks `pr_status` about it,
-  then Julian's re-approval doesn't count, because Liam didn't approve `0000000`.
+  then Julian's re-approval doesn't count, and its note says Liam didn't approve `0000000`.
 - Given the same pull request with Liam's approval on `0000000` and "Julian: re-approved on head `7651f8c`" without the range-diff part,
   when an agent asks `pr_status` about it,
   then Julian's re-approval doesn't count, because it's outside his limits.

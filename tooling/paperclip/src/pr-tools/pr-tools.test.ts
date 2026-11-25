@@ -187,18 +187,28 @@ verifies("paperclip.pr-tools", () => {
 
 verifies("paperclip.pr-tools-reapproval", () => {
   describe("pr_status", () => {
-    test("counts Julian's rebase-only re-approval on Liam's paths when Liam approved the head it names", async () => {
+    test("doesn't count Julian's rebase-only re-approval on Liam's paths, as the Merger doesn't (#5676)", async () => {
       const reapproval =
         "Julian: re-approved on head `7651f8c` (rebase only, range-diff vs `0000000`)";
-      const github = pr4588(["Liam: approved on head `0000000`", reapproval], ["pnpm-lock.yaml"]);
+      const github = pr4588(
+        ["Liam: approved on head `0000000`", reapproval],
+        [
+          "packages/host/server/requirements/cloud-sign-out.md",
+          "packages/host/server/src/cloud-session-routes.test.ts",
+          "packages/host/server/src/cloud-session-routes.ts",
+          "packages/host/server/src/cloud-sign-in-api.ts",
+          "packages/host/server/src/cloud-sign-in-routes.test.ts",
+        ],
+      );
       const status = await prStatus(github.get, repo, 4588);
-      expect(status.approvedOnHead).toBe(true);
+      expect(status.reviewer).toBe("liam");
+      expect(status.approvedOnHead).toBe(false);
       expect(status.approvals[1]).toMatchObject({
         by: "Julian",
         rebaseOf: "0000000",
-        counts: true,
+        counts: false,
+        note: "rebase only since Liam's approval on 0000000, but outside Julian's limits the Merger waits for Liam (HAL-18190)",
       });
-      expect(statusText(status)).toContain("rebase only since Liam's approval on 0000000");
     });
 
     test("doesn't count a re-approval without Liam's approval on the named head or without the range-diff", async () => {
@@ -219,7 +229,7 @@ verifies("paperclip.pr-tools-reapproval", () => {
       const status = await prStatus(github.get, repo, 4588);
       expect(status.approvedOnHead).toBe(false);
       expect(status.approvals[1]?.note).toBe(
-        "re-approval after a rebase, but Liam didn't approve 0000000 (HAL-14809)",
+        "re-approval after a rebase, and Liam didn't approve 0000000, but outside Julian's limits the Merger waits for Liam (HAL-18190)",
       );
     });
 
