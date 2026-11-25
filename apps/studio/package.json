@@ -41,6 +41,7 @@
     "@halonicjs/studio-feature-assistant": "workspace:*",
     "@halonicjs/studio-feature-check-computer": "workspace:*",
     "@halonicjs/studio-feature-connections": "workspace:*",
+    "@halonicjs/studio-feature-feedback": "workspace:*",
     "@halonicjs/studio-feature-files": "workspace:*",
     "@halonicjs/studio-feature-first-run": "workspace:*",
     "@halonicjs/studio-feature-google-setup": "workspace:*",
