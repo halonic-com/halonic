@@ -1,6 +1,4 @@
 import { startRunCommand } from "@halonicjs/app";
-import { ConfirmAgainCallouts } from "@halonicjs/studio-feature-agents/api";
-import { SandboxCantRunCallout } from "@halonicjs/studio-feature-runs/api";
 import {
   Button,
   LetterTile,
@@ -32,16 +30,9 @@ import { GuideSlot } from "./guide-card.tsx";
 import { pageOrGuideScreen, useGuideRun, useGuideScreen } from "./guide-screen.tsx";
 import { firstTestsPick, firstView, hasDockedCard, panelClass, stepNamesOf } from "./page-view.ts";
 import { pageWords } from "./page-words.ts";
-import { ProgramStepsLine, programAgentsOf } from "./program-steps-line.tsx";
 import { type DockOpener, drawingCaption, RunDock, useDock, useShownRun } from "./run-dock.tsx";
 import { unavailableFor, useRunGate } from "./run-gate.ts";
-import {
-  missingAliasOf,
-  ProblemsBand,
-  StartRow,
-  useProblemsGate,
-  useStartRefusal,
-} from "./start-row.tsx";
+import { missingAliasOf, useProblemsGate, useStartRefusal } from "./start-row.tsx";
 import { stepCardIn } from "./step-card.tsx";
 import { useAskedForRunForm } from "./use-asked-for-run-form.ts";
 import { useAskedForTests } from "./use-asked-for-tests.ts";
@@ -51,6 +42,7 @@ import { useOutline } from "./use-outline.ts";
 import { useRename } from "./use-rename.ts";
 import { useHostRead, useWorkflow } from "./use-workflow.ts";
 import { useWorkflowTrash } from "./use-workflow-trash.tsx";
+import { WorkflowBands } from "./workflow-bands.tsx";
 import type { CanvasFocus } from "./workflow-canvas.tsx";
 import { WorkflowName } from "./workflow-name.tsx";
 import type { WorkflowScreenProps } from "./workflow-screen-props.ts";
@@ -300,39 +292,29 @@ export function WorkflowScreen({
         )}
       </header>
       {changes.bar}
-      <ProblemsBand
+      <WorkflowBands
         name={name}
-        problems={problems}
-        missingAlias={missingAlias}
-        blockingFile={blockingFileOf(filesWithErrorsList, fileProblems, hubId, missingAlias)}
-        onOpen={problemsAsk.open}
-        openAgent={openAgent}
-        openFileAt={openFileAt}
-        openModels={openModels && (() => openModels())}
-      />
-      <SandboxCantRunCallout
-        name={name}
-        start={gate.sandbox}
-        firstLineId={gate.cantRunId}
-        announce={announce}
-        onReady={() => (runButton.current ?? title.current)?.focus()}
-        band
-      >
-        <ProgramStepsLine steps={gate.programSteps} phone={phone} openAgent={openAgent} />
-      </SandboxCantRunCallout>
-      {/* Below the can't-run Callout; it never disables Run (agents.confirm-again.run-controls). */}
-      <ConfirmAgainCallouts
-        host={agents}
         hubId={hubId}
-        agents={programAgentsOf(gate.programSteps)}
+        phone={phone}
+        problemsBand={{
+          problems,
+          missingAlias,
+          blockingFile: blockingFileOf(filesWithErrorsList, fileProblems, hubId, missingAlias),
+          onOpen: problemsAsk.open,
+          openFileAt,
+          openModels: openModels && (() => openModels()),
+        }}
+        gate={gate}
+        startRow={{
+          refusal: cantStart,
+          startCommand,
+          showStartCommand: !startRun && settings.load.kind === "ready" && errors === 0,
+        }}
+        agents={agents}
         reviewAndConfirm={reviewAndConfirm}
-      />
-      {/* With a Run button, the page starts it itself, so the terminal line would only repeat it. */}
-      <StartRow
-        name={name}
-        refusal={cantStart}
-        startCommand={startCommand}
-        showStartCommand={!startRun && settings.load.kind === "ready" && errors === 0}
+        openAgent={openAgent}
+        announce={announce}
+        onSandboxReady={() => (runButton.current ?? title.current)?.focus()}
       />
       <GuideSlot {...guideSlot} page={guidePage} at="top" />
       {/* The container a docked card measures: under 800 px it takes the whole body (DW1). */}
