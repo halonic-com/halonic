@@ -33,6 +33,7 @@ import type {
   ToolVerb,
   Usage,
 } from "./run-basics.ts";
+import type { RunLimitWaitingEvent } from "./run-limit-waiting.ts";
 import type { RunTask } from "./run-task.ts";
 import type { SandboxBlockedEvent } from "./sandbox-blocked.ts";
 import type { SandboxOpenedView } from "./sandbox-opened.ts";
@@ -398,6 +399,7 @@ export type RunEventBody =
       body?: string;
       labels?: Record<string, string>;
     }
+  | RunLimitWaitingEvent
   /** A timer transition (`after`) of a wait state fired. */
   | { type: "timer.fired"; state: string; after: string }
   | { type: "event.received"; event: string; payload?: unknown }

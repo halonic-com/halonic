@@ -109,6 +109,12 @@ export interface RunSummary {
    * filled-in values can be model output: show them as plain text.
    */
   waitingFor: { title: string; body: string } | null;
+  /**
+   * While waiting at a plan limit: the plan's stop it waits at, from its
+   * `run.limit-waiting` (requirement `events.run-limit-waiting`). Absent
+   * otherwise and in older logs.
+   */
+  limit?: RunFailureCause;
   /** ISO time of the last `run.waiting`, kept after the run goes on; `null` if it never waited. */
   lastWaitingAt: string | null;
   /**
