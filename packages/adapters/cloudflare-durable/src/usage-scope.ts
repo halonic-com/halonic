@@ -93,13 +93,16 @@ export class UsageScope {
     return rememberNonce(this.#storage, { keyId, nonce, keepUntilMs }, this.#nowMs());
   }
 
-  /** Whether the principal may take a step now. */
-  async check(principal: UsagePrincipal): Promise<UsageAnswer> {
+  /** Whether the principal may take a step now, or with `runStart` start a run (no slot is taken). */
+  async check(
+    principal: UsagePrincipal,
+    options: { readonly runStart?: boolean } = {},
+  ): Promise<UsageAnswer> {
     const account = this.#account(principal.scope);
     const limited = this.#takeRateSlot(principal);
     if (limited !== null) return limited;
     if (!(await this.#hasCurrentLimits(principal.scope))) return noLimits;
-    return account.check(principal.actor);
+    return account.check(principal.actor, options);
   }
 
   /** Holds the step's maximum, or refuses; the alarm then settles it if it runs out. */

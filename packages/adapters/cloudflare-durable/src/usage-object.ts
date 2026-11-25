@@ -61,8 +61,11 @@ export class UsageObject extends DurableObject {
     return this.#scope.rememberNonce(scope, keyId, nonce, keepUntilMs);
   }
 
-  check(principal: UsagePrincipal): Promise<UsageAnswer> {
-    return this.#scope.check(principal);
+  check(
+    principal: UsagePrincipal,
+    options: { readonly runStart?: boolean } = {},
+  ): Promise<UsageAnswer> {
+    return this.#scope.check(principal, options);
   }
 
   reserve(principal: UsagePrincipal, step: StepReservation): Promise<UsageAnswer> {

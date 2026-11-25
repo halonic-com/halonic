@@ -55,6 +55,11 @@ time window and keeps the document unless it has that version or a newer one. Tw
 
 Without both and the `USAGE` binding, the path is an unknown path; with only some of them it answers 503.
 
+`UsageObjectMeter` (`src/usage-meter.ts`) is the engine's `Meter` over that object, one per top-level run
+(requirement `runtime.usage-meter`). It turns the object's refusals into the plan's stops; its load limits
+keep their own codes (`usage.rate`, `usage.member.rate`, `usage.outbox-full`). The Worker doesn't give it to
+the engine yet.
+
 ## Export and import routes (the contract for the CLI)
 
 `halonic deploy export` and `import` talk to the Worker through routes that exist only while a one-job
