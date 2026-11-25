@@ -30,3 +30,11 @@ export {
   type RouterAliasFields,
 } from "./router-extension.ts";
 export { aliasForRun, type PinnedRouting, pinnedRouting } from "./run-alias.ts";
+export {
+  providerDownCause,
+  type RouteOutcomeRow,
+  type RunOutcome,
+  routeOutcomeOf,
+  type SkipReason,
+} from "./run-outcome.ts";
+export type { RoutingStamp, RunRecord } from "./run-record.ts";

@@ -43,6 +43,25 @@ another alias. When nothing is left, the router gives the task the fallback. Whe
 because its provider is down, the plugin asks for a new route with the same `attempt` and the
 failure `"provider_down"`, and this rule decides whether the same workflow is still allowed.
 
+## Cost per run (`route_outcomes`)
+
+`routeOutcomeOf(runRecord, catalog)` turns one Paperclip run record (`GET /api/heartbeat-runs/:id`)
+into the cost part of its `route_outcomes` row (architecture note section 6; Q2 to Q4 in section 10).
+Paperclip's run record is the source of truth for cost; there is no second log.
+
+- **Which runs:** only a finished run whose process started and whose routing stamp
+  (`contextSnapshot.halonicRouting`, written by the server at run start, HAL-16985) names a variant
+  and a catalog alias. A run that failed before its process started may carry a stamp from its
+  wake, so it is skipped as `not-started`. Unrouted (`variant: null`), unstamped and unfinished runs
+  are skipped too, each with its reason.
+- **Cost:** the list price from the catalog (seat runs too), the paid cost (0 for a seat run, else
+  the reported cost), the reported cost and the catalog's `priceVersion`. `costDrift` flags a
+  reported cost more than 10% away from the list price.
+- **Provider down:** a run that ended with `provider_down` keeps its cost but has
+  `trainingEvidence: false`.
+- **Decision:** `decisionId` and `stepIndex` stay `null` until the router step at assignment stamps
+  them; the configuration is looked up through the decision, not copied onto the row.
+
 ## Example
 
 ```ts
