@@ -214,7 +214,10 @@ export class PaperclipWriter {
     const [approval = ""] = ids;
     const request = approvalAnswerRequest(answer);
     if (request === undefined) {
-      throw new PaperclipClientError("An approval takes Approve or Reject only.", "refused");
+      throw new PaperclipClientError(
+        "An approval takes Approve, Reject or Request changes only.",
+        "refused",
+      );
     }
     const sent = await this.#reader.send(request.name, { path: { approval }, body: request.body });
     if (sent.kind === "ok") {

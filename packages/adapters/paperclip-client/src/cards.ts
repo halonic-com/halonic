@@ -7,6 +7,8 @@ import type {
   MessagingId,
 } from "@halonicjs/ports";
 import { approvalRisk } from "./approval-risk.ts";
+import { approvalQuestion, asksToRunTool, confirmationQuestion } from "./approval-text.ts";
+import { approvalWords } from "./approval-words.ts";
 import {
   listCardAnswerOf,
   listCardAnswerRequest,
@@ -50,9 +52,7 @@ function questionOf(kind: string, record: JsonRecord, payload: JsonRecord | unde
     );
     return prompts.join("\n\n");
   }
-  const prompt = text(payload, "prompt") ?? "";
-  const details = text(payload, "detailsMarkdown");
-  return details === undefined ? prompt : `${prompt}\n\n${details}`;
+  return confirmationQuestion(payload);
 }
 
 function optionsOf(kind: string, payload: JsonRecord | undefined): InboxItemOption[] {
@@ -145,8 +145,8 @@ export function cardToItem(
     options: questions === undefined ? optionsOf(kind, payload) : [],
     ...(questions === undefined ? {} : { questions }),
     work: context.ids.make("task", task),
-    // A card asks a question in words; answering it spends nothing and changes no one's rights.
-    risk: "normal",
+    // A card asks a question in words and changes no one's rights, unless it lets an agent run a tool.
+    risk: asksToRunTool(payload) ? "risky" : "normal",
     createdAt: timeOf(record, "createdAt"),
     // The provider lists no files yet; it reads none, so it makes no request for them.
     attachments: [],
@@ -202,21 +202,29 @@ export function cardAnswerRequest(
     return undefined;
   }
   if (kind === "request_confirmation") {
-    return answer.kind === "option" ? confirmationRequest(answer) : undefined;
+    return answer.kind === "option" ? confirmationRequest(payload, answer) : undefined;
   }
   return kind === "ask_user_questions" ? oneQuestionRequest(payload, answer) : undefined;
 }
 
 /** The request that accepts or rejects a confirmation card, or `undefined` for another option. */
 function confirmationRequest(
+  payload: JsonRecord | undefined,
   answer: Extract<InboxAnswer, { kind: "option" }>,
 ): AnswerRequest | undefined {
   if (answer.option === "accept") {
     return { name: "acceptCard", body: {} };
   }
-  return answer.option === "reject"
-    ? { name: "rejectCard", body: answer.note === undefined ? {} : { reason: answer.note } }
-    : undefined;
+  if (answer.option !== "reject") {
+    return undefined;
+  }
+  if (answer.note !== undefined) {
+    return { name: "rejectCard", body: { reason: answer.note } };
+  }
+  // Paperclip refuses a reject without a reason when the card asks for one.
+  return field(payload, "rejectRequiresReason") === true
+    ? undefined
+    : { name: "rejectCard", body: {} };
 }
 
 /** The request that answers a card's one single-select question with an option it offers or a reply. */
@@ -248,9 +256,17 @@ function oneQuestionRequest(
 }
 
 const approvalOptions: readonly InboxItemOption[] = [
-  { id: "approve", label: "Approve" },
-  { id: "reject", label: "Reject" },
+  { id: "approve", label: approvalWords.approve },
+  { id: "reject", label: approvalWords.reject },
+  { id: "request-changes", label: approvalWords.requestChanges },
 ];
+
+/** How a decided approval was answered; a `revision_requested` one waits on the agent that asked. */
+const decidedOptions: ReadonlyMap<string, string> = new Map([
+  ["approved", "approve"],
+  ["rejected", "reject"],
+  ["revision_requested", "request-changes"],
+]);
 
 /** A Paperclip approval as an inbox item; `work` is the first task it is linked to. */
 export function approvalToItem(
@@ -262,44 +278,45 @@ export function approvalToItem(
   if (id === undefined) {
     return undefined;
   }
-  const payload = asRecord(field(record, "payload"));
   // The type comes from Paperclip and says what approving does (hire an agent, change a budget).
   // The title and summary come from the agent that asks, so they never stand in for the type.
   const type = text(record, "type");
-  const kind = `Approval: ${type ?? "request"}`;
-  const agentTitle = text(payload, "title");
-  const title = agentTitle === undefined ? kind : `${kind}\n\n${agentTitle}`;
-  const summary = text(payload, "summary");
-  const status = text(record, "status");
-  const decided = status === "approved" || status === "rejected";
+  const decided = decidedOptions.get(text(record, "status") ?? "");
+  const note = text(record, "decisionNote");
   return {
     id: context.ids.make("approval", id),
     source: context.ids.source(),
     from: authorOf(context, text(record, "requestedByAgentId"), text(record, "requestedByUserId")),
-    question: summary === undefined ? title : `${title}\n\n${summary}`,
+    question: approvalQuestion(type, asRecord(field(record, "payload"))),
     options: approvalOptions,
     ...(work === undefined ? {} : { work }),
     risk: approvalRisk(type),
     createdAt: timeOf(record, "createdAt"),
     // The provider lists no files yet; it reads none, so it makes no request for them.
     attachments: [],
-    state: decided
-      ? answeredState(context, record, {
-          kind: "option",
-          option: status === "approved" ? "approve" : "reject",
-        })
-      : { kind: "open" },
+    state:
+      decided === undefined
+        ? { kind: "open" }
+        : answeredState(context, record, {
+            kind: "option",
+            option: decided,
+            ...(note === undefined ? {} : { note }),
+          }),
   };
 }
+
+const approvalRequests: ReadonlyMap<string, AnswerRequest["name"]> = new Map([
+  ["approve", "approve"],
+  ["reject", "rejectApproval"],
+  ["request-changes", "requestApprovalRevision"],
+]);
 
 /** The request that gives `answer` to an approval, or `undefined` for a reply or an unknown option. */
 export function approvalAnswerRequest(answer: InboxAnswer): AnswerRequest | undefined {
   if (answer.kind !== "option") {
     return undefined;
   }
+  const name = approvalRequests.get(answer.option);
   const body = answer.note === undefined ? {} : { decisionNote: answer.note };
-  if (answer.option === "approve") {
-    return { name: "approve", body };
-  }
-  return answer.option === "reject" ? { name: "rejectApproval", body } : undefined;
+  return name === undefined ? undefined : { name, body };
 }

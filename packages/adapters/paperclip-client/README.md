@@ -110,7 +110,7 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `listChats` | `GET /api/companies/{company}/chats` | the signed-in user's chats; 404 when Agent Chat is off |
 | `listComments` | `GET /api/issues/{task}/comments?order=desc&limit=100` | a chat's newest messages |
 | `listTaskCards` | `GET /api/issues/{task}/interactions` | a task's cards |
-| `listApprovals` | `GET /api/companies/{company}/approvals?status=pending` | pending approvals, company-wide |
+| `listApprovals` | `GET /api/companies/{company}/approvals?status=pending`, then `?status=revision_requested` | pending approvals, and those waiting on the agent after Request changes, company-wide |
 | `getApproval` | `GET /api/approvals/{approval}` | who decided an approval first |
 | `listApprovalTasks` | `GET /api/approvals/{approval}/issues` | the task an approval belongs to |
 | `commentOnChat` | `POST /api/issues/{task}/comments` | send a message, with a `clientRequestId` |
@@ -118,6 +118,7 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `respondToCard` | `POST /api/issues/{task}/interactions/{card}/respond` | answer a question card, every question at once |
 | `submitVerdicts` | `POST /api/issues/{task}/interactions/{card}/verdicts` | approve, reject or defer a verdict card's items, some or all |
 | `approve`, `rejectApproval` | `POST /api/approvals/{approval}/approve`, `/reject` | decide an approval |
+| `requestApprovalRevision` | `POST /api/approvals/{approval}/request-revision` with `{ decisionNote }` | Request changes: send an approval back to the agent that asked |
 | `whoAmI`, `revokeKey` | `GET /api/cli-auth/me`, `POST /api/cli-auth/revoke-current` | whom a connection is signed in as (its name only); disconnect (track A4) |
 | `spendSummary`, `spendByProvider` | `GET /api/companies/{company}/costs/summary?from=`, `/costs/by-provider?from=` | paid money, the budget, and tokens of every billing type |
 | `spendByAgent`, `spendByAgentModel` | `GET /api/companies/{company}/costs/by-agent?from=`, `/costs/by-agent-model?from=` | each agent's spend and tokens by model |

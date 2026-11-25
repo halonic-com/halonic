@@ -116,7 +116,7 @@ verifies("ports.agent-messaging", () => {
         [
           `${source}:approval:${approvalId}`,
           `${source}:task:${plainTask}`,
-          "Approval: hire_agent\n\nHire a designer\n\nOne more seat",
+          "Hire an agent\n\nHire a designer\n\nOne more seat",
         ],
       ]);
       expect(items[0]?.options).toEqual([
@@ -146,7 +146,7 @@ verifies("ports.agent-messaging", () => {
       const item = (await client().listInboxItems()).find((entry) =>
         entry.id.includes(":approval:"),
       );
-      expect(item?.question).toBe("Approval: hire_agent\n\nTidy a typo\n\nNothing to see");
+      expect(item?.question).toBe("Hire an agent\n\nTidy a typo\n\nNothing to see");
     });
 
     it("leaves the project out when the card's task has none", async () => {
