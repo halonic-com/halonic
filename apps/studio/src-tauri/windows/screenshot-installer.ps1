@@ -122,6 +122,7 @@ if ($NoSandbox) {
   if ($found.Count -gt 0) { throw "An install without the sandbox installed $($found.FullName -join ', ')" }
   Write-Output 'without the sandbox: no licence page, and no vcruntime140 file in the install folder'
 } else {
+  Save-Picture $h '0-install'
   # Back from the licence page keeps the person's choices (HAL-17872): clear
   # the shortcut box, go on, come back, and both boxes are as they were left.
   $shortcut = Find-Box $h 'Add a desktop shortcut'
@@ -134,7 +135,6 @@ if ($NoSandbox) {
   if ((Box-Checked (Find-Box $h 'Add a desktop shortcut'))) { Save-Picture $h 'back-shortcut-ticked'; throw 'Back from the licence page ticked the desktop shortcut box again' }
   if (-not (Box-Checked (Find-Box $h 'Set up the agent sandbox (recommended)'))) { throw 'Back from the licence page cleared the sandbox box' }
   Write-Output 'Back from the licence page: the desktop shortcut box stays cleared'
-  Save-Picture $h '0-install'
   Press $h
   Wait-Button $h 'I &Agree' 20
   Save-Picture $h '1-licence'
