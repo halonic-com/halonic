@@ -7,8 +7,9 @@
 // really is.
 
 import { mkdir, readdir, realpath } from "node:fs/promises";
-import { isAbsolute, join, relative, sep } from "node:path";
+import thisComputer, { join, relative, sep } from "node:path";
 import { workingFolderProblem } from "@halonicjs/format";
+import { isInsideOrSameOn, isStrictlyInsideOn, overlapsOn } from "./path-containment.ts";
 
 /** What the profile builder reads and makes on disk. */
 export interface ProfileDisk {
@@ -122,16 +123,15 @@ async function realOrMade(
 
 /** Whether `path` is `folder` or inside it. Both are absolute, in this computer's notation. */
 export function isInsideOrSame(path: string, folder: string): boolean {
-  const way = relative(folder, path);
-  return way === "" || (!isAbsolute(way) && way !== ".." && !way.startsWith(`..${sep}`));
+  return isInsideOrSameOn(thisComputer, path, folder);
 }
 
 /** Whether `path` is inside `folder`, and isn't `folder` itself. */
 export function isStrictlyInside(path: string, folder: string): boolean {
-  return isInsideOrSame(path, folder) && relative(folder, path) !== "";
+  return isStrictlyInsideOn(thisComputer, path, folder);
 }
 
 /** Whether one of two absolute paths is, or is inside, the other. */
 export function overlaps(a: string, b: string): boolean {
-  return isInsideOrSame(a, b) || isInsideOrSame(b, a);
+  return overlapsOn(thisComputer, a, b);
 }

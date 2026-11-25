@@ -4,7 +4,8 @@
   "type": "module",
   "description": "What the harness adapters share: reading a program's output line by line, keeping the bridge token and anything after the final agent.finished out of a run's events, writing the agent's settings folder, making a harness run's settings and temp folders, naming a harness's install folders in a Windows profile, and building a harness run's sandbox profile.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./web": "./src/web.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",

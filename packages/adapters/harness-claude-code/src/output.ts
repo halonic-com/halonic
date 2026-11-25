@@ -1,4 +1,4 @@
-import { readLines } from "@halonicjs/adapter-harness-kit";
+import { readLines } from "@halonicjs/adapter-harness-kit/web";
 
 /**
  * The longest line Halonic reads from Claude Code, in characters. A

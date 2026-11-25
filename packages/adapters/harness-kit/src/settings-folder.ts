@@ -1,75 +1,43 @@
 import { randomUUID } from "node:crypto";
 import { lstat, mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import thisComputer, { dirname } from "node:path";
+import {
+  resetSettingsFolderWith,
+  type SettingsFolderContents,
+  type SettingsFolderWriter,
+  writeSettingsFilesWith,
+} from "./settings-files.ts";
+
+export type { SettingsFolderContents, SettingsFolderWriter } from "./settings-files.ts";
 
 /**
- * Where a harness writes its files (the agent's settings folder, and a
- * run's own files) and looks at the working folder: this computer's disk,
- * or a fake in tests.
- */
-export interface SettingsFolderWriter {
-  /** The file's text, or `null` when there is no such file. */
-  read(path: string): Promise<string | null>;
-  /** Writes `text` to the file, creating its folder. A reader sees the old text or the new, never a part. */
-  write(path: string, text: string): Promise<void>;
-  /** The names of everything in `folder`, hidden entries too; none when there is no such folder. */
-  list(folder: string): Promise<string[]>;
-  /** Removes the file, folder or link at `path`, with everything in a folder; a link's target stays. Nothing there is fine. */
-  remove(path: string): Promise<void>;
-  /** Whether anything is at `path`: a file, a folder, or a link, even one that points nowhere. */
-  exists(path: string): Promise<boolean>;
-}
-
-/** What {@link resetSettingsFolder} leaves in the agent's settings folder. */
-export interface SettingsFolderContents {
-  /** Halonic's own files for the program, by file name, as {@link writeSettingsFiles} writes them. */
-  readonly files: Readonly<Record<string, string>>;
-  /** The names of the files that hold the program's sign-in, which stay as they are. */
-  readonly signIn: readonly string[];
-}
-
-/**
- * Makes the agent's settings folder hold only Halonic's files and the
- * program's sign-in (requirement `harness-kit.settings-folder-reset`):
- * everything else at its top level is removed, then the files are written.
- * The folder stays between runs and the program may write in it, so
- * without this a file one run left there, such as a user-level instructions
- * file, would reach every later run of the agent.
+ * {@link resetSettingsFolderWith} under this computer's path rules
+ * (requirement `harness-kit.settings-folder-reset`).
  *
  * @example
  * await resetSettingsFolder(folder, { files: { "config.toml": text }, signIn: ["auth.json"] }, diskSettingsFolder);
  */
-export async function resetSettingsFolder(
+export function resetSettingsFolder(
   folder: string,
-  { files, signIn }: SettingsFolderContents,
+  contents: SettingsFolderContents,
   writer: SettingsFolderWriter,
 ): Promise<void> {
-  const kept = new Set([...Object.keys(files), ...signIn]);
-  for (const name of await writer.list(folder)) {
-    if (!kept.has(name)) await writer.remove(join(folder, name));
-  }
-  await writeSettingsFiles(folder, files, writer);
+  return resetSettingsFolderWith(thisComputer, folder, contents, writer);
 }
 
 /**
- * Writes `files`, by file name, into `folder` (requirement
- * `harness-kit.settings-folder`). A file that already holds the same text is
- * left alone: the program may watch its settings, and another run of the
- * agent may be reading them.
+ * {@link writeSettingsFilesWith} under this computer's path rules
+ * (requirement `harness-kit.settings-folder`).
  *
  * @example
  * await writeSettingsFiles(profile.settingsFolder, { "settings.json": "{}\n" }, diskSettingsFolder);
  */
-export async function writeSettingsFiles(
+export function writeSettingsFiles(
   folder: string,
   files: Readonly<Record<string, string>>,
   writer: SettingsFolderWriter,
 ): Promise<void> {
-  for (const [name, text] of Object.entries(files)) {
-    const path = join(folder, name);
-    if ((await writer.read(path)) === text) continue;
-    await writer.write(path, text);
-  }
+  return writeSettingsFilesWith(thisComputer, folder, files, writer);
 }
 
 /** Writes settings files on this computer's disk. Each file is written aside and then renamed into place. */

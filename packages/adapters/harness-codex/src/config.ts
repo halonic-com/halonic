@@ -1,4 +1,4 @@
-import { type CodingToolsCommand, codingToolsServerName } from "@halonicjs/adapter-harness-kit";
+import { type CodingToolsCommand, codingToolsServerName } from "@halonicjs/adapter-harness-kit/web";
 import { type HarnessBridge, harnessBridgeTokenHeader } from "@halonicjs/ports";
 import { bridgeServerName } from "./app-server-events.ts";
 import { codexRunTokenVariable } from "./environment.ts";

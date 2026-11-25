@@ -1,4 +1,4 @@
-import { HarnessEventFilter } from "@halonicjs/adapter-harness-kit";
+import { HarnessEventFilter } from "@halonicjs/adapter-harness-kit/web";
 import type { HarnessEvent } from "@halonicjs/ports";
 import { isBridgeTool } from "./bridge-tools.ts";
 import { findSignInMessage, findSignInProblem, SignInError } from "./sign-in.ts";

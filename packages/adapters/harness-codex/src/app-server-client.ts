@@ -1,4 +1,4 @@
-import { readLines } from "@halonicjs/adapter-harness-kit";
+import { readLines } from "@halonicjs/adapter-harness-kit/web";
 import type { SandboxProcess } from "@halonicjs/ports";
 import { isPlainObject, SecretScrubber } from "@halonicjs/std";
 

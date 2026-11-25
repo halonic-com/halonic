@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import thisComputer, { join } from "node:path";
 import { diskSettingsFolder, type SettingsFolderWriter } from "@halonicjs/adapter-harness-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -41,7 +41,7 @@ function countingWriter(): SettingsFolderWriter & { written: string[] } {
 verifies("harness-claude-code.settings", () => {
   describe("writeClaudeCodeSettings", () => {
     it("turns Claude Code's own sandbox off and denies its web tools", async () => {
-      await writeClaudeCodeSettings(folder, diskSettingsFolder);
+      await writeClaudeCodeSettings(folder, diskSettingsFolder, thisComputer);
 
       expect(await readJson("settings.json")).toEqual({
         sandbox: { enabled: false },
@@ -59,7 +59,7 @@ verifies("harness-claude-code.settings", () => {
     });
 
     it("keeps Claude Code's own sandbox, for outside the fence, in a file of its own that asks for every command", async () => {
-      await writeClaudeCodeSettings(folder, diskSettingsFolder);
+      await writeClaudeCodeSettings(folder, diskSettingsFolder, thisComputer);
 
       expect(await readJson(unfencedSettingsFile)).toEqual({
         sandbox: {
@@ -72,7 +72,7 @@ verifies("harness-claude-code.settings", () => {
     });
 
     it("names the bridge's MCP servers from the environment, with no token in any file", async () => {
-      await writeClaudeCodeSettings(folder, diskSettingsFolder);
+      await writeClaudeCodeSettings(folder, diskSettingsFolder, thisComputer);
 
       // biome-ignore lint/suspicious/noTemplateCurlyInString: a variable Claude Code fills in, written literally
       const headers = { "x-halonic-run-token": "${HALONIC_RUN_TOKEN}" };
@@ -105,16 +105,16 @@ verifies("harness-claude-code.settings", () => {
 
     it("creates the settings folder when it doesn't exist yet", async () => {
       const inside = join(folder, "agents", "writer");
-      await writeClaudeCodeSettings(inside, diskSettingsFolder);
+      await writeClaudeCodeSettings(inside, diskSettingsFolder, thisComputer);
 
       expect((await stat(join(inside, "settings.json"))).isFile()).toBe(true);
     });
 
     it("leaves files that already hold the settings alone", async () => {
-      await writeClaudeCodeSettings(folder, diskSettingsFolder);
+      await writeClaudeCodeSettings(folder, diskSettingsFolder, thisComputer);
       const writer = countingWriter();
 
-      await writeClaudeCodeSettings(folder, writer);
+      await writeClaudeCodeSettings(folder, writer, thisComputer);
       expect(writer.written).toEqual([]);
     });
 
@@ -122,7 +122,7 @@ verifies("harness-claude-code.settings", () => {
       const writer = countingWriter();
       await diskSettingsFolder.write(join(folder, "settings.json"), "{}\n");
 
-      await writeClaudeCodeSettings(folder, writer);
+      await writeClaudeCodeSettings(folder, writer, thisComputer);
       expect(writer.written).toEqual([
         join(folder, "settings.json"),
         join(folder, mcpSettingsFile),
@@ -149,7 +149,7 @@ verifies("harness-claude-code.settings-reset", () => {
       await writeFile(join(folder, name, "notes", "notes.md"), "notes\n");
     }
 
-    await writeClaudeCodeSettings(folder, diskSettingsFolder);
+    await writeClaudeCodeSettings(folder, diskSettingsFolder, thisComputer);
 
     expect((await readdir(folder)).sort()).toEqual([
       ".claude.json",

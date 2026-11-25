@@ -1,4 +1,4 @@
-import { HarnessEventFilter } from "@halonicjs/adapter-harness-kit";
+import { HarnessEventFilter } from "@halonicjs/adapter-harness-kit/web";
 import type { HarnessEvent } from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
 import type { CodexApprovalRequest } from "./approvals.ts";

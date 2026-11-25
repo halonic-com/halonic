@@ -1,3 +1,4 @@
+import thisComputer from "node:path";
 import {
   diskSettingsFolder,
   type OwnSandboxCheck,
@@ -5,10 +6,7 @@ import {
   type SettingsFolderWriter,
 } from "@halonicjs/adapter-harness-kit";
 import type { Harness, ProgramProbe } from "@halonicjs/ports";
-import { detectClaudeCode } from "./detect.ts";
-import { claudeCodeEnvironment } from "./environment.ts";
-import { ClaudeCodeRun } from "./run.ts";
-import { claudeCodeSignIn } from "./sign-in-command.ts";
+import { claudeCodeWebHarness } from "./web-harness.ts";
 
 /** What the Claude Code harness is made with. */
 export interface ClaudeCodeHarnessOptions {
@@ -23,7 +21,8 @@ export interface ClaudeCodeHarnessOptions {
 /**
  * Claude Code as a {@link Harness}: an agent whose file says
  * `harness: claude-code` runs in Claude Code, inside Halonic's sandbox and
- * behind the run's bridge.
+ * behind the run's bridge. Its files are named under this computer's own
+ * path rules, `node:path` itself.
  *
  * @example
  * const claudeCode = claudeCodeHarness({ probe });
@@ -31,17 +30,12 @@ export interface ClaudeCodeHarnessOptions {
  * for await (const event of run) record(event);
  */
 export function claudeCodeHarness(options: ClaudeCodeHarnessOptions): Harness {
-  const settings = options.settings ?? diskSettingsFolder;
-  // Claude Code's sandbox needs socat on Linux, for its network proxy.
-  const ownSandbox =
-    options.ownSandbox ?? ownSandboxCheck({ probe: options.probe, linuxNeeds: ["socat"] });
-  return {
-    id: "claude-code",
-    name: "Claude Code",
-    detect: (detectOptions) => detectClaudeCode(options.probe, detectOptions),
-    environment: claudeCodeEnvironment,
-    start: (task, session, bridge) =>
-      new ClaudeCodeRun(task, session, bridge, { settings, ownSandbox }),
-    signIn: claudeCodeSignIn,
-  };
+  return claudeCodeWebHarness({
+    probe: options.probe,
+    settings: options.settings ?? diskSettingsFolder,
+    // Claude Code's sandbox needs socat on Linux, for its network proxy.
+    ownSandbox:
+      options.ownSandbox ?? ownSandboxCheck({ probe: options.probe, linuxNeeds: ["socat"] }),
+    paths: thisComputer,
+  });
 }

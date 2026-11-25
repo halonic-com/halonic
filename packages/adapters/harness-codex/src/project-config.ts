@@ -1,8 +1,7 @@
-import { dirname, join } from "node:path";
-import type { SettingsFolderWriter } from "@halonicjs/adapter-harness-kit";
+import type { HostPaths, SettingsFolderWriter } from "@halonicjs/adapter-harness-kit/web";
 
-/** Where a project keeps its own Codex settings, in a folder Codex reads them from. */
-export const projectConfigPath = join(".codex", "config.toml");
+/** The folder and the file where a project keeps its own Codex settings, which Codex reads. */
+const projectConfigParts = [".codex", "config.toml"] as const;
 
 /** What marks a project's root for Codex: the folder that holds `.git`. */
 const projectRootMarker = ".git";
@@ -22,9 +21,10 @@ const projectRootMarker = ".git";
 export async function refuseProjectConfig(
   workingFolder: string,
   disk: Pick<SettingsFolderWriter, "exists">,
+  paths: Pick<HostPaths, "join" | "dirname">,
 ): Promise<void> {
-  for (const folder of await projectFolders(workingFolder, disk)) {
-    const path = join(folder, projectConfigPath);
+  for (const folder of await projectFolders(workingFolder, disk, paths)) {
+    const path = paths.join(folder, ...projectConfigParts);
     if (await disk.exists(path)) {
       throw new Error(
         `Codex can't start here: ${path} holds Codex settings for the project, and Halonic gives Codex its settings itself. Remove the file, or move it out of the project.`,
@@ -37,11 +37,12 @@ export async function refuseProjectConfig(
 async function projectFolders(
   workingFolder: string,
   disk: Pick<SettingsFolderWriter, "exists">,
+  paths: Pick<HostPaths, "join" | "dirname">,
 ): Promise<string[]> {
   const folders = [workingFolder];
   let folder = workingFolder;
-  while (!(await disk.exists(join(folder, projectRootMarker)))) {
-    const parent = dirname(folder);
+  while (!(await disk.exists(paths.join(folder, projectRootMarker)))) {
+    const parent = paths.dirname(folder);
     if (parent === folder) return [workingFolder];
     folders.push(parent);
     folder = parent;
