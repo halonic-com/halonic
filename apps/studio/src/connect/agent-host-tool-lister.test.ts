@@ -63,7 +63,7 @@ verifies("studio.workspace-listed-tools", () => {
 
   it("refuses every http request, since the window starts no http connector", async () => {
     await expect(noHttpInStudio.fetch("https://notes.acme.example/mcp")).rejects.toThrow(
-      "http servers",
+      "Studio can't list this server's tools yet.",
     );
   });
 });

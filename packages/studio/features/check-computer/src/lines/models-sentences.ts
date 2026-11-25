@@ -21,7 +21,7 @@ function failedTest(outcome: Exclude<TestOutcome, "ok">, name: string): LineSent
         fix(`Fix: add credit on ${name}'s site, then test again.`),
       ];
     case "offline":
-      return [found(`Studio can't reach ${name}. Check your connection.`)];
+      return [found(`Halonic can't reach ${name}. Check your connection.`)];
     case "provider-error":
       return [found(`${name} isn't answering right now. Try again in a minute.`)];
     case "local-not-answering":

@@ -12,8 +12,8 @@ The agents feature shall open an agent in its tab as the shell's item page (`she
 - Given the desktop, when the page opens, then focus is on the "Sorter" heading, whose ring outlines the icon, "AGENT" and the name.
 - Given Sorter's Claude Code isn't installed and the panel shows Runs, when the person presses **Open Harness settings ›** under the chat's box, then the panel shows Configuration › Harness; once **Check again** there finds Claude Code, the chat's line is gone too.
 - Given the person closed the panel with ✕, when they press **Open Harness settings ›**, then the panel opens again on Configuration › Harness, with focus on the Harness tab.
-- Given no workflow runs the agent "Sorter", then its Runs tab says "Runs aren't listed by agent yet. **Open the Runs page ›**" and "Sorter runs as a step in a workflow. Add it to one in Workflows."; pressing **Open the Runs page ›** opens the Runs page.
-- Given an app that can't open pages, then that line says "Runs aren't listed by agent yet." alone.
+- Given no workflow runs the agent "Sorter", then its Runs tab says "Studio can't list runs by agent yet. **Open the Runs page ›**" and "Sorter runs as a step in a workflow. Add it to one in Workflows."; pressing **Open the Runs page ›** opens the Runs page.
+- Given an app that can't open pages, then that line says "Studio can't list runs by agent yet." alone.
 - Given the workflow "Support reply" runs "Sorter", then its Runs tab says "Sorter runs as a step in Support reply. That workflow's runs are in Runs." and not that it has no runs; given two workflows run it, it says "Sorter runs as a step in 2 workflows. Their runs are in Runs.".
 - Given the workflows can't be read, then the Runs tab says only "Sorter runs as a step in a workflow.".
 - Given the read takes over 300 ms, then screen readers hear "Loading Sorter"; after 10 s the page adds "Still loading" and **Try again**.

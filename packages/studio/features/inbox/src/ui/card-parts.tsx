@@ -24,7 +24,7 @@ export const decidedElsewhereText =
   "This is no longer waiting for you. It was answered somewhere else or the run moved on.";
 
 /** The line when an answer was refused because the workspace isn't trusted (HAL-13973 TU1). */
-export const untrustedText = "This workspace isn't trusted yet, so Studio can't send your answer.";
+export const untrustedText = "This workspace isn't trusted yet, so Halonic can't send your answer.";
 
 /**
  * A card fills the item pane: its body scrolls and its bar of answers stays in sight under it. In a

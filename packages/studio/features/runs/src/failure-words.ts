@@ -343,8 +343,8 @@ export const failureWords = {
     `${capitalised(agent)} didn't start: Studio can't send its model calls to ${provider}'s Base URL yet. Nothing ran.`,
   /** R17's line before the command (9.6, revision 109). */
   runInTerminal: "To run it, run this in a terminal:",
-  /** R17 on a phone, which has no terminal. */
-  runOnComputer: "Run it from the command line on your computer.",
+  /** R17 on a phone, which has no terminal: the same command, to run on the computer (N4). */
+  runOnComputer: "To run it, run this on your computer:",
   /** R2 (microcopy 15.3, P9): the provider turned the key away. */
   keyRefused: (provider: string, secret: string, model: string, alias: string | undefined) =>
     `${provider} didn't accept the key in the secret ${secret}, used by ${modelOrAlias(model, alias)}. It may be mistyped, revoked, or for another account.`,

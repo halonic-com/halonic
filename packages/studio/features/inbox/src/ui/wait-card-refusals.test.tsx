@@ -27,7 +27,7 @@ verifies("inbox.wait-card", () => {
       await press(button(root, "Reject"));
       const slot = root.querySelector("[role='alert']") as HTMLElement;
       expect(slot.textContent).toBe(
-        "This workspace isn't trusted yet, so Studio can't send your answer.Review",
+        "This workspace isn't trusted yet, so Halonic can't send your answer.Review",
       );
       const reviewButton = button(slot, "Review");
       await act(async () => reviewButton.click());

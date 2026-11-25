@@ -32,8 +32,8 @@ export const liteCheckWords = {
   /** Once the start is ready the engine is running, so the intro no longer says it isn't (C525-1). */
   intro: (ready: boolean) =>
     ready
-      ? "Checks what this window can on its own. It changes nothing, and the report stays on this computer until you copy it."
-      : "Checks what this window can while the engine isn't running. It changes nothing, and the report stays on this computer until you copy it.",
+      ? "Checks what Halonic can on its own. It changes nothing, and the report stays on this computer until you copy it."
+      : "Checks what Halonic can while the engine isn't running. It changes nothing, and the report stays on this computer until you copy it.",
   checking: "Checking this computer…",
   checkAgain: "Check again",
   copyReport: "Copy report",
@@ -57,7 +57,7 @@ export const liteCheckWords = {
   profileWritable: "Halonic can write to it",
   profileNotWritable:
     "Halonic can't write to it. Check that your account can change files in your home folder.",
-  profileNotFound: "Couldn't check: Halonic couldn't find it",
+  profileNotFound: "Couldn't check: the folder isn't there",
   /** The report's words for a relative `HALONIC_HOME`: the fact, never the value (HAL-15963). */
   halonicHomeRelative: "HALONIC_HOME isn't a full path",
   disk: "Disk",
@@ -76,7 +76,7 @@ export const liteCheckWords = {
       : "Halonic's files, profile folder and disk, because Check this computer wasn't run",
   engineChecks: (ready: boolean) =>
     ready
-      ? "The engine's checks, which this window can't run"
+      ? "The engine's checks, which can't run from here"
       : "The engine's checks, because the engine isn't running",
 } as const;
 

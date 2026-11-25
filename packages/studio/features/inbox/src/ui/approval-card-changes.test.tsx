@@ -152,7 +152,9 @@ verifies("inbox.approval-card", () => {
       await press(dialogButton("Send note"));
       await act(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
       const text = document.querySelector("dialog")?.textContent ?? "";
-      expect(text).toContain("This workspace isn't trusted yet, so Studio can't send your answer.");
+      expect(text).toContain(
+        "This workspace isn't trusted yet, so Halonic can't send your answer.",
+      );
       expect(text).not.toContain("Couldn't record your decision.");
       expect(noteField().value).toBe("Use the shorter title");
     });

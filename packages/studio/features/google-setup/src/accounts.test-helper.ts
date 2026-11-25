@@ -86,7 +86,7 @@ export function fakeAccounts(
   initial: readonly GoogleSetupAccount[],
   options: {
     readonly entry?: SecretEntry;
-    /** Whether this window can sign in; the computer that runs Halonic unless a test says otherwise. */
+    /** Whether this Studio can sign in; the computer that runs Halonic unless a test says otherwise. */
     readonly signInEntry?: SignInEntry;
     /** Whether Check again can run; it can unless a test says otherwise. */
     readonly checkAgainEntry?: CheckAgainEntry;

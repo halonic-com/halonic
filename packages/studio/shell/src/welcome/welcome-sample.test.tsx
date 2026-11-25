@@ -149,7 +149,7 @@ verifies("shell.welcome-sample", () => {
     await act(async () => sampleButton(root)?.click());
 
     expect(root.querySelector('[role="alert"]')?.textContent).toBe(
-      "Can't copy the demo to Documents: permission denied.",
+      "Couldn't copy the demo to Documents: permission denied.",
     );
     expect(sampleButton(root)?.getAttribute("aria-busy")).not.toBe("true");
   });
@@ -211,7 +211,7 @@ verifies("shell.welcome-sample", () => {
 
       const line = root.querySelector('[role="alert"]')?.textContent;
       expect(line).toBe(
-        "Can't copy the demo to Documents: the engine isn't answering. It may still be starting.",
+        "Couldn't copy the demo to Documents: the engine isn't answering. It may still be starting.",
       );
       expect(line).not.toMatch(/shell/i);
       expect(sampleButton(root)?.getAttribute("aria-busy")).not.toBe("true");

@@ -59,7 +59,7 @@ verifies("agents.page.frame", () => {
     const page = await show(<AgentScreen host={hostWith()} hubId="acme" id="sorter" />);
     await act(async () => buttonNamed(page, "Runs")?.click());
 
-    expect(page.textContent).toContain("Runs aren't listed by agent yet.");
+    expect(page.textContent).toContain("Studio can't list runs by agent yet.");
     expect(buttonNamed(page, "Open the Runs page ›")).toBeUndefined();
     expect(page.textContent).toContain(
       "Sorter runs as a step in a workflow. Add it to one in Workflows.",
@@ -73,7 +73,7 @@ verifies("agents.page.frame", () => {
     );
     await act(async () => buttonNamed(page, "Runs")?.click());
 
-    expect(page.textContent).toContain("Runs aren't listed by agent yet. Open the Runs page ›");
+    expect(page.textContent).toContain("Studio can't list runs by agent yet. Open the Runs page ›");
     await act(async () => buttonNamed(page, "Open the Runs page ›")?.click());
     expect(openRuns).toHaveBeenCalledOnce();
   });
@@ -89,7 +89,7 @@ verifies("agents.page.frame", () => {
     const page = await show(<AgentScreen host={host} hubId="acme" id="sorter" />);
     await act(async () => buttonNamed(page, "Runs")?.click());
 
-    expect(page.textContent).not.toContain("Runs aren't listed by agent yet.");
+    expect(page.textContent).not.toContain("Studio can't list runs by agent yet.");
     expect(page.textContent).toContain(
       "Sorter runs as a step in Support reply. That workflow's runs are in Runs.",
     );
@@ -116,7 +116,7 @@ verifies("agents.page.frame", () => {
     };
     const failed = await show(<AgentScreen host={unread} hubId="acme" id="sorter" />);
     await act(async () => buttonNamed(failed, "Runs")?.click());
-    expect(failed.textContent).not.toContain("Runs aren't listed by agent yet.");
+    expect(failed.textContent).not.toContain("Studio can't list runs by agent yet.");
     expect(failed.textContent).toContain("Sorter runs as a step in a workflow.");
   });
 

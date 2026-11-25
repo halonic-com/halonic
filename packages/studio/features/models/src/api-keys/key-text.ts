@@ -63,7 +63,7 @@ export function changeQuestion(secretName: string): string {
 
 /** The question before a key is saved while the check for a stored key failed. */
 export function saveUnknownQuestion(secretName: string): string {
-  return `Save a key as ${secretName}? Studio couldn't check whether one is stored, so this may replace it.`;
+  return `Save a key as ${secretName}? Halonic couldn't check whether one is stored, so this may replace it.`;
 }
 
 /** The question before a stored key is removed. */

@@ -196,7 +196,9 @@ verifies("workspace.try-sample", () => {
 
     await act(async () => openDemo()?.click());
 
-    expect(element.textContent).toContain("Can't copy the demo to Documents: permission denied.");
+    expect(element.textContent).toContain(
+      "Couldn't copy the demo to Documents: permission denied.",
+    );
     expect(element.querySelector("h1")?.textContent).toBe("Halonic Studio");
     expect(shell.toasts.list()).toEqual([]);
   });

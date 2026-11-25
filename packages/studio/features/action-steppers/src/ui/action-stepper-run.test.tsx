@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
+import { ClipboardProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { StepperView } from "../stepper-view.ts";
 import {
   inStage,
@@ -23,8 +24,17 @@ afterEach(() => {
 
 function show(view: StepperView) {
   const actions = recordingActions();
-  const root = render(<ActionStepper view={view} actions={actions} />);
-  return { root, actions };
+  const copied: string[] = [];
+  const writeClipboard = vi.fn(async (text: string) => {
+    copied.push(text);
+    return true;
+  });
+  const root = render(
+    <ClipboardProvider writeClipboard={writeClipboard}>
+      <ActionStepper view={view} actions={actions} />
+    </ClipboardProvider>,
+  );
+  return { root, actions, copied };
 }
 
 function buttonNames(root: ParentNode): string[] {
@@ -65,15 +75,18 @@ verifies("action-steppers.run", () => {
       expect(button(root, "Run step 3 of 3")).toBeDefined();
     });
 
-    it("shows a failure's status and the service's message, and resumes from that step", async () => {
+    it("names the service and the status of a failure, copies its message, and resumes there", async () => {
       const view = withOutcomes(routineRequest(), [
         { kind: "succeeded" },
         { kind: "failed", status: 403, message: "Resource not accessible by integration" },
       ]);
-      const { root, actions } = show(view);
-      expect(root.querySelector('[role="status"], [aria-live]')?.textContent).toContain(
-        "Failed with status 403. GitHub said: “Resource not accessible by integration”",
-      );
+      const { root, actions, copied } = show(view);
+      const line = root.querySelector('[role="status"], [aria-live]')?.textContent;
+      expect(line).toContain("Failed: GitHub refused this step (status 403).");
+      // The service's own words go only to Copy details (microcopy 1.6 E3, C805 A7).
+      expect(line).not.toContain("Resource not accessible");
+      await click(button(root, "Copy details"));
+      expect(copied).toEqual(["Status 403. GitHub said: “Resource not accessible by integration”"]);
       await click(button(root, "Try step 2 again"));
       expect(actions.calls).toEqual(["run 2"]);
     });

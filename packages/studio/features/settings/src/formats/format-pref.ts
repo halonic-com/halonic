@@ -96,7 +96,7 @@ export function usableTag(tag: string): string {
 
 /**
  * The Format select's options: first "Follow this computer: English (UK)" ("Follow
- * this browser: …" when served, "Follow this phone: …" on the phone's page), then each tag this window can format, by name, sorted by name.
+ * this browser: …" when served, "Follow this phone: …" on the phone's page), then each tag Studio can format here, by name, sorted by name.
  * The followed name is the short one, so the line fits the select in Settings' 360px column.
  *
  * @example

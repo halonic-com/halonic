@@ -25,7 +25,7 @@ verifies("check-computer.lines", () => {
     it.each<[TestOutcome, string]>([
       ["ok", "Anthropic: key set · last test accepted, 10:42"],
       ["key-refused", "Anthropic didn't accept the saved key."],
-      ["offline", "Studio can't reach Anthropic. Check your connection."],
+      ["offline", "Halonic can't reach Anthropic. Check your connection."],
       ["provider-error", "Anthropic isn't answering right now. Try again in a minute."],
       [
         "local-not-answering",

@@ -199,7 +199,7 @@ verifies("studio.page-versions", () => {
       await expect(liveVersionOf(worktree)).rejects.toMatchObject({
         kind: "unavailable",
         message:
-          "This folder keeps its git files outside it, as a git worktree does, so Studio can't read its versions.",
+          "This folder keeps its git files outside it, as a git worktree does, so Halonic can't read its versions.",
         fix: "Open the repository's own folder, with its .git folder inside it, or clone the repository into a folder of its own.",
       });
     });

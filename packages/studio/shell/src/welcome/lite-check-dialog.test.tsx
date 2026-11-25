@@ -167,7 +167,7 @@ verifies("shell.welcome-lite-check", () => {
 
     expect(lines[1]).toMatchObject({
       mark: "info",
-      text: "Couldn't check: Halonic couldn't find it",
+      text: "Couldn't check: the folder isn't there",
     });
     expect(lines[2]).toMatchObject({ mark: "warning", text: "Low on disk space: 0.6 GB free" });
     expect(checkHeading(lines)).toBe("1 problem · 1 warning");
@@ -195,12 +195,12 @@ verifies("shell.welcome-lite-check", () => {
     await act(async () => button(root, "Something wrong?").click());
     const dialog = document.querySelector("dialog");
     expect(dialog?.textContent).toContain(
-      "Checks what this window can while the engine isn't running. It changes nothing, and the report stays on this computer until you copy it.",
+      "Checks what Halonic can while the engine isn't running. It changes nothing, and the report stays on this computer until you copy it.",
     );
 
     start.answer({ state: "ready", seconds: 15 });
     expect(dialog?.textContent).toContain(
-      "Checks what this window can on its own. It changes nothing, and the report stays on this computer until you copy it.",
+      "Checks what Halonic can on its own. It changes nothing, and the report stays on this computer until you copy it.",
     );
     expect(dialog?.textContent).not.toContain("while the engine isn't running");
   });

@@ -99,7 +99,7 @@ verifies("inbox.proposal-page", () => {
       await press(buttons(root, "Accept")[0]);
 
       expect(alertOf(root)).toContain(
-        "Couldn't accept this change. This workspace isn't trusted yet, so Studio can't change its files.",
+        "Couldn't accept this change. This workspace isn't trusted yet, so Halonic can't change its files.",
       );
       const [reviewButton] = buttons(root, "Review");
       await press(reviewButton);
