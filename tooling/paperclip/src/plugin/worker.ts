@@ -64,7 +64,7 @@ export const plugin = definePlugin({
     // The worker's one pass lock: merge control's state is written only through it.
     const lock = passLock(ctx.state);
     const mergeJob = scheduledPerCompany(ctx, roster, "merge-control", (companyId, now) =>
-      mergeControlPass(ctx, lock, companyId, now, readFacts),
+      mergeControlPass(ctx, lock, companyId, now, readFacts).then(() => undefined),
     );
     ctx.jobs.register("merge-control", () => mergeJob.dispatch());
     ctx.events.on("issue.comment.created", async (event) => {

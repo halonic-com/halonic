@@ -1,9 +1,48 @@
+import { defaultBudget } from "../merge-control/budget.ts";
+
 /**
  * The queue's settings: merge control's (HAL-17700, HAL-17706) and the
  * fast-track rules' (HAL-15971, HAL-17722, HAL-18007), spread into the
  * manifest's instance settings. Kept beside the manifest so it stays under
  * the file size limit.
  */
+
+const budgetNumber = (title: string, description: string, fallback: number) => ({
+  type: "integer",
+  minimum: 1,
+  title,
+  description,
+  default: fallback,
+});
+
+/** Merge control's GitHub call budget (HAL-17913), inside its settings. */
+const budgetConfigProperties = {
+  readBudgetPerHour: budgetNumber(
+    "Read budget per hour",
+    "GitHub calls an hour merge control may make on the read token (githubToken, the read-only GitHub App's, limit 15,000).",
+    defaultBudget.read.perHour,
+  ),
+  readLowAt: budgetNumber(
+    "Read budget: degrade below",
+    "Remaining read calls below which a pass degrades: it skips the reads only shadow mode needs and waits longer before the next pass.",
+    defaultBudget.read.lowAt,
+  ),
+  writeBudgetPerHour: budgetNumber(
+    "Write budget per hour",
+    "GitHub calls an hour merge control may make on the merge queue token (limit 5,000).",
+    defaultBudget.write.perHour,
+  ),
+  writeLowAt: budgetNumber(
+    "Write budget: degrade below",
+    "Remaining write calls below which a pass degrades and waits longer before the next pass.",
+    defaultBudget.write.lowAt,
+  ),
+  degradedIntervalMinutes: budgetNumber(
+    "Minutes between degraded passes",
+    "How long a degraded pass waits before the next one.",
+    defaultBudget.degradedIntervalMinutes,
+  ),
+};
 
 /** Merge control's settings. */
 export const mergeControlConfigProperties = {
@@ -52,6 +91,7 @@ export const mergeControlConfigProperties = {
         description:
           "Prometheus' address, scheme, host and port only, as Paperclip's server reaches it. Jobs waiting for a runner come from its halonic_ci_live metrics. Empty: capacity is unknown and merge control never jumps.",
       },
+      ...budgetConfigProperties,
     },
   },
 };

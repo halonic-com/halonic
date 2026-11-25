@@ -11,17 +11,22 @@ import {
   factsCaches,
   readMergeFacts,
 } from "../merge-control/facts.ts";
+import {
+  type EtagCache,
+  etagCache,
+  passReader,
+  ReadRefused,
+} from "../merge-control/read-client.ts";
 import { defaultSettings } from "../merge-control/state.ts";
-import { gitHubReader } from "../pr-watcher/github.ts";
 import type { PrioTask, TaskPriority } from "../rules/queue-prio.ts";
-import { gitHubQueryReader } from "../snapshot/graphql.ts";
 import { everyIssue } from "./host.ts";
 import { companyConfig, readSettings, requestTimeoutMs } from "./job.ts";
 import type { MergeFactsReader } from "./merge-control-job.ts";
 
 /**
  * Builds merge control's facts reader from the plugin context: the
- * read-only GitHub token from the PR watcher's setting, the capacity
+ * read-only GitHub App token from the PR watcher's setting (`githubToken`),
+ * read once per pass and again only after a 401 (HAL-17913), the capacity
  * addresses and the Merger's login from merge control's settings, and the
  * tasks' priorities and blockers from Paperclip, read at most every
  * 10 minutes, as the fill order changes slowly.
@@ -112,27 +117,28 @@ function plainGet(fetch: PlainFetch) {
 export function mergeFactsReader(ctx: MergeReaderApi, plainFetch: PlainFetch): MergeFactsReader {
   const companies = new Map<
     string,
-    { caches: FactsCaches; tasks?: { at: number; list: PrioTask[] } }
+    { caches: FactsCaches; etags: EtagCache; tasks?: { at: number; list: PrioTask[] } }
   >();
-  return async (companyId, now) => {
+  return async (companyId, now, options = {}) => {
     const { settings, token } = readFactsSettings(
       (await companyConfig(ctx.config, companyId)) ?? {},
     );
     if (token === undefined) {
       throw new Error("no GitHub token set for this company, so no facts to read.");
     }
-    const kept = companies.get(companyId) ?? { caches: factsCaches() };
+    const kept = companies.get(companyId) ?? { caches: factsCaches(), etags: etagCache() };
     companies.set(companyId, kept);
-    // Read at run time and never logged or kept (the SDK's secrets rule).
-    const secret = await ctx.secrets.resolve(token, { companyId });
-    const fetch = (
-      url: string,
-      init: { method: string; headers: Record<string, string>; body?: string },
-    ) => ctx.http.fetch(url, { ...init, signal: AbortSignal.timeout(requestTimeoutMs) });
-    return await readMergeFacts(
+    const reader = await passReader({
+      fetch: (url, init) =>
+        ctx.http.fetch(url, { ...init, signal: AbortSignal.timeout(requestTimeoutMs) }),
+      // Read at run time and never logged or kept past the pass (the SDK's secrets rule).
+      token: () => ctx.secrets.resolve(token, { companyId }),
+      etags: kept.etags,
+    });
+    const facts = await readMergeFacts(
       {
-        query: gitHubQueryReader({ fetch, token: secret }),
-        get: gitHubReader({ fetch, token: secret }),
+        query: reader.query,
+        get: reader.get,
         plainGet: plainGet(plainFetch),
         async tasks() {
           if (
@@ -148,6 +154,13 @@ export function mergeFactsReader(ctx: MergeReaderApi, plainFetch: PlainFetch): M
         log: (line) => ctx.logger.info(`Merge control: ${line}`, { companyId }),
       },
       now,
-    );
+      options,
+    ).catch((error: unknown) => {
+      if (error instanceof ReadRefused) {
+        error.calls = reader.calls();
+      }
+      throw error;
+    });
+    return { ...facts, reads: reader.calls() };
   };
 }

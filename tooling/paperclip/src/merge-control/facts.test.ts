@@ -19,6 +19,9 @@ import type { RestRun } from "./facts-runs.ts";
 import { headOf, now } from "./merge-control.test-helper.ts";
 import { defaultSettings, emptyMergeState } from "./state.ts";
 
+/** A later pass, past the 90 s GET cache. */
+const inTwoMinutes = new Date(now.getTime() + 2 * 60_000);
+
 interface Sent {
   readonly method: string;
   readonly url: string;
@@ -190,7 +193,8 @@ verifies("paperclip.merge-control-facts", () => {
     // The first pass sees run 7004 queued; by the second the Merger has cancelled it.
     await readMergeFacts(recorded({ caches, groups: groupRuns("queued") }).deps, now);
     const second = recorded({ caches });
-    const { observed } = await readMergeFacts(second.deps, now);
+    // Past the 90 s GET cache, as the next minute's pass is.
+    const { observed } = await readMergeFacts(second.deps, inTwoMinutes);
     expect(observed).toEqual(
       expect.arrayContaining([
         { kind: "enqueue", number: 102, jump: true, at: expect.any(String) },
@@ -277,7 +281,7 @@ verifies("paperclip.merge-control-facts", () => {
     expect(lint?.name).toBe("Lint");
     expect(lint?.annotatedFiles).toBeUndefined();
     const second = recorded({ caches });
-    await readMergeFacts(second.deps, now);
+    await readMergeFacts(second.deps, inTwoMinutes);
     expect(second.sent.some((request) => request.url.includes("/runs/7001/jobs"))).toBe(true);
   });
 });

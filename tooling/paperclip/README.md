@@ -1045,6 +1045,28 @@ Settings under `mergeControl`, all empty by default:
 - `mergerLogin`: the account the Merger acts as, so shadow mode can read what
   it did. It lives only in the settings, never in the repo.
 
+**GitHub call budget (HAL-17913).** Reads go out on `githubToken`, the
+read-only GitHub App's installation token, which the host renews every
+10 minutes: each pass reads the secret once at its start, and once more
+only after a 401, then retries once (`src/merge-control/read-client.ts`).
+Writes (enqueue, dequeue, comments, reruns, cancels) go out only on
+`mergeQueueToken`. A GET answered less than 90 s before is served again
+without asking GitHub, and older ones send their ETag, so a 304 isn't
+charged. Each token's calls are counted per UTC hour against its own budget,
+together with the lowest remaining limit GitHub named. Each pass logs one line:
+
+```text
+GitHub budget: reads 40 this pass, 11960 of 12000/h left, resets 12:41 UTC; writes 3 this pass, 3497 of 3500/h left, resets 13:00 UTC
+```
+
+When either budget's remaining count drops below its threshold, or GitHub
+refuses the read token twice or says its limit is used up, the pass degrades
+instead of stopping. The next passes wait `degradedIntervalMinutes`, and a
+pass with the read budget low skips what only shadow mode and the
+known-flake check read. Settings under `mergeControl`: `readBudgetPerHour`
+(12000), `readLowAt` (1000), `writeBudgetPerHour` (3500), `writeLowAt` (350)
+and `degradedIntervalMinutes` (5).
+
 ## Reviewer path list
 
 `reviewerFor({ files, changedLines, sensitive })` answers `julian` or `liam`
