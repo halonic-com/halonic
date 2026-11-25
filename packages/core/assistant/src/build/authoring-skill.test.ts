@@ -57,4 +57,57 @@ verifies("assistant.build.authoring-skill-override", () => {
     expect(workspace.issues).toEqual([]);
     expect(authoringInstructions(workspace)).toBe(builtInAuthoringInstructions.trim());
   });
+
+  it("replaces the integration steps too with the workspace's own skill", async () => {
+    const workspace = await load({ [authoringSkillPath]: skill("Always answer in Dutch.") });
+    expect(authoringInstructions(workspace)).not.toContain("integration_guide");
+  });
+});
+
+verifies("assistant.build.integration-steps", () => {
+  it("offers a built-in integration that fits before building one", () => {
+    expect(builtInAuthoringInstructions).toContain(
+      "Check what's already there first: the built-in Gmail and Google Drive",
+    );
+    expect(builtInAuthoringInstructions).toContain(
+      "If one fits, offer it instead of building a new one.",
+    );
+  });
+
+  it("asks only for the address, the tools and the sign-in, read-only by default", () => {
+    expect(builtInAuthoringInstructions).toContain(
+      "Ask only for what you still need: the service's address, which tools to offer (read-only unless they ask for more), and how it signs in",
+    );
+  });
+
+  it("stops for a service that signs in only with OAuth", () => {
+    expect(builtInAuthoringInstructions).toContain(
+      "If the service signs in only with OAuth, say plainly that you can't build that sign-in here, and stop.",
+    );
+  });
+
+  it("names `integration_guide`, and says it's there only once the workspace is trusted", () => {
+    expect(builtInAuthoringInstructions).toContain(
+      "Read the integration guide with `integration_guide` and follow it.",
+    );
+    expect(builtInAuthoringInstructions).toContain(
+      "until then, say that the integration can be built once the workspace is trusted.",
+    );
+  });
+
+  it("stops after two failed fixes and says what's wrong", () => {
+    expect(builtInAuthoringInstructions).toContain(
+      "If it still fails after two fixes, stop and say what's wrong",
+    );
+  });
+
+  it("never asks for a key in the chat", () => {
+    expect(builtInAuthoringInstructions).toContain(
+      "Never ask for a key, token or password in the chat",
+    );
+    const asksForAKey = /\b(paste|send|give|share|type)\b[^.\n]*\b(key|token|password)\b/i;
+    for (const line of builtInAuthoringInstructions.split("\n")) {
+      if (!line.includes("Never ask")) expect(line).not.toMatch(asksForAKey);
+    }
+  });
 });
