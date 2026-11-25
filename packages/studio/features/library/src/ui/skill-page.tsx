@@ -40,12 +40,14 @@ function AskAboutSkill({
 }: Pick<ItemViewProps, "item" | "context"> & { readonly name: string }) {
   const itemChat = context.services.find(ItemChatService);
   if (itemChat === undefined) return null;
+  // An unnamed skill goes by its id, as its title does.
+  const shownName = name || item.id;
   return (
     <Button
       variant="ghost"
       size="sm"
       onClick={() =>
-        void itemChat.askAbout({ kind: "skill", hub: item.hub, id: item.id }, name, context)
+        void itemChat.askAbout({ kind: "skill", hub: item.hub, id: item.id }, shownName, context)
       }
     >
       {skillWords.askAbout}
@@ -221,7 +223,7 @@ function LoadedSkillPage({
           {parts.name || item.id}
         </h1>
         <div className="flex items-center gap-1">
-          <AskAboutSkill item={item} name={parts.name || item.id} context={context} />
+          <AskAboutSkill item={item} name={parts.name} context={context} />
           {trash.menu}
         </div>
       </div>
