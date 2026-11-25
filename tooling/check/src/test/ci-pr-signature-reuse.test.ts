@@ -62,16 +62,15 @@ verifies("check.ci-pr-signature-reuse", () => {
     test("the check runs only on a pull request's new commit, on GitHub's runner, and never fails", () => {
       // The job itself runs wherever `changes` runs: a skipped job would skip every job below
       // `changes` that has no status check (the bug in the first run of HAL-17896's pull request).
-      expect(field(reuse, "if")).toBe(
-        "github.event.action != 'labeled' || github.event.label.name == 'fast-track'",
-      );
+      // With no label runs any more (HAL-17992) that is every run: the job has no condition.
+      expect(field(reuse, "if")).toBeFalsy();
       const onlyNewCommits =
         "        if: github.event_name == 'pull_request' && github.event.action == 'synchronize' && !github.event.pull_request.draft && vars.CI_PR_SIGNATURE_REUSE != 'off'\n";
       expect(reuse.split(onlyNewCommits)).toHaveLength(3);
       expect(field(reuse, "runs-on")).toBe("ubuntu-24.04");
       expect(reuse).toContain("continue-on-error: true");
       expect(jobs.get("ci-ok")).toMatch(/^ {8}signature-reuse,$/m);
-      expect(jobs.get("changes")).toMatch(/^ {4}if: \$\{\{ !cancelled\(\) && /m);
+      expect(jobs.get("changes")).toMatch(/^ {4}if: \$\{\{ !cancelled\(\) \}\}$/m);
       // A later push finds this job by its name and reads its notice by the same title.
       expect(field(reuse, "name")).toBe(REUSE_TITLE);
     });
