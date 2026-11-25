@@ -51,11 +51,17 @@ impl Transport for ShellTransport {
     }
 }
 
-async fn send_call(call: Outgoing, proxy: &ProxySetting) -> Result<Answer, String> {
-    let builder = reqwest::Client::builder()
+/// The client every stepper call and sign-in goes through. It follows no
+/// redirect, to any host: a `3xx` comes back as it is, so the token's
+/// header never goes anywhere else.
+pub fn action_client() -> reqwest::ClientBuilder {
+    reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
-        .https_only(true)
-        .timeout(CALL_TIMEOUT);
+        .timeout(CALL_TIMEOUT)
+}
+
+async fn send_call(call: Outgoing, proxy: &ProxySetting) -> Result<Answer, String> {
+    let builder = action_client().https_only(true);
     let builder = match route_for(&call.address, proxy).map_err(|refusal| refusal.to_string())? {
         Route::Direct => builder.no_proxy(),
         Route::Tunnel(endpoint) => {
@@ -70,6 +76,12 @@ async fn send_call(call: Outgoing, proxy: &ProxySetting) -> Result<Answer, Strin
     let client = builder
         .build()
         .map_err(|_| "the HTTP client couldn't be made".to_owned())?;
+    send_with(&client, call).await
+}
+
+/// Sends one call with `client` and reads its answer, at most
+/// [`MAX_ANSWER_BYTES`] of it.
+pub async fn send_with(client: &reqwest::Client, call: Outgoing) -> Result<Answer, String> {
     let method = reqwest::Method::from_bytes(call.method.as_bytes())
         .map_err(|_| "not a method".to_owned())?;
     let mut request = client.request(method, call.address);
@@ -228,3 +240,7 @@ impl<R: Runtime> CodeScreen for ShellCodeScreen<R> {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "action_parts_tests.rs"]
+mod tests;

@@ -90,6 +90,21 @@ fn path_tricks_are_refused_after_decoding_once() {
 }
 
 #[test]
+fn a_path_still_encoded_after_one_decode_is_refused() {
+    // Decoded once, these leave `%5C`, `%2e` or `%2F` behind, which the site
+    // could decode again into `\`, `..` or `/` (Julian's review).
+    for address in [
+        "https://github.com/acme/app/settings/variables/%255C..%255Caccess",
+        "https://github.com/acme/app/settings/variables/%255c",
+        "https://github.com/acme/app/settings/variables/%252e%252e/access",
+        "https://github.com/acme/app/settings/variables/%252E%252E/access",
+        "https://github.com/acme/app/settings/variables/x%252Fy",
+    ] {
+        assert_eq!(opened(address), Err(Refusal::BadValue), "{address:?}");
+    }
+}
+
+#[test]
 fn a_query_or_fragment_is_refused() {
     for address in [
         "https://github.com/acme/app/settings/variables/actions?return_to=https://evil.example",

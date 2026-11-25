@@ -48,6 +48,7 @@ impl SecretsState {
 
     /// The keychain a stepper's sign-in is kept in, for the `action_*`
     /// commands only, which reach just the `action__` names (HAL-18084).
+    #[cfg(desktop)]
     pub(crate) fn action_keychain(&self) -> Arc<dyn SecretBackend> {
         Arc::clone(&self.backend)
     }

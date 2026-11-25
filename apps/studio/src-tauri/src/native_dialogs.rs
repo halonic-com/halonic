@@ -373,11 +373,6 @@ pub fn ask_to_allow_pairing<R: Runtime>(_app: &AppHandle<R>) -> bool {
     false
 }
 
-#[cfg(mobile)]
-pub fn ask_to_send_step<R: Runtime>(_app: &AppHandle<R>, _question: &str) -> bool {
-    false
-}
-
 #[cfg(all(test, desktop))]
 mod tests {
     use tauri::test::{MockRuntime, mock_builder};
