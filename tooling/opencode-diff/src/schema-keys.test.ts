@@ -38,7 +38,7 @@ const modules = new Map([
   ["event.js", "export const Event = Schema.Struct({\n    type: Schema.String,\n});"],
 ]);
 
-verifies("tooling-opencode-diff.diff", () => {
+verifies("opencode-diff.diff", () => {
   describe("readSchemaKeys", () => {
     it("lists the fields of config.js and every module it reaches, without annotations", () => {
       expect(readSchemaKeys(modules)).toEqual([

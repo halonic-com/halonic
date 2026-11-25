@@ -9,7 +9,7 @@ const old: VersionFacts = {
   schemaKeys: ["config.js: share", "config.js: update"],
 };
 
-verifies("tooling-opencode-diff.diff", () => {
+verifies("opencode-diff.diff", () => {
   describe("changeBetween", () => {
     it("names what only the new list has and what only the old one has", () => {
       expect(changeBetween(["b", "a"], ["c", "a"])).toEqual({ added: ["c"], removed: ["b"] });

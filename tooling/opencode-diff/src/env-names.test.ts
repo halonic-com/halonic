@@ -6,7 +6,7 @@ function program(text: string): Uint8Array {
   return new TextEncoder().encode(text);
 }
 
-verifies("tooling-opencode-diff.diff", () => {
+verifies("opencode-diff.diff", () => {
   describe("readEnvNames", () => {
     it("finds each OPENCODE_* name once, sorted", () => {
       const text = "\u0000OPENCODE_DB\u0000x OPENCODE_CONFIG_DIR=1 OPENCODE_DB OPENAI_KEY";

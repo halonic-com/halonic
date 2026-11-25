@@ -89,6 +89,7 @@ const sessions: SandboxSession[] = [];
 beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), "oc-egress-"));
   await mkdir(join(root, "work"), { recursive: true });
+  await mkdir(join(root, "temp"), { recursive: true });
   await writeFile(join(root, "work", "hello.txt"), "hello from acme\n");
   bridge = await startScriptedBridge(join(root, "work", "hello.txt"));
 });
@@ -128,8 +129,28 @@ async function openRecorded(profile: SandboxProfile, traceFile: string) {
   return { session: tracedSession(session, traceFile), refused };
 }
 
-async function traceOf(file: string): Promise<TracedAttempt[]> {
-  return readTrace(await readFile(file, "utf8"));
+/**
+ * Where strace writes in the fence: the session's temp folder, one of the
+ * few folders a program in the fence may write to.
+ */
+function traceFileIn(name: string): string {
+  return join(root, "temp", name);
+}
+
+/**
+ * The attempts in a trace file. When strace wrote none, it couldn't start
+ * or couldn't write, and `why` says what the program printed or ended with.
+ */
+async function traceOf(file: string, why: string): Promise<TracedAttempt[]> {
+  try {
+    return readTrace(await readFile(file, "utf8"));
+  } catch (error) {
+    throw new Error(`strace wrote no trace (${String(error)}). The program: ${why}`);
+  }
+}
+
+async function read(stream: ReadableStream<Uint8Array>): Promise<string> {
+  return new Response(stream).text();
 }
 
 /** Runs OpenCode in the fence, with `unset` taken out of its environment. */
@@ -138,7 +159,7 @@ async function runOpenCode(unset: readonly string[] = []): Promise<FencedRun> {
     url: bridge.url,
     token: `made-up-token-${crypto.randomUUID()}`,
   };
-  const traceFile = join(root, "opencode.trace");
+  const traceFile = traceFileIn("opencode.trace");
   const { session, refused } = await openRecorded(profileFor(harnessBridge, unset), traceFile);
   const run = new OpenCodeRun(task, session, harnessBridge, {
     settings: diskSettingsFolder,
@@ -151,7 +172,7 @@ async function runOpenCode(unset: readonly string[] = []): Promise<FencedRun> {
   } catch (caught) {
     error = caught as Error;
   }
-  const traced = await traceOf(traceFile);
+  const traced = await traceOf(traceFile, error?.message ?? "finished");
   return { events, error, refused, traced, out: attemptsOut(traced), token: harnessBridge.token };
 }
 
@@ -212,7 +233,7 @@ describe.skipIf(!ready)(
     });
 
     it("tracer control: a DNS question in the fence is in the trace", async () => {
-      const traceFile = join(root, "dns.trace");
+      const traceFile = traceFileIn("dns.trace");
       const harnessBridge: HarnessBridge = { url: bridge.url, token: "made-up-token" };
       const { session } = await openRecorded(profileFor(harnessBridge, []), traceFile);
 
@@ -220,9 +241,11 @@ describe.skipIf(!ready)(
         program: "getent",
         args: ["ahosts", "egress-check.example.com"],
       });
-      await lookup.exited;
+      const [, errors] = await Promise.all([read(lookup.stdout), read(lookup.stderr)]);
+      const exit = await lookup.exited;
 
-      const dns = attemptsOut(await traceOf(traceFile)).filter((attempt) => attempt.port === 53);
+      const traced = await traceOf(traceFile, `${JSON.stringify(exit)} ${errors}`);
+      const dns = attemptsOut(traced).filter((attempt) => attempt.port === 53);
       expect(dns.length).toBeGreaterThan(0);
     });
   },

@@ -37,7 +37,7 @@ function fakePrograms(calls: string[]): RunProgram {
   };
 }
 
-verifies("tooling-opencode-diff.diff", () => {
+verifies("opencode-diff.diff", () => {
   describe("fetchVersion", () => {
     it("packs both packages at the version, unpacks them and reads them", async () => {
       const calls: string[] = [];

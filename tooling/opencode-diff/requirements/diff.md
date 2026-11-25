@@ -1,4 +1,4 @@
-# tooling-opencode-diff.diff
+# opencode-diff.diff
 
 - Status: active
 - Since: unreleased
