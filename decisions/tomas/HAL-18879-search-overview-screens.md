@@ -2,6 +2,7 @@
 
 - Approval: HAL-18879 (the board's phase 1 list on HAL-17897; features 4, 10 and 11 of the HAL-17422 plan, approved by the board on HAL-10); the reviewer (Liam) approves this note in review on HAL-18879
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:3caXtL8wFL79GWRUm7imls1AQTstXRwZnIawwH91p02V33xjghSpNnduxV21jd6ZxZZHXka6XVbkijHRhkVFCA==
 
 `shell.sidebar-places` names one more place, Overview, first in the Team group, before Spend and
 seats and Pull requests. The Overview feature adds it: the heading "Overview", the daily recap
