@@ -12,7 +12,7 @@ import {
 /**
  * The merge rules as one file the Merger loads (HAL-18337, plan step 4 on
  * HAL-17912): `build:plugin` bundles this module into
- * `dist/merge-control-decide-<version>.js`, with nothing from Node in it.
+ * `dist/merge-control-decide-<version>-<hash>.js`, with nothing from Node in it.
  * The Merger keeps its own reads, writes and schedule; it hands each pass's
  * snapshot and state in as JSON and carries out the actions that come back,
  * so a rule fix reaches it with the next plugin version.
