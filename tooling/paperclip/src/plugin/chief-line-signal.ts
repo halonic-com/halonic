@@ -4,6 +4,7 @@ import {
   type ChiefLineThread,
   chiefAgentId,
   isLiveThread,
+  postedByPlugin,
   readRecords,
   rememberThread,
   takeSlot,
@@ -138,6 +139,10 @@ async function handle(ctx: ChiefLineSignalApi, event: PluginEvent): Promise<void
   }
   const chiefId = await chiefAgentId(ctx, companyId);
   if (comment.authorAgentId === null || comment.authorAgentId !== chiefId) {
+    // The send route already woke Chief for the plugin's own comment.
+    if (await postedByPlugin(ctx, companyId, caller, comment.id)) {
+      return;
+    }
     await wakeChief(ctx, companyId, caller, thread, comment.id, settings.maxPerHour);
     return;
   }

@@ -7,11 +7,12 @@ import { onChiefLineComment } from "./chief-line-signal.ts";
 import { manifest } from "./manifest.ts";
 
 verifies("paperclip.chief-line", () => {
-  test("the manifest declares the three routes board-only", () => {
+  test("the manifest declares the four routes board-only", () => {
     const routes = manifest.apiRoutes?.filter((route) => route.routeKey.startsWith("chief-line"));
     expect(routes?.map((route) => [route.method, route.path, route.auth])).toEqual([
       ["POST", "/chief-line/thread", "board"],
       ["GET", "/chief-line/thread", "board"],
+      ["POST", "/chief-line/send", "board"],
       ["POST", "/chief-line/subscribe", "board"],
     ]);
   });
@@ -205,5 +206,43 @@ verifies("paperclip.chief-line", () => {
     const b = line.addComment(own.id, "y", "agent-chief", null);
     await onChiefLineComment(line.ctx, commentEvent(own.id, b.id));
     expect(line.posts).toHaveLength(1);
+  });
+
+  test("send posts as the plugin with the header and wakes Chief once", async () => {
+    const line = fakeChiefLine();
+    await handleChiefLineRequest(lineRequest(keys.openThread, { caller: "sup" }), line.ctx);
+    const sent = await handleChiefLineRequest(
+      lineRequest(keys.send, { caller: "sup", message: "How is the queue?" }),
+      line.ctx,
+    );
+    expect(sent).toEqual({
+      status: 200,
+      body: { threadId: "issue-1", identifier: "ACME-1", commentId: "c1" },
+    });
+    const [comment] = line.comments["issue-1"] ?? [];
+    expect(comment?.body).toBe("**From sup (chief line)**\n\nHow is the queue?");
+    expect(line.createCommentOptions).toEqual([undefined]);
+    await onChiefLineComment(line.ctx, commentEvent("issue-1", "c1"));
+    expect(line.wakes).toEqual([
+      { issueId: "issue-1", options: { reason: "chief_line", idempotencyKey: "chief-line c1" } },
+    ]);
+  });
+
+  test("send needs an existing thread and keeps to the hourly limit", async () => {
+    const line = fakeChiefLine();
+    const send = () =>
+      handleChiefLineRequest(lineRequest(keys.send, { caller: "sup", message: "x" }), line.ctx);
+    const missing = await send();
+    expect(missing.status).toBe(404);
+    expect(line.created).toEqual([]);
+    await line.ctx.issues.create({ title: "[chief-line] sup", projectId: "proj-1" } as never);
+    for (let index = 0; index < 3; index += 1) {
+      expect((await send()).status).toBe(200);
+    }
+    expect(await send()).toEqual({
+      status: 429,
+      body: { error: "Too many messages: sup may send 3 per hour." },
+    });
+    expect(line.wakes).toHaveLength(3);
   });
 });

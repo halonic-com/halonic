@@ -19,17 +19,18 @@ import {
 
 /**
  * The chief line (board supervisor to Chief): one task per caller, assigned
- * to Chief, where the caller posts and Chief answers. Three board-only routes:
- * open the thread, read the thread, subscribe a webhook. Callers post on the
- * thread as their own Paperclip user through the normal comments API. The
- * wake and the reply signal live in src/plugin/chief-line-signal.ts.
+ * to Chief, where the caller posts and Chief answers. Four board-only routes:
+ * open the thread, send (the plugin posts the message as itself), read the
+ * thread, subscribe a webhook. A plugin-authored comment has no human author,
+ * so the runs it starts stay on the board's seats. The wake and the reply
+ * signal live in src/plugin/chief-line-signal.ts.
  */
 
 /** What the chief line uses from the plugin context, so tests can fake it. */
 export interface ChiefLineApi {
   readonly issues: Pick<
     PluginIssuesClient,
-    "list" | "get" | "create" | "listComments" | "requestWakeup"
+    "list" | "get" | "create" | "createComment" | "listComments" | "requestWakeup"
   >;
   readonly agents: Pick<PluginAgentsClient, "list">;
   readonly state: Pick<PluginStateClient, "get" | "set">;
@@ -102,16 +103,15 @@ export async function rememberThread(
 }
 
 /**
- * The caller's thread: the stored one while it is still a live `[chief-line] <caller>` task in
- * the project, else the newest such task (the board may create it itself), else a new one.
+ * The caller's live thread: the stored one while it is still a live `[chief-line] <caller>`
+ * task in the project, else the newest such task (the board may create it itself).
  */
-async function findOrCreateThread(
+async function findThread(
   ctx: ChiefLineApi,
   companyId: string,
   caller: string,
   projectId: string,
-  chiefId: string,
-): Promise<ChiefLineThread> {
+): Promise<ChiefLineThread | undefined> {
   const known = (await readRecords<ChiefLineThread>(ctx, companyId, "threads"))[caller];
   if (known !== undefined) {
     const issue = await ctx.issues.get(known.id, companyId);
@@ -125,19 +125,51 @@ async function findOrCreateThread(
   const newest = listed
     .filter((candidate) => isLiveThread(candidate, caller, projectId))
     .sort((x, y) => new Date(y.createdAt).getTime() - new Date(x.createdAt).getTime())[0];
-  const issue =
-    newest ??
-    (await ctx.issues.create({
-      companyId,
-      projectId,
-      title: threadTitle(caller),
-      description: `The chief line for ${caller}: it posts here, and Chief answers here.`,
-      status: "todo",
-      assigneeAgentId: chiefId,
-    }));
+  if (newest === undefined) {
+    return undefined;
+  }
+  const thread = asThread(newest);
+  await rememberThread(ctx, companyId, caller, thread);
+  return thread;
+}
+
+/** The caller's live thread, or a new one assigned to Chief. */
+async function findOrCreateThread(
+  ctx: ChiefLineApi,
+  companyId: string,
+  caller: string,
+  projectId: string,
+  chiefId: string,
+): Promise<ChiefLineThread> {
+  const found = await findThread(ctx, companyId, caller, projectId);
+  if (found !== undefined) {
+    return found;
+  }
+  const issue = await ctx.issues.create({
+    companyId,
+    projectId,
+    title: threadTitle(caller),
+    description: `The chief line for ${caller}: it posts here, and Chief answers here.`,
+    status: "todo",
+    assigneeAgentId: chiefId,
+  });
   const thread = asThread(issue);
   await rememberThread(ctx, companyId, caller, thread);
   return thread;
+}
+
+/** How many of the plugin's own comment ids are kept per caller. */
+const keptPosted = 50;
+
+/** Whether the plugin posted this comment itself through the send route. */
+export async function postedByPlugin(
+  ctx: Pick<ChiefLineApi, "state">,
+  companyId: string,
+  caller: string,
+  commentId: string,
+): Promise<boolean> {
+  const posted = await readRecords<string[]>(ctx, companyId, "posted");
+  return (posted[caller] ?? []).includes(commentId);
 }
 
 /** Counts one wake against the caller's hourly limit; false when the limit is reached. */
@@ -163,6 +195,54 @@ export async function takeSlot(
 }
 
 const fail = (status: number, error: string): PluginApiResponse => ({ status, body: { error } });
+
+async function send(
+  ctx: ChiefLineApi,
+  companyId: string,
+  settings: ChiefLineSettings,
+  body: Records<unknown>,
+  now: Date,
+): Promise<PluginApiResponse> {
+  const { caller, message } = body;
+  if (typeof caller !== "string" || !callerPattern.test(caller)) {
+    return fail(400, "caller must match ^[a-z0-9][a-z0-9-]{0,40}$.");
+  }
+  if (typeof message !== "string" || message.trim() === "") {
+    return fail(400, "message must be a non-empty string.");
+  }
+  if (settings.projectId === undefined) {
+    return fail(409, "The chief line has no project: set chiefLine.projectId.");
+  }
+  const thread = await findThread(ctx, companyId, caller, settings.projectId);
+  if (thread === undefined) {
+    return fail(
+      404,
+      `No chief line thread for ${caller}: create the task "${threadTitle(caller)}" in the chief line's project first.`,
+    );
+  }
+  if (!(await takeSlot(ctx, companyId, "wakes", caller, settings.maxPerHour, now))) {
+    return fail(429, `Too many messages: ${caller} may send ${settings.maxPerHour} per hour.`);
+  }
+  // Posted by the plugin itself (no actorUserId): the run it starts stays on the board's seats.
+  const comment = await ctx.issues.createComment(
+    thread.id,
+    `**From ${caller} (chief line)**\n\n${message}`,
+    companyId,
+  );
+  const posted = await readRecords<string[]>(ctx, companyId, "posted");
+  await ctx.state.set(chiefLineStateKey(companyId, "posted"), {
+    ...posted,
+    [caller]: [...(posted[caller] ?? []), comment.id].slice(-keptPosted),
+  });
+  await ctx.issues.requestWakeup(thread.id, companyId, {
+    reason: "chief_line",
+    idempotencyKey: `chief-line ${comment.id}`,
+  });
+  return {
+    status: 200,
+    body: { threadId: thread.id, identifier: thread.identifier, commentId: comment.id },
+  };
+}
 
 async function openThread(
   ctx: ChiefLineApi,
@@ -248,10 +328,11 @@ async function subscribe(
 export const isChiefLineRoute = (routeKey: string) =>
   (Object.values(chiefLineRouteKeys) as string[]).includes(routeKey);
 
-/** Answers the chief line's three routes, for a signed-in board user only. */
+/** Answers the chief line's four routes, for a signed-in board user only. */
 export async function handleChiefLineRequest(
   input: PluginApiRequestInput,
   ctx: ChiefLineApi,
+  now: Date = new Date(),
 ): Promise<PluginApiResponse> {
   const userId = input.actor.actorType === "user" ? input.actor.userId : undefined;
   if (typeof userId !== "string" || userId === "") {
@@ -263,6 +344,8 @@ export async function handleChiefLineRequest(
   }
   const body = (input.body ?? {}) as Records<unknown>;
   switch (input.routeKey) {
+    case chiefLineRouteKeys.send:
+      return await send(ctx, input.companyId, settings, body, now);
     case chiefLineRouteKeys.openThread:
       return await openThread(ctx, input.companyId, settings, body);
     case chiefLineRouteKeys.thread:

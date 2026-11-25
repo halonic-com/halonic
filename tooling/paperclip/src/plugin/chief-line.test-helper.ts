@@ -33,6 +33,7 @@ export function fakeChiefLine(
   const created: unknown[] = [];
   const wakes: { issueId: string; options: unknown }[] = [];
   const posts: { url: string; body: unknown }[] = [];
+  const createCommentOptions: unknown[] = [];
   const logs: string[] = [];
   const statuses = [...(options.hookStatuses ?? [])];
   const config = options.config ?? {
@@ -75,6 +76,11 @@ export function fakeChiefLine(
         issues.push(issue);
         return issue;
       },
+      // A plugin-authored comment: no agent and no user author.
+      createComment: async (issueId: string, body: string, _companyId: string, opts?: unknown) => {
+        createCommentOptions.push(opts);
+        return addComment(issueId, body, null, null);
+      },
       listComments: async (issueId: string) => comments[issueId] ?? [],
       requestWakeup: async (issueId: string, _companyId: string, opts: unknown) => {
         wakes.push({ issueId, options: opts });
@@ -113,6 +119,7 @@ export function fakeChiefLine(
     created,
     wakes,
     posts,
+    createCommentOptions,
     logs,
     addComment,
   };
