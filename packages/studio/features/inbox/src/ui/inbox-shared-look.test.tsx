@@ -151,6 +151,16 @@ verifies("inbox.agent-asks", () => {
   });
 });
 
+verifies("inbox.agent-asks", () => {
+  it("keeps the cards and says the name alone when the agents can't be read", async () => {
+    const { messaging } = acme("Ship 0.2 today?");
+    messaging.listAgents = () => Promise.reject(new Error("fetch failed"));
+    const { root } = await openInbox(fakeRuns([]).runs, messaging);
+    await open(rowTitled(root, "Ship 0.2 today?"));
+    expect(root.querySelector("section p")?.textContent).toBe("CChief asks");
+  });
+});
+
 verifies("inbox.stale-callout", () => {
   it("says the stale line in a callout whose Try again loads the Inbox again", async () => {
     const fake = fakeRuns([notes]);
