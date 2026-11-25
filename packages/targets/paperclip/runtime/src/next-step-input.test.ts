@@ -1,3 +1,4 @@
+import { parseFile } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
 import {
@@ -68,6 +69,95 @@ verifies("runtime.paperclip-writes", () => {
     ],
   ])("set_next_step refuses %j", (params, message) => {
     expect(() => readSetNextStepParams(params)).toThrow(message);
+  });
+
+  describe("flat parameters, as a tool file can declare them", () => {
+    /** A `set_next_step` tool whose parameters are all plain values. */
+    const setNextStepTool = [
+      "name: set_next_step",
+      "description: Keeps your task in progress with a monitor, or marks it blocked.",
+      "callers: everyone",
+      "action: { run: paperclip.next-step }",
+      "parameters:",
+      "  task: { type: string, description: The task you hold., required: true }",
+      "  status: { type: string, description: The next state., enum: [in_progress, blocked], required: true }",
+      "  comment: { type: string, description: What happened and what comes next., required: true }",
+      "  monitorInMinutes: { type: integer, description: Minutes until the first check., minimum: 15, maximum: 1440 }",
+      "  monitorRef: { type: string, description: What the monitor watches., maxLength: 200 }",
+      "  monitorService: { type: string, description: The service it asks., maxLength: 200 }",
+      "  monitorMaxChecks: { type: integer, description: How many checks at most., minimum: 1, maximum: 8 }",
+      "  blockedBy: { type: string, description: The tasks that hold the work. }",
+    ].join("\n");
+
+    test("the tool file is a valid tool", () => {
+      const parsed = parseFile("tool", setNextStepTool, { id: "set-next-step" });
+      expect(parsed.ok ? [] : parsed.error).toEqual([]);
+    });
+
+    test("a monitor from flat fields reads like the monitor object", () => {
+      const flat = readSetNextStepParams({
+        task: "HAL-1",
+        status: "in_progress",
+        comment: "Pushed; CI runs.",
+        monitorInMinutes: 20,
+        monitorRef: "halonic-com/halonic#5486",
+      });
+      const nested = readSetNextStepParams({
+        task: "HAL-1",
+        status: "in_progress",
+        comment: "Pushed; CI runs.",
+        monitor: { inMinutes: 20, ref: "halonic-com/halonic#5486" },
+      });
+      expect(flat).toEqual(nested);
+    });
+
+    test("blockedBy takes one text with commas between the tasks", () => {
+      expect(readBlockedBy("HAL-16989, HAL-17012,HAL-16989")).toEqual(["HAL-16989", "HAL-17012"]);
+      expect(
+        readFinishRunParams({
+          task: "HAL-1",
+          outcome: "blocked",
+          blockedBy: "HAL-2",
+          comment: "x",
+        }).outcome,
+      ).toEqual({ outcome: "blocked", blockedBy: ["HAL-2"] });
+      expect(() => readBlockedBy("")).toThrow("blockedBy must list 1 to 10 tasks");
+      expect(() => readBlockedBy("HAL-2,,HAL-3")).toThrow("blockedBy must list 1 to 10 tasks");
+    });
+
+    test.each([
+      [
+        { monitorInMinutes: 5, monitorRef: "x#1" },
+        "monitorInMinutes must be a whole number from 15 to 1440.",
+      ],
+      [
+        { monitorInMinutes: 20 },
+        "monitorRef must be a short text, such as halonic-com/halonic#5486.",
+      ],
+      [
+        { monitorInMinutes: 20, monitorRef: "x#1", monitorMaxChecks: 9 },
+        "monitorMaxChecks must be a whole number from 1 to 8.",
+      ],
+      [
+        { monitor: { inMinutes: 20, ref: "x#1" }, monitorInMinutes: 20 },
+        "give the monitor either as monitor or as monitorInMinutes and monitorRef, not both.",
+      ],
+    ])("refuses %j", (monitor, message) => {
+      const params = { task: "HAL-1", status: "in_progress", comment: "x", ...monitor };
+      expect(() => readSetNextStepParams(params)).toThrow(message);
+    });
+
+    test("a blocked task refuses a flat monitor field too", () => {
+      expect(() =>
+        readSetNextStepParams({
+          task: "HAL-1",
+          status: "blocked",
+          blockedBy: "HAL-2",
+          monitorRef: "x#1",
+          comment: "x",
+        }),
+      ).toThrow("a blocked task's monitor never fires");
+    });
   });
 
   test("finish_run needs a known outcome, and a name for a handoff", () => {

@@ -20,6 +20,9 @@ When an agent calls a tool on `paperclip.comment`, `paperclip.next-step` or `pap
 - Given a `finish_run` tool with `mode: write` on a host without `setDisposition`,
   when Tomas hands his task to Liam,
   then the host gets Tomas's comment, then one update to `todo` assigned to Liam, as Tomas's run.
+- Given a `set_next_step` tool file whose parameters are plain values,
+  when Tomas calls it with `monitorInMinutes: 20` and `monitorRef`, or with `status: blocked` and `blockedBy: "HAL-2, HAL-3"`,
+  then it reads them as the `monitor` object and the `blockedBy` list, with the same limits and refusals.
 - Given a `finish_run` tool,
   when Tomas finishes a task Liam holds,
   then it is refused, in dry run too.
