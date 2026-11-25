@@ -2,6 +2,7 @@ import { addUsage } from "./add-usage.ts";
 import { followKeyOriginQuestions } from "./key-origin-questions.ts";
 import { type ChargedCall, modelCallCharge } from "./model-call-charge.ts";
 import type { RunEvent } from "./run-event.ts";
+import { continueEvent } from "./run-limit-waiting.ts";
 import type { PendingApproval, RunSummary } from "./run-summary.ts";
 import { upgradeEvent } from "./upgrade.ts";
 
@@ -89,6 +90,9 @@ function applyEvent(summary: RunSummary, event: RunEvent): void {
           : { title: event.title ?? "", body: event.body ?? "" };
       summary.lastWaitingAt = event.at;
       return;
+    case "run.limit-waiting":
+      waitAtLimit(summary, event);
+      return;
     case "signal.sent":
       summary.signals.push({
         id: `${event.runId}:${event.seq}`,
@@ -116,6 +120,7 @@ function applyEvent(summary: RunSummary, event: RunEvent): void {
       summary.answerLabels = {};
       summary.nextTimer = null;
       summary.waitingFor = null;
+      delete summary.limit;
       return;
     case "run.completed":
       summary.status = "completed";
@@ -131,6 +136,7 @@ function applyEvent(summary: RunSummary, event: RunEvent): void {
       summary.error = event.error;
       summary.reason = event.reason ?? null;
       if (event.cause !== undefined) summary.cause = event.cause;
+      delete summary.limit;
       summary.approvals = [];
       return;
     case "run.cant-try":
@@ -142,6 +148,24 @@ function applyEvent(summary: RunSummary, event: RunEvent): void {
     default:
       return;
   }
+}
+
+/**
+ * A run waiting at a plan limit waits like a wait state does: it accepts only
+ * `continue`, and its next timer is when it fails if nobody continues it.
+ */
+function waitAtLimit(
+  summary: RunSummary,
+  event: Extract<RunEvent, { type: "run.limit-waiting" }>,
+): void {
+  summary.status = "waiting";
+  summary.waitingOn = null;
+  summary.accepts = [continueEvent];
+  summary.answerLabels = {};
+  summary.nextTimer = event.until;
+  summary.waitingFor = null;
+  summary.limit = event.cause;
+  summary.lastWaitingAt = event.at;
 }
 
 /** The tool call an `approval.requested` asks about, as the summary lists it. */

@@ -95,6 +95,8 @@ verifies("events.run-log-contract", () => {
       // Added after the reference by events.workflow-resumed (HAL-6173).
       | "workflow.resumed"
       | "run.waiting"
+      // Added after the reference by events.run-limit-waiting (HAL-13220).
+      | "run.limit-waiting"
       | "timer.fired"
       | "event.received"
       | "run.completed"
