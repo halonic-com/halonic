@@ -1,4 +1,6 @@
 import { judgeApprovals } from "../pr-tools/approvals.ts";
+import { type Answers, answeredKey, answerLine } from "./answered.ts";
+import { carriedOnHead } from "./carry-over.ts";
 import {
   branchOwner,
   type Memory,
@@ -69,9 +71,19 @@ export function outsideKey(pull: PullFacts): string {
   return `${at(pull, pull.head)} outside julian`;
 }
 
-function handoffKey(pull: PullFacts, refused: Refused): string {
+/** The key of this head's handoff: after an answered finding, after Julian's refused approval, or when ready. */
+export function handoffKey(
+  pull: PullFacts,
+  refused: Refused,
+  answers: Answers = noAnswers,
+): string {
+  if (answers.has(pullId(pull))) {
+    return answeredKey(pull);
+  }
   return refused.has(pullId(pull)) ? outsideKey(pull) : readyKey(pull);
 }
+
+const noAnswers: Answers = new Map();
 
 /**
  * Its only approvals on the head are Julian's, on a pull request neither
@@ -110,12 +122,23 @@ export function julianRefused(pull: PullFacts, byPaths: Reviewer): boolean {
   );
 }
 
-/** Nothing on it waits for its author: out of draft, mergeable, no open finding, and green or approved. */
-function settled(pull: PullFacts, refused: Refused): boolean {
-  if (pull.draft || pull.conflicting || pull.retargeted || pull.latestReview !== undefined) {
+/** Approved on its head, or the watcher recorded that an approval carries to it (HAL-18460). */
+function approvedOrCarried(pull: PullFacts, refused: Refused, memory: Memory): boolean {
+  return approvedOnHead(pull, refused) || carriedOnHead(pull, memory);
+}
+
+/**
+ * Nothing on it waits for its author: out of draft, mergeable, no open
+ * finding the author hasn't answered (`answers`), and green or approved.
+ */
+function settled(pull: PullFacts, refused: Refused, answers: Answers, memory: Memory): boolean {
+  if (pull.draft || pull.conflicting || pull.retargeted) {
     return false;
   }
-  return approvedOnHead(pull, refused) || pull.inQueue || pull.ciOkOnHead === "success";
+  if (pull.latestReview !== undefined && !answers.has(pullId(pull))) {
+    return false;
+  }
+  return approvedOrCarried(pull, refused, memory) || pull.inQueue || pull.ciOkOnHead === "success";
 }
 
 /**
@@ -125,23 +148,27 @@ function settled(pull: PullFacts, refused: Refused): boolean {
  * the task has an open child task (a security or release pull request's
  * review task among them) or its author's newest comment says the pull
  * request has a review task of its own. A pull request in `refused` counts
- * as not approved.
+ * as not approved, one whose approval the watcher found carries to its head
+ * counts as approved, and one with an open finding waits only once its
+ * author answered it (`answers`).
  */
 export function waitingForReview(
   task: WatchedTask,
   pulls: readonly PullFacts[],
   memory: Memory,
   refused: Refused = none,
+  answers: Answers = noAnswers,
 ): PullFacts[] {
   if (task.openChildren || memory.ownReview === true) {
     return [];
   }
   const open = pulls.filter((pull) => pull.state === "open");
-  if (open.length === 0 || !open.every((pull) => settled(pull, refused))) {
+  if (open.length === 0 || !open.every((pull) => settled(pull, refused, answers, memory))) {
     return [];
   }
-  const waiting = open.filter((pull) => !approvedOnHead(pull, refused) && !pull.inQueue);
-  return waiting.some((pull) => !memory.reported.has(handoffKey(pull, refused))) ? waiting : [];
+  const waiting = open.filter((pull) => !approvedOrCarried(pull, refused, memory) && !pull.inQueue);
+  const unreported = (pull: PullFacts) => !memory.reported.has(handoffKey(pull, refused, answers));
+  return waiting.some(unreported) ? waiting : [];
 }
 
 /**
@@ -174,6 +201,11 @@ export interface SinceApproval {
   readonly approvedHead: string;
   readonly rebaseOnly: boolean;
   readonly security?: boolean;
+  /**
+   * The watcher rebased it off a merged base since the approval (HAL-18031),
+   * so the approved head's diff from `main` still holds the base's commits.
+   */
+  readonly stacked?: boolean;
 }
 
 /** `SinceApproval` by `pullId`, for the pull requests approved on an older head. */
@@ -213,6 +245,7 @@ export function handoffMessage(
   reviewer: Reviewer,
   refused: Refused = none,
   since: SinceApprovals = new Map(),
+  answers: Answers = noAnswers,
 ): string {
   const name = reviewer === "julian" ? "Julian" : "Liam";
   const lines = pulls.map(
@@ -220,6 +253,10 @@ export function handoffMessage(
       `PR watcher: ready for review: [#${pull.number}](${pull.url}), head \`${short(pull.head)}\`.`,
   );
   const changed = pulls.flatMap((pull) => sinceLine(pull, since.get(pullId(pull)), reviewer));
+  const answered = pulls.flatMap((pull) => {
+    const answer = answers.get(pullId(pull));
+    return answer === undefined ? [] : [answerLine(pull, answer)];
+  });
   const outside = pulls
     .filter((pull) => refused.has(pullId(pull)))
     .map(
@@ -230,10 +267,16 @@ export function handoffMessage(
     ...lines,
     "",
     ...changed,
+    ...answered,
     ...outside,
     `Out of draft with a green \`ci-ok\`, so the task goes to ${name}.`,
-    ...pulls.map((pull) => marker(handoffKey(pull, refused))),
+    ...pulls.map((pull) => marker(handoffKey(pull, refused, answers))),
   ].join("\n");
+}
+
+/** The key of the one warning about pushes after the approval of `approvedHead`. */
+export function pushedKey(pull: PullFacts, approvedHead: string): string {
+  return `${at(pull, approvedHead)} pushed after approval`;
 }
 
 /** A push after an approval, worth one warning. */
@@ -264,7 +307,7 @@ export function pushedAfterApproval(
       return [];
     }
     const approved = at(pull, newest.head);
-    const key = `${approved} pushed after approval`;
+    const key = pushedKey(pull, newest.head);
     const seen = [key, `${approved} conflict`, `${approved} retargeted`];
     return seen.some((each) => memory.reported.has(each))
       ? []

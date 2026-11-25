@@ -227,7 +227,8 @@ async function openFacts(
   defaultBranch: string,
   fallback: CheckFallback,
 ): Promise<OpenFacts> {
-  const rollup = node.commits.nodes[0]?.commit.statusCheckRollup ?? null;
+  const headCommit = node.commits.nodes[0]?.commit;
+  const rollup = headCommit?.statusCheckRollup ?? null;
   const check = async (name: string) =>
     checkOf(rollup, name) ?? (await fallback(repo, node.headRefOid, name));
   const reviews = node.reviews.nodes;
@@ -252,6 +253,9 @@ async function openFacts(
         },
         node.headRefOid,
       ) ?? null,
+    ...(headCommit?.committedDate === undefined
+      ? {}
+      : { headCommittedAt: headCommit.committedDate }),
     approvals: signedApprovals(conversation),
     githubApprovals: githubApprovals(reviews),
     baseChangedSincePush: baseChangedSincePush(node, defaultBranch),

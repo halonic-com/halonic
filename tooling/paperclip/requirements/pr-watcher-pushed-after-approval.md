@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-17675; the board's decision on HAL-10 (24 Nov) to tell authors once when they push after an approval
+- Source: HAL-17675; the board's decision on HAL-10 (24 Nov) to tell authors once when they push after an approval; HAL-18460, an approval that carries over a rebase
 
-When the PR watcher checks an open task whose author holds it and has no run going, and one of its open pull requests is out of draft, doesn't conflict, and has a signed approval by someone other than its author whose head is not the current head, with no approval on the current head, the PR watcher shall comment once per approval on the task, starting "PR watcher: pushed after approval; this voids the approval.", naming the approved and the current head, and waking nobody. It shall not comment when it had reported a conflict or a base change on the approved head, because then the push was the fix the merge queue needed.
+When the PR watcher checks an open task whose author holds it and has no run going, and one of its open pull requests is out of draft, doesn't conflict, and has a signed approval by someone other than its author whose head is not the current head, with no approval on the current head, the PR watcher shall comment once per approval on the task, starting "PR watcher: pushed after approval; this voids the approval.", naming the approved and the current head, and waking nobody. It shall not comment when it had reported a conflict or a base change on the approved head, because then the push was the fix the merge queue needed, nor when the approval carries over a rebase-only push (`paperclip.pr-watcher-rebase-carry`), which gets the carry-over comment instead.
 
 ## Examples
 

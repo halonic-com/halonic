@@ -27,8 +27,15 @@ export interface PullFacts {
   readonly retargeted: boolean;
   /** Open only: checks the merge queue requires with no run on the head, such as `Guard notes`. */
   readonly missingChecks?: readonly string[];
-  /** Open only: the newest review or inline comment made on the current head. */
-  readonly latestReview: { readonly id: string; readonly at: string } | undefined;
+  /**
+   * Open only: the newest review or inline comment made on the current head,
+   * with the reviewer its text names (Liam or Julian) when it names one.
+   */
+  readonly latestReview:
+    | { readonly id: string; readonly at: string; readonly by?: string }
+    | undefined;
+  /** Open only: when the head commit was committed, so a push after a finding shows (HAL-18460). */
+  readonly headCommittedAt?: string;
   /** Open only: our reviewers' signed approvals, oldest first, each with the head it names. */
   readonly approvals?: readonly {
     readonly by: string;
@@ -68,6 +75,8 @@ export interface WatchedTask {
   readonly openChildren: boolean;
   /** It is in `backlog` or `blocked`, as a stacked pull request's task often is until the one below merges. */
   readonly parked?: boolean;
+  /** When its Paperclip monitor checks next, or null without one: its holder waits on something. */
+  readonly monitorNextCheckAt?: string | null;
 }
 
 /** One state the author should hear about. `key` says when it is the same state again. */
@@ -100,6 +109,8 @@ export interface Memory {
   readonly lastCommentAt: string | undefined;
   /** The author's newest comment on the task says its pull request has a review task of its own. */
   readonly ownReview?: boolean;
+  /** When the author last commented on the task. */
+  readonly authorLastAt?: string | undefined;
 }
 
 /** The outcome for one task. */

@@ -176,6 +176,12 @@ export async function latestReview(
   return newestFinding({ reviews, inline, conversation }, head);
 }
 
+/** The reviewer a finding's opening names ("Liam: changes requested …"), when it names one. */
+function findingBy(body: string | null | undefined): { by?: string } {
+  const by = /\b(Liam|Julian)\b/.exec((body ?? "").slice(0, 160))?.[1];
+  return by === undefined ? {} : { by };
+}
+
 /** `latestReview`'s rule on lists already read, by REST or GraphQL. */
 export function newestFinding(
   lists: {
@@ -191,15 +197,27 @@ export function newestFinding(
       .filter(byReviewer)
       .filter((review) => review.commit_id === head)
       .filter((review) => review.state === "CHANGES_REQUESTED" || asksForChanges(review.body ?? ""))
-      .map((review) => ({ id: `r${review.id}`, at: review.submitted_at ?? "" })),
+      .map((review) => ({
+        id: `r${review.id}`,
+        at: review.submitted_at ?? "",
+        ...findingBy(review.body),
+      })),
     ...inline
       .filter(byReviewer)
       .filter((comment) => (comment.original_commit_id ?? comment.commit_id) === head)
-      .map((comment) => ({ id: `c${comment.id}`, at: comment.created_at ?? "" })),
+      .map((comment) => ({
+        id: `c${comment.id}`,
+        at: comment.created_at ?? "",
+        ...findingBy(comment.body),
+      })),
     ...conversation
       .filter(byReviewer)
       .filter((comment) => asksForChanges(comment.body ?? ""))
-      .map((comment) => ({ id: `i${comment.id}`, at: comment.created_at ?? "" })),
+      .map((comment) => ({
+        id: `i${comment.id}`,
+        at: comment.created_at ?? "",
+        ...findingBy(comment.body),
+      })),
   ].sort((a, b) => b.at.localeCompare(a.at));
   return found[0];
 }

@@ -110,7 +110,12 @@ verifies("paperclip.github-snapshot", () => {
     expect(pull?.open?.ciOk).toBe("success");
     expect(pull?.open?.draftCiOk).toBe("missing");
     // Julian's "changes requested" names an older head, but a conversation comment has no commit.
-    expect(pull?.open?.finding).toEqual({ id: "i7077736706", at: "2026-11-22T10:21:12Z" });
+    // It names the reviewer who asked, so the task can go back to them (HAL-18460).
+    expect(pull?.open?.finding).toEqual({
+      id: "i7077736706",
+      at: "2026-11-22T10:21:12Z",
+      by: "Julian",
+    });
     expect(pull?.open?.approvals).toEqual([
       { by: "Liam", head: "2fb148897" },
       { by: "Liam", head: "8e574ea05" },
@@ -378,5 +383,37 @@ verifies("paperclip.github-routes", () => {
     expect(pull?.title).toHaveLength(titleCap);
     expect(pull?.open?.reviewCounts).toEqual({ blocker: 0, major: 2, minor: 0, nit: 1 });
     expect(JSON.stringify(snapshot)).not.toMatch(/secret one|stranger/);
+  });
+});
+
+/** Sets `committedDate` on pull request `number`'s head commit in a recording's open page. */
+function withCommittedDate(answers: Recording, number: number, at: string): Recording {
+  const page = answers.open.data as {
+    repository: {
+      pullRequests: { nodes: { number: number; commits: { nodes: { commit: object }[] } }[] };
+    };
+  };
+  for (const node of page.repository.pullRequests.nodes) {
+    if (node.number === number) {
+      node.commits.nodes = node.commits.nodes.map(({ commit }) => ({
+        commit: { ...commit, committedDate: at },
+      }));
+    }
+  }
+  return answers;
+}
+
+verifies("paperclip.pr-watcher-answered-review", () => {
+  test("keeps when the head commit was committed, so a push after a finding shows (HAL-18460)", async () => {
+    const { query } = fakeQuery(withCommittedDate(recording(), 4965, "2026-11-22T13:50:00Z"));
+    const snapshot = await takeSnapshot({
+      token: "shared",
+      query,
+      repos,
+      now: new Date("2026-11-22T14:10:00Z"),
+      fallback: noFallback,
+    });
+    const pull = snapshot.repos[0]?.pulls.find((each) => each.number === 4965);
+    expect(pull?.open?.headCommittedAt).toBe("2026-11-22T13:50:00Z");
   });
 });
