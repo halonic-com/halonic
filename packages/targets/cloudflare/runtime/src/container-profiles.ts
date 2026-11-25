@@ -21,6 +21,12 @@ export const containerFolders = {
   settings: "/halonic/home/.claude",
 } as const;
 
+/**
+ * The bridge's socket file in a run container: none. The intercept, outside the container, routes
+ * the bridge's name, so `ContainerSandbox` never reads this path.
+ */
+const noSocketFile = "";
+
 /** Whether `path` is an absolute POSIX path with no empty, `.` or `..` part. */
 function plainAbsolute(path: string): boolean {
   if (!path.startsWith("/")) return false;
@@ -39,8 +45,7 @@ function containerBridgeOf(bridge: HarnessBridge): SandboxBridge {
   if (url.protocol !== "http:" || url.port !== "" || url.hostname !== workerBridgeName) {
     throw new Error(`A run container reaches its bridge only as http://${workerBridgeName}.`);
   }
-  // The intercept, outside the container, routes the name: there is no socket file.
-  return { kind: "socket", name: workerBridgeName, socketPath: "" };
+  return { kind: "socket", name: workerBridgeName, socketPath: noSocketFile };
 }
 
 /**

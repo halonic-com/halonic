@@ -18,8 +18,29 @@ const keptErrorCharacters = 2_048;
 /** The exit code the read script gives for a missing file. */
 const missingExitCode = 3;
 
+/** The exit code every script gives for a path under a symbolic link. */
+const linkedParentExitCode = 4;
+
+/**
+ * Refuses a path `$1` any of whose parent folders, up to and including the
+ * folder `$2` it is inside, is a symbolic link. The path check in
+ * TypeScript reads only the path's text, so a link the program made in its
+ * temp folder could otherwise send a write or a removal somewhere else.
+ * `${parent%/*}` drops the last part without `dirname`, which would lose a
+ * name's trailing newlines. The path itself may be a link: `rm` and `mv`
+ * act on the link, never on where it points.
+ */
+const refuseLinkedParent = [
+  'parent="$1"',
+  'while [ "$parent" != "$2" ]; do',
+  // biome-ignore lint/suspicious/noTemplateCurlyInString: the shell's parameter expansion, not a template's.
+  "  parent=${parent%/*}",
+  `  if [ -z "$parent" ] || [ -L "$parent" ]; then printf '%s is a symbolic link\\n' "$parent" >&2; exit ${linkedParentExitCode}; fi`,
+  "done",
+].join("\n");
+
 /** The scripts, each reading its path as `$1`. */
-const scripts = {
+const operationScripts = {
   read: `if [ -e "$1" ] || [ -L "$1" ]; then exec cat -- "$1"; fi; exit ${missingExitCode}`,
   // The temporary file sits next to its target, so `mv` is a rename on one
   // disk, and the trap removes it when any step fails.
@@ -44,7 +65,15 @@ const scripts = {
   exists: '[ -e "$1" ] || [ -L "$1" ]',
 } as const;
 
-type Operation = keyof typeof scripts;
+type Operation = keyof typeof operationScripts;
+
+/** Each operation's script, after the parent folders' check. */
+const scripts = Object.fromEntries(
+  Object.entries(operationScripts).map(([operation, script]) => [
+    operation,
+    `${refuseLinkedParent}\n${script}`,
+  ]),
+) as Record<Operation, string>;
 
 /** What a script gave back. */
 interface ScriptResult {
@@ -102,7 +131,9 @@ async function sendInput(
  * A {@link SettingsFolderWriter} that works inside `session`'s sandbox. It
  * reaches only the profile's settings folder and temp folder: a path outside
  * them, or one with a `.` or `..` part, is refused before anything starts,
- * and writing or removing either folder itself is refused too.
+ * and writing or removing either folder itself is refused too. In the
+ * sandbox, each script first refuses a path under a symbolic link inside
+ * those folders.
  *
  * @example
  * const settings = sessionSettingsFolder(session);
@@ -114,14 +145,16 @@ export function sessionSettingsFolder(session: SandboxSession): SettingsFolderWr
 
   const run = async (operation: Operation, path: string, input?: string): Promise<ScriptResult> => {
     const orSame = operation !== "write" && operation !== "remove";
-    if (!roots.some((root) => insideRoot(root, path, orSame))) {
+    const root = roots.find((folder) => insideRoot(folder, path, orSame));
+    if (root === undefined) {
       throw new Error(
         `The settings writer refuses ${path}: it may only reach ${roots.join(" and ")}.`,
       );
     }
     const started = await session.start({
       program: "sh",
-      args: ["-c", scripts[operation], "sh", path],
+      // The folder goes in without a trailing `/`, the form the parent check's loop ends on.
+      args: ["-c", scripts[operation], "sh", path, root.replace(/\/+$/, "")],
     });
     // A script that fails before it reads its input, such as a write whose folder can't be made,
     // closes the pipe first: sending then fails with a broken pipe. Its exit code and error output

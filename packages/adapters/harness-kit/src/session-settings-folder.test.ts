@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { chmod, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Readable, Writable } from "node:stream";
@@ -188,6 +188,30 @@ verifies("harness-kit.session-settings-folder", () => {
       const writer = sessionSettingsFolder(localSession());
 
       await expect(writer.read(join(tempFolder, "big.txt"))).rejects.toThrow(/over/);
+    },
+  );
+
+  it.runIf(posixShell)(
+    "refuses a path under a symbolic link in its folders, and leaves where it points alone",
+    async () => {
+      await writeFile(join(workingFolder, "notes.md"), "keep");
+      await symlink(workingFolder, join(tempFolder, "link"));
+      const writer = sessionSettingsFolder(localSession());
+
+      await expect(writer.remove(join(tempFolder, "link", "notes.md"))).rejects.toThrow(
+        /symbolic link/,
+      );
+      await expect(writer.write(join(tempFolder, "link", "new.md"), "x")).rejects.toThrow(
+        /symbolic link/,
+      );
+      await expect(writer.read(join(tempFolder, "link", "notes.md"))).rejects.toThrow(
+        /symbolic link/,
+      );
+
+      expect(await readdir(workingFolder)).toEqual(["notes.md"]);
+      // The link itself is removed, never what it points to.
+      await writer.remove(join(tempFolder, "link"));
+      expect(await readFile(join(workingFolder, "notes.md"), "utf8")).toBe("keep");
     },
   );
 
