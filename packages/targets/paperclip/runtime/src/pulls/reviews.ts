@@ -29,7 +29,7 @@ export interface Approval {
   /** The head named in a re-approval's range-diff part. */
   readonly rebaseOf?: string;
   readonly counts: boolean;
-  /** Why it doesn't count. */
+  /** Why it doesn't count, or what it holds only under. */
   readonly note?: string;
 }
 
