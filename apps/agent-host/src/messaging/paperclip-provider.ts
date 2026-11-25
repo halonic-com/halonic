@@ -1,5 +1,6 @@
 import {
   type PaperclipAnswer,
+  PaperclipFeedback,
   type PaperclipKeyGuard,
   PaperclipMessaging,
   type PaperclipMessagingOptions,
@@ -65,8 +66,34 @@ export function paperclipTeamStatus(
     : new PaperclipTeamStatus({ ...guarded, ...network(options) });
 }
 
+/** What {@link paperclipFeedback} needs: one connection's key, and its file as it is now. */
+export type PaperclipFeedbackSenderOptions = Pick<
+  PaperclipProviderOptions,
+  "binding" | "keys" | "readNow" | "fetch"
+>;
+
+/**
+ * The connection's feedback sender (`agent-host.feedback-send-route`), or
+ * `undefined` when the host holds no key for it. It sends through the same
+ * key guard as {@link paperclipProvider}, so it too sends only to the address
+ * and company the key was made for.
+ */
+export function paperclipFeedback(
+  options: PaperclipFeedbackSenderOptions,
+): PaperclipFeedback | undefined {
+  const guarded = guardedKey(options);
+  if (guarded === undefined) return undefined;
+  const { address, key, company } = guarded;
+  return new PaperclipFeedback({
+    address,
+    key,
+    company,
+    ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
+  });
+}
+
 /** Where the key was made for, and the guard that checks the connection file before each request. */
-function guardedKey(options: PaperclipProviderOptions) {
+function guardedKey(options: Pick<PaperclipProviderOptions, "binding" | "keys" | "readNow">) {
   const { binding, keys } = options;
   const madeFor = keys.madeFor(binding);
   if (madeFor === undefined) return undefined;

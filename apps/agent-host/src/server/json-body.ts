@@ -16,10 +16,10 @@ export type BodyProblem = "body_too_large" | "body_not_json";
 export class BodyError extends Error {
   readonly problem: BodyProblem;
 
-  constructor(problem: BodyProblem) {
+  constructor(problem: BodyProblem, limit = maxBodyBytes) {
     super(
       problem === "body_too_large"
-        ? `The request body is larger than ${maxBodyBytes} bytes.`
+        ? `The request body is larger than ${limit} bytes.`
         : "The request body is not JSON.",
     );
     this.name = "BodyError";
@@ -34,7 +34,7 @@ export const bodyProblemStatus: Record<BodyProblem, number> = {
 
 /**
  * Reads the request's body as JSON. Refuses a body whose `Content-Length` is
- * over {@link maxBodyBytes} before reading any of it, so a caller can't hold
+ * over `limit` ({@link maxBodyBytes} unless a route allows more) before reading any of it, so a caller can't hold
  * the request open by promising a body it never sends. A body without a
  * length (chunked) is counted as it arrives, and reading stops as soon as it
  * passes the limit. The request stays open, so the answer can still reach the
@@ -42,16 +42,19 @@ export const bodyProblemStatus: Record<BodyProblem, number> = {
  *
  * @throws {BodyError} when the body is too large or not JSON
  */
-export async function readJsonBody(request: IncomingMessage): Promise<unknown> {
-  if (Number(request.headers["content-length"] ?? 0) > maxBodyBytes) {
-    throw new BodyError("body_too_large");
+export async function readJsonBody(
+  request: IncomingMessage,
+  limit = maxBodyBytes,
+): Promise<unknown> {
+  if (Number(request.headers["content-length"] ?? 0) > limit) {
+    throw new BodyError("body_too_large", limit);
   }
   const chunks: Buffer[] = [];
   let size = 0;
   // Leaving a plain `for await` early would destroy the request and its connection.
   for await (const chunk of request.iterator({ destroyOnReturn: false }) as AsyncIterable<Buffer>) {
     size += chunk.length;
-    if (size > maxBodyBytes) throw new BodyError("body_too_large");
+    if (size > limit) throw new BodyError("body_too_large", limit);
     chunks.push(chunk);
   }
   try {
@@ -68,17 +71,18 @@ export async function readJsonBody(request: IncomingMessage): Promise<unknown> {
  *
  * A problem's text can quote what the caller sent (an unknown key's name, for
  * one). A route whose body holds a secret passes `describeProblems: false`, and
- * the 400 says only that the body is not valid.
+ * the 400 says only that the body is not valid. A route that takes a file
+ * (feedback's screenshot) passes a larger `maxBytes`.
  */
 export async function readCheckedBody<T>(
   request: IncomingMessage,
   response: ServerResponse,
   schema: Schema<T>,
-  options: { readonly describeProblems?: boolean } = {},
+  options: { readonly describeProblems?: boolean; readonly maxBytes?: number } = {},
 ): Promise<T | undefined> {
   let body: unknown;
   try {
-    body = await readJsonBody(request);
+    body = await readJsonBody(request, options.maxBytes);
   } catch (error) {
     if (!(error instanceof BodyError)) throw error;
     // The caller may still be sending the rest of a body that is too large.
