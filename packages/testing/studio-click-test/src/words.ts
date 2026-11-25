@@ -82,6 +82,54 @@ export const screenText = {
   replyFailed: { text: "'s reply failed: ", file: tryItFile },
 } as const;
 
+const settingsFolder = "packages/studio/features/settings";
+const appearanceFile = `${settingsFolder}/src/appearance/appearance-text.ts`;
+const sandboxStateFile = `${settingsFolder}/src/agent-sandbox/sandbox-state.ts`;
+const sandboxTextFile = `${settingsFolder}/src/agent-sandbox/sandbox-text.ts`;
+const aboutFile = `${settingsFolder}/src/updater/about-text.ts`;
+
+/**
+ * Text the Settings steps read, from the settings feature, which exports no
+ * words entry point. `words.test.ts` checks each is still in its file. The
+ * Format names and examples come from `Intl` in the window, so no source file
+ * holds them: those point at the requirement that states them.
+ */
+export const settingsText = {
+  appearance: { text: "Appearance", file: `${settingsFolder}/src/feature.ts` },
+  themeDark: { text: "Dark", file: appearanceFile },
+  themeSystem: { text: "System", file: appearanceFile },
+  formats: { text: "Formats", file: `${settingsFolder}/src/feature.ts` },
+  formatExample: { text: "Example:", file: `${settingsFolder}/src/formats/formats-text.ts` },
+  dutch: { text: "Dutch (Netherlands)", file: `${settingsFolder}/requirements/formats-section.md` },
+  dutchNumber: { text: "12.345,60", file: `${settingsFolder}/requirements/formats-section.md` },
+  followComputer: {
+    text: "Follow this computer:",
+    file: `${settingsFolder}/requirements/formats-format.md`,
+  },
+  agentSandbox: {
+    text: "Agent sandbox",
+    file: sandboxTextFile,
+  },
+  sandboxChecking: { text: "Checking the sandbox…", file: sandboxTextFile },
+  sandboxNotChecked: {
+    text: "Couldn't check the sandbox: ",
+    file: sandboxTextFile,
+  },
+  about: { text: "About Halonic", file: aboutFile },
+  checkNow: { text: "Check now", file: aboutFile },
+  automatic: { text: "Update Halonic automatically", file: aboutFile },
+  updaterDidntAnswer: { text: "Halonic's updater didn't answer.", file: aboutFile },
+} as const;
+
+/** The chips Settings › Agent sandbox can show once its check answered. */
+export const sandboxChips = [
+  "Needs setting up",
+  "Needs repair",
+  "Ready",
+  "Restart needed",
+  "Not available",
+].map((text) => ({ text, file: sandboxStateFile }));
+
 /**
  * The error lines a step can find on screen, by the code the results table
  * shows for each. The code is the words file's name for the line.

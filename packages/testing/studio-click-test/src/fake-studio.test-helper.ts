@@ -13,6 +13,8 @@ export interface FakeStudio {
   readonly clicks: string[];
   readonly typed: string[];
   readonly shortcuts: string[];
+  /** The page root's attributes, such as `data-theme`. */
+  readonly rootAttributes: Map<string, string>;
   current: string;
   /** The window title the driver reads. */
   title: string;
@@ -29,6 +31,7 @@ export function fakeStudio(text = ""): FakeStudio {
     clicks: [],
     typed: [],
     shortcuts: [],
+    rootAttributes: new Map(),
     current: "main",
     title: "",
     elements: new Map(),
@@ -38,7 +41,8 @@ export function fakeStudio(text = ""): FakeStudio {
   const window = () => studio.windows.get(studio.current) ?? { text: "", buttons: new Map() };
   const driver: Driver = {
     click: async (xpath) => {
-      const name = /normalize-space\(\)='([^']*)'/.exec(xpath)?.[1] ?? xpath;
+      // A button or an option, named in full or by how it starts.
+      const name = /normalize-space\(\)[=,]'([^']*)'/.exec(xpath)?.[1] ?? xpath;
       const press = window().buttons.get(name);
       if (press === undefined) throw new Error(`no such element: ${name}`);
       studio.clicks.push(name);
@@ -55,6 +59,7 @@ export function fakeStudio(text = ""): FakeStudio {
       studio.clicks.push(name);
       press();
     },
+    attribute: async (_xpath, name) => studio.rootAttributes.get(name) ?? null,
     pageText: async () => window().text,
     title: async () => studio.title,
     count: async (xpath) => studio.elements.get(xpath) ?? 0,

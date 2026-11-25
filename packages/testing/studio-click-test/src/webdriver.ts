@@ -20,6 +20,8 @@ export interface Driver {
   type(xpath: string, text: string): Promise<void>;
   /** Presses the keys together, as a shortcut, and lets them go in reverse order. */
   pressKeys(keys: readonly string[]): Promise<void>;
+  /** The value of an attribute of the first element the XPath finds, or null when it has none. */
+  attribute(xpath: string, name: string): Promise<string | null>;
   /** The visible text of the current window's page. */
   pageText(): Promise<string>;
   /** The current window's title, as the task bar shows it. */
@@ -86,6 +88,11 @@ export async function openSession(serverUrl: string, debuggerAddress: string): P
         actions: [{ type: "key", id: "keyboard", actions: [...down, ...up] }],
       });
       await call("DELETE", "/actions");
+    },
+    attribute: async (xpath, name) => {
+      const element = await find(xpath);
+      const value = await call("GET", `/element/${element}/attribute/${encodeURIComponent(name)}`);
+      return typeof value === "string" ? value : null;
     },
     pageText: async () => {
       const text = await call("POST", "/execute/sync", {

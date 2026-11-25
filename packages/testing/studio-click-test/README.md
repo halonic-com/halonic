@@ -41,9 +41,13 @@ The steps, in `src/steps/`:
 | 4 | The demo is the shown workspace | `workspace.try-sample`, `studio.try-sample`, `workspace.workspace-window`, `workspace.workspace-menu`, `workspace.menu-sample-tag`, `workspace.recent-workspaces`, `shell.window-title` | the window title reads "*page* · *workspace* · Halonic", and the workspace switcher's menu lists `Acme sample` under Recent with the Demo tag, then Open a folder… |
 | 5 | The window tabs | `shell.window-tab-strip`, `shell.tab-set`, `shell.window-keys` | New tab adds a tab to the Open tabs strip, Ctrl W closes it and Ctrl Shift T brings it back |
 | 6 | Close workspace | `workspace.workspace-window`, `shell.welcome-open`, `shell.welcome-recent`, `shell.welcome-sample` | the workspace menu's Close workspace shows Welcome, with the demo under Recent with the Demo tag, and Open demo |
+| 7 | Theme | `settings.feature`, `settings.appearance-section`, `settings.appearance-theme` | Settings › Appearance › Theme Dark sets the window's `data-theme="dark"`, and System takes it off again |
+| 8 | Formats | `settings.formats-section`, `settings.formats-format` | Settings › Formats' example turns Dutch (`12.345,60`) after Dutch (Netherlands), and back after Follow this computer |
+| 9 | Agent sandbox and About Halonic | `settings.agent-sandbox-section`, `settings.agent-sandbox-state`, `settings.about-section` | Agent sandbox shows a state chip without a button pressed, and About Halonic shows Check now and Update Halonic automatically |
 
-Steps 4 to 6 are the Studio basics (HAL-18866). Close workspace comes last because it leaves the
-window on Welcome; a later step that needs a workspace opens the demo again from there.
+Steps 4 to 6 are the Studio basics (HAL-18866), steps 7 to 9 Settings (HAL-18867). Close workspace
+ends the basics because it leaves the window on Welcome; a later step that needs a workspace, such
+as each Settings step, opens the demo again from there.
 
 Each step names, in its file, the requirement ids it checks (`requirements`), and the results table
 shows them in its Requirements column. The package's tests fail when a step names none, or an id
@@ -55,8 +59,8 @@ earlier one that didn't pass is "skipped"; if the app won't restart, the rest ar
 failure's code is the words file's name for
 the error line on screen, such as `LIST_FAILED`. The expected text comes from the features' words
 files (their `./words` entry points), so a copy change moves the test with it. Text no entry point
-exports (place names, the Try it chat's words, the demo's agent) is in `screenText`, and
-`words.test.ts` checks it is still in its file.
+exports (place names, the Try it chat's words, the demo's agent) is in `screenText`, and Settings'
+words in `settingsText`; `words.test.ts` checks each is still in its file.
 
 Step 3 approves the sign-in as the test Paperclip's board. Studio opens the approval page in a
 browser, and only that page's address holds the challenge's secret, so Studio reaches the
