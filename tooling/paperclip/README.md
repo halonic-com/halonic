@@ -496,7 +496,11 @@ task (task, comment id, author, time, link; never the comment's text) and
 wake the Board Checker once per batch. Asks are remembered by comment id
 for 7 days in plugin state, so a repeated event wakes nobody. Asks found
 while writes are off are remembered too: turning writes on doesn't replay
-them, it only wakes the Board Checker for asks from then on.
+them, it only wakes the Board Checker for asks from then on. When the
+setting `boardAskWakeTask` names a task (such as Chief's chat task), the
+wake goes to that task instead, and its holder's own comments don't count
+as asks either; the `board-asks` document stays on the Board Checker's
+task (HAL-18857).
 
 **Waiting on the board (part b).** On the first pass of each hour it lists
 every open task blocked with a board user as assignee or unblock owner, or
@@ -585,6 +589,7 @@ times and error codes only, never a comment's or an error's text.
 
 **Settings** (board-only, like all plugin settings): `boardCheckerTask`,
 the Board Checker's task id (empty: the board check doesn't run),
+`boardAskWakeTask` (optional: where a board ask wakes, see above),
 `chiefTask` and `seatSupervisorTask` (optional, for their one-line
 comments), and
 `boardCheckWritesForVersion`, the no-writes switch. The board check writes
@@ -593,7 +598,10 @@ write; otherwise it logs each write by kind, target and size. A new install
 or an upgrade therefore starts with writes off.
 
 **Metrics** (tags `companyId`, `trigger`: `event` or `job`):
-`board_check.asks_new`, `.writes`, `.writes_logged`.
+`board_check.asks_new`, `.writes`, `.writes_logged`, and
+`board_check.job_passes` (1 per finished job pass, none for event passes),
+which the server's missed-pass alert counts: an hour with fewer than 4
+means board.check missed passes or failed (HAL-18857).
 
 ## Task effort
 

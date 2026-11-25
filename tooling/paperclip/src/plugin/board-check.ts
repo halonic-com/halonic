@@ -103,7 +103,11 @@ async function pass(
   // One listing of open tasks per job pass, shared by every part that reads tasks.
   const openTasks = only === undefined ? await everyIssue(ctx, companyId) : [];
   const scope: AskScope = only === undefined ? { openTasks } : { only };
-  const asks = await planAsks(ctx, companyId, settings.boardCheckerTaskId, now, scope);
+  const askTasks = {
+    checkerTaskId: settings.boardCheckerTaskId,
+    wakeTaskId: settings.askWakeTaskId,
+  };
+  const asks = await planAsks(ctx, companyId, askTasks, now, scope);
   const parts: PartPlan[] = [asks];
   if (trigger === "job") {
     parts.push(...(await planJobParts(ctx, companyId, settings, openTasks, asks, now)));
@@ -124,6 +128,8 @@ async function pass(
       "board_check.asks_new": asks.found,
       "board_check.writes": outcome.written,
       "board_check.writes_logged": outcome.logged,
+      // One per finished job pass, for the missed-pass alert (HAL-18857); event passes don't count.
+      ...(trigger === "job" ? { "board_check.job_passes": 1 } : {}),
     },
     { companyId, trigger },
   );

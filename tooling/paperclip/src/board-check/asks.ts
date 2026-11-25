@@ -45,20 +45,22 @@ export interface SeenAsk {
 export interface AskRules {
   /** The Board Checker answers asks; its answers name the board too. */
   readonly boardCheckerAgentId: string | undefined;
+  /** Whoever holds the task an ask wakes, when that isn't the Board Checker: its answers name the board too. */
+  readonly askWakeAgentId?: string | undefined;
   readonly mergerAgentId: string | undefined;
 }
 
 /**
  * Whether a comment asks the board. Only an agent's comment can: the board's
  * own comments and the plugin's (no agent author) never do, and neither do
- * the Board Checker's answers, Paperclip's receipts or the Merger's requests.
+ * the answers of the Board Checker or of whoever the ask wakes, Paperclip's receipts or the Merger's requests.
  */
 export function isAsk(comment: AskComment, rules: AskRules, now: Date): boolean {
   const author = comment.authorAgentId;
   if (author === null || comment.origin === "fast_response") {
     return false;
   }
-  if (author === rules.boardCheckerAgentId) {
+  if (author === rules.boardCheckerAgentId || author === rules.askWakeAgentId) {
     return false;
   }
   if (author === rules.mergerAgentId && comment.identifier === mergerRequestsTask) {
