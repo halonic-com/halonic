@@ -6,12 +6,14 @@ export const maxWaiting = 50;
 /** How many times Paperclip may refuse a waiting feedback before it is given up. */
 export const maxRefusals = 3;
 
-/** A feedback waiting to be sent. */
+/**
+ * A feedback waiting to be sent. Its screenshot isn't in here: the store keeps
+ * it apart, by `id`, so the list it loads and saves on every change stays small.
+ */
 export interface WaitingFeedback {
+  /** Also the idempotency key Paperclip gets, so every try makes the same one task. */
   readonly id: string;
   readonly task: FeedbackTask;
-  /** The PNG of the selected area, or `null` when sent without a screenshot. */
-  readonly image: Uint8Array | null;
   /** How many times Paperclip refused it so far, and why it last did. */
   readonly refusals: number;
   readonly lastRefusal: string | null;
@@ -21,6 +23,12 @@ export interface WaitingFeedback {
 export interface FeedbackStore {
   load(): Promise<readonly WaitingFeedback[]>;
   save(waiting: readonly WaitingFeedback[]): Promise<void>;
+  /** Keeps feedback `id`'s screenshot, as its own file. */
+  saveImage(id: string, image: Uint8Array): Promise<void>;
+  /** Feedback `id`'s screenshot, or `null` when there is none. */
+  loadImage(id: string): Promise<Uint8Array | null>;
+  /** Forgets feedback `id`'s screenshot; nothing happens when there is none. */
+  deleteImage(id: string): Promise<void>;
 }
 
 /** What creating one task in Paperclip came to. */
@@ -32,7 +40,11 @@ export type SendOutcome =
 
 /** Creates one feedback task, with its screenshot, through Studio's Paperclip connection. */
 export interface FeedbackSender {
-  send(task: FeedbackTask, image: Uint8Array | null): Promise<SendOutcome>;
+  /**
+   * Sends feedback `id`. Sending the same `id` again gives the task already
+   * made, so a retry after a lost reply makes no second task.
+   */
+  send(id: string, task: FeedbackTask, image: Uint8Array | null): Promise<SendOutcome>;
 }
 
 /** What pressing Send came to: sent, saved to send later, or refused. */
@@ -73,17 +85,27 @@ export class FeedbackOutbox {
     this.newId = newId;
   }
 
-  /** Sends one feedback now, or saves it when there is no connection. A refusal saves nothing. */
+  /**
+   * Sends one feedback now, or saves it when there is no connection. A refusal saves nothing.
+   * It doesn't wait for older waiting feedback, so its task can come before theirs.
+   */
   async submit(task: FeedbackTask, image: Uint8Array | null): Promise<SubmitOutcome> {
-    const outcome = await this.sender.send(task, image);
+    const id = this.newId();
+    const outcome = await this.sender.send(id, task, image);
     if (outcome.kind === "sent" || outcome.kind === "refused") {
       return outcome;
     }
-    const feedback = { id: this.newId(), task, image, refusals: 0, lastRefusal: null };
+    // The reply may only have been lost: the waiting feedback keeps the same `id`, so its
+    // retry gets the task Paperclip may already have made.
+    if (image !== null) {
+      await this.store.saveImage(id, image);
+    }
+    const feedback = { id, task, refusals: 0, lastRefusal: null };
     const added = await this.change((waiting) =>
       waiting.length >= maxWaiting ? undefined : [...waiting, feedback],
     );
     if (!added) {
+      await this.store.deleteImage(id);
       return { kind: "full" };
     }
     return { kind: "saved", until: outcome.kind === "offline" ? "online" : "connected" };
@@ -111,17 +133,19 @@ export class FeedbackOutbox {
     const sent: FlushReport["sent"][number][] = [];
     const givenUp: FlushReport["givenUp"][number][] = [];
     for (const feedback of await this.store.load()) {
-      const outcome = await this.sender.send(feedback.task, feedback.image);
+      const image =
+        feedback.task.screenshot === null ? null : await this.store.loadImage(feedback.id);
+      const outcome = await this.sender.send(feedback.id, feedback.task, image);
       if (outcome.kind === "offline" || outcome.kind === "not-connected") {
         break;
       }
       if (outcome.kind === "sent") {
-        await this.change((waiting) => waiting.filter((each) => each.id !== feedback.id));
+        await this.forget(feedback.id);
         sent.push({ feedback, taskId: outcome.taskId, taskUrl: outcome.taskUrl });
         continue;
       }
       if (feedback.refusals + 1 >= maxRefusals) {
-        await this.change((waiting) => waiting.filter((each) => each.id !== feedback.id));
+        await this.forget(feedback.id);
         givenUp.push({ feedback, reason: outcome.reason });
         continue;
       }
@@ -131,6 +155,15 @@ export class FeedbackOutbox {
       );
     }
     return { sent, givenUp, waiting: await this.waiting() };
+  }
+
+  /**
+   * Takes feedback `id` off the waiting list, then deletes its screenshot: a stop in between
+   * leaves a stray file, never a waiting feedback without its screenshot.
+   */
+  private async forget(id: string): Promise<void> {
+    await this.change((waiting) => waiting.filter((each) => each.id !== id));
+    await this.store.deleteImage(id);
   }
 
   /**

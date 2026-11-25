@@ -136,6 +136,26 @@ export const paperclipRequests = {
   // its cancel, which takes no body. Run again wakes the agent through `wakeTask` above.
   getRun: { method: "GET", path: "/api/heartbeat-runs/:run" },
   cancelRun: { method: "POST", path: "/api/heartbeat-runs/:run/cancel" },
+  // Screenshot feedback (`paperclip-client.feedback-tasks`, HAL-18737): one task in a project,
+  // assigned to one agent, with an idempotency key, so a retry after a lost reply gets the same
+  // task back. The create row sets no parent, label, blocker or budget, only `todo`, and its key
+  // must be a feedback's, so it can't make any other task. The upload row takes one PNG and
+  // nothing else; the list row lets a retry see that the PNG is already there.
+  createFeedbackTask: {
+    method: "POST",
+    path: "/api/companies/:company/issues",
+    body: {
+      fields: ["title", "description", "projectId", "assigneeAgentId", "status", "idempotencyKey"],
+      status: "todo",
+      prefixed: { idempotencyKey: "halonic-feedback:" },
+    },
+  },
+  listTaskAttachments: { method: "GET", path: "/api/issues/:task/attachments" },
+  attachScreenshot: {
+    method: "POST",
+    path: "/api/companies/:company/issues/:task/attachments",
+    upload: { field: "file", contentType: "image/png", maxBytes: 10 * 1024 * 1024 },
+  },
 } as const satisfies Record<string, RequestRule>;
 
 /**
@@ -150,14 +170,35 @@ interface BodyRule {
   pinned?: Readonly<Record<string, string>>;
   nullable?: readonly string[];
   idLists?: readonly string[];
+  /** Fields whose text must start with the given prefix and go on after it. */
+  prefixed?: Readonly<Record<string, string>>;
 }
 
-/** One row of the fixed list. */
-interface RequestRule {
+/**
+ * One row of the fixed list. A row sends a JSON body, a file, or neither, never both: the
+ * `never` members make a row with both a type error.
+ */
+type RequestRule = {
   method: "GET" | "POST" | "PATCH" | "PUT";
   path: string;
-  /** For a write on a route that takes many fields: the only body it may send. */
-  body?: BodyRule;
+} & (
+  | {
+      /** For a write on a route that takes many fields: the only body it may send. */
+      body?: BodyRule;
+      upload?: never;
+    }
+  | {
+      /** For a file upload: the one file it may send, as multipart form data. */
+      upload: UploadRule;
+      body?: never;
+    }
+);
+
+/** What a row's one uploaded file must be: in form field `field`, of this type, at most `maxBytes`. */
+export interface UploadRule {
+  field: string;
+  contentType: "image/png";
+  maxBytes: number;
 }
 
 /**
@@ -247,7 +288,7 @@ export function matchesRequest(name: PaperclipRequestName, method: string, path:
 /**
  * Whether `body` may go with request `name`: anything for a row without a
  * body rule, otherwise exactly the rule's fields, each a non-empty string or
- * a `null` the rule allows, with the rule's status and pinned values. So a
+ * a `null` the rule allows, with the rule's status, pinned values and prefixes. So a
  * task write can't change a title, a blocker or a budget, or set any other
  * status, and the stepper result is always a Markdown document of that title.
  */
@@ -268,11 +309,25 @@ export function fitsBody(name: PaperclipRequestName, body: unknown): boolean {
       : (typeof value === "string" && value !== "") ||
         (value === null && rule.nullable?.includes(field) === true),
   );
+  const allPrefixed = Object.entries(rule.prefixed ?? {}).every(([field, prefix]) => {
+    const value = fields.get(field);
+    return typeof value === "string" && value.startsWith(prefix) && value.length > prefix.length;
+  });
   const pinned = Object.entries({
     ...(rule.status === undefined ? {} : { status: rule.status }),
     ...rule.pinned,
   });
-  return onlyRuleFields && allText && pinned.every(([field, value]) => fields.get(field) === value);
+  return (
+    onlyRuleFields &&
+    allText &&
+    allPrefixed &&
+    pinned.every(([field, value]) => fields.get(field) === value)
+  );
+}
+
+/** Row `name`'s upload rule, or `undefined` for a row that sends no file. */
+export function uploadRule(name: PaperclipRequestName): UploadRule | undefined {
+  return (paperclipRequests[name] as RequestRule).upload;
 }
 
 /** Whether `value` is a list of exactly one ID that is a safe segment, such as one label. */

@@ -19,14 +19,24 @@ function task(title: string): FeedbackTask {
   };
 }
 
-/** A store kept in memory, as Studio's would be on disk. */
+/** A store kept in memory, as Studio's would be on disk: the list, and one file per screenshot. */
 class MemoryStore implements FeedbackStore {
   saved: readonly WaitingFeedback[] = [];
+  readonly images = new Map<string, Uint8Array>();
   async load() {
     return this.saved;
   }
   async save(waiting: readonly WaitingFeedback[]) {
     this.saved = waiting;
+  }
+  async saveImage(id: string, image: Uint8Array) {
+    this.images.set(id, image);
+  }
+  async loadImage(id: string) {
+    return this.images.get(id) ?? null;
+  }
+  async deleteImage(id: string) {
+    this.images.delete(id);
   }
 }
 
@@ -34,7 +44,7 @@ class MemoryStore implements FeedbackStore {
 function paperclip(answer: (title: string) => SendOutcome | "sent") {
   const created: string[] = [];
   const sender = {
-    async send(sent: FeedbackTask) {
+    async send(_id: string, sent: FeedbackTask) {
       const outcome = answer(sent.title);
       if (outcome !== "sent") {
         return outcome;
@@ -61,6 +71,14 @@ function outboxWith(store: MemoryStore, answer: (title: string) => SendOutcome |
   return { outbox, created };
 }
 
+/** A screenshot's task: the outbox loads the image only for a task that has one. */
+function shotTask(title: string): FeedbackTask {
+  return {
+    ...task(title),
+    screenshot: { fileName: "feedback.png", contentType: "image/png", width: 2, height: 2 },
+  };
+}
+
 verifies("feedback.outbox", () => {
   it("sends at once when Studio is online, and keeps nothing", async () => {
     const store = new MemoryStore();
@@ -84,7 +102,7 @@ verifies("feedback.outbox", () => {
     expect(await outbox.submit(task("First"), image)).toEqual({ kind: "saved", until: "online" });
     expect(await outbox.submit(task("Second"), null)).toEqual({ kind: "saved", until: "online" });
     expect(await outbox.waiting()).toBe(2);
-    expect(store.saved[0]?.image).toBe(image);
+    expect(store.images.get("waiting-1")).toBe(image);
 
     online = true;
     const report = await outbox.flush();
@@ -179,7 +197,7 @@ verifies("feedback.outbox", () => {
     const heldSender = new FeedbackOutbox(
       store,
       {
-        async send(sent) {
+        async send(_id, sent) {
           if (online && sent.title === "First") {
             await firstHeld;
           }
@@ -208,3 +226,72 @@ function sentAs(title: string, created: string[]): SendOutcome {
   created.push(title);
   return { kind: "sent", taskId: `ACME-${created.length}`, taskUrl: "https://paperclip.example" };
 }
+
+verifies("feedback.outbox-retry", () => {
+  it("creates no second task when a retry follows a lost reply", async () => {
+    const store = new MemoryStore();
+    // Like Paperclip with an idempotency key: one task per feedback ID, whatever the tries.
+    const tasks = new Map<string, string>();
+    const triedWith: string[] = [];
+    let replyLost = true;
+    const sender = {
+      async send(id: string, _task: FeedbackTask, image: Uint8Array | null): Promise<SendOutcome> {
+        triedWith.push(`${id} ${image?.length ?? 0}`);
+        const taskId = tasks.get(id) ?? `ACME-${tasks.size + 1}`;
+        tasks.set(id, taskId);
+        if (replyLost) {
+          return { kind: "offline" };
+        }
+        return { kind: "sent", taskId, taskUrl: `https://paperclip.example/ACME/issues/${taskId}` };
+      },
+    };
+    const outbox = new FeedbackOutbox(store, sender, () => "feedback-1");
+    const image = new Uint8Array([137, 80, 78, 71]);
+
+    expect(await outbox.submit(shotTask("Lost reply"), image)).toEqual({
+      kind: "saved",
+      until: "online",
+    });
+    replyLost = false;
+    const report = await outbox.flush();
+
+    expect(triedWith).toEqual(["feedback-1 4", "feedback-1 4"]);
+    expect(tasks.size).toBe(1);
+    expect(report.sent.map((each) => each.taskId)).toEqual(["ACME-1"]);
+  });
+
+  it("keeps screenshots out of the waiting list, one file each, deleted once sent", async () => {
+    const store = new MemoryStore();
+    let online = false;
+    const { outbox } = outboxWith(store, () => (online ? "sent" : { kind: "offline" }));
+    const image = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+
+    await outbox.submit(shotTask("With a screenshot"), image);
+    await outbox.submit(task("Without one"), null);
+
+    expect(store.saved.map((each) => Object.keys(each).sort())).toEqual([
+      ["id", "lastRefusal", "refusals", "task"],
+      ["id", "lastRefusal", "refusals", "task"],
+    ]);
+    expect(JSON.stringify(store.saved)).not.toContain("137");
+    expect([...store.images.keys()]).toEqual(["waiting-1"]);
+
+    online = true;
+    await outbox.flush();
+
+    expect(store.images.size).toBe(0);
+  });
+
+  it("deletes the screenshot of a feedback it can't keep because the list is full", async () => {
+    const store = new MemoryStore();
+    const { outbox } = outboxWith(store, () => ({ kind: "offline" }));
+    for (let index = 0; index < maxWaiting; index += 1) {
+      await outbox.submit(task(`Feedback ${index}`), null);
+    }
+
+    expect(await outbox.submit(shotTask("One too many"), new Uint8Array([1]))).toEqual({
+      kind: "full",
+    });
+    expect(store.images.size).toBe(0);
+  });
+});

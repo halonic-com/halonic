@@ -14,7 +14,13 @@ This package holds the parts with no screen or native code:
 - `payload.ts`: the task made from the text and the moment: title, description, screenshot
   file (`feedback.payload`).
 - `outbox.ts`: feedback kept while Studio is offline or not connected, sent later
-  (`feedback.outbox`).
+  (`feedback.outbox`). Every try of one feedback goes with the same ID, which Paperclip keeps as
+  the task's idempotency key, so a lost reply never makes a second task; each screenshot waits in
+  its own file, never in the waiting list (`feedback.outbox-retry`). A new feedback doesn't wait
+  for older waiting ones, so the words never promise an order.
+
+The sender is `PaperclipFeedback` from `@halonicjs/adapter-paperclip-client`; Studio's services
+hand it in, with the key behind its guard.
 
 The overlay, the Send feedback window, the shortcut and the screen capture come in later pull
 requests; the native part is a security change with its own review.

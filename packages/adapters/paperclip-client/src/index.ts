@@ -8,6 +8,14 @@ export {
   type PaperclipMessagingOptions,
   type PaperclipUser,
 } from "./client.ts";
+export {
+  type FeedbackSendOutcome,
+  type FeedbackTaskInput,
+  feedbackKey,
+  feedbackRefusals,
+  PaperclipFeedback,
+  type PaperclipFeedbackOptions,
+} from "./feedback.ts";
 export { paperclipSourceId } from "./ids.ts";
 export {
   findRequest,

@@ -71,14 +71,13 @@ export class FakePaperclip {
 
   /** Records `request` and answers it from the routes; 404 for anything else. */
   async handle(request: Request): Promise<Response> {
-    const text = await request.text();
     const url = new URL(request.url);
     const seen: SeenRequest = {
       method: request.method,
       path: url.pathname,
       query: url.searchParams,
       headers: request.headers,
-      body: text === "" ? undefined : JSON.parse(text),
+      body: await bodyOf(request),
     };
     this.seen.push(seen);
     const route = this.routes.get(`${seen.method} ${seen.path}`);
@@ -96,6 +95,15 @@ export class FakePaperclip {
       headers: { "content-type": "application/json", ...answer.headers },
     });
   }
+}
+
+/** A request's body: its form data for an upload, its JSON otherwise, `undefined` when empty. */
+async function bodyOf(request: Request): Promise<unknown> {
+  if (request.headers.get("content-type")?.startsWith("multipart/form-data") === true) {
+    return request.formData();
+  }
+  const text = await request.text();
+  return text === "" ? undefined : JSON.parse(text);
 }
 
 /** The tasks Paperclip's `q=` would match: the query in the identifier, title or description, ignoring case. */

@@ -136,6 +136,9 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `createChannel` | `POST /api/companies/{company}/issues` with exactly `{ title, description, labelIds: [one], status: "backlog" }` | start a channel: its parent task, unassigned |
 | `updateChannel` | `PATCH /api/issues/{task}` with exactly `{ description }` | change a channel's members line: members, lead, who follows it |
 | `listTaskActivity` | `GET /api/issues/{task}/activity` | a channel child task's history: who passed it to whom |
+| `createFeedbackTask` | `POST /api/companies/{company}/issues` with exactly `{ title, description, projectId, assigneeAgentId, status: "todo", idempotencyKey }`, the key starting `halonic-feedback:` | screenshot feedback: one task; a repeated key gets the task already made |
+| `listTaskAttachments` | `GET /api/issues/{task}/attachments` | before an upload: whether the feedback's screenshot is already there |
+| `attachScreenshot` | `POST /api/companies/{company}/issues/{task}/attachments`, multipart, one `file` part | the feedback's screenshot: a PNG of at most 10 MB, the only file any row sends |
 
 **Live check of `TeamStatus`.** `pnpm test:board` reads a real server with every `TeamStatus` method and
 fails unless each of the rows from `spendSummary` to `pullRequestDetail` answers 200 and maps. It never runs
