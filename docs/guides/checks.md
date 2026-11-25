@@ -651,6 +651,12 @@ passes.
 
 To run one test file without the floor: `pnpm exec vitest run <file> --coverage.enabled=false`.
 
+A package whose tests take too long for one Turbo task may split them into
+parts that run at once, as the CLI does (`apps/cli`, HAL-17930): `test:part-1`,
+`test:part-2`, … each run a `--shard` and write a blob report, and the `test`
+script is exactly `vitest run --config vitest.merge.config.ts --merge-reports=test-results/blob`,
+which merges them and checks the floor for all parts together.
+
 If a run says test files "never ran", the coverage it prints leaves those
 files out and is not the code's real coverage. Vitest gives each worker 60
 seconds to start and set up its test environment, and on a busy machine a

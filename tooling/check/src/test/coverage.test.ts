@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { coverageFloorProblems, testSetupProblems } from "../lib/coverage.ts";
+import {
+  coverageFloorProblems,
+  mergedPartsTestScript,
+  testSetupProblems,
+} from "../lib/coverage.ts";
 import { manifestFor, runChecks } from "./fixture-repo.ts";
 
 describe("tooling/check: coverage floors", () => {
@@ -86,6 +90,50 @@ describe("tooling/check: floors can't be bypassed", () => {
     expect(messages(std({ scripts: {} }))).toHaveLength(1);
   });
 
+  describe("tests run as parts and merged", () => {
+    const merged = { scripts: { test: mergedPartsTestScript } };
+    const mergeConfig =
+      'import packageConfig from "./vitest.config.ts";\nexport default { ...packageConfig };\n';
+    const withMergeConfig = (text: string) =>
+      messages(std(merged, { "vitest.merge.config.ts": text }));
+
+    it("accepts the merge script with a merge config built on vitest.config.ts", () => {
+      expect(withMergeConfig(mergeConfig)).toEqual([]);
+    });
+
+    it("accepts nothing else on that command", () => {
+      const script = `${mergedPartsTestScript} --coverage.enabled=false`;
+      expect(
+        messages(std({ scripts: { test: script } }, { "vitest.merge.config.ts": mergeConfig })),
+      ).toHaveLength(1);
+    });
+
+    it("rejects the merge script without a merge config", () => {
+      expect(messages(std(merged))).toEqual([
+        expect.stringContaining("Add a vitest.merge.config.ts"),
+      ]);
+    });
+
+    it("rejects a merge config that doesn't build on vitest.config.ts", () => {
+      expect(withMergeConfig("export default {};\n")).toEqual([
+        expect.stringContaining('import it from "./vitest.config.ts"'),
+      ]);
+    });
+
+    it("rejects a merge config that turns coverage or its floor off", () => {
+      for (const opt of [
+        "coverage: { enabled: false }",
+        "coverage: { thresholds: {} }",
+        "thresholds: {}",
+      ]) {
+        const text = `${mergeConfig.trimEnd().replace("};", "")}, test: { ${opt} } };\n`;
+        expect(withMergeConfig(text)).toEqual([
+          expect.stringContaining('vitest.merge.config.ts may not set "coverage"'),
+        ]);
+      }
+    });
+  });
+
   it("rejects a vitest config that opts out or is missing", () => {
     for (const config of [
       "export default definePackageTestConfig({ test: { coverage: { enabled: false } } });",
@@ -95,7 +143,13 @@ describe("tooling/check: floors can't be bypassed", () => {
     ]) {
       expect(messages(std({}, { "vitest.config.ts": config }))).toHaveLength(1);
     }
-    expect(testSetupProblems("vitest run", undefined)).toHaveLength(1);
+    expect(
+      testSetupProblems({
+        testScript: "vitest run",
+        configText: undefined,
+        mergeConfigText: undefined,
+      }),
+    ).toHaveLength(1);
   });
 });
 

@@ -131,35 +131,98 @@ function percentProblem(
 }
 
 /**
+ * The `test` script of a package whose tests Turbo runs as parts at once
+ * (`test:part-1`, `test:part-2`, …, HAL-17930): it merges the parts' blob
+ * reports with `vitest.merge.config.ts`, which builds on the package's
+ * `vitest.config.ts`, so the merged run checks the shared floor.
+ */
+export const mergedPartsTestScript =
+  "vitest run --config vitest.merge.config.ts --merge-reports=test-results/blob";
+
+const allowedTestScripts: readonly string[] = ["vitest run", mergedPartsTestScript];
+
+/** The test files of a package, as the packages check reads them. */
+export interface TestSetup {
+  /** The `test` script from `package.json`. */
+  testScript: unknown;
+  /** The text of `vitest.config.ts`, or `undefined` when missing. */
+  configText: string | undefined;
+  /** The text of `vitest.merge.config.ts`, or `undefined` when missing. */
+  mergeConfigText: string | undefined;
+}
+
+/**
  * Checks that a package's tests run through the shared Vitest preset with
- * coverage on, so its floor is enforced and can't be switched off.
+ * coverage on, so its floor is enforced and can't be switched off. A package
+ * whose tests run as parts is checked on its merge config too, since the
+ * merge is the run whose floor counts.
  *
- * @param testScript - the `test` script from `package.json`
- * @param configText - the text of `vitest.config.ts`, or `undefined` when missing
+ * @param setup - the package's `test` script and Vitest config files
  * @returns one message per problem, empty when the setup is fine
  *
  * @example
- * testSetupProblems("vitest run", "export default definePackageTestConfig();"); // []
+ * testSetupProblems({
+ *   testScript: "vitest run",
+ *   configText: "export default definePackageTestConfig();",
+ *   mergeConfigText: undefined,
+ * }); // []
  */
-export function testSetupProblems(testScript: unknown, configText: string | undefined): string[] {
+export function testSetupProblems(setup: TestSetup): string[] {
+  const { testScript, configText, mergeConfigText } = setup;
   const problems: string[] = [];
-  if (typeof testScript !== "string" || testScript.trim() !== "vitest run") {
+  if (typeof testScript !== "string" || !allowedTestScripts.includes(testScript.trim())) {
     problems.push(
-      'The "test" script must be exactly "vitest run": coverage and its floor come from the shared preset, so no flags such as --coverage.enabled=false.',
+      'The "test" script must be exactly "vitest run", or "' +
+        mergedPartsTestScript +
+        '" for tests split into parts: coverage and its floor come from the shared preset, so no flags such as --coverage.enabled=false.',
     );
   }
-  if (configText === undefined) {
-    problems.push(
-      'Add a vitest.config.ts with `export default definePackageTestConfig();` from "@halonicjs/tooling-config/vitest".',
-    );
-  } else if (!/\bdefinePackageTestConfig\(/.test(configText)) {
-    problems.push(
-      "vitest.config.ts must build its config with definePackageTestConfig() from the shared preset.",
-    );
-  } else if (/\bcoverage\b|\bthresholds\b/.test(configText)) {
-    problems.push(
-      'vitest.config.ts may not set "coverage" or "thresholds": the floor lives in package.json under halonic.coverage and may only go up.',
-    );
+  problems.push(...packageConfigProblems(configText));
+  if (typeof testScript === "string" && testScript.trim() === mergedPartsTestScript) {
+    problems.push(...mergeConfigProblems(mergeConfigText));
   }
   return problems;
+}
+
+function packageConfigProblems(configText: string | undefined): string[] {
+  if (configText === undefined) {
+    return [
+      'Add a vitest.config.ts with `export default definePackageTestConfig();` from "@halonicjs/tooling-config/vitest".',
+    ];
+  }
+  if (!/\bdefinePackageTestConfig\(/.test(configText)) {
+    return [
+      "vitest.config.ts must build its config with definePackageTestConfig() from the shared preset.",
+    ];
+  }
+  if (/\bcoverage\b|\bthresholds\b/.test(configText)) {
+    return [
+      'vitest.config.ts may not set "coverage" or "thresholds": the floor lives in package.json under halonic.coverage and may only go up.',
+    ];
+  }
+  return [];
+}
+
+/**
+ * The merge config of tests run as parts: it must build on the package's
+ * `vitest.config.ts` and leave coverage as the preset sets it, so the merged
+ * run checks the same floor as a whole run would.
+ */
+function mergeConfigProblems(mergeConfigText: string | undefined): string[] {
+  if (mergeConfigText === undefined) {
+    return [
+      `Add a vitest.merge.config.ts that builds on vitest.config.ts: the "test" script "${mergedPartsTestScript}" runs it.`,
+    ];
+  }
+  if (!/from\s+["']\.\/vitest\.config\.ts["']/.test(mergeConfigText)) {
+    return [
+      'vitest.merge.config.ts must build on the package\'s own config: import it from "./vitest.config.ts".',
+    ];
+  }
+  if (/\bcoverage\b|\bthresholds\b/.test(mergeConfigText)) {
+    return [
+      'vitest.merge.config.ts may not set "coverage" or "thresholds": the merged run checks the floor from vitest.config.ts.',
+    ];
+  }
+  return [];
 }

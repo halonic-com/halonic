@@ -5,9 +5,57 @@
   ],
   "tasks": {
     "test": {
+      "dependsOn": [
+        "//#codegen",
+        "transit",
+        "test:part-1",
+        "test:part-2"
+      ],
       "inputs": [
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/examples/**"
+      ]
+    },
+    "test:part-1": {
+      "dependsOn": [
+        "//#codegen",
+        "transit"
+      ],
+      "env": [
+        "FAST_CHECK_SEED"
+      ],
+      "passThroughEnv": [
+        "CI",
+        "HALONIC_TEST_TIMEOUT",
+        "HALONIC_TEST_WORKERS"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/examples/**"
+      ],
+      "outputs": [
+        "test-results/blob/part-1.json"
+      ]
+    },
+    "test:part-2": {
+      "dependsOn": [
+        "//#codegen",
+        "transit"
+      ],
+      "env": [
+        "FAST_CHECK_SEED"
+      ],
+      "passThroughEnv": [
+        "CI",
+        "HALONIC_TEST_TIMEOUT",
+        "HALONIC_TEST_WORKERS"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/examples/**"
+      ],
+      "outputs": [
+        "test-results/blob/part-2.json"
       ]
     }
   }

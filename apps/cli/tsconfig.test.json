@@ -4,6 +4,8 @@
     "src",
     "vitest.config.ts",
     "fence",
-    "vitest.fence.config.ts"
+    "vitest.fence.config.ts",
+    "vitest.merge.config.ts",
+    "vitest.part.config.ts"
   ]
 }
