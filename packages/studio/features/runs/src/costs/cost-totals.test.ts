@@ -133,6 +133,15 @@ verifies("runs.costs", () => {
         costTotals({ entries: [entry({ cost: euros(0.11) })], period: "today", now, timeZone }),
       ).toThrow(RangeError);
     });
+
+    it("refuses a token count that isn't a whole, non-negative number", () => {
+      for (const tokens of [1.5, -3, Number.NaN]) {
+        const cost = { kind: "tokens", tokens } as const;
+        expect(() =>
+          costTotals({ entries: [entry({ cost })], period: "today", now, timeZone }),
+        ).toThrow(RangeError);
+      }
+    });
   });
 
   describe("toMinorUnits", () => {

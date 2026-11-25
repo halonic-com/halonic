@@ -82,7 +82,7 @@ export interface CostTotalsInput {
  *
  * @param input - the runs, the period, the current time and the time zone
  * @returns the totals, sorted by name at both levels
- * @throws RangeError when a money cost isn't a whole number of minor units
+ * @throws RangeError when a money cost isn't a whole number of minor units, or tokens aren't whole
  */
 export function costTotals(input: CostTotalsInput): CostTotals {
   const startsAt = costPeriodStart(input.period, input.now, input.timeZone);
@@ -119,6 +119,7 @@ function total(
       assertWholeUnits(cost.minorUnits, cost.currency);
       money.set(cost.currency, (money.get(cost.currency) ?? 0) + cost.minorUnits);
     } else if (cost.kind === "tokens") {
+      assertWholeTokens(cost.tokens);
       tokens += cost.tokens;
     }
   }
@@ -141,6 +142,13 @@ function assertWholeUnits(minorUnits: number, currency: string): void {
     throw new RangeError(
       `A run's cost must be a whole, non-negative number of ${currency} minor units, got ${minorUnits}.`,
     );
+  }
+}
+
+/** Refuses a fraction of a token or a negative count: tokens are counted, never measured. */
+function assertWholeTokens(tokens: number): void {
+  if (!Number.isSafeInteger(tokens) || tokens < 0) {
+    throw new RangeError(`A run's tokens must be a whole, non-negative number, got ${tokens}.`);
   }
 }
 
@@ -180,5 +188,7 @@ export function toMinorUnits(amount: number, currency: string): number {
       .maximumFractionDigits ?? 2;
   // Shifting the decimal point in the text avoids float products such as 0.285 * 100 = 28.499….
   const shifted = Number(`${amount}e${decimals}`);
+  // The text trick gives NaN only for amounts that print in exponent form (1e-7, 1e21); for
+  // those the plain product is as exact as a float allows, and rounding below absorbs the rest.
   return Math.round(Number.isNaN(shifted) ? amount * 10 ** decimals : shifted);
 }
