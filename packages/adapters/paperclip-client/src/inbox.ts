@@ -1,7 +1,7 @@
 import type { InboxItem, MessagingProject } from "@halonicjs/ports";
 import { PaperclipBoardRequests } from "./board-requests.ts";
 import { approvalToItem, cardToItem } from "./cards.ts";
-import { decisionToItem } from "./decisions.ts";
+import { decisionPage, decisionToItem } from "./decisions.ts";
 import { asRecords, type JsonRecord, text } from "./json.ts";
 import { type MapContext, newestFirst } from "./map.ts";
 import type { PaperclipReader } from "./reader.ts";
@@ -19,9 +19,6 @@ const taskPage = "1000";
 
 /** Approval states the Inbox shows: waiting on the person, or on the agent after Request changes. */
 const waitingApprovalStates = ["pending", "revision_requested"] as const;
-
-/** Paperclip's largest page of decisions; more than 100 open ones lose the rest from the Inbox. */
-export const decisionPage = "100";
 
 /** How many card reads run at once, so a first read of a big company doesn't flood the server. */
 const cardReadsAtOnce = 4;

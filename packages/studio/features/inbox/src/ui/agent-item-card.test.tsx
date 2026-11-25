@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import type { InboxAnswer } from "@halonicjs/ports";
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -120,5 +121,64 @@ verifies("inbox.agent-inbox-items", () => {
     expect(root.textContent).toContain("The website deploy needs it.");
     const buttons = [...root.querySelectorAll("button")].map((button) => button.textContent);
     expect(buttons).toEqual(["Approve", "Reject"]);
+  });
+});
+
+verifies("inbox.option-note", () => {
+  /** The card of a Paperclip approval whose Request changes takes a required note, and what it sent. */
+  async function approvalCard() {
+    const messaging = new FakeAgentMessaging({ now: () => asked });
+    const source = messaging.addSource({ label: "Paperclip · Acme", provider: "paperclip" });
+    const item = messaging.addInboxItem(source.id, {
+      question: "Hire an agent\n\n- Name: Iris",
+      options: [
+        { id: "approve", label: "Approve" },
+        { id: "reject", label: "Reject" },
+        {
+          id: "request-changes",
+          label: "Request changes",
+          noteRequired: true,
+          noteLabel: "What should change?",
+        },
+      ],
+    });
+    const [read] = await messaging.listSources();
+    const sent: InboxAnswer[] = [];
+    const root = await render(
+      <AgentItemCard
+        item={item}
+        source={read}
+        now={() => asked}
+        answer={(answer) => {
+          sent.push(answer);
+          return messaging.answer(item.id, answer);
+        }}
+        readAttachment={(attachment) => messaging.readAttachment(attachment)}
+      />,
+    );
+    return { root, sent };
+  }
+
+  function button(root: HTMLElement, name: string): HTMLButtonElement {
+    const found = [...root.querySelectorAll("button")].find((b) => b.textContent === name);
+    if (found === undefined) throw new Error(`no button "${name}"`);
+    return found;
+  }
+
+  it("keeps Request changes off until its note is written, and says why with the field's label", async () => {
+    const { root } = await approvalCard();
+    const field = root.querySelector("textarea");
+    expect(field?.labels?.[0]?.textContent).toBe("What should change?");
+    expect(button(root, "Request changes").getAttribute("aria-disabled")).toBe("true");
+    expect(description(button(root, "Request changes"))).toBe("What should change?");
+    expect(button(root, "Approve").getAttribute("aria-disabled")).not.toBe("true");
+  });
+
+  it("sends the note written under Request changes with the option", async () => {
+    const { root, sent } = await approvalCard();
+    await type(root, "Lower the budget");
+    expect(button(root, "Request changes").getAttribute("aria-disabled")).not.toBe("true");
+    await act(async () => button(root, "Request changes").click());
+    expect(sent).toEqual([{ kind: "option", option: "request-changes", note: "Lower the budget" }]);
   });
 });

@@ -297,6 +297,26 @@ verifies("agent-host.agent-messaging-cache", () => {
       expect(offline?.state).toMatchObject({ kind: "answered", answer });
     });
 
+    it("keeps an option's note field for an offline read", async () => {
+      const { source } = await readAcme();
+      const options = [
+        { id: "approve", label: "Approve" },
+        {
+          id: "request-changes",
+          label: "Request changes",
+          noteRequired: true,
+          noteLabel: "What should change?",
+        },
+      ] as const;
+      const item = fake.addInboxItem(source.id, { question: "Hire an agent", options });
+      const live = await messaging.listInboxItems();
+
+      fake.goOffline(source.id);
+      const offline = (await messaging.listInboxItems()).find((kept) => kept.id === item.id);
+      expect(offline).toEqual(live.find((kept) => kept.id === item.id));
+      expect(offline?.options).toEqual(options);
+    });
+
     it("keeps no key, Authorization header or request in any cache file", async () => {
       await readAcme();
       const files = await filesUnder(cacheFolder);

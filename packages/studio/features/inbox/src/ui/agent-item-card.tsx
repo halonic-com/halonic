@@ -31,6 +31,7 @@ import {
   failureDetailOf,
   useEveryMinute,
 } from "./card-parts.tsx";
+import { OptionButtons } from "./option-buttons.tsx";
 
 /** Props for {@link AgentItemCard}. */
 export interface AgentItemCardProps {
@@ -67,9 +68,11 @@ type Sent =
 
 /**
  * An agent's card or question (`inbox.agent-inbox-items`): its title, its source and since when it
- * waits, the question as safe Markdown, and one button per option, a form of its questions when it
- * asks several (`inbox.question-cards`), or a reply field when it has none. Once answered, here or elsewhere, a line says by whom and how, and the buttons stay, off
- * (render 5f). It names the work it came from, whatever made it (`inbox.every-waiting-item`), and
+ * waits, the question as safe Markdown, and one button per option, with a field for an option that
+ * takes a note (`inbox.option-note`), a form of its questions when it asks several
+ * (`inbox.question-cards`), or a reply field when it has none. Once answered, here or elsewhere, a
+ * line says by whom and how, and the buttons stay, off (render 5f). It names the work it came
+ * from, whatever made it (`inbox.every-waiting-item`), and
  * lists its files, showing a picture only once asked (`inbox.agent-item-media`). While its source
  * is offline or signed out the buttons are off and say why; nothing is kept to send later.
  */
@@ -174,7 +177,8 @@ interface AnswerControlsProps {
 
 /**
  * How the person answers an item that isn't an action request: a form of its questions when it
- * asks several (`inbox.question-cards`), else a button per option, else a written reply.
+ * asks several (`inbox.question-cards`), else a button per option with any note fields
+ * (`inbox.option-note`), else a written reply.
  */
 function AnswerControls({
   item,
@@ -209,19 +213,7 @@ function AnswerControls({
     );
   }
   return (
-    <div className="flex flex-wrap gap-2">
-      {item.options.map((option, index) => (
-        <Button
-          key={option.id}
-          variant={index === 0 ? "primary" : "secondary"}
-          unavailable={unavailable}
-          busy={busy({ kind: "option", option: option.id })}
-          onClick={() => send({ kind: "option", option: option.id })}
-        >
-          {option.label}
-        </Button>
-      ))}
-    </div>
+    <OptionButtons options={item.options} unavailable={unavailable} busy={busy} onAnswer={send} />
   );
 }
 

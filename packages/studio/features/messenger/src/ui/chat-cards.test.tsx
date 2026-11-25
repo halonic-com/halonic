@@ -203,3 +203,29 @@ function idle(): AsyncIterator<string> {
     return: () => Promise.resolve({ done: true, value: undefined }),
   };
 }
+
+verifies("messenger.option-note", () => {
+  it("leaves out an option whose note is required, and offers the others", async () => {
+    const { messaging, acme, chief } = chiefAsks();
+    messaging.addInboxItem(acme.id, {
+      question: "Hire Iris?",
+      from: { kind: "agent", agent: chief.id, name: "Chief" },
+      options: [
+        { id: "hire", label: "Hire" },
+        {
+          id: "request-changes",
+          label: "Request changes",
+          noteRequired: true,
+          noteLabel: "What should change?",
+        },
+        { id: "later", label: "Later", noteLabel: "Why?" },
+      ],
+    });
+    const page = await openMessenger(messaging);
+    await openChat(page, "Chief");
+    const buttons = [...page.querySelectorAll("main ol button")].map((b) => b.textContent);
+    expect(buttons).toContain("Hire");
+    expect(buttons).toContain("Later");
+    expect(buttons).not.toContain("Request changes");
+  });
+});

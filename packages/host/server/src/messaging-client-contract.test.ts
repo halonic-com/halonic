@@ -111,4 +111,40 @@ verifies("server.messaging-client", () => {
       expect(sent).toEqual({ outcome: "refused", reason: "signed-out" });
     });
   });
+
+  describe("an option that asks for a note", () => {
+    it("lists the option's note field and sends the note with the answer", async () => {
+      const fake = new FakeAgentMessaging();
+      const source = fake.addSource({ label: "Paperclip · Acme" });
+      const requestChanges = {
+        id: "request-changes",
+        label: "Request changes",
+        noteRequired: true,
+        noteLabel: "What should change?",
+      };
+      fake.addInboxItem(source.id, {
+        question: "Hire an agent",
+        options: [{ id: "approve", label: "Approve" }, requestChanges],
+      });
+      const server = ownerServer(fake);
+      const client = new ServerAgentMessaging({
+        address,
+        token: await pairedToken(server),
+        label: "Acme server",
+        fetch: inProcess(server),
+      });
+
+      const [item] = await client.listInboxItems();
+      const answer = {
+        kind: "option",
+        option: "request-changes",
+        note: "Lower the budget",
+      } as const;
+      const result = await client.answer(item?.id ?? "", answer);
+
+      expect(item?.options).toEqual([{ id: "approve", label: "Approve" }, requestChanges]);
+      expect(result.outcome).toBe("answered");
+      expect((await fake.listInboxItems())[0]?.state).toMatchObject({ kind: "answered", answer });
+    });
+  });
 });

@@ -176,6 +176,11 @@ export interface InboxItemOption {
   label: string;
   /** Picking it needs a note that isn't blank, such as the reason for a reject. */
   noteRequired?: boolean;
+  /**
+   * The label of the field for the option's note, such as "What should change?"
+   * (requirement `ports.agent-messaging-option-note`). The note goes in the option answer's `note`.
+   */
+  noteLabel?: string;
 }
 
 /** Where an item that can't be answered here is answered instead. */

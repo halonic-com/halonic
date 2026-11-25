@@ -11,6 +11,11 @@ export function oneLine(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
+/** `value` as a link's text, so a `[`, `]` or `\` in it can't end the link or start another one. */
+function linkText(value: string): string {
+  return value.replace(/[\\[\]]/g, (character) => `\\${character}`);
+}
+
 /** A `- Label: value` line for each field that has a value. */
 export function fieldLines(fields: readonly (readonly [string, string | undefined])[]): string[] {
   return fields.flatMap(([label, value]) =>
@@ -58,6 +63,8 @@ function boardFields(payload: JsonRecord | undefined): string[] {
 }
 
 function strategyFields(payload: JsonRecord | undefined): string[] {
+  // Paperclip's approval route takes any payload and its OpenAPI names no plan field, so the plan
+  // is the first of the keys agents write it under.
   const plan =
     text(payload, "plan") ??
     text(payload, "description") ??
@@ -101,17 +108,20 @@ export function approvalQuestion(
 /** The document a confirmation is bound to, such as a plan at one revision; nothing without one. */
 function targetLine(payload: JsonRecord | undefined): string[] {
   const target = asRecord(field(payload, "target"));
-  const name = text(target, "label") ?? text(target, "key");
+  const label = text(target, "label") ?? text(target, "key");
   // A stepper request is the card itself, shown as an action item, not a document to read.
-  if (name === undefined || text(target, "key") === stepperRequestKey) {
+  if (label === undefined || text(target, "key") === stepperRequestKey) {
     return [];
   }
+  // The label is agent-written: a newline in it would end the line.
+  const name = oneLine(label);
   const revision = field(target, "revisionNumber");
   const named =
     typeof revision === "number" ? `${name}, ${approvalWords.revision(revision)}` : name;
   const href = text(target, "href");
   // A Paperclip-relative link leads nowhere in Halonic, so only a full web address is linked.
-  const linked = href !== undefined && /^https?:\/\//.test(href) ? `[${named}](${href})` : named;
+  const linked =
+    href !== undefined && /^https?:\/\//.test(href) ? `[${linkText(named)}](${href})` : named;
   return [`${approvalWords.document}: ${linked}`];
 }
 
