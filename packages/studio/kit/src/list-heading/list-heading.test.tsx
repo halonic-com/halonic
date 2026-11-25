@@ -26,6 +26,19 @@ verifies("kit.list-heading", () => {
     expect(heading.className).toContain("px-4 pt-4 pb-1 text-label uppercase text-fg-muted");
   });
 
+  it("draws a Needs you heading in warning and a Failed one in danger", () => {
+    const { container } = render(
+      <>
+        <ListHeading name="Needs you" tone="warning" />
+        <ListHeading name="Failed" tone="danger" />
+      </>,
+    );
+    const [needsYou, failed] = Array.from(container.querySelectorAll("h2"));
+    expect(needsYou?.className).toContain("text-warning");
+    expect(needsYou?.className).not.toContain("text-fg-muted");
+    expect(failed?.className).toContain("text-danger");
+  });
+
   it("takes another heading level and an id", () => {
     const { container } = render(<ListHeading name="Agents" headingLevel={3} id="agents" />);
     expect(container.querySelector("h3")?.id).toBe("agents");

@@ -8,6 +8,11 @@ import { fromMinorUnits, type MoneyTotal, type RunCost } from "../costs/cost-tot
 import type { GroupedRun, TodaySummary } from "../list/run-groups.ts";
 import { lineSeparator } from "../run-words.ts";
 
+/** Who or what ran, for the row's tile: an agent by its name, or a workflow. */
+export type RunBy =
+  | { readonly kind: "agent"; readonly name: string }
+  | { readonly kind: "workflow" };
+
 /** One row of the Runs app's list. */
 export interface AppRun extends GroupedRun {
   /** What ran: a workflow's name, or an agent's name with its title. */
@@ -16,6 +21,7 @@ export interface AppRun extends GroupedRun {
   readonly line: string;
   /** Where it runs: the workspace, or "Paperclip · Acme". */
   readonly where: string;
+  readonly by: RunBy;
   readonly chip: { readonly word: string; readonly tone: StatusChipTone };
   /** The sentence a screen reader hears for the row, ending with a full stop. */
   readonly label: string;
@@ -32,6 +38,8 @@ export const appListWords = {
   costs: "Costs",
   soFar: (amount: string) => `${amount} so far`,
   tokens: (count: number) => `${count.toLocaleString("en")} tokens`,
+  minutes: (count: number) => `${count} min`,
+  hours: (count: number) => `${count} h`,
 } as const;
 
 /** One amount of money, in its own currency: "€0.11". */
@@ -50,6 +58,50 @@ export function rowCostWords(cost: RunCost, running: boolean): string | undefine
   }
   const words = cost.kind === "money" ? moneyWords(cost) : appListWords.tokens(cost.tokens);
   return running ? appListWords.soFar(words) : words;
+}
+
+/** The cost at a row's end in two parts: the amount at full strength, and the muted rest. */
+export interface RowCostParts {
+  /** Money ("€0.04"), or `undefined` for tokens, which are all muted. */
+  readonly amount: string | undefined;
+  /** " so far", or the tokens' words. */
+  readonly rest: string;
+}
+
+/**
+ * {@link rowCostWords} split for its tones: money at full strength, "so far" and tokens muted
+ * (HAL-18594 rev 3, "Visual pass").
+ */
+export function rowCostParts(cost: RunCost, running: boolean): RowCostParts | undefined {
+  const words = rowCostWords(cost, running);
+  if (words === undefined) {
+    return undefined;
+  }
+  if (cost.kind !== "money") {
+    return { amount: undefined, rest: words };
+  }
+  const amount = moneyWords(cost);
+  return { amount, rest: words.slice(amount.length) };
+}
+
+/**
+ * The time at the end of a row's title line: how long it has run while it's going ("7 min",
+ * "2 h"), else the time it started on the user's clock ("09:00"). The day is the group's heading.
+ */
+export function rowTimeWords(run: GroupedRun, now: Date, timeZone: string): string {
+  const started = new Date(run.startedAt);
+  if (run.phase === "running" || run.phase === "needs-you") {
+    const minutes = Math.max(1, Math.floor((now.getTime() - started.getTime()) / 60_000));
+    return minutes < 60
+      ? appListWords.minutes(minutes)
+      : appListWords.hours(Math.floor(minutes / 60));
+  }
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(started);
 }
 
 /**

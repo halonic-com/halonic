@@ -7,6 +7,13 @@ import type { ReactNode, Ref } from "react";
  */
 export type ListHeadingLayout = "inline" | "stacked";
 
+/**
+ * A group heading's colour when the group is a state that asks for something: `warning` for
+ * "Needs you", `danger` for "Failed", as the Runs app's groups (HAL-18594 rev 3). Without it the
+ * heading is `fg-muted`.
+ */
+export type ListHeadingTone = "warning" | "danger";
+
 /** The props of `ListHeading`. */
 export interface ListHeadingProps {
   /** The group's name, written in sentence case: CSS draws the capitals. It may be cut. */
@@ -18,6 +25,7 @@ export interface ListHeadingProps {
   /** So a list that isn't a kit List can point `aria-labelledby` at the heading. */
   readonly id?: string;
   readonly layout?: ListHeadingLayout;
+  readonly tone?: ListHeadingTone;
   /**
    * For a heading that takes focus from code, as Home's section heading after Try again works
    * (a11y 1.4). With it the heading gets `tabindex="-1"`, so only code can focus it, and the
@@ -26,7 +34,13 @@ export interface ListHeadingProps {
   readonly headingRef?: Ref<HTMLHeadingElement>;
 }
 
-const shared = "px-4 pt-4 pb-1 text-label uppercase text-fg-muted";
+const shared = "px-4 pt-4 pb-1 text-label uppercase";
+
+const toneClasses: Record<ListHeadingTone | "none", string> = {
+  none: "text-fg-muted",
+  warning: "text-warning",
+  danger: "text-danger",
+};
 
 const layoutClasses: Record<ListHeadingLayout, string> = {
   inline: "flex flex-wrap items-baseline gap-x-1",
@@ -46,6 +60,7 @@ export function ListHeading({
   headingLevel = 2,
   id,
   layout = "inline",
+  tone,
   headingRef,
 }: ListHeadingProps) {
   const Heading = `h${headingLevel}` as const;
@@ -56,7 +71,7 @@ export function ListHeading({
       ref={headingRef}
       id={id}
       tabIndex={headingRef === undefined ? undefined : -1}
-      className={`${shared} ${layoutClasses[layout]}`}
+      className={`${shared} ${toneClasses[tone ?? "none"]} ${layoutClasses[layout]}`}
     >
       <span className="min-w-0 truncate">{name}</span>
       {hasDetail ? (

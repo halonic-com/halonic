@@ -27,4 +27,24 @@ verifies("kit.list", () => {
     expect(hidden?.parentElement?.className).toContain("relative");
     expect(hidden?.parentElement?.className).toContain("truncate");
   });
+
+  it("ends the title line with the titleEnd, never cut, after a title that is", () => {
+    const rows: readonly ListRow[] = [
+      { id: "digest", title: "Weekly digest", titleEnd: "7 min", meta: "Writing the summary" },
+    ];
+    const { container } = render(<List label="Runs" rows={rows} />);
+    const end = mainCell(container, 0).querySelector('[data-part="title-end"]');
+    expect(end?.textContent).toBe("7 min");
+    expect(end?.className).toContain("shrink-0");
+    expect(end?.previousElementSibling?.textContent).toBe("Weekly digest");
+    expect(end?.previousElementSibling?.className).toContain("truncate");
+  });
+
+  it("pads a row with a part under its meta line, which grows it past its height", () => {
+    const rows: readonly ListRow[] = [
+      { id: "digest", title: "Weekly digest", meta: "Done in 2 min", under: <span>Acme Ops</span> },
+    ];
+    const { container } = render(<List label="Runs" rows={rows} />);
+    expect(mainCell(container, 0).firstElementChild?.className).toContain("py-2");
+  });
 });

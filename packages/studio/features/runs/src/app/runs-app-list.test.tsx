@@ -21,6 +21,7 @@ function run(id: string, overrides: Partial<AppRun> = {}): AppRun {
     title: "Nightly report",
     line: "Done in 2 min",
     where: "Acme Ops",
+    by: { kind: "workflow" },
     chip: { word: "Done", tone: "success" },
     label: `Run ${id}, Nightly report, done.`,
     ...overrides,
@@ -30,6 +31,7 @@ function run(id: string, overrides: Partial<AppRun> = {}): AppRun {
 const runs = [
   run("running", {
     phase: "running",
+    startedAt: "2026-11-25T09:53:00Z",
     title: "Weekly digest",
     chip: { word: "Running", tone: "running" },
     cost: { kind: "money", currency: "EUR", minorUnits: 4 },
@@ -43,6 +45,7 @@ const runs = [
   run("agent", {
     title: "Reviewer",
     where: "Paperclip · Acme",
+    by: { kind: "agent", name: "Reviewer" },
     cost: { kind: "tokens", tokens: 1200 },
   }),
 ];
@@ -80,13 +83,56 @@ verifies("runs.app-list", () => {
       ]);
     });
 
-    it("ends each row with its cost, so far while running, or tokens", () => {
+    it("leads each row with what ran as a tile with its state's corner dot, not a chip", () => {
       const { root } = show();
-      const content = text(root);
-      expect(content).toContain("€0.04 so far");
-      expect(content).toContain("€0.07");
-      expect(content).toContain("1,200 tokens");
-      expect(content).toContain("Done in 2 min · Paperclip · Acme");
+      const leading = (id: string) =>
+        root.querySelector(`[data-row-id="${id}"] [data-part="run-tile"]`);
+      for (const id of ["running", "failed", "agent"]) {
+        const tile = leading(id);
+        expect(tile?.parentElement?.parentElement?.firstElementChild).toBe(tile?.parentElement);
+      }
+      expect(leading("failed")?.querySelector("[data-state]")?.getAttribute("data-state")).toBe(
+        "failed",
+      );
+      expect(leading("agent")?.textContent).toBe("R");
+      expect(leading("running")?.querySelector("svg[data-place-icon='workflows']")).not.toBeNull();
+      // No chip word: the row reads what ran, the time, its line, where, and the cost.
+      expect(text(root.querySelector('[data-row-id="failed"]'))).toBe(
+        "Nightly report09:00Failed in the step Fetch salesAcme Ops€0.07",
+      );
+    });
+
+    it("ends the title line with the time and the where line with the cost", () => {
+      const { root } = show();
+      const part = (id: string, name: string) =>
+        text(root.querySelector(`[data-row-id="${id}"] [data-part="${name}"]`));
+      expect(part("running", "title-end")).toBe("7 min");
+      expect(part("failed", "title-end")).toBe("09:00");
+      expect(part("running", "cost")).toBe("€0.04 so far");
+      expect(part("failed", "cost")).toBe("€0.07");
+      expect(part("agent", "cost")).toBe("1,200 tokens");
+      expect(part("agent", "where-line")).toBe("Paperclip · Acme1,200 tokens");
+      const money = root.querySelector('[data-row-id="running"] [data-part="cost"] .text-fg');
+      expect(text(money)).toBe("€0.04");
+    });
+
+    it("colours the Needs you and Failed headings, and leaves the others", () => {
+      const needsYou = run("waiting", { phase: "needs-you" });
+      const { root } = show({ runs: [...runs, needsYou] });
+      const tone = (heading: Element) =>
+        ["text-warning", "text-danger", "text-fg-muted"].find((name) =>
+          heading.className.includes(name),
+        );
+      const tones = [...root.querySelectorAll("h2")].map((heading) => [
+        text(heading),
+        tone(heading),
+      ]);
+      expect(tones).toEqual([
+        ["Needs you", "text-warning"],
+        ["Failed", "text-danger"],
+        ["Running", "text-fg-muted"],
+        ["Earlier today", "text-fg-muted"],
+      ]);
     });
 
     it("says so when nothing ran today, and leaves Running out", () => {

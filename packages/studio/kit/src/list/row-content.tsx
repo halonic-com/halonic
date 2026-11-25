@@ -58,6 +58,24 @@ function titleColour(row: AnyListRow): string {
   return row.muted === true ? "text-fg-muted" : "text-fg";
 }
 
+/** The title, with its `titleEnd` at the line's end when the row has one. */
+function TitleLine({ row }: { readonly row: AnyListRow }) {
+  const title = (
+    <span className={`${titleFit(row)} text-body-strong ${titleColour(row)}`}>{row.title}</span>
+  );
+  if (row.titleEnd === undefined) {
+    return title;
+  }
+  return (
+    <span className="flex min-w-0 items-baseline justify-between gap-3">
+      {title}
+      <span data-part="title-end" className="shrink-0 text-small text-fg-muted tabular-nums">
+        {row.titleEnd}
+      </span>
+    </span>
+  );
+}
+
 export interface RowContentProps {
   readonly row: AnyListRow;
   readonly phone: boolean;
@@ -140,7 +158,9 @@ export function RowContent({
   // the meta line.
   const trailingBelow = phone && (row.more !== undefined || chevron);
   const showTrailingRight = !trailingBelow && trailing !== undefined;
-  const wrap = row.wrap === true || row.wrapTitle === true || row.wrapMeta === true;
+  // A part under the meta line grows the row past its height, as wrapping does, so it gets padding too.
+  const wrap =
+    row.wrap === true || row.wrapTitle === true || row.wrapMeta === true || row.under !== undefined;
 
   return (
     <div
@@ -148,7 +168,7 @@ export function RowContent({
     >
       <Leading row={row} small={dense && !phone} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <span className={`${titleFit(row)} text-body-strong ${titleColour(row)}`}>{row.title}</span>
+        <TitleLine row={row} />
         <MetaLine row={row} text={meta} id={reasonId} chip={trailingBelow ? trailing : undefined} />
         {row.under}
         {row.actions === undefined || row.actions.length === 0 ? null : (
