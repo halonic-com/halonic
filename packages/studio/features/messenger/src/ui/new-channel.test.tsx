@@ -161,7 +161,7 @@ verifies("messenger.channel-create", () => {
       vi.spyOn(console, "error").mockImplementation(() => undefined);
       await press(button("Browse channels", await openMessenger(messaging)));
       expect(openDialog()?.querySelector("[role=alert]")?.textContent).toBe(
-        "Couldn't read the channels.",
+        "Couldn't load the channels.",
       );
     });
   });

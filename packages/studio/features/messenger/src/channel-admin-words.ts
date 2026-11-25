@@ -26,7 +26,7 @@ export const channelAdminWords = {
     oneSource: (source: string) => `Agents from ${source} only. A channel stays in one place.`,
     tooFew: "Pick at least 2 agents.",
     nameNeeded: "Give the channel a name.",
-    unread: "Couldn't read the agents.",
+    unread: "Couldn't load the agents.",
     sourceTooSmall: (source: string, count: number) =>
       `A channel needs at least 2 agents. ${source} has ${count}.`,
     nameTaken: (name: string) => `There's already a channel called ${name}.`,
@@ -39,7 +39,7 @@ export const channelAdminWords = {
     subtitle: (source: string) => `Channels in ${source} you aren't in.`,
     empty: (source: string) => `No other channels in ${source}.`,
     join: "Join",
-    unread: "Couldn't read the channels.",
+    unread: "Couldn't load the channels.",
     joinFailed: (channel: string, reason: string) => `Couldn't join ${channel}: ${reason}.`,
   },
   leave: {
