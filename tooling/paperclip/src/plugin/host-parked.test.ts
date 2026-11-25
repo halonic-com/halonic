@@ -121,14 +121,23 @@ verifies("paperclip.pr-watcher-retargeted", () => {
     ]);
   });
 
-  test("never marks a parked task done or hands it to a reviewer", async () => {
+  test("never hands a parked task to a reviewer", async () => {
     for (const status of ["backlog", "blocked"]) {
       const { host, writes } = fakeHost([parkedIssue(status)]);
       const paperclip = paperclipHost(host, "acme");
-      expect(await paperclip.markDone("task-17744", "PR watcher: done.")).toBe("closed");
       const change = { from: "agent-mateo", to: "agent-liam" };
       expect(await paperclip.handOff("task-17744", change, "PR watcher: x", "k1")).toBe("closed");
       expect(writes).toEqual([]);
+    }
+  });
+
+  // Since HAL-18147 a parked task whose pull requests landed is done too (`paperclip.pr-watcher-done`).
+  test("marks a parked task done when the watcher decided so", async () => {
+    for (const status of ["backlog", "blocked"]) {
+      const { host, writes } = fakeHost([parkedIssue(status)]);
+      const paperclip = paperclipHost(host, "acme");
+      expect(await paperclip.markDone("task-17744", "PR watcher: done.")).toBe("written");
+      expect(writes.map((write) => write.kind)).toEqual(["update", "comment"]);
     }
   });
 });

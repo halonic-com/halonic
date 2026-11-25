@@ -17,6 +17,7 @@ import { gitHubConflictFiles } from "../pr-watcher/conflict-files.ts";
 import { discoverPulls } from "../pr-watcher/discover.ts";
 import { baseGreenSince, snapshotFacts } from "../pr-watcher/facts.ts";
 import { ciOk, gitHubReader } from "../pr-watcher/github.ts";
+import { type HeldHead, heldHeads } from "../pr-watcher/held.ts";
 import { countMonitors, type MonitorCounts } from "../pr-watcher/monitors.ts";
 import type { TaskRow } from "../pr-watcher/paperclip.ts";
 import { gitHubRebaseOnly } from "../pr-watcher/rebase-only.ts";
@@ -32,6 +33,7 @@ import { type StateApi, saveSnapshot } from "../snapshot/store.ts";
 import { readWatchersSettings, runMergeWatchers, type WatchersSettings } from "../watchers/run.ts";
 import { type CompanySource, listedCompanies } from "./companies.ts";
 import { type HostApi, paperclipHost, unblockHost } from "./host.ts";
+import { passStateKey } from "./merge-control-lock.ts";
 import { countingFetch, type MetricsApi, writeMetrics } from "./metrics.ts";
 import {
   readStackRebaseSettings,
@@ -244,6 +246,25 @@ async function runFastTrack(
   }
 }
 
+/**
+ * The heads merge control holds after a failed merge group, from its last
+ * pass's state (HAL-18147). A read that fails is logged and holds nothing,
+ * so the watcher's other work goes on.
+ */
+async function heldOf(ctx: JobApi, companyId: string, repo: string): Promise<HeldHead[]> {
+  try {
+    return heldHeads(await ctx.state.get(passStateKey(companyId)), repo);
+  } catch (error) {
+    ctx.logger.error(
+      `PR watcher: couldn't read merge control's holds: ${(error as Error).message}`,
+      {
+        companyId,
+      },
+    );
+    return [];
+  }
+}
+
 /** One watcher pass for one company. Returns how many tasks it couldn't check. */
 async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<number> {
   const settings = await companySettings(ctx, companyId);
@@ -316,6 +337,7 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
     route: gitHubRoute(get),
     rebaseOnly: gitHubRebaseOnly(get, stackRebase?.tried.baseOf),
     conflictFiles: gitHubConflictFiles(get),
+    held: await heldOf(ctx, companyId, settings.repos[0] ?? defaultRepos[0] ?? ""),
     ...(stackRebase === undefined ? {} : { stackRebase }),
   });
   // After the watcher's tick, so a task it just marked done unblocks its dependents in the same pass.

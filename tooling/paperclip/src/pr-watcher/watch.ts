@@ -12,6 +12,7 @@ import {
 import type { FoundPulls, PullRef } from "./discover.ts";
 import { type PullFactsReader, pullKey } from "./facts.ts";
 import type { ReviewerRoute } from "./handoff.ts";
+import { type HeldHead, withHeld } from "./held.ts";
 import { doneMessage, wakeMessage } from "./messages.ts";
 import { postponeUntil } from "./monitors.ts";
 import type { CommentRow, Paperclip, TaskRow } from "./paperclip.ts";
@@ -44,6 +45,8 @@ export interface TickOptions {
   readonly conflictFiles?: ConflictFiles;
   /** Rebases a stacked pull request once its base merged (HAL-18031); off when unset. */
   readonly stackRebase?: StackRebase;
+  /** The heads merge control holds after a failed merge group (HAL-18147); none when unset. */
+  readonly held?: readonly HeldHead[];
 }
 
 /** How a tick went: counts, and the tasks it couldn't check. */
@@ -199,10 +202,8 @@ function factsOf(ref: PullRef, facts: TickRefs["facts"]): PullFacts {
 
 /** Whether a decision on the task depends on its comments: a wake, or a done the author may hold. */
 function needsMemory(task: TaskRow, pulls: readonly PullFacts[]): boolean {
-  if (task.parked === true) {
-    return parkedCandidates(pulls).length > 0;
-  }
-  return candidates(pulls).length > 0 || closedOutcome(pulls)?.kind === "done";
+  const wakes = task.parked === true ? parkedCandidates(pulls) : candidates(pulls);
+  return wakes.length > 0 || closedOutcome(pulls)?.kind === "done";
 }
 
 async function decideTask(
@@ -221,7 +222,10 @@ async function decideTask(
     );
     return decide(task, listedOwner, [], emptyMemory);
   }
-  const pulls = found.map((ref) => factsOf(ref, refs.facts));
+  const pulls = withHeld(
+    found.map((ref) => factsOf(ref, refs.facts)),
+    options.held ?? [],
+  );
   const ownerId = ownerOf(
     pulls.map((pull) => pull.branch),
     refs.owners,
@@ -258,6 +262,8 @@ async function act(options: TickOptions, task: TaskRow, decision: Decision): Pro
           task.id,
           body,
           decision.reasons.map((reason) => reason.key).join(" | "),
+          // A held head is the author's to fix now, whatever the task's status (HAL-18147).
+          { todo: decision.reasons.some((reason) => reason.kind === "held") },
         );
   if (outcome === "closed") {
     options.log(`${task.identifier}: closed during this pass, so left alone`);
