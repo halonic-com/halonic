@@ -16,6 +16,12 @@ const callCapability: Readonly<Record<string, Capability | undefined>> = {
   "secrets.resolve": "secrets.read-ref",
   "http.fetch": "http.outbound",
   "agents.get": "agents.read",
+  "agents.list": "agents.read",
+  "issues.get": "issues.read",
+  "issues.listComments": "issue.comments.read",
+  "issues.relations.get": "issue.relations.read",
+  "issues.documents.list": "issue.documents.read",
+  "issues.documents.get": "issue.documents.read",
   "metrics.write": "metrics.write",
 };
 

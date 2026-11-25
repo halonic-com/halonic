@@ -38,6 +38,21 @@ const probes: Record<
     return "counted";
   },
   agent: (host) => host.agents.get("agent-mateo", "acme"),
+  agents: (host) => host.agents.list({ companyId: "acme" }),
+  task: async (host) => {
+    const task = await host.issues.get("issue-1", "acme");
+    const comments = await host.issues.listComments("issue-1", "acme");
+    const { blockedBy } = await host.issues.relations.get("issue-1", "acme");
+    const documents = await host.issues.documents.list("issue-1", "acme");
+    const plan = await host.issues.documents.get("issue-1", "plan", "acme");
+    return {
+      title: task?.title,
+      comments: comments.map((comment) => comment.body),
+      blockedBy: blockedBy.length,
+      documents: documents.length,
+      plan: plan?.body ?? null,
+    };
+  },
 };
 
 /**

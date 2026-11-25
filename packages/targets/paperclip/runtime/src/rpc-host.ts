@@ -18,6 +18,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/** Paperclip's answer that should be a list; anything else is an error, not an empty list. */
+function asList<T>(method: string, result: unknown): readonly T[] {
+  if (!Array.isArray(result)) throw new Error(`Paperclip's ${method} answer isn't a list.`);
+  return result as T[];
+}
+
+/** Paperclip's answer that should be one record or nothing. */
+function asRecordOrNull<T>(method: string, result: unknown): T | null {
+  if (result === null || result === undefined) return null;
+  if (!isRecord(result)) throw new Error(`Paperclip's ${method} answer isn't a record.`);
+  return result as T;
+}
+
 /** Paperclip's answer to an `http.fetch`, as a `Response`. */
 function toResponse(result: unknown): Response {
   if (!isRecord(result) || typeof result["status"] !== "number") {
@@ -63,6 +76,31 @@ export function rpcHost(
           typeof agent["urlKey"] === "string" &&
           typeof agent["name"] === "string";
         return known ? { urlKey: String(agent["urlKey"]), name: String(agent["name"]) } : null;
+      },
+      list: async (input) => asList("agents.list", await to("agents.list", { ...input })),
+    },
+    issues: {
+      get: async (issueId, companyId) =>
+        asRecordOrNull("issues.get", await to("issues.get", { issueId, companyId })),
+      listComments: async (issueId, companyId) =>
+        asList("issues.listComments", await to("issues.listComments", { issueId, companyId })),
+      relations: {
+        get: async (issueId, companyId) => {
+          const relations = await to("issues.relations.get", { issueId, companyId });
+          const blockedBy = isRecord(relations) ? relations["blockedBy"] : undefined;
+          return { blockedBy: asList("issues.relations.get", blockedBy) };
+        },
+      },
+      documents: {
+        list: async (issueId, companyId) =>
+          asList(
+            "issues.documents.list",
+            await to("issues.documents.list", { issueId, companyId }),
+          ),
+        get: async (issueId, key, companyId) => {
+          const document = await to("issues.documents.get", { issueId, key, companyId });
+          return asRecordOrNull("issues.documents.get", document);
+        },
       },
     },
     config: {

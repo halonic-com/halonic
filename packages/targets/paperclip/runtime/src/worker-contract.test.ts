@@ -19,6 +19,10 @@ const allCapabilities = [
   "http.outbound",
   "agents.read",
   "metrics.write",
+  "issues.read",
+  "issue.comments.read",
+  "issue.relations.read",
+  "issue.documents.read",
 ];
 
 async function initialized(config: Record<string, unknown> = {}) {
@@ -105,6 +109,35 @@ verifies("runtime.worker-protocol", () => {
 
       expect(await host.executeTool({ kind: "agent" })).toMatchObject({
         result: { data: { urlKey: "mateo", name: "Mateo" } },
+      });
+    });
+
+    test("agents: the company's agents come back as a list", async () => {
+      const host = await initialized();
+      const mateo = { id: "agent-mateo", companyId: "acme", urlKey: "mateo", name: "Mateo" };
+      host.harness.seed({ agents: [mateo as never] });
+
+      expect(await host.executeTool({ kind: "agents" })).toMatchObject({
+        result: { data: [{ id: "agent-mateo", name: "Mateo" }] },
+      });
+    });
+
+    test("tasks: a task, its comments, blockers and documents come back", async () => {
+      const host = await initialized();
+      const task = { id: "issue-1", companyId: "acme", title: "Ship the plugin" };
+      const comment = { id: "comment-1", issueId: "issue-1", companyId: "acme", body: "On it." };
+      host.harness.seed({ issues: [task as never], issueComments: [comment as never] });
+
+      expect(await host.executeTool({ kind: "task" })).toMatchObject({
+        result: {
+          data: {
+            title: "Ship the plugin",
+            comments: ["On it."],
+            blockedBy: 0,
+            documents: 0,
+            plan: null,
+          },
+        },
       });
     });
 

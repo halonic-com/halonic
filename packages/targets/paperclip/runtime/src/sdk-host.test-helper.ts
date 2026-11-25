@@ -36,7 +36,19 @@ export interface SdkHarness {
         options?: { companyId: string },
       ): Promise<string>;
     };
-    readonly agents: { get(agentId: string, companyId: string): Promise<unknown> };
+    readonly agents: {
+      get(agentId: string, companyId: string): Promise<unknown>;
+      list(input: { companyId: string; limit?: number }): Promise<unknown>;
+    };
+    readonly issues: {
+      get(issueId: string, companyId: string): Promise<unknown>;
+      listComments(issueId: string, companyId: string): Promise<unknown>;
+      readonly relations: { get(issueId: string, companyId: string): Promise<unknown> };
+      readonly documents: {
+        list(issueId: string, companyId: string): Promise<unknown>;
+        get(issueId: string, key: string, companyId: string): Promise<unknown>;
+      };
+    };
     readonly metrics: {
       write(name: string, value: number, tags?: Record<string, string>): Promise<void>;
     };
@@ -44,8 +56,32 @@ export interface SdkHarness {
   };
   readonly metrics: readonly unknown[];
   getState(key: StateKey): unknown;
-  /** Seeds Paperclip's records; agents are the SDK's own `Agent` shape. */
-  seed(input: { agents: never[] }): void;
+  /** Seeds Paperclip's records, in the SDK's own `Agent`, `Issue` and `IssueComment` shapes. */
+  seed(input: { agents?: never[]; issues?: never[]; issueComments?: never[] }): void;
+}
+
+/** What the host answers a task read with, or `undefined` when the call isn't one. */
+function taskReadAnswer(harness: SdkHarness, request: Message): Promise<unknown> | undefined {
+  const { issues } = harness.ctx;
+  const { issueId, key, companyId } = request.params as {
+    issueId: string;
+    key: string;
+    companyId: string;
+  };
+  switch (request.method) {
+    case "issues.get":
+      return issues.get(issueId, companyId);
+    case "issues.listComments":
+      return issues.listComments(issueId, companyId);
+    case "issues.relations.get":
+      return issues.relations.get(issueId, companyId);
+    case "issues.documents.list":
+      return issues.documents.list(issueId, companyId);
+    case "issues.documents.get":
+      return issues.documents.get(issueId, key, companyId);
+    default:
+      return undefined;
+  }
 }
 
 /** The parts of `@paperclipai/plugin-sdk` the test host uses: its testing and protocol entries. */
@@ -112,6 +148,8 @@ async function hostAnswer(harness: SdkHarness, request: Message): Promise<unknow
       const { agentId, companyId } = params<{ agentId: string; companyId: string }>();
       return ctx.agents.get(agentId, companyId);
     }
+    case "agents.list":
+      return ctx.agents.list(params<{ companyId: string; limit?: number }>());
     case "metrics.write": {
       const { name, value, tags } = params<{
         name: string;
@@ -131,8 +169,11 @@ async function hostAnswer(harness: SdkHarness, request: Message): Promise<unknow
         body: await response.text(),
       };
     }
-    default:
-      throw new Error(`the test host has no ${String(request.method)}`);
+    default: {
+      const answer = taskReadAnswer(harness, request);
+      if (answer === undefined) throw new Error(`the test host has no ${String(request.method)}`);
+      return answer;
+    }
   }
 }
 
