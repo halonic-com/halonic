@@ -10,7 +10,9 @@ export const continueEvent = "continue";
  * from its beginning. `cause`: the plan's stop, as `run.failed` would have
  * given it, with a `plan.` code. `error`: the stop's words, for a reader that
  * doesn't know the code. `until`: when the run fails with the reason `budget`
- * if nobody continues it (ISO). The event has no cost or token use.
+ * if nobody continues it (ISO). `input`: the input the engine refused, which
+ * it decides again on `continue`; for the engine only, never shown. The event
+ * has no cost or token use.
  */
 export interface RunLimitWaitingEvent {
   type: "run.limit-waiting";
@@ -18,4 +20,5 @@ export interface RunLimitWaitingEvent {
   error: string;
   cause: RunFailureCause;
   until: string;
+  input: Record<string, unknown>;
 }

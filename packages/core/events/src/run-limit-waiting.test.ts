@@ -21,16 +21,18 @@ const waiting: LimitWaiting = {
   error: "Plan limit reached: 10 of 10 cost used.",
   cause,
   until: "2026-12-02T07:00:00.000Z",
+  input: { type: "effect-done", callId: "call-1" },
 };
 
 verifies("events.run-limit-waiting", () => {
-  typeTest("names the step, the stop and when the wait ends", () => {
+  typeTest("names the step, the stop, when the wait ends and the refused input", () => {
     expectTypeOf<LimitWaiting>().toEqualTypeOf<{
       type: "run.limit-waiting";
       state: string | null;
       error: string;
       cause: RunFailureCause;
       until: string;
+      input: Record<string, unknown>;
     }>();
   });
 
