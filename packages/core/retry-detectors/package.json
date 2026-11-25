@@ -1,0 +1,29 @@
+{
+  "name": "@halonicjs/retry-detectors",
+  "private": true,
+  "type": "module",
+  "description": "Retry Detectors.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "core",
+    "owner": "owen",
+    "coverage": {
+      "lines": 90,
+      "branches": 85
+    }
+  }
+}
