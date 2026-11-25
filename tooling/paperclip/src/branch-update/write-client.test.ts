@@ -157,6 +157,16 @@ verifies("paperclip.branch-update-write-scope", () => {
     }
   });
 
+  test("takes the token out before it cuts GitHub's message short, so no part of it survives the cut", async () => {
+    const { client } = setup({
+      answer: { status: 401, body: { message: `${"x".repeat(190)}${secret}` } },
+    });
+    const text = JSON.stringify(await client.rebase(request));
+    for (let start = 0; start + 8 <= secret.length; start += 1) {
+      expect(text).not.toContain(secret.slice(start, start + 8));
+    }
+  });
+
   test("only the stack rebase job imports the branch write client", () => {
     const src = resolve(dirname(fileURLToPath(import.meta.url)), "..");
     const files = readdirSync(src, { recursive: true, encoding: "utf8" }).filter(

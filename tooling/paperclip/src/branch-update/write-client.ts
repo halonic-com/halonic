@@ -126,8 +126,15 @@ async function checked(
   return { id: pull.node_id };
 }
 
-/** GitHub's own reason, its first GraphQL error or `message`, cut short. */
-async function reasonOf(response: Pick<Response, "ok" | "status" | "json">): Promise<string> {
+/**
+ * GitHub's own reason, its first GraphQL error or `message`, cut short. The
+ * token comes out before the cut: a token across the cut would otherwise
+ * leave its first part behind.
+ */
+async function reasonOf(
+  response: Pick<Response, "ok" | "status" | "json">,
+  token: string,
+): Promise<string> {
   const body = (await response.json().catch(() => null)) as {
     message?: unknown;
     errors?: readonly { message?: unknown }[];
@@ -136,7 +143,7 @@ async function reasonOf(response: Pick<Response, "ok" | "status" | "json">): Pro
   if (response.ok && message === undefined) {
     return "";
   }
-  const text = typeof message === "string" ? `: ${message.slice(0, 200)}` : "";
+  const text = typeof message === "string" ? `: ${scrubbed(message, token).slice(0, 200)}` : "";
   return `GitHub answered ${response.status}${text}`;
 }
 
@@ -188,10 +195,8 @@ export function branchUpdateClient(options: {
           },
           body: send.body,
         });
-        const reason = await reasonOf(response);
-        return reason === ""
-          ? { kind: "rebased" }
-          : { kind: "refused", reason: scrubbed(reason, token) };
+        const reason = await reasonOf(response, token);
+        return reason === "" ? { kind: "rebased" } : { kind: "refused", reason };
       } catch (error) {
         return { kind: "refused", reason: scrubbed(`${(error as Error).message}`, token) };
       }
