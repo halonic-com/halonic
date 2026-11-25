@@ -2,6 +2,7 @@
 
 - Approval: HAL-17624, from the board's approval of the phase 2 card (HAL-17544) and section 1.2 of the phase 2 architecture note (HAL-17511)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:httsMCsxLQNDQNxqxd+B5+VXdRGR2MCYFcQJT02l1RMbRARRkP6Q4lmsmxq+RmLxlBVzU3+B1Sb04xh+pRS1Bg==
 
 The board approved channels, conversations with several agents, with the
 phase 2 card. The port gets them as version 4: version 2 is the attachments
