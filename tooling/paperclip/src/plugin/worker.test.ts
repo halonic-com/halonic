@@ -30,6 +30,7 @@ verifies("paperclip.pr-watcher-plugin", () => {
     expect(secrets.map(([key]) => key)).toEqual([
       "githubToken",
       "mergeQueueToken",
+      "branchUpdateToken",
       "paperclipApiKey",
       "taggerAnthropicKey",
       "trialResultsTokenRef",

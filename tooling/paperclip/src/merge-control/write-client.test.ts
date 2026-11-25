@@ -146,9 +146,12 @@ verifies("paperclip.merge-control-write-scope", () => {
     const files = readdirSync(src, { recursive: true, encoding: "utf8" }).filter(
       (file) => file.endsWith(".ts") && !file.includes(".test"),
     );
-    const importers = files.filter((file) =>
-      /from\s+"[^"]*write-client\.ts"/.test(readFileSync(join(src, file), "utf8")),
-    );
+    // Merge control's client only; the branch client has its own check (HAL-18031).
+    const importers = files.filter((file) => {
+      const text = readFileSync(join(src, file), "utf8");
+      const local = file.startsWith("merge-control/") && /from\s+"\.\/write-client\.ts"/.test(text);
+      return local || /from\s+"[^"]*merge-control\/write-client\.ts"/.test(text);
+    });
     expect(importers.map((file) => relative(src, join(src, file))).sort()).toEqual([
       "merge-control/act.ts",
       "plugin/merge-control-job.ts",

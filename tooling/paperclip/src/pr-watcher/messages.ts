@@ -9,7 +9,7 @@ import type { PullSummary } from "./wake-status.ts";
  * limit (HAL-17922).
  */
 
-const reasonText: Record<Reason["kind"], (head: string) => string> = {
+const reasonText: Record<Reason["kind"], (head: string, reason: Reason) => string> = {
   "ci-red": (head) => `\`ci-ok\` failed on its head \`${head}\`.`,
   conflict: () => "it conflicts with its base branch and isn't in the merge queue.",
   retargeted: (head) =>
@@ -19,6 +19,8 @@ const reasonText: Record<Reason["kind"], (head: string) => string> = {
     `it has an approving GitHub review on its head \`${head}\`, which its base branch needs. Merge it on that head once \`ci-ok\` is green (\`--match-head-commit\`); nobody queues it for you.`,
   merged: () =>
     "it merged and `ci-ok` is green, but the task has comments since. Mark it done if nothing else is left.",
+  "stack-conflict": (head, { base }) =>
+    `#${base?.number} below it merged, and GitHub couldn't rebase it on \`main\` (head \`${head}\`). Rebase it without #${base?.number}'s old commits: \`git rebase --onto origin/main ${base?.head.slice(0, 7)}\`, then push.`,
 };
 
 /** What `pr_status` would say about each open pull request the reasons name, once each. */
@@ -49,9 +51,11 @@ export function wakeMessage(
   summary?: PullSummary,
   conflicts: ConflictFileMap = new Map(),
 ): string {
-  const lines = reasons.map(({ pull, kind }) => {
-    const files = kind === "conflict" ? conflictFilesText(conflicts.get(pullKey(pull))) : "";
-    return `- [#${pull.number}](${pull.url}): ${reasonText[kind](pull.head.slice(0, 7))}${files}`;
+  const lines = reasons.map((reason) => {
+    const { pull, kind } = reason;
+    const conflict = kind === "conflict" || kind === "stack-conflict";
+    const files = conflict ? conflictFilesText(conflicts.get(pullKey(pull))) : "";
+    return `- [#${pull.number}](${pull.url}): ${reasonText[kind](pull.head.slice(0, 7), reason)}${files}`;
   });
   return [
     "PR watcher: this needs you.",
@@ -59,7 +63,7 @@ export function wakeMessage(
     ...lines,
     "",
     ...statusLines(reasons, summary),
-    ...reasons.map((reason) => marker(reason.key)),
+    ...reasons.flatMap((reason) => [reason.key, ...(reason.also ?? [])].map(marker)),
   ].join("\n");
 }
 

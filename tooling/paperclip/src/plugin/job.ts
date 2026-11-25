@@ -33,6 +33,11 @@ import { readWatchersSettings, runMergeWatchers, type WatchersSettings } from ".
 import { type CompanySource, listedCompanies } from "./companies.ts";
 import { type HostApi, paperclipHost, unblockHost } from "./host.ts";
 import { countingFetch, type MetricsApi, writeMetrics } from "./metrics.ts";
+import {
+  readStackRebaseSettings,
+  type StackRebaseSettings,
+  stackRebaseOf,
+} from "./stack-rebase-job.ts";
 import { recordThinSpecOutcomes } from "./thin-spec-outcome.ts";
 
 /** The part of the plugin context the job uses, so tests can fake it. */
@@ -59,6 +64,8 @@ export interface WatcherSettings {
   readonly watchers: WatchersSettings;
   /** Where a `fast-track` label added as `halonic-dev` counts (HAL-16003 scope note); unset: the board's list of 24 Nov. */
   readonly fastTrackSharedLabelScope: SharedLabelList;
+  /** Rebasing a stacked pull request after its base merged (HAL-18031). */
+  readonly stackRebase: StackRebaseSettings;
 }
 
 /** `halonic` first: tools without a `repo` argument answer for the first one. */
@@ -96,6 +103,7 @@ export function readSettings(config: Readonly<Record<string, unknown>>): Watcher
       typeof config["fastTrackLabelAdder"] === "string" ? config["fastTrackLabelAdder"].trim() : "",
     watchers: readWatchersSettings(config),
     fastTrackSharedLabelScope: readSharedLabelList(config["fastTrackSharedLabelScope"]),
+    stackRebase: readStackRebaseSettings(config),
   };
 }
 
@@ -276,6 +284,15 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
     });
   });
   const snapshotCalls = requests();
+  const stackRebase = await stackRebaseOf({
+    ctx,
+    companyId,
+    settings: settings.stackRebase,
+    fetch,
+    get,
+    query,
+    repo: settings.repos[0] ?? defaultRepos[0] ?? "",
+  });
   await runFastTrack(ctx, companyId, snapshot, settings, now);
   const found = discoverPulls(snapshot);
   const paperclip = paperclipHost(ctx, companyId);
@@ -297,8 +314,9 @@ async function watchCompany(ctx: JobApi, companyId: string, now: Date): Promise<
     now,
     summary: snapshotSummary(snapshot),
     route: gitHubRoute(get),
-    rebaseOnly: gitHubRebaseOnly(get),
+    rebaseOnly: gitHubRebaseOnly(get, stackRebase?.tried.baseOf),
     conflictFiles: gitHubConflictFiles(get),
+    ...(stackRebase === undefined ? {} : { stackRebase }),
   });
   // After the watcher's tick, so a task it just marked done unblocks its dependents in the same pass.
   const unblocked = await unblockPass({

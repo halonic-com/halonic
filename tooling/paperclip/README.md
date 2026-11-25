@@ -8,7 +8,7 @@ the merge queue's fill order (`queue.prio`).
 - **Layer:** tooling
 - **Owner:** mateo
 - **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; the GitHub snapshot's reader and shape; `reviewerFor`, `isLiamPath` and the path lists; `queuePrio` and its weights)
-- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-conflict-files`, `paperclip.pr-watcher-wake-status`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-monitor-postpone`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-plugin`, `paperclip.pr-watcher-review-priority`, `paperclip.pr-tools`, `paperclip.task-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-piles`, `paperclip.board-check-waiting`, `paperclip.board-check-load`, `paperclip.board-check-approvals`, `paperclip.board-check-merge-speed`, `paperclip.board-tools`, `paperclip.merge-speed-tool`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.github-routes`, `paperclip.agent-merge-counts`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`, `paperclip.task-effort-rules`, `paperclip.task-effort-guard`, `paperclip.task-effort-writes`, `paperclip.handoff-limit`
+- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-conflict-files`, `paperclip.pr-watcher-wake-status`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-monitor-postpone`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-stack-rebase`, `paperclip.branch-update-write-scope`, `paperclip.pr-watcher-plugin`, `paperclip.pr-watcher-review-priority`, `paperclip.pr-tools`, `paperclip.task-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-piles`, `paperclip.board-check-waiting`, `paperclip.board-check-load`, `paperclip.board-check-approvals`, `paperclip.board-check-merge-speed`, `paperclip.board-tools`, `paperclip.merge-speed-tool`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.github-routes`, `paperclip.agent-merge-counts`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`, `paperclip.task-effort-rules`, `paperclip.task-effort-guard`, `paperclip.task-effort-writes`, `paperclip.handoff-limit`
 
 ## PR watcher
 
@@ -45,6 +45,38 @@ has a run going, it does nothing and logs why.
 
 Any open pull request keeps the task open, a stacked one included; one
 closed without merging is ignored.
+
+**Rebasing a stacked pull request** (HAL-18031, off until the board turns
+`stackRebase` on and sets `branchUpdateToken`). Before it wakes the author
+about a base change or a conflict, the watcher checks whether the pull
+request is the child of a merged one: same repository, now on `main`, its
+last base change came from a branch whose pull request GitHub says merged,
+and its head still holds that pull request's last head. Then it asks GitHub
+once per head to rebase it on `main` (`updatePullRequestBranch`, rebase
+method). `main` takes squash merges, so the rebase replays the base's old
+commits: GitHub drops the ones that come out empty and refuses when one
+conflicts, as when a review fix rewrote an earlier commit's line (trial on
+HAL-18035).
+
+- GitHub takes it: no wake; a note on the task says so. CI runs on the new
+  head, and an approval on the old head goes to its reviewer as rebase only
+  once `ci-ok` is green (the approved side is compared from the base's last
+  head, not from `main`).
+- GitHub refuses: one wake, naming the files and the command that leaves out
+  the base's old commits, `git rebase --onto origin/main <base head>`.
+- The same head again: nothing, whatever came of it. Tried heads are kept in
+  plugin state (`pr-watcher` / `stack-rebase`, the last 500).
+
+The rebase uses the **branch credential**, not the read token: a GitHub App
+the board creates with `Contents: write` on `halonic-com/halonic` only, no
+workflows scope (a branch that changes `.github/workflows/` falls back to
+the wake) and **no bypass** in the `main` ruleset. If it has to be a
+fine-grained token instead, it expires within 90 days and is rotated before
+then. The client (`src/branch-update/write-client.ts`) sends only that one
+mutation, and only for an open pull request whose head branch is in the
+same repository, still at the head the watcher read, and neither `main`,
+protected nor under a ruleset, all read with the read token. The token is
+resolved at each rebase and kept out of state, logs and errors.
 
 **Handing a ready task to its reviewer** (HAL-17675). When the watcher has
 nothing else to tell the author, every open pull request of the task is out

@@ -178,6 +178,7 @@ describe("the job", () => {
         parents: ["HAL-17422"],
         pulls: ["halonic-com/halonic#5659", "halonic-com/halonic#5674"],
       },
+      stackRebase: { enabled: false, token: undefined },
     });
     expect(readSettings({ fastTrackLabelAdder: " board-member " }).fastTrackLabelAdder).toBe(
       "board-member",

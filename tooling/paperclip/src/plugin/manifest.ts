@@ -2,6 +2,7 @@ import type { PaperclipPluginManifestV1, PluginCapability } from "@paperclipai/p
 import { workerAgentsRouteKey } from "../worker-agents/keys.ts";
 import { workerReadTables } from "../worker-agents/tables.ts";
 import { fastTrackConfigProperties, mergeControlConfigProperties } from "./queue-settings.ts";
+import { stackRebaseConfigProperties } from "./stack-rebase-settings.ts";
 import { taskToolDeclarations } from "./task-tool-declarations.ts";
 import {
   trialResultsConfigProperties,
@@ -136,6 +137,7 @@ export const manifest: PaperclipPluginManifestV1 = {
         format: "secret-ref",
       },
       ...mergeControlConfigProperties,
+      ...stackRebaseConfigProperties,
       repos: {
         type: "array",
         title: "Repositories",
