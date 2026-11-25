@@ -2,6 +2,7 @@
 
 - Approval: the task HAL-18263 asks for a `routing` place in the workspace loader, `snapshotInputOf` and the plugin builder passing it to `makeSnapshot`, and the release file's change list naming a routing change (plan HAL-17450 rev 5, step 2 and "Safety", accepted by the board on 24 Nov); a security PR, so Liam signs this note in review and Julian reviews it
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:JmwSaIDqHeGSY0nbIb7KMzTilT1tKxiJMuBlon/ETKdfglHp5pDxROyRmhLi5xU6KOitqs4xrByoIgEvBCtCCQ==
 
 The file kind registry gets one new kind, `routing` (`routing.yaml` at the workspace root), after `signal`, read with the snapshot's own `Routing` schema and `checkRouting`, so the loader, `halonic validate` and the plugin builder read it like any other workspace file and refuse it for the same reasons the snapshot does. The registry requirement lists its kinds by name, so it now names `routing` too. Nothing is removed: every kind it listed before stays, in the same order. `halonic schema` writes one more file, `routing.schema.json`, so its golden output says 20 schemas and lists it. Like the snapshot's `routing` part, the file has no `version` key, so the spec-id-version requirement and its test name `routing` next to `skill` and `template` as the kinds whose `$id` takes `SCHEMA_VERSION`. `routing.yaml` joins the files an agent's working folder may not be, because it decides who reviews.
 
