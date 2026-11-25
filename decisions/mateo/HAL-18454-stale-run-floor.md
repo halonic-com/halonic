@@ -3,6 +3,7 @@
 - Task: HAL-18454
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-18454 (the ci-fasttrack session's sweep 1, 25 Nov 10:38–11:22 UTC; Liam approves this note in review)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:LhjGUiF0vBfq1tNWX/KvrcBFSe5LipFZRKpeivVtnLe2ptgk9gUy4RJvrqVkIszk0FbI/f+IYpIZv7ViumDYBQ==
 
 ## What changes
 
