@@ -20,6 +20,11 @@ cases from the same export are in `src/end-of-run-selftest.ts` and `src/in-run-s
 The tests score every case and fail if this port disagrees with the Python model by more
 than 0.001.
 
+Every model was fitted on one writer setup, `calibratedOn` (opencode, deepseek-v4.1-flash on
+deepinfra-fp8). Both scoring functions take the attempt's setup and return `kind: "refused"`
+for any other, because turns, tool calls, seconds and tokens mean different things on another
+agent, model or provider.
+
 The end-of-run and 3-minute models are trained (held-out AUC 0.785 and 0.720 on live runs).
 The 6- and 10-minute models are placeholders (`trained: false`: every attempt scores 0.5 and
 none is flagged) until there are enough live runs to fit them; on today's data they scored

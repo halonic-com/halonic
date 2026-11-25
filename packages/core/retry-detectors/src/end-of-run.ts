@@ -1,16 +1,14 @@
 import { type AttemptStep, countChangedLines, turnStepTool } from "./attempt-step.ts";
-import { endOfRunModel } from "./coefficients.ts";
-import {
-  type FailScore,
-  type FeatureValues,
-  type LogisticModel,
-  scoreWith,
-} from "./logistic-model.ts";
+import { type DetectorResult, scoreIfCalibrated, type WriterSetup } from "./calibration.ts";
+import { calibratedOn, endOfRunModel } from "./coefficients.ts";
+import { type FeatureValues, type LogisticModel, scoreWith } from "./logistic-model.ts";
 
 /** What is known about a writer attempt once it stops, before any check runs. */
 export interface FinishedAttempt {
   /** The attempt's steps from the writer's event stream. */
   readonly steps: readonly AttemptStep[];
+  /** The agent, model and provider it ran on. */
+  readonly setup: WriterSetup;
   /** The attempt's diff against its base commit. */
   readonly diff: string;
   /** Wall seconds from start to stop. */
@@ -35,7 +33,7 @@ const defaultExpectedDiffLines = 50;
  * and `live_detector.py`). Never the check result, hidden tests or failure reasons.
  * Every number is here; the model picks the ones it was trained on.
  */
-export function endOfRunFeatures(attempt: FinishedAttempt): FeatureValues {
+export function endOfRunFeatures(attempt: Omit<FinishedAttempt, "setup">): FeatureValues {
   const toolCounts = countTools(attempt.steps);
   const changedLines = countChangedLines(attempt.diff);
   const expected = attempt.expectedDiffLines ?? defaultExpectedDiffLines;
@@ -55,12 +53,18 @@ export function endOfRunFeatures(attempt: FinishedAttempt): FeatureValues {
   return values;
 }
 
-/** Scores a finished attempt; `flagged` means retry (or don't ship) it. */
+/**
+ * Scores a finished attempt; `flagged` means retry (or don't ship) it. Refuses
+ * an attempt from a setup other than the one the model was fitted on.
+ */
 export function scoreFinishedAttempt(
   attempt: FinishedAttempt,
   model: LogisticModel = endOfRunModel,
-): FailScore {
-  return scoreWith(model, endOfRunFeatures(attempt));
+  modelSetup: WriterSetup = calibratedOn,
+): DetectorResult {
+  return scoreIfCalibrated(attempt.setup, modelSetup, () =>
+    scoreWith(model, endOfRunFeatures(attempt)),
+  );
 }
 
 function countTurns(steps: readonly AttemptStep[]): number {

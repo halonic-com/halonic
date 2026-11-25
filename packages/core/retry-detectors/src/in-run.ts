@@ -1,11 +1,7 @@
 import { type AttemptStep, turnStepTool } from "./attempt-step.ts";
-import { inRunModels } from "./coefficients.ts";
-import {
-  type FailScore,
-  type FeatureValues,
-  type LogisticModel,
-  scoreWith,
-} from "./logistic-model.ts";
+import { type DetectorResult, scoreIfCalibrated, type WriterSetup } from "./calibration.ts";
+import { calibratedOn, inRunModels } from "./coefficients.ts";
+import { type FeatureValues, type LogisticModel, scoreWith } from "./logistic-model.ts";
 
 /** The minutes into an attempt at which the in-run detector scores it. */
 export const checkpointMinutes = [3, 6, 10] as const;
@@ -68,15 +64,20 @@ export function checkpointTags(
 /**
  * Scores a running attempt at a checkpoint from the steps seen so far. Only
  * meaningful while the attempt is still running at that minute; once it has
- * stopped, use the end-of-run score.
+ * stopped, use the end-of-run score. Refuses an attempt from a setup other
+ * than the one the models were fitted on.
  */
 export function scoreRunningAttempt(
   steps: readonly AttemptStep[],
   minute: CheckpointMinute,
+  setup: WriterSetup,
   existingFiles?: ReadonlySet<string>,
   models: Readonly<Record<CheckpointMinute, LogisticModel>> = inRunModels,
-): FailScore {
-  return scoreWith(models[minute], checkpointTags(steps, minute, existingFiles));
+  modelSetup: WriterSetup = calibratedOn,
+): DetectorResult {
+  return scoreIfCalibrated(setup, modelSetup, () =>
+    scoreWith(models[minute], checkpointTags(steps, minute, existingFiles)),
+  );
 }
 
 function filesRead(step: AttemptStep): string[] {

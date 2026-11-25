@@ -9,6 +9,7 @@
  * 0.50, too weak to act on until there are more live runs. Callers check
  * `trained` before they act on a score.
  */
+import type { WriterSetup } from "./calibration.ts";
 import type { CheckpointMinute } from "./in-run.ts";
 import type { FeatureValues, LogisticModel } from "./logistic-model.ts";
 
@@ -86,6 +87,13 @@ function untrained(
     threshold: 0.5,
   };
 }
+
+/** The only setup every model here was fitted on; the detectors refuse attempts from any other. */
+export const calibratedOn: WriterSetup = {
+  agent: "opencode",
+  model: "deepseek-v4.1-flash",
+  provider: "deepinfra-fp8",
+};
 
 /** End-of-run detector; report threshold 0.5 (catches 70–73% of failures at 24–26% false flags). */
 export const endOfRunModel: TrainedModel = {

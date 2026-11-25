@@ -2,7 +2,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import type { AttemptStep } from "./attempt-step.ts";
 import { countChangedLines } from "./attempt-step.ts";
-import { endOfRunModel, inRunModels } from "./coefficients.ts";
+import { calibratedOn, endOfRunModel, inRunModels } from "./coefficients.ts";
 import { endOfRunFeatures, scoreFinishedAttempt } from "./end-of-run.ts";
 import { endOfRunSelftest } from "./end-of-run-selftest.ts";
 import { checkpointMinutes, checkpointTags, scoreRunningAttempt } from "./in-run.ts";
@@ -56,6 +56,15 @@ describe("scoreWith", () => {
     );
   });
 });
+
+const finishedAttempt = {
+  steps,
+  diff,
+  seconds: 1,
+  exitCode: 0,
+  timedOut: false,
+  promptChars: 1,
+};
 
 verifies("retry-detectors.end-of-run", () => {
   describe("countChangedLines", () => {
@@ -201,12 +210,40 @@ verifies("retry-detectors.end-of-run", () => {
 
     it("score attempts through the public helpers", () => {
       expect(
-        scoreFinishedAttempt(
-          { steps, diff, seconds: 1, exitCode: 0, timedOut: false, promptChars: 1 },
-          twoFeatureModel,
-        ).flagged,
-      ).toBe(false);
-      expect(scoreRunningAttempt(steps, 10).pFail).toBeGreaterThanOrEqual(0);
+        scoreFinishedAttempt({ ...finishedAttempt, setup: calibratedOn }, twoFeatureModel),
+      ).toMatchObject({ kind: "scored", flagged: false });
+      expect(scoreRunningAttempt(steps, 3, calibratedOn)).toMatchObject({ kind: "scored" });
+    });
+  });
+});
+
+verifies("retry-detectors.calibration", () => {
+  describe("the calibrated setup", () => {
+    const otherModel = { ...calibratedOn, model: "another-model" };
+    const otherProvider = { ...calibratedOn, provider: "another-provider" };
+
+    it("is the setup the shipped coefficients were fitted on", () => {
+      expect(calibratedOn).toEqual({
+        agent: "opencode",
+        model: "deepseek-v4.1-flash",
+        provider: "deepinfra-fp8",
+      });
+    });
+
+    it("refuses a finished attempt from another model or provider", () => {
+      for (const setup of [otherModel, otherProvider]) {
+        expect(scoreFinishedAttempt({ ...finishedAttempt, setup })).toEqual({
+          kind: "refused",
+          calibratedOn,
+        });
+      }
+    });
+
+    it("refuses a running attempt from another agent", () => {
+      expect(scoreRunningAttempt(steps, 3, { ...calibratedOn, agent: "another-agent" })).toEqual({
+        kind: "refused",
+        calibratedOn,
+      });
     });
   });
 });
