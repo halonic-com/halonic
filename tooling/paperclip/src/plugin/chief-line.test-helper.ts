@@ -20,7 +20,15 @@ export function fakeChiefLine(
   options: { config?: Record<string, unknown>; hookStatuses?: number[] } = {},
 ) {
   const { state } = fakeState();
-  const issues: { id: string; identifier: string; title: string; assigneeAgentId?: string }[] = [];
+  const issues: {
+    id: string;
+    identifier: string;
+    title: string;
+    status: string;
+    projectId?: string;
+    createdAt: Date;
+    assigneeAgentId?: string;
+  }[] = [];
   const comments: Record<string, LineComment[]> = {};
   const created: unknown[] = [];
   const wakes: { issueId: string; options: unknown }[] = [];
@@ -45,13 +53,24 @@ export function fakeChiefLine(
       ],
     },
     issues: {
-      list: async () => issues,
-      create: async (input: { title: string; assigneeAgentId?: string }) => {
+      list: async (input: { projectId?: string }) =>
+        issues.filter(
+          (issue) => input.projectId === undefined || issue.projectId === input.projectId,
+        ),
+      get: async (issueId: string) => issues.find((issue) => issue.id === issueId) ?? null,
+      create: async (input: {
+        title: string;
+        status?: string;
+        projectId?: string;
+        assigneeAgentId?: string;
+      }) => {
         created.push(input);
         const issue = {
           ...input,
           id: `issue-${issues.length + 1}`,
           identifier: `ACME-${issues.length + 1}`,
+          status: input.status ?? "todo",
+          createdAt: new Date(Date.UTC(2026, 10, 25, 9, issues.length)),
         };
         issues.push(issue);
         return issue;

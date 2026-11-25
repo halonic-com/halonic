@@ -98,6 +98,9 @@ export function webhookAllowed(url: string, hosts: readonly string[]): boolean {
 /** The title of a caller's task. */
 export const threadTitle = (caller: string) => `[chief-line] ${caller}`;
 
+/** A thread's title, with the caller as its first group. */
+export const threadTitlePattern = /^\[chief-line\] ([a-z0-9][a-z0-9-]{0,40})$/;
+
 /** Where the chief line keeps its records: one entry per company. */
 export const chiefLineStateKey = (companyId: string, key: ChiefLineRecord) =>
   ({ scopeKind: "company", scopeId: companyId, namespace: "chief-line", stateKey: key }) as const;
