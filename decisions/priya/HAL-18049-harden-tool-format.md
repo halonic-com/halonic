@@ -4,14 +4,6 @@
 - Approval: Liam approves this note in review
 - Kind: user-visible
 
-## Covers
-
-- format.tool-refusals
-- format.workspace-snapshot
-- format.tool-file
-- format.plugin-file
-- cli.commands.trust.plugin
-
 ## What changes
 
 The requirements gain refusals; none is removed or weakened, and no test or example is dropped.
@@ -39,3 +31,11 @@ for every call. The size caps keep a hostile file or snapshot from costing a par
 The tool requirements are unreleased. Plugin text holding such characters was never meant to
 pass: `format.plugin-file` exists to stop one name imitating another, and these characters do
 that as well as a text-direction mark does.
+
+## Covers
+
+- format.tool-refusals
+- format.workspace-snapshot
+- format.tool-file
+- format.plugin-file
+- cli.commands.trust.plugin
