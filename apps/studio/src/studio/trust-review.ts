@@ -1,5 +1,5 @@
 import { keyDestination } from "@halonicjs/adapter-workspace-models";
-import { programTrustFields, type TrustCheck } from "@halonicjs/app";
+import { type AssistantAddedHosts, programTrustFields, type TrustCheck } from "@halonicjs/app";
 import type {
   TrustReview,
   TrustRowView,
@@ -33,6 +33,11 @@ export interface TrustReviewFacts {
   readonly runs?: IntegrationRuns;
   /** Each installed plugin's backend hosts, for a plugin connector's Reaches line (HAL-15123). */
   readonly pluginHosts?: PluginHosts;
+  /**
+   * The hosts the assistant added to local integrations' sheets that the person didn't name, from
+   * the profile's review folder: the Reaches row marks them (HAL-525). Left out, none.
+   */
+  readonly assistantAdded?: AssistantAddedHosts;
 }
 
 export type { IntegrationRuns } from "./integration-trust-rows.ts";
@@ -92,7 +97,7 @@ export function trustReviewOf(check: TrustCheck, facts: TrustReviewFacts): Trust
       ...common,
       title: `${facts.name} changed since you trusted it on ${since}`,
       changed: true,
-      ...changesView(check.changes, since, unpinned, facts.runs, facts.pluginHosts),
+      ...changesView(check.changes, since, unpinned, facts),
     };
   }
   const { connectors, agents = [], integrations = [], providers = [] } = check.content;
@@ -103,7 +108,7 @@ export function trustReviewOf(check: TrustCheck, facts: TrustReviewFacts): Trust
     summary: startSummary(check.content, facts.runs),
     sections: sectionsOf(
       programs(connectors).map((row) => programRow(row, unpinned, facts.runs)),
-      integrations.map((row) => integrationRow(row, facts.runs)),
+      integrations.map((row) => integrationRow(row, facts.runs, facts.assistantAdded)),
       agents.map(agentRow),
       [
         ...addresses(connectors).map((row) => addressRow(row, facts.pluginHosts)),
@@ -118,9 +123,9 @@ function changesView(
   changes: TrustChanges,
   since: string,
   unpinned: ReadonlySet<string>,
-  runs: IntegrationRuns,
-  pluginHosts: PluginHosts | undefined,
+  facts: TrustReviewFacts,
 ): Pick<TrustReview, "summary" | "sections" | "unchanged"> {
+  const { runs, pluginHosts, assistantAdded } = facts;
   const kind = (isKind: (row: ConnectorTrustContent) => boolean) => ({
     added: changes.added.filter(isKind).length,
     changed: changes.changed.filter((row) => isKind(row.after)).length,
@@ -185,11 +190,13 @@ function changesView(
       ],
       [
         ...tagged(
-          changes.integrations.added.map((row) => integrationRow(row, runs)),
+          changes.integrations.added.map((row) => integrationRow(row, runs, assistantAdded)),
           "New",
         ),
         ...tagged(
-          changes.integrations.changed.map((row) => integrationRow(row.after, runs)),
+          changes.integrations.changed.map((row) =>
+            integrationRow(row.after, runs, assistantAdded),
+          ),
           "Changed",
         ),
       ],

@@ -6,7 +6,12 @@
 // rows for what changed. `trust-check.ts` puts them in sections.
 
 import { keyDestination } from "@halonicjs/adapter-workspace-models";
-import { type ProgramTrustFields, programTrustFields } from "@halonicjs/app";
+import {
+  type AssistantAddedHosts,
+  assistantAddedIn,
+  type ProgramTrustFields,
+  programTrustFields,
+} from "@halonicjs/app";
 import { defaultWorkingFolder } from "@halonicjs/format";
 import type {
   AgentTrustContent,
@@ -261,29 +266,66 @@ export function providerKeyName(provider: ProviderTrustContent): string | undefi
 /**
  * "  my-crm        CRM_URL   https://crm.example.com", then one line under it
  * per further setting, the names padded to the longest (team, HAL-3498).
+ * After them, each host the assistant added to the sheet that the person
+ * didn't name, with "added by the assistant" (HAL-525). The sheet's other
+ * fixed hosts aren't listed.
+ *
+ * @param assistantAdded - the assistant-added hosts as the profile's review folder records them
  */
-export function integrationRows(integration: IntegrationTrustContent): Phrase[] {
+export function integrationRows(
+  integration: IntegrationTrustContent,
+  assistantAdded: AssistantAddedHosts = new Map(),
+): Phrase[] {
   const settings = Object.entries(integration.addresses).map(
-    ([name, address]) => [printable(name), address] as const,
+    ([name, address]) => [printable(name), settingAddress(address)] as const,
   );
-  const width = Math.max(0, ...settings.map(([name]) => name.length));
-  return settings.map(([name, address], index) => {
-    const detail = phrase`${name.padEnd(width + columnGap)}${settingAddress(address)}`;
+  return namedRows(integration, [...settings, ...assistantAddedLines(integration, assistantAdded)]);
+}
+
+/** The assistant-added hosts' lines of {@link integrationRows}, without the settings. */
+function assistantAddedLines(
+  integration: IntegrationTrustContent,
+  assistantAdded: AssistantAddedHosts,
+): (readonly [string, Phrase])[] {
+  const marked = assistantAddedIn(
+    assistantAdded,
+    integration.folder,
+    Object.keys(integration.hosts),
+  );
+  return [...marked].map(
+    (host) => [printable(host), trustMessages.assistantAddedHost().phrase] as const,
+  );
+}
+
+/** The integration's id on the first line, then a padded name and its value on each line. */
+function namedRows(
+  integration: IntegrationTrustContent,
+  lines: readonly (readonly [string, Phrase])[],
+): Phrase[] {
+  const width = Math.max(0, ...lines.map(([name]) => name.length));
+  return lines.map(([name, value], index) => {
+    const detail = phrase`${name.padEnd(width + columnGap)}${value}`;
     return index === 0 ? row(printable(integration.id), detail) : phrase`${underRow}${detail}`;
   });
 }
 
 /**
  * A changed local integration's Changed rows: its setting addresses when one
- * changed, then its folder when it moved, then "code changed" when a file
- * in it changed. Every other field is in the sheet, so a change to one is a
- * change to the code too.
+ * changed, else the hosts the assistant added, then its folder when it
+ * moved, then "code changed" when a file in it changed. Every other field is
+ * in the sheet, so a change to one is a change to the code too.
  */
-export function integrationChanges(integration: ChangedIntegration): Phrase[] {
+export function integrationChanges(
+  integration: ChangedIntegration,
+  assistantAdded: AssistantAddedHosts = new Map(),
+): Phrase[] {
   const { id, before, after, fields } = integration;
   const changedRow = trustMessages.changedRow();
+  const addresses = fields.includes("addresses")
+    ? integrationRows(after, assistantAdded)
+    : namedRows(after, assistantAddedLines(after, assistantAdded));
   return [
-    ...(fields.includes("addresses") ? tagged(integrationRows(after), changedRow) : []),
+    ...tagged(addresses, changedRow),
     ...(fields.includes("folder")
       ? [
           withTag(

@@ -208,6 +208,11 @@ export const trustMessages = defineMessages("trust", {
   /** A local integration's setting with no address in it yet. */
   settingNotSet: () => phrase`not set`,
   /**
+   * After a host the assistant added to a local integration's sheet that the
+   * person didn't name in the chat (HAL-525): "api.example.com   added by the assistant".
+   */
+  assistantAddedHost: () => phrase`added by the assistant`,
+  /**
    * A local integration's setting whose URL can't be trusted, such as one
    * with a password in it: "can't be used: the address has a user name or password in it".
    */

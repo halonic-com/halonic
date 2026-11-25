@@ -20,6 +20,7 @@ import {
   builtInAuthoringSkill,
   ownAuthoringSkill,
   type ShowOutcome,
+  sheetHostsNamedIn,
 } from "@halonicjs/assistant";
 import type { ChatMessage, DefinitionStore, Digest } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
@@ -41,6 +42,7 @@ import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspa
 import { acceptedFiles, isAuthoringSkillPath } from "./accepted-files.ts";
 import { answerWithFailure } from "./chat-failure.ts";
 import { agentOfKind, chatAgentsOf, type HasKey, modelOptionsOf } from "./chat-models.ts";
+import { forTheModel } from "./for-the-model.ts";
 import { type ChatStore, type KeptChat, KeptChats } from "./kept-chats.ts";
 import {
   assistantModelOf,
@@ -135,9 +137,17 @@ export class WorkspaceAssistant implements AssistantHost {
       onSaveFailed: (error) => console.error("Saving a chat", error),
     });
     this.askTrust = parts.askTrust;
-    this.#stopReview = parts.review.onDidChange((paths) =>
+    const stopListening = parts.review.onDidChange((paths) =>
       this.#changed({ kind: "review", paths }),
     );
+    // Accept marks the hosts a change adds that the person didn't name in its chat (HAL-525).
+    const stopNaming = parts.review.readHostsNamedWith(async (chatId) =>
+      sheetHostsNamedIn(await this.#personMessages(chatId)),
+    );
+    this.#stopReview = () => {
+      stopListening();
+      stopNaming();
+    };
     this.#stopEngine =
       parts.engine?.onChange(() => this.#changed({ kind: "engine" })) ?? (() => undefined);
     this.#stopTrust =
@@ -431,11 +441,7 @@ export class WorkspaceAssistant implements AssistantHost {
     if (tools === undefined) {
       const show = async (item: ItemRef): Promise<ShowOutcome> =>
         this.#shows.get(chatId)?.(item) ?? "nowhere";
-      // The message sent is kept before the first model turn, so a write in it reads it.
-      const personMessages = async () =>
-        (await this.#chats.get(chatId)).messages.flatMap((m) =>
-          m.role === "user" ? [m.content] : [],
-        );
+      const personMessages = () => this.#personMessages(chatId);
       tools = buildChatTools({ chatId, files, review, isTrusted, digest, show, personMessages });
       this.#tools.set(chatId, tools);
     }
@@ -443,6 +449,16 @@ export class WorkspaceAssistant implements AssistantHost {
     // so `show` and `integration_guide` wait for trust.
     const afterTrust = ["show", "integration_guide"];
     return isTrusted() ? tools : tools.filter((tool) => !afterTrust.includes(tool.definition.name));
+  }
+
+  /**
+   * The person's own messages in a chat: what the Build chat's gate and the "added by the
+   * assistant" mark count as named. The message sent is kept before the first model turn, so a
+   * write in it reads it.
+   */
+  async #personMessages(chatId: string): Promise<string[]> {
+    const { messages } = await this.#chats.get(chatId);
+    return messages.flatMap((m) => (m.role === "user" ? [m.content] : []));
   }
 
   #add(chatId: string, message: ChatMessage): void {
@@ -461,19 +477,4 @@ export class WorkspaceAssistant implements AssistantHost {
   #changed(change: AssistantChange): void {
     for (const listener of [...this.#listeners]) listener(change);
   }
-}
-
-/**
- * What the model reads: the chat, then the person's message with the notes on the cards they
- * decided before it (flow-assistant 3.3). The notes aren't kept: the cards already say it.
- */
-function forTheModel(
-  kept: readonly ChatMessage[],
-  sent: ChatMessage | undefined,
-  notes: readonly string[],
-): readonly ChatMessage[] {
-  if (notes.length === 0) return sent === undefined ? kept : [...kept, sent];
-  const said = notes.join("\n");
-  if (sent === undefined) return [...kept, { role: "user", content: said }];
-  return [...kept, { role: "user", content: `${said}\n\n${sent.content}` }];
 }

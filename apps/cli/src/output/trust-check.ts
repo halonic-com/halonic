@@ -5,7 +5,7 @@
 // fingerprint, or the ✓ line when nothing changed. Every word comes from the
 // catalogue; this file only decides which sentence goes where.
 
-import type { TrustCheck } from "@halonicjs/app";
+import { type AssistantAddedHosts, assistantAddedIn, type TrustCheck } from "@halonicjs/app";
 import type { ConnectorTrustContent, TrustChanges } from "@halonicjs/workspace";
 import { dayInWords, localDay } from "../messages/dates.ts";
 import type { Message } from "../messages/define.ts";
@@ -61,6 +61,12 @@ export interface TrustCheckFacts {
    * fingerprint a script reads. Left out or empty, there is no such line.
    */
   readonly notCommitted?: readonly string[];
+  /**
+   * The hosts the assistant added to local integrations' sheets that the
+   * person didn't name, from the profile's review folder (HAL-525): each is
+   * listed under its integration with "added by the assistant". Left out, none.
+   */
+  readonly assistantAdded?: AssistantAddedHosts;
 }
 
 /** The dimmed line naming `files`, escaped, or none when there are none. */
@@ -112,8 +118,8 @@ export function trustCheckLines(check: FingerprintedCheck, rawFacts: TrustCheckF
     ...(check.status === "unreadable" ? [marked("needsYou", trustMessages.listUnreadable())] : []),
     trustMessages.heading(facts.name, facts.folder).phrase,
     trustMessages.intro(facts.name).phrase,
-    ...(hasCounts(check.content, facts.sandboxWorks === true)
-      ? [trustMessages.startSummary(counts(check.content, facts.sandboxWorks === true)).phrase]
+    ...(hasCounts(check.content, facts)
+      ? [trustMessages.startSummary(counts(check.content, facts)).phrase]
       : []),
   ];
   return [
@@ -125,7 +131,7 @@ export function trustCheckLines(check: FingerprintedCheck, rawFacts: TrustCheckF
     ...agentsSection(agents.flatMap((agent) => agentRow(agent))),
     ...section(trustMessages.addressesHeading(), [
       ...addresses(connectors).flatMap((row) => addressRows(row, facts.pluginHosts)),
-      ...integrations.flatMap(integrationRows),
+      ...integrations.flatMap((row) => integrationRows(row, facts.assistantAdded)),
       ...providers.flatMap((provider) => providerRow(provider, facts.keyAddresses)),
     ]),
     ...fingerprint,
@@ -188,8 +194,12 @@ function changedLines(
     ]),
     ...section(trustMessages.addressesHeading(), [
       ...rowsOf(addresses, (row) => addressRows(row, facts.pluginHosts)),
-      ...changes.integrations.added.flatMap((row) => tagged(integrationRows(row), newRow)),
-      ...changes.integrations.changed.flatMap(integrationChanges),
+      ...changes.integrations.added.flatMap((row) =>
+        tagged(integrationRows(row, facts.assistantAdded), newRow),
+      ),
+      ...changes.integrations.changed.flatMap((row) =>
+        integrationChanges(row, facts.assistantAdded),
+      ),
       ...changes.providers.added.flatMap((row) =>
         tagged(providerRow(row, facts.keyAddresses), newRow),
       ),
@@ -220,7 +230,9 @@ function marked(mark: "done" | "needsYou", message: Message): Phrase {
   return phrase`${markPart(mark)} ${message.phrase}`;
 }
 
-function counts(content: TrustCheck["content"], sandboxWorks: boolean) {
+function counts(content: TrustCheck["content"], facts: TrustCheckFacts) {
+  const sandboxWorks = facts.sandboxWorks === true;
+  const marks = facts.assistantAdded ?? new Map();
   const agents = content.agents ?? [];
   const providers = content.providers ?? [];
   return {
@@ -233,7 +245,10 @@ function counts(content: TrustCheck["content"], sandboxWorks: boolean) {
     addresses:
       addresses(content.connectors).length +
       (content.integrations ?? []).reduce(
-        (sum, integration) => sum + Object.keys(integration.addresses).length,
+        (sum, integration) =>
+          sum +
+          Object.keys(integration.addresses).length +
+          assistantAddedIn(marks, integration.folder, Object.keys(integration.hosts)).size,
         0,
       ) +
       providers.length,
@@ -244,8 +259,8 @@ function counts(content: TrustCheck["content"], sandboxWorks: boolean) {
   };
 }
 
-function hasCounts(content: TrustCheck["content"], sandboxWorks: boolean): boolean {
-  return Object.values(counts(content, sandboxWorks)).some((count) => count > 0);
+function hasCounts(content: TrustCheck["content"], facts: TrustCheckFacts): boolean {
+  return Object.values(counts(content, facts)).some((count) => count > 0);
 }
 
 function isProgram(connector: ConnectorTrustContent): boolean {

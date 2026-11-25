@@ -74,7 +74,7 @@ export function connectorAsks(connector: Connector): Asks | typeof unreadableUrl
 }
 
 /** A host written without a scheme, `name` or `name:port`, reached over `https`. */
-function writtenHost(host: string): AskedHost {
+export function writtenHost(host: string): AskedHost {
   const [, name = host, port] = /^(.*?)(?::(\d+))?$/u.exec(host) ?? [];
   return { name, port, scheme: "https" };
 }

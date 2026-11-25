@@ -1,7 +1,12 @@
 // The workspace trust check's Integrations section (the "Runs" line design section 4, HAL-1873;
 // microcopy 24.1 R4, R6, R9 and R12): one row per local integration, in the CLI's content.
 
-import { type RunnerUnfencedReason, runnerUnfencedWords } from "@halonicjs/app";
+import {
+  type AssistantAddedHosts,
+  assistantAddedIn,
+  type RunnerUnfencedReason,
+  runnerUnfencedWords,
+} from "@halonicjs/app";
 import { unfencedAllowedLine } from "@halonicjs/studio-feature-plugins/api";
 import type { TrustRowView } from "@halonicjs/studio-feature-workspace";
 import type { IntegrationTrustContent } from "@halonicjs/workspace";
@@ -40,6 +45,12 @@ export const integrationRunsUnfenced =
 /** After an integration's name where it can't run in the sandbox (R12, design section 4). */
 export const integrationNotFencedFlag = "not in the sandbox";
 
+/**
+ * After a host the assistant added to the sheet that the person didn't name in the chat (HAL-525).
+ * It stays until the host leaves the sheet, also once the person types it in by hand.
+ */
+export const assistantAddedMark = "added by the assistant";
+
 /** The Runs row while the host answers (R4). */
 export const integrationRunsChecking = "Checking the sandbox on this computer…";
 
@@ -47,17 +58,32 @@ export const integrationRunsChecking = "Checking the sandbox on this computer…
  * A local integration's row (the "Runs" line design section 4): **Folder**, **Runs** for this
  * computer, **Reaches** with each address, a setting's with where its value comes from (R9), and
  * **Gets secrets** with where each may go. Only local integrations are in the check: built-in
- * ones aren't in the trust content, whatever a sheet says about itself.
+ * ones aren't in the trust content, whatever a sheet says about itself. A host the assistant added
+ * that the person didn't name carries {@link assistantAddedMark}.
+ *
+ * @param assistantAdded - the assistant-added hosts as the profile's review folder records them
  */
 export function integrationRow(
   integration: IntegrationTrustContent,
   runs: IntegrationRuns,
+  assistantAdded: AssistantAddedHosts = new Map(),
 ): TrustRowView {
+  const marked = assistantAddedIn(
+    assistantAdded,
+    integration.folder,
+    Object.keys(integration.hosts),
+  );
   const reaches = Object.entries(integration.hosts).map(([host, addressClass]) => {
     const setting = settingNameOf(host);
-    return setting === undefined
-      ? host
-      : settingReach(integration.id, setting, integration.addresses[setting] ?? null, addressClass);
+    if (setting === undefined) {
+      return marked.has(host) ? `${host} · ${assistantAddedMark}` : host;
+    }
+    return settingReach(
+      integration.id,
+      setting,
+      integration.addresses[setting] ?? null,
+      addressClass,
+    );
   });
   const secrets = integration.secrets.map(
     (secret) =>

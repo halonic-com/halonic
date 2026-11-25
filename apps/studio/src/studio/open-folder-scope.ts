@@ -3,7 +3,12 @@ import {
   type TauriFileShell,
   webCryptoDigest,
 } from "@halonicjs/adapter-fs-tauri";
-import { openWorkspace, type WorkspaceScope, workspaceFilesKey } from "@halonicjs/app";
+import {
+  openWorkspace,
+  reviewServiceKey,
+  type WorkspaceScope,
+  workspaceFilesKey,
+} from "@halonicjs/app";
 import { WorkspaceSaving, type WorkspaceSavingOptions } from "@halonicjs/studio-feature-workspace";
 import type { StudioWorkspace } from "@halonicjs/studio-shell";
 import type { WorkspaceTrust } from "./workspace-trust.ts";
@@ -39,5 +44,11 @@ export function openFolderScope(
   });
   // A saved change may add something to run, so trust is checked again on what is saved.
   scope.events.on("files.saved", () => void trust.refresh());
+  // The Reaches row marks the hosts the assistant added; an Accept may add some (HAL-525).
+  const review = scope.services.get(reviewServiceKey);
+  trust.followAssistantAdded(
+    () => review.assistantAddedHosts(),
+    (listener) => review.onDidChange(listener),
+  );
   return scope;
 }

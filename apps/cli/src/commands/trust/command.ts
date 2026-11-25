@@ -3,10 +3,12 @@ import { basename, dirname, resolve } from "node:path";
 import { type CommandSearch, nodeCommandSearch } from "@halonicjs/adapter-doctor-node";
 import { FileTrustStore } from "@halonicjs/adapter-fs-node";
 import { resolveRealPath } from "@halonicjs/adapter-harness-kit";
+import type { AssistantAddedHosts } from "@halonicjs/app";
 import type { Clock, KeyOrigins, TrustStore } from "@halonicjs/ports";
 import { profileFolder, trustFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { reachesOnlyTheTestModel } from "@halonicjs/workspace";
+import { profileAssistantAdded } from "../../assistant-added.ts";
 import {
   type CliCommand,
   type CommandContext,
@@ -61,6 +63,12 @@ export interface TrustMachine {
   readonly keyOrigins?: KeyOrigins;
   /** Opens the workspace's history, for the version a run would start; git on the `PATH` when left out. */
   readonly history?: OpenWorkspaceHistory;
+  /**
+   * The hosts the assistant added that the person didn't name, from the
+   * profile's review folder for the workspace at this real path (HAL-525);
+   * left out, the check marks none.
+   */
+  readonly assistantAdded?: (location: string) => Promise<AssistantAddedHosts>;
 }
 
 /**
@@ -77,6 +85,7 @@ export function nodeTrustMachine(): TrustMachine {
     sandboxWorks: nodeSandboxWorks,
     pluginHosts: () => installedPluginHosts(),
     keyOrigins: profileKeyOrigins(),
+    assistantAdded: profileAssistantAdded,
   };
 }
 
@@ -191,6 +200,7 @@ async function reviewAndTrust(
     pluginHosts: (await machine.pluginHosts?.()) ?? new Map(),
     keyAddresses: await keyAddressLists(check, machine.keyOrigins),
     notCommitted: reviewed.notCommitted,
+    assistantAdded: (await machine.assistantAdded?.(workspace.subject.location)) ?? new Map(),
   });
   const changes =
     check.status === "changed" ? trustChangesDocument(check.changes, check.trustedAt) : undefined;

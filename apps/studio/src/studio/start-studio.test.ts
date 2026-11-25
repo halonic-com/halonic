@@ -273,9 +273,13 @@ verifies("studio.open-folder", () => {
     await opened.workspace.services.get(workspaceFilesKey).read("workspace.yaml");
     expect(opened.workspace.services.has(reviewServiceKey)).toBe(true);
 
-    expect(webview.calls.find((call) => call.command === "fs_read")?.args).toEqual({
+    const reads = webview.calls.filter((call) => call.command === "fs_read").map((c) => c.args);
+    expect(reads).toContainEqual({ workspace: "/work/acme", path: "workspace.yaml" });
+    // The assistant-added hosts come from the review folder in the profile, never the workspace.
+    expect(reads).toContainEqual({
       workspace: "/work/acme",
-      path: "workspace.yaml",
+      path: "assistant-hosts.json",
+      folder: "review",
     });
     await opened.dispose();
   });

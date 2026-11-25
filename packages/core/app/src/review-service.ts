@@ -3,6 +3,8 @@
 // rejects what it wrote. Accept changes only the record; Reject writes the
 // baseline back. Nothing here commits, pushes or makes anything live.
 
+import { type AssistantAddedHosts, AssistantHosts, type HostsNamedIn } from "./assistant-hosts.ts";
+import type { ListenerErrorHandler } from "./event-bus.ts";
 import { catchUp } from "./review-catch-up.ts";
 import { ReviewFiles, type ReviewServiceOptions } from "./review-files.ts";
 import { isNeverWritten } from "./review-gate.ts";
@@ -59,9 +61,15 @@ export class ReviewService {
    */
   readonly writer: FileWriter;
 
+  private readonly hosts: AssistantHosts;
+  private hostsNamedIn: HostsNamedIn = noneNamed;
+  private readonly onListenerError: ListenerErrorHandler | undefined;
+
   constructor(options: ReviewServiceOptions) {
     this.files = new ReviewFiles(options);
     this.writer = new ReviewWriteHook(this.files);
+    this.hosts = new AssistantHosts(options.records);
+    this.onListenerError = options.onListenerError;
   }
 
   /**
@@ -109,16 +117,44 @@ export class ReviewService {
    * Accepts what the target covers. The files aren't touched: for a part
    * or a change the baseline takes it over; for whole files the baseline
    * becomes the file, so the record goes. For a card or a chat, a record
-   * that can't be read is removed without telling the listeners.
+   * that can't be read is removed without telling the listeners. If the
+   * "added by the assistant" marks can't be written afterwards, that error
+   * goes to `onListenerError` and the outcome is still returned.
    */
-  accept(target: ReviewTarget): Promise<ReviewOutcome> {
-    if (isInFile(target)) {
-      return decideInFile(this.files, target, "accept");
+  async accept(target: ReviewTarget): Promise<ReviewOutcome> {
+    const outcome = isInFile(target)
+      ? await decideInFile(this.files, target, "accept")
+      : await this.decide(target, async (record) => {
+          await this.files.putRecord(record.path, null);
+          return { path: record.path, record: { before: record, after: null } };
+        });
+    if (outcome.status === "done") {
+      await this.markAssistantHosts(outcome.step).catch((error: unknown) => {
+        // The Accept itself is done, so it still reports its outcome.
+        this.onListenerError?.(error, assistantHostsEvent);
+      });
     }
-    return this.decide(target, async (record) => {
-      await this.files.putRecord(record.path, null);
-      return { path: record.path, record: { before: record, after: null } };
-    });
+    return outcome;
+  }
+
+  /**
+   * Where Accept reads which hosts the person named in a chat, for the
+   * "added by the assistant" mark (HAL-525). Until one is set, and when it
+   * fails, the person named none, so every host an accepted change adds to
+   * a sheet is marked.
+   *
+   * @returns a function that takes it away again
+   */
+  readHostsNamedWith(hostsNamedIn: HostsNamedIn): () => void {
+    this.hostsNamedIn = hostsNamedIn;
+    return () => {
+      if (this.hostsNamedIn === hostsNamedIn) this.hostsNamedIn = noneNamed;
+    };
+  }
+
+  /** The hosts the assistant added to local integrations' sheets that the person didn't name. */
+  assistantAddedHosts(): Promise<AssistantAddedHosts> {
+    return this.hosts.read();
   }
 
   /**
@@ -322,6 +358,23 @@ export class ReviewService {
     return { status: "done", step: { files: done }, held };
   }
 
+  /**
+   * Records the hosts each accepted change added to a sheet. The change is
+   * from the old baseline to the new one; a record that went leaves the
+   * file itself as the new baseline.
+   */
+  private async markAssistantHosts(step: ReviewStep): Promise<void> {
+    for (const { path, record } of step.files) {
+      if (record.before === null) continue;
+      const after =
+        record.after === null
+          ? await this.files.turn(path, () => this.files.store.read(path))
+          : record.after.baseline;
+      const named = await this.hostsNamedIn(record.before.card.chatId).catch(() => nothingNamed);
+      await this.hosts.accepted({ path, before: record.before.baseline, after, named });
+    }
+  }
+
   private async pathsOf(target: FilesTarget): Promise<string[]> {
     if (target.kind === "file") {
       return [target.path];
@@ -337,6 +390,16 @@ export class ReviewService {
       (await this.files.digestOf(await this.files.store.read(path))) === record.seen
     );
   }
+}
+
+/** The name the error of recording the assistant's hosts is reported under. */
+const assistantHostsEvent = "review.assistant-hosts";
+
+/** A person who named no host. */
+const nothingNamed = (_host: string): boolean => false;
+
+async function noneNamed(): Promise<(host: string) => boolean> {
+  return nothingNamed;
 }
 
 function isInFile(target: ReviewTarget): target is InFileTarget {

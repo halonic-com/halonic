@@ -30,7 +30,10 @@ export interface ReviewServiceOptions {
   /**
    * Receives the error of an `onDidChange` listener that threw, so the
    * change itself still succeeds. Without it, the call that changed the
-   * records throws that error, which suits tests.
+   * records throws that error, which suits tests. It also receives the
+   * error of writing the "added by the assistant" marks after an Accept
+   * (`review.assistant-hosts`); that one is dropped without a handler,
+   * because the Accept is done either way.
    */
   readonly onListenerError?: ListenerErrorHandler;
   /** Where the assistant's deletes go. Without one, the assistant can't delete files. */
