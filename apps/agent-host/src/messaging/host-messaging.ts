@@ -85,7 +85,7 @@ export function hostMessaging(
     clock: systemClock,
     poll: () => messaging.refresh(),
   });
-  const signIn = hostSignIn(keys, messaging, scheduler);
+  const signIn = hostSignIn(keys, messaging, scheduler, poller);
   poller
     .start()
     .catch((error: unknown) => report({ provider: "scheduler", action: "start", error }));
@@ -112,12 +112,14 @@ export function hostMessaging(
 /**
  * Paperclip's sign-in on the host's scheduler: an approved key is kept in
  * memory for its connection, whose file is written first when it is new,
- * and starts the connection's provider.
+ * and starts the connection's provider, which the poller then reads at once
+ * (`agent-host.paperclip-first-poll`).
  */
 function hostSignIn(
   keys: PaperclipKeys,
   messaging: DesktopMessaging,
   scheduler: Scheduler,
+  poller: Pick<MessagingPoller, "pollNow">,
 ): PaperclipSignIn {
   return new PaperclipSignIn({
     callsFor: (address) => new PaperclipSignInClient({ address }),
@@ -127,7 +129,10 @@ function hostSignIn(
           { workspace: entry.workspace, connection: entry.name },
           { key: entry.key, address: entry.address, company: entry.companyId },
         ),
-      connect: async (workspace, name) => (await messaging.of(workspace))?.connect(name),
+      connect: async (workspace, name) => {
+        await (await messaging.of(workspace))?.connect(name);
+        await poller.pollNow();
+      },
       readConnection: readConnectionFile,
       writeConnection: writeConnectionFile,
       // Forgotten first, so Disconnect's own revoke has no key to send: the sign-in revoked it.
