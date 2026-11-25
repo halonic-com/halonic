@@ -15,4 +15,5 @@ await store.start(); // reads now, then again on every change
 ```
 
 The feature reads `AgentMessaging` from `OverviewMessagingService`, which `studio/services`
-provides. Where the view is mounted (a place or a Home section) follows the HAL-17421 renders.
+provides. The feature adds the Overview place, under the sidebar's Team heading, which shows
+the recap and then the overview (requirement `overview.place`).
