@@ -2,6 +2,7 @@
 
 - Approval: the board's decision on HAL-18474 (standing yes for publishing Preview builds), asked for by HAL-18477; Liam approves and signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:hPaV/lwP0KUjqaxLKPNzmHZTe9Kf8nckczFjhfGPm7t4MIJgoOEYo3+jh5cqSMfqcsH0+kuHtSVL6Nxp/vFiDA==
 
 ## What changes
 
