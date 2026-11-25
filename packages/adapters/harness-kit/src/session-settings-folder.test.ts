@@ -62,73 +62,110 @@ function localSession(): SandboxSession & { started: SandboxCommand[] } {
   };
 }
 
+/**
+ * Whether this computer runs the writer's `sh` scripts on POSIX paths, as the run's Linux
+ * container does. On Windows only the path checks, which start nothing, can run.
+ */
+const posixShell = process.platform !== "win32";
+
+/** A session in a container, as the Worker's profile names its folders, recording what it starts. */
+function containerSession(): SandboxSession & { started: SandboxCommand[] } {
+  const started: SandboxCommand[] = [];
+  const profile = {
+    settingsFolder: "/halonic/home/.claude",
+    tempFolder: "/halonic/temp",
+    workingFolder: "/work",
+  } as SandboxProfile;
+  return {
+    profile,
+    started,
+    fence: { state: "fenced" },
+    onBlocked: () => () => undefined,
+    close: async () => undefined,
+    async start(command): Promise<SandboxProcess> {
+      started.push(command);
+      throw new Error("A refused path must start nothing.");
+    },
+  };
+}
+
 verifies("harness-kit.session-settings-folder", () => {
-  it("writes a file through the session and reads it back, leaving nothing aside", async () => {
-    const session = localSession();
-    const writer = sessionSettingsFolder(session);
-    const path = join(settingsFolder, "settings.json");
-    const text = '{ "say": "$(rm -rf /) `x` \\"quoted\\"" }\n';
+  it.runIf(posixShell)(
+    "writes a file through the session and reads it back, leaving nothing aside",
+    async () => {
+      const session = localSession();
+      const writer = sessionSettingsFolder(session);
+      const path = join(settingsFolder, "settings.json");
+      const text = '{ "say": "$(rm -rf /) `x` \\"quoted\\"" }\n';
 
-    await writer.write(path, text);
+      await writer.write(path, text);
 
-    expect(await writer.read(path)).toBe(text);
-    expect(await readFile(path, "utf8")).toBe(text);
-    expect(await readdir(settingsFolder)).toEqual(["settings.json"]);
-    // The text went on standard input: no argument holds it.
-    expect(session.started.flatMap((command) => command.args).join("\n")).not.toContain(
-      "rm -rf /)",
-    );
-  });
+      expect(await writer.read(path)).toBe(text);
+      expect(await readFile(path, "utf8")).toBe(text);
+      expect(await readdir(settingsFolder)).toEqual(["settings.json"]);
+      // The text went on standard input: no argument holds it.
+      expect(session.started.flatMap((command) => command.args).join("\n")).not.toContain(
+        "rm -rf /)",
+      );
+    },
+  );
 
-  it("gives null for a missing file, and says whether a path exists", async () => {
-    const writer = sessionSettingsFolder(localSession());
+  it.runIf(posixShell)(
+    "gives null for a missing file, and says whether a path exists",
+    async () => {
+      const writer = sessionSettingsFolder(localSession());
 
-    expect(await writer.read(join(tempFolder, "absent.md"))).toBeNull();
-    expect(await writer.exists(join(tempFolder, "absent.md"))).toBe(false);
-    expect(await writer.exists(tempFolder)).toBe(true);
-  });
+      expect(await writer.read(join(tempFolder, "absent.md"))).toBeNull();
+      expect(await writer.exists(join(tempFolder, "absent.md"))).toBe(false);
+      expect(await writer.exists(tempFolder)).toBe(true);
+    },
+  );
 
-  it("lists every name in a folder, hidden ones too, and none for a missing folder", async () => {
-    await mkdir(settingsFolder, { recursive: true });
-    await writeFile(join(settingsFolder, ".credentials.json"), "{}");
-    await writeFile(join(settingsFolder, "old.md"), "old");
-    await writeFile(join(settingsFolder, "line\nbreak"), "odd");
-    const writer = sessionSettingsFolder(localSession());
+  it.runIf(posixShell)(
+    "lists every name in a folder, hidden ones too, and none for a missing folder",
+    async () => {
+      await mkdir(settingsFolder, { recursive: true });
+      await writeFile(join(settingsFolder, ".credentials.json"), "{}");
+      await writeFile(join(settingsFolder, "old.md"), "old");
+      await writeFile(join(settingsFolder, "line\nbreak"), "odd");
+      const writer = sessionSettingsFolder(localSession());
 
-    expect((await writer.list(settingsFolder)).sort()).toEqual(
-      [".credentials.json", "line\nbreak", "old.md"].sort(),
-    );
-    expect(await writer.list(join(settingsFolder, "none"))).toEqual([]);
-  });
+      expect((await writer.list(settingsFolder)).sort()).toEqual(
+        [".credentials.json", "line\nbreak", "old.md"].sort(),
+      );
+      expect(await writer.list(join(settingsFolder, "none"))).toEqual([]);
+    },
+  );
 
-  it("removes a folder inside the settings folder with everything in it", async () => {
-    await mkdir(join(settingsFolder, "projects", "deep"), { recursive: true });
-    const writer = sessionSettingsFolder(localSession());
+  it.runIf(posixShell)(
+    "removes a folder inside the settings folder with everything in it",
+    async () => {
+      await mkdir(join(settingsFolder, "projects", "deep"), { recursive: true });
+      const writer = sessionSettingsFolder(localSession());
 
-    await writer.remove(join(settingsFolder, "projects"));
+      await writer.remove(join(settingsFolder, "projects"));
 
-    expect(await readdir(settingsFolder)).toEqual([]);
-  });
+      expect(await readdir(settingsFolder)).toEqual([]);
+    },
+  );
 
   it("refuses a path outside its two folders, or with a .. part, before anything starts", async () => {
-    await writeFile(join(workingFolder, "notes.md"), "keep");
-    const session = localSession();
+    const session = containerSession();
     const writer = sessionSettingsFolder(session);
 
-    await expect(writer.remove(join(workingFolder, "notes.md"))).rejects.toThrow(/refuses/);
-    await expect(writer.remove(`${settingsFolder}/../../work`)).rejects.toThrow(/refuses/);
+    await expect(writer.remove("/work/notes.md")).rejects.toThrow(/refuses/);
+    await expect(writer.remove("/halonic/home/.claude/../../../work")).rejects.toThrow(/refuses/);
     await expect(writer.remove("/")).rejects.toThrow(/refuses/);
     await expect(writer.write("settings.json", "{}")).rejects.toThrow(/refuses/);
-    await expect(writer.write(`${settingsFolder}-other/settings.json`, "{}")).rejects.toThrow(
+    await expect(writer.write("/halonic/home/.claude-other/settings.json", "{}")).rejects.toThrow(
       /refuses/,
     );
-    await expect(writer.remove(settingsFolder)).rejects.toThrow(/refuses/);
+    await expect(writer.remove("/halonic/home/.claude")).rejects.toThrow(/refuses/);
 
     expect(session.started).toEqual([]);
-    expect(await readFile(join(workingFolder, "notes.md"), "utf8")).toBe("keep");
   });
 
-  it("fails a write it can't make, leaving no temporary file", async () => {
+  it.runIf(posixShell)("fails a write it can't make, leaving no temporary file", async () => {
     await mkdir(settingsFolder, { recursive: true });
     await chmod(join(root, "home"), 0o555);
     await chmod(settingsFolder, 0o555);
@@ -141,7 +178,7 @@ verifies("harness-kit.session-settings-folder", () => {
     expect(await readdir(settingsFolder)).toEqual([]);
   });
 
-  it("refuses to read a file over the limit", async () => {
+  it.runIf(posixShell)("refuses to read a file over the limit", async () => {
     await writeFile(join(tempFolder, "big.txt"), "x".repeat(sessionReadLimitBytes + 1));
     const writer = sessionSettingsFolder(localSession());
 
