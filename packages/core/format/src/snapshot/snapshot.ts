@@ -5,6 +5,7 @@ import type { Template } from "../kinds/template/schema.ts";
 import { checkTool } from "../kinds/tool/checks.ts";
 import type { Tool } from "../kinds/tool/schema.ts";
 import { checkKeysIn } from "../shared/key-in-value.ts";
+import { checkRouting, type Routing } from "./routing.ts";
 import { MAX_SNAPSHOT_BYTES, WorkspaceSnapshot } from "./schema.ts";
 
 /**
@@ -20,13 +21,14 @@ export interface SnapshotProblem {
   readonly message: string;
 }
 
-/** What a snapshot is made from: the workspace, its commit and its parsed tool and template files. */
+/** What a snapshot is made from: the workspace, its commit, its parsed tool and template files and its routing. */
 export interface SnapshotInput {
   readonly name: string;
   readonly commit: string;
   readonly tools: readonly Tool[];
   /** The workspace's templates; none when left out. */
   readonly templates?: readonly Template[];
+  readonly routing?: Routing;
 }
 
 /** One of the snapshot's lists, by the name it has in the snapshot and what one item is called. */
@@ -109,8 +111,11 @@ function sortedBy<Item extends Readonly<Record<Key, string>>, Key extends string
  * number range (`parameter-range-empty`), a tool name or id used twice
  * (`tool-name-twice`, `tool-id-twice`), tools out of name order
  * (`tools-not-sorted`), a key in a template (`value-looks-like-key`), a
- * template id used twice (`template-id-twice`) and templates out of id
- * order (`templates-not-sorted`).
+ * template id used twice (`template-id-twice`), templates out of id order
+ * (`templates-not-sorted`), and in the routing a key in an agent's name
+ * (`value-looks-like-key`) or an area named like an account or credential
+ * field (`routing-area-looks-like-account`). The schema already refuses an
+ * unknown role, an unknown field and a name that isn't an agent's url key.
  *
  * @param data - the snapshot as JSON data
  * @returns the snapshot, or every problem found
@@ -146,6 +151,7 @@ export function readSnapshot(data: unknown): Result<WorkspaceSnapshot, SnapshotP
     ...templateProblems(templates.items),
     ...repeated(templates, "id", "template-id-twice"),
     ...outOfOrder(templates, "id"),
+    ...(parsed.value.routing === undefined ? [] : checkRouting(parsed.value.routing, ["routing"])),
   ];
   return problems.length > 0 ? err(problems) : ok(parsed.value);
 }
@@ -196,6 +202,7 @@ export function makeSnapshot(input: SnapshotInput): Result<WorkspaceSnapshot, Sn
     workspace: { name: input.name, commit: input.commit },
     tools: sortedBy(input.tools, "name"),
     ...(templates.length > 0 ? { templates } : {}),
+    ...(input.routing === undefined ? {} : { routing: input.routing }),
   });
 }
 

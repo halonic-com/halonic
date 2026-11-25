@@ -172,6 +172,14 @@ export { type Guard, isGuard } from "./shared/guard.ts";
 export { type NamedPath, type ProgramStart, pathsNamedBy } from "./shared/program-start.ts";
 export { foldName } from "./shared/relative-path.ts";
 export {
+  AGENT_NAME_PATTERN,
+  AREA_NAME_PATTERN,
+  MAX_ROUTING_AREAS,
+  ROUTING_ROLES,
+  Routing,
+  type RoutingRole,
+} from "./snapshot/routing.ts";
+export {
   MAX_SNAPSHOT_BYTES,
   MAX_SNAPSHOT_TOOLS,
   SNAPSHOT_FORMAT,

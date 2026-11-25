@@ -72,6 +72,7 @@ export {
   type ManifestChange,
   type RoutedPull,
   reviewerFor,
+  reviewerRoleFor,
   touchesPackageFields,
 } from "./reviewer-paths.ts";
 export {

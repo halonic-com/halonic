@@ -3,8 +3,8 @@
 // The builder writes it into the plugin, and the plugin's loader reads it
 // again before using it. It is plain data with nothing engine- or
 // Paperclip-specific in it, so the server engine can serve the same file.
-// Templates are the first optional list (HAL-18141); signals and routing
-// join it later the same way, so a snapshot without them stays as it was.
+// Templates (HAL-18141) and routing (HAL-17982) are optional parts; signals
+// join them later the same way, so a snapshot without them stays as it was.
 import {
   type Infer,
   JSON_SCHEMA_DRAFT,
@@ -16,6 +16,7 @@ import { SPEC_ID_BASE } from "../json-schema.ts";
 import { Template } from "../kinds/template/schema.ts";
 import { Tool } from "../kinds/tool/schema.ts";
 import { label } from "../shared/shown-text.ts";
+import { Routing } from "./routing.ts";
 
 /** The snapshot format this version of Halonic writes and reads. */
 export const SNAPSHOT_FORMAT = 1 as const;
@@ -44,6 +45,8 @@ export const WorkspaceSnapshot = s
     tools: s.array(Tool).max(MAX_SNAPSHOT_TOOLS),
     /** The templates agents can read, sorted by id, each id once. Left out when there are none. */
     templates: s.array(Template.strict()).max(MAX_SNAPSHOT_TEMPLATES).optional(),
+    /** Who covers each role and owns each area; without it, each reader keeps its own defaults. */
+    routing: Routing.optional(),
   })
   .strict();
 

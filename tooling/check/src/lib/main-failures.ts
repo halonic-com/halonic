@@ -4,6 +4,7 @@
  * job of the newest finished push run and hourly run on main to an area, and
  * marks the jobs that also failed on the runs from the night before.
  */
+import { areaOwnerFor, type Routing } from "@halonicjs/tooling-paperclip/routing";
 
 export interface Area {
   readonly name: string;
@@ -203,14 +204,18 @@ export function slugOf(area: string): string {
 /**
  * One report per area, failing or not, so the nightly can close the issue of
  * an area that is green again. `earlier` is the run from the night before.
+ * Each owner comes through the routing resolver (`areaOwnerFor`): from the
+ * workspace snapshot's routing once it is given, and from the area table
+ * until then (HAL-17982).
  */
 export function areaReports(options: {
   table: AreaTable;
   latest: Run;
   earlier?: Run | undefined;
   logs: ReadonlyMap<number, string>;
+  routing?: Routing | undefined;
 }): AreaReport[] {
-  const { table, latest, earlier, logs } = options;
+  const { table, latest, earlier, logs, routing } = options;
   const before = new Set(
     earlier === undefined
       ? []
@@ -224,7 +229,7 @@ export function areaReports(options: {
   }
   return table.areas.map((area) => ({
     area: area.name,
-    owner: area.owner,
+    owner: areaOwnerFor(slugOf(area.name), area.owner, routing),
     slug: slugOf(area.name),
     failures: failures.get(area.name) ?? [],
   }));
