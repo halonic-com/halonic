@@ -8,7 +8,7 @@
 
 - The Paperclip plugin runtime gets its own client for Paperclip's plugin worker protocol (JSON-RPC 2.0, one message per line over stdin and stdout). It answers `initialize`, `health`, `shutdown` and `executeTool`, and fills the runtime's existing `RuntimeHost` with calls back to Paperclip for state, config, secrets, http, metrics and agents. It uses only built-in web APIs and imports no Paperclip code.
 - The worker's entry, `src/worker.ts`, is built by `esbuild.config.ts` into the one `worker.js` the plugin builder copies (HAL-17950). That file imports nothing but the `snapshot.json` next to it, as a JSON module, so the `process-starts` check can follow every import: a test builds it, checks that it holds no `@paperclipai` code, and runs it as `node worker.js` with a `snapshot.json` next to it.
-- `tooling/check/dependencies.json`: `@paperclipai/plugin-sdk` and `esbuild` stay `dev-tooling` and are also allowed as dev dependencies of `@halonicjs/target-paperclip-runtime` (layer `targets`). The SDK appears only in the contract tests; esbuild only builds the file. Neither ships.
+- `@paperclipai/plugin-sdk` and `esbuild` are dev dependencies of `@halonicjs/target-paperclip-runtime`, allowed by #5834 (HAL-18008). The SDK appears only in the contract tests; esbuild only builds the file. Neither ships.
 - `RuntimeHost.tools.register`: a tool's code may get a third argument, the host for that one call, so its calls back to Paperclip echo the invocation id Paperclip scopes them by (the SDK does the same with Node's `AsyncLocalStorage`, which a web-only worker doesn't have). `registerWorkspaceTools` uses it when given and the registering host otherwise.
 
 ## Why, and Liam's conditions
@@ -21,4 +21,4 @@
 
 ## Covers
 
-- tooling/check/
+- runtime.worker-protocol
