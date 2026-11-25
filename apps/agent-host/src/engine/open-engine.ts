@@ -48,6 +48,7 @@ import type { EngineRoleParts, RunningEngine } from "./engine-role.ts";
 import { engineTrustSentences } from "./engine-trust-sentences.ts";
 import { runUpdatesFeed } from "./run-updates-feed.ts";
 import { EngineSchedule, runningEngine } from "./running-engine.ts";
+import type { SecretRedactor } from "./secret-redactor.ts";
 
 /** What the engine lock names its holder by, so a refused `halonic run` can say who holds it. */
 const engineHolder = "Studio's background engine";
@@ -66,18 +67,23 @@ export interface EngineCommandParts extends EngineRoleParts {
   abandoned(): boolean;
 }
 
-/** The engine role's parts on this computer, for `runEngineRole`. */
+/**
+ * The engine role's parts on this computer, for `runEngineRole`.
+ *
+ * @param redactor - learns every secret the broker hands the engine, for its standard error
+ */
 export function engineRoleParts(
   args: EngineArguments,
   version: string,
   writeError: (text: string) => void,
+  redactor: SecretRedactor,
 ): EngineCommandParts {
   let abandoned = false;
   const onAbandoned = () => {
     abandoned = true;
   };
   return {
-    open: (pipe) => openEngine(args, version, pipe, { writeError, onAbandoned }),
+    open: (pipe) => openEngine(args, version, pipe, { writeError, onAbandoned, redactor }),
     every,
     writeError,
     abandoned: () => abandoned,
@@ -113,9 +119,9 @@ async function openEngine(
   args: EngineArguments,
   version: string,
   pipe: ControlPipe,
-  report: { writeError(text: string): void; onAbandoned(): void },
+  report: { writeError(text: string): void; onAbandoned(): void; redactor: SecretRedactor },
 ): Promise<RunningEngine> {
-  const { writeError, onAbandoned } = report;
+  const { writeError, onAbandoned, redactor } = report;
   const profile = profileOf(args.profileFolder);
   // Only the profile folder the shell named: never `HALONIC_HOME` from the environment.
   const environment: ProfileEnvironment = {
@@ -148,7 +154,7 @@ async function openEngine(
   try {
     versions.checkWith(engineVersionChecks(dir, machine));
     const first = await workspaceTrustState(dir, machine, async () => versions.latestVersion());
-    const secrets = new BrokerSecrets((kind, name) => pipe.ask(kind, name));
+    const secrets = new BrokerSecrets((kind, name) => pipe.ask(kind, name), redactor);
     let ownPort: number | undefined;
     local = await openLocalEngine({
       workspace: versions.latest(),
