@@ -2,6 +2,7 @@
 
 - Approval: the board asked for it on HAL-17074 (house rules at the top as the default for the OpenCode pilot writer); Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:9oEqILOvJWCOziijBO6zaegdroqoazmsGfvmxAXLzhM8Ekxn3Do0Blz4CsOu5uuayFMKsIqVAiDK86rJn31QAg==
 
 ## What changes
 
