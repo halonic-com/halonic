@@ -3,7 +3,6 @@
 - Task: HAL-17992 (found by the board session on HAL-17891, 25 Nov)
 - Approval: the task asks for option (a), no `ci.yml` run for a label other than `fast-track`, as the preferred fix; Liam signs this note in review. The hook and the gate don't change
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:mIhRci7pG7A1kXbUc2qqpx4zy/qSDcqw10lfUBQ52Lu9Y4WZn57SgdRKgPZGaTaEkJdS3Yt+Bmiwzgp4P/haBw==
 
 ## What changes
 
@@ -67,5 +66,6 @@ skipped or weakened. New:
 - check.ci-self-hosted-routing
 - check.ci-label-keeps-ci-ok
 - check.ci-pr-signature-reuse
+- tooling/check/src/test/ci-self-hosted-routing.test.ts
 - .github/
 - tooling/check/

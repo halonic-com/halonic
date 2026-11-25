@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-17992 (a label run hid `ci-ok`, and GitHub refused to queue the pull request); HAL-17672 (adding `fast-track` starts a run)
 
-`.github/workflows/ci.yml` shall not start on a label change: its `pull_request` types shall not include `labeled`, `unlabeled` or `edited`, so a label never starts a run that becomes the pull request's newest `ci.yml` run without a `ci-ok` of its own, which leaves GitHub's required `ci-ok` "expected". When the `fast-track` label is added to a pull request a person opened from a `halonic-com/halonic` branch, `.github/workflows/fast-track-label.yml` shall cancel that head's newest `ci.yml` pull request run if it is still going, and re-run every job of it unless it already passed, so `pick-runner` reads the label and the run can go to the fast pool. That workflow shall have no job named `ci-ok`, check out nothing, and do nothing for any other label, a fork's pull request or a bot's.
+The `.github/workflows/ci.yml` workflow shall not start on a label change: its `pull_request` types shall not include `labeled`, `unlabeled` or `edited`, so a label never starts a run that becomes the pull request's newest `ci.yml` run without a `ci-ok` of its own, which leaves GitHub's required `ci-ok` "expected". When the `fast-track` label is added to a pull request a person opened from a `halonic-com/halonic` branch, `.github/workflows/fast-track-label.yml` shall cancel that head's newest `ci.yml` pull request run if it is still going, and re-run every job of it unless it already passed, so `pick-runner` reads the label and the run can go to the fast pool. That workflow shall have no job named `ci-ok`, check out nothing, and do nothing for any other label, a fork's pull request or a bot's.
 
 ## Examples
 
