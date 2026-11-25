@@ -16,7 +16,7 @@ import type {
 } from "@halonicjs/app";
 import type { RunFailure } from "@halonicjs/app/run-failure";
 import type { ShowOutcome } from "@halonicjs/assistant";
-import type { ChatMessage, SavedChatAbout } from "@halonicjs/ports";
+import type { ChatMessage, SavedChatAbout, SavedChatDocs } from "@halonicjs/ports";
 import {
   type ItemPageChat,
   type ItemRef,
@@ -232,6 +232,18 @@ export interface AssistantHost {
   rename(chatId: string, title: string): Promise<void>;
   /** Removes the chat from the kept chats. Its changes to review stay in the items (flow 5.6). */
   deleteChat(chatId: string): Promise<void>;
+  /**
+   * A Build chat's docs sites, each with the `read_docs` call whose card asked, and its docs log,
+   * each line with its call (`assistant.build.site-card`). Empty for a chat that read no docs.
+   * A change comes as `{ kind: "chat" }`.
+   */
+  chatDocs(chatId: string): Promise<SavedChatDocs>;
+  /**
+   * The person's answer on the site card under the `read_docs` call `cardId`: `allowed` lets the
+   * chat read pages from that site for the rest of the chat, `declined` doesn't. Rejects with
+   * `not_found` for a card the chat doesn't have, and `conflict` once it was answered.
+   */
+  answerSite(chatId: string, cardId: string, answer: "allowed" | "declined"): Promise<void>;
   /** Changes the model of this chat only (`assistant.chat.model-per-chat`). Rejects with `not_found`. */
   setModel(chatId: string, model: ChatModel): Promise<void>;
   /** A Build chat's Model menu, in order: the Assistant model first when one is set, then the aliases by name. */

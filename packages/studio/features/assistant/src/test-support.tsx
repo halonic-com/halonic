@@ -1,4 +1,4 @@
-import type { ChatMessage } from "@halonicjs/ports";
+import type { ChatMessage, SavedChatDocs } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import { WorkspaceUntrusted } from "@halonicjs/studio-shell";
 import { act } from "react";
@@ -99,6 +99,7 @@ export function fakeHost(
   let trustAnswer: "trusted" | "declined" = "declined";
   let trustChecks = 0;
   let authoringOnly = false;
+  const docs = new Map<string, SavedChatDocs>();
   const listeners = new Set<(change: AssistantChange) => void>();
   const find = (chatId: string) => {
     const chat = chats.find((each) => each.id === chatId);
@@ -150,6 +151,13 @@ export function fakeHost(
     },
     deleteChat: async (chatId) => {
       chats = chats.filter((each) => each.id !== chatId);
+    },
+    chatDocs: async (chatId) => docs.get(chatId) ?? { sites: [], log: [] },
+    answerSite: async (chatId, cardId, answer) => {
+      const kept = docs.get(chatId) ?? { sites: [], log: [] };
+      const sites = kept.sites.map((site) => (site.cardId === cardId ? { ...site, answer } : site));
+      docs.set(chatId, { ...kept, sites });
+      for (const listener of listeners) listener({ kind: "chat", chatId });
     },
     setModel: async (chatId, model) => keep({ ...find(chatId), model }),
     models: async () => choices.models ?? [settingsModel],
@@ -222,6 +230,15 @@ export function fakeHost(
     },
     /** How often "customize skill" asked the host to write the skill. */
     customized: () => customized,
+    /** Gives a chat its docs sites and log, told as a change of the chat. */
+    setDocs: async (chatId: string, kept: SavedChatDocs) => {
+      docs.set(chatId, kept);
+      await act(async () => {
+        for (const listener of listeners) listener({ kind: "chat", chatId });
+      });
+    },
+    /** A chat's docs sites and log as the host keeps them now. */
+    docsOf: (chatId: string) => docs.get(chatId),
     /** How many items the next answers leave to review. */
     leaveToReview: (count: number) => {
       items = count;

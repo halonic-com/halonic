@@ -1,15 +1,12 @@
 import {
-  type ChatAnswer,
   type ChatAnswerRequest,
   type ChatSettings,
   type ChatTool,
   type FileReview,
-  type HostSettings,
   type ItemToReview,
   maxTurnLimit,
   type ReviewCard,
   type ReviewOutcome,
-  type ReviewService,
   type ReviewStep,
   type ReviewTarget,
 } from "@halonicjs/app";
@@ -23,7 +20,7 @@ import {
   sheetHostsNamedIn,
   toolsWhilePageLoaded,
 } from "@halonicjs/assistant";
-import type { ChatMessage, DefinitionStore, Digest } from "@halonicjs/ports";
+import type { ChatMessage, SavedChatDocs } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import type {
   AssistantAnswer,
@@ -41,10 +38,11 @@ import type {
 import { EngineNotAnswering, type ItemRef, WorkspaceUntrusted } from "@halonicjs/studio-shell";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { acceptedFiles, isAuthoringSkillPath } from "./accepted-files.ts";
+import { answerSiteCard, docsOptionsOf, KeptDocsSites, noDocs, withCallIds } from "./chat-docs.ts";
 import { answerWithFailure } from "./chat-failure.ts";
-import { agentOfKind, chatAgentsOf, type HasKey, modelOptionsOf } from "./chat-models.ts";
+import { agentOfKind, chatAgentsOf, modelOptionsOf } from "./chat-models.ts";
 import { forTheModel } from "./for-the-model.ts";
-import { type ChatStore, type KeptChat, KeptChats } from "./kept-chats.ts";
+import { type KeptChat, KeptChats } from "./kept-chats.ts";
 import {
   assistantModelOf,
   authoringTurnLimitOf,
@@ -55,54 +53,12 @@ import {
   shownNote,
   turnLimitOf,
 } from "./workspace-assistant-model.ts";
+import type { WorkspaceAssistantParts } from "./workspace-assistant-parts.ts";
 
-/** What {@link WorkspaceAssistant} works on. */
-export interface WorkspaceAssistantParts {
-  /**
-   * The workspace's files as saved, changes to review included: what the tools read, and where
-   * "customize skill" writes the person's own skill.
-   */
-  readonly files: DefinitionStore;
-  /** The open workspace's changes to review, where the tools write. */
-  readonly review: ReviewService;
-  readonly digest: Digest;
-  /** Whether the workspace is trusted, read on every write. */
-  readonly isTrusted: () => boolean;
-  /** Answers on the engine's chat service, as the Try it chat does (`answerChatOn`). */
-  readonly answerChat: (request: ChatAnswerRequest) => Promise<ChatAnswer>;
-  /**
-   * Answers a Build chat on the Settings › Assistant model while the workspace isn't trusted,
-   * with the authoring tools only and no engine (`authoringChatExecutor`). Absent: such a chat
-   * asks for trust, as a model from the workspace does.
-   */
-  readonly answerAuthoring?:
-    | ((request: ChatAnswerRequest, localOnly: boolean) => Promise<ChatAnswer>)
-    | undefined;
-  /** Calls `listener` each time the workspace's trust changes. Returns the stop. */
-  readonly onTrustChange?: ((listener: () => void) => () => void) | undefined;
-  /** Settings › Assistant: the model call limit and the person's own model. */
-  readonly settings: Pick<HostSettings, "get">;
-  /**
-   * The window's engine connection: whether the engine answers now, and `onChange`, which calls
-   * its listener on each change and returns the stop. Absent: the engine always counts as answering.
-   */
-  readonly engine?: WorkspaceAssistantEngine | undefined;
-  /** The workspace's name, as the window shows it. */
-  readonly workspaceName: string;
-  /** Where the workspace's chats are saved, so they come back when it opens again. */
-  readonly chats: ChatStore;
-  /** Opens the window's trust check; absent where there is none. */
-  readonly askTrust?: (() => Promise<"trusted" | "declined">) | undefined;
-  /** Whether a key is stored under a secret's name, for the Model menu's reasons. */
-  readonly hasKey?: HasKey | undefined;
-  readonly now?: (() => Date) | undefined;
-}
-
-/** The window's engine connection, as {@link WorkspaceAssistant} follows it. */
-export interface WorkspaceAssistantEngine {
-  readonly answering: () => boolean;
-  readonly onChange: (listener: (answering: boolean) => void) => () => void;
-}
+export type {
+  WorkspaceAssistantEngine,
+  WorkspaceAssistantParts,
+} from "./workspace-assistant-parts.ts";
 
 /**
  * The Assistant of one open workspace (`studio.workspace-assistant`): its chats, each answer on
@@ -233,6 +189,15 @@ export class WorkspaceAssistant implements AssistantHost {
     if (title.trim() === "") throw new KindedError("invalid_input", "A chat needs a title.");
     await this.#chats.change(chatId, { title: title.trim() });
     this.#changed({ kind: "chats" });
+  }
+
+  async chatDocs(chatId: string): Promise<SavedChatDocs> {
+    return (await this.#chats.get(chatId)).docs ?? noDocs;
+  }
+
+  async answerSite(chatId: string, cardId: string, answer: "allowed" | "declined"): Promise<void> {
+    await answerSiteCard(this.#chats, chatId, cardId, answer);
+    this.#changed({ kind: "chat", chatId });
   }
 
   async deleteChat(chatId: string): Promise<void> {
@@ -430,7 +395,10 @@ export class WorkspaceAssistant implements AssistantHost {
     };
   }
 
-  /** The chat's tools, made once to remember what the model read; `show` uses `#shows`. */
+  /**
+   * The chat's tools, made once to remember what the model read; `show` uses `#shows`, and
+   * `read_docs` keeps its sites and log with the chat (`studio.assistant-read-docs`).
+   */
   #toolsOf(chatId: string): readonly ChatTool[] {
     const { files, review, isTrusted, digest } = this.#parts;
     let tools = this.#tools.get(chatId);
@@ -438,12 +406,19 @@ export class WorkspaceAssistant implements AssistantHost {
       const show = async (item: ItemRef): Promise<ShowOutcome> =>
         this.#shows.get(chatId)?.(item) ?? "nowhere";
       const personMessages = () => this.#personMessages(chatId);
-      tools = buildChatTools({ chatId, files, review, isTrusted, digest, show, personMessages });
+      const sites = new KeptDocsSites(this.#chats, chatId, () =>
+        this.#changed({ kind: "chat", chatId }),
+      );
+      const reading = this.#parts.docs;
+      const now = this.#parts.now ?? (() => new Date());
+      const docs = reading === undefined ? undefined : docsOptionsOf(reading, sites, now);
+      const options = { chatId, files, review, isTrusted, digest, show, personMessages, docs };
+      tools = withCallIds(buildChatTools(options), sites);
       this.#tools.set(chatId, tools);
     }
     // Before trust a turn offers exactly the six authoring tools (`studio.assistant-authoring-turn`),
-    // so `show` and `integration_guide` wait for trust.
-    const afterTrust = ["show", "integration_guide"];
+    // so `show`, `integration_guide` and `read_docs` wait for trust.
+    const afterTrust = ["show", "integration_guide", "read_docs"];
     return isTrusted() ? tools : tools.filter((tool) => !afterTrust.includes(tool.definition.name));
   }
 

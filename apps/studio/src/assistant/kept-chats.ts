@@ -7,7 +7,7 @@ import {
   restoredChat,
   titleAfterSend,
 } from "@halonicjs/assistant";
-import type { ChatMessage, ChatSessions, SavedChatSummary } from "@halonicjs/ports";
+import type { ChatMessage, ChatSessions, SavedChatDocs, SavedChatSummary } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import {
   type ChatAbout,
@@ -29,6 +29,8 @@ export interface KeptChat {
   readonly about?: ChatAbout | undefined;
   /** True when it was answering as Halonic closed, until its next message (H14). */
   readonly stoppedWhenClosed: boolean;
+  /** A Build chat's docs sites and log (`studio.assistant-read-docs`); absent until it reads docs. */
+  readonly docs?: SavedChatDocs | undefined;
 }
 
 /** Where the chats of one workspace are saved. */
@@ -135,6 +137,15 @@ export class KeptChats {
     this.#set({ ...(await this.get(chatId)), ...change });
   }
 
+  /**
+   * Changes a chat's docs sites or log, read with {@link KeptChats.get} before, and saves it. It
+   * isn't a message, so the chat's place in the recent chats stays.
+   */
+  changeDocs(chatId: string, change: (docs: SavedChatDocs) => SavedChatDocs): void {
+    const chat = this.#got(chatId);
+    this.#set({ ...chat, docs: change(chat.docs ?? { sites: [], log: [] }) });
+  }
+
   /** Marks whether the chat is answering, saved so a chat cut off by closing comes back stopped. */
   answering(chatId: string, answering: boolean): void {
     if (answering) this.#answering.add(chatId);
@@ -164,7 +175,7 @@ export class KeptChats {
       const saved = await sessions.load(location, summary.id);
       if (saved === null) continue;
       const { chat, stoppedWhenClosed } = restoredChat(saved);
-      const { id, kind, title, lastUsedAt, model, messages, about } = chat;
+      const { id, kind, title, lastUsedAt, model, messages, about, docs } = chat;
       // A chat changed in this window while the store answered wins over its saved copy.
       if (!this.#savedIsNewer(summary)) continue;
       this.#chats.set(id, {
@@ -177,6 +188,7 @@ export class KeptChats {
         draft: false,
         stoppedWhenClosed,
         ...(about === undefined ? {} : { about }),
+        ...(docs === undefined ? {} : { docs }),
       });
     }
   }
@@ -220,6 +232,7 @@ export class KeptChats {
       answering: this.#answering.has(chat.id),
       model: chat.model,
       messages: [...chat.messages],
+      ...(chat.docs === undefined ? {} : { docs: chat.docs }),
     });
     if (toSave !== null) this.#store((sessions, location) => sessions.save(location, toSave));
   }

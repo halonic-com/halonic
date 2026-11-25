@@ -269,6 +269,7 @@ export function provideFolderServices(
     name,
     askTrust,
     chatSessions,
+    docsHttp: new ShellHttpClient(ipc, { publicOnly: true }),
   });
   // The assistant's changes to an agent, for its page's item bar and marks (AI changes 1.2).
   services.provide(

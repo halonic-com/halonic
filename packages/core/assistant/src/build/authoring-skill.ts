@@ -12,14 +12,15 @@ export const authoringSkillPath = `library/skills/${authoringSkillId}/SKILL.md`;
 
 /**
  * How the Build chat builds an integration (HAL-1309 plan, steps 2 to 5; HAL-511 and HAL-524).
- * The guide tool and the files under `integrations/` are there only once the workspace is
- * trusted (`studio.assistant-authoring-turn`), so the text says so instead of naming a tool the
- * model may not have.
+ * The guide tool, `read_docs` (`assistant.build.read-docs`) and the files under `integrations/`
+ * are there only once the workspace is trusted (`studio.assistant-authoring-turn`), so the text
+ * says so instead of naming a tool the model may not have.
  */
 const integrationSteps = `When the person asks for an integration with an outside service:
 1. Check what's already there first: the built-in Gmail and Google Drive (a connector with \`google\`), and the integrations and connectors in this workspace. If one fits, offer it instead of building a new one.
 2. Ask only for what you still need: the service's address, which tools to offer (read-only unless they ask for more), and how it signs in (an API key or a token). If the service signs in only with OAuth, say plainly that you can't build that sign-in here, and stop.
 3. Read the integration guide with \`integration_guide\` and follow it. That tool and the files under \`integrations/\` are there only once the workspace is trusted; until then, say that the integration can be built once the workspace is trusted.
+   To check the service's API, read its public docs with \`read_docs\`, once trusted too: one https page at a time, never with a query (?…), and never with a key, a name or anything else from this chat in the address. The person allows each site first: say which page you want and why, then stop until they allow it. If they don't, work without it or ask them to paste what you need.
 4. Write the permission sheet, the client code and its connector with \`propose_file\`, using only the hosts and sign-ins the person named. The person adds the key themselves; the files name it only.
 5. Run \`validate\`. If it still fails after two fixes, stop and say what's wrong; never call a half-working integration done.
 `;

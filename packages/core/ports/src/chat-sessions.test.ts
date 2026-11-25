@@ -45,6 +45,26 @@ verifies("ports.chat-sessions", () => {
     }
   });
 
+  it("knows a Build chat's docs sites and log, and refuses malformed ones", () => {
+    const build: SavedChat = { ...chat, kind: "build" };
+    const site = { host: "docs.example.com", answer: "allowed", cardId: "t2" };
+    const line = { callId: "t2", at: chat.lastUsedAt, url: "https://docs.example.com/api" };
+    const read = { ...line, outcome: "read", status: 200, bytes: 512 };
+    expect(isSavedChat({ ...build, docs: { sites: [site], log: [read] } })).toBe(true);
+    expect(isSavedChat({ ...build, docs: { sites: [], log: [] } })).toBe(true);
+    for (const docs of [
+      null,
+      { sites: [site] },
+      { sites: [{ ...site, answer: "maybe" }], log: [] },
+      { sites: [{ ...site, host: "" }], log: [] },
+      { sites: [], log: [{ ...read, outcome: "fetched" }] },
+      { sites: [], log: [{ ...read, status: "200" }] },
+      { sites: [], log: [{ ...read, callId: undefined }] },
+    ]) {
+      expect(isSavedChat({ ...build, docs }), JSON.stringify(docs)).toBe(false);
+    }
+  });
+
   it("refuses an id that couldn't be a file name", () => {
     for (const id of ["../acme", "C-1", "", "-a", "a".repeat(65), 7]) {
       expect(isSavedChat({ ...chat, id })).toBe(false);
