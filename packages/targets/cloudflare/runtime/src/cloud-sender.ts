@@ -108,8 +108,13 @@ export class CloudSender {
     } catch (error) {
       return { kind: "retry", reason: "network", error: describe(error) };
     }
-    // The answer's body is never read: only the status says what happened.
-    await response.body?.cancel();
+    // The answer's body is never read: only the status says what happened. The status has
+    // already arrived, so a body that fails to cancel doesn't change the answer.
+    try {
+      await response.body?.cancel();
+    } catch (error) {
+      console.warn(`Cloud sender: the answer's body did not cancel (${describe(error)}).`);
+    }
     return this.#answerFor(response.status);
   }
 

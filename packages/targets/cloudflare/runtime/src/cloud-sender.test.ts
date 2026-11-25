@@ -8,7 +8,7 @@ import {
   goldenTimeMs,
 } from "@halonicjs/host-signed-request/golden";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { type CloudAnswer, CloudSender } from "./cloud-sender.ts";
 
 interface SentRequest {
@@ -129,6 +129,26 @@ verifies("runtime.cloud-sender", () => {
       reason: "network",
       error: "TypeError: fetch failed",
     });
+  });
+
+  it("answers from the status when the answer's body fails to cancel", async () => {
+    const { sender } = await goldenSender(async () => {
+      const response = new Response("ok", { status: 202 });
+      const body = response.body;
+      if (body !== null) {
+        body.cancel = async () => {
+          throw new TypeError("cancel failed");
+        };
+      }
+      return response;
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    expect(await sender.send("/v1/usage", goldenRequest.body)).toEqual(
+      await (await goldenSender(answering(202))).sender.send("/v1/usage", goldenRequest.body),
+    );
+    expect(warn).toHaveBeenCalledOnce();
+    warn.mockRestore();
   });
 
   it("never puts the signature or the key in an answer", async () => {

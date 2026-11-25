@@ -3,7 +3,7 @@
 // (the deployment here, Halonic Cloud from its pinned commit) test against this one copy.
 //
 // The key is a test key made from the seed bytes 0, 1, 2, …, 31 here in code. It signs nothing
-// real and no product trusts it.
+// real and no product trusts it. This file is for tests only: production code never imports it.
 
 import { encodeBase64url } from "@halonicjs/std";
 import { importSigningKey, type SigningKey } from "./keys.ts";
