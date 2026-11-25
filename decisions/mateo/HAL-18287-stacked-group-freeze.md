@@ -3,6 +3,7 @@
 - Task: HAL-18287
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-18287 (Chief found the false freeze in shadow mode on HAL-17912, 25 Nov 07:58 UTC; Liam approves this note in review)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xU2hdnC3pDeQhE6RKkwqcscf0l02Wkk1hl556KG6EJP6V75HUKcIUEUwkik3kRwjgGEvNaB5rwATKwdHjqn3Bg==
 
 `paperclip.merge-control-main-broken` changes for a merge group built on other merge groups.
 
