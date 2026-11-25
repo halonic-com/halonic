@@ -34,6 +34,12 @@ export interface FramePoints {
   readonly panelWindows: Point<PanelWindowContribution>;
   readonly statusBar: Point<BarItemContribution>;
   readonly titleBar: Point<BarItemContribution>;
+  /**
+   * Sets the one item at the sidebar's bottom left, such as the account switcher. Throws a
+   * `ShellError` when another feature already set one: the sidebar has room for one, and the shell
+   * won't pick between two.
+   */
+  readonly sidebarFooter: Point<BarItemContribution>;
   readonly phoneBar: Point<PhoneBarContribution>;
   /** Adds a strip under the top bar, such as the first-run bar. */
   readonly strips: Point<StripContribution>;
@@ -71,6 +77,8 @@ export interface FrameContributions {
   readonly panelWindows: { list(): readonly Registered<PanelWindowContribution>[] };
   readonly statusBar: { list(): readonly Registered<BarItemContribution>[] };
   readonly titleBar: { list(): readonly Registered<BarItemContribution>[] };
+  /** The item at the sidebar's bottom left, or `undefined` while no feature sets one. */
+  readonly sidebarFooter: { item(): Registered<BarItemContribution> | undefined };
   readonly phoneBar: { list(): readonly Registered<PhoneBarContribution>[] };
   readonly strips: { list(): readonly Registered<StripContribution>[] };
   readonly help: { list(): readonly Registered<HelpContribution>[] };
@@ -104,6 +112,7 @@ export class FrameStores {
   ]);
   private readonly statusBar = new PointStore<BarItemContribution>("statusBar.add", ["id"]);
   private readonly titleBar = new PointStore<BarItemContribution>("titleBar.add", ["id"]);
+  private readonly sidebarFooter = new PointStore<BarItemContribution>("sidebarFooter.add", ["id"]);
   private readonly phoneBar = new PointStore<PhoneBarContribution>("phoneBar.add", ["id"]);
   private readonly strips = new PointStore<StripContribution>("strips.add", ["id"]);
   private readonly help = new PointStore<HelpContribution>("help.add", ["id"]);
@@ -129,6 +138,13 @@ export class FrameStores {
       panelWindows: pointOf("panelWindows.add", this.panelWindows),
       statusBar: pointOf("statusBar.add", this.statusBar),
       titleBar: pointOf("titleBar.add", this.titleBar),
+      sidebarFooter: {
+        add: (item) => {
+          guard("sidebarFooter.add");
+          this.rejectTakenFooter(featureId);
+          this.sidebarFooter.add(featureId, item);
+        },
+      },
       phoneBar: pointOf("phoneBar.add", this.phoneBar),
       strips: pointOf("strips.add", this.strips),
       help: pointOf("help.add", this.help),
@@ -185,6 +201,7 @@ export class FrameStores {
       panelWindows: { list: () => byOrder(this.panelWindows.all()) },
       statusBar: { list: () => byOrder(this.statusBar.all()) },
       titleBar: { list: () => byOrder(this.titleBar.all()) },
+      sidebarFooter: { item: () => this.sidebarFooter.all()[0] },
       phoneBar: { list: () => byOrder(this.phoneBar.all()) },
       strips: { list: () => byOrder(this.strips.all()) },
       help: { list: () => byOrder(this.help.all()) },
@@ -218,6 +235,16 @@ export class FrameStores {
     if (existing !== undefined) {
       throw new ShellError(
         `places.add: the place "${place.id}" is added by both "${existing.featureId}" and "${featureId}". Each place belongs to one feature; add your page to that feature's view instead.`,
+      );
+    }
+  }
+
+  /** The footer holds one item, so a second is an error rather than a quiet pick. */
+  private rejectTakenFooter(featureId: string): void {
+    const existing = this.sidebarFooter.all()[0];
+    if (existing !== undefined) {
+      throw new ShellError(
+        `sidebarFooter.add: the sidebar's footer has room for one item, and "${existing.featureId}" already set it, so "${featureId}" can't. Put the item in that feature's view, or in the title bar with titleBar.add.`,
       );
     }
   }

@@ -1,5 +1,8 @@
 import type { AgentHostTransport } from "@halonicjs/adapter-agent-host-client";
 import { ServiceRegistry } from "@halonicjs/app";
+import { OverviewMessagingService } from "@halonicjs/studio-feature-overview/api";
+import { SearchMessagingService } from "@halonicjs/studio-feature-search/api";
+import { ActiveAccountService, AgentMessagingService } from "@halonicjs/studio-services";
 import { expect, it } from "vitest";
 import { provideAgentMessaging } from "./provide-agent-messaging.ts";
 
@@ -29,4 +32,15 @@ it("stops telling the host about the window once the folder's services are dispo
   await Promise.resolve();
 
   expect(routes).toEqual(["POST /v1/messaging/focus"]);
+});
+
+it("provides the active account with the scoped port, for every window to read", async () => {
+  const services = new ServiceRegistry();
+  provideAgentMessaging(services, recordingHost().transport, "/work/acme", new EventTarget());
+
+  expect(services.get(ActiveAccountService).preferred()).toBeUndefined();
+  // The three keys hold the one scoped port, not the host's own.
+  expect(services.get(SearchMessagingService)).toBe(services.get(AgentMessagingService));
+  expect(services.get(OverviewMessagingService)).toBe(services.get(AgentMessagingService));
+  await services.dispose();
 });
