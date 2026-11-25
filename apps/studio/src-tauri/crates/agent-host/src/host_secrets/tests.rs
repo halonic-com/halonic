@@ -181,3 +181,34 @@ impl SecretBackend for Unavailable {
         Err(SecretError::Unavailable)
     }
 }
+
+#[test]
+fn host_secrets_channel_reaches_a_server_pairing_only_in_its_exact_form() {
+    let backend = MemoryBackend::new();
+    let pairing = "server-pairing__0123456789abcdef0123456789abcdef";
+    let set = json!({ "op": "set", "name": pairing, "value": VALUE });
+    assert_eq!(
+        ask(&backend, &set),
+        Ok(json!({ "ok": true, "value": null }))
+    );
+    assert_eq!(
+        ask(&backend, &json!({ "op": "get", "name": pairing })),
+        Ok(json!({ "ok": true, "value": VALUE }))
+    );
+    for other in [
+        "Server-Pairing__0123456789abcdef0123456789abcdef",
+        "server_pairing__0123456789abcdef0123456789abcdef",
+        "server-pairing__",
+        "server-pairing__*",
+    ] {
+        assert_eq!(
+            ask(&backend, &json!({ "op": "get", "name": other })),
+            Err(Refused::Name),
+            "{other}"
+        );
+    }
+    assert_eq!(
+        ask(&backend, &json!({ "op": "delete", "name": pairing })),
+        Ok(json!({ "ok": true, "value": null }))
+    );
+}

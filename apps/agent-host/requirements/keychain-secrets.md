@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-14090 (plan, slice 2), HAL-14126 (scope: `remote-host-key` only); slice-1 security review HAL-14962; security review pending (Julian, then Liam)
+- Source: HAL-14090 (plan, slice 2), HAL-14126 (scope: `remote-host-key` only); slice-1 security review HAL-14962; server pairings HAL-18501; security review pending (Julian, then Liam)
 
-Where Studio starts the agent host with `--keychain-relay`, the host shall keep its own secrets (`hostSecretNames`, today only `remote-host-key`) in the OS keychain, by asking Studio's shell on connection id 0 as the shell's requirement `studio.src-tauri.crates.agent-host.host-secrets-channel` describes: over the relay's frame stream with `--stdio`, and otherwise over its standard input and output after the handshake line. It shall send one request at a time, and shall refuse any other name before it sends anything. Once it serves this way, its standard output shall carry the handshake line and frames only: anything else that prints goes to standard error. If the shell answers on id 0 without a request waiting, or with anything but an answer, then the host shall stop, as on any other broken frame stream. If the keychain can't be used, then the host shall fail with the shell's reason and shall not use the secrets file instead.
+Where Studio starts the agent host with `--keychain-relay`, the host shall keep its own secrets (`hostSecretNames`, today only `remote-host-key`, and each workspace's server pairing, `server-pairing__` and the workspace's 32 lower-case hex digits) in the OS keychain, by asking Studio's shell on connection id 0 as the shell's requirement `studio.src-tauri.crates.agent-host.host-secrets-channel` describes: over the relay's frame stream with `--stdio`, and otherwise over its standard input and output after the handshake line. It shall send one request at a time, send a server pairing's name exactly as `isServerPairingSecretName` accepts it, never list pairings, and shall refuse any other name, other spellings of a pairing included, before it sends anything. Once it serves this way, its standard output shall carry the handshake line and frames only: anything else that prints goes to standard error. If the shell answers on id 0 without a request waiting, or with anything but an answer, then the host shall stop, as on any other broken frame stream. If the keychain can't be used, then the host shall fail with the shell's reason and shall not use the secrets file instead.
 
 Before the first use of the keychain, and when it starts serving, the host shall move each of its secrets out of the profile's secrets file. When the file holds one and the keychain doesn't, it shall write it to the keychain, read it back, and remove it from the file only when the keychain gave back the same value. If the keychain gave back another value, then it shall remove that value from the keychain and keep the file's; if that removal fails too, then it shall say that the file's copy is the right one, and shall not try the move again until it restarts. When both hold the same value, it shall remove the file's. If they hold different values, then it shall change neither, say that the keychain's value wins and that the file's must be removed, and refuse every use of its secrets until only one is left. A move that fails shall be tried again on the next use, and shall say why only once. What the move says shall never hold a value, nor a hash of one.
 
@@ -27,6 +27,12 @@ Without `--keychain-relay` (the CLI's `halonic serve`, a headless Linux), the ho
 - Given a keychain that keeps another value than it was given and won't remove it,
   when the host moves `remote-host-key`,
   then the file's copy stays, and the message says the file's copy is the right one.
+- Given the host saves and reads `server-pairing__0123456789abcdef0123456789abcdef`,
+  when it lists its secrets,
+  then the pairing isn't listed, and the shell was asked only for that exact name.
+- Given `Server-Pairing__0123456789abcdef0123456789abcdef`,
+  when the host reads it,
+  then it is refused before the shell is asked.
 - Given a shell that answers that the keychain is unavailable,
   when the host reads `remote-host-key`,
   then it fails with that reason, and the secrets file is unchanged.

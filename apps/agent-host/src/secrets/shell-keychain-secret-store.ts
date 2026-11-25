@@ -2,6 +2,7 @@ import {
   checkSecretValue,
   describeSecretName,
   hostSecretNames,
+  isServerPairingSecretName,
   type SecretStore,
   secretKey,
 } from "@halonicjs/ports";
@@ -21,7 +22,8 @@ export class KeychainError extends Error {
 /**
  * The host's own secrets in the OS keychain, through Studio's shell
  * (requirement `agent-host.keychain-secrets`). The shell reaches only the
- * names of `hostSecretNames` (Rust's `HOST_NAMES`) and stops the host on any
+ * names of `hostSecretNames` (Rust's `HOST_NAMES`) and the server pairings in
+ * their exact form (`isServerPairingSecretName`), and stops the host on any
  * other, so a different name is refused here, before anything is sent.
  *
  * Nothing falls back to the secrets file: when the keychain can't be used
@@ -49,7 +51,10 @@ export class ShellKeychainSecretStore implements SecretStore {
     await this.#ask({ op: "delete", name: keychainName(name) }, `remove ${name}`);
   }
 
-  /** The host's names that hold a value: the keychain lists nothing, so each one is read. */
+  /**
+   * The host's names that hold a value: the keychain lists nothing, so each one is read. Server
+   * pairings are left out: the channel can't list them, and each one is asked for by its own name.
+   */
   async names(): Promise<readonly string[]> {
     const stored: string[] = [];
     for (const name of hostSecretNames) {
@@ -68,11 +73,13 @@ export class ShellKeychainSecretStore implements SecretStore {
 const hostKeys = new Set(hostSecretNames.map(secretKey));
 
 /**
- * The name as the keychain keeps it (`remote-host-key` is `remote_host_key`).
+ * The name as the shell takes it: a host name as the keychain keeps it (`remote-host-key` is
+ * `remote_host_key`), or a server pairing's exactly as given, the one form the shell accepts.
  *
  * @throws RangeError when it isn't one of the host's own names; the message names it only when it may
  */
 function keychainName(name: string): string {
+  if (isServerPairingSecretName(name)) return name;
   const key = secretKey(name);
   if (!hostKeys.has(key)) {
     throw new RangeError(`${describeSecretName(name)} isn't one the host keeps in the keychain.`);

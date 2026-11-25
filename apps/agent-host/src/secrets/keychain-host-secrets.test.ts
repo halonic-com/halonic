@@ -15,6 +15,8 @@ import { ShellSecretsChannel } from "./shell-secrets-channel.ts";
 // Made-up values: never keys anyone uses.
 const fileValue = "made-up-file-value";
 const keychainValue = "made-up-keychain-value";
+// Built, not written out, so the secret scan does not read it as a key.
+const pairingKey = "0f".repeat(16);
 
 /** A keychain store whose channel a fake shell answers, with the profile's secrets file in memory. */
 function setUp() {
@@ -61,6 +63,34 @@ verifies("agent-host.keychain-secrets", () => {
         expect(shell.asked).toEqual([]);
       },
     );
+
+    it("reaches a server pairing by its exact name only, and never lists one", async () => {
+      const { shell, keychain } = setUp();
+      const pairing = `server-pairing__${pairingKey}`;
+      await keychain.set(pairing, keychainValue);
+      expect(await keychain.get(pairing)).toBe(keychainValue);
+      expect(await keychain.names()).toEqual([]);
+      await keychain.remove(pairing);
+      expect(shell.asked).toEqual([
+        `set ${pairing}`,
+        `get ${pairing}`,
+        "get remote_host_key",
+        `delete ${pairing}`,
+      ]);
+    });
+
+    it.each([
+      `Server-Pairing__${pairingKey}`,
+      `server_pairing__${pairingKey}`,
+      `server-pairing__${pairingKey.toUpperCase()}`,
+      "server-pairing__",
+    ])("refuses the pairing spelling %s before it asks the shell", async (name) => {
+      const { shell, keychain } = setUp();
+      await expect(keychain.get(name)).rejects.toThrow(RangeError);
+      await expect(keychain.set(name, keychainValue)).rejects.toThrow(RangeError);
+      await expect(keychain.remove(name)).rejects.toThrow(RangeError);
+      expect(shell.asked).toEqual([]);
+    });
 
     it("fails with the shell's reason when the keychain can't be used", async () => {
       const { shell, keychain } = setUp();

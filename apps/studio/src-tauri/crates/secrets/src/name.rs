@@ -34,6 +34,9 @@ impl SecretName {
     /// found under the same entry.
     pub fn token(name: &str) -> Result<Self, SecretError> {
         let token = Self::parse(name)?;
+        if token.0.starts_with(SERVER_PAIRING_PREFIX) {
+            return Err(SecretError::ReservedName);
+        }
         if TOKEN_PREFIX.len() + token.0.len() > MAX_NAME_LENGTH {
             return Err(SecretError::InvalidName);
         }
@@ -41,18 +44,24 @@ impl SecretName {
     }
 
     /// Whether the name belongs to Halonic: one of [`HALONIC_NAMES`], a
-    /// token under [`TOKEN_PREFIX`] or a stepper's sign-in under
-    /// [`ACTION_PREFIX`]. The same rule as `isHalonicSecretName` in
-    /// `@halonicjs/ports`, which doesn't know the stepper prefix yet: a
-    /// workspace secret named like one is refused here.
+    /// token under [`TOKEN_PREFIX`], a stepper's sign-in under
+    /// [`ACTION_PREFIX`] or a server pairing under [`SERVER_PAIRING_PREFIX`].
+    /// The same rule as `isHalonicSecretName` in `@halonicjs/ports`, which
+    /// doesn't know the stepper prefix yet: a workspace secret named like one
+    /// is refused here. The canonical form folds case and `-`, so every
+    /// spelling of a prefix counts, as Windows matches credential names
+    /// without case.
     pub fn is_halonic(&self) -> bool {
         HALONIC_NAMES.contains(&self.0.as_str())
             || self.0.starts_with(TOKEN_PREFIX)
             || self.0.starts_with(ACTION_PREFIX)
+            || self.0.starts_with(SERVER_PAIRING_PREFIX)
     }
 
     /// Whether the agent host may reach the name through its secrets
-    /// channel: one of [`HOST_NAMES`].
+    /// channel: one of [`HOST_NAMES`]. A server pairing is reachable too, but
+    /// only in its exact form, which the canonical form can't tell apart, so
+    /// the channel checks [`is_server_pairing_name`] on the name it was sent.
     pub fn is_host(&self) -> bool {
         HOST_NAMES.contains(&self.0.as_str())
     }
@@ -72,6 +81,29 @@ pub const TOKEN_PREFIX: &str = "halonic_token_";
 /// host and the engine never do, so no page, agent or integration sees the
 /// token.
 pub const ACTION_PREFIX: &str = "action__";
+
+/// The canonical prefix of a workspace's server pairing: the device token
+/// the server gave this computer for one workspace (HAL-18501). Only the
+/// agent host reaches these, through its secrets channel and only in the
+/// exact form [`is_server_pairing_name`] accepts; the page's secret and
+/// token commands refuse every spelling of the prefix.
+pub const SERVER_PAIRING_PREFIX: &str = "server_pairing__";
+
+/// Whether `name`, as the host sent it, is a server pairing's name in its
+/// one exact form: `server-pairing__` and the workspace's key, exactly 32
+/// lower-case hex digits. Nothing is folded or trimmed, so
+/// `Server-Pairing__…`, `server_pairing__…` and upper-case hex are not
+/// pairing names. The same rule as `isServerPairingSecretName` in
+/// `@halonicjs/ports`; both sides check it against
+/// `tests/fixtures/server-pairing-names.tsv`.
+pub fn is_server_pairing_name(name: &str) -> bool {
+    name.strip_prefix("server-pairing__").is_some_and(|key| {
+        key.len() == 32
+            && key
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+    })
+}
 
 /// Halonic's own secrets, in canonical form: the key the CLI seals its
 /// tokens with, the hash of the served Studio's sign-in password and the

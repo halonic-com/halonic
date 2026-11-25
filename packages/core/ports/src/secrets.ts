@@ -195,15 +195,59 @@ export const deploymentSecretNames: readonly string[] = [
  */
 export const tokenNamePrefix = "halonic_token_";
 
+/**
+ * The prefix of a workspace's server pairing in the desktop keychain: the
+ * device token the server gave this computer, followed by the workspace's
+ * key (HAL-18501). Only the agent host reaches it, through its secrets
+ * channel; no page and no workspace may pick any spelling of it.
+ */
+export const serverPairingSecretPrefix = "server-pairing__";
+
+const serverPairingNamePattern = /^server-pairing__[0-9a-f]{32}$/;
+
+/**
+ * Whether a name is a server pairing's in its one exact form:
+ * {@link serverPairingSecretPrefix} and the workspace's key, exactly 32
+ * lower-case hex digits. Nothing is folded or trimmed, so `Server-Pairing__…`
+ * or upper-case hex is not one. The shell's `is_server_pairing_name` holds
+ * the same rule; both are checked against its `server-pairing-names.tsv`.
+ *
+ * @example
+ * isServerPairingSecretName("server-pairing__0123456789abcdef0123456789abcdef"); // true
+ * isServerPairingSecretName("Server-Pairing__0123456789abcdef0123456789abcdef"); // false
+ */
+export function isServerPairingSecretName(name: string): boolean {
+  return serverPairingNamePattern.test(name);
+}
+
+/**
+ * The keychain name of a workspace's server pairing.
+ *
+ * @throws RangeError when `workspaceKey` isn't 32 lower-case hex digits
+ *
+ * @example
+ * serverPairingSecretName("0123456789abcdef0123456789abcdef");
+ * // "server-pairing__0123456789abcdef0123456789abcdef"
+ */
+export function serverPairingSecretName(workspaceKey: string): string {
+  const name = `${serverPairingSecretPrefix}${workspaceKey}`;
+  if (!isServerPairingSecretName(name)) {
+    throw new RangeError("A workspace's key is 32 lower-case hex digits.");
+  }
+  return name;
+}
+
 const halonicSecretKeys = new Set(
   [...halonicSecretNames, ...hostSecretNames, ...deploymentSecretNames].map(secretKey),
 );
 const tokenKeyPrefix = secretKey(tokenNamePrefix);
+const serverPairingKeyPrefix = secretKey(serverPairingSecretPrefix);
 
 /**
  * Whether a secret name belongs to Halonic: one of {@link halonicSecretNames},
- * {@link hostSecretNames} or {@link deploymentSecretNames}, or a token name
- * under {@link tokenNamePrefix}. Names are compared in their
+ * {@link hostSecretNames} or {@link deploymentSecretNames}, a token name
+ * under {@link tokenNamePrefix}, or any spelling of a server pairing's
+ * {@link serverPairingSecretPrefix}. Names are compared in their
  * `secretKey` form, so `Token_Key` is `token-key`.
  *
  * @throws RangeError when the name breaks the rule of the `Secrets` port
@@ -214,7 +258,11 @@ const tokenKeyPrefix = secretKey(tokenNamePrefix);
  */
 export function isHalonicSecretName(name: string): boolean {
   const key = secretKey(name);
-  return halonicSecretKeys.has(key) || key.startsWith(tokenKeyPrefix);
+  return (
+    halonicSecretKeys.has(key) ||
+    key.startsWith(tokenKeyPrefix) ||
+    key.startsWith(serverPairingKeyPrefix)
+  );
 }
 
 /**
