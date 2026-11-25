@@ -3,6 +3,7 @@
 - Task: HAL-18049; the security findings on #5827 (HAL-17962), ported onto the format merged in #5829 (HAL-17948)
 - Approval: Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:nyEUIcAfkj+PhU2sh9rZ06XnnuFAXkwZfR8PK4f2tO2qQNENJoEVKTotqIUIDwlZAqxLnGhmu6vSaCbKOurvCA==
 
 ## What changes
 
