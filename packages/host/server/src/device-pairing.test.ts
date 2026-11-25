@@ -1,85 +1,10 @@
-import type { Coordination } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import { password, setup } from "./device-pairing.test-helper.ts";
 import { deviceSessionsKey } from "./device-sessions.ts";
 import { sessionGenerationKey } from "./stored-session.ts";
-import { FakeCoordination, FakePasswordHasher, TestClock, testServer } from "./test-server.ts";
 
-const host = "halonic.acme.example";
-const password = "correct horse";
 const dayMs = 24 * 60 * 60 * 1000;
-
-function setup() {
-  const clock = new TestClock();
-  const coordination = new FakeCoordination(clock);
-  const secret = { hash: `hash:${password}` };
-  const server = testServer({
-    passwordHash: null,
-    secrets: { get: async (name) => (name === "serve-password" ? secret.hash : null) },
-    clock,
-    coordination: coordination as unknown as Coordination,
-    passwordHasher: new FakePasswordHasher(),
-  });
-
-  async function send(path: string, init: { body?: object; auth?: string; cookie?: string } = {}) {
-    const headers = new Headers({ host });
-    if (init.body !== undefined) headers.set("content-type", "application/json");
-    if (init.auth !== undefined) headers.set("authorization", init.auth);
-    if (init.cookie !== undefined) headers.set("cookie", init.cookie);
-    const request = new Request(`https://${host}${path}`, {
-      method: init.body === undefined ? "GET" : "POST",
-      headers,
-      ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }),
-    });
-    const response = await server.handle(request, { clientAddress: "203.0.113.7" });
-    return { status: response.status, json: (await response.json().catch(() => null)) as Answer };
-  }
-
-  /** A password session's cookie, as the served Studio page has it. */
-  async function browserCookie(): Promise<string> {
-    const response = await server.handle(
-      new Request(`https://${host}/api/login`, {
-        method: "POST",
-        headers: { host, "content-type": "application/json" },
-        body: JSON.stringify({ password }),
-      }),
-    );
-    return (response.headers.get("set-cookie") ?? "").split(";")[0] ?? "";
-  }
-
-  /** A new code, made from a session with the password again. */
-  async function newCode(as: { auth?: string; cookie?: string }): Promise<string> {
-    const answer = await send("/api/devices/code", { ...as, body: { password } });
-    expect(answer.status).toBe(200);
-    return answer.json.code ?? "";
-  }
-
-  /** Pairs a device all the way, allowed from `as`, and gives its bearer header. */
-  async function pairDevice(name: string, as: { auth?: string; cookie?: string }) {
-    const code = await newCode(as);
-    const pending = await send("/api/pair", { body: { code, deviceName: name } });
-    const [waiting] = (await send("/api/devices", as)).json.waiting ?? [];
-    await send("/api/devices/allow", { ...as, body: { password, requestId: waiting?.id } });
-    const done = await send("/api/pair/status", { body: { pendingId: pending.json.pendingId } });
-    return `Bearer ${done.json.token}`;
-  }
-
-  async function isSignedIn(auth: string): Promise<boolean> {
-    return (await send("/api/session", { auth })).status === 200;
-  }
-
-  return { clock, coordination, secret, send, browserCookie, newCode, pairDevice, isSignedIn };
-}
-
-interface Answer {
-  code?: string;
-  pendingId?: string;
-  checkCode?: string;
-  token?: string;
-  devices?: { id: string; name: string; allowedBy: string }[];
-  waiting?: { id: string; deviceName: string; checkCode: string }[];
-  allowedDevices?: { id: string; name: string }[];
-}
 
 describe("pairing a device", () => {
   verifies("server.device-pairing", () => {
@@ -112,7 +37,7 @@ describe("pairing a device", () => {
       expect(limited.status).toBe(429);
     });
 
-    it("refuses a second request with the same code and cancels the first", async () => {
+    it("refuses a second request with the same code and ends the first", async () => {
       const { send, browserCookie, newCode } = setup();
       const cookie = await browserCookie();
       const code = await newCode({ cookie });
@@ -121,7 +46,7 @@ describe("pairing a device", () => {
       expect(second.status).toBe(401);
       expect((await send("/api/devices", { cookie })).json.waiting).toEqual([]);
       const poll = await send("/api/pair/status", { body: { pendingId: first.json.pendingId } });
-      expect(poll.status).toBe(404);
+      expect(poll).toMatchObject({ status: 200, json: { state: "taken-over" } });
     });
 
     it("gives no session until Allow, then the token once, and nothing for a guessed ID", async () => {

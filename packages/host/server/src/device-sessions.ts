@@ -52,6 +52,13 @@ export interface RevokeResult {
   readonly allowedDevices: readonly DeviceView[];
 }
 
+/** A new device session: its token, given only this once, and when it ends at the latest. */
+export interface StartedSession {
+  readonly token: string;
+  /** The absolute end, {@link deviceAgeLimitMs} after the start; it may end sooner if unused. */
+  readonly endsAt: string;
+}
+
 /** The device sessions of one server. Every call takes the current `serve-password` hash. */
 export interface DeviceSessions {
   /**
@@ -65,7 +72,7 @@ export interface DeviceSessions {
       readonly generation: string | null;
     },
     passwordHash: string,
-  ): Promise<string>;
+  ): Promise<StartedSession>;
   /** The id of the live device that holds `token`, or `null`. Notes the use as last seen. */
   check(token: string, passwordHash: string): Promise<string | null>;
   /** The live devices. */
@@ -120,7 +127,8 @@ export function createDeviceSessions({ coordination, clock }: DevicePorts): Devi
   return {
     async start(device, passwordHash) {
       const token = toHex(crypto.getRandomValues(new Uint8Array(32)));
-      const now = clock.now().toISOString();
+      const started = clock.now();
+      const now = started.toISOString();
       const entry: StoredDevice = {
         id: `device_${toHex(crypto.getRandomValues(new Uint8Array(12)))}`,
         name: device.name,
@@ -132,7 +140,7 @@ export function createDeviceSessions({ coordination, clock }: DevicePorts): Devi
         generation: device.generation,
       };
       await change(passwordHash, (live) => [...live, entry]);
-      return token;
+      return { token, endsAt: new Date(started.getTime() + deviceAgeLimitMs).toISOString() };
     },
 
     async check(token, passwordHash) {
