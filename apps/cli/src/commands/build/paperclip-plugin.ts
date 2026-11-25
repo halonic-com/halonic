@@ -1,9 +1,9 @@
 // `halonic build paperclip-plugin`: builds a Paperclip plugin of the
 // workspace's tools, templates, signals and routing (plan HAL-17950,
-// HAL-18153, HAL-18365, HAL-18263). A thin command over the plugin build app service: this file
-// reads the workspace, its commit, the runtime and the previous build, and
-// writes the archive and the release file. It never installs anything and
-// never reaches Paperclip or the network.
+// HAL-18153, HAL-18365, HAL-18263). A thin command over the plugin build
+// app service: this file reads the workspace, its commit, the runtime and
+// the previous build, and writes the archive and the release file. It never
+// installs anything and never reaches Paperclip or the network.
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";

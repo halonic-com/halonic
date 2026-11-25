@@ -13,3 +13,4 @@ When the plugin builder reads a previous build, it shall read the release file s
 - Given an archive without `package/snapshot.json`, or with a snapshot over 4 MiB, when it is read, then it is refused.
 - Given a snapshot that isn't JSON, names a tool twice or is nested deeper than schema-kit allows, when it is read, then it is refused.
 - Given a snapshot that names a signal twice, has a signal without an id or more than 50 signals, when it is read, then it is refused.
+- Given a snapshot with a signal id that doesn't fit the format's id pattern, such as `Watcher` or `../x`, when it is read, then it is refused, so it never reaches the release file's change list.

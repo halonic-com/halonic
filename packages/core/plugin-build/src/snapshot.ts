@@ -22,6 +22,9 @@ export interface SnapshotTool {
 /** The most signals a snapshot read back from an earlier build may hold, as the snapshot allows. */
 export const maxSnapshotSignals = MAX_SNAPSHOT_SIGNALS;
 
+/** A signal id: the format's id pattern, as long as a tool name. The release file needs the same. */
+export const signalIdPattern = /^[a-z0-9][a-z0-9-_]{0,127}$/;
+
 /** One signal in a snapshot: its id and its other fields, as plain JSON data. */
 export interface SnapshotSignal {
   /** The signal's id, unique in its snapshot. */
@@ -58,9 +61,9 @@ export const untrustedSnapshot = s
         }
       }),
     // Only the ids are checked: the change list compares each signal as canonical JSON, and a
-    // previous build's rule settings may be of an older Halonic.
+    // previous build's rule settings may be of an older Halonic. An id must fit the release file.
     signals: s
-      .array(s.object({ id: s.string().min(1).max(maxToolNameLength) }).passthrough())
+      .array(s.object({ id: s.string().regex(signalIdPattern) }).passthrough())
       .max(maxSnapshotSignals)
       .superRefine((signals, context) => {
         const ids = signals.map((signal) => signal.id);

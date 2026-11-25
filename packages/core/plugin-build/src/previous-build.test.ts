@@ -101,6 +101,8 @@ verifies("plugin-build.previous-build", () => {
     ["has a tool without a name", '{"tools":[{"description":"x"}]}'],
     ["names a signal twice", '{"tools":[],"signals":[{"id":"a"},{"id":"a"}]}'],
     ["has a signal without an id", '{"tools":[],"signals":[{"dryRun":true}]}'],
+    ["has a signal id with a capital", '{"tools":[],"signals":[{"id":"Watcher"}]}'],
+    ["has a signal id that is a path", '{"tools":[],"signals":[{"id":"../x"}]}'],
     [
       "has more signals than a snapshot may",
       `{"tools":[],"signals":[${'{"id":"a"},'.repeat(50)}{"id":"b"}]}`,
