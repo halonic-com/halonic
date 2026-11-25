@@ -438,8 +438,11 @@ jobs:
       # A merge's build runs the short check plus the steps its change touched
       # since main's last green build (HAL-18863), so builds skipped or failed
       # in between are covered too. The nightly run and a run by hand list
-      # nothing, so they run every step. GitHub's compare lists at most 3,000
-      # files: at that size every step runs rather than miss one.
+      # nothing, so they run every step. The list comes from git, not GitHub's
+      # compare, which returns at most 300 files without saying so (Liam's
+      # review of #6254). A diff of two commits needs only their trees, so
+      # one commit of the base is enough. --no-renames lists a moved file's
+      # old path too, so a step whose folder lost the file still runs.
       - name: List what changed since main's last green build
         if: github.event_name == 'push'
         env:
@@ -451,16 +454,14 @@ jobs:
           if (-not $base) {
             "No green build of main yet: every click-test step runs." >> $env:GITHUB_STEP_SUMMARY
           } else {
-            $files = @(gh api --paginate "repos/$env:GITHUB_REPOSITORY/compare/$base...$($env:SHA)?per_page=100" --jq '.files[].filename')
-            if ($LASTEXITCODE -ne 0) { throw "Comparing $base with $env:SHA failed" }
-            if ($files.Count -ge 3000) {
-              "$($files.Count) files changed since $base: every click-test step runs." >> $env:GITHUB_STEP_SUMMARY
-            } else {
-              $list = Join-Path $env:RUNNER_TEMP 'changed.txt'
-              Set-Content $list -Value $files -Encoding utf8NoBOM
-              "CLICK_TEST_CHANGED=$list" >> $env:GITHUB_ENV
-              "CLICK_TEST_SINCE=$base" >> $env:GITHUB_ENV
-            }
+            git fetch --no-tags --depth=1 origin $base $env:SHA
+            if ($LASTEXITCODE -ne 0) { throw "Fetching $base and $env:SHA failed" }
+            $files = @(git -c core.quotepath=off diff --name-only --no-renames $base $env:SHA)
+            if ($LASTEXITCODE -ne 0) { throw "Diffing $base with $env:SHA failed" }
+            $list = Join-Path $env:RUNNER_TEMP 'changed.txt'
+            Set-Content $list -Value $files -Encoding utf8NoBOM
+            "CLICK_TEST_CHANGED=$list" >> $env:GITHUB_ENV
+            "CLICK_TEST_SINCE=$base" >> $env:GITHUB_ENV
           }
       # The shell gives WebView2 its own browser arguments, which beat the
       # variable msedgedriver (and so tauri-driver) uses to open the DevTools
