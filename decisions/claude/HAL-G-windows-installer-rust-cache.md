@@ -2,7 +2,6 @@
 
 - Approval: Liam (workflow) and Julian (cache OK on `b169a7fce`) on PR 6086, for HAL-18424
 - Kind: internal
-- Signature: pending
 
 ## What changes
 
