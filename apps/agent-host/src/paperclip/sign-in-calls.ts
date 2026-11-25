@@ -85,9 +85,10 @@ export interface PaperclipKeyStore {
   /** Keeps the key with the address and company it was made for; a failure makes the flow revoke it. */
   save(entry: StoredPaperclipKey): Promise<SavedKey>;
   /**
-   * Undoes a save whose key never reached Studio's keychain: forgets the key,
-   * stops the connection's provider and removes the connection file the save
-   * wrote. A file that was there before stays.
+   * Undoes a save whose key never reached Studio's keychain: puts back the
+   * key the connection held before, or else forgets the key and stops the
+   * connection's provider, and removes the connection file the save wrote. A
+   * file that was there before stays.
    */
   drop(entry: StoredPaperclipKey, saved: SavedKey): Promise<void>;
 }
@@ -96,6 +97,12 @@ export interface PaperclipKeyStore {
 export interface SavedKey {
   /** Whether the save wrote a new connection file. */
   createdFile: boolean;
+  /**
+   * Puts back the key the connection held before the save, when it held one:
+   * {@link PaperclipKeyStore.drop} then leaves the connection signed in with
+   * its old key instead of signed out.
+   */
+  putBack?: () => void;
 }
 
 /** A keychain entry: the key and the connection it was made for (`agent-host.paperclip-key`). */

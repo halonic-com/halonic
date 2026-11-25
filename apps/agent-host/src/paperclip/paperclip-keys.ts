@@ -59,16 +59,24 @@ export class PaperclipKeys {
   readonly #entries = new Map<string, { key: string; origin: string; company: string }>();
 
   /**
-   * Keeps `entry` for `binding`, replacing the one held before.
+   * Keeps `entry` for `binding`, replacing the one held before. Answers a
+   * function that puts the one held before back, so a sign-in Studio couldn't
+   * keep leaves a connection with its old key (Julian, HAL-18048); the old key
+   * stays inside that function and never comes out. `undefined` when no key
+   * was held.
    *
    * @throws RangeError when the entry's address isn't `https`, or plain `http` to this computer; nothing is changed then
    */
-  replace(binding: PaperclipBinding, entry: PaperclipKeyEntry): void {
+  replace(binding: PaperclipBinding, entry: PaperclipKeyEntry): (() => void) | undefined {
     const origin = paperclipOrigin(entry.address);
     if (origin === undefined) {
       throw new RangeError("A Paperclip key is kept only with the address it was made for.");
     }
-    this.#entries.set(nameOf(binding), { key: entry.key, origin, company: entry.company });
+    const name = nameOf(binding);
+    const before = this.#entries.get(name);
+    this.#entries.set(name, { key: entry.key, origin, company: entry.company });
+    if (before === undefined) return undefined;
+    return () => void this.#entries.set(name, before);
   }
 
   /** Drops the key held for `binding`. */

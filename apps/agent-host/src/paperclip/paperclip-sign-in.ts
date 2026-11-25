@@ -13,9 +13,10 @@ import { newSignInPhrase } from "./sign-in-phrase.ts";
 export const signInLimitMs = 10 * 60 * 1000;
 
 /**
- * How long the host waits, after the approved poll's answer, for Studio to
- * confirm the key is in the keychain. A key it never confirms is revoked
- * (Liam's review of #5805, HAL-17942).
+ * How long the host waits, after the key is saved, for Studio to confirm the
+ * key is in the keychain. A key it never confirms is revoked (Liam's review
+ * of #5805, HAL-17942). A confirmed sign-in is remembered until then too, so
+ * Studio can repeat a confirm whose answer it lost (HAL-18048).
  */
 export const handOverLimitMs = 60 * 1000;
 
@@ -105,11 +106,13 @@ interface OpenSignIn {
   polling: boolean;
 }
 
-/** An approved sign-in whose key went to Studio, until Studio confirms the keychain has it. */
+/** An approved sign-in whose key went to Studio, until its hand-over time limit. */
 interface HandedOver {
   calls: SignInCalls;
   entry: StoredPaperclipKey;
   saved: SavedKey;
+  /** Whether Studio confirmed the keychain has the key; a confirmed key is never undone. */
+  confirmed: boolean;
 }
 
 /**
@@ -171,18 +174,22 @@ export class PaperclipSignIn {
     return { signInId, phrase, approvalUrl, expiresAt };
   }
 
-  /** Whether the engine still holds a key for this sign-in, open or handed over. */
+  /** Whether the engine still holds a key for this sign-in, open or handed over and not confirmed. */
   holdsKey(signInId: string): boolean {
-    return this.#open.has(signInId) || this.#handedOver.has(signInId);
+    const handed = this.#handedOver.get(signInId);
+    return this.#open.has(signInId) || (handed !== undefined && !handed.confirmed);
   }
 
   /**
-   * Studio says the handed-over key is in its keychain: the sign-in ends and
-   * the key stays connected. Answers whether there was such a sign-in.
+   * Studio says the handed-over key is in its keychain: the key stays
+   * connected. Answers whether there was such a sign-in. A repeated confirm
+   * answers `true` again until the hand-over limit, so Studio can retry a
+   * confirm whose answer got lost instead of undoing a key the host kept.
    */
   async confirm(signInId: string): Promise<boolean> {
-    if (!this.#handedOver.delete(signInId)) return false;
-    await this.#endTimer(signInId);
+    const handed = this.#handedOver.get(signInId);
+    if (handed === undefined) return false;
+    handed.confirmed = true;
     return true;
   }
 
@@ -282,14 +289,10 @@ export class PaperclipSignIn {
       if (companyId !== undefined) {
         const { address, workspace, name } = open.connection;
         const entry = { address, companyId, key: open.key, workspace, name };
-        const limit = this.#options.clock.now().getTime() + handOverLimitMs;
-        await this.#options.scheduler.schedule(
-          signInTimerKey,
-          signInId,
-          new Date(limit).toISOString(),
-        );
         const saved = await keyStore.save(entry);
-        this.#handedOver.set(signInId, { calls, entry, saved });
+        // The limit starts once the save is done, so a slow save can't leave a key with no timer (HAL-18048).
+        await this.#scheduleHandOver(signInId, entry, saved);
+        this.#handedOver.set(signInId, { calls, entry, saved, confirmed: false });
         return {
           status: "connected",
           userId: owner.userId,
@@ -314,15 +317,40 @@ export class PaperclipSignIn {
     return { status: "wrong-company" };
   }
 
+  /** Sets the hand-over limit; when that fails, the save is undone and the caller revokes the key. */
+  async #scheduleHandOver(
+    signInId: string,
+    entry: StoredPaperclipKey,
+    saved: SavedKey,
+  ): Promise<void> {
+    const limit = this.#options.clock.now().getTime() + handOverLimitMs;
+    try {
+      await this.#options.scheduler.schedule(
+        signInTimerKey,
+        signInId,
+        new Date(limit).toISOString(),
+      );
+    } catch (error) {
+      await cleanUpAfterFailure(
+        () => this.#options.keyStore.drop(entry, saved),
+        error,
+        "Paperclip sign-in couldn't set its hand-over limit, and its save couldn't be undone",
+      );
+      throw error;
+    }
+  }
+
   /**
    * Revokes a handed-over key Studio didn't keep and undoes its save. When the
-   * revoke fails, the answer says the key may work.
+   * revoke fails, the answer says the key may work. A confirmed key stays:
+   * only its record ends.
    */
   async #undoHandOver(signInId: string, status: "cancelled" | "expired"): Promise<SignInState> {
     const handed = this.#handedOver.get(signInId);
     if (handed === undefined) return { status: "unknown" };
     this.#handedOver.delete(signInId);
     await this.#endTimer(signInId);
+    if (handed.confirmed) return { status: "unknown" };
     const revoked = await handed.calls.revokeCurrent(handed.entry.key).then(
       () => true,
       () => false,

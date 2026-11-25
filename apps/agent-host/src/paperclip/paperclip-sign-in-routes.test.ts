@@ -55,7 +55,7 @@ async function started(): Promise<Setup> {
   signIn = new PaperclipSignIn({
     callsFor: () => calls,
     keyStore: new HostKeyStore({
-      keep: (entry) => kept.push(entry),
+      keep: (entry) => void kept.push(entry),
       connect: async (_workspace, name) => void connected.push(name),
       readConnection: readConnectionFile,
       writeConnection: writeConnectionFile,

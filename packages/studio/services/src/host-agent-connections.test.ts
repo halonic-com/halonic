@@ -38,6 +38,8 @@ class FakeSignIn {
   confirms: string[] = [];
   /** When set, a confirm or a cancel throws it. */
   failWith: Error | undefined;
+  /** How many of the next confirms throw, as when their answer gets lost. */
+  confirmsLost = 0;
   startAnswer: PaperclipSignInStart = {
     outcome: "started",
     signInId: "sign-in-1",
@@ -62,6 +64,10 @@ class FakeSignIn {
   async confirm(signInId: string) {
     this.confirms.push(signInId);
     if (this.failWith !== undefined) throw this.failWith;
+    if (this.confirmsLost > 0) {
+      this.confirmsLost--;
+      throw new Error("The answer got lost.");
+    }
     return true;
   }
   async cancel(signInId: string) {
@@ -86,6 +92,7 @@ function setUp(options: { setFails?: boolean; revoked?: boolean } = {}) {
       },
     },
     tokens: {
+      get: async (name) => kept.get(name) ?? null,
       set: async (name, value) => {
         if (options.setFails) throw new Error("The keychain is locked.");
         kept.set(name, value);
@@ -170,10 +177,44 @@ verifies("services.host-agent-connections", () => {
       signIn.failWith = new Error("The host can't be reached.");
       const { result } = await resultOf(connections);
       expect(result).toEqual({ outcome: "key-not-saved" });
-      expect(signIn.confirms).toEqual(["sign-in-1"]);
+      expect(signIn.confirms).toEqual(["sign-in-1", "sign-in-1"]);
       expect(signIn.cancels).toEqual(["sign-in-1"]);
       expect(kept.size).toBe(0);
-      expect(reported).toHaveLength(2);
+      expect(reported).toHaveLength(3);
+    });
+
+    it("puts the old key back when Sign in again fails at the confirm", async () => {
+      const { signIn, kept, connections } = setUp();
+      kept.set("paperclip-acme", "old-entry");
+      signIn.states = [connected];
+      signIn.failWith = new Error("The host can't be reached.");
+      const { result } = await resultOf(connections);
+      expect(result).toEqual({ outcome: "key-not-saved" });
+      expect(kept.get("paperclip-acme")).toBe("old-entry");
+      expect(signIn.cancels).toEqual(["sign-in-1"]);
+    });
+
+    it("keeps the old key when Sign in again fails at the keychain write", async () => {
+      const { signIn, kept, connections } = setUp({ setFails: true });
+      kept.set("paperclip-acme", "old-entry");
+      signIn.states = [connected];
+      const { result } = await resultOf(connections);
+      expect(result).toEqual({ outcome: "key-not-saved" });
+      expect(kept.get("paperclip-acme")).toBe("old-entry");
+      expect(signIn.confirms).toEqual([]);
+      expect(signIn.cancels).toEqual(["sign-in-1"]);
+    });
+
+    it("sends a confirm whose answer got lost once more, and connects when the host has the key", async () => {
+      const { signIn, kept, reported, connections } = setUp();
+      signIn.states = [connected];
+      signIn.confirmsLost = 1;
+      const { result } = await resultOf(connections);
+      expect(result).toMatchObject({ outcome: "connected" });
+      expect(signIn.confirms).toEqual(["sign-in-1", "sign-in-1"]);
+      expect(signIn.cancels).toEqual([]);
+      expect(kept.has("paperclip-acme")).toBe(true);
+      expect(reported).toHaveLength(1);
     });
 
     it("still connects when the list fails after the key is kept", async () => {

@@ -4,8 +4,11 @@ import type { PaperclipKeyStore, SavedKey, StoredPaperclipKey } from "./sign-in-
 
 /** What the host's key store reaches. */
 export interface HostKeyStoreDeps {
-  /** Keeps the key in memory for the workspace's connection, as Studio's hand-over does. */
-  keep(entry: StoredPaperclipKey): void;
+  /**
+   * Keeps the key in memory for the workspace's connection, as Studio's
+   * hand-over does; answers what puts back the key held before, if any.
+   */
+  keep(entry: StoredPaperclipKey): (() => void) | undefined;
   /** Starts the connection's provider; it calls nobody until Studio reads or the poller polls. */
   connect(workspace: string, name: string): Promise<void>;
   readConnection(workspace: string, name: string): Promise<PaperclipConnection | undefined>;
@@ -44,13 +47,15 @@ export class HostKeyStore implements PaperclipKeyStore {
       // The file changed while the board approved: keep no key for another server or company.
       throw new Error("The connection file changed during the sign-in.");
     }
-    this.#deps.keep(entry);
+    const putBack = this.#deps.keep(entry);
     await this.#deps.connect(workspace, name);
-    return { createdFile };
+    return putBack === undefined ? { createdFile } : { createdFile, putBack };
   }
 
   async drop(entry: StoredPaperclipKey, saved: SavedKey): Promise<void> {
-    await this.#deps.forget(entry.workspace, entry.name);
+    // A connection that was signed in keeps its old key: this sign-in never revoked it.
+    if (saved.putBack === undefined) await this.#deps.forget(entry.workspace, entry.name);
+    else saved.putBack();
     // Only the file this sign-in wrote: an existing connection keeps its file, signed out.
     if (saved.createdFile) await this.#deps.removeConnection(entry.workspace, entry.name);
   }
