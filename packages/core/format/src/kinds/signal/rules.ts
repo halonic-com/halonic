@@ -57,6 +57,34 @@ export const SIGNAL_RULES = {
       .strict()
       .prefault({}),
   },
+  "board-ask": {
+    about:
+      "Wakes the Board Checker once for agents' comments that ask the board, and lists them in its board-asks document.",
+    writes: true,
+    settings: s
+      .object({
+        /** How far back, in minutes, a comment counts as a new ask. */
+        windowMinutes: s.number().int().min(1).max(60).default(12),
+        /** Whether a new ask wakes the Board Checker; the list is kept either way. */
+        wake: s.boolean().default(true),
+      })
+      .strict()
+      .prefault({}),
+  },
+  "task-effort": {
+    about:
+      "Sets a task's thinking effort from its tags: high or low, never medium or max, and never on a task whose effort someone else set.",
+    writes: true,
+    settings: s
+      .object({
+        /** The easiest difficulty tag (`D1` to `D5`) that runs at high. */
+        highFrom: s.number().int().min(1).max(5).default(4),
+        /** Whether a rerun after a reviewer's send-back runs at high. */
+        highAfterSendBack: s.boolean().default(true),
+      })
+      .strict()
+      .prefault({}),
+  },
 } as const;
 
 /** A rule's name, such as `pr-watcher`. */

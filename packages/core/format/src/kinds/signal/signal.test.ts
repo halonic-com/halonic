@@ -36,8 +36,25 @@ verifies("format.signal-file", () => {
   });
 
   it("lists every rule with whether it writes", () => {
-    expect(signalRuleNames()).toEqual(["pr-watcher"]);
-    expect(signalRuleInfo("pr-watcher").writes).toBe(true);
+    expect(signalRuleNames()).toEqual(["pr-watcher", "board-ask", "task-effort"]);
+    expect(signalRuleNames().map((name) => signalRuleInfo(name).writes)).toEqual([
+      true,
+      true,
+      true,
+    ]);
+  });
+
+  it("fills in today's settings for the board-ask and task-effort rules, and takes a file's", () => {
+    expect(parsedValue("signal", yaml("id: asks", "rule: { run: board-ask }")).rule).toEqual({
+      run: "board-ask",
+      with: { windowMinutes: 12, wake: true },
+    });
+    expect(parsedValue("signal", yaml("id: effort", "rule: { run: task-effort }")).rule).toEqual({
+      run: "task-effort",
+      with: { highFrom: 4, highAfterSendBack: true },
+    });
+    const text = yaml("id: effort", "rule:", "  run: task-effort", "  with: { highFrom: 3 }");
+    expect(parsedValue("signal", text).rule.with).toEqual({ highFrom: 3, highAfterSendBack: true });
   });
 });
 
@@ -69,6 +86,18 @@ verifies("format.signal-refusals", () => {
     expect(summary(problemsOf("signal", signalFile("  with: { wakeOn: [deploy] }")))).toEqual([
       "rule.with.wakeOn.0 invalid_value 4",
     ]);
+  });
+
+  it("refuses another rule's setting, and a setting out of range", () => {
+    const asks = (line: string) => yaml("id: asks", "rule:", "  run: board-ask", line);
+    expect(summary(problemsOf("signal", asks("  with: { wakeOn: [ci-red] }")))).toEqual([
+      "rule.with unrecognized_keys 4",
+    ]);
+    expect(summary(problemsOf("signal", asks("  with: { windowMinutes: 600 }")))).toEqual([
+      "rule.with.windowMinutes too_big 4",
+    ]);
+    const effort = yaml("id: effort", "rule:", "  run: task-effort", "  with: { effort: max }");
+    expect(summary(problemsOf("signal", effort))).toEqual(["rule.with unrecognized_keys 4"]);
   });
 
   it("refuses a key written as its id, without repeating it", () => {

@@ -19,6 +19,30 @@ verifies("paperclip.signals", () => {
     expect(lines).toEqual([]);
   });
 
+  test("runs the board-ask and task-effort rules with today's settings, or a file's", () => {
+    const { plans } = loadSignals(undefined);
+    expect(plans.get("board-ask")).toMatchObject({
+      source: "default",
+      writes: true,
+      settings: { windowMinutes: 12, wake: true },
+    });
+    expect(plans.get("task-effort")).toMatchObject({
+      source: "default",
+      settings: { highFrom: 4, highAfterSendBack: true },
+    });
+    const effort = {
+      version: 1,
+      id: "effort",
+      rule: { run: "task-effort", with: { highFrom: 5 } },
+    };
+    const loaded = loadSignals([effort]);
+    expect(loaded.plans.get("task-effort")).toMatchObject({
+      source: "file",
+      settings: { highFrom: 5 },
+    });
+    expect(loaded.plans.get("pr-watcher")).toMatchObject({ source: "default" });
+  });
+
   test("takes a signal file's settings", () => {
     const signal = { ...watcher, rule: { run: "pr-watcher", with: { wakeOn: ["ci-red"] } } };
     expect(loadSignals([signal]).plans.get("pr-watcher")).toMatchObject({
