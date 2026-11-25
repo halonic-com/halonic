@@ -4,6 +4,7 @@
 - Task: HAL-17962; the phase 3 plugin plan, rev 5 (HAL-17450)
 - Approval: Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:anHxW9ChvuRPKpqmcb4NfTzSme5pYiLjbas2AyJfqnWvYxuOwXzLOwo5g4lZIoBY/NpP6ALSKuT5iA5TZARLBA==
 
 ## What changes
 
