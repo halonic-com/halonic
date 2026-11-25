@@ -191,7 +191,7 @@ halonic routines
 
 ```text
 Weekly report   Mondays at 09:00   Next 23 Nov 09:00   Never ran
-Routines start on time only while this workspace is open in Halonic Studio or `halonic routines watch` is running.
+Routines start on time only while this workspace is open in Halonic Studio, or while `halonic serve` or `halonic routines watch` is running.
 ```
 
 Acme has one routine, the weekly report, set for Monday at 9:00. This command

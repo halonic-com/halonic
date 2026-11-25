@@ -201,14 +201,15 @@ export const routinesMessages = defineMessages("routines", {
 
   /**
    * The dim line under the list: a routine starts on time only while `watch`
-   * runs or its workspace is open in Halonic Studio, since the Studio's engine
-   * starts the open workspace's routines too (HAL-14205, HAL-15204). "Halonic
+   * or `serve` runs or its workspace is open in Halonic Studio, since the
+   * Studio's engine and `serve` start the workspace's routines too (HAL-14205,
+   * HAL-15204, HAL-18602). "Halonic
    * Studio" in full, as the allow-address error says it, since plain
    * "Halonic" is ambiguous in a terminal (HAL-15504).
    */
   watchHint: () => [
     dim(
-      "Routines start on time only while this workspace is open in Halonic Studio or `halonic routines watch` is running.",
+      "Routines start on time only while this workspace is open in Halonic Studio, or while `halonic serve` or `halonic routines watch` is running.",
     ),
   ],
 

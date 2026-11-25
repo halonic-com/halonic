@@ -17,7 +17,7 @@ import { assertTrustable, cliTrustService, readWorkspaceTrust } from "../../work
 import { routinesCommandWith } from "./command.ts";
 
 const hint =
-  "Routines start on time only while this workspace is open in Halonic Studio or `halonic routines watch` is running.";
+  "Routines start on time only while this workspace is open in Halonic Studio, or while `halonic serve` or `halonic routines watch` is running.";
 const routinePath = "hubs/support/workflows/routines/morning.routine.yaml";
 /** A provider that reaches a real model, so Acme needs trust to start anything. */
 const realModel = { "providers/ollama.yaml": "id: ollama\ntype: ollama\nlocal: true\n" };

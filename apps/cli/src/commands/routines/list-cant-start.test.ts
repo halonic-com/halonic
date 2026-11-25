@@ -17,7 +17,7 @@ import { type CapturedIo, captureIo } from "../../test/capture-io.ts";
 import { routinesCommandWith } from "./command.ts";
 
 const hint =
-  "Routines start on time only while this workspace is open in Halonic Studio or `halonic routines watch` is running.";
+  "Routines start on time only while this workspace is open in Halonic Studio, or while `halonic serve` or `halonic routines watch` is running.";
 
 /** The line above the list for `count` routines that can't start, each with its reason under it (C672 #1). */
 const cantStartLine = (count: number) =>
