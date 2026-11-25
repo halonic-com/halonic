@@ -108,8 +108,12 @@ pub fn show<R: Runtime>(handle: &AppHandle<R>, app: Option<FocusedApp>) -> tauri
 }
 
 /// What the running Halonic does when it is started again with `arguments`.
-/// A window that can't open leaves the others as they are.
+/// A window that can't open leaves the others as they are. A start at login
+/// opens nothing: Halonic runs already (`background_start.rs`).
 pub fn started_again<R: Runtime>(handle: &AppHandle<R>, arguments: &[String]) {
+    if crate::background_start::requested(arguments) {
+        return;
+    }
     if let Err(error) = show(handle, requested(arguments)) {
         halonic_shell_log::record("window", format!("a window didn't open: {error}"));
     }

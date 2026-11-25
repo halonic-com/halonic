@@ -50,6 +50,8 @@ mod action_parts;
 #[cfg(desktop)]
 mod actions;
 mod agent_host;
+#[cfg(desktop)]
+mod background_start;
 mod blobs;
 mod command_paths;
 mod connect;
@@ -76,6 +78,8 @@ mod google_setups;
 mod host_settings;
 mod http_fetch;
 mod instruction_trust;
+#[cfg(desktop)]
+mod last_quit;
 mod lite_check;
 mod local_network;
 #[cfg(desktop)]
@@ -265,12 +269,10 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .plugin(navigation::guard())
         .setup(|app| {
             profile::start_shell_log(app.handle());
-            // Studio's window, or the focused app's that `--app` names.
+            // Studio's window, the focused app's that `--app` names, or none.
             #[cfg(desktop)]
-            {
-                let arguments: Vec<String> = std::env::args().collect();
-                focused_apps::show(app.handle(), focused_apps::requested(&arguments))?;
-            }
+            let background =
+                background_start::open_window(app.handle(), &std::env::args().collect::<Vec<_>>())?;
             #[cfg(mobile)]
             window::open(app.handle())?;
             server_session::sweep_at_start(app.handle());
@@ -279,7 +281,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             #[cfg(desktop)]
             notification_clicks::listen(app.handle());
             #[cfg(desktop)]
-            tray::start(app.handle());
+            background_start::after_tray(app.handle(), background, tray::start(app.handle()));
             Ok(())
         })
         // A page that reloads or closes can't end its agent host streams

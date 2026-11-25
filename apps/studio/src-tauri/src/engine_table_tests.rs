@@ -19,7 +19,7 @@ fn windows(labels: &[&str]) -> HashSet<String> {
 fn engine_lifetime_one_engine_serves_every_window_of_a_workspace() {
     let mut table = EngineTable::default();
     table
-        .started(acme(), "acme".into(), "first launch", "main")
+        .started(acme(), "acme".into(), "first launch", Some("main"))
         .unwrap();
 
     assert_eq!(table.serve(&acme(), "code"), Some(&"first launch"));
@@ -38,7 +38,9 @@ fn engine_lifetime_one_engine_serves_every_window_of_a_workspace() {
 fn engine_lifetime_restarts_three_times_then_stays_down() {
     let mut table = EngineTable::default();
     let start = Instant::now();
-    let mut launch = table.started(acme(), "acme".into(), 1, "main").unwrap();
+    let mut launch = table
+        .started(acme(), "acme".into(), 1, Some("main"))
+        .unwrap();
     for minute in 0..3 {
         let now = start + Duration::from_secs(60 * minute);
         let (crashed, next) = table.crashed(&acme(), launch, now);
@@ -60,7 +62,9 @@ fn engine_lifetime_restarts_three_times_then_stays_down() {
         None,
         "nothing runs in the problem state"
     );
-    table.started(acme(), "acme".into(), 9, "main").unwrap();
+    table
+        .started(acme(), "acme".into(), 9, Some("main"))
+        .unwrap();
     let (_, again) = table.crashed(&acme(), 5, start + Duration::from_secs(4 * 60));
     assert!(
         matches!(again, AfterCrash::Restart { .. }),
@@ -72,7 +76,7 @@ fn engine_lifetime_restarts_three_times_then_stays_down() {
 fn engine_lifetime_ignores_word_about_an_old_or_stopped_launch() {
     let mut table = EngineTable::default();
     let first = table
-        .started(acme(), "acme".into(), "first", "main")
+        .started(acme(), "acme".into(), "first", Some("main"))
         .unwrap();
     let _first_crash = table.crashed(&acme(), first, Instant::now());
     let (second, _) = table.restarted(&acme(), "second").unwrap();
@@ -97,7 +101,7 @@ fn engine_lifetime_ignores_word_about_an_old_or_stopped_launch() {
 fn engine_lifetime_closed_window_leaves_the_engine_running() {
     let mut table = EngineTable::default();
     table
-        .started(acme(), "acme".into(), "engine", "main")
+        .started(acme(), "acme".into(), "engine", Some("main"))
         .unwrap();
 
     table.close_window("main");
@@ -110,14 +114,14 @@ fn engine_lifetime_closed_window_leaves_the_engine_running() {
 fn engine_lifetime_an_engine_that_finishes_starting_after_quit_is_given_back() {
     let mut table = EngineTable::default();
     table
-        .started(acme(), "acme".into(), "running", "main")
+        .started(acme(), "acme".into(), "running", Some("main"))
         .unwrap();
 
     let stopped = table.take_all();
 
     assert_eq!(stopped, vec![("running", windows(&["main"]))]);
     assert_eq!(
-        table.started(PathBuf::from("other"), "other".into(), "late", "code"),
+        table.started(PathBuf::from("other"), "other".into(), "late", Some("code")),
         Err("late"),
         "Quit closed the table while it started"
     );
@@ -137,7 +141,9 @@ fn engine_lifetime_a_fresh_workspace_is_not_paused() {
 fn engine_lifetime_the_pause_stays_through_crashes_and_restarts() {
     let mut table = EngineTable::default();
     let start = Instant::now();
-    let launch = table.started(acme(), "acme".into(), 1, "main").unwrap();
+    let launch = table
+        .started(acme(), "acme".into(), 1, Some("main"))
+        .unwrap();
     assert_eq!(
         table.set_pause(&acme(), true),
         Some(&1),
@@ -161,7 +167,9 @@ fn engine_lifetime_the_pause_stays_through_crashes_and_restarts() {
     }
     let (_, next) = table.crashed(&acme(), launch, start + Duration::from_secs(3 * 60));
     assert!(matches!(next, AfterCrash::Problem { .. }));
-    table.started(acme(), "acme".into(), 9, "code").unwrap();
+    table
+        .started(acme(), "acme".into(), 9, Some("code"))
+        .unwrap();
     assert!(
         table.pause(&acme()).is_paused(),
         "opening it again keeps it"
@@ -177,7 +185,9 @@ fn engine_lifetime_pausing_with_no_engine_running() {
     assert_eq!(table.set_pause(&acme(), true), None, "no launch yet");
     assert!(!table.pause(&acme()).is_paused(), "nothing to keep it on");
 
-    let launch = table.started(acme(), "acme".into(), 1, "main").unwrap();
+    let launch = table
+        .started(acme(), "acme".into(), 1, Some("main"))
+        .unwrap();
     let _ = table.crashed(&acme(), launch, Instant::now());
     assert_eq!(
         table.set_pause(&acme(), true),
@@ -193,7 +203,9 @@ fn engine_lifetime_pausing_with_no_engine_running() {
 
 /// Crashes the engine of `acme` until it is in the problem state.
 fn into_problem(table: &mut EngineTable<u32>, start: Instant) {
-    let mut launch = table.started(acme(), "acme".into(), 1, "main").unwrap();
+    let mut launch = table
+        .started(acme(), "acme".into(), 1, Some("main"))
+        .unwrap();
     for minute in 0..4 {
         let now = start + Duration::from_secs(60 * minute);
         let (_, next) = table.crashed(&acme(), launch, now);
@@ -210,7 +222,7 @@ fn into_problem(table: &mut EngineTable<u32>, start: Instant) {
 fn tray_summary_adds_runs_and_shows_a_problem() {
     let mut table = EngineTable::default();
     table
-        .started(PathBuf::from("other"), "other".into(), 2, "code")
+        .started(PathBuf::from("other"), "other".into(), 2, Some("code"))
         .unwrap();
     assert_eq!(
         table.summary(|runs| *runs),
@@ -257,14 +269,16 @@ fn tray_try_again_starts_the_problem_workspaces_again() {
 #[test]
 fn tray_pause_routines_covers_every_workspace_and_later_ones() {
     let mut table = EngineTable::default();
-    table.started(acme(), "acme".into(), 1, "main").unwrap();
+    table
+        .started(acme(), "acme".into(), 1, Some("main"))
+        .unwrap();
 
     let (pause, engines) = table.set_pause_all(true);
     assert!(pause.is_paused());
     assert_eq!(engines, vec![&1]);
     assert!(table.summary(|runs| *runs).paused);
     table
-        .started(PathBuf::from("other"), "other".into(), 2, "code")
+        .started(PathBuf::from("other"), "other".into(), 2, Some("code"))
         .unwrap();
     assert!(
         table.pause(Path::new("other")).is_paused(),
@@ -281,11 +295,31 @@ fn tray_pause_routines_covers_every_workspace_and_later_ones() {
 #[test]
 fn tray_a_failed_restart_is_a_problem() {
     let mut table = EngineTable::default();
-    let launch = table.started(acme(), "acme".into(), 1, "main").unwrap();
+    let launch = table
+        .started(acme(), "acme".into(), 1, Some("main"))
+        .unwrap();
     let _crash = table.crashed(&acme(), launch, Instant::now());
 
     table.failed_to_restart(&acme());
 
     assert!(table.summary(|runs| *runs).problem);
     assert_eq!(table.try_again(), vec![(acme(), "acme".to_owned())]);
+}
+
+/// `studio.src-tauri.background-start`: a start at login serves no window,
+/// and Quit lists every workspace once, the problem ones too, then nothing.
+#[test]
+fn background_start_records_every_open_workspace_once() {
+    let mut table = EngineTable::default();
+    into_problem(&mut table, Instant::now());
+    table
+        .started(PathBuf::from("other"), "other".into(), 2, None)
+        .unwrap();
+    assert_eq!(
+        table.open_at_quit(),
+        Some(vec!["acme".to_owned(), "other".to_owned()])
+    );
+    let taken = table.take_all();
+    assert_eq!(taken, vec![(2, HashSet::new())]);
+    assert_eq!(table.open_at_quit(), None);
 }

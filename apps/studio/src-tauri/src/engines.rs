@@ -51,6 +51,12 @@ pub struct EngineOpenRefusal {
     message: String,
 }
 
+impl std::fmt::Display for EngineOpenRefusal {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "{}: {}", self.kind, self.message)
+    }
+}
+
 fn refusal(kind: &'static str, message: impl std::fmt::Display) -> EngineOpenRefusal {
     EngineOpenRefusal {
         kind,
@@ -89,25 +95,50 @@ fn open<R: Runtime>(
         .folders()
         .check(Path::new(location))
         .map_err(|_| refusal("folder_not_open", "the shell hasn't opened that folder"))?;
-    let state = app.state::<EnginesState>();
-    let start_lock = start_lock(&state, &workspace);
-    let _starting = lock(&start_lock);
-    let running = lock(&state.table)
-        .serve(&workspace, window)
-        .map(|engine| engine.link().handshake().clone());
-    let handshake = match running {
-        Some(handshake) => handshake,
-        None => {
-            let launch_number = next_launch(&state, &workspace);
-            let engine = start(app, &workspace, location, launch_number)?;
-            let handshake = engine.link().handshake().clone();
-            join(&state, workspace, location, engine, window)?;
-            // It may have left the problem state.
-            crate::tray::refresh(app);
-            handshake
-        }
-    };
+    let handshake = running_engine(app, &workspace, location, Some(window))?;
     connect(app, window, handshake)
+}
+
+/// A start at login (`background_start.rs`): starts the engine of
+/// `workspace`, a folder the shell has opened, for `location`, with no
+/// window, unless one runs already.
+pub fn start_in_background<R: Runtime>(
+    app: &AppHandle<R>,
+    workspace: &Path,
+    location: &str,
+) -> Result<(), EngineOpenRefusal> {
+    running_engine(app, workspace, location, None).map(|_| ())
+}
+
+/// The handshake of the engine of `workspace`, which now also serves
+/// `window`, starting the engine first when none runs.
+fn running_engine<R: Runtime>(
+    app: &AppHandle<R>,
+    workspace: &Path,
+    location: &str,
+    window: Option<&str>,
+) -> Result<Handshake, EngineOpenRefusal> {
+    let state = app.state::<EnginesState>();
+    let start_lock = start_lock(&state, workspace);
+    let _starting = lock(&start_lock);
+    let running = {
+        let mut table = lock(&state.table);
+        let engine = match window {
+            Some(window) => table.serve(workspace, window),
+            None => table.engine(workspace),
+        };
+        engine.map(|engine| engine.link().handshake().clone())
+    };
+    if let Some(handshake) = running {
+        return Ok(handshake);
+    }
+    let launch_number = next_launch(&state, workspace);
+    let engine = start(app, workspace, location, launch_number)?;
+    let handshake = engine.link().handshake().clone();
+    join(&state, workspace.to_owned(), location, engine, window)?;
+    // It may have left the problem state.
+    crate::tray::refresh(app);
+    Ok(handshake)
 }
 
 /// The start lock of `workspace`. Kept for the shell's life: one small
@@ -124,7 +155,7 @@ fn join(
     workspace: PathBuf,
     location: &str,
     engine: EngineProcess,
-    window: &str,
+    window: Option<&str>,
 ) -> Result<(), EngineOpenRefusal> {
     let mut table = lock(&state.table);
     let joined = table.started(workspace.clone(), location.to_owned(), engine, window);
@@ -368,7 +399,8 @@ pub fn sandbox_host_changed<R: Runtime>(app: &AppHandle<R>, host: Option<&Handsh
     }
 }
 
-/// Quit, or an update's restart: stops every engine at once, each with its
+/// Quit, or an update's restart: records the workspaces open now for the
+/// next start at login, then stops every engine at once, each with its
 /// 15 seconds, and waits for them all. An engine still starting is stopped
 /// as it finishes (the table is closed), and none starts after.
 pub fn stop_all<R: Runtime>(app: &AppHandle<R>) {
@@ -378,7 +410,13 @@ pub fn stop_all<R: Runtime>(app: &AppHandle<R>) {
     let Some(state) = app.try_state::<EnginesState>() else {
         return;
     };
-    let engines = lock(&state.table).take_all();
+    let mut table = lock(&state.table);
+    let open = table.open_at_quit();
+    let engines = table.take_all();
+    drop(table);
+    if let Some(locations) = open {
+        crate::background_start::record_open_at_quit(app, &locations);
+    }
     let stopping: Vec<_> = engines
         .into_iter()
         .map(|(engine, windows)| {
@@ -390,6 +428,14 @@ pub fn stop_all<R: Runtime>(app: &AppHandle<R>) {
         if !matches!(stop.join(), Ok(Stopped::Exited)) {
             halonic_shell_log::record("engine", "it didn't stop in time and was killed");
         }
+    }
+}
+
+/// A start at login that exits without running: closes the table, so the
+/// exit doesn't record an empty list over the last Quit's.
+pub fn close_unrecorded<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(state) = app.try_state::<EnginesState>() {
+        drop(lock(&state.table).take_all());
     }
 }
 

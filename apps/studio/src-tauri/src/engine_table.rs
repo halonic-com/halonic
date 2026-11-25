@@ -86,9 +86,9 @@ impl<P> EngineTable<P> {
         Some(engine)
     }
 
-    /// Notes a new launch for `workspace`, opened by `window`. A window that
-    /// opens a workspace in the problem state gets a fresh restart limit;
-    /// the user's pause stays.
+    /// Notes a new launch for `workspace`, opened by `window`, or by a start
+    /// at login when `None`. A window that opens a workspace in the problem
+    /// state gets a fresh restart limit; the user's pause stays.
     ///
     /// Returns the launch's number, for [`Self::crashed`], or gives `engine`
     /// back to be stopped when Quit closed the table while it started.
@@ -97,7 +97,7 @@ impl<P> EngineTable<P> {
         workspace: PathBuf,
         location: String,
         engine: P,
-        window: &str,
+        window: Option<&str>,
     ) -> Result<u64, P> {
         if self.closed {
             return Err(engine);
@@ -120,7 +120,9 @@ impl<P> EngineTable<P> {
         entry.launch += 1;
         entry.restarts = RestartLimit::default();
         entry.problem = false;
-        entry.windows.insert(window.to_owned());
+        if let Some(window) = window {
+            entry.windows.insert(window.to_owned());
+        }
         Ok(entry.launch)
     }
 
@@ -271,6 +273,24 @@ impl<P> EngineTable<P> {
         self.workspaces
             .values()
             .filter_map(|entry| entry.engine.as_ref())
+    }
+
+    /// The location of every workspace an engine was started for, running
+    /// or in the problem state, sorted, for the start at login to start
+    /// again (`studio.src-tauri.background-start`). `None` once Quit closed
+    /// the table, so a second stop doesn't record an empty list over it.
+    pub fn open_at_quit(&self) -> Option<Vec<String>> {
+        if self.closed {
+            return None;
+        }
+        let mut locations: Vec<String> = self
+            .workspaces
+            .values()
+            .map(|entry| entry.location.clone())
+            .collect();
+        locations.sort();
+        locations.dedup();
+        Some(locations)
     }
 
     /// Quit: closes the table, so an engine still starting is given back by
