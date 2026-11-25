@@ -144,6 +144,33 @@ verifies("format.deployments-cloudflare", () => {
     ]);
   });
 
+  it("reads a scope's share of the daily ceiling as written", () => {
+    const text = cloud(
+      "local",
+      "    limits:",
+      "      dailyRequests: 50000",
+      "      scopeDailyRequests: 5000",
+    );
+    expect(parsedValue("deployments", text).deployments["cloud"]?.limits).toEqual({
+      dailyRequests: 50000,
+      scopeDailyRequests: 5000,
+    });
+  });
+
+  it.each([
+    ["0", "      dailyRequests: 10"],
+    ["1.5", "      dailyRequests: 10"],
+    ["11", "      dailyRequests: 10"],
+    ["5", null],
+  ])("refuses scopeDailyRequests: %s next to %s", (value, dailyLine) => {
+    const lines = dailyLine === null ? [] : [dailyLine];
+    const text = cloud("local", "    limits:", ...lines, `      scopeDailyRequests: ${value}`);
+    const problems = problemsOf("deployments", text);
+    expect(problems.map((problem) => problem.path.join("."))).toEqual([
+      "deployments.cloud.limits.scopeDailyRequests",
+    ]);
+  });
+
   it("warns, without failing, about cloudflare settings on another host", () => {
     const text = cloud("local", "    cloudflare:", "      worker: acme");
     expect(warningsOf(text)).toEqual([
