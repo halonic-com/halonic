@@ -50,6 +50,8 @@ export class FakePaperclip {
     if (path === `/api/companies/${acme.company}/issues`) return json([]);
     if (path === `/api/companies/${acme.company}/approvals`) return json([]);
     if (path === `/api/companies/${acme.company}/decisions`) return json([]);
+    if (path === `/api/companies/${acme.company}/secret-proposals`) return json([]);
+    if (path === `/api/companies/${acme.company}/join-requests`) return json([]);
     if (path === `/api/companies/${acme.company}/projects`) return json([]);
     if (path === "/api/issues/task-1/comments") return json([]);
     return json({ error: "API route not found" }, 404);

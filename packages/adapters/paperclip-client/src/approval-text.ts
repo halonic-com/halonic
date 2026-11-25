@@ -7,12 +7,12 @@ import { stepperRequestKey } from "./steppers.ts";
 // fields are the ones Paperclip's own approval screen reads. Every value is agent-written.
 
 /** `value` on one line, so an agent's newline can't end a list item or start a block. */
-function oneLine(value: string): string {
+export function oneLine(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
 /** A `- Label: value` line for each field that has a value. */
-function fieldLines(fields: readonly (readonly [string, string | undefined])[]): string[] {
+export function fieldLines(fields: readonly (readonly [string, string | undefined])[]): string[] {
   return fields.flatMap(([label, value]) =>
     value === undefined ? [] : [`- ${label}: ${oneLine(value)}`],
   );
@@ -26,7 +26,7 @@ function dollars(cents: unknown): string | undefined {
 }
 
 /** `body` under a bold heading, or nothing without a body. */
-function section(heading: string, body: string | undefined): string[] {
+export function section(heading: string, body: string | undefined): string[] {
   return body === undefined ? [] : [`**${heading}**\n\n${body}`];
 }
 

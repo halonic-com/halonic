@@ -20,6 +20,7 @@ import {
   type WorkItem,
 } from "@halonicjs/ports";
 import { readAvatar } from "./avatars.ts";
+import { boardRequestOf } from "./board-requests.ts";
 import { ChangeFeed } from "./changes.ts";
 import { PaperclipChannelMembers } from "./channel-members.ts";
 import { PaperclipChannelSender } from "./channel-send.ts";
@@ -217,6 +218,7 @@ export class PaperclipMessaging implements AgentMessaging {
       card: this.#ids.read(item, "card"),
       approval: this.#ids.read(item, "approval"),
       decision: this.#ids.read(item, "decision"),
+      boardRequest: boardRequestOf(this.#ids, item),
     };
     const result = await this.#writer.answer(this.#context(), target, answer);
     this.#changedAfter(result.outcome !== "refused");

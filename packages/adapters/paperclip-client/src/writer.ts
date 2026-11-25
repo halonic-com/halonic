@@ -1,4 +1,5 @@
 import type { AnswerResult, InboxAnswer, InboxItem, MessagingRefusal } from "@halonicjs/ports";
+import { type BoardRequestKind, PaperclipBoardRequests } from "./board-requests.ts";
 import { approvalAnswerRequest, approvalToItem, cardAnswerRequest, cardToItem } from "./cards.ts";
 import { decisionAnswerRequest, decisionToItem } from "./decisions.ts";
 import { decisionPage } from "./inbox.ts";
@@ -15,6 +16,8 @@ export interface AnswerTarget {
   card: readonly string[] | undefined;
   approval: readonly string[] | undefined;
   decision?: readonly string[] | undefined;
+  /** A secret proposal or a join request (`paperclip-client.board-requests`). */
+  boardRequest?: { kind: BoardRequestKind; id: string } | undefined;
 }
 
 /** What sending a chat message did, before it is mapped to the port. */
@@ -96,6 +99,10 @@ export class PaperclipWriter {
       }
       if (target.decision !== undefined) {
         return await this.#answerDecision(context, target.decision, answer);
+      }
+      if (target.boardRequest !== undefined) {
+        const requests = new PaperclipBoardRequests(this.#reader, this.#company);
+        return await requests.answer(context, target.boardRequest, answer, this.#now);
       }
     } catch (error) {
       if (error instanceof UnsafeIdError) {

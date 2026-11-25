@@ -66,6 +66,12 @@ export class FakePaperclip {
       .on("GET", `/api/companies/${company}/decisions`, ({ query }) => ({
         body: data.decisions.filter((decision) => decision.status === query.get("status")),
       }))
+      .on("GET", `/api/companies/${company}/secret-proposals`, ({ query }) => ({
+        body: byStatus(data.secretProposals, query.get("status")),
+      }))
+      .on("GET", `/api/companies/${company}/join-requests`, ({ query }) => ({
+        body: byStatus(data.joinRequests, query.get("status")),
+      }))
       .on("GET", `/api/companies/${company}/projects`, { body: data.projects })
       .on("GET", `/api/approvals/${approvalId}/issues`, {
         body: [{ id: plainTask, projectId: websiteProject }],
@@ -110,6 +116,11 @@ async function bodyOf(request: Request): Promise<unknown> {
 }
 
 /** The tasks Paperclip's `q=` would match: the query in the identifier, title or description, ignoring case. */
+/** `records` in `status`, or all of them without one, as Paperclip's list filters take it. */
+function byStatus<T extends { status: string }>(records: readonly T[], status: string | null) {
+  return status === null ? records : records.filter((record) => record.status === status);
+}
+
 function matchingTasks<T extends object>(tasks: readonly T[], query: string | null): readonly T[] {
   if (query === null) {
     return tasks;

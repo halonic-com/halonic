@@ -35,6 +35,31 @@ export const paperclipRequests = {
   // Standalone decisions (HAL-18872): read the open ones, and pick one option of one.
   listDecisions: { method: "GET", path: "/api/companies/:company/decisions" },
   decide: { method: "POST", path: "/api/decisions/:decision/decide" },
+  // Secret proposals and join requests (`paperclip-client.board-requests`, HAL-18873). Each
+  // write pins its body: approve sends no overrides and no cascade, so Halonic never renames a
+  // secret or approves another proposal with it, and a reject sends only Paperclip's reason.
+  listSecretProposals: { method: "GET", path: "/api/companies/:company/secret-proposals" },
+  approveSecretProposal: {
+    method: "POST",
+    path: "/api/companies/:company/secret-proposals/:proposal/approve",
+    body: { fields: [] },
+  },
+  rejectSecretProposal: {
+    method: "POST",
+    path: "/api/companies/:company/secret-proposals/:proposal/reject",
+    body: { fields: ["reason"] },
+  },
+  listJoinRequests: { method: "GET", path: "/api/companies/:company/join-requests" },
+  approveJoinRequest: {
+    method: "POST",
+    path: "/api/companies/:company/join-requests/:join/approve",
+    body: { fields: [] },
+  },
+  rejectJoinRequest: {
+    method: "POST",
+    path: "/api/companies/:company/join-requests/:join/reject",
+    body: { fields: [] },
+  },
   // Disconnect (track A4): read who the key belongs to, and revoke the key in use.
   // Starting a sign-in makes a key, so it isn't here: no route that makes keys is
   // (board, HAL-10, 24 Nov). Sign-in has its own list, `sign-in-requests.ts` (HAL-17439).
@@ -226,6 +251,9 @@ const segmentRules: Readonly<Record<string, RegExp>> = {
   revision: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
   // A run is a UUID too: Paperclip's run routes refuse anything else.
   run: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+  // Secret proposals and join requests are UUIDs as well (HAL-18873).
+  proposal: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+  join: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
 };
 
 /** Whether `value` may fill segment `:segment`: safe, and passing the segment's own rule. */
