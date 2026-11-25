@@ -100,6 +100,15 @@ verifies("shell.item-page-header", () => {
     expect(header.lastElementChild?.textContent).toBe("Run");
   });
 
+  it("shows the name as plain text in the title, with no field, when the host can't rename", () => {
+    const container = render(<Workflow onRename={undefined} />);
+    const heading = container.querySelector("header h1") as HTMLElement;
+    expect(heading.textContent).toContain("Support reply");
+    expect(heading.className).toContain("text-section");
+    expect(container.querySelector('input[type="text"]')).toBeNull();
+    expect(nameField(container)).toBeNull();
+  });
+
   it("sizes the name field by the name it shows, not by a count of characters", () => {
     const container = render(<Workflow />);
     const field = nameField(container);
