@@ -96,6 +96,7 @@ verifies("paperclip.gh-guard-route", () => {
         ["chief-line-subscribe", "board"],
         ["board-post", "board"],
         ["chief-line-track", "board"],
+        ["chief-line-pr-event", "board"],
       ]);
       expect(manifest.capabilities).toContain("api.routes.register");
       const onApiRequest = plugin.definition.onApiRequest;

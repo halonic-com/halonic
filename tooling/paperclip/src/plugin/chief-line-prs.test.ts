@@ -99,6 +99,7 @@ function setup() {
     projectId: "proj-1",
     webhookHosts: ["hooks.acme.test"],
     maxPerHour: 3,
+    prOutcomes: true,
   };
   const github = fakeGitHub();
   const pass = (snapshot: Snapshot) =>
@@ -197,6 +198,28 @@ verifies("paperclip.chief-line-prs", () => {
     );
     expect((await handleChiefLineRequest(agent, line.ctx)).status).toBe(403);
   });
+  test("with prOutcomes off the pass posts nothing", async () => {
+    const { line, track } = setup();
+    await track(6085);
+    const before = line.comments["thread-1"]?.length;
+    const off = chiefLinePrPass(line.ctx, {
+      companyId: "acme",
+      settings: {
+        enabled: true,
+        projectId: "proj-1",
+        webhookHosts: [],
+        maxPerHour: 3,
+        prOutcomes: false,
+      },
+      snapshot: snapshotOf(pull(6085, "69f553a7c", "merged")),
+      get: fakeGitHub().get,
+      watched: [repo],
+      dryRun: false,
+    });
+    expect(await off).toBe(0);
+    expect(line.comments["thread-1"]?.length).toBe(before);
+  });
+
   test("a pull request GitHub doesn't know is dropped once", async () => {
     const { line, pass, track } = setup();
     await track(99999);

@@ -7,7 +7,7 @@ import type {
   PluginStateClient,
 } from "@paperclipai/plugin-sdk";
 import { boardPost } from "./board-post.ts";
-import { trackPull } from "./chief-line-prs.ts";
+import { prEvent, trackPull } from "./chief-line-pr-routes.ts";
 import {
   type ChiefLineRecord,
   type ChiefLineSettings,
@@ -17,6 +17,7 @@ import {
   readChiefLineSettings,
   webhookAllowed,
 } from "./chief-line-settings.ts";
+import type { ChiefLineSignalApi } from "./chief-line-signal.ts";
 import { reopenThread } from "./host.ts";
 import {
   isChief,
@@ -413,7 +414,7 @@ export const isChiefLineRoute = (routeKey: string) =>
 /** Answers the chief line's routes and `board/post`, for a signed-in board user only. */
 export async function handleChiefLineRequest(
   input: PluginApiRequestInput,
-  ctx: ChiefLineApi,
+  ctx: ChiefLineSignalApi,
   now: Date = new Date(),
 ): Promise<PluginApiResponse> {
   const userId = input.actor.actorType === "user" ? input.actor.userId : undefined;
@@ -436,6 +437,8 @@ export async function handleChiefLineRequest(
       return await boardPost(ctx, input.companyId, settings, body, now);
     case chiefLineRouteKeys.track:
       return await trackPull(ctx, input.companyId, settings, body);
+    case chiefLineRouteKeys.prEvent:
+      return await prEvent(ctx, input.companyId, settings, body);
     default:
       return await subscribe(ctx, input.companyId, settings, body);
   }

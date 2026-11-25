@@ -1,17 +1,11 @@
-import type { PluginApiResponse, PluginIssuesClient } from "@paperclipai/plugin-sdk";
+import type { PluginIssuesClient } from "@paperclipai/plugin-sdk";
 import { plainLines } from "../merge-control/signed.ts";
 import { reviewers } from "../pr-tools/approvals.ts";
 import type { CheckState } from "../pr-watcher/decide.ts";
 import { byReviewer, everyPage, type GitHubGet } from "../pr-watcher/github.ts";
 import type { Snapshot } from "../snapshot/shape.ts";
-import { type ChiefLineApi, fail, readRecords } from "./chief-line.ts";
-import {
-  type ChiefLineSettings,
-  callerPattern,
-  parseThreadTitle,
-  threadTitle,
-  webhookAllowed,
-} from "./chief-line-settings.ts";
+import { readRecords } from "./chief-line.ts";
+import { type ChiefLineSettings, parseThreadTitle, webhookAllowed } from "./chief-line-settings.ts";
 import { type ChiefLineSignalApi, sendSignal } from "./chief-line-signal.ts";
 
 /**
@@ -19,19 +13,22 @@ import { type ChiefLineSignalApi, sendSignal } from "./chief-line-signal.ts";
  * Paperclip task the PR watcher could wake, so it registers its pull requests
  * with `POST /chief-line/track`, and every watcher pass posts what changed on
  * the caller's chief line: a signed verdict from Liam or Julian, a green or
- * red `ci-ok` on the head, a merge or a close. Both the registry and what was
+ * red `ci-ok` on the head, a merge or a close. GitHub's webhooks reach the
+ * same posts sooner through `POST /chief-line/pr-event`
+ * (src/plugin/chief-line-pr-routes.ts). Both the registry and what was
  * already sent are hidden markers in the plugin's own comments on the thread,
- * so they survive a plugin reinstall, which clears plugin state.
+ * so they survive a plugin reinstall, which clears plugin state, and the
+ * webhook and the pass never post one event twice.
  */
 
 /** The marker's prefix, in an HTML comment that the task page doesn't show. */
 const markerPrefix = "chief-line-pr";
 const markerPattern = /<!-- chief-line-pr ([\w.-]+\/[\w.-]+)#(\d+) (\S+) -->/g;
-const repoPattern = /^[\w.-]+\/[\w.-]+$/;
 /** Keys that end tracking: the pull request is gone, nothing more will come. */
 const endKeys = new Set(["merged", "closed", "dropped"]);
 
-const marker = (repo: string, number: number, key: string) =>
+/** The hidden marker that records `key` as sent (or `track`) for a pull request. */
+export const marker = (repo: string, number: number, key: string) =>
   `<!-- ${markerPrefix} ${repo}#${number} ${key} -->`;
 
 /** A tracked pull request, from the markers on a caller's threads. */
@@ -90,7 +87,7 @@ const verdictLine =
 /** A conversation comment as GitHub lists it. */
 interface IssueComment {
   readonly id: number;
-  readonly html_url?: string;
+  readonly html_url?: string | undefined;
   readonly body?: string | null;
   readonly author_association?: string;
   readonly created_at: string;
@@ -129,7 +126,7 @@ export function verdicts(comments: readonly IssueComment[]): Verdict[] {
 }
 
 /** What the pass knows about a pull request's state. */
-interface PullState {
+export interface PullState {
   readonly state: "open" | "merged" | "closed";
   readonly head: string;
   readonly ciOk: CheckState;
@@ -163,13 +160,13 @@ async function pullState(
 }
 
 /** One event to post: its line and the key that marks it sent. */
-interface News {
+export interface News {
   readonly line: string;
   readonly key: string;
 }
 
 /** Verdicts on the current head, and any made since tracking began, so one just ahead of `track` still arrives. */
-function verdictNews(found: readonly Verdict[], pull: TrackedPull, head: string): News[] {
+export function verdictNews(found: readonly Verdict[], pull: TrackedPull, head: string): News[] {
   const name = `${pull.repo}#${pull.number}`;
   return found.flatMap((verdict): News[] => {
     const key = `verdict:${verdict.commentId}`;
@@ -183,7 +180,7 @@ function verdictNews(found: readonly Verdict[], pull: TrackedPull, head: string)
 }
 
 /** A green or red `ci-ok` on the open head, or the merge or close that ends tracking. */
-function stateNews(state: PullState, pull: TrackedPull): News[] {
+export function stateNews(state: PullState, pull: TrackedPull): News[] {
   const name = `${pull.repo}#${pull.number}`;
   if (state.state !== "open") {
     const what = state.state === "merged" ? "merged" : "closed without merging";
@@ -249,24 +246,34 @@ export interface PassOptions {
 }
 
 /** A chief line thread as the pass reads it. */
-interface PassThread {
+export interface PassThread {
   readonly id: string;
   readonly identifier?: string | null;
   readonly createdAt: Date | string;
 }
 
+/** The pull requests tracked on a caller's threads, read from their comments. */
+export async function callerPulls(
+  ctx: PrOutcomesApi,
+  companyId: string,
+  threads: readonly PassThread[],
+): Promise<TrackedPull[]> {
+  const comments = await Promise.all(
+    threads.map((thread) => ctx.issues.listComments(thread.id, companyId)),
+  );
+  return trackedPulls(comments.flat());
+}
+
 /** Posts one caller's news on its newest thread and signals its webhook; 1 when it posted. */
 async function postNews(
   ctx: PrOutcomesApi,
-  { companyId, settings, snapshot, get, watched, dryRun }: PassOptions,
+  options: PassOptions,
   caller: string,
   threads: readonly PassThread[],
 ): Promise<number> {
-  const comments = (
-    await Promise.all(threads.map((thread) => ctx.issues.listComments(thread.id, companyId)))
-  ).flat();
+  const { companyId, snapshot, get, watched } = options;
   const news = [];
-  for (const pull of trackedPulls(comments)) {
+  for (const pull of await callerPulls(ctx, companyId, threads)) {
     try {
       news.push(await pullNews(get, snapshot, watched, pull));
     } catch (error) {
@@ -277,6 +284,18 @@ async function postNews(
     }
   }
   const lines = news.flatMap((n) => n.lines);
+  const markers = news.flatMap((n) => n.keys);
+  return await postLines(ctx, options, caller, threads, { lines, markers });
+}
+
+/** Posts lines and their markers on the caller's newest thread and signals its webhook; 1 when it posted. */
+export async function postLines(
+  ctx: PrOutcomesApi,
+  { companyId, settings, dryRun }: Pick<PassOptions, "companyId" | "settings" | "dryRun">,
+  caller: string,
+  threads: readonly PassThread[],
+  { lines, markers }: { lines: readonly string[]; markers: readonly string[] },
+): Promise<number> {
   const thread = [...threads].sort(
     (x, y) => new Date(y.createdAt).getTime() - new Date(x.createdAt).getTime(),
   )[0];
@@ -288,8 +307,7 @@ async function postNews(
     return 0;
   }
   const list = lines.map((line) => `- ${line}`).join("\n");
-  const markers = news.flatMap((n) => n.keys).join("\n");
-  const body = `**PR watcher (chief line)**\n\n${list}\n\n${markers}`;
+  const body = `**PR watcher (chief line)**\n\n${list}\n\n${markers.join("\n")}`;
   const comment = await ctx.issues.createComment(thread.id, body, companyId);
   const url = (await readRecords<string>(ctx, companyId, "hooks"))[caller];
   if (url !== undefined && webhookAllowed(url, settings.webhookHosts)) {
@@ -312,75 +330,50 @@ async function postNews(
  */
 export async function chiefLinePrPass(ctx: PrOutcomesApi, options: PassOptions): Promise<number> {
   const { companyId, settings } = options;
-  if (!settings.enabled || settings.projectId === undefined) {
+  if (!settings.enabled || !settings.prOutcomes || settings.projectId === undefined) {
     return 0;
   }
-  const listed = await ctx.issues.list({ companyId, projectId: settings.projectId, limit: 500 });
-  const byCaller = new Map<string, typeof listed>();
+  let posted = 0;
+  for (const [caller, threads] of await callerThreads(ctx, companyId, settings.projectId)) {
+    posted += await oneAtATime(`${companyId} ${caller}`, () =>
+      postNews(ctx, options, caller, threads),
+    );
+  }
+  return posted;
+}
+
+/** Every caller's live `[chief-line] <caller>` threads in the line's project. */
+export async function callerThreads(
+  ctx: PrOutcomesApi,
+  companyId: string,
+  projectId: string,
+): Promise<Map<string, PassThread[]>> {
+  const listed = await ctx.issues.list({ companyId, projectId, limit: 500 });
+  const byCaller = new Map<string, PassThread[]>();
   for (const issue of listed) {
     const parsed = parseThreadTitle(issue.title);
     if (issue.status !== "cancelled" && parsed !== undefined && parsed.agentName === undefined) {
       byCaller.set(parsed.caller, [...(byCaller.get(parsed.caller) ?? []), issue]);
     }
   }
-  let posted = 0;
-  for (const [caller, threads] of byCaller) {
-    posted += await postNews(ctx, options, caller, threads);
-  }
-  return posted;
+  return byCaller;
 }
 
-/** A pull request number from `6085`, `"#6085"` or its GitHub URL, with the URL's repository. */
-function parsePull(pr: unknown): { number: number; repo?: string } | undefined {
-  if (typeof pr === "number") {
-    return Number.isInteger(pr) && pr > 0 ? { number: pr } : undefined;
-  }
-  if (typeof pr !== "string") {
-    return undefined;
-  }
-  const url = /^https:\/\/github\.com\/([\w.-]+\/[\w.-]+)\/pull\/(\d+)\/?$/.exec(pr.trim());
-  if (url?.[1] !== undefined) {
-    return { number: Number(url[2]), repo: url[1] };
-  }
-  const plain = /^#?(\d+)$/.exec(pr.trim());
-  return plain === null ? undefined : { number: Number(plain[1]) };
-}
+/** The newest work per key, so a pass and a webhook never read and post one caller's markers at once. */
+const running = new Map<string, Promise<unknown>>();
 
-/**
- * `POST /chief-line/track` {caller, pr, repo?}: registers a pull request for
- * the caller's chief line by posting a `track` marker there as the plugin,
- * which wakes nobody. The repository defaults to halonic-com/halonic.
- */
-export async function trackPull(
-  ctx: ChiefLineApi,
-  companyId: string,
-  settings: ChiefLineSettings,
-  body: Record<string, unknown>,
-): Promise<PluginApiResponse> {
-  const { caller } = body;
-  if (typeof caller !== "string" || !callerPattern.test(caller)) {
-    return fail(400, "caller must match ^[a-z0-9][a-z0-9-]{0,40}$.");
-  }
-  const pull = parsePull(body["pr"]);
-  const repo = pull?.repo ?? body["repo"] ?? "halonic-com/halonic";
-  if (pull === undefined || typeof repo !== "string" || !repoPattern.test(repo)) {
-    return fail(400, "pr must be a pull request number or URL, and repo owner/name.");
-  }
-  if (settings.projectId === undefined) {
-    return fail(409, "The chief line has no project: set chiefLine.projectId.");
-  }
-  const title = threadTitle(caller);
-  const thread = (await ctx.issues.list({ companyId, projectId: settings.projectId, limit: 500 }))
-    .filter((issue) => issue.title === title && issue.status !== "cancelled")
-    .sort((x, y) => new Date(y.createdAt).getTime() - new Date(x.createdAt).getTime())[0];
-  if (thread === undefined) {
-    return fail(404, `No chief line thread for ${caller} yet.`);
-  }
-  const name = `${repo}#${pull.number}`;
-  const comment = await ctx.issues.createComment(
-    thread.id,
-    `**PR watcher (chief line)**\n\nTracking ${name} for ${caller}: review verdicts, \`ci-ok\`, a merge or a close come here.\n\n${marker(repo, pull.number, "track")}`,
-    companyId,
-  );
-  return { status: 200, body: { caller, repo, pr: pull.number, commentId: comment.id } };
+/** Runs `work` after any earlier work under the same key has finished, failed or not. */
+export function oneAtATime<T>(key: string, work: () => Promise<T>): Promise<T> {
+  const before = running.get(key) ?? Promise.resolve();
+  const next = before.catch(() => undefined).then(work);
+  running.set(key, next);
+  // Forget the key once its newest work is done, so the map doesn't grow.
+  void next
+    .catch(() => undefined)
+    .then(() => {
+      if (running.get(key) === next) {
+        running.delete(key);
+      }
+    });
+  return next;
 }

@@ -15,6 +15,7 @@ export const chiefLineRouteKeys = {
   subscribe: "chief-line-subscribe",
   boardPost: "board-post",
   track: "chief-line-track",
+  prEvent: "chief-line-pr-event",
 } as const;
 
 /** The chief line's settings, spread into the manifest's instance settings. */
@@ -45,6 +46,13 @@ export const chiefLineConfigProperties = {
         items: { type: "string" },
         default: [],
       },
+      prOutcomes: {
+        type: "boolean",
+        title: "Pull request outcomes",
+        description:
+          "On: tracked pull requests' verdicts, ci-ok and merges are posted on the caller's chief line, from the PR watcher and from GitHub webhooks. Off: nothing is posted, and Chief relays them by hand.",
+        default: false,
+      },
       maxPerHour: {
         type: "integer",
         title: "Wakes per hour per caller",
@@ -62,6 +70,8 @@ export interface ChiefLineSettings {
   readonly projectId: string | undefined;
   readonly webhookHosts: readonly string[];
   readonly maxPerHour: number;
+  /** Whether tracked pull requests' outcomes are posted (HAL-18586). */
+  readonly prOutcomes: boolean;
 }
 
 /** Reads the `chiefLine` object of a company's settings, with the defaults for what's missing. */
@@ -80,6 +90,7 @@ export function readChiefLineSettings(
       ? hosts.filter((host): host is string => typeof host === "string").map((h) => h.toLowerCase())
       : [],
     maxPerHour: typeof max === "number" && Number.isInteger(max) && max > 0 ? max : 20,
+    prOutcomes: raw["prOutcomes"] === true,
   };
 }
 
@@ -138,6 +149,7 @@ export const chiefLineRoutes = (
     [chiefLineRouteKeys.subscribe, "POST", "/chief-line/subscribe"],
     [chiefLineRouteKeys.boardPost, "POST", "/board/post"],
     [chiefLineRouteKeys.track, "POST", "/chief-line/track"],
+    [chiefLineRouteKeys.prEvent, "POST", "/chief-line/pr-event"],
   ] as const
 ).map(([routeKey, method, path]) => ({
   routeKey,
