@@ -3,6 +3,7 @@
 - Task: HAL-18966
 - Approval: the board approved quick ask on HAL-18594 (25 Nov); Liam approved the plan on HAL-18625 (https://paperclip.halonic.com/HAL/issues/HAL-18625), with this PR on its own task, HAL-18966; Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4D1CYQBGGDlEGJY21kx7r5BDP2TNZCbjq9N7LCy75m6YF/DYQaY0doigrH1klC8f1Dmc23mWNyfI+92moNfCDw==
 
 ## What changes
 
