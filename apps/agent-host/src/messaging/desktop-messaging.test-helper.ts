@@ -58,6 +58,8 @@ export class FakePaperclip {
         },
       ]);
     }
+    // The open tasks, where the provider finds channels (`paperclip-client.channels`): none here.
+    if (path === `/api/companies/${acme.company}/issues`) return json([]);
     if (path === "/api/cli-auth/revoke-current") return json({ revoked: true });
     return json({ error: "API route not found" }, 404);
   };
