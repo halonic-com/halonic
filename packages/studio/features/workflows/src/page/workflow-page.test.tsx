@@ -20,6 +20,7 @@ import {
 } from "../test-support.tsx";
 import { reply, settings } from "./page-fixtures.ts";
 import { WorkflowPage } from "./workflow-item.tsx";
+import { buttonLabelled, shownName } from "./workflow-page.test-helper.ts";
 import { WorkflowScreen } from "./workflow-page.tsx";
 
 beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
@@ -31,10 +32,6 @@ afterEach(() => {
 const surface = (page: HTMLElement) =>
   page.querySelector<HTMLElement>("[data-testid=canvas-surface]");
 
-/** A button that has only an icon, by its name. */
-const buttonLabelled = (page: HTMLElement, name: string) =>
-  page.querySelector<HTMLButtonElement>(`button[aria-label="${name}"]`) ?? undefined;
-
 verifies("workflows.page.frame-and-states", () => {
   it("shows the name and the cards at once, with no skeleton and no ⤢ or ✕", async () => {
     const { host } = memoryHost([], [], [reply]);
@@ -42,10 +39,12 @@ verifies("workflows.page.frame-and-states", () => {
       <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />,
     );
 
-    expect(page.querySelector("h1")?.textContent).toBe("Support reply");
-    expect(page.textContent).toContain("WORKFLOW");
+    expect(shownName(page)).toBe("Support reply");
+    // The item page's header shows the kind in small caps: "WORKFLOW".
+    expect(page.querySelector("h1 .uppercase")?.textContent).toBe("Workflow");
     expect(page.querySelector("[role=status]")).toBeNull();
     expect(page.querySelector("[aria-label*=ximise], [aria-label=Close]")).toBeNull();
+    expect(page.querySelector("[data-item-chat]")).toBeNull();
   });
 
   it("doesn't repeat the name on a phone, where the top bar has it", async () => {
@@ -99,7 +98,7 @@ verifies("workflows.page.frame-and-states", () => {
     expect(page.textContent).toContain("The engine isn't answering. It may still be starting.");
 
     await act(async () => buttonNamed(page, "Try again")?.click());
-    expect(page.querySelector("h1")?.textContent).toBe("Support reply");
+    expect(shownName(page)).toBe("Support reply");
   });
 
   it("says a workflow that isn't there any more is gone, with Go to Workflows", async () => {
@@ -216,7 +215,7 @@ verifies("workflows.page.frame-and-states", () => {
     expect(surface(page)?.style.transform).not.toBe(fitted);
 
     await act(async () => buttonNamed(page, "Switch")?.click());
-    expect(page.querySelector("h1")?.textContent).toBe("Other");
+    expect(shownName(page)).toBe("Other");
     expect(surface(page)?.style.transform).toBe(fitted);
   });
 

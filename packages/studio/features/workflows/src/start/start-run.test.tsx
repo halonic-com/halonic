@@ -133,7 +133,7 @@ verifies("workflows.start.start-run", () => {
         <WorkflowScreen host={host} runs={memoryRuns().source} hubId="acme" id="reply" />
       </PresentationProvider>,
     );
-    const panel = () => page.querySelector<HTMLElement>("[role=tabpanel]");
+    const panel = () => page.querySelector<HTMLElement>("[data-workflow-view]");
     expect(panel()?.className).not.toBe("hidden");
 
     await click(runButton(page));

@@ -4,7 +4,7 @@ import {
   stepsToSelect,
   WHERE_IT_RUNS_STEP,
 } from "@halonicjs/studio-feature-agents/api";
-import { ShowInChatService } from "@halonicjs/studio-feature-assistant/api";
+import { ItemChatService, ShowInChatService } from "@halonicjs/studio-feature-assistant/api";
 import { InboxService } from "@halonicjs/studio-feature-inbox/api";
 import {
   openModelsOf,
@@ -12,6 +12,7 @@ import {
   RunsSourceService,
 } from "@halonicjs/studio-feature-runs/api";
 import { engineWordsOf, FilesWithErrorsService, type ItemViewProps } from "@halonicjs/studio-shell";
+import { useMemo } from "react";
 import {
   RUN_FORM_STEP,
   WorkflowGuideService,
@@ -31,6 +32,16 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
   const runsList = context.services.get(RunsListService);
   const openModels = openModelsOf(context);
   const assistant = context.services.find(ShowInChatService);
+  const itemChat = context.services.find(ItemChatService);
+  // The chat keeps one `about` while the tab shows this workflow, so it doesn't read its chat again.
+  const about = useMemo(
+    () => ({ kind: "workflow" as const, hub: item.hub, id: item.id }),
+    [item.hub, item.id],
+  );
+  const chatFor = useMemo(
+    () => itemChat && ((name: string) => itemChat.chatFor(about, name, context)),
+    [itemChat, about, context],
+  );
   return (
     <WorkflowScreen
       host={context.services.get(WorkflowsHostService)}
@@ -54,6 +65,8 @@ export function WorkflowPage({ item, context, step, asked }: ItemViewProps) {
       })}
       shownRuns={context.services.find(InboxService)?.shownRuns}
       filesWithErrors={context.services.find(FilesWithErrorsService)}
+      {...(chatFor && { chatFor })}
+      closeStack={context.closeStack}
       {...(assistant && {
         showInChat: {
           label: assistant.label,

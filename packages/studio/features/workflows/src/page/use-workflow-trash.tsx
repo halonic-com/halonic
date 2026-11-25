@@ -1,7 +1,7 @@
 import {
   Button,
   Menu,
-  type MenuEntry,
+  type MenuItem,
   MoreIcon,
   TrashStrip,
   usePresentation,
@@ -33,6 +33,8 @@ export interface WorkflowTrash {
    * page puts it.
    */
   readonly menu: ReactNode;
+  /** The same ⋮'s entries, for the shell's item page to draw; none before the workflow is read. */
+  readonly actions: readonly MenuItem[];
   /** The strip with Undo that replaces the page after Delete, or `null` while the workflow is there. */
   readonly strip: ReactNode;
 }
@@ -109,13 +111,13 @@ export function useWorkflowTrash(
     };
   }, [inTrash, host, hubId, id]);
 
-  const chatEntries: MenuEntry[] =
+  const chatEntries: MenuItem[] =
     chat === undefined
       ? []
       : [{ id: "show-in-chat", label: chat.label, onSelect: () => chat.show(name) }];
   // There is no ⋮ before the page has read the workflow.
-  const menuOf = (entries: readonly MenuEntry[]) => {
-    if (!ready || entries.length === 0) return null;
+  const menuOf = (entries: readonly MenuItem[]) => {
+    if (!ready || entries.length === 0) return { menu: null, actions: [] };
     const button = (
       <Menu
         align="end"
@@ -131,11 +133,12 @@ export function useWorkflowTrash(
         entries={entries}
       />
     );
-    return inTopBar ? <PhoneTopBarActions>{button}</PhoneTopBarActions> : button;
+    const menu = inTopBar ? <PhoneTopBarActions>{button}</PhoneTopBarActions> : button;
+    return { menu, actions: entries };
   };
   const { trash, referencesTo } = host;
   // A workspace that can't delete it still has Show in chat in the ⋮.
-  if (trash === undefined) return { menu: menuOf(chatEntries), strip: null };
+  if (trash === undefined) return { ...menuOf(chatEntries), strip: null };
 
   const onDelete = async () => {
     if (deleting.current) return;
@@ -185,11 +188,11 @@ export function useWorkflowTrash(
         />
       </div>
     );
-  const deleteEntry = {
+  const deleteEntry: MenuItem = {
     id: "delete",
     label: deleteWords.delete,
     danger: true,
     onSelect: () => void onDelete(),
   };
-  return { menu: menuOf([...chatEntries, deleteEntry]), strip };
+  return { ...menuOf([...chatEntries, deleteEntry]), strip };
 }

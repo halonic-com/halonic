@@ -2,7 +2,12 @@ import type { SandboxStartCheck } from "@halonicjs/app";
 import type { AgentsHost } from "@halonicjs/studio-feature-agents/api";
 import type { ShownRuns } from "@halonicjs/studio-feature-inbox/api";
 import type { RunsSource } from "@halonicjs/studio-feature-runs/api";
-import type { FilesWithErrorsSource, SaveState } from "@halonicjs/studio-shell";
+import type {
+  CloseStack,
+  FilesWithErrorsSource,
+  ItemPageChat,
+  SaveState,
+} from "@halonicjs/studio-shell";
 import type { WorkflowGuide, WorkflowsHost } from "../api.ts";
 import type { WorkflowReviewHost } from "../review-api.ts";
 import type { AnnounceState } from "../start/run-announcement.ts";
@@ -87,4 +92,11 @@ export interface WorkflowScreenProps {
   readonly showInChat?:
     | { readonly label: string; readonly show: (name: string) => void }
     | undefined;
+  /**
+   * The Assistant's chat about the workflow, named `name`, for the left of the page (flow-assistant
+   * 2.4); without it the page takes the full width.
+   */
+  readonly chatFor?: ((name: string) => ItemPageChat) | undefined;
+  /** The window's close stack, for the item page's maximised panel. */
+  readonly closeStack?: CloseStack | undefined;
 }

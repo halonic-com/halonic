@@ -152,11 +152,11 @@ verifies("workflows.page.docked-card-body", () => {
   it("gives a docked card the page's body under 800 px, hiding the canvas, and shows it again on close", async () => {
     const runs = memoryRuns();
     const { page } = await open(async () => ({ runId: "run_mfx3k2a1_01jd8q" }), runs);
-    const panel = () => page.querySelector("[role='tabpanel']")?.className.split(" ") ?? [];
+    const panel = () => page.querySelector("[data-workflow-view]")?.className.split(" ") ?? [];
     expect(panel()).not.toContain("@max-[800px]:hidden");
-    expect(page.querySelector("[role='tabpanel']")?.parentElement?.className.split(" ")).toContain(
-      "@container",
-    );
+    expect(
+      page.querySelector("[data-workflow-view]")?.parentElement?.className.split(" "),
+    ).toContain("@container");
 
     await click(runButton(page));
     expect(capped(page, "Start run")).toContain("@max-[800px]:w-full");

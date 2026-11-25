@@ -33,7 +33,8 @@ export const workflowsFeature = defineFeature({
     FilesHostService,
     // Show in chat in a row's and the page's ⋮ (assistant.chat.show-in-chat).
     ShowInChatService,
-    // New workflow's "Describe it to the Assistant instead ›" (assistant.chat.describe).
+    // New workflow's "Describe it to the Assistant instead ›" (assistant.chat.describe), and the
+    // chat on the left of the workflow's page (flow-assistant 2.4).
     ItemChatService,
     // The assistant's changes to review; where the app has none, the page shows no bar.
     WorkflowReviewService,
