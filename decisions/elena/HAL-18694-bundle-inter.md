@@ -2,6 +2,7 @@
 
 - Approval: HAL-18694 (the board asked for Inter Variable on HAL-10, 25 Nov); Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:YzNsYDdeJMf7wc7wixo2uYP57AjyAqatCvnbYqBR0t3bcv+hi6VIVKaa1T1HBUKDMBGh1RnwYxK3lF5UsrrYDQ==
 
 The Studio kit now ships the two variable fonts of the official Inter 4.1 release
 (`packages/studio/kit/src/fonts/InterVariable.woff2` and `InterVariable-Italic.woff2`, SIL Open
