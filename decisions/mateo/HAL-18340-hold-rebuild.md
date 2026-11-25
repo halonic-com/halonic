@@ -3,6 +3,7 @@
 - Task: HAL-18340
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-18340 (Chief's requirement from the research session's CI sweep, fix 10, HAL-10, 25 Nov 09:04 UTC; Liam approves this note in review)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:FpyFJQUYV8hD/g/CLdwpdz0cahoss73M1QrPNewCYULbtxgEa7f/aR9bmhi0Ll9f5irKQnTh/0PfM4FRwO2dBA==
 
 ## What changes
 
