@@ -3,6 +3,7 @@
 - Task: HAL-18424 (item A of the CI speed list)
 - Approval: Liam asked for this note on PR #6085 and signs it in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:XMNHrgeS+XVqEUuvm476KSCNQcEQGWP47IKLaTehBeHRvPpZgmIYOoMjX6jYWtqMd5xquj6DGoroVRVpFNnSCQ==
 
 ## What changes
 
