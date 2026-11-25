@@ -1,14 +1,19 @@
 import { parseScope, type Scope, scopeName } from "@halonicjs/host-server";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { deleteScopeRoutes, eraseScopeStores, type ScopeStores } from "./delete-scope.ts";
+import {
+  deleteScopeRoutes,
+  eraseScopeStores,
+  type ScopeStores,
+  UsageUnsentError,
+} from "./delete-scope.ts";
 import { ConfigurationError, type RuntimeEnv } from "./env.ts";
 
 const env = {} as RuntimeEnv;
 const acme = "o/org_acme0123456789abcdef";
 
 /** Stores that write down each erase, in order, with the runs `r1` and `r2` in the run list. */
-function recordingStores(): { stores: ScopeStores; erased: string[] } {
+function recordingStores(unsent = 0): { stores: ScopeStores; erased: string[] } {
   const erased: string[] = [];
   const note = (what: string) => async () => {
     erased.push(what);
@@ -22,6 +27,7 @@ function recordingStores(): { stores: ScopeStores; erased: string[] } {
     },
     eraseCoordination: note("coordination"),
     eraseRoutines: note("routines"),
+    eraseUsage: async () => ({ unsent }),
   };
   return { stores, erased };
 }
@@ -77,6 +83,26 @@ verifies("runtime.delete-scope", () => {
       if (unready === undefined || broken === undefined) throw new Error("The route is missing.");
       expect((await ask(unready, `?scope=${acme}`)).status).toBe(503);
       await expect(ask(broken, `?scope=${acme}`)).rejects.toThrow(TypeError);
+    });
+  });
+});
+
+verifies("runtime.delete-scope-usage", () => {
+  describe("a scope's delete with usage rows waiting", () => {
+    it("erases nothing while usage rows wait for Cloud", async () => {
+      const { stores, erased } = recordingStores(2);
+      await expect(eraseScopeStores(stores)).rejects.toThrow(UsageUnsentError);
+      expect(erased).toEqual([]);
+    });
+
+    it("answers 409 usage_unsent", async () => {
+      const [route] = deleteScopeRoutes(async () => {
+        throw new UsageUnsentError(2);
+      });
+      if (route === undefined) throw new Error("The delete route is missing.");
+      const refused = await ask(route, `?scope=${acme}`);
+      expect(refused.status).toBe(409);
+      expect(await refused.json()).toMatchObject({ code: "usage_unsent" });
     });
   });
 });

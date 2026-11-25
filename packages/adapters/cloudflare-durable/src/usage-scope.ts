@@ -8,6 +8,7 @@ import {
 import { checkScope } from "./usage-input.ts";
 import { usageLimitsKey } from "./usage-limits.ts";
 import { rememberNonce } from "./usage-nonces.ts";
+import { takeRateSlot, type UsageRateLimits } from "./usage-rate.ts";
 import { type KvStorageOwner, usageStorageOf } from "./usage-storage.ts";
 import type { UsageAmounts, UsageAnswer, UsageLimits, UsageStorage } from "./usage-types.ts";
 
@@ -45,6 +46,8 @@ export interface UsageScopeOptions {
   readonly onPullError: (error: unknown) => void;
   /** How long a pull that found no limits is remembered before the next one; 30 s by default. */
   readonly pullRetryMs?: number;
+  /** The calls a scope and an organisation member may make per window, when not the defaults. */
+  readonly rate?: UsageRateLimits;
   /** The account's outbox cap and run lease, when not its defaults. */
   readonly account?: Pick<UsageAccountOptions, "outboxCap" | "runLeaseMs">;
 }
@@ -93,6 +96,8 @@ export class UsageScope {
   /** Whether the principal may take a step now. */
   async check(principal: UsagePrincipal): Promise<UsageAnswer> {
     const account = this.#account(principal.scope);
+    const limited = this.#takeRateSlot(principal);
+    if (limited !== null) return limited;
     if (!(await this.#hasCurrentLimits(principal.scope))) return noLimits;
     return account.check(principal.actor);
   }
@@ -100,6 +105,8 @@ export class UsageScope {
   /** Holds the step's maximum, or refuses; the alarm then settles it if it runs out. */
   async reserve(principal: UsagePrincipal, step: StepReservation): Promise<UsageAnswer> {
     const account = this.#account(principal.scope);
+    const limited = this.#takeRateSlot(principal);
+    if (limited !== null) return limited;
     if (!(await this.#hasCurrentLimits(principal.scope))) return noLimits;
     const answer = account.reserve({ ...step, actor: principal.actor });
     if (answer.allowed) await this.#arm(account);
@@ -124,16 +131,18 @@ export class UsageScope {
 
   /** Lets a run start or wake within the caps; the alarm frees its slot if it is lost. */
   async startRun(principal: UsagePrincipal, runId: string): Promise<UsageAnswer> {
-    const account = this.#account(principal.scope);
-    if (!(await this.#hasCurrentLimits(principal.scope))) return noLimits;
-    const answer = account.startRun(runId, principal.actor);
-    if (answer.allowed) await this.#arm(account);
-    return answer;
+    this.#account(principal.scope);
+    const limited = this.#takeRateSlot(principal);
+    if (limited !== null) return limited;
+    return this.#holdRun(principal, runId);
   }
 
-  /** The running run's heartbeat, well inside its lease; a lost run is refused at a full cap. */
+  /**
+   * The running run's heartbeat, well inside its lease; a lost run is refused at a full cap. It
+   * isn't rate limited: a refused heartbeat would stop a run that the limit let start.
+   */
   async renewRun(principal: UsagePrincipal, runId: string): Promise<UsageAnswer> {
-    return this.startRun(principal, runId);
+    return this.#holdRun(principal, runId);
   }
 
   /** Frees the run's slot, when it starts waiting or ends. */
@@ -153,13 +162,43 @@ export class UsageScope {
     await this.#arm(this.#account(scope));
   }
 
-  /** The account of `scope`, after noting it as this object's scope or checking it is. */
-  #account(scope: string): UsageAccount {
+  /**
+   * How many rows wait to go to Cloud, for a delete of `scope` to check before it erases the
+   * object. Unlike every other call it notes no scope, so a delete never starts an empty object.
+   */
+  unsentRows(scope: string): number {
     checkScope(scope);
+    this.#checkName(scope);
+    const noted = this.#storage.get<string>(scopeKey);
+    if (noted === undefined) return 0;
+    return this.#account(scope).outboxSize();
+  }
+
+  async #holdRun(principal: UsagePrincipal, runId: string): Promise<UsageAnswer> {
+    const account = this.#account(principal.scope);
+    if (!(await this.#hasCurrentLimits(principal.scope))) return noLimits;
+    const answer = account.startRun(runId, principal.actor);
+    if (answer.allowed) await this.#arm(account);
+    return answer;
+  }
+
+  /** The rate refusal, or `null` once the call is counted; checked first, so a loop never pulls. */
+  #takeRateSlot(principal: UsagePrincipal): UsageAnswer | null {
+    const refusal = takeRateSlot(this.#storage, principal, this.#nowMs(), this.#options.rate);
+    return refusal === null ? null : { allowed: false, refusal };
+  }
+
+  #checkName(scope: string): void {
     const { objectName } = this.#options;
     if (objectName !== undefined && objectName !== scope) {
       throw new RangeError("This usage object is named for another scope.");
     }
+  }
+
+  /** The account of `scope`, after noting it as this object's scope or checking it is. */
+  #account(scope: string): UsageAccount {
+    checkScope(scope);
+    this.#checkName(scope);
     this.#storage.transactionSync(() => {
       const noted = this.#storage.get<string>(scopeKey);
       if (noted === undefined) this.#storage.put(scopeKey, scope);

@@ -9,6 +9,18 @@ export interface ScopeDeletion {
   readonly runs: number;
 }
 
+/** A delete refused because the scope's usage rows haven't gone to Cloud yet; nothing was erased. */
+export class UsageUnsentError extends Error {
+  /** How many rows wait. */
+  readonly unsent: number;
+
+  constructor(unsent: number) {
+    super(`${unsent} usage rows of the scope wait to go to Cloud.`);
+    this.name = "UsageUnsentError";
+    this.unsent = unsent;
+  }
+}
+
 /** The stores of one scope, as a delete erases them. */
 export interface ScopeStores {
   readonly runs: {
@@ -20,13 +32,22 @@ export interface ScopeStores {
   eraseRunObject(runId: string): Promise<void>;
   eraseCoordination(): Promise<void>;
   eraseRoutines(): Promise<void>;
+  /** Erases the usage object unless rows wait to go to Cloud; answers how many wait. */
+  eraseUsage(): Promise<{ readonly unsent: number }>;
 }
 
 /**
  * Erases every store of one scope. The run list is read first and erased last, so a delete that
- * fails halfway finds the same runs when it is run again; running it again is always safe.
+ * fails halfway finds the same runs when it is run again; running it again is always safe. The
+ * usage object goes first: while its rows haven't gone to Cloud, nothing is erased. Erasing it also
+ * wipes the pushed limits, so a run left in a half-deleted scope fails closed with `noLimits`; keep
+ * this order.
+ *
+ * @throws UsageUnsentError when usage rows wait to go to Cloud
  */
 export async function eraseScopeStores(stores: ScopeStores): Promise<ScopeDeletion> {
+  const { unsent } = await stores.eraseUsage();
+  if (unsent > 0) throw new UsageUnsentError(unsent);
   const runIds = (await stores.runs.list()).map((run) => run.id);
   for (const runId of runIds) await stores.eraseRunObject(runId);
   await stores.eraseCoordination();
@@ -61,6 +82,11 @@ export async function deleteScope(env: RuntimeEnv, scope: Scope): Promise<ScopeD
       env.RUN.get(env.RUN.idFromName(`${scopedKeyPrefix(name)}${runId}`)).eraseAll(),
     eraseCoordination: () => env.COORDINATION.get(env.COORDINATION.idFromName(name)).eraseAll(),
     eraseRoutines: () => env.ROUTINES.get(env.ROUTINES.idFromName(name)).eraseAll(),
+    // A Worker without the usage binding has no usage to keep.
+    eraseUsage: async () =>
+      env.USAGE === undefined
+        ? { unsent: 0 }
+        : env.USAGE.get(env.USAGE.idFromName(name)).eraseIfSent(name),
   });
 }
 
@@ -94,6 +120,9 @@ export function deleteScopeRoutes(remove: DeleteScope = deleteScope): readonly A
         } catch (error) {
           if (error instanceof ConfigurationError) {
             return refusal(503, "unavailable", "The server isn't ready.");
+          }
+          if (error instanceof UsageUnsentError) {
+            return refusal(409, "usage_unsent", "Usage waits to go to Cloud; try again later.");
           }
           throw error;
         }
