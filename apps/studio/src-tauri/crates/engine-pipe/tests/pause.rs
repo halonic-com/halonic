@@ -67,7 +67,7 @@ fn routine_pause_reads_paused_from_health() {
     let now = Instant::now();
     let mut session = open_session(now);
     let health =
-        br#"{"kind":"health","scheduling":true,"paused":true,"activeRuns":0,"lastTick":null}"#;
+        br#"{"kind":"health","scheduling":true,"paused":true,"activeRuns":0,"runsWaiting":0,"lastTick":null,"nextRoutineAt":null}"#;
     let event = session.accept(health, now).unwrap();
     let EngineEvent::Health(health) = event else {
         panic!("not health: {event:?}");
@@ -78,7 +78,9 @@ fn routine_pause_reads_paused_from_health() {
             scheduling: true,
             paused: true,
             active_runs: 0,
+            runs_waiting: 0,
             last_tick: None,
+            next_routine_at: None,
         }
     );
 }
@@ -87,9 +89,9 @@ fn routine_pause_reads_paused_from_health() {
 fn routine_pause_health_without_paused_or_with_a_wrong_one_is_a_fault() {
     let now = Instant::now();
     let cases = [
-        r#"{"kind":"health","scheduling":true,"activeRuns":0,"lastTick":null}"#,
-        r#"{"kind":"health","scheduling":true,"paused":"no","activeRuns":0,"lastTick":null}"#,
-        r#"{"kind":"health","scheduling":true,"paused":null,"activeRuns":0,"lastTick":null}"#,
+        r#"{"kind":"health","scheduling":true,"activeRuns":0,"runsWaiting":0,"lastTick":null,"nextRoutineAt":null}"#,
+        r#"{"kind":"health","scheduling":true,"paused":"no","activeRuns":0,"runsWaiting":0,"lastTick":null,"nextRoutineAt":null}"#,
+        r#"{"kind":"health","scheduling":true,"paused":null,"activeRuns":0,"runsWaiting":0,"lastTick":null,"nextRoutineAt":null}"#,
     ];
     for json in cases {
         let mut session = open_session(now);

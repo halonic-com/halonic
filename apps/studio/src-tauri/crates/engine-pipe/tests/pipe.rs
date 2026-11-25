@@ -82,7 +82,7 @@ fn control_pipe_takes_the_engines_messages_in_order() {
     let origins = session.accept(br#"{"kind":"origins_get","id":7,"name":"acme_key"}"#, now);
     assert!(matches!(origins, Ok(EngineEvent::Request { id: 7, .. })));
     let health =
-        br#"{"kind":"health","scheduling":true,"paused":false,"activeRuns":2,"lastTick":null}"#;
+        br#"{"kind":"health","scheduling":true,"paused":false,"activeRuns":2,"runsWaiting":0,"lastTick":null,"nextRoutineAt":null}"#;
     assert!(matches!(
         session.accept(health, now),
         Ok(EngineEvent::Health(_))
@@ -167,7 +167,7 @@ fn control_pipe_faults_on_anything_else() {
         ),
         (
             "health without lastTick",
-            r#"{"kind":"health","scheduling":true,"paused":false,"activeRuns":0}"#,
+            r#"{"kind":"health","scheduling":true,"paused":false,"activeRuns":0,"runsWaiting":0,"nextRoutineAt":null}"#,
             PipeFault::NotAMessage,
         ),
         (
@@ -219,7 +219,7 @@ fn control_pipe_faults_on_repeated_or_lower_ids_and_after_stopped() {
         .accept(br#"{"kind":"stopped","interrupted":0}"#, now)
         .unwrap();
     let after = session.accept(
-        br#"{"kind":"health","scheduling":false,"paused":false,"activeRuns":0,"lastTick":null}"#,
+        br#"{"kind":"health","scheduling":false,"paused":false,"activeRuns":0,"runsWaiting":0,"lastTick":null,"nextRoutineAt":null}"#,
         now,
     );
     assert_eq!(after.unwrap_err(), PipeFault::Stopped);
@@ -242,7 +242,7 @@ fn control_pipe_faults_never_hold_the_frame() {
 fn control_pipe_drops_health_beyond_one_a_second() {
     let start = Instant::now();
     let mut session = open_session(start);
-    let health = br#"{"kind":"health","scheduling":true,"paused":false,"activeRuns":0,"lastTick":"2026-11-23T10:00:00.000Z"}"#;
+    let health = br#"{"kind":"health","scheduling":true,"paused":false,"activeRuns":0,"runsWaiting":0,"lastTick":"2026-11-23T10:00:00.000Z","nextRoutineAt":null}"#;
     assert!(matches!(
         session.accept(health, start),
         Ok(EngineEvent::Health(_))

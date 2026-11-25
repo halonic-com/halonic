@@ -37,10 +37,13 @@ pub(crate) enum EngineFrame {
         scheduling: bool,
         paused: bool,
         active_runs: u32,
+        runs_waiting: u32,
         // Required though nullable: serde would take a missing `Option` as
         // `None`, and a missing field is a fault.
         #[serde(deserialize_with = "Option::deserialize")]
         last_tick: Option<String>,
+        #[serde(deserialize_with = "Option::deserialize")]
+        next_routine_at: Option<String>,
     },
     Stopped {
         interrupted: u32,
@@ -61,6 +64,31 @@ pub(crate) fn parse_frame(json: &[u8]) -> Result<EngineFrame, PipeFault> {
         return Err(PipeFault::NotAMessage);
     }
     serde_json::from_slice(json).map_err(|_| PipeFault::NotAMessage)
+}
+
+/// Whether `text` is a UTC time as JavaScript's `Date.toISOString()` writes
+/// it, such as `2026-11-25T14:00:00.000Z`: the only form the tray reads.
+pub(crate) fn is_iso_instant(text: &str) -> bool {
+    let bytes = text.as_bytes();
+    let shape = b"dddd-dd-ddTdd:dd:dd.dddZ";
+    if bytes.len() != shape.len() {
+        return false;
+    }
+    let shaped = bytes.iter().zip(shape).all(|(&byte, &expected)| {
+        if expected == b'd' {
+            byte.is_ascii_digit()
+        } else {
+            byte == expected
+        }
+    });
+    let number =
+        |from: usize| u32::from(bytes[from] - b'0') * 10 + u32::from(bytes[from + 1] - b'0');
+    shaped
+        && (1..=12).contains(&number(5))
+        && (1..=31).contains(&number(8))
+        && number(11) <= 23
+        && number(14) <= 59
+        && number(17) <= 59
 }
 
 /// Where the sandbox host is: its loopback address and launch token. The

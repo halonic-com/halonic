@@ -41,7 +41,14 @@ interface FakeEngineOptions {
 /** An engine that records what it is asked, with its health changes under the test's control. */
 function fakeEngine(options: FakeEngineOptions = {}) {
   const log: EngineLog = { steps: [], graceMs: [], sandboxHosts: [], pauses: [] };
-  let health: EngineHealth = { scheduling: true, paused: true, activeRuns: 0, lastTick: null };
+  let health: EngineHealth = {
+    scheduling: true,
+    paused: true,
+    activeRuns: 0,
+    runsWaiting: 0,
+    lastTick: null,
+    nextRoutineAt: null,
+  };
   const listeners = new Set<() => void>();
   const engine: RunningEngine = {
     url: "http://127.0.0.1:41234",
@@ -102,7 +109,15 @@ function startRole(open: EngineRoleParts["open"]) {
   return { input, exit, written, errors, ticks, tick };
 }
 
-const healthy = { kind: "health", scheduling: true, paused: true, activeRuns: 0, lastTick: null };
+const healthy = {
+  kind: "health",
+  scheduling: true,
+  paused: true,
+  activeRuns: 0,
+  runsWaiting: 0,
+  lastTick: null,
+  nextRoutineAt: null,
+};
 
 verifies("agent-host.engine-role-lifecycle", () => {
   describe("while it runs", () => {
@@ -117,7 +132,9 @@ verifies("agent-host.engine-role-lifecycle", () => {
         scheduling: true,
         paused: false,
         activeRuns: 2,
+        runsWaiting: 1,
         lastTick: "2026-11-20T08:00:00.000Z",
+        nextRoutineAt: "2026-11-20T14:00:00.000Z",
       };
       changeHealth(busy);
       role.tick();

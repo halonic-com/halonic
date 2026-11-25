@@ -4,7 +4,7 @@ use halonic_agent_host::{Handshake, read_handshake};
 use halonic_secret_broker::BrokerRequest;
 
 use crate::fault::PipeFault;
-use crate::messages::{EngineFrame, PROTOCOL_VERSION, parse_frame};
+use crate::messages::{EngineFrame, PROTOCOL_VERSION, is_iso_instant, parse_frame};
 
 /// The shortest time between two `health` frames the shell takes; it drops
 /// the ones in between.
@@ -20,8 +20,15 @@ pub struct EngineHealth {
     pub paused: bool,
     /// The runs going now, running or waiting.
     pub active_runs: u32,
+    /// Of `active_runs`, the ones waiting for someone's answer, such as an
+    /// approval: they need the user, and aren't in progress.
+    pub runs_waiting: u32,
     /// When the scheduler last ticked, as an ISO time.
     pub last_tick: Option<String>,
+    /// When the next routine is due to start, `None` when none is or
+    /// routines are paused. Always a UTC time in the form
+    /// `2026-11-25T14:00:00.000Z`: any other is a fault.
+    pub next_routine_at: Option<String>,
 }
 
 /// A frame the session accepted.
@@ -82,16 +89,27 @@ impl PipeSession {
                 scheduling,
                 paused,
                 active_runs,
+                runs_waiting,
                 last_tick,
-            } => Ok(self.health(
-                now,
-                EngineHealth {
-                    scheduling,
-                    paused,
-                    active_runs,
-                    last_tick,
-                },
-            )),
+                next_routine_at,
+            } => {
+                let well_formed = runs_waiting <= active_runs
+                    && next_routine_at.as_deref().is_none_or(is_iso_instant);
+                if !well_formed {
+                    return Err(PipeFault::NotAMessage);
+                }
+                Ok(self.health(
+                    now,
+                    EngineHealth {
+                        scheduling,
+                        paused,
+                        active_runs,
+                        runs_waiting,
+                        last_tick,
+                        next_routine_at,
+                    },
+                ))
+            }
             EngineFrame::Stopped { interrupted } if self.stop_sent => {
                 self.stopped = true;
                 Ok(EngineEvent::Stopped { interrupted })

@@ -100,6 +100,8 @@ verifies("agent-host.engine-role-lifecycle", () => {
         scheduling: true,
         paused: true,
         activeRuns: 0,
+        runsWaiting: 0,
+        nextRoutineAt: null,
       });
       engine.input.write(shellFrame('{"kind":"stop"}'));
       expect(await engine.exit).toBe(0);
@@ -120,7 +122,14 @@ verifies("agent-host.engine-role-lifecycle", () => {
       const abandoned: RunningEngine = {
         url: "http://127.0.0.1:49152",
         token: "a".repeat(43),
-        health: () => ({ scheduling: true, paused: false, activeRuns: 1, lastTick: null }),
+        health: () => ({
+          scheduling: true,
+          paused: false,
+          activeRuns: 1,
+          runsWaiting: 0,
+          lastTick: null,
+          nextRoutineAt: null,
+        }),
         useSandboxHost: () => {},
         pauseRoutines: () => {},
         followHealth: () => () => {},
