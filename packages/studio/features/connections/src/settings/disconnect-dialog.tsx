@@ -29,7 +29,8 @@ function noteOf(connection: AgentConnection, result: DisconnectResult): Disconne
 
 /**
  * Asks before it disconnects `connection`, then asks the engine once, however often the button is
- * pressed. `onDone` gets the note to show, or nothing when the person cancelled.
+ * pressed. `onDone` gets the note to show, or nothing when the person cancelled, and whether the
+ * connection is gone.
  */
 export function DisconnectDialog({
   connections,
@@ -38,7 +39,7 @@ export function DisconnectDialog({
 }: {
   readonly connections: AgentConnections;
   readonly connection: AgentConnection;
-  readonly onDone: (note: DisconnectNote | undefined) => void;
+  readonly onDone: (note: DisconnectNote | undefined, disconnected: boolean) => void;
 }) {
   const [busy, setBusy] = useState(false);
   // A ref, not state: two clicks can land before React renders again.
@@ -49,9 +50,12 @@ export function DisconnectDialog({
     running.current = true;
     setBusy(true);
     connections.disconnect(connection.id).then(
-      (result) => onDone(noteOf(connection, result)),
+      (result) => onDone(noteOf(connection, result), true),
       () =>
-        onDone({ kind: "line", line: words.disconnectFailed(connection.label), tone: "attention" }),
+        onDone(
+          { kind: "line", line: words.disconnectFailed(connection.label), tone: "attention" },
+          false,
+        ),
     );
   };
 
@@ -62,7 +66,7 @@ export function DisconnectDialog({
       confirm={{ label: words.DISCONNECT, variant: "danger", busyLabel: words.DISCONNECTING }}
       busy={busy}
       onConfirm={disconnect}
-      onCancel={() => onDone(undefined)}
+      onCancel={() => onDone(undefined, false)}
     >
       <p className="m-0 text-fg">{words.DISCONNECT_TEXT}</p>
     </Dialog>
