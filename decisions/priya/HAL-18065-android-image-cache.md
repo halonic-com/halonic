@@ -3,6 +3,7 @@
 - Task: HAL-18065
 - Approval: the board's CI sweep asked for this fix on HAL-18065 (cache the SDK image keyed on the exact image and version, retry the download with a short backoff); the CTO (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:z/cJOaycAfRhoY26pj2KU8zkTUBdwaTQe4YxK46SCWUguCjXYFSyKBcu0sXpWj3D0AsokhZ8VHfiqo4qHPtECw==
 
 ## What changes
 
