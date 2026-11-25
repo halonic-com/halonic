@@ -119,7 +119,9 @@ export class ServerConnection {
 }
 
 async function read(method: string, call: string, response: Response): Promise<ServerAnswer> {
-  if (response.type === "opaqueredirect" || (response.status >= 300 && response.status < 400)) {
+  // Cloudflare's `Response` types leave out `opaqueredirect`, which the platform's `fetch` gives.
+  const type: string = response.type;
+  if (type === "opaqueredirect" || (response.status >= 300 && response.status < 400)) {
     await response.body?.cancel();
     throw new ServerClientError(
       `The server answered ${method} ${call} with a redirect, which the client never follows.`,
