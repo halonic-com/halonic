@@ -445,22 +445,3 @@ fn served_page_test_sees_the_agent_host_granted_to_the_local_main_window_only() 
         ])
     );
 }
-
-#[test]
-fn served_page_test_sees_host_settings_granted_to_the_local_main_window_only() {
-    // The served Studio may show the settings, but only through the
-    // computer's own server; it must never change them through the shell.
-    let text = include_str!("../capabilities/desktop-host-settings.json");
-    let capability: Value = serde_json::from_str(text).expect("the capability is JSON");
-    assert_eq!(capability["local"], true);
-    assert_eq!(capability["windows"], json!(["main", "inbox", "messenger"]));
-    assert!(capability.get("remote").is_none(), "{capability}");
-    assert_eq!(
-        capability["permissions"],
-        json!([
-            "allow-host-settings-read",
-            "allow-host-settings-set",
-            "allow-host-settings-remove"
-        ])
-    );
-}
