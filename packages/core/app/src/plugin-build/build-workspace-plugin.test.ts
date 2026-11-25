@@ -21,17 +21,21 @@ const committed = { kind: "commit", id: commit, uncommitted: [] } as const;
 /** An invented classic GitHub token. */
 const githubToken = `ghp_${"Q7x2Lm9K3".repeat(4)}`;
 
+/** A tool with the one required parameter its action reads. */
 function tool(name: string, run: "github.pull-request" | "paperclip.task" = "github.pull-request") {
   const action =
     run === "paperclip.task"
       ? { run, with: {} }
       : { run, with: { repositories: ["acme/website"] } };
+  const required = run === "paperclip.task" ? "task" : "pr";
   return {
     version: 1,
     id: name.replaceAll("_", "-"),
     name,
     description: `The ${name} tool.`,
-    parameters: {},
+    parameters: {
+      [required]: { type: "string", description: `The ${required}.`, required: true },
+    },
     callers: "everyone",
     action,
   } as Tool;

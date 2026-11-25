@@ -8,14 +8,18 @@ const anthropicKey = `sk-ant-api03-${"Q7x2Lm9K".repeat(4)}`;
 /** An invented classic GitHub token; at 40 characters it fits a parameter's name. */
 const githubToken = `ghp_${"Q7x2Lm9K3".repeat(4)}`;
 
-/** A tool file whose description, parameter and settings are given. */
+/**
+ * A tool file whose description, parameter and settings are given. Its
+ * action reads only `since`, so any other parameter is also refused with
+ * `parameter-not-read` (`format.tool-action-parameters`).
+ */
 function toolFile(parts: { description?: string; parameter?: string; agents?: string }): string {
   return yaml(
     "id: failed-runs",
     "name: failed_runs",
     `description: ${parts.description ?? "Lists the runs that failed."}`,
     "parameters:",
-    `  ${parts.parameter ?? "hours: { type: integer, description: How far back., minimum: 1, maximum: 168 }"}`,
+    `  ${parts.parameter ?? "since: { type: string, description: Since when. }"}`,
     `callers: ${parts.agents === undefined ? "everyone" : `{ agents: [${parts.agents}] }`}`,
     "action: { run: paperclip.failed-runs }",
   );
@@ -29,13 +33,13 @@ verifies("format.tool-refusals", () => {
   });
 
   it("refuses a key in a parameter's description or choices, and in the named callers", () => {
-    const inDescription = `hours: { type: integer, description: "Key ${anthropicKey}" }`;
+    const inDescription = `since: { type: string, description: "Key ${anthropicKey}" }`;
     expect(summary(problemsOf("tool", toolFile({ parameter: inDescription })))).toEqual([
-      "parameters.hours.description value-looks-like-key 5",
+      "parameters.since.description value-looks-like-key 5",
     ]);
-    const inChoices = `mode: { type: string, description: Which., enum: [fast, ${anthropicKey}] }`;
+    const inChoices = `since: { type: string, description: Which., enum: [fast, ${anthropicKey}] }`;
     expect(summary(problemsOf("tool", toolFile({ parameter: inChoices })))).toEqual([
-      "parameters.mode.enum.1 value-looks-like-key 5",
+      "parameters.since.enum.1 value-looks-like-key 5",
     ]);
     expect(summary(problemsOf("tool", toolFile({ agents: `Builder, ${anthropicKey}` })))).toEqual([
       "callers.agents.1 value-looks-like-key 6",
@@ -45,8 +49,13 @@ verifies("format.tool-refusals", () => {
   it("refuses a key written as a parameter's name, without repeating it", () => {
     const parameter = `${githubToken}: { type: string, description: Pass it. }`;
     const problems = problemsOf("tool", toolFile({ parameter }));
-    expect(summary(problems)).toEqual([`parameters.${githubToken} value-looks-like-key 5`]);
-    expect(problems[0]?.message).not.toContain(githubToken);
+    expect(summary(problems)).toEqual([
+      `parameters.${githubToken} value-looks-like-key 5`,
+      `parameters.${githubToken} parameter-not-read 5`,
+    ]);
+    for (const problem of problems) {
+      expect(problem.message).not.toContain(githubToken);
+    }
   });
 
   it("refuses a parameter whose name asks for a key", () => {
@@ -54,6 +63,7 @@ verifies("format.tool-refusals", () => {
       const parameter = `${name}: { type: string, description: Pass it. }`;
       expect(summary(problemsOf("tool", toolFile({ parameter })))).toEqual([
         `parameters.${name} parameter-asks-for-key 5`,
+        `parameters.${name} parameter-not-read 5`,
       ]);
     }
   });
@@ -63,9 +73,9 @@ verifies("format.tool-refusals", () => {
       expect(
         summary(problemsOf("tool", toolFile({ description: `Lists${hidden} runs.` }))),
       ).toEqual(["description custom 3"]);
-      const parameter = `mode: { type: string, description: Which., enum: [fast, "sl${hidden}ow"] }`;
+      const parameter = `since: { type: string, description: Which., enum: [fast, "sl${hidden}ow"] }`;
       expect(summary(problemsOf("tool", toolFile({ parameter })))).toEqual([
-        "parameters.mode.enum.1 custom 5",
+        "parameters.since.enum.1 custom 5",
       ]);
     }
   });
@@ -91,6 +101,7 @@ verifies("format.tool-refusals", () => {
       "hours: { type: integer, description: How far back., minimum: 10, maximum: 1 }";
     expect(summary(problemsOf("tool", toolFile({ parameter })))).toEqual([
       "parameters.hours.minimum parameter-range-empty 5",
+      "parameters.hours parameter-not-read 5",
     ]);
   });
 });

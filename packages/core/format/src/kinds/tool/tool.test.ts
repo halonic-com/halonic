@@ -3,35 +3,41 @@ import { expect, it } from "vitest";
 import { parsedValue, problemsOf, summary, yaml } from "../../test/parse.spec.ts";
 import { toolActionInfo, toolActionNames } from "./actions.ts";
 
-/** A tool file that passes, with `extra` lines added at the end. */
+/**
+ * A tool file that passes, with `extra` lines added at the end. Its action
+ * reads no parameters, so it passes without any.
+ */
 function toolFile(...extra: string[]): string {
   return yaml(
-    "id: pr-status",
-    "name: pr_status",
-    "description: Reads one pull request's checks and queue state.",
+    "id: my-prs",
+    "name: my_prs",
+    "description: Lists the caller's open pull requests.",
     "callers: everyone",
     "action:",
-    "  run: github.pull-request",
+    "  run: github.open-pull-requests",
     "  with: { repositories: [acme/website] }",
     ...extra,
   );
 }
 
-/** The same tool with its own `parameters` block. */
+/** A `github.pull-request` tool with its own `parameters` block: that action reads `pr` and `repo`. */
 function withParameters(...lines: string[]): string {
-  return toolFile("parameters:", ...lines.map((line) => `  ${line}`));
+  return toolFile("parameters:", ...lines.map((line) => `  ${line}`)).replace(
+    "github.open-pull-requests",
+    "github.pull-request",
+  );
 }
 
 verifies("format.tool-file", () => {
   it("reads a tool and fills in version and parameters", () => {
     expect(parsedValue("tool", toolFile())).toEqual({
       version: 1,
-      id: "pr-status",
-      name: "pr_status",
-      description: "Reads one pull request's checks and queue state.",
+      id: "my-prs",
+      name: "my_prs",
+      description: "Lists the caller's open pull requests.",
       parameters: {},
       callers: "everyone",
-      action: { run: "github.pull-request", with: { repositories: ["acme/website"] } },
+      action: { run: "github.open-pull-requests", with: { repositories: ["acme/website"] } },
     });
   });
 
@@ -95,9 +101,9 @@ verifies("format.tool-file", () => {
   });
 
   it("refuses a tool name, parameter name or repository in another form", () => {
-    expect(
-      summary(problemsOf("tool", toolFile().replace("name: pr_status", "name: PR-Status"))),
-    ).toEqual(["name invalid_format 2"]);
+    expect(summary(problemsOf("tool", toolFile().replace("name: my_prs", "name: My-PRs")))).toEqual(
+      ["name invalid_format 2"],
+    );
     expect(
       summary(problemsOf("tool", withParameters("Pr: { type: boolean, description: Yes. }"))),
     ).toEqual(["parameters.Pr invalid_key 9"]);
@@ -116,7 +122,7 @@ verifies("format.tool-file", () => {
   });
 
   it("refuses a control character or text-direction mark in the description", () => {
-    const text = toolFile().replace("Reads one", "Reads\u202E one");
+    const text = toolFile().replace("Lists the", "Lists\u202E the");
     expect(summary(problemsOf("tool", text))).toEqual(["description custom 3"]);
   });
 });
@@ -145,20 +151,24 @@ verifies("format.tool-actions", () => {
   });
 
   it("refuses an action the runtime doesn't have", () => {
-    const text = toolFile().replace("github.pull-request", "shell.run");
+    const text = toolFile().replace("github.open-pull-requests", "shell.run");
     expect(summary(problemsOf("tool", text))).toEqual(["action.run invalid_union 6"]);
   });
 
   it("starts a writing action in dry run, and refuses a mode it doesn't know", () => {
-    const comment = toolFile()
-      .replace("github.pull-request", "paperclip.comment")
+    const comment = toolFile(
+      "parameters:",
+      "  task: { type: string, description: The task., required: true }",
+      "  body: { type: string, description: The comment., required: true }",
+    )
+      .replace("github.open-pull-requests", "paperclip.comment")
       .replace("  with: { repositories: [acme/website] }\n", "");
     expect(parsedValue("tool", comment).action).toEqual({
       run: "paperclip.comment",
       with: { mode: "dry-run" },
     });
     const unknown = toolFile()
-      .replace("github.pull-request", "paperclip.comment")
+      .replace("github.open-pull-requests", "paperclip.comment")
       .replace("{ repositories: [acme/website] }", "{ mode: always }");
     expect(summary(problemsOf("tool", unknown))).toEqual(["action.with.mode invalid_value 7"]);
   });
@@ -167,7 +177,7 @@ verifies("format.tool-actions", () => {
     const text = toolFile().replace("  with: { repositories: [acme/website] }\n", "");
     expect(summary(problemsOf("tool", text))).toEqual(["action.with invalid_type 5"]);
     const task = toolFile()
-      .replace("github.pull-request", "paperclip.failed-runs")
+      .replace("github.open-pull-requests", "paperclip.failed-runs")
       .replace("  with: { repositories: [acme/website] }\n", "");
     expect(parsedValue("tool", task).action).toEqual({
       run: "paperclip.failed-runs",

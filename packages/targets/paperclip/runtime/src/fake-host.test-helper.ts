@@ -1,4 +1,4 @@
-import type { Tool, WorkspaceSnapshot } from "@halonicjs/format";
+import { type Tool, toolActionInfo, type WorkspaceSnapshot } from "@halonicjs/format";
 import type { PaperclipEvent, ToolResult, ToolRunContext } from "./host.ts";
 import { snapshotPath } from "./pinned-snapshot.ts";
 import type { WorkspaceRuntimeApi } from "./register.ts";
@@ -15,16 +15,33 @@ export const runCtx: ToolRunContext = {
   projectId: "",
 };
 
-/** One acme tool on `acme/website`, as a tool file would define it. */
+/** The parameters a tool file declares for an action: the ones it reads, as text. */
+export function parametersFor(action: Tool["action"]["run"]): Tool["parameters"] {
+  return Object.fromEntries(
+    toolActionInfo(action).parameters.map(({ name, required }) => [
+      name,
+      { type: "string", description: `The ${name}.`, required, maxLength: 1000 },
+    ]),
+  );
+}
+
+/**
+ * One acme tool on `acme/website`, as a tool file would define it, with the
+ * parameters its action reads unless the overrides give others.
+ */
 export function acmeTool(name: string, overrides: Partial<Tool> = {}): Tool {
+  const action = overrides.action ?? {
+    run: "github.pull-request",
+    with: { repositories: ["acme/website"] },
+  };
   return {
     version: 1,
     id: name.replaceAll("_", "-"),
     name,
     description: `Acme's ${name}.`,
-    parameters: {},
+    parameters: parametersFor(action.run),
     callers: "everyone",
-    action: { run: "github.pull-request", with: { repositories: ["acme/website"] } },
+    action,
     ...overrides,
   } as Tool;
 }

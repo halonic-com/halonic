@@ -27,11 +27,14 @@ const runtime: PluginRuntime = {
   settings: {},
 };
 
+/** A tool file with the one required parameter its action reads. */
 function toolFile(name: string, run = "github.pull-request", description = "Reads one PR.") {
   const settings = run === "paperclip.task" ? "{}" : "{ repositories: [acme/website] }";
+  const required = run === "paperclip.task" ? "task" : "pr";
   return [
     `name: ${name}`,
     `description: ${description}`,
+    `parameters: { ${required}: { type: string, description: Which one., required: true } }`,
     "callers: everyone",
     "action:",
     `  run: ${run}`,
