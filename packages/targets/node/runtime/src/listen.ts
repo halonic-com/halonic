@@ -14,6 +14,16 @@ export class NetworkNeedsPasswordError extends Error {
   }
 }
 
+/** `publicOrigin` was given without a password. */
+export class PublicOriginNeedsPasswordError extends Error {
+  constructor() {
+    super(
+      "Serving at a public address needs a password, so nobody on the internet can open your workspace. Set one with `halonic secret set serve-password`, then start again.",
+    );
+    this.name = "PublicOriginNeedsPasswordError";
+  }
+}
+
 /** `network: true` was asked for on a computer with no network address. */
 export class NoNetworkAddressError extends Error {
   constructor() {
@@ -34,6 +44,12 @@ export interface ListenOptions {
   readonly port: number;
   /** Also listen on the home network. Needs `passwordIsSet`. */
   readonly network: boolean;
+  /**
+   * The `https` origin a proxy on this computer serves the server under. The
+   * server then answers to that host only, so `createServer` gets just it.
+   * Needs `passwordIsSet`, and can't go with `network`.
+   */
+  readonly publicOrigin?: string;
   /** Whether a sign-in password is set. */
   readonly passwordIsSet: boolean;
   /** Where the line for the phone goes; the CLI prints it. */
@@ -55,22 +71,34 @@ export interface Listening {
 }
 
 /**
+ * Refuses what {@link listenOnNode} must not start, before anything binds.
+ *
+ * @returns the LAN address to also serve on with `network`, otherwise `undefined`
+ */
+function checkedLanAddress(options: ListenOptions): string | undefined {
+  if (options.publicOrigin !== undefined) {
+    // A proxy on this computer is the only way in, so the listener stays on loopback.
+    if (options.network) throw new RangeError("publicOrigin can't go with network");
+    if (!options.passwordIsSet) throw new PublicOriginNeedsPasswordError();
+  }
+  if (!options.network) return undefined;
+  if (!options.passwordIsSet) throw new NetworkNeedsPasswordError();
+  const lanAddress = findLanAddress(options.interfaces ?? networkInterfaces());
+  if (lanAddress === undefined) throw new NoNetworkAddressError();
+  return lanAddress;
+}
+
+/**
  * Serves `createServer`'s handler over HTTP. It binds to `127.0.0.1` only,
  * unless `network` is set, which needs a password.
  *
+ * @throws RangeError when both `network` and `publicOrigin` are set
+ * @throws PublicOriginNeedsPasswordError when `publicOrigin` is set and no password is
  * @throws NetworkNeedsPasswordError when `network` is set and no password is
  * @throws NoNetworkAddressError when `network` is set and there is no LAN address
  */
 export async function listenOnNode(options: ListenOptions): Promise<Listening> {
-  if (options.network && !options.passwordIsSet) {
-    throw new NetworkNeedsPasswordError();
-  }
-  const lanAddress = options.network
-    ? findLanAddress(options.interfaces ?? networkInterfaces())
-    : undefined;
-  if (options.network && lanAddress === undefined) {
-    throw new NoNetworkAddressError();
-  }
+  const lanAddress = checkedLanAddress(options);
 
   let server: Server | undefined;
   const http = createHttpServer((incoming, outgoing) => {
@@ -103,7 +131,10 @@ export async function listenOnNode(options: ListenOptions): Promise<Listening> {
     if (address === null || typeof address === "string") {
       throw new Error("The HTTP listener has no port.");
     }
-    const allowedHosts = [`localhost:${address.port}`];
+    const allowedHosts =
+      options.publicOrigin === undefined
+        ? [`localhost:${address.port}`]
+        : [new URL(options.publicOrigin).host];
     if (lanAddress !== undefined) {
       allowedHosts.push(`${lanAddress}:${address.port}`);
     }

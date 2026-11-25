@@ -1,4 +1,4 @@
-// `halonic serve [--network] [--port]`: opens the workspace to a phone or
+// `halonic serve [--network | --public-origin] [--port]`: opens the workspace to a phone or
 // browser through the secure server (`@halonicjs/host-server`), until Ctrl C
 // or SIGTERM (HAL-195 PR 9b-2). A thin command, modelled on `routines watch`:
 // it checks trust, opens the local engine, and plugs the engine, the
@@ -20,6 +20,7 @@ import { workspaceModelSettings } from "@halonicjs/adapter-workspace-models";
 import type { RoutineEngine } from "@halonicjs/engine";
 import {
   createServer,
+  isHttpsOrigin,
   passwordSecretName,
   providerKeysOf,
   type ServerPorts,
@@ -35,6 +36,7 @@ import {
   NoNetworkAddressError,
   openDiskRequestCountStore,
   openStudioPageFolder,
+  PublicOriginNeedsPasswordError,
 } from "@halonicjs/target-node-runtime";
 import {
   type CommandContext,
@@ -119,7 +121,8 @@ const maxBodyBytes = 1024 * 1024;
  * Serves the workspace until Ctrl C or SIGTERM, then returns that it
  * stopped: exit 130 or 143.
  *
- * @throws UsageError when `--port` isn't a port number
+ * @throws UsageError when `--port` isn't a port number, or `--public-origin` isn't an https
+ *   origin or comes with `--network`
  * @throws NoWorkspaceError when the folder holds no workspace
  * @throws HistoryUnavailableError when the workspace has history but git
  *   can't start; nothing was served (exit 9)
@@ -129,6 +132,7 @@ const maxBodyBytes = 1024 * 1024;
  *   since; nothing was served (exit 3)
  * @throws NetworkNeedsPasswordError when `--network` is given and no sign-in password is set
  * @throws NoNetworkAddressError when `--network` is given and the computer has no network address
+ * @throws KindedError `invalid_input` when `--public-origin` is given and no sign-in password is set
  * @throws KindedError `conflict` when another engine is open on the workspace,
  *   or another program listens on the port
  */
@@ -139,10 +143,12 @@ export async function serveWorkspace(
 ): Promise<StoppedResult> {
   const port = portOf(input);
   const network = input.options["network"] === true;
+  const publicOrigin = publicOriginOf(input, network);
   const dir = await openWorkspaceDir(input, context);
   const versions = await WatchedVersions.open(dir, setup.history);
   try {
-    return await serveVersions(input, context, setup, dir, versions, { port, network });
+    const listen = { port, network, ...(publicOrigin === undefined ? {} : { publicOrigin }) };
+    return await serveVersions(input, context, setup, dir, versions, listen);
   } finally {
     // After the engine has closed: no run starts from a version any more.
     await versions.close();
@@ -159,13 +165,31 @@ function portOf(input: CommandInput): number {
   return Number(given);
 }
 
+/** `--public-origin` when given: an https origin, never with `--network`. */
+function publicOriginOf(input: CommandInput, network: boolean): string | undefined {
+  const given = input.options["public-origin"];
+  if (given === undefined) return undefined;
+  if (typeof given !== "string" || !isHttpsOrigin(given)) {
+    throw new UsageError(serveMessages.publicOriginInvalid());
+  }
+  if (network) throw new UsageError(serveMessages.publicOriginWithNetwork());
+  return given;
+}
+
+/** Where `serve` listens: the port, and the network or a public origin besides this computer. */
+interface ListenChoice {
+  readonly port: number;
+  readonly network: boolean;
+  readonly publicOrigin?: string;
+}
+
 async function serveVersions(
   input: CommandInput,
   context: CommandContext,
   setup: ServeSetup,
   dir: OpenWorkspaceDir,
   versions: WatchedVersions,
-  listen: { readonly port: number; readonly network: boolean },
+  listen: ListenChoice,
 ): Promise<StoppedResult> {
   const workspace = versions.latest();
   const typedDir = givenDir(input, dir);
@@ -218,7 +242,7 @@ async function serveVersions(
     servePort = server.port;
     try {
       const name = printable(workspaceNameOf(workspace, dir));
-      const address = `http://localhost:${server.port}`;
+      const address = listen.publicOrigin ?? `http://localhost:${server.port}`;
       context.printAhead(serveMessages.serving(name, address).phrase);
       if (!(await passwordIsSet(context))) context.printAhead(serveMessages.noPassword().phrase);
       const studioLine = await studioPageLine(setup);
@@ -279,7 +303,7 @@ async function listenOnComputer(
   dir: OpenWorkspaceDir,
   versions: WatchedVersions,
   parts: RoutineEngine,
-  listen: { readonly port: number; readonly network: boolean },
+  listen: ListenChoice,
 ): Promise<Listening> {
   const environment = setup.profile ?? nodeProfileEnvironment();
   const root = await realpath(dir.root);
@@ -355,6 +379,7 @@ async function listenOnComputer(
             minAppVersion: halonicVersion,
             allowedHosts,
             maxBodyBytes,
+            ...(listen.publicOrigin === undefined ? {} : { publicOrigin: listen.publicOrigin }),
           },
           ports,
         }),
@@ -366,13 +391,17 @@ async function listenOnComputer(
       ),
     port: listen.port,
     network: listen.network,
+    ...(listen.publicOrigin === undefined ? {} : { publicOrigin: listen.publicOrigin }),
     passwordIsSet: await passwordIsSet(context),
     report: (line) => context.printAhead(serveMessages.address(printable(line)).phrase),
     logError: logRequestFailure,
   });
   return await listening.catch((error: unknown) => {
     // The runtime's own sentences say what to do, so they reach the person as they are.
-    if (error instanceof NetworkNeedsPasswordError) {
+    if (
+      error instanceof NetworkNeedsPasswordError ||
+      error instanceof PublicOriginNeedsPasswordError
+    ) {
       throw new KindedError("invalid_input", error.message, { cause: error });
     }
     if (error instanceof NoNetworkAddressError) {

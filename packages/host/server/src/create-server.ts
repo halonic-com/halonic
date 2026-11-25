@@ -19,6 +19,7 @@ import {
 } from "./google-routes.ts";
 import { googleCallbackPath } from "./google-sign-in-routes.ts";
 import { helloResponse } from "./hello-route.ts";
+import { isHttpsOrigin } from "./https-origin.ts";
 import { createManyUserRoutes, type ManyUserRoutes } from "./many-user-routes.ts";
 import {
   createModelChoiceRoutes,
@@ -49,6 +50,9 @@ import { createWorkspaceRoutes } from "./workspace-routes.ts";
 function checkConfig(config: ServerConfig): void {
   if (config.allowedHosts.length === 0) {
     throw new RangeError("allowedHosts needs at least one name");
+  }
+  if (config.publicOrigin !== undefined && !isHttpsOrigin(config.publicOrigin)) {
+    throw new RangeError("publicOrigin must be an https origin with no path");
   }
   if (config.dailyRequests !== undefined && !isWholeNumberAboveZero(config.dailyRequests)) {
     throw new RangeError("dailyRequests must be a whole number above zero");
@@ -109,7 +113,13 @@ function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<Cr
   const { config, ports } = options;
   checkConfig(config);
   const manyUserRoutes = manyUserRoutesOf(options, checks);
-  const allowedHosts = config.allowedHosts.map((name) => name.toLowerCase());
+  const publicHost = config.publicOrigin === undefined ? null : new URL(config.publicOrigin).host;
+  // Behind the proxy every request comes from loopback, so only the public name is allowed.
+  const hostCheck = {
+    allowedHosts:
+      publicHost === null ? config.allowedHosts.map((name) => name.toLowerCase()) : [publicHost],
+    loopbackAllowed: publicHost === null,
+  };
   const signIn = createSignIn(ports);
   const trustRoutes = createTrustRoutes(ports);
   const webhookRoutes = createWebhookRoutes(ports);
@@ -309,7 +319,7 @@ function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<Cr
     const hasPassword =
       manyUserRoutes !== null || (await ports.secrets.get(passwordSecretName)) !== null;
     const refusal =
-      checkHost(request, { allowedHosts, hasPassword }) ?? checkOrigin(request, context);
+      checkHost(request, { ...hostCheck, hasPassword }) ?? checkOrigin(request, context);
     if (refusal !== null) {
       return errorResponse(refusal);
     }
@@ -341,13 +351,15 @@ function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<Cr
     ports.requestLog.record({ method: request.method, path: pathname, status: response.status });
   }
 
-  async function respond(request: Request, context: RequestContext): Promise<Response> {
+  async function respond(request: Request, hostContext: RequestContext): Promise<Response> {
+    // The operator vouches for the proxy in front of a public origin; no `X-Forwarded-*` header is read.
+    const context = publicHost === null ? hostContext : { ...hostContext, secure: true };
     try {
-      return withSecurityHeaders(await answer(request, context), request);
+      return withSecurityHeaders(await answer(request, context), request, context);
     } catch (cause) {
       // The cause stays out of the reply: a stack or path would tell a caller about the host.
       ports.errorLog.record(cause);
-      return withSecurityHeaders(errorResponse(serverErrors.internal), request);
+      return withSecurityHeaders(errorResponse(serverErrors.internal), request, context);
     }
   }
 

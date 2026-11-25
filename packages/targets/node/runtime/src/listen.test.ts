@@ -8,6 +8,7 @@ import {
   listenOnNode,
   NetworkNeedsPasswordError,
   NoNetworkAddressError,
+  PublicOriginNeedsPasswordError,
 } from "./listen.ts";
 
 const lanInterfaces = {
@@ -320,6 +321,41 @@ verifies("runtime.listen-abort", () => {
       expect(answer.body).toBe("done");
       await new Promise((resolve) => setTimeout(resolve, 20));
       expect(signal?.aborted).toBe(false);
+    });
+  });
+});
+
+verifies("server.public-endpoint", () => {
+  describe("listenOnNode with a public origin", () => {
+    const publicOrigin = "https://engine.example.com";
+
+    it("listens on loopback only and gives the server just the public name", async () => {
+      const { listening, reported, hostNames } = await listen({ publicOrigin });
+      expect(listening.host).toBe("127.0.0.1");
+      expect(hostNames).toEqual([["engine.example.com"]]);
+      expect(reported).toEqual([]);
+    });
+
+    it("refuses to start without a password, before it builds a server or binds", async () => {
+      let built = false;
+      await expect(
+        listen({
+          publicOrigin,
+          passwordIsSet: false,
+          createServer: () => {
+            built = true;
+            return recordingServer([]);
+          },
+        }),
+      ).rejects.toThrow(PublicOriginNeedsPasswordError);
+      expect(built).toBe(false);
+      expect(new PublicOriginNeedsPasswordError().message).toContain(
+        "halonic secret set serve-password",
+      );
+    });
+
+    it("refuses to start together with the network", async () => {
+      await expect(listen({ publicOrigin, network: true })).rejects.toThrow(RangeError);
     });
   });
 });

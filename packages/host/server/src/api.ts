@@ -83,6 +83,13 @@ export interface ServerConfig {
    * whatever this holds.
    */
   readonly allowedHosts: readonly string[];
+  /**
+   * The `https` origin a proxy on the same computer serves the server under,
+   * such as `https://engine.example.com`. When set, the server answers only to
+   * that origin's host, never to a loopback name or `allowedHosts`, and treats
+   * every request as `secure`. With no password it answers nothing.
+   */
+  readonly publicOrigin?: string;
   /** The deployment's `limits.dailyRequests`. No ceiling when absent. */
   readonly dailyRequests?: number;
   /** The most bytes a request body may have; the limit is enforced while the body streams. */

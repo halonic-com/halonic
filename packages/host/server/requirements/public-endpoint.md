@@ -1,10 +1,10 @@
 # server.public-endpoint
 
-- Status: draft
+- Status: active
 - Since: unreleased
-- Source: HAL-17512 `server-engine` rev 2, §4 (PR S7); Julian's security note on HAL-17513, findings S3 and S10
+- Source: HAL-17512 `server-engine` rev 2, §4 (PR S7); Julian's security note on HAL-17513, findings S3 and S10; built in HAL-18498
 
-When `serve` is started with `--public-origin https://<host>`, it shall refuse to start, for the whole server, unless a `serve-password` is set, and shall refuse to start together with `--network`, each time exiting with a message that names the reason. It shall listen on `127.0.0.1` only. It shall accept only `<host>` in the `Host` header and refuse every other name, loopback names included, with 421 `host_not_allowed` (`server.host-check`). It shall treat every request as `secure` from this setting and never read an `X-Forwarded-*` header. Its answers shall carry `Strict-Transport-Security`, and its session cookie shall be the `__Host-` cookie of `server.session`; the `Origin` check (`server.origin-check`) is unchanged. A `--public-origin` that isn't an `https` origin with no path shall be refused at start.
+When `serve` is started with `--public-origin https://<host>`, it shall refuse to start, for the whole server, unless a `serve-password` is set, and shall refuse to start together with `--network`, each time exiting with a message that names the reason. It shall listen on `127.0.0.1` only. It shall accept only `<host>` in the `Host` header and refuse every other name, loopback names included, with 421 `host_not_allowed` (`server.host-check`). It shall treat every request as `secure` from this setting and never read an `X-Forwarded-*` header. Its answers shall carry `Strict-Transport-Security`, and its session cookie shall be the `__Host-` cookie of `server.session`; the `Origin` check (`server.origin-check`) is unchanged. A `--public-origin` that isn't an `https` origin with no path shall be refused at start. While no password is set, a server with a public origin shall refuse every request, its own name included.
 
 Rationale: behind a proxy on the same machine, every outside request comes from loopback, so the loopback rules that keep a local server safe would open it to the internet.
 

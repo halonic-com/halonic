@@ -10,6 +10,12 @@ const networkOption: CliOption = {
   description: serveMessages.networkOption(),
 };
 
+const publicOriginOption: CliOption = {
+  type: "string",
+  valueName: "origin",
+  description: serveMessages.publicOriginOption(),
+};
+
 const portOption: CliOption = {
   type: "string",
   valueName: "port",
@@ -23,11 +29,16 @@ const portOption: CliOption = {
 export function serveCommandWith(setup: ServeSetup): CliCommand {
   return {
     name: "serve",
-    usage: "[--dir <folder>] [--network] [--port <port>]",
+    usage: "[--dir <folder>] [--network | --public-origin <origin>] [--port <port>]",
     summary: serveMessages.summary(),
     action: (input, context) =>
       serveMessages.action(printable(workspaceDir(input, context.cwd).name)),
-    options: { dir: dirOption, network: networkOption, port: portOption },
+    options: {
+      dir: dirOption,
+      network: networkOption,
+      "public-origin": publicOriginOption,
+      port: portOption,
+    },
     run: (input, context) => serveWorkspace(input, context, setup),
   };
 }

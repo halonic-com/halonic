@@ -59,6 +59,7 @@ export {
   type EngineServerPorts,
 } from "./engine-server.ts";
 export { createGoogleRoutes, type GoogleRoutes } from "./google-routes.ts";
+export { isHttpsOrigin } from "./https-origin.ts";
 export {
   bearerMatches,
   type LaunchRefusal,
