@@ -144,9 +144,7 @@ pub fn run() {
         .expect("the Studio shell could not start")
         .run(|app, event| {
             #[cfg(desktop)]
-            if let RunEvent::ExitRequested { code, api, .. } = &event {
-                tray::exit_requested(app, *code, api);
-            }
+            tray::run_event(app, &event);
             if matches!(event, RunEvent::Exit) {
                 // Each engine releases its own `engine.lock` as it stops.
                 #[cfg(desktop)]

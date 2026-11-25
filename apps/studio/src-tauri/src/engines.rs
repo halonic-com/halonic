@@ -281,6 +281,22 @@ pub fn try_again<R: Runtime>(app: &AppHandle<R>) {
     crate::tray::refresh(app);
 }
 
+/// The tray's Pause routines or Resume routines: every workspace's engine
+/// hears it now, and every engine that starts later gets it after its
+/// handshake.
+pub fn pause_routines<R: Runtime>(app: &AppHandle<R>, paused: bool) {
+    let state = app.state::<EnginesState>();
+    let mut table = lock(&state.table);
+    let (pause, engines) = table.set_pause_all(paused);
+    for engine in engines {
+        // Failing to queue means the link already ended; its watcher takes
+        // it from there, and the next launch gets the pause.
+        let _ended = engine.link().send_pause_routines(pause);
+    }
+    drop(table);
+    crate::tray::refresh(app);
+}
+
 /// Every engine together, for the tray: runs in progress from each one's
 /// latest health.
 pub fn summary<R: Runtime>(app: &AppHandle<R>) -> EnginesSummary {
@@ -305,6 +321,8 @@ fn restart<R: Runtime>(app: &AppHandle<R>, state: &EnginesState, workspace: &Pat
                 "engine",
                 format_args!("it didn't start again: {}", failure.message),
             );
+            // The tray says routines aren't running, and offers Try again.
+            lock(&state.table).failed_to_restart(workspace);
             return;
         }
     };
@@ -354,6 +372,9 @@ pub fn sandbox_host_changed<R: Runtime>(app: &AppHandle<R>, host: Option<&Handsh
 /// 15 seconds, and waits for them all. An engine still starting is stopped
 /// as it finishes (the table is closed), and none starts after.
 pub fn stop_all<R: Runtime>(app: &AppHandle<R>) {
+    // Halonic is exiting: a redraw would wait on the main thread, which may
+    // be the one stopping the engines.
+    crate::tray::stop_redrawing(app);
     let Some(state) = app.try_state::<EnginesState>() else {
         return;
     };

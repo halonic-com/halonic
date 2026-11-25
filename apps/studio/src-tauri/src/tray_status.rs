@@ -3,8 +3,7 @@
 //! from the background engines' summary. Plain data, so tests need no tray.
 //!
 //! Not here yet: the status line's "next routine at 14:00" and "1 run needs
-//! you", which wait on the engine's health reporting them (HAL-18279), and
-//! Pause routines, which waits on HAL-17185.
+//! you", which wait on the engine's health reporting them (HAL-18279).
 
 use crate::engine_table::EnginesSummary;
 
@@ -59,6 +58,10 @@ pub const OPEN: &str = "open";
 pub const STATUS: &str = "status";
 /// Try again, in the problem state: starts the stopped engines again.
 pub const TRY_AGAIN: &str = "try-again";
+/// Pause routines, in every workspace.
+pub const PAUSE: &str = "pause";
+/// Resume routines, in its place while paused.
+pub const RESUME: &str = "resume";
 /// Quit Halonic.
 pub const QUIT: &str = "quit";
 
@@ -89,23 +92,27 @@ pub fn tray_view(summary: EnginesSummary, quitting: bool) -> TrayView {
         return TrayView {
             // The icon keeps its state; it goes when Halonic has quit.
             icon,
-            menu: menu(&[quitting_line(summary.active_runs)], &[OPEN], false),
+            menu: menu(
+                &[quitting_line(summary.active_runs)],
+                &[OPEN, pause_item(summary)],
+                false,
+            ),
         };
     }
-    let (status, actions): (Vec<String>, &[&str]) = if summary.problem {
+    let (status, actions): (Vec<String>, Vec<&str>) = if summary.problem {
         (
             vec![
                 "Routines aren't running".to_owned(),
                 "The background engine stopped 3 times".to_owned(),
             ],
-            &[TRY_AGAIN, OPEN],
+            vec![TRY_AGAIN, OPEN],
         )
     } else {
-        (vec![status_line(summary)], &[OPEN])
+        (vec![status_line(summary)], vec![OPEN, pause_item(summary)])
     };
     TrayView {
         icon,
-        menu: menu(&status, actions, true),
+        menu: menu(&status, &actions, true),
     }
 }
 
@@ -167,18 +174,34 @@ fn menu(status: &[String], actions: &[&str], enabled: bool) -> Vec<MenuLine> {
     lines
 }
 
+/// Pause routines, or Resume routines while paused (the card swaps them).
+fn pause_item(summary: EnginesSummary) -> &'static str {
+    if summary.paused { RESUME } else { PAUSE }
+}
+
 fn action_text(id: &str) -> &'static str {
     match id {
         TRY_AGAIN => "Try again",
+        PAUSE => "Pause routines",
+        RESUME => "Resume routines",
         _ => "Open Halonic",
     }
 }
 
+/// Whether Halonic may keep running in the tray on `os`
+/// (`std::env::consts::OS`): Windows and macOS, where a tray that builds is
+/// a tray the user sees. On Linux a tray can build with nothing showing (GNOME
+/// without the AppIndicator extension), so closing the window quits there
+/// until the shell can tell (B1 step 6).
+pub fn keeps_running_in_tray(os: &str) -> bool {
+    os == "windows" || os == "macos"
+}
+
 /// Whether closing the window `label` hides it rather than closing it:
-/// Studio's window, while the tray shows and Halonic isn't quitting. With no
-/// tray, closing it quits as before (design note D9).
-pub fn hides_on_close(label: &str, tray_shown: bool, quitting: bool) -> bool {
-    label == crate::focused_apps::STUDIO_WINDOW && tray_shown && !quitting
+/// Studio's window, while Halonic keeps running in the tray and isn't
+/// quitting. With no tray, closing it quits as before (design note D9).
+pub fn hides_on_close(label: &str, background: bool, quitting: bool) -> bool {
+    label == crate::focused_apps::STUDIO_WINDOW && background && !quitting
 }
 
 /// Whether Halonic keeps running in the tray when an exit was asked with
@@ -187,10 +210,10 @@ pub fn hides_on_close(label: &str, tray_shown: bool, quitting: bool) -> bool {
 pub fn stays_in_tray(
     code: Option<i32>,
     windows_left: usize,
-    tray_shown: bool,
+    background: bool,
     quitting: bool,
 ) -> bool {
-    code.is_none() && windows_left == 0 && tray_shown && !quitting
+    code.is_none() && windows_left == 0 && background && !quitting
 }
 
 #[cfg(test)]

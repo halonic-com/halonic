@@ -31,7 +31,14 @@ fn tray_idle_and_running() {
     assert_eq!(idle.icon, IconState::Idle);
     assert_eq!(
         texts(&idle),
-        ["Nothing running", "-", "Open Halonic", "-", "Quit Halonic"]
+        [
+            "Nothing running",
+            "-",
+            "Open Halonic",
+            "Pause routines",
+            "-",
+            "Quit Halonic"
+        ]
     );
 
     let one = tray_view(summary(1, false, false), false);
@@ -51,6 +58,18 @@ fn tray_paused_shows_the_bars_even_with_runs_going() {
     assert_eq!(
         texts(&tray_view(summary(0, true, false), false))[0],
         "Routines paused"
+    );
+    assert_eq!(
+        texts(&paused),
+        [
+            "Routines paused · 1 run in progress",
+            "-",
+            "Open Halonic",
+            "Resume routines",
+            "-",
+            "Quit Halonic",
+        ],
+        "the card swaps Pause for Resume"
     );
 }
 
@@ -91,6 +110,7 @@ fn tray_quitting_can_not_be_clicked() {
             "Quitting… 2 runs finishing their step (off)",
             "-",
             "Open Halonic (off)",
+            "Pause routines (off)",
             "-",
             "Quit Halonic (off)",
         ]
@@ -138,4 +158,14 @@ fn tray_keeps_halonic_running_only_after_the_last_window_closed() {
     );
     assert!(!stays_in_tray(None, 0, false, false), "no tray");
     assert!(!stays_in_tray(None, 0, true, true), "quitting");
+}
+
+#[test]
+fn tray_keeps_halonic_running_only_where_a_built_tray_shows() {
+    assert!(keeps_running_in_tray("windows"));
+    assert!(keeps_running_in_tray("macos"));
+    assert!(
+        !keeps_running_in_tray("linux"),
+        "GNOME can build a tray that shows nothing"
+    );
 }

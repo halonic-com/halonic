@@ -251,3 +251,41 @@ fn tray_try_again_starts_the_problem_workspaces_again() {
     let (_, next) = table.crashed(&acme(), launch, start + Duration::from_secs(5 * 60));
     assert!(matches!(next, AfterCrash::Restart { .. }), "a fresh limit");
 }
+
+/// `studio.src-tauri.tray`: Pause routines covers every workspace, and the
+/// ones opened after it, until the user resumes.
+#[test]
+fn tray_pause_routines_covers_every_workspace_and_later_ones() {
+    let mut table = EngineTable::default();
+    table.started(acme(), "acme".into(), 1, "main").unwrap();
+
+    let (pause, engines) = table.set_pause_all(true);
+    assert!(pause.is_paused());
+    assert_eq!(engines, vec![&1]);
+    assert!(table.summary(|runs| *runs).paused);
+    table
+        .started(PathBuf::from("other"), "other".into(), 2, "code")
+        .unwrap();
+    assert!(
+        table.pause(Path::new("other")).is_paused(),
+        "opened after it"
+    );
+
+    let (resumed, _) = table.set_pause_all(false);
+    assert!(!resumed.is_paused());
+    assert!(!table.pause(&acme()).is_paused());
+}
+
+/// `studio.src-tauri.tray`: a restart that doesn't start leaves the
+/// workspace in the problem state, so the tray offers Try again.
+#[test]
+fn tray_a_failed_restart_is_a_problem() {
+    let mut table = EngineTable::default();
+    let launch = table.started(acme(), "acme".into(), 1, "main").unwrap();
+    let _crash = table.crashed(&acme(), launch, Instant::now());
+
+    table.failed_to_restart(&acme());
+
+    assert!(table.summary(|runs| *runs).problem);
+    assert_eq!(table.try_again(), vec![(acme(), "acme".to_owned())]);
+}

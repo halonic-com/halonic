@@ -15,22 +15,24 @@ use std::thread;
 use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{TrayIcon, TrayIconBuilder};
-use tauri::{AppHandle, CloseRequestApi, ExitRequestApi, Manager, Runtime, Window};
+use tauri::{AppHandle, CloseRequestApi, ExitRequestApi, Manager, RunEvent, Runtime, Window};
 
 use crate::tray_status::{
-    IconScheme, IconState, MenuLine, OPEN, QUIT, STATUS, TRY_AGAIN, TrayView, hides_on_close,
-    stays_in_tray, tray_view,
+    IconScheme, IconState, MenuLine, OPEN, PAUSE, QUIT, RESUME, STATUS, TRY_AGAIN, TrayView,
+    hides_on_close, keeps_running_in_tray, stays_in_tray, tray_view,
 };
 
 /// The tray icon's id.
 const TRAY_ID: &str = "halonic";
 
-/// Whether the tray shows, whether Quit started, and what it shows now, so
-/// a health that changes nothing redraws nothing.
+/// Whether Halonic keeps running in the tray, whether Quit started,
+/// whether Halonic is exiting (no more redraws), and what the tray shows
+/// now, so a health that changes nothing redraws nothing.
 #[derive(Default)]
 pub struct TrayShellState {
-    shown: AtomicBool,
+    background: AtomicBool,
     quitting: AtomicBool,
+    exiting: AtomicBool,
     view: Mutex<Option<TrayView>>,
 }
 
@@ -51,7 +53,8 @@ pub fn start<R: Runtime>(app: &AppHandle<R>) {
     match built {
         Ok(_) => {
             let state = app.state::<TrayShellState>();
-            state.shown.store(true, Ordering::SeqCst);
+            let background = keeps_running_in_tray(std::env::consts::OS);
+            state.background.store(background, Ordering::SeqCst);
             *lock(&state.view) = Some(view);
         }
         Err(error) => halonic_shell_log::record(
@@ -77,6 +80,9 @@ pub fn refresh<R: Runtime>(app: &AppHandle<R>) {
     let Some(state) = app.try_state::<TrayShellState>() else {
         return;
     };
+    if state.exiting.load(Ordering::SeqCst) {
+        return;
+    }
     let Some(tray) = app.tray_by_id(TRAY_ID) else {
         return;
     };
@@ -128,6 +134,9 @@ fn clicked<R: Runtime>(app: &AppHandle<R>, id: &str) {
     } else if id == TRY_AGAIN {
         let app = app.clone();
         thread::spawn(move || crate::engines::try_again(&app));
+    } else if id == PAUSE || id == RESUME {
+        let (app, paused) = (app.clone(), id == PAUSE);
+        thread::spawn(move || crate::engines::pause_routines(&app, paused));
     } else if id == QUIT {
         quit(app);
     }
@@ -152,13 +161,24 @@ fn quit<R: Runtime>(app: &AppHandle<R>) {
     });
 }
 
-/// A window asked to close: Studio's is hidden instead while the tray shows.
+/// Halonic is exiting (Quit, ⌘Q, an update): the tray isn't redrawn any
+/// more, since a redraw waits on the main thread, which may be stopping the
+/// engines.
+pub fn stop_redrawing<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(state) = app.try_state::<TrayShellState>() {
+        state.exiting.store(true, Ordering::SeqCst);
+    }
+}
+
+/// A window asked to close: Studio's is hidden instead while Halonic keeps
+/// running in the tray.
 pub fn close_requested<R: Runtime>(window: &Window<R>, api: &CloseRequestApi) {
     let Some(state) = window.app_handle().try_state::<TrayShellState>() else {
         return;
     };
-    let shown = state.shown.load(Ordering::SeqCst);
-    if hides_on_close(window.label(), shown, state.quitting.load(Ordering::SeqCst)) {
+    let background = state.background.load(Ordering::SeqCst);
+    let quitting = state.quitting.load(Ordering::SeqCst);
+    if hides_on_close(window.label(), background, quitting) {
         api.prevent_close();
         if let Err(error) = window.hide() {
             halonic_shell_log::record("tray", format_args!("the window didn't hide: {error}"));
@@ -166,20 +186,31 @@ pub fn close_requested<R: Runtime>(window: &Window<R>, api: &CloseRequestApi) {
     }
 }
 
+/// The app's events the tray answers: an exit asked after the last window
+/// closed, and on macOS a click on the Dock icon while no window shows,
+/// which brings Studio's window back.
+pub fn run_event<R: Runtime>(app: &AppHandle<R>, event: &RunEvent) {
+    match event {
+        RunEvent::ExitRequested { code, api, .. } => exit_requested(app, *code, api),
+        #[cfg(target_os = "macos")]
+        RunEvent::Reopen {
+            has_visible_windows: false,
+            ..
+        } => crate::focused_apps::started_again(app, &[]),
+        _ => {}
+    }
+}
+
 /// Halonic was asked to exit with `code`: after the last window closed, it
 /// keeps running in the tray.
-pub fn exit_requested<R: Runtime>(app: &AppHandle<R>, code: Option<i32>, api: &ExitRequestApi) {
+fn exit_requested<R: Runtime>(app: &AppHandle<R>, code: Option<i32>, api: &ExitRequestApi) {
     let Some(state) = app.try_state::<TrayShellState>() else {
         return;
     };
     let windows_left = app.webview_windows().len();
-    let shown = state.shown.load(Ordering::SeqCst);
-    if stays_in_tray(
-        code,
-        windows_left,
-        shown,
-        state.quitting.load(Ordering::SeqCst),
-    ) {
+    let background = state.background.load(Ordering::SeqCst);
+    let quitting = state.quitting.load(Ordering::SeqCst);
+    if stays_in_tray(code, windows_left, background, quitting) {
         api.prevent_exit();
     }
 }
