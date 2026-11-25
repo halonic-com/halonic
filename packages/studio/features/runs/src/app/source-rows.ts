@@ -7,13 +7,27 @@ import type { StatusChipTone } from "@halonicjs/studio-kit";
 import type { SourcedRun } from "../api.ts";
 import { toMinorUnits } from "../costs/cost-totals.ts";
 import { type RunPhase, workflowRunPhase } from "../list/run-groups.ts";
-import { type RowContext, runRow } from "../list/run-row.ts";
+import { currentStepName, enteredAStep, type RowContext, runRow } from "../list/run-row.ts";
+import { startedByYou } from "../list/started-by-you.ts";
 import { chipWords, lineSeparator } from "../run-words.ts";
 import type { AppRun } from "./app-run.ts";
+
+/** What a run notification says about a row besides its list words (`runs.run-notifications`). */
+export interface RowNotice {
+  /** Whether the user started it; a team's run never is, as Paperclip doesn't say who did. */
+  readonly startedByMe: boolean;
+  /** How long it ran, once it has ended. */
+  readonly tookMs?: number;
+  /** The step a workflow run failed in. */
+  readonly failedStep?: string;
+  /** The task an agent ran on, such as "ACME-7". */
+  readonly task?: string;
+}
 
 /** A row of the Runs app, with the item its click opens: a workflow run's page; none yet for an agent's run. */
 export interface AllRunsRow extends AppRun {
   readonly item?: { readonly kind: "run"; readonly hub: string; readonly id: string };
+  readonly notice: RowNotice;
 }
 
 /**
@@ -30,9 +44,10 @@ export function workflowAppRun(
   const { summary } = run;
   if (summary.kind === "test") return undefined;
   const row = runRow(run, context);
+  const phase = workflowRunPhase(runStanding(summary));
   return {
     id: summary.id,
-    phase: workflowRunPhase(runStanding(summary)),
+    phase,
     startedAt: summary.startedAt,
     lineage: `${summary.hubId}/${summary.workflowId}`,
     cost:
@@ -50,7 +65,21 @@ export function workflowAppRun(
     chip: { word: row.chip.word, tone: row.chip.tone },
     label: row.label,
     item: { kind: "run", hub: summary.hubId, id: summary.id },
+    notice: {
+      startedByMe: startedByYou(summary),
+      ...tookOf(summary.startedAt, summary.endedAt ?? undefined),
+      ...(phase === "failed" && enteredAStep(summary)
+        ? { failedStep: currentStepName(summary, context.workflow) }
+        : {}),
+    },
   };
+}
+
+/** How long a run took, when it has ended and both times can be read. */
+function tookOf(startedAt: string, endedAt: string | undefined): { tookMs?: number } {
+  if (endedAt === undefined) return {};
+  const tookMs = Date.parse(endedAt) - Date.parse(startedAt);
+  return Number.isNaN(tookMs) ? {} : { tookMs };
 }
 
 /** Where a team agent's run is, as `ports.team-runs` says it. */
@@ -130,6 +159,13 @@ export function teamAppRun(run: TeamRunFields, context: TeamRowContext): AllRuns
     by: { kind: "agent", name: context.agent?.name ?? teamRowWords.unknownAgent },
     chip: { word: look.word, tone: look.tone },
     label: teamRowWords.label(look.word, title, line, context.where),
+    notice: {
+      startedByMe: false,
+      ...(look.phase === "running" || run.startedAt === undefined
+        ? {}
+        : tookOf(run.startedAt, run.lastActivityAt)),
+      ...(run.task?.identifier === undefined ? {} : { task: run.task.identifier }),
+    },
   };
 }
 

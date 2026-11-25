@@ -31,6 +31,7 @@ import {
 import {
   provideShellHostSettings,
   provideShellSecrets,
+  ShellNotifier,
   type TauriCallbacks,
   type TauriIpc,
   tauriAgentHostTransport,
@@ -40,6 +41,7 @@ import { itemLocationKey, placeNames, type Shell, StudioWorkspace } from "@halon
 import { showEngineLockLost } from "../engine/engine-lock-lost-toast.ts";
 import { openShellEngine } from "../engine/remote-engine.ts";
 import { provideKeepAwake, provideRemoteControl } from "../remote/provide-remote.ts";
+import { provideRunNotifications } from "../runs/run-notifications-watch.ts";
 import { provideAssistant } from "./assistant-workspace.ts";
 import type { DeviceMemory } from "./device-memory.ts";
 import { firstRunDeviceOf } from "./first-run-device.ts";
@@ -150,6 +152,14 @@ export async function openFolder(
           kind,
           openRuns: () => workspace.tabs.openHere({ key: "runs", title: placeNames.runs.label }),
         }),
+    });
+    // A failed run, or one the person started, shows a desktop notification (HAL-18845).
+    const reportNotifications = (error: unknown) => console.error("A run notification", error);
+    provideRunNotifications(services, {
+      notifier: new ShellNotifier(ipc, reportNotifications),
+      // The shell brought this window forward (HAL-18844); Runs shows the run's group.
+      open: () => workspace.tabs.openHere({ key: "runs", title: placeNames.runs.label }),
+      onError: reportNotifications,
     });
   }
   shell.services.instantiate(services);
