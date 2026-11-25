@@ -1,7 +1,7 @@
 import type { LibraryItemKind } from "@halonicjs/app";
-import { requestFilesReveal } from "@halonicjs/studio-feature-files/api";
+import { brokenFileActions, requestFilesReveal } from "@halonicjs/studio-feature-files/api";
 import { type ToastStore, usePresentation, useToastStore } from "@halonicjs/studio-kit";
-import type { PlaceViewProps } from "@halonicjs/studio-shell";
+import { FilesWithErrorsService, type PlaceViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useState } from "react";
 import type { CollectionRef } from "../collection-host.ts";
 import { requestConnectorTitleFocus } from "../connector-focus-request.ts";
@@ -76,6 +76,18 @@ function openItemAsFile(
 ): Pick<LibraryPageProps, "onOpenAsFile"> {
   if (openItem === undefined) return {};
   return { onOpenAsFile: (kind, place) => openItem(itemFileRef(kind, place)) };
+}
+
+/** A broken connector file's row (C348 ST4): the shared list of files with errors, and what its row can do. */
+function brokenFilesOf(
+  context: PlaceViewProps["context"],
+  toasts: ToastStore | null,
+): Pick<LibraryPageProps, "filesWithErrors" | "brokenActions"> {
+  const filesWithErrors = context.services.find(FilesWithErrorsService);
+  return {
+    brokenActions: brokenFileActions(context, toasts),
+    ...(filesWithErrors === undefined ? {} : { filesWithErrors }),
+  };
 }
 
 /** How many items of each kind the open workspace has, read while the phone's list of kinds shows; a kind that can't be read has no count. */
@@ -237,6 +249,7 @@ function LibraryKindView({ context, sub }: PlaceViewProps) {
         {...openAsFile}
         {...(desktop ? openDocsFolder(context.showSidebarView, toasts) : {})}
         {...(onNew === undefined ? {} : { onNew })}
+        {...brokenFilesOf(context, toasts)}
       />
       {openedFile !== undefined && (
         <OpenAsFileSheet
