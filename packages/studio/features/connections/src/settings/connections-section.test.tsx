@@ -5,7 +5,7 @@ import { type AgentConnection, FakeAgentConnections } from "@halonicjs/studio-se
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it } from "vitest";
-import { button, dialog, polyfillDialog, press, settle } from "../test-support/dom.ts";
+import { button, dialog, polyfillDialog, press, settle, typeInto } from "../test-support/dom.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { ConnectionsView } from "./connections-section.tsx";
 
@@ -139,5 +139,83 @@ verifies("connections.connection-row", () => {
     expect(view.textContent).toContain("No connections");
     expect(view.textContent).toContain("Connect Paperclip to answer your agents' cards");
     expect(button("Connect Paperclip")).toBeDefined();
+  });
+});
+
+verifies("connections.connect-dialog", () => {
+  it("says Connected and puts focus on the new row's Disconnect once the board approves", async () => {
+    const fake = new FakeAgentConnections();
+    const { view, announced } = await showSection(fake);
+    await press(button("Connect Paperclip"));
+    typeInto(dialog()?.querySelector("input") ?? null, "https://paperclip.acme.test");
+    await press(button("Continue", inDialog()));
+    act(() => fake.approve("Paperclip · Halonic"));
+    await settle();
+    expect(dialog()).toBeNull();
+    expect(announced).toEqual(["Connected Paperclip · Halonic."]);
+    expect(document.activeElement).toBe(button("Disconnect", rowOf(view, "Paperclip · Halonic")));
+  });
+
+  it("puts focus on the new row's Disconnect, not back on Connect Paperclip under the rows", async () => {
+    const fake = new FakeAgentConnections({ connections: [connected] });
+    const { view } = await showSection(fake);
+    const opener = button("Connect Paperclip");
+    opener?.focus();
+    await press(opener);
+    typeInto(dialog()?.querySelector("input") ?? null, "https://paperclip.beta.test");
+    await press(button("Continue", inDialog()));
+    act(() => fake.approve("Paperclip · Beta"));
+    await settle();
+    expect(document.activeElement).toBe(button("Disconnect", rowOf(view, "Paperclip · Beta")));
+  });
+
+  it("puts focus on the row's Disconnect after Sign in again, whose opener has gone", async () => {
+    const fake = new FakeAgentConnections({ connections: [signedOut] });
+    const { view, announced } = await showSection(fake);
+    await press(button("Sign in again", rowOf(view, "Paperclip · Acme")));
+    await press(button("Continue", inDialog()));
+    act(() => fake.approve("Paperclip · Acme"));
+    await settle();
+    expect(announced).toEqual(["Connected Paperclip · Acme."]);
+    expect(document.activeElement).toBe(button("Disconnect", rowOf(view, "Paperclip · Acme")));
+  });
+});
+
+verifies("connections.connection-row", () => {
+  it("puts focus on Connect Paperclip after the last connection is disconnected", async () => {
+    const { view } = await showSection(new FakeAgentConnections({ connections: [connected] }));
+    await press(button("Disconnect", rowOf(view, "Paperclip · Halonic")));
+    await press(button("Disconnect", inDialog()));
+    expect(rowOf(view, "Paperclip · Halonic")).toBeUndefined();
+    expect(document.activeElement).toBe(button("Connect Paperclip"));
+  });
+
+  it("puts focus on the next row's Disconnect after a Disconnect", async () => {
+    const fake = new FakeAgentConnections({ connections: [connected, signedOut] });
+    const { view } = await showSection(fake);
+    await press(button("Disconnect", rowOf(view, "Paperclip · Halonic")));
+    await press(button("Disconnect", inDialog()));
+    expect(document.activeElement).toBe(button("Disconnect", rowOf(view, "Paperclip · Acme")));
+  });
+
+  it("keeps the row and its Disconnect in focus when the engine fails to disconnect", async () => {
+    const fake = new FakeAgentConnections({ connections: [connected] });
+    fake.disconnect = () => Promise.reject(new Error("The fake engine didn't answer."));
+    const { view } = await showSection(fake);
+    const opener = button("Disconnect", rowOf(view, "Paperclip · Halonic"));
+    opener?.focus();
+    await press(opener);
+    await press(button("Disconnect", inDialog()));
+    expect(dialog()).toBeNull();
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it("names the row each Disconnect belongs to", async () => {
+    const fake = new FakeAgentConnections({ connections: [connected, signedOut] });
+    const { view } = await showSection(fake);
+    for (const label of ["Paperclip · Halonic", "Paperclip · Acme"]) {
+      const id = button("Disconnect", rowOf(view, label))?.getAttribute("aria-describedby");
+      expect(id && document.getElementById(id)?.textContent).toBe(label);
+    }
   });
 });

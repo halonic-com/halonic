@@ -47,6 +47,7 @@ async function openDialog(
   const fake = options.fake ?? new FakeAgentConnections({ phrase: "amber falcon river seven" });
   const opened: string[] = [];
   const closed = vi.fn();
+  const connected = vi.fn();
   const cancelFailed = vi.fn();
   render(
     <OpenExternalProvider openExternal={async (address) => void opened.push(await address)}>
@@ -54,12 +55,13 @@ async function openDialog(
         connections={fake}
         again={options.again}
         onClose={closed}
+        onConnected={connected}
         onCancelFailed={cancelFailed}
       />
     </OpenExternalProvider>,
   );
   await settle();
-  return { fake, opened, closed, cancelFailed };
+  return { fake, opened, closed, connected, cancelFailed };
 }
 
 /** Types the address and presses Continue. */
@@ -157,12 +159,14 @@ verifies("connections.connect-dialog", () => {
     ]);
   });
 
-  it("closes by itself once the board approves", async () => {
-    const { fake, closed } = await openDialog();
+  it("hands the new connection to the opener once the board approves", async () => {
+    const { fake, closed, connected } = await openDialog();
     await connectTo("https://paperclip.acme.test");
     act(() => fake.approve("Paperclip · Halonic"));
     await settle();
-    expect(closed).toHaveBeenCalledOnce();
+    expect(connected).toHaveBeenCalledOnce();
+    expect(connected.mock.calls[0]?.[0]).toMatchObject({ label: "Paperclip · Halonic" });
+    expect(closed).not.toHaveBeenCalled();
     expect(fake.cancels).toBe(0);
   });
 
@@ -198,6 +202,7 @@ verifies("connections.connect-dialog", () => {
     await openDialog();
     await connectTo("http://paperclip.acme.test");
     expect(document.activeElement).toBe(dialog()?.querySelector("input"));
+    expect(document.activeElement?.getAttribute("aria-invalid")).toBe("true");
     // Again on the same error, which doesn't change.
     button("Continue", dialog() ?? document)?.focus();
     await connectTo("http://paperclip.acme.test");
@@ -208,6 +213,7 @@ verifies("connections.connect-dialog", () => {
     await openDialog({ fake: new FakeAgentConnections({ refuseStart: "unreachable" }) });
     await connectTo("https://elsewhere.test");
     expect(document.activeElement).toBe(dialog()?.querySelector("input"));
+    expect(document.activeElement?.getAttribute("aria-invalid")).toBe("true");
   });
 
   it("sets the lead in body type, the words in a 12px box, and the bar for high contrast", async () => {

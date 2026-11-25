@@ -8,6 +8,7 @@ import {
   type StatusChipTone,
 } from "@halonicjs/studio-kit";
 import type { AgentConnection } from "@halonicjs/studio-services";
+import { type Ref, useId } from "react";
 import * as words from "../connections-words.ts";
 
 const chipTones: Record<AgentConnection["state"]["kind"], StatusChipTone> = {
@@ -52,14 +53,19 @@ function StateCallout({
  */
 export function ConnectionRow({
   connection,
+  disconnectRef,
   onSignInAgain,
   onDisconnect,
 }: {
   readonly connection: AgentConnection;
+  /** The Disconnect button, where the section puts focus after a dialog closed. */
+  readonly disconnectRef: Ref<HTMLButtonElement>;
   readonly onSignInAgain: () => void;
   /** Asks before it disconnects: the section opens the confirmation. */
   readonly onDisconnect: () => void;
 }) {
+  // With several rows, every button says Disconnect: the row's name says which one.
+  const nameId = useId();
   return (
     <li>
       <Card>
@@ -68,7 +74,9 @@ export function ConnectionRow({
             <LetterTile name={connection.provider} size="md" />
             <div className="flex min-w-0 grow flex-col gap-1">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="m-0 text-body-strong text-fg">{connection.label}</p>
+                <p id={nameId} className="m-0 text-body-strong text-fg">
+                  {connection.label}
+                </p>
                 <StatusChip tone="outline">{words.READ_ONLY}</StatusChip>
                 <StatusChip tone={chipTones[connection.state.kind]} dot>
                   {words.stateChips[connection.state.kind]}
@@ -79,7 +87,13 @@ export function ConnectionRow({
                 {` · ${words.stateMeta(connection.state, connection.keyExpiresAt)}`}
               </p>
             </div>
-            <Button variant="danger-outline" size="sm" onClick={onDisconnect}>
+            <Button
+              ref={disconnectRef}
+              variant="danger-outline"
+              size="sm"
+              aria-describedby={nameId}
+              onClick={onDisconnect}
+            >
               {words.DISCONNECT}
             </Button>
           </div>

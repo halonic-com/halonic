@@ -16,8 +16,10 @@ export interface ConnectDialogProps {
   readonly connections: AgentConnections;
   /** The signed-out connection to sign in again, or none for a new one. */
   readonly again?: AgentConnection | undefined;
-  /** Runs once the dialog has cancelled its sign-in, or once it connected; the opener unmounts it. */
+  /** Runs once the dialog has cancelled its sign-in; the opener unmounts it. */
   readonly onClose: () => void;
+  /** Runs once the sign-in connected `connection`; the opener unmounts the dialog and says so. */
+  readonly onConnected: (connection: AgentConnection) => void;
   /** Runs after `onClose` when the engine failed to cancel the sign-in, so the opener can say so. */
   readonly onCancelFailed: () => void;
   /** Where the countdown counts from. Default the clock. */
@@ -66,10 +68,10 @@ function endedOf(view: SignInView, leftMs: number): EndedResult | undefined {
  * Connect Paperclip, or Sign in again for a signed-out connection (`connections.connect-dialog`).
  * It asks for the address the board opens Paperclip at, starts a sign-in there and opens the
  * approval page, then shows the words the page shows too and the 10 minutes left to approve.
- * Closing it cancels a waiting sign-in, silently; once approved it closes by itself.
+ * Closing it cancels a waiting sign-in, silently; once approved the opener closes it.
  */
 export function ConnectDialog(props: ConnectDialogProps) {
-  const { connections, again, onClose } = props;
+  const { connections, again, onClose, onConnected } = props;
   const signIn = useSignIn(connections, again?.id);
   const title = again === undefined ? words.CONNECT : words.SIGN_IN_AGAIN;
   // Kept here, so Start again shows the address the last sign-in went to.
@@ -85,9 +87,10 @@ export function ConnectDialog(props: ConnectDialogProps) {
   }, [timedOut, expire]);
 
   // The Settings row says Connected; the dialog has nothing left to say.
+  const connected = view.stage === "connected" ? view.connection : undefined;
   useEffect(() => {
-    if (view.stage === "connected") onClose();
-  }, [view.stage, onClose]);
+    if (connected !== undefined) onConnected(connected);
+  }, [connected, onConnected]);
 
   // The dialog goes either way; a failed cancel is said by the opener, which stays on screen.
   const close = () => {

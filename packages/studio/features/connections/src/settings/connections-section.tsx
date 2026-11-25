@@ -4,8 +4,8 @@ import {
   type AgentConnections,
   AgentConnectionsService,
 } from "@halonicjs/studio-services";
-import type { SettingsSectionProps } from "@halonicjs/studio-shell";
-import { useEffect, useState } from "react";
+import { type SettingsSectionProps, sectionHeading } from "@halonicjs/studio-shell";
+import { useEffect, useRef, useState } from "react";
 import { ConnectDialog } from "../connect/connect-dialog.tsx";
 import * as words from "../connections-words.ts";
 import { ConnectionRow } from "./connection-row.tsx";
@@ -62,6 +62,24 @@ export interface ConnectionsViewProps {
   readonly now?: () => number;
 }
 
+/**
+ * Where focus goes once a dialog closed and the list shows what it did, since the button that
+ * opened it may be gone (component specs 23 A2): a row's Disconnect while that row is listed,
+ * else `fallback`.
+ */
+interface FocusNext {
+  /** Whether the list shows the change yet: the new row is in it, or the removed one has left. */
+  readonly shown: (list: readonly AgentConnection[]) => boolean;
+  readonly row: AgentConnection["id"] | undefined;
+  readonly fallback: "heading" | "connect";
+}
+
+/** The Connect Paperclip button, in the empty state or under the rows: the empty state's has no ref. */
+function connectButton(root: HTMLElement | null): HTMLElement | null {
+  const buttons = [...(root?.querySelectorAll("button") ?? [])];
+  return buttons.find((found) => found.textContent?.trim() === words.CONNECT) ?? null;
+}
+
 /** What the last Disconnect or a failed cancel said, until the next one. */
 function NoteCallout({ note }: { readonly note: DisconnectNote }) {
   const openExternal = useOpenExternal();
@@ -83,16 +101,60 @@ export function ConnectionsView({ connections, announce, now }: ConnectionsViewP
   const [connecting, setConnecting] = useState<Connecting>();
   const [disconnecting, setDisconnecting] = useState<AgentConnection>();
   const [note, setNote] = useState<DisconnectNote>();
+  const root = useRef<HTMLDivElement>(null);
+  const disconnectButtons = useRef(new Map<AgentConnection["id"], HTMLButtonElement>());
+  const focusNext = useRef<FocusNext | undefined>(undefined);
+
+  // Runs after the commit that closed the dialog, so it overrides the kit's move back to the
+  // opener, and again whenever the list is read, until the list shows the change.
+  const dialogOpen = connecting !== undefined || disconnecting !== undefined;
+  useEffect(() => {
+    const next = focusNext.current;
+    if (dialogOpen || next === undefined || !Array.isArray(list) || !next.shown(list)) return;
+    focusNext.current = undefined;
+    const row = next.row === undefined ? undefined : disconnectButtons.current.get(next.row);
+    const fallback =
+      next.fallback === "connect" ? connectButton(root.current) : sectionHeading(root.current);
+    (row ?? fallback)?.focus();
+  }, [dialogOpen, list]);
 
   const tell = (next: DisconnectNote) => {
     setNote(next);
     announce(next.kind === "line" ? next.line : `${next.ending.heading} ${next.ending.text}`);
   };
 
+  const connected = (connection: AgentConnection) => {
+    focusNext.current = {
+      shown: (now) => now.some((known) => known.id === connection.id),
+      row: connection.id,
+      fallback: "heading",
+    };
+    setConnecting(undefined);
+    announce(words.connectedLine(connection.label));
+  };
+
+  // A cancel or a failed Disconnect keeps the row, so focus goes back to its Disconnect.
+  const disconnectDone = (
+    connection: AgentConnection,
+    result: DisconnectNote | undefined,
+    gone: boolean,
+  ) => {
+    if (gone && Array.isArray(list)) {
+      const at = list.findIndex((known) => known.id === connection.id);
+      focusNext.current = {
+        shown: (now) => now.every((known) => known.id !== connection.id),
+        row: list[at + 1]?.id,
+        fallback: "connect",
+      };
+    }
+    setDisconnecting(undefined);
+    if (result !== undefined) tell(result);
+  };
+
   if (list === undefined) return null;
   if (list === "failed") return <p className="m-0 text-danger">{words.LIST_FAILED}</p>;
   return (
-    <div className="flex flex-col gap-4">
+    <div ref={root} className="flex flex-col gap-4">
       {note === undefined ? null : <NoteCallout note={note} />}
       {list.length === 0 ? (
         <EmptyState
@@ -107,6 +169,10 @@ export function ConnectionsView({ connections, announce, now }: ConnectionsViewP
               <ConnectionRow
                 key={connection.id}
                 connection={connection}
+                disconnectRef={(node) => {
+                  if (node) disconnectButtons.current.set(connection.id, node);
+                  else disconnectButtons.current.delete(connection.id);
+                }}
                 onSignInAgain={() => setConnecting({ again: connection })}
                 onDisconnect={() => setDisconnecting(connection)}
               />
@@ -123,10 +189,7 @@ export function ConnectionsView({ connections, announce, now }: ConnectionsViewP
         <DisconnectDialog
           connections={connections}
           connection={disconnecting}
-          onDone={(result) => {
-            setDisconnecting(undefined);
-            if (result !== undefined) tell(result);
-          }}
+          onDone={(result, gone) => disconnectDone(disconnecting, result, gone)}
         />
       )}
       {connecting === undefined ? null : (
@@ -134,6 +197,7 @@ export function ConnectionsView({ connections, announce, now }: ConnectionsViewP
           connections={connections}
           again={connecting.again}
           onClose={() => setConnecting(undefined)}
+          onConnected={connected}
           onCancelFailed={() =>
             tell({ kind: "line", line: words.CANCEL_FAILED, tone: "attention" })
           }

@@ -139,6 +139,9 @@ export const disconnectTitle = (label: string): string => `Disconnect ${label}?`
 export const DISCONNECT_TEXT =
   "Halonic revokes its key in Paperclip and deletes the key and the cache from this computer. Your cards, tasks and chats stay in Paperclip.";
 
+/** What a screen reader hears once a sign-in connected and the dialog closed by itself. */
+export const connectedLine = (label: string): string => `Connected ${label}.`;
+
 /** After Disconnect, when Paperclip revoked the key. */
 export const disconnectedRevoked = (label: string): string =>
   `Disconnected ${label}. Its key is revoked in Paperclip and deleted from this computer.`;
