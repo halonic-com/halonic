@@ -1,6 +1,7 @@
 import {
   FieldAnnounceProvider,
   ModalRegionsProvider,
+  NarrowProvider,
   type Presentation,
   PresentationProvider,
   ToastRegion,
@@ -15,6 +16,7 @@ import { EngineLine } from "../engine/engine-line.tsx";
 import {
   useDocumentLanguage,
   useEscapeClosesTopLayer,
+  useNarrowFromWidth,
   usePresentationFromWidth,
   useWindowFocusForAnnouncer,
 } from "./frame-effects.ts";
@@ -107,7 +109,8 @@ export interface ShellFrameProps {
  * While the engine isn't answering, its one line sits over the sidebar and the page, at the top of
  * the panel on the desktop and under the top bar on a phone.
  *
- * Everything inside learns the layout through the kit's `PresentationProvider`, and every kit
+ * Everything inside learns the layout through the kit's `PresentationProvider`, and whether the
+ * window is narrower than 900px through its `NarrowProvider`; every kit
  * Dialog sends its announcements through the window's announcer, as does every kit Field whose
  * error appears after focus has left it. The window's one `ToastRegion`
  * sits over the sidebar and the page (on a phone, the page), so a toast never covers the status
@@ -127,21 +130,24 @@ export interface ShellFrameProps {
 export function ShellFrame(props: ShellFrameProps) {
   const { announcer, closeStack, toasts, language } = props;
   const presentation = usePresentationFromWidth();
+  const narrow = useNarrowFromWidth();
   useDocumentLanguage(language);
   useEscapeClosesTopLayer(closeStack);
   useWindowFocusForAnnouncer(announcer);
 
   return (
     <PresentationProvider presentation={presentation}>
-      <ModalRegionsProvider pushModalRegions={(regions) => announcer.pushModalRegions(regions)}>
-        <FieldAnnounceProvider announce={(text) => announcer.announce(text)}>
-          <ToastStoreProvider store={toasts}>
-            <FrameLayers presentation={presentation} {...props} />
-            <FrameRegions announcer={announcer} />
-            {props.dialogs}
-          </ToastStoreProvider>
-        </FieldAnnounceProvider>
-      </ModalRegionsProvider>
+      <NarrowProvider narrow={narrow}>
+        <ModalRegionsProvider pushModalRegions={(regions) => announcer.pushModalRegions(regions)}>
+          <FieldAnnounceProvider announce={(text) => announcer.announce(text)}>
+            <ToastStoreProvider store={toasts}>
+              <FrameLayers presentation={presentation} {...props} />
+              <FrameRegions announcer={announcer} />
+              {props.dialogs}
+            </ToastStoreProvider>
+          </FieldAnnounceProvider>
+        </ModalRegionsProvider>
+      </NarrowProvider>
     </PresentationProvider>
   );
 }

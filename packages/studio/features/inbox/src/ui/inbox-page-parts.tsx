@@ -7,27 +7,42 @@ import type { InboxItem } from "../inbox-items.ts";
 import type { NextItem } from "./card-parts.tsx";
 import { itemTitle } from "./inbox-row.tsx";
 
-/** The list's title with **New request**: beside it on a desktop, a full-width row under it on a phone. */
-export function ListHeader({ phone, newRequest }: { phone: boolean; newRequest: ReactNode }) {
+/** The props of {@link ListHeader}. */
+interface ListHeaderProps {
+  /** On a phone the top bar says "Inbox", so the title is for screen readers only. */
+  readonly phone: boolean;
+  /** One pane at a time (a phone or a narrow window): **New request** is a row under the title. */
+  readonly onePane: boolean;
+  readonly newRequest: ReactNode;
+}
+
+/**
+ * The list's title with **New request**: beside it on a desktop, a full-width row under it with
+ * one pane at a time.
+ */
+export function ListHeader({ phone, onePane, newRequest }: ListHeaderProps) {
   return (
     <>
       <header className={phone ? "sr-only" : "flex items-center justify-between px-4 py-3"}>
         <h1 className="text-title">Inbox</h1>
-        {phone ? null : newRequest}
+        {onePane ? null : newRequest}
       </header>
-      {phone ? newRequest : null}
+      {onePane ? newRequest : null}
     </>
   );
 }
 
-/** The list's column: 360 px beside the card, the whole page on a phone, and gone while an item is open. */
-export function listPaneClass(phone: boolean, itemOpen: boolean): string {
-  if (!phone) return "flex w-90 shrink-0 flex-col border-e border-border";
+/**
+ * The list's column: 360 px beside the card, else (one pane at a time) the whole page, and gone
+ * while an item is open.
+ */
+export function listPaneClass(onePane: boolean, itemOpen: boolean): string {
+  if (!onePane) return "flex w-90 shrink-0 flex-col border-e border-border";
   return `${itemOpen ? "hidden" : "flex"} w-full flex-col`;
 }
 
 /**
- * A phone's bar over the open item, which is pushed like a page (HAL-11945 Q12): **Back to Inbox**
+ * The bar over the open item on a phone or in a narrow window, which is pushed like a page (HAL-11945 Q12): **Back to Inbox**
  * and, while the item waits, where it is among what waits ("1 of 4"). A decided or done item
  * isn't counted, so it shows no place.
  */
