@@ -5,6 +5,7 @@ import {
   type GatewayHostMessage,
   gatewayClosingErrorCodes,
   gatewayErrorCodes,
+  gatewayFallbackProtocolVersion,
   gatewayMaxBufferedBytes,
   gatewayMaxIdLength,
   gatewayMaxMessageBytes,
@@ -17,7 +18,19 @@ import {
 verifies("ports.remote-gateway-protocol", () => {
   typeTest("lets a phone send only sessions, approvals and prompts", () => {
     expectTypeOf<GatewayClientMessage["type"]>().toEqualTypeOf<
-      "hello" | "list-sessions" | "watch" | "unwatch" | "answer-approval" | "prompt"
+      | "hello"
+      | "list-sessions"
+      | "watch"
+      | "unwatch"
+      | "answer-approval"
+      | "prompt"
+      | "msg-read"
+      | "msg-search"
+      | "msg-answer"
+      | "msg-send"
+      | "msg-watch"
+      | "msg-unwatch"
+      | "team-read"
     >();
     // @ts-expect-error: a phone can't ask the host to run a command
     const shell: GatewayClientMessage = { type: "run-command", id: "1", command: "ls" };
@@ -28,12 +41,45 @@ verifies("ports.remote-gateway-protocol", () => {
 
   typeTest("lets the host send only these messages", () => {
     expectTypeOf<GatewayHostMessage["type"]>().toEqualTypeOf<
-      "welcome" | "sessions" | "event" | "ok" | "error" | "paired" | "pair-refused" | "not-paired"
+      | "welcome"
+      | "sessions"
+      | "event"
+      | "ok"
+      | "error"
+      | "paired"
+      | "pair-refused"
+      | "not-paired"
+      | "msg-data"
+      | "msg-result"
+      | "msg-changed"
+      | "team-data"
     >();
   });
 
-  it("is message version 3, with one Noise transport message less its tag per message", () => {
-    expect(gatewayProtocolVersion).toBe(3);
+  typeTest("sends an answer to an inbox item only confirmed, and never a stepper's result", () => {
+    const answer = {
+      type: "msg-answer",
+      id: "a",
+      item: "i",
+      answer: { kind: "reply", text: "ok" },
+    };
+    // @ts-expect-error: an answer the phone's owner check didn't confirm
+    const unconfirmed: GatewayClientMessage = { ...answer, confirmed: false };
+    const stepper: GatewayClientMessage = {
+      ...answer,
+      confirmed: true,
+      // @ts-expect-error: an action item's stepper runs only on the desktop
+      answer: { kind: "action-result", result: {} },
+    };
+    // @ts-expect-error: the phone can't start a channel
+    const start: GatewayClientMessage = { type: "msg-start-channel", id: "s" };
+    expectTypeOf([unconfirmed, stepper, start]).toEqualTypeOf<GatewayClientMessage[]>();
+  });
+
+  it("is message version 4, with one Noise transport message less its tag per message", () => {
+    expect(gatewayProtocolVersion).toBe(4);
+    expect(gatewayFallbackProtocolVersion).toBe(3);
+    expect(gatewayRefusalCodes).toContain("not-allowed-from-phone");
     expect(gatewayMaxMessageBytes).toBe(65_519);
     expect(gatewayErrorCodes).toContain("too-large");
     expect(gatewayErrorCodes).toContain("not-allowed-remotely");
@@ -47,7 +93,7 @@ verifies("ports.remote-gateway-protocol", () => {
       answersRisky: false,
     };
     const pushed: GatewayHostMessage = { type: "sessions", sessions: [], answersRisky: true };
-    // @ts-expect-error: version 3 always says whether risky answers are on
+    // @ts-expect-error: since version 3 it always says whether risky answers are on
     const withoutSwitch: GatewayHostMessage = { type: "sessions", replyTo: "p-2", sessions: [] };
     expectTypeOf([answer, pushed, withoutSwitch]).toEqualTypeOf<GatewayHostMessage[]>();
   });

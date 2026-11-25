@@ -140,6 +140,10 @@ export class GatewayConnection {
         return this.answer(message);
       case "prompt":
         return this.prompt(message);
+      default:
+        // The Inbox, Messenger and team status are served once the host has
+        // its `PhoneMessaging` view (G2 on HAL-17511); until then, refused.
+        return this.refuse(message.id, "not-supported");
     }
   }
 

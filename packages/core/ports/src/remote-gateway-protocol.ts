@@ -1,8 +1,15 @@
+import type {
+  GatewayMessagingClientMessage,
+  GatewayMessagingHostMessage,
+} from "./remote-gateway-messaging.ts";
+import { gatewayMessagingRefusalCodes } from "./remote-gateway-messaging.ts";
+
 /**
  * The remote gateway protocol: what a phone and the desktop host's remote
  * gateway say to each other, inside the end-to-end session (requirement
  * `ports.remote-gateway-protocol`). It covers sessions, their events,
- * approvals and prompt input, the end of a pairing, and nothing else. Each
+ * approvals and prompt input, the end of a pairing, and (since version 4) the
+ * Inbox, Messenger and team status, and nothing else. Each
  * message is one JSON object in one Noise transport message; nothing here is
  * ever sent in cleartext. The session around it is in
  * `remote-gateway-session.ts` (ADR "Pairing and the end-to-end session").
@@ -19,9 +26,18 @@
  * `unsupported-version` and closes; the phone closes on a `welcome` with
  * another version. Either way the phone shows that an update is needed.
  *
- * Version 3 added `answersRisky` and the pushed `sessions`.
+ * Version 3 added `answersRisky` and the pushed `sessions`. Version 4 added
+ * the Inbox, Messenger and team status (`remote-gateway-messaging.ts`).
  */
-export const gatewayProtocolVersion = 3;
+export const gatewayProtocolVersion = 4;
+
+/**
+ * The version a version 4 phone falls back to, for one release, when the
+ * desktop answers `unsupported-version`: it says `hello` again with this one
+ * and shows only Agents. The host itself speaks only
+ * {@link gatewayProtocolVersion}.
+ */
+export const gatewayFallbackProtocolVersion = 3;
 
 /**
  * The largest message either side accepts, in bytes of its UTF-8 JSON: one
@@ -114,6 +130,7 @@ export const gatewayRefusalCodes = [
   "not-allowed-remotely",
   "history-gone",
   "too-many-watches",
+  ...gatewayMessagingRefusalCodes,
 ] as const;
 
 /** Every error code, closing ones first. Studio words each code. */
@@ -164,7 +181,8 @@ export type GatewayClientMessage =
       readonly id: string;
       readonly sessionId: string;
       readonly text: string;
-    };
+    }
+  | GatewayMessagingClientMessage;
 
 /**
  * Why the host ended a pairing after the phone's message 3 decrypted: the
@@ -195,7 +213,10 @@ export type GatewayPairDeniedReason = "denied" | "timed-out";
  *   unlisted `type`, a missing, extra or wrongly typed field, an id that
  *   breaks {@link gatewayMaxIdLength}, an `afterSeq` that isn't a whole number
  *   from 0 up to the session's `lastSeq`, a prompt `text` that is empty or
- *   longer than {@link gatewayMaxPromptLength}, any message before `hello`,
+ *   longer than {@link gatewayMaxPromptLength}, a `msg-send` body outside
+ *   that limit, a `msg-search` text that is empty or longer than
+ *   `gatewayMaxSearchLength`, a `msg-answer` without `confirmed: true`, a
+ *   `team-read` `range` with anything but `spend`, any message before `hello`,
  *   and a second `hello`.
  *
  * A well-formed message the host won't carry out gets an `error` with a code
@@ -246,4 +267,5 @@ export type GatewayHostMessage =
       readonly type: "error";
       readonly replyTo: string;
       readonly code: (typeof gatewayRefusalCodes)[number];
-    };
+    }
+  | GatewayMessagingHostMessage;

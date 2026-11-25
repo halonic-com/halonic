@@ -11,7 +11,7 @@ const parserRuns = Number(process.env["HALONIC_FUZZ_RUNS"] ?? 4_000);
 const connectionRuns = Number(process.env["HALONIC_FUZZ_CONNECTIONS"] ?? 60);
 
 const validMessages: readonly Record<string, unknown>[] = [
-  { type: "hello", id: "h1", version: 3 },
+  { type: "hello", id: "h1", version: 4 },
   { type: "list-sessions", id: "l1" },
   { type: "watch", id: "w1", sessionId: "s1", afterSeq: 0 },
   { type: "unwatch", id: "u1", sessionId: "s1" },
@@ -161,7 +161,7 @@ function readsAsValid(bytes: Uint8Array, binary: boolean): boolean {
 async function hostileConnection(rig: TunnelRig, rand: Rand): Promise<void> {
   const client = rig.client();
   await client.open(rig.forwarderPort, { host: rig.tunnelName });
-  client.sendJson({ type: "hello", id: "h1", version: 3 });
+  client.sendJson({ type: "hello", id: "h1", version: 4 });
   for (let at = 0, count = 1 + Math.floor(rand() * 6); at < count; at++) {
     client.write(hostileBytes(rand));
   }

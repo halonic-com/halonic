@@ -129,6 +129,12 @@ const hostMessages: Readonly<Record<GatewayHostMessage["type"], readonly Check[]
     message("error", { code: oneOf(...gatewayClosingErrorCodes) }),
     message("error", { replyTo: isId, code: oneOf(...gatewayRefusalCodes) }),
   ],
+  // The phone asks for none of version 4's Inbox, Messenger and team status
+  // yet (G3 on HAL-17511), so it takes none of their answers.
+  "msg-data": [],
+  "msg-result": [],
+  "msg-changed": [],
+  "team-data": [],
 };
 
 /**

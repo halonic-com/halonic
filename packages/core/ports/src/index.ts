@@ -385,6 +385,16 @@ export {
   remoteControlVersion,
 } from "./remote-control.ts";
 export {
+  type GatewayInboxAnswer,
+  type GatewayMessagingClientMessage,
+  type GatewayMessagingHostMessage,
+  gatewayMaxAddressees,
+  gatewayMaxSearchLength,
+  gatewayMessagingLists,
+  gatewayMessagingRefusalCodes,
+  gatewayTeamLists,
+} from "./remote-gateway-messaging.ts";
+export {
   type GatewayApproval,
   type GatewayClientMessage,
   type GatewayErrorCode,
@@ -394,6 +404,7 @@ export {
   type GatewaySession,
   gatewayClosingErrorCodes,
   gatewayErrorCodes,
+  gatewayFallbackProtocolVersion,
   gatewayMaxBufferedBytes,
   gatewayMaxIdLength,
   gatewayMaxMessageBytes,

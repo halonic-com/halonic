@@ -113,7 +113,7 @@ verifies("tunnel-attacks.handshake-fuzz", () => {
         await pairPhone(rig, pairing);
         const client = await rig.opened();
         await client.reconnect(paired);
-        client.sendJson({ type: "hello", id: "h1", version: 3 });
+        client.sendJson({ type: "hello", id: "h1", version: 4 });
         expect(await client.frames(1), `seed ${seed}`).toMatchObject([{ type: "welcome" }]);
       } finally {
         await rig.stop();

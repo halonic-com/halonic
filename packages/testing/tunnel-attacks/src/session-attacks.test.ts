@@ -5,7 +5,7 @@ import { keyPair, RigPhone } from "./rig-phone.ts";
 import { openTunnelRig, type TunnelRig } from "./tunnel-rig.ts";
 import { op, type WireClient, wireFrame } from "./wire-client.ts";
 
-const hello = Buffer.from(JSON.stringify({ type: "hello", id: "h1", version: 3 }));
+const hello = Buffer.from(JSON.stringify({ type: "hello", id: "h1", version: 4 }));
 
 /** A client that has opened the WebSocket through the tunnel, before any end-to-end handshake. */
 async function opened(rig: TunnelRig): Promise<WireClient> {
