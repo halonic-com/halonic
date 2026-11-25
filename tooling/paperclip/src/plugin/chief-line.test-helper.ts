@@ -34,8 +34,8 @@ export function fakeChiefLine(
   const wakes: { issueId: string; options: unknown }[] = [];
   const posts: { url: string; body: unknown }[] = [];
   const updates: { issueId: string; patch: unknown }[] = [];
-  /** Like the host: only these statuses can be woken; others throw. */
-  const wakeable = new Set(["todo", "in_progress", "blocked"]);
+  /** Like the live host: only these statuses can be woken (not blocked); others throw. */
+  const wakeable = new Set(["todo", "in_progress"]);
   let wakeFails = false;
   const agents = [
     { id: "agent-chief", name: "Chief", urlKey: "chief" },
@@ -105,7 +105,9 @@ export function fakeChiefLine(
     http: {
       fetch: async (url: string, init?: RequestInit) => {
         posts.push({ url, body: JSON.parse(String(init?.body)) });
-        return new Response(null, { status: statuses.shift() ?? 200 });
+        // Like the SDK's worker, which rebuilds the host's answer with its (empty string) body:
+        // for a 204 that constructor throws after the request was sent.
+        return new Response("", { status: statuses.shift() ?? 200 });
       },
     },
     logger: { info: (m: string) => logs.push(m), error: (m: string) => logs.push(m) },

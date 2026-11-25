@@ -163,11 +163,11 @@ async function findOrCreateThread(
   return thread;
 }
 
-/** Statuses Chief can't be woken on; a new message moves the thread back to `todo` first. */
-const parkedStatuses = new Set(["backlog", "done"]);
+/** Statuses Chief can't be woken on (never `cancelled`, which isn't a live thread); a new message moves the thread back to `todo` first. */
+const parkedStatuses = new Set(["backlog", "done", "blocked"]);
 
 /**
- * Wakes Chief on a thread for one comment, first moving a `backlog` or `done` thread to `todo`
+ * Wakes Chief on a thread for one comment, first moving a `backlog`, `done` or `blocked` thread to `todo`
  * (the host wakes only open work). Logs a failure and answers false; never throws.
  */
 export async function wakeThread(
