@@ -53,7 +53,7 @@ pub fn open_focused<R: Runtime, M: Manager<R>>(
 }
 
 /// The app window tauri.conf.json describes.
-fn app_window_config<R: Runtime, M: Manager<R>>(manager: &M) -> WindowConfig {
+pub(crate) fn app_window_config<R: Runtime, M: Manager<R>>(manager: &M) -> WindowConfig {
     manager
         .config()
         .app

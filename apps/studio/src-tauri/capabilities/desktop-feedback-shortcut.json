@@ -1,0 +1,16 @@
+{
+  "identifier": "desktop-feedback-shortcut",
+  "description": "On desktop, Studio's own window may change the feedback shortcut through plugin:feedback|shortcut_set, from Settings (HAL-18778). The command registers only the keys it is given, as the one feedback shortcut, and lets go of the old ones; no page can listen to keys. It is local only, so the Studio the computer serves gets nothing.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "feedback:allow-shortcut-set"
+  ]
+}

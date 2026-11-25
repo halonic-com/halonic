@@ -217,6 +217,12 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "update_restart",
         "update_set_automatic",
         "plugin:updater|check",
+        "plugin:feedback|still",
+        "plugin:feedback|select",
+        "plugin:feedback|crop",
+        "plugin:feedback|end",
+        "plugin:feedback|shortcut_set",
+        "plugin:global-shortcut|register",
     ] {
         assert!(
             commands.iter().any(|command| command == expected),

@@ -1,0 +1,34 @@
+[package]
+name = "halonic-screen-still"
+description = "Takes one still picture of one screen, in memory, for the feedback shortcut, and crops it."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Reading the screen needs `unsafe` on Windows. As in
+# window-caption, this crate turns the workspace's `unsafe_code = "forbid"`
+# off in its own Cargo.toml, every block has a `// SAFETY:` comment, and
+# nothing unsafe leaves the platform modules. These are the workspace lints
+# with that one change.
+[lints.rust]
+unsafe_code = "allow"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+undocumented_unsafe_blocks = "deny"
+
+# Each one is pinned to the version already in Cargo.lock, so this crate
+# adds no new code to the build. Only the features it calls are turned on.
+# Windows: GDI's BitBlt and GetDIBits.
+[target.'cfg(windows)'.dependencies]
+windows = { version = "=0.62.2", features = [
+  "Win32_Foundation",
+  "Win32_Graphics_Gdi",
+] }
+
+# Linux on X11: the core protocol's GetImage. x11rb comes with the global
+# shortcut plugin (HAL-18778); its pure-Rust connection, no libxcb.
+[target.'cfg(target_os = "linux")'.dependencies]
+x11rb = { version = "=0.13.2", default-features = false }
