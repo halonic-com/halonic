@@ -218,6 +218,12 @@ export {
 export { PageBackLinkSlot } from "./page/back-link-slot.tsx";
 export { copyDetails, useCopyDetails, useCopyDetailsInPlace } from "./page/copy-details.ts";
 export { ItemGone, type ItemGoneProps } from "./page/item-gone.tsx";
+export {
+  connectFrom,
+  NoConnections,
+  type NoConnectionsProps,
+  noConnectionsWords,
+} from "./page/no-connections.tsx";
 export { PageErrorBoundary, type PageErrorBoundaryProps } from "./page/page-error-boundary.tsx";
 export { pageStoppedWords } from "./page/page-stopped.tsx";
 export { unreachableWords } from "./page/page-unreachable.tsx";

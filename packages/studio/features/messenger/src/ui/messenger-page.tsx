@@ -1,10 +1,12 @@
 import type { MessagingId } from "@halonicjs/ports";
-import { Button, EmptyState, useNarrow } from "@halonicjs/studio-kit";
+import { Button, useNarrow } from "@halonicjs/studio-kit";
 import {
+  connectFrom,
   type EngineWords,
   engineWords,
   engineWordsOf,
   focusedPanelClass,
+  NoConnections,
   type PlaceViewProps,
 } from "@halonicjs/studio-shell";
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
@@ -214,7 +216,9 @@ function Panel({
   readonly onLeft: () => void;
   readonly onChanged: () => void;
 }) {
-  if (connected === false) return <NoConnections onConnect={onConnect} />;
+  if (connected === false) {
+    return <NoConnections line={messengerWords.noConnections.line} onConnect={onConnect} />;
+  }
   // While the chats load, or failed to, the list's column says so; the panel stays empty.
   if (!loaded) return null;
   if (open === undefined) {
@@ -231,21 +235,6 @@ function Panel({
       onLeft={onLeft}
       onChanged={onChanged}
     />
-  );
-}
-
-function NoConnections({ onConnect }: { readonly onConnect: (() => void) | undefined }) {
-  const words = messengerWords.noConnections;
-  return (
-    <div className="m-auto max-w-md">
-      <EmptyState
-        title={words.title}
-        description={words.line}
-        {...(onConnect === undefined
-          ? {}
-          : { action: { label: words.connect, onClick: onConnect } })}
-      />
-    </div>
   );
 }
 
@@ -283,12 +272,12 @@ function useOnePane(
  * Messenger, with its list on the window's frame and the open chat as the one panel.
  */
 export function MessengerWindow({ context }: PlaceViewProps) {
-  const { openSettings } = context;
+  const onConnect = connectFrom(context);
   return (
     <MessengerPage
       messenger={context.services.get(MessengerService)}
       words={engineWordsOf(context)}
-      {...(openSettings === undefined ? {} : { onConnect: () => openSettings("connections") })}
+      {...(onConnect === undefined ? {} : { onConnect })}
     />
   );
 }

@@ -20,7 +20,9 @@ export const messengerWords = {
   pickChat: "Pick a chat to read it.",
   /**
    * The Messenger with nothing connected: the words of Settings › Connections with no connection
-   * (Noah's wording table on HAL-17498), so both places say the same.
+   * (Noah's wording table on HAL-17498), so both places say the same. The shell's `NoConnections`
+   * shows them; `title` and `connect` repeat its `noConnectionsWords` for the click test, which
+   * reads this file in Node and can't load the shell.
    */
   noConnections: {
     title: "No connections",

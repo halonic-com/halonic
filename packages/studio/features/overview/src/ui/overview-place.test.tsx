@@ -4,7 +4,7 @@ import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { OverviewMessagingService, OverviewService, RecapService } from "../api.ts";
 import { overviewFeature } from "../feature.ts";
 import { OverviewStore } from "../overview-store.ts";
@@ -26,16 +26,26 @@ function contextWith(entries: ReadonlyMap<ServiceKey<unknown>, unknown>): Worksp
   return context as unknown as WorkspaceContext;
 }
 
-/** Draws the place in `context` and gives its text. */
-async function drawPlace(context: WorkspaceContext): Promise<string> {
+/** Draws the place in `context`, gives it to `look`, then takes it away again. */
+async function withPlace<Result>(
+  context: WorkspaceContext,
+  look: (container: HTMLElement) => Result | Promise<Result>,
+): Promise<Result> {
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
   await act(async () => root.render(<OverviewPlace context={context} />));
-  const text = container.textContent ?? "";
-  act(() => root.unmount());
-  container.remove();
-  return text;
+  try {
+    return await look(container);
+  } finally {
+    act(() => root.unmount());
+    container.remove();
+  }
+}
+
+/** Draws the place in `context` and gives its text. */
+function drawPlace(context: WorkspaceContext): Promise<string> {
+  return withPlace(context, (container) => container.textContent ?? "");
 }
 
 verifies("overview.place", () => {
@@ -68,9 +78,31 @@ verifies("overview.place", () => {
     expect(text).toMatch(/^Overview.*Recap.*Chief.*Nothing is blocked\./su);
   });
 
-  it("says there are no agents yet when no source is connected", async () => {
-    const text = await drawPlace(contextWith(new Map()));
+  it("says No connections and offers Connect Paperclip when no source is connected", async () => {
+    const openSettings = vi.fn();
+    const context = { ...contextWith(new Map()), openSettings };
 
-    expect(text).toBe("OverviewNo agents yet.");
+    await withPlace(context, async (container) => {
+      expect(container.querySelector("h1")?.textContent).toBe("Overview");
+      expect(container.querySelector("h2")?.textContent).toBe("No connections");
+      expect(container.textContent).toContain(
+        "Connect Paperclip to see who works on what and which work is blocked.",
+      );
+      expect(container.textContent).not.toContain("No agents yet.");
+      const connect = container.querySelector("button") as HTMLButtonElement;
+      expect(connect.textContent).toBe("Connect Paperclip");
+      await act(async () => connect.click());
+    });
+
+    expect(openSettings).toHaveBeenCalledWith("connections");
+  });
+
+  it("says No connections without a button when the window can't open Settings", async () => {
+    await withPlace(contextWith(new Map()), (container) => {
+      expect(container.textContent).toBe(
+        "OverviewNo connectionsConnect Paperclip to see who works on what and which work is blocked.",
+      );
+      expect(container.querySelector("button")).toBeNull();
+    });
   });
 });
