@@ -1,8 +1,9 @@
 import type { Template, Tool, ToolActionName } from "@halonicjs/format";
-import type { GitHubGet } from "./github.ts";
+import type { GitHubGet, GitHubQuery } from "./github.ts";
 import type { Capability, ToolResult } from "./host.ts";
 import type { PaperclipAccess } from "./paperclip-access.ts";
 import { writeActionHandlers } from "./paperclip-writes.ts";
+import { mergeQueueHandler } from "./pulls/merge-queue.ts";
 import { mergeTimesHandler } from "./pulls/merge-times.ts";
 import { openPullRequestsHandler } from "./pulls/open-pull-requests.ts";
 import { pullRequestHandler } from "./pulls/pull-request.ts";
@@ -31,6 +32,8 @@ export interface ActionCall {
   readonly companyId: string;
   /** The GitHub reader with the plugin's read token: GET to api.github.com only. */
   readonly github: () => Promise<GitHubGet>;
+  /** The GraphQL reader with the same token: read-only queries to api.github.com/graphql only. */
+  readonly githubQuery: () => Promise<GitHubQuery>;
   /** Paperclip's clients, cut down to the capabilities the handler declares. */
   readonly paperclip: PaperclipAccess;
   /** The time of the call, for monitors. */
@@ -57,6 +60,7 @@ export const runtimeHandlers: ActionHandlers = {
   "paperclip.task": taskHandler,
   "paperclip.template": templateHandler,
   "paperclip.failed-runs": failedRunsHandler,
+  "github.merge-queue": mergeQueueHandler,
   "github.merge-times": mergeTimesHandler,
   ...writeActionHandlers,
 };

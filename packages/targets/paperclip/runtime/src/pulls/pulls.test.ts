@@ -98,6 +98,9 @@ function run(
     caller,
     companyId: "acme",
     github: async () => github,
+    githubQuery: async () => {
+      throw new Error(`${action} reads GitHub's REST API only`);
+    },
     paperclip: paperclipAccess(
       { agents: { list: async () => agents } } as never,
       handler.capabilities,
@@ -284,12 +287,9 @@ verifies("runtime.github-pulls", () => {
 
 verifies("runtime.tools", () => {
   describe("the runtime's handlers", () => {
-    // Each read action moves in from `tooling/paperclip` under its own task (HAL-18139).
-    const notYetMoved = ["github.merge-queue"];
-
-    test("cover every read action but the ones still moving, and no read handler needs a writing capability", () => {
+    test("cover every read action, and no read handler needs a writing capability", () => {
       const reads = toolActionNames().filter((name) => !toolActionInfo(name).writes);
-      expect(reads.filter((name) => runtimeHandlers[name] === undefined)).toEqual(notYetMoved);
+      expect(reads.filter((name) => runtimeHandlers[name] === undefined)).toEqual([]);
       const asked = reads.flatMap((name) => runtimeHandlers[name]?.capabilities ?? []);
       expect(asked.filter((capability) => /create|update|write|delete/.test(capability))).toEqual(
         [],
