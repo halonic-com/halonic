@@ -91,7 +91,7 @@ function PullRequestsFrame(props: { shown: Shown; clock: TeamClock; children: Re
       onFocus={remember}
     >
       <header className="flex flex-wrap justify-between gap-x-4">
-        <h1 ref={heading} tabIndex={-1} className="outline-none">
+        <h1 ref={heading} tabIndex={-1}>
           {read === undefined ? pullRequestWords.place : pullRequestWords.title(read.repo)}
         </h1>
         {read === undefined ? null : <Freshness asOf={read.asOf} clock={clock} />}
