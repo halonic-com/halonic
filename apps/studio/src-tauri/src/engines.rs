@@ -9,8 +9,10 @@
 //! the workspace is in the problem state until a window opens it again.
 //! After every handshake the shell sends the sandbox host's connection and
 //! the user's Pause routines: the engine starts no routine run before it
-//! has the second.
+//! has the second. It sends them as the engine joins the table, under the
+//! table's lock, so a sandbox host that starts meanwhile can't be missed.
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::thread;
@@ -30,17 +32,19 @@ use crate::git::GitState;
 use crate::profile::cli_profile;
 use crate::secrets::SecretsState;
 
-/// The shell's engines. `starting` is held while one starts, so two
-/// windows opening one workspace don't start two engines.
+/// The shell's engines. A workspace's lock in `starting` is held while its
+/// engine starts, so two windows opening one workspace don't start two
+/// engines, and a slow start holds up no other workspace.
 #[derive(Default)]
 pub struct EnginesState {
     table: Mutex<EngineTable<EngineProcess>>,
-    starting: Mutex<()>,
+    starting: Mutex<HashMap<PathBuf, Arc<Mutex<()>>>>,
 }
 
 /// Why `engine_open` didn't connect the window: `folder_not_open`,
-/// `profile_setting`, `engine_failed` or `io`, and a message for the log.
-/// The page then runs its workspace's engine itself, as before.
+/// `profile_setting`, `engine_failed` (also when Halonic is quitting) or
+/// `io`, and a message for the log. The page then runs its workspace's
+/// engine itself, as before.
 #[derive(Debug, Serialize)]
 pub struct EngineOpenRefusal {
     kind: &'static str,
@@ -54,9 +58,10 @@ fn refusal(kind: &'static str, message: impl std::fmt::Display) -> EngineOpenRef
     }
 }
 
-/// Connects the window to the engine of `workspace`, a folder it opened,
-/// starting the engine first when none runs. Answers once the engine's
-/// handshake is in, or with a refusal.
+/// Connects the window to the engine of `workspace`, which must be a folder
+/// the shell has opened (by any window) or a folder inside one, starting
+/// the engine first when none runs. Answers once the engine's handshake is
+/// in, or with a refusal.
 #[tauri::command]
 pub async fn engine_open<R: Runtime>(
     webview: Webview<R>,
@@ -78,9 +83,10 @@ fn open<R: Runtime>(
         .state::<GitState>()
         .folders()
         .check(Path::new(location))
-        .map_err(|_| refusal("folder_not_open", "the window hasn't opened that folder"))?;
+        .map_err(|_| refusal("folder_not_open", "the shell hasn't opened that folder"))?;
     let state = app.state::<EnginesState>();
-    let _starting = lock(&state.starting);
+    let start_lock = start_lock(&state, &workspace);
+    let _starting = lock(&start_lock);
     let running = lock(&state.table)
         .serve(&workspace, window)
         .map(|engine| engine.link().handshake().clone());
@@ -90,11 +96,56 @@ fn open<R: Runtime>(
             let launch_number = next_launch(&state, &workspace);
             let engine = start(app, &workspace, location, launch_number)?;
             let handshake = engine.link().handshake().clone();
-            lock(&state.table).started(workspace, location.to_owned(), engine, window);
+            join(&state, workspace, location, engine, window)?;
             handshake
         }
     };
     connect(app, window, handshake)
+}
+
+/// The start lock of `workspace`. Kept for the shell's life: one small
+/// entry per workspace opened.
+fn start_lock(state: &EnginesState, workspace: &Path) -> Arc<Mutex<()>> {
+    let mut locks = lock(&state.starting);
+    Arc::clone(locks.entry(workspace.to_owned()).or_default())
+}
+
+/// Puts a started engine in the table and tells it what it needs, or stops
+/// it when Quit or an update's restart closed the table meanwhile.
+fn join(
+    state: &EnginesState,
+    workspace: PathBuf,
+    location: &str,
+    engine: EngineProcess,
+    window: &str,
+) -> Result<(), EngineOpenRefusal> {
+    let mut table = lock(&state.table);
+    let joined = table.started(workspace.clone(), location.to_owned(), engine, window);
+    match joined {
+        Ok(_) => {
+            after_handshake(&table, &workspace);
+            Ok(())
+        }
+        Err(engine) => {
+            drop(table);
+            let _stopped = engine.stop(STOP_KILL_AFTER);
+            Err(refusal("engine_failed", "Halonic is quitting"))
+        }
+    }
+}
+
+/// Sends the engine of `workspace` the sandbox host and its Pause routines.
+/// Called with the table locked, so the host it sends is the latest.
+fn after_handshake(table: &EngineTable<EngineProcess>, workspace: &Path) {
+    let Some(engine) = table.engine(workspace) else {
+        return;
+    };
+    let host = table.host().map(sandbox_host);
+    // Failing to queue means the link already ended; its watcher takes it
+    // from there.
+    let _ended = engine
+        .link()
+        .send_after_handshake(host, table.pause(workspace));
 }
 
 /// The number the next launch of `workspace` gets in the table, so its
@@ -103,8 +154,8 @@ fn next_launch(state: &EnginesState, workspace: &Path) -> u64 {
     lock(&state.table).launch(workspace) + 1
 }
 
-/// Starts the engine of `workspace` and tells it what it needs after the
-/// handshake. Blocks until the handshake, up to a minute.
+/// Starts the engine of `workspace`. Blocks until the handshake, up to a
+/// minute.
 fn start<R: Runtime>(
     app: &AppHandle<R>,
     workspace: &Path,
@@ -127,16 +178,7 @@ fn start<R: Runtime>(
         workspace: workspace.to_owned(),
         launch,
     });
-    let engine = EngineProcess::start(command, broker, watcher)
-        .map_err(|error| refusal("engine_failed", error))?;
-    let link = engine.link();
-    let host = crate::agent_host::current_host(app);
-    let pause = lock(&app.state::<EnginesState>().table).pause(workspace);
-    // Failing to queue either means the link already ended; its watcher
-    // takes it from there.
-    let _ended = link.send_sandbox_host(host.as_ref().map(sandbox_host));
-    let _ended = link.send_routine_pause(pause);
-    Ok(engine)
+    EngineProcess::start(command, broker, watcher).map_err(|error| refusal("engine_failed", error))
 }
 
 fn sandbox_host(handshake: &Handshake) -> SandboxHost<'_> {
@@ -190,7 +232,8 @@ impl<R: Runtime> LinkWatcher for Watcher<R> {
 
 fn crashed<R: Runtime>(app: &AppHandle<R>, workspace: &Path, launch: u64) {
     let state = app.state::<EnginesState>();
-    let _starting = lock(&state.starting);
+    let start_lock = start_lock(&state, workspace);
+    let _starting = lock(&start_lock);
     let (old, next) = lock(&state.table).crashed(workspace, launch, Instant::now());
     drop(old);
     match next {
@@ -223,9 +266,12 @@ fn restart<R: Runtime>(app: &AppHandle<R>, state: &EnginesState, workspace: &Pat
         }
     };
     let handshake = engine.link().handshake().clone();
-    let restarted = lock(&state.table).restarted(workspace, engine);
+    let mut table = lock(&state.table);
+    let restarted = table.restarted(workspace, engine);
     match restarted {
         Ok((_, windows)) => {
+            after_handshake(&table, workspace);
+            drop(table);
             for window in windows {
                 if connect(app, &window, handshake.clone()).is_err() {
                     halonic_shell_log::record("engine", "a window couldn't be reconnected");
@@ -234,6 +280,7 @@ fn restart<R: Runtime>(app: &AppHandle<R>, state: &EnginesState, workspace: &Pat
         }
         // Quit came while it started.
         Err(engine) => {
+            drop(table);
             let _stopped = engine.stop(STOP_KILL_AFTER);
         }
     }
@@ -247,17 +294,22 @@ pub fn window_closed<R: Runtime>(app: &AppHandle<R>, window: &str) {
     disconnect(app, [window.to_owned()]);
 }
 
-/// Tells every engine where the sandbox host is now, or that none runs.
+/// Notes where the sandbox host is now, or that none runs, for engines that
+/// start later, and tells every running engine.
 pub fn sandbox_host_changed<R: Runtime>(app: &AppHandle<R>, host: Option<&Handshake>) {
-    if let Some(state) = app.try_state::<EnginesState>() {
-        for engine in lock(&state.table).engines() {
-            let _ended = engine.link().send_sandbox_host(host.map(sandbox_host));
-        }
+    let Some(state) = app.try_state::<EnginesState>() else {
+        return;
+    };
+    let mut table = lock(&state.table);
+    table.set_host(host.cloned());
+    for engine in table.engines() {
+        let _ended = engine.link().send_sandbox_host(host.map(sandbox_host));
     }
 }
 
 /// Quit, or an update's restart: stops every engine at once, each with its
-/// 15 seconds, and waits for them all.
+/// 15 seconds, and waits for them all. An engine still starting is stopped
+/// as it finishes (the table is closed), and none starts after.
 pub fn stop_all<R: Runtime>(app: &AppHandle<R>) {
     let Some(state) = app.try_state::<EnginesState>() else {
         return;
@@ -277,7 +329,7 @@ pub fn stop_all<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
-/// The table and the start lock stay whole if a holder panicked.
+/// The table and the start locks stay whole if a holder panicked.
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }

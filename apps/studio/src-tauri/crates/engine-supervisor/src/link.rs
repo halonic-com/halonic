@@ -155,14 +155,20 @@ impl EngineLink {
         send(&self.input, sandbox_host_json(host))
     }
 
-    /// Sends the user's Pause routines for this workspace as it is now. The
-    /// shell sends it after every handshake: the engine starts no routine
-    /// run until it has one.
+    /// Sends what an engine needs after every handshake, a first start's or
+    /// a restart's: where the sandbox host is, or that none runs, then the
+    /// user's Pause routines for this workspace. The engine starts no
+    /// routine run until it has the second.
     ///
     /// # Errors
     ///
     /// [`PipeFault::Write`] when the input is closed or its queue is full.
-    pub fn send_routine_pause(&self, pause: RoutinePause) -> Result<(), PipeFault> {
+    pub fn send_after_handshake(
+        &self,
+        host: Option<SandboxHost<'_>>,
+        pause: RoutinePause,
+    ) -> Result<(), PipeFault> {
+        send(&self.input, sandbox_host_json(host))?;
         send(&self.input, pause.after_handshake())
     }
 

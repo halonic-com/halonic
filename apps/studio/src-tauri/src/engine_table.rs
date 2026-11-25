@@ -1,13 +1,15 @@
 //! The shell's background engines, one per workspace (design note D10), as
 //! plain data: which windows each serves, which launch is current, and
-//! whether a crashed one may start again. `engines.rs` starts and stops
-//! the processes; this file holds no Tauri types, so tests drive it with a
-//! stand-in engine.
+//! whether a crashed one may start again, and where the sandbox host is, so
+//! an engine joins the table and hears the host under one lock. `engines.rs`
+//! starts and stops the processes; this file holds no Tauri types, so tests
+//! drive it with a stand-in engine.
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
+use halonic_agent_host::Handshake;
 use halonic_engine_pipe::RoutinePause;
 use halonic_engine_supervisor::RestartLimit;
 
@@ -41,12 +43,18 @@ struct Workspace<P> {
 /// The engines by the workspace's real path.
 pub struct EngineTable<P> {
     workspaces: HashMap<PathBuf, Workspace<P>>,
+    /// The sandbox host's latest handshake, `None` while none runs.
+    host: Option<Handshake>,
+    /// Set by Quit or an update's restart: no engine joins after it.
+    closed: bool,
 }
 
 impl<P> Default for EngineTable<P> {
     fn default() -> Self {
         Self {
             workspaces: HashMap::new(),
+            host: None,
+            closed: false,
         }
     }
 }
@@ -64,14 +72,18 @@ impl<P> EngineTable<P> {
     /// opens a workspace in the problem state gets a fresh restart limit;
     /// the user's pause stays.
     ///
-    /// Returns the launch's number, for [`Self::crashed`].
+    /// Returns the launch's number, for [`Self::crashed`], or gives `engine`
+    /// back to be stopped when Quit closed the table while it started.
     pub fn started(
         &mut self,
         workspace: PathBuf,
         location: String,
         engine: P,
         window: &str,
-    ) -> u64 {
+    ) -> Result<u64, P> {
+        if self.closed {
+            return Err(engine);
+        }
         let entry = self
             .workspaces
             .entry(workspace)
@@ -88,7 +100,7 @@ impl<P> EngineTable<P> {
         entry.launch += 1;
         entry.restarts = RestartLimit::default();
         entry.windows.insert(window.to_owned());
-        entry.launch
+        Ok(entry.launch)
     }
 
     /// Notes that launch `launch` of `workspace` ended without the shell
@@ -117,8 +129,9 @@ impl<P> EngineTable<P> {
 
     /// Notes a restart's launch, which keeps the restart limit.
     ///
-    /// Returns its number and the windows to connect, or `None` when the
-    /// workspace was stopped meanwhile: then the caller stops `engine`.
+    /// Returns its number and the windows to connect, or gives `engine`
+    /// back when the workspace was stopped meanwhile: then the caller stops
+    /// it.
     pub fn restarted(&mut self, workspace: &Path, engine: P) -> Result<(u64, HashSet<String>), P> {
         let Some(entry) = self.workspaces.get_mut(workspace) else {
             return Err(engine);
@@ -133,6 +146,21 @@ impl<P> EngineTable<P> {
         self.workspaces
             .get(workspace)
             .map_or(0, |entry| entry.launch)
+    }
+
+    /// The running engine of `workspace`, without serving a window.
+    pub fn engine(&self, workspace: &Path) -> Option<&P> {
+        self.workspaces.get(workspace)?.engine.as_ref()
+    }
+
+    /// The sandbox host's latest handshake, to send after a handshake.
+    pub fn host(&self) -> Option<&Handshake> {
+        self.host.as_ref()
+    }
+
+    /// Notes where the sandbox host is now, or that none runs.
+    pub fn set_host(&mut self, host: Option<Handshake>) {
+        self.host = host;
     }
 
     /// The user's Pause routines for `workspace`, to send after a handshake.
@@ -157,9 +185,12 @@ impl<P> EngineTable<P> {
             .filter_map(|entry| entry.engine.as_ref())
     }
 
-    /// Quit: forgets every workspace and gives back the running engines,
-    /// to stop outside any lock, with the windows each served.
+    /// Quit: closes the table, so an engine still starting is given back by
+    /// [`Self::started`] or [`Self::restarted`], forgets every workspace, and
+    /// gives back the running engines, to stop outside any lock, with the
+    /// windows each served.
     pub fn take_all(&mut self) -> Vec<(P, HashSet<String>)> {
+        self.closed = true;
         self.workspaces
             .drain()
             .filter_map(|(_, entry)| entry.engine.map(|engine| (engine, entry.windows)))

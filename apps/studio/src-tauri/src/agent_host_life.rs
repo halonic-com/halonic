@@ -2,8 +2,6 @@
 //! a page's streams when the page reloads or closes, and stopping the host
 //! itself before the updater's installer replaces it.
 
-#[cfg(desktop)]
-use halonic_agent_host::Handshake;
 use tauri::{AppHandle, Manager, Runtime};
 
 use super::choice::HostKind;
@@ -16,17 +14,6 @@ pub fn end_page_streams<R: Runtime>(app: &AppHandle<R>, page: &str) {
     if let Some(state) = app.try_state::<AgentHostState>() {
         state.streams.end(|key| key.page == page);
     }
-}
-
-/// The running host's handshake, for the background engines (design note
-/// D8). It never starts a host and never waits for one that is starting:
-/// that start tells the engines itself once its handshake is in.
-#[cfg(desktop)]
-pub fn current_host<R: Runtime>(app: &AppHandle<R>) -> Option<Handshake> {
-    let state = app.try_state::<AgentHostState>()?;
-    let mut host = state.host.try_lock().ok()?;
-    let running = host.as_mut()?;
-    (!running.has_exited()).then(|| running.handshake().clone())
 }
 
 /// Stops the host, as dropping it does, before the updater's installer

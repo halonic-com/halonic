@@ -130,6 +130,9 @@ fn save_choice<R: Runtime>(
     if moves_host(before.map(|(kind, _)| kind), after) {
         drop(host.take());
         state.streams.end(|_| true);
+        // The engines forget the old host's address and token.
+        #[cfg(desktop)]
+        crate::engines::sandbox_host_changed(app, None);
     }
     Ok(())
 }

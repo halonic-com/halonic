@@ -44,11 +44,11 @@ fn served_page_test_sees_the_connect_page_allowed_the_engine_commands_on_desktop
     assert_eq!(ended, Ok(Value::Null));
 }
 
-/// `studio.src-tauri.engine-lifetime`: a folder the window hasn't opened is
-/// refused before anything starts.
+/// `studio.src-tauri.engine-lifetime`: a folder the shell hasn't opened, in
+/// any window, is refused before anything starts.
 #[cfg(desktop)]
 #[test]
-fn engine_lifetime_engine_open_refuses_a_folder_the_window_did_not_open() {
+fn engine_lifetime_engine_open_refuses_a_folder_the_shell_has_not_opened() {
     let window = app_window();
     let answer = invoke(
         &window,
