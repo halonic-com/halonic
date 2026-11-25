@@ -64,7 +64,8 @@ export const stepperCatalog: StepperCatalog = {
       host: "github.com",
       pathPrefixes: ["/{owner}/{repo}/settings/variables/"],
     },
-  ],  route: () => undefined,
+  ],
+  route: () => undefined,
 };
 
 const parameters = { owner: "acme", repo: "app" };
