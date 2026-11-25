@@ -36,6 +36,9 @@ export function layerProblem(
   if (kind === "dev" && (toLayer === "testing" || toLayer === "tooling")) {
     return undefined;
   }
+  if (fromLayer === "tooling") {
+    return toolingRule(context, toLayer, from, to, kind);
+  }
   return layerRule(context, fromLayer, toLayer, from, to);
 }
 
@@ -54,7 +57,7 @@ function layerRule(
     case "testing":
       return undefined;
     case "tooling":
-      return toolingRule(context, toLayer, fromName);
+      return toolingRule(context, toLayer, from, to, "runtime");
     case "core":
       return coreRule(context, toLayer, fromName, toName);
     case "adapters":
@@ -73,12 +76,47 @@ function layerRule(
 }
 
 /**
- * The target packages the `halonic` CLI ships with: the Node runtime behind
- * `halonic serve` and the Node harness wiring it shares with the engine host
- * (HAL-16907). Every other target is installed by the user who deploys
- * to it, and the CLI loads it by name (board decision, HAL-7114).
+ * Tooling uses other tooling packages, and two narrow exceptions:
+ * - a target's runtime as a dev dependency only: `tooling/paperclip` tests the
+ *   Paperclip plugin runtime against today's Agent tools (HAL-17949). Nothing
+ *   wider, because apps and Studio packages dev-depend on tooling and would make cycles;
+ * - core packages for the packages listed under "toolingUsesCore": the Agent
+ *   tools plugin runs its workflow host on our own engine (HAL-18009).
  */
-const targetShippedWithCli = { name: "node", kinds: ["runtime", "harness"] } as const;
+function toolingRule(
+  context: CheckContext,
+  toLayer: Layer,
+  from: WorkspacePackage,
+  to: WorkspacePackage,
+  kind: EdgeKind,
+): string | undefined {
+  if (toLayer === "tooling") {
+    return undefined;
+  }
+  if (kind === "dev" && context.placeOf(to)?.target?.kind === "runtime") {
+    return undefined;
+  }
+  const fromName = from.manifest.name ?? from.directory;
+  if (!context.policy.toolingUsesCore.includes(fromName)) {
+    return "tooling packages use only other tooling packages. A target's runtime package is allowed as a dev dependency only.";
+  }
+  return toLayer === "core"
+    ? undefined
+    : `${fromName} is listed under "toolingUsesCore" (${context.policyPath}), so it may use core and tooling packages only.`;
+}
+
+/**
+ * The target packages the `halonic` CLI ships with: the Node runtime behind
+ * `halonic serve`, the Node harness wiring it shares with the engine host
+ * (HAL-16907), and the Paperclip runtime, whose `worker.js` the CLI's plugin
+ * builder copies into each plugin it makes (HAL-17949). Every other target is
+ * installed by the user who deploys to it, and the CLI loads it by name
+ * (board decision, HAL-7114).
+ */
+const targetsShippedWithCli: readonly { name: string; kinds: readonly string[] }[] = [
+  { name: "node", kinds: ["runtime", "harness"] },
+  { name: "paperclip", kinds: ["runtime"] },
+];
 
 function appRule(
   context: CheckContext,
@@ -92,29 +130,13 @@ function appRule(
   if (target === undefined || target.kind === "testing") {
     return undefined;
   }
-  const shipped =
-    target.name === targetShippedWithCli.name &&
-    (targetShippedWithCli.kinds as readonly string[]).includes(target.kind);
+  const shipped = targetsShippedWithCli.some(
+    (shippedTarget) =>
+      shippedTarget.name === target.name && shippedTarget.kinds.includes(target.kind),
+  );
   return shipped
     ? undefined
-    : "the halonic CLI ships only the Node runtime and the Node harness. It loads a deploy target by name when the user deploys, so users install only the targets they use (HAL-7114).";
-}
-
-/**
- * Tooling uses only tooling, except the packages listed under
- * "toolingUsesCore", which may also use core packages: the Agent tools
- * plugin runs its workflow host on our own engine (HAL-18009).
- */
-function toolingRule(context: CheckContext, toLayer: Layer, fromName: string): string | undefined {
-  if (toLayer === "tooling") {
-    return undefined;
-  }
-  if (!context.policy.toolingUsesCore.includes(fromName)) {
-    return "tooling packages use only other tooling packages.";
-  }
-  return toLayer === "core"
-    ? undefined
-    : `${fromName} is listed under "toolingUsesCore" (${context.policyPath}), so it may use core and tooling packages only.`;
+    : "the halonic CLI ships only the Node runtime and the Node harness, and the Paperclip runtime its plugin builder copies. It loads a deploy target by name when the user deploys, so users install only the targets they use (HAL-7114).";
 }
 
 function coreRule(

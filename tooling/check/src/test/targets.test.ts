@@ -243,6 +243,17 @@ verifies("check.cli-never-uses-deploy-targets", () => {
     expect(found.some((message) => message.includes(shipsOnlyNode))).toBe(true);
   });
 
+  it("passes the CLI using the Paperclip runtime its plugin builder copies, but not a Paperclip deploy package", () => {
+    const paperclip = (kind: string): FixturePackage =>
+      pkg(`packages/targets/paperclip/${kind}`, `@halonicjs/target-paperclip-${kind}`, "targets");
+    const source = 'import "@halonicjs/target-paperclip-runtime";\nexport const x = 1;\n';
+    expect(
+      messages([paperclip("runtime"), cli(["@halonicjs/target-paperclip-runtime"], source)]),
+    ).toEqual([]);
+    const found = messages([paperclip("deploy"), cli(["@halonicjs/target-paperclip-deploy"])]);
+    expect(found.some((message) => message.includes(shipsOnlyNode))).toBe(true);
+  });
+
   it("leaves other apps free to use a target", () => {
     const studio = pkg("apps/studio", "@halonicjs/app-studio", "apps", {
       uses: ["@halonicjs/target-cloudflare-deploy"],

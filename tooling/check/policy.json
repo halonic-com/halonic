@@ -112,6 +112,9 @@
       "./tauri-ipc",
       "./tauri-channel"
     ],
+    "@halonicjs/target-paperclip-runtime": [
+      "./actions"
+    ],
     "@halonicjs/testing-contracts": [
       "./node"
     ],
