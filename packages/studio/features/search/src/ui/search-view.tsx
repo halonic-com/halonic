@@ -1,4 +1,5 @@
 import type { SearchHit } from "@halonicjs/ports";
+import { Input } from "@halonicjs/studio-kit";
 import { useSyncExternalStore } from "react";
 import type { SearchKindGroup } from "../search-results.ts";
 import type { SearchState, SearchStore } from "../search-store.ts";
@@ -19,11 +20,10 @@ export function SearchView({ store, onOpen }: SearchViewProps) {
   const state = useSyncExternalStore(store.subscribe, store.snapshot);
   return (
     <div className="flex flex-col gap-4 px-4 py-3">
-      <input
+      <Input
         type="search"
         aria-label="Search agents, chats, inbox and work"
         placeholder="Search agents, chats, inbox and work"
-        className="rounded border border-border px-2 py-1"
         onChange={(event) => void store.search(event.currentTarget.value)}
       />
       <p role="status" className="text-fg-muted">

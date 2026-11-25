@@ -4356,6 +4356,9 @@ importers:
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../../core/ports
+      '@halonicjs/studio-kit':
+        specifier: workspace:*
+        version: link:../../kit
       '@halonicjs/studio-shell':
         specifier: workspace:*
         version: link:../../shell

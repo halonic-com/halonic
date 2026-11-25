@@ -72,10 +72,12 @@ const frame = EditorView.theme({
     paddingInlineStart: "4px",
   },
   ".cm-review-part": { padding: "2px 0" },
-  // Previous and Next move the focus to the part: it wears the ring as its buttons do.
+  // Previous and Next move the focus to the part: it wears the inset ring, as the editor does,
+  // because the gutter and the scroller clip an outset ring's sides. High contrast drops the
+  // shadow, so the outline shows there.
   ".cm-review-part:focus-visible": {
     outline: "2px solid transparent",
-    boxShadow: "var(--focus-ring)",
+    boxShadow: "var(--focus-ring-inset)",
   },
   ".cm-review-removed": {
     display: "block",

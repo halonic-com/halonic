@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import type { SearchHit } from "@halonicjs/ports";
+import { Input } from "@halonicjs/studio-kit";
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -66,4 +67,32 @@ verifies("search.across-sources", () => {
     act(() => root.unmount());
     container.remove();
   });
+});
+
+it("uses the kit's search Input as its box, with the kit's look", async () => {
+  const kit = document.createElement("div");
+  const view = document.createElement("div");
+  document.body.append(kit, view);
+  const kitRoot = createRoot(kit);
+  const viewRoot = createRoot(view);
+  await act(async () => kitRoot.render(<Input type="search" aria-label="Kit" />));
+  await act(async () =>
+    viewRoot.render(
+      <SearchView store={new SearchStore(new FakeAgentMessaging())} onOpen={() => {}} />,
+    ),
+  );
+
+  const box = view.querySelector<HTMLInputElement>("input");
+  const kitBox = kit.querySelector<HTMLInputElement>("input");
+  expect(box?.type).toBe("search");
+  expect(box?.getAttribute("aria-label")).toBe("Search agents, chats, inbox and work");
+  expect(box?.placeholder).toBe("Search agents, chats, inbox and work");
+  expect(box?.className).toBe(kitBox?.className);
+  expect(box?.parentElement?.className).toBe(kitBox?.parentElement?.className);
+  act(() => {
+    kitRoot.unmount();
+    viewRoot.unmount();
+  });
+  kit.remove();
+  view.remove();
 });

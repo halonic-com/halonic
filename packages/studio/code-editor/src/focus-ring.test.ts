@@ -23,6 +23,18 @@ describe("focus ring", () => {
       editor.destroy();
     });
 
+    it("draws a change Previous and Next focus with the inset ring, which nothing clips", () => {
+      const editor = createCodeEditorForTest("");
+      const css = pageCss();
+      expect(css).toMatch(
+        /\.cm-review-part:focus-visible\s*\{[^}]*box-shadow:\s*var\(--focus-ring-inset\)/,
+      );
+      expect(css).toMatch(
+        /\.cm-review-part:focus-visible\s*\{[^}]*outline:\s*2px solid transparent/,
+      );
+      editor.destroy();
+    });
+
     it("draws a Highlight ring inside the editor in high contrast", () => {
       const editor = createCodeEditorForTest("");
       expect(pageCss()).toMatch(
