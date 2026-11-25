@@ -7,6 +7,13 @@ import type {
   WriteOutcome,
 } from "../pr-watcher/paperclip.ts";
 import {
+  ancestorIds,
+  finished,
+  parentBlockers,
+  parentBlockKey,
+  parentBlockMessage,
+} from "../pr-watcher/parent-block.ts";
+import {
   type BlockedRow,
   type BlockerRow,
   readyToUnblock,
@@ -24,7 +31,8 @@ import {
  * a task to `high` (HAL-17920), and nothing else; `setTaskLabels` lets the difficulty tagger
  * set labels and nothing else, and `assignTaskBack` lets the hand-off limit
  * set the task's agent and nothing else, because the manifest can't narrow
- * `issues.update`.
+ * `issues.update`. The one blocker link it removes is a task's parent or a
+ * task above it (`parent_block`), re-read right before the write.
  */
 
 /** The part of the plugin context the adapter uses, so tests can fake it. */
@@ -32,7 +40,7 @@ export interface HostApi {
   readonly issues: Pick<
     PluginIssuesClient,
     "list" | "get" | "listComments" | "createComment" | "update" | "requestWakeup" | "monitors"
-  > & { readonly relations: Pick<PluginIssuesClient["relations"], "get"> };
+  > & { readonly relations: Pick<PluginIssuesClient["relations"], "get" | "removeBlockers"> };
   readonly agents: Pick<PluginAgentsClient, "list">;
 }
 
@@ -365,5 +373,49 @@ export function unblockHost(host: HostApi, companyId: string): UnblockPaperclip 
       });
       return "written";
     },
+    async parentOf(taskId) {
+      return (await host.issues.get(taskId, companyId))?.parentId ?? null;
+    },
+    releaseParentBlock: (taskId, removed) => releaseParentBlock(host, companyId, taskId, removed),
   };
+}
+
+/**
+ * Removes a task's parent, or a task above it, from its "blocked by"
+ * (`parent_block`), after reading the task, its blockers and its parents
+ * again: only blockers that are still there, unfinished and above it go.
+ */
+async function releaseParentBlock(
+  host: HostApi,
+  companyId: string,
+  taskId: string,
+  removed: readonly BlockerRow[],
+): Promise<"todo" | "blocked" | "closed"> {
+  const issue = await host.issues.get(taskId, companyId);
+  const blockers = await blockersOf(host, taskId, companyId);
+  const above = await ancestorIds(
+    taskId,
+    async (id) => (await host.issues.get(id, companyId))?.parentId ?? null,
+  );
+  const stillThere = parentBlockers(blockers, above).map((blocker) => blocker.id);
+  if (issue?.status !== "blocked" || !removed.every((blocker) => stillThere.includes(blocker.id))) {
+    return "closed";
+  }
+  const ids = removed.map((blocker) => blocker.id);
+  await host.issues.relations.removeBlockers(taskId, ids, companyId);
+  const rest = blockers.filter((blocker) => !ids.includes(blocker.id));
+  const backToTodo = rest.every((blocker) => finished.has(blocker.status));
+  if (backToTodo) {
+    await host.issues.update(taskId, todoOnly({ status: "todo" }), companyId);
+  }
+  await host.issues.createComment(taskId, parentBlockMessage(removed, backToTodo), companyId);
+  if (!backToTodo) {
+    return "blocked";
+  }
+  // A plugin's comment and status change wake nobody, so the wake-up is its own call.
+  await host.issues.requestWakeup(taskId, companyId, {
+    reason: "parent_block",
+    idempotencyKey: `pr-watcher ${taskId} ${parentBlockKey(removed)}`,
+  });
+  return "todo";
 }

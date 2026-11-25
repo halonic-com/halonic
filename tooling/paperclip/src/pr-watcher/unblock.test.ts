@@ -34,6 +34,8 @@ function fakePaperclip(
       unblocked.push({ taskId, body, key });
       return "written";
     },
+    parentOf: async () => null,
+    releaseParentBlock: async () => "closed",
   };
   return { paperclip, unblocked };
 }
@@ -54,7 +56,7 @@ verifies("paperclip.pr-watcher-unblock", () => {
     const fake = fakePaperclip([blocked("HAL-17446")], {
       "id-HAL-17446": [blocker("HAL-17445", "done")],
     });
-    expect((await sweep(fake)).summary).toEqual({ unblocked: 1, failed: [] });
+    expect((await sweep(fake)).summary).toEqual({ unblocked: 1, parentBlocks: 0, failed: [] });
     expect(fake.unblocked).toEqual([
       {
         taskId: "id-HAL-17446",
@@ -125,7 +127,7 @@ verifies("paperclip.pr-watcher-unblock", () => {
       return [blocker("HAL-1", "done")];
     };
     const { summary, lines } = await sweep(fake);
-    expect(summary).toEqual({ unblocked: 1, failed: ["HAL-2"] });
+    expect(summary).toEqual({ unblocked: 1, parentBlocks: 0, failed: ["HAL-2"] });
     expect(lines[0]).toBe("HAL-2: couldn't unblock it: relations unavailable");
   });
 });

@@ -28,7 +28,8 @@ export type HostWrite =
   | { readonly kind: "comment"; readonly issueId: string; readonly body: string }
   | { readonly kind: "update"; readonly issueId: string; readonly patch: unknown }
   | { readonly kind: "wake"; readonly issueId: string; readonly options: unknown }
-  | { readonly kind: "postpone"; readonly issueId: string; readonly until: string };
+  | { readonly kind: "postpone"; readonly issueId: string; readonly until: string }
+  | { readonly kind: "unlink"; readonly issueId: string; readonly blockerIds: readonly string[] };
 
 /** A task in another's "blocked by", as the fake host lists it. */
 export interface FakeBlocker {
@@ -81,6 +82,13 @@ export function fakeHost(
       },
       relations: {
         get: async (issueId: string) => ({ blockedBy: blockedBy[issueId] ?? [], blocks: [] }),
+        removeBlockers: async (issueId: string, blockerIds: string[]) => {
+          writes.push({ kind: "unlink", issueId, blockerIds });
+          blockedBy[issueId] = (blockedBy[issueId] ?? []).filter(
+            (blocker) => !blockerIds.includes(blocker.id),
+          );
+          return { blockedBy: blockedBy[issueId], blocks: [] };
+        },
       },
       monitors: {
         postpone: async (issueId: string, _companyId: string, options: { until: string }) => {
