@@ -62,7 +62,10 @@ export async function conflictFilesOf(
   if (read === undefined) {
     return found;
   }
-  for (const { pull } of reasons.filter((reason) => reason.kind === "conflict")) {
+  const conflicts = reasons.filter(
+    (reason) => reason.kind === "conflict" || reason.kind === "stack-conflict",
+  );
+  for (const { pull } of conflicts) {
     try {
       found.set(pullKey(pull), await read(pull));
     } catch (error) {

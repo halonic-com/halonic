@@ -64,8 +64,19 @@ export interface WatchedTask {
 /** One state the author should hear about. `key` says when it is the same state again. */
 export interface Reason {
   readonly pull: PullFacts;
-  readonly kind: "ci-red" | "conflict" | "retargeted" | "review" | "approved" | "merged";
+  readonly kind:
+    | "ci-red"
+    | "conflict"
+    | "retargeted"
+    | "review"
+    | "approved"
+    | "merged"
+    | "stack-conflict";
   readonly key: string;
+  /** `stack-conflict` only: the keys of the reasons it answers, marked as reported with it. */
+  readonly also?: readonly string[];
+  /** `stack-conflict` only: the merged pull request it was stacked on and that one's last head. */
+  readonly base?: { readonly number: number; readonly head: string };
 }
 
 /** What the watcher reported on the task before, read back from its own comments. */

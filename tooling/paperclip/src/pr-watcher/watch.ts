@@ -18,6 +18,7 @@ import type { CommentRow, Paperclip, TaskRow } from "./paperclip.ts";
 import type { RebaseOnly } from "./rebase-only.ts";
 import { reviewSteps } from "./review-steps.ts";
 import { noReviewWait, noteReviewWait, oldestFirst, type WaitRow } from "./review-wait.ts";
+import { type StackRebase, stackStep } from "./stack-rebase.ts";
 import type { PullSummary } from "./wake-status.ts";
 
 /**
@@ -41,6 +42,8 @@ export interface TickOptions {
   readonly rebaseOnly?: RebaseOnly;
   /** The files a conflicting pull request conflicts in, for the wake comment (HAL-17922); none when unset. */
   readonly conflictFiles?: ConflictFiles;
+  /** Rebases a stacked pull request once its base merged (HAL-18031); off when unset. */
+  readonly stackRebase?: StackRebase;
 }
 
 /** How a tick went: counts, and the tasks it couldn't check. */
@@ -227,7 +230,7 @@ async function decideTask(
     ownerId !== undefined && ownerId === task.assigneeAgentId && needsMemory(task, pulls)
       ? readMemory(await options.paperclip.comments(task.id), ownerId)
       : emptyMemory;
-  return decide(task, ownerId, pulls, memory);
+  return stackStep(options, task, decide(task, ownerId, pulls, memory));
 }
 
 /** Carries out a decision; false when it did nothing (a skip, or the task closed meanwhile). */
