@@ -1,3 +1,4 @@
+import type { StepperCatalog } from "@halonicjs/action-steppers";
 import {
   type AgentMessaging,
   type AnswerResult,
@@ -26,6 +27,7 @@ import { type MapContext, newestFirst, toAgent, toConversation, toMessage, toWor
 import { PaperclipReader } from "./reader.ts";
 import { isSafeSegment } from "./requests.ts";
 import { searchAll } from "./search.ts";
+import { PaperclipSteppers } from "./steppers.ts";
 import {
   bodyOf,
   PaperclipClientError,
@@ -44,6 +46,8 @@ export interface PaperclipMessagingOptions extends TransportOptions {
   label: string;
   /** The Paperclip user the key belongs to, so their own messages read as "me". */
   userId?: string;
+  /** The catalog stepper requests are checked against; without one, cards that pin one stay plain cards. */
+  stepperCatalog?: StepperCatalog;
   now?: () => Date;
 }
 
@@ -81,8 +85,10 @@ export class PaperclipMessaging implements AgentMessaging {
     this.#label = options.label;
     this.#userId = options.userId;
     this.#reader = new PaperclipReader(new PaperclipTransport(options), now);
-    this.#inbox = new PaperclipInbox(this.#reader, options.company);
-    this.#writer = new PaperclipWriter(this.#reader, now);
+    const steppers =
+      options.stepperCatalog && new PaperclipSteppers(this.#reader, options.stepperCatalog);
+    this.#inbox = new PaperclipInbox(this.#reader, options.company, steppers);
+    this.#writer = new PaperclipWriter(this.#reader, now, steppers);
   }
 
   async listSources(): Promise<readonly MessagingSource[]> {

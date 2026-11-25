@@ -4,6 +4,8 @@ import { asRecord, asRecords, type JsonRecord, text } from "./json.ts";
 import type { MapContext } from "./map.ts";
 import type { PaperclipReader } from "./reader.ts";
 import { UnsafeIdError } from "./requests.ts";
+import { answerStepperCard } from "./stepper-answer.ts";
+import { type PaperclipSteppers, pinnedRevision } from "./steppers.ts";
 import { type PaperclipAnswer, PaperclipClientError } from "./transport.ts";
 
 /** Which item an answer is for: Paperclip's IDs of a card (task, card) or of an approval. */
@@ -56,10 +58,12 @@ function unexpected(name: string): PaperclipClientError {
 export class PaperclipWriter {
   readonly #reader: PaperclipReader;
   readonly #now: () => Date;
+  readonly #steppers: PaperclipSteppers | undefined;
 
-  constructor(reader: PaperclipReader, now: () => Date) {
+  constructor(reader: PaperclipReader, now: () => Date, steppers?: PaperclipSteppers) {
     this.#reader = reader;
     this.#now = now;
+    this.#steppers = steppers;
   }
 
   /** Gives `answer` to the card or approval `target` names. */
@@ -68,8 +72,8 @@ export class PaperclipWriter {
     target: AnswerTarget,
     answer: InboxAnswer,
   ): Promise<AnswerResult> {
-    // This provider serves no action items yet (HAL-17536), so no `action-result` fits any of its items.
-    if (answer.kind === "action-result") {
+    // Only a stepper card takes an `action-result`, and only with a catalog to read its request.
+    if (answer.kind === "action-result" && (this.#steppers === undefined || !target.card)) {
       return refused("bad-answer");
     }
     try {
@@ -128,6 +132,14 @@ export class PaperclipWriter {
     if (answered !== undefined) {
       return answered;
     }
+    if (answer.kind === "action-result" && this.#steppers !== undefined) {
+      const steppers = { reader: this.#reader, steppers: this.#steppers, now: this.#now };
+      return answerStepperCard(steppers, { task, card }, before.record, answer);
+    }
+    if (await this.#servesStepper(task, before.record)) {
+      // A stepper item offers no options: it takes only the stepper's result.
+      return refused("bad-answer");
+    }
     const request = cardAnswerRequest(before.record, answer);
     if (request === undefined) {
       throw new PaperclipClientError(
@@ -160,6 +172,13 @@ export class PaperclipWriter {
       return refused("not-found");
     }
     throw unexpected(request.name);
+  }
+
+  /** Whether card `record` is served as a stepper item: it pins a request this Halonic can read. */
+  async #servesStepper(task: string, record: JsonRecord): Promise<boolean> {
+    const revision = pinnedRevision(record);
+    if (revision === undefined || this.#steppers === undefined) return false;
+    return (await this.#steppers.read(task, revision)).kind === "readable";
   }
 
   async #readCard(

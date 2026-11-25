@@ -3,6 +3,7 @@ import { approvalToItem, cardToItem } from "./cards.ts";
 import { asRecords, type JsonRecord, text } from "./json.ts";
 import { type MapContext, newestFirst } from "./map.ts";
 import type { PaperclipReader } from "./reader.ts";
+import type { PaperclipSteppers } from "./steppers.ts";
 
 /** Task states whose cards may still wait on the person. A closed task's cards can't be answered. */
 export const openTaskStates = "backlog,todo,in_progress,in_review,blocked";
@@ -63,13 +64,16 @@ async function eachLimited<T>(
 export class PaperclipInbox {
   readonly #reader: PaperclipReader;
   readonly #company: string;
+  readonly #steppers: PaperclipSteppers | undefined;
   #cards = new Map<string, TaskCards>();
   /** Each pending approval's first linked task, read once: an approval's links don't change. */
   #approvalTasks = new Map<string, JsonRecord | undefined>();
 
-  constructor(reader: PaperclipReader, company: string) {
+  /** With `steppers`, a card that pins a stepper request is served as a stepper item. */
+  constructor(reader: PaperclipReader, company: string, steppers?: PaperclipSteppers) {
     this.#reader = reader;
     this.#company = company;
+    this.#steppers = steppers;
   }
 
   /** The company's open tasks. */
@@ -94,7 +98,11 @@ export class PaperclipInbox {
   async list(context: MapContext, tasks?: readonly JsonRecord[]): Promise<InboxItem[]> {
     const projectOf = await this.#projects(context);
     const approvals = await this.#approvals(context, projectOf);
-    const cards = await this.#allCards(context, projectOf, tasks ?? (await this.openTasks()));
+    const read = await this.#allCards(context, projectOf, tasks ?? (await this.openTasks()));
+    const cards =
+      this.#steppers === undefined
+        ? read
+        : await this.#steppers.refresh(read, (item) => context.ids.read(item.id, "card")?.[0]);
     return newestFirst([...approvals, ...cards], (item) => item.createdAt);
   }
 
@@ -177,8 +185,15 @@ export class PaperclipInbox {
       }
     }
     await eachLimited(changed, cardReadsAtOnce, async ({ id, updatedAt, projectId }) => {
-      const records = await this.cardsOf(id);
-      const items = records.flatMap((record) => cardToItem(context, id, record) ?? []);
+      const items: InboxItem[] = [];
+      for (const record of await this.cardsOf(id)) {
+        const item = cardToItem(context, id, record);
+        if (item !== undefined) {
+          items.push(
+            this.#steppers === undefined ? item : await this.#steppers.serve(id, record, item),
+          );
+        }
+      }
       next.set(id, { updatedAt, projectId, items });
     });
     // Closed tasks drop out here, so their cards leave the Inbox with them.
