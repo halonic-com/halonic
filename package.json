@@ -43,6 +43,7 @@
     "@biomejs/biome": "catalog:",
     "@changesets/cli": "catalog:",
     "@changesets/git": "catalog:",
+    "@halonicjs/target-cloudflare-deploy": "workspace:*",
     "turbo": "catalog:"
   },
   "halonic": {
