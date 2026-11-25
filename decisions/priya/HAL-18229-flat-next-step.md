@@ -9,6 +9,9 @@ parameters are plain values. The runtime now also reads the monitor from
 as one text with commas between the tasks, with the same limits and refusals. The
 requirement's text and its other examples don't change, and no test is weakened: the
 existing tests for the `monitor` object and the `blockedBy` list still pass as they were.
+Two expectations grow to match: the `blockedBy` refusal also shows the text form, and
+`paperclip.next-step` declares the four flat `monitor…` parameters
+(`format.tool-action-parameters`), so a tool file may use them.
 
 ## Why
 

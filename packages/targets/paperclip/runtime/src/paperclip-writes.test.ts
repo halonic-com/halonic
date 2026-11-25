@@ -222,7 +222,7 @@ verifies("runtime.paperclip-writes", () => {
       [
         "paperclip.next-step",
         { task: "HAL-16403", status: "blocked", comment: "Waiting." },
-        "blockedBy must list 1 to 10 tasks that hold the work, such as ['HAL-16989'], never a parent epic.",
+        "blockedBy must list 1 to 10 tasks that hold the work, such as ['HAL-16989'] or \"HAL-16989, HAL-17012\", never a parent epic.",
       ],
       [
         "paperclip.next-step",

@@ -33,7 +33,7 @@ verifies("format.tool-action-parameters", () => {
       "paperclip.failed-runs since?",
       "paperclip.template id?",
       "paperclip.comment task!,body!",
-      "paperclip.next-step task!,status!,comment!,monitor?,blockedBy?",
+      "paperclip.next-step task!,status!,comment!,monitor?,monitorInMinutes?,monitorRef?,monitorService?,monitorMaxChecks?,blockedBy?",
       "paperclip.finish-run task!,outcome!,comment!,to?,blockedBy?",
     ]);
   });

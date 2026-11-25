@@ -134,12 +134,14 @@ export function readMonitor(value: unknown): MonitorRequest {
   return readMonitorFields((key) => monitor[key], nestedMonitorNames);
 }
 
+/** Whether any of the flat `monitor…` fields is set. */
+function hasFlatMonitor(params: Params): boolean {
+  return Object.values(flatMonitorKeys).some((key) => params[key] !== undefined);
+}
+
 /** Whether the parameters ask for a monitor, as `monitor` or as any of the flat `monitor…` fields. */
 function hasMonitor(params: Params): boolean {
-  return (
-    params["monitor"] !== undefined ||
-    Object.values(flatMonitorKeys).some((key) => params[key] !== undefined)
-  );
+  return params["monitor"] !== undefined || hasFlatMonitor(params);
 }
 
 /** The monitor from `monitor`, or from `monitorInMinutes`, `monitorRef`, `monitorService` and `monitorMaxChecks`; not both. */
@@ -147,7 +149,7 @@ function readMonitorParams(params: Params): MonitorRequest {
   if (params["monitor"] === undefined) {
     return readMonitorFields((key) => params[flatMonitorKeys[key]], flatMonitorKeys);
   }
-  if (Object.values(flatMonitorKeys).some((key) => params[key] !== undefined)) {
+  if (hasFlatMonitor(params)) {
     throw new ToolInputError(
       "give the monitor either as monitor or as monitorInMinutes and monitorRef, not both.",
     );
@@ -170,7 +172,7 @@ export function readBlockedBy(value: unknown): readonly string[] {
   const tasks = blockedByList(value).map((one) => (typeof one === "string" ? one.trim() : ""));
   if (tasks.length === 0 || tasks.length > 10 || !tasks.every(isTaskRef)) {
     throw new ToolInputError(
-      "blockedBy must list 1 to 10 tasks that hold the work, such as ['HAL-16989'], never a parent epic.",
+      "blockedBy must list 1 to 10 tasks that hold the work, such as ['HAL-16989'] or \"HAL-16989, HAL-17012\", never a parent epic.",
     );
   }
   return [...new Set(tasks)];
