@@ -34,9 +34,14 @@ export interface ConversationViewProps {
 export function ConversationView({ messenger, row, changed }: ConversationViewProps) {
   const [search, setSearch] = useState("");
   // What the chat's status region reads out: a new message, or the option that answered a card.
-  const [said, setSaid] = useState("");
+  // Each gets its own key, so the same words twice are read twice (HAL-18316 MS8).
+  const [said, setSaid] = useState({ text: "", count: 0 });
+  const say = useCallback(
+    (text: string) => setSaid((last) => ({ text, count: last.count + 1 })),
+    [],
+  );
   const section = useRef<HTMLElement>(null);
-  const { messages, questions, read } = useMessages(messenger, row, search, changed, setSaid);
+  const { messages, questions, read } = useMessages(messenger, row, search, changed, say);
 
   // Once a card is answered and gone, the next card's first option, or else the box, takes focus.
   const focusAfterAnswer = useCallback(() => {
@@ -55,7 +60,7 @@ export function ConversationView({ messenger, row, changed }: ConversationViewPr
     >
       <ConversationHeader row={row} search={search} onSearch={setSearch} />
       <p role="status" className="sr-only">
-        {said}
+        <span key={said.count}>{said.text}</span>
       </p>
       <p role="status" className={noMatch ? "px-4 pt-4 text-small text-fg-muted" : undefined}>
         {noMatch ? messengerWords.noMatches : ""}
@@ -71,7 +76,7 @@ export function ConversationView({ messenger, row, changed }: ConversationViewPr
           quickActions={messenger.quickActions}
           row={row}
           changed={changed}
-          announce={setSaid}
+          announce={say}
           afterAnswer={focusAfterAnswer}
         />
       </Transcript>
@@ -208,7 +213,8 @@ function Transcript({
           className={message.author.kind === "me" ? "ms-auto max-w-[80%]" : "max-w-[80%]"}
         >
           {channel && message.author.kind !== "me" ? (
-            <p className="text-small text-fg-muted" data-author-name>
+            // The sr-only "<name>: " below says it, so a screen reader reads it once (MS11).
+            <p className="text-small text-fg-muted" data-author-name aria-hidden="true">
               <bdi>{authorOf(message, row)}</bdi>
             </p>
           ) : null}

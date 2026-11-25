@@ -1,7 +1,7 @@
 import type { MessagingId } from "@halonicjs/ports";
 import { Button, EmptyState, useNarrow } from "@halonicjs/studio-kit";
 import { focusedPanelClass, type PlaceViewProps } from "@halonicjs/studio-shell";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { MessengerService } from "../api.ts";
 import { type ConversationRow, inTab, type Messenger, type MessengerTab } from "../messenger.ts";
@@ -24,7 +24,8 @@ export interface MessengerPageProps {
  *
  * A window narrower than 900px (`useNarrow`, such as 320px or 400 % zoom) shows one pane at a
  * time, as the Inbox does: the list, or the open chat with **Back to chats**, which puts focus
- * back on the chat's row. Opening a chat there puts focus in its box (HAL-18074 MS5).
+ * back on the chat's row, or on the tab when the chat left it. Opening a chat there puts focus in
+ * its box (HAL-18074 MS5).
  *
  * With nothing connected, the panel says so and offers Connect Paperclip, instead
  * of an empty list that looks like a Paperclip with no chats.
@@ -63,23 +64,15 @@ export function MessengerPage({ messenger, onConnect }: MessengerPageProps) {
     <div className="flex h-full min-h-0 gap-2">
       <h1 className="sr-only">{messengerWords.title}</h1>
       {onePane && panelFirst ? null : (
-        <nav
-          ref={list}
-          aria-label={messengerWords.title}
-          className={onePane ? "flex min-w-0 flex-1 flex-col" : "flex w-80 shrink-0 flex-col"}
-        >
-          {/* With nothing connected the panel's No connections is the one message; the column
-              stays, so the layout doesn't move once a source connects. */}
-          {connected === false ? null : (
-            <ConversationList
-              tab={tab}
-              onTab={setTab}
-              rows={inTab(rows, tab)}
-              selected={selected}
-              onSelect={select}
-            />
-          )}
-        </nav>
+        <ListColumn listRef={list} onePane={onePane} connected={connected}>
+          <ConversationList
+            tab={tab}
+            onTab={setTab}
+            rows={inTab(rows, tab)}
+            selected={selected}
+            onSelect={select}
+          />
+        </ListColumn>
       )}
       {onePane && !panelFirst ? null : (
         <main ref={chat} className={`flex min-w-0 flex-1 flex-col ${focusedPanelClass}`}>
@@ -100,6 +93,31 @@ export function MessengerPage({ messenger, onConnect }: MessengerPageProps) {
         </main>
       )}
     </div>
+  );
+}
+
+/**
+ * The list's column, the page's Messenger landmark. With nothing connected the panel's No
+ * connections is the one message: the column stays, so the layout doesn't move once a source
+ * connects, but as a plain empty `div`, not an empty landmark (HAL-18316 MS12).
+ */
+function ListColumn({
+  listRef,
+  onePane,
+  connected,
+  children,
+}: {
+  readonly listRef: RefObject<HTMLElement | null>;
+  readonly onePane: boolean;
+  readonly connected: boolean | undefined;
+  readonly children: ReactNode;
+}) {
+  const className = onePane ? "flex min-w-0 flex-1 flex-col" : "flex w-80 shrink-0 flex-col";
+  if (connected === false) return <div className={className} />;
+  return (
+    <nav ref={listRef} aria-label={messengerWords.title} className={className}>
+      {children}
+    </nav>
   );
 }
 
@@ -165,7 +183,12 @@ function useOnePane(
   const back = () => {
     flushSync(() => setSelected(undefined));
     const chats = list.current?.querySelectorAll<HTMLElement>("[data-chat]") ?? [];
-    [...chats].find((row) => row.getAttribute("data-chat") === selected)?.focus();
+    const row = [...chats].find((each) => each.getAttribute("data-chat") === selected);
+    // An answered chat can leave Waiting for me while it stays open: then its tab takes focus
+    // (HAL-18316 MS6).
+    (
+      row ?? list.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
+    )?.focus();
   };
   return { onePane, list, chat, select, back };
 }

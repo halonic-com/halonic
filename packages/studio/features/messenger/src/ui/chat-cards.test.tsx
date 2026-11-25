@@ -67,6 +67,24 @@ verifies("messenger.quick-actions", () => {
       expect(document.activeElement).toBe(page.querySelector("textarea"));
     });
 
+    it("reads the same answer to two cards out twice (HAL-18316 MS8)", async () => {
+      const { messaging, acme, chief } = chiefAsks();
+      const yes = [{ id: "yes", label: "Yes" }];
+      const from = { kind: "agent", agent: chief.id, name: "Chief" } as const;
+      messaging.addInboxItem(acme.id, { question: "Tag it?", from, options: yes });
+      messaging.addInboxItem(acme.id, { question: "Ship it?", from, options: yes });
+      const page = await openMessenger(messaging);
+      await openChat(page, "Chief");
+      const status = page.querySelector('main p.sr-only[role="status"]');
+      const lines: string[] = [];
+      const observer = new MutationObserver(() => lines.push(status?.textContent ?? ""));
+      if (status !== null) observer.observe(status, { childList: true, subtree: true });
+      await press(byText(page, "main ol button", "Yes"));
+      await press(byText(page, "main ol button", "Yes"));
+      observer.disconnect();
+      expect(lines.filter((line) => line === "Answered: Yes.")).toHaveLength(2);
+    });
+
     it("says who answered first when the card was answered elsewhere, and answers nothing more", async () => {
       const { messaging, card } = chiefAsks();
       // The change isn't heard before the click, as when another client answers just before it.

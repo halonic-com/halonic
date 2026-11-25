@@ -152,6 +152,18 @@ verifies("messenger.conversations", () => {
       expect(document.activeElement).toBe(byText(page, "nav li button", "Acme"));
     });
 
+    it("in a narrow window, Back to chats focuses the tab when the chat left it (HAL-18316 MS6)", async () => {
+      const { messaging } = twoChiefs();
+      const page = await openMessenger(messaging, [], true);
+      await press(byText(page, '[role="tab"]', "Waiting for me"));
+      const box = await openAcmeChat(page);
+      // Answering it takes the chat off Waiting for me, and it stays open.
+      await typeAndSend(box, "Yes, merge it");
+      await press(byText(page, "main button", "Back to chats"));
+      expect(rows(page)).toEqual([]);
+      expect(document.activeElement).toBe(byText(page, '[role="tab"]', "Waiting for me"));
+    });
+
     it("never lets a search's late answer replace a newer one's", async () => {
       const { messaging, acmeChat } = twoChiefs();
       messaging.addMessage(acmeChat.id, { body: "Morning" });

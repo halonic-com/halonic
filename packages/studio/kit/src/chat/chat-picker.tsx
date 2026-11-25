@@ -101,6 +101,17 @@ export function useChatPicker(picker: ChatComposerPicker | undefined): ChatPicke
   return { boxAttributes, listboxId, labelId, activeIndex, optionId, pick, handleKey };
 }
 
+/**
+ * A picker row. Focus stays in the box, so the active row's fill is the only sign of it; as on a
+ * menu row, high contrast, which drops the fill, shows the see-through outline instead, and more
+ * contrast shows it as an edge as well (HAL-18316 KT1).
+ */
+const optionClasses = [
+  "cursor-pointer rounded-md px-2 py-1 text-start aria-selected:bg-surface-muted",
+  "outline-2 -outline-offset-2 outline-transparent aria-selected:outline-solid",
+  "contrast-more:aria-selected:outline-border-control",
+].join(" ");
+
 /** The picker's rows above the box: a listbox whose active row the box names. */
 export function ChatPickerList({
   picker,
@@ -129,7 +140,7 @@ export function ChatPickerList({
               aria-selected={index === state.activeIndex}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => state.pick(option.id)}
-              className="cursor-pointer rounded-md px-2 py-1 text-start aria-selected:bg-surface-muted"
+              className={optionClasses}
             >
               {option.content}
             </div>

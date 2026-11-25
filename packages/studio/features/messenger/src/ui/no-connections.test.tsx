@@ -42,12 +42,12 @@ verifies("messenger.not-connected", () => {
       expect(page.querySelector("nav")?.textContent).toContain("No chats yet.");
     });
 
-    it("leaves the list empty, without tabs or No chats yet., so No connections is the one message", async () => {
+    it("leaves the list out, without tabs or No chats yet., so No connections is the one message", async () => {
       const page = await openMessenger(new FakeAgentMessaging());
-      const list = page.querySelector("nav");
-      expect(list).not.toBeNull();
-      expect(list?.textContent).not.toContain("No chats yet.");
-      expect(list?.querySelector("[role=tablist]")).toBeNull();
+      expect(page.textContent).not.toContain("No chats yet.");
+      expect(page.querySelector("[role=tablist]")).toBeNull();
+      // No empty Messenger landmark either (HAL-18316 MS12).
+      expect(page.querySelector("nav")).toBeNull();
     });
   });
 });
