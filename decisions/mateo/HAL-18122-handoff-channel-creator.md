@@ -2,6 +2,7 @@
 
 - Approval: HAL-18122
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:Pei7yYlMjie2d9aC3wLNwTQZP4Dz7gwtcViCyMnqpzFXpfD67qokD+kuNw7XMlmqB6AjzHCOVtgNxI/jNc5JAQ==
 
 The hand-off limit took any parent task with the `channel` tag as a channel's
 parent, so an agent could put the limit on tasks by tagging a task it created.
