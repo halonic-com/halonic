@@ -1,9 +1,11 @@
 /**
  * The placement rules of `seats.check`: which agents should move off which
- * seat, where to, and which full seat is worth its one manual reset. From the
- * seat forecast's plan (HAL-15997, section 4.4): move at 80% of the 5-hour
- * window or when it is projected above 90%, move off at 88% of the week,
- * reserves only when no pool seat fits, and never the paid API.
+ * seat, where to, and which full seat is worth its one manual reset. They are
+ * the Seat Supervisor's rules as it runs them (HAL-16021): move at 80% of the
+ * 5-hour window or when it is projected above 90% before its reset, move
+ * everyone at 95%, move off at 88% of the week or at 75% with the weekly reset
+ * more than a day away; send agents to the seat with the emptiest 5-hour
+ * window, reserves only when no other seat fits, and never the paid API.
  *
  * These are proposals only: the board applies them (or, behind its
  * **Move agents** switch, phase 4 does). No I/O here: the job hands in each
@@ -43,10 +45,24 @@ export interface PlacementRules {
   readonly sessionMovePercent: number;
   /** Move off when the 5-hour window is projected to pass this … */
   readonly sessionProjectedPercent: number;
-  /** … within this many minutes. */
-  readonly projectionMinutes: number;
+  /** … within this many minutes; `undefined` for "before its reset". */
+  readonly projectionMinutes: number | undefined;
+  /** Move everyone off at this much of the 5-hour window, or when it would get there before the next check. */
+  readonly sessionHardStopPercent: number;
+  /** Minutes until the next check, for the hard stop's projection. */
+  readonly checkMinutes: number;
   /** Move off at this much of the week. */
   readonly weekMovePercent: number;
+  /** A seat with this much of its week used … */
+  readonly reservePercent: number;
+  /** … and its weekly reset more than this many hours away is kept as a reserve. */
+  readonly reserveResetHours: number;
+  /** A target's 5-hour window must be below this. */
+  readonly targetSessionBelow: number;
+  /** A target's week must be below this … */
+  readonly targetWeekBelow: number;
+  /** … or below this when its weekly reset is within `reserveResetHours`. */
+  readonly targetWeekNearResetBelow: number;
   /** How many agents a seat may take; `undefined` for no limit. */
   readonly agentsPerSeat: number | undefined;
   /** A full seat is worth a manual reset only when its weekly reset is at least this far off. */
@@ -56,14 +72,27 @@ export interface PlacementRules {
 export const defaultPlacementRules: PlacementRules = {
   sessionMovePercent: 80,
   sessionProjectedPercent: 90,
-  projectionMinutes: 60,
+  projectionMinutes: undefined,
+  sessionHardStopPercent: 95,
+  checkMinutes: 10,
   weekMovePercent: 88,
-  agentsPerSeat: undefined,
+  reservePercent: 75,
+  reserveResetHours: 24,
+  targetSessionBelow: 50,
+  targetWeekBelow: 75,
+  targetWeekNearResetBelow: 85,
+  agentsPerSeat: 3,
   resetAdviceDays: 3,
 };
 
 /** Why an agent should leave its seat. */
-export type MoveReason = "session-full" | "session-projected" | "week-full" | "paid-api";
+export type MoveReason =
+  | "session-hard-stop"
+  | "session-full"
+  | "session-projected"
+  | "week-full"
+  | "week-reserve"
+  | "paid-api";
 
 export interface ProposedMove {
   readonly agentId: AgentId;
@@ -80,7 +109,8 @@ export interface PlacementProposal {
 }
 
 const minuteMs = 60_000;
-const dayMs = 24 * 60 * minuteMs;
+const hourMs = 60 * minuteMs;
+const dayMs = 24 * hourMs;
 
 /**
  * The moves and the reset advice at `now` (ISO), for the agents on the seats
@@ -98,9 +128,11 @@ export function proposePlacements(
   for (const seatId of placements.values()) {
     load.set(seatId, (load.get(seatId) ?? 0) + 1);
   }
-  const targets = seats
-    .filter((seat) => canTake(seat, now, rules))
-    .sort((a, b) => compareTargets(a, b));
+  // Seats with room first, then reserves as a last resort; never the paid API.
+  const targets = [
+    ...seats.filter((seat) => isTarget(seat, now, rules)).sort(compareTargets),
+    ...seats.filter((seat) => isLastResort(seat, now, rules)).sort(compareTargets),
+  ];
 
   const moves: ProposedMove[] = [];
   const agents = [...placements.entries()].sort(([a], [b]) => a.localeCompare(b));
@@ -132,64 +164,113 @@ export function moveReason(
   if (!seat.readable) {
     return undefined;
   }
-  if (seat.session !== undefined && seat.session.usedPercent >= rules.sessionMovePercent) {
-    return "session-full";
+  const session = seat.session;
+  if (session !== undefined) {
+    if (projectedPercent(session, now, rules.checkMinutes) >= rules.sessionHardStopPercent) {
+      return "session-hard-stop";
+    }
+    if (session.usedPercent >= rules.sessionMovePercent) {
+      return "session-full";
+    }
+    if (projectedPercent(session, now, rules.projectionMinutes) > rules.sessionProjectedPercent) {
+      return "session-projected";
+    }
   }
-  if (
-    seat.session !== undefined &&
-    projectedPercent(seat.session, now, rules) > rules.sessionProjectedPercent
-  ) {
-    return "session-projected";
-  }
+  // The 88% rule is checked before the reserve rule, so it always fires
+  // first; the Supervisor's old "move off at 90%" is covered by it.
   if (seat.week !== undefined && seat.week.usedPercent >= rules.weekMovePercent) {
     return "week-full";
+  }
+  if (isReserve(seat, now, rules)) {
+    return "week-reserve";
   }
   return undefined;
 }
 
 /**
- * The 5-hour window's percent `projectionMinutes` from now at its current
- * rate, or at its reset if that comes first (after it, the window is empty).
+ * The window's percent `minutes` from now at its current rate, or at its
+ * reset if that comes first (after it, the window is empty). With `minutes`
+ * `undefined`, the percent just before the reset.
  */
-export function projectedPercent(window: WindowNow, now: string, rules: PlacementRules): number {
+export function projectedPercent(
+  window: WindowNow,
+  now: string,
+  minutes: number | undefined,
+): number {
   if (window.percentPerHour === undefined || window.percentPerHour <= 0) {
     return window.usedPercent;
   }
   const nowMs = Date.parse(now);
-  const horizonMs = nowMs + rules.projectionMinutes * minuteMs;
+  const horizonMs = minutes === undefined ? Number.POSITIVE_INFINITY : nowMs + minutes * minuteMs;
   const untilMs =
     window.resetsAt === undefined ? horizonMs : Math.min(horizonMs, Date.parse(window.resetsAt));
+  if (!Number.isFinite(untilMs)) {
+    return window.usedPercent;
+  }
   const hours = Math.max(0, untilMs - nowMs) / (60 * minuteMs);
   return window.usedPercent + window.percentPerHour * hours;
 }
 
-/** A seat takes agents when it is a pool or reserve seat, readable, active and not near a limit. */
-function canTake(seat: SeatNow, now: string, rules: PlacementRules): boolean {
-  if (seat.role === "paid-api" || seat.status !== "active" || !seat.readable) {
+/** A seat with much of its week used and its weekly reset far off: kept for last. */
+function isReserve(seat: SeatNow, now: string, rules: PlacementRules): boolean {
+  const week = seat.week;
+  if (week === undefined || week.usedPercent < rules.reservePercent) {
     return false;
   }
-  if (seat.session === undefined || seat.week === undefined) {
-    return false;
-  }
-  return moveReason(seat, now, rules) === undefined;
+  return resetMs(seat) - Date.parse(now) > rules.reserveResetHours * hourMs;
 }
 
-/** Pool seats before reserves; then the weekly reset that comes soonest; then the less used week. */
+/** Readable, active, with both windows known, and not the paid API. */
+function isOpen(seat: SeatNow): seat is SeatNow & { session: WindowNow; week: WindowNow } {
+  return (
+    seat.role !== "paid-api" &&
+    seat.status === "active" &&
+    seat.readable &&
+    seat.session !== undefined &&
+    seat.week !== undefined
+  );
+}
+
+/**
+ * A first-choice target: a pool seat that isn't a reserve, with its 5-hour
+ * window below 50% and its week below 75% (or below 85% when its weekly reset
+ * is within a day).
+ */
+function isTarget(seat: SeatNow, now: string, rules: PlacementRules): boolean {
+  if (!isOpen(seat) || seat.role !== "pool" || isReserve(seat, now, rules)) {
+    return false;
+  }
+  const resetSoon = resetMs(seat) - Date.parse(now) <= rules.reserveResetHours * hourMs;
+  const weekLimit = resetSoon ? rules.targetWeekNearResetBelow : rules.targetWeekBelow;
+  return (
+    seat.session.usedPercent < rules.targetSessionBelow &&
+    seat.week.usedPercent < weekLimit &&
+    moveReason(seat, now, rules) === undefined
+  );
+}
+
+/** A last-resort target: a reserve seat, or a seat kept as a reserve, below every move limit. */
+function isLastResort(seat: SeatNow, now: string, rules: PlacementRules): boolean {
+  if (!isOpen(seat) || isTarget(seat, now, rules)) {
+    return false;
+  }
+  const reason = moveReason(seat, now, rules);
+  const reserve = seat.role === "reserve" || isReserve(seat, now, rules);
+  return (
+    reserve &&
+    seat.session.usedPercent < rules.targetSessionBelow &&
+    (reason === undefined || reason === "week-reserve")
+  );
+}
+
+/** The emptiest 5-hour window first; then the weekly reset that comes soonest; then the id. */
 function compareTargets(a: SeatNow, b: SeatNow): number {
-  const byRole = rolePlace(a.role) - rolePlace(b.role);
-  if (byRole !== 0) {
-    return byRole;
+  const bySession = (a.session?.usedPercent ?? 0) - (b.session?.usedPercent ?? 0);
+  if (bySession !== 0) {
+    return bySession;
   }
   const byReset = resetMs(a) - resetMs(b);
-  if (byReset !== 0) {
-    return byReset;
-  }
-  const byUse = (a.week?.usedPercent ?? 0) - (b.week?.usedPercent ?? 0);
-  return byUse !== 0 ? byUse : a.id.localeCompare(b.id);
-}
-
-function rolePlace(role: SeatRole): number {
-  return role === "pool" ? 0 : 1;
+  return byReset !== 0 ? byReset : a.id.localeCompare(b.id);
 }
 
 function resetMs(seat: SeatNow): number {

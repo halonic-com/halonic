@@ -65,12 +65,18 @@ export function reasonText(
   switch (reason) {
     case "paid-api":
       return "a paid-API seat takes no agents";
+    case "session-hard-stop":
+      return `5-hour window at ${session}%, at or heading to ${rules.sessionHardStopPercent}% before the next check`;
     case "session-full":
       return `5-hour window at ${session}%`;
     case "session-projected":
-      return `5-hour window at ${session}%, heading above ${rules.sessionProjectedPercent}% within ${rules.projectionMinutes} minutes`;
+      return rules.projectionMinutes === undefined
+        ? `5-hour window at ${session}%, heading above ${rules.sessionProjectedPercent}% before its reset`
+        : `5-hour window at ${session}%, heading above ${rules.sessionProjectedPercent}% within ${rules.projectionMinutes} minutes`;
     case "week-full":
       return `week at ${week}%`;
+    case "week-reserve":
+      return `week at ${week}% with its reset more than ${rules.reserveResetHours} hours away, kept as a reserve`;
   }
 }
 
