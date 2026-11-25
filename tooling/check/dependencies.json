@@ -276,8 +276,7 @@
     "@typescript/typescript6": {
       "category": "dev-tooling",
       "allowedIn": [
-        "@halonicjs/tooling-check",
-        "@halonicjs/tooling-paperclip"
+        "@halonicjs/tooling-check"
       ],
       "layers": [
         "tooling"

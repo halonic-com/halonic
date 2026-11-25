@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { fixedIds } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { impurities } from "../signals/purity.test-helper.ts";
 import type { PrWatcherAction, WatchedPull, WatchedTask } from "../signals/rules/pr-watcher.ts";
 import { engineLock } from "./engine-lock.ts";
 import { PluginStateRunStore } from "./plugin-run-store.ts";
@@ -126,6 +125,11 @@ verifies("paperclip.pr-watcher-lifecycle", () => {
 
   it("is a pure ToolScript rule", () => {
     const file = new URL("./rules/pr-watcher-lifecycle.ts", import.meta.url);
-    expect(impurities("pr-watcher-lifecycle.ts", readFileSync(file, "utf8"))).toEqual([]);
+    const source = readFileSync(file, "utf8");
+    const code = source.replace(/^\s*(\/\/|\*|\/\*).*$/gm, "");
+    expect(code.match(/^import /gm)).toBeNull();
+    expect(code).not.toMatch(
+      /\bfetch\(|Date\.now\(|new Date\(|Math\.random|process\.|require\(|globalThis|import\(|\beval\b|\bFunction\(/,
+    );
   });
 });
