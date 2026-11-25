@@ -34,6 +34,8 @@ vm_off() { [[ $(virsh domstate "$VM") == "shut off" ]]; }
 [[ $(stat -c '%U %a' "$ETC/product-key") == "root 400" ]] || fail "$ETC/product-key must be root-owned 0400"
 nft list table inet halonic_win >/dev/null || fail "nft table halonic_win isn't loaded (halonic-win-nft.service)"
 [[ $(virsh net-info win-net | awk '/^Active:/ {print $2}') == yes ]] || fail "network win-net isn't active"
+# The runner service restores and destroys the same VM and disk, so it must be stopped (README).
+if systemctl is-active -q halonic-win-runner.service; then fail "halonic-win-runner.service is running; stop it first"; fi
 if virsh dominfo "$VM" >/dev/null 2>&1 && ! vm_off; then fail "$VM is running; stop it first"; fi
 
 # --- Fresh SSH key pair, admin password and known_hosts for this build.
@@ -79,8 +81,9 @@ virsh change-media "$VM" sdb --eject --live --config >/dev/null
 virsh change-media "$VM" sdc --eject --live --config >/dev/null
 rm -f "$WORK/answer.iso"
 
-log "installing WSL"
-"${SCP[@]}" "$HERE/image/setup-2.ps1" "$HERE/image/activate.ps1" halonic@10.79.0.10:C:/halonic-win/
+log "installing WSL, Node and the Actions runner"
+"${SCP[@]}" "$HERE/image/setup-2.ps1" "$HERE/image/activate.ps1" "$HERE/image/run-job.ps1" \
+  "$HERE/image/job-started.mjs" "$HERE/image/job-started.ps1" halonic@10.79.0.10:C:/halonic-win/
 "${SSH[@]}" 'powershell -NoProfile -ExecutionPolicy Bypass -File "$env:SystemDrive\halonic-win\setup-2.ps1"'
 log "activating Windows"
 "${SSH[@]}" 'powershell -NoProfile -ExecutionPolicy Bypass -File "$env:SystemDrive\halonic-win\activate.ps1"' <"$ETC/product-key"
