@@ -123,6 +123,72 @@ verifies("kit.question-form", () => {
       );
       expect(container.textContent).not.toContain("Answered 24 Nov");
       expect(labelled(container, "Dark").getAttribute("aria-describedby")).toContain("card-line");
+      expect(labelled(container, "Separate repo").getAttribute("aria-describedby")).toBe(
+        "card-line",
+      );
+      expect(labelled(container, "In the monorepo").getAttribute("aria-describedby")).toBe(
+        "card-line",
+      );
+    });
+
+    it("describes each answered radio by the answered line", () => {
+      const { container } = render(
+        <QuestionForm
+          questions={questions}
+          onSubmit={vi.fn()}
+          answered={{
+            answers: [{ question: "repo", options: ["separate"] }],
+            at: new Date(2026, 10, 24, 18, 43),
+          }}
+        />,
+      );
+      const line = [...container.querySelectorAll("p")].find(
+        (each) => each.textContent === "Answered 24 Nov",
+      );
+      expect(line?.id).toBeTruthy();
+      for (const option of ["Separate repo", "In the monorepo"]) {
+        expect(labelled(container, option).getAttribute("aria-describedby")).toBe(line?.id);
+      }
+    });
+
+    it("lets the person clear the pick on an optional single question, which then sends nothing for it", async () => {
+      const withOptionalSingle: readonly FormQuestion[] = [
+        ...questions,
+        {
+          id: "when",
+          prompt: "When?",
+          selection: "single",
+          required: false,
+          options: [
+            { id: "now", label: "Now" },
+            { id: "later", label: "Later" },
+          ],
+        },
+      ];
+      const onSubmit = vi.fn();
+      const { container } = render(
+        <QuestionForm questions={withOptionalSingle} onSubmit={onSubmit} />,
+      );
+      const clearButton = () =>
+        [...container.querySelectorAll("button")].find(
+          (each) => each.textContent === "Clear answer",
+        );
+      // Only an optional question with a pick offers it: not the required one, not before a pick.
+      await click(labelled(container, "Separate repo"));
+      expect(clearButton()).toBeUndefined();
+
+      await click(labelled(container, "Later"));
+      const clear = clearButton();
+      if (clear === undefined) throw new Error("no Clear answer");
+      expect(clear.getAttribute("aria-label")).toBe("Clear answer to When?");
+      await click(clear);
+      expect(labelled(container, "Later").checked).toBe(false);
+      expect(labelled(container, "Now").checked).toBe(false);
+      expect(document.activeElement).toBe(labelled(container, "Now"));
+      expect(clearButton()).toBeUndefined();
+
+      await click(submit(container));
+      expect(onSubmit).toHaveBeenCalledWith([{ question: "repo", options: ["separate"] }]);
     });
 
     it("names each picked option by its label, and by its ID once the card no longer offers it", () => {

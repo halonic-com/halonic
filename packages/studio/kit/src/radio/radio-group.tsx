@@ -24,6 +24,11 @@ interface RadioOptionUnavailable<Value extends string> extends RadioOptionBase<V
   /** Why it can't be picked: "Needs Docker." Never only a tooltip. */
   readonly note: ReactNode;
   readonly unavailable: true;
+  /**
+   * The `id` of a line outside the group that says why, such as a form's "Answered 24 Nov". It
+   * describes the radio, after the note when there is one.
+   */
+  readonly reason?: string | undefined;
 }
 
 /** One choice in a RadioGroup. */
@@ -183,6 +188,8 @@ function RadioRow<Value extends string>({
   const noteId = useId();
   const unavailable = option.unavailable === true;
   const hasNote = option.note !== undefined && option.note !== null;
+  const reason = option.unavailable === true ? option.reason : undefined;
+  const describedBy = [hasNote ? noteId : undefined, reason].filter((id) => id !== undefined);
   let state: keyof typeof circleStateClasses = "default";
   if (unavailable) {
     state = "unavailable";
@@ -208,7 +215,7 @@ function RadioRow<Value extends string>({
           // Named by its words alone: the note sits in the label too, but it is the description,
           // so a screen reader reads it once.
           aria-labelledby={labelId}
-          aria-describedby={hasNote ? noteId : undefined}
+          aria-describedby={describedBy.length === 0 ? undefined : describedBy.join(" ")}
           className={`${circleShared} ${layouts[layout].circle} ${circleStateClasses[state]} ${unavailable ? unavailableFade : ""}`}
           onChange={onPick}
         />
