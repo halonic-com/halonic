@@ -300,12 +300,9 @@ for (const p of packets) {
     names.set(address, [...new Set([...(names.get(address) ?? []), name])]);
 }
 const nameOf = (address) => names.get(address)?.[0] ?? address;
-// The update check asks updates.halonic.com, which sends the download on to GitHub's asset hosts
-// (HAL-18480).
-const isUpdateHost = (address) =>
-  (names.get(address) ?? []).some((n) =>
-    /^updates\.halonic\.com$|(^|\.)(github\.com|githubusercontent\.com)$/i.test(n),
-  );
+// The update check asks updates.halonic.com, which sends the download on to GitHub's asset hosts.
+const updateHost = /^updates\.halonic\.com$|(^|\.)(github\.com|githubusercontent\.com)$/i;
+const isUpdateHost = (address) => (names.get(address) ?? []).some((n) => updateHost.test(n));
 
 const phaseOf = (time) =>
   Object.entries(session?.phases ?? {}).find(([, w]) => w.start <= time && time <= w.end)?.[0] ??
