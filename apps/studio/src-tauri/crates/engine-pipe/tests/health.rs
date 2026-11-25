@@ -18,7 +18,7 @@ fn open_session(now: Instant) -> PipeSession {
 
 /// A `health` frame with these two fields, and the rest as an engine with 2
 /// runs going sends them.
-fn health(runs_waiting: &str, next_routine_at: &str) -> String {
+fn health_frame(runs_waiting: &str, next_routine_at: &str) -> String {
     format!(
         r#"{{"kind":"health","scheduling":true,"paused":false,"activeRuns":2,"runsWaiting":{runs_waiting},"lastTick":"2026-11-25T09:00:00.000Z","nextRoutineAt":{next_routine_at}}}"#
     )
@@ -31,7 +31,7 @@ fn read(json: &str) -> Result<EngineEvent, PipeFault> {
 
 #[test]
 fn health_status_reads_the_runs_waiting_and_the_next_routine() {
-    let event = read(&health("1", r#""2026-11-25T14:00:00.000Z""#)).unwrap();
+    let event = read(&health_frame("1", r#""2026-11-25T14:00:00.000Z""#)).unwrap();
     let EngineEvent::Health(health) = event else {
         panic!("not health: {event:?}");
     };
@@ -46,7 +46,7 @@ fn health_status_reads_the_runs_waiting_and_the_next_routine() {
             next_routine_at: Some("2026-11-25T14:00:00.000Z".into()),
         }
     );
-    let none = read(&health("0", "null")).unwrap();
+    let none = read(&health_frame("0", "null")).unwrap();
     let EngineEvent::Health(health) = none else {
         panic!("not health: {none:?}");
     };
@@ -55,7 +55,7 @@ fn health_status_reads_the_runs_waiting_and_the_next_routine() {
 
 #[test]
 fn health_status_faults_on_missing_or_extra_fields() {
-    let full = health("0", "null");
+    let full = health_frame("0", "null");
     let cases = [
         (
             "without runsWaiting",
@@ -69,8 +69,8 @@ fn health_status_faults_on_missing_or_extra_fields() {
             "an unknown field",
             full.replace(r#""runsWaiting":0,"#, r#""runsWaiting":0,"runsQueued":0,"#),
         ),
-        ("runsWaiting as text", health(r#""1""#, "null")),
-        ("negative runsWaiting", health("-1", "null")),
+        ("runsWaiting as text", health_frame(r#""1""#, "null")),
+        ("negative runsWaiting", health_frame("-1", "null")),
     ];
     for (name, json) in cases {
         assert_eq!(read(&json).unwrap_err(), PipeFault::NotAMessage, "{name}");
@@ -80,11 +80,11 @@ fn health_status_faults_on_missing_or_extra_fields() {
 #[test]
 fn health_status_faults_on_more_waiting_than_going() {
     assert_eq!(
-        read(&health("3", "null")).unwrap_err(),
+        read(&health_frame("3", "null")).unwrap_err(),
         PipeFault::NotAMessage
     );
     assert!(matches!(
-        read(&health("2", "null")),
+        read(&health_frame("2", "null")),
         Ok(EngineEvent::Health(_))
     ));
 }
@@ -107,7 +107,7 @@ fn health_status_faults_on_a_next_routine_in_another_form() {
     ];
     for next_routine_at in cases {
         assert_eq!(
-            read(&health("0", next_routine_at)).unwrap_err(),
+            read(&health_frame("0", next_routine_at)).unwrap_err(),
             PipeFault::NotAMessage,
             "{next_routine_at}"
         );
