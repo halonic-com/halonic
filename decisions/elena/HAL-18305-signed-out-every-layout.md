@@ -2,6 +2,7 @@
 
 - Approval: Liam asked for it in the review of #5987 (HAL-18216); Liam signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:TUgWas0YjGdwVS2pO2y1f4dvH8n8Q+Gl+gQzdeb5yNgrRTpLMrQc4Uxn+xIShvx1sJqqBQNs9KwsCFqfgixwBw==
 - Task: HAL-18305
 
 ## What changes
