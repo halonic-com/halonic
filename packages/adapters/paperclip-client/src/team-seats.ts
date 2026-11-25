@@ -56,15 +56,21 @@ function stateOf(record: JsonRecord, windows: readonly SeatWindow[]): SeatState 
 /**
  * Why the seat's newest read failed, from the plugin's `lastError`. A signed-out
  * seat has its own state, and a seat with no error was read fine or only too
- * long ago, so neither has a `failedRead`. The plugin's summary doesn't say
- * when the failed read ran, so `at` is the summary's own time: the newest
- * moment the failure is known to hold.
+ * long ago, so neither has a `failedRead`. `at` is when the failed read ran,
+ * the plugin's `failedReadAt`. A plugin from before HAL-17898 doesn't send
+ * it, so then `at` is the summary's own time: the newest moment the failure
+ * is known to hold.
  */
-function failedReadOf(record: JsonRecord, state: SeatState, at: string): Pick<Seat, "failedRead"> {
+function failedReadOf(
+  record: JsonRecord,
+  state: SeatState,
+  summaryAt: string,
+): Pick<Seat, "failedRead"> {
   const error = text(record, "lastError");
   if (state !== "not-read" || error === undefined) {
     return {};
   }
+  const at = text(record, "failedReadAt") ?? summaryAt;
   return { failedRead: { cause: error === "rate-limited" ? "rate-limited" : "other", at } };
 }
 

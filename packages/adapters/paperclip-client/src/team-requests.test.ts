@@ -48,7 +48,8 @@ verifies("paperclip-client.team-status", () => {
       await team.spend("month");
       await team.agentSpend("week");
       await team.seats();
-      expect(paperclip.seen).toHaveLength(6);
+      // Spend reads the seats summary too, for its runs with no seat.
+      expect(paperclip.seen).toHaveLength(7);
       for (const request of paperclip.seen) {
         expect(request.method).toBe("GET");
         expect(findRequest(request.method, request.path), request.path).toBeDefined();
