@@ -76,3 +76,28 @@ verifies("action-steppers.stepper-preview", () => {
     });
   });
 });
+
+verifies("action-steppers.stepper-preview-server-session", () => {
+  it("shows a server-session block's steps and Done when under the requester's heading", () => {
+    const serverSession = {
+      kind: "server-session",
+      task: "HAL-1234",
+      steps: ["Pull main in the acme checkout.", "Restart the acme worker."],
+      doneWhen: "The worker answers on build.acme.example/health.",
+    };
+    expect(preview(serverSession).blocks).toEqual([
+      {
+        block: 1,
+        lines: ["Opens Claude Code on your server for HAL-1234."],
+        fromRequester: {
+          heading: "Instructions from acme-bot, not checked by Halonic",
+          lines: [
+            "Pull main in the acme checkout.",
+            "Restart the acme worker.",
+            "Done when: The worker answers on build.acme.example/health.",
+          ],
+        },
+      },
+    ]);
+  });
+});
