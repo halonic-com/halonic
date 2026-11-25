@@ -78,6 +78,9 @@ verifies("app.plugin-build", () => {
       workspaceCommit: commit,
       changes: { added: ["pr_status"], removed: [], changed: [] },
     });
+    expect(first.release.snapshotSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(first.release.snapshotSha256).not.toBe(first.release.sha256);
+    expect(JSON.parse(first.releaseText)).toEqual(first.release);
   });
 
   it("puts the workspace's templates in the snapshot, sorted by id", async () => {

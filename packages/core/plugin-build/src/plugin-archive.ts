@@ -63,7 +63,7 @@ export function buildPluginArchive(files: PluginFiles): Uint8Array {
     { name: inPackage(pluginFileNames.packageJson), bytes: encodeUtf8(files.packageJson) },
     { name: inPackage(pluginFileNames.manifest), bytes: encodeUtf8(files.manifest) },
     { name: inPackage(pluginFileNames.worker), bytes: files.worker },
-    { name: inPackage(pluginFileNames.snapshot), bytes: encodeUtf8(snapshotText(files.snapshot)) },
+    { name: inPackage(pluginFileNames.snapshot), bytes: snapshotBytes(files.snapshot) },
   ]);
 }
 
@@ -74,6 +74,23 @@ export function buildPluginArchive(files: PluginFiles): Uint8Array {
  */
 export async function archiveSha256(archive: Uint8Array, digest: Sha256): Promise<string> {
   return bytesToHex(await digest.sha256(archive));
+}
+
+/**
+ * The sha-256 of `package/snapshot.json` as the archive holds it, 64
+ * lowercase hex characters. The plugin's pin settings ask for it, so the
+ * release file carries it and nobody has to unpack the archive to find it.
+ *
+ * @param snapshot - the snapshot passed to {@link buildPluginArchive}
+ * @param digest - hashes the bytes (the `Digest` port)
+ */
+export async function snapshotSha256(snapshot: PluginSnapshot, digest: Sha256): Promise<string> {
+  return bytesToHex(await digest.sha256(snapshotBytes(snapshot)));
+}
+
+/** The snapshot's bytes in the archive. Both the archive and its sha-256 take them from here. */
+function snapshotBytes(snapshot: PluginSnapshot): Uint8Array {
+  return encodeUtf8(snapshotText(snapshot));
 }
 
 function inPackage(fileName: string): string {

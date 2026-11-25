@@ -9,6 +9,7 @@ import {
   pluginIdFor,
   readPreviousBuild,
   releaseFileText,
+  snapshotSha256,
 } from "../src/index.ts";
 
 /**
@@ -40,6 +41,7 @@ export async function runExample(digest: Sha256): Promise<{
     pluginId: pluginId.value,
     version: version.value,
     sha256: await archiveSha256(archive, digest),
+    snapshotSha256: await snapshotSha256(snapshot, digest), // what the pin settings ask for
     workspaceCommit: "0123456789abcdef0123456789abcdef01234567",
     halonicVersion: "0.2.0",
     changes,

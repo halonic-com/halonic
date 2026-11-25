@@ -48,13 +48,14 @@ export const workspacePinProperties = {
     type: "string",
     title: "Pinned workspace commit",
     description:
-      "The full commit whose snapshot the plugin loads. It loads it only if the workspace check on it is green and the file's sha-256 matches. Empty: the built-in snapshot.",
+      "The full commit whose snapshot the plugin loads. It loads it only if the workspace check on it is green and the file's SHA-256 matches. Empty: the built-in snapshot.",
     pattern: commitPattern.source,
   },
   snapshotSha256: {
     type: "string",
-    title: "Pinned snapshot sha-256",
-    description: "The SHA-256 of snapshot.json in the plugin file built from the pinned commit.",
+    title: "Pinned snapshot SHA-256",
+    description:
+      "The SHA-256 of snapshot.json in the plugin file built from the pinned commit: snapshotSha256 in that build's release file.",
     pattern: sha256Pattern.source,
   },
   snapshotRef: {

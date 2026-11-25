@@ -234,10 +234,11 @@ halonic build paperclip-plugin --out dist
 
 ```text
 ✓ Built halonic-ws.acme 0.1.0 from commit 873b694
-  Plugin file    ./dist/halonic-ws.acme-0.1.0.tar
-  Release file   ./dist/halonic-ws.acme-0.1.0.release.json
-  SHA-256        b97549649579591470fb81d0474f83a0fd5393c8b8a0307d0f00493e8379b8ee
-  Changes        added my_prs, pr_status and task_get
+  Plugin file        ./dist/halonic-ws.acme-0.1.0.tar
+  Release file       ./dist/halonic-ws.acme-0.1.0.release.json
+  SHA-256            b97549649579591470fb81d0474f83a0fd5393c8b8a0307d0f00493e8379b8ee
+  Snapshot SHA-256   a16dcc9361a7dc815acb3a818a3312a9b3c33227a21cf5b8a21dac85f281a1cc
+  Changes            added my_prs, pr_status and task_get
 ```
 
 It writes two files:
@@ -255,6 +256,7 @@ workspaces can each have a plugin in one Paperclip.
 | `version` | the plugin's version, such as `0.1.0` |
 | `archive` | the plugin file's name |
 | `sha256` | the plugin file's SHA-256 |
+| `snapshotSha256` | the SHA-256 of the plugin file's `package/snapshot.json`, for pinning a snapshot (see [section 6](#6-which-workspace-version-the-plugin-serves)) |
 | `workspaceCommit` | the workspace commit the tools come from |
 | `halonicVersion` | the version of Halonic that built it |
 | `changes` | the tools `added`, `removed` and `changed` since the previous build, with the fields that changed, the `routing` entries (`roles.<role>`, `areas.<area>`) whose agent changed, and the `signals` `added`, `removed` and `changed`, by id |
@@ -348,10 +350,11 @@ To change your tools:
 
    ```text
    ✓ Built halonic-ws.acme 0.2.0 from commit d5e0193
-     Plugin file    ./dist/halonic-ws.acme-0.2.0.tar
-     Release file   ./dist/halonic-ws.acme-0.2.0.release.json
-     SHA-256        a5de844b64b5f392887a731b6cb6e76f10a79757646d915a7d355d302c34401e
-     Changes        changed pr_status
+     Plugin file        ./dist/halonic-ws.acme-0.2.0.tar
+     Release file       ./dist/halonic-ws.acme-0.2.0.release.json
+     SHA-256            a5de844b64b5f392887a731b6cb6e76f10a79757646d915a7d355d302c34401e
+     Snapshot SHA-256   c85c8f175dd2a307da17fc2f1f255d064a0b964a9ac62929f3996bb640cbc929
+     Changes            changed pr_status
    ```
 
 3. Install the new plugin file as in step 4.
@@ -377,7 +380,7 @@ all three of these, or none:
 | --- | --- |
 | **Workspace repository** | the workspace's GitHub repository, as `owner/name` |
 | **Pinned workspace commit** | the full id of the commit whose snapshot to serve |
-| **Pinned snapshot sha-256** | the SHA-256 of that snapshot file |
+| **Pinned snapshot SHA-256** | the SHA-256 of that snapshot file: `snapshotSha256` in the release file of the plugin built from that commit |
 
 The plugin reads the snapshot from `snapshots/<commit>.json` on the
 `halonic-snapshots` branch of that repository (**Snapshot branch** changes the
@@ -395,10 +398,12 @@ Halonic doesn't publish the snapshot file for you. To pin a commit:
 2. Commit its `package/snapshot.json` to `snapshots/<commit>.json` on the
    snapshot branch and push. Copy the file unchanged, byte for byte: no reformatting
    and no change to its line endings, or its SHA-256 no longer matches.
-3. Set **Pinned snapshot sha-256** to that file's SHA-256:
+3. Set **Pinned snapshot SHA-256** to `snapshotSha256` from that build's
+   release file. The build prints the same value as **Snapshot SHA-256**.
+   To check your copy, its SHA-256 must be that value:
 
    ```sh
-   sha256sum package/snapshot.json
+   sha256sum snapshots/<commit>.json
    ```
 
 The same commit always gives the same `snapshot.json`, so anyone can rebuild

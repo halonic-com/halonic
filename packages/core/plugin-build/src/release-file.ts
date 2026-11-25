@@ -1,7 +1,8 @@
 // The release file sits next to the archive and says what it is: the plugin
-// id, version, archive name, sha-256, the workspace commit it was built from,
-// the Halonic version that built it and what changed since the last build.
-// A later build reads it back (`--since`), so parsing treats it as untrusted.
+// id, version, archive name, sha-256, its snapshot's sha-256, the workspace
+// commit it was built from, the Halonic version that built it and what changed
+// since the last build. A later build reads it back (`--since`), so parsing
+// treats it as untrusted.
 
 import { type Issue, parse, s } from "@halonicjs/schema-kit";
 import { canonicalJson, err, ok, type Result, readVersion } from "@halonicjs/std";
@@ -25,12 +26,17 @@ const routingEntry = s.string().regex(/^(?:roles|areas)\.[a-z][a-z0-9-]{0,63}$/)
 /** Signal ids in the change list: the snapshot's id pattern, at most one per signal. */
 const signalIds = s.array(s.string().regex(signalIdPattern)).max(maxSnapshotSignals);
 
+const sha256Pattern = /^[0-9a-f]{64}$/;
+
 const releaseFileSchema = s
   .object({
     pluginId: s.string().regex(pluginIdPattern),
     version: s.string().regex(pluginVersionPattern),
     archive: s.string(),
-    sha256: s.string().regex(/^[0-9a-f]{64}$/),
+    sha256: s.string().regex(sha256Pattern),
+    // Every build writes it; a release file from a build before HAL-18195 has none,
+    // and `--since` still reads that one.
+    snapshotSha256: s.string().regex(sha256Pattern).optional(),
     // A SHA-1 commit, or a SHA-256 one in a repository that uses them.
     workspaceCommit: s.string().regex(/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/),
     halonicVersion: s
@@ -69,6 +75,12 @@ export interface ReleaseFile {
   readonly archive: string;
   /** The archive's sha-256, 64 lowercase hex characters. */
   readonly sha256: string;
+  /**
+   * The sha-256 of the archive's `package/snapshot.json`, 64 lowercase hex
+   * characters: the value the plugin's pin settings ask for. A release file
+   * from an earlier build may have none.
+   */
+  readonly snapshotSha256?: string | undefined;
   /** The workspace commit the build was made from. */
   readonly workspaceCommit: string;
   /** The version of Halonic that made the build. */
@@ -77,8 +89,11 @@ export interface ReleaseFile {
   readonly changes: ChangeList;
 }
 
+/** A release file as this Halonic writes it: always with its snapshot's sha-256. */
+export type NewReleaseFile = ReleaseFile & { readonly snapshotSha256: string };
+
 /** What goes into a new release file; the archive name follows from the id and version. */
-export type ReleaseFileFields = Omit<ReleaseFile, "archive">;
+export type ReleaseFileFields = Omit<NewReleaseFile, "archive">;
 
 /** Why a release file was refused. */
 export type ReleaseFileProblem =
@@ -106,6 +121,7 @@ export function releaseFileText(fields: ReleaseFileFields): string {
  * Reads a release file, which is untrusted: it refuses a file over
  * {@link maxReleaseFileBytes}, anything that isn't JSON, unknown fields, and
  * an id, version, archive name, sha-256 or commit that isn't in its strict form.
+ * A file without `snapshotSha256`, from an earlier build, is read.
  *
  * @param text - the release file's text
  * @returns the release file, or why it was refused
