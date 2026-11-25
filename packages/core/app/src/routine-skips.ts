@@ -15,6 +15,7 @@ import { deleteValue } from "./routine-last-runs.ts";
  * with the refusal's own sentence in `sentence` and its next step in `fix`
  * when it has them, and `toCommand` when that step leads to a command.
  * `signal-loop`: the loop guard refused a signal start (`routines.signal-loop`).
+ * `paused`: due while the user paused the routines (`app.routine-pass-skips`).
  */
 export type SkipReason =
   | CatchUpReason
@@ -22,7 +23,8 @@ export type SkipReason =
   | "changed"
   | "target-unavailable"
   | "start-refused"
-  | "signal-loop";
+  | "signal-loop"
+  | "paused";
 
 /**
  * Why a routine's target can't be started (flow-routines 3.9): it isn't in
@@ -265,6 +267,7 @@ const knownReasons: Record<SkipReason, true> = {
   "target-unavailable": true,
   "start-refused": true,
   "signal-loop": true,
+  paused: true,
 };
 const reasons: ReadonlySet<string> = new Set(Object.keys(knownReasons));
 
