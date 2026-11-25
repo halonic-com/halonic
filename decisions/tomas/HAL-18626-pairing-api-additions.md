@@ -2,6 +2,7 @@
 
 - Approval: Liam approved PR 6118 on HAL-18626 (https://paperclip.halonic.com/HAL/issues/HAL-18626#comment-8afbff88-534b-40f8-9229-71f51d0e77f3) and signs this note with the re-review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:FuBNVe/ZHdwlIHoCYaERLZQwB4Uk6n6QbEbbl3S0J4A4U04e1MaAxnbLs+PTduTwGO7lHAn9lfEaIL1RoPiTCA==
 
 ## What changes
 
