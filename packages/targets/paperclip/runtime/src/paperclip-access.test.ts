@@ -60,7 +60,12 @@ verifies("runtime.paperclip-writes", () => {
       const keys: unknown[] = [];
       const host = {
         ...fakePaperclip().host,
-        state: { get: async (key: unknown) => (keys.push(key), null) },
+        state: {
+          get: async (key: unknown) => {
+            keys.push(key);
+            return null;
+          },
+        },
       };
       const access = paperclipAccess(host, [], call);
       await access.state.get({
