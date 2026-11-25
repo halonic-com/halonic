@@ -5,10 +5,12 @@ import { byReviewer } from "../pr-watcher/github.ts";
  * "<Name>: approved on head `abc1234`" (7 or more characters) on the current
  * head, or the same with "re-approved" or "approved again", as the Merger reads
  * them (HAL-15553). Julian's counts only within his limits, or on a pull
- * request Liam wrote; nobody approves their own. After a rebase-only push to a pull request
- * Liam approved, Julian's "re-approved on head `<new>` (rebase only,
- * range-diff vs `<old>`)" counts outside his limits too, when Liam approved
- * `<old>`.
+ * request Liam wrote; nobody approves their own. Julian's "re-approved on
+ * head `<new>` (rebase only, range-diff vs `<old>`)" counts outside his
+ * limits no more than any other approval of his: the Merger's gate
+ * (`outsideJulianScope` in `merge-control/approval.ts`) waits for Liam there,
+ * and carries Liam's own approval over a rebase only when the diff is
+ * identical (HAL-18190).
  */
 
 /** The reviewers whose signed approvals count. */
@@ -26,7 +28,7 @@ export interface Approval {
 }
 
 // The same forms as the Merger's gate (`LIAM_RE`, `JULIAN_RE`). The optional range-diff part names
-// the head Liam approved, which lets Julian's re-approval count outside his limits.
+// the head Liam approved, which the note on an uncounted re-approval mentions.
 const approvalLine =
   /^[ \t]*(?:\*\*)?([A-Z][a-z]+)(?:\*\*)?:[ \t]*(?:re-)?approved(?: again)? on head[ \t]*`?([0-9a-f]{7,40})`?(?:[ \t]*\(rebase only, range-diff vs[ \t]*`?([0-9a-f]{7,40})`?\))?/gm;
 
@@ -65,7 +67,10 @@ export interface ApprovedPull {
   readonly head: string;
   /** The agent the branch belongs to, lower case. */
   readonly author: string | undefined;
-  /** The reviewer by the path rules, or undefined when the changed files weren't read. */
+  /**
+   * The reviewer by the path rules (`reviewerFor`, the same rule the Merger's
+   * `outsideJulianScope` applies), or undefined when the changed files weren't read.
+   */
   readonly reviewer: "julian" | "liam" | undefined;
 }
 
@@ -89,7 +94,7 @@ export function judgeApprovals(signed: readonly SignedApproval[], pull: Approved
     }
     const anyPaths = pull.author === "liam";
     if (!anyPaths && pull.reviewer === "liam") {
-      return rebaseOnly(approval, signed);
+      return outsideLimits(approval, signed);
     }
     return anyPaths || pull.reviewer === "julian"
       ? { ...approval, counts: true, note: "unless it's a security or release pull request" }
@@ -102,10 +107,12 @@ export function judgeApprovals(signed: readonly SignedApproval[], pull: Approved
 }
 
 /**
- * Julian's approval outside his limits counts only as a re-approval after a
- * rebase-only push, naming a head Liam approved (HAL-14809).
+ * Julian's approval outside his limits doesn't count, not even as a
+ * re-approval after a rebase-only push: the Merger's gate waits for Liam
+ * there (#5559, #5676, HAL-18190). Liam's approval carries over by itself when
+ * the rebase left the diff identical.
  */
-function rebaseOnly(approval: SignedApproval, signed: readonly SignedApproval[]): Approval {
+function outsideLimits(approval: SignedApproval, signed: readonly SignedApproval[]): Approval {
   const { rebaseOf } = approval;
   if (rebaseOf === undefined) {
     return { ...approval, counts: false, note: "outside Julian's limits (HAL-14809)" };
@@ -116,15 +123,12 @@ function rebaseOnly(approval: SignedApproval, signed: readonly SignedApproval[])
       liamRebase === undefined &&
       (head.startsWith(rebaseOf) || rebaseOf.startsWith(head)),
   );
-  return liamApproved
-    ? {
-        ...approval,
-        counts: true,
-        note: `rebase only since Liam's approval on ${rebaseOf}; unless it's a security or release pull request`,
-      }
-    : {
-        ...approval,
-        counts: false,
-        note: `re-approval after a rebase, but Liam didn't approve ${rebaseOf} (HAL-14809)`,
-      };
+  const why = liamApproved
+    ? `rebase only since Liam's approval on ${rebaseOf}`
+    : `re-approval after a rebase, and Liam didn't approve ${rebaseOf}`;
+  return {
+    ...approval,
+    counts: false,
+    note: `${why}, but outside Julian's limits the Merger waits for Liam (HAL-18190)`,
+  };
 }
