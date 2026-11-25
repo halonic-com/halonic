@@ -5425,6 +5425,9 @@ importers:
 
   tooling/paperclip:
     devDependencies:
+      '@halonicjs/target-paperclip-runtime':
+        specifier: workspace:*
+        version: link:../../packages/targets/paperclip/runtime
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../packages/testing/spec
