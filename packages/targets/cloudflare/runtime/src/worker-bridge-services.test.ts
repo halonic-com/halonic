@@ -1,7 +1,11 @@
 import type { BridgeAgent } from "@halonicjs/host-harness-host";
 import type { BridgeApprovalRequest, DefinitionSource, Secrets } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { loadWorkspace } from "@halonicjs/workspace";
+import {
+  loadWorkspace,
+  ManyUsersSubscriptionError,
+  manyUsersSubscriptionCode,
+} from "@halonicjs/workspace";
 import { beforeEach, expect, it } from "vitest";
 import { workerBridgeServices } from "./worker-bridge-services.ts";
 
@@ -103,5 +107,23 @@ verifies("runtime.worker-bridge-services", () => {
     await expect(bridge.services.servicesFor(coder)).rejects.toThrow(
       /"anthropic-key" .* isn't set on deployment "acme-cloud"/,
     );
+  });
+});
+
+verifies("harness-host.many-users-subscription", () => {
+  it("refuses a harness agent with no provider key when its run starts, reading no key", async () => {
+    const bridge = await servicesOf({
+      ...acmeFiles,
+      "providers/claude.yaml": "id: claude\ntype: anthropic\n",
+    });
+
+    const refused = bridge.services.servicesFor(coder);
+
+    await expect(refused).rejects.toBeInstanceOf(ManyUsersSubscriptionError);
+    await expect(refused).rejects.toMatchObject({
+      code: manyUsersSubscriptionCode,
+      message: expect.stringContaining('Deployment "acme-cloud" lets many people sign in'),
+    });
+    expect(asked).toEqual([]);
   });
 });
