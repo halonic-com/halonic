@@ -45,7 +45,7 @@ verifies("cli.commands.validate.check-workspace", () => {
     const { code, output } = await validateWithParameter("number");
 
     expect(code).toBe(exitCode.failed);
-    expect(output).toContain("library/tools/pr-status.tool.yaml");
+    expect(output).toContain(join("library", "tools", "pr-status.tool.yaml"));
     expect(output).toMatch(/✕ The action github\.pull-request reads the parameter 'pr'/);
     expect(output).toContain("(parameter-missing)");
     expect(output).toContain("(parameter-not-read)");
