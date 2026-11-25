@@ -38,6 +38,12 @@ The steps, in `src/steps/`:
 | 1 | The engine answers | `shell.welcome-start`, `shell.welcome-sample`, `agents.chat.try-it`, `agents.chat.engine-quiet`, `studio.workspace-agents-chat` | Open demo turns on, and the demo's Writer agent answers a message in its Try it chat ("Writer replied."; the demo's mock model needs no key) with no "The engine isn't answering" line |
 | 2 | Messenger shows its empty state | `studio.installer-focused-apps`, `studio.focused-app-window`, `messenger.not-connected` | the Halonic Messenger shortcut opens a window with No connections |
 | 3 | Connect Paperclip | `studio.desktop-connections`, `connections.connect-dialog`, `connections.connection-row`, `services.paperclip-connect` | Settings › Connections › Connect Paperclip, approved on the test Paperclip, shows Connected |
+| 4 | The demo is the shown workspace | `workspace.try-sample`, `studio.try-sample`, `workspace.workspace-window`, `workspace.workspace-menu`, `workspace.menu-sample-tag`, `workspace.recent-workspaces`, `shell.window-title` | the window title reads "*page* · *workspace* · Halonic", and the workspace switcher's menu lists `Acme sample` under Recent with the Demo tag, then Open a folder… |
+| 5 | The window tabs | `shell.window-tab-strip`, `shell.tab-set`, `shell.window-keys` | New tab adds a tab to the Open tabs strip, Ctrl W closes it and Ctrl Shift T brings it back |
+| 6 | Close workspace | `workspace.workspace-window`, `shell.welcome-open`, `shell.welcome-recent`, `shell.welcome-sample` | the workspace menu's Close workspace shows Welcome, with the demo under Recent with the Demo tag, and Open demo |
+
+Steps 4 to 6 are the Studio basics (HAL-18866). Close workspace comes last because it leaves the
+window on Welcome; a later step that needs a workspace opens the demo again from there.
 
 Each step names, in its file, the requirement ids it checks (`requirements`), and the results table
 shows them in its Requirements column. The package's tests fail when a step names none, or an id

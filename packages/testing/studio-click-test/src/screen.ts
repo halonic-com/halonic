@@ -74,6 +74,14 @@ export async function clickOrWhyNot(
   return whyNot;
 }
 
+/** The parts of `wanted` the text lacks, quoted and joined for a step's note. */
+export function missingParts(wanted: readonly string[], text: string): string {
+  return wanted
+    .filter((part) => !text.includes(part))
+    .map((part) => `"${part}"`)
+    .join(", ");
+}
+
 /** The end of the page text, short enough for the results table. */
 export function lastWords(text: string): string {
   const flat = text.replaceAll(/\s+/g, " ").trim();
