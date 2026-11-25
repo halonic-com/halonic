@@ -73,3 +73,16 @@ verifies("agent-host-client.paperclip-sign-in", () => {
     });
   });
 });
+
+verifies("agent-host.paperclip-add-account", () => {
+  describe("AgentHostPaperclipSignIn for another account", () => {
+    it("asks for a new connection when told to", async () => {
+      const host = new FakeHost().answer("POST /v1/paperclip/sign-in/start", ok(started));
+      const signIn = new AgentHostPaperclipSignIn(host, workspace);
+      await signIn.start(address, undefined, { newConnection: true });
+      expect(host.calls.map((call) => call.body)).toEqual([
+        { workspace, address, newConnection: true },
+      ]);
+    });
+  });
+});

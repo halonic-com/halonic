@@ -33,7 +33,7 @@ const connected: PaperclipSignInState = {
 class FakeSignIn {
   rows: PaperclipConnectionRow[] = [];
   states: (PaperclipSignInState | Error)[] = [];
-  starts: { address: string; connection: string | undefined }[] = [];
+  starts: { address: string; connection: string | undefined; newConnection?: boolean }[] = [];
   cancels: string[] = [];
   confirms: string[] = [];
   /** When set, a confirm or a cancel throws it. */
@@ -51,8 +51,8 @@ class FakeSignIn {
   async connections() {
     return this.rows;
   }
-  async start(atAddress: string, connection?: string) {
-    this.starts.push({ address: atAddress, connection });
+  async start(atAddress: string, connection?: string, options?: { newConnection?: boolean }) {
+    this.starts.push({ address: atAddress, connection, ...options });
     return this.startAnswer;
   }
   async poll() {
@@ -294,6 +294,19 @@ verifies("services.host-agent-connections", () => {
 
     it("waits between polls", () => {
       expect(signInPollMs).toBe(2000);
+    });
+  });
+});
+
+verifies("agent-host.paperclip-add-account", () => {
+  describe("HostAgentConnections for another account", () => {
+    it("asks the host for a new connection at the address", async () => {
+      const { signIn, connections } = setUp();
+      signIn.states = [connected];
+      const start = await connections.signIn({ address, newConnection: true });
+      if (start.outcome !== "started") throw new Error("expected a started sign-in");
+      await start.challenge.result;
+      expect(signIn.starts).toEqual([{ address, connection: undefined, newConnection: true }]);
     });
   });
 });

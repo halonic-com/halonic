@@ -16,6 +16,8 @@ export interface ConnectDialogProps {
   readonly connections: AgentConnections;
   /** The signed-out connection to sign in again, or none for a new one. */
   readonly again?: AgentConnection | undefined;
+  /** The connected connection to add another account beside, at its address. */
+  readonly another?: AgentConnection | undefined;
   /** Runs once the dialog has cancelled its sign-in; the opener unmounts it. */
   readonly onClose: () => void;
   /** Runs once the sign-in connected `connection`; the opener unmounts the dialog and says so. */
@@ -37,6 +39,20 @@ function isAllowedAddress(address: string): boolean {
   } catch {
     return false;
   }
+}
+
+/** The dialog's title: Connect Paperclip, Sign in again or Add another account. */
+function titleOf(props: ConnectDialogProps): string {
+  if (props.again !== undefined) return words.SIGN_IN_AGAIN;
+  if (props.another !== undefined) return words.ADD_ACCOUNT;
+  return words.CONNECT;
+}
+
+/** The line above the address field, for the title the dialog has. */
+function leadOf(props: ConnectDialogProps): string {
+  if (props.again !== undefined) return words.signInAgainLead(props.again.label);
+  if (props.another !== undefined) return words.ADD_ACCOUNT_LEAD;
+  return words.CONNECT_LEAD;
 }
 
 /** The field's error for a refused start; an engine that didn't answer goes to the Dialog's alert. */
@@ -65,17 +81,18 @@ function endedOf(view: SignInView, leftMs: number): EndedResult | undefined {
 }
 
 /**
- * Connect Paperclip, or Sign in again for a signed-out connection (`connections.connect-dialog`).
+ * Connect Paperclip, or Sign in again for a signed-out connection (`connections.connect-dialog`),
+ * or Add another account on a connected one's Paperclip (`connections.add-account`).
  * It asks for the address the board opens Paperclip at, starts a sign-in there and opens the
  * approval page, then shows the words the page shows too and the 10 minutes left to approve.
  * Closing it cancels a waiting sign-in, silently; once approved the opener closes it.
  */
 export function ConnectDialog(props: ConnectDialogProps) {
-  const { connections, again, onClose, onConnected } = props;
-  const signIn = useSignIn(connections, again?.id);
-  const title = again === undefined ? words.CONNECT : words.SIGN_IN_AGAIN;
+  const { connections, again, another, onClose, onConnected } = props;
+  const signIn = useSignIn(connections, again?.id, another !== undefined);
+  const title = titleOf(props);
   // Kept here, so Start again shows the address the last sign-in went to.
-  const [address, setAddress] = useState(again?.address ?? "");
+  const [address, setAddress] = useState(again?.address ?? another?.address ?? "");
   const view = signIn.view;
   const leftMs = useLeftMs(view.stage === "waiting" ? view.challenge : undefined, props.now);
 
@@ -104,7 +121,8 @@ export function ConnectDialog(props: ConnectDialogProps) {
     return (
       <AddressStep
         title={title}
-        again={again}
+        lead={leadOf(props)}
+        fixedAddress={again !== undefined || another !== undefined}
         signIn={signIn}
         address={address}
         onAddressChange={setAddress}
@@ -129,7 +147,8 @@ export function ConnectDialog(props: ConnectDialogProps) {
 /** The address field, with Continue, which starts the sign-in and opens the approval page. */
 function AddressStep({
   title,
-  again,
+  lead,
+  fixedAddress,
   signIn,
   address,
   onAddressChange,
@@ -138,7 +157,9 @@ function AddressStep({
   onClose,
 }: {
   readonly title: string;
-  readonly again: AgentConnection | undefined;
+  readonly lead: string;
+  /** The connection's own address, read-only: Sign in again and Add another account. */
+  readonly fixedAddress: boolean;
   readonly signIn: SignIn;
   readonly address: string;
   readonly onAddressChange: (address: string) => void;
@@ -183,14 +204,12 @@ function AddressStep({
       {...(problem === "failed" ? { error: words.START_FAILED } : {})}
     >
       <div className="flex flex-col gap-4">
-        <p className="m-0 text-body text-fg">
-          {again === undefined ? words.CONNECT_LEAD : words.signInAgainLead(again.label)}
-        </p>
+        <p className="m-0 text-body text-fg">{lead}</p>
         <Field label={words.ADDRESS_LABEL} hint={words.ADDRESS_HINT} error={fieldError ?? null}>
           <Input
             ref={input}
             mono
-            readOnly={busy || again !== undefined}
+            readOnly={busy || fixedAddress}
             value={address}
             placeholder={words.ADDRESS_PLACEHOLDER}
             onChange={(event) => onAddressChange(event.target.value)}

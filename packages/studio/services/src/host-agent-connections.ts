@@ -85,9 +85,13 @@ export class HostAgentConnections implements AgentConnections {
   async signIn(request: {
     readonly address: string;
     readonly connection?: MessagingId;
+    readonly newConnection?: boolean;
   }): Promise<SignInStart> {
     const name = request.connection === undefined ? undefined : this.#names.get(request.connection);
-    const started = await this.#options.signIn.start(request.address, name);
+    const started =
+      request.newConnection === true
+        ? await this.#options.signIn.start(request.address, name, { newConnection: true })
+        : await this.#options.signIn.start(request.address, name);
     if (started.outcome === "refused") return started;
     let ended = false;
     const cancel = async () => {

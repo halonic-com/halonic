@@ -17,6 +17,7 @@ const startBody = s
     workspace,
     address: s.string().min(1).max(2048),
     connection: s.string().regex(paperclipConnectionNamePattern).optional(),
+    newConnection: s.boolean().optional(),
   })
   .strict();
 const signInBody = s.object({ signInId }).strict();
@@ -36,12 +37,16 @@ export interface PaperclipSignInRouteDeps {
  * request from another site (403 `secret_from_other_site`, before the body is
  * read), since the approved poll's answer holds the key.
  *
- * - `POST /v1/paperclip/sign-in/start` with `{ workspace, address, connection? }`
- *   signs in for the named connection file, or the one with the same address,
- *   or a new connection named after the address's host. It answers
+ * - `POST /v1/paperclip/sign-in/start` with `{ workspace, address, connection?,
+ *   newConnection? }` signs in for the named connection file, or the one with
+ *   the same address, or a new connection named after the address's host.
+ *   With `newConnection`, it always signs in for a new connection, so another
+ *   account on an address that already has one gets a file and key of its own
+ *   (`agent-host.paperclip-add-account`). It answers
  *   `{ outcome: "started", signInId, phrase, approvalUrl, expiresAt }`, or
  *   `{ outcome: "refused", reason }` for an address that isn't `https` (nor
- *   plain `http` to this computer) or isn't the named file's, and for an
+ *   plain `http` to this computer) or isn't the named file's, for a named
+ *   file with `newConnection`, and for an
  *   address where no sign-in could start.
  * - `POST /v1/paperclip/sign-in/poll` with `{ signInId }` answers the
  *   sign-in's state. The first `connected` answer is the only one that holds
@@ -101,12 +106,15 @@ type Started =
 async function start(
   deps: PaperclipSignInRouteDeps,
   folder: string,
-  body: { address: string; connection?: string | undefined },
+  body: { address: string; connection?: string | undefined; newConnection?: boolean | undefined },
 ): Promise<Started> {
   const address = paperclipOrigin(body.address);
   if (address === undefined) return { outcome: "refused", reason: "address-not-allowed" };
   const files = await listConnectionFiles(folder, paperclipConnectionNamePattern);
-  const file = fileFor(files, address, body.connection);
+  const file =
+    body.newConnection === true
+      ? newFor(body.connection)
+      : fileFor(files, address, body.connection);
   if (file === "refused") return { outcome: "refused", reason: "address-not-allowed" };
   const name =
     file?.name ??
@@ -114,7 +122,8 @@ async function start(
       address,
       files.map((each) => each.name),
     );
-  const companyId = file?.connection.company;
+  // Another account on the same Paperclip asks for the company its first connection reads.
+  const companyId = (file ?? files.find(sameAddressAs(address)))?.connection.company;
   try {
     const answer = await deps.signIn.start({
       address,
@@ -138,11 +147,20 @@ function fileFor(
   address: string,
   name: string | undefined,
 ): NamedConnection | undefined | "refused" {
-  const sameAddress = (each: NamedConnection) =>
-    paperclipOrigin(each.connection.address) === address;
+  const sameAddress = sameAddressAs(address);
   if (name === undefined) return files.find(sameAddress);
   const named = files.find((each) => each.name === name);
   return named !== undefined && sameAddress(named) ? named : "refused";
+}
+
+/** A new connection's sign-in names no file: one that does is refused. */
+function newFor(name: string | undefined): undefined | "refused" {
+  return name === undefined ? undefined : "refused";
+}
+
+/** Whether a connection file points at `address`. */
+function sameAddressAs(address: string): (each: NamedConnection) => boolean {
+  return (each) => paperclipOrigin(each.connection.address) === address;
 }
 
 /** A state as Studio reads it; only the approved answer holds the key. */
