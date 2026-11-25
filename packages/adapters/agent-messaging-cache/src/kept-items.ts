@@ -147,7 +147,10 @@ function keptAnswer(answer: InboxAnswer): InboxAnswer {
 }
 
 function keptOption(option: InboxItemOption): InboxItemOption {
-  return { id: option.id, label: option.label };
+  const kept: InboxItemOption = { id: option.id, label: option.label };
+  if (option.noteRequired !== undefined) kept.noteRequired = option.noteRequired;
+  if (option.noteLabel !== undefined) kept.noteLabel = option.noteLabel;
+  return kept;
 }
 
 function keptQuestion(question: InboxQuestion): InboxQuestion {

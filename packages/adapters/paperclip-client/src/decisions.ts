@@ -7,6 +7,9 @@ import { authorOf, type MapContext, timeOf } from "./map.ts";
 // Paperclip's standalone decisions (`paperclip-client.decisions`): an agent offers the board
 // up to 8 options, each with effects on tasks that Paperclip runs once one is picked.
 
+/** Paperclip's largest page of decisions; more than 100 open ones lose the rest from the Inbox. */
+export const decisionPage = "100";
+
 /** A decision's options as buttons, in Paperclip's order. */
 function optionsOf(record: JsonRecord): InboxItemOption[] {
   return asRecords(field(record, "options")).flatMap((option) => {

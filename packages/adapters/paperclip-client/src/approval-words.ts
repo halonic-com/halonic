@@ -15,6 +15,9 @@ export const approvalWords = {
   approve: "Approve",
   reject: "Reject",
   requestChanges: "Request changes",
+  // The labels of the note fields under Request changes and a Reject that needs a reason (HAL-18924).
+  whatShouldChange: "What should change?",
+  rejectReason: "Why are you rejecting this?",
   name: "Name",
   role: "Role",
   adapter: "Adapter",

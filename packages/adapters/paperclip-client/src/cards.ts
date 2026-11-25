@@ -59,7 +59,7 @@ function optionsOf(kind: string, payload: JsonRecord | undefined): InboxItemOpti
   if (kind === "request_confirmation") {
     return [
       { id: "accept", label: text(payload, "acceptLabel") ?? "Accept" },
-      { id: "reject", label: text(payload, "rejectLabel") ?? "Reject" },
+      { id: "reject", label: text(payload, "rejectLabel") ?? "Reject", ...rejectNote(payload) },
     ];
   }
   if (kind === "ask_user_questions") {
@@ -67,6 +67,19 @@ function optionsOf(kind: string, payload: JsonRecord | undefined): InboxItemOpti
   }
   // Checkbox, verdict and task cards ask `questions` instead (`card-kinds.ts`).
   return [];
+}
+
+/** The reason field a confirmation's Reject needs when Paperclip refuses a reject without one. */
+function rejectNote(
+  payload: JsonRecord | undefined,
+): Pick<InboxItemOption, "noteRequired" | "noteLabel"> {
+  if (field(payload, "rejectRequiresReason") !== true) {
+    return {};
+  }
+  return {
+    noteRequired: true,
+    noteLabel: text(payload, "rejectReasonLabel") ?? approvalWords.rejectReason,
+  };
 }
 
 /**
@@ -258,7 +271,13 @@ function oneQuestionRequest(
 const approvalOptions: readonly InboxItemOption[] = [
   { id: "approve", label: approvalWords.approve },
   { id: "reject", label: approvalWords.reject },
-  { id: "request-changes", label: approvalWords.requestChanges },
+  {
+    id: "request-changes",
+    label: approvalWords.requestChanges,
+    // Request changes tells the agent what to change, so it is sent only with a note.
+    noteRequired: true,
+    noteLabel: approvalWords.whatShouldChange,
+  },
 ];
 
 /** How a decided approval was answered; a `revision_requested` one waits on the agent that asked. */

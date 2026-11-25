@@ -195,7 +195,7 @@ function ChatCard({
             {chosen}
           </StatusChip>
         )}
-        {(chosen === undefined ? card.options : []).map((option, index) => (
+        {(chosen === undefined ? answerableHere(card) : []).map((option, index) => (
           <Button
             key={option.id}
             variant={variantOf(index)}
@@ -248,6 +248,14 @@ export function lineOf(outcome: AnswerResult, row: ConversationRow): string | un
     return messengerWords.card.answeredBy(outcome.by.name);
   }
   return undefined;
+}
+
+/**
+ * The options a chat card offers: those whose note is required are left out, since the chat has
+ * no note field yet; the Inbox answers them (`messenger.option-note`).
+ */
+function answerableHere(card: InboxItem): readonly InboxItem["options"][number][] {
+  return card.options.filter((option) => option.noteRequired !== true);
 }
 
 /** The 1st option is primary, the 2nd secondary and any later one ghost (render 4e). */

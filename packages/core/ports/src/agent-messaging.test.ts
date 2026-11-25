@@ -8,6 +8,7 @@ import {
   channelMembersFit,
   type InboxAnswer,
   type InboxItem,
+  type InboxItemOption,
   type Message,
   type MessageSendOptions,
   type MessageWork,
@@ -189,5 +190,25 @@ verifies("ports.agent-messaging-inbox-conversation", () => {
     const asked: InboxItem = { ...item, conversation: "acme:chat:1" };
     expect(item.conversation).toBeUndefined();
     expect(asked.conversation).toBe("acme:chat:1");
+  });
+});
+
+verifies("ports.agent-messaging-option-note", () => {
+  typeTest("lets an option label its note field, optionally", () => {
+    expectTypeOf<InboxItemOption["noteLabel"]>().toEqualTypeOf<string | undefined>();
+  });
+
+  it("takes options with and without a note, and the note in the option answer", () => {
+    const plain: InboxItemOption = { id: "approve", label: "Approve" };
+    const noted: InboxItemOption = {
+      id: "request-changes",
+      label: "Request changes",
+      noteRequired: true,
+      noteLabel: "What should change?",
+    };
+    const answer: InboxAnswer = { kind: "option", option: noted.id, note: "Lower the budget" };
+    expect(plain.noteLabel).toBeUndefined();
+    expect(noted).toMatchObject({ noteRequired: true, noteLabel: "What should change?" });
+    expect(answer).toMatchObject({ option: "request-changes", note: "Lower the budget" });
   });
 });
