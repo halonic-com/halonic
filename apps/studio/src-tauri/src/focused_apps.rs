@@ -35,7 +35,9 @@ pub enum FocusedApp {
 
 impl FocusedApp {
     /// Every focused app with a Start menu shortcut, as the installer adds
-    /// them. Quick ask has none: its keys open it.
+    /// them. Quick ask has none: its keys open it. Only the tests read it,
+    /// since `--app` parsing goes through `STARTED`.
+    #[cfg(test)]
     pub const ALL: [FocusedApp; 2] = [FocusedApp::Inbox, FocusedApp::Messenger];
 
     /// Every focused app `--app` can name.
