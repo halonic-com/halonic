@@ -3,6 +3,7 @@
 - Task: HAL-18987
 - Approval: Liam's review note 1 on #5966 (replace the regex purity check with a syntax-tree walk); Liam and Julian sign this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:6uiLbTbAjzXZ05k9Bym0DTmDxLXn2zsgRDnW92AyMdaF9TCMEbGek0SU/YCV//t0h0v15tFUt3d4uPH7ghGGBQ==
 
 ## What changes
 
