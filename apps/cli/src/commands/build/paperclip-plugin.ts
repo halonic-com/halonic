@@ -1,5 +1,5 @@
 // `halonic build paperclip-plugin`: builds a Paperclip plugin of the
-// workspace's tools (plan HAL-17950). A thin command over the plugin build
+// workspace's tools and templates (plan HAL-17950, HAL-18153). A thin command over the plugin build
 // app service: this file reads the workspace, its commit, the runtime and
 // the previous build, and writes the archive and the release file. It never
 // installs anything and never reaches Paperclip or the network.
@@ -63,9 +63,10 @@ export async function buildPaperclipPlugin(
   const loaded = await loadWorkspace(workspace.store);
   const errors = workspaceProblemsOf(loaded).filter((issue) => issue.severity === "error");
   const tools = filesOf(loaded, "tool");
+  const templates = filesOf(loaded, "template");
   const commit = await workspaceCommit(
     workspace.root,
-    tools.map((file) => file.path),
+    [...tools, ...templates].map((file) => file.path),
     setup.git,
   );
   const since = textOption(input, "since");
@@ -82,6 +83,7 @@ export async function buildPaperclipPlugin(
         errors: errors.length,
         commit,
         tools: tools.map((file) => file.value),
+        templates: templates.map((file) => file.value),
       },
       runtime,
       ...(previous === undefined ? {} : { previous }),
