@@ -35,6 +35,11 @@ empty and the default policy holds.
 
 Every sentence is in `src/ui/stepper-words.ts`.
 
+Each new view is compared with the one before (`src/ui/stepper-changes.ts`): its results are said
+through one status region that is on the page from the start, and when the pressed control went
+away with the change, focus moves to the title, GitHub's code, the next browser step or the done
+step's line (`action-steppers.results`).
+
 ## Example
 
 ```tsx

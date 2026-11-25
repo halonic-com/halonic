@@ -161,8 +161,8 @@ verifies("action-steppers.end", () => {
 
     it("says so right under the title, before the facts and the steps", () => {
       const { root } = show(inStage({ kind: "expired" }));
-      const line = [...root.querySelectorAll('[role="status"]')].find(
-        (status) => status.textContent === "This request has expired, so it can't run anymore.",
+      const line = [...root.querySelectorAll("div")].find(
+        (div) => div.textContent === "This request has expired, so it can't run anymore.",
       );
       expect(root.querySelector("h2")?.compareDocumentPosition(line as Node)).toBe(
         Node.DOCUMENT_POSITION_FOLLOWING,

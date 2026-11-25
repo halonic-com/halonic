@@ -28,3 +28,10 @@ export function render(element: ReactNode): HTMLElement {
   act(() => root.render(element));
   return container;
 }
+
+/** Draws `element` in a container {@link render} made, as a new view from the app service would. */
+export function rerender(container: HTMLElement, element: ReactNode): void {
+  const found = mounted.find((one) => one.container === container);
+  if (found === undefined) throw new Error("rerender takes a container that render() made");
+  act(() => found.root.render(element));
+}
