@@ -1,27 +1,59 @@
 //! One ask for an update, and what its answer means for the status
 //! (HAL-1206): the state for a version found, why a check got no usable
 //! answer, and whether installing it sets the sandbox up again (HAL-5404).
+//! The check asks the endpoint in `tauri.conf.json` with the install's track
+//! filled in, `updates.halonic.com/<track>/…` (HAL-18480).
 
 use std::ffi::OsString;
 
 use halonic_update_state::{
-    CHECK_TIME_LIMIT, CheckFailure, UpdateState, UpdaterRecord, Version, notes_url,
-    raises_setup_version, this_build_setup_version,
+    CHECK_TIME_LIMIT, CheckFailure, UpdateState, UpdateTrack, UpdaterRecord, Version, notes_url,
+    raises_setup_version, this_build_setup_version, track_endpoint,
 };
-use tauri::{AppHandle, Runtime};
+use serde_json::Value;
+use tauri::{AppHandle, Runtime, Url};
 use tauri_plugin_updater::{Error as UpdaterError, Update};
 
 use super::proxy::{ProxyFault, proxy_fault, updater_on_proxy_rules};
 
-/// Asks the update server once, on Halonic's proxy rules and within the
-/// check's time limit.
+/// Asks the update server once for `track`'s newest build, on Halonic's
+/// proxy rules and within the check's time limit.
 pub(super) async fn ask_for_update<R: Runtime>(
     app: &AppHandle<R>,
+    track: UpdateTrack,
 ) -> Result<Option<Update>, UpdaterError> {
     let updater = updater_on_proxy_rules(app, |client| client)?
+        .endpoints(track_endpoints(&configured_endpoints(app), track)?)?
         .timeout(CHECK_TIME_LIMIT)
         .build()?;
     updater.check().await
+}
+
+/// The updater's endpoints in `tauri.conf.json`, as written there.
+fn configured_endpoints<R: Runtime>(app: &AppHandle<R>) -> Vec<String> {
+    let updater = app.config().plugins.0.get("updater");
+    let endpoints = updater.and_then(|updater| updater.get("endpoints"));
+    endpoints
+        .and_then(Value::as_array)
+        .map(|endpoints| {
+            endpoints
+                .iter()
+                .filter_map(Value::as_str)
+                .map(str::to_owned)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// `configured` with `track` filled in, as URLs.
+pub(super) fn track_endpoints(
+    configured: &[String],
+    track: UpdateTrack,
+) -> Result<Vec<Url>, UpdaterError> {
+    configured
+        .iter()
+        .map(|endpoint| Url::parse(&track_endpoint(endpoint, track)).map_err(UpdaterError::from))
+        .collect()
 }
 
 /// The state for a version the check found: available, unless its
@@ -87,3 +119,7 @@ pub(super) fn installer_args(update: &Update, relaunch: bool) -> Vec<OsString> {
         .map(|(_, switch)| OsString::from(switch))
         .collect()
 }
+
+#[cfg(test)]
+#[path = "updates_check_tests.rs"]
+mod tests;

@@ -19,9 +19,9 @@ use std::sync::{Mutex, MutexGuard};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use halonic_update_state::{
-    CheckResult, FIRST_CHECK_AFTER, JustUpdated, Managed, Migrated, RecordRead, StartOutcome,
-    UpdateState, UpdateStatus, UpdaterRecord, Version, check_due, detect_managed,
-    migrate_settings_file, read_record, record_text,
+    CheckResult, FIRST_CHECK_AFTER, JustUpdated, Managed, Migrated, StartOutcome, UpdateState,
+    UpdateStatus, UpdaterRecord, Version, check_due, detect_managed, migrate_settings_file,
+    record_text,
 };
 use tauri::async_runtime::JoinHandle;
 use tauri::ipc::Channel;
@@ -41,6 +41,10 @@ mod managed;
 
 #[path = "updates_proxy.rs"]
 mod proxy;
+
+#[path = "updates_file.rs"]
+mod file;
+use file::{read_file, write_over};
 
 #[path = "updates_way_back.rs"]
 mod way_back;
@@ -89,6 +93,7 @@ impl Inner {
             last_checked: self.record.last_checked,
             just_updated: self.just_updated.clone(),
             managed: self.managed.clone(),
+            track: self.record.track,
             sandbox_setup_again: self
                 .ready
                 .as_ref()
@@ -249,42 +254,6 @@ fn migrate_settings(profile: &Path, from: &str) -> Vec<String> {
     not_carried_over
 }
 
-/// The record, and whether it may be written. A missing file gives the
-/// defaults; one that can't be read or is a newer Halonic's is left alone.
-fn read_file(file: Option<&Path>) -> (UpdaterRecord, bool) {
-    let Some(file) = file else {
-        return (UpdaterRecord::default(), false);
-    };
-    match std::fs::read_to_string(file) {
-        Ok(text) => match read_record(&text) {
-            RecordRead::Read(record) => (record, true),
-            RecordRead::Newer => (UpdaterRecord::default(), false),
-            RecordRead::Unreadable => (UpdaterRecord::default(), true),
-        },
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-            (UpdaterRecord::default(), true)
-        }
-        Err(error) => {
-            halonic_shell_log::record(
-                "updates",
-                format!("{} can't be read: {error}", file.display()),
-            );
-            (UpdaterRecord::default(), false)
-        }
-    }
-}
-
-/// Writes `text` through a temporary file and a rename, so a crash leaves
-/// the old record or the new one, never half of one.
-fn write_over(file: &Path, text: &str) -> std::io::Result<()> {
-    if let Some(folder) = file.parent() {
-        std::fs::create_dir_all(folder)?;
-    }
-    let temporary = file.with_extension("json.tmp");
-    std::fs::write(&temporary, text)?;
-    std::fs::rename(&temporary, file)
-}
-
 fn now() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -320,7 +289,7 @@ fn background<R: Runtime>(app: &AppHandle<R>, ready: Instant) {
 async fn check<R: Runtime>(app: &AppHandle<R>) {
     // The guard lives only in this block: a `drop` inside an `if` still leaves
     // it in the future's state, which makes the command's future not `Send`.
-    let is_managed = {
+    let (is_managed, track) = {
         let mut inner = lock(app);
         if inner.checking {
             return;
@@ -330,12 +299,12 @@ async fn check<R: Runtime>(app: &AppHandle<R>) {
         inner.record.last_attempt = Some(now());
         inner.save();
         inner.notify();
-        inner.managed.is_some()
+        (inner.managed.is_some(), inner.record.track)
     };
     if is_managed {
         return managed::check(app).await;
     }
-    let result = ask_for_update(app).await;
+    let result = ask_for_update(app, track).await;
     let mut inner = lock(app);
     inner.checking = false;
     match result {
