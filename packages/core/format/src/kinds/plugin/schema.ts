@@ -5,6 +5,12 @@
 import { type Infer, s } from "@halonicjs/schema-kit";
 import { asciiHost } from "@halonicjs/std";
 import { relativePathProblem } from "../../shared/relative-path.ts";
+import {
+  HIDDEN_MARK,
+  label,
+  NO_HIDDEN_MARKS,
+  withoutHiddenMarks,
+} from "../../shared/shown-text.ts";
 import { allowedSiteProblem, MAX_ALLOWED_SITES } from "../agent/sandbox-fields.ts";
 import {
   INTEGRATION_NAME_PATTERN,
@@ -27,26 +33,6 @@ export const ARGUMENT_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*$/;
 const argumentName = s
   .string()
   .regex(ARGUMENT_NAME_PATTERN, "use the tool argument's name, such as 'city' or 'folderId'");
-
-/**
- * A control character, or a mark that turns the direction of the text around it.
- * In text a person reads, either can make one name look like another, in the
- * Plugins list and in the trust dialog. A line break is the one exception, and
- * only in longer text.
- */
-const HIDDEN_MARK = /[\p{Cc}\p{Bidi_Control}]/u;
-const HIDDEN_MARK_BUT_LINE_BREAK = /(?!\n)[\p{Cc}\p{Bidi_Control}]/u;
-const NO_HIDDEN_MARKS = "don't use control characters or text-direction marks";
-
-/** Whether a description or help text has no hidden mark. It may break lines. */
-const withoutHiddenMarks = (text: string) => !HIDDEN_MARK_BUT_LINE_BREAK.test(text);
-
-/** Text a person reads: a title or a label. Studio shows it as untrusted text. */
-const label = s
-  .string()
-  .min(1)
-  .max(80)
-  .refine((text) => !HIDDEN_MARK.test(text), NO_HIDDEN_MARKS);
 
 /**
  * Why a local tool's `network` entry can't be used, or `null` when it can.

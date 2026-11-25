@@ -25,6 +25,8 @@ import { runtimeKind } from "./kinds/runtime/kind.ts";
 import type { Runtime } from "./kinds/runtime/schema.ts";
 import { skillKind } from "./kinds/skill/kind.ts";
 import type { Skill } from "./kinds/skill/schema.ts";
+import { toolKind } from "./kinds/tool/kind.ts";
+import type { Tool } from "./kinds/tool/schema.ts";
 import { workflowKind } from "./kinds/workflow/kind.ts";
 import type { Workflow } from "./kinds/workflow/schema.ts";
 import { workflowTestKind } from "./kinds/workflow-test/kind.ts";
@@ -43,6 +45,7 @@ export interface KindValues {
   collection: Collection;
   connector: Connector;
   skill: Skill;
+  tool: Tool;
   hub: Hub;
   agent: Agent;
   workflow: Workflow;
@@ -70,6 +73,7 @@ export const fileKinds: { readonly [Name in KindName]: FileKind<KindValues[Name]
   collection: collectionKind,
   connector: connectorKind,
   skill: skillKind,
+  tool: toolKind,
   hub: hubKind,
   agent: agentKind,
   workflow: workflowKind,
