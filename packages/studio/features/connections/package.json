@@ -5,7 +5,8 @@
   "description": "The Connections feature of the Studio: Settings \u203a Connections and the Connect Paperclip dialog.",
   "exports": {
     ".": "./src/index.ts",
-    "./api": "./src/api.ts"
+    "./api": "./src/api.ts",
+    "./words": "./src/connections-words.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",

@@ -5,7 +5,8 @@
   "description": "The Messenger feature of the Studio: one conversation per agent, from the engine's AgentMessaging.",
   "exports": {
     ".": "./src/index.ts",
-    "./api": "./src/api.ts"
+    "./api": "./src/api.ts",
+    "./words": "./src/messenger-words.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",

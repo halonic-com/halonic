@@ -1,0 +1,67 @@
+# @halonicjs/testing-studio-click-test
+
+Clicks through the installed Studio on Windows, the way a person does, and writes a pass/fail table
+with a screenshot per step (HAL-18317). The board's first live check failed at step 1 on an install
+that had passed every package test (HAL-18311); this is the test that runs the real install.
+
+- **Layer:** testing
+- **Owner:** mateo
+- **Public API:** `@halonicjs/testing-studio-click-test`
+
+## How it runs
+
+The `click-test` job in `.github/workflows/studio-preview.yml` runs it on a hosted `windows-2025`
+runner, after the `installer` job:
+
+1. installs the release-version setup, then updates it silently with the preview setup;
+2. turns on WSL (`wsl --install --no-distribution`), so the app imports its own distro as on a PC;
+3. checks that the Start menu's `Halonic.lnk` starts the installed `Halonic.exe`;
+4. starts a throwaway Paperclip (`paperclipai`, pinned, on the runner's PostgreSQL), seeded with a
+   company, a task and a board card, and never ours;
+5. sets WebView2's registry policy that opens Halonic's DevTools port, starts the `msedgedriver`
+   of the installed WebView2, and runs `pnpm --filter @halonicjs/testing-studio-click-test click-test`,
+   which starts Halonic through `Halonic.lnk` and attaches to it.
+
+The shell gives WebView2 its own browser arguments, which beat the variable `msedgedriver` (and
+so `tauri-driver`) would use to open that port, so the driver attaches instead of starting the app.
+
+The steps, in `src/steps/`:
+
+| # | Step | Passes when |
+| --- | --- | --- |
+| 1 | The engine answers | Open demo turns on, and the demo's Writer agent answers a message in its Try it chat ("Writer replied."; the demo's mock model needs no key) with no "The engine isn't answering" line |
+| 2 | Messenger shows its empty state | the Halonic Messenger shortcut opens a window with No connections |
+| 3 | Connect Paperclip | Settings › Connections › Connect Paperclip, approved on the test Paperclip, shows Connected |
+
+After a failing step the suite restarts the app (it stops every Halonic process, starts Halonic from
+its shortcut again and attaches) and goes on, so one run lists every failure. A step that needs an
+earlier one that didn't pass is "skipped"; if the app won't restart, the rest are "not run". A
+failure's code is the words file's name for
+the error line on screen, such as `LIST_FAILED`. The expected text comes from the features' words
+files (their `./words` entry points), so a copy change moves the test with it. Text no entry point
+exports (place names, the Try it chat's words, the demo's agent) is in `screenText`, and
+`words.test.ts` checks it is still in its file.
+
+Step 3 approves the sign-in as the test Paperclip's board. Studio opens the approval page in a
+browser, and only that page's address holds the challenge's secret, so Studio reaches the
+Paperclip through a recording proxy (`src/paperclip-board.ts`) that keeps the challenge from
+Paperclip's answer.
+
+## Example
+
+On the Windows runner, with `msedgedriver` on `127.0.0.1:9515` and the policy set to
+`--remote-debugging-port=9222` (PowerShell):
+
+```powershell
+$env:HALONIC_DEVTOOLS = '127.0.0.1:9222'
+$env:HALONIC_SHORTCUTS = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs"
+$env:PAPERCLIP_URL = 'http://127.0.0.1:3100'
+$env:CLICK_TEST_OUT = 'click-test'
+$env:CLICK_TEST_BUILD = '9115b95'
+pnpm --filter @halonicjs/testing-studio-click-test click-test
+```
+
+Results: `click-test/results.json`, `click-test/results.md` and `click-test/screenshots/NN-step.png`.
+To test an older build with today's suite: `gh workflow run studio-preview.yml -f build-ref=<commit>`.
+Such a run reuses the installers an earlier run built from that commit (the
+`halonic-installers-<commit>` artifact, kept 7 days), so a change to the suite alone skips the build.

@@ -32,12 +32,13 @@ verifies("studio.preview-auto-build", () => {
       expect(jobOf(text, "publish")).toContain("group: studio-preview-publish");
     });
 
-    it("saves the Rust cache only on main", () => {
+    // A build-ref run on main builds an older commit, so it saves nothing (HAL-18353).
+    it("saves the Rust cache only for main's own commit", () => {
       const installer = jobOf(workflow(), "installer");
       const saves = installer.match(/uses: actions\/cache\/save@/g) ?? [];
       expect(saves).toHaveLength(1);
       expect(installer).toContain(
-        "if: ${{ !cancelled() && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}",
+        "if: ${{ !cancelled() && github.ref == 'refs/heads/main' && !inputs.build-ref && steps.rust-cache.outputs.cache-hit != 'true' }}",
       );
       expect(installer).not.toMatch(/uses: actions\/cache@/);
     });

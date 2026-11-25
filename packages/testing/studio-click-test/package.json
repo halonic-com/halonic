@@ -1,0 +1,35 @@
+{
+  "name": "@halonicjs/testing-studio-click-test",
+  "private": true,
+  "type": "module",
+  "description": "Clicks through the installed Windows Studio with WebDriver and writes a pass/fail table with a screenshot per step.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run",
+    "click-test": "node src/main.ts"
+  },
+  "dependencies": {
+    "@halonicjs/studio-feature-assistant": "workspace:*",
+    "@halonicjs/studio-feature-connections": "workspace:*",
+    "@halonicjs/studio-feature-messenger": "workspace:*",
+    "@halonicjs/studio-shell": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "testing",
+    "owner": "mateo",
+    "coverage": {
+      "lines": 80
+    }
+  }
+}
