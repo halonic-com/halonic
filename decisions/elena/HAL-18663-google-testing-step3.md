@@ -2,6 +2,7 @@
 
 - Approval: the board's choice of option 1 on HAL-18554 (google-setup-flow revision 12), built on HAL-18663
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:jnoyG/SpztElSwSiIZTXgr2sGNiOiRe7p79rL2OxP8rqlEQPDorc6Jtai+1yFDcT9joNpQq784GsiMewfSSTAw==
 
 Google keeps **Publish app** disabled until an app has a home page and a privacy policy, so most
 people with a personal Google account couldn't give step 3's "In production" tick. The board
