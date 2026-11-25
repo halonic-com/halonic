@@ -1,22 +1,11 @@
 import type { ShowOutcome } from "@halonicjs/assistant";
 import type { ChatMessage, ToolCall } from "@halonicjs/ports";
 import { errorKindOf } from "@halonicjs/std";
-import {
-  EngineNotAnswering,
-  type ItemRef,
-  isUntrustedRefusal,
-  type ShownInWindow,
-} from "@halonicjs/studio-shell";
-import type {
-  AssistantAnswer,
-  AssistantHost,
-  Chat,
-  ChatKind,
-  ChatModel,
-  ShownItem,
-} from "../api.ts";
+import { type ItemRef, isUntrustedRefusal, type ShownInWindow } from "@halonicjs/studio-shell";
+import type { AssistantHost, Chat, ChatAbout, ChatKind, ChatModel, ShownItem } from "../api.ts";
 import { cardReviewsOf } from "../cards/card-reviews.ts";
 import { buildChatWords } from "./build-chat-words.ts";
+import { endOf, endOfError, isSameItem, loadFailure, viewOf, withShown } from "./chat-view.ts";
 import { endLine, type ReplyEnd } from "./turns.ts";
 
 /** Reads a sentence out through the shell's announcer. */
@@ -35,6 +24,12 @@ export interface ChatView {
   readonly stoppedByYou: boolean;
   /** What Show in chat put in this chat, oldest first; kept for this session (flow 5.7). */
   readonly shown: readonly ShownItem[];
+  /**
+   * Asks the box to take focus, and to hold `text` when it is given: the New workflow dialog's
+   * Describe link and "Ask about this <kind>…" (flow-workflows 2.2, flow-assistant 10). A new
+   * object asks again; the box asks once per object.
+   */
+  readonly boxRequest?: { readonly text?: string | undefined } | undefined;
 }
 
 /** What else {@link BuildChats.send} is given. */
@@ -140,9 +135,28 @@ export class BuildChats {
     }
   }
 
-  /** Shows a new chat of `kind`, a Build chat unless named, or the empty draft there is already. */
-  async newChat(kind: ChatKind = "build"): Promise<void> {
-    await this.load(() => this.host.newChat(kind));
+  /**
+   * Shows a new chat of `kind`, a Build chat unless named, about `about` when given, or the empty
+   * draft there is already.
+   */
+  async newChat(kind: ChatKind = "build", about?: ChatAbout): Promise<void> {
+    await this.load(() => this.host.newChat(kind, about));
+  }
+
+  /**
+   * Shows a new Build chat (or the empty draft there is) about `about`, or about no item when
+   * absent, and asks its box for focus, holding `text` when given.
+   */
+  async newChatAsking(about: ChatAbout | undefined, text?: string): Promise<void> {
+    await this.newChat("build", about);
+    if (this.state.kind !== "chat") return;
+    this.update(this.state.view.chat.id, () => ({ boxRequest: { text } }));
+  }
+
+  /** The box did what {@link newChatAsking} asked: a box drawn again later doesn't do it again. */
+  clearBoxRequest(chatId: string): void {
+    if (this.views.get(chatId)?.boxRequest === undefined) return;
+    this.update(chatId, () => ({ boxRequest: undefined }));
   }
 
   /**
@@ -403,66 +417,6 @@ export class BuildChats {
   /** Tells the panel and the tabs that a chat, or where it is, changed. */
   private changed(): void {
     for (const listener of this.listeners) listener();
-  }
-}
-
-/** The view of a chat just read: a chat that was answering as Halonic closed says so (flow 5.4). */
-function viewOf(chat: Chat): ChatView {
-  const ends = new Map<number, ReplyEnd>();
-  const turns = chat.messages.filter((each) => each.role === "user").length;
-  if (chat.stoppedWhenClosed && turns > 0) ends.set(turns - 1, { kind: "stopped-when-closed" });
-  return {
-    chat,
-    messages: chat.messages,
-    answering: false,
-    tool: undefined,
-    ends,
-    stoppedByYou: false,
-    shown: [],
-  };
-}
-
-/** The chat's shown items with `shown` at the end, unless it is there already. */
-function withShown(view: ChatView, shown: ShownItem): Partial<ChatView> {
-  return view.shown.some((each) => isSameItem(each, shown))
-    ? {}
-    : { shown: [...view.shown, shown] };
-}
-
-function isSameItem(one: ShownItem, other: ShownItem): boolean {
-  const [a, b] = [one.item, other.item];
-  return a.kind === b.kind && a.hub === b.hub && a.id === b.id;
-}
-
-/** Why a chat couldn't load: the engine not answering yet in its own words (H11), else the error. */
-function loadFailure(error: unknown): string {
-  if (error instanceof EngineNotAnswering || errorKindOf(error) === "unavailable") {
-    return buildChatWords.engineNotStarted;
-  }
-  return error instanceof Error ? error.message : String(error);
-}
-
-/** How an answer the host rejected ended: the engine stopped (H13), or it failed (H22, H23). */
-function endOfError(error: unknown, toolsRan: boolean): ReplyEnd {
-  if (error instanceof EngineNotAnswering) return { kind: "engine-stopped", toolsRan };
-  const reason = error instanceof Error ? error.message : String(error);
-  return { kind: "failed", reason, toolsRan };
-}
-
-function endOf({ end, failure }: AssistantAnswer): ReplyEnd | undefined {
-  switch (end.reason) {
-    case "answered":
-      return undefined;
-    case "stopped":
-      return { kind: "stopped" };
-    case "turn-limit":
-      return { kind: "model-call-limit", calls: end.turns };
-    case "failed":
-      // The engine stopped mid-answer: the shell found it gone, or a turn couldn't reach it (K3).
-      if (end.error instanceof EngineNotAnswering) {
-        return { kind: "engine-stopped", toolsRan: end.toolsRan };
-      }
-      return { kind: "failed", reason: end.error.message, toolsRan: end.toolsRan, failure };
   }
 }
 

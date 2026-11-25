@@ -12,6 +12,7 @@ import type {
   ChatAgent,
   ModelOption,
 } from "./api.ts";
+import { sameAbout } from "./api.ts";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -115,11 +116,10 @@ export function fakeHost(
       if (readFails !== undefined) throw readFails;
       return find(chatId);
     },
-    newChat: async (kind) => {
-      const chat = chats.find((each) => each.draft && each.kind === kind) ?? {
-        ...chatOf(`chat-${chats.length + 1}`),
-        kind,
-      };
+    newChat: async (kind, about) => {
+      const chat = chats.find(
+        (each) => each.draft && each.kind === kind && sameAbout(each.about, about),
+      ) ?? { ...chatOf(`chat-${chats.length + 1}`), kind, ...(about ? { about } : {}) };
       keep(chat);
       return chat;
     },

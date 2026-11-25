@@ -303,10 +303,16 @@ export interface ItemChat {
    */
   chatFor(about: ChatAbout, name: string, context: WorkspaceContext): ItemPageChat;
   /**
-   * Opens a new Build chat about `about` in the side panel, for a page's "Ask about this <kind>…"
-   * and the New workflow dialog's Describe link. Focus moves to the chat's box.
+   * Opens a new Build chat about `about` in the side panel, for a page's "Ask about this <kind>…".
+   * Focus moves to the chat's box.
    */
   askAbout(about: ChatAbout, name: string, context: WorkspaceContext): Promise<void>;
+  /**
+   * Opens a new Build chat about no item in the side panel, for the New workflow dialog's Describe
+   * link (flow-workflows 2.2): it reuses an empty Build draft about no item, puts `text` in the box
+   * unsent, and moves focus to the end of the text.
+   */
+  describe(text: string, context: WorkspaceContext): Promise<void>;
 }
 
 /** The chat on an item's page, provided by the Assistant feature while the app gives it a host. */

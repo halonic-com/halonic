@@ -1,9 +1,10 @@
 import { defineFeature, type WorkspaceContext } from "@halonicjs/studio-shell";
-import { AssistantHostService, ShowInChatService } from "./api.ts";
+import { AssistantHostService, ItemChatService, ShowInChatService } from "./api.ts";
 import { buildChatWords } from "./chat/build-chat-words.ts";
 import { buildChatsOf } from "./chat/build-chats.ts";
 import { chatTabKind } from "./chat/chat-tab-item.ts";
 import { showInChat } from "./chat/show-in-chat.ts";
+import { itemChat } from "./item/item-chat.tsx";
 
 /** Shows or hides the panel, from Ctrl+Alt+I and Ctrl K's "Assistant". */
 export const togglePanelCommand = "assistant.panel";
@@ -11,16 +12,18 @@ export const togglePanelCommand = "assistant.panel";
 /**
  * The Assistant feature: the side panel with the Build chat (flow-assistant 2.2), its title bar
  * button and Ctrl+Alt+I (5.8), Ctrl K's "Assistant" and "New chat", a chat open as a tab (2.3),
- * and Show in chat for the agents and workflows features (5.7). The app provides the Assistant
+ * Show in chat for the agents and workflows features (5.7), and the chat about one item for the
+ * workflows and library features (2.4). The app provides the Assistant
  * host for each open workspace; without one there is no panel.
  */
 export const assistantFeature = defineFeature({
   id: "assistant",
   title: "Assistant",
   needs: [AssistantHostService],
-  provides: [ShowInChatService],
+  provides: [ShowInChatService, ItemChatService],
   register(studio) {
     studio.services.provide(ShowInChatService, () => showInChat);
+    studio.services.provide(ItemChatService, () => itemChat);
     studio.panelWindows.add({
       id: "assistant.panel",
       title: "Assistant",
