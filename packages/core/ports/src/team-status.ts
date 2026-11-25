@@ -99,6 +99,36 @@ export interface Seat extends AsOf {
   proposal?: { text: string; at: string };
   /** The newest reading failed: its cause and when. Only with `state: "not-read"`. */
   failedRead?: { cause: SeatReadCause; at: string };
+  /** Each agent's share of the seat's week, in percent. Left out by a source that can't tell. */
+  agentShares?: readonly { agent: MessagingId; weekPercent: number }[];
+  /** The plan's plain-text label, such as "Max". Never an account or billing detail. */
+  plan?: string;
+  /** Plain-text label of the seats that share one manual reset. */
+  manualResetGroup?: string;
+  /** A page to open in the system browser. Only a link `isAllowedWebLink` passes. */
+  webLink?: string;
+}
+
+/** Who moved an agent to its seat. Never a login or a name: a mover the port doesn't name reads as `other`. */
+export type SeatMover = "seat-supervisor" | "board" | "observed" | "other";
+
+/** Why a run failed. A cause a provider can't map reads as `other`. */
+export type RunFailCause = "time-out" | "spend-limit" | "no-identity" | "adapter-error" | "other";
+
+/**
+ * One agent's detail for a range, for its detail page. Every field is
+ * optional: a source leaves out what it can't tell, and the page leaves
+ * out those rows. Counts only: no titles, logs or review text.
+ */
+export interface AgentDetail extends AsOf {
+  /** The seat the agent is on now, since when, and who moved it there. */
+  seatNow?: { seat: MessagingId; since: string; movedBy: SeatMover };
+  /** The seats the agent used in the range, oldest first. `to` is left out while it is still on it. */
+  seatHistory?: readonly { seat: MessagingId; from: string; to?: string }[];
+  runs?: { total: number; failedByCause: readonly { cause: RunFailCause; count: number }[] };
+  produced?: { pullRequestsMerged: number; tasksDone: number };
+  /** A page to open in the system browser. Only a link `isAllowedWebLink` passes. */
+  webLink?: string;
 }
 
 /** Where a pull request stands, as apps show it. A state a provider can't map reads as `other`. */
@@ -231,6 +261,12 @@ export interface TeamStatus {
   pullRequests(): Promise<readonly PullRequestList[]>;
   pullRequest(id: MessagingId): Promise<PullRequestDetail | undefined>;
   mergeQueue(): Promise<readonly MergeQueue[]>;
+  /**
+   * One agent's detail for a range, or `undefined` when the source doesn't
+   * know the agent. Optional: a caller checks that it exists, and a source
+   * without it is still a whole `TeamStatus`.
+   */
+  agent?(id: MessagingId, range: SpendRange): Promise<AgentDetail | undefined>;
   /** The ID of each source whose team status changed. Ends when the reader stops. */
   changes(): AsyncIterable<MessagingId>;
 }
