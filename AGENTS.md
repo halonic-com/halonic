@@ -138,6 +138,15 @@ deploy packages are planned; the rules that name them apply once they exist.
 Do what the task asks, nothing more. No unrequested refactors, renames or reformatting. Clean-ups
 you spot become a new task.
 
+## Waiting on other work
+
+- When a task waits on another task or pull request, link it as a real blocker in Paperclip
+  (blocked by `HAL-<n>`, the task that holds the work), never only in words or a status note.
+  Paperclip wakes the waiting task when its blocker is done; a note wakes nobody (HAL-18856).
+- When work is split to avoid clashes, add the blocker link straight away.
+- Never link a blocker to a chief-line thread (the chief of staff's standing threads): they stay
+  open, so the waiting task would never wake.
+
 ## Pull requests
 
 - Under about 400 changed lines (generated files, the lockfile and fixtures don't count).
