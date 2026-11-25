@@ -7,7 +7,11 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { acme, canaryKey, writeConnection } from "../../test/fake-paperclip.ts";
 import { paperclipKeySecretName } from "./serve-messaging.ts";
-import { ServePaperclipSignIn, serveSignInLimitMs } from "./serve-paperclip-sign-in.ts";
+import {
+  ServePaperclipSignIn,
+  serveOpenSignInLimit,
+  serveSignInLimitMs,
+} from "./serve-paperclip-sign-in.ts";
 
 const challengeId = "69effd29-0000-4000-8000-000000000001";
 const challengePath = `/api/cli-auth/challenges/${challengeId}`;
@@ -21,9 +25,11 @@ class FakeSignInPaperclip {
   companyIds = [acme.company];
   revokeFails = false;
   cancelFails = false;
+  offline = false;
   approvalPath = `/cli-auth/${challengeId}?token=made-up-challenge-secret`;
 
   readonly fetch = async (input: Request | string | URL, init?: RequestInit): Promise<Response> => {
+    if (this.offline) throw new TypeError("fetch failed");
     const request = new Request(input, init);
     const path = new URL(request.url).pathname;
     const authorization = request.headers.get("authorization");
@@ -328,5 +334,59 @@ verifies("server.paperclip-sign-in-failures", () => {
     expect(await signIn.poll(id)).toEqual({ status: "wrong-company", keyMayWork: true });
     expect(reported).toHaveLength(1);
     expect(reportedText().join("\n")).not.toContain(canaryKey);
+  });
+});
+
+verifies("server.paperclip-sign-in-cap", () => {
+  /** How many challenges the server asked Paperclip for. */
+  function challengesMade(): number {
+    return paperclip.seen.filter((each) => each.path === "/api/cli-auth/challenges").length;
+  }
+
+  it("refuses one sign-in past the cap, asks Paperclip nothing and holds nothing new", async () => {
+    const ids: string[] = [];
+    for (let count = 0; count < serveOpenSignInLimit; count += 1) ids.push(await started());
+
+    const refused = await signIn.start({ address: acme.address });
+
+    expect(serveOpenSignInLimit).toBe(8);
+    expect(refused).toEqual({ outcome: "refused", reason: "too-many-sign-ins" });
+    expect(challengesMade()).toBe(serveOpenSignInLimit);
+    expect(timers).toHaveLength(serveOpenSignInLimit);
+  });
+
+  it("lets only as many starts through as the cap when they come at once", async () => {
+    const starts = await Promise.all(
+      Array.from({ length: serveOpenSignInLimit + 3 }, () =>
+        signIn.start({ address: acme.address }),
+      ),
+    );
+
+    expect(starts.filter((start) => start.outcome === "started")).toHaveLength(8);
+    expect(starts.filter((start) => start.outcome === "refused")).toEqual(
+      Array.from({ length: 3 }, () => ({ outcome: "refused", reason: "too-many-sign-ins" })),
+    );
+    expect(challengesMade()).toBe(serveOpenSignInLimit);
+  });
+
+  it("starts again once a sign-in ends", async () => {
+    const ids: string[] = [];
+    for (let count = 0; count < serveOpenSignInLimit; count += 1) ids.push(await started());
+
+    await signIn.cancel(ids[0] ?? "");
+
+    expect(await signIn.start({ address: acme.address })).toMatchObject({ outcome: "started" });
+  });
+
+  it("frees the place of a start Paperclip didn't answer", async () => {
+    paperclip.offline = true;
+    for (let count = 0; count < serveOpenSignInLimit; count += 1) {
+      expect(await signIn.start({ address: acme.address })).toMatchObject({
+        reason: "unreachable",
+      });
+    }
+    paperclip.offline = false;
+
+    expect(await signIn.start({ address: acme.address })).toMatchObject({ outcome: "started" });
   });
 });

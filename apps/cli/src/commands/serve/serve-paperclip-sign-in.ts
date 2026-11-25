@@ -35,6 +35,12 @@ import {
 /** How long a sign-in lasts: Paperclip's challenge lifetime (HAL-17423), as on the desktop. */
 export const serveSignInLimitMs = 10 * 60 * 1000;
 
+/**
+ * How many sign-ins the server holds in memory at once, each with a board key nobody approved
+ * yet. One past it is refused with `too-many-sign-ins` (agreed with S8, HAL-18769).
+ */
+export const serveOpenSignInLimit = 8;
+
 /** What {@link ServePaperclipSignIn} needs. */
 export interface ServePaperclipSignInOptions {
   /** The engine workspace's real path; a sign-in is only for one of its connection files. */
@@ -122,12 +128,28 @@ interface OpenSignIn {
 export class ServePaperclipSignIn implements PaperclipKeyPorts {
   readonly #options: ServePaperclipSignInOptions;
   readonly #open = new Map<string, OpenSignIn>();
+  /** Starts waiting for Paperclip's challenge; they count toward the cap too. */
+  #starting = 0;
 
   constructor(options: ServePaperclipSignInOptions) {
     this.#options = options;
   }
 
   async start(request: PaperclipSignInRequest): Promise<PaperclipSignInStart> {
+    // Counted before the first wait, so starts that run at once can't pass the cap together.
+    if (this.#open.size + this.#starting >= serveOpenSignInLimit) {
+      return { outcome: "refused", reason: "too-many-sign-ins" };
+    }
+    this.#starting += 1;
+    try {
+      return await this.#begin(request);
+    } finally {
+      this.#starting -= 1;
+    }
+  }
+
+  /** Starts Paperclip's CLI sign-in for the connection file with the request's address. */
+  async #begin(request: PaperclipSignInRequest): Promise<PaperclipSignInStart> {
     const address = paperclipOrigin(request.address);
     const file =
       address === undefined

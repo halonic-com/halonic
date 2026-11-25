@@ -18,7 +18,11 @@ export type PaperclipSignInStart =
       /** When the sign-in ends as `expired`, as an ISO time. */
       readonly expiresAt: string;
     }
-  | { readonly outcome: "refused"; readonly reason: "address-not-allowed" | "unreachable" };
+  | {
+      readonly outcome: "refused";
+      /** `too-many-sign-ins`: the server already holds as many open sign-ins as it allows. */
+      readonly reason: "address-not-allowed" | "unreachable" | "too-many-sign-ins";
+    };
 
 /**
  * Where a sign-in stands. Unlike the desktop host's answer, `connected` never
