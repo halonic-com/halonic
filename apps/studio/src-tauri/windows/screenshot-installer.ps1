@@ -77,11 +77,16 @@ function Licence-Text([IntPtr]$h) {
   [W]::SendMessage($box, 0x000D, [IntPtr]($length + 1), $s) | Out-Null
   return $s.ToString()
 }
-# A box on the install page, by its words.
+# A box on the install page, by its words. After Back, NSIS can name the
+# button before the page has made its boxes, so this waits up to 10 s.
 function Find-Box([IntPtr]$h, [string]$words) {
-  $box = [W]::FindWindowEx((Inner $h), [IntPtr]::Zero, 'Button', $words)
-  if ($box -eq [IntPtr]::Zero) { throw "The install page has no box '$words'" }
-  return $box
+  foreach ($i in 1..20) {
+    $box = [W]::FindWindowEx((Inner $h), [IntPtr]::Zero, 'Button', $words)
+    if ($box -ne [IntPtr]::Zero) { return $box }
+    Start-Sleep -Milliseconds 500
+  }
+  Save-Picture $h "no-box-$($words -replace '\W', '')"
+  throw "The install page has no box '$words'"
 }
 # BM_GETCHECK: 1 when the box is ticked.
 function Box-Checked([IntPtr]$box) { return [int][W]::SendMessage($box, 0xF0, [IntPtr]::Zero, [IntPtr]::Zero) -eq 1 }
@@ -128,6 +133,7 @@ if ($NoSandbox) {
   $shortcut = Find-Box $h 'Add a desktop shortcut'
   [W]::SendMessage($shortcut, 0xF5, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
   if ((Box-Checked $shortcut)) { throw 'The desktop shortcut box stayed ticked after a click' }
+  Write-Output 'cleared the desktop shortcut box; going to the licence page and back'
   Press $h
   Wait-Button $h 'I &Agree' 20
   [W]::PostMessage($h, 0x111, [IntPtr]3, [W]::GetDlgItem($h, 3)) | Out-Null
