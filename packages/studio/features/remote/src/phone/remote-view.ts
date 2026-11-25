@@ -135,7 +135,7 @@ export interface RemoteView {
   /**
    * Whether the computer runs an older Halonic that speaks only version 3 of
    * the gateway's messages: the phone fell back to it and offers Agents only,
-   * with "Update Halonic on Alex's laptop to use Inbox and Messenger from your
+   * with "Update Halonic on Tim's laptop to use Inbox and Messenger from your
    * phone." Stays true across reconnects until a version 4 `welcome`.
    */
   readonly olderComputer: boolean;

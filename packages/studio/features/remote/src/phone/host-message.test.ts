@@ -1,5 +1,6 @@
 import {
   type GatewayHostMessage,
+  gatewayFallbackProtocolVersion,
   gatewayMaxMessageBytes,
   gatewayProtocolVersion,
 } from "@halonicjs/ports";
@@ -176,5 +177,34 @@ verifies("remote.phone-host-messages", () => {
     expect(problemOf(JSON.stringify({ type: "welcome", replyTo: "p-1", version: "2" }))).toBe(
       "malformed",
     );
+  });
+});
+
+verifies("remote.phone-messaging-client", () => {
+  const page = { type: "msg-data", replyTo: "p-3", what: "inbox", items: [{ id: "i1" }] };
+
+  it("reads the Inbox and Messenger answers of version 4", () => {
+    for (const message of [
+      page,
+      { ...page, what: "hits", more: "40" },
+      { type: "msg-result", replyTo: "p-4", result: { outcome: "answered", answeredAt: "now" } },
+      {
+        type: "msg-result",
+        replyTo: "p-4",
+        result: { outcome: "already-answered", by: { kind: "me" }, answeredAt: "now" },
+      },
+      { type: "msg-result", replyTo: "p-4", result: { outcome: "sent", message: { id: "m1" } } },
+      { type: "msg-changed", source: "acme" },
+    ]) {
+      expect(problemOf(JSON.stringify(message))).toBeUndefined();
+    }
+  });
+
+  it("refuses a page with an extra key or an item that isn't an object, and any from a version 3 host", () => {
+    expect(problemOf(JSON.stringify({ ...page, extra: 1 }))).toBe("malformed");
+    expect(problemOf(JSON.stringify({ ...page, items: ["i1"] }))).toBe("malformed");
+    expect(problemOf(JSON.stringify({ ...page, what: "seats" }))).toBe("malformed");
+    const result = parseHostMessage(JSON.stringify(page), gatewayFallbackProtocolVersion);
+    expect(result).toEqual({ ok: false, problem: "malformed" });
   });
 });

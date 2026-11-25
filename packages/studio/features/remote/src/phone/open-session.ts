@@ -5,9 +5,9 @@
  * sent in another, and nothing is queued or sent again.
  */
 
-import type { GatewayClientMessage } from "@halonicjs/ports";
+import type { GatewayClientMessage, GatewayHostMessage } from "@halonicjs/ports";
 import type { ComputerTunnel, ComputerTunnelRefusal } from "./computer-tunnel.ts";
-import type { RemoteSendOutcome } from "./remote-view.ts";
+import type { RemoteNotSentReason, RemoteRefusal, RemoteSendOutcome } from "./remote-view.ts";
 
 /** An answer or a prompt, settled by the host, the shell or a drop. */
 export interface PendingSend {
@@ -17,12 +17,37 @@ export interface PendingSend {
   readonly settle: (outcome: RemoteSendOutcome) => void;
 }
 
+/** A host message that answers a request by its `replyTo`. */
+export type MessagingAnswer = Extract<
+  GatewayHostMessage,
+  { type: "msg-data" | "msg-result" | "ok" }
+>;
+
+/**
+ * What settles a version 4 Inbox or Messenger request: the host's answer, its
+ * refusal, the shell's refusal, or a drop before any of them.
+ */
+export type MessagingSettled =
+  | { readonly kind: "answered" }
+  | { readonly kind: "refused"; readonly code: RemoteRefusal }
+  | { readonly kind: "not-sent"; readonly reason: RemoteNotSentReason }
+  | { readonly kind: "cut-off" };
+
+/** A version 4 Inbox or Messenger request, settled once. */
+export interface PendingMessaging {
+  readonly kind: "messaging";
+  /** Whether `message`, which names this request in `replyTo`, answers it, and takes what it holds. */
+  readonly answers: (message: MessagingAnswer) => boolean;
+  readonly settle: (settled: MessagingSettled) => void;
+}
+
 /** A message the phone sent and waits for the host to answer. */
 export type Pending =
   | { readonly kind: "hello" | "list" }
   | { readonly kind: "watch"; readonly sessionId: string }
   | { readonly kind: "unwatch"; readonly sessionId: string }
-  | PendingSend;
+  | PendingSend
+  | PendingMessaging;
 
 /** Called when the shell refused to send an answer or a prompt: nothing went out. */
 export type ShellRefused = (pending: PendingSend, reason: ComputerTunnelRefusal) => void;
@@ -58,7 +83,8 @@ export class OpenSession {
     void this.tunnel.send(this.generation, JSON.stringify(build(id))).then((result) => {
       if (result.sent || this.pending.get(id) !== pending) return;
       this.pending.delete(id);
-      if (pending.kind === "answer" || pending.kind === "prompt") {
+      if (pending.kind === "messaging") pending.settle({ kind: "not-sent", reason: result.reason });
+      else if (pending.kind === "answer" || pending.kind === "prompt") {
         this.shellRefused(pending, result.reason);
       }
     });
@@ -76,10 +102,14 @@ export class OpenSession {
     return pending;
   }
 
-  /** The session dropped: settles every answer and prompt as cut off; returns their approvals. */
+  /**
+   * The session dropped: settles every answer, prompt and Inbox or Messenger
+   * request as cut off, never to be sent again; returns the answers' approvals.
+   */
   end(): string[] {
     const cutOff: string[] = [];
     for (const pending of this.pending.values()) {
+      if (pending.kind === "messaging") pending.settle({ kind: "cut-off" });
       if (pending.kind !== "answer" && pending.kind !== "prompt") continue;
       if (pending.approvalId !== undefined) cutOff.push(pending.approvalId);
       pending.settle({ kind: "cut-off" });

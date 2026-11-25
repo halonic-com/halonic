@@ -12,6 +12,7 @@ import {
   gatewayClosingErrorCodes,
   gatewayMaxIdLength,
   gatewayMaxMessageBytes,
+  gatewayMessagingLists,
   gatewayProtocolVersion,
   gatewayRefusalCodes,
 } from "@halonicjs/ports";
@@ -78,6 +79,12 @@ function message(type: string, fields: Readonly<Record<string, Check>> = {}): Ch
   return exactly({ type: oneOf(type), ...fields });
 }
 
+/** Passes when any of `checks` passes. */
+const anyOf =
+  (...checks: readonly Check[]): Check =>
+  (value) =>
+    checks.some((check) => check(value));
+
 const isState = oneOf("running", "waiting", "done", "failed");
 const isDecision = oneOf("approve", "deny");
 
@@ -108,6 +115,48 @@ const isEventBody: Check = (value) => {
   return check?.(value) === true;
 };
 
+const isMessagingId: Check = (value) => typeof value === "string" && value !== "";
+
+/** The refusals a port's `AnswerResult` or `SendResult` may carry. */
+const isMessagingRefusal = oneOf(
+  "offline",
+  "signed-out",
+  "not-found",
+  "too-large",
+  "unsupported-type",
+  "bad-answer",
+  "bad-members",
+  "not-supported",
+);
+
+const isAuthor = anyOf(
+  exactly({ kind: oneOf("me") }),
+  exactly({ kind: oneOf("agent"), agent: isMessagingId, name: isText }),
+  exactly({ kind: oneOf("person"), name: isText }),
+);
+
+/** An `AnswerResult` or a `SendResult`; the client checks it fits what it asked. */
+const isMessagingResult = anyOf(
+  exactly({ outcome: oneOf("answered"), answeredAt: isText }),
+  exactly({ outcome: oneOf("already-answered"), by: isAuthor, answeredAt: isText }),
+  exactly({ outcome: oneOf("refused"), reason: isMessagingRefusal }),
+  exactly({ outcome: oneOf("sent"), message: isObject }),
+);
+
+/** A page of port values: each item one object, its fields the port's own. */
+const isMessagingPage = exactly(
+  {
+    type: oneOf("msg-data"),
+    replyTo: isId,
+    what: oneOf(...gatewayMessagingLists, "messages", "hits"),
+    items: listOf(isObject),
+  },
+  { more: isMessagingId },
+);
+
+/** The types only version 4 lists: a version 3 host never sends them. */
+const versionFourTypes = new Set(["msg-data", "msg-result", "msg-changed", "team-data"]);
+
 /**
  * Every message the host may send, by its `type`. `error` has two shapes:
  * a closing one without `replyTo`, and a refusal that names the message it
@@ -129,11 +178,10 @@ const hostMessages: Readonly<Record<GatewayHostMessage["type"], readonly Check[]
     message("error", { code: oneOf(...gatewayClosingErrorCodes) }),
     message("error", { replyTo: isId, code: oneOf(...gatewayRefusalCodes) }),
   ],
-  // The phone asks for none of version 4's Inbox, Messenger and team status
-  // yet (G3 on HAL-17511), so it takes none of their answers.
-  "msg-data": [],
-  "msg-result": [],
-  "msg-changed": [],
+  "msg-data": [isMessagingPage],
+  "msg-result": [message("msg-result", { replyTo: isId, result: isMessagingResult })],
+  "msg-changed": [message("msg-changed", { source: isMessagingId })],
+  // The phone asks for no team status yet (G3 on HAL-17511), so it takes none.
   "team-data": [],
 };
 
@@ -142,8 +190,8 @@ const hostMessages: Readonly<Record<GatewayHostMessage["type"], readonly Check[]
  * comes first: a text over `gatewayMaxMessageBytes` bytes of UTF-8 is never
  * parsed. A `welcome` of another version than `version`, the one the phone's
  * `hello` named, is `other-version` whatever else it holds, since the phone
- * closes on it either way. Version 3 lists the same messages the phone takes
- * of version 4, so one table reads both.
+ * closes on it either way. Version 3 lists the messages of version 4 but
+ * the Inbox, Messenger and team status ones, so one table reads both.
  */
 export function parseHostMessage(
   text: string,
@@ -154,6 +202,7 @@ export function parseHostMessage(
   if (value === undefined) return refused("malformed");
   const type = value["type"];
   if (typeof type !== "string" || !Object.hasOwn(hostMessages, type)) return refused("malformed");
+  if (version < gatewayProtocolVersion && versionFourTypes.has(type)) return refused("malformed");
   if (type === "welcome" && isWhole(value["version"]) && value["version"] !== version) {
     return refused("other-version");
   }
