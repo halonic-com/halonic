@@ -13,7 +13,8 @@ one pass of delay.
 1. Checks `X-Hub-Signature-256` (HMAC-SHA256 of the raw body with the
    webhook secret, compared in constant time). A missing or wrong signature
    gets 401 and nothing is read further or forwarded. An empty secret refuses
-   everything.
+   everything. A body over 1 MiB gets 413 and the connection is closed without
+   reading the rest, and every request must arrive within 10 seconds.
 2. Keeps only three facts, for the repositories in `PR_HOOKS_REPOS`:
    - `issue_comment` `created` on a pull request, by the team (`OWNER`,
      `MEMBER`, `COLLABORATOR`), whose body has "on head";
@@ -27,7 +28,9 @@ one pass of delay.
    dropped with a log line; the pass catches it.
 
 The plugin decides whether the pull request is tracked and whether the fact
-is new. Webhook and pass share the markers on the chief line thread, so an
+is new. A pull request nobody tracks is answered from the plugin's own index
+before any Paperclip read, so the many `ci-ok` deliveries for untracked pull
+requests cost Paperclip nothing. Webhook and pass share the markers on the chief line thread, so an
 event is posted once, and the switch `chiefLine.prOutcomes` in the plugin's
 settings turns both off (the plugin then answers 409 and posts nothing).
 
@@ -42,7 +45,7 @@ PR_HOOKS_PORT=8787 \
 node infra/pr-hooks/receiver.mjs
 ```
 
-The two secrets are files mounted from the secret store, never arguments or
+Without `PR_HOOKS_FORWARD_URL` the receiver refuses to start. The two secrets are files mounted from the secret store, never arguments or
 environment values, and are never logged. Point the hooks proxy's route for
 GitHub at the port. Then the board adds to the halonic-pr-reader App: the
 events `issue_comment`, `check_run` and `pull_request`, the proxy's URL and

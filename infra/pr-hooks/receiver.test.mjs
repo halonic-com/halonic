@@ -1,8 +1,16 @@
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
-import { createServer } from "node:http";
+import { request as httpRequest } from "node:http";
 import { test } from "node:test";
-import { factsOf, forwardBudget, receiver, signatureValid } from "./receiver.mjs";
+import {
+  factsOf,
+  forwardBudget,
+  maxBodyBytes,
+  receiver,
+  serverFor,
+  settingsFrom,
+  signatureValid,
+} from "./receiver.mjs";
 
 const secret = "acme-webhook-secret";
 const repos = ["acme/tools"];
@@ -27,7 +35,7 @@ const verdictDelivery = {
 async function serve(t, { allow = () => true } = {}) {
   const forwarded = [];
   const logs = [];
-  const server = createServer(
+  const server = serverFor(
     receiver({
       secret,
       repos,
@@ -51,7 +59,7 @@ async function serve(t, { allow = () => true } = {}) {
     await new Promise((resolve) => setImmediate(resolve));
     return answer.status;
   };
-  return { deliver, forwarded, logs };
+  return { deliver, forwarded, logs, port, server };
 }
 
 test("a signed verdict comment is forwarded once, as the plugin's comment event", async (t) => {
@@ -125,4 +133,32 @@ test("past the per-minute limit facts are dropped and logged, not forwarded", as
   clock = 61_000;
   await deliver("issue_comment", verdictDelivery);
   assert.equal(forwarded.length, 2);
+});
+
+test("a body past the cap is answered 413 without waiting for the rest of it", async (t) => {
+  const { forwarded, port, server } = await serve(t);
+  assert.equal(server.requestTimeout, 10_000);
+  const outcome = await new Promise((resolve) => {
+    const request = httpRequest({ host: "127.0.0.1", port, method: "POST", path: "/" }, (answer) =>
+      resolve(answer.statusCode),
+    );
+    request.on("error", () => resolve("closed"));
+    // Never ended: the receiver must not keep reading an unsigned body.
+    request.write(Buffer.alloc(maxBodyBytes + 1));
+    t.after(() => request.destroy());
+  });
+  assert.ok(outcome === 413 || outcome === "closed", `answered ${outcome}`);
+  assert.deepEqual(forwarded, []);
+});
+
+test("the receiver refuses to start without the plugin's URL", () => {
+  assert.throws(() => settingsFrom({}), /PR_HOOKS_FORWARD_URL/);
+  assert.throws(() => settingsFrom({ PR_HOOKS_FORWARD_URL: " " }), /PR_HOOKS_FORWARD_URL/);
+  const url = "https://paperclip.acme.test/api/plugins/agent-tools/chief-line/pr-event";
+  assert.deepEqual(settingsFrom({ PR_HOOKS_FORWARD_URL: url }), {
+    forwardUrl: url,
+    repos: ["halonic-com/halonic"],
+    max: 30,
+    port: 8787,
+  });
 });

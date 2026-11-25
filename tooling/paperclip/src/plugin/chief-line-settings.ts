@@ -137,8 +137,8 @@ export function parseThreadTitle(
 export const chiefLineStateKey = (companyId: string, key: ChiefLineRecord) =>
   ({ scopeKind: "company", scopeId: companyId, namespace: "chief-line", stateKey: key }) as const;
 
-/** The chief line's records in plugin state: threads, wakes and board posts per hour, webhooks, signalled comments. */
-export type ChiefLineRecord = "threads" | "wakes" | "posts" | "hooks" | "signalled";
+/** The chief line's records in plugin state: threads, wakes and board posts per hour, webhooks, signalled comments, tracked pull requests. */
+export type ChiefLineRecord = "threads" | "wakes" | "posts" | "hooks" | "signalled" | "tracked";
 
 /** The chief line's routes, board only (src/plugin/chief-line.ts). */
 export const chiefLineRoutes = (

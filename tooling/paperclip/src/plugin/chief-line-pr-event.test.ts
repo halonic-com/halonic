@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import type { GitHubGet } from "../pr-watcher/github.ts";
 import type { Snapshot, SnapshotPull } from "../snapshot/shape.ts";
 import { fakeChiefLine, lineRequest } from "./chief-line.test-helper.ts";
@@ -115,6 +115,36 @@ verifies("paperclip.chief-line-pr-hooks", () => {
       posted: 0,
     });
     expect(posts()).toHaveLength(1);
+  });
+
+  test("an untracked pull request is answered without any Paperclip read", async () => {
+    const { line, call, event } = setup();
+    await call("chief-line-track", { caller: "ci-fasttrack", pr: 6085, repo });
+    const list = vi.spyOn(line.ctx.issues, "list");
+    const listComments = vi.spyOn(line.ctx.issues, "listComments");
+    expect((await event({ kind: "ci-ok", head, conclusion: "failure" })).body).toEqual({
+      posted: 0,
+    });
+    expect(list).not.toHaveBeenCalled();
+    expect(listComments).not.toHaveBeenCalled();
+  });
+
+  test("after a reinstall clears the index, the pass rebuilds it from the markers", async () => {
+    const { line, call, event, posts } = setup();
+    await call("chief-line-track", { caller: "ci-fasttrack", pr: 6089, repo });
+    await line.ctx.state.set(chiefLineStateKey("acme", "tracked"), {});
+    // The webhook skips it now; the pass posts it and rebuilds the index.
+    expect((await event({ kind: "comment", comment: verdict })).body).toEqual({ posted: 0 });
+    expect(await pass(line)).toBe(1);
+    expect(await line.ctx.state.get(chiefLineStateKey("acme", "tracked"))).toEqual({
+      [`${repo}#6089`]: ["ci-fasttrack"],
+    });
+    const count = posts().length;
+    expect((await event({ kind: "closed", merged: true })).body).toEqual({ posted: 1 });
+    expect(posts()).toHaveLength(count + 1);
+    // The merge ends tracking, so the next pass drops it from the index.
+    await pass(line, "merged");
+    expect(await line.ctx.state.get(chiefLineStateKey("acme", "tracked"))).toEqual({});
   });
 
   test("bad events, an agent's key and the switch off are refused", async () => {

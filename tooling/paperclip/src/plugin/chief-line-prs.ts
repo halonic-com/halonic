@@ -5,6 +5,7 @@ import type { CheckState } from "../pr-watcher/decide.ts";
 import { byReviewer, everyPage, type GitHubGet } from "../pr-watcher/github.ts";
 import type { Snapshot } from "../snapshot/shape.ts";
 import { readRecords } from "./chief-line.ts";
+import { writeIndex } from "./chief-line-pr-index.ts";
 import { type ChiefLineSettings, parseThreadTitle, webhookAllowed } from "./chief-line-settings.ts";
 import { type ChiefLineSignalApi, sendSignal } from "./chief-line-signal.ts";
 
@@ -264,16 +265,17 @@ export async function callerPulls(
   return trackedPulls(comments.flat());
 }
 
-/** Posts one caller's news on its newest thread and signals its webhook; 1 when it posted. */
+/** Posts one caller's news about its tracked pull requests on its newest thread and signals its webhook; 1 when it posted. */
 async function postNews(
   ctx: PrOutcomesApi,
   options: PassOptions,
   caller: string,
   threads: readonly PassThread[],
+  pulls: readonly TrackedPull[],
 ): Promise<number> {
-  const { companyId, snapshot, get, watched } = options;
+  const { snapshot, get, watched, companyId } = options;
   const news = [];
-  for (const pull of await callerPulls(ctx, companyId, threads)) {
+  for (const pull of pulls) {
     try {
       news.push(await pullNews(get, snapshot, watched, pull));
     } catch (error) {
@@ -334,11 +336,16 @@ export async function chiefLinePrPass(ctx: PrOutcomesApi, options: PassOptions):
     return 0;
   }
   let posted = 0;
+  const tracked = new Map<string, TrackedPull[]>();
   for (const [caller, threads] of await callerThreads(ctx, companyId, settings.projectId)) {
-    posted += await oneAtATime(`${companyId} ${caller}`, () =>
-      postNews(ctx, options, caller, threads),
-    );
+    posted += await oneAtATime(`${companyId} ${caller}`, async () => {
+      const pulls = await callerPulls(ctx, companyId, threads);
+      tracked.set(caller, pulls);
+      return await postNews(ctx, options, caller, threads, pulls);
+    });
   }
+  // The markers are the truth; the index only lets the webhook skip untracked pull requests.
+  await writeIndex(ctx, companyId, tracked);
   return posted;
 }
 

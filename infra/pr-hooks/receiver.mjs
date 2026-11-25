@@ -17,7 +17,9 @@ import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 
 /** GitHub's deliveries for these events are far smaller; anything larger is refused unread. */
-const maxBodyBytes = 1024 * 1024;
+export const maxBodyBytes = 1024 * 1024;
+/** A delivery must arrive in full within this time, so a slow sender can't hold a connection. */
+const requestTimeoutMs = 10_000;
 const teamAssociations = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
 
 /** Whether `header` is GitHub's `sha256=<hex>` HMAC of the raw body with `secret`. */
@@ -119,14 +121,17 @@ function readBody(request) {
   return new Promise((resolve) => {
     const chunks = [];
     let size = 0;
-    // Past the cap the rest is drained, not kept, so the 413 still reaches the sender.
+    // Past the cap reading stops at once; the handler answers 413 and closes the connection.
     request.on("data", (chunk) => {
       size += chunk.length;
-      if (size <= maxBodyBytes) {
-        chunks.push(chunk);
+      if (size > maxBodyBytes) {
+        request.pause();
+        resolve(undefined);
+        return;
       }
+      chunks.push(chunk);
     });
-    request.on("end", () => resolve(size > maxBodyBytes ? undefined : Buffer.concat(chunks)));
+    request.on("end", () => resolve(Buffer.concat(chunks)));
     request.on("error", () => resolve(undefined));
   });
 }
@@ -153,7 +158,8 @@ export function receiver({ secret, repos, forward, allow, log = console.error })
     }
     const raw = await readBody(request);
     if (raw === undefined) {
-      return answer(413);
+      // The rest of the body is never read: close the connection once the answer is out.
+      return response.writeHead(413, { connection: "close" }).end(() => request.destroy());
     }
     if (!signatureValid(secret, raw, request.headers["x-hub-signature-256"])) {
       log("pr-hooks: refused a delivery with a missing or wrong signature.");
@@ -192,19 +198,38 @@ export function forwarder(url, token, fetchImpl = fetch) {
   };
 }
 
+/** An HTTP server for the handler, with a time limit on every request. */
+export function serverFor(handler) {
+  const server = createServer(handler);
+  server.requestTimeout = requestTimeoutMs;
+  server.headersTimeout = requestTimeoutMs;
+  return server;
+}
+
+/** The settings from the environment; throws when the plugin's URL is missing, so the receiver never starts without one. */
+export function settingsFrom(env) {
+  const forwardUrl = (env.PR_HOOKS_FORWARD_URL ?? "").trim();
+  if (!URL.canParse(forwardUrl)) {
+    throw new Error("PR_HOOKS_FORWARD_URL must be the plugin's /chief-line/pr-event URL.");
+  }
+  const max = Number(env.PR_HOOKS_MAX_PER_MINUTE ?? "30");
+  return {
+    forwardUrl,
+    repos: (env.PR_HOOKS_REPOS ?? "halonic-com/halonic").split(",").map((r) => r.trim()),
+    max: Number.isInteger(max) && max > 0 ? max : 30,
+    port: Number(env.PR_HOOKS_PORT ?? "8787"),
+  };
+}
+
 const readSecret = (name) => readFileSync(process.env[name] ?? "", "utf8").trim();
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const repos = (process.env.PR_HOOKS_REPOS ?? "halonic-com/halonic")
-    .split(",")
-    .map((r) => r.trim());
-  const max = Number(process.env.PR_HOOKS_MAX_PER_MINUTE ?? "30");
+  const { forwardUrl, repos, max, port } = settingsFrom(process.env);
   const handler = receiver({
     secret: readSecret("PR_HOOKS_SECRET_FILE"),
     repos,
-    forward: forwarder(process.env.PR_HOOKS_FORWARD_URL ?? "", readSecret("PR_HOOKS_TOKEN_FILE")),
-    allow: forwardBudget(Number.isInteger(max) && max > 0 ? max : 30),
+    forward: forwarder(forwardUrl, readSecret("PR_HOOKS_TOKEN_FILE")),
+    allow: forwardBudget(max),
   });
-  const port = Number(process.env.PR_HOOKS_PORT ?? "8787");
-  createServer(handler).listen(port, () => console.log(`pr-hooks: listening on ${port}`));
+  serverFor(handler).listen(port, () => console.log(`pr-hooks: listening on ${port}`));
 }

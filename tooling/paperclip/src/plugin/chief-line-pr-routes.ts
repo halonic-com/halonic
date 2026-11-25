@@ -1,6 +1,7 @@
 import type { PluginApiResponse } from "@paperclipai/plugin-sdk";
 import { newestCheck } from "../pr-watcher/github.ts";
 import { type ChiefLineApi, fail } from "./chief-line.ts";
+import { addToIndex, indexedCallers } from "./chief-line-pr-index.ts";
 import {
   callerPulls,
   callerThreads,
@@ -24,6 +25,8 @@ import { type ChiefLineSettings, callerPattern, threadTitle } from "./chief-line
  * line route. `pr-event` reads nothing from GitHub: the delivery carries the
  * fact, and the markers the PR watcher's pass also reads decide whether it is
  * new, so an event the webhook posted is never posted again by the pass.
+ * The tracked pull request index (src/plugin/chief-line-pr-index.ts) lets
+ * `pr-event` skip an untracked pull request without reading Paperclip.
  */
 
 const repoPattern = /^[\w.-]+\/[\w.-]+$/;
@@ -80,6 +83,7 @@ export async function trackPull(
     `**PR watcher (chief line)**\n\nTracking ${name} for ${caller}: review verdicts, \`ci-ok\`, a merge or a close come here.\n\n${marker(repo, pull.number, "track")}`,
     companyId,
   );
+  await addToIndex(ctx, companyId, { repo, number: pull.number, caller });
   return { status: 200, body: { caller, repo, pr: pull.number, commentId: comment.id } };
 }
 
@@ -181,8 +185,16 @@ export async function prEvent(
   if (settings.projectId === undefined) {
     return fail(409, "The chief line has no project: set chiefLine.projectId.");
   }
+  // Most deliveries are for pull requests nobody tracks: answer those before any Paperclip read.
+  const tracking = await indexedCallers(ctx, companyId, repo, pr);
+  if (tracking.length === 0) {
+    return { status: 200, body: { posted: 0 } };
+  }
   let posted = 0;
   for (const [caller, threads] of await callerThreads(ctx, companyId, settings.projectId)) {
+    if (!tracking.includes(caller)) {
+      continue;
+    }
     posted += await oneAtATime(`${companyId} ${caller}`, async () => {
       const pulls = await callerPulls(ctx, companyId, threads);
       const pull = pulls.find((p) => p.repo === repo && p.number === pr);
