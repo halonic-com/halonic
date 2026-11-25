@@ -92,6 +92,11 @@ export function dispatchMessaging(
 async function readMessaging(context: Context, message: MessageOf<"msg-read">): Promise<void> {
   const { view } = context.messaging;
   if (message.what === "messages") {
+    // Only a conversation the view lists, as `msg-send` checks it.
+    const conversations = await view.listConversations();
+    if (!conversations.some((candidate) => candidate.id === message.conversation)) {
+      return context.replies.refuse(message.id, "not-found");
+    }
     // Oldest first from the port; the phone reads the newest page first.
     const messages = [...(await view.listMessages(message.conversation))].reverse();
     return sendPage(
@@ -139,7 +144,9 @@ async function answer(context: Context, message: MessageOf<"msg-answer">): Promi
   const { view } = context.messaging;
   const item = (await view.listInboxItems()).find((candidate) => candidate.id === message.item);
   if (item === undefined) return context.replies.refuse(message.id, "not-found");
-  if (item.risk === "risky" && !context.policy.allowRiskyRemotely()) {
+  // Fails closed: any risk but `normal` (absent reads as `normal`) waits for the switch.
+  const risky = item.risk !== undefined && item.risk !== "normal";
+  if (risky && !context.policy.allowRiskyRemotely()) {
     return context.replies.refuse(message.id, "not-allowed-remotely");
   }
   const source = (await view.listSources()).find((candidate) => candidate.id === item.source);

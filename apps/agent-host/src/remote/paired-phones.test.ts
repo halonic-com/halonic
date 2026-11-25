@@ -304,6 +304,34 @@ verifies("agent-host.gateway-idle-expiry", () => {
       expect(phones.find(new Uint8Array(32).fill(1))?.id).toBe(added.id);
     });
 
+    it("keeps a phone at exactly 30 days, and refuses it one millisecond later", async () => {
+      const { time, phones } = await store();
+      const added = await phones.add(phone("Pixel 8", 1));
+      await time.advance(30 * day);
+      expect(phones.find(new Uint8Array(32).fill(1))?.id).toBe(added.id);
+      await time.advance(1);
+      expect(phones.find(new Uint8Array(32).fill(1))).toBeUndefined();
+    });
+
+    it("drops a phone idle for 31 days from the list without any connection", async () => {
+      const { file, time, phones } = await store();
+      await phones.add(phone("Pixel 8", 1));
+      await time.advance(31 * day);
+      expect(phones.phones).toEqual([]);
+      await settled();
+      expect(JSON.parse(file.text ?? "").phones).toEqual([]);
+    });
+
+    it("refuses a file whose paired time can't be read, so no phone escapes expiry", async () => {
+      const file = new MemoryFile();
+      const { phones: first } = await store(file);
+      await first.add(phone("Pixel 8", 1));
+      const saved = JSON.parse(file.text ?? "");
+      saved.phones[0].pairedAt = "not a date";
+      file.text = JSON.stringify(saved);
+      await expect(store(file)).rejects.toThrow("has no time it was paired");
+    });
+
     it("never expires a phone while its session is open", async () => {
       const { time, phones } = await store();
       const added = await phones.add(phone("Pixel 8", 1));

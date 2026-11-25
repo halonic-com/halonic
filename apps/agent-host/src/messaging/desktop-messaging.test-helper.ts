@@ -44,8 +44,25 @@ export class FakePaperclip {
   /** What `heartbeat-runs` answers: the newest runs, finished ones included. */
   runs: unknown[] = [];
 
+  /**
+   * When set, every object in every answer also carries fields no app may
+   * ever see (a key, a token, an address with a password), each holding this
+   * value, so a test can show none of it leaves the provider.
+   */
+  canary: string | undefined;
+
   readonly fetch = async (input: Request | string | URL, init?: RequestInit): Promise<Response> => {
-    const request = new Request(input, init);
+    const answer = await this.#answer(new Request(input, init));
+    if (this.canary === undefined) return answer;
+    const text = await answer.text();
+    const canary = this.canary;
+    return new Response(text === "" ? text : JSON.stringify(withCanary(JSON.parse(text), canary)), {
+      status: answer.status,
+      headers: { "content-type": "application/json", "x-canary": canary },
+    });
+  };
+
+  async #answer(request: Request): Promise<Response> {
     if (this.offline) throw new TypeError("fetch failed");
     this.seen.push({
       url: request.url,
@@ -80,6 +97,23 @@ export class FakePaperclip {
     if (path === "/api/cli-auth/me" && this.meAnswer !== undefined) return this.meAnswer();
     if (path === "/api/cli-auth/me" && this.me !== undefined) return json(this.me);
     return json({ error: "API route not found" }, 404);
+  }
+}
+
+/** `value` with the canary's fields added to every object in it. */
+function withCanary(value: unknown, canary: string): unknown {
+  if (Array.isArray(value)) return value.map((item) => withCanary(item, canary));
+  if (typeof value !== "object" || value === null) return value;
+  const fields = Object.entries(value).map(([name, field]) => [name, withCanary(field, canary)]);
+  // An address that carries the canary as its password, as a raw Paperclip field might.
+  const instanceUrl = new URL(acme.address);
+  instanceUrl.username = "board";
+  instanceUrl.password = canary;
+  return {
+    ...Object.fromEntries(fields),
+    apiKey: canary,
+    adapterConfig: { token: canary, headers: { authorization: `Bearer ${canary}` } },
+    instanceUrl: instanceUrl.href,
   };
 }
 
