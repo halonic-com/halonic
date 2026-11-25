@@ -6,7 +6,11 @@ describe("nodeDoctorMachine", () => {
     const computer = nodeDoctorMachine();
 
     expect(computer.system).toMatch(/^(Linux|macOS|Windows|\w+) \w+$/);
-    expect(computer.harnesses.map((harness) => harness.id)).toEqual(["claude-code", "codex", "opencode"]);
+    expect(computer.harnesses.map((harness) => harness.id)).toEqual([
+      "claude-code",
+      "codex",
+      "opencode",
+    ]);
   });
 });
 
