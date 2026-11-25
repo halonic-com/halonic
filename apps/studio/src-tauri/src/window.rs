@@ -34,7 +34,9 @@ pub fn open_focused<R: Runtime, M: Manager<R>>(
     config.visible = false;
     let window = open_from(manager, config)?;
     // Without its own icon the window still works, with Studio's.
-    if let Err(error) = window.set_icon(app.icon()) {
+    if let Some(icon) = app.icon()
+        && let Err(error) = window.set_icon(icon)
+    {
         halonic_shell_log::record(
             "window",
             format!("{}'s icon didn't set: {error}", app.title()),
@@ -50,6 +52,27 @@ pub fn open_focused<R: Runtime, M: Manager<R>>(
     }
     window.show()?;
     Ok(window)
+}
+
+#[cfg(desktop)]
+/// Opens quick ask's window (HAL-18787), hidden, on the same page as
+/// Studio's: frameless and transparent, so the page draws the box with its
+/// own corners and shadow (design HAL-18594, "For the build"), always on
+/// top, on every desktop space and without a taskbar entry or a system
+/// shadow of its own. `quick_ask` places and shows it.
+pub fn open_ask<R: Runtime, M: Manager<R>>(manager: &M) -> tauri::Result<WebviewWindow<R>> {
+    let mut config = app_window_config(manager);
+    config.label = FocusedApp::Ask.name().to_owned();
+    config.title = FocusedApp::Ask.title().to_owned();
+    config.visible = false;
+    config.decorations = false;
+    config.transparent = true;
+    config.shadow = false;
+    config.always_on_top = true;
+    config.visible_on_all_workspaces = true;
+    config.skip_taskbar = true;
+    config.resizable = false;
+    WebviewWindowBuilder::from_config(manager, &config)?.build()
 }
 
 /// The app window tauri.conf.json describes.

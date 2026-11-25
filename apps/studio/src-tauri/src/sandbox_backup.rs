@@ -101,7 +101,10 @@ mod tests {
         let text = include_str!("../capabilities/desktop-sandbox-backup.json");
         let capability: Value = serde_json::from_str(text).expect("the capability is JSON");
         assert_eq!(capability["local"], true);
-        assert_eq!(capability["windows"], json!(["main", "inbox", "messenger"]));
+        assert_eq!(
+            capability["windows"],
+            json!(["main", "inbox", "messenger", "ask"])
+        );
         assert!(capability.get("remote").is_none(), "{capability}");
         assert_eq!(
             capability["permissions"],

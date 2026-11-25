@@ -24,7 +24,10 @@ fn served_page_test_sees_blobs_and_records_granted_to_the_local_main_window_only
     ] {
         let capability: Value = serde_json::from_str(text).expect("the capability is JSON");
         assert_eq!(capability["local"], true);
-        assert_eq!(capability["windows"], json!(["main", "inbox", "messenger"]));
+        assert_eq!(
+            capability["windows"],
+            json!(["main", "inbox", "messenger", "ask"])
+        );
         assert!(capability.get("remote").is_none(), "{capability}");
         assert_eq!(capability["permissions"], permissions);
     }
@@ -37,7 +40,10 @@ fn served_page_test_sees_files_granted_to_the_local_main_window_only() {
     let text = include_str!("../../capabilities/desktop-files.json");
     let capability: Value = serde_json::from_str(text).expect("the capability is JSON");
     assert_eq!(capability["local"], true);
-    assert_eq!(capability["windows"], json!(["main", "inbox", "messenger"]));
+    assert_eq!(
+        capability["windows"],
+        json!(["main", "inbox", "messenger", "ask"])
+    );
     assert!(capability.get("remote").is_none(), "{capability}");
     assert_eq!(
         capability["permissions"],
@@ -62,7 +68,10 @@ fn served_page_test_sees_the_agent_host_granted_to_the_local_main_window_only() 
     let text = include_str!("../../capabilities/desktop-agent-host.json");
     let capability: Value = serde_json::from_str(text).expect("the capability is JSON");
     assert_eq!(capability["local"], true);
-    assert_eq!(capability["windows"], json!(["main", "inbox", "messenger"]));
+    assert_eq!(
+        capability["windows"],
+        json!(["main", "inbox", "messenger", "ask"])
+    );
     assert!(capability.get("remote").is_none(), "{capability}");
     assert_eq!(
         capability["permissions"],
@@ -85,7 +94,10 @@ fn served_page_test_sees_the_action_commands_granted_to_the_local_windows_only()
     let text = include_str!("../../capabilities/desktop-actions.json");
     let capability: Value = serde_json::from_str(text).expect("the capability is JSON");
     assert_eq!(capability["local"], true);
-    assert_eq!(capability["windows"], json!(["main", "inbox", "messenger"]));
+    assert_eq!(
+        capability["windows"],
+        json!(["main", "inbox", "messenger", "ask"])
+    );
     assert!(capability.get("remote").is_none(), "{capability}");
     assert_eq!(
         capability["permissions"],

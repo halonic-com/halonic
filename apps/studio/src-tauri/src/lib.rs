@@ -47,6 +47,10 @@
 //! capability names, so it gets no command either (`server_session_brief.rs`).
 //! The feedback shortcut's windows get only the `feedback` plugin's
 //! commands (capabilities/desktop-feedback-*.json, `feedback_capture.rs`).
+//! Quick ask's box (`--app ask`, `quick_ask.rs`) gets what the focused
+//! apps' windows get, and `plugin:quick-ask|hide`
+//! (capabilities/desktop-quick-ask-window.json); only Studio's window reads
+//! and changes its keys (capabilities/desktop-quick-ask-shortcut.json).
 
 #[cfg(desktop)]
 mod action_parts;
@@ -82,6 +86,8 @@ mod files;
 mod focused_apps;
 mod frame_colour;
 mod git;
+#[cfg(desktop)]
+mod global_keys;
 mod google_setups;
 mod host_settings;
 mod http_fetch;
@@ -117,6 +123,8 @@ mod plugin_git;
 mod plugin_source;
 mod profile;
 mod profile_place;
+#[cfg(desktop)]
+mod quick_ask;
 #[cfg(windows)]
 mod raised_start;
 mod records;
@@ -156,9 +164,10 @@ pub fn run() {
     if raised_start::refused() {
         return;
     }
-    // Outside `shell`, so the tests' apps claim neither: one instance, and the feedback keys.
+    // Outside `shell`, so the tests' apps claim neither: one instance, and
+    // the global keys of the feedback shortcut and quick ask.
     #[cfg(desktop)]
-    let builder = feedback_capture::keys(focused_apps::single_instance(Builder::default()));
+    let builder = global_keys::keys(focused_apps::single_instance(Builder::default()));
     #[cfg(mobile)]
     let builder = Builder::default();
     shell(builder)
@@ -232,7 +241,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         // Notifications for the Inbox and the Messenger (HAL-17448): only
         // the app's own page is granted its commands.
         .plugin(tauri_plugin_notification::init())
-        .plugin(feedback_capture::commands());
+        .plugin(feedback_capture::commands())
+        .plugin(quick_ask::commands());
     // The phone's own plugins, each used from Rust only (`android_plugins.rs`).
     #[cfg(target_os = "android")]
     let builder = android_plugins::register(builder);
@@ -263,6 +273,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             notification_clicks::listen(app.handle());
             #[cfg(desktop)]
             background_start::after_tray(app.handle(), background, tray::start(app.handle()));
+            #[cfg(desktop)]
+            quick_ask::register_saved(app.handle());
             Ok(())
         })
         // A page that reloads or closes can't end its agent host streams
@@ -298,6 +310,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
                 engine::end_page(window.app_handle(), window.label());
                 #[cfg(desktop)]
                 engines::window_closed(window.app_handle(), window.label());
+                #[cfg(desktop)]
+                quick_ask::window_closed(window.app_handle(), window.label());
                 http_fetch::end_page_calls(window.app_handle(), window.label());
                 #[cfg(desktop)]
                 actions::end_page(window.app_handle(), window.label());

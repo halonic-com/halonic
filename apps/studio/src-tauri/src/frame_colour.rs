@@ -81,7 +81,7 @@ mod tests {
         assert!(capability.get("remote").is_none());
         assert_eq!(
             capability["windows"],
-            serde_json::json!(["main", "inbox", "messenger"])
+            serde_json::json!(["main", "inbox", "messenger", "ask"])
         );
         assert_eq!(
             capability["permissions"],

@@ -11,6 +11,10 @@
 //! title and, on Windows, its own taskbar entry: its AppUserModelID is the
 //! one its Start menu shortcut carries, and its own icon: the halo with the
 //! app's glyph (HAL-18693), drawn by icons/draw-app-icons.mjs.
+//!
+//! Quick ask (`--app ask`, HAL-18787) is a focused app too, but its window
+//! is the box `quick_ask` shows over other apps: no Start menu shortcut,
+//! taskbar entry or icon of its own.
 
 use tauri::image::Image;
 use tauri::{AppHandle, Builder, Manager, Runtime, WebviewWindow};
@@ -26,17 +30,23 @@ pub const STUDIO_WINDOW: &str = "main";
 pub enum FocusedApp {
     Inbox,
     Messenger,
+    Ask,
 }
 
 impl FocusedApp {
-    /// Every focused app, as the installer adds their shortcuts.
+    /// Every focused app with a Start menu shortcut, as the installer adds
+    /// them. Quick ask has none: its keys open it.
     pub const ALL: [FocusedApp; 2] = [FocusedApp::Inbox, FocusedApp::Messenger];
+
+    /// Every focused app `--app` can name.
+    const STARTED: [FocusedApp; 3] = [FocusedApp::Inbox, FocusedApp::Messenger, FocusedApp::Ask];
 
     /// Its name after `--app`, which is also its window's label.
     pub fn name(self) -> &'static str {
         match self {
             FocusedApp::Inbox => "inbox",
             FocusedApp::Messenger => "messenger",
+            FocusedApp::Ask => "ask",
         }
     }
 
@@ -45,21 +55,25 @@ impl FocusedApp {
         match self {
             FocusedApp::Inbox => "Halonic Inbox",
             FocusedApp::Messenger => "Halonic Messenger",
+            // Read by screen readers only: the box has no title bar.
+            FocusedApp::Ask => "Ask an agent",
         }
     }
 
     /// Its window's icon, 64 by 64 raw RGBA like the tray's (so it stays
     /// sharp on the taskbar at 125–200% scaling): the halo with the app's
     /// glyph, from the same drawing as its shortcut's icon
-    /// (`icons/apps/<name>.ico`).
-    pub fn icon(self) -> Image<'static> {
-        Image::new(self.icon_bytes(), 64, 64)
+    /// (`icons/apps/<name>.ico`). `None` for quick ask, which has no
+    /// taskbar entry.
+    pub fn icon(self) -> Option<Image<'static>> {
+        self.icon_bytes().map(|bytes| Image::new(bytes, 64, 64))
     }
 
-    fn icon_bytes(self) -> &'static [u8] {
+    fn icon_bytes(self) -> Option<&'static [u8]> {
         match self {
-            FocusedApp::Inbox => include_bytes!("../icons/apps/inbox.rgba"),
-            FocusedApp::Messenger => include_bytes!("../icons/apps/messenger.rgba"),
+            FocusedApp::Inbox => Some(include_bytes!("../icons/apps/inbox.rgba")),
+            FocusedApp::Messenger => Some(include_bytes!("../icons/apps/messenger.rgba")),
+            FocusedApp::Ask => None,
         }
     }
 
@@ -72,7 +86,9 @@ impl FocusedApp {
     }
 
     fn named(name: &str) -> Option<FocusedApp> {
-        FocusedApp::ALL.into_iter().find(|app| app.name() == name)
+        FocusedApp::STARTED
+            .into_iter()
+            .find(|app| app.name() == name)
     }
 }
 
@@ -112,8 +128,12 @@ pub fn first_open<R: Runtime>(handle: &AppHandle<R>, labels: &[&str]) -> Option<
 }
 
 /// Opens the window `app` asks for (Studio's for `None`), or brings it
-/// forward when it is already open.
+/// forward when it is already open. Quick ask's box shows on the screen
+/// the pointer is on.
 pub fn show<R: Runtime>(handle: &AppHandle<R>, app: Option<FocusedApp>) -> tauri::Result<()> {
+    if app == Some(FocusedApp::Ask) {
+        return crate::quick_ask::show(handle);
+    }
     let label = app.map_or(STUDIO_WINDOW, FocusedApp::name);
     if let Some(window) = handle.get_webview_window(label) {
         return bring_forward(&window);
@@ -184,6 +204,23 @@ mod tests {
         );
     }
 
+    /// `studio.src-tauri.quick-ask-window`: `--app ask` opens the box,
+    /// which the installer gives no shortcut of its own.
+    #[test]
+    fn requested_reads_quick_ask_which_has_no_start_menu_shortcut() {
+        assert_eq!(
+            requested(&["halonic-studio", "--app", "ask"]),
+            Some(FocusedApp::Ask)
+        );
+        assert_eq!(
+            requested(&["halonic-studio", "--app=ask"]),
+            Some(FocusedApp::Ask)
+        );
+        assert_eq!(requested(&["halonic-studio", "--app=Ask"]), None);
+        assert!(!FocusedApp::ALL.contains(&FocusedApp::Ask));
+        assert!(FocusedApp::Ask.icon().is_none());
+    }
+
     #[test]
     fn requested_is_studio_without_a_known_app() {
         assert_eq!(requested(&["Halonic.exe"]), None);
@@ -202,8 +239,12 @@ mod tests {
     #[test]
     fn each_app_has_its_own_64_by_64_icon() {
         for app in FocusedApp::ALL {
-            assert_eq!(app.icon_bytes().len(), 64 * 64 * 4, "{}", app.name());
-            assert_eq!((app.icon().width(), app.icon().height()), (64, 64));
+            let bytes = app
+                .icon_bytes()
+                .expect("an app with a shortcut has an icon");
+            assert_eq!(bytes.len(), 64 * 64 * 4, "{}", app.name());
+            let icon = app.icon().expect("its icon");
+            assert_eq!((icon.width(), icon.height()), (64, 64));
         }
         assert_ne!(
             FocusedApp::Inbox.icon_bytes(),
@@ -256,7 +297,7 @@ mod tests {
         assert_eq!(capability["local"], true);
         assert_eq!(
             capability["windows"],
-            serde_json::json!(["inbox", "messenger"])
+            serde_json::json!(["inbox", "messenger", "ask"])
         );
         assert!(capability.get("remote").is_none());
         assert_eq!(
