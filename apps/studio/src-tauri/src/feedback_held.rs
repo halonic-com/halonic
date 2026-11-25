@@ -3,14 +3,8 @@
 //! minutes pass or a box is selected, and then only the crop of that box.
 //! Plain values and functions, so they test without windows or a screen.
 
-// Until the overlay's page lands, nothing registers the saved shortcut
-// at start (HAL-18778 PR 4), so outside the tests its parsing is unused.
-#![cfg_attr(
-    not(test),
-    expect(dead_code, reason = "used once PR 4 registers the shortcut")
-)]
-
 use std::str::FromStr;
+use std::sync::{Mutex, PoisonError};
 use std::time::{Duration, Instant};
 
 use halonic_screen_still::{CropBox, Still};
@@ -24,6 +18,10 @@ pub const DEFAULT_SHORTCUT: &str = "CommandOrControl+Alt+F";
 
 /// The overlay windows' labels: this and the screen's number.
 pub const OVERLAY_PREFIX: &str = "feedback-overlay-";
+
+/// The label of the window that says screen capture isn't available on
+/// this system yet, such as macOS or Linux on Wayland.
+pub const UNAVAILABLE_WINDOW: &str = "feedback-unavailable";
 
 /// The most screens one press captures. No capability may name a window
 /// with a wildcard (`served_page_tests`), so the overlay's capability lists
@@ -44,6 +42,9 @@ pub struct Held {
     /// A press's stills are being taken and its overlays opened: another
     /// press now would start a second capture whose windows clash.
     capturing: bool,
+    /// The Send feedback window was asked to close and hasn't gone yet: a
+    /// press now takes a new capture instead of bringing it forward.
+    send_feedback_closing: bool,
 }
 
 /// Which of the feedback's windows are open when the shortcut is pressed.
@@ -76,6 +77,7 @@ impl Held {
             crop: None,
             press: self.press + 1,
             capturing: self.capturing,
+            send_feedback_closing: self.send_feedback_closing,
         };
         self.press
     }
@@ -96,7 +98,7 @@ impl Held {
         if open.overlays {
             return Press::End;
         }
-        if open.send_feedback {
+        if open.send_feedback && !self.send_feedback_closing {
             return Press::ShowSendFeedback;
         }
         self.capturing = true;
@@ -106,6 +108,16 @@ impl Held {
     /// The press's capture ended, with its overlays open or not.
     pub fn capture_done(&mut self) {
         self.capturing = false;
+    }
+
+    /// The Send feedback window was asked to close.
+    pub fn send_feedback_closing(&mut self) {
+        self.send_feedback_closing = true;
+    }
+
+    /// The Send feedback window is gone.
+    pub fn send_feedback_closed(&mut self) {
+        self.send_feedback_closing = false;
     }
 
     /// Drops the stills of press `press` when no box was selected from them
@@ -133,6 +145,7 @@ impl Held {
         *self = Held {
             press: self.press,
             capturing: self.capturing,
+            send_feedback_closing: self.send_feedback_closing,
             ..Held::default()
         };
     }
@@ -170,6 +183,19 @@ impl Held {
     /// The selected crop, until the feedback ends.
     pub fn crop(&self) -> Option<&Still> {
         self.crop.as_ref()
+    }
+}
+
+/// Marks a press's capture as ended when it is dropped, so a capture that
+/// panics still lets the next press take one.
+pub struct Capturing<'a>(pub &'a Mutex<Held>);
+
+impl Drop for Capturing<'_> {
+    fn drop(&mut self) {
+        self.0
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .capture_done();
     }
 }
 

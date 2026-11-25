@@ -12,6 +12,12 @@ export {
   stillSize,
 } from "./crop.ts";
 export { feedbackFeature } from "./feature.ts";
+export { type FeedbackIpc, feedbackCommands } from "./feedback-ipc.ts";
+export {
+  type FeedbackWindowKind,
+  type MountedFeedbackWindow,
+  mountFeedbackWindow,
+} from "./feedback-windows.tsx";
 export { feedbackWords } from "./feedback-words.ts";
 export {
   FeedbackOutbox,
