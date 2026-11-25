@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
     "lint": "biome check .",
     "test": "vitest run",
-    "build:plugin": "esbuild src/plugin/worker.ts src/plugin/manifest.ts --bundle --platform=node --format=esm --target=node24 --outdir=dist && esbuild src/worker-agents/ui/index.tsx --bundle --platform=browser --format=esm --target=es2022 --jsx=automatic --external:react --external:react/jsx-runtime --external:react-dom --external:@paperclipai/plugin-sdk/ui --outfile=dist/ui/index.js",
+    "build:plugin": "node src/plugin/build.ts",
     "build:seats-plugin": "node src/seats/plugin/build.ts",
     "build:gh-guard": "node src/gh-guard/build.ts"
   },
@@ -19,7 +19,14 @@
     "worker": "./dist/worker.js"
   },
   "devDependencies": {
+    "@halonicjs/app": "workspace:*",
+    "@halonicjs/engine": "workspace:*",
+    "@halonicjs/events": "workspace:*",
+    "@halonicjs/format": "workspace:*",
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/std": "workspace:*",
     "@halonicjs/target-paperclip-runtime": "workspace:*",
+    "@halonicjs/testing-contracts": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@paperclipai/plugin-sdk": "catalog:",

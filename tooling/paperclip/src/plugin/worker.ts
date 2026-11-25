@@ -6,6 +6,7 @@ import { boardCheck } from "./board-check.ts";
 import { registerBoardTools } from "./board-tools.ts";
 import { companyRoster } from "./companies.ts";
 import { difficultyTagger } from "./difficulty-tagger.ts";
+import { lifecycleRunner } from "./fast-track-lifecycle-job.ts";
 import { handleGhGuard } from "./gh-guard-route.ts";
 import {
   githubPullRouteKey,
@@ -50,8 +51,9 @@ export const plugin = definePlugin({
   async setup(ctx) {
     context = ctx;
     // Each job only dispatches; its pass runs in a call scoped to the company (scheduled.ts).
+    const lifecycle = lifecycleRunner(ctx);
     const watcher = scheduledPerCompany(ctx, roster, "pr-watch", (companyId, now) =>
-      runWatcher(ctx, now, async () => [companyId]),
+      runWatcher(ctx, now, async () => [companyId], lifecycle),
     );
     ctx.jobs.register("pr-watch", () => watcher.dispatch());
     const board = boardCheck(ctx);
