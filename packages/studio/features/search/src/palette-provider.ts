@@ -44,6 +44,7 @@ export async function searchForPalette(
       label: hit.title === "" ? hit.excerpt : hit.title,
       detail: `${hitKindWords[hit.kind]} · ${sourceLabel}`,
       hubName: sourceLabel,
+      kindName: hitKindWords[hit.kind].toLowerCase(),
       ...(hit.excerpt === "" ? {} : { description: hit.excerpt }),
       place,
     });

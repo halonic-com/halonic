@@ -11,8 +11,10 @@ import { RecapView } from "./recap-view.tsx";
 export function OverviewPlace({ context }: PlaceViewProps) {
   const connected = context.services.find(OverviewMessagingService) !== undefined;
   return (
-    <div className="flex w-full flex-col gap-2 py-5">
-      <h1 className="px-4 text-title">Overview</h1>
+    <div className="flex w-full flex-col gap-4 px-2 py-5 phone:px-0">
+      <h1 tabIndex={-1} className="px-4 text-title">
+        Overview
+      </h1>
       {connected ? (
         <>
           <RecapView store={context.services.get(RecapService)} />

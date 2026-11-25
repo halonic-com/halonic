@@ -17,6 +17,7 @@ verifies("search.palette", () => {
         label: "ACME-7",
         detail: "Work · Paperclip · Acme",
         hubName: "Paperclip · Acme",
+        kindName: "work",
         description: "Answer the click test",
         place: "overview",
       },

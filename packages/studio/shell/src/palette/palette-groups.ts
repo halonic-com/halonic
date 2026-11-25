@@ -39,6 +39,8 @@ export interface PaletteRow {
   readonly match?: NameMatch;
   /** Whether a window tab shows it already, so the row says "Switch to tab". */
   readonly open: boolean;
+  /** The kind a screen reader hears after the name, from a provider's `kindName`. */
+  readonly kind?: string;
   readonly target: PaletteTarget;
 }
 
@@ -168,7 +170,9 @@ export function paletteGroups(sources: PaletteSources): PaletteContent {
       label: result.label,
       ...(result.detail === undefined ? {} : { detail: result.detail }),
       ...(result.hubName === undefined ? {} : { hubName: result.hubName }),
-      open: openKeys.has(key),
+      ...(result.kindName === undefined ? {} : { kind: result.kindName }),
+      // A found item that opens a place is open when a tab shows that place.
+      open: openKeys.has(result.place ?? key),
       target:
         result.place === undefined
           ? { kind: "item", item: result.item }
@@ -188,7 +192,7 @@ export function paletteGroups(sources: PaletteSources): PaletteContent {
   const itemRows = withoutRepeats([...foundRows, ...placeRows]);
   const items = [
     ...ranked(sources.words, itemRows, recency),
-    ...foundOtherwise(sources.words, itemRows),
+    ...foundOtherwise(sources.words, itemRows, new Set(foundRows.map((row) => row.key))),
   ];
   const actions = ranked(
     sources.words,
@@ -242,10 +246,13 @@ function ranked(
  * or an agent by its description, in the order given. They show after the rows whose name
  * matches, with nothing marked (HAL-13242). An open or recent place needs its name to match.
  */
-function foundOtherwise(words: string, rows: readonly PaletteRow[]): PaletteRow[] {
-  return rows.filter(
-    (row) => row.target.kind === "item" && matchName(words, row.label) === undefined,
-  );
+/** The found rows whose name doesn't hold the words, also those that open a place (`SearchResult.place`). */
+function foundOtherwise(
+  words: string,
+  rows: readonly PaletteRow[],
+  foundKeys: ReadonlySet<string>,
+): PaletteRow[] {
+  return rows.filter((row) => foundKeys.has(row.key) && matchName(words, row.label) === undefined);
 }
 
 function compareRecency(left: number, right: number): number {

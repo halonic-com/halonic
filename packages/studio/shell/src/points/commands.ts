@@ -86,6 +86,11 @@ export interface SearchResult {
    * feature's item kind opens.
    */
   readonly place?: SidebarPlace;
+  /**
+   * The item's kind as a screen reader hears it after the name, such as "work", for an item no
+   * feature's item kind names, such as one with a `place`. A registered kind's own name wins.
+   */
+  readonly kindName?: string;
 }
 
 /** Offers a feature's items to search. Ids are unique. */

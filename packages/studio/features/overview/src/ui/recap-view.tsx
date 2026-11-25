@@ -24,7 +24,8 @@ export function RecapView({ store }: RecapViewProps) {
       <h2 id="overview-recap" className="text-heading">
         Recap
       </h2>
-      <p role="status" className="text-fg-muted">
+      {/* Empty, the live region stays for screen readers only, so it adds no gap under "Recap". */}
+      <p role="status" className={state.kind === "loading" ? "text-fg-muted" : "sr-only"}>
         {state.kind === "loading" ? "Loading…" : ""}
       </p>
       {state.kind === "failed" ? (
