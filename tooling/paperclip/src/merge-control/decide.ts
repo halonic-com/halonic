@@ -4,6 +4,7 @@ import { fill, fillOrder, trackReady, verifiedFastTrack } from "./fill.ts";
 import { gateRow, withSizeHolds } from "./gate.ts";
 import { notes } from "./notes.ts";
 import { queueFirst } from "./order.ts";
+import { pruneState } from "./prune.ts";
 import { removals } from "./removal.ts";
 import { cancelledReruns, flakeReruns, rerunPause, staleRuns, stalledGroups } from "./reruns.ts";
 import type { MergeSnapshot } from "./snapshot.ts";
@@ -31,6 +32,7 @@ export function decide(
     cancelled: new Set(),
   };
   const { state } = context;
+  pruneState(context);
   const rows = withSizeHolds(
     snapshot.pulls.map((pull) => gateRow(snapshot, pull, settings)),
     snapshot,

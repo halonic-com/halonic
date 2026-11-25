@@ -179,7 +179,7 @@ export function staleRuns(context: PassContext): void {
       });
     }
   }
-  const heads = new Map(snapshot.open.map((pull) => [pull.branch, pull.head]));
+  const heads = new Map((snapshot.open ?? []).map((pull) => [pull.branch, pull.head]));
   for (const run of snapshot.queuedPullRuns) {
     const head = heads.get(run.branch);
     if (run.status === "queued" && head !== undefined && head !== run.headSha) {
