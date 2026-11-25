@@ -53,7 +53,7 @@ export function decide(
   const waitFor = state.board.fillPause?.waitFor ?? [];
   const freeze = mainRedFreeze(context);
   const still = rows.filter((row) => row.entry !== undefined && !removed.includes(row));
-  const added = fill(context, fillOrder(context, rows, fast), still, fast, {
+  const added = fill(context, fillOrder(context, rows, fast, still), still, fast, {
     pauseOn,
     waitFor,
     freeze,
