@@ -107,7 +107,9 @@ function sortedBy<Item extends Readonly<Record<Key, string>>, Key extends string
  *
  * Refused besides the schema: a key in any text or name, the workspace's
  * name included (`value-looks-like-key`),
- * a parameter that asks for a key (`parameter-asks-for-key`), an empty
+ * a parameter that asks for a key (`parameter-asks-for-key`), a parameter
+ * the action needs but the tool leaves out (`parameter-missing`) or one it
+ * never reads (`parameter-not-read`), an empty
  * number range (`parameter-range-empty`), a tool name or id used twice
  * (`tool-name-twice`, `tool-id-twice`), tools out of name order
  * (`tools-not-sorted`), a key in a template (`value-looks-like-key`), a

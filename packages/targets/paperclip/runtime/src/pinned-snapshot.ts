@@ -16,7 +16,7 @@ export interface SnapshotPin {
   readonly repo: string;
   /** The workspace commit the snapshot was built from. */
   readonly commit: string;
-  /** The snapshot file's sha-256, from the build's release file: 64 hex characters. */
+  /** The SHA-256 of `snapshot.json` in the plugin file built from the pinned commit: 64 hex characters. */
   readonly sha256: string;
   /** The branch or tag where CI keeps built snapshots, one file per commit. */
   readonly ref: string;

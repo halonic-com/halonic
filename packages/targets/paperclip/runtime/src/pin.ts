@@ -54,7 +54,7 @@ export const workspacePinProperties = {
   snapshotSha256: {
     type: "string",
     title: "Pinned snapshot sha-256",
-    description: "The snapshot file's sha-256 from the build's release file.",
+    description: "The SHA-256 of snapshot.json in the plugin file built from the pinned commit.",
     pattern: sha256Pattern.source,
   },
   snapshotRef: {

@@ -42,6 +42,17 @@ const writeSettings = s
   .strict()
   .prefault({});
 
+/**
+ * A parameter an action reads from the agent's call. The tool file declares
+ * it under `parameters` with this name; the action reads no other.
+ */
+export interface ActionParameter {
+  /** Its name, such as `pr`. */
+  readonly name: string;
+  /** Whether the action can't run without it, so every tool file for the action must declare it. */
+  readonly required: boolean;
+}
+
 /** What one action is, for the people who write and review tool files. */
 export interface ToolActionInfo {
   /** One line on what the action does. */
@@ -50,13 +61,19 @@ export interface ToolActionInfo {
   readonly writes: boolean;
   /** The keys the installer fills in for it. */
   readonly keys: readonly ActionKey[];
+  /** The parameters it reads from the agent's call, required ones first. */
+  readonly parameters: readonly ActionParameter[];
 }
+
+const none: readonly ActionParameter[] = [];
 
 /**
  * Every action, with the settings a tool file gives it under `action.with`.
  * Settings are workspace data (which repositories, how many days), never a
  * key. Each settings map refuses keys it doesn't know. `with` may be left
- * out only for an action whose settings all have defaults.
+ * out only for an action whose settings all have defaults. `parameters` are
+ * the names the action's code reads from the agent's call: the runtime's
+ * tests hold each handler to them.
  */
 export const TOOL_ACTIONS = {
   "github.pull-request": {
@@ -64,36 +81,49 @@ export const TOOL_ACTIONS = {
       "Reads one pull request: its checks, whether it can merge, and its place in the merge queue.",
     writes: false,
     keys: ["github-read"],
+    parameters: [
+      { name: "pr", required: true },
+      { name: "repo", required: false },
+    ],
     settings: s.object({ repositories }).strict(),
   },
   "github.open-pull-requests": {
     about: "Lists the open pull requests whose branch starts with the caller's name.",
     writes: false,
     keys: ["github-read"],
+    parameters: none,
     settings: s.object({ repositories }).strict(),
   },
   "github.merge-queue": {
     about: "Reads the merge queue of the listed repositories.",
     writes: false,
     keys: ["github-read"],
+    parameters: none,
     settings: s.object({ repositories }).strict(),
   },
   "github.merge-times": {
     about: "Reads how long pull requests took to merge over the last days.",
     writes: false,
     keys: ["github-read"],
+    parameters: none,
     settings: s.object({ repositories, days: s.number().int().min(1).max(90).default(7) }).strict(),
   },
   "paperclip.task": {
     about: "Reads one Paperclip task: its status, holder, blockers, documents and newest comments.",
     writes: false,
     keys: ["paperclip-api"],
+    parameters: [
+      { name: "task", required: true },
+      { name: "comments", required: false },
+      { name: "document", required: false },
+    ],
     settings: s.object({}).strict().prefault({}),
   },
   "paperclip.failed-runs": {
     about: "Lists the agent runs that failed over the last hours.",
     writes: false,
     keys: ["paperclip-api"],
+    parameters: [{ name: "since", required: false }],
     settings: s
       .object({ hours: s.number().int().min(1).max(168).default(24) })
       .strict()
@@ -104,12 +134,17 @@ export const TOOL_ACTIONS = {
       "Reads one of the workspace's templates by its id, or lists them all when no id is given.",
     writes: false,
     keys: [],
+    parameters: [{ name: "id", required: false }],
     settings: s.object({}).strict().prefault({}),
   },
   "paperclip.comment": {
     about: "Posts one comment on a task in the caller's company, with the caller as its author.",
     writes: true,
     keys: ["paperclip-api"],
+    parameters: [
+      { name: "task", required: true },
+      { name: "body", required: true },
+    ],
     settings: writeSettings,
   },
   "paperclip.next-step": {
@@ -117,12 +152,26 @@ export const TOOL_ACTIONS = {
       "Sets the caller's own task to in progress with a monitor, or to blocked with its blockers, with a comment.",
     writes: true,
     keys: ["paperclip-api"],
+    parameters: [
+      { name: "task", required: true },
+      { name: "status", required: true },
+      { name: "comment", required: true },
+      { name: "monitor", required: false },
+      { name: "blockedBy", required: false },
+    ],
     settings: writeSettings,
   },
   "paperclip.finish-run": {
     about: "Ends the caller's run on its own task: done, blocked, or handed to another agent.",
     writes: true,
     keys: ["paperclip-api"],
+    parameters: [
+      { name: "task", required: true },
+      { name: "outcome", required: true },
+      { name: "comment", required: true },
+      { name: "to", required: false },
+      { name: "blockedBy", required: false },
+    ],
     settings: writeSettings,
   },
 } as const;
@@ -139,7 +188,8 @@ export function toolActionNames(): ToolActionName[] {
 }
 
 /**
- * What an action does, which keys it needs and whether it writes.
+ * What an action does, which keys it needs, which parameters it reads and
+ * whether it writes.
  *
  * @param name - the action's name from a tool file
  * @returns its description, without its settings schema
@@ -148,6 +198,6 @@ export function toolActionNames(): ToolActionName[] {
  * toolActionInfo("paperclip.task").keys; // ["paperclip-api"]
  */
 export function toolActionInfo(name: ToolActionName): ToolActionInfo {
-  const { about, writes, keys } = TOOL_ACTIONS[name];
-  return { about, writes, keys };
+  const { about, writes, keys, parameters } = TOOL_ACTIONS[name];
+  return { about, writes, keys, parameters };
 }

@@ -63,6 +63,34 @@ const todaysActions: Readonly<Record<string, string>> = {
   pr_status: "github.pull-request",
 };
 
+/** One property of a declaration's parameters schema, as Agent tools writes it. */
+interface SchemaProperty {
+  readonly type: string | readonly string[];
+  readonly description: string;
+}
+
+/**
+ * A declaration's parameters as a tool file declares them, so the snapshot
+ * check holds today's names to what each action reads. A number-or-URL
+ * parameter such as `pr` is text in a tool file.
+ */
+function parametersOf(declaration: ToolDeclaration) {
+  const schema = declaration.parametersSchema as {
+    readonly properties?: Readonly<Record<string, SchemaProperty>>;
+    readonly required?: readonly string[];
+  };
+  return Object.fromEntries(
+    Object.entries(schema.properties ?? {}).map(([name, property]) => [
+      name,
+      {
+        type: Array.isArray(property.type) ? "string" : property.type,
+        description: property.description,
+        required: schema.required?.includes(name) ?? false,
+      },
+    ]),
+  );
+}
+
 /**
  * The snapshot of today's tools that the declarations name, on Agent tools'
  * repositories, checked as the runtime checks any snapshot.
@@ -75,7 +103,7 @@ function todaysSnapshot(declarations: readonly ToolDeclaration[]) {
       id: declaration.name.replaceAll("_", "-"),
       name: declaration.name,
       description: declaration.description,
-      parameters: {},
+      parameters: parametersOf(declaration),
       callers: "everyone",
       action: { run: todaysActions[declaration.name], with: { repositories: todaysRepos } },
     }))
@@ -183,8 +211,12 @@ verifies("paperclip.workspace-runtime-today", () => {
       expect(runtime.sent.length).toBeGreaterThan(0);
     });
 
-    test("the snapshot holds both tools on Agent tools' repositories", () => {
+    test("the snapshot holds both tools on Agent tools' repositories, with their parameters", () => {
       const snapshot = todaysSnapshot(declarations);
+      expect(snapshot.tools.map((tool) => [tool.name, Object.keys(tool.parameters)])).toEqual([
+        ["my_prs", []],
+        ["pr_status", ["pr", "repo"]],
+      ]);
       expect(snapshot.tools.map((tool) => [tool.name, tool.action])).toEqual([
         [
           "my_prs",

@@ -24,7 +24,8 @@ The plugin builder (`halonic build paperclip-plugin`, a later step) writes three
 1. With no pin in the plugin settings: `snapshot.json`.
 2. With a pin (`workspaceRepo`, `snapshotCommit`, `snapshotSha256`): the file
    `snapshots/<commit>.json` on the `halonic-snapshots` branch of the workspace repository, once the
-   workspace check (`ci-ok`) on that commit is green, the file's sha-256 is the pinned one and
+   workspace check (`ci-ok`) on that commit is green, the file's sha-256 is the pinned one (the
+   SHA-256 of `snapshot.json` in the plugin file built from that commit) and
    `readSnapshot` accepts it. It is kept as the last good snapshot.
 3. When the pin can't be loaded: the last good snapshot, or `snapshot.json`, unchanged. The plugin
    writes `workspace.snapshot_stale_minutes` and tries again at most every 10 minutes.
@@ -54,15 +55,22 @@ display name and its first word, so "Liam" is the own approval of `liam-cto` nam
 company's routing, so it isn't in the runtime. The other actions of the format are off until their
 handlers move in.
 
+Each action reads fixed parameter names from an agent's call, listed with it in `@halonicjs/format`
+(`toolActionInfo(name).parameters`): `pr` and `repo` for `github.pull-request`, `task`, `comments`
+and `document` for `paperclip.task`, `since` for `paperclip.failed-runs`, `id` for
+`paperclip.template`. `halonic validate` refuses a tool
+file that leaves out a required one or declares one its action doesn't read, so the builder never
+builds it. `action-parameters.test.ts` holds every handler here to that list.
+
+A tool's `callers` name agents by their `urlKey`, compared without case. An agent's display name
+never counts, because two agents can share one.
+
 ## Failed runs
 
 The SDK can't list runs, so when a built-in tool runs `paperclip.failed-runs` the runtime subscribes
 to `agent.run.failed` (the `events.subscribe` capability) and keeps each failed run in plugin state:
 ids, a cause code and a time, never the error text, for a week and at most 500 runs. Runs that fail
 while the plugin is down are missing, and the answer says since when it has been counting.
-
-A tool's `callers` name agents by their `urlKey`, compared without case. An agent's display name
-never counts, because two agents can share one.
 
 ## Writing actions
 

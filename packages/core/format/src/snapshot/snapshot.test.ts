@@ -14,14 +14,16 @@ import {
 
 const commit = "0123456789abcdef0123456789abcdef01234567";
 
-/** A parsed tool with this name and id. */
+/** A parsed tool with this name and id, with the `task` its action needs. */
 function tool(name: string, id = name.replaceAll("_", "-")): Tool {
   return {
     version: 1,
     id,
     name,
     description: "Reads something.",
-    parameters: {},
+    parameters: {
+      task: { type: "string", description: "The task.", required: true, maxLength: 1000 },
+    },
     callers: "everyone",
     action: { run: "paperclip.task", with: {} },
   };
@@ -77,6 +79,8 @@ verifies("format.workspace-snapshot", () => {
     };
     expect(problemsOf(snapshotData([asking, leaky]))).toEqual([
       "tools.0.parameters.token parameter-asks-for-key",
+      "tools.0.parameters parameter-missing",
+      "tools.0.parameters.token parameter-not-read",
       "tools.1.description value-looks-like-key",
     ]);
   });
