@@ -31,6 +31,14 @@ export interface GatewayListenerOptions {
    * gives this computer ("host.example.ts.net"), compared in lower case.
    */
   extraHosts?: readonly string[];
+  /**
+   * Header names a tunnel adds only to a request that reached it from the
+   * public internet, such as Tailscale's `Tailscale-Funnel-Request` when
+   * someone turned Funnel on for the gateway's port. A request that carries
+   * one is refused with 403, so a tunnel made public later still can't reach
+   * the gateway. Compared in lower case.
+   */
+  publicHeaders?: readonly string[];
   /** Connections at most at once; a new one past this is refused. */
   maxConnections?: number;
   /** How often the host pings each connection. A connection that sends nothing for 2.5 times this is dropped. */
@@ -76,9 +84,11 @@ type Refusal = { status: number; reason: string };
  * 1. its `Host` names this listener (loopback and its port, or one of
  *    `extraHosts`), so a web page that points its own name at this computer
  *    gets nothing;
- * 2. it has no `Origin`: the phone's app isn't a web page, so a browser's
+ * 2. it carries none of `publicHeaders`, so a tunnel someone made public
+ *    later still can't reach the gateway;
+ * 3. it has no `Origin`: the phone's app isn't a web page, so a browser's
  *    request is refused, and there is no CORS;
- * 3. it is a WebSocket upgrade of GET {@link gatewayPath} in version 13.
+ * 4. it is a WebSocket upgrade of GET {@link gatewayPath} in version 13.
  *
  * Anything else gets a short refusal that says nothing about what this is.
  * The listener starts only when the host asks; nothing starts it by default.
@@ -88,7 +98,10 @@ export async function startGatewayListener(
 ): Promise<GatewayListener> {
   const sockets = new Set<Duplex>();
   const connections = new Set<GatewayConnection>();
-  const extraHosts = (options.extraHosts ?? []).map((host) => host.toLowerCase());
+  const names = {
+    extraHosts: (options.extraHosts ?? []).map((host) => host.toLowerCase()),
+    publicHeaders: (options.publicHeaders ?? []).map((header) => header.toLowerCase()),
+  };
   let port = 0;
   const server = createServer((_request, response) => {
     response.writeHead(404, { Connection: "close", "Content-Length": 0 }).end();
@@ -97,7 +110,7 @@ export async function startGatewayListener(
   server.headersTimeout = 10_000;
   server.requestTimeout = 10_000;
   server.on("upgrade", (request: IncomingMessage, socket: Duplex, head: Buffer) => {
-    const refusal = refusalOf(request, port, extraHosts);
+    const refusal = refusalOf(request, port, names);
     if (refusal !== undefined) {
       socket.end(
         `HTTP/1.1 ${refusal.status} ${refusal.reason}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`,
@@ -133,12 +146,14 @@ export async function startGatewayListener(
 function refusalOf(
   request: IncomingMessage,
   port: number,
-  extraHosts: readonly string[],
+  names: { readonly extraHosts: readonly string[]; readonly publicHeaders: readonly string[] },
 ): Refusal | undefined {
-  const allowed = [`${gatewayLoopbackHost}:${port}`, `localhost:${port}`, ...extraHosts];
+  const allowed = [`${gatewayLoopbackHost}:${port}`, `localhost:${port}`, ...names.extraHosts];
   const host = request.headers.host?.toLowerCase();
   if (host === undefined || hostLineCount(request) > 1 || !allowed.includes(host))
     return { status: 421, reason: "Misdirected Request" };
+  if (names.publicHeaders.some((header) => request.headers[header] !== undefined))
+    return { status: 403, reason: "Forbidden" };
   if (request.headers.origin !== undefined) return { status: 403, reason: "Forbidden" };
   const isUpgrade =
     request.method === "GET" &&
