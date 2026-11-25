@@ -3,6 +3,7 @@
 - Task: HAL-18506
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-18470 (Chief's request to mirror both live Merger changes, 25 Nov 12:19 UTC; the live Merger runs them since 12:16 UTC, HAL-18424; the reviewer approves this note in review)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:j0MfSQ/7NoxZAsYTMIK5YiHZdKz8jug10sBPZPlKM86/4so3nsNNJgJ6XZ1eihKyai7H2pmj0TzvJ0VW8pucCQ==
 
 Merge control now dequeues a queued pull request in the same pass when its own merge group ends `failure`, instead of waiting for GitHub to take it out, and adds `built-on:paperclip` to an approved, green pull request by the team account or the board's queue login that has no `built-on:*` label, so the plugin decides the same as the live Merger.
 
