@@ -91,7 +91,7 @@ export function MessageItem({
           </span>
         </p>
       ) : null}
-      <div className="flex items-start gap-1 ps-9">
+      <div className="flex items-start gap-1.5 ps-9">
         <div data-bubble className={agentBubble(automatic)}>
           {automatic ? <span className="sr-only">{messengerWords.automatic(author)} </span> : null}
           {body}
@@ -103,12 +103,13 @@ export function MessageItem({
 }
 
 /**
- * An agent's bubble on the start side, on a neutral surface (plan HAL-18743, sketch 3.1). An
- * automatic note has a dashed edge, so it doesn't read as the agent's answer (sketch 3.2).
+ * An agent's bubble on the start side, on a neutral surface with an edge (plan HAL-18743, sketch
+ * 3.1). An automatic note has a dashed edge and no fill, so it reads lighter than the agent's
+ * answer (sketch 3.2).
  */
 function agentBubble(automatic: boolean): string {
-  const edge = automatic ? "border-dashed border-border-strong" : "border-transparent";
-  return `min-w-0 rounded-lg border bg-surface-subtle px-3 py-2 wrap-break-word ${edge}`;
+  const look = automatic ? "border-dashed border-border-strong" : "border-border bg-surface-subtle";
+  return `min-w-0 rounded-lg border px-3 py-2 wrap-break-word ${look}`;
 }
 
 /** The small mark beside an automatic note; its tooltip says who wrote it. */
@@ -117,7 +118,7 @@ function AutomaticMark({ author }: { readonly author: string }) {
     // The note's sr-only line already says it, so the tooltip is for the eye only.
     <Tooltip text={messengerWords.automatic(author)} visualOnly>
       {() => (
-        <span data-automatic-mark className="mt-2 size-3 shrink-0 text-fg-muted">
+        <span data-automatic-mark className="mt-3 size-3 shrink-0 text-fg-muted">
           <SparkIcon />
         </span>
       )}
