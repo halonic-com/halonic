@@ -3,6 +3,7 @@
 - Task: HAL-13220
 - Approval: /HAL/issues/HAL-13220 (Owen's plan, approved with changes by Liam on the task, 25 Nov)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:777EH6J/ao137Hg5wVkKApFoNxyPaPene95sWAA92tqNfq7hN2DhJItEOYLuS8Cwuj/3pmTU4Ctoz3+GmUvACQ==
 
 ## What changes
 
