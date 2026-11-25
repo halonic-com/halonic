@@ -37,7 +37,8 @@ afterEach(async () => {
   paperclipFetch.mockClear();
 });
 
-async function started(): Promise<Setup> {
+/** Starts the route; `startProvider` stands in for the host starting the connection's provider. */
+async function started(startProvider = async (_binding: PaperclipBinding) => {}): Promise<Setup> {
   const keys = new PaperclipKeys();
   const logged: string[] = [];
   const kept: PaperclipBinding[] = [];
@@ -49,6 +50,7 @@ async function started(): Promise<Setup> {
       workspaceRoots: [workspace],
       kept: async (binding) => {
         kept.push(binding);
+        await startProvider(binding);
       },
       log: (text) => logged.push(text),
     }),
@@ -161,6 +163,21 @@ verifies("agent-host.paperclip-key-hand-over", () => {
         expect(text).not.toContain(fakeKey);
       }
       expect(keys.has(halonic())).toBe(false);
+    });
+
+    it("forgets the key and refuses when the connection's provider doesn't start", async () => {
+      const { url, keys, logged } = await started(async () => {
+        throw new TypeError(`no provider for ${fakeKey}`);
+      });
+      const refused = await handOver(url, { connection: "halonic", key: fakeKey, ...acme });
+      const text = await refused.text();
+
+      expect(refused.status).toBe(502);
+      expect(text).toContain("provider_not_started");
+      expect(text).not.toContain(fakeKey);
+      expect(keys.has(halonic())).toBe(false);
+      expect(logged.join("")).toContain("TypeError");
+      expect(logged.join("")).not.toContain(fakeKey);
     });
 
     it("never writes the key to its log, whatever it is handed", async () => {

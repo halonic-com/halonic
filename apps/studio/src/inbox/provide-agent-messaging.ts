@@ -1,8 +1,14 @@
 import { AgentHostMessaging, type AgentHostTransport } from "@halonicjs/adapter-agent-host-client";
-import type { ServiceRegistry } from "@halonicjs/app";
+import type { Disposable, ServiceRegistry } from "@halonicjs/app";
 import { OverviewMessagingService } from "@halonicjs/studio-feature-overview/api";
 import { SearchMessagingService } from "@halonicjs/studio-feature-search/api";
 import { AgentMessagingService } from "@halonicjs/studio-services";
+import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
+
+/** The window listeners that tell the host whether the window is in front; the folder's registry removes them when it closes. */
+export const agentMessagingFocusKey: ServiceKey<Disposable> = serviceKey<Disposable>(
+  "studio.agent-messaging-focus",
+);
 
 /**
  * Provides the desktop engine's `AgentMessaging` for the open workspace
@@ -14,6 +20,8 @@ import { AgentMessagingService } from "@halonicjs/studio-services";
  * It also tells the host when the window comes to the front or goes to the
  * back, so the host polls every 30 seconds or every 5 minutes. Without an
  * agent host nothing is provided, and the features show no agent items.
+ * Closing the folder removes the window listeners, so a closed folder tells
+ * the host nothing.
  *
  * @param location - the workspace's real path, which the host binds keys to
  */
@@ -34,6 +42,14 @@ export function provideAgentMessaging(
       console.error("Telling the agent host whether the window is in front", error);
     });
   };
-  window.addEventListener("focus", tell(true));
-  window.addEventListener("blur", tell(false));
+  const focused = tell(true);
+  const blurred = tell(false);
+  window.addEventListener("focus", focused);
+  window.addEventListener("blur", blurred);
+  services.provide(agentMessagingFocusKey, {
+    dispose: () => {
+      window.removeEventListener("focus", focused);
+      window.removeEventListener("blur", blurred);
+    },
+  });
 }
