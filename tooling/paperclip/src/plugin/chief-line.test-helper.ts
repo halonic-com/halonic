@@ -27,6 +27,7 @@ export function fakeChiefLine(
     status: string;
     projectId?: string;
     createdAt: Date;
+    companyId?: string;
     assigneeAgentId?: string;
   }[] = [];
   const comments: Record<string, LineComment[]> = {};
@@ -61,8 +62,10 @@ export function fakeChiefLine(
         issues.filter(
           (issue) => input.projectId === undefined || issue.projectId === input.projectId,
         ),
-      get: async (issueId: string) => issues.find((issue) => issue.id === issueId) ?? null,
+      get: async (ref: string) =>
+        issues.find((issue) => issue.id === ref || issue.identifier === ref) ?? null,
       create: async (input: {
+        companyId?: string;
         title: string;
         status?: string;
         projectId?: string;

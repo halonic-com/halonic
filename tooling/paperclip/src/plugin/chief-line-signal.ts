@@ -11,16 +11,18 @@ import {
 } from "./chief-line.ts";
 import {
   chiefLineStateKey,
+  parseThreadTitle,
   readChiefLineSettings,
-  threadTitlePattern,
   webhookAllowed,
 } from "./chief-line-settings.ts";
+import { findAgent, type LineTarget, targetKey, targetTitle } from "./line-target.ts";
 
 /**
- * What the chief line does on `issue.comment.created`: a comment on a caller's
- * `[chief-line]` thread by anyone but Chief wakes Chief (within the caller's
- * hourly limit), and a comment by Chief sends the caller's webhook a signal
- * with the thread, the caller, the comment id and the time, never the body.
+ * What the lines do on `issue.comment.created`: a human's comment on a caller's
+ * thread (`[chief-line] <caller>` for Chief, `[line] <caller> → <agent>` for
+ * any other agent) wakes the thread's agent (within the caller's hourly
+ * limit), and a comment by that agent sends the caller's webhook a signal
+ * with the thread, the caller, the agent, the comment id and the time, never the body.
  * One retry on a failed POST, then a log line; it never throws.
  */
 
@@ -35,6 +37,8 @@ export interface ChiefLineSignal {
   readonly caller: string;
   readonly commentId: string;
   readonly at: string;
+  /** The name of the agent that replied: `Chief` on a chief line. */
+  readonly agent: string;
 }
 
 /** Companies whose missing Chief was already logged by this worker, to log it once. */
@@ -97,7 +101,10 @@ async function wakeChief(
   maxPerHour: number,
 ) {
   if (!(await takeSlot(ctx, companyId, "wakes", caller, maxPerHour, new Date()))) {
-    ctx.logger.info("Chief line: over the hourly limit, Chief not woken.", { caller, commentId });
+    ctx.logger.info("Chief line: over the hourly limit, the agent not woken.", {
+      caller,
+      commentId,
+    });
     return;
   }
   await wakeThread(ctx, companyId, thread.id, commentId);
@@ -114,29 +121,61 @@ function eventIds(event: PluginEvent): { issueId?: string; commentId?: string } 
   };
 }
 
+/** A live line thread with its caller and the id of the agent that answers on it. */
+interface FoundLine {
+  readonly target: LineTarget;
+  readonly thread: ChiefLineThread;
+  readonly agentId: string;
+  readonly agentName: string;
+}
+
+/** The thread's agent: Chief for a chief line, else the agent named in the title. */
+async function lineAgent(
+  ctx: ChiefLineSignalApi,
+  companyId: string,
+  agentName: string | undefined,
+): Promise<{ id: string; name: string } | undefined> {
+  if (agentName === undefined) {
+    const chiefId = await chiefAgentId(ctx, companyId);
+    if (chiefId === undefined && !missingChiefLogged.has(companyId)) {
+      // Without Chief, no author can be told apart from Chief: no wake and no signal.
+      missingChiefLogged.add(companyId);
+      ctx.logger.error("Chief line: no agent named Chief; comments are ignored.", { companyId });
+    }
+    return chiefId === undefined ? undefined : { id: chiefId, name: "Chief" };
+  }
+  const agents = await ctx.agents.list({ companyId, limit: 500 });
+  const found = agents.find((agent) => agent.name === agentName) ?? findAgent(agents, agentName);
+  return found === undefined ? undefined : { id: found.id, name: found.name };
+}
+
 /**
- * The caller and thread of a live chief-line task. The task's own title names the caller, so a
- * stored record can't go stale here.
+ * The caller, agent and thread of a live line task. The task's own title names the caller and
+ * agent, so a stored record can't go stale here.
  */
 async function threadOf(
   ctx: ChiefLineSignalApi,
   companyId: string,
   issueId: string,
   projectId: string | undefined,
-): Promise<{ caller: string; thread: ChiefLineThread } | undefined> {
+): Promise<FoundLine | undefined> {
   const issue = await ctx.issues.get(issueId, companyId);
-  const caller = issue?.title.match(threadTitlePattern)?.[1];
-  if (
-    issue === null ||
-    caller === undefined ||
-    projectId === undefined ||
-    !isLiveThread(issue, caller, projectId)
-  ) {
+  const parsed = issue === null ? undefined : parseThreadTitle(issue.title);
+  if (issue === null || parsed === undefined || projectId === undefined) {
+    return undefined;
+  }
+  const agent = await lineAgent(ctx, companyId, parsed.agentName);
+  if (agent === undefined) {
+    return undefined;
+  }
+  const target: LineTarget =
+    parsed.agentName === undefined ? { caller: parsed.caller } : { caller: parsed.caller, agent };
+  if (!isLiveThread(issue, targetTitle(target), projectId)) {
     return undefined;
   }
   const thread: ChiefLineThread = { id: issue.id, identifier: issue.identifier ?? issue.id };
-  await rememberThread(ctx, companyId, caller, thread);
-  return { caller, thread };
+  await rememberThread(ctx, companyId, targetKey(target), thread);
+  return { target, thread, agentId: agent.id, agentName: agent.name };
 }
 
 async function handle(ctx: ChiefLineSignalApi, event: PluginEvent): Promise<void> {
@@ -150,7 +189,8 @@ async function handle(ctx: ChiefLineSignalApi, event: PluginEvent): Promise<void
   if (found === undefined) {
     return;
   }
-  const { caller, thread } = found;
+  const { target, thread, agentId, agentName } = found;
+  const { caller } = target;
   const comments = await ctx.issues.listComments(thread.id, companyId);
   // Without a comment id in the payload, the newest comment is the one just created.
   const comment =
@@ -158,24 +198,17 @@ async function handle(ctx: ChiefLineSignalApi, event: PluginEvent): Promise<void
   if (comment === undefined) {
     return;
   }
-  const chiefId = await chiefAgentId(ctx, companyId);
-  if (chiefId === undefined) {
-    // Without Chief, no author can be told apart from Chief: no wake and no signal.
-    if (!missingChiefLogged.has(companyId)) {
-      missingChiefLogged.add(companyId);
-      ctx.logger.error("Chief line: no agent named Chief; comments are ignored.", { companyId });
-    }
-    return;
-  }
-  if (comment.authorAgentId !== chiefId) {
-    // Only a human's comment wakes Chief here. System comments and the plugin's own posts have
-    // no author (the send route wakes Chief itself), and another agent's comment wakes nothing.
+  if (comment.authorAgentId !== agentId) {
+    // Only a human's comment wakes the agent here. System comments and the plugin's own posts
+    // have no author (the send route wakes the agent itself), and another agent's wakes nothing.
     if (comment.authorAgentId === null && comment.authorUserId !== null) {
       await wakeChief(ctx, companyId, caller, thread, comment.id, settings.maxPerHour);
     }
     return;
   }
-  const url = (await readRecords<string>(ctx, companyId, "hooks"))[caller];
+  const hooks = await readRecords<string>(ctx, companyId, "hooks");
+  // A line to another agent may have its own webhook; else the caller's (chief line) one.
+  const url = hooks[targetKey(target)] ?? hooks[caller];
   if (url === undefined || !webhookAllowed(url, settings.webhookHosts)) {
     return;
   }
@@ -185,6 +218,7 @@ async function handle(ctx: ChiefLineSignalApi, event: PluginEvent): Promise<void
     caller,
     commentId: comment.id,
     at,
+    agent: agentName,
   });
 }
 
