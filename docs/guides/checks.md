@@ -1041,11 +1041,11 @@ CI caches the pnpm store, Gradle, and the Rust registry and build folders
 (keyed on `Cargo.lock` and `rust-toolchain.toml`). Only runs on `main` save
 them; pull requests and the merge queue read `main`'s copy. GitHub keeps
 10 GB of cache per repo, and a pull request's or queue entry's copy would
-never be read again, so saving there evicted `main`'s. The Windows installer and update
-jobs share their own Rust key (`rust-installer-*`, the release build folder),
-which only `main`'s hourly installer run saves. The release workflow restores
-no cache, so a signed installer is always built from scratch. Turbo's cache works the
-same way, one entry per build shard. On our own CI server `main` and the merge
+never be read again, so saving there evicted `main`'s. The Windows installer
+and update jobs share their own Rust key (`rust-installer-*`, the release
+build folder), which only `main`'s hourly installer run saves. The release
+workflow restores no cache, so a signed installer is always built from
+scratch. Turbo's cache works the same way, one entry per build shard. On our own CI server `main` and the merge
 queue use the server's disk cache instead and save nothing to GitHub, so after
 a push to `main` the `pr-turbo-cache` job copies each shard's current task
 results from that disk cache into `main`'s GitHub copy, at most once per
