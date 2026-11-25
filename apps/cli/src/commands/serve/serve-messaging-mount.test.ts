@@ -134,11 +134,15 @@ async function sourceIds(client: Client): Promise<string[]> {
   return items.map((source) => source.id).sort();
 }
 
-/** Signs `connection` in through the server's own routes; the fake board approves at once. */
+/**
+ * Signs `connection` in through the server's own routes, with the serve-password the key routes
+ * ask for again; the fake board approves at once.
+ */
 async function signInSecond(client: Client, connection: string): Promise<unknown> {
   const start = await client.post("/api/paperclip-keys/sign-in/start", {
     address: acme.address,
     connection,
+    password,
   });
   const { signInId } = (await start.json()) as { signInId: string };
   const poll = await client.post("/api/paperclip-keys/sign-in/poll", { signInId });
@@ -173,6 +177,7 @@ verifies("cli.commands.serve.messaging-mount", () => {
 
     const disconnect = await client.post("/api/paperclip-keys/disconnect", {
       connection: "studio",
+      password,
     });
     expect(await disconnect.json()).toEqual({ outcome: "disconnected", revoked: true });
     const after = paperclip.keys.length;
