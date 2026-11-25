@@ -1,12 +1,17 @@
 use crate::backend::{SecretBackend, check_value_fits};
 use crate::error::SecretError;
-use crate::name::SecretName;
+use crate::name::{SecretName, is_server_pairing_name};
 
 /// A name the agent host's secrets channel may reach: one of
-/// [`crate::HOST_NAMES`] in any spelling the name rule accepts. Every other
+/// [`crate::HOST_NAMES`] in any spelling the name rule accepts, or a server
+/// pairing in its one exact form ([`is_server_pairing_name`]). Every other
 /// name is refused as [`SecretError::ReservedName`], so the host can't read
-/// `serve_password`, a token or a workspace's key, whatever it sends.
+/// `serve_password`, a token or a workspace's key, whatever it sends. One
+/// name per call: there is no listing and no wildcard.
 fn host_name(name: &str) -> Result<SecretName, SecretError> {
+    if is_server_pairing_name(name) {
+        return SecretName::parse(name);
+    }
     let name = SecretName::parse(name)?;
     if !name.is_host() {
         return Err(SecretError::ReservedName);

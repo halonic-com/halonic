@@ -11,8 +11,9 @@
 //! - [`allowed_origins`] and [`allow_origin`]: the origins a stored key may
 //!   be sent to, kept beside the key (requirement `key-origins`).
 //! - [`get_host_secret`], [`set_host_secret`] and [`delete_host_secret`]:
-//!   the agent host's own secrets, only those in [`HOST_NAMES`]
-//!   (requirement `host-secrets`).
+//!   the agent host's own secrets, only those in [`HOST_NAMES`] and the
+//!   server pairings [`is_server_pairing_name`] accepts (requirement
+//!   `host-secrets`).
 //! - [`check_backend_contract`]: the behaviour every backend must show.
 //!
 //! This crate holds no Tauri types and no keychain crate: the shell's
@@ -35,6 +36,7 @@ pub use error::SecretError;
 pub use host::{delete_host_secret, get_host_secret, set_host_secret};
 pub use memory::MemoryBackend;
 pub use name::{
-    ACTION_PREFIX, HALONIC_NAMES, HOST_NAMES, MAX_NAME_LENGTH, SecretName, TOKEN_PREFIX,
+    ACTION_PREFIX, HALONIC_NAMES, HOST_NAMES, MAX_NAME_LENGTH, SERVER_PAIRING_PREFIX, SecretName,
+    TOKEN_PREFIX, is_server_pairing_name,
 };
 pub use origins::{AllowOrigin, MAX_ALLOWED_ORIGINS, allow_origin, allowed_origins};

@@ -8,7 +8,8 @@
       "inputs": [
         "$TURBO_DEFAULT$",
         "../../../apps/studio/src-tauri/crates/secrets/tests/fixtures/canonical-names.tsv",
-        "../../../apps/studio/src-tauri/crates/secrets/tests/fixtures/reserved-names.txt"
+        "../../../apps/studio/src-tauri/crates/secrets/tests/fixtures/reserved-names.txt",
+        "../../../apps/studio/src-tauri/crates/secrets/tests/fixtures/server-pairing-names.tsv"
       ]
     }
   }

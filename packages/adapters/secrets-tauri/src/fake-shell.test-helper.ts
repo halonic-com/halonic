@@ -18,6 +18,9 @@ const halonicNames = ["token_key", "serve_password", "remote_host_key"];
 /** The canonical prefix the shell keeps every token under. */
 const tokenPrefix = "halonic_token_";
 
+/** The canonical prefix of a server pairing, which only the agent host reaches (`SERVER_PAIRING_PREFIX`). */
+const serverPairingPrefix = "server_pairing__";
+
 /**
  * A shell that answers the `secret_*` and `token_*` commands, origins included, as
  * `crates/secrets` does over its `MemoryBackend`, written out on its own
@@ -99,13 +102,17 @@ export class FakeShell implements TauriShell {
   /**
    * The name an entry is kept under: a token's under the token prefix, a secret's as it is, unless it
    * belongs to Halonic. Like `SecretName::token`, the shell also refuses a token name that is too
-   * long once prefixed; the adapter never sends one, so the fake leaves that out.
+   * long once prefixed; the adapter never sends one, so the fake leaves that out. Both kinds refuse
+   * a server pairing, as `SecretName::is_halonic` and `SecretName::token` do.
    */
   #storedName(command: string, name: unknown): string {
-    if (command.startsWith("token_")) {
-      return tokenPrefix + canonicalName(name);
-    }
     const canonical = canonicalName(name);
+    if (this.#refusesHalonicNames && canonical.startsWith(serverPairingPrefix)) {
+      throw refusal("reserved_name", "this name belongs to Halonic");
+    }
+    if (command.startsWith("token_")) {
+      return tokenPrefix + canonical;
+    }
     if (
       this.#refusesHalonicNames &&
       (halonicNames.includes(canonical) || canonical.startsWith(tokenPrefix))

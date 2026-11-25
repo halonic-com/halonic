@@ -8,7 +8,7 @@ import type { ShellSecretAnswer, ShellSecretRequest } from "./shell-secrets-chan
  * values only.
  */
 export class FakeKeychainShell {
-  /** The keychain, by the name the shell keeps (`remote_host_key`). */
+  /** The keychain, by the name the host sent (`remote_host_key`, `server-pairing__<key>`). */
   readonly stored = new Map<string, string>();
   /** Each request's `op` and name, in order; never a value. */
   readonly asked: string[] = [];

@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-14090, HAL-14126
+- Source: HAL-14090, HAL-14126, HAL-18501 (server pairings)
 
-When the agent host asks the shell to get, set or delete one of its own secrets, the shell shall check the name against the secret name rule and accept it only when its canonical form is in `HOST_NAMES`, which holds only `remote_host_key`, and check the value for `set` as `secret_set` does, before the backend runs. It shall return the value or nothing for `get`, replace any stored value for `set`, and succeed for `delete` even when nothing is stored. If the name is any other one, including `token_key`, `serve_password`, a token or a workspace's key, then the shell shall refuse it with `reserved_name` and the backend shall not run. `HOST_NAMES` shall stay a part of Halonic's reserved names, so the page's secret commands never reach the host's secrets.
+When the agent host asks the shell to get, set or delete one of its own secrets, the shell shall check the name against the secret name rule and accept it only when its canonical form is in `HOST_NAMES`, which holds only `remote_host_key`, or when the name as sent is a server pairing's in its one exact form, `server-pairing__` followed by exactly 32 lower-case hex digits, with nothing folded or trimmed, and check the value for `set` as `secret_set` does, before the backend runs. It shall return the value or nothing for `get`, replace any stored value for `set`, and succeed for `delete` even when nothing is stored. It shall handle exactly one name per request, with no listing and no wildcard. If the name is any other one, including `token_key`, `serve_password`, a token, a workspace's key or another spelling of a server pairing (`Server-Pairing__…`, `server_pairing__…`, upper-case hex), then the shell shall refuse it with `reserved_name` and the backend shall not run. `HOST_NAMES` and the prefix `server_pairing__` shall stay a part of Halonic's reserved names, so the page's secret commands never reach the host's secrets.
 
 ## Examples
 
@@ -17,6 +17,12 @@ When the agent host asks the shell to get, set or delete one of its own secrets,
 - Given the host asks to store `token_key`,
   when the shell checks it,
   then the result is `reserved_name`: `token_key` stays in the CLI's file until HAL-14148.
+- Given the host stores `server-pairing__0123456789abcdef0123456789abcdef`,
+  when it reads the same name,
+  then it gets the value, kept as `server_pairing__0123456789abcdef0123456789abcdef`.
+- Given the host asks for `Server-Pairing__0123456789abcdef0123456789abcdef`,
+  when the shell checks it,
+  then the result is `reserved_name` and nothing is read: the cases both sides check are in `tests/fixtures/server-pairing-names.tsv`.
 - Given an empty value for `remote_host_key`,
   when the host stores it,
   then the result is `invalid_value` and nothing is written.
