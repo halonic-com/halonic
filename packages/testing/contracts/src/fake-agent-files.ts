@@ -42,11 +42,23 @@ export class FakeAgentFiles {
 
   /** Keeps each file's bytes for `readAttachment` and gives the attachments an item lists. */
   keep(source: MessagingId, files: readonly FakeAttachment[] = []): Attachment[] {
-    return files.map((file) => {
-      const id = this.#newId();
-      this.#kept.set(id, { source, file: { ...file, bytes: file.bytes.slice() } });
-      return { id, name: file.name, type: file.type, size: file.bytes.byteLength };
-    });
+    return files.map((file) => ({
+      id: this.#keepOne(source, file),
+      name: file.name,
+      type: file.type,
+      size: file.bytes.byteLength,
+    }));
+  }
+
+  /** Keeps an agent's picture, when it has one, and gives the agent's `avatar` field for it. */
+  avatar(source: MessagingId, picture: FakeAttachment | undefined): { avatar?: MessagingId } {
+    return picture === undefined ? {} : { avatar: this.#keepOne(source, picture) };
+  }
+
+  #keepOne(source: MessagingId, file: FakeAttachment): MessagingId {
+    const id = this.#newId();
+    this.#kept.set(id, { source, file: { ...file, bytes: file.bytes.slice() } });
+    return id;
   }
 
   /** The file kept under this ID, if any. */

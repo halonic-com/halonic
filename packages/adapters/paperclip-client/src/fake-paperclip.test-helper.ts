@@ -84,6 +84,13 @@ export class FakePaperclip {
     const route = this.routes.get(`${seen.method} ${seen.path}`);
     const answer =
       route === undefined ? { status: 404, body: { error: "API route not found" } } : route(seen);
+    // Bytes, such as a picture, go as they are, with only the headers the route names.
+    if (answer.body instanceof Uint8Array || answer.body instanceof ReadableStream) {
+      return new Response(answer.body, {
+        status: answer.status ?? 200,
+        headers: answer.headers ?? {},
+      });
+    }
     return new Response(answer.body === undefined ? null : JSON.stringify(answer.body), {
       status: answer.status ?? 200,
       headers: { "content-type": "application/json", ...answer.headers },

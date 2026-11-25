@@ -59,7 +59,8 @@ export interface MessagingHubOptions {
  * provider that fails a read is reported and left out, and the others'
  * items still come back; only when every provider fails does the read fail.
  * An attachment's bytes are read only from the provider that listed it on an
- * inbox item or a message (`agent-host.messaging-hub-attachments`).
+ * inbox item or a message (`agent-host.messaging-hub-attachments`), and an
+ * agent's picture only from the one that listed the agent (`ports.agent-messaging-avatars`).
  *
  * @example
  * const hub = new MessagingHub({ providers: [{ name: "paperclip:acme", messaging }], report: log });
@@ -71,6 +72,7 @@ export class MessagingHub implements AgentMessaging {
   readonly #inboxOwners: OwnerIndex;
   readonly #conversationOwners: OwnerIndex;
   readonly #inboxAttachmentOwners: OwnerIndex;
+  readonly #avatarOwners: OwnerIndex;
   /** Per conversation, who listed it and the files its messages carry; replaced on each read of it. */
   readonly #messageAttachments = new Map<MessagingId, ConversationFiles>();
 
@@ -80,6 +82,7 @@ export class MessagingHub implements AgentMessaging {
     this.#inboxOwners = new OwnerIndex(options.providers.length);
     this.#conversationOwners = new OwnerIndex(options.providers.length);
     this.#inboxAttachmentOwners = new OwnerIndex(options.providers.length);
+    this.#avatarOwners = new OwnerIndex(options.providers.length);
   }
 
   async listSources(): Promise<readonly MessagingSource[]> {
@@ -87,7 +90,15 @@ export class MessagingHub implements AgentMessaging {
   }
 
   async listAgents(): Promise<readonly MessagingAgent[]> {
-    return joined(await this.#readAll("listAgents", (each) => each.listAgents()));
+    const lists = await this.#readAll("listAgents", (each) => each.listAgents());
+    lists.forEach((list, index) => {
+      if (list !== undefined)
+        this.#avatarOwners.record(
+          index,
+          list.flatMap((each) => each.avatar ?? []),
+        );
+    });
+    return joined(lists);
   }
 
   async listConversations(): Promise<readonly Conversation[]> {
@@ -136,7 +147,7 @@ export class MessagingHub implements AgentMessaging {
     const owner = await this.#ownerOf(
       attachment,
       (id) => this.#attachmentOwners(id),
-      () => this.listInboxItems(),
+      () => Promise.all([this.listInboxItems(), this.listAgents()]),
     );
     if (owner === undefined) return { outcome: "refused", reason: "not-found" };
     return owner.messaging.readAttachment(attachment);
@@ -254,9 +265,12 @@ export class MessagingHub implements AgentMessaging {
     this.#messageAttachments.set(conversation, { provider, ids });
   }
 
-  /** The providers that listed a file, on an inbox item or on a conversation's messages. */
+  /** The providers that listed a file, on an inbox item or on a conversation's messages, or an agent's picture. */
   #attachmentOwners(id: MessagingId): number[] {
-    const owners = new Set(this.#inboxAttachmentOwners.ownersOf(id));
+    const owners = new Set([
+      ...this.#inboxAttachmentOwners.ownersOf(id),
+      ...this.#avatarOwners.ownersOf(id),
+    ]);
     for (const files of this.#messageAttachments.values()) {
       if (files.ids.has(id)) owners.add(files.provider);
     }

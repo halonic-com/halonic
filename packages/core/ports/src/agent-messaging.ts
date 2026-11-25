@@ -49,6 +49,12 @@ export interface MessagingAgent {
   /** Its role, such as "CTO", when the source has one. */
   title?: string;
   activity: AgentActivity;
+  /**
+   * Its picture, when the source has one: an ID for {@link AgentMessaging.readAttachment}, never
+   * an address. Apps show the agent's initial while it is missing or can't be read
+   * (requirement `ports.agent-messaging-avatars`).
+   */
+  avatar?: MessagingId;
 }
 
 /**
@@ -284,7 +290,9 @@ export interface AgentMessaging {
   answer(item: MessagingId, answer: InboxAnswer): Promise<AnswerResult>;
   /**
    * An attachment's bytes, read through the engine only when the person asks to see it: apps
-   * load nothing on their own and never get the provider's address for it.
+   * load nothing on their own and never get the provider's address for it. The one exception is
+   * an agent's {@link MessagingAgent.avatar}, the picture the source's own people set for it on
+   * the connection's own host, which apps read on their own to show next to its name.
    */
   readAttachment(attachment: MessagingId): Promise<AttachmentRead>;
   /**
