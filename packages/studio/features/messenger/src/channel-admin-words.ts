@@ -1,11 +1,41 @@
 import type { MessagingRefusal } from "@halonicjs/ports";
 
 /**
- * The words for changing a channel's members and leaving it. Each is a row of HAL-17514's
- * `wording` table (flow H), approved with the phase 2 card on HAL-17544; the "adding shows
+ * The words for starting, browsing, joining and leaving channels and changing their members. Each
+ * is a row of HAL-17514's `wording` table (flows G and H), approved with the phase 2 card on HAL-17544; the "adding shows
  * history" notice is Noah's on HAL-18165.
  */
 export const channelAdminWords = {
+  menu: {
+    label: "New",
+    channel: "New channel",
+    browse: "Browse channels",
+  },
+  create: {
+    title: "New channel",
+    subtitle: "One conversation with several agents.",
+    name: "Name",
+    agents: "Agents",
+    lead: "Lead",
+    leadHint: "answers when you don't name anyone",
+    confirm: "Create channel",
+    busy: "Creating…",
+    oneSource: (source: string) => `Agents from ${source} only. A channel stays in one place.`,
+    tooFew: "Pick at least 2 agents.",
+    sourceTooSmall: (source: string, count: number) =>
+      `A channel needs at least 2 agents. ${source} has ${count}.`,
+    nameTaken: (name: string) => `There's already a channel called ${name}.`,
+    offline: (source: string) => `You can make a channel when ${source} answers again.`,
+    failed: (reason: string) => `Couldn't make the channel: ${reason}.`,
+    picked: (count: number, most: number) => `${count} of ${most} picked`,
+  },
+  browse: {
+    title: "Browse channels",
+    subtitle: (source: string) => `Channels in ${source} you aren't in.`,
+    empty: (source: string) => `No other channels in ${source}.`,
+    join: "Join",
+    joinFailed: (channel: string, reason: string) => `Couldn't join ${channel}: ${reason}.`,
+  },
   leave: {
     button: "Leave channel",
     title: (channel: string) => `Leave ${channel}?`,
@@ -39,12 +69,12 @@ export const channelAdminWords = {
     busy: "Saving…",
     failed: (reason: string) => `Couldn't change the members: ${reason}.`,
   },
-  /** With 8 agents, Add an agent can't be used. */
+  /** With 8 agents, Add an agent can't be used and no ninth can be picked. */
   tooMany: "A channel can have up to 8 agents.",
   tryAgain: "Try again",
   /** The *reason* when the call itself failed, rather than being refused. */
   noAnswer: "the source didn't answer",
-  /** The *reason* in a failed change or leave: "Couldn't leave Engineering: *reason*." */
+  /** The *reason* in "Couldn't make the channel: *reason*." and the other failures. */
   reason: {
     offline: (source: string) => `${source} is offline`,
     "signed-out": (source: string) => `you're signed out of ${source}`,
