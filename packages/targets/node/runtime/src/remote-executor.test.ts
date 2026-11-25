@@ -8,6 +8,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import { FakeEngine } from "./fake-engine.test-helper.ts";
 import { type Listening, listenOnNode } from "./listen.ts";
 
+/** How long one step of a test over a real connection may take; three of them fit in CI's 30 s test timeout. */
+const stepTimeoutMs = 8_000;
+
 const open: Listening[] = [];
 afterEach(async () => {
   await Promise.all(open.splice(0).map((listening) => listening.close()));
@@ -120,15 +123,25 @@ verifies("executor-remote.runs", () => {
         tools: [],
         signal: controller.signal,
       });
-      while (engine.lastTurnSignal === undefined) {
-        await new Promise((resolve) => setTimeout(resolve, 5));
-      }
+      let settled = false;
+      const ended = turn.finally(() => {
+        settled = true;
+      });
+      // Every wait is bounded well inside the 30 s test timeout, and the first also ends when the turn
+      // fails before it reaches the engine, so a stall names its step instead of hitting that timeout.
+      await waitUntil(
+        "the turn to reach the engine",
+        () => engine.lastTurnSignal !== undefined || settled,
+        { timeout: stepTimeoutMs },
+      );
       controller.abort(new Error("stopped"));
+      await waitUntil("the aborted turn to end", () => settled, { timeout: stepTimeoutMs });
 
-      await expect(turn).rejects.toThrow("stopped");
+      await expect(ended).rejects.toThrow("stopped");
       await waitUntil(
         "engine.lastTurnSignal?.aborted to be true",
         () => engine.lastTurnSignal?.aborted === true,
+        { timeout: stepTimeoutMs },
       );
       expect(engine.lastTurnSignal?.aborted).toBe(true);
     });

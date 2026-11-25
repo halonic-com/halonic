@@ -126,7 +126,12 @@ export class FakeEngine implements RunExecutor {
     this.lastTurnSignal = request.signal;
     const { signal } = request;
     if (this.holdTurns && signal !== undefined) {
-      await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve()));
+      // A signal that aborted before the turn got here never fires "abort" again, so check it first.
+      if (!signal.aborted) {
+        await new Promise<void>((resolve) =>
+          signal.addEventListener("abort", () => resolve(), { once: true }),
+        );
+      }
       throw new Error("the model call was aborted");
     }
     if (this.turnError !== undefined) throw this.turnError;
