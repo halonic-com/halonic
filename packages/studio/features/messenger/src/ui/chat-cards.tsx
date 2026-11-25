@@ -10,36 +10,37 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isChannel } from "../channel.ts";
 import { channelWords } from "../channel-words.ts";
+import { cardRecord } from "../chat-timeline.ts";
 import type { ConversationRow } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import type { QuickActions } from "../quick-actions.ts";
 
-/** The props of {@link ChatCards}. */
-export interface ChatCardsProps {
-  readonly quickActions: QuickActions;
-  readonly row: ConversationRow;
-  /** Grows each time a source changes, so the cards are read again. */
-  readonly changed: number;
-  /** Reads a line out in the chat's status region, which stays when the card goes. */
-  readonly announce: (line: string) => void;
-  /** Called once an answered card is gone, to put focus on what comes next. */
-  readonly afterAnswer: () => void;
+/** What {@link useChatCards} gives: the chat's cards, open and answered, and how to answer one. */
+export interface ChatCardsState {
+  /** Undefined until the first read landed. */
+  readonly cards: readonly InboxItem[] | undefined;
+  /** Called with an option's label once it answered a card. */
+  readonly onAnswered: (option: string) => Promise<void>;
 }
 
 /**
- * The chat agent's open cards, below its messages (HAL-17421 render 4e). Each
- * option is a button that answers the card through `AgentMessaging.answer`,
- * once; the card is the Inbox's own item, so it leaves both places together.
- * Once answered, "Answered: Tomorrow." is read out and focus moves on, as
- * `afterAnswer` says (HAL-18074 MS2).
+ * The chat's cards, open and answered, read again on each change (requirement
+ * `messenger.inline-cards`). Once an option answered a card, "Answered: Tomorrow." is passed to
+ * `announce` and, after the cards are read again, `afterAnswer` moves focus on (HAL-18074 MS2).
  */
-export function ChatCards({ quickActions, row, changed, announce, afterAnswer }: ChatCardsProps) {
-  const [cards, setCards] = useState<readonly InboxItem[]>([]);
+export function useChatCards(
+  quickActions: QuickActions,
+  row: ConversationRow,
+  changed: number,
+  announce: (line: string) => void,
+  afterAnswer: () => void,
+): ChatCardsState {
+  const [cards, setCards] = useState<readonly InboxItem[] | undefined>(undefined);
   // Set by an answer that landed, so the cards read after it move focus on.
   const answered = useRef(false);
 
   const read = useCallback(async () => {
-    setCards(await quickActions.cards(row));
+    setCards(await quickActions.chatCards(row));
   }, [quickActions, row]);
 
   useEffect(() => {
@@ -54,17 +55,58 @@ export function ChatCards({ quickActions, row, changed, announce, afterAnswer }:
     afterAnswer();
   }, [cards, afterAnswer]);
 
-  async function onAnswered(option: string) {
-    announce(messengerWords.card.answered(option));
-    answered.current = true;
-    await read();
-  }
+  const onAnswered = useCallback(
+    async (option: string) => {
+      announce(messengerWords.card.answered(option));
+      answered.current = true;
+      await read();
+    },
+    [announce, read],
+  );
 
-  return cards.map((card) => (
-    <li key={card.id} data-chat-card={card.id} className="max-w-[80%]">
-      <ChatCard quickActions={quickActions} row={row} card={card} onAnswered={onAnswered} />
+  return { cards, onAnswered };
+}
+
+/**
+ * One of the chat agent's cards, in the timeline where it was made. An open card (HAL-17421
+ * render 4e) offers each option as a button that answers it through `AgentMessaging.answer`, once;
+ * it is the Inbox's own item, so it is answered in both places together. An answered card stays as
+ * its record, "Approve, 12:10" (`messenger.inline-cards`).
+ */
+export function ChatCardItem({
+  quickActions,
+  row,
+  card,
+  now,
+  onAnswered,
+}: {
+  readonly quickActions: QuickActions;
+  readonly row: ConversationRow;
+  readonly card: InboxItem;
+  /** The Messenger's clock, so the card says how long it waits as the Inbox does. */
+  readonly now: Date;
+  readonly onAnswered: (option: string) => Promise<void>;
+}) {
+  const record = cardRecord(card);
+  if (record !== undefined) {
+    return (
+      <li data-chat-card-record={card.id} className="max-w-[80%] text-small text-fg-muted">
+        <span className="sr-only">{messengerWords.card.recordPrefix}</span>
+        {record}
+      </li>
+    );
+  }
+  return (
+    <li data-chat-card={card.id} className="max-w-[80%]">
+      <ChatCard
+        quickActions={quickActions}
+        row={row}
+        card={card}
+        now={now}
+        onAnswered={onAnswered}
+      />
     </li>
-  ));
+  );
 }
 
 /** One open card: who waits since when, the question, its options, and where else it shows. */
@@ -72,11 +114,13 @@ function ChatCard({
   quickActions,
   row,
   card,
+  now,
   onAnswered,
 }: {
   readonly quickActions: QuickActions;
   readonly row: ConversationRow;
   readonly card: InboxItem;
+  readonly now: Date;
   /** Called with the option's label once the answer landed. */
   readonly onAnswered: (option: string) => Promise<void>;
 }) {
@@ -102,7 +146,7 @@ function ChatCard({
         <StatusChip tone="warning" dot>
           {messengerWords.card.needsYou}
         </StatusChip>
-        {waitingSince(new Date(card.createdAt), new Date())}
+        {waitingSince(new Date(card.createdAt), now)}
       </p>
       <ChatText openLink={openLink}>{card.question}</ChatText>
       <div className="flex flex-wrap gap-2">

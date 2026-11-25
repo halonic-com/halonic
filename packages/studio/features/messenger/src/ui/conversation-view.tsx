@@ -1,15 +1,17 @@
 import type { Message, MessagingId } from "@halonicjs/ports";
-import { ChatText, Input, useOpenExternal } from "@halonicjs/studio-kit";
+import { Input } from "@halonicjs/studio-kit";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { isChannel } from "../channel.ts";
+import { chatName } from "../chat-name.ts";
 import { activityOf, type ConversationRow, type Messenger } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
-import { AttachmentList } from "./attachment-list.tsx";
+import { CardsBar } from "./cards-bar.tsx";
 import { ChannelHeaderActions } from "./channel-header-actions.tsx";
-import { authorOf, EmptyChannel, MessageTo, WorkLines } from "./channel-message.tsx";
+import { authorOf } from "./channel-message.tsx";
 import { ChatBox } from "./chat-box.tsx";
-import { ChatCards } from "./chat-cards.tsx";
+import { useChatCards } from "./chat-cards.tsx";
 import { MembersPanel } from "./members-panel.tsx";
+import { Transcript } from "./transcript.tsx";
 import { WaitingBar } from "./waiting-bar.tsx";
 
 /** The props of {@link ConversationView}. */
@@ -26,8 +28,9 @@ export interface ConversationViewProps {
 
 /**
  * One open conversation (HAL-17421 render 4a): its agent and activity in the
- * header, a search through its messages, the messages oldest first, and the
- * box. While its source is offline or signed out, the box keeps the text and
+ * header, a search through its messages, the messages and the agent's cards
+ * oldest first, "3 cards waiting" in a direct chat while any card waits
+ * (`messenger.inline-cards`), and the box. While its source is offline or signed out, the box keeps the text and
  * Send sends nothing (requirement `messenger.conversations`). Files picked or
  * pasted wait in the box and go with the message (`messenger.files`); the
  * agent's cards and "Ask for an update" are its quick actions
@@ -64,14 +67,17 @@ export function ConversationView({
       section.current?.querySelector<HTMLElement>("textarea");
     next?.focus();
   }, []);
+  const { cards, onAnswered } = useChatCards(
+    messenger.quickActions,
+    row,
+    changed,
+    say,
+    focusAfterAnswer,
+  );
 
-  const noMatch = messages.length === 0 && search.trim() !== "";
+  const noMatch = messages?.length === 0 && search.trim() !== "";
   return (
-    <section
-      ref={section}
-      aria-label={row.conversation.title}
-      className="flex min-h-0 flex-1 flex-col"
-    >
+    <section ref={section} aria-label={chatName(row)} className="flex min-h-0 flex-1 flex-col">
       <ConversationHeader row={row} search={search} onSearch={setSearch}>
         {isChannel(row) ? (
           <ChannelHeaderActions
@@ -95,17 +101,11 @@ export function ConversationView({
           messenger={messenger}
           row={row}
           messages={messages}
+          cards={cards}
           questions={questions}
           searching={search.trim() !== ""}
-        >
-          <ChatCards
-            quickActions={messenger.quickActions}
-            row={row}
-            changed={changed}
-            announce={say}
-            afterAnswer={focusAfterAnswer}
-          />
-        </Transcript>
+          onAnswered={onAnswered}
+        />
         {membersOpen ? (
           <MembersPanel
             messenger={messenger}
@@ -114,6 +114,8 @@ export function ConversationView({
           />
         ) : null}
       </div>
+      {/* A channel has the waiting bar at the top instead: one count per screen (HAL-18483). */}
+      {isChannel(row) ? null : <CardsBar cards={cards ?? []} section={section} />}
       <ChatBox messenger={messenger} row={row} onSent={read} />
     </section>
   );
@@ -135,7 +137,7 @@ function useMessages(
   // The row is read again on each change; the author's name is taken from the newest one.
   const latestRow = useRef(row);
   latestRow.current = row;
-  const [messages, setMessages] = useState<readonly Message[]>([]);
+  const [messages, setMessages] = useState<readonly Message[] | undefined>(undefined);
   const [questions, setQuestions] = useState<ReadonlyMap<MessagingId, string>>(new Map());
   // Counts the reads, so an answer that arrives after a newer read's never shows.
   const reads = useRef(0);
@@ -193,7 +195,7 @@ function ConversationHeader({
     <header className="flex items-center gap-3 border-b border-border px-4 py-3">
       <div className="flex min-w-0 flex-1 flex-col">
         <h2 className="truncate text-body-strong">
-          <bdi>{row.conversation.title}</bdi>
+          <bdi>{chatName(row)}</bdi>
         </h2>
         <p className="text-small text-fg-muted">
           {[row.source?.label ?? "", activity].filter((part) => part !== "").join(" · ")}
@@ -211,61 +213,5 @@ function ConversationHeader({
         />
       </div>
     </header>
-  );
-}
-
-/**
- * The messages, oldest first; the person's on the end side. Each says who wrote it to a screen
- * reader; in a channel it shows it too, and the person's say who they went to and what each agent
- * did with them (`messenger.channel-messages`). An agent writes a message, so whoever can steer
- * that agent does (ADR 2026-11-24, agent-written content): the kit's `ChatText` keeps HTML, images
- * and any link that isn't a web address as plain text, and a web link opens outside the app with
- * its address after it.
- */
-function Transcript({
-  messenger,
-  row,
-  messages,
-  questions,
-  searching,
-  children,
-}: {
-  readonly messenger: Messenger;
-  readonly row: ConversationRow;
-  readonly messages: readonly Message[];
-  readonly questions: ReadonlyMap<MessagingId, string>;
-  readonly searching: boolean;
-  /** What follows the messages: the agent's open cards. */
-  readonly children: ReactNode;
-}) {
-  const openLink = useOpenExternal();
-  const channel = isChannel(row);
-  const now = messenger.now();
-  return (
-    <ol className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-4 py-4">
-      {channel && messages.length === 0 && !searching ? <EmptyChannel row={row} /> : null}
-      {messages.map((message) => (
-        <li
-          key={message.id}
-          data-author={message.author.kind}
-          className={message.author.kind === "me" ? "ms-auto max-w-[80%]" : "max-w-[80%]"}
-        >
-          {channel && message.author.kind !== "me" ? (
-            // The sr-only "<name>: " below says it, so a screen reader reads it once (MS11).
-            <p className="text-small text-fg-muted" data-author-name aria-hidden="true">
-              <bdi>{authorOf(message, row)}</bdi>
-            </p>
-          ) : null}
-          {channel ? <MessageTo message={message} row={row} /> : null}
-          <span className="sr-only">{authorOf(message, row)}: </span>
-          <ChatText openLink={openLink}>{message.body}</ChatText>
-          <AttachmentList messenger={messenger} attachments={message.attachments} />
-          {channel ? (
-            <WorkLines message={message} row={row} questions={questions} now={now} />
-          ) : null}
-        </li>
-      ))}
-      {children}
-    </ol>
   );
 }

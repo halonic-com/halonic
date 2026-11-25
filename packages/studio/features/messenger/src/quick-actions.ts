@@ -33,12 +33,19 @@ export class QuickActions {
    * answering it here answers it there.
    */
   async cards(row: ConversationRow): Promise<readonly InboxItem[]> {
+    const cards = await this.chatCards(row);
+    return cards.filter((card) => card.state.kind === "open");
+  }
+
+  /**
+   * The same cards, open and answered, oldest first: the chat's timeline shows each where it was
+   * made, and an answered one as its record (requirement `messenger.inline-cards`).
+   */
+  async chatCards(row: ConversationRow): Promise<readonly InboxItem[]> {
     const items = await this.messaging.listInboxItems();
     const asked = new Set((row.questions ?? []).map((question) => question.item.id));
     return items
-      .filter(
-        (item) => item.state.kind === "open" && (isFromAgentOf(item, row) || asked.has(item.id)),
-      )
+      .filter((item) => isFromAgentOf(item, row) || asked.has(item.id))
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
 
