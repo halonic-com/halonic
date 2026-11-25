@@ -5,7 +5,16 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use super::{AfterCrash, EngineTable, EnginesSummary};
+use super::{AfterCrash, EngineStatus, EngineTable, EnginesSummary};
+use crate::tray_time::{ClockTime, NextRoutine};
+
+/// A stand-in engine's status: its number is its runs going.
+fn running(runs: &u32) -> EngineStatus {
+    EngineStatus {
+        active_runs: *runs,
+        ..EngineStatus::default()
+    }
+}
 
 fn acme() -> PathBuf {
     PathBuf::from("acme")
@@ -213,9 +222,11 @@ fn tray_summary_adds_runs_and_shows_a_problem() {
         .started(PathBuf::from("other"), "other".into(), 2, "code")
         .unwrap();
     assert_eq!(
-        table.summary(|runs| *runs),
+        table.summary(running),
         EnginesSummary {
             active_runs: 2,
+            runs_waiting: 0,
+            next_routine: None,
             paused: false,
             problem: false,
         }
@@ -223,11 +234,11 @@ fn tray_summary_adds_runs_and_shows_a_problem() {
 
     into_problem(&mut table, Instant::now());
 
-    let summary = table.summary(|runs| *runs);
+    let summary = table.summary(running);
     assert!(summary.problem);
     assert_eq!(summary.active_runs, 2, "only the running engine counts");
     assert_eq!(
-        EngineTable::<u32>::default().summary(|runs| *runs),
+        EngineTable::<u32>::default().summary(running),
         EnginesSummary::default()
     );
 }
@@ -245,7 +256,7 @@ fn tray_try_again_starts_the_problem_workspaces_again() {
         table.try_again().is_empty(),
         "no longer in the problem state"
     );
-    assert!(!table.summary(|runs| *runs).problem);
+    assert!(!table.summary(running).problem);
     let (launch, windows_to_connect) = table.restarted(&acme(), 7).unwrap();
     assert_eq!(windows_to_connect, windows(&["main"]));
     let (_, next) = table.crashed(&acme(), launch, start + Duration::from_secs(5 * 60));
@@ -262,7 +273,7 @@ fn tray_pause_routines_covers_every_workspace_and_later_ones() {
     let (pause, engines) = table.set_pause_all(true);
     assert!(pause.is_paused());
     assert_eq!(engines, vec![&1]);
-    assert!(table.summary(|runs| *runs).paused);
+    assert!(table.summary(running).paused);
     table
         .started(PathBuf::from("other"), "other".into(), 2, "code")
         .unwrap();
@@ -286,6 +297,36 @@ fn tray_a_failed_restart_is_a_problem() {
 
     table.failed_to_restart(&acme());
 
-    assert!(table.summary(|runs| *runs).problem);
+    assert!(table.summary(running).problem);
     assert_eq!(table.try_again(), vec![(acme(), "acme".to_owned())]);
+}
+
+/// `studio.src-tauri.tray-status-lines`: the runs waiting add up, and the
+/// earliest next routine of every workspace counts.
+#[test]
+fn tray_status_lines_add_waiting_runs_and_take_the_earliest_routine() {
+    let at = |at: i64, hour: u32| NextRoutine {
+        at,
+        clock: ClockTime { hour, minute: 0 },
+    };
+    let mut table = EngineTable::default();
+    table.started(acme(), "acme".into(), 1, "main").unwrap();
+    table
+        .started(PathBuf::from("other"), "other".into(), 2, "code")
+        .unwrap();
+    let summary = table.summary(|engine| match engine {
+        1 => EngineStatus {
+            active_runs: 2,
+            runs_waiting: 1,
+            next_routine: Some(at(7_200, 16)),
+        },
+        _ => EngineStatus {
+            active_runs: 1,
+            runs_waiting: 1,
+            next_routine: Some(at(3_600, 14)),
+        },
+    });
+    assert_eq!(summary.active_runs, 3);
+    assert_eq!(summary.runs_waiting, 2);
+    assert_eq!(summary.next_routine, Some(at(3_600, 14)));
 }

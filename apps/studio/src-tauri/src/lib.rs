@@ -119,6 +119,8 @@ mod system_region;
 mod tray;
 #[cfg(desktop)]
 mod tray_status;
+#[cfg(desktop)]
+mod tray_time;
 mod trust;
 #[cfg(desktop)]
 mod updates;

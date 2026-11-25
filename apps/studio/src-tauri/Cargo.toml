@@ -82,6 +82,11 @@ url = "2"
 # the build, only the timer feature.
 tokio = { version = "1", default-features = false, features = ["time"] }
 
+# The tray's "next routine at 14:00", in this computer's time (HAL-18279).
+# serde_with already builds chrono with the clock feature, so this adds no
+# crate to the build.
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+
 # The native folder picker and the trust question (HAL-2612). rfd is the
 # library tauri-plugin-dialog (plan 7.2) shows its dialogs with; the shell
 # calls it from Rust instead of registering the plugin, whose script would

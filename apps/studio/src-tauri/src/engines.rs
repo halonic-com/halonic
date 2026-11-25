@@ -27,7 +27,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Manager, Runtime, Webview};
 
 use crate::engine::EngineState;
-use crate::engine_table::{AfterCrash, EngineTable, EnginesSummary};
+use crate::engine_table::{AfterCrash, EngineStatus, EngineTable, EnginesSummary};
 use crate::git::GitState;
 use crate::profile::cli_profile;
 use crate::secrets::SecretsState;
@@ -308,7 +308,14 @@ pub fn summary<R: Runtime>(app: &AppHandle<R>) -> EnginesSummary {
         engine
             .link()
             .health()
-            .map_or(0, |health| health.active_runs)
+            .map_or_else(EngineStatus::default, |health| EngineStatus {
+                active_runs: health.active_runs,
+                runs_waiting: health.runs_waiting,
+                next_routine: health
+                    .next_routine_at
+                    .as_deref()
+                    .and_then(crate::tray_time::next_routine),
+            })
     })
 }
 

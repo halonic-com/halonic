@@ -3,12 +3,31 @@
 //! (HAL-14213, "every state of the menu").
 
 use super::*;
+use crate::tray_time::{ClockTime, NextRoutine};
 
 fn summary(active_runs: u32, paused: bool, problem: bool) -> EnginesSummary {
     EnginesSummary {
         active_runs,
         paused,
         problem,
+        ..EnginesSummary::default()
+    }
+}
+
+/// `active_runs` going, `runs_waiting` of them waiting, and the next
+/// routine at 14:00.
+fn waiting(active_runs: u32, runs_waiting: u32) -> EnginesSummary {
+    EnginesSummary {
+        active_runs,
+        runs_waiting,
+        next_routine: Some(NextRoutine {
+            at: 1_795_611_600,
+            clock: ClockTime {
+                hour: 14,
+                minute: 0,
+            },
+        }),
+        ..EnginesSummary::default()
     }
 }
 
@@ -167,5 +186,65 @@ fn tray_keeps_halonic_running_only_where_a_built_tray_shows() {
     assert!(
         !keeps_running_in_tray("linux"),
         "GNOME can build a tray that shows nothing"
+    );
+}
+
+/// `studio.src-tauri.tray-status-lines`: the next routine follows the runs.
+#[test]
+fn tray_status_lines_show_the_next_routine() {
+    assert_eq!(
+        texts(&tray_view(waiting(0, 0), false)),
+        [
+            "Nothing running · next routine at 14:00",
+            "-",
+            "Open Halonic",
+            "Pause routines",
+            "-",
+            "Quit Halonic",
+        ]
+    );
+    assert_eq!(
+        texts(&tray_view(waiting(2, 0), false))[0],
+        "2 runs in progress · next routine at 14:00"
+    );
+}
+
+/// `studio.src-tauri.tray-status-lines`: runs waiting for the user come
+/// first, on their own line, and aren't counted as in progress.
+#[test]
+fn tray_status_lines_put_the_runs_that_need_you_first() {
+    let view = tray_view(waiting(2, 1), false);
+    assert_eq!(
+        texts(&view)[..3],
+        [
+            "1 run needs you",
+            "1 run in progress · next routine at 14:00",
+            "-",
+        ]
+    );
+    assert_eq!(view.icon, IconState::Running);
+    let only_waiting = tray_view(waiting(2, 2), false);
+    assert_eq!(
+        texts(&only_waiting)[..2],
+        ["2 runs need you", "Nothing running · next routine at 14:00"]
+    );
+    assert_eq!(only_waiting.icon, IconState::Idle, "no run in progress");
+    assert_eq!(
+        texts(&tray_view(waiting(2, 1), true))[0],
+        "Quitting… 1 run finishing its step (off)",
+        "a waiting run has no step to finish"
+    );
+}
+
+/// `studio.src-tauri.tray-status-lines`: paused routines have no next one.
+#[test]
+fn tray_status_lines_show_no_next_routine_while_paused() {
+    let paused = EnginesSummary {
+        paused: true,
+        ..waiting(1, 1)
+    };
+    assert_eq!(
+        texts(&tray_view(paused, false))[..2],
+        ["1 run needs you", "Routines paused"]
     );
 }

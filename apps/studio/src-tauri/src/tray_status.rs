@@ -1,9 +1,8 @@
 //! What the tray shows (B1 step 5), as the board approved it on HAL-14213:
 //! the icon's state and the menu, worded as the card's "every state" render,
 //! from the background engines' summary. Plain data, so tests need no tray.
-//!
-//! Not here yet: the status line's "next routine at 14:00" and "1 run needs
-//! you", which wait on the engine's health reporting them (HAL-18279).
+//! Runs waiting for the user get their own first line ("1 run needs you")
+//! and aren't counted as in progress, as in the card's Quit render.
 
 use crate::engine_table::EnginesSummary;
 
@@ -93,7 +92,7 @@ pub fn tray_view(summary: EnginesSummary, quitting: bool) -> TrayView {
             // The icon keeps its state; it goes when Halonic has quit.
             icon,
             menu: menu(
-                &[quitting_line(summary.active_runs)],
+                &[quitting_line(in_progress(summary))],
                 &[OPEN, pause_item(summary)],
                 false,
             ),
@@ -108,7 +107,9 @@ pub fn tray_view(summary: EnginesSummary, quitting: bool) -> TrayView {
             vec![TRY_AGAIN, OPEN],
         )
     } else {
-        (vec![status_line(summary)], vec![OPEN, pause_item(summary)])
+        let needs_you = needs_you_line(summary.runs_waiting);
+        let status = needs_you.into_iter().chain([status_line(summary)]);
+        (status.collect(), vec![OPEN, pause_item(summary)])
     };
     TrayView {
         icon,
@@ -121,20 +122,39 @@ fn icon_state(summary: EnginesSummary) -> IconState {
         IconState::Problem
     } else if summary.paused {
         IconState::Paused
-    } else if summary.active_runs > 0 {
+    } else if in_progress(summary) > 0 {
         IconState::Running
     } else {
         IconState::Idle
     }
 }
 
+/// The runs going that aren't waiting for the user.
+fn in_progress(summary: EnginesSummary) -> u32 {
+    summary.active_runs.saturating_sub(summary.runs_waiting)
+}
+
+fn needs_you_line(runs_waiting: u32) -> Option<String> {
+    match runs_waiting {
+        0 => None,
+        1 => Some("1 run needs you".to_owned()),
+        runs => Some(format!("{runs} runs need you")),
+    }
+}
+
 fn status_line(summary: EnginesSummary) -> String {
-    let runs = runs_in_progress(summary.active_runs);
-    match (summary.paused, runs) {
-        (true, Some(runs)) => format!("Routines paused · {runs}"),
-        (true, None) => "Routines paused".to_owned(),
-        (false, Some(runs)) => runs,
-        (false, None) => "Nothing running".to_owned(),
+    let runs = runs_in_progress(in_progress(summary));
+    // Paused routines have no next one.
+    if summary.paused {
+        return match runs {
+            Some(runs) => format!("Routines paused · {runs}"),
+            None => "Routines paused".to_owned(),
+        };
+    }
+    let line = runs.unwrap_or_else(|| "Nothing running".to_owned());
+    match summary.next_routine {
+        Some(next) => format!("{line} · next routine at {}", next.clock),
+        None => line,
     }
 }
 

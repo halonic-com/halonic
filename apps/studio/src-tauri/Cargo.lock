@@ -1854,6 +1854,7 @@ version = "0.1.0"
 name = "halonic-studio"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "halonic-action-send",
  "halonic-agent-host",
  "halonic-blob-store",

@@ -13,6 +13,8 @@ use halonic_agent_host::Handshake;
 use halonic_engine_pipe::RoutinePause;
 use halonic_engine_supervisor::RestartLimit;
 
+use crate::tray_time::NextRoutine;
+
 /// What a crashed engine's workspace does next.
 #[derive(Debug, PartialEq, Eq)]
 pub enum AfterCrash {
@@ -29,11 +31,23 @@ pub enum AfterCrash {
     Problem { windows: HashSet<String> },
 }
 
+/// What one engine's latest health says, for the tray.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct EngineStatus {
+    pub active_runs: u32,
+    pub runs_waiting: u32,
+    pub next_routine: Option<NextRoutine>,
+}
+
 /// What the tray shows of every engine together (B1 step 5).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct EnginesSummary {
     /// The runs going now in every workspace, running or waiting.
     pub active_runs: u32,
+    /// Of `active_runs`, the ones waiting for the user's answer.
+    pub runs_waiting: u32,
+    /// The earliest next routine of every workspace.
+    pub next_routine: Option<NextRoutine>,
     /// Whether the user paused routines from the tray.
     pub paused: bool,
     /// Whether a workspace is in the problem state.
@@ -164,18 +178,25 @@ impl<P> EngineTable<P> {
             .collect()
     }
 
-    /// Every engine together, for the tray. `active_runs` reads one
-    /// engine's runs from its latest health.
-    pub fn summary(&self, active_runs: impl Fn(&P) -> u32) -> EnginesSummary {
+    /// Every engine together, for the tray. `status` reads one engine's
+    /// runs and next routine from its latest health.
+    pub fn summary(&self, status: impl Fn(&P) -> EngineStatus) -> EnginesSummary {
         let mut summary = EnginesSummary {
             paused: self.pause_all.is_paused(),
             ..EnginesSummary::default()
         };
         for entry in self.workspaces.values() {
             summary.problem |= entry.problem;
-            if let Some(engine) = &entry.engine {
-                summary.active_runs += active_runs(engine);
-            }
+            let Some(engine) = &entry.engine else {
+                continue;
+            };
+            let engine = status(engine);
+            summary.active_runs = summary.active_runs.saturating_add(engine.active_runs);
+            summary.runs_waiting = summary.runs_waiting.saturating_add(engine.runs_waiting);
+            summary.next_routine = [summary.next_routine, engine.next_routine]
+                .into_iter()
+                .flatten()
+                .min_by_key(|next| next.at);
         }
         summary
     }
