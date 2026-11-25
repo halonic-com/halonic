@@ -5,11 +5,17 @@ import type { Readable, Writable } from "node:stream";
 import { engineArgumentsOf } from "./engine-arguments.ts";
 import { runEngineRole } from "./engine-role.ts";
 import { type EngineCommandParts, engineRoleParts } from "./open-engine.ts";
+import { SecretRedactor } from "./secret-redactor.ts";
 
 /** The host's standard streams, as the engine role uses them. */
 export interface EngineIo {
   readonly input: Readable;
   writeError(text: string): void;
+  /**
+   * Redacts every secret `redactor` learns from standard error, uncaught
+   * errors included; absent in tests that pass their own streams.
+   */
+  redactStandardError?: ((redactor: SecretRedactor) => void) | undefined;
   /** Takes standard output over for the control pipe's frames. */
   takeOutput(): Writable;
   /** Ends the process with `code`; `process.exit` by default. */
@@ -38,7 +44,10 @@ export function engineCommand(
     io.writeError(given.error);
     return Promise.resolve(2);
   }
-  const parts = makeParts(given, version, (text) => io.writeError(text));
+  const redactor = new SecretRedactor();
+  // Before standard output is taken: a stray print there goes to standard error.
+  io.redactStandardError?.(redactor);
+  const parts = makeParts(given, version, (text) => io.writeError(text), redactor);
   const output = io.takeOutput();
   return runEngineRole(io.input, output, parts).then((code) =>
     endIfAbandoned(parts, output, io, code),

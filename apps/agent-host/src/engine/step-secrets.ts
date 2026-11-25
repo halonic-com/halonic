@@ -116,7 +116,7 @@ export class StepSecrets implements Secrets, KeyOrigins {
  * string (a tool's JSON arguments logged as a JSON string), so a value holding
  * a quote, a backslash or a newline is redacted wherever a step writes it.
  */
-function redactedForms(value: string): readonly string[] {
+export function redactedForms(value: string): readonly string[] {
   const escapedOnce = escapeForJsonString(value);
   return [value, escapedOnce, escapeForJsonString(escapedOnce)];
 }

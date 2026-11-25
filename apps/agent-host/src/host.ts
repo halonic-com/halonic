@@ -23,7 +23,8 @@ import { hostConnectorRoutes } from "./connector/connector-factory.ts";
 import { connectorRoutes } from "./connector/connector-routes.ts";
 import { ConnectorTable } from "./connector/connector-table.ts";
 import { hostDoctorRoutes } from "./doctor/host-doctor-routes.ts";
-import { engineCommand } from "./engine/engine-command.ts";
+import { type EngineIo, engineCommand } from "./engine/engine-command.ts";
+import { redactStandardError } from "./engine/secret-redactor.ts";
 import { RunLedger } from "./gateway/run-ledger.ts";
 import { googleRoutes } from "./google/google-routes.ts";
 import { harnessFolders } from "./harness/harness-folders.ts";
@@ -91,6 +92,8 @@ export interface HostIo {
   write(text: string): void;
   /** Writes to standard error, for a person to read. */
   writeError(text: string): void;
+  /** The engine role's redaction of its standard error (`engine-command.ts`). */
+  redactStandardError?: EngineIo["redactStandardError"];
   /**
    * Takes standard output over for the frames of `--stdio` mode: from then
    * on, `write` and anything else that prints go to standard error.
@@ -104,6 +107,7 @@ function standardIo(): HostIo {
     input: process.stdin,
     write: (text) => process.stdout.write(text),
     writeError: (text) => process.stderr.write(text),
+    redactStandardError: (redactor) => redactStandardError(redactor),
     takeOutput: () => takeStandardOutput(),
   };
 }
