@@ -40,6 +40,7 @@ the plugin was built with, is off. So is a tool whose action has no handler in t
 | `github.pull-request` | one pull request on the tool's `repositories`: `ci-ok`, mergeability, merge queue, signed approvals on the head, the newest review finding, what the author does next |
 | `github.open-pull-requests` | the caller's open pull requests (branches starting with its `urlKey`), the ones out of sync first |
 | `paperclip.failed-runs` | the runs that failed or timed out since a time, per agent, with cause codes and tasks, from the record the runtime keeps |
+| `paperclip.budgets` | each agent's monthly budget as the workspace sets it beside Paperclip's, flagging every difference; reads the agent list only and changes nothing |
 | `paperclip.task` | one task: status, holder, parent, blockers, documents and its newest comments (5 unless asked for up to 20), trimmed as `task_get` does |
 | `github.merge-times` | merges into the default branch over the tool's `days`, per day, and the median and longest time from opened to merged |
 

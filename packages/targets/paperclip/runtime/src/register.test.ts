@@ -157,6 +157,7 @@ verifies("runtime.tools", () => {
         "github.merge-times",
         "paperclip.task",
         "paperclip.failed-runs",
+        "paperclip.budgets",
         "paperclip.template",
         "paperclip.comment",
         "paperclip.next-step",

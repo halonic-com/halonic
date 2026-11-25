@@ -106,6 +106,7 @@ export const ToolActionChoice = s.discriminatedUnion("run", [
   actionChoice("github.merge-times"),
   actionChoice("paperclip.task"),
   actionChoice("paperclip.failed-runs"),
+  actionChoice("paperclip.budgets"),
   actionChoice("paperclip.template"),
   actionChoice("paperclip.comment"),
   actionChoice("paperclip.next-step"),

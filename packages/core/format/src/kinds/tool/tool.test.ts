@@ -138,6 +138,7 @@ verifies("format.tool-actions", () => {
       "github.merge-times github-read",
       "paperclip.task paperclip-api",
       "paperclip.failed-runs paperclip-api",
+      "paperclip.budgets paperclip-api",
       "paperclip.template ",
       "paperclip.comment paperclip-api",
       "paperclip.next-step paperclip-api",
@@ -171,6 +172,25 @@ verifies("format.tool-actions", () => {
       .replace("github.open-pull-requests", "paperclip.comment")
       .replace("{ repositories: [acme/website] }", "{ mode: always }");
     expect(summary(problemsOf("tool", unknown))).toEqual(["action.with.mode invalid_value 7"]);
+  });
+
+  it("refuses a budget list without its agents, or with a budget in fractions of a cent", () => {
+    const budgets = toolFile().replace("github.open-pull-requests", "paperclip.budgets");
+    const none = budgets.replace("  with: { repositories: [acme/website] }\n", "");
+    expect(summary(problemsOf("tool", none))).toEqual(["action.with invalid_type 5"]);
+    const cents = budgets.replace(
+      "{ repositories: [acme/website] }",
+      "{ agents: { mateo: 12.5 } }",
+    );
+    expect(parsedValue("tool", cents).action).toEqual({
+      run: "paperclip.budgets",
+      with: { agents: { mateo: 12.5 } },
+    });
+    const fraction = budgets.replace(
+      "{ repositories: [acme/website] }",
+      "{ agents: { mateo: 12.345 } }",
+    );
+    expect(summary(problemsOf("tool", fraction))).toEqual(["action.with.agents.mateo custom 7"]);
   });
 
   it("refuses a GitHub action without its repositories, and fills in the others' defaults", () => {
