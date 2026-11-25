@@ -6,6 +6,7 @@
 import type { ProposedWrite, ProposeOutcome, ReviewService } from "@halonicjs/app";
 import type { DefinitionSource, Digest, ExpectedContent } from "@halonicjs/ports";
 import { contentDigest } from "@halonicjs/std";
+import type { DocsOptions } from "./docs/docs-sites.ts";
 import { isGatedPath, namedOnlyRefusal } from "./named-only.ts";
 
 /** What the Build chat's tools need from the host, for one chat. */
@@ -31,6 +32,11 @@ export interface BuildToolsOptions {
    * for the hosts and sign-ins in them (`assistant.build.named-hosts-secrets`).
    */
   readonly personMessages: () => Promise<readonly string[]>;
+  /**
+   * What `read_docs` fetches with and where the chat's site answers and docs log are kept
+   * (`assistant.build.read-docs`). Absent: the chat has no `read_docs`.
+   */
+  readonly docs?: DocsOptions | undefined;
 }
 
 /** An item the `show` tool shows, as the model names it. */

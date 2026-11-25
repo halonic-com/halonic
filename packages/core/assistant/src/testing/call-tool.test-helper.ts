@@ -1,5 +1,6 @@
 import type { ReviewService } from "@halonicjs/app";
 import { buildChatTools } from "../build/build-tools.ts";
+import type { DocsOptions } from "../build/docs/docs-sites.ts";
 import { digest, type TestStore } from "./test-workspace.test-helper.ts";
 
 /** A workspace and its review service, as `testWorkspace` gives them. */
@@ -14,8 +15,13 @@ export interface ToolWorkspace {
  * calls one by name as the chat service would, numbering the calls.
  *
  * @param said - the person's own messages in the chat, for a scripted turn
+ * @param docs - what `read_docs` fetches with; without it the chat has no `read_docs`
  */
-export function chatTools(workspace: ToolWorkspace, said: readonly string[] = []) {
+export function chatTools(
+  workspace: ToolWorkspace,
+  said: readonly string[] = [],
+  docs?: DocsOptions,
+) {
   const tools = buildChatTools({
     chatId: "c1",
     files: workspace.store,
@@ -23,6 +29,7 @@ export function chatTools(workspace: ToolWorkspace, said: readonly string[] = []
     isTrusted: () => workspace.trust.trusted,
     digest,
     personMessages: async () => said,
+    docs,
   });
   let calls = 0;
   return (name: string, args: Record<string, unknown> = {}): Promise<string> => {
