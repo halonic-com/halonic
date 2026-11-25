@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: the board's request on HAL-18736 (HAL-10, 25 Nov, 19:00 UTC); plan approved on HAL-18736 (25 Nov, 19:02 UTC).
 
-In a chat with one agent, the Messenger shall show one tick after the time under each message the person sent, once the source has it, and two ticks once the source says the chat's agent picked it up (`readAt`). A screen reader shall hear "Sent", or "Read" and the time it was picked up, such as "Read 19:02", and the pointer shall see the same words as a tooltip. A message still on its way shall keep "Sending…" and show no tick. In a channel, the work lines under the person's message say what each agent did with it instead (`messenger.channel-messages`).
+Where a chat has one agent, the Messenger shall show one tick after the time under each message the person sent, once the source has it, and two ticks once the source says the chat's agent picked it up (`readAt`). A screen reader shall hear "Sent", or "Read" and the time it was picked up, such as "Read 19:02", and the pointer shall see the same words as a tooltip. A message still on its way shall keep "Sending…" and show no tick. In a channel, the work lines under the person's message say what each agent did with it instead (`messenger.channel-messages`).
 
 ## Examples
 
