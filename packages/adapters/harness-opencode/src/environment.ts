@@ -35,8 +35,8 @@ export const disableSwitches: readonly string[] = [
  * - Each of {@link disableSwitches}.
  * - `OPENCODE_CONFIG_CONTENT`: the run's config ({@link opencodeConfig}),
  *   which names the token's variable but holds no token.
- * - `OPENCODE_CONFIG_DIR`, the `XDG_*` folders and `OPENCODE_DB`: folders
- *   the adapter owns, never the person's.
+ * - `HOME`, `OPENCODE_CONFIG_DIR`, the `XDG_*` folders and `OPENCODE_DB`:
+ *   folders the adapter owns, never the person's.
  * - `OPENCODE_MODELS_PATH`: the catalog the adapter writes.
  * - `HALONIC_RUN_TOKEN`: the run token, which OpenCode sends in the
  *   bridge's header. Its shell tool inherits it, as Claude Code's does
@@ -56,6 +56,7 @@ export function opencodeEnvironment(
   return {
     ...switches,
     OPENCODE_CONFIG_CONTENT: JSON.stringify(opencodeConfig(bridge, task, files)),
+    HOME: files.homeFolder,
     OPENCODE_CONFIG_DIR: files.configFolder,
     XDG_CONFIG_HOME: files.configFolder,
     XDG_DATA_HOME: files.dataFolder,

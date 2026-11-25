@@ -32,6 +32,7 @@ verifies("harness-opencode.environment", () => {
       expect(environment["XDG_CACHE_HOME"]?.startsWith(settings)).toBe(true);
       expect(environment["OPENCODE_DB"]).toBe(join(settings, "opencode.db"));
       expect(environment["OPENCODE_MODELS_PATH"]).toBe(join(settings, "models.json"));
+      expect(files.updatePolicyFile).toBe(join(settings, "config", "opencode.json"));
       expect(files.instructionsFile).toBe(join("/run", "tmp", "halonic-instructions.md"));
     });
 

@@ -25,5 +25,18 @@ verifies("harness-opencode.command", () => {
       expect(args).not.toContain("--server");
       expect(args.filter((arg) => !arg.startsWith("--"))).toEqual(["run", "json", "writer"]);
     });
+
+    it("refuses an agent id that isn't one plain word", () => {
+      for (const agentId of [
+        "-p",
+        "--server",
+        "a b",
+        "x{env:HALONIC_RUN_TOKEN}",
+        "",
+        "a".repeat(129),
+      ]) {
+        expect(() => opencodeCommand({ agentId })).toThrow("plain agent id");
+      }
+    });
   });
 });

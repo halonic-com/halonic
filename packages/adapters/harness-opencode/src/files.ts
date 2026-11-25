@@ -10,8 +10,16 @@ export type OpenCodeFolders = Pick<SandboxProfile, "tempFolder" | "settingsFolde
  * person's `~/.config/opencode` or `~/.local/share/opencode`.
  */
 export interface OpenCodeFiles {
+  /**
+   * The home folder OpenCode gets (`HOME`). srt passes no `HOME` into the
+   * fence, and without one OpenCode would look up the account's own home
+   * folder for anything the other variables don't cover.
+   */
+  homeFolder: string;
   /** OpenCode's config folder (`OPENCODE_CONFIG_DIR` and `XDG_CONFIG_HOME`). */
   configFolder: string;
+  /** The file in it that holds only the update policy (`opencodeUpdatePolicyText`). */
+  updatePolicyFile: string;
   /** Its data, state and cache folders (`XDG_DATA_HOME`, `XDG_STATE_HOME`, `XDG_CACHE_HOME`), where its log goes. */
   dataFolder: string;
   stateFolder: string;
@@ -36,7 +44,9 @@ export function opencodeFiles(folders: OpenCodeFolders): OpenCodeFiles {
     throw new Error("OpenCode needs a settings folder, and the sandbox profile has none.");
   }
   return {
+    homeFolder: join(settings, "home"),
     configFolder: join(settings, "config"),
+    updatePolicyFile: join(settings, "config", "opencode.json"),
     dataFolder: join(settings, "data"),
     stateFolder: join(settings, "state"),
     cacheFolder: join(settings, "cache"),

@@ -1,5 +1,6 @@
 import type { HarnessTask, SandboxCommand } from "@halonicjs/ports";
 import { opencodeProgram } from "./detect.ts";
+import { requireTitle } from "./names.ts";
 
 /**
  * The command that runs OpenCode for one task (requirement
@@ -14,6 +15,9 @@ import { opencodeProgram } from "./detect.ts";
  * - `--archived`: the session isn't kept as an open one.
  * - `--format json`: one JSON event per line on standard output.
  * - `--title`: the agent's id, so OpenCode makes no model call for a title.
+ *   It must be one plain word, so it can't be read as an option.
+ *
+ * @throws Error when the agent's id isn't one plain word
  */
 export function opencodeCommand(task: Pick<HarnessTask, "agentId">): SandboxCommand {
   return {
@@ -26,7 +30,7 @@ export function opencodeCommand(task: Pick<HarnessTask, "agentId">): SandboxComm
       "--format",
       "json",
       "--title",
-      task.agentId,
+      requireTitle(task.agentId),
     ],
   };
 }

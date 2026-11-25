@@ -5,6 +5,7 @@ import {
   opencodeConfig,
   opencodeInstructionsText,
   opencodeModelCatalog,
+  opencodeUpdatePolicyText,
 } from "./config.ts";
 
 const model = "deepseek/deepseek-v4.1-flash-1017";
@@ -68,6 +69,34 @@ verifies("harness-opencode.config", () => {
     it("refuses a task without a model", () => {
       expect(() => opencodeConfig({ url: "http://b" }, {}, files)).toThrow("names none");
     });
+
+    it("refuses a model name OpenCode would expand, or that isn't plain", () => {
+      const crafted = [
+        "x{env:HALONIC_RUN_TOKEN}",
+        "x{file:../../.netrc}",
+        "/deepseek",
+        "deepseek/",
+        "deepseek//flash",
+        "-flash",
+        "deep seek",
+        "$HOME",
+        "a".repeat(129),
+      ];
+      for (const name of crafted) {
+        expect(() => opencodeConfig({ url: "http://b" }, { model: name }, files)).toThrow(
+          "plain model name",
+        );
+        expect(() => opencodeModelCatalog({ model: name })).toThrow("plain model name");
+      }
+    });
+
+    it("keeps OpenRouter's ids with a /, and names with . _ : -", () => {
+      for (const name of [model, "claude-sonnet-5-5", "org/model_v2:free"]) {
+        expect(opencodeConfig({ url: "http://b" }, { model: name }, files)["model"]).toBe(
+          `anthropic/${name}`,
+        );
+      }
+    });
   });
 
   describe("opencodeModelCatalog", () => {
@@ -81,6 +110,12 @@ verifies("harness-opencode.config", () => {
           },
         },
       });
+    });
+  });
+
+  describe("opencodeUpdatePolicyText", () => {
+    it("holds only the update policy, as 2.3.0's update check reads it", () => {
+      expect(JSON.parse(opencodeUpdatePolicyText())).toEqual({ update: "disable" });
     });
   });
 

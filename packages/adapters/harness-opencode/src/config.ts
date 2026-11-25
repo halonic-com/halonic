@@ -1,5 +1,6 @@
 import { type HarnessBridge, type HarnessTask, harnessBridgeTokenHeader } from "@halonicjs/ports";
 import type { OpenCodeFiles } from "./files.ts";
+import { requireModelName } from "./names.ts";
 
 /**
  * The variable that carries the run token. The config names it as
@@ -63,7 +64,11 @@ export const batchToolCallsLine =
  *   model, so titles and compaction use the agent's model too.
  * - The output limit is the alias's, or {@link defaultMaxOutputTokens}.
  * - Every network feature of its own is off: updates, sharing, snapshots,
- *   plugins, LSP and formatters (they download servers).
+ *   plugins, LSP and formatters (they download servers). `update` and
+ *   `share` are spelled as 2.3.0's config schema has them
+ *   (`"disable" | "notify" | "auto"` and `"manual" | "auto" | "disabled"`).
+ *   Its update check reads `update` only from a file in the config folder,
+ *   so {@link opencodeUpdatePolicyText} goes there too.
  * - Everything is allowed but {@link deniedTools}; Halonic's fence and the
  *   bridge's approvals do the rest.
  * - Its only instructions file is the session's, and its only MCP server is
@@ -71,7 +76,7 @@ export const batchToolCallsLine =
  *
  * It holds the bridge's address but no secret.
  *
- * @throws Error when the task names no model: OpenCode has no default the bridge serves
+ * @throws Error when the task names no model (OpenCode has no default the bridge serves), or one that isn't a plain name
  */
 export function opencodeConfig(
   bridge: Pick<HarnessBridge, "url">,
@@ -114,7 +119,7 @@ export function opencodeConfig(
  * dates, modalities and `open_weights` carry no meaning here, but 2.3.0
  * finds no route to a model without them (checked by hand on HAL-18101).
  *
- * @throws Error when the task names no model
+ * @throws Error when the task names no model, or one that isn't a plain name
  */
 export function opencodeModelCatalog(
   task: Pick<HarnessTask, "model" | "maxOutputTokens">,
@@ -146,6 +151,16 @@ export function opencodeModelCatalog(
   };
 }
 
+/**
+ * The text of `opencode.json` in OpenCode's config folder. 2.3.0's update
+ * check reads `update` from that folder's files only, never from
+ * `OPENCODE_CONFIG_CONTENT`, so the policy is written there as well as
+ * `OPENCODE_DISABLE_AUTOUPDATE` being set. It holds nothing else.
+ */
+export function opencodeUpdatePolicyText(): string {
+  return `${JSON.stringify({ update: "disable" })}\n`;
+}
+
 /** The text of the session's instructions file: the fixed line, then the agent's instructions. */
 export function opencodeInstructionsText(task: Pick<HarnessTask, "instructions">): string {
   const instructions = task.instructions.trim();
@@ -159,8 +174,5 @@ function outputLimit(task: Pick<HarnessTask, "maxOutputTokens">): number {
 }
 
 function requireModel(task: Pick<HarnessTask, "model">): string {
-  if (task.model === undefined) {
-    throw new Error("OpenCode needs a model from the agent's file, and it names none.");
-  }
-  return task.model;
+  return requireModelName(task.model);
 }

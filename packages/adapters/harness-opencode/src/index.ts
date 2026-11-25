@@ -7,6 +7,7 @@ export {
   opencodeInstructionsText,
   opencodeModelCatalog,
   opencodeRunTokenVariable,
+  opencodeUpdatePolicyText,
 } from "./config.ts";
 export { detectOpenCode, opencodeProgram, supportedVersions, testedVersions } from "./detect.ts";
 export { disableSwitches, opencodeEnvironment, opencodeStandInKey } from "./environment.ts";
