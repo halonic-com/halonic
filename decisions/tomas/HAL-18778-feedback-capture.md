@@ -2,6 +2,7 @@
 
 - Approval: the board asked for the feedback shortcut on HAL-10 (HAL-18563); Liam approved the plan and the plugin on HAL-18781 (https://paperclip.halonic.com/HAL/issues/HAL-18781); Julian reviews the security and Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:g6E6XM38P/frS/QAsGEYnbNnf1pnFyRILYBFezfeGo/uKt+aKFW1ftYldI8mdM/OT1ISNliB8SMzuY1fLSwmDQ==
 
 ## What changes
 
