@@ -2,6 +2,7 @@
 
 - Approval: Liam's decision on HAL-18194 (25 Nov) and his note 1 on halonic-com/halonic#5967, tracked on HAL-18238. Liam approves this note in review of this PR.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:TfcKdhnmh8PoY6ls1FZvJ3n2g6mzFc0Ljdh6xIFLaZKo9jVpAs59SYEpDV3sjooDTt0bM6WLWSYB/wQIzzzcBQ==
 
 `format.tool-file` said each parameter has one flat type, and its example
 refused `type: object`. `paperclip.next-step` reads `monitor` as an object
