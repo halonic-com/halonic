@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-18155 (Sofia's design decision, option a), with Liam's review of #5940 on HAL-18055
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:9UAJEoB/y2aWGkhvlMpnqDi9t26MqBm9265LhL7WJyX4myUav/LACM/3whO2sg5KzXETSUALeKSYzOErIZ3LBQ==
 - Task: HAL-18154
 
 ## What changes
