@@ -193,7 +193,7 @@ export function openAiRoute(dependencies: OpenAiRouteDependencies): BridgeRoute 
         refuseUnknownAtCompatible(request, openAiKnown, target.models);
       }
       const call = withSubagent(
-        readModelCall("openai", request, "input", access),
+        readModelCall("openai", request, "input", openAiEffort, access),
         context.request.headers,
       );
       // Also before the key is read, so a model the agent wasn't given never reads it.
