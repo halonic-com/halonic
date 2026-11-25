@@ -8,6 +8,7 @@ import type {
   PaperclipConnectionNow,
   PaperclipKeys,
 } from "@halonicjs/host-agent-messaging-hub";
+import type { MessagingSource } from "@halonicjs/ports";
 
 /** What {@link paperclipProvider} needs for one connection the person connected. */
 export interface PaperclipProviderOptions {
@@ -35,7 +36,7 @@ const signedOut: PaperclipAnswer = { kind: "failed", failure: "signed-out" };
  */
 export function paperclipProvider(
   options: PaperclipProviderOptions,
-): PaperclipMessaging | undefined {
+): PaperclipConnectionProvider | undefined {
   const { binding, keys } = options;
   const madeFor = keys.madeFor(binding);
   if (madeFor === undefined) return undefined;
@@ -46,7 +47,7 @@ export function paperclipProvider(
       use.origin === madeFor.address ? request(use.key) : Promise.resolve(signedOut),
     );
   };
-  return new PolledWhileSignedIn({
+  return new PaperclipConnectionProvider({
     address: madeFor.address,
     key: guard,
     connection: binding.connection,
@@ -58,14 +59,43 @@ export function paperclipProvider(
 }
 
 /**
- * A provider the poller leaves alone once it is signed out: only a new key,
- * which Connect hands over and which makes a new provider, can sign it in
- * again, so polling on would only repeat the refusal every 30 seconds.
+ * One connection's provider, which knows whom it is signed in as
+ * (`agent-host.paperclip-signed-in-user`): two accounts on one Paperclip
+ * then read as two sources, "Paperclip · Halonic · Board Supervisor". The
+ * poller leaves it alone once it is signed out: only a new key, which Connect
+ * hands over and which makes a new provider, can sign it in again, so polling
+ * on would only repeat the refusal every 30 seconds.
  */
-class PolledWhileSignedIn extends PaperclipMessaging {
+export class PaperclipConnectionProvider extends PaperclipMessaging {
+  /** The user's name once read; `null` once read from a Paperclip that holds none. */
+  #userName: string | null | undefined;
+
+  /** The name of the Paperclip user the key belongs to, once read. */
+  get userName(): string | undefined {
+    return this.#userName ?? undefined;
+  }
+
+  /**
+   * Reads whom the key belongs to, until one read worked: Connect calls it
+   * once, and a poll tries again when Connect's read failed.
+   */
+  async readUser(): Promise<void> {
+    if (this.#userName !== undefined) return;
+    const user = await this.signedInUser();
+    if (user !== undefined) this.#userName = user.name ?? null;
+  }
+
+  override async listSources(): Promise<readonly MessagingSource[]> {
+    const sources = await super.listSources();
+    const { userName } = this;
+    if (userName === undefined) return sources;
+    return sources.map((source) => ({ ...source, label: `${source.label} · ${userName}` }));
+  }
+
   override async refresh(): Promise<void> {
-    const [source] = await this.listSources();
+    const [source] = await super.listSources();
     if (source?.state.kind === "signed-out") return;
+    await this.readUser();
     await super.refresh();
   }
 }

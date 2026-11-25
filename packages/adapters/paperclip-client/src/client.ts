@@ -27,7 +27,7 @@ import { PaperclipChannelWork } from "./channel-work.ts";
 import { readChannel, toChannel } from "./channels.ts";
 import { PaperclipIds } from "./ids.ts";
 import { PaperclipInbox } from "./inbox.ts";
-import { asRecords, type JsonRecord, text } from "./json.ts";
+import { asRecord, asRecords, field, type JsonRecord, text } from "./json.ts";
 import { type MapContext, newestFirst, toAgent, toConversation, toMessage, toWork } from "./map.ts";
 import { PaperclipReader } from "./reader.ts";
 import { isSafeSegment } from "./requests.ts";
@@ -54,6 +54,12 @@ export interface PaperclipMessagingOptions extends TransportOptions {
   /** The catalog stepper requests are checked against; without one, cards that pin one stay plain cards. */
   stepperCatalog?: StepperCatalog;
   now?: () => Date;
+}
+
+/** The Paperclip user a key belongs to, as far as the apps show it. */
+export interface PaperclipUser {
+  /** Their name in Paperclip, such as "Board Supervisor". */
+  name?: string;
 }
 
 /** How many of a chat's newest messages are read. */
@@ -319,6 +325,23 @@ export class PaperclipMessaging implements AgentMessaging {
   async revoke(): Promise<boolean> {
     const answer = await this.#reader.send("revokeKey");
     return answer.kind === "ok";
+  }
+
+  /**
+   * Reads who the key belongs to (`GET /api/cli-auth/me`), so two connections
+   * to one Paperclip can be told apart. Answers only the user's name, never
+   * their email; `undefined` while Paperclip can't be reached or refuses the
+   * key, so it is worth asking again, and no `name` when Paperclip has none
+   * to give.
+   */
+  async signedInUser(): Promise<PaperclipUser | undefined> {
+    const answer = await this.#reader.send("whoAmI");
+    if (answer.kind === "failed") {
+      const askLater = answer.failure === "offline" || answer.failure === "signed-out";
+      return askLater ? undefined : {};
+    }
+    const name = text(asRecord(field(asRecord(answer.body), "user")), "name");
+    return name === undefined ? {} : { name };
   }
 
   #changedAfter(wrote: boolean): void {

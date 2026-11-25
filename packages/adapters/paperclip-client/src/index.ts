@@ -3,7 +3,11 @@
  * provider behind `AgentMessaging` and `TeamStatus`, and its fixed request list.
  */
 export { UnsafeAddressError } from "./address.ts";
-export { PaperclipMessaging, type PaperclipMessagingOptions } from "./client.ts";
+export {
+  PaperclipMessaging,
+  type PaperclipMessagingOptions,
+  type PaperclipUser,
+} from "./client.ts";
 export { paperclipSourceId } from "./ids.ts";
 export {
   findRequest,

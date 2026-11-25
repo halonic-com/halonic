@@ -1,5 +1,5 @@
 import { CachedAgentMessaging } from "@halonicjs/adapter-agent-messaging-cache";
-import { type PaperclipMessaging, paperclipSourceId } from "@halonicjs/adapter-paperclip-client";
+import { paperclipSourceId } from "@halonicjs/adapter-paperclip-client";
 import type { PaperclipConnection } from "@halonicjs/format";
 import type { PaperclipConnectionNow, PaperclipKeys } from "@halonicjs/host-agent-messaging-hub";
 import { type MessagingFailure, MessagingHub } from "@halonicjs/host-agent-messaging-hub";
@@ -12,7 +12,7 @@ import type {
 import { paperclipConnectionNamePattern } from "../paperclip/paperclip-key-routes.ts";
 import { ChangeLog, type ChangesSince } from "./change-log.ts";
 import { listConnectionFiles } from "./connection-file.ts";
-import { paperclipProvider } from "./paperclip-provider.ts";
+import { type PaperclipConnectionProvider, paperclipProvider } from "./paperclip-provider.ts";
 
 /** What one workspace's messaging needs. */
 export interface WorkspaceMessagingOptions {
@@ -48,10 +48,12 @@ export interface ConnectionRow {
   id: MessagingId;
   /** The file name without `.yaml`. */
   name: string;
-  /** "Paperclip · Halonic". */
+  /** "Paperclip · Halonic", and whom it is signed in as once known: "Paperclip · Halonic · Board Supervisor". */
   label: string;
   address: string;
   state: MessagingSourceState;
+  /** The Paperclip user the connection is signed in as, once read. */
+  userName?: string;
 }
 
 /**
@@ -65,7 +67,7 @@ export interface ConnectionRow {
 export class WorkspaceMessaging {
   readonly #options: WorkspaceMessagingOptions;
   /** Each connected connection's provider, by the connection's name. */
-  readonly #providers = new Map<string, PaperclipMessaging>();
+  readonly #providers = new Map<string, PaperclipConnectionProvider>();
   readonly #changes = new ChangeLog();
   #hub: MessagingHub;
   #served: CachedAgentMessaging;
@@ -89,9 +91,9 @@ export class WorkspaceMessaging {
 
   /**
    * Starts the provider of a connection whose key Studio just handed over,
-   * replacing the one before. It sends nothing itself: the first request
-   * comes when Studio reads or the poller polls. A connection whose file is
-   * gone gets no provider.
+   * replacing the one before. Its one request reads whom the key belongs to
+   * (`agent-host.paperclip-signed-in-user`); when that fails, the next poll
+   * tries again. A connection whose file is gone gets no provider.
    */
   async connect(connection: string): Promise<void> {
     const binding = { workspace: this.#options.workspace, connection };
@@ -106,6 +108,9 @@ export class WorkspaceMessaging {
             readNow: () => this.#options.readConnection(binding.workspace, connection),
             ...this.#network(),
           });
+    await provider?.readUser().catch((error: unknown) => {
+      this.#options.report({ provider: paperclipSourceId(connection), action: "read user", error });
+    });
     if (provider === undefined) this.#providers.delete(connection);
     else this.#providers.set(connection, provider);
     this.#rejoin();
@@ -164,12 +169,16 @@ export class WorkspaceMessaging {
     const asOf = (now?.() ?? new Date()).toISOString();
     return files.map(({ name, connection }) => {
       const id = paperclipSourceId(name);
+      const provider = this.#providers.get(name);
+      const userName = provider?.userName;
+      const label = `Paperclip · ${connection.label}`;
       return {
         id,
         name,
-        label: `Paperclip · ${connection.label}`,
+        label: userName === undefined ? label : `${label} · ${userName}`,
         address: connection.address,
-        state: this.#providers.has(name) ? stateOf(id, sources, asOf) : { kind: "signed-out" },
+        state: provider === undefined ? { kind: "signed-out" } : stateOf(id, sources, asOf),
+        ...(userName === undefined ? {} : { userName }),
       };
     });
   }

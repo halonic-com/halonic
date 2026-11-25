@@ -68,12 +68,13 @@ export class HostAgentConnections implements AgentConnections {
   async list(): Promise<readonly AgentConnection[]> {
     const rows = await this.#options.signIn.connections();
     for (const row of rows) this.#names.set(row.id, row.name);
-    return rows.map(({ id, label, address, state }) => ({
+    return rows.map(({ id, label, address, state, userName }) => ({
       id,
       provider: "paperclip",
       label,
       address,
       state,
+      ...(userName === undefined ? {} : { userName }),
     }));
   }
 

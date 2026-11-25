@@ -237,3 +237,22 @@ verifies("ports.agent-messaging", () => {
     });
   });
 });
+
+verifies("agent-host.paperclip-signed-in-user", () => {
+  describe("signedInUser", () => {
+    it("reads only the user's name, and nothing when Paperclip can't tell yet", async () => {
+      const messaging = client();
+      paperclip.on("GET", "/api/cli-auth/me", {
+        body: { user: { id: "user-1", name: "Board Supervisor", email: "board@acme.test" } },
+      });
+      expect(await messaging.signedInUser()).toEqual({ name: "Board Supervisor" });
+      paperclip.on("GET", "/api/cli-auth/me", { body: { user: null, userId: "user-1" } });
+      expect(await messaging.signedInUser()).toEqual({});
+      paperclip.on("GET", "/api/cli-auth/me", { status: 401, body: { error: "expired" } });
+      expect(await messaging.signedInUser()).toBeUndefined();
+      network.offline = true;
+      expect(await messaging.signedInUser()).toBeUndefined();
+      expect(seenRoutes()).toEqual(Array(3).fill("GET /api/cli-auth/me"));
+    });
+  });
+});

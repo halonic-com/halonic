@@ -124,6 +124,17 @@ async function resultOf(connections: HostAgentConnections, connection?: string) 
   return { challenge: start.challenge, result: await start.challenge.result };
 }
 
+verifies("connections.connection-user", () => {
+  it("hands features the user each connection is signed in as", async () => {
+    const { signIn, connections } = setUp();
+    const label = "Paperclip · Acme · Board Supervisor";
+    signIn.rows = [{ ...acmeRow, label, userName: "Board Supervisor" }];
+    expect(await connections.list()).toEqual([
+      { ...acmeListed, provider: "paperclip", label, userName: "Board Supervisor" },
+    ]);
+  });
+});
+
 verifies("services.host-agent-connections", () => {
   describe("HostAgentConnections", () => {
     it("writes the approved key to the keychain and passes on no key", async () => {

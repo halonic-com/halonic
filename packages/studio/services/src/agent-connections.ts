@@ -11,8 +11,13 @@ export interface AgentConnection {
   readonly id: MessagingId;
   /** The provider's kind, for an icon: "paperclip". Never parsed. */
   readonly provider: string;
-  /** What the user reads, such as "Paperclip · Halonic". */
+  /** What the user reads, such as "Paperclip · Halonic · Board Supervisor". */
   readonly label: string;
+  /**
+   * Whom the connection is signed in as, such as "Board Supervisor", once the engine read it, so
+   * two accounts on one Paperclip can be told apart.
+   */
+  readonly userName?: string;
   /** The address its sign-in goes to, such as `https://paperclip.acme.test`. */
   readonly address: string;
   readonly state: MessagingSourceState;

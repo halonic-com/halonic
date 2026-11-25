@@ -18,6 +18,7 @@ const connectionsAnswer = s
           label: s.string(),
           address: s.string(),
           state: sourceState,
+          userName: s.string().optional(),
         })
         .strict(),
     ),
@@ -66,10 +67,12 @@ export interface PaperclipConnectionRow {
   readonly id: MessagingId;
   /** The file name without `.yaml`. */
   readonly name: string;
-  /** "Paperclip · Halonic". */
+  /** "Paperclip · Halonic", with whom it is signed in as once known: "Paperclip · Halonic · Board Supervisor". */
   readonly label: string;
   readonly address: string;
   readonly state: MessagingSourceState;
+  /** The Paperclip user the connection is signed in as, once the engine read it. */
+  readonly userName?: string | undefined;
 }
 
 /** How starting a sign-in went. */
