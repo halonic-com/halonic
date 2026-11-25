@@ -65,6 +65,18 @@ function dryLine(rule: string, action: PrWatcherAction): string {
   return `Signal ${rule} (dry run): would ${what} (${action.key}).`;
 }
 
+/**
+ * Executors that only log what they would do, one line per action, and
+ * write nothing: for a pass that runs beside today's watcher, which still
+ * does the writes (HAL-18197).
+ */
+export function dryRunSignalExecutors(rule: string): SignalExecutors {
+  return {
+    wake: async (_task, actions) => actions.map((action) => dryLine(rule, action)).join("\n"),
+    "task-update": async (action) => dryLine(rule, action),
+  };
+}
+
 /** Every stored key starts with its task: keeps the keys of the tasks still watched. */
 function keep(
   done: Readonly<Record<string, string>>,
@@ -80,23 +92,43 @@ function storedKey(action: PrWatcherAction): string {
   return action.kind === "wake" ? `${action.task}|${action.key}` : action.key;
 }
 
+/**
+ * Carries out each write on its own, as `workflow-host/lifecycle-pass.ts`
+ * does: a key is recorded as soon as its write succeeded, and a write that
+ * throws is logged and left for the next pass, so the writes before it are
+ * never sent twice and the ones after it still run.
+ */
 async function carryOut(input: SignalPassInput, fresh: readonly PrWatcherAction[]) {
   const lines: string[] = [];
   const done: Record<string, string> = {};
   const wakes = new Map<string, WakeAction[]>();
+  const attempt = async (
+    what: string,
+    actions: readonly PrWatcherAction[],
+    write: () => Promise<string>,
+  ) => {
+    try {
+      lines.push(await write());
+      for (const action of actions) {
+        done[storedKey(action)] = input.now;
+      }
+    } catch (error) {
+      lines.push(
+        `Signal ${input.plan.rule}: ${what} failed, tried again next pass: ${(error as Error).message}`,
+      );
+    }
+  };
   for (const action of fresh) {
     if (action.kind === "wake") {
       wakes.set(action.task, [...(wakes.get(action.task) ?? []), action]);
     } else {
-      lines.push(await input.executors["task-update"](action));
-      done[storedKey(action)] = input.now;
+      await attempt(`marking ${action.task} ${action.status}`, [action], () =>
+        input.executors["task-update"](action),
+      );
     }
   }
   for (const [task, actions] of wakes) {
-    lines.push(await input.executors.wake(task, actions));
-    for (const action of actions) {
-      done[storedKey(action)] = input.now;
-    }
+    await attempt(`waking ${task}`, actions, () => input.executors.wake(task, actions));
   }
   return { lines, done };
 }

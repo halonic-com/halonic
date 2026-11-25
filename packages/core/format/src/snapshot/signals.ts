@@ -28,7 +28,8 @@ function repeated(
       {
         code,
         path: ["signals", index, ...at],
-        message: `another signal already has the ${at.join(".")} '${name}'`,
+        // The path names the place; the value stays out, as it is the file's own text.
+        message: `another signal already has this ${at.join(".")}`,
       },
     ];
   });

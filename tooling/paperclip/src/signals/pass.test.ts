@@ -103,4 +103,21 @@ verifies("paperclip.signals", () => {
     });
     expect(Object.keys(later.state.done)).toEqual(["ACME-2|acme/website#8|done"]);
   });
+
+  test("a write that throws is logged and tried again, and the writes around it are never sent twice", async () => {
+    const { writes, executors } = recorder();
+    const failing: SignalExecutors = {
+      ...executors,
+      "task-update": async () => {
+        throw new Error("Paperclip answered 503");
+      },
+    };
+    const first = await pass(plan(undefined), emptySignalState, failing);
+    expect(writes).toEqual(["wake ACME-1 ci-red,conflict"]);
+    expect(first.lines).toContain(
+      "Signal pr-watcher: marking ACME-2 done failed, tried again next pass: Paperclip answered 503",
+    );
+    await pass(plan(undefined), first.state, executors);
+    expect(writes).toEqual(["wake ACME-1 ci-red,conflict", "done ACME-2"]);
+  });
 });

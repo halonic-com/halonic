@@ -55,6 +55,17 @@ verifies("format.workspace-snapshot", () => {
       "signals.1 signals-not-sorted",
     ]);
     expect(problemsOf([signal(lowercaseKey)])).toEqual(["signals.0.id value-looks-like-key"]);
+    // The message names the place, never the id itself: an id is the file's own text.
+    const twice = readSnapshot({
+      format: 1,
+      workspace: { name: "Acme", commit },
+      tools: [],
+      signals: [signal("acme-watcher"), signal("acme-watcher")],
+    });
+    expect(twice.ok).toBe(false);
+    expect(twice.ok ? [] : twice.error.map((problem) => problem.message)).not.toContainEqual(
+      expect.stringContaining("acme-watcher"),
+    );
     const unknown = { ...signal("a"), rule: { run: "shell.run", with: {} } };
     expect(problemsOf([unknown])).toEqual(["signals.0.rule.run invalid_union"]);
     const action = { ...signal("a"), action: { run: "paperclip.task" } };
