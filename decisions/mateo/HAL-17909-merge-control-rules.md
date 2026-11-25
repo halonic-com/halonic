@@ -3,6 +3,7 @@
 - Task: HAL-17909 (under HAL-17891)
 - Approval: the board asked for each live Merger change as a plugin rule on HAL-17909 (25 Nov 01:25 and 01:50); Julian set the signed-line rule on HAL-17946; Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:oz8eRFQgIXfceLlOzcJ5PdXb7A8nLMMKAbn3+j20B9DafFqPt5dvXSIXTgTCtkx9fZ2sHoR3GqQsBmrR2llqBQ==
 
 ## What changes
 
