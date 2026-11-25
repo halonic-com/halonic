@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-17942 (Liam's findings 1 to 3 from the review of #5805, approved on head `8ca846d`)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:wWomMtXsZ7+hVXdNcsJCIebrNN4/G90h/TsGqMLFZl9LQquokCejfmo5pH+XZl+mG/Is8q/6Y12sg88zLoCBBw==
 
 After the approved poll handed the key to Studio, the host ended the sign-in
 at once. If that answer never reached Studio, or Studio closed before its
