@@ -85,13 +85,7 @@ export class PaperclipTeamStatus implements TeamStatus {
   }
 
   async spend(range: SpendRange): Promise<readonly SpendSummary[]> {
-    const from = rangeStart(range, this.#now());
-    const details = { path: { company: this.#company }, query: { from } };
-    const summary = await this.#reader.read("spendSummary", details);
-    const byProvider = await this.#reader.read("spendByProvider", details);
-    // The seats plugin counts the range's runs with no seat; the cost routes can't tell.
-    const seats = await this.#pluginRead("seats", "seatsSummary", { query: { from } });
-    return [toSpendSummary(this.#spendContext(range), { summary, byProvider, seats })];
+    return this.#readSpend(range, true);
   }
 
   async agentSpend(range: SpendRange): Promise<readonly AgentSpend[]> {
@@ -139,11 +133,12 @@ export class PaperclipTeamStatus implements TeamStatus {
   /**
    * Reads today's spend, the seats, the pull requests and the queue again and
    * tells `changes` readers when any of them changed. The engine calls it on
-   * its 5-minute schedule.
+   * its 5-minute schedule. Spend is read without `unknownSeatRuns`, so the
+   * seats plugin doesn't scan today's cost rows on every refresh.
    */
   async refresh(): Promise<void> {
     const seen = JSON.stringify([
-      await this.spend("today"),
+      await this.#readSpend("today", false),
       await this.seats(),
       await this.pullRequests(),
       await this.mergeQueue(),
@@ -153,6 +148,37 @@ export class PaperclipTeamStatus implements TeamStatus {
     if (changed) {
       this.#feed.push(this.#ids.source());
     }
+  }
+
+  /** The range's spend, with the seats plugin's `unknownSeatRuns` when `withSeatRuns`. */
+  async #readSpend(range: SpendRange, withSeatRuns: boolean): Promise<readonly SpendSummary[]> {
+    const from = rangeStart(range, this.#now());
+    const details = { path: { company: this.#company }, query: { from } };
+    const summary = await this.#reader.read("spendSummary", details);
+    const byProvider = await this.#reader.read("spendByProvider", details);
+    const seats = withSeatRuns ? await this.#unknownSeatRunsRead(from) : undefined;
+    return [toSpendSummary(this.#spendContext(range), { summary, byProvider, seats })];
+  }
+
+  /**
+   * The seats plugin's summary since `from`, for its count of runs with no
+   * seat, which the cost routes can't tell. Unlike other reads, any failure
+   * here gives `undefined` instead of an error: the count is optional, and a
+   * plugin fault (a 5xx, or a 400 from its `from` check) shouldn't take the
+   * paid money and tokens down with it. Only a 404 marks the seats part as
+   * not served; another failure says nothing about whether it is installed.
+   */
+  async #unknownSeatRunsRead(from: string): Promise<unknown> {
+    const query = { from, companyId: this.#company };
+    const answer = await this.#reader.send("seatsSummary", { query });
+    if (answer.kind === "ok") {
+      this.#missing.delete("seats");
+      return answer.body;
+    }
+    if (answer.failure === "not-found") {
+      this.#missing.add("seats");
+    }
+    return undefined;
   }
 
   /**
