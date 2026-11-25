@@ -98,6 +98,8 @@ verifies("runtime.serve", () => {
         version: "0.1.0",
         minAppVersion: "0.1.0",
         runExecutorVersion,
+        mode: "owner",
+        minStudioVersion: "0.1.0",
       });
       expect((await ask(envWith({}), "/api/hello", "OTHER.example.com")).status).toBe(200);
     });

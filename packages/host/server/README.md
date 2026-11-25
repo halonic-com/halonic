@@ -46,10 +46,10 @@ It never uses `createServer`'s routes. It serves its own `GET /api/hello` (only 
 Answers 200 without a sign-in, with exactly three keys:
 
 ```json
-{ "product": "halonic", "version": "0.1.0", "minAppVersion": "0.1.0", "runExecutorVersion": 2 }
+{ "product": "halonic", "version": "0.1.0", "minAppVersion": "0.1.0", "runExecutorVersion": 2, "mode": "owner", "minStudioVersion": "0.1.0" }
 ```
 
-`version` is the server's version and `minAppVersion` is the oldest Android app this server works with. `runExecutorVersion` is the version of the `RunExecutor` port the server honors; a remote executor reads it before it sends an answer that names a wait step. The Android app calls the route before it opens the sign-in page, to check it can talk to this server. It tells nothing else: no workspace name, host name or user. It sits behind the same `Host` and `Origin` checks and the same ceiling as every other route.
+`version` is the server's version and `minAppVersion` is the oldest Android app this server works with. `runExecutorVersion` is the version of the `RunExecutor` port the server honors; a remote executor reads it before it sends an answer that names a wait step. `mode` is `owner` for one owner and `many` for a many-user server, and `minStudioVersion` is the oldest Studio the protocol works with: a fixed floor, not the server's version. Studio reads both before it attaches, so it refuses a product's many-user server and a server that needs a newer Studio. The Android app calls the route before it opens the sign-in page, to check it can talk to this server. It tells nothing else: no workspace name, host name or user. It sits behind the same `Host` and `Origin` checks and the same ceiling as every other route.
 
 ## Example
 

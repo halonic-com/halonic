@@ -352,7 +352,7 @@ function buildServer(options: ServerOptions, checks: BuildChecks): ReturnType<Cr
   ): Promise<Response> {
     switch (endpoint) {
       case "GET /api/hello":
-        return helloResponse(config);
+        return helloResponse(config, "owner");
       case "POST /api/login":
         return signIn.login(request, body, context);
       case "POST /api/logout":
