@@ -83,13 +83,10 @@ beforeEach(async () => {
 
 afterEach(() => rm(folder, { recursive: true, force: true }));
 
-/** The workspace's history: one commit, with the two files. */
-const oneCommit: OpenWorkspaceHistory = async () => {
-  const files: Record<string, string> = {
-    "workspace.yaml": "id: acme\nname: Acme\n",
-    "deployments.yaml": deploymentsYaml,
-  };
-  return {
+/** The workspace's history: one commit, with these files. */
+const commitOf =
+  (files: Readonly<Record<string, string>>): OpenWorkspaceHistory =>
+  async () => ({
     vcs: {
       status: async () => ({
         isRepo: true,
@@ -111,8 +108,13 @@ const oneCommit: OpenWorkspaceHistory = async () => {
       listAt: async () => Object.keys(files).sort(),
     },
     close: async () => {},
-  };
-};
+  });
+
+/** One commit with the two files. */
+const oneCommit = commitOf({
+  "workspace.yaml": "id: acme\nname: Acme\n",
+  "deployments.yaml": deploymentsYaml,
+});
 
 /**
  * A target whose deploy sends `events`, then ends as `end` says: with a
@@ -220,7 +222,10 @@ verifies("cli.commands.deploy.run", () => {
     await rm(join(folder, "deployments.yaml"));
     const { setup, asked } = targetWith(livePlan, uploadAndGoLive, deployed);
     const io = captureIo(folder);
-    const code = await runCli(["deploy"], io, [deployCommandWith(setup)]);
+    const withoutDeployments = commitOf({ "workspace.yaml": "id: acme\nname: Acme\n" });
+    const code = await runCli(["deploy"], io, [
+      deployCommandWith({ ...setup, openHistory: withoutDeployments }),
+    ]);
     expect(code).toBe(exitCode.usage);
     expect(io.stderr).toEqual([
       "✕ Acme has no deployments yet.",
