@@ -30,7 +30,8 @@ export class ConsoleSocketError extends Error {
 }
 
 /**
- * Makes the socket's folder 0700 (under the caller's umask of 077), or checks the one there is:
+ * Makes the socket's folder 0700 (a umask only takes bits away, so it stays 0700 under any), or
+ * checks the one there is:
  * this user's, a folder and not a link, exactly 0700. It is never changed into shape: a folder
  * someone else could open may already hold their socket or link. Then checks every folder above.
  */

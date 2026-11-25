@@ -251,6 +251,30 @@ verifies("cli.commands.serve.pair", () => {
     slowTest,
   );
 
+  it(
+    "still serves when the system won't let it make the console's folder, and says why",
+    async () => {
+      transport = {
+        ...memoryConsole(),
+        listen: async (place) => {
+          throw Object.assign(new Error(`EACCES: permission denied, mkdir '${place}'`), {
+            code: "EACCES",
+          });
+        },
+      };
+      const address = await startServe();
+
+      expect((await fetch(`${address}/api/hello`)).status).toBe(200);
+      await waitUntil("the warning", () => (running?.io.stderr.length ?? 0) >= 1, slowStart);
+      expect(running?.io.stderr).toContainEqual(
+        expect.stringMatching(
+          /^! halonic serve pair and halonic serve devices won't work: EACCES: permission denied, mkdir /u,
+        ),
+      );
+    },
+    slowTest,
+  );
+
   it("with no serve-password set, says to set it first", async () => {
     secrets = new MemorySecrets({});
     const pair = startCommand(["pair"]);

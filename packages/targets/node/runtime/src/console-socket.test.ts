@@ -1,5 +1,5 @@
 import { chmod, lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
-import { createConnection, createServer } from "node:net";
+import { createConnection, createServer, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
@@ -90,6 +90,30 @@ describe("console socket", () => {
       expect(await callConsoleSocket(path, { op: "code" })).toMatchObject({ ok: true });
     });
 
+    it("narrows the process's umask only for the bind, never across an await", async () => {
+      const before = process.umask(0o022);
+      const seen = new Set<number>();
+      let opening = true;
+      // Reads the umask on every turn of the event loop while the socket opens, as any other
+      // code in the process would see it.
+      const watch = (): void => {
+        seen.add(process.umask());
+        if (opening) setImmediate(watch);
+      };
+      try {
+        watch();
+        const { path } = await openEcho();
+        opening = false;
+
+        expect(process.umask()).toBe(0o022);
+        expect([...seen]).toEqual([0o022]);
+        expect(await modeOf(path)).toBe(0o600);
+      } finally {
+        opening = false;
+        process.umask(before);
+      }
+    });
+
     it("refuses a plain file at the socket's path and leaves it", async () => {
       await mkdir(join(folder, "console"), { mode: 0o700 });
       await writeFile(socketPath(), "mine");
@@ -138,6 +162,26 @@ describe("console socket", () => {
       await expect(callConsoleSocket(path, { op: "devices" })).rejects.toThrow(
         ConsoleNotRunningError,
       );
+    });
+
+    it("finds no server when what answers on the socket doesn't reply in JSON", async () => {
+      const path = join(folder, "other.sock");
+      const connections: Socket[] = [];
+      const other = createServer((socket) => {
+        connections.push(socket);
+        socket.end("hello\n");
+      });
+      await new Promise<void>((resolve) => other.listen(path, resolve));
+      try {
+        await expect(callConsoleSocket(path, { op: "devices" })).rejects.toThrow(
+          ConsoleNotRunningError,
+        );
+      } finally {
+        await new Promise<void>((resolve) => {
+          other.close(() => resolve());
+          for (const socket of connections) socket.destroy();
+        });
+      }
     });
 
     it("refuses a path longer than the system takes, before it makes anything", async () => {
