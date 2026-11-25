@@ -2,6 +2,13 @@ import { counted, listInWords } from "./counts.ts";
 import { defineMessages } from "./define.ts";
 import { markPart, phrase } from "./phrase.ts";
 
+/** The signals a build added, removed and changed, by id. */
+interface SignalIds {
+  readonly added: readonly string[];
+  readonly removed: readonly string[];
+  readonly changed: readonly string[];
+}
+
 /**
  * The sentences of `halonic build` and `halonic build paperclip-plugin`
  * (plan HAL-17950): build a workspace's tools into a Paperclip plugin, with
@@ -39,19 +46,24 @@ export const buildMessages = defineMessages("build", {
   noChanges: () => phrase`none`,
   /**
    * What changed since the previous build, or every tool as added without one,
-   * then the routing entries (`roles.<role>`, `areas.<area>`) whose agent changed.
+   * then the routing entries (`roles.<role>`, `areas.<area>`) whose agent changed,
+   * then the signals added, removed and changed, by id.
    */
   changes: (
     added: readonly string[],
     removed: readonly string[],
     changed: readonly string[],
     routing: readonly string[] = [],
+    signals: SignalIds = { added: [], removed: [], changed: [] },
   ) =>
     phrase`${[
       added.length > 0 ? `added ${listInWords(added)}` : "",
       removed.length > 0 ? `removed ${listInWords(removed)}` : "",
       changed.length > 0 ? `changed ${listInWords(changed)}` : "",
       routing.length > 0 ? `routing ${listInWords(routing)}` : "",
+      signals.added.length > 0 ? `signals added ${listInWords(signals.added)}` : "",
+      signals.removed.length > 0 ? `signals removed ${listInWords(signals.removed)}` : "",
+      signals.changed.length > 0 ? `signals changed ${listInWords(signals.changed)}` : "",
     ]
       .filter((part) => part !== "")
       .join(" · ")}`,

@@ -195,6 +195,7 @@ export {
 } from "./snapshot/routing.ts";
 export {
   MAX_SNAPSHOT_BYTES,
+  MAX_SNAPSHOT_SIGNALS,
   MAX_SNAPSHOT_TOOLS,
   SNAPSHOT_FORMAT,
   snapshotJsonSchema,

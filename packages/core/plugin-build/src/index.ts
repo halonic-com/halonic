@@ -1,6 +1,11 @@
 // The public API of @halonicjs/plugin-build. Everything else in src/ is internal.
 
-export { type ChangedTool, type ChangeList, changeList } from "./change-list.ts";
+export {
+  type ChangedTool,
+  type ChangeList,
+  changeList,
+  type SignalChanges,
+} from "./change-list.ts";
 export {
   type ManifestInput,
   manifestApiVersion,
@@ -52,5 +57,5 @@ export {
   type ReleaseFileProblem,
   releaseFileText,
 } from "./release-file.ts";
-export type { PluginSnapshot, SnapshotTool } from "./snapshot.ts";
+export type { PluginSnapshot, SnapshotSignal, SnapshotTool } from "./snapshot.ts";
 export type { TarReadProblem } from "./tar-read.ts";

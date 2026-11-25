@@ -1,6 +1,6 @@
 // Builds a Paperclip plugin from one workspace commit (plan HAL-17950, with
 // Liam's conditions on HAL-17985): the snapshot of its tools, templates
-// (HAL-18153) and routing (HAL-18263), the four fixed files, the archive, its sha-256 and the release
+// (HAL-18153), signals (HAL-18365) and routing (HAL-18263), the four fixed files, the archive, its sha-256 and the release
 // file. Bytes in, bytes out:
 // the caller reads the workspace, the runtime and the previous build, and
 // writes what comes back. Nothing here reaches a disk, a network or Paperclip.
@@ -8,6 +8,7 @@
 import {
   makeSnapshot,
   type Routing,
+  type Signal,
   type SnapshotProblem,
   type Template,
   type Tool,
@@ -60,7 +61,7 @@ export interface PluginRuntime {
 }
 
 /**
- * The git commit the tool and template files were read at, as the caller found it. The
+ * The git commit the tool, template and signal files were read at, as the caller found it. The
  * release file names the commit, so it must hold every file the build read.
  */
 export type WorkspaceCommit =
@@ -78,7 +79,7 @@ export type WorkspaceCommit =
 export interface WorkspacePluginRequest {
   /**
    * The workspace: its id (the plugin id's last part), name, errors, commit,
-   * parsed tool and template files and its routing.
+   * parsed tool, template and signal files and its routing.
    */
   readonly workspace: {
     readonly id: string;
@@ -89,6 +90,8 @@ export interface WorkspacePluginRequest {
     readonly tools: readonly Tool[];
     /** The templates the plugin serves; none when left out. */
     readonly templates?: readonly Template[];
+    /** The signals the plugin switches on; none when left out. */
+    readonly signals?: readonly Signal[];
     /** Its `routing.yaml`; left out, the plugin keeps its own defaults. */
     readonly routing?: Routing;
   };
@@ -203,6 +206,7 @@ function checkedWorkspace(
     commit: commit.id,
     tools: workspace.tools,
     ...(workspace.templates === undefined ? {} : { templates: workspace.templates }),
+    ...(workspace.signals === undefined ? {} : { signals: workspace.signals }),
     ...(workspace.routing === undefined ? {} : { routing: workspace.routing }),
   });
   if (!snapshot.ok) return err({ code: "snapshot", problems: snapshot.error });

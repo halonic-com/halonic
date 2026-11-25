@@ -2,7 +2,7 @@
 // snapshot schema comes with 1a-1 (HAL-17948); once it is on `main`, this file
 // takes its type instead and keeps the untrusted-input check below.
 
-import { Routing } from "@halonicjs/format";
+import { MAX_SNAPSHOT_SIGNALS, Routing } from "@halonicjs/format";
 import { s } from "@halonicjs/schema-kit";
 
 /** The most tools a snapshot read back from an earlier build may hold. */
@@ -19,10 +19,26 @@ export interface SnapshotTool {
   readonly [field: string]: unknown;
 }
 
-/** What a build serves, as data: its tools and, when it has one, its routing. */
+/** The most signals a snapshot read back from an earlier build may hold, as the snapshot allows. */
+export const maxSnapshotSignals = MAX_SNAPSHOT_SIGNALS;
+
+/** A signal id: the format's id pattern, as long as a tool name. The release file needs the same. */
+export const signalIdPattern = /^[a-z0-9][a-z0-9-_]{0,127}$/;
+
+/** One signal in a snapshot: its id and its other fields, as plain JSON data. */
+export interface SnapshotSignal {
+  /** The signal's id, unique in its snapshot. */
+  readonly id: string;
+  /** Every other field, such as `rule` or `dryRun`. */
+  readonly [field: string]: unknown;
+}
+
+/** What a build serves, as data: its tools and, when it has them, its signals and routing. */
 export interface PluginSnapshot {
   /** The tools the plugin serves. */
   readonly tools: readonly SnapshotTool[];
+  /** The signals the plugin switches on; none in a build without signal files. */
+  readonly signals?: readonly SnapshotSignal[] | undefined;
   /** Who covers each role and who owns each area; none in a build without `routing.yaml`. */
   readonly routing?: Routing | undefined;
 }
@@ -44,6 +60,19 @@ export const untrustedSnapshot = s
           context.addIssue({ code: "custom", message: `The tool "${duplicate}" comes twice.` });
         }
       }),
+    // Only the ids are checked: the change list compares each signal as canonical JSON, and a
+    // previous build's rule settings may be of an older Halonic. An id must fit the release file.
+    signals: s
+      .array(s.object({ id: s.string().regex(signalIdPattern) }).passthrough())
+      .max(maxSnapshotSignals)
+      .superRefine((signals, context) => {
+        const ids = signals.map((signal) => signal.id);
+        const duplicate = ids.find((id, index) => ids.indexOf(id) !== index);
+        if (duplicate !== undefined) {
+          context.addIssue({ code: "custom", message: `The signal "${duplicate}" comes twice.` });
+        }
+      })
+      .optional(),
     // Checked like the snapshot's own routing, so the change list compares agent names only.
     routing: Routing.optional(),
   })
