@@ -2,7 +2,7 @@
 
 - Approval: HAL-17982, step 2 of the phase 3 plan on HAL-17450 (rev 5, approved by the board)
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:s0Dy1ygIPPo00J9GWG7wDLnTEWptzwpxtmHTzWlGXrwgJxxB9SJWBvpJoDd4v080gTb7PtqfDBRR/pr31l5cCg==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:SetqV6XybqTm0qOcMUU00eP53WczRkgVLiDiScCZ2Q5y6cs0/w78wQIS6KQ8pVtHG1RENq/wkOUyDT2pH3dmBg==
 
 The workspace snapshot gets an optional `routing`: who covers each role
 (`code-reviewer`, `second-reviewer`, `clarifier`, `merge-captain`) and who owns
