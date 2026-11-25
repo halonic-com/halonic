@@ -15,7 +15,9 @@
 # clicks through the installed app (HAL-18317): see
 # packages/testing/studio-click-test. No installer artifact unless the click
 # test passed on this build: only then does it keep the setup .exe as the
-# 7-day halonic-studio-preview-windows artifact (HAL-18356). There is no
+# 7-day halonic-studio-preview-windows artifact (HAL-18356). A merge's
+# build clicks through the short check plus the steps its change touched
+# (HAL-18863); the nightly run and a run by hand click every step. There is no
 # override; a flaky click test is fixed, not bypassed. The installers it
 # installs travel between the jobs as halonic-installers-<commit>, the click
 # test's own input, not an installer for anyone to try.
@@ -433,6 +435,34 @@ jobs:
           & $post "/api/companies/$($company.id)/issues" @{ title = 'Acme: answer the click test' } | Out-Null
           & $post "/api/companies/$($company.id)/approvals" @{ type = 'approve_ceo_strategy'; payload = @{ plan = 'Acme click-test card' } } | Out-Null
           "PAPERCLIP_URL=$url" >> $env:GITHUB_ENV
+      # A merge's build runs the short check plus the steps its change touched
+      # since main's last green build (HAL-18863), so builds skipped or failed
+      # in between are covered too. The nightly run and a run by hand list
+      # nothing, so they run every step. The list comes from git, not GitHub's
+      # compare, which returns at most 300 files without saying so (Liam's
+      # review of #6254). A diff of two commits needs only their trees, so
+      # one commit of the base is enough. --no-renames lists a moved file's
+      # old path too, so a step whose folder lost the file still runs.
+      - name: List what changed since main's last green build
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ needs.resolve.outputs.sha }}
+        run: |
+          $base = gh api "repos/$env:GITHUB_REPOSITORY/actions/workflows/studio-preview.yml/runs?branch=main&event=push&status=success&per_page=1" --jq '.workflow_runs[0].head_sha // empty'
+          if ($LASTEXITCODE -ne 0) { throw 'Reading the last green build failed' }
+          if (-not $base) {
+            "No green build of main yet: every click-test step runs." >> $env:GITHUB_STEP_SUMMARY
+          } else {
+            git fetch --no-tags --depth=1 origin $base $env:SHA
+            if ($LASTEXITCODE -ne 0) { throw "Fetching $base and $env:SHA failed" }
+            $files = @(git -c core.quotepath=off diff --name-only --no-renames $base $env:SHA)
+            if ($LASTEXITCODE -ne 0) { throw "Diffing $base with $env:SHA failed" }
+            $list = Join-Path $env:RUNNER_TEMP 'changed.txt'
+            Set-Content $list -Value $files -Encoding utf8NoBOM
+            "CLICK_TEST_CHANGED=$list" >> $env:GITHUB_ENV
+            "CLICK_TEST_SINCE=$base" >> $env:GITHUB_ENV
+          }
       # The shell gives WebView2 its own browser arguments, which beat the
       # variable msedgedriver (and so tauri-driver) uses to open the DevTools
       # port. WebView2's registry policy beats them (as in test-update.ps1), so

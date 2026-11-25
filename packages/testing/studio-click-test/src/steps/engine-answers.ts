@@ -28,6 +28,7 @@ export const engineAnswers: Step = {
     "agents.chat.engine-quiet",
     "studio.workspace-agents-chat",
   ],
+  shortCheck: true,
   run: async (context) => {
     const opened = await openDemo(context);
     if (!opened.passed) return withShellLog(context, opened);

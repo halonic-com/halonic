@@ -28,6 +28,20 @@ a flaky run is fixed, not bypassed. Every night `scheduled.yml` also runs it on 
 anything the installed app is built from, or the click test, changed since the last nightly run, and a
 failure there opens "Failing on main: Desktop app" (`docs/guides/area-owners.md`).
 
+A merge's build runs only the short check plus the steps its change touched (HAL-18863). The job
+lists the paths changed since main's last green build (in `CLICK_TEST_CHANGED`), and the suite
+runs (`src/affected.ts`):
+
+- the short check, the step marked `shortCheck` (the app installs, starts and its engine answers);
+- each step that one of these paths touches: one of its requirement files, anything in the folder
+  that holds that requirement's `requirements/` folder (for `messenger.not-connected`,
+  `packages/studio/features/messenger/`), or the step's own file in `src/steps/`;
+- the steps those need.
+
+A change to the suite's other code or to `studio-preview.yml` runs every step, and so do the
+nightly run and a run by hand, which list nothing. The results table names the steps a build left
+out.
+
 The shell gives WebView2 its own browser arguments, which beat the variable `msedgedriver` (and
 so `tauri-driver`) would use to open that port, so the driver attaches instead of starting the app.
 
