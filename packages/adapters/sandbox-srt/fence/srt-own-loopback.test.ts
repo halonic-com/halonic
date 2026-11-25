@@ -37,9 +37,14 @@ const { createServer } = require("node:http");
 const { execFileSync } = require("node:child_process");
 const port = Number(process.argv[2]);
 const url = "http://127.0.0.1:" + port + "/";
-const fetchWith = (args) => {
+// curl reads srt's HTTP_PROXY from the environment, so a direct request needs it removed.
+const proxyNames = ["HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy", "ALL_PROXY", "all_proxy"];
+const withoutProxy = Object.fromEntries(
+  Object.entries(process.env).filter(([name]) => !proxyNames.includes(name)),
+);
+const fetchWith = (args, env = process.env) => {
   try {
-    return execFileSync("curl", ["-s", "--max-time", "10", ...args, url], { encoding: "utf8" });
+    return execFileSync("curl", ["-s", "--max-time", "10", ...args, url], { encoding: "utf8", env });
   } catch (error) {
     return "refused: curl exit " + error.status;
   }
@@ -52,7 +57,7 @@ server.on("error", (error) => {
 server.listen(port, "127.0.0.1", () => {
   const proxy = process.env.HTTP_PROXY || process.env.http_proxy || "";
   const got = {
-    direct: fetchWith([]),
+    direct: fetchWith([], withoutProxy),
     noProxy: fetchWith(["--noproxy", "*"]),
     throughProxy: proxy === "" ? "no HTTP_PROXY" : fetchWith(["--proxy", proxy, "--noproxy", ""]),
   };
