@@ -129,6 +129,7 @@ fn main() {
         "server_session_open",
         "login_item_get",
         "login_item_set",
+        "show_main_window",
     ]);
     let attributes = tauri_build::Attributes::new()
         .app_manifest(commands)

@@ -115,6 +115,21 @@ pub fn started_again<R: Runtime>(handle: &AppHandle<R>, arguments: &[String]) {
     }
 }
 
+/// The `show_main_window` command (HAL-18188): a focused app's window with
+/// no workspace to open has an "Open Halonic" button, which brings Studio's
+/// window forward, or opens it when it was closed, so a workspace can be
+/// chosen there. It takes nothing from the page and only ever shows Studio's
+/// window. Only the focused apps' windows are granted it
+/// (capabilities/desktop-show-main-window.json). A window that can't show
+/// is refused as `failed`, with the reason in the shell's log.
+#[tauri::command]
+pub async fn show_main_window<R: Runtime>(app: AppHandle<R>) -> Result<(), &'static str> {
+    show(&app, None).map_err(|error| {
+        halonic_shell_log::record("window", format!("Studio's window didn't show: {error}"));
+        "failed"
+    })
+}
+
 /// Shows `window`, restored if it was minimised, with the keyboard focus.
 fn bring_forward<R: Runtime>(window: &WebviewWindow<R>) -> tauri::Result<()> {
     window.unminimize()?;
@@ -172,5 +187,38 @@ mod tests {
         let mut labels: Vec<String> = app.webview_windows().into_keys().collect();
         labels.sort();
         assert_eq!(labels, ["inbox", "main"]);
+    }
+
+    #[test]
+    fn show_main_window_opens_studio_beside_a_focused_app() {
+        let app = crate::shell(tauri::test::mock_builder())
+            .build(tauri::generate_context!())
+            .expect("the shell builds on the mock runtime");
+        show(app.handle(), Some(FocusedApp::Messenger)).expect("the Messenger opens");
+        tauri::async_runtime::block_on(show_main_window(app.handle().clone()))
+            .expect("Studio opens");
+        tauri::async_runtime::block_on(show_main_window(app.handle().clone()))
+            .expect("Studio comes forward");
+        let mut labels: Vec<String> = app.webview_windows().into_keys().collect();
+        labels.sort();
+        assert_eq!(labels, ["main", "messenger"]);
+    }
+
+    #[test]
+    fn show_main_window_is_granted_to_the_focused_apps_only_and_never_served() {
+        let capability: serde_json::Value = serde_json::from_str(include_str!(
+            "../capabilities/desktop-show-main-window.json"
+        ))
+        .expect("the capability");
+        assert_eq!(capability["local"], true);
+        assert_eq!(
+            capability["windows"],
+            serde_json::json!(["inbox", "messenger"])
+        );
+        assert!(capability.get("remote").is_none());
+        assert_eq!(
+            capability["permissions"],
+            serde_json::json!(["allow-show-main-window"])
+        );
     }
 }

@@ -4,7 +4,7 @@
 //! follows the page's title. On desktop, `--app inbox` or `--app messenger`
 //! opens that focused app's window on the same page instead, and a second
 //! start hands its arguments to the running shell (`focused_apps`); the
-//! desktop capabilities below grant those windows what they grant `main`. The page may call the `connect` command
+//! desktop capabilities below grant those windows what they grant `main`, except where named. The page may call the `connect` command
 //! (capabilities/connect-page.json) and, on desktop, `git`
 //! (capabilities/desktop-git.json), the `secret_*` and `token_*` commands
 //! (capabilities/desktop-secrets.json) and `pick_folder`, `documents_folder`,
@@ -24,7 +24,8 @@
 //! command (capabilities/desktop-resources.json) and the `lite_check` command, which
 //! makes and removes a probe file in the profile (capabilities/desktop-lite-check.json) and the `update_*` commands
 //! (capabilities/desktop-updates.json), in the main window only the
-//! `login_item_*` commands (capabilities/desktop-login-item.json), and the page's close request
+//! `login_item_*` commands (capabilities/desktop-login-item.json), in the focused apps' windows only
+//! `show_main_window` (capabilities/desktop-show-main-window.json), and the page's close request
 //! (capabilities/desktop-window.json), its notifications
 //! (capabilities/desktop-notifications.json) and the `wsl_*` commands of the sandbox
 //! backup (capabilities/desktop-sandbox-backup.json) and the `action_*` commands of
@@ -441,6 +442,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             login_item::login_item_get,
             #[cfg(desktop)]
             login_item::login_item_set,
+            #[cfg(desktop)]
+            focused_apps::show_main_window,
         ])
 }
 
