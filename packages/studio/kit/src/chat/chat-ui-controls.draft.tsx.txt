@@ -1,0 +1,304 @@
+import type { OpenUiComponent, OpenUiValue } from "@halonicjs/openui-lang";
+import { useId, useState } from "react";
+import { Button } from "../button/button.tsx";
+import { Card } from "../card/card.tsx";
+import { Checkbox } from "../checkbox/checkbox.tsx";
+import { ExternalLink } from "../external-link/external-link.tsx";
+import { Field } from "../field/field.tsx";
+import { Input } from "../input/input.tsx";
+import { TextArea } from "../input/text-area.tsx";
+import { RadioGroup } from "../radio/radio-group.tsx";
+import { Select } from "../select/select.tsx";
+
+/**
+ * The four components an agent may draw in a reply (HAL-17107 design): card, table, form and
+ * buttons. The agent draws in grey: its buttons are always `secondary`, with no icon, and none of
+ * its parts gets a status colour, so it can't draw something that looks like Studio's own
+ * approval, warning or failure.
+ */
+
+/** Sends a message as the person, as if they typed it; absent when the controls don't work. */
+export type ChatUiSend = ((message: string) => void) | undefined;
+
+/** A table shows this many rows until the person asks for all of them. */
+export const CHAT_UI_ROWS_SHOWN = 20;
+
+const gap = "flex flex-col gap-3";
+
+/** One part of a reply's `Stack`, by its type. */
+export function ChatUiPart({ part, onSend }: { part: OpenUiComponent; onSend: ChatUiSend }) {
+  switch (part.type) {
+    case "Card":
+      return <AgentCard part={part} />;
+    case "Table":
+      return <AgentTable part={part} />;
+    case "Form":
+      return <AgentForm part={part} onSend={onSend} />;
+    case "Buttons":
+      return <AgentButtons part={part} onSend={onSend} />;
+    default:
+      throw new TypeError(`Chat can't draw a ${part.type}.`);
+  }
+}
+
+function text(value: OpenUiValue | undefined): string {
+  if (value === undefined || value === null) return "";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  return typeof value === "object" ? "" : String(value);
+}
+
+function components(value: OpenUiValue | undefined): OpenUiComponent[] {
+  return (value ?? []) as OpenUiComponent[];
+}
+
+function plain(value: OpenUiValue | undefined): readonly OpenUiValue[] {
+  return (value ?? []) as readonly OpenUiValue[];
+}
+
+/** A link: its words, ↗, then the host from the address itself, never from the agent's words. */
+function AgentLink({ label, url }: { label: string; url: string }) {
+  return (
+    <span title={url}>
+      <ExternalLink href={url}>{label}</ExternalLink>{" "}
+      <span className="whitespace-nowrap text-fg-muted">
+        (<bdi dir="ltr">{new URL(url).host}</bdi>)
+      </span>
+    </span>
+  );
+}
+
+function AgentCard({ part }: { part: OpenUiComponent }) {
+  const facts = components(part.props.facts);
+  const links = components(part.props.links);
+  return (
+    <Card title={text(part.props.title)}>
+      <div className={gap}>
+        {part.props.text === undefined ? null : <p className="text-fg">{text(part.props.text)}</p>}
+        {facts.length === 0 ? null : (
+          <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-small">
+            {facts.map((fact, index) => (
+              <div key={index} className="contents">
+                <dt className="text-fg-muted">{text(fact.props.label)}</dt>
+                <dd className="text-fg">{text(fact.props.value)}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+        {links.length === 0 ? null : (
+          <ul className="flex flex-col gap-1 text-small">
+            {links.map((link, index) => (
+              <li key={index}>
+                <AgentLink label={text(link.props.label)} url={text(link.props.url)} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function AgentTable({ part }: { part: OpenUiComponent }) {
+  const captionId = useId();
+  const [all, setAll] = useState(false);
+  const columns = plain(part.props.columns);
+  const rows = components(part.props.rows).map((row) => plain(row.props.cells));
+  const shown = all ? rows : rows.slice(0, CHAT_UI_ROWS_SHOWN);
+  const numeric = columns.map((_, index) =>
+    rows.every((cells) => typeof cells[index] === "number"),
+  );
+  const align = (index: number) => (numeric[index] ? "text-end tabular-nums" : "text-start");
+  const caption = text(part.props.caption);
+  return (
+    <div className="flex flex-col gap-2">
+      {caption === "" ? null : (
+        <p id={captionId} className="text-small font-medium text-fg">
+          {caption}
+        </p>
+      )}
+      <div className="overflow-auto rounded-sm border border-border">
+        <table
+          aria-labelledby={caption === "" ? undefined : captionId}
+          className="w-full border-collapse text-small text-fg"
+        >
+          <thead className="bg-surface-subtle text-fg-muted">
+            <tr>
+              {columns.map((column, index) => (
+                <th
+                  key={index}
+                  scope="col"
+                  className={`px-3 py-1.5 font-normal whitespace-nowrap ${align(index)}`}
+                >
+                  {text(column)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((cells, row) => (
+              <tr key={row} className="border-t border-border">
+                {columns.map((_, index) => (
+                  <td key={index} className={`px-3 py-1.5 align-top ${align(index)}`}>
+                    {text(cells[index])}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {shown.length === rows.length ? null : (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="text-small text-fg-muted">
+            Showing {shown.length} of {rows.length} rows.
+          </span>
+          <Button variant="ghost" size="sm" onClick={() => setAll(true)}>
+            Show all {rows.length}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** The line under every button row: a click is the same as typing. */
+export const BUTTONS_LINE = "A button sends its words as your message.";
+
+function AgentButtons({ part, onSend }: { part: OpenUiComponent; onSend: ChatUiSend }) {
+  const lineId = useId();
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        {components(part.props.buttons).map((button, index) => {
+          const label = text(button.props.label);
+          return (
+            <Button
+              key={index}
+              variant="secondary"
+              size="sm"
+              unavailable={onSend === undefined ? { reason: lineId } : undefined}
+              onClick={() => onSend?.(label)}
+            >
+              {label}
+            </Button>
+          );
+        })}
+      </div>
+      <p id={lineId} className="text-small text-fg-muted">
+        {BUTTONS_LINE}
+      </p>
+    </div>
+  );
+}
+
+/** The line under every form: sending it is the same as typing the answers. */
+export const FORM_LINE = "Sends your answers as your message.";
+
+type Answer = string | boolean | null;
+
+function AgentForm({ part, onSend }: { part: OpenUiComponent; onSend: ChatUiSend }) {
+  const lineId = useId();
+  const fields = components(part.props.fields);
+  const [answers, setAnswers] = useState<readonly Answer[]>(() =>
+    fields.map((field) => (field.props.kind === "tickBox" ? false : null)),
+  );
+  const submit = text(part.props.submit);
+  function answer(index: number, value: Answer) {
+    setAnswers((before) => before.map((old, at) => (at === index ? value : old)));
+  }
+  function send() {
+    const lines = fields.map((field, index) => {
+      const value = answers[index];
+      const shown = typeof value === "boolean" ? (value ? "yes" : "no") : (value ?? "");
+      return `${text(field.props.label)}: ${shown}`;
+    });
+    onSend?.([submit, ...lines].join("\n"));
+  }
+  return (
+    <Card title={text(part.props.title)}>
+      <div className="flex flex-col gap-4">
+        {fields.map((field, index) => (
+          <FormField
+            key={index}
+            field={field}
+            value={answers[index] ?? null}
+            onChange={(value) => answer(index, value)}
+          />
+        ))}
+        <div className="flex flex-col items-start gap-2">
+          <Button
+            variant="secondary"
+            unavailable={onSend === undefined ? { reason: lineId } : undefined}
+            onClick={send}
+          >
+            {submit}
+          </Button>
+          <p id={lineId} className="text-small text-fg-muted">
+            {FORM_LINE}
+          </p>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+interface FormFieldProps {
+  readonly field: OpenUiComponent;
+  readonly value: Answer;
+  readonly onChange: (value: Answer) => void;
+}
+
+function FormField({ field, value, onChange }: FormFieldProps) {
+  const label = text(field.props.label);
+  const options = plain(field.props.options).map((option) => {
+    const words = text(option);
+    return { value: words, label: words };
+  });
+  switch (field.props.kind) {
+    case "tickBox":
+      return (
+        <Checkbox checked={value === true} onChange={onChange}>
+          {label}
+        </Checkbox>
+      );
+    case "choice":
+      return (
+        <Field label={label}>
+          <RadioGroup
+            value={typeof value === "string" ? value : null}
+            onChange={onChange}
+            options={options}
+          />
+        </Field>
+      );
+    case "list":
+      return (
+        <Field label={label}>
+          <Select
+            value={typeof value === "string" ? value : ""}
+            onChange={onChange}
+            options={options}
+          />
+        </Field>
+      );
+    case "longText":
+      return (
+        <Field label={label}>
+          <TextArea
+            value={typeof value === "string" ? value : ""}
+            minRows={2}
+            onChange={(event) => onChange(event.target.value)}
+          />
+        </Field>
+      );
+    default:
+      return (
+        <Field label={label}>
+          <Input
+            value={typeof value === "string" ? value : ""}
+            onChange={(event) => onChange(event.target.value)}
+          />
+        </Field>
+      );
+  }
+}
