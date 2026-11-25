@@ -3,6 +3,7 @@
 - Task: HAL-18516
 - Approval: Liam approves this change on HAL-18516 when he reviews the pull request. The place, its name, its icon and its count are the board-approved phase 2 design (HAL-17544, HAL-17515 S0), so no board card.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:MUf3fbiaRK894FKz3XaO+hv6nulU1vuPJwQcOXIumRGNJktewLjoRnpX1wpKOjE6/EfvSBc6MYCcZw0u+m05Dg==
 
 ## What changes
 
