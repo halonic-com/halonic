@@ -1,7 +1,15 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
-import { ago, headOf, now, pull, snapshot } from "../merge-control/merge-control.test-helper.ts";
+import {
+  ago,
+  entry,
+  headOf,
+  now,
+  pull,
+  snapshot,
+} from "../merge-control/merge-control.test-helper.ts";
 import type { GroupRun, MergeSnapshot } from "../merge-control/snapshot.ts";
+import { emptyMergeState } from "../merge-control/state.ts";
 import { type MergeControlApi, mergeControlPass } from "./merge-control-job.ts";
 import { passLock } from "./merge-control-lock.ts";
 
@@ -22,9 +30,12 @@ function database() {
 }
 
 /** A fresh worker: its own pass lock and nothing in memory, over the same database. */
-function worker(db: ReturnType<typeof database>) {
+function worker(
+  db: ReturnType<typeof database>,
+  settings: Record<string, unknown> = { mode: "shadow" },
+) {
   const ctx = {
-    config: { get: async () => ({ mergeControl: { mode: "shadow" } }) },
+    config: { get: async () => ({ mergeControl: settings }) },
     secrets: { resolve: async () => "" },
     http: { fetch: async () => ({ ok: true, status: 200, json: async () => ({}) }) },
     issues: { createComment: async () => ({}) },
@@ -46,8 +57,9 @@ async function enqueuesAt(
   db: ReturnType<typeof database>,
   at: Date,
   facts: MergeSnapshot,
+  settings?: Record<string, unknown>,
 ): Promise<boolean> {
-  const { ctx, lock } = worker(db);
+  const { ctx, lock } = worker(db, settings);
   await mergeControlPass(ctx, lock, companyId, at, async () => ({ snapshot: facts, observed: [] }));
   const stored = await db.get({ stateKey: "pass" });
   return Object.keys(stored.shadow.decided).includes("enqueue #5");
@@ -66,5 +78,28 @@ verifies("paperclip.merge-control-unjudged-hold", () => {
     const later = new Date(now.getTime() + 2 * 60 * 60_000);
     expect(await enqueuesAt(db, later, snapshot({ pulls: [pull(5)] }))).toBe(false);
     expect((await db.get({ stateKey: "pass" })).state.failedHeads).toEqual({ "5": headOf(5) });
+  });
+
+  test("a settings change between two passes keeps the culprit holds and cooldowns", async () => {
+    const db = database();
+    const cooldown = { head: headOf(6), ahead: [9], at: ago(5) };
+    await db.set(
+      { stateKey: "pass" },
+      {
+        version: 1,
+        state: { ...emptyMergeState, failedHeads: { "5": headOf(5) }, cooldown: { "6": cooldown } },
+        shadow: null,
+      },
+    );
+    const facts = snapshot({ pulls: [pull(5), pull(6), pull(9)], queue: [entry(9, 1)] });
+    expect(await enqueuesAt(db, now, facts)).toBe(false);
+    // The board saves new settings (HAL-17912, 07:55): another login and diff task, same mode.
+    const saved = { mode: "shadow", mergerLogin: "acme-merger", diffTask: "HAL-1" };
+    const later = new Date(now.getTime() + 60_000);
+    expect(await enqueuesAt(db, later, facts, saved)).toBe(false);
+    const stored = await db.get({ stateKey: "pass" });
+    expect(stored.state.failedHeads).toEqual({ "5": headOf(5) });
+    expect(stored.state.cooldown).toEqual({ "6": cooldown });
+    expect(stored.shadow.passes).toBe(2);
   });
 });
