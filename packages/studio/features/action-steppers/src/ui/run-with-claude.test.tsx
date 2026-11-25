@@ -191,14 +191,15 @@ verifies("action-steppers.run-with-claude", () => {
       );
     });
 
-    it("moves focus to the started line and says it when the terminal opened", async () => {
+    it("moves focus to the started line, which says it once, when the terminal opened", async () => {
       const { root } = show(acmeServer, fakeShell({ kind: "terminal-opened" }).shell);
       await press(root, "Run with Claude");
       await pressFocused(root, "Run with Claude");
       const started = "Claude Code is starting in a terminal. It reports back on HAL-1234.";
       expect(document.activeElement?.getAttribute("role")).toBe("group");
       expect(document.activeElement?.textContent).toBe(started);
-      expect(root.querySelector('[role="status"]')?.textContent).toBe(started);
+      // The focused line reads the words, so the status region stays empty.
+      expect(root.querySelector('[role="status"]')?.textContent).toBe("");
       expect(root.querySelector('[role="alert"]')?.textContent).toBe("");
     });
 

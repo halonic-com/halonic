@@ -47,11 +47,15 @@ interface Said {
   readonly alert: boolean;
 }
 
-/** The words the status region says for `answer`: the same words the screen shows for it. */
-function saidFor(answer: ServerSessionAnswer, task: string): Said {
+/**
+ * The words the status region says for `answer`: the same words the screen shows for it. Nothing
+ * for an opened terminal: focus moves to the started line, which reads them, so saying them here
+ * too would read them twice.
+ */
+function saidFor(answer: ServerSessionAnswer): Said {
   switch (answer.kind) {
     case "terminal-opened":
-      return { text: words.started(task), alert: false };
+      return { text: "", alert: false };
     case "cancelled":
       return { text: words.cancelledInShell, alert: false };
     case "refused":
@@ -159,7 +163,7 @@ export function RunWithClaude({
   const answer = phase.kind === "answered" ? phase.answer : undefined;
   const manual =
     shell === undefined || (answer !== undefined && guideAnswers.includes(answer.kind));
-  const said = answer === undefined ? { text: "", alert: false } : saidFor(answer, offer.task);
+  const said = answer === undefined ? { text: "", alert: false } : saidFor(answer);
   return (
     // By hand the user runs the ssh command, never the launcher, so its disclosure stays hidden.
     <ConfirmScreen
