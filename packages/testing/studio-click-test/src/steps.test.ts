@@ -35,10 +35,12 @@ function studioWithChat(reply: string): FakeStudio {
 
 verifies("studio-click-test.steps", () => {
   describe("step 1, the engine answers", () => {
-    it("sends Writer a message and passes on the echoed reply", async () => {
-      const studio = studioWithChat(probeMessage);
+    // Run 45675354530: the demo's mock model answers with its own line, not an echo.
+    it("sends Writer a message and passes once the chat says Writer replied", async () => {
+      const { writer, replied } = screenText;
+      const studio = studioWithChat(`Sam wants a refund. ${writer.text}${replied.text}`);
       await expect(engineAnswers.run(studio.context)).resolves.toEqual({ passed: true });
-      const { places, agents, writer } = screenText;
+      const { places, agents } = screenText;
       expect(studio.clicks).toEqual([
         buttonLabels.openDemo.text,
         places.text,
@@ -59,8 +61,8 @@ verifies("studio-click-test.steps", () => {
       );
     });
 
-    it("fails as NO_REPLY when nothing comes back", async () => {
-      const outcome = await engineAnswers.run(studioWithChat("").context);
+    it("fails as NO_REPLY when nothing comes back, even an echo of the message", async () => {
+      const outcome = await engineAnswers.run(studioWithChat(probeMessage).context);
       expect(outcome).toMatchObject({ passed: false, code: "NO_REPLY" });
     });
 
@@ -93,9 +95,12 @@ verifies("studio-click-test.steps", () => {
           studio.windows.set("messenger", { text, buttons: new Map() });
         },
       });
-      button(studio, "main", buttonLabels.settings.text, () => {
-        button(studio, "main", words.connectionsSection, () => {
-          main(studio).text = connections;
+      // As in the app: Settings is a row in the list the Places button opens.
+      button(studio, "main", screenText.places.text, () => {
+        button(studio, "main", buttonLabels.settings.text, () => {
+          button(studio, "main", words.connectionsSection, () => {
+            main(studio).text = connections;
+          });
         });
       });
       return studio;
@@ -116,6 +121,11 @@ verifies("studio-click-test.steps", () => {
         code: "LIST_FAILED",
         note: "Messenger: (blank)",
       });
+      expect(studio.clicks).toEqual([
+        screenText.places.text,
+        buttonLabels.settings.text,
+        words.connectionsSection,
+      ]);
     });
 
     it("fails as NO_WINDOW when the shortcut opens nothing", async () => {
@@ -162,6 +172,12 @@ verifies("studio-click-test.steps", () => {
       studio.approval = "Studio started no sign-in on the test Paperclip.";
       await expect(connectPaperclip.run(studio.context)).resolves.toMatchObject({
         code: "NOT_APPROVED",
+      });
+    });
+
+    it("fails as NO_SETTINGS when neither Settings nor Places is there", async () => {
+      await expect(connectPaperclip.run(fakeStudio("Acme").context)).resolves.toMatchObject({
+        code: "NO_SETTINGS",
       });
     });
 

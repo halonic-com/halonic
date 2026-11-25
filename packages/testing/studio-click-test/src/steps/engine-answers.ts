@@ -6,14 +6,15 @@ import { openDemo } from "./open-demo.ts";
 
 /** How long the engine may take to answer the first message. */
 const replyWaitMs = 90_000;
-/** What step 1 sends. The demo's model echoes it, so it shows twice once the engine answers. */
+/** What step 1 sends. */
 export const probeMessage = "Click test: are you there?";
 
 /**
  * Step 1 (Tomas, HAL-18317): the engine answers. Opens the demo from Welcome,
  * then the demo's Writer agent, whose Try it chat is open on its page, and
- * sends one message. The demo's model is the mock echo, which needs no key, so
- * the step passes once the reply shows and fails on an engine line. The desktop
+ * sends one message. The demo's mock model needs no key and answers with its
+ * own canned line, not the message (run 45675354530), so the step passes once
+ * the chat announces "Writer replied." and fails on an engine line. The desktop
  * Studio registers no Assistant panel (run 45654461077), so the Try it chat is
  * where a person meets "The engine isn't answering".
  */
@@ -58,10 +59,11 @@ async function sendAndWaitForReply(context: StepContext): Promise<StepOutcome> {
   if (whyNot !== undefined) return failure("NOT_SENT", `Couldn't send (${whyNot}).`, "");
   // Sending asks the trust check when the demo isn't trusted yet; no dialog is fine.
   await clickWhenShown(context, buttonLabels.trust.text, 5_000);
+  const replied = `${screenText.writer.text}${screenText.replied.text}`;
   const reply = await waitForText(context, replyWaitMs, (text) => {
     const code = errorCodeIn(text);
     if (code !== undefined) return code;
-    return text.split(probeMessage).length > 2 ? "replied" : undefined;
+    return text.includes(replied) ? "replied" : undefined;
   });
   if (reply.value === "replied") return { passed: true };
   if (reply.value !== undefined) return failure(reply.value, "", reply.text);

@@ -1,7 +1,7 @@
 import type { Step, StepContext } from "../runner.ts";
-import { clickWhenShown, lastWords, waitForText } from "../screen.ts";
-import { buttonLabels, errorCodeIn, words } from "../words.ts";
-import { onWorkspace } from "./open-demo.ts";
+import { lastWords, waitForText } from "../screen.ts";
+import { errorCodeIn, words } from "../words.ts";
+import { onWorkspace, openConnections } from "./open-demo.ts";
 
 const windowWaitMs = 30_000;
 const emptyStateWaitMs = 45_000;
@@ -49,8 +49,7 @@ async function newWindow(
 /** The error code Settings › Connections shows in the main window, if any. */
 export async function connectionsError(context: StepContext): Promise<string | undefined> {
   if (!(await onWorkspace(context)).passed) return undefined;
-  if (!(await clickWhenShown(context, buttonLabels.settings.text, 10_000))) return undefined;
-  await clickWhenShown(context, words.connectionsSection, 10_000);
+  if (!(await openConnections(context))) return undefined;
   const { value } = await waitForText(context, 20_000, errorCodeIn);
   return value;
 }

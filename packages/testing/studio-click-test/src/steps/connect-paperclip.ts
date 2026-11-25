@@ -1,7 +1,7 @@
 import type { Step } from "../runner.ts";
 import { clickWhenShown, lastWords, waitForText } from "../screen.ts";
-import { buttonLabels, errorCodeIn, words } from "../words.ts";
-import { onWorkspace } from "./open-demo.ts";
+import { errorCodeIn, words } from "../words.ts";
+import { onWorkspace, openConnections } from "./open-demo.ts";
 
 const connectedWaitMs = 60_000;
 
@@ -17,15 +17,15 @@ export const connectPaperclip: Step = {
     const { driver } = context;
     const workspace = await onWorkspace(context);
     if (!workspace.passed) return workspace;
-    // Settings may already be open, when step 2 read Connections there.
-    await clickWhenShown(context, buttonLabels.settings.text, 10_000);
-    await clickWhenShown(context, words.connectionsSection, 10_000);
+    const settingsOpened = await openConnections(context);
     const section = await waitForText(context, 20_000, (text) =>
       text.includes(words.connect) || errorCodeIn(text) !== undefined ? text : undefined,
     );
     const listError = errorCodeIn(section.text);
     if (listError !== undefined)
       return { passed: false, code: listError, note: lastWords(section.text) };
+    if (!settingsOpened)
+      return { passed: false, code: "NO_SETTINGS", note: lastWords(section.text) };
     if (!(await clickWhenShown(context, words.connect, 10_000))) {
       return { passed: false, code: "NO_CONNECT_BUTTON", note: lastWords(section.text) };
     }

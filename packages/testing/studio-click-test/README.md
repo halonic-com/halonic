@@ -29,7 +29,7 @@ The steps, in `src/steps/`:
 
 | # | Step | Passes when |
 | --- | --- | --- |
-| 1 | The engine answers | Open demo turns on, and the demo's Writer agent answers a message in its Try it chat (the demo's model echoes it, no key) with no "The engine isn't answering" line |
+| 1 | The engine answers | Open demo turns on, and the demo's Writer agent answers a message in its Try it chat ("Writer replied."; the demo's mock model needs no key) with no "The engine isn't answering" line |
 | 2 | Messenger shows its empty state | the Halonic Messenger shortcut opens a window with No connections |
 | 3 | Connect Paperclip | Settings › Connections › Connect Paperclip, approved on the test Paperclip, shows Connected |
 

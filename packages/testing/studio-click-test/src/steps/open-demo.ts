@@ -1,6 +1,6 @@
 import type { StepContext, StepOutcome } from "../runner.ts";
 import { clickOrWhyNot, clickWhenShown, lastWords, waitForText } from "../screen.ts";
-import { buttonLabels, errorCodeIn } from "../words.ts";
+import { buttonLabels, errorCodeIn, screenText, words } from "../words.ts";
 
 /** How long Studio may take to start its engine on a fresh profile (the WSL import included). */
 export const startWaitMs = 5 * 60_000;
@@ -38,4 +38,20 @@ export async function onWorkspace(context: StepContext): Promise<StepOutcome> {
   );
   if (!text.includes(buttonLabels.openDemo.text)) return { passed: true };
   return openDemo(context);
+}
+
+/**
+ * Opens Settings › Connections from a workspace and returns whether Settings
+ * opened. Settings is a row in the Places list, which the ☰ Places button
+ * opens (run 45675354530), unless that list or Settings is open already.
+ */
+export async function openConnections(context: StepContext): Promise<boolean> {
+  const { settings } = buttonLabels;
+  const opened =
+    (await clickWhenShown(context, settings.text, 2_000)) ||
+    ((await clickWhenShown(context, screenText.places.text, 10_000)) &&
+      (await clickWhenShown(context, settings.text, 10_000)));
+  if (!opened) return false;
+  await clickWhenShown(context, words.connectionsSection, 10_000);
+  return true;
 }
