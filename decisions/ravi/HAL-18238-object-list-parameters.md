@@ -22,7 +22,15 @@ fields checked like parameters) are in the new requirement
 `format.tool-parameter-shapes`; they only refuse more. None of this is
 released yet.
 
+The format's generated JSON Schemas, `spec/tool.schema.json` and
+`spec/workspace-snapshot.schema.json`, change to match: each parameter's
+`oneOf` gains the object and list choices. The flat choices keep the same
+rules, with their keys listed in another order, so no file that was valid
+before is refused.
+
 ## Covers
 
 - format.tool-file
 - plugin-build.manifest
+- packages/core/format/spec/tool.schema.json
+- packages/core/format/spec/workspace-snapshot.schema.json
