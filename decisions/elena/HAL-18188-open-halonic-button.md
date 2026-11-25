@@ -2,6 +2,7 @@
 
 - Approval: HAL-18188, the team decision on HAL-18174's row ASK (option B, decided by the team under HAL-2282), and Liam's security review of this pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:QBfIXrn+z72FqPxAr3o8bsOpApXk1bZ5c10IL0xEhi4P+vA8xbKl/Sa3oCP4o/ACgZFSzU0kysis9Cqale6KCQ==
 
 Halonic Inbox and Halonic Messenger, opened with no workspace, said only
 "Open Halonic to choose a workspace." with nothing to press. The line stays
