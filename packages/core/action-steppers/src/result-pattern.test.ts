@@ -40,6 +40,7 @@ verifies("action-steppers.stepper-request", () => {
       const value = "a".repeat(maxResultLength);
       expect(matcher(pattern)(value)).toBe(false);
       const checks = countMatchChecks(pattern, value);
+      expect(checks.ok).toBe(true);
       expect(checks.ok && checks.value).toBeLessThanOrEqual(
         (atomCount + 1) * maxResultLength * (maxResultLength + 1),
       );

@@ -92,6 +92,8 @@ verifies("action-steppers.stepper-request", () => {
       ["https://github.com/acme/app/settings/variables/./x", "path trick"],
       ["https://github.com/acme/app/settings/variables/%2e/x", "path trick"],
       ["https://github.com/acme/%2E/settings/variables/", "path trick"],
+      ["https://github.com/acme/app/settings/variables/%3Fx", "path trick"],
+      ["https://github.com/acme/app/settings/variables/%23x", "path trick"],
     ])("refuses the browser address %s", (url, reason) => {
       const found = reasons(request(setVariable, browser(url)));
       expect(found).toHaveLength(1);
