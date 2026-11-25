@@ -16,6 +16,7 @@ import {
 import { agentCharactersPref, themePref } from "./appearance/appearance-prefs.ts";
 import { onOrOff, themeNames } from "./appearance/appearance-text.ts";
 import * as assistantText from "./assistant/assistant-text.ts";
+import * as notificationsText from "./notifications/notifications-text.ts";
 import { agentSandboxSummary, assistantSummary } from "./section-summaries.ts";
 import * as serverSessionText from "./server-session/server-session-text.ts";
 import { showUnfinishedSettings, unfinishedSectionIds } from "./unfinished.ts";
@@ -64,6 +65,15 @@ export function settingsSectionsFor(showUnfinished: boolean): SettingsSectionCon
       summary: assistantSummary,
       view: "AssistantSection",
       load: () => import("./assistant/assistant-section.tsx"),
+    },
+    {
+      id: "notifications",
+      title: notificationsText.TITLE,
+      scope: "host",
+      // After Assistant (10), before Agent sandbox (30). No icon of its own yet: the design has none.
+      order: 20,
+      view: "NotificationsSection",
+      load: () => import("./notifications/notifications-section.tsx"),
     },
     {
       id: "agent-sandbox",

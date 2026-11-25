@@ -6,6 +6,10 @@ export {
   runNotificationSettingWords,
 } from "./notify/run-notices.ts";
 export {
+  runNotificationPrefs,
+  runNotificationSettingsOf,
+} from "./notify/run-notification-prefs.ts";
+export {
   type RunNotificationsOptions,
   type RunNotificationsWatch,
   type RunsReader,
