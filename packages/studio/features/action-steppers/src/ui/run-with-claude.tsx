@@ -1,6 +1,13 @@
 import { renderServerSessionLauncher, type ServerTarget } from "@halonicjs/action-steppers";
-import { Button, Callout, CommandBox, CopyButton, Disclosure } from "@halonicjs/studio-kit";
-import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import {
+  Button,
+  Callout,
+  type CalloutHandle,
+  CommandBox,
+  CopyButton,
+  Disclosure,
+} from "@halonicjs/studio-kit";
+import { type ReactNode, type RefObject, useEffect, useId, useRef, useState } from "react";
 import type { ServerSessionOffer } from "../server-session/server-session-offer.ts";
 import type {
   ServerChoice,
@@ -8,6 +15,7 @@ import type {
   ServerSessionShell,
 } from "../server-session/server-session-shell.ts";
 import * as words from "./server-session-words.ts";
+import { focusLost } from "./stepper-changes.ts";
 
 /** Props for {@link RunWithClaude}. */
 export interface RunWithClaudeProps {
@@ -33,6 +41,56 @@ const guideAnswers: readonly ServerSessionAnswer["kind"][] = [
   "unsupported-platform",
 ];
 
+/** What the screen says about the shell's answer, polite or as an alert, or nothing. */
+interface Said {
+  readonly text: string;
+  readonly alert: boolean;
+}
+
+/** The words the status region says for `answer`: the same words the screen shows for it. */
+function saidFor(answer: ServerSessionAnswer, task: string): Said {
+  switch (answer.kind) {
+    case "terminal-opened":
+      return { text: words.started(task), alert: false };
+    case "cancelled":
+      return { text: words.cancelledInShell, alert: false };
+    case "refused":
+      return { text: words.shellRefused(answer.reason), alert: true };
+    case "no-terminal":
+      return { text: words.noTerminal, alert: false };
+    case "unsupported-platform":
+      return { text: words.cannotOpenTerminal, alert: false };
+    case "not-configured":
+      return { text: "", alert: false };
+  }
+}
+
+/** Where focus goes once an answer came: the started line, the guide's title or the heading. */
+interface FocusTargets {
+  readonly started: RefObject<CalloutHandle | null>;
+  readonly guideTitle: RefObject<HTMLSpanElement | null>;
+  readonly heading: RefObject<HTMLHeadingElement | null>;
+}
+
+/**
+ * Follows the shell's answers (`action-steppers.run-with-claude`): when an answer takes away the
+ * pressed **Run with Claude**, focus moves to the started line or the manual guide's title, or the
+ * confirm heading when neither is there. Returns how many answers came, so the status region reads
+ * the same words again on a second try.
+ */
+function useFollowAnswer(phase: Phase, targets: FocusTargets): number {
+  const [answers, setAnswers] = useState(0);
+  useEffect(() => {
+    if (phase.kind !== "answered") return;
+    setAnswers((count) => count + 1);
+    if (!focusLost()) return;
+    const result = targets.started.current ?? targets.guideTitle.current;
+    if (result !== null) result.focus();
+    else targets.heading.current?.focus({ preventScroll: true });
+  }, [phase, targets]);
+  return answers;
+}
+
 /**
  * "Run with Claude" for an item that offers a server session (`action-steppers.run-with-claude`):
  * the button, then the confirm screen with the whole brief as plain text under who wrote it. With
@@ -55,6 +113,12 @@ export function RunWithClaude({
     focusRunButton.current = false;
     runButton.current?.focus();
   }, [phase]);
+  const started = useRef<CalloutHandle>(null);
+  const guideTitle = useRef<HTMLSpanElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  // One object for every render, so following the answers runs only when the phase changes.
+  const [targets] = useState<FocusTargets>(() => ({ started, guideTitle, heading }));
+  const answers = useFollowAnswer(phase, targets);
   if (server.kind !== "set") {
     return (
       <div className="flex flex-col gap-2">
@@ -95,10 +159,19 @@ export function RunWithClaude({
   const answer = phase.kind === "answered" ? phase.answer : undefined;
   const manual =
     shell === undefined || (answer !== undefined && guideAnswers.includes(answer.kind));
+  const said = answer === undefined ? { text: "", alert: false } : saidFor(answer, offer.task);
   return (
     // By hand the user runs the ssh command, never the launcher, so its disclosure stays hidden.
-    <ConfirmScreen offer={offer} target={server.target} showLauncher={!manual}>
+    <ConfirmScreen
+      offer={offer}
+      target={server.target}
+      showLauncher={!manual}
+      heading={heading}
+      said={said}
+      answers={answers}
+    >
       <Outcome
+        targets={targets}
         phase={phase}
         offer={offer}
         target={server.target}
@@ -118,21 +191,42 @@ interface ConfirmScreenProps {
   readonly offer: ServerSessionOffer;
   readonly target: ServerTarget;
   readonly showLauncher: boolean;
+  readonly heading: RefObject<HTMLHeadingElement | null>;
+  /** What the shell's newest answer says, for the status region or, for a refusal, the alert. */
+  readonly said: Said;
+  /** How many answers came, so the same words are read again. */
+  readonly answers: number;
   readonly children: ReactNode;
 }
 
 /**
  * The confirm screen, copied from the review (`request-review.tsx`): where it starts, then the
  * brief word for word. React writes the brief as a text node, so nothing in it is ever Markdown.
+ * Each answer is said through a status region, or an alert for a refusal, that is there from the
+ * start, because a region that appears already holding its words is often not read.
  */
-function ConfirmScreen({ offer, target, showLauncher, children }: ConfirmScreenProps) {
+function ConfirmScreen({
+  offer,
+  target,
+  showLauncher,
+  heading,
+  said,
+  answers,
+  children,
+}: ConfirmScreenProps) {
   const titleId = useId();
   const captionId = useId();
-  const heading = useRef<HTMLHeadingElement>(null);
-  useEffect(() => heading.current?.focus({ preventScroll: true }), []);
+  useEffect(() => heading.current?.focus({ preventScroll: true }), [heading]);
   const launcher = renderServerSessionLauncher(target, offer.task);
   return (
     <section aria-labelledby={titleId} className="flex flex-col gap-3">
+      <p role="status" aria-atomic="true" className="sr-only">
+        {/* A new key for each answer, so the same words are read again. */}
+        <span key={answers}>{said.alert ? "" : said.text}</span>
+      </p>
+      <p role="alert" aria-atomic="true" className="sr-only">
+        <span key={answers}>{said.alert ? said.text : ""}</span>
+      </p>
       <h3 id={titleId} ref={heading} tabIndex={-1} className="focus-ring text-body-strong text-fg">
         {words.confirmHeading(target.host)}
       </h3>
@@ -169,6 +263,7 @@ function ConfirmScreen({ offer, target, showLauncher, children }: ConfirmScreenP
 }
 
 interface OutcomeProps {
+  readonly targets: FocusTargets;
   readonly phase: Phase;
   readonly offer: ServerSessionOffer;
   readonly target: ServerTarget;
@@ -180,19 +275,32 @@ interface OutcomeProps {
 }
 
 /** Under the brief: the buttons, or what the shell answered. */
-function Outcome({ phase, offer, target, manual, start, cancel, openSettings }: OutcomeProps) {
+function Outcome({
+  targets,
+  phase,
+  offer,
+  target,
+  manual,
+  start,
+  cancel,
+  openSettings,
+}: OutcomeProps) {
   const answer = phase.kind === "answered" ? phase.answer : undefined;
   if (manual) {
     const why = answer?.kind === "no-terminal" ? words.noTerminal : words.cannotOpenTerminal;
     return (
       <div className="flex flex-col gap-2">
-        <ManualStart why={why} brief={offer.brief} target={target} />
+        <ManualStart why={why} brief={offer.brief} target={target} title={targets.guideTitle} />
         <CancelButton cancel={cancel} />
       </div>
     );
   }
   if (answer?.kind === "terminal-opened") {
-    return <Callout tone="info">{words.started(offer.task)}</Callout>;
+    return (
+      <Callout tone="info" announce="focus" ref={targets.started}>
+        {words.started(offer.task)}
+      </Callout>
+    );
   }
   if (answer?.kind === "not-configured") {
     return (
@@ -244,12 +352,19 @@ interface ManualStartProps {
   readonly why: string;
   readonly brief: string;
   readonly target: ServerTarget;
+  /** The title, which takes focus when the guide replaces the pressed **Run with Claude**. */
+  readonly title: RefObject<HTMLSpanElement | null>;
 }
 
 /** The manual guide where the shell can't open a terminal: Windows, the browser, or none found. */
-function ManualStart({ why, brief, target }: ManualStartProps) {
+function ManualStart({ why, brief, target, title }: ManualStartProps) {
+  const heading = (
+    <span ref={title} tabIndex={-1} className="focus-ring">
+      {words.guideTitle}
+    </span>
+  );
   return (
-    <Callout tone="info" title={words.guideTitle}>
+    <Callout tone="info" title={heading}>
       <div className="flex flex-col gap-2">
         <p>{why}</p>
         <ol className="list-decimal pl-5">
