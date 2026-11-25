@@ -2,10 +2,12 @@
 
 If your agents run in Paperclip, Halonic can turn tools you define in your
 workspace into a Paperclip plugin: a package you install in Paperclip that
-offers those tools to your agents. Your workspace names and words each tool
-and says who may call it. What a tool can do comes only from Halonic's
-built-in actions, so a workspace can choose and word tools but never give
-itself a new power.
+offers those tools to your agents. This is a package for Paperclip. It isn't
+a [plugin](../guides/plugins.md) you add to Halonic.
+
+Your workspace names and describes each tool and says who may call it. What a
+tool can do comes only from Halonic's built-in actions, so a workspace can
+choose and describe tools but never give itself a new power.
 
 You need:
 
@@ -90,12 +92,15 @@ anything.
 
 This version of Halonic can build a plugin with these actions:
 
-| Action | What it answers | Parameters it reads | Settings under `with` | Key it needs |
-| --- | --- | --- | --- | --- |
-| `github.pull-request` | one pull request: its checks, mergeability, merge queue, approvals on its newest commit, newest review finding and what its author does next | `pr` (a number or the pull request's GitHub URL), and `repo` when the tool lists more than one repository | `repositories`: 1 to 20, each `owner/name` | GitHub read token |
-| `github.open-pull-requests` | the caller's open pull requests (branches that start with the agent's URL key), the ones that need attention first | none | `repositories` | GitHub read token |
-| `paperclip.task` | one Paperclip task: status, holder, blockers, documents and its newest comments | `task` (an identifier or id), `comments` (0 to 20, 5 by default), `document` (a document key) | none | none: it reads through Paperclip |
-| `paperclip.template` | one of the workspace's templates, or the list of them | `id` (leave it out for the list) | none | none |
+| Action | What it answers | Parameters it reads | Settings under `with` |
+| --- | --- | --- | --- |
+| `github.pull-request` | one pull request: its checks, whether it can merge, its place in the merge queue, approvals on its newest commit, the newest review finding and what its author does next | `pr` (a number or the pull request's GitHub URL), and `repo` when the tool lists more than one repository | `repositories`: 1 to 20, each `owner/name` |
+| `github.open-pull-requests` | the caller's open pull requests (branches that start with the agent's URL key), listed with the ones that need attention first | none | `repositories` |
+| `paperclip.task` | one Paperclip task: status, holder, blockers, documents and its newest comments | `task` (its identifier, such as `ACME-12`, or its id), `comments` (0 to 20, 5 by default), `document` (a document key) | none |
+| `paperclip.template` | one of the workspace's templates, or the list of them | `id` (leave it out for the list) | none |
+
+The two `github.` actions need a GitHub read token (see step 4). The
+`paperclip.` actions need no key: they read through Paperclip.
 
 An action reads its parameters only by the names in this table. Declare them
 in your tool under those names: a parameter with another name never reaches
@@ -106,7 +111,7 @@ The `paperclip.template` action reads the Markdown files in your workspace's
 
 The format also knows `github.merge-queue`, `github.merge-times` and
 `paperclip.failed-runs`, but a plugin from this version of Halonic can't run
-them yet. `halonic validate` accepts them; the build refuses them (see below).
+them. `halonic validate` accepts them; the build refuses them (see below).
 
 ## 3. Build the plugin
 
@@ -187,8 +192,8 @@ are.
 
 ## 4. Install it in Paperclip
 
-1. Check that the plugin file is the one the release file names. The two
-   values must be the same:
+1. Check that the plugin file is the one the release file names: the SHA-256
+   this prints must match `sha256` in the release file.
 
    ```sh
    sha256sum dist/halonic-ws.acme-0.1.0.tar
@@ -212,8 +217,8 @@ are.
 5. Leave the pin settings empty (see
    [Which workspace version the plugin serves](#6-which-workspace-version-the-plugin-serves)).
 
-Your agents then see each tool under its `name`. An agent that a tool's
-`callers` don't name gets an answer that the tool isn't offered to it, and
+Your agents then see each tool under its `name`. If a tool's `callers` don't
+name an agent, the tool answers that agent that it isn't offered to it, and
 nothing runs.
 
 The plugin asks Paperclip only for the permissions its tools need. For
@@ -274,11 +279,11 @@ branch). It serves it only when:
 - the snapshot names that commit and passes the same checks the build runs on
   your tool files.
 
-Halonic doesn't publish the snapshot file for you yet. To pin a commit:
+Halonic doesn't publish the snapshot file for you. To pin a commit:
 
 1. Build a plugin file from that commit and unpack it, as in step 4.
 2. Commit its `package/snapshot.json` to `snapshots/<commit>.json` on the
-   snapshot branch. Copy the file unchanged, byte for byte: no reformatting
+   snapshot branch and push. Copy the file unchanged, byte for byte: no reformatting
    and no change to its line endings, or its SHA-256 no longer matches.
 3. Set **Pinned snapshot sha-256** to that file's SHA-256:
 
@@ -303,10 +308,11 @@ pin again at most every 10 minutes.
 A tool answers that it is off, and runs nothing, when:
 
 - the snapshot it serves doesn't have it;
-- the snapshot gives it another action or other parameters than the plugin was
-  built with;
+- the snapshot gives it a different action or different parameters from the
+  ones the plugin was built with;
 - this version of Halonic has no code for its action.
 
-A tool that's missing or wrong is never allowed by default. To roll back a
+A tool that's missing or doesn't match stays off: the plugin never runs it
+anyway. To roll back a
 pin, set the earlier commit and its SHA-256, or clear all three settings to go
 back to the snapshot built into the plugin.
