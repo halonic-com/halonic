@@ -142,7 +142,7 @@ function TestUserPart({
     <li
       ref={partRef}
       tabIndex={partRef === undefined ? undefined : -1}
-      className="flex flex-col gap-1"
+      className="flex flex-col gap-1 rounded-xs focus-ring"
     >
       <span>
         On "Audience", under "Test users", click "Add users", add your address and click "Save".{" "}
@@ -172,7 +172,7 @@ function PublishParts({
   ] as const;
   return (
     <>
-      <li ref={partRef} tabIndex={-1} className="flex flex-col gap-1">
+      <li ref={partRef} tabIndex={-1} className="flex flex-col gap-1 rounded-xs focus-ring">
         <span>
           On "Branding", fill in, then click "Save". <ConsoleLink step={step} page="branding" />
         </span>
