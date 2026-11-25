@@ -26,6 +26,7 @@ const studioFolder = path.join(shellFolder, "..");
 const packageStyles: Record<string, string> = {
   tailwindcss: path.join(modules, "tailwindcss/index.css"),
   "@halonicjs/studio-kit": path.join(modules, "@halonicjs/studio-kit/src/theme.css"),
+  "@halonicjs/studio-kit/fonts": path.join(modules, "@halonicjs/studio-kit/src/theme-font.css"),
 };
 
 /** The CSS Tailwind writes from the Studio's entry for `classes`. */
