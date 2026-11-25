@@ -1,9 +1,11 @@
-import type { Message } from "@halonicjs/ports";
+import type { Message, MessagingId } from "@halonicjs/ports";
 import { ChatText, Input, useOpenExternal } from "@halonicjs/studio-kit";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { isChannel } from "../channel.ts";
 import { activityOf, type ConversationRow, type Messenger } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import { AttachmentList } from "./attachment-list.tsx";
+import { authorOf, EmptyChannel, MessageTo, WorkLines } from "./channel-message.tsx";
 import { ChatBox } from "./chat-box.tsx";
 import { ChatCards } from "./chat-cards.tsx";
 
@@ -30,12 +32,11 @@ export interface ConversationViewProps {
  * search (HAL-18074 MS1, MS2 and MS4).
  */
 export function ConversationView({ messenger, row, changed }: ConversationViewProps) {
-  const id = row.conversation.id;
   const [search, setSearch] = useState("");
   // What the chat's status region reads out: a new message, or the option that answered a card.
   const [said, setSaid] = useState("");
   const section = useRef<HTMLElement>(null);
-  const { messages, read } = useMessages(messenger, id, search, changed, setSaid);
+  const { messages, questions, read } = useMessages(messenger, row, search, changed, setSaid);
 
   // Once a card is answered and gone, the next card's first option, or else the box, takes focus.
   const focusAfterAnswer = useCallback(() => {
@@ -59,7 +60,13 @@ export function ConversationView({ messenger, row, changed }: ConversationViewPr
       <p role="status" className={noMatch ? "px-4 pt-4 text-small text-fg-muted" : undefined}>
         {noMatch ? messengerWords.noMatches : ""}
       </p>
-      <Transcript messenger={messenger} messages={messages}>
+      <Transcript
+        messenger={messenger}
+        row={row}
+        messages={messages}
+        questions={questions}
+        searching={search.trim() !== ""}
+      >
         <ChatCards
           quickActions={messenger.quickActions}
           row={row}
@@ -79,12 +86,17 @@ export function ConversationView({ messenger, row, changed }: ConversationViewPr
  */
 function useMessages(
   messenger: Messenger,
-  id: Message["conversation"],
+  row: ConversationRow,
   search: string,
   changed: number,
   announce: (line: string) => void,
 ) {
+  const id = row.conversation.id;
+  // The row is read again on each change; the author's name is taken from the newest one.
+  const latestRow = useRef(row);
+  latestRow.current = row;
   const [messages, setMessages] = useState<readonly Message[]>([]);
+  const [questions, setQuestions] = useState<ReadonlyMap<MessagingId, string>>(new Map());
   // Counts the reads, so an answer that arrives after a newer read's never shows.
   const reads = useRef(0);
   // The messages the last read without a search found; none before the first and after a search.
@@ -93,20 +105,25 @@ function useMessages(
   const read = useCallback(async () => {
     reads.current += 1;
     const thisRead = reads.current;
-    const found = await messenger.messages(id, search);
+    const [found, asked] = await Promise.all([
+      messenger.messages(id, search),
+      messenger.questions(),
+    ]);
     if (thisRead !== reads.current) return;
     setMessages(found);
+    setQuestions(asked);
     const before = search.trim() === "" ? seen.current : undefined;
     seen.current = search.trim() === "" ? new Set(found.map((message) => message.id)) : undefined;
     const fresh = before === undefined ? undefined : newestFromAgent(found, before);
-    if (fresh !== undefined) announce(messengerWords.newMessage(authorName(fresh), fresh.body));
+    if (fresh !== undefined)
+      announce(messengerWords.newMessage(authorOf(fresh, latestRow.current), fresh.body));
   }, [messenger, id, search, announce]);
 
   useEffect(() => {
     void read().catch((error: unknown) => console.error("The chat couldn't be read:", error));
   }, [read, changed]);
 
-  return { messages, read };
+  return { messages, questions, read };
 }
 
 /** The newest message an agent wrote that wasn't in the chat at the last read. */
@@ -154,38 +171,54 @@ function ConversationHeader({
 
 /**
  * The messages, oldest first; the person's on the end side. Each says who wrote it to a screen
- * reader. An agent writes a message, so whoever can steer that agent does (ADR 2026-11-24,
+ * reader; in a channel it shows it too, and the person's say who they went to and what each agent
+ * did with them (`messenger.channel-messages`). An agent writes a message, so whoever can steer that agent does (ADR 2026-11-24,
  * agent-written content): the kit's `ChatText` keeps HTML, images and any link that isn't a web
  * address as plain text, and a web link opens outside the app with its address after it.
  */
 function Transcript({
   messenger,
+  row,
   messages,
+  questions,
+  searching,
   children,
 }: {
   readonly messenger: Messenger;
+  readonly row: ConversationRow;
   readonly messages: readonly Message[];
+  readonly questions: ReadonlyMap<MessagingId, string>;
+  readonly searching: boolean;
   /** What follows the messages: the agent's open cards. */
   readonly children: ReactNode;
 }) {
   const openLink = useOpenExternal();
+  const channel = isChannel(row);
+  const now = messenger.now();
   return (
     <ol className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-4 py-4">
+      {channel && messages.length === 0 && !searching ? <EmptyChannel row={row} /> : null}
       {messages.map((message) => (
         <li
           key={message.id}
+          data-author={message.author.kind}
           className={message.author.kind === "me" ? "ms-auto max-w-[80%]" : "max-w-[80%]"}
         >
-          <span className="sr-only">{authorName(message)}: </span>
+          {channel && message.author.kind !== "me" ? (
+            <p className="text-small text-fg-muted" data-author-name>
+              <bdi>{authorOf(message, row)}</bdi>
+            </p>
+          ) : null}
+          {channel ? <MessageTo message={message} row={row} /> : null}
+          <span className="sr-only">{authorOf(message, row)}: </span>
           <ChatText openLink={openLink}>{message.body}</ChatText>
           <AttachmentList messenger={messenger} attachments={message.attachments} />
+          {channel ? (
+            <WorkLines message={message} row={row} questions={questions} now={now} />
+          ) : null}
         </li>
       ))}
       {children}
     </ol>
   );
-}
-
-function authorName(message: Message): string {
-  return message.author.kind === "me" ? messengerWords.you : message.author.name;
 }

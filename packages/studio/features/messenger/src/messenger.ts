@@ -8,6 +8,7 @@ import type {
   MessagingId,
   MessagingRefusal,
   MessagingSource,
+  SendResult,
 } from "@halonicjs/ports";
 import { DraftFiles } from "./draft-files.ts";
 import { QuickActions } from "./quick-actions.ts";
@@ -19,9 +20,8 @@ export { refusalOf } from "./refusal.ts";
 export type MessengerTab = "all" | "waiting";
 
 /**
- * One row of the Messenger's list. A conversation holds a list of agents,
- * though phase 1 has one per conversation: phase 2's channels put several
- * agents in one conversation without changing the row.
+ * One row of the Messenger's list. A chat holds its one agent; a channel its
+ * members, the lead first.
  */
 export interface ConversationRow {
   readonly conversation: Conversation;
@@ -55,11 +55,15 @@ export class Messenger {
   readonly quickActions: QuickActions;
   /** The files waiting in each chat's box, sent with its next message. */
   readonly files = new DraftFiles();
+  /** The time now, for how long an agent has been working on what the person asked. */
+  readonly now: () => Date;
   private readonly messaging: AgentMessaging;
   private readonly drafts = new Map<MessagingId, string>();
+  private readonly picks = new Map<MessagingId, readonly MessagingId[]>();
 
-  constructor(messaging: AgentMessaging) {
+  constructor(messaging: AgentMessaging, now: () => Date = () => new Date()) {
     this.messaging = messaging;
+    this.now = now;
     this.quickActions = new QuickActions(messaging);
   }
 
@@ -93,12 +97,34 @@ export class Messenger {
     else this.drafts.set(conversation, text);
   }
 
+  /** The agents the person picked in a channel's box (chips), in the order picked. */
+  named(conversation: MessagingId): readonly MessagingId[] {
+    return this.picks.get(conversation) ?? [];
+  }
+
+  /**
+   * Keeps the agents the person picked in a channel's box. Only a pick names an agent: the
+   * Messenger never reads names from the text (requirement `messenger.channel-authority`).
+   */
+  setNamed(conversation: MessagingId, agents: readonly MessagingId[]): void {
+    if (agents.length === 0) this.picks.delete(conversation);
+    else this.picks.set(conversation, [...agents]);
+  }
+
+  /** The open questions' text by the work they belong to, for a work line that asks the person. */
+  async questions(): Promise<ReadonlyMap<MessagingId, string>> {
+    const items = await this.messaging.listInboxItems();
+    const open = items.filter((item) => item.state.kind === "open" && item.work !== undefined);
+    return new Map(open.map((item) => [item.work ?? "", item.question]));
+  }
+
   /**
    * Sends a conversation's draft, with the files waiting in its box. Offline
    * or signed out, it asks the source nothing and keeps the draft and the
    * files: nothing is queued to send later (ADR, Offline). A refusal from the
    * source keeps them too; only a sent message clears them, and the draft only
    * while it still holds what was sent, so text typed during the send stays.
+   * In a channel it goes to the agents the person picked, or else the lead.
    */
   async sendDraft(conversation: MessagingId, row?: ConversationRow): Promise<DraftOutcome> {
     const body = this.draft(conversation);
@@ -106,15 +132,21 @@ export class Messenger {
     if (body.trim() === "" && files.length === 0) return { outcome: "kept", reason: "blank" };
     const refusal = row === undefined ? undefined : refusalOf(row);
     if (refusal !== undefined) return { outcome: "kept", reason: refusal };
-    const outgoing = await this.files.outgoing(conversation);
-    const result =
-      outgoing.length === 0
-        ? await this.messaging.send(conversation, body)
-        : await this.messaging.send(conversation, body, outgoing);
+    const result = await this.send(conversation, body);
     if (result.outcome === "refused") return { outcome: "kept", reason: result.reason };
     if (this.draft(conversation) === body) this.drafts.delete(conversation);
     this.files.clear(conversation);
+    this.picks.delete(conversation);
     return { outcome: "sent", message: result.message };
+  }
+
+  private async send(conversation: MessagingId, body: string): Promise<SendResult> {
+    const outgoing = await this.files.outgoing(conversation);
+    const to = this.named(conversation);
+    if (to.length > 0) return this.messaging.send(conversation, body, outgoing, { to });
+    return outgoing.length === 0
+      ? this.messaging.send(conversation, body)
+      : this.messaging.send(conversation, body, outgoing);
   }
 
   /** An attachment's bytes, read through the engine only when the person asks to see it. */
@@ -168,9 +200,11 @@ function rowOf(
   sources: readonly MessagingSource[],
   agents: readonly MessagingAgent[],
 ): ConversationRow {
+  const { agent: lead, members = [lead] } = conversation;
+  const ids = [lead, ...members.filter((member) => member !== lead)];
   return {
     conversation,
-    agents: agents.filter((agent) => agent.id === conversation.agent),
+    agents: ids.flatMap((id) => agents.find((agent) => agent.id === id) ?? []),
     source: sources.find((each) => each.id === conversation.source),
   };
 }

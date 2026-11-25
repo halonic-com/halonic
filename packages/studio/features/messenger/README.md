@@ -9,10 +9,15 @@ own types, IDs or addresses: it gets the port from `AgentMessagingService` in `s
 Messages are written by agents, so the kit's `ChatText` draws them: no raw HTML, scripts, images or
 `javascript:` links, and web links open in the browser with their address shown.
 
+A channel is one conversation with several agents of one source. Its box says who a message goes
+to: the lead, or the members the person picked with `@`, which become chips. Only a pick names an
+agent; text is never read as a name or an instruction. Each message shows its author as the source
+gives it, and the person's messages show one work line per agent they went to.
+
 - **Layer:** studio
 - **Owner:** elena
 - **Public API:** `@halonicjs/studio-feature-messenger` (the feature) and `@halonicjs/studio-feature-messenger/api` (`MessengerService`)
-- **Requirement:** `messenger.conversations`
+- **Requirements:** `messenger.conversations`, `messenger.channel-authority`, `messenger.author-from-source`, `messenger.channel-messages`
 
 ## Example
 
