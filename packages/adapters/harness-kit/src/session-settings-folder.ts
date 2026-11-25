@@ -18,6 +18,29 @@ const keptErrorCharacters = 2_048;
 /** The exit code the read script gives for a missing file. */
 const missingExitCode = 3;
 
+/** The exit code every script gives for a path under a symlinked folder. */
+const symlinkedParentExitCode = 4;
+
+/**
+ * Runs before each script, with the path as `$1` and the folder it's inside as `$2`: it
+ * refuses a path whose folders below `$2` include a symlink, so a link the program made
+ * can't send a write or a removal elsewhere. `$2` itself is the profile's and isn't checked.
+ */
+const parentsGuard = [
+  'if [ "$1" != "$2" ]; then',
+  // biome-ignore lint/suspicious/noTemplateCurlyInString: the shell's parameter expansion, not a template's.
+  "  parent=${1%/*}",
+  '  while [ "$parent" != "$2" ] && [ -n "$parent" ]; do',
+  '    if [ -L "$parent" ]; then',
+  "      printf '%s is a symlink\\n' \"$parent\" >&2",
+  `      exit ${symlinkedParentExitCode}`,
+  "    fi",
+  // biome-ignore lint/suspicious/noTemplateCurlyInString: the shell's parameter expansion, not a template's.
+  "    parent=${parent%/*}",
+  "  done",
+  "fi",
+].join("\n");
+
 /** The scripts, each reading its path as `$1`. */
 const scripts = {
   read: `if [ -e "$1" ] || [ -L "$1" ]; then exec cat -- "$1"; fi; exit ${missingExitCode}`,
@@ -67,6 +90,11 @@ function insideRoot(root: string, path: string, orSame: boolean): boolean {
   return path.startsWith(root.endsWith("/") ? root : `${root}/`);
 }
 
+/** `folder` without its trailing `/`, as the parents guard compares it; `/` stays itself. */
+function withoutTrailingSlash(folder: string): string {
+  return folder.length > 1 && folder.endsWith("/") ? folder.slice(0, -1) : folder;
+}
+
 /** Reads `stream` to its end, refusing more than `limitBytes`. */
 async function readAll(
   stream: ReadableStream<Uint8Array>,
@@ -102,7 +130,8 @@ async function sendInput(
  * A {@link SettingsFolderWriter} that works inside `session`'s sandbox. It
  * reaches only the profile's settings folder and temp folder: a path outside
  * them, or one with a `.` or `..` part, is refused before anything starts,
- * and writing or removing either folder itself is refused too.
+ * and writing or removing either folder itself is refused too. A path under a
+ * symlinked folder inside them is refused by the script before it acts.
  *
  * @example
  * const settings = sessionSettingsFolder(session);
@@ -114,14 +143,21 @@ export function sessionSettingsFolder(session: SandboxSession): SettingsFolderWr
 
   const run = async (operation: Operation, path: string, input?: string): Promise<ScriptResult> => {
     const orSame = operation !== "write" && operation !== "remove";
-    if (!roots.some((root) => insideRoot(root, path, orSame))) {
+    const root = roots.find((candidate) => insideRoot(candidate, path, orSame));
+    if (root === undefined) {
       throw new Error(
         `The settings writer refuses ${path}: it may only reach ${roots.join(" and ")}.`,
       );
     }
     const started = await session.start({
       program: "sh",
-      args: ["-c", scripts[operation], "sh", path],
+      args: [
+        "-c",
+        `${parentsGuard}\n${scripts[operation]}`,
+        "sh",
+        path,
+        withoutTrailingSlash(root),
+      ],
     });
     // A script that fails before it reads its input, such as a write whose folder can't be made,
     // closes the pipe first: sending then fails with a broken pipe. Its exit code and error output

@@ -11,7 +11,7 @@ Rationale: one Halonic version means one Worker, so the bundle hash in `deploy s
 ## Examples
 
 - Given two builds of the same sources into two folders, then both folders hold the same bytes, and the manifest's hash is the SHA-256 of `halonic-worker.js`.
-- Given the runtime's `wrangler.toml`, then the manifest holds its compatibility date and its four Durable Object classes.
+- Given the runtime's `wrangler.toml`, then the manifest holds its compatibility date and its five Durable Object classes.
 - Given a migration with `renamed_classes`, then the build fails and names the line and the field.
 - Given a binding with `script_name`, then the build fails and names the field.
 - Given `name = 'RUN'`, then the build fails and names the line.
