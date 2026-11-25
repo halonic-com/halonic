@@ -125,15 +125,6 @@ export function createDeployService(deps: DeployServiceDeps) {
       const target = await deps.loadTarget(host);
       return target.status(await deploymentRefOf(target, id, deployment));
     },
-
-    /**
-     * Where a deployment from `deployments.yaml` lives on its host, for
-     * {@link DeployInput.deployment} (requirement `app.deploy-account`).
-     * Reads only the target's account list.
-     */
-    async deploymentRef(host: string, id: string, deployment: Deployment): Promise<DeploymentRef> {
-      return deploymentRefOf(await deps.loadTarget(host), id, deployment);
-    },
   };
 }
 
