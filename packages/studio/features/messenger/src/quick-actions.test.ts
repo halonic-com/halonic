@@ -89,6 +89,20 @@ verifies("messenger.quick-actions", () => {
       expect(outcome).toEqual({ outcome: "refused", reason: "offline" });
       expect(answer).not.toHaveBeenCalled();
     });
+
+    it("offline, answers no question card either", async () => {
+      const { messaging, acme, merge } = chiefWithCards();
+      messaging.goOffline(acme.id);
+      const answer = vi.spyOn(messaging, "answer");
+      const messenger = new Messenger(messaging);
+      const outcome = await messenger.quickActions.answerQuestions(
+        await chiefRow(messenger),
+        merge,
+        [{ question: "repo", options: ["separate"] }],
+      );
+      expect(outcome).toEqual({ outcome: "refused", reason: "offline" });
+      expect(answer).not.toHaveBeenCalled();
+    });
   });
 
   describe("QuickActions.askForUpdate", () => {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  calendarDay,
   clockTime,
   decidedAt,
   endedAgo,
@@ -32,5 +33,6 @@ describe("waiting time", () => {
     expect(movesOnLine(at(9, 14, 0))).toBe("Moves on by itself on Mon 9 Nov, 14:00.");
     expect(movesOnMeta(at(9, 14, 0))).toBe("moves on Mon 14:00");
     expect(decidedAt(at(8, 10, 44))).toBe("10:44");
+    expect(calendarDay(at(24, 18, 43))).toBe("24 Nov");
   });
 });

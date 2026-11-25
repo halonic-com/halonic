@@ -3,13 +3,14 @@ import type {
   AnswerResult,
   AttachmentRead,
   InboxAnswer,
+  InboxQuestionsAnswer,
   MessagingAgent,
   MessagingAuthor,
   MessagingId,
   MessagingSource,
   WorkItem,
 } from "@halonicjs/ports";
-import { Avatar, Button, Callout, waitingSince } from "@halonicjs/studio-kit";
+import { Avatar, Button, Callout, QuestionForm, waitingSince } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef, useState } from "react";
 import {
   agentItemTitle,
@@ -66,8 +67,8 @@ type Sent =
 
 /**
  * An agent's card or question (`inbox.agent-inbox-items`): its title, its source and since when it
- * waits, the question as safe Markdown, and one button per option, or a reply field when it has
- * none. Once answered, here or elsewhere, a line says by whom and how, and the buttons stay, off
+ * waits, the question as safe Markdown, and one button per option, a form of its questions when it
+ * asks several (`inbox.question-cards`), or a reply field when it has none. Once answered, here or elsewhere, a line says by whom and how, and the buttons stay, off
  * (render 5f). It names the work it came from, whatever made it (`inbox.every-waiting-item`), and
  * lists its files, showing a picture only once asked (`inbox.agent-item-media`). While its source
  * is offline or signed out the buttons are off and say why; nothing is kept to send later.
@@ -91,8 +92,6 @@ export function AgentItemCard({
     if (focusOnOpen) heading.current?.focus({ preventScroll: true });
   }, [focusOnOpen]);
   const [sent, setSent] = useState<Sent>({ kind: "idle" });
-  const [reply, setReply] = useState("");
-
   const send = async (chosen: InboxAnswer) => {
     setSent({ kind: "sending", answer: chosen });
     try {
@@ -150,32 +149,79 @@ export function AgentItemCard({
             onDecline={() => void send(declined)}
           />
         )}
-        {item.action === undefined && item.options.length === 0 ? (
-          <ReplyField
-            value={reply}
-            onChange={setReply}
-            unavailable={unavailable}
-            busy={busy({ kind: "reply", text: reply })}
-            onSend={() => void send({ kind: "reply", text: reply })}
-          />
-        ) : null}
-        {item.action !== undefined || item.options.length === 0 ? null : (
-          <div className="flex flex-wrap gap-2">
-            {item.options.map((option, index) => (
-              <Button
-                key={option.id}
-                variant={index === 0 ? "primary" : "secondary"}
-                unavailable={unavailable}
-                busy={busy({ kind: "option", option: option.id })}
-                onClick={() => void send({ kind: "option", option: option.id })}
-              >
-                {option.label}
-              </Button>
-            ))}
-          </div>
-        )}
+        <AnswerControls
+          item={item}
+          sent={sent}
+          unavailable={unavailable}
+          answeredReason={reasonId}
+          busy={busy}
+          send={(chosen) => void send(chosen)}
+        />
       </div>
     </section>
+  );
+}
+
+interface AnswerControlsProps {
+  readonly item: AgentItem;
+  readonly sent: Sent;
+  readonly unavailable: { readonly reason: string } | undefined;
+  /** The `id` of the callout that says how the item was answered. */
+  readonly answeredReason: string;
+  readonly busy: (chosen: InboxAnswer) => boolean;
+  readonly send: (chosen: InboxAnswer) => void;
+}
+
+/**
+ * How the person answers an item that isn't an action request: a form of its questions when it
+ * asks several (`inbox.question-cards`), else a button per option, else a written reply.
+ */
+function AnswerControls({
+  item,
+  sent,
+  unavailable,
+  answeredReason,
+  busy,
+  send,
+}: AnswerControlsProps) {
+  const [reply, setReply] = useState("");
+  if (item.action !== undefined) return null;
+  if (item.questions !== undefined) {
+    return (
+      <QuestionForm
+        questions={item.questions}
+        answered={answeredWith(item, sent, answeredReason)}
+        busy={sent.kind === "sending"}
+        unavailable={unavailable}
+        onSubmit={(answers) => send({ kind: "answers", answers })}
+      />
+    );
+  }
+  if (item.options.length === 0) {
+    return (
+      <ReplyField
+        value={reply}
+        onChange={setReply}
+        unavailable={unavailable}
+        busy={busy({ kind: "reply", text: reply })}
+        onSend={() => send({ kind: "reply", text: reply })}
+      />
+    );
+  }
+  return (
+    <div className="flex flex-wrap gap-2">
+      {item.options.map((option, index) => (
+        <Button
+          key={option.id}
+          variant={index === 0 ? "primary" : "secondary"}
+          unavailable={unavailable}
+          busy={busy({ kind: "option", option: option.id })}
+          onClick={() => send({ kind: "option", option: option.id })}
+        >
+          {option.label}
+        </Button>
+      ))}
+    </div>
   );
 }
 
@@ -207,6 +253,30 @@ function sentAfter(result: AnswerResult, chosen: InboxAnswer): Sent {
       // that is gone can't be answered, so it is a failure to try again.
       return result.reason === "not-found" ? { kind: "failed", answer: chosen } : { kind: "idle" };
   }
+}
+
+/**
+ * What a card that asks several questions was answered with, by this card or as the source last
+ * said. `reason` is the card's own answered line, which then stands in for the form's (render 5f).
+ */
+function answeredWith(
+  item: AgentItem,
+  sent: Sent,
+  reason: string,
+):
+  | {
+      readonly answers: InboxQuestionsAnswer["answers"];
+      readonly at: Date;
+      readonly reason: string;
+    }
+  | undefined {
+  if (sent.kind === "answered" && sent.answer.kind === "answers") {
+    return { answers: sent.answer.answers, at: new Date(sent.answeredAt), reason };
+  }
+  if (item.state.kind === "answered" && item.state.answer.kind === "answers") {
+    return { answers: item.state.answer.answers, at: new Date(item.state.answeredAt), reason };
+  }
+  return undefined;
 }
 
 /** The line once the item is answered: by this card, else as the source last said, else as the refusal said. */

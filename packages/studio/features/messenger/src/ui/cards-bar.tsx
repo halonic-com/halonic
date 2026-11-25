@@ -27,7 +27,7 @@ export function CardsBar({
       ...(section.current?.querySelectorAll<HTMLElement>("[data-chat-card]") ?? []),
     ].find((each) => each.getAttribute("data-chat-card") === oldest.id);
     card?.scrollIntoView?.({ block: "center" });
-    card?.querySelector<HTMLElement>("button")?.focus({ preventScroll: true });
+    card?.querySelector<HTMLElement>("button, input")?.focus({ preventScroll: true });
   };
   return (
     <div data-cards-bar className="border-t border-border px-4 py-1">
@@ -53,5 +53,5 @@ export function focusNextCard(section: HTMLElement | null): void {
   const current = cards.findIndex((card) => card.contains(document.activeElement));
   const card = cards[(current + 1) % cards.length];
   card?.scrollIntoView?.({ block: "center" });
-  (card?.querySelector<HTMLElement>("button") ?? card)?.focus({ preventScroll: true });
+  (card?.querySelector<HTMLElement>("button, input") ?? card)?.focus({ preventScroll: true });
 }

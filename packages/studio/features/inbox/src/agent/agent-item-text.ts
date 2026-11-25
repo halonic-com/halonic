@@ -8,6 +8,7 @@ import type {
 } from "@halonicjs/ports";
 import { markHiddenName } from "@halonicjs/std";
 import {
+  answerLabels,
   clockTime,
   decidedAt,
   isLate,
@@ -113,14 +114,7 @@ export function sourceDownLine(source: MessagingSource | undefined, now: Date): 
 export function answerText(item: AgentItem, answer: InboxAnswer): string {
   if (answer.kind === "reply") return `“${answer.text}”`;
   if (answer.kind === "action-result") return answer.outcome;
-  if (answer.kind === "answers") {
-    return answer.answers
-      .flatMap((each) => {
-        const offered = item.questions?.find((question) => question.id === each.question)?.options;
-        return each.options.map((id) => offered?.find((option) => option.id === id)?.label ?? id);
-      })
-      .join(", ");
-  }
+  if (answer.kind === "answers") return answerLabels(item.questions, answer.answers).join(", ");
   return item.options.find((option) => option.id === answer.option)?.label ?? answer.option;
 }
 

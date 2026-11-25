@@ -72,7 +72,7 @@ export function ConversationView({
   // Once a card is answered and gone, the next card's first option, or else the box, takes focus.
   const focusAfterAnswer = useCallback(() => {
     const next =
-      section.current?.querySelector<HTMLElement>("[data-chat-card] button") ??
+      section.current?.querySelector<HTMLElement>("[data-chat-card] :is(button, input)") ??
       section.current?.querySelector<HTMLElement>("textarea");
     next?.focus();
   }, []);

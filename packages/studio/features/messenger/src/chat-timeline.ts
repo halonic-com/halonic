@@ -1,5 +1,5 @@
-import type { InboxAnswer, InboxItem, InboxQuestionsAnswer, Message } from "@halonicjs/ports";
-import { decidedAt } from "@halonicjs/studio-kit";
+import type { InboxAnswer, InboxItem, Message } from "@halonicjs/ports";
+import { answerLabels, decidedAt } from "@halonicjs/studio-kit";
 import { messengerWords } from "./messenger-words.ts";
 
 /** One entry of a chat's timeline: a message, or a card the chat's agent put to the person. */
@@ -56,14 +56,6 @@ export function cardRecord(card: InboxItem): string | undefined {
 function choiceOf(card: InboxItem, answer: InboxAnswer): string {
   if (answer.kind === "reply") return `“${answer.text}”`;
   if (answer.kind === "action-result") return messengerWords.card.outcomes[answer.outcome];
-  if (answer.kind === "answers") return pickedLabels(card, answer.answers).join(", ");
+  if (answer.kind === "answers") return answerLabels(card.questions, answer.answers).join(", ");
   return card.options.find((option) => option.id === answer.option)?.label ?? answer.option;
-}
-
-/** Each option picked for a card's questions, by its label, in the order answered. */
-function pickedLabels(card: InboxItem, answers: InboxQuestionsAnswer["answers"]): string[] {
-  return answers.flatMap((each) => {
-    const offered = card.questions?.find((question) => question.id === each.question)?.options;
-    return each.options.map((id) => offered?.find((option) => option.id === id)?.label ?? id);
-  });
 }

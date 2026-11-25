@@ -25,7 +25,7 @@ export function WaitingBar({
     ...(section.current?.querySelectorAll<HTMLElement>("[data-chat-card]") ?? []),
   ];
   const focus = (card: HTMLElement | undefined) =>
-    (card?.querySelector<HTMLElement>("button") ?? card)?.focus();
+    (card?.querySelector<HTMLElement>("button, input") ?? card)?.focus();
   const show = (item: MessagingId) =>
     focus(cards().find((card) => card.getAttribute("data-chat-card") === item));
   const next = () => focusNextCard(section.current);
