@@ -49,8 +49,7 @@ mod file;
 use file::{read_file, write_over};
 
 #[path = "updates_track.rs"]
-mod track;
-pub use track::update_set_track;
+pub mod track;
 
 #[path = "updates_way_back.rs"]
 mod way_back;
