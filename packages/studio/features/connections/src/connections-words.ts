@@ -24,6 +24,8 @@ export const KEY_POWER = "This key can do everything the board can in Paperclip"
 /** The section when the engine couldn't list the connections. */
 export const LIST_FAILED =
   "Halonic couldn't read the connections. Close Settings and open it again.";
+/** The button under {@link LIST_FAILED} that reads the connections again. */
+export const TRY_AGAIN = "Try again";
 /** After closing the dialog, when the engine couldn't cancel its sign-in. */
 export const CANCEL_FAILED =
   "Halonic couldn't cancel the sign-in. Don't approve it in Paperclip: it ends by itself within 10 minutes.";

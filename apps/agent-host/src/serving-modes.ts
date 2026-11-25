@@ -1,9 +1,8 @@
 import type { Readable } from "node:stream";
 import type { FramedHandshake, Handshake, HostIo } from "./host.ts";
-import type { ShellSecretsChannel } from "./secrets/shell-secrets-channel.ts";
 import { type HostRoute, serveHostOverFrames, startHostServer } from "./server/host-server.ts";
 import { randomLaunchToken } from "./server/launch-token.ts";
-import { carryHostConnection } from "./stdio/frame-stream.ts";
+import { carryHostConnection, type HostConnection } from "./stdio/frame-stream.ts";
 
 /** The routes the host serves, and how to stop all they started. */
 export interface HostServices {
@@ -25,7 +24,7 @@ export async function serveHost(
   args: readonly string[],
   io: HostIo,
   host: HostServices,
-  keychain: ShellSecretsChannel | undefined,
+  keychain: HostConnection | undefined,
 ): Promise<number> {
   if (args.includes("--stdio")) return await serveOverFrames(args, io, host, keychain);
   const ended = await serveOnLoopback(io, host, keychain);
@@ -50,7 +49,7 @@ export async function serveHost(
 async function serveOnLoopback(
   io: HostIo,
   host: HostServices,
-  keychain: ShellSecretsChannel | undefined,
+  keychain: HostConnection | undefined,
 ): Promise<Error | undefined> {
   const token = randomLaunchToken();
   const server = await startHostServer(token, host.routes);
@@ -86,7 +85,7 @@ async function serveOverFrames(
   args: readonly string[],
   io: HostIo,
   host: HostServices,
-  keychain: ShellSecretsChannel | undefined,
+  keychain: HostConnection | undefined,
 ): Promise<number> {
   const relayPort = relayPortOf(args);
   if (relayPort === undefined) {

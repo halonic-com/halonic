@@ -42,9 +42,10 @@ pub(super) async fn running_host<R: Runtime>(app: &AppHandle<R>) -> Result<Hands
             && !running.has_exited()
         {
             state.progress.host_started();
+            running.name_workspaces(&opened_folders(&app));
             return Ok(running.handshake().clone());
         }
-        let (started, updates) = match start_host(&app, &state) {
+        let (mut started, updates) = match start_host(&app, &state) {
             Ok(started) => {
                 state.progress.host_started();
                 started
@@ -55,6 +56,8 @@ pub(super) async fn running_host<R: Runtime>(app: &AppHandle<R>) -> Result<Hands
             }
         };
         *state.start_checks.lock().map_err(|_| poisoned())? = updates;
+        // A folder opened while the host started, after its command was made.
+        started.name_workspaces(&opened_folders(&app));
         let handshake = started.handshake().clone();
         *host = Some(started);
         // The background engines run harness steps through this host too.
@@ -265,6 +268,18 @@ fn real_host_command<R: Runtime>(app: &AppHandle<R>) -> Result<Command, HostRefu
         profile,
         &sweep_roots(profile, &opened),
     ))
+}
+
+/// The folders the person has open now, in the form `--sweep-root` names
+/// them, for naming the ones opened since the host started (requirement
+/// `opened-workspaces`): a host whose workspace routes don't know a folder
+/// refuses it as `unknown_workspace`. Only a host beside the shell is told.
+fn opened_folders<R: Runtime>(app: &AppHandle<R>) -> Vec<PathBuf> {
+    let opened = app.state::<GitState>().folders().list();
+    opened
+        .iter()
+        .map(|folder| PathBuf::from(plain_path(folder)))
+        .collect()
 }
 
 /// The folders the host sweeps kept Windows grants in (HAL-6256): the

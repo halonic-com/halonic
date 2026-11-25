@@ -4,7 +4,7 @@ import { OpenExternalProvider } from "@halonicjs/studio-kit";
 import { type AgentConnection, FakeAgentConnections } from "@halonicjs/studio-services";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { button, dialog, polyfillDialog, press, settle, typeInto } from "../test-support/dom.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { ConnectionsView } from "./connections-section.tsx";
@@ -217,5 +217,36 @@ verifies("connections.connection-row", () => {
       const id = button("Disconnect", rowOf(view, label))?.getAttribute("aria-describedby");
       expect(id && document.getElementById(id)?.textContent).toBe(label);
     }
+  });
+});
+
+verifies("connections.list-retry", () => {
+  /** A fake whose list fails until `failing` is false. */
+  function failingFirst() {
+    const fake = new FakeAgentConnections({ connections: [connected] });
+    const read = fake.list.bind(fake);
+    const state = { failing: true };
+    fake.list = async () => {
+      if (state.failing) throw new Error("unknown_workspace");
+      return await read();
+    };
+    return { fake, state };
+  }
+
+  it("says it couldn't read the connections, reports why, and reads them again on Try again", async () => {
+    const reported = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { fake, state } = failingFirst();
+    const { view } = await showSection(fake);
+    expect(view.textContent).toContain("Halonic couldn't read the connections.");
+    expect(reported).toHaveBeenCalledWith(
+      "Settings › Connections couldn't read the connections",
+      expect.objectContaining({ message: "unknown_workspace" }),
+    );
+
+    state.failing = false;
+    await press(button("Try again", view));
+    expect(rowOf(view, "Paperclip · Halonic")).toBeDefined();
+    expect(view.textContent).not.toContain("couldn't read");
+    reported.mockRestore();
   });
 });

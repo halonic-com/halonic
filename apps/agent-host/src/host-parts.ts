@@ -8,6 +8,9 @@ import { type ProfileFolder, secretsFile } from "@halonicjs/profile";
 import { profileTrustStore } from "./profile-folder.ts";
 import { hostWslRemover, type WslRemover } from "./sandbox/wsl-remove-host.ts";
 import type { HostKeychain } from "./secrets/host-keychain.ts";
+import { openWorkspaceReporting } from "./server/opened-workspaces.ts";
+import type { HostConnection } from "./stdio/frame-stream.ts";
+import { ShellChannel } from "./stdio/shell-channel.ts";
 
 // The small parts `host.ts` puts together, kept here so that file stays short.
 
@@ -30,6 +33,7 @@ export function sharedFoldersOf(args: readonly string[]): readonly string[] {
  * The host checks every connector's trust grant against the trust records of that same folder.
  */
 export function connectorPlaces(roots: readonly string[], profileFolder: string | undefined) {
+  // A list of its own, which grows as the shell names opened folders (`shellChannelOf`).
   return {
     workspaceRoots: roots.filter((root) => root !== profileFolder),
     deniedPaths: profileFolder === undefined ? [] : [profileFolder],
@@ -60,4 +64,22 @@ export function logToError(text: string): void {
 export function hostHarnesses(version: string): Harness[] {
   const probe = createProgramProbe();
   return [claudeCodeHarness({ probe }), codexHarness({ probe, halonicVersion: version })];
+}
+
+/**
+ * The host's connection id 0 when Studio's shell answers for its secrets
+ * (`--keychain-relay`): the secrets channel, and the shell's notices of
+ * folders the person opened, which join `workspaceRoots` (requirement
+ * `agent-host.opened-workspaces`). `undefined` without the shell.
+ */
+export function shellChannelOf(
+  keychain: HostKeychain | undefined,
+  workspaceRoots: string[],
+  profileFolder: string | undefined,
+  log: (text: string) => void,
+): HostConnection | undefined {
+  if (keychain === undefined) return undefined;
+  return new ShellChannel(keychain.channel, (folder) => {
+    openWorkspaceReporting(workspaceRoots, folder, profileFolder, log);
+  });
 }

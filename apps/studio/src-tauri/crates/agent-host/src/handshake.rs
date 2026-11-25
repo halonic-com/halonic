@@ -4,6 +4,9 @@
 //! standard input and output, it prints `{"token":"<43 characters>"}`, and
 //! its address is the relay's.
 
+use std::io::{BufRead, BufReader, Read};
+use std::sync::mpsc;
+
 use serde::Deserialize;
 
 use crate::AgentHostError;
@@ -140,4 +143,43 @@ fn is_token(token: &str) -> bool {
         && token
             .bytes()
             .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_')
+}
+
+/// The longest handshake line read. A real one is under 100 bytes; a host
+/// that prints more without a newline is refused, not read without end.
+const HANDSHAKE_LINE_LIMIT: u64 = 4096;
+
+/// What the host printed first.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum FirstLine {
+    /// A line of text, with its newline if it had one.
+    Text(String),
+    /// A line that isn't UTF-8: the host runs, but this is no handshake.
+    NotText,
+    /// Nothing: the output ended, or couldn't be read, before a line.
+    Ended,
+}
+
+/// Reads the first line of `output` on a thread of its own, and gives it
+/// with the rest of the output, which the caller reads or drains.
+pub(crate) fn read_first_line<R: Read + Send + 'static>(
+    output: R,
+) -> mpsc::Receiver<(FirstLine, BufReader<R>)> {
+    let (sender, receiver) = mpsc::channel();
+    std::thread::spawn(move || {
+        let mut reader = BufReader::new(output);
+        let mut line = String::new();
+        let read = reader
+            .by_ref()
+            .take(HANDSHAKE_LINE_LIMIT)
+            .read_line(&mut line);
+        let first = match read {
+            Ok(length) if length > 0 => FirstLine::Text(line),
+            Err(error) if error.kind() == std::io::ErrorKind::InvalidData => FirstLine::NotText,
+            _ => FirstLine::Ended,
+        };
+        // The shell may have stopped waiting; then the host is killed.
+        let _ = sender.send((first, reader));
+    });
+    receiver
 }
