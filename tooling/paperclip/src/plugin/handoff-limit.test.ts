@@ -14,10 +14,17 @@ interface FakeTask {
   parentId: string | null;
   assigneeAgentId: string | null;
   labels: { name: string }[];
+  createdByUserId: string | null;
+  createdByAgentId: string | null;
 }
 
+/** Who made the parent task: the board through the provider, or an agent. */
+type Maker = { createdByUserId: string | null; createdByAgentId: string | null };
+
+const byBoard: Maker = { createdByUserId: "user-board", createdByAgentId: null };
+
 /** A channel's parent task and one child task under it, assigned to Chief. */
-function channelTasks(parentLabels = ["Channel"]): FakeTask[] {
+function channelTasks(parentLabels = ["Channel"], parentMaker: Maker = byBoard): FakeTask[] {
   return [
     {
       id: "channel-1",
@@ -26,6 +33,7 @@ function channelTasks(parentLabels = ["Channel"]): FakeTask[] {
       parentId: null,
       assigneeAgentId: null,
       labels: parentLabels.map((name) => ({ name })),
+      ...parentMaker,
     },
     {
       id: "child-1",
@@ -34,6 +42,8 @@ function channelTasks(parentLabels = ["Channel"]): FakeTask[] {
       parentId: "channel-1",
       assigneeAgentId: "agent-chief",
       labels: [],
+      createdByUserId: null,
+      createdByAgentId: "agent-chief",
     },
   ];
 }
@@ -181,6 +191,24 @@ verifies("paperclip.handoff-limit", () => {
       }
       expect(host.child().assigneeAgentId).toBe("agent-elena");
       expect(host.comments).toEqual([]);
+    });
+
+    test.each([
+      ["an agent", { createdByUserId: null, createdByAgentId: "agent-ravi" }],
+      [
+        "an agent on a person's behalf",
+        { createdByUserId: "user-board", createdByAgentId: "agent-ravi" },
+      ],
+      ["nobody it names", { createdByUserId: null, createdByAgentId: null }],
+    ])("leaves a task alone whose tagged parent was made by %s", async (_maker, parentMaker) => {
+      const host = harness(channelTasks(["Channel"], parentMaker));
+      await host.handler.onIssueEvent(host.event("issue.created", "user"));
+      for (const agent of ["agent-liam", "agent-julian", "agent-mateo", "agent-elena"]) {
+        await host.pass(agent);
+      }
+      expect(host.child().assigneeAgentId).toBe("agent-elena");
+      expect(host.comments).toEqual([]);
+      expect(host.written).toEqual([]);
     });
   });
 });

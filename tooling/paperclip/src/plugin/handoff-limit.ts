@@ -48,13 +48,27 @@ function assigneeAtEvent(event: PluginEvent, issue: Issue): string | null {
   return typeof assignee === "string" ? assignee : null;
 }
 
+/**
+ * Whether a person made the task, not an agent. The Paperclip provider makes a
+ * channel's parent with the board's key, so an agent can't make a channel by
+ * tagging a task it created (HAL-18122, the marker `readChannel` uses).
+ */
+function madeByPerson(task: Issue): boolean {
+  const byUser = typeof task.createdByUserId === "string" && task.createdByUserId !== "";
+  const byAgent = typeof task.createdByAgentId === "string" && task.createdByAgentId !== "";
+  return byUser && !byAgent;
+}
+
 /** Whether the task's parent is a channel's parent task. */
 async function underChannel(ctx: HandoffLimitApi, issue: Issue): Promise<boolean> {
   if (issue.parentId === null || issue.parentId === undefined) {
     return false;
   }
   const parent = await ctx.issues.get(issue.parentId, issue.companyId);
-  return parent !== null && isChannelParent((parent.labels ?? []).map((label) => label.name));
+  if (parent === null || !madeByPerson(parent)) {
+    return false;
+  }
+  return isChannelParent((parent.labels ?? []).map((label) => label.name));
 }
 
 /**
