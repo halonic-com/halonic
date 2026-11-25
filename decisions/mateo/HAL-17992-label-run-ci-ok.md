@@ -3,6 +3,7 @@
 - Task: HAL-17992 (found by the board session on HAL-17891, 25 Nov)
 - Approval: the task asks for option (a), no `ci.yml` run for a label other than `fast-track`, as the preferred fix; Liam signs this note in review. The hook and the gate don't change
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:mQ6tNj7gd2gdJhQO5SrjySATFLoqGwF036LbvBwwCgkOEYjgleaR0b7fnNPAXZumFF/QRRU3vz2BN+m+Zj2rCA==
 
 ## What changes
 
