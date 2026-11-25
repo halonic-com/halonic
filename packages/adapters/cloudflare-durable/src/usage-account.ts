@@ -27,6 +27,7 @@ import {
   withDefaults,
 } from "./usage-limits.ts";
 import { defaultOutboxCap, UsageOutbox } from "./usage-outbox.ts";
+import { canUpgrade, effectiveLimits } from "./usage-overrides.ts";
 import type {
   UsageAmounts,
   UsageAnswer,
@@ -35,6 +36,7 @@ import type {
   UsageRefusal,
   UsageStorage,
   UsageSummary,
+  UsageUnit,
 } from "./usage-types.ts";
 
 /** Use in the current period, for the pool and for each actor. */
@@ -299,14 +301,17 @@ export class UsageAccount {
   summary(): UsageSummary {
     return this.#storage.transactionSync(() => {
       const limits = this.#storage.get<UsageLimits>(keys.limits);
-      const current = limits !== undefined && this.#now() < limits.period.end ? limits : undefined;
-      return summaryOf(current, this.#spent().pool);
+      const now = this.#now();
+      if (limits === undefined || now >= limits.period.end) {
+        return summaryOf(undefined, this.#spent().pool);
+      }
+      return summaryOf({ ...limits, limits: effectiveLimits(limits, now) }, this.#spent().pool);
     });
   }
 
   #refusal(actor: string, needed: UsageAmounts): UsageRefusal | null {
     const limits = this.#storage.get<UsageLimits>(keys.limits);
-    if (limits === undefined) return { code: "plan.none" };
+    if (limits === undefined || limits.status === "none") return { code: "plan.none" };
     if (limits.status !== "active") return { code: "plan.inactive" };
     const member = limits.members?.[actor];
     if (limits.members !== undefined && member?.status !== "active") {
@@ -316,7 +321,10 @@ export class UsageAccount {
     const taken = this.#taken();
     const resetsAt = limits.period.end;
     const { plan } = limits;
-    const pool = firstOver("plan", limits.limits, taken.pool, needed, resetsAt, plan);
+    const poolLimits = effectiveLimits(limits, this.#now());
+    const upgradable =
+      limits.upgradable === undefined ? undefined : (unit: UsageUnit) => canUpgrade(limits, unit);
+    const pool = firstOver("plan", poolLimits, taken.pool, needed, resetsAt, plan, upgradable);
     if (pool !== null || member?.shares === undefined) return pool;
     const memberTaken = taken.actors[actor] ?? {};
     return firstOver("plan.member", member.shares, memberTaken, needed, resetsAt, plan);
@@ -388,7 +396,8 @@ export class UsageAccount {
 
   /** Adds a row the first time this period the pool reaches 80% and 100% of a limit. */
   #reportThresholds(spent: Spent): void {
-    const limits = this.#storage.get<UsageLimits>(keys.limits)?.limits ?? {};
+    const kept = this.#storage.get<UsageLimits>(keys.limits);
+    const limits = kept === undefined ? {} : effectiveLimits(kept, this.#now());
     for (const { unit, percent, used, limit } of newThresholds(
       limits,
       spent.pool,

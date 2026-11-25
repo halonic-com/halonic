@@ -31,3 +31,15 @@ verifies("runtime.limits-plan", () => {
     });
   });
 });
+
+verifies("runtime.limits-upgrade", () => {
+  it("carries the refusal's upgrade offer, and none when the refusal doesn't say", () => {
+    const offered = stopOfRefusal({ ...costReached, canUpgrade: true }, "check");
+    expect(offered.cause.detail).toMatchObject({ canUpgrade: "true" });
+    expect(stopOfRefusal(costReached, "check").cause.detail).toMatchObject({
+      canUpgrade: "false",
+    });
+    const member = { ...costReached, code: "plan.member.cost" as const, canUpgrade: true };
+    expect(stopOfRefusal(member, "check").cause.detail).toMatchObject({ canUpgrade: "false" });
+  });
+});

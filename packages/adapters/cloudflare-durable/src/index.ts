@@ -48,6 +48,7 @@ export type {
   UsageAmounts,
   UsageAnswer,
   UsageLimits,
+  UsageOverride,
   UsageRefusal,
   UsageSummary,
   UsageUnit,

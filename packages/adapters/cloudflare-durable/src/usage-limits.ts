@@ -27,7 +27,10 @@ export function withDefaults(max: UsageAmounts, limits: UsageLimits | undefined)
   return amounts;
 }
 
-/** The first limited unit that is used up or that `needed` would take past its limit. */
+/**
+ * The first limited unit that is used up or that `needed` would take past its limit. With
+ * `upgradable`, the refusal also says whether a bigger plan raises that unit's limit.
+ */
 export function firstOver(
   prefix: "plan" | "plan.member",
   limits: UsageAmounts,
@@ -35,6 +38,7 @@ export function firstOver(
   needed: UsageAmounts,
   resetsAt: number,
   plan?: UsagePlan,
+  upgradable?: (unit: UsageUnit) => boolean,
 ): UsageRefusal | null {
   for (const unit of usageUnits) {
     const limit = limits[unit];
@@ -44,7 +48,9 @@ export function firstOver(
     if (used >= limit || used + need > limit) {
       const left = Math.max(0, limit - used);
       const reached = { unit, used, limit, needed: need, left, resetsAt };
-      return { code: `${prefix}.${unit}`, ...reached, ...(plan === undefined ? {} : { plan }) };
+      const named = plan === undefined ? {} : { plan };
+      const upgrade = upgradable === undefined ? {} : { canUpgrade: upgradable(unit) };
+      return { code: `${prefix}.${unit}`, ...reached, ...named, ...upgrade };
     }
   }
   return null;

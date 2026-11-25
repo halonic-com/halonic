@@ -51,8 +51,11 @@ export interface UsagePlan {
 export interface UsageLimits {
   /** Goes up with every document Cloud sends for this customer. */
   readonly version: number;
-  /** `active` while the subscription allows use (a trial included); anything else refuses. */
-  readonly status: "active" | "stopped";
+  /**
+   * `active` while the subscription allows use (a trial included), `none` while the customer has
+   * no plan at all; anything else refuses.
+   */
+  readonly status: "active" | "stopped" | "none";
   /** The subscription period, in ms since 1970; usage counts from `start`. */
   readonly period: { readonly start: number; readonly end: number };
   /** The pool's limit per unit, per period; a unit that isn't there has no limit. */
@@ -68,6 +71,21 @@ export interface UsageLimits {
    * and the account menu name it. Its name is text to show, never markup.
    */
   readonly plan?: UsagePlan;
+  /** Amounts that take the place of the plan's limit of their unit, each until its `until`. */
+  readonly overrides?: readonly UsageOverride[];
+  /** The units whose limit the customer can raise by buying a bigger plan; none when not there. */
+  readonly upgradable?: readonly UsageUnit[];
+}
+
+/**
+ * An amount the seller set for one of the customer's units. It replaces the pool's limit of that
+ * unit while `until` (ms since 1970) is in the future, or always when `until` is `null`, and only
+ * when the plan limits that unit at all.
+ */
+export interface UsageOverride {
+  readonly unit: UsageUnit;
+  readonly amount: number;
+  readonly until: number | null;
 }
 
 /** The longest plan name a limits document may carry. */
@@ -109,6 +127,8 @@ export type UsageRefusal =
       readonly resetsAt: number;
       /** The limits document's plan, when it has one. */
       readonly plan?: UsagePlan;
+      /** Whether a bigger plan raises this limit; only for the pool's limits, never a member's. */
+      readonly canUpgrade?: boolean;
     }
   | { readonly code: "usage.outbox-full" }
   | {

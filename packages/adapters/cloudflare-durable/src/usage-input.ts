@@ -1,5 +1,6 @@
 // The account's input rules. Each check throws a RangeError before anything is read or changed,
 // and only what passes them is stored, so no free text from a run can reach a usage record.
+import { checkOverrides } from "./usage-overrides.ts";
 import {
   maxPlanNameLength,
   type UsageAmounts,
@@ -8,6 +9,9 @@ import {
   type UsageUnit,
   usageUnits,
 } from "./usage-types.ts";
+
+/** The statuses a limits document may have; any other is refused rather than read as one. */
+const limitStatuses: readonly UsageLimits["status"][] = ["active", "stopped", "none"];
 
 /** Ids are machine ids: letters, digits and `_ . : -`, at most 128 characters. */
 const idPattern = /^[A-Za-z0-9_.:-]{1,128}$/;
@@ -106,6 +110,10 @@ export function checkLimits(limits: UsageLimits): UsageLimits {
     throw new RangeError("A limits document's version, cap and period are safe whole numbers.");
   }
   if (period.end <= period.start) throw new RangeError("A period ends after it starts.");
+  if (!limitStatuses.includes(limits.status)) {
+    throw new RangeError('A limits document\'s status is "active", "stopped" or "none".');
+  }
+  checkOverrides(limits);
   checkAmounts(limits.limits);
   checkAmounts(limits.defaultReserve);
   if (limits.plan !== undefined) checkPlan(limits.plan);
