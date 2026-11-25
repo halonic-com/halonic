@@ -16,8 +16,11 @@ export const maxInboxStepperBlocks = 20;
 /** The most targets one block's touches may list. */
 const maxTargets = 20;
 
-/** The longest revision id or target text taken. */
-const maxTextLength = 200;
+/** The longest revision id taken. */
+const maxRevisionLength = 200;
+
+/** The longest target text taken: a page's target is its address, which a request allows up to 2,000 characters. */
+const maxTargetLength = 2000;
 
 /** A request's risk levels, from lowest to highest, as `core/action-steppers` names them. */
 export const inboxStepperRisks = ["routine", "admin", "irreversible"] as const;
@@ -83,7 +86,7 @@ export function checkInboxStepperRequest(value: unknown): InboxStepperCheck {
   const document = value["document"];
   if (typeof document !== "string" || document === "") problems.push("document: not a text");
   else if (utf8Length(document) > maxInboxStepperBytes) problems.push("document: over 16 KB");
-  if (!isShortText(value["revision"])) problems.push("revision: not a text");
+  if (!isPlainText(value["revision"], maxRevisionLength)) problems.push("revision: not a text");
   if (typeof value["changed"] !== "boolean") problems.push("changed: not true or false");
   problems.push(...touchesProblems(value["touches"]));
   if (problems.length > 0) return { ok: false, problems };
@@ -119,19 +122,19 @@ function touchProblems(value: unknown, at: string): string[] {
     if (!isRecord(target)) problems.push(`${where}: not an object`);
     else if (unlistedFields(target, targetFields, "").length > 0) {
       problems.push(`${where}: a field not allowed`);
-    } else if (!targetFields.every((field) => isShortText(target[field]))) {
+    } else if (!targetFields.every((field) => isPlainText(target[field], maxTargetLength))) {
       problems.push(`${where}: not plain text`);
     }
   });
   return problems;
 }
 
-/** A non-empty text of at most 200 characters with no control characters. */
-function isShortText(value: unknown): boolean {
+/** A non-empty text of at most `maxLength` characters with no control characters. */
+function isPlainText(value: unknown, maxLength: number): boolean {
   return (
     typeof value === "string" &&
     value !== "" &&
-    value.length <= maxTextLength &&
+    value.length <= maxLength &&
     // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it refuses
     !/[\u0000-\u001f\u007f]/.test(value)
   );
