@@ -3,6 +3,7 @@
 - Task: HAL-18031
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-18035 (Julian's OK with changes on the branch credential; Liam approves this note in review)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:AOnVcSJv6Y9IBeykaVeJIxKXCIoqcVLokFNiGkDMKKnpzHC7UTPs1QRT3mwBTinE50exYBCSlpR08ssxCT2mDQ==
 
 The PR watcher gains one write: when a stacked pull request's base merges, it asks GitHub once per head to rebase the child on `main` (`paperclip.pr-watcher-stack-rebase`). That write goes through a separate branch credential and its own client, which sends only the rebase mutation (`paperclip.branch-update-write-scope`). The watcher's read token still only reads.
 
