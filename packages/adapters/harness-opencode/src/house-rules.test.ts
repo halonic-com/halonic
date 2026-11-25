@@ -1,8 +1,20 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { houseRulesText, withHouseRules } from "./house-rules.ts";
+import { houseRulesText, opencodePrompt, withHouseRules } from "./house-rules.ts";
 
 verifies("harness-opencode.house-rules", () => {
+  describe("opencodePrompt", () => {
+    const prompt = "Summarise this week's notes.";
+
+    it("sends a task without houseRules its prompt unchanged", () => {
+      expect(opencodePrompt({ prompt })).toBe(prompt);
+    });
+
+    it("puts the house rules before the prompt of a task that asks for them", () => {
+      expect(opencodePrompt({ prompt, houseRules: true })).toBe(withHouseRules(prompt));
+    });
+  });
+
   describe("withHouseRules", () => {
     it("puts the house rules first, then a blank line, then the prompt unchanged", () => {
       const prompt = "What does hello.txt say?";
