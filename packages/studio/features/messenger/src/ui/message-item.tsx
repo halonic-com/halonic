@@ -14,11 +14,13 @@ import type { ConversationRow, Messenger } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import { AttachmentList } from "./attachment-list.tsx";
 import { authorOf, MessageTo, WorkLines } from "./channel-message.tsx";
+import { ReadTicks } from "./read-ticks.tsx";
 
 /**
  * One message (`messenger.chat-transcript`). The person's sits on the end side in a bubble with
- * its time under it. An agent's sits on the start side in a bubble of its own, and starts its run
- * with the picture and "Name · 13:58" when `head`; the rest of the run lines up under the name
+ * its time under it; in a chat it has one tick once sent and two once the agent picked it up
+ * (`messenger.read-receipts`). An agent's sits on the start side in a bubble of its own, and starts
+ * its run with the picture and "Name · 13:58" when `head`; the rest of the run lines up under the name
  * (`messenger.agent-bubbles`). An automatic note, such as a fast-response receipt, has a dashed
  * edge and a small mark (`messenger.automatic-notes`). `data-head` and `data-follows` let the transcript
  * set a run's messages close together and a new run further apart. Each says who wrote it to a screen reader; in a
@@ -59,7 +61,17 @@ export function MessageItem({
     return (
       <Bubble
         data={{ "data-author": "me", ...runData(false, follows) }}
-        under={time}
+        under={
+          channel ? (
+            time
+          ) : (
+            // A channel's work lines say what each agent did with it; a chat has ticks.
+            <span className="inline-flex items-center gap-1">
+              {time}
+              <ReadTicks message={message} />
+            </span>
+          )
+        }
         above={channel ? <MessageTo message={message} row={row} /> : null}
         after={
           channel ? (
@@ -183,8 +195,8 @@ function Bubble({
   children,
 }: {
   readonly data: Record<string, string>;
-  /** The muted line under the bubble: the time, or "Sending…". */
-  readonly under: string;
+  /** The muted line under the bubble: the time and its ticks, or "Sending…". */
+  readonly under: ReactNode;
   /** In a channel, who the message went to. */
   readonly above?: ReactNode;
   /** In a channel, what each agent did with it. */
@@ -195,7 +207,8 @@ function Bubble({
     <li {...data} className="ms-auto flex max-w-[80%] flex-col items-end gap-1">
       {above}
       <div className="rounded-lg bg-surface-muted px-3 py-2 wrap-break-word">{children}</div>
-      <p className="text-small text-fg-muted">{under}</p>
+      {/* A div: the ticks' tooltip is one. */}
+      <div className="text-small text-fg-muted">{under}</div>
       {after}
     </li>
   );

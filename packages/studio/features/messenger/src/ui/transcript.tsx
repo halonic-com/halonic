@@ -11,6 +11,7 @@ import { EmptyChannel } from "./channel-message.tsx";
 import { ChatCardItem } from "./chat-cards.tsx";
 import { failureReason, reportMotion } from "./load-states.tsx";
 import { DayItem, MessageItem, PendingItem } from "./message-item.tsx";
+import { agentTyping, TypingLine } from "./typing-line.tsx";
 
 /** Within this many pixels of the end, the person reads the newest entry and the chat stays there. */
 const PINNED_WITHIN_PX = 24;
@@ -47,7 +48,8 @@ export interface TranscriptProps {
  * it shows the kit's loading lines, and if it fails "Couldn't load this chat" with **Try again**
  * (`messenger.load-states`). An agent writes a message, so whoever can steer that agent does
  * (ADR 2026-11-24, agent-written content): the kit's `ChatText` keeps HTML, images and any link
- * that isn't a web address as plain text.
+ * that isn't a web address as plain text. Under the messages, "Chief is typing…" shows while the
+ * agent works on the chat (`messenger.typing`).
  */
 export function Transcript(props: TranscriptProps) {
   const { messenger, row, messages, cards, pending, failure, words, onRetry } = props;
@@ -59,10 +61,12 @@ export function Transcript(props: TranscriptProps) {
     messenger.now(),
     isChannel(row),
   );
+  const typing = agentTyping(row, messages, pending, props.searching);
   const { unseen, onScroll, toEnd } = useStickToEnd(scroller, list, lines, {
     messages: messages !== undefined,
     cards: cards !== undefined,
     searching: props.searching,
+    typing,
   });
 
   if (messages === undefined && failure !== undefined) {
@@ -110,6 +114,7 @@ export function Transcript(props: TranscriptProps) {
             <Line key={line.key} line={line} {...props} />
           ))}
         </ol>
+        <TypingLine row={row} typing={typing} />
       </div>
       {unseen === 0 ? null : (
         <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center">
@@ -161,7 +166,8 @@ function arrive(element: HTMLElement | null): void {
  * Keeps the chat at its newest entry (motions 3 and 4 of the design review): it opens there as
  * soon as its messages landed, without waiting for its cards (`messenger.open-at-newest`), and
  * then follows new entries, and the transcript growing, while the person is within 24px of the
- * end, or sent something. The cards' first read only puts them in their place.
+ * end, or sent something. The cards' first read only puts them in their place. The typing line
+ * appearing keeps the person at the end there too.
  * Scrolled up, a new message from someone else only counts toward the pill. Each new entry rises
  * into view, except a search's results and the person's own message that took its pending one's
  * place.
@@ -170,7 +176,13 @@ function useStickToEnd(
   scroller: RefObject<HTMLDivElement | null>,
   list: RefObject<HTMLOListElement | null>,
   lines: readonly ChatLine[],
-  read: { readonly messages: boolean; readonly cards: boolean; readonly searching: boolean },
+  read: {
+    readonly messages: boolean;
+    readonly cards: boolean;
+    readonly searching: boolean;
+    /** The typing line shows under the messages. */
+    readonly typing: boolean;
+  },
 ) {
   const { searching } = read;
   const [unseen, setUnseen] = useState(0);
@@ -205,6 +217,8 @@ function useStickToEnd(
     const before = known.current;
     known.current = new Set(lines.map((line) => line.key));
     if (before === undefined) {
+      // Cards read with the messages are in their place already: their read never lands later.
+      hadCards.current = read.cards;
       // The chat opens at its latest entry, before its first paint, with no scroll to watch.
       list.current?.lastElementChild?.scrollIntoView?.({ block: "end" });
       return;
@@ -222,6 +236,11 @@ function useStickToEnd(
     if (added.some((line) => line.kind === "pending") || pinned.current) toEnd(false);
     else setUnseen((count) => count + added.filter(isNewToThePerson).length);
   }, [keys, read.messages, read.cards, searching]);
+
+  // The typing line coming in under the messages keeps the person at the end seeing it.
+  useLayoutEffect(() => {
+    if (read.typing && pinned.current) toEnd(false);
+  }, [read.typing]);
 
   // A picture or a long message taking its size grows the transcript; the person at the end stays there.
   useEffect(() => {
