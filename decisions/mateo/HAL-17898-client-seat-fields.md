@@ -3,6 +3,7 @@
 - Task: HAL-17898
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-17898 (Liam asked for this follow-up on HAL-17735; Liam approves this note in review)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Ag2582pltymauteOMjFtNLsYcMNweUOYID5r4dOwgsZei3pB1Jy/UiT3dohmlnyUoOZ3jYru06CeTdnuEo4jAA==
 
 `paperclip-client.team-status-fields` changes, because the `halonic.seats` plugin now sends what the
 provider couldn't fill before (#5800, requirement `paperclip.seats-summary-fields`):
