@@ -1,3 +1,5 @@
+import { setFlagsFromString } from "node:v8";
+import { runInNewContext } from "node:vm";
 import { createRemoteExecutor } from "@halonicjs/adapter-executor-remote";
 import type { RunEvent } from "@halonicjs/events";
 import { createServer, MemoryRequestCountStore } from "@halonicjs/host-server";
@@ -66,6 +68,54 @@ async function serve() {
   return { engine, executor, logged };
 }
 
+/** Runs a full garbage collection, as the engine would at some point under memory pressure. */
+function collectGarbage(): void {
+  setFlagsFromString("--expose-gc");
+  const gc = runInNewContext("gc") as () => void;
+  gc();
+}
+
+/**
+ * Starts a chat turn the host holds, calls `beforeAbort` once the turn reached the engine, then
+ * aborts it and checks that the turn ends with the caller's reason and the model call stops.
+ */
+async function abortHeldTurn(beforeAbort: () => void): Promise<void> {
+  const { engine, executor } = await serve();
+  engine.holdTurns = true;
+  const controller = new AbortController();
+
+  const turn = executor.chatTurn({
+    hubId: "acme",
+    messages: [],
+    tools: [],
+    signal: controller.signal,
+  });
+  let settled = false;
+  const settle = () => {
+    settled = true;
+  };
+  // Handles the rejection too, so it isn't unhandled while the waits below run.
+  turn.then(settle, settle);
+  // Every wait is bounded well inside the 30 s test timeout, and the first also ends when the turn
+  // fails before it reaches the engine, so a stall names its step instead of hitting that timeout.
+  await waitUntil(
+    "the turn to reach the engine",
+    () => engine.lastTurnSignal !== undefined || settled,
+    { timeout: stepTimeoutMs },
+  );
+  beforeAbort();
+  controller.abort(new Error("stopped"));
+  await waitUntil("the aborted turn to end", () => settled, { timeout: stepTimeoutMs });
+
+  await expect(turn).rejects.toThrow("stopped");
+  await waitUntil(
+    "engine.lastTurnSignal?.aborted to be true",
+    () => engine.lastTurnSignal?.aborted === true,
+    { timeout: stepTimeoutMs },
+  );
+  expect(engine.lastTurnSignal?.aborted).toBe(true);
+}
+
 runExecutorContract("remote executor against a served host", async () => {
   const { engine, executor } = await serve();
   return {
@@ -113,39 +163,12 @@ verifies("executor-remote.runs", () => {
     });
 
     it("stops the model call on the host when the caller aborts a chat turn", async () => {
-      const { engine, executor } = await serve();
-      engine.holdTurns = true;
-      const controller = new AbortController();
+      await abortHeldTurn(() => {});
+    });
 
-      const turn = executor.chatTurn({
-        hubId: "acme",
-        messages: [],
-        tools: [],
-        signal: controller.signal,
-      });
-      let settled = false;
-      const settle = () => {
-        settled = true;
-      };
-      // Handles the rejection too, so it isn't unhandled while the waits below run.
-      turn.then(settle, settle);
-      // Every wait is bounded well inside the 30 s test timeout, and the first also ends when the turn
-      // fails before it reaches the engine, so a stall names its step instead of hitting that timeout.
-      await waitUntil(
-        "the turn to reach the engine",
-        () => engine.lastTurnSignal !== undefined || settled,
-        { timeout: stepTimeoutMs },
-      );
-      controller.abort(new Error("stopped"));
-      await waitUntil("the aborted turn to end", () => settled, { timeout: stepTimeoutMs });
-
-      await expect(turn).rejects.toThrow("stopped");
-      await waitUntil(
-        "engine.lastTurnSignal?.aborted to be true",
-        () => engine.lastTurnSignal?.aborted === true,
-        { timeout: stepTimeoutMs },
-      );
-      expect(engine.lastTurnSignal?.aborted).toBe(true);
+    it("stops the model call on the host when a garbage collection ran before the abort", async () => {
+      // Under CI load a collection often runs while the turn waits; it used to cut the abort off from `fetch` (HAL-18853).
+      await abortHeldTurn(collectGarbage);
     });
 
     it("cancels a run and ends its stream", async () => {
