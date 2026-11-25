@@ -76,6 +76,12 @@ export class Messenger {
     return inTab(rows, tab);
   }
 
+  /** Whether anything is connected, so the Messenger can tell "nothing connected" from "no chats". */
+  async hasSources(): Promise<boolean> {
+    const sources = await this.messaging.listSources();
+    return sources.length > 0;
+  }
+
   /** A conversation's messages, oldest first, or only those whose text holds `search`. */
   async messages(conversation: MessagingId, search = ""): Promise<readonly Message[]> {
     const messages = await this.messaging.listMessages(conversation);

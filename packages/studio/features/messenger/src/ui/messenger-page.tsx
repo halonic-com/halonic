@@ -1,5 +1,5 @@
 import type { MessagingId } from "@halonicjs/ports";
-import { Button, useNarrow } from "@halonicjs/studio-kit";
+import { Button, EmptyState, useNarrow } from "@halonicjs/studio-kit";
 import { focusedPanelClass, type PlaceViewProps } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
@@ -12,6 +12,8 @@ import { ConversationView } from "./conversation-view.tsx";
 /** The props of {@link MessengerPage}. */
 export interface MessengerPageProps {
   readonly messenger: Messenger;
+  /** Opens Settings › Connections; without it, the page with nothing connected has no button. */
+  readonly onConnect?: () => void;
 }
 
 /**
@@ -23,10 +25,15 @@ export interface MessengerPageProps {
  * A window narrower than 900px (`useNarrow`, such as 320px or 400 % zoom) shows one pane at a
  * time, as the Inbox does: the list, or the open chat with **Back to chats**, which puts focus
  * back on the chat's row. Opening a chat there puts focus in its box (HAL-18074 MS5).
+ *
+ * With nothing connected, the panel says so and offers Connect Paperclip, instead
+ * of an empty list that looks like a Paperclip with no chats.
  */
-export function MessengerPage({ messenger }: MessengerPageProps) {
+export function MessengerPage({ messenger, onConnect }: MessengerPageProps) {
   const [tab, setTab] = useState<MessengerTab>("all");
   const [rows, setRows] = useState<readonly ConversationRow[]>([]);
+  // Unknown until the first read lands, so the page never flashes "No connections".
+  const [connected, setConnected] = useState<boolean | undefined>(undefined);
   const [selected, setSelected] = useState<MessagingId | undefined>(undefined);
   // Grows on each change a source reports, so the list and the open conversation read again.
   const [changed, setChanged] = useState(0);
@@ -35,9 +42,11 @@ export function MessengerPage({ messenger }: MessengerPageProps) {
 
   useEffect(() => {
     let current = true;
-    messenger.rows().then(
-      (read) => {
-        if (current) setRows(read);
+    Promise.all([messenger.rows(), messenger.hasSources()]).then(
+      ([read, hasSources]) => {
+        if (!current) return;
+        setRows(read);
+        setConnected(hasSources);
       },
       (error: unknown) => console.error("The Messenger couldn't read its chats:", error),
     );
@@ -48,10 +57,12 @@ export function MessengerPage({ messenger }: MessengerPageProps) {
 
   const open = rows.find((row) => row.conversation.id === selected);
   const { onePane, list, chat, select, back } = useOnePane(selected, setSelected);
+  // In one pane, nothing connected shows the panel, so a narrow window still offers Connect.
+  const panelFirst = open !== undefined || connected === false;
   return (
     <div className="flex h-full min-h-0 gap-2">
       <h1 className="sr-only">{messengerWords.title}</h1>
-      {onePane && open !== undefined ? null : (
+      {onePane && panelFirst ? null : (
         <nav
           ref={list}
           aria-label={messengerWords.title}
@@ -66,27 +77,67 @@ export function MessengerPage({ messenger }: MessengerPageProps) {
           />
         </nav>
       )}
-      {onePane && open === undefined ? null : (
+      {onePane && !panelFirst ? null : (
         <main ref={chat} className={`flex min-w-0 flex-1 flex-col ${focusedPanelClass}`}>
-          {onePane ? (
+          {onePane && open !== undefined ? (
             <div className="px-2 pt-2">
               <Button variant="ghost" size="sm" onClick={back}>
                 {messengerWords.backToChats}
               </Button>
             </div>
           ) : null}
-          {open === undefined ? (
-            <p className="m-auto text-small text-fg-muted">{messengerWords.pickChat}</p>
-          ) : (
-            <ConversationView
-              key={open.conversation.id}
-              messenger={messenger}
-              row={open}
-              changed={changed}
-            />
-          )}
+          <Panel
+            messenger={messenger}
+            connected={connected}
+            open={open}
+            changed={changed}
+            onConnect={onConnect}
+          />
         </main>
       )}
+    </div>
+  );
+}
+
+/** The panel: nothing connected, no chat picked yet, or the open chat. */
+function Panel({
+  messenger,
+  connected,
+  open,
+  changed,
+  onConnect,
+}: {
+  readonly messenger: Messenger;
+  readonly connected: boolean | undefined;
+  readonly open: ConversationRow | undefined;
+  readonly changed: number;
+  readonly onConnect: (() => void) | undefined;
+}) {
+  if (connected === false) return <NoConnections onConnect={onConnect} />;
+  if (open === undefined) {
+    return <p className="m-auto text-small text-fg-muted">{messengerWords.pickChat}</p>;
+  }
+  return (
+    <ConversationView
+      key={open.conversation.id}
+      messenger={messenger}
+      row={open}
+      changed={changed}
+    />
+  );
+}
+
+function NoConnections({ onConnect }: { readonly onConnect: (() => void) | undefined }) {
+  const words = messengerWords.noConnections;
+  return (
+    <div className="m-auto max-w-md">
+      <EmptyState
+        title={words.title}
+        description={words.line}
+        {...(onConnect === undefined
+          ? {}
+          : { action: { label: words.connect, onClick: onConnect } })}
+      />
     </div>
   );
 }
@@ -120,5 +171,11 @@ function useOnePane(
  * Messenger, with its list on the window's frame and the open chat as the one panel.
  */
 export function MessengerWindow({ context }: PlaceViewProps) {
-  return <MessengerPage messenger={context.services.get(MessengerService)} />;
+  const { openSettings } = context;
+  return (
+    <MessengerPage
+      messenger={context.services.get(MessengerService)}
+      {...(openSettings === undefined ? {} : { onConnect: () => openSettings("connections") })}
+    />
+  );
 }
