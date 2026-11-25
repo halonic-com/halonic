@@ -36,9 +36,12 @@ export interface UntrustedText {
   text: string;
 }
 
-/** How one step of an action request ended. Steps the stepper never reached aren't listed. */
+/**
+ * How one step of an action request ended. Steps the stepper never reached
+ * aren't listed. For a stepper request (`InboxItem.stepper`) a step is one block.
+ */
 export interface ActionResultStep {
-  /** The step's number in the definition, from 1. */
+  /** The step's number in the definition, or the block's in a stepper request, from 1. */
   step: number;
   outcome: "succeeded" | "failed" | "skipped";
   /** The HTTP status, when the service answered. */
@@ -49,6 +52,8 @@ export interface ActionResultStep {
   failure?: ActionStepFailure;
   /** For `failed`: what the service said, untrusted. */
   error?: UntrustedText;
+  /** For `succeeded`: the user did it by hand ("Done by hand"), so the result says so. */
+  byHand?: true;
 }
 
 /**
@@ -68,7 +73,8 @@ export type ActionResultCheck =
   | { ok: false; problems: readonly string[] };
 
 /**
- * Whether an answer fits its item: an action item takes only an
+ * Whether an answer fits its item: an action item (one with `action` or
+ * `stepper`) takes only an
  * `action-result` that passes {@link checkActionResultAnswer}, any other item
  * only an option or a reply. Every `AgentMessaging` refuses an answer that
  * doesn't fit with `bad-answer`, before sending anything.
@@ -77,13 +83,15 @@ export type ActionResultCheck =
  * answerFitsItem(item, { kind: "reply", text: "Not yet" }); // false when `item.action` is set
  */
 export function answerFitsItem(item: InboxItem, answer: InboxAnswer): boolean {
-  if (item.action === undefined) return answer.kind !== "action-result";
+  if (item.action === undefined && item.stepper === undefined) {
+    return answer.kind !== "action-result";
+  }
   return answer.kind === "action-result" && checkActionResultAnswer(answer).ok;
 }
 
 const stepOutcomes: readonly string[] = ["succeeded", "failed", "skipped"];
 const answerFields = ["kind", "outcome", "steps"];
-const stepFields = ["step", "outcome", "status", "kept", "failure", "error"];
+const stepFields = ["step", "outcome", "status", "kept", "failure", "error", "byHand"];
 
 /**
  * Checks a value against the allow-list of an `action-result` answer
@@ -168,6 +176,7 @@ function stepProblems(value: unknown, at: string): string[] {
     oneOf(value["failure"], actionStepFailures) ? undefined : "not allowed",
   );
   only("error", "failed", untrustedTextProblem(value["error"]));
+  only("byHand", "succeeded", value["byHand"] === true ? undefined : "not true");
   if (outcome === "failed" && value["failure"] === undefined)
     problems.push(`${at}failure: missing`);
   return problems;

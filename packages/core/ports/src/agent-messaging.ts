@@ -1,5 +1,6 @@
 import type { ActionResultAnswer, InboxActionRequest } from "./agent-messaging-actions.ts";
 import type { ChannelResult, MessageSendOptions, MessageWork } from "./agent-messaging-channels.ts";
+import type { InboxStepperRequest } from "./agent-messaging-steppers.ts";
 
 /**
  * Version of the {@link AgentMessaging} port. A breaking change bumps it and comes with an ADR.
@@ -156,7 +157,7 @@ export interface MessagingProject {
 /**
  * A card or a question an agent put to the person. `question` is agent-written Markdown, as {@link Message}'s body.
  *
- * An item with `action` is an action item: a request that the person run a
+ * An item with `action` or `stepper` is an action item: a request that the person run a
  * user-only action stepper (ADR 2026-11-24, action sender). It offers no
  * options, `question` is the requester's reason, and it takes only an
  * `action-result` answer. Any other item takes only an option or a reply.
@@ -169,6 +170,11 @@ export interface InboxItem {
   options: readonly InboxItemOption[];
   /** For an action item, the request: a reviewed definition and its parameters, never a call. */
   action?: InboxActionRequest;
+  /**
+   * For an action item from a stored request, the stepper request at the
+   * revision its source pinned; set instead of `action`, never with it.
+   */
+  stepper?: InboxStepperRequest;
   /** The project it belongs to (for Paperclip, its task's project). Without one, apps show it under "No project". */
   project?: MessagingProject;
   /** Files the agent put on it, such as a screenshot, in the order they were added; often none. */
