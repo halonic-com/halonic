@@ -1,6 +1,6 @@
 # Decision: the first-run Ollama hint names the Check again button
 
-- Approval: [HAL-18262](/HAL/issues/HAL-18262), row W2 of Sofia's words check on HAL-18261, a small wording fix on an approved screen that the team decides (HAL-2282); Liam signs this note with the pull request
+- Approval: HAL-18262, row W2 of Sofia's words check on HAL-18261, a small wording fix on an approved screen that the team decides (HAL-2282); Liam signs this note with the pull request
 - Kind: user-visible
 - Task: HAL-18262
 
