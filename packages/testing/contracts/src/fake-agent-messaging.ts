@@ -288,11 +288,14 @@ export class FakeAgentMessaging implements AgentMessaging {
     return this.add("conversations", owner.source, added);
   }
 
-  /** Adds a message to a conversation, from its agent unless told otherwise; an agent's message waits for the person. */
+  /**
+   * Adds a message to a conversation, from its agent unless told otherwise; an agent's message
+   * waits for the person, except an `automatic` one, which isn't the agent's answer.
+   */
   addMessage(
     conversation: MessagingId,
     message: { body: string; attachments?: readonly FakeAttachment[] } & Partial<
-      Pick<Message, "author" | "to" | "work">
+      Pick<Message, "author" | "to" | "work" | "automatic">
     >,
   ): Message {
     const found = this.live.conversations.find((each) => each.id === conversation);
@@ -308,7 +311,7 @@ export class FakeAgentMessaging implements AgentMessaging {
       attachments: this.files.keep(found.source, attachments),
     };
     found.updatedAt = added.sentAt;
-    found.waitingForMe = author.kind === "agent";
+    if (added.automatic !== true) found.waitingForMe = author.kind === "agent";
     return this.add("messages", found.source, added);
   }
 

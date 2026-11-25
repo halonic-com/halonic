@@ -1,5 +1,12 @@
 import type { Message, MessagingId } from "@halonicjs/ports";
-import { Avatar, ChatText, decidedAt, useOpenExternal } from "@halonicjs/studio-kit";
+import {
+  Avatar,
+  ChatText,
+  decidedAt,
+  SparkIcon,
+  Tooltip,
+  useOpenExternal,
+} from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import { isChannel } from "../channel.ts";
 import type { PendingMessage } from "../chat-layout.ts";
@@ -10,8 +17,10 @@ import { authorOf, MessageTo, WorkLines } from "./channel-message.tsx";
 
 /**
  * One message (`messenger.chat-transcript`). The person's sits on the end side in a bubble with
- * its time under it. An agent's starts its run with the picture and "Name · 13:58" when `head`;
- * the rest of the run lines up under the name. `data-head` and `data-follows` let the transcript
+ * its time under it. An agent's sits on the start side in a bubble of its own, and starts its run
+ * with the picture and "Name · 13:58" when `head`; the rest of the run lines up under the name
+ * (`messenger.agent-bubbles`). An automatic note, such as a fast-response receipt, has a dashed
+ * edge and a small mark (`messenger.automatic-notes`). `data-head` and `data-follows` let the transcript
  * set a run's messages close together and a new run further apart. Each says who wrote it to a screen reader; in a
  * channel the person's say who they went to and what each agent did with them
  * (`messenger.channel-messages`).
@@ -62,8 +71,14 @@ export function MessageItem({
       </Bubble>
     );
   }
+  const automatic = message.automatic === true;
   return (
-    <li data-author={message.author.kind} {...runData(head, follows)} className="max-w-[80%]">
+    <li
+      data-author={message.author.kind}
+      {...(automatic ? { "data-automatic": "" } : {})}
+      {...runData(head, follows)}
+      className="max-w-[80%]"
+    >
       {head ? (
         // The sr-only "<name>: " says it, so a screen reader reads it once (MS11).
         <p aria-hidden="true" className="flex items-center gap-2 text-small text-fg-muted">
@@ -76,8 +91,37 @@ export function MessageItem({
           </span>
         </p>
       ) : null}
-      <div className="ps-9">{body}</div>
+      <div className="flex items-start gap-1 ps-9">
+        <div data-bubble className={agentBubble(automatic)}>
+          {automatic ? <span className="sr-only">{messengerWords.automatic(author)} </span> : null}
+          {body}
+        </div>
+        {automatic ? <AutomaticMark author={author} /> : null}
+      </div>
     </li>
+  );
+}
+
+/**
+ * An agent's bubble on the start side, on a neutral surface (plan HAL-18743, sketch 3.1). An
+ * automatic note has a dashed edge, so it doesn't read as the agent's answer (sketch 3.2).
+ */
+function agentBubble(automatic: boolean): string {
+  const edge = automatic ? "border-dashed border-border-strong" : "border-transparent";
+  return `min-w-0 rounded-lg border bg-surface-subtle px-3 py-2 wrap-break-word ${edge}`;
+}
+
+/** The small mark beside an automatic note; its tooltip says who wrote it. */
+function AutomaticMark({ author }: { readonly author: string }) {
+  return (
+    // The note's sr-only line already says it, so the tooltip is for the eye only.
+    <Tooltip text={messengerWords.automatic(author)} visualOnly>
+      {() => (
+        <span data-automatic-mark className="mt-2 size-3 shrink-0 text-fg-muted">
+          <SparkIcon />
+        </span>
+      )}
+    </Tooltip>
   );
 }
 
