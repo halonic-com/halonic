@@ -9,7 +9,7 @@ export const teamDetailWords = {
   seeAll: (count: number) => `See all ${count}`,
   back: "Back",
   unknownAgent: "Unknown agent",
-  notFound: "This isn't on the Paperclip any more.",
+  notFound: "This agent or seat is gone.",
   activity: {
     working: "Working",
     waiting: "Waiting",
@@ -23,13 +23,13 @@ export const teamDetailWords = {
   month: "This month",
   ofBudget: (budget: string, percent: number) => `of ${budget} · ${percent}%`,
   onSeat: (seat: string) => `On: ${seat}`,
-  noSeat: "On no seat",
+  noSeat: "Not on a seat",
   tokensByModel: "Tokens this week, by model",
   tokens: (input: string, cached: string, output: string) =>
     `${input} in · ${cached} cached · ${output} out`,
   manualReset: (reset: Seat["manualReset"], date: (at: string) => string) => {
     if (reset === "available") return "Manual reset available";
-    if (reset === "none") return "No manual reset";
+    if (reset === "none") return "Manual reset not offered";
     return `Manual reset used on ${date(reset.usedAt)}`;
   },
   resets: (time: string) => `resets ${time}`,
