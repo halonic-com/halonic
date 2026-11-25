@@ -123,19 +123,29 @@ export function sessionSettingsFolder(session: SandboxSession): SettingsFolderWr
       program: "sh",
       args: ["-c", scripts[operation], "sh", path],
     });
+    // A script that fails before it reads its input, such as a write whose folder can't be made,
+    // closes the pipe first: sending then fails with a broken pipe. Its exit code and error output
+    // say why, so the sending error is kept only for a script that otherwise succeeded.
+    const inputSent = sendInput(started.stdin, input).then(
+      () => null,
+      (error: unknown) => error,
+    );
+    let output: Uint8Array;
+    let errorTail: string;
     try {
-      const [output, errorTail] = await Promise.all([
+      [output, errorTail] = await Promise.all([
         readAll(started.stdout, sessionReadLimitBytes),
         outputTail(started.stderr, keptErrorCharacters),
-        sendInput(started.stdin, input),
       ]);
-      const exit = await started.exited;
-      return { code: exit.code, output, errorTail };
     } catch (error) {
-      // A read over the limit, or a broken pipe: the script must not run on unwatched.
+      // A read over the limit: the script must not run on unwatched.
       await started.kill();
       throw error;
     }
+    const exit = await started.exited;
+    const inputError = await inputSent;
+    if (exit.code === 0 && inputError !== null) throw inputError;
+    return { code: exit.code, output, errorTail };
   };
 
   const failed = (operation: Operation, path: string, result: ScriptResult): Error => {

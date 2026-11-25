@@ -184,4 +184,31 @@ verifies("harness-kit.session-settings-folder", () => {
 
     await expect(writer.read(join(tempFolder, "big.txt"))).rejects.toThrow(/over/);
   });
+
+  it("reports a script's own failure when it closed its input before the text was sent", async () => {
+    const session = containerSession();
+    session.start = async (command) => {
+      session.started.push(command);
+      return {
+        // The script exited before reading: sending its text breaks the pipe.
+        stdin: new WritableStream({
+          write: () => Promise.reject(new Error("write EPIPE")),
+        }),
+        stdout: new ReadableStream({ start: (controller) => controller.close() }),
+        stderr: new ReadableStream({
+          start: (controller) => {
+            controller.enqueue(new TextEncoder().encode("mkdir: Permission denied\n"));
+            controller.close();
+          },
+        }),
+        exited: Promise.resolve({ code: 1, signal: null, reason: "exited" as const }),
+        kill: async () => undefined,
+      };
+    };
+    const writer = sessionSettingsFolder(session);
+
+    await expect(writer.write("/halonic/home/.claude/settings.json", "{}")).rejects.toThrow(
+      /write .* failed with exit code 1: mkdir: Permission denied/,
+    );
+  });
 });
