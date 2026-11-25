@@ -20,6 +20,10 @@ export const messengerWords = {
   pickChat: "Pick a chat to read it.",
   searchLabel: "Search this chat",
   noMatches: "No message in this chat matches.",
+  /** One pane at a time in a narrow window: back from the open chat to the list (HAL-18074). */
+  backToChats: "Back to chats",
+  /** Read out when the agent writes after the chat opened: its name and the message's start. */
+  newMessage: (name: string, body: string) => `${name}: ${[...body].slice(0, 100).join("")}`,
   activity: {
     idle: "Idle",
     working: "Working",
@@ -46,12 +50,15 @@ export const messengerWords = {
     alsoInInbox: "Also in your Inbox. Answering here answers it there.",
     answeredBy: (name: string) => `${name} answered this first.`,
     answeredByYou: "You already answered this.",
+    /** Read out once an option answered the card, which then leaves the chat. */
+    answered: (option: string) => `Answered: ${option}.`,
   },
   askForUpdate: "Ask for an update",
   /** Files and screenshots in a chat: picked, pasted, or sent by the agent. */
   files: {
     attach: "Attach a file",
     remove: (name: string) => `Remove ${name}`,
+    removed: (name: string) => `${name} removed.`,
     /** Why a file wasn't added to the box; the limits are `messengerFileLimits`. */
     refused: {
       "too-large": (name: string) => `${name} is over 10 MB, so it wasn't added.`,

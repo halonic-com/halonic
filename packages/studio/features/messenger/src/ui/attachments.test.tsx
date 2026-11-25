@@ -167,7 +167,27 @@ verifies("messenger.files", () => {
       const remove = chip?.querySelector("button");
       expect(remove?.getAttribute("aria-label")).toBe(`Remove ${name}`);
       await press(remove);
-      expect(page.textContent).not.toContain(name);
+      expect(page.querySelector("main ul")).toBeNull();
+      expect(page.textContent).toContain(`${name} removed.`);
+    });
+
+    it("after Remove focuses the next file's Remove, else the one before, else Attach a file", async () => {
+      const { messaging } = chiefChat();
+      const page = await openMessenger(messaging);
+      await openChat(page, "Chief");
+      await attach(
+        page,
+        ["a.txt", "b.txt", "c.txt"].map((name) => new File(["x"], name, { type: "text/plain" })),
+      );
+      const removeOf = (name: string) => page.querySelector(`button[aria-label="Remove ${name}"]`);
+      await press(removeOf("a.txt"));
+      expect(document.activeElement).toBe(removeOf("b.txt"));
+      expect(page.textContent).toContain("a.txt removed.");
+      await press(removeOf("c.txt"));
+      expect(document.activeElement).toBe(removeOf("b.txt"));
+      await press(removeOf("b.txt"));
+      expect(document.activeElement).toBe(byText(page, "main button", "Attach a file"));
+      expect(page.textContent).toContain("b.txt removed.");
     });
   });
 });

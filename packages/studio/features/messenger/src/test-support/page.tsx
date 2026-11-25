@@ -5,7 +5,7 @@
  */
 
 import type { AgentMessaging } from "@halonicjs/ports";
-import { OpenExternalProvider } from "@halonicjs/studio-kit";
+import { NarrowProvider, OpenExternalProvider } from "@halonicjs/studio-kit";
 import { act } from "react";
 import { Messenger } from "../messenger.ts";
 import { MessengerPage } from "../ui/messenger-page.tsx";
@@ -18,18 +18,29 @@ export async function settle(): Promise<void> {
   });
 }
 
-/** Renders the Messenger and lets its first reads land; links it opens go to `opened`. */
+/**
+ * Renders the Messenger and lets its first reads land; links it opens go to `opened`. `narrow`
+ * renders it in a window narrower than 900px.
+ */
 export async function openMessenger(
   messaging: AgentMessaging,
   opened: string[] = [],
+  narrow = false,
 ): Promise<HTMLElement> {
   const page = render(
-    <OpenExternalProvider openExternal={async (address) => void opened.push(await address)}>
-      <MessengerPage messenger={new Messenger(messaging)} />
-    </OpenExternalProvider>,
+    <NarrowProvider narrow={narrow}>
+      <OpenExternalProvider openExternal={async (address) => void opened.push(await address)}>
+        <MessengerPage messenger={new Messenger(messaging)} />
+      </OpenExternalProvider>
+    </NarrowProvider>,
   );
   await settle();
   return page;
+}
+
+/** What the open chat's status region last read out: a new message or an answered card. */
+export function said(page: HTMLElement): string | null | undefined {
+  return page.querySelector('main p.sr-only[role="status"]')?.textContent;
 }
 
 /** Clicks an element and lets what it started land. */
