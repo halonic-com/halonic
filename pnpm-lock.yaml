@@ -3334,6 +3334,18 @@ importers:
 
   packages/studio/features/action-steppers:
     dependencies:
+      '@halonicjs/action-steppers':
+        specifier: workspace:*
+        version: link:../../../core/action-steppers
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../../../core/ports
+      '@halonicjs/schema-kit':
+        specifier: workspace:*
+        version: link:../../../core/schema-kit
+      '@halonicjs/std':
+        specifier: workspace:*
+        version: link:../../../core/std
       '@halonicjs/studio-kit':
         specifier: workspace:*
         version: link:../../kit
@@ -3771,6 +3783,9 @@ importers:
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../../core/std
+      '@halonicjs/studio-feature-action-steppers':
+        specifier: workspace:*
+        version: link:../action-steppers
       '@halonicjs/studio-feature-runs':
         specifier: workspace:*
         version: link:../runs
@@ -3787,6 +3802,9 @@ importers:
         specifier: 'catalog:'
         version: 19.3.1
     devDependencies:
+      '@halonicjs/action-steppers':
+        specifier: workspace:*
+        version: link:../../../core/action-steppers
       '@halonicjs/testing-contracts':
         specifier: workspace:*
         version: link:../../../testing/contracts

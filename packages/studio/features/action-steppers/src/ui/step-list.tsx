@@ -8,7 +8,7 @@ import {
   type StepperView,
   type StepView,
 } from "../stepper-view.ts";
-import { BrowserControls, BrowserInstructions } from "./browser-step.tsx";
+import { BrowserControls, BrowserCopy, BrowserInstructions } from "./browser-step.tsx";
 import { StepByHand } from "./manual-guide.tsx";
 import { RiskChip } from "./request-review.tsx";
 import { outcomeText, stepLabel, stepsHeading } from "./stepper-words.ts";
@@ -19,6 +19,11 @@ export interface StepListProps {
   readonly actions: StepperActions;
   /** Whether the steps can be worked on now: only while the request is `ready`. */
   readonly active: boolean;
+  /**
+   * Whether the request can only be reviewed here, such as Studio before the desktop shell runs
+   * steps: each browser step then offers **Copy instructions** alone, so the user can still do it.
+   */
+  readonly reviewOnly?: boolean;
   /** The `id` for the running step's "Running…" line, which says why the other buttons wait. */
   readonly runningId: string;
 }
@@ -30,7 +35,7 @@ export interface StepListProps {
  * stops there. While the request is ready, each step not done has **Do it by hand**, and the next
  * browser step has its own controls.
  */
-export function StepList({ view, actions, active, runningId }: StepListProps) {
+export function StepList({ view, actions, active, reviewOnly = false, runningId }: StepListProps) {
   const headingId = useId();
   if (view.steps.length === 0) return null;
   const next = active ? nextStep(view) : undefined;
@@ -53,6 +58,9 @@ export function StepList({ view, actions, active, runningId }: StepListProps) {
               <p className="text-body text-fg wrap-break-word">{step.preview}</p>
               {step.action.kind === "browser" ? (
                 <BrowserInstructions action={step.action} requester={view.requester} />
+              ) : null}
+              {reviewOnly && step.action.kind === "browser" ? (
+                <BrowserCopy action={step.action} requester={view.requester} />
               ) : null}
               {step === next && step.action.kind === "browser" ? (
                 <BrowserControls

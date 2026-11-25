@@ -13,8 +13,15 @@ file a request; they never run a step. Design: the architecture note on HAL-1749
 
 The screen draws a feature-local view model, `StepperView` in `src/stepper-view.ts`, and calls
 back through `StepperActions`. It holds no rules of its own beyond asking once more before an
-`irreversible` step. A later pull request fills the view model from `core/actions` and the app
-service and adds the screen to the Inbox.
+`irreversible` step.
+
+The Inbox opens an action item through `api.ts`: `reviewActionItem` checks the item's request again
+with `validateStepperRequest` from `core/action-steppers`, against the installed catalog
+(`ActionCatalogService`), applies the user's requester policy (`RequesterPolicyService`) to the
+source the messaging provider attests, and builds the view in review mode (requirement
+`action-steppers.review-mode`). Until the desktop shell runs steps (HAL-17535), the stage is
+`desktop-only`, and `reviewOnlyActions` wires only **Decline**. Without the services, the catalog is
+empty and the default policy holds.
 
 | State | What the user sees |
 | --- | --- |
@@ -23,7 +30,8 @@ service and adds the screen to the Inbox.
 | `missing-permission` | the missing permission by name and **Sign in again** |
 | `declined`, `expired`, `finished` | one line, no buttons |
 | `not-available` | the request's definition isn't in this version; no steps |
-| `desktop-only` | "Open it in the desktop app to run it." and **Decline** |
+| `desktop-only` | "Open it in the desktop app to run it.", **Copy instructions** on each browser step, and **Decline** |
+| `blocked` | "Blocked by your settings. This requester may only ask for routine changes." and **Decline** |
 
 Every sentence is in `src/ui/stepper-words.ts`.
 

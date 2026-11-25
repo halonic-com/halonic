@@ -41,7 +41,15 @@ export interface AgentItemCardProps {
   readonly readAttachment: (attachment: MessagingId) => Promise<AttachmentRead>;
   /** Whether its title takes the focus when it opens: in a bundle, only the first card's does. */
   readonly focusOnOpen?: boolean;
+  /**
+   * For an action item whose request Halonic can't read: why, one reason each. The card then says
+   * so and offers only **Decline** (`inbox.agent-action-items`).
+   */
+  readonly cannotRun?: readonly string[];
 }
+
+/** How an action request ends when the user declines it: it never ran, so no step is listed. */
+const declined: InboxAnswer = { kind: "action-result", outcome: "declined", steps: [] };
 
 /** Where this card's own answer is. */
 type Sent =
@@ -67,6 +75,7 @@ export function AgentItemCard({
   answer,
   readAttachment,
   focusOnOpen = true,
+  cannotRun = [],
 }: AgentItemCardProps) {
   useEveryMinute();
   const titleId = useId();
@@ -126,7 +135,15 @@ export function AgentItemCard({
           onRetry={sent.kind === "failed" ? () => void send(sent.answer) : null}
           detail={sent.kind === "failed" ? failureDetailOf(sent.error) : null}
         />
-        {item.options.length === 0 ? (
+        {item.action === undefined ? null : (
+          <CannotRun
+            reasons={cannotRun}
+            unavailable={unavailable}
+            busy={busy(declined)}
+            onDecline={() => void send(declined)}
+          />
+        )}
+        {item.action === undefined && item.options.length === 0 ? (
           <ReplyField
             value={reply}
             onChange={setReply}
@@ -134,7 +151,8 @@ export function AgentItemCard({
             busy={busy({ kind: "reply", text: reply })}
             onSend={() => void send({ kind: "reply", text: reply })}
           />
-        ) : (
+        ) : null}
+        {item.action !== undefined || item.options.length === 0 ? null : (
           <div className="flex flex-wrap gap-2">
             {item.options.map((option, index) => (
               <Button
@@ -179,6 +197,39 @@ function decidedLine(item: AgentItem, sent: Sent): string | null {
   return sent.kind === "elsewhere"
     ? answeredLine(false, sent.by, sent.answeredAt, undefined)
     : null;
+}
+
+interface CannotRunProps {
+  readonly reasons: readonly string[];
+  readonly unavailable: { readonly reason: string } | undefined;
+  readonly busy: boolean;
+  readonly onDecline: () => void;
+}
+
+/**
+ * An action request Halonic can't read: the reasons as plain text, never Markdown, and **Decline**,
+ * so the agent hears it won't run. Nothing here can run it. Without reasons it shows nothing.
+ */
+function CannotRun({ reasons, unavailable, busy, onDecline }: CannotRunProps) {
+  if (reasons.length === 0) return null;
+  return (
+    <>
+      <Callout tone="attention" title="This card has a stepper Halonic can't read:">
+        <ul className="list-disc pl-5">
+          {reasons.map((reason) => (
+            <li key={reason} className="wrap-break-word">
+              {reason}
+            </li>
+          ))}
+        </ul>
+      </Callout>
+      <div>
+        <Button variant="secondary" unavailable={unavailable} busy={busy} onClick={onDecline}>
+          Decline
+        </Button>
+      </div>
+    </>
+  );
 }
 
 interface ReplyFieldProps {

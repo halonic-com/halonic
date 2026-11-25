@@ -13,6 +13,10 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@halonicjs/action-steppers": "workspace:*",
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/schema-kit": "workspace:*",
+    "@halonicjs/std": "workspace:*",
     "@halonicjs/studio-kit": "workspace:*",
     "@halonicjs/studio-shell": "workspace:*",
     "react": "catalog:"
