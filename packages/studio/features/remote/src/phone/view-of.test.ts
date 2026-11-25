@@ -40,6 +40,7 @@ function holding(overrides: Partial<ClientHolding> = {}): ClientHolding {
     answersRisky: false,
     ownerCheckAvailable: false,
     updateNeeded: false,
+    olderComputer: false,
     ...overrides,
   };
 }

@@ -50,6 +50,7 @@ export function remoteView(overrides: Partial<RemoteView> = {}): RemoteView {
     offReason: undefined,
     answersRisky: false,
     updateNeeded: false,
+    olderComputer: false,
     ...overrides,
   };
 }

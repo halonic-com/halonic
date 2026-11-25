@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 
-import type { PairingQrPayload } from "@halonicjs/ports";
+import {
+  gatewayFallbackProtocolVersion,
+  gatewayMaxMessageBytes,
+  type PairingQrPayload,
+} from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it } from "vitest";
@@ -234,5 +238,35 @@ verifies("remote.phone-computer-agents", () => {
     await step(() => tunnel.push(computer, { state: "removed" }));
     expect(document.querySelector("h2")?.textContent).toBe("Removed from Tim's laptop");
     expect(text()).not.toContain("Reporter");
+  });
+
+  it("offers Agents only, with Update Halonic on…, when the computer speaks only version 3", async () => {
+    const { tunnel, hosts } = await mountApp();
+    await press("Scan code");
+    await press("Open agents");
+    const [[computer, host] = []] = [...hosts];
+    if (computer === undefined || host === undefined) throw new Error("No gateway client held.");
+    await step(() => {
+      tunnel.push(computer, { state: "connected" });
+      host.tunnel.status("connected");
+      host.tunnel.open(1);
+      host.tunnel.host(1, { type: "error", code: "unsupported-version" });
+      host.drop();
+      host.generation = 2;
+      host.tunnel.status("connected");
+      host.tunnel.open(2);
+      host.host({
+        type: "welcome",
+        replyTo: host.tunnel.lastOf("hello").id,
+        version: gatewayFallbackProtocolVersion,
+        maxMessageBytes: gatewayMaxMessageBytes,
+      });
+      host.list([reporter]);
+    });
+    expect(text()).toContain(
+      "Update Halonic on Tim's laptop to use Inbox and Messenger from your phone.",
+    );
+    expect(text()).toContain("Agents still works.");
+    expect(text()).toContain("Reporter");
   });
 });
