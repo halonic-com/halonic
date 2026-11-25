@@ -52,6 +52,23 @@ verifies("paperclip.pr-watcher-rereview", () => {
     expect(note?.body).not.toContain("this voids the approval");
   });
 
+  test("sends a rebase-only push after Liam's approval on Liam's paths to Julian when it doesn't carry over (HAL-18459)", async () => {
+    const rebased = setup({
+      tasks: [task(5701, agents.mateo, { branch: mateoBranch })],
+      pulls: [{ ...approvedByLiam, repo: "halonic-com/cloud" }],
+      byPaths: "liam",
+      files: ["pnpm-lock.yaml"],
+      rebaseOnly: async () => true,
+    });
+    expect(await rebased.run()).toMatchObject({ handedOff: 1, failed: [] });
+    expect(rebased.handoffs.map(({ to }) => to)).toEqual([agents.julian]);
+    const body = handoffBody(rebased.comments);
+    expect(body).toContain("#5701: only a rebase since Liam's approval on `4999bbb`");
+    expect(body).toContain(
+      '"Julian: re-approved on head `5701aaa` (rebase only, range-diff vs `4999bbb`)"',
+    );
+  });
+
   test("sends a rebase-only push on Liam's own pull request after Julian's approval to Julian, with the re-approval line", async () => {
     const liamBranch = "liam/HAL-5701-work";
     const rebased = setup({

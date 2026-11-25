@@ -1,4 +1,4 @@
-import { isSecurityPath } from "../reviewer-paths.ts";
+import { isSecurityPath, julianRebaseRefusal } from "../reviewer-paths.ts";
 import type { PullFacts } from "./decide.ts";
 import { type FakeTask, fakePaperclip } from "./fakes.test-helper.ts";
 import type { Reviewer } from "./handoff.ts";
@@ -77,7 +77,11 @@ export function setup({
       now: new Date("2026-11-24T17:00:00Z"),
       route: async (pull) => {
         routed.push(pull.number);
-        return { reviewer: byPaths, security: files.some(isSecurityPath) };
+        return {
+          reviewer: byPaths,
+          security: files.some(isSecurityPath),
+          rebaseRefusal: julianRebaseRefusal({ files, branch: pull.branch }),
+        };
       },
       ...(rebaseOnly === undefined ? {} : { rebaseOnly }),
     });

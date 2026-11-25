@@ -19,6 +19,7 @@ import {
   pushedKey,
   pushedMessage,
   type Refused,
+  type Reviewer,
   type ReviewerRoute,
   reviewerOf,
   type SinceApproval,
@@ -131,7 +132,7 @@ async function refusedOf(
   const suspects = pulls.filter((pull) => julianOnlyOnHead(pull, memory));
   const refused = await Promise.all(
     suspects.map(async (pull) =>
-      julianRefused(pull, (await reads.routeOf(pull)).reviewer) ? [pullId(pull)] : [],
+      julianRefused(pull, await reads.routeOf(pull)) ? [pullId(pull)] : [],
     ),
   );
   return new Set(refused.flat());
@@ -214,6 +215,21 @@ async function warn(
   return options.dryRun || (await options.paperclip.note(task.id, body)) === "written";
 }
 
+/**
+ * The reviewer of one pull request: Julian for a rebase-only push since
+ * Liam's approval, whose re-approval counts on any path the rebase rule
+ * allows (`julianRebaseRefusal`, HAL-18459); otherwise the reviewer of its paths.
+ */
+async function reviewerAfter(
+  pull: PullFacts,
+  since: SinceApproval | undefined,
+  reads: Reads,
+): Promise<Reviewer> {
+  const paths = await reads.routeOf(pull);
+  const rebaseAfterLiam = since?.rebaseOnly === true && since.by === "Liam";
+  return rebaseAfterLiam && paths.rebaseRefusal === null ? "julian" : paths.reviewer;
+}
+
 async function handOff(
   options: ReviewStepOptions,
   task: WatchedTask,
@@ -235,10 +251,8 @@ async function handOff(
       )
     ).filter((entry): entry is [string, SinceApproval] => entry[1] !== undefined),
   );
-  // A rebase-only push after Liam's approval goes to the reviewer of its paths too:
-  // outside Julian's limits his re-approval doesn't count (HAL-18190), so only Liam's would.
   const byPull = await Promise.all(
-    waiting.map(async (pull) => (await reads.routeOf(pull)).reviewer),
+    waiting.map((pull) => reviewerAfter(pull, since.get(pullId(pull)), reads)),
   );
   const author = branchOwner(first.branch);
   const blocking = blockingReviewer(waiting.filter((pull) => answers.has(pullId(pull))));

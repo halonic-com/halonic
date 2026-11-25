@@ -139,6 +139,23 @@ verifies("paperclip.merge-control-julian-scope", () => {
     expect(reasonsOf({ texts: [julian], branch: "changeset-release/main" }).added).toEqual([]);
   });
 
+  test("his rebase-only re-approval of a head Liam approved counts on Liam's paths (HAL-18459)", () => {
+    const texts = [
+      said(`Liam: approved on head \`${old.slice(0, 7)}\``, 40),
+      said(
+        `Julian: re-approved on head \`${head.slice(0, 7)}\` (rebase only, range-diff vs \`${old.slice(0, 7)}\`)`,
+        20,
+      ),
+    ];
+    const lockfile = { files: ["pnpm-lock.yaml"], fileNet: {}, texts };
+    expect(reasonsOf(lockfile).added).toEqual([1]);
+    const fence = { ...lockfile, files: ["packages/x/src/sandbox/fence.ts"] };
+    expect(reasonsOf(fence).added).toEqual([]);
+    expect(reasonsOf({ ...lockfile, branch: "changeset-release/main" }).added).toEqual([]);
+    expect(reasonsOf({ ...lockfile, filesTotal: 2 }).added).toEqual([]);
+    expect(reasonsOf({ ...lockfile, texts: texts.slice(1) }).added).toEqual([]);
+  });
+
   test("Liam's change request on the current head isn't overruled by Julian", () => {
     const request = said("Liam: changes requested, please fix the guard", 20);
     expect(

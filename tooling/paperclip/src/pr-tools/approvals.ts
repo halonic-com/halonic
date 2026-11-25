@@ -6,11 +6,9 @@ import { byReviewer } from "../pr-watcher/github.ts";
  * head, or the same with "re-approved" or "approved again", as the Merger reads
  * them (HAL-15553). Julian's counts only within his limits, or on a pull
  * request Liam wrote; nobody approves their own. Julian's "re-approved on
- * head `<new>` (rebase only, range-diff vs `<old>`)" counts outside his
- * limits no more than any other approval of his: the Merger's gate
- * (`outsideJulianScope` in `merge-control/approval.ts`) waits for Liam there,
- * and carries Liam's own approval over a rebase only when the diff is
- * identical (HAL-18190).
+ * head `<new>` (rebase only, range-diff vs `<old>`)" also counts outside his
+ * limits when Liam approved `<old>` and `julianRebaseRefusal` allows it, as
+ * in the Merger's gate (`merge-control/approval.ts`, HAL-18459).
  */
 
 /** The reviewers whose signed approvals count. */
@@ -72,6 +70,12 @@ export interface ApprovedPull {
    * `outsideJulianScope` applies), or undefined when the changed files weren't read.
    */
   readonly reviewer: "julian" | "liam" | undefined;
+  /**
+   * Why Julian's rebase-only re-approval can't count here
+   * (`julianRebaseRefusal`), null when it can, or undefined when the changed
+   * files weren't read.
+   */
+  readonly rebaseRefusal?: string | null;
 }
 
 /** Each signed approval, with whether it counts on this pull request's current head. */
@@ -94,7 +98,7 @@ export function judgeApprovals(signed: readonly SignedApproval[], pull: Approved
     }
     const anyPaths = pull.author === "liam";
     if (!anyPaths && pull.reviewer === "liam") {
-      return outsideLimits(approval, signed);
+      return outsideLimits(approval, signed, pull.rebaseRefusal);
     }
     return anyPaths || pull.reviewer === "julian"
       ? { ...approval, counts: true, note: "unless it's a security or release pull request" }
@@ -107,12 +111,15 @@ export function judgeApprovals(signed: readonly SignedApproval[], pull: Approved
 }
 
 /**
- * Julian's approval outside his limits doesn't count, not even as a
- * re-approval after a rebase-only push: the Merger's gate waits for Liam
- * there (#5559, #5676, HAL-18190). Liam's approval carries over by itself when
- * the rebase left the diff identical.
+ * Julian's approval outside his limits counts only as a re-approval after a
+ * rebase-only push of a head Liam approved, on a pull request
+ * `julianRebaseRefusal` allows (HAL-18459).
  */
-function outsideLimits(approval: SignedApproval, signed: readonly SignedApproval[]): Approval {
+function outsideLimits(
+  approval: SignedApproval,
+  signed: readonly SignedApproval[],
+  refusal: string | null | undefined,
+): Approval {
   const { rebaseOf } = approval;
   if (rebaseOf === undefined) {
     return { ...approval, counts: false, note: "outside Julian's limits (HAL-14809)" };
@@ -123,12 +130,17 @@ function outsideLimits(approval: SignedApproval, signed: readonly SignedApproval
       liamRebase === undefined &&
       (head.startsWith(rebaseOf) || rebaseOf.startsWith(head)),
   );
-  const why = liamApproved
-    ? `rebase only since Liam's approval on ${rebaseOf}`
-    : `re-approval after a rebase, and Liam didn't approve ${rebaseOf}`;
-  return {
-    ...approval,
-    counts: false,
-    note: `${why}, but outside Julian's limits the Merger waits for Liam (HAL-18190)`,
-  };
+  if (!liamApproved) {
+    return {
+      ...approval,
+      counts: false,
+      note: `re-approval after a rebase, and Liam didn't approve ${rebaseOf}`,
+    };
+  }
+  const since = `rebase only since Liam's approval on ${rebaseOf}`;
+  if (refusal === null) {
+    return { ...approval, counts: true, note: `${since} (HAL-18459)` };
+  }
+  const why = refusal ?? "the changed files weren't read";
+  return { ...approval, counts: false, note: `${since}, but ${why}: needs Liam` };
 }
