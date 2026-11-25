@@ -105,9 +105,15 @@ verifies("paperclip-client.board-requests", () => {
       });
       const items = await connect(acmeWith([binding]), { offline: false }).listInboxItems();
       const question = items.find((each) => each.id === proposalItem)?.question;
-      expect(question).toContain("Give Bo a secret");
+      expect(question).toContain("Give Bo access to a secret");
       expect(question).toContain("- Secret: Acme deploy token");
-      expect(question).toContain("- Setting: env.ACME_DEPLOY_TOKEN");
+      expect(question).toContain("- Used as: env.ACME_DEPLOY_TOKEN");
+    });
+
+    it("says the value stays sealed in Paperclip", async () => {
+      const items = await connect(acmeWith([proposal()]), { offline: false }).listInboxItems();
+      const question = items.find((each) => each.id === proposalItem)?.question;
+      expect(question).toContain("The value stays sealed in Paperclip. Halonic never reads it.");
     });
 
     it("offers only Reject when Paperclip says this person can't approve it", async () => {
@@ -119,6 +125,17 @@ verifies("paperclip-client.board-requests", () => {
       const item = items.find((each) => each.id === proposalItem);
       expect(item?.options.map((option) => option.id)).toEqual(["reject"]);
       expect(item?.question).toContain("Company admin access required. Approve it in Paperclip.");
+    });
+
+    it("never doubles the full stop when Paperclip's reason already ends in one", async () => {
+      const blocked = proposal({
+        viewerCanApprove: false,
+        approveBlockReason: "Company admin access required.",
+      });
+      const items = await connect(acmeWith([blocked]), { offline: false }).listInboxItems();
+      const question = items.find((each) => each.id === proposalItem)?.question;
+      expect(question).toContain("Company admin access required. Approve it in Paperclip.");
+      expect(question).not.toContain("..");
     });
 
     it("approves with an empty body, and rejects with the note or a fixed reason", async () => {
