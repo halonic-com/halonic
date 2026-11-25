@@ -71,4 +71,19 @@ class NearbyHitsTest {
     assertNull(queue.next())
     assertEquals("a", queue.add("a", "a"))
   }
+
+  @Test
+  fun a_resolve_still_running_from_an_ended_browse_makes_the_next_browse_wait() {
+    val queue = ResolveQueue<String>(limit = 2)
+    assertEquals("a", queue.add("a", "a"))
+    // The browse ends while Android still resolves "a" (HAL-16882).
+    queue.clear()
+    // The next browse finds "a" again and "b": both wait for Android.
+    assertNull(queue.add("a", "a"))
+    assertNull(queue.add("b", "b"))
+    // Android's resolve of the old "a" ends; the new hits follow in turn.
+    assertEquals("a", queue.next())
+    assertEquals("b", queue.next())
+    assertNull(queue.next())
+  }
 }

@@ -43,10 +43,20 @@ object NearbyHits {
  * one service at a time and fails a second call with
  * `FAILURE_ALREADY_ACTIVE`, so the plugin resolves them in turn. At most
  * [limit] wait; later ones are dropped.
+ *
+ * Android's resolve keeps running when a browse ends, so the queue outlives
+ * the browse (HAL-16882): [clear] drops the waiting hits but stays busy
+ * until that resolve ends and [next] is called. Otherwise the next browse's
+ * first resolve would fail as already active and never be tried again.
  */
 class ResolveQueue<T>(private val limit: Int) {
   private val waiting = ArrayDeque<Pair<String, T>>()
+
+  /** The hit being resolved, or null when there is none or its browse ended. */
   private var active: String? = null
+
+  /** Whether Android is resolving, for this browse or an ended one. */
+  private var busy = false
 
   /**
    * Adds the hit [key]. Answers [item] when it can be resolved at once, and
@@ -55,7 +65,8 @@ class ResolveQueue<T>(private val limit: Int) {
    */
   fun add(key: String, item: T): T? {
     if (key == active || waiting.any { it.first == key } || waiting.size >= limit) return null
-    if (active == null) {
+    if (!busy) {
+      busy = true
       active = key
       return item
     }
@@ -68,16 +79,18 @@ class ResolveQueue<T>(private val limit: Int) {
     waiting.removeAll { it.first == key }
   }
 
-  /** The resolve in progress ended. Answers the next hit to resolve, if any. */
+  /** Android's resolve ended, in any browse. Answers the next hit to resolve, if any. */
   fun next(): T? {
     val (key, item) = waiting.removeFirstOrNull() ?: run {
       active = null
+      busy = false
       return null
     }
     active = key
     return item
   }
 
+  /** The browse ended: drops the waiting hits. A resolve still running ends with [next]. */
   fun clear() {
     waiting.clear()
     active = null

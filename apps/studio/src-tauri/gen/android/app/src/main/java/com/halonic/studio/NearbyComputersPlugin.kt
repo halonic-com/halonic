@@ -55,6 +55,13 @@ class NearbyComputersPlugin(private val host: Activity) : Plugin(host) {
   private var search: Search? = null
   private var inForeground = true
 
+  /**
+   * Before Android 14: the hits waiting to be resolved, one at a time. It
+   * belongs to the plugin, not a search, because Android's resolve outlives
+   * the search that started it (HAL-16882).
+   */
+  private val resolves = ResolveQueue<Resolve>(NearbyHits.MAX_PENDING)
+
   /** Starts browsing for the shell's browse `browse`, ending any earlier one. */
   @Command
   fun browse(invoke: Invoke) {
@@ -113,6 +120,26 @@ class NearbyComputersPlugin(private val host: Activity) : Plugin(host) {
     return true
   }
 
+  /** A hit to resolve, and the search that found it. */
+  private class Resolve(val search: Search, val info: NsdServiceInfo)
+
+  /** Asks Android to resolve [next]; when that ends, resolves the one after it, in any search. */
+  @Suppress("DEPRECATION")
+  private fun resolve(next: Resolve) {
+    nsd?.resolveService(next.info, object : NsdManager.ResolveListener {
+      override fun onServiceResolved(resolved: NsdServiceInfo) {
+        main.post {
+          next.search.resolved(resolved)
+          resolves.next()?.let(::resolve)
+        }
+      }
+
+      override fun onResolveFailed(failed: NsdServiceInfo, errorCode: Int) {
+        main.post { resolves.next()?.let(::resolve) }
+      }
+    })
+  }
+
   /** The shell's end of the search: what it is told, tagged with the browse's number. */
   private class Shell(private val channel: Channel, private val browse: Long) {
     fun found(key: String, name: String?, address: String, port: Int) {
@@ -136,9 +163,6 @@ class NearbyComputersPlugin(private val host: Activity) : Plugin(host) {
     /** The hits found and not lost since, by service name. */
     private val present = mutableSetOf<String>()
 
-    /** Before Android 14: the hits waiting to be resolved, one at a time. */
-    private val resolves = ResolveQueue<NsdServiceInfo>(NearbyHits.MAX_PENDING)
-
     /** From Android 14: each hit's callback, which tells its address and its changes. */
     private val watched = mutableMapOf<String, NsdManager.ServiceInfoCallback>()
 
@@ -146,7 +170,7 @@ class NearbyComputersPlugin(private val host: Activity) : Plugin(host) {
       val key = info.serviceName
       if (key in present || present.size >= NearbyHits.MAX_PENDING) return@onMain
       present.add(key)
-      if (Build.VERSION.SDK_INT >= ANDROID_14) watch(info) else resolves.add(key, info)?.let(::resolve)
+      if (Build.VERSION.SDK_INT >= ANDROID_14) watch(info) else resolves.add(key, Resolve(this, info))?.let(::resolve)
     }
 
     override fun onServiceLost(info: NsdServiceInfo) = onMain {
@@ -193,18 +217,9 @@ class NearbyComputersPlugin(private val host: Activity) : Plugin(host) {
       browsing.found(key, NearbyHits.name(info.attributes), address, info.port)
     }
 
-    @Suppress("DEPRECATION")
-    private fun resolve(info: NsdServiceInfo) {
-      manager.resolveService(info, object : NsdManager.ResolveListener {
-        override fun onServiceResolved(resolved: NsdServiceInfo) = onMain {
-          report(resolved, resolved.host?.let { NearbyHits.address(listOf(it)) })
-          resolves.next()?.let(::resolve)
-        }
-
-        override fun onResolveFailed(failed: NsdServiceInfo, errorCode: Int) = onMain {
-          resolves.next()?.let(::resolve)
-        }
-      })
+    /** Before Android 14: Android resolved one of this search's hits. */
+    fun resolved(info: NsdServiceInfo) {
+      if (!ended) report(info, info.host?.let { NearbyHits.address(listOf(it)) })
     }
 
     @RequiresApi(ANDROID_14)
