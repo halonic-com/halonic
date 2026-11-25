@@ -1,7 +1,7 @@
 //! Tests for `studio.src-tauri.update-track` and
 //! `studio.src-tauri.update-track-key`.
 
-use super::{ENDPOINT, UpdateTrack, track_endpoint, track_pubkey};
+use super::{ENDPOINT, UpdateTrack, install_track, track_endpoint, track_pubkey};
 use crate::record::{RecordRead, UpdaterRecord, read_record, record_text};
 
 fn read(text: &str) -> UpdaterRecord {
@@ -45,27 +45,62 @@ fn update_track_leaves_an_endpoint_without_a_track_as_it_is() {
 }
 
 #[test]
-fn update_track_is_stable_when_nothing_chose_one() {
-    assert_eq!(UpdateTrack::default(), UpdateTrack::Stable);
-    assert_eq!(UpdaterRecord::default().track, UpdateTrack::Stable);
-    assert_eq!(read(r#"{"format":1}"#).track, UpdateTrack::Stable);
+fn update_track_with_no_choice_follows_the_build() {
+    assert_eq!(UpdaterRecord::default().chosen_track, None);
+    assert_eq!(read(r#"{"format":1}"#).chosen_track, None);
+    assert_eq!(install_track(None, "0.1.1"), UpdateTrack::Stable);
+    assert_eq!(install_track(None, "0.1.1-preview.3"), UpdateTrack::Preview);
+    assert_eq!(install_track(None, "0.1.1-rc.1"), UpdateTrack::Stable);
 }
 
 #[test]
-fn update_track_preview_is_kept_in_the_record() {
-    let record = read(r#"{"format":1,"track":"preview"}"#);
-    assert_eq!(record.track, UpdateTrack::Preview);
-    assert!(record_text(&record).contains(r#""track": "preview""#));
-    assert_eq!(read(&record_text(&record)), record);
+fn update_track_a_saved_choice_wins_over_the_build() {
+    assert_eq!(
+        install_track(Some(UpdateTrack::Stable), "0.1.1-preview.3"),
+        UpdateTrack::Stable
+    );
+    assert_eq!(
+        install_track(Some(UpdateTrack::Preview), "0.1.1"),
+        UpdateTrack::Preview
+    );
 }
 
 #[test]
-fn update_track_unknown_or_broken_value_is_stable_and_keeps_the_rest_of_the_record() {
+fn update_track_the_choice_is_kept_in_the_record() {
+    for (name, track) in [
+        ("stable", UpdateTrack::Stable),
+        ("preview", UpdateTrack::Preview),
+    ] {
+        let record = read(&format!(r#"{{"format":1,"chosenTrack":"{name}"}}"#));
+        assert_eq!(record.chosen_track, Some(track));
+        assert!(record_text(&record).contains(&format!(r#""chosenTrack": "{name}""#)));
+        assert_eq!(read(&record_text(&record)), record);
+    }
+}
+
+#[test]
+fn update_track_a_record_without_a_choice_writes_none() {
+    assert!(!record_text(&UpdaterRecord::default()).contains("chosenTrack"));
+}
+
+#[test]
+fn update_track_the_old_track_key_is_not_a_choice() {
+    // Builds before HAL-18656 wrote "track": "stable" on every start.
+    let record = read(r#"{"format":1,"track":"stable"}"#);
+    assert_eq!(record.chosen_track, None);
+    assert_eq!(
+        install_track(record.chosen_track, "0.1.1-preview.3"),
+        UpdateTrack::Preview
+    );
+}
+
+#[test]
+fn update_track_unknown_or_broken_choice_is_none_and_keeps_the_rest_of_the_record() {
     for track in [r#""nightly""#, "3", "null", r#"{"name":"preview"}"#] {
         let record = read(&format!(
-            r#"{{"format":1,"automatic":false,"track":{track}}}"#
+            r#"{{"format":1,"automatic":false,"chosenTrack":{track}}}"#
         ));
-        assert_eq!(record.track, UpdateTrack::Stable, "{track}");
+        assert_eq!(record.chosen_track, None, "{track}");
         assert!(!record.automatic, "{track}");
     }
 }

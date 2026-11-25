@@ -14,7 +14,7 @@ use serde_json::Value;
 pub const ENDPOINT: &str =
     "https://updates.halonic.com/{{track}}/{{target}}-{{arch}}/{{current_version}}";
 
-/// Which builds an install updates to. Stable unless the person chose Preview.
+/// Which builds an install updates to: see [`install_track`].
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum UpdateTrack {
@@ -73,16 +73,33 @@ pub fn track_pubkey(keys: &str, track: UpdateTrack) -> Result<Option<String>, se
     }
 }
 
-/// Reads the record's `track`. Anything but `preview` is Stable, so a value
-/// a newer Halonic wrote, or a broken one, never makes the whole record
-/// unreadable and never moves an install off the released builds.
-pub(crate) fn track_or_stable<'de, D: Deserializer<'de>>(
+/// The track an install follows: the person's choice, or with none saved,
+/// the track its build came from, so a Preview build (`0.1.1-preview.42`)
+/// keeps getting Preview builds and every other build Stable (HAL-18656).
+pub fn install_track(chosen: Option<UpdateTrack>, current: &str) -> UpdateTrack {
+    chosen.unwrap_or_else(|| build_track(current))
+}
+
+/// The track `version` was built for.
+pub fn build_track(version: &str) -> UpdateTrack {
+    if version.contains("-preview.") {
+        UpdateTrack::Preview
+    } else {
+        UpdateTrack::Stable
+    }
+}
+
+/// Reads the record's `chosenTrack`. Anything but `stable` or `preview`
+/// counts as no choice, so a value a newer Halonic wrote, or a broken one,
+/// never makes the whole record unreadable.
+pub(crate) fn chosen_or_none<'de, D: Deserializer<'de>>(
     deserializer: D,
-) -> Result<UpdateTrack, D::Error> {
+) -> Result<Option<UpdateTrack>, D::Error> {
     let value = Value::deserialize(deserializer)?;
     Ok(match value.as_str() {
-        Some("preview") => UpdateTrack::Preview,
-        _ => UpdateTrack::Stable,
+        Some("stable") => Some(UpdateTrack::Stable),
+        Some("preview") => Some(UpdateTrack::Preview),
+        _ => None,
     })
 }
 

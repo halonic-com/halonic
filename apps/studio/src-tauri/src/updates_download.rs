@@ -37,7 +37,7 @@ pub(super) fn start_download<R: Runtime>(app: &AppHandle<R>) {
         unit: Unit::Bytes,
     });
     inner.notify();
-    let track = inner.record.track;
+    let track = inner.track();
     let task_app = app.clone();
     inner.download = Some(tauri::async_runtime::spawn(async move {
         download(&task_app, &found, track).await;
@@ -89,6 +89,11 @@ async fn download<R: Runtime>(app: &AppHandle<R>, found: &Update, track: UpdateT
         Err(error) => Err(error),
     };
     let mut inner = lock(app);
+    // The person picked the other track while this finished: its update
+    // isn't kept, since it would install with the other track's key.
+    if inner.track() != track {
+        return;
+    }
     inner.download = None;
     match result {
         Ok(Some(ready)) => {

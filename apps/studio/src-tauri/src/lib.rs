@@ -39,8 +39,7 @@
 //! commands with `phone_tunnel_watch`, `tunnel_send` and `tunnel_end_session`
 //! (capabilities/phone-tunnel.json) and the computer picker's
 //! `phone_nearby_browse` and `phone_nearby_stop` (capabilities/phone-nearby.json)
-//! and `phone_open_settings` and
-//! `phone_open_tailscale` (capabilities/phone-screens.json); the Studio it then opens is
+//! and `phone_open_settings` and `phone_open_tailscale` (capabilities/phone-screens.json); the Studio it then opens is
 //! served by the computer and gets no command at all. The navigation guard keeps
 //! everything but the confirmed address out of the window. On macOS and Linux,
 //! `server_session_open` shows the brief in a second window whose page no
@@ -443,6 +442,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             updates::update_restart,
             #[cfg(desktop)]
             updates::update_set_automatic,
+            #[cfg(desktop)]
+            updates::track::update_set_track,
             server_session::server_session_open,
             #[cfg(desktop)]
             login_item::login_item_get,

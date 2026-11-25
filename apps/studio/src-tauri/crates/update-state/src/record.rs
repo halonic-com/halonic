@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use crate::status::{CheckFailure, JustUpdated, UpdateState, notes_url};
-use crate::track::{UpdateTrack, track_or_stable};
+use crate::track::{UpdateTrack, chosen_or_none};
 use crate::version::Version;
 
 /// The record's format. A newer one is never written over (failure path 2).
@@ -35,9 +35,15 @@ pub struct UpdaterRecord {
     pub bad_signature: Option<BadSignature>,
     #[serde(default)]
     pub install: Option<InstallRecord>,
-    /// Which builds this install updates to (HAL-18480).
-    #[serde(default, deserialize_with = "track_or_stable")]
-    pub track: UpdateTrack,
+    /// The update track the person chose in About Halonic, written only
+    /// when they pick one (HAL-18656). The `track` key that 0.1.x builds
+    /// before it wrote on every start isn't a choice, so it isn't read.
+    #[serde(
+        default,
+        deserialize_with = "chosen_or_none",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub chosen_track: Option<UpdateTrack>,
     /// Fields a newer Halonic of the same format wrote, kept as they are.
     #[serde(flatten)]
     pub other: Map<String, Value>,
@@ -108,7 +114,7 @@ impl Default for UpdaterRecord {
             last_result: None,
             bad_signature: None,
             install: None,
-            track: UpdateTrack::Stable,
+            chosen_track: None,
             other: Map::new(),
         }
     }
