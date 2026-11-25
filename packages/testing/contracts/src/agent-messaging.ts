@@ -94,6 +94,54 @@ export function agentMessagingContract(name: string, make: MakeAgentMessaging): 
         expect(result).toEqual({ outcome: "refused", reason: "bad-answer" });
       });
 
+      it("answers an item's questions only with answers, and no other item with them", async () => {
+        const { fake, port, source, item } = await setUp();
+        const asking = fake.addInboxItem(source.id, {
+          question: "Two open decisions",
+          options: [],
+          questions: [
+            {
+              id: "repo",
+              prompt: "Where does the code live?",
+              selection: "single",
+              required: true,
+              options: [
+                { id: "separate", label: "A separate repo" },
+                { id: "mono", label: "The monorepo" },
+              ],
+            },
+            {
+              id: "phase",
+              prompt: "What goes into phase 2?",
+              selection: "multiple",
+              required: false,
+              options: [
+                { id: "tests", label: "Tests" },
+                { id: "docs", label: "Docs" },
+              ],
+            },
+          ],
+        });
+        const answers = {
+          kind: "answers",
+          answers: [
+            { question: "repo", options: ["separate"] },
+            { question: "phase", options: ["tests", "docs"] },
+          ],
+        } as const;
+
+        const option = await port.answer(asking.id, { kind: "option", option: "separate" });
+        const toPlain = await port.answer(item.id, answers);
+        const answered = await port.answer(asking.id, answers);
+        const [listed] = (await port.listInboxItems()).filter((each) => each.id === asking.id);
+
+        expect(option).toEqual({ outcome: "refused", reason: "bad-answer" });
+        expect(toPlain).toEqual({ outcome: "refused", reason: "bad-answer" });
+        expect(answered.outcome).toBe("answered");
+        expect(listed?.questions).toEqual(asking.questions);
+        expect(listed?.state).toMatchObject({ kind: "answered", answer: answers });
+      });
+
       it("sends a message with a file to one agent, and reads the file's bytes back", async () => {
         const { port, chat, chief } = await setUp();
         const bytes = new Uint8Array([0, 1, 2, 250, 255]);

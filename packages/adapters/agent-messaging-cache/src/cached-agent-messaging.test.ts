@@ -249,6 +249,35 @@ verifies("agent-host.agent-messaging-cache", () => {
       expect(offline?.state).toMatchObject({ kind: "answered", answer: result });
     });
 
+    it("keeps an item's questions and its answers for an offline read", async () => {
+      const { source } = await readAcme();
+      const questions = [
+        {
+          id: "phase",
+          prompt: "What goes into phase 2?",
+          selection: "multiple",
+          required: true,
+          options: [
+            { id: "tests", label: "Tests" },
+            { id: "docs", label: "Docs" },
+          ],
+        },
+      ] as const;
+      const item = fake.addInboxItem(source.id, { question: "Phase 2", options: [], questions });
+      const answer = {
+        kind: "answers",
+        answers: [{ question: "phase", options: ["tests", "docs"], text: "Docs last" }],
+      } as const;
+      expect((await messaging.answer(item.id, answer)).outcome).toBe("answered");
+      const live = await messaging.listInboxItems();
+
+      fake.goOffline(source.id);
+      const offline = (await messaging.listInboxItems()).find((kept) => kept.id === item.id);
+      expect(offline).toEqual(live.find((kept) => kept.id === item.id));
+      expect(offline?.questions).toEqual(questions);
+      expect(offline?.state).toMatchObject({ kind: "answered", answer });
+    });
+
     it("keeps no key, Authorization header or request in any cache file", async () => {
       await readAcme();
       const files = await filesUnder(cacheFolder);

@@ -66,6 +66,14 @@ export {
   messageWorkReasonMax,
 } from "./agent-messaging-channels.ts";
 export {
+  type InboxQuestion,
+  type InboxQuestionAnswer,
+  type InboxQuestionsAnswer,
+  inboxQuestionOptionsMax,
+  inboxQuestionsMax,
+  questionsAnswerFits,
+} from "./agent-messaging-questions.ts";
+export {
   checkInboxStepperRequest,
   type InboxStepperCheck,
   type InboxStepperRequest,

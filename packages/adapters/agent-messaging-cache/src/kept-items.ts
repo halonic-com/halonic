@@ -6,7 +6,10 @@ import type {
   InboxActionRequest,
   InboxAnswer,
   InboxItem,
+  InboxItemOption,
   InboxItemState,
+  InboxQuestion,
+  InboxQuestionAnswer,
   Message,
   MessageWork,
   MessagingAgent,
@@ -66,11 +69,12 @@ export function keptInboxItem(item: InboxItem): InboxItem {
     source: item.source,
     from: keptAuthor(item.from),
     question: item.question,
-    options: item.options.map((option) => ({ id: option.id, label: option.label })),
+    options: item.options.map(keptOption),
     createdAt: item.createdAt,
     state: keptState(item.state),
     attachments: item.attachments.map(keptAttachment),
   };
+  if (item.questions !== undefined) kept.questions = item.questions.map(keptQuestion);
   if (item.action !== undefined) kept.action = keptAction(item.action);
   if (item.project !== undefined) kept.project = { id: item.project.id, name: item.project.name };
   if (item.work !== undefined) kept.work = item.work;
@@ -129,8 +133,31 @@ function keptState(state: InboxItemState): InboxItemState {
 function keptAnswer(answer: InboxAnswer): InboxAnswer {
   if (answer.kind === "reply") return { kind: "reply", text: answer.text };
   if (answer.kind === "action-result") return keptActionResult(answer);
+  if (answer.kind === "answers") {
+    return { kind: "answers", answers: answer.answers.map(keptQuestionAnswer) };
+  }
   const kept: InboxAnswer = { kind: "option", option: answer.option };
   if (answer.note !== undefined) kept.note = answer.note;
+  return kept;
+}
+
+function keptOption(option: InboxItemOption): InboxItemOption {
+  return { id: option.id, label: option.label };
+}
+
+function keptQuestion(question: InboxQuestion): InboxQuestion {
+  return {
+    id: question.id,
+    prompt: question.prompt,
+    selection: question.selection,
+    options: question.options.map(keptOption),
+    required: question.required,
+  };
+}
+
+function keptQuestionAnswer(answer: InboxQuestionAnswer): InboxQuestionAnswer {
+  const kept: InboxQuestionAnswer = { question: answer.question, options: [...answer.options] };
+  if (answer.text !== undefined) kept.text = answer.text;
   return kept;
 }
 

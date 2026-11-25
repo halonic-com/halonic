@@ -1,0 +1,77 @@
+// Inbox items that ask several questions, or one the person answers with
+// several options (requirement `ports.agent-messaging-questions`). A single
+// single-select question stays a plain item with `options` and an `option`
+// answer, so apps and sources that only know those keep working.
+import type { InboxItemOption } from "./agent-messaging.ts";
+
+/** The most questions one item asks; a source maps no more, the wire takes no more. */
+export const inboxQuestionsMax = 20;
+
+/** The most options one question offers or one answer picks. */
+export const inboxQuestionOptionsMax = 50;
+
+/**
+ * One question of an inbox item that asks several, or that the person answers
+ * with several options. `prompt` is agent-written Markdown, as the item's
+ * `question`. `single` takes at most one option, `multiple` any number of
+ * them; a `required` question takes at least one.
+ */
+export interface InboxQuestion {
+  id: string;
+  prompt: string;
+  selection: "single" | "multiple";
+  options: readonly InboxItemOption[];
+  required: boolean;
+}
+
+/** The person's answer to one {@link InboxQuestion}: the IDs of the options picked, in the order offered. */
+export interface InboxQuestionAnswer {
+  /** The question's `id`. */
+  question: string;
+  options: readonly string[];
+  /** A written answer the source kept with it, such as Paperclip's "other" text. Apps don't send one yet. */
+  text?: string;
+}
+
+/**
+ * The answer to an item with `questions`: one entry per question answered,
+ * each question at most once. It is the only answer such an item takes, and
+ * no other item takes it.
+ */
+export interface InboxQuestionsAnswer {
+  kind: "answers";
+  answers: readonly InboxQuestionAnswer[];
+}
+
+/**
+ * Whether an `answers` answer fits an item's questions: every question it
+ * names is one the item asks, named once; every option it picks is one that
+ * question offers, picked once; a `single` question has at most one option and
+ * a `required` one at least one.
+ *
+ * @example
+ * questionsAnswerFits(questions, { kind: "answers", answers: [{ question: "repo", options: ["separate"] }] });
+ */
+export function questionsAnswerFits(
+  questions: readonly InboxQuestion[],
+  answer: InboxQuestionsAnswer,
+): boolean {
+  const named = answer.answers.map((each) => each.question);
+  if (new Set(named).size !== named.length) return false;
+  const fits = answer.answers.every((each) => {
+    const question = questions.find((asked) => asked.id === each.question);
+    return question !== undefined && optionsFit(question, each.options);
+  });
+  if (!fits) return false;
+  return questions.every(
+    (question) =>
+      !question.required ||
+      answer.answers.some((each) => each.question === question.id && each.options.length > 0),
+  );
+}
+
+function optionsFit(question: InboxQuestion, picked: readonly string[]): boolean {
+  if (new Set(picked).size !== picked.length) return false;
+  if (question.selection === "single" && picked.length > 1) return false;
+  return picked.every((option) => question.options.some((offered) => offered.id === option));
+}

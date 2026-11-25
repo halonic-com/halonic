@@ -107,12 +107,20 @@ export function sourceDownLine(source: MessagingSource | undefined, now: Date): 
 }
 
 /**
- * How an item was answered: the option's label, the reply in quotes, or how an action request
- * ended ("succeeded") until the Inbox shows action items in full.
+ * How an item was answered: the option's label, the labels picked for its questions, the reply in
+ * quotes, or how an action request ended ("succeeded") until the Inbox shows action items in full.
  */
 export function answerText(item: AgentItem, answer: InboxAnswer): string {
   if (answer.kind === "reply") return `“${answer.text}”`;
   if (answer.kind === "action-result") return answer.outcome;
+  if (answer.kind === "answers") {
+    return answer.answers
+      .flatMap((each) => {
+        const offered = item.questions?.find((question) => question.id === each.question)?.options;
+        return each.options.map((id) => offered?.find((option) => option.id === id)?.label ?? id);
+      })
+      .join(", ");
+  }
   return item.options.find((option) => option.id === answer.option)?.label ?? answer.option;
 }
 

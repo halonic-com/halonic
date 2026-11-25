@@ -111,6 +111,35 @@ verifies("server.messaging-routes", () => {
       expect([wrongMethod.status, unknownCall.status]).toEqual([404, 404]);
     });
 
+    it("refuses an answers answer over its limits, and a question ID that is empty", async () => {
+      const { server } = messagingServer(new FakeAgentMessaging());
+      const headers = await signedIn(server);
+      const answer = (answers: unknown) =>
+        callMessaging(server, "POST", "answer", {
+          headers,
+          body: { item: "i-1", answer: { kind: "answers", answers } },
+        });
+      const one = (question: string, options: string[]) => ({ question, options });
+
+      const fits = await answer([one("repo", ["mono"])]);
+      const tooManyQuestions = await answer(Array.from({ length: 21 }, (_, n) => one(`q${n}`, [])));
+      const tooManyOptions = await answer([
+        one(
+          "repo",
+          Array.from({ length: 51 }, (_, n) => `o${n}`),
+        ),
+      ]);
+      const longId = await answer([one("repo", ["x".repeat(257)])]);
+      const emptyId = await answer([one("", ["mono"])]);
+      const longText = await answer([{ ...one("repo", []), text: "x".repeat(20_001) }]);
+
+      // The wire takes it; the item doesn't exist, so the port answers not-found.
+      expect(fits.status).toBe(404);
+      expect(
+        [tooManyQuestions, tooManyOptions, longId, emptyId, longText].map((each) => each.status),
+      ).toEqual([400, 400, 400, 400, 400]);
+    });
+
     it("passes a focus report on to the poll loop", async () => {
       const { server, focus } = messagingServer(new FakeAgentMessaging());
       const headers = await signedIn(server);
