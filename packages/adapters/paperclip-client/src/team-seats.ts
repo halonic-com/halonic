@@ -54,12 +54,28 @@ function stateOf(record: JsonRecord, windows: readonly SeatWindow[]): SeatState 
 }
 
 /**
+ * Why the seat's newest read failed, from the plugin's `lastError`. A signed-out
+ * seat has its own state, and a seat with no error was read fine or only too
+ * long ago, so neither has a `failedRead`. The plugin's summary doesn't say
+ * when the failed read ran, so `at` is the summary's own time: the newest
+ * moment the failure is known to hold.
+ */
+function failedReadOf(record: JsonRecord, state: SeatState, at: string): Pick<Seat, "failedRead"> {
+  const error = text(record, "lastError");
+  if (state !== "not-read" || error === undefined) {
+    return {};
+  }
+  return { failedRead: { cause: error === "rate-limited" ? "rate-limited" : "other", at } };
+}
+
+/**
  * The seats of a `seats/summary` answer, by their board label only. Each
  * field is picked by name, so anything else the route might send (an
  * account, a folder, a connection) never reaches a `Seat`. The route has
  * one proposal for the whole pool, so it goes on each pool seat. The route
  * says only whether the manual reset is used, not when, so a used one reads
- * as `none` left.
+ * as `none` left. The plugin keeps a failed seat's last good windows and
+ * `asOf`, so a `failedRead` seat carries those unchanged.
  */
 export function toSeats(ids: PaperclipIds, answer: unknown): Seat[] {
   const summary = asRecord(answer);
@@ -77,13 +93,14 @@ export function toSeats(ids: PaperclipIds, answer: unknown): Seat[] {
     }
     const windows = asRecords(field(record, "windows")).flatMap((window) => toWindow(window) ?? []);
     const role = roles[text(record, "role") ?? ""] ?? "other";
+    const state = stateOf(record, windows);
     const seat: Seat = {
       id: ids.make("seat", id),
       source: ids.source(),
       asOf: text(record, "asOf") ?? at,
       label: text(record, "label") ?? id,
       role,
-      state: stateOf(record, windows),
+      state,
       windows,
       agents: asRecords(field(record, "agents")).flatMap((agent) => {
         const agentId = text(agent, "agentId");
@@ -91,6 +108,7 @@ export function toSeats(ids: PaperclipIds, answer: unknown): Seat[] {
       }),
       manualReset: field(record, "manualResetUsed") === true ? "none" : "available",
       ...(proposal !== undefined && role === "pool" ? { proposal } : {}),
+      ...failedReadOf(record, state, at),
     };
     return [seat];
   });
