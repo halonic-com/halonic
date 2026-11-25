@@ -180,7 +180,7 @@ function reuse(main: Main): StepRun {
       BASE_REF: main.baseRef ?? "main",
       REPO: repo,
       GITHUB_OUTPUT: outputs,
-      BUILD_SHARDS: "alpha ./packages/alpha/*\nbeta ./packages/beta/*\n",
+      QUEUE_BUILD_SHARDS: "alpha ./packages/alpha/*\nbeta ./packages/beta/*\n",
     },
   });
   return {

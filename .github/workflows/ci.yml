@@ -135,8 +135,9 @@ env:
   # package, and the merge queue and main test everything. "off" tests every
   # package again (HAL-12539).
   AFFECTED_TESTS: "on"
-  # The build job's shards (HAL-14115), for every event:
-  # one line per shard, its name, then the Turbo folder or package filters
+  # The build job's shards on a pull request (HAL-14115); the merge queue
+  # and pushes use QUEUE_BUILD_SHARDS below. One line per shard, its name,
+  # then the Turbo folder or package filters
   # it runs every task of. Each package belongs to exactly one shard; the
   # first shard checks that with a dry run. Eight shards since HAL-15167
   # (board decision on HAL-14831, 21 Nov), nine since HAL-16095 (below):
@@ -166,6 +167,21 @@ env:
     apps-host ./apps/* ./packages/host/* !@halonicjs/app-studio
     app-studio @halonicjs/app-studio
     tooling-targets ./tooling/* ./packages/targets/*/* @halonicjs/adapter-password-scrypt
+  # The build job's shards in the merge queue and on a push (HAL-17908): the
+  # same packages in four jobs instead of nine. There most tasks are cache
+  # hits, so seven of the nine shards ran about a minute and then waited up
+  # to 4-5 minutes (p90) for a large slot: one group took about 13 of the
+  # pool's 19 slots (report on HAL-17891). Each line joins whole pull-request
+  # shards: adapters-a, adapters-b and core; features-a, features-b and
+  # studio-testing; apps-host and tooling-targets; app-studio as before, so
+  # its 6 test workers stay alone on their slot. Pull requests keep nine:
+  # GitHub's runners don't wait, and fewer shards would make each one slower.
+  # base-tests reads main's test results by these names.
+  QUEUE_BUILD_SHARDS: |
+    adapters-core ./packages/adapters/* ./packages/core/* !@halonicjs/adapter-password-scrypt
+    studio ./packages/studio/* ./packages/studio/features/* ./packages/testing/*
+    apps-host-tooling ./apps/* ./packages/host/* ./tooling/* ./packages/targets/*/* @halonicjs/adapter-password-scrypt !@halonicjs/app-studio
+    app-studio @halonicjs/app-studio
 
 jobs:
   changes:
@@ -763,25 +779,18 @@ jobs:
     timeout-minutes: 15
     # One job took 14-17 minutes in the merge queue and up to 24 on a cold
     # pull request (HAL-9808, HAL-14115), so every event spreads the work over
-    # the shards in BUILD_SHARDS. On a pull request the guard job reads every
+    # the shards in BUILD_SHARDS (pull requests) or QUEUE_BUILD_SHARDS
+    # (everything else). On a pull request the guard job reads every
     # shard's test results; in the merge queue and on a push, the trace job.
     strategy:
       fail-fast: false
       matrix:
-        shard:
-          - adapters-a
-          - adapters-b
-          - features-a
-          - features-b
-          - core
-          - studio-testing
-          - apps-host
-          - app-studio
-          - tooling-targets
+        # The names of BUILD_SHARDS, or of QUEUE_BUILD_SHARDS, in order.
+        shard: ${{ fromJSON(github.event_name == 'pull_request' && '["adapters-a","adapters-b","features-a","features-b","core","studio-testing","apps-host","app-studio","tooling-targets"]' || '["adapters-core","studio","apps-host-tooling","app-studio"]') }}
         # Test workers for one shard on our own CI server, over the repo
         # variable CI_SELF_HOSTED_TEST_WORKERS: app-studio runs one package's
         # many small test files, so it uses the slot's 6 CPUs (see
-        # BUILD_SHARDS).
+        # BUILD_SHARDS). It is a shard in both lists, so this never adds a job.
         include:
           - shard: app-studio
             test-workers: "6"
@@ -811,38 +820,58 @@ jobs:
           fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 1 }}
           fetch-tags: true
       - uses: $/.github/actions/setup
+      # Outside a pull request the steps below read the queue's list.
+      - name: Choose this event's shards
+        if: github.event_name != 'pull_request'
+        run: |
+          {
+            echo "BUILD_SHARDS<<SHARDS_END"
+            echo "$QUEUE_BUILD_SHARDS"
+            echo "SHARDS_END"
+          } >> "$GITHUB_ENV"
       # The shards together must run exactly what one job would: every
       # package in exactly one shard, and one shard per line of BUILD_SHARDS.
+      # A pull request checks the queue's list too, so a package a new folder
+      # leaves out fails there, not in the merge queue.
       # Turbo's dry run lists the packages without running anything. `read`
       # doesn't expand the filters' `*`; the shell would.
       - name: The shards cover every package once
         if: strategy.job-index == 0
         env:
           JOBS: ${{ strategy.job-total }}
+          PR_SHARDS: ${{ github.event_name == 'pull_request' && 'true' || '' }}
         run: |
           packages() { pnpm exec turbo run typecheck lint test build --dry=json "$@" | jq -r '.packages[]' | sort; }
           all=$(packages)
-          shards=0 each=""
-          while read -r name rest; do
-            [ -n "$name" ] || continue
-            read -ra words <<< "$rest"
-            mine=$(packages "${words[@]/#/--filter=}")
-            if [ -z "$mine" ]; then
-              echo "::error::The $name shard has no package."
-              exit 1
+          # covers <list name> <list>: how many shards it has, or a failure.
+          covers() {
+            local list="$1" shards=0 each="" name rest mine words
+            while read -r name rest; do
+              [ -n "$name" ] || continue
+              read -ra words <<< "$rest"
+              mine=$(packages "${words[@]/#/--filter=}")
+              if [ -z "$mine" ]; then
+                echo "::error::The $name shard of $list has no package." >&2
+                return 1
+              fi
+              echo "$list $name: $(wc -l <<< "$mine") packages" >&2
+              each+="$mine"$'\n'
+              shards=$((shards + 1))
+            done <<< "$2"
+            if [ "$(sort <<< "${each%$'\n'}")" != "$all" ]; then
+              echo "::error::The shards of $list don't hold every package exactly once (< missing, > in two shards):" >&2
+              diff <(echo "$all") <(sort <<< "${each%$'\n'}") >&2 || true
+              return 1
             fi
-            echo "$name: $(wc -l <<< "$mine") packages"
-            each+="$mine"$'\n'
-            shards=$((shards + 1))
-          done <<< "$BUILD_SHARDS"
+            echo "$shards"
+          }
+          shards=$(covers BUILD_SHARDS "$BUILD_SHARDS")
           if [ "$shards" != "$JOBS" ]; then
             echo "::error::BUILD_SHARDS has $shards shards, the build job's matrix $JOBS."
             exit 1
           fi
-          if [ "$(sort <<< "${each%$'\n'}")" != "$all" ]; then
-            echo "::error::The shards don't hold every package exactly once (< missing, > in two shards):"
-            diff <(echo "$all") <(sort <<< "${each%$'\n'}") || true
-            exit 1
+          if [ "$PR_SHARDS" = true ]; then
+            covers QUEUE_BUILD_SHARDS "$QUEUE_BUILD_SHARDS" > /dev/null
           fi
           echo "all: $(wc -l <<< "$all") packages"
       # On our own CI server Turbo's cache lives on the server's cache disk,
@@ -1132,9 +1161,10 @@ jobs:
         with:
           pattern: test-results-*
           path: ${{ runner.temp }}/results
+      # Never a pull request, so the queue's shards.
       - name: Unpack every shard's test results
         run: |
-          for shard in $(awk '{ print $1 }' <<< "$BUILD_SHARDS"); do
+          for shard in $(awk '{ print $1 }' <<< "$QUEUE_BUILD_SHARDS"); do
             archive="$RUNNER_TEMP/results/test-results-$shard/test-results.tar"
             if [ ! -f "$archive" ]; then
               echo "::error::The $shard shard uploaded no test results."
@@ -1243,7 +1273,9 @@ jobs:
             echo "::notice title=Merge base's tests::The pull request is into $BASE_REF, not main, so the merge base is tested."
             exit 0
           fi
-          read -ra shards <<< "$(awk 'NF { printf "%s ", $1 }' <<< "$BUILD_SHARDS")"
+          # Main's runs build the queue's shards (HAL-17908). A run from
+          # before that has none of these names and is passed over.
+          read -ra shards <<< "$(awk 'NF { printf "%s ", $1 }' <<< "$QUEUE_BUILD_SHARDS")"
           trusted='.workflow_runs[]
             | select(.head_sha == $sha and .status == "completed" and .conclusion == "success"
               and .path == ".github/workflows/ci.yml"
@@ -1251,7 +1283,7 @@ jobs:
               and ((.event == "push" and .head_branch == "main")
                 or (.event == "merge_group" and (.head_branch | startswith("gh-readonly-queue/main/")))))
             | .id'
-          # "<shard> <artifact id>" for every shard of BUILD_SHARDS, or a
+          # "<shard> <artifact id>" for every shard of QUEUE_BUILD_SHARDS, or a
           # failure when one is missing or expired.
           artifacts() {
             local run="$1" sha="$2" list shard id
