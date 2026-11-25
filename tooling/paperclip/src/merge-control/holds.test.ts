@@ -104,6 +104,20 @@ verifies("paperclip.merge-control-unjudged-hold", () => {
     expect(exitOf([])).toBeNull();
   });
 
+  test("#6052, 25 Nov: a group cancelled by its first failed job holds its head on an empty state", () => {
+    // Run 45599725895: Leak guard failed, "Cancel the run on the first failure" ended it as cancelled.
+    const cancelled: GroupRun = {
+      ...group(6052, 45599725895, 8),
+      conclusion: "cancelled",
+      failedJobs: [{ id: 1, name: "Leak guard", url: "", failedSteps: ["Run the leak guard"] }],
+    };
+    const facts = snapshot({ pulls: [failedOut(6052, 4)], groupRuns: [cancelled] });
+    const decision = pass(facts);
+    expect(enqueued(decision)).toEqual([]);
+    expect(decision.state.failedHeads).toEqual({ "6052": headOf(6052) });
+    expect(enqueued(pass(facts, decision.state))).toEqual([]);
+  });
+
   test("a queued pull request is never held this way", () => {
     const decision = pass(
       snapshot({ pulls: [failedOut(5, 90)], queue: [entry(5, 1)] }),

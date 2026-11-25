@@ -17,6 +17,12 @@ export const stallMinutes = 30;
 export const stallFront = 3;
 /** Queued runs older than this are GitHub ghosts that can't be cancelled (409). */
 export const staleRunHours = 24;
+/**
+ * A queued group run younger than this is never cancelled: the pass reads
+ * the queue before the run list, so a group GitHub rebuilt in between looks
+ * gone (run 45600263634, 25 Nov, went green and merged).
+ */
+export const staleRunMinMinutes = 3;
 
 /** Why reruns pause this pass, or undefined. */
 export function rerunPause(context: PassContext): string | undefined {
@@ -161,8 +167,8 @@ export function stalledGroups(context: PassContext): void {
 
 /**
  * Cancels queued merge-group runs whose commit is no longer a current group,
- * and queued pull request runs on a head that was pushed over, if less than
- * a day old (board, 20 Nov).
+ * at least 3 minutes and less than a day old, and queued pull request runs
+ * on a head that was pushed over (board, 20 Nov).
  */
 export function staleRuns(context: PassContext): void {
   const { snapshot } = context;
@@ -170,8 +176,14 @@ export function staleRuns(context: PassContext): void {
     snapshot.queue.flatMap((entry) => (entry.groupHead === null ? [] : [entry.groupHead])),
   );
   const young = (at: string) => minutesSince(context, at) < staleRunHours * 60;
+  const settled = (at: string) => minutesSince(context, at) >= staleRunMinMinutes;
   for (const run of snapshot.mergeGroupRuns) {
-    if (run.status === "queued" && young(run.createdAt) && !groups.has(run.headSha)) {
+    if (
+      run.status === "queued" &&
+      young(run.createdAt) &&
+      settled(run.createdAt) &&
+      !groups.has(run.headSha)
+    ) {
       context.actions.push({
         kind: "cancel-run",
         runId: run.id,
