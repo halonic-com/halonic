@@ -10,7 +10,7 @@ The engine's `ConfigMeter` shall be a `Meter` that holds each principal to the `
 - In an organisation's scope (`o/<id>`), the limits shall be the organisation's pool and the member's own share, checked share first. A member past their share shall be refused with `plan.member.<unit>` and `canUpgrade: "false"` while the pool has room. An `actor` the organisation doesn't list shall be refused with `plan.member-removed`, and a scope that names no organisation in the file, or that is neither `u/` nor `o/`, with `plan.none`.
 - `check` shall refuse once a unit's use and what steps hold back reach its limit. Only a run start shall count against `runs`, with the runs going counted as used (the member's own against their share, all of the scope's against the pool) since a run is counted when it ends, and before it, the member's `concurrency` and then the organisation's shall refuse with `plan.concurrency`, naming the cap that was hit, when as many runs are going as the cap allows.
 - `reserve` shall hold back a step's maximum in cost, minutes and model calls, checking the pool and the member's share in the same change, and refuse with `phase: "reserve"`, `needed` and `left` when that much isn't left. A unit the step sets no maximum for shall hold back nothing, and refuse once it is used up. `settle` shall let go of the step's hold and count its harness time. A hold never settled shall lapse after two days, twice the longest harness step.
-- `record` shall count a model call as one step, its input and output tokens and its cost (0 when a subscription paid), count nothing for an answer from the cache, and count a run's end as one run.
+- `record` shall count a model call as one step, its input and output tokens and its cost (0 when a subscription paid), count nothing for an answer from the cache, and count a run's end as one run. A run's end recorded again shall count nothing while the meter still keeps its run's id: for two days after its end was counted, and as long as the ids of the scope's newer run ends leave room for it in 8 KiB, since an answer lost after the count is tried again and two hosts can both end a run.
 - A `stop` limit per `run` or per `step` shall make the meter refuse to be created, naming the limit, since the meter is asked by principal and couldn't keep to it.
 - A scope's counts shall stay within what `Coordination` keeps for one value, however many people use the scope: a member's own use shall be counted only for the limits of their share, an organisation whose members' shares couldn't be counted in half that space shall make the meter refuse to be created, and a hold that would grow the counts past it shall throw rather than be counted.
 
@@ -42,6 +42,12 @@ Rationale: a self-hoster can cap a team without Halonic Cloud (design, section 1
 - Given a member's `concurrency: 1` and an organisation's `concurrency: 3`,
   when the member starts a run with 1 of theirs going, or anyone starts one with 3 going,
   then it is refused with `plan.concurrency` and `cap: "member"`, or `cap: "scope"`.
+- Given a run whose end was counted an hour ago,
+  when its end is recorded again,
+  then nothing more is counted; when another run's end is recorded, it counts as one run.
+- Given a run whose end was counted two days ago,
+  when its end is recorded again,
+  then it counts as one more run, since its id is no longer kept.
 - Given a limit of 10 cost per month with 7 used,
   when a step reserves 2 and then another reserves 2,
   then the first is held and the second is refused with `phase: "reserve"`, `needed: "2"` and `left: "1"`.
