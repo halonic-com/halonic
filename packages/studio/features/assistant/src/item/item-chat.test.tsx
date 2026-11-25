@@ -132,3 +132,19 @@ verifies("assistant.chat.ask-about", () => {
     act(() => root.unmount());
   });
 });
+
+verifies("assistant.chat.ask-about-placeholder", () => {
+  it("gives the box the item-page chat's placeholder with the item's name", async () => {
+    const context = windowOf(fakeHost());
+    await itemChat.askAbout(summarize, "Summarize", context);
+    await show(<AssistantPanel context={context} title="Assistant" onClose={() => {}} />);
+    expect(box().placeholder).toBe("What should change in Summarize?");
+  });
+
+  it("keeps the box's own placeholder in a chat about no item", async () => {
+    const context = windowOf(fakeHost());
+    await itemChat.describe("Make a workflow that ", context);
+    await show(<AssistantPanel context={context} title="Assistant" onClose={() => {}} />);
+    expect(box().placeholder).toBe("Ask for a change…");
+  });
+});

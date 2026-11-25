@@ -82,7 +82,7 @@ export function ChatBox(props: {
       <StripAboveBox view={view} host={host} box={props.box} announce={props.announce} />
       {props.glow === true ? null : chips}
       <BuildComposer
-        {...agentBox(agent)}
+        {...boxWords(agent, view?.placeholder)}
         answering={view?.answering === true}
         box={props.box}
         onSend={(message, putBack) => {
@@ -111,9 +111,12 @@ function sendWait(loading: boolean, reason: string | undefined): ButtonUnavailab
   return loading || reason === undefined ? undefined : { reason };
 }
 
-/** An agent chat's box is named for the agent: "Message Triage", with "Message Triage…". */
-function agentBox(agent: ChatAgent | undefined) {
-  if (agent === undefined) return {};
+/**
+ * An agent chat's box is named for the agent: "Message Triage", with "Message Triage…". A Build
+ * chat's box keeps its own words, unless the chat was given a placeholder.
+ */
+function boxWords(agent: ChatAgent | undefined, placeholder: string | undefined) {
+  if (agent === undefined) return placeholder === undefined ? {} : { placeholder };
   return {
     label: agentWords.boxLabel(agent.name),
     placeholder: agentWords.placeholder(agent.name),
