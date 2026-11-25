@@ -69,6 +69,11 @@ export function decidedAt(at: Date): string {
   return hoursAndMinutes(at);
 }
 
+/** A day without its weekday or time, as an answered card's line says it: "24 Nov". */
+export function calendarDay(at: Date): string {
+  return `${at.getDate()} ${months[at.getMonth()]}`;
+}
+
 function elapsed(since: Date, now: Date, form: "short" | "long"): string {
   const ms = Math.max(0, now.getTime() - since.getTime());
   if (ms >= dayInMs) {

@@ -11,6 +11,7 @@ import { EmptyChannel } from "./channel-message.tsx";
 import { ChatCardItem } from "./chat-cards.tsx";
 import { failureReason, reportMotion } from "./load-states.tsx";
 import { DayItem, MessageItem, PendingItem } from "./message-item.tsx";
+import { asksQuestions, QuestionCardItem } from "./question-card.tsx";
 import { agentTyping, TypingLine } from "./typing-line.tsx";
 
 /** Within this many pixels of the end, the person reads the newest entry and the chat stays there. */
@@ -134,14 +135,17 @@ function Line({ line, ...props }: TranscriptProps & { readonly line: ChatLine })
   if (line.kind === "day") return <DayItem label={line.label} />;
   if (line.kind === "pending") return <PendingItem pending={line.pending} follows={line.follows} />;
   if (line.kind === "card") {
-    return (
-      <ChatCardItem
-        quickActions={props.messenger.quickActions}
-        row={props.row}
-        card={line.card}
-        now={props.messenger.now()}
-        onAnswered={props.onAnswered}
-      />
+    const card = line.card;
+    const shared = {
+      quickActions: props.messenger.quickActions,
+      row: props.row,
+      now: props.messenger.now(),
+      onAnswered: props.onAnswered,
+    };
+    return asksQuestions(card) ? (
+      <QuestionCardItem {...shared} card={card} />
+    ) : (
+      <ChatCardItem {...shared} card={card} />
     );
   }
   return (

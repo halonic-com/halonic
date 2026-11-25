@@ -230,14 +230,14 @@ async function foldAway(element: HTMLElement | null): Promise<void> {
 }
 
 /** Where else the card shows: in a channel, also where it was asked (k13a). */
-function alsoInInbox(row: ConversationRow): string {
+export function alsoInInbox(row: ConversationRow): string {
   return isChannel(row)
     ? channelWords.waiting.alsoInInbox(row.conversation.title)
     : messengerWords.card.alsoInInbox;
 }
 
 /** What the card says after an answer that didn't land; nothing more once it did. */
-function lineOf(outcome: AnswerResult, row: ConversationRow): string | undefined {
+export function lineOf(outcome: AnswerResult, row: ConversationRow): string | undefined {
   if (outcome.outcome === "refused") {
     return messengerWords.notSent[outcome.reason](row.source?.label ?? "");
   }

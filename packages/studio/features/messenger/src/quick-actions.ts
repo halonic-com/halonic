@@ -1,4 +1,10 @@
-import type { AgentMessaging, AnswerResult, InboxItem, SendResult } from "@halonicjs/ports";
+import type {
+  AgentMessaging,
+  AnswerResult,
+  InboxItem,
+  InboxQuestionsAnswer,
+  SendResult,
+} from "@halonicjs/ports";
 import type { ConversationRow } from "./messenger.ts";
 import { refusalOf } from "./refusal.ts";
 
@@ -54,6 +60,20 @@ export class QuickActions {
     const refusal = refusalOf(row);
     if (refusal !== undefined) return { outcome: "refused", reason: refusal };
     return this.messaging.answer(card.id, { kind: "option", option });
+  }
+
+  /**
+   * Answers one of the chat's cards that asks several questions with what was picked for each:
+   * one `answer` call with an `answers` answer (requirement `messenger.question-cards`).
+   */
+  async answerQuestions(
+    row: ConversationRow,
+    card: InboxItem,
+    answers: InboxQuestionsAnswer["answers"],
+  ): Promise<AnswerResult> {
+    const refusal = refusalOf(row);
+    if (refusal !== undefined) return { outcome: "refused", reason: refusal };
+    return this.messaging.answer(card.id, { kind: "answers", answers });
   }
 
   /** Asks the chat's agent where its work stands: one `send` of {@link askForUpdateText}. */
