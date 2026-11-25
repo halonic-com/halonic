@@ -53,7 +53,11 @@ const bodylessSuccess = /Invalid response status code 20[45]\b/;
 export const deliveredWithoutBody = (error: unknown) =>
   error instanceof TypeError && bodylessSuccess.test(error.message);
 
-async function postOnce(ctx: ChiefLineSignalApi, url: string, signal: ChiefLineSignal) {
+async function postOnce(
+  ctx: Pick<ChiefLineSignalApi, "http">,
+  url: string,
+  signal: ChiefLineSignal,
+) {
   try {
     const response = await ctx.http.fetch(url, {
       method: "POST",
@@ -68,8 +72,9 @@ async function postOnce(ctx: ChiefLineSignalApi, url: string, signal: ChiefLineS
   }
 }
 
-async function sendSignal(
-  ctx: ChiefLineSignalApi,
+/** Sends a caller's webhook one signal for a comment, once per comment id; logs a failure, never throws. */
+export async function sendSignal(
+  ctx: Pick<ChiefLineSignalApi, "state" | "http" | "logger">,
   companyId: string,
   url: string,
   signal: ChiefLineSignal,
