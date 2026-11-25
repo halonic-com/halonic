@@ -179,11 +179,9 @@ function day(iso: string): string {
 /** The account switcher at the sidebar's bottom left (HAL-18672): its name, its menu's lead and its rows. */
 export const accountSwitcherWords = {
   /** The trigger's accessible name: the initials alone don't say what it opens. */
-  trigger: (name: string) => `Account: ${name}`,
+  trigger: (name: string) => `Account menu, ${name}`,
   /** The menu's quiet first row. */
   lead: "Show Inbox and Messenger for",
-  /** After the account the Inbox and Messenger show now. */
-  active: "Showing now",
   /** The row that opens Settings › Connections. */
   settings: "Settings › Connections",
 } as const;

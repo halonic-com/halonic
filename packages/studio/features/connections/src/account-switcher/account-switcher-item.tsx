@@ -16,6 +16,11 @@ export function accountName(connection: AgentConnection): string {
   return connection.userName ?? connection.label;
 }
 
+/** The name the avatar takes its initials from: a label's "·" separators would become the letters. */
+function initialsSource(connection: AgentConnection): string {
+  return accountName(connection).replaceAll("·", " ");
+}
+
 /**
  * The account switcher at the sidebar's bottom left (`connections.account-switcher`): the active
  * account's initials, opening a menu of the linked accounts by the user each is signed in as, with
@@ -52,7 +57,7 @@ function AccountSwitcher(props: {
   const entries: MenuEntry[] = list.map((connection) => ({
     id: connection.id,
     label: accountName(connection),
-    detail: connection.id === shown ? accountSwitcherWords.active : undefined,
+    checked: connection.id === shown,
     onSelect: () => {
       active.select(connection.id).catch((error: unknown) => {
         console.error("Switching the account", error);
@@ -75,7 +80,7 @@ function AccountSwitcher(props: {
         <Button
           {...trigger}
           variant="ghost"
-          icon={<Avatar name={accountName(current)} />}
+          icon={<Avatar name={initialsSource(current)} />}
           label={accountSwitcherWords.trigger(accountName(current))}
         />
       )}

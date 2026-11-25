@@ -83,30 +83,35 @@ async function renderSwitcher(
 }
 
 const rows = (container: HTMLElement) =>
-  [...container.querySelectorAll("[role=menuitem]")].map((row) => row.textContent);
+  [...container.querySelectorAll("[role^=menuitem]")].map((row) => row.textContent);
+
+const shownRow = (container: HTMLElement) =>
+  container.querySelector("[aria-checked=true]")?.textContent;
 
 verifies("connections.account-switcher", () => {
   describe("the account switcher", () => {
     it("lists the accounts by user, marking the first while none is picked", async () => {
       const container = await renderSwitcher([ada, bo], new Pick());
       const trigger = container.querySelector("button[aria-haspopup=menu]");
-      expect(trigger?.getAttribute("aria-label")).toBe("Account: Ada");
-      expect(rows(container)).toEqual(["AdaShowing now", "Bo"]);
+      expect(trigger?.getAttribute("aria-label")).toBe("Account menu, Ada");
+      expect(rows(container)).toEqual(["Ada", "Bo"]);
+      expect(shownRow(container)).toBe("Ada");
     });
 
     it("switches the active account when another is picked", async () => {
       const pick = new Pick();
       const container = await renderSwitcher([ada, bo], pick);
-      const bos = [...container.querySelectorAll<HTMLElement>("[role=menuitem]")][1];
+      const bos = [...container.querySelectorAll<HTMLElement>("[role^=menuitem]")][1];
       await act(async () => bos?.click());
       expect(pick.picked).toBe(bo.id);
-      expect(rows(container)).toEqual(["Ada", "BoShowing now"]);
+      expect(rows(container)).toEqual(["Ada", "Bo"]);
+      expect(shownRow(container)).toBe("Bo");
     });
 
     it("opens Settings › Connections", async () => {
       const openSettings = vi.fn();
       const container = await renderSwitcher([ada], new Pick(), openSettings);
-      const last = [...container.querySelectorAll<HTMLElement>("[role=menuitem]")].at(-1);
+      const last = [...container.querySelectorAll<HTMLElement>("[role^=menuitem]")].at(-1);
       await act(async () => last?.click());
       expect(openSettings).toHaveBeenCalledWith("connections");
     });
@@ -117,7 +122,7 @@ verifies("connections.account-switcher", () => {
 
     it("names a connection by its label while it has no user name yet", async () => {
       const container = await renderSwitcher([withoutUserName], new Pick());
-      expect(rows(container)).toEqual(["Paperclip · Acme · AdaShowing now"]);
+      expect(rows(container)).toEqual(["Paperclip · Acme · Ada"]);
     });
   });
 });
