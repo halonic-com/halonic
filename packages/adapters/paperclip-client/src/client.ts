@@ -25,6 +25,7 @@ import { PaperclipChannelMembers } from "./channel-members.ts";
 import { PaperclipChannelSender } from "./channel-send.ts";
 import { PaperclipChannelWork } from "./channel-work.ts";
 import { readChannel, toChannel } from "./channels.ts";
+import { readWorkingChats, withAgentWorking, withReadAt } from "./chat-signals.ts";
 import { PaperclipIds } from "./ids.ts";
 import { PaperclipInbox } from "./inbox.ts";
 import { asRecords, type JsonRecord, text } from "./json.ts";
@@ -87,6 +88,8 @@ export class PaperclipMessaging implements AgentMessaging {
   readonly #channelWork: PaperclipChannelWork;
   readonly #feed = new ChangeFeed<MessagingId>();
   #agentNames = new Map<string, string>();
+  /** Each chat task's agent, as the chats were last read, for its messages' `readAt`. */
+  #chatAgents = new Map<string, string>();
   /** The Inbox as last read, which search matches without reading every task's cards again. */
   #lastInbox: readonly InboxItem[] = [];
   #lastSeen: string | undefined;
@@ -161,9 +164,14 @@ export class PaperclipMessaging implements AgentMessaging {
       .flatMap((record) => toMessage(context, task, record) ?? [])
       .map((message) => ({ ...message, conversation }))
       .reverse();
-    return channel === undefined
+    if (channel !== undefined) {
+      return this.#channelWork.add(context, channel, conversation, messages);
+    }
+    // A chat not yet listed has no known agent, so its messages wait for the next read for `readAt`.
+    const agent = this.#chatAgents.get(task);
+    return agent === undefined
       ? messages
-      : this.#channelWork.add(context, channel, conversation, messages);
+      : withReadAt(this.#reader, this.#ids, { task, agent }, messages);
   }
 
   async listInboxItems(): Promise<readonly InboxItem[]> {
@@ -380,12 +388,23 @@ export class PaperclipMessaging implements AgentMessaging {
     });
     const answer = await this.#reader.send("listChats", { path: { company: this.#company } });
     // Paperclip answers 404 when Agent Chat is off: there are no chats, which isn't an error.
-    const chats =
+    const records =
       answer.kind === "failed" && answer.failure === "not-found"
         ? []
-        : asRecords(bodyOf("listChats", answer)).flatMap(
-            (record) => toConversation(context, record) ?? [],
-          );
+        : asRecords(bodyOf("listChats", answer));
+    this.#chatAgents = new Map(
+      records.flatMap((record) => {
+        const [task, agent] = [text(record, "id"), text(record, "conversationAgentId")];
+        return task === undefined || agent === undefined ? [] : [[task, agent] as const];
+      }),
+    );
+    // Live runs are read only when there are chats to mark (`paperclip-client.agent-working`).
+    const working =
+      records.length === 0 ? undefined : await readWorkingChats(this.#reader, this.#company);
+    const chats = records.flatMap((record) => {
+      const chat = toConversation(context, record);
+      return chat === undefined ? [] : [withAgentWorking(this.#ids, chat, working)];
+    });
     return newestFirst([...chats, ...channels], (conversation) => conversation.updatedAt);
   }
 

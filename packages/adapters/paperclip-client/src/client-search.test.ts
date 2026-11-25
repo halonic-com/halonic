@@ -156,6 +156,8 @@ verifies("agent-host.paperclip-key", () => {
         "createFeedbackTask",
         "listTaskAttachments",
         "attachScreenshot",
+        // Read receipts (HAL-18772), pinned in chat-signals.test.ts.
+        "listIssueRuns",
       ]);
     });
   });

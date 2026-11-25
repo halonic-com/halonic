@@ -156,6 +156,10 @@ export const paperclipRequests = {
     path: "/api/companies/:company/issues/:task/attachments",
     upload: { field: "file", contentType: "image/png", maxBytes: 10 * 1024 * 1024 },
   },
+  // Read receipts (`paperclip-client.read-receipts`, HAL-18772): a chat task's runs, read for
+  // each run's agent, status, start and the comments that woke it. The answer carries logs, errors
+  // and wake text; the mapping keeps none of it.
+  listIssueRuns: { method: "GET", path: "/api/issues/:task/runs" },
 } as const satisfies Record<string, RequestRule>;
 
 /**
