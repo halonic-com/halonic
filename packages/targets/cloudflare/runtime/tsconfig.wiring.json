@@ -26,7 +26,8 @@
     "src/container-outbound.test.ts",
     "src/run-object-bridge.test.ts",
     "src/container-wiring.node.test.ts",
-    "src/usage-stops.test.ts"
+    "src/usage-stops.test.ts",
+    "src/customer-limits.test.ts"
   ],
   "exclude": []
 }
