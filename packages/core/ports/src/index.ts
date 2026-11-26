@@ -413,8 +413,10 @@ export {
   gatewayMaxBufferedBytes,
   gatewayMaxIdLength,
   gatewayMaxMessageBytes,
+  gatewayMaxMessagingIdLength,
   gatewayMaxPromptLength,
   gatewayMaxWatches,
+  gatewayMessagingIdPattern,
   gatewayProtocolVersion,
   gatewayRefusalCodes,
 } from "./remote-gateway-protocol.ts";

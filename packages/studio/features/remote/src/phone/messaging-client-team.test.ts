@@ -1,6 +1,7 @@
 import {
   gatewayFallbackProtocolVersion,
   gatewayMaxMessageBytes,
+  gatewayMaxMessagingIdLength,
   type gatewayTeamLists,
 } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
@@ -79,13 +80,21 @@ verifies("remote.phone-team-read", () => {
     it("sends no read of a pull request whose id breaks the id rule", async () => {
       const scene = new GatewayScene();
       scene.connect();
-      for (const id of ["", "pr 1", "x".repeat(129)]) {
+      for (const id of ["", "pr 1", "a/b", "x".repeat(gatewayMaxMessagingIdLength + 1)]) {
         expect(await scene.client.messaging.readPullRequest(id)).toEqual({
           kind: "not-sent",
           reason: "invalid",
         });
       }
       expect(scene.tunnel.sentOf("team-read")).toEqual([]);
+    });
+
+    it("sends a read of a pull request a provider named with `:` and `%`", () => {
+      const scene = new GatewayScene();
+      scene.connect();
+      const pullRequest = "paperclip:acme:pull:acme%2Fapp:11";
+      void scene.client.messaging.readPullRequest(pullRequest);
+      expect(scene.tunnel.lastOf("team-read")).toMatchObject({ what: "pull-request", pullRequest });
     });
   });
 

@@ -1,4 +1,8 @@
-import { gatewayMaxMessageBytes, gatewayMaxSearchLength } from "@halonicjs/ports";
+import {
+  gatewayMaxMessageBytes,
+  gatewayMaxMessagingIdLength,
+  gatewayMaxSearchLength,
+} from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { fitPage, type GatewayPage } from "./fit-page.ts";
@@ -90,6 +94,31 @@ verifies("ports.remote-gateway-protocol", () => {
         ok: false,
       });
       expect(send({ to: ["@everyone"] })).toMatchObject({ ok: false });
+    });
+
+    it("accepts the messaging ids providers make, with `:`, `%` and `.`", () => {
+      const item = "paperclip:acme:card:3f2b9c1e-task:7a1d0e5b-card";
+      const pullRequest = "paperclip:acme:pull:acme%2Fapp:11";
+      const conversation = "paperclip:acme:channel:release.notes";
+      const messages = [
+        { ...answer, item },
+        { type: "team-read", id: "t", what: "pull-request", pullRequest },
+        { type: "msg-read", id: "r", what: "messages", conversation },
+        { type: "msg-send", id: "m", conversation, body: "hi", to: ["paperclip:acme:agent:ada"] },
+      ];
+      for (const message of messages) {
+        expect(parse(message)).toEqual({ ok: true, message });
+      }
+    });
+
+    it("keeps request ids strict and caps messaging ids at their own length", () => {
+      expect(parse({ ...answer, id: "a:1" })).toEqual({ ok: false, code: "malformed" });
+      const item = (length: number) => parse({ ...answer, item: "i".repeat(length) });
+      expect(item(gatewayMaxMessagingIdLength)).toMatchObject({ ok: true });
+      expect(item(gatewayMaxMessagingIdLength + 1)).toMatchObject({ ok: false });
+      for (const bad of ["", "a b", "a/b", "a@b", "a\nb"]) {
+        expect(parse({ ...answer, item: bad })).toEqual({ ok: false, code: "malformed" });
+      }
     });
   });
 

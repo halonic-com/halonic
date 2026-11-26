@@ -57,9 +57,27 @@ export const gatewayMaxPromptLength = 10_000;
 
 /**
  * The longest id, the phone's or the host's. Every id is 1 to this many
- * characters from `A`–`Z`, `a`–`z`, `0`–`9`, `_` and `-`.
+ * characters from `A`–`Z`, `a`–`z`, `0`–`9`, `_` and `-`. Messaging ids
+ * follow {@link gatewayMessagingIdPattern} instead.
  */
 export const gatewayMaxIdLength = 128;
+
+/**
+ * The longest messaging id: an Inbox item, a conversation, an addressee or a
+ * pull request, typed `MessagingId`. The providers make these ids, not the
+ * phone or the host, so they get their own rule, {@link gatewayMessagingIdPattern}.
+ */
+export const gatewayMaxMessagingIdLength = 256;
+
+/**
+ * The rule for a messaging id: 1 to {@link gatewayMaxMessagingIdLength}
+ * characters that `encodeURIComponent` leaves as they are, plus `%` and `:`,
+ * because a provider joins encoded parts with `:`, as in
+ * `paperclip:acme:pull:acme%2Fapp:11`.
+ */
+export const gatewayMessagingIdPattern = new RegExp(
+  `^[A-Za-z0-9_.!~*'()%:-]{1,${gatewayMaxMessagingIdLength}}$`,
+);
 
 /**
  * The most sessions one connection may watch at once. A `watch` for one more
@@ -211,7 +229,8 @@ export type GatewayPairDeniedReason = "denied" | "timed-out";
  * - `malformed`: anything else that isn't exactly one listed message. That is
  *   bytes that aren't valid UTF-8, text that isn't one JSON object, an
  *   unlisted `type`, a missing, extra or wrongly typed field, an id that
- *   breaks {@link gatewayMaxIdLength}, an `afterSeq` that isn't a whole number
+ *   breaks {@link gatewayMaxIdLength} (a messaging id:
+ *   {@link gatewayMessagingIdPattern}), an `afterSeq` that isn't a whole number
  *   from 0 up to the session's `lastSeq`, a prompt `text` that is empty or
  *   longer than {@link gatewayMaxPromptLength}, a `msg-send` body outside
  *   that limit, a `msg-search` text that is empty or longer than
