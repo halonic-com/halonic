@@ -120,6 +120,28 @@ verifies("cli.run-view-failed-call", () => {
     ]);
   });
 
+  it("says the service asked to slow down, in the words Studio's step panel says", async () => {
+    await storeRuns(
+      acmeRuns,
+      triagedAfter([
+        connectorStarted("notes-mcp"),
+        called("create_note"),
+        result("create_note", "error", {
+          code: "service-refused",
+          why: "slow-down",
+          retries: 2,
+          sentOnce: true,
+        }),
+      ]),
+    );
+
+    const { stdout } = await show();
+
+    expect(stdout[3]).toBe(
+      "  Didn't work: the service asked Halonic to slow down when the tool create_note (notes-mcp) called it, and still did after Halonic tried again twice. Try again in a few minutes. Nothing was sent twice.",
+    );
+  });
+
   it("says only that it didn't work when the log gives no reason, and never the tool's own text", async () => {
     await storeRuns(
       acmeRuns,

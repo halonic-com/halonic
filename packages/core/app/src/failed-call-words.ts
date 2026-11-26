@@ -46,6 +46,25 @@ export const failedCallWords = {
     "Didn't work: the connector {connector} didn't start: the sandbox its plugin runs in can't start on this computer.",
   notStarted: "Didn't work: the connector {connector} didn't start.",
   /**
+   * The lines for a call the service, or Halonic for it, refused (`service-refused`, HAL-19185),
+   * from the I7 card's 401, 403 and 429 rows (HAL-19173) and the HAL-19172 plan, section 2.3,
+   * as Chief approved them on HAL-19275: each says whose side the cause is on and one next step.
+   * They're filled from the log only, never from the reply, and only for the outcome `error`.
+   */
+  serviceNotAccepted:
+    "Didn't work: the service didn't accept the token for the tool {tool}. It may be mistyped or revoked, so set a new one.",
+  serviceNotAllowed:
+    "Didn't work: the token isn't allowed to do what the tool {tool} asked. Check its permissions at the service.",
+  serviceSlowDown:
+    "Didn't work: the service asked Halonic to slow down when the tool {tool} called it. Try again in a few minutes.",
+  serviceSlowDownRetried:
+    "Didn't work: the service asked Halonic to slow down when the tool {tool} called it, and still did after Halonic tried again {times}. Try again in a few minutes.",
+  /** `{host}` is only the main part of the host, such as `example.net`, so it can't pass for another service. */
+  hostNotDeclared:
+    "Didn't work: the tool {tool} tried to reach {host}, which its integration doesn't list. Halonic stopped it, so nothing reached {host}. Look at the integration's code.",
+  /** Added to the 429 line only when the log shows nothing but a `GET` or `HEAD` went out twice. */
+  nothingSentTwice: "{line} Nothing was sent twice.",
+  /**
    * The line above a step's tool calls for a connector that couldn't list its tools when a turn
    * started, so the turn went without them: the `halonic tools review` lines decided on HAL-13829,
    * and for a plugin the cause of the plugin lines above (HAL-15278).
@@ -67,6 +86,8 @@ export const failedCallWords = {
   connectorOfTool: "of the tool {tool}",
   /** `{tool}` with its connector: "`create_note` (*notes-mcp*)". */
   toolFrom: "{tool} ({connector})",
+  once: "once",
+  twice: "twice",
   second: "1 second",
   seconds: "{count} seconds",
 };

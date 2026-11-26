@@ -1,4 +1,10 @@
-import type { RunEvent, RunEventBody, ToolFailureCause } from "@halonicjs/events";
+import {
+  maxServiceRetries,
+  type RunEvent,
+  type RunEventBody,
+  type ServiceRefusal,
+  type ToolFailureCause,
+} from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import {
@@ -127,12 +133,73 @@ verifies("app.failed-call-line", () => {
       );
       expect(shown("t", {})).toBe("Didn't work.");
     });
+  });
 
-    it("says a refused service's call as one without a cause, until it has words of its own", () => {
-      const cause = { code: "service-refused", why: "slow-down", retries: 2 } as const;
-      expect(shown("t", { reason: "no-answer", cause })).toBe(shown("t", { reason: "no-answer" }));
-      expect(shown("t", { cause: { code: "service-refused", why: "not-accepted" } })).toBe(
-        "Didn't work.",
+  describe("failedCallLine for a refused service", () => {
+    const refused = (refusal: ServiceRefusal, sentOnce?: true): FailedCall => ({
+      cause: { code: "service-refused", ...refusal, ...(sentOnce ? { sentOnce } : {}) },
+      connector: "shop",
+    });
+
+    it("says a 401 is the token, and to set a new one", () => {
+      expect(shown("list_orders", refused({ why: "not-accepted" }))).toBe(
+        "Didn't work: the service didn't accept the token for the tool `list_orders` (*shop*). It may be mistyped or revoked, so set a new one.",
+      );
+    });
+
+    it("says a 403 is the token's permissions, at the service", () => {
+      expect(shown("list_orders", refused({ why: "not-allowed" }))).toBe(
+        "Didn't work: the token isn't allowed to do what the tool `list_orders` (*shop*) asked. Check its permissions at the service.",
+      );
+    });
+
+    it("says a 429 asked to slow down, how often Halonic tried again, and nothing sent twice only with sentOnce", () => {
+      expect(shown("t", refused({ why: "slow-down", retries: 0 }))).toBe(
+        "Didn't work: the service asked Halonic to slow down when the tool `t` (*shop*) called it. Try again in a few minutes.",
+      );
+      expect(shown("t", refused({ why: "slow-down", retries: 1 }))).toContain(
+        "called it, and still did after Halonic tried again once. Try again in a few minutes.",
+      );
+      const twice = shown("t", refused({ why: "slow-down", retries: 2 }, true));
+      expect(twice).toBe(
+        "Didn't work: the service asked Halonic to slow down when the tool `t` (*shop*) called it, and still did after Halonic tried again twice. Try again in a few minutes. Nothing was sent twice.",
+      );
+      expect(shown("t", refused({ why: "slow-down", retries: 2 }))).not.toContain("sent twice");
+    });
+
+    it("names an undeclared host as code, and says nothing reached it", () => {
+      const failed = refused({ why: "host-not-declared", host: "example.net" });
+      expect(shown("create_order", failed)).toBe(
+        "Didn't work: the tool `create_order` (*shop*) tried to reach `example.net`, which its integration doesn't list. Halonic stopped it, so nothing reached `example.net`. Look at the integration's code.",
+      );
+      expect(failedCallParts(failedCallLine("create_order", failed))).toContainEqual({
+        name: "example.net",
+        look: "code",
+      });
+    });
+
+    it("says only once or twice, as Halonic tries again at most twice", () => {
+      // Raising the cap fails here first, so the line gets words for more than twice.
+      expect(maxServiceRetries).toBe(2);
+    });
+
+    it("keeps the broke-off line when the outcome is unknown, as an earlier write may have gone through", () => {
+      const cause = {
+        code: "service-refused",
+        why: "slow-down",
+        retries: 2,
+        sentOnce: true,
+      } as const;
+      expect(shown("create_order", { reason: "no-answer", cause, connector: "shop" })).toBe(
+        shown("create_order", { reason: "no-answer", connector: "shop" }),
+      );
+      const host = {
+        code: "service-refused",
+        why: "host-not-declared",
+        host: "example.net",
+      } as const;
+      expect(shown("t", { reason: "no-answer", cause: host })).toBe(
+        "Didn't work: the tool `t` broke off without an answer, so it may or may not have done its work.",
       );
     });
   });
