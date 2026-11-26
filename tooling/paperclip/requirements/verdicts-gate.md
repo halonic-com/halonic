@@ -18,6 +18,8 @@ A security pull request also waits for Julian's `security-ok` recorded on its ex
 
 While the flag is on, a queued pull request whose records, task comments or agents couldn't be read, or whose records the pass didn't read, shall stay in the merge queue (it isn't added either), as on a refused GitHub read; a pull request whose records were read and don't approve it shall come out as before. The merge rules file (`decidePass`) shall refuse a pass with the flag on and no recorded verdicts in its snapshot.
 
+Every file the gate runs, in `verdicts/` or imported from it at run time, shall be one a routine review can't approve alone (`isRoutineExcluded`), so a routine pull request can't change what the gate counts (HAL-20010).
+
 ## Examples
 
 - Given the flag off and Liam's approval line on GitHub,

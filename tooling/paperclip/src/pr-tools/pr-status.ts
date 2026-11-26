@@ -18,11 +18,14 @@ import {
 import { manifestFileOf } from "../reviewer-paths-manifest.ts";
 import { pathReviewer, reviewerOfPull } from "../reviewer-paths-who.ts";
 import type { Routing } from "../routing.ts";
+import { branchPath } from "../verdicts/github-read.ts";
 import { verdictGateText } from "../verdicts/pr-status-verdicts.ts";
 import { type CopyReader, readCopySource, withCopies } from "./approval-copy.ts";
 import { type Approval, approvals, type PullComment } from "./approvals.ts";
 import { type ChangedFile, readManifests, routedFromRest } from "./manifests.ts";
 import { requiredWorkflowsOf } from "./required-workflows.ts";
+
+export { branchPath } from "../verdicts/github-read.ts";
 
 /**
  * The `pr_status` tool: everything an agent asks GitHub when it checks a
@@ -139,15 +142,6 @@ function stateOf(pull: PullDetails): PrStatus["state"] {
 /** The `ci-ok` that applies to the pull request: the light run's while it's a draft. */
 export function ciOkOf(get: GitHubGet, repo: string, pull: PullDetails): Promise<CheckState> {
   return ciOk(get, repo, pull.head.sha, pull.draft === true ? draftCiOkName : "ci-ok");
-}
-
-/**
- * A branch name as a path: each `/`-separated part encoded, so a `?`, `#` or
- * `%` in it can't change which request goes to GitHub. Git refuses `..` in a
- * branch name, so no part resolves upwards.
- */
-export function branchPath(branch: string): string {
-  return branch.split("/").map(encodeURIComponent).join("/");
 }
 
 /**

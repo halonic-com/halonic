@@ -1,4 +1,4 @@
-import { byReviewer } from "../pr-watcher/github.ts";
+import { byReviewer } from "../verdicts/github-read.ts";
 import type { CopyState } from "./approval-copy.ts";
 
 /**

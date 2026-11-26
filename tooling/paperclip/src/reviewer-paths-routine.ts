@@ -21,6 +21,13 @@ export const routineExcludedFolders: readonly string[] = [
   // The review-verdict recorder and the carry-over the gates will read (HAL-19585), tests included.
   "tooling/paperclip/src/verdicts/",
   "tooling/paperclip/src/plugin/review-verdict-tool",
+  // What the verdict gate runs outside `verdicts/` (HAL-20010): which approvals count, the
+  // manifests a pull request changes, who reviews it and this file; `verdicts/imports.test.ts` checks.
+  "tooling/paperclip/src/pr-tools/approvals.ts",
+  "tooling/paperclip/src/pr-tools/manifests.ts",
+  "tooling/paperclip/src/reviewer-paths",
+  "tooling/paperclip/src/routing.ts",
+  "tooling/paperclip/src/task-tools/input.ts",
   // The DCO standing statement CONTRIBUTING.md links to, which covers every halonic-dev commit.
   "docs/legal/",
 ];
