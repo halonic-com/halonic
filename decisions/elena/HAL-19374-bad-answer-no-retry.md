@@ -3,6 +3,7 @@
 - Task: HAL-19374
 - Approval: Liam asked for this in his review of #6422 (HAL-19350, [minor]); Liam signs this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:KKxXM0MXgplBND5H5Xz5gusRGv66oDXaYdfvxgOvwqwineofji5ORt/xirF9R0poGgigzVWU1dTEpHDEa7+wCw==
 
 ## What changes
 
