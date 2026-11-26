@@ -86,3 +86,27 @@ verifies("quick-ask.messenger", () => {
     });
   });
 });
+
+verifies("quick-ask.automatic-notes", () => {
+  describe("an automatic note", () => {
+    it("offers no Open in Messenger on the agent's receipt, only once its own answer comes", async () => {
+      const messenger = new FakeMessenger([chat(chief)]);
+      const { page } = await openBox(messenger);
+      await ask(page, "Where are we?");
+      messenger.note(chief, "On it.", "2026-11-25T13:40:05.000Z");
+      await act(async () => messenger.change("acme"));
+
+      expect(page.querySelector("footer")?.textContent).toBe(
+        "Enterask" + "Tabanother agent" + "Escclose",
+      );
+      expect(page.querySelector("[data-answer]")).toBeNull();
+
+      messenger.reply(chief, "The release card is with the board.", "2026-11-25T13:41:00.000Z");
+      await act(async () => messenger.change("acme"));
+      expect(page.querySelector("footer")?.textContent).toBe("CopyOpen in Messenger");
+      expect(page.querySelector("[data-answer]")?.textContent).toBe(
+        "The release card is with the board.",
+      );
+    });
+  });
+});

@@ -117,6 +117,13 @@ export class FakeMessenger implements AskMessenger {
     this.messagesOf.set(conversation, [...(this.messagesOf.get(conversation) ?? []), reply]);
   }
 
+  /** Adds a note written automatically on the agent's behalf, as Paperclip's fast-response receipt. */
+  note(from: MessagingAgent, body: string, sentAt: string): void {
+    const conversation = `chat-${from.name}`;
+    const note = { ...message(conversation, body, sentAt, from), automatic: true };
+    this.messagesOf.set(conversation, [...(this.messagesOf.get(conversation) ?? []), note]);
+  }
+
   /** Tells every watcher that `source` changed. */
   change(source: MessagingId): void {
     for (const listener of this.listeners) listener(source);

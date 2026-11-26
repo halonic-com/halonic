@@ -49,6 +49,8 @@ export const quickAskWords = {
   tryAgain: "Try again",
   /** Under a question that didn't go out. */
   unreachable: (source: string) => `Couldn't reach ${source}. Your question is still here.`,
+  /** Said to screen readers while the box reads the agents to ask, as Messenger's "Loading your chats". */
+  loading: "Loading your agents",
   /** No agent to ask yet. */
   noAgents: "No agents yet",
   noAgentsHint: "Connect a workspace or a team in Studio to ask its agents.",

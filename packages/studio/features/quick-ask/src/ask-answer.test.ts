@@ -165,3 +165,29 @@ verifies("quick-ask.answer", () => {
     expect(back.kind === "ready" ? back.lastAnswer?.agentName : undefined).toBe("Chief");
   });
 });
+
+verifies("quick-ask.automatic-notes", () => {
+  it("doesn't take an automatic note for the answer, only the agent's own message", () => {
+    const chief = agent("Chief", "working");
+    const facts = { agent: chief, cards: [], sentAt: "2026-11-25T13:40:00.000Z" };
+    const receipt = {
+      ...message("chat-Chief", "On it.", "2026-11-25T13:40:05.000Z", chief),
+      automatic: true,
+    };
+    expect(answerState({ ...facts, messages: [receipt] })).toEqual({ kind: "working" });
+
+    const reply = message("chat-Chief", "Friday.", "2026-11-25T13:41:00.000Z", chief);
+    expect(answerState({ ...facts, messages: [receipt, reply] })).toEqual({
+      kind: "answer",
+      messages: [reply],
+    });
+  });
+
+  it("offers no automatic note as the last answer", async () => {
+    const { messenger, storage, chief } = await asked();
+    messenger.note(chief, "On it.", "2026-11-25T13:41:00.000Z");
+
+    const opening = await new AskSession(messenger, new AskMemory(storage)).open();
+    expect(opening.kind === "ready" ? opening.lastAnswer : "none").toBeUndefined();
+  });
+});

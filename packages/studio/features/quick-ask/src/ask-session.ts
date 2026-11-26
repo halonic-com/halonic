@@ -10,7 +10,7 @@ import type {
   DraftOutcome,
   Messenger,
 } from "@halonicjs/studio-feature-messenger/api";
-import { type AnswerState, answerState, isAnswered, isLater } from "./ask-answer.ts";
+import { type AnswerState, answerState, isAgentReply, isAnswered, isLater } from "./ask-answer.ts";
 import type { AskMemory } from "./ask-memory.ts";
 
 /**
@@ -187,7 +187,7 @@ export class AskSession {
       return undefined;
     }
     const reply = messages.findLast(
-      (message) => message.author.kind === "agent" && isLater(message.sentAt, pending.sentAt),
+      (message) => isAgentReply(message) && isLater(message.sentAt, pending.sentAt),
     );
     if (reply === undefined || reply.author.kind !== "agent") return undefined;
     return {
