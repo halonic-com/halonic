@@ -4,7 +4,11 @@ import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import type { ToolFailureCause, ToolNotMadeReason } from "./run-basics.ts";
 import type { RunEventBody } from "./run-event.ts";
-import { maxCauseNameLength, toolFailureCauseOf } from "./tool-failure-cause.ts";
+import {
+  maxCauseHostLength,
+  maxCauseNameLength,
+  toolFailureCauseOf,
+} from "./tool-failure-cause.ts";
 import { parseEventLine } from "./upgrade.ts";
 
 type ToolResultEvent = Extract<RunEventBody, { type: "tool.result" }>;
@@ -62,6 +66,14 @@ verifies("events.tool-result-cause", () => {
         { code: "connector-not-started", why: "plugin-stopped", name: "Weather" },
         { code: "connector-not-started", why: "sandbox-not-ready" },
         { code: "connector-not-started", why: "unfenced-not-allowed", name: "container" },
+        { code: "service-refused", why: "not-accepted" },
+        { code: "service-refused", why: "not-allowed", sentOnce: true },
+        { code: "service-refused", why: "slow-down", retries: 0 },
+        { code: "service-refused", why: "slow-down", retries: 2, sentOnce: true },
+        { code: "service-refused", why: "host-not-declared", host: "example.net" },
+        { code: "service-refused", why: "host-not-declared", host: "xn--bcher-kva.example" },
+        { code: "service-refused", why: "host-not-declared", host: "192.0.2.7" },
+        { code: "service-refused", why: "host-not-declared", host: "[2001:db8::1]" },
       ];
       for (const cause of causes) {
         expect(readLine(cause)).toStrictEqual(cause);
@@ -70,6 +82,36 @@ verifies("events.tool-result-cause", () => {
 
     it("reads a code it doesn't know as absent", () => {
       expect(readLine({ code: "melted", seconds: 60 })).toBeUndefined();
+    });
+
+    it("reads a service-refused cause with a why it doesn't know as absent", () => {
+      expect(readLine({ code: "service-refused", why: "melted" })).toBeUndefined();
+      expect(readLine({ code: "service-refused", why: "time-limit", seconds: 60 })).toBeUndefined();
+      expect(readLine({ code: "service-refused" })).toBeUndefined();
+    });
+
+    it("reads a service-refused cause whose fields don't fit as absent", () => {
+      for (const retries of [-1, 3, 1.5, "1", undefined]) {
+        expect(readLine({ code: "service-refused", why: "slow-down", retries })).toBeUndefined();
+      }
+      for (const host of ["", "Example.net", "example.net/path", "bücher.example", "a b", 7]) {
+        expect(
+          readLine({ code: "service-refused", why: "host-not-declared", host }),
+        ).toBeUndefined();
+      }
+      const long = `${"a".repeat(maxCauseHostLength - 7)}.example`;
+      expect(
+        readLine({ code: "service-refused", why: "host-not-declared", host: long }),
+      ).toBeUndefined();
+    });
+
+    it("keeps sentOnce only when it is true", () => {
+      for (const sentOnce of [false, "true", 1]) {
+        expect(readLine({ code: "service-refused", why: "not-accepted", sentOnce })).toStrictEqual({
+          code: "service-refused",
+          why: "not-accepted",
+        });
+      }
     });
 
     it("reads a field of the wrong type as absent", () => {
@@ -104,6 +146,12 @@ verifies("events.tool-result-cause", () => {
         code: "connector-not-started",
         why: "secret-not-set",
         name: "NOTION",
+      });
+      const refused = { code: "service-refused", why: "slow-down", retries: 1, status: 429 };
+      expect(readLine(refused)).toStrictEqual({
+        code: "service-refused",
+        why: "slow-down",
+        retries: 1,
       });
     });
 

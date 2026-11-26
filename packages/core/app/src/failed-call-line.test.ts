@@ -127,6 +127,14 @@ verifies("app.failed-call-line", () => {
       );
       expect(shown("t", {})).toBe("Didn't work.");
     });
+
+    it("says a refused service's call as one without a cause, until it has words of its own", () => {
+      const cause = { code: "service-refused", why: "slow-down", retries: 2 } as const;
+      expect(shown("t", { reason: "no-answer", cause })).toBe(shown("t", { reason: "no-answer" }));
+      expect(shown("t", { cause: { code: "service-refused", why: "not-accepted" } })).toBe(
+        "Didn't work.",
+      );
+    });
   });
 
   it("gives a connector that couldn't list its tools its listing line", () => {

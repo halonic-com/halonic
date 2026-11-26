@@ -1,4 +1,5 @@
 import { IntegrationRefusedError } from "./integration/index.ts";
+import type { LoggedRequestInit } from "./limited-http.ts";
 import type { RequestLog, RequestLogEntry } from "./request-log.ts";
 import { SecretInRequestError } from "./secret-in-request.ts";
 
@@ -16,6 +17,7 @@ const unchecked: Place = { method: "", host: "", path: "" };
 export class AttemptLog {
   readonly #log: RequestLog;
   readonly #now: () => number;
+  readonly #onLogged: ((entry: RequestLogEntry) => void) | undefined;
   #started: number;
   #retry = 0;
   /** Whether an attempt is under way and not logged yet. */
@@ -23,9 +25,11 @@ export class AttemptLog {
   /** Until the secret check has passed, the method, host and path may hold a key. */
   #place = unchecked;
 
-  constructor(log: RequestLog, now: () => number) {
+  /** @param onLogged - hears each entry right after the log takes it ({@link LoggedRequestInit}) */
+  constructor(log: RequestLog, now: () => number, onLogged?: (entry: RequestLogEntry) => void) {
     this.#log = log;
     this.#now = now;
+    this.#onLogged = onLogged;
     this.#started = now();
   }
 
@@ -67,11 +71,13 @@ export class AttemptLog {
 
   #add(entry: Omit<RequestLogEntry, "durationMs" | "retry">): void {
     this.#open = false;
-    this.#log.add({
+    const logged: RequestLogEntry = {
       ...entry,
       durationMs: this.#now() - this.#started,
       ...(this.#retry > 0 ? { retry: this.#retry as 1 | 2 } : {}),
-    });
+    };
+    this.#log.add(logged);
+    this.#onLogged?.(logged);
   }
 }
 

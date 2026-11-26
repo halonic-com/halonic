@@ -170,6 +170,22 @@ export type ConnectorStartReason =
   | "other";
 
 /**
+ * Why a service refused the last request of a failed integration call, as
+ * Halonic's own request log of that call says (requirement
+ * `events.tool-result-cause`): `not-accepted`, it answered 401;
+ * `not-allowed`, it answered 403; `slow-down`, it answered 429 after
+ * Halonic tried again `retries` times; `host-not-declared`, the kit
+ * refused a host the integration's sheet doesn't list, so nothing reached it.
+ */
+export type ServiceRefusal =
+  | { readonly why: "not-accepted" | "not-allowed" }
+  | { readonly why: "slow-down"; readonly retries: number }
+  | { readonly why: "host-not-declared"; readonly host: string };
+
+/** The `why` of a `service-refused` cause. */
+export type ServiceRefusedReason = ServiceRefusal["why"];
+
+/**
  * Why a tool call failed, when the engine knows (requirement
  * `events.tool-result-cause`):
  *
@@ -181,6 +197,10 @@ export type ConnectorStartReason =
  *   plugin's id, for `plugin-stopped` the plugin's name, or for
  *   `unfenced-not-allowed` why the sandbox isn't available (a code such as
  *   `container`), never a secret's value, a path or a program's output.
+ * - `service-refused`: the service refused the call's last request
+ *   ({@link ServiceRefusal}). `host` is only the main part of the host, such
+ *   as `example.net`. `sentOnce` is there only when the log shows that no
+ *   request other than a `GET` or `HEAD` went out twice in the call.
  *
  * Read it with `toolFailureCauseOf`: a cause it doesn't know reads as absent.
  */
@@ -192,7 +212,8 @@ export type ToolFailureCause =
       readonly code: "connector-not-started";
       readonly why: ConnectorStartReason;
       readonly name?: string;
-    };
+    }
+  | ({ readonly code: "service-refused"; readonly sentOnce?: true } & ServiceRefusal);
 
 /**
  * Why a connector's tool call ran without asking a person (requirement

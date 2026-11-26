@@ -29,7 +29,9 @@ export {
 export { leakAttemptCodes } from "./leak-attempt.ts";
 export {
   createLimitedHttpClient,
+  type LimitedHttpClient,
   type LimitedHttpOptions,
+  type LoggedRequestInit,
   type RequestLimits,
 } from "./limited-http.ts";
 export type { LoadProblem } from "./load-problem.ts";
