@@ -12,8 +12,8 @@ import {
   clockTime,
   decidedAt,
   isLate,
-  type MarkdownInline,
-  readMarkdown,
+  questionBody,
+  questionTitle,
 } from "@halonicjs/studio-kit";
 
 /** The list's key of an agent item; the item's ID is opaque, so the prefix keeps it apart from run items. */
@@ -27,11 +27,7 @@ export function agentItemKey(item: AgentItem): string {
  * is marked as in every other title.
  */
 export function agentItemTitle(item: AgentItem): string {
-  const [first] = readMarkdown(item.question);
-  if (first === undefined) return "";
-  if (first.kind === "code") return markHiddenName(first.text);
-  const inlines = first.kind === "list" ? (first.items[0] ?? []) : first.inlines;
-  return markHiddenName(plainText(inlines).split("\n")[0] ?? "");
+  return markHiddenName(questionTitle(item.question));
 }
 
 /**
@@ -54,29 +50,7 @@ export function askerLine(
  * no more than its title. A first block the title can't say in full, such as code or a link, stays.
  */
 export function agentItemBody(item: AgentItem): string {
-  const [first] = readMarkdown(item.question);
-  if (first === undefined) return "";
-  if (first.kind === "code") return item.question;
-  const inlines = first.kind === "list" ? (first.items[0] ?? []) : first.inlines;
-  if (!onlyWords(inlines)) return item.question;
-  const [, ...rest] = item.question.trim().split("\n");
-  return rest.join("\n").trim();
-}
-
-/** Whether the inlines are words alone, bold or italic at most, which the title says as they are. */
-function onlyWords(inlines: readonly MarkdownInline[]): boolean {
-  return inlines.every((inline) => {
-    if (inline.kind === "strong" || inline.kind === "em") return onlyWords(inline.children);
-    return inline.kind === "text";
-  });
-}
-
-function plainText(inlines: readonly MarkdownInline[]): string {
-  return inlines
-    .map((inline) =>
-      inline.kind === "strong" || inline.kind === "em" ? plainText(inline.children) : inline.text,
-    )
-    .join("");
+  return questionBody(item.question);
 }
 
 /** Who wrote or answered, as a line says it: "you", or their name. */

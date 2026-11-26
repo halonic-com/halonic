@@ -41,7 +41,7 @@ verifies("remote.phone-inbox-parts", () => {
     expect(inbox?.getAttribute("aria-current")).toBe("page");
     expect(inbox?.getAttribute("aria-controls")).toBe("views");
     expect(inbox?.querySelector('span[aria-hidden="true"]')?.textContent).toContain("2");
-    expect(inbox?.querySelector(":scope > .sr-only")?.textContent).toBe(", 2 waiting");
+    expect(inbox?.getAttribute("aria-label")).toBe("Inbox, 2 waiting");
     expect(messenger?.textContent).toBe("Messenger");
     expect(agents?.textContent).toBe("Agents");
     await act(async () => agents?.click());
