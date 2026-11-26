@@ -3,6 +3,7 @@
 - Task: HAL-18921
 - Approval: Liam reviews this change on HAL-18921, the follow-up he approved on HAL-18872.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jfjtzp9YALHuOYg1hbprlbJYb4Xiu9cxGDjsD6dxIY+w0ef67rWLv1c3TQTsUVMINIujhiMDBEXpUpYmCOb0BQ==
 
 ## What changes
 
