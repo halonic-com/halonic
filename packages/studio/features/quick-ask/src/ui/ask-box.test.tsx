@@ -6,6 +6,7 @@ import { AskMemory, memoryStorage } from "../ask-memory.ts";
 import {
   ask,
   byText,
+  described,
   FakeClipboard,
   openBox,
   press,
@@ -27,13 +28,6 @@ function picker(page: HTMLElement): HTMLInputElement {
   const search = page.querySelector<HTMLInputElement>("[data-agent-picker] input");
   if (search === null) throw new Error("the picker isn't open");
   return search;
-}
-
-/** The text of what an element's `aria-describedby` points at, with its spaces collapsed. */
-function described(element: Element): string {
-  const ids = element.getAttribute("aria-describedby")?.split(" ") ?? [];
-  const text = ids.map((id) => document.getElementById(id)?.textContent ?? "").join(" ");
-  return text.replace(/\s+/g, " ").trim();
 }
 
 /** Asks Chief a question, and Chief answers it. */

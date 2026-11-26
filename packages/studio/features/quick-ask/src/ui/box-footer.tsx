@@ -19,8 +19,8 @@ export interface FooterAnswer {
 /** The props of {@link BoxFooter}. */
 export interface BoxFooterProps {
   readonly answer: FooterAnswer | undefined;
-  /** The hint row's id, so the text box can name its keys from it. */
-  readonly hintId: string;
+  /** The hint row's id, so the text box can name its keys from it; none while the box opens. */
+  readonly hintId?: string;
   /** An answer that came after the box closed, linked at the end of the hint row. */
   readonly lastAnswer: LastAnswer | undefined;
   /** Opens `conversation` in Messenger. */
@@ -62,7 +62,7 @@ export function BoxFooter({
  * **Ask** names its own key. The spaces keep the description's words apart; the flex rows don't
  * draw them.
  */
-function Hints({ id }: { readonly id: string }) {
+function Hints({ id }: { readonly id: string | undefined }) {
   return (
     <p id={id} aria-hidden="true" className="flex flex-wrap items-center gap-4">
       {quickAskWords.hints.map((hint, index) => (

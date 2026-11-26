@@ -47,6 +47,9 @@ verifies("quick-ask.box", () => {
       expect(page.textContent).toContain(
         "You can close this. The answer comes to your chat with Chief.",
       );
+      // Not read out on each send: only what comes back is (design HAL-18594, section 5).
+      expect(page.querySelector("[data-pending]")?.closest("[aria-live]")).toBeNull();
+      expect(page.querySelector("[data-reply]")?.textContent).toBe("");
     });
 
     it("clears the first question's working line once a second question goes out", async () => {
@@ -75,15 +78,17 @@ verifies("quick-ask.box", () => {
       const messenger = new FakeMessenger([chat(chief)]);
       const { page } = await openBox(messenger);
       await ask(page, "Where are we?");
+      // The region is in the page before the answer, so a screen reader hears it fill.
+      const region = page.querySelector("[data-reply]");
       messenger.reply(chief, "The release card is with the board.", "2026-11-25T13:41:00.000Z");
       await act(async () => messenger.change("acme"));
 
       expect(page.querySelector("[data-answer]")?.textContent).toBe(
         "The release card is with the board.",
       );
-      expect(
-        page.querySelector("[data-answer]")?.closest("[aria-live]")?.getAttribute("aria-live"),
-      ).toBe("polite");
+      expect(region?.getAttribute("aria-live")).toBe("polite");
+      expect(page.querySelector("[data-answer]")?.closest("[aria-live]")).toBe(region);
+      expect(page.querySelector("[data-pending]")).toBeNull();
       expect(page.querySelector("[data-question]")?.closest("[aria-live]")).toBeNull();
       expect(page.querySelector("[data-working]")).toBeNull();
       expect(textBox(page).placeholder).toBe("Reply to Chief");
@@ -138,6 +143,11 @@ verifies("quick-ask.box", () => {
       expect(page.textContent).toContain("Not sent · Try again");
       expect(page.textContent).toContain(
         "Couldn't reach Paperclip · Acme. Your question is still here.",
+      );
+      const region = page.querySelector("[data-reply]");
+      expect(region?.getAttribute("aria-live")).toBe("polite");
+      expect(region?.textContent).toBe(
+        "Not sent · Try againCouldn't reach Paperclip · Acme. Your question is still here.",
       );
 
       messenger.refuse = undefined;

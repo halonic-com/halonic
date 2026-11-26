@@ -4,7 +4,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { AskMemory, memoryStorage } from "../ask-memory.ts";
-import { ask, byText, openBox, press } from "../test-support/box-page.tsx";
+import { ask, byText, described, openBox, press } from "../test-support/box-page.tsx";
 import { agent, card, chat, FakeMessenger } from "../test-support/fake-messenger.ts";
 import { unmountAll } from "../test-support/render.tsx";
 
@@ -18,12 +18,6 @@ function accessibleName(element: Node): string {
   if (element instanceof HTMLElement && element.getAttribute("aria-hidden") === "true") return "";
   if (!(element instanceof HTMLElement)) return element.textContent ?? "";
   return [...element.childNodes].map(accessibleName).join("");
-}
-
-/** The text of the elements an element's `aria-describedby` names. */
-function accessibleDescription(element: Element | undefined): string {
-  const ids = element?.getAttribute("aria-describedby")?.split(" ") ?? [];
-  return ids.map((id) => document.getElementById(id)?.textContent ?? "").join(" ");
 }
 
 verifies("quick-ask.messenger", () => {
@@ -78,7 +72,7 @@ verifies("quick-ask.messenger", () => {
       await act(async () => messenger.change("acme"));
 
       const button = byText(page, "[data-answer] button", "Answer in Messenger");
-      expect(accessibleDescription(button)).toBe("Ship 0.2.0 today?");
+      expect(described(button)).toBe("Ship 0.2.0 today?");
     });
   });
 
@@ -123,7 +117,7 @@ verifies("quick-ask.automatic-notes", () => {
       await act(async () => messenger.change("acme"));
 
       expect(page.querySelector("footer")?.textContent).toBe(
-        "Enterask" + "Tabanother agent" + "Escclose",
+        "Enter ask Tab another agent Esc close",
       );
       expect(page.querySelector("[data-answer]")).toBeNull();
 

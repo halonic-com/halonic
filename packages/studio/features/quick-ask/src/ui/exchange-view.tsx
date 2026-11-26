@@ -1,7 +1,7 @@
 import type { Message, MessagingId } from "@halonicjs/ports";
 import { Button, ChatText, enter, standaloneLinkClasses } from "@halonicjs/studio-kit";
 import { type ReactNode, useEffect, useId, useRef } from "react";
-import type { AnswerState } from "../ask-answer.ts";
+import { type AnswerState, isAnswered } from "../ask-answer.ts";
 import { quickAskWords } from "../quick-ask-words.ts";
 import type { Exchange } from "./use-ask-box.ts";
 
@@ -22,6 +22,8 @@ export interface ExchangeViewProps {
 export function ExchangeView({ exchange, onRetry, onOpenChat }: ExchangeViewProps) {
   const agent = exchange.agent.agent.name;
   const notSent = exchange.status === "not-sent";
+  const sent = exchange.status === "sent";
+  const arrived = exchange.answer !== undefined && isAnswered(exchange.answer);
   return (
     <li className="flex flex-col">
       <Arriving className="flex flex-col items-end">
@@ -34,11 +36,13 @@ export function ExchangeView({ exchange, onRetry, onOpenChat }: ExchangeViewProp
           {exchange.question}
         </p>
       </Arriving>
-      {/* Only what comes back is read out, once: not the question just typed. Shown while empty,
-          as a hidden live region may not be heard once it fills. */}
-      <div aria-live="polite" className="mt-2 flex flex-col gap-2 empty:mt-0">
+      {sent && !arrived ? <PendingLines agent={agent} answer={exchange.answer} /> : null}
+      {/* Only what comes back is read out, once: not the question just typed, nor the waiting
+          and working lines. Shown while empty, as a hidden live region may not be heard once it
+          fills. */}
+      <div data-reply="" aria-live="polite" className="mt-2 flex flex-col gap-2 empty:mt-0">
         {notSent ? <NotSent exchange={exchange} onRetry={onRetry} /> : null}
-        {exchange.status === "sent" ? (
+        {sent && exchange.answer !== undefined && arrived ? (
           <AnswerView
             agent={agent}
             answer={exchange.answer}
@@ -68,24 +72,33 @@ function NotSent({ exchange, onRetry }: Pick<ExchangeViewProps, "exchange" | "on
   );
 }
 
+/** While the answer is on its way: the working line once the agent works, and that the box can close. */
+function PendingLines({
+  agent,
+  answer,
+}: {
+  readonly agent: string;
+  readonly answer: AnswerState | undefined;
+}) {
+  return (
+    <div data-pending="" className="mt-2 flex flex-col gap-1">
+      {answer?.kind === "working" ? <WorkingLine agent={agent} /> : null}
+      <CanClose agent={agent} />
+    </div>
+  );
+}
+
+/** The answer once it has come: the agent's replies, and what a card asks. */
 function AnswerView({
   agent,
   answer,
   onAnswerCard,
 }: {
   readonly agent: string;
-  readonly answer: AnswerState | undefined;
+  readonly answer: AnswerState;
   readonly onAnswerCard: () => void;
 }) {
-  if (answer === undefined || answer.kind === "waiting") return <CanClose agent={agent} />;
-  if (answer.kind === "working") {
-    return (
-      <div className="flex flex-col gap-1">
-        <WorkingLine agent={agent} />
-        <CanClose agent={agent} />
-      </div>
-    );
-  }
+  if (answer.kind === "waiting" || answer.kind === "working") return null;
   return (
     <Arriving data-answer="" className="flex flex-col gap-2">
       <Replies messages={answer.messages} />

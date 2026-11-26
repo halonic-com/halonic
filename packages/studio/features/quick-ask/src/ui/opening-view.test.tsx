@@ -8,7 +8,7 @@ import { openBox, settle } from "../test-support/box-page.tsx";
 import { agent, chat, FakeMessenger } from "../test-support/fake-messenger.ts";
 import { unmountAll } from "../test-support/render.tsx";
 
-const hints = "Enterask" + "Tabanother agent" + "Escclose";
+const hints = "Enter ask Tab another agent Esc close";
 
 /** A Messenger whose chats arrive only when the test lets them. */
 function slowMessenger() {

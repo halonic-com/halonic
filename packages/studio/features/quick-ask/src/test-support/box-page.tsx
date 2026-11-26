@@ -111,6 +111,13 @@ export function byText(page: HTMLElement, selector: string, text: string): Eleme
   return [...page.querySelectorAll(selector)].find((each) => each.textContent?.includes(text));
 }
 
+/** The text of what an element's `aria-describedby` points at, with its spaces collapsed. */
+export function described(element: Element | undefined): string {
+  const ids = element?.getAttribute("aria-describedby")?.split(" ") ?? [];
+  const text = ids.map((id) => document.getElementById(id)?.textContent ?? "").join(" ");
+  return text.replace(/\s+/g, " ").trim();
+}
+
 /** Types a question and sends it with Enter. */
 export async function ask(page: HTMLElement, question: string): Promise<void> {
   await typeIn(textBox(page), question);
