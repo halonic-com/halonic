@@ -46,7 +46,7 @@ export function PullRequestDetailPage(props: {
   return (
     <DetailFrame
       shown={shown}
-      title={({ row }) => <PullRequestTitleWords pullRequest={row.pullRequest} />}
+      title={({ row }) => <PullRequestTitleWords pullRequest={row.pullRequest} heading />}
       onBack={props.onBack}
       onTryAgain={readAgain}
       words={frameWords}
@@ -221,9 +221,13 @@ function Timeline({ events, clock }: { events: readonly PullRequestEvent[]; cloc
       <ListHeading id={heading} name={words.timeline} />
       <ol className={`flex flex-col gap-2 px-4 py-3 ${boxFrame}`}>
         {events.map((event, index) => (
-          // Steps can share a time and words, so their place in the list is their key.
-          <li key={index} className="flex gap-3">
-            <time dateTime={event.at} className="w-20 shrink-0 text-fg-muted tabular-nums">
+          // Steps can share a time and words, so their place in the list is their key. The time is
+          // small text, as the facts' terms are, on the same baseline as the step's words.
+          <li key={index} className="flex items-baseline gap-3">
+            <time
+              dateTime={event.at}
+              className="w-20 shrink-0 text-small text-fg-muted tabular-nums"
+            >
               {when(event.at, clock)}
             </time>
             <Rail failed={event.kind === "check-failed"} last={index === events.length - 1} />
@@ -235,11 +239,14 @@ function Timeline({ events, clock }: { events: readonly PullRequestEvent[]; cloc
   );
 }
 
-/** A step's dot, and the line down to the next step's dot unless it's the last. Decoration. */
+/**
+ * A step's dot, and the line down to the next step's dot unless it's the last. Decoration. It
+ * has no text to share the step's baseline, so it stretches from the step's top instead.
+ */
 function Rail({ failed, last }: { failed: boolean; last: boolean }) {
   const colour = failed ? "bg-danger" : "bg-fg-muted";
   return (
-    <span aria-hidden="true" className="relative flex w-2 shrink-0 justify-center">
+    <span aria-hidden="true" className="relative flex w-2 shrink-0 self-stretch justify-center">
       <span
         className={`mt-2 size-1.5 rounded-full forced-color-adjust-none forced-colors:bg-[CanvasText] ${colour}`}
       />

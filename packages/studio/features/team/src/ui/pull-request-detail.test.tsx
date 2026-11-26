@@ -153,6 +153,28 @@ verifies("team.pull-request-detail", () => {
       expect(boxes[1]?.className).toBe(listBox);
     });
 
+    it("draws the h1's number at the title's size and the timeline's times small, as P12 does", async () => {
+      const fake = acme();
+      const id = fake.add("#5641", { state: "failing", since: minutesAgo(120) });
+      fake.team.addPullRequestEvent(id, { kind: "other", text: "Opened", at: minutesAgo(150) });
+      const page = await open(fake);
+      // On the list the row's number stays small text.
+      const rowNumber = [...(shownMain(page)?.querySelectorAll("button span.font-mono") ?? [])];
+      expect(rowNumber.map((label) => label.className.split(" "))).toEqual([
+        expect.arrayContaining(["text-small", "text-fg-muted"]),
+      ]);
+      await press(page, "#5641");
+      const number = shownMain(page)?.querySelector("h1 span.font-mono");
+      expect(number?.textContent).toBe("#5641");
+      expect(number?.className.split(" ")).toContain("text-fg-muted");
+      // No size of its own, so it takes the h1's.
+      expect(number?.className).not.toMatch(/\btext-(small|body|caption|title|display)/);
+      const times = [...(shownMain(page)?.querySelectorAll("section li time") ?? [])];
+      expect(times.map((time) => time.className.split(" "))).toEqual([
+        expect.arrayContaining(["text-small", "text-fg-muted"]),
+      ]);
+    });
+
     it("says a queued PR's place, its group's run and who approved it", async () => {
       const fake = acme();
       const first = fake.add("#1", {
