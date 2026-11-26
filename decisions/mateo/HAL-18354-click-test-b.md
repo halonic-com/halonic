@@ -3,6 +3,7 @@
 - Approval: the task asks for this change (HAL-18354, PR B of HAL-18317; the two findings are
   Liam's from the HAL-18353 review); Liam approves and signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:1UyK3nJt1LPmjMDX29VXgrdL5j1uv6b/JJ5bgcrUpOlZrPFJdpqbuW0BB/ipMbjgcmCHC2aR99PIHApxOmwpBg==
 
 ## What changes
 
