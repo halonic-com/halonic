@@ -11,7 +11,7 @@ import type { PaletteKindNames } from "./palette-options.ts";
 import { PhoneSearchSheet } from "./phone-search-sheet.tsx";
 import type { RecentPlaces } from "./recent-places.ts";
 import { runAction, useRecentPlaces } from "./shell-palette.tsx";
-import { usePaletteSearch } from "./use-palette-search.ts";
+import { usePausedSearch } from "./use-palette-search.ts";
 
 /** Props for {@link ShellPhoneSearch}. */
 export interface ShellPhoneSearchProps {
@@ -39,9 +39,9 @@ export interface ShellPhoneSearchProps {
 
 /**
  * The phone's Search sheet, joined to a workspace (component specs 24.3 "On a phone", UX
- * checklist 1.14, microcopy 3.6): it owns the words, asks the search providers as they change,
- * and ranks the recent places, what the providers found and the commands with `paletteGroups`,
- * as Ctrl K does. A phone has no window tabs, so there is no Open tabs group and nothing reads
+ * checklist 1.14, microcopy 3.6): it owns the words, asks the search providers once the typing
+ * pauses, and ranks the recent places, what the providers found and the commands with
+ * `paletteGroups`, as Ctrl K does. A phone has no window tabs, so there is no Open tabs group and nothing reads
  * "Switch to tab".
  *
  * Every pick closes the sheet first, so the focus goes back to the top bar's Search before the
@@ -63,7 +63,7 @@ export function ShellPhoneSearch(props: ShellPhoneSearchProps) {
   const { kinds, contextFor, onClose } = props;
   const [words, setWords] = useState("");
   const recent = useRecentPlaces(props.recent);
-  const search = usePaletteSearch(words, props.providers, contextFor);
+  const search = usePausedSearch(words, props.providers, contextFor);
   const content = paletteGroups({
     words,
     openTabs: [],

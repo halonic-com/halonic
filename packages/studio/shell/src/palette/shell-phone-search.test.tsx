@@ -11,6 +11,7 @@ import type {
   SearchResult,
 } from "../points/commands.ts";
 import type { Registered } from "../points/point-store.ts";
+import { searchPauseMs } from "../search/use-paused-words.ts";
 import { type TabLocation, TabSet } from "../tabs/tab-set.ts";
 import { fakeShowModal } from "../test-support/fake-show-modal.ts";
 import { FakeTimers } from "../test-support/fake-timers.ts";
@@ -41,6 +42,8 @@ let restoreModal: () => void;
 
 beforeEach(() => {
   restoreModal = fakeShowModal();
+  // The sheet asks the providers once the typing pauses; the tests move the clock past it.
+  vi.useFakeTimers();
 });
 
 afterEach(() => {
@@ -112,12 +115,15 @@ function renderSheet({
     field,
     opened,
     events,
-    type: (words: string) =>
+    /** Types the words and pauses, so the sheet asks the providers. */
+    type: (words: string) => {
       act(() => {
         const box = field() as HTMLInputElement;
         Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(box, words);
         box.dispatchEvent(new Event("input", { bubbles: true }));
-      }),
+      });
+      act(() => vi.advanceTimersByTime(searchPauseMs));
+    },
     press: (key: string) =>
       act(() => {
         field()?.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));

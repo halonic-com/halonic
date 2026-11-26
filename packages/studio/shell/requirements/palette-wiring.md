@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-1290 (T2); component specs 24.3 (HAL-175); UX checklist part 1, 1.7 (HAL-1323); design-search 2; microcopy 3.5 and 22 F13
 
-When the user presses Mod K outside a modal dialog, on any keyboard layout, the shell shall open the Ctrl K palette with an empty search row. The palette shall list the open tabs' places and the places opened lately in the workspace, latest first, each once and with its current name, also when the tab that showed a place was closed before the place was renamed. When the words change, the palette shall ask the search providers again, use only the answer to the latest words, keep showing what was found for earlier words while it waits, and ask again on Try again. When the user opens a place or an item here, the palette shall close and the active tab shall show it, or the tab that already shows it shall become active. When the user opens one in a new tab, the palette shall stay open and say "Opened _name_ in a new tab." When the user picks an action, the palette shall close and run the command with its feature's context, and if the command fails, the shell shall show a danger toast "Couldn't run _title_." with the reason, and with **Try again**, which runs the command again, when the reason is one that may pass, such as Halonic not answering (microcopy 1.1; states audit gap 5, HAL-11643).
+When the user presses Mod K outside a modal dialog, on any keyboard layout, the shell shall open the Ctrl K palette with an empty search row. The palette shall list the open tabs' places and the places opened lately in the workspace, latest first, each once and with its current name, also when the tab that showed a place was closed before the place was renamed. When the words change and the typing pauses for 300 ms, the palette shall ask the search providers again, use only the answer to the latest words, keep showing what was found for earlier words while it waits, and ask again on Try again. When the user opens a place or an item here, the palette shall close and the active tab shall show it, or the tab that already shows it shall become active. When the user opens one in a new tab, the palette shall stay open and say "Opened _name_ in a new tab." When the user picks an action, the palette shall close and run the command with its feature's context, and if the command fails, the shell shall show a danger toast "Couldn't run _title_." with the reason, and with **Try again**, which runs the command again, when the reason is one that may pass, such as Halonic not answering (microcopy 1.1; states audit gap 5, HAL-11643).
 
 ## Examples
 
@@ -14,6 +14,9 @@ When the user presses Mod K outside a modal dialog, on any keyboard layout, the 
 - Given the user typed "re" and then "ref" before the providers answered "re",
   when the answer for "re" arrives,
   then it is dropped and the palette keeps searching for "ref".
+- Given the user types "Acme: answer the click test" one letter at a time, faster than 300 ms apart,
+  when the typing pauses for 300 ms,
+  then the palette asks the search providers once, for the whole title.
 - Given the user Ctrl-clicks "Refund checker", which no tab shows,
   when the click ends,
   then it opens in a new tab next to the active one, the palette stays open and "Opened Refund checker in a new tab." is said.

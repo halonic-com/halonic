@@ -4,7 +4,7 @@ import { KindedError } from "@halonicjs/std";
 import { createToastStore } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, useState } from "react";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createAnnouncer } from "../announcer/announcer.ts";
 import type {
   CommandContribution,
@@ -13,6 +13,7 @@ import type {
 } from "../points/commands.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
 import type { Registered } from "../points/point-store.ts";
+import { searchPauseMs } from "../search/use-paused-words.ts";
 import { currentLocation, type TabLocation, TabSet } from "../tabs/tab-set.ts";
 import { fakeShowModal } from "../test-support/fake-show-modal.ts";
 import { FakeTimers } from "../test-support/fake-timers.ts";
@@ -31,11 +32,14 @@ let restoreModal: () => void;
 
 beforeEach(() => {
   restoreModal = fakeShowModal();
+  // The palette asks the providers once the typing pauses; the tests move the clock past it.
+  vi.useFakeTimers();
 });
 
 afterEach(() => {
   unmountAll();
   restoreModal();
+  vi.useRealTimers();
 });
 
 /** A provider whose answers the test gives, one question at a time. */
@@ -108,6 +112,12 @@ function renderPalette({ commands = [], platform = "windows" }: PaletteSetup = {
 
   const view = render(<Window />);
   const box = () => view.querySelector<HTMLInputElement>('[role="combobox"]');
+  const typeInBox = (words: string) =>
+    act(() => {
+      const field = box() as HTMLInputElement;
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(field, words);
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+    });
   return {
     tabs,
     toasts,
@@ -122,15 +132,17 @@ function renderPalette({ commands = [], platform = "windows" }: PaletteSetup = {
           new KeyboardEvent("keydown", { ...keys, bubbles: true, cancelable: true }),
         );
       }),
-    type: (words: string) =>
-      act(() => {
-        const field = box() as HTMLInputElement;
-        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(
-          field,
-          words,
-        );
-        field.dispatchEvent(new Event("input", { bubbles: true }));
-      }),
+    /** Types the words and pauses, so the palette asks the providers. */
+    type: (words: string) => {
+      typeInBox(words);
+      act(() => vi.advanceTimersByTime(searchPauseMs));
+    },
+    /** Types the words one letter at a time without a pause, as a fast typist or a driver does. */
+    typeLetters: (words: string) => {
+      for (let end = 1; end <= words.length; end++) typeInBox(words.slice(0, end));
+    },
+    /** Lets the typing pause. */
+    pause: () => act(() => vi.advanceTimersByTime(searchPauseMs)),
     press: (key: string, held: KeyboardEventInit = {}) =>
       act(() => {
         box()?.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, ...held }));
@@ -206,6 +218,19 @@ verifies("shell.palette-wiring", () => {
     expect(palette.rowNames()).toEqual([]);
     await palette.answer(1, [refundChecker]);
     expect(palette.rowNames()).toEqual(["Refund checker, agent"]);
+  });
+
+  it("asks the providers once for a title typed letter by letter, when the typing pauses", () => {
+    // HAL-19044: one search per letter went over a Paperclip's 8 task-list reads at once, and the
+    // refused last one showed "Couldn't search".
+    const palette = renderPalette();
+    palette.open();
+    palette.typeLetters("Acme: answer the click test");
+    expect(palette.questions).toEqual([]);
+    palette.pause();
+    expect(palette.questions.map((question) => question.words)).toEqual([
+      "Acme: answer the click test",
+    ]);
   });
 
   it("keeps showing what earlier words found while a newer search runs", async () => {
