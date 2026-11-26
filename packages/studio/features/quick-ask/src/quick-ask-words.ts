@@ -25,6 +25,11 @@ export const quickAskWords = {
   findAgent: "Find an agent",
   /** The picker's first group: the agents asked or chatted with most recently. */
   recent: "Recent",
+  /**
+   * The picker's group for agents whose workspace or team isn't connected any more, so has no name
+   * to group them under. The team chose these words (HAL-18997); the design has none for this case.
+   */
+  noSource: "No longer connected",
   /** The working line while the agent works on the question. */
   working: (agent: string) => `${agent} is working`,
   /** Under the question while it waits: the box can close, the answer isn't lost. */

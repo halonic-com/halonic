@@ -38,4 +38,17 @@ verifies("quick-ask.box", () => {
     expect(shown(" LI ")).toEqual([["Paperclip · Globex", ["Liam", "Julian"]]]);
     expect(shown("zed")).toEqual([]);
   });
+
+  it("puts agents whose workspace is gone under No longer connected, never an empty heading", () => {
+    const gone = { ...chat(agent("Mara")), source: undefined };
+    const groups = pickerGroups(askableAgents([...agents.map((each) => each.row), gone]), "");
+
+    expect(groups.map((group) => group.label)).toEqual([
+      "Recent",
+      "Paperclip · Acme",
+      "Paperclip · Globex",
+      "No longer connected",
+    ]);
+    expect(groups.every((group) => group.label.trim() !== "")).toBe(true);
+  });
 });
