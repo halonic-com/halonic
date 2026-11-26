@@ -131,6 +131,28 @@ verifies("paperclip.ready-for-review", () => {
       }
     });
 
+    test("a read that fails after the check started answers RUNNING with its id", async () => {
+      const { call, sent } = fakePrecheck([queued, new TypeError("fetch failed")]);
+      const result = await call({ branch: "dev/acme-widget" });
+      expect(sent).toHaveLength(2);
+      expect(result.error).toBeUndefined();
+      expect(result.data).toEqual({ verdict: "running", checkId });
+    });
+
+    test("tags each CHECK UNAVAILABLE with its cause", async () => {
+      const timeout = new DOMException("The operation was aborted due to timeout", "TimeoutError");
+      for (const [answer, reason] of [
+        [{ status: 429 }, "queue-full"],
+        [timeout, "timeout"],
+        [new TypeError("fetch failed"), "unreachable"],
+        [{ status: 502 }, "http-5xx"],
+      ] as const) {
+        const { call, metrics } = fakePrecheck([answer]);
+        expect((await call({ branch })).data).toMatchObject({ verdict: "unavailable", reason });
+        expect(metrics[0]?.tags).toMatchObject({ result: "unavailable", reason });
+      }
+    });
+
     test("input the service refuses and an unknown id are errors", async () => {
       expect(
         await fakePrecheck([{ status: 400, body: { error: "branch: a branch name" } }]).call({
