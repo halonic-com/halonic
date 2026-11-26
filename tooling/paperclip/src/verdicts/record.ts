@@ -35,6 +35,12 @@ export interface VerdictRecord {
   readonly task: string;
   /** When Paperclip stored it. */
   readonly at: string;
+  /**
+   * For an approval imported from its Paperclip copy (2.4 of HAL-19228): the
+   * id of the reviewer's task comment it came from. Left out for a verdict
+   * the reviewer recorded with `review_verdict`.
+   */
+  readonly importedFrom?: string;
 }
 
 /** A record before Paperclip stores it. */
@@ -82,7 +88,7 @@ export function readVerdict(
   pr: number,
 ): VerdictRecord | undefined {
   const data = entity.data;
-  const { head, fingerprint, verdict, reviewer, agentId, runId, task } = data;
+  const { head, fingerprint, verdict, reviewer, agentId, runId, task, importedFrom } = data;
   const valid =
     entity.entityType === verdictEntityType(repo, pr) &&
     entity.updatedAt === entity.createdAt &&
@@ -95,7 +101,8 @@ export function readVerdict(
     isText(reviewer) &&
     isText(agentId) &&
     isText(runId) &&
-    isText(task);
+    isText(task) &&
+    (importedFrom === undefined || isText(importedFrom));
   if (!valid) {
     return undefined;
   }
@@ -111,6 +118,7 @@ export function readVerdict(
     runId,
     task,
     at: entity.createdAt,
+    ...(importedFrom === undefined ? {} : { importedFrom }),
   };
 }
 

@@ -132,8 +132,10 @@ async function recordVerdict(
     if (error instanceof ToolInputError) {
       throw error;
     }
+    // A timeout can come after the record was stored, so this can't say nothing was recorded.
+    // Calling again is safe: a second record of the same verdict judges the same.
     throw new ToolInputError(
-      `${(error as Error).message} Without the verdict line on the task, nothing was recorded.`,
+      `${(error as Error).message} If the verdict line isn't on the task, call review_verdict again: recording the same verdict twice changes nothing.`,
     );
   }
 }
