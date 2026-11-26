@@ -86,6 +86,7 @@ export class PaperclipShadowReader {
   async approval(approvalId: string): Promise<ShadowApprovalRead> {
     const path = { approval: approvalId };
     const approval = this.#approvalOf(await this.#read("getApproval", { path }));
+    if (approval.id !== approvalId) throw badAnswer("another approval");
     const activity = await this.#read("listCompanyActivity", {
       path: { company: this.#company },
       query: { entityType: "approval", entityId: approvalId },
@@ -95,7 +96,7 @@ export class PaperclipShadowReader {
     return {
       approval,
       activity: asList(activity).map((each) => this.#activityOf(each, approvalId)),
-      comments: asList(comments).map((each) => commentOf(this.#ours(each))),
+      comments: asList(comments).map((each) => commentOf(this.#ofApproval(each, approvalId))),
       linkedIssues: asList(issues).map((each) => issueOf(this.#ours(each))),
     };
   }
@@ -143,6 +144,13 @@ export class PaperclipShadowReader {
     if (record === undefined || text(record, "companyId") !== this.#company) {
       throw badAnswer("an answer for another company");
     }
+    return record;
+  }
+
+  /** `value` as a record of this company about approval `approvalId`; any other fails closed. */
+  #ofApproval(value: unknown, approvalId: string): JsonRecord {
+    const record = this.#ours(value);
+    if (text(record, "approvalId") !== approvalId) throw badAnswer("a comment on another approval");
     return record;
   }
 

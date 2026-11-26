@@ -18,6 +18,7 @@ const withKeyword = neverList("entries:\n  - kind: keyword\n    value: payee\n")
 
 const removedAt = Date.UTC(2026, 10, 26, 12);
 const minute = 60 * 1000;
+const hour = 60 * minute;
 
 /** A clock that stays at one time, for judging the 24-hour delay. */
 function clockAt(time: number) {
@@ -206,10 +207,12 @@ verifies("auto-approvals.never-list", () => {
 
     it("ignores an older revision no owner wrote, for content and for timing", () => {
       const revisions = [
-        revision(1, withKeyword, removedAt - loosenDelayMs),
-        revision(2, emptyList, removedAt - loosenDelayMs, false),
-        revision(3, withKeyword, removedAt - loosenDelayMs),
+        revision(1, withKeyword, removedAt - loosenDelayMs - 2 * hour),
+        revision(2, emptyList, removedAt - loosenDelayMs - hour, false),
+        revision(3, emptyList, removedAt - hour),
       ];
+      // Counting the agent's revision 2 would end revision 1 more than
+      // 24 hours ago and drop the keyword; only revision 3 replaces it.
       const read = effectiveNeverList(revisions, workspaceId, clockAt(removedAt));
       expect(read.ok && read.list.entries).toContainEqual({ kind: "keyword", value: "payee" });
     });
@@ -238,6 +241,11 @@ verifies("auto-approvals.never-list", () => {
         "number",
       ],
       ["a revision number of 0", [revision(0, withKeyword, removedAt)], "number"],
+      [
+        "a missing older revision",
+        [revision(1, withKeyword, removedAt), revision(3, emptyList, removedAt)],
+        "number",
+      ],
     ])("fails closed on %s", (_, revisions, broken) => {
       expect(effectiveNeverList(revisions, workspaceId, clockAt(removedAt))).toEqual({
         ok: false,

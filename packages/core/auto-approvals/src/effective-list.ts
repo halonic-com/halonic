@@ -58,7 +58,7 @@ export interface EffectiveNeverList {
 /** Why the revision history can't be used. Each one stops Studio. */
 export type RevisionHistoryReason =
   | "never_list.missing"
-  /** A revision number that isn't a whole number from 1, or one used twice. */
+  /** Revision numbers that aren't exactly 1 to n, one each. */
   | "never_list.bad_revision_number"
   /** A time that isn't a date, or a later revision dated before an earlier one. */
   | "never_list.bad_revision_time"
@@ -73,9 +73,9 @@ export type EffectiveNeverListRead =
 /**
  * The never-list in force at `clock.now()`. Studio stops on its own when the
  * newest revision isn't an owner's (A24), and when the history itself is
- * broken: a revision number used twice or a time that isn't a date. Only
- * owner-written revisions count after that, ordered by revision number. The
- * newest must read cleanly, or the whole list fails closed. An older revision
+ * broken: revision numbers that aren't exactly 1 to n, or a time that isn't
+ * a date. Only owner-written revisions count after that, ordered by revision
+ * number. The newest must read cleanly, or the whole list fails closed. An older revision
  * that doesn't read is left out entirely, for content and for timing: each
  * revision stays in force until 24 hours after the next readable one, so a
  * broken revision in between can't speed up a removal.
@@ -111,8 +111,8 @@ export function effectiveNeverList(
 }
 
 /**
- * Every revision ordered by number, once the history is sound: numbers whole
- * and unique, times real dates that never go back as the numbers go up, and
+ * Every revision ordered by number, once the history is sound: numbers
+ * exactly 1 to n, so a missing older revision can't let a removal apply early, times real dates that never go back as the numbers go up, and
  * the newest written by an owner.
  */
 function checkHistory(
@@ -120,10 +120,7 @@ function checkHistory(
 ): { ok: true; byNumber: NeverListRevision[] } | { ok: false; reason: RevisionHistoryReason } {
   const byNumber = [...revisions].sort((a, b) => a.revisionNumber - b.revisionNumber);
   const numbers = byNumber.map((revision) => revision.revisionNumber);
-  if (!numbers.every((number) => Number.isSafeInteger(number) && number >= 1)) {
-    return { ok: false, reason: "never_list.bad_revision_number" };
-  }
-  if (new Set(numbers).size !== numbers.length) {
+  if (!numbers.every((number, index) => number === index + 1)) {
     return { ok: false, reason: "never_list.bad_revision_number" };
   }
   const times = byNumber.map((revision) => revision.writtenAt.getTime());

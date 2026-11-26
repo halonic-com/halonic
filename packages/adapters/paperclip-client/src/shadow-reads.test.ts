@@ -17,6 +17,7 @@ import { shadowAnswerMaxBytes } from "./shadow-reads.ts";
 
 const documents = `/api/issues/${pinnedIssue}/documents`;
 const otherCompany = "c0000000-0000-4000-8000-000000000009";
+const otherApproval = "p0000000-0000-4000-8000-000000000009";
 
 function reader(fake: FakePaperclip) {
   return shadowReader(fake, fake.fetch);
@@ -154,8 +155,28 @@ verifies("paperclip-client.shadow-reads", () => {
       });
     });
 
+    it.each([
+      ["another approval", `/api/approvals/${approvalId}`, pendingApproval({ id: otherApproval })],
+      [
+        "a comment on another approval",
+        `/api/approvals/${approvalId}/comments`,
+        [{ companyId: company, approvalId: otherApproval, body: "ok", authorUserId: "u1" }],
+      ],
+    ])("fails closed on %s", async (_, path, body) => {
+      const fake = serveShadow(new FakePaperclip()).on("GET", path, { body });
+      await expect(reader(fake).approval(approvalId)).rejects.toMatchObject({
+        reason: "bad-answer",
+      });
+    });
+
     it("counts a comment by neither or both kinds of author as unknown", async () => {
-      const comment = { companyId: company, body: "ok", authorAgentId: "a1", authorUserId: "u1" };
+      const comment = {
+        companyId: company,
+        approvalId,
+        body: "ok",
+        authorAgentId: "a1",
+        authorUserId: "u1",
+      };
       const fake = serveShadow(new FakePaperclip()).on(
         "GET",
         `/api/approvals/${approvalId}/comments`,

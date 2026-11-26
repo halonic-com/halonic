@@ -121,6 +121,10 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `listApprovals` | `GET /api/companies/{company}/approvals?status=pending`, then `?status=revision_requested` | pending approvals, and those waiting on the agent after Request changes, company-wide |
 | `getApproval` | `GET /api/approvals/{approval}` | before Approve or Reject: whether it is a budget override; who decided an approval first |
 | `listApprovalTasks` | `GET /api/approvals/{approval}/issues` | the task an approval belongs to |
+| `listApprovalComments` | `GET /api/approvals/{approval}/comments` | auto approvals in shadow mode: who has commented on an approval |
+| `listCompanyActivity` | `GET /api/companies/{company}/activity?entityType=approval&entityId={approval}` | auto approvals in shadow mode: an approval's `approval.created` entry |
+| `readNeverList`, `listNeverListRevisions` | `GET /api/issues/{task}/documents/never-list`, `/revisions` | auto approvals in shadow mode: the never-list's lock and latest revision, and every revision with its author |
+| `readStopDocument`, `listStopDocumentRevisions` | `GET /api/issues/{task}/documents/auto-approve-stop`, `/revisions` | auto approvals in shadow mode: the stop document, read the same way |
 | `commentOnChat` | `POST /api/issues/{task}/comments` | send a message, with a `clientRequestId` |
 | `acceptCard`, `rejectCard` | `POST /api/issues/{task}/interactions/{card}/accept`, `/reject` | answer a confirmation |
 | `respondToCard` | `POST /api/issues/{task}/interactions/{card}/respond` | answer a question card, every question at once |
