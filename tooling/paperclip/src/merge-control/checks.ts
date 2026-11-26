@@ -22,6 +22,16 @@ export const labelNoopWhy =
 /** Workflows the ruleset requires besides CI (#4198, #4292). */
 export const requiredWorkflows: readonly string[] = ["Guard notes", "Built-on label"];
 
+/** Repositories whose ruleset requires fewer workflows: cloud has no Guard notes (HAL-19392). */
+const requiredWorkflowsByRepo: ReadonlyMap<string, readonly string[]> = new Map([
+  ["halonic-com/cloud", ["Built-on label"]],
+]);
+
+/** The workflows a repository's ruleset requires besides CI. */
+export function requiredWorkflowsOfRepo(repo: string): readonly string[] {
+  return requiredWorkflowsByRepo.get(repo) ?? requiredWorkflows;
+}
+
 function fromPull(check: CheckFact): boolean {
   return check.event !== "merge_group";
 }
@@ -74,10 +84,11 @@ export function ciOkOf(pull: GatePull): CiOk {
  */
 export function requiredWorkflowProblems(
   pull: Pick<GatePull, "checks" | "retargetedAt">,
+  workflows: readonly string[] = requiredWorkflows,
 ): string[] {
   const retarget = [...pull.retargetedAt].sort().pop() ?? "";
   const problems: string[] = [];
-  for (const workflow of requiredWorkflows) {
+  for (const workflow of workflows) {
     const runs = pull.checks
       .filter(
         (check) => fromPull(check) && check.workflow === workflow && check.runCreatedAt >= retarget,
