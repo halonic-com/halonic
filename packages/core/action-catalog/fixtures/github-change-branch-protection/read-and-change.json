@@ -1,0 +1,95 @@
+{
+  "exchanges": [
+    {
+      "request": {
+        "body": {
+          "kind": "empty"
+        },
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer <scrubbed:secret>",
+          "x-github-api-version": "2022-11-28"
+        },
+        "method": "GET",
+        "url": "https://api.github.com/repos/acme/app/branches/main/protection/required_pull_request_reviews"
+      },
+      "response": {
+        "body": {
+          "kind": "json",
+          "value": {
+            "dismiss_stale_reviews": false,
+            "dismissal_restrictions": {
+              "teams": [],
+              "url": "https://api.github.com/repos/acme/app/branches/main/protection/dismissal_restrictions",
+              "users": []
+            },
+            "require_code_owner_reviews": true,
+            "require_last_push_approval": false,
+            "required_approving_review_count": 1,
+            "url": "https://api.github.com/repos/acme/app/branches/main/protection/required_pull_request_reviews"
+          }
+        },
+        "headers": {
+          "content-type": "application/json; charset=utf-8"
+        },
+        "status": 200
+      },
+      "transport": "http"
+    },
+    {
+      "request": {
+        "body": {
+          "kind": "json",
+          "value": {
+            "required_approving_review_count": 2
+          }
+        },
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer <scrubbed:secret>",
+          "content-type": "application/json",
+          "x-github-api-version": "2022-11-28"
+        },
+        "method": "PATCH",
+        "url": "https://api.github.com/repos/acme/app/branches/main/protection/required_pull_request_reviews"
+      },
+      "response": {
+        "body": {
+          "kind": "json",
+          "value": {
+            "dismiss_stale_reviews": false,
+            "dismissal_restrictions": {
+              "teams": [],
+              "url": "https://api.github.com/repos/acme/app/branches/main/protection/dismissal_restrictions",
+              "users": []
+            },
+            "require_code_owner_reviews": true,
+            "require_last_push_approval": false,
+            "required_approving_review_count": 2,
+            "url": "https://api.github.com/repos/acme/app/branches/main/protection/required_pull_request_reviews"
+          }
+        },
+        "headers": {
+          "content-type": "application/json; charset=utf-8"
+        },
+        "status": 200
+      },
+      "transport": "http"
+    }
+  ],
+  "format": "halonic.recording/1",
+  "integration": "github-change-branch-protection",
+  "scenario": "read-and-change",
+  "scrubReport": [
+    {
+      "count": 1,
+      "path": "exchanges[0].request.headers.authorization",
+      "rule": "secret-header"
+    },
+    {
+      "count": 1,
+      "path": "exchanges[1].request.headers.authorization",
+      "rule": "secret-header"
+    }
+  ]
+}

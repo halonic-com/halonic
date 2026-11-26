@@ -2718,9 +2718,18 @@ importers:
         specifier: workspace:*
         version: link:../action-steppers
     devDependencies:
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../ports
       '@halonicjs/schema-kit':
         specifier: workspace:*
         version: link:../schema-kit
+      '@halonicjs/testing-contracts':
+        specifier: workspace:*
+        version: link:../../testing/contracts
+      '@halonicjs/testing-integration':
+        specifier: workspace:*
+        version: link:../../testing/integration
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../testing/spec

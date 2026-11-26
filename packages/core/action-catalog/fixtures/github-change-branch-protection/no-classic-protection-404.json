@@ -1,0 +1,43 @@
+{
+  "exchanges": [
+    {
+      "request": {
+        "body": {
+          "kind": "empty"
+        },
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer <scrubbed:secret>",
+          "x-github-api-version": "2022-11-28"
+        },
+        "method": "GET",
+        "url": "https://api.github.com/repos/acme/app/branches/main/protection/required_pull_request_reviews"
+      },
+      "response": {
+        "body": {
+          "kind": "json",
+          "value": {
+            "documentation_url": "https://docs.github.com/rest/branches/branch-protection",
+            "message": "Branch not protected",
+            "status": "404"
+          }
+        },
+        "headers": {
+          "content-type": "application/json; charset=utf-8"
+        },
+        "status": 404
+      },
+      "transport": "http"
+    }
+  ],
+  "format": "halonic.recording/1",
+  "integration": "github-change-branch-protection",
+  "scenario": "no-classic-protection-404",
+  "scrubReport": [
+    {
+      "count": 1,
+      "path": "exchanges[0].request.headers.authorization",
+      "rule": "secret-header"
+    }
+  ]
+}
