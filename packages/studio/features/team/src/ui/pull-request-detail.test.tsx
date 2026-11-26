@@ -166,9 +166,8 @@ verifies("team.pull-request-detail", () => {
       await press(page, "#5641");
       const number = shownMain(page)?.querySelector("h1 span.font-mono");
       expect(number?.textContent).toBe("#5641");
-      expect(number?.className.split(" ")).toContain("text-fg-muted");
-      // No size of its own, so it takes the h1's.
-      expect(number?.className).not.toMatch(/\btext-(small|body|caption|title|display)/);
+      // Exactly these classes: no size of its own, so it takes the h1's.
+      expect(number?.className).toBe("font-mono text-fg-muted");
       const times = [...(shownMain(page)?.querySelectorAll("section li time") ?? [])];
       expect(times.map((time) => time.className.split(" "))).toEqual([
         expect.arrayContaining(["text-small", "text-fg-muted"]),
