@@ -1,7 +1,8 @@
 /** The 80% banner's words, flow C3's 80% row (`limit.warning`). */
 export const usageBannerWords = {
   /** "You've used 95% of this month's agent time": the warning's own whole percent. */
-  title: (percent: number, unitName: string) => `You've used ${percent}% of this month's ${unitName}`,
+  title: (percent: number, unitName: string) =>
+    `You've used ${percent}% of this month's ${unitName}`,
   resets: (date: string) => `It resets on ${date}.`,
   seeUsage: "See usage",
   close: "Close",
