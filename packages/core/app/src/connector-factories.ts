@@ -127,6 +127,10 @@ export function connectorConfigOf(connector: Connector): ConnectorConfig {
       secretEnv: {},
     };
   }
+  if ("paperclip" in transport) {
+    const { connection } = transport.paperclip;
+    return { id: connector.id, transport: { kind: "paperclip", connection }, secretEnv: {} };
+  }
   const { account, client } = transport.google;
   return { id: connector.id, transport: { kind: "google", account, client }, secretEnv: {} };
 }

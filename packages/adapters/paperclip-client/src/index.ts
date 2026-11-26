@@ -71,6 +71,11 @@ export {
   paperclipSignInRequests,
 } from "./sign-in-requests.ts";
 export {
+  PaperclipTaskTools,
+  type PaperclipTaskToolsOptions,
+  prWatcherPassTool,
+} from "./task-tools.ts";
+export {
   PaperclipTasks,
   type PaperclipTasksOptions,
   type TaskWriteRefusal,

@@ -92,7 +92,8 @@ const connectorCallLimitMs = 5 * 60_000;
 
 /**
  * The CLI's `stdio` and `http` factories, `integration` when it is given
- * `openIntegration`, and `plugin` when it is given `plugins`. A `stdio`
+ * `openIntegration`, `plugin` when it is given `plugins`, and the `builtIn` ones the command
+ * connects, such as `serve`'s `paperclip`. A `stdio`
  * program starts with `starter`, inheriting `env`; a pinned one is found in
  * `env` too.
  *
@@ -106,6 +107,7 @@ export function cliConnectorFactories(
   fence?: ConnectorFence,
   openIntegration?: OpenIntegration,
   plugins?: PluginConnectorFactory,
+  builtIn: readonly ConnectorFactory[] = [],
 ): ConnectorFactories {
   const clientInfo = { name: "halonic", version: halonicVersion };
   const runners = createRunnerSearch(env);
@@ -122,6 +124,7 @@ export function cliConnectorFactories(
     // Only with a way to open one in the runner: no in-process start for a local integration or a plugin's backend.
     ...(openIntegration === undefined ? [] : [new IntegrationConnectorFactory(openIntegration)]),
     ...(plugins === undefined ? [] : [plugins]),
+    ...builtIn,
   ]);
 }
 

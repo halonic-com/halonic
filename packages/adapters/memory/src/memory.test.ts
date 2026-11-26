@@ -362,6 +362,7 @@ function connectorContracts(): void {
     google: { kind: "google", account: "ana@acme.test", client: "google-client" },
     integration: { kind: "integration", folder: "notes" },
     plugin: { kind: "plugin", id: "notes" },
+    paperclip: { kind: "paperclip", connection: "acme" },
   };
   for (const kind of ["http", "stdio", "google"] satisfies ConnectorKind[]) {
     connectorClientContract("memory", kind, async () => {

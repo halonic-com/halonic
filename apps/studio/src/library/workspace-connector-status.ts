@@ -73,7 +73,8 @@ function connectionOf({ transport, secret }: Connector): ConnectorConnection {
     const { folder, secrets } = transport.integration;
     return { kind: "integration", folder, secrets: integrationSecretsOf(secrets) };
   }
-  return { kind: "plugin", id: transport.plugin.id };
+  if ("plugin" in transport) return { kind: "plugin", id: transport.plugin.id };
+  return { kind: "paperclip", connection: transport.paperclip.connection };
 }
 
 /**

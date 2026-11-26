@@ -2,7 +2,8 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { problemsOf, yaml } from "../../test/parse.spec.ts";
 
-const namesTheKinds = "transport needs exactly one of: http, stdio, google, integration or plugin.";
+const namesTheKinds =
+  "transport needs exactly one of: http, stdio, google, integration, plugin or paperclip.";
 
 verifies("format.connector-transport-kinds", () => {
   it("names the kinds when the transport is missing, next to the field put beside it", () => {

@@ -12,6 +12,7 @@ export const connectionSummaryWords = {
     stdio: newConnectorWords.ways.stdio,
     integration: "Local integration",
     plugin: "Plugin",
+    paperclip: "Paperclip",
   } satisfies Record<ConnectorConnection["kind"], string>,
   /** The label of the row that says where it connects to. */
   detail: {
@@ -22,6 +23,7 @@ export const connectionSummaryWords = {
     /** A plugin's row: its display name, or its id when it has no name. */
     pluginName: "Name",
     pluginId: "ID",
+    paperclip: "Connection",
   },
   secrets: "Secrets",
   noSecrets: "none",
