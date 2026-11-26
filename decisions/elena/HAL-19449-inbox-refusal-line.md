@@ -3,6 +3,7 @@
 - Task: HAL-19449 (follow-up agreed in the review of #6409, HAL-19190)
 - Approval: HAL-19449 asks for this change; Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xSWkEO/8UxWUcQoSUIctRDtxB3pT+M2RsMgTRQD+cxMq6HDYJt7b/J/bEcUcRK2ITo3/8+yx1qd0jCt14CJUBw==
 
 ## What changes
 
