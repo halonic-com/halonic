@@ -4,6 +4,10 @@
 - Approval: the task asks for this change; Liam approves this note in review on HAL-19791
 - Kind: internal
 
+## Covers
+
+- paperclip.pr-watcher-unneeded-rebase
+
 ## What changes
 
 `paperclip.pr-watcher-unneeded-rebase` gains one exception: the PR watcher doesn't note "unneeded rebase after approval" for a pull request on a repository without a merge queue. The repositories with a queue are listed in `mergeQueueRepos` in `tooling/paperclip/src/pr-watcher/unneeded-rebase.ts`; today only `halonic-com/halonic`. The "pushed after approval" handling is unchanged.
