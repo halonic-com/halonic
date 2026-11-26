@@ -14,6 +14,7 @@ import { rebaseCheck, rebaseCheckText } from "../pr-tools/rebase-pr.ts";
 import { type GitHubGet, gitHubReader } from "../pr-watcher/github.ts";
 import type { Snapshot } from "../snapshot/shape.ts";
 import { loadSnapshot, type StateApi } from "../snapshot/store.ts";
+import { type CopiesApi, paperclipCopies } from "./approval-copies.ts";
 import { readSettings } from "./job.ts";
 import { manifest } from "./manifest.ts";
 import { countingGet, type MetricsApi, writeMetrics } from "./metrics.ts";
@@ -27,13 +28,16 @@ import { countingGet, type MetricsApi, writeMetrics } from "./metrics.ts";
  */
 
 /** The part of the plugin context the tools use, so tests can fake it. */
-export interface ToolsApi extends MetricsApi, StateApi {
+export interface ToolsApi extends MetricsApi, StateApi, CopiesApi {
   readonly tools: Pick<PluginToolsClient, "register">;
   readonly config: PluginConfigClient;
   readonly secrets: Pick<PluginSecretsClient, "resolve">;
   readonly http: PluginHttpClient;
-  /** `rebase_pr` reads the calling agent's url key, which its own branches start with. */
-  readonly agents: Pick<PluginAgentsClient, "get">;
+  /**
+   * `rebase_pr` reads the calling agent's url key, which its own branches start with;
+   * `pr_status` lists the agents to find each approval's Paperclip copy (HAL-19324).
+   */
+  readonly agents: Pick<PluginAgentsClient, "get" | "list">;
 }
 
 /**
@@ -204,7 +208,8 @@ export function registerTools(ctx: ToolsApi): void {
       if (typeof target === "string") {
         return { error: `pr_status: ${target}` };
       }
-      const status = await prStatus(get, target.repo, target.number);
+      const copies = paperclipCopies(ctx, runCtx.companyId);
+      const status = await prStatus(get, target.repo, target.number, undefined, copies);
       return { content: statusText(status), data: status };
     }),
   );

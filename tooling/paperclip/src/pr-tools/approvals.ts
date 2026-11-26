@@ -1,4 +1,5 @@
 import { byReviewer } from "../pr-watcher/github.ts";
+import type { CopyState } from "./approval-copy.ts";
 
 /**
  * Signed approvals on a pull request, by the HAL-14809 rules: a comment
@@ -23,6 +24,11 @@ export interface Approval {
   readonly counts: boolean;
   /** Why it doesn't count, or what still applies when it does. */
   readonly note?: string;
+  /**
+   * Whether its Paperclip copy exists (`approval-copy.ts`, HAL-19324); left out
+   * when the copies weren't read. Detection only: it never changes `counts`.
+   */
+  readonly copy?: CopyState;
 }
 
 // The same forms as the Merger's gate (`LIAM_RE`, `JULIAN_RE`). The optional range-diff part names
@@ -50,14 +56,17 @@ export interface PullComment {
  * anyone can write "Liam: approved on head …".
  */
 export function signedApprovals(comments: readonly PullComment[]): SignedApproval[] {
-  return comments.filter(byReviewer).flatMap(({ body }) =>
-    [...(body ?? "").matchAll(approvalLine)].flatMap(([, by, head, rebaseOf]): SignedApproval[] => {
-      if (by === undefined || head === undefined || !reviewers.includes(by)) {
-        return [];
-      }
-      return rebaseOf === undefined ? [{ by, head }] : [{ by, head, rebaseOf }];
-    }),
-  );
+  return comments.filter(byReviewer).flatMap(({ body }) => signedLines(body ?? ""));
+}
+
+/** The signed approval lines by our reviewers in one text, whoever wrote it. */
+export function signedLines(text: string): SignedApproval[] {
+  return [...text.matchAll(approvalLine)].flatMap(([, by, head, rebaseOf]): SignedApproval[] => {
+    if (by === undefined || head === undefined || !reviewers.includes(by)) {
+      return [];
+    }
+    return rebaseOf === undefined ? [{ by, head }] : [{ by, head, rebaseOf }];
+  });
 }
 
 /** What deciding whether an approval counts needs to know about the pull request. */

@@ -24,13 +24,14 @@ import { gitHubRebaseOnly } from "../pr-watcher/rebase-only.ts";
 import { longestWaitingLine } from "../pr-watcher/review-wait.ts";
 import { gitHubRoute } from "../pr-watcher/route.ts";
 import { unblockPass } from "../pr-watcher/unblock.ts";
-import { snapshotSummary } from "../pr-watcher/wake-status.ts";
+import { snapshotCopies, snapshotSummary } from "../pr-watcher/wake-status.ts";
 import { type TickSummary, tick } from "../pr-watcher/watch.ts";
 import { gitHubQueryReader } from "../snapshot/graphql.ts";
 import { takeSnapshot } from "../snapshot/read.ts";
 import type { GitHubTokenKind, Snapshot } from "../snapshot/shape.ts";
 import { type StateApi, saveSnapshot } from "../snapshot/store.ts";
 import { readWatchersSettings, runMergeWatchers, type WatchersSettings } from "../watchers/run.ts";
+import { paperclipCopies } from "./approval-copies.ts";
 import { chiefLinePrPass } from "./chief-line-prs.ts";
 import { readChiefLineSettings } from "./chief-line-settings.ts";
 import { type CompanySource, listedCompanies } from "./companies.ts";
@@ -350,7 +351,11 @@ async function watchCompany(
     dryRun: settings.dryRun,
     log,
     now,
-    summary: snapshotSummary(snapshot),
+    // Each approval's Paperclip copy, shown in the wake lines (HAL-19324); detection only.
+    summary: snapshotSummary(
+      snapshot,
+      await snapshotCopies(snapshot, paperclipCopies(ctx, companyId), log),
+    ),
     route: gitHubRoute(get),
     rebaseOnly: gitHubRebaseOnly(get, stackRebase?.tried.baseOf),
     conflictFiles: gitHubConflictFiles(get),

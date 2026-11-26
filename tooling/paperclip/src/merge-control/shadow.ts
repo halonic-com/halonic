@@ -1,3 +1,4 @@
+import { type CopyChecks, needsCopyLines } from "./shadow-copies.ts";
 import {
   lateAgrees,
   mergerOnlyReason,
@@ -65,6 +66,8 @@ export interface ShadowDay {
   readonly pulls?: Readonly<Record<string, PullTrack>>;
   /** The Merger's newest note per pull request and head, `<number>@<head>`. */
   readonly notes?: Readonly<Record<string, NoteSeen>>;
+  /** The day's checks of the rule "needs a Paperclip copy with a full-SHA match" (HAL-19324). */
+  readonly copies?: CopyChecks;
 }
 
 /** A new day with nothing in it. */
@@ -218,6 +221,8 @@ export interface ShadowDiff {
   readonly differing: readonly ShadowLine[];
   /** What merge control's own jumps and dequeues would have cancelled that day. */
   readonly cost: ActionCost;
+  /** The pull requests the rule "needs a Paperclip copy with a full-SHA match" would refuse; none is. */
+  readonly needsCopy: readonly ShadowLine[];
 }
 
 const byTime = (a: ShadowLine, b: ShadowLine) => a.at.localeCompare(b.at);
@@ -271,6 +276,7 @@ export function shadowDiff(day: ShadowDay): ShadowDiff {
     mergerOnly: mergerOnly.sort(byTime),
     lateAgreed: lateAgreed.sort(byTime),
     differing: differing.sort(byTime),
+    needsCopy: needsCopyLines(day.copies).sort(byTime),
     cost: {
       groupsCancelled: costs.reduce((sum, cost) => sum + cost.groupsCancelled, 0),
       runnerMinutes: costs.reduce((sum, cost) => sum + cost.runnerMinutes, 0),
@@ -314,5 +320,9 @@ export function shadowDiffText(diff: ShadowDiff): string {
     ...lines("Only merge control would have done", diff.controllerOnly),
     ...lines("Only the Merger did", diff.mergerOnly, "merge control: "),
     ...lines("Late, agrees: merge control's rules passed within 5 minutes", diff.lateAgreed),
+    ...lines(
+      "Needs a Paperclip copy with a full-SHA match: would refuse, nothing refused",
+      diff.needsCopy,
+    ),
   ].join("\n");
 }

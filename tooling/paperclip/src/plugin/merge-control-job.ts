@@ -1,4 +1,5 @@
 import type {
+  PluginAgentsClient,
   PluginConfigClient,
   PluginHttpClient,
   PluginIssuesClient,
@@ -28,7 +29,8 @@ import {
   shadowDiff,
   shadowDiffText,
 } from "../merge-control/shadow.ts";
-import { passView } from "../merge-control/shadow-reasons.ts";
+import { checkCopies } from "../merge-control/shadow-copies.ts";
+import { type PassView, passView } from "../merge-control/shadow-reasons.ts";
 import type { MergeSnapshot } from "../merge-control/snapshot.ts";
 import {
   type Decision,
@@ -39,6 +41,7 @@ import {
   type MergeState,
 } from "../merge-control/state.ts";
 import { type QueueWriteClient, queueWriteClient } from "../merge-control/write-client.ts";
+import { paperclipCopies } from "./approval-copies.ts";
 import { companyConfig, readSettings, requestTimeoutMs } from "./job.ts";
 import { type MergeStateClient, type PassLock, passStateKey } from "./merge-control-lock.ts";
 
@@ -57,7 +60,9 @@ export interface MergeControlApi {
   readonly config: PluginConfigClient;
   readonly secrets: Pick<PluginSecretsClient, "resolve">;
   readonly http: PluginHttpClient;
-  readonly issues: Pick<PluginIssuesClient, "createComment">;
+  readonly issues: Pick<PluginIssuesClient, "createComment" | "get" | "listComments">;
+  /** The approvals' Paperclip copies, for the shadow diff (HAL-19324). */
+  readonly agents: Pick<PluginAgentsClient, "list">;
   readonly logger: Pick<PluginLogger, "info" | "error">;
 }
 
@@ -209,6 +214,31 @@ async function shadowDay(
 }
 
 /**
+ * The day with this pass's checks of the rule "needs a Paperclip copy with a
+ * full-SHA match" (HAL-19324). A failed read is logged and the day kept as it
+ * was, so the next pass checks again.
+ */
+async function withCopyChecks(
+  ctx: MergeControlApi,
+  companyId: string,
+  day: ShadowDay,
+  snapshot: MergeSnapshot,
+  view: PassView,
+  now: Date,
+): Promise<ShadowDay> {
+  try {
+    const reader = paperclipCopies(ctx, companyId);
+    return { ...day, copies: await checkCopies(snapshot, view, day.copies, reader, now) };
+  } catch (error) {
+    ctx.logger.error(
+      `Merge control: couldn't read the approvals' Paperclip copies: ${(error as Error).message}`,
+      { companyId },
+    );
+    return day;
+  }
+}
+
+/**
  * The write client in act mode with a queue token, else none: shadow mode,
  * and act mode without a token, never write.
  */
@@ -350,6 +380,7 @@ async function lockedPass(
     if (day !== undefined) {
       const view = passView(facts.snapshot, decision, settings.rules);
       shadow = recordShadow(day, decision.actions, facts.observed, now, view);
+      shadow = await withCopyChecks(ctx, companyId, shadow, facts.snapshot, view, now);
     }
   }
   const state = keepSent(stored.state, decision.state, decision.actions, results);
