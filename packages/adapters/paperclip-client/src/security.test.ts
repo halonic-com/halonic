@@ -365,7 +365,7 @@ verifies("paperclip-client.shadow-reads", () => {
         });
         await expect(guarded(url, { method })).rejects.toMatchObject({ reason: "refused" });
         expect(fetched).toBe(0);
-        expect(counter.counts()).toEqual({ sent: 0, refused: 2, refusedNotGet: 2 });
+        expect(counter.counts()).toEqual({ sent: 0, refused: 2, refusedNotGet: 2, writesSent: 0 });
       },
     );
 
@@ -402,7 +402,7 @@ verifies("paperclip-client.shadow-reads", () => {
         expect(shadowRequestNames).toContain(findRequest(request.method, request.path));
         expect(request.headers.get("authorization")).toBe(`Bearer ${testKey}`);
       }
-      expect(reader.counts()).toEqual({ sent: 9, refused: 0, refusedNotGet: 0 });
+      expect(reader.counts()).toEqual({ sent: 9, refused: 0, refusedNotGet: 0, writesSent: 0 });
     });
 
     it("refuses a redirect, and the other host never hears from it", async () => {

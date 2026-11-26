@@ -55,6 +55,24 @@ export {
   type PinnedNeverListReason,
   type StopReason,
 } from "./pinned-documents.ts";
+export { notMeasured, type ShadowDigestInput, shadowDigest } from "./shadow-digest.ts";
+export {
+  type HaltReason,
+  type PollReport,
+  pollRan,
+  runEntryId,
+  runStarted,
+  type ShadowLimits,
+  ShadowRunner,
+  type ShadowRunnerOptions,
+  shadowLimits,
+} from "./shadow-runner.ts";
+export {
+  readReasonOf,
+  type ShadowApprovalRead,
+  type ShadowCallCounts,
+  type ShadowSource,
+} from "./shadow-source.ts";
 export {
   type ApprovalSource,
   type ApprovalType,

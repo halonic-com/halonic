@@ -5,6 +5,8 @@ import type {
   DocumentRevision,
   LinkedIssue,
   PinnedDocument,
+  ShadowApprovalRead,
+  ShadowSource,
 } from "@halonicjs/auto-approvals";
 import { readAtMost } from "./avatars.ts";
 import { asList, asRecord, field, type JsonRecord, text } from "./json.ts";
@@ -17,8 +19,9 @@ import {
 } from "./shadow-fetch.ts";
 import {
   type BodyReader,
-  bodyOf,
+  type PaperclipAnswer,
   PaperclipClientError,
+  type PaperclipFailure,
   type PaperclipKeyGuard,
   PaperclipTransport,
   type RequestDetails,
@@ -26,6 +29,38 @@ import {
 
 /** The largest answer the shadow reader reads, in bytes; a larger one fails closed. */
 export const shadowAnswerMaxBytes = 1024 * 1024;
+
+/**
+ * The most activity entries or comments the reader asks for. A full page may hide a later entry,
+ * such as a revision request, so it fails closed with `read.incomplete` instead.
+ */
+export const shadowPageSize = 500;
+
+/** Why a shadow read failed, as a code the runner records; never the message. */
+export type ShadowReadReason =
+  | "read.status"
+  | "read.rate_limited"
+  | "read.too_large"
+  | "read.not_json"
+  | "read.incomplete"
+  | "read.wrong_company"
+  | "read.wrong_entity"
+  | "read.bad_shape"
+  | "read.redirect"
+  | "read.offline"
+  | "read.signed_out"
+  | "read.refused"
+  | "read.failed";
+
+/** A failed shadow read, with the code the runner records. */
+export class ShadowReadError extends PaperclipClientError {
+  readonly shadowReason: ShadowReadReason;
+
+  constructor(message: string, reason: PaperclipClientError["reason"], code: ShadowReadReason) {
+    super(message, reason);
+    this.shadowReason = code;
+  }
+}
 
 /** Where the shadow reader reads, with which key, for which company. */
 export interface PaperclipShadowReaderOptions {
@@ -38,13 +73,7 @@ export interface PaperclipShadowReaderOptions {
   fetch?: typeof fetch;
 }
 
-/** Everything read about one approval, before it becomes a card. */
-export interface ShadowApprovalRead {
-  readonly approval: ApprovalRecord;
-  readonly activity: readonly ActivityEntry[];
-  readonly comments: readonly ApprovalComment[];
-  readonly linkedIssues: readonly LinkedIssue[];
-}
+export type { ShadowApprovalRead };
 
 /**
  * The read-only Paperclip source for auto approvals in shadow mode (`paperclip-client.shadow-reads`,
@@ -54,7 +83,7 @@ export interface ShadowApprovalRead {
  * by throwing, on a redirect, any answer but 200, a body for another company or one over
  * {@link shadowAnswerMaxBytes}.
  */
-export class PaperclipShadowReader {
+export class PaperclipShadowReader implements ShadowSource {
   readonly #transport: PaperclipTransport;
   readonly #company: string;
   readonly #counter = new ShadowCallCounter();
@@ -73,6 +102,11 @@ export class PaperclipShadowReader {
     return this.#counter.counts();
   }
 
+  /** The server's time from the newest answer's `Date` header, or `undefined` without one. */
+  serverTime(): Date | undefined {
+    return this.#counter.serverTime();
+  }
+
   /** The company's pending approvals. */
   async pendingApprovals(): Promise<ApprovalRecord[]> {
     const body = await this.#read("listApprovals", {
@@ -86,17 +120,20 @@ export class PaperclipShadowReader {
   async approval(approvalId: string): Promise<ShadowApprovalRead> {
     const path = { approval: approvalId };
     const approval = this.#approvalOf(await this.#read("getApproval", { path }));
-    if (approval.id !== approvalId) throw badAnswer("another approval");
-    const activity = await this.#read("listCompanyActivity", {
-      path: { company: this.#company },
-      query: { entityType: "approval", entityId: approvalId },
-    });
-    const comments = await this.#read("listApprovalComments", { path });
+    if (approval.id !== approvalId) throw badAnswer("another approval", "read.wrong_entity");
+    const limit = String(shadowPageSize);
+    const activity = whole(
+      await this.#read("listCompanyActivity", {
+        path: { company: this.#company },
+        query: { entityType: "approval", entityId: approvalId, limit },
+      }),
+    );
+    const comments = whole(await this.#read("listApprovalComments", { path, query: { limit } }));
     const issues = await this.#read("listApprovalTasks", { path });
     return {
       approval,
-      activity: asList(activity).map((each) => this.#activityOf(each, approvalId)),
-      comments: asList(comments).map((each) => commentOf(this.#ofApproval(each, approvalId))),
+      activity: activity.map((each) => this.#activityOf(each, approvalId)),
+      comments: comments.map((each) => commentOf(this.#ofApproval(each, approvalId))),
       linkedIssues: asList(issues).map((each) => issueOf(this.#ours(each))),
     };
   }
@@ -133,16 +170,32 @@ export class PaperclipShadowReader {
   /** Sends shadow row `name` and gives its body, or throws: nothing else is ever sent. */
   async #read(name: PaperclipRequestName, details: RequestDetails): Promise<unknown> {
     if (!isShadowRequest(name)) {
-      throw this.#counter.refuse(paperclipRequests[name].method, name);
+      throw asShadowReadError(this.#counter.refuse(paperclipRequests[name].method, name));
     }
-    return bodyOf(name, await this.#transport.sendReading(name, details, limitedJson));
+    const refusedBefore = this.#counter.counts().refused;
+    let answer: PaperclipAnswer;
+    try {
+      answer = await this.#transport.sendReading(name, details, limitedJson);
+    } catch (error) {
+      throw asShadowReadError(error);
+    }
+    if (answer.kind === "ok") return answer.body;
+    // The transport reports the guard's refused `fetch` as offline; name the real cause.
+    if (this.#counter.counts().refused > refusedBefore) {
+      throw new ShadowReadError(`The shadow reader refused ${name}.`, "refused", "read.refused");
+    }
+    throw new ShadowReadError(
+      `Paperclip GET ${name} failed: ${answer.failure}.`,
+      answer.failure,
+      answer.status === 429 ? "read.rate_limited" : failedAnswerReasons[answer.failure],
+    );
   }
 
   /** `value` as a record of this company, or a thrown error: another company's fails closed. */
   #ours(value: unknown): JsonRecord {
     const record = asRecord(value);
     if (record === undefined || text(record, "companyId") !== this.#company) {
-      throw badAnswer("an answer for another company");
+      throw badAnswer("an answer for another company", "read.wrong_company");
     }
     return record;
   }
@@ -150,7 +203,8 @@ export class PaperclipShadowReader {
   /** `value` as a record of this company about approval `approvalId`; any other fails closed. */
   #ofApproval(value: unknown, approvalId: string): JsonRecord {
     const record = this.#ours(value);
-    if (text(record, "approvalId") !== approvalId) throw badAnswer("a comment on another approval");
+    if (text(record, "approvalId") !== approvalId)
+      throw badAnswer("a comment on another approval", "read.wrong_entity");
     return record;
   }
 
@@ -173,7 +227,7 @@ export class PaperclipShadowReader {
     const record = this.#ours(value);
     // Paperclip filters by entity; an entry for anything else means the filter didn't hold.
     if (text(record, "entityType") !== "approval" || text(record, "entityId") !== approvalId) {
-      throw badAnswer("activity for another entity");
+      throw badAnswer("activity for another entity", "read.wrong_entity");
     }
     return {
       action: required(record, "action"),
@@ -190,14 +244,16 @@ const limitedJson: BodyReader = {
   async read(name, response) {
     if (response.status !== 200) {
       await response.body?.cancel();
-      throw badAnswer(`a ${response.status} answer to ${name}`);
+      const code = response.status === 429 ? "read.rate_limited" : "read.status";
+      throw badAnswer(`a ${response.status} answer to ${name}`, code);
     }
     const bytes = await readAtMost(response, shadowAnswerMaxBytes);
-    if (bytes === undefined) throw badAnswer(`an answer to ${name} over the size limit`);
+    if (bytes === undefined)
+      throw badAnswer(`an answer to ${name} over the size limit`, "read.too_large");
     try {
       return { kind: "ok", body: JSON.parse(new TextDecoder().decode(bytes)) };
     } catch {
-      throw badAnswer(`an answer to ${name} that isn't JSON`);
+      throw badAnswer(`an answer to ${name} that isn't JSON`, "read.not_json");
     }
   },
 };
@@ -223,9 +279,11 @@ function issueOf(record: JsonRecord): LinkedIssue {
 }
 
 function revisionOf(record: JsonRecord, documentId: string): DocumentRevision {
-  if (text(record, "documentId") !== documentId) throw badAnswer("a revision of another document");
+  if (text(record, "documentId") !== documentId)
+    throw badAnswer("a revision of another document", "read.wrong_entity");
   const revisionNumber = field(record, "revisionNumber");
-  if (typeof revisionNumber !== "number") throw badAnswer("a revision without a number");
+  if (typeof revisionNumber !== "number")
+    throw badAnswer("a revision without a number", "read.bad_shape");
   return {
     id: required(record, "id"),
     revisionNumber,
@@ -238,10 +296,43 @@ function revisionOf(record: JsonRecord, documentId: string): DocumentRevision {
 
 function required(record: JsonRecord, name: string): string {
   const value = text(record, name);
-  if (value === undefined) throw badAnswer(`an answer without ${name}`);
+  if (value === undefined) throw badAnswer(`an answer without ${name}`, "read.bad_shape");
   return value;
 }
 
-function badAnswer(what: string): PaperclipClientError {
-  return new PaperclipClientError(`The shadow reader got ${what}.`, "bad-answer");
+function badAnswer(what: string, code: ShadowReadReason): ShadowReadError {
+  return new ShadowReadError(`The shadow reader got ${what}.`, "bad-answer", code);
+}
+
+/** A list answer that holds everything: a full page fails closed. */
+function whole(body: unknown): readonly unknown[] {
+  const list = asList(body);
+  if (list.length >= shadowPageSize) throw badAnswer("a full page", "read.incomplete");
+  return list;
+}
+
+/** Codes for an answer the transport gave as failed, by why. */
+const failedAnswerReasons: Readonly<Record<PaperclipFailure, ShadowReadReason>> = {
+  offline: "read.offline",
+  "signed-out": "read.signed_out",
+  "not-found": "read.status",
+  conflict: "read.status",
+  refused: "read.status",
+};
+
+/** Codes for the transport's own failures; an unknown error is `read.failed`. */
+const transportReasons: Readonly<Record<PaperclipClientError["reason"], ShadowReadReason>> = {
+  redirect: "read.redirect",
+  offline: "read.offline",
+  "signed-out": "read.signed_out",
+  "bad-key": "read.signed_out",
+  "not-found": "read.status",
+  conflict: "read.status",
+  refused: "read.refused",
+  "bad-answer": "read.bad_shape",
+};
+
+function asShadowReadError(error: unknown): unknown {
+  if (error instanceof ShadowReadError || !(error instanceof PaperclipClientError)) return error;
+  return new ShadowReadError(error.message, error.reason, transportReasons[error.reason]);
 }
