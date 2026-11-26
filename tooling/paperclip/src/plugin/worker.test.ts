@@ -34,6 +34,7 @@ verifies("paperclip.pr-watcher-plugin", () => {
       "mergeQueueToken",
       "branchUpdateToken",
       "paperclipApiKey",
+      "frontBotAnthropicKey",
       "taggerAnthropicKey",
       "trialResultsTokenRef",
     ]);

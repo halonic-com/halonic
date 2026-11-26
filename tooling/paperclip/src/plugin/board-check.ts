@@ -15,6 +15,7 @@ import { planRuns, recordFailedRun } from "./board-check-runs.ts";
 import { planStalePart } from "./board-check-stale.ts";
 import { planWaiting } from "./board-check-waiting.ts";
 import { type CompanySource, listedCompanies } from "./companies.ts";
+import { automaticNoteIds, isAutomaticNote } from "./front-bot-notes.ts";
 import { everyIssue } from "./host.ts";
 import { companyConfig } from "./job.ts";
 import { manifest } from "./manifest.ts";
@@ -186,6 +187,26 @@ export interface BoardCheck {
   onRunFailed(event: PluginEvent, now: Date): Promise<void>;
 }
 
+/** Whether the new comment is one of the front bot's: its id is on the bot's list, or it is an authorless note. */
+async function isFrontBotComment(
+  ctx: BoardCheckApi,
+  companyId: string,
+  taskId: string,
+  commentId: string | undefined,
+): Promise<boolean> {
+  if (commentId === undefined) {
+    return false;
+  }
+  const ownIds = await automaticNoteIds(ctx.state, companyId, taskId);
+  if (ownIds.has(commentId)) {
+    return true;
+  }
+  // The event can come before the bot saved the id, so the comment itself is read too.
+  const comments = await ctx.issues.listComments(taskId, companyId);
+  const comment = comments.find((candidate) => candidate.id === commentId);
+  return comment !== undefined && isAutomaticNote(comment, ownIds);
+}
+
 /** The board check for one plugin worker. */
 export function boardCheck(ctx: BoardCheckApi): BoardCheck {
   const serially = serialPerCompany();
@@ -200,8 +221,16 @@ export function boardCheck(ctx: BoardCheckApi): BoardCheck {
       }
     },
     async onCommentCreated(event, now) {
-      const payload = (event.payload ?? {}) as { issueId?: unknown };
+      const payload = (event.payload ?? {}) as { issueId?: unknown; commentId?: unknown };
       const taskId = typeof payload.issueId === "string" ? payload.issueId : event.entityId;
+      const commentId = typeof payload.commentId === "string" ? payload.commentId : undefined;
+      // The front bot's Automatic note is no board ask (HAL-19136).
+      if (
+        taskId !== undefined &&
+        (await isFrontBotComment(ctx, event.companyId, taskId, commentId))
+      ) {
+        return;
+      }
       if (taskId !== undefined) {
         await checkCompany(ctx, serially, event.companyId, now, "event", taskId);
       }

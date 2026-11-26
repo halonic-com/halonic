@@ -1,7 +1,9 @@
 import type { PaperclipPluginManifestV1, PluginCapability } from "@paperclipai/plugin-sdk";
+import { frontBotConfigProperties } from "../front-bot/settings.ts";
 import { workerAgentsRouteKey } from "../worker-agents/keys.ts";
 import { workerReadTables } from "../worker-agents/tables.ts";
 import { chiefLine } from "./chief-line-settings.ts";
+import { chatNotesRouteKey } from "./front-bot-notes.ts";
 import { mergeControlJob } from "./merge-control-declaration.ts";
 import {
   ciFailuresDeclaration,
@@ -79,7 +81,9 @@ export const manifest: PaperclipPluginManifestV1 = {
     // trial_results sends GET requests to the trial results service at the address in the
     // settings (src/plugin/trial-results.ts). Merge control's facts reader uses the two GitHub
     // readers, and GETs the CI status file and Prometheus at the addresses in the settings
-    // (src/plugin/merge-control-reader.ts).
+    // (src/plugin/merge-control-reader.ts). The front bot sends one POST to
+    // api.anthropic.com/v1/messages per board message on a chat task, with its own key, and
+    // nothing else (src/plugin/front-bot-calls.ts, HAL-19136).
     "http.outbound",
     "secrets.read-ref",
     // pr_status: GitHub reads only, with the same token and origin guard.
@@ -91,6 +95,7 @@ export const manifest: PaperclipPluginManifestV1 = {
     // A new comment is looked at for a board ask at once; runs that failed (part a).
     // Task effort (HAL-16876): a created or changed task's tags and effort.
     // Difficulty tagger (HAL-16901): a created task, or one whose title or description changed.
+    // Front bot (HAL-19136): a board user's message on a chat task gets a first reply.
     "events.subscribe",
     // Each job emits only its own event (`pr-watch`, `board-check`, `merge-control`, `precheck-wake`),
     // once per company, so its pass runs in a call the host scopes to that company (HAL-16941,
@@ -281,6 +286,7 @@ export const manifest: PaperclipPluginManifestV1 = {
         description:
           "Empty: the difficulty tagger is off and calls nothing. Enter the plugin's version to turn it on: a new task, or one whose title or description changes, gets D1–D4 and opus-only labels from Haiku (code tasks only), unless a person or Chief set its difficulty labels. It also needs the Tagger Anthropic key and the Paperclip API and key. After an upgrade it stops until you enter the new version. It stops for the month once spend passes $5.",
       },
+      ...frontBotConfigProperties,
       taggerAnthropicKey: {
         type: "string",
         title: "Tagger Anthropic key",
@@ -363,6 +369,15 @@ export const manifest: PaperclipPluginManifestV1 = {
       routeKey: "github-pull",
       method: "GET",
       path: "/github/pr/:number",
+      auth: "board",
+      capability: "api.routes.register",
+      companyResolution: { from: "query", key: "companyId" },
+    },
+    {
+      // The front bot's own comment ids on one chat task, board only, read by Messenger (src/plugin/front-bot-notes.ts).
+      routeKey: chatNotesRouteKey,
+      method: "GET",
+      path: "/chat-notes/:taskId",
       auth: "board",
       capability: "api.routes.register",
       companyResolution: { from: "query", key: "companyId" },

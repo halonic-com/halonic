@@ -9,6 +9,8 @@ import { onChiefLineComment } from "./chief-line-signal.ts";
 import { companyRoster } from "./companies.ts";
 import { difficultyTagger } from "./difficulty-tagger.ts";
 import { lifecycleRunner } from "./fast-track-lifecycle-job.ts";
+import { frontBot } from "./front-bot.ts";
+import { chatNotesRouteKey, handleChatNotes } from "./front-bot-notes.ts";
 import { handleGhGuard } from "./gh-guard-route.ts";
 import {
   githubPullRouteKey,
@@ -88,11 +90,17 @@ export const plugin = definePlugin({
       waits.pass(companyId),
     );
     ctx.jobs.register("precheck-wake", () => precheckJob.dispatch());
+    // Off unless the board turns it on; its only outside call is to api.anthropic.com (HAL-19136).
+    const bot = frontBot(ctx, {
+      anthropicFetch: (url, init) => ctx.http.fetch(String(url), init),
+      now: () => new Date(),
+    });
     ctx.events.on("issue.comment.created", async (event) => {
       roster.remember(event.companyId);
       await Promise.all([
         board.onCommentCreated(event, new Date()),
         onChiefLineComment(ctx, event),
+        bot.onCommentCreated(event),
       ]);
     });
     ctx.events.on("agent.run.failed", async (event) => {
@@ -147,6 +155,9 @@ export const plugin = definePlugin({
     }
     if (input.routeKey === githubSummaryRouteKey) {
       return await handleGitHubSummary(input, context);
+    }
+    if (input.routeKey === chatNotesRouteKey) {
+      return await handleChatNotes(input, context);
     }
     if (input.routeKey === githubPullRouteKey) {
       return await handleGitHubPull(input, context);
