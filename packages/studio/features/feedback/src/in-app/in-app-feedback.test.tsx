@@ -37,9 +37,13 @@ const details = {
 const canvasPrototype = HTMLCanvasElement.prototype as unknown as Record<string, unknown>;
 let stop: (() => void) | undefined;
 let sent: OutgoingFeedback[] = [];
+/** Frames the window asked for and hasn't drawn yet; {@link drawFrame} draws them. */
+let frames: FrameRequestCallback[] = [];
 
 beforeEach(() => {
   Object.assign(window, { innerWidth: 100, innerHeight: 50 });
+  // The test draws the frames itself, so nothing waits on the clock (HAL-19693).
+  vi.spyOn(window, "requestAnimationFrame").mockImplementation((frame) => frames.push(frame));
   // jsdom has `<dialog>` but no `showModal()` or `close()`, and its canvas draws nothing.
   HTMLDialogElement.prototype.showModal ??= function showModal(this: HTMLDialogElement) {
     this.setAttribute("open", "");
@@ -64,6 +68,7 @@ afterEach(() => {
   act(() => stop?.());
   stop = undefined;
   sent = [];
+  frames = [];
   delete canvasPrototype["getContext"];
   delete canvasPrototype["toBlob"];
   vi.unstubAllGlobals();
@@ -81,6 +86,23 @@ function startWith(shell: ReturnType<typeof fakeShell>, shortcut = "CommandOrCon
     },
     details: () => details,
   });
+}
+
+/** Draws the frames the window asked for, as the screen's next refresh would. */
+async function drawFrame() {
+  const due = frames;
+  frames = [];
+  await act(async () => {
+    for (const frame of due) frame(0);
+  });
+}
+
+/**
+ * Lets the shell's answers, which are all promises, run out and React show what they bring. A
+ * timer runs only once every waiting promise has, so this needs no time limit.
+ */
+async function settle() {
+  await act(() => new Promise<void>((resolve) => setTimeout(resolve, 0)));
 }
 
 /** A key press on a text field, as when the person types in the composer. */
@@ -119,9 +141,11 @@ function buttonNamed(name: string): HTMLButtonElement {
 async function selectWholeWindow(shell: ReturnType<typeof fakeShell>) {
   startWith(shell);
   await press(ctrlShiftF);
-  await vi.waitFor(() => expect(overlay()).not.toBeNull());
+  await settle();
+  expect(overlay()).not.toBeNull();
   await act(async () => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" })));
-  await vi.waitFor(() => expect(document.body.textContent).toContain("20 × 10"));
+  await settle();
+  expect(document.body.textContent).toContain("20 × 10");
 }
 
 verifies("feedback.in-app", () => {
@@ -130,7 +154,8 @@ verifies("feedback.in-app", () => {
     startWith(shell);
     await press(ctrlShiftF);
     expect(shell.invoke).toHaveBeenCalledWith("plugin:feedback|start");
-    await vi.waitFor(() => expect(overlay()).not.toBeNull());
+    await settle();
+    expect(overlay()).not.toBeNull();
   });
 
   it("does nothing on Shift+F, Ctrl+F or a held key's repeats", async () => {
@@ -146,7 +171,8 @@ verifies("feedback.in-app", () => {
     const shell = fakeShell();
     startWith(shell);
     await press(ctrlShiftF);
-    await vi.waitFor(() => expect(overlay()).not.toBeNull());
+    await settle();
+    expect(overlay()).not.toBeNull();
     await press(ctrlShiftF);
     expect(overlay()).toBeNull();
     expect(shell.invoke).toHaveBeenCalledWith("plugin:feedback|end");
@@ -238,7 +264,8 @@ verifies("feedback.send-window", () => {
     await act(async () =>
       document.querySelector<HTMLButtonElement>('dialog button[type="submit"]')?.click(),
     );
-    await vi.waitFor(() => expect(dialog()).toBeNull());
+    await settle();
+    expect(dialog()).toBeNull();
     expect(sent.map((feedback) => feedback.task.title)).toEqual(["Run list jumps"]);
     expect(ends(shell)).toHaveLength(1);
   });
@@ -290,13 +317,17 @@ verifies("feedback.select-again", () => {
     typeInDialog("Run list jumps");
     act(() => buttonNamed("Select again").click());
     expect(dialog()).toBeNull();
-    // The still is asked for only after the window drew without the dialog.
+    // The still is asked for only after the window drew twice without the dialog.
+    await drawFrame();
     expect(starts(shell)).toHaveLength(1);
-    await vi.waitFor(() => expect(overlay()).not.toBeNull());
+    await drawFrame();
     expect(starts(shell)).toHaveLength(2);
+    await settle();
+    expect(overlay()).not.toBeNull();
     expect(ends(shell)).toEqual([]);
     await act(async () => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" })));
-    await vi.waitFor(() => expect(dialog()?.open).toBe(true));
+    await settle();
+    expect(dialog()?.open).toBe(true);
     expect(document.querySelector("textarea")?.value).toBe("Run list jumps");
   });
 
@@ -310,7 +341,10 @@ verifies("feedback.select-again", () => {
     await selectWholeWindow(shell);
     typeInDialog("Run list jumps");
     act(() => buttonNamed("Select again").click());
-    await vi.waitFor(() => expect(dialog()?.open).toBe(true));
+    await drawFrame();
+    await drawFrame();
+    await settle();
+    expect(dialog()?.open).toBe(true);
     expect(starts(shell)).toHaveLength(2);
     expect(overlay()).toBeNull();
     expect(document.querySelector("textarea")?.value).toBe("Run list jumps");
