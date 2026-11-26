@@ -144,6 +144,18 @@ verifies("paperclip.pr-watcher-rereview", () => {
     expect(sameChanges([{ filename: "logo.png", status: "modified" }], [])).toBe(false);
   });
 
+  test("a renamed file GitHub lists without a patch counts by its content (HAL-19481)", () => {
+    const renamed = (sha?: string) => ({
+      filename: "b.png",
+      previous_filename: "a.png",
+      status: "renamed",
+      ...(sha === undefined ? {} : { sha }),
+    });
+    expect(sameChanges([renamed("1111")], [renamed("1111")])).toBe(true);
+    expect(sameChanges([renamed("1111")], [renamed("2222")])).toBe(false);
+    expect(sameChanges([renamed()], [renamed()])).toBe(false);
+  });
+
   test("compares on GitHub with GET requests only", async () => {
     const github = fakeGitHub({
       [`/repos/${repo}/pulls/5701`]: { base: { ref: "main" } },

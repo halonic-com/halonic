@@ -8,13 +8,19 @@ import { mergeControlJob } from "./merge-control-declaration.ts";
 import { mergerWakeConfigProperties, mergerWakeJob } from "./merger-wake-declaration.ts";
 import {
   ciFailuresDeclaration,
+  mergeSpeedDeclaration,
   prStatusDeclaration,
+  queueStateDeclaration,
   rebasePrDeclaration,
   writePrDeclaration,
 } from "./pr-tool-declarations.ts";
 import { prWriteConfigProperties } from "./pr-write-settings.ts";
 import { fastTrackConfigProperties, mergeControlConfigProperties } from "./queue-settings.ts";
 import { precheckWakeJob, readyForReviewDeclaration } from "./ready-for-review-declaration.ts";
+import {
+  reviewVerdictConfigProperties,
+  reviewVerdictDeclaration,
+} from "./review-verdict-declaration.ts";
 import { seatMoveJob, seatMoverConfigProperties, seatResetRoute } from "./seat-move-declaration.ts";
 import { stackRebaseConfigProperties } from "./stack-rebase-settings.ts";
 import { statePacketConfigProperties } from "./state-packet-declaration.ts";
@@ -148,6 +154,9 @@ export const manifest: PaperclipPluginManifestV1 = {
     // the plugin keeps nothing in its own schema. src/worker-agents/tables.ts names every column.
     "database.namespace.migrate",
     "database.namespace.read",
+    // review_verdict (HAL-19481): only to check that the calling run holds the task it names,
+    // never to check a task out for anyone else (src/plugin/review-verdict-tool.ts).
+    "issues.checkout",
   ],
   entrypoints: { worker: "dist/worker.js", ui: "dist/ui" },
   database: {
@@ -173,6 +182,7 @@ export const manifest: PaperclipPluginManifestV1 = {
       ...mergerWakeConfigProperties,
       ...stackRebaseConfigProperties,
       ...prWriteConfigProperties,
+      ...reviewVerdictConfigProperties,
       repos: {
         type: "array",
         title: "Repositories",
@@ -415,13 +425,7 @@ export const manifest: PaperclipPluginManifestV1 = {
     ciFailuresDeclaration,
     rebasePrDeclaration,
     writePrDeclaration,
-    {
-      name: "queue_state",
-      displayName: "Merge queue",
-      description:
-        "The merge queue from the PR watcher's last snapshot (at most about 10 minutes old, and it says when it's older): each entry's position, state, group ci-ok, time in the queue and who queued it; merge-group jobs waiting for a runner and the longest wait; open pull requests labelled fast-track with who added the label (unknown never counts as allowed). Sends no GitHub request.",
-      parametersSchema: { type: "object", properties: {} },
-    },
+    queueStateDeclaration,
     readyForReviewDeclaration,
     {
       name: "board_asks",
@@ -454,25 +458,10 @@ export const manifest: PaperclipPluginManifestV1 = {
         },
       },
     },
-    {
-      name: "merge_speed",
-      displayName: "Merge speed",
-      description:
-        "Merges per hour, the share of pull requests dropped from the merge queue without merging, and the time in the queue of the merged ones, from the PR watcher's last GitHub snapshot. Queue exits count only from the board check's first pass. Pull request numbers and times only.",
-      parametersSchema: {
-        type: "object",
-        properties: {
-          hours: {
-            type: "integer",
-            minimum: 1,
-            maximum: 168,
-            description: "How many hours back; 6 by default.",
-          },
-        },
-      },
-    },
+    mergeSpeedDeclaration,
     ...taskToolDeclarations,
     trialResultsDeclaration,
+    reviewVerdictDeclaration,
   ],
 };
 
