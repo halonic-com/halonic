@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { SearchProviderContribution } from "../points/commands.ts";
 import type { Registered } from "../points/point-store.ts";
+import { usePausedWords } from "../search/use-paused-words.ts";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import { type FoundItems, searchProviders } from "./search-providers.ts";
 
@@ -84,5 +85,33 @@ export function usePaletteSearch(
     found: searching ? { results: answer.found.results, failed: false } : answer.found,
     searching,
     tryAgain: () => setAttempt((count) => count + 1),
+  };
+}
+
+/**
+ * {@link usePaletteSearch} for a box the user types in, such as Ctrl K's: the providers are asked
+ * only once the typing pauses (`usePausedWords`), as the Search page asks them, not for every
+ * letter. A search reads the connected sources too, and a Paperclip refuses more than 8 of one
+ * key's task-list reads at once (HAL-19044), so a title typed fast would otherwise fail its last
+ * search and show "Couldn't search". Until the typing pauses the new words count as being searched.
+ *
+ * @example
+ * const search = usePausedSearch(words, shell.contributions.search.providers(), contextFor);
+ */
+export function usePausedSearch(
+  words: string,
+  providers: readonly Registered<SearchProviderContribution>[],
+  contextFor: (featureId: string) => WorkspaceContext,
+): PaletteSearch {
+  const paused = usePausedWords(words);
+  const search = usePaletteSearch(paused, providers, contextFor);
+  if (words.trim() === "") {
+    return { found: nothingFound, searching: false, tryAgain: search.tryAgain };
+  }
+  if (paused === words) return search;
+  return {
+    found: { results: search.found.results, failed: false },
+    searching: true,
+    tryAgain: search.tryAgain,
   };
 }

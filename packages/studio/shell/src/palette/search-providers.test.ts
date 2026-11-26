@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import type { SearchProviderContribution, SearchResult } from "../points/commands.ts";
 import type { Registered } from "../points/point-store.ts";
 import type { WorkspaceContext } from "../workspace-context.ts";
@@ -44,19 +44,24 @@ verifies("shell.palette-groups", () => {
     expect(found).toEqual({ results: [sorter, support], failed: false });
   });
 
-  it("keeps what the others found when a provider fails", async () => {
+  it("keeps what the others found when a provider fails, and logs each failure", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const engineDown = new Error("engine down");
     const found = await searchProviders(
       "s",
       [
         provider("agents", () => {
           throw new Error("index not ready");
         }),
-        provider("runs", async () => Promise.reject(new Error("engine down"))),
+        provider("runs", async () => Promise.reject(engineDown)),
         provider("workflows", async () => [support]),
       ],
       contextFor,
     );
     expect(found).toEqual({ results: [support], failed: true });
+    expect(logged).toHaveBeenCalledTimes(2);
+    expect(logged).toHaveBeenCalledWith(`Ctrl K: the "runs" search provider failed.`, engineDown);
+    logged.mockRestore();
   });
 
   it("asks nobody while nothing is typed", async () => {

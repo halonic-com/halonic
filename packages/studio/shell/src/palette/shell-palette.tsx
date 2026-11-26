@@ -14,7 +14,7 @@ import { itemLocation, type PaletteRow, paletteGroups } from "./palette-groups.t
 import type { PaletteKindNames } from "./palette-options.ts";
 import { paletteRowIcon } from "./palette-row-icon.tsx";
 import type { RecentPlaces } from "./recent-places.ts";
-import { usePaletteSearch } from "./use-palette-search.ts";
+import { usePausedSearch } from "./use-palette-search.ts";
 
 /** Props for {@link ShellPalette}. */
 export interface ShellPaletteProps {
@@ -47,8 +47,8 @@ export interface ShellPaletteProps {
 
 /**
  * The Ctrl K palette, joined to a workspace (component specs 24.3, UX checklist 1.7): it owns the
- * words, asks the search providers as they change, and ranks the open tabs, the recent places,
- * what the providers found and the commands with `paletteGroups`.
+ * words, asks the search providers once the typing pauses, and ranks the open tabs, the recent
+ * places, what the providers found and the commands with `paletteGroups`.
  *
  * A place or an item opens here, which closes the palette and moves focus to the new page's `h1`,
  * or with Mod in a new tab next to the active one: the palette stays open with the focus in its
@@ -73,7 +73,7 @@ export function ShellPalette(props: ShellPaletteProps) {
   const [words, setWords] = useState("");
   const openTabs = useOpenTabs(tabs);
   const recentPlaces = useRecentPlaces(recent);
-  const search = usePaletteSearch(words, props.providers, contextFor);
+  const search = usePausedSearch(words, props.providers, contextFor);
   const content = paletteGroups({
     words,
     openTabs,

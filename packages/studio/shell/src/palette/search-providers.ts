@@ -12,8 +12,10 @@ export interface FoundItems {
 
 /**
  * Asks every `search.addProvider` provider for the words, each with its own feature's context, and
- * waits for all of them. A provider that fails doesn't hide what the others found. With nothing
- * typed, or no provider yet, nothing is asked and nothing is found.
+ * waits for all of them. A provider that fails doesn't hide what the others found, and its error
+ * goes to the console under the provider's id, since the palette's "Couldn't search" names no
+ * provider (HAL-19044). With nothing typed, or no provider yet, nothing is asked and nothing is
+ * found.
  *
  * @param contextFor the workspace context for a feature, for the target the palette searches:
  *   `(featureId) => shell.services.contextFor(featureId, target)`
@@ -32,12 +34,13 @@ export async function searchProviders(
   );
   const results: SearchResult[] = [];
   let failed = false;
-  for (const outcome of settled) {
+  settled.forEach((outcome, index) => {
     if (outcome.status === "fulfilled") {
       results.push(...outcome.value);
-    } else {
-      failed = true;
+      return;
     }
-  }
+    failed = true;
+    console.error(`Ctrl K: the "${providers[index]?.id}" search provider failed.`, outcome.reason);
+  });
   return { results, failed };
 }
