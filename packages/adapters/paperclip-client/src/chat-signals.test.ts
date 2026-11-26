@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { beforeEach, describe, expect, it } from "vitest";
-import { acmeData, agentAda, agentBo, chatTask, company } from "./acme-data.test-helper.ts";
+import { acmeData, agentAda, agentBo, chatTask, company, me } from "./acme-data.test-helper.ts";
 import { connect, FakePaperclip, type Network } from "./fake-paperclip.test-helper.ts";
 import { findRequest, paperclipRequests } from "./requests.ts";
 
@@ -77,6 +77,29 @@ verifies("paperclip-client.agent-working", () => {
       runs.length = 0;
       await messaging.refresh();
       expect(await changes.next()).toEqual({ done: false, value: "paperclip:acme" });
+      await changes.return?.();
+    });
+
+    it("tells changes readers when the agent's run starts on the first poll after a send", async () => {
+      const runs: unknown[] = [];
+      paperclip
+        .on("GET", liveRunsPath, () => ({ body: runs }))
+        .on("POST", `/api/issues/${chatTask}/comments`, {
+          body: { id: "m9", body: "Thanks", authorUserId: me, createdAt: "2026-11-24T10:12:00Z" },
+        });
+      const messaging = client();
+      await messaging.refresh();
+      const changes = messaging.changes()[Symbol.asyncIterator]();
+      expect((await messaging.send(chat, "Thanks")).outcome).toBe("sent");
+      expect(await changes.next()).toEqual({ done: false, value: "paperclip:acme" });
+      // HAL-19362: the reply's run starts after the send, and the next poll is the first to see it.
+      runs.push(run(agentAda, "running"));
+      await messaging.refresh();
+      const next = changes.next();
+      expect(await Promise.race([next, Promise.resolve("none")])).toEqual({
+        done: false,
+        value: "paperclip:acme",
+      });
       await changes.return?.();
     });
 

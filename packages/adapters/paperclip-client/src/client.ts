@@ -357,7 +357,8 @@ export class PaperclipMessaging implements AgentMessaging {
 
   #changedAfter(wrote: boolean): void {
     if (wrote) {
-      this.#lastSeen = undefined;
+      // `#lastSeen` stays: forgetting it would make the next poll a silent first read, and that
+      // poll is the one that sees the agent's run start after a send (HAL-19362).
       this.#feed.push(this.#ids.source());
     }
   }
