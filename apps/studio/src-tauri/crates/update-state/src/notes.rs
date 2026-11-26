@@ -60,7 +60,8 @@ pub fn offered_notes(manifest: &Value, installed: &str, offered: &str) -> Offere
         let release_notes = notes
             .iter()
             .map(|notes| VersionNotes {
-                version: offered.to_owned(),
+                version: Version::parse(offered)
+                    .map_or_else(|| offered.to_owned(), |version| version.to_string()),
                 notes: notes.clone(),
             })
             .collect();
@@ -76,6 +77,20 @@ pub fn offered_notes(manifest: &Value, installed: &str, offered: &str) -> Offere
         .into_iter()
         .filter(|(version, _)| *version > installed && *version <= offered_version)
         .collect();
+    // The offered version's own `notes` stand in when the list leaves it out.
+    if let Some(own) = &notes
+        && !between
+            .iter()
+            .any(|(version, _)| *version == offered_version)
+    {
+        between.push((
+            offered_version.clone(),
+            VersionNotes {
+                version: offered_version.to_string(),
+                notes: own.clone(),
+            },
+        ));
+    }
     between.sort_by(|(left, _), (right, _)| right.cmp(left));
     between.dedup_by(|(left, _), (right, _)| left == right);
     let (release_notes, cut) = within_caps(between.into_iter().map(|(_, notes)| notes));
@@ -88,24 +103,24 @@ pub fn offered_notes(manifest: &Value, installed: &str, offered: &str) -> Offere
 
 /// One list entry with a version and its notes; anything else is skipped.
 fn entry(value: &Value) -> Option<(Version, VersionNotes)> {
-    let version = value.get("version")?.as_str()?;
+    let version = Version::parse(value.get("version")?.as_str()?)?;
     let notes = value.get("notes")?.as_str()?;
-    Some((
-        Version::parse(version)?,
-        VersionNotes {
-            version: version.to_owned(),
-            notes: notes.to_owned(),
-        },
-    ))
+    // The parsed version, not the manifest's text: build metadata is never
+    // checked, so it could carry any text into the page's headings.
+    let notes = VersionNotes {
+        version: version.to_string(),
+        notes: notes.to_owned(),
+    };
+    Some((version, notes))
 }
 
-/// The first versions that fit [`MAX_NOTES_VERSIONS`] and [`MAX_NOTES_CHARS`],
-/// and whether any were left out.
+/// The first versions that fit [`MAX_NOTES_VERSIONS`] and [`MAX_NOTES_CHARS`]
+/// (versions and notes counted together), and whether any were left out.
 fn within_caps(all: impl Iterator<Item = VersionNotes>) -> (Vec<VersionNotes>, bool) {
     let mut kept = Vec::new();
     let mut chars = 0;
     for notes in all {
-        let size = notes.notes.chars().count();
+        let size = notes.version.chars().count() + notes.notes.chars().count();
         if kept.len() == MAX_NOTES_VERSIONS || chars + size > MAX_NOTES_CHARS {
             return (kept, true);
         }

@@ -2,7 +2,7 @@
 
 use serde_json::{Value, json};
 
-use super::{MAX_NOTES_VERSIONS, OfferedNotes, VersionNotes, offered_notes};
+use super::{MAX_NOTES_CHARS, MAX_NOTES_VERSIONS, OfferedNotes, VersionNotes, offered_notes};
 use crate::{UpdateState, UpdaterRecord};
 
 fn listed(versions: &[&str]) -> Value {
@@ -55,7 +55,7 @@ fn update_notes_shows_every_version_skipped_newest_first() {
 fn update_notes_orders_by_version_ignoring_build_metadata() {
     let manifest = listed(&["0.4.3+build.9", "0.4.5", "0.4.2", "0.4.4", "not a version"]);
     let notes = offered_notes(&manifest, "0.4.1+build.1", "0.4.4");
-    assert_eq!(versions(&notes), ["0.4.4", "0.4.3+build.9", "0.4.2"]);
+    assert_eq!(versions(&notes), ["0.4.4", "0.4.3", "0.4.2"]);
     assert!(notes.older_on_release_page);
 }
 
@@ -109,4 +109,33 @@ fn update_notes_keeps_at_most_fifty_versions() {
     assert!(notes.older_on_release_page);
     let sent = serde_json::to_value(&notes).expect("JSON");
     assert_eq!(sent["olderOnReleasePage"], json!(true));
+}
+
+#[test]
+fn update_notes_drops_build_metadata_of_any_length() {
+    let long = format!("0.4.3+{}", "x".repeat(200_000));
+    let notes = offered_notes(&listed(&["0.4.4", &long, "0.4.1"]), "0.4.1", "0.4.4");
+    assert_eq!(versions(&notes), ["0.4.4", "0.4.3"]);
+}
+
+#[test]
+fn update_notes_counts_versions_toward_the_character_cap() {
+    let long = format!("0.4.3-{}", "a".repeat(200_000));
+    let notes = offered_notes(&listed(&["0.4.4", &long, "0.4.1"]), "0.4.1", "0.4.4");
+    assert_eq!(versions(&notes), ["0.4.4"]);
+    assert!(notes.older_on_release_page);
+    let sent: usize = notes
+        .release_notes
+        .iter()
+        .map(|entry| entry.version.chars().count() + entry.notes.chars().count())
+        .sum();
+    assert!(sent <= MAX_NOTES_CHARS);
+}
+
+#[test]
+fn update_notes_puts_the_own_notes_under_the_offered_version_the_list_leaves_out() {
+    let manifest = listed(&["0.4.3", "0.4.2", "0.4.1"]);
+    let notes = offered_notes(&manifest, "0.4.1", "0.4.4");
+    assert_eq!(versions(&notes), ["0.4.4", "0.4.3", "0.4.2"]);
+    assert_eq!(notes.release_notes[0].notes, "- Own notes.");
 }

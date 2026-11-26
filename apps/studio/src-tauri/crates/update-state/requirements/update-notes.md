@@ -7,7 +7,9 @@
 When a check finds an update, the shell's updater shall pass the update manifest's `notes` on with
 the available and ready states, and from the manifest's `halonic.releaseNotes` the notes of every
 version newer than the installed one and no newer than the offered one, by semantic version with
-build metadata ignored, newest first, at most 50 versions and 100,000 characters. When the list
+build metadata ignored, newest first, at most 50 versions and 100,000 characters (versions and notes
+counted together). It shall pass each version as it parsed it, without build metadata, and put the
+offered version's own notes under the offered version when the list leaves it out. When the list
 stops above the installed version or is cut, it shall say that older notes are on the release page.
 When the manifest has no list, it shall pass on the offered version's own notes alone.
 
