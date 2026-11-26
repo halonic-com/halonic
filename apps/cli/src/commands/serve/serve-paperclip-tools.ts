@@ -11,6 +11,8 @@ import type {
   ConnectorFactoryContext,
   SecretStore,
 } from "@halonicjs/ports";
+import { plainText } from "../../messages/phrase.ts";
+import { serveMessages } from "../../messages/serve.ts";
 import { readConnectionFile, readStoredKey, storedKeyGuard } from "./serve-messaging.ts";
 
 /** What {@link ServePaperclipTools} needs. */
@@ -39,7 +41,7 @@ export class ServePaperclipTools implements ConnectorFactory {
 
   create(config: ConnectorConfig, context: ConnectorFactoryContext): ConnectorClient {
     if (config.transport.kind !== "paperclip") {
-      throw new Error(`Connector "${config.id}" isn't a Paperclip connector.`);
+      throw new Error(plainText(serveMessages.notPaperclipConnector(config.id).phrase));
     }
     const { connection } = config.transport;
     const { workspace, keys, fetch } = this.#options;

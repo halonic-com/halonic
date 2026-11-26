@@ -31,6 +31,8 @@ export const serveMessages = defineMessages("serve", {
   runNotStarted: () => phrase`That run didn't start. The server is still running.`,
   /** A served run of a harness agent starts while nothing is live yet. */
   noLiveVersion: () => phrase`No version of the workspace is live yet.`,
+  /** For the log: the serve's Paperclip connectors were asked to build another kind of connector. */
+  notPaperclipConnector: (id: string) => phrase`Connector "${id}" isn't a Paperclip connector.`,
   /** `--port` is not a port number. */
   portInvalid: () => phrase`--port needs a whole number from 0 to 65535.`,
   /**

@@ -87,7 +87,7 @@ const watchWorkflow = [
 const redRule = [
   "export function run(ctx) {",
   '  const red = ctx.input.prs.filter((pr) => pr.checks === "red")[0];',
-    '  return { task: red.task, agent: red.author, comment: "ci-ok is red on #" + red.number + "." };',
+  '  return { task: red.task, agent: red.author, comment: "ci-ok is red on #" + red.number + "." };',
   "}",
   "",
 ].join("\n");
