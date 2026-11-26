@@ -142,6 +142,25 @@ verifies("paperclip.verdicts-reader", () => {
       expect(otherReviewer.approved).toBe(false);
     });
 
+    test("an imported approval never clears a change request; a recorded one does (HAL-19968)", () => {
+      const imported = judgeVerdicts(
+        [
+          record("liam", "changes-requested"),
+          record("liam", "approved", { importedFrom: "comment-1" }),
+        ],
+        pull,
+      );
+      expect(imported.holds).toMatchObject([{ by: "Liam" }]);
+      expect(imported.approved).toBe(false);
+
+      const recorded = judgeVerdicts(
+        [record("liam", "changes-requested"), record("liam", "approved")],
+        pull,
+      );
+      expect(recorded.holds).toEqual([]);
+      expect(recorded.approved).toBe(true);
+    });
+
     test("security-ok counts only on the exact head, and only Julian's", () => {
       expect(judgeVerdicts([record("julian", "security-ok")], pull).securityOkOnHead).toBe(true);
       expect(

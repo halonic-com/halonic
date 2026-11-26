@@ -93,14 +93,22 @@ function judgedApproval(record: VerdictRecord, pull: VerdictPull): RecordedAppro
   return { ...(judged as Approval), ...carried, record: record.id };
 }
 
-/** Each reviewer's change request that no later approval or `withdrawn` of theirs cleared. */
+/**
+ * Each reviewer's change request that no later approval or `withdrawn` of
+ * theirs cleared. An approval imported from a Paperclip copy (`importedFrom`)
+ * never clears one: the import can race a change request recorded while it
+ * reads (HAL-19968). Only a verdict recorded with `review_verdict` does.
+ */
 function holdsOf(records: readonly VerdictRecord[]): Hold[] {
   const open = new Map<string, Hold>();
   for (const record of records) {
     if (record.verdict === "changes-requested") {
       const by = reviewerName(record.reviewer);
       open.set(record.reviewer, { by, head: record.head, at: record.at, record: record.id });
-    } else if (record.verdict === "approved" || record.verdict === "withdrawn") {
+    } else if (
+      (record.verdict === "approved" && record.importedFrom === undefined) ||
+      record.verdict === "withdrawn"
+    ) {
       open.delete(record.reviewer);
     }
   }

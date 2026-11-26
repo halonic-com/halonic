@@ -16,6 +16,7 @@
   - A changed-files list GitHub gave only part of counts as not approved. That covers more than 100 files in the snapshot, or the REST list falling short of `changed_files`.
   - The author comes from `authorOf` (the hand-over comment on the task), never from the branch name alone.
   - The shadow comparison uses the same judge, so shadow and gate refuse alike.
+- Julian's addition from HAL-19968: an approval imported from a Paperclip copy (`importedFrom`) never clears a change request in `holdsOf`. Only an approval or `withdrawn` recorded with `review_verdict` does, so an import that races a change request can't clear it. This also covers records the shadow has already written.
 - Fail closed: a failed read of the records, the task's comments, the agents or the pull request leaves it not approved, with the reason. So does a pull request the pass didn't read.
 
 ## Why
@@ -34,10 +35,11 @@ No test was skipped or weakened. These new tests cover the flag off (the gate ro
 - `src/merge-control/approval-side.test.ts`
 - `src/pr-tools/pr-status-verdicts.test.ts`
 
-The test "lists a recorded approval the gate doesn't see" in `shadow-verdicts.test.ts` now gives the hand-over comment that `authorOf` needs. Two new shadow tests cover the refusals.
+`reader.test.ts` adds an imported approval after a change request (still held) and a recorded one (cleared). The test "lists a recorded approval the gate doesn't see" in `shadow-verdicts.test.ts` now gives the hand-over comment that `authorOf` needs. Two new shadow tests cover the refusals.
 
 ## Covers
 
 - tooling/paperclip/
 - paperclip.verdicts-gate
 - paperclip.verdicts-shadow
+- paperclip.verdicts-reader
