@@ -132,6 +132,20 @@ verifies("feedback.overlay", () => {
     expect(element.textContent).toContain("Drag to select an area");
   });
 
+  it("keeps one dim for the overlay's life, so it doesn't flash on a click or while drawing", async () => {
+    await mount("overlay");
+    await vi.waitFor(() => expect(drawn).toHaveBeenCalled());
+    const dimBefore = element.querySelector("[data-feedback-dim]");
+    expect(dimBefore).not.toBeNull();
+    act(() => pointer("pointerdown", 30, 30));
+    expect(element.querySelector("[data-feedback-dim]")).toBe(dimBefore);
+    act(() => pointer("pointerup", 30, 30));
+    dragFrom([10, 10], [17, 40]);
+    expect(element.querySelector("[data-feedback-dim]")).toBe(dimBefore);
+    act(() => pointer("pointerup", 17, 40));
+    expect(element.querySelector("[data-feedback-dim]")).toBe(dimBefore);
+  });
+
   it("ends the feedback when its still is gone", async () => {
     const shell = fakeShell();
     shell.invoke.mockImplementation(async (command: string) => {
