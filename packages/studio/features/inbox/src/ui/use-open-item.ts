@@ -53,6 +53,10 @@ export function useOpenItem(inbox: Inbox, items: readonly InboxItem[]): OpenItem
     },
     [inbox, openKey],
   );
+  const shownKey = open?.key;
+  useEffect(() => {
+    inbox.shownItem.note(shownKey);
+  }, [inbox, shownKey]);
   useEffect(() => {
     const take = () => {
       const asked = inbox.takeOpenRequest();

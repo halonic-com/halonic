@@ -20,6 +20,7 @@ import { type WaitingCard, waitingCards } from "./needs-you.ts";
 import { isFromAgentOf, QuickActions } from "./quick-actions.ts";
 import { type ReadMarks, StoredReadMarks } from "./read-marks.ts";
 import { refusalOf } from "./refusal.ts";
+import { ShownChat } from "./shown-chat.ts";
 
 export { refusalOf } from "./refusal.ts";
 
@@ -83,6 +84,8 @@ export class Messenger {
   readonly channels: ChannelAdmin;
   /** The files waiting in each chat's box, sent with its next message. */
   readonly files = new DraftFiles();
+  /** The chat the page shows, and a chat asked to show again (`messenger.window-chat`). */
+  readonly shown = new ShownChat();
   /** The time now, for how long an agent has been working on what the person asked. */
   readonly now: () => Date;
   /** What the agents are doing, for the activity panel; none where no agent host serves it. */
@@ -350,6 +353,16 @@ export class Messenger {
     return outgoing.length === 0
       ? this.messaging.send(conversation, body)
       : this.messaging.send(conversation, body, outgoing);
+  }
+
+  /**
+   * Asks the page to show the chat `id` again, as its window reopens, only while it is still
+   * listed. Resolves whether it asked; a chat that is gone leaves the chats list showing.
+   */
+  async reopen(id: MessagingId): Promise<boolean> {
+    const listed = (await this.rows()).some((row) => row.conversation.id === id);
+    if (listed) this.shown.ask(id);
+    return listed;
   }
 
   /** An attachment's bytes, read through the engine only when the person asks to see it. */

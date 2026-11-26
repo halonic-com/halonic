@@ -24,6 +24,7 @@ import { NeedsYouPanel, useWaiting } from "./needs-you.tsx";
 import { NewMenu } from "./new-menu.tsx";
 import { useChatOpens } from "./use-chat-opens.ts";
 import { useLeft } from "./use-left.ts";
+import { useShownChat } from "./use-shown-chat.ts";
 
 /** The props of {@link MessengerPage}. */
 export interface MessengerPageProps {
@@ -91,6 +92,10 @@ export function MessengerPage({
     open?.conversation.id,
     chat,
   );
+  useShownChat(messenger, open?.conversation.id, (conversation) => {
+    setNeedsYou(false);
+    setSelected(conversation);
+  });
   const waiting = useWaiting(messenger, rows);
   // In one pane, nothing connected shows the panel, so a narrow window still offers Connect.
   const panelFirst = open !== undefined || needsYou || connected === false;

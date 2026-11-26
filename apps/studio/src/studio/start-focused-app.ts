@@ -12,6 +12,7 @@ import {
   type Shell,
 } from "@halonicjs/studio-shell";
 import type { DeviceMemory } from "./device-memory.ts";
+import { keepFocusedContent, shownInApp } from "./focused-window-content.ts";
 import { focusedFrameColour, followFrameColour } from "./frame-colour.ts";
 import { noStorage, openFolder } from "./open-folder.ts";
 import type { StartedStudio, StudioPage } from "./start-studio.ts";
@@ -65,7 +66,6 @@ export function startFocusedApp(page: StudioPage, parts: FocusedAppParts): Start
     storage: page.storage ?? noStorage,
     platform: parts.platform,
   };
-  const keeper = new WindowContentKeeper(ipc);
   let mounted: MountedFocusedWindow | undefined;
   let windowProps: FocusedWindowProps | undefined;
   let regionFormat: string | undefined;
@@ -82,26 +82,39 @@ export function startFocusedApp(page: StudioPage, parts: FocusedAppParts): Start
     const opened = await openLast(ipc, location, (at) =>
       openFolder(shell, page.window, at, display, device),
     );
-    if (opened !== undefined) await keeper.keep({ workspace: location });
-    return opened;
+    return opened === undefined ? undefined : { opened, location, content };
   });
-  const shown = opening.then((opened) => {
+  const shown = opening.then((found) => {
     windowProps = {
       shell,
       app,
-      workspace: opened?.workspace,
+      workspace: found?.opened.workspace,
       language,
       regionFormat,
       openStudio: () => showStudio(ipc),
     };
     mounted = mountFocusedWindow(page.element, windowProps);
-    return opened;
+    return found?.opened;
   });
+  // The chat or item is asked for once the page shows, while the page is listening.
+  const keeping = opening
+    .then(async (found) => {
+      await shown;
+      if (found === undefined) return () => {};
+      const { opened, location, content } = found;
+      const inApp = shownInApp(app.id, opened.workspace.services);
+      return keepFocusedContent(new WindowContentKeeper(ipc), inApp, location, content);
+    })
+    .catch((error: unknown) => {
+      console.error("This window won't reopen on what it shows:", error);
+      return () => {};
+    });
   return {
     host: "desktop-app",
     stop: async () => {
       const opened = await shown;
       stopRegion();
+      (await keeping)();
       mounted?.unmount();
       stopFrameColour();
       stopAppearance();
