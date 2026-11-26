@@ -49,6 +49,11 @@ export interface ChangedFiles {
    * back to the whole pull request's lines.
    */
   readonly lines: Readonly<Record<string, number>>;
+  /**
+   * Each renamed file's old path, by its new path: a folder line limit counts
+   * a file moved out of its folders, as halonic's `codeLines` does.
+   */
+  readonly renamedFrom: Readonly<Record<string, string>>;
 }
 
 /** Every path a pull request changes, with its changed lines. */
@@ -60,16 +65,18 @@ export async function changedFiles(
   const files = (await everyPage(get, `/repos/${repo}/pulls/${number}/files`)) as ChangedFile[];
   const paths: string[] = [];
   const lines: Record<string, number> = {};
+  const renamedFrom: Record<string, string> = {};
   for (const file of files) {
     if (file.previous_filename !== undefined) {
       paths.push(file.previous_filename);
       // `??=`: when files swap names, the old name is another file's new one.
       lines[file.previous_filename] ??= 0;
+      renamedFrom[file.filename] = file.previous_filename;
     }
     paths.push(file.filename);
     lines[file.filename] = (file.additions ?? 0) + (file.deletions ?? 0);
   }
-  return { paths, lines };
+  return { paths, lines, renamedFrom };
 }
 
 /** Whether any of the regexes matches the path. */
@@ -130,7 +137,8 @@ function linesIn(
 
 /**
  * Whether the pull request is over the line limit or one of its folder
- * limits, counting only the files the limit doesn't skip.
+ * limits, counting only the files the limit doesn't skip. A renamed file
+ * counts toward a folder limit when its new or its old path is in it.
  */
 function overLineLimit(
   rules: RepositoryReviewerRules,
@@ -138,6 +146,7 @@ function overLineLimit(
   paths: readonly string[],
   changedLines: number,
   fileLines: Readonly<Record<string, number>> | undefined,
+  renamedFrom: Readonly<Record<string, string>> | undefined,
 ): boolean {
   if (rules.lineLimit === undefined) {
     return false;
@@ -150,9 +159,9 @@ function overLineLimit(
     return true;
   }
   return rules.lineLimit.folderLimits.some((limit) => {
-    const inFolders = counted.filter((path) =>
-      limit.folders.some((folder) => path.startsWith(folder)),
-    );
+    const inLimit = (path: string | undefined) =>
+      path !== undefined && limit.folders.some((folder) => path.startsWith(folder));
+    const inFolders = counted.filter((path) => inLimit(path) || inLimit(renamedFrom?.[path]));
     return inFolders.length > 0 && linesIn(inFolders, changedLines, fileLines) > limit.max;
   });
 }
@@ -184,17 +193,18 @@ function roleBelowEscalation(
  * request is over a line limit; otherwise `narrowTo.role` when it lets the
  * pull request narrow, and `default` when not. `fileLines` gives each
  * path's changed lines; without it, the line limits count the whole pull
- * request's `changedLines`.
+ * request's `changedLines`. `renamedFrom` gives renamed files' old paths.
  */
 export function reviewRoleByPaths(
   rules: RepositoryReviewerRules,
   paths: readonly string[],
   changedLines: number,
   fileLines?: Readonly<Record<string, number>>,
+  renamedFrom?: Readonly<Record<string, string>>,
 ): ReviewRole {
   const regexps = compiled(rules);
   if (
-    overLineLimit(rules, regexps, paths, changedLines, fileLines) ||
+    overLineLimit(rules, regexps, paths, changedLines, fileLines, renamedFrom) ||
     paths.some((path) => escalatesPath(rules, regexps, path))
   ) {
     return rules.escalateTo;
@@ -209,7 +219,7 @@ export function reviewerByPaths(
   changedLines: number,
   routing: Routing | undefined,
 ): ReviewerByPaths {
-  const role = reviewRoleByPaths(rules, files.paths, changedLines, files.lines);
+  const role = reviewRoleByPaths(rules, files.paths, changedLines, files.lines, files.renamedFrom);
   return { role, person: routing?.roles[role] };
 }
 
