@@ -11,15 +11,20 @@ export type StillState =
 /**
  * The Send feedback dialog's crop, drawn on `canvas` once the shell gave it. Without one, such as
  * after two minutes, or on a canvas that can't draw, it is `failed`: the dialog then says so and
- * offers to send the text alone, so nothing typed is lost (Noah's design on HAL-19384).
+ * offers to send the text alone, so nothing typed is lost (Noah's design on HAL-19384). Given the
+ * `kept` crop, as after Undo, it draws that and asks the shell for nothing.
  */
 export function useStill(
   ipc: FeedbackIpc,
   canvas: RefObject<HTMLCanvasElement | null>,
   command: typeof feedbackCommands.crop = feedbackCommands.crop,
+  kept?: StillImage,
 ): StillState {
-  const [state, setState] = useState<StillState>({ kind: "loading" });
+  const [state, setState] = useState<StillState>(
+    kept === undefined ? { kind: "loading" } : { kind: "ready", still: kept },
+  );
   useEffect(() => {
+    if (kept !== undefined) return;
     let current = true;
     ipc
       .invoke(command)
@@ -33,7 +38,7 @@ export function useStill(
     return () => {
       current = false;
     };
-  }, [ipc, command]);
+  }, [ipc, command, kept]);
   useEffect(() => {
     if (state.kind !== "ready" || canvas.current === null) return;
     try {

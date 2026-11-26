@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import type { ToastMessage } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -39,6 +40,7 @@ let stop: (() => void) | undefined;
 let sent: OutgoingFeedback[] = [];
 /** Frames the window asked for and hasn't drawn yet; {@link drawFrame} draws them. */
 let frames: FrameRequestCallback[] = [];
+let toasts: ToastMessage[] = [];
 
 beforeEach(() => {
   Object.assign(window, { innerWidth: 100, innerHeight: 50 });
@@ -69,12 +71,17 @@ afterEach(() => {
   stop = undefined;
   sent = [];
   frames = [];
+  toasts = [];
   delete canvasPrototype["getContext"];
   delete canvasPrototype["toBlob"];
   vi.unstubAllGlobals();
 });
 
-function startWith(shell: ReturnType<typeof fakeShell>, shortcut = "CommandOrControl+Shift+F") {
+function startWith(
+  shell: ReturnType<typeof fakeShell>,
+  shortcut = "CommandOrControl+Shift+F",
+  connected?: () => boolean,
+) {
   stop = startInAppFeedback({
     ipc: shell,
     platform: "windows",
@@ -85,6 +92,10 @@ function startWith(shell: ReturnType<typeof fakeShell>, shortcut = "CommandOrCon
       return { kind: "taken" };
     },
     details: () => details,
+    toasts: { show: (message) => toasts.push(message) },
+    ...(connected === undefined
+      ? {}
+      : { connected: { current: connected, subscribe: () => () => undefined } }),
   });
 }
 
@@ -349,5 +360,73 @@ verifies("feedback.select-again", () => {
     expect(overlay()).toBeNull();
     expect(document.querySelector("textarea")?.value).toBe("Run list jumps");
     expect(ends(shell)).toEqual([]);
+  });
+});
+
+function crops(shell: ReturnType<typeof fakeShell>) {
+  return shell.invoke.mock.calls.filter(([command]) => command === "plugin:feedback|crop");
+}
+
+verifies("feedback.undo-discard", () => {
+  it("says Feedback discarded on Cancel with text, and Undo brings back the text and crop", async () => {
+    const shell = fakeShell();
+    await selectWholeWindow(shell);
+    typeInDialog("Run list jumps");
+    const cropsBefore = crops(shell).length;
+    act(() => buttonNamed("Cancel").click());
+
+    expect(dialog()).toBeNull();
+    expect(ends(shell)).toHaveLength(1);
+    expect(toasts.map((toast) => [toast.title, toast.action?.label])).toEqual([
+      ["Feedback discarded", "Undo"],
+    ]);
+
+    await act(async () => toasts[0]?.action?.onClick());
+
+    expect(dialog()?.open).toBe(true);
+    expect(document.querySelector("textarea")?.value).toBe("Run list jumps");
+    expect(document.body.textContent).toContain("20 × 10");
+    expect(crops(shell)).toHaveLength(cropsBefore);
+  });
+
+  it("closes without a toast when nothing was written", async () => {
+    const shell = fakeShell();
+    await selectWholeWindow(shell);
+    act(() => void dialog()?.dispatchEvent(new Event("cancel", { cancelable: true })));
+
+    expect(dialog()).toBeNull();
+    expect(toasts).toEqual([]);
+  });
+
+  it("leaves a feedback already showing as it is on Undo", async () => {
+    const shell = fakeShell();
+    await selectWholeWindow(shell);
+    typeInDialog("First");
+    act(() => buttonNamed("Cancel").click());
+    await press(ctrlShiftF);
+    await settle();
+    expect(overlay()).not.toBeNull();
+
+    await act(async () => toasts[0]?.action?.onClick());
+
+    expect(overlay()).not.toBeNull();
+    expect(dialog()).toBeNull();
+  });
+});
+
+verifies("feedback.connected-only", () => {
+  it("lets the shortcut through while Studio isn't connected to Paperclip", async () => {
+    const shell = fakeShell();
+    let connected = false;
+    startWith(shell, "CommandOrControl+Shift+F", () => connected);
+    const event = new KeyboardEvent("keydown", { cancelable: true, ...ctrlShiftF });
+    await act(async () => window.dispatchEvent(event));
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(shell.invoke).not.toHaveBeenCalled();
+
+    connected = true;
+    await press(ctrlShiftF);
+    expect(shell.invoke).toHaveBeenCalledWith("plugin:feedback|start");
   });
 });

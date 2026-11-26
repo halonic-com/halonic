@@ -44,7 +44,7 @@ export const feedbackFeature = defineFeature({
       group: "general",
       order: 37,
       phone: false,
-      available: feedbackSettingsAvailable,
+      available: feedbackSectionAvailable,
       view: "FeedbackSection",
       load: () => import("./settings/feedback-section.tsx"),
     });
@@ -62,6 +62,20 @@ export const feedbackFeature = defineFeature({
     });
   },
 });
+
+/**
+ * Shows Settings → Feedback only where the app gives a {@link FeedbackSettingsService}, and only
+ * while Studio is connected to Paperclip (`feedback.connected-only`).
+ */
+export function feedbackSectionAvailable(
+  context: WorkspaceContext,
+  set: (available: boolean) => void,
+): () => void {
+  const connected = context.services.find(FeedbackSettingsService)?.connected;
+  if (connected === undefined) return feedbackSettingsAvailable(context, set);
+  set(connected.current());
+  return connected.subscribe(() => set(connected.current()));
+}
 
 /** Shows the sections only where the app gives a {@link FeedbackSettingsService}. */
 export function feedbackSettingsAvailable(

@@ -5,8 +5,13 @@ import {
 } from "@halonicjs/studio-feature-quick-ask/api";
 import { HostSettingsService } from "@halonicjs/studio-feature-settings/api";
 import type { SettingsSectionProps } from "@halonicjs/studio-shell";
-import { useState } from "react";
-import { type FeedbackSettingsHost, FeedbackSettingsService, type ShortcutChange } from "../api.ts";
+import { useState, useSyncExternalStore } from "react";
+import {
+  type FeedbackConnected,
+  type FeedbackSettingsHost,
+  FeedbackSettingsService,
+  type ShortcutChange,
+} from "../api.ts";
 import { feedbackPrefs } from "../feedback-prefs.ts";
 import { QuickAskRow } from "./quick-ask-row.tsx";
 import { notSavedLine, settingsWords, takenLine } from "./settings-words.ts";
@@ -43,12 +48,14 @@ export interface KeyboardViewProps {
  * Settings → Keyboard (`feedback.settings-shortcut`): the **Send feedback** row. A recorded
  * shortcut goes to the shell; the row shows the new keys once the shell saved them, and keeps
  * the old ones, with the reason under the row, when it didn't. Below it, the **Quick ask** row
- * where the app gives quick ask's keys.
+ * where the app gives quick ask's keys. The Send feedback row shows only while Studio is connected to
+ * Paperclip (`feedback.connected-only`), so no row offers keys that do nothing.
  */
 export function KeyboardView({ host, saved, announce, askKeys }: KeyboardViewProps) {
   const [shortcut, setShortcut] = useState(saved);
   const [problem, setProblem] = useState<{ line: string; taken: boolean }>();
   const keys = shortcutKeys(shortcut, host.platform);
+  const connected = useConnected(host.connected);
 
   async function record(next: string) {
     setProblem(undefined);
@@ -67,21 +74,36 @@ export function KeyboardView({ host, saved, announce, askKeys }: KeyboardViewPro
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex max-w-120 flex-col gap-1">
-        <ShortcutRecorder
-          name={settingsWords.sendFeedback}
-          keys={keys}
-          spoken={shortcutText(keys, host.platform)}
-          onRecord={record}
-        />
-        {problem === undefined ? null : (
-          <p className={`text-small ${problem.taken ? "text-attention" : "text-danger"}`}>
-            {problem.line}
-          </p>
-        )}
-      </div>
+      {connected ? (
+        <div className="flex max-w-120 flex-col gap-1">
+          <ShortcutRecorder
+            name={settingsWords.sendFeedback}
+            keys={keys}
+            spoken={shortcutText(keys, host.platform)}
+            onRecord={record}
+          />
+          {problem === undefined ? null : (
+            <p className={`text-small ${problem.taken ? "text-attention" : "text-danger"}`}>
+              {problem.line}
+            </p>
+          )}
+        </div>
+      ) : null}
       {askKeys === undefined ? null : <QuickAskRow settings={askKeys} announce={announce} />}
     </div>
+  );
+}
+
+const alwaysConnected: FeedbackConnected = {
+  current: () => true,
+  subscribe: () => () => undefined,
+};
+
+/** Whether Studio is connected to Paperclip, kept current; absent counts as connected. */
+function useConnected(connected: FeedbackConnected = alwaysConnected): boolean {
+  return useSyncExternalStore(
+    (listener) => connected.subscribe(listener),
+    () => connected.current(),
   );
 }
 

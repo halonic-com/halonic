@@ -1,12 +1,16 @@
+import type { ToastMessage } from "@halonicjs/studio-kit";
 import type { KeyboardPlatform } from "@halonicjs/studio-shell";
 import { type ReactNode, StrictMode } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import type { FeedbackConnected } from "../api.ts";
 import { endFeedback, type FeedbackIpc, feedbackCommands } from "../feedback-ipc.ts";
 import type { StillSize } from "../overlay/drag.ts";
 import { FeedbackOverlay } from "../overlay/feedback-overlay.tsx";
+import type { StillImage } from "../overlay/still.ts";
+import { discardedToast } from "../send/feedback-toast.ts";
 import type { FeedbackDetails, SendOutgoing } from "../send/hand-on.ts";
 import { noPressedWindow, pressedWindowOf } from "../send/pressed-window.ts";
-import { SendFeedback } from "../send/send-feedback.tsx";
+import { type FeedbackDraft, SendFeedback } from "../send/send-feedback.tsx";
 import { heardShortcut, matchesShortcut } from "../settings/shortcut-keys.ts";
 
 /**
@@ -35,6 +39,13 @@ export interface InAppFeedbackParts {
   readonly send: SendOutgoing;
   /** What the Send feedback dialog says and sends; read each time it opens. */
   readonly details: () => FeedbackDetails;
+  /** The window's toast region, where "Feedback discarded" shows with its Undo. */
+  readonly toasts: { show(message: ToastMessage): unknown };
+  /**
+   * Whether Studio is connected to Paperclip; the shortcut is heard only while it is
+   * (`feedback.connected-only`). Absent counts as connected.
+   */
+  readonly connected?: FeedbackConnected;
 }
 
 /**
@@ -47,7 +58,10 @@ export interface InAppFeedbackParts {
  * shell answers `unavailable` when it showed the window that says capture isn't available: then no
  * overlay shows. The overlay closes itself when the shell drops the still, after
  * {@link stillLifetime}. The dialog's Select again closes it and starts a new selection, whose
- * dialog opens with the text kept (`feedback.select-again`). Gives the stop.
+ * dialog opens with the text kept (`feedback.select-again`). Cancel, the ✕ or Esc with text written
+ * shows "Feedback discarded", whose Undo brings the dialog back with that text and crop
+ * (`feedback.undo-discard`). While Studio isn't connected to Paperclip the shortcut is let through
+ * as if unheard. Gives the stop.
  */
 export function startInAppFeedback(parts: InAppFeedbackParts): () => void {
   const { ipc, platform, shortcut, window } = parts;
@@ -55,6 +69,7 @@ export function startInAppFeedback(parts: InAppFeedbackParts): () => void {
 
   const onKey = (event: KeyboardEvent) => {
     if (event.repeat || !matchesShortcut(heardShortcut(shortcut()), event, platform)) return;
+    if (parts.connected?.current() === false) return;
     event.preventDefault();
     event.stopPropagation();
     if (flow.layer.showing() === "dialog") return;
@@ -87,7 +102,7 @@ function feedbackFlow(parts: InAppFeedbackParts) {
   // The window as it was at the press, before the overlay or the dialog showed.
   let pressed = noPressedWindow;
 
-  const showDialog = (text: string) => {
+  const showDialog = (text: string, crop?: StillImage) => {
     layer.show(
       <SendFeedback
         ipc={ipc}
@@ -95,11 +110,18 @@ function feedbackFlow(parts: InAppFeedbackParts) {
         details={parts.details()}
         pressed={pressed}
         initialText={text}
+        {...(crop === undefined ? {} : { initialCrop: crop })}
         selectAgain={selectAgain}
+        onDiscarded={(draft) => parts.toasts.show(discardedToast(() => undo(draft)))}
         onClose={layer.close}
       />,
       "dialog",
     );
+  };
+
+  // Undo while another feedback shows, or starts, would take that one away, so it does nothing.
+  const undo = (draft: FeedbackDraft) => {
+    if (layer.showing() === undefined && !starting) showDialog(draft.text, draft.crop ?? undefined);
   };
 
   const begin = (text: string, refused: () => void) => {

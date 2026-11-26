@@ -1,6 +1,7 @@
 import { type HostSettings, ServiceRegistry } from "@halonicjs/app";
 import {
   type FeedbackDetails,
+  type InAppFeedbackParts,
   type SendOutgoing,
   startInAppFeedback,
 } from "@halonicjs/studio-feature-feedback";
@@ -15,12 +16,14 @@ import { hostSettingsOf } from "../studio/window-host-settings.ts";
  * Messenger (`feedback.in-app`). The window hears the shortcut only while it is focused,
  * and the selection overlay and then the Send feedback dialog show inside it. The shortcut, the
  * project and the assignee are read from the window's host settings when they're needed, so a
- * change in Settings counts at once. Gives the stop.
+ * change in Settings counts at once. "Feedback discarded" shows in the window's `toasts`. Gives
+ * the stop.
  */
 export function startWindowFeedback(
   page: { readonly window: object },
   ipc: TauriIpc,
   platform: KeyboardPlatform,
+  toasts: InAppFeedbackParts["toasts"],
 ): () => void {
   const window = page.window as Window;
   if (typeof window.addEventListener !== "function" || window.document === undefined) {
@@ -47,6 +50,7 @@ export function startWindowFeedback(
       now: () => new Date(),
     }),
     send: notSentYet,
+    toasts,
   });
 }
 

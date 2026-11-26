@@ -129,7 +129,7 @@ export function startStudio(page: StudioPage, desktop = desktopFeatures): Starte
             language: studioLanguage,
             display: displaySettingsOf(page),
           });
-    return withWindowFeedback(started, startWindowFeedback(page, ipc, platform));
+    return withWindowFeedback(started, startWindowFeedback(page, ipc, platform, shell.toasts));
   }
   return startServedStudio(page, {
     host,
