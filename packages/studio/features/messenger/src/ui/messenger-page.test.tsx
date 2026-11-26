@@ -86,18 +86,16 @@ verifies("messenger.conversations", () => {
       const { messaging } = twoChiefs();
       const page = await openMessenger(messaging);
       const [acme, globex] = rows(page);
-      expect(acme).toMatch(/^CChief · Paperclip · Acme.*Shall I merge #12\?Unread$/);
+      expect(acme).toMatch(/^CChief · Paperclip · Acme.*Shall I merge #12\?1 unread$/);
       expect(globex).toBe("CChief · Paperclip · Globex");
       await openAcmeChat(page);
       expect(page.querySelector("main header p")?.textContent).toBe("Paperclip · Acme · Waiting");
     });
 
-    it("lists under Waiting for me only the conversation whose agent wrote last", async () => {
+    it("lists every conversation in one list, with no tabs (HAL-19132)", async () => {
       const { messaging } = twoChiefs();
       const page = await openMessenger(messaging);
-      await press(byText(page, '[role="tab"]', "Waiting for me"));
-      expect(rows(page)).toEqual([expect.stringMatching(/^CChief · Paperclip · Acme/)]);
-      await press(byText(page, '[role="tab"]', "All"));
+      expect(page.querySelector('[role="tab"]')).toBeNull();
       expect(rows(page)).toHaveLength(2);
     });
 
@@ -179,16 +177,13 @@ verifies("messenger.conversations", () => {
       expect(document.activeElement).toBe(byText(page, "nav li button", "Acme"));
     });
 
-    it("in a narrow window, Back to chats focuses the tab when the chat left it (HAL-18316 MS6)", async () => {
+    it("in a narrow window, Back to chats focuses the row of a chat the person answered", async () => {
       const { messaging } = twoChiefs();
       const page = await openMessenger(messaging, [], true);
-      await press(byText(page, '[role="tab"]', "Waiting for me"));
       const box = await openAcmeChat(page);
-      // Answering it takes the chat off Waiting for me, and it stays open.
       await typeAndSend(box, "Yes, merge it");
       await press(byText(page, "main button", "Back to chats"));
-      expect(rows(page)).toEqual([]);
-      expect(document.activeElement).toBe(byText(page, '[role="tab"]', "Waiting for me"));
+      expect(document.activeElement).toBe(byText(page, "nav li button", "Acme"));
     });
 
     it("after Leave, focuses the row that took the channel's place and says it left (HAL-18835)", async () => {
@@ -203,7 +198,7 @@ verifies("messenger.conversations", () => {
       expect(pageSaid(page)).toBe("You left Engineering.");
     });
 
-    it("after leaving the tab's last chat, focuses the tab", async () => {
+    it("after leaving the last chat, focuses the list's first button", async () => {
       polyfillModals();
       const messaging = new FakeAgentMessaging({ now: ticking() });
       const acme = messaging.addSource({ label: "Paperclip · Acme" });
@@ -213,7 +208,7 @@ verifies("messenger.conversations", () => {
       const page = await openMessenger(messaging);
       await leaveChannel(page, "Engineering");
       expect(rows(page)).toEqual([]);
-      expect(document.activeElement).toBe(byText(page, '[role="tab"]', "All"));
+      expect(document.activeElement).toBe(page.querySelector("nav button"));
       expect(pageSaid(page)).toBe("You left Engineering.");
     });
 

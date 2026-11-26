@@ -79,13 +79,12 @@ verifies("messenger.channel-waiting", () => {
       expect(rowOf(page, "Design")?.textContent).not.toContain("working");
     });
 
-    it("lists the channel in Waiting for me with its oldest question and how many more", async () => {
+    it("marks the channel with the violet dot while a question waits for the person", async () => {
       const { messaging } = withQuestions();
       const page = await openMessenger(messaging);
-      await press(byText(page, '[role="tab"]', "Waiting for me"));
-      expect(rowOf(page, "Engineering")?.textContent).toContain(
-        "Elena asks you: Which hostname? · +1 more",
-      );
+      const row = rowOf(page, "Engineering");
+      expect(row?.querySelector("[data-needs-you]")?.textContent).toBe(", needs you");
+      expect(row?.textContent).not.toContain("asks you");
     });
 
     it("shows the bar, moves to the next card, and says where the card was asked", async () => {

@@ -12,7 +12,7 @@ import {
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { MessengerService } from "../api.ts";
-import { type ConversationRow, inTab, type Messenger, type MessengerTab } from "../messenger.ts";
+import type { ConversationRow, Messenger } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import { WithActivity } from "./activity-host.tsx";
 import { type AgentPictures, pictureOf, useAgentPictures } from "./agent-pictures.ts";
@@ -34,12 +34,11 @@ export interface MessengerPageProps {
 /**
  * The Messenger (HAL-17421 render 4a): the list on the left, on the frame,
  * and the open conversation as the one panel on the right. It reads the list
- * when it opens and whenever a source says it changed. The open conversation
- * stays open when it leaves the tab, as when the person answers it.
+ * when it opens and whenever a source says it changed.
  *
  * A window narrower than 900px (`useNarrow`, such as 320px or 400 % zoom) shows one pane at a
  * time, as the Inbox does: the list, or the open chat with **Back to chats**, which puts focus
- * back on the chat's row, or on the tab when the chat left it. Opening a chat there puts focus in
+ * back on the chat's row. Opening a chat there puts focus in
  * its box (HAL-18074 MS5).
  *
  * With nothing connected, the panel says so and offers Connect Paperclip, instead
@@ -53,7 +52,6 @@ export function MessengerPage({
   onConnect,
   words = engineWords["desktop-app"],
 }: MessengerPageProps) {
-  const [tab, setTab] = useState<MessengerTab>("all");
   // Undefined until the first read lands, so the page shows its skeleton, not "No chats yet".
   const [rows, setRows] = useState<readonly ConversationRow[] | undefined>(undefined);
   // Unknown until the first read lands, so the page never flashes "No connections".
@@ -97,7 +95,7 @@ export function MessengerPage({
     setChanged((count) => count + 1);
     select(channel);
   };
-  const { said, leave } = useLeft(list, rows, tab);
+  const { said, leave } = useLeft(list, rows);
   const left = () => {
     if (open !== undefined) leave(open);
     setSelected(undefined);
@@ -126,15 +124,13 @@ export function MessengerPage({
               onRetry={readAgain}
             >
               <ConversationList
-                tab={tab}
-                onTab={setTab}
-                rows={rows === undefined ? undefined : inTab(rows, tab)}
+                rows={rows}
                 onRetry={readAgain}
                 selected={selected}
                 onSelect={select}
                 pictures={pictures}
                 now={messenger.now()}
-                unread={(row) => messenger.unread(row)}
+                unread={(row) => messenger.unreadCount(row)}
                 manySources={new Set(rows?.map((row) => row.conversation.source)).size > 1}
               />
             </ChatsLoad>
@@ -260,12 +256,7 @@ function useOnePane(
   const back = () => {
     flushSync(() => setSelected(undefined));
     const chats = list.current?.querySelectorAll<HTMLElement>("[data-chat]") ?? [];
-    const row = [...chats].find((each) => each.getAttribute("data-chat") === selected);
-    // An answered chat can leave Waiting for me while it stays open: then its tab takes focus
-    // (HAL-18316 MS6).
-    (
-      row ?? list.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
-    )?.focus();
+    [...chats].find((each) => each.getAttribute("data-chat") === selected)?.focus();
   };
   return { onePane, list, chat, select, back };
 }
