@@ -112,20 +112,24 @@ describe("createNodeWorkerToolScriptIsolate", () => {
 
     it("terminates a running worker with toolscript.cancelled when its signal aborts", async () => {
       const cancel = new AbortController();
+      let abortedAt = Number.NaN;
       const isolate = workerIsolate(
         {},
         {
           entry: new URL("./test/stand-in-worker.spec.ts", import.meta.url),
           // Aborts once the worker has said it started, so the run is under way.
           startWorker: (entry, options) =>
-            startWorker(entry, options).once("message", () => cancel.abort()),
+            startWorker(entry, options).once("message", () => {
+              abortedAt = performance.now();
+              cancel.abort();
+            }),
           startLimitMs: workerStartLimitMs,
         },
       );
-      const startedAt = performance.now();
       const result = await run(isolate, "block", { signal: cancel.signal });
       expect(result).toMatchObject({ ok: false, reason: "toolscript.cancelled" });
-      expect(performance.now() - startedAt).toBeLessThan(agent.cpuMs);
+      // Counted from the abort, so a slow worker start on a busy runner doesn't count.
+      expect(performance.now() - abortedAt).toBeLessThan(agent.cpuMs);
     });
 
     it("answers toolscript.failed for a worker that crashes, exits, or never starts, without its error", async () => {
