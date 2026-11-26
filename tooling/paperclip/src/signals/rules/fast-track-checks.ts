@@ -22,8 +22,8 @@ export interface PullCheck {
   readonly number: number;
   /** Its task, from an own branch named `<agent>/HAL-<n>-…`; null for a fork or another name. */
   readonly task: string | null;
-  /** Julian on a pull request Liam wrote, else Liam. */
-  readonly reviewer: "Liam" | "Julian";
+  /** The reviewer the snapshot names (HAL-19653), or null in a snapshot saved before it named one. */
+  readonly reviewer: string | null;
   /** Its reviewer's signed approval names its head. */
   readonly approved: boolean;
   /** Checks still running that count. */
@@ -52,10 +52,6 @@ function taskOf(repo: string, pull: SnapshotPull): string | null {
   const own = pull.headRepo?.toLowerCase() === repo.toLowerCase();
   const match = /^[\w.-]+\/([a-z]+-\d+)(?:-|$)/i.exec(pull.branch);
   return own && match?.[1] !== undefined ? match[1].toUpperCase() : null;
-}
-
-function reviewerOf(pull: SnapshotPull): PullCheck["reviewer"] {
-  return pull.branch.toLowerCase().startsWith("liam/") ? "Julian" : "Liam";
 }
 
 function pendingOf(open: OpenFacts): readonly string[] {
@@ -94,7 +90,8 @@ function labelCounts(input: FastTrackCheckInput, pull: SnapshotPull, by: string 
 }
 
 function checkOf(input: FastTrackCheckInput, pull: SnapshotPull, open: OpenFacts): PullCheck {
-  const reviewer = reviewerOf(pull);
+  // The pass names the reviewer in the snapshot (`snapshot/reviewers.ts`): a pure rule can't import the source.
+  const reviewer = open.reviewer ?? null;
   const approved = open.approvals.some(
     ({ by, head }) => by === reviewer && pull.head.startsWith(head),
   );

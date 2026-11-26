@@ -1,4 +1,4 @@
-import { branchOwner } from "../pr-watcher/decide.ts";
+import { snapshotReviewer } from "../snapshot/reviewers.ts";
 import type { OpenFacts, SnapshotPull } from "../snapshot/shape.ts";
 
 /**
@@ -8,9 +8,9 @@ import type { OpenFacts, SnapshotPull } from "../snapshot/shape.ts";
 /** A check the monitor ignores: it runs outside the merge's gate. */
 export const ignoredCheck = "Live cloud suites passed";
 
-/** The reviewer whose approval counts here: Julian on a pull request Liam wrote, else Liam. */
-export function reviewerOf(pull: SnapshotPull): "Liam" | "Julian" {
-  return branchOwner(pull.branch) === "liam" ? "Julian" : "Liam";
+/** The reviewer whose approval counts here: the one the snapshot names (`snapshotReviewer`, HAL-19653). */
+export function reviewerOf(pull: SnapshotPull): string {
+  return snapshotReviewer(pull);
 }
 
 /** Approved on its current head by its reviewer, by the monitor's rule. */

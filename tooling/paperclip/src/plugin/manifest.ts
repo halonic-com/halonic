@@ -219,7 +219,13 @@ export const manifest: PaperclipPluginManifestV1 = {
         type: "string",
         title: "Julian's wake task",
         description:
-          "The id of the task where a pull request Liam wrote that waits only for its review wakes Julian (Chat with Julian). Empty: it only logs.",
+          "The id of the task where a green pull request that waits only for Julian's review wakes him (Chat with Julian). Empty: it only logs.",
+      },
+      noraWakeTask: {
+        type: "string",
+        title: "Nora's wake task",
+        description:
+          "The id of the task where a green pull request that waits only for Nora's review wakes her (Chat with Nora). Empty: it only logs.",
       },
       unhandledTask: {
         type: "string",

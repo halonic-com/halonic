@@ -41,6 +41,7 @@ import { passStateKey } from "./merge-control-lock.ts";
 import { countingFetch, type MetricsApi, writeMetrics } from "./metrics.ts";
 import { type RunsFetch, reviewerLimitsOf } from "./reviewer-runs.ts";
 import { prWatcherSignalPass, watcherRecorder } from "./signal-pass-job.ts";
+import { addReviewers } from "./snapshot-reviewers.ts";
 import {
   readStackRebaseSettings,
   type StackRebaseSettings,
@@ -300,7 +301,7 @@ async function watchCompany(
   const query = gitHubQueryReader({ fetch, token });
   const fallback = (repo: string, sha: string, name: string) => ciOk(get, repo, sha, name);
   const started = Date.now();
-  const snapshot = await takeSnapshot({
+  const taken = await takeSnapshot({
     // Only the shared token today; the read-only GitHub App's token replaces it here (HAL-16003).
     token: tokenKind,
     query,
@@ -311,6 +312,11 @@ async function watchCompany(
       ctx.logger.error(`PR watcher: left ${repo} out, the token doesn't reach it: ${reason}`, {
         companyId,
       }),
+  });
+  // Each open pull request's reviewer, so the tools that read only the snapshot name the shared one (HAL-19653).
+  const snapshot = await addReviewers(ctx, companyId, taken, {
+    repo: settings.repos[0] ?? defaultRepos[0] ?? "",
+    get,
   });
   // The watcher works from the snapshot in memory; only its later readers miss a failed save.
   await saveSnapshot(ctx, companyId, snapshot).catch((error: unknown) => {

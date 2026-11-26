@@ -19,6 +19,7 @@ import {
   sharedLabelScope,
 } from "../fast-track/scope.ts";
 import { checksOf } from "../snapshot/read.ts";
+import { authorRuleReviewer } from "../snapshot/reviewers.ts";
 import type { Snapshot, SnapshotPull, SnapshotRepo } from "../snapshot/shape.ts";
 import { decide, type FastTrackSettings } from "./rules/fast-track.ts";
 import { checkPulls } from "./rules/fast-track-checks.ts";
@@ -76,7 +77,7 @@ function today(snapshot: Snapshot, before: FastTrackState, settings: PassSetting
   };
 }
 
-/** The rule's pass, every input through JSON as a ToolScript Action gets it. */
+/** The rule's pass, every input through JSON as a ToolScript Action gets it, on the snapshot the pass names reviewers in. */
 function rule(
   snapshot: Snapshot,
   before: FastTrackState,
@@ -86,7 +87,7 @@ function rule(
   const json = <Value>(value: Value): Value => JSON.parse(JSON.stringify(value));
   const notices: unknown[] = [];
   const tracked: Record<string, unknown> = {};
-  for (const each of snapshot.repos) {
+  for (const each of withReviewers(snapshot).repos) {
     const prefix = `${each.repo}#`;
     const base = json({
       repo: each,
@@ -117,6 +118,18 @@ function rule(
     }
   }
   return { notices, tracked };
+}
+
+/** Each open pull request with the reviewer the pass names where it reads no paths (`snapshot/reviewers.ts`), unless it names one. */
+function withReviewers(snapshot: Snapshot): Snapshot {
+  const named = (pull: SnapshotPull): SnapshotPull =>
+    pull.open === null
+      ? pull
+      : { ...pull, open: { reviewer: authorRuleReviewer(pull), ...pull.open } };
+  return {
+    ...snapshot,
+    repos: snapshot.repos.map((each) => ({ ...each, pulls: each.pulls.map(named) })),
+  };
 }
 
 function expectParity(snapshot: Snapshot, before: FastTrackState, settings: PassSettings) {
@@ -241,6 +254,17 @@ const rulesInputs: [
   [
     "ready, and Liam's own",
     [pull(105), pull(106, {}, { branch: "liam/HAL-106-x" })],
+    [],
+    undefined,
+    {},
+  ],
+  [
+    "ready, routine: Nora's, approved by her and not by Liam",
+    [
+      pull(107, { reviewer: "Nora" }),
+      pull(111, { reviewer: "Nora", approvals: [{ by: "Nora", head: "abc1234" }] }),
+      pull(112, { reviewer: "Nora", ...liamApproved }),
+    ],
     [],
     undefined,
     {},

@@ -6,6 +6,10 @@ import { describe, expect, test } from "vitest";
 import type { PullDetails } from "./pr-tools/pr-status.ts";
 import type { GitHubGet } from "./pr-watcher/github.ts";
 import { reviewerAnswer } from "./pr-watcher/route.ts";
+import type { RoutedPull } from "./reviewer-paths.ts";
+import { reviewerOfPull } from "./reviewer-paths-who.ts";
+import { snapshotWith } from "./routing.test-helper.ts";
+import { routingOf } from "./routing-load.ts";
 
 const repo = "halonic-com/halonic";
 
@@ -64,6 +68,31 @@ verifies("paperclip.reviewer-source", () => {
       expect(await reviewerOn("julian/HAL-1-acme")).toBe("liam");
     });
 
+    test("a routing never names the author either (HAL-19653)", () => {
+      const routing = routingOf(
+        snapshotWith({
+          roles: { "code-reviewer": "owen", "second-reviewer": "kim", "routine-reviewer": "pip" },
+        }),
+      );
+      const routine: RoutedPull = {
+        files: studio,
+        changedLines: 120,
+        sensitive: false,
+        ours: true,
+      };
+      const core: RoutedPull = {
+        files: ["package.json"],
+        changedLines: 2,
+        sensitive: false,
+        ours: true,
+      };
+      expect(reviewerOfPull(routine, "ravi", routing)).toBe("pip");
+      expect(reviewerOfPull(routine, "pip", routing)).toBe("kim");
+      expect(reviewerOfPull(routine, "kim", routing)).toBe("pip");
+      expect(reviewerOfPull(core, "owen", routing)).toBe("kim");
+      expect(reviewerOfPull(core, undefined, routing)).toBe("owen");
+    });
+
     test("the shared answer names Liam for his paths", async () => {
       const answer = await reviewerAnswer(gitHubWith("ravi/HAL-1-acme", ["package.json"]), repo, 1);
       expect(answer.reviewer).toBe("liam");
@@ -100,15 +129,12 @@ const knownCopies: Readonly<Record<string, string>> = {
   // Signature parsers: the names whose signed line is read, not who reviews.
   "merge-control/facts-patch-ids.ts": "reads Liam's, Julian's and Nora's signed lines",
   "pr-tools/approvals.ts": "reads Liam's, Julian's and Nora's signed lines",
-  // Snapshot-only tools without changed files: HAL-19653.
-  "fast-track/checks.ts": "HAL-19653",
-  "signals/rules/fast-track-checks.ts": "HAL-19653",
-  "watchers/reviewer-wake.ts": "HAL-19653",
-  "pr-watcher/reroute.ts": "HAL-19653",
-  "plugin/manifest.ts": "HAL-19653: the effort reviewers' default in the plugin manifest",
-  // Settings defaults in the plugin manifest's import closure, which the deployer pins: HAL-19653.
-  "seat-mover/settings.ts": "HAL-19653",
-  "task-effort/settings.ts": "HAL-19653",
+  // Defaults in the plugin manifest and its import closure, which the plugin deployer pins
+  // (`MANIFEST_IMPORTS`): who counts as a reviewer, not who reviews a pull request. Importing
+  // the source there would pull it into the closure (HAL-19653).
+  "plugin/manifest.ts": "the effort reviewers' default in the plugin manifest",
+  "seat-mover/settings.ts": "the seat mover's reviewers' default, in the manifest's closure",
+  "task-effort/settings.ts": "the effort reviewers' default, in the manifest's closure",
 };
 
 function sourceFiles(folder: string): string[] {

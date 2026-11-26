@@ -159,6 +159,13 @@ export interface OpenFacts {
   readonly missingChecks?: readonly string[];
   /** Reviewers' findings by severity tag, counts only, of the newest 50 reviews and 100 comments. Added like `failingChecks`. */
   readonly reviewCounts?: SeverityCounts;
+  /**
+   * Who reviews it, as their signed line writes their name (`Nora`): the
+   * shared answer (`reviewerAnswer`, HAL-19639), read for the watcher's first
+   * repository, or the author rule alone where its paths weren't read
+   * (`snapshot/reviewers.ts`). Added like `failingChecks` (HAL-19653).
+   */
+  readonly reviewer?: string;
 }
 
 /** A label on an open pull request. */

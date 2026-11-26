@@ -175,7 +175,7 @@ describe("the job", () => {
       fastTrackLabelAdder: "",
       watchers: {
         dryRun: true,
-        wakeTasks: { Liam: "", Julian: "" },
+        wakeTasks: { Liam: "", Julian: "", Nora: "" },
         unhandledTask: "",
         handQueueBranches: [],
       },
