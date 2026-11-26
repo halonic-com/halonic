@@ -108,6 +108,12 @@ the update's signature was refused or its download failed (HAL-19575). The strip
 title bar; the button and the dialog are the settings feature's own, over a made-up updater, and
 load through `loadUpdateButton` in its `api.ts`.
 
+## An agent's question
+
+`agent-card-<light|dark>.png` is the Inbox card of an open question a made-up agent put to the
+person, with who asks, the work it came from and Approve and Reject, on the lifted card surface
+(HAL-19651). The page draws the card through `AgentItemCard` in the Inbox feature's `api.ts`.
+
 ## Pictures for halonic.dev
 
 `e2e/site-screenshots.spec.ts` takes the pictures the website shows (HAL-10732): the run page of a
