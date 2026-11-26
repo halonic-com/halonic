@@ -17,7 +17,6 @@
 //! nothing while the window isn't on the app's own page. No capability
 //! grants the plugin's own commands.
 
-use halonic_device_keys::ComputerId;
 use serde::{Deserialize, Serialize};
 use tauri::{Runtime, Webview};
 
@@ -65,9 +64,18 @@ fn fit(text: &str) -> bool {
     !text.trim().is_empty() && text.len() <= MAX_CHAT_TEXT && !text.chars().any(char::is_control)
 }
 
+/// Whether `id` follows `halonic_device_keys::ComputerId`'s rule: 1 to 64
+/// ASCII letters, digits, `-` or `_`. Written out here because that crate
+/// is an Android-only dependency, and these checks run in the desktop tests.
+fn computer_fits(id: &str) -> bool {
+    let allowed =
+        |character: char| character.is_ascii_alphanumeric() || character == '-' || character == '_';
+    !id.is_empty() && id.len() <= 64 && id.chars().all(allowed)
+}
+
 /// Whether `chat` may become the last-chat shortcut.
 pub(crate) fn chat_fits(chat: &LastChat) -> bool {
-    ComputerId::parse(&chat.computer).is_ok() && fit(&chat.chat) && fit(&chat.name)
+    computer_fits(&chat.computer) && fit(&chat.chat) && fit(&chat.name)
 }
 
 /// The screen Kotlin's answer names. A chat that doesn't check out opens
@@ -77,7 +85,7 @@ pub(crate) fn target_of(taken: Taken) -> Option<OpenTarget> {
         "inbox" => Some(OpenTarget::Inbox),
         "messenger" => Some(OpenTarget::Messenger),
         "chat" => match (taken.computer, taken.chat) {
-            (Some(computer), Some(chat)) if ComputerId::parse(&computer).is_ok() && fit(&chat) => {
+            (Some(computer), Some(chat)) if computer_fits(&computer) && fit(&chat) => {
                 Some(OpenTarget::Chat { computer, chat })
             }
             _ => Some(OpenTarget::Messenger),
