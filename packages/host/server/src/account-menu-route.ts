@@ -1,7 +1,7 @@
 import type { CloudProfile } from "./cloud-profile.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import type { SignedInHandler } from "./many-user-run-routes.ts";
-import type { AccountUsage } from "./many-users-api.ts";
+import type { AccountUsage, UnitUsage } from "./many-users-api.ts";
 
 /** Where the served Studio asks for the signed-in customer's account menu. */
 export const accountMenuPath = "/api/account-menu";
@@ -17,9 +17,13 @@ export interface AccountMenuParts {
   usage(): Promise<AccountUsage | null>;
 }
 
+/** From this percent of a unit's limit the app shows its usage banner (flow C3, `limit.warning`). */
+export const usageWarningPercent = 80;
+
 /**
  * `GET /api/account-menu`: the customer's name, the product's name, their plan, the percent of
- * the cost limit they used and the two account page addresses. It answers 404 without account
+ * the cost limit they used, the units at 80% or more of their limit and under 100% (`warnings`,
+ * highest first) and the two account page addresses. It answers 404 without account
  * menu parts, so a single-user Studio, or many users without Cloud sign-in, shows no menu. The
  * server sends `Cache-Control: no-store` on every answer.
  */
@@ -34,10 +38,22 @@ export const accountMenuHandler: SignedInHandler = async (_request, _body, { acc
     productName: profile.productName,
     plan: usage?.plan ?? null,
     usedPercent: usage?.usedPercent ?? null,
+    warnings: warningsOf(usage?.units ?? []),
     accountUrl: profile.account,
     planUrl: planAddress(profile.account),
   });
 };
+
+/**
+ * The units nearly used up, highest first. A used-up unit has none: its runs stop with their own
+ * message, so a banner would say less than the run does.
+ */
+function warningsOf(units: readonly UnitUsage[]): UnitUsage[] {
+  return units
+    .filter(({ percent }) => percent >= usageWarningPercent && percent < 100)
+    .map(({ unit, percent, resetsAt }) => ({ unit, percent, resetsAt }))
+    .sort((left, right) => right.percent - left.percent);
+}
 
 /** The account page's plan section: the same address with `#plan` in place of any fragment. */
 function planAddress(account: string): string {

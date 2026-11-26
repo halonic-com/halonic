@@ -41,6 +41,7 @@ const sofia: AccountMenuFacts = {
   productName: "Acme Agents",
   plan: "Pro",
   usedPercent: 62,
+  warnings: [],
   accountUrl: "https://account.example.com/acme",
   planUrl: "https://account.example.com/acme#plan",
 };

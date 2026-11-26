@@ -92,7 +92,12 @@ export {
   type LaunchRequestHeaders,
   launchRequestRefusal,
 } from "./launch-token-check.ts";
-export type { AccountUsage, ManyUserPorts, ScopedRunPorts } from "./many-users-api.ts";
+export type {
+  AccountUsage,
+  ManyUserPorts,
+  ScopedRunPorts,
+  UnitUsage,
+} from "./many-users-api.ts";
 export { MemoryRequestCountStore } from "./memory-request-count-store.ts";
 export type { MessagingFocus, MessagingPorts } from "./messaging-api.ts";
 export {

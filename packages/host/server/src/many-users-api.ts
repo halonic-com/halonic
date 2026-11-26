@@ -52,6 +52,21 @@ export interface AccountUsage {
    * 100, or `null` with no cost limit.
    */
   readonly usedPercent: number | null;
+  /**
+   * How much of each limited unit was used this period, for the 80% banner (S3-11). Without it the
+   * menu answers no warnings.
+   */
+  readonly units?: readonly UnitUsage[];
+}
+
+/** What a scope used of one limited unit this period. */
+export interface UnitUsage {
+  /** The usage account's unit: `runs`, `steps`, `tokens`, `cacheTokens`, `cost` or `harnessMs`. */
+  readonly unit: string;
+  /** What was used of the unit's limit, as a whole percent rounded down and at most 100. */
+  readonly percent: number;
+  /** When the period ends and the unit starts again from 0, as an ISO 8601 time. */
+  readonly resetsAt: string;
 }
 
 /**
