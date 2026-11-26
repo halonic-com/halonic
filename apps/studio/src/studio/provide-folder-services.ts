@@ -21,7 +21,9 @@ import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-set
 import {
   HeldAgentsService,
   InboxRequestsService,
+  monthBudgetLine,
   monthBudgetUse,
+  monthBudgetUsedUp,
 } from "@halonicjs/studio-feature-inbox/api";
 import {
   CollectionHostService,
@@ -234,6 +236,14 @@ export function provideFolderServices(
   const chatSessions = new TauriChatSessions(ipc);
   const placed =
     transport === undefined ? undefined : agentHostPlacement(transport, files, location, changes);
+  // What this month's runs spent of the monthly budget: the Inbox's requests and Try it ask it.
+  const monthBudget = async () => {
+    const runs = services.get(RunsSourceService);
+    const summaries = (await runs.list()).map((run) => run.summary);
+    const limit = runs.monthlyBudget();
+    const monthly = limit === undefined ? undefined : { limit, currency: runs.currency() };
+    return monthBudgetUse(summaries, monthly, new Date());
+  };
   const agents = services.provide(
     AgentsHostService,
     new WorkspaceAgents({
@@ -266,6 +276,10 @@ export function provideFolderServices(
           .get(ModelKeysService)
           .stored(secret)
           .catch(() => false),
+      budgetReached: async () => {
+        const use = await monthBudget();
+        return monthBudgetUsedUp(use) ? monthBudgetLine(use, new Date()) : undefined;
+      },
     }),
   );
   provideAssistantHost(services, {
@@ -357,16 +371,7 @@ export function provideFolderServices(
     new WorkspaceRequests({
       files: services.get(workspaceFilesKey),
       onChange: (listener) => scope.events.on("files.changed", listener),
-      monthBudget: async () => {
-        const runs = services.get(RunsSourceService);
-        const summaries = (await runs.list()).map((run) => run.summary);
-        const limit = runs.monthlyBudget();
-        return monthBudgetUse(
-          summaries,
-          limit === undefined ? undefined : { limit, currency: runs.currency() },
-          new Date(),
-        );
-      },
+      monthBudget,
       engine,
     }),
   );
