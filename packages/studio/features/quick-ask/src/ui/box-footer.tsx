@@ -1,5 +1,5 @@
 import type { MessagingId } from "@halonicjs/ports";
-import { Button, clockTime, copyText, Kbd, standaloneLinkClasses } from "@halonicjs/studio-kit";
+import { clockTime, copyText, Kbd, standaloneLinkClasses } from "@halonicjs/studio-kit";
 import type { LastAnswer } from "../ask-session.ts";
 import { quickAskWords } from "../quick-ask-words.ts";
 
@@ -23,7 +23,7 @@ export interface BoxFooterProps {
 /**
  * The one footer of every state, on the hint row's tint (design HAL-18594, sections 4–5): the keys
  * and **Last answer ›** when an answer came while the box was closed, or **Copy** and **Open in
- * Messenger** once there's an answer.
+ * Messenger** once there's an answer, both as links, **Open in Messenger** at the right end.
  */
 export function BoxFooter({ answer, lastAnswer, onOpenChat, onOpenLastAnswer }: BoxFooterProps) {
   return (
@@ -91,9 +91,13 @@ function AnswerActions({
       <button type="button" className={standaloneLinkClasses} onClick={() => void copy()}>
         {quickAskWords.copy}
       </button>
-      <Button variant="ghost" size="xs" onClick={() => onOpenChat(answer.conversation)}>
+      <button
+        type="button"
+        className={`ml-auto ${standaloneLinkClasses}`}
+        onClick={() => onOpenChat(answer.conversation)}
+      >
         {quickAskWords.openInMessenger}
-      </Button>
+      </button>
     </>
   );
 }

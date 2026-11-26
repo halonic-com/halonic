@@ -89,7 +89,7 @@ function AnswerView({
             <p className="text-body-strong">{quickAskWords.cardAsks(agent)}</p>
             <p className="text-body">{answer.card.question}</p>
           </div>
-          <Button variant="secondary" size="sm" onClick={onAnswerCard}>
+          <Button variant="primary" size="sm" onClick={onAnswerCard}>
             {quickAskWords.answerInMessenger}
           </Button>
         </div>
