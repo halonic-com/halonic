@@ -4,8 +4,10 @@ import { agentTint } from "@halonicjs/studio-kit";
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ConversationRow } from "../messenger.ts";
 import { byText, openChat, openMessenger } from "../test-support/page.tsx";
-import { unmountAll } from "../test-support/render.tsx";
+import { render, unmountAll } from "../test-support/render.tsx";
+import { ChatAvatar } from "./chat-avatar.tsx";
 
 afterEach(() => {
   unmountAll();
@@ -92,6 +94,35 @@ verifies("messenger.channel-picture", () => {
       expect(picture?.querySelector('[data-member="behind"] canvas')).not.toBeNull();
       expect(tile(picture, "front")?.textContent).toBe("C");
       expect(reads).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows a channel's one listed member alone, and its title's letters with none", () => {
+      const chief = { id: "a1", source: "acme", name: "Chief", activity: "idle" } as const;
+      const channel = (agents: ConversationRow["agents"]): ConversationRow => ({
+        conversation: {
+          id: "c1",
+          source: "acme",
+          agent: chief.id,
+          members: [chief.id],
+          title: "Engineering",
+          updatedAt: "2026-11-25T10:00:00.000Z",
+          waitingForMe: false,
+        },
+        agents,
+        sourceAgents: agents,
+        source: undefined,
+      });
+      const pictures = new Map<string, ImageBitmap>();
+      const alone = render(
+        <ChatAvatar row={channel([chief])} pictures={pictures} size="sidebar" />,
+      );
+      expect(alone.querySelector("[data-channel-picture]")).toBeNull();
+      expect(alone.textContent).toBe("C");
+      expect(alone.firstElementChild?.className).toContain(agentTint(chief.id));
+      const empty = render(<ChatAvatar row={channel([])} pictures={pictures} size="sidebar" />);
+      expect(empty.querySelector("[data-channel-picture]")).toBeNull();
+      expect(empty.textContent).toBe("E");
+      expect(empty.firstElementChild?.className).not.toMatch(/bg-agent-/);
     });
   });
 });

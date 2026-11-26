@@ -23,8 +23,8 @@ export function agentPicture(
 
 /**
  * The picture of the agent with ID `agent`, for who asks in Needs you, also in a channel
- * (`messenger.needs-you`): found among `rows`' agents, and read already as a chat agent's. None
- * when no row lists the agent, it has no picture, or its picture wasn't read.
+ * (`messenger.needs-you`): found among `rows`' agents. None when no row lists the agent, it has no
+ * picture, or its picture wasn't read, since only the pictures a row shows are read.
  */
 export function pictureOfAgent(
   pictures: AgentPictures,
