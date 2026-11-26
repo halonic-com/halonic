@@ -92,6 +92,7 @@ export const manifest: PaperclipPluginManifestV1 = {
     // progress notes GET a chat run's status and log from Paperclip's API (HAL-19218).
     // The PR watcher GETs Liam's and Julian's newest runs from Paperclip's API at the address in
     // the settings, to move a limited reviewer's review (src/plugin/reviewer-runs.ts, HAL-19203).
+    // The seat mover reads and moves agents' AI connections there too (src/seat-mover/api.ts).
     "http.outbound",
     "secrets.read-ref",
     // pr_status: GitHub reads only, with the same token and origin guard.
@@ -281,13 +282,13 @@ export const manifest: PaperclipPluginManifestV1 = {
         type: "string",
         title: "Paperclip API",
         description:
-          "The address of Paperclip's API as the plugin reaches it, scheme, host and port only, for example http://127.0.0.1:3100. The task effort handler, the difficulty tagger, the thin-spec check, the front bot's progress notes and the PR watcher call it; the API key below says what each sends.",
+          "The address of Paperclip's API as the plugin reaches it, scheme, host and port only, for example http://127.0.0.1:3100. The task effort handler, the difficulty tagger, the thin-spec check, the front bot's progress notes, the PR watcher and the seat mover call it; the API key below says what each sends.",
       },
       paperclipApiKey: {
         type: "string",
         title: "Paperclip API key",
         description:
-          "The secret with the plugin's Paperclip API key. Five parts use it: the task effort handler sends only a task's assigneeAdapterOverrides, with the effort changed; the difficulty tagger reads the company's labels (GET only); the thin-spec check posts its comment on a flagged task, reads that task, creates the clarify task under it and sets it blocked by the clarify task; the front bot's progress notes read a chat run's status and the next piece of its log (GET only); the PR watcher reads Liam's and Julian's newest runs (GET only).",
+          "The secret with the plugin's Paperclip API key. Six parts use it: the task effort handler sends only a task's assigneeAdapterOverrides, with the effort changed; the difficulty tagger reads the company's labels (GET only); the thin-spec check posts its comment on a flagged task, reads that task, creates the clarify task under it and sets it blocked by the clarify task; the front bot's progress notes read a chat run's status and the next piece of its log (GET only); the PR watcher reads Liam's and Julian's newest runs (GET only); the seat mover, unless off, reads the AI connections, the seat readings (a POST to the readings plugin's data), one agent and a run's recovery hold, and in act mode changes an agent's runtimeConfig (only aiConnection), cancels a parked run that never started and resolves the hold that cancel leaves.",
         format: "secret-ref",
       },
       difficultyTaggerForVersion: {
