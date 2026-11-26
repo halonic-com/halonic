@@ -5,6 +5,7 @@ import {
   gatewayMaxMessageBytes,
   gatewayMaxPromptLength,
   gatewayMaxSearchLength,
+  gatewayMessagingIdPattern,
   gatewayMessagingLists,
   gatewayTeamLists,
 } from "@halonicjs/ports";
@@ -33,7 +34,7 @@ interface FieldSpec {
 }
 
 const readMessages: FieldSpec = {
-  required: { id: isId, what: isOneOf(["messages"]), conversation: isId },
+  required: { id: isId, what: isOneOf(["messages"]), conversation: isMessagingId },
   optional: { before: isCursor },
 };
 const readList: FieldSpec = {
@@ -45,7 +46,7 @@ const readSpend: FieldSpec = {
   optional: { range: isOneOf(["today", "week", "month"]) },
 };
 const readPullRequest: FieldSpec = {
-  required: { id: isId, what: isOneOf(["pull-request"]), pullRequest: isId },
+  required: { id: isId, what: isOneOf(["pull-request"]), pullRequest: isMessagingId },
 };
 const readTeamList: FieldSpec = { required: { id: isId, what: isOneOf(gatewayTeamLists) } };
 
@@ -68,9 +69,11 @@ const fieldSpecs: Record<
   ...sessionMessages,
   "msg-read": (message) => (message["what"] === "messages" ? readMessages : readList),
   "msg-search": { required: { id: isId, text: isTextUpTo(gatewayMaxSearchLength) } },
-  "msg-answer": { required: { id: isId, item: isId, answer: isInboxAnswer, confirmed: isTrue } },
+  "msg-answer": {
+    required: { id: isId, item: isMessagingId, answer: isInboxAnswer, confirmed: isTrue },
+  },
   "msg-send": {
-    required: { id: isId, conversation: isId, body: isTextUpTo(gatewayMaxPromptLength) },
+    required: { id: isId, conversation: isMessagingId, body: isTextUpTo(gatewayMaxPromptLength) },
     optional: { to: isAddressees },
   },
   "msg-watch": { required: { id: isId } },
@@ -137,6 +140,11 @@ function isId(value: unknown): boolean {
   return typeof value === "string" && idPattern.test(value);
 }
 
+/** An id a provider made, such as an Inbox item's; see `gatewayMessagingIdPattern`. */
+function isMessagingId(value: unknown): boolean {
+  return typeof value === "string" && gatewayMessagingIdPattern.test(value);
+}
+
 function isSequence(value: unknown): boolean {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 }
@@ -166,7 +174,7 @@ function isAddressees(value: unknown): boolean {
   return (
     Array.isArray(value) &&
     value.length <= gatewayMaxAddressees &&
-    value.every(isId) &&
+    value.every(isMessagingId) &&
     new Set(value).size === value.length
   );
 }

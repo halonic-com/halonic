@@ -22,9 +22,9 @@ import type {
 } from "@halonicjs/ports";
 import {
   gatewayMaxAddressees,
-  gatewayMaxIdLength,
   gatewayMaxPromptLength,
   gatewayMaxSearchLength,
+  gatewayMessagingIdPattern,
 } from "@halonicjs/ports";
 import type {
   MessagingAnswer,
@@ -39,8 +39,6 @@ export type MessagingList = (typeof gatewayMessagingLists)[number];
 
 /** A team status list a `team-read` names, besides one pull request. */
 export type TeamList = (typeof gatewayTeamLists)[number];
-
-const idPattern = new RegExp(`^[A-Za-z0-9_-]{1,${gatewayMaxIdLength}}$`);
 
 /** One page of a list, a conversation's messages or search hits. */
 export interface MessagingPage {
@@ -167,11 +165,11 @@ export class MessagingClient {
 
   /**
    * Reads one pull request's detail, a `PullRequestDetail`; the host refuses
-   * one it can't find with `not-found`. An id outside the protocol's id rule
+   * one it can't find with `not-found`. An id outside the protocol's messaging id rule
    * isn't sent, since the host would close the session on it.
    */
   readPullRequest(pullRequest: MessagingId): Promise<MessagingOutcome<unknown>> {
-    if (!idPattern.test(pullRequest)) return notSent("invalid");
+    if (!gatewayMessagingIdPattern.test(pullRequest)) return notSent("invalid");
     const page = teamPageOf("pull-request");
     return this.request(
       (id) => ({ type: "team-read", id, what: "pull-request", pullRequest }),
