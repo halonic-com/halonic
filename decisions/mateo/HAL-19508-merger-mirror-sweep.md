@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-18424 (Chief's OK for both live Merger fixes, 26 Nov 08:58 and 09:07 UTC, required jobs only; the plugin mirror is HAL-19508)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:0qrqkZqCTxkt6xGFbNz3sYoODyX5/Ea8hFZ7NtV7GSXO4tf0CrzNhNiNohFtb15VtfO7qJ17Dl+Zf4x+s81YDQ==
 
 Merge control now dequeues a queued pull request in the same pass when its own merge group ends `cancelled` with a failed job that `ci-ok` needs, as it does for `failure`. Fail-fast cancels a group at its first failed job, so failed groups end `cancelled`: on 26 Nov the live Merger left 8 culprits queued for 1–12 minutes because its dequeue only looked at `failure`. The live Merger dequeues them since 09:11 UTC.
 
