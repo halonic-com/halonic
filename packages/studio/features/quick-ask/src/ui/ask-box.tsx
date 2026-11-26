@@ -25,12 +25,15 @@ export interface AskBoxProps {
 }
 
 /**
- * The 640 px box, 16 px corners and the dialogs' shadow; in dark it lifts by its strong border.
- * On a screen narrower than the box and its 32 px margin, the margin is 16 px.
+ * The 640 px box, 16 px corners and the dialogs' shadow; in dark it lifts by its strong border and
+ * a 1 px white line along its top edge. On a screen narrower than the box and its 32 px margin, the
+ * margin is 16 px. It never grows past its window, so a long answer scrolls the exchanges instead of
+ * pushing the footer out of sight (HAL-19213).
  */
 const boxClasses = [
-  "flex w-full max-w-[640px] flex-col overflow-hidden rounded-lg bg-surface-raised text-fg shadow-3",
+  "flex max-h-full w-full max-w-[640px] flex-col overflow-hidden rounded-lg bg-surface-raised text-fg shadow-3",
   "border border-[light-dark(var(--color-border),var(--color-border-strong))]",
+  "inset-shadow-[0_1px_0_light-dark(transparent,rgb(255_255_255/0.06))]",
 ].join(" ");
 
 /**
@@ -121,8 +124,11 @@ function Ready({
   const [picking, setPicking] = useState(false);
   const text = useRef<HTMLTextAreaElement>(null);
   const ask = useRef<HTMLButtonElement>(null);
+  const list = useRef<HTMLOListElement>(null);
+  const exchanges = model.state.kind === "ready" ? model.state.exchanges : [];
+  useNewestInView(list, exchanges);
   if (model.state.kind !== "ready") return null;
-  const { agent, agents, exchanges, lastAnswer } = model.state;
+  const { agent, agents, lastAnswer } = model.state;
   const name = agent.agent.name;
   const answer = newestAnswer(exchanges.at(-1));
 
@@ -158,7 +164,10 @@ function Ready({
         />
       ) : null}
       {exchanges.length > 0 ? (
-        <ol aria-live="polite" className="flex flex-col gap-3 border-t border-border px-3.5 py-3">
+        <ol
+          ref={list}
+          className="flex min-h-0 flex-col gap-3 overflow-y-auto border-t border-border px-3.5 py-3"
+        >
           {exchanges.map((exchange) => (
             <ExchangeView
               key={exchange.id}
@@ -210,7 +219,7 @@ function QuestionRow({
 }: QuestionRowProps) {
   const value = model.state.kind === "ready" ? model.state.text : "";
   return (
-    <div className="flex items-start gap-2 px-3.5 py-3">
+    <div className="flex shrink-0 items-start gap-2 px-3.5 py-3">
       <textarea
         ref={text}
         // biome-ignore lint/a11y/noAutofocus: the box opens to type a question, and the focus starts here.
@@ -239,12 +248,23 @@ function QuestionRow({
         aria-label={quickAskWords.ask}
         aria-keyshortcuts="Enter"
         onClick={() => model.send()}
-        className="grid size-control-md shrink-0 place-items-center rounded-sm border border-transparent bg-primary text-on-primary focus-ring"
+        className="grid size-control-md shrink-0 place-items-center rounded-sm border border-transparent bg-primary text-on-primary hover:bg-primary-hover active:bg-primary-hover focus-ring"
       >
         <ArrowUp />
       </button>
     </div>
   );
+}
+
+/**
+ * Scrolls the exchanges to the newest one whenever they change: a question just sent, or its
+ * answer arriving, is what the person is looking for.
+ */
+function useNewestInView(list: RefObject<HTMLOListElement | null>, exchanges: readonly Exchange[]) {
+  useEffect(() => {
+    const element = list.current;
+    if (element !== null && exchanges.length > 0) element.scrollTop = element.scrollHeight;
+  }, [list, exchanges]);
 }
 
 /** The newest exchange's answer and its chat, once the agent has answered. */

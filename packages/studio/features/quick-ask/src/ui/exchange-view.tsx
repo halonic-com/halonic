@@ -52,11 +52,14 @@ export function ExchangeView({ exchange, onRetry, onOpenChat }: ExchangeViewProp
         ) : null}
       </Arriving>
       {exchange.status === "sent" ? (
-        <AnswerView
-          agent={agent}
-          answer={exchange.answer}
-          onAnswerCard={() => onOpenChat(exchange.agent.row.conversation.id)}
-        />
+        // Only where the answer stands is announced, not the question the person just typed.
+        <div aria-live="polite">
+          <AnswerView
+            agent={agent}
+            answer={exchange.answer}
+            onAnswerCard={() => onOpenChat(exchange.agent.row.conversation.id)}
+          />
+        </div>
       ) : null}
     </li>
   );
