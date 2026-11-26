@@ -171,3 +171,29 @@ verifies("kit.avatar-edge", () => {
     for (const name of edge) expect(classes).not.toContain(name);
   });
 });
+
+verifies("kit.avatar-tint", () => {
+  it("draws an agent's initials in fg on its own tint", () => {
+    const avatar = render(<Avatar name="Chief" tint="bg-agent-teal" />).container
+      .firstElementChild as HTMLElement;
+    const classes = avatar.className.split(" ");
+    expect(avatar.textContent).toBe("C");
+    expect(classes).toEqual(
+      expect.arrayContaining([
+        "bg-agent-teal",
+        "text-fg",
+        "ring-1",
+        "ring-inset",
+        "ring-border-strong",
+      ]),
+    );
+    expect(classes).not.toContain("bg-surface-muted");
+    expect(classes).not.toContain("text-fg-muted");
+  });
+
+  it("stays neutral without a tint", () => {
+    const classes = avatarOf("Sofia Marin").className.split(" ");
+    expect(classes).toEqual(expect.arrayContaining(["bg-surface-muted", "text-fg-muted"]));
+    expect(classes.some((name) => name.startsWith("bg-agent-"))).toBe(false);
+  });
+});

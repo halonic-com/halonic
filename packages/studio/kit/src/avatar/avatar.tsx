@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { AgentTint } from "./agent-tint.ts";
 
 /** The props of `Avatar`. */
 export interface AvatarProps {
@@ -15,6 +16,11 @@ export interface AvatarProps {
    * hard to see beside a two-line title (HAL-19192, `kit.avatar-size`).
    */
   readonly size?: AvatarSize;
+  /**
+   * An agent's own colour, from `agentTint`, for the initials' tile, so the agent looks the same
+   * wherever it shows (`kit.avatar-tint`). A person's avatar has none and stays neutral.
+   */
+  readonly tint?: AgentTint | undefined;
 }
 
 /** The Avatar's two sizes: 28px in a row, 40px in a header. */
@@ -27,13 +33,13 @@ export type AvatarSize = "row" | "header";
  */
 const sizes = {
   row: {
-    tile: "size-7 shrink-0 rounded-full bg-surface-muted",
+    tile: "size-7 shrink-0 rounded-full",
     text: "text-caption",
     pixels: 28,
     inset: "p-0.5",
   },
   header: {
-    tile: "size-10 shrink-0 rounded-full bg-surface-muted",
+    tile: "size-10 shrink-0 rounded-full",
     text: "text-small",
     pixels: 40,
     inset: "p-[3px]",
@@ -43,25 +49,30 @@ const sizes = {
   { tile: string; text: string; pixels: number; inset: string }
 >;
 
+/** The neutral tile, for a person and behind a picture. */
+const neutral = "bg-surface-muted";
+
 /**
  * A member's initials, or their picture, on a 28px round tile (40px with `size="header"`): who is signed in, in Cloud's top
  * bar (HAL-16050), or an agent in the Messenger. `surface-muted` with a `border-strong` edge and `fg-muted`, not the accent,
- * so it doesn't read as a product. It's decoration: the member's name is next to it, or in the
+ * so it doesn't read as a product. An agent's initials sit on its own tint instead, in `fg` so
+ * they read as well on every tint, with the same edge. It's decoration: the member's name is next to it, or in the
  * top bar's name for screen readers.
  *
  * @example
  * <Avatar name={member.name} />
- * <Avatar name={agent.name} picture={pictures.get(agent.avatar)} />
+ * <Avatar name={agent.name} tint={agentTint(agent.id)} picture={pictures.get(agent.avatar)} />
  */
-export function Avatar({ name, picture, size = "row" }: AvatarProps) {
+export function Avatar({ name, picture, size = "row", tint }: AvatarProps) {
   const { tile, text } = sizes[size];
   if (picture !== undefined) return <AvatarPicture picture={picture} size={size} />;
   // A hovered, focused or open plain row is filled `surface-muted` too, so the edge keeps the
   // circle from vanishing into it (`kit.avatar-edge`); a picture fills the tile on its own.
+  const look = tint === undefined ? `${neutral} text-fg-muted` : `${tint} text-fg`;
   return (
     <span
       aria-hidden="true"
-      className={`flex items-center justify-center ${text} font-semibold text-fg-muted ring-1 ring-inset ring-border-strong ${tile}`}
+      className={`flex items-center justify-center ${text} font-semibold ${look} ring-1 ring-inset ring-border-strong ${tile}`}
     >
       {initials(name)}
     </span>
@@ -106,7 +117,7 @@ function AvatarPicture({
     <span
       aria-hidden="true"
       data-picture={pictureDrawn ? "drawn" : undefined}
-      className={`block overflow-hidden ${inset} ${tile}`}
+      className={`block overflow-hidden ${neutral} ${inset} ${tile}`}
     >
       <canvas ref={canvas} className="block size-full rounded-full" />
     </span>

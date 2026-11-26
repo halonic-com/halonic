@@ -1,6 +1,7 @@
 import type { MessagingId } from "@halonicjs/ports";
 import { Avatar, Button, PlaceIcon } from "@halonicjs/studio-kit";
 import { useCallback, useEffect, useState } from "react";
+import { chatTint } from "../agent-tint.ts";
 import { chatAgent } from "../chat-name.ts";
 import { listWords } from "../list-words.ts";
 import type { ConversationRow, Messenger } from "../messenger.ts";
@@ -150,7 +151,7 @@ function WaitingItem({
   return (
     <li data-needs-you-card={card.id} className="mx-auto flex w-full max-w-3xl flex-col gap-2">
       <div className="flex items-center gap-2 text-small text-fg-muted">
-        <Avatar name={agent} />
+        <Avatar name={agent} tint={chatTint(row)} />
         <span className="min-w-0 flex-1 truncate">
           <bdi className="font-semibold text-fg">{agent}</bdi> · <bdi>{words.where(where)}</bdi>
         </span>

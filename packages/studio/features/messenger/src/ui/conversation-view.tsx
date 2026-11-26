@@ -2,6 +2,7 @@ import type { Message, MessagingId } from "@halonicjs/ports";
 import { Avatar, ContentHeader } from "@halonicjs/studio-kit";
 import type { EngineWords } from "@halonicjs/studio-shell";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { chatTint } from "../agent-tint.ts";
 import { isChannel } from "../channel.ts";
 import type { PendingMessage } from "../chat-layout.ts";
 import { chatAgent, chatName } from "../chat-name.ts";
@@ -303,6 +304,7 @@ function ConversationHeader({
         <Avatar
           name={chatAgent(row)?.name ?? row.conversation.title}
           picture={picture}
+          tint={chatTint(row)}
           size="header"
         />
       }

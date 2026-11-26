@@ -42,7 +42,8 @@ export function ChatMessage(props: ChatMessageProps) {
   if (props.from === "you") {
     return (
       <div className="flex justify-end" data-chat-message="you">
-        <p className="max-w-4/5 rounded-md bg-surface-muted px-3 py-2 text-reading text-fg whitespace-pre-wrap wrap-break-word">
+        {/* `rounded-lg`, as the person's bubble in the Messenger (`kit.chat-message-corner`). */}
+        <p className="max-w-4/5 rounded-lg bg-surface-muted px-3 py-2 text-reading text-fg whitespace-pre-wrap wrap-break-word">
           {props.children}
         </p>
       </div>

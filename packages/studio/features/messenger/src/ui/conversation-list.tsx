@@ -1,6 +1,7 @@
 import type { MessagingId } from "@halonicjs/ports";
 import { Avatar, PlainList, PlainRow, type PlainRowAction, TimeStamp } from "@halonicjs/studio-kit";
 import { useRef } from "react";
+import { chatTint } from "../agent-tint.ts";
 import { channelSize, isChannel, workingMembers } from "../channel.ts";
 import { chatAgent, chatName } from "../chat-name.ts";
 import type { ConversationRow } from "../messenger.ts";
@@ -177,7 +178,13 @@ function Row({
   return (
     <PlainRow
       id={row.conversation.id}
-      picture={<Avatar name={chatAgent(row)?.name ?? row.conversation.title} picture={picture} />}
+      picture={
+        <Avatar
+          name={chatAgent(row)?.name ?? row.conversation.title}
+          picture={picture}
+          tint={chatTint(row)}
+        />
+      }
       title={<Highlighted text={chatName(row)} term={highlight} />}
       afterTitle={afterName(row, named)}
       flag={waitsForPerson(row) ? messengerWords.needsYouDot : undefined}
