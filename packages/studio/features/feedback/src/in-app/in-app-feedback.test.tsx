@@ -205,7 +205,7 @@ verifies("feedback.send-window", () => {
     expect(document.querySelectorAll("[data-feedback-layer]")).toHaveLength(1);
     expect(shell.invoke).toHaveBeenCalledWith("plugin:feedback|crop");
     expect(document.body.textContent).toContain(
-      "Goes to Acme apps as a task in Paperclip for Robin, with the time and Studio version.",
+      "Goes to Acme apps as a task in Paperclip for Robin, with the app, window, time and Studio version.",
     );
   });
 
@@ -251,6 +251,69 @@ verifies("feedback.send-window", () => {
     expect(
       shell.invoke.mock.calls.filter(([command]) => command === "plugin:feedback|start"),
     ).toHaveLength(1);
+    expect(ends(shell)).toEqual([]);
+  });
+});
+
+/** Types `text` into the dialog's field as React hears it. */
+function typeInDialog(text: string) {
+  const field = document.querySelector("textarea");
+  const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+  act(() => {
+    setter?.call(field, text);
+    field?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
+function starts(shell: ReturnType<typeof fakeShell>) {
+  return shell.invoke.mock.calls.filter(([command]) => command === "plugin:feedback|start");
+}
+
+verifies("feedback.select-again", () => {
+  beforeEach(() => {
+    document.title = "Runs · Acme · Halonic";
+  });
+  afterEach(() => {
+    document.title = "";
+  });
+
+  it("names the window the shortcut was pressed in under the crop", async () => {
+    await selectWholeWindow(fakeShell());
+    expect(document.querySelector("[data-feedback-size]")?.textContent).toBe(
+      "Halonic · Runs · Acme · 20 × 10",
+    );
+  });
+
+  it("closes the dialog, selects again once it's gone and opens the next with the text", async () => {
+    const shell = fakeShell();
+    await selectWholeWindow(shell);
+    typeInDialog("Run list jumps");
+    act(() => buttonNamed("Select again").click());
+    expect(dialog()).toBeNull();
+    // The still is asked for only after the window drew without the dialog.
+    expect(starts(shell)).toHaveLength(1);
+    await vi.waitFor(() => expect(overlay()).not.toBeNull());
+    expect(starts(shell)).toHaveLength(2);
+    expect(ends(shell)).toEqual([]);
+    await act(async () => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" })));
+    await vi.waitFor(() => expect(dialog()?.open).toBe(true));
+    expect(document.querySelector("textarea")?.value).toBe("Run list jumps");
+  });
+
+  it("brings the dialog back with the text when the shell gives no new still", async () => {
+    let answers = 0;
+    const shell = fakeShell(async () => {
+      answers += 1;
+      if (answers > 1) throw "busy";
+      return { width: 200, height: 100 };
+    });
+    await selectWholeWindow(shell);
+    typeInDialog("Run list jumps");
+    act(() => buttonNamed("Select again").click());
+    await vi.waitFor(() => expect(dialog()?.open).toBe(true));
+    expect(starts(shell)).toHaveLength(2);
+    expect(overlay()).toBeNull();
+    expect(document.querySelector("textarea")?.value).toBe("Run list jumps");
     expect(ends(shell)).toEqual([]);
   });
 });

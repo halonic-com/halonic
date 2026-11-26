@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { StillImage } from "../overlay/still.ts";
 import { buildFeedbackTask, type FeedbackTask } from "../payload.ts";
+import type { PressedWindow } from "./pressed-window.ts";
 import { type PngEncoder, type ScreenshotPng, screenshotPng } from "./screenshot-png.ts";
 import type { Screenshot, SendProblem } from "./send-notice.tsx";
 
@@ -40,6 +41,8 @@ export interface SendParts {
   readonly crop: StillImage | null;
   readonly openedAt: Date;
   readonly details: FeedbackDetails;
+  /** The app and window the shortcut was pressed in, for the task. */
+  readonly pressed: PressedWindow;
   readonly encodePng: PngEncoder;
 }
 
@@ -65,12 +68,11 @@ async function handOn(
 
 /** The feedback to hand on: the task, with the crop as a PNG small enough to send, if any. */
 function outgoing(parts: SendParts, screenshot: ScreenshotPng | null): OutgoingFeedback {
-  const { text, openedAt, details } = parts;
+  const { text, openedAt, details, pressed } = parts;
   const build = buildFeedbackTask({
     text,
-    // The shell doesn't yet say which app and window were in front at the press (HAL-19010).
-    app: "",
-    window: "",
+    app: pressed.app,
+    window: pressed.window,
     capturedAt: openedAt,
     utcOffsetMinutes: -openedAt.getTimezoneOffset(),
     studioVersion: details.studioVersion,

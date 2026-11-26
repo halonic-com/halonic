@@ -1,6 +1,6 @@
 {
   "identifier": "desktop-feedback-unavailable",
-  "description": "On desktop, the window that says screen capture for feedback isn't available on this system yet (macOS, Linux on Wayland) may close itself through plugin:feedback|end, which also ends a feedback under way (HAL-18970). It gets no still and no crop. It is local only, so the Studio the computer serves gets nothing.",
+  "description": "On desktop, the window that says screen capture for feedback isn't available on this system (macOS, Linux on Wayland) may close itself through plugin:feedback|end, which also ends a feedback under way (HAL-18970). It gets no still and no crop. It is local only, so the Studio the computer serves gets nothing.",
   "local": true,
   "windows": [
     "feedback-unavailable"

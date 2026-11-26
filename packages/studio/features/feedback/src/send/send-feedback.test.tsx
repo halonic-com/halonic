@@ -75,7 +75,9 @@ async function render(
   options: {
     readonly shell?: ReturnType<typeof fakeShell>;
     readonly answers?: (() => Promise<SendAnswer>)[];
-  } & Partial<Pick<SendFeedbackProps, "connection" | "selectAgain" | "encodePng">> = {},
+  } & Partial<
+    Pick<SendFeedbackProps, "connection" | "selectAgain" | "encodePng" | "pressed" | "initialText">
+  > = {},
 ) {
   const { shell = fakeShell(), answers = [], ...rest } = options;
   const sent: OutgoingFeedback[] = [];
@@ -166,7 +168,7 @@ verifies("feedback.send-window", () => {
     expect(textField().placeholder).toBe("What did you notice? The first line becomes the title.");
     expect(document.activeElement).toBe(textField());
     expect(element.textContent).toContain(
-      "Goes to Acme apps as a task in Paperclip for Robin, with the time and Studio version.",
+      "Goes to Acme apps as a task in Paperclip for Robin, with the app, window, time and Studio version.",
     );
     expect(element.textContent).toContain("CtrlEntersend");
   });
@@ -178,7 +180,7 @@ verifies("feedback.send-window", () => {
     const described = textField().getAttribute("aria-describedby")?.split(" ") ?? [];
     const footnote = described.map((id) => document.getElementById(id)?.textContent);
     expect(footnote).toContain(
-      "Goes to Acme apps as a task in Paperclip for Robin, with the time and Studio version.",
+      "Goes to Acme apps as a task in Paperclip for Robin, with the app, window, time and Studio version.",
     );
   });
 
@@ -389,5 +391,48 @@ verifies("feedback.send-states", () => {
     await act(async () => button("Send without a screenshot").click());
     await vi.waitFor(() => expect(ends(shell)).toHaveLength(1));
     expect(sent[0]?.png).toBeNull();
+  });
+});
+
+verifies("feedback.select-again", () => {
+  const pressed = { app: "Halonic", window: "Runs · Acme" };
+
+  it("names the app and window under the crop, and puts them in the task", async () => {
+    const { sent } = await open({ pressed });
+    expect(element.querySelector("[data-feedback-size]")?.textContent).toBe(
+      "Halonic · Runs · Acme · 20 × 10",
+    );
+    type("Run list jumps");
+    await act(async () => sendButton().click());
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0]?.task.description).toContain("- App: `Halonic`\n- Window: `Runs · Acme`\n");
+  });
+
+  it("hands the text to Select again at the right of that line, ending nothing", async () => {
+    const selectAgain = vi.fn();
+    const { shell } = await open({ pressed, selectAgain });
+    type("Run list jumps");
+    act(() => button("Select again").click());
+    expect(selectAgain).toHaveBeenCalledWith("Run list jumps");
+    expect(ends(shell)).toEqual([]);
+  });
+
+  it("opens with the text Select again kept", async () => {
+    await open({ initialText: "Run list jumps" });
+    expect(textField().value).toBe("Run list jumps");
+  });
+
+  it("tabs from the text to Select again, then Cancel, then Send", async () => {
+    await open({ pressed, selectAgain: vi.fn() });
+    const order: HTMLElement[] = [
+      textField(),
+      button("Select again"),
+      button("Cancel"),
+      sendButton(),
+    ];
+    const tabbable = [...dialog().querySelectorAll<HTMLElement>("textarea, button")].filter(
+      (each) => order.includes(each),
+    );
+    expect(tabbable).toEqual(order);
   });
 });

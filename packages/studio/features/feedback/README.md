@@ -27,10 +27,12 @@ hand it in, with the key behind its guard.
   (`feedback.in-app`). `overlay/` is that see-through selection overlay over the live app: a
   light dim, the hint, the box and its size; letting go of a box calls `plugin:feedback|select`
   and Esc `plugin:feedback|end` (`feedback.overlay`). Once the shell kept the crop, `send/` is the
-  Send feedback dialog in that same window (`feedback.send-window`).
+  Send feedback dialog in that same window (`feedback.send-window`): under the crop, the app and
+  window from the window's title at the press, and "Select again", which closes the dialog,
+  keeps the text and starts a new selection (`feedback.select-again`).
 - `feedback-windows.tsx`: the pages Studio mounts in the shell's feedback windows, with no
   workspace. `unavailable/` is
-  the window a press opens where no still can be taken yet, macOS and Wayland
+  the window a press opens where no still can be taken, macOS and Wayland
   (`feedback.unavailable`).
 
 - `settings/`: Settings → Keyboard, the **Send feedback** row whose **Change** records a new
