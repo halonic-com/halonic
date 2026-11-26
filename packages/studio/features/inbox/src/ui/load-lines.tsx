@@ -139,7 +139,7 @@ export function StaleLine({
  * `kind`, else the error's name.
  *
  * @example
- * failedAs("proposals", new AgentHostNotAnswering()); // "proposals host_unavailable"
+ * failedAs("proposals", new AgentHostNotAnswering(refusal)); // "proposals host_unavailable"
  */
 export function failedAs(source: string | undefined, error: unknown): string {
   return `${source ?? "unknown"} ${kindOf(error)}`;

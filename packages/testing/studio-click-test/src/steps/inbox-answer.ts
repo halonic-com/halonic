@@ -32,6 +32,20 @@ async function stale(context: StepContext, text: string): Promise<StepOutcome> {
 const staleLine = "//*[@data-failed]";
 
 /**
+ * Goes back from the answered card to the list, which then shows Needs you and any stale line.
+ * An answered Paperclip card can stay open with its "Answered at" line, and in a narrow window it
+ * hides the list (run 45834340178).
+ */
+async function backToList(
+  context: StepContext,
+): Promise<{ value: true | undefined; text: string }> {
+  await clickWhenShown(context, screenText.backToInbox.text, 10_000);
+  return waitForText(context, 30_000, (text) =>
+    text.includes(screenText.nothingWaiting.text) ? true : undefined,
+  );
+}
+
+/**
  * Step 8: the Inbox shows the seeded board card, and Approve answers it. The
  * row shows the card's type; the card shows its title, from a fresh read: no
  * line says the Inbox shows what it read last, over the card or over the list after the answer
@@ -64,14 +78,15 @@ export const inboxAnswer: Step = {
     if (!(await clickWhenShown(context, buttonLabels.approve.text, 10_000))) {
       return { passed: false, code: "NO_ANSWER_BUTTON", note: lastWords(card.text) };
     }
-    const answered = await waitForText(context, 30_000, (text) =>
+    const shownAnswered = await waitForText(context, 30_000, (text) =>
       text.includes(screenText.nothingWaiting.text) ? true : undefined,
     );
     const status = await context.paperclip.approvalStatus();
     if (status !== "approved") {
-      const note = `Paperclip says ${status}. Screen: ${lastWords(answered.text)}`;
+      const note = `Paperclip says ${status}. Screen: ${lastWords(shownAnswered.text)}`;
       return { passed: false, code: "NOT_ANSWERED_ON_PAPERCLIP", note };
     }
+    const answered = shownAnswered.value === true ? shownAnswered : await backToList(context);
     if (answered.value !== true) {
       return { passed: false, code: "NO_ANSWERED_LINE", note: lastWords(answered.text) };
     }

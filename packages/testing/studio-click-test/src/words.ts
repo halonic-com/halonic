@@ -114,6 +114,11 @@ export const screenText = {
     text: "Nothing is waiting for you.",
     file: "packages/studio/features/inbox/src/ui/needs-you-card.tsx",
   },
+  // An answered card can stay open; this takes step 8 back to the list (run 45834340178).
+  backToInbox: {
+    text: "Back to Inbox",
+    file: "packages/studio/features/inbox/src/ui/inbox-page-parts.tsx",
+  },
   // The Inbox's lines over a list it couldn't read again: the engine's, a refusal's, or the agents'
   // (HAL-19190).
   engineShowingLast: {
