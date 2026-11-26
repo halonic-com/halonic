@@ -25,6 +25,13 @@ export function unneededKey(pull: PullFacts): string {
   return `${pull.repo}#${pull.number} ${short(pull.head)} unneeded rebase`;
 }
 
+/**
+ * The repositories with a merge queue, where a pull request behind `main`
+ * still merges. `cloud` has none (Team plan): there a branch behind `main`
+ * can't merge, so a rebase after the approval is needed (HAL-19791).
+ */
+export const mergeQueueRepos: ReadonlySet<string> = new Set(["halonic-com/halonic"]);
+
 /** What the watcher reported on the approved head that asks for a new one. */
 const askedOnHead = ["conflict", "retargeted", "held"] as const;
 
@@ -52,10 +59,13 @@ function asked(pull: PullFacts, approvedHead: string, memory: Memory): boolean {
  * Only a rebase since the approval, with no conflict and no queue request on
  * the approved head, and not noted on this head yet. Never one the watcher
  * rebased itself off a merged base (`stack-rebase.ts`), nor a security pull
- * request, which isn't compared.
+ * request, which isn't compared, nor one on a repository without a merge queue.
  */
 export function unneeded(pull: PullFacts, since: SinceApproval, memory: Memory): boolean {
   if (!since.rebaseOnly || since.stacked === true || since.security === true) {
+    return false;
+  }
+  if (!mergeQueueRepos.has(pull.repo.toLowerCase())) {
     return false;
   }
   return !memory.reported.has(unneededKey(pull)) && !asked(pull, since.approvedHead, memory);
