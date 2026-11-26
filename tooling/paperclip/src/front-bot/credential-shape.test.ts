@@ -26,6 +26,7 @@ const samples: Record<string, string> = {
   "url-password": ["https://deploy:", random, "@example.com/repo"].join(""),
   "npm-auth-token": `//registry.npmjs.org/:_authToken=${random.repeat(3)}`,
   "oauth-field": `refresh_token=${random.repeat(3)}`,
+  "oauth-code": `https://example.com/callback?code=${random.repeat(3)}`,
 };
 
 verifies("paperclip.front-bot-grounding", () => {
@@ -41,6 +42,13 @@ verifies("paperclip.front-bot-grounding", () => {
     for (const prefix of ["ghs_", "gho_", "ghu_", "ghr_"]) {
       expect(findCredentialShape(`token ${prefix}${random.repeat(3)}`)).toBe("github-token");
     }
+  });
+
+  test("a sign-in code counts in a token request, and the word code alone doesn't", () => {
+    expect(findCredentialShape(`grant_type=authorization_code&code=${random.repeat(3)}`)).toBe(
+      "oauth-code",
+    );
+    expect(findCredentialShape(`code: ${random.repeat(3)}`)).toBe(undefined);
   });
 
   test("Studio's shapes still count, and ordinary words don't", () => {

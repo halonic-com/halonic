@@ -72,7 +72,13 @@ export const timePromises =
  */
 const credentialWords =
   /\b(?:api[- ]?keys?|keys?|tokens?|passwords?|passphrases?|secrets?|credentials?)\b/i;
-const handOverWords = /\b(?:paste|send|share|provide|enter)\b/i;
+/** A credential named by its identifier, such as `PAPERCLIP_API_KEY` or `deploy-token`. */
+const credentialIdentifier = /[_-](?:keys?|tokens?|secrets?|passwords?)\b/i;
+const handOverWords = /\b(?:paste|send|share|provide|enter|post|type|give|upload)\b/i;
+
+function asksForCredential(line: string): boolean {
+  return credentialWords.test(line) || credentialIdentifier.test(line) || handOverWords.test(line);
+}
 
 /** Whether a line names a credential or asks the reader to hand something over. */
 export function asksForCredential(line: string): boolean {

@@ -25,12 +25,35 @@ type ExtraShape =
   | "huggingface-token"
   | "url-password"
   | "npm-auth-token"
-  | "oauth-field";
+  | "oauth-field"
+  | "oauth-code";
 
 export type CredentialShape = NonNullable<ReturnType<typeof findSecretShape>> | ExtraShape;
 
 /** A literal value after a field name, quoted after `:` or `=`, or bare after `=`. */
 const assigned = String.raw`(?:["']?\s*[:=]\s*["']?)`;
+
+const oauthValue = `[A-Za-z0-9._~%/+=-]{16,}`;
+
+/**
+ * `code` is a common word, so, as in the leak guard, it counts only as a
+ * sign-in code: in a query string or form body (`?code=…`, `&code=…`), or in
+ * a token request that names `grant_type` on the same line.
+ */
+const oauthCodeInQuery = new RegExp(`[?&]code=${oauthValue}`);
+const oauthCodeInTokenRequest = new RegExp(
+  [
+    String.raw`\bgrant_type\b.*\bcode${assigned}${oauthValue}`,
+    String.raw`\bcode${assigned}${oauthValue}.*\bgrant_type\b`,
+  ].join("|"),
+);
+
+function hasOAuthCode(text: string): boolean {
+  return (
+    oauthCodeInQuery.test(text) ||
+    (text.includes("grant_type") && oauthCodeInTokenRequest.test(text))
+  );
+}
 
 const extraPatterns: ReadonlyArray<readonly [ExtraShape, RegExp]> = [
   ["private-key", /-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY(?: BLOCK)?-----/],
@@ -72,5 +95,9 @@ export function findCredentialShape(text: string): CredentialShape | undefined {
   if (studio !== undefined) {
     return studio;
   }
-  return extraPatterns.find(([, pattern]) => pattern.test(text))?.[0];
+  const extra = extraPatterns.find(([, pattern]) => pattern.test(text))?.[0];
+  if (extra !== undefined) {
+    return extra;
+  }
+  return hasOAuthCode(text) ? "oauth-code" : undefined;
 }
