@@ -581,10 +581,6 @@
       },
       "aptPackages": [
         {
-          "name": "ca-certificates",
-          "reason": "update-ca-certificates trusts the Containers CA at start."
-        },
-        {
           "name": "bubblewrap",
           "reason": "srt's sandbox on Linux."
         },

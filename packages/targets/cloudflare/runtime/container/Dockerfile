@@ -12,10 +12,9 @@
 
 FROM node:22.21.1-bookworm-slim@sha256:25b3eb23a00590b7499f2a2ce939322727fcce1b15fdd69754fcd09536a3ae2c
 
-# ca-certificates: the Containers CA is trusted below. bubblewrap, socat and ripgrep: what srt
-# needs on Linux. patch: applies Halonic's srt patch, then is removed.
+# bubblewrap, socat and ripgrep: what srt needs on Linux. patch: applies Halonic's srt patch, then is removed.
 RUN apt-get update \
-  && apt-get install --yes --no-install-recommends ca-certificates bubblewrap socat ripgrep patch \
+  && apt-get install --yes --no-install-recommends bubblewrap socat ripgrep patch \
   && rm -rf /var/lib/apt/lists/*
 
 # Claude Code: the native Linux binary only, not the npm wrapper (whose install script picks it).
@@ -56,15 +55,17 @@ RUN tar -xzf /build/claude-code.tgz -C /build package/claude \
   && rm -rf /build \
   && apt-get purge --yes patch
 
-# The Containers CA: Cloudflare puts it here at start, for the TLS of the intercepted sites.
-# Trusting it at start, not at build, because the platform supplies the file only then.
-COPY --chmod=0755 packages/targets/cloudflare/runtime/container/trust-containers-ca.sh /usr/local/bin/
-
 # Never root: harness steps run as this user, with only their workspace writable.
 RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin halonic \
   && mkdir -p /workspace \
   && chown halonic:halonic /workspace
+USER halonic
 WORKDIR /workspace
 
-ENTRYPOINT ["/usr/local/bin/trust-containers-ca.sh"]
+# The Containers CA: Cloudflare puts it here when the container starts. Every request leaves through
+# its intercepting proxy, so it is the only CA the programs need. Set in the image, not by an
+# entrypoint, because `exec` starts programs without one (deployed check, HAL-18578).
+ENV NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt
+ENV SSL_CERT_FILE=/etc/cloudflare/certs/cloudflare-containers-ca.crt
+
 CMD ["sleep", "infinity"]
