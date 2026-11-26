@@ -10,7 +10,7 @@
 The usage banner reads "You've used 95% of this month's tokens" with the warning's own percent,
 not a fixed "80%". The reset day reads "2 Dec 2026" (UTC) instead of "2 December", the same style
 as the connection row's "24 Dec 2026". The requirement `account-menu.usage-banner` says this, and
-the words file and its test follow. No test was weakened or skipped.
+the words file and its test follow. It also says "this month's" is deliberate, because the usage account's periods are monthly (docs item 6, HAL-19117). No test was weakened or skipped.
 
 ## Why
 

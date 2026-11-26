@@ -10,7 +10,8 @@ top bar for the highest unit at 80% or more of its limit and under 100%: the bar
 used {percent}% of this month's {unit}** · It resets on {day mon year}.", **See usage**, which opens the
 answer's `planUrl`, and a close button named "Close". The percent shall be the warning's own
 `percent`, so a customer at 95% reads 95%, never the 80% mark. The day shall be the warning's `resetsAt`
-in UTC, in the short style the connection row uses, such as "2 Dec 2026" (decided by the team on HAL-20021). The units shall read "runs", "steps", "tokens", "agent time"
+in UTC, in the short style the connection row uses, such as "2 Dec 2026" (decided by the team on HAL-20021).
+"This month's" is deliberate: the usage account's periods are monthly, and the day shall be where the period ends. The units shall read "runs", "steps", "tokens", "agent time"
 (`harnessMs`) and, for the cost unit, "usage": a percentage only, never an amount of money. A unit
 without one of these names shall get no banner.
 
