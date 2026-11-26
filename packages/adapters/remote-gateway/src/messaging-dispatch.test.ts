@@ -117,6 +117,14 @@ verifies("remote-gateway.messaging-allow-list", () => {
       expect(t.sent.at(-1)).toMatchObject({ type: "msg-result", replyTo: "a2" });
     });
 
+    it("treats any risk but normal as risky, so the check fails closed", async () => {
+      const t = await connect();
+      t.fake.item = { ...inboxItem(), risk: "unknown" as "risky" };
+      await t.say(everyAllowedMessage[7]);
+      expect(t.sent.at(-1)).toEqual({ type: "error", replyTo: "a1", code: "not-allowed-remotely" });
+      expect(t.fake.calls).not.toContain("answer");
+    });
+
     it("refuses an item the view doesn't have with not-found", async () => {
       const t = await connect();
       await t.say({ ...everyAllowedMessage[7], item: "item-9" });
@@ -189,6 +197,13 @@ verifies("remote-gateway.messaging-allow-list", () => {
       ).toEqual(["msg-3", "msg-2", "msg-1"]);
       await t.say({ ...everyAllowedMessage[5], id: "r7", before: "4" });
       expect(t.sent.at(-1)).toEqual({ type: "error", code: "malformed" });
+    });
+
+    it("refuses the messages of a conversation the view doesn't list, before reading them", async () => {
+      const t = await connect();
+      await t.say({ ...everyAllowedMessage[5], conversation: "conv-9" });
+      expect(t.sent.at(-1)).toEqual({ type: "error", replyTo: "r6", code: "not-found" });
+      expect(t.fake.calls).not.toContain("listMessages");
     });
 
     it("pushes msg-changed while watched, and nothing after msg-unwatch", async () => {

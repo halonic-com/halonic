@@ -135,6 +135,11 @@ export class WorkspaceMessaging {
     return this.#served;
   }
 
+  /** Every connected source's team status, under the team hub's freshness rules and cache. */
+  get team(): TeamStatus {
+    return this.#team;
+  }
+
   /**
    * What the activity panel reads (`agent-host.team-activity-routes`): every
    * connected source's runs, kept in memory only, and its pull requests,

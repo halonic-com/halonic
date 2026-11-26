@@ -3,10 +3,12 @@ import {
   type GatewayPolicy,
   startGatewayListener,
 } from "@halonicjs/adapter-remote-gateway";
+import type { Clock, PhoneMessaging } from "@halonicjs/ports";
 import type { RunTable } from "../harness/run-table.ts";
 import type { GatewaySwitch } from "../remote/host-remote-control.ts";
 import type { GatewayAccess } from "./desk-access.ts";
 import { hostGatewaySource } from "./host-gateway-source.ts";
+import { PhoneRateLimits } from "./phone-rate-limit.ts";
 import type { RunLedger } from "./run-ledger.ts";
 
 /**
@@ -49,6 +51,12 @@ export interface RemoteGatewayOptions {
   readonly ownPorts: Set<number>;
   /** Where a listener that can't start, and a connection that fails, is reported; the host serves on. */
   readonly log: (text: string) => void;
+  /**
+   * The Inbox, Messenger and team status a paired phone may read, built by
+   * `phoneMessaging`, and the clock its rates run on. Without it the gateway
+   * refuses them with `not-supported`.
+   */
+  readonly messaging?: { readonly view: PhoneMessaging; readonly clock: Clock };
 }
 
 /**
@@ -60,12 +68,16 @@ export interface RemoteGatewayOptions {
  */
 export class RemoteGateway implements GatewaySwitch {
   readonly #options: RemoteGatewayOptions;
+  /** Made once, so a phone's rate outlives its connection and the listener's restarts. */
+  readonly #rateLimits: PhoneRateLimits | undefined;
   #listener: GatewayListener | undefined;
   /** The start or stop running now; the next one waits for it. */
   #turn: Promise<unknown> = Promise.resolve();
 
   constructor(options: RemoteGatewayOptions) {
     this.#options = options;
+    this.#rateLimits =
+      options.messaging === undefined ? undefined : new PhoneRateLimits(options.messaging.clock);
   }
 
   /**
@@ -98,7 +110,8 @@ export class RemoteGateway implements GatewaySwitch {
   }
 
   async #listen(): Promise<GatewayListener | undefined> {
-    const { ledger, runs, risky, port, publicHeaders, log } = this.#options;
+    const { ledger, runs, risky, port, publicHeaders, log, messaging } = this.#options;
+    const rateLimits = this.#rateLimits;
     try {
       const { phones, pairing } = await this.#options.access();
       const extraHosts = await this.#tunnelHosts();
@@ -111,6 +124,14 @@ export class RemoteGateway implements GatewaySwitch {
         ...(port === undefined ? {} : { port }),
         extraHosts,
         ...(publicHeaders === undefined ? {} : { publicHeaders }),
+        ...(messaging === undefined || rateLimits === undefined
+          ? {}
+          : {
+              messaging: {
+                view: messaging.view,
+                rateLimitFor: (phoneKey: Uint8Array) => rateLimits.forPhone(phoneKey),
+              },
+            }),
       });
     } catch (error) {
       log(`The remote gateway didn't start: ${String(error)}\n`);

@@ -68,8 +68,15 @@ export class PairedPhones {
     return new PairedPhones(options, readPhoneRecords(await options.file.read()));
   }
 
-  /** The paired phones, oldest pairing first, as Studio shows them. */
+  /**
+   * The paired phones, oldest pairing first, as Studio shows them. A phone
+   * that went idle too long is revoked here too, so a lost phone that never
+   * connects again still leaves the list.
+   */
   get phones(): readonly PairedPhone[] {
+    for (const record of this.#records.filter((candidate) => this.#idleTooLong(candidate))) {
+      this.#expire(record.id);
+    }
     return this.#records.map((record) => this.#shown(record));
   }
 
@@ -89,9 +96,7 @@ export class PairedPhones {
     const record = this.#records.find((phone) => phone.id === deviceId(publicKey));
     if (record === undefined) return undefined;
     if (this.#idleTooLong(record)) {
-      this.revoke(record.id).catch((error: unknown) => {
-        this.#log(`An idle phone's removal couldn't be saved: ${String(error)}\n`);
-      });
+      this.#expire(record.id);
       return undefined;
     }
     return this.#shown(record);
@@ -198,11 +203,22 @@ export class PairedPhones {
     );
   }
 
-  /** Whether the phone went unused too long: no open session, and last seen (or paired) over the limit ago. */
+  /**
+   * Whether the phone went unused too long: no open session, and last seen
+   * (or paired) over the limit ago. A time that can't be read counts as too
+   * long, so the check fails closed.
+   */
   #idleTooLong(record: PhoneRecord): boolean {
     if (this.#sessions.has(record.id)) return false;
-    const lastUsedMs = Date.parse(record.lastSeenAt ?? record.pairedAt);
-    return this.#time.now().getTime() - lastUsedMs > phoneIdleExpiryMs;
+    const idleMs = this.#time.now().getTime() - Date.parse(record.lastSeenAt ?? record.pairedAt);
+    return !(idleMs <= phoneIdleExpiryMs);
+  }
+
+  /** Revokes an idle phone; the removal leaves memory at once, and a failed write is reported. */
+  #expire(phoneId: string): void {
+    this.revoke(phoneId).catch((error: unknown) => {
+      this.#log(`An idle phone's removal couldn't be saved: ${String(error)}\n`);
+    });
   }
 
   /** Cuts every session of these phones, each on its own, so one that fails stops no other. */
