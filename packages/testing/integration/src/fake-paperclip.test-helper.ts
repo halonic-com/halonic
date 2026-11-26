@@ -105,6 +105,7 @@ function acmeRoutes(): Map<string, unknown> {
     [`GET ${company}/join-requests`, []],
     [`GET /api/approvals/${acmeApproval}/issues`, []],
     [`GET /api/issues/${acmeTask}/interactions`, [card]],
+    [`GET /api/issues/${acmeTask}/attachments`, []],
     [
       `POST /api/issues/${acmeTask}/interactions/${acmeCard}/accept`,
       { ...card, status: "accepted" },

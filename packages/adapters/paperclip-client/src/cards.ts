@@ -162,7 +162,7 @@ export function cardToItem(
     // A card asks a question in words and changes no one's rights, unless it lets an agent run a tool.
     risk: asksToRunTool(payload) ? "risky" : "normal",
     createdAt: timeOf(record, "createdAt"),
-    // The provider lists no files yet; it reads none, so it makes no request for them.
+    // The Inbox adds the files of the card's task (`card-files.ts`).
     attachments: [],
     state:
       status === "pending"
@@ -322,7 +322,7 @@ export function approvalToItem(
     ...(work === undefined ? {} : { work }),
     risk: approvalRisk(type),
     createdAt: timeOf(record, "createdAt"),
-    // The provider lists no files yet; it reads none, so it makes no request for them.
+    // The Inbox adds the files of the card's task (`card-files.ts`).
     attachments: [],
     state:
       decided === undefined
