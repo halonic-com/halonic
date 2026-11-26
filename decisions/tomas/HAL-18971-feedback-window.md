@@ -1,6 +1,7 @@
 # Decision: the not-available window no longer says "yet"
 
-- Requirements: `feedback.unavailable` (`packages/studio/features/feedback/requirements/unavailable.md`)
+- Requirements: `feedback.unavailable` (`packages/studio/features/feedback/requirements/unavailable.md`),
+  `studio.feedback-windows` (`apps/studio/requirements/feedback-windows.md`), one example only
 - Task: HAL-18971, from Nina's words check on HAL-19210
 - Approval: Liam approves this note in his review of this pull request on HAL-18971
 - Kind: user-visible
@@ -12,13 +13,15 @@ can't take a screenshot for feedback on this system yet." Nina's words check (HA
 that "yet" promises a later feature, and the docs rule is to describe only what ships. The
 sentence becomes "Studio can't take a screenshot for feedback on this system." Nothing else in
 the requirement changes: the "Not now" button, Esc and the window never asking for a still stay
-as they are.
+as they are. The example in `studio.feedback-windows` that quotes the sentence changes with it.
 
 ## Tests
 
-No test was weakened. The `feedback.unavailable` test in `feedback-windows.test.tsx` compares the
-new sentence, with the same number of `expect` calls.
+No test was weakened. The `feedback.unavailable` test in `feedback-windows.test.tsx` and the
+`studio.feedback-windows` test in `start-studio.feedback.test.ts` compare the new sentence, with the
+same number of `expect` calls.
 
 ## Covers
 
 - feedback.unavailable
+- studio.feedback-windows
