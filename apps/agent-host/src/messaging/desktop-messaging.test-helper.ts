@@ -18,6 +18,7 @@ import { DesktopMessaging } from "./desktop-messaging.ts";
 import { MessagingEngineSetting } from "./messaging-engine-setting.ts";
 import { MessagingPoller } from "./messaging-poller.ts";
 import { messagingRoutes } from "./messaging-routes.ts";
+import { ReplyWatch } from "./reply-watch.ts";
 import { ServerPairings } from "./server-engine.ts";
 
 // A fake key only these tests use, so its absence from answers and files means something.
@@ -96,6 +97,15 @@ export class FakePaperclip {
     if (path === `/api/companies/${acme.company}/heartbeat-runs`) return json(this.runs);
     if (path === "/api/issues/task-1")
       return json({ identifier: "ACME-7", title: "Chat with Ada" });
+    // A message the person sends to Ada; what it says isn't read back.
+    if (path === "/api/issues/task-1/comments" && request.method === "POST") {
+      return json({
+        id: "c1",
+        body: "Sent",
+        authorUserId: "user-1",
+        createdAt: "2026-11-24T14:00:00.000Z",
+      });
+    }
     if (path === "/api/cli-auth/revoke-current") return json({ revoked: true });
     if (path === "/api/cli-auth/me" && this.meAnswer !== undefined) return this.meAnswer();
     if (path === "/api/cli-auth/me" && this.me !== undefined) return json(this.me);
@@ -229,7 +239,13 @@ export async function startDesktop(): Promise<Desktop> {
     { onTimer: async (timer) => void (await poller.onTimer(timer)), onTick: async () => {} },
     clock,
   );
-  const poller = new MessagingPoller({ scheduler, clock, poll: () => messaging.refresh() });
+  const replies = new ReplyWatch({ clock, report: (error) => log(`watch replies ${error}\n`) });
+  const poller = new MessagingPoller({
+    scheduler,
+    clock,
+    poll: () => messaging.refresh(),
+    waiting: () => replies.waiting(),
+  });
   await poller.start();
   const token = randomLaunchToken();
   const host: HostServer = await startHostServer(token, [
@@ -240,7 +256,7 @@ export async function startDesktop(): Promise<Desktop> {
       log,
       usesServer: (folder) => messaging.usesServer(folder),
     }),
-    ...messagingRoutes({ messaging, poller, log }),
+    ...messagingRoutes({ messaging, poller, replies, log }),
   ]);
   const answers: string[] = [];
   const transport = pageTransport(host.url, token, answers);

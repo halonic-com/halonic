@@ -4,7 +4,7 @@ import type { MessagingId } from "@halonicjs/ports";
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { MessagingPoller, messagingPollTimer } from "./messaging-poller.ts";
+import { MessagingPoller, messagingPollTimer, pollWhileWaitingMs } from "./messaging-poller.ts";
 
 /** A fake that, like the Paperclip provider, only sees what changed on its server when it is refreshed. */
 class PolledFake extends FakeAgentMessaging {
@@ -19,7 +19,9 @@ class PolledFake extends FakeAgentMessaging {
 }
 
 /** A poller on a memory scheduler whose clock the test moves; nothing runs until `wait`. */
-async function startPolling(options: { inFront?: boolean; poll?: () => Promise<void> } = {}) {
+async function startPolling(
+  options: { inFront?: boolean; poll?: () => Promise<void>; waiting?: () => Promise<boolean> } = {},
+) {
   let now = Date.parse("2026-11-24T10:00:00.000Z");
   const clock = { now: () => new Date(now) };
   let polls = 0;
@@ -38,7 +40,12 @@ async function startPolling(options: { inFront?: boolean; poll?: () => Promise<v
     },
     clock,
   );
-  poller = new MessagingPoller({ scheduler, clock, poll });
+  poller = new MessagingPoller({
+    scheduler,
+    clock,
+    poll,
+    ...(options.waiting === undefined ? {} : { waiting: options.waiting }),
+  });
   await poller.start(options.inFront ?? true);
   const wait = async (ms: number) => {
     now += ms;
@@ -86,6 +93,67 @@ verifies("agent-host.paperclip-polling", () => {
     expect(polls()).toBe(1);
     await wait(30_000);
     expect(polls()).toBe(2);
+  });
+
+  it("polls every 5 seconds after a send while a chat waits for its agent, then every 30 once none does", async () => {
+    let waiting = true;
+    const { poller, wait, polls } = await startPolling({ waiting: async () => waiting });
+    await wait(10_000);
+
+    await poller.expectReply();
+    await wait(4_999);
+    expect(polls()).toBe(0);
+    await wait(1);
+    expect(polls()).toBe(1);
+    await wait(5_000);
+    expect(polls()).toBe(2);
+
+    waiting = false;
+    await wait(5_000);
+    expect(polls()).toBe(3);
+    await wait(29_999);
+    expect(polls()).toBe(3);
+    await wait(1);
+    expect(polls()).toBe(4);
+  });
+
+  it("polls every 30 seconds while no chat waits, even right after a send", async () => {
+    const { poller, wait, polls } = await startPolling({ waiting: async () => false });
+    await wait(30_000);
+    expect(polls()).toBe(1);
+
+    await poller.expectReply();
+    await wait(pollWhileWaitingMs);
+    expect(polls()).toBe(2);
+    await wait(29_999);
+    expect(polls()).toBe(2);
+    await wait(1);
+    expect(polls()).toBe(3);
+  });
+
+  it("goes back to 30 seconds 3 minutes after the last send, even if the chat still waits", async () => {
+    const { poller, wait, polls } = await startPolling({ waiting: async () => true });
+
+    await poller.expectReply();
+    for (let step = 0; step < 36; step += 1) await wait(5_000);
+    expect(polls()).toBe(36);
+    await wait(29_999);
+    expect(polls()).toBe(36);
+    await wait(1);
+    expect(polls()).toBe(37);
+  });
+
+  it("keeps the 5-minute wait in the background, even right after a send", async () => {
+    const { poller, wait, polls } = await startPolling({
+      inFront: false,
+      waiting: async () => true,
+    });
+
+    await poller.expectReply();
+    await wait(5 * 60_000 - 1);
+    expect(polls()).toBe(0);
+    await wait(1);
+    expect(polls()).toBe(1);
   });
 
   it("drops a late or repeated delivery and a timer that isn't the poll's", async () => {

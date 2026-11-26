@@ -237,3 +237,50 @@ verifies("agent-host.agent-messaging-offline", () => {
     expect(sent).toEqual({ outcome: "refused", reason: "offline" });
   });
 });
+
+verifies("agent-host.paperclip-polling", () => {
+  it("reads Paperclip 5 seconds after a message sent through the host, while the chat waits for Ada", async () => {
+    const on = await started();
+    await connect(on);
+    const [chat] = await on.studio.listConversations();
+    const chatReads = () =>
+      on.paperclip.seen.filter((request) =>
+        request.url.endsWith(`/companies/${acme.company}/chats`),
+      ).length;
+
+    const sent = await on.studio.send(chat?.id ?? "", "Ship it");
+    const before = chatReads();
+    await on.wait(4_999);
+    const early = chatReads();
+    await on.wait(1);
+
+    expect(sent).toMatchObject({ outcome: "sent" });
+    expect(early).toBe(before);
+    expect(chatReads()).toBeGreaterThan(before);
+  });
+
+  it("reads only the lists again for the watch in a fast tick, never a chat's messages", async () => {
+    const on = await started();
+    await connect(on);
+    const [chat] = await on.studio.listConversations();
+    await on.studio.send(chat?.id ?? "", "Ship it");
+    const before = on.paperclip.seen.length;
+
+    await on.wait(5_000);
+    const tick = on.paperclip.seen
+      .slice(before)
+      .map((request) => `${request.method} ${new URL(request.url).pathname}`);
+
+    const company = `/api/companies/${acme.company}`;
+    expect(tick).toEqual([
+      // The poll.
+      `GET ${company}/issues`,
+      `GET ${company}/agents`,
+      `GET ${company}/projects`,
+      // The watch: the conversation list, and no chat's comments.
+      `GET ${company}/issues`,
+      `GET ${company}/chats`,
+      `GET ${company}/live-runs`,
+    ]);
+  });
+});
