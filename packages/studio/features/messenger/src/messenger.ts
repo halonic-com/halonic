@@ -43,8 +43,13 @@ export interface ConversationRow {
   readonly questions?: readonly ChannelQuestion[];
   /** The newest message that isn't an automatic note, for the row's preview and time; none in an empty chat. */
   readonly last?: Message;
-  /** How many of the chat agent's cards are open, for the row's "1 card" chip. */
+  /** How many of the chat agent's cards are open, for the row's violet dot. */
   readonly openCards?: number;
+  /**
+   * When each agent's message since the person's own newest one was sent, oldest first; automatic
+   * notes left out. The row's unread count is those the person hasn't seen.
+   */
+  readonly incoming?: readonly string[];
 }
 
 /** What sending a conversation's draft did. A draft that wasn't sent stays as it was. */
@@ -120,7 +125,10 @@ export class Messenger {
         const messages = await this.newestOf(row);
         // An automatic note isn't the agent's answer: the row's preview and unread dot skip it.
         const last = messages.findLast((message) => message.automatic !== true);
-        const facts = last === undefined ? row : { ...row, last };
+        const facts = {
+          ...(last === undefined ? row : { ...row, last }),
+          incoming: incoming(messages),
+        };
         if (row.conversation.members !== undefined) {
           return { ...facts, questions: channelQuestions(row, messages, items) };
         }
@@ -159,6 +167,15 @@ export class Messenger {
     const { last } = row;
     if (last === undefined || last.author.kind === "me") return false;
     return last.sentAt > (this.seen.get(row.conversation.id) ?? "");
+  }
+
+  /**
+   * How many agent's messages a row holds that the person hasn't seen: those since the person's
+   * own newest message and since they last had the chat open (`messenger.chat-rows`).
+   */
+  unreadCount(row: ConversationRow): number {
+    const seen = this.seen.get(row.conversation.id) ?? "";
+    return (row.incoming ?? []).filter((sentAt) => sentAt > seen).length;
   }
 
   /** Whether anything is connected, so the Messenger can tell "nothing connected" from "no chats". */
@@ -329,6 +346,15 @@ function rowOf(
     sourceAgents: agents.filter((agent) => agent.source === conversation.source),
     source: sources.find((each) => each.id === conversation.source),
   };
+}
+
+/** When each agent's message after the person's own newest one was sent; automatic notes left out. */
+function incoming(messages: readonly Message[]): readonly string[] {
+  const mine = messages.findLastIndex((message) => message.author.kind === "me");
+  return messages
+    .slice(mine + 1)
+    .filter((message) => message.automatic !== true)
+    .map((message) => message.sentAt);
 }
 
 /** Whether `text` holds `search`, ignoring case; an empty search matches everything. */

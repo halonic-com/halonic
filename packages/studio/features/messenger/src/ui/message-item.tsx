@@ -8,6 +8,7 @@ import {
   useOpenExternal,
 } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
+import { type AgentTint, agentTint } from "../agent-tint.ts";
 import { isChannel } from "../channel.ts";
 import type { PendingMessage } from "../chat-layout.ts";
 import type { ConversationRow, Messenger } from "../messenger.ts";
@@ -84,6 +85,7 @@ export function MessageItem({
     );
   }
   const automatic = message.automatic === true;
+  const tint = agentTint(message.author);
   return (
     <li
       data-author={message.author.kind}
@@ -96,7 +98,8 @@ export function MessageItem({
         <p aria-hidden="true" className="flex items-center gap-2 text-small text-fg-muted">
           <Avatar name={author} picture={channel ? undefined : picture} />
           <span>
-            <bdi data-author-name aria-hidden="true">
+            {/* The name in the normal text colour, the time muted (HAL-19132, point 4). */}
+            <bdi data-author-name aria-hidden="true" className="font-semibold text-fg">
               {author}
             </bdi>{" "}
             · {time}
@@ -104,7 +107,7 @@ export function MessageItem({
         </p>
       ) : null}
       <div className="flex items-start gap-2 ps-9">
-        <div data-bubble className={agentBubble(automatic)}>
+        <div data-bubble className={agentBubble(automatic, tint)}>
           {automatic ? <span className="sr-only">{messengerWords.automatic(author)} </span> : null}
           {body}
         </div>
@@ -115,13 +118,13 @@ export function MessageItem({
 }
 
 /**
- * An agent's bubble on the start side, on a neutral surface with an edge (plan HAL-18743, sketch
- * 3.1). An automatic note has a dashed edge and no fill, so it reads lighter than the agent's
- * answer (sketch 3.2).
+ * An agent's bubble on the start side, with no edge, in the agent's own tint at the strength of
+ * the person's bubble (HAL-19134, approved on HAL-19132). An automatic note keeps its dashed edge
+ * and no fill, so it reads lighter than the agent's answer (plan HAL-18743, sketch 3.2).
  */
-function agentBubble(automatic: boolean): string {
-  const look = automatic ? "border-dashed border-border-strong" : "border-border bg-surface-subtle";
-  return `min-w-0 rounded-lg border px-3 py-2 wrap-break-word ${look}`;
+function agentBubble(automatic: boolean, tint: AgentTint): string {
+  const look = automatic ? "border border-dashed border-border-strong" : tint;
+  return `min-w-0 rounded-lg px-3 py-2 wrap-break-word ${look}`;
 }
 
 /** The small mark beside an automatic note; its tooltip says who wrote it. */

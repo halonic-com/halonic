@@ -22,7 +22,7 @@ const notAnswering = "The engine isn't answering. It may still be starting.";
 
 verifies("messenger.load-states", () => {
   describe("loading and failed reads", () => {
-    it("shows the tabs over loading rows while the chats are on their way, never No chats yet", async () => {
+    it("shows loading rows while the chats are on their way, never No chats yet", async () => {
       vi.useFakeTimers();
       const { messaging } = acme();
       vi.spyOn(messaging, "listConversations").mockReturnValue(new Promise(() => undefined));
@@ -34,8 +34,6 @@ verifies("messenger.load-states", () => {
       );
       expect(said).toContain("Loading your chats");
       expect(page.querySelector("nav [aria-busy='true']")).not.toBeNull();
-      // The tabs are drawn already, so the rows arrive where the skeleton rows stood.
-      expect(page.querySelectorAll('nav [role="tab"]')).toHaveLength(2);
       expect(page.querySelectorAll("nav [aria-busy='true'] li")).toHaveLength(3);
     });
 

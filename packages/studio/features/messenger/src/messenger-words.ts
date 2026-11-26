@@ -1,6 +1,5 @@
 import type { AgentActivity, InboxAnswer, MessagingRefusal } from "@halonicjs/ports";
 import type { FileRefusal } from "./file-limits.ts";
-import type { MessengerTab } from "./messenger.ts";
 
 /** Why the engine refused a message's files; it sends none of the message then. Approved on HAL-17459. */
 const filesNotSent =
@@ -10,16 +9,14 @@ const filesNotSent =
 const labelList = new Intl.ListFormat("en-GB", { type: "conjunction" });
 
 /**
- * The Messenger's words. "Messenger", "All" and "Waiting for me" are the
- * HAL-17421 renders' (approved by the board, 24 Nov); a single conversation is
- * "chat" in lower case, never the app's name (HAL-17358).
+ * The Messenger's words. "Messenger" is the HAL-17421 renders' (approved by the board, 24 Nov); a
+ * single conversation is "chat" in lower case, never the app's name (HAL-17358).
  */
 export const messengerWords = {
   title: "Messenger",
-  tabsLabel: "Chats",
-  tabs: { all: "All", waiting: "Waiting for me" } satisfies Record<MessengerTab, string>,
+  /** The list of chats, for a screen reader. */
+  chatsLabel: "Chats",
   noChats: "No chats yet.",
-  nothingWaiting: "No chat is waiting for you.",
   pickChat: "Pick a chat to read it.",
   /**
    * The Messenger with nothing connected: the words of Settings › Connections with no connection
@@ -59,10 +56,12 @@ export const messengerWords = {
   readAt: (time: string) => `Read ${time}`,
   /** The pill over the box while replies came in below where the person reads. */
   newMessages: (count: number) => (count === 1 ? "1 new message" : `${count} new messages`),
-  /** A row's chip while its agent's cards wait. */
-  openCards: (count: number) => (count === 1 ? "1 card" : `${count} cards`),
-  /** The unread dot, for a screen reader. */
-  unread: "Unread",
+  /** The violet dot after a row's name while a card or question waits, for a screen reader. */
+  needsYouDot: ", needs you",
+  /** A row's count of the messages the person hasn't seen, capped (HAL-19132, point 5). */
+  unreadCount: (count: number) => (count > 99 ? "99+" : String(count)),
+  /** After the count, for a screen reader: "3 unread". */
+  unread: " unread",
   /** Before the person's own message in a row's preview. */
   youSaid: "You: ",
   /** One pane at a time in a narrow window: back from the open chat to the list (HAL-18074). */

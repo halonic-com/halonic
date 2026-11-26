@@ -1,8 +1,10 @@
 # @halonicjs/studio-feature-messenger
 
 The Messenger feature of the Studio: one conversation per agent, read from the engine's
-`AgentMessaging` (ADR `docs/adr/2026-11-24-agent-messaging.md`), with the tabs "All" and "Waiting
-for me". It sends through `AgentMessaging.send`, keeps a draft per conversation, and keeps the
+`AgentMessaging` (ADR `docs/adr/2026-11-24-agent-messaging.md`), in one list. Each row counts the
+agent's messages the person hasn't read, and a violet dot after its name marks a card or question
+waiting. An agent's bubbles are tinted in its own colour, one of six from the kit's theme
+(`bg-agent-*`). It sends through `AgentMessaging.send`, keeps a draft per conversation, and keeps the
 draft unsent while the conversation's source is offline or signed out. It never sees a provider's
 own types, IDs or addresses: it gets the port from `AgentMessagingService` in `studio/services`.
 
