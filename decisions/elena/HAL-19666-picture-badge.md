@@ -4,6 +4,7 @@
 - Task: HAL-19666, from Sofia's proposal on HAL-19491, approved by the board on 26 Nov
 - Approval: Liam approves this note in his review of this pull request on HAL-19666
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:iCWNhAfu2gSOPaeM79Q7mViaHn+V7CUTjoFGWjlFqZ/EbmS4JIAClSYRd9pjwIatobvXwH6KapHxtFrMV1d9Ag==
 
 ## What changes
 
