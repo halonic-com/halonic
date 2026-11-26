@@ -21,10 +21,17 @@ export interface RuleSet {
   readonly capacityGate: boolean;
 }
 
+/**
+ * The settings the rule sets start from: today's, with a stand-in for the
+ * board's queue login, so the simulated day's `fast-track` labels count as
+ * the board's (its login comes from config, never from code).
+ */
+const simSettings: MergeSettings = { ...defaultSettings, fastTrackLabellers: ["board-queue"] };
+
 /** Today's rule: fast-track jumps with more than 8 queued (HAL-15971, HAL-17697). */
 export const jumpOver8: RuleSet = {
   name: "jump >8 (today)",
-  settings: defaultSettings,
+  settings: simSettings,
   frontOnRebuild: false,
   capacityGate: true,
 };
@@ -32,7 +39,7 @@ export const jumpOver8: RuleSet = {
 /** The rule before HAL-17697 tightened it, with the capacity gate. */
 export const jumpOver3: RuleSet = {
   name: "jump >3",
-  settings: { ...defaultSettings, jumpAhead: 3 },
+  settings: { ...simSettings, jumpAhead: 3 },
   frontOnRebuild: false,
   capacityGate: true,
 };
@@ -40,7 +47,7 @@ export const jumpOver3: RuleSet = {
 /** The Merger on 24 Nov until 18:15: jump with more than 3 queued, no capacity gate. */
 export const mergerBefore1815: RuleSet = {
   name: "the Merger until 18:15 (jump >3, no capacity gate)",
-  settings: { ...defaultSettings, jumpAhead: 3 },
+  settings: { ...simSettings, jumpAhead: 3 },
   frontOnRebuild: false,
   capacityGate: false,
 };
@@ -48,7 +55,7 @@ export const mergerBefore1815: RuleSet = {
 /** "Front of the line without a rebuild" (ADR, board 24 Nov 17:47). */
 export const frontOfLine: RuleSet = {
   name: "front of the line without a rebuild",
-  settings: { ...defaultSettings, jumpAhead: Number.POSITIVE_INFINITY },
+  settings: { ...simSettings, jumpAhead: Number.POSITIVE_INFINITY },
   frontOnRebuild: true,
   capacityGate: true,
 };

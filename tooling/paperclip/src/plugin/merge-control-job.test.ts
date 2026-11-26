@@ -16,6 +16,7 @@ import {
   type MergeControlApi,
   mergeControlPass,
   readMergeControlSettings,
+  rulesOf,
 } from "./merge-control-job.ts";
 import { mergeControlNamespace, passLock } from "./merge-control-lock.ts";
 
@@ -80,13 +81,13 @@ verifies("paperclip.merge-control-shadow", () => {
 
   test("the daily diff lists a differing action with its cost, once the day is over", async () => {
     const fake = fakeContext({
-      mergeControl: { mode: "shadow", diffTask: "task-17700" },
+      mergeControl: { mode: "shadow", diffTask: "task-17700", mergerLogin: "acme-queue" },
       mergeQueueToken: token,
     });
     const queued = Array.from({ length: 9 }, (_, index) => pull(10 + index));
     const fast = pull(30, {
       labels: ["built-on:paperclip", "fast-track"],
-      fastTrackBy: "halonic-dev",
+      fastTrackBy: "acme-queue",
     });
     const facts = snapshot({
       pulls: [...queued, fast],
@@ -267,5 +268,14 @@ verifies("paperclip.merge-control-api-budget", () => {
     for (const [, init] of fake.fetch.mock.calls as unknown as [string, { method: string }][]) {
       expect(init.method).toBe("POST");
     }
+  });
+});
+
+verifies("paperclip.merge-control-fast-track", () => {
+  test("only the board's queue login fast-tracks, never the account every agent posts as", () => {
+    expect(rulesOf({ mergeControl: { mergerLogin: "acme-queue" } }).fastTrackLabellers).toEqual([
+      "acme-queue",
+    ]);
+    expect(rulesOf({}).fastTrackLabellers).toEqual([]);
   });
 });
