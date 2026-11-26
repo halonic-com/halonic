@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-18424 (the board's switch-over checklist via ci-fasttrack, 26 Nov 11:30 UTC, point 1: count Nora and Julian approvals the way the live gate does; Chief agreed 11:30 UTC)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:tQEk8Y1ge45Kq+uEyosLYos7g7sEV3EbL+9x7SLN1/e2dzlgsgN5tgnLJ7v9IpVHndD9LfCoQaVV02mOK3+rDQ==
 
 A signed approval line that is the first line of its comment now counts even when the findings below it use change words. On 26 Nov the gate refused four approvals the live Merger counted: Julian's on #6452 and Nora's on #6453, #6482 and #6495, each because the findings said "none blocking" or similar. The live gate never reads an approval comment as blocking itself (`isBlock`: a text whose first line approves isn't a block).
 
