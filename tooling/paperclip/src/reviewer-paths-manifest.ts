@@ -16,12 +16,13 @@ const manifestModule =
 
 /**
  * The rest of the manifests' import closure, whose names don't match
- * `manifestModule`, and the build files that bundle `dist/manifest.js`.
+ * `manifestModule`, and the build files that bundle `dist/manifest.js`
+ * with everything they import.
  * A module one import further down shapes the built manifest as much as a
  * direct one: a default in `seat-mover/settings.ts` decides what the seat
  * mover job may do. `reviewer-paths-manifest.test.ts` walks the closure as
- * esbuild bundles it and fails when this list misses a module or names one
- * that left it. Keep it in step with the deployer's `MANIFEST_IMPORTS`.
+ * esbuild bundles it, and the build scripts' own imports, and fails when
+ * this list misses a module or names one that left them. Keep it in step with the deployer's `MANIFEST_IMPORTS`.
  */
 export const manifestImports: readonly string[] = [
   "tooling/paperclip/src/amsterdam-time.ts",
@@ -42,6 +43,8 @@ export const manifestImports: readonly string[] = [
   "tooling/paperclip/src/plugin/build-options.ts",
   "tooling/paperclip/src/plugin/build.ts",
   "tooling/paperclip/src/seats/plugin/build.ts",
+  // What the build scripts import at run time: their code runs while `dist/manifest.js` is written (HAL-19527).
+  "tooling/paperclip/src/merge-control/rules-hash.ts",
 ];
 
 /**

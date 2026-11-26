@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import type { BuildOptions } from "esbuild";
-import { rulesHashPlaceholder } from "../merge-control/decide-file.ts";
+import { rulesHashPlaceholder } from "../merge-control/rules-hash.ts";
 import { pluginVersion } from "./version.ts";
 
 /**
