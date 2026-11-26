@@ -8,7 +8,7 @@ import { keys } from "./webdriver.ts";
 import { basicsText, buttonLabels } from "./words.ts";
 
 const { recent, demoFolder, demoTag, openFolderRow } = basicsText;
-const menu = `${recent.text} Acme ~/Documents/${demoFolder.text} ${demoTag.text} ${openFolderRow.text}`;
+const menu = `${recent.text.toUpperCase()} Acme ~/Documents/${demoFolder.text} ${demoTag.text} ${openFolderRow.text}`;
 
 /** The demo in the app's 800 × 600 window, whose switcher opens the workspace menu. */
 function studioOnDemo(): FakeStudio {

@@ -10,6 +10,8 @@ import { basicsText, buttonLabels, closeSettingsLabel } from "./words.ts";
 
 const { recent, demoFolder, demoTag, openFolderRow, welcomeTitle, welcomeLine } = basicsText;
 const demoRow = `${recent.text} Acme ~/Documents/${demoFolder.text} ${demoTag.text}`;
+// The workspace menu's heading as the page text reads it: the kit draws menu headings in capitals.
+const menuDemoRow = demoRow.replace(recent.text, recent.text.toUpperCase());
 
 function setText(studio: FakeStudio, text: string) {
   const main = studio.windows.get("main");
@@ -48,8 +50,9 @@ verifies("studio-click-test.basics-steps", () => {
   });
 
   describe("the demo is the shown workspace", () => {
-    it("passes on the window title and a menu with the demo's Demo row", async () => {
-      const studio = studioOnDemo(`${demoRow} ${openFolderRow.text}`);
+    // Run 45737719858: the menu's heading reads "RECENT", as drawn.
+    it("passes on the window title and a menu with the demo's Demo row, under its capital heading", async () => {
+      const studio = studioOnDemo(`${menuDemoRow} ${openFolderRow.text}`);
       await expect(demoWorkspace.run(studio.context)).resolves.toEqual({ passed: true });
       expect(studio.clicks).toEqual([switcherXpath, keys.escape]);
     });
@@ -64,7 +67,7 @@ verifies("studio-click-test.basics-steps", () => {
     });
 
     it("fails as MENU_INCOMPLETE, naming what the menu lacks", async () => {
-      const studio = studioOnDemo(`${recent.text} Acme ${openFolderRow.text}`);
+      const studio = studioOnDemo(`${recent.text.toUpperCase()} Acme ${openFolderRow.text}`);
       const outcome = await demoWorkspace.run(studio.context);
       expect(outcome).toMatchObject({ passed: false, code: "MENU_INCOMPLETE" });
       expect(outcome.passed ? "" : outcome.note).toContain(
@@ -79,7 +82,7 @@ verifies("studio-click-test.basics-steps", () => {
       button(studio, "main", closeSettingsLabel, () => {
         setText(studio, "Support reply");
         button(studio, "main", switcherXpath, () =>
-          setText(studio, `${demoRow} ${openFolderRow.text}`),
+          setText(studio, `${menuDemoRow} ${openFolderRow.text}`),
         );
         button(studio, "main", keys.escape);
       });
