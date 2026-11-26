@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { chainEntry, type LedgerEntry } from "./ledger-entry.ts";
-import { shadowDigest } from "./shadow-digest.ts";
+import { callsBetween, noCalls, shadowDigest } from "./shadow-digest.ts";
 import { owner, pinned } from "./shadow-runner.test-helper.ts";
 
 const digest = {
@@ -52,6 +52,7 @@ verifies("auto-approvals.shadow-runner", () => {
         day: "2026-11-27",
         entries,
         calls: { sent: 42, refused: 0, refusedNotGet: 0, writesSent: 0 },
+        callsSince: new Date("2026-11-27T08:00:00.000Z"),
         documents: {
           neverList: { ...neverList, revisions: [...neverList.revisions, revision] },
           stop: pinned("d-stop", "stop: false\n"),
@@ -66,10 +67,11 @@ verifies("auto-approvals.shadow-runner", () => {
           "Build: abc1234",
           `Ledger head: ${entries.at(-1)?.hash}`,
           "Red-team: 46 of 46 passed on build abc1234",
+          "Runner: running",
           "Stopped: 1 h 0 min of 12 h 0 min, left out of every count below",
           "Polls: 3, stopped: 1, restarts: 1",
           "- stopped by stop.stopped: 1",
-          "Calls to Paperclip: 42 sent (only GETs can pass the guard), writes sent: 0, refused: 0 (0 of them writes)",
+          "Calls to Paperclip since 08:00 UTC: 42 sent (only GETs can pass the guard), writes sent: 0, refused: 0 (0 of them writes)",
           "",
           "Kind untyped:",
           "- approvals seen: 3, evaluations: 4",
@@ -96,7 +98,8 @@ verifies("auto-approvals.shadow-runner", () => {
       const text = shadowDigest({
         day: "2026-11-27",
         entries: [],
-        calls: { sent: 0, refused: 0, refusedNotGet: 0, writesSent: 0 },
+        calls: noCalls,
+        callsSince: new Date("2026-11-27T00:00:00.000Z"),
         build: "abc1234",
         until: new Date("2026-11-28T00:00:00.000Z"),
       });
@@ -104,6 +107,32 @@ verifies("auto-approvals.shadow-runner", () => {
       expect(text).toContain("Ledger head: none");
       expect(text).toContain("never-list revisions today: not read");
       expect(text).toContain("- untyped: 0 of 0");
+    });
+
+    it("says a halted runner, which wrote nothing, instead of reading as a quiet day", () => {
+      const text = shadowDigest({
+        day: "2026-11-28",
+        entries: [],
+        calls: noCalls,
+        callsSince: new Date("2026-11-28T00:00:00.000Z"),
+        halted: { reason: "ledger.write_failed", since: new Date("2026-11-27T10:05:00.000Z") },
+        build: "abc1234",
+        until: new Date("2026-11-29T00:00:00.000Z"),
+      });
+      expect(text).toContain(
+        "Runner: halted since 2026-11-27 10:05 UTC (ledger.write_failed), until a person restarts it",
+      );
+    });
+
+    it("counts the calls between two readings of the source's counts", () => {
+      const dayStart = { sent: 40, refused: 0, refusedNotGet: 0, writesSent: 0 };
+      const now = { sent: 52, refused: 1, refusedNotGet: 1, writesSent: 0 };
+      expect(callsBetween(dayStart, now)).toEqual({
+        sent: 12,
+        refused: 1,
+        refusedNotGet: 1,
+        writesSent: 0,
+      });
     });
   });
 });

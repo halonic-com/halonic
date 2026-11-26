@@ -53,6 +53,7 @@
     "@halonicjs/adapter-workspace-engine-node": "workspace:*",
     "@halonicjs/adapter-workspace-models": "workspace:*",
     "@halonicjs/app": "workspace:*",
+    "@halonicjs/auto-approvals": "workspace:*",
     "@halonicjs/engine": "workspace:*",
     "@halonicjs/events": "workspace:*",
     "@halonicjs/format": "workspace:*",

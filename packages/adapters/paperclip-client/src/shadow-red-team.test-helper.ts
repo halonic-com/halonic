@@ -45,6 +45,7 @@ export async function shadowRun(
     day: digestDay,
     entries: run.store.stored,
     calls: run.reader.counts(),
+    callsSince: new Date(0),
     ...documentsOf(run.runner),
     build: "abc1234",
     until: new Date(t0.getTime() + hour),

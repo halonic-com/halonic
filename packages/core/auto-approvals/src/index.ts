@@ -55,7 +55,13 @@ export {
   type PinnedNeverListReason,
   type StopReason,
 } from "./pinned-documents.ts";
-export { notMeasured, type ShadowDigestInput, shadowDigest } from "./shadow-digest.ts";
+export {
+  callsBetween,
+  noCalls,
+  notMeasured,
+  type ShadowDigestInput,
+  shadowDigest,
+} from "./shadow-digest.ts";
 export {
   type HaltReason,
   type PollReport,

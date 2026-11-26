@@ -5,7 +5,7 @@
 
 import type { LedgerEntry } from "./ledger-entry.ts";
 import type { DocumentRevision, PinnedDocument } from "./pinned-documents.ts";
-import { pollRan, runEntryId, runStarted } from "./shadow-runner.ts";
+import { type HaltReason, pollRan, runEntryId, runStarted } from "./shadow-runner.ts";
 import type { ShadowCallCounts } from "./shadow-source.ts";
 
 /** What one day's digest is made from. */
@@ -14,9 +14,19 @@ export interface ShadowDigestInput {
   readonly day: string;
   /** The whole ledger, oldest first; only the day's entries are counted. */
   readonly entries: readonly LedgerEntry[];
+  /** The source's calls since {@link callsSince}, see {@link callsBetween}. */
   readonly calls: ShadowCallCounts;
+  /** Where the call counts start: the day's start, or the source's start when that came later. */
+  readonly callsSince: Date;
+  /** Why and since when the runner halted, or `undefined` while it runs. */
+  readonly halted?: { readonly reason: HaltReason; readonly since: Date };
   /** Both pinned documents as last read, for the day's revisions. */
   readonly documents?: { readonly neverList: PinnedDocument; readonly stop: PinnedDocument };
+  /**
+   * The ledger head the digest names; the ledger's newest entry's hash by default. After a
+   * `ledger.head_mismatch` halt it is the last digest's head, so a restart halts again (A44).
+   */
+  readonly head?: string;
   /** The build commit the runner runs. */
   readonly build: string;
   /** The red-team result for this build, or `undefined` when it wasn't run. */
@@ -53,19 +63,20 @@ export function shadowDigest(input: ShadowDigestInput): string {
   const counted = (test: (reason: string) => boolean) =>
     `${[...reasons.values()].filter(test).length} of ${seen}`;
   const stops = runEntries.filter((entry) => isStop(entry.reason));
-  const head = input.entries.at(-1)?.hash ?? "none";
+  const head = input.head ?? input.entries.at(-1)?.hash ?? "none";
 
   return [
     `Auto approvals shadow digest, ${input.day} (UTC)`,
     `Build: ${input.build}`,
     `Ledger head: ${head}`,
     redTeamLine(input),
+    runnerLine(input.halted),
     `Stopped: ${duration(stoppedMs(runEntries, end))} of ${duration(end - start)}, left out of every count below`,
     `Polls: ${runEntries.filter((entry) => entry.reason === pollRan).length + stops.length}, stopped: ${stops.length}, restarts: ${runEntries.filter((entry) => entry.reason === runStarted).length}`,
     ...tally(stops.map((entry) => entry.reason)).map(
       ([reason, count]) => `- stopped by ${reason}: ${count}`,
     ),
-    `Calls to Paperclip: ${input.calls.sent} sent (only GETs can pass the guard), writes sent: ${input.calls.writesSent}, refused: ${input.calls.refused} (${input.calls.refusedNotGet} of them writes)`,
+    `Calls to Paperclip since ${clockTime(input.callsSince)} UTC: ${input.calls.sent} sent (only GETs can pass the guard), writes sent: ${input.calls.writesSent}, refused: ${input.calls.refused} (${input.calls.refusedNotGet} of them writes)`,
     "",
     "Kind untyped:",
     `- approvals seen: ${seen}, evaluations: ${today.length - runEntries.length}`,
@@ -82,6 +93,34 @@ export function shadowDigest(input: ShadowDigestInput): string {
     ...revisionLines("never-list", input.documents?.neverList, start),
     ...revisionLines("stop document", input.documents?.stop, start),
   ].join("\n");
+}
+
+/**
+ * The calls made between two readings of a source's cumulative counts, such as the day's start
+ * and now. The counts only grow, so each field is a plain difference.
+ */
+export function callsBetween(from: ShadowCallCounts, to: ShadowCallCounts): ShadowCallCounts {
+  return {
+    sent: to.sent - from.sent,
+    refused: to.refused - from.refused,
+    refusedNotGet: to.refusedNotGet - from.refusedNotGet,
+    writesSent: to.writesSent - from.writesSent,
+  };
+}
+
+/** No call made yet: the counts a day starts from before the source exists. */
+export const noCalls: ShadowCallCounts = { sent: 0, refused: 0, refusedNotGet: 0, writesSent: 0 };
+
+/** Whether the runner goes on: a halt writes nothing to the ledger, so it is said here. */
+function runnerLine(halted: ShadowDigestInput["halted"]): string {
+  if (halted === undefined) return "Runner: running";
+  const at = halted.since.toISOString();
+  return `Runner: halted since ${at.slice(0, 10)} ${clockTime(halted.since)} UTC (${halted.reason}), until a person restarts it`;
+}
+
+/** `HH:MM` of a time, in UTC. */
+function clockTime(time: Date): string {
+  return time.toISOString().slice(11, 16);
 }
 
 /** The approval ids whose reason holds `marker`, after a colon, or nothing when there are none. */
@@ -145,7 +184,7 @@ function revisionLines(
 }
 
 function revisionLine(revision: DocumentRevision): string {
-  const time = revision.createdAt.slice(11, 16);
+  const time = clockTime(new Date(revision.createdAt));
   const author =
     revision.authorAgentId === null
       ? `user ${revision.authorUserId ?? "unknown"}`

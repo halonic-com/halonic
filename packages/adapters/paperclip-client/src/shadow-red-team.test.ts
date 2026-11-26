@@ -94,6 +94,7 @@ verifies("paperclip-client.shadow-red-team", () => {
           day: digestDay,
           entries: store.stored,
           calls: reader.counts(),
+          callsSince: new Date(0),
           build: "abc1234",
           until: new Date(),
         });
@@ -104,7 +105,7 @@ verifies("paperclip-client.shadow-red-team", () => {
     it("G4: every digest gives the call counts and both documents' revisions", async () => {
       const run = await shadowRun(b0());
       expect(run.digest).toMatch(
-        /^Calls to Paperclip: \d+ sent .* writes sent: 0, refused: 0 \(0 of them writes\)/m,
+        /^Calls to Paperclip since \d\d:\d\d UTC: \d+ sent .* writes sent: 0, refused: 0 \(0 of them writes\)/m,
       );
       expect(run.digest).toContain("never-list revisions today:");
       expect(run.digest).toContain("stop document revisions today:");

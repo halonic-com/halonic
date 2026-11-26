@@ -121,6 +121,7 @@ export const runnerRows: RedTeamRow[] = [
         "constructor",
         "documents",
         "halted",
+        "haltedState",
         "nextDelayMs",
         "poll",
         "start",
