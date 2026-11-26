@@ -14,6 +14,18 @@ export { feedbackPrefs } from "./feedback-prefs.ts";
 export type ShortcutChange = "saved" | "taken" | "invalid" | "unavailable" | "failed";
 
 /**
+ * Whether Studio is connected to Paperclip now, as the main window's open folder says
+ * (`feedback.connected-only`). Send feedback shows only while it is: the board decides on the
+ * 0.2.0 release card who gets it, and until then people without Paperclip see none of it.
+ */
+export interface FeedbackConnected {
+  /** Whether a Paperclip connection of the open folder holds its key now. */
+  current(): boolean;
+  /** Calls `listener` when that may have changed; returns a function that stops the calls. */
+  subscribe(listener: () => void): () => void;
+}
+
+/**
  * What Settings → Keyboard and Settings → Feedback need of the desktop app. Only Studio's own
  * main window has it: the shell grants `shortcut_set` to no other window, and served Studio has
  * no shell, so there the two sections don't show.
@@ -25,6 +37,8 @@ export interface FeedbackSettingsHost {
   setShortcut(shortcut: string): Promise<ShortcutChange>;
   /** How many feedbacks wait to be sent; absent until the app keeps them, and then no line shows. */
   waiting?(): Promise<number>;
+  /** Whether Studio is connected to Paperclip; absent counts as connected. */
+  readonly connected?: FeedbackConnected;
 }
 
 /** The desktop app's {@link FeedbackSettingsHost}. */

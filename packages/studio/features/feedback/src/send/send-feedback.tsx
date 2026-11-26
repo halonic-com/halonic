@@ -2,6 +2,7 @@ import { Dialog, Field, Kbd, TextArea } from "@halonicjs/studio-kit";
 import { type Ref, type RefObject, useId, useRef, useState } from "react";
 import { endFeedback, type FeedbackIpc, feedbackCommands } from "../feedback-ipc.ts";
 import { feedbackWords } from "../feedback-words.ts";
+import type { StillImage } from "../overlay/still.ts";
 import { type StillState, useStill } from "../overlay/use-still.ts";
 import { feedbackTitle } from "../payload.ts";
 import { CropView, PressLine } from "./crop-view.tsx";
@@ -11,6 +12,12 @@ import { canvasPng, type PngEncoder } from "./screenshot-png.ts";
 import { type FeedbackConnection, type Screenshot, SendNotice } from "./send-notice.tsx";
 import { useShownAfterWait } from "./show-after.ts";
 
+/** What a discarded feedback had, for Undo to bring back: its text, and its crop once loaded. */
+export interface FeedbackDraft {
+  readonly text: string;
+  readonly crop: StillImage | null;
+}
+
 /** Props for {@link SendFeedback}. */
 export interface SendFeedbackProps {
   /** The shell, for the crop and to end the feedback. */
@@ -19,8 +26,12 @@ export interface SendFeedbackProps {
   readonly details: FeedbackDetails;
   /** The app and window the shortcut was pressed in, for the line under the crop and the task. */
   readonly pressed?: PressedWindow;
-  /** The text the field opens with: what Select again kept. Empty by default. */
+  /** The text the field opens with: what Select again or Undo kept. Empty by default. */
   readonly initialText?: string;
+  /** The crop the dialog opens with, as after Undo; it is drawn without asking the shell. */
+  readonly initialCrop?: StillImage;
+  /** Hears Cancel, the ✕ or Esc with text written, before the dialog goes, for "Feedback discarded". */
+  readonly onDiscarded?: (draft: FeedbackDraft) => void;
   /** Takes the dialog away; the feedback has ended or is ending. */
   readonly onClose: () => void;
   /** Whether Send sends now or saves the feedback until Studio is online; `online` by default. */
@@ -40,11 +51,12 @@ export interface SendFeedbackProps {
  * with Select again (`feedback.select-again`), the text field and its footnote, with Cancel and
  * Send. Send, or Ctrl Enter (⌘ ↩), hands the feedback on and ends; with nothing written it says
  * "Write a line about what you saw." and sends nothing. A refused Send keeps the dialog open and
- * says why (`feedback.send-states`). Cancel, the ✕ and Esc end the
- * feedback and keep nothing. Each way out takes the dialog away and calls `plugin:feedback|end`.
+ * says why (`feedback.send-states`). Cancel, the ✕ and Esc end the feedback and keep nothing; with
+ * text written, they first hand what was written to `onDiscarded` (`feedback.undo-discard`). Each
+ * way out takes the dialog away and calls `plugin:feedback|end`.
  */
 export function SendFeedback(props: SendFeedbackProps) {
-  const { canvas, textField, end, still, text, error, type, submit, handing, again } =
+  const { canvas, textField, cancel, still, text, error, type, submit, handing, again } =
     useSendDialog(props);
   // The spinner shows only after 300 ms, so a quick send just closes the dialog.
   const spinner = useShownAfterWait(handing.sending);
@@ -62,7 +74,7 @@ export function SendFeedback(props: SendFeedbackProps) {
       initialFocus={() => textField.current}
       describedBy={footnoteId}
       onConfirm={() => submit("crop")}
-      onCancel={end}
+      onCancel={cancel}
     >
       {/* The order classes show the crop, its line, the text, the notice and the footnote in that
           order, while Tab goes text → Select again → Cancel → Send (design check on HAL-19208). */}
@@ -115,10 +127,16 @@ function useSendDialog(props: SendFeedbackProps) {
     props.onClose();
     endFeedback(ipc);
   };
-  const still = useStill(ipc, canvas, feedbackCommands.crop);
+  const still = useStill(ipc, canvas, feedbackCommands.crop, props.initialCrop);
   const sending = useSend(props, end, still, textField);
   const again = selectAgain === undefined ? undefined : () => selectAgain(sending.text);
-  return { canvas, textField, end, still, again, ...sending };
+  const cancel = () => {
+    if (props.onDiscarded !== undefined && feedbackTitle(sending.text) !== "") {
+      props.onDiscarded({ text: sending.text, crop: still.kind === "ready" ? still.still : null });
+    }
+    end();
+  };
+  return { canvas, textField, cancel, still, again, ...sending };
 }
 
 /**

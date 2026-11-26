@@ -68,5 +68,9 @@ export {
   type ScreenshotPng,
   screenshotPng,
 } from "./send/screenshot-png.ts";
-export { SendFeedback, type SendFeedbackProps } from "./send/send-feedback.tsx";
+export {
+  type FeedbackDraft,
+  SendFeedback,
+  type SendFeedbackProps,
+} from "./send/send-feedback.tsx";
 export type { FeedbackConnection } from "./send/send-notice.tsx";

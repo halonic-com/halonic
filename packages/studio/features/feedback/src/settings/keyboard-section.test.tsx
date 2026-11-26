@@ -159,3 +159,16 @@ verifies("feedback.settings-shortcut", () => {
     expect(shownKeys(container)).toBe("⌘ ⌥ F");
   });
 });
+
+verifies("feedback.connected-only", () => {
+  it("shows no Send feedback row while Studio isn't connected to Paperclip", () => {
+    const host = {
+      ...fakeHost(),
+      connected: { current: () => false, subscribe: () => () => undefined },
+    };
+    const container = showRow(host);
+
+    expect(container.textContent).not.toContain("Send feedback");
+    expect(container.querySelectorAll("kbd")).toHaveLength(0);
+  });
+});
