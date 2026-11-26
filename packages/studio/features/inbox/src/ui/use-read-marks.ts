@@ -9,11 +9,17 @@ export interface ReadRow {
   readonly keys: readonly string[];
 }
 
+/** One of the Inbox's own items as a row of the order, by its read key. */
+export function readRow(item: InboxItem): ReadRow {
+  return { key: item.key, keys: [readKey(item)] };
+}
+
 /** What the Inbox page reads and changes of its read marks (`inbox.read-marks`). */
 export interface InboxReading {
   /**
-   * The rows, each with the blue dot while any item it holds is new. A row missing from `order`,
-   * such as a decided item still open, doesn't wait, so it has no dot.
+   * The rows, each with the blue dot while any item it holds is new. `order` names each row's
+   * items by their read keys: the rows that wait, then the other listed rows of the Inbox's own,
+   * such as a fixed setup item or a decided item still open; a row in neither has no dot.
    */
   readonly mark: (rows: readonly ListRow[], order: readonly ReadRow[]) => ListRow[];
   /** How many of the items that wait are new, each card of a bundle on its own. */
@@ -26,8 +32,11 @@ export interface InboxReading {
   readonly markUnread: (close: () => void, row: ReadRow | undefined) => void;
 }
 
-/** The words a screen reader hears after a new row's name. */
-const unread = { label: "unread" };
+/**
+ * The word a screen reader hears after a new row's name: "new", as the heading counts them
+ * (Nina's words check on HAL-19492).
+ */
+const unread = { label: "new" };
 
 /**
  * The Inbox's read marks for its page: the item open now, of the Inbox's own (`own`) or the

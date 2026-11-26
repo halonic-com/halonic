@@ -37,7 +37,6 @@ import { waits } from "../inbox-count.ts";
 import type { InboxNotices } from "../notices/inbox-notices.ts";
 import { mergeNotices } from "../notices/merge-notices.ts";
 import type { ProposalDecisions } from "../proposal-decisions.ts";
-import { readKey } from "../read-marks.ts";
 import type { InboxRequests } from "../request/inbox-requests.ts";
 import { DoneSection } from "./done-proposals.tsx";
 import {
@@ -66,7 +65,7 @@ import type { RunFactsOf } from "./run-facts.ts";
 import { useAgentItems } from "./use-agent-items.tsx";
 import { useOpenItem } from "./use-open-item.ts";
 import { useProjectFilter } from "./use-project-filter.tsx";
-import { useReadMarks } from "./use-read-marks.ts";
+import { readRow, useReadMarks } from "./use-read-marks.ts";
 import { useRequestPane } from "./use-request-pane.tsx";
 import { useRunFacts } from "./use-run-facts.ts";
 import { useRunReview } from "./use-run-review.ts";
@@ -298,9 +297,7 @@ export function InboxView({
     else render();
   };
   const waitingOrder = [
-    ...state.items
-      .filter(waits)
-      .map((item) => ({ key: item.key, items: 1, keys: [readKey(item)] })),
+    ...state.items.filter(waits).map((item) => ({ ...readRow(item), items: 1 })),
     ...agent.order,
   ];
   // Opening an item marks it read; an agent's row, each of its cards (`inbox.read-marks`).
@@ -372,7 +369,7 @@ export function InboxView({
                     .map((item) => ({ ...inboxRow(item, now(), runFacts), ...itemMark(item) })),
                   ...agent.rows(now(), project.filter),
                 ],
-                waitingOrder,
+                [...waitingOrder, ...listed.map(readRow)],
               )}
               onOpen={(key) =>
                 paneMotion(
