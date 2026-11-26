@@ -3,8 +3,11 @@ import {
   decidedAt,
   ExternalLink,
   enter,
+  PlaceIcon,
   SKELETON_AFTER_MS,
   SkeletonBar,
+  StatusChip,
+  type StatusChipTone,
 } from "@halonicjs/studio-kit";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { type ActivityTask, minutesBetween, type RunOutcome } from "../activity.ts";
@@ -23,7 +26,7 @@ const dotTone = {
   failed: "bg-danger",
 } as const;
 
-/** "● Working · for 7 min": the status dot is still, the label strong. */
+/** "● Working · for 7 min": the status dot is still, the label strong, the detail muted. */
 export function Status({
   tone,
   label,
@@ -38,7 +41,7 @@ export function Status({
       <span aria-hidden="true" className={`size-2 rounded-full ${dotTone[tone]}`} />
       <span>
         <b className="text-body-strong">{label}</b>
-        {detail === undefined ? null : ` · ${detail}`}
+        {detail === undefined ? null : <span className="text-fg-muted"> · {detail}</span>}
       </span>
     </p>
   );
@@ -60,12 +63,16 @@ export function Section({
 }
 
 const outcomeTone = {
-  done: "text-success",
-  failed: "text-danger",
-  stopped: "text-attention",
-} as const satisfies Record<RunOutcome, string>;
+  done: "success",
+  failed: "danger",
+  stopped: "attention",
+} as const satisfies Record<RunOutcome, StatusChipTone>;
 
-/** The task card: "HAL-18602 · Done", its title, then "Started 14:02 · run 3f9c2a" or the run's times. */
+/**
+ * The task card, on the subtle fill: "HAL-18602" with its state chip ("In progress" while it runs,
+ * Done, Failed or Stopped once it ended), its title, then "Started 14:02 · run 3f9c2a" or the
+ * run's times.
+ */
 export function TaskCard({
   task,
   outcome,
@@ -75,13 +82,13 @@ export function TaskCard({
 }) {
   const id = task.onChat ? activityWords.thisChat : task.identifier;
   return (
-    <div className="flex flex-col gap-1 rounded-md border border-border px-3 py-2">
-      <p className="flex items-center gap-2 text-small">
+    <div className="flex flex-col gap-1 rounded-md border border-border bg-surface-subtle px-3 py-2">
+      <p className="flex flex-wrap items-center gap-2 text-small">
         {id === undefined ? null : <span className="text-body-strong">{id}</span>}
-        {task.onChat ? <span className="text-accent">{activityWords.answeringYou}</span> : null}
-        {outcome === undefined ? null : (
-          <span className={outcomeTone[outcome]}>{activityWords.outcome[outcome]}</span>
-        )}
+        {task.onChat ? (
+          <span className="text-accent-text">{activityWords.answeringYou}</span>
+        ) : null}
+        <TaskState outcome={outcome} />
       </p>
       {task.title === undefined ? null : (
         <p className="text-body">
@@ -91,6 +98,12 @@ export function TaskCard({
       <p className="text-small text-fg-muted">{factsOf(task)}</p>
     </div>
   );
+}
+
+function TaskState({ outcome }: { readonly outcome: RunOutcome | undefined }) {
+  if (outcome === undefined)
+    return <StatusChip tone="running">{activityWords.inProgress}</StatusChip>;
+  return <StatusChip tone={outcomeTone[outcome]}>{activityWords.outcome[outcome]}</StatusChip>;
 }
 
 /** "Started 14:02 · run 3f9c2a" while it runs; "14:02–14:09 · 7 min" once it ended. */
@@ -131,7 +144,13 @@ function PullRequestRow({ pull }: { readonly pull: PullRequest }) {
     enter(element).catch(reportMotion);
   }, []);
   return (
-    <li ref={ref} className="flex items-baseline gap-2 text-small">
+    <li ref={ref} className="flex items-center gap-2 text-small">
+      <span
+        aria-hidden="true"
+        className="inline-grid size-icon-sm shrink-0 text-fg-muted *:size-full"
+      >
+        <PlaceIcon name="pull-requests" />
+      </span>
       <span className="min-w-0 flex-1 truncate">
         {pull.webLink !== undefined && isAllowedWebLink(pull.webLink, undefined) ? (
           <ExternalLink href={pull.webLink}>{name}</ExternalLink>

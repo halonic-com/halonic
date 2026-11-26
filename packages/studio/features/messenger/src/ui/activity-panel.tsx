@@ -1,4 +1,4 @@
-import { CloseIcon, decidedAt, EmptyState, leave } from "@halonicjs/studio-kit";
+import { Button, CloseIcon, decidedAt, EmptyState, leave } from "@halonicjs/studio-kit";
 import { type EngineWords, focusedPanelClass } from "@halonicjs/studio-shell";
 import {
   type KeyboardEvent,
@@ -20,6 +20,12 @@ import type { ActivityRead } from "./use-activity.ts";
 
 /** The panel's ID, for the chat header button's `aria-controls`. */
 export const activityPanelId = "messenger-activity";
+
+/**
+ * The control that closes the panel, which takes the focus as a sheet or a place opens: a place's
+ * **‹ Chief**, or the kit's close button, which takes no data attributes, so it's found by its id.
+ */
+const closesSelector = `[data-closes], #${activityPanelId}-close`;
 
 /**
  * Where the panel shows (HAL-18558 section 3): `beside` the chat on a wide window, a `sheet` over
@@ -107,7 +113,7 @@ function usePanelMotion(
     if (place === "sheet" && aside.current !== null) arriveFromEnd(aside.current);
   }, [aside, place]);
   useEffect(() => {
-    if (place !== "beside") aside.current?.querySelector<HTMLElement>("[data-closes]")?.focus();
+    if (place !== "beside") aside.current?.querySelector<HTMLElement>(closesSelector)?.focus();
   }, [aside, place]);
   return () => {
     const sheet = aside.current;
@@ -149,15 +155,14 @@ function PanelHeader({
         <bdi>{activityWords.title(name)}</bdi>
       </h2>
       {place === "place" ? null : (
-        <button
-          type="button"
-          data-closes
-          aria-label={activityWords.close}
+        <Button
+          id={`${activityPanelId}-close`}
+          variant="ghost"
+          size="sm"
+          icon={<CloseIcon />}
+          label={activityWords.close}
           onClick={onClose}
-          className="rounded-sm px-1 text-fg-muted hover:text-fg"
-        >
-          <CloseIcon />
-        </button>
+        />
       )}
     </div>
   );

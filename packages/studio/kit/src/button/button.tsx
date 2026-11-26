@@ -92,6 +92,7 @@ interface ButtonWithLabel extends ButtonBase {
   readonly name?: string | undefined;
   readonly label?: never;
   readonly round?: never;
+  readonly pressed?: never;
 }
 
 /** A square button with only an icon, or a round one at the end of a round chip. */
@@ -104,6 +105,12 @@ interface IconButton extends ButtonBase {
    * and its hover fill follow the chip's round end.
    */
   readonly round?: boolean;
+  /**
+   * A toggle's state: the button is pressed while what it shows is open, such as a side panel.
+   * A pressed ghost button keeps the hover fill and full text, so the state shows without colour
+   * alone.
+   */
+  readonly pressed?: boolean;
   readonly children?: never;
   readonly busyLabel?: never;
   readonly busyName?: never;
@@ -145,6 +152,7 @@ const variantClasses: Record<ButtonVariant, string> = {
     "border-transparent text-fg-muted",
     "not-aria-disabled:hover:bg-surface-muted not-aria-disabled:hover:text-fg",
     "not-aria-disabled:active:bg-surface-muted not-aria-disabled:active:text-fg",
+    "aria-pressed:bg-surface-muted aria-pressed:text-fg",
   ].join(" "),
   "danger-outline": [
     "border-danger bg-surface text-danger",
@@ -296,6 +304,7 @@ export function Button(props: ButtonProps) {
         aria-disabled={unavailable === undefined ? undefined : true}
         aria-haspopup={props["aria-haspopup"]}
         aria-expanded={props["aria-expanded"]}
+        aria-pressed={props.pressed}
         aria-controls={props["aria-controls"]}
         popoverTarget={props.popoverTarget}
         aria-describedby={describedBy(unavailable?.reason, props["aria-describedby"])}

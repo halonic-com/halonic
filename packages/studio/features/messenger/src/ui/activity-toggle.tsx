@@ -1,4 +1,4 @@
-import { useNarrow } from "@halonicjs/studio-kit";
+import { Button, useNarrow } from "@halonicjs/studio-kit";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { activityWords } from "../activity-words.ts";
 import { activityPanelId } from "./activity-panel.tsx";
@@ -98,32 +98,30 @@ function useWide(): boolean {
   return wide;
 }
 
-/** The chat header's button: pressed while the panel is open, with a still blue dot while closed and working. */
+/**
+ * The chat header's button: the kit's ghost icon button, on its filled tile while the panel is
+ * open, with a still blue dot while closed and working.
+ */
 export function ActivityButton() {
   const toggle = useContext(ActivityToggleContext);
   if (toggle === undefined) return null;
-  const working = toggle.working && !toggle.open;
   return (
-    <button
-      type="button"
-      title={activityWords.button}
-      aria-label={
-        toggle.working ? activityWords.buttonWorking(toggle.name) : activityWords.title(toggle.name)
-      }
-      aria-pressed={toggle.open}
-      aria-controls={activityPanelId}
-      onClick={toggle.toggle}
-      className="relative rounded-sm p-1 text-fg-muted hover:text-fg aria-pressed:text-fg"
-    >
-      <PanelIcon />
-      {working ? (
-        <span
-          data-activity-dot
-          aria-hidden="true"
-          className="absolute end-0.5 top-0.5 size-2 rounded-full bg-accent"
-        />
-      ) : null}
-    </button>
+    <span title={activityWords.button} className="inline-flex">
+      <Button
+        variant="ghost"
+        size="sm"
+        icon={<PanelIcon dot={toggle.working && !toggle.open} />}
+        label={
+          toggle.working
+            ? activityWords.buttonWorking(toggle.name)
+            : activityWords.title(toggle.name)
+        }
+        pressed={toggle.open}
+        aria-controls={activityPanelId}
+        aria-keyshortcuts="Control+I"
+        onClick={toggle.toggle}
+      />
+    </span>
   );
 }
 
@@ -132,24 +130,25 @@ export function ShowActivity() {
   const toggle = useContext(ActivityToggleContext);
   if (toggle === undefined || toggle.open) return null;
   return (
-    <button type="button" onClick={toggle.toggle} className="text-accent-text hover:underline">
+    <button
+      type="button"
+      onClick={toggle.toggle}
+      className="focus-ring inline-flex min-h-6 items-center rounded-xs text-accent-text hover:underline"
+    >
       {activityWords.show}
     </button>
   );
 }
 
-/** A window with a pane on its right side. */
-function PanelIcon() {
+/** A window with a pane on its right side, with the still dot in its corner while the agent works. */
+function PanelIcon({ dot }: { readonly dot: boolean }) {
   return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 16 16"
-      className="size-4"
-      fill="none"
-      stroke="currentColor"
-    >
+    <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor">
       <rect x="1.5" y="2.5" width="13" height="11" rx="1.5" />
       <path d="M10 2.5v11" />
+      {dot ? (
+        <circle data-activity-dot cx="13.5" cy="2.5" r="2.5" className="fill-accent stroke-none" />
+      ) : null}
     </svg>
   );
 }

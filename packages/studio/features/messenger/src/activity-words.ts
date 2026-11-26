@@ -53,6 +53,8 @@ export const activityWords = {
   pullRequests: "Pull requests",
   thisChat: "This chat",
   answeringYou: "Answering you",
+  /** The task card's state chip while its run goes, as on the mockup. */
+  inProgress: "In progress",
   started: (time: string) => `Started ${time}`,
   run: (id: string) => `run ${id}`,
   /** A finished run's times: "14:02–14:09 · 7 min". */
