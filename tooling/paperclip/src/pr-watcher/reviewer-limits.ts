@@ -2,9 +2,11 @@
  * Whether a reviewer can review now (HAL-19203), from their newest runs as
  * Paperclip records them. A reviewer is limited while a run of theirs is
  * parked on a pool wait (no AI seat free for them), or after a seat or usage
- * limit stopped one until a run of theirs starts again. Rules only, no I/O;
- * `src/plugin/reviewer-runs.ts` reads the runs.
+ * limit stopped one until a run of theirs starts again or the limit resets
+ * (HAL-19254). Rules only, no I/O; `src/plugin/reviewer-runs.ts` reads the runs.
  */
+
+import { resetTimeOf } from "./limit-reset.ts";
 
 /** One run, with only the fields the rules read. Times are ISO strings. */
 export interface RunRow {
@@ -13,6 +15,8 @@ export interface RunRow {
   readonly scheduledRetryReason: string | null;
   /** Why the run stopped, such as `provider_limit_wait`. */
   readonly errorCode: string | null;
+  /** The run's error message: a limit stop's names when the limit resets. */
+  readonly error: string | null;
   readonly createdAt: string;
   readonly startedAt: string | null;
   readonly finishedAt: string | null;
@@ -36,7 +40,10 @@ const poolWait = "ai_connection_pool_wait";
 /** The stop codes of a run that hit a seat or usage limit. */
 const limitCodes: ReadonlySet<string> = new Set(["provider_limit_wait", "provider_quota"]);
 
-/** How long a limit stop counts when no run started since: a usage window is 5 hours. */
+/**
+ * How long a limit stop counts when no run started since and its message
+ * names no reset time: a usage window is 5 hours.
+ */
 export const limitWindowMs = 5 * 60 * 60 * 1000;
 
 /** A run parked until a seat frees up: still scheduled, for a pool wait. */
@@ -78,6 +85,11 @@ export function limitOf(runs: readonly RunRow[], now: Date): Limit | undefined {
     return undefined;
   }
   const at = stoppedAt(stop);
-  const recent = now.getTime() - Date.parse(at) < limitWindowMs;
-  return recent && !startedSince(runs, at) ? { why: "usage limit", since: at } : undefined;
+  if (startedSince(runs, at)) {
+    return undefined;
+  }
+  // Nothing may start a run of theirs once their reviews have moved away, so
+  // the limit ends by the clock: at the recorded reset, or after the window.
+  const until = resetTimeOf(stop.error, at) ?? Date.parse(at) + limitWindowMs;
+  return now.getTime() < until ? { why: "usage limit", since: at } : undefined;
 }
