@@ -1,4 +1,5 @@
 import type { GroundingReason } from "./grounding.ts";
+import type { ProgressReason } from "./progress-check.ts";
 
 /**
  * The one log record each front bot decision leaves (HAL-18847 section 4.3,
@@ -20,6 +21,7 @@ export type FrontBotOutcome =
 /** Why, as a fixed code: a grounding reason, an API failure's status or type, or a reason for not calling. */
 export type FrontBotReason =
   | GroundingReason
+  | ProgressReason
   | "off"
   | "no_key"
   | "out_of_scope"
@@ -34,6 +36,9 @@ export type FrontBotReason =
   | "post_failed"
   | "note_unsaved";
 
+/** Which of the bot's two calls a record is about: the first reply (HAL-19136) or a progress note (HAL-19218). */
+export type FrontBotCallType = "first_reply" | "progress_note";
+
 /** The one record per decision. Every field is a number, a fixed code or an id. */
 export interface FrontBotLogRecord {
   readonly at: string;
@@ -41,7 +46,7 @@ export interface FrontBotLogRecord {
   readonly taskId: string;
   /** The agent run the message woke, when one was queued; Paperclip ids only. */
   readonly runId: string | undefined;
-  readonly callType: "first_reply";
+  readonly callType: FrontBotCallType;
   readonly inputTokens: number;
   readonly outputTokens: number;
   readonly costMicroUsd: number;
@@ -70,10 +75,11 @@ export function notCalledRecord(
   base: Pick<FrontBotLogRecord, "at" | "companyId" | "taskId" | "runId">,
   outcome: FrontBotOutcome,
   reason: FrontBotReason,
+  callType: FrontBotCallType = "first_reply",
 ): FrontBotLogRecord {
   return {
     ...base,
-    callType: "first_reply",
+    callType,
     inputTokens: 0,
     outputTokens: 0,
     costMicroUsd: 0,

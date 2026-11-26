@@ -18,7 +18,7 @@ use tauri::tray::{TrayIcon, TrayIconBuilder};
 use tauri::{AppHandle, CloseRequestApi, ExitRequestApi, Manager, RunEvent, Runtime, Window};
 
 use crate::tray_status::{
-    IconScheme, IconState, MenuLine, OPEN, PAUSE, QUIT, RESUME, STATUS, TRY_AGAIN, TrayView,
+    ASK, IconScheme, IconState, MenuLine, OPEN, PAUSE, QUIT, RESUME, STATUS, TRY_AGAIN, TrayView,
     hides_on_close, keeps_running_in_tray, stays_in_tray, tray_view,
 };
 
@@ -136,6 +136,10 @@ fn menu<R: Runtime>(app: &AppHandle<R>, view: &TrayView) -> tauri::Result<Menu<R
 fn clicked<R: Runtime>(app: &AppHandle<R>, id: &str) {
     if id == OPEN || id.starts_with(STATUS) {
         crate::focused_apps::started_again(app, &[]);
+    } else if id == ASK {
+        if let Err(error) = crate::quick_ask::show(app) {
+            halonic_shell_log::record("tray", format_args!("the box didn't open: {error}"));
+        }
     } else if id == TRY_AGAIN {
         let app = app.clone();
         thread::spawn(move || crate::engines::try_again(&app));
@@ -164,6 +168,12 @@ fn quit<R: Runtime>(app: &AppHandle<R>) {
         crate::engines::stop_all(&app);
         app.exit(0);
     });
+}
+
+/// Whether Halonic keeps running in the tray once its windows close.
+pub fn keeps_running<R: Runtime>(app: &AppHandle<R>) -> bool {
+    app.try_state::<TrayShellState>()
+        .is_some_and(|state| state.background.load(Ordering::SeqCst))
 }
 
 /// Halonic is exiting (Quit, ⌘Q, an update): the tray isn't redrawn any

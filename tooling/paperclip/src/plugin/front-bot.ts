@@ -1,24 +1,12 @@
 import type {
   PluginAgentsClient,
-  PluginConfigClient,
   PluginEvent,
   PluginIssuesClient,
   PluginLogger,
   PluginSecretsClient,
 } from "@paperclipai/plugin-sdk";
 import { checkGrounding } from "../front-bot/grounding.ts";
-import {
-  afterCall,
-  type CallHealth,
-  callCostMicroUsd,
-  capReached,
-  type DaySpend,
-  freshHealth,
-  shouldWarn,
-  spendDay,
-  spendFor,
-  stoppedForErrors,
-} from "../front-bot/limits.ts";
+import { callCostMicroUsd } from "../front-bot/limits.ts";
 import {
   type FrontBotLogRecord,
   type FrontBotOutcome,
@@ -26,15 +14,23 @@ import {
   logMeta,
   notCalledRecord,
 } from "../front-bot/log-record.ts";
-import { automaticNotePrefix } from "../front-bot/prompt.ts";
+import { automaticNotePrefix, frontBotRequest } from "../front-bot/prompt.ts";
 import { frontBotKey, readFrontBotSettings } from "../front-bot/settings.ts";
-import type { StateApi } from "../snapshot/store.ts";
 import { errorCode } from "./board-check-api.ts";
+import {
+  type Budget,
+  type BudgetApi,
+  countSpend,
+  readBudget,
+  recordCall,
+  type Serial,
+  serial,
+} from "./front-bot-budget.ts";
 import { askFrontBot, type FrontBotDeps } from "./front-bot-calls.ts";
 import { rememberNote } from "./front-bot-notes.ts";
 import { agentAnswered, inputBlock, inputOf, type Scene, sceneOf } from "./front-bot-scene.ts";
 import { companyConfig } from "./job.ts";
-import { type MetricsApi, writeMetrics } from "./metrics.ts";
+import { writeMetrics } from "./metrics.ts";
 
 /**
  * The front bot's first reply (HAL-19136, step 1 of the design on HAL-18847):
@@ -48,16 +44,11 @@ import { type MetricsApi, writeMetrics } from "./metrics.ts";
  */
 
 /** The part of the plugin context the front bot uses, so tests can fake it. */
-export interface FrontBotApi extends MetricsApi, StateApi {
+export interface FrontBotApi extends BudgetApi {
   readonly issues: Pick<PluginIssuesClient, "get" | "listComments" | "createComment">;
   readonly agents: Pick<PluginAgentsClient, "list">;
-  readonly config: PluginConfigClient;
   readonly secrets: Pick<PluginSecretsClient, "resolve">;
   readonly logger: Pick<PluginLogger, "info" | "error">;
-}
-
-function companyKey(companyId: string, stateKey: "spend" | "health") {
-  return { scopeKind: "company", scopeId: companyId, namespace: "front-bot", stateKey } as const;
 }
 
 /** The comment's task id and comment id, from the event's payload. */
@@ -82,32 +73,15 @@ async function report(ctx: FrontBotApi, record: FrontBotLogRecord): Promise<void
   await writeMetrics(ctx, { "front_bot.first_reply": 1 }, tags);
 }
 
-/** Counts a call's cost; tells Chief once a day at 80% of the cap. */
-async function countSpend(ctx: FrontBotApi, companyId: string, spend: DaySpend, cost: number) {
-  const next = { ...spend, microUsd: spend.microUsd + cost };
-  const warn = shouldWarn(next);
-  await ctx.state.set(companyKey(companyId, "spend"), { ...next, warned: next.warned || warn });
-  await writeMetrics(ctx, { "front_bot.spend_micro_usd": cost }, { companyId });
-  const config = await companyConfig(ctx.config, companyId);
-  const chiefTask = config?.["chiefTask"];
-  if (warn && typeof chiefTask === "string" && chiefTask !== "") {
-    const dollars = (next.microUsd / 1_000_000).toFixed(2);
-    const body = `Front bot: $${dollars} spent today, 80% of the $3 daily cap. At $3 it stops until 00:00 UTC.`;
-    await ctx.issues.createComment(chiefTask, body, companyId);
-  }
-}
-
 /** The ids and time every record of one message carries. */
 type RecordBase = Pick<FrontBotLogRecord, "at" | "companyId" | "taskId" | "runId">;
 
 /** A message the bot may call for: what it read, and the day's spend and call health before the call. */
-interface Ready {
+interface Ready extends Budget {
   readonly scene: Scene;
   readonly keyRef: NonNullable<ReturnType<typeof frontBotKey>>;
   readonly base: RecordBase;
   readonly started: Date;
-  readonly spend: DaySpend;
-  readonly health: CallHealth;
 }
 
 /**
@@ -146,13 +120,10 @@ async function beforeCall(
   const blocked = inputBlock(scene);
   if (blocked !== undefined) return stop("not_called", blocked);
   if (await agentAnswered(ctx, scene)) return stop("not_called", "agent_answered");
-  const stored = (await ctx.state.get(companyKey(companyId, "spend"))) as DaySpend | null;
-  const spend = spendFor(stored, spendDay(started));
-  if (capReached(spend)) return stop("capped", "cap_reached");
-  const health =
-    ((await ctx.state.get(companyKey(companyId, "health"))) as CallHealth | null) ?? freshHealth;
-  if (stoppedForErrors(health, started)) return stop("stopped", "error_rate");
-  return { scene, keyRef, base, started, spend, health };
+  const budget = await readBudget(ctx, companyId, started);
+  if (budget === "cap_reached") return stop("capped", "cap_reached");
+  if (budget === "error_rate") return stop("stopped", "error_rate");
+  return { scene, keyRef, base, started, ...budget };
 }
 
 /**
@@ -194,11 +165,8 @@ async function callAndPost(
   const { scene, base, started } = ready;
   const { companyId } = scene.issue;
   const input = await inputOf(ctx, scene);
-  const call = await askFrontBot(ctx, deps, ready.keyRef, companyId, input);
-  await ctx.state.set(
-    companyKey(companyId, "health"),
-    afterCall(ready.health, deps.now(), !call.answered),
-  );
+  const call = await askFrontBot(ctx, deps, ready.keyRef, companyId, frontBotRequest(input));
+  await recordCall(ctx, companyId, ready.health, deps.now(), !call.answered);
   const latencyMs = () => deps.now().getTime() - started.getTime();
   if (!call.answered) {
     return { ...notCalledRecord(base, "failed", call.reason), latencyMs: latencyMs() };
@@ -248,12 +216,16 @@ export interface FrontBot {
 }
 
 /**
- * The front bot. Messages run one after another, so the day's spend and the
- * error window are never counted from a stale total. It never throws: a
- * failure is one log line with its code and shows nothing in the chat.
+ * The front bot. Messages run one after another, and through `inOrder`
+ * together with the progress notes, so the day's spend and the error window
+ * are never counted from a stale total. It never throws: a failure is one log
+ * line with its code and shows nothing in the chat.
  */
-export function frontBot(ctx: FrontBotApi, deps: FrontBotDeps): FrontBot {
-  let queue: Promise<void> = Promise.resolve();
+export function frontBot(
+  ctx: FrontBotApi,
+  deps: FrontBotDeps,
+  inOrder: Serial = serial(),
+): FrontBot {
   return {
     async onCommentCreated(event) {
       const work = async () => {
@@ -268,8 +240,7 @@ export function frontBot(ctx: FrontBotApi, deps: FrontBotDeps): FrontBot {
           });
         }
       };
-      queue = queue.then(work);
-      await queue;
+      await inOrder(work);
     },
   };
 }

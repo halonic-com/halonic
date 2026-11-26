@@ -1,0 +1,72 @@
+{
+  "about": "Progress notes that pass the check (HAL-18743 section 10 examples, in the Automatic note voice). Names and numbers are made up.",
+  "cases": [
+    {
+      "name": "a step under way",
+      "message": "Is the 0.3 build ready?",
+      "earlierNotes": [],
+      "steps": [
+        {
+          "label": "Ran gh run",
+          "status": "running"
+        }
+      ],
+      "reply": "Looking at the latest build run now.",
+      "expect": "posted"
+    },
+    {
+      "name": "a failed step, said as failed",
+      "message": "Why is main red?",
+      "earlierNotes": [
+        "Looking at the main run now."
+      ],
+      "steps": [
+        {
+          "label": "Ran pnpm test",
+          "status": "failed"
+        }
+      ],
+      "reply": "A test run failed. Digging into which test it was.",
+      "expect": "posted"
+    },
+    {
+      "name": "a hedged early answer from a passed step",
+      "message": "Is #6129 merged yet?",
+      "earlierNotes": [],
+      "steps": [
+        {
+          "label": "Ran gh pr",
+          "status": "passed"
+        }
+      ],
+      "reply": "The pull request check passed, so probably close. Still checking PR #6129.",
+      "expect": "posted"
+    },
+    {
+      "name": "a negated result word",
+      "message": "Can you merge #6129?",
+      "earlierNotes": [],
+      "steps": [
+        {
+          "label": "Read a file",
+          "status": "passed"
+        }
+      ],
+      "reply": "Reading the task first; PR #6129 is not merged yet.",
+      "expect": "posted"
+    },
+    {
+      "name": "another language",
+      "message": "Was ist mit dem Release?",
+      "earlierNotes": [],
+      "steps": [
+        {
+          "label": "Ran gh pr",
+          "status": "running"
+        }
+      ],
+      "reply": "Release wird gerade angeschaut.",
+      "expect": "posted"
+    }
+  ]
+}

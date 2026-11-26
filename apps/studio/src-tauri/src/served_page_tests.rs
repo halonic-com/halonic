@@ -223,6 +223,7 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "plugin:feedback|crop",
         "plugin:feedback|end",
         "plugin:feedback|shortcut_set",
+        "plugin:global-shortcut|register",
         "owner_login",
         "owner_logout",
         "owner_status",

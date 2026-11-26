@@ -133,7 +133,7 @@ fn google_setup_command_is_granted_to_the_local_main_window_only() {
     assert_eq!(capability["local"], true);
     assert_eq!(
         capability["windows"],
-        serde_json::json!(["main", "inbox", "messenger"])
+        serde_json::json!(["main", "inbox", "messenger", "ask"])
     );
     assert!(capability.get("remote").is_none(), "{capability}");
     assert_eq!(

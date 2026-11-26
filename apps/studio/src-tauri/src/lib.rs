@@ -82,6 +82,8 @@ mod files;
 mod focused_apps;
 mod frame_colour;
 mod git;
+#[cfg(desktop)]
+mod global_keys;
 mod google_setups;
 mod host_settings;
 mod http_fetch;
@@ -117,6 +119,8 @@ mod plugin_git;
 mod plugin_source;
 mod profile;
 mod profile_place;
+#[cfg(desktop)]
+mod quick_ask;
 #[cfg(windows)]
 mod raised_start;
 mod records;
@@ -156,9 +160,9 @@ pub fn run() {
     if raised_start::refused() {
         return;
     }
-    // Outside `shell`, so the tests' apps don't claim the one instance.
+    // Outside `shell`, so the tests' apps claim neither: one instance, and the global keys.
     #[cfg(desktop)]
-    let builder = focused_apps::single_instance(Builder::default());
+    let builder = global_keys::keys(focused_apps::single_instance(Builder::default()));
     #[cfg(mobile)]
     let builder = Builder::default();
     shell(builder)
@@ -232,7 +236,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         // Notifications for the Inbox and the Messenger (HAL-17448): only
         // the app's own page is granted its commands.
         .plugin(tauri_plugin_notification::init())
-        .plugin(feedback_capture::commands());
+        .plugin(feedback_capture::commands())
+        .plugin(quick_ask::commands());
     // The phone's own plugins, each used from Rust only (`android_plugins.rs`).
     #[cfg(target_os = "android")]
     let builder = android_plugins::register(builder);

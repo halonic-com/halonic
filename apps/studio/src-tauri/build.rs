@@ -151,9 +151,14 @@ fn main() {
         "end",
         "shortcut_set",
     ]);
+    // Quick ask's commands (HAL-18787), as the `quick-ask` plugin:
+    // `plugin:quick-ask|hide` needs `quick-ask:allow-hide`.
+    let quick_ask =
+        tauri_build::InlinedPlugin::new().commands(&["hide", "shortcut", "shortcut_set"]);
     let attributes = tauri_build::Attributes::new()
         .app_manifest(commands)
         .plugin("feedback", feedback)
+        .plugin("quick-ask", quick_ask)
         .windows_attributes(tauri_build::WindowsAttributes::new_without_app_manifest());
     tauri_build::try_build(attributes).expect("the shell's build step failed");
     embed_windows_manifest();

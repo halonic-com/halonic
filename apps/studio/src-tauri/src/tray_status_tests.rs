@@ -34,6 +34,7 @@ fn tray_idle_and_running() {
         [
             "Nothing running",
             "-",
+            "Ask…",
             "Open Halonic",
             "Pause routines",
             "-",
@@ -64,6 +65,7 @@ fn tray_paused_shows_the_bars_even_with_runs_going() {
         [
             "Routines paused · 1 run in progress",
             "-",
+            "Ask…",
             "Open Halonic",
             "Resume routines",
             "-",
@@ -84,6 +86,7 @@ fn tray_problem_offers_try_again_and_comes_first() {
             "The background engine stopped 3 times",
             "-",
             "Try again",
+            "Ask…",
             "Open Halonic",
             "-",
             "Quit Halonic",
@@ -97,7 +100,7 @@ fn tray_problem_offers_try_again_and_comes_first() {
             MenuLine::Separator => None,
         })
         .collect();
-    assert_eq!(ids, ["status-0", "status-1", TRY_AGAIN, OPEN, QUIT]);
+    assert_eq!(ids, ["status-0", "status-1", TRY_AGAIN, ASK, OPEN, QUIT]);
 }
 
 #[test]
@@ -109,6 +112,7 @@ fn tray_quitting_can_not_be_clicked() {
         [
             "Quitting… 2 runs finishing their step (off)",
             "-",
+            "Ask… (off)",
             "Open Halonic (off)",
             "Pause routines (off)",
             "-",

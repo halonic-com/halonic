@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { clockTime } from "@halonicjs/studio-kit";
+import { clockTime, standaloneLinkClasses } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it } from "vitest";
@@ -15,7 +15,7 @@ afterEach(unmountAll);
 
 verifies("quick-ask.messenger", () => {
   describe("the answer", () => {
-    it("offers Open in Messenger next to Copy, which closes the box on the agent's chat", async () => {
+    it("offers Open in Messenger after Copy, which closes the box on the agent's chat", async () => {
       const messenger = new FakeMessenger([chat(chief)]);
       const { page, window, closed } = await openBox(messenger);
       await ask(page, "Where are we?");
@@ -23,7 +23,9 @@ verifies("quick-ask.messenger", () => {
       await act(async () => messenger.change("acme"));
 
       expect(page.querySelector("footer")?.textContent).toBe("CopyOpen in Messenger");
-      await press(byText(page, "footer button", "Open in Messenger"));
+      const open = byText(page, "footer button", "Open in Messenger");
+      expect(open?.className).toBe(`ml-auto ${standaloneLinkClasses}`);
+      await press(open);
       expect(window.chatsOpened).toEqual(["chat-Chief"]);
       expect(window.hidden).toBe(0);
       expect(closed).toHaveLength(1);
@@ -39,7 +41,7 @@ verifies("quick-ask.messenger", () => {
   });
 
   describe("the answer asks something", () => {
-    it("offers Answer in Messenger under the card, which opens the agent's chat", async () => {
+    it("offers Answer in Messenger under the card as its primary button, which opens the agent's chat", async () => {
       const messenger = new FakeMessenger([chat(chief)]);
       const { page, window } = await openBox(messenger);
       await ask(page, "Shall we ship?");
@@ -49,7 +51,9 @@ verifies("quick-ask.messenger", () => {
       expect(page.querySelector("[data-answer]")?.textContent).toBe(
         "Chief asks you to chooseShip 0.2.0 today?Answer in Messenger",
       );
-      await press(byText(page, "[data-answer] button", "Answer in Messenger"));
+      const answer = byText(page, "[data-answer] button", "Answer in Messenger");
+      expect(answer?.className).toContain("bg-primary");
+      await press(answer);
       expect(window.chatsOpened).toEqual(["chat-Chief"]);
     });
   });
@@ -69,6 +73,7 @@ verifies("quick-ask.messenger", () => {
       const time = clockTime(new Date(answeredAt), new Date());
       const link = byText(page, "footer button", "Last answer");
       expect(link?.textContent).toBe(`Last answer: Liam, ${time} ›`);
+      expect(link?.className).toBe(`ml-auto ${standaloneLinkClasses}`);
       await press(link);
       expect(window.chatsOpened).toEqual(["chat-Liam"]);
       expect(new AskMemory(storage).pending()).toBeUndefined();

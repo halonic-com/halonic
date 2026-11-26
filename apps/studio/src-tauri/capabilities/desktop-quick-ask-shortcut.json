@@ -1,0 +1,17 @@
+{
+  "identifier": "desktop-quick-ask-shortcut",
+  "description": "On desktop, Studio's own window may read quick ask's keys and whether they work through plugin:quick-ask|shortcut, and change them through plugin:quick-ask|shortcut_set, from Settings › Shortcuts (HAL-18787). The command registers only the keys it is given, as quick ask's one shortcut, and lets go of the old ones; no page can listen to keys. It is local only, so the Studio the computer serves gets nothing.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "quick-ask:allow-shortcut",
+    "quick-ask:allow-shortcut-set"
+  ]
+}
