@@ -13,7 +13,8 @@ import {
 /** What the line in place of an unread list or chat needs. */
 export interface ReadFailedLineProps {
   readonly messaging: PhoneMessaging;
-  readonly failure: ReadFailure;
+  /** Why the newest read failed; `undefined` while nothing has. */
+  readonly failure: ReadFailure | undefined;
   readonly computer: string;
   /** Reads again what failed. */
   readonly onTryAgain: () => void;
@@ -22,33 +23,45 @@ export interface ReadFailedLineProps {
 /**
  * Says why a list or a chat couldn't be read, with Try again, instead of an empty screen
  * (HAL-19042). When the computer says a source is `offline`, it asks which sources are and names
- * each, with when it last answered.
+ * each, with when it last answered, and says nothing until that read has answered. The live
+ * region stays in place while nothing failed, since some screen readers skip one that appears
+ * with its text already in it.
  */
 export function ReadFailedLine({ messaging, failure, computer, onTryAgain }: ReadFailedLineProps) {
-  const [offline, setOffline] = useState<readonly OfflineSource[]>([]);
-  const sourceOffline = failure.kind === "refused" && failure.code === "offline";
+  // `undefined` while the sources read is out, so the generic line never shows first.
+  const [offline, setOffline] = useState<readonly OfflineSource[] | undefined>(undefined);
+  const sourceOffline = failure?.kind === "refused" && failure.code === "offline";
 
   useEffect(() => {
+    setOffline(undefined);
     if (!sourceOffline) return;
     let current = true;
     void messaging.readList("sources").then((read) => {
-      if (current && read.kind === "done") setOffline(offlineSources(read.value.items, new Date()));
+      if (!current) return;
+      setOffline(read.kind === "done" ? offlineSources(read.value.items, new Date()) : []);
     });
     return () => {
       current = false;
     };
   }, [messaging, sourceOffline]);
 
+  const waiting = sourceOffline && offline === undefined;
+  const lines = failure === undefined || waiting ? [] : readLines(failure, offline ?? [], computer);
   return (
-    <div className="flex flex-col items-start gap-2 p-4">
-      {readLines(failure, offline, computer).map((line) => (
-        <p key={line} className="text-body text-fg">
-          {line}
-        </p>
-      ))}
-      <Button variant="secondary" size="touch" onClick={onTryAgain}>
-        {words.tryAgain}
-      </Button>
+    <div className={failure === undefined ? "" : "flex flex-col items-start gap-2 p-4"}>
+      <div role="status" className="flex flex-col gap-2">
+        {lines.map((line, index) => (
+          // Two sources can read the same; lines never reorder, so the index is the key.
+          <p key={index} className="text-body text-fg">
+            {line}
+          </p>
+        ))}
+      </div>
+      {failure === undefined ? null : (
+        <Button variant="secondary" size="touch" onClick={onTryAgain}>
+          {words.tryAgain}
+        </Button>
+      )}
     </div>
   );
 }

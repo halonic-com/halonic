@@ -71,17 +71,15 @@ export function PhoneChat(props: PhoneChatProps) {
           </Button>
         ) : null}
       </header>
-      {failure === undefined ? null : (
-        <ReadFailedLine
-          messaging={messaging}
-          failure={failure}
-          computer={computer}
-          onTryAgain={() => {
-            setFailure(undefined);
-            setReads((count) => count + 1);
-          }}
-        />
-      )}
+      <ReadFailedLine
+        messaging={messaging}
+        failure={failure}
+        computer={computer}
+        onTryAgain={() => {
+          setFailure(undefined);
+          setReads((count) => count + 1);
+        }}
+      />
       <ol className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
         {messages.map((message) => (
           <li key={message.id} className={message.author.kind === "me" ? "self-end" : ""}>

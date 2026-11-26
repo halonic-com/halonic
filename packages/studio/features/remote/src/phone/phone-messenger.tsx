@@ -79,17 +79,15 @@ function MessengerLists({ messaging, computer, onOpenLink }: PhoneMessengerProps
         value={waitingOnly ? "waiting" : "all"}
         onChange={(value) => setWaitingOnly(value === "waiting")}
       />
-      {failure === undefined ? null : (
-        <ReadFailedLine
-          messaging={messaging}
-          failure={failure}
-          computer={computer}
-          onTryAgain={() => {
-            listed.retry();
-            agents.retry();
-          }}
-        />
-      )}
+      <ReadFailedLine
+        messaging={messaging}
+        failure={failure}
+        computer={computer}
+        onTryAgain={() => {
+          listed.retry();
+          agents.retry();
+        }}
+      />
       <ul className="flex flex-col">
         {shown.map((conversation) => (
           <li key={conversation.id}>

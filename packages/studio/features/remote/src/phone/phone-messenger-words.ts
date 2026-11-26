@@ -40,8 +40,9 @@ export const phoneMessengerWords = {
     `${source} is offline, as of ${asOf}, so its chats may be out of date.`,
   /** p06e: a read the drop cut off, or one that never left the phone. */
   notAnswering: (computer: string) => `Couldn't load it: ${computer} isn't answering.`,
-  /** A read the computer refused for any other reason (Noah's check, HAL-19042). */
-  notLoaded: (computer: string) => `Couldn't load it: ${computer} didn't send it.`,
+  /** A read the computer refused for any other reason (Noah's check, HAL-19232). */
+  notLoaded: (computer: string) =>
+    `Couldn't load it: ${computer} turned it down. You can open it there.`,
   tryAgain: "Try again",
 } as const;
 

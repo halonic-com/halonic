@@ -91,7 +91,10 @@ function type(text: string) {
   });
 }
 
-const line = () => document.querySelector('[role="status"]')?.textContent;
+/** The live regions: a failed read's line first, then in a chat the line under the box. */
+const statuses = () => [...document.querySelectorAll('[role="status"]')];
+const line = () => statuses().at(-1)?.textContent;
+const readLine = () => statuses()[0]?.textContent;
 
 verifies("remote.phone-messenger", () => {
   describe("the phone's Messenger tab", () => {
@@ -206,11 +209,13 @@ verifies("remote.phone-messenger", () => {
       scene.host({ type: "error", replyTo: refused?.id ?? "", code: "offline" });
       answer(scene, "agents", []);
       await settle();
+      // Nothing until the sources read answers, so the generic refusal never shows first.
+      expect(readLine()).toBe("");
       const asOf = new Date(2026, 10, 26, 14, 2).toISOString();
       const state = { kind: "offline", asOf } as const;
       answer(scene, "sources", [{ id: "s1", provider: "paperclip", label: paperclip, state }]);
       await settle();
-      expect(document.body.textContent).toContain(
+      expect(readLine()).toBe(
         "Paperclip · Halonic is offline, as of 14:02, so its chats may be out of date.",
       );
       const before = reads().length;
@@ -219,6 +224,7 @@ verifies("remote.phone-messenger", () => {
       answer(scene, "conversations", [channel]);
       await settle();
       expect(buttonNamed("Try again")).toBeUndefined();
+      expect(readLine()).toBe("");
       expect(buttonNamed("Engineering")).toBeDefined();
     });
 
@@ -232,7 +238,7 @@ verifies("remote.phone-messenger", () => {
       scene.drop();
       scene.connect();
       await settle();
-      expect(document.body.textContent).toContain("Couldn't load it: Work laptop isn't answering.");
+      expect(readLine()).toBe("Couldn't load it: Work laptop isn't answering.");
       const messageReads = () =>
         scene.tunnel.sentOf("msg-read").filter((read) => read.what === "messages");
       const before = messageReads().length;
@@ -244,7 +250,7 @@ verifies("remote.phone-messenger", () => {
       expect(document.body.textContent).toContain("Merged.");
     });
 
-    it("says the computer didn't send a list it refused for any other reason", async () => {
+    it("says the computer turned down a list it refused for any other reason", async () => {
       const scene = new GatewayScene();
       scene.connect();
       render(
@@ -259,7 +265,9 @@ verifies("remote.phone-messenger", () => {
       const agents = scene.tunnel.sentOf("msg-read").find((read) => read.what === "agents");
       scene.host({ type: "error", replyTo: agents?.id ?? "", code: "signed-out" });
       await settle();
-      expect(document.body.textContent).toContain("Couldn't load it: Work laptop didn't send it.");
+      expect(readLine()).toBe(
+        "Couldn't load it: Work laptop turned it down. You can open it there.",
+      );
       expect(buttonNamed("Engineering")).toBeDefined();
       expect(scene.tunnel.sentOf("msg-read").map((read) => read.what)).not.toContain("sources");
     });
