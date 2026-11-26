@@ -6,7 +6,7 @@ import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GatewayScene, SCENE_COMPUTER } from "../test-support/gateway-scene.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
-import { messageParts, openChecked } from "./message-links.ts";
+import { messageParts, openChecked, openInBrowserTab } from "./message-links.ts";
 import type { MessagingList } from "./messaging-client.ts";
 import { PhoneMessenger } from "./phone-messenger.tsx";
 
@@ -173,9 +173,9 @@ verifies("remote.phone-messenger", () => {
     it("shows a link's full address and opens only one isAllowedWebLink passes", async () => {
       const body = `See [the PR](${pullRequest}) or https://github.com.evil.io/acme/app/pull/12.`;
       const { onOpenLink } = await openChannel([message(body)]);
-      expect(buttonNamed("https://github.com.evil.io/acme/app/pull/12")).toBeUndefined();
+      expect(document.querySelectorAll("a")).toHaveLength(1);
       expect(document.body.textContent).toContain("https://github.com.evil.io/acme/app/pull/12.");
-      await act(async () => buttonNamed(pullRequest)?.click());
+      await act(async () => document.querySelector("a")?.click());
       expect(onOpenLink).toHaveBeenCalledWith(pullRequest);
       expect(openChecked("javascript:alert(1)", undefined, onOpenLink)).toBe(false);
       expect(onOpenLink).toHaveBeenCalledTimes(1);
@@ -230,7 +230,7 @@ verifies("remote.phone-messenger", () => {
 
     it("says a chat cut off by a drop couldn't be loaded, and Try again reads it again", async () => {
       const { scene } = await openChannel();
-      await act(async () => buttonNamed("Back")?.click());
+      await act(async () => buttonNamed("Messenger")?.click());
       answer(scene, "conversations", [channel]);
       answer(scene, "agents", []);
       await settle();
@@ -344,6 +344,50 @@ verifies("remote.phone-messenger-tab", () => {
       await act(async () => chips()?.querySelectorAll("input")[1]?.click());
       expect(document.body.textContent).toContain("Nothing is waiting for you.");
       expect(buttonNamed("Chief")).toBeUndefined();
+    });
+  });
+});
+
+verifies("remote.phone-messenger-links", () => {
+  describe("a link and the way back in a phone chat", () => {
+    it("is a link that says it opens in the browser, showing only the address", async () => {
+      await openChannel([message(`Merged: ${pullRequest}`)]);
+      const link = document.querySelector("a");
+      expect(link?.getAttribute("href")).toBe(pullRequest);
+      expect(link?.textContent).toBe(`${pullRequest} opens in your browser`);
+      const hidden = link?.querySelector(".sr-only")?.textContent;
+      expect(hidden).toBe(" opens in your browser");
+      expect(link?.textContent?.replace(hidden ?? "", "")).toBe(pullRequest);
+    });
+
+    it("opens a link in a new tab, cut off from the page, in a browser", () => {
+      const opener = { open: vi.fn(() => null) };
+      expect(openInBrowserTab(pullRequest, opener)).toBe(true);
+      expect(opener.open).toHaveBeenCalledWith(pullRequest, "_blank", "noopener,noreferrer");
+      expect(openInBrowserTab("javascript:alert(1)", opener)).toBe(false);
+      expect(opener.open).toHaveBeenCalledTimes(1);
+    });
+
+    it("names the chat's back button Messenger, and it goes back to the list", async () => {
+      const { scene } = await openChannel();
+      expect(document.querySelector("h2")?.textContent).toBe("Engineering");
+      await act(async () => buttonNamed("Messenger")?.click());
+      answer(scene, "conversations", [channel, direct]);
+      answer(scene, "agents", []);
+      await settle();
+      expect(document.querySelector("h2")).toBeNull();
+      expect(buttonNamed("Chief")).toBeDefined();
+    });
+
+    // HAL-20070: unbounded, each `[` and each dot rescanned to the end; 100,000 took seconds.
+    it.each([
+      ["brackets that never close", "[".repeat(100_000)],
+      ["links that never close", "[](".repeat(33_334)],
+      ["a run of dots after an address", `${pullRequest}${".".repeat(100_000)}a`],
+    ])("splits 100,000 characters of %s in well under a second", (_name, body) => {
+      const started = performance.now();
+      messageParts(body);
+      expect(performance.now() - started).toBeLessThan(500);
     });
   });
 });

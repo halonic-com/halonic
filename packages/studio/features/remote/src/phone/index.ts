@@ -40,6 +40,7 @@ export {
   routeOf,
 } from "./computers-words.ts";
 export type { OwnerCheckAvailable, OwnerCheckReady } from "./gateway-client.ts";
+export { openInBrowserTab } from "./message-links.ts";
 export {
   MAX_NEARBY,
   type NearbyComputer,

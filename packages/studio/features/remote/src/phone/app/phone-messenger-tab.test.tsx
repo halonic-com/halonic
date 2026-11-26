@@ -168,7 +168,9 @@ verifies("remote.phone-messenger-tab", () => {
 
     await press("Engineering");
     await answer(host, "messages", [message(`Merged: ${pullRequest}.`)]);
-    await press(pullRequest);
+    const link = document.querySelector<HTMLAnchorElement>(`a[href="${pullRequest}"]`);
+    expect(link).not.toBeNull();
+    await act(async () => link?.click());
     expect(onOpenLink.mock.calls).toEqual([[pullRequest]]);
   });
 

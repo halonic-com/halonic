@@ -19,6 +19,10 @@ export const phoneMessengerWords = {
   emptyText: (computer: string) => `Chats you start on ${computer} show up here.`,
   /** Waiting for me picked, and nothing waits (HAL-20039). */
   nothingWaiting: "Nothing is waiting for you.",
+  /** A chat's back button, named for where it goes, as the Inbox card's "Inbox" (HAL-20039). */
+  back: "Messenger",
+  /** After a link's address, for a screen reader only: the tap leaves for the browser (L4). */
+  opensInBrowser: " opens in your browser",
   /** p04a: "Message Chief…", as the prompt box writes it. */
   placeholder: (title: string) => `Message ${title}…`,
   /** The box's name for a screen reader. */
