@@ -174,6 +174,43 @@ verifies("paperclip.seat-mover-checklist", () => {
     });
   });
 
+  describe("g. the timer agents' quiet seat", () => {
+    const timers = { ...settings, pinned: ["pip", "merger"] };
+
+    test("a heavy agent never joins the quiet seat, even when it has the most room", () => {
+      const seats = [seat("A", 85, 10), seat("Quiet", 5, 10), seat("B", 40, 10)];
+      const agents = [agent("pip", "Quiet"), agent("merger", "Quiet"), agent("tomas", "A")];
+      const plan = planMoves(seats, agents, timers, now);
+      expect(movesOf(plan)).toEqual(["tomas → B"]);
+    });
+
+    test("a light agent may join the quiet seat", () => {
+      const seats = [seat("A", 85, 10), seat("Quiet", 5, 10), seat("B", 40, 10)];
+      const agents = [agent("pip", "Quiet"), agent("kim", "A")];
+      expect(movesOf(planMoves(seats, agents, timers, now))).toEqual(["kim → Quiet"]);
+    });
+
+    test("a heavy agent on the quiet seat moves off; a paused one stays; the timers stay", () => {
+      const seats = [seat("Quiet", 10, 10), seat("B", 20, 10)];
+      const agents = [
+        agent("pip", "Quiet"),
+        agent("merger", "Quiet"),
+        agent("tomas", "Quiet"),
+        agent("elena", "Quiet", { paused: true }),
+      ];
+      const plan = planMoves(seats, agents, timers, now);
+      expect(movesOf(plan)).toEqual(["tomas → B"]);
+      expect(plan.moves[0]?.reason).toBe("g-quiet-seat");
+    });
+
+    test("with no other seat, the heavy agent is stuck rather than sent to the quiet seat", () => {
+      const seats = [seat("A", 85, 10), seat("Quiet", 5, 10)];
+      const plan = planMoves(seats, [agent("pip", "Quiet"), agent("tomas", "A")], timers, now);
+      expect(plan.moves).toEqual([]);
+      expect(plan.stuck.map((one) => one.agent.key)).toEqual(["tomas"]);
+    });
+  });
+
   describe("d. the Admin seat, e. the paid API, f. the 5-hour stop", () => {
     test("Admin is never a target, and an agent on it moves off", () => {
       const seats = [seat("Admin", 0, 0), seat("B", 30, 10)];

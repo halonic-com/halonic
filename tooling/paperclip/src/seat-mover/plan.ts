@@ -2,9 +2,11 @@ import {
   type AgentPlace,
   type Break,
   breaks,
+  breaksQuietSeat,
   isExcluded,
   isHeavy,
   isPaidApi,
+  isPinned,
   isReviewer,
   type Placement,
   type Seat,
@@ -35,7 +37,8 @@ export type MoveReason =
   | "b-reviewer-seat"
   | "b-reviewers-share"
   | "b-reviewer-not-alone"
-  | "c-heavy-limit";
+  | "c-heavy-limit"
+  | "g-quiet-seat";
 
 export interface Move {
   readonly agent: AgentPlace;
@@ -89,7 +92,11 @@ function moveReason(
     // A paused agent uses nothing: only where it sits can be wrong.
     return undefined;
   }
-  return usageReason(agent, seat, settings, now) ?? heavyReason(agent, others, settings);
+  return (
+    usageReason(agent, seat, settings, now) ??
+    heavyReason(agent, others, settings) ??
+    (breaksQuietSeat(agent, others, settings) ? "g-quiet-seat" : undefined)
+  );
 }
 
 function usageReason(
@@ -171,7 +178,7 @@ export function planMoves(
   now: Date,
 ): SeatPlan {
   const batch = new Batch(seatList, agentList, settings, now);
-  const movable = batch.agents.filter((agent) => !settings.pinned.includes(agent.key));
+  const movable = batch.agents.filter((agent) => !isPinned(agent, settings));
   const reviewers = movable.filter((agent) => isReviewer(agent, settings));
   // Reviewers first: they get the seats with the most 5-hour room, alone. One
   // sitting with a pinned agent moves now too, before spreading the others

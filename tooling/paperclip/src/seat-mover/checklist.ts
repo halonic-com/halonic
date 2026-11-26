@@ -1,7 +1,7 @@
 import type { SeatMoverSettings } from "./settings.ts";
 
 /**
- * The board's pre-move checklist (HAL-19354, a–f), as code. A seat is a legal
+ * The board's pre-move checklist (HAL-19354, a–g), as code. A seat is a legal
  * target for an agent only when every item holds; `breaks` checks a whole
  * placement against the items that are about who sits together, so a batch is
  * never sent that leaves one of them broken. No I/O here.
@@ -62,6 +62,7 @@ export type TargetRefusal =
   | "b-reviewer-seat"
   | "b-reviewer-needs-empty-seat"
   | "c-heavy-limit"
+  | "g-quiet-seat"
   | "d-admin"
   | "e-paid-api"
   | "f-session-stop"
@@ -77,6 +78,10 @@ export const isReviewer = (agent: AgentPlace, settings: SeatMoverSettings) =>
 
 export const isHeavy = (agent: AgentPlace, settings: SeatMoverSettings) =>
   settings.heavy.includes(agent.key);
+
+/** Pinned agents (the seat starter and the timer agents) are never moved. */
+export const isPinned = (agent: AgentPlace, settings: SeatMoverSettings) =>
+  settings.pinned.includes(agent.key);
 
 export const isExcluded = (seat: Seat, settings: SeatMoverSettings) =>
   settings.excludedSeats.includes(seat.name) || settings.excludedSeats.includes(seat.connectionId);
@@ -122,6 +127,19 @@ export function seatedOn(
 /** Heavy agents that run (not paused) count against item c. */
 const countsAsHeavy = (agent: AgentPlace, settings: SeatMoverSettings) =>
   isHeavy(agent, settings) && !agent.paused;
+
+/**
+ * Item g: a seat a pinned agent sits on is the quiet seat. No heavy agent that
+ * runs may sit there; reviewers already can't, because they sit alone.
+ */
+const isQuietSeat = (seated: readonly AgentPlace[], settings: SeatMoverSettings) =>
+  seated.some((agent) => isPinned(agent, settings));
+
+export const breaksQuietSeat = (
+  agent: AgentPlace,
+  seated: readonly AgentPlace[],
+  settings: SeatMoverSettings,
+) => countsAsHeavy(agent, settings) && isQuietSeat(seated, settings);
 
 /** The 5-hour stop that applies to an agent: a reviewer's is lower (HAL-19202). */
 export const sessionStopFor = (agent: AgentPlace, settings: SeatMoverSettings) =>
@@ -177,19 +195,27 @@ export function targetRefusal(
   if (countsAsHeavy(agent, settings) && heavy >= settings.maxHeavyPerSeat) {
     return "c-heavy-limit";
   }
+  if (breaksQuietSeat(agent, others, settings)) {
+    return "g-quiet-seat";
+  }
   return undefined;
 }
 
 /** A rule a placement breaks on one seat. */
 export interface Break {
   readonly connectionId: string;
-  readonly rule: "b-reviewer-not-alone" | "c-heavy-limit" | "d-admin" | "e-paid-api";
+  readonly rule:
+    | "b-reviewer-not-alone"
+    | "c-heavy-limit"
+    | "d-admin"
+    | "e-paid-api"
+    | "g-quiet-seat";
 }
 
 /**
  * The checklist items a placement breaks on the given seats: a reviewer with
  * anyone else, more heavy agents than allowed, anyone on an excluded seat or
- * on the paid API. (Items a and f are about the seat's use, which a move
+ * on the paid API, a heavy agent on the quiet seat. (Items a and f are about the seat's use, which a move
  * doesn't change before the next reading; `targetRefusal` covers them.)
  */
 export function breaks(
@@ -218,6 +244,9 @@ export function breaks(
     const heavy = seated.filter((agent) => countsAsHeavy(agent, settings)).length;
     if (heavy > settings.maxHeavyPerSeat) {
       found.push({ connectionId, rule: "c-heavy-limit" });
+    }
+    if (seated.some((agent) => breaksQuietSeat(agent, seated, settings))) {
+      found.push({ connectionId, rule: "g-quiet-seat" });
     }
   }
   return found;
