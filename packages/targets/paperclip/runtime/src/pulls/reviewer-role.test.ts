@@ -176,14 +176,14 @@ verifies("runtime.github-reviewer-rules", () => {
       const reviewer = reviewerByPaths(rules, filesAt(["infra/deploy.ts"]), 3, routing);
       expect(reviewer).toEqual({ role: "code-reviewer", person: "priya" });
       expect(reviewerText(reviewer)).toBe(
-        "reviewer: priya as code-reviewer (by paths; security/release PRs and the author's own PRs route differently)",
+        "reviewer: priya as code-reviewer (by paths; security/release PRs, the author's own PRs and PRs not written by the team route differently)",
       );
     });
 
     test("names the role alone when no one covers it, and says when there are no rules", () => {
       const reviewer = reviewerByPaths(rules, filesAt(["src/cart.ts"]), 3, undefined);
       expect(reviewerText(reviewer)).toBe(
-        "reviewer: second-reviewer, no one covers it in the routing (by paths; security/release PRs and the author's own PRs route differently)",
+        "reviewer: second-reviewer, no one covers it in the routing (by paths; security/release PRs, the author's own PRs and PRs not written by the team route differently)",
       );
       expect(reviewerText(undefined)).toBe("reviewer: none (no path rules for this repository)");
     });

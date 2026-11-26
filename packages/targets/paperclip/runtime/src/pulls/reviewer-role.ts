@@ -23,7 +23,7 @@ export interface ReviewerByPaths {
 
 /** What the paths-only answer can't see; said every time, so it never reads as final. */
 export const pathsOnlyNote =
-  "by paths; security/release PRs and the author's own PRs route differently";
+  "by paths; security/release PRs, the author's own PRs and PRs not written by the team route differently";
 
 /** The rules for one repository, or undefined when the tool gives it none. */
 export function reviewerRulesOf(tool: Tool, repo: string): RepositoryReviewerRules | undefined {
