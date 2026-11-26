@@ -13,6 +13,8 @@ export const acmeTask = "i0000000-0000-4000-8000-000000000001";
 export const acmeCard = "f0000000-0000-4000-8000-000000000001";
 const acmeApproval = "p0000000-0000-4000-8000-000000000001";
 const agentBo = "a0000000-0000-4000-8000-000000000001";
+/** The invented person the key belongs to; the provider reads it before it lists the Inbox. */
+const acmeUser = "u-acme-board";
 const takenAt = "2026-11-24T10:00:00.000Z";
 
 /** One request the fake saw: method and path, without the query. */
@@ -95,6 +97,7 @@ function acmeRoutes(): Map<string, unknown> {
     ],
   };
   return new Map<string, unknown>([
+    ["GET /api/cli-auth/me", { userId: acmeUser, user: { name: "Board" } }],
     [`GET ${company}/agents`, [{ id: agentBo, name: "Bo", title: null, status: "running" }]],
     [`GET ${company}/chats`, []],
     [`GET ${company}/issues`, [task]],
