@@ -7,11 +7,14 @@ it is open, and as the normal Messenger notification when it is closed.
 - **Layer:** studio
 - **Owner:** tomas
 - **Public API:** `@halonicjs/studio-feature-quick-ask` (the feature) and `@halonicjs/studio-feature-quick-ask/api`
-- **Requirements:** `quick-ask.session`, `quick-ask.answer`
+- **Requirements:** `quick-ask.session`, `quick-ask.answer`, `quick-ask.box`
 
-This package holds the box's work without its screen: `AskSession` (which agents, which is picked,
-the unsent text, sending, watching for the answer) and `AskMemory` (what the box remembers in the
-page's storage). The box's screen, its window and its key come in later changes.
+This package holds the box's work, `AskSession` (which agents, which is picked, the unsent text,
+sending, watching for the answer) and `AskMemory` (what the box remembers in the page's storage),
+and its screen: the focused app `ask`, a `dialog` labelled "Ask an agent" with its own agent picker,
+floating on the see-through window the desktop shell shows for quick ask's keys. The desktop app
+gives it `AskWindowService`, which hides that window and brings Studio forward. Every word is in
+`quick-ask-words.ts`. Open in Messenger comes in a later change.
 
 ## Example
 

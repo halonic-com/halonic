@@ -1,0 +1,45 @@
+/**
+ * Every word the quick-ask box shows or says, copied from the approved design (HAL-18594,
+ * sections 4–7). "Quick ask" is the working name until the chosen one replaces it everywhere.
+ */
+export const quickAskWords = {
+  /** The app's name, first in its window's title. */
+  name: "Quick ask",
+  /** The box's name for screen readers. */
+  label: "Ask an agent",
+  /** The text box's placeholder, before the agent has answered. */
+  placeholder: (agent: string) => `Ask ${agent} anything`,
+  /** The text box's placeholder once the agent has answered: the next question is a reply. */
+  reply: (agent: string) => `Reply to ${agent}`,
+  /** The agent button's name for screen readers. */
+  agentButton: (agent: string) => `Ask ${agent}. Change agent`,
+  /** The button that sends. */
+  ask: "Ask",
+  /** The hint row: each key, then what it does. */
+  hints: [
+    { key: "Enter", does: "ask" },
+    { key: "Tab", does: "another agent" },
+    { key: "Esc", does: "close" },
+  ],
+  /** The picker's search box. */
+  findAgent: "Find an agent",
+  /** The picker's first group: the agents asked or chatted with most recently. */
+  recent: "Recent",
+  /** The working line while the agent works on the question. */
+  working: (agent: string) => `${agent} is working`,
+  /** Under the question while it waits: the box can close, the answer isn't lost. */
+  canClose: (agent: string) => `You can close this. The answer comes to your chat with ${agent}.`,
+  /** Copies the answer's text. */
+  copy: "Copy",
+  /** The answer holds a card, which is answered in Messenger, not in the box. */
+  cardAsks: (agent: string) => `${agent} asks you to choose`,
+  /** On a question that didn't go out (motion 4's words). */
+  notSent: "Not sent",
+  tryAgain: "Try again",
+  /** Under a question that didn't go out. */
+  unreachable: (source: string) => `Couldn't reach ${source}. Your question is still here.`,
+  /** No agent to ask yet. */
+  noAgents: "No agents yet",
+  noAgentsHint: "Connect a workspace or a team in Studio to ask its agents.",
+  openStudio: "Open Studio",
+} as const;

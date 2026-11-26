@@ -42,6 +42,7 @@ import {
   NoLimitMemoryService,
   ProviderCheckService,
 } from "@halonicjs/studio-feature-models/api";
+import { AskWindowService } from "@halonicjs/studio-feature-quick-ask/api";
 import { RoutinesHostService } from "@halonicjs/studio-feature-routines/api";
 import {
   InstructionTrustHostService,
@@ -105,6 +106,7 @@ import { WorkspaceRoutines } from "../routines/workspace-routines.ts";
 import { provideAllRuns } from "../runs/all-runs-sources.ts";
 import { WorkspaceWorkflowReview } from "../workflows/workspace-workflow-review.ts";
 import { WorkspaceWorkflows } from "../workflows/workspace-workflows.ts";
+import { desktopAskWindow } from "./desktop-ask-window.ts";
 import { folderEngine } from "./folder-engine.ts";
 import { focusOf, storageOf } from "./page-window.ts";
 import { provideEngineAutoOpen } from "./provide-engine-auto-open.ts";
@@ -177,6 +179,7 @@ export function provideFolderServices(
   );
   provideModelChoice(services, { ipc, trust, keys, settle });
   services.provide(NoLimitMemoryService, new WorkspaceNoLimit(storageOf(window), location));
+  services.provide(AskWindowService, desktopAskWindow(ipc));
   services.provide(
     ProviderCheckService,
     new WorkspaceProviderCheck(new ShellHttpClient(ipc), trust),

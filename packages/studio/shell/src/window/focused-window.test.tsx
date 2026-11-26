@@ -57,8 +57,8 @@ function shellWith(app: FocusedAppContribution) {
   return createShell({ features: [feature], timers: new FakeTimers() });
 }
 
-async function mount(name: string | undefined) {
-  const shell = shellWith(inboxApp);
+async function mount(name: string | undefined, shown: FocusedAppContribution = inboxApp) {
+  const shell = shellWith(shown);
   const services = new MapTarget();
   shell.services.instantiate(services);
   const workspace =
@@ -88,6 +88,22 @@ verifies("shell.focused-apps", () => {
     expect(document.title).toBe("Inbox · Acme · Halonic Inbox");
     focused.unmount();
     expect(element.childElementCount).toBe(0);
+  });
+
+  it("draws a floating app, quick ask's box, on the see-through window with no frame or panel", async () => {
+    await mount("Acme", {
+      ...inboxApp,
+      id: "ask",
+      title: "Ask an agent",
+      panel: false,
+      floating: true,
+    });
+    const window = element.querySelector('[data-focused-app="ask"]');
+
+    expect(window?.className).not.toContain("bg-app-frame");
+    expect(window?.className).not.toContain("p-2");
+    expect(element.querySelector("main")).toBeNull();
+    expect(element.querySelector("h1")?.textContent).toBe("Inbox for desktop-app");
   });
 
   it("shows its app in one pane in a window 640px wide, and in two once it's widened", async () => {
