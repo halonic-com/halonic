@@ -55,6 +55,14 @@ impl SecretsState {
     pub(crate) fn action_keychain(&self) -> Arc<dyn SecretBackend> {
         Arc::clone(&self.backend)
     }
+
+    /// The keychain an owner server's session is kept in, handed only to
+    /// the `owner_*` commands (HAL-18944). The secret and token commands
+    /// refuse those names, so the session stays in Rust.
+    #[cfg(desktop)]
+    pub(crate) fn owner_keychain(&self) -> Arc<dyn SecretBackend> {
+        Arc::clone(&self.backend)
+    }
 }
 
 /// Why a call failed: a stable `kind` for the page to pick its words by
