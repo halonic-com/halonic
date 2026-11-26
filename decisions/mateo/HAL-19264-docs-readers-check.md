@@ -3,6 +3,7 @@
 - Task: HAL-19264
 - Approval: the task asks for this check, follow-up to HAL-19227; Liam reviews it and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:8/u9kOl5efTpUnDyWrRyhcb5ZJ2w0STigkKG9oR0s1P7u9b5yCRQo/oLeVBPjQK24kEeCenjuwf1QwTR1XL6DQ==
 
 ## What changes
 
