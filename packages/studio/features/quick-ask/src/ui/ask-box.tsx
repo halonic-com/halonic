@@ -15,6 +15,7 @@ import { AgentPicker, type PickerExit } from "./agent-picker.tsx";
 import { BoxFooter, type FooterAnswer } from "./box-footer.tsx";
 import { ExchangeList } from "./exchange-list.tsx";
 import { answerText } from "./exchange-view.tsx";
+import { OpeningView } from "./opening-view.tsx";
 import { type AskBoxModel, type Exchange, useAskBox } from "./use-ask-box.ts";
 
 /** The props of {@link AskBox}. */
@@ -92,6 +93,7 @@ export function AskBox({ session, window, onClosed }: AskBoxProps) {
         className={boxClasses}
         onKeyDown={onKeyDown}
       >
+        {model.state.kind === "opening" ? <OpeningView /> : null}
         {model.state.kind === "no-agents" ? <NoAgents window={window} /> : null}
         {model.state.kind === "ready" ? <Ready model={model} onOpenChat={openChat} /> : null}
       </section>

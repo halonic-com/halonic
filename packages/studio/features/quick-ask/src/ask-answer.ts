@@ -36,12 +36,21 @@ export interface AnswerFacts {
  */
 export function answerState(facts: AnswerFacts): AnswerState {
   const replies = facts.messages.filter(
-    (message) => message.author.kind === "agent" && isLater(message.sentAt, facts.sentAt),
+    (message) => isAgentReply(message) && isLater(message.sentAt, facts.sentAt),
   );
   const card = facts.cards.find((each) => !isLater(facts.sentAt, each.createdAt));
   if (card !== undefined) return { kind: "card", card, messages: replies };
   if (replies.length > 0) return { kind: "answer", messages: replies };
   return facts.agent.activity === "working" ? { kind: "working" } : { kind: "waiting" };
+}
+
+/**
+ * Whether `message` is the agent's own: written by the agent, and not a note its source wrote
+ * automatically on its behalf, such as Paperclip's fast-response receipt, which only says the
+ * agent picked the question up (requirement `quick-ask.automatic-notes`).
+ */
+export function isAgentReply(message: Message): boolean {
+  return message.author.kind === "agent" && message.automatic !== true;
 }
 
 /** Whether a state is an answer the person has now seen, so the box stops waiting for one. */
