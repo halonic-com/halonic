@@ -1,42 +1,49 @@
 import { type RefObject, useEffect, useState } from "react";
-import { endFeedback, type FeedbackIpc, feedbackCommands } from "../feedback-ipc.ts";
+import { type FeedbackIpc, feedbackCommands } from "../feedback-ipc.ts";
 import { readStill, type StillImage } from "./still.ts";
 
+/** Where the window's crop is: on its way, drawn, or not to be had. */
+export type StillState =
+  | { readonly kind: "loading" }
+  | { readonly kind: "ready"; readonly still: StillImage }
+  | { readonly kind: "failed" };
+
 /**
- * The Send feedback window's crop, drawn on `canvas` once the shell gave it. Without one, such as after two minutes, or a canvas that can't
- * draw, the feedback ends: a window over nothing would hide the screen for no reason.
+ * The Send feedback window's crop, drawn on `canvas` once the shell gave it. Without one, such as
+ * after two minutes, or on a canvas that can't draw, it is `failed`: the window then says so and
+ * offers to send the text alone, so nothing typed is lost (Noah's design on HAL-19384).
  */
 export function useStill(
   ipc: FeedbackIpc,
   canvas: RefObject<HTMLCanvasElement | null>,
   command: typeof feedbackCommands.crop = feedbackCommands.crop,
-): StillImage | undefined {
-  const [still, setStill] = useState<StillImage>();
+): StillState {
+  const [state, setState] = useState<StillState>({ kind: "loading" });
   useEffect(() => {
     let current = true;
     ipc
       .invoke(command)
       .then((answer) => {
-        if (current) setStill(readStill(answer));
+        if (current) setState({ kind: "ready", still: readStill(answer) });
       })
       .catch((error: unknown) => {
         console.error("The window has no picture:", error);
-        endFeedback(ipc);
+        if (current) setState({ kind: "failed" });
       });
     return () => {
       current = false;
     };
   }, [ipc, command]);
   useEffect(() => {
-    if (still === undefined || canvas.current === null) return;
+    if (state.kind !== "ready" || canvas.current === null) return;
     try {
-      drawStill(canvas.current, still);
+      drawStill(canvas.current, state.still);
     } catch (error) {
       console.error("The picture wasn't drawn:", error);
-      endFeedback(ipc);
+      setState({ kind: "failed" });
     }
-  }, [still, canvas, ipc]);
-  return still;
+  }, [state, canvas]);
+  return state;
 }
 
 /** Draws the still at its own size; the canvas's CSS stretches it over the window. */

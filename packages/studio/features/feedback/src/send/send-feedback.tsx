@@ -1,35 +1,15 @@
 import { Button, Field, Kbd, TextArea } from "@halonicjs/studio-kit";
-import { type FormEvent, type RefObject, useId, useRef, useState } from "react";
-import { sizeLabel } from "../crop.ts";
+import { type FormEvent, type Ref, type RefObject, useId, useRef, useState } from "react";
 import { endFeedback, type FeedbackIpc, feedbackCommands } from "../feedback-ipc.ts";
 import { feedbackWords } from "../feedback-words.ts";
-import type { StillImage } from "../overlay/still.ts";
-import { useStill } from "../overlay/use-still.ts";
-import { buildFeedbackTask, type FeedbackTask, feedbackTitle } from "../payload.ts";
+import { type StillState, useStill } from "../overlay/use-still.ts";
+import { feedbackTitle } from "../payload.ts";
 import { useEscapeEnds } from "../use-escape-ends.ts";
-import { canvasPng, type PngEncoder, screenshotPng } from "./screenshot-png.ts";
-
-/** One feedback the window hands on to be sent: its task and its screenshot as a PNG. */
-export interface OutgoingFeedback {
-  readonly task: FeedbackTask;
-  readonly png: Uint8Array | null;
-}
-
-/** Hands a feedback on to be sent; it settles once the feedback is taken, sent or kept. */
-export type SendOutgoing = (feedback: OutgoingFeedback) => Promise<void>;
-
-/** What the window says and sends besides what the person types. */
-export interface FeedbackDetails {
-  /** Where the task goes and who gets it (Settings → Feedback). */
-  readonly project: string;
-  readonly assignee: string;
-  /** The Studio version, such as "0.2.0". */
-  readonly studioVersion: string;
-  /** Shows ⌘ ↩ instead of Ctrl Enter. */
-  readonly mac: boolean;
-  /** The clock: the window's opening stands for the press, a moment before. */
-  readonly now: () => Date;
-}
+import { CropView } from "./crop-view.tsx";
+import { type FeedbackDetails, type SendOutgoing, useHandOn } from "./hand-on.ts";
+import { canvasPng, type PngEncoder } from "./screenshot-png.ts";
+import { type FeedbackConnection, type Screenshot, SendNotice } from "./send-notice.tsx";
+import { useShownAfterWait } from "./show-after.ts";
 
 /** Props for {@link SendFeedback}. */
 export interface SendFeedbackProps {
@@ -37,47 +17,33 @@ export interface SendFeedbackProps {
   readonly ipc: FeedbackIpc;
   readonly send: SendOutgoing;
   readonly details: FeedbackDetails;
+  /** Whether Send sends now or saves the feedback until Studio is online; `online` by default. */
+  readonly connection?: FeedbackConnection;
+  /**
+   * Closes the window, keeping the text, and starts a new selection, offered where the crop
+   * couldn't be loaded. Without it that box offers only Send without a screenshot.
+   */
+  readonly selectAgain?: () => void;
   /** Saves the crop as a PNG; the page's canvas unless a test gives another. */
   readonly encodePng?: PngEncoder;
 }
 
-/** The crop's box in the window: the dialog's 560px less its padding, and 220px high. */
-const cropBox = { width: 512, height: 220 };
-
 /**
- * The Send feedback window (`feedback.send-window`, sketch on HAL-18562 §2): the crop, its size,
- * the text field and its footnote, with Cancel and Send. Send, or Ctrl Enter (⌘ ↩), hands the
- * feedback on and ends; with nothing written it says "Write a line about what you saw." and
- * sends nothing. Cancel and Esc end the feedback and keep nothing.
+ * The Send feedback window (`feedback.send-window`, sketch on HAL-18562 §2, states on HAL-19384):
+ * the crop, its size, the text field and its footnote, with Cancel and Send. Send, or Ctrl Enter
+ * (⌘ ↩), hands the feedback on and ends; with nothing written it says "Write a line about what
+ * you saw." and sends nothing. A refused Send keeps the window open and says why
+ * (`feedback.send-states`). Cancel and Esc end the feedback and keep nothing.
  */
-export function SendFeedback({ ipc, send, details, encodePng = canvasPng }: SendFeedbackProps) {
+export function SendFeedback(props: SendFeedbackProps) {
+  const { ipc, details } = props;
   const canvas = useRef<HTMLCanvasElement>(null);
   const textField = useRef<HTMLTextAreaElement>(null);
-  const crop = useStill(ipc, canvas, feedbackCommands.crop);
-  const [openedAt] = useState(details.now);
-  const [text, setText] = useState("");
-  const [error, setError] = useState<string>();
-  const [sending, setSending] = useState(false);
+  const still = useStill(ipc, canvas, feedbackCommands.crop);
+  const { text, error, type, submit, handing } = useSend(props, still, textField);
+  const spinner = useShownAfterWait(handing.sending);
   const footnoteId = useId();
   useEscapeEnds(ipc);
-
-  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (crop === undefined || sending) return;
-    if (feedbackTitle(text) === "") {
-      setError(feedbackWords.emptyText);
-      textField.current?.focus();
-      return;
-    }
-    setSending(true);
-    outgoing({ text, crop, openedAt, details, encodePng })
-      .then(send)
-      .then(() => endFeedback(ipc))
-      .catch((failure: unknown) => {
-        console.error("The feedback wasn't sent:", failure);
-        setSending(false);
-      });
-  };
 
   return (
     <form
@@ -85,56 +51,98 @@ export function SendFeedback({ ipc, send, details, encodePng = canvasPng }: Send
       // same colour behind it (design check on HAL-19208).
       className="fixed inset-0 flex flex-col gap-4 border border-border-strong bg-app-panel p-6 text-fg"
       data-feedback-send=""
-      onSubmit={onSubmit}
+      onSubmit={(event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        submit("crop");
+      }}
     >
-      <CropView canvas={canvas} crop={crop} />
-      <Field label={feedbackWords.textLabel} hideLabel error={error ?? null}>
-        <TextArea
-          ref={textField}
-          value={text}
-          placeholder={feedbackWords.placeholder}
-          minRows={3}
-          maxRows={8}
-          submitOnCtrlEnter
-          // A screen reader also hears what goes with the text.
-          describedBy={footnoteId}
-          // The window opens to be typed in (sketch §2).
-          autoFocus
-          onChange={(event) => {
-            setText(event.target.value);
-            setError(undefined);
-          }}
-        />
-      </Field>
+      <CropView
+        canvas={canvas}
+        still={still}
+        sending={handing.sending}
+        onSelectAgain={props.selectAgain}
+        onSendWithoutScreenshot={() => submit("none")}
+      />
+      <TextBox
+        ref={textField}
+        text={text}
+        error={error}
+        sending={handing.sending}
+        footnoteId={footnoteId}
+        onChange={type}
+      />
+      <SendNotice
+        problem={handing.problem}
+        connection={props.connection ?? "online"}
+        onSend={submit}
+      />
       <Footnote id={footnoteId} details={details} />
       {/* Last in the page, so Tab goes from the text to Cancel and Send; shown first, as a title bar. */}
-      {/* Send stays still while the crop loads: a press then does nothing, and nothing is sending. */}
-      <TitleBar busy={sending} onCancel={() => endFeedback(ipc)} />
+      {/* The spinner shows only after 300 ms, so a quick send just closes the window. */}
+      <TitleBar busy={spinner} onCancel={() => endFeedback(ipc)} />
     </form>
   );
 }
 
-/** The crop, fitted in its box, and its size under it. */
-function CropView({
-  canvas,
-  crop,
-}: {
-  readonly canvas: RefObject<HTMLCanvasElement | null>;
-  readonly crop: StillImage | undefined;
+/**
+ * The text and its error, and the Send that checks them: with nothing written it says why and
+ * focuses the field, and Send does nothing until the crop is there; Send without a screenshot
+ * needs none.
+ */
+function useSend(
+  props: SendFeedbackProps,
+  still: StillState,
+  textField: RefObject<HTMLTextAreaElement | null>,
+) {
+  const [openedAt] = useState(props.details.now);
+  const [text, setText] = useState("");
+  const [error, setError] = useState<string>();
+  const handing = useHandOn(props.ipc, props.send);
+  const type = (next: string) => {
+    setText(next);
+    setError(undefined);
+  };
+  const submit = (screenshot: Screenshot) => {
+    if (handing.sending) return;
+    if (feedbackTitle(text) === "") {
+      setError(feedbackWords.emptyText);
+      textField.current?.focus();
+      return;
+    }
+    const crop = screenshot === "crop" && still.kind === "ready" ? still.still : null;
+    if (screenshot === "crop" && crop === null) return;
+    const encodePng = props.encodePng ?? canvasPng;
+    handing.start({ text, crop, openedAt, details: props.details, encodePng }, screenshot);
+  };
+  return { text, error, type, submit, handing };
+}
+
+/** The text field, read-only in its subtle fill while sending, so nothing typed then gets lost. */
+function TextBox(props: {
+  readonly ref: Ref<HTMLTextAreaElement>;
+  readonly text: string;
+  readonly error: string | undefined;
+  readonly sending: boolean;
+  readonly footnoteId: string;
+  readonly onChange: (text: string) => void;
 }) {
   return (
-    // Close together, so the size reads as the crop's caption.
-    <div className="flex flex-col gap-2">
-      <div
-        className="flex shrink-0 items-center justify-center rounded-md bg-surface-subtle"
-        style={{ height: cropBox.height }}
-      >
-        <canvas ref={canvas} style={crop === undefined ? undefined : fittedSize(crop)} />
-      </div>
-      <p className="font-mono text-caption text-fg-muted" data-feedback-size="">
-        {crop === undefined ? "" : sizeLabel({ x: 0, y: 0, ...crop })}
-      </p>
-    </div>
+    <Field label={feedbackWords.textLabel} hideLabel error={props.error ?? null}>
+      <TextArea
+        ref={props.ref}
+        value={props.text}
+        placeholder={feedbackWords.placeholder}
+        minRows={3}
+        maxRows={8}
+        submitOnCtrlEnter
+        readOnly={props.sending}
+        // A screen reader also hears what goes with the text.
+        describedBy={props.footnoteId}
+        // The window opens to be typed in (sketch §2).
+        autoFocus
+        onChange={(event) => props.onChange(event.target.value)}
+      />
+    </Field>
   );
 }
 
@@ -166,39 +174,4 @@ function TitleBar({ busy, onCancel }: { readonly busy: boolean; readonly onCance
       </div>
     </div>
   );
-}
-
-/** The feedback to hand on: the task, with the crop as a PNG small enough to send. */
-async function outgoing(parts: {
-  readonly text: string;
-  readonly crop: StillImage;
-  readonly openedAt: Date;
-  readonly details: FeedbackDetails;
-  readonly encodePng: PngEncoder;
-}): Promise<OutgoingFeedback> {
-  const { text, crop, openedAt, details } = parts;
-  const screenshot = await screenshotPng(crop, parts.encodePng);
-  const build = buildFeedbackTask({
-    text,
-    // The shell doesn't yet say which app and window were in front at the press (HAL-19010).
-    app: "",
-    window: "",
-    capturedAt: openedAt,
-    utcOffsetMinutes: -openedAt.getTimezoneOffset(),
-    studioVersion: details.studioVersion,
-    screenshot: { width: screenshot.width, height: screenshot.height },
-    project: details.project,
-    assignee: details.assignee,
-  });
-  if (build.kind !== "task") throw new Error("The feedback has no title.");
-  return { task: build.task, png: screenshot.png };
-}
-
-/** The crop at its own size in CSS pixels, shrunk to fit its box and never stretched. */
-function fittedSize(crop: StillImage): { width: number; height: number } {
-  const pixelRatio = window.devicePixelRatio || 1;
-  const width = crop.width / pixelRatio;
-  const height = crop.height / pixelRatio;
-  const scale = Math.min(1, cropBox.width / width, cropBox.height / height);
-  return { width: width * scale, height: height * scale };
 }

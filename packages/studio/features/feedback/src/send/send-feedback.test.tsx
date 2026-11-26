@@ -3,7 +3,8 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { type OutgoingFeedback, SendFeedback } from "./send-feedback.tsx";
+import type { OutgoingFeedback, SendAnswer } from "./hand-on.ts";
+import { SendFeedback, type SendFeedbackProps } from "./send-feedback.tsx";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -16,10 +17,11 @@ function cropBytes(): ArrayBuffer {
   return bytes.buffer;
 }
 
-function fakeShell() {
+/** A shell whose crop is `crop()`: the 20 × 10 crop unless a test gives another answer. */
+function fakeShell(crop: () => Promise<unknown> = async () => cropBytes()) {
   return {
     invoke: vi.fn(async (command: string): Promise<unknown> => {
-      if (command === "plugin:feedback|crop") return cropBytes();
+      if (command === "plugin:feedback|crop") return crop();
       return null;
     }),
   };
@@ -33,6 +35,7 @@ const details = {
   mac: false,
   now: () => new Date("2026-11-25T17:04:05Z"),
 };
+const taken: SendAnswer = { kind: "taken" };
 
 const canvasPrototype = HTMLCanvasElement.prototype as unknown as Record<string, unknown>;
 let root: Root | undefined;
@@ -54,19 +57,43 @@ afterEach(() => {
   root = undefined;
   element.remove();
   delete canvasPrototype["getContext"];
+  vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
-async function open(shell = fakeShell()) {
+/** Draws the window; `answers` are the sender's answers, one per Send, then `taken`. */
+async function render(
+  options: {
+    readonly shell?: ReturnType<typeof fakeShell>;
+    readonly answers?: (() => Promise<SendAnswer>)[];
+  } & Partial<Pick<SendFeedbackProps, "connection" | "selectAgain" | "encodePng">> = {},
+) {
+  const { shell = fakeShell(), answers = [], ...rest } = options;
   const sent: OutgoingFeedback[] = [];
-  const send = vi.fn(async (feedback: OutgoingFeedback) => void sent.push(feedback));
+  const send = vi.fn(async (feedback: OutgoingFeedback) => {
+    sent.push(feedback);
+    return (answers.shift() ?? (async () => taken))();
+  });
   await act(async () => {
     root = createRoot(element);
     root.render(
-      <SendFeedback ipc={shell} send={send} details={details} encodePng={async () => png} />,
+      <SendFeedback
+        ipc={shell}
+        send={send}
+        details={details}
+        encodePng={async () => png}
+        {...rest}
+      />,
     );
   });
-  await vi.waitFor(() => expect(element.textContent).toContain("20 × 10"));
   return { shell, send, sent };
+}
+
+/** Draws the window and waits for its crop. */
+async function open(options: Parameters<typeof render>[0] = {}) {
+  const drawn = await render(options);
+  await vi.waitFor(() => expect(element.textContent).toContain("20 × 10"));
+  return drawn;
 }
 
 function textField(): HTMLTextAreaElement {
@@ -84,14 +111,27 @@ function type(text: string) {
   });
 }
 
+function findButton(label: string): HTMLButtonElement | undefined {
+  return [...element.querySelectorAll("button")].find((each) => each.textContent === label);
+}
+
 function button(label: string): HTMLButtonElement {
-  const found = [...element.querySelectorAll("button")].find((each) => each.textContent === label);
+  const found = findButton(label);
   if (found === undefined) throw new Error(`No ${label} button.`);
   return found;
 }
 
 function ends(shell: ReturnType<typeof fakeShell>) {
   return shell.invoke.mock.calls.filter(([command]) => command === "plugin:feedback|end");
+}
+
+/** The Callout above the footnote that took the focus: its name's text and its own text. */
+function focusedCallout() {
+  const group = document.activeElement;
+  if (group?.getAttribute("role") !== "group") throw new Error("No Callout has the focus.");
+  const title = document.getElementById(group.getAttribute("aria-labelledby") ?? "");
+  const text = document.getElementById(group.getAttribute("aria-describedby") ?? "");
+  return { title: title?.textContent, text: text?.textContent ?? null };
 }
 
 verifies("feedback.send-window", () => {
@@ -164,41 +204,157 @@ verifies("feedback.send-window", () => {
 
   it("stays open with the text when the feedback can't be handed on", async () => {
     const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const shell = fakeShell();
-    await act(async () => {
-      root = createRoot(element);
-      root.render(
-        <SendFeedback
-          ipc={shell}
-          send={async () => {
-            throw new Error("no main window");
-          }}
-          details={details}
-          encodePng={async () => png}
-        />,
-      );
+    const { shell } = await open({
+      answers: [
+        async () => {
+          throw new Error("no main window");
+        },
+      ],
     });
-    await vi.waitFor(() => expect(element.textContent).toContain("20 × 10"));
     type("Run list jumps");
     await act(async () => button("Send").click());
     await vi.waitFor(() => expect(errors).toHaveBeenCalled());
     expect(ends(shell)).toEqual([]);
     expect(textField().value).toBe("Run list jumps");
-    errors.mockRestore();
+  });
+});
+
+verifies("feedback.send-states", () => {
+  it("marks the crop box busy and shows the skeleton only after 300 ms, keeping the size line", async () => {
+    vi.useFakeTimers();
+    await render({ shell: fakeShell(() => new Promise(() => undefined)) });
+    const box = element.querySelector("[data-feedback-crop]");
+    expect(box?.getAttribute("aria-busy")).toBe("true");
+    expect(element.querySelector("[data-feedback-crop-skeleton]")).toBeNull();
+    // The size line keeps a line's height with a zero-width space.
+    expect(element.querySelector("[data-feedback-size]")?.textContent).toBe(
+      String.fromCharCode(0x200b),
+    );
+    await act(async () => vi.advanceTimersByTime(300));
+    const skeleton = element.querySelector("[data-feedback-crop-skeleton]");
+    expect(skeleton?.getAttribute("aria-hidden")).toBe("true");
+    expect(document.activeElement).toBe(textField());
   });
 
-  it("ends when the crop is gone", async () => {
-    const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const shell = fakeShell();
-    shell.invoke.mockImplementation(async (command: string) => {
-      if (command === "plugin:feedback|crop") throw "gone";
-      return null;
-    });
-    await act(async () => {
-      root = createRoot(element);
-      root.render(<SendFeedback ipc={shell} send={vi.fn()} details={details} />);
-    });
+  it("says the crop couldn't be loaded, stays open and sends the text alone", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const selectAgain = vi.fn();
+    const shell = fakeShell(async () => Promise.reject("gone"));
+    const { send, sent } = await render({ shell, selectAgain });
+    await vi.waitFor(() => expect(element.textContent).toContain("Couldn't load the screenshot."));
+    expect(element.querySelector("[data-feedback-crop]")?.hasAttribute("aria-busy")).toBe(false);
+    expect(ends(shell)).toEqual([]);
+    act(() => button("Select again").click());
+    expect(selectAgain).toHaveBeenCalledOnce();
+    type("Run list jumps");
+    await act(async () => button("Send").click());
+    expect(send).not.toHaveBeenCalled();
+    await act(async () => button("Send without a screenshot").click());
     await vi.waitFor(() => expect(ends(shell)).toHaveLength(1));
-    errors.mockRestore();
+    expect(sent[0]?.png).toBeNull();
+    expect(sent[0]?.task).toMatchObject({ title: "Run list jumps", screenshot: null });
+  });
+
+  it("offers no Select again where the window can't start a selection", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await render({ shell: fakeShell(async () => Promise.reject("gone")) });
+    await vi.waitFor(() => expect(element.textContent).toContain("Couldn't load the screenshot."));
+    expect(findButton("Select again")).toBeUndefined();
+    expect(findButton("Send without a screenshot")).toBeDefined();
+  });
+
+  it("keeps the danger focus ring on a field with an error", async () => {
+    await open();
+    await act(async () => button("Send").click());
+    expect(textField().getAttribute("aria-invalid")).toBe("true");
+    const ring = (textField().parentElement?.className ?? "").split(" ");
+    expect(ring).toContain("focus-field-danger");
+    expect(ring).not.toContain("focus-field");
+  });
+
+  it("says before Send that Studio is offline", async () => {
+    await open({ connection: "offline" });
+    expect(element.textContent).toContain("Studio is offline");
+    expect(element.textContent).toContain(
+      "Send saves your feedback on this computer and sends it automatically once Studio is back online.",
+    );
+  });
+
+  it("says before Send that Studio isn't connected to Paperclip", async () => {
+    await open({ connection: "not-connected" });
+    expect(element.textContent).toContain("Studio isn't connected to Paperclip");
+    expect(element.textContent).toContain(
+      "Send saves your feedback on this computer and sends it automatically once Studio is connected to Paperclip.",
+    );
+  });
+
+  it("says nothing about the connection while Studio is online", async () => {
+    await open({ connection: "online" });
+    expect(element.textContent).not.toContain("Studio is offline");
+    expect(element.textContent).not.toContain("Studio isn't connected to Paperclip");
+  });
+
+  it("makes the field read-only and hides Select again while sending, with the spinner after 300 ms", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { send } = await render({
+      shell: fakeShell(async () => Promise.reject("gone")),
+      selectAgain: vi.fn(),
+      answers: [() => new Promise(() => undefined)],
+    });
+    await vi.waitFor(() => expect(findButton("Select again")).toBeDefined());
+    type("Run list jumps");
+    vi.useFakeTimers();
+    await act(async () => button("Send without a screenshot").click());
+    await act(async () => undefined);
+    expect(send).toHaveBeenCalledOnce();
+    expect(textField().readOnly).toBe(true);
+    expect(findButton("Select again")).toBeUndefined();
+    expect(button("Send").hasAttribute("aria-busy")).toBe(false);
+    await act(async () => vi.advanceTimersByTime(300));
+    expect(button("Send").getAttribute("aria-busy")).toBe("true");
+  });
+
+  it("says why Paperclip refused, keeps the text, focuses the Callout and tries again", async () => {
+    const refused: SendAnswer = { kind: "refused", reason: "Project not found." };
+    const { shell, send } = await open({ answers: [async () => refused] });
+    type("Run list jumps");
+    await act(async () => button("Send").click());
+    await vi.waitFor(() => expect(focusedCallout().title).toBe("Couldn't send your feedback"));
+    expect(focusedCallout().text).toBe(
+      "Paperclip said: Project not found. Your text and screenshot are still here.",
+    );
+    expect(textField().value).toBe("Run list jumps");
+    expect(textField().readOnly).toBe(false);
+    expect(ends(shell)).toEqual([]);
+    await act(async () => button("Try again").click());
+    await vi.waitFor(() => expect(ends(shell)).toHaveLength(1));
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows the title alone when Paperclip gives no reason", async () => {
+    const refused: SendAnswer = { kind: "refused", reason: "" };
+    await open({ answers: [async () => refused] });
+    type("Run list jumps");
+    await act(async () => button("Send").click());
+    await vi.waitFor(() => expect(focusedCallout().title).toBe("Couldn't send your feedback"));
+    expect(focusedCallout().text).toBe("");
+    expect(element.textContent).not.toContain("Paperclip said");
+  });
+
+  it("says the screenshot couldn't be prepared and sends the text alone", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { shell, send, sent } = await open({
+      encodePng: async () => {
+        throw new Error("no canvas");
+      },
+    });
+    type("Run list jumps");
+    await act(async () => button("Send").click());
+    await vi.waitFor(() => expect(focusedCallout().title).toBe("Couldn't prepare the screenshot"));
+    expect(focusedCallout().text).toBe("Your text is still here.");
+    expect(send).not.toHaveBeenCalled();
+    await act(async () => button("Send without a screenshot").click());
+    await vi.waitFor(() => expect(ends(shell)).toHaveLength(1));
+    expect(sent[0]?.png).toBeNull();
   });
 });

@@ -40,8 +40,14 @@ hand it in, with the key behind its guard.
   (`feedbackPrefs`, host settings) and how many feedbacks wait (`feedback.settings-section`). Both
   show only in Studio's own main window, where the app gives `FeedbackSettingsService`.
 
+- `send/`: the Send feedback window, its crop, text and footnote (`feedback.send-window`), and
+  its fallback states (`feedback.send-states`): the crop's skeleton and the crop that couldn't be
+  loaded, with **Send without a screenshot**; the offline Callout before Send (the window's
+  `connection`); and a refused Send, which keeps the window open with **Try again**. The sender
+  answers `taken` or `refused` with Paperclip's reason. The crop that couldn't be loaded offers
+  **Select again** only where the page gets `selectAgain`.
+
 The still and the shortcut's saved value are the shell's (`apps/studio/src-tauri/src/feedback_*.rs`).
-The Send feedback window comes in a later pull request.
 
 ## Example
 
