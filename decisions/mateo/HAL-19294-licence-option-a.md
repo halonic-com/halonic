@@ -2,6 +2,7 @@
 
 - Approval: HAL-19294, from the board's approval of option A on 26 Nov (design HAL-18894, tech check HAL-18893); Liam approved the PR split on HAL-19294 and signs as the CTO
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:r7MHqFpnMNQBvDsflHONMdX0sfCieNUdCMP7mMj45h6e9I3CELsABnEJkbMW2frNuwi+MRcIrKmU7NiteMZeCA==
 
 The Windows installer becomes progress bar only (HAL-18892): it asks nothing,
 so it can no longer show a licence page or a sandbox choice. The board chose
