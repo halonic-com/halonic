@@ -21,6 +21,7 @@ import type {
 import { type Infer, parse, type Schema, s } from "@halonicjs/schema-kit";
 import { decodeBase64url, encodeBase64url } from "@halonicjs/std";
 import {
+  type AccessToken,
   type ServerAnswer,
   ServerClientError,
   ServerConnection,
@@ -44,6 +45,8 @@ export interface ServerAgentMessagingOptions {
   readonly address: string;
   /** The device's session token, from pairing. It goes only in the `Authorization` header. */
   readonly token: string;
+  /** The Cloudflare Access service token for the server's origin, when an Access check fronts it. */
+  readonly access?: AccessToken;
   /** The server's name for its stand-in source, until the server has listed its own sources. */
   readonly label: string;
   /** The `fetch` to use; the platform's own by default. */
@@ -80,6 +83,7 @@ export class ServerAgentMessaging implements AgentMessaging {
       options.address,
       options.token,
       options.fetch ?? ((request) => fetch(request)),
+      options.access,
     );
     this.#label = options.label;
     this.#now = options.now ?? (() => new Date());

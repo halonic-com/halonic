@@ -6,7 +6,38 @@ import { messagingRefusals } from "./messaging-wire.ts";
 const loopbackHosts: readonly string[] = ["localhost", "127.0.0.1", "[::1]"];
 
 /** Why the client stopped: an address or token it won't use, a redirect, or an answer it can't read. */
-export type ServerClientFailure = "unsafe-address" | "bad-token" | "redirect" | "bad-answer";
+export type ServerClientFailure =
+  | "unsafe-address"
+  | "bad-token"
+  | "redirect"
+  | "access-refused"
+  | "bad-answer";
+
+/** A Cloudflare Access service token: sent as headers to the paired origin, and nowhere else. */
+export interface AccessToken {
+  readonly clientId: string;
+  readonly clientSecret: string;
+}
+
+/** A header can't carry a line break or a control character; fetch would fail as if offline. */
+const headerSafe = /^[\x21-\x7e]{1,512}$/;
+
+/** The two Access headers for `access`, or none. @throws ServerClientError when a value can't be sent */
+export function accessHeaders(access: AccessToken | undefined): Record<string, string> {
+  if (access === undefined) return {};
+  if (!headerSafe.test(access.clientId) || !headerSafe.test(access.clientSecret)) {
+    throw new ServerClientError(
+      "The Access client ID or secret can't be sent: it holds a character a header can't carry.",
+      "bad-token",
+    );
+  }
+  return { "CF-Access-Client-Id": access.clientId, "CF-Access-Client-Secret": access.clientSecret };
+}
+
+/** Whether an answer is the Access check's own refusal: a 403 that isn't the server's JSON. */
+export function isAccessRefusal(response: Response): boolean {
+  return response.status === 403 && !(response.headers.get("content-type") ?? "").includes("json");
+}
 
 /**
  * Thrown when the client can't go on. Its message names the call and the
@@ -63,15 +94,17 @@ export type ServerAnswer =
 
 /**
  * Sends the messaging calls to one server, with the device's token in the
- * `Authorization` header only. It follows no redirect, same host included,
+ * `Authorization` header only, and the Access service token, when given, in
+ * its two Access headers. It follows no redirect, same host included,
  * and leaves certificate checks to the platform's `fetch`.
  */
 export class ServerConnection {
   readonly #origin: string;
   readonly #token: string;
   readonly #fetch: ServerFetch;
+  readonly #access: Record<string, string>;
 
-  constructor(address: string, token: string, send: ServerFetch) {
+  constructor(address: string, token: string, send: ServerFetch, access?: AccessToken) {
     this.#origin = checkedServerOrigin(address);
     // A header can't carry a line break or a control character; fetch would fail as if offline.
     if (!/^[\x21-\x7e]+$/.test(token)) {
@@ -82,6 +115,7 @@ export class ServerConnection {
     }
     this.#token = token;
     this.#fetch = send;
+    this.#access = accessHeaders(access);
   }
 
   /** The origin calls go to, which names the server in a source the client stands in for. */
@@ -99,6 +133,8 @@ export class ServerConnection {
     const headers: Record<string, string> = {
       accept: call === "changes" ? "text/event-stream" : "application/json",
       authorization: `Bearer ${this.#token}`,
+      // Every request goes to the paired origin and no redirect is followed, so these never leave it.
+      ...this.#access,
     };
     if (body !== undefined) headers["content-type"] = "application/json";
     let response: Response;
@@ -130,6 +166,13 @@ async function read(method: string, call: string, response: Response): Promise<S
     );
   }
   if (response.ok) return { kind: "ok", response };
+  if (isAccessRefusal(response)) {
+    await response.body?.cancel();
+    throw new ServerClientError(
+      `The server's access check refused ${method} ${call} with ${response.status}.`,
+      "access-refused",
+    );
+  }
   if (response.status === 401) {
     await response.body?.cancel();
     return { kind: "refused", reason: "signed-out" };

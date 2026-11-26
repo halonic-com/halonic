@@ -105,7 +105,10 @@ export {
   type ServerAgentMessagingOptions,
 } from "./messaging-client.ts";
 export {
+  type AccessToken,
+  accessHeaders,
   checkedServerOrigin,
+  isAccessRefusal,
   ServerClientError,
   type ServerClientFailure,
   type ServerFetch,

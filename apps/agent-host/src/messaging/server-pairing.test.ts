@@ -107,7 +107,7 @@ verifies("agent-host.server-engine-pairing", () => {
       expect(await pair(on.server.address)).toEqual({ state: "not_halonic" });
       on.pairingServer.hello = () =>
         new Response(null, { status: 302, headers: { location: "/" } });
-      expect(await pair(on.server.address)).toEqual({ state: "not_halonic" });
+      expect(await pair(on.server.address)).toEqual({ state: "access_refused" });
       on.pairingServer.unreachable = true;
       expect(await pair(on.server.address)).toEqual({ state: "unreachable" });
       expect(on.pairingServer.calls("/api/pair")).toEqual([]);
@@ -167,7 +167,7 @@ verifies("agent-host.server-engine-pairing", () => {
         pairing: undefined,
         log: () => {},
       });
-      expect(routes).toHaveLength(5);
+      expect(routes).toHaveLength(6);
       for (const route of routes) {
         expect(messagingOnlyPrefixes.some((prefix) => route.path.startsWith(prefix))).toBe(true);
       }

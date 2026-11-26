@@ -103,6 +103,8 @@ export { type RunNoticeClicks, shellRunNoticeClicks } from "./run-notice-clicks.
 export { scopeToAccount } from "./scope-to-account.ts";
 export {
   hostServerEngine,
+  type ServerAccess,
+  type ServerAccessSaved,
   type ServerEngine,
   type ServerEngineLeft,
   ServerEngineService,

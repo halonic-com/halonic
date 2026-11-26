@@ -93,6 +93,7 @@ export const agentHostRequestRoutes = [
   "POST /v1/messaging/pull-requests",
   "POST /v1/messaging/server-engine/state",
   "POST /v1/messaging/server-engine/pair",
+  "POST /v1/messaging/server-engine/access",
   "POST /v1/messaging/server-engine/pair-status",
   "POST /v1/messaging/server-engine/pair-cancel",
   "POST /v1/messaging/server-engine/use-this-computer",

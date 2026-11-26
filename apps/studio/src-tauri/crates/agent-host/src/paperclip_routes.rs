@@ -93,6 +93,14 @@ pub(crate) const PAPERCLIP_ROUTES: &[(&str, Route)] = &[
         ),
     ),
     (
+        "POST /v1/messaging/server-engine/access",
+        route(
+            Method::Post,
+            "/v1/messaging/server-engine/access",
+            Answer::Json,
+        ),
+    ),
+    (
         "POST /v1/messaging/server-engine/pair-status",
         route(
             Method::Post,

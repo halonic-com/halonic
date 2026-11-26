@@ -1,6 +1,7 @@
 import { ServerAgentMessaging } from "@halonicjs/host-server";
 import { type AgentMessaging, type SecretStore, serverPairingSecretName } from "@halonicjs/ports";
 import type { MessagingEngineSetting } from "./messaging-engine-setting.ts";
+import { type KeptPairing, keptPairing } from "./server-access.ts";
 
 /**
  * Each workspace's device token for its server, in the OS keychain under
@@ -17,13 +18,14 @@ export class ServerPairings {
   }
 
   /**
-   * The workspace's device token, or `undefined` when it has none.
+   * The workspace's device token and Access service token, or `undefined` when it has no pairing.
    *
    * @throws the keychain's error when it can't be read
    */
-  async token(workspaceKey: string): Promise<string | undefined> {
+  async kept(workspaceKey: string): Promise<KeptPairing | undefined> {
     if (this.#keychain === undefined) return undefined;
-    return (await this.#keychain.get(serverPairingSecretName(workspaceKey))) ?? undefined;
+    const value = await this.#keychain.get(serverPairingSecretName(workspaceKey));
+    return value === null ? undefined : keptPairing(value);
   }
 }
 
@@ -61,9 +63,9 @@ export async function joinedEngineOf(
   const { key, engine } = await options.setting.read(workspace);
   if (engine.kind === "this-computer") return engine;
   const { address } = engine;
-  let token: string | undefined;
+  let kept: KeptPairing | undefined;
   try {
-    token = await options.pairings.token(key);
+    kept = await options.pairings.kept(key);
   } catch (error) {
     options.warn(
       `This computer's pairing with ${address} couldn't be read (${errorName(error)}), ` +
@@ -71,19 +73,20 @@ export async function joinedEngineOf(
     );
     return { kind: "server", address, messaging: undefined };
   }
-  if (token === undefined) return { kind: "server", address, messaging: undefined };
+  if (kept === undefined) return { kind: "server", address, messaging: undefined };
   try {
     const { fetch, now } = options;
     const messaging = new ServerAgentMessaging({
       address,
-      token,
+      token: kept.token,
+      ...(kept.access === undefined ? {} : { access: kept.access }),
       label: new URL(address).host,
       ...(fetch === undefined ? {} : { fetch: (request: Request) => fetch(request) }),
       ...(now === undefined ? {} : { now }),
     });
     return { kind: "server", address, messaging };
   } catch (error) {
-    // The client names the reason only (a token a header can't carry), never the token.
+    // The client names the reason only (a token or Access value a header can't carry), never the token.
     options.warn(`The pairing with ${address} can't be used (${errorName(error)}).`);
     return { kind: "server", address, messaging: undefined };
   }

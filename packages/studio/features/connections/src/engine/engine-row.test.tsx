@@ -55,6 +55,59 @@ async function pick(input: HTMLInputElement | undefined) {
 }
 
 verifies("connections.engine-row", () => {
+  describe("the Access client ID and secret", () => {
+    it("shows the access check's refusal with Update access", async () => {
+      const { root } = await showRow({
+        state: {
+          ...server,
+          server: { state: "access-refused", checkedAt: "2026-11-24T14:02:00.000Z" },
+        },
+      });
+      expect(root.textContent).toContain(
+        "The server's access check refused this computer. Check the Access client ID and secret.",
+      );
+      expect(button("Update access", root)).toBeDefined();
+    });
+
+    it("saves new values without pairing again, and announces it", async () => {
+      const { root, engine, said } = await showRow({ state: checked("online") });
+      await press(button("Update access", root));
+      const [clientId, clientSecret] = [...(dialog()?.querySelectorAll("input") ?? [])];
+      typeInto(clientId ?? null, "new-id.access");
+      typeInto(clientSecret ?? null, "new-secret");
+      await press(button("Save", dialog() ?? document));
+      expect(engine.accesses).toEqual([{ clientId: "new-id.access", clientSecret: "new-secret" }]);
+      expect(engine.calls).not.toContain("pair");
+      expect(said).toEqual(["Saved the Access client ID and secret."]);
+    });
+
+    it("clears them when both are empty, and refuses just one", async () => {
+      const { root, engine, said } = await showRow({ state: checked("online") });
+      await press(button("Update access", root));
+      const [clientId] = [...(dialog()?.querySelectorAll("input") ?? [])];
+      typeInto(clientId ?? null, "only-id");
+      await press(button("Save", dialog() ?? document));
+      expect(engine.accesses).toEqual([]);
+      typeInto(clientId ?? null, "");
+      await press(button("Save", dialog() ?? document));
+      expect(engine.accesses).toEqual([undefined]);
+      expect(said).toEqual(["Halonic no longer sends an Access client ID and secret."]);
+    });
+
+    it("says so when the server's access check still refuses the new values", async () => {
+      const { root, said } = await showRow({
+        state: checked("online"),
+        access: { state: "saved", server: "access-refused" },
+      });
+      await press(button("Update access", root));
+      const [clientId, clientSecret] = [...(dialog()?.querySelectorAll("input") ?? [])];
+      typeInto(clientId ?? null, "id");
+      typeInto(clientSecret ?? null, "secret");
+      await press(button("Save", dialog() ?? document));
+      expect(said[0]).toContain("access check refused this computer");
+    });
+  });
+
   describe("the row", () => {
     it("starts on This computer", async () => {
       const { root } = await showRow();
@@ -151,7 +204,7 @@ verifies("connections.engine-row", () => {
       const { root } = await showRow({ state });
       await pick(radio(root, "Server"));
       const fields = [...(dialog()?.querySelectorAll("input") ?? [])];
-      expect(fields.at(-1)?.value).toBe("Ada's MacBook");
+      expect(fields.at(2)?.value).toBe("Ada's MacBook");
     });
 
     it("says so when a cancelled pairing couldn't be dropped on the server", async () => {

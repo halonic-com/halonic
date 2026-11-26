@@ -1,4 +1,5 @@
 import {
+  Button,
   Callout,
   Field,
   RadioGroup,
@@ -11,6 +12,7 @@ import { useCallback, useEffect, useState } from "react";
 import { plainText, withCode } from "../connect/connect-steps.tsx";
 import * as connectWords from "../connections-words.ts";
 import * as words from "../server-engine-words.ts";
+import { AccessDialog } from "./access-dialog.tsx";
 import { PairDialog } from "./pair-dialog.tsx";
 import { type EngineNote, SwitchBackDialog } from "./switch-back-dialog.tsx";
 
@@ -20,13 +22,14 @@ type Engine = "this-computer" | "server";
 type OnServer = Extract<ServerEngineView, { engine: "server" }>;
 
 /** What the row shows under Server: the server's own answer, or why the pairing can't be used. */
-type Shown = "online" | "offline" | "signed-out" | "unreadable";
+type Shown = "online" | "offline" | "signed-out" | "unreadable" | "access-refused";
 
 const chipTones: Record<Shown, StatusChipTone> = {
   online: "success",
   offline: "attention",
   "signed-out": "danger",
   unreadable: "danger",
+  "access-refused": "danger",
 };
 
 /** The address's host, as the row shows it: `halonic.example.com`. */
@@ -57,6 +60,7 @@ export function EngineRow({ engine, announce, now }: EngineRowProps) {
   const [state, setState] = useState<ServerEngineView>();
   const [pairing, setPairing] = useState<{ readonly again?: { readonly address: string } }>();
   const [switching, setSwitching] = useState(false);
+  const [updatingAccess, setUpdatingAccess] = useState(false);
   const [note, setNote] = useState<EngineNote>();
 
   const read = useCallback(() => {
@@ -109,6 +113,7 @@ export function EngineRow({ engine, announce, now }: EngineRowProps) {
                 host={host}
                 state={state}
                 onPairAgain={() => setPairing({ again: { address: state.address } })}
+                onUpdateAccess={() => setUpdatingAccess(true)}
               />
             ) : null,
         };
@@ -136,6 +141,16 @@ export function EngineRow({ engine, announce, now }: EngineRowProps) {
           {...(now === undefined ? {} : { now })}
         />
       )}
+      {updatingAccess ? (
+        <AccessDialog
+          engine={engine}
+          onDone={(done, saved) => {
+            setUpdatingAccess(false);
+            if (done !== undefined) tell({ kind: "line", ...done });
+            if (saved) read();
+          }}
+        />
+      ) : null}
       {switching ? (
         <SwitchBackDialog
           engine={engine}
@@ -184,10 +199,12 @@ function ServerLine({
   host,
   state,
   onPairAgain,
+  onUpdateAccess,
 }: {
   readonly host: string;
   readonly state: OnServer;
   readonly onPairAgain: () => void;
+  readonly onUpdateAccess: () => void;
 }) {
   const shown = shownOf(state);
   const meta = metaOf(state, shown);
@@ -197,12 +214,28 @@ function ServerLine({
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-mono text-body-strong text-fg">{host}</span>
         <StatusChip tone={chipTones[shown]} dot>
-          {connectWords.stateChips[shown === "unreadable" ? "signed-out" : shown]}
+          {
+            connectWords.stateChips[
+              shown === "unreadable" || shown === "access-refused" ? "signed-out" : shown
+            ]
+          }
         </StatusChip>
       </div>
       {meta === undefined ? null : <p className="m-0 text-small text-fg-muted">{meta}</p>}
       {shown === "offline" ? (
         <Callout tone="attention">{words.SERVER_OFFLINE_CALLOUT}</Callout>
+      ) : null}
+      {shown === "access-refused" ? (
+        <Callout tone="danger" action={{ label: words.UPDATE_ACCESS, onClick: onUpdateAccess }}>
+          {words.ACCESS_REFUSED}
+        </Callout>
+      ) : null}
+      {shown !== "access-refused" && state.pairing === "kept" ? (
+        <div>
+          <Button variant="ghost" size="sm" onClick={onUpdateAccess}>
+            {words.UPDATE_ACCESS}
+          </Button>
+        </div>
       ) : null}
       {shown === "signed-out" || shown === "unreadable" ? (
         <Callout tone="danger" action={pairAgain}>
