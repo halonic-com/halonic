@@ -1,5 +1,6 @@
 // What a permission sheet or a connector file asks for: the hosts it may
-// reach, its secrets and its OAuth sign-ins (`assistant.build.named-hosts-secrets`).
+// reach, the secrets it has or points at and its OAuth sign-ins
+// (`assistant.build.named-hosts-secrets`).
 // A `{ fromSetting }` host isn't in it: the person fills that in later.
 
 import { type Connector, type IntegrationSheet, placedSecrets } from "@halonicjs/format";
@@ -17,7 +18,10 @@ export interface AskedHost {
 /** What a sheet or a connector file asks for. */
 export interface Asks {
   readonly hosts: readonly AskedHost[];
-  /** The sheet's secrets by name; a connector has none of its own. */
+  /**
+   * Secrets by name: a sheet's own, or the workspace secrets a connector
+   * points at. Both count against the sign-ins the person named.
+   */
   readonly secrets: readonly string[];
   /** The sheet's OAuth sign-ins by name. */
   readonly oauth: readonly string[];
@@ -55,9 +59,9 @@ export function sheetAsks(sheet: IntegrationSheet): Asks | typeof unreadableUrl 
 
 /**
  * What a connector asks for: the host of an `http` server, the sites of a
- * `stdio` program, or the hosts in a local integration's settings. A
- * setting is where a `{ fromSetting }` host comes from, so the model can't
- * fill one in that the person didn't name.
+ * `stdio` program, or the hosts in a local integration's settings, and the
+ * workspace secrets it points at. A setting is where a `{ fromSetting }`
+ * host comes from, so the model can't fill one in that the person didn't name.
  */
 export function connectorAsks(connector: Connector): Asks | typeof unreadableUrl {
   const { transport } = connector;
@@ -70,7 +74,25 @@ export function connectorAsks(connector: Connector): Asks | typeof unreadableUrl
     const values = Object.values(transport.integration.settings ?? {});
     hosts = settingHosts(values.filter((value) => typeof value === "string"));
   }
-  return hosts === unreadableUrl ? unreadableUrl : { ...nothingAsked, hosts };
+  if (hosts === unreadableUrl) return unreadableUrl;
+  return { ...nothingAsked, hosts, secrets: connectorSecrets(connector) };
+}
+
+/**
+ * The workspace secrets a connector points at, each name once: its
+ * `secret`, and the secret names a local integration's `secrets` and a
+ * program's `secretEnv` map to. A Google connector's `secret` names
+ * nothing the connector uses, but it counts as well: the Build chat has no
+ * reason to write one.
+ */
+function connectorSecrets(connector: Connector): string[] {
+  const { transport } = connector;
+  const names = [
+    connector.secret,
+    ...("integration" in transport ? Object.values(transport.integration.secrets ?? {}) : []),
+    ...("stdio" in transport ? Object.values(transport.stdio.secretEnv ?? {}) : []),
+  ];
+  return [...new Set(names.filter((name) => name !== undefined))];
 }
 
 /** A host written without a scheme, `name` or `name:port`, reached over `https`. */
