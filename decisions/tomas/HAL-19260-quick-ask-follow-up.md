@@ -2,6 +2,7 @@
 
 - Approval: Nina's copy check of quick ask on HAL-18787 asked for the full stop; this follow-up is HAL-19260, and Liam signs this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:njspWf0OkPfM2GO7ngeOdvLVUg8fhm1iJFY6IntqiYkQxq74RHVlpLzl1NEWyecVBL9jJ44jbAyJAKTX2N9EDA==
 
 ## What changes
 
