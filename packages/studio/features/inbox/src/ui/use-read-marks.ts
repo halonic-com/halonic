@@ -1,9 +1,9 @@
-import type { ListRow } from "@halonicjs/studio-kit";
+import type { ListRow, PlainRowAction } from "@halonicjs/studio-kit";
 import { useEffect, useReducer } from "react";
 import type { InboxItem } from "../inbox-items.ts";
 import { type ReadMarks, readKey } from "../read-marks.ts";
 
-/** A row that waits, with the keys of the items it holds: one, or a bundle's cards. */
+/** A row of Needs you, with the read keys of the items it holds: one, or a bundle's cards. */
 export interface ReadRow {
   readonly key: string;
   readonly keys: readonly string[];
@@ -19,9 +19,14 @@ export interface InboxReading {
   /**
    * The rows, each with the blue dot while any item it holds is new. `order` names each row's
    * items by their read keys: the rows that wait, then the other listed rows of the Inbox's own,
-   * such as a fixed setup item or a decided item still open; a row in neither has no dot.
+   * such as a fixed setup item or a decided item still open; a row in neither has no dot. Each
+   * marked row but the `open` one gets **Mark as read** or **Mark as unread** on hover.
    */
-  readonly mark: (rows: readonly ListRow[], order: readonly ReadRow[]) => ListRow[];
+  readonly mark: (
+    rows: readonly ListRow[],
+    order: readonly ReadRow[],
+    open: string | undefined,
+  ) => ListRow[];
   /** How many of the items that wait are new, each card of a bundle on its own. */
   readonly newCount: (order: readonly ReadRow[]) => number;
   /**
@@ -58,11 +63,28 @@ export function useReadMarks(
     redraw();
   }, [marks, opened]);
   const isNew = (key: string) => !marks.isRead(key);
+  /** **Mark as read** marks all a new row holds; **Mark as unread**, a read row's newest. */
+  const rowAction = (title: string, keys: readonly string[], fresh: boolean): PlainRowAction => {
+    const label = fresh ? "Mark as read" : "Mark as unread";
+    const onClick = () => {
+      const newest = keys.at(-1);
+      if (fresh) marks.markRead(keys);
+      else if (newest !== undefined) marks.markUnread(newest);
+      redraw();
+    };
+    return { label, spokenLabel: `${label}: ${title}`, onClick };
+  };
   return {
-    mark: (rows, order) =>
+    mark: (rows, order, open) =>
       rows.map((row) => {
         const keys = order.find((each) => each.key === row.id)?.keys ?? [];
-        return keys.some(isNew) ? { ...row, unread } : row;
+        if (keys.length === 0) return row;
+        const fresh = keys.some(isNew);
+        const marked = fresh ? { ...row, unread } : row;
+        // The open row is read by being open, so it offers neither, as the Messenger's open chat.
+        return row.id === open
+          ? marked
+          : { ...marked, hoverAction: rowAction(row.title, keys, fresh) };
       }),
     newCount: (order) => order.reduce((sum, row) => sum + row.keys.filter(isNew).length, 0),
     markUnread: (close, row) => {

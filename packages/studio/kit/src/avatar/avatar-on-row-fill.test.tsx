@@ -16,7 +16,9 @@ const classesOf = (element: Element | null | undefined) => element?.className.sp
 
 /** The nearest element that marks a muted fill, as `on-muted:` reads it, and how. */
 function fillMarkOf(element: Element) {
-  const marked = element.closest("[data-fill],[data-hover-fill],[data-focus-fill]");
+  const marked = element.closest(
+    "[data-fill],[data-hover-fill],[data-focus-fill],[data-focus-visible-fill]",
+  );
   return {
     marked,
     fill: marked?.getAttribute("data-fill") ?? null,
@@ -109,6 +111,16 @@ verifies("kit.avatar-on-row-fill", () => {
     const current = renderListRow(true, {}, "notes");
     expect(classesOf(current.cell)).toContain("bg-surface-muted");
     expect(fillMarkOf(current.tile)).toMatchObject({ marked: current.row, fill: "muted" });
+  });
+
+  it("marks a plain List row muted on keyboard focus, where its row is filled too", () => {
+    const { row, cell, tile } = renderListRow(true);
+
+    expect(classesOf(cell)).toContain("group-has-[:focus-visible]:bg-surface-muted");
+    expect(fillMarkOf(tile).marked).toBe(row);
+    expect(row.getAttribute("data-focus-visible-fill")).toBe("muted");
+    // Not on any focus inside it: a click's focus leaves the row unfilled.
+    expect(row.getAttribute("data-focus-fill")).toBeNull();
   });
 
   it("marks no fill on an unavailable plain List row, which isn't filled on hover", () => {

@@ -194,7 +194,29 @@ verifies("inbox.read-marks", () => {
     inbox.addSetupSource(fakeSetups("google", [fixed]).source);
     const root = await openInbox(inbox);
     expect(isUnread(root, "Google is set up")).toBe(true);
-    expect(cell(root, "Google is set up").textContent).toMatch(/new/);
+    expect(cell(root, "Google is set up").textContent).toMatch(/new$/);
     expect(heading(root)).toBe("Needs you, 1 waiting, 1 new");
+  });
+
+  it("offers Mark as read on a new row and Mark as unread on a read one, but not on the open row", async () => {
+    const root = await openInbox(inboxOf(fakeRuns([notes, invoice]).runs));
+    const action = (title: string) =>
+      cell(root, title).closest("tr")?.querySelector<HTMLButtonElement>("button") ?? null;
+    expect(action("send_invoice")?.textContent).toBe("Mark as read");
+    expect(action("send_invoice")?.getAttribute("aria-label")).toMatch(
+      /^Mark as read: .*send_invoice/,
+    );
+
+    await press(action("send_invoice"));
+    expect(isUnread(root, "send_invoice")).toBe(false);
+    expect(heading(root)).toBe("Needs you, 2 waiting, 1 new");
+    expect(action("send_invoice")?.textContent).toBe("Mark as unread");
+
+    await press(action("send_invoice"));
+    expect(isUnread(root, "send_invoice")).toBe(true);
+    expect(heading(root)).toBe("Needs you, 2 waiting, 2 new");
+
+    await press(cell(root, "create_note"));
+    expect(action("create_note")).toBeNull();
   });
 });
