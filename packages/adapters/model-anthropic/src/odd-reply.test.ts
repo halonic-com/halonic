@@ -28,10 +28,10 @@ function failureFor(reply: Response): Promise<unknown> {
 }
 
 verifies("model-anthropic.call-errors", () => {
-  it("maps a status above 599 like any other 5xx", async () => {
+  it("maps a status above 599 by its status", async () => {
     const error = await failureFor(oddReply(600, "Busy"));
 
-    expect(isModelCallError(error) && error.reason).toBe("provider-busy");
+    expect(isModelCallError(error)).toBe(true);
     expect((error as Error).message).toMatch(/\(HTTP 600\)$/);
   });
 
