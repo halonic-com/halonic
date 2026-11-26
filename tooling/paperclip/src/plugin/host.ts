@@ -10,6 +10,7 @@ import type {
   TaskRow,
   WriteOutcome,
 } from "../pr-watcher/paperclip.ts";
+import { waitingRunStatuses } from "../pr-watcher/paperclip.ts";
 import {
   ancestorIds,
   finished,
@@ -187,6 +188,7 @@ export function paperclipHost(
             identifier: issue.identifier ?? "",
             assigneeAgentId: issue.assigneeAgentId,
             running: issue.activeRun != null,
+            ...(issue.activeRun == null ? {} : { runStatus: issue.activeRun.status }),
             openChildren: parents.has(issue.id),
             monitorNextCheckAt: isoOrNull(issue.monitorNextCheckAt),
             monitorLastTriggeredAt: isoOrNull(issue.monitorLastTriggeredAt),
@@ -245,14 +247,17 @@ export function paperclipHost(
       await host.issues.createComment(taskId, body, companyId);
       return "written";
     },
-    async handOff(taskId, { from, to }, body, key) {
+    async handOff(taskId, { from, to }, body, key, options = {}) {
       // Re-read: the author may have handed it on, closed it or started a run during the pass.
       const issue = await host.issues.get(taskId, companyId);
+      const run = issue?.activeRun;
+      const waiting = options.overQueuedRun === true && waitingRunStatuses.has(run?.status ?? "");
+      const blocking = run != null && !waiting;
       if (
         issue === null ||
         !watchedStatuses.has(issue.status) ||
         issue.assigneeAgentId !== from ||
-        issue.activeRun != null
+        blocking
       ) {
         return "closed";
       }

@@ -85,7 +85,9 @@ export const manifest: PaperclipPluginManifestV1 = {
     // readers, and GETs the CI status file and Prometheus at the addresses in the settings
     // (src/plugin/merge-control-reader.ts). The front bot sends one POST to
     // api.anthropic.com/v1/messages per board message on a chat task, with its own key, and
-    // nothing else (src/plugin/front-bot-calls.ts, HAL-19136).
+    // nothing else (src/plugin/front-bot-calls.ts, HAL-19136). The PR watcher GETs Liam's and
+    // Julian's newest runs from Paperclip's API at the address in the settings, to move a
+    // limited reviewer's review (src/plugin/reviewer-runs.ts, HAL-19203).
     "http.outbound",
     "secrets.read-ref",
     // pr_status: GitHub reads only, with the same token and origin guard.
@@ -274,13 +276,13 @@ export const manifest: PaperclipPluginManifestV1 = {
         type: "string",
         title: "Paperclip API",
         description:
-          "The address of Paperclip's API as the plugin reaches it, scheme, host and port only, for example http://127.0.0.1:3100. The task effort handler sends its task changes there.",
+          "The address of Paperclip's API as the plugin reaches it, scheme, host and port only, for example http://127.0.0.1:3100. The task effort handler sends its task changes there, and the PR watcher reads Liam's and Julian's newest runs there (GET only) to move a review off a reviewer who is parked or at a limit.",
       },
       paperclipApiKey: {
         type: "string",
         title: "Paperclip API key",
         description:
-          "The secret with the API key the task effort handler sends its task changes with. It sends only a task's assigneeAdapterOverrides, with the effort changed.",
+          "The secret with the API key the task effort handler sends its task changes with. It sends only a task's assigneeAdapterOverrides, with the effort changed. The PR watcher reads Liam's and Julian's runs with it too (GET only).",
         format: "secret-ref",
       },
       difficultyTaggerForVersion: {

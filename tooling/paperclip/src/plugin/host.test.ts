@@ -145,6 +145,28 @@ verifies("paperclip.pr-watcher-handoff", () => {
     }
   });
 
+  test("moves a limited reviewer's task over a queued or parked run, never a working one", async () => {
+    // HAL-19203: the move cancels the queued run; a run going stays untouched.
+    for (const status of ["queued", "scheduled_retry"]) {
+      const { host, writes } = fakeHost([{ ...authorsTask, activeRun: { id: "run-1", status } }]);
+      const paperclip = paperclipHost(host, "acme");
+      const options = { overQueuedRun: true };
+      expect(await paperclip.handOff("task-1", change, "PR watcher: x", "k1", options)).toBe(
+        "written",
+      );
+      expect(writes[0]).toMatchObject({ kind: "update", patch: { status: "todo" } });
+    }
+    for (const activeRun of [{ id: "run-1", status: "running" }, { id: "run-1" }]) {
+      const { host, writes } = fakeHost([{ ...authorsTask, activeRun }]);
+      const paperclip = paperclipHost(host, "acme");
+      const options = { overQueuedRun: true };
+      expect(await paperclip.handOff("task-1", change, "PR watcher: x", "k1", options)).toBe(
+        "closed",
+      );
+      expect(writes).toEqual([]);
+    }
+  });
+
   test("posts a note as a comment only, waking nobody", async () => {
     const { host, writes } = fakeHost([authorsTask]);
     expect(

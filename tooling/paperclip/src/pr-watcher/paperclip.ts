@@ -6,12 +6,21 @@
  * the task already has, and a raise of a task's priority to `high`.
  */
 
+/**
+ * Statuses of a run that isn't working yet: queued, or parked until a retry
+ * (a pool wait, a limit's reset). Any other status, or none known, counts as
+ * working.
+ */
+export const waitingRunStatuses: ReadonlySet<string> = new Set(["queued", "scheduled_retry"]);
+
 /** An open task, as the watcher reads it. */
 export interface TaskRow {
   readonly id: string;
   readonly identifier: string;
   readonly assigneeAgentId: string | null;
   readonly running: boolean;
+  /** The status of that run (`running`, `queued`, `scheduled_retry`); unset when unknown or none. */
+  readonly runStatus?: string;
   /** It has a child task that isn't done or cancelled. */
   readonly openChildren: boolean;
   /** When its Paperclip monitor checks next, as an ISO time, or null without one. */
@@ -71,13 +80,16 @@ export interface Paperclip {
   /**
    * Comments, then gives the task to the reviewer `to` with status `todo` and
    * wakes them, if the author `from` still holds it with no run going.
-   * `key` makes a repeated wake-up a no-op.
+   * `key` makes a repeated wake-up a no-op. With `overQueuedRun`, a run that
+   * is only queued or parked doesn't stop it: the move cancels that run
+   * (a limited reviewer's, HAL-19203).
    */
   handOff(
     taskId: string,
     change: { readonly from: string; readonly to: string },
     body: string,
     key: string,
+    options?: { readonly overQueuedRun?: boolean },
   ): Promise<WriteOutcome>;
   /** Comments on the task and wakes nobody. */
   note(taskId: string, body: string): Promise<WriteOutcome>;

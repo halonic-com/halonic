@@ -15,14 +15,16 @@ import type { FoundPulls, PullRef } from "./discover.ts";
 import { type PullFactsReader, pullKey } from "./facts.ts";
 import type { ReviewerRoute } from "./handoff.ts";
 import { type HeldHead, withHeld } from "./held.ts";
+import { emptyMemory, isSelf, readMemory } from "./memory.ts";
 import { doneMessage, wakeMessage } from "./messages.ts";
 import { postponeUntil } from "./monitors.ts";
-import type { CommentRow, Paperclip, TaskRow } from "./paperclip.ts";
+import { type Paperclip, type TaskRow, waitingRunStatuses } from "./paperclip.ts";
 import type { RebaseOnly } from "./rebase-only.ts";
+import { noReroute, rerouteStep } from "./reroute.ts";
 import { reviewSteps } from "./review-steps.ts";
 import { noReviewWait, noteReviewWait, oldestFirst, type WaitRow } from "./review-wait.ts";
+import type { ReviewerLimits } from "./reviewer-limits.ts";
 import { type StackRebase, stackStep } from "./stack-rebase.ts";
-import { queueRequestsOf } from "./unneeded-rebase.ts";
 import type { PullSummary } from "./wake-status.ts";
 
 /**
@@ -56,6 +58,8 @@ export interface TickOptions {
    * (HAL-18197); nothing when unset.
    */
   readonly observe?: TaskObserver;
+  /** Whether a reviewer is parked or at a limit, by agent id (HAL-19203); without it, no review moves. */
+  readonly limits?: ReviewerLimits | undefined;
 }
 
 /** Called with what the watcher read about one task its author holds. */
@@ -83,6 +87,10 @@ export interface TickSummary {
   readonly reviewWaits: number;
   /** Tasks raised to `high` for a green head unapproved for over an hour (HAL-17920). */
   readonly priorityRaised: number;
+  /** Tasks moved from a limited reviewer to the other one (HAL-19203). */
+  readonly rerouted: number;
+  /** Tasks noted because both reviewers are limited (HAL-19203). */
+  readonly bothLimited: number;
   /** Every handed-over head still waiting for its approval, oldest handoff first. */
   readonly longestWaits: readonly WaitRow[];
   readonly failed: readonly string[];
@@ -94,79 +102,6 @@ interface TickRefs {
   readonly found: FoundPulls;
   /** The facts of every pull request whose author or reviewer holds its task, or why they couldn't be read. */
   readonly facts: ReadonlyMap<string, PullFacts> | Error;
-}
-
-const emptyMemory: Memory = {
-  reported: new Set<string>(),
-  seenUntil: undefined,
-  heldAt: undefined,
-  lastCommentAt: undefined,
-};
-
-const markerPattern = /<!-- pr-watcher: (.+?) -->/g;
-
-/** The line an author puts in a task comment to keep the task open after a merge. */
-const holdPattern = /^[ \t]*PR watcher: more PRs to come[ \t.]*$/im;
-
-/** The line an author of a security or release pull request puts in a task comment: its review has a task of its own. */
-const ownReviewPattern = /^[ \t]*PR watcher: own review task[ \t.]*$/im;
-
-/**
- * A comment the watcher wrote. The host stores no plugin id on a plugin's
- * comment, so it is one with neither an agent nor a user as author that
- * starts with the watcher's name.
- */
-export function isSelf(comment: CommentRow): boolean {
-  return (
-    comment.authorAgentId === null &&
-    comment.authorUserId === null &&
-    comment.body.startsWith("PR watcher:")
-  );
-}
-
-/** When the newest of these comments was written. */
-function newestAt(comments: readonly CommentRow[]): string | undefined {
-  return comments.reduce<string | undefined>(
-    (newest, comment) =>
-      newest === undefined || comment.createdAt > newest ? comment.createdAt : newest,
-    undefined,
-  );
-}
-
-/** What the watcher reported before, from its own comments and the author's. */
-export function readMemory(comments: readonly CommentRow[], ownerId: string): Memory {
-  const reported = new Set<string>();
-  let seenUntil: string | undefined;
-  for (const comment of comments) {
-    const self = isSelf(comment);
-    if (self) {
-      for (const match of comment.body.matchAll(markerPattern)) {
-        reported.add(match[1] ?? "");
-      }
-    }
-    const counts = self || comment.authorAgentId === ownerId;
-    if (counts && (seenUntil === undefined || comment.createdAt > seenUntil)) {
-      seenUntil = comment.createdAt;
-    }
-  }
-  const authorLast = comments
-    .filter((comment) => comment.authorAgentId === ownerId)
-    .reduce<CommentRow | undefined>(
-      (newest, comment) =>
-        newest === undefined || comment.createdAt > newest.createdAt ? comment : newest,
-      undefined,
-    );
-  return {
-    reported,
-    seenUntil,
-    heldAt: holdPattern.test(authorLast?.body ?? "") ? authorLast?.createdAt : undefined,
-    ownReview: ownReviewPattern.test(authorLast?.body ?? ""),
-    authorLastAt: newestAt(comments.filter((comment) => comment.authorAgentId === ownerId)),
-    lastCommentAt: newestAt(comments.filter((comment) => !isSelf(comment))),
-    queueRequests: queueRequestsOf(
-      comments.filter((comment) => !isSelf(comment)).map(({ body }) => body),
-    ),
-  };
 }
 
 /** The agent every branch names, by its id, when there is one and Paperclip knows it. */
@@ -208,6 +143,19 @@ function reviewerHeldPulls(
   );
   const held = holder !== null && reviewers.includes(holder) && holder !== author;
   return held && !task.running ? pulls : [];
+}
+
+/**
+ * The same, but a run that is only queued or parked doesn't count: moving a
+ * limited reviewer's task cancels it (HAL-19203).
+ */
+function reroutablePulls(
+  task: TaskRow,
+  found: FoundPulls,
+  owners: ReadonlyMap<string, string>,
+): readonly PullRef[] {
+  const working = task.running && !waitingRunStatuses.has(task.runStatus ?? "");
+  return working ? [] : reviewerHeldPulls({ ...task, running: false }, found, owners);
 }
 
 function factsOf(ref: PullRef, facts: TickRefs["facts"]): PullFacts {
@@ -385,6 +333,16 @@ function reviewWaitOf(options: TickOptions, task: TaskRow, refs: TickRefs) {
   );
 }
 
+/** The reroute step for a task a limited reviewer holds; nothing for any other task. */
+function rerouteOf(options: TickOptions, task: TaskRow, refs: TickRefs) {
+  // A parked task waits on something else first; its review isn't due.
+  const refsOf = task.parked === true ? [] : reroutablePulls(task, refs.found, refs.owners);
+  const pulls = refsOf.map((ref) => factsOf(ref, refs.facts));
+  return pulls.length === 0
+    ? Promise.resolve(noReroute)
+    : rerouteStep({ ...options, owners: refs.owners }, task, pulls);
+}
+
 /** What one tick counts, apart from the tasks it couldn't check. */
 type Counts = Omit<TickSummary, "failed" | "longestWaits">;
 
@@ -398,6 +356,8 @@ const zero: Counts = {
   warned: 0,
   reviewWaits: 0,
   priorityRaised: 0,
+  rerouted: 0,
+  bothLimited: 0,
 };
 
 function one(yes: boolean): number {
@@ -420,7 +380,11 @@ async function checkTask(
     decision.kind === "skip"
       ? await reviewStepsOf(options, task, refs)
       : { handedOff: false, warned: false };
-  const waited = decision.kind === "skip" ? await reviewWaitOf(options, task, refs) : noReviewWait;
+  const moved = decision.kind === "skip" ? await rerouteOf(options, task, refs) : noReroute;
+  const waited =
+    decision.kind === "skip" && !moved.rerouted
+      ? await reviewWaitOf(options, task, refs)
+      : noReviewWait;
   waits.push(...waited.waits);
   const acted = await act(options, task, decision);
   return {
@@ -433,6 +397,8 @@ async function checkTask(
     warned: one(review.warned),
     reviewWaits: one(waited.noted),
     priorityRaised: one(waited.raised),
+    rerouted: one(moved.rerouted),
+    bothLimited: one(moved.bothLimited),
   };
 }
 
@@ -449,7 +415,7 @@ export async function tick(options: TickOptions): Promise<TickSummary> {
   const tasks = await options.paperclip.openTasks();
   const wanted = tasks.flatMap((task) => [
     ...watchedPulls(task, found, owners),
-    ...reviewerHeldPulls(task, found, owners),
+    ...reroutablePulls(task, found, owners),
   ]);
   // One read for every task; if it fails, each of those tasks reports it below.
   const facts = await options.facts(wanted).catch((error: unknown) => error as Error);

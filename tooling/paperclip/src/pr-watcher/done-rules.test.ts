@@ -10,7 +10,8 @@ import {
   restFacts,
   task,
 } from "./fakes.test-helper.ts";
-import { isSelf, tick } from "./watch.ts";
+import { isSelf } from "./memory.ts";
+import { tick } from "./watch.ts";
 
 /**
  * The rules that keep a task open now that the watcher finds pull requests
@@ -66,6 +67,8 @@ verifies("paperclip.pr-watcher-done", () => {
       warned: 0,
       reviewWaits: 0,
       priorityRaised: 0,
+      rerouted: 0,
+      bothLimited: 0,
       longestWaits: [],
       failed: [],
     });
@@ -126,6 +129,8 @@ verifies("paperclip.pr-watcher-done", () => {
       warned: 0,
       reviewWaits: 0,
       priorityRaised: 0,
+      rerouted: 0,
+      bothLimited: 0,
       longestWaits: [],
       failed: [],
     });
@@ -144,6 +149,8 @@ verifies("paperclip.pr-watcher-done", () => {
       warned: 0,
       reviewWaits: 0,
       priorityRaised: 0,
+      rerouted: 0,
+      bothLimited: 0,
       longestWaits: [],
       failed: [],
     });
