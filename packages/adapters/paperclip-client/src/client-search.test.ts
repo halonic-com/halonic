@@ -145,6 +145,7 @@ verifies("agent-host.paperclip-key", () => {
         // Pull requests and the merge queue (HAL-17681), pinned in team-pulls.test.ts.
         "pullRequestsSummary",
         "pullRequestDetail",
+        "chatNotes",
         // Workflow task writes (HAL-17975), pinned in tasks.test.ts.
         "getTask",
         "wakeTask",

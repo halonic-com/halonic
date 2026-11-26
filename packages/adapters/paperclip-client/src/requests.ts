@@ -100,6 +100,9 @@ export const paperclipRequests = {
     method: "GET",
     path: "/api/plugins/halonic.agent-tools/api/github/pr/:number",
   },
+  // The front bot's comment ids on a chat (`paperclip-client.bot-notes`, HAL-19646), from
+  // the agent-tools plugin's board-only route, so its lines show as the agent's, not a person's.
+  chatNotes: { method: "GET", path: "/api/plugins/halonic.agent-tools/api/chat-notes/:task" },
   // Workflow task writes (`paperclip-client.task-writes`, HAL-17975): a routine wakes an
   // agent or closes a task, each with a comment. Both use Paperclip's task update, so
   // each row also pins its body: exactly these fields, and this one status.
