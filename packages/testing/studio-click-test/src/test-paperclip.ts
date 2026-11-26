@@ -78,6 +78,8 @@ export function testPaperclip(
       });
       if (answer.status === 401) return false;
       if (!answer.ok) throw new Error(`GET /api/cli-auth/me: HTTP ${answer.status}`);
+      // The test Paperclip is `local_trusted`: a loopback call whose key it doesn't accept still
+      // answers 200, as the implicit local board. Only `board_key` says the key itself worked.
       return stringField(await answer.json(), "source") === "board_key";
     },
   };

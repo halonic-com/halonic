@@ -29,7 +29,10 @@ function fakeGitHub(run: Partial<ClickTestRun> = {}): ClickTestRunReader & { rea
       reads.push(runId);
       return {
         url: `https://github.com/acme/studio/actions/runs/${runId}`,
-        workflowName: "Studio preview (Windows, unsigned)",
+        repository: "acme/studio",
+        path: ".github/workflows/studio-preview.yml",
+        headRepository: "acme/studio",
+        event: "workflow_dispatch",
         table,
         screenshots: [
           { name: "01-engine-answers.png", png },
@@ -96,12 +99,16 @@ verifies("paperclip.click-test-evidence", () => {
       expect(paperclip.comments).toEqual([]);
     });
 
-    test("refuses another workflow's run and posts nothing", async () => {
+    test.each([
+      ["another workflow's", { path: ".github/workflows/ci.yml" }, "ran .github/workflows/ci.yml"],
+      ["a fork's", { headRepository: "mallory/studio" }, "ran code from mallory/studio"],
+      ["a pull request's", { event: "pull_request" }, "was started by pull_request"],
+    ] as const)("refuses %s run and posts nothing", async (_, run, reason) => {
       const paperclip = fakePaperclip();
-      const github = fakeGitHub({ workflowName: "CI" });
-      await expect(postClickTestEvidence("1", "ACME-7", github, paperclip)).rejects.toThrow(
-        'is a "CI" run',
-      );
+      await expect(
+        postClickTestEvidence("1", "ACME-7", fakeGitHub(run), paperclip),
+      ).rejects.toThrow(reason);
+      expect(paperclip.attached).toEqual([]);
       expect(paperclip.comments).toEqual([]);
     });
 

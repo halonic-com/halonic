@@ -12,15 +12,17 @@ export function ghClickTestRuns(repo: string): ClickTestRunReader {
   return {
     read: async (runId) => {
       const { stdout } = await run("gh", [
-        "run",
-        "view",
-        runId,
-        "-R",
-        repo,
-        "--json",
-        "url,workflowName",
+        "api",
+        `repos/${repo}/actions/runs/${runId}`,
+        "--jq",
+        "{url: .html_url, path: .path, headRepository: .head_repository.full_name, event: .event}",
       ]);
-      const view = JSON.parse(stdout) as { url: string; workflowName: string };
+      const view = JSON.parse(stdout) as {
+        url: string;
+        path: string;
+        headRepository: string;
+        event: string;
+      };
       const folder = await mkdtemp(join(tmpdir(), "click-test-"));
       try {
         await run("gh", [
@@ -42,7 +44,7 @@ export function ghClickTestRuns(repo: string): ClickTestRunReader {
             png: new Uint8Array(await readFile(join(folder, "screenshots", name))),
           })),
         );
-        return { url: view.url, workflowName: view.workflowName, table, screenshots };
+        return { ...view, repository: repo, table, screenshots };
       } finally {
         await rm(folder, { recursive: true, force: true });
       }
