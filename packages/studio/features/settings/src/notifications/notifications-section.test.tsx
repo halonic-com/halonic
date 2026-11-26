@@ -67,11 +67,11 @@ verifies("settings.notifications-section", () => {
     );
   });
 
-  it("is a host section named Notifications, after Assistant and before Agent sandbox, hidden until run notifications show", () => {
+  it("is a host section named Notifications, after Formats in General, hidden until run notifications show", () => {
     expect(settingsSectionsFor(false).map(({ id }) => id)).not.toContain("notifications");
     const sections = settingsSectionsFor(true);
     const notifications = sections.find(({ id }) => id === "notifications");
-    expect(notifications).toMatchObject({ title: "Notifications", scope: "host", order: 20 });
+    expect(notifications).toMatchObject({ title: "Notifications", scope: "host", order: 25 });
   });
 
   it("says the settings couldn't be read, with Try again, and shows the switches once they are", async () => {
