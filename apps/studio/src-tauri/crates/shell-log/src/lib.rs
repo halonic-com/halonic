@@ -3,8 +3,10 @@
 //! `studio/shell.log` in the profile, where a person and the doctor can
 //! read it.
 //!
-//! - [`start`] names the file once, when the shell starts. Until then, and
-//!   in tests, a record goes to stderr only.
+//! - [`start`] names the file once, when the shell starts. A record made
+//!   before that goes to stderr and is held, up to [`MAX_HELD_LINES`], then
+//!   written when the log starts, so what a plugin records in its `setup`,
+//!   which runs first, isn't lost.
 //! - [`record`] writes one line: the time, where it comes from and what
 //!   happened. Callers name things and give error kinds, never a secret's
 //!   value or a token.
@@ -14,6 +16,7 @@
 //!   replacing an older one, and a new file starts.
 //! - On macOS and Linux only its owner can read the file.
 
+mod held;
 mod key_shape;
 mod line;
 
@@ -23,6 +26,7 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock, PoisonError};
 
+pub use held::{HeldLines, MAX_HELD_LINES};
 pub use key_shape::find_key_shape;
 pub use line::{MAX_LINE_BYTES, log_line};
 
@@ -107,23 +111,57 @@ pub fn set_aside(file: &Path) -> PathBuf {
 
 static LOG: OnceLock<ShellLog> = OnceLock::new();
 
-/// Names the shell's log file. Only the first call counts.
+/// The lines recorded before [`start`]. `record` and `start` both look at
+/// [`LOG`] while holding it, so no line is held after the log started.
+static HELD: Mutex<HeldLines> = Mutex::new(HeldLines::new());
+
+/// Names the shell's log file and writes the lines recorded before it, in
+/// order. Only the first call counts.
 pub fn start(file: PathBuf) {
-    let _ = LOG.set(ShellLog::new(file));
+    let mut held = HELD.lock().unwrap_or_else(PoisonError::into_inner);
+    if LOG.set(ShellLog::new(file)).is_err() {
+        return;
+    }
+    let Some(log) = LOG.get() else {
+        return;
+    };
+    let (lines, left_out) = held.take();
+    for line in lines {
+        write(log, &line);
+    }
+    if left_out > 0 {
+        let note = format!("{left_out} more lines recorded before the log started were left out");
+        write(
+            log,
+            &log_line(std::time::SystemTime::now(), "shell log", &note),
+        );
+    }
 }
 
-/// Records what happened in `source`: in the log once [`start`]ed, and on
-/// stderr, which a development build shows. A log that can't be written
-/// says so on stderr; nothing else can be done with it.
+/// Records what happened in `source`: on stderr, which a development build
+/// shows, and in the log, or held for it until it [`start`]s.
 // The one place the shell prints to stderr (the workspace denies
 // `print_stderr` everywhere else), so every record reaches the log too.
 #[allow(clippy::print_stderr)]
 pub fn record(source: &str, message: impl Display) {
     let line = log_line(std::time::SystemTime::now(), source, &message.to_string());
     eprint!("{line}");
-    if let Some(log) = LOG.get()
-        && let Err(error) = log.append(&line)
-    {
+    if let Some(log) = LOG.get() {
+        write(log, &line);
+        return;
+    }
+    let mut held = HELD.lock().unwrap_or_else(PoisonError::into_inner);
+    match LOG.get() {
+        Some(log) => write(log, &line),
+        None => held.hold(line),
+    }
+}
+
+/// Appends `line` to `log`. A log that can't be written says so on stderr;
+/// nothing else can be done with it.
+#[allow(clippy::print_stderr)]
+fn write(log: &ShellLog, line: &str) {
+    if let Err(error) = log.append(line) {
         eprintln!(
             "shell log: {} can't be written: {error}",
             log.file().display()

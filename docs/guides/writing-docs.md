@@ -98,6 +98,7 @@ the same pull request.
 | **`halonic`** | the command-line tool | the `studio` command |
 | **workspace** | a folder, usually a git repository, that holds a `workspace.yaml` and everything Halonic works with | project, repo (for the folder) |
 | **hub** | one area of a workspace, in the `hubs/` folder, with its own agents, workflows, skills, knowledge, connectors and routines | team, space |
+| **team** | a Paperclip company connected to Studio, whose agents you chat with in the Messenger and ask from quick ask, next to a workspace's agents. "Your team" also means the people you share a workspace with | company (for a connected team), hub |
 | **agent** | an AI model with instructions and tools, defined in a file | bot, assistant (except the built-in assistant) |
 | **workflow** | a defined sequence of steps that agents and people carry out | flow, pipeline |
 | **routine** | starts a workflow or an agent by itself: on a schedule, at an interval or on a trigger | job, cron |

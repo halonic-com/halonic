@@ -12,7 +12,7 @@ export const quickAskWords = {
   /** The text box's placeholder once the agent has answered: the next question is a reply. */
   reply: (agent: string) => `Reply to ${agent}`,
   /** The agent button's name for screen readers. */
-  agentButton: (agent: string) => `Ask ${agent}. Change agent`,
+  agentButton: (agent: string) => `Ask ${agent}. Change agent.`,
   /** The button that sends. */
   ask: "Ask",
   /** The hint row: each key, then what it does. */
