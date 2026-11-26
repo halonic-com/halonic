@@ -22,6 +22,9 @@ interface CheckResult {
 /** The only site the check's rules allow; the control check must reach it. */
 const ALLOWED_SITE = "example.com";
 
+/** How long the check waits for a started container to report it is running. */
+const startWaitMs = 60_000;
+
 /** Runs in the container with node: each prints one JSON line `{ pass, detail }`. */
 const PROBES: Record<string, string> = {
   "control: allowed site answers": `fetch("https://${ALLOWED_SITE}/").then(
@@ -61,6 +64,13 @@ export class CheckContainerObject extends RunContainerObject {
     await this.begin(setupFor(runId));
     const results: CheckResult[] = [];
     try {
+      // `start()` returns before the container is up, and exec() refuses a container that isn't
+      // running yet (run 45701542369), so the probes wait for it first.
+      const started = await this.#waitUntilRunning();
+      results.push(started);
+      if (!started.pass) {
+        return results;
+      }
       for (const [name, script] of Object.entries(PROBES)) {
         results.push(await this.#probe(runId, name, script));
       }
@@ -78,6 +88,19 @@ export class CheckContainerObject extends RunContainerObject {
     const result = await outcome("destroy() right after start", () => this.end(runId));
     const running = this.ctx.container?.running ?? false;
     return { ...result, pass: result.pass && !running, detail: `${result.detail}; running ${running}` };
+  }
+
+  /** Waits up to {@link startWaitMs} for the container to run; fails if it never does or exits. */
+  async #waitUntilRunning(): Promise<CheckResult> {
+    const name = "container running after start";
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < startWaitMs) {
+      if (this.ctx.container?.running === true) {
+        return { name, pass: true, detail: `running after ${Date.now() - startedAt} ms` };
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    return { name, pass: false, detail: `not running after ${startWaitMs} ms` };
   }
 
   async #probe(runId: string, name: string, script: string): Promise<CheckResult> {

@@ -98,8 +98,8 @@ jobs:
           echo "--- results ---"
           cat "$RUNNER_TEMP/results.txt"
           passes=$(grep -c '^PASS ' "$RUNNER_TEMP/results.txt" || true)
-          if [ "$passes" != 7 ]; then
-            echo "::error::$passes of 7 checks passed."
+          if [ "$passes" != 8 ]; then
+            echo "::error::$passes of 8 checks passed."
             exit 1
           fi
 
