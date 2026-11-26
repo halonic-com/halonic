@@ -119,9 +119,12 @@ function targetLine(payload: JsonRecord | undefined): string[] {
   const named =
     typeof revision === "number" ? `${name}, ${approvalWords.revision(revision)}` : name;
   const href = text(target, "href");
-  // A Paperclip-relative link leads nowhere in Halonic, so only a full web address is linked.
+  // A full web address, or a path from Paperclip's root that the card's question makes full
+  // (`paperclip-client.full-links`); anything else is left unlinked.
   const linked =
-    href !== undefined && /^https?:\/\//.test(href) ? `[${linkText(named)}](${href})` : named;
+    href !== undefined && (/^https?:\/\//.test(href) || /^\/(?![/\\])[^\s()<>]*$/.test(href))
+      ? `[${linkText(named)}](${href})`
+      : named;
   return [`${approvalWords.document}: ${linked}`];
 }
 

@@ -2,7 +2,7 @@ import type { InboxAnswer, InboxItem, InboxItemOption } from "@halonicjs/ports";
 import type { AnswerRequest } from "./cards.ts";
 import { answeredState } from "./cards.ts";
 import { asRecords, field, type JsonRecord, text } from "./json.ts";
-import { authorOf, type MapContext, timeOf } from "./map.ts";
+import { authorOf, fullLinksOf, type MapContext, timeOf } from "./map.ts";
 
 // Paperclip's standalone decisions (`paperclip-client.decisions`): an agent offers the board
 // up to 8 options, each with effects on tasks that Paperclip runs once one is picked.
@@ -47,7 +47,7 @@ export function decisionToItem(context: MapContext, record: JsonRecord): InboxIt
     id: context.ids.make("decision", id),
     source: context.ids.source(),
     from: authorOf(context, text(record, "originAgentId"), undefined),
-    question: body === undefined ? title : `${title}\n\n${body}`,
+    question: fullLinksOf(context, body === undefined ? title : `${title}\n\n${body}`),
     options,
     ...(task === undefined ? {} : { work: context.ids.make("task", task) }),
     risk: destructive ? "risky" : "normal",
