@@ -3,6 +3,7 @@
 - Task: HAL-19486
 - Approval: Liam approved these Windows-only skips in his review of #6473 on HAL-19486 (https://paperclip.halonic.com/HAL/issues/HAL-19486), 26 November.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:CAkgqXKGsPm6lWrdB3jayFThJBvAHHrVuqc2Ae8e6eFy6Hd1cSIUx6JPvatL/3UTPXDt/0ogUndgAj3tnaE3Bg==
 
 ## What changes
 
