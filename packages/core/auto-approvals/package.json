@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "sideEffects": false,
-  "description": "Auto approvals in shadow mode: the typed approval card, the workspace never-list and the checks that may only block. Pure; no I/O.",
+  "description": "Auto approvals, shadow mode: the typed approval card, the workspace never-list and the checks that may only block. Pure; no I/O.",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -12,7 +12,12 @@
     "lint": "biome check .",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@halonicjs/std": "workspace:*",
+    "@halonicjs/yaml": "workspace:*"
+  },
   "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",
     "typescript": "catalog:",
