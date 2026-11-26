@@ -68,7 +68,9 @@ export function RunsAppList({
         groups={groups.map((group) => ({
           id: group.kind === "day" ? `day-${group.heading}` : group.kind,
           heading: { name: group.heading, ...headingTone(group.kind) },
-          rows: group.runs.map((run) => appRow(run, now, timeZone, locale)),
+          rows: group.runs.map((run) =>
+            appRow(run, group.kind === "day", { now, timeZone, locale }),
+          ),
         }))}
         groupHeadingLevel={2}
         onOpen={onOpen}
@@ -89,11 +91,15 @@ function headingTone(kind: RunGroup<AppRun>["kind"]): { tone?: ListHeadingTone }
  * A run as a List row: its tile, what ran with the time, its line, and where it runs with its
  * cost. The state is the tile's corner dot for the eye and the label's word for a screen reader.
  */
-function appRow(run: AppRun, now: Date, timeZone: string, locale: string | undefined): ListRow {
+function appRow(
+  run: AppRun,
+  underDay: boolean,
+  clock: { now: Date; timeZone: string; locale: string | undefined },
+): ListRow {
   return {
     id: run.id,
     title: run.title,
-    titleEnd: rowTimeWords(run, now, timeZone, locale),
+    titleEnd: rowTimeWords(run, clock.now, clock.timeZone, clock.locale, underDay),
     meta: run.line,
     under: <WhereLine run={run} />,
     avatar: <RunTile by={run.by} phase={run.phase} />,

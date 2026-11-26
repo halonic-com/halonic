@@ -91,14 +91,16 @@ export function rowCostParts(cost: RunCost, running: boolean): RowCostParts | un
 
 /**
  * The time at the end of a row's title line: how long it has run while it's going ("7 min",
- * "2 h"), else the time it started on the user's clock, as the kit writes a time in `locale`'s
- * format ("09:00", "9:00 AM"; `runs.app-list-time`). The day is the group's heading.
+ * "2 h"), else when it started on the user's clock, as the kit writes it in `locale`'s format
+ * (`runs.app-list-time`). Under a day's heading that is the time alone ("09:00", "9:00 AM");
+ * elsewhere, such as in Failed, an earlier day's run says its day ("Yesterday", "Mon").
  */
 export function rowTimeWords(
   run: GroupedRun,
   now: Date,
   timeZone: string,
   locale?: string,
+  underDay = true,
 ): string {
   const started = new Date(run.startedAt);
   if (run.phase === "running" || run.phase === "needs-you") {
@@ -107,8 +109,8 @@ export function rowTimeWords(
       ? appListWords.minutes(minutes)
       : appListWords.hours(Math.floor(minutes / 60));
   }
-  // Read against its own moment, the short time is the time of day: the group already says which day.
-  return shortTime(started, started, locale, timeZone);
+  // Read against its own moment, the short time is the time of day, for a group that says the day.
+  return shortTime(started, underDay ? started : now, locale, timeZone);
 }
 
 /**

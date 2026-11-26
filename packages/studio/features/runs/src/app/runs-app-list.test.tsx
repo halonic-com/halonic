@@ -167,6 +167,16 @@ verifies("runs.app-list-time", () => {
     // 08:00 UTC is 09:00 in Madrid.
     expect(root.textContent).toContain("9:00 AM");
   });
+
+  it("says an earlier day's failure's day under Failed, where no heading says it", () => {
+    const failed = run("failed", {
+      phase: "failed",
+      startedAt: "2026-11-24T08:00:00Z",
+      chip: { word: "Failed", tone: "danger" },
+    });
+    const { root } = show({ runs: [failed] });
+    expect(root.textContent).toContain("Nightly reportYesterday");
+  });
 });
 
 verifies("runs.agent-tint", () => {

@@ -106,11 +106,7 @@ export const pullRequestWords = {
     failing: (facts) => ({ chip: withReason("✕ Failing", facts), detail: facts.age }),
     conflicting: (facts) => ({ chip: "✕ Conflicts with main", detail: facts.age }),
     dequeued: (facts) => ({ chip: withReason("⊘ Taken out", facts), detail: facts.age }),
-    // Merged in the last 24 hours, so today's time or yesterday, in lower case after "Merged".
-    merged: (facts) => ({
-      chip: `Merged ${facts.time === "Yesterday" ? "yesterday" : facts.time}`,
-      detail: undefined,
-    }),
+    merged: (facts) => ({ chip: `Merged ${afterWord(facts.time)}`, detail: undefined }),
     // Closed PRs aren't on any list.
     closed: () => ({ chip: "", detail: undefined }),
     other: (facts) => ({ chip: "", detail: facts.age }),
@@ -122,4 +118,12 @@ export function formatAge(minutes: number): string {
   if (minutes < 60) return `${minutes} min`;
   if (minutes < 24 * 60) return `${Math.floor(minutes / 60)} h`;
   return `${Math.floor(minutes / (24 * 60))} d`;
+}
+
+/**
+ * A short time inside a sentence: a clock time as it is, a day's word in lower case ("Merged
+ * yesterday"), so the line never depends on the kit's exact words.
+ */
+function afterWord(time: string): string {
+  return /\d/u.test(time) ? time : time.toLowerCase();
 }
