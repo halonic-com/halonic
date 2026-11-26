@@ -358,6 +358,7 @@ export { SecretText } from "./secret-text/secret-text.ts";
 export { Select, type SelectOption, type SelectProps } from "./select/select.tsx";
 export { MAX_SERIES, OTHER_NAME, type Series } from "./series-chart/series.ts";
 export { SeriesChart, type SeriesChartProps } from "./series-chart/series-chart.tsx";
+export { finalState, settleHoldMs, useSettleAway, useSettling } from "./settle/settle.ts";
 export {
   type SetupStep,
   type SetupStepCheck,

@@ -1,4 +1,4 @@
-import type { AgentActivity, InboxAnswer, MessagingRefusal } from "@halonicjs/ports";
+import type { AgentActivity, MessagingRefusal } from "@halonicjs/ports";
 import type { FileRefusal } from "./file-limits.ts";
 
 /** Why the engine refused a message's files; it sends none of the message then. Approved on HAL-17459. */
@@ -128,15 +128,6 @@ export const messengerWords = {
     notRecorded: "Couldn't record your decision. Try again.",
     /** Read out once an option answered the card, which then leaves the chat. */
     answered: (option: string) => `Answered: ${option}.`,
-    /** Before an answered card's record, for a screen reader only: "Answered: Approve, 12:10". */
-    recordPrefix: "Answered: ",
-    /** How an action card ended, as its record says it (Noah's check on HAL-18476). */
-    outcomes: {
-      succeeded: "Succeeded",
-      failed: "Failed",
-      declined: "Declined",
-      expired: "Expired",
-    } satisfies Record<Extract<InboxAnswer, { kind: "action-result" }>["outcome"], string>,
   },
   /** The bar under the chat while cards wait (board decision on HAL-18471, 25 Nov). */
   cardsWaiting: (count: number) => (count === 1 ? "1 card waiting" : `${count} cards waiting`),

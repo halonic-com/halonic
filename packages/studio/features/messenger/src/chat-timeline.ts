@@ -1,6 +1,4 @@
-import type { InboxAnswer, InboxItem, Message } from "@halonicjs/ports";
-import { answerLabels, decidedAt } from "@halonicjs/studio-kit";
-import { messengerWords } from "./messenger-words.ts";
+import type { InboxItem, Message } from "@halonicjs/ports";
 
 /** One entry of a chat's timeline: a message, or a card the chat's agent put to the person. */
 export type TimelineEntry =
@@ -9,8 +7,7 @@ export type TimelineEntry =
 
 /**
  * A chat's messages and cards in one timeline, oldest first (requirement
- * `messenger.inline-cards`): each card sits where its `createdAt` falls among the messages' `sentAt`,
- * open or answered. A card made at the same time as a message comes after it.
+ * `messenger.inline-cards`): each card sits where its `createdAt` falls among the messages' `sentAt`. A card made at the same time as a message comes after it.
  *
  * @example
  * chatTimeline(messages, cards).map((entry) => entry.kind); // ["message", "card", "message"]
@@ -38,24 +35,4 @@ export function waitingCards(cards: readonly InboxItem[]): readonly InboxItem[] 
   return cards
     .filter((card) => card.state.kind === "open")
     .sort((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt));
-}
-
-/**
- * What an answered card keeps in the chat, as its record: the choice and the time, "Approve, 12:10".
- * An open card has none.
- */
-export function cardRecord(card: InboxItem): string | undefined {
-  if (card.state.kind !== "answered") return undefined;
-  return `${choiceOf(card, card.state.answer)}, ${decidedAt(new Date(card.state.answeredAt))}`;
-}
-
-/**
- * How a card was answered: the option's label, the labels picked for its questions, the reply in
- * quotes, or how an action ended.
- */
-function choiceOf(card: InboxItem, answer: InboxAnswer): string {
-  if (answer.kind === "reply") return `“${answer.text}”`;
-  if (answer.kind === "action-result") return messengerWords.card.outcomes[answer.outcome];
-  if (answer.kind === "answers") return answerLabels(card.questions, answer.answers).join(", ");
-  return card.options.find((option) => option.id === answer.option)?.label ?? answer.option;
 }

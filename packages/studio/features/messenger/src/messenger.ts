@@ -3,6 +3,7 @@ import type {
   AgentMessaging,
   AttachmentRead,
   Conversation,
+  InboxItem,
   Message,
   MessageReactions,
   MessagingAgent,
@@ -301,6 +302,11 @@ export class Messenger {
   /** Everything waiting for the person across `rows`, oldest first (`messenger.needs-you`). */
   async needsYou(rows: readonly ConversationRow[]): Promise<readonly WaitingCard[]> {
     return waitingCards(rows, await this.inbox.read());
+  }
+
+  /** Every Inbox item as last read, so a card that left "Needs you" shows how it ended. */
+  inboxItems(): Promise<readonly InboxItem[]> {
+    return this.inbox.read();
   }
 
   /** The open questions' text by the work they belong to, for a work line that asks the person. */

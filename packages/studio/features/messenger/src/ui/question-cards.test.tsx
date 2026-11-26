@@ -109,12 +109,12 @@ verifies("messenger.question-cards", () => {
       });
       expect(said(page)).toBe("Answered: Separate repo, Dark, Wide, Next week.");
       expect(page.querySelector("[data-cards-bar]")).toBeNull();
-      expect(page.querySelector("main [data-chat-card-record]")?.textContent).toContain(
-        "Answered 24 Nov",
+      expect(page.querySelector("main [data-chat-card-settling]")?.textContent).toContain(
+        "Answered by you · 18:43",
       );
     });
 
-    it("shows an answered card as ticked, disabled boxes with Answered 24 Nov", async () => {
+    it("doesn't show a card that was answered before the chat opened", async () => {
       const { messaging } = chiefAsks({
         kind: "answered",
         by: { kind: "me" },
@@ -130,18 +130,9 @@ verifies("messenger.question-cards", () => {
       });
       const page = await openMessenger(messaging);
       await openChat(page, "Chief");
-      const record = page.querySelector("main [data-chat-card-record]");
-      expect(record?.textContent).toContain("Three open decisions");
-      expect(record?.textContent).toContain("Answered 24 Nov");
-      for (const label of ["Separate repo", "Dark", "Compact", "Now"]) {
-        expect(option(page, label).checked).toBe(true);
-      }
-      for (const label of ["In the monorepo", "Wide", "Next week"]) {
-        expect(option(page, label).checked).toBe(false);
-      }
-      expect(option(page, "Separate repo").disabled).toBe(true);
-      expect(option(page, "Wide").getAttribute("aria-disabled")).toBe("true");
-      expect(submit(page)).toBeUndefined();
+      // Its task in Paperclip keeps it (`messenger.final-state`).
+      expect(page.querySelector("main ol")?.textContent).not.toContain("Three open decisions");
+      expect(page.querySelector("main fieldset")).toBeNull();
       expect(page.querySelector("[data-cards-bar]")).toBeNull();
     });
 

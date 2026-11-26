@@ -1,7 +1,15 @@
 import type { InboxItem, Message, MessagingId, ReactionEmoji } from "@halonicjs/ports";
-import { Button, ChatLoading, EmptyState, enter } from "@halonicjs/studio-kit";
+import { Button, ChatLoading, EmptyState, enter, useSettling } from "@halonicjs/studio-kit";
 import type { EngineWords } from "@halonicjs/studio-shell";
-import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { isChannel } from "../channel.ts";
 import { type ChatLine, chatLines, type PendingMessage } from "../chat-layout.ts";
 import { chatTimeline } from "../chat-timeline.ts";
@@ -9,6 +17,7 @@ import type { ConversationRow, Messenger } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import { EmptyChannel } from "./channel-message.tsx";
 import { ChatCardItem } from "./chat-cards.tsx";
+import { SettlingChatCard } from "./final-card.tsx";
 import { failureReason, reportMotion } from "./load-states.tsx";
 import { DayItem, MessageItem, PendingItem } from "./message-item.tsx";
 import { asksQuestions, QuestionCardItem } from "./question-card.tsx";
@@ -24,7 +33,10 @@ export interface TranscriptProps {
   readonly row: ConversationRow;
   /** Undefined until the first read landed. */
   readonly messages: readonly Message[] | undefined;
-  /** The chat's cards, open and answered; undefined until the first read landed. */
+  /**
+   * The chat's cards, open and ended; undefined until the first read landed. Only the open ones
+   * show, and one that ends while shown until it settled away (`messenger.final-state`).
+   */
   readonly cards: readonly InboxItem[] | undefined;
   /** The person's messages on their way. */
   readonly pending: readonly PendingMessage[];
@@ -66,8 +78,9 @@ export function Transcript(props: TranscriptProps) {
   const { messenger, row, messages, cards, pending, failure, words, onRetry } = props;
   const scroller = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLOListElement>(null);
+  const settle = useSettlingCards(cards);
   const lines = chatLines(
-    chatTimeline(messages ?? [], cards ?? []),
+    chatTimeline(messages ?? [], settle.shown),
     pending,
     messenger.now(),
     isChannel(row),
@@ -127,7 +140,7 @@ export function Transcript(props: TranscriptProps) {
             <EmptyChannel row={row} />
           ) : null}
           {lines.map((line) => (
-            <Line key={line.key} line={line} {...props} />
+            <Line key={line.key} line={line} settle={settle} {...props} />
           ))}
         </ol>
         <TypingLine row={row} typing={typing} />
@@ -146,11 +159,42 @@ export function Transcript(props: TranscriptProps) {
   );
 }
 
-function Line({ line, ...props }: TranscriptProps & { readonly line: ChatLine }) {
+/** The chat's cards that show: the open ones, then those settling away since they ended. */
+interface SettlingCards {
+  readonly shown: readonly InboxItem[];
+  readonly settling: ReadonlySet<MessagingId>;
+  readonly gone: (card: MessagingId) => void;
+}
+
+const cardKey = (card: InboxItem): MessagingId => card.id;
+
+/** Which of the chat's cards show (`messenger.final-state`): an ended card shows only while it settles. */
+function useSettlingCards(cards: readonly InboxItem[] | undefined): SettlingCards {
+  const open = useMemo(() => (cards ?? []).filter((card) => card.state.kind === "open"), [cards]);
+  const endedOf = useCallback(
+    (left: InboxItem) => cards?.find((card) => card.id === left.id && card.state.kind !== "open"),
+    [cards],
+  );
+  const { settling, gone } = useSettling(open, cardKey, endedOf);
+  return {
+    shown: [...open, ...settling],
+    settling: new Set(settling.map(cardKey)),
+    gone,
+  };
+}
+
+function Line({
+  line,
+  settle,
+  ...props
+}: TranscriptProps & { readonly line: ChatLine; readonly settle: SettlingCards }) {
   if (line.kind === "day") return <DayItem label={line.label} />;
   if (line.kind === "pending") return <PendingItem pending={line.pending} follows={line.follows} />;
   if (line.kind === "card") {
     const card = line.card;
+    if (settle.settling.has(card.id)) {
+      return <SettlingChatCard card={card} onGone={() => settle.gone(card.id)} />;
+    }
     const shared = {
       quickActions: props.messenger.quickActions,
       row: props.row,

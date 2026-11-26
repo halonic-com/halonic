@@ -79,6 +79,35 @@ export function leave(element: HTMLElement): Promise<void> {
 }
 
 /**
+ * Takes a decided card away once its final state showed (`kit.settle`): it fades out while its
+ * height closes, over `--duration-base` with `--ease-exit`, so what is below moves up into its
+ * place. Under reduced motion only the `--duration-fast` fade, with nothing moving. Resolves when
+ * it ends; the caller then removes the element.
+ */
+export function settleOut(element: HTMLElement): Promise<void> {
+  if (!canAnimate(element)) {
+    return Promise.resolve();
+  }
+  const tokens = readTokens(element);
+  if (prefersReducedMotion()) {
+    return play(element, [{ opacity: 1 }, { opacity: 0 }], {
+      duration: tokens.fast,
+      easing: tokens.easeExit,
+      fill: "forwards",
+    });
+  }
+  const height = `${element.getBoundingClientRect().height}px`;
+  return play(
+    element,
+    [
+      { opacity: 1, height, overflow: "hidden" },
+      { opacity: 0, height: "0px", overflow: "hidden" },
+    ],
+    { duration: tokens.base, easing: tokens.easeExit, fill: "forwards" },
+  );
+}
+
+/**
  * Runs `change`, which adds, removes or reorders the list's children, then glides every child
  * that stayed from its old place to its new one over `--duration-base` with `--ease-standard`
  * (first, last, invert, play). New children are left alone: give them `enter`. Under reduced
