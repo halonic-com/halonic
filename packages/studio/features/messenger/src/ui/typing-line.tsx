@@ -9,7 +9,8 @@ import { ShowActivity } from "./activity-toggle.tsx";
  * Whether the chat's agent shows as typing (`messenger.typing`): its source says the agent has a
  * started run on the chat (`agentWorking`), and nothing it wrote came after the person's last
  * message, sent or on its way. A search shows only some messages, so it never shows then, nor
- * before the messages' first read landed.
+ * before the messages' first read landed. An offline source's last read can't say the run still
+ * goes on, so it never shows while the source isn't online either (`messenger.typing-offline`).
  */
 export function agentTyping(
   row: ConversationRow,
@@ -18,6 +19,7 @@ export function agentTyping(
   searching: boolean,
 ): boolean {
   if (row.conversation.agentWorking !== true || searching || messages === undefined) return false;
+  if (row.source?.state.kind !== "online") return false;
   if (pending.length > 0) return true;
   const newest = messages.at(-1);
   return newest === undefined || newest.author.kind === "me";
