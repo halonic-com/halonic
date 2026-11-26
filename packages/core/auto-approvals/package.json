@@ -1,0 +1,34 @@
+{
+  "name": "@halonicjs/auto-approvals",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "description": "Shadow-mode auto approvals: the typed approval card built from Paperclip facts, and the workspace never-list that blocks it. Pure; nothing here can approve or deny.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/std": "workspace:*",
+    "@halonicjs/yaml": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "core",
+    "owner": "owen",
+    "coverage": {
+      "lines": 90,
+      "branches": 85
+    }
+  }
+}

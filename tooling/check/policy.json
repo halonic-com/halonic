@@ -4,6 +4,7 @@
     "@halonicjs/std",
     "@halonicjs/schema-kit",
     "@halonicjs/yaml",
+    "@halonicjs/auto-approvals",
     "@halonicjs/events",
     "@halonicjs/ports",
     "@halonicjs/retry-detectors",
