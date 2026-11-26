@@ -149,7 +149,7 @@ async function pump(
 
 /**
  * The status, with the secrets removed from the reason phrase, which the
- * server writes. `new Response()` throws for a status outside 200–599 and
+ * server writes. `new Response()` throws for a status above 599 and
  * for a reason phrase with a control character, though the global `fetch`
  * passes both on. Such a status is built as a 500, which isn't `ok` either,
  * and {@link rebuilt} puts the real one back. Such a phrase is left out:

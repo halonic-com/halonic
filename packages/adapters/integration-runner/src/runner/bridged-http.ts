@@ -130,7 +130,7 @@ export class BridgedHttp implements IntegrationHttpClient {
       this.#open.delete(frame.id);
       request.stopListening();
     }
-    // `new Response()` throws for a status outside 200–599, though `fetch`
+    // `new Response()` throws for a status above 599, though `fetch`
     // passes one on: build it as a 500, which isn't `ok` either, and put the
     // real status back. The status text comes from the kit, which has
     // already left out one `Response` can't hold.

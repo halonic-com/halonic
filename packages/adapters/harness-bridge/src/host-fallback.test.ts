@@ -396,7 +396,7 @@ function busyOnce(then: { fetch: Fetch }) {
 }
 
 verifies("harness-bridge.odd-status", () => {
-  it("moves a call answered with a status outside 200–599 on to the next pin", async () => {
+  it("moves a call answered with a status above 599 on to the next pin", async () => {
     const upstream = answers();
     const busy = busyOnce(upstream);
     const opened = await open("anthropic", keyed("anthropic", [backup]), busy);

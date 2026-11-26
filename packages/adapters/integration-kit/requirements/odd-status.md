@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-19515 (found in the review of PR 6480)
 
-When the transport answers an integration's request with a status outside 200–599, or with a reason phrase a Web `Response` can't hold, the kit shall still hand the integration a response that carries the server's status, as the global `fetch` does, and shall leave out a reason phrase that isn't valid, so that the integration sees the HTTP status instead of a failed request.
+When the transport answers an integration's request with a status above 599, or with a reason phrase a Web `Response` can't hold, the kit shall still hand the integration a response that carries the server's status, as the global `fetch` does, and shall leave out a reason phrase that isn't valid, so that the integration sees the HTTP status instead of a failed request.
 
 ## Examples
 

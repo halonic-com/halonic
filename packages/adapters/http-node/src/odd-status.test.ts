@@ -42,6 +42,18 @@ verifies("http-node.odd-status", () => {
     expect(await response.text()).toBe("no");
   });
 
+  it("refuses a 101 without an upgrade, as the global fetch does", async () => {
+    const url = await answerWith(Buffer.from("HTTP/1.1 101 Switching"));
+
+    await expect(http.fetch(url)).rejects.toThrow(/status 101/);
+  });
+
+  it("refuses a status below 100, as the global fetch does", async () => {
+    const url = await answerWith(Buffer.from("HTTP/1.1 099 Odd"));
+
+    await expect(http.fetch(url)).rejects.toThrow(/status 99/);
+  });
+
   it("leaves out a status text with a control character", async () => {
     const statusLine = Buffer.from([...Buffer.from("HTTP/1.1 503 O"), 0x01, 0x4b]);
     const response = await http.fetch(await answerWith(statusLine));

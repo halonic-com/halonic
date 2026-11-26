@@ -15,7 +15,7 @@ const busyHead: ResponseFrame = {
 };
 
 verifies("integration-runner.odd-status", () => {
-  it("takes a head frame with a status outside 200–599", () => {
+  it("takes a head frame with a status above 599", () => {
     expect(halonicFrame.safeParse(busyHead).success).toBe(true);
   });
 

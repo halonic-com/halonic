@@ -311,7 +311,7 @@ function stoppedReading(limits: UpstreamLimits): KindedError {
 /**
  * Calls the provider and waits for its reply to start.
  *
- * A status outside 200–599 is taken as the provider being busy (requirement
+ * A status above 599 is taken as the provider being busy (requirement
  * `harness-bridge.odd-status`), so the call moves on to the next host pin or
  * the program gets the usual 503. It isn't passed on: `new Response()`
  * can't hold it, and the program's own HTTP client can't be counted on to

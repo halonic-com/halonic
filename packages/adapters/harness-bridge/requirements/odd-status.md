@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-19515 (found in the review of PR 6480)
 
-When a provider answers a model call with a status outside 200–599, the bridge shall treat the provider as busy: it shall move the call on to the next host pin where there is one, and otherwise answer the program 503 with the kind `unavailable`, instead of passing the status on or failing as an internal error.
+When a provider answers a model call with a status above 599, the bridge shall treat the provider as busy: it shall move the call on to the next host pin where there is one, and otherwise answer the program 503 with the kind `unavailable`, instead of passing the status on or failing as an internal error.
 
 ## Examples
 

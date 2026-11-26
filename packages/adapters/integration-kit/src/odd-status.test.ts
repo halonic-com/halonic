@@ -27,7 +27,7 @@ function oddReply(status: number, statusText: string, body: string | null): Resp
 }
 
 verifies("integration-kit.odd-status", () => {
-  it("passes a status outside 200–599 on, with `ok` false", async () => {
+  it("passes a status above 599 on, with `ok` false", async () => {
     const guarded = guardBody(policy, oddReply(600, "Busy", "no"), url, guard);
     expect(guarded.status).toBe(600);
     expect(guarded.ok).toBe(false);
@@ -36,7 +36,7 @@ verifies("integration-kit.odd-status", () => {
     expect(await guarded.text()).toBe("no");
   });
 
-  it("passes a status outside 200–599 on when the reply has no body", () => {
+  it("passes a status above 599 on when the reply has no body", () => {
     expect(guardBody(policy, oddReply(600, "", null), url, guard).status).toBe(600);
   });
 
