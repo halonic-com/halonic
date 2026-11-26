@@ -5,6 +5,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { fakeRuns } from "../fake-runs.test-helper.ts";
+import { fakeSetups, setupEntry } from "../fake-setups.test-helper.ts";
 import { Inbox, type InboxRuns } from "../inbox.ts";
 import { StoredReadMarks } from "../read-marks.ts";
 import { pendingApproval, waitingRun } from "../test-runs.test-helper.ts";
@@ -92,7 +93,7 @@ verifies("inbox.read-marks", () => {
     const root = await openInbox(inboxOf(fakeRuns([notes, invoice]).runs));
     expect(isUnread(root, "create_note")).toBe(true);
     expect(isUnread(root, "send_invoice")).toBe(true);
-    expect(cell(root, "create_note").textContent).toMatch(/unread$/);
+    expect(cell(root, "create_note").textContent).toMatch(/new$/);
     expect(heading(root)).toBe("Needs you, 2 waiting, 2 new");
 
     await press(cell(root, "create_note"));
@@ -184,6 +185,16 @@ verifies("inbox.read-marks", () => {
     await markUnread(root);
     expect(marks.isRead(`agent:${ship.id}`)).toBe(false);
     expect(marks.isRead(`agent:${move.id}`)).toBe(true);
+    expect(heading(root)).toBe("Needs you, 1 waiting, 1 new");
+  });
+
+  it("keeps the dot on a fixed setup item nobody opened, which no longer waits", async () => {
+    const inbox = inboxOf(fakeRuns([notes]).runs);
+    const fixed = setupEntry("acct-1", at(9, 0), { fixed: true, title: "Google is set up" });
+    inbox.addSetupSource(fakeSetups("google", [fixed]).source);
+    const root = await openInbox(inbox);
+    expect(isUnread(root, "Google is set up")).toBe(true);
+    expect(cell(root, "Google is set up").textContent).toMatch(/new/);
     expect(heading(root)).toBe("Needs you, 1 waiting, 1 new");
   });
 });

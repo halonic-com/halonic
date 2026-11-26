@@ -23,8 +23,8 @@ const storageKey = "halonic.inbox.read";
 export const keptMarks = 1000;
 
 /**
- * Which of the Inbox's items the person opened (`inbox.read-marks`), by item key: an item of the
- * Inbox's own, or one card of an agent's. A port can stand in for it later without the screens
+ * Which of the Inbox's items the person opened (`inbox.read-marks`), by read key (`readKey`): an
+ * item of the Inbox's own, or one card of an agent's. A port can stand in for it later without the screens
  * changing.
  */
 export interface ReadMarks {
@@ -43,7 +43,7 @@ export interface ReadMarks {
  *
  * @example
  * inbox.readMarks = new StoredReadMarks(globalThis.localStorage ?? null);
- * inbox.readMarks.markRead([item.key]);
+ * inbox.readMarks.markRead([readKey(item)]);
  */
 export class StoredReadMarks implements ReadMarks {
   readonly #storage: ReadMarkStorage | null;

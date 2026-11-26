@@ -168,7 +168,7 @@ verifies("inbox.home", () => {
     expect(rows(home)).toEqual(
       rows(page)
         .slice(0, 2)
-        .map((row) => row.replace(/unread$/, "")),
+        .map((row) => row.replace(/new$/, "")),
     );
   });
 
