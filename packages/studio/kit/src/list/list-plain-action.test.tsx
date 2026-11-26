@@ -78,6 +78,8 @@ verifies("kit.list-plain-action", () => {
     expect(fill?.split(" ")).toContain("group-has-[:focus-visible]:bg-surface-muted");
     // It covers the trailing part with the row's hover fill.
     expect(classes).toEqual(expect.arrayContaining(["absolute", "bg-surface-muted"]));
+    // Its cell takes no width, so without this the label would wrap at every word.
+    expect(classes).toContain("whitespace-nowrap");
   });
 
   it("draws no action in a List that isn't plain", () => {

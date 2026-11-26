@@ -274,7 +274,8 @@ interface BoxOptions extends PlainParts {
 
 /** The main cell's box: its padding and height. */
 function boxClasses({ row, plain, phone, dense, afterCheck, hasMeta }: BoxOptions): string {
-  // A part under the meta line grows the row past its height, as wrapping does, so it gets padding too.
+  // A part under the meta line grows the row past its height, as wrapping does, so it gets
+  // padding too.
   const wrap =
     row.wrap === true || row.wrapTitle === true || row.wrapMeta === true || row.under !== undefined;
   const height = plain ? plainHeight(row) : heightClasses(phone, dense, hasMeta, wrap);
