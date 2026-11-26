@@ -90,10 +90,15 @@ application:
      the board's identities get in with a browser.
   2. **Service Auth**, including only the engine desktops' service tokens: the
      **Service Token Tag** selector with a tag that only those tokens carry,
-     such as `halonic-engine`, or the **Service Token** selector naming each
-     token. Never **Any Access Service Token**: that selector admits every
-     service token in the Cloudflare account, now and later. A desktop calls
-     the server with no browser, so this is its way through.
+     such as `app: halonic-engine` (a key and a value, both case-sensitive),
+     or the **Service Token** selector naming each token.
+     Never **Any Access Service Token**: that selector admits every service
+     token in the Cloudflare account, now and later. A desktop calls the server with no
+     browser, so this is its way through.
+
+     The tag works from now on. With names there is no token to name yet:
+     then add this policy in step 6, with the first token, and do the check
+     below there.
 - Add no bypass policy for `/api/*`. On Paperclip's name the API bypasses
   Access because the desktop engine calls it; here `/api/*` is the whole name,
   so a bypass would leave nothing behind Access.
@@ -116,7 +121,9 @@ engine serve devices --dir /srv/halonic-engine/workspace
 engine serve devices --dir /srv/halonic-engine/workspace --revoke <device id>
 ```
 
-The first lists the devices with their IDs, the second signs that one out.
+The first lists the devices with their IDs, the second signs that one out. It
+then asks whether to sign out the devices that desktop allowed too: for a lost
+or stolen desktop, answer yes.
 
 If the serve password may be known too, set a new one as in part 1's step 4.
 That ends every device session, pairing code and pairing request, so every
@@ -135,18 +142,25 @@ address on its own, before the request reaches the server.
 Under Security, WAF, Rate limiting rules, add one rule for the zone:
 
 - If incoming requests match:
-  `http.host eq "engine.<your domain>" and http.request.method eq "POST" and http.request.uri.path in {"/api/pair" "/api/devices/code" "/api/login"}`
+  `http.host eq "engine.<your domain>" and http.request.method eq "POST" and (http.request.uri.path in {"/api/pair" "/api/devices/code" "/api/login"} or http.request.uri.path contains "\\")`
 - Count by IP, 5 requests per period, with the longest period and block time
   your plan offers.
 - Action: Block.
 
+Rate limiting rules offer the Method field only on the Business plan and up,
+and the Host field only on Pro and up. On Pro, leave out
+`http.request.method eq "POST" and`. On Free, also leave out the host clause:
+the rule then counts these paths on every name in the zone.
+
 `POST /api/pair/status` isn't in the rule: a desktop asks it every few seconds
 while it waits for Allow. `POST /api/login` is in it, because it takes the
-password.
+password. The server reads `\` as `/`, so a path with a backslash counts too;
+no desktop sends one.
 
 Check that the zone's "Normalize incoming URLs" setting, under Rules,
 Settings, is on (the default), so a rule on a path also matches the same path
-written with `%2e` or `//`.
+written with `%2e`. Leave its type at the default: the "Cloudflare" type
+covers the whole zone, so it would change how Paperclip's rules match too.
 
 ## 4. Get both reviews
 
@@ -185,8 +199,8 @@ or a `/api/*` bypass like Paperclip's, comes to cover it.
 Saving the route makes the name resolve. A path outside `/api/` falls through
 to the tunnel's last rule, which answers `404` without reaching the server.
 That path rule keeps Studio's pages off the name, but it isn't a security
-boundary: `cloudflared` matches the path as it arrives, and the server resolves
-`/api/%2e%2e/x` to `/x`. Access and pairing are what keep callers out.
+boundary: `cloudflared` matches a path that the server may resolve elsewhere,
+such as `/api/%2e%2e/x` to `/x`. Access and pairing are what keep callers out.
 
 ## 6. Check it
 
@@ -214,7 +228,8 @@ On the server:
 6. The board makes the desktop's service token now, in the Cloudflare
    dashboard under Access, Service auth, Service tokens: named after the
    desktop, with the tag from step 2 (or added by name to the Service Auth
-   policy), and with an expiry, such as a year. Note on the deploy task the
+   policy, which the first token's turn creates, with step 2's check), and
+   with an expiry, such as a year. Note on the deploy task the
    token's name and when it ends, never its ID or secret. Cloudflare shows the
    secret only once: paste the client ID and client secret straight into the
    desktop's pairing dialog, and keep them nowhere else, no file, note or

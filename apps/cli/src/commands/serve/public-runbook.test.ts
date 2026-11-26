@@ -95,13 +95,6 @@ verifies("cli.commands.serve.public-runbook", () => {
     expect(access).not.toMatch(/\*\*Bypass\*\*/u);
   });
 
-  it("admits only the desktops' service tokens, by tag or by name, never any token in the account", () => {
-    const access = runbook.slice(stepAt("2\\. Put Access"), stepAt("3\\. Limit pairing"));
-    expect(access).toMatch(/\*\*Service Token Tag\*\*/u);
-    expect(access).toMatch(/\*\*Service Token\*\* selector/u);
-    expect(access).toMatch(/Never \*\*Any Access Service Token\*\*/u);
-  });
-
   it("names no real domain in its commands", () => {
     const code = blocks.flatMap((block) => block.lines).join("\n");
     const placeholders = code
@@ -115,5 +108,14 @@ verifies("cli.commands.serve.public-runbook", () => {
   it("sets no secret: the password is part 1's, typed at its prompt", () => {
     const lines = blocks.flatMap((block) => block.lines);
     expect(lines.filter((line) => /\bsecret set\b/u.test(line))).toEqual([]);
+  });
+});
+
+verifies("cli.commands.serve.public-runbook-service-auth", () => {
+  it("admits only the desktops' service tokens, by tag or by name, never any token in the account", () => {
+    const access = runbook.slice(stepAt("2\\. Put Access"), stepAt("3\\. Limit pairing"));
+    expect(access).toMatch(/\*\*Service Token Tag\*\*/u);
+    expect(access).toMatch(/\*\*Service Token\*\* selector/u);
+    expect(access).toMatch(/Never \*\*Any Access Service Token\*\*/u);
   });
 });
