@@ -301,7 +301,8 @@ The board chose the monorepo on 24 Nov at ~15:20 UTC (HAL-10), replacing its 14:
 | `packages/core/toolscript` (`@halonicjs/toolscript`) | core | header schema (with `ui`, `touches`, `examples`), `UserContext`/`AgentContext` over a registry, the artifact format, the `toolscript-index/1` format and search ranking | T2, T10 |
 | `packages/core/toolscript-host` | core | the `ctx` host: S3, S7, S9, S14–S17, over any isolate; no timers or vendor code | T5 |
 | `packages/adapters/toolscript-check` | adapter | the P1–P7 checker and the reproducible build, with the TypeScript compiler API | T3 |
-| `packages/adapters/toolscript-quickjs` | adapter | QuickJS in a Web Worker or `worker_threads`; implements `ToolScriptHost` with `core/toolscript-host` | T4, T5 |
+| `packages/adapters/toolscript-quickjs` | adapter | the QuickJS isolate, on any runtime with WebAssembly; implements `ToolScriptHost` with `core/toolscript-host` | T4, T5 |
+| `packages/adapters/toolscript-quickjs-node` | adapter (Node) | that isolate in a `worker_threads` worker per run (2.2), with the hard kill of 2.3; for now without host functions, for rule steps | S11c (HAL-18669) |
 | `packages/adapters/cloudflare-toolscript` | adapter | the Dynamic Worker host on the Cloudflare target | T11 |
 | `packages/testing/contracts` | testing | `FakeToolScriptHost` and the `ToolScriptHost` contract every host passes | T1 |
 | `packages/testing/toolscript-fence` | testing | the fence suite (T4 list), run against every isolate with the static check off | T4 |

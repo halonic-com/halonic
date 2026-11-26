@@ -1,5 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { expect } from "vitest";
+import { fenceIt } from "./fence-case.ts";
 import {
   held,
   type MakeToolScriptIsolate,
@@ -31,6 +32,7 @@ export const absentGlobals = [
 
 /** No ambient authority, and nothing carried from one run to the next. */
 export function globalCases(make: MakeToolScriptIsolate): void {
+  const it = fenceIt(make);
   verifies("toolscript-fence.no-ambient-globals", () => {
     it("has none of the globals that reach outside the isolate", async () => {
       const names = JSON.stringify(absentGlobals);
@@ -98,6 +100,7 @@ export function ctxCases(make: MakeToolScriptIsolate): void {
 
 /** `ctx`, its namespaces and the input are frozen; `this` is ignored. */
 function ctxShapeCases(make: MakeToolScriptIsolate): void {
+  const it = fenceIt(make);
   it("gives a frozen ctx and frozen namespaces with no prototype", async () => {
     const acme = recorder();
     const code = script(`
@@ -149,6 +152,7 @@ function ctxShapeCases(make: MakeToolScriptIsolate): void {
 
 /** A saved `ctx` method does nothing after the run or a limit has ended it. */
 function afterEndCases(make: MakeToolScriptIsolate): void {
+  const it = fenceIt(make);
   it("never calls a saved ctx method after the run has ended", async () => {
     const slow = held();
     const acme = recorder();

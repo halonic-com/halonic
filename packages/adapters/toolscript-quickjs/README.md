@@ -23,8 +23,9 @@ Runs a Halonic ToolScript in a fresh QuickJS-ng isolate, compiled to WebAssembly
 - **Limits.** Each run's WASM memory has a fixed size, the module's own 16 MiB plus the run's memory limit, which is the hard memory limit: QuickJS's own memory limit doesn't count large strings. A WASM trap ends the run with `limit.memory`. Stack and CPU (only time inside the isolate) are QuickJS's own limits; calls,
   pending promises, input, output, log and the wall clock are counted by the host.
 
-Every isolate passes `@halonicjs/testing-toolscript-fence`. The worker wrappers that keep the isolate
-off the main thread (Node `worker_threads`, a Web Worker with its CSP) come in a follow-up.
+Every isolate passes `@halonicjs/testing-toolscript-fence`. On Node, `@halonicjs/adapter-toolscript-quickjs-node`
+keeps the isolate off the main thread, in a `worker_threads` worker per run; a Web Worker wrapper with its CSP
+comes in a follow-up.
 
 ## The engine
 

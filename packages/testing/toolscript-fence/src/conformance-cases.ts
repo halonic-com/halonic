@@ -7,7 +7,8 @@ import {
   toolScriptReasons,
 } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { expect } from "vitest";
+import { fenceIt } from "./fence-case.ts";
 import { type MakeToolScriptIsolate, recorder, runScript, script } from "./harness.ts";
 
 /** Every host answers alike: its real limits, listed reasons, short messages without frames. */
@@ -15,6 +16,7 @@ export function conformanceCases(
   make: MakeToolScriptIsolate,
   declaredLimits: Partial<ToolScriptLimits>,
 ): void {
+  const it = fenceIt(make);
   verifies("toolscript-fence.conformance", () => {
     it("reports the limits it applied, the host's declared ones included", async () => {
       const isolate = await make();
@@ -59,6 +61,7 @@ export function conformanceCases(
 
 /** Bad input and every kind of failure end with a listed reason. */
 function failureCases(make: MakeToolScriptIsolate): void {
+  const it = fenceIt(make);
   it("answers input that isn't plain data with toolscript.bad-input", async () => {
     const cycle: { self?: unknown } = {};
     cycle.self = cycle;

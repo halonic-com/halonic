@@ -1,0 +1,35 @@
+{
+  "name": "@halonicjs/adapter-toolscript-quickjs-node",
+  "private": true,
+  "type": "module",
+  "description": "Runs each ToolScript in the QuickJS isolate inside a worker_threads worker of its own, killed at its CPU limit.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/adapter-toolscript-quickjs": "workspace:*",
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/schema-kit": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/testing-toolscript-fence": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "tomas",
+    "coverage": {
+      "lines": 80
+    },
+    "runtime": "node"
+  }
+}

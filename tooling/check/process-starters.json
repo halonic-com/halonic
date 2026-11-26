@@ -101,6 +101,14 @@
       "reason": "Reads the process table with /bin/ps or Windows PowerShell for halonic doctor's resource report.",
       "scriptsTest": "packages/adapters/system-node/src/run-program.test.ts"
     },
+    "packages/adapters/toolscript-quickjs-node/src/worker-entry.ts": {
+      "reason": "A ToolScript run's worker thread (ADR ToolScript 2.2, HAL-18669). It imports node:worker_threads only for parentPort, to take the one request and send the result; it starts no worker, process or module itself, and runs the script only inside the QuickJS WASM isolate with no host functions.",
+      "scriptsTest": "packages/adapters/toolscript-quickjs-node/src/worker-isolate.starts.test.ts"
+    },
+    "packages/adapters/toolscript-quickjs-node/src/worker-run.ts": {
+      "reason": "Starts one worker_threads worker per ToolScript run (ADR ToolScript 2.2 and 2.3, HAL-18669), always the fixed file worker-entry.ts next to it, with an empty env, no argv, execArgv or workerData and a capped heap, and terminates it when the run ends or overruns. It never starts a path a workspace or script names, so never a skill's scripts/ file.",
+      "scriptsTest": "packages/adapters/toolscript-quickjs-node/src/worker-isolate.starts.test.ts"
+    },
     "packages/adapters/tunnel-tailscale/src/tailscale-runner.ts": {
       "reason": "The Tailscale tunnel provider's runner. It starts only the tailscale CLI (a program whose file name is tailscale, found on PATH or given as an absolute path outside any scripts folder) with execFile, no shell, a small environment and a time limit, and only status and serve commands. It never loads a skill.",
       "scriptsTest": "packages/adapters/tunnel-tailscale/src/tailscale-runner.test.ts"
