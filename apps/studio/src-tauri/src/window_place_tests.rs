@@ -37,9 +37,10 @@ fn window(x: i32, y: i32, width: u32, height: u32) -> Rect {
 
 #[test]
 fn keeps_position_size_and_maximised_but_never_whether_it_shows() {
+    // StateFlags has no `==`, so its bits are compared.
     assert_eq!(
-        kept(),
-        StateFlags::POSITION | StateFlags::SIZE | StateFlags::MAXIMIZED
+        kept().bits(),
+        (StateFlags::POSITION | StateFlags::SIZE | StateFlags::MAXIMIZED).bits()
     );
     assert!(!kept().contains(StateFlags::VISIBLE));
 }
