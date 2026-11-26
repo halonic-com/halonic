@@ -110,8 +110,10 @@ export function settingsSectionsFor(showUnfinished: boolean): SettingsSectionCon
     },
     {
       id: "startup",
+      icon: "startup",
       title: startupText.SECTION_TITLE,
       scope: "host",
+      group: "general",
       // After Trusted sources (40) and Your server (50), before About Halonic (HAL-14213).
       order: 55,
       available: startupAvailable,
