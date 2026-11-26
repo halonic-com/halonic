@@ -1,7 +1,7 @@
 import type { RefusalCode } from "./integration/index.ts";
 
 /**
- * One request an integration made. Method, host, path, status and time only:
+ * One request an integration made. Method, host, path, status, time and retry only:
  * no query, no headers and no bodies, so the log never holds a secret or the
  * content of a message. The integration debugger reads only this.
  */
@@ -15,6 +15,8 @@ export interface RequestLogEntry {
   readonly outcome: "ok" | "refused" | "failed";
   /** Why the kit refused it, when it did. */
   readonly refusal?: RefusalCode;
+  /** Which retry of the same request this is, after a `429`. Absent on the first attempt. */
+  readonly retry?: 1 | 2;
 }
 
 /** The most recent requests of one integration, oldest first. */

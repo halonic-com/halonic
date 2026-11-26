@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-135 (the integration debugger reads only this log)
 
-The kit shall log every request with method, host, path, final status, time and outcome, and nothing else: no query, no headers, no bodies.
+The kit shall log every request with method, host, path, final status, time, outcome and which retry it is, and nothing else: no query, no headers, no bodies.
 
 ## Examples
 
