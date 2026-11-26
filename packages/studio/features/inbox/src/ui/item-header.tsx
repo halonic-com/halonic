@@ -1,4 +1,4 @@
-import { BackIcon, Button, ContentHeader, Tooltip } from "@halonicjs/studio-kit";
+import { BackIcon, Button, ContentHeader, Menu, MoreIcon, Tooltip } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import { type InboxItem, isRunItem } from "../inbox-items.ts";
 import { inboxRow, runItemContext, wholeLine } from "./inbox-row.tsx";
@@ -41,6 +41,8 @@ interface ItemHeaderProps {
   /** Where the item is among what waits, "2 of 6"; `null` for one that doesn't wait. */
   readonly place: string | null;
   readonly close: () => void;
+  /** The ··· menu's **Mark as unread**, for an item that waits (`inbox.read-marks`). */
+  readonly markUnread?: (() => void) | undefined;
 }
 
 /**
@@ -52,7 +54,7 @@ interface ItemHeaderProps {
  * fills the rest of the pane, so its body scrolls with its answers in sight; in a short window the
  * whole pane scrolls, header included, as a Dialog's does.
  */
-export function ItemHeader({ heading, back, place, close }: ItemHeaderProps) {
+export function ItemHeader({ heading, back, place, close, markUnread }: ItemHeaderProps) {
   return (
     <ContentHeader
       picture={
@@ -63,7 +65,44 @@ export function ItemHeader({ heading, back, place, close }: ItemHeaderProps) {
       }
       title={heading.title}
       line={heading.line}
-      actions={place === null ? null : <p className="shrink-0 text-small text-fg-muted">{place}</p>}
+      actions={
+        place === null ? null : (
+          <>
+            <p className="shrink-0 text-small text-fg-muted">{place}</p>
+            {markUnread === undefined ? null : (
+              <ItemMenu title={heading.title} markUnread={markUnread} />
+            )}
+          </>
+        )
+      }
+    />
+  );
+}
+
+/**
+ * The ··· menu at the end of the header, as the Messenger's chat has it (Sofia's sketch H on
+ * HAL-19192), with **Mark as unread**: the page marks the item, closes it and puts focus on its row.
+ */
+function ItemMenu({
+  title,
+  markUnread,
+}: {
+  readonly title: string;
+  readonly markUnread: () => void;
+}) {
+  return (
+    <Menu
+      align="end"
+      trigger={(trigger) => (
+        <Button
+          {...trigger}
+          variant="ghost"
+          size="sm"
+          icon={<MoreIcon />}
+          label={`More actions for ${title}`}
+        />
+      )}
+      entries={[{ id: "mark-unread", label: "Mark as unread", onSelect: markUnread }]}
     />
   );
 }

@@ -164,7 +164,12 @@ verifies("inbox.home", () => {
       "Approve this reply?Support reply · run r3 · a person step · Waiting 1\u00a0h",
     ]);
     // One line for both, so the run's short id that tells them apart (HAL-12528) shows here too.
-    expect(rows(home)).toEqual(rows(page).slice(0, 2));
+    // The page also says each is new (`inbox.read-marks`); Home's Needs you doesn't.
+    expect(rows(home)).toEqual(
+      rows(page)
+        .slice(0, 2)
+        .map((row) => row.replace(/unread$/, "")),
+    );
   });
 
   it("opens the Inbox with the item's card open when you press Enter on its row", async () => {

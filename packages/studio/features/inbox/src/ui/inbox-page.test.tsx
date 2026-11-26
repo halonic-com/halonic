@@ -119,7 +119,7 @@ verifies("inbox.page", () => {
       );
       await settled();
       expect(rowCell(root, 0).textContent).toBe(
-        "Approve this reply?Support reply · run r2 · a person step · Waiting 1\u00a0h · moves on Sun 14:00",
+        "Approve this reply?Support reply · run r2 · a person step · Waiting 1\u00a0h · moves on Sun 14:00unread",
       );
       await click(rowCell(root, 0));
       expect(root.querySelector("section header")?.textContent).toContain("Started by a message");
@@ -142,11 +142,11 @@ verifies("inbox.page", () => {
       const { root } = await openPage(fakeRuns([review, notes]).runs);
       expect(root.querySelector("h1")?.textContent).toBe("Inbox");
       const grid = root.querySelector('[role="grid"]');
-      expect(nameOf(root, grid)).toBe("Needs you, 2 waiting");
+      expect(nameOf(root, grid)).toBe("Needs you, 2 waiting, 2 new");
       // The agent by its id until the Studio knows agents' names.
       expect(rows(root).map((row) => row.querySelector("[role=gridcell]")?.textContent)).toEqual([
-        "sorter wants to use create_note (notes-mcp)Waiting 1\u00a0min",
-        "Approve this reply?Waiting 1\u00a0h · moves on Sun 14:00",
+        "sorter wants to use create_note (notes-mcp)Waiting 1\u00a0minunread",
+        "Approve this reply?Waiting 1\u00a0h · moves on Sun 14:00unread",
       ]);
       expect(root.querySelector("[aria-current]")).toBeNull();
       expect(root.textContent).toContain("Pick something on the left to see it here.");
@@ -159,7 +159,7 @@ verifies("inbox.page", () => {
       });
       const { root } = await openPage(fakeRuns([notes, stale]).runs);
       expect(nameOf(root, root.querySelector('[role="grid"]'))).toBe(
-        "Needs you, 2 waiting, 1 late",
+        "Needs you, 2 waiting, 2 new, 1 late",
       );
       const chips = root.querySelectorAll('[role="grid"] .bg-attention-soft');
       expect([...chips].map((chip) => chip.textContent)).toEqual(["Late"]);
@@ -194,7 +194,7 @@ verifies("inbox.page", () => {
       await click(button(root, "Approve"));
       await settled();
       expect(root.textContent).toContain("Approved by you at 10:43. The run continues.");
-      expect(nameOf(root, root.querySelector('[role="grid"]'))).toBe("Needs you, 1 waiting");
+      expect(nameOf(root, root.querySelector('[role="grid"]'))).toBe("Needs you, 1 waiting, 1 new");
       expect(rows(root)).toHaveLength(1);
 
       await click(button(root, "Next: Approve this reply?"));

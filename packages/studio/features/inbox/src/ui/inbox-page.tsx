@@ -64,6 +64,7 @@ import type { RunFactsOf } from "./run-facts.ts";
 import { type AgentItems, useAgentItems } from "./use-agent-items.tsx";
 import { useOpenItem } from "./use-open-item.ts";
 import { useProjectFilter } from "./use-project-filter.tsx";
+import { useReadMarks } from "./use-read-marks.ts";
 import { useRequestPane } from "./use-request-pane.tsx";
 import { useRunFacts } from "./use-run-facts.ts";
 import { useRunReview } from "./use-run-review.ts";
@@ -295,9 +296,11 @@ export function InboxView({
     else render();
   };
   const waitingOrder = [
-    ...state.items.filter(waits).map((item) => ({ key: item.key, items: 1 })),
+    ...state.items.filter(waits).map((item) => ({ key: item.key, items: 1, keys: [item.key] })),
     ...agent.order,
   ];
+  // Opening an item marks it read; an agent's row, each of its cards (`inbox.read-marks`).
+  const reading = useReadMarks(inbox.readMarks, open?.key, agent.openItemKeys);
   const sentCard = useSentRequestCard({
     items: state.items,
     openItem,
@@ -350,14 +353,21 @@ export function InboxView({
               heading={{
                 name: "Needs you",
                 headingRef: needsYouHeading,
-                ...countDetail(needsYouCount(waitingOrder), lateCount(state.items, now())),
+                ...countDetail(
+                  needsYouCount(waitingOrder),
+                  lateCount(state.items, now()),
+                  reading.newCount(waitingOrder),
+                ),
               }}
-              rows={[
-                ...project
-                  .own(listed)
-                  .map((item) => ({ ...inboxRow(item, now(), runFacts), ...itemMark(item) })),
-                ...agent.rows(now(), project.filter),
-              ]}
+              rows={reading.mark(
+                [
+                  ...project
+                    .own(listed)
+                    .map((item) => ({ ...inboxRow(item, now(), runFacts), ...itemMark(item) })),
+                  ...agent.rows(now(), project.filter),
+                ],
+                waitingOrder,
+              )}
               onOpen={(key) =>
                 paneMotion(
                   itemPane.current,
@@ -408,7 +418,13 @@ export function InboxView({
       {request.sheet}
       <div ref={itemPane} data-pane="item" className={itemPaneClass(onePane, anyOpen, framed)}>
         {heading === undefined ? null : (
-          <ItemHeader heading={heading} back={onePane} place={place} close={close} />
+          <ItemHeader
+            heading={heading}
+            back={onePane}
+            place={place}
+            close={close}
+            markUnread={() => reading.markUnread(close)}
+          />
         )}
         {/* Fills the pane under the header, so a card's body scrolls with its answers in sight. */}
         <div className="mx-auto flex min-h-0 w-full max-w-190 flex-1 flex-col short:min-h-auto">

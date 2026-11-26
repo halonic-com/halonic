@@ -40,9 +40,12 @@ async function inboxWith(title: string): Promise<HTMLElement> {
   return root;
 }
 
-/** The spans in the Needs you grid's cells whose text is exactly `text`. */
+/**
+ * The innermost span in the Needs you grid's cells whose text is exactly `text`: a new row's mark
+ * wraps the line in a span with the same text.
+ */
 function spanWith(root: HTMLElement, text: string): Element | undefined {
-  return [...root.querySelectorAll('[role="grid"] [role="gridcell"] span')].find(
+  return [...root.querySelectorAll('[role="grid"] [role="gridcell"] span')].findLast(
     (span) => span.textContent === text,
   );
 }

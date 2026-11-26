@@ -22,6 +22,7 @@ import {
 import { Inbox } from "./inbox.ts";
 import type { InboxNotices } from "./notices/inbox-notices.ts";
 import { joinInboxNotices } from "./notices/merge-notices.ts";
+import { StoredReadMarks } from "./read-marks.ts";
 import { onHoldSetup } from "./sandbox/on-hold-setup-source.ts";
 import { sandboxSetup } from "./sandbox/sandbox-setup-source.ts";
 
@@ -88,6 +89,7 @@ export const inboxFeature = defineFeature({
         notices.push(onHold.notices);
       }
       inbox.extraNotices = joinInboxNotices(notices);
+      inbox.readMarks = new StoredReadMarks(globalThis.localStorage ?? null);
       return inbox;
     });
     studio.places.add({
