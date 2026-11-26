@@ -29,6 +29,7 @@ import { followFrameColour, studioFrameColour } from "./frame-colour.ts";
 import { noStorage, openFolder } from "./open-folder.ts";
 import { halonicVersion } from "./open-trusts.ts";
 import { startServedStudio } from "./served-studio.ts";
+import { feedbackWindowOf, startFeedbackWindow } from "./start-feedback-window.ts";
 import { focusedAppOf, startFocusedApp } from "./start-focused-app.ts";
 import { watchStart } from "./start-watch.ts";
 
@@ -78,7 +79,8 @@ export interface StartedStudio {
  * Starts the Studio in a page (`studio.entry`). The desktop app starts on the Welcome screen and
  * opens the folders the user picks, each with its own services, behind the workspace switcher
  * (`studio.open-folder`). A window the shell opened for a focused app, such as Halonic Inbox, shows
- * only that app (`studio.focused-app-window`). The served Studio shows the one workspace the computer serves
+ * only that app (`studio.focused-app-window`), and a feedback shortcut's window only its page
+ * (`studio.feedback-windows`). The served Studio shows the one workspace the computer serves
  * (`studio.served-workspace`). The window is the shell's or the workspace feature's; the app only
  * starts it, as AGENTS.md asks of screens.
  *
@@ -96,6 +98,11 @@ export function startStudio(page: StudioPage, desktop = desktopFeatures): Starte
   const platform = keyboardPlatform(page.userAgent);
   const ipc = tauriIpc(page.window);
   if (ipc !== undefined) {
+    // The feedback shortcut's overlays, opened over every app, start nothing else.
+    const feedback = feedbackWindowOf(page.window);
+    if (feedback !== undefined) {
+      return startFeedbackWindow(page, { ipc, kind: feedback, display: displaySettingsOf(page) });
+    }
     const shell = createShell({ ...desktop, host, platform });
     // Halonic Inbox and Halonic Messenger load this page too, in a window of their own.
     const app = focusedAppOf(page.window, shell);

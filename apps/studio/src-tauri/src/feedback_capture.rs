@@ -5,16 +5,20 @@
 //! feedback window gets only the crop of the box the person drew
 //! (`plugin:feedback|crop`). The shortcut is registered from Rust only: no
 //! capability grants the global-shortcut plugin's commands, so no page can
-//! register a key or hear one.
+//! register a key or hear one. Where no still can be taken yet, such as
+//! macOS or Linux on Wayland, a press opens a small window that says so.
 
 use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::time::Instant;
 
 use halonic_screen_still::{ScreenArea, StillError};
+use tauri::async_runtime::Mutex as AsyncMutex;
 use tauri::ipc::Response;
 use tauri::plugin::TauriPlugin;
 use tauri::webview::{WebviewWindow, WebviewWindowBuilder};
-use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize, Runtime, Webview, WindowEvent};
+use tauri::{
+    AppHandle, LogicalSize, Manager, PhysicalPosition, PhysicalSize, Runtime, Webview, WindowEvent,
+};
 use tauri_plugin_global_shortcut::Shortcut;
 
 #[path = "feedback_held.rs"]
@@ -22,8 +26,8 @@ mod held;
 #[path = "feedback_shortcut.rs"]
 mod shortcut;
 use held::{
-    Held, MAX_SCREENS, OVERLAY_PREFIX, OpenWindows, Press, STILL_LIFETIME, SelectedBox,
-    overlay_index, still_bytes,
+    Capturing, Held, MAX_SCREENS, OVERLAY_PREFIX, OpenWindows, Press, STILL_LIFETIME, SelectedBox,
+    UNAVAILABLE_WINDOW, overlay_index, still_bytes,
 };
 pub use shortcut::keys;
 
@@ -35,6 +39,8 @@ pub const FEEDBACK_WINDOW: &str = "feedback";
 pub struct FeedbackCapture {
     held: Mutex<Held>,
     shortcut: Mutex<Option<Shortcut>>,
+    /// Held by a shortcut change until it is saved or put back.
+    changing: AsyncMutex<()>,
 }
 
 /// The `feedback` plugin, whose commands build.rs names, so each needs its
@@ -50,6 +56,7 @@ pub fn commands<R: Runtime>() -> TauriPlugin<R> {
         ])
         .setup(|app, _api| {
             app.manage(FeedbackCapture::default());
+            shortcut::register_saved(app);
             Ok(())
         })
         .build()
@@ -86,9 +93,17 @@ fn pressed<R: Runtime>(app: &AppHandle<R>) {
         Press::Capture => {
             let app = app.clone();
             tauri::async_runtime::spawn_blocking(move || {
-                let opened = open_overlays(&app);
-                held(&app).capture_done();
-                if let Err(error) = opened {
+                let opened = {
+                    let state = app.state::<FeedbackCapture>();
+                    let _capturing = Capturing(&state.held);
+                    open_overlays(&app)
+                };
+                let Err(error) = opened else {
+                    return;
+                };
+                if let Some(StillError::Unavailable) = error.downcast_ref::<StillError>() {
+                    show_unavailable(&app);
+                } else {
                     finish(&app);
                     log(format!("no screenshot was taken: {error}"));
                 }
@@ -133,6 +148,23 @@ fn open_overlays<R: Runtime>(app: &AppHandle<R>) -> Result<(), Box<dyn std::erro
     Ok(())
 }
 
+/// The small window that says screen capture isn't available on this
+/// system yet, brought forward when it is already open.
+fn show_unavailable<R: Runtime>(app: &AppHandle<R>) {
+    let shown = match app.get_webview_window(UNAVAILABLE_WINDOW) {
+        Some(window) => window.set_focus(),
+        None => page_window(app, UNAVAILABLE_WINDOW).and_then(|window| {
+            window.set_size(LogicalSize::new(440.0, 220.0))?;
+            window.center()?;
+            window.show()?;
+            window.set_focus()
+        }),
+    };
+    if let Err(error) = shown {
+        log(format!("the not-available window didn't show: {error}"));
+    }
+}
+
 /// A hidden, borderless, always-on-top window on the app's own page.
 fn page_window<R: Runtime>(app: &AppHandle<R>, label: &str) -> tauri::Result<WebviewWindow<R>> {
     let mut config = crate::window::app_window_config(app);
@@ -146,28 +178,31 @@ fn page_window<R: Runtime>(app: &AppHandle<R>, label: &str) -> tauri::Result<Web
     // Closed any other way, such as Alt+F4 or a crashed page, an overlay
     // drops every still and the Send feedback window the crop. Only its own
     // press's: a window can close after the next press took its stills.
+    // While the Send feedback window closes, a press takes a new capture.
     let closed = app.clone();
     let overlay = overlay_index(label).is_some();
+    let send_feedback = label == FEEDBACK_WINDOW;
     let press = held(app).press();
-    window.on_window_event(move |event| {
-        if matches!(event, WindowEvent::Destroyed) {
-            let mut held = held(&closed);
-            if overlay {
-                held.drop_stills_of(press)
-            } else {
-                held.clear_press(press)
-            }
+    window.on_window_event(move |event| match event {
+        WindowEvent::CloseRequested { .. } if send_feedback => {
+            held(&closed).send_feedback_closing();
         }
+        WindowEvent::Destroyed if overlay => held(&closed).drop_stills_of(press),
+        WindowEvent::Destroyed if send_feedback => {
+            let mut held = held(&closed);
+            held.clear_press(press);
+            held.send_feedback_closed();
+        }
+        _ => {}
     });
     Ok(window)
 }
 
-/// Drops the stills and the crop, and closes the overlays and the Send
-/// feedback window.
+/// Drops the stills and the crop, and closes every feedback window.
 fn finish<R: Runtime>(app: &AppHandle<R>) {
     held(app).clear();
     close_windows(app, |label| {
-        overlay_index(label).is_some() || label == FEEDBACK_WINDOW
+        overlay_index(label).is_some() || label == FEEDBACK_WINDOW || label == UNAVAILABLE_WINDOW
     });
 }
 
@@ -226,7 +261,8 @@ pub fn crop<R: Runtime>(app: AppHandle<R>) -> Result<Response, &'static str> {
         .ok_or("gone")
 }
 
-/// Ends the feedback: Esc, Cancel, or a sent feedback. Keeps nothing.
+/// Ends the feedback: Esc, Cancel, a sent feedback, or "Not now" where
+/// capture isn't available. Keeps nothing.
 #[tauri::command]
 pub fn end<R: Runtime>(app: AppHandle<R>) {
     finish(&app);

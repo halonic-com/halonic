@@ -306,4 +306,9 @@ fn each_feedback_window_is_granted_only_its_own_commands_and_never_served() {
         shortcut["permissions"],
         json!(["feedback:allow-shortcut-set"])
     );
+    let unavailable = capability(include_str!(
+        "../capabilities/desktop-feedback-unavailable.json"
+    ));
+    assert_eq!(unavailable["windows"], json!(["feedback-unavailable"]));
+    assert_eq!(unavailable["permissions"], json!(["feedback:allow-end"]));
 }
