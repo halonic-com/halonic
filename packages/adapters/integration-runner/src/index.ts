@@ -44,6 +44,7 @@ export {
   PluginBackendStoppedError,
 } from "./halonic/open-plugin-backend.ts";
 export { type LoadPluginBackendOptions, loadPluginBackend } from "./halonic/plugin-backend.ts";
+export type { LocalRequestLog } from "./halonic/request-log-writer.ts";
 export { runnerFile } from "./halonic/runner-file-path.ts";
 export { runnerNodeFolder } from "./halonic/runner-node-folder.ts";
 export {

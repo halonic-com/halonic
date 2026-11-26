@@ -28,6 +28,7 @@ import { err, ok, type Result } from "@halonicjs/std";
 import type { RunnerConnection } from "./connect-runner.ts";
 import { folderLinkProblems, type IntegrationFolderDisk } from "./integration-folder.ts";
 import { RunnerStoppedError } from "./limits.ts";
+import { type LocalRequestLog, RequestLogWriter } from "./request-log-writer.ts";
 
 /** What one runner start needs from the loader: the parts of the bridge only Halonic holds. */
 export interface LocalRunnerBridge {
@@ -62,6 +63,8 @@ export interface LoadLocalIntegrationOptions extends Omit<PrepareIntegrationOpti
   readonly start: StartLocalRunner;
   /** The disk the folder is on; this machine's unless a test passes another. */
   readonly folderDisk?: IntegrationFolderDisk;
+  /** Where its requests and failed calls are kept for the debugger; without it they stay in memory only. */
+  readonly requestLog?: LocalRequestLog;
 }
 
 /**
@@ -104,7 +107,7 @@ async function load(
   options: LoadLocalIntegrationOptions,
   plugin: boolean,
 ): Promise<Result<LoadedIntegration, LoadProblem[]>> {
-  const { sheet, approvedSheet, folder, start, folderDisk, ...ports } = options;
+  const { sheet, approvedSheet, folder, start, folderDisk, requestLog, ...ports } = options;
   const prepared = prepareIntegration({
     ...ports,
     source: {
@@ -122,8 +125,15 @@ async function load(
   if (links.length > 0) {
     return err(links);
   }
-  const runners = new LocalRunners(prepared.value, start, () =>
-    folderLinkProblems(checked.sheet.id, folder, folderDisk),
+  const sheetTools = checked.sheet.tools.map((tool) => tool.name);
+  const writer =
+    requestLog && new RequestLogWriter(requestLog, checked.sheet.id, folder, sheetTools);
+  if (writer !== undefined) checked.log.onEntry((entry) => void writer.request(entry));
+  const runners = new LocalRunners(
+    prepared.value,
+    start,
+    () => folderLinkProblems(checked.sheet.id, folder, folderDisk),
+    writer,
   );
   const first = await runners.startFirst();
   const problems = declarationProblems(checked.sheet, first.declaration);
@@ -151,15 +161,19 @@ class LocalRunners {
   #refused: Error | undefined;
   /** How many connections are open; the runner closes when the last one does. */
   #openConnections = 0;
+  /** Where failed calls are noted, when the integration has a request log in the profile. */
+  readonly #requestLog: RequestLogWriter | undefined;
 
   constructor(
     prepared: PreparedIntegration,
     start: StartLocalRunner,
     linkProblems: () => LoadProblem[],
+    requestLog: RequestLogWriter | undefined,
   ) {
     this.#prepared = prepared;
     this.#start = start;
     this.#linkProblems = linkProblems;
+    this.#requestLog = requestLog;
   }
 
   async startFirst(): Promise<RunnerConnection> {
@@ -185,7 +199,12 @@ class LocalRunners {
         if (!open) {
           throw new Error(`${this.#prepared.sheet.id}: its connection is closed`);
         }
-        return this.#call(name, args, signal);
+        try {
+          return await this.#call(name, args, signal);
+        } catch (error) {
+          void this.#requestLog?.failure(name, error);
+          throw error;
+        }
       },
       close: async () => {
         if (!open) return;
