@@ -223,10 +223,12 @@ jobs:
           # the tarball for that warning to reach users.
           engines=$(tar -xzOf "$tarball" package/package.json | node -p 'JSON.parse(require("node:fs").readFileSync(0, "utf8")).engines?.node')
           [ "$engines" = ">=26.12.0" ] || { echo "::error::The CLI package's engines.node is '$engines', expected '>=26.12.0'."; exit 1; }
-          # What npm would publish, without publishing: no login needed.
-          npm publish --dry-run "$tarball" --tag latest
           clean=$(mktemp -d)
           cd "$clean"
+          # What npm would publish, without publishing: no login needed. It
+          # runs in the empty folder: at the repo root npm refuses because the
+          # root package.json's devEngines asks for pnpm (EBADDEVENGINES).
+          npm publish --dry-run "$tarball" --tag latest
           # The tarball is a file dependency, so this is a plain `npm install`.
           printf '{"private":true,"dependencies":{"halonic":"file:%s"}}\n' "$tarball" > package.json
           npm install --no-audit --no-fund
