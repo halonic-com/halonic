@@ -1,5 +1,11 @@
 import type { StepContext, StepOutcome } from "../runner.ts";
-import { clickOrWhyNot, clickWhenShown, lastWords, waitForText } from "../screen.ts";
+import {
+  clickOrWhyNot,
+  clickPlaceWhenShown,
+  clickWhenShown,
+  lastWords,
+  waitForText,
+} from "../screen.ts";
 import { keys } from "../webdriver.ts";
 import { buttonLabels, closeSettingsLabel, errorCodeIn, screenText, words } from "../words.ts";
 
@@ -79,12 +85,15 @@ async function openSettings(context: StepContext): Promise<boolean> {
   return openPlace(context, buttonLabels.settings.text);
 }
 
-/** Opens a place, such as Inbox, from the Places list unless it shows already. */
+/**
+ * Opens a place, such as Inbox, from the Places list unless the list shows already. The place is
+ * clicked inside the list, not anywhere on the page (HAL-19099).
+ */
 export async function openPlace(context: StepContext, name: string): Promise<boolean> {
   return (
-    (await clickWhenShown(context, name, 2_000)) ||
+    (await clickPlaceWhenShown(context, name, 2_000)) ||
     ((await clickWhenShown(context, screenText.places.text, 10_000)) &&
-      (await clickWhenShown(context, name, 10_000)))
+      (await clickPlaceWhenShown(context, name, 10_000)))
   );
 }
 

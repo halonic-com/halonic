@@ -21,6 +21,11 @@ export interface FakeStudio {
   title: string;
   /** How many elements each XPath finds; one it doesn't name finds none. */
   readonly elements: Map<string, number>;
+  /**
+   * Buttons that a hidden copy comes before in the page, such as a closed menu's row: a click
+   * reaches the shown one only through the XPath scope named here, and otherwise isn't interactable.
+   */
+  readonly shownWithin: Map<string, string>;
   approval: string | undefined;
   /** What the fake test Paperclip answers: the card's status, the chat's comments, the key. */
   readonly paperclip: { status: string; comments: string[]; keyWorks: boolean | undefined };
@@ -38,6 +43,7 @@ export function fakeStudio(text = ""): FakeStudio {
     current: "main",
     title: "",
     elements: new Map(),
+    shownWithin: new Map(),
     approval: undefined,
     paperclip: { status: "pending", comments: [], keyWorks: true },
     context: undefined as unknown as StepContext,
@@ -49,6 +55,9 @@ export function fakeStudio(text = ""): FakeStudio {
       const name = /normalize-space\(\)(?:[=,]|, )'([^']*)'/.exec(xpath)?.[1] ?? xpath;
       const press = window().buttons.get(name);
       if (press === undefined) throw new Error(`no such element: ${name}`);
+      const scope = studio.shownWithin.get(name);
+      if (scope !== undefined && !xpath.startsWith(scope))
+        throw new Error(`element not interactable: ${name}`);
       studio.clicks.push(name);
       press();
     },

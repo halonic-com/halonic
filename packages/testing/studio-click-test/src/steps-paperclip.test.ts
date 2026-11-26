@@ -1,6 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { button, type FakeStudio, fakeStudio } from "./fake-studio.test-helper.ts";
+import { placesList } from "./screen.ts";
 import { inboxAnswer } from "./steps/inbox-answer.ts";
 import { messengerProbe, messengerSend } from "./steps/messenger-send.ts";
 import { overviewRecap, searchTask } from "./steps/search-overview.ts";
@@ -128,6 +129,20 @@ verifies("studio-click-test.paperclip-steps", () => {
         },
       });
       await expect(overviewRecap.run(studio.context)).resolves.toEqual({ passed: true });
+    });
+
+    it("opens Overview from the Places list when step 10 left Overview as the open tab", async () => {
+      // Step 10's search lands on the Overview, so the closed "1 open tab" menu holds a hidden
+      // Overview button before the Places list (runs 45736847707, 45740666285).
+      const studio = connectedStudio({
+        [screenText.overview.text]: () => {
+          main(studio).text = `${screenText.recap.text} ${screenText.nothingBlocked.text}`;
+        },
+      });
+      main(studio).text = `${screenText.overview.text} ${screenText.recap.text}`;
+      studio.shownWithin.set(screenText.overview.text, placesList);
+      await expect(overviewRecap.run(studio.context)).resolves.toEqual({ passed: true });
+      expect(studio.clicks).toEqual([screenText.places.text, screenText.overview.text]);
     });
 
     it("fails as NO_OVERVIEW when Places has no Overview", async () => {

@@ -21,6 +21,19 @@ export function buttonNamed(text: string): string {
 }
 
 /**
+ * An XPath for a place, such as Overview, by its name in the sidebar's Places list. Only there:
+ * the window's "1 open tab" menu is a closed popover holding a hidden button named after the
+ * open tab, and it comes first in the page, so a plain {@link buttonNamed} finds that one and the
+ * click is refused (HAL-19099).
+ */
+export function placeNamed(text: string): string {
+  return `${placesList}${buttonNamed(text)}`;
+}
+
+/** The sidebar's Places list, a `nav` named "Places" (`places-list.tsx`). */
+export const placesList = "//nav[@aria-label='Places']";
+
+/**
  * Reads the page until `found` returns something, for at most `waitMs`, and
  * returns that, or undefined with the last text read. A read that fails (the
  * window is still loading) counts as an empty page.
@@ -61,6 +74,15 @@ export async function clickOrWhyNot(
   waitMs: number,
 ): Promise<string | undefined> {
   return clickXPathOrWhyNot(context, buttonNamed(text), waitMs);
+}
+
+/** Clicks the place with this name in the Places list once it shows, waiting at most `waitMs`. */
+export async function clickPlaceWhenShown(
+  context: StepContext,
+  text: string,
+  waitMs: number,
+): Promise<boolean> {
+  return (await clickXPathOrWhyNot(context, placeNamed(text), waitMs)) === undefined;
 }
 
 /**
