@@ -45,7 +45,12 @@ function recordingHub() {
  */
 async function bytesSentFor(view: PhoneMessaging, message: { id: string }): Promise<string[]> {
   const sent: string[] = [];
-  let closed = false;
+  // The reply comes after the provider, its cache and the fake Paperclip answer over real I/O, so no
+  // fixed number of turns is enough (HAL-19054): the transport settles this when the reply or the close arrives.
+  let settle = () => {};
+  const answeredOrClosed = new Promise<void>((resolve) => {
+    settle = resolve;
+  });
   const connection = new GatewayConnection({
     source: {
       list: () => [],
@@ -56,22 +61,19 @@ async function bytesSentFor(view: PhoneMessaging, message: { id: string }): Prom
     },
     policy: { allowRiskyRemotely: () => true },
     transport: {
-      send: (json) => sent.push(json),
-      bufferedBytes: () => 0,
-      close: () => {
-        closed = true;
+      send: (json) => {
+        sent.push(json);
+        if (json.includes(`"replyTo":"${message.id}"`)) settle();
       },
+      bufferedBytes: () => 0,
+      close: settle,
     },
     messaging: { view, rateLimit: { take: () => true } },
   });
   for (const frame of [{ type: "hello", id: "h1", version: gatewayProtocolVersion }, message]) {
     connection.receive({ binary: false, bytes: encoder.encode(JSON.stringify(frame)) });
   }
-  // Each read goes through the provider, its cache and the fake Paperclip: wait for the answer, or the close.
-  const answered = () => sent.some((json) => json.includes(`"replyTo":"${message.id}"`));
-  for (let turn = 0; turn < 1_000 && !answered() && !closed; turn++) {
-    await new Promise((resolve) => setImmediate(resolve));
-  }
+  await answeredOrClosed;
   connection.close();
   return sent;
 }
