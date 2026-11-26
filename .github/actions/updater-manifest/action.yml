@@ -19,8 +19,11 @@ inputs:
   key:
     description: "Real runs: which public key the signature must match. Empty: the release key in tauri.conf.json. preview: the Preview key in apps/studio/src-tauri/updater-keys.json (HAL-18477)."
     default: ""
+  notes-file:
+    description: The release notes, written by tooling/publish's release-notes script. They become the manifest's `notes`, which the app's update dialog shows (HAL-19542).
+    required: true
   repo:
-    description: The repository whose release gets the installer, for the manifest's url and notes. Empty means this one.
+    description: The repository whose release gets the installer, for the manifest's url. Empty means this one.
     default: ""
   private-key:
     description: The updater private key (the text `tauri signer generate` writes). Real runs only.
@@ -40,6 +43,7 @@ runs:
         TAG: ${{ inputs.tag }}
         VERSION: ${{ inputs.version }}
         INSTALLER: ${{ inputs.installer }}
+        NOTES_FILE: ${{ inputs.notes-file }}
         DRY_RUN: ${{ inputs.dry-run }}
         PRIVATE_KEY: ${{ inputs.private-key }}
         KEY_PASSWORD: ${{ inputs.password }}
@@ -48,6 +52,9 @@ runs:
       run: |
         $ErrorActionPreference = "Stop"
         $utf8 = New-Object System.Text.UTF8Encoding $false
+        # Read first, so a missing notes file fails before anything is signed.
+        $notes = ([System.IO.File]::ReadAllText((Resolve-Path $env:NOTES_FILE).Path, $utf8) -replace "`r`n", "`n").Trim()
+        if (-not $notes) { throw "$env:NOTES_FILE is empty: a release needs its notes" }
         function Get-Lines([string]$base64) {
           $utf8.GetString([Convert]::FromBase64String($base64.Trim())) -split "`r?`n"
         }
@@ -102,10 +109,11 @@ runs:
         if (-not ($setupVersion -is [long] -and $setupVersion -gt 0)) { throw "windows-setup-version.json has no setupVersion above zero" }
 
         # Tauri's static manifest. The url is the installer on this release.
+        # `notes` is the text the update dialog shows, never a link to it.
         # Tauri ignores keys it doesn't know, such as `halonic`.
         $manifest = [ordered]@{
           version = $env:VERSION
-          notes = "https://github.com/$env:REPO/releases/tag/$env:TAG"
+          notes = $notes
           pub_date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'")
           platforms = [ordered]@{
             "windows-x86_64" = [ordered]@{

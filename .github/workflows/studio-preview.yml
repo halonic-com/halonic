@@ -549,12 +549,25 @@ jobs:
       VERSION: ${{ needs.installer.outputs.version }}
       PREVIEW_REPO: halonic-com/halonic-preview
     steps:
+      # The whole history and the tags, without old file contents, for the
+      # release notes below.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
+          filter: blob:none
       - uses: $/.github/actions/setup
         with:
           cache: false
+      # The app's changes since the newest stable release, for latest.json,
+      # which the update dialog reads, and the pre-release's description
+      # (HAL-19542). Only a build of main publishes, so the commit is here.
+      - name: Write the release notes
+        env:
+          SHA: ${{ needs.resolve.outputs.sha }}
+        run: |
+          mkdir -p release-notes
+          node tooling/publish/src/cli/release-notes.ts preview "$SHA" release-notes/notes.md
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: halonic-installers-${{ needs.resolve.outputs.sha }}
@@ -573,6 +586,7 @@ jobs:
           tag: v${{ env.VERSION }}
           version: ${{ env.VERSION }}
           installer: ${{ env.INSTALLER }}
+          notes-file: release-notes/notes.md
           dry-run: "false"
           key: preview
           repo: halonic-com/halonic-preview
@@ -591,7 +605,9 @@ jobs:
           RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           notes="Preview, not for general use. Unsigned Windows build of $SOURCE, built, installed and started in $RUN. Halonic installs set to the Preview update track update to it; stable releases are on $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases."
+          # The same notes as latest.json's, in a file: they can be 20,000 characters.
+          printf '%s\n\n## What changed\n\n%s\n' "$notes" "$(jq -r .notes dist/latest.json)" > "$RUNNER_TEMP/release-body.md"
           gh release create "v$VERSION" --repo "$PREVIEW_REPO" --target main --prerelease --latest=false \
-            --title "Halonic $VERSION (Preview, not for general use)" --notes "$notes" \
+            --title "Halonic $VERSION (Preview, not for general use)" --notes-file "$RUNNER_TEMP/release-body.md" \
             "dist/$INSTALLER" "dist/$INSTALLER.sig" dist/latest.json dist/SHA256SUMS
           echo "Published [v$VERSION]($GITHUB_SERVER_URL/$PREVIEW_REPO/releases/tag/v$VERSION) to $PREVIEW_REPO as a pre-release." >> "$GITHUB_STEP_SUMMARY"

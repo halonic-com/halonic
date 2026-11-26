@@ -9,7 +9,7 @@ small workspace packages stay private and keep their own names.
 - **Layer:** tooling
 - **Owner:** mateo
 - **Public API:** `@halonicjs/tooling-publish` (`stageLayer`, `rewriteSpecifiers`, `buildWorkerBundle`)
-- **Requirements:** `publish.staged-package`, `publish.matching-versions`, `publish.packed-import`, `publish.worker-bundle`, `publish.staged-cli`
+- **Requirements:** `publish.staged-package`, `publish.matching-versions`, `publish.packed-import`, `publish.worker-bundle`, `publish.staged-cli`, `publish.release-notes`
 
 ## Example
 
@@ -127,6 +127,19 @@ The CLI goes the same way from [`release.yml`](../../.github/workflows/release.y
 exists. That job runs in the `npm-publish-cli` environment, which allows `v*` tags only, and npm's
 trusted publisher for `halonic` names `release.yml` and that environment, with staged publishing only.
 Both are set up once by the board before the first release that ships the CLI (HAL-16209).
+
+### Release notes
+
+`src/cli/release-notes.ts` writes the notes of a desktop build (`publish.release-notes`, HAL-19542):
+for a release, its version's section of `apps/studio/CHANGELOG.md` (the release fails without one); for a
+preview, the app's changesets merged since the newest stable tag. The updater-manifest action puts them
+in latest.json's `notes`, which the app's update dialog shows, and the workflows put the same text in the
+GitHub release's description. They stop at 20,000 characters; the release links the full changelog.
+
+```sh
+node tooling/publish/src/cli/release-notes.ts changelog 0.1.1 notes.md
+node tooling/publish/src/cli/release-notes.ts preview origin/main notes.md
+```
 
 ## Release branch
 
