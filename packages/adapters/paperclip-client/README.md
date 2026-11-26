@@ -111,7 +111,7 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `listComments` | `GET /api/issues/{task}/comments?order=desc&limit=100` | a chat's newest messages |
 | `listTaskCards` | `GET /api/issues/{task}/interactions` | a task's cards |
 | `listApprovals` | `GET /api/companies/{company}/approvals?status=pending`, then `?status=revision_requested` | pending approvals, and those waiting on the agent after Request changes, company-wide |
-| `getApproval` | `GET /api/approvals/{approval}` | who decided an approval first |
+| `getApproval` | `GET /api/approvals/{approval}` | before Approve or Reject: whether it is a budget override; who decided an approval first |
 | `listApprovalTasks` | `GET /api/approvals/{approval}/issues` | the task an approval belongs to |
 | `commentOnChat` | `POST /api/issues/{task}/comments` | send a message, with a `clientRequestId` |
 | `acceptCard`, `rejectCard` | `POST /api/issues/{task}/interactions/{card}/accept`, `/reject` | answer a confirmation |
@@ -123,11 +123,12 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `listSecretProposals`, `listJoinRequests` | `GET /api/companies/{company}/secret-proposals?status=pending`, `/join-requests?status=pending_approval` (no filter before an answer) | what agents propose as secrets or bindings, and who asks to join; never a value |
 | `approveSecretProposal`, `rejectSecretProposal` | `POST /api/companies/{company}/secret-proposals/{id}/approve` with `{}`, `/reject` with `{ reason }` | decide a secret proposal; no overrides, no cascade |
 | `approveJoinRequest`, `rejectJoinRequest` | `POST /api/companies/{company}/join-requests/{id}/approve`, `/reject`, each with `{}` | decide a join request |
+| `raiseBudget`, `keepBudgetPaused` | `POST /api/companies/{company}/budget-incidents/{incident}/resolve` with exactly `{ action: "raise_budget_and_resume", amount }` (whole cents, 1 to 2147483647) or exactly `{ action: "keep_paused" }`; `{incident}` a UUID | Approve or Reject a budget override: raise the limit and resume, or keep paused. The incident is the one `budgetsOverview` lists for the approval |
 | `requestApprovalRevision` | `POST /api/approvals/{approval}/request-revision` with `{ decisionNote }` | Request changes: send an approval back to the agent that asked |
 | `whoAmI`, `revokeKey` | `GET /api/cli-auth/me`, `POST /api/cli-auth/revoke-current` | whom a connection is signed in as (its name only); disconnect (track A4) |
 | `spendSummary`, `spendByProvider` | `GET /api/companies/{company}/costs/summary?from=`, `/costs/by-provider?from=` | paid money, the budget, and tokens of every billing type |
 | `spendByAgent`, `spendByAgentModel` | `GET /api/companies/{company}/costs/by-agent?from=`, `/costs/by-agent-model?from=` | each agent's spend and tokens by model |
-| `budgetsOverview` | `GET /api/companies/{company}/budgets/overview` | each agent's monthly budget |
+| `budgetsOverview` | `GET /api/companies/{company}/budgets/overview` | each agent's monthly budget; before a budget override's answer, its active incident |
 | `seatsSummary` | `GET /api/plugins/halonic.seats/api/seats/summary?companyId=`, with `&from=` for spend | seats by label, windows, the pool's proposal, when a failed read ran; with `from=`, the range's runs with no seat (left out if that read fails; `refresh` doesn't ask for it) |
 | `pullRequestsSummary` | `GET /api/plugins/halonic.agent-tools/api/github/summary?companyId=` | pull requests and the merge queue |
 | `pullRequestDetail` | `GET /api/plugins/halonic.agent-tools/api/github/pr/{number}?repo=&companyId=` | one pull request; `{number}` a positive integer |

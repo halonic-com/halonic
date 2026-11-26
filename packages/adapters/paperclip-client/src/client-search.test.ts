@@ -120,6 +120,9 @@ verifies("agent-host.paperclip-key", () => {
         "rejectApproval",
         // Request changes (HAL-18872), pinned in approval-fields.test.ts.
         "requestApprovalRevision",
+        // Budget overrides (HAL-18921), pinned in budget-incidents.test.ts.
+        "raiseBudget",
+        "keepBudgetPaused",
         // Standalone decisions (HAL-18872), pinned in decisions.test.ts.
         "listDecisions",
         "decide",

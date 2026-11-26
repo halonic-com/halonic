@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { InboxAnswer } from "@halonicjs/ports";
+import type { AnswerResult, InboxAnswer } from "@halonicjs/ports";
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -228,6 +228,63 @@ verifies("inbox.option-note", () => {
     expect(button(root, "Request changes").getAttribute("aria-disabled")).not.toBe("true");
     await press(root, "Request changes");
     expect(sent).toEqual([{ kind: "option", option: "request-changes", note: "Lower the budget" }]);
+  });
+
+  /** A Paperclip budget override as the provider maps it: Approve takes the new limit (HAL-18921). */
+  async function budgetCard(answer: (sent: InboxAnswer) => Promise<AnswerResult>) {
+    const messaging = new FakeAgentMessaging({ now: () => asked });
+    const source = messaging.addSource({ label: "Paperclip · Acme", provider: "paperclip" });
+    const item = messaging.addInboxItem(source.id, {
+      question: "Budget override\n\n- For: Website\n- Limit: $100.00\n- Spent: $125.50",
+      options: [
+        { id: "approve", label: "Approve", noteRequired: true, noteLabel: "New limit, in dollars" },
+        { id: "reject", label: "Reject" },
+      ],
+    });
+    const [read] = await messaging.listSources();
+    return render(
+      <AgentItemCard
+        item={item}
+        source={read}
+        now={() => asked}
+        answer={answer}
+        readAttachment={(attachment) => messaging.readAttachment(attachment)}
+      />,
+    );
+  }
+
+  it("enters a budget override's new limit under Approve and sends it as the note", async () => {
+    const sent: InboxAnswer[] = [];
+    const root = await budgetCard(async (answer) => {
+      sent.push(answer);
+      return { outcome: "answered", answeredAt: asked.toISOString() };
+    });
+    await press(root, "Approve");
+    expect(root.querySelector("textarea")?.labels?.[0]?.textContent).toBe("New limit, in dollars");
+    expect(button(root, "Approve").getAttribute("aria-disabled")).toBe("true");
+    await type(root, "250");
+    await press(root, "Approve");
+    expect(sent).toEqual([{ kind: "option", option: "approve", note: "250" }]);
+  });
+
+  it("says why the source refused the new limit", async () => {
+    const tooLow = Object.assign(
+      new Error("The new limit must be more than the $125.50 already spent."),
+      { kind: "denied" },
+    );
+    // jsdom has no scrolling; the failed line scrolls the pressed button into view.
+    Element.prototype.scrollIntoView = () => undefined;
+    try {
+      const root = await budgetCard(() => Promise.reject(tooLow));
+      await press(root, "Approve");
+      await type(root, "100");
+      await press(root, "Approve");
+      expect(root.querySelector('[role="alert"]')?.textContent).toContain(
+        "The new limit must be more than the $125.50 already spent.",
+      );
+    } finally {
+      delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+    }
   });
 
   it("writes the note and Your answer in the kit's field box", async () => {

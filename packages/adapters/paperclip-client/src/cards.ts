@@ -9,6 +9,7 @@ import type {
 import { approvalRisk } from "./approval-risk.ts";
 import { approvalQuestion, asksToRunTool, confirmationQuestion } from "./approval-text.ts";
 import { approvalWords } from "./approval-words.ts";
+import { budgetOverrideType } from "./budget-amount.ts";
 import {
   listCardAnswerOf,
   listCardAnswerRequest,
@@ -280,6 +281,16 @@ const approvalOptions: readonly InboxItemOption[] = [
   },
 ];
 
+/**
+ * A budget override's options (`paperclip-client.budget-incidents`): Approve raises the limit, so
+ * it is sent only with the new limit the person writes in its field.
+ */
+const budgetOverrideOptions: readonly InboxItemOption[] = approvalOptions.map((option) =>
+  option.id === "approve"
+    ? { ...option, noteRequired: true, noteLabel: approvalWords.newLimit }
+    : option,
+);
+
 /** How a decided approval was answered; a `revision_requested` one waits on the agent that asked. */
 const decidedOptions: ReadonlyMap<string, string> = new Map([
   ["approved", "approve"],
@@ -307,7 +318,7 @@ export function approvalToItem(
     source: context.ids.source(),
     from: authorOf(context, text(record, "requestedByAgentId"), text(record, "requestedByUserId")),
     question: approvalQuestion(type, asRecord(field(record, "payload"))),
-    options: approvalOptions,
+    options: type === budgetOverrideType ? budgetOverrideOptions : approvalOptions,
     ...(work === undefined ? {} : { work }),
     risk: approvalRisk(type),
     createdAt: timeOf(record, "createdAt"),
