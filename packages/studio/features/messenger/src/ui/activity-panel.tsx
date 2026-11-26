@@ -1,74 +1,18 @@
-import type { PullRequestList, TeamRuns } from "@halonicjs/ports";
 import { CloseIcon, decidedAt, EmptyState } from "@halonicjs/studio-kit";
 import { type EngineWords, focusedPanelClass } from "@halonicjs/studio-shell";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { type ActivityView, activityView, minutesBetween } from "../activity.ts";
+import { useRef } from "react";
+import { type ActivityView, minutesBetween } from "../activity.ts";
+import { endedJustNow } from "../activity-today.ts";
 import { activityWords } from "../activity-words.ts";
 import { chatAgent } from "../chat-name.ts";
-import type { ConversationRow, Messenger } from "../messenger.ts";
+import type { ConversationRow } from "../messenger.ts";
+import { EarlierRuns, NextTasks } from "./activity-lists.tsx";
 import { ActivitySkeleton, PullRequests, Section, Status, TaskCard } from "./activity-parts.tsx";
 import { useFadeIn } from "./load-states.tsx";
+import type { ActivityRead } from "./use-activity.ts";
 
 /** The panel's ID, for the chat header button's `aria-controls`. */
 export const activityPanelId = "messenger-activity";
-
-/** How often the panel reads while open, and while closed for the header button's dot. */
-const readEveryMs = { open: 15_000, closed: 30_000 };
-
-/** What the panel last read: nothing yet, the agent's activity, and whether the newest read failed. */
-export interface ActivityRead {
-  readonly view: ActivityView | undefined;
-  readonly failure: unknown;
-  readonly read: () => void;
-}
-
-/**
- * The open chat's agent's activity (`messenger.activity-panel`): its runs since local midnight
- * and the pull requests, read every 15 seconds while the panel is open and every 30 while it is
- * closed, so the header button's dot stays right. A failed read keeps what was read last. The view
- * is worked out on each render, so a new list read (this chat's `agentWorking`) shows at once.
- */
-export function useActivity(
-  messenger: Messenger,
-  row: ConversationRow,
-  open: boolean,
-): ActivityRead {
-  const activity = messenger.activity;
-  const agent = row.conversation.agent;
-  const [read, setRead] = useState<
-    { runs: readonly TeamRuns[]; pulls: readonly PullRequestList[] } | undefined
-  >(undefined);
-  const [failure, setFailure] = useState<unknown>(undefined);
-  // Counts the reads, so an answer that lands after a newer read's never shows.
-  const reads = useRef(0);
-  const readNow = useCallback(() => {
-    if (activity === undefined) return;
-    reads.current += 1;
-    const thisRead = reads.current;
-    const since = startOfToday(messenger.now()).toISOString();
-    Promise.all([activity.runs({ agent, since }), activity.pullRequests()]).then(
-      ([runs, pulls]) => {
-        if (thisRead !== reads.current) return;
-        setRead({ runs, pulls });
-        setFailure(undefined);
-      },
-      (error: unknown) => {
-        console.error("The Messenger couldn't read the agent's activity:", error);
-        if (thisRead === reads.current) setFailure(error);
-      },
-    );
-  }, [activity, messenger, agent]);
-
-  useEffect(() => {
-    readNow();
-    const every = setInterval(readNow, open ? readEveryMs.open : readEveryMs.closed);
-    return () => clearInterval(every);
-  }, [readNow, open]);
-
-  const view =
-    read === undefined ? undefined : activityView(row, read.runs, read.pulls, messenger.now());
-  return { view, failure, read: readNow };
-}
 
 /**
  * The activity panel (`messenger.activity-panel`, HAL-18558 revision 3): "Chief's activity", the
@@ -152,6 +96,10 @@ function ActivityBody({
         <p className="text-small text-fg-muted">{words.showingLast}</p>
       )}
       <ViewBody view={view} now={now} />
+      <NextTasks next={activity.next} />
+      {view.kind === "ended" || view.kind === "idle" ? (
+        <EarlierRuns runs={activity.earlier} />
+      ) : null}
     </>
   );
 }
@@ -170,7 +118,7 @@ function ViewBody({ view, now }: { readonly view: ActivityView; readonly now: Da
       </>
     );
   }
-  if (view.kind === "ended") return <EndedBody view={view} />;
+  if (view.kind === "ended") return <EndedBody view={view} now={now} />;
   const quiet = minutesBetween(view.lastActivityAt, now);
   return (
     <>
@@ -192,19 +140,30 @@ function ViewBody({ view, now }: { readonly view: ActivityView; readonly now: Da
   );
 }
 
-function EndedBody({ view }: { readonly view: Extract<ActivityView, { kind: "ended" }> }) {
-  const at = view.task.finishedAt === undefined ? "" : decidedAt(view.task.finishedAt);
+/**
+ * The last run once it ended: "Idle · finished 14:09" just after, "Idle · last run ended 13:41"
+ * from 10 minutes on, and "Stopped with an error · 14:09" for a failed run.
+ */
+function EndedBody({
+  view,
+  now,
+}: {
+  readonly view: Extract<ActivityView, { kind: "ended" }>;
+  readonly now: Date;
+}) {
+  const finishedAt = view.task.finishedAt;
+  const at = finishedAt === undefined ? "" : decidedAt(finishedAt);
   const failed = view.outcome === "failed";
+  const ended =
+    finishedAt !== undefined && endedJustNow(finishedAt, now)
+      ? activityWords.finished
+      : activityWords.lastRunEnded;
   return (
     <>
       {failed ? (
         <Status tone="failed" label={activityWords.stoppedWithError} detail={at || undefined} />
       ) : (
-        <Status
-          tone="done"
-          label={activityWords.idle}
-          detail={at ? activityWords.finished(at) : undefined}
-        />
+        <Status tone="done" label={activityWords.idle} detail={at ? ended(at) : undefined} />
       )}
       <Section title={activityWords.lastRun}>
         <TaskCard task={view.task} outcome={view.outcome} />
@@ -212,8 +171,4 @@ function EndedBody({ view }: { readonly view: Extract<ActivityView, { kind: "end
       <PullRequests pulls={view.pullRequests} />
     </>
   );
-}
-
-function startOfToday(now: Date): Date {
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }

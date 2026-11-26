@@ -10,6 +10,7 @@ import type {
   MessagingSource,
   SendResult,
   TeamStatus,
+  WorkItem,
 } from "@halonicjs/ports";
 import { ChannelAdmin } from "./channel-admin.ts";
 import { type ChannelQuestion, channelQuestions } from "./channel-waiting.ts";
@@ -151,6 +152,11 @@ export class Messenger {
       console.error(`The Messenger couldn't read the messages of ${row.conversation.id}:`, error);
       return [];
     }
+  }
+
+  /** The work the sources list, for the activity panel's **Next**. */
+  work(): Promise<readonly WorkItem[]> {
+    return this.messaging.listWork();
   }
 
   /** Notes that the person saw a chat's messages up to the newest of `messages`. */

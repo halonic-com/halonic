@@ -1,4 +1,4 @@
-import type { PullRequestState } from "@halonicjs/ports";
+import type { PullRequestState, WorkState } from "@halonicjs/ports";
 import type { RunOutcome } from "./activity.ts";
 
 /**
@@ -23,6 +23,23 @@ export const activityWords = {
   queuedAt: (time: string) => `queued at ${time}`,
   idle: "Idle",
   finished: (time: string) => `finished ${time}`,
+  lastRunEnded: (time: string) => `last run ended ${time}`,
+  next: "Next",
+  earlierToday: "Earlier today",
+  /** A run's start and length in **Earlier today**: "11:02 · 9 min". */
+  startedFor: (time: string, minutes: number) => `${time} · ${duration(minutes)}`,
+  /** Read out once when a run starts or ends, in the page's status region. */
+  announceStarted: (name: string, task: string) => `${name} started: ${task}`,
+  announceFinished: (name: string, task: string) => `${name} finished: ${task}`,
+  workState: {
+    todo: "To do",
+    "in-progress": "In progress",
+    "in-review": "In review",
+    blocked: "Blocked",
+    done: "Done",
+    cancelled: "Cancelled",
+    other: "",
+  } satisfies Record<WorkState, string>,
   stoppedWithError: "Stopped with an error",
   task: "Task",
   lastRun: "Last run",
