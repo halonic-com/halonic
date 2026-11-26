@@ -2,6 +2,7 @@
 
 - Approval: asked for on HAL-19031 (from HAL-17866, the board's evidence of 26 Nov 00:59 UTC); Liam approves this note in his review of this pull request
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:1wTnAkwUU2GPvwJoUoG8CLXOVhpaYBjQX2FaIFMaMjYsPSH+eCZ2tP0dcJByc58/aNzbSkZEXlC85sXNwgDrDQ==
 - Task: HAL-19031
 
 ## What changes
