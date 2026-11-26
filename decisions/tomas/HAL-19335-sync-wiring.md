@@ -2,6 +2,7 @@
 
 - Approval: HAL-19201, the maintainer's approval of the sync service design with conditions (comment 805348ab), which asks for this note on PR 3; Liam signs it in his review of this pull request on HAL-19335
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:bQY/TtT64mikkNcDNHdVwij+FO3eo3U1TbPgxqm6+ICYn72BRfqw/GBmGJ/D4AxFbTWH2ZPV4ZHC08/Y1aaqAA==
 
 ## What changes
 
