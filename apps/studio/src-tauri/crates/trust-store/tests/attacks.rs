@@ -202,6 +202,41 @@ fn trust_files_trust_nothing_under_a_profile_that_is_a_file() {
     assert_eq!(fs::read_to_string(&profile).unwrap(), "not a folder");
 }
 
+/// A record behind a symbolic or a hard link, such as a file in a
+/// workspace an agent may edit, is refused, by `get` and by `list`.
+#[cfg(unix)]
+#[test]
+fn trust_files_refuse_a_record_behind_a_link() {
+    for link in ["symbolic", "hard"] {
+        let scratch = Scratch::new(&format!("linked-{link}"));
+        let store = scratch.store();
+        let location = "/workspaces/acme";
+        grant(&store, location, "hfp1:aa");
+        let file = file_for(&scratch, location);
+        let elsewhere = scratch.path().join("elsewhere.json");
+        fs::rename(&file, &elsewhere).unwrap();
+        if link == "symbolic" {
+            std::os::unix::fs::symlink(&elsewhere, &file).unwrap();
+        } else {
+            fs::hard_link(&elsewhere, &file).unwrap();
+        }
+
+        assert_eq!(
+            store.get(location),
+            Err(unreadable_naming(location, &file)),
+            "{link}"
+        );
+        assert_eq!(
+            store.list(),
+            Err(TrustError::Unreadable {
+                location: None,
+                file: file.clone(),
+            }),
+            "{link}"
+        );
+    }
+}
+
 /// M3: every folder a grant creates, the profile too, is its owner's only.
 #[cfg(unix)]
 #[test]

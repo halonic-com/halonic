@@ -41,3 +41,15 @@ verifies("studio.pages-not-framed", () => {
     expect(directives(csp).get("frame-ancestors")).toBe("'none'");
   });
 });
+
+verifies("studio.page-policy-closed", () => {
+  it.each(["object-src", "base-uri", "form-action", "frame-src"])(
+    "gives the desktop pages a policy that says %s 'none', as Android's does",
+    (name) => {
+      const csp = tauriConfig("tauri.conf.json").app?.security?.csp ?? "";
+      const android = tauriConfig("tauri.android.conf.json").app?.security?.csp ?? "";
+      expect(directives(csp).get(name)).toBe("'none'");
+      expect(directives(android).get(name)).toBe("'none'");
+    },
+  );
+});

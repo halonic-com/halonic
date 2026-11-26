@@ -60,8 +60,9 @@ impl<'a> WorkspaceFolder<'a> {
     }
 
     /// The same folder, writing every file private to the user (`600` on
-    /// systems with modes), as the stores in `fs-node` write theirs. A
-    /// replaced file takes the private mode too, not its old one.
+    /// systems with modes), as the stores in `fs-node` write theirs, and
+    /// making every folder a write needs private too (`700`). A replaced
+    /// file takes the private mode too, not its old one.
     #[must_use]
     pub fn private_files(self) -> Self {
         Self {
@@ -272,7 +273,7 @@ impl<'a> WorkspaceFolder<'a> {
                 Ok(entry) if entry.is_dir() => {}
                 Ok(_) => return Err(in_the_way()),
                 Err(error) if is_missing(&error) => {
-                    if let Err(error) = fs::create_dir(&folder)
+                    if let Err(error) = create_folder(&folder, self.private_files)
                         && error.kind() != io::ErrorKind::AlreadyExists
                     {
                         return Err(FileError::io(path, &error));
@@ -306,6 +307,25 @@ fn matches_expected(current: Option<&str>, expected: &str) -> bool {
         None => expected == "absent",
         Some(text) => expected != "absent" && content_digest(text) == expected,
     }
+}
+
+/// Creates one folder, private to the user (`700` on systems with modes)
+/// when `private`.
+#[cfg(unix)]
+fn create_folder(folder: &Path, private: bool) -> io::Result<()> {
+    use std::os::unix::fs::DirBuilderExt;
+    let mut builder = fs::DirBuilder::new();
+    if private {
+        builder.mode(0o700);
+    }
+    builder.create(folder)
+}
+
+/// Creates one folder; on Windows the profile folder's own permissions
+/// protect what is in it.
+#[cfg(not(unix))]
+fn create_folder(folder: &Path, _private: bool) -> io::Result<()> {
+    fs::create_dir(folder)
 }
 
 /// Creates `file`, which must not exist yet, with `text`, flushed to disk.
