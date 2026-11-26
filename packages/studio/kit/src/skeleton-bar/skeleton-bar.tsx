@@ -1,7 +1,8 @@
 /**
  * Which part of a row the bar stands in for. `title` is 10px high and `meta` 8px; `trailing` is
- * the 80px value or chip on the right; `heading` is a List heading's 48px bar. `icon` (20px) and
- * `avatar` (28px) are the leading block; `value` (72 × 36px) is a card's headline value.
+ * the 80px value or chip on the right; `heading` is a List heading's 48px bar. `icon` (20px),
+ * `avatar` (28px) and `sidebar` (60px, a sidebar row's picture) are the leading block; `value`
+ * (72 × 36px) is a card's headline value.
  */
 export type SkeletonBarKind =
   | "title"
@@ -10,6 +11,7 @@ export type SkeletonBarKind =
   | "heading"
   | "icon"
   | "avatar"
+  | "sidebar"
   | "value";
 
 /**
@@ -32,6 +34,7 @@ const kindClasses: Record<SkeletonBarKind, string> = {
   heading: "h-2 w-12 rounded-xs",
   icon: "size-icon-md shrink-0 rounded-xs",
   avatar: "size-7 shrink-0 rounded-full",
+  sidebar: "size-15 shrink-0 rounded-full",
   value: "h-9 w-18 shrink-0 rounded-sm",
 };
 

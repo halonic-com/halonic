@@ -22,7 +22,7 @@ export const STILL_LOADING_AFTER_MS = 10_000;
 
 /** The shape of the rows that are coming, so the page doesn't jump when they arrive. */
 export interface ListSkeletonShape {
-  /** The rows' icon (20px) or avatar (28px). */
+  /** The rows' icon (20px) or avatar (28px, 60px in a `plain` List). */
   readonly leading?: "icon" | "avatar";
   /** The rows have a chip or a value on the right. */
   readonly trailing?: boolean;
@@ -126,7 +126,15 @@ export function ListSkeleton({
               {heading === undefined ? null : <HeadingBar />}
               {barWidths.map((widths, index) => {
                 const line = index === 0 ? "" : lineClasses[look].main;
-                const row = <SkeletonRow widths={widths} phone={phone} shape={shape} line={line} />;
+                const row = (
+                  <SkeletonRow
+                    widths={widths}
+                    phone={phone}
+                    shape={shape}
+                    line={line}
+                    look={look}
+                  />
+                );
                 if (columns === undefined || phone) {
                   return <Fragment key={widths.title}>{row}</Fragment>;
                 }
@@ -136,7 +144,13 @@ export function ListSkeleton({
                   <div key={widths.title} className={line}>
                     <ColumnsSkeletonRow widths={widths} columns={columns} />
                     <div className="@list-wide:hidden">
-                      <SkeletonRow widths={widths} phone={phone} shape={shape} line="" />
+                      <SkeletonRow
+                        widths={widths}
+                        phone={phone}
+                        shape={shape}
+                        line=""
+                        look={look}
+                      />
                     </div>
                   </div>
                 );
@@ -159,23 +173,37 @@ function HeadingBar() {
   );
 }
 
+/** A skeleton row's height: a `plain` List's sidebar row, else a real row with a meta line. */
+function skeletonHeight(look: ListLook, phone: boolean): string {
+  // A sidebar row is at least 80px, on a phone too (HAL-19735, `kit.plain-row-size`).
+  if (look === "plain") {
+    return "min-h-20 py-2.5";
+  }
+  // A real row with a meta line: 56px, or at least 64px on a phone.
+  return phone ? "min-h-16 py-3" : "min-h-14";
+}
+
 function SkeletonRow({
   widths,
   phone,
   shape,
   line,
+  look,
 }: {
   readonly widths: { title: SkeletonBarWidth; meta: SkeletonBarWidth };
   readonly phone: boolean;
   readonly shape: ListSkeletonShape;
   /** The line above it: none on the first row. */
   readonly line: string;
+  readonly look: ListLook;
 }) {
-  // A real row with a meta line: 56px, or at least 64px on a phone.
-  const height = phone ? "min-h-16 py-3" : "min-h-14";
+  // A `plain` List's avatar is the sidebar's 60px picture.
+  const leading = look === "plain" && shape.leading === "avatar" ? "sidebar" : shape.leading;
   return (
-    <div className={`flex items-center gap-3 bg-surface px-4 ${height} ${line}`}>
-      {shape.leading === undefined ? null : <SkeletonBar kind={shape.leading} />}
+    <div
+      className={`flex items-center gap-3 bg-surface px-4 ${skeletonHeight(look, phone)} ${line}`}
+    >
+      {leading === undefined ? null : <SkeletonBar kind={leading} />}
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <SkeletonBar kind="title" width={widths.title} />
         <SkeletonBar kind="meta" width={widths.meta} />

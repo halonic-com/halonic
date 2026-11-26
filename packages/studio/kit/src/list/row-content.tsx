@@ -16,9 +16,19 @@ import { Leading, lineFit, MetaLine } from "./row-parts.tsx";
 /**
  * The row's height, from the presentation, the density and whether it has a meta line. A row that
  * wraps, or only wraps its title or meta line, grows past it, so on a desktop it gets padding too, keeping its
- * text off the lines.
+ * text off the lines. A `plain` row is a sidebar's: at least 80px with 10px above and below, on a
+ * phone too (HAL-19735, `kit.plain-row-size`).
  */
-function heightClasses(phone: boolean, dense: boolean, hasMeta: boolean, wrap: boolean): string {
+function heightClasses(
+  phone: boolean,
+  dense: boolean,
+  hasMeta: boolean,
+  wrap: boolean,
+  plain: boolean,
+): string {
+  if (plain) {
+    return "min-h-20 py-2.5";
+  }
   if (phone) {
     return dense ? "min-h-touch py-2" : "min-h-14 py-3";
   }
@@ -60,14 +70,14 @@ function titleColour(row: AnyListRow): string {
 }
 
 /**
- * The title's weight: medium, or in a `plain` List regular, and semibold while unread (600, since
- * at 14px only 600 reads as unread; Sofia, HAL-19512).
+ * The title's style: medium 14px, or in a `plain` List regular 15px (HAL-19735), and semibold while
+ * unread (600, since only 600 reads as unread; Sofia, HAL-19512).
  */
 function titleWeight(row: AnyListRow, plain: boolean): string {
   if (!plain) {
     return "text-body-strong";
   }
-  return row.unread === undefined ? "text-body" : "text-body font-semibold";
+  return row.unread === undefined ? "text-reading" : "text-reading font-semibold";
 }
 
 /** The title, with its `titleEnd` at the line's end when the row has one. */
@@ -205,9 +215,9 @@ export function RowContent({
 
   return (
     <div
-      className={`flex items-center gap-3 ${afterCheck ? "pr-4" : "px-4"} ${heightClasses(phone, dense, meta !== undefined, wrap)}`}
+      className={`flex items-center gap-3 ${afterCheck ? "pr-4" : "px-4"} ${heightClasses(phone, dense, meta !== undefined, wrap, plain)}`}
     >
-      <Leading row={row} small={dense && !phone} />
+      <Leading row={row} small={dense && !phone} sidebar={plain} />
       <div className="flex min-w-0 flex-1 flex-col">
         <TitleLine row={row} plain={plain} />
         <UnreadLine row={row} plain={plain}>
@@ -217,6 +227,7 @@ export function RowContent({
             id={reasonId}
             chip={trailingBelow ? trailing : undefined}
             full={plain && row.unread !== undefined}
+            large={plain}
           />
         </UnreadLine>
         {row.under}

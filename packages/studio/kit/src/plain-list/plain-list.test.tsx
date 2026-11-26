@@ -50,7 +50,7 @@ verifies("kit.plain-list", () => {
   it("draws a read row with a regular title, a muted line and no mark", () => {
     const { button, title, lineText } = renderRow();
 
-    expect(classesOf(title)).toContain("text-body");
+    expect(classesOf(title)).toContain("text-reading");
     expect(classesOf(title)).not.toContain("font-semibold");
     expect(classesOf(lineText)).toContain("text-fg-muted");
     expect(button.querySelector("[data-unread]")).toBeNull();
@@ -144,7 +144,7 @@ verifies("kit.plain-list", () => {
     const action = row.querySelector(":scope > button:last-child") as HTMLButtonElement;
 
     expect(classesOf(action)).toEqual(
-      expect.arrayContaining(["min-h-5", "top-2", "inline-flex", "items-center"]),
+      expect.arrayContaining(["min-h-5", "top-5", "inline-flex", "items-center"]),
     );
     expect(classesOf(action)).not.toContain("min-h-6");
   });

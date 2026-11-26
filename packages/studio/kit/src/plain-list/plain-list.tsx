@@ -27,7 +27,7 @@ export interface PlainRowAction {
 export interface PlainRowProps {
   /** Stable, never the index: tests and code find the row by its `data-row-id`. */
   readonly id: string;
-  /** The 28px picture before the text: an `Avatar` or an item's mark. Decoration. */
+  /** The 60px picture before the text: an `Avatar` with `size="sidebar"`. Decoration. */
   readonly picture: ReactNode;
   /** The row's name. A node, so a search can mark the part it found. Cut with an ellipsis. */
   readonly title: ReactNode;
@@ -50,7 +50,9 @@ export interface PlainRowProps {
 
 /**
  * A list of plain rows for a two-pane app's list, the Messenger's chats and the Inbox's items
- * (HAL-19192, `kit.plain-list`): no borders or box, 4px apart.
+ * (HAL-19192, `kit.plain-list`): no borders or box, 4px apart. Its rows are a sidebar's bigger
+ * ones (HAL-19735, `kit.plain-row-size`): at least 80px high, a 60px picture, a 15px title over a
+ * 14px line.
  */
 export function PlainList({ label, children, listRef }: PlainListProps) {
   return (
@@ -61,7 +63,7 @@ export function PlainList({ label, children, listRef }: PlainListProps) {
 }
 
 const rowClasses =
-  "flex w-full items-center gap-3 rounded-md px-3 py-2 text-start transition-colors duration-(--duration-fast) ease-standard hover:bg-surface-muted focus-ring aria-[current=true]:bg-surface-muted";
+  "flex min-h-20 w-full items-center gap-3 rounded-md px-3 py-2.5 text-start transition-colors duration-(--duration-fast) ease-standard hover:bg-surface-muted focus-ring aria-[current=true]:bg-surface-muted";
 
 /**
  * A row with an action keeps the hover fill while the pointer is on the action or the row has
@@ -72,13 +74,13 @@ const rowWithActionClasses = `${rowClasses} group-hover:bg-surface-muted group-f
 /**
  * The action sits over the title's end, so it carries the row's fill and covers what's under it.
  * While hidden it takes no clicks, so a tap where hover doesn't apply opens the row instead; it
- * stays in the tab order. Its visible box is 20px high at the time's line, so its fill and its
- * inset focus ring end clear of the unread count below; an invisible `after:` area 2px above and
- * below makes the target 24px (WCAG 2.5.8, Sofia, HAL-19706). `pe-1` gives the ring air and
+ * stays in the tab order. Its visible box is 20px high, centred on the time's line in the 80px row
+ * (`top-5`, HAL-19735), so its fill and its inset focus ring end clear of the unread count below;
+ * an invisible `after:` area 2px above and below makes the target 24px (WCAG 2.5.8, Sofia, HAL-19706). `pe-1` gives the ring air and
  * `-me-1` keeps the label's end lined up with the time (HAL-19656).
  */
 const actionClasses =
-  "absolute end-3 -me-1 top-2 inline-flex min-h-5 items-center rounded-sm bg-surface-muted ps-2 pe-1 text-small text-fg-muted opacity-0 pointer-events-none transition-opacity duration-(--duration-fast) hover:text-fg focus-ring-inset after:absolute after:-inset-y-0.5 after:inset-x-0 after:content-[''] group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100";
+  "absolute end-3 -me-1 top-5 inline-flex min-h-5 items-center rounded-sm bg-surface-muted ps-2 pe-1 text-small text-fg-muted opacity-0 pointer-events-none transition-opacity duration-(--duration-fast) hover:text-fg focus-ring-inset after:absolute after:-inset-y-0.5 after:inset-x-0 after:content-[''] group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100";
 
 /**
  * One row of a `PlainList`: its picture, its title over one line, its time on the right and its
@@ -88,8 +90,8 @@ const actionClasses =
  * it is a button of its own, reached with Tab after the row.
  *
  * @example
- * <PlainRow id={chat.id} picture={<Avatar name="Chief" />} title="Chief" line="Shall I merge #12?"
- *   time="09:30" unread={{ label: " unread", count: "2" }} onSelect={open} />
+ * <PlainRow id={chat.id} picture={<Avatar name="Chief" size="sidebar" />} title="Chief"
+ *   line="Shall I merge #12?" time="09:30" unread={{ label: " unread", count: "2" }} onSelect={open} />
  */
 export function PlainRow(props: PlainRowProps) {
   const { id, picture, current = false, onSelect, action, time } = props;
@@ -132,8 +134,9 @@ export function PlainRow(props: PlainRowProps) {
 
 /** The title, the part after it and the violet dot, which sits outside the cut so it stays. */
 function RowTitle({ title, afterTitle, flag, unread }: PlainRowProps) {
-  // Semibold (600), not text-body-strong (500): at 14px only 600 reads as unread (Sofia, HAL-19512).
-  const weight = unread === undefined ? "text-body" : "text-body font-semibold";
+  // 15px, a pixel over the body text, as the sidebar's bigger rows ask (HAL-19735). Semibold (600),
+  // not medium (500): only 600 reads as unread (Sofia, HAL-19512).
+  const weight = unread === undefined ? "text-reading" : "text-reading font-semibold";
   return (
     <span className="flex min-w-0 flex-1 items-center">
       <span className={`min-w-0 truncate ${weight}`}>
@@ -152,7 +155,7 @@ function RowLine({ line, unread }: PlainRowProps) {
   const colour = unread === undefined ? "text-fg-muted" : "text-fg";
   return (
     <span className="flex items-center gap-2">
-      <span className={`min-w-0 flex-1 truncate text-small ${colour}`}>{line}</span>
+      <span className={`min-w-0 flex-1 truncate text-body ${colour}`}>{line}</span>
       {unread === undefined ? null : <UnreadMark unread={unread} />}
     </span>
   );

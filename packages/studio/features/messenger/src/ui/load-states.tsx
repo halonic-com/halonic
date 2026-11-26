@@ -75,8 +75,9 @@ const lineHeight = String.fromCharCode(0x200b);
 
 /**
  * The chats while their first read is on its way (`messenger.load-states`, motion 7): nothing for
- * 300 ms, so a fast load doesn't flash, then three rows in the real rows' shape (padding, picture,
- * name and preview lines), so nothing moves when the chats arrive. They breathe three times, then
+ * 300 ms, so a fast load doesn't flash, then three rows in the real rows' shape (80px, 10px
+ * padding, a 60px picture, the 15px name and 14px preview lines; HAL-19735), so nothing moves when
+ * the chats arrive. They breathe three times, then
  * rest; under reduced motion they stay still. Hidden from screen
  * readers, which hear "Loading your chats" instead. After 10 seconds "Still loading" and **Try
  * again** show under them, as under the kit's List.
@@ -96,14 +97,14 @@ export function ChatsSkeleton({ onRetry }: { readonly onRetry: () => void }) {
         {wait === "early" ? null : (
           <ul ref={breathe} aria-hidden="true" className="flex flex-col gap-1">
             {skeletonWidths.map((widths) => (
-              <li key={widths.name} className="flex items-center gap-3 px-3 py-2">
-                <SkeletonBar kind="avatar" />
+              <li key={widths.name} className="flex min-h-20 items-center gap-3 px-3 py-2.5">
+                <SkeletonBar kind="sidebar" />
                 <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="flex items-center text-body">
+                  <span className="flex items-center text-reading">
                     {lineHeight}
                     <SkeletonBar kind="title" width={widths.name} />
                   </span>
-                  <span className="flex items-center text-small">
+                  <span className="flex items-center text-body">
                     {lineHeight}
                     <SkeletonBar kind="meta" width={widths.line} />
                   </span>

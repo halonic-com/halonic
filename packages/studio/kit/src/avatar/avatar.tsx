@@ -13,7 +13,8 @@ export interface AvatarProps {
   readonly picture?: ImageBitmap | undefined;
   /**
    * The tile's size: 28px in a row (the default), or 40px in an open item's header, where 28px is
-   * hard to see beside a two-line title (HAL-19192, `kit.avatar-size`).
+   * hard to see beside a two-line title (HAL-19192, `kit.avatar-size`), or 60px in a two-pane
+   * app's sidebar row, the Inbox's and the Messenger's (HAL-19735, `kit.plain-row-size`).
    */
   readonly size?: AvatarSize;
   /**
@@ -23,13 +24,13 @@ export interface AvatarProps {
   readonly tint?: AgentTint | undefined;
 }
 
-/** The Avatar's two sizes: 28px in a row, 40px in a header. */
-export type AvatarSize = "row" | "header";
+/** The Avatar's three sizes: 28px in a row, 40px in a header, 60px in a sidebar row. */
+export type AvatarSize = "row" | "header" | "sidebar";
 
 /**
  * Each size's tile classes, its initials' text style, its side in CSS pixels, and the padding
  * around a picture inside the tile, so a face doesn't touch the circle's edge (HAL-19539,
- * `kit.avatar-inset`): 2px at 28px, 3px at 40px.
+ * `kit.avatar-inset`): 2px at 28px, 3px at 40px, 4px at 60px.
  */
 const sizes = {
   row: {
@@ -44,6 +45,12 @@ const sizes = {
     pixels: 40,
     inset: "p-[3px]",
   },
+  sidebar: {
+    tile: "size-15 shrink-0 rounded-full",
+    text: "text-heading",
+    pixels: 60,
+    inset: "p-1",
+  },
 } as const satisfies Record<
   AvatarSize,
   { tile: string; text: string; pixels: number; inset: string }
@@ -53,7 +60,8 @@ const sizes = {
 const neutral = "bg-surface-muted";
 
 /**
- * A member's initials, or their picture, on a 28px round tile (40px with `size="header"`): who is signed in, in Cloud's top
+ * A member's initials, or their picture, on a 28px round tile (40px with `size="header"`, 60px with
+ * `size="sidebar"` in a two-pane app's sidebar row): who is signed in, in Cloud's top
  * bar (HAL-16050), or an agent in the Messenger. `surface-muted` with a `border-strong` edge and `fg-muted`, not the accent,
  * so it doesn't read as a product. An agent's initials sit on its own tint instead, in `fg` so
  * they read as well on every tint, with the same edge. It's decoration: the member's name is next to it, or in the

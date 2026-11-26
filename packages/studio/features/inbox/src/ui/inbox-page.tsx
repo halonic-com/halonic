@@ -360,6 +360,8 @@ export function InboxView({
               // The loading skeleton's heading takes no headingRef, so a last-notice dismiss during a
               // refresh can't move focus to it. Known and accepted.
               loading={!state.loaded}
+              // Loading rows with the sidebar's 60px picture, so nothing moves (`kit.plain-row-size`).
+              skeleton={{ leading: "avatar" }}
               loadingLabel="Loading the Inbox"
               onRetry={retry}
             />

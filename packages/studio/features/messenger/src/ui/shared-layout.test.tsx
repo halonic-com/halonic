@@ -43,8 +43,10 @@ verifies("messenger.shared-layout", () => {
     const row = chiefRow(page);
 
     expect(header.firstElementChild?.className.split(" ")).toContain("size-10");
+    const rowPicture = page.querySelector("nav li button")?.firstElementChild;
+    expect(rowPicture?.className.split(" ")).toContain("size-15");
     expect(header.querySelector("h2")?.textContent).toBe("Chief");
-    expect(row.name).toContain("text-body");
+    expect(row.name).toContain("text-reading");
     expect(row.name).not.toContain("font-semibold");
     expect(row.line).toContain("text-fg-muted");
   });
