@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-135 (no redirects to undeclared hosts); HAL-19196 (a refusal says whether a redirect chose the URL)
+- Source: HAL-135 (no redirects to undeclared hosts)
 
-The kit shall follow redirects itself and check every hop like the first request. A secret not allowed for the new host, and origin-bound headers when the origin changes, shall not be sent on. A refusal of a URL shall name its host and say whether a redirect chose it.
+The kit shall follow redirects itself and check every hop like the first request. A secret not allowed for the new host, and origin-bound headers when the origin changes, shall not be sent on.
 
 ## Examples
 
@@ -20,6 +20,3 @@ The kit shall follow redirects itself and check every hop like the first request
 - Given more redirects than the limit,
   when the kit follows them,
   then it throws `too-many-redirects`.
-- Given a redirect to undeclared `undeclared.example.net`,
-  when the kit refuses it,
-  then the refusal's `url` is `{ host: "undeclared.example.net", fromRedirect: true }`; for the integration's own request to that host it is `fromRedirect: false`.

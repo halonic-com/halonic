@@ -53,7 +53,7 @@ async function codeOf(request: Promise<Response>): Promise<string> {
   }
 }
 
-verifies("integration-runner.requests", () => {
+verifies("integration-runner.host-block", () => {
   describe("a refused request reported as blocked", () => {
     it("reports a host the integration's own code asked for, and sends nothing", async () => {
       const kit = realKit(() => new Response("ok"));

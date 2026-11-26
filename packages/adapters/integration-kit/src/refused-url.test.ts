@@ -13,7 +13,7 @@ async function refusedWith(request: Promise<Response>): Promise<IntegrationRefus
   return error;
 }
 
-verifies("integration-kit.redirects-checked", () => {
+verifies("integration-kit.refused-url", () => {
   it("says a refused host came from the integration's own request", async () => {
     const { http } = client();
     const refusal = await refusedWith(http.fetch("https://undeclared.example.net/collect"));

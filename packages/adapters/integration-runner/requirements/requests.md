@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: 0.1.0
-- Source: HAL-4281, HAL-4353, HAL-4375, HAL-19196 (HAL-983, design HAL-958 sections 3.3 and 3.7, attack cases A21, A27, A37)
+- Source: HAL-4281, HAL-4353, HAL-4375 (HAL-983, design HAL-958 sections 3.3 and 3.7, attack cases A21, A27, A37)
 
-When the integration in the runner sends a request through its host, the bridge shall send it through Halonic's kit client with the same body kind, secret placements and signal, answer with the response head and then one body piece per read, refuse a body the kit refuses in-process before it crosses, refuse a request outside a running tool call, over 8 requests in flight, with more than 100 headers or 16 secret placements, or with a URL, headers and secret placements over 32 KiB together (each header and placement counting 4 bytes more), close every request of a call when the call answers, is cancelled or fails, and ignore a `pull`, `cancel-body` or `abort` for a request closed that way, answer every request even when the kit's refusal is too large for a frame, and report a kit refusal on the leak list as blocked, and a request the integration's own code sent to a host its sheet doesn't list as a `host-not-declared` block naming the host, but not a redirect hop to such a host, which the service chose.
+When the integration in the runner sends a request through its host, the bridge shall send it through Halonic's kit client with the same body kind, secret placements and signal, answer with the response head and then one body piece per read, refuse a body the kit refuses in-process before it crosses, refuse a request outside a running tool call, over 8 requests in flight, with more than 100 headers or 16 secret placements, or with a URL, headers and secret placements over 32 KiB together (each header and placement counting 4 bytes more), close every request of a call when the call answers, is cancelled or fails, and ignore a `pull`, `cancel-body` or `abort` for a request closed that way, answer every request even when the kit's refusal is too large for a frame, and report a kit refusal on the leak list as blocked.
 
 ## Examples
 
@@ -32,9 +32,3 @@ When the integration in the runner sends a request through its host, the bridge 
 - Given a kit client that refuses with `secret-in-request`,
   when the integration sends that request,
   then it gets the kit's refusal and the bridge reports a leak attempt.
-- Given an integration whose own code fetches `https://undeclared.example.net/collect`,
-  when the kit refuses it with `host-not-allowed`,
-  then the bridge reports `{ kind: "host-not-declared", host: "undeclared.example.net" }` once and nothing reaches the network.
-- Given a `GET` to a declared host that answers with a 302 to `undeclared.example.net`,
-  when the kit refuses the redirect with `host-not-allowed`,
-  then the integration gets that refusal and the bridge reports no block.
