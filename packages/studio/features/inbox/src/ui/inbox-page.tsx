@@ -312,6 +312,7 @@ export function InboxView({
         <ListHeader phone={phone} onePane={onePane} newRequest={request.newRequest} />
         <StaleLine
           error={state.loaded ? state.error : undefined}
+          source={state.failedSource}
           words={words}
           age={{ updatedAt: state.updatedAt, now }}
           phone={phone}
