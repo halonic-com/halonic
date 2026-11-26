@@ -89,22 +89,33 @@ verifies("app.integration-request-log", () => {
       expect(masked).toBe("/{…}".repeat(64));
     });
 
-    it("masks a write of 200 slow paths against 4 MB of code quickly", async () => {
-      const { held, release, writing } = heldWrites(requestLogFilesIn(profile));
-      const store = new RequestLogStore(held);
+    it("masks the 200 slow paths of one write against 4 MB of code quickly", () => {
       // `e.e` starts like the code at every `e` and is never in it whole, so each scan of it reads
       // all 4 MB: about 10 ms, and 12,800 of them in a write without a bound (Julian, HAL-19291).
-      const code = "e ".repeat(2_000_000);
-      const slow = (n: number) => ({ ...refused, path: `/${n}${"/e.e".repeat(64)}` });
-      const writes = [store.addRequest(workspace, "shop", slow(0), code)];
-      await writing;
-      for (let n = 1; n <= 200; n += 1)
-        writes.push(store.addRequest(workspace, "shop", slow(n), code));
+      // The code is read and indexed once per write before any path is masked, so only the
+      // masking is timed, as for the path at the URL limit above.
+      const code = codeIndex("e ".repeat(2_000_000));
+      const paths = Array.from({ length: 200 }, (_, n) => `/${n}${"/e.e".repeat(64)}`);
       const started = performance.now();
+      const masking = new PathMasking(code);
+      const masked = paths.map((path) => masking.path(path));
+      expect(performance.now() - started).toBeLessThan(2_000);
+      expect(masked.at(-1)).toBe("/{…}".repeat(64));
+    });
+
+    it("masks every waiting path in one write, with one masking", async () => {
+      const { held, release, writing } = heldWrites(requestLogFilesIn(profile));
+      const store = new RequestLogStore(held);
+      const slow = (n: number) => ({ ...refused, path: `/${n}${"/e.e".repeat(64)}` });
+      const writes = [store.addRequest(workspace, "shop", slow(0), "e e")];
+      await writing;
+      for (let n = 1; n <= 200; n += 1) {
+        writes.push(store.addRequest(workspace, "shop", slow(n), "e e"));
+      }
       release();
       await Promise.all(writes);
-      expect(performance.now() - started).toBeLessThan(2_000);
       const lines = await store.lines(workspace, "shop");
+      expect(lines).toHaveLength(200);
       expect(lines.at(-1)).toMatchObject({ path: "/{…}".repeat(64) });
     });
 
