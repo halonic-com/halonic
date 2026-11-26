@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19539 (board feedback on HAL-10, items on HAL-19536; Liam approved the plan and its groups on HAL-19539)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/5mfLz/6/6NuJKvDnWn4rH75cBVXXj/GrIXzmUtbJHK8NCGzvpnZU8m87aiuIUiBYLFYkqcn4uZsTNenljLrDg==
 
 The board asked for the Settings menu in logical groups, with About Halonic last and an icon on every
 item. In the desktop app's Settings dialog the sections are now grouped by what they are about (new
