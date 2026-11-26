@@ -2,6 +2,7 @@
 
 - Approval: asked for on HAL-19020, from the visual check of #6270 on HAL-19016; it follows the kit's form for Ask for changes (component specs 23 A8) and adds no words, a team decision with no board card (HAL-2282 rule); Liam approves this note in his review of this pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:6n3s19f9AipySyxleCJg0jlYn73U+EE+lE/dgtnMO6N70Qg7es+ygNG89VLLP/jfOUm/v1Eyi7aT2RxBoFVTDw==
 - Task: HAL-19020
 
 ## What changes
