@@ -3,6 +3,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { DisplaySettings } from "../display-settings.ts";
 import { MemoryDisplayPrefs } from "../test-support/memory-display-prefs.ts";
 import {
+  chosenFormatOf,
   formatExample,
   formatLocale,
   formatOptions,
@@ -97,5 +98,21 @@ verifies("settings.formats-format", () => {
     expect(stored("follow")).toBe("follow");
     expect(stored("Dutch (Netherlands)")).toBe("follow");
     expect(stored(undefined)).toBe("follow");
+  });
+});
+
+verifies("kit.time-stamp", () => {
+  it("gives the window's times the chosen format, none while following, and tells it of a change", async () => {
+    const settings = new DisplaySettings(new MemoryDisplayPrefs());
+    const chosen = chosenFormatOf(settings);
+    const heard: (string | undefined)[] = [];
+    const stop = chosen.subscribe(() => heard.push(chosen.get()));
+    expect(chosen.get()).toBeUndefined();
+
+    await settings.set(formatPref, "de-DE");
+    expect(heard.at(-1)).toBe("de-DE");
+    await settings.set(formatPref, "follow");
+    expect(heard.at(-1)).toBeUndefined();
+    stop();
   });
 });

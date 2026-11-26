@@ -1,4 +1,5 @@
 import {
+  type ChosenFormat,
   type KeyboardPlatform,
   type Shell,
   type StudioHost,
@@ -29,6 +30,8 @@ export interface ServedWindowProps {
   readonly load: LoadServedWorkspace;
   /** The page has no host settings yet, so Settings leaves out its `host` sections. */
   readonly withoutHostSettings?: boolean | undefined;
+  /** The format chosen in Settings → Formats, which the window's times follow over the browser's. */
+  readonly chosenFormat?: ChosenFormat | undefined;
 }
 
 /**

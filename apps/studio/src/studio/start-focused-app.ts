@@ -1,5 +1,9 @@
 import { TauriPickedFolders } from "@halonicjs/adapter-fs-tauri";
-import { type DisplaySettings, watchAppearance } from "@halonicjs/studio-feature-settings";
+import {
+  chosenFormatOf,
+  type DisplaySettings,
+  watchAppearance,
+} from "@halonicjs/studio-feature-settings";
 import { type OpenedWorkspace, RecentWorkspaces } from "@halonicjs/studio-feature-workspace";
 import type { TauriIpc } from "@halonicjs/studio-services";
 import {
@@ -91,6 +95,7 @@ export function startFocusedApp(page: StudioPage, parts: FocusedAppParts): Start
       workspace: found?.opened.workspace,
       language,
       regionFormat,
+      chosenFormat: chosenFormatOf(display),
       openStudio: () => showStudio(ipc),
     };
     mounted = mountFocusedWindow(page.element, windowProps);

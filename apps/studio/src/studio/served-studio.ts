@@ -9,6 +9,7 @@ import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-set
 import { inboxFeature } from "@halonicjs/studio-feature-inbox";
 import { InboxRunsService, ServedHomeHintService } from "@halonicjs/studio-feature-inbox/api";
 import {
+  chosenFormatOf,
   type DisplaySettings,
   settingsFeature,
   watchAppearance,
@@ -115,6 +116,7 @@ export function startServedStudio(
       served,
       load,
       withoutHostSettings: true,
+      chosenFormat: chosenFormatOf(display),
     });
   };
   load().then(draw, () => draw(undefined));

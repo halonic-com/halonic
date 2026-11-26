@@ -2528,10 +2528,14 @@ list the same `now`, so they all read against one moment.
 <TimeStamp at={new Date(chat.sentAt)} now={now} />;
 ```
 
-It follows the window's `FormatLocale`, which Studio's window and each focused app's window (such
-as the Messenger's) set from the system's region format (the browser's language when served), so en-US reads "9:41 AM" and "Nov 26"; pass `locale`
-to override it. `shortTime(at, now, locale)` and `fullTime(at, locale)` give the same text as
-strings, and `formatTag` turns a system tag such as `en_GB.UTF-8` into `en-GB`.
+It's always English, the language of the Studio's words, written the way the region writes it, so
+one line never mixes languages: en-US reads "9:41 AM" and "Nov 26", de-DE reads "09:41", "Mon" and
+"26 Nov". A region with no English of its own reads as en-GB. It follows the window's
+`FormatLocaleProvider`, which Studio's window and the Inbox's and Messenger's windows set from the
+format chosen in Settings → Formats, else from the system's region format (the browser's language
+when served); pass `locale` to override it. `shortTime(at, now, locale)` and `fullTime(at, locale)`
+give the same text as strings, `followedFormat(chosen, region)` the window's tag, and `formatTag`
+turns a system tag such as `en_GB.UTF-8` into `en-GB`.
 
 ## Toast and ToastRegion
 

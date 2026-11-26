@@ -3,9 +3,10 @@ const dayInMs = 24 * 60 * 60 * 1000;
 /**
  * When something happened, as short as a list row can say it (HAL-19536 item 4): "09:41" today,
  * "Yesterday", the weekday within the last week ("Mon"), the day and month this year ("26 Nov"),
- * else the short date ("26/11/2025"). Each part follows `locale` (the runtime's own when it's
- * undefined), so a 12-hour locale reads "9:41 AM" and a month-first one "Nov 26". "Yesterday" is
- * in English, the language of the Studio's words. A time later than `now` reads as its day.
+ * else the short date ("26/11/2025"). Each part is in English, the language of the Studio's words,
+ * written the way `locale`'s region writes it (the runtime's own when it's undefined), so one line
+ * never mixes languages (HAL-19540): en-US reads "9:41 AM" and "Nov 26", de-DE reads "09:41" and
+ * "26 Nov", never "26. Nov.". A time later than `now` reads as its day.
  *
  * @example
  * shortTime(new Date(2026, 10, 25, 18, 2), new Date(2026, 10, 26, 9, 41), "en-GB"); // "Yesterday"
@@ -30,9 +31,48 @@ export function fullTime(at: Date, locale?: string): string {
   return format(at, locale, { dateStyle: "full", timeStyle: "short" });
 }
 
+/** Each formatter by locale and options: a long list asks for the same few on every render. */
+const formatters = new Map<string, Intl.DateTimeFormat>();
+
 function format(at: Date, locale: string | undefined, options: Intl.DateTimeFormatOptions): string {
-  return new Intl.DateTimeFormat(locale, options).format(at);
+  const english = englishFor(locale);
+  const key = `${english} ${JSON.stringify(options)}`;
+  let formatter = formatters.get(key);
+  if (formatter === undefined) {
+    formatter = new Intl.DateTimeFormat(english, options);
+    formatters.set(key, formatter);
+  }
+  return formatter.format(at);
 }
+
+/**
+ * English as `locale`'s region writes it: "en-DE" for `de-DE`, "en-NL" for `nl` (whose likely
+ * region is the Netherlands). A region Intl has no English for, such as Brazil, reads as plain
+ * `en-GB`, never as another language or as US English by accident.
+ */
+function englishFor(locale: string | undefined): string {
+  const known = englishes.get(locale);
+  if (known !== undefined) return known;
+  const english = englishOfRegion(locale);
+  englishes.set(locale, english);
+  return english;
+}
+
+/** The English each locale reads in, worked out once: see {@link englishFor}. */
+const englishes = new Map<string | undefined, string>();
+
+function englishOfRegion(locale: string | undefined): string {
+  const given = new Intl.Locale(locale ?? new Intl.DateTimeFormat().resolvedOptions().locale);
+  const region = given.region ?? given.maximize().region;
+  if (region === undefined) return fallbackEnglish;
+  const english = new Intl.Locale("en", { region }).toString();
+  // Intl resolves a region it has no English data for to plain "en", which is US English.
+  const resolved = new Intl.DateTimeFormat(english).resolvedOptions().locale;
+  return resolved === english ? english : fallbackEnglish;
+}
+
+/** The English a region without English data reads in (HAL-19540). */
+const fallbackEnglish = "en-GB";
 
 /** Whole local calendar days from `at` to `now`; rounded, so a daylight-saving day still counts as one. */
 function calendarDaysBetween(at: Date, now: Date): number {

@@ -1,6 +1,7 @@
 import { TauriPickedFolders } from "@halonicjs/adapter-fs-tauri";
 import {
   BrowserDisplayPrefs,
+  chosenFormatOf,
   DisplaySettings,
   type DisplayStorage,
   watchAppearance,
@@ -196,6 +197,7 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
     switcher,
     platform,
     language: studioLanguage,
+    chosenFormat: chosenFormatOf(display),
     resources,
     start,
     ...newWorkspace,

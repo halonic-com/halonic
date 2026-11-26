@@ -1,4 +1,5 @@
 import {
+  type ChosenFormat,
   focusPageHeading,
   isInWorkspaceContent,
   type KeyboardPlatform,
@@ -47,6 +48,8 @@ export interface WorkspaceWindowProps {
   readonly language: string;
   /** The system's region format as a language tag, such as `nl-NL`; Formats follows it. */
   readonly regionFormat?: string | undefined;
+  /** The format chosen in Settings → Formats, which the window's times follow over the region's. */
+  readonly chosenFormat?: ChosenFormat | undefined;
   /**
    * What the New workspace dialog needs from the app. Without it the window has no
    * **New workspace…** row or button.
@@ -82,6 +85,7 @@ export function WorkspaceWindow({
   platform,
   language,
   regionFormat,
+  chosenFormat,
   newWorkspace,
   newWorkspaceAsks,
   sample,
@@ -289,6 +293,7 @@ export function WorkspaceWindow({
         platform={platform}
         language={language}
         regionFormat={regionFormat}
+        chosenFormat={chosenFormat}
         resources={resources}
         switcher={{ workspace: { name: shown.value.name, folder: shown.location }, menu, busy }}
         badges={

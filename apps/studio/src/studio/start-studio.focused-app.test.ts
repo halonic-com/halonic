@@ -200,4 +200,21 @@ verifies("kit.time-stamp", () => {
     expect(focusedWindowsDrawn.every((props) => props.regionFormat === undefined)).toBe(true);
     vi.restoreAllMocks();
   }, 30_000);
+
+  it("gives the Messenger's window the format chosen in Settings → Formats", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const storage = storageWithAcme(true);
+    storage.setItem("halonic.settings.formats.format", JSON.stringify("de-DE"));
+    started = startStudio({
+      element,
+      window: webviewLabelled("messenger", [], "en_US.UTF-8"),
+      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+      storage,
+    });
+
+    await vi.waitFor(() => expect(focusedWindowsDrawn.at(-1)?.chosenFormat?.get()).toBe("de-DE"), {
+      timeout: 15_000,
+    });
+    vi.restoreAllMocks();
+  }, 30_000);
 });
