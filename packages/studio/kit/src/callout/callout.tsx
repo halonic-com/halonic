@@ -38,6 +38,12 @@ export interface CalloutAction {
    * Callout that stands where focus was, such as the strip of a page whose item went to the trash.
    */
   readonly focus?: boolean;
+  /**
+   * The id of an element outside the Callout that also describes the action, heard before the
+   * Callout's own title and text: the row's name, so the "Sign in" of two rows in a list can be
+   * told apart (`kit.callout-action-described-by`, WCAG 2.4.6).
+   */
+  readonly describedBy?: string;
 }
 
 /** What a Callout with `announce="focus"` gives its screen. */

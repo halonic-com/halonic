@@ -31,12 +31,16 @@ function hostOf(address: string): string {
 /** What the row says under its name while the connection can't be used, if anything. */
 function StateCallout({
   connection,
+  nameId,
   onSignInAgain,
 }: {
   readonly connection: AgentConnection;
+  /** The row's name, which describes the action: with several rows, every one says Sign in. */
+  readonly nameId: string;
   readonly onSignInAgain: () => void;
 }) {
   const { state } = connection;
+  const signIn = (label: string) => ({ label, onClick: onSignInAgain, describedBy: nameId });
   switch (state.kind) {
     case "online":
       return null;
@@ -44,13 +48,13 @@ function StateCallout({
       return <Callout tone="attention">{words.OFFLINE_CALLOUT}</Callout>;
     case "signed-out":
       return (
-        <Callout tone="danger" action={{ label: words.SIGN_IN_AGAIN, onClick: onSignInAgain }}>
+        <Callout tone="danger" action={signIn(words.SIGN_IN_AGAIN)}>
           {words.SIGNED_OUT_CALLOUT}
         </Callout>
       );
     case "no-key":
       return (
-        <Callout tone="info" action={{ label: words.SIGN_IN, onClick: onSignInAgain }}>
+        <Callout tone="info" action={signIn(words.SIGN_IN)}>
           {words.NO_KEY_CALLOUT}
         </Callout>
       );
@@ -85,7 +89,7 @@ export function ConnectionRow({
   /** Asks before it disconnects: the section opens the confirmation. */
   readonly onDisconnect: () => void;
 }) {
-  // With several rows, every button says Disconnect: the row's name says which one.
+  // With several rows, every button says Disconnect or Sign in: the row's name says which one.
   const nameId = useId();
   return (
     <li>
@@ -128,7 +132,7 @@ export function ConnectionRow({
               {words.DISCONNECT}
             </Button>
           </div>
-          <StateCallout connection={connection} onSignInAgain={onSignInAgain} />
+          <StateCallout connection={connection} nameId={nameId} onSignInAgain={onSignInAgain} />
           <p className="m-0 flex items-center gap-2 border-t border-border pt-3 text-small text-fg-muted">
             <span className="inline-grid size-icon-sm shrink-0 place-items-center *:size-full">
               <ShieldIcon />

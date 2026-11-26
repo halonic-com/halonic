@@ -15,10 +15,21 @@ export type DisconnectNote =
   | { readonly kind: "line"; readonly line: string; readonly tone: "info" | "attention" }
   | { readonly kind: "still-valid"; readonly ending: words.Ending; readonly address: string };
 
+/**
+ * Whether this computer holds no key for `connection`: the engine has none to revoke, so
+ * Disconnect promises no revoke and says no key stays valid (HAL-19120).
+ */
+function holdsNoKey(connection: AgentConnection): boolean {
+  return connection.state.kind === "no-key";
+}
+
 /** The note for what Disconnect did. */
 function noteOf(connection: AgentConnection, result: DisconnectResult): DisconnectNote {
   if (result.revoked) {
     return { kind: "line", line: words.disconnectedRevoked(connection.label), tone: "info" };
+  }
+  if (holdsNoKey(connection)) {
+    return { kind: "line", line: words.disconnectedNoKey(connection.label), tone: "info" };
   }
   return {
     kind: "still-valid",
@@ -68,7 +79,9 @@ export function DisconnectDialog({
       onConfirm={disconnect}
       onCancel={() => onDone(undefined, false)}
     >
-      <p className="m-0 text-fg">{words.DISCONNECT_TEXT}</p>
+      <p className="m-0 text-fg">
+        {holdsNoKey(connection) ? words.DISCONNECT_NO_KEY_TEXT : words.DISCONNECT_TEXT}
+      </p>
     </Dialog>
   );
 }

@@ -97,7 +97,7 @@ export class HostAgentConnections implements AgentConnections {
   /**
    * Gives the host back the keys the person signed in with in this workspace,
    * once, when it opens (`services.paperclip-restore`). It never throws or
-   * asks anything; a failure is reported and leaves that row on Sign in again.
+   * asks anything; a failure is reported and leaves that row as it was.
    *
    * When the host can't list the workspace's connections yet, as right after
    * a start, the restore stays pending and the next {@link list} tries it
