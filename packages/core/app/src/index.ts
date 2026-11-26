@@ -54,6 +54,17 @@ export {
 } from "./connector-factories.ts";
 export { connectorFiles, unreadableConnectorFile } from "./connector-files.ts";
 export {
+  type ConnectorPause,
+  ConnectorPausedError,
+  type ConnectorPauseKey,
+  type ConnectorPauseReason,
+  ConnectorPauses,
+  type ConnectorPausesOptions,
+  type ConnectorPauseWhy,
+  connectorPausesCollection,
+  type PauseMade,
+} from "./connector-pauses.ts";
+export {
   checkPinVersion,
   checkResolvedVersion,
   type PinnedPackage,
