@@ -329,6 +329,54 @@ verifies("agent-host.agent-messaging-cache", () => {
       expect(offline?.webLink).toEqual(webLink);
     });
 
+    /** The item as a live read returns it, then as an offline read does. */
+    async function liveAndOffline(source: MessagingId, id: MessagingId) {
+      const live = (await messaging.listInboxItems()).find((kept) => kept.id === id);
+      fake.goOffline(source);
+      const offline = (await messaging.listInboxItems()).find((kept) => kept.id === id);
+      return { live, offline };
+    }
+
+    it("passes an item's answer-elsewhere link on, live and offline", async () => {
+      const { source } = await readAcme();
+      const answerElsewhere = { link: "https://paperclip.acme.test/ACME/issues/ACME-7" };
+      const item = fake.addInboxItem(source.id, { question: "Hire an agent", answerElsewhere });
+
+      const { live, offline } = await liveAndOffline(source.id, item.id);
+      expect(live?.answerElsewhere).toEqual(answerElsewhere);
+      expect(offline?.answerElsewhere).toEqual(answerElsewhere);
+    });
+
+    it("passes an item's conversation on, live and offline", async () => {
+      const { source, chat } = await readAcme();
+      const item = fake.addInboxItem(source.id, { question: "Ship it?", conversation: chat.id });
+
+      const { live, offline } = await liveAndOffline(source.id, item.id);
+      expect(live?.conversation).toBe(chat.id);
+      expect(offline?.conversation).toBe(chat.id);
+    });
+
+    it("passes an item's stepper request on, live and offline", async () => {
+      const { source } = await readAcme();
+      const target = { service: "github", kind: "repository", name: "acme/app" };
+      const stepper = {
+        format: "halonic.stepper-request/1",
+        document: '{"format":"halonic.stepper-request/1"}',
+        revision: "3",
+        touches: [{ block: 1, risk: "admin", targets: [target] }],
+        changed: false,
+      } as const;
+      const item = fake.addInboxItem(source.id, {
+        question: "Add a deploy key",
+        options: [],
+        stepper,
+      });
+
+      const { live, offline } = await liveAndOffline(source.id, item.id);
+      expect(live?.stepper).toEqual(stepper);
+      expect(offline?.stepper).toEqual(stepper);
+    });
+
     it("keeps no key, Authorization header or request in any cache file", async () => {
       await readAcme();
       const files = await filesUnder(cacheFolder);

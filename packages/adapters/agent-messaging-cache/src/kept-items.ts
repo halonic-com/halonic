@@ -10,6 +10,7 @@ import type {
   InboxItemState,
   InboxQuestion,
   InboxQuestionAnswer,
+  InboxStepperRequest,
   Message,
   MessageWork,
   MessagingAgent,
@@ -80,9 +81,13 @@ export function keptInboxItem(item: InboxItem): InboxItem {
     attachments: item.attachments.map(keptAttachment),
   };
   if (item.questions !== undefined) kept.questions = item.questions.map(keptQuestion);
+  if (item.answerElsewhere !== undefined)
+    kept.answerElsewhere = { link: item.answerElsewhere.link };
   if (item.action !== undefined) kept.action = keptAction(item.action);
+  if (item.stepper !== undefined) kept.stepper = keptStepper(item.stepper);
   if (item.project !== undefined) kept.project = { id: item.project.id, name: item.project.name };
   if (item.work !== undefined) kept.work = item.work;
+  if (item.conversation !== undefined) kept.conversation = item.conversation;
   if (item.risk !== undefined) kept.risk = item.risk;
   if (item.webLink !== undefined)
     kept.webLink = { link: item.webLink.link, site: item.webLink.site };
@@ -180,6 +185,20 @@ function keptAction(action: InboxActionRequest): InboxActionRequest {
   };
   if (action.expect !== undefined) kept.expect = { ...action.expect };
   return kept;
+}
+
+function keptStepper(stepper: InboxStepperRequest): InboxStepperRequest {
+  return {
+    format: stepper.format,
+    document: stepper.document,
+    revision: stepper.revision,
+    touches: stepper.touches.map((touch) => ({
+      block: touch.block,
+      risk: touch.risk,
+      targets: touch.targets.map(({ service, kind, name }) => ({ service, kind, name })),
+    })),
+    changed: stepper.changed,
+  };
 }
 
 function keptActionResult(answer: ActionResultAnswer): ActionResultAnswer {
