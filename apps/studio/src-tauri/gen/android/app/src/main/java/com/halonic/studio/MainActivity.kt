@@ -1,5 +1,6 @@
 package com.halonic.studio
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.webkit.WebView
@@ -27,6 +28,18 @@ class MainActivity : TauriActivity() {
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
     keepClearOfBars(findViewById(android.R.id.content))
+    // A shortcut's screen, for the phone's own page to take (HAL-19143). Not again when Android
+    // recreates the activity: that intent's screen was taken already.
+    if (savedInstanceState == null) {
+      PendingShortcut.keep(intent)
+    }
+  }
+
+  // A shortcut tapped while the app runs reaches the same activity (singleTask); the page takes
+  // its screen when it shows again.
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    PendingShortcut.keep(intent)
   }
 
   // The served Studio shows the app's version and Change address only when

@@ -12,6 +12,13 @@
 // icon.ico (Studio's, which the exe and the installer carry), and for each focused app apps/<app>.svg,
 // apps/<app>.ico (its Start menu shortcut) and apps/<app>.rgba (its window, 64 by 64 raw RGBA like
 // the tray's, so the shell needs no image decoder).
+//
+// Android's shortcut icons (HAL-19143) need no Chromium, as Android draws them from vectors:
+//
+//   pnpm exec node apps/studio/src-tauri/icons/draw-app-icons.mjs android
+//
+// writes, for each focused app, the adaptive icon's slate background and its ring and glyph in front,
+// in the Android app's res/drawable: the same ring and glyph, at the size Android keeps clear of the mask.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { appGlyphScale, appGlyphs } from "@halonicjs/studio-kit/app-glyphs";
@@ -150,8 +157,61 @@ function write(drawn) {
   }
 }
 
+/** One shape of a glyph as a vector path: white, filled or stroked as `shapeMarkup` draws it. */
+function vectorPath(shape) {
+  if (shape.kind === "dot") {
+    const { cx, cy, r } = shape;
+    const circle = `M${cx - r},${cy} a${r},${r} 0 1,0 ${2 * r},0 a${r},${r} 0 1,0 ${-2 * r},0 Z`;
+    return `<path android:fillColor="#ffffff" android:pathData="${circle}" />`;
+  }
+  if (shape.kind === "solid") {
+    return `<path android:fillColor="#ffffff" android:strokeColor="#ffffff" android:strokeWidth="4.5" android:strokeLineJoin="round" android:pathData="${shape.d}" />`;
+  }
+  return `<path android:strokeColor="#ffffff" android:strokeWidth="${shape.width}" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="${shape.d}" />`;
+}
+
+const generated =
+  "<!-- Drawn by apps/studio/src-tauri/icons/draw-app-icons.mjs. Edit the script, not this file. -->";
+
+/** A 108 dp vector: Android's adaptive icon layer, whose middle 66 dp no mask cuts. */
+const vector = (body) =>
+  `<?xml version="1.0" encoding="utf-8"?>\n${generated}\n<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">\n${body}\n</vector>\n`;
+
+/** The ring and the glyph, 60 dp across in the middle, as the launcher icon's ring is. */
+function shortcutForeground(app) {
+  const ring = `<path android:strokeWidth="16" android:pathData="M8,50 a42,42 0 1,0 84,0 a42,42 0 1,0 -84,0 Z"><aapt:attr name="android:strokeColor"><gradient android:type="linear" android:startX="0" android:startY="100" android:endX="100" android:endY="0"><item android:color="${blue}" android:offset="0" /><item android:color="${cyan}" android:offset="1" /></gradient></aapt:attr></path>`;
+  const glyph = appGlyphs[app].map(vectorPath).join("\n");
+  return vector(
+    `<group android:translateX="24" android:translateY="24" android:scaleX="0.6" android:scaleY="0.6">\n${ring}\n${glyph}\n</group>`,
+  );
+}
+
+/** Each focused app's shortcut icon: adaptive from Android 8, the two layers stacked before it. */
+function writeAndroid() {
+  const res = join(here, "..", "gen", "android", "app", "src", "main", "res");
+  mkdirSync(join(res, "drawable-anydpi-v26"), { recursive: true });
+  writeFileSync(
+    join(res, "drawable", "ic_shortcut_background.xml"),
+    vector(`<path android:fillColor="${slate950}" android:pathData="M0,0h108v108h-108z" />`),
+  );
+  for (const app of focusedApps) {
+    const name = `ic_shortcut_${app}`;
+    writeFileSync(join(res, "drawable", `${name}_foreground.xml`), shortcutForeground(app));
+    writeFileSync(
+      join(res, "drawable", `${name}.xml`),
+      `<?xml version="1.0" encoding="utf-8"?>\n${generated}\n<layer-list xmlns:android="http://schemas.android.com/apk/res/android">\n<item android:drawable="@drawable/ic_shortcut_background" />\n<item android:drawable="@drawable/${name}_foreground" />\n</layer-list>\n`,
+    );
+    writeFileSync(
+      join(res, "drawable-anydpi-v26", `${name}.xml`),
+      `<?xml version="1.0" encoding="utf-8"?>\n${generated}\n<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n<background android:drawable="@drawable/ic_shortcut_background" />\n<foreground android:drawable="@drawable/${name}_foreground" />\n</adaptive-icon>\n`,
+    );
+  }
+}
+
 const [step, drawnPage] = process.argv.slice(2);
-if (step === "page") {
+if (step === "android") {
+  writeAndroid();
+} else if (step === "page") {
   const sizes = [...new Set([...icoSizes, windowIconSize, 512])];
   const jobs = ["studio", ...focusedApps].flatMap((app) =>
     sizes.map((pixels) => ({ key: `${app} ${pixels}`, pixels, svg: appIconSvg(app, pixels) })),
@@ -160,5 +220,7 @@ if (step === "page") {
 } else if (step === "write" && drawnPage !== undefined) {
   write(drawnFrom(readFileSync(drawnPage, "utf8")));
 } else {
-  throw new Error("Run it with `page`, then with `write <the page Chromium dumped>`.");
+  throw new Error(
+    "Run it with `page`, then with `write <the page Chromium dumped>`, or with `android`.",
+  );
 }

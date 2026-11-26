@@ -8,6 +8,7 @@ import type {
 } from "@halonicjs/studio-feature-remote/phone";
 import { type ConnectPageOptions, startConnectPage } from "./connect-page.ts";
 import type { PairingScanner } from "./pair-scan.ts";
+import type { AppShortcuts } from "./tauri-app-shortcuts.ts";
 
 /** The phone app's code, loaded only when the shell has a tunnel. */
 export type PhoneAppModule = { readonly mountPhoneApp: typeof mountPhoneApp };
@@ -30,6 +31,8 @@ export interface PageOptions extends ConnectPageOptions {
   readonly openTailscale: () => void;
   /** Where an answer or a refusal the page doesn't expect goes, for the log. */
   readonly report: (problem: string) => void;
+  /** The Android app's shortcuts (HAL-19143); without them no shortcut opens a screen. */
+  readonly shortcuts?: AppShortcuts;
   /** Loads the phone app; a test passes its own. */
   readonly loadPhoneApp?: () => Promise<PhoneAppModule>;
 }
@@ -49,12 +52,16 @@ const loadPhoneApp = async (): Promise<PhoneAppModule> => {
  * - `#change-address` and `#page-not-shown` open the connect screen, as the 0.1 page does;
  * - a remembered address and no paired computer keep the 0.1 launch, which connects to it;
  * - anything else opens the phone app: Pair with a computer, or the paired computer's screen.
+ * A shortcut's screen counts only in the phone app; the 0.1 launch drops it.
  * In the phone app the connect screen shows only after "Not listed? Enter its address", filled in.
  */
 export async function startPage(options: PageOptions): Promise<void> {
   const { document, tunnel } = options;
   if (tunnel === undefined || options.changeAddress) return startConnectPage(options);
   if (options.store.load() !== undefined && !(await anyPaired(tunnel, options.report))) {
+    // The Studio the 0.1 launch opens has no address for a screen, so a shortcut opens it as the
+    // icon does (decided on HAL-19148). Its screen is taken all the same, so it can't turn up later.
+    await options.shortcuts?.takeOpening();
     return startConnectPage(options);
   }
   const section = document.createElement("section");

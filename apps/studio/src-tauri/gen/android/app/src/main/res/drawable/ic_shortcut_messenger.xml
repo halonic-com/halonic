@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Drawn by apps/studio/src-tauri/icons/draw-app-icons.mjs. Edit the script, not this file. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+<item android:drawable="@drawable/ic_shortcut_background" />
+<item android:drawable="@drawable/ic_shortcut_messenger_foreground" />
+</layer-list>

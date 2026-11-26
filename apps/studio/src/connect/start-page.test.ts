@@ -182,3 +182,25 @@ verifies("studio.connect.phone-tunnel-screens", () => {
     });
   }
 });
+
+verifies("studio.connect.app-shortcuts", () => {
+  it("keeps the 0.1 launch for a shortcut, and takes its screen", async () => {
+    const shell = new FakeShell().answer({ kind: "notAnswering", address: "192.168.1.20:4280" });
+    const phoneApp = fakePhoneApp();
+    const takeOpening = vi.fn(() => Promise.resolve({ screen: "inbox" as const }));
+    await startPage({
+      ...options(shell, tunnelListing([])),
+      shortcuts: {
+        takeOpening,
+        setLastChat: () => undefined,
+        canPin: () => Promise.resolve(true),
+        pin: () => undefined,
+      },
+      loadPhoneApp: phoneApp.load,
+    });
+    expect(takeOpening).toHaveBeenCalledOnce();
+    expect(shell.asked).toEqual(["192.168.1.20:4280"]);
+    expect(shownScreens()).toEqual(["not-answering"]);
+    expect(phoneApp.load).not.toHaveBeenCalled();
+  });
+});

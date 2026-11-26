@@ -40,7 +40,7 @@
 //! commands with `phone_tunnel_watch`, `tunnel_send` and `tunnel_end_session`
 //! (capabilities/phone-tunnel.json) and the computer picker's
 //! `phone_nearby_browse` and `phone_nearby_stop` (capabilities/phone-nearby.json)
-//! and `phone_open_settings` and `phone_open_tailscale` (capabilities/phone-screens.json); the Studio it then opens is
+//! and `phone_open_*` (capabilities/phone-screens.json) and the shortcuts' `phone_*` (app-shortcuts.json); the Studio it then opens is
 //! served by the computer and gets no command at all. The navigation guard keeps
 //! everything but the confirmed address out of the window. On macOS and Linux,
 //! `server_session_open` shows the brief in a second window whose page no
@@ -55,6 +55,7 @@ mod actions;
 mod agent_host;
 #[cfg(target_os = "android")]
 mod android_plugins;
+mod app_shortcuts;
 #[cfg(desktop)]
 mod background_start;
 mod blobs;
@@ -388,6 +389,10 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             phone_nearby::phone_nearby_stop,
             phone_screens::phone_open_settings,
             phone_screens::phone_open_tailscale,
+            app_shortcuts::phone_open_target,
+            app_shortcuts::phone_last_chat,
+            app_shortcuts::phone_can_pin,
+            app_shortcuts::phone_pin,
             owner_check_page::owner_check_available,
             #[cfg(desktop)]
             actions::action_send,

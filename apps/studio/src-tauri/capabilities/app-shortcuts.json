@@ -1,0 +1,17 @@
+{
+  "identifier": "app-shortcuts",
+  "description": "On Android, the app's own page may take the screen a shortcut asked for through phone_open_target, set or remove the last-chat shortcut through phone_last_chat, and ask whether the launcher pins shortcuts and pin Inbox or Messenger through phone_can_pin and phone_pin (HAL-19143). A shortcut only opens a screen, and the shell does nothing while the window is on another page. It is local only, so the Studio the computer serves gets none of these.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "android"
+  ],
+  "permissions": [
+    "allow-phone-open-target",
+    "allow-phone-last-chat",
+    "allow-phone-can-pin",
+    "allow-phone-pin"
+  ]
+}
