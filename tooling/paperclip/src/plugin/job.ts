@@ -39,7 +39,7 @@ import type { LifecycleRunner } from "./fast-track-lifecycle-job.ts";
 import { type HostApi, paperclipHost, unblockHost } from "./host.ts";
 import { passStateKey } from "./merge-control-lock.ts";
 import { countingFetch, type MetricsApi, writeMetrics } from "./metrics.ts";
-import { reviewerLimitsOf } from "./reviewer-runs.ts";
+import { type RunsFetch, reviewerLimitsOf } from "./reviewer-runs.ts";
 import { prWatcherSignalPass, watcherRecorder } from "./signal-pass-job.ts";
 import {
   readStackRebaseSettings,
@@ -279,6 +279,7 @@ async function watchCompany(
   companyId: string,
   now: Date,
   lifecycle: LifecycleRunner | undefined,
+  paperclipFetch: RunsFetch,
 ): Promise<number> {
   const settings = await companySettings(ctx, companyId);
   if (settings === undefined) {
@@ -361,7 +362,7 @@ async function watchCompany(
     conflictFiles: gitHubConflictFiles(get),
     held: await heldOf(ctx, companyId, settings.repos[0] ?? defaultRepos[0] ?? ""),
     observe: recorder.observe,
-    limits: reviewerLimitsOf(ctx, config, { companyId, now, log }),
+    limits: reviewerLimitsOf(ctx, paperclipFetch, config, { companyId, now, log }),
     ...(stackRebase === undefined ? {} : { stackRebase }),
   });
   // After the watcher's tick, so a task it just marked done unblocks its dependents in the same pass.
@@ -430,17 +431,20 @@ async function watchCompany(
  * set. The worker runs it for one company at a time, inside that company's
  * dispatch event (see `scheduled.ts`). A company that fails is logged and
  * the others still run; the pass fails at the end, so the log shows it.
+ * `paperclipFetch` reads reviewers' runs from Paperclip's API: Node's own
+ * `fetch`, like the plugin's other Paperclip API calls (see reviewer-runs.ts).
  */
 export async function runWatcher(
   ctx: JobApi,
   now: Date,
   companies: CompanySource = listedCompanies,
   lifecycle?: LifecycleRunner,
+  paperclipFetch: RunsFetch = (url, init) => fetch(url, init),
 ): Promise<void> {
   let failed = 0;
   for (const companyId of await companies(ctx)) {
     try {
-      failed += await watchCompany(ctx, companyId, now, lifecycle);
+      failed += await watchCompany(ctx, companyId, now, lifecycle, paperclipFetch);
     } catch (error) {
       failed += 1;
       ctx.logger.error(`PR watcher: couldn't run: ${(error as Error).message}`, { companyId });

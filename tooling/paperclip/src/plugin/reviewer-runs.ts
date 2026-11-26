@@ -14,15 +14,25 @@ import { requestTimeoutMs } from "./job.ts";
  * so this GETs `heartbeat-runs` with the Paperclip API address and key the
  * task effort handler already uses. GET only, at most once per reviewer and
  * pass, and only when a reviewer's task waits for approval.
+ *
+ * It uses Node's own `fetch`, like the plugin's other calls to Paperclip's
+ * API: the host's `ctx.http.fetch` may refuse Paperclip's private address,
+ * and it forwards neither the timeout's signal nor `redirect`. Errors carry
+ * only a fixed code, so nothing from the answer reaches the log.
  */
 
 /** How many of a reviewer's newest runs to read: enough to see a stop and what came after. */
 export const runsRead = 20;
 
-/** The fetch the reader uses: the plugin host's, with a timeout. */
+/** The fetch the reader uses: Node's own, only ever called with the settings' Paperclip url. */
 export type RunsFetch = (
   url: string,
-  init: { readonly method: "GET"; readonly headers: Record<string, string> },
+  init: {
+    readonly method: "GET";
+    readonly headers: Record<string, string>;
+    readonly redirect: "error";
+    readonly signal: AbortSignal;
+  },
 ) => Promise<{ readonly ok: boolean; readonly status: number; json(): Promise<unknown> }>;
 
 /** What the reader needs. */
@@ -61,19 +71,34 @@ export function runRow(value: unknown): RunRow | null {
   };
 }
 
+/** A failed read's fixed code: `http_<status>`, `not_a_list` or the error's name, never its message. */
+function failureCode(error: unknown): string {
+  const code = (error as { code?: unknown } | null)?.code;
+  if (typeof code === "string") {
+    return code;
+  }
+  return error instanceof Error ? error.name : "unknown_error";
+}
+
 async function readRuns(deps: ReviewerRunsDeps, agentId: string): Promise<RunRow[]> {
   const key = await deps.resolve(deps.apiKey);
   const query = `agentId=${encodeURIComponent(agentId)}&limit=${runsRead}`;
   const response = await deps.fetch(
     `${deps.apiUrl}/api/companies/${encodeURIComponent(deps.companyId)}/heartbeat-runs?${query}`,
-    { method: "GET", headers: { authorization: `Bearer ${key}` } },
+    {
+      method: "GET",
+      headers: { authorization: `Bearer ${key}` },
+      // A redirect would take the key header to another host.
+      redirect: "error",
+      signal: AbortSignal.timeout(requestTimeoutMs),
+    },
   );
   if (!response.ok) {
-    throw new Error(`Paperclip answered ${response.status}`);
+    throw Object.assign(new Error("paperclip"), { code: `http_${response.status}` });
   }
   const body = await response.json();
   if (!Array.isArray(body)) {
-    throw new Error("Paperclip's answer isn't a list of runs");
+    throw Object.assign(new Error("paperclip"), { code: "not_a_list" });
   }
   return body.flatMap((value) => runRow(value) ?? []);
 }
@@ -92,7 +117,7 @@ export function paperclipReviewerLimits(deps: ReviewerRunsDeps): ReviewerLimits 
     const read = readRuns(deps, agentId).then(
       (runs) => limitOf(runs, deps.now),
       (error: unknown) => {
-        deps.log(`PR watcher: couldn't read ${agentId}'s runs: ${(error as Error).message}`);
+        deps.log(`PR watcher: couldn't read ${agentId}'s runs: ${failureCode(error)}`);
         return "unknown" as const;
       },
     );
@@ -103,7 +128,6 @@ export function paperclipReviewerLimits(deps: ReviewerRunsDeps): ReviewerLimits 
 
 /** The part of the plugin context the reader uses. */
 export interface ReviewerRunsApi {
-  readonly http: { fetch(url: string, init?: RequestInit): Promise<Response> };
   readonly secrets: {
     resolve(ref: SecretRef, scope: { readonly companyId: string }): Promise<string>;
   };
@@ -115,6 +139,7 @@ export interface ReviewerRunsApi {
  */
 export function reviewerLimitsOf(
   ctx: ReviewerRunsApi,
+  paperclipFetch: RunsFetch,
   config: Readonly<Record<string, unknown>> | undefined,
   pass: { readonly companyId: string; readonly now: Date; readonly log: (line: string) => void },
 ): ReviewerLimits | undefined {
@@ -129,8 +154,7 @@ export function reviewerLimitsOf(
     ...pass,
     apiUrl,
     apiKey,
-    fetch: (url, init) =>
-      ctx.http.fetch(url, { ...init, signal: AbortSignal.timeout(requestTimeoutMs) }),
+    fetch: paperclipFetch,
     resolve: (ref) => ctx.secrets.resolve(ref, { companyId: pass.companyId }),
   });
 }

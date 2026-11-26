@@ -87,9 +87,9 @@ export const manifest: PaperclipPluginManifestV1 = {
     // settings (src/plugin/trial-results.ts). Merge control's facts reader uses the two GitHub
     // readers, and GETs the CI status file and Prometheus at the addresses in the settings
     // (src/plugin/merge-control-reader.ts). The front bot sends one POST to
-    // api.anthropic.com/v1/messages per board message on a chat task, with its own key, and
-    // nothing else (src/plugin/front-bot-calls.ts, HAL-19136). Its lookups, off by default, read a
-    // pull request with pr_status's GET requests (src/plugin/front-bot-lookup.ts, HAL-19222).
+    // api.anthropic.com/v1/messages per board message on a chat task, with its own key (HAL-19136).
+    // Off by default, its lookups read a pull request with pr_status's GETs (HAL-19222), and its
+    // progress notes GET a chat run's status and log from Paperclip's API (HAL-19218).
     // The PR watcher GETs Liam's and Julian's newest runs from Paperclip's API at the address in
     // the settings, to move a limited reviewer's review (src/plugin/reviewer-runs.ts, HAL-19203).
     "http.outbound",
@@ -281,13 +281,13 @@ export const manifest: PaperclipPluginManifestV1 = {
         type: "string",
         title: "Paperclip API",
         description:
-          "The address of Paperclip's API as the plugin reaches it, scheme, host and port only, for example http://127.0.0.1:3100. The task effort handler sends its task changes there, and the PR watcher reads Liam's and Julian's newest runs there (GET only) to move a review off a reviewer who is parked or at a limit.",
+          "The address of Paperclip's API as the plugin reaches it, scheme, host and port only, for example http://127.0.0.1:3100. The task effort handler, the difficulty tagger, the thin-spec check, the front bot's progress notes and the PR watcher call it; the API key below says what each sends.",
       },
       paperclipApiKey: {
         type: "string",
         title: "Paperclip API key",
         description:
-          "The secret with the API key the task effort handler sends its task changes with. It sends only a task's assigneeAdapterOverrides, with the effort changed. The PR watcher reads Liam's and Julian's runs with it too (GET only).",
+          "The secret with the plugin's Paperclip API key. Five parts use it: the task effort handler sends only a task's assigneeAdapterOverrides, with the effort changed; the difficulty tagger reads the company's labels (GET only); the thin-spec check posts its comment on a flagged task, reads that task, creates the clarify task under it and sets it blocked by the clarify task; the front bot's progress notes read a chat run's status and the next piece of its log (GET only); the PR watcher reads Liam's and Julian's newest runs (GET only).",
         format: "secret-ref",
       },
       difficultyTaggerForVersion: {
