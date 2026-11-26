@@ -3,7 +3,6 @@
 - Task: HAL-20021
 - Approval: the team decides this on HAL-20021 (https://paperclip.halonic.com/HAL/issues/HAL-20021#comment-35790baa-6c25-4ba5-8cba-3adae0a66fd8), taking both recommendations. A team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
-- Signature: pending (the approver signs)
 
 ## What changes
 
