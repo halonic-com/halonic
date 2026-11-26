@@ -60,11 +60,15 @@ export interface KeptChatsParts {
  * are read from the store again on every {@link KeptChats.list} and {@link KeptChats.get}, taking
  * any saved copy newer than the window's, and the 40 are counted on the store's list. Every change
  * is saved in the order it happened; {@link KeptChats.saved} waits for the saves started so far.
+ * A chat the store held and no longer lists, as when Try it dropped it past the 40, goes from the
+ * window too; a chat the store never confirmed, as when its save failed, stays.
  */
 export class KeptChats {
   readonly #parts: KeptChatsParts;
   readonly #chats = new Map<string, KeptChat>();
   readonly #answering = new Set<string>();
+  /** The chats the store has shown it holds, read from it or saved to it. */
+  readonly #confirmed = new Set<string>();
   #saving: Promise<void> = Promise.resolve();
   #made = 0;
 
@@ -165,12 +169,19 @@ export class KeptChats {
     return this.#saving;
   }
 
-  /** Takes in every saved chat the window doesn't have, or has an older copy of. */
+  /**
+   * Takes in every saved chat the window doesn't have, or has an older copy of, and lets go of the
+   * chats the store no longer has.
+   */
   async #readSaved(): Promise<void> {
     // The window's own saves and deletes land first, so a chat it just let go doesn't come back.
-    await this.#saving;
+    const landed = this.#saving;
+    await landed;
     const { sessions, location } = this.#parts.store;
-    for (const summary of await sessions.list(location)) {
+    const summaries = await sessions.list(location);
+    // A save started while the store answered may bring a chat back, so only a quiet list counts.
+    if (this.#saving === landed) this.#letGoOfUnlisted(new Set(summaries.map(({ id }) => id)));
+    for (const summary of summaries) {
       if (!this.#savedIsNewer(summary)) continue;
       const saved = await sessions.load(location, summary.id);
       if (saved === null) continue;
@@ -178,6 +189,7 @@ export class KeptChats {
       const { id, kind, title, lastUsedAt, model, messages, about, docs } = chat;
       // A chat changed in this window while the store answered wins over its saved copy.
       if (!this.#savedIsNewer(summary)) continue;
+      this.#confirmed.add(id);
       this.#chats.set(id, {
         id,
         kind,
@@ -202,6 +214,17 @@ export class KeptChats {
     if (kept === undefined) return true;
     if (this.#answering.has(summary.id)) return false;
     return Date.parse(summary.lastUsedAt) > Date.parse(kept.lastUsedAt);
+  }
+
+  /**
+   * Forgets the chats the store confirmed once and no longer lists. Drafts, chats answering here
+   * and chats the store never confirmed are the window's own, so they stay.
+   */
+  #letGoOfUnlisted(listed: ReadonlySet<string>): void {
+    for (const chat of [...this.#chats.values()]) {
+      if (listed.has(chat.id) || chat.draft || this.#answering.has(chat.id)) continue;
+      if (this.#confirmed.has(chat.id)) this.#forget(chat.id);
+    }
   }
 
   /** Deletes the chats past the 40 on the store's list, which holds the Try it chats too. */
@@ -234,7 +257,11 @@ export class KeptChats {
       messages: [...chat.messages],
       ...(chat.docs === undefined ? {} : { docs: chat.docs }),
     });
-    if (toSave !== null) this.#store((sessions, location) => sessions.save(location, toSave));
+    if (toSave === null) return;
+    this.#store(async (sessions, location) => {
+      await sessions.save(location, toSave);
+      if (this.#chats.has(toSave.id)) this.#confirmed.add(toSave.id);
+    });
   }
 
   #remove(chatId: string): void {
@@ -245,6 +272,7 @@ export class KeptChats {
   #forget(chatId: string): void {
     this.#chats.delete(chatId);
     this.#answering.delete(chatId);
+    this.#confirmed.delete(chatId);
     this.#parts.onGone?.(chatId);
   }
 
