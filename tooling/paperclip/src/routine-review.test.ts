@@ -135,6 +135,8 @@ verifies("paperclip.routine-review", () => {
     "tooling/paperclip/src/merge-control/checks.test.ts",
     "tooling/paperclip/src/verdicts/review-verdict.ts",
     "tooling/paperclip/src/plugin/review-verdict-tool.ts",
+    "tooling/paperclip/src/plugin/review-verdict-tool.test.ts",
+    "tooling/paperclip/src/verdicts/review-verdict.test.ts",
     "tooling/paperclip/src/plugin/manifest.ts",
     "tooling/paperclip/src/seats/plugin/manifest.ts",
     ".claude/settings.json",

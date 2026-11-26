@@ -195,10 +195,11 @@ Stacks stay short, so a closed pull request never strands work above it:
   reviewer, and nobody else reviews it too:
   - the routine reviewer approves alone what the second reviewer may approve on a team branch,
     except `packages/core/`, `packages/host/`, `packages/testing/spec/`, `tooling/config/`, the
-    Merger's rules, plugin manifests, root files and root dot-folders (this file and `CLAUDE.md`
-    among them; `.changeset/` stays routine), `.gitattributes`, the legal files, security tests
-    and docs, and a public interface (an entry point a package exports, such as `src/index.ts`
-    or `src/api.ts`, or its `exports`). A renamed file counts by its old path too;
+    Merger's rules, the review verdicts (`tooling/paperclip/src/verdicts/`,
+    `plugin/review-verdict-tool*`), plugin manifests, root files and root dot-folders (this file
+    and `CLAUDE.md` among them; `.changeset/` stays routine), `.gitattributes`, the legal files,
+    security tests and docs, and a public interface (an entry point a package exports, such as
+    `src/index.ts` or `src/api.ts`, or its `exports`). A renamed file counts by its old path too;
   - the second reviewer approves the rest outside the maintainer's paths, up to 1500 changed lines
     of code (800 in the engine's kernel and the event types);
   - the maintainer reviews everything else: the maintainer's paths (the guard, `.github/`, the
