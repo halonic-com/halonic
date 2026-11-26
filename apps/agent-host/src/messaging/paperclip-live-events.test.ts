@@ -148,6 +148,41 @@ verifies("agent-host.paperclip-live-events", () => {
       expect(on.sockets.opened).toHaveLength(1);
     });
 
+    it("a socket that fails to close on Disconnect is logged, and the cache is still deleted", async () => {
+      const on = await connectedWithEvents();
+      await on.studio.listAgents();
+      const cache = join(on.profile, "agent-messaging-cache");
+      expect((await on.filesIn(cache)).size).toBeGreaterThan(0);
+
+      on.failLive("remove", new Error("timer not cancelled"));
+      const result = await on.paperclipKey.disconnect({
+        workspace: on.workspace,
+        connection: "halonic",
+      });
+
+      expect(result).toEqual({ revoked: true });
+      expect([...(await on.filesIn(cache)).keys()]).toEqual([]);
+      expect(on.logged).toContain("paperclip:halonic live events\n");
+    });
+
+    it("a socket that fails to open on the key hand-over is logged, and the key is still kept", async () => {
+      desktop = await startDesktop();
+      const on = desktop;
+      on.failLive("add", new Error("timer not set"));
+
+      await on.paperclipKey.handOver({
+        workspace: on.workspace,
+        connection: "halonic",
+        key: testKey,
+        ...acme,
+      });
+
+      expect(on.answers.map((text) => JSON.parse(text))).toEqual([{ kept: true }]);
+      expect(on.keys.has({ workspace: on.workspace, connection: "halonic" })).toBe(true);
+      expect(on.logged).toContain("paperclip:halonic live events\n");
+      expect(await on.studio.listSources()).toMatchObject([{ id: "paperclip:halonic" }]);
+    });
+
     it("switching the workspace to a server closes its socket, and leaving the server opens a new one", async () => {
       const on = await connectedWithEvents();
       const { key } = await on.setting.read(on.workspace);
@@ -177,7 +212,7 @@ verifies("agent-host.paperclip-live-events", () => {
       const cache = join(on.profile, "agent-messaging-cache");
       expect((await on.filesIn(cache)).size).toBeGreaterThan(0);
 
-      on.failLiveAdds(new Error("timer not set"));
+      on.failLive("add", new Error("timer not set"));
       await on.setting.useThisComputer(on.workspace);
       await on.messaging.leaveServer(on.workspace);
 

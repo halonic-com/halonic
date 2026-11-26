@@ -51,11 +51,15 @@ export class ConnectionEvents {
     this.#closed = closed;
   }
 
-  /** Follows `connection`'s events with the key just handed over, or none when `made` is `undefined`. */
+  /**
+   * Follows `connection`'s events with the key just handed over, or none when `made` is `undefined`.
+   * A socket that fails to open or close is reported, not thrown: events are best-effort, so the
+   * hand-over still keeps the key and Disconnect still deletes the cache.
+   */
   async follow(connection: string, made: PaperclipProviderOptions | undefined): Promise<void> {
     if (made === undefined) this.#made.delete(connection);
     else this.#made.set(connection, made);
-    await followEvents(this.#options, connection, this.#closed ? undefined : made);
+    await this.#followReported(connection, this.#closed ? undefined : made);
   }
 
   /**
@@ -67,12 +71,20 @@ export class ConnectionEvents {
     if (closed === this.#closed) return;
     this.#closed = closed;
     for (const [connection, made] of this.#made) {
-      try {
-        await followEvents(this.#options, connection, closed ? undefined : made);
-      } catch (error) {
-        const provider = paperclipSourceId(connection);
-        this.#options.report({ provider, action: "live events", error });
-      }
+      await this.#followReported(connection, closed ? undefined : made);
+    }
+  }
+
+  /** {@link followEvents}, reporting a failure instead of throwing it; without events the sync polls. */
+  async #followReported(
+    connection: string,
+    made: PaperclipProviderOptions | undefined,
+  ): Promise<void> {
+    try {
+      await followEvents(this.#options, connection, made);
+    } catch (error) {
+      const provider = paperclipSourceId(connection);
+      this.#options.report({ provider, action: "live events", error });
     }
   }
 }
