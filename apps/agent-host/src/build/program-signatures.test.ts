@@ -57,18 +57,22 @@ describe("the release's check of every program in the installer (HAL-20055)", ()
     });
   });
 
-  it("checks every program in the folder and its subfolders, and skips other files", () => {
+  it("checks every program in the folder and its subfolders, whatever its name, and skips other files", () => {
     folder = mkdtempSync(join(tmpdir(), "program-signatures-"));
     mkdirSync(join(folder, "$PLUGINSDIR"));
     writeFileSync(join(folder, "Halonic.exe"), program("none"));
     writeFileSync(join(folder, "halonic-agent-host.exe"), program("injected"));
     writeFileSync(join(folder, "$PLUGINSDIR", "System.dll"), program("signed"));
+    writeFileSync(join(folder, "vcruntime140.dll.pinned"), program("signed"));
     writeFileSync(join(folder, "halonic-runtime.json"), "{}");
+    writeFileSync(join(folder, "notes.txt"), "MZ, but no PE header");
+    writeFileSync(join(folder, "empty"), "");
     const results = checkPrograms(folder);
     expect(results.map(({ path, ok }) => [path.slice(folder?.length ?? 0), ok])).toEqual([
       [join("/", "$PLUGINSDIR", "System.dll"), true],
       [join("/", "Halonic.exe"), true],
       [join("/", "halonic-agent-host.exe"), false],
+      [join("/", "vcruntime140.dll.pinned"), true],
     ]);
   });
 });

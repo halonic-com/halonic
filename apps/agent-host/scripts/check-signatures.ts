@@ -1,20 +1,25 @@
+import { writeFileSync } from "node:fs";
 import { checkPrograms } from "../src/build/program-signatures.ts";
 
 /**
- * `node apps/agent-host/scripts/check-signatures.ts <folder>`: checks every
+ * `node apps/agent-host/scripts/check-signatures.ts <folder> [<list>]`: checks every
  * Windows program and DLL in the folder, such as an unpacked installer, and
  * fails when one has a security directory that holds no signature, as a
  * program changed after signing does (HAL-20055). Unsigned passes: our own
- * programs ship unsigned (HAL-16758). build-installer.ps1 runs it, then asks
- * Authenticode whether each signature is valid.
+ * programs ship unsigned (HAL-16758). With <list>, it writes the path of every
+ * program it found there, one per line: build-installer.ps1 asks Authenticode
+ * whether each of those signatures is valid, whatever the file's name.
  */
 
-const folder = process.argv[2];
+const [folder, list] = process.argv.slice(2);
 if (folder === undefined) {
-  throw new Error("usage: check-signatures.ts <folder>");
+  throw new Error("usage: check-signatures.ts <folder> [<list>]");
 }
 
 const results = checkPrograms(folder);
+if (list !== undefined) {
+  writeFileSync(list, results.map(({ path }) => `${path}\n`).join(""));
+}
 for (const { path, ok, detail } of results) {
   console.log(`${ok ? "ok  " : "FAIL"} ${path}: ${detail}`);
 }
