@@ -3,6 +3,7 @@
 - Task: HAL-17484
 - Approval: Liam asked for both requirement changes in his reviews of #5643 (HAL-17661) and Julian's security check HAL-17477; collected on HAL-17484. Liam reviews it and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ic3O6ge3IJmwcMjOZ+VKt+d/Pctfz4rfA/boaMYiFKgUmg9n4fsN3Oin04l8XuNIRAUIU0NngknmBzqEJxZPBA==
 
 ## What changes
 
