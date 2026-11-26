@@ -210,3 +210,21 @@ New-Item -ItemType Directory -Force $dist | Out-Null
 $out = Join-Path $dist "Halonic-$version-windows-x64-setup.exe"
 Copy-Item $built $out -Force
 Write-Output "Installer: $out ($([math]::Round((Get-Item $out).Length / 1MB, 1)) MB)"
+
+# Every program in the installer must be unsigned or validly signed: a
+# signature broken by a later change looks like tampering to Smart App Control
+# and antivirus (HAL-20055). 7-Zip unpacks NSIS installers.
+$unpacked = Join-Path ([System.IO.Path]::GetTempPath()) "halonic-installer-$version"
+Remove-Item -Recurse -Force $unpacked -ErrorAction SilentlyContinue
+try {
+  & 7z x -y "-o$unpacked" $out | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw '7z could not unpack the installer' }
+  # The security directory first: Authenticode calls one that holds no
+  # certificate "not signed", which would pass below.
+  node (Join-Path $repo 'apps/agent-host/scripts/check-signatures.ts') $unpacked
+  if ($LASTEXITCODE -ne 0) { throw 'a program in the installer has a broken security directory' }
+  foreach ($program in Get-ChildItem $unpacked -Recurse -File -Include '*.exe', '*.dll') {
+    $status = (Get-AuthenticodeSignature -LiteralPath $program.FullName).Status
+    if ($status -ne 'NotSigned' -and $status -ne 'Valid') { throw "$($program.Name) in the installer: signature is $status" }
+  }
+} finally { Remove-Item -Recurse -Force $unpacked -ErrorAction SilentlyContinue }

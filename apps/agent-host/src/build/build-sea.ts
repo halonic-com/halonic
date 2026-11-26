@@ -29,15 +29,22 @@ export function bundleEntry(source: string, constants: Readonly<Record<string, u
 
 /**
  * The settings file `node --build-sea` reads. Each payload file becomes an
- * asset whose key is its payload path.
+ * asset whose key is its payload path. `executablePath` is the Node it builds
+ * on, when not the running one: on Windows, a copy without Node's signature.
  */
-export function seaConfig(bundlePath: string, outputPath: string, payload: Payload): string {
+export function seaConfig(
+  bundlePath: string,
+  outputPath: string,
+  payload: Payload,
+  executablePath?: string,
+): string {
   const assets = Object.fromEntries(payload.files.map(({ path, source }) => [path, source]));
   return `${JSON.stringify(
     {
       main: bundlePath,
       mainFormat: "module",
       output: outputPath,
+      ...(executablePath === undefined ? {} : { executable: executablePath }),
       disableExperimentalSEAWarning: true,
       assets,
     },
