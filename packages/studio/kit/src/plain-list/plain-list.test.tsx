@@ -110,6 +110,29 @@ verifies("kit.plain-list", () => {
     );
   });
 
+  it("lets the hidden action take no clicks, but keeps it in the tab order", () => {
+    const { row } = renderRow({ action: { label: "Mark as unread", onClick: () => undefined } });
+    const action = row.querySelector(":scope > button:last-child") as HTMLButtonElement;
+
+    expect(classesOf(action)).toEqual(
+      expect.arrayContaining([
+        "opacity-0",
+        "pointer-events-none",
+        "group-hover:pointer-events-auto",
+        "group-focus-within:pointer-events-auto",
+      ]),
+    );
+    expect(classesOf(action)).not.toContain("invisible");
+  });
+
+  it("gives the action a 24px target, raised so its words stay on the title's line", () => {
+    const { row } = renderRow({ action: { label: "Mark as unread", onClick: () => undefined } });
+    const action = row.querySelector(":scope > button:last-child") as HTMLButtonElement;
+
+    expect(classesOf(action)).toEqual(expect.arrayContaining(["min-h-6", "top-1.5"]));
+    expect(classesOf(action)).not.toContain("top-2");
+  });
+
   it("leaves a row without an action on its own hover fill", () => {
     const { button } = renderRow();
 
