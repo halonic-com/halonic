@@ -6,6 +6,18 @@ import { useEffect, useRef, useState } from "react";
 /** The picture types a card draws; SVG never, since it is a document that can hold script. */
 const drawnTypes = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
 
+/**
+ * The most bytes a card reads or decodes for one picture. A screenshot is far smaller; above
+ * this the card says it couldn't load the image rather than hold the bytes.
+ */
+export const maxImageBytes = 20 * 1024 * 1024;
+
+/**
+ * The most pixels a card draws for one picture, about a 8K screen. A small file can decode to a
+ * huge bitmap (a decompression bomb), so the decoded size is checked too.
+ */
+export const maxImagePixels = 8192 * 4320;
+
 /** Said when an image's bytes couldn't be read or drawn, with **Try again**. */
 export const imageFailed = "Couldn't load the image.";
 
@@ -59,17 +71,25 @@ function ImageAttachment({
   readonly read: AgentAttachmentsProps["read"];
 }) {
   const [shown, setShown] = useState<Shown>({ kind: "hidden" });
+  const picture = useRef<ImageBitmap>(undefined);
+  const gone = useRef(false);
+  // The bitmap is closed when the card goes, not in the effect that draws it: strict mode runs
+  // that effect again after its cleanup, and a closed bitmap can't be drawn.
+  useEffect(() => {
+    gone.current = false;
+    return () => {
+      gone.current = true;
+      picture.current?.close();
+    };
+  }, []);
   const show = async () => {
     setShown({ kind: "loading" });
     try {
-      const result = await read(attachment.id);
-      // Offline or signed out, the source's own line already says why; here it only failed.
-      if (result.outcome !== "read") {
-        setShown({ kind: "failed" });
-        return;
-      }
-      const blob = new Blob([result.bytes.slice()], { type: attachment.type });
-      setShown({ kind: "shown", picture: await createImageBitmap(blob) });
+      const decoded = await readPicture(attachment, read);
+      // Closed at once if the card went while it was read, since nothing else would close it.
+      if (gone.current) decoded?.close();
+      picture.current = decoded;
+      setShown(decoded === undefined ? { kind: "failed" } : { kind: "shown", picture: decoded });
     } catch {
       // The line below says it failed and Try again reads it again; bytes that don't decode as
       // a picture fail here too, and are never shown any other way.
@@ -106,10 +126,33 @@ function ImageAttachment({
 }
 
 /**
+ * Reads and decodes a picture, or `undefined` when it mustn't be drawn: listed or read above
+ * {@link maxImageBytes}, read as a type the card doesn't draw (the type the source listed isn't
+ * proof of what it sends), refused by the source, or decoded above {@link maxImagePixels}.
+ * Offline or signed out, the source's own line already says why; here it only failed.
+ */
+async function readPicture(
+  attachment: Attachment,
+  read: AgentAttachmentsProps["read"],
+): Promise<ImageBitmap | undefined> {
+  if (attachment.size > maxImageBytes) return undefined;
+  const result = await read(attachment.id);
+  if (result.outcome !== "read") return undefined;
+  if (!drawnTypes.has(result.type) || result.bytes.byteLength > maxImageBytes) return undefined;
+  const blob = new Blob([result.bytes.slice()], { type: result.type });
+  const decoded = await createImageBitmap(blob);
+  if (decoded.width * decoded.height > maxImagePixels) {
+    decoded.close();
+    return undefined;
+  }
+  return decoded;
+}
+
+/**
  * Draws the decoded picture at its own size, never wider than the card. **Show image** is gone
- * once it's drawn, so focus moves to the picture instead of falling to the page. It's drawn once:
- * strict mode runs the effect again after its cleanup has closed the bitmap, and the canvas keeps
- * its pixels.
+ * once it's drawn, so focus moves to the picture instead of falling to the page. It's drawn once
+ * per canvas, since strict mode runs the effect twice and the canvas keeps its pixels; the card
+ * that read the bitmap closes it.
  */
 function Picture({ picture, name }: { readonly picture: ImageBitmap; readonly name: string }) {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -124,7 +167,6 @@ function Picture({ picture, name }: { readonly picture: ImageBitmap; readonly na
       drawn.current = picture;
     }
     target.focus();
-    return () => picture.close();
   }, [picture]);
   return (
     <canvas

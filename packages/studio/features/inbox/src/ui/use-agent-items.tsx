@@ -12,6 +12,7 @@ import {
   bundleAgentItems,
   bundleMeta,
   bundleTitle,
+  rowKeyHolding,
 } from "../agent/agent-bundles.ts";
 import { AgentInbox, type AgentInboxState } from "../agent/agent-inbox.ts";
 import {
@@ -141,7 +142,10 @@ export function useAgentItems(
         now={now}
       />
     ),
-    openKey: openItems.length === 0 ? undefined : opened?.key,
+    openKey:
+      openItems.length === 0 || opened === undefined
+        ? undefined
+        : (rowKeyHolding(opened, bundles) ?? opened.key),
     open: (key) => {
       const found = bundles.find((bundle) => bundle.key === key);
       setOpened(found === undefined ? undefined : { key, ids: found.items.map((item) => item.id) });
