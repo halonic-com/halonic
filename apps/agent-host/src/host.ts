@@ -322,10 +322,12 @@ async function hostServices(
   // Runs are recorded only when the gateway can show them to someone.
   const ledger = remote === undefined ? undefined : new RunLedger();
   const runs = new RunTable(ledger);
+  // Built before remote, so the gateway serves a paired phone the messaging Studio reads.
+  const messaging = hostMessaging(profile, connectors.workspaceRoots, logToError);
   const hostRemote = await openHostRemote(
     remote === undefined || ledger === undefined
       ? undefined
-      : { ...remote, ledger, runs, ownPorts: listeningPorts },
+      : { ...remote, ledger, runs, ownPorts: listeningPorts, messaging: messaging.phone },
   );
   const harnesses = hostHarnesses(version);
   const connectorTable = new ConnectorTable();
@@ -371,7 +373,6 @@ async function hostServices(
   const setupJobs = new SetupJobs(sandbox, undefined, wslRemover, (exitCode) =>
     setupAfterHelper(exitCode, () => sandbox.check()),
   );
-  const messaging = hostMessaging(profile, connectors.workspaceRoots, logToError);
   const routes = [
     healthRoute(version),
     // A session's temp folder, made with its harness profile, goes when the session closes.

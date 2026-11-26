@@ -2,8 +2,9 @@ import { randomBytes } from "node:crypto";
 import { hostname } from "node:os";
 import { join } from "node:path";
 import { privateFileAt } from "@halonicjs/adapter-fs-node";
-import type { RemoteControl, SecretStore, TunnelProvider } from "@halonicjs/ports";
+import type { PhoneMessaging, RemoteControl, SecretStore, TunnelProvider } from "@halonicjs/ports";
 import type { ProfileFolder } from "@halonicjs/profile";
+import { systemClock } from "@halonicjs/std";
 import { deskAccess } from "../gateway/desk-access.ts";
 import { RemoteGateway } from "../gateway/remote-gateway.ts";
 import type { RunLedger } from "../gateway/run-ledger.ts";
@@ -91,6 +92,8 @@ export interface HostRemoteParts extends ServedRemoteHome {
   readonly runs: RunTable;
   /** The ports the host listens on; the gateway's joins while it listens. */
   readonly ownPorts: Set<number>;
+  /** What a paired phone's `msg-*` and `team-read` read; without it the gateway answers them `not-supported`. */
+  readonly messaging?: PhoneMessaging | undefined;
 }
 
 /** The `RemoteControl` the host serves, and how to stop what it started. */
@@ -147,6 +150,9 @@ async function offered(parts: HostRemoteParts): Promise<HostRemote> {
     risky: settings,
     ownPorts: parts.ownPorts,
     log,
+    ...(parts.messaging === undefined
+      ? {}
+      : { messaging: { view: parts.messaging, clock: systemClock } }),
     ...(offer.gatewayPort === undefined ? {} : { port: offer.gatewayPort }),
     ...(offer.tunnelHosts === undefined ? {} : { tunnelHosts: offer.tunnelHosts }),
     ...(offer.publicHeaders === undefined ? {} : { publicHeaders: offer.publicHeaders }),

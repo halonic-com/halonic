@@ -5,9 +5,10 @@ import { NodeScheduler } from "@halonicjs/adapter-scheduler-node";
 import { systemSetTimer } from "@halonicjs/adapter-scheduler-node/node";
 import type { MessagingFailure } from "@halonicjs/host-agent-messaging-hub";
 import { type PaperclipBinding, PaperclipKeys } from "@halonicjs/host-agent-messaging-hub";
-import type { Scheduler, SecretStore } from "@halonicjs/ports";
+import type { PhoneMessaging, Scheduler, SecretStore } from "@halonicjs/ports";
 import type { ProfileFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
+import { phoneWorkspaceMessaging } from "../gateway/phone-workspace.ts";
 import { feedbackRoutes } from "../paperclip/feedback-routes.ts";
 import { HostKeyStore } from "../paperclip/host-key-store.ts";
 import { paperclipKeyRoutes } from "../paperclip/paperclip-key-routes.ts";
@@ -30,6 +31,8 @@ import { ServerPairings } from "./server-engine.ts";
 /** The host's agent messaging: its routes, and what stops it. */
 export interface HostMessaging {
   routes: HostRoute[];
+  /** What a paired phone reads: the workspace Studio last asked for. Without a profile folder or a workspace there is none. */
+  phone?: PhoneMessaging;
   stop(): Promise<void>;
 }
 
@@ -133,6 +136,9 @@ export function hostMessaging(
       ...paperclipSignInRoutes({ signIn, workspaceRoots, log, usesServer }),
       ...feedback,
     ],
+    ...(workspaceRoots.length === 0
+      ? {}
+      : { phone: phoneWorkspaceMessaging(() => messaging.lastAsked()) }),
     stop: async () => {
       await poller.stop();
       await scheduler.close();
