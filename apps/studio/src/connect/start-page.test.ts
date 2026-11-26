@@ -204,4 +204,22 @@ verifies("studio.connect.app-shortcuts", () => {
     expect(shownScreens()).toEqual(["not-answering"]);
     expect(phoneApp.load).not.toHaveBeenCalled();
   });
+
+  it("hands the shortcuts to the phone app, which takes the screen itself", async () => {
+    const phoneApp = fakePhoneApp();
+    const takeOpening = vi.fn(() => Promise.resolve({ screen: "messenger" as const }));
+    const shortcuts = {
+      takeOpening,
+      setLastChat: () => undefined,
+      canPin: () => Promise.resolve(true),
+      pin: () => undefined,
+    };
+    await startPage({
+      ...options(new FakeShell(), tunnelListing([laptop])),
+      shortcuts,
+      loadPhoneApp: phoneApp.load,
+    });
+    expect(phoneApp.mounted[0]?.mount.shortcuts).toBe(shortcuts);
+    expect(takeOpening).not.toHaveBeenCalled();
+  });
 });

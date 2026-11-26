@@ -8,8 +8,13 @@ export { agentLine, agentRowLine, agentStateWords } from "./agent-line.ts";
 export { AgentsList } from "./agents-list.tsx";
 // The phone app round the screens above, for the Android app's own page (HAL-15985).
 export type { ComputerTunnelOf } from "./app/held-gateway.ts";
-export { mountPhoneApp, type PhoneAppMount } from "./app/mount-phone-app.tsx";
+export {
+  mountPhoneApp,
+  type PhoneAppMount,
+  type PhoneShortcuts,
+} from "./app/mount-phone-app.tsx";
 export type { HeldComputer } from "./app/phone-app-router.ts";
+export type { ShortcutTab } from "./app/shortcut-landing.ts";
 // The gateway client and its view, also on their own as `./phone-client`.
 export {
   ANSWER_RISKY_ON_COMPUTER,

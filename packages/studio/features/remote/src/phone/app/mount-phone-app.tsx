@@ -2,6 +2,7 @@ import { PresentationProvider } from "@halonicjs/studio-kit";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import type { OwnerCheckAvailable } from "../gateway-client.ts";
+import type { PhonePinning } from "../home-screen-group.tsx";
 import type { NearbyComputers } from "../nearby-computers.ts";
 import type { PhoneScanner } from "../pairing-flow.ts";
 import type { PhoneTunnel } from "../phone-tunnel.ts";
@@ -10,6 +11,16 @@ import type { PhoneOutside } from "./computer-screen.tsx";
 import { type ComputerTunnelOf, holdGateway } from "./held-gateway.ts";
 import { PhoneApp } from "./phone-app.tsx";
 import { PhoneAppRouter } from "./phone-app-router.ts";
+import type { ShortcutTab } from "./shortcut-landing.ts";
+
+/** The Android app's shortcuts, as the phone app uses them (HAL-19143). */
+export interface PhoneShortcuts extends PhonePinning {
+  /**
+   * The screen the last shortcut asked for, once; undefined when none did. The last chat opens
+   * the Messenger tab, as a chat that's gone does, until the phone app opens a chat by itself.
+   */
+  readonly takeOpening: () => Promise<{ readonly screen: ShortcutTab | "chat" } | undefined>;
+}
 
 /** What the page hands the phone app. */
 export interface PhoneAppMount extends PhoneOutside {
@@ -39,13 +50,17 @@ export interface PhoneAppMount extends PhoneOutside {
   readonly saved?: SavedDataStore;
   /** Where a call the shell refused goes, for the log. */
   readonly report: (problem: string) => void;
+  /** The Android app's shortcuts; without them the app opens as its icon does. */
+  readonly shortcuts?: PhoneShortcuts;
 }
 
 /**
  * Draws the phone app into `container` and starts it (task D5, HAL-15985). Android back goes
  * through the page's history: while the app has somewhere to go back to, one history entry stands
  * for it, so back comes to the app instead of closing it. The container is hidden while the page
- * shows its 0.1 connect screen. Returns the unmount.
+ * shows its 0.1 connect screen. A shortcut's tab is taken before the start, and again each time
+ * the page shows, since a shortcut tapped while the app runs comes back to this page (HAL-19143).
+ * Returns the unmount.
  */
 export function mountPhoneApp(container: HTMLElement, mount: PhoneAppMount): () => void {
   const router = new PhoneAppRouter({
@@ -91,6 +106,18 @@ export function mountPhoneApp(container: HTMLElement, mount: PhoneAppMount): () 
   };
   const unsubscribe = router.subscribe(follow);
   mount.window.addEventListener("popstate", onPopState);
+  const { shortcuts } = mount;
+  const page = mount.window.document;
+  const onShown = () => {
+    if (shortcuts === undefined || page.visibilityState !== "visible") return;
+    shortcuts.takeOpening().then(
+      (opening) => {
+        if (opening !== undefined) router.openShortcut(tabOf(opening));
+      },
+      (error: unknown) => mount.report(`The shortcut's screen couldn't be read: ${String(error)}`),
+    );
+  };
+  page.addEventListener("visibilitychange", onShown);
   const root = createRoot(container);
   root.render(
     <StrictMode>
@@ -103,15 +130,35 @@ export function mountPhoneApp(container: HTMLElement, mount: PhoneAppMount): () 
           onOpenLink={mount.onOpenLink}
           onCamera={mount.onCamera}
           nearby={mount.nearby}
+          pinning={shortcuts}
         />
       </PresentationProvider>
     </StrictMode>,
   );
-  void router.start();
+  void startOn(router, shortcuts, mount.report);
   return () => {
     unsubscribe();
     mount.window.removeEventListener("popstate", onPopState);
+    page.removeEventListener("visibilitychange", onShown);
     root.unmount();
     router.dispose();
   };
+}
+
+/** Starts the app on the tab the shortcut that opened it asked for, if one did. */
+async function startOn(
+  router: PhoneAppRouter,
+  shortcuts: PhoneShortcuts | undefined,
+  report: (problem: string) => void,
+): Promise<void> {
+  const opening = await shortcuts?.takeOpening().catch((error: unknown) => {
+    report(`The shortcut's screen couldn't be read: ${String(error)}`);
+    return undefined;
+  });
+  await router.start(opening === undefined ? undefined : tabOf(opening));
+}
+
+/** The tab a shortcut's screen opens on. */
+function tabOf(opening: { readonly screen: ShortcutTab | "chat" }): ShortcutTab {
+  return opening.screen === "chat" ? "messenger" : opening.screen;
 }

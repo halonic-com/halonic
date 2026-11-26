@@ -9,11 +9,13 @@ import {
 } from "react";
 import { computersWords } from "../computers-words.ts";
 import { forgottenWords } from "../forget-dialog.tsx";
+import { HomeScreenGroup, type PhonePinning } from "../home-screen-group.tsx";
 import type { NearbyComputers } from "../nearby-computers.ts";
 import { pairWords } from "../pair-words.ts";
 import { PairedComputers } from "../paired-computers.tsx";
 import type { PairingView, PhonePairingFlow } from "../pairing-flow.ts";
 import { PairingScreens } from "../pairing-screens.tsx";
+import { shortcutWords } from "../shortcut-words.ts";
 import { TypedStep } from "../typed-step.tsx";
 import { ComputerScreen, type PhoneOutside } from "./computer-screen.tsx";
 import type { PhoneAppRouter, PhoneAppView } from "./phone-app-router.ts";
@@ -25,6 +27,8 @@ export interface PhoneAppProps extends PhoneOutside {
   readonly onCamera: (showing: boolean) => void;
   /** The shell's list of computers on this Wi-Fi, for Type a code; none outside the Android app. */
   readonly nearby?: NearbyComputers | undefined;
+  /** Pinning a screen to the home screen; without it Paired computers has no Home screen group. */
+  readonly pinning?: PhonePinning | undefined;
 }
 
 /**
@@ -62,7 +66,15 @@ function PhoneScreen(props: PhoneAppProps & { readonly view: PhoneAppView }) {
     case "address":
       return null;
     case "pair":
-      return <PairScreen {...props} flow={screen.flow} computers={view.computers} onBack={back} />;
+      return (
+        <PairScreen
+          {...props}
+          flow={screen.flow}
+          computers={view.computers}
+          landing={view.landing}
+          onBack={back}
+        />
+      );
     case "computers":
       return (
         <TopBar title={computersWords.title} onBack={back} focusOnOpen>
@@ -73,6 +85,7 @@ function PhoneScreen(props: PhoneAppProps & { readonly view: PhoneAppView }) {
             onPair={() => router.pair()}
             onRetry={() => void router.refresh()}
           />
+          <HomeScreenGroup pinning={props.pinning} />
         </TopBar>
       );
     case "computer": {
@@ -88,6 +101,7 @@ function PhoneScreen(props: PhoneAppProps & { readonly view: PhoneAppView }) {
           status={view.statuses.get(computer.id)}
           sheet={screen.sheet}
           run={screen.run}
+          tab={screen.tab ?? "inbox"}
           outside={props}
         />
       );
@@ -99,6 +113,7 @@ function PairScreen({
   router,
   flow,
   computers,
+  landing,
   nearby,
   onBack,
   onOpenSettings,
@@ -106,6 +121,7 @@ function PairScreen({
 }: PhoneAppProps & {
   readonly flow: PhonePairingFlow;
   readonly computers: PhoneAppView["computers"];
+  readonly landing: PhoneAppView["landing"];
   readonly onBack: (() => void) | undefined;
 }) {
   const step = useSyncExternalStore(flow.subscribe, () => flow.view);
@@ -117,6 +133,7 @@ function PairScreen({
       <PairingScreens
         onFocusTitle={() => title.current?.focus()}
         flow={flow}
+        note={landing === undefined ? undefined : shortcutWords.afterPairing[landing]}
         typed={(typed) => (
           <TypedStep
             step={typed}

@@ -33,6 +33,7 @@ export function StartStep({
   scanRef,
   onScan,
   onTypeInstead,
+  note,
 }: {
   /** False on a build without a scanner: only the typed route is offered. */
   readonly scanner: boolean;
@@ -40,6 +41,8 @@ export function StartStep({
   readonly scanRef: Ref<HTMLButtonElement>;
   readonly onScan: () => void;
   readonly onTypeInstead: () => void;
+  /** One more line under the intro, such as which screen opens after pairing. */
+  readonly note?: string | undefined;
 }) {
   return (
     <StepLayout
@@ -63,6 +66,7 @@ export function StartStep({
       <p className="text-body text-fg">
         <MarkedText text={pairWords.intro} />
       </p>
+      {note === undefined ? null : <p className="text-body text-fg">{note}</p>}
       <div className="flex items-start gap-4 rounded-md border border-border p-4">
         <IconTile>
           <ShieldIcon />
