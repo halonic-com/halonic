@@ -2,6 +2,7 @@ import type { AgentMessaging } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { FakeAgentMessaging } from "./fake-agent-messaging.ts";
+import { offPatternMessagingIds } from "./messaging-ids.ts";
 
 /**
  * Makes the `AgentMessaging` under test over a fake that sits behind it: a
@@ -45,8 +46,8 @@ async function firstChange(
 
 /**
  * The contract every `AgentMessaging` passes, whatever carries it
- * (requirements `contracts.agent-messaging`, `contracts.agent-messaging-questions` and
- * `contracts.agent-messaging-closed`): each call of the port gives what
+ * (requirements `contracts.agent-messaging`, `contracts.agent-messaging-questions`,
+ * `contracts.agent-messaging-closed` and `contracts.agent-messaging-ids`): each call of the port gives what
  * the fake behind it holds, refusals keep their reason, files keep their
  * bytes, and `changes` names the source that changed.
  */
@@ -243,6 +244,18 @@ export function agentMessagingContract(name: string, make: MakeAgentMessaging): 
           reason: "expired",
           closedAt: "2026-11-24T10:00:00.000Z",
         });
+      });
+    });
+  });
+
+  verifies("contracts.agent-messaging-ids", () => {
+    describe(`AgentMessaging contract, ids: ${name}`, () => {
+      it("lists only ids that follow gatewayMessagingIdPattern", async () => {
+        const { port, chat, chief } = await setUp();
+        const file = { name: "a.png", type: "image/png", bytes: new Uint8Array([1]) };
+        await port.send(chat.id, "Here it is", [file], { to: [chief.id] });
+
+        expect(await offPatternMessagingIds(port)).toEqual([]);
       });
     });
   });
