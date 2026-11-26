@@ -1,5 +1,5 @@
 //! What the feedback shortcut holds between a press and the send
-//! (HAL-18778): the still of the main window from one press, until two
+//! (HAL-18778): the still of the window from one press, until two
 //! minutes pass or a box is selected, and then only the crop of that box.
 //! Plain values and functions, so they test without windows or a screen.
 
@@ -52,7 +52,7 @@ pub enum Press {
     Ignore,
     /// Brings the Send feedback window forward, keeping what is typed in it.
     ShowSendFeedback,
-    /// Takes the main window's still; `capture_done` follows.
+    /// Takes the calling window's still; `capture_done` follows.
     Capture,
 }
 
@@ -119,6 +119,7 @@ impl Held {
 
     /// Drops the stills of press `press` and keeps the crop: one of its
     /// windows closed some other way, such as Alt+F4.
+    #[cfg(test)]
     pub fn drop_stills_of(&mut self, press: u64) {
         if self.press == press {
             self.stills.clear();
@@ -185,7 +186,7 @@ impl Drop for Capturing<'_> {
     }
 }
 
-/// The box the main window's overlay selected, in its still's pixels. Negative or
+/// The box the calling window's overlay selected, in its still's pixels. Negative or
 /// fractional numbers aren't a box: they are refused before the command.
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
 pub struct SelectedBox {

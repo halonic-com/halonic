@@ -55,6 +55,20 @@ verifies("feedback.in-app", () => {
     await vi.waitFor(() => expect(overlay()).not.toBeNull());
   });
 
+  it("leaves a press to the shortcut recorder while it records", async () => {
+    const shell = fakeShell();
+    startWith(shell);
+    const record = (event: KeyboardEvent) => event.stopImmediatePropagation();
+    window.addEventListener("keydown", record, true);
+    try {
+      await press(ctrlShiftF);
+    } finally {
+      window.removeEventListener("keydown", record, true);
+    }
+    expect(shell.invoke).not.toHaveBeenCalled();
+    expect(overlay()).toBeNull();
+  });
+
   it("does nothing on Shift+F, Ctrl+F or a held key's repeats", async () => {
     const shell = fakeShell();
     startWith(shell);

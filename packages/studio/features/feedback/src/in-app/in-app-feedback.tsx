@@ -8,7 +8,7 @@ import { matchesShortcut } from "../settings/shortcut-keys.ts";
 
 /** What {@link startInAppFeedback} needs of the window it runs in. */
 export interface InAppFeedbackParts {
-  /** The shell; `plugin:feedback|start`, `select` and `end` are granted to the main window only. */
+  /** The shell; `plugin:feedback|start`, `select` and `end` are granted to the main, Inbox and Messenger windows. */
   readonly ipc: FeedbackIpc;
   /** The platform the shortcut is read for: `CommandOrControl` is ⌘ on macOS. */
   readonly platform: KeyboardPlatform;
@@ -81,10 +81,12 @@ export function startInAppFeedback(parts: InAppFeedbackParts): () => void {
       });
   };
 
-  // Heard first, so the composer or a find bar never takes the keys.
-  window.addEventListener("keydown", onKey, true);
+  // On the document in capture phase: heard before the composer or a find bar,
+  // but after the Settings shortcut recorder on the window, whose
+  // stopImmediatePropagation keeps a recorded press from starting feedback.
+  window.document.addEventListener("keydown", onKey, true);
   return () => {
-    window.removeEventListener("keydown", onKey, true);
+    window.document.removeEventListener("keydown", onKey, true);
     close();
   };
 }

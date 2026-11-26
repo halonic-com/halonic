@@ -210,7 +210,9 @@ fn page_window<R: Runtime>(app: &AppHandle<R>, label: &str) -> tauri::Result<Web
 /// Drops the still and the crop, and closes every feedback window.
 fn finish<R: Runtime>(app: &AppHandle<R>) {
     held(app).clear();
-    close_windows(app, |label| label == FEEDBACK_WINDOW || label == UNAVAILABLE_WINDOW);
+    close_windows(app, |label| {
+        label == FEEDBACK_WINDOW || label == UNAVAILABLE_WINDOW
+    });
 }
 
 /// Closes every window whose label `closes` picks.

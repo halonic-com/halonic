@@ -1,5 +1,4 @@
 ---
-"@halonicjs/studio-feature-feedback": patch
 "@halonicjs/app-studio": patch
 ---
 
