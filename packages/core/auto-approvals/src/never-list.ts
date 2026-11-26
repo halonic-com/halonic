@@ -37,7 +37,12 @@ export interface Hold {
 /** A never-list as one revision of the document says it. */
 export interface NeverList {
   readonly workspaceId: string;
-  readonly connectorUserId: string;
+  /**
+   * The Studio connector's user. Optional while auto approvals run in shadow
+   * mode, where there is no connector user (board, HAL-19462); live mode must
+   * require it again.
+   */
+  readonly connectorUserId?: string;
   readonly entries: readonly NeverListEntry[];
   readonly holds: readonly Hold[];
 }
@@ -111,12 +116,14 @@ function neverListFrom(data: unknown, workspaceId: string): NeverList {
   }
   if (data["version"] !== neverListVersion) fail("never_list.unsupported_version");
   if (data["workspaceId"] !== workspaceId) fail("never_list.wrong_workspace");
-  return {
+  const list: NeverList = {
     workspaceId,
-    connectorUserId: nonEmptyText(data["connectorUserId"]),
     entries: listOf(data["entries"]).map(entryFrom),
     holds: data["holds"] === undefined ? [] : listOf(data["holds"]).map(holdFrom),
   };
+  // Left out is fine; there but empty or not text still fails closed.
+  if (!("connectorUserId" in data)) return list;
+  return { ...list, connectorUserId: nonEmptyText(data["connectorUserId"]) };
 }
 
 function entryFrom(data: unknown): NeverListEntry {

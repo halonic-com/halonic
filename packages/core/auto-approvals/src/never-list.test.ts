@@ -108,10 +108,37 @@ verifies("auto-approvals.never-list", () => {
     });
   });
 
+  describe("connectorUserId", () => {
+    const withoutConnector = `version: 2\nworkspaceId: ${workspaceId}\nentries: []\n`;
+
+    it("may be left out, as in shadow mode", () => {
+      expect(readNeverList(withoutConnector, workspaceId)).toEqual({
+        ok: true,
+        list: { workspaceId, entries: [], holds: [] },
+      });
+    });
+
+    it.each([
+      ["empty", 'connectorUserId: ""\n'],
+      ["not text", "connectorUserId: [a]\n"],
+    ])("fails closed when it is there but %s", (_, line) => {
+      expect(readNeverList(`${withoutConnector}${line}`, workspaceId)).toEqual({
+        ok: false,
+        reason: "never_list.bad_shape",
+      });
+    });
+  });
+
   describe("effectiveNeverList", () => {
     it("keeps blocking a seed entry the document removed", () => {
       const read = effectiveNeverList(
-        [{ text: emptyList, writtenAt: new Date(removedAt - 30 * loosenDelayMs) }],
+        [
+          {
+            text: emptyList,
+            writtenAt: new Date(removedAt - 30 * loosenDelayMs),
+            ownerWritten: true,
+          },
+        ],
         workspaceId,
         clockAt(removedAt),
       );
@@ -124,8 +151,12 @@ verifies("auto-approvals.never-list", () => {
 
     it("applies a loosening edit only once 24 hours have passed", () => {
       const revisions = [
-        { text: withDeployHold, writtenAt: new Date(removedAt - loosenDelayMs) },
-        { text: emptyList, writtenAt: new Date(removedAt) },
+        {
+          text: withDeployHold,
+          writtenAt: new Date(removedAt - loosenDelayMs),
+          ownerWritten: true,
+        },
+        { text: emptyList, writtenAt: new Date(removedAt), ownerWritten: true },
       ];
       const at = (offset: number) =>
         effectiveNeverList(revisions, workspaceId, clockAt(removedAt + offset));
@@ -141,8 +172,12 @@ verifies("auto-approvals.never-list", () => {
     it("applies an added entry at once", () => {
       const read = effectiveNeverList(
         [
-          { text: emptyList, writtenAt: new Date(removedAt - loosenDelayMs * 3) },
-          { text: withKeyword, writtenAt: new Date(removedAt) },
+          {
+            text: emptyList,
+            writtenAt: new Date(removedAt - loosenDelayMs * 3),
+            ownerWritten: true,
+          },
+          { text: withKeyword, writtenAt: new Date(removedAt), ownerWritten: true },
         ],
         workspaceId,
         clockAt(removedAt),
@@ -152,18 +187,27 @@ verifies("auto-approvals.never-list", () => {
 
     it("can't speed up a removal by writing a broken revision in between", () => {
       const revisions = [
-        { text: withKeyword, writtenAt: new Date(removedAt - minute) },
-        { text: "entries: [", writtenAt: new Date(removedAt) },
-        { text: emptyList, writtenAt: new Date(removedAt + minute) },
+        { text: withKeyword, writtenAt: new Date(removedAt - minute), ownerWritten: true },
+        { text: "entries: [", writtenAt: new Date(removedAt), ownerWritten: true },
+        { text: emptyList, writtenAt: new Date(removedAt + minute), ownerWritten: true },
       ];
       const read = effectiveNeverList(revisions, workspaceId, clockAt(removedAt + 2 * minute));
       expect(read.ok && read.list.entries).toContainEqual({ kind: "keyword", value: "payee" });
     });
 
+    it("ignores a revision no owner wrote, for content and for timing", () => {
+      const revisions = [
+        { text: withKeyword, writtenAt: new Date(removedAt - loosenDelayMs), ownerWritten: true },
+        { text: emptyList, writtenAt: new Date(removedAt - loosenDelayMs), ownerWritten: false },
+      ];
+      const read = effectiveNeverList(revisions, workspaceId, clockAt(removedAt));
+      expect(read.ok && read.list.entries).toContainEqual({ kind: "keyword", value: "payee" });
+    });
+
     it("fails closed when the newest revision doesn't read, or there is none", () => {
       const revisions = [
-        { text: withHireAgent, writtenAt: new Date(removedAt - minute) },
-        { text: neverList("entries: 1\n"), writtenAt: new Date(removedAt) },
+        { text: withHireAgent, writtenAt: new Date(removedAt - minute), ownerWritten: true },
+        { text: neverList("entries: 1\n"), writtenAt: new Date(removedAt), ownerWritten: true },
       ];
       expect(effectiveNeverList(revisions, workspaceId, clockAt(removedAt))).toEqual({
         ok: false,

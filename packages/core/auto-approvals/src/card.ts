@@ -5,7 +5,7 @@
 
 import { canonicalJson, contentDigest, type Sha256 } from "@halonicjs/std";
 import { stringsIn } from "./claims.ts";
-import type { PathClass } from "./vocabulary.ts";
+import { type ApprovalSource, approvalSources, isKnown, type PathClass } from "./vocabulary.ts";
 
 /** The approval kinds a rule may name. v1 has none: each comes with its own board card. */
 export type ApprovalKind = "untyped";
@@ -89,8 +89,12 @@ export interface ApprovalCard {
   readonly untypedBecause: readonly UntypedReason[];
   /** A claim; used only to block. */
   readonly approvalType: string;
-  /** `payload.source` when it is a string, a claim; used only to block. */
-  readonly approvalSource: string | null;
+  /**
+   * Where the approval came from, read from the payload; used only to block.
+   * Only a known source is kept: anything else is `other`, so an agent's text
+   * never reaches the card.
+   */
+  readonly approvalSource: ApprovalSource | "other" | null;
   readonly target: Target;
   /** What would be approved: the payload hash while the target is `none`. */
   readonly version: string;
@@ -193,10 +197,15 @@ function isUntouched(read: ApprovalRead): boolean {
   );
 }
 
-function sourceOf(payload: unknown): string | null {
-  if (typeof payload !== "object" || payload === null || !("source" in payload)) return null;
-  const source = payload.source;
-  return typeof source === "string" ? source : "(not text)";
+/** Fields only a tool-gateway approval carries, so its shape gives it away without `source`. */
+const toolGatewayFields = ["invocationId", "argumentsHash"];
+
+function sourceOf(payload: unknown): ApprovalSource | "other" | null {
+  if (typeof payload !== "object" || payload === null) return null;
+  // A changed or missing `source` must not hide a tool-gateway call.
+  if (toolGatewayFields.some((field) => field in payload)) return "tool_gateway";
+  if (!("source" in payload)) return null;
+  return isKnown(approvalSources, payload.source) ? payload.source : "other";
 }
 
 function canonicalPayload(payload: unknown): string | undefined {

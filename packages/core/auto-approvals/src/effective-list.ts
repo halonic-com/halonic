@@ -36,6 +36,12 @@ export interface NeverListRevision {
   readonly text: string;
   /** When Paperclip stored this revision (a server fact). */
   readonly writtenAt: Date;
+  /**
+   * Whether someone with authority over the list (an owner) wrote it, as
+   * Paperclip records the author. Any other revision, such as an agent's edit
+   * while the list was unlocked, is ignored for content and for timing.
+   */
+  readonly ownerWritten: boolean;
 }
 
 /** The entries and holds in force now. */
@@ -50,7 +56,8 @@ export type EffectiveNeverListRead =
   | { readonly ok: false; readonly reason: NeverListReason | "never_list.missing" };
 
 /**
- * The never-list in force at `clock.now()`. The newest revision must read
+ * The never-list in force at `clock.now()`, from owner-written revisions
+ * only. The newest of them must read
  * cleanly, or the whole list fails closed. An older revision that doesn't
  * read adds nothing: the revision before it still counts on its own 24 hours,
  * so fixing a typo can't speed up a removal.
@@ -64,7 +71,8 @@ export function effectiveNeverList(
   workspaceId: string,
   clock: Clock,
 ): EffectiveNeverListRead {
-  const inForce = revisionsInForce(revisions, clock.now().getTime());
+  const ownerRevisions = revisions.filter((revision) => revision.ownerWritten);
+  const inForce = revisionsInForce(ownerRevisions, clock.now().getTime());
   const newest = inForce.at(-1);
   if (newest === undefined) return { ok: false, reason: "never_list.missing" };
   const newestRead = readNeverList(newest.text, workspaceId);

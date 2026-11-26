@@ -5,7 +5,7 @@ import type { ApprovalCard } from "./card.ts";
 import { findKeyword } from "./claims.ts";
 import type { EffectiveNeverList } from "./effective-list.ts";
 import type { Hold } from "./never-list.ts";
-import { approvalSources, approvalTypes, type EntryKind, isKnown } from "./vocabulary.ts";
+import { approvalTypes, type EntryKind, isKnown } from "./vocabulary.ts";
 
 /** Why a card gets no decision. */
 export type NotEligibleReason =
@@ -39,9 +39,7 @@ export function checkEligibility(
   // whatever the never-list says.
   if (card.approvalSource === "tool_gateway") return notEligible("card.tool_gateway");
   if (!isKnown(approvalTypes, card.approvalType)) return notEligible("card.unknown_type");
-  if (card.approvalSource !== null && !isKnown(approvalSources, card.approvalSource)) {
-    return notEligible("card.unknown_source");
-  }
+  if (card.approvalSource === "other") return notEligible("card.unknown_source");
   if (!card.untouched) return notEligible("card.touched");
   if (neverList.entries.some((entry) => entry.kind !== "keyword" && blocks(card, entry))) {
     return notEligible("never_list.entry");

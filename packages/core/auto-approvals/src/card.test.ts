@@ -96,9 +96,24 @@ verifies("auto-approvals.card", () => {
     });
   });
 
+  describe("the card's source", () => {
+    it("keeps only a known source, so an agent's text never reaches the card", async () => {
+      const hostile = approvalRead({ payload: { source: "x".repeat(10_000) } });
+      const card = await toCard(hostile, digest);
+      expect(card.ok && card.card.approvalSource).toBe("other");
+    });
+  });
+
   describe("checkEligibility", () => {
-    it("never finds a tool_gateway approval eligible, even with no never-list entry", async () => {
-      const read = approvalRead({ payload: { source: "tool_gateway", tool: "notes.create" } });
+    it.each([
+      ["marked by its source", { source: "tool_gateway", tool: "notes.create" }],
+      ["with no source but an invocation id", { invocationId: "inv-1", tool: "notes.create" }],
+      [
+        "with a renamed source but an arguments hash",
+        { origin: "tool_gateway", argumentsHash: "h" },
+      ],
+    ])("never finds a tool_gateway approval eligible, %s", async (_, payload) => {
+      const read = approvalRead({ payload });
       expect(await eligibilityOf(read, { entries: [], holds: [] })).toEqual({
         eligible: false,
         reason: "card.tool_gateway",
@@ -170,7 +185,7 @@ verifies("auto-approvals.card", () => {
     it("blocks the kinds a hold covers", async () => {
       const text = `version: 2\nworkspaceId: ${workspaceId}\nconnectorUserId: v\nentries: []\nholds:\n  - name: FREEZE\n    covers: [request_board_approval]\n`;
       const list = effectiveNeverList(
-        [{ text, writtenAt: new Date(createdAt) }],
+        [{ text, writtenAt: new Date(createdAt), ownerWritten: true }],
         workspaceId,
         fixedClock(),
       );
