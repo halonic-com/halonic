@@ -68,6 +68,8 @@ export interface ServeMessaging {
   readonly messaging: AgentMessaging;
   /** The sources whose provider started at the last build; empty when no key is stored. */
   readonly connected: readonly string[];
+  /** Reads every source of the last build again, for the server's poll loop (`server.messaging-rate`). */
+  refresh(): Promise<void>;
   /**
    * Makes the providers again from the stored keys, after a sign-in stored a key or Disconnect
    * removed one, and names `connection`'s source to every `changes` reader. Builds run one at a
@@ -98,6 +100,7 @@ export async function openServeMessaging(options: ServeMessagingOptions): Promis
     get connected() {
       return built.connected;
     },
+    refresh: () => built.hub.refresh(),
     rebuild(connection) {
       const next = latest.then(() => rebuildNow(connection));
       // The caller hears this build's failure; the next build still runs.
@@ -107,10 +110,10 @@ export async function openServeMessaging(options: ServeMessagingOptions): Promis
   };
 }
 
-/** The hub over a provider for each connection with a stored key, with the cache in front. */
+/** The hub over a provider for each connection with a stored key, with the cache in front, and the hub alone. */
 async function joinedProviders(
   options: ServeMessagingOptions,
-): Promise<{ messaging: AgentMessaging; connected: readonly string[] }> {
+): Promise<{ messaging: AgentMessaging; hub: MessagingHub; connected: readonly string[] }> {
   const { workspace, report, warn } = options;
   const providers: { name: string; messaging: AgentMessaging }[] = [];
   for (const connection of await connectionNames(workspace)) {
@@ -125,7 +128,7 @@ async function joinedProviders(
     workspaceRoots: [workspace],
     warn,
   });
-  return { messaging, connected: providers.map((provider) => provider.name) };
+  return { messaging, hub, connected: providers.map((provider) => provider.name) };
 }
 
 /**
