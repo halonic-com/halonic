@@ -22,7 +22,8 @@
     "@halonicjs/test-runner",
     "@halonicjs/words",
     "@halonicjs/assistant",
-    "@halonicjs/openui-lang"
+    "@halonicjs/openui-lang",
+    "@halonicjs/auto-approvals"
   ],
   "apiTypes": [
     "@halonicjs/events",
