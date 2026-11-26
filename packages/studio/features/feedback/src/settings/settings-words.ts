@@ -24,14 +24,12 @@ export const settingsWords = {
   assignTo: "Assign to",
 } as const;
 
-/** "Ctrl+Alt+K is taken by another app. Choose another." */
+/**
+ * "Ctrl+Alt+K is taken by another app. Choose another.", under Send feedback's row and Quick ask's
+ * alike, so one refusal reads the same on one screen (HAL-19570).
+ */
 export function takenLine(shortcut: string): string {
   return `${shortcut} is taken by another app. Choose another.`;
-}
-
-/** "Ctrl+Alt+Space is taken by another app. Pick another key.", Quick ask's words (HAL-18594 §7). */
-export function askKeysTakenLine(shortcut: string): string {
-  return `${shortcut} is taken by another app. Pick another key.`;
 }
 
 /**

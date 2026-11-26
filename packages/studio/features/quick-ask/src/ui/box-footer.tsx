@@ -4,6 +4,7 @@ import {
   clockTime,
   Kbd,
   standaloneLinkClasses,
+  TickIcon,
   useWriteClipboard,
 } from "@halonicjs/studio-kit";
 import { Fragment, useEffect, useState } from "react";
@@ -88,7 +89,7 @@ function LastAnswerLink({
   return (
     <button
       type="button"
-      className={`ml-auto ${standaloneLinkClasses}`}
+      className={`ms-auto ${standaloneLinkClasses}`}
       onClick={() => onOpen(lastAnswer)}
     >
       {quickAskWords.lastAnswer(lastAnswer.agentName, time)}
@@ -110,7 +111,7 @@ function AnswerActions({
       <CopyAnswer text={answer.text} />
       <button
         type="button"
-        className={`ml-auto ${standaloneLinkClasses}`}
+        className={`ms-auto ${standaloneLinkClasses}`}
         onClick={() => onOpenChat(answer.conversation)}
       >
         {quickAskWords.openInMessenger}
@@ -122,37 +123,60 @@ function AnswerActions({
 type CopyState = "ready" | "copied" | "failed";
 
 /**
- * **Copy**, with what it did in a polite status line beside it, as the kit's CopyButton says it:
- * "Copied" for screen readers for a moment, or, if the clipboard refuses, a hint everyone sees.
+ * **Copy**, which says what it did in its own place for 2 s (design HAL-19384): "Copied" with a
+ * tick in the success colour, as the kit's Callout `doneLabel` does, or "Couldn't copy" in the
+ * danger colour when the clipboard refuses. A polite status line says it to screen readers once;
+ * the button keeps its name, as the kit's CopyButton does.
  */
 function CopyAnswer({ text }: { readonly text: string }) {
   const writeClipboard = useWriteClipboard();
   const [state, setState] = useState<CopyState>("ready");
-  // A new copy restarts the "Copied" moment and is announced again.
+  // A new copy restarts the 2 s and is announced again.
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    if (state !== "copied") return;
+    if (state === "ready") return;
     const timer = setTimeout(() => setState("ready"), COPIED_FOR_MS);
     return () => clearTimeout(timer);
   }, [state, attempt]);
 
   const copy = async () => {
     const copied = await writeClipboard(text);
+    if (!copied) console.error("Quick ask couldn't put the answer on the clipboard.");
     setAttempt((previous) => previous + 1);
     setState(copied ? "copied" : "failed");
   };
 
   return (
     <>
-      <button type="button" className={standaloneLinkClasses} onClick={() => void copy()}>
-        {quickAskWords.copy}
+      <button
+        type="button"
+        aria-label={quickAskWords.copy}
+        className={standaloneLinkClasses}
+        onClick={() => void copy()}
+      >
+        <CopyLabel state={state} />
       </button>
-      <span role="status" className={state === "failed" ? "text-caption text-fg-muted" : "sr-only"}>
+      <span role="status" className="sr-only">
         <span key={attempt}>{copyStatus(state)}</span>
       </span>
     </>
   );
+}
+
+function CopyLabel({ state }: { readonly state: CopyState }) {
+  if (state === "copied") {
+    return (
+      <span className="inline-flex items-center gap-1">
+        <span className="inline-grid size-3.5 place-items-center text-success *:size-full">
+          <TickIcon />
+        </span>
+        {quickAskWords.copied}
+      </span>
+    );
+  }
+  if (state === "failed") return <span className="text-danger">{quickAskWords.notCopied}</span>;
+  return quickAskWords.copy;
 }
 
 function copyStatus(state: CopyState): string {

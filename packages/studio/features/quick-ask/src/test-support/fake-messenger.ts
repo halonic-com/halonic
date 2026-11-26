@@ -66,6 +66,20 @@ export function card(from: MessagingAgent, question: string, createdAt: string):
   };
 }
 
+/** A promise the test settles by hand: a read or a send held on its way. */
+export class Held {
+  readonly promise: Promise<void>;
+  readonly release: () => void;
+  readonly fail: (error: Error) => void;
+
+  constructor() {
+    const { promise, resolve, reject } = Promise.withResolvers<void>();
+    this.promise = promise;
+    this.release = () => resolve();
+    this.fail = reject;
+  }
+}
+
 /**
  * A Messenger the box can talk to in tests: chats, their messages and cards held here, sending
  * stamped at `sentAt`, and changes told by {@link FakeMessenger.change}.
@@ -76,6 +90,10 @@ export class FakeMessenger implements AskMessenger {
   cardsOf: InboxItem[] = [];
   /** Sending is refused with this while set. */
   refuse: MessagingRefusal | undefined;
+  /** Reading the chats waits for this while set, and fails if it fails. */
+  rowsHeld: Held | undefined;
+  /** Sending waits for this while set. */
+  sendHeld: Held | undefined;
   sentAt = "2026-11-25T13:40:00.000Z";
   readonly listeners = new Set<(source: MessagingId) => void>();
   readonly quickActions = {
@@ -90,6 +108,7 @@ export class FakeMessenger implements AskMessenger {
   }
 
   async rows(): Promise<readonly ConversationRow[]> {
+    await this.rowsHeld?.promise;
     return this.chats;
   }
 
@@ -99,6 +118,7 @@ export class FakeMessenger implements AskMessenger {
 
   async sendText(conversation: MessagingId, body: string): Promise<DraftOutcome> {
     if (body.trim() === "") return { outcome: "kept", reason: "blank" };
+    await this.sendHeld?.promise;
     if (this.refuse !== undefined) return { outcome: "kept", reason: this.refuse };
     const sent = message(conversation, body, this.sentAt);
     this.messagesOf.set(conversation, [...(this.messagesOf.get(conversation) ?? []), sent]);

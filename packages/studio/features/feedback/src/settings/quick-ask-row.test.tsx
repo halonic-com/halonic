@@ -84,7 +84,7 @@ verifies("feedback.settings-quick-ask", () => {
     const row = quickAskRow(container);
     expect(shownKeys(row)).toBe("Ctrl Alt Space");
     expect(row.querySelector(".text-attention")?.textContent).toBe(
-      "Ctrl+Alt+Space is taken by another app. Pick another key.",
+      "Ctrl+Alt+Space is taken by another app. Choose another.",
     );
   });
 
@@ -124,7 +124,7 @@ verifies("feedback.settings-quick-ask", () => {
     press({ code: "KeyK", key: "k", ctrlKey: true, altKey: true });
     await settle();
 
-    const taken = "Ctrl+Alt+K is taken by another app. Pick another key.";
+    const taken = "Ctrl+Alt+K is taken by another app. Choose another.";
     expect(shownKeys(row)).toBe("Ctrl Alt Space");
     expect(row.querySelector(".text-attention")?.textContent).toBe(taken);
     expect(announced).toEqual([taken]);

@@ -31,7 +31,7 @@ verifies("quick-ask.messenger", () => {
 
       expect(page.querySelector("footer")?.textContent).toBe("CopyOpen in Messenger");
       const open = byText(page, "footer button", "Open in Messenger");
-      expect(open?.className).toBe(`ml-auto ${standaloneLinkClasses}`);
+      expect(open?.className).toBe(`ms-auto ${standaloneLinkClasses}`);
       await press(open);
       expect(window.chatsOpened).toEqual(["chat-Chief"]);
       expect(window.hidden).toBe(0);
@@ -91,7 +91,7 @@ verifies("quick-ask.messenger", () => {
       const time = clockTime(new Date(answeredAt), new Date());
       const link = byText(page, "footer button", "Last answer");
       expect(link?.textContent).toBe(`Last answer: Liam, ${time} ›`);
-      expect(link?.className).toBe(`ml-auto ${standaloneLinkClasses}`);
+      expect(link?.className).toBe(`ms-auto ${standaloneLinkClasses}`);
       // The chevron is drawn, not read: screen readers hear the words alone.
       expect(link === undefined ? "" : accessibleName(link)).toBe(`Last answer: Liam, ${time}`);
       await press(link);

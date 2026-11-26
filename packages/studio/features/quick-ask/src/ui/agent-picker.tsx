@@ -26,8 +26,8 @@ const optionClasses = [
  * The agent picker (design HAL-18594, section 4): a search box over a listbox of agents only,
  * **Recent** first, then each workspace and team. Typing finds an agent, ↑/↓ moves, Enter picks,
  * Esc or Shift+Tab goes back to the text box, and Tab goes on to **Ask**. The focus stays in the
- * search box, which names the active row (the combobox pattern); a status line says when nobody
- * matches. It fades in as the kit's menus do.
+ * search box, which names the active row (the combobox pattern). A search nobody matches says so
+ * in the list's place and keeps the search (design HAL-19384). It fades in as the kit's menus do.
  */
 export function AgentPicker({ agents, picked, onPick, onClose }: AgentPickerProps) {
   const [query, setQuery] = useState("");
@@ -82,9 +82,11 @@ export function AgentPicker({ agents, picked, onPick, onClose }: AgentPickerProp
         optionId={optionId}
         onPick={onPick}
       />
-      {/* Always there, so screen readers hear it when no agent matches the text. */}
-      <p role="status" className="px-2 text-body text-fg-muted">
-        {shown.length === 0 ? quickAskWords.noMatch(query) : null}
+      {/* Always displayed, even empty, so screen readers hear it when no agent matches the search. */}
+      <p role="status" className="text-small text-fg-muted">
+        {shown.length === 0 ? (
+          <span className="block px-2 pt-1 pb-2">{quickAskWords.noMatch(query)}</span>
+        ) : null}
       </p>
     </div>
   );

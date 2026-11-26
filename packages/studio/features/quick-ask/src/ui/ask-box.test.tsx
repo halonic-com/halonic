@@ -139,7 +139,7 @@ verifies("quick-ask.box", () => {
       expect(status?.textContent).toBe("");
       await typeIn(picker(page), "zzz");
       expect(page.querySelectorAll('[role="option"]')).toHaveLength(0);
-      expect(status?.textContent).toBe('No agents match "zzz".');
+      expect(status?.textContent).toBe('No agent matches "zzz"');
     });
 
     it("closes only the picker on Esc, not the box", async () => {
@@ -167,15 +167,16 @@ verifies("quick-ask.box", () => {
       expect(status?.className).toBe("sr-only");
     });
 
-    it("says, for everyone, to copy by hand when the clipboard refuses", async () => {
+    it("says, for everyone, that it couldn't copy when the clipboard refuses", async () => {
       const messenger = new FakeMessenger([chat(chief)]);
       const { page } = await openBox(messenger, memoryStorage(), new FakeClipboard(true));
       await answered(page, messenger);
-      await press(byText(page, "footer button", "Copy"));
+      const copy = byText(page, "footer button", "Copy");
+      await press(copy);
 
       const status = page.querySelector('footer [role="status"]');
-      expect(status?.textContent).toBe("Couldn't copy. Select the text and copy it yourself.");
-      expect(status?.className).not.toContain("sr-only");
+      expect(status?.textContent).toBe("Couldn't copy");
+      expect(copy?.textContent).toBe("Couldn't copy");
     });
   });
 

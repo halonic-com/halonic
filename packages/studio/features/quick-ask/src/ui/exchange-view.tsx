@@ -25,7 +25,7 @@ export interface ExchangeViewProps {
  * One question asked from the box and where its answer stands (design HAL-18594, sections 4–5):
  * the question at once (motion 4), then the working line while the agent works, the answer as it
  * arrives (motion 3), what a card asks with **Answer in Messenger**, or **Not sent · Try again**
- * with the reason.
+ * with the reason, and "Sending…" once Try again sends it again (design HAL-19384).
  */
 export function ExchangeView({ exchange, onRetry, onOpenChat }: ExchangeViewProps) {
   const agent = exchange.agent.agent.name;
@@ -51,6 +51,11 @@ export function ExchangeView({ exchange, onRetry, onOpenChat }: ExchangeViewProp
           )}
         </div>
       </Arriving>
+      {exchange.status === "sending" && exchange.retried === true ? (
+        <p data-sending="" className="mt-1 self-end text-small text-fg-muted">
+          {quickAskWords.sending}
+        </p>
+      ) : null}
       {sent && !arrived ? <PendingLines agent={agent} answer={exchange.answer} /> : null}
       {/* Only what comes back is read out, once: not the question just typed, nor the waiting
           and working lines. Shown while empty, as a hidden live region may not be heard once it
