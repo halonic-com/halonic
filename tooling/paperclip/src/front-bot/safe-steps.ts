@@ -24,38 +24,52 @@ export interface SafeStep {
   readonly status: StepStatus;
 }
 
-/** Labels for the tool kinds ACPX reports; any other kind is {@link otherTool}. */
-const toolLabels: Readonly<Record<string, string>> = {
-  Terminal: "Ran a command",
-  "Read File": "Read a file",
-  Read: "Read a file",
-  Edit: "Edited a file",
-  "Edit File": "Edited a file",
-  Write: "Edited a file",
-  "Write File": "Edited a file",
-  Search: "Searched the code",
-  Grep: "Searched the code",
-  Glob: "Searched the code",
-  Find: "Searched the code",
-  Fetch: "Read a web page",
-  WebFetch: "Read a web page",
-  WebSearch: "Searched the web",
-};
+const terminalLabel = "Ran a command";
+
+/**
+ * Labels for the tool kinds ACPX reports; any other kind is {@link otherTool}.
+ * A `Map`, so a kind such as `constructor` or `__proto__` finds no label.
+ */
+const toolLabels: ReadonlyMap<string, string> = new Map([
+  ["Terminal", terminalLabel],
+  ["Read File", "Read a file"],
+  ["Read", "Read a file"],
+  ["Edit", "Edited a file"],
+  ["Edit File", "Edited a file"],
+  ["Write", "Edited a file"],
+  ["Write File", "Edited a file"],
+  ["Search", "Searched the code"],
+  ["Grep", "Searched the code"],
+  ["Glob", "Searched the code"],
+  ["Find", "Searched the code"],
+  ["Fetch", "Read a web page"],
+  ["WebFetch", "Read a web page"],
+  ["WebSearch", "Searched the web"],
+]);
 
 const otherTool = "Used a tool";
 
-/** Programs a command label may name; a command run with any other program stays "Ran a command". */
-const namedPrograms = new Set([
+/**
+ * Programs whose second word is a subcommand, so a label may name it. For
+ * {@link namedPrograms} the second word is a pattern, a host, a folder or a
+ * script: data the agent chose, so the label names the program alone.
+ */
+const programsWithSubcommands = new Set([
   "git",
   "gh",
   "pnpm",
   "npm",
   "npx",
-  "node",
-  "vitest",
-  "tsc",
-  "biome",
   "cargo",
+  "vitest",
+  "biome",
+]);
+
+/** Programs a command label may name; a command run with any other program stays "Ran a command". */
+const namedPrograms = new Set([
+  ...programsWithSubcommands,
+  "node",
+  "tsc",
   "python3",
   "ls",
   "grep",
@@ -64,23 +78,23 @@ const namedPrograms = new Set([
   "jq",
 ]);
 
-/** A program or subcommand word: lowercase letters, digits and inner dashes or colons only. */
+/** A subcommand word: lowercase letters, digits and inner dashes or colons only. */
 const plainWord = /^[a-z][a-z0-9:-]{0,30}$/;
 
 /**
  * "Ran <program> <subcommand>" when the command starts with a listed program
- * and a plain subcommand word, "Ran <program>" with no plain second word, else
- * undefined. Never more than those two words: arguments can hold anything.
+ * that has subcommands and a plain subcommand word, "Ran <program>" for any
+ * other listed program, else undefined. Never more than those two words:
+ * arguments can hold anything.
  */
 export function commandLabel(command: string): string | undefined {
   const [program, subcommand] = command.trim().split(/\s+/);
   if (program === undefined || !namedPrograms.has(program)) {
     return undefined;
   }
-  const label =
-    subcommand !== undefined && plainWord.test(subcommand)
-      ? `Ran ${program} ${subcommand}`
-      : `Ran ${program}`;
+  const namesSubcommand =
+    programsWithSubcommands.has(program) && subcommand !== undefined && plainWord.test(subcommand);
+  const label = namesSubcommand ? `Ran ${program} ${subcommand}` : `Ran ${program}`;
   return findCredentialShape(label) === undefined ? label : undefined;
 }
 
@@ -115,26 +129,41 @@ interface ToolCallRecord {
   readonly status: StepStatus | undefined;
 }
 
-/** The tool call records in one log line: `{ stream, chunk }`, the chunk holding ndjson. */
-function toolCallRecords(line: string): ToolCallRecord[] {
-  let chunk: unknown;
+/** A parsed JSON value when it is a plain object; `null`, arrays and other values are not. */
+function asObject(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+/** A JSON text as a plain object, or undefined when it doesn't parse or isn't one. */
+function parseObject(text: string): Record<string, unknown> | undefined {
   try {
-    chunk = (JSON.parse(line) as { chunk?: unknown }).chunk;
+    return asObject(JSON.parse(text));
   } catch {
-    return [];
+    return undefined;
   }
-  if (typeof chunk !== "string") {
+}
+
+/**
+ * The tool call records in one log line: `{ stream, chunk }`, the chunk holding
+ * ndjson. Only the agent's own stdout counts: a hook or a server writing JSON
+ * to stderr must not add steps.
+ */
+function toolCallRecords(line: string): ToolCallRecord[] {
+  const entry = parseObject(line);
+  const chunk = entry?.["chunk"];
+  if (entry?.["stream"] !== "stdout" || typeof chunk !== "string") {
     return [];
   }
   const records: ToolCallRecord[] = [];
   for (const part of chunk.split("\n")) {
-    let record: Record<string, unknown>;
-    try {
-      record = JSON.parse(part) as Record<string, unknown>;
-    } catch {
-      continue;
-    }
-    if (record["type"] !== "acpx.tool_call" || typeof record["toolCallId"] !== "string") {
+    const record = parseObject(part);
+    if (
+      record === undefined ||
+      record["type"] !== "acpx.tool_call" ||
+      typeof record["toolCallId"] !== "string"
+    ) {
       continue;
     }
     // Only `name` and `status` are read: `text` holds the tool's output.
@@ -150,8 +179,8 @@ function updated(call: TrackedCall | undefined, record: ToolCallRecord): Tracked
     call === undefined ? { label: otherTool, status: "running", named: false } : { ...call };
   const { name } = record;
   if (name !== undefined && call === undefined) {
-    next.label = toolLabels[name] ?? otherTool;
-  } else if (name !== undefined && next.label === toolLabels["Terminal"] && !next.named) {
+    next.label = toolLabels.get(name) ?? otherTool;
+  } else if (name !== undefined && next.label === terminalLabel && !next.named) {
     const label = commandLabel(name);
     next.named = label !== undefined || name !== "Terminal";
     next.label = label ?? next.label;

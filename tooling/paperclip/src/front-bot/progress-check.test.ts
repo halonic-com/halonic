@@ -68,6 +68,20 @@ verifies("paperclip.front-bot-progress-check", () => {
     });
   });
 
+  test.each([
+    "Reading a file <img src=x onerror=alert(1)> now.",
+    "Reading a file, see [this](javascript:alert(1)) now.",
+    "Reading a file, see javascript:alert(1) now.",
+  ])("markup or a script link is rejected: %s", (note) => {
+    const input: ProgressInput = {
+      agentName: "Chief",
+      message: "Can you check file 1?",
+      earlierNotes: [],
+      steps: [{ label: "Read a file", status: "running" }],
+    };
+    expect(checkProgressNote(note, input)).toEqual({ ok: false, reason: "markup" });
+  });
+
   test("the agent's name counts as known", () => {
     const input: ProgressInput = {
       agentName: "Chief",

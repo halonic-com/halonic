@@ -130,6 +130,9 @@ export function fakeState() {
     set: async (key: unknown, value: unknown) => {
       saved.set(JSON.stringify(key), value);
     },
+    delete: async (key: unknown) => {
+      saved.delete(JSON.stringify(key));
+    },
   };
   return { state, saved };
 }
