@@ -38,6 +38,7 @@ import { PaperclipReader } from "./reader.ts";
 import { type RefreshLists, RefreshReads } from "./refresh-reads.ts";
 import { isSafeSegment } from "./requests.ts";
 import { searchAll } from "./search.ts";
+import { SharedRead } from "./shared-read.ts";
 import { type PaperclipUser, SignedInUser } from "./signed-in-user.ts";
 import { PaperclipSteppers } from "./steppers.ts";
 import { type PaperclipLists, paperclipSync } from "./sync-collections.ts";
@@ -97,6 +98,7 @@ export class PaperclipMessaging implements AgentMessaging {
   readonly #feed = new ChangeFeed<MessagingId>();
   readonly #now: () => Date;
   #agentNames = new Map<string, string>();
+  readonly #agentsRead = new SharedRead<readonly MessagingAgent[]>();
   /** The Inbox as last read, which search matches without reading every task's cards again. */
   #lastInbox: readonly InboxItem[] = [];
   #lastSeen: string | undefined;
@@ -459,7 +461,7 @@ export class PaperclipMessaging implements AgentMessaging {
 
   async #knowAgents(): Promise<void> {
     if (this.#agentNames.size === 0) {
-      await this.#readAgents();
+      await this.#agentsRead.run(() => this.#readAgents());
     }
   }
 

@@ -1,5 +1,6 @@
 import { asRecord, field, text } from "./json.ts";
 import type { PaperclipReader } from "./reader.ts";
+import { SharedRead } from "./shared-read.ts";
 
 /** The Paperclip user a key belongs to, as far as the apps show it. */
 export interface PaperclipUser {
@@ -18,6 +19,8 @@ export class SignedInUser {
   #id: string | undefined;
   /** Whether Paperclip gave a final answer, with or without a user: an agent key has none. */
   #answered = false;
+  /** The read `know` started, which the reads that need the user at the same time share. */
+  readonly #knowing = new SharedRead<PaperclipUser | undefined>();
 
   /** `id` is the user the host named, if any; then no read is ever needed. */
   constructor(reader: PaperclipReader, id: string | undefined) {
@@ -36,7 +39,7 @@ export class SignedInUser {
    * or another refusal is final, so `whoAmI` isn't read again on every read and send.
    */
   async know(): Promise<void> {
-    if (this.#id === undefined && !this.#answered) await this.read();
+    if (this.#id === undefined && !this.#answered) await this.#knowing.run(() => this.read());
   }
 
   /**

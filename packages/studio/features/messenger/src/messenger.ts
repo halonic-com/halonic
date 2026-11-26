@@ -16,6 +16,7 @@ import { ChannelAdmin } from "./channel-admin.ts";
 import { type ChannelQuestion, channelQuestions } from "./channel-waiting.ts";
 import { type FoundChat, findChats } from "./chat-search.ts";
 import { DraftFiles } from "./draft-files.ts";
+import { type CardsRead, InboxFacts } from "./inbox-facts.ts";
 import { type WaitingCard, waitingCards } from "./needs-you.ts";
 import { isFromAgentOf, QuickActions } from "./quick-actions.ts";
 import { type ReadMarks, StoredReadMarks } from "./read-marks.ts";
@@ -88,6 +89,8 @@ export class Messenger {
   /** What the agents are doing, for the activity panel; none where no agent host serves it. */
   readonly activity: ActivityReads | undefined;
   private readonly messaging: AgentMessaging;
+  /** The Inbox as last read, shared by the rows, Needs you and a channel's questions. */
+  private readonly inbox: InboxFacts;
   private readonly drafts = new Map<MessagingId, string>();
   private readonly picks = new Map<MessagingId, readonly MessagingId[]>();
   /** When the newest message the person read in each chat was sent (`messenger.read-marks`). */
@@ -103,12 +106,17 @@ export class Messenger {
     this.now = now;
     this.activity = activity;
     this.marks = marks;
+    this.inbox = new InboxFacts(() => messaging.listInboxItems());
     this.quickActions = new QuickActions(messaging);
     this.channels = new ChannelAdmin(messaging);
   }
 
-  /** The conversations of a tab, newest first, each with its agents and its source's label. */
+  /**
+   * The conversations of a tab, newest first, each with its agents and its source's label. The
+   * rows don't wait for the Inbox: their card facts are the last Inbox read's (`messenger.rows-first`).
+   */
   async rows(tab: MessengerTab = "all"): Promise<readonly ConversationRow[]> {
+    const cards = this.inbox.start();
     const [sources, agents, conversations] = await Promise.all([
       this.messaging.listSources(),
       this.messaging.listAgents(),
@@ -128,31 +136,34 @@ export class Messenger {
         listed.map((conversation) => conversation.id),
       );
     }
-    return inTab(await this.withFacts(rows), tab);
+    return inTab(await this.withFacts(rows, cards), tab);
   }
 
   /**
    * Each row with its newest message and its open cards (`messenger.chat-rows`), and a channel's
-   * with the questions it holds for the person.
+   * with the questions it holds for the person. Every row's messages are read at once.
    */
-  private async withFacts(rows: readonly ConversationRow[]): Promise<readonly ConversationRow[]> {
-    const items = await this.messaging.listInboxItems();
-    return Promise.all(
-      rows.map(async (row) => {
-        const messages = await this.newestOf(row);
-        // An automatic note isn't the agent's answer: the row's preview and unread dot skip it.
-        const last = messages.findLast((message) => message.automatic !== true);
-        const facts = {
-          ...(last === undefined ? row : { ...row, last }),
-          incoming: incoming(messages),
-        };
-        if (row.conversation.members !== undefined) {
-          return { ...facts, questions: channelQuestions(row, messages, items) };
-        }
-        const open = items.filter((item) => item.state.kind === "open" && isFromAgentOf(item, row));
-        return { ...facts, openCards: open.length };
-      }),
+  private async withFacts(
+    rows: readonly ConversationRow[],
+    cards: CardsRead,
+  ): Promise<readonly ConversationRow[]> {
+    const read = await Promise.all(
+      rows.map(async (row) => ({ row, messages: await this.newestOf(row) })),
     );
+    const items = cards.now();
+    return read.map(({ row, messages }) => {
+      // An automatic note isn't the agent's answer: the row's preview and unread dot skip it.
+      const last = messages.findLast((message) => message.automatic !== true);
+      const facts = {
+        ...(last === undefined ? row : { ...row, last }),
+        incoming: incoming(messages),
+      };
+      if (row.conversation.members !== undefined) {
+        return { ...facts, questions: channelQuestions(row, messages, items) };
+      }
+      const open = items.filter((item) => item.state.kind === "open" && isFromAgentOf(item, row));
+      return { ...facts, openCards: open.length };
+    });
   }
 
   /**
@@ -281,12 +292,12 @@ export class Messenger {
 
   /** Everything waiting for the person across `rows`, oldest first (`messenger.needs-you`). */
   async needsYou(rows: readonly ConversationRow[]): Promise<readonly WaitingCard[]> {
-    return waitingCards(rows, await this.messaging.listInboxItems());
+    return waitingCards(rows, await this.inbox.read());
   }
 
   /** The open questions' text by the work they belong to, for a work line that asks the person. */
   async questions(): Promise<ReadonlyMap<MessagingId, string>> {
-    const items = await this.messaging.listInboxItems();
+    const items = await this.inbox.read();
     const open = items.filter((item) => item.state.kind === "open" && item.work !== undefined);
     return new Map(open.map((item) => [item.work ?? "", item.question]));
   }
@@ -358,11 +369,12 @@ export class Messenger {
   }
 
   /**
-   * Calls `listener` each time a source changes, until the returned function
-   * is called. The Messenger reads again then; it never polls.
+   * Calls `listener` each time a source changes, or an Inbox read lands with other cards than the
+   * rows showed, until the returned function is called. The Messenger reads again then; it never polls.
    */
   watch(listener: (source: MessagingId) => void): () => void {
     const changes = this.messaging.changes()[Symbol.asyncIterator]();
+    const stopCards = this.inbox.onLate(listener);
     let stopped = false;
     const next = (): void => {
       changes.next().then(
@@ -380,6 +392,7 @@ export class Messenger {
     next();
     return () => {
       stopped = true;
+      stopCards();
       void changes.return?.();
     };
   }
