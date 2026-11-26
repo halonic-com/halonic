@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.ing/HAL/issues/HAL-19716
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:i9Ptojd+MG7GoJuAPr+J1fCAkSW2004pRL5rG/9NbfC8pwkMX/lbVyw348zzFsGVua5hcwqAz6mafauhimuuDg==
 
 The board approved the final Windows taskbar icons on HAL-19183 (Sofia's `draw-r6.js`, with the
 rounder envelope). So `studio.app-icons` changes: on Windows an icon has no slate tile any more,
