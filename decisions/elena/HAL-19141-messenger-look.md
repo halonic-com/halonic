@@ -3,6 +3,7 @@
 - Task: HAL-19141
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19132 (the board approved the 8 Messenger look and layout changes on HAL-10, 26 Nov 03:51 UTC, and on the card on HAL-19132, 04:00 UTC; Sofia's sketches and values on HAL-19134)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2uThU0efrReIXqZD4hm/yjH3B+rGjiP2lVyjQljbFHBOCtCaLvwgDhzj5XPUdO14hHhCS4HbNgRUxYDenDbSBA==
 
 ## What changes
 
