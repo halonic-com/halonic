@@ -1,4 +1,7 @@
 <resources>
     <string name="app_name">"Halonic"</string>
     <string name="main_activity_title">"Halonic"</string>
+    <!-- The shortcuts' labels: the same words as in the app and on Windows (HAL-18991). -->
+    <string name="shortcut_inbox">"Inbox"</string>
+    <string name="shortcut_messenger">"Messenger"</string>
 </resources>

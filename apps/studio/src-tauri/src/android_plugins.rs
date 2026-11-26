@@ -24,6 +24,9 @@ pub(crate) fn register<R: Runtime>(builder: Builder<R>) -> Builder<R> {
     // connect page opens only through `phone_open_settings` and
     // `phone_open_tailscale`: no capability grants the plugin's commands.
     let builder = builder.plugin(crate::phone_screens::plugin());
+    // The icon's shortcuts (HAL-19143), which the connect page reaches only
+    // through the `phone_*` commands in `app_shortcuts`.
+    let builder = builder.plugin(crate::app_shortcuts::plugin());
     // The phone tunnel, over the key store above, so registered after it.
     let builder = builder.plugin(crate::phone_tunnel::plugin());
     // The typed route's computer picker searches the Wi-Fi with Android's

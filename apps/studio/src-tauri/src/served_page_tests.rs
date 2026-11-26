@@ -9,7 +9,9 @@
 //! commands, the `blob_*` and `record_*` commands and the `update_*`
 //! commands, and, on Android, `pair_scan` and `pair_scan_cancel` and the
 //! phone tunnel's `phone_*` commands with `phone_tunnel_watch`, and the
-//! computer picker's `phone_nearby_browse` and `phone_nearby_stop`.
+//! computer picker's `phone_nearby_browse` and `phone_nearby_stop`, and the
+//! shortcuts' `phone_open_target`, `phone_last_chat`, `phone_can_pin` and
+//! `phone_pin`.
 
 use serde_json::{Value, json};
 use tauri::ipc::{CallbackFn, InvokeBody};
@@ -20,6 +22,7 @@ use crate::shell;
 
 #[cfg(desktop)]
 mod actions;
+mod app_shortcuts;
 mod capabilities;
 mod device_keys;
 mod engine;

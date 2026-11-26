@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The long-press menu of the Halonic icon (HAL-19143, sketch approved on HAL-18991): Inbox next to
+  the icon, then Messenger. Each opens MainActivity with the screen's name only; ShortcutTargets
+  reads it, and anything else opens the app as its own icon does. The last chat is added at run
+  time, after these. AppShortcutsPlugin pins these two by the same ids.
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="inbox"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_inbox"
+        android:shortcutShortLabel="@string/shortcut_inbox"
+        android:shortcutLongLabel="@string/shortcut_inbox">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="halonic-shortcut://open/inbox"
+            android:targetPackage="com.halonic.studio"
+            android:targetClass="com.halonic.studio.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="messenger"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_messenger"
+        android:shortcutShortLabel="@string/shortcut_messenger"
+        android:shortcutLongLabel="@string/shortcut_messenger">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="halonic-shortcut://open/messenger"
+            android:targetPackage="com.halonic.studio"
+            android:targetClass="com.halonic.studio.MainActivity" />
+    </shortcut>
+</shortcuts>

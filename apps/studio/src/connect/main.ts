@@ -3,6 +3,7 @@ import { tauriChannelIpc, tauriIpc } from "@halonicjs/studio-services/tauri-ipc"
 import { type ConnectBridge, localAddressStore } from "./bridge.ts";
 import { type PairingScanner, tauriPairingScanner } from "./pair-scan.ts";
 import { startPage } from "./start-page.ts";
+import { tauriAppShortcuts } from "./tauri-app-shortcuts.ts";
 import { tauriBridge } from "./tauri-bridge.ts";
 import { tauriNearbyComputers } from "./tauri-nearby-computers.ts";
 import { tauriOwnerCheckAvailable } from "./tauri-owner-check.ts";
@@ -46,6 +47,7 @@ void startPage({
     : {
         ownerCheckAvailable: tauriOwnerCheckAvailable(internals, report),
         saved: tauriSavedDataStore(internals, report),
+        shortcuts: tauriAppShortcuts(internals, report),
       }),
   bridge: internals === undefined ? outsideTheApp : tauriBridge(internals, window),
   store: localAddressStore(localStorage),
