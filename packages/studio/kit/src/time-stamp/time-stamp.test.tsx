@@ -68,6 +68,14 @@ verifies("kit.time-stamp", () => {
     expect(time?.className).toContain("tabular-nums");
   });
 
+  it("shows nothing for an invalid time, rather than throw", () => {
+    const { container } = render(
+      <TimeStamp at={new Date("not a time")} now={new Date()} locale="en-GB" />,
+    );
+    expect(container.querySelector("time")).toBeNull();
+    expect(container.textContent).toBe("");
+  });
+
   it("follows the window's format when it isn't given one", () => {
     const { container } = render(
       <FormatLocale value={formatTag("en_US.UTF-8")}>

@@ -2497,6 +2497,23 @@ because the place's name says the same.
 </span>;
 ```
 
+## TimeStamp
+
+When something happened, at the end of a list row's name line (`kit.time-stamp`): "09:41" today,
+"Yesterday", the weekday within the last week ("Mon"), "26 Nov" this year, else "26/11/2025".
+Hovering shows the full date and time. It's small muted text with tabular figures that never
+wraps, so the name beside it is cut first. An invalid date shows nothing. Give every row of one
+list the same `now`, so they all read against one moment.
+
+```tsx
+<TimeStamp at={new Date(chat.sentAt)} now={now} />;
+```
+
+It follows the window's `FormatLocale`, which the Studio window sets from the system's region
+format (the browser's language when served), so en-US reads "9:41 AM" and "Nov 26"; pass `locale`
+to override it. `shortTime(at, now, locale)` and `fullTime(at, locale)` give the same text as
+strings, and `formatTag` turns a system tag such as `en_GB.UTF-8` into `en-GB`.
+
 ## Toast and ToastRegion
 
 The result of something you did or something that finished in the background: "Agent saved",
