@@ -1,7 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { beforeEach, describe, expect, it } from "vitest";
-import { chatTask, company, testKey } from "./acme-data.test-helper.ts";
-import { PaperclipCommentThreads } from "./comment-threads.ts";
+import { company, testKey } from "./acme-data.test-helper.ts";
 import { FakePaperclip, type SeenRequest } from "./fake-paperclip.test-helper.ts";
 import { text } from "./json.ts";
 import { PaperclipReader } from "./reader.ts";
@@ -12,15 +11,10 @@ interface FakeTask {
   id: string;
   status: string;
   updatedAt: string;
-}
-
-interface FakeComment {
-  id: string;
-  body: string;
+  description?: string | null;
 }
 
 const tasksPath = `/api/companies/${company}/issues`;
-const commentsPath = `/api/issues/${chatTask}/comments`;
 const before = "2026-11-24T10:00:00.000Z";
 const after = "2026-11-24T10:05:00.000Z";
 
@@ -29,7 +23,6 @@ const taskId = (n: number): string => `i0000000-0000-4000-8000-00000000010${n}`;
 
 let paperclip: FakePaperclip;
 let tasks: FakeTask[];
-let comments: FakeComment[];
 /** The task IDs each task read answered with. */
 let answered: string[][];
 
@@ -43,29 +36,16 @@ function listTasks({ query }: SeenRequest): FakeTask[] {
     .filter((task) => since === null || Date.parse(task.updatedAt) > Date.parse(since))
     .filter((task) => afterId === null || task.id > afterId)
     .sort((left, right) => left.id.localeCompare(right.id))
-    .slice(0, Number(query.get("limit")));
+    .slice(0, Number(query.get("limit")))
+    .map((task) => (query.get("view") === "index" ? { ...task, description: null } : task));
   answered.push(page.map((task) => task.id));
   return page;
 }
 
-/** The comments Paperclip answers `query` with: newest first, or after one, oldest first. */
-function listComments({ query }: SeenRequest): FakeComment[] {
-  const limit = Number(query.get("limit"));
-  const anchor = query.get("after");
-  if (anchor === null) {
-    return comments.slice(-limit).reverse();
-  }
-  const index = comments.findIndex((comment) => comment.id === anchor);
-  return index === -1 ? [] : comments.slice(index + 1, index + 1 + limit);
-}
-
 beforeEach(() => {
   tasks = [];
-  comments = [];
   answered = [];
-  paperclip = new FakePaperclip()
-    .on("GET", tasksPath, (request) => ({ body: listTasks(request) }))
-    .on("GET", commentsPath, (request) => ({ body: listComments(request) }));
+  paperclip = new FakePaperclip().on("GET", tasksPath, (request) => ({ body: listTasks(request) }));
 });
 
 function reader(): PaperclipReader {
@@ -80,13 +60,13 @@ function reader(): PaperclipReader {
 const ids = (list: readonly unknown[]): (string | undefined)[] =>
   list.map((task) => text(task as Record<string, unknown>, "id"));
 
+const open = (...numbers: number[]): FakeTask[] =>
+  numbers.map((n) => ({ id: taskId(n), status: "todo", updatedAt: before }));
+
 verifies("paperclip-client.delta-reads", () => {
   describe("the task list", () => {
     it("drops a task that closes after the first load, after one delta read", async () => {
-      tasks = [
-        { id: taskId(1), status: "todo", updatedAt: before },
-        { id: taskId(2), status: "in_progress", updatedAt: before },
-      ];
+      tasks = open(1, 2);
       const list = new PaperclipTaskList(reader(), company);
       expect(ids(await list.read())).toEqual([taskId(1), taskId(2)]);
 
@@ -102,8 +82,8 @@ verifies("paperclip-client.delta-reads", () => {
     });
 
     it("reads a page boundary inside equal updatedAt values in one pass, each task once", async () => {
-      tasks = [1, 2, 3, 4, 5].map((n) => ({ id: taskId(n), status: "todo", updatedAt: before }));
-      const list = new PaperclipTaskList(reader(), company, 2);
+      tasks = open(1, 2, 3, 4, 5);
+      const list = new PaperclipTaskList(reader(), company, { pageSize: 2 });
       await list.read();
       answered = [];
 
@@ -115,9 +95,25 @@ verifies("paperclip-client.delta-reads", () => {
       expect(ids(read)).toHaveLength(5);
     });
 
+    it("takes the watermark from the first page, so a change behind the cursor isn't lost", async () => {
+      tasks = open(1, 2, 3);
+      const list = new PaperclipTaskList(reader(), company, { pageSize: 2 });
+      paperclip.on("GET", tasksPath, (request) => {
+        if (request.query.has("afterId")) {
+          tasks[0] = { id: taskId(1), status: "done", updatedAt: "2026-11-24T10:01:00.000Z" };
+          tasks[2] = { id: taskId(3), status: "todo", updatedAt: "2026-11-24T10:02:00.000Z" };
+        }
+        return { body: listTasks(request) };
+      });
+      expect(ids(await list.read())).toEqual([taskId(1), taskId(2), taskId(3)]);
+
+      paperclip.on("GET", tasksPath, (request) => ({ body: listTasks(request) }));
+      expect(ids(await list.read())).toEqual([taskId(2), taskId(3)]);
+    });
+
     it("after a failed page, starts the next read after the last task it read", async () => {
-      tasks = [1, 2, 3].map((n) => ({ id: taskId(n), status: "todo", updatedAt: before }));
-      const list = new PaperclipTaskList(reader(), company, 2);
+      tasks = open(1, 2, 3);
+      const list = new PaperclipTaskList(reader(), company, { pageSize: 2 });
       paperclip.on("GET", tasksPath, (request) =>
         request.query.has("afterId") ? { status: 500 } : { body: listTasks(request) },
       );
@@ -132,7 +128,7 @@ verifies("paperclip-client.delta-reads", () => {
     });
 
     it("makes exactly one request for a read where nothing changed", async () => {
-      tasks = [{ id: taskId(1), status: "todo", updatedAt: before }];
+      tasks = open(1);
       const list = new PaperclipTaskList(reader(), company);
       await list.read();
       const first = paperclip.seen.length;
@@ -141,39 +137,63 @@ verifies("paperclip-client.delta-reads", () => {
 
       expect(paperclip.seen.length - first).toBe(1);
     });
-  });
 
-  describe("a chat's comments", () => {
-    it("reads only the comments after the ones it keeps", async () => {
-      comments = [
-        { id: "m1", body: "Hello Ada" },
-        { id: "m2", body: "Shall I go on?" },
-      ];
-      const threads = new PaperclipCommentThreads(reader());
-      await threads.read(chatTask);
+    it("loads the open tasks whole once in 10 reads, so a deleted task leaves", async () => {
+      tasks = open(1, 2);
+      const list = new PaperclipTaskList(reader(), company);
+      await list.read();
+      tasks = open(1);
+      for (let delta = 0; delta < 9; delta += 1) {
+        expect(ids(await list.read())).toEqual([taskId(1), taskId(2)]);
+      }
 
-      comments.push({ id: "m3", body: "Yes" });
-      const read = await threads.read(chatTask);
-
-      expect(ids(read)).toEqual(["m1", "m2", "m3"]);
-      const delta = paperclip.seen.at(-1)?.query;
-      expect([delta?.get("after"), delta?.get("order")]).toEqual(["m1", "asc"]);
-      expect(paperclip.seen).toHaveLength(2);
+      expect(ids(await list.read())).toEqual([taskId(1)]);
+      expect(paperclip.seen.at(-1)?.query.get("status")).not.toBeNull();
     });
 
-    it("reads the newest page whole when the newest comment it keeps was deleted", async () => {
-      comments = [
-        { id: "m1", body: "Hello Ada" },
-        { id: "m2", body: "Shall I go on?" },
-      ];
-      const threads = new PaperclipCommentThreads(reader());
-      await threads.read(chatTask);
+    it("reads a task whole that needs its description, and again only when it changed", async () => {
+      tasks = [...open(1), { id: taskId(2), status: "todo", updatedAt: before, description: "Hi" }];
+      paperclip.on("GET", `/api/issues/${taskId(2)}`, () => ({ body: tasks[1] }));
+      const list = new PaperclipTaskList(reader(), company, {
+        readWhole: (task) => text(task, "id") === taskId(2),
+      });
 
-      comments = [{ id: "m1", body: "Hello Ada" }];
-      const read = await threads.read(chatTask);
+      const read = await list.read();
+      tasks[0] = { id: taskId(1), status: "todo", updatedAt: after };
+      await list.read();
 
-      expect(ids(read)).toEqual(["m1"]);
-      expect(paperclip.seen.at(-1)?.query.get("after")).toBeNull();
+      expect(read.map((task) => task["description"])).toEqual([null, "Hi"]);
+      expect(paperclip.seen.filter((request) => request.path.endsWith(taskId(2)))).toHaveLength(1);
+    });
+
+    it("reads the open tasks plainly from a Paperclip that refuses view=index", async () => {
+      tasks = open(1, 2);
+      paperclip.on("GET", tasksPath, (request) =>
+        request.query.has("view") ? { status: 400 } : { body: listTasks(request) },
+      );
+      const list = new PaperclipTaskList(reader(), company);
+
+      expect(ids(await list.read())).toEqual([taskId(1), taskId(2)]);
+      tasks = open(2);
+      expect(ids(await list.read())).toEqual([taskId(2)]);
+      expect(paperclip.seen.at(-1)?.query.get("view")).toBeNull();
+    });
+
+    it("throws instead of asking for the same page again", async () => {
+      tasks = open(1, 2, 3);
+      paperclip.on("GET", tasksPath, () => ({ body: open(1, 2) }));
+      const list = new PaperclipTaskList(reader(), company, { pageSize: 2 });
+
+      await expect(list.read()).rejects.toThrow("the same page again");
+    });
+
+    it("skips an updatedAt it can't read instead of keeping it as the watermark", async () => {
+      tasks = [{ id: taskId(1), status: "todo", updatedAt: "not a time" }, ...open(2)];
+      const list = new PaperclipTaskList(reader(), company);
+      await list.read();
+
+      expect(list.watermark().updatedAt).toBe(before);
+      expect(ids(await list.read())).toEqual([taskId(1), taskId(2)]);
     });
   });
 });

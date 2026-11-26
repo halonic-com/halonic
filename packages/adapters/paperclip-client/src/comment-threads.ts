@@ -1,14 +1,15 @@
 import { asRecords, type JsonRecord, text } from "./json.ts";
 import type { PaperclipReader } from "./reader.ts";
+import { PaperclipClientError } from "./transport.ts";
 
 /** How many of a thread's newest comments are kept, and the size of each page read. */
 const threadPage = 100;
 
 /**
- * How many reads of a thread use `after` before one reads it whole again. `after` sees only new
- * comments, so an older comment deleted or blanked in Paperclip shows until that whole read.
+ * One read of a thread in this many reads its newest page whole. `after` sees only the comments
+ * after its anchor, so an older comment deleted or blanked in Paperclip shows until that read.
  */
-const deltasPerWholeRead = 10;
+const readsPerWholeRead = 10;
 
 /** One task's comments as last read. */
 interface Thread {
@@ -19,7 +20,8 @@ interface Thread {
 
 /**
  * The comments of the tasks read so far, oldest first (`paperclip-client.delta-reads`): the
- * newest page on the first read of a task, then only the comments after the ones kept.
+ * newest page on the first read of a task, then only the comments after the ones kept, with
+ * the newest page read whole again once in every 10 reads.
  */
 export class PaperclipCommentThreads {
   readonly #reader: PaperclipReader;
@@ -32,14 +34,18 @@ export class PaperclipCommentThreads {
   /** Task `task`'s newest comments, oldest first. */
   async read(task: string): Promise<readonly JsonRecord[]> {
     const known = this.#threads.get(task);
-    const added =
-      known === undefined || known.deltas >= deltasPerWholeRead
+    const fromNewest =
+      known === undefined || known.deltas >= readsPerWholeRead - 1
         ? undefined
         : await this.#after(task, known.comments);
+    // `fromNewest` starts with the newest kept comment's current copy, so a delete shows at once.
     const thread: Thread =
-      added === undefined || known === undefined
+      fromNewest === undefined || known === undefined
         ? { comments: await this.#newest(task), deltas: 0 }
-        : { comments: [...known.comments, ...added].slice(-threadPage), deltas: known.deltas + 1 };
+        : {
+            comments: [...known.comments.slice(0, -1), ...fromNewest].slice(-threadPage),
+            deltas: known.deltas + 1,
+          };
     this.#threads.set(task, thread);
     return thread.comments;
   }
@@ -53,9 +59,10 @@ export class PaperclipCommentThreads {
   }
 
   /**
-   * The comments after `kept`, page by page, or `undefined` when the thread must be read whole.
-   * It reads after the second-newest kept comment and expects the newest back first: Paperclip
-   * answers `after` an ID it has deleted with nothing, which would otherwise look like no news.
+   * The newest kept comment as Paperclip has it now, then the comments after it, page by page;
+   * or `undefined` when the thread must be read whole. It reads after the second-newest kept
+   * comment and expects the newest back first: Paperclip answers `after` a comment that is gone
+   * with nothing, which would otherwise look like no news.
    */
   async #after(task: string, kept: readonly JsonRecord[]): Promise<JsonRecord[] | undefined> {
     const anchor = text(kept.at(-2), "id");
@@ -63,7 +70,7 @@ export class PaperclipCommentThreads {
     if (anchor === undefined || newest === undefined) {
       return undefined;
     }
-    const added: JsonRecord[] = [];
+    const read: JsonRecord[] = [];
     let after = anchor;
     for (;;) {
       const page = asRecords(
@@ -72,14 +79,24 @@ export class PaperclipCommentThreads {
           query: { after, order: "asc", limit: String(threadPage) },
         }),
       );
-      added.push(...page);
-      const last = text(page.at(-1), "id");
-      if (page.length < threadPage || last === undefined) {
+      read.push(...page);
+      if (page.length < threadPage) {
         break;
       }
-      after = last;
+      after = nextAfter(page, after);
     }
-    const [first, ...rest] = added;
-    return text(first, "id") === newest ? rest : undefined;
+    return text(read[0], "id") === newest ? read : undefined;
   }
+}
+
+/** The last comment ID on a full page, which the next page starts after; throws when paging can't move on. */
+function nextAfter(page: readonly JsonRecord[], sent: string): string {
+  const last = text(page.at(-1), "id");
+  if (last === undefined || last === sent) {
+    throw new PaperclipClientError(
+      "Paperclip GET listComments answered the same page again.",
+      "bad-answer",
+    );
+  }
+  return last;
 }

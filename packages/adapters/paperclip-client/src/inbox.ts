@@ -1,6 +1,7 @@
 import type { InboxItem, MessagingProject } from "@halonicjs/ports";
 import { PaperclipBoardRequests } from "./board-requests.ts";
 import { approvalToItem, cardToItem } from "./cards.ts";
+import { mayBeChannel } from "./channels.ts";
 import { decisionPage, decisionToItem } from "./decisions.ts";
 import { asRecords, type JsonRecord, text } from "./json.ts";
 import { type MapContext, newestFirst } from "./map.ts";
@@ -86,7 +87,8 @@ export class PaperclipInbox {
     this.#webLinks = webLinks;
     this.#steppers = steppers;
     this.#boardRequests = new PaperclipBoardRequests(reader, company);
-    this.#tasks = new PaperclipTaskList(reader, company);
+    // A channel's members line is in its description, which the task list's index view leaves out.
+    this.#tasks = new PaperclipTaskList(reader, company, { readWhole: mayBeChannel });
   }
 
   /** The company's open tasks, read as the changes since the last read (`paperclip-client.delta-reads`). */

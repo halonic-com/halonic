@@ -84,6 +84,15 @@ export function madeByThePerson(record: JsonRecord, userId: string | undefined):
   return !agentMade && creator !== undefined && (userId === undefined || creator === userId);
 }
 
+/**
+ * Whether task `record` may be a channel, from the fields Paperclip's `view=index` list keeps:
+ * the channel tag, made by a person. Its members line is in the description, which that list
+ * leaves out, so such a task is read whole.
+ */
+export function mayBeChannel(record: JsonRecord): boolean {
+  return hasChannelTag(record) && madeByThePerson(record, undefined);
+}
+
 /** The IDs in `value` that are safe segments. */
 function idsIn(value: unknown): string[] {
   return asList(value).filter((id): id is string => typeof id === "string" && isSafeSegment(id));

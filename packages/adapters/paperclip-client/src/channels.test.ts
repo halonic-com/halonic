@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { acmeData, agentAda, agentBo, company, me } from "./acme-data.test-helper.ts";
 import { channelMembersLine } from "./channels.ts";
 import {
+  asListed,
   connect,
   FakePaperclip,
   type Network,
@@ -40,9 +41,14 @@ const network: Network = { offline: false };
 /** Serves Acme with `tasks` added to its open tasks, and the routes a channel message uses. */
 function serve(...tasks: Record<string, unknown>[]): void {
   const data = acmeData();
+  for (const task of tasks) {
+    paperclip.on("GET", `/api/issues/${String(task["id"])}`, { body: task });
+  }
   paperclip
     .serveAcme(data)
-    .on("GET", `/api/companies/${company}/issues`, { body: [...data.tasks, ...tasks] })
+    .on("GET", `/api/companies/${company}/issues`, ({ query }) => ({
+      body: asListed([...data.tasks, ...tasks], query),
+    }))
     .on("GET", `/api/issues/${channelTask}`, { body: engineering() })
     .on("GET", `/api/issues/${channelTask}/comments`, {
       body: [{ id: "c1", body: "Hi all", authorUserId: me, createdAt: "2026-11-24T10:08:00.000Z" }],

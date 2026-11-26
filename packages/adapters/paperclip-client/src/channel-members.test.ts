@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { acmeData, agentAda, agentBo, company, me } from "./acme-data.test-helper.ts";
 import { channelMembersLine, readChannel } from "./channels.ts";
 import {
+  asListed,
   connect,
   FakePaperclip,
   type Network,
@@ -44,10 +45,14 @@ function serve(labels: readonly Record<string, unknown>[] = [{ id: labelId, name
   const data = acmeData();
   paperclip
     .serveAcme(data)
-    .on("GET", `/api/companies/${company}/issues`, () => ({ body: [...data.tasks, parent] }))
+    .on("GET", `/api/companies/${company}/issues`, ({ query }) => ({
+      body: asListed([...data.tasks, parent], query),
+    }))
     .on("GET", `/api/issues/${channelTask}`, () => ({ body: parent }))
     .on("PATCH", `/api/issues/${channelTask}`, ({ body }) => {
-      parent = { ...parent, ...asRecord(body) };
+      // Paperclip touches a task on every update, which is how a delta read sees it changed.
+      const updatedAt = new Date(Date.parse(String(parent["updatedAt"])) + 60_000).toISOString();
+      parent = { ...parent, ...asRecord(body), updatedAt };
       return { body: parent };
     })
     .on("GET", `/api/companies/${company}/labels`, { body: labels })

@@ -210,14 +210,24 @@ approval's linked task is read once while it is pending.
 
 **Delta reads** (`paperclip-client.delta-reads`, HAL-19334). The provider keeps the open tasks in memory.
 The first read loads them with `view=index`, in pages of 1000 by task ID. Every later read asks only for
-the tasks Paperclip changed since the newest `updatedAt` it has seen, less 30 seconds, with no status
-filter, so a task that closes comes back once and leaves the list. While a read is unfinished it keeps
-the last task ID it read, so a page boundary among equal `updatedAt` values, or a failed page, resumes
-after that ID instead of reading the same tasks again. A read where nothing changed is one request. A
-chat's messages are read whole once, then only the comments after the ones kept; every 10th read, and
-whenever the newest comment kept is gone, the newest page is read whole again, because `after` doesn't
-see a deleted or blanked comment. A task Paperclip hides from the list (deleted, or made private) stays
-until the client is made again.
+the tasks Paperclip changed since the watermark, less 30 seconds, with no status filter, so a task that
+closes comes back once and leaves the list. The watermark is the newest `updatedAt` on a read's first
+page: pages go by ID, so a task on an earlier page can change while a later one is read. While a read is
+unfinished it keeps the last task ID it read, so a page boundary among equal `updatedAt` values, or a
+failed page, resumes after that ID instead of reading the same tasks again. A read where nothing changed
+is one request. One read in 10 loads the open tasks whole again and replaces the list, so a task that
+leaves Paperclip's list without changing (deleted, hidden, or an external conversation waiting on the
+other side) leaves by then.
+
+`view=index` sends no description, so a task that may be a channel (the channel tag, made by a person)
+is read whole with `getTask`, and again only when its `updatedAt` changed. Paperclip before v2026.1117.0
+answers 400 to `view=index`; the provider then reads the open tasks as one plain page of 1000 on every
+read, as before delta reads.
+
+A chat's messages are read whole once. Later reads ask for the comments after the second-newest one
+kept, so the newest comment comes back first as Paperclip has it now: a deleted or blanked newest
+message shows at once, and when it is gone altogether the newest page is read whole. One read in 10 also
+reads the newest page whole, because `after` doesn't see an older comment deleted or blanked.
 
 **Search** uses Paperclip's issue search (`searchTasks`, the `listTasks` route with `q=`, so it reads
 nothing the provider couldn't already) in the connection's company, all states included. A matching chat
