@@ -1,4 +1,4 @@
-import { Button, useNarrow } from "@halonicjs/studio-kit";
+import { Button, Tooltip, useNarrow } from "@halonicjs/studio-kit";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { activityWords } from "../activity-words.ts";
 import { activityPanelId } from "./activity-panel.tsx";
@@ -106,22 +106,25 @@ export function ActivityButton() {
   const toggle = useContext(ActivityToggleContext);
   if (toggle === undefined) return null;
   return (
-    <span title={activityWords.button} className="inline-flex">
-      <Button
-        variant="ghost"
-        size="sm"
-        icon={<PanelIcon dot={toggle.working && !toggle.open} />}
-        label={
-          toggle.working
-            ? activityWords.buttonWorking(toggle.name)
-            : activityWords.title(toggle.name)
-        }
-        pressed={toggle.open}
-        aria-controls={activityPanelId}
-        aria-keyshortcuts="Control+I"
-        onClick={toggle.toggle}
-      />
-    </span>
+    <Tooltip text={activityWords.button}>
+      {(props) => (
+        <Button
+          {...props}
+          variant="ghost"
+          size="sm"
+          icon={<PanelIcon dot={toggle.working && !toggle.open} />}
+          label={
+            toggle.working
+              ? activityWords.buttonWorking(toggle.name)
+              : activityWords.title(toggle.name)
+          }
+          pressed={toggle.open}
+          aria-controls={activityPanelId}
+          aria-keyshortcuts="Control+I"
+          onClick={toggle.toggle}
+        />
+      )}
+    </Tooltip>
   );
 }
 
@@ -140,16 +143,30 @@ export function ShowActivity() {
   );
 }
 
-/** A window with a pane on its right side, with the still dot in its corner while the agent works. */
+/**
+ * A window with a pane on its right side, with the still 8px dot on its corner while the agent
+ * works, as it was before the button was the kit's (`CanvasText` in high contrast).
+ */
 function PanelIcon({ dot }: { readonly dot: boolean }) {
   return (
-    <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor">
-      <rect x="1.5" y="2.5" width="13" height="11" rx="1.5" />
-      <path d="M10 2.5v11" />
+    <span className="relative">
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 16 16"
+        fill="none"
+        stroke="currentColor"
+        className="size-full"
+      >
+        <rect x="1.5" y="2.5" width="13" height="11" rx="1.5" />
+        <path d="M10 2.5v11" />
+      </svg>
       {dot ? (
-        <circle data-activity-dot cx="13.5" cy="2.5" r="2.5" className="fill-accent stroke-none" />
+        <span
+          data-activity-dot
+          className="absolute -end-0.5 -top-0.5 size-2 rounded-full bg-accent forced-color-adjust-none forced-colors:bg-[CanvasText]"
+        />
       ) : null}
-    </svg>
+    </span>
   );
 }
 

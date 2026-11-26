@@ -22,10 +22,10 @@ import type { ActivityRead } from "./use-activity.ts";
 export const activityPanelId = "messenger-activity";
 
 /**
- * The control that closes the panel, which takes the focus as a sheet or a place opens: a place's
- * **‹ Chief**, or the kit's close button, which takes no data attributes, so it's found by its id.
+ * The id of the control that closes the panel: a place's **‹ Chief** or the kit's **×**, whichever
+ * shows. It takes the focus as a sheet or a place opens, and **Ctrl+I** closes through it.
  */
-const closesSelector = `[data-closes], #${activityPanelId}-close`;
+export const panelCloseId = `${activityPanelId}-close`;
 
 /**
  * Where the panel shows (HAL-18558 section 3): `beside` the chat on a wide window, a `sheet` over
@@ -113,7 +113,7 @@ function usePanelMotion(
     if (place === "sheet" && aside.current !== null) arriveFromEnd(aside.current);
   }, [aside, place]);
   useEffect(() => {
-    if (place !== "beside") aside.current?.querySelector<HTMLElement>(closesSelector)?.focus();
+    if (place !== "beside") aside.current?.querySelector<HTMLElement>(`#${panelCloseId}`)?.focus();
   }, [aside, place]);
   return () => {
     const sheet = aside.current;
@@ -142,10 +142,10 @@ function PanelHeader({
       {place === "place" ? (
         <button
           type="button"
-          data-closes
+          id={panelCloseId}
           aria-label={activityWords.backTo(chat)}
           onClick={onClose}
-          className="rounded-sm px-1 text-small text-fg-muted hover:text-fg"
+          className="focus-ring inline-flex min-h-6 items-center rounded-sm px-1 text-small text-fg-muted hover:text-fg"
         >
           <span aria-hidden="true">‹ </span>
           <bdi>{chat}</bdi>
@@ -156,7 +156,7 @@ function PanelHeader({
       </h2>
       {place === "place" ? null : (
         <Button
-          id={`${activityPanelId}-close`}
+          id={panelCloseId}
           variant="ghost"
           size="sm"
           icon={<CloseIcon />}
@@ -215,7 +215,7 @@ function ViewBody({ view, now }: { readonly view: ActivityView; readonly now: Da
       <>
         <Status tone="idle" label={activityWords.starting} detail={at} />
         <Section title={activityWords.task}>
-          <TaskCard task={view.task} />
+          <TaskCard task={view.task} state="queued" />
         </Section>
       </>
     );
@@ -235,7 +235,7 @@ function ViewBody({ view, now }: { readonly view: ActivityView; readonly now: Da
         </p>
       </div>
       <Section title={activityWords.task}>
-        <TaskCard task={view.task} />
+        <TaskCard task={view.task} state="running" />
       </Section>
       <PullRequests pulls={view.pullRequests} />
     </>
@@ -268,7 +268,7 @@ function EndedBody({
         <Status tone="done" label={activityWords.idle} detail={at ? ended(at) : undefined} />
       )}
       <Section title={activityWords.lastRun}>
-        <TaskCard task={view.task} outcome={view.outcome} />
+        <TaskCard task={view.task} state={view.outcome} />
       </Section>
       <PullRequests pulls={view.pullRequests} />
     </>

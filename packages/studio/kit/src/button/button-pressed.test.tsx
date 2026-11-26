@@ -2,7 +2,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it } from "vitest";
 import { render, unmountAll } from "../test/render.tsx";
-import { Button, type ButtonProps } from "./button.tsx";
+import { Button, type ButtonProps, type ButtonVariant, OnTintContext } from "./button.tsx";
 
 afterEach(() => {
   unmountAll();
@@ -33,6 +33,46 @@ verifies("kit.button-pressed", () => {
       pressed: false,
     });
     expect(released.getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it.each<[ButtonVariant, string]>([
+    ["primary", "aria-pressed:bg-primary-hover"],
+    ["secondary", "aria-pressed:bg-surface-subtle"],
+    ["danger-outline", "aria-pressed:bg-danger-soft"],
+    ["danger", "aria-pressed:bg-danger-hover"],
+  ])("gives a pressed %s button its hover fill", (variant, fill) => {
+    const classes = buttonOf({
+      variant,
+      icon: panelIcon,
+      label: "Activity",
+      pressed: true,
+    }).className.split(" ");
+    expect(classes).toContain(fill);
+  });
+
+  it("gives a pressed ghost button on a tint the surface fill", () => {
+    const { container } = render(
+      <OnTintContext value={true}>
+        <Button variant="ghost" icon={panelIcon} label="Activity" pressed />
+      </OnTintContext>,
+    );
+    const classes = container.querySelector("button")?.className.split(" ");
+    expect(classes).toContain("aria-pressed:bg-surface");
+  });
+
+  it("keeps a pressed button's outline in high contrast", () => {
+    const classes = buttonOf({
+      variant: "ghost",
+      icon: panelIcon,
+      label: "Activity",
+      pressed: true,
+    }).className.split(" ");
+    expect(classes).toEqual(
+      expect.arrayContaining([
+        "forced-colors:aria-pressed:outline-2",
+        "forced-colors:aria-pressed:outline-solid",
+      ]),
+    );
   });
 
   it("leaves aria-pressed off a button that isn't a toggle", () => {

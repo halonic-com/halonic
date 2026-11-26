@@ -18,12 +18,7 @@ import { agentRow, channelAgentLines } from "../channel-activity.ts";
 import { chatAgent } from "../chat-name.ts";
 import type { ConversationRow, Messenger } from "../messenger.ts";
 import { ChannelAgents } from "./activity-channel.tsx";
-import {
-  ActivityBody,
-  ActivityPanel,
-  activityPanelId,
-  type PanelPlace,
-} from "./activity-panel.tsx";
+import { ActivityBody, ActivityPanel, type PanelPlace, panelCloseId } from "./activity-panel.tsx";
 import {
   ActivityToggleContext,
   type ActivityWidth,
@@ -113,7 +108,7 @@ export function ActivityHost({
  */
 function useCloseKey(host: RefObject<HTMLDivElement | null>, opens: () => void): void {
   const press = useCallback(() => {
-    const closes = host.current?.querySelector<HTMLElement>(`#${activityPanelId} [data-closes]`);
+    const closes = host.current?.querySelector<HTMLElement>(`#${panelCloseId}`);
     if (closes) closes.click();
     else opens();
   }, [host, opens]);

@@ -68,17 +68,20 @@ const outcomeTone = {
   stopped: "attention",
 } as const satisfies Record<RunOutcome, StatusChipTone>;
 
+/** Where the task card's run is: waiting to start, going, or ended with its outcome. */
+export type TaskCardState = "queued" | "running" | RunOutcome;
+
 /**
  * The task card, on the subtle fill: "HAL-18602" with its state chip ("In progress" while it runs,
- * Done, Failed or Stopped once it ended), its title, then "Started 14:02 · run 3f9c2a" or the
- * run's times.
+ * Done, Failed or Stopped once it ended, none while it waits to start, as the status line above
+ * already says "Starting"), its title, then "Started 14:02 · run 3f9c2a" or the run's times.
  */
 export function TaskCard({
   task,
-  outcome,
+  state,
 }: {
   readonly task: ActivityTask;
-  readonly outcome?: RunOutcome;
+  readonly state: TaskCardState;
 }) {
   const id = task.onChat ? activityWords.thisChat : task.identifier;
   return (
@@ -88,7 +91,7 @@ export function TaskCard({
         {task.onChat ? (
           <span className="text-accent-text">{activityWords.answeringYou}</span>
         ) : null}
-        <TaskState outcome={outcome} />
+        <TaskState state={state} />
       </p>
       {task.title === undefined ? null : (
         <p className="text-body">
@@ -100,10 +103,11 @@ export function TaskCard({
   );
 }
 
-function TaskState({ outcome }: { readonly outcome: RunOutcome | undefined }) {
-  if (outcome === undefined)
+function TaskState({ state }: { readonly state: TaskCardState }) {
+  if (state === "queued") return null;
+  if (state === "running")
     return <StatusChip tone="running">{activityWords.inProgress}</StatusChip>;
-  return <StatusChip tone={outcomeTone[outcome]}>{activityWords.outcome[outcome]}</StatusChip>;
+  return <StatusChip tone={outcomeTone[state]}>{activityWords.outcome[state]}</StatusChip>;
 }
 
 /** "Started 14:02 · run 3f9c2a" while it runs; "14:02–14:09 · 7 min" once it ended. */
