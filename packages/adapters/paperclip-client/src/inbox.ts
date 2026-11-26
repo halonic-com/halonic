@@ -1,5 +1,5 @@
 import type { Attachment, InboxItem, MessagingId, MessagingProject } from "@halonicjs/ports";
-import type { PaperclipBoardMentions } from "./board-mentions.ts";
+import { PaperclipBoardMentions } from "./board-mentions.ts";
 import { PaperclipBoardRequests } from "./board-requests.ts";
 import { assignedToPerson, boardTaskToItem } from "./board-tasks.ts";
 import { cardFilesOf, type FilesOf, PaperclipCardFiles } from "./card-files.ts";
@@ -71,7 +71,7 @@ export class PaperclipInbox {
   readonly #boardRequests: PaperclipBoardRequests;
   readonly #tasks: PaperclipTaskList;
   readonly #webLinks: PaperclipWebLinks;
-  readonly #mentions: PaperclipBoardMentions | undefined;
+  readonly #mentions: PaperclipBoardMentions;
   /** The files on cards and approvals, and the only ones `readAttachment` reads. */
   readonly files: PaperclipCardFiles;
   #cards = new Map<string, TaskCards>();
@@ -82,21 +82,22 @@ export class PaperclipInbox {
 
   /**
    * `webLinks` gives cards and approvals their page in Paperclip. With `steppers`, a card that
-   * pins a stepper request is served as a stepper item. With `mentions`, the comments that
-   * mention the person are items too.
+   * pins a stepper request is served as a stepper item. The comments that mention the person
+   * are items too; `connection.warn` hears when they can't be read.
    */
   constructor(
     reader: PaperclipReader,
-    company: string,
+    connection: { company: string; warn?: ((message: string) => void) | undefined },
     webLinks: PaperclipWebLinks,
+    now: () => Date,
     steppers?: PaperclipSteppers,
-    mentions?: PaperclipBoardMentions,
   ) {
+    const company = connection.company;
     this.#reader = reader;
     this.#company = company;
     this.#webLinks = webLinks;
     this.#steppers = steppers;
-    this.#mentions = mentions;
+    this.#mentions = new PaperclipBoardMentions(reader, webLinks, connection, now);
     this.#boardRequests = new PaperclipBoardRequests(reader, company);
     // A channel's members line and a person's task's text are in the description, which the task
     // list's index view leaves out.
@@ -134,7 +135,7 @@ export class PaperclipInbox {
     const approvals = await this.#approvals(context, projectOf, companyPrefix(open), filesOf);
     const decisions = await this.#decisions(context);
     const boardRequests = await this.#boardRequests.list(context);
-    const mentions = (await this.#mentions?.list(context, open, projectOf)) ?? [];
+    const mentions = await this.#mentions.list(context, open, projectOf);
     const read = await this.#allCards(context, projectOf, open, filesOf);
     const cards =
       this.#steppers === undefined

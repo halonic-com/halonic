@@ -20,7 +20,6 @@ import type {
 } from "@halonicjs/ports";
 import { checkedOrigin } from "./address.ts";
 import { readAvatar } from "./avatars.ts";
-import { PaperclipBoardMentions } from "./board-mentions.ts";
 import { boardRequestOf } from "./board-requests.ts";
 import { PaperclipBotNotes } from "./bot-notes.ts";
 import { ChangeFeed } from "./changes.ts";
@@ -116,8 +115,7 @@ export class PaperclipMessaging implements AgentMessaging {
     const steppers =
       options.stepperCatalog && new PaperclipSteppers(this.#reader, options.stepperCatalog);
     const webLinks = new PaperclipWebLinks(options.address);
-    const mentions = new PaperclipBoardMentions(this.#reader, webLinks, options, now);
-    this.#inbox = new PaperclipInbox(this.#reader, options.company, webLinks, steppers, mentions);
+    this.#inbox = new PaperclipInbox(this.#reader, options, webLinks, now, steppers);
     this.#writer = new PaperclipWriter(this.#reader, this.#company, now, steppers);
     this.#channels = new PaperclipChannelSender(this.#reader, options.company, options.userId, now);
     this.#members = new PaperclipChannelMembers(this.#reader, options.company, options.userId);
