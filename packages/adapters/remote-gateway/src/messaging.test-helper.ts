@@ -97,6 +97,8 @@ export class FakePhoneMessaging {
   readonly sent: unknown[][] = [];
   source: MessagingSource = acmeSource;
   item: InboxItem = inboxItem();
+  /** What `listInboxItems` fails with, as a provider's read does offline; unset, it answers. */
+  inboxFailure: Error | undefined;
   messages: Message[] = [1, 2, 3].map(message);
   sendResult: SendResult = { outcome: "sent", message: message(4) };
   /** What `limit` allows of each kind before it refuses. */
@@ -114,7 +116,10 @@ export class FakePhoneMessaging {
       listAgents: () => record("listAgents", []),
       listConversations: () => record("listConversations", [channel]),
       listMessages: () => record("listMessages", this.messages),
-      listInboxItems: () => record("listInboxItems", [this.item]),
+      listInboxItems: () =>
+        this.inboxFailure === undefined
+          ? record("listInboxItems", [this.item])
+          : Promise.reject(this.inboxFailure),
       listWork: () => record("listWork", []),
       search: () => record("search", []),
       answer: () => record("answer", { outcome: "answered", answeredAt: at }),
