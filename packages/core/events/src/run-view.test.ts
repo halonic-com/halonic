@@ -5,7 +5,7 @@ import { acmeMarks, everyKindLog, hidden } from "./run-view.test-fixture.ts";
 import type { WaitingPoint } from "./run-view.ts";
 import { toRunViewEvents } from "./run-view-events.ts";
 import { runViewFailureSentence, runViewWords } from "./run-view-words.ts";
-import { toRunView } from "./to-run-view.ts";
+import { toRunView, waitingPointsOf } from "./to-run-view.ts";
 
 const handleOf = (point: WaitingPoint) => `h-${point.kind}`;
 
@@ -149,6 +149,20 @@ verifies("events.run-view", () => {
       { kind: "question", state: "check", events: ["ok"] },
       { kind: "message", state: "check", event: "message" },
     ]);
+  });
+
+  it("lists the waiting points before any handle is made, as the view asks for them", () => {
+    const events = log({
+      type: "run.waiting",
+      state: "check",
+      events: ["ok", "message"],
+      labels: { ok: "Looks right" },
+    });
+    expect(waitingPointsOf(events, acmeMarks)).toEqual([
+      { kind: "question", state: "check", events: ["ok"] },
+      { kind: "message", state: "check", event: "message" },
+    ]);
+    expect(waitingPointsOf(log(), acmeMarks)).toEqual([]);
   });
 
   it("waits for the next message, a timer or a plan limit", () => {

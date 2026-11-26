@@ -130,6 +130,7 @@ export {
   maxAnswerMessageLength,
   maxRunViewTitleLength,
   toRunView,
+  waitingPointsOf,
 } from "./to-run-view.ts";
 export {
   maxCauseHostLength,

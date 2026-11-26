@@ -66,6 +66,20 @@ export function toRunView(
   };
 }
 
+/**
+ * The points a run waits at for an end user, in the order `toRunView` asks for their handles.
+ * The deployment reads them first, makes or finds each one's stored handle, then builds the
+ * view with a lookup of those handles, since storing a handle can't happen inside `toRunView`.
+ */
+export function waitingPointsOf(events: readonly RunEvent[], marks: RunViewMarks): WaitingPoint[] {
+  const points: WaitingPoint[] = [];
+  toRunView(events, marks, (point) => {
+    points.push(point);
+    return "";
+  });
+  return points;
+}
+
 function titleOf(text: string): string {
   const firstLine = text.split("\n")[0] ?? "";
   return firstLine.trim().slice(0, maxRunViewTitleLength);
