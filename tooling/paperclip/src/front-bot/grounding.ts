@@ -4,6 +4,7 @@ import {
   commentLimit,
   type FrontBotInput,
   frontBotUserText,
+  maxReplyLines,
   shownEarlier,
 } from "./prompt.ts";
 
@@ -20,7 +21,6 @@ export type GroundingReason =
   | "secret_shape"
   | "credential_request"
   | "too_long"
-  | "bare_acknowledgement"
   | "unhedged_answer"
   | "first_person"
   | "banned_word"
@@ -35,11 +35,14 @@ export type Grounding =
   | { readonly ok: true }
   | { readonly ok: false; readonly reason: GroundingReason };
 
-/** About 20 words is the voice's rule; this leaves room for a task title in quotes. */
-const maxWords = 30;
-const maxCharacters = 240;
+/**
+ * Each line is one short chat message (HAL-19588): a few words, with room
+ * for a task title in quotes.
+ */
+const maxLineWords = 12;
+const maxLineCharacters = 100;
 
-/** Replies that say nothing; the bot should have answered SKIP. */
+/** Lines that only acknowledge. A first reply may be one now (HAL-19588); a progress note may not. */
 const bareAcknowledgements = new Set([
   "on it",
   "ok",
@@ -128,7 +131,9 @@ const commonWords = new Set(
     "a an the about request requests depends adds asks also answer current plan question " +
     "this that these those it its your for on in to of and or but so which what why how " +
     "when where who whether same earlier new still not needs part follows ties waiting " +
-    "pr prs ci utc task build run release"
+    "pr prs ci utc task build run release " +
+    "got good ok okay sure noted ah ugh hm hmm oh right fair yeah thanks looking checking " +
+    "digging working reading on into let's let"
   ).split(" "),
 );
 
@@ -206,7 +211,7 @@ function resultWordsAllowed(line: string, input: FrontBotInput): boolean {
 }
 
 /**
- * Checks one reply against what the bot was given. Cheap checks on the reply
+ * Checks one line against what the bot was given. Cheap checks on the reply
  * alone come first; then every number, link and name must be found in the exact
  * text it sent, and result words need a negation or an earlier comment quoted
  * with its time. Result words come before names, so a sentence that starts with
@@ -217,8 +222,9 @@ export function checkGrounding(line: string, given: FrontBotInput): Grounding {
   const reject = (reason: GroundingReason): Grounding => ({ ok: false, reason });
   if (findCredentialShape(line) !== undefined) return reject("secret_shape");
   if (asksForCredential(line)) return reject("credential_request");
-  if (line.length > maxCharacters || words(line).length > maxWords) return reject("too_long");
-  if (isBareAcknowledgement(line)) return reject("bare_acknowledgement");
+  if (line.length > maxLineCharacters || words(line).length > maxLineWords) {
+    return reject("too_long");
+  }
   if (unhedgedAnswer.test(line)) return reject("unhedged_answer");
   if (firstPerson.test(line)) return reject("first_person");
   if (bannedWords.test(line)) return reject("banned_word");
@@ -227,5 +233,19 @@ export function checkGrounding(line: string, given: FrontBotInput): Grounding {
   if (!allLinksKnown(line, input)) return reject("unknown_link");
   if (!resultWordsAllowed(line, given)) return reject("result_word");
   if (!allNamesKnown(line, input)) return reject("unknown_name");
+  return { ok: true };
+}
+
+/**
+ * Checks a whole first reply (HAL-19588): at most `maxReplyLines` lines, and
+ * every line passes `checkGrounding`. One bad line rejects the whole reply,
+ * so a reply is never posted in part.
+ */
+export function checkReply(lines: readonly string[], given: FrontBotInput): Grounding {
+  if (lines.length > maxReplyLines) return { ok: false, reason: "too_long" };
+  for (const line of lines) {
+    const grounding = checkGrounding(line, given);
+    if (!grounding.ok) return grounding;
+  }
   return { ok: true };
 }

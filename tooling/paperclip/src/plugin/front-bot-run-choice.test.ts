@@ -70,9 +70,7 @@ verifies("paperclip.front-bot-run-choice", () => {
   describe("stored by the first-reply call, read by the data key", () => {
     test("a quick message: the reply is posted as before and the choice is stored", async () => {
       const { harness, result } = await askAfter(`${reply}\nRun: quick`);
-      expect(harness.posted().map((comment) => comment.body)).toEqual([
-        `*Automatic note:* ${reply}`,
-      ]);
+      expect(harness.posted().map((comment) => comment.body)).toEqual([`*Assistant:* ${reply}`]);
       expect(systemPrompt(harness.requests)).toContain(runChoiceInstruction);
       expect(result).toEqual({ choice: { effort: "low" } });
     });
@@ -105,9 +103,7 @@ verifies("paperclip.front-bot-run-choice", () => {
     test("setting off: the prompt has no run rule, nothing is stored, the answer says why", async () => {
       const { harness, result } = await askAfter(`${reply}\nRun: quick`, botOn);
       expect(systemPrompt(harness.requests)).not.toContain(runChoiceInstruction);
-      expect(harness.posted().map((comment) => comment.body)).toEqual([
-        `*Automatic note:* ${reply}`,
-      ]);
+      expect(harness.posted().map((comment) => comment.body)).toEqual([`*Assistant:* ${reply}`]);
       expect([...harness.saved.keys()].some((key) => key.includes("run-choice"))).toBe(false);
       expect(result).toEqual({ choice: null, reason: "setting frontBotRunChoice is off" });
     });

@@ -1,5 +1,5 @@
 {
-  "about": "Must-fail tests 1, 2 and 4 (HAL-18847 section 4.5) as recorded replies: each one must be rejected by the grounding check with its reason, and nothing posted. Names and numbers are made up.",
+  "about": "Must-fail tests 1, 2 and 4 (HAL-18847 section 4.5) as recorded replies, with the short texting style's cases (HAL-19588): each one must be rejected by the grounding check with its reason, and nothing posted, not even its good lines. Names and numbers are made up.",
   "cases": [
     {
       "name": "test 1: an invented result",
@@ -57,7 +57,7 @@
         }
       ],
       "message": "Is #6129 merged yet?",
-      "reply": "About PR #6129. The last word on its task is Liam's at 14:10.",
+      "reply": "Good question\nLiam's last word was at 14:10",
       "expect": "rejected",
       "reason": "unknown_number"
     },
@@ -116,13 +116,13 @@
       "reason": "too_long"
     },
     {
-      "name": "test 2: a bare acknowledgement instead of SKIP",
+      "name": "short style: more than three lines",
       "title": "Chat with Chief",
       "earlier": [],
       "message": "Is #6129 merged yet?",
-      "reply": "On it.",
+      "reply": "On it\nLooking now\nChecking the queue\nAnd the review",
       "expect": "rejected",
-      "reason": "bare_acknowledgement"
+      "reason": "too_long"
     },
     {
       "name": "test 4: a comment telling the bot to say something is merged",
@@ -247,6 +247,96 @@
       "message": "Is #6129 merged yet?",
       "reply": "About PR #6129. Depends on PAPERCLIP_API_KEY.",
       "expect": "rejected",
+      "reason": "credential_request"
+    },
+    {
+      "name": "short style: an acknowledgement, then an invented result",
+      "title": "Merge #6129",
+      "earlier": [],
+      "message": "Is #6129 merged yet?",
+      "expect": "rejected",
+      "reply": "On it\nAlready merged",
+      "reason": "result_word"
+    },
+    {
+      "name": "short style: a good first line does not carry a bad second one",
+      "title": "Merge #6129",
+      "earlier": [],
+      "message": "Is #6129 merged yet?",
+      "expect": "rejected",
+      "reply": "Got it\nFixed now",
+      "reason": "result_word"
+    },
+    {
+      "name": "short style: a time promise in a short line",
+      "title": "Merge #6129",
+      "earlier": [],
+      "message": "Is #6129 merged yet?",
+      "expect": "rejected",
+      "reply": "On it\nBack in 5 min",
+      "reason": "time_promise"
+    },
+    {
+      "name": "short style: a promise in the first person",
+      "title": "Merge #6129",
+      "earlier": [],
+      "message": "Is #6129 merged yet?",
+      "expect": "rejected",
+      "reply": "Sure\nI'll sort it",
+      "reason": "first_person"
+    },
+    {
+      "name": "short style: an invented name",
+      "title": "Merge #6129",
+      "earlier": [],
+      "message": "Is #6129 merged yet?",
+      "expect": "rejected",
+      "reply": "Ah, annoying\nJulian is looking",
+      "reason": "unknown_name"
+    },
+    {
+      "name": "short style: an invented number",
+      "title": "Merge #6129",
+      "earlier": [],
+      "message": "Is #6129 merged yet?",
+      "expect": "rejected",
+      "reply": "Good question\nChecking #6200",
+      "reason": "unknown_number"
+    },
+    {
+      "name": "short style: a yes or no answer it doesn't have",
+      "title": "Merge #6129",
+      "earlier": [],
+      "message": "Is #6129 merged yet?",
+      "expect": "rejected",
+      "reply": "Yep\nIn the queue",
+      "reason": "unhedged_answer"
+    },
+    {
+      "name": "short style: an exclamation mark",
+      "title": "Merge #6129",
+      "earlier": [],
+      "message": "Is #6129 merged yet?",
+      "expect": "rejected",
+      "reply": "On it!",
+      "reason": "banned_word"
+    },
+    {
+      "name": "short style: a line too long for a chat message",
+      "title": "Merge #6129",
+      "earlier": [],
+      "message": "Is #6129 merged yet?",
+      "expect": "rejected",
+      "reply": "Checking the queue for #6129 and the review and the checks and the runners",
+      "reason": "too_long"
+    },
+    {
+      "name": "short style: asks the reader for a key",
+      "title": "Merge #6129",
+      "earlier": [],
+      "message": "Is #6129 merged yet?",
+      "expect": "rejected",
+      "reply": "On it\nSend the token here",
       "reason": "credential_request"
     }
   ]

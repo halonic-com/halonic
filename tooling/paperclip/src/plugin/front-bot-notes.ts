@@ -5,7 +5,7 @@ import type {
   PluginStateClient,
 } from "@paperclipai/plugin-sdk";
 import { automaticAnswerStart } from "../front-bot/lookups.ts";
-import { automaticNotePrefix } from "../front-bot/prompt.ts";
+import { assistantLabel, automaticNotePrefix } from "../front-bot/prompt.ts";
 
 /**
  * The front bot's list of its own comments (HAL-18847 section 2.2). A plugin
@@ -172,7 +172,8 @@ interface CommentLike {
 
 /**
  * Whether a comment is the bot's: its id is on the list, or it has no author
- * and starts with the prefix of a note or of a lookup's answer (HAL-19222).
+ * and starts with the assistant's label, the older note prefix or a lookup's
+ * answer (HAL-19222).
  * Only the plugin and Paperclip itself post with
  * no author, so the second rule covers the moment between the post and the
  * list's save; a person typing the prefix still has an author.
@@ -184,7 +185,9 @@ export function isAutomaticNote(comment: CommentLike, ownIds: ReadonlySet<string
   return (
     comment.authorAgentId === null &&
     comment.authorUserId === null &&
-    (comment.body.startsWith(automaticNotePrefix) || comment.body.startsWith(automaticAnswerStart))
+    [assistantLabel, automaticNotePrefix, automaticAnswerStart].some((start) =>
+      comment.body.startsWith(start),
+    )
   );
 }
 

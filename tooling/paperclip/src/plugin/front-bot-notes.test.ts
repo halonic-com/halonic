@@ -70,6 +70,9 @@ verifies("paperclip.front-bot-own-comments", () => {
     expect(
       isAutomaticNote({ id: "c-2", ...authorless, body: "*Automatic note:* About PR #1." }, ids),
     ).toBe(true);
+    expect(isAutomaticNote({ id: "c-4", ...authorless, body: "*Assistant:* On it" }, ids)).toBe(
+      true,
+    );
     const typed = {
       id: "c-3",
       authorAgentId: null,

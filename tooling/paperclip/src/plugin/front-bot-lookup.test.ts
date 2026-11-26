@@ -111,7 +111,7 @@ verifies("paperclip.front-bot-lookups", () => {
       expect(harness.sourceReads).toEqual([]);
       expect(harness.requests).toHaveLength(1);
       expect(harness.posted().map((comment) => comment.body)).toEqual([
-        `*Automatic note:* ${firstReply.reply}`,
+        `*Assistant:* ${firstReply.reply}`,
       ]);
     });
 
@@ -137,7 +137,7 @@ verifies("paperclip.front-bot-lookups", () => {
     const harness = await ask("Please merge #6129");
     expect(harness.sourceReads).toEqual([]);
     expect(harness.posted().map((comment) => comment.body)).toEqual([
-      `*Automatic note:* ${firstReply.reply}`,
+      `*Assistant:* ${firstReply.reply}`,
     ]);
     expect(records(harness.logs)[0]).toMatchObject({
       callType: "lookup",
@@ -201,7 +201,7 @@ verifies("paperclip.front-bot-lookups", () => {
       test(name, async () => {
         const harness = await ask(message, options);
         expect(harness.posted().map((comment) => comment.body)).toEqual([
-          `*Automatic note:* ${firstReply.reply}`,
+          `*Assistant:* ${firstReply.reply}`,
         ]);
         expect(records(harness.logs)[0]).toMatchObject({ outcome: "handed_over", reason });
       });
@@ -224,7 +224,7 @@ verifies("paperclip.front-bot-lookups", () => {
           reason: "lookup_failed",
         });
         expect(harness.posted().map((comment) => comment.body)).toEqual([
-          `*Automatic note:* ${firstReply.reply}`,
+          `*Assistant:* ${firstReply.reply}`,
         ]);
       } finally {
         vi.useRealTimers();

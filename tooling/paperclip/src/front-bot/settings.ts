@@ -83,9 +83,9 @@ export function progressNotesOn(settings: FrontBotSettings): ActiveNotesSettings
 export const frontBotConfigProperties = {
   frontBotEnabled: {
     type: "boolean",
-    title: "Front bot (Automatic note)",
+    title: "Front bot (Assistant replies)",
     description:
-      "Off: the front bot calls nothing and posts nothing. On: a board user's message on a chat task gets a first reply of one or two sentences from Haiku 4.5, posted as an Automatic note, or nothing when it has nothing useful to say. It also needs the Front bot Anthropic key. It stops by itself for the day at $3, and for 15 minutes when more than 1 in 5 calls fail.",
+      "Off: the front bot calls nothing and posts nothing. On: a board user's message on a chat task gets a first reply from Haiku 4.5 in one to three short chat messages, labelled Assistant, or nothing when the message needs no reply. It also needs the Front bot Anthropic key. It stops by itself for the day at $3, and for 15 minutes when more than 1 in 5 calls fail.",
     default: false,
   },
   frontBotAnthropicKey: {
