@@ -71,6 +71,7 @@ import {
   reachableFromPhone,
   studioPageIsBuilt,
 } from "./no-studio-page.ts";
+import { serveRequestLog } from "./request-log.ts";
 import { type ConsoleTransport, openServeConsole, type ServeConsole } from "./serve-console.ts";
 import { openServePaperclip } from "./serve-paperclip.ts";
 import { type ServedRoutines, servedRoutines } from "./serve-routines.ts";
@@ -110,9 +111,7 @@ export interface StudioPlaces {
 
 /**
  * The Studio page and app for code at `codeUrl`, in the repository; none in the npm package,
- * which doesn't ship the page, so `serve` never looks in the folders around the package.
- * `serve` reads the page where it is and keeps no copy, so there is no build step in this
- * package: the page is built where it lives, and `serve` serves what is there.
+ * which doesn't ship the page. `serve` reads the page where it is built and keeps no copy.
  */
 export function studioPlacesFor(npmPackage: boolean, codeUrl: string): StudioPlaces | null {
   if (npmPackage) return null;
@@ -416,6 +415,7 @@ async function listenOnComputer(
     ...(studioFolder === null ? {} : { studioPage: openStudioPageFolder(studioFolder) }),
     requestCounts: openDiskRequestCountStore(countFolder, parts.clock),
     errorLog: { record: logRequestFailure },
+    requestLog: serveRequestLog(context),
     clock: parts.clock,
     ids: randomIds((count) => crypto.getRandomValues(new Uint8Array(count)), parts.clock),
   };
