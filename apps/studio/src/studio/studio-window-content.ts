@@ -18,7 +18,8 @@ export interface ContentSwitcher {
     subscribe(listener: () => void): () => void;
   };
   readonly recent: Pick<RecentWorkspaces, "list">;
-  openLocation(location: string): Promise<WelcomeOpenProblem | undefined>;
+  /** Opens it beside the person, who may open another folder meanwhile (HAL-19958). */
+  reopenOnStart(location: string): Promise<WelcomeOpenProblem | undefined>;
 }
 
 /** Studio's window keeping what it shows. */
@@ -63,7 +64,7 @@ async function reopenKept(ipc: TauriIpc, switcher: ContentSwitcher): Promise<voi
   if (workspace === undefined || switcher.open.shown !== undefined) return;
   if (!switcher.recent.list().some((remembered) => remembered.location === workspace)) return;
   if (!(await reopensWindows(ipc))) return;
-  const problem = await switcher.openLocation(workspace);
+  const problem = await switcher.reopenOnStart(workspace);
   if (problem !== undefined) {
     console.error(`Studio couldn't reopen the workspace at ${workspace}:`, problem);
   }

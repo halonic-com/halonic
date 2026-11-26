@@ -34,6 +34,8 @@ export interface WelcomeRecentList {
   readonly onOpen: (location: string) => Promise<WelcomeOpenProblem | undefined>;
   /** Forgets the workspace in that folder, for **Remove from Recent**. */
   readonly onRemove: (location: string) => void;
+  /** The folder the window reopens by itself at start, while it does: its row shows it opening. */
+  readonly reopening?: string | undefined;
 }
 
 /** Props for {@link Welcome}. */
@@ -93,10 +95,15 @@ function holdFor(start: WelcomeStartState, what: Opening): WelcomeStartState["af
   return what.from === "recent" ? start.afterEngine : start.afterStart;
 }
 
-/** The Recent row that is opening, and the step it waits on. */
-function recentOpening(opening: Opening | undefined, engineReady: boolean) {
-  if (opening?.from !== "recent") return undefined;
-  return { location: opening.location, step: engineReady ? "workspace" : "engine" } as const;
+/** The Recent row that is opening, else the one the window reopens by itself, and its step. */
+function recentOpening(
+  opening: Opening | undefined,
+  engineReady: boolean,
+  reopening: string | undefined,
+) {
+  const location = opening?.from === "recent" ? opening.location : reopening;
+  if (location === undefined) return undefined;
+  return { location, step: engineReady ? "workspace" : "engine" } as const;
 }
 
 /** What failed to open, and whether a Recent row asked for it. */
@@ -134,7 +141,9 @@ type Opening = { readonly from: "picker" } | { readonly from: "recent"; readonly
  * Under the button, **Recent** lists up to five remembered workspaces, and one press opens one
  * (states-flow-map W2). A row whose folder is gone says so on the same line with
  * **Remove from Recent**; the row stays until it's removed, and focus then goes to the next row,
- * else **Open folder** (W7). One folder opens at a time: presses meanwhile are ignored.
+ * else **Open folder** (W7). One folder opens at a time: presses meanwhile are ignored. The row
+ * the window reopens by itself at start shows it opening, and the other rows and **Open folder**
+ * still work meanwhile (`workspace.reopen-gives-way`).
  *
  * @example
  * <Welcome onOpenFolder={openFolder} recent={{ workspaces, onOpen, onRemove }} />
@@ -339,7 +348,7 @@ export function Welcome({
         {recent === undefined ? null : (
           <WelcomeRecent
             workspaces={recent.workspaces}
-            opening={recentOpening(opening, startState.engineReady)}
+            opening={recentOpening(opening, startState.engineReady, recent.reopening)}
             onOpen={(location) => run({ from: "recent", location }, () => recent.onOpen(location))}
             rowRef={rowRef}
             failed={
