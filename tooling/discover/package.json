@@ -12,6 +12,10 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "@halonicjs/action-catalog": "workspace:*",
+    "@halonicjs/action-steppers": "workspace:*",
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-check": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",

@@ -6020,6 +6020,18 @@ importers:
 
   tooling/discover:
     devDependencies:
+      '@halonicjs/action-catalog':
+        specifier: workspace:*
+        version: link:../../packages/core/action-catalog
+      '@halonicjs/action-steppers':
+        specifier: workspace:*
+        version: link:../../packages/core/action-steppers
+      '@halonicjs/ports':
+        specifier: workspace:*
+        version: link:../../packages/core/ports
+      '@halonicjs/testing-spec':
+        specifier: workspace:*
+        version: link:../../packages/testing/spec
       '@halonicjs/tooling-check':
         specifier: workspace:*
         version: link:../check

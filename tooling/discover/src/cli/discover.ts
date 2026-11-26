@@ -5,6 +5,7 @@ import {
   loadContext,
   rules,
 } from "@halonicjs/tooling-check";
+import { actionRoutesFile, writeActionRoutes } from "../action-routes.ts";
 import { writeCatalogFiles } from "../catalog-files.ts";
 import { fixFeatureList, generatedFeaturesFile, writeFeaturesFile } from "../features.ts";
 import { type FolderDiscovery, readFolderDiscoveries } from "../folder-discovery.ts";
@@ -12,7 +13,8 @@ import { folderProblems, writeFolderFiles } from "../folder-files.ts";
 import { fixTurboInputs, turboFile, turboProblems } from "../turbo.ts";
 
 /**
- * pnpm discover            write the generated registration files (gitignored)
+ * pnpm discover            write the generated registration files and the desktop
+ *                          shell's action route list (gitignored)
  * pnpm discover --fix      also rewrite the Studio's feature list in apps/studio/package.json,
  *                          add missing folder-discovery globs to turbo.json and write
  *                          each hashed catalog's committed src/catalog.generated.ts
@@ -45,6 +47,9 @@ function main(argv: readonly string[]): number {
   }
   for (const file of writeFolderFiles(context, discoveries)) {
     console.log(`discover: wrote ${file}.`);
+  }
+  if (writeActionRoutes(root)) {
+    console.log(`discover: wrote ${actionRoutesFile}.`);
   }
   return 0;
 }
