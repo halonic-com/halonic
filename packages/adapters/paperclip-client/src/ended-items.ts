@@ -8,8 +8,8 @@ export const endedKeptMax = 50;
 
 /**
  * Reads again the items that were listed last time and are gone from this read, and gives back
- * those it found that no longer wait, with their final state. An item it doesn't give back ended
- * without anyone saying how.
+ * those it found, with their state now. One it gives back still open stays listed; one it
+ * doesn't give back ended without anyone saying how.
  */
 export type EndedLookUp = (gone: readonly InboxItem[]) => Promise<readonly InboxItem[]>;
 
@@ -32,15 +32,21 @@ export class EndedItems {
     const readIds = new Set(read.map((item) => item.id));
     const gone = this.#listed.filter((item) => !readIds.has(item.id));
     const found = gone.length === 0 ? [] : await lookUp(gone);
+    const stillOpen: InboxItem[] = [];
     for (const item of gone) {
-      const final = found.find((each) => each.id === item.id && each.state.kind !== "open");
-      this.#ended.set(item.id, final ?? { ...item, state: missedState(now) });
+      const current = found.find((each) => each.id === item.id);
+      if (current?.state.kind === "open") {
+        stillOpen.push(current);
+        continue;
+      }
+      this.#ended.set(item.id, current ?? { ...item, state: missedState(now) });
     }
+    const listed = [...read, ...stillOpen];
     // An item listed again waits again, so it is no longer an ended one.
-    for (const id of readIds) this.#ended.delete(id);
-    this.#listed = read;
+    for (const item of listed) this.#ended.delete(item.id);
+    this.#listed = listed;
     this.#forgetOld(now);
-    return [...read, ...this.#ended.values()];
+    return [...listed, ...this.#ended.values()];
   }
 
   /** Forgets the items that ended more than a day ago, then all but the newest {@link endedKeptMax}. */
@@ -48,7 +54,7 @@ export class EndedItems {
     const since = now.getTime() - endedKeptMs;
     const kept = [...this.#ended.values()]
       .filter((item) => Date.parse(endedAt(item.state)) >= since)
-      .sort((a, b) => endedAt(b.state).localeCompare(endedAt(a.state)))
+      .sort((a, b) => Date.parse(endedAt(b.state)) - Date.parse(endedAt(a.state)))
       .slice(0, endedKeptMax);
     this.#ended = new Map(kept.map((item) => [item.id, item]));
   }

@@ -40,6 +40,7 @@ import { toSeats } from "./team-seats.ts";
 import { rangeStart, type SpendContext, toAgentSpend, toSpendSummary } from "./team-spend.ts";
 import {
   bodyOf,
+  isUnreadable,
   type PaperclipAnswer,
   PaperclipTransport,
   type RequestDetails,
@@ -309,12 +310,4 @@ export class PaperclipTeamStatus implements TeamStatus {
     }
     return { ids: this.#ids, origin: this.#origin, agents: this.#agents };
   }
-}
-
-/** Whether a task read failed because the key can't find the task or may not read it. */
-function isUnreadable(answer: PaperclipAnswer): boolean {
-  return (
-    answer.kind === "failed" &&
-    (answer.failure === "not-found" || (answer.failure === "refused" && answer.status === 403))
-  );
 }

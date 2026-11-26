@@ -473,6 +473,7 @@ export class PaperclipMessaging implements AgentMessaging {
       ids: this.#ids,
       agentNames: this.#agentNames,
       origin: this.#origin,
+      readAt: this.#now().toISOString(),
       ...(this.#user.id === undefined ? {} : { userId: this.#user.id }),
     };
   }

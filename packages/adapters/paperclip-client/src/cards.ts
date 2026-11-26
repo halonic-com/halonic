@@ -159,7 +159,11 @@ export function answeredState(
       text(record, "resolvedByUserId") ?? text(record, "decidedByUserId"),
     ),
     answer,
-    answeredAt: text(record, "resolvedAt") ?? timeOf(record, "decidedAt"),
+    answeredAt:
+      text(record, "resolvedAt") ??
+      text(record, "decidedAt") ??
+      context.readAt ??
+      timeOf(record, "decidedAt"),
   };
 }
 
@@ -175,7 +179,10 @@ export function closedState(
   const agentId = text(record, "resolvedByAgentId");
   const userId = text(record, "resolvedByUserId") ?? text(record, "decidedByUserId");
   const closedAt =
-    text(record, "resolvedAt") ?? text(record, "updatedAt") ?? timeOf(record, "createdAt");
+    text(record, "resolvedAt") ??
+    text(record, "updatedAt") ??
+    context.readAt ??
+    timeOf(record, "createdAt");
   if (agentId === undefined && userId === undefined) {
     return { kind: "closed", reason, closedAt };
   }
