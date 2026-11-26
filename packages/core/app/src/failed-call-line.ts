@@ -53,14 +53,14 @@ export function failedCallLine(tool: string, failed: FailedCall): FailedCallText
     connector: connector ?? { key: "connectorOfTool" as const, values: { tool: toolName } },
   };
   const { cause } = failed;
-  // A refused service has no words of its own yet (HAL-19186): it reads as
-  // a call without a cause, by its outcome.
-  if (cause === undefined || cause.code === "service-refused") {
+  if (cause === undefined) {
     return failed.reason === "no-answer"
       ? { key: "noAnswer", values }
       : { key: "failed", values: {} };
   }
   switch (cause.code) {
+    case "service-refused":
+      return serviceRefusedLine(cause, values.tool);
     case "time-limit":
       return { key: "timeLimit", values: { ...values, seconds: secondsOf(cause) } };
     case "engine-stopped":
@@ -179,6 +179,35 @@ function namedInCause(cause: ConnectorStartCause): FailedCallName {
   return cause.why === "plugin-not-trusted" || cause.why === "plugin-changed"
     ? { name, look: "name", plugin: true }
     : { name, look: "code" };
+}
+
+type ServiceRefusedCause = Extract<ToolFailureCause, { code: "service-refused" }>;
+
+/**
+ * The line for a call the service refused, or Halonic refused for it: by
+ * the cause's `why`, with the host as code for an undeclared one. A 429's
+ * line says how often Halonic tried again, and "Nothing was sent twice."
+ * only when the cause's `sentOnce` says so, never from the tool's risk.
+ */
+function serviceRefusedLine(cause: ServiceRefusedCause, tool: FailedCallValue): FailedCallText {
+  switch (cause.why) {
+    case "not-accepted":
+      return { key: "serviceNotAccepted", values: { tool } };
+    case "not-allowed":
+      return { key: "serviceNotAllowed", values: { tool } };
+    case "host-not-declared":
+      return { key: "hostNotDeclared", values: { tool, host: { name: cause.host, look: "code" } } };
+    case "slow-down": {
+      const line: FailedCallText =
+        cause.retries === 0
+          ? { key: "serviceSlowDown", values: { tool } }
+          : {
+              key: "serviceSlowDownRetried",
+              values: { tool, times: { key: cause.retries === 1 ? "once" : "twice", values: {} } },
+            };
+      return cause.sentOnce === true ? { key: "nothingSentTwice", values: { line } } : line;
+    }
+  }
 }
 
 /** "60 seconds", or "1 second". */

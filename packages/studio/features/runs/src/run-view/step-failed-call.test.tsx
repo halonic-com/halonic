@@ -179,6 +179,12 @@ verifies("runs.run-view.step-failed-call", () => {
     );
   });
 
+  it("says the service asked to slow down, as `halonic runs show` says it", () => {
+    expect(lineFor({ code: "service-refused", why: "slow-down", retries: 2, sentOnce: true })).toBe(
+      "✕ Didn't work: the service asked Halonic to slow down when the tool create_note (notes-mcp) called it, and still did after Halonic tried again twice. Try again in a few minutes. Nothing was sent twice.",
+    );
+  });
+
   it("names the plugin, by its name, whose sandbox didn't work when it started", () => {
     expect(lineFor({ code: "connector-not-started", why: "plugin-stopped", name: "Weather" })).toBe(
       "✕ Didn't work: the connector notes-mcp didn't start. The sandbox didn't work when its plugin Weather started.",
