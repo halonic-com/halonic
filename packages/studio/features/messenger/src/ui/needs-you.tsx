@@ -14,7 +14,7 @@ import type { ConversationRow, Messenger } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import { endedCard, type NeedsYouRead, type WaitingCard } from "../needs-you.ts";
 import { ChatCard } from "./chat-cards.tsx";
-import { FinalCard } from "./final-card.tsx";
+import { FinalCard, useSaySettled } from "./final-card.tsx";
 
 const words = listWords.needsYou;
 
@@ -99,22 +99,47 @@ export function NeedsYouPanel({
   readonly onAnswered: () => void;
 }) {
   const [said, setSaid] = useState({ text: "", count: 0 });
+  const say = useCallback(
+    (text: string) => setSaid((last) => ({ text, count: last.count + 1 })),
+    [],
+  );
+  const panel = useRef<HTMLElement>(null);
+  // The cards answered here, already read out, and whether the next read moves focus on.
+  const answeredHere = useRef(new Set<MessagingId>());
+  const focusOn = useRef(false);
   const answered = useCallback(
-    async (option: string) => {
-      setSaid((last) => ({ text: messengerWords.card.answered(option), count: last.count + 1 }));
+    async (card: MessagingId, option: string) => {
+      answeredHere.current.add(card);
+      focusOn.current = true;
+      say(messengerWords.card.answered(option));
       onAnswered();
     },
-    [onAnswered],
+    [onAnswered, say],
   );
   const waiting = read?.waiting;
   const endedOf = useCallback((left: WaitingCard) => endedCard(read?.items ?? [], left), [read]);
   const { settling, gone } = useSettling(waiting ?? [], waitingKey, endedOf);
+  useSaySettled(
+    settling.map((each) => each.card),
+    answeredHere.current,
+    say,
+  );
+  // The answered card turned into its final state, so its button is gone: as in a chat, the next
+  // card's first option, or else the panel's title, takes focus.
+  useEffect(() => {
+    if (waiting === undefined || !focusOn.current) return;
+    focusOn.current = false;
+    const next =
+      panel.current?.querySelector<HTMLElement>("[data-needs-you-card] :is(button, input)") ??
+      panel.current?.querySelector<HTMLElement>("h2");
+    next?.focus();
+  }, [waiting]);
   const shown = [...(waiting ?? []), ...settling].sort((a, b) =>
     a.card.createdAt.localeCompare(b.card.createdAt),
   );
   const settlingIds = new Set(settling.map(waitingKey));
   return (
-    <section aria-label={words.title} className="flex min-h-0 flex-1 flex-col">
+    <section ref={panel} aria-label={words.title} className="flex min-h-0 flex-1 flex-col">
       <header className="flex items-center gap-3 border-b border-border px-4 py-3">
         <span
           aria-hidden="true"
@@ -123,7 +148,9 @@ export function NeedsYouPanel({
           <PlaceIcon name="inbox" />
         </span>
         <div className="flex min-w-0 flex-1 flex-col">
-          <h2 className="truncate text-body-strong">{words.title}</h2>
+          <h2 tabIndex={-1} className="truncate text-body-strong">
+            {words.title}
+          </h2>
           {/* "0 waiting" would only repeat the empty state below, or show before the read lands. */}
           {(waiting?.length ?? 0) === 0 ? null : (
             <p className="text-small text-fg-muted">{words.count(waiting?.length ?? 0)}</p>
@@ -144,7 +171,10 @@ export function NeedsYouPanel({
                 key={each.card.id}
                 waiting={each}
                 onOpenChat={onOpenChat}
-                onGone={() => gone(each.card.id)}
+                onGone={() => {
+                  answeredHere.current.delete(each.card.id);
+                  gone(each.card.id);
+                }}
               />
             ) : (
               <WaitingItem
@@ -152,7 +182,7 @@ export function NeedsYouPanel({
                 messenger={messenger}
                 waiting={each}
                 onOpenChat={onOpenChat}
-                onAnswered={answered}
+                onAnswered={(option) => answered(each.card.id, option)}
               />
             ),
           )}

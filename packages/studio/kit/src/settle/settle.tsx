@@ -2,16 +2,52 @@
  * How a decided card settles (`kit.settle`, `kit.final-state`): its final state as one line, the
  * same whether it ended here or elsewhere, held long enough to read, then the card goes.
  */
-import { type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { settleOut } from "../motion/motion.ts";
 import type { StatusChipTone } from "../status-chip/status-chip.tsx";
 import { decidedAt } from "../text/waiting-time.ts";
+import { finalStateWords } from "./final-state-words.ts";
 
 /**
  * How long a decided card shows its final state before it goes (`kit.settle`): long enough to read
  * who decided it and when.
  */
 export const settleHoldMs = 4000;
+
+/** How a settling element goes once its hold is over; resolves when it has gone. */
+export type SettleOut = (element: HTMLElement) => Promise<void>;
+
+const SettleOutContext = createContext<SettleOut>(settleOut);
+
+/** Props of {@link SettleMotionProvider}. */
+export interface SettleMotionProviderProps {
+  /** How every settling element under it goes, instead of the kit's `settleOut`. */
+  readonly out: SettleOut;
+  readonly children: ReactNode;
+}
+
+/**
+ * Puts in how settling elements go (`kit.settle`), so a test can play and check the motion
+ * without the browser's animations.
+ */
+export function SettleMotionProvider({ out, children }: SettleMotionProviderProps) {
+  return <SettleOutContext value={out}>{children}</SettleOutContext>;
+}
+
+/** How a settling element goes where a component renders: the kit's `settleOut` by default. */
+export function useSettleOut(): SettleOut {
+  return useContext(SettleOutContext);
+}
 
 /** What {@link useSettling} gives. */
 export interface Settling<Item> {
@@ -64,9 +100,10 @@ export function useSettling<Item>(
 }
 
 /**
- * Holds a settling element's final state for `hold` milliseconds, then plays `settleOut` and calls
- * `onGone` (`kit.settle`). The hold pauses while the pointer is over the element or the focus is
- * in it, so the person can read it, and goes on for what was left once they leave.
+ * Holds a settling element's final state for `hold` milliseconds, then plays the settle motion
+ * (`settleOut`, or what a {@link SettleMotionProvider} put in) and calls `onGone` (`kit.settle`).
+ * The hold pauses while the pointer is over the element or the focus is in it, also when it
+ * already is as the hold starts, and goes on for what was left once both leave.
  */
 export function useSettleAway(
   element: RefObject<HTMLElement | null>,
@@ -75,6 +112,7 @@ export function useSettleAway(
 ): void {
   const goneRef = useRef(onGone);
   goneRef.current = onGone;
+  const out = useSettleOut();
 
   useEffect(() => {
     const target = element.current;
@@ -82,13 +120,16 @@ export function useSettleAway(
     let left = hold;
     let startedAt = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    let held = 0;
+    // Set once it starts going, so leaving the element afterwards starts nothing again.
+    let done = false;
+    let held = heldAtStart(target);
 
     const go = () => {
       timer = undefined;
-      // Nothing is left to hold, so leaving the element afterwards starts nothing again.
-      left = 0;
-      settleOut(target).then(
+      done = true;
+      // Nothing in it takes the focus while it goes, so it is never removed with the focus inside.
+      target.setAttribute("inert", "");
+      out(target).then(
         () => goneRef.current(),
         (error: unknown) => {
           console.error("A settling card couldn't animate away:", error);
@@ -109,19 +150,29 @@ export function useSettleAway(
     };
     const resume = () => {
       held = Math.max(0, held - 1);
-      if (held === 0 && timer === undefined && left > 0) run();
+      if (held === 0 && timer === undefined && !done) run();
     };
     const pausers = ["pointerenter", "focusin"] as const;
     const resumers = ["pointerleave", "focusout"] as const;
     for (const name of pausers) target.addEventListener(name, pause);
     for (const name of resumers) target.addEventListener(name, resume);
-    run();
+    if (held === 0) run();
     return () => {
       if (timer !== undefined) clearTimeout(timer);
       for (const name of pausers) target.removeEventListener(name, pause);
       for (const name of resumers) target.removeEventListener(name, resume);
     };
-  }, [element, hold]);
+  }, [element, hold, out]);
+}
+
+/**
+ * How many of the pointer and the focus are on `target` as its hold starts: a card that replaced
+ * the one just answered can show right under the pointer that answered it.
+ */
+function heldAtStart(target: HTMLElement): number {
+  const hovered = target.matches(":hover") ? 1 : 0;
+  const focused = target.contains(document.activeElement) ? 1 : 0;
+  return hovered + focused;
 }
 
 /** Who ended a card, as the messaging port names them: the person, or someone with a name. */
@@ -137,7 +188,12 @@ export type EndedCardState =
   | {
       readonly kind: "answered";
       readonly by: CardEnder;
-      readonly answer: { readonly kind: string; readonly option?: string };
+      readonly answer: {
+        readonly kind: string;
+        readonly option?: string;
+        /** How the action ended, for an `action-result` answer. */
+        readonly outcome?: string;
+      };
       readonly answeredAt: string;
     }
   | {
@@ -153,18 +209,6 @@ export interface FinalState {
   readonly tone: StatusChipTone;
 }
 
-/** The five ways a card ends, as its final-state line starts (HAL-19496). */
-export const finalStateWords = {
-  approved: "Approved",
-  rejected: "Rejected",
-  answered: "Answered",
-  cancelled: "Cancelled",
-  expired: "Expired",
-  /** Who, after the word: "by you", "by Ada". */
-  by: (name: string) => `by ${name}`,
-  you: "you",
-} as const;
-
 /**
  * The option IDs that approve or reject, as every source names them (Paperclip's approvals and
  * confirmations); any other answer reads as Answered.
@@ -175,7 +219,8 @@ const rejecting: ReadonlySet<string> = new Set(["reject"]);
 /**
  * A card's final state, the same whether it ended here or elsewhere (`kit.final-state`):
  * "Approved by Ada · 14:02", "Rejected by you · 14:02", "Answered by Chief · 14:02",
- * "Cancelled · 14:02" (with "by …" when the source says who) or "Expired · 14:02".
+ * "Cancelled · 14:02" (with "by …" when the source says who) or "Expired · 14:02". An action card
+ * says how its action ended: "Succeeded", "Failed", "Declined" or "Expired", by whoever ran it.
  *
  * @example
  * finalState({ kind: "closed", reason: "expired", closedAt }).line; // "Expired · 14:02"
@@ -185,6 +230,9 @@ export function finalState(state: EndedCardState): FinalState {
     const word = finalStateWords[state.reason];
     return { line: lineOf(word, state.by, state.closedAt), tone: "neutral" };
   }
+  if (state.answer.kind === "action-result") {
+    return actionLine(state.answer.outcome ?? "", state.by, state.answeredAt);
+  }
   const option = state.answer.kind === "option" ? (state.answer.option ?? "") : "";
   if (approving.has(option)) {
     return { line: lineOf(finalStateWords.approved, state.by, state.answeredAt), tone: "success" };
@@ -193,6 +241,21 @@ export function finalState(state: EndedCardState): FinalState {
     return { line: lineOf(finalStateWords.rejected, state.by, state.answeredAt), tone: "danger" };
   }
   return { line: lineOf(finalStateWords.answered, state.by, state.answeredAt), tone: "success" };
+}
+
+/** How an action ended, and its tone: only one that succeeded shows as a success. */
+const actionOutcomes: Readonly<Record<string, FinalState["tone"]>> = {
+  succeeded: "success",
+  failed: "danger",
+  declined: "neutral",
+  expired: "neutral",
+};
+
+/** The line of an action card, by how the action ended: "Declined by you · 12:10". */
+function actionLine(outcome: string, by: CardEnder, at: string): FinalState {
+  const words: Readonly<Record<string, string>> = finalStateWords.outcomes;
+  const word = words[outcome] ?? finalStateWords.answered;
+  return { line: lineOf(word, by, at), tone: actionOutcomes[outcome] ?? "neutral" };
 }
 
 function lineOf(word: string, by: CardEnder | undefined, at: string): string {

@@ -1,17 +1,24 @@
 // @vitest-environment jsdom
-import { settleHoldMs } from "@halonicjs/studio-kit";
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { byText, openChat, openMessenger, press, settle } from "../test-support/page.tsx";
+import {
+  byText,
+  openChat,
+  openMessenger,
+  press,
+  said,
+  settle,
+  settleHoldMs,
+} from "../test-support/page.tsx";
 import { unmountAll } from "../test-support/render.tsx";
+import { isNewLine } from "./transcript.tsx";
 
 afterEach(() => {
   unmountAll();
   vi.useRealTimers();
   vi.unstubAllGlobals();
-  Reflect.deleteProperty(HTMLElement.prototype, "animate");
 });
 
 const approveOrReject = [
@@ -37,9 +44,19 @@ const approve = { kind: "option", option: "approve" } as const;
 
 /** The final-state lines the page shows, in order. */
 function finalLines(page: HTMLElement): (string | null)[] {
-  return [...page.querySelectorAll("[data-final-state] [role='status']")].map(
+  return [...page.querySelectorAll("[data-final-state] [data-final-line]")].map(
     (line) => line.textContent,
   );
+}
+
+/** A settle motion that records each element it played on and ends at once. */
+function recordedSettle() {
+  const played: HTMLElement[] = [];
+  const out = (element: HTMLElement) => {
+    played.push(element);
+    return Promise.resolve();
+  };
+  return { played, out };
 }
 
 /** Lets the fake clock run `ms`, and the page finish what that started. */
@@ -48,11 +65,6 @@ async function pass(ms: number): Promise<void> {
     vi.advanceTimersByTime(ms);
   });
   await settle();
-}
-
-/** A keyframe that moves its element up or down, as `enter`'s rise does. */
-function rises(keyframe: Keyframe): boolean {
-  return String(keyframe["transform"] ?? "").includes("translateY");
 }
 
 function holdTimers(): void {
@@ -124,17 +136,12 @@ verifies("messenger.final-state", () => {
       expect(finalLines(page)).toEqual([]);
     });
 
-    it("changes in place as it ends, with its question muted and no rise", async () => {
-      const played: { element: Element; keyframes: Keyframe[] }[] = [];
-      HTMLElement.prototype.animate = function animate(keyframes) {
-        played.push({ element: this, keyframes: keyframes as Keyframe[] });
-        return { finished: Promise.resolve() } as unknown as Animation;
-      };
+    it("changes in place as it ends, with its question muted and nothing played on it", async () => {
+      const { played, out } = recordedSettle();
       const { messaging, cards } = chiefAsks("Merge #12?");
-      const page = await openMessenger(messaging);
+      const page = await openMessenger(messaging, [], false, undefined, undefined, undefined, out);
       await openChat(page, "Chief");
       holdTimers();
-      played.length = 0;
 
       messaging.answerElsewhere(cards[0]?.id ?? "", ada, approve);
       await settle();
@@ -144,36 +151,72 @@ verifies("messenger.final-state", () => {
       // The nearest colour wins: the question's own, not one around it.
       const colour = question?.closest("[class*='text-fg']");
       expect(colour?.classList.contains("text-fg-muted")).toBe(true);
-      const onTheCard = played.filter(({ element }) =>
-        element.matches("[data-chat-card-settling]"),
-      );
-      expect(onTheCard).toEqual([]);
-      expect(played.flatMap(({ keyframes }) => keyframes).some(rises)).toBe(false);
+      expect(played).toEqual([]);
     });
 
-    it("only fades out while the person prefers reduced motion", async () => {
+    it("never counts a settling card as a new line that rises into view", () => {
+      const card = chiefAsks("Merge #12?").cards[0];
+      if (card === undefined) throw new Error("Acme's card is missing.");
+      const line = { kind: "card", key: card.id, card } as const;
+
+      expect(isNewLine(line, false, new Set([card.id]))).toBe(false);
+      expect(isNewLine(line, false, new Set())).toBe(true);
+    });
+
+    it("keeps the 4-second hold while the person prefers reduced motion, then settles out", async () => {
+      // Under reduced motion the kit's settle only fades (`kit.settle`'s own tests).
       vi.stubGlobal("matchMedia", (query: string) => ({
         matches: query === "(prefers-reduced-motion: reduce)",
         addEventListener: () => undefined,
         removeEventListener: () => undefined,
       }));
-      const played: Keyframe[][] = [];
-      HTMLElement.prototype.animate = function animate(keyframes) {
-        played.push(keyframes as Keyframe[]);
-        return { finished: Promise.resolve() } as unknown as Animation;
-      };
+      const { played, out } = recordedSettle();
       const { messaging, cards } = chiefAsks("Merge #12?");
-      const page = await openMessenger(messaging);
+      const page = await openMessenger(messaging, [], false, undefined, undefined, undefined, out);
       await openChat(page, "Chief");
       holdTimers();
-      played.length = 0;
       messaging.answerElsewhere(cards[0]?.id ?? "", ada, approve);
       await settle();
+      const card = page.querySelector("[data-chat-card-settling]");
 
-      await pass(settleHoldMs);
+      await pass(settleHoldMs - 1);
+      expect(played).toEqual([]);
+      await pass(1);
 
+      expect(played).toEqual([card]);
       expect(finalLines(page)).toEqual([]);
-      expect(played.at(-1)).toEqual([{ opacity: 1 }, { opacity: 0 }]);
+    });
+
+    it("reads a card decided elsewhere out once, and one answered here only as its answer", async () => {
+      const { messaging, cards } = chiefAsks("Merge #12?", "Tag v1?");
+      const page = await openMessenger(messaging);
+      await openChat(page, "Chief");
+
+      messaging.answerElsewhere(cards[0]?.id ?? "", ada, approve);
+      await settle();
+      expect(said(page)).toBe("Approved by Ada · 10:00");
+      expect(page.querySelector("[data-final-state] [role='status']")).toBeNull();
+
+      const here = page.querySelector(`[data-chat-card="${cards[1]?.id}"]`);
+      await press(here === null ? undefined : byText(here as HTMLElement, "button", "Approve"));
+      expect(said(page)).toBe("Answered: Approve.");
+    });
+
+    it("says how an action ended, in a tone that isn't a success's", async () => {
+      const { messaging, cards } = chiefAsks("Run the deploy?");
+      const page = await openMessenger(messaging);
+      await openChat(page, "Chief");
+
+      messaging.answerElsewhere(
+        cards[0]?.id ?? "",
+        { kind: "me" },
+        { kind: "action-result", outcome: "declined", steps: [] },
+      );
+      await settle();
+
+      expect(finalLines(page)).toEqual(["Declined by you · 10:00"]);
+      const chip = page.querySelector("[data-final-line] > *");
+      expect(chip?.className).not.toContain("success");
     });
   });
 
@@ -192,6 +235,19 @@ verifies("messenger.final-state", () => {
       expect(page.querySelector("[data-needs-you-settling]")?.textContent).toContain("Chief");
       await pass(settleHoldMs);
       expect(byText(page, "main p", "Nothing is waiting for you.")).toBeDefined();
+    });
+
+    it("moves the focus to the next card's first option once one is answered there", async () => {
+      const { messaging, cards } = chiefAsks("Merge #12?", "Tag v1?");
+      const page = await openMessenger(messaging);
+      await press(page.querySelector("[data-needs-you-entry]"));
+
+      const first = page.querySelector(`[data-needs-you-card="${cards[0]?.id}"]`) as HTMLElement;
+      await press(byText(first, "button", "Approve"));
+
+      const next = page.querySelector(`[data-needs-you-card="${cards[1]?.id}"] button`);
+      expect(document.activeElement).toBe(next);
+      expect(finalLines(page)).toEqual(["Approved by you · 10:00"]);
     });
   });
 });

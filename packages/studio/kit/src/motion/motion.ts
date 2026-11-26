@@ -56,7 +56,7 @@ export function enter(element: HTMLElement, options: EnterOptions = {}): Promise
           { opacity: 0, transform: `translateY(${offset}px)` },
           { opacity: 1, transform: "translateY(0)" },
         ];
-  return play(element, keyframes, {
+  return playAnimation(element, keyframes, {
     duration: reduced ? tokens.fast : tokens.base,
     easing: tokens.easeEnter,
   });
@@ -71,28 +71,43 @@ export function leave(element: HTMLElement): Promise<void> {
     return Promise.resolve();
   }
   const tokens = readTokens(element);
-  return play(element, [{ opacity: 1 }, { opacity: 0 }], {
+  return playAnimation(element, [{ opacity: 1 }, { opacity: 0 }], {
     duration: tokens.fast,
     easing: tokens.easeExit,
     fill: "forwards",
   });
 }
 
+/** Plays one animation on an element and resolves when it ends: the browser's own by default. */
+export type Animate = (
+  element: HTMLElement,
+  keyframes: Keyframe[],
+  timing: KeyframeAnimationOptions,
+) => Promise<void>;
+
 /**
  * Takes a decided card away once its final state showed (`kit.settle`, motion 6 of the design
  * review): it fades out over `--duration-fast` with `--ease-exit`, then its height and the space
  * above it close over `--duration-base` with `--ease-standard`, so what is below moves up into its
- * place without a jump. Under reduced motion only the fade, with nothing moving. Resolves when it
- * ends; the caller then removes the element.
+ * place without a jump. The first of a list has no space above it, so it takes in the space below
+ * it instead, the next one's top margin, which that one loses as it becomes the first. Under
+ * reduced motion only the fade, with nothing moving. Resolves when it ends; the caller then
+ * removes the element. `animate` plays each step; a test puts in its own.
  */
-export async function settleOut(element: HTMLElement): Promise<void> {
-  if (!canAnimate(element)) {
+export async function settleOut(element: HTMLElement, animate?: Animate): Promise<void> {
+  const play = animate ?? (canAnimate(element) ? playAnimation : undefined);
+  if (play === undefined) {
     return;
   }
   const tokens = readTokens(element);
   // Measured before the fade, which keeps the element's size.
   const height = `${element.getBoundingClientRect().height}px`;
   const marginTop = getComputedStyle(element).marginTop || "0px";
+  const next = element.nextElementSibling;
+  const below =
+    element.previousElementSibling === null && next !== null
+      ? getComputedStyle(next).marginTop || "0px"
+      : "0px";
   await play(element, [{ opacity: 1 }, { opacity: 0 }], {
     duration: tokens.fast,
     easing: tokens.easeExit,
@@ -104,8 +119,14 @@ export async function settleOut(element: HTMLElement): Promise<void> {
   await play(
     element,
     [
-      { opacity: 0, height, marginTop, overflow: "hidden" },
-      { opacity: 0, height: "0px", marginTop: "0px", overflow: "hidden" },
+      { opacity: 0, height, marginTop, marginBottom: "0px", overflow: "hidden" },
+      {
+        opacity: 0,
+        height: "0px",
+        marginTop: "0px",
+        marginBottom: `-${below}`,
+        overflow: "hidden",
+      },
     ],
     { duration: tokens.base, easing: tokens.easeStandard, fill: "forwards" },
   );
@@ -141,7 +162,7 @@ export function flip(list: HTMLElement, change: () => void): Promise<void> {
       continue;
     }
     glides.push(
-      play(
+      playAnimation(
         child,
         [{ transform: `translate(${deltaX}px, ${deltaY}px)` }, { transform: "translate(0, 0)" }],
         { duration: tokens.base, easing: tokens.easeStandard },
@@ -177,7 +198,7 @@ export function swap(
           { opacity: 0, transform: `translateX(${offset}px)` },
           { opacity: 1, transform: "translateX(0)" },
         ];
-  return play(pane, keyframes, {
+  return playAnimation(pane, keyframes, {
     duration: reduced ? tokens.fast : tokens.base,
     easing: tokens.easeEnter,
   });
@@ -196,7 +217,7 @@ function prefersReducedMotion(): boolean {
  * Plays one animation and resolves when it ends. A cancelled animation (the element was replaced
  * or another motion took over) also resolves, since nothing went wrong; any other error rejects.
  */
-function play(
+function playAnimation(
   element: HTMLElement,
   keyframes: Keyframe[],
   timing: KeyframeAnimationOptions,

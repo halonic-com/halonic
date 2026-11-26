@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-19496 (board report on HAL-10, comment 20e30d36: a card processed in Paperclip should update here too and animate to its state; and its addition, comment 910fe451: after its final state it goes away, removed from the chat and from "Needs you"); plan approved by Liam
 
-When a card the Messenger shows in a conversation's timeline or in the "Needs you" panel ends, because the person answered it here, or it was decided, cancelled or expired anywhere else, the Messenger shall change it in its place, without the rise of a new entry, to its final state, in the kit's words (`kit.final-state`), such as "Approved by Ada · 14:02", "Rejected by you · 14:02", "Answered by Chief · 14:02", "Cancelled · 14:02" or "Expired · 14:02", with its question muted and the link to its page in its source; a card decided here and one decided elsewhere shall look the same. The card shall leave the cards bar's count and the "Needs you" count at once. After 4 seconds it shall settle out of the timeline and the panel, as `kit.settle` says, the time pausing while the pointer is over it or the focus is in it; while the person prefers reduced motion it shall only fade. A card that had ended before the Messenger first showed it shall not be shown; its task in the source keeps it.
+When a card the Messenger shows in a conversation's timeline or in the "Needs you" panel ends, because the person answered it here, or it was decided, cancelled or expired anywhere else, the Messenger shall change it in its place, without the rise of a new entry, to its final state, in the kit's words (`kit.final-state`), such as "Approved by Ada · 14:02", "Rejected by you · 14:02", "Answered by Chief · 14:02", "Cancelled · 14:02", "Expired · 14:02" or, for an action card, "Declined by you · 14:02", with its question muted and the link to its page in its source; a card decided here and one decided elsewhere shall look the same. The card shall leave the cards bar's count and the "Needs you" count at once. After 4 seconds it shall settle out of the timeline and the panel, as `kit.settle` says, the time pausing while the pointer is over it or the focus is in it; while the person prefers reduced motion it shall only fade. A card that had ended before the Messenger first showed it shall not be shown; its task in the source keeps it. The Messenger shall read the final state out once, through the view's one status region, except for a card the person answered here, whose answer it already read out. In "Needs you", once a card the person answered there turned into its final state, the focus shall move to the next card's first option, or else to the panel's title.
 
 ## Examples
 
@@ -29,3 +29,12 @@ When a card the Messenger shows in a conversation's timeline or in the "Needs yo
 - Given a person who prefers reduced motion,
   when a card settles out,
   then it only fades.
+- Given Chief's open card in his chat,
+  when Ada approves it in Paperclip,
+  then the chat reads out "Approved by Ada · 10:00" once.
+- Given Chief's open action card,
+  when the person declines it,
+  then it shows "Declined by you · 10:00", not in the success tone.
+- Given "Needs you" with two of Chief's open cards,
+  when the person approves the first there,
+  then the focus moves to the second card's first option.

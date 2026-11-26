@@ -17,7 +17,7 @@ import type { ConversationRow, Messenger } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import { EmptyChannel } from "./channel-message.tsx";
 import { ChatCardItem } from "./chat-cards.tsx";
-import { SettlingChatCard } from "./final-card.tsx";
+import { SettlingChatCard, useSaySettled } from "./final-card.tsx";
 import { failureReason, reportMotion } from "./load-states.tsx";
 import { DayItem, MessageItem, PendingItem } from "./message-item.tsx";
 import { asksQuestions, QuestionCardItem } from "./question-card.tsx";
@@ -60,6 +60,8 @@ export interface TranscriptProps {
   readonly onAnswered: (option: string) => Promise<void>;
   /** The chat's reactions; none where nothing keeps them (`messenger.reactions`). */
   readonly reactions?: ReactionsView | undefined;
+  /** Reads a line out through the chat's status region: a card that ended elsewhere. */
+  readonly announce: (text: string) => void;
 }
 
 /**
@@ -79,6 +81,7 @@ export function Transcript(props: TranscriptProps) {
   const scroller = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLOListElement>(null);
   const settle = useSettlingCards(cards);
+  useSaySettled(settle.settlingCards, settle.answeredHere, props.announce);
   const lines = chatLines(
     chatTimeline(messages ?? [], settle.shown),
     pending,
@@ -163,7 +166,11 @@ export function Transcript(props: TranscriptProps) {
 /** The chat's cards that show: the open ones, then those settling away since they ended. */
 interface SettlingCards {
   readonly shown: readonly InboxItem[];
+  readonly settlingCards: readonly InboxItem[];
   readonly settling: ReadonlySet<MessagingId>;
+  /** The cards answered here, which the chat already read out. */
+  readonly answeredHere: ReadonlySet<MessagingId>;
+  readonly answered: (card: MessagingId) => void;
   readonly gone: (card: MessagingId) => void;
 }
 
@@ -177,10 +184,17 @@ function useSettlingCards(cards: readonly InboxItem[] | undefined): SettlingCard
     [cards],
   );
   const { settling, gone } = useSettling(open, cardKey, endedOf);
+  const answeredHere = useRef(new Set<MessagingId>());
   return {
     shown: [...open, ...settling],
+    settlingCards: settling,
     settling: new Set(settling.map(cardKey)),
-    gone,
+    answeredHere: answeredHere.current,
+    answered: (card) => answeredHere.current.add(card),
+    gone: (card) => {
+      answeredHere.current.delete(card);
+      gone(card);
+    },
   };
 }
 
@@ -200,7 +214,10 @@ function Line({
       quickActions: props.messenger.quickActions,
       row: props.row,
       now: props.messenger.now(),
-      onAnswered: props.onAnswered,
+      onAnswered: (option: string) => {
+        settle.answered(card.id);
+        return props.onAnswered(option);
+      },
     };
     return asksQuestions(card) ? (
       <QuestionCardItem {...shared} card={card} />
@@ -362,7 +379,11 @@ function useStickToEnd(
  * read only `placed`, and not a card that ended. An ended card drops out of the open ones a render
  * before it settles, so it comes back in place of itself (`messenger.final-state`).
  */
-function isNewLine(line: ChatLine, placed: boolean, settling: ReadonlySet<MessagingId>): boolean {
+export function isNewLine(
+  line: ChatLine,
+  placed: boolean,
+  settling: ReadonlySet<MessagingId>,
+): boolean {
   if (line.kind === "day") return false;
   if (line.kind !== "card") return true;
   return !placed && !settling.has(line.card.id);

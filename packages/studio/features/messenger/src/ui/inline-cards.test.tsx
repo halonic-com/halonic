@@ -125,7 +125,11 @@ verifies("messenger.inline-cards", () => {
       expect(bar(page)).toBe("1 card waiting");
       await press(byText(page, "main ol button", "Reject"));
       expect(bar(page)).toBeUndefined();
-      expect(timeline(page)[1]).toContain("Rejected by you · 11:30");
+      const entries = timeline(page);
+      expect(entries).toHaveLength(3);
+      expect(entries[0]).toBe("CChief · 09:00Chief: Morning");
+      expect(entries[1]).toContain("Rejected by you · 11:30");
+      expect(entries[2]).toBe("CChief · 11:30Chief: Done");
     });
 
     it("in a channel with open cards, shows only the waiting bar, not the cards bar", async () => {

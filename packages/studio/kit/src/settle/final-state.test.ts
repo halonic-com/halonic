@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { type CardEnder, finalState } from "./settle.ts";
+import { type CardEnder, finalState } from "./settle.tsx";
 
 const at = new Date(2026, 10, 26, 14, 2).toISOString();
 const ada = { kind: "agent", name: "Ada" } as const;
@@ -23,6 +23,21 @@ verifies("kit.final-state", () => {
       });
       expect(answered(option("friday")).line).toBe("Answered by Ada · 14:02");
       expect(answered({ kind: "reply" }).line).toBe("Answered by Ada · 14:02");
+    });
+
+    it("says how an action ended, in the success tone only when it succeeded", () => {
+      const ended = (outcome: string) =>
+        finalState({
+          kind: "answered",
+          by: { kind: "me" },
+          answer: { kind: "action-result", outcome },
+          answeredAt: at,
+        });
+
+      expect(ended("declined")).toEqual({ line: "Declined by you · 14:02", tone: "neutral" });
+      expect(ended("failed")).toEqual({ line: "Failed by you · 14:02", tone: "danger" });
+      expect(ended("expired")).toEqual({ line: "Expired by you · 14:02", tone: "neutral" });
+      expect(ended("succeeded")).toEqual({ line: "Succeeded by you · 14:02", tone: "success" });
     });
 
     it("says Cancelled or Expired, naming who only when the source does", () => {

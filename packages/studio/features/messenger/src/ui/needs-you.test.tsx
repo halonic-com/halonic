@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 
-import { agentTint, settleHoldMs } from "@halonicjs/studio-kit";
+import { agentTint } from "@halonicjs/studio-kit";
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { byText, openMessenger, press, settle } from "../test-support/page.tsx";
+import { byText, openMessenger, press, settle, settleHoldMs } from "../test-support/page.tsx";
 import { unmountAll } from "../test-support/render.tsx";
 
 afterEach(unmountAll);
