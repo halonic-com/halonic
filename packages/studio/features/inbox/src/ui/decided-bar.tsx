@@ -3,8 +3,14 @@ import { type RefObject, useLayoutEffect, useRef } from "react";
 import { PlainValue } from "./plain-value.tsx";
 
 /**
- * After "Nothing else is waiting for you." on a phone, which can't show what the run did next: where
- * to see it (HAL-19399 G14).
+ * After "Nothing else is waiting for you." on a phone whose card shows **Open run**: the run page
+ * there shows the receipt and every step (HAL-19480).
+ */
+export const openRunText = "Open the run to see what it did.";
+
+/**
+ * After "Nothing else is waiting for you." on a phone whose card has no **Open run**: where to see
+ * what the run did (HAL-19399 G14).
  */
 export const seeOnComputerText = "See what it did in Studio on your computer.";
 
@@ -48,6 +54,8 @@ interface DecidedBarProps {
   readonly note?: string;
   readonly next: NextItem | null;
   readonly back: BackLink | null;
+  /** Whether the card shows **Open run**, so the phone's line can point at it. */
+  readonly runOpens: boolean;
   readonly callout: RefObject<CalloutHandle | null>;
 }
 
@@ -65,14 +73,16 @@ interface DecidedBarProps {
  * and fail on when the bar goes away.
  *
  * **Next** opens the next card at its top (`openAtTop`). On a phone the row starts at the left, and
- * "Nothing else is waiting for you." goes on to say where to see what the run did,
- * {@link seeOnComputerText}.
+ * "Nothing else is waiting for you." goes on to say where to see what the run did:
+ * {@link openRunText} when the card shows **Open run**, else {@link seeOnComputerText}, so the
+ * line never names a button that isn't there.
  */
-export function DecidedBar({ text, note, next, back, callout }: DecidedBarProps) {
+export function DecidedBar({ text, note, next, back, runOpens, callout }: DecidedBarProps) {
   // On a phone Next takes the card's width and its label wraps, so a long title grows it taller,
   // never past the screen's edge (HAL-13801 IN1).
   const phone = usePresentation() === "phone";
   const bar = useRef<HTMLDivElement>(null);
+  const whereToSee = runOpens ? openRunText : seeOnComputerText;
   useLayoutEffect(() => {
     bar.current?.scrollIntoView?.({ block: "nearest" });
   }, []);
@@ -93,7 +103,7 @@ export function DecidedBar({ text, note, next, back, callout }: DecidedBarProps)
         {back === null ? null : <Button onClick={back.open}>{backLabel(back)}</Button>}
         {next === null ? (
           <p className="text-small text-fg-muted">
-            Nothing else is waiting for you.{phone ? ` ${seeOnComputerText}` : null}
+            Nothing else is waiting for you.{phone ? ` ${whereToSee}` : null}
           </p>
         ) : (
           <Button

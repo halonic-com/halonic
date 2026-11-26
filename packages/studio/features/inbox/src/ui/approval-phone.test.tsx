@@ -38,17 +38,24 @@ verifies("inbox.approval-phone", () => {
       expect(root.textContent).not.toContain("The run continues.");
     });
 
-    it("says where to see what the run did when nothing else waits (HAL-19399 G14)", async () => {
+    it("points at Open run when the card shows it and nothing else waits (HAL-19480)", async () => {
       const { root, later } = openCard({}, "phone");
       later(61);
       await press(button(root, "Approve"));
-      const line = [...root.querySelectorAll("p")].find((each) =>
-        each.textContent?.startsWith("Nothing else is waiting for you."),
-      );
+      const line = nothingElseLine(root);
       expect(line?.textContent).toBe(
-        "Nothing else is waiting for you. See what it did in Studio on your computer.",
+        "Nothing else is waiting for you. Open the run to see what it did.",
       );
       expect(line?.parentElement?.className).toContain("justify-start");
+    });
+
+    it("says to look in Studio on your computer when the card has no Open run (HAL-19399 G14)", async () => {
+      const { root, later } = openCard({ onOpenRun: undefined }, "phone");
+      later(61);
+      await press(button(root, "Approve"));
+      expect(nothingElseLine(root)?.textContent).toBe(
+        "Nothing else is waiting for you. See what it did in Studio on your computer.",
+      );
     });
 
     it("still says the run finished when the approve finished it", async () => {
@@ -76,5 +83,12 @@ verifies("inbox.approval-phone", () => {
     await press(button(root, "Approve"));
     expect(root.textContent).toContain("Nothing else is waiting for you.");
     expect(root.textContent).not.toContain("See what it did");
+    expect(root.textContent).not.toContain("Open the run");
   });
 });
+
+function nothingElseLine(root: HTMLElement) {
+  return [...root.querySelectorAll("p")].find((each) =>
+    each.textContent?.startsWith("Nothing else is waiting for you."),
+  );
+}
