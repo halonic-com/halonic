@@ -4,10 +4,11 @@ import { AskSessionService, type AskWindow, AskWindowService } from "../api.ts";
 import type { AskSession } from "../ask-session.ts";
 import { AskBox } from "./ask-box.tsx";
 
-/** A window that can't hide or open Studio, as in the served Studio: the box still asks. */
+/** A window that can't hide, open Studio or open a chat, as in the served Studio: the box still asks. */
 const noWindow: AskWindow = {
   hide: async () => undefined,
   openStudio: async () => undefined,
+  openChat: async () => undefined,
 };
 
 /**

@@ -141,7 +141,7 @@ function SelectionBox({ screen, box }: { readonly screen: Screen; readonly box: 
 function Hint() {
   return (
     <p
-      className="absolute top-6 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full px-3 py-1.5 text-body transition-[opacity,translate] duration-(--duration-base) ease-(--ease-enter) starting:-translate-y-(--motion-rise) starting:opacity-0"
+      className="absolute top-6 left-1/2 flex w-max -translate-x-1/2 items-center gap-1.5 rounded-full px-3 py-1.5 text-body transition-[opacity,translate] duration-(--duration-base) ease-(--ease-enter) starting:-translate-y-(--motion-rise) starting:opacity-0"
       style={pill}
       data-feedback-hint=""
     >

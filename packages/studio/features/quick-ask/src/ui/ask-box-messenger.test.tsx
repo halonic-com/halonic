@@ -1,0 +1,83 @@
+// @vitest-environment jsdom
+import { clockTime } from "@halonicjs/studio-kit";
+import { verifies } from "@halonicjs/testing-spec";
+import { act } from "react";
+import { afterEach, describe, expect, it } from "vitest";
+import { AskMemory, memoryStorage } from "../ask-memory.ts";
+import { ask, byText, openBox, press } from "../test-support/box-page.tsx";
+import { agent, card, chat, FakeMessenger } from "../test-support/fake-messenger.ts";
+import { unmountAll } from "../test-support/render.tsx";
+
+const chief = agent("Chief");
+const liam = agent("Liam");
+
+afterEach(unmountAll);
+
+verifies("quick-ask.messenger", () => {
+  describe("the answer", () => {
+    it("offers Open in Messenger next to Copy, which closes the box on the agent's chat", async () => {
+      const messenger = new FakeMessenger([chat(chief)]);
+      const { page, window, closed } = await openBox(messenger);
+      await ask(page, "Where are we?");
+      messenger.reply(chief, "The release card is with the board.", "2026-11-25T13:41:00.000Z");
+      await act(async () => messenger.change("acme"));
+
+      expect(page.querySelector("footer")?.textContent).toBe("CopyOpen in Messenger");
+      await press(byText(page, "footer button", "Open in Messenger"));
+      expect(window.chatsOpened).toEqual(["chat-Chief"]);
+      expect(window.hidden).toBe(0);
+      expect(closed).toHaveLength(1);
+    });
+
+    it("offers no Open in Messenger before the agent has answered", async () => {
+      const messenger = new FakeMessenger([chat(chief)]);
+      const { page } = await openBox(messenger);
+      await ask(page, "Where are we?");
+
+      expect(page.querySelector("footer")?.textContent).not.toContain("Open in Messenger");
+    });
+  });
+
+  describe("the answer asks something", () => {
+    it("offers Answer in Messenger under the card, which opens the agent's chat", async () => {
+      const messenger = new FakeMessenger([chat(chief)]);
+      const { page, window } = await openBox(messenger);
+      await ask(page, "Shall we ship?");
+      messenger.cardsOf = [card(chief, "Ship 0.2.0 today?", "2026-11-25T13:41:00.000Z")];
+      await act(async () => messenger.change("acme"));
+
+      expect(page.querySelector("[data-answer]")?.textContent).toBe(
+        "Chief asks you to chooseShip 0.2.0 today?Answer in Messenger",
+      );
+      await press(byText(page, "[data-answer] button", "Answer in Messenger"));
+      expect(window.chatsOpened).toEqual(["chat-Chief"]);
+    });
+  });
+
+  describe("last answer", () => {
+    it("ends the hint row with the answer that came while the box was closed, and opens its chat", async () => {
+      const messenger = new FakeMessenger([chat(chief), chat(liam)]);
+      const storage = memoryStorage();
+      new AskMemory(storage).setPending({
+        conversation: "chat-Liam",
+        sentAt: "2026-11-25T13:30:00.000Z",
+      });
+      const answeredAt = "2026-11-25T13:41:00.000Z";
+      messenger.reply(liam, "Merged.", answeredAt);
+      const { page, window } = await openBox(messenger, storage);
+
+      const time = clockTime(new Date(answeredAt), new Date());
+      const link = byText(page, "footer button", "Last answer");
+      expect(link?.textContent).toBe(`Last answer: Liam, ${time} ›`);
+      await press(link);
+      expect(window.chatsOpened).toEqual(["chat-Liam"]);
+      expect(new AskMemory(storage).pending()).toBeUndefined();
+    });
+
+    it("shows no last answer when none came while the box was closed", async () => {
+      const { page } = await openBox(new FakeMessenger([chat(chief)]));
+
+      expect(byText(page, "footer button", "Last answer")).toBeUndefined();
+    });
+  });
+});

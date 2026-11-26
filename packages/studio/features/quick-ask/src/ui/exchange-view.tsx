@@ -1,5 +1,5 @@
-import type { Message } from "@halonicjs/ports";
-import { ChatText, enter, standaloneLinkClasses } from "@halonicjs/studio-kit";
+import type { Message, MessagingId } from "@halonicjs/ports";
+import { Button, ChatText, enter, standaloneLinkClasses } from "@halonicjs/studio-kit";
 import { type ReactNode, useEffect, useRef } from "react";
 import type { AnswerState } from "../ask-answer.ts";
 import { quickAskWords } from "../quick-ask-words.ts";
@@ -9,14 +9,17 @@ import type { Exchange } from "./use-ask-box.ts";
 export interface ExchangeViewProps {
   readonly exchange: Exchange;
   readonly onRetry: (exchange: Exchange) => void;
+  /** Opens the exchange's chat in Messenger, for **Answer in Messenger** on a card. */
+  readonly onOpenChat: (conversation: MessagingId) => void;
 }
 
 /**
  * One question asked from the box and where its answer stands (design HAL-18594, sections 4–5):
  * the question at once (motion 4), then the working line while the agent works, the answer as it
- * arrives (motion 3), what a card asks, or **Not sent · Try again** with the reason.
+ * arrives (motion 3), what a card asks with **Answer in Messenger**, or **Not sent · Try again**
+ * with the reason.
  */
-export function ExchangeView({ exchange, onRetry }: ExchangeViewProps) {
+export function ExchangeView({ exchange, onRetry, onOpenChat }: ExchangeViewProps) {
   const agent = exchange.agent.agent.name;
   const notSent = exchange.status === "not-sent";
   return (
@@ -48,7 +51,13 @@ export function ExchangeView({ exchange, onRetry }: ExchangeViewProps) {
           </>
         ) : null}
       </Arriving>
-      {exchange.status === "sent" ? <AnswerView agent={agent} answer={exchange.answer} /> : null}
+      {exchange.status === "sent" ? (
+        <AnswerView
+          agent={agent}
+          answer={exchange.answer}
+          onAnswerCard={() => onOpenChat(exchange.agent.row.conversation.id)}
+        />
+      ) : null}
     </li>
   );
 }
@@ -56,9 +65,11 @@ export function ExchangeView({ exchange, onRetry }: ExchangeViewProps) {
 function AnswerView({
   agent,
   answer,
+  onAnswerCard,
 }: {
   readonly agent: string;
   readonly answer: AnswerState | undefined;
+  readonly onAnswerCard: () => void;
 }) {
   if (answer === undefined || answer.kind === "waiting") return <CanClose agent={agent} />;
   if (answer.kind === "working") {
@@ -73,9 +84,14 @@ function AnswerView({
     <Arriving data-answer="" className="flex max-h-[380px] flex-col gap-2 overflow-y-auto">
       <Replies messages={answer.messages} />
       {answer.kind === "card" ? (
-        <div className="rounded-md border border-border px-3 py-2">
-          <p className="text-body-strong">{quickAskWords.cardAsks(agent)}</p>
-          <p className="text-body">{answer.card.question}</p>
+        <div className="flex flex-col items-start gap-2 rounded-md border border-border px-3 py-2">
+          <div>
+            <p className="text-body-strong">{quickAskWords.cardAsks(agent)}</p>
+            <p className="text-body">{answer.card.question}</p>
+          </div>
+          <Button variant="secondary" size="sm" onClick={onAnswerCard}>
+            {quickAskWords.answerInMessenger}
+          </Button>
         </div>
       ) : null}
     </Arriving>
