@@ -18,5 +18,14 @@ export const avatarSection: PartSection = {
         </>
       ),
     },
+    {
+      name: "On a muted row",
+      copies: () => (
+        <span className="flex gap-2 rounded-md bg-surface-muted p-2">
+          <Avatar name="Sofia Marin" />
+          <Avatar name="Sofia Marin" size="header" />
+        </span>
+      ),
+    },
   ],
 };
