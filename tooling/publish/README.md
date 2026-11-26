@@ -89,16 +89,23 @@ requirement `publish.staged-cli`.
 
 On npm, `halonic` 1.0.0 is our placeholder. It and `0.0.0-stage` are
 already deprecated ("Empty placeholder. Use halonic 0.1.0 or later.", checked on 18 Nov 2026), so nothing
-more is needed for them. `latest` names 0.1.1 since that release (checked on 26 Nov 2026), so
-`npm i -g halonic` installs it. A real 0.1.x is lower than 1.0.0, so npm won't move `latest` to it by
-itself, and without the tag `npm i -g halonic` would install the placeholder again (HAL-12286). Every CLI
-publish before 1.0.0 therefore takes one more step:
+more is needed for them. `latest` names 0.1.1 since that release (checked on 26 Nov 2026). A real 0.1.x
+is lower than 1.0.0, so npm won't move `latest` to it by itself, and without the tag an install that leaves
+out `@latest` would get the placeholder again (HAL-12286).
+
+Our install lines say `npm install -g halonic@latest`, not plain `halonic`, until a real version is above
+1.0.0. When the `latest` version's `engines` doesn't match the user's Node.js (older than 26.12), an install
+without `@latest` falls back to the highest version that does, the placeholder 1.0.0, which installs
+quietly with no `halonic` command. With `@latest`, npm installs the tagged version, and `halonic` then says
+which Node.js it needs (HAL-19454).
+
+Every CLI publish before 1.0.0 therefore takes one more step:
 
 1. On a real run, the release workflow's `npm-cli` job stages the `cli-package` tarball with
    `npm stage publish <tarball> --tag latest` (HAL-16209), and a person approves it on npmjs.com. If it
    went live without the tag, run `npm dist-tag add halonic@<version> latest` right after.
 2. Once the version is live, check that `npm view halonic dist-tags` shows `latest: <version>`, and that
-   `npm i -g halonic` followed by `halonic --version` prints it.
+   `npm install -g halonic@latest` followed by `halonic --version` prints it.
 3. Check the npm page with `npm view halonic license readme`: it must show `Apache-2.0` and the README from
    `cli/README.md`. npm shows the `latest` version's licence and README, so until `latest` moves it still
    shows the placeholder's ISC licence and its one-word README.
