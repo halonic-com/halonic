@@ -2,6 +2,7 @@
 
 - Approval: the wording and the narrower `sentOnce` are Chief's team decision on HAL-19373 (26 Nov), built on the lines approved on HAL-19275; Liam's rule on HAL-19172 (never claim "Nothing was sent twice." unless the log proves it) is unchanged; the task is HAL-19373, and its reviewer approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:8GO4Hab7Ox+oGJhKgTV/AvJQfMtAQQ6mYthkDTb9uT+Zu2Ddea73rYfAYr7vJbvhWdY0Mh2m+RJePyIMzjbLCg==
 - Task: HAL-19373
 
 ## What changes
