@@ -50,6 +50,7 @@ pub fn open_focused<R: Runtime, M: Manager<R>>(
     config.visible = false;
     let window = open_from(manager, config)?;
     // Without its own icon the window still works, with Studio's.
+    #[cfg(not(windows))]
     if let Some(icon) = app.icon()
         && let Err(error) = window.set_icon(icon)
     {
@@ -58,6 +59,9 @@ pub fn open_focused<R: Runtime, M: Manager<R>>(
             format!("{}'s icon didn't set: {error}", app.title()),
         );
     }
+    // Windows takes both of the window's icons from the app's .ico.
+    #[cfg(windows)]
+    crate::window_icons::set(&window, app);
     #[cfg(windows)]
     {
         let app_id = app.app_user_model_id(&manager.config().identifier);
