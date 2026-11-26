@@ -14,6 +14,7 @@ import { agentChangeRows, agentRow, siteLines, withoutAsking } from "./agent-tru
 import { secretNames, secretPicks } from "./connector-secrets.ts";
 import { connectorLines } from "./connector-trust-lines.ts";
 import {
+  changedIntegrationRow,
   type IntegrationRuns,
   integrationRow,
   integrationsIntro,
@@ -195,7 +196,7 @@ function changesView(
         ),
         ...tagged(
           changes.integrations.changed.map((row) =>
-            integrationRow(row.after, runs, assistantAdded),
+            changedIntegrationRow(row, runs, assistantAdded),
           ),
           "Changed",
         ),

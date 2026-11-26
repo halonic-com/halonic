@@ -116,7 +116,9 @@ export {
   type ChangedIntegration,
   type ChangedItem,
   type ChangedProvider,
+  type IntegrationAdditions,
   type ItemChanges,
+  integrationAdditions,
   type TrustChanges,
   trustChanges,
 } from "./trust-changes.ts";

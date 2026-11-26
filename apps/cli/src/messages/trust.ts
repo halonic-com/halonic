@@ -205,6 +205,17 @@ export const trustMessages = defineMessages("trust", {
   /** A local integration that moved: "folder integrations/crm → integrations/my-crm". */
   integrationFolderChanged: (before: string, after: string) =>
     phrase`folder ${dim(before)} → ${dim(after)}`,
+  /**
+   * Under a changed local integration, one line for each host, secret or
+   * tool it has that it didn't have when it was trusted: "New: can also
+   * reach cdn.shopify.com" (HAL-511, until the copy check). A host from a
+   * setting is named by the setting.
+   */
+  integrationNewHost: (host: string) => phrase`New: can also reach ${host}`,
+  integrationNewSettingHost: (setting: string) =>
+    phrase`New: can also reach the address in the setting ${setting}`,
+  integrationNewSecret: (name: string) => phrase`New: can also get the secret ${name}`,
+  integrationNewTool: (name: string) => phrase`New: can also offer the tool ${name}`,
   /** A local integration's setting with no address in it yet. */
   settingNotSet: () => phrase`not set`,
   /**

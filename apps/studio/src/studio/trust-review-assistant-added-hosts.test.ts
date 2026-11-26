@@ -32,8 +32,9 @@ function reachesOf(check: TrustCheck): TrustRowView["lines"] | undefined {
   const section = trustReviewOf(check, facts)?.sections.find((each) =>
     each.heading.startsWith("Integrations"),
   );
+  // The Reaches row only: a changed row's "New:" lines are in fix-trust-changes.test.ts.
   return section?.rows[0]?.lines.filter(
-    ([label, text]) => label === "Reaches" || text.includes("weather"),
+    ([label, text]) => label === "Reaches" || (label === "" && text.includes("weather")),
   );
 }
 

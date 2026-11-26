@@ -9,7 +9,11 @@ import {
 } from "@halonicjs/app";
 import { unfencedAllowedLine } from "@halonicjs/studio-feature-plugins/api";
 import type { TrustRowView } from "@halonicjs/studio-feature-workspace";
-import type { IntegrationTrustContent } from "@halonicjs/workspace";
+import {
+  type ChangedIntegration,
+  type IntegrationTrustContent,
+  integrationAdditions,
+} from "@halonicjs/workspace";
 
 /**
  * Whether integration code runs in the sandbox on this computer, as the host says when the check
@@ -100,6 +104,38 @@ export function integrationRow(
       ...labelled("Gets secrets", secrets),
     ],
   };
+}
+
+/**
+ * The label before each host, secret or tool a changed integration has that it didn't have when it
+ * was trusted, such as "New: can also reach cdn.shopify.com" (HAL-511, until the copy check).
+ */
+export const newAdditionLabel = "New:";
+
+/**
+ * A changed local integration's row: first a {@link newAdditionLabel} line for each host, secret
+ * and tool it has now that it didn't have when it was trusted, then its row as it is now. What it
+ * no longer has gets no line (HAL-65 decision 9).
+ */
+export function changedIntegrationRow(
+  changed: ChangedIntegration,
+  runs: IntegrationRuns,
+  assistantAdded?: AssistantAddedHosts,
+): TrustRowView {
+  const row = integrationRow(changed.after, runs, assistantAdded);
+  const added = integrationAdditions(changed);
+  const lines = [
+    ...added.hosts.map((host) => `can also reach ${newHost(host)}`),
+    ...added.secrets.map((secret) => `can also get the secret ${secretName(secret)}`),
+    ...added.tools.map((tool) => `can also offer the tool ${tool}`),
+  ].map((text) => [newAdditionLabel, text] as const);
+  return { ...row, lines: [...lines, ...row.lines] };
+}
+
+/** A host the integration may reach now: its name, or the setting that holds the address. */
+function newHost(host: string): string {
+  const setting = settingNameOf(host);
+  return setting === undefined ? host : `the address in the setting ${setting}`;
 }
 
 /**
