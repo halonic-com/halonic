@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-20018
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xErI3amLgFUO5ZLfLofvMHwaq0llZYvFOCuYy7ehSlK0nbAedQ4Emz0gD2q2FN2pCybYeIuwXc3GkCjk5MX4Cw==
 
 Source: the board's correction on HAL-10 (26 Nov): the Inbox's and the Messenger's sidebar rows are
 exactly 80px, padding included; Noah's design decision on HAL-20018 (option B, with the wait kept
