@@ -133,6 +133,8 @@ verifies("account-menu.menu", () => {
       const trigger = container.querySelector("button[aria-haspopup=menu]");
       expect(trigger?.getAttribute("aria-label")).toBe("Account menu, Sofia Marin");
       expect(trigger?.textContent).toBe("SM");
+      // The whole 28px tile, not squeezed into a 16px icon slot (HAL-19536).
+      expect(trigger?.firstElementChild?.className.split(" ")).toContain("size-7");
       const menu = container.querySelector("[role=menu]");
       expect(menu?.textContent).toContain("Signed in as Sofia Marin");
       const items = [...container.querySelectorAll("[role=menuitem]")];

@@ -9,6 +9,7 @@ import {
   OpenAsTabIcon,
   PlusIcon,
   SparkIcon,
+  useFormatLocale,
 } from "@halonicjs/studio-kit";
 import { type RefObject, useEffect, useRef, useState } from "react";
 import type { AssistantHost, ChatAgent, ChatSummary } from "../api.ts";
@@ -48,6 +49,7 @@ export function ChatHeading(
 ) {
   const { chats, view, title, renaming } = props;
   const kept = useRecentChats(props.host);
+  const locale = useFormatLocale();
   const recent = props.only === undefined ? kept : kept.filter(props.only);
   if (view === undefined) return title;
   const heading = view.chat.draft ? title : view.chat.title;
@@ -65,7 +67,7 @@ export function ChatHeading(
   };
   const now = new Date();
   const rows: MenuEntry[] = recent.map((chat) => {
-    const time = chatTime(chat.lastUsedAt, now);
+    const time = chatTime(chat.lastUsedAt, now, locale);
     return {
       id: chat.id,
       label: chat.title,

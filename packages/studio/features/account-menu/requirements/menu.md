@@ -6,8 +6,8 @@
 
 Where the app provides the account menu host, the Account Menu feature shall ask it for the
 signed-in customer's facts (`GET /api/account-menu` in a served Studio). When it answers, the
-feature shall show the customer's initials as the last item at the right end of the top bar, a
-ghost icon button named "Account menu, {name}", opening a menu, lined up with its right edge, with:
+feature shall show the customer's initials on the 28px avatar tile, as the last item at the
+right end of the top bar, a round button named "Account menu, {name}", opening a menu, lined up with its right edge, with:
 
 - the description "Signed in as {name}";
 - the plan item: its label "{Plan}" and the detail "{percent}% of this month's usage", with the

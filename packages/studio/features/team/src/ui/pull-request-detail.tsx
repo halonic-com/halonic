@@ -60,7 +60,7 @@ function PullRequestBody(props: {
   return (
     <>
       <p className="flex items-center gap-2 text-small text-fg-muted">
-        <Avatar name={authorName(pullRequest.author)} />
+        <Avatar name={authorName(pullRequest.author)} size="header" />
         <span className="min-w-0 wrap-anywhere">{headerLine(page.row)}</span>
       </p>
       <StateRow row={page.row} clock={clock} />

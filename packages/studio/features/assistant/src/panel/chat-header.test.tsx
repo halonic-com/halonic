@@ -102,12 +102,19 @@ verifies("assistant.chat.menu", () => {
 
 describe("chatTime", () => {
   const now = new Date(2026, 10, 24, 12, 0);
-  it("says the time today, yesterday, the day this week, then the date", () => {
-    expect(chatTime(new Date(2026, 10, 24, 9, 5).toISOString(), now)).toBe("09:05");
-    expect(chatTime(new Date(2026, 10, 23, 22, 0).toISOString(), now)).toBe("yesterday");
-    expect(chatTime(new Date(2026, 10, 20, 8, 0).toISOString(), now)).toBe("Fri");
-    expect(chatTime(new Date(2026, 10, 3, 8, 0).toISOString(), now)).toBe("3 Nov");
-    expect(chatTime(new Date(2025, 11, 2, 8, 0).toISOString(), now)).toBe("2 Dec 2025");
+  const at = (...parts: [number, number, number, number, number]) =>
+    new Date(...parts).toISOString();
+  it("says the time today, Yesterday, the day this week, then the date, as the kit does", () => {
+    expect(chatTime(at(2026, 10, 24, 9, 5), now, "en-GB")).toBe("09:05");
+    expect(chatTime(at(2026, 10, 23, 22, 0), now, "en-GB")).toBe("Yesterday");
+    expect(chatTime(at(2026, 10, 20, 8, 0), now, "en-GB")).toBe("Fri");
+    expect(chatTime(at(2026, 10, 3, 8, 0), now, "en-GB")).toBe("3 Nov");
+    expect(chatTime(at(2025, 11, 2, 8, 0), now, "en-GB")).toBe("02/12/2025");
+  });
+
+  it("follows the format it's given", () => {
+    expect(chatTime(at(2026, 10, 24, 9, 5), now, "en-US")).toMatch(/^9:05\sAM$/u);
+    expect(chatTime(at(2026, 10, 3, 8, 0), now, "en-US")).toBe("Nov 3");
   });
 });
 
