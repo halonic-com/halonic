@@ -81,12 +81,12 @@ verifies("messenger.chat-rows", () => {
       messaging.addInboxItem(source.id, card);
       messaging.addInboxItem(source.id, card);
       const page = await openMessenger(messaging, [], false, noon);
-      const dot = row(page, "Chief")?.querySelector("[data-needs-you]");
+      const dot = row(page, "Chief")?.querySelector("[data-flag]");
       expect(dot?.className).toContain("bg-warning");
       expect(dot?.className).toContain("size-1.5");
       expect(dot?.textContent).toBe(", needs you");
       expect(row(page, "Chief")?.textContent).not.toContain("card");
-      expect(row(page, "Liam")?.querySelector("[data-needs-you]")).toBeNull();
+      expect(row(page, "Liam")?.querySelector("[data-flag]")).toBeNull();
     });
 
     it("name their source once the chats come from two", async () => {
