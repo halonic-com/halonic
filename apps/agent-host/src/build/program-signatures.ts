@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { closeSync, openSync, readdirSync, readFileSync, readSync } from "node:fs";
 import { join } from "node:path";
 import { isPortableExecutable, signatureState } from "./pe-signature.ts";
 
@@ -27,7 +27,22 @@ export function checkProgram(path: string, bytes: Uint8Array): ProgramSignature 
   return { path, ok: true, detail: `signed (${where})` };
 }
 
-/** Every Windows program or DLL in a folder and its subfolders, checked as `checkProgram` does. */
+/** Whether a file starts with "MZ", read from its first two bytes only. */
+function startsWithMz(file: string): boolean {
+  const head = new Uint8Array(2);
+  const fd = openSync(file, "r");
+  try {
+    return readSync(fd, head, 0, 2, 0) === 2 && head[0] === 0x4d && head[1] === 0x5a;
+  } finally {
+    closeSync(fd);
+  }
+}
+
+/**
+ * Every Windows program or DLL in a folder and its subfolders, checked as
+ * `checkProgram` does. Only files that start with "MZ" are read in full, so
+ * large archives such as the WSL image cost two bytes each.
+ */
 export function checkPrograms(folder: string): ProgramSignature[] {
   const files = readdirSync(folder, { recursive: true, withFileTypes: true })
     .filter((entry) => entry.isFile())
@@ -35,6 +50,7 @@ export function checkPrograms(folder: string): ProgramSignature[] {
     .sort();
   const results: ProgramSignature[] = [];
   for (const file of files) {
+    if (!startsWithMz(file)) continue;
     const bytes = readFileSync(file);
     if (!isPortableExecutable(bytes)) continue;
     results.push(checkProgram(file, bytes));

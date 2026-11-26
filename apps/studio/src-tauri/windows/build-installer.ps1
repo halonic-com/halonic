@@ -220,11 +220,15 @@ try {
   & 7z x -y "-o$unpacked" $out | Out-Null
   if ($LASTEXITCODE -ne 0) { throw '7z could not unpack the installer' }
   # The security directory first: Authenticode calls one that holds no
-  # certificate "not signed", which would pass below.
-  node (Join-Path $repo 'apps/agent-host/scripts/check-signatures.ts') $unpacked
+  # certificate "not signed", which would pass below. The check writes every
+  # program it finds to $programs, so Authenticode also sees programs with
+  # other names, such as vcruntime140.dll.pinned.
+  $programs = "$unpacked.programs.txt"
+  node (Join-Path $repo 'apps/agent-host/scripts/check-signatures.ts') $unpacked $programs
   if ($LASTEXITCODE -ne 0) { throw 'a program in the installer has a broken security directory' }
-  foreach ($program in Get-ChildItem $unpacked -Recurse -File -Include '*.exe', '*.dll') {
-    $status = (Get-AuthenticodeSignature -LiteralPath $program.FullName).Status
-    if ($status -ne 'NotSigned' -and $status -ne 'Valid') { throw "$($program.Name) in the installer: signature is $status" }
+  foreach ($program in Get-Content -LiteralPath $programs) {
+    $status = (Get-AuthenticodeSignature -LiteralPath $program).Status
+    Write-Output "Authenticode $status`: $($program.Substring($unpacked.Length + 1))"
+    if ($status -ne 'NotSigned' -and $status -ne 'Valid') { throw "$program in the installer: signature is $status" }
   }
-} finally { Remove-Item -Recurse -Force $unpacked -ErrorAction SilentlyContinue }
+} finally { Remove-Item -Recurse -Force $unpacked, "$unpacked.programs.txt" -ErrorAction SilentlyContinue }
