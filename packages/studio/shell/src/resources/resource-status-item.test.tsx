@@ -114,18 +114,18 @@ verifies("shell.resource-status-item", () => {
     expect(reads).toBe(before + 2);
   });
 
-  it("shows from 900px, and only the normal item gives way to a Restart to update item", async () => {
+  it("shows from 900px, in its normal and its low-disk form", async () => {
     const normal = await renderItem();
     const normalClasses = (normal.firstElementChild as HTMLElement).className;
     expect(normalClasses).toContain("hidden");
     expect(normalClasses).toContain("wide:inline");
-    expect(normalClasses).toContain("max-[1199px]:group-has-[[data-status-update]]/bar:hidden");
     unmountAll();
     watch?.stop();
     report.free = 0.8 * gigabyte;
     const low = await renderItem();
-    expect((low.firstElementChild as HTMLElement).className).toContain("wide:flex");
-    expect((low.firstElementChild as HTMLElement).className).not.toContain("group-has");
+    const lowClasses = (low.firstElementChild as HTMLElement).className;
+    expect(lowClasses).toContain("hidden");
+    expect(lowClasses).toContain("wide:flex");
   });
 });
 

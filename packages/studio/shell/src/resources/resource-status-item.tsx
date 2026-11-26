@@ -23,8 +23,7 @@ export interface ResourceStatusItemProps {
  *
  * It's plain text, not a button: there's no details page for it to open. It reads the report
  * every 30 s and when the window comes to the front. Until a reading arrives, it shows nothing.
- * From 900px it shows; between 900 and 1199px the normal item gives way to an item marked
- * `data-status-update` (Restart to update) in the same status bar, while the low-disk warning stays.
+ * It shows from 900px wide.
  *
  * The status bar isn't a live region, and a state that lasts isn't announced: the item's name is
  * also its tooltip.
@@ -45,10 +44,7 @@ export function ResourceStatusItem({ watch, timers = systemTimers }: ResourceSta
   const memory = memoryText(halonicMemoryBytes(reading.report));
   const name = resourceWords.usageName(memory, free);
   return (
-    <span
-      title={name}
-      className="hidden shrink-0 whitespace-nowrap max-[1199px]:group-has-[[data-status-update]]/bar:hidden wide:inline"
-    >
+    <span title={name} className="hidden shrink-0 whitespace-nowrap wide:inline">
       <span aria-hidden="true">{resourceWords.usage(memory, free)}</span>
       <span className="sr-only">{name}</span>
     </span>
