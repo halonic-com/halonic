@@ -24,6 +24,12 @@ export {
   UnsafeIdError,
 } from "./requests.ts";
 export {
+  logRouteTimings,
+  type RouteTiming,
+  type RouteTimingSink,
+  routeTimingLine,
+} from "./route-timing.ts";
+export {
   PaperclipRunControl,
   type PaperclipRunControlOptions,
   runAgainComment,
