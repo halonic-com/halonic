@@ -34,6 +34,7 @@ export type { DisplayPref, DisplayPrefs } from "./display-prefs.ts";
 export { DisplaySettings, type SaveOutcome } from "./display-settings.ts";
 export { settingsFeature } from "./feature.ts";
 export {
+  chosenFormatOf,
   type FormatChoice,
   type FormatOption,
   type FormatPlace,

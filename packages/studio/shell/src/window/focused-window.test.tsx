@@ -8,6 +8,7 @@ import { defineFeature } from "../feature.ts";
 import type { FocusedAppContribution } from "../points/frame.ts";
 import { createShell } from "../shell.ts";
 import { ShellError } from "../shell-error.ts";
+import { FakeChosenFormat } from "../test-support/fake-chosen-format.ts";
 import { FakeMediaQueries } from "../test-support/fake-media-query.ts";
 import { FakeTimers } from "../test-support/fake-timers.ts";
 import { MapTarget } from "../test-support/map-target.ts";
@@ -62,6 +63,7 @@ async function mount(
   name: string | undefined,
   shown: FocusedAppContribution = inboxApp,
   regionFormat?: string,
+  chosenFormat?: FakeChosenFormat,
 ) {
   const shell = shellWith(shown);
   const services = new MapTarget();
@@ -80,6 +82,7 @@ async function mount(
       workspace,
       language: "en",
       regionFormat,
+      chosenFormat,
       openStudio,
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -195,6 +198,15 @@ verifies("kit.time-stamp", () => {
     vi.spyOn(navigator, "language", "get").mockReturnValue("en-US");
     await mount("Acme", messengerApp);
 
+    expect(element.querySelector("time")?.textContent).toBe("9:41 AM");
+  });
+
+  it("follows the format chosen in Settings → Formats over the region, and a new choice at once", async () => {
+    const chosen = new FakeChosenFormat("en-GB");
+    await mount("Acme", messengerApp, "en_US.UTF-8", chosen);
+    expect(element.querySelector("time")?.textContent).toBe("09:41");
+
+    act(() => chosen.choose(undefined));
     expect(element.querySelector("time")?.textContent).toBe("9:41 AM");
   });
 });

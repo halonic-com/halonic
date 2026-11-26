@@ -3,7 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { render, unmountAll } from "../test/render.tsx";
 import { fullTime, shortTime } from "../text/short-time.ts";
-import { FormatLocale, formatTag } from "./format-locale.ts";
+import { FormatLocaleProvider, followedFormat, formatTag } from "./format-locale.tsx";
 import { TimeStamp } from "./time-stamp.tsx";
 
 // Local times, so the test reads the same in every time zone. `now` is the faked clock.
@@ -18,6 +18,7 @@ beforeEach(() => {
 afterEach(() => {
   unmountAll();
   vi.useRealTimers();
+  vi.unstubAllEnvs();
 });
 
 verifies("kit.time-stamp", () => {
@@ -52,6 +53,30 @@ verifies("kit.time-stamp", () => {
     expect(shortTime(at(2025, 11, 26, 9, 41), new Date(), "en-US")).toBe("11/26/2025");
   });
 
+  it("writes English the way a region in another language writes it, never mixing them", () => {
+    expect(shortTime(at(2026, 11, 26, 9, 41), new Date(), "de-DE")).toBe("09:41");
+    expect(shortTime(at(2026, 11, 23, 12, 0), new Date(), "de-DE")).toBe("Mon");
+    expect(shortTime(at(2026, 11, 19, 12, 0), new Date(), "de-DE")).toBe("19 Nov");
+    expect(shortTime(at(2026, 11, 19, 12, 0), new Date(), "nl")).toBe("19 Nov");
+    expect(fullTime(at(2026, 11, 26, 9, 41), "de-DE")).toBe(
+      fullTime(at(2026, 11, 26, 9, 41), "en-DE"),
+    );
+    expect(fullTime(at(2026, 11, 26, 9, 41), "de-DE")).toMatch(/^Thursday,? 26 November 2026/u);
+  });
+
+  it("writes a region Intl has no English for as en-GB, not as US English", () => {
+    expect(shortTime(at(2026, 11, 26, 9, 41), new Date(), "pt-BR")).toBe("09:41");
+    expect(shortTime(at(2026, 11, 19, 12, 0), new Date(), "pt-BR")).toBe("19 Nov");
+  });
+
+  it("counts calendar days across a change to summer time", () => {
+    // In Amsterdam the clocks go forward on Sun 29 Mar 2026, so that day has 23 hours.
+    vi.stubEnv("TZ", "Europe/Amsterdam");
+    vi.setSystemTime(new Date("2026-03-30T08:00:00Z"));
+    expect(shortTime(new Date("2026-03-28T11:00:00Z"), new Date(), "en-GB")).toBe("Sat");
+    expect(shortTime(new Date("2026-03-29T21:30:00Z"), new Date(), "en-GB")).toBe("Yesterday");
+  });
+
   it("reads a time later than now as its day", () => {
     expect(shortTime(at(2026, 11, 27, 8, 0), new Date(), "en-GB")).toBe("27 Nov");
   });
@@ -78,11 +103,34 @@ verifies("kit.time-stamp", () => {
 
   it("follows the window's format when it isn't given one", () => {
     const { container } = render(
-      <FormatLocale value={formatTag("en_US.UTF-8")}>
+      <FormatLocaleProvider locale={formatTag("en_US.UTF-8")}>
         <TimeStamp at={at(2026, 11, 26, 9, 41)} now={new Date()} />
-      </FormatLocale>,
+      </FormatLocaleProvider>,
     );
     expect(container.querySelector("time")?.textContent).toBe("9:41 AM");
+  });
+
+  it("gives a window in a region in another language English times in that region's way", () => {
+    const { container } = render(
+      <FormatLocaleProvider locale={followedFormat(undefined, "en_DE.UTF-8")}>
+        <TimeStamp at={at(2026, 11, 26, 9, 41)} now={new Date()} />
+        <TimeStamp at={at(2026, 11, 23, 9, 41)} now={new Date()} />
+        <TimeStamp at={at(2026, 11, 26, 9, 41)} now={at(2026, 12, 5, 12, 0)} />
+      </FormatLocaleProvider>,
+    );
+    const shown = [...container.querySelectorAll("time")].map((time) => time.textContent);
+    expect(shown).toEqual(["09:41", "Mon", "26 Nov"]);
+  });
+
+  it("follows the format chosen in Settings → Formats over the computer's region", () => {
+    expect(followedFormat("de-DE", "en_US.UTF-8")).toBe("de-DE");
+    expect(followedFormat(undefined, "en_US.UTF-8")).toBe("en-US");
+    const { container } = render(
+      <FormatLocaleProvider locale={followedFormat("de-DE", "en_US.UTF-8")}>
+        <TimeStamp at={at(2026, 11, 26, 9, 41)} now={new Date()} />
+      </FormatLocaleProvider>,
+    );
+    expect(container.querySelector("time")?.textContent).toBe("09:41");
   });
 
   it("reads a system tag, and leaves one Intl can't read to the runtime", () => {

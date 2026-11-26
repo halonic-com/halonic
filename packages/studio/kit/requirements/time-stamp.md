@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-19537; HAL-19536 item 4 (short timestamps); design check HAL-19540
+- Source: HAL-19537; HAL-19536 item 4 (short timestamps); design check HAL-19540; HAL-19825
 
-The kit's `shortTime(at, now, locale)` shall be the one way Studio says when something happened in a list: the time of day when `at` is on the same calendar day as `now` ("09:41"), "Yesterday" on the calendar day before, the short weekday from 2 to 6 calendar days before ("Mon"), the day and short month earlier in the same year ("26 Nov"), and the short numeric date before that year ("26/11/2025"). Each part shall follow `locale`, the runtime's own when none is given, so a 12-hour locale shows "9:41 AM" and a month-first locale "Nov 26". The kit's `fullTime(at, locale)` shall give the full date and time. The kit's `TimeStamp` shall render the short time in a `<time>` element with the moment in `dateTime` and the full date and time as its hover title, in `text-small` `fg-muted` with tabular figures, and shall never wrap or shrink, so the name beside it is cut first; for an invalid `at` it shall render nothing. Without a `locale` of its own, `TimeStamp` shall follow the window's `FormatLocale`, which Studio's window and every focused app's window, such as the Messenger's, set from the system's region format (the browser's language when served), as Settings → Formats' "Follow this computer" does; `formatTag` shall turn a system tag such as `en_GB.UTF-8` into `en-GB`, and a tag Intl can't read into none, so the runtime's own format is used.
+The kit's `shortTime(at, now, locale)` shall be the one way Studio says when something happened in a list: the time of day when `at` is on the same calendar day as `now` ("09:41"), "Yesterday" on the calendar day before, the short weekday from 2 to 6 calendar days before ("Mon"), the day and short month earlier in the same year ("26 Nov"), and the short numeric date before that year ("26/11/2025"). Each part shall be in English, the language of the Studio's words, written as `locale`'s region writes English (the runtime's own when none is given), so one line never mixes languages: en-US shows "9:41 AM" and "Nov 26", de-DE shows "09:41", "Mon" and "26 Nov"; a region Intl has no English for shall read as `en-GB`. The kit's `fullTime(at, locale)` shall give the full date and time by the same rule. The kit's `TimeStamp` shall render the short time in a `<time>` element with the moment in `dateTime` and the full date and time as its hover title, in `text-small` `fg-muted` with tabular figures, and shall never wrap or shrink, so the name beside it is cut first; for an invalid `at` it shall render nothing. Without a `locale` of its own, `TimeStamp` shall follow the window's `FormatLocaleProvider`, which Studio's window and the Inbox's and Messenger's windows set from the format chosen in Settings → Formats, else from the system's region format (the browser's language when served), as "Follow this computer" does, and set again at once when the choice changes; `followedFormat(chosen, region)` shall give that tag, and `formatTag` shall turn a system tag such as `en_GB.UTF-8` into `en-GB`, and a tag Intl can't read into none, so the runtime's own format is used.
 
 ## Examples
 
@@ -35,3 +35,15 @@ The kit's `shortTime(at, now, locale)` shall be the one way Studio says when som
 - Given the Messenger's focused window, in a browser whose language is `en-US`, on a computer whose region format is `en_GB.UTF-8`,
   when a `TimeStamp` without a locale inside it renders 09:41 today,
   then it shows "09:41".
+- Given now is Thu 26 Nov 2026 09:41 and the locale `de-DE`,
+  when `at` is 09:41 that day, Mon 23 Nov 2026, or 26 Nov 2026 seen from 5 Dec 2026,
+  then `shortTime` gives "09:41", "Mon" and "26 Nov", never "Mo." or "26. Nov.".
+- Given the locale `pt-BR`, a region Intl has no English for,
+  when `at` is 09:41 today,
+  then `shortTime` gives "09:41", as `en-GB` does.
+- Given now is Mon 30 Mar 2026 10:00 in Amsterdam, the day after the clocks went forward,
+  when `at` is Sat 28 Mar 2026 12:00,
+  then `shortTime` gives "Sat", not "Yesterday".
+- Given a window on a computer whose region format is `en_GB.UTF-8`, where Settings → Formats is set to English (US),
+  when a `TimeStamp` without a locale inside it renders 09:41 today,
+  then it shows "9:41 AM"; once Formats follows the computer again, it shows "09:41".

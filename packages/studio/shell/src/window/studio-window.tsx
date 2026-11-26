@@ -50,7 +50,7 @@ import { StudioPage } from "./studio-page.tsx";
 import { StudioPhonePage, StudioPhoneTopBar } from "./studio-phone.tsx";
 import { StudioSidebar } from "./studio-sidebar.tsx";
 import type { StudioWorkspace } from "./studio-workspace.ts";
-import { WindowFormatLocale } from "./window-format.tsx";
+import { type ChosenFormat, WindowFormatLocale } from "./window-format.tsx";
 import { useWindowOpeners } from "./window-openers.ts";
 import { windowPanelParts } from "./window-panel.tsx";
 import { useOpenSettings } from "./window-settings.ts";
@@ -85,6 +85,8 @@ export interface StudioWindowProps {
    * Formats' "Follow this computer" uses it; without it Formats follows the browser's language.
    */
   readonly regionFormat?: string | undefined;
+  /** The format chosen in Settings → Formats, which the window's times follow over the region's. */
+  readonly chosenFormat?: ChosenFormat | undefined;
   /**
    * The sidebar's workspace switcher, once the app has a workspace menu (T3). The menu is a list of
    * rows, or a function of the window's actions for rows that open a page (**Workspace settings…**).
@@ -136,7 +138,7 @@ export function StudioWindow(props: StudioWindowProps) {
   // and its times follow the system's region format, as Formats' "Follow this computer" does.
   return (
     <StudioHostContext value={props.host}>
-      <WindowFormatLocale regionFormat={props.regionFormat}>
+      <WindowFormatLocale regionFormat={props.regionFormat} chosenFormat={props.chosenFormat}>
         <StudioWindowBody {...props} />
       </WindowFormatLocale>
     </StudioHostContext>

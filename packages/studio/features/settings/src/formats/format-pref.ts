@@ -1,4 +1,7 @@
+import { formatTag } from "@halonicjs/studio-kit";
+import type { ChosenFormat } from "@halonicjs/studio-shell";
 import type { DisplayPref } from "../display-prefs.ts";
+import type { DisplaySettings } from "../display-settings.ts";
 import { settingsWhere } from "../where.ts";
 
 /**
@@ -86,12 +89,10 @@ const studioLanguage = "en";
  * usableTag("en-GB-u-ca-buddhist"); // "en-GB"
  */
 export function usableTag(tag: string): string {
-  const posix = tag.split(/[.@]/u)[0]?.replaceAll("_", "-") ?? "";
-  try {
-    return new Intl.Locale(posix).baseName;
-  } catch {
-    return new Intl.Locale(new Intl.DateTimeFormat().resolvedOptions().locale).baseName;
-  }
+  // The kit's reading, so "Follow this computer: …" and the window's times can't drift apart.
+  return (
+    formatTag(tag) ?? new Intl.Locale(new Intl.DateTimeFormat().resolvedOptions().locale).baseName
+  );
 }
 
 /**
@@ -124,6 +125,24 @@ export function formatOptions(where: FormatPlace): FormatOption[] {
   const followTag = usableTag(where.followTag);
   const followed = shortNames.of(followTag) ?? followTag;
   return [{ value: "follow", label: `Follow ${follows}: ${followed}` }, ...tags];
+}
+
+/**
+ * The format chosen in Settings → Formats, for the window's times (`kit.time-stamp`): the tag, or
+ * undefined while it follows the computer, read again when a display setting changes, in this
+ * window or another.
+ *
+ * @example
+ * mountFocusedWindow(element, { ...props, chosenFormat: chosenFormatOf(display) });
+ */
+export function chosenFormatOf(settings: DisplaySettings): ChosenFormat {
+  return {
+    get: () => {
+      const choice = settings.get(formatPref);
+      return choice === "follow" ? undefined : choice;
+    },
+    subscribe: (listener) => settings.subscribe(listener),
+  };
 }
 
 /** The tag a choice formats with: the one followed, or the one chosen. */

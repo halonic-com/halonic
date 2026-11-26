@@ -6,6 +6,7 @@ import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { defineFeature } from "../feature.ts";
 import { createShell } from "../shell.ts";
+import { FakeChosenFormat } from "../test-support/fake-chosen-format.ts";
 import { FakeMediaQueries } from "../test-support/fake-media-query.ts";
 import { fakeShowModal } from "../test-support/fake-show-modal.ts";
 import { FakeTimers } from "../test-support/fake-timers.ts";
@@ -45,7 +46,7 @@ const clockFeature = defineFeature({
 });
 
 /** The time the card shows in a window given `regionFormat`, once its view has loaded. */
-async function shownTime(regionFormat?: string) {
+async function shownTime(regionFormat?: string, chosenFormat?: FakeChosenFormat) {
   const shell = createShell({ features: [clockFeature], timers: new FakeTimers() });
   const services = new MapTarget();
   shell.services.instantiate(services);
@@ -58,6 +59,7 @@ async function shownTime(regionFormat?: string) {
       platform="windows"
       language="en"
       regionFormat={regionFormat}
+      chosenFormat={chosenFormat}
     />,
   );
   await act(async () => {
@@ -78,5 +80,13 @@ verifies("kit.time-stamp", () => {
     unmountAll();
     vi.spyOn(navigator, "language", "get").mockReturnValue("en-GB");
     expect(await shownTime()).toBe("09:41");
+  });
+
+  it("follows the format chosen in Settings → Formats over the region, and a new choice at once", async () => {
+    const chosen = new FakeChosenFormat("en-US");
+    expect(await shownTime("en_GB.UTF-8", chosen)).toBe("9:41 AM");
+
+    act(() => chosen.choose(undefined));
+    expect(document.querySelector("time")?.textContent).toBe("09:41");
   });
 });

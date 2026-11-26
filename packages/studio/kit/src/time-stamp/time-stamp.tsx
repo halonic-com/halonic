@@ -1,5 +1,5 @@
 import { fullTime, shortTime } from "../text/short-time.ts";
-import { useFormatLocale } from "./format-locale.ts";
+import { useFormatLocale } from "./format-locale.tsx";
 
 /** The props of {@link TimeStamp}. */
 export interface TimeStampProps {
@@ -7,7 +7,7 @@ export interface TimeStampProps {
   readonly at: Date;
   /** The list's clock, so every row of one list reads against the same moment. */
   readonly now: Date;
-  /** The format to follow; the window's `FormatLocale` when undefined. */
+  /** The format to follow; the window's `FormatLocaleProvider` when undefined. */
   readonly locale?: string;
 }
 

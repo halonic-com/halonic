@@ -25,7 +25,7 @@ import { LoadedView } from "../view-loading.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import type { PlaceViewProps } from "./studio-page.tsx";
 import type { StudioWorkspace } from "./studio-workspace.ts";
-import { WindowFormatLocale } from "./window-format.tsx";
+import { type ChosenFormat, WindowFormatLocale } from "./window-format.tsx";
 import { appName } from "./window-title.ts";
 
 /**
@@ -72,6 +72,8 @@ export interface FocusedWindowProps {
    * follow it, as in Studio's window; without it they follow the browser's language.
    */
   readonly regionFormat?: string | undefined;
+  /** The format chosen in Settings → Formats, which the app's times follow over the region's. */
+  readonly chosenFormat?: ChosenFormat | undefined;
   /** Brings Studio's window forward, for the "Open Halonic" button while there is no workspace. */
   readonly openStudio: () => void;
 }
@@ -86,7 +88,7 @@ export interface FocusedWindowProps {
  * box, draws on the see-through window itself, with no frame.
  */
 export function FocusedWindow(props: FocusedWindowProps) {
-  const { shell, app, workspace, language, regionFormat, openStudio } = props;
+  const { shell, app, workspace, language, regionFormat, chosenFormat, openStudio } = props;
   const { announcer, closeStack, toasts } = shell;
   const presentation = usePresentationFromWidth();
   const narrow = useNarrowFromWidth();
@@ -98,7 +100,7 @@ export function FocusedWindow(props: FocusedWindowProps) {
   }, [app.title, workspace?.name]);
 
   return (
-    <WindowFormatLocale regionFormat={regionFormat}>
+    <WindowFormatLocale regionFormat={regionFormat} chosenFormat={chosenFormat}>
       <PresentationProvider presentation={presentation}>
         <NarrowProvider narrow={narrow}>
           <ModalRegionsProvider pushModalRegions={(regions) => announcer.pushModalRegions(regions)}>

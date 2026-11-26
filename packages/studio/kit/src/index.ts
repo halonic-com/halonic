@@ -414,7 +414,13 @@ export {
   waitingSince,
 } from "./text/waiting-time.ts";
 export { TextSheet, type TextSheetProps } from "./text-sheet/text-sheet.tsx";
-export { FormatLocale, formatTag, useFormatLocale } from "./time-stamp/format-locale.ts";
+export {
+  FormatLocaleProvider,
+  type FormatLocaleProviderProps,
+  followedFormat,
+  formatTag,
+  useFormatLocale,
+} from "./time-stamp/format-locale.tsx";
 export { TimeStamp, type TimeStampProps } from "./time-stamp/time-stamp.tsx";
 export {
   TOAST_CLOSES_AFTER_MS,

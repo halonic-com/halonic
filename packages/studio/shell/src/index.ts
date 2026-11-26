@@ -459,6 +459,7 @@ export {
   type WindowActions,
 } from "./window/studio-window.tsx";
 export { StudioWorkspace, type StudioWorkspaceOptions } from "./window/studio-workspace.ts";
+export type { ChosenFormat } from "./window/window-format.tsx";
 export type {
   PanelWindowControl,
   SettingsSectionName,
