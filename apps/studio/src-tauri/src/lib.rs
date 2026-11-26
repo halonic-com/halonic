@@ -106,6 +106,7 @@ mod owner_check_page;
 #[cfg(desktop)]
 mod owner_sign_in;
 mod page_calls;
+mod page_ends;
 mod page_streams;
 mod pair_scan;
 mod phone_nearby;
@@ -149,8 +150,7 @@ mod window_place;
 mod workspace_data;
 mod workspace_key;
 
-use tauri::webview::PageLoadEvent;
-use tauri::{Builder, Manager, RunEvent, Runtime, WindowEvent};
+use tauri::{Builder, Manager, RunEvent, Runtime};
 
 /// Starts the shell. Android calls this through the generated entry point;
 /// on desktop, `main` calls it. When Halonic quits with an update ready,
@@ -274,50 +274,10 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             background_start::after_tray(app.handle(), background, tray::start(app.handle()));
             Ok(())
         })
-        // A page that reloads or closes can't end its agent host streams
-        // and file watches itself, so the shell ends them. A page that
-        // loads starts the timer of Studio's start.
-        .on_page_load(|webview, payload| {
-            if payload.event() == PageLoadEvent::Started {
-                agent_host::page_loaded(webview.app_handle());
-                agent_host::end_page_streams(webview.app_handle(), webview.label());
-                engine::end_page(webview.app_handle(), webview.label());
-                http_fetch::end_page_calls(webview.app_handle(), webview.label());
-                #[cfg(desktop)]
-                actions::end_page(webview.app_handle(), webview.label());
-                files::end_page_watches(webview.app_handle(), webview.label());
-                pair_scan::end_page_scan(webview.app_handle());
-                phone_tunnel::end_page(webview.app_handle(), webview.label());
-                phone_nearby::end_page(webview.app_handle());
-                #[cfg(desktop)]
-                updates::end_page_watches(webview.app_handle(), webview.label());
-            }
-        })
-        .on_window_event(|window, event| {
-            #[cfg(desktop)]
-            if let WindowEvent::CloseRequested { api, .. } = event {
-                tray::close_requested(window, api);
-            }
-            if matches!(event, WindowEvent::Destroyed) {
-                window
-                    .app_handle()
-                    .state::<engine_lock::EngineLockState>()
-                    .release_window(window.label());
-                agent_host::end_page_streams(window.app_handle(), window.label());
-                engine::end_page(window.app_handle(), window.label());
-                #[cfg(desktop)]
-                engines::window_closed(window.app_handle(), window.label());
-                http_fetch::end_page_calls(window.app_handle(), window.label());
-                #[cfg(desktop)]
-                actions::end_page(window.app_handle(), window.label());
-                files::end_page_watches(window.app_handle(), window.label());
-                pair_scan::end_page_scan(window.app_handle());
-                phone_tunnel::end_page(window.app_handle(), window.label());
-                phone_nearby::end_page(window.app_handle());
-                #[cfg(desktop)]
-                updates::end_page_watches(window.app_handle(), window.label());
-            }
-        })
+        // What the shell ends for a page that reloads or a window that
+        // closes (`page_ends.rs`).
+        .on_page_load(page_ends::page_load)
+        .on_window_event(page_ends::window_event)
         .invoke_handler(tauri::generate_handler![
             connect::connect,
             git::git,
