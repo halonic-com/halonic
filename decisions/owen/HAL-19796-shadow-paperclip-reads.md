@@ -3,6 +3,7 @@
 - Task: HAL-19796
 - Approval: asked of Liam in the review of this pull request on HAL-19796; the change is the fix Julian asked for in his security review of #6470, confirmed by Liam on HAL-19479.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:CkYcNHX0y/MYhhL3vX88/Wbw8ZCCea/N5X8Dbr8ctcrWMdWniTydBxFrmlFBfuIiBkFmVe6dRjZIVhgFDLYVAQ==
 
 ## What changes
 
