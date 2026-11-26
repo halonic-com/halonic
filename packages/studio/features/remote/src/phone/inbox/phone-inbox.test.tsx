@@ -352,3 +352,19 @@ verifies("remote.phone-inbox-parts", () => {
     }
   });
 });
+
+verifies("remote.phone-inbox-closed", () => {
+  it("settles a card that closed before the answer got there, its options turned off", async () => {
+    const { scene } = await mountInbox([item()]);
+    await open("Ship phase 2 now?");
+    await press("Today");
+    await result(scene, { outcome: "closed", reason: "expired", closedAt: answeredAt });
+    expect(text()).toContain(`Expired · ${timeOf(answeredAt)}`);
+    expect(text()).not.toContain("Answer this on your computer");
+    for (const option of ["Today", "Later"]) {
+      expect(button(option).getAttribute("aria-disabled")).toBe("true");
+    }
+    await press("Next");
+    expect(text()).toContain("Needs you");
+  });
+});
