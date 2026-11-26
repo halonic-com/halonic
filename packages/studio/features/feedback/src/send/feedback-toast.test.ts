@@ -33,11 +33,12 @@ verifies("feedback.send-toasts", () => {
     });
     const notConnected = feedbackToast({ kind: "saved", until: "connected" }, "x", vi.fn());
     expect(notConnected?.text).toBe("It sends by itself once Studio is connected to Paperclip.");
+    // Nothing exists to open yet, so a saved toast has no action.
+    expect(notConnected?.action).toBeUndefined();
   });
 
   it("has no toast for a refusal, which the caller logs", () => {
     expect(feedbackToast({ kind: "refused", reason: "no project" }, "x", vi.fn())).toBeUndefined();
-    expect(feedbackToast({ kind: "full" }, "x", vi.fn())).toBeUndefined();
   });
 
   it("says Feedback discarded with Undo", () => {

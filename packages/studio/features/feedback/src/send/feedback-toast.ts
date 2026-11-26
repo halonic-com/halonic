@@ -5,7 +5,7 @@ import type { SubmitOutcome } from "../outbox.ts";
 /**
  * The toast for what pressing Send came to (`feedback.send-toasts`, sketch on HAL-18562 §3):
  * "Feedback sent" with "Open task", or "Feedback saved" with when it sends by itself. A refused
- * or full outcome has no toast in the sketch yet, so it gets `undefined` and the caller logs it.
+ * outcome has no toast in the sketch yet, so it gets `undefined` and the caller logs it.
  *
  * @param title the task's title, for the sent toast's line
  * @param openTask opens the task's page in the browser
