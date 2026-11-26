@@ -11,8 +11,10 @@ export const maxActionErrorLength = 300;
 /** The longest `reason` a request may give. */
 export const maxActionReasonLength = 2000;
 
+/** The longest text a kept or parameter field may hold. A writer cuts a kept text to this before it builds the event. */
+export const maxActionValueLength = 1000;
+
 const maxIdLength = 200;
-const maxValueLength = 1000;
 const maxFlatEntries = 50;
 const fieldName = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 const isoUtc = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
@@ -220,7 +222,7 @@ function flatProblem(value: unknown, allowsNull: boolean): string | undefined {
 
 function isPlainValue(value: unknown, allowsNull: boolean): boolean {
   if (value === null) return allowsNull;
-  if (typeof value === "string") return value.length <= maxValueLength;
+  if (typeof value === "string") return value.length <= maxActionValueLength;
   if (typeof value === "number") return Number.isFinite(value);
   return typeof value === "boolean";
 }

@@ -1,6 +1,7 @@
 // The public API of @halonicjs/action-steppers. Everything else in src/ is internal.
 
 export { checkBrowserAddress } from "./browser-address.ts";
+export { capKeptValues } from "./kept-values.ts";
 export { findKeyShapedText, type KeyShape } from "./key-shaped-text.ts";
 export { manualFormProblems, renderManualGuide } from "./manual-guide.ts";
 export {
