@@ -270,6 +270,20 @@ verifies("paperclip.merge-control-change-request", () => {
     }
   });
 
+  test("an approval carried over a rebase from before the push doesn't clear a change request (HAL-19778)", () => {
+    const routine = { files: ["apps/cli/src/commands/run.ts"], filesTotal: 1, fileNet: {} };
+    const o7 = old.slice(0, 7);
+    const rebased = { [o7]: "p1", [head]: "p1" };
+    const asked = said(`Liam: changes requested on head \`${o7}\``, 30);
+    for (const texts of [
+      [said(`Liam: approved on head \`${o7}\``, 40), asked],
+      [said(`Julian: approved on head \`${o7}\``, 40), asked],
+      [asked, said(`Nora: approved on head \`${o7}\``, 25)],
+    ]) {
+      expect(reasonsOf({ ...routine, texts, forcePushedAt: [ago(20)] }, rebased).added).toEqual([]);
+    }
+  });
+
   test("a queued pull request with a new change request comes out", () => {
     const texts = [
       said(`Liam: approved on head \`${head.slice(0, 7)}\``, 30),

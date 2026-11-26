@@ -41,7 +41,11 @@ function approverOf(approval: ApprovalVerdict): Reviewer {
   return approval.nora === true ? "Nora" : "Liam";
 }
 
-/** Whether `request` is closed: a push after it, or the same reviewer's approval of the head after it. */
+/**
+ * Whether `request` is closed: a push after it that the held approval came
+ * after, or the same reviewer's approval of the head after it. An approval
+ * carried over a rebase from before the push never clears it (HAL-19778).
+ */
 function cleared(
   pull: GatePull,
   texts: readonly PullText[],
@@ -49,7 +53,9 @@ function cleared(
   request: PullText,
   who: Reviewer,
 ): boolean {
-  if (lastPushOf(pull) > request.at) {
+  const lastPush = lastPushOf(pull);
+  const approvedAfterPush = approval?.ok === true && (approval.at ?? "") >= lastPush;
+  if (lastPush > request.at && approvedAfterPush) {
     return true;
   }
   const own = texts.some((text) => {
