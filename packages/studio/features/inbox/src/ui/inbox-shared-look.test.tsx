@@ -198,4 +198,13 @@ verifies("inbox.stale-age", () => {
       "The agent host refused the read. Showing what was read last. Last updated 10:43.",
     );
   });
+
+  it("says only to sign in again when signed out, with no age", async () => {
+    const fake = fakeRuns([notes]);
+    const { root, inbox } = await openInbox(fake.runs);
+    fake.fail(new KindedError("unauthenticated", "Sign in again to list what waits for you."));
+    await act(() => inbox.refresh());
+    const status = root.querySelector('[data-pane="list"] [role="status"]') as HTMLElement;
+    expect(status.textContent).toBe("Sign in again to list what waits for you.");
+  });
 });
