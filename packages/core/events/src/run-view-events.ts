@@ -1,4 +1,5 @@
 import type { RunEvent, RunEventType } from "./run-event.ts";
+import { continueEvent } from "./run-limit-waiting.ts";
 import type { RunViewEvent, RunViewMarks } from "./run-view.ts";
 import { runViewFailureOf } from "./run-view-failure.ts";
 import { upgradeEvent } from "./upgrade.ts";
@@ -92,15 +93,42 @@ export const maxRunViewMessageLength = 20_000;
 
 /**
  * The events of a run as an end user sees them (requirement `events.run-view`), in log order.
- * An event kind the table doesn't know, such as one from a newer log, is left out.
+ * An event kind the table doesn't know, such as one from a newer log, is left out, and so is a
+ * received event the run wasn't waiting for.
  */
 export function toRunViewEvents(events: readonly RunEvent[], marks: RunViewMarks): RunViewEvent[] {
   const shown: RunViewEvent[] = [];
+  // The events the run accepts while it waits: an `event.received` shows only when it answers
+  // one of them, so a webhook's or a signal's event never reads as the end user's answer.
+  let accepted: readonly string[] = [];
   for (const raw of events) {
-    const viewEvent = runViewEventOf(upgradeEvent(raw), marks);
+    const event = upgradeEvent(raw);
+    if (event.type === "event.received" && !accepted.includes(event.event)) continue;
+    accepted = acceptedAfter(event, accepted);
+    const viewEvent = runViewEventOf(event, marks);
     if (viewEvent !== null) shown.push(viewEvent);
   }
   return shown;
+}
+
+/** What the run accepts after this event, as `summarize` tracks it. */
+function acceptedAfter(event: RunEvent, accepted: readonly string[]): readonly string[] {
+  switch (event.type) {
+    case "run.waiting":
+      return event.events;
+    case "run.limit-waiting":
+      return [continueEvent];
+    case "event.received":
+    case "workflow.finished":
+    case "workflow.resumed":
+    case "timer.fired":
+    case "run.completed":
+    case "run.failed":
+    case "run.cant-try":
+      return [];
+    default:
+      return accepted;
+  }
 }
 
 function runViewEventOf(event: RunEvent, marks: RunViewMarks): RunViewEvent | null {

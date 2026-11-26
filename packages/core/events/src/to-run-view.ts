@@ -1,4 +1,5 @@
 import type { RunEvent } from "./run-event.ts";
+import { continueEvent } from "./run-limit-waiting.ts";
 import type { PendingApproval, RunSummary } from "./run-summary.ts";
 import type {
   AnswerHandle,
@@ -15,6 +16,9 @@ import { summarize } from "./summarize.ts";
 
 /** The longest run title, cut from the end user's first message. */
 export const maxRunViewTitleLength = 80;
+
+/** The longest value one `{name}` placeholder of an approval text is filled with; a longer one is cut. */
+export const maxApprovalArgumentLength = 200;
 
 /** The longest chat message an end user may send with a `message` handle. */
 export const maxAnswerMessageLength = 20_000;
@@ -59,7 +63,7 @@ export function toRunView(
     asks,
     message,
     nextTimer: summary.status === "waiting" ? summary.nextTimer : null,
-    limit: summary.limit?.code ?? null,
+    limit: summary.status === "waiting" ? (summary.limit?.code ?? null) : null,
     usage: { inputTokens: summary.usage.inputTokens, outputTokens: summary.usage.outputTokens },
     cost: summary.cost,
     failure: summary.status === "failed" ? runViewFailureOf(summary.reason, summary.cause) : null,
@@ -93,7 +97,10 @@ function resultsOf(summary: RunSummary, marks: RunViewMarks): Record<string, unk
   return results;
 }
 
-/** A waiting run's summary and the state of the step it waits at, from its last `run.waiting`. */
+/**
+ * A waiting run's summary and the state of the step it waits at, from its last `run.waiting` or
+ * `run.limit-waiting`.
+ */
 interface Waiting {
   readonly summary: RunSummary;
   readonly state: string;
@@ -102,16 +109,19 @@ interface Waiting {
 /** The run's wait, or `null` while it isn't waiting at a step (`summarize` keeps no wait state). */
 function waitingOf(summary: RunSummary, events: readonly RunEvent[]): Waiting | null {
   if (summary.status !== "waiting") return null;
-  const lastWait = events.findLast((event) => event.type === "run.waiting");
-  if (lastWait?.type !== "run.waiting") return null;
-  return { summary, state: lastWait.state };
+  const lastWait = events.findLast(
+    (event) => event.type === "run.waiting" || event.type === "run.limit-waiting",
+  );
+  if (lastWait?.type !== "run.waiting" && lastWait?.type !== "run.limit-waiting") return null;
+  return lastWait.state === null ? null : { summary, state: lastWait.state };
 }
 
 function waitsForOf(summary: RunSummary, asks: boolean, message: boolean): RunViewWaitsFor {
   if (summary.status !== "waiting") return null;
+  // A plan limit's continue is an ask too, but the run waits for the plan, not for a decision.
+  if (summary.limit !== undefined) return "limit";
   if (asks) return "you";
   if (message) return "message";
-  if (summary.limit !== undefined) return "limit";
   if (summary.nextTimer !== null) return "timer";
   return null;
 }
@@ -120,9 +130,10 @@ function waitsForOf(summary: RunSummary, asks: boolean, message: boolean): RunVi
 function asksOf(waiting: Waiting | null, marks: RunViewMarks, handleOf: HandleOf): RunViewAsk[] {
   if (waiting === null) return [];
   const { summary } = waiting;
+  if (summary.limit !== undefined) return [continueAsk(waiting, handleOf)];
   const asks = summary.approvals.map((approval) => approvalAsk(approval, marks, handleOf));
-  // An approval and a plan limit have their own answers, not the wait step's events.
-  if (asks.length > 0 || summary.limit !== undefined) return asks;
+  // An approval has its own answers, not the wait step's events.
+  if (asks.length > 0) return asks;
   const labelled = summary.accepts.filter(
     (event) => event !== marks.messageEvent && Object.hasOwn(summary.answerLabels, event),
   );
@@ -136,6 +147,17 @@ function asksOf(waiting: Waiting | null, marks: RunViewMarks, handleOf: HandleOf
   };
   const title = summary.waitingFor?.title ?? runViewWords.question;
   return [{ answer, title, body: summary.waitingFor?.body ?? "" }];
+}
+
+/** The one answer a run waiting at a plan limit takes: continue, which the engine decides again. */
+function continueAsk(waiting: Waiting, handleOf: HandleOf): RunViewAsk {
+  const point: WaitingPoint = { kind: "question", state: waiting.state, events: [continueEvent] };
+  const answer: AnswerHandle = {
+    handle: handleOf(point),
+    kind: "question",
+    payloadSchema: { type: "choice", choices: [runViewWords.continue] },
+  };
+  return { answer, title: runViewWords.limitWaiting, body: "" };
 }
 
 function approvalAsk(
@@ -153,7 +175,7 @@ function approvalAsk(
 
 /**
  * The seller's approval text for a tool call, with `{name}` filled in from that argument when
- * it is a plain value. Without such text, the fixed line, never the tool or its arguments.
+ * it is a plain value, cut at {@link maxApprovalArgumentLength} characters. Without such text, the fixed line, never the tool or its arguments.
  */
 export function approvalTextOf(approval: PendingApproval, marks: RunViewMarks): string {
   const key =
@@ -170,7 +192,7 @@ function argumentOf(args: unknown, name: string): string | null {
   if (typeof args !== "object" || args === null || !Object.hasOwn(args, name)) return null;
   const value: unknown = (args as Record<string, unknown>)[name];
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-    return String(value);
+    return String(value).slice(0, maxApprovalArgumentLength);
   }
   return null;
 }
