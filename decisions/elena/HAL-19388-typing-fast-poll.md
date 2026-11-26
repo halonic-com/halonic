@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19388
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:9FAiRVWWdvqge3yQTYZh8s3/F02SsppeHkxn0PmTAMps9TSCctuqNgJgo5xJYKDQ7sDRA5jlzYwPZmY+nVVqAg==
 
 `agent-host.paperclip-polling` said the host reads Paperclip about every 30 seconds while Studio is
 in front. A short agent reply could start and finish between two reads, so the board never saw
