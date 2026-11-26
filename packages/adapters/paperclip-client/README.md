@@ -154,7 +154,8 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `listTaskActivity` | `GET /api/issues/{task}/activity` | a channel child task's history: who passed it to whom |
 | `readFullAnswer` | `GET /api/issues/{task}/documents/full-answer` | a chat's full answer: read once per list, only when an agent's reply links that chat's `full-answer` document; kept only as Markdown of at most 64 KB. No other document key, and not the document list |
 | `createFeedbackTask` | `POST /api/companies/{company}/issues` with exactly `{ title, description, projectId, assigneeAgentId, status: "todo", idempotencyKey }`, the key starting `halonic-feedback:` | screenshot feedback: one task; a repeated key gets the task already made |
-| `listTaskAttachments` | `GET /api/issues/{task}/attachments` | before an upload: whether the feedback's screenshot is already there |
+| `listTaskAttachments` | `GET /api/issues/{task}/attachments` | before an upload: whether the feedback's screenshot is already there; for the Inbox, the files of a task with a card for the person (`paperclip-client.card-files`) |
+| `readAttachmentContent` | `GET /api/attachments/{file}/content` | a picture a card lists, only when the person asks: PNG, JPEG, GIF or WebP, at most 10 MB, its leading bytes matching its type |
 | `attachScreenshot` | `POST /api/companies/{company}/issues/{task}/attachments`, multipart, one `file` part | the feedback's screenshot: a PNG of at most 10 MB, the only file any row sends |
 | `listIssueRuns` | `GET /api/issues/{task}/runs` | a chat's messages: each run's agent, status, start and the comments that woke it, for `readAt` (nothing else kept) |
 | `liveEvents` | `GET /api/companies/{company}/events/ws`, a WebSocket upgrade only | live events: which record changed, so the local copy reads it again (`LiveEventsConnection`) |
