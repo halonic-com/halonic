@@ -84,6 +84,7 @@ export function freshStatus(number: number): PrStatus {
     state: "open",
     draft: false,
     branch: `ada/HAL-${number}-fuel`,
+    base: "main",
     author: "ada",
     task: `HAL-${number}`,
     head,
@@ -95,6 +96,7 @@ export function freshStatus(number: number): PrStatus {
     approvedOnHead: false,
     reviewer: "liam",
     changedLines: 40,
+    securityFile: undefined,
     latestReviewFinding: undefined,
     requiredWorkflows: [],
   };
