@@ -117,9 +117,10 @@ fn report_run_click<R: Runtime>(
         // Kept before the window opens, so its page can't start before it. A window that
         // didn't open drops it, so it can't open that run the next time Studio opens.
         pending_click::hold(app, clicked);
-        return focused_apps::show(app, None).inspect_err(|_| pending_click::forget(app));
+        return crate::open_windows_track::open_studio(app)
+            .inspect_err(|_| pending_click::forget(app));
     }
-    focused_apps::show(app, None)?;
+    crate::open_windows_track::open_studio(app)?;
     app.emit_to(
         focused_apps::STUDIO_WINDOW,
         NOTIFICATION_CLICKED_EVENT,

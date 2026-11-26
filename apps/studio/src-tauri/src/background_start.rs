@@ -33,8 +33,9 @@ pub fn requested<S: AsRef<str>>(arguments: &[S]) -> bool {
     matches!(arguments, [_, flag] if flag.as_ref() == BACKGROUND_ARGUMENT)
 }
 
-/// Opens the window a start asks for (`focused_apps`), or none for a start
-/// at login. Answers whether it is one.
+/// Opens the window a start asks for (`focused_apps`), with the windows open
+/// at the last quit (`open_windows_track`), or none for a start at login.
+/// Answers whether it is one.
 pub fn open_window<R: Runtime, S: AsRef<str>>(
     app: &AppHandle<R>,
     arguments: &[S],
@@ -42,7 +43,7 @@ pub fn open_window<R: Runtime, S: AsRef<str>>(
     if requested(arguments) {
         return Ok(true);
     }
-    crate::focused_apps::show(app, crate::focused_apps::requested(arguments))?;
+    crate::open_windows_track::open(app, crate::focused_apps::requested(arguments))?;
     Ok(false)
 }
 

@@ -36,6 +36,9 @@ pub fn window_event<R: Runtime>(window: &Window<R>, event: &WindowEvent) {
     if let WindowEvent::CloseRequested { api, .. } = event {
         crate::tray::close_requested(window, api);
     }
+    // After the tray's close, so a window it hid counts as closed.
+    #[cfg(desktop)]
+    crate::open_windows_track::window_event(window, event);
     if !matches!(event, WindowEvent::Destroyed) {
         return;
     }

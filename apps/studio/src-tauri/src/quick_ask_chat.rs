@@ -16,7 +16,7 @@ use std::sync::Mutex;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, Runtime, Webview};
 
-use crate::focused_apps::{self, FocusedApp};
+use crate::focused_apps::FocusedApp;
 
 /// The event Messenger's page listens for.
 pub const OPEN_CONVERSATION_EVENT: &str = "open-conversation";
@@ -52,10 +52,10 @@ fn hand_over<R: Runtime>(app: &AppHandle<R>, chat: OpenConversation) -> tauri::R
         // Kept before the window opens, so its page can't start before it. A window that
         // didn't open drops it, so the next Messenger doesn't open that chat.
         keep(app, Some(chat));
-        return focused_apps::show(app, Some(FocusedApp::Messenger))
+        return crate::open_windows_track::open(app, Some(FocusedApp::Messenger))
             .inspect_err(|_| keep(app, None));
     }
-    focused_apps::show(app, Some(FocusedApp::Messenger))?;
+    crate::open_windows_track::open(app, Some(FocusedApp::Messenger))?;
     app.emit_to(messenger, OPEN_CONVERSATION_EVENT, chat)
 }
 

@@ -143,6 +143,8 @@ fn main() {
         "owner_logout",
         "owner_status",
         "show_main_window",
+        "window_content_get",
+        "window_content_set",
         "take_pending_notification_click",
         "set_frame_colour",
     ]);

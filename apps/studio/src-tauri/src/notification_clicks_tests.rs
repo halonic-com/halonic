@@ -154,6 +154,40 @@ fn a_click_on_a_run_goes_to_studio_even_with_the_apps_open() {
     assert_eq!(receivers_of("runs-failed", &["inbox", "main"]), ["main"]);
 }
 
+/// `studio.src-tauri.run-notification-cold-open`
+#[test]
+fn a_click_on_a_run_after_a_start_at_login_opens_studio_with_the_windows_of_the_last_quit() {
+    let app = crate::shell(mock_builder())
+        .build(tauri::generate_context!())
+        .expect("the shell builds on the mock runtime");
+    // Only the Inbox, focused, and the Messenger were open at the last quit.
+    crate::open_windows_track::seed(
+        app.handle(),
+        &[
+            crate::open_windows::OpenWindow {
+                label: "inbox".to_owned(),
+                focused: true,
+                content: None,
+            },
+            crate::open_windows::OpenWindow {
+                label: "messenger".to_owned(),
+                focused: false,
+                content: None,
+            },
+        ],
+    );
+    let failed = extra(json!({ "messagingId": "runs-failed-acme", "kind": "runs-failed" }));
+    report_click(app.handle(), &failed).expect("Studio opens");
+    let mut labels: Vec<String> = app.webview_windows().into_keys().collect();
+    labels.sort();
+    assert_eq!(labels, ["inbox", "main", "messenger"]);
+    let waiting = super::pending_click::take_pending_notification_click(
+        app.state::<super::pending_click::PendingClick>(),
+    )
+    .expect("taken");
+    assert!(waiting.is_some(), "Studio's page takes the click");
+}
+
 #[test]
 fn a_click_on_a_run_opens_studio_while_only_an_app_is_open() {
     let app = crate::shell(mock_builder())
