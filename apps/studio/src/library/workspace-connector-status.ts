@@ -15,6 +15,8 @@ import type {
 } from "@halonicjs/studio-feature-library/api";
 import { type ConnectionState, connectionStateOf } from "@halonicjs/studio-feature-library/api";
 import { filesOf, loadWorkspace, placeOf } from "@halonicjs/workspace";
+import type { RequestLogs } from "../assistant/chat-request-log.ts";
+import { connectorTroubles } from "./connector-troubles.ts";
 import { googleAskFirst } from "./workspace-new-connector.ts";
 
 /** What {@link WorkspaceConnectorStatus} reads. */
@@ -34,6 +36,11 @@ export interface WorkspaceConnectorStatusOptions {
   readonly onFocus?: (listener: () => void) => () => void;
   /** Called with the error when the files can't be watched; the Studio logs it. */
   readonly onWatchError?: (error: unknown) => void;
+  /**
+   * The local request logs the engine keeps, which say what went wrong with a local integration's
+   * last call (`app.connector-trouble`). Absent without an agent host: no connector has a trouble.
+   */
+  readonly requestLogs?: RequestLogs | undefined;
 }
 
 /** The state of a Google connector whose account has no setup record yet. */
@@ -123,8 +130,11 @@ export class WorkspaceConnectorStatus implements ConnectorStatusHost {
       : [];
     // The engine starts only local connectors in a local-only workspace (`engine.local-only`).
     const localOnly = filesOf(workspace, "workspace")[0]?.value.privacy.localOnly ?? false;
+    const { definitions, requestLogs } = this.#options;
+    const troubles = await connectorTroubles(definitions, connectors, requestLogs);
     const listed = connectors.map((connector): ConnectorStatus => {
       const asks = asksOf(connector);
+      const trouble = troubles.get(connector.id);
       return {
         id: connector.id,
         name: connector.name ?? connector.id,
@@ -132,6 +142,7 @@ export class WorkspaceConnectorStatus implements ConnectorStatusHost {
         connection: connectionOf(connector),
         ...(asks === undefined ? {} : { asks }),
         ...(localOnly && !connectorIsLocal(connector) ? { blocked: true } : {}),
+        ...(trouble === undefined ? {} : { trouble }),
       };
     });
     // A file that parsed is not an unreadable one.
