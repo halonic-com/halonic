@@ -174,7 +174,7 @@ draft a reply. Then it stops at **Approve this reply?** and waits for you:
   Answer with: halonic runs send 4f873c approve (or reject)
 ```
 
-Your run id is different from `4f873c`. Copy the command from your own output.
+The reply it asks about shows first, between that line and the next, so you read what you approve. This excerpt skips it. Your run id is different from `4f873c`. Copy the command from your own output.
 
 ### Answer it
 
