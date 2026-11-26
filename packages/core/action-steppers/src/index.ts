@@ -50,6 +50,7 @@ export {
   stepperRequestFormat,
   stepperRequestSchema,
 } from "./stepper-request.ts";
+export { planResume, type ResumePlan, type StepOutcome } from "./stepper-resume.ts";
 export { type StepperRisk, stepperRisks } from "./stepper-risk.ts";
 export type {
   BrowserOrigin,
