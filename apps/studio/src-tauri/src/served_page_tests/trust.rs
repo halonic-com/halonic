@@ -48,10 +48,7 @@ fn served_page_test_sees_trust_granted_to_the_local_main_window_only() {
     let text = include_str!("../../capabilities/desktop-trust.json");
     let capability: Value = serde_json::from_str(text).expect("the capability is JSON");
     assert_eq!(capability["local"], true);
-    assert_eq!(
-        capability["windows"],
-        json!(["main", "inbox", "messenger"])
-    );
+    assert_eq!(capability["windows"], json!(["main", "inbox", "messenger"]));
     assert!(capability.get("remote").is_none(), "{capability}");
     assert_eq!(
         capability["permissions"],
