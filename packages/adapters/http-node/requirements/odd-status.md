@@ -14,6 +14,6 @@ When a server answers with a status outside 200–599 or with a reason phrase a 
 - Given a server that answers `HTTP/1.1 503` with a control character in the reason phrase,
   when the request is sent,
   then the response has status 503 and an empty status text.
-- Given a server that answers `HTTP/1.1 503 Busy`,
+- Given a server that answers `HTTP/1.1 503` with a valid reason phrase, Latin-1 included (`Busy é`),
   when the request is sent,
-  then the response keeps the status text `Busy`.
+  then the response keeps the status text `Busy é`.

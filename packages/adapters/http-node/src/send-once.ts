@@ -132,8 +132,8 @@ function toResponse(url: URL, method: string, incoming: http.IncomingMessage): R
     // any status on. Build it as a 500, which isn't `ok` either, and give it
     // the real status, so callers see the HTTP status instead of a failure.
     status: buildableStatus(status) ? status : 500,
-    // Nobody acts on the reason phrase, so one `new Response()` would refuse
-    // is left out rather than failing the request.
+    // Nobody acts on the reason phrase, so a phrase `new Response()` would
+    // refuse is left out rather than failing the request.
     statusText: reasonPhrase.test(statusText) ? statusText : "",
     headers,
   });
