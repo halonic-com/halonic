@@ -1,5 +1,5 @@
-import { Callout } from "@halonicjs/studio-kit";
-import { type EngineWords, errorMessageFor } from "@halonicjs/studio-shell";
+import { Callout, clockTime } from "@halonicjs/studio-kit";
+import { EngineNotAnswering, type EngineWords, errorMessageFor } from "@halonicjs/studio-shell";
 
 /** The title when the Inbox's first load fails. */
 export const loadFailed = "Couldn't load the Inbox";
@@ -43,12 +43,42 @@ export function SignedOutLine({
 }
 
 /**
- * The line over a list that failed to load again. Signed out, the engine still answers, so it says
- * to sign in again, as a first load that fails does (HAL-13371); otherwise it isn't answering and
- * the list is what it said last.
+ * Whether a failed load never reached the engine: the host's `EngineNotAnswering`, or a failure
+ * without a kind or a reason. Only then does the Inbox say the engine isn't answering; a source
+ * the engine answered for with a refusal, such as the agent host's, says its own reason
+ * (HAL-19190). The cards' buttons stay unavailable either way (`inbox.proposal-not-answering`).
  */
-function staleReason(error: unknown, words: EngineWords): string {
-  return isSignedOut(error) ? failureReason(error, words) : words.showingLast;
+function engineSilent(error: unknown): boolean {
+  if (error instanceof EngineNotAnswering) return true;
+  const message = errorMessageFor(error, { title: loadFailed });
+  return message.kind === "internal" || message.body.trim() === "";
+}
+
+/** How old the list is that a failed load left showing. */
+export interface ListAge {
+  /** When a load last succeeded in full; `undefined` before one has. */
+  readonly updatedAt: Date | undefined;
+  readonly now: () => Date;
+}
+
+/**
+ * The line over a list that failed to load again. Signed out, the engine still answers, so it says
+ * to sign in again, as a first load that fails does (HAL-13371). When the engine isn't answering,
+ * the list is what it said last; when it answered with a refusal, the line gives that reason. Both
+ * then say when the list was last updated (HAL-19190).
+ *
+ * @example
+ * staleReason(new EngineNotAnswering(), words, age); // "The engine isn't answering. Showing what it said last. Last updated 10:42."
+ */
+function staleReason(error: unknown, words: EngineWords, age: ListAge): string {
+  if (isSignedOut(error)) return failureReason(error, words);
+  const reason = engineSilent(error)
+    ? words.showingLast
+    : `${failureReason(error, words)} Showing what was read last.`;
+  const { updatedAt } = age;
+  return updatedAt === undefined
+    ? reason
+    : `${reason} Last updated ${clockTime(updatedAt, age.now())}.`;
 }
 
 /**
@@ -62,11 +92,13 @@ function staleReason(error: unknown, words: EngineWords): string {
 export function StaleLine({
   error,
   words,
+  age,
   phone,
   onRetry,
 }: {
   readonly error: unknown;
   readonly words: EngineWords;
+  readonly age: ListAge;
   readonly phone: boolean;
   readonly onRetry: () => Promise<void>;
 }) {
@@ -75,7 +107,7 @@ export function StaleLine({
   return (
     <div className={error === undefined ? undefined : linePadding(phone)}>
       <Callout tone="info" announce="polite" action={{ label: "Try again", onClick: onRetry }}>
-        {error === undefined ? "" : staleReason(error, words)}
+        {error === undefined ? "" : staleReason(error, words, age)}
       </Callout>
     </div>
   );

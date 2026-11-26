@@ -8,8 +8,19 @@ import { closeDialogs, onWorkspace, openPlace } from "./open-demo.ts";
 const cardWaitMs = 90_000;
 
 /**
+ * Whether the Inbox says its list is what it read last: the engine's line, a refusal's
+ * ("Showing what was read last."), or the agents' items' ("Couldn't load the items from your agents.").
+ */
+function isStale(text: string): boolean {
+  return [screenText.engineShowingLast, screenText.staleInbox, screenText.agentLoadFailed].some(
+    (line) => text.includes(line.text),
+  );
+}
+
+/**
  * Step 8: the Inbox shows the seeded board card, and Approve answers it. The
- * row shows the card's type; the card shows its title. The click must reach
+ * row shows the card's type; the card shows its title, from a fresh read: no
+ * line says the Inbox shows what it read last (HAL-19190). The click must reach
  * the test Paperclip: its API says approved, and the card leaves Needs you.
  */
 export const inboxAnswer: Step = {
@@ -34,6 +45,9 @@ export const inboxAnswer: Step = {
       text.includes(seedNames.card) ? true : undefined,
     );
     if (card.value !== true) return { passed: false, code: "NO_CARD", note: lastWords(card.text) };
+    if (isStale(card.text)) {
+      return { passed: false, code: "STALE_INBOX", note: lastWords(card.text) };
+    }
     if (!(await clickWhenShown(context, buttonLabels.approve.text, 10_000))) {
       return { passed: false, code: "NO_ANSWER_BUTTON", note: lastWords(card.text) };
     }

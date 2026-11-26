@@ -37,13 +37,16 @@ function shortcutsOpen(studio: FakeStudio, texts: Record<string, string>) {
 
 verifies("studio-click-test.paperclip-steps", () => {
   describe("step 8, the Inbox card", () => {
-    /** A card whose Approve reaches the test Paperclip, or, with `reaches` false, doesn't. */
-    function studioWithCard(reaches = true): FakeStudio {
+    /**
+     * A card whose Approve reaches the test Paperclip, or, with `reaches` false, doesn't. With
+     * `staleLine`, the Inbox shows that line over it.
+     */
+    function studioWithCard(reaches = true, staleLine = ""): FakeStudio {
       const studio = connectedStudio({
         [screenText.inbox.text]: () => {
           main(studio).text = `Needs you ${screenText.strategyApproval.text}`;
           button(studio, "main", screenText.strategyApproval.text, () => {
-            main(studio).text = `${screenText.strategyApproval.text} ${seedNames.card}`;
+            main(studio).text = `${staleLine}${screenText.strategyApproval.text} ${seedNames.card}`;
             button(studio, "main", buttonLabels.approve.text, () => {
               if (reaches) studio.paperclip.status = "approved";
               main(studio).text = `Needs you ${screenText.nothingWaiting.text} Done`;
@@ -68,6 +71,17 @@ verifies("studio-click-test.paperclip-steps", () => {
       await expect(inboxAnswer.run(studio.context)).resolves.toMatchObject({
         code: "NOT_ANSWERED_ON_PAPERCLIP",
         note: expect.stringContaining("Paperclip says pending."),
+      });
+    });
+
+    it.each([
+      screenText.engineShowingLast.text,
+      screenText.staleInbox.text,
+      screenText.agentLoadFailed.text,
+    ])("fails as STALE_INBOX when the card shows under the line %s", async (line) => {
+      const studio = studioWithCard(true, `${line} `);
+      await expect(inboxAnswer.run(studio.context)).resolves.toMatchObject({
+        code: "STALE_INBOX",
       });
     });
 

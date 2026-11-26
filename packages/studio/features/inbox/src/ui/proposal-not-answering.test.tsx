@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import type { Decision, ProposedRecord, Settled } from "@halonicjs/app";
+import { KindedError } from "@halonicjs/std";
 import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, useState } from "react";
@@ -166,6 +167,41 @@ verifies("inbox.proposal-not-answering", () => {
         true,
       );
       expect(decisions.remove).not.toHaveBeenCalled();
+    });
+
+    it("sends nothing after a load the engine refused with its own reason", async () => {
+      // HAL-19190: the line gives a refusal's reason instead of "isn't answering", but the last
+      // load still failed, so the buttons stay unavailable.
+      let refuse = false;
+      const decisions = fakeDecisions();
+      const { runs } = fakeRuns([]);
+      const inbox = new Inbox({
+        ...runs,
+        proposals: async () => {
+          if (refuse) throw new KindedError("unavailable", "The agent host refused the read.");
+          return [entry("01JD8Q")];
+        },
+      });
+      const root = render(
+        <InboxView
+          inbox={inbox}
+          proposals={decisions}
+          now={() => new Date("2026-11-22T10:00:00Z")}
+        />,
+      );
+      await act(async () => inbox.refresh());
+      refuse = true;
+      await act(async () => inbox.refresh());
+      const cell = root.querySelector<HTMLElement>('[role="grid"] tr [role="gridcell"]');
+      act(() => cell?.focus());
+      await act(async () => {
+        cell?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      });
+
+      expect(root.textContent).toContain("The agent host refused the read.");
+      expect(buttons(root, "Accept")[0]?.getAttribute("aria-disabled")).toBe("true");
+      await press(buttons(root, "Accept")[0]);
+      expect(decisions.accept).not.toHaveBeenCalled();
     });
   });
 
