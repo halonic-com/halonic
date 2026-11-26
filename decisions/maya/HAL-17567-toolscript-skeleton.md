@@ -2,6 +2,7 @@
 
 - Approval: Liam approved the plan for `packages/core/toolscript` on HAL-17567, from the ToolScript ADR on HAL-17560. It changes `tooling/check/policy.json`, a trust root, so both guardians sign: Julian, then Liam
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:qWIsPCCss2EKcmR9XQEsdJ0Ivw3DUwYfvtVDCNzPhEMuw3+Ubm7i+kab2GlTvx4/oIY5/8hTeY8SXd7NQcWNBQ==
 
 ## What changes
 
