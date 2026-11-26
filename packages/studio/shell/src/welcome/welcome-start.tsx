@@ -5,7 +5,15 @@ import {
   WAITING_REASON_AFTER_MS,
   WaitingLine,
 } from "@halonicjs/studio-kit";
-import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useCopyDetails } from "../page/copy-details.ts";
 import { LiteCheckDialog } from "./lite-check-dialog.tsx";
 import { checkLines, checkReport } from "./lite-check-lines.ts";
@@ -106,7 +114,7 @@ export interface WelcomeStartAreaProps {
  * line shows, so nothing under it moves; then either nothing, with "Halonic is ready" said once,
  * or **Halonic's engine didn't start** with the cause's sentence, **Try again**, **Check this
  * computer** and **Copy report**, which takes focus. Under them, while Open demo and Open folder
- * are off, the line that says why.
+ * are off, the line that says why. The waiting line sits centred and takes focus when it shows.
  */
 export function WelcomeStartArea(props: WelcomeStartAreaProps) {
   return props.start === undefined ? null : <StartArea {...props} start={props.start} />;
@@ -123,6 +131,7 @@ function StartArea({
   /** The lite check's last answer, for Copy report after the dialog closed. */
   const [results, setResults] = useState<readonly LiteCheckResult[] | undefined>(undefined);
   const ready = useReadyLine(view);
+  const line = useStartLineFocus(view, lead);
   const wasFailed = useRef(false);
   const failed = view.kind === "failed";
   useEffect(() => {
@@ -139,7 +148,12 @@ function StartArea({
         {ready ? welcomeStartWords.ready : null}
       </p>
       {view.kind === "waiting" ? (
-        <StartLine seconds={view.seconds} still={view.still} onSomethingWrong={setChecking} />
+        <StartLine
+          seconds={view.seconds}
+          still={view.still}
+          onSomethingWrong={setChecking}
+          lineRef={line}
+        />
       ) : null}
       {view.kind === "failed" ? (
         <StartFailure
@@ -212,6 +226,37 @@ function StartFailure({
   );
 }
 
+/** Whether nothing has focus, or a button that does nothing has it: Open demo or Open folder, off. */
+function focusIsIdle(): boolean {
+  const active = document.activeElement;
+  return (
+    active === null || active === document.body || active.getAttribute("aria-disabled") === "true"
+  );
+}
+
+/**
+ * Moves focus to the waiting line when it shows, from a button it turned off or from nowhere
+ * (HAL-19399 G11), so focus isn't left on an Open demo that does nothing; never from a busy button
+ * or a Recent row. When the start is ready and the line goes with the focus in it, focus goes back
+ * to the leading button. Gives the line's ref.
+ */
+function useStartLineFocus(
+  view: StartView,
+  lead: () => HTMLElement | null,
+): RefObject<HTMLDivElement | null> {
+  const line = useRef<HTMLDivElement>(null);
+  const lineShows = view.kind === "waiting" && startShows(view);
+  const lineShowed = useRef(false);
+  useEffect(() => {
+    if (lineShows && focusIsIdle()) line.current?.focus();
+    if (!lineShows && lineShowed.current && view.kind === "ready" && focusIsIdle()) {
+      lead()?.focus();
+    }
+    lineShowed.current = lineShows;
+  }, [lineShows, view.kind, lead]);
+  return line;
+}
+
 /**
  * True once the start is ready after the waiting line or the failure showed, so a screen reader
  * hears "Halonic is ready" once. A start that's ready within 2 s says nothing: nothing showed.
@@ -248,14 +293,18 @@ function StartLine({
   seconds,
   still,
   onSomethingWrong,
+  lineRef,
 }: {
   readonly seconds: number;
   readonly still: boolean;
   readonly onSomethingWrong: (open: true) => void;
+  /** The line's box, which takes focus when it shows (`useStartLineFocus`). */
+  readonly lineRef: RefObject<HTMLDivElement | null>;
 }) {
   const waitedMs = seconds * 1000;
+  // As wide as its words, so Welcome's column centres it under the buttons (HAL-19399 G11).
   return (
-    <div className="w-full text-left">
+    <div ref={lineRef} tabIndex={-1} className="focus-ring max-w-full rounded-sm text-left">
       <WaitingLine
         what={welcomeStartWords.starting}
         waitedMs={waitedMs}

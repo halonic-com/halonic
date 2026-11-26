@@ -4,7 +4,7 @@
 import { Button } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import type { InboxItem } from "../inbox-items.ts";
-import type { NextItem } from "./card-parts.tsx";
+import type { NextItem } from "./decided-bar.tsx";
 import { itemTitle } from "./inbox-row.tsx";
 
 /** The props of {@link ListHeader}. */

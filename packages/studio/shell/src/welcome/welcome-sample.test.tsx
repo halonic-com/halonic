@@ -261,13 +261,14 @@ verifies("shell.welcome-sample", () => {
       "Acme, ~/Documents/Acme sample, Demo",
       "Acme, ~/Work/Acme",
     ]);
-    expect(rows[0]?.textContent).toBe("Acme~/Documents/Acme sampleDemo");
+    expect(rows[0]?.textContent).toBe("AcmeDemo~/Documents/Acme sample");
     expect(rows[1]?.textContent).toBe("Acme~/Work/Acme");
   });
 
-  it("puts a sample's tag right after its name on a phone, and at the row's right on desktop", () => {
-    const sample = [{ name: "Acme", location: "C:\\Users\\Sam\\Documents\\Acme", sample: true }]; // leak-guard: allow absolute-path made-up Windows paths for the test
-    const row = (presentation: "desktop" | "phone") => {
+  it.each(["desktop", "phone"] as const)(
+    "puts a sample's tag right after its name on a %s",
+    (presentation) => {
+      const sample = [{ name: "Acme", location: "C:\\Users\\Sam\\Documents\\Acme", sample: true }]; // leak-guard: allow absolute-path made-up Windows paths for the test
       const container = render(
         <PresentationProvider presentation={presentation}>
           <WelcomeRecent
@@ -278,18 +279,12 @@ verifies("shell.welcome-sample", () => {
           />
         </PresentationProvider>,
       );
-      return container.querySelector("li button") as HTMLButtonElement;
-    };
+      const row = container.querySelector("li button") as HTMLButtonElement;
 
-    const phone = row("phone");
-    const nameLine = phone.querySelector(".text-body");
-    expect(nameLine?.textContent).toBe("AcmeDemo");
-    // Only the name and the folder's column: no tag at the right.
-    expect(phone.children).toHaveLength(1);
-
-    const desktop = row("desktop");
-    expect(desktop.querySelector(".text-body")?.textContent).toBe("Acme");
-    expect(desktop.lastElementChild?.textContent).toBe("Demo");
-    expect(desktop.getAttribute("aria-label")).toBe(phone.getAttribute("aria-label"));
-  });
+      expect(row.querySelector(".text-body")?.textContent).toBe("AcmeDemo");
+      // Only the name and the folder's column: no tag at the right (HAL-19399 G12).
+      expect(row.children).toHaveLength(1);
+      expect(row.getAttribute("aria-label")).toBe("Acme, C:\\Users\\Sam\\Documents\\Acme, Demo"); // leak-guard: allow absolute-path made-up Windows paths for the test
+    },
+  );
 });

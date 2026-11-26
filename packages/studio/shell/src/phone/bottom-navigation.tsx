@@ -125,8 +125,9 @@ function NavigationPill({ current, signal, children }: NavigationPillProps) {
 }
 
 /**
- * A signal at the icon's corner (component specs 15.2, rev. 6): the count's left edge 4px right
- * of the icon's centre and its top 4px above the pill; the dot centred on the icon's top right
+ * A signal at the icon's corner (component specs 15.2, rev. 6): the count's right edge and top
+ * 2px inside the 56×28px pill, ring included, so however wide the count, it stays inside the
+ * current place's filled pill (HAL-19399 G13); the dot centred on the icon's top right
  * corner. Both have a 2px `surface` ring, and the count sits on a `surface` backing so the pill
  * doesn't show through its soft fill. The link's name already says it, so it's hidden here.
  */
@@ -135,7 +136,7 @@ function IconSignal({ signal }: { readonly signal: PlaceSignal }) {
     return (
       <span
         aria-hidden="true"
-        className="absolute start-3.5 -top-2 rounded-full bg-surface ring-2 ring-surface"
+        className="absolute -end-3.5 -top-0.5 rounded-full bg-surface ring-2 ring-surface"
       >
         <SignalCount signal={signal} />
       </span>

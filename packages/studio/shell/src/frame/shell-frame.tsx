@@ -16,6 +16,7 @@ import { EngineLine } from "../engine/engine-line.tsx";
 import {
   useDocumentLanguage,
   useEscapeClosesTopLayer,
+  useInputModality,
   useNarrowFromWidth,
   usePresentationFromWidth,
   useWindowFocusForAnnouncer,
@@ -133,6 +134,7 @@ export function ShellFrame(props: ShellFrameProps) {
   const narrow = useNarrowFromWidth();
   useDocumentLanguage(language);
   useEscapeClosesTopLayer(closeStack);
+  useInputModality();
   useWindowFocusForAnnouncer(announcer);
 
   return (

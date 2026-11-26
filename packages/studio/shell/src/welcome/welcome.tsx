@@ -97,7 +97,8 @@ type Opening = { readonly from: "picker" } | { readonly from: "recent"; readonly
  * The window while no workspace is open (`shell.welcome.open-action`, microcopy 3.2): "Halonic
  * Studio", what a workspace is, and **Open folder**, centred with no sidebar and no tabs. With the
  * app's demo and an empty Recent, **Open demo** is the primary button beside it and "New here? The
- * demo takes about 4 minutes." sits right under the buttons (`shell.welcome-sample`); else **Open
+ * demo takes about 4 minutes." sits right under the buttons, except while Halonic's start shows
+ * (`shell.welcome-sample`); else **Open
  * folder** is the primary button. With the app's New workspace dialog, **New workspace…** comes
  * last as a quiet link. The column hangs a fixed 18% of the window height from the top rather than
  * centring, so nothing above a new line (Recent, an error) moves under the pointer. While the
@@ -354,6 +355,9 @@ function WelcomeActions({
 }: WelcomeActionsProps) {
   const timeId = useId();
   const demoLeads = demo !== undefined;
+  // While the start shows, its lines say what to wait for, and the time line would be a third grey
+  // line under the buttons it can't press yet (HAL-19399 G11).
+  const timeShown = demoLeads && offId === undefined;
   return (
     <>
       <div className="flex flex-wrap justify-center gap-3 @max-xs:flex-col @max-xs:self-stretch">
@@ -363,7 +367,7 @@ function WelcomeActions({
             busy={demo.busy}
             onPress={demo.onPress}
             buttonRef={demo.ref}
-            timeId={timeId}
+            timeId={timeShown ? timeId : undefined}
             offId={offId}
           />
         )}
@@ -379,7 +383,7 @@ function WelcomeActions({
         </Button>
       </div>
       {start}
-      {demoLeads ? (
+      {timeShown ? (
         <p id={timeId} className="text-small text-fg-muted">
           {trySampleWords.time}
         </p>
