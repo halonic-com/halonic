@@ -23,8 +23,21 @@ const oldHooksPath = "tooling/check/hooks";
 let repo = "";
 let installedPath = "";
 
+function readHooksPath(): string {
+  // An unset key exits 1, which is the answer here, not a failure.
+  return runGit("config", "--local", "core.hooksPath").stdout.trim();
+}
+
 function git(...args: string[]): string {
-  const result = spawnSync("git", args, {
+  const result = runGit(...args);
+  if (result.status !== 0) {
+    throw new Error(`git ${args.join(" ")} exited ${result.status}: ${result.stderr}`);
+  }
+  return result.stdout.trim();
+}
+
+function runGit(...args: string[]): { status: number | null; stdout: string; stderr: string } {
+  return spawnSync("git", args, {
     cwd: repo,
     encoding: "utf8",
     env: {
@@ -37,7 +50,6 @@ function git(...args: string[]): string {
       GIT_COMMITTER_EMAIL: "test@example.com",
     },
   });
-  return result.stdout.trim();
 }
 
 function install(extra: NodeJS.ProcessEnv = {}): { status: number; output: string } {
@@ -64,7 +76,7 @@ describe("install-hooks", () => {
   it("copies the hooks under the git dir and points git at them", () => {
     const result = install();
     expect(result.status).toBe(0);
-    expect(git("config", "--local", "core.hooksPath")).toBe(installedPath);
+    expect(readHooksPath()).toBe(installedPath);
     expect(readdirSync(installedPath).sort()).toEqual([
       "pre-commit",
       "pre-push",
@@ -87,6 +99,8 @@ describe("install-hooks", () => {
 
   it("never runs a hook a checked-out branch brings along", () => {
     install();
+    // `main` needs a commit to switch back to.
+    git("commit", "-q", "--no-verify", "--allow-empty", "-m", "start");
     git("switch", "-q", "-c", "brings-a-hook");
     const hook = join(repo, oldHooksPath, "post-checkout");
     mkdirSync(join(repo, oldHooksPath), { recursive: true });
@@ -114,7 +128,7 @@ describe("install-hooks", () => {
     git("config", "--local", "core.hooksPath", typeof value === "string" ? value : value());
     const result = install();
     expect(result.status).toBe(0);
-    expect(git("config", "--local", "core.hooksPath")).toBe(installedPath);
+    expect(readHooksPath()).toBe(installedPath);
     expect(result.output).toContain("git hooks installed");
   });
 
@@ -122,7 +136,7 @@ describe("install-hooks", () => {
     git("config", "--local", "core.hooksPath", ".husky");
     const result = install();
     expect(result.status).toBe(0);
-    expect(git("config", "--local", "core.hooksPath")).toBe(".husky");
+    expect(readHooksPath()).toBe(".husky");
     expect(existsSync(installedPath)).toBe(false);
     expect(result.output).toContain("NOT installed");
     expect(result.output).toContain(".husky");
@@ -131,7 +145,7 @@ describe("install-hooks", () => {
   it("installs nothing in CI", () => {
     const result = install({ CI: "true" });
     expect(result.status).toBe(0);
-    expect(git("config", "--local", "core.hooksPath")).toBe("");
+    expect(readHooksPath()).toBe("");
     expect(existsSync(installedPath)).toBe(false);
   });
 });
