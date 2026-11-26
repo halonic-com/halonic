@@ -146,6 +146,8 @@ verifies("agent-host.paperclip-key", () => {
         "pullRequestsSummary",
         "pullRequestDetail",
         "chatNotes",
+        // Comments that mention the board (HAL-19669), pinned in board-mentions.test.ts.
+        "boardMentions",
         "prWatcherPass",
         // Workflow task writes (HAL-17975), pinned in tasks.test.ts.
         "getTask",

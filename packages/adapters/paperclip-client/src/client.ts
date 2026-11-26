@@ -115,7 +115,7 @@ export class PaperclipMessaging implements AgentMessaging {
     const steppers =
       options.stepperCatalog && new PaperclipSteppers(this.#reader, options.stepperCatalog);
     const webLinks = new PaperclipWebLinks(options.address);
-    this.#inbox = new PaperclipInbox(this.#reader, options.company, webLinks, steppers);
+    this.#inbox = new PaperclipInbox(this.#reader, options, webLinks, now, steppers);
     this.#writer = new PaperclipWriter(this.#reader, this.#company, now, steppers);
     this.#channels = new PaperclipChannelSender(this.#reader, options.company, options.userId, now);
     this.#members = new PaperclipChannelMembers(this.#reader, options.company, options.userId);

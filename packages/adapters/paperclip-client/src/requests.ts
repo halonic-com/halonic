@@ -103,6 +103,8 @@ export const paperclipRequests = {
   // The front bot's comment ids on a chat (`paperclip-client.bot-notes`, HAL-19646), from
   // the agent-tools plugin's board-only route, so its lines show as the agent's, not a person's.
   chatNotes: { method: "GET", path: "/api/plugins/halonic.agent-tools/api/chat-notes/:task" },
+  // Comments that mention the person (`paperclip-client.board-mentions`, HAL-19669), board only.
+  boardMentions: { method: "GET", path: "/api/plugins/halonic.agent-tools/api/board/mentions" },
   // The PR watcher's last pass (HAL-19720): the rule input and the watcher's actions, for
   // the served `pr-watcher` workflow, which reads GitHub and tasks only through Paperclip.
   prWatcherPass: { method: "GET", path: "/api/plugins/halonic.agent-tools/api/pr-watcher/pass" },
