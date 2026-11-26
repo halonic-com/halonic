@@ -1,4 +1,10 @@
-import type { ConnectorStartReason, ToolFailureCause, ToolNotMadeReason } from "./run-basics.ts";
+import type {
+  ConnectorStartReason,
+  ServiceRefusal,
+  ServiceRefusedReason,
+  ToolFailureCause,
+  ToolNotMadeReason,
+} from "./run-basics.ts";
 import type { RunEventBody } from "./run-event.ts";
 
 /** A `tool.result` event, whose `cause` this reads. */
@@ -26,8 +32,22 @@ const startReasons: readonly unknown[] = [
   "other",
 ] satisfies ConnectorStartReason[];
 
+/** The most Halonic tries a request again after a 429: the kit's limit. */
+export const maxServiceRetries = 2;
+
+/** The longest `host` a `service-refused` cause carries: the longest a host name can be. */
+export const maxCauseHostLength = 253;
+
+/**
+ * What a `service-refused` cause's `host` may hold: a host name in its
+ * ASCII (`xn--`) form, an IPv4 address, or an IPv6 address in brackets.
+ */
+const hostPattern = /^[a-z0-9._-]+$|^\[[0-9a-f:.]+\]$/;
+
 /** The fields a logged cause may have, each still unread. */
-type CauseFields = Partial<Record<"code" | "seconds" | "why" | "name", unknown>>;
+type CauseFields = Partial<
+  Record<"code" | "seconds" | "why" | "name" | "retries" | "host" | "sentOnce", unknown>
+>;
 
 /**
  * Reads the `cause` of a stored `tool.result` event (requirement
@@ -62,6 +82,8 @@ export function toolFailureCauseOf(event: ToolResultEvent): ToolFailureCause | u
         : undefined;
     case "connector-not-started":
       return connectorNotStarted(fields);
+    case "service-refused":
+      return serviceRefused(fields);
     default:
       return undefined;
   }
@@ -79,4 +101,41 @@ function connectorNotStarted(fields: CauseFields): ToolFailureCause | undefined 
   if (name === undefined) return { code: "connector-not-started", why };
   if (typeof name !== "string" || name === "" || name.length > maxCauseNameLength) return undefined;
   return { code: "connector-not-started", why, name };
+}
+
+/** A `service-refused` cause, with `sentOnce` only when it is `true`. */
+function serviceRefused(fields: CauseFields): ToolFailureCause | undefined {
+  const refusal = serviceRefusalOf(fields);
+  if (refusal === undefined) return undefined;
+  return {
+    code: "service-refused",
+    ...refusal,
+    ...(fields.sentOnce === true ? { sentOnce: true } : {}),
+  };
+}
+
+function serviceRefusalOf(fields: CauseFields): ServiceRefusal | undefined {
+  const why = fields.why as ServiceRefusedReason | undefined;
+  switch (why) {
+    case "not-accepted":
+    case "not-allowed":
+      return { why };
+    case "slow-down":
+      return isRetries(fields.retries) ? { why, retries: fields.retries } : undefined;
+    case "host-not-declared":
+      return isCauseHost(fields.host) ? { why, host: fields.host } : undefined;
+    default:
+      return undefined;
+  }
+}
+
+/** How many times Halonic tried again: a whole number from 0 to {@link maxServiceRetries}. */
+function isRetries(value: unknown): value is number {
+  return (
+    Number.isInteger(value) && (value as number) >= 0 && (value as number) <= maxServiceRetries
+  );
+}
+
+function isCauseHost(value: unknown): value is string {
+  return typeof value === "string" && value.length <= maxCauseHostLength && hostPattern.test(value);
 }

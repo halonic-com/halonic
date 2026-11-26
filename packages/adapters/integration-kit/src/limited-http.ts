@@ -26,7 +26,7 @@ import {
   requestTooLarge,
   toForm,
 } from "./request-body.ts";
-import type { RequestLog } from "./request-log.ts";
+import type { RequestLog, RequestLogEntry } from "./request-log.ts";
 import { type BodyGuard, guardBody, untilAborted } from "./response-body.ts";
 import { removeSecretsFromError, type SecretForms, secretForms } from "./secret-filter.ts";
 import {
@@ -85,6 +85,22 @@ export interface LimitedHttpOptions {
   readonly now?: () => number;
 }
 
+/**
+ * What Halonic's side may pass the kit's client for one request, on top of
+ * what an integration passes: `onLogged` hears each of the request's log
+ * entries, one for each attempt, right after the log takes it, so the bridge
+ * can tell which tool call it belongs to (HAL-19185). It hears the same
+ * entries the log keeps, never more.
+ */
+export interface LoggedRequestInit extends IntegrationRequestInit {
+  readonly onLogged?: (entry: RequestLogEntry) => void;
+}
+
+/** The kit's client: an `IntegrationHttpClient` that also takes {@link LoggedRequestInit}. */
+export interface LimitedHttpClient extends IntegrationHttpClient {
+  fetch(url: string, init?: LoggedRequestInit): Promise<Response>;
+}
+
 const redirectStatuses = new Set([301, 302, 303, 307, 308]);
 /** Headers a browser drops when a redirect leaves the origin; the kit does the same. */
 const originBoundHeaders = ["authorization", "cookie", "proxy-authorization"];
@@ -100,11 +116,13 @@ const originBoundHeaders = ["authorization", "cookie", "proxy-authorization"];
  * const http = createLimitedHttpClient({ policy, transport: { fetch }, secrets, log: new RequestLog() });
  * await http.fetch("https://api.example.com/v1", { auth: { secret: "example-key", as: "bearer" } });
  */
-export function createLimitedHttpClient(options: LimitedHttpOptions): IntegrationHttpClient {
+export function createLimitedHttpClient(options: LimitedHttpOptions): LimitedHttpClient {
   const now = options.now ?? Date.now;
   return {
-    async fetch(rawUrl: string, init: IntegrationRequestInit = {}): Promise<Response> {
-      const attempts = new AttemptLog(options.log, now);
+    async fetch(rawUrl: string, init: LoggedRequestInit = {}): Promise<Response> {
+      // Read once, before the first `await`; `copyRequest` takes only the request's own fields.
+      const onLogged = typeof init.onLogged === "function" ? init.onLogged : undefined;
+      const attempts = new AttemptLog(options.log, now, onLogged);
       try {
         // Before the first `await`: from here on the kit reads only this copy.
         const own = copyRequest(options.policy, rawUrl, init);

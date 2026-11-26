@@ -5,6 +5,7 @@
 // longer than the grace. When a call stops running, the bridge closes its
 // requests (HAL-4353).
 
+import type { ConnectorCallRequest } from "@halonicjs/ports";
 import { isErrorKind } from "@halonicjs/std";
 import type { RunnerFrame } from "../frames.ts";
 import {
@@ -29,6 +30,8 @@ export interface CallTableHooks {
   onIdle(): void;
   /** A call stopped running: it answered, was cancelled, or failed with the runner. */
   onEnded(call: number): void;
+  /** Halonic's log of the requests the call made so far, oldest first. */
+  requestsOf(call: number): readonly ConnectorCallRequest[];
 }
 
 interface TableCall {
@@ -106,12 +109,18 @@ export class CallTable {
   settle(call: number, outcome: ResultOutcome): boolean {
     const entry = this.#calls.get(call);
     if (entry === undefined) return false;
+    // Before the call ends, which drops its requests.
+    const requests = this.#hooks.requestsOf(call);
     this.#remove(call, entry);
     if (entry.state === "cancelled") return true;
     this.#hooks.onEnded(call);
     if (outcome.error !== undefined) {
       entry.reject(
-        new RunnerToolError(this.#hooks.filter(outcome.error), this.#failureOf(outcome)),
+        new RunnerToolError(
+          this.#hooks.filter(outcome.error),
+          this.#failureOf(outcome),
+          this.#unchangedRequests(requests),
+        ),
       );
     } else {
       entry.resolve(this.#hooks.filter(outcome.text ?? ""));
@@ -138,6 +147,24 @@ export class CallTable {
     if (kept.length > 0) cause.detail = Object.fromEntries(kept);
     if (cause.code !== undefined || cause.detail !== undefined) failure.failureCause = cause;
     return failure;
+  }
+
+  /**
+   * The call's requests, when it made any and the secret filter changes none
+   * of their texts. One it changes would leave a gap, which could put the
+   * wrong request last, so then the call has none: no cause beats a wrong one.
+   */
+  #unchangedRequests(
+    requests: readonly ConnectorCallRequest[],
+  ): readonly ConnectorCallRequest[] | undefined {
+    if (requests.length === 0) return undefined;
+    const unchanged = requests.every(
+      (request) =>
+        this.#isUnchanged(request.method) &&
+        this.#isUnchanged(request.host) &&
+        this.#isUnchanged(request.path),
+    );
+    return unchanged ? requests : undefined;
   }
 
   #isUnchanged(text: string): boolean {

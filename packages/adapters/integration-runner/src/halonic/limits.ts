@@ -1,5 +1,5 @@
 import type { RefusalCode } from "@halonicjs/adapter-integration-kit";
-import type { SandboxBlock, SandboxExit } from "@halonicjs/ports";
+import type { ConnectorCallRequest, SandboxBlock, SandboxExit } from "@halonicjs/ports";
 import type { ErrorKind } from "@halonicjs/std";
 
 /**
@@ -121,16 +121,25 @@ export interface RunnerToolFailure {
  * secret filter. `kind` and `failureCause` carry what the integration's error
  * said, so the engine can record the typed cause of a failed run
  * (`failureCauseOf`) as it does for an error thrown in its own process.
+ * `callRequests` is different: Halonic's own log of the call's requests, never
+ * anything the runner said, which the engine reads for a `service-refused`
+ * cause (`connectorCallRequestsOf`, HAL-19185).
  */
 export class RunnerToolError extends Error {
   override readonly name = "RunnerToolError";
   declare readonly kind?: ErrorKind;
   declare readonly failureCause?: NonNullable<RunnerToolFailure["failureCause"]>;
+  declare readonly callRequests?: readonly ConnectorCallRequest[];
 
-  constructor(message: string, failure: RunnerToolFailure = {}) {
+  constructor(
+    message: string,
+    failure: RunnerToolFailure = {},
+    callRequests?: readonly ConnectorCallRequest[],
+  ) {
     super(message);
     if (failure.kind !== undefined) this.kind = failure.kind;
     if (failure.failureCause !== undefined) this.failureCause = failure.failureCause;
+    if (callRequests !== undefined) this.callRequests = callRequests;
   }
 }
 

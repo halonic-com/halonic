@@ -2,12 +2,12 @@
 // stdin and stdout, holds it to the protocol and the limits, and offers it to
 // the engine as an ordinary IntegrationConnection (design HAL-958, section 3).
 
-import { type CurrentSecretForms, removeSecrets } from "@halonicjs/adapter-integration-kit";
-import type {
-  IntegrationConnection,
-  IntegrationHttpClient,
-  SandboxProcess,
-} from "@halonicjs/ports";
+import {
+  type CurrentSecretForms,
+  type LimitedHttpClient,
+  removeSecrets,
+} from "@halonicjs/adapter-integration-kit";
+import type { IntegrationConnection, SandboxProcess } from "@halonicjs/ports";
 import { parse } from "@halonicjs/schema-kit";
 import {
   FrameLineError,
@@ -44,8 +44,11 @@ export interface ConnectRunnerOptions {
   settings: Readonly<Record<string, unknown>>;
   /** The names of the tools the permission sheet declares. Only these are called. */
   tools: readonly string[];
-  /** The kit's client for this integration: every request the runner asks for goes through it. */
-  http: IntegrationHttpClient;
+  /**
+   * The kit's client for this integration: every request the runner asks for
+   * goes through it, and its log entries tell a failed call's requests.
+   */
+  http: LimitedHttpClient;
   /**
    * Every form of this integration's secrets and sign-in tokens, as they are
    * now, to filter what leaves the runner. It is asked each time something is
@@ -137,6 +140,7 @@ class RunnerBridge {
         if (this.#state === "started") this.#heartbeat.betweenCalls();
       },
       onEnded: (call) => this.#requests.closeCall(call),
+      requestsOf: (call) => this.#requests.requestsOf(call),
     });
     this.#requests = new RequestTable(options.http, this.#calls, limits, {
       send: (frame) => this.#send(frame),

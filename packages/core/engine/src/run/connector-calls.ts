@@ -6,7 +6,12 @@
 import type { SendingSettings } from "@halonicjs/app";
 import type { ToolFailureCause, ToolNotMadeReason } from "@halonicjs/events";
 import type { Agent, Connector } from "@halonicjs/format";
-import { type ConnectorClient, forwardedPartsOff, isConnectorToolError } from "@halonicjs/ports";
+import {
+  type ConnectorClient,
+  connectorCallRequestsOf,
+  forwardedPartsOff,
+  isConnectorToolError,
+} from "@halonicjs/ports";
 import { isPlainObject } from "@halonicjs/std";
 import { connectorStartCause } from "../agent/connector-start-cause.ts";
 import type { ListedToolApproval } from "../agent/listed-tool-approval.ts";
@@ -15,6 +20,7 @@ import type { EffectBoundary } from "../agent/run-tool-call.ts";
 import { collectTurnTools, errorMessage, toolErrorText } from "../agent/turn-tools.ts";
 import type { CallToolEffect, RunDefinitions, ToolResult } from "../kernel/decide-types.ts";
 import { brokeOff } from "../kernel/requested-effect.ts";
+import { serviceRefusedOf } from "./service-refused-cause.ts";
 
 /**
  * What runs need to reach connectors. Without it, a run's model call
@@ -98,7 +104,11 @@ export function readToolsOf(
  * on (HAL-12342). When the call breaks off without an answer, because the
  * program died, the connection dropped or it ran out of time, the connector
  * may have done the work before it broke off, so its outcome is `unknown`,
- * and the run waits for a person.
+ * and the run waits for a person. When Halonic's own log of the call's
+ * requests (`connectorCallRequestsOf`) shows the service, or the kit, refused
+ * its last request, the result gets a `service-refused` cause, and its
+ * outcome is `error` when no earlier request that could change something got
+ * through ({@link serviceRefusedOf}, HAL-19185).
  */
 export async function makeConnectorCall(
   connectors: readonly ConnectorClient[],
@@ -149,10 +159,24 @@ export async function makeConnectorCall(
     });
     return { type: "tool", result, outcome: "ok", ...logged };
   } catch (error) {
-    return isConnectorToolError(error)
-      ? { type: "tool", result: toolErrorText(error), outcome: "error", ...logged }
-      : { type: "tool", result: brokeOff(errorMessage(error)), outcome: "unknown", ...logged };
+    return { ...failedCallResult(error), ...logged };
   }
+}
+
+/**
+ * The result of a call that failed with `error`. A tool that answered with
+ * an error of its own, or whose service refused a call that changed nothing
+ * ({@link serviceRefusedOf}), failed: its outcome is `error`, with the
+ * tool's text. Any other call broke off, so its outcome is `unknown`. A
+ * refusal's `service-refused` cause goes on either.
+ */
+function failedCallResult(error: unknown): ToolResult {
+  const refused = serviceRefusedOf(connectorCallRequestsOf(error));
+  const cause = refused === undefined ? {} : { cause: refused.cause };
+  if (isConnectorToolError(error) || refused?.outcome === "error") {
+    return { type: "tool", result: toolErrorText(error), outcome: "error", ...cause };
+  }
+  return { type: "tool", result: brokeOff(errorMessage(error)), outcome: "unknown", ...cause };
 }
 
 /**

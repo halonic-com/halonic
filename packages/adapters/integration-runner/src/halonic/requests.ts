@@ -8,10 +8,16 @@
 
 import {
   IntegrationRefusedError,
+  type LimitedHttpClient,
   leakAttemptCodes,
   type RefusalCode,
+  type RequestLogEntry,
 } from "@halonicjs/adapter-integration-kit";
-import type { AuthPlacement, IntegrationHttpClient } from "@halonicjs/ports";
+import {
+  type AuthPlacement,
+  type ConnectorCallRequest,
+  maxConnectorCallRequests,
+} from "@halonicjs/ports";
 import { decodeRequestBody, toBase64 } from "../bodies.ts";
 import { FrameTooLargeError } from "../frame-lines.ts";
 import type { FetchFrame, HalonicFrame } from "../frames.ts";
@@ -46,7 +52,7 @@ interface TableRequest {
 
 /** Halonic's record of the runner's requests. */
 export class RequestTable {
-  readonly #http: IntegrationHttpClient;
+  readonly #http: LimitedHttpClient;
   readonly #calls: CallTable;
   readonly #limits: RunnerLimits;
   readonly #hooks: RequestTableHooks;
@@ -55,9 +61,11 @@ export class RequestTable {
   #lastId = -1;
   /** Requests closed because their call ended, whose late `pull` or `cancel-body` is ignored. */
   readonly #closedWithCall = new ClosedRequests();
+  /** The kit's log entries of each running call's requests, oldest first (HAL-19185). */
+  readonly #logged = new Map<number, ConnectorCallRequest[]>();
 
   constructor(
-    http: IntegrationHttpClient,
+    http: LimitedHttpClient,
     calls: CallTable,
     limits: RunnerLimits,
     hooks: RequestTableHooks,
@@ -164,10 +172,21 @@ export class RequestTable {
   }
 
   /**
+   * The kit's log entries of the requests call `call` made while it ran,
+   * oldest first: only entries the kit logged for a `fetch` frame of that
+   * call, so two calls running at once never see each other's.
+   */
+  requestsOf(call: number): readonly ConnectorCallRequest[] {
+    return [...(this.#logged.get(call) ?? [])];
+  }
+
+  /**
    * Closes every request of a call that stopped running: aborts the kit's
-   * request, drops its body, frees its slot, and tells the runner.
+   * request, drops its body, frees its slot, and tells the runner. Its
+   * logged requests go too.
    */
   closeCall(call: number): void {
+    this.#logged.delete(call);
     for (const [id, entry] of this.#live) {
       if (entry.call !== call) continue;
       this.#close(id, entry);
@@ -181,6 +200,7 @@ export class RequestTable {
 
   /** Aborts every request and drops every body, when the runner stops. */
   closeAll(): void {
+    this.#logged.clear();
     for (const [id, entry] of this.#live) this.#close(id, entry);
   }
 
@@ -193,6 +213,7 @@ export class RequestTable {
         body,
         auth: frame.auth.map(toPlacement),
         signal: entry.abort.signal,
+        onLogged: (logged) => this.#log(frame.call, logged),
       });
     } catch (error) {
       if (!this.#isLive(frame.id, entry)) return;
@@ -204,6 +225,19 @@ export class RequestTable {
     }
     if (!this.#isLive(frame.id, entry)) return dropBody(response.body);
     this.#sendHead(frame.id, entry, response);
+  }
+
+  /**
+   * Keeps the kit's entry for a request of `call` while the call runs. An
+   * entry that comes after it ended, such as for a request its end aborted,
+   * is dropped, so nothing is kept for a call that is over.
+   */
+  #log(call: number, logged: RequestLogEntry): void {
+    if (!this.#calls.isRunning(call)) return;
+    const requests = this.#logged.get(call) ?? [];
+    requests.push(callRequestOf(logged));
+    if (requests.length > maxConnectorCallRequests) requests.shift();
+    this.#logged.set(call, requests);
   }
 
   #sendHead(id: number, entry: TableRequest, response: Response): void {
@@ -343,6 +377,18 @@ function toPlacement(placement: FetchFrame["auth"][number]): AuthPlacement {
   if ("signIn" in placement)
     return { signIn: placement.signIn, as: "header", header: placement.header };
   return { secret: placement.secret, as: "header", header: placement.header };
+}
+
+/** What a call's failure carries of a log entry: no time, and no outcome the fields don't already say. */
+function callRequestOf(logged: RequestLogEntry): ConnectorCallRequest {
+  return {
+    method: logged.method,
+    host: logged.host,
+    path: logged.path,
+    ...(logged.status === undefined ? {} : { status: logged.status }),
+    ...(logged.refusal === undefined ? {} : { refusal: logged.refusal }),
+    ...(logged.retry === undefined ? {} : { retry: logged.retry }),
+  };
 }
 
 /** Stops reading a body nobody will read. A failure to cancel leaves nothing to clean up. */

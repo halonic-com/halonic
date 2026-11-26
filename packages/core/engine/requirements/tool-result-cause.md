@@ -2,11 +2,12 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-12471, plan approved by Liam on HAL-12575; follow-up to HAL-12429; the start causes in PR 2 of that plan; the approved call whose connector didn't start in HAL-13829 (CN1 of the C248 check on HAL-13818); the plugin reasons from HAL-14974 (Kim's C522 finding on HAL-14972: a run with a plugin added but not trusted warned only "couldn't list its tools"); `plugin-stopped` from flow check C600 #4 (HAL-15608); `sandbox-not-ready`: HAL-14296; `program-stopped` from HAL-15606 (C600 #1); `unfenced-not-allowed` from HAL-15689 (Nina's C611 on HAL-15671)
+- Source: HAL-12471, plan approved by Liam on HAL-12575; follow-up to HAL-12429; the start causes in PR 2 of that plan; the approved call whose connector didn't start in HAL-13829 (CN1 of the C248 check on HAL-13818); the plugin reasons from HAL-14974 (Kim's C522 finding on HAL-14972: a run with a plugin added but not trusted warned only "couldn't list its tools"); `plugin-stopped` from flow check C600 #4 (HAL-15608); `sandbox-not-ready`: HAL-14296; `program-stopped` from HAL-15606 (C600 #1); `unfenced-not-allowed` from HAL-15689 (Nina's C611 on HAL-15671); `service-refused` from HAL-19185 (PR 2 of the HAL-19172 plan, with Liam's rules from his OK on HAL-19172, 26 Nov)
 
 When a connector call a run recorded fails and the engine knows why, the engine shall log the reason in the `cause` of its `tool.result` (`events.tool-result-cause`), and shall leave the text the model hears as it was:
 
-- a call whose time limit ran out gets `time-limit`, with the limit in `seconds`; any other failure of the call keeps `outcome: "unknown"` and gets no cause;
+- a call whose time limit ran out gets `time-limit`, with the limit in `seconds`; any other failure of the call keeps `outcome: "unknown"` and gets no cause, unless it is refused as below;
+- a call that fails with the requests it made on its error (`ports.connector-call-requests`), whose **last** request got `401`, `403` or `429`, or was refused by the kit as `host-not-allowed`, gets `service-refused` with `why: "not-accepted"`, `"not-allowed"`, `"slow-down"` with the request's `retry` in `retries` (0 when absent, at most 2), or `"host-not-declared"` with the host's main part in `host`: its last two labels, or three under a two-part ending such as `co.uk` from the engine's own list, an IP address or `localhost` as it is, an internationalised host in its `xn--` form. Its outcome is `error`, and the model hears the tool's error as for a tool that answered with one, when no earlier request of the call other than a `GET` or `HEAD` got a `2xx` or `3xx`; otherwise it stays `unknown`, with the cause. The cause has `sentOnce: true` only when no request other than a `GET` or `HEAD` went out twice in the call (the same method, host and path; a request the kit refused never went out). It never holds a path, a status, a header, any part of the reply or of the error's message. A call whose last request got anything else gets no `service-refused` cause;
 - a call the engine was making when it stopped gets `engine-stopped`;
 - a call the engine didn't make gets `not-made`, with `not-connected` when the agent's connector isn't among the run's or the engine makes no connector calls, `tool-gone` when the connector no longer offers the tool, `sending-off` when the tool sends and the "allow sending" check refused it, and `bad-arguments` when the arguments aren't an object;
 - a call whose run's connectors couldn't start, or whose connector couldn't list its tools, gets `connector-not-started`: with `why: "program-missing"`, `"program-stopped"`, `"secret-not-set"`, `"plugin-not-trusted"`, `"plugin-changed"`, `"plugin-stopped"` or `"unfenced-not-allowed"` and the program's or the secret's name, the plugin's id, for `plugin-stopped` the plugin's name, or why the sandbox isn't available in `name`, cut to `maxCauseNameLength`, when the error is one `connectorStartFailureOf` reads (`ports.connector-start-failure`), with `why: "sandbox-not-ready"` and no `name` when it reads a plugin's backend with no sandbox, else with `why: "other"` and no `name`; never any part of the error's message.
@@ -21,6 +22,18 @@ A call a person approved, whose connector couldn't list its tools when the agent
 - Given a recorded call to `send_mail` whose connector fails,
   when the call ends,
   then `tool.result` has `outcome: "unknown"` and no cause.
+- Given a recorded call to `send_mail` whose only request got `401`,
+  when the call fails,
+  then `tool.result` has `outcome: "error"` and `cause: { code: "service-refused", why: "not-accepted", sentOnce: true }`.
+- Given a call whose `POST` got `200` and whose last request, a `GET`, got `429`,
+  when the call fails,
+  then the result has `outcome: "unknown"` and `cause: { code: "service-refused", why: "slow-down", retries: 0, sentOnce: true }`.
+- Given a call the kit refused for the host `shopify.com.example.net`,
+  when the call fails,
+  then the result has `cause: { code: "service-refused", why: "host-not-declared", host: "example.net", sentOnce: true }`.
+- Given a call that fails after its last request got `200`,
+  when the call ends,
+  then the result has no cause.
 - Given an engine that stopped after recording a call,
   when an engine starts on the same store,
   then `tool.result` has `cause: { code: "engine-stopped" }`.

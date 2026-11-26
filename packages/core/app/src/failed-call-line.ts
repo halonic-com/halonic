@@ -53,7 +53,9 @@ export function failedCallLine(tool: string, failed: FailedCall): FailedCallText
     connector: connector ?? { key: "connectorOfTool" as const, values: { tool: toolName } },
   };
   const { cause } = failed;
-  if (cause === undefined) {
+  // A refused service has no words of its own yet (HAL-19186): it reads as
+  // a call without a cause, by its outcome.
+  if (cause === undefined || cause.code === "service-refused") {
     return failed.reason === "no-answer"
       ? { key: "noAnswer", values }
       : { key: "failed", values: {} };

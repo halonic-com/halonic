@@ -139,6 +139,11 @@ export {
   connectionSettingsStoreVersion,
 } from "./connection-settings-store.ts";
 export {
+  type ConnectorCallRequest,
+  connectorCallRequestsOf,
+  maxConnectorCallRequests,
+} from "./connector-call-requests.ts";
+export {
   type ConnectorCallOptions,
   type ConnectorClient,
   type ConnectorConfig,
