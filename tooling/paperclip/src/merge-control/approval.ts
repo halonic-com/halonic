@@ -370,11 +370,6 @@ export function approvalOf(pull: GatePull, teamLogin: string, patchIds: PatchIds
     approval = julian.approval ?? nora.approval ?? approval;
     note = nora.approval === undefined ? (julian.note ?? nora.note) : undefined;
   }
-  if (approval?.ok !== true) {
-    const nora = noraVerdict(pull, teamLogin, patchIds);
-    approval = nora.approval ?? approval;
-    note = nora.note ?? note;
-  }
   const reReview =
     approval?.ok === false && (approval.stale !== undefined || approval.moved === true);
   const reason = approvalReason(pull, approval, reReview);
