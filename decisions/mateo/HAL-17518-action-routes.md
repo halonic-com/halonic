@@ -3,6 +3,7 @@
 - Task: HAL-17518
 - Approval: Liam approved the plan on HAL-20151 (PR 3-2) and the code of #6707 on head `4a1d53aff`; it changes the guard's own path `turbo.json`, so Liam and Julian sign as the two guardians
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:0ZTSggyOTLJ76sEn3UcUXCvyG5/6a0fcua0tFkqA6bvSytFgej7hc6X7CNF7r81Js/iwkCwPfLGHfgE6o3L2BA==
 
 ## What changes
 
