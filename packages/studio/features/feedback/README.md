@@ -31,6 +31,8 @@ hand it in, with the key behind its guard.
 
 - `settings/`: Settings → Keyboard, the **Send feedback** row whose **Change** records a new
   shortcut and hands it to the shell's `plugin:feedback|shortcut_set` (`feedback.settings-shortcut`),
+  under it the **Quick ask** row, for quick ask's keys through `AskKeysSettingsService` from
+  quick ask's `api.ts`, with the taken and Wayland lines (`feedback.settings-quick-ask`),
   and Settings → Feedback, the **Project** and **Assign to** the Send feedback window reads
   (`feedbackPrefs`, host settings) and how many feedbacks wait (`feedback.settings-section`). Both
   show only in Studio's own main window, where the app gives `FeedbackSettingsService`.
