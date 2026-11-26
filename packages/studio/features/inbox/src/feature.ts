@@ -98,13 +98,13 @@ export const inboxFeature = defineFeature({
       subscribeSignal: (context, listener) =>
         context.services.get(InboxService).subscribe(listener),
     });
-    // The Inbox's own window, Halonic Inbox (shell.focused-apps): the same page, in the frame's panel.
+    // The Inbox's own window, Halonic Inbox (shell.focused-apps): the same page, its list on the
+    // frame and the item on a framed panel beside it (inbox.framed-sidebar).
     studio.focusedApps.add({
       id: "inbox",
       title: "Inbox",
-      view: "InboxPage",
+      view: "InboxWindow",
       load: () => import("./ui/inbox-page.tsx"),
-      panel: true,
     });
     studio.dialogs.add({
       id: "inbox.needs-you-news",

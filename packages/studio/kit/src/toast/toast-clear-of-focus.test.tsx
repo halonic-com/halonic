@@ -38,12 +38,16 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-/** The region and a button, in a wrapper placed as the shell places it, with the button's box. */
-function page(presentation: Presentation, buttonBox: DOMRect) {
+/**
+ * The region and a button, in a wrapper placed as the shell places it, with the button's box.
+ * `inContents` puts the region in a `contents` box inside the wrapper, as the shell's phone frame does.
+ */
+function page(presentation: Presentation, buttonBox: DOMRect, options = { inContents: false }) {
+  const toasts = <ToastRegion store={store} />;
   const { container } = render(
     <PresentationProvider presentation={presentation}>
       <button type="button">Go back to this version</button>
-      <ToastRegion store={store} />
+      {options.inContents ? <div style={{ display: "contents" }}>{toasts}</div> : toasts}
     </PresentationProvider>,
   );
   const button = container.querySelector("button");
@@ -133,6 +137,14 @@ verifies("kit.toast-clear-of-focus", () => {
       document.dispatchEvent(new Event("scroll"));
     });
     expect(region.style.top).toBe("28px");
+  });
+
+  it("measures the wrapper past a `contents` box, as the shell's phone frame has (HAL-19924)", () => {
+    const { button, region } = page("phone", underTheToast, { inContents: true });
+    region.style.position = "fixed";
+    act(() => button.focus());
+    show("Went back to 14:02");
+    expect(region.style.top).toBe(`${wrapperBox.y + 8}px`);
   });
 
   it("stays at the bottom when it would cover the focused element at the top as well", () => {

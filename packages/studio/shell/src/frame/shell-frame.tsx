@@ -1,5 +1,6 @@
 import {
   FieldAnnounceProvider,
+  framedPanelClass,
   ModalRegionsProvider,
   NarrowProvider,
   type Presentation,
@@ -99,22 +100,22 @@ export interface ShellFrameProps {
 }
 
 /**
- * The Studio window's frame. On the desktop it has three layers (design direction 2): the 40px
- * title bar on the halo, then the panel set into the halo with a 12px radius, holding two rows:
- * the sidebar beside the page, and the 24px status bar. On a phone (narrower than `PHONE_MAX_WIDTH`) it
+ * The Studio window's frame. On the desktop (design direction 2) it has the 40px title bar on the
+ * halo, then the framed sidebar the Messenger and the Inbox share (`kit.framed-sidebar`,
+ * HAL-19923): the sidebar on the halo, full height, and 8px beside it the framed panel with the
+ * page over the 24px status bar. On a phone (narrower than `PHONE_MAX_WIDTH`) it
  * shows the phone's top bar, the page and the bottom navigation, with no window tabs and no
  * status bar (component specs 15.1, 15.2).
  * In a narrow window (600 to 899px) the sidebar folds into the Places drawer, opened by a Places
  * button at the title bar's far left.
- * While the engine isn't answering, its one line sits over the sidebar and the page, at the top of
- * the panel on the desktop and under the top bar on a phone.
+ * While the engine isn't answering, its one line sits over the page, at the top of the framed
+ * panel on the desktop and under the top bar on a phone.
  *
  * Everything inside learns the layout through the kit's `PresentationProvider`, and whether the
  * window is narrower than 900px through its `NarrowProvider`; every kit
  * Dialog sends its announcements through the window's announcer, as does every kit Field whose
  * error appears after focus has left it. The window's one `ToastRegion`
- * sits over the sidebar and the page (on a phone, the page), so a toast never covers the status
- * bar, and kit parts that confirm with a toast find the store through `ToastStoreProvider`.
+ * sits over the page, so a toast never covers the status bar, and kit parts that confirm with a toast find the store through `ToastStoreProvider`.
  *
  * @example
  * <ShellFrame
@@ -152,7 +153,22 @@ export function ShellFrame(props: ShellFrameProps) {
   );
 }
 
-const panel = "overflow-hidden rounded-md border border-border";
+/**
+ * The desktop's framed panel beside the sidebar (`kit.framed-sidebar`): the engine's line, the
+ * page and the status bar. Its classes, not the kit's `FramedPanel`, because on a phone the same
+ * element stays as a `contents` box, so `main` keeps its place in the tree (`shell.frame`).
+ */
+const panel = `flex min-h-0 min-w-0 flex-1 flex-col ${framedPanelClass("studio")}`;
+
+/**
+ * The framed panel's classes: 8px from the sidebar, as a margin rather than the row's gap, since
+ * the sidebar's resize edge sits between them as a flex item of its own. With the sidebar in the
+ * Places drawer, or no sidebar, the panel takes the whole row; on a phone it's only a `contents` box.
+ */
+function desktopPanelClass(desktop: boolean, besideSidebar: boolean): string {
+  if (!desktop) return "contents";
+  return besideSidebar ? `ms-2 ${panel}` : panel;
+}
 
 /**
  * On a short phone window (400 % zoom, a phone held sideways) the bars would leave the page no room,
@@ -196,7 +212,7 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
           {props.titleBar}
         </header>
       ) : null}
-      <div className={`flex min-h-0 flex-1 flex-col bg-surface ${desktop ? panel : phoneColumn}`}>
+      <div className={`flex min-h-0 flex-1 flex-col ${desktop ? "" : phoneColumn}`}>
         <TopLines props={props} desktop={desktop} phonePanel={phonePanel} />
         <div className={`relative flex min-h-0 flex-1 ${desktop ? "" : phoneContent}`}>
           {desktop ? (
@@ -212,23 +228,20 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
               {props.sidebar}
             </SidebarSlot>
           ) : null}
-          <PageColumn
+          <FramedContent
             desktop={desktop}
-            inert={drawer.open || covered || phonePanel}
-            strips={props.strips}
+            besideSidebar={!drawer.narrow && props.sidebar !== undefined}
+            frame={props}
           >
-            {props.children}
-          </PageColumn>
-          {props.panel}
-          <ToastRegion store={props.toasts} />
+            <PageColumn
+              desktop={desktop}
+              inert={drawer.open || covered || phonePanel}
+              strips={props.strips}
+            >
+              {props.children}
+            </PageColumn>
+          </FramedContent>
         </div>
-        {desktop ? (
-          <DesktopStatusBar
-            badges={props.badges}
-            statusBar={props.statusBar}
-            saveNote={props.saveNote}
-          />
-        ) : null}
         {desktop || phonePanel ? null : props.phoneNavigation}
       </div>
     </div>
@@ -236,8 +249,42 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
 }
 
 /**
- * What sits above the page: the engine's line, and on a phone the top bar first and the strips and
- * the notice strip after it. A phone's full-page panel takes the place of all of them.
+ * The desktop's framed panel: the engine's line, the page with the side panel and the toasts, and
+ * the status bar. On a phone the same two boxes stay, as `contents`, so the page keeps its place.
+ */
+function FramedContent(props: {
+  readonly desktop: boolean;
+  readonly besideSidebar: boolean;
+  readonly frame: ShellFrameProps;
+  readonly children: ReactNode;
+}) {
+  const { desktop, frame } = props;
+  return (
+    <div
+      data-framed-panel={desktop ? "" : undefined}
+      className={desktopPanelClass(desktop, props.besideSidebar)}
+    >
+      {desktop ? <EngineLine engine={frame.engine} /> : null}
+      <div className={desktop ? "relative flex min-h-0 flex-1" : "contents"}>
+        {props.children}
+        {frame.panel}
+        <ToastRegion store={frame.toasts} />
+      </div>
+      {desktop ? (
+        <DesktopStatusBar
+          badges={frame.badges}
+          statusBar={frame.statusBar}
+          saveNote={frame.saveNote}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * What sits above a phone's page: the top bar, the engine's line, the strips and the notice strip.
+ * A phone's full-page panel takes the place of all of them. The desktop has none here: its engine
+ * line is at the top of the framed panel.
  */
 function TopLines(props: {
   readonly props: ShellFrameProps;
@@ -245,13 +292,13 @@ function TopLines(props: {
   readonly phonePanel: boolean;
 }) {
   const { props: frame, desktop, phonePanel } = props;
-  if (phonePanel) return null;
+  if (phonePanel || desktop) return null;
   return (
     <>
-      {desktop ? null : frame.phoneTopBar}
+      {frame.phoneTopBar}
       <EngineLine engine={frame.engine} />
-      {desktop ? null : frame.strips}
-      {desktop ? null : <PhoneNotices saveNote={frame.saveNote} badges={frame.phoneBadges} />}
+      {frame.strips}
+      <PhoneNotices saveNote={frame.saveNote} badges={frame.phoneBadges} />
     </>
   );
 }

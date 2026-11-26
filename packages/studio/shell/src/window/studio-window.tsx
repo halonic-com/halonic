@@ -50,6 +50,7 @@ import { StudioPage } from "./studio-page.tsx";
 import { StudioPhonePage, StudioPhoneTopBar } from "./studio-phone.tsx";
 import { StudioSidebar } from "./studio-sidebar.tsx";
 import type { StudioWorkspace } from "./studio-workspace.ts";
+import { TitleBarStart, useSidebarWidth } from "./title-bar-start.tsx";
 import { type ChosenFormat, WindowFormatLocale } from "./window-format.tsx";
 import { useWindowOpeners } from "./window-openers.ts";
 import { windowPanelParts } from "./window-panel.tsx";
@@ -217,6 +218,7 @@ function StudioWindowBody(props: StudioWindowProps) {
   );
   // The sidebar switch's tab, kept here in memory only so a view can ask for another one.
   const [sidebarView, setSidebarView] = useState<string>(studioTab);
+  const sidebarWidth = useSidebarWidth();
   const showSidebarView = useCallback(
     (viewId: string) => {
       const known =
@@ -334,10 +336,10 @@ function StudioWindowBody(props: StudioWindowProps) {
       language={props.language}
       titleBar={
         <>
-          <span className="flex items-center gap-1 self-center">
+          <TitleBarStart sidebarWidth={sidebarWidth.width}>
             <TitleBarBrand />
             <HistoryButtons tabs={tabs} />
-          </span>
+          </TitleBarStart>
           <WindowTabStrip tabs={tabs} onNewTab={palette.show} windowKeys={{ host, platform }} />
           {panel.button}
           <TitleBarItems items={contributions.titleBar.list()} contextFor={contextFor} />
@@ -363,6 +365,7 @@ function StudioWindowBody(props: StudioWindowProps) {
           onSettings={() => openSettings()}
           help={help}
           switcher={sidebarSwitcher}
+          {...sidebarWidth.sidebar}
           footer={contributions.sidebarFooter.item()}
         />
       }

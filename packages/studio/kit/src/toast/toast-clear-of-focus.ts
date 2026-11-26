@@ -105,10 +105,22 @@ function placeClearOfFocus(region: HTMLElement): TopPlace | null {
  * its `top` is in the window; otherwise it's `absolute` in the wrapper.
  */
 function topPlace(region: HTMLElement): TopPlace {
-  const wrapper = region.parentElement?.getBoundingClientRect().top ?? 0;
+  const wrapper = drawnParent(region)?.getBoundingClientRect().top ?? 0;
   const y = Math.max(wrapper, 0) + GAP_PX;
   const fixed = getComputedStyle(region).position === "fixed";
   return { y, top: fixed ? y : y - wrapper };
+}
+
+/**
+ * The region's nearest parent with a box of its own. A `contents` parent draws none and measures
+ * as 0, as the shell's framed panel does on a phone (HAL-19924), so it's skipped.
+ */
+function drawnParent(region: HTMLElement): HTMLElement | null {
+  let parent = region.parentElement;
+  while (parent !== null && getComputedStyle(parent).display === "contents") {
+    parent = parent.parentElement;
+  }
+  return parent;
 }
 
 /** Whether two boxes share any area; boxes that only touch don't. */

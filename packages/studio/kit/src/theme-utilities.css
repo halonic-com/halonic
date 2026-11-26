@@ -89,6 +89,18 @@
   background: linear-gradient(90deg, var(--halo-tint-blue), var(--halo-tint-violet));
 }
 
+/*
+ * The current place in Studio's sidebar, which sits on the window's frame (kit.framed-sidebar): the
+ * "you are here" tint over a 60% wash of surface in light, where the tint alone barely shows on the
+ * frame (HAL-19925). Dark keeps the tint alone, which already reads there. A layer like
+ * bg-tab-hover, not a colour token.
+ */
+@utility bg-place-current {
+  background:
+    linear-gradient(90deg, var(--halo-tint-blue), var(--halo-tint-violet)),
+    light-dark(color-mix(in srgb, var(--color-surface) 60%, transparent), transparent);
+}
+
 /* A soft wash that fades out downwards: the assistant panel header, empty states. */
 @utility bg-halo-wash {
   background: linear-gradient(
