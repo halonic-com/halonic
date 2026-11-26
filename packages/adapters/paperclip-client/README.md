@@ -58,6 +58,13 @@ Only `request_board_approval`, which just records the board's answer, is `normal
 The risk comes from Paperclip's type, never from the asking agent's title. A phone can't answer a risky
 item unless the desktop allows it (requirement `paperclip-client.approval-risk`).
 
+**Route timing.** Pass `timing` (for example `logRouteTimings(log)`) and every request reports its
+method, route template, status, milliseconds and body bytes (counted after `fetch` decompressed
+the body, so not network bytes), such as
+`paperclip GET issues/:task 200 312 ms 18944 B`. It names the route as the request list writes it, so a
+record never holds an ID, a query string, a header, the key or a body (requirement
+`paperclip-client.route-timing`). The sink must not throw: its error would replace the call's answer.
+
 **Channels** (`paperclip-client.channels`, K1). A channel is an open parent task with the `channel` tag that a
 person made, never an agent, with a members line the provider writes (2 to 8 agents, the lead among them). A
 message in a channel is a comment on that task, and each agent in `to`, or the lead when `to` is empty, gets one

@@ -12,6 +12,7 @@ import {
   paperclipRequests,
   uploadRule,
 } from "./requests.ts";
+import { CountedResponse, type RouteTimingSink, routeOf } from "./route-timing.ts";
 import { fitsUpload, type Upload, uploadForm } from "./uploads.ts";
 
 /** Why a request didn't give an answer the client can use. */
@@ -65,6 +66,10 @@ export interface TransportOptions {
   key: string | PaperclipKeyGuard;
   /** The `fetch` to use; the global one by default. */
   fetch?: typeof fetch;
+  /** Where each call's route, status, time and size go (`paperclip-client.route-timing`); nowhere by default. */
+  timing?: RouteTimingSink;
+  /** Milliseconds for {@link timing}, read only when it is set; `Date.now` by default. */
+  clock?: () => number;
 }
 
 /** One request's details beyond its name and path. */
@@ -122,6 +127,8 @@ export class PaperclipTransport {
   readonly #origin: string;
   readonly #guard: PaperclipKeyGuard;
   readonly #fetch: typeof fetch;
+  readonly #timing: RouteTimingSink | undefined;
+  readonly #clock: () => number;
 
   constructor(options: TransportOptions) {
     this.#origin = checkedOrigin(options.address);
@@ -129,6 +136,8 @@ export class PaperclipTransport {
     if (typeof key === "string") checkKey(key);
     this.#guard = typeof key === "string" ? (request) => request(key) : key;
     this.#fetch = options.fetch ?? fetch;
+    this.#timing = options.timing;
+    this.#clock = options.clock ?? Date.now;
   }
 
   /** Sends request `name`. An unsafe ID throws before anything is sent. */
@@ -213,6 +222,7 @@ export class PaperclipTransport {
     if (payload.contentType !== undefined) {
       headers["content-type"] = payload.contentType;
     }
+    const started = this.#timing === undefined ? 0 : this.#clock();
     let response: Response;
     try {
       response = await this.#fetch(url, {
@@ -222,10 +232,35 @@ export class PaperclipTransport {
         redirect: "manual",
       });
     } catch {
+      this.#record(name, "offline", started, 0);
       // The platform's error can name the address; "offline" is all a caller needs.
       return { kind: "failed", failure: "offline" };
     }
-    return this.#read(name, response, reader);
+    // Without a sink the answer goes to the reader exactly as `fetch` gave it.
+    if (this.#timing === undefined) {
+      return this.#read(name, response, reader);
+    }
+    const counted = new CountedResponse(response);
+    try {
+      return await this.#read(name, counted.response, reader);
+    } finally {
+      // Recorded after the body is read, so the time includes the download.
+      this.#record(name, response.status, started, counted.bytes);
+    }
+  }
+
+  /** Hands one call's timing to the sink: the route template only, never the URL it was sent to. */
+  #record(
+    name: PaperclipRequestName,
+    status: number | "offline",
+    started: number,
+    bytes: number,
+  ): void {
+    if (this.#timing === undefined) return;
+    const { method } = paperclipRequests[name];
+    // `Date.now` jumps back when the system clock is set; a negative time would mislead.
+    const ms = Math.max(0, this.#clock() - started);
+    this.#timing({ method, route: routeOf(name), status, ms, bytes });
   }
 
   async #read(
