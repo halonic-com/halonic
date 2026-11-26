@@ -27,10 +27,7 @@ fn served_page_test_sees_the_updater_plugin_granted_to_no_page() {
     let text = include_str!("../../capabilities/desktop-updates.json");
     let capability: Value = serde_json::from_str(text).expect("the capability is JSON");
     assert_eq!(capability["local"], true);
-    assert_eq!(
-        capability["windows"],
-        json!(["main", "inbox", "messenger", "ask"])
-    );
+    assert_eq!(capability["windows"], json!(["main", "inbox", "messenger"]));
     assert!(capability.get("remote").is_none(), "{capability}");
     assert_eq!(
         capability["permissions"],

@@ -4,8 +4,7 @@
   "local": true,
   "windows": [
     "inbox",
-    "messenger",
-    "ask"
+    "messenger"
   ],
   "platforms": [
     "linux",
