@@ -1,10 +1,9 @@
-import { Button, Field, Kbd, TextArea } from "@halonicjs/studio-kit";
-import { type FormEvent, type Ref, type RefObject, useId, useRef, useState } from "react";
+import { Dialog, Field, Kbd, TextArea } from "@halonicjs/studio-kit";
+import { type Ref, type RefObject, useId, useRef, useState } from "react";
 import { endFeedback, type FeedbackIpc, feedbackCommands } from "../feedback-ipc.ts";
 import { feedbackWords } from "../feedback-words.ts";
 import { type StillState, useStill } from "../overlay/use-still.ts";
 import { feedbackTitle } from "../payload.ts";
-import { useEscapeEnds } from "../use-escape-ends.ts";
 import { CropView } from "./crop-view.tsx";
 import { type FeedbackDetails, type SendOutgoing, useHandOn } from "./hand-on.ts";
 import { canvasPng, type PngEncoder } from "./screenshot-png.ts";
@@ -17,10 +16,12 @@ export interface SendFeedbackProps {
   readonly ipc: FeedbackIpc;
   readonly send: SendOutgoing;
   readonly details: FeedbackDetails;
+  /** Takes the dialog away; the feedback has ended or is ending. */
+  readonly onClose: () => void;
   /** Whether Send sends now or saves the feedback until Studio is online; `online` by default. */
   readonly connection?: FeedbackConnection;
   /**
-   * Closes the window, keeping the text, and starts a new selection, offered where the crop
+   * Closes the dialog, keeping the text, and starts a new selection, offered where the crop
    * couldn't be loaded. Without it that box offers only Send without a screenshot.
    */
   readonly selectAgain?: () => void;
@@ -29,58 +30,65 @@ export interface SendFeedbackProps {
 }
 
 /**
- * The Send feedback window (`feedback.send-window`, sketch on HAL-18562 §2, states on HAL-19384):
- * the crop, its size, the text field and its footnote, with Cancel and Send. Send, or Ctrl Enter
- * (⌘ ↩), hands the feedback on and ends; with nothing written it says "Write a line about what
- * you saw." and sends nothing. A refused Send keeps the window open and says why
- * (`feedback.send-states`). Cancel and Esc end the feedback and keep nothing.
+ * The Send feedback dialog (`feedback.send-window`, sketch on HAL-18562 §2, states on HAL-19384),
+ * shown in the window where the shortcut was pressed: the crop, its size, the text field and its
+ * footnote, with Cancel and Send. Send, or Ctrl Enter (⌘ ↩), hands the feedback on and ends; with
+ * nothing written it says "Write a line about what you saw." and sends nothing. A refused Send
+ * keeps the dialog open and says why (`feedback.send-states`). Cancel, the ✕ and Esc end the
+ * feedback and keep nothing. Each way out takes the dialog away and calls `plugin:feedback|end`.
  */
 export function SendFeedback(props: SendFeedbackProps) {
   const { ipc, details } = props;
   const canvas = useRef<HTMLCanvasElement>(null);
   const textField = useRef<HTMLTextAreaElement>(null);
+  const end = () => {
+    props.onClose();
+    endFeedback(ipc);
+  };
   const still = useStill(ipc, canvas, feedbackCommands.crop);
-  const { text, error, type, submit, handing } = useSend(props, still, textField);
+  const { text, error, type, submit, handing } = useSend(props, end, still, textField);
+  // The spinner shows only after 300 ms, so a quick send just closes the dialog.
   const spinner = useShownAfterWait(handing.sending);
   const footnoteId = useId();
-  useEscapeEnds(ipc);
 
   return (
-    <form
-      // The window is opaque and has no frame, so a 1px edge keeps it apart from a window of the
-      // same colour behind it (design check on HAL-19208).
-      className="fixed inset-0 flex flex-col gap-4 border border-border-strong bg-app-panel p-6 text-fg"
-      data-feedback-send=""
-      onSubmit={(event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        submit("crop");
-      }}
+    <Dialog
+      title={feedbackWords.sendTitle}
+      size="md"
+      form
+      confirm={{ label: feedbackWords.send, busyLabel: feedbackWords.sending }}
+      busy={spinner}
+      cancelLabel={feedbackWords.cancel}
+      // The dialog opens to be typed in (sketch §2).
+      initialFocus={() => textField.current}
+      describedBy={footnoteId}
+      onConfirm={() => submit("crop")}
+      onCancel={end}
     >
-      <CropView
-        canvas={canvas}
-        still={still}
-        sending={handing.sending}
-        onSelectAgain={props.selectAgain}
-        onSendWithoutScreenshot={() => submit("none")}
-      />
-      <TextBox
-        ref={textField}
-        text={text}
-        error={error}
-        sending={handing.sending}
-        footnoteId={footnoteId}
-        onChange={type}
-      />
-      <SendNotice
-        problem={handing.problem}
-        connection={props.connection ?? "online"}
-        onSend={submit}
-      />
-      <Footnote id={footnoteId} details={details} />
-      {/* Last in the page, so Tab goes from the text to Cancel and Send; shown first, as a title bar. */}
-      {/* The spinner shows only after 300 ms, so a quick send just closes the window. */}
-      <TitleBar busy={spinner} onCancel={() => endFeedback(ipc)} />
-    </form>
+      <div className="flex flex-col gap-4 pt-3" data-feedback-send="">
+        <CropView
+          canvas={canvas}
+          still={still}
+          sending={handing.sending}
+          onSelectAgain={props.selectAgain}
+          onSendWithoutScreenshot={() => submit("none")}
+        />
+        <TextBox
+          ref={textField}
+          text={text}
+          error={error}
+          sending={handing.sending}
+          footnoteId={footnoteId}
+          onChange={type}
+        />
+        <SendNotice
+          problem={handing.problem}
+          connection={props.connection ?? "online"}
+          onSend={submit}
+        />
+        <Footnote id={footnoteId} details={details} />
+      </div>
+    </Dialog>
   );
 }
 
@@ -91,13 +99,14 @@ export function SendFeedback(props: SendFeedbackProps) {
  */
 function useSend(
   props: SendFeedbackProps,
+  end: () => void,
   still: StillState,
   textField: RefObject<HTMLTextAreaElement | null>,
 ) {
   const [openedAt] = useState(props.details.now);
   const [text, setText] = useState("");
   const [error, setError] = useState<string>();
-  const handing = useHandOn(props.ipc, props.send);
+  const handing = useHandOn(end, props.send);
   const type = (next: string) => {
     setText(next);
     setError(undefined);
@@ -138,8 +147,6 @@ function TextBox(props: {
         readOnly={props.sending}
         // A screen reader also hears what goes with the text.
         describedBy={props.footnoteId}
-        // The window opens to be typed in (sketch §2).
-        autoFocus
         onChange={(event) => props.onChange(event.target.value)}
       />
     </Field>
@@ -155,23 +162,6 @@ function Footnote({ id, details }: { readonly id: string; readonly details: Feed
         <Kbd keys={details.mac ? ["⌘", "↩"] : ["Ctrl", "Enter"]} />
         {feedbackWords.sendKeyHint}
       </span>
-    </div>
-  );
-}
-
-/** "Send feedback" with Cancel and Send at its right. */
-function TitleBar({ busy, onCancel }: { readonly busy: boolean; readonly onCancel: () => void }) {
-  return (
-    <div className="order-first flex items-center justify-between gap-4">
-      <h1 className="text-heading">{feedbackWords.sendTitle}</h1>
-      <div className="flex gap-2">
-        <Button variant="secondary" onClick={onCancel}>
-          {feedbackWords.cancel}
-        </Button>
-        <Button type="submit" busy={busy}>
-          {feedbackWords.send}
-        </Button>
-      </div>
     </div>
   );
 }

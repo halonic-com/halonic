@@ -23,6 +23,7 @@ function fakeShell(selecting: () => Promise<unknown> = async () => null) {
 let root: Root | undefined;
 let element: HTMLDivElement;
 const closed = vi.fn();
+const kept = vi.fn();
 
 beforeEach(() => {
   Object.assign(window, { innerWidth: viewport.width, innerHeight: viewport.height });
@@ -35,12 +36,13 @@ afterEach(() => {
   root = undefined;
   element.remove();
   closed.mockReset();
+  kept.mockReset();
 });
 
 async function mount(shell = fakeShell()) {
   await act(async () => {
     root = createRoot(element);
-    root.render(<FeedbackOverlay ipc={shell} still={still} onClose={closed} />);
+    root.render(<FeedbackOverlay ipc={shell} still={still} onClose={closed} onSelected={kept} />);
   });
   return shell;
 }
@@ -89,13 +91,14 @@ verifies("feedback.overlay", () => {
     expect(hintText()).toBe("Drag to select an area · Enter for the whole window · Esc to cancel");
   });
 
-  it("selects the whole window on Enter and closes", async () => {
+  it("selects the whole window on Enter, closes, and says so once the shell kept the crop", async () => {
     const shell = await mount();
-    act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" })));
+    await act(async () => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" })));
     expect(selected(shell)).toEqual([
       ["plugin:feedback|select", { area: { left: 0, top: 0, width: 200, height: 100 } }],
     ]);
     expect(closed).toHaveBeenCalled();
+    expect(kept).toHaveBeenCalledOnce();
   });
 
   it("ends the feedback when the shell refuses the box, unless another window's press took the still", async () => {
@@ -103,6 +106,7 @@ verifies("feedback.overlay", () => {
     const quiet = vi.spyOn(console, "error").mockImplementation(() => undefined);
     await act(async () => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" })));
     expect(gone.invoke).toHaveBeenCalledWith("plugin:feedback|end");
+    expect(kept).not.toHaveBeenCalled();
     act(() => root?.unmount());
     const otherWindow = await mount(fakeShell(() => Promise.reject("other_window")));
     await act(async () => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" })));

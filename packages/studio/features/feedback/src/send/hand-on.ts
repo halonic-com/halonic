@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { endFeedback, type FeedbackIpc } from "../feedback-ipc.ts";
 import type { StillImage } from "../overlay/still.ts";
 import { buildFeedbackTask, type FeedbackTask } from "../payload.ts";
 import { type PngEncoder, type ScreenshotPng, screenshotPng } from "./screenshot-png.ts";
@@ -92,10 +91,10 @@ export interface HandingOn {
 }
 
 /**
- * Hands feedback on and ends the feedback once it is taken. A refusal, a crop that can't become a
- * PNG or a sender that fails keeps the window open with the problem; the failure is logged.
+ * Hands feedback on and calls `end` once it is taken. A refusal, a crop that can't become a PNG or
+ * a sender that fails keeps the dialog open with the problem; the failure is logged.
  */
-export function useHandOn(ipc: FeedbackIpc, send: SendOutgoing): HandingOn {
+export function useHandOn(end: () => void, send: SendOutgoing): HandingOn {
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState<SendProblem>();
   const start = (parts: SendParts, screenshot: Screenshot) => {
@@ -104,7 +103,7 @@ export function useHandOn(ipc: FeedbackIpc, send: SendOutgoing): HandingOn {
     handOn(parts, send)
       .then((answer) => {
         if (answer.kind === "taken") {
-          endFeedback(ipc);
+          end();
           return;
         }
         setSending(false);

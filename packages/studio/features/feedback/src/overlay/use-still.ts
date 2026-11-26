@@ -9,8 +9,8 @@ export type StillState =
   | { readonly kind: "failed" };
 
 /**
- * The Send feedback window's crop, drawn on `canvas` once the shell gave it. Without one, such as
- * after two minutes, or on a canvas that can't draw, it is `failed`: the window then says so and
+ * The Send feedback dialog's crop, drawn on `canvas` once the shell gave it. Without one, such as
+ * after two minutes, or on a canvas that can't draw, it is `failed`: the dialog then says so and
  * offers to send the text alone, so nothing typed is lost (Noah's design on HAL-19384).
  */
 export function useStill(
@@ -27,7 +27,7 @@ export function useStill(
         if (current) setState({ kind: "ready", still: readStill(answer) });
       })
       .catch((error: unknown) => {
-        console.error("The window has no picture:", error);
+        console.error("The dialog has no picture:", error);
         if (current) setState({ kind: "failed" });
       });
     return () => {

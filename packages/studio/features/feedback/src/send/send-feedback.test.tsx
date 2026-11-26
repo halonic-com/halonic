@@ -40,8 +40,16 @@ const taken: SendAnswer = { kind: "taken" };
 const canvasPrototype = HTMLCanvasElement.prototype as unknown as Record<string, unknown>;
 let root: Root | undefined;
 let element: HTMLDivElement;
+const closed = vi.fn();
 
 beforeEach(() => {
+  // jsdom has `<dialog>` but no `showModal()` or `close()`.
+  HTMLDialogElement.prototype.showModal ??= function showModal(this: HTMLDialogElement) {
+    this.setAttribute("open", "");
+  };
+  HTMLDialogElement.prototype.close ??= function close(this: HTMLDialogElement) {
+    this.removeAttribute("open");
+  };
   canvasPrototype["getContext"] = () => ({
     createImageData: (width: number, height: number) => ({
       data: new Uint8ClampedArray(width * height * 4),
@@ -59,9 +67,10 @@ afterEach(() => {
   delete canvasPrototype["getContext"];
   vi.useRealTimers();
   vi.restoreAllMocks();
+  closed.mockReset();
 });
 
-/** Draws the window; `answers` are the sender's answers, one per Send, then `taken`. */
+/** Draws the dialog; `answers` are the sender's answers, one per Send, then `taken`. */
 async function render(
   options: {
     readonly shell?: ReturnType<typeof fakeShell>;
@@ -81,6 +90,7 @@ async function render(
         ipc={shell}
         send={send}
         details={details}
+        onClose={closed}
         encodePng={async () => png}
         {...rest}
       />,
@@ -89,7 +99,7 @@ async function render(
   return { shell, send, sent };
 }
 
-/** Draws the window and waits for its crop. */
+/** Draws the dialog and waits for its crop. */
 async function open(options: Parameters<typeof render>[0] = {}) {
   const drawn = await render(options);
   await vi.waitFor(() => expect(element.textContent).toContain("20 × 10"));
@@ -121,6 +131,19 @@ function button(label: string): HTMLButtonElement {
   return found;
 }
 
+/** Send, the dialog's submit button; its text also holds the hidden "Sending…". */
+function sendButton(): HTMLButtonElement {
+  const found = element.querySelector<HTMLButtonElement>('dialog button[type="submit"]');
+  if (found === null) throw new Error("No Send button.");
+  return found;
+}
+
+function dialog(): HTMLDialogElement {
+  const found = element.querySelector("dialog");
+  if (found === null) throw new Error("No dialog.");
+  return found;
+}
+
 function ends(shell: ReturnType<typeof fakeShell>) {
   return shell.invoke.mock.calls.filter(([command]) => command === "plugin:feedback|end");
 }
@@ -135,9 +158,11 @@ function focusedCallout() {
 }
 
 verifies("feedback.send-window", () => {
-  it("shows the crop's size, the field with its placeholder and the footnote", async () => {
+  it("shows the crop's size, the field with its placeholder and the footnote, as a dialog", async () => {
     await open();
-    expect(element.querySelector("h1")?.textContent).toBe("Send feedback");
+    expect(dialog().open).toBe(true);
+    const title = document.getElementById(dialog().getAttribute("aria-labelledby") ?? "");
+    expect(title?.textContent).toBe("Send feedback");
     expect(textField().placeholder).toBe("What did you notice? The first line becomes the title.");
     expect(document.activeElement).toBe(textField());
     expect(element.textContent).toContain(
@@ -157,11 +182,12 @@ verifies("feedback.send-window", () => {
     );
   });
 
-  it("sends once with text, with the crop as a PNG, then ends", async () => {
+  it("sends once with text, with the crop as a PNG, then ends and closes", async () => {
     const { shell, send, sent } = await open();
     type("Run list jumps\nIt scrolls to the top");
-    await act(async () => button("Send").click());
+    await act(async () => sendButton().click());
     await vi.waitFor(() => expect(ends(shell)).toHaveLength(1));
+    expect(closed).toHaveBeenCalledOnce();
     expect(send).toHaveBeenCalledOnce();
     expect(sent[0]?.png).toBe(png);
     expect(sent[0]?.task).toMatchObject({
@@ -186,19 +212,25 @@ verifies("feedback.send-window", () => {
   it("says to write a line when the text is empty, and sends nothing", async () => {
     const { shell, send } = await open();
     type("   \n ");
-    await act(async () => button("Send").click());
+    await act(async () => sendButton().click());
     expect(element.textContent).toContain("Write a line about what you saw.");
     expect(document.activeElement).toBe(textField());
     expect(send).not.toHaveBeenCalled();
     expect(ends(shell)).toEqual([]);
   });
 
-  it("ends on Cancel and on Esc, sending nothing", async () => {
+  it("ends and closes on Cancel, the ✕ and Esc, sending nothing", async () => {
     const { shell, send } = await open();
     type("Run list jumps");
     act(() => button("Cancel").click());
-    act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })));
-    expect(ends(shell)).toHaveLength(2);
+    const close = dialog().querySelector<HTMLButtonElement>(
+      'button[aria-label="Close Send feedback"]',
+    );
+    act(() => close?.click());
+    // Esc fires `cancel` on a modal `<dialog>`.
+    act(() => void dialog().dispatchEvent(new Event("cancel", { cancelable: true })));
+    expect(ends(shell)).toHaveLength(3);
+    expect(closed).toHaveBeenCalledTimes(3);
     expect(send).not.toHaveBeenCalled();
   });
 
@@ -212,9 +244,10 @@ verifies("feedback.send-window", () => {
       ],
     });
     type("Run list jumps");
-    await act(async () => button("Send").click());
+    await act(async () => sendButton().click());
     await vi.waitFor(() => expect(errors).toHaveBeenCalled());
     expect(ends(shell)).toEqual([]);
+    expect(closed).not.toHaveBeenCalled();
     expect(textField().value).toBe("Run list jumps");
   });
 });
@@ -247,7 +280,7 @@ verifies("feedback.send-states", () => {
     act(() => button("Select again").click());
     expect(selectAgain).toHaveBeenCalledOnce();
     type("Run list jumps");
-    await act(async () => button("Send").click());
+    await act(async () => sendButton().click());
     expect(send).not.toHaveBeenCalled();
     await act(async () => button("Send without a screenshot").click());
     await vi.waitFor(() => expect(ends(shell)).toHaveLength(1));
@@ -265,7 +298,7 @@ verifies("feedback.send-states", () => {
 
   it("keeps the danger focus ring on a field with an error", async () => {
     await open();
-    await act(async () => button("Send").click());
+    await act(async () => sendButton().click());
     expect(textField().getAttribute("aria-invalid")).toBe("true");
     const ring = (textField().parentElement?.className ?? "").split(" ");
     expect(ring).toContain("focus-field-danger");
@@ -309,16 +342,16 @@ verifies("feedback.send-states", () => {
     expect(send).toHaveBeenCalledOnce();
     expect(textField().readOnly).toBe(true);
     expect(findButton("Select again")).toBeUndefined();
-    expect(button("Send").hasAttribute("aria-busy")).toBe(false);
+    expect(sendButton().hasAttribute("aria-busy")).toBe(false);
     await act(async () => vi.advanceTimersByTime(300));
-    expect(button("Send").getAttribute("aria-busy")).toBe("true");
+    expect(sendButton().getAttribute("aria-busy")).toBe("true");
   });
 
   it("says why Paperclip refused, keeps the text, focuses the Callout and tries again", async () => {
     const refused: SendAnswer = { kind: "refused", reason: "Project not found." };
     const { shell, send } = await open({ answers: [async () => refused] });
     type("Run list jumps");
-    await act(async () => button("Send").click());
+    await act(async () => sendButton().click());
     await vi.waitFor(() => expect(focusedCallout().title).toBe("Couldn't send your feedback"));
     expect(focusedCallout().text).toBe(
       "Paperclip said: Project not found. Your text and screenshot are still here.",
@@ -335,7 +368,7 @@ verifies("feedback.send-states", () => {
     const refused: SendAnswer = { kind: "refused", reason: "" };
     await open({ answers: [async () => refused] });
     type("Run list jumps");
-    await act(async () => button("Send").click());
+    await act(async () => sendButton().click());
     await vi.waitFor(() => expect(focusedCallout().title).toBe("Couldn't send your feedback"));
     expect(focusedCallout().text).toBe("");
     expect(element.textContent).not.toContain("Paperclip said");
@@ -349,7 +382,7 @@ verifies("feedback.send-states", () => {
       },
     });
     type("Run list jumps");
-    await act(async () => button("Send").click());
+    await act(async () => sendButton().click());
     await vi.waitFor(() => expect(focusedCallout().title).toBe("Couldn't prepare the screenshot"));
     expect(focusedCallout().text).toBe("Your text is still here.");
     expect(send).not.toHaveBeenCalled();
