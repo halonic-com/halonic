@@ -58,6 +58,7 @@ const sectionsFeature = defineFeature({
       id: "appearance",
       title: "Appearance",
       scope: "display",
+      group: "general",
       order: 10,
       ...view,
     });
@@ -65,6 +66,7 @@ const sectionsFeature = defineFeature({
       id: "remote",
       title: "Remote",
       scope: "host",
+      group: "connections",
       order: 20,
       ...view,
       available(context, set) {

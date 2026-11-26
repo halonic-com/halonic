@@ -20,6 +20,7 @@ export const remoteFeature = defineFeature({
       id: "remote",
       title: "Remote",
       scope: "host",
+      group: "connections",
       order: 35,
       icon: "remote",
       description: DESCRIPTION,

@@ -20,6 +20,7 @@ const sections: Registered<SettingsSectionContribution>[] = Array.from(
     id: `section-${index}`,
     title: `Section ${index}`,
     scope: index < 10 ? "workspace" : "display",
+    group: "general",
     order: index,
     view: "View",
     load,

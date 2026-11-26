@@ -63,6 +63,7 @@ const pluginsFeature = defineFeature({
       id: "plugins",
       title: "Plugins",
       scope: "workspace",
+      group: "agents",
       order: 10,
       view: "PluginsSection",
       load: async () => ({ PluginsSection }),

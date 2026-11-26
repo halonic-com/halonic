@@ -16,8 +16,9 @@ export interface SettingsNavProps {
 }
 
 /**
- * The settings list on the left (flow-settings 3, a11y checklist 3.2): a heading per group and a
- * row per section. The list is one Tab stop. ↑ and ↓ move across both groups, Home and End go to
+ * The settings list on the left (flow-settings 3, a11y checklist 3.2): a heading per group, or for
+ * a divided group a hairline and a named `group` (`shell.settings-dialog-groups`), and a row per
+ * section. The list is one Tab stop. ↑ and ↓ move across all groups, Home and End go to
  * the first and last row, and none of them switch the section: Enter or a click does, and the
  * focus stays on the row. When the focus leaves the list, its Tab stop goes back to the current
  * row, so Shift Tab from the section's first control lands there.
@@ -57,15 +58,25 @@ export function SettingsNav({ groups, current, attention, onShow, navRef }: Sett
       onBlur={onBlur}
     >
       {groups.map((group) => (
-        <div key={group.key}>
-          <ListHeading
-            id={`${idPrefix}-${group.key}`}
-            name={group.name}
-            {...(group.detail === undefined ? {} : { detail: group.detail })}
-            headingLevel={3}
-            layout="stacked"
-          />
-          <ul aria-labelledby={`${idPrefix}-${group.key}`} className="flex flex-col gap-0.5">
+        <div
+          key={group.key}
+          {...(group.divider === true
+            ? { role: "group", "aria-label": group.name, className: dividedGroupClass }
+            : {})}
+        >
+          {group.divider === true ? null : (
+            <ListHeading
+              id={`${idPrefix}-${group.key}`}
+              name={group.name}
+              {...(group.detail === undefined ? {} : { detail: group.detail })}
+              headingLevel={3}
+              layout="stacked"
+            />
+          )}
+          <ul
+            {...(group.divider === true ? {} : { "aria-labelledby": `${idPrefix}-${group.key}` })}
+            className="flex flex-col gap-0.5"
+          >
             {group.sections.map((section) => (
               <SettingsRow
                 key={section.id}
@@ -146,6 +157,11 @@ export function rowAfterKey(
       return undefined;
   }
 }
+
+// A divided group (HAL-19539): a 1px hairline in the border token above every group but the
+// first, with 8px on each side of it, and no heading.
+const dividedGroupClass =
+  "not-first:mt-2 not-first:border-t not-first:border-border not-first:pt-2";
 
 // The sidebar's 32px row (component specs 24.4); a name too long for one line wraps, never cut
 // (a11y checklist 3.21), so the row grows rather than holding 32px.

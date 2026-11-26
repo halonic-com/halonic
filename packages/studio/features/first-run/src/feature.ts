@@ -121,6 +121,7 @@ export const servedFirstRunFeature = defineFeature({
       icon: "models",
       title: servedModelsWords.title,
       scope: "workspace",
+      group: "agents",
       order: 10,
       view: "ServedModelsSection",
       load: () => import("./ui/served-models-section.tsx"),

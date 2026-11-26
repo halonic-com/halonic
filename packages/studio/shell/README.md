@@ -1008,10 +1008,13 @@ and records the feature that added each (`Registered`). A bad id, a repeated id 
   from **Help** just above Settings while any group has items; the phone's More page lists the
   same groups after Settings.
   A settings section names its `scope` (`workspace`, `display` or `host`: where its values are
-  saved), may give a `summary` for the phone's list and `phone: false` to stay off a phone. The
-  settings list shows the workspace's group, then "On this computer", each by `order`
-  (`bySettingsGroup`); in a browser, "In this browser" heads `display` and "On the computer running
-  Halonic" heads `host` (`settingsGroups`). Features never write headings. `settingsSectionToOpen`
+  saved) and its `group` (`general`, `agents`, `connections`, `keyboard` or `about`: what it is
+  about), and may give a `summary` for the phone's list and `phone: false` to stay off a phone. The
+  desktop app's Settings dialog lists the sections by `group` in that order, each by `order`, with
+  a hairline between groups and no headings (`shell.settings-dialog-groups`). The phone's list
+  shows the workspace's group, then "On this computer"; in a browser, "In this browser" heads
+  `display` and "On the computer running Halonic" heads `host` (`settingsGroups`). Features never
+  write headings. `settingsSectionToOpen`
   picks the section `settings.open` shows (`shell.settings-open`).
 - **Commands** (`shell.commands`, `shell.keybindings`): `commands.add`, `keybindings.add`,
   `commands.addSource`, `search.addProvider` and `persist`, which a feature calls at most once. A binding's `when` joins
