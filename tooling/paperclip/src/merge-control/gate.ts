@@ -19,6 +19,8 @@ export interface GateRow {
   readonly approval: ApprovalVerdict | null;
   readonly noApproval: boolean;
   readonly reReview: boolean;
+  /** With the board's flag on, the recorded verdicts couldn't be read: it isn't added, and isn't removed for that. */
+  readonly verdictsUnread: boolean;
   readonly changeRequest: ChangeRequest | null;
   readonly ci: CiOk;
   readonly foreign: boolean;
@@ -100,6 +102,7 @@ export function gateRow(snapshot: MergeSnapshot, pull: GatePull, settings: Merge
     approval: side.approval,
     noApproval: side.approval?.ok !== true,
     reReview: side.reReview,
+    verdictsUnread: side.unread,
     changeRequest: side.changeRequest,
     ci,
     foreign,

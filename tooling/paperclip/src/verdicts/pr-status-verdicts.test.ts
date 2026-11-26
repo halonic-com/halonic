@@ -1,10 +1,10 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
+import { type PrStatus, statusText } from "../pr-tools/pr-status.ts";
 import type { GitHubGet } from "../pr-watcher/github.ts";
-import type { RecordedSource } from "../verdicts/gate.ts";
-import type { VerdictRecord } from "../verdicts/record.ts";
-import { type PrStatus, statusText } from "./pr-status.ts";
+import type { RecordedSource } from "./gate.ts";
 import { withVerdictGate } from "./pr-status-verdicts.ts";
+import type { VerdictRecord } from "./record.ts";
 
 const repo = "halonic-com/halonic";
 const head = "c".repeat(40);

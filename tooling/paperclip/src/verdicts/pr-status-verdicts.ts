@@ -1,8 +1,8 @@
+import type { PrStatus } from "../pr-tools/pr-status.ts";
 import type { GitHubGet } from "../pr-watcher/github.ts";
-import { type RecordedGate, type RecordedSource, refusedGate } from "../verdicts/gate.ts";
-import { recordedGateOf } from "../verdicts/gate-read.ts";
-import { readVerdictPull } from "../verdicts/pull-facts.ts";
-import type { PrStatus } from "./pr-status.ts";
+import { type RecordedGate, type RecordedSource, refusedGate } from "./gate.ts";
+import { recordedGateOf } from "./gate-read.ts";
+import { readVerdictPull } from "./pull-facts.ts";
 
 /**
  * `pr_status` and the board's flag (HAL-19969). With the flag off nothing

@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-19969, step 3 of 2.4 in the plan on HAL-19228, with Julian's minor 2 from his review on HAL-19481
+- Source: HAL-19969, step 3 of 2.4 in the plan on HAL-19228, with Julian's minor 2 from his review on HAL-19481, and his review of #6636 (HAL-19992)
 
 While the board's flag `verdictGate` is off, the merge gate and `pr_status` shall read approvals from PR comments as before, and `pr_status` shall say that the flag is off.
 
@@ -15,6 +15,8 @@ While the flag is on, the merge gate and `pr_status` shall count only the record
 - any read of the records, the task's comments, the agents or the pull request fails.
 
 A security pull request also waits for Julian's `security-ok` recorded on its exact head.
+
+While the flag is on, a queued pull request whose records, task comments or agents couldn't be read, or whose records the pass didn't read, shall stay in the merge queue (it isn't added either), as on a refused GitHub read; a pull request whose records were read and don't approve it shall come out as before. The merge rules file (`decidePass`) shall refuse a pass with the flag on and no recorded verdicts in its snapshot.
 
 ## Examples
 
@@ -30,3 +32,9 @@ A security pull request also waits for Julian's `security-ok` recorded on its ex
 - Given the flag on, Liam's recorded approval and 3,001 changed files of which GitHub listed 3,000,
   when the gate checks it,
   then it isn't approved.
+- Given the flag on, #1 queued and #3 ready, and the agents read fails,
+  when the merge gate decides,
+  then it removes no queued pull request and adds none.
+- Given the flag on and a snapshot with no recorded verdicts,
+  when the Merger hands it to `decidePass`,
+  then it throws, and the Merger falls back to its own rules for that pass.

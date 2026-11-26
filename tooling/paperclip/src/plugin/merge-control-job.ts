@@ -42,11 +42,11 @@ import {
   type MergeState,
 } from "../merge-control/state.ts";
 import { type QueueWriteClient, queueWriteClient } from "../merge-control/write-client.ts";
-import { paperclipCopies } from "./approval-copies.ts";
+import { paperclipCopies } from "../verdicts/approval-copies.ts";
+import { withRecordedVerdicts } from "../verdicts/verdict-gate.ts";
 import { companyConfig, readSettings, requestTimeoutMs } from "./job.ts";
 import { type MergeStateClient, type PassLock, passStateKey } from "./merge-control-lock.ts";
 import { verdictGateOn, verdictReviewerIds } from "./review-verdict-declaration.ts";
-import { withRecordedVerdicts } from "./verdict-gate.ts";
 import { withVerdictChecks } from "./verdict-shadow.ts";
 
 /**

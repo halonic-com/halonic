@@ -1,7 +1,7 @@
-import { type CopyAgent, copyTaskOf } from "../pr-tools/approval-copy.ts";
-import { branchOwner } from "../pr-watcher/decide.ts";
+import type { CopyAgent } from "../pr-tools/approval-copy.ts";
 import { routineRefusal } from "../reviewer-paths.ts";
 import { pathReviewer } from "../reviewer-paths-who.ts";
+import { branchAgentOf, copyTaskOf } from "../verdicts/branch.ts";
 import type { RecordedGate } from "../verdicts/gate.ts";
 import { recordedGateOf } from "../verdicts/gate-read.ts";
 import { type ImportComment, importDrafts } from "../verdicts/import.ts";
@@ -83,7 +83,7 @@ export function verdictPullOf(
   const routed = routedOf(pull);
   return {
     head: pull.head,
-    author: pull.crossRepository ? undefined : branchOwner(pull.branch),
+    author: pull.crossRepository ? undefined : branchAgentOf(pull.branch),
     reviewer: all ? pathReviewer(routed) : undefined,
     routineRefusal: all ? routineRefusal(routed) : `${pull.filesTotal} files (can't check all)`,
     fingerprint: patchIds[pull.head] ?? null,

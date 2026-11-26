@@ -5,10 +5,10 @@ import type {
 } from "@paperclipai/plugin-sdk";
 import { gateVerdictPullOf } from "../merge-control/approval-side.ts";
 import type { MergeSnapshot } from "../merge-control/snapshot.ts";
-import type { RecordedGate, RecordedSource } from "../verdicts/gate.ts";
-import { recordedGateOf } from "../verdicts/gate-read.ts";
-import { entityVerdicts } from "../verdicts/store.ts";
 import { paperclipCopies } from "./approval-copies.ts";
+import type { RecordedGate, RecordedSource } from "./gate.ts";
+import { recordedGateOf } from "./gate-read.ts";
+import { entityVerdicts } from "./store.ts";
 
 /**
  * The gates on the recorded verdicts (HAL-19969), on the plugin context: the

@@ -18,10 +18,10 @@ import {
 import { manifestFileOf } from "../reviewer-paths-manifest.ts";
 import { pathReviewer, reviewerOfPull } from "../reviewer-paths-who.ts";
 import type { Routing } from "../routing.ts";
+import { verdictGateText } from "../verdicts/pr-status-verdicts.ts";
 import { type CopyReader, readCopySource, withCopies } from "./approval-copy.ts";
 import { type Approval, approvals, type PullComment } from "./approvals.ts";
 import { type ChangedFile, readManifests, routedFromRest } from "./manifests.ts";
-import { verdictGateText } from "./pr-status-verdicts.ts";
 import { requiredWorkflowsOf } from "./required-workflows.ts";
 
 /**

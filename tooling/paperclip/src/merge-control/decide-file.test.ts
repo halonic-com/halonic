@@ -126,6 +126,12 @@ verifies("paperclip.merge-control-decide-file", () => {
     expect(answer.state.labelNoopReopened).toEqual({});
   });
 
+  test("the board's flag on with the records given answers, and adds nothing the records don't approve", () => {
+    const passed = { ...input(), settings: { verdictGate: true } };
+    const answer = decidePass({ ...passed, snapshot: { ...passed.snapshot, recorded: {} } });
+    expect(enqueued(answer)).toEqual([]);
+  });
+
   test.each([
     ["a time that isn't one", { now: "soon" }, /"now" isn't a time/],
     [
@@ -158,6 +164,11 @@ verifies("paperclip.merge-control-decide-file", () => {
       "a text setting given as a list",
       { settings: { owner: ["halonic-com"] } },
       /wrong type owner/,
+    ],
+    [
+      "the board's flag on with no recorded verdicts",
+      { settings: { verdictGate: true } },
+      /verdictGate is on, but the snapshot has no recorded verdicts/,
     ],
   ])("refuses %s, so the Merger falls back to its own rules", (_case, change, error) => {
     expect(() => decidePass({ ...input(), ...change } as DecideFileInput)).toThrow(error);
