@@ -1,6 +1,6 @@
 import type { Attachment, InboxItem, MessagingProject } from "@halonicjs/ports";
 import { PaperclipBoardRequests } from "./board-requests.ts";
-import { cardFilesOf, PaperclipCardFiles } from "./card-files.ts";
+import { cardFilesOf, type FilesOf, PaperclipCardFiles } from "./card-files.ts";
 import { approvalToItem, cardToItem } from "./cards.ts";
 import { mayBeChannel } from "./channels.ts";
 import { decisionPage, decisionToItem } from "./decisions.ts";
@@ -115,10 +115,12 @@ export class PaperclipInbox {
   async list(context: MapContext, tasks?: readonly JsonRecord[]): Promise<InboxItem[]> {
     const projectOf = await this.#projects(context);
     const open = tasks ?? (await this.openTasks());
-    const approvals = await this.#approvals(context, projectOf, companyPrefix(open));
+    // A task with both an approval and a card has its files read once.
+    const filesOf = this.files.oncePerList();
+    const approvals = await this.#approvals(context, projectOf, companyPrefix(open), filesOf);
     const decisions = await this.#decisions(context);
     const boardRequests = await this.#boardRequests.list(context);
-    const read = await this.#allCards(context, projectOf, open);
+    const read = await this.#allCards(context, projectOf, open, filesOf);
     const cards =
       this.#steppers === undefined
         ? read
@@ -154,6 +156,7 @@ export class PaperclipInbox {
     context: MapContext,
     projectOf: ProjectOf,
     prefix: string | undefined,
+    filesOf: FilesOf,
   ): Promise<InboxItem[]> {
     const items: InboxItem[] = [];
     const known = new Map<string, JsonRecord | undefined>();
@@ -172,7 +175,11 @@ export class PaperclipInbox {
         task === undefined ? undefined : context.ids.make("task", task),
       );
       if (mapped !== undefined) {
-        const attachments = await this.#approvalFilesOf(context, approval, task, mapped.createdAt);
+        const attachments = await this.#approvalFilesOf(
+          context,
+          { approval, task, filesOf },
+          mapped.createdAt,
+        );
         files.set(approval, attachments);
         const item = { ...mapped, attachments };
         // An approval with no task has no project.
@@ -190,14 +197,13 @@ export class PaperclipInbox {
   /** An approval's files, from its first linked task only; none without one. */
   async #approvalFilesOf(
     context: MapContext,
-    approval: string,
-    task: string | undefined,
+    { approval, task, filesOf }: { approval: string; task: string | undefined; filesOf: FilesOf },
     madeAt: string,
   ): Promise<Attachment[]> {
     const known = this.#approvalFiles.get(approval);
     if (known !== undefined) return known;
     if (task === undefined) return [];
-    return cardFilesOf(context.ids, task, await this.files.recordsOf(task), madeAt);
+    return cardFilesOf(context.ids, task, await filesOf(task), madeAt);
   }
 
   /**
@@ -237,6 +243,7 @@ export class PaperclipInbox {
     context: MapContext,
     projectOf: ProjectOf,
     tasks: readonly JsonRecord[],
+    filesOf: FilesOf,
   ): Promise<InboxItem[]> {
     const next = new Map<string, TaskCards>();
     const changed: (Omit<TaskCards, "items"> & { id: string })[] = [];
@@ -262,7 +269,7 @@ export class PaperclipInbox {
         return item === undefined ? [] : [{ record, item }];
       });
       // A task's files are read only when it has a card for the person, once per change.
-      const files = cards.length === 0 ? [] : await this.files.recordsOf(id);
+      const files = cards.length === 0 ? [] : await filesOf(id);
       for (const { record, item: read } of cards) {
         const item = { ...read, attachments: cardFilesOf(context.ids, id, files, read.createdAt) };
         items.push(
