@@ -3,6 +3,7 @@
 - Task: HAL-19122
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19110 (Noah's visual check of #6330 and #6328, item 1; words checked by Sofia on a child task of HAL-19122)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:PL3GjftiNw96PoP4pZkA45vOiNQcF/+GJS38H1Brek77lyDGCwISR170062AIH2i+VfTbyT1GNNxyjCaiBalDQ==
 
 ## What changes
 
