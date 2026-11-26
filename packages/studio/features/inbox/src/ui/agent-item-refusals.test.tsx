@@ -65,11 +65,27 @@ async function click(target: HTMLElement) {
 
 verifies("inbox.answer-refused", () => {
   describe("an answer the source refuses", () => {
-    it("shows the failure line for bad-answer, and Try again sends the same answer", async () => {
-      const { messaging, item } = acme();
+    it("says to answer a bad-answer in Paperclip, with no Try again", async () => {
+      const { messaging } = acme();
       const answer = vi
         .spyOn(messaging, "answer")
         .mockResolvedValueOnce({ outcome: "refused", reason: "bad-answer" });
+      const root = await openFirstItem(messaging);
+
+      await click(button(root, "Yes"));
+
+      expect(root.querySelector('[role="alert"]')?.textContent).toBe(
+        "Couldn't record your decision. Your answer doesn't fit this card, so answer it in Paperclip.",
+      );
+      expect(() => button(root, "Try again")).toThrow();
+      expect(answer).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows the failure line for not-found, and Try again sends the same answer", async () => {
+      const { messaging, item } = acme();
+      const answer = vi
+        .spyOn(messaging, "answer")
+        .mockResolvedValueOnce({ outcome: "refused", reason: "not-found" });
       const root = await openFirstItem(messaging);
 
       await click(button(root, "Yes"));
