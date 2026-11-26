@@ -6,14 +6,16 @@ import { desktopAskWindow } from "./desktop-ask-window.ts";
 /** An ipc that keeps the commands it was asked for, and refuses `refused`. */
 function recordingIpc(refused?: string) {
   const invoked: string[] = [];
+  const args: (Record<string, unknown> | undefined)[] = [];
   const ipc: TauriIpc = {
-    invoke: async (command) => {
+    invoke: async (command, given) => {
       invoked.push(command);
+      args.push(given);
       if (command === refused) throw new Error("not_the_box");
       return undefined;
     },
   };
-  return { ipc, invoked };
+  return { ipc, invoked, args };
 }
 
 verifies("quick-ask.box", () => {
@@ -30,5 +32,15 @@ verifies("quick-ask.box", () => {
     const { ipc } = recordingIpc("plugin:quick-ask|hide");
 
     await expect(desktopAskWindow(ipc).hide()).rejects.toThrow("not_the_box");
+  });
+});
+
+verifies("quick-ask.messenger", () => {
+  it("opens the chat in Messenger through plugin:quick-ask|open_chat", async () => {
+    const { ipc, invoked, args } = recordingIpc();
+    await desktopAskWindow(ipc).openChat("chat-Chief");
+
+    expect(invoked).toEqual(["plugin:quick-ask|open_chat"]);
+    expect(args).toEqual([{ conversation: "chat-Chief" }]);
   });
 });

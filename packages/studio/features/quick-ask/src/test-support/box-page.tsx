@@ -15,6 +15,7 @@ import { render } from "./render.tsx";
 export class FakeAskWindow implements AskWindow {
   hidden = 0;
   studioShown = 0;
+  readonly chatsOpened: string[] = [];
 
   async hide(): Promise<void> {
     this.hidden += 1;
@@ -22,6 +23,10 @@ export class FakeAskWindow implements AskWindow {
 
   async openStudio(): Promise<void> {
     this.studioShown += 1;
+  }
+
+  async openChat(conversation: string): Promise<void> {
+    this.chatsOpened.push(conversation);
   }
 }
 

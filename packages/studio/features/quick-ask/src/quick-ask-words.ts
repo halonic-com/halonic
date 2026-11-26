@@ -34,10 +34,16 @@ export const quickAskWords = {
   working: (agent: string) => `${agent} is working`,
   /** Under the question while it waits: the box can close, the answer isn't lost. */
   canClose: (agent: string) => `You can close this. The answer comes to your chat with ${agent}.`,
+  /** The hint row's link to an answer that came after the box closed: "Last answer: Liam, 13:41 ›". */
+  lastAnswer: (agent: string, time: string) => `Last answer: ${agent}, ${time} ›`,
   /** Copies the answer's text. */
   copy: "Copy",
+  /** Next to Copy: carries the conversation on in its Messenger chat. */
+  openInMessenger: "Open in Messenger",
   /** The answer holds a card, which is answered in Messenger, not in the box. */
   cardAsks: (agent: string) => `${agent} asks you to choose`,
+  /** Under the card's question: opens its chat in Messenger, where the card is answered. */
+  answerInMessenger: "Answer in Messenger",
   /** On a question that didn't go out (motion 4's words). */
   notSent: "Not sent",
   tryAgain: "Try again",

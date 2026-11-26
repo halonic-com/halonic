@@ -1,13 +1,5 @@
-import {
-  Avatar,
-  copyText,
-  EmptyState,
-  enter,
-  isComposing,
-  Kbd,
-  leave,
-  standaloneLinkClasses,
-} from "@halonicjs/studio-kit";
+import type { MessagingId } from "@halonicjs/ports";
+import { Avatar, EmptyState, enter, isComposing, leave } from "@halonicjs/studio-kit";
 import {
   type KeyboardEvent,
   type MouseEvent,
@@ -20,8 +12,9 @@ import type { AskWindow } from "../api.ts";
 import type { AskSession } from "../ask-session.ts";
 import { quickAskWords } from "../quick-ask-words.ts";
 import { AgentPicker, type PickerExit } from "./agent-picker.tsx";
+import { BoxFooter, type FooterAnswer } from "./box-footer.tsx";
 import { answerText, ExchangeView } from "./exchange-view.tsx";
-import { type AskBoxModel, useAskBox } from "./use-ask-box.ts";
+import { type AskBoxModel, type Exchange, useAskBox } from "./use-ask-box.ts";
 
 /** The props of {@link AskBox}. */
 export interface AskBoxProps {
@@ -43,8 +36,9 @@ const boxClasses = [
 /**
  * Quick ask's box (requirement `quick-ask.box`, design HAL-18594 sections 4–6): a `dialog`
  * labelled "Ask an agent" with the picked agent, the text box and **Ask**, the questions asked and
- * their answers below, and one footer: the keys, or **Copy** once there's an answer. It fades in
- * and rises 8 px as it opens; Esc or a click beside it fades it out and hides the window.
+ * their answers below, and one footer: the keys, or **Copy** and **Open in Messenger** once there's
+ * an answer. It fades in and rises 8 px as it opens; Esc or a click beside it fades it out and hides
+ * the window, and opening a chat in Messenger fades it out as Messenger's window opens.
  */
 export function AskBox({ session, window, onClosed }: AskBoxProps) {
   const model = useAskBox(session);
@@ -57,15 +51,22 @@ export function AskBox({ session, window, onClosed }: AskBoxProps) {
 
   if (model.state.kind === "failed") throw model.state.error;
 
-  const close = async () => {
+  /** Fades the box out once, then has its window hide or open a chat. */
+  const fadeOut = async (then: () => Promise<void>, failure: string) => {
     if (closing.current) return;
     closing.current = true;
     if (box.current !== null) await leave(box.current);
-    window.hide().catch((error: unknown) => {
-      console.error("Quick ask couldn't hide its window:", error);
+    then().catch((error: unknown) => {
+      console.error(failure, error);
     });
     onClosed();
   };
+  const close = () => fadeOut(() => window.hide(), "Quick ask couldn't hide its window:");
+  const openChat = (conversation: MessagingId) =>
+    void fadeOut(
+      () => window.openChat(conversation),
+      "Quick ask couldn't open the chat in Messenger:",
+    );
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key !== "Escape" || isComposing(event)) return;
     event.preventDefault();
@@ -88,7 +89,7 @@ export function AskBox({ session, window, onClosed }: AskBoxProps) {
         onKeyDown={onKeyDown}
       >
         {model.state.kind === "no-agents" ? <NoAgents window={window} /> : null}
-        {model.state.kind === "ready" ? <Ready model={model} /> : null}
+        {model.state.kind === "ready" ? <Ready model={model} onOpenChat={openChat} /> : null}
       </section>
     </div>
   );
@@ -110,15 +111,20 @@ function NoAgents({ window }: { readonly window: AskWindow }) {
   );
 }
 
-function Ready({ model }: { readonly model: AskBoxModel }) {
+function Ready({
+  model,
+  onOpenChat,
+}: {
+  readonly model: AskBoxModel;
+  readonly onOpenChat: (conversation: MessagingId) => void;
+}) {
   const [picking, setPicking] = useState(false);
   const text = useRef<HTMLTextAreaElement>(null);
   const ask = useRef<HTMLButtonElement>(null);
   if (model.state.kind !== "ready") return null;
-  const { agent, agents, exchanges } = model.state;
+  const { agent, agents, exchanges, lastAnswer } = model.state;
   const name = agent.agent.name;
-  const last = exchanges.at(-1);
-  const answer = last?.status === "sent" ? answerText(last.answer) : undefined;
+  const answer = newestAnswer(exchanges.at(-1));
 
   const closePicker = (exit: PickerExit) => {
     setPicking(false);
@@ -154,11 +160,24 @@ function Ready({ model }: { readonly model: AskBoxModel }) {
       {exchanges.length > 0 ? (
         <ol aria-live="polite" className="flex flex-col gap-3 border-t border-border px-3.5 py-3">
           {exchanges.map((exchange) => (
-            <ExchangeView key={exchange.id} exchange={exchange} onRetry={model.retry} />
+            <ExchangeView
+              key={exchange.id}
+              exchange={exchange}
+              onRetry={model.retry}
+              onOpenChat={onOpenChat}
+            />
           ))}
         </ol>
       ) : null}
-      <Footer answer={answer} />
+      <BoxFooter
+        answer={answer}
+        lastAnswer={lastAnswer}
+        onOpenChat={onOpenChat}
+        onOpenLastAnswer={(opened) => {
+          model.forgetLastAnswer();
+          onOpenChat(opened.conversation);
+        }}
+      />
     </>
   );
 }
@@ -228,31 +247,11 @@ function QuestionRow({
   );
 }
 
-/** The one footer of every state, on the hint row's tint: the keys, or Copy once there's an answer. */
-function Footer({ answer }: { readonly answer: string | undefined }) {
-  const copy = (text: string) =>
-    copyText(text).then((copied) => {
-      if (!copied) console.error("Quick ask couldn't put the answer on the clipboard.");
-    });
-  return (
-    <footer className="flex items-center gap-4 border-t border-border bg-surface-subtle px-3.5 py-3 text-caption text-fg-muted">
-      {answer === undefined ? (
-        // The keys are shown for the eye; each control names its own key for screen readers.
-        <p aria-hidden="true" className="flex flex-wrap items-center gap-4">
-          {quickAskWords.hints.map((hint) => (
-            <span key={hint.key} className="inline-flex items-center gap-1.5">
-              <Kbd keys={[hint.key]} />
-              {hint.does}
-            </span>
-          ))}
-        </p>
-      ) : (
-        <button type="button" className={standaloneLinkClasses} onClick={() => void copy(answer)}>
-          {quickAskWords.copy}
-        </button>
-      )}
-    </footer>
-  );
+/** The newest exchange's answer and its chat, once the agent has answered. */
+function newestAnswer(last: Exchange | undefined): FooterAnswer | undefined {
+  if (last?.status !== "sent") return undefined;
+  const text = answerText(last.answer);
+  return text === undefined ? undefined : { text, conversation: last.agent.row.conversation.id };
 }
 
 /** The send button's drawn 16 px arrow, which doesn't change with the system font. */

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { AnswerState } from "../ask-answer.ts";
-import type { AskAgent, AskSession } from "../ask-session.ts";
+import type { AskAgent, AskSession, LastAnswer } from "../ask-session.ts";
 
 /** One question asked from the box, and where its answer stands. */
 export interface Exchange {
@@ -24,6 +24,8 @@ export type BoxState =
       readonly agent: AskAgent;
       readonly text: string;
       readonly exchanges: readonly Exchange[];
+      /** An answer that came after the box closed, for **Last answer ›**. */
+      readonly lastAnswer?: LastAnswer;
     };
 
 /** The box's state and what the person can do in it. */
@@ -35,6 +37,8 @@ export interface AskBoxModel {
   send(): void;
   /** Sends a question that wasn't sent again. */
   retry(exchange: Exchange): void;
+  /** Forgets the answer behind **Last answer ›**, once the person opened it. */
+  forgetLastAnswer(): void;
 }
 
 /**
@@ -92,6 +96,14 @@ export function useAskBox(session: AskSession): AskBoxModel {
       const sending: Exchange = { ...exchange, status: "sending" };
       update(sending);
       deliver(sending);
+    },
+    forgetLastAnswer() {
+      session.forgetLastAnswer();
+      setState((now) => {
+        if (now.kind !== "ready") return now;
+        const { lastAnswer: _forgotten, ...rest } = now;
+        return rest;
+      });
     },
   };
 }

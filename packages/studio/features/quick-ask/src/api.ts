@@ -1,3 +1,4 @@
+import type { MessagingId } from "@halonicjs/ports";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import type { AskSession } from "./ask-session.ts";
 
@@ -17,10 +18,15 @@ export interface AskWindow {
   hide(): Promise<void>;
   /** Brings Studio's window forward, for **Open Studio** when there's no agent to ask. */
   openStudio(): Promise<void>;
+  /**
+   * Opens Messenger's window on the chat `conversation` and hides the box's window, for **Open in
+   * Messenger**, **Answer in Messenger** and **Last answer ›**.
+   */
+  openChat(conversation: MessagingId): Promise<void>;
 }
 
 /**
  * The box's {@link AskWindow}, given by the desktop app. Without one, as in the served Studio,
- * the box still shows and asks; only hiding and Open Studio do nothing.
+ * the box still shows and asks; only hiding, Open Studio and opening a chat do nothing.
  */
 export const AskWindowService: ServiceKey<AskWindow> = serviceKey<AskWindow>("quick-ask.window");

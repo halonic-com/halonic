@@ -86,7 +86,7 @@ verifies("quick-ask.box", () => {
       ).toBe("polite");
       expect(page.querySelector("[data-working]")).toBeNull();
       expect(textBox(page).placeholder).toBe("Reply to Chief");
-      expect(page.querySelector("footer")?.textContent).toBe("Copy");
+      expect(page.querySelector("footer")?.textContent).toBe("CopyOpen in Messenger");
     });
 
     it("sends a reply to the same chat", async () => {
@@ -118,7 +118,7 @@ verifies("quick-ask.box", () => {
       await act(async () => messenger.change("acme"));
 
       expect(page.querySelector("[data-answer]")?.textContent).toBe(
-        "Chief asks you to chooseShip 0.2.0 today?",
+        "Chief asks you to chooseShip 0.2.0 today?Answer in Messenger",
       );
     });
   });
