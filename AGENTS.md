@@ -250,8 +250,8 @@ adds it; the Merger checks who added it and treats the label as missing if anyon
   bodies. Write "the board". (Paperclip comments are private and may keep using names.)
 - **Every working copy has the leak guard's git hooks.** `pnpm install` installs them (it prints
   `leak guard: git hooks installed`). Check with `git config --local core.hooksPath`, which must
-  print `tooling/check/hooks`. If `pnpm install` says the hooks were NOT installed, fix that before
-  your first commit. Keep your personal terms in `~/.config/halonic/deny-terms`, never in the repo.
+  print the `halonic-hooks` folder in your clone's git dir. If `pnpm install` says the hooks were
+  NOT installed, fix that before your first commit. Keep your personal terms in `~/.config/halonic/deny-terms`, never in the repo.
   Details: [docs/guides/leak-guard.md](docs/guides/leak-guard.md).
 - **Never skip git hooks**: no `--no-verify` on commit or push, and no other way around them.
 - **A genuine false positive** goes on the allow-list, never around the hook. For an absolute path

@@ -45,9 +45,16 @@ that holds a term as `[withheld]`.
   list and no inline `gitleaks:allow` comments, so a `.gitleaks.toml`,
   `.gitleaksignore` or `gitleaks:allow` in a pull request changes nothing.
 
-`pnpm install` installs the hooks. It points git's `core.hooksPath` at
-`tooling/check/hooks`, for this clone only. There is no hook framework.
+`pnpm install` installs the hooks. It copies them from
+`tooling/check/hooks` into a `halonic-hooks` folder in the clone's git dir
+(shared by all its worktrees) and points git's `core.hooksPath` there, for
+this clone only. Checking out a branch never changes the hooks git runs;
+the next `pnpm install` copies them afresh. There is no hook framework.
 The hooks take well under a second.
+
+If `core.hooksPath` is already set to another folder (husky, your own),
+`pnpm install` leaves it alone and says the hooks were NOT installed. An
+older `tooling/check/hooks` value is replaced.
 
 Don't skip the hooks with `--no-verify`. CI runs the same rules, and a
 leaked secret or term is public the moment it is pushed, even if CI
