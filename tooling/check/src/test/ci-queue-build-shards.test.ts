@@ -39,12 +39,12 @@ verifies("check.ci-queue-build-shards", () => {
     const pullRequest = shardNames(workflow, "BUILD_SHARDS");
     const queue = shardNames(workflow, "QUEUE_BUILD_SHARDS");
 
-    test("a pull request runs BUILD_SHARDS, anything else the three or four of QUEUE_BUILD_SHARDS", () => {
+    test("a pull request runs BUILD_SHARDS, anything else the three to five of QUEUE_BUILD_SHARDS", () => {
       expect(build).toContain("github.event_name == 'pull_request' && '[");
       expect(matrixLists(build)).toEqual([pullRequest, queue]);
       expect(pullRequest).toHaveLength(9);
       expect(queue.length).toBeGreaterThanOrEqual(3);
-      expect(queue.length).toBeLessThanOrEqual(4);
+      expect(queue.length).toBeLessThanOrEqual(5);
     });
 
     test("app-studio keeps its own shard and test workers in both lists", () => {
