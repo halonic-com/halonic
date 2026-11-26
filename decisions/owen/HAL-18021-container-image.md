@@ -3,6 +3,7 @@
 - Task: HAL-18021
 - Approval: Liam decided how `dependencies.json` records image contents on HAL-18533 (#6090); the board approved the image's contents on HAL-18117
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:M6k5bFe9eaptBj2tLx1x77URt1FMW5ODYZ37D2QZnndXRnZzTHiI4VoK2dnGYJQkDgqN82p1GH0K1x3LLZBCDw==
 
 ## What changes
 
