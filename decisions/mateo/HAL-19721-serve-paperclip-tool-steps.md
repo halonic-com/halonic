@@ -25,3 +25,4 @@ No test was skipped or weakened. `transport-kinds.test.ts` expects the new messa
 - server.routines
 - format.connector-transport-kinds
 - format.json-schema-goldens
+- packages/core/format/spec/connector.schema.json
