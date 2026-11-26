@@ -1,4 +1,5 @@
 import type {
+  ActionResultAnswer,
   ActionResultStep,
   Attachment,
   Conversation,
@@ -8,6 +9,7 @@ import type {
   InboxAnswerElsewhere,
   InboxItem,
   InboxItemOption,
+  InboxItemState,
   InboxQuestion,
   InboxQuestionAnswer,
   InboxQuestionsAnswer,
@@ -18,7 +20,9 @@ import type {
   Message,
   MessageWork,
   MessagingAgent,
+  MessagingAuthor,
   MessagingProject,
+  UntrustedText,
   WorkItem,
 } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
@@ -76,13 +80,18 @@ const stepper = {
   changed: false,
 } satisfies Required<InboxStepperRequest>;
 
+const stepError = {
+  untrusted: true,
+  text: "Bad credentials",
+} satisfies Required<UntrustedText>;
+
 const step = {
   step: 1,
   outcome: "succeeded",
   status: 201,
   kept: { id: 7 },
   failure: "service-error",
-  error: { untrusted: true, text: "Bad credentials" },
+  error: stepError,
   byHand: true,
 } satisfies Required<ActionResultStep>;
 
@@ -104,6 +113,30 @@ const attachment = {
   size: 1024,
 } satisfies Required<Attachment>;
 
+const me = { kind: "me" } satisfies Required<Extract<MessagingAuthor, { kind: "me" }>>;
+
+const agentAuthor = {
+  kind: "agent",
+  agent: "agent-1",
+  name: "Ada",
+} satisfies Required<Extract<MessagingAuthor, { kind: "agent" }>>;
+
+const person = {
+  kind: "person",
+  name: "Grace",
+} satisfies Required<Extract<MessagingAuthor, { kind: "person" }>>;
+
+const actionResult = {
+  kind: "action-result",
+  outcome: "succeeded",
+  steps: [step],
+} satisfies Required<ActionResultAnswer>;
+
+const replyAnswer = {
+  kind: "reply",
+  text: "Not today.",
+} satisfies Required<Extract<InboxAnswer, { kind: "reply" }>>;
+
 const optionAnswer = {
   kind: "option",
   option: "approve",
@@ -121,10 +154,19 @@ const questionsAnswer = {
   answers: [questionAnswer],
 } satisfies Required<InboxQuestionsAnswer>;
 
+const answered = {
+  kind: "answered",
+  by: me,
+  answer: actionResult,
+  answeredAt: "2026-11-26T09:00:00.000Z",
+} satisfies Required<Extract<InboxItemState, { kind: "answered" }>>;
+
+const open = { kind: "open" } satisfies Required<Extract<InboxItemState, { kind: "open" }>>;
+
 const item = {
   id: "item-1",
   source: "acme",
-  from: { kind: "agent", agent: "agent-1", name: "Ada" },
+  from: agentAuthor,
   question: "Add a deploy key",
   options: [option],
   questions: [question],
@@ -138,12 +180,7 @@ const item = {
   conversation: "chat-1",
   risk: "risky",
   createdAt: "2026-11-26T08:00:00.000Z",
-  state: {
-    kind: "answered",
-    by: { kind: "me" },
-    answer: { kind: "action-result", outcome: "succeeded", steps: [step] },
-    answeredAt: "2026-11-26T09:00:00.000Z",
-  },
+  state: answered,
 } satisfies Required<InboxItem>;
 
 const work = {
@@ -164,7 +201,7 @@ const fullAnswer = {
 const message = {
   id: "message-1",
   conversation: "chat-1",
-  author: { kind: "me" },
+  author: me,
   body: "Ship it?",
   attachments: [attachment],
   sentAt: "2026-11-26T08:00:00.000Z",
@@ -213,13 +250,30 @@ verifies("agent-host.agent-messaging-cache", () => {
     });
 
     it("keeps every field of an option answer, its note included", () => {
-      const answered = { ...item, state: { ...item.state, answer: optionAnswer } };
-      expect(keptInboxItem(answered)).toEqual(answered);
+      const withOption = { ...item, state: { ...answered, answer: optionAnswer } };
+      expect(keptInboxItem(withOption)).toEqual(withOption);
     });
 
     it("keeps every field of an answers answer, down to each question's text", () => {
-      const answered = { ...item, state: { ...item.state, answer: questionsAnswer } };
-      expect(keptInboxItem(answered)).toEqual(answered);
+      const withAnswers = { ...item, state: { ...answered, answer: questionsAnswer } };
+      expect(keptInboxItem(withAnswers)).toEqual(withAnswers);
+    });
+
+    it("keeps every field of a reply answer", () => {
+      const withReply = { ...item, state: { ...answered, answer: replyAnswer } };
+      expect(keptInboxItem(withReply)).toEqual(withReply);
+    });
+
+    it("keeps an open item's state", () => {
+      const openItem = { ...item, state: open };
+      expect(keptInboxItem(openItem)).toEqual(openItem);
+    });
+
+    it("keeps every field of a person author, on an item, its answer and a message", () => {
+      const fromPerson = { ...item, from: person, state: { ...answered, by: person } };
+      expect(keptInboxItem(fromPerson)).toEqual(fromPerson);
+      const byPerson = { ...message, author: person };
+      expect(keptMessage(byPerson)).toEqual(byPerson);
     });
 
     it("keeps every field the port names on a work item, assignee included", () => {
@@ -245,10 +299,10 @@ verifies("agent-host.agent-messaging-cache", () => {
         stepper: {
           ...stepper,
           ...extra,
-          touches: stepper.touches.map((touch) => ({
-            ...touch,
+          touches: stepper.touches.map((eachTouch) => ({
+            ...eachTouch,
             ...extra,
-            targets: touch.targets.map((target) => ({ ...target, ...extra })),
+            targets: eachTouch.targets.map((eachTarget) => ({ ...eachTarget, ...extra })),
           })),
         },
       };
