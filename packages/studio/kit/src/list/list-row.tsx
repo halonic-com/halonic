@@ -269,13 +269,16 @@ export function Row<Id extends string>({ row, place, shared }: RowProps<Id>) {
     ...rowActions(shared, isInert),
   });
 
+  // `group/plain` lets the Avatar's tile change its fill on a filled row (`kit.avatar-on-row-fill`).
+  const groups = look === "plain" ? "group group/plain" : "group";
+
   return (
     <tr
       data-row-id={row.id}
       aria-selected={selection === undefined ? undefined : isSelected}
       aria-current={isCurrent ? true : undefined}
       aria-disabled={isUnavailable ? true : undefined}
-      className={`group ${state.row}`}
+      className={`${groups} ${state.row}`}
     >
       {hasCheck && selection !== undefined ? (
         <CheckCell

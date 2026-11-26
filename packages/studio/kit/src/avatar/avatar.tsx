@@ -56,8 +56,13 @@ const sizes = {
   { tile: string; text: string; pixels: number; inset: string }
 >;
 
-/** The neutral tile, for a person and behind a picture. */
-const neutral = "bg-surface-muted";
+/**
+ * The neutral tile, for a person and behind a picture. A plain row (`group/plain`) is filled
+ * `surface-muted` while hovered, pressed or current, so there the tile turns `surface` and its
+ * circle stays visible (HAL-19751, `kit.avatar-on-row-fill`).
+ */
+const neutral =
+  "bg-surface-muted group-hover/plain:bg-surface group-active/plain:bg-surface group-has-[[aria-current=true]]/plain:bg-surface";
 
 /**
  * A member's initials, or their picture, on a 28px round tile (40px with `size="header"`, 60px with
