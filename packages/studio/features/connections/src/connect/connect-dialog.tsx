@@ -30,8 +30,8 @@ export interface ConnectDialogProps {
 
 const thisComputer = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
-/** Whether the engine could sign in at `address`: https, or plain http on this computer only. */
-function isAllowedAddress(address: string): boolean {
+/** Whether the engine could sign in or pair at `address`: https, or plain http on this computer only. */
+export function isAllowedAddress(address: string): boolean {
   try {
     const url = new URL(address);
     if (url.protocol === "https:") return true;

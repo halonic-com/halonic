@@ -101,6 +101,15 @@ export {
 } from "./quiet-hours.ts";
 export { type RunNoticeClicks, shellRunNoticeClicks } from "./run-notice-clicks.ts";
 export { scopeToAccount } from "./scope-to-account.ts";
+export {
+  hostServerEngine,
+  type ServerEngine,
+  type ServerEngineLeft,
+  ServerEngineService,
+  type ServerEngineView,
+  type ServerPairStart,
+  type ServerPairState,
+} from "./server-engine.ts";
 export { actionStepsKey, provideActionSteps } from "./shell-actions.ts";
 export { type ChatOpens, shellChatOpens } from "./shell-chat-opens.ts";
 export { hostSettingsStoreKey, provideShellHostSettings } from "./shell-host-settings.ts";

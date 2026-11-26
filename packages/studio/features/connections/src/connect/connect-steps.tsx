@@ -1,6 +1,6 @@
 import { Dialog, IconTile, Spinner, useOpenExternal, WarningIcon } from "@halonicjs/studio-kit";
 import { type SignInChallenge, signInLimitMs } from "@halonicjs/studio-services";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import * as words from "../connections-words.ts";
 import type { EndedResult } from "./sign-in-flow.ts";
 
@@ -9,7 +9,7 @@ import type { EndedResult } from "./sign-in-flow.ts";
  * as text. Without a challenge it doesn't tick.
  */
 export function useLeftMs(
-  challenge: SignInChallenge | undefined,
+  challenge: Pick<SignInChallenge, "expiresAt"> | undefined,
   now: () => number = Date.now,
 ): number {
   const [, setTick] = useState(0);
@@ -36,8 +36,8 @@ function Phrase({ phrase }: { readonly phrase: string }) {
   );
 }
 
-/** "9:42 left", and a bar that empties over the 10 minutes. */
-function Countdown({ leftMs }: { readonly leftMs: number }) {
+/** "9:42 left", and a bar that empties over the 10 minutes; Pair with a server shows it too. */
+export function Countdown({ leftMs }: { readonly leftMs: number }) {
   const share = Math.max(0, Math.min(1, leftMs / signInLimitMs));
   return (
     <div className="flex flex-col gap-1">
@@ -126,7 +126,28 @@ export function EndedStep({
   readonly onClose: () => void;
   readonly onStartAgain: () => void;
 }) {
-  const ending = endingOf(result);
+  return (
+    <EndingStep
+      title={title}
+      ending={endingOf(result)}
+      onClose={onClose}
+      onStartAgain={onStartAgain}
+    />
+  );
+}
+
+/** Any ending: an icon tile, the heading and its text, and Close or Start again. */
+export function EndingStep({
+  title,
+  ending,
+  onClose,
+  onStartAgain,
+}: {
+  readonly title: string;
+  readonly ending: words.Ending;
+  readonly onClose: () => void;
+  readonly onStartAgain: () => void;
+}) {
   return (
     <Dialog
       size="md"
@@ -143,9 +164,25 @@ export function EndedStep({
         </IconTile>
         <div className="flex flex-col gap-1">
           <h3 className="m-0 text-section text-fg">{ending.heading}</h3>
-          <p className="m-0 text-fg-muted">{ending.text}</p>
+          <p className="m-0 text-fg-muted">{withCode(ending.text)}</p>
         </div>
       </div>
     </Dialog>
+  );
+}
+
+/** `text` with each part between backticks in mono, as a command: "Run `halonic serve pair`". */
+export function withCode(text: string): ReactNode {
+  const parts = text.split("`");
+  if (parts.length === 1) return text;
+  return parts.map((part, index) =>
+    index % 2 === 1 ? (
+      // The parts never move, so the place is the key.
+      <code key={index} className="font-mono">
+        {part}
+      </code>
+    ) : (
+      part
+    ),
   );
 }

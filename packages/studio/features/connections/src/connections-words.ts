@@ -200,13 +200,13 @@ export const OPEN_PAPERCLIP = "Open Paperclip";
 const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /** "14:02" in the computer's time zone. */
-function timeOfDay(iso: string): string {
+export function timeOfDay(iso: string): string {
   const at = new Date(iso);
   return `${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}`;
 }
 
 /** "24 Dec 2026" in the computer's time zone. */
-function day(iso: string): string {
+export function day(iso: string): string {
   const at = new Date(iso);
   return `${at.getDate()} ${months[at.getMonth()]} ${at.getFullYear()}`;
 }

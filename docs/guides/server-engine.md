@@ -285,6 +285,26 @@ secrets file, the unit, an environment variable or the engine workspace by
 hand: the server reads it only from the record that the sign-in on the server
 stores (`server.paperclip-key-store`).
 
+## Pair Studio with the server
+
+A desktop Studio reads a workspace's Inbox and Messenger from the server once
+it is paired (`connections.engine-row`, `connections.server-pair-dialog`):
+
+1. On the server, run `halonic serve pair`. It shows the server's address and
+   an 8-symbol pairing code, valid for 10 minutes.
+2. In Studio, open Settings › Connections and pick **Server** under
+   **Messaging engine**. Enter the address, the code and a name for this
+   computer, and press **Continue**.
+3. Studio shows a check code. Allow the request on the server only if it shows
+   the same check code next to that name.
+
+The setting moves to **Server** only once the server allowed it and the
+keychain holds the pairing; Studio never sees the device token. Picking
+**This computer** again asks first, ends the pairing on the server and deletes
+it from the keychain. If the server couldn't be reached then, remove the
+computer with `halonic serve devices`. Studio needs the desktop keychain for
+this: without it, **Server** can't be picked.
+
 ## Deploy a new commit
 
 ```sh

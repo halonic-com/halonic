@@ -1,14 +1,17 @@
 import {
   AgentHostPaperclipKey,
   AgentHostPaperclipSignIn,
+  AgentHostServerEngine,
   type AgentHostTransport,
 } from "@halonicjs/adapter-agent-host-client";
 import type { ServiceRegistry } from "@halonicjs/app";
 import {
   AgentConnectionsService,
   HostAgentConnections,
+  hostServerEngine,
   type RestoreTrust,
   restoreWhenMayStart,
+  ServerEngineService,
   tokenStoreKey,
 } from "@halonicjs/studio-services";
 
@@ -20,7 +23,9 @@ import {
  * something (the person trusted it, or it reaches only the test model), it
  * gives the host back the keys they signed in with in it, quietly, so a
  * restart doesn't ask them to sign in again (`services.paperclip-restore`);
- * a folder that needs trust and has none starts nothing.
+ * a folder that needs trust and has none starts nothing. It also provides
+ * the workspace's server engine, for the Messaging engine row
+ * (`services.server-engine`).
  * Without an agent host nothing is provided, and Settings shows no
  * Connections section.
  *
@@ -49,6 +54,10 @@ export function provideAgentConnections(
     report: (error) => console.error("Paperclip sign-in", error),
   });
   services.provide(AgentConnectionsService, connections);
+  services.provide(
+    ServerEngineService,
+    hostServerEngine(new AgentHostServerEngine(transport, location)),
+  );
   // Not awaited: the workspace opens at once, and a row shows Sign in again until its key is back.
   restoreWhenMayStart(trust, () => connections.restore());
 }
