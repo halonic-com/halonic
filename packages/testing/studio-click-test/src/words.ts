@@ -88,8 +88,8 @@ export const closeSettingsLabel = `Close ${basicsText.settingsTitle.text}`;
 const tryItFile = "packages/studio/features/agents/src/chat/try-it-words.ts";
 
 /**
- * Text step 1 reads that no words entry point exports: the shell's place names, the agents
- * feature's Try it words, and the demo's agent. `words.test.ts` checks each is still in its file.
+ * Text the Try it steps read that no words entry point exports: the shell's place names, the agents feature's Try it words, the shell's key line, and the demo's agent.
+ * `words.test.ts` checks each is still in its file.
  */
 export const screenText = {
   places: { text: "Places", file: "packages/studio/shell/src/sidebar/places-list.tsx" },
@@ -100,6 +100,11 @@ export const screenText = {
   replied: { text: " replied.", file: tryItFile },
   engineStopped: { text: "Stopped when Halonic's engine stopped.", file: tryItFile },
   replyFailed: { text: "'s reply failed: ", file: tryItFile },
+  sendAnyway: { text: "Send anyway", file: tryItFile },
+  keyLine: {
+    text: "This looks like an API key. Keys go in the key field, so they stay out of chats and files.",
+    file: "packages/studio/shell/src/secret-hold/secret-hold.ts",
+  },
 } as const;
 
 const settingsFolder = "packages/studio/features/settings";
