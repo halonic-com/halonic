@@ -104,6 +104,17 @@ verifies("account-menu.usage-banner", () => {
       expect(host.open).toHaveBeenCalledWith("https://account.example.com/acme#plan");
     });
 
+    it("is a region named by its sentence, and not a live one", async () => {
+      const container = await renderBanner(fakeHost(Promise.resolve(facts([agentTime]))));
+      // A section with a name is a region landmark.
+      const region = container.querySelector("section[aria-labelledby]");
+      const name = document.getElementById(region?.getAttribute("aria-labelledby") ?? "");
+      expect(name?.textContent).toBe(
+        "You've used 80% of this month's agent time · It resets on 2 December.",
+      );
+      expect(container.querySelector("[aria-live]")).toBeNull();
+    });
+
     it("shows once: closed, it stays closed this period, and focus goes to the page's heading", async () => {
       const host = fakeHost(Promise.resolve(facts([agentTime])));
       const container = await renderBanner(host);

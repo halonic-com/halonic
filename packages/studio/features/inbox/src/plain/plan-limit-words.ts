@@ -31,6 +31,8 @@ export const planLimitWords = {
   finished: "The run finished.",
   /** After **Continue the run** when the run ended another way, such as an account no longer active. */
   ended: "The run ended without finishing.",
+  /** Said, not shown, when Continue leaves the run at its limit, so a press is never silent (Sofia, HAL-19119). */
+  stillWaiting: "The run is still waiting at your plan's limit.",
   usedUp: (unit: string) => `This run stopped: you've used this month's ${unit}`,
   reserveTitle: (unit: string) => `This step can't start: not enough ${unit} left this month`,
   /** Under 1% left reads "less than 1%", as "0% left" reads like a limit used up (Sofia, HAL-19057). */

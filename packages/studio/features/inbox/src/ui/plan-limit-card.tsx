@@ -37,6 +37,8 @@ export interface PlanLimitCardProps extends EngineState {
   readonly now?: () => Date;
   /** `false` once the run no longer waits here, such as continued from another window. */
   readonly waiting?: boolean;
+  /** Says a line politely, such as when Continue leaves the run at its limit and nothing changes on screen. */
+  readonly announce?: ((line: string) => void) | undefined;
 }
 
 type CardState =
@@ -52,7 +54,8 @@ type CardState =
  * The card for a run waiting at a plan limit (`inbox.plan-limit-card`, flow C3 as board 10 draws
  * it): the chip "Waiting: plan limit reached", C3's title and line, **Continue the run** and
  * **See usage**. Continue is always there: when there's still no room the run waits again at the
- * same stop, and the card stays as it was, with no new error.
+ * same stop, and the card stays as it was, with no new error; `announce` says so, as nothing
+ * changes on screen.
  */
 export function PlanLimitCard(props: PlanLimitCardProps) {
   const { item } = props;
@@ -83,11 +86,12 @@ export function PlanLimitCard(props: PlanLimitCardProps) {
       setState({ kind: "open", failed });
       return;
     }
-    setState(
-      stillAtLimit(run)
-        ? { kind: "open", failed: null }
-        : { kind: "continued", after: afterAnswer(run) },
-    );
+    if (stillAtLimit(run)) {
+      setState({ kind: "open", failed: null });
+      props.announce?.(planLimitWords.stillWaiting);
+      return;
+    }
+    setState({ kind: "continued", after: afterAnswer(run) });
   }
 
   return (
