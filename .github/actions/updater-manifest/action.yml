@@ -19,9 +19,12 @@ inputs:
   key:
     description: "Real runs: which public key the signature must match. Empty: the release key in tauri.conf.json. preview: the Preview key in apps/studio/src-tauri/updater-keys.json (HAL-18477)."
     default: ""
-  notes-file:
-    description: The release notes, written by tooling/publish's release-notes script. They become the manifest's `notes`, which the app's update dialog shows (HAL-19542).
+  notes-dir:
+    description: "The folder tooling/publish's release-notes script wrote (HAL-19542): notes.md becomes the manifest's `notes`, this version's notes, and release-notes.json its `halonic.releaseNotes`, the notes of this and older versions, newest first, so the app can show every version an install skipped."
     required: true
+  source:
+    description: "The commit the build is from, kept as `halonic.source` so the next Preview build's notes start there. Empty: not written."
+    default: ""
   repo:
     description: The repository whose release gets the installer, for the manifest's url. Empty means this one.
     default: ""
@@ -43,7 +46,8 @@ runs:
         TAG: ${{ inputs.tag }}
         VERSION: ${{ inputs.version }}
         INSTALLER: ${{ inputs.installer }}
-        NOTES_FILE: ${{ inputs.notes-file }}
+        NOTES_DIR: ${{ inputs.notes-dir }}
+        SOURCE: ${{ inputs.source }}
         DRY_RUN: ${{ inputs.dry-run }}
         PRIVATE_KEY: ${{ inputs.private-key }}
         KEY_PASSWORD: ${{ inputs.password }}
@@ -52,9 +56,13 @@ runs:
       run: |
         $ErrorActionPreference = "Stop"
         $utf8 = New-Object System.Text.UTF8Encoding $false
-        # Read first, so a missing notes file fails before anything is signed.
-        $notes = ([System.IO.File]::ReadAllText((Resolve-Path $env:NOTES_FILE).Path, $utf8) -replace "`r`n", "`n").Trim()
-        if (-not $notes) { throw "$env:NOTES_FILE is empty: a release needs its notes" }
+        # Read first, so missing notes fail before anything is signed.
+        $notesFile = Join-Path $env:NOTES_DIR "notes.md"
+        $notes = ([System.IO.File]::ReadAllText((Resolve-Path $notesFile).Path, $utf8) -replace "`r`n", "`n").Trim()
+        if (-not $notes) { throw "$notesFile is empty: a release needs its notes" }
+        # -NoEnumerate keeps a list of one a list.
+        $releaseNotes = Get-Content -Raw (Join-Path $env:NOTES_DIR "release-notes.json") | ConvertFrom-Json -NoEnumerate
+        if ($releaseNotes -isnot [array]) { throw "release-notes.json is not a list" }
         function Get-Lines([string]$base64) {
           $utf8.GetString([Convert]::FromBase64String($base64.Trim())) -split "`r?`n"
         }
@@ -123,9 +131,11 @@ runs:
           }
           halonic = [ordered]@{
             srtWindowsSetupVersion = $setupVersion
+            releaseNotes = $releaseNotes
           }
         }
-        $json = ($manifest | ConvertTo-Json -Depth 5) -replace "`r`n", "`n"
+        if ($env:SOURCE) { $manifest.halonic.source = $env:SOURCE }
+        $json = ($manifest | ConvertTo-Json -Depth 6) -replace "`r`n", "`n"
         [System.IO.File]::WriteAllText((Join-Path $env:DIR "latest.json"), $json + "`n", $utf8)
 
         # latest.json and the signed installer changed the folder, so write

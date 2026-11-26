@@ -9,7 +9,7 @@ small workspace packages stay private and keep their own names.
 - **Layer:** tooling
 - **Owner:** mateo
 - **Public API:** `@halonicjs/tooling-publish` (`stageLayer`, `rewriteSpecifiers`, `buildWorkerBundle`)
-- **Requirements:** `publish.staged-package`, `publish.matching-versions`, `publish.packed-import`, `publish.worker-bundle`, `publish.staged-cli`, `publish.release-notes`
+- **Requirements:** `publish.staged-package`, `publish.matching-versions`, `publish.packed-import`, `publish.worker-bundle`, `publish.staged-cli`, `publish.release-notes`, `publish.release-notes-history`
 
 ## Example
 
@@ -130,15 +130,23 @@ Both are set up once by the board before the first release that ships the CLI (H
 
 ### Release notes
 
-`src/cli/release-notes.ts` writes the notes of a desktop build (`publish.release-notes`, HAL-19542):
-for a release, its version's section of `apps/studio/CHANGELOG.md` (the release fails without one); for a
-preview, the app's changesets merged since the newest stable tag. The updater-manifest action puts them
-in latest.json's `notes`, which the app's update dialog shows, and the workflows put the same text in the
-GitHub release's description. They stop at 20,000 characters; the release links the full changelog.
+`src/cli/release-notes.ts` writes the notes of a desktop build into a folder (`publish.release-notes`,
+`publish.release-notes-history`, HAL-19542):
+
+- `notes.md`, the build's own notes: for a release, its version's section of `apps/studio/CHANGELOG.md`
+  (the release fails without one); for a preview, the app's changesets merged since the previous
+  Preview build's commit, or since the newest stable tag when there is none. At most 20,000 characters.
+- `release-notes.json`, the notes of this version and older ones, newest first: the changelog's sections
+  from this version down, or for a preview its own notes before the previous build's list. At most
+  100,000 characters and 50 versions.
+
+The updater-manifest action puts them in latest.json as `notes` and `halonic.releaseNotes`, with the
+build's commit as `halonic.source` for the next Preview build. The app shows the notes of every version
+after the installed one; the workflows put `notes` in the GitHub release's description.
 
 ```sh
-node tooling/publish/src/cli/release-notes.ts changelog 0.1.1 notes.md
-node tooling/publish/src/cli/release-notes.ts preview origin/main notes.md
+node tooling/publish/src/cli/release-notes.ts changelog 0.1.1 release-notes
+node tooling/publish/src/cli/release-notes.ts preview 0.1.2-preview.7 HEAD release-notes previous-latest.json
 ```
 
 ## Release branch

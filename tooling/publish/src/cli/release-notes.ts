@@ -1,28 +1,33 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { changelogSection, previewNotes } from "../release-notes.ts";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import {
+  chainHistory,
+  changelogHistory,
+  previewNotes,
+  type ReleaseNote,
+} from "../release-notes.ts";
 
 /**
- * Used by the release and preview workflows: writes the release notes that go into the GitHub
- * release and into latest.json, where the app's update dialog reads them (HAL-19542).
+ * Used by the release and preview workflows (HAL-19542): writes into <dir> the release notes for
+ * the GitHub release and latest.json, where the app's update dialog reads them:
+ *   notes.md            this build's own notes, latest.json's `notes`
+ *   release-notes.json  this build's and older versions' notes, newest first, latest.json's
+ *                       `halonic.releaseNotes`, so an install that skipped versions shows them all
  *
- *   node release-notes.ts changelog <version|latest> <out>
- *     The version's section of apps/studio/CHANGELOG.md. Fails when it has none, so a release
- *     never goes out without notes.
- *   node release-notes.ts preview <commit> <out>
- *     The app's changesets merged since the newest stable tag, newest first. Needs the history
- *     and the tags (a clone with --filter=blob:none is enough), with <commit> checked out: the
- *     changesets are read from the files, since a partial clone fetches old ones one by one.
+ *   node release-notes.ts changelog <version|latest> <dir>
+ *     From apps/studio/CHANGELOG.md. Fails when it has no notes for the version, so a release
+ *     never goes out without them.
+ *   node release-notes.ts preview <version> <commit> <dir> [<previous latest.json>]
+ *     The app's changesets merged since the previous preview's source commit (or, without one,
+ *     since the newest stable tag), then the previous preview's list. Needs the history and the
+ *     tags (a clone with --filter=blob:none is enough), with <commit> checked out: the changesets
+ *     are read from the files, since a partial clone fetches old ones one by one.
  */
-const [mode, target, out] = process.argv.slice(2);
-if (mode === undefined || target === undefined || out === undefined) {
-  throw new Error(
-    "Usage: release-notes.ts changelog <version|latest> <out> | preview <commit> <out>",
-  );
-}
+const [mode, ...args] = process.argv.slice(2);
 
-function git(args: string[]): string {
-  return execFileSync("git", args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+function git(gitArgs: string[]): string {
+  return execFileSync("git", gitArgs, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
 }
 
 /** The newest tag of a stable release: v<major>.<minor>.<patch>, without a pre-release part. */
@@ -51,26 +56,82 @@ function changesetsSince(base: string, head: string): string[] {
   return paths.map((path) => readFileSync(path, "utf8"));
 }
 
-function changelogNotes(version: string): string {
-  const notes = changelogSection(readFileSync("apps/studio/CHANGELOG.md", "utf8"), version);
-  if (notes === undefined) {
+/** Whether `commit` is in this clone and before `head`; says why not in the log. */
+function isAncestor(commit: string, head: string): boolean {
+  try {
+    git(["merge-base", "--is-ancestor", commit, head]);
+    return true;
+  } catch (error) {
+    console.log(
+      `::warning::The previous preview's commit ${commit} isn't before ${head} (${String(error)}); its notes list starts again.`,
+    );
+    return false;
+  }
+}
+
+function changelogRun(version: string): { own: string; history: ReleaseNote[] } {
+  const history = changelogHistory(readFileSync("apps/studio/CHANGELOG.md", "utf8"), version);
+  const own = history[0];
+  if (own === undefined) {
     throw new Error(
       `apps/studio/CHANGELOG.md has no notes under "## ${version}". Run the release pull request first.`,
     );
   }
-  return notes;
+  return { own: own.notes, history };
 }
 
-function previewNotesAt(head: string): string {
+/** What the previous preview's latest.json says, all of it untrusted. */
+interface Previous {
+  readonly version: unknown;
+  readonly source: unknown;
+  readonly releaseNotes: unknown;
+}
+
+/** The previous preview's latest.json: its version, source commit and notes list. */
+function readPrevious(path: string | undefined): Previous {
+  if (path === undefined || !existsSync(path)) {
+    return { version: undefined, source: undefined, releaseNotes: undefined };
+  }
+  const manifest: { version?: unknown; halonic?: { source?: unknown; releaseNotes?: unknown } } =
+    JSON.parse(readFileSync(path, "utf8"));
+  return {
+    version: manifest.version,
+    source: manifest.halonic?.source,
+    releaseNotes: manifest.halonic?.releaseNotes,
+  };
+}
+
+function previewRun(version: string, head: string, previousPath: string | undefined) {
+  const previous = readPrevious(previousPath);
+  const source = typeof previous.source === "string" ? previous.source : "";
+  const chained = /^[0-9a-f]{40}$/.test(source) && isAncestor(source, head);
   const tag = newestStableTag();
-  const base = git(["merge-base", head, tag]).trim();
-  const stable = tag.slice(1);
-  return (
-    previewNotes(changesetsSince(base, head), stable) ?? `No changes users see since ${stable}.`
+  const base = chained ? source : git(["merge-base", head, tag]).trim();
+  const since = chained ? String(previous.version) : tag.slice(1);
+  const notes = previewNotes(changesetsSince(base, head), since);
+  const own = notes ?? `No changes users see since ${since}.`;
+  const history = chainHistory({ version, notes: own }, chained ? previous.releaseNotes : []);
+  // A build without changes adds nothing to the list; its own notes still say so.
+  return { own, history: notes === undefined ? history.slice(1) : history };
+}
+
+function run(): { own: string; history: ReleaseNote[]; dir: string } {
+  if (mode === "changelog" && args.length === 2) {
+    const [version = "", dir = ""] = args;
+    return { ...changelogRun(version), dir };
+  }
+  if (mode === "preview" && (args.length === 3 || args.length === 4)) {
+    const [version = "", head = "", dir = "", previous] = args;
+    return { ...previewRun(version, head, previous), dir };
+  }
+  throw new Error(
+    "Usage: release-notes.ts changelog <version|latest> <dir> | preview <version> <commit> <dir> [<previous latest.json>]",
   );
 }
 
-if (mode !== "preview" && mode !== "changelog") throw new Error(`Unknown mode "${mode}".`);
-const notes = mode === "preview" ? previewNotesAt(target) : changelogNotes(target);
-writeFileSync(out, `${notes}\n`);
-console.log(notes);
+const { own, history, dir } = run();
+mkdirSync(dir, { recursive: true });
+writeFileSync(join(dir, "notes.md"), `${own}\n`);
+writeFileSync(join(dir, "release-notes.json"), `${JSON.stringify(history, null, 2)}\n`);
+console.log(own);
+console.log(`release-notes.json: ${history.map((note) => note.version).join(", ") || "none"}`);

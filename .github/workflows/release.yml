@@ -179,8 +179,7 @@ jobs:
         run: |
           from="$VERSION"
           [ "$DRY_RUN" = "true" ] && from=latest
-          mkdir -p release-notes
-          node tooling/publish/src/cli/release-notes.ts changelog "$from" release-notes/notes.md
+          node tooling/publish/src/cli/release-notes.ts changelog "$from" release-notes
       - uses: $/.github/actions/setup
       # The Rust crates' licences are read with `cargo metadata`, on the
       # toolchain pinned in rust-toolchain.toml.
@@ -531,7 +530,7 @@ jobs:
           tag: ${{ needs.build.outputs.tag }}
           version: ${{ needs.build.outputs.version }}
           installer: ${{ needs.build.outputs.installer }}
-          notes-file: release-notes/notes.md
+          notes-dir: release-notes
           dry-run: "true"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -663,7 +662,7 @@ jobs:
           tag: ${{ needs.build.outputs.tag }}
           version: ${{ needs.build.outputs.version }}
           installer: ${{ needs.build.outputs.installer }}
-          notes-file: release-notes/notes.md
+          notes-dir: release-notes
           dry-run: "false"
           private-key: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           password: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -747,8 +746,10 @@ jobs:
           if ls -- *.sig >/dev/null 2>&1; then echo "::error::A .sig file would be published (HAL-1119)"; exit 1; fi
           jq -e --arg f "$INSTALLER" '.platforms["windows-x86_64"].url | endswith("/" + $f)' latest.json
           jq -e '.halonic.srtWindowsSetupVersion | type == "number" and . > 0 and . == floor' latest.json
-          # The update dialog shows `notes` as text: a link there is no notes (HAL-19542).
+          # The update dialog shows `notes` as text: a link there is no notes,
+          # and an install that skipped versions shows each one's (HAL-19542).
           jq -e '.notes | type == "string" and length > 0 and (startswith("https://") | not)' latest.json
+          jq -e '.halonic.releaseNotes | type == "array" and length > 0 and all(.[]; (.version | type == "string") and (.notes | type == "string" and length > 0))' latest.json
           sha256sum -c SHA256SUMS
       - name: Create the draft release
         env:

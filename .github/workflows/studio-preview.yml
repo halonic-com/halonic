@@ -559,15 +559,27 @@ jobs:
       - uses: $/.github/actions/setup
         with:
           cache: false
-      # The app's changes since the newest stable release, for latest.json,
+      # The app's changes since the previous Preview build, for latest.json,
       # which the update dialog reads, and the pre-release's description
-      # (HAL-19542). Only a build of main publishes, so the commit is here.
+      # (HAL-19542). The previous build's latest.json gives its commit and
+      # the notes of older builds, so an install that skipped builds shows
+      # them all. Without it the notes start at the newest stable release.
+      # Only a build of main publishes, so the commit is here.
       - name: Write the release notes
         env:
+          GH_TOKEN: ${{ github.token }}
           SHA: ${{ needs.resolve.outputs.sha }}
         run: |
-          mkdir -p release-notes
-          node tooling/publish/src/cli/release-notes.ts preview "$SHA" release-notes/notes.md
+          previous=$(gh release list --repo "$PREVIEW_REPO" --exclude-drafts --limit 1 --json tagName --jq '.[0].tagName // ""')
+          args=()
+          if [ -z "$previous" ]; then
+            echo "::notice::No earlier Preview build: the notes start at the newest stable release."
+          elif gh release download "$previous" --repo "$PREVIEW_REPO" --pattern latest.json --output "$RUNNER_TEMP/previous-latest.json"; then
+            args=("$RUNNER_TEMP/previous-latest.json")
+          else
+            echo "::warning::Couldn't read latest.json of $previous: the notes start at the newest stable release."
+          fi
+          node tooling/publish/src/cli/release-notes.ts preview "$VERSION" "$SHA" release-notes "${args[@]}"
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: halonic-installers-${{ needs.resolve.outputs.sha }}
@@ -586,7 +598,8 @@ jobs:
           tag: v${{ env.VERSION }}
           version: ${{ env.VERSION }}
           installer: ${{ env.INSTALLER }}
-          notes-file: release-notes/notes.md
+          notes-dir: release-notes
+          source: ${{ needs.resolve.outputs.sha }}
           dry-run: "false"
           key: preview
           repo: halonic-com/halonic-preview
