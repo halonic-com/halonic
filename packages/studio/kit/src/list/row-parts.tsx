@@ -33,20 +33,30 @@ function metaFit(row: AnyListRow): string {
   return lineFit(row);
 }
 
+/** Where the row's icon or avatar goes, and how big it is. */
+interface LeadingProps {
+  readonly row: AnyListRow;
+  /** A 32px `dense` row: a 16px icon. */
+  readonly small: boolean;
+  /** A `plain` List's row, a sidebar's: a 60px avatar (HAL-19735, `kit.plain-row-size`). */
+  readonly sidebar?: boolean;
+}
+
 /**
  * The row's icon or avatar. `small` is a 32px `dense` row; a dense row 48px high, on a phone or
  * under a coarse pointer, keeps 20px. In a row that wraps it stays at the top, centred on the
  * title's first 20px line.
  */
-export function Leading({ row, small }: { readonly row: AnyListRow; readonly small: boolean }) {
+export function Leading({ row, small, sidebar = false }: LeadingProps) {
   const dim = row.unavailable !== undefined;
   const wrap = row.wrap === true;
   if (row.avatar !== undefined) {
     // At the top, the 28px avatar reaches 4px above and below the title's line.
+    const place = wrap ? "-my-1 self-start" : "";
     return (
       <span
         aria-hidden="true"
-        className={`size-7 shrink-0 ${wrap ? "-my-1 self-start" : ""} ${dim ? "opacity-45" : ""}`}
+        className={`${sidebar ? "size-15" : `size-7 ${place}`} shrink-0 ${dim ? "opacity-45" : ""}`}
       >
         {row.avatar}
       </span>
@@ -89,6 +99,8 @@ interface MetaLineProps {
   readonly chip: ReactNode;
   /** Full colour, not muted: an unread row's line in a `plain` List. */
   readonly full?: boolean;
+  /** 14px, not 13px: a `plain` List's line, a sidebar's (HAL-19735). */
+  readonly large?: boolean;
 }
 
 /**
@@ -96,7 +108,7 @@ interface MetaLineProps {
  * a chip, the chip comes first and only the text is cut; without text, the chip has the line alone.
  * An error's chip sits on its own line, above its reason.
  */
-export function MetaLine({ row, text, id, chip, full = false }: MetaLineProps) {
+export function MetaLine({ row, text, id, chip, full = false, large = false }: MetaLineProps) {
   if (text === undefined && chip === undefined) {
     return null;
   }
@@ -108,7 +120,7 @@ export function MetaLine({ row, text, id, chip, full = false }: MetaLineProps) {
     text === undefined ? null : (
       <span
         id={describesRow(row) ? id : undefined}
-        className={`relative ${metaFit(row)} text-small ${colour}`}
+        className={`relative ${metaFit(row)} ${large ? "text-body" : "text-small"} ${colour}`}
       >
         {text}
       </span>

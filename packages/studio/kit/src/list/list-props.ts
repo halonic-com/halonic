@@ -20,8 +20,8 @@ interface ListRowBase<Id extends string> {
    */
   readonly icon?: ReactNode;
   /**
-   * A 28px avatar before the text, in place of the icon, or a setup step's 24px circle. Hidden
-   * from screen readers too.
+   * A 28px avatar before the text, in place of the icon, or a setup step's 24px circle; 60px in a
+   * `plain` List, so pass an `Avatar` with `size="sidebar"` there. Hidden from screen readers too.
    */
   readonly avatar?: ReactNode;
   /** The "More" icon button. Its label names the row: "More actions for Sorter". */
@@ -260,8 +260,9 @@ interface ListBase<Id extends string> {
   readonly flush?: boolean;
   /**
    * Rows as `PlainList`'s, as the Inbox's Needs you (HAL-19192): no box or lines, each row rounded
-   * and 4px apart, a regular title, and the muted fill on hover and on the `current` row. It wins
-   * over `flush`, on a phone too.
+   * and 4px apart, a regular title, and the muted fill on hover and on the `current` row. Its rows
+   * are a sidebar's bigger ones (HAL-19735): at least 80px, a 60px avatar, a 15px title over a 14px
+   * meta line. It wins over `flush`, on a phone too.
    */
   readonly plain?: boolean;
   /**

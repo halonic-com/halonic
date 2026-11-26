@@ -71,13 +71,13 @@ verifies("kit.list-plain", () => {
       [...cell(id).querySelectorAll("span")].find(
         (span) => span.textContent === items.find((item) => item.id === id)?.title,
       );
-    const metaOf = (id: string) => cell(id).querySelector(".text-small:not([data-part])");
+    const metaOf = (id: string) => cell(id).querySelector(".text-body:not([data-part])");
     expect(classesOf(titleOf("digest"))).toContain("font-semibold");
     expect(classesOf(metaOf("digest"))).toContain("text-fg");
     const dot = cell("digest").querySelector("[data-unread]");
     expect(classesOf(dot)).toContain("bg-primary");
     expect(dot?.textContent).toBe("unread");
-    expect(classesOf(titleOf("notes"))).toContain("text-body");
+    expect(classesOf(titleOf("notes"))).toContain("text-reading");
     expect(classesOf(titleOf("notes"))).not.toContain("font-semibold");
     expect(classesOf(metaOf("notes"))).toContain("text-fg-muted");
     expect(cell("notes").querySelector("[data-unread]")).toBeNull();

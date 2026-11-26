@@ -183,6 +183,7 @@ function Row({
           name={chatAgent(row)?.name ?? row.conversation.title}
           picture={picture}
           tint={chatTint(row)}
+          size="sidebar"
         />
       }
       title={<Highlighted text={chatName(row)} term={highlight} />}

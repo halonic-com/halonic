@@ -6,7 +6,8 @@ import type { InboxItem } from "../inbox-items.ts";
 /*
  * The mark that leads each Needs you row, so an approval, a question, a person step and an agent's
  * card read apart at a glance (design review HAL-18481, 5; `inbox.row-marks`). Each mark sits on
- * the agent Avatar's 28px round tile, so every row's title starts at the same place (HAL-18617).
+ * the agent Avatar's round tile, 60px in the sidebar (HAL-19735), so every row's title starts at the
+ * same place (HAL-18617).
  * The marks are decoration: the row's title and meta line say what it is.
  */
 
@@ -19,16 +20,17 @@ export function itemMark(item: InboxItem): Pick<ListRow, "avatar"> {
 
 /** The mark of an agent's row: the agent's picture (its initials for now), else a question mark. */
 export function agentMark(item: AgentItem | undefined): Pick<ListRow, "avatar"> {
-  if (item?.from.kind === "agent") return { avatar: <Avatar name={item.from.name} /> };
+  if (item?.from.kind === "agent")
+    return { avatar: <Avatar name={item.from.name} size="sidebar" /> };
   return { avatar: <MarkTile glyph={<HelpIcon />} /> };
 }
 
-/** A glyph centred on the Avatar's round tile, in its colours. */
+/** A glyph centred on the sidebar Avatar's 60px round tile, in its colours. */
 function MarkTile({ glyph }: { readonly glyph: ReactNode }) {
   return (
     <span
       aria-hidden="true"
-      className="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-muted text-fg-muted [&>svg]:size-4"
+      className="flex size-15 shrink-0 items-center justify-center rounded-full bg-surface-muted text-fg-muted [&>svg]:size-8"
     >
       {glyph}
     </span>
