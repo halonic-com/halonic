@@ -177,9 +177,17 @@ env:
   # its 6 test workers stay alone on their slot. Pull requests keep nine:
   # GitHub's runners don't wait, and fewer shards would make each one slower.
   # base-tests reads main's test results by these names.
+  # The Studio packages are two shards again (HAL-19508): one `studio` shard
+  # was the slowest build job in 8 of 9 groups (26 Nov, 3.3-6.5 min, the
+  # others at most 3.7), and trace waits for it. Its tests miss whenever core,
+  # the lockfile or Studio change (19 of 40 groups under 60% cached, 26 Nov
+  # sweep): then about 5.5 min against 0.7 cached. The features and the rest
+  # of Studio with the testing packages each run in about half of that, for
+  # one more large slot per group.
   QUEUE_BUILD_SHARDS: |
     adapters-core ./packages/adapters/* ./packages/core/* !@halonicjs/adapter-password-scrypt
-    studio ./packages/studio/* ./packages/studio/features/* ./packages/testing/*
+    studio-features ./packages/studio/features/*
+    studio-testing ./packages/studio/* ./packages/testing/*
     apps-host-tooling ./apps/* ./packages/host/* ./tooling/* ./packages/targets/*/* @halonicjs/adapter-password-scrypt !@halonicjs/app-studio
     app-studio @halonicjs/app-studio
 
@@ -836,7 +844,7 @@ jobs:
       fail-fast: false
       matrix:
         # The names of BUILD_SHARDS, or of QUEUE_BUILD_SHARDS, in order.
-        shard: ${{ fromJSON(github.event_name == 'pull_request' && '["adapters-a","adapters-b","features-a","features-b","core","studio-testing","apps-host","app-studio","tooling-targets"]' || '["adapters-core","studio","apps-host-tooling","app-studio"]') }}
+        shard: ${{ fromJSON(github.event_name == 'pull_request' && '["adapters-a","adapters-b","features-a","features-b","core","studio-testing","apps-host","app-studio","tooling-targets"]' || '["adapters-core","studio-features","studio-testing","apps-host-tooling","app-studio"]') }}
         # Test workers for one shard on our own CI server, over the repo
         # variable CI_SELF_HOSTED_TEST_WORKERS: app-studio runs one package's
         # many small test files, so it uses the slot's 6 CPUs (see
