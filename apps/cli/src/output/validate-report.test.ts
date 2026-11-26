@@ -26,6 +26,7 @@ function loaded(issues: readonly WorkspaceIssue[], checked: number): LoadedWorks
     issues,
     ignored: [],
     leftOut: [],
+    ruleFiles: {},
   };
 }
 

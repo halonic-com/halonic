@@ -17,6 +17,7 @@ import { checkWorkspace } from "./checks/check-workspace.ts";
 import { agentFolders, leaveOutFor, leftOutNames } from "./left-out-folders.ts";
 import { misplacedFile } from "./misplaced-files.ts";
 import { idSourceOf, placeOf } from "./places.ts";
+import { readRuleFiles } from "./rule-files.ts";
 
 /**
  * Something wrong with a workspace, and where: the file, the key path in it
@@ -73,6 +74,12 @@ export interface LoadedWorkspace {
    * source.
    */
   readonly leftOut: readonly string[];
+  /**
+   * The text of each rule file a workflow's `rule` step names, by workspace
+   * path, read with the rest (`workspace.rule-files`). A missing file, or one
+   * over the size limit, isn't here: a check reports it.
+   */
+  readonly ruleFiles: Readonly<Record<string, string>>;
 }
 
 /**
@@ -150,7 +157,15 @@ export async function loadWorkspace(
     // A loop, not `push(...list)`: spreading a very long list overflows the stack.
     for (const issue of outcome.issues) issues.push(issue);
   }
-  for (const issue of checkWorkspace(files, read, paths, options.sheetHosts)) issues.push(issue);
+  const workflows = files.filter((file) => file.kind === "workflow");
+  const rules = await readRuleFiles(workflows, new Set(paths), (path) => readText(source, path));
+  for (const issue of checkWorkspace(files, read, paths, options.sheetHosts, rules)) {
+    issues.push(issue);
+  }
+  // `fromEntries` defines each key, so a rule file named "__proto__" stays one.
+  const ruleFiles = Object.fromEntries(
+    [...rules].flatMap(([path, file]) => (file.kind === "text" ? [[path, file.text]] : [])),
+  );
   return {
     location: source.location,
     version,
@@ -158,6 +173,7 @@ export async function loadWorkspace(
     issues: byFile(issues),
     ignored,
     leftOut: leaveOut.folders,
+    ruleFiles,
   };
 }
 

@@ -4,6 +4,7 @@ import { bytesToHex, canonicalJson, encodeUtf8 } from "@halonicjs/std";
 import { type DeclaredToolsByConnector, declaredToolsOf } from "./declared-tools.ts";
 import { filesOf, type LoadedWorkspace } from "./load-workspace.ts";
 import { modelAliases, type ResolvedModelTarget, resolvedAlias } from "./resolve-model.ts";
+import { ruleFilePath, ruleStepsOf } from "./rule-files.ts";
 import type { LocalIntegrationInput } from "./trust-integrations.ts";
 
 /** Values of one kind by their id. */
@@ -38,6 +39,12 @@ export interface HubDefinitions {
   readonly knowledge: ById<"knowledge">;
   readonly collections: ById<"collection">;
   readonly connectors: ById<"connector">;
+  /**
+   * The code of each rule file the hub's workflows name, by its `rule` path
+   * in the hub, as it was read (`workspace.rule-files`). Left out when the
+   * hub has none, so a hub without rule steps keeps its version.
+   */
+  readonly rules?: Readonly<Record<string, string>>;
 }
 
 /** The library kinds, each with its key in a hub's `uses`. */
@@ -70,12 +77,14 @@ export function definitionsOf(workspace: LoadedWorkspace, hubId: string): HubDef
   );
   const uses = hub?.uses;
   const defaultModel = hub?.defaults.model ?? settings?.defaults.model;
+  const workflows = idsOf(workspace, "workflow", hubId);
+  const rules = rulesOf(workspace, hubId, workflows);
   return {
     hubId,
     settings,
     hub,
     ...(defaultModel === undefined ? {} : { defaultModel }),
-    workflows: idsOf(workspace, "workflow", hubId),
+    workflows,
     agents: idsOf(workspace, "agent", hubId),
     models,
     providers: idsOf(workspace, "provider", null),
@@ -84,6 +93,7 @@ export function definitionsOf(workspace: LoadedWorkspace, hubId: string): HubDef
     knowledge: libraryOf(workspace, "knowledge", hubId, uses?.knowledge),
     collections: libraryOf(workspace, "collection", hubId, uses?.collections),
     connectors: libraryOf(workspace, "connector", hubId, uses?.connectors),
+    ...(Object.keys(rules).length === 0 ? {} : { rules }),
   };
 }
 
@@ -112,6 +122,8 @@ export interface RunStartDefinitions {
    * host passed no integrations, for lack of trust or of any.
    */
   readonly declaredTools?: DeclaredToolsByConnector;
+  /** The code of the hub's rule files by `rule` path, which its `rule` steps run; left out when it has none. */
+  readonly rules?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -154,6 +166,7 @@ export function runDefinitionsOf(
     skills: hub.skills,
     connectorTools: connectorToolsOf(hub),
     ...(integrations === undefined ? {} : { declaredTools: declaredToolsOf(hub, integrations) }),
+    ...(hub.rules === undefined ? {} : { rules: hub.rules }),
   };
 }
 
@@ -203,6 +216,28 @@ function idsOf<
     }
   }
   return byId;
+}
+
+/**
+ * The code of the rule files the hub's workflows name, by `rule` path. A
+ * file the loader didn't keep, missing or too large, is left out, so the
+ * run's step fails with `rule.missing`; `loadWorkspace` reported it.
+ */
+function rulesOf(
+  workspace: LoadedWorkspace,
+  hubId: string,
+  workflows: ById<"workflow">,
+): Record<string, string> {
+  const rules: [string, string][] = [];
+  for (const workflow of Object.values(workflows)) {
+    for (const { rule } of ruleStepsOf(workflow)) {
+      const path = ruleFilePath(hubId, rule);
+      const code = Object.hasOwn(workspace.ruleFiles, path) ? workspace.ruleFiles[path] : undefined;
+      if (code !== undefined) rules.push([rule, code]);
+    }
+  }
+  // `fromEntries` defines each key, so a rule named "__proto__" stays one.
+  return Object.fromEntries(rules);
 }
 
 function libraryOf<Name extends LibraryKind>(

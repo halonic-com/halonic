@@ -138,6 +138,10 @@ it can use resolved, the providers and runtimes, and the library items it may us
 `runDefinitionsOf` builds what a new run starts with: the workflow, the hub's agents, workflows,
 collections and knowledge sources, and the `allow` and `approve` lists of the connectors the hub can
 see, by connector id, and nothing else of their files (`workspace.run-definitions`).
+Both hold `rules` when the hub's workflows have `rule` steps: the text of each rule file, by its
+`rule` path in the hub, as `loadWorkspace` read it (`workspace.rule-files`). A missing rule file, or
+one over 256 KB (`maxRuleFileBytes`), is a validation error and is left out, so the step fails with
+`rule.missing`; a hub without rule steps has no `rules` and keeps its version.
 `definitionsVersion(definitions, digest)` is the SHA-256 of their canonical JSON, through the
 `Digest` port. That is the hash the `BlobStore` gives the same JSON, so the engine keeps the
 definitions under the run's `definitionsVersion` and a waiting run goes on with the definitions it
