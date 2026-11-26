@@ -1,4 +1,7 @@
+import { byReviewer, everyPage } from "../verdicts/github-read.ts";
 import type { CheckState, PullFacts } from "./decide.ts";
+
+export { byReviewer, everyPage } from "../verdicts/github-read.ts";
 
 /**
  * Reads what the PR watcher needs from the GitHub REST API. Read-only: it
@@ -110,31 +113,6 @@ export interface Review {
   readonly state?: string;
   readonly body?: string | null;
   readonly author_association?: string;
-}
-
-/**
- * Who may ask our authors for changes: the repository's owner, members of
- * its organization and its collaborators. On a public repository anyone else
- * can comment too, and their comments don't wake anyone.
- */
-const reviewerAssociations: ReadonlySet<string> = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
-
-export function byReviewer(item: { readonly author_association?: string }): boolean {
-  return reviewerAssociations.has(item.author_association ?? "");
-}
-
-/** Every item of a list endpoint, page by page. */
-export async function everyPage(get: GitHubGet, path: string): Promise<unknown[]> {
-  const items: unknown[] = [];
-  for (let page = 1; ; page += 1) {
-    const list = (await get(
-      `${path}${path.includes("?") ? "&" : "?"}per_page=100&page=${page}`,
-    )) as unknown[];
-    items.push(...list);
-    if (list.length < 100) {
-      return items;
-    }
-  }
 }
 
 /**

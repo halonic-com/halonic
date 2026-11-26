@@ -1,10 +1,11 @@
 import { type ChangedFile, readManifests, routedFromRest } from "../pr-tools/manifests.ts";
-import { branchPath, type PullDetails } from "../pr-tools/pr-status.ts";
-import { everyPage, type GitHubGet } from "../pr-watcher/github.ts";
-import { type CompareFile, changeIdOf } from "../pr-watcher/rebase-only.ts";
+import type { PullDetails } from "../pr-tools/pr-status.ts";
+import type { GitHubGet } from "../pr-watcher/github.ts";
 import { routedPaths, routineRefusal } from "../reviewer-paths.ts";
 import { manifestFileOf } from "../reviewer-paths-manifest.ts";
 import { pathReviewer } from "../reviewer-paths-who.ts";
+import { type CompareFile, changeIdOf } from "./compare.ts";
+import { branchPath, everyPage } from "./github-read.ts";
 import type { VerdictPullFacts } from "./review-verdict.ts";
 
 /** The facts with what the gate also checks (HAL-19969): whether every changed file was read, and a manifest. */
