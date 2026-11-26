@@ -23,8 +23,8 @@ export function ExchangeView({ exchange, onRetry, onOpenChat }: ExchangeViewProp
   const agent = exchange.agent.agent.name;
   const notSent = exchange.status === "not-sent";
   return (
-    <li className="flex flex-col gap-2">
-      <Arriving className="flex flex-col items-end gap-1">
+    <li className="flex flex-col">
+      <Arriving className="flex flex-col items-end">
         <p
           data-question=""
           className={`max-w-[85%] whitespace-pre-wrap rounded-lg bg-surface-muted px-3 py-2 text-body ${
@@ -33,35 +33,38 @@ export function ExchangeView({ exchange, onRetry, onOpenChat }: ExchangeViewProp
         >
           {exchange.question}
         </p>
-        {notSent ? (
-          <>
-            <p className="text-small text-danger">
-              {`${quickAskWords.notSent} · `}
-              <button
-                type="button"
-                className={standaloneLinkClasses}
-                onClick={() => onRetry(exchange)}
-              >
-                {quickAskWords.tryAgain}
-              </button>
-            </p>
-            <p className="text-small text-fg-muted">
-              {quickAskWords.unreachable(exchange.agent.row.source?.label ?? agent)}
-            </p>
-          </>
-        ) : null}
       </Arriving>
-      {exchange.status === "sent" ? (
-        // Only where the answer stands is announced, not the question the person just typed.
-        <div aria-live="polite">
+      {/* Only what comes back is read out, once: not the question just typed. Shown while empty,
+          as a hidden live region may not be heard once it fills. */}
+      <div aria-live="polite" className="mt-2 flex flex-col gap-2 empty:mt-0">
+        {notSent ? <NotSent exchange={exchange} onRetry={onRetry} /> : null}
+        {exchange.status === "sent" ? (
           <AnswerView
             agent={agent}
             answer={exchange.answer}
             onAnswerCard={() => onOpenChat(exchange.agent.row.conversation.id)}
           />
-        </div>
-      ) : null}
+        ) : null}
+      </div>
     </li>
+  );
+}
+
+/** Under a question that didn't go out: **Not sent · Try again**, and the reason. */
+function NotSent({ exchange, onRetry }: Pick<ExchangeViewProps, "exchange" | "onRetry">) {
+  const agent = exchange.agent.agent.name;
+  return (
+    <Arriving className="-mt-1 flex flex-col items-end gap-1">
+      <p className="text-small text-danger">
+        {`${quickAskWords.notSent} · `}
+        <button type="button" className={standaloneLinkClasses} onClick={() => onRetry(exchange)}>
+          {quickAskWords.tryAgain}
+        </button>
+      </p>
+      <p className="text-small text-fg-muted">
+        {quickAskWords.unreachable(exchange.agent.row.source?.label ?? agent)}
+      </p>
+    </Arriving>
   );
 }
 
