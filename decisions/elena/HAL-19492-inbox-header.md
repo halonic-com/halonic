@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19492
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:W0XT87pctoGdYUPPAc909HiapqZVA3oRmQ3iK/tj4nrQ2Bx6sV72b45PflHktVMeMvFRTD6LPjpkBPvAcLbgCw==
 
 `inbox.header-avatar` said the Inbox shows the asker's 40px picture inside an agent's card, before
 the line that says who asks and the title. The Inbox and Messenger layout the board approved on
