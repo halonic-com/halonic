@@ -59,7 +59,7 @@ afterEach(() => {
 
 async function mount(kind: "overlay" | "unavailable", shell = fakeShell()) {
   await act(async () => {
-    mounted = mountFeedbackWindow(element, kind, shell);
+    mounted = mountFeedbackWindow(element, { kind }, shell);
   });
   return shell;
 }
@@ -208,13 +208,21 @@ verifies("feedback.overlay", () => {
     expect(drawn).not.toHaveBeenCalled();
     errors.mockRestore();
   });
+
+  it("ends the feedback when its canvas can't draw", async () => {
+    canvasPrototype["getContext"] = () => null;
+    const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const shell = await mount("overlay");
+    await vi.waitFor(() => expect(shell.invoke).toHaveBeenCalledWith("plugin:feedback|end"));
+    errors.mockRestore();
+  });
 });
 
 verifies("feedback.unavailable", () => {
   it("says capture isn't available here, and Not now or Esc closes it", async () => {
     const shell = await mount("unavailable");
     expect(element.textContent).toContain(
-      "Studio can't take a screenshot for feedback on this system yet.",
+      "Studio can't take a screenshot for feedback on this system.",
     );
     const notNow = [...element.querySelectorAll("button")].find(
       (button) => button.textContent === "Not now",

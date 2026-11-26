@@ -1,12 +1,15 @@
 /**
  * The shell's commands for the feedback windows (`feedback_capture.rs`). Each window's capability
- * grants only its own: an overlay `still`, `select` and `end`, the not-available window `end`.
+ * grants only its own: an overlay `still`, `select` and `end`, the Send feedback window `crop`
+ * and `end`, the not-available window `end`.
  */
 export const feedbackCommands = {
   /** The calling overlay's still: width and height as two little-endian u32s, then RGBA rows. */
   still: "plugin:feedback|still",
   /** Keeps the crop of a box of the calling overlay's still, in its device pixels. */
   select: "plugin:feedback|select",
+  /** The Send feedback window's crop, in the still's format; refused as `gone` once dropped. */
+  crop: "plugin:feedback|crop",
   /** Ends the feedback: closes every feedback window and keeps nothing. */
   end: "plugin:feedback|end",
 } as const;

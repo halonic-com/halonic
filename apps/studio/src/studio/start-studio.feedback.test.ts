@@ -68,7 +68,7 @@ verifies("studio.feedback-windows", () => {
     start("feedback-unavailable", called);
     await vi.waitFor(() =>
       expect(element.textContent).toBe(
-        "Studio can't take a screenshot for feedback on this system yet.Not now",
+        "Studio can't take a screenshot for feedback on this system.Not now",
       ),
     );
     expect(called).toEqual([]);
