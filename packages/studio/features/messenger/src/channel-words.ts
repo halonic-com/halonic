@@ -16,6 +16,9 @@ export const channelWords = {
   toNobody: "To nobody yet",
   noLead: "Name someone with @, or pick a lead in Members.",
   picker: "Members · ↑↓ to pick · Enter names them · Esc closes",
+  /** The picker when the name typed is an agent of the source who isn't a member (k10c). */
+  notMember: (agent: string) => `${agent} isn't in this channel.`,
+  onlyMembers: "Only members can be named here.",
   /** A channel's row in the list (k14a): its size, and who is working (Noah, HAL-18224: "1 working · Elena" too). */
   row: {
     size: (count: number) => `${count} agents`,
@@ -37,6 +40,8 @@ export const channelWords = {
   work: {
     starting: (agent: string) => `${agent} · starting…`,
     working: (agent: string, minutes: number) => `${agent} · working · ${minutes} min`,
+    /** Working, while the source is offline: as of when it was last read (k11b). */
+    stale: (agent: string, time: string) => `${agent} · working, as of ${time}`,
     answered: (agent: string) => `${agent} answered`,
     /** Without the question's text, while its card hasn't been read yet, the line ends at "asks you". */
     asksYou: (agent: string, question: string | undefined) =>
@@ -47,6 +52,7 @@ export const channelWords = {
     couldntFinish: (agent: string, reason: string) => `${agent} couldn't finish: ${reason}`,
     passedOn: (agent: string, to: string) => `${agent} passed this to ${to}`,
     handOffLimit: "Stopped after 3 hand-offs. Name who should answer.",
+    askAgain: "Ask again",
   },
 } as const;
 

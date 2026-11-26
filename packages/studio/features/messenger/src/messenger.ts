@@ -186,6 +186,17 @@ export class Messenger {
     return (row.incoming ?? []).filter((sentAt) => sentAt > seen).length;
   }
 
+  /**
+   * Sends one of the person's messages again, to `agent` only, after that agent's work ended
+   * without an answer (**Ask again**, flow J). Its files aren't sent again: the port gives back only
+   * their names. Offline or signed out, it asks the source nothing.
+   */
+  async askAgain(row: ConversationRow, message: Message, agent: MessagingId): Promise<SendResult> {
+    const refusal = refusalOf(row);
+    if (refusal !== undefined) return { outcome: "refused", reason: refusal };
+    return this.messaging.send(row.conversation.id, message.body, [], { to: [agent] });
+  }
+
   /** Whether anything is connected, so the Messenger can tell "nothing connected" from "no chats". */
   async hasSources(): Promise<boolean> {
     const sources = await this.messaging.listSources();

@@ -182,7 +182,7 @@ function AddAgent({
 }
 
 /** The dialog a change waits in: the history notice before adding, or a new lead before removing. */
-function PendingDialog({
+export function PendingDialog({
   row,
   pending,
   busy,

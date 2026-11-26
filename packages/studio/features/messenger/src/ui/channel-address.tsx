@@ -1,9 +1,21 @@
 import type { MessagingAgent, MessagingId } from "@halonicjs/ports";
 import { Button, type ChatComposerPicker, CloseIcon } from "@halonicjs/studio-kit";
-import { useId, useState } from "react";
-import { isChannel, pickable, pickerQuery, type ToLine, toLine, withoutQuery } from "../channel.ts";
+import { useEffect, useId, useRef, useState } from "react";
+import {
+  isChannel,
+  outsider,
+  pickable,
+  pickerQuery,
+  type ToLine,
+  toLine,
+  withoutQuery,
+} from "../channel.ts";
+import { canAdd } from "../channel-admin.ts";
+import { channelAdminWords } from "../channel-admin-words.ts";
 import { channelWords } from "../channel-words.ts";
 import type { ConversationRow, Messenger } from "../messenger.ts";
+import { PendingDialog } from "./members-panel.tsx";
+import type { MemberChanges } from "./use-members.ts";
 
 /** What a channel's box needs to name agents: the picks, the picker and the To line. */
 export interface ChannelAddress {
@@ -13,6 +25,8 @@ export interface ChannelAddress {
   readonly lineId: string;
   /** The `@` picker, for the box: the members it offers while it's open. */
   readonly picker: ChatComposerPicker;
+  /** With no member to offer: the source's agent whose name was typed, who could be added. */
+  readonly outsider: MessagingAgent | undefined;
   unname(agent: MessagingId): void;
   /** Reads the picks again, as after a send cleared them. */
   refresh(): void;
@@ -50,13 +64,17 @@ export function useChannelAddress(
     setNamed([...named, agent.id]);
     type(withoutQuery(draft));
   };
+  const notMember = open && options.length === 0 ? outsider(row, query ?? "") : undefined;
+  useSayNotMember(notMember, say);
+  // The note above the box takes the picker's place, so its frame, with no rows, doesn't show
+  // (HAL-19415). Esc then does nothing; typing past the name hides the note.
   return {
     named: named.flatMap((each) => row.agents.find((agent) => agent.id === each) ?? []),
     line: toLine(row, named),
     lineId,
     picker: {
       label: channelWords.picker,
-      open,
+      open: open && notMember === undefined,
       options: options.map((agent) => ({ id: agent.id, content: <MemberOption agent={agent} /> })),
       onPick(agentId) {
         const agent = options.find((each) => each.id === agentId);
@@ -64,9 +82,24 @@ export function useChannelAddress(
       },
       onClose: () => setClosedAt(draft),
     },
+    outsider: notMember,
     unname: (agent) => setNamed(named.filter((each) => each !== agent)),
     refresh: () => setNamedState(messenger.named(id)),
   };
+}
+
+/**
+ * The picker offers no options for a name that isn't a member's, so `say` reads out "Writer isn't
+ * in this channel." once each time such a name first shows (WCAG 4.1.3), as the To line is (MS10).
+ */
+function useSayNotMember(agent: MessagingAgent | undefined, say: (text: string) => void): void {
+  const said = useRef<MessagingId | undefined>(undefined);
+  useEffect(() => {
+    if (said.current === agent?.id) return;
+    said.current = agent?.id;
+    if (agent !== undefined)
+      say(`${channelWords.notMember(agent.name)} ${channelWords.onlyMembers}`);
+  });
 }
 
 /** A member's row in the picker: the name, then the title. */
@@ -118,5 +151,65 @@ export function ChannelAddressBar({
         </span>
       ))}
     </div>
+  );
+}
+
+/**
+ * Above a channel's box, while the picker offers nobody: a name typed that is the source's agent
+ * but not a member says so, with **Add Writer** (k10c). That goes through the Members panel's own
+ * change, so the history notice comes first (`messenger.members`). In a channel of 8 agents it
+ * can't be used and says why, as the panel's **Add an agent** does.
+ */
+export function ChannelNotMember({
+  row,
+  address,
+  members,
+}: {
+  readonly row: ConversationRow;
+  readonly address: ChannelAddress;
+  readonly members: MemberChanges;
+}) {
+  const agent = address.outsider;
+  const fullId = useId();
+  const full = !canAdd(row);
+  return (
+    <>
+      {agent === undefined ? null : (
+        <div data-not-member className="flex flex-col gap-1 text-small">
+          <p className="flex flex-wrap items-center gap-2">
+            <span>{channelWords.notMember(agent.name)}</span>
+            <Button
+              size="sm"
+              variant="secondary"
+              unavailable={full ? { reason: fullId } : undefined}
+              onClick={() => members.add(agent)}
+            >
+              {channelAdminWords.members.history.confirm(agent.name)}
+            </Button>
+          </p>
+          {full ? (
+            <p id={fullId} className="text-fg-muted">
+              {channelAdminWords.tooMany}
+            </p>
+          ) : null}
+          <p className="text-fg-muted">{channelWords.onlyMembers}</p>
+        </div>
+      )}
+      {members.failure === undefined || members.pending !== undefined ? null : (
+        <p role="alert" className="text-small text-danger">
+          {members.failure}
+        </p>
+      )}
+      {members.pending === undefined ? null : (
+        <PendingDialog
+          row={row}
+          pending={members.pending}
+          busy={members.busy}
+          failure={members.failure}
+          onConfirm={members.confirm}
+          onCancel={members.cancel}
+        />
+      )}
+    </>
   );
 }

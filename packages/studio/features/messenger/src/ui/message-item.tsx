@@ -37,6 +37,7 @@ export function MessageItem({
   picture,
   questions,
   found,
+  onAsked,
 }: {
   readonly messenger: Messenger;
   readonly row: ConversationRow;
@@ -49,6 +50,8 @@ export function MessageItem({
   readonly questions: ReadonlyMap<MessagingId, string>;
   /** The find bar found it: the match shown, or another (`messenger.find-in-chat`). */
   readonly found?: "current" | "match" | undefined;
+  /** **Ask again** sent the message again: the chat reads its messages again. */
+  readonly onAsked: () => Promise<void>;
 }) {
   const mark = foundData(message.id, found);
   const openLink = useOpenExternal();
@@ -80,7 +83,20 @@ export function MessageItem({
         above={channel ? <MessageTo message={message} row={row} /> : null}
         after={
           channel ? (
-            <WorkLines message={message} row={row} questions={questions} now={messenger.now()} />
+            <WorkLines
+              message={message}
+              row={row}
+              questions={questions}
+              now={messenger.now()}
+              askAgain={async (asked, agent) => {
+                const result = await messenger.askAgain(row, asked, agent);
+                if (result.outcome === "refused") {
+                  return messengerWords.notSent[result.reason](row.source?.label ?? "");
+                }
+                await onAsked();
+                return undefined;
+              }}
+            />
           ) : null
         }
       >

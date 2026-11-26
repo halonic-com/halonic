@@ -5,6 +5,7 @@ import {
   type MessagingId,
   messageWorkReasonMax,
 } from "@halonicjs/ports";
+import { clockTime } from "@halonicjs/studio-kit";
 import { channelWords } from "./channel-words.ts";
 import type { ConversationRow } from "./messenger.ts";
 
@@ -96,6 +97,8 @@ export type WorkLineKind = "running" | "answered" | "asks-you" | "failed" | "pas
 export interface WorkLine {
   readonly kind: WorkLineKind;
   readonly text: string;
+  /** For a line that ended without an answer: the agent **Ask again** sends the text to, if any. */
+  readonly askAgain?: MessagingId;
 }
 
 /** The hand-offs after which a message stops being passed on (K3). */
@@ -114,7 +117,9 @@ export function workLines(
   now: Date,
 ): readonly WorkLine[] {
   const work = message.work ?? [];
-  const lines = work.flatMap((share) => lineOf(share, row, questions, now) ?? []);
+  // A message with only files has no text to send again: the port gives back only their names.
+  const askable = message.body.trim() !== "";
+  const lines = work.flatMap((share) => lineOf(share, row, questions, now, askable) ?? []);
   const handOffs = work.filter((share) => share.state === "passed-on").length;
   if (handOffs >= handOffLimit) lines.push({ kind: "limit", text: channelWords.work.handOffLimit });
   return lines;
@@ -125,6 +130,7 @@ function lineOf(
   row: ConversationRow,
   questions: ReadonlyMap<MessagingId, string>,
   now: Date,
+  askable: boolean,
 ): WorkLine | undefined {
   const agent = agentName(row, share.agent);
   if (agent === undefined) return undefined;
@@ -132,10 +138,8 @@ function lineOf(
   switch (share.state) {
     case "starting":
       return { kind: "running", text: words.starting(agent) };
-    case "working": {
-      const minutes = Math.max(0, Math.floor((now.getTime() - Date.parse(share.since)) / 60_000));
-      return { kind: "running", text: words.working(agent, minutes) };
-    }
+    case "working":
+      return { kind: "running", text: workingText(agent, share, row, now) };
     case "answered":
       return { kind: "answered", text: words.answered(agent) };
     case "asks-you": {
@@ -145,7 +149,7 @@ function lineOf(
     case "failed": {
       const reason = shownReason(share.reason);
       const text = reason === undefined ? words.closed(agent) : words.couldntFinish(agent, reason);
-      return { kind: "failed", text };
+      return askable ? { kind: "failed", text, askAgain: share.agent } : { kind: "failed", text };
     }
     case "passed-on": {
       const to = share.passedTo === undefined ? undefined : agentName(row, share.passedTo);
@@ -154,6 +158,19 @@ function lineOf(
     default:
       return undefined;
   }
+}
+
+/**
+ * How long an agent has been working, or, while its source is offline, as of when the source was
+ * last read: the minutes would keep counting with nothing to say the work still goes on.
+ */
+function workingText(agent: string, share: MessageWork, row: ConversationRow, now: Date): string {
+  const state = row.source?.state;
+  if (state?.kind === "offline") {
+    return channelWords.work.stale(agent, clockTime(new Date(state.asOf), now));
+  }
+  const minutes = Math.max(0, Math.floor((now.getTime() - Date.parse(share.since)) / 60_000));
+  return channelWords.work.working(agent, minutes);
 }
 
 /**
@@ -177,4 +194,14 @@ export function workingMembers(row: ConversationRow): string | undefined {
   const working = row.agents.filter((agent) => agent.activity === "working");
   if (working.length === 0) return undefined;
   return channelWords.row.working(working.map((agent) => agent.name));
+}
+
+/** The source's agent whose name holds `query` but who isn't a member, for the picker's **Add**. */
+export function outsider(row: ConversationRow, query: string): MessagingAgent | undefined {
+  const wanted = query.toLowerCase();
+  if (wanted === "") return undefined;
+  const members = row.conversation.members ?? [row.conversation.agent];
+  return row.sourceAgents.find(
+    (agent) => !members.includes(agent.id) && agent.name.toLowerCase().includes(wanted),
+  );
 }

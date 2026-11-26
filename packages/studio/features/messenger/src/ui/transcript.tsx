@@ -39,6 +39,8 @@ export interface TranscriptProps {
   readonly words: EngineWords;
   /** Reads the messages again. */
   readonly onRetry: () => void;
+  /** **Ask again** sent a message: the chat reads its messages again. */
+  readonly onAsked: () => Promise<void>;
   /** The chat agent's picture beside each run of its messages. */
   readonly picture: ImageBitmap | undefined;
   /** Called with an option's label once it answered a card. */
@@ -163,6 +165,7 @@ function Line({ line, ...props }: TranscriptProps & { readonly line: ChatLine })
       picture={props.picture}
       questions={props.questions}
       found={foundOf(line.message.id, props.found)}
+      onAsked={props.onAsked}
     />
   );
 }
