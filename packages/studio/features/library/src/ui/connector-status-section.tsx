@@ -51,21 +51,23 @@ export function ConnectorStatusSection({
         <p className="text-small text-fg-muted">{words.showingLast}</p>
       ) : null}
       {state.connector === undefined ? null : (
-        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-          <StatusChip tone={connectionStateTable[state.connector.state].tone}>
-            {connectionStateTable[state.connector.state].label}
-          </StatusChip>
-          {state.connector.reason === undefined ? null : (
-            <p className="min-w-0 text-body [overflow-wrap:anywhere]">{state.connector.reason}</p>
+        <div className="flex min-w-0 flex-col gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+            <StatusChip tone={connectionStateTable[state.connector.state].tone}>
+              {connectionStateTable[state.connector.state].label}
+            </StatusChip>
+            {state.connector.reason === undefined ? null : (
+              <p className="min-w-0 text-body [overflow-wrap:anywhere]">{state.connector.reason}</p>
+            )}
+          </div>
+          {state.connector.trouble === undefined ? null : (
+            <TroubleLine
+              connector={state.connector}
+              trouble={state.connector.trouble}
+              onLook={onLook}
+            />
           )}
         </div>
-      )}
-      {state.connector?.trouble === undefined ? null : (
-        <TroubleLine
-          connector={state.connector}
-          trouble={state.connector.trouble}
-          onLook={onLook}
-        />
       )}
       <div className="flex min-w-0 flex-col gap-2">
         <h2 id={headingId} className="text-heading [overflow-wrap:anywhere]">
