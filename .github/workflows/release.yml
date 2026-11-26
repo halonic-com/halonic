@@ -771,7 +771,7 @@ jobs:
           # README. What changed is the notes the update dialog shows, from
           # latest.json (HAL-19542); the changelog link points at the tag, so
           # it never moves, and has the whole list when the notes are cut.
-          cli="**Command line** (Windows WSL 2, macOS, Linux): \`npm install -g halonic\`, with Node.js 26.12 or later. Then try \`halonic init --example acme\`. [Getting started](https://docs.halonic.dev/getting-started)"
+          cli="**Command line** (Windows WSL 2, macOS, Linux): \`npm install -g halonic@latest\`, with Node.js 26.12 or later. Then try \`halonic init --example acme\`. [Getting started](https://docs.halonic.dev/getting-started)"
           changes="## What changed"$'\n\n'"$(jq -r .notes dist/latest.json)"$'\n\n'"[The full changelog](https://github.com/$GH_REPO/blob/$TAG/apps/studio/CHANGELOG.md)"
           body="$link"$'\n\n'"$cli"$'\n\n'"$changes"
           notes="$body"

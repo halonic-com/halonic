@@ -90,8 +90,8 @@ requirement `publish.staged-cli`.
 On npm, `halonic` 1.0.0 is our placeholder. It and `0.0.0-stage` are
 already deprecated ("Empty placeholder. Use halonic 0.1.0 or later.", checked on 18 Nov 2026), so nothing
 more is needed for them. `latest` names 0.1.1 since that release (checked on 26 Nov 2026). A real 0.1.x
-is lower than 1.0.0, so npm won't move `latest` to it by itself, and without the tag an install that leaves
-out `@latest` would get the placeholder again (HAL-12286).
+is lower than 1.0.0, so npm won't move `latest` to it by itself: a new publish without `--tag latest` would
+go live with `latest` still naming the previous version, and installs would keep getting that one (HAL-12286).
 
 Our install lines say `npm install -g halonic@latest`, not plain `halonic`, until a real version is above
 1.0.0. When the `latest` version's `engines` doesn't match the user's Node.js (older than 26.12), an install
