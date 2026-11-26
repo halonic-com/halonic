@@ -7,6 +7,7 @@ import type { ProposedWrite, ProposeOutcome, ReviewService } from "@halonicjs/ap
 import type { DefinitionSource, Digest, ExpectedContent } from "@halonicjs/ports";
 import { contentDigest } from "@halonicjs/std";
 import type { DocsOptions } from "./docs/docs-sites.ts";
+import type { FixAttempts } from "./fix-attempts.ts";
 import { isGatedPath, namedOnlyRefusal } from "./named-only.ts";
 import type { RequestLogReading } from "./request-log-tool.ts";
 
@@ -43,6 +44,12 @@ export interface BuildToolsOptions {
    * Absent: the chat has no `read_request_log`.
    */
   readonly requestLog?: RequestLogReading | undefined;
+  /**
+   * The chat's fix attempts on the local integration it is about (`assistant.build.fix-attempts`).
+   * After two failed fixes, `propose_file`, `propose_delete` and `read_request_log` on its folder
+   * answer the stop result. Absent: the chat counts no fixes.
+   */
+  readonly fixes?: FixAttempts | undefined;
 }
 
 /** An item the `show` tool shows, as the model names it. */

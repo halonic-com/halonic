@@ -60,6 +60,8 @@ export function requestLogTool(chat: BuildChat, log: RequestLogReading): ChatToo
       const integration = await log.integration();
       if (integration === undefined) return requestLogTexts.notAbout;
       if (asked !== integration) return requestLogTexts.other(integration);
+      const stop = await chat.options.fixes?.stopped();
+      if (stop !== undefined) return stop;
       const lines = (await log.lines(integration)).slice(-requestLogLinesShown);
       if (lines.length === 0) return requestLogTexts.empty(integration);
       const text = lines.map(lineText).join("\n");

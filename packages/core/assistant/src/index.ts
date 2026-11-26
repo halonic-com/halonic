@@ -25,6 +25,14 @@ export {
   untrustedTextLoaded,
 } from "./build/docs/loaded-page.ts";
 export {
+  FixAttempts,
+  type FixAttemptsOptions,
+  failedFixesAllowed,
+  fixStopTexts,
+  type KeptFixAttempts,
+  type LocalIntegration,
+} from "./build/fix-attempts.ts";
+export {
   type RequestLogReading,
   requestLogLinesShown,
   requestLogTexts,

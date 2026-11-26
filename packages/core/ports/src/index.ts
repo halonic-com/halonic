@@ -127,6 +127,7 @@ export {
   type SavedDocsLogEntry,
   type SavedDocsOutcome,
   type SavedDocsSite,
+  type SavedFixAttempts,
   type SavedSiteAnswer,
   savedChatAboutKinds,
   savedChatIdPattern,
