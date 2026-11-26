@@ -20,7 +20,19 @@ export const reviewVerdictConfigProperties = {
     },
     additionalProperties: false,
   },
+  verdictGate: {
+    type: "boolean",
+    title: "Gates read the recorded verdicts",
+    description:
+      "The board's flag (HAL-19969): when on, the merge gate and pr_status count only recorded verdicts (review_verdict), never PR comments. Off by default: the gates read PR comments as before.",
+    default: false,
+  },
 } as const;
+
+/** Whether the board turned the gates over to the recorded verdicts; anything but `true` is off. */
+export function verdictGateOn(config: Readonly<Record<string, unknown>>): boolean {
+  return config["verdictGate"] === true;
+}
 
 /** The agent id of each reviewer the settings name, by lower-case name; empty when they name none. */
 export function verdictReviewerIds(

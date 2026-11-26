@@ -2,22 +2,25 @@ import { type CopyAgent, copyTaskOf } from "../pr-tools/approval-copy.ts";
 import { branchOwner } from "../pr-watcher/decide.ts";
 import { routineRefusal } from "../reviewer-paths.ts";
 import { pathReviewer } from "../reviewer-paths-who.ts";
+import type { RecordedGate } from "../verdicts/gate.ts";
+import { recordedGateOf } from "../verdicts/gate-read.ts";
 import { type ImportComment, importDrafts } from "../verdicts/import.ts";
-import { judgeVerdicts, type VerdictPull, type Verdicts } from "../verdicts/reader.ts";
+import type { VerdictPull } from "../verdicts/reader.ts";
 import type { VerdictDraft, VerdictRecord } from "../verdicts/record.ts";
 import { approvalOf, routedOf } from "./approval.ts";
+import { gateVerdictPullOf } from "./approval-side.ts";
 import { changeRequestOf } from "./change-request.ts";
 import type { GatePull, MergeSnapshot } from "./snapshot.ts";
 
 /**
  * Shadow mode for the recorded verdicts (HAL-19481, step 2 of 2.4 in
- * HAL-19228): the reader of `review_verdict`'s records (`judgeVerdicts`)
- * next to the gate's approval rules on GitHub text (`approvalOf` and
+ * HAL-19228): the records as the gate reads them once the board's flag is on
+ * (`recordedGateOf`, HAL-19969) next to its approval rules on GitHub text (`approvalOf` and
  * `changeRequestOf`). Each pull request is checked on a new head and every
  * 15 minutes after; before the records are read, the approvals' Paperclip
  * copies not imported yet become records (`importDrafts`, step 1). The
  * daily diff lists each pull request where the two disagree. Nothing is
- * refused: no gate reads the records yet.
+ * refused here.
  */
 
 /** What the records say about a pull request's current head. */
@@ -65,7 +68,7 @@ export interface VerdictShadowSettings {
 const recheckMs = 15 * 60_000;
 
 /**
- * What the reader needs about the pull request, from the snapshot, routed
+ * What the import needs about the pull request, from the snapshot, routed
  * as the gate routes it (`routedOf`: a security or release origin, renamed
  * files' old paths, who wrote it). When the snapshot lists only some files,
  * there is no reviewer and Nora's approval can't count, as in the gate. The
@@ -103,21 +106,20 @@ export function gateApproves(
 }
 
 /** What the records say, in the diff's words. */
-export function recordedOf(verdicts: Verdicts): Pick<VerdictCheck, "recorded" | "recordedWhy"> {
-  const counting = verdicts.approvals.find((approval) => approval.counts);
-  if (verdicts.approved && counting !== undefined) {
+export function recordedOf(gate: RecordedGate): Pick<VerdictCheck, "recorded" | "recordedWhy"> {
+  const counting = gate.approvals.find((approval) => approval.counts);
+  if (gate.approved && counting !== undefined) {
     const carried =
       counting.carriedFrom === undefined
         ? ""
         : ` (same change as ${counting.carriedFrom.slice(0, 9)})`;
     return { recorded: "approved", recordedWhy: `${counting.by}${carried}` };
   }
-  const [hold] = verdicts.holds;
+  const [hold] = gate.holds;
   if (hold !== undefined) {
     return { recorded: "not approved", recordedWhy: `changes requested by ${hold.by}` };
   }
-  const note = verdicts.approvals.at(-1)?.note;
-  return { recorded: "not approved", recordedWhy: note ?? "no recorded approval" };
+  return { recorded: "not approved", recordedWhy: gate.reasons[0] ?? "no recorded approval" };
 }
 
 /**
@@ -191,7 +193,17 @@ async function checkOne(
   try {
     const records = await reader.records(pull.number);
     const added = gate.approves ? await imported(pull, facts, records, reader, settings) : [];
-    const recorded = recordedOf(judgeVerdicts([...records, ...added], facts));
+    const recordedGate = await recordedGateOf(
+      {
+        // The records just read, with this pass's imports: no second read.
+        store: { list: async () => [...records, ...added], append: reader.append },
+        teamLogin: settings.teamLogin,
+        taskComments: (identifier) => reader.taskComments(identifier),
+        agents: () => reader.agents(),
+      },
+      gateVerdictPullOf(pull, settings.repo, snapshot.patchIds),
+    );
+    const recorded = recordedOf(recordedGate);
     return {
       head: pull.head,
       ...gateSide,

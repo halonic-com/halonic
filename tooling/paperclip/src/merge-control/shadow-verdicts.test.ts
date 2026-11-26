@@ -172,8 +172,9 @@ verifies("paperclip.verdicts-shadow", () => {
   });
 
   describe("the comparison", () => {
-    test("lists a recorded approval the gate doesn't see", async () => {
-      const { reader } = fakeReader([]);
+    /** A reader with Liam's recorded approval of #3's head. */
+    async function recordedLiam(comments: readonly ImportComment[]) {
+      const { reader } = fakeReader(comments);
       await reader.append({
         repo,
         pr: 3,
@@ -185,10 +186,35 @@ verifies("paperclip.verdicts-shadow", () => {
         runId: "run-1",
         task: "HAL-3",
       });
+      return reader;
+    }
+
+    test("lists a recorded approval the gate doesn't see", async () => {
+      const reader = await recordedLiam([handOver]);
       const facts = snapshot({ pulls: [pull(3, { texts: [] })] });
       const checks = await checkVerdicts(facts, undefined, reader, settings, now);
       const [line] = verdictDiffLines(checks);
       expect(line?.reason).toMatch(/^gate: not approved, .+; records: approved, Liam$/);
+    });
+
+    test("the records refuse as the gate does: no author without the hand-over (HAL-19969)", async () => {
+      const reader = await recordedLiam([]);
+      const facts = snapshot({ pulls: [pull(3, { texts: [] })] });
+      const checks = await checkVerdicts(facts, undefined, reader, settings, now);
+      expect(checks["3"]).toMatchObject({ recorded: "not approved" });
+      expect(checks["3"]?.recordedWhy).toMatch(
+        /^who wrote it isn't clear: mateo, whom the branch names/,
+      );
+    });
+
+    test("the records refuse as the gate does: a files list GitHub cut short (HAL-19969)", async () => {
+      const reader = await recordedLiam([handOver]);
+      const facts = snapshot({ pulls: [pull(3, { texts: [], filesTotal: 150 })] });
+      const checks = await checkVerdicts(facts, undefined, reader, settings, now);
+      expect(checks["3"]).toMatchObject({ recorded: "not approved" });
+      expect(checks["3"]?.recordedWhy).toMatch(
+        /changed files were read: the review rules can't be checked$/,
+      );
     });
 
     test("a change request on GitHub holds the gate's side", async () => {

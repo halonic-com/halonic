@@ -163,6 +163,11 @@ export interface MergeSettings {
    * entry goes once its flake is fixed.
    */
   readonly knownFlakyPushJobs: readonly string[];
+  /**
+   * The board's flag (HAL-19969): the gate counts only the recorded verdicts
+   * (`MergeSnapshot.recorded`), never PR comments. Off by default.
+   */
+  readonly verdictGate: boolean;
 }
 
 /** Today's settings (board, 22–24 Nov). */
@@ -179,6 +184,7 @@ export const defaultSettings: MergeSettings = {
   groupRunnerMinutes: 240,
   // Goes once HAL-18065 fixes the emulator flake.
   knownFlakyPushJobs: ["Android device keys (emulator)"],
+  verdictGate: false,
 };
 
 /** The one label merge control adds, and the write client allows (HAL-18506). */

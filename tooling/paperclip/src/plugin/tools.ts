@@ -7,8 +7,10 @@ import type {
   ToolResult,
   ToolRunContext,
 } from "@paperclipai/plugin-sdk";
+import { defaultSettings } from "../merge-control/state.ts";
 import { type CiTarget, ciFailures, ciFailuresText } from "../pr-tools/ci-failures.ts";
 import { prStatus, statusText } from "../pr-tools/pr-status.ts";
+import { withVerdictGate } from "../pr-tools/pr-status-verdicts.ts";
 import { queueState, queueStateText } from "../pr-tools/queue-state.ts";
 import { rebaseCheck, rebaseCheckText } from "../pr-tools/rebase-pr.ts";
 import { type GitHubGet, gitHubReader } from "../pr-watcher/github.ts";
@@ -18,6 +20,8 @@ import { type CopiesApi, paperclipCopies } from "./approval-copies.ts";
 import { readSettings } from "./job.ts";
 import { manifest } from "./manifest.ts";
 import { countingGet, type MetricsApi, writeMetrics } from "./metrics.ts";
+import { verdictGateOn } from "./review-verdict-declaration.ts";
+import { recordedSourceOf, type VerdictGateApi } from "./verdict-gate.ts";
 
 /**
  * The agent tools `pr_status`, `ci_failures`, `rebase_pr` and `queue_state`. Like the watcher,
@@ -28,7 +32,7 @@ import { countingGet, type MetricsApi, writeMetrics } from "./metrics.ts";
  */
 
 /** The part of the plugin context the tools use, so tests can fake it. */
-export interface ToolsApi extends MetricsApi, StateApi, CopiesApi {
+export interface ToolsApi extends MetricsApi, StateApi, CopiesApi, VerdictGateApi {
   readonly tools: Pick<PluginToolsClient, "register">;
   readonly config: PluginConfigClient;
   readonly secrets: Pick<PluginSecretsClient, "resolve">;
@@ -209,7 +213,13 @@ export function registerTools(ctx: ToolsApi): void {
         return { error: `pr_status: ${target}` };
       }
       const copies = paperclipCopies(ctx, runCtx.companyId);
-      const status = await prStatus(get, target.repo, target.number, undefined, copies);
+      const read = await prStatus(get, target.repo, target.number, undefined, copies);
+      // The board's flag: approvals from the recorded verdicts only (HAL-19969).
+      const gateOn = verdictGateOn(await ctx.config.get(runCtx.companyId));
+      const source = gateOn
+        ? recordedSourceOf(ctx, runCtx.companyId, defaultSettings.teamLogin)
+        : undefined;
+      const status = await withVerdictGate(get, read, source);
       return { content: statusText(status), data: status };
     }),
   );
