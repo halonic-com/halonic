@@ -18,7 +18,9 @@ verifies("cli.commands.serve.npm-package-page", () => {
 
     it("scales to a phone's screen and has no script or style", () => {
       const page = noStudioPage(true);
-      expect(page).toContain('<meta name="viewport" content="width=device-width, initial-scale=1">');
+      expect(page).toContain(
+        '<meta name="viewport" content="width=device-width, initial-scale=1">',
+      );
       expect(page).not.toMatch(/<script|<style|style=/);
     });
   });

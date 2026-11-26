@@ -12,6 +12,8 @@ required is dropped.
 
 - `cli.commands.init.create-workspace`
 - `cli.commands.serve.npm-package-page`
+- apps/cli/src/commands/run/golden/support-reply-waiting.txt
+- apps/cli/src/commands/init/golden/not-empty.txt
 
 ## What changes
 
