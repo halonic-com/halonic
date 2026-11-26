@@ -5,7 +5,7 @@ import {
 } from "@halonicjs/studio-feature-quick-ask/api";
 import { HostSettingsService } from "@halonicjs/studio-feature-settings/api";
 import type { SettingsSectionProps } from "@halonicjs/studio-shell";
-import { useState, useSyncExternalStore } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 import {
   type FeedbackConnected,
   type FeedbackSettingsHost,
@@ -101,10 +101,12 @@ const alwaysConnected: FeedbackConnected = {
 
 /** Whether Studio is connected to Paperclip, kept current; absent counts as connected. */
 function useConnected(connected: FeedbackConnected = alwaysConnected): boolean {
-  return useSyncExternalStore(
-    (listener) => connected.subscribe(listener),
-    () => connected.current(),
+  // A new function each render would make React subscribe again on every render.
+  const subscribe = useCallback(
+    (listener: () => void) => connected.subscribe(listener),
+    [connected],
   );
+  return useSyncExternalStore(subscribe, () => connected.current());
 }
 
 /** The shell's answer, with a host that throws read as a failed save, and said in the console. */

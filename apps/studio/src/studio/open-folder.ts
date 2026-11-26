@@ -126,7 +126,7 @@ export async function openFolder(
   await provideAgentSandbox(services, window, ipc, platform);
   provideRemoteControl(services, tauriAgentHostTransport(window));
   provideKeepAwake(services, ipc, windowLabelOf(window));
-  provideFeedbackSettings(services, ipc, windowLabelOf(window), platform);
+  provideFeedbackSettings(services, ipc, windowLabelOf(window), platform, device.feedback);
   provideAskKeysSettings(services, ipc, windowLabelOf(window), platform);
   if (ipc !== undefined) {
     services.provide(UpdaterService, updaterOf(ipc));

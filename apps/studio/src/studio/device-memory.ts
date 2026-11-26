@@ -1,5 +1,6 @@
 import type { RecentStorage, RecentWorkspaces } from "@halonicjs/studio-feature-workspace";
 import type { KeyboardPlatform } from "@halonicjs/studio-shell";
+import type { MainWindowFeedback } from "../feedback/main-window-feedback.ts";
 
 /** What this device remembers across folders: Recent, and the page's storage behind it. */
 export interface DeviceMemory {
@@ -14,4 +15,6 @@ export interface DeviceMemory {
    * is written; `undefined` without Open demo.
    */
   readonly startOver?: (copied: () => void) => void;
+  /** Send feedback in the main window, for Settings › Feedback; absent in other windows. */
+  readonly feedback?: MainWindowFeedback;
 }

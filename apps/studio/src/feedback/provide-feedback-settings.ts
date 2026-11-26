@@ -1,5 +1,6 @@
 import type { ServiceRegistry } from "@halonicjs/app";
 import {
+  type FeedbackConnected,
   type FeedbackSettingsHost,
   FeedbackSettingsService,
   type ShortcutChange,
@@ -7,19 +8,36 @@ import {
 import type { TauriIpc } from "@halonicjs/studio-services";
 import type { KeyboardPlatform } from "@halonicjs/studio-shell";
 
+/** What Settings › Feedback shows of the main window's feedback: what waits, and the connection. */
+export interface FeedbackSettingsFeed extends FeedbackConnected {
+  waiting(): Promise<number>;
+}
+
 /**
  * Gives Settings → Keyboard and Settings → Feedback the shell's feedback shortcut
  * (`studio.feedback-settings`), in Studio's own main window only: the shell grants
- * `plugin:feedback|shortcut_set` to no other window, and served Studio has no shell.
+ * `plugin:feedback|shortcut_set` to no other window, and served Studio has no shell. With the main
+ * window's `feedback`, Settings › Feedback counts what waits to be sent and, with the shortcut's
+ * row, shows only while Studio is connected to Paperclip.
  */
 export function provideFeedbackSettings(
   services: ServiceRegistry,
   ipc: TauriIpc | undefined,
   windowLabel: string | undefined,
   platform: KeyboardPlatform,
+  feedback?: FeedbackSettingsFeed,
 ): void {
   if (ipc === undefined || windowLabel !== "main") return;
-  services.provide(FeedbackSettingsService, feedbackSettingsOf(ipc, platform));
+  const host = feedbackSettingsOf(ipc, platform);
+  if (feedback === undefined) {
+    services.provide(FeedbackSettingsService, host);
+    return;
+  }
+  services.provide(FeedbackSettingsService, {
+    ...host,
+    waiting: () => feedback.waiting(),
+    connected: feedback,
+  });
 }
 
 /** The shell's refusals of `shortcut_set` (`feedback_shortcut.rs`). */
