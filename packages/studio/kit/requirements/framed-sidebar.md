@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: the board's correction on HAL-19923 (Messenger's sidebar in the frame was right; the same in Studio and the Inbox), plan approved by Liam on HAL-19929; built on HAL-19924
 
-The kit shall give the Messenger, the Inbox and Studio one framed sidebar, `SidebarFrame` with `FramedPanel`. The sidebar shall sit on the window's frame with no fill, line, rounded corners or shadow of its own. The content beside it shall sit 8px away on a framed panel with 12px rounded corners and a 1px line in the border colour, which forced colours draw as a visible edge. The panel's fill shall be the focused app's panel colour in a focused app and the page's surface colour in Studio's window. A second framed panel beside the first, such as the Messenger's activity panel, shall sit 8px from it, not joined to it.
+The kit shall give the Messenger, the Inbox and Studio one framed sidebar, `SidebarFrame` with `FramedPanel`. The sidebar shall sit on the window's frame with no fill, line, rounded corners or shadow of its own. The sidebar's rows shall end 8px from the panel. The content beside it shall sit 8px away on a framed panel with 12px rounded corners and a 1px line in the border colour, which forced colours draw as a visible edge. The panel's fill shall be the focused app's panel colour in a focused app and the page's surface colour in Studio's window. A second framed panel beside the first, such as the Messenger's activity panel, shall sit 8px from it, not joined to it.
 
 ## Examples
 

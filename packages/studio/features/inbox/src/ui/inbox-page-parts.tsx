@@ -66,6 +66,13 @@ export function listPaneClass(onePane: boolean, itemOpen: boolean, framed = fals
   return `${itemOpen ? "hidden" : "flex"} w-full flex-col`;
 }
 
+/** The list's scrolling rows. On the window's frame they end 8px from the framed panel, as the Messenger's do. */
+export function listScrollClass(framed: boolean): string {
+  return framed
+    ? "min-h-0 flex-1 overflow-y-auto ps-2 pb-4"
+    : "min-h-0 flex-1 overflow-y-auto px-2 pb-4";
+}
+
 /**
  * The open item's column, its header over its card: beside the list, else (one pane at a time)
  * the whole page while an item or an agent's card is open, and gone while none is. In the Inbox's

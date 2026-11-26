@@ -200,3 +200,12 @@ verifies("shell.sidebar-settings", () => {
     expect(container.querySelector("nav hr")).toBeNull();
   });
 });
+
+verifies("shell.frame", () => {
+  it("marks the current place with the fill that reads on the halo, and the others with none", () => {
+    const { link } = renderPlaces();
+
+    expect(link("Home").className.split(" ")).toContain("bg-place-current");
+    expect(link("Inbox").className.split(" ")).not.toContain("bg-place-current");
+  });
+});

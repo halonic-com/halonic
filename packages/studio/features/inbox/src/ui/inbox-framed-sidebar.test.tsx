@@ -56,6 +56,12 @@ verifies("inbox.framed-sidebar", () => {
     expect(list?.parentElement?.tagName).toBe("MAIN");
     expect(classesOf(list?.parentElement ?? null)).toContain("gap-2");
     expect(classesOf(list)).not.toContain("border-e");
+    // The rows end 8px from the panel: the frame's gap, with no padding of the list's own.
+    expect(
+      classesOf(
+        root.querySelector('[data-pane="list"] [role="grid"]')?.closest(".overflow-y-auto") ?? null,
+      ),
+    ).toEqual(expect.arrayContaining(["ps-2"]));
     expect(classesOf(item)).toEqual(
       expect.arrayContaining(["rounded-lg", "border", "border-border", "bg-app-panel"]),
     );

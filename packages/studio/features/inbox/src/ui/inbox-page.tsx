@@ -45,6 +45,7 @@ import {
   itemPaneClass,
   ListHeader,
   listPaneClass,
+  listScrollClass,
   needsYouCount,
   nextItem,
   placeOf,
@@ -335,7 +336,7 @@ export function InboxView({
         />
         {agent.lines(now())}
         {project.chips}
-        <div ref={list} className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
+        <div ref={list} className={listScrollClass(framed)}>
           {failedFirst ? (
             <EmptyState
               tone="error"

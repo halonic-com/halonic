@@ -204,7 +204,8 @@ const placeClasses = {
   // In forced colours the tint is gone, so a 2px `Highlight` bar at the start marks where you are.
   current: [
     placeBase,
-    "bg-halo-tint text-fg",
+    // The sidebar sits on the halo (`kit.framed-sidebar`), so the tint takes a light wash under it.
+    "bg-place-current text-fg",
     "forced-colors:border-s-2 forced-colors:border-[Highlight]",
   ].join(" "),
   other: [placeBase, "text-fg-muted hover:bg-surface-muted hover:text-fg"].join(" "),

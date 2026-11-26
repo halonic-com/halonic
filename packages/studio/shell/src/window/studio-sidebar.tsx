@@ -53,13 +53,20 @@ export interface StudioSidebarProps {
   readonly footer?: Registered<BarItemContribution> | undefined;
   /** The workspace switcher, once the app has a workspace menu (T3); without it, none shows. */
   readonly switcher?: WorkspaceSwitcherProps | undefined;
+  /**
+   * The sidebar's width, when the window keeps it, so the title bar's tabs can start where the
+   * framed panel does; with `onWidthChange`. Without it the sidebar keeps its own, from 264px.
+   */
+  readonly width?: number | undefined;
+  /** Called with the width the resize edge sets, when the window keeps it. */
+  readonly onWidthChange?: ((width: number) => void) | undefined;
 }
 
 /**
  * The desktop sidebar (component specs 24.4): the workspace switcher, the Search box, then the
  * places and Settings, followed by its resize edge. It starts 264px wide and keeps the width the edge sets while
  * the window is open. It has no fill or line of its own: it sits on the window's halo, beside the
- * framed panel (`kit.framed-sidebar`). In a narrow window the frame puts it in the Places drawer,
+ * framed panel (`kit.framed-sidebar`), and no end padding, so its rows end 8px from the panel. In a narrow window the frame puts it in the Places drawer,
  * which sets its width and fill, and the edge hides itself.
  *
  * A place's signal is read again each time the tabs change, and each time its place says it
@@ -73,7 +80,9 @@ export interface StudioSidebarProps {
 export function StudioSidebar(props: StudioSidebarProps) {
   const { tabs, contextFor } = props;
   const sidebarId = useId();
-  const [width, setWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
+  const [ownWidth, setOwnWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
+  const width = props.width ?? ownWidth;
+  const setWidth = props.onWidthChange ?? setOwnWidth;
   useSyncExternalStore(
     useCallback((listener) => tabs.subscribe(listener), [tabs]),
     () => tabs.state,
@@ -85,7 +94,7 @@ export function StudioSidebar(props: StudioSidebarProps) {
       <div
         id={sidebarId}
         style={{ width }}
-        className="flex shrink-0 flex-col gap-2 overflow-y-auto p-2"
+        className="flex shrink-0 flex-col gap-2 overflow-y-auto py-2 ps-2"
       >
         {props.switcher === undefined ? null : <WorkspaceSwitcher {...props.switcher} />}
         <SidebarSearch platform={props.platform} onOpen={props.onSearch} />
