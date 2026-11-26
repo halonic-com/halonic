@@ -3,6 +3,7 @@
 - Task: HAL-19636
 - Approval: an internal note written by Liam; Mateo checked it on HAL-19638, then Julian signs
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:RFfXKMMRkUl6n4Yb0k9oARUNRrr9vGGJSHsQhySf8u3wDB2ViwhZsgUY2z12/InvXrodGe73eSXiE5bJSyslDw==
 
 ## What changes
 
