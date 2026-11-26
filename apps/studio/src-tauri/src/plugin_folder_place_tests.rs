@@ -228,11 +228,17 @@ fn plugin_folder_place_test_refuses_a_name_that_is_not_one_plain_folder_name() {
         "a~1",
         "a<b",
         "tab\tname",
+        ".git",
+        ".env",
+        ".studio",
+        "..x",
+        "-acme",
+        "café",
     ] {
         let refusal = check_plugin_name(name).expect_err(name);
         assert_eq!(refusal.kind(), "unsafe_path", "{name:?}");
     }
-    for name in ["acme-weather", "Weather", "a.b", "weather2"] {
+    for name in ["acme-weather", "Weather", "a.b", "weather2", "acme_tools"] {
         assert_eq!(check_plugin_name(name), Ok(()), "{name}");
     }
 }

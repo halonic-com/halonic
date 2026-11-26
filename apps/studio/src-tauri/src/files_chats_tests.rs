@@ -8,7 +8,7 @@ use halonic_git_guard::OpenedFolders;
 use halonic_profile::{Platform, ProfileFolder};
 use halonic_workspace_files::{Fence, WorkspaceFolder, WriteLocks};
 
-use super::{FileFolder, Making, chats_root, made_for};
+use super::{FileFolder, Making, chats_root, made_for, private_for, review_root};
 
 /// A folder of its own for one test, with two workspaces and a profile,
 /// removed when the test ends.
@@ -200,4 +200,38 @@ fn chats_of_one_workspace_are_not_reached_through_another() {
         globex_folder.read(&through).is_err(),
         "{through} is refused"
     );
+}
+
+#[cfg(unix)]
+#[test]
+fn chats_and_review_folders_and_files_are_private_to_the_user() {
+    use std::os::unix::fs::PermissionsExt;
+    let mode = |path: &Path| {
+        std::fs::metadata(path)
+            .expect("the entry")
+            .permissions()
+            .mode()
+            & 0o777
+    };
+    let scratch = Scratch::new("private");
+    let acme = scratch.workspace("acme");
+    let opened = OpenedFolders::new();
+    opened.open(&acme).expect("the folder opens");
+    let locks = WriteLocks::default();
+    let profile = scratch.profile();
+    let roots = [
+        (FileFolder::Chats, chats_root(&opened, &profile, &acme)),
+        (FileFolder::Review, review_root(&opened, &profile, &acme)),
+    ];
+
+    for (folder, root) in roots {
+        let root =
+            made_for(root.expect("an opened workspace"), Making::Folder).expect("the folder");
+        let files = WorkspaceFolder::new(root.clone(), &locks).fenced(Fence::Outside);
+        let files = private_for(folder, files);
+        files.write("a/c1.json", "{}", None).expect("the write");
+        assert_eq!(mode(&root), 0o700, "{folder:?}");
+        assert_eq!(mode(&root.join("a")), 0o700, "{folder:?}");
+        assert_eq!(mode(&root.join("a/c1.json")), 0o600, "{folder:?}");
+    }
 }

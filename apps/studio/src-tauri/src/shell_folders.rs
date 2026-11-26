@@ -2,12 +2,14 @@
 //! page: the review folder (HAL-1291) and the chats folder (HAL-17305). The
 //! page names the folder (`folder: "review"` or `"chats"`), never its path.
 
+use std::fs::DirBuilder;
 use std::path::{Path, PathBuf};
 
 use halonic_git_guard::OpenedFolders;
 use halonic_profile::{ProfileFolder, WorkspaceFolders};
+use halonic_workspace_files::WorkspaceFolder;
 
-use super::{FileRefusal, Making, workspace_root};
+use super::{FileFolder, FileRefusal, Making, workspace_root};
 
 /// The review folder of `workspace` in `profile`, as `reviewFolder` names
 /// it. `workspace` must be a folder the person opened in the shell, or
@@ -48,11 +50,36 @@ fn shell_root(
     Ok(PathBuf::from(pick(&folders)))
 }
 
-/// `root`, made first when `making` is a write's: a list or read of a folder
-/// that isn't there leaves the profile as it was.
+/// `root`, made first when `making` is a write's, private to the user: a
+/// list or read of a folder that isn't there leaves the profile as it was.
 pub(crate) fn made_for(root: PathBuf, making: Making) -> Result<PathBuf, FileRefusal> {
     if making == Making::Folder {
-        std::fs::create_dir_all(&root).map_err(FileRefusal::io)?;
+        make_private_folder(&root)?;
     }
     Ok(root)
+}
+
+/// Makes the folder, and the ones above it that are missing, private to the
+/// user (`700` on systems with modes), as the stores in `fs-node` do, and
+/// makes a folder an earlier version made with the default mode private too.
+fn make_private_folder(root: &Path) -> Result<(), FileRefusal> {
+    let mut builder = DirBuilder::new();
+    builder.recursive(true);
+    #[cfg(unix)]
+    std::os::unix::fs::DirBuilderExt::mode(&mut builder, 0o700);
+    builder.create(root).map_err(FileRefusal::io)?;
+    #[cfg(unix)]
+    std::fs::set_permissions(root, std::os::unix::fs::PermissionsExt::from_mode(0o700))
+        .map_err(FileRefusal::io)?;
+    Ok(())
+}
+
+/// `files`, private to the user for the review and chats folders: they hold
+/// the person's reviews and chats, so their files and folders are written
+/// `600` and `700`, as the CLI's stores write theirs.
+pub(crate) fn private_for(folder: FileFolder, files: WorkspaceFolder<'_>) -> WorkspaceFolder<'_> {
+    match folder {
+        FileFolder::Review | FileFolder::Chats => files.private_files(),
+        _ => files,
+    }
 }

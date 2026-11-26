@@ -125,7 +125,8 @@ where
         let opened = app.state::<GitState>().folders();
         let profile = cli_profile(&app).map_err(FileRefusal::from)?;
         let state = app.state::<FileState>();
-        let (root, fence) = match folder.unwrap_or_default() {
+        let folder = folder.unwrap_or_default();
+        let (root, fence) = match folder {
             FileFolder::Workspace => {
                 let root = workspace_root(&opened, &workspace)?;
                 let fence = profile_fence(&profile, &root);
@@ -150,9 +151,8 @@ where
                 return tool_approvals::run(&root, making, files, call);
             }
         };
-        Ok(call(
-            WorkspaceFolder::new(root, &state.locks).fenced(fence),
-        )?)
+        let files = WorkspaceFolder::new(root, &state.locks).fenced(fence);
+        Ok(call(private_for(folder, files))?)
     })
     .await
     .map_err(FileRefusal::io)?
@@ -429,7 +429,7 @@ pub use refusal::FileRefusal;
 
 #[path = "shell_folders.rs"]
 mod shell_folders;
-pub(crate) use shell_folders::{chats_root, made_for, review_root};
+pub(crate) use shell_folders::{chats_root, made_for, private_for, review_root};
 
 #[path = "kept_copies.rs"]
 mod kept_copies;

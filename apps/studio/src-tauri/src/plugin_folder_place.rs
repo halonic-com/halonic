@@ -102,10 +102,26 @@ fn check_plugin_name(plugin: &str) -> Result<(), InstallRefusal> {
     if plugin.is_empty() || plugin == "." || plugin == ".." || plugin.contains(['/', '\\', '\0']) {
         return Err(unsafe_name(plugin, "a plugin's folder is one name"));
     }
-    match why_not_portable(plugin) {
-        Some(reason) => Err(unsafe_name(plugin, reason)),
-        None => Ok(()),
+    if let Some(reason) = why_not_portable(plugin) {
+        return Err(unsafe_name(plugin, reason));
     }
+    if !has_plugin_id_shape(plugin) {
+        return Err(unsafe_name(plugin, "a plugin's folder is one name"));
+    }
+    Ok(())
+}
+
+/// Whether `plugin` has the shape of a plugin id, as `pluginIdPattern` in the
+/// agent host allows it, in either case because the shell matches names in
+/// any case: a letter or digit first, then letters, digits, `.`, `_` and `-`.
+/// So a hidden or private name such as `.git`, `.env` or `..x`, which
+/// removing refuses, is never placed.
+fn has_plugin_id_shape(plugin: &str) -> bool {
+    let mut chars = plugin.chars();
+    chars
+        .next()
+        .is_some_and(|first| first.is_ascii_alphanumeric())
+        && chars.all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
 }
 
 /// The files, decoded and checked: a safe path each, no private name (`.git`, `.studio`, `.env*`), none the same

@@ -8,6 +8,7 @@ use serde_json::{Map, Value};
 
 use crate::error::TrustError;
 use crate::record_file::{file_name, is_record_file, leading_location, location_in, record_text};
+use crate::unlinked::{ReadFailure, read_unlinked};
 
 /// What `list` found: the records, and the files it had to leave out.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -48,10 +49,9 @@ impl FileTrustStore {
     /// normalisation.
     pub fn get(&self, location: &str) -> Result<Option<Value>, TrustError> {
         let file = self.file_for(location);
-        let text = match fs::read_to_string(&file) {
-            Ok(text) => text,
-            Err(error) if error.kind() == ErrorKind::NotFound => return Ok(None),
-            Err(_) => return Err(unreadable(Some(location), &file)),
+        let Some(text) = read_record_text(&file).map_err(|_| unreadable(Some(location), &file))?
+        else {
+            return Ok(None);
         };
         parse_record(location, &file, &text).map(Some)
     }
@@ -94,11 +94,9 @@ impl FileTrustStore {
                 continue;
             };
             let file = entry.path();
-            let text = match fs::read_to_string(&file) {
-                Ok(text) => text,
+            let Some(text) = read_record_text(&file).map_err(|_| unreadable(None, &file))? else {
                 // Revoked since the folder was read.
-                Err(error) if error.kind() == ErrorKind::NotFound => continue,
-                Err(_) => return Err(unreadable(None, &file)),
+                continue;
             };
             let Some(units) = location_in(name, &text) else {
                 return Err(unreadable(None, &file));
@@ -120,6 +118,20 @@ impl FileTrustStore {
 
     fn file_for(&self, location: &str) -> PathBuf {
         self.root.join(file_name(location))
+    }
+}
+
+/// The record file's text, or `None` when there is none. A symbolic link, a
+/// hard link, anything but a plain file and text that isn't UTF-8 are
+/// refused, as the other stores in the profile refuse them, so a record
+/// can't live in a file an agent may edit.
+fn read_record_text(file: &Path) -> Result<Option<String>, ReadFailure> {
+    match read_unlinked(file) {
+        Ok(bytes) => String::from_utf8(bytes)
+            .map(Some)
+            .map_err(|_| ReadFailure::Io),
+        Err(ReadFailure::Missing) => Ok(None),
+        Err(failure) => Err(failure),
     }
 }
 

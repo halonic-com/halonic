@@ -54,12 +54,36 @@ fn is_this_network(ip: IpAddr) -> bool {
     matches!(unmapped(ip), IpAddr::V4(v4) if v4.octets()[0] == 0)
 }
 
-/// An IPv4 address written as IPv6 (`::ffff:a.b.c.d`) is checked as the IPv4 one.
+/// An IPv4 address written as IPv6 is checked as the IPv4 one: mapped
+/// (`::ffff:a.b.c.d`), the well-known NAT64 prefix (`64:ff9b::a.b.c.d`), which
+/// a NAT64 gateway turns into the IPv4 address, and IPv4-compatible
+/// (`::a.b.c.d`). `::` and `::1` keep their IPv6 meaning.
 fn unmapped(ip: IpAddr) -> IpAddr {
-    match ip {
-        IpAddr::V6(v6) => v6.to_ipv4_mapped().map_or(IpAddr::V6(v6), IpAddr::V4),
-        v4 => v4,
+    let IpAddr::V6(v6) = ip else {
+        return ip;
+    };
+    if let Some(v4) = v6.to_ipv4_mapped() {
+        return IpAddr::V4(v4);
     }
+    if v6.is_unspecified() || v6.is_loopback() {
+        return ip;
+    }
+    let [a, b, c, d, e, f, ..] = v6.segments();
+    let embeds_v4 = matches!(
+        (a, b, c, d, e, f),
+        (0x64, 0xff9b, 0, 0, 0, 0) | (0, 0, 0, 0, 0, 0)
+    );
+    if embeds_v4 {
+        let [.., w, x, y, z] = v6.octets();
+        return IpAddr::V4(Ipv4Addr::new(w, x, y, z));
+    }
+    ip
+}
+
+/// `fd00:ec2::/64`, which holds Amazon EC2's IPv6 metadata service
+/// (`fd00:ec2::254`), inside the private range `fc00::/7`.
+fn is_cloud_metadata_v6(ip: Ipv6Addr) -> bool {
+    ip.segments()[..4] == [0xfd00, 0x0ec2, 0, 0]
 }
 
 /// Service addresses inside `100.64.0.0/10` that no request may reach, over
@@ -80,7 +104,12 @@ fn refused(ip: IpAddr) -> bool {
                 || v4.is_link_local()
                 || SERVICE_ADDRESSES_V4.contains(&v4)
         }
-        IpAddr::V6(v6) => v6.is_unspecified() || v6.is_multicast() || is_unicast_link_local_v6(v6),
+        IpAddr::V6(v6) => {
+            v6.is_unspecified()
+                || v6.is_multicast()
+                || is_unicast_link_local_v6(v6)
+                || is_cloud_metadata_v6(v6)
+        }
     }
 }
 
@@ -212,5 +241,37 @@ mod tests {
             Some("plain_http_public")
         );
         assert_eq!(code("::ffff:127.0.0.1", true), None);
+    }
+
+    #[test]
+    fn address_cloud_metadata_and_ipv4_in_ipv6_forms_are_refused_either_way() {
+        for ip in [
+            "fd00:ec2::254",
+            "fd00:ec2::1",
+            "64:ff9b::a9fe:a9fe",
+            "64:ff9b::169.254.169.254",
+            "::169.254.169.254",
+            "64:ff9b::100.100.100.200",
+            "::100.100.100.200",
+        ] {
+            assert_eq!(code(ip, false), Some("address_refused"), "{ip}");
+            assert_eq!(code(ip, true), Some("address_refused"), "{ip}");
+        }
+    }
+
+    #[test]
+    fn address_ipv4_in_nat64_and_compatible_forms_is_checked_as_ipv4() {
+        assert_eq!(
+            code("64:ff9b::93.184.216.34", true),
+            Some("plain_http_public")
+        );
+        assert_eq!(code("::93.184.216.34", true), Some("plain_http_public"));
+        assert_eq!(code("64:ff9b::10.0.0.5", true), None);
+        assert_eq!(code("::1", true), None);
+        assert_eq!(code("fd00:ec3::254", true), None);
+        for ip in ["64:ff9b::127.0.0.1", "::10.0.0.5"] {
+            let refusal = check_public(ip.parse().unwrap()).expect_err(ip);
+            assert_eq!(refusal.code(), "address_not_public", "{ip}");
+        }
     }
 }
