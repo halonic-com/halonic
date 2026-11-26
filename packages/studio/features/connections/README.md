@@ -2,6 +2,8 @@
 
 The Connections feature of the Studio: Settings › Connections, with a row per connection to a place where agents run (Paperclip first), and the Connect Paperclip dialog that signs in there. It reaches the engine only through `AgentConnectionsService` in `@halonicjs/studio-services`, so it knows no provider's types.
 
+A row is "Connected", "Offline", "Signed out" (Paperclip refused the key: **Sign in again**) or "Not connected" (this computer holds no key for it yet: **Sign in**). Both buttons open the sign-in dialog; requirement `connections.connection-row` has the exact wording.
+
 - **Layer:** studio
 - **Owner:** tomas
 - **Public API:** `@halonicjs/studio-feature-connections` (the feature) and `@halonicjs/studio-feature-connections/api`
