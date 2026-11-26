@@ -110,3 +110,12 @@ verifies("cli.commands.serve.public-runbook", () => {
     expect(lines.filter((line) => /\bsecret set\b/u.test(line))).toEqual([]);
   });
 });
+
+verifies("cli.commands.serve.public-runbook-service-auth", () => {
+  it("admits only the desktops' service tokens, by tag or by name, never any token in the account", () => {
+    const access = runbook.slice(stepAt("2\\. Put Access"), stepAt("3\\. Limit pairing"));
+    expect(access).toMatch(/\*\*Service Token Tag\*\*/u);
+    expect(access).toMatch(/\*\*Service Token\*\* selector/u);
+    expect(access).toMatch(/Never \*\*Any Access Service Token\*\*/u);
+  });
+});
