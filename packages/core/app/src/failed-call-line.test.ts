@@ -160,11 +160,15 @@ verifies("app.failed-call-line", () => {
       expect(shown("t", refused({ why: "slow-down", retries: 1 }))).toContain(
         "called it, and still did after Halonic tried again once. Try again in a few minutes.",
       );
-      const twice = shown("t", refused({ why: "slow-down", retries: 2 }, true));
-      expect(twice).toBe(
-        "Didn't work: the service asked Halonic to slow down when the tool `t` (*shop*) called it, and still did after Halonic tried again twice. Try again in a few minutes. Nothing was sent twice.",
+      expect(shown("create_order", refused({ why: "slow-down", retries: 2 }, true))).toBe(
+        "Didn't work: the service asked Halonic to slow down when the tool `create_order` (*shop*) called it, and still did after Halonic tried again twice. Try again in a few minutes. Nothing was sent twice.",
       );
-      expect(shown("t", refused({ why: "slow-down", retries: 2 }))).not.toContain("sent twice");
+    });
+
+    it("doesn't say nothing was sent twice for a read tool, whose cause has no sentOnce (HAL-19373)", () => {
+      expect(shown("list_orders", refused({ why: "slow-down", retries: 2 }))).toBe(
+        "Didn't work: the service asked Halonic to slow down when the tool `list_orders` (*shop*) called it, and still did after Halonic tried again twice. Try again in a few minutes.",
+      );
     });
 
     it("names an undeclared host as code, and says nothing reached it", () => {
@@ -183,24 +187,43 @@ verifies("app.failed-call-line", () => {
       expect(maxServiceRetries).toBe(2);
     });
 
-    it("keeps the broke-off line when the outcome is unknown, as an earlier write may have gone through", () => {
-      const cause = {
-        code: "service-refused",
-        why: "slow-down",
-        retries: 2,
-        sentOnce: true,
-      } as const;
-      expect(shown("create_order", { reason: "no-answer", cause, connector: "shop" })).toBe(
-        shown("create_order", { reason: "no-answer", connector: "shop" }),
-      );
-      const host = {
-        code: "service-refused",
-        why: "host-not-declared",
-        host: "example.net",
-      } as const;
-      expect(shown("t", { reason: "no-answer", cause: host })).toBe(
-        "Didn't work: the tool `t` broke off without an answer, so it may or may not have done its work.",
-      );
+    describe("with the outcome unknown, as an earlier step may already have done its work (HAL-19373)", () => {
+      const mayHaveWorked = (refusal: ServiceRefusal): FailedCall => ({
+        reason: "no-answer",
+        cause: { code: "service-refused", ...refusal, sentOnce: true },
+        connector: "shop",
+      });
+
+      it("says a 401 is the token, and to check before setting a new one", () => {
+        expect(shown("create_order", mayHaveWorked({ why: "not-accepted" }))).toBe(
+          "Didn't work: the service didn't accept the token for the tool `create_order` (*shop*), after an earlier step may already have done its work. Check before you try again, and set a new token if it was mistyped or revoked.",
+        );
+      });
+
+      it("says a 403 is the token's permissions, and to check before trying again", () => {
+        expect(shown("create_order", mayHaveWorked({ why: "not-allowed" }))).toBe(
+          "Didn't work: the token isn't allowed to do what the tool `create_order` (*shop*) asked, after an earlier step may already have done its work. Check before you try again.",
+        );
+      });
+
+      it("says a 429 asked to slow down, without how often Halonic tried again or nothing sent twice", () => {
+        expect(shown("create_order", mayHaveWorked({ why: "slow-down", retries: 2 }))).toBe(
+          "Didn't work: the service asked Halonic to slow down when the tool `create_order` (*shop*) called it, after an earlier step may already have done its work. Check before you try again.",
+        );
+      });
+
+      it("names an undeclared host as code, and says nothing reached it", () => {
+        const failed = mayHaveWorked({ why: "host-not-declared", host: "example.net" });
+        expect(shown("create_order", failed)).toBe(
+          "Didn't work: the tool `create_order` (*shop*) tried to reach `example.net`, which its integration doesn't list, after an earlier step may already have done its work. Halonic stopped it, so nothing reached `example.net`. Check before you try again, and look at the integration's code.",
+        );
+      });
+
+      it("keeps the broke-off line when there is no cause", () => {
+        expect(shown("create_order", { reason: "no-answer", connector: "shop" })).toBe(
+          "Didn't work: the tool `create_order` (*shop*) broke off without an answer, so it may or may not have done its work.",
+        );
+      });
     });
   });
 

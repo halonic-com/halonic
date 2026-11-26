@@ -34,7 +34,7 @@ export type FailedCallValue = FailedCallName | FailedCallText | number;
 /**
  * The line under a failed call to `tool`: the logged cause's line when there
  * is one, else the `unknown` outcome's line, else only that it didn't work.
- * A refused service's cause gets its own line only with the outcome `error`.
+ * A refused service's cause gets its own line with either outcome.
  * Names from the log (the tool, the connector, a program or a secret) are
  * values, never part of a sentence a value could change.
  *
@@ -62,9 +62,9 @@ export function failedCallLine(tool: string, failed: FailedCall): FailedCallText
   switch (cause.code) {
     case "service-refused":
       // An `unknown` outcome means an earlier write may have gone through, so trying again could
-      // do its work twice: it keeps the "may or may not have done its work" line (HAL-19172, PR 2).
+      // do its work twice: its line says so next to the cause (HAL-19172, PR 2; HAL-19373).
       return failed.reason === "no-answer"
-        ? { key: "noAnswer", values }
+        ? serviceRefusedMayHaveWorkedLine(cause, values.tool)
         : serviceRefusedLine(cause, values.tool);
     case "time-limit":
       return { key: "timeLimit", values: { ...values, seconds: secondsOf(cause) } };
@@ -212,6 +212,31 @@ function serviceRefusedLine(cause: ServiceRefusedCause, tool: FailedCallValue): 
             };
       return cause.sentOnce === true ? { key: "nothingSentTwice", values: { line } } : line;
     }
+  }
+}
+
+/**
+ * The line for a refused call whose outcome is `unknown`, because an
+ * earlier step may already have done its work: the same cause, and to check
+ * before trying again. It never says how often Halonic tried again or
+ * "Nothing was sent twice.", so the line keeps to that one next step.
+ */
+function serviceRefusedMayHaveWorkedLine(
+  cause: ServiceRefusedCause,
+  tool: FailedCallValue,
+): FailedCallText {
+  switch (cause.why) {
+    case "not-accepted":
+      return { key: "serviceNotAcceptedMayHaveWorked", values: { tool } };
+    case "not-allowed":
+      return { key: "serviceNotAllowedMayHaveWorked", values: { tool } };
+    case "slow-down":
+      return { key: "serviceSlowDownMayHaveWorked", values: { tool } };
+    case "host-not-declared":
+      return {
+        key: "hostNotDeclaredMayHaveWorked",
+        values: { tool, host: { name: cause.host, look: "code" } },
+      };
   }
 }
 

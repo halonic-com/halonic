@@ -199,8 +199,9 @@ export type ServiceRefusedReason = ServiceRefusal["why"];
  *   `container`), never a secret's value, a path or a program's output.
  * - `service-refused`: the service refused the call's last request
  *   ({@link ServiceRefusal}). `host` is only the main part of the host, such
- *   as `example.net`. `sentOnce` is there only when the log shows that no
- *   request other than a `GET` or `HEAD` went out twice in the call.
+ *   as `example.net`. `sentOnce` is there only when the log shows that at
+ *   least one request other than a `GET` or `HEAD` went out in the call,
+ *   and none went out twice.
  *
  * Read it with `toolFailureCauseOf`: a cause it doesn't know reads as absent.
  */

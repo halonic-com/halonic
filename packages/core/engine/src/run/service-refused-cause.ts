@@ -25,7 +25,7 @@ export interface ServiceRefusedCall {
  * count, because the later one is what the call ended on.
  *
  * @example
- * serviceRefusedOf([{ method: "GET", host: "api.example.com", path: "/v1", status: 429 }]);
+ * serviceRefusedOf([{ method: "POST", host: "api.example.com", path: "/v1", status: 429 }]);
  * // => { cause: { code: "service-refused", why: "slow-down", retries: 0, sentOnce: true }, outcome: "error" }
  */
 export function serviceRefusedOf(
@@ -40,7 +40,7 @@ export function serviceRefusedOf(
     cause: {
       code: "service-refused",
       ...refusal,
-      ...(sentNothingTwice(requests) ? { sentOnce: true } : {}),
+      ...(sentChangesOnce(requests) ? { sentOnce: true } : {}),
     },
     outcome: earlier.some(mayHaveGoneThrough) ? "unknown" : "error",
   };
@@ -83,11 +83,13 @@ function mayHaveGoneThrough(request: ConnectorCallRequest): boolean {
 }
 
 /**
- * Whether no request that may change something went out twice in the call:
- * the same method to the same host and path. A request the kit refused
- * never went out, so it doesn't count.
+ * Whether at least one request that may change something went out in the
+ * call, and none went out twice: the same method to the same host and path.
+ * A request the kit refused never went out, so it doesn't count. A call that
+ * only read gets no `sentOnce`, since "Nothing was sent twice." means
+ * nothing to it (Chief, HAL-19373).
  */
-function sentNothingTwice(requests: readonly ConnectorCallRequest[]): boolean {
+function sentChangesOnce(requests: readonly ConnectorCallRequest[]): boolean {
   const sent = new Set<string>();
   for (const request of requests) {
     if (!mayChange(request) || request.refusal !== undefined) continue;
@@ -95,7 +97,7 @@ function sentNothingTwice(requests: readonly ConnectorCallRequest[]): boolean {
     if (sent.has(key)) return false;
     sent.add(key);
   }
-  return true;
+  return sent.size > 0;
 }
 
 /** An IPv4 address, or an IPv6 address as a URL writes it, in brackets. */
