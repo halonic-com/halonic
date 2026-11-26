@@ -17,6 +17,24 @@ verifies("agent-host-client.server-engine", () => {
       expect(host.calls).toEqual([{ route: `${prefix}/state`, body: { workspace } }]);
     });
 
+    it("passes on the computer's name, the paired name and the reach, and refuses a name with a control character", async () => {
+      const state = {
+        engine: "server",
+        address,
+        pairing: "kept",
+        computerName: "acme-mbp",
+        deviceName: "Work laptop",
+        reach: { state: "offline", asOf: "2026-11-26T14:02:00.000Z" },
+      };
+      const host = new FakeHost().answer(`${prefix}/state`, ok(state));
+      expect(await new AgentHostServerEngine(host, workspace).state()).toEqual(state);
+      const named = { engine: "this-computer", computerName: "acme\nmbp" };
+      const broken = new FakeHost().answer(`${prefix}/state`, ok(named));
+      await expect(new AgentHostServerEngine(broken, workspace).state()).rejects.toMatchObject({
+        kind: "answer_invalid",
+      });
+    });
+
     it("pairs with the address, code and name, and answers the check code", async () => {
       const waiting = {
         state: "waiting",

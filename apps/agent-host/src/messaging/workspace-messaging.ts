@@ -25,6 +25,7 @@ import {
   withUserName,
 } from "./paperclip-provider.ts";
 import { type JoinedEngine, ServerEngineInUse } from "./server-engine.ts";
+import type { Reach } from "./server-reach.ts";
 import { syncFiles } from "./sync-files.ts";
 import { TeamStatusHub } from "./team-status-hub.ts";
 
@@ -127,6 +128,11 @@ export class WorkspaceMessaging {
   get engine(): MessagingEngine {
     const engine = this.#engine;
     return engine.kind === "server" ? { kind: "server", address: engine.address } : engine;
+  }
+
+  /** What the host last heard from the joined server; `undefined` on this computer or before its first call. */
+  get serverReach(): Reach | undefined {
+    return this.#engine.kind === "server" ? this.#engine.reach.last : undefined;
   }
 
   /**

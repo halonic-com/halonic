@@ -1,13 +1,22 @@
 import { type Infer, s } from "@halonicjs/schema-kit";
 import { type AgentHostTransport, readAnswer } from "./transport.ts";
 
+// The pair route's rule, so a name the host gives can be sent back as it is.
+const deviceName = s.string().regex(/^[^\p{Cc}\p{Cf}]{1,80}$/u);
+
 const stateAnswer = s.discriminatedUnion("engine", [
-  s.object({ engine: s.literal("this-computer") }).strict(),
+  s.object({ engine: s.literal("this-computer"), computerName: deviceName.optional() }).strict(),
   s
     .object({
       engine: s.literal("server"),
       address: s.string(),
       pairing: s.enum(["kept", "missing", "unreadable"]),
+      computerName: deviceName.optional(),
+      deviceName: deviceName.optional(),
+      reach: s
+        .object({ state: s.enum(["online", "offline"]), asOf: s.string() })
+        .strict()
+        .optional(),
     })
     .strict(),
 ]);
@@ -60,7 +69,11 @@ const thisComputerAnswer = s
   .object({ stillValid: s.boolean(), keychainEntryKept: s.literal(true).optional() })
   .strict();
 
-/** Where the workspace's messaging runs, and whether the keychain holds its pairing. */
+/**
+ * Where the workspace's messaging runs, whether the keychain holds its
+ * pairing, the computer's name, the name it paired as, and whether the
+ * host's last call to the server got through (`asOf` in UTC).
+ */
 export type ServerEngineState = Infer<typeof stateAnswer>;
 
 /** How starting a pairing went: waiting with the check code, or why it didn't start. */

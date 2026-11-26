@@ -5,6 +5,9 @@ import { type PairingDesktop, startPairingDesktop } from "./server-pairing.test-
 
 let desktop: PairingDesktop | undefined;
 
+/** The engine with nothing kept: This computer, with the name the helper's host gives. */
+const thisComputer = { engine: "this-computer", computerName: "acme-mbp" };
+
 afterEach(async () => {
   await desktop?.close();
   desktop = undefined;
@@ -49,7 +52,7 @@ verifies("agent-host.server-engine-pairing", () => {
       expect(await pairedAnswer(on)).toEqual({ state: "key_not_saved", signedOut: true });
       const signOuts = on.pairingServer.calls("/api/devices/sign-out");
       expect(signOuts.map((call) => call.authorization)).toEqual([`Bearer ${on.server.token}`]);
-      expect(await on.engine.state()).toEqual({ engine: "this-computer" });
+      expect(await on.engine.state()).toEqual(thisComputer);
       expect(on.logged.join("")).toContain("KeychainError");
       expectNoCanary(on);
     });
@@ -61,7 +64,7 @@ verifies("agent-host.server-engine-pairing", () => {
       expect(await pairedAnswer(on)).toEqual({ state: "key_not_saved", signedOut: true });
       on.pairingKeychain.garbleGet = false;
       expect(await on.keychain.get(await entryOf(on))).toBeNull();
-      expect(await on.engine.state()).toEqual({ engine: "this-computer" });
+      expect(await on.engine.state()).toEqual(thisComputer);
       expectNoCanary(on);
     });
 
@@ -93,7 +96,7 @@ verifies("agent-host.server-engine-pairing", () => {
       expect(await on.engine.useThisComputer()).toEqual({ stillValid: false });
       expect(on.pairingServer.calls("/api/devices/sign-out")).toHaveLength(1);
       expect(await on.keychain.get(await entryOf(on))).toBeNull();
-      expect(await on.engine.state()).toEqual({ engine: "this-computer" });
+      expect(await on.engine.state()).toEqual(thisComputer);
       expect((await on.messaging.of(on.workspace))?.engine).toEqual({ kind: "this-computer" });
       const cached = [...(await on.filesIn(on.profile)).keys()];
       expect(cached.filter((path) => path.includes("agent-messaging-cache"))).toEqual([]);
@@ -106,7 +109,7 @@ verifies("agent-host.server-engine-pairing", () => {
       on.pairingServer.unreachable = true;
       expect(await on.engine.useThisComputer()).toEqual({ stillValid: true });
       expect(await on.keychain.get(await entryOf(on))).toBeNull();
-      expect(await on.engine.state()).toEqual({ engine: "this-computer" });
+      expect(await on.engine.state()).toEqual(thisComputer);
     });
 
     it("when the keychain can't read or delete the token: the setting goes anyway", async () => {
@@ -121,7 +124,7 @@ verifies("agent-host.server-engine-pairing", () => {
       });
       expect(on.pairingServer.calls("/api/devices/sign-out")).toEqual([]);
       on.pairingKeychain.failGet = false;
-      expect(await on.engine.state()).toEqual({ engine: "this-computer" });
+      expect(await on.engine.state()).toEqual(thisComputer);
       expectNoCanary(on);
     });
   });

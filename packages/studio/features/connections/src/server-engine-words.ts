@@ -17,6 +17,9 @@ export const KEYCHAIN_NEEDED =
 /** The row's meta line once paired: "Checked 14:02 · pairing ends 23 Feb 2027". */
 export const connectedMeta = (checkedAt: string, endsAt: string): string =>
   `Checked ${timeOfDay(checkedAt)} · pairing ends ${day(endsAt)}`;
+/** The callout while the host can't reach the server; the meta line is Connect's "Offline, as of 14:02". */
+export const SERVER_OFFLINE_CALLOUT =
+  "The server isn't answering. Inbox and Messenger show what was read last; answering is off until it's back.";
 /** The row's meta line while signed out. */
 export const SIGNED_OUT_META = "pairing expired or removed";
 export const signedOutCallout = (host: string): string =>

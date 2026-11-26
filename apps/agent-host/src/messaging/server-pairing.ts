@@ -3,11 +3,24 @@ import { type SecretStore, serverPairingSecretName } from "@halonicjs/ports";
 import type { DesktopMessaging } from "./desktop-messaging.ts";
 import type { MessagingEngineSetting } from "./messaging-engine-setting.ts";
 import { ServerPairingClient } from "./server-pairing-client.ts";
+import type { Reach } from "./server-reach.ts";
 
-/** Where a workspace's engine stands, for Settings › Connections; never the token. */
+/**
+ * Where a workspace's engine stands, for Settings › Connections; never the
+ * token. `computerName` is what Pair with a server suggests as the device's name.
+ */
 export type EngineState =
-  | { engine: "this-computer" }
-  | { engine: "server"; address: string; pairing: "kept" | "missing" | "unreadable" };
+  | { engine: "this-computer"; computerName?: string }
+  | {
+      engine: "server";
+      address: string;
+      pairing: "kept" | "missing" | "unreadable";
+      computerName?: string;
+      /** The name this computer paired as, kept with the setting. */
+      deviceName?: string;
+      /** Whether the host's last call to the server got through; none before the first. */
+      reach?: Reach;
+    };
 
 /** What starting a pairing gave the page. */
 export type PairAnswer =
@@ -52,12 +65,16 @@ export interface ServerEnginePairingOptions {
   /** The `fetch` the server is called with; the global one by default. */
   fetch?: typeof fetch;
   now?: () => Date;
+  /** The computer's name, cleaned for the pair route ({@link computerName}); none leaves it out. */
+  computerName?: string;
 }
 
 /** A pairing waiting for Allow, kept in this host's memory only. */
 interface Pending {
   workspace: string;
   address: string;
+  /** The name the computer pairs as, kept with the setting once it's paired. */
+  deviceName: string;
   /** The server's pending ID: whoever holds it collects the token, so the page never sees it. */
   pendingId: string;
   expiresAt: string;
@@ -82,10 +99,15 @@ export class ServerEnginePairing {
     this.#options = options;
   }
 
-  /** The workspace's engine, and whether the keychain holds its pairing. */
+  /**
+   * The workspace's engine, whether the keychain holds its pairing, the name
+   * it paired as and whether the host last reached the server.
+   */
   async state(workspace: string): Promise<EngineState> {
-    const { key, engine } = await this.#options.setting.read(workspace);
-    if (engine.kind === "this-computer") return { engine: "this-computer" };
+    const { setting, computerName, messaging } = this.#options;
+    const { key, engine } = await setting.read(workspace);
+    const named = computerName === undefined ? {} : { computerName };
+    if (engine.kind === "this-computer") return { engine: "this-computer", ...named };
     let pairing: "kept" | "missing" | "unreadable";
     try {
       const token = await this.#options.keychain.get(serverPairingSecretName(key));
@@ -94,7 +116,20 @@ export class ServerEnginePairing {
       this.#failed("couldn't read the pairing from the keychain", error);
       pairing = "unreadable";
     }
-    return { engine: "server", address: engine.address, pairing };
+    const joined = await messaging.of(workspace);
+    // Only for the address the setting names: the hub may still be joining the one before.
+    const reach =
+      joined?.engine.kind === "server" && joined.engine.address === engine.address
+        ? joined.serverReach
+        : undefined;
+    return {
+      engine: "server",
+      address: engine.address,
+      pairing,
+      ...named,
+      ...(engine.deviceName === undefined ? {} : { deviceName: engine.deviceName }),
+      ...(reach === undefined ? {} : { reach }),
+    };
   }
 
   /** Checks the address is a Halonic server (`GET /api/hello`), then asks it to pair. */
@@ -121,6 +156,7 @@ export class ServerEnginePairing {
     this.#keepPending(pairingId, {
       workspace,
       address: client.origin,
+      deviceName,
       pendingId: started.pendingId,
       expiresAt: started.expiresAt,
     });
@@ -207,7 +243,7 @@ export class ServerEnginePairing {
       name = serverPairingSecretName(await setting.keyOf(pending.workspace));
       await keychain.set(name, token);
       if ((await keychain.get(name)) !== token) throw new PairingNotKept();
-      await setting.useServer(pending.workspace, pending.address);
+      await setting.useServer(pending.workspace, pending.address, pending.deviceName);
     } catch (error) {
       this.#failed("couldn't keep the new pairing, so it ends it on the server", error);
       if (name !== undefined) await keychain.remove(name).catch(() => undefined);

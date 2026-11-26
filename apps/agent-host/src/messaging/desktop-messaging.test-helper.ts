@@ -166,8 +166,11 @@ export class FakeServer {
   readonly seen: SeenRequest[] = [];
   /** The device token it accepts. */
   token = "acme-device-token-for-tests-only";
+  /** When set, every request gets this instead: a fault, a timeout or a dead network. */
+  fault: (() => Promise<Response>) | undefined;
 
   readonly fetch = async (request: Request): Promise<Response> => {
+    if (this.fault !== undefined) return this.fault();
     const authorization = request.headers.get("authorization");
     this.seen.push({ url: request.url, method: request.method, authorization });
     if (authorization !== `Bearer ${this.token}`) return json({ code: "signed-out" }, 401);

@@ -136,6 +136,7 @@ export async function startPairingDesktop(options = { keychain: true }): Promise
         keychain: pairingKeychain,
         log,
         fetch: pairingServer.fetch,
+        computerName: "acme-mbp",
       })
     : undefined;
   const token = randomLaunchToken();

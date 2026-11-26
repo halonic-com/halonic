@@ -1,6 +1,7 @@
 import { ServerAgentMessaging } from "@halonicjs/host-server";
 import { type AgentMessaging, type SecretStore, serverPairingSecretName } from "@halonicjs/ports";
 import type { MessagingEngineSetting } from "./messaging-engine-setting.ts";
+import { ServerReach } from "./server-reach.ts";
 
 /**
  * Each workspace's device token for its server, in the OS keychain under
@@ -34,7 +35,7 @@ export class ServerPairings {
  */
 export type JoinedEngine =
   | { kind: "this-computer" }
-  | { kind: "server"; address: string; messaging: AgentMessaging | undefined };
+  | { kind: "server"; address: string; messaging: AgentMessaging | undefined; reach: ServerReach };
 
 /** What {@link joinedEngineOf} reads with. */
 export interface ServerEngineOptions {
@@ -61,6 +62,7 @@ export async function joinedEngineOf(
   const { key, engine } = await options.setting.read(workspace);
   if (engine.kind === "this-computer") return engine;
   const { address } = engine;
+  const reach = new ServerReach(options.now);
   let token: string | undefined;
   try {
     token = await options.pairings.token(key);
@@ -69,23 +71,23 @@ export async function joinedEngineOf(
       `This computer's pairing with ${address} couldn't be read (${errorName(error)}), ` +
         `so its messaging is signed out.`,
     );
-    return { kind: "server", address, messaging: undefined };
+    return { kind: "server", address, messaging: undefined, reach };
   }
-  if (token === undefined) return { kind: "server", address, messaging: undefined };
+  if (token === undefined) return { kind: "server", address, messaging: undefined, reach };
   try {
-    const { fetch, now } = options;
+    const { fetch: send = globalThis.fetch, now } = options;
     const messaging = new ServerAgentMessaging({
       address,
       token,
       label: new URL(address).host,
-      ...(fetch === undefined ? {} : { fetch: (request: Request) => fetch(request) }),
+      fetch: reach.watch((request) => send(request)),
       ...(now === undefined ? {} : { now }),
     });
-    return { kind: "server", address, messaging };
+    return { kind: "server", address, messaging, reach };
   } catch (error) {
     // The client names the reason only (a token a header can't carry), never the token.
     options.warn(`The pairing with ${address} can't be used (${errorName(error)}).`);
-    return { kind: "server", address, messaging: undefined };
+    return { kind: "server", address, messaging: undefined, reach };
   }
 }
 

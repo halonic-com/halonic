@@ -86,6 +86,31 @@ verifies("connections.engine-row", () => {
       expect(button("Pair again", root)).toBeDefined();
     });
 
+    it("says Offline, as of the host's failed call, with the attention callout", async () => {
+      const reach = { state: "offline", asOf: "2026-11-24T14:02:00.000Z" } as const;
+      const { root } = await showRow({ state: { ...server, reach } });
+      expect(radio(root, "Server")?.checked).toBe(true);
+      expect(root.textContent).toContain("Offline");
+      expect(root.textContent).toContain("Offline, as of 14:02");
+      expect(root.textContent).not.toContain("Connected");
+      // The chip and the callout both carry the attention tone.
+      const attention = [...root.querySelectorAll(".bg-attention-soft")].map(
+        (each) => each.textContent,
+      );
+      expect(attention).toEqual([
+        "Offline",
+        "The server isn't answering. Inbox and Messenger show what was read last; answering is off until it's back.",
+      ]);
+      expect(button("Pair again", root)).toBeUndefined();
+    });
+
+    it("says Connected once the host reached the server again", async () => {
+      const reach = { state: "online", asOf: "2026-11-24T14:03:00.000Z" } as const;
+      const { root } = await showRow({ state: { ...server, reach } });
+      expect(root.textContent).toContain("Connected");
+      expect(root.querySelector(".bg-attention-soft")).toBeNull();
+    });
+
     it("lists Server as unavailable when the host has no keychain", async () => {
       const { root } = await showRow({ state: { engine: "keychain-needed" } });
       expect(radio(root, "Server")?.disabled).toBe(true);
@@ -94,6 +119,26 @@ verifies("connections.engine-row", () => {
   });
 
   describe("pairing", () => {
+    it("fills in the computer's name the host gives, and the name it paired as for Pair again", async () => {
+      const { root } = await showRow({
+        state: { engine: "this-computer", computerName: "acme-mbp" },
+      });
+      await pick(radio(root, "Server"));
+      expect([...(dialog()?.querySelectorAll("input") ?? [])][2]?.value).toBe("acme-mbp");
+      await press(button("Cancel", dialog() ?? document));
+      unmountAll();
+
+      const kept = {
+        ...server,
+        pairing: "missing",
+        computerName: "acme-mbp",
+        deviceName: "Work laptop",
+      };
+      const again = await showRow({ state: kept } as FakeServerEngineAnswers);
+      await press(button("Pair again", again.root));
+      expect([...(dialog()?.querySelectorAll("input") ?? [])][2]?.value).toBe("Work laptop");
+    });
+
     it("opens Pair with a server on Server, and stays on This computer until paired", async () => {
       const sessionEndsAt = "2027-02-22T14:00:00.000Z";
       const answers: FakeServerEngineAnswers = { status: [{ state: "paired", sessionEndsAt }] };
@@ -175,6 +220,16 @@ verifies("connections.engine-row", () => {
       await press(button("Use this computer", dialog() ?? document));
       expect(root.textContent).toContain("Remove Work laptop with halonic serve devices");
       expect(root.textContent).not.toContain("Halonic Studio");
+    });
+
+    it("names this computer as the host kept its pairing, with no pairing in this window", async () => {
+      const state = { ...server, computerName: "acme-mbp", deviceName: "Work laptop" };
+      const { root, engine } = await showRow({ state, left: { stillValid: true } });
+      await pick(radio(root, "This computer"));
+      engine.answers.state = { engine: "this-computer" };
+      await press(button("Use this computer", dialog() ?? document));
+      expect(root.textContent).toContain("Remove Work laptop with halonic serve devices");
+      expect(root.textContent).not.toContain("acme-mbp");
     });
 
     it("says what the keychain kept", async () => {

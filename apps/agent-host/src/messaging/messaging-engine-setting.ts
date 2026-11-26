@@ -17,8 +17,21 @@ export const messagingEngineFileName = "messaging-engine.json";
 /** The only version of the file this host reads and writes. */
 const settingVersion = 1;
 
+/** A file's fields, sorted: with or without the name the computer paired as. */
+const knownFields = ["address,engine,version", "address,deviceName,engine,version"];
+
 /** Where a workspace's messaging runs: on this computer (the default), or on a Halonic server. */
-export type MessagingEngine = { kind: "this-computer" } | { kind: "server"; address: string };
+export type MessagingEngine =
+  | { kind: "this-computer" }
+  | {
+      kind: "server";
+      address: string;
+      /** The name this computer paired as, when the file keeps one. */
+      deviceName?: string;
+    };
+
+/** The pair route's rule for a device name, so a kept one can be sent again as it is. */
+export const deviceNamePattern = /^[^\p{Cc}\p{Cf}]{1,80}$/u;
 
 /** A workspace's setting, with the key that names its folder in the profile and its server pairing. */
 export interface WorkspaceEngineSetting {
@@ -38,7 +51,8 @@ export interface MessagingEngineSettingOptions {
 /**
  * Each workspace's messaging engine (`agent-host.messaging-engine`), kept in
  * the profile at `workspaces/<key>/messaging-engine.json` as
- * `{ "version": 1, "engine": "server", "address": "https://…" }`. The key
+ * `{ "version": 1, "engine": "server", "address": "https://…", "deviceName": "…" }`
+ * (`deviceName` since HAL-19918; a file without it still reads). The key
  * comes from the profile's `workspaceFolders`, never from the workspace's
  * own files, so a `git pull` can't change the engine. The file never holds
  * a token: the device token lives in the keychain (`ServerPairings`).
@@ -71,15 +85,16 @@ export class MessagingEngineSetting {
   }
 
   /**
-   * Saves "Server" at `address`: a temporary file with mode 0600, renamed
+   * Saves "Server" at `address`, paired as `deviceName`: a temporary file with mode 0600, renamed
    * over the setting, so a reader sees the old setting or the new one.
    *
    * @throws ServerClientError when the address breaks the server client's rule; nothing is written
    */
-  async useServer(workspace: string, address: string): Promise<void> {
+  async useServer(workspace: string, address: string, deviceName?: string): Promise<void> {
     const origin = checkedServerOrigin(address);
     const { folder, file } = await this.#place(workspace);
-    const text = `${JSON.stringify({ version: settingVersion, engine: "server", address: origin }, null, 2)}\n`;
+    const setting = { version: settingVersion, engine: "server", address: origin, deviceName };
+    const text = `${JSON.stringify(setting, null, 2)}\n`;
     const temporary = `${file}.${randomUUID()}.tmp`;
     await makePrivateFolder(folder);
     try {
@@ -116,7 +131,7 @@ export class MessagingEngineSetting {
       return this.#thisComputer("it isn't JSON");
     }
     if (!isRecord(setting)) return this.#thisComputer("it isn't a setting");
-    const { version, engine, address } = setting;
+    const { version, engine, address, deviceName } = setting;
     if (typeof version === "number" && version > settingVersion) {
       return this.#thisComputer(`a newer Halonic wrote it (version ${version})`);
     }
@@ -125,15 +140,23 @@ export class MessagingEngineSetting {
       version !== settingVersion ||
       engine !== "server" ||
       typeof address !== "string" ||
-      fields !== "address,engine,version"
+      !knownFields.includes(fields)
     ) {
       return this.#thisComputer("it isn't a setting this version of Halonic reads");
     }
+    let origin: string;
     try {
-      return { kind: "server", address: checkedServerOrigin(address) };
+      origin = checkedServerOrigin(address);
     } catch {
       return this.#thisComputer("its server address isn't https, nor plain http to this computer");
     }
+    if (deviceName === undefined) return { kind: "server", address: origin };
+    if (typeof deviceName === "string" && deviceNamePattern.test(deviceName)) {
+      return { kind: "server", address: origin, deviceName };
+    }
+    // The reason only: the name is the person's own text.
+    this.#options.warn("The messaging engine setting's device name is left out: it isn't one.");
+    return { kind: "server", address: origin };
   }
 
   #thisComputer(reason: string): MessagingEngine {

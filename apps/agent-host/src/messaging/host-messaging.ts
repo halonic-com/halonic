@@ -1,3 +1,4 @@
+import { hostname } from "node:os";
 import { join } from "node:path";
 import { MemoryRecordStore } from "@halonicjs/adapter-memory";
 import { PaperclipSignInClient } from "@halonicjs/adapter-paperclip-client";
@@ -17,6 +18,7 @@ import { PaperclipSignIn } from "../paperclip/paperclip-sign-in.ts";
 import { paperclipSignInRoutes } from "../paperclip/paperclip-sign-in-routes.ts";
 import { webCryptoDigest } from "../profile-token-key.ts";
 import type { HostRoute } from "../server/host-server.ts";
+import { computerName } from "./computer-name.ts";
 import {
   readConnectionFile,
   removeConnectionFile,
@@ -153,7 +155,13 @@ export function hostMessaging(
         pairing:
           pairingSecrets === undefined
             ? undefined
-            : new ServerEnginePairing({ messaging, setting, keychain: pairingSecrets, log }),
+            : new ServerEnginePairing({
+                messaging,
+                setting,
+                keychain: pairingSecrets,
+                log,
+                ...namedComputer(),
+              }),
         log,
       }),
     ],
@@ -204,6 +212,12 @@ function hostSignIn(
     scheduler,
     clock: systemClock,
   });
+}
+
+/** The computer's name Pair with a server suggests, read once as the host starts; none when it's empty. */
+function namedComputer(): { computerName?: string } {
+  const name = computerName(hostname());
+  return name === undefined ? {} : { computerName: name };
 }
 
 function describe(error: unknown): string {
