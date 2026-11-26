@@ -69,6 +69,11 @@ export {
   messageWorkReasonMax,
 } from "./agent-messaging-channels.ts";
 export {
+  type InboxItemKind,
+  inboxItemKind,
+  inboxItemKindFits,
+} from "./agent-messaging-kinds.ts";
+export {
   type InboxQuestion,
   type InboxQuestionAnswer,
   type InboxQuestionsAnswer,

@@ -1,5 +1,6 @@
 import type { ActionResultAnswer, InboxActionRequest } from "./agent-messaging-actions.ts";
 import type { ChannelResult, MessageSendOptions, MessageWork } from "./agent-messaging-channels.ts";
+import type { InboxItemKind } from "./agent-messaging-kinds.ts";
 import type { InboxQuestion, InboxQuestionsAnswer } from "./agent-messaging-questions.ts";
 import type { InboxStepperRequest } from "./agent-messaging-steppers.ts";
 
@@ -273,6 +274,12 @@ export interface InboxItem {
    * that chat from the card. Absent when the item came from no conversation.
    */
   conversation?: MessagingId;
+  /**
+   * What kind of item it is, set by the provider when it can tell, such as an approval from a
+   * question with the same options. Absent, apps work it out with `inboxItemKind`
+   * (requirement `ports.agent-messaging-item-kind`).
+   */
+  kind?: InboxItemKind;
   /** Set by the provider only: `risky` is an approval that spends money or changes who may do what. Absent reads as `normal`. */
   risk?: "normal" | "risky";
   createdAt: string;

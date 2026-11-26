@@ -178,6 +178,7 @@ const item = {
   attachments: [attachment],
   work: "work-1",
   conversation: "chat-1",
+  kind: "action",
   risk: "risky",
   createdAt: "2026-11-26T08:00:00.000Z",
   state: answered,
