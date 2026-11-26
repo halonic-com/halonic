@@ -8,7 +8,7 @@ import {
   AgentConnectionsService,
   HostAgentConnections,
   type RestoreTrust,
-  restoreWhenTrusted,
+  restoreWhenMayStart,
   tokenStoreKey,
 } from "@halonicjs/studio-services";
 
@@ -16,10 +16,11 @@ import {
  * Provides the desktop engine's connections for the open workspace, so
  * Settings › Connections shows and the Connect dialog signs in through the
  * agent host (ADR 2026-11-24, agent messaging, "Sign-in"). The approved key
- * goes straight to the keychain's tokens. Once the person has trusted the
- * workspace, it gives the host back the keys they signed in with in it,
- * quietly, so a restart doesn't ask them to sign in again
- * (`services.paperclip-restore`); an untrusted folder starts nothing.
+ * goes straight to the keychain's tokens. Once the workspace may start
+ * something (the person trusted it, or it reaches only the test model), it
+ * gives the host back the keys they signed in with in it, quietly, so a
+ * restart doesn't ask them to sign in again (`services.paperclip-restore`);
+ * a folder that needs trust and has none starts nothing.
  * Without an agent host nothing is provided, and Settings shows no
  * Connections section.
  *
@@ -49,5 +50,5 @@ export function provideAgentConnections(
   });
   services.provide(AgentConnectionsService, connections);
   // Not awaited: the workspace opens at once, and a row shows Sign in again until its key is back.
-  restoreWhenTrusted(trust, () => connections.restore());
+  restoreWhenMayStart(trust, () => connections.restore());
 }

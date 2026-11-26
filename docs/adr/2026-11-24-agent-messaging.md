@@ -93,8 +93,9 @@ reuses it.
 engine holds keys in memory only, so after a restart every connection was
 signed out and the person had to sign in again each time. The keychain entry
 now also lists the workspaces the person signed in from, by the real path the
-engine resolved. When one of them opens and the person has trusted it (or
-trusts it later), Studio hands the key back to the engine once, quietly, but
+engine resolved. When one of them opens and may start a run, because the
+person has trusted it (or trusts it later) or it reaches only the test model,
+like the demo (HAL-19832), Studio hands the key back to the engine once, quietly, but
 only when the entry names that workspace and its address
 (scheme, host and port) and company match the connection file. Opening replays
 an earlier Connect in that workspace; it doesn't start a new one, so a

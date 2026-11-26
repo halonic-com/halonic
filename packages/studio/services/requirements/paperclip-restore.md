@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-18910 (the board had to sign in to Paperclip again after every restart); plan approved by Liam on HAL-18911, option (a); HAL-19027 (the installed app's click test still signed out after a restart); HAL-19120 (a failed restore leaves a `no-key` row `no-key`); ADR `docs/adr/2026-11-24-agent-messaging.md` (the key)
+- Source: HAL-18910 (the board had to sign in to Paperclip again after every restart); plan approved by Liam on HAL-18911, option (a); HAL-19027 (the installed app's click test still signed out after a restart); HAL-19120 (a failed restore leaves a `no-key` row `no-key`); HAL-19832 (a workspace that reaches only the test model never restored, as it never asks for trust); ADR `docs/adr/2026-11-24-agent-messaging.md` (the key)
 
-The Studio services shall record in a Paperclip connection's keychain entry the real paths of the workspaces the person signed in from with its key, as the agent host resolved them; a sign-in shall add its workspace to that list when the entry held before was made for the same address and company, and shall otherwise start the list again, so the entry holds one key. While the open workspace isn't trusted by the person, the Studio services shall ask the agent host nothing to restore a key. When a workspace opens trusted, or the person trusts the open workspace, the Studio services shall restore once: they shall read the keychain once for each connection the host lists as holding no key on this computer or as signed out, and shall hand the key over only when its entry names that workspace and was made for the address (scheme, host and port) and company the connection file names now. A Windows path shall be compared without regard to case. If the entry names no workspaces, names another workspace, or was made for another address or company, or a read or the hand-over fails, then it shall hand nothing over, leave the connection as it was, report a failure without asking the person anything, and try nothing again. If the agent host can't list the workspace's connections for the restore, such as while it is still starting, then the Studio services shall report the failure and try the restore again before the next listing of the connections, until one listing succeeds.
+The Studio services shall record in a Paperclip connection's keychain entry the real paths of the workspaces the person signed in from with its key, as the agent host resolved them; a sign-in shall add its workspace to that list when the entry held before was made for the same address and company, and shall otherwise start the list again, so the entry holds one key. While the open workspace may not start a run (`studio.untrusted-starts-nothing`: the person hasn't trusted it and it reaches more than the test model, or its trust check is still running or failed), the Studio services shall ask the agent host nothing to restore a key. When a workspace opens that may start a run, because the person trusted it or it reaches only the test model, or when the open workspace comes to be allowed to, the Studio services shall restore once: they shall read the keychain once for each connection the host lists as holding no key on this computer or as signed out, and shall hand the key over only when its entry names that workspace and was made for the address (scheme, host and port) and company the connection file names now. A Windows path shall be compared without regard to case. If the entry names no workspaces, names another workspace, or was made for another address or company, or a read or the hand-over fails, then it shall hand nothing over, leave the connection as it was, report a failure without asking the person anything, and try nothing again. If the agent host can't list the workspace's connections for the restore, such as while it is still starting, then the Studio services shall report the failure and try the restore again before the next listing of the connections, until one listing succeeds.
 
 ## Examples
 
@@ -14,9 +14,12 @@ The Studio services shall record in a Paperclip connection's keychain entry the 
 - Given that entry,
   when Studio opens a clone at `/real/acme-clone`,
   then nothing is handed over and the connection asks to sign in again.
-- Given that entry and a workspace the person hasn't trusted,
+- Given that entry and a workspace with a connector the person hasn't trusted,
   when Studio opens it,
   then Studio asks the agent host nothing; when the person trusts it, the key is handed over once.
+- Given that entry and the demo, which reaches only the test model and holds the connection file `connections/paperclip/halonic.yaml`,
+  when Studio restarts and opens it,
+  then the key is handed over once without asking for trust, and the connection is no longer signed out.
 - Given an entry saved before it named workspaces,
   when Studio opens the workspace,
   then nothing is handed over; after one more sign-in, the next start restores the key.
