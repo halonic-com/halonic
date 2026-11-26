@@ -6,8 +6,8 @@
 
 ## What changes
 
-- `app.failed-call-line` gives a call with a `service-refused` cause (HAL-19185) a line of its own,
-  by the cause's `why`, instead of the plain line for its outcome:
+- `app.failed-call-line` gives a call with the outcome `error` and a `service-refused` cause
+  (HAL-19185) a line of its own, by the cause's `why`, instead of the plain line for its outcome:
   - a token the service didn't accept;
   - a token without permission;
   - a request to slow down, saying whether Halonic tried again once or twice;
@@ -15,7 +15,12 @@
 - The 429 line ends "Nothing was sent twice." only when the cause has `sentOnce: true`, never from
   the tool's risk alone (Liam's rule on HAL-19172).
 - A host is now marked to look like code, as a tool, a program or a secret is.
-- Two examples are added: the 429 line with and without `sentOnce`, and the host line.
+- A refused call whose outcome is `unknown` keeps the `unknown` outcome's line ("…so it may or
+  may not have done its work."). The engine logs `unknown` when an earlier write may already have
+  gone through, so "try again" could do that work twice (Liam's PR 2 rule on HAL-19172). Naming
+  the cause in that line too needs new words, so it's a follow-up.
+- Three examples are added: the 429 line with and without `sentOnce`, the host line, and a
+  refused call with the outcome `unknown`.
 - No earlier line changes. A call without a cause still gets the `unknown` outcome's line or
   "Didn't work.".
 

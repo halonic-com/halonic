@@ -47,9 +47,9 @@ export const failedCallWords = {
   notStarted: "Didn't work: the connector {connector} didn't start.",
   /**
    * The lines for a call the service, or Halonic for it, refused (`service-refused`, HAL-19185),
-   * from the I7 card's 401, 403 and 429 rows (HAL-19173) and the HAL-19172 plan, section 2.3:
-   * each says whose side the cause is on and one next step. They're filled from the log only,
-   * never from the reply.
+   * from the I7 card's 401, 403 and 429 rows (HAL-19173) and the HAL-19172 plan, section 2.3,
+   * as Chief approved them on HAL-19275: each says whose side the cause is on and one next step.
+   * They're filled from the log only, never from the reply, and only for the outcome `error`.
    */
   serviceNotAccepted:
     "Didn't work: the service didn't accept the token for the tool {tool}. It may be mistyped or revoked, so set a new one.",

@@ -1,4 +1,10 @@
-import type { RunEvent, RunEventBody, ServiceRefusal, ToolFailureCause } from "@halonicjs/events";
+import {
+  maxServiceRetries,
+  type RunEvent,
+  type RunEventBody,
+  type ServiceRefusal,
+  type ToolFailureCause,
+} from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import {
@@ -172,9 +178,29 @@ verifies("app.failed-call-line", () => {
       });
     });
 
-    it("says the cause's line, not the broke-off one, when the outcome is unknown", () => {
-      const cause = { code: "service-refused", why: "slow-down", retries: 0 } as const;
-      expect(shown("t", { reason: "no-answer", cause })).toContain("asked Halonic to slow down");
+    it("says only once or twice, as Halonic tries again at most twice", () => {
+      // Raising the cap fails here first, so the line gets words for more than twice.
+      expect(maxServiceRetries).toBe(2);
+    });
+
+    it("keeps the broke-off line when the outcome is unknown, as an earlier write may have gone through", () => {
+      const cause = {
+        code: "service-refused",
+        why: "slow-down",
+        retries: 2,
+        sentOnce: true,
+      } as const;
+      expect(shown("create_order", { reason: "no-answer", cause, connector: "shop" })).toBe(
+        shown("create_order", { reason: "no-answer", connector: "shop" }),
+      );
+      const host = {
+        code: "service-refused",
+        why: "host-not-declared",
+        host: "example.net",
+      } as const;
+      expect(shown("t", { reason: "no-answer", cause: host })).toBe(
+        "Didn't work: the tool `t` broke off without an answer, so it may or may not have done its work.",
+      );
     });
   });
 

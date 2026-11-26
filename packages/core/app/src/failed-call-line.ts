@@ -34,6 +34,7 @@ export type FailedCallValue = FailedCallName | FailedCallText | number;
 /**
  * The line under a failed call to `tool`: the logged cause's line when there
  * is one, else the `unknown` outcome's line, else only that it didn't work.
+ * A refused service's cause gets its own line only with the outcome `error`.
  * Names from the log (the tool, the connector, a program or a secret) are
  * values, never part of a sentence a value could change.
  *
@@ -60,7 +61,11 @@ export function failedCallLine(tool: string, failed: FailedCall): FailedCallText
   }
   switch (cause.code) {
     case "service-refused":
-      return serviceRefusedLine(cause, values.tool);
+      // An `unknown` outcome means an earlier write may have gone through, so trying again could
+      // do its work twice: it keeps the "may or may not have done its work" line (HAL-19172, PR 2).
+      return failed.reason === "no-answer"
+        ? { key: "noAnswer", values }
+        : serviceRefusedLine(cause, values.tool);
     case "time-limit":
       return { key: "timeLimit", values: { ...values, seconds: secondsOf(cause) } };
     case "engine-stopped":
