@@ -291,7 +291,9 @@ verifies("inbox.home-next-step", () => {
 
   it("says in a served Studio where runs that need you come from, with no demo line", async () => {
     const inbox = new Inbox(fakeRuns([]).runs);
-    const root = await renderSuspending(<OnHome inbox={inbox} served={{ isDemo: () => false }} />);
+    const root = await renderSuspending(
+      <OnHome inbox={inbox} served={{ isSample: () => false }} />,
+    );
     await settled();
 
     expect(root.textContent).toContain("Nothing is waiting for you.");
@@ -301,7 +303,7 @@ verifies("inbox.home-next-step", () => {
 
   it("adds how to start one from the computer on the sample", async () => {
     const inbox = new Inbox(fakeRuns([]).runs);
-    const root = await renderSuspending(<OnHome inbox={inbox} served={{ isDemo: () => true }} />);
+    const root = await renderSuspending(<OnHome inbox={inbox} served={{ isSample: () => true }} />);
     await settled();
 
     expect(root.textContent).toContain(nextStep);
@@ -318,7 +320,7 @@ verifies("inbox.home-next-step", () => {
 
   it("says nothing more while something waits", async () => {
     const inbox = new Inbox(fakeRuns([review]).runs);
-    const root = await renderSuspending(<OnHome inbox={inbox} served={{ isDemo: () => true }} />);
+    const root = await renderSuspending(<OnHome inbox={inbox} served={{ isSample: () => true }} />);
     await settled();
 
     expect(root.textContent).not.toContain(nextStep);

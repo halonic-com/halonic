@@ -92,7 +92,7 @@ export function startServedStudio(
   services.provide(DisplaySettingsService, display);
   // The window is drawn once the computer said which workspace it serves, so Home reads it set.
   let sample = false;
-  services.provide(ServedHomeHintService, { isDemo: () => sample });
+  services.provide(ServedHomeHintService, { isSample: () => sample });
   shell.services.instantiate(services);
   const load = () => loadServedWorkspace(pageFetch);
   let window: MountedServedWindow | undefined;

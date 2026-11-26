@@ -60,7 +60,7 @@ const servedDemoStep = "Start one on your computer: Run the Support reply workfl
 /** What an empty Needs you says under its title: nothing in the desktop app, the served lines otherwise. */
 function nextStepOf(served: ServedHomeHint | undefined): ReactNode {
   if (served === undefined) return undefined;
-  if (!served.isDemo()) return servedNextStep;
+  if (!served.isSample()) return servedNextStep;
   return (
     <>
       <span className="block">{servedNextStep}</span>

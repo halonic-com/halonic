@@ -135,7 +135,7 @@ export const ProposalDecisionsService: ServiceKey<ProposalDecisions> =
 /** What the served Studio knows about the workspace it serves, for Needs you's next step. */
 export interface ServedHomeHint {
   /** Whether the computer serves the sample workspace. */
-  isDemo(): boolean;
+  isSample(): boolean;
 }
 
 /**
