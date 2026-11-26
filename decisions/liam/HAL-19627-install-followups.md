@@ -3,6 +3,7 @@
 - Task: HAL-19627
 - Approval: an internal note written by Liam; Julian reviews #6532 on HAL-19627 and signs
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:rJPSB06mhzwBZBLt95MM8+C83sgar83U2KrxgHpktox5/uC2mntWwaC2Y1bJniVayi5Tzypfc36dpKqsz/tyCg==
 
 ## What changes
 
