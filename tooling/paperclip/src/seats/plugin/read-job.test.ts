@@ -88,14 +88,6 @@ verifies("paperclip.seats-read-store", () => {
     expect(logs.join("\n")).not.toContain("/srv/");
   });
 
-  test("does nothing when no company lists seats", async () => {
-    const { ctx, logs } = api(["initech"]);
-    const read: string[] = [];
-    await runSeatsRead(ctx, readerReading(read).reader);
-    expect(read).toEqual([]);
-    expect(logs).toEqual([]);
-  });
-
   test("stores each seat's sign-in expiry and read status, with seat ids only", async () => {
     const { ctx, state } = api(["acme"]);
     const { reader, later } = readerReading([], "2026-11-24T08:00:00.000Z");
@@ -109,5 +101,18 @@ verifies("paperclip.seats-read-store", () => {
       expect.objectContaining({ seatId: "seat-a", signInExpiresAt: "2026-11-24T08:00:00.000Z" }),
     ]);
     expect(JSON.stringify(stored)).not.toContain("/srv/");
+  });
+
+  test("reads nothing and logs it once per worker when no company lists seats", async () => {
+    const { ctx, logs } = api(["no-settings", "initech"]);
+    const read: string[] = [];
+    const { reader } = readerReading(read);
+
+    await runSeatsRead(ctx, reader);
+    await runSeatsRead(ctx, reader);
+
+    expect(read).toEqual([]);
+    expect(logs).toHaveLength(1);
+    expect(logs[0]).toContain("no company's settings list any seats");
   });
 });

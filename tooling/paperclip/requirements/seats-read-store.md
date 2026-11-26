@@ -20,6 +20,9 @@ While the `seats` plugin runs, `seats.read` shall every minute read the seats of
 - Given two companies that both list seats,
   when `seats.read` runs,
   then only the first company's seats are read and the job logs it.
+- Given no company whose settings list seats,
+  when `seats.read` runs twice,
+  then the job logs once that there is nothing to read.
 - Given ticks 30 and 60 minutes after the first,
   when old rows are removed,
   then that happens at the first tick and the 60-minute one only.
