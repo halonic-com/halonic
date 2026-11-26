@@ -3,6 +3,7 @@
  * other only through this file. Home's Needs you reads the same items and
  * count as the Inbox.
  */
+import type { Notifier } from "@halonicjs/studio-services";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import type { Inbox, InboxRuns } from "./inbox.ts";
 import type { InboxNotices } from "./notices/inbox-notices.ts";
@@ -148,3 +149,12 @@ export interface ServedHomeHint {
  */
 export const ServedHomeHintService: ServiceKey<ServedHomeHint> =
   serviceKey<ServedHomeHint>("inbox.served-home-hint");
+
+/**
+ * The folder's desktop notifications, such as the shell's `ShellNotifier`. With it and the agents'
+ * `AgentMessagingService`, the Inbox shows a notification for a new card, question or finished
+ * work, and a click opens the Inbox on it (`inbox.agent-notifications-start`); without it, as in a
+ * browser, nothing shows. The app disposes it with the folder.
+ */
+export const AgentNotifierService: ServiceKey<Notifier> =
+  serviceKey<Notifier>("inbox.agent-notifier");

@@ -8,6 +8,7 @@ import { RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { AgentMessagingService, actionStepsKey } from "@halonicjs/studio-services";
 import { defineFeature } from "@halonicjs/studio-shell";
 import {
+  AgentNotifierService,
   HeldAgentsService,
   InboxNoticesService,
   InboxRequestsService,
@@ -59,6 +60,8 @@ export const inboxFeature = defineFeature({
     AccountMenuHostService,
     // The served Studio's next step under an empty Needs you (inbox.home-next-step).
     ServedHomeHintService,
+    // The folder's desktop notifications, for the agents' items (inbox.agent-notifications-start).
+    AgentNotifierService,
   ],
   provides: [InboxService],
   register(studio) {
@@ -108,6 +111,12 @@ export const inboxFeature = defineFeature({
       order: 10,
       view: "NeedsYouNews",
       load: () => import("./ui/needs-you-news.tsx"),
+    });
+    studio.dialogs.add({
+      id: "inbox.agent-notices",
+      order: 11,
+      view: "AgentNoticeHost",
+      load: () => import("./ui/agent-notice-host.tsx"),
     });
     studio.home.addCard({
       id: "needs-you",
