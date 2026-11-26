@@ -144,6 +144,8 @@ mod trust;
 #[cfg(desktop)]
 mod updates;
 mod window;
+#[cfg(desktop)]
+mod window_place;
 mod workspace_data;
 mod workspace_key;
 
@@ -236,6 +238,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         // Notifications for the Inbox and the Messenger (HAL-17448): only
         // the app's own page is granted its commands.
         .plugin(tauri_plugin_notification::init())
+        // Each app window's own place (HAL-19204); no capability grants its commands.
+        .plugin(window_place::plugin())
         .plugin(feedback_capture::commands())
         .plugin(quick_ask::commands());
     // The phone's own plugins, each used from Rust only (`android_plugins.rs`).
