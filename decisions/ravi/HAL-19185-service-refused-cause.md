@@ -2,6 +2,7 @@
 
 - Approval: Liam's OK with changes on HAL-19172 (https://paperclip.halonic.com/HAL/issues/HAL-19172), section 2.2 of its plan, built on HAL-19185 (https://paperclip.halonic.com/HAL/issues/HAL-19185)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:boN0JgKLTW64xjGMYnM4E7DPij8kUj2px2a2M4b2xG8Ga3v7HyUN6OkYqA3N6Obs2lMzYdXGWoDQOzbCNHWcCg==
 
 ## What changes
 
