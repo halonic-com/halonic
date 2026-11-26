@@ -6,7 +6,7 @@
 
 The Quick Ask feature shall add the focused app `ask`, which floats on its see-through window with
 no frame. Its box shall be a `dialog` labelled "Ask an agent", with the focus in a text box whose
-placeholder is "Ask {agent} anything", the picked agent's button named "Ask {agent}. Change agent",
+placeholder is "Ask {agent} anything", the picked agent's button named "Ask {agent}. Change agent.",
 an **Ask** button, and the hints "Enter ask · Tab another agent · Esc close". Enter shall send and
 Shift+Enter shall make a new line. Tab or a click on the agent shall open the picker: a search box
 "Find an agent" over the agents only, **Recent** first, then each workspace and team; typing narrows

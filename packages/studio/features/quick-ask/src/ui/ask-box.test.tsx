@@ -29,7 +29,7 @@ verifies("quick-ask.box", () => {
       expect(dialog?.getAttribute("aria-label")).toBe("Ask an agent");
       expect(textBox(page).placeholder).toBe("Ask Chief anything");
       expect(document.activeElement).toBe(textBox(page));
-      expect(page.querySelector('button[aria-label="Ask Chief. Change agent"]')).not.toBeNull();
+      expect(page.querySelector('button[aria-label="Ask Chief. Change agent."]')).not.toBeNull();
       expect(page.querySelector('button[aria-label="Ask"]')).not.toBeNull();
       expect(page.querySelector("footer")?.textContent).toBe(
         "Enterask" + "Tabanother agent" + "Escclose",
@@ -83,7 +83,7 @@ verifies("quick-ask.box", () => {
 
     it("finds an agent as the person types, and Enter picks it", async () => {
       const { page } = await openBox(new FakeMessenger([chat(chief), chat(liam), chat(elena)]));
-      await press(page.querySelector('button[aria-label="Ask Chief. Change agent"]'));
+      await press(page.querySelector('button[aria-label="Ask Chief. Change agent."]'));
       await typeIn(picker(page), "ele");
 
       const rows = [...page.querySelectorAll('[role="option"]')];
