@@ -3,7 +3,7 @@
 - Task: HAL-19721
 - Approval: the task asks for the `server.routines` change; Liam reviews it as a security PR and signs this note as the CTO
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:j+fx84g7wYcyoAwyNVBukbIDPgbEdxZjTpuQeaNvFfyxHjqYEcvJQLhgZQW127K+C/vCT+EYma/O8WAar7tLDw==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:X3LLa94oi+ZLHkQKmxbsIECoY5C9vEUiY6qFdtC7LOPTbaloq0jEZOEj9/SwHeuenOJIOT1H+xRFlC5cMNX+AQ==
 
 ## What changes
 
