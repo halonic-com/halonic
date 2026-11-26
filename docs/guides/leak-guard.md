@@ -53,7 +53,11 @@ that holds a term as `[withheld]`.
   in pull request comments", which lists pull request numbers and links,
   never the text: edit each text to say "the board", then close the issue.
   A manual run of `scheduled.yml` with `pr-comments-full-scan` scans every
-  pull request. Until the terms secret is set, the job passes with a notice.
+  pull request. Until the terms secret is set, the job passes with a notice,
+  and that pass still moves the scan window forward. So once
+  `HALONIC_DENY_TERMS` is first set, run `scheduled.yml` once by hand with
+  `pr-comments-full-scan`, or the comments from before that day are never
+  scanned.
 
 `pnpm install` installs the hooks. It copies them from
 `tooling/check/hooks` into a `halonic-hooks` folder in the clone's git dir
