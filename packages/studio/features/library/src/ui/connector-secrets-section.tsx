@@ -4,6 +4,7 @@ import { errorReasonFor } from "@halonicjs/studio-shell";
 import { useEffect, useId, useRef, useState } from "react";
 import {
   type ConnectorSecretState,
+  type LocalConnectorKind,
   type ReservedSecretOwner,
   connectorSecretWords as words,
 } from "../connector-secret-words.ts";
@@ -16,6 +17,8 @@ export interface ConnectorSecretsSectionProps {
   readonly names: readonly string[];
   /** The connector's name, for the line about who gets the secret. */
   readonly sourceName: string;
+  /** Which kind of connector it is, since that changes who it gives the secret to. */
+  readonly kind: LocalConnectorKind;
   /**
    * For the trouble line's **Paste a new token**: the first secret's entry takes focus when this
    * says yes. A new function asks again; one asked before the keychain answered is taken once the
@@ -31,12 +34,13 @@ export interface ConnectorSecretsSectionProps {
  * once one is stored. The page only learns whether a value is stored, never the value.
  *
  * @example
- * <ConnectorSecretsSection secrets={keychain} names={["NOTES_TOKEN"]} sourceName="Notes" />
+ * <ConnectorSecretsSection secrets={keychain} names={["NOTES_TOKEN"]} sourceName="Notes" kind="stdio" />
  */
 export function ConnectorSecretsSection({
   secrets,
   names,
   sourceName,
+  kind,
   takeFocus,
 }: ConnectorSecretsSectionProps) {
   const headingId = useId();
@@ -84,6 +88,7 @@ export function ConnectorSecretsSection({
           takeFocus={index === 0 ? takeFocus : undefined}
           name={name}
           sourceName={sourceName}
+          kind={kind}
           secrets={secrets}
           state={states[name] ?? "not-set"}
           onState={(state) => changed(name, state)}
@@ -96,6 +101,7 @@ export function ConnectorSecretsSection({
 interface SecretRowProps {
   readonly name: string;
   readonly sourceName: string;
+  readonly kind: LocalConnectorKind;
   readonly secrets: ConnectorSecrets;
   readonly state: ConnectorSecretState;
   readonly onState: (state: ConnectorSecretState) => void;
@@ -104,7 +110,7 @@ interface SecretRowProps {
 }
 
 /** One secret: its state, an entry that never shows what's stored, and **Remove** once it is set. */
-function SecretRow({ name, sourceName, secrets, state, onState, takeFocus }: SecretRowProps) {
+function SecretRow({ name, sourceName, kind, secrets, state, onState, takeFocus }: SecretRowProps) {
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const entry = useRef<HTMLInputElement>(null);
@@ -185,7 +191,7 @@ function SecretRow({ name, sourceName, secrets, state, onState, takeFocus }: Sec
       <StatusChip tone={state === "not-set" ? "attention" : "neutral"}>
         {words.state[state]}
       </StatusChip>{" "}
-      <span className="block">{words.storedLine(sourceName)}</span>
+      <span className="block">{words.storedLine(sourceName, kind)}</span>
     </>
   );
   return (

@@ -7,6 +7,9 @@ import { reasonAfterColon } from "@halonicjs/studio-shell";
 /** What the keychain said about a secret: a value, none, or nothing (it couldn't be read). */
 export type ConnectorSecretState = "set" | "not-set" | "unknown";
 
+/** A connector whose secrets Studio sets: one whose program it starts, or a local integration. */
+export type LocalConnectorKind = "stdio" | "integration";
+
 /** The words of the connector page's Secrets section. */
 export const connectorSecretWords = {
   heading: "Secrets",
@@ -22,10 +25,11 @@ export const connectorSecretWords = {
    * reads the profile's secrets file, not this store (C553 row 26). The last sentence says which
    * one Studio uses, because `halonic doctor` tells people to run `halonic secret set`, which
    * keeps a separate one (C552 finding 1, C595 row 25). It doesn't say "only": another connector
-   * or a model may name the same secret.
+   * or a model may name the same secret. Only the middle sentence depends on the kind: see
+   * {@link whoGetsItWords}.
    */
-  storedLine: (source: string) =>
-    `Kept in your system keychain, never in files. ${source} gives it to the program it starts. Studio uses this one; halonic secret set keeps a separate one for the command line.`,
+  storedLine: (source: string, kind: LocalConnectorKind) =>
+    `Kept in your system keychain, never in files. ${whoGetsItWords[kind](source)} Studio uses this one; halonic secret set keeps a separate one for the command line.`,
   /** In the empty entry once a value is stored: typing one replaces it. */
   replacePlaceholder: "Type a new value to replace it",
   remove: "Remove",
@@ -49,6 +53,17 @@ export const connectorSecretWords = {
   refusedName: (owner: ReservedSecretOwner) =>
     `Couldn't save the secret: a workspace can't pick a secret that belongs to ${reservedOwnerWords[owner]}. Give it another name in the connector's file.`,
 };
+
+/**
+ * The Secrets line's middle sentence: who the connector gives the secret to. A local integration
+ * starts no program; its HTTP client sends the secret only to the hosts the integration declares,
+ * so its "only" is about where the secret goes, not who else may name it (HAL-19672, copy check
+ * HAL-19673).
+ */
+const whoGetsItWords = {
+  stdio: (source: string) => `${source} gives it to the program it starts.`,
+  integration: (source: string) => `${source} sends it only to the sites it says it connects to.`,
+} satisfies Record<LocalConnectorKind, (source: string) => string>;
 
 /** Who a secret name a workspace may not pick belongs to. */
 export type ReservedSecretOwner = "halonic" | "plugin";

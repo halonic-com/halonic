@@ -9,6 +9,7 @@ import {
 } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { takeConnectorTitleFocus } from "../connector-focus-request.ts";
+import type { LocalConnectorKind } from "../connector-secret-words.ts";
 import { type ConnectorSecrets, ConnectorSecretsService } from "../connector-secrets-host.ts";
 import { type ConnectorConnection, ConnectorStatusHostService } from "../connector-status-host.ts";
 import { ConnectorStatusModel, type ConnectorStatusState } from "../connector-status-model.ts";
@@ -47,8 +48,15 @@ function ListedToolsLine({
   return <ListedToolsWaiting {...waiting} />;
 }
 
+/** What the page's Secrets section needs: the store, the secret names and the connector's kind. */
+interface SecretsSectionPart {
+  readonly secrets: ConnectorSecrets;
+  readonly names: readonly string[];
+  readonly kind: LocalConnectorKind;
+}
+
 /**
- * The store and names for the page's Secrets section, or `undefined` for none: only the desktop
+ * The store, names and kind for the page's Secrets section, or `undefined` for none: only the desktop
  * app can write the keychain a connector's program or local integration reads its secrets from
  * (HAL-14995, HAL-19445), a phone only views, and any other connector, or one that names no
  * secret, has nothing to set here.
@@ -56,13 +64,13 @@ function ListedToolsLine({
 function secretsSectionOf(
   context: ItemViewProps["context"],
   connector: ConnectorStatusState["connector"],
-): { readonly secrets: ConnectorSecrets; readonly names: readonly string[] } | undefined {
+): SecretsSectionPart | undefined {
   const secrets =
     context.host === "phone" ? undefined : context.services.find(ConnectorSecretsService);
   const connection = connector?.connection;
   const local = connection?.kind === "stdio" || connection?.kind === "integration";
   if (secrets === undefined || !local || connection.secrets.length === 0) return undefined;
-  return { secrets, names: connection.secrets };
+  return { secrets, names: connection.secrets, kind: connection.kind };
 }
 
 /** The page's Secrets section, when {@link secretsSectionOf} gives one. */
