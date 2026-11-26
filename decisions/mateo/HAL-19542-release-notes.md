@@ -2,6 +2,7 @@
 
 - Approval: the task asks for this change (HAL-19542, the board's report on HAL-19002 and its added requirement); Liam approves and signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ZitJQUoE9jSijGos3n/zMQawWlvbchDTzfPh/gSe2Bj0SzimhlTMN/Ets61A2Dy7atUcNHaOCPQS/bhqvvi7AQ==
 
 ## What changes
 
