@@ -1,5 +1,5 @@
 import type { MessagingId } from "@halonicjs/ports";
-import { Avatar, clockTime } from "@halonicjs/studio-kit";
+import { Avatar, clockTime, PlainList, PlainRow } from "@halonicjs/studio-kit";
 import { useRef } from "react";
 import { channelSize, isChannel, workingMembers } from "../channel.ts";
 import { chatAgent, chatName } from "../chat-name.ts";
@@ -59,26 +59,25 @@ export function ConversationList({
     return <p className="px-2 py-4 text-small text-fg-muted">{messengerWords.noChats}</p>;
   }
   return (
-    <ul ref={list} aria-label={messengerWords.chatsLabel} className="flex flex-col gap-1">
+    <PlainList listRef={list} label={messengerWords.chatsLabel}>
       {rows.map((row) => {
         const current = row.conversation.id === selected;
         return (
-          <li key={row.conversation.id}>
-            <Row
-              row={row}
-              current={current}
-              onSelect={onSelect}
-              picture={pictureOf(pictures, row)}
-              now={now}
-              unread={current ? 0 : unread(row)}
-              named={manySources}
-              line={search?.lines.get(row.conversation.id) ?? rowLine(row)}
-              highlight={search?.text ?? ""}
-            />
-          </li>
+          <Row
+            key={row.conversation.id}
+            row={row}
+            current={current}
+            onSelect={onSelect}
+            picture={pictureOf(pictures, row)}
+            now={now}
+            unread={current ? 0 : unread(row)}
+            named={manySources}
+            line={search?.lines.get(row.conversation.id) ?? rowLine(row)}
+            highlight={search?.text ?? ""}
+          />
         );
       })}
-    </ul>
+    </PlainList>
   );
 }
 
@@ -105,6 +104,7 @@ function preview({ last }: ConversationRow): string {
   return last.author.kind === "me" ? `${messengerWords.youSaid}${line}` : line;
 }
 
+/** One conversation's row, drawn by the kit's plain row, as the Inbox's items are (HAL-19192). */
 function Row({
   row,
   current,
@@ -130,60 +130,22 @@ function Row({
   /** What a chat search searched for, marked in the row; empty with none. */
   readonly highlight: string;
 }) {
-  const after = afterName(row, named);
   return (
-    <button
-      type="button"
-      data-chat={row.conversation.id}
-      aria-current={current ? "true" : undefined}
-      onClick={() => onSelect(row.conversation.id)}
-      className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-start transition-colors duration-(--duration-fast) ease-standard hover:bg-surface-muted focus-ring aria-[current=true]:bg-surface-muted"
-    >
-      <Avatar name={chatAgent(row)?.name ?? row.conversation.title} picture={picture} />
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span className="flex items-baseline gap-2">
-          {/* The dot sits outside the truncated name, so a long name's ellipsis never hides it. */}
-          <span className="flex min-w-0 flex-1 items-center">
-            <span className="min-w-0 truncate text-body">
-              <bdi>
-                <Highlighted text={chatName(row)} term={highlight} />
-              </bdi>
-              {after === undefined ? null : (
-                <span className="text-small text-fg-muted"> · {after}</span>
-              )}
-            </span>
-            {waitsForPerson(row) ? (
-              <span data-needs-you className="ms-1.5 size-1.5 shrink-0 rounded-full bg-warning">
-                <span className="sr-only">{messengerWords.needsYouDot}</span>
-              </span>
-            ) : null}
-          </span>
-          {row.last === undefined ? null : (
-            <span className="shrink-0 text-small text-fg-muted">
-              {clockTime(new Date(row.last.sentAt), now)}
-            </span>
-          )}
-        </span>
-        <span className="flex items-center gap-2">
-          <span className="min-w-0 flex-1 truncate text-small text-fg-muted">
-            <Highlighted text={line} term={highlight} />
-          </span>
-          {unread === 0 ? null : <UnreadBadge count={unread} />}
-        </span>
-      </span>
-    </button>
-  );
-}
-
-/** The blue count of a row's unread messages, "99+" past 99. */
-function UnreadBadge({ count }: { readonly count: number }) {
-  return (
-    <span
-      data-unread
-      className="inline-flex h-4.5 min-w-4.5 shrink-0 items-center justify-center rounded-full bg-primary px-1 text-caption text-on-primary"
-    >
-      {messengerWords.unreadCount(count)}
-      <span className="sr-only">{messengerWords.unread}</span>
-    </span>
+    <PlainRow
+      id={row.conversation.id}
+      picture={<Avatar name={chatAgent(row)?.name ?? row.conversation.title} picture={picture} />}
+      title={<Highlighted text={chatName(row)} term={highlight} />}
+      afterTitle={afterName(row, named)}
+      flag={waitsForPerson(row) ? messengerWords.needsYouDot : undefined}
+      line={<Highlighted text={line} term={highlight} />}
+      time={row.last === undefined ? undefined : clockTime(new Date(row.last.sentAt), now)}
+      unread={
+        unread === 0
+          ? undefined
+          : { count: messengerWords.unreadCount(unread), label: messengerWords.unread }
+      }
+      current={current}
+      onSelect={() => onSelect(row.conversation.id)}
+    />
   );
 }

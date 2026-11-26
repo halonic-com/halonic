@@ -26,7 +26,10 @@ export function useLeft(
   useEffect(() => {
     if (gone === undefined || rows === undefined) return;
     if (rows.some((row) => row.conversation.id === gone.id)) return;
-    const chats = [...(list.current?.querySelectorAll<HTMLElement>("[data-chat]") ?? [])];
+    // Each kit plain row's first button is the row itself.
+    const chats = [
+      ...(list.current?.querySelectorAll<HTMLElement>("[data-row-id] > button:first-child") ?? []),
+    ];
     const first = list.current?.querySelector<HTMLElement>("button");
     (chats[gone.index] ?? chats.at(-1) ?? first)?.focus();
     setGone(undefined);
