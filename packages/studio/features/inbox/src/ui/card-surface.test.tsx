@@ -62,6 +62,12 @@ verifies("inbox.card-surface", () => {
     );
   });
 
+  it("lets the whole card grow in a short window so its bar of answers isn't clipped", () => {
+    expect(cardClasses.split(" ")).toEqual(
+      expect.arrayContaining(["short:min-h-auto", "short:overflow-visible"]),
+    );
+  });
+
   it.each([
     ["an approval's", async () => openApproval().root],
     ["a wait step's", async () => openWait().root],
