@@ -225,7 +225,8 @@ requests, only to `api.github.com`, about 20 calls per pass on `halonic`.
 `tools.ts` (the agent tools) and `host.ts`, the adapter to Paperclip's
 plugin API. It asks for the fewest capabilities the watcher and the tools
 need: jobs, reading companies, agents, tasks and comments, creating
-comments, wake-ups, `issues.update`, outbound HTTP, reading a secret,
+comments, creating a chief-line thread (`issues.create`, only in
+`chief-line.ts`), wake-ups, `issues.update`, outbound HTTP, reading a secret,
 registering agent tools, writing metrics and keeping plugin state (the
 GitHub snapshot). The board check adds events, the two documents, reading
 approvals, a task's subtree, its blockers and its pending cards (see Board

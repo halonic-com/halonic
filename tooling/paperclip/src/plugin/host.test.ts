@@ -47,6 +47,13 @@ verifies("paperclip.pr-watcher-plugin", () => {
     expect(writers).toEqual(["plugin/host.ts"]);
   });
 
+  test("creates tasks only in the chief line's findOrCreateThread", () => {
+    const creators = sourceFiles(srcDir)
+      .filter((file) => /\bissues\.create\s*\(/.test(readFileSync(file, "utf8")))
+      .map((file) => relative(srcDir, file));
+    expect(creators).toEqual(["plugin/chief-line.ts"]);
+  });
+
   test("marks a task done with exactly the done status, then comments", async () => {
     const { host, writes } = fakeHost([openTask]);
     expect(await paperclipHost(host, "acme").markDone("task-1", "PR watcher: done.")).toBe(
