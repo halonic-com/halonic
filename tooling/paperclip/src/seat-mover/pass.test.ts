@@ -327,6 +327,13 @@ verifies("paperclip.seat-mover-job", () => {
       expect(fake.writes).toEqual(["move a-elena c-B", "move a-tomas c-C"]);
     });
 
+    test("act mode puts no third heavy agent on a seat, counting the moves it already sent", async () => {
+      const agents = [row("ravi", "Finance"), row("elena", "Full"), row("mateo", "Full")];
+      const fake = world({ Full: [100, 10], Finance: [0, 10] }, agents);
+      await seatMoverPass(deps(fake, agents, { settings: { mode: "act" } }).deps);
+      expect(fake.writes).toEqual(["move a-elena c-Finance"]);
+    });
+
     test("a paused agent is never moved, even off a full seat", async () => {
       const agents = [row("kim", "Full", "paused")];
       const fake = world({ Full: [100, 99], B: [10, 10] }, agents);

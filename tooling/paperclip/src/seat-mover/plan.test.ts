@@ -231,6 +231,19 @@ verifies("paperclip.seat-mover-checklist", () => {
       expect(movesOf(planMoves(seats, agents, settings, now))).toEqual(["tomas → B", "kim → Two"]);
     });
 
+    test("the limit counts the heavy agents on the seat plus every move planned in the same pass", () => {
+      const seats = [seat("Full", 100, 10), seat("Finance", 0, 10), seat("Week", 0, 96)];
+      const agents = [
+        agent("ravi", "Finance"),
+        agent("elena", "Full"),
+        agent("mateo", "Full"),
+        agent("priya", "Full"),
+      ];
+      const plan = planMoves(seats, agents, settings, now);
+      expect(movesOf(plan)).toEqual(["elena → Finance"]);
+      expect(plan.stuck.map((stuck) => stuck.agent.key)).toEqual(["mateo", "priya"]);
+    });
+
     test("a third heavy agent on a seat moves off; paused heavy agents don't count", () => {
       const seats = [seat("A", 10, 10), seat("B", 20, 10)];
       const agents = [
