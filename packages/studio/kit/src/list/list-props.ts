@@ -1,5 +1,6 @@
 import type { MouseEvent, ReactNode, Ref } from "react";
 import type { ListHeadingTone } from "../list-heading/list-heading.tsx";
+import type { PlainRowAction } from "../plain-list/plain-list.tsx";
 import type { PlainRowUnread } from "../plain-list/unread-mark.tsx";
 import type { ListEmpty } from "./empty-list.tsx";
 import type { ListSkeletonShape } from "./list-skeleton.tsx";
@@ -114,6 +115,12 @@ export interface ListRow<Id extends string = string> extends ListRowBase<Id> {
    * leave it out. With a `label`, the kit adds the words to it.
    */
   readonly unread?: PlainRowUnread;
+  /**
+   * In a `plain` List, one action in the end column's place while the pointer is on the row or the
+   * row has focus, as `PlainRow`'s: the Inbox's Mark as unread. It covers the trailing part with
+   * the row's fill, and it is a cell of the grid after the row's `actions`, so → reaches it.
+   */
+  readonly hoverAction?: PlainRowAction;
   readonly tag?: never;
   readonly cells?: never;
   readonly child?: never;
@@ -145,6 +152,7 @@ interface ListColumnsRowBase<Id extends string> extends ListRowBase<Id> {
   readonly under?: never;
   readonly actions?: never;
   readonly unread?: never;
+  readonly hoverAction?: never;
 }
 
 /** A row on its own: its `label` is optional. */

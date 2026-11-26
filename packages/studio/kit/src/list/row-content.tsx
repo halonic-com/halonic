@@ -166,18 +166,21 @@ function RowActions({
 
 /**
  * In a `plain` List, an unread row's meta line with the unread mark at its end, under the title
- * line's end as `PlainRow`'s; any other row's meta line as it is.
+ * line's end as `PlainRow`'s; any other row's meta line as it is. A row with a trailing part has
+ * the mark under that part instead (`EndColumn`).
  */
 function UnreadLine({
   row,
   plain,
+  markBelowTrailing,
   children,
 }: {
   readonly row: AnyListRow;
   readonly plain: boolean;
+  readonly markBelowTrailing: boolean;
   readonly children: ReactNode;
 }) {
-  if (!plain || row.unread === undefined) {
+  if (!plain || row.unread === undefined || markBelowTrailing) {
     return children;
   }
   return (
@@ -189,6 +192,29 @@ function UnreadLine({
 }
 
 /**
+ * The trailing part, and in a `plain` List an unread row's mark under it at the meta line's end,
+ * so the marks line up in one column, under the chips and where a time would be (sketch D on
+ * HAL-19192).
+ */
+function EndColumn({ trailing, row, plain }: { readonly trailing: ReactNode } & PlainParts) {
+  if (!plain || row.unread === undefined) {
+    return <span className="flex shrink-0 items-center">{trailing}</span>;
+  }
+  return (
+    <span className="flex shrink-0 flex-col items-end gap-1.5">
+      {trailing}
+      <UnreadMark unread={row.unread} />
+    </span>
+  );
+}
+
+/** A row and whether its List is `plain`. */
+interface PlainParts {
+  readonly row: AnyListRow;
+  readonly plain: boolean;
+}
+
+/**
  * The row's side padding: 16px in a box, 12px in a `plain` List, as `PlainRow`'s, so the Inbox's
  * avatars and titles line up with the Messenger's (HAL-19916). After a checkbox only the right side.
  */
@@ -197,6 +223,23 @@ function inset(plain: boolean, afterCheck: boolean): string {
     return afterCheck ? "pr-3" : "px-3";
   }
   return afterCheck ? "pr-4" : "px-4";
+}
+
+/** What the main cell's box depends on. */
+interface BoxOptions extends PlainParts {
+  readonly phone: boolean;
+  readonly dense: boolean;
+  readonly afterCheck: boolean;
+  readonly hasMeta: boolean;
+}
+
+/** The main cell's box: its padding and height. */
+function boxClasses({ row, plain, phone, dense, afterCheck, hasMeta }: BoxOptions): string {
+  // A part under the meta line grows the row past its height, as wrapping does, so it gets padding too.
+  const wrap =
+    row.wrap === true || row.wrapTitle === true || row.wrapMeta === true || row.under !== undefined;
+  const height = plain ? plainHeight(row) : heightClasses(phone, dense, hasMeta, wrap);
+  return `flex items-center gap-3 ${inset(plain, afterCheck)} ${height}`;
 }
 
 /**
@@ -231,18 +274,14 @@ export function RowContent({
   // the meta line.
   const trailingBelow = phone && (row.more !== undefined || chevron);
   const showTrailingRight = !trailingBelow && trailing !== undefined;
-  // A part under the meta line grows the row past its height, as wrapping does, so it gets padding too.
-  const wrap =
-    row.wrap === true || row.wrapTitle === true || row.wrapMeta === true || row.under !== undefined;
-
   return (
     <div
-      className={`flex items-center gap-3 ${inset(plain, afterCheck)} ${plain ? plainHeight(row) : heightClasses(phone, dense, meta !== undefined, wrap)}`}
+      className={boxClasses({ row, plain, phone, dense, afterCheck, hasMeta: meta !== undefined })}
     >
       <Leading row={row} small={dense && !phone} sidebar={plain} />
       <div className="flex min-w-0 flex-1 flex-col">
         <TitleLine row={row} plain={plain} />
-        <UnreadLine row={row} plain={plain}>
+        <UnreadLine row={row} plain={plain} markBelowTrailing={showTrailingRight}>
           <MetaLine
             row={row}
             text={meta}
@@ -257,7 +296,7 @@ export function RowContent({
           <RowActions actions={row.actions} actionCell={actionCell} />
         )}
       </div>
-      {showTrailingRight ? <span className="flex shrink-0 items-center">{trailing}</span> : null}
+      {showTrailingRight ? <EndColumn trailing={trailing} row={row} plain={plain} /> : null}
       {chevron ? (
         <span data-part="row-chevron" className="flex size-icon-md shrink-0 text-fg-subtle">
           <ChevronRightIcon />

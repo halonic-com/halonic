@@ -24,8 +24,8 @@ export const keptMarks = 1000;
 
 /**
  * Which of the Inbox's items the person opened (`inbox.read-marks`), by read key (`readKey`): an
- * item of the Inbox's own, or one card of an agent's. A port can stand in for it later without the screens
- * changing.
+ * item of the Inbox's own, or one card of an agent's. A port can stand in for it later without
+ * the screens changing.
  */
 export interface ReadMarks {
   isRead(key: string): boolean;

@@ -16,7 +16,7 @@ The Inbox shall list one setup item for each account a setup source gives it, su
   then the 11:00 setup item comes first, then the 10:00 one, then the run's item, and the count is 3.
 - Given a setup item,
   when its row is shown,
-  then it reads "Set up Google for x@example.com", "Step 4 of 7 · Scopes" and "Setup", and has no button.
+  then it reads "Set up Google for x@example.com", "Step 4 of 7 · Scopes" and "Setup", and has no button but its Mark as read on hover.
 - Given a setup item on Home's Needs you,
   when you press Enter on it,
   then the Inbox opens with that item open and its title has focus.

@@ -370,6 +370,7 @@ export function InboxView({
                   ...agent.rows(now(), project.filter),
                 ],
                 [...waitingOrder, ...listed.map(readRow)],
+                openKey,
               )}
               onOpen={(key) =>
                 paneMotion(

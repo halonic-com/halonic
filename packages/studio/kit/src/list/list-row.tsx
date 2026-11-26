@@ -11,6 +11,7 @@ import {
   plainStateClasses,
   type RowStateClasses,
 } from "./list-plain.ts";
+import { HoverActionCell, hoverActionRow } from "./list-plain-action.tsx";
 import type { AnyListRow, ListColumn, ListSelection } from "./list-props.ts";
 import { RowContent } from "./row-content.tsx";
 import { rowHandlers } from "./row-handlers.ts";
@@ -175,6 +176,8 @@ export interface RowShared<Id extends string> {
   readonly chevrons: boolean | undefined;
   readonly hasMore: boolean;
   readonly hasCheck: boolean;
+  /** A `plain` List with a row's `hoverAction`: every row gets the action's cell. */
+  readonly hasHoverAction: boolean;
   /** The grid's columns for actions, between the main cell and the More button. */
   readonly actionColumns: number;
   readonly grid: GridNavigation;
@@ -233,16 +236,19 @@ export function firstFocusColumn(hasCheck: boolean): number {
 export function ListColumns({
   hasCheck,
   hasMore,
+  hasHoverAction,
   phone,
 }: {
   readonly hasCheck: boolean;
   readonly hasMore: boolean;
+  readonly hasHoverAction: boolean;
   readonly phone: boolean;
 }) {
   return (
     <colgroup>
       {hasCheck ? <col className={checkColumnWidth} /> : null}
       <col />
+      {hasHoverAction ? <col className="w-0" /> : null}
       {hasMore ? <col className={moreClasses[phone ? "phone" : "desktop"].width} /> : null}
     </colgroup>
   );
@@ -278,7 +284,7 @@ export function Row<Id extends string>({ row, place, shared }: RowProps<Id>) {
       aria-current={isCurrent ? true : undefined}
       aria-disabled={isUnavailable ? true : undefined}
       {...(look === "plain" ? plainFillMarks[stateName] : {})}
-      className={`group ${state.row}`}
+      className={`group ${hoverActionRow(shared.hasHoverAction)} ${state.row}`}
     >
       {hasCheck && selection !== undefined ? (
         <CheckCell
@@ -323,6 +329,12 @@ export function Row<Id extends string>({ row, place, shared }: RowProps<Id>) {
           actionCell={(index) => grid.cell(row.id, mainColumn + 1 + index)}
         />
       </td>
+      <HoverActionCell
+        row={row}
+        grid={grid}
+        mainColumn={mainColumn}
+        shown={shared.hasHoverAction}
+      />
       {hasMore ? (
         <MoreCell
           row={row}

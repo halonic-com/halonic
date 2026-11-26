@@ -49,10 +49,12 @@ verifies("inbox.setup-items", () => {
     const { inbox } = await inboxWithSetup();
     const root = render(<InboxView inbox={inbox} now={now} />);
     expect(cells(root).map((cell) => cell.textContent)).toEqual([
-      "Set up Google for x@example.comStep 4 of 7 · ScopesnewSetup",
+      "Set up Google for x@example.comStep 4 of 7 · ScopesSetupnew",
       "sorter wants to use create_note (notes-mcp)Waiting 1\u00a0minnew",
     ]);
-    expect(root.querySelector('[role="grid"] button')).toBeNull();
+    // Only each row's Mark as read, shown on hover (`inbox.read-marks`): no other button.
+    const buttons = [...root.querySelectorAll('[role="grid"] button')];
+    expect(buttons.map((button) => button.textContent)).toEqual(["Mark as read", "Mark as read"]);
     expect(root.textContent).not.toMatch(/Approve|Reject|Delete/);
   });
 

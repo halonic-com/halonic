@@ -5,6 +5,7 @@
  */
 
 import type { PlainRowUnread } from "../plain-list/unread-mark.tsx";
+import type { AnyListRow } from "./list-props.ts";
 
 /** A row state's classes: the cells' fill, the row's own, and the main cell's. */
 export interface RowStateClasses {
@@ -57,4 +58,9 @@ export function plainRowLabel(
     return label;
   }
   return `${label}, ${`${unread.count ?? ""}${unread.label}`.trim()}`;
+}
+
+/** How many grid cells a row's buttons take after its main cell: its `actions`, then its `hoverAction`. */
+export function actionCount(row: AnyListRow): number {
+  return (row.actions?.length ?? 0) + (row.hoverAction === undefined ? 0 : 1);
 }

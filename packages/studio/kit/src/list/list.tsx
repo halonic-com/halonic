@@ -4,6 +4,7 @@ import { InsetListHeading, type ListHeadingInset } from "../list-heading/list-he
 import { usePresentation } from "../presentation/presentation.tsx";
 import { EmptyList, useFocusOnEmpty } from "./empty-list.tsx";
 import { boxClasses, type ListLook } from "./list-lines.ts";
+import { actionCount } from "./list-plain.ts";
 import type { AnyListRow, ListGroup, ListProps } from "./list-props.ts";
 import { firstFocusColumn, ListColumns, Row, type RowShared } from "./list-row.tsx";
 import { ListSkeleton, useFocusAfterLoading } from "./list-skeleton.tsx";
@@ -63,8 +64,9 @@ export function List<Id extends string>({
   const sections = sectionsOf(rows, groups);
   const allRows = sections.flatMap((section) => section.rows);
   const hasMore = allRows.some((row) => row.more !== undefined);
+  const hasHoverAction = look === "plain" && allRows.some((row) => row.hoverAction !== undefined);
   const hasCheck = onOpen !== undefined && selection !== undefined;
-  const actionColumns = allRows.reduce((most, row) => Math.max(most, row.actions?.length ?? 0), 0);
+  const actionColumns = allRows.reduce((most, row) => Math.max(most, actionCount(row)), 0);
   const grid = useGridNavigation(gridRows(sections, { hasCheck, actionColumns, hasMore }), {
     startColumn: firstFocusColumn(hasCheck),
     // Tab enters at the first row that does something; the arrows still reach the inert ones.
@@ -116,6 +118,7 @@ export function List<Id extends string>({
     chevrons,
     hasMore,
     hasCheck,
+    hasHoverAction,
     actionColumns,
     grid,
     onOpen,
@@ -201,7 +204,12 @@ function GridTable<Id extends string>({
         focusWatch.onBlur(event);
       }}
     >
-      <ListColumns hasCheck={shared.hasCheck} hasMore={shared.hasMore} phone={shared.phone} />
+      <ListColumns
+        hasCheck={shared.hasCheck}
+        hasMore={shared.hasMore}
+        hasHoverAction={shared.hasHoverAction}
+        phone={shared.phone}
+      />
       {sections.map((section) => (
         <Section
           key={section.id}
@@ -284,7 +292,7 @@ function gridRows<Id extends string>(
  * with fewer actions than another leaves those columns empty, so its More button lines up.
  */
 function gridCells(row: AnyListRow, { hasCheck, actionColumns, hasMore }: GridColumns): boolean[] {
-  const actions = row.actions?.length ?? 0;
+  const actions = actionCount(row);
   return [
     ...(hasCheck ? [true] : []),
     true,
@@ -315,7 +323,8 @@ function Section<Id extends string>({
   shared,
 }: SectionProps<Id>) {
   const headingId = useId();
-  const columns = (shared.hasCheck ? 1 : 0) + 1 + (shared.hasMore ? 1 : 0);
+  const columns =
+    (shared.hasCheck ? 1 : 0) + 1 + (shared.hasHoverAction ? 1 : 0) + (shared.hasMore ? 1 : 0);
   const { heading, rows } = section;
 
   return (
