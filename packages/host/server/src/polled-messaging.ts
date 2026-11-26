@@ -22,28 +22,28 @@ export class PolledMessaging implements AgentMessaging {
     this.#loop = loop;
   }
 
-  async listSources() {
-    return (await this.#loop.snapshot()).sources;
+  listSources() {
+    return this.#loop.list("sources");
   }
 
-  async listAgents() {
-    return (await this.#loop.snapshot()).agents;
+  listAgents() {
+    return this.#loop.list("agents");
   }
 
-  async listConversations() {
-    return (await this.#loop.snapshot()).conversations;
+  listConversations() {
+    return this.#loop.list("conversations");
   }
 
-  async listInboxItems() {
-    return (await this.#loop.snapshot()).inboxItems;
+  listInboxItems() {
+    return this.#loop.list("inboxItems");
   }
 
-  async listWork() {
-    return (await this.#loop.snapshot()).work;
+  listWork() {
+    return this.#loop.list("work");
   }
 
-  async browseChannels() {
-    return (await this.#loop.snapshot()).channels;
+  browseChannels() {
+    return this.#loop.list("channels");
   }
 
   listMessages(conversation: MessagingId) {

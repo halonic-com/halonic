@@ -41,14 +41,27 @@ export interface MessagingPollLoopOptions {
   /** Makes the scheduler of the loop's timer, with the loop as its listener; the runtime's own. */
   readonly createScheduler: (listener: SchedulerListener) => Scheduler & { close(): Promise<void> };
   readonly clock: Clock;
-  /** Hears a poll or a timer change that failed; the loop carries on with the next poll. */
+  /** Hears a failed `refresh`, list read or timer change; the loop carries on with the next poll. */
   readonly report: (error: unknown) => void;
 }
 
-/** A snapshot, and the generation of the source it was read from. */
+/** The name of one list a poll reads. */
+export type MessagingListName = keyof MessagingSnapshot;
+
+/** Each list's last good value; a list with none is missing. */
+type KeptLists = { -readonly [Name in MessagingListName]?: MessagingSnapshot[Name] };
+
+/** What the polls of one generation of the source read: each list's last good value, or why it has none. */
 interface Kept {
   readonly generation: number;
-  readonly snapshot: MessagingSnapshot;
+  readonly lists: KeptLists;
+  readonly failures: Partial<Record<MessagingListName, unknown>>;
+}
+
+/** A poll, or a poll's list reads, and the generation of the source it reads. */
+interface Running {
+  readonly generation: number;
+  readonly done: Promise<Kept>;
 }
 
 /**
@@ -56,6 +69,10 @@ interface Kept {
  * about every 30 seconds while any client reported focus in the last 2 minutes, and every 5
  * minutes otherwise, through the `Scheduler` port. Clients' list reads answer from what the
  * last poll read, so the number of clients never multiplies the calls to Paperclip.
+ *
+ * A poll first runs `refresh`, which tells `changes` readers what changed, then reads the lists.
+ * A client that hears a change reads again at once, so a list read made while a poll reads its
+ * lists waits for them: it never answers from the poll before the change.
  *
  * What a poll read belongs to one generation of the source. A write, a sign-in or a Disconnect
  * starts a new one ({@link invalidate}): a poll of the generation before is thrown away when it
@@ -73,7 +90,9 @@ export class MessagingPollLoop {
   #closed = false;
   #generation = 0;
   #kept: Kept | undefined;
-  #polling: { readonly generation: number; readonly done: Promise<MessagingSnapshot> } | undefined;
+  #polling: Running | undefined;
+  /** The running poll once its `refresh` is done, while it reads the lists. */
+  #listing: Running | undefined;
   #lastPollAt: number | undefined;
   #focusAt: number | undefined;
   /** The ISO time the loop's timer is set for; a delivery for any other time is late or repeated. */
@@ -87,23 +106,33 @@ export class MessagingPollLoop {
     this.#createScheduler = options.createScheduler;
   }
 
-  /** The messaging the loop reads; list reads go through {@link snapshot} instead. */
+  /** The messaging the loop reads; list reads go through {@link list} instead. */
   get source(): AgentMessaging {
     return this.#source;
   }
 
-  /**
-   * Polls once, so the first clients' reads find the lists ready, and sets the next poll. A
-   * first poll that fails is reported, and the next list read polls again.
-   */
+  /** Polls once, so the first clients' reads find the lists ready, and sets the next poll. */
   async start(): Promise<void> {
-    await this.#poll().catch(this.#report);
+    await this.#poll();
   }
 
-  /** Stops the timer; a poll in progress still ends, and sets no timer after. */
+  /**
+   * Stops the timer. A poll in progress still ends, and sets no timer after; `close` doesn't
+   * wait for it, so a stalled Paperclip never holds up the server's end.
+   */
   async close(): Promise<void> {
     this.#closed = true;
     await this.#scheduler?.close();
+  }
+
+  /**
+   * Resolves once the poll running now, if any, has ended. A timer doesn't wait for its poll,
+   * so a test that lets time pass waits here before the next timer is due.
+   */
+  async idle(): Promise<void> {
+    for (let polling = this.#polling; polling !== undefined; polling = this.#polling) {
+      await polling.done.catch(() => undefined);
+    }
   }
 
   /** Where `POST /api/messaging/focus` reports go. It never throws. */
@@ -118,12 +147,16 @@ export class MessagingPollLoop {
     },
   };
 
-  /** What the last poll of the source as it is now read; polls first when there is none. */
-  snapshot(): Promise<MessagingSnapshot> {
-    const kept = this.#kept;
-    return kept !== undefined && kept.generation === this.#generation
-      ? Promise.resolve(kept.snapshot)
-      : this.#poll();
+  /**
+   * One list as the last poll of the source as it is now read it; polls first when there is
+   * none. When that poll's read of this list failed and the generation has no good value of it
+   * yet, the read fails with that failure; the other lists still answer.
+   */
+  async list<Name extends MessagingListName>(name: Name): Promise<MessagingSnapshot[Name]> {
+    const kept = await this.#current();
+    const value: MessagingSnapshot[Name] | undefined = kept.lists[name];
+    if (value === undefined) throw kept.failures[name];
+    return value;
   }
 
   /**
@@ -135,11 +168,24 @@ export class MessagingPollLoop {
     this.#kept = undefined;
   }
 
-  /** One poll for the current generation at a time; a read while one runs waits for it. */
-  #poll(): Promise<MessagingSnapshot> {
+  /** What list reads answer from now: a poll's lists still being read, the last poll's, or a new poll's. */
+  #current(): Promise<Kept> {
+    const generation = this.#generation;
+    if (this.#listing?.generation === generation) return this.#listing.done;
+    if (this.#kept?.generation === generation) return Promise.resolve(this.#kept);
+    return this.#poll();
+  }
+
+  /**
+   * One poll for the current generation at a time; a read while one runs waits for it. The next
+   * poll is set when one starts, so a poll that takes long never holds up the timer.
+   */
+  #poll(): Promise<Kept> {
     const polling = this.#polling;
     if (polling !== undefined && polling.generation === this.#generation) return polling.done;
     const generation = this.#generation;
+    this.#lastPollAt = this.#now();
+    this.#scheduleFrom(this.#lastPollAt).catch(this.#report);
     const done = this.#read(generation).finally(() => {
       if (this.#polling?.done === done) this.#polling = undefined;
     });
@@ -147,31 +193,66 @@ export class MessagingPollLoop {
     return done;
   }
 
-  async #read(generation: number): Promise<MessagingSnapshot> {
-    const source = this.#source;
+  /** Runs `refresh`, then reads the lists; a failed `refresh` is reported and the lists still read. */
+  async #read(generation: number): Promise<Kept> {
+    await this.#refresh().catch(this.#report);
+    const done = this.#readLists(generation);
+    this.#listing = { generation, done };
     try {
-      await this.#refresh();
-      const [sources, agents, conversations, inboxItems, work, channels] = await Promise.all([
-        source.listSources(),
-        source.listAgents(),
-        source.listConversations(),
-        source.listInboxItems(),
-        source.listWork(),
-        source.browseChannels(),
-      ]);
-      const snapshot = { sources, agents, conversations, inboxItems, work, channels };
-      if (generation === this.#generation) this.#kept = { generation, snapshot };
-      return snapshot;
+      return await done;
     } finally {
-      this.#lastPollAt = this.#now();
-      await this.#scheduleFrom(this.#lastPollAt).catch(this.#report);
+      if (this.#listing?.done === done) this.#listing = undefined;
     }
   }
 
-  /** A due timer polls once; a poll that fails is reported, and the next one is set either way. */
-  async #onTimer(timer: ScheduledTimer): Promise<void> {
-    if (timer.key !== pollTimerKey || timer.at !== this.#nextAt) return;
-    await this.#poll().catch(this.#report);
+  /**
+   * Reads every list on its own, so one that fails never holds back the others. A failed list
+   * keeps the generation's last good value, and its failure is reported.
+   */
+  async #readLists(generation: number): Promise<Kept> {
+    const source = this.#source;
+    const before = this.#kept?.generation === generation ? this.#kept : undefined;
+    const kept: Kept = { generation, lists: {}, failures: {} };
+    await Promise.all([
+      this.#readList(kept, before, "sources", () => source.listSources()),
+      this.#readList(kept, before, "agents", () => source.listAgents()),
+      this.#readList(kept, before, "conversations", () => source.listConversations()),
+      this.#readList(kept, before, "inboxItems", () => source.listInboxItems()),
+      this.#readList(kept, before, "work", () => source.listWork()),
+      this.#readList(kept, before, "channels", () => source.browseChannels()),
+    ]);
+    if (generation === this.#generation) this.#kept = kept;
+    return kept;
+  }
+
+  async #readList<Name extends MessagingListName>(
+    kept: Kept,
+    before: Kept | undefined,
+    name: Name,
+    read: () => Promise<MessagingSnapshot[Name]>,
+  ): Promise<void> {
+    try {
+      kept.lists[name] = await read();
+    } catch (error) {
+      this.#report(error);
+      const last: MessagingSnapshot[Name] | undefined = before?.lists[name];
+      if (last === undefined) kept.failures[name] = error;
+      else kept.lists[name] = last;
+    }
+  }
+
+  /**
+   * A due timer starts a poll without waiting for it: the scheduler's `close` waits for a
+   * delivery in progress. A poll still running counts as this one, and the next is set from now.
+   */
+  #onTimer(timer: ScheduledTimer): Promise<void> {
+    if (timer.key !== pollTimerKey || timer.at !== this.#nextAt) return Promise.resolve();
+    if (this.#polling?.generation === this.#generation) {
+      this.#scheduleFrom(this.#now()).catch(this.#report);
+    } else {
+      this.#poll().catch(this.#report);
+    }
+    return Promise.resolve();
   }
 
   /** Sets the next poll after `from`: the short wait while a client is in front, else the long one. */

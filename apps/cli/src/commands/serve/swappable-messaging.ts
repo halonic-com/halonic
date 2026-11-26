@@ -171,9 +171,9 @@ class FollowedChanges implements AsyncIterableIterator<MessagingId> {
   }
 
   /**
-   * The followed stream failed: the reader ends after the changes it already queued, so the
-   * client sees its stream close and opens it again, instead of waiting for a swap that may
-   * never come. A stream a swap already left only reports its failure.
+   * The followed stream failed: the reader ends after the changes it already queued, instead of
+   * waiting for a swap that may never come. A client must then open the stream again to keep
+   * hearing changes. A stream a swap already left only reports its failure.
    */
   #streamFailed(following: AsyncIterator<MessagingId>, error: unknown): void {
     this.#failed(error);

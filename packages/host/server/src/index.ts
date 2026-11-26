@@ -111,6 +111,7 @@ export {
   type ServerFetch,
 } from "./messaging-client-transport.ts";
 export {
+  type MessagingListName,
   MessagingPollLoop,
   type MessagingPollLoopOptions,
   type MessagingSnapshot,

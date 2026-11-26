@@ -360,6 +360,7 @@ async function listenOnComputer(
     keys,
     profileFolder: folders.folder,
     log: logRequestFailure,
+    clock: parts.clock,
     ...(setup.paperclipFetch === undefined ? {} : { fetch: setup.paperclipFetch }),
   });
   // With no password, everyone who reaches the port would act with the board's key.

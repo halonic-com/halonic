@@ -12,13 +12,18 @@ import { FakeCoordination, FakePasswordHasher, TestClock, testServer } from "./t
 
 /**
  * A scheduler on a test clock: {@link FakeScheduler.pass} moves the clock forward and delivers
- * each timer when its time comes, one at a time, as a real scheduler would.
+ * each timer when its time comes, one at a time, as a real scheduler would. A delivery may start
+ * work it doesn't wait for; `settled` waits for that work before the next timer, as real time
+ * between two timers would.
  */
 export class FakeScheduler implements Scheduler {
   readonly #timers = new Map<string, ScheduledTimer>();
   readonly #clock: TestClock;
   #listener: SchedulerListener | undefined;
   closed = false;
+
+  /** Waits for what a delivery started; set once the listener exists. */
+  settled: () => Promise<void> = async () => undefined;
 
   constructor(clock: TestClock) {
     this.#clock = clock;
@@ -59,6 +64,7 @@ export class FakeScheduler implements Scheduler {
       this.#clock.advance(Math.max(0, at - this.#clock.now().getTime()));
       this.#timers.delete(`${next.key}/${next.timerId}`);
       await this.#listener?.onTimer(next);
+      await this.settled();
     }
     this.#clock.advance(end - this.#clock.now().getTime());
   }
@@ -90,6 +96,7 @@ export async function polledServer<Provider extends PolledProvider>(
     clock,
     report: (error) => errors.push(error),
   });
+  scheduler.settled = () => loop.idle();
   const server = testServer({
     passwordHash: "hash:pw",
     clock,
