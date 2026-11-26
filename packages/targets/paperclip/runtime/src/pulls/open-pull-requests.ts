@@ -1,6 +1,14 @@
 import type { CheckState, GitHubGet } from "../github.ts";
 import type { ActionHandler } from "../handlers.ts";
 import {
+  type CopyReader,
+  type CopyState,
+  copyCapabilities,
+  paperclipCopies,
+  readCopySource,
+  withCopies,
+} from "./approval-copy.ts";
+import {
   ciOkOf,
   everyPage,
   type Mergeable,
@@ -36,8 +44,17 @@ export interface OpenPullRequest {
   readonly mergeable: Mergeable;
   /** Someone other than the author signed an approval on the current head. */
   readonly approvedOnHead: boolean;
+  /** Those approvals on the current head, each with whether its Paperclip copy exists. */
+  readonly approvals: readonly HeadApproval[];
   /** Out of sync: it conflicts or its `ci-ok` is red. */
   readonly needsYou: boolean;
+}
+
+/** An approval on the current head by someone other than the author. */
+export interface HeadApproval {
+  readonly by: string;
+  readonly head: string;
+  readonly copy: CopyState;
 }
 
 interface ListedPull {
@@ -45,12 +62,13 @@ interface ListedPull {
   readonly head: { readonly ref: string; readonly repo: { readonly full_name: string } | null };
 }
 
-/** One of the agent's pull requests: about 3 GitHub requests. */
+/** One of the agent's pull requests: about 3 GitHub requests, and 2 Paperclip reads when approved. */
 async function openPullRequest(
   get: GitHubGet,
   repo: string,
   number: number,
   author: PullAuthor,
+  copies: CopyReader | undefined,
 ): Promise<OpenPullRequest> {
   // The list leaves out `mergeable`; only the pull request itself has it.
   const pull = (await get(`/repos/${repo}/pulls/${number}`)) as PullDetails;
@@ -60,29 +78,42 @@ async function openPullRequest(
   ]);
   const mergeable = mergeableOf(pull);
   const title = shownTitle(pull);
+  // The list only holds the repository's own branches, so the branch names the task.
+  const task = taskOfBranch(pull.head.ref);
+  const onHead = signedApprovals(comments)
+    .filter(({ by, head }) => pull.head.sha.startsWith(head) && !signedByAuthor(by, author))
+    .map(({ by, head }) => ({ by, head }));
+  const approvals =
+    copies === undefined || onHead.length === 0
+      ? onHead.map((approval) => ({ ...approval, copy: "unknown" as const }))
+      : withCopies(onHead, await readCopySource(copies, task));
   return {
     repo,
     number,
     ...(title === undefined ? {} : { title }),
     url: pull.html_url,
-    task: taskOfBranch(pull.head.ref),
+    task,
     draft: pull.draft === true,
     head: pull.head.sha,
     ciOk,
     mergeable,
-    approvedOnHead: signedApprovals(comments).some(
-      ({ by, head }) => pull.head.sha.startsWith(head) && !signedByAuthor(by, author),
-    ),
+    approvedOnHead: approvals.length > 0,
+    approvals,
     needsYou: ciOk === "failure" || mergeable === "conflict",
   };
 }
 
-/** The agent's open pull requests on `repos`. A repository the token doesn't reach goes to `unread`. */
+/**
+ * The agent's open pull requests on `repos`. A repository the token doesn't reach goes to `unread`.
+ *
+ * @param copies - where each approval's Paperclip copy is read; without it, every copy is `unknown`
+ */
 export async function openPullRequests(
   get: GitHubGet,
   repos: readonly string[],
   agent: PullAuthor,
   unread: string[] = [],
+  copies?: CopyReader,
 ): Promise<OpenPullRequest[]> {
   const author = agent.urlKey.toLowerCase();
   const found: OpenPullRequest[] = [];
@@ -102,7 +133,9 @@ export async function openPullRequests(
         pull.head.ref.toLowerCase().startsWith(`${author}/`),
     );
     found.push(
-      ...(await Promise.all(mine.map(({ number }) => openPullRequest(get, repo, number, agent)))),
+      ...(await Promise.all(
+        mine.map(({ number }) => openPullRequest(get, repo, number, agent, copies)),
+      )),
     );
   }
   return found;
@@ -111,6 +144,14 @@ export async function openPullRequests(
 /** `#123`, or `cloud#123` when the list spans more than one repository. */
 function label(pr: OpenPullRequest, oneRepo: boolean): string {
   return oneRepo ? `#${pr.number}` : `${pr.repo.slice(pr.repo.indexOf("/") + 1)}#${pr.number}`;
+}
+
+/** "approved on head (Liam copy: yes)", or "not approved on head". */
+function approvedText(approvals: readonly HeadApproval[]): string {
+  if (approvals.length === 0) {
+    return "not approved on head";
+  }
+  return `approved on head (${approvals.map(({ by, copy }) => `${by} copy: ${copy}`).join(", ")})`;
 }
 
 /** One line per pull request, the ones that need the agent first, then the repositories not read. */
@@ -130,7 +171,7 @@ export function openPullRequestsText(
       pr.draft ? "draft" : "ready",
       `ci-ok ${pr.ciOk}`,
       `mergeable ${pr.mergeable}`,
-      pr.approvedOnHead ? "approved on head" : "not approved on head",
+      approvedText(pr.approvals),
     ].join(", ");
     return `${pr.needsYou ? "NEEDS YOU " : ""}${label(pr, oneRepo)} (${pr.task ?? "no task"}): ${facts}; ${titleText(pr.title)}`;
   });
@@ -146,14 +187,22 @@ export function openPullRequestsText(
 
 /** Lists the calling agent's open pull requests on the tool's repositories. */
 export const openPullRequestsHandler: ActionHandler = {
-  capabilities: [],
-  run: async ({ tool, caller, github }) => {
+  // It reads each approved pull request's task for approvals' Paperclip copies.
+  capabilities: copyCapabilities,
+  run: async (call) => {
+    const { tool, caller, github } = call;
     if (tool.action.run !== "github.open-pull-requests") {
       return { error: `${tool.name}: runs ${tool.action.run}, not github.open-pull-requests.` };
     }
     const unread: string[] = [];
     const repos = repositoriesOf(tool);
-    const prs = await openPullRequests(await github(), repos, caller, unread);
+    const prs = await openPullRequests(
+      await github(),
+      repos,
+      caller,
+      unread,
+      paperclipCopies(call),
+    );
     return { content: openPullRequestsText(caller.urlKey, prs, unread), data: prs };
   },
 };
