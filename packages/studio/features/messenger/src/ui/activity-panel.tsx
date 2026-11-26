@@ -24,7 +24,7 @@ export type PanelPlace = "beside" | "sheet" | "place";
 
 const placeClass: Record<PanelPlace, string> = {
   beside: "w-80 shrink-0",
-  sheet: "absolute inset-y-0 end-0 z-10 w-80 shadow-lg",
+  sheet: "absolute inset-y-0 end-0 z-10 w-80 shadow-2",
   place: "min-w-0 flex-1",
 };
 
