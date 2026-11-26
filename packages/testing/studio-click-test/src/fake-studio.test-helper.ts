@@ -21,6 +21,8 @@ export interface FakeStudio {
   title: string;
   /** How many elements each XPath finds; one it doesn't name finds none. */
   readonly elements: Map<string, number>;
+  /** The computed background colour each XPath's element has; one it doesn't name has none. */
+  readonly backgrounds: Map<string, string>;
   /**
    * Buttons that a hidden copy comes before in the page, such as a closed menu's row: a click
    * reaches the shown one only through the XPath scope named here, and otherwise isn't interactable.
@@ -49,6 +51,7 @@ export function fakeStudio(text = ""): FakeStudio {
     current: "main",
     title: "",
     elements: new Map(),
+    backgrounds: new Map(),
     shownWithin: new Map(),
     approval: undefined,
     paperclip: { status: "pending", comments: [], keyWorks: true },
@@ -82,6 +85,7 @@ export function fakeStudio(text = ""): FakeStudio {
       press();
     },
     attribute: async (_xpath, name) => studio.rootAttributes.get(name) ?? null,
+    cssValue: async (xpath) => studio.backgrounds.get(xpath) ?? "",
     pageText: async () => window().text,
     title: async () => studio.title,
     count: async (xpath) => studio.elements.get(xpath) ?? 0,

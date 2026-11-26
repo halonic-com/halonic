@@ -49,12 +49,15 @@ const markTileSize: Record<AvatarSize, string> = {
   sidebar: "size-15 [&>svg]:size-8",
 };
 
-/** A glyph centred on the Avatar's round tile, in its colours. */
+/**
+ * A glyph centred on the Avatar's round tile, in its colours: `surface` on a hovered or open row's
+ * muted fill, as the Avatar's (HAL-19751, `kit.avatar-on-row-fill`).
+ */
 function MarkTile({ glyph, size }: { readonly glyph: ReactNode; readonly size: AvatarSize }) {
   return (
     <span
       aria-hidden="true"
-      className={`flex ${markTileSize[size]} shrink-0 items-center justify-center rounded-full bg-surface-muted text-fg-muted`}
+      className={`flex ${markTileSize[size]} shrink-0 items-center justify-center rounded-full bg-surface-muted on-muted:bg-surface text-fg-muted`}
     >
       {glyph}
     </span>

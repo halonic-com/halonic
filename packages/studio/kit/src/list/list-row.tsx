@@ -6,6 +6,7 @@ import { CheckCell, checkColumnWidth } from "./check-cell.tsx";
 import { type ListLook, lineClasses } from "./list-lines.ts";
 import {
   plainCorners,
+  plainFillMarks,
   plainRowLabel,
   plainStateClasses,
   type RowStateClasses,
@@ -257,7 +258,8 @@ export function Row<Id extends string>({ row, place, shared }: RowProps<Id>) {
   // Being current only changes the row's look: its `aria-selected` and checkbox follow the selection.
   const isInert = isRowInert(row, shared);
   const states = look === "plain" ? plainStateClasses : rowStateClasses;
-  const state = states[rowState(isUnavailable, isInert, isSelected || isCurrent)];
+  const stateName = rowState(isUnavailable, isInert, isSelected || isCurrent);
+  const state = states[stateName];
   const cells = cellClasses({ look, ...place, state, hasCheck, hasMore });
   const label = look === "plain" ? plainRowLabel(row.label, row.unread) : row.label;
   const mainColumn = firstFocusColumn(hasCheck);
@@ -275,6 +277,7 @@ export function Row<Id extends string>({ row, place, shared }: RowProps<Id>) {
       aria-selected={selection === undefined ? undefined : isSelected}
       aria-current={isCurrent ? true : undefined}
       aria-disabled={isUnavailable ? true : undefined}
+      {...(look === "plain" ? plainFillMarks[stateName] : {})}
       className={`group ${state.row}`}
     >
       {hasCheck && selection !== undefined ? (

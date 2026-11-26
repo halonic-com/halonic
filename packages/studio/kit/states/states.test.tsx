@@ -37,8 +37,9 @@ const pageCss = await buildCss(pageClasses, statesCss, statesFolder);
 type Forced = "hover" | "active" | "focus";
 
 /**
- * How each state shows in a real selector. The on-muted: variant's own hover is left out, and so
- * is the ActionBar's hiding while a field has the focus, which is the page's state, not a part's.
+ * How each state shows in a real selector. The on-muted: variant's own hover and focus are left
+ * out, as the muted fill's state rather than the part's (HAL-19751), and so is the ActionBar's
+ * hiding while a field has the focus, which is the page's state, not a part's.
  */
 const real: Record<Forced, RegExp> = {
   hover: /:hover(?![^(]*data-hover-fill)/,
@@ -48,7 +49,9 @@ const real: Record<Forced, RegExp> = {
 };
 
 const isReal = (selector: string, state: Forced) =>
-  real[state].test(selector) && !selector.includes("data-hover-fill");
+  real[state].test(selector) &&
+  !selector.includes("data-hover-fill") &&
+  !selector.includes("data-focus-fill");
 const isForced = (selector: string, state: Forced) =>
   selector.includes(`[data-force-state="${state}"]`);
 
