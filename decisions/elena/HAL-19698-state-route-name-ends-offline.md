@@ -3,6 +3,7 @@
 - Task: HAL-19698
 - Approval: Liam reviews this security PR and signs this note as the CTO; Julian gives the security sign-off
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:e0bUpcG1lVZRWhN/88kf2GueeGBoJA3nfvN17nbEf8j00D9mv/uar9X23GoikUR7uSCQ9QN11F3zx2wGzMbSAA==
 
 ## What changes
 
