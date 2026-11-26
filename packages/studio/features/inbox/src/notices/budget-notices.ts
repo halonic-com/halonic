@@ -129,6 +129,15 @@ export function monthBudgetReached(use: MonthBudgetUse): string {
   return `This month's estimated spend reached its budget of ${moneyAmount(use.limit, use.currency, tinyAmount)}.`;
 }
 
+/**
+ * "This month's estimated spend reached its budget of €50.00. Runs won't start until 1 December
+ * (UTC) or until you change the budget." (microcopy 6.5): the month's notice, and the line under
+ * an agent's Try it box (states H21).
+ */
+export function monthBudgetLine(use: MonthBudgetUse, now: Date): string {
+  return `${monthBudgetReached(use)} Runs won't start until ${nextMonthStart(now)} (UTC) or until you change the budget.`;
+}
+
 /** The first of next month, "1 December". */
 function nextMonthStart(now: Date): string {
   const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
@@ -178,7 +187,7 @@ export function budgetNotices(
       kind: "budget-month",
       key: `budget-month:${month}:${use.limit}`,
       at: newest ?? monthStartOf(month),
-      title: `${monthBudgetReached(use)} Runs won't start until ${nextMonthStart(now)} (UTC) or until you change the budget.`,
+      title: monthBudgetLine(use, now),
     });
   }
   return notices.sort(newestFirst);

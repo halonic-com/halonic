@@ -6,6 +6,7 @@ import type { HarnessStrip } from "../configuration/harness-strip.ts";
 import { type MemoryAgentsHostOptions, memoryAgentsHost } from "../memory-host.ts";
 import { buttonNamed, typeIntoArea } from "../test-support.tsx";
 import { TryItChatView, type TryItChatViewProps } from "./try-it-chat.tsx";
+import { useBudgetReached } from "./use-budget-reached.ts";
 import { useModelKey } from "./use-model-key.ts";
 import { useTryItChat } from "./use-try-it-chat.ts";
 
@@ -24,7 +25,8 @@ export function scriptedHost({
   savedChats,
   trust,
   missingKeys,
-}: Pick<MemoryAgentsHostOptions, "savedChats" | "trust" | "missingKeys"> = {}) {
+  budgetReached,
+}: Pick<MemoryAgentsHostOptions, "savedChats" | "trust" | "missingKeys" | "budgetReached"> = {}) {
   const requests: AgentChatRequest[] = [];
   const pending: ((answer: ChatAnswer | Error) => void)[] = [];
   const host = memoryAgentsHost({
@@ -33,6 +35,7 @@ export function scriptedHost({
     savedChats,
     trust,
     missingKeys,
+    budgetReached,
     answer: (_ref, request) => {
       // A copy, since the chat's conversation grows after the request.
       requests.push({ ...request, messages: [...request.messages] });
@@ -71,6 +74,7 @@ export function Chat({
 }) {
   const chat = useTryItChat({ host, agent: sorter, name: "Sorter", announce });
   const modelKey = useModelKey(host, sorter);
+  const budgetReached = useBudgetReached(host);
   return (
     <TryItChatView
       chat={chat}
@@ -80,6 +84,7 @@ export function Chat({
       harnessStrip={harnessStrip}
       ways={ways}
       modelKey={modelKey}
+      budgetReached={budgetReached}
       sandboxStartCheck={sandboxStartCheck}
       announce={announce}
       chatUi={chatUi}

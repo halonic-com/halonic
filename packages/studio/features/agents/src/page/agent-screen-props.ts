@@ -27,6 +27,8 @@ export interface AgentScreenProps extends AgentRef {
    * with a secret name, that provider's key block, for **Set the key ›**.
    */
   readonly openKeyField?: ((secretName?: string) => void) | undefined;
+  /** Opens Workspace settings at its Budget block, for the Try it budget line's **Change budget**. */
+  readonly openBudget?: (() => void) | undefined;
   /** The window's close stack, so Esc closes the top card; a page of its own without one. */
   readonly closeStack?: CloseStack | undefined;
   /** Reads a sentence to screen readers, such as "*Writer* was removed." when its card drops. */

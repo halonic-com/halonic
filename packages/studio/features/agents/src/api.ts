@@ -373,6 +373,11 @@ export interface AgentsHost {
    */
   missingModelKey?(ref: AgentRef): Promise<MissingModelKey | undefined>;
   /**
+   * The monthly budget's sentence while this month's spend has reached it (states H21), else
+   * `undefined`. Absent where the budget can't be read, which shows no line.
+   */
+  budgetReached?(): Promise<string | undefined>;
+  /**
    * Makes the agent live: opens Create version with only this agent's file, and answers `"made"`
    * once the version is created, `"cancelled"` when the person closed it. Absent while the app
    * can't offer that, so the "Changes not live yet" line has no **Review and make live**. Rejects

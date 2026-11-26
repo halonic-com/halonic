@@ -43,9 +43,14 @@ export interface TryItChatViewProps {
   readonly harness: AgentHarnessId;
   readonly harnessStrip: HarnessStrip | null;
   /** The ways to the places the line under the box points to. */
-  readonly ways: Pick<BoxLineActions, "goToKeyField" | "openHarness" | "setTheKey">;
+  readonly ways: Pick<
+    BoxLineActions,
+    "goToKeyField" | "openHarness" | "setTheKey" | "changeBudget"
+  >;
   /** Whether the agent's model is missing its key (H19); absent where the host can't tell. */
   readonly modelKey?: ModelKeyCheck | undefined;
+  /** The monthly budget's sentence while this month's spend has reached it (H21). */
+  readonly budgetReached?: string | undefined;
   /**
    * Checks whether the sandbox can start, for an agent whose harness is a program; where it is
    * absent, Send never waits for the sandbox (the engine still refuses such a reply).
@@ -78,6 +83,7 @@ export function TryItChatView(props: TryItChatViewProps) {
     harness: props.harness,
     strip: props.harnessStrip,
     sandboxRefused: sandbox.refused !== undefined,
+    budgetReached: props.budgetReached,
     missingKey: props.modelKey?.missing,
   });
   // A model without its key keeps every message, as a harness that isn't ready does (H19).
@@ -198,8 +204,8 @@ export function TryItChatView(props: TryItChatViewProps) {
   };
 
   // While the engine isn't answering, Send waits with the transcript's line as its reason (H12).
-  // A program or a sandbox that isn't ready makes it wait with the line under the box (H27,
-  // HAL-4291).
+  // A program or a sandbox that isn't ready, or the month's budget used up, makes it wait with the
+  // line under the box (H27, HAL-4291, H21).
   const sendWait = () => {
     if (chat.engineQuiet) return { reason: noticeId };
     if (makesSendWait(problem)) return { reason: lineId };

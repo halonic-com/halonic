@@ -101,6 +101,7 @@ export function AgentPage({ item, context, step, asked, Sections, sections }: It
         {...(openItem && { openFile: (path: string) => openItem(fileItemOf(path)) })}
         {...(runCommand && {
           openLibrary: (list: AgentToolList) => runCommand(libraryTabCommands[list]),
+          openBudget: () => runCommand("workspace.open-budget"),
         })}
         openKeyField={keyFieldOpener(context)}
         closeStack={closeStack}
@@ -148,6 +149,7 @@ export function AgentScreen({
   openLibrary,
   openRuns,
   openKeyField,
+  openBudget,
   closeStack,
   announce,
   openAgent,
@@ -457,6 +459,7 @@ export function AgentScreen({
               goToKeyField: () => openKeyField?.(),
               setTheKey: (secretName) => openKeyField?.(secretName),
               openHarness,
+              changeBudget: openBudget,
             }}
             sandboxStartCheck={sandboxStartCheck}
             announce={(text, politeness) => announce?.(text, politeness)}

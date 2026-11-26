@@ -9,13 +9,13 @@ import { tryItWords } from "./try-it-words.ts";
 /**
  * What stops a Try it message now, most urgent first: a message held because it looks like it
  * holds a key (H29), then the harness and the sandbox in harness-states rule 1's order (H27,
- * HAL-4291), then the model's missing key (H19). The budget (H21) joins this list as its check
- * lands.
+ * HAL-4291), then the month's budget used up (H21), then the model's missing key (H19).
  */
 export type BoxProblem =
   | { readonly kind: "key-in-message"; readonly hold: ChatSecretHold }
   | { readonly kind: "harness"; readonly strip: HarnessStrip; readonly harness: AgentHarnessId }
   | { readonly kind: "sandbox" }
+  | { readonly kind: "budget"; readonly line: string }
   | { readonly kind: "model-key"; readonly key: MissingModelKey };
 
 /** What {@link boxProblem} weighs. */
@@ -27,6 +27,8 @@ export interface BoxState {
   readonly strip: HarnessStrip | null;
   /** The sandbox check refused: the agent's program can't start on this computer. */
   readonly sandboxRefused: boolean;
+  /** The monthly budget's sentence while this month's spend has reached it. */
+  readonly budgetReached: string | undefined;
   /** The agent's model, when it needs a key that isn't stored. */
   readonly missingKey: MissingModelKey | undefined;
 }
@@ -36,16 +38,18 @@ export function boxProblem(state: BoxState): BoxProblem | undefined {
   if (state.held !== undefined) return { kind: "key-in-message", hold: state.held };
   if (state.strip !== null) return { kind: "harness", strip: state.strip, harness: state.harness };
   if (state.sandboxRefused) return { kind: "sandbox" };
+  if (state.budgetReached !== undefined) return { kind: "budget", line: state.budgetReached };
   if (state.missingKey !== undefined) return { kind: "model-key", key: state.missingKey };
   return undefined;
 }
 
 /**
  * Whether a problem makes Send wait, with the line under the box as its reason. A missing model
- * key doesn't: Send stays, so pressing it can find a key set since (flow-assistant 7).
+ * key doesn't: Send stays, so pressing it can find a key set since (flow-assistant 7). A changed
+ * budget is a change of the workspace's files, so its line goes by itself.
  */
 export function makesSendWait(problem: BoxProblem | undefined): boolean {
-  return problem?.kind === "harness" || problem?.kind === "sandbox";
+  return problem?.kind === "harness" || problem?.kind === "sandbox" || problem?.kind === "budget";
 }
 
 /** What the line's actions do; the page gives the ways to the other places. */
@@ -58,13 +62,16 @@ export interface BoxLineActions {
   readonly openHarness: () => void;
   /** Opens the key block of the provider whose key is stored under `secretName`. */
   readonly setTheKey: (secretName: string) => void;
+  /** Opens Workspace settings at its Budget block; absent where the page can't. */
+  readonly changeBudget?: (() => void) | undefined;
 }
 
 /**
  * The line under the Try it box for `problem` (microcopy 8.3), in `warning`. A harness that isn't
  * ready also makes Send wait, with this line as its reason; a held key leaves Send as it is, so
  * pressing it again sends nothing until the text changes or **Send anyway**. A Google client
- * secret has no way to the key field, which is for other keys.
+ * secret has no way to the key field, which is for other keys. The budget's line is the Inbox's
+ * notice word for word, with **Change budget** where the page can open the budget.
  */
 export function TryItBoxLine({
   problem,
@@ -80,6 +87,8 @@ export function TryItBoxLine({
       return <HeldMessageLine hold={problem.hold} actions={actions} />;
     case "model-key":
       return <ModelKeyLine missing={problem.key} name={name} setTheKey={actions.setTheKey} />;
+    case "budget":
+      return <BudgetLine line={problem.line} changeBudget={actions.changeBudget} />;
     case "harness":
       return (
         <ChatBoxLine
@@ -109,6 +118,23 @@ function HeldMessageLine({
   return (
     <ChatBoxLine tone="warning" actions={offers}>
       {hold.line}
+    </ChatBoxLine>
+  );
+}
+
+/** H21: the month's budget used up, as the Inbox's notice says it. */
+function BudgetLine({
+  line,
+  changeBudget,
+}: {
+  readonly line: string;
+  readonly changeBudget: (() => void) | undefined;
+}) {
+  const change: ChatAction[] =
+    changeBudget === undefined ? [] : [{ label: tryItWords.changeBudget, onClick: changeBudget }];
+  return (
+    <ChatBoxLine tone="warning" actions={change}>
+      {line}
     </ChatBoxLine>
   );
 }

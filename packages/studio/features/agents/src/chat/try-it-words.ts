@@ -5,7 +5,7 @@ type BadEnd = Extract<ReplyEnd, { readonly kind: "failed" | "engine-stopped" }>;
 
 /**
  * The Try it chat's words (microcopy 8.3, 14.1 and 19.5; states H2, H9, H12, H13, H16, H19,
- * H23, H24). The agent's name is the one it has now.
+ * H21, H23, H24). The agent's name is the one it has now.
  */
 export const tryItWords = {
   /** H2: the empty chat's heading. */
@@ -61,6 +61,8 @@ export const tryItWords = {
   noUsableModel: (agent: string) => `${agent} has no model it can use:`,
   needsKey: (provider: string) => `needs an API key for ${provider}.`,
   setTheKey: "Set the key ›",
+  /** H21: the budget line's way to Workspace settings › Budget; the line is the Inbox's notice. */
+  changeBudget: "Change budget",
   /** H27: the harness line's way to fix it. */
   openHarness: "Open Harness settings ›",
   /** A tool call's line, with the tool's name in words: "send reply". */

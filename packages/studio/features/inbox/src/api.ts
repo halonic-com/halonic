@@ -33,6 +33,7 @@ export {
   budgetNotices,
   type MonthBudgetNotice,
   type MonthBudgetUse,
+  monthBudgetLine,
   monthBudgetReached,
   monthBudgetUse,
   monthBudgetUsedUp,

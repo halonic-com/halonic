@@ -68,6 +68,8 @@ export interface MemoryAgentsHostOptions {
    * can store the key meanwhile; every model can be used when left out.
    */
   readonly missingKeys?: Readonly<Record<string, MissingModelKey>> | undefined;
+  /** What `budgetReached` answers, asked each time; left out, the host can't tell. */
+  readonly budgetReached?: (() => string | undefined) | undefined;
   /** The workflows that run each agent, keyed by `hubId/id` of the agent. */
   readonly users?: Readonly<Record<string, readonly AgentUser[]>> | undefined;
   /** The routines that start each agent, keyed by `hubId/id` of the agent. */
@@ -276,6 +278,9 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
       found(ref);
       return options.missingKeys?.[keyOf(ref)];
     },
+    ...(options.budgetReached && {
+      budgetReached: async () => options.budgetReached?.(),
+    }),
     ...(options.savedChats && { savedChats: options.savedChats }),
     ...(options.trust && {
       mayStart: options.trust.mayStart,
