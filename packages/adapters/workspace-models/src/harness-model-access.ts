@@ -49,6 +49,36 @@ export function harnessCallsProviderType(harness: string, providerType: string):
   return route !== undefined && harnessRoutes.get(harness)?.route === route;
 }
 
+/**
+ * How an agent's harness gets on with its model alias's provider, for the
+ * Model page and `halonic validate` (flow 5.6, UX 2.5):
+ *
+ * - `refused`: the harness's program can't call a provider of this type, so
+ *   {@link harnessModelAccess} refuses it and the run stops.
+ * - `check-endpoint`: Codex calls an OpenAI-compatible provider, whose
+ *   address may not speak OpenAI's Responses API, which Codex needs.
+ * - `fits`: anything else, Halonic's own loop always: it calls any provider.
+ */
+export type HarnessModelFit = "fits" | "refused" | "check-endpoint";
+
+/**
+ * How the harness gets on with a provider of this type, by the same pairs
+ * {@link harnessModelAccess} allows.
+ *
+ * @example
+ * harnessModelFit("claude-code", "openai"); // "refused"
+ * harnessModelFit("codex", "openai-compatible"); // "check-endpoint"
+ * harnessModelFit("halonic", "ollama"); // "fits"
+ */
+export function harnessModelFit(harness: string, providerType: string): HarnessModelFit {
+  const program = harnessRoutes.get(harness);
+  if (program === undefined) return "fits";
+  if (!harnessCallsProviderType(harness, providerType)) return "refused";
+  return program.route === "openai" && providerType === "openai-compatible"
+    ? "check-endpoint"
+    : "fits";
+}
+
 /** A harness agent's keyed provider, from its model alias. */
 export interface HarnessModelAccess {
   /** The bridge route whose API the provider speaks. */

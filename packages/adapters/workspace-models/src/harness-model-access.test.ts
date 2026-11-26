@@ -10,6 +10,7 @@ import {
   type HarnessAccessChecks,
   harnessCallsProviderType,
   harnessModelAccess,
+  harnessModelFit,
   harnessProviderModel,
 } from "./index.ts";
 
@@ -233,5 +234,15 @@ verifies("cli.harness-model-access", () => {
     expect(harnessCallsProviderType("codex", "ollama")).toBe(false);
     expect(harnessCallsProviderType("opencode", "anthropic")).toBe(true);
     expect(harnessCallsProviderType("opencode", "openai-compatible")).toBe(false);
+  });
+
+  it("tells the Model page and validate how each harness gets on with a provider type", () => {
+    expect(harnessModelFit("claude-code", "anthropic")).toBe("fits");
+    expect(harnessModelFit("claude-code", "openai")).toBe("refused");
+    expect(harnessModelFit("codex", "openai")).toBe("fits");
+    expect(harnessModelFit("codex", "openai-compatible")).toBe("check-endpoint");
+    expect(harnessModelFit("codex", "anthropic")).toBe("refused");
+    expect(harnessModelFit("opencode", "ollama")).toBe("refused");
+    expect(harnessModelFit("halonic", "ollama")).toBe("fits");
   });
 });

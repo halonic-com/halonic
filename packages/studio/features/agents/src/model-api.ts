@@ -1,5 +1,7 @@
 /** What the agents host tells about an agent's model: its missing key and its alias's line. */
 
+import type { AgentHarnessId } from "./harness-api.ts";
+
 /** An agent's model that needs an API key that isn't stored here (states H19). */
 export interface MissingModelKey {
   /** The model as the agent's file names it, such as `smart`. */
@@ -30,4 +32,11 @@ export interface AliasSummary {
   /** The model's name at the provider, such as `claude-sonnet-5-5`. */
   readonly model: string;
   readonly cost: AliasCost;
+  /**
+   * How each harness gets on with the alias's provider (flow 5.6, UX 2.5), as `halonic run`
+   * decides it: `refused` when the harness's program can't call it, `check-endpoint` when Codex
+   * calls an OpenAI-compatible provider, whose address may not speak the Responses API. A harness
+   * left out, or the whole field, means it fits.
+   */
+  readonly harnessFit?: Readonly<Partial<Record<AgentHarnessId, "refused" | "check-endpoint">>>;
 }

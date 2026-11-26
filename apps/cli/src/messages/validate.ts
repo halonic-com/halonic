@@ -43,6 +43,16 @@ export const validateMessages = defineMessages("validate", {
   trustRefused: (reason: string) =>
     phrase`This file can't be trusted, because ${reason}. Fix the address, and keep any password or key as a secret instead.`,
 
+  /**
+   * An agent whose harness can't call its model alias's provider (HAL-18930),
+   * with the Model page's sentence for that harness (flow 5.6, UX 2.5).
+   */
+  harnessModelRefused: (agent: string, model: string, harness: string) =>
+    phrase`Agent ${agent} names model ${model}. ${harnessRefusal(harness)}`,
+  /** A Codex agent on an OpenAI-compatible provider (HAL-18930, flow 5.6). */
+  harnessEndpoint: (agent: string, provider: string) =>
+    phrase`Agent ${agent} runs in Codex on provider ${provider}. Make sure this endpoint supports the Responses API.`,
+
   noProblems: (checked: number, workspace: string) =>
     phrase`Checked ${counted(checked, "file", "files")} in ${workspace}. No problems.`,
   /** Warnings alone pass, with a ✓ and exit 0. */
@@ -76,4 +86,19 @@ function foundProblems(counts: ValidateCounts): Phrase {
     return phrase`${warnings}`;
   }
   return phrase`${bold(errors)} and ${warnings}`;
+}
+
+/**
+ * Why the harness can't use the model, in the Model page's words (flow 5.6, UX 2.5), with what to
+ * do: Claude Code and OpenCode call Anthropic's API only, Codex OpenAI's Responses API only.
+ */
+function harnessRefusal(harness: string): string {
+  switch (harness) {
+    case "codex":
+      return "This model can't be used with Codex. Choose another.";
+    case "opencode":
+      return "OpenCode can use Anthropic models only. Choose another.";
+    default:
+      return "Claude Code can use Anthropic models only. Choose another.";
+  }
 }

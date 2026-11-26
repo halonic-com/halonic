@@ -1,7 +1,13 @@
 import { Field, Input, Select, type SelectOption } from "@halonicjs/studio-kit";
 import { useAutoSaved, useReportNotSaved } from "@halonicjs/studio-shell";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
-import type { AgentChange, AgentSettings, AgentsHost } from "../api.ts";
+import type {
+  AgentChange,
+  AgentHarnessId,
+  AgentSettings,
+  AgentsHost,
+  AliasSummary,
+} from "../api.ts";
 import { ReviewMark } from "../review/review-marks.tsx";
 import { AliasLine, type OpenAlias } from "./alias-line.tsx";
 import { configurationWords as words } from "./configuration-words.ts";
@@ -26,6 +32,18 @@ export const turnLimitCheck = (text: string): string | null => {
 export const modelCheck = (model: string, aliases: readonly string[]): string | null => {
   if (model === "" || model.includes("/") || aliases.includes(model)) return null;
   return words.unknownAlias(model);
+};
+
+/**
+ * The sentence for an alias whose provider the agent's harness can't call, as `halonic run` and
+ * `halonic validate` decide it (flow 5.6, UX 2.5); `null` when it can, or the host can't tell.
+ */
+export const harnessModelCheck = (
+  harness: AgentHarnessId,
+  summary: AliasSummary | undefined,
+): string | null => {
+  if (harness === "halonic" || summary?.harnessFit?.[harness] !== "refused") return null;
+  return words.harnessRefused[harness];
 };
 
 /** Props for {@link ModelPage}. */
@@ -92,17 +110,16 @@ export function ModelPage({
   // `provider/model` name is fine as it is; an alias the hub doesn't have gets an error under it.
   const options: SelectOption[] = aliases.map((alias) => ({ value: alias, label: alias }));
   if (model !== "" && !aliases.includes(model)) options.push({ value: model, label: model });
-  // The alias line is the picker's hint, so a screen reader hears it on the picker.
-  const aliasLine = summary && (
-    <AliasLine alias={model} summary={summary} harness={settings.harness} openAlias={openAlias} />
+  const aliasHint = summary && (
+    <AliasHint alias={model} summary={summary} harness={settings.harness} openAlias={openAlias} />
   );
   return (
     <div className="flex flex-col gap-6">
       <ReviewMark agent={settings} field="model">
         <Field
           label={words.model}
-          hint={aliases.length === 0 ? words.noAliases : aliasLine}
-          error={modelCheck(model, aliases)}
+          hint={aliases.length === 0 ? words.noAliases : aliasHint}
+          error={modelCheck(model, aliases) ?? harnessModelCheck(settings.harness, summary)}
         >
           <Select
             ref={picker}
@@ -138,5 +155,30 @@ export function ModelPage({
         <MoreSettings params={settings.params} save={save} reportNotSaved={setMoreNotSaved} />
       </ReviewMark>
     </div>
+  );
+}
+
+/**
+ * The picker's hint: the alias line, so a screen reader hears it on the picker, with flow 5.6's
+ * endpoint warning under it for a Codex agent on an OpenAI-compatible provider.
+ */
+function AliasHint({
+  alias,
+  summary,
+  harness,
+  openAlias,
+}: {
+  readonly alias: string;
+  readonly summary: AliasSummary;
+  readonly harness: AgentHarnessId;
+  readonly openAlias: OpenAlias | undefined;
+}) {
+  return (
+    <>
+      <AliasLine alias={alias} summary={summary} harness={harness} openAlias={openAlias} />
+      {summary.harnessFit?.[harness] === "check-endpoint" && (
+        <span className="block text-fg-muted">{words.responsesApiWarning}</span>
+      )}
+    </>
   );
 }
