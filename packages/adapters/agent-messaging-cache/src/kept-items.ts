@@ -84,6 +84,8 @@ export function keptInboxItem(item: InboxItem): InboxItem {
   if (item.project !== undefined) kept.project = { id: item.project.id, name: item.project.name };
   if (item.work !== undefined) kept.work = item.work;
   if (item.risk !== undefined) kept.risk = item.risk;
+  if (item.webLink !== undefined)
+    kept.webLink = { link: item.webLink.link, site: item.webLink.site };
   return kept;
 }
 

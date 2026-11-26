@@ -2,7 +2,7 @@
 // several options (requirement `ports.agent-messaging-questions`). A single
 // single-select question stays a plain item with `options` and an `option`
 // answer, so apps and sources that only know those keep working.
-import type { InboxAnswer, InboxItem, InboxItemOption } from "./agent-messaging.ts";
+import type { InboxAnswer, InboxItem, InboxItemOption, InboxWebLink } from "./agent-messaging.ts";
 
 /** The most questions one item asks; a source maps no more, the wire takes no more. */
 export const inboxQuestionsMax = 20;
@@ -98,7 +98,8 @@ export function optionAnswerFits(
 /**
  * Whether a source's item holds together (requirement
  * `ports.agent-messaging-answer-elsewhere`): an `answerElsewhere` link is an
- * `https:` address, and each question's `preselected` options are ones it
+ * `https:` address, so is a `webLink`'s link, whose `site` names its place in 1 to 80
+ * characters (requirement `ports.agent-messaging-web-link`), and each question's `preselected` options are ones it
  * offers, each once, at most one for a single-select question. A provider
  * leaves out an item that doesn't.
  *
@@ -107,6 +108,7 @@ export function optionAnswerFits(
  */
 export function inboxItemFits(item: InboxItem): boolean {
   if (item.answerElsewhere !== undefined && !isHttps(item.answerElsewhere.link)) return false;
+  if (item.webLink !== undefined && !webLinkFits(item.webLink)) return false;
   return (item.questions ?? []).every((question) => {
     const picked = question.preselected ?? [];
     if (question.selection === "single" && picked.length > 1) return false;
@@ -114,8 +116,15 @@ export function inboxItemFits(item: InboxItem): boolean {
   });
 }
 
+const webLinkSiteMax = 80;
+
 /** An `https://` address with a host and no user name, and no white space anywhere in it. */
 const httpsLink = /^https:\/\/[^\s/?#@\\]+(?:[/?#]\S*)?$/i;
+
+function webLinkFits(webLink: InboxWebLink): boolean {
+  const site = webLink.site.trim();
+  return isHttps(webLink.link) && site !== "" && webLink.site.length <= webLinkSiteMax;
+}
 
 function isHttps(link: string): boolean {
   return link.length <= 2000 && httpsLink.test(link);

@@ -3,6 +3,7 @@ import {
   Button,
   type ButtonVariant,
   ChatText,
+  ExternalLink,
   enter,
   leave,
   StatusChip,
@@ -175,10 +176,7 @@ export function ChatCard({
   }
 
   return (
-    <article
-      ref={article}
-      className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4"
-    >
+    <article ref={article} className={chatCardClasses}>
       <p className="flex items-center gap-2 text-small text-fg-muted">
         <StatusChip tone="warning" dot>
           {messengerWords.card.needsYou}
@@ -216,7 +214,28 @@ export function ChatCard({
       <p className="text-small text-fg-muted" role="status">
         {line ?? whereElse(row, card)}
       </p>
+      <CardPageLink card={card} />
     </article>
+  );
+}
+
+/** A card in the chat: a lifted surface (`messenger.card-web-link`). */
+export const chatCardClasses =
+  "flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 shadow-1";
+
+/**
+ * The card's page in its source, "Open in Paperclip", when the source gives one
+ * (`messenger.card-web-link`). It is one link: the place to answer the card, when the source names
+ * one, else the card's own page.
+ */
+export function CardPageLink({ card }: { readonly card: InboxItem }) {
+  if (card.webLink === undefined) return null;
+  return (
+    <p className="text-small">
+      <ExternalLink href={card.answerElsewhere?.link ?? card.webLink.link}>
+        {messengerWords.card.openIn(card.webLink.site)}
+      </ExternalLink>
+    </p>
   );
 }
 

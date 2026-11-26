@@ -11,7 +11,7 @@ import { useState } from "react";
 import type { ConversationRow } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import type { QuickActions } from "../quick-actions.ts";
-import { alsoInInbox, lineOf, tryAnswer } from "./chat-cards.tsx";
+import { alsoInInbox, CardPageLink, chatCardClasses, lineOf, tryAnswer } from "./chat-cards.tsx";
 
 /** A card that asks several questions, or one with several picks, and, once answered, was answered with them. */
 type QuestionCard = InboxItem & { readonly questions: readonly InboxQuestion[] };
@@ -74,7 +74,7 @@ export function QuestionCardItem({
       data-chat-card-record={answered === undefined ? undefined : card.id}
       className="max-w-[80%]"
     >
-      <article className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
+      <article className={chatCardClasses}>
         {answered === undefined ? (
           <p className="flex items-center gap-2 text-small text-fg-muted">
             <StatusChip tone="warning" dot>
@@ -99,6 +99,7 @@ export function QuestionCardItem({
             {line ?? alsoInInbox(row)}
           </p>
         ) : null}
+        <CardPageLink card={card} />
       </article>
     </li>
   );

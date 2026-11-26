@@ -33,6 +33,7 @@ export {
   type InboxItem,
   type InboxItemOption,
   type InboxItemState,
+  type InboxWebLink,
   type Message,
   type MessagingAgent,
   type MessagingAuthor,

@@ -317,6 +317,18 @@ verifies("agent-host.agent-messaging-cache", () => {
       expect(offline?.options).toEqual(options);
     });
 
+    it("passes an item's page link on, live and offline", async () => {
+      const { source } = await readAcme();
+      const webLink = { link: "https://paperclip.acme.test/ACME/issues/ACME-7", site: "Paperclip" };
+      const item = fake.addInboxItem(source.id, { question: "Hire an agent", webLink });
+      const live = (await messaging.listInboxItems()).find((kept) => kept.id === item.id);
+
+      fake.goOffline(source.id);
+      const offline = (await messaging.listInboxItems()).find((kept) => kept.id === item.id);
+      expect(live?.webLink).toEqual(webLink);
+      expect(offline?.webLink).toEqual(webLink);
+    });
+
     it("keeps no key, Authorization header or request in any cache file", async () => {
       await readAcme();
       const files = await filesUnder(cacheFolder);
