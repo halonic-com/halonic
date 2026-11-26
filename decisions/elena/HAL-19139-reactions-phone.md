@@ -3,6 +3,7 @@
 - Task: HAL-19139
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19139 (the board's yes to reactions on desktop and phone, 26 Nov 12:21 UTC; Liam's approval of the build plan, 26 Nov 12:47 UTC, point 2: a phone protocol bump is fine as long as a phone and a host of different versions lose only reactions, never the chat)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:DET7vqwSlz2T3N/z5fRaCrgpjROtUPiEdLnY+wAbq14TuLCYbDeomtAszNMSinDNl0MaUWmvM3dkV0a0MRmkCw==
 
 ## What changes
 
