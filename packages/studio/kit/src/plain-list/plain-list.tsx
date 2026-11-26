@@ -66,6 +66,16 @@ const rowClasses =
   "flex w-full items-center gap-3 rounded-md px-3 py-2 text-start transition-colors duration-(--duration-fast) ease-standard hover:bg-surface-muted focus-ring aria-[current=true]:bg-surface-muted";
 
 /**
+ * A row with an action keeps the hover fill while the pointer is on the action or the row has
+ * focus, because the action covers the title's end with that same fill (HAL-19622).
+ */
+const rowWithActionClasses = `${rowClasses} group-hover:bg-surface-muted group-focus-within:bg-surface-muted`;
+
+/** The action sits over the title's end, so it carries the row's fill and covers what's under it. */
+const actionClasses =
+  "absolute end-3 top-2 rounded-sm bg-surface-muted ps-2 text-small text-fg-muted opacity-0 transition-opacity duration-(--duration-fast) hover:text-fg focus-ring group-focus-within:opacity-100 group-hover:opacity-100";
+
+/**
  * One row of a `PlainList`: its picture, its title over one line, its time on the right and its
  * unread mark under the time (`kit.plain-list`). Unread rows have a semibold title and a
  * full-colour line, read rows a regular title and a muted line; nothing else moves, so the list
@@ -86,7 +96,7 @@ export function PlainRow(props: PlainRowProps) {
         type="button"
         aria-current={current ? "true" : undefined}
         onClick={onSelect}
-        className={rowClasses}
+        className={action === undefined ? rowClasses : rowWithActionClasses}
       >
         {picture}
         <span className="flex min-w-0 flex-1 flex-col">
@@ -100,11 +110,7 @@ export function PlainRow(props: PlainRowProps) {
         </span>
       </button>
       {action === undefined ? null : (
-        <button
-          type="button"
-          onClick={action.onClick}
-          className="absolute end-3 top-2 rounded-sm text-small text-fg-muted opacity-0 transition-opacity duration-(--duration-fast) hover:text-fg focus-ring group-focus-within:opacity-100 group-hover:opacity-100"
-        >
+        <button type="button" onClick={action.onClick} className={actionClasses}>
           {action.label}
         </button>
       )}

@@ -91,4 +91,29 @@ verifies("kit.plain-list", () => {
     act(() => button.click());
     expect(onSelect).toHaveBeenCalledOnce();
   });
+
+  it("gives the action the row's fill, so a long title's end doesn't show through it", () => {
+    const long = "Chief, the agent that plans the releases and reviews every pull request";
+    const { row, button } = renderRow({
+      title: long,
+      flag: "needs you",
+      action: { label: "Mark as unread", onClick: () => undefined },
+    });
+    const action = row.querySelector(":scope > button:last-child") as HTMLButtonElement;
+
+    expect(classesOf(action)).toEqual(expect.arrayContaining(["bg-surface-muted", "ps-2"]));
+    expect(classesOf(button)).toEqual(
+      expect.arrayContaining([
+        "group-hover:bg-surface-muted",
+        "group-focus-within:bg-surface-muted",
+      ]),
+    );
+  });
+
+  it("leaves a row without an action on its own hover fill", () => {
+    const { button } = renderRow();
+
+    expect(classesOf(button)).toContain("hover:bg-surface-muted");
+    expect(classesOf(button)).not.toContain("group-focus-within:bg-surface-muted");
+  });
 });
