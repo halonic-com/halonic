@@ -3,6 +3,7 @@ import { lastWords, missingParts, waitForText } from "../screen.ts";
 import { keys } from "../webdriver.ts";
 import { basicsText } from "../words.ts";
 import { onWorkspaceWithoutSettings } from "./open-demo.ts";
+import { inWideWindow } from "./wide-window.ts";
 
 /**
  * The sidebar's workspace switcher, a button named "Workspace: *name*". The demo's name comes from
@@ -13,7 +14,8 @@ export const switcherXpath = `//button[starts-with(@aria-label, '${basicsText.sw
 /**
  * Step 15: the demo Open demo made is the shown workspace. The window title names the page, the
  * workspace and Halonic; the switcher opens the workspace menu, whose Recent lists the demo's
- * folder with the Demo tag, then Open a folder….
+ * folder with the Demo tag, then Open a folder…. It runs in a wide window, where the sidebar shows
+ * the switcher.
  */
 export const demoWorkspace: Step = {
   id: "demo-workspace",
@@ -27,27 +29,31 @@ export const demoWorkspace: Step = {
     "workspace.recent-workspaces",
     "shell.window-title",
   ],
-  run: async (context) => {
-    const workspace = await onWorkspaceWithoutSettings(context);
-    if (!workspace.passed) return workspace;
-    const title = await windowTitleParts(context);
-    if (title.parts.length !== 3 || title.parts[2] !== basicsText.appName.text) {
-      return { passed: false, code: "WRONG_TITLE", note: `Window title: "${title.text}".` };
-    }
-    const menu = await openWorkspaceMenu(context);
-    if (!menu.passed) return menu;
-    const { recent, demoFolder, demoTag, openFolderRow } = basicsText;
-    const wanted = [recent.text, demoFolder.text, demoTag.text, openFolderRow.text];
-    const listed = await waitForText(context, 10_000, (text) =>
-      wanted.every((part) => text.includes(part)) ? true : undefined,
-    );
-    await context.driver.pressKeys([keys.escape]);
-    if (listed.value === true) return { passed: true };
-    const missing = missingParts(wanted, listed.text);
-    const note = `The workspace menu has no ${missing}. Screen: ${lastWords(listed.text)}`;
-    return { passed: false, code: "MENU_INCOMPLETE", note };
-  },
+  run: (context) => inWideWindow(context, () => showsDemo(context)),
 };
+
+async function showsDemo(context: StepContext): Promise<StepOutcome> {
+  const workspace = await onWorkspaceWithoutSettings(context);
+  if (!workspace.passed) return workspace;
+  const title = await windowTitleParts(context);
+  if (title.parts.length !== 3 || title.parts[2] !== basicsText.appName.text) {
+    return { passed: false, code: "WRONG_TITLE", note: `Window title: "${title.text}".` };
+  }
+  const menu = await openWorkspaceMenu(context);
+  if (!menu.passed) return menu;
+  const { recent, demoFolder, demoTag, openFolderRow } = basicsText;
+  // The kit draws menu headings in capitals (`uppercase`), and the page text is the text as drawn
+  // (studio-preview run 45737719858).
+  const wanted = [recent.text.toUpperCase(), demoFolder.text, demoTag.text, openFolderRow.text];
+  const listed = await waitForText(context, 10_000, (text) =>
+    wanted.every((part) => text.includes(part)) ? true : undefined,
+  );
+  await context.driver.pressKeys([keys.escape]);
+  if (listed.value === true) return { passed: true };
+  const missing = missingParts(wanted, listed.text);
+  const note = `The workspace menu has no ${missing}. Screen: ${lastWords(listed.text)}`;
+  return { passed: false, code: "MENU_INCOMPLETE", note };
+}
 
 /**
  * Opens the workspace menu from the sidebar's switcher, waiting until the window shows a workspace.

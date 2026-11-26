@@ -70,6 +70,7 @@ verifies("studio-click-test.steps", () => {
         "/session/s1/window/handles": ["main", 7],
         "/session/s1/title": "Home · Acme · Halonic",
         "/session/s1/elements": [element, element],
+        "/session/s1/window/rect": { x: 0, y: 0, width: 1280, height: 800 },
       };
       const driverServer = await fakeServer((request) => ({
         status: 200,
@@ -83,11 +84,17 @@ verifies("studio-click-test.steps", () => {
       expect(await driver.windowHandles()).toEqual(["main"]);
       expect(await driver.title()).toBe("Home · Acme · Halonic");
       expect(await driver.count("//*[@role='tab']")).toBe(2);
+      expect(await driver.windowSize()).toEqual({ width: 1280, height: 800 });
+      await driver.setWindowSize({ width: 1280, height: 800 });
       await driver.switchToWindow("main");
       await driver.close();
       const sent = driverServer.requests.map((request) => `${request.method} ${request.url}`);
       expect(sent).toContain("POST /session/s1/element/e1/click");
       expect(sent).toContain("DELETE /session/s1");
+      const resize = driverServer.requests.find(
+        (request) => request.method === "POST" && request.url === "/session/s1/window/rect",
+      );
+      expect(JSON.parse(resize?.body ?? "")).toEqual({ width: 1280, height: 800 });
       expect(JSON.parse(driverServer.requests[0]?.body ?? "")).toMatchObject({
         capabilities: {
           alwaysMatch: {

@@ -1,6 +1,6 @@
 import type { StepContext } from "./runner.ts";
 import type { TestPaperclip } from "./test-paperclip.ts";
-import type { Driver } from "./webdriver.ts";
+import type { Driver, WindowSize } from "./webdriver.ts";
 
 /** A window of the fake Studio: its text, and what each button click does to it. */
 export interface FakeWindow {
@@ -29,6 +29,12 @@ export interface FakeStudio {
   approval: string | undefined;
   /** What the fake test Paperclip answers: the card's status, the chat's comments, the key. */
   readonly paperclip: { status: string; comments: string[]; keyWorks: boolean | undefined };
+  /** The main window's size; the installed app opens at 800 × 600. */
+  windowSize: WindowSize;
+  /** Every size a step set, in order. */
+  readonly resizes: WindowSize[];
+  /** Set to make the driver refuse to size the window, with this error. */
+  resizeRefusal: string | undefined;
   readonly context: StepContext;
 }
 
@@ -46,6 +52,9 @@ export function fakeStudio(text = ""): FakeStudio {
     shownWithin: new Map(),
     approval: undefined,
     paperclip: { status: "pending", comments: [], keyWorks: true },
+    windowSize: { width: 800, height: 600 },
+    resizes: [],
+    resizeRefusal: undefined,
     context: undefined as unknown as StepContext,
   };
   const window = () => studio.windows.get(studio.current) ?? { text: "", buttons: new Map() };
@@ -84,6 +93,13 @@ export function fakeStudio(text = ""): FakeStudio {
     },
     closeWindow: async () => {
       studio.windows.delete(studio.current);
+    },
+    windowSize: async () => studio.windowSize,
+    setWindowSize: async (size) => {
+      if (studio.resizeRefusal !== undefined) throw new Error(studio.resizeRefusal);
+      studio.resizes.push(size);
+      studio.windowSize = size;
+      return size;
     },
     close: async () => undefined,
   };
