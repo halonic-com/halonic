@@ -3,6 +3,7 @@ import { defineFeature } from "@halonicjs/studio-shell";
 import { ChatOpensService, MessengerService } from "./api.ts";
 import { Messenger } from "./messenger.ts";
 import { messengerWords } from "./messenger-words.ts";
+import { StoredReadMarks } from "./read-marks.ts";
 
 /**
  * The Messenger feature (requirement `messenger.conversations`). It offers
@@ -26,6 +27,8 @@ export const messengerFeature = defineFeature({
           services.get(AgentMessagingService),
           undefined,
           services.find(AgentActivityService),
+          // On this device, shared by every window; without storage, for this page only.
+          new StoredReadMarks(globalThis.localStorage ?? null),
         ),
     );
     studio.focusedApps.add({

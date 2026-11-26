@@ -21,7 +21,9 @@ function acme() {
 }
 
 function rows(page: HTMLElement): string[] {
-  return [...page.querySelectorAll("nav li button")].map((row) => row.textContent ?? "");
+  return [...page.querySelectorAll("nav li > button:first-child")].map(
+    (row) => row.textContent ?? "",
+  );
 }
 
 verifies("messenger.chat-search", () => {

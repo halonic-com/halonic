@@ -6,7 +6,7 @@ import type { ConversationRow, Messenger } from "../messenger.ts";
 import type { WaitingCard } from "../needs-you.ts";
 import type { AgentPictures } from "./agent-pictures.ts";
 import { ListHeader, useChatSearch } from "./chat-search.tsx";
-import { ConversationList } from "./conversation-list.tsx";
+import { ConversationList, type RowMarks } from "./conversation-list.tsx";
 import { ChatsLoad } from "./load-states.tsx";
 import { NeedsYouEntry } from "./needs-you.tsx";
 
@@ -67,6 +67,7 @@ export function ChatsColumn({
   needsYou,
   onNeedsYou,
   newMenu,
+  onMarked,
 }: {
   readonly messenger: Messenger;
   readonly rows: readonly ConversationRow[] | undefined;
@@ -82,8 +83,21 @@ export function ChatsColumn({
   readonly needsYou: boolean;
   readonly onNeedsYou: () => void;
   readonly newMenu: ReactNode;
+  /** A row was marked read or unread; the page reads the list again. */
+  readonly onMarked: () => void;
 }) {
   const chatSearch = useChatSearch(messenger, rows);
+  const marks: RowMarks = {
+    canMarkUnread: (row) => messenger.canMarkUnread(row),
+    onMarkRead: (row) => {
+      messenger.markRead(row);
+      onMarked();
+    },
+    onMarkUnread: (row) => {
+      messenger.markUnread(row);
+      onMarked();
+    },
+  };
   const found = chatSearch.search === undefined ? undefined : chatSearch.found;
   return (
     <>
@@ -116,6 +130,7 @@ export function ChatsColumn({
             pictures={pictures}
             now={messenger.now()}
             unread={(row) => messenger.unreadCount(row)}
+            marks={marks}
             manySources={new Set(rows?.map((row) => row.conversation.source)).size > 1}
           />
         </ChatsLoad>

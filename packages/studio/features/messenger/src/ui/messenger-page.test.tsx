@@ -63,7 +63,9 @@ function pageSaid(page: HTMLElement): string | null | undefined {
 }
 
 function rows(page: HTMLElement): string[] {
-  return [...page.querySelectorAll("nav li")].map((row) => row.textContent ?? "");
+  return [...page.querySelectorAll("nav li > button:first-child")].map(
+    (row) => row.textContent ?? "",
+  );
 }
 
 /** Opens Acme's chat with Chief, the one whose row names Acme. */

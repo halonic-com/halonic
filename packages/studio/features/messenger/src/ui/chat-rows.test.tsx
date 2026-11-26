@@ -97,7 +97,9 @@ verifies("messenger.chat-rows", () => {
         messaging.addConversation(messaging.addAgent(globex.id, { name: "Chief" }).id);
       });
       const page = await openMessenger(messaging, [], false, noon);
-      const rows = [...page.querySelectorAll("nav li button")].map((each) => each.textContent);
+      const rows = [...page.querySelectorAll("nav li > button:first-child")].map(
+        (each) => each.textContent,
+      );
       expect(rows).toEqual([
         "CChief · Paperclip · Acme09:30Shall I merge #12?1 unread",
         "LLiam · Paperclip · Acme",
