@@ -3,7 +3,8 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
 import type { GitHubGet } from "../github.ts";
 import {
-  changedPaths,
+  type ChangedFiles,
+  changedFiles,
   defaultReviewerNote,
   noteDefaultReviewer,
   reviewerByPaths,
@@ -14,8 +15,8 @@ import {
 /**
  * Rules shaped like the ones Liam asked for on HAL-18289, written for the
  * invented `acme/website`: exact files, folders, words with the same skip
- * regexes as `isTestPath` / `isWordsOnly`, a 1200-line limit and any nested
- * `package.json`.
+ * regexes as `isTestPath` / `isWordsOnly`, a 1200-line limit with 800 in
+ * `src/kernel/`, and any nested `package.json`.
  */
 const testPath = [
   "\\.(test|spec)\\.[cm]?[jt]sx?$",
@@ -28,9 +29,18 @@ const rules: RepositoryReviewerRules = {
   folders: ["infra/", ".github/"],
   words: ["sandbox", "secret", "sign-in"],
   wordsSkip: [...testPath, "\\.md$", "^apps\\/cli\\/src\\/messages\\/", "(^|[/-])words\\.[jt]sx?$"],
-  lineLimit: { max: 1200, skip: [...testPath, "\\.md$"] },
+  lineLimit: {
+    max: 1200,
+    skip: [...testPath, "\\.md$"],
+    folderLimits: [{ folders: ["src/kernel/"], max: 800 }],
+  },
   nestedPackageJson: true,
 };
+
+/** Changed files without their own line counts. */
+function filesAt(paths: readonly string[]): ChangedFiles {
+  return { paths, lines: {} };
+}
 
 const routing: Routing = {
   roles: { "second-reviewer": "mateo", "code-reviewer": "priya" },
@@ -63,8 +73,51 @@ verifies("runtime.github-reviewer-rules", () => {
         "second-reviewer",
       ],
       ["at the limit", ["src/cart.ts"], 1200, "second-reviewer"],
+      ["over a folder limit", ["src/kernel/step.ts"], 801, "code-reviewer"],
+      ["at a folder limit", ["src/kernel/step.ts"], 800, "second-reviewer"],
     ] as const)("%s", (_, paths, lines, role) => {
       expect(reviewRoleByPaths(rules, paths, lines)).toBe(role);
+    });
+
+    describe("with each file's changed lines", () => {
+      test.each([
+        [
+          "lines in skipped files don't count toward the limit",
+          { "src/cart.ts": 700, "src/cart.test.ts": 900 },
+          "second-reviewer",
+        ],
+        [
+          "code lines in all folders add up",
+          { "src/cart.ts": 700, "src/kernel/step.ts": 501 },
+          "code-reviewer",
+        ],
+        [
+          "a folder limit counts only its folders",
+          { "src/cart.ts": 1000, "src/kernel/step.ts": 100 },
+          "second-reviewer",
+        ],
+        [
+          "over a folder limit",
+          { "src/kernel/step.ts": 500, "src/kernel/run.ts": 301 },
+          "code-reviewer",
+        ],
+        [
+          "tests in the folder don't count toward its limit",
+          { "src/kernel/step.ts": 400, "src/kernel/step.test.ts": 900 },
+          "second-reviewer",
+        ],
+      ] as const)("%s", (_, lines, role) => {
+        const paths = Object.keys(lines);
+        const total = Object.values(lines).reduce((sum, count) => sum + count, 0);
+        expect(reviewRoleByPaths(rules, paths, total, lines)).toBe(role);
+      });
+
+      test("a path without its count falls back to the whole pull request's lines", () => {
+        const paths = ["src/kernel/step.ts", "src/kernel/run.ts"];
+        expect(reviewRoleByPaths(rules, paths, 900, { "src/kernel/step.ts": 10 })).toBe(
+          "code-reviewer",
+        );
+      });
     });
 
     test("only the rules a repository gives fire: no line limit means none", () => {
@@ -75,7 +128,7 @@ verifies("runtime.github-reviewer-rules", () => {
 
   describe("the person and the answer", () => {
     test("names who the routing gives the role, and says it is by paths only", () => {
-      const reviewer = reviewerByPaths(rules, ["infra/deploy.ts"], 3, routing);
+      const reviewer = reviewerByPaths(rules, filesAt(["infra/deploy.ts"]), 3, routing);
       expect(reviewer).toEqual({ role: "code-reviewer", person: "priya" });
       expect(reviewerText(reviewer)).toBe(
         "reviewer: priya as code-reviewer (by paths; security/release PRs and the author's own PRs route differently)",
@@ -83,7 +136,7 @@ verifies("runtime.github-reviewer-rules", () => {
     });
 
     test("names the role alone when no one covers it, and says when there are no rules", () => {
-      const reviewer = reviewerByPaths(rules, ["src/cart.ts"], 3, undefined);
+      const reviewer = reviewerByPaths(rules, filesAt(["src/cart.ts"]), 3, undefined);
       expect(reviewerText(reviewer)).toBe(
         "reviewer: second-reviewer, no one covers it in the routing (by paths; security/release PRs and the author's own PRs route differently)",
       );
@@ -93,11 +146,45 @@ verifies("runtime.github-reviewer-rules", () => {
     test("reads both sides of a rename, so moving a file out of a folder still counts", async () => {
       const get: GitHubGet = async (path) => {
         expect(path).toBe("/repos/acme/website/pulls/12/files?per_page=100&page=1");
-        return [{ filename: "scripts/deploy.ts", previous_filename: "infra/deploy.ts" }];
+        return [
+          {
+            filename: "scripts/deploy.ts",
+            previous_filename: "infra/deploy.ts",
+            additions: 2,
+            deletions: 1,
+          },
+        ];
       };
-      const paths = await changedPaths(get, "acme/website", 12);
-      expect(paths).toEqual(["scripts/deploy.ts", "infra/deploy.ts"]);
-      expect(reviewerByPaths(rules, paths, 3, routing).person).toBe("priya");
+      const files = await changedFiles(get, "acme/website", 12);
+      expect(files).toEqual({
+        paths: ["infra/deploy.ts", "scripts/deploy.ts"],
+        lines: { "infra/deploy.ts": 0, "scripts/deploy.ts": 3 },
+      });
+      expect(reviewerByPaths(rules, files, 3, routing).person).toBe("priya");
+    });
+
+    test("counts a renamed file's lines once, under its new name", async () => {
+      const get: GitHubGet = async () => [
+        {
+          filename: "src/kernel/step.ts",
+          previous_filename: "src/kernel/run.ts",
+          additions: 500,
+          deletions: 200,
+        },
+      ];
+      const files = await changedFiles(get, "acme/website", 12);
+      expect(files.lines).toEqual({ "src/kernel/run.ts": 0, "src/kernel/step.ts": 700 });
+      // Counted on both sides, 1,400 lines would pass the kernel's 800.
+      expect(reviewerByPaths(rules, files, 700, routing).person).toBe("mateo");
+    });
+
+    test("keeps each file's count when two files swap names", async () => {
+      const get: GitHubGet = async () => [
+        { filename: "src/a.ts", previous_filename: "src/b.ts", additions: 4, deletions: 0 },
+        { filename: "src/b.ts", previous_filename: "src/a.ts", additions: 5, deletions: 0 },
+      ];
+      const files = await changedFiles(get, "acme/website", 12);
+      expect(files.lines).toEqual({ "src/a.ts": 4, "src/b.ts": 5 });
     });
   });
 });
@@ -109,7 +196,7 @@ verifies("runtime.github-reviewer-approval-note", () => {
     const signedByMateo = (by: string) => by.toLowerCase() === "mateo";
 
     test("notes the default reviewer's counting approval, and no one else's", () => {
-      const reviewer = reviewerByPaths(rules, ["src/cart.ts"], 3, routing);
+      const reviewer = reviewerByPaths(rules, filesAt(["src/cart.ts"]), 3, routing);
       expect(noteDefaultReviewer([mateo, liam], rules, reviewer, signedByMateo)).toEqual([
         { ...mateo, note: defaultReviewerNote },
         liam,
@@ -117,8 +204,8 @@ verifies("runtime.github-reviewer-approval-note", () => {
     });
 
     test("adds no note when the paths escalate, no one covers the role or there are no rules", () => {
-      const escalated = reviewerByPaths(rules, ["infra/deploy.ts"], 3, routing);
-      const uncovered = reviewerByPaths(rules, ["src/cart.ts"], 3, undefined);
+      const escalated = reviewerByPaths(rules, filesAt(["infra/deploy.ts"]), 3, routing);
+      const uncovered = reviewerByPaths(rules, filesAt(["src/cart.ts"]), 3, undefined);
       expect(noteDefaultReviewer([mateo], rules, escalated, signedByMateo)).toEqual([mateo]);
       expect(noteDefaultReviewer([mateo], rules, uncovered, signedByMateo)).toEqual([mateo]);
       expect(noteDefaultReviewer([mateo], undefined, undefined, signedByMateo)).toEqual([mateo]);
@@ -126,7 +213,7 @@ verifies("runtime.github-reviewer-approval-note", () => {
 
     test("leaves an approval that doesn't count as it is", () => {
       const older = { ...mateo, head: "0000000", counts: false, note: "names an older head" };
-      const reviewer = reviewerByPaths(rules, ["src/cart.ts"], 3, routing);
+      const reviewer = reviewerByPaths(rules, filesAt(["src/cart.ts"]), 3, routing);
       expect(noteDefaultReviewer([older], rules, reviewer, signedByMateo)).toEqual([older]);
     });
   });

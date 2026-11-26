@@ -591,6 +591,35 @@
                                     "minLength": 1,
                                     "maxLength": 200
                                   }
+                                },
+                                "folderLimits": {
+                                  "default": [],
+                                  "maxItems": 10,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "folders": {
+                                        "default": [],
+                                        "maxItems": 100,
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 300
+                                        }
+                                      },
+                                      "max": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "max"
+                                    ],
+                                    "additionalProperties": false
+                                  }
                                 }
                               },
                               "required": [
