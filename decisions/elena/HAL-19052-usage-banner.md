@@ -3,6 +3,7 @@
 - Task: HAL-19052
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-14163 (S3-11 plan, PR 3, approved by Liam on 26 Nov)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ak5L8gIM3yhD5V3t6P6PMQE8V2l18clypINuRLXX2SK3af0NI8Lj1/W9oyyQCh0tofyM7EYzckzvqtTKS6SvCw==
 
 ## What changes
 
