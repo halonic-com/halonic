@@ -13,7 +13,19 @@ function random(seed: number) {
   };
 }
 
-const names = ["liam", "julian", "elena", "priya", "tomas", "mateo", "kim", "nina", "mara", "noah", "pip"];
+const names = [
+  "liam",
+  "julian",
+  "elena",
+  "priya",
+  "tomas",
+  "mateo",
+  "kim",
+  "nina",
+  "mara",
+  "noah",
+  "pip",
+];
 
 function scenario(seed: number): { seats: Seat[]; agents: AgentPlace[] } {
   const pick = random(seed);

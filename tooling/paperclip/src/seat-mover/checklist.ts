@@ -185,6 +185,15 @@ export function targetRefusal(
   const others = seatedOn(seat.connectionId, placement, agents).filter(
     (other) => other.id !== agent.id,
   );
+  return companyRefusal(agent, others, settings);
+}
+
+/** Items b, c and g: whether `agent` may join the agents already on a seat. */
+function companyRefusal(
+  agent: AgentPlace,
+  others: readonly AgentPlace[],
+  settings: SeatMoverSettings,
+): TargetRefusal | undefined {
   if (others.some((other) => isReviewer(other, settings))) {
     return "b-reviewer-seat";
   }
@@ -215,8 +224,9 @@ export interface Break {
 /**
  * The checklist items a placement breaks on the given seats: a reviewer with
  * anyone else, more heavy agents than allowed, anyone on an excluded seat or
- * on the paid API, a heavy agent on the quiet seat. (Items a and f are about the seat's use, which a move
- * doesn't change before the next reading; `targetRefusal` covers them.)
+ * on the paid API, a heavy agent on the quiet seat. (Items a and f are about
+ * the seat's use, which a move doesn't change before the next reading;
+ * `targetRefusal` covers them.)
  */
 export function breaks(
   connectionIds: Iterable<string>,
@@ -238,16 +248,26 @@ export function breaks(
     if (seat !== undefined && isPaidApi(seat)) {
       found.push({ connectionId, rule: "e-paid-api" });
     }
-    if (seated.length > 1 && seated.some((agent) => isReviewer(agent, settings))) {
-      found.push({ connectionId, rule: "b-reviewer-not-alone" });
-    }
-    const heavy = seated.filter((agent) => countsAsHeavy(agent, settings)).length;
-    if (heavy > settings.maxHeavyPerSeat) {
-      found.push({ connectionId, rule: "c-heavy-limit" });
-    }
-    if (seated.some((agent) => breaksQuietSeat(agent, seated, settings))) {
-      found.push({ connectionId, rule: "g-quiet-seat" });
-    }
+    found.push(...companyBreaks(seated, settings).map((rule) => ({ connectionId, rule })));
+  }
+  return found;
+}
+
+/** Items b, c and g: what the agents on one seat break by sitting together. */
+function companyBreaks(
+  seated: readonly AgentPlace[],
+  settings: SeatMoverSettings,
+): Break["rule"][] {
+  const found: Break["rule"][] = [];
+  if (seated.length > 1 && seated.some((agent) => isReviewer(agent, settings))) {
+    found.push("b-reviewer-not-alone");
+  }
+  const heavy = seated.filter((agent) => countsAsHeavy(agent, settings)).length;
+  if (heavy > settings.maxHeavyPerSeat) {
+    found.push("c-heavy-limit");
+  }
+  if (seated.some((agent) => breaksQuietSeat(agent, seated, settings))) {
+    found.push("g-quiet-seat");
   }
   return found;
 }
