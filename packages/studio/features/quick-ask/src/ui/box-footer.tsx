@@ -27,7 +27,7 @@ export interface BoxFooterProps {
  */
 export function BoxFooter({ answer, lastAnswer, onOpenChat, onOpenLastAnswer }: BoxFooterProps) {
   return (
-    <footer className="flex items-center gap-4 border-t border-border bg-surface-subtle px-3.5 py-3 text-caption text-fg-muted">
+    <footer className="flex shrink-0 items-center gap-4 border-t border-border bg-surface-subtle px-3.5 py-3 text-caption text-fg-muted">
       {answer === undefined ? (
         <>
           <Hints />

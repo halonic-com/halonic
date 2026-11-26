@@ -84,6 +84,8 @@ verifies("quick-ask.box", () => {
       expect(
         page.querySelector("[data-answer]")?.closest("[aria-live]")?.getAttribute("aria-live"),
       ).toBe("polite");
+      // Only the answer is announced, not the question the person just typed.
+      expect(page.querySelector("[data-question]")?.closest("[aria-live]")).toBeNull();
       expect(page.querySelector("[data-working]")).toBeNull();
       expect(textBox(page).placeholder).toBe("Reply to Chief");
       expect(page.querySelector("footer")?.textContent).toBe("CopyOpen in Messenger");
