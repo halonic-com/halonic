@@ -1,5 +1,12 @@
 import type { StepContext, StepOutcome } from "../runner.ts";
-import { clickOrWhyNot, clickWhenShown, lastWords, waitForText } from "../screen.ts";
+import {
+  clickOrWhyNot,
+  clickPlaceWhenShown,
+  clickWhenShown,
+  lastWords,
+  waitForText,
+} from "../screen.ts";
+import { keys } from "../webdriver.ts";
 import { buttonLabels, closeSettingsLabel, errorCodeIn, screenText, words } from "../words.ts";
 
 /** How long Studio may take to start its engine on a fresh profile (the WSL import included). */
@@ -75,10 +82,33 @@ export async function openSettingsSection(context: StepContext, row: string): Pr
 }
 
 async function openSettings(context: StepContext): Promise<boolean> {
-  const { settings } = buttonLabels;
+  return openPlace(context, buttonLabels.settings.text);
+}
+
+/**
+ * Opens a place, such as Inbox, from the Places list unless the list shows already. The place is
+ * clicked inside the list, not anywhere on the page (HAL-19099).
+ */
+export async function openPlace(context: StepContext, name: string): Promise<boolean> {
   return (
-    (await clickWhenShown(context, settings.text, 2_000)) ||
+    (await clickPlaceWhenShown(context, name, 2_000)) ||
     ((await clickWhenShown(context, screenText.places.text, 10_000)) &&
-      (await clickWhenShown(context, settings.text, 10_000)))
+      (await clickPlaceWhenShown(context, name, 10_000)))
   );
 }
+
+/**
+ * Closes the dialogs an earlier step left open, such as Settings after
+ * Connect Paperclip, which cover the Places button (run 45700568549).
+ */
+export async function closeDialogs(context: StepContext): Promise<void> {
+  for (let tries = 0; tries < 3; tries += 1) {
+    const open = await context.driver.count(openDialog).catch(() => 0);
+    if (open === 0) return;
+    await context.driver.pressKeys([keys.escape]);
+    await context.sleep(500);
+  }
+}
+
+/** An open dialog: the kit's are native `<dialog>` elements, with no role unless an alert. */
+export const openDialog = "//dialog[@open]";

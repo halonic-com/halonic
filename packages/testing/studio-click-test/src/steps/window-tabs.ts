@@ -10,7 +10,7 @@ export const tabXpath = `//*[@role='tablist' and @aria-label='${basicsText.openT
 const tabWaitMs = 10_000;
 
 /**
- * Step 9: the window tabs. **+** (New tab) adds a tab, Ctrl W closes the active one and
+ * Step 15: the window tabs. **+** (New tab) adds a tab, Ctrl W closes the active one and
  * Ctrl Shift T brings it back, each counted in the Open tabs strip. **+** also opens Ctrl K over
  * the new tab, a modal dialog that keeps the window keys off, so Esc closes it first.
  */

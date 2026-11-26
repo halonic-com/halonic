@@ -64,7 +64,7 @@ verifies("studio-click-test.try-it-steps", () => {
     ]);
   });
 
-  describe("step 14, the chat comes back", () => {
+  describe("step 20, the chat comes back", () => {
     // Run 45712554139: the Settings a step before left open covered the window.
     it("closes a Settings left open first", async () => {
       const studio = studioOnWriter(probeMessage);
@@ -108,7 +108,7 @@ verifies("studio-click-test.try-it-steps", () => {
     });
   });
 
-  describe("step 15, a key is held", () => {
+  describe("step 21, a key is held", () => {
     it("sees the key line with the key out of the chat, then Send anyway sends it", async () => {
       const studio = studioWithKeyCheck(holdsTheKey);
       await expect(keyHeld.run(studio.context)).resolves.toEqual({ passed: true });

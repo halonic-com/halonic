@@ -107,9 +107,21 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ steps.commit.outputs.sha }}
+        # Only a run of this workflow, in this repo, counts: any other
+        # workflow, a fork pull request's included, could upload an artifact
+        # with that name (Liam, HAL-18353 review).
         run: |
-          run="$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=halonic-installers-$SHA&per_page=10" \
-            --jq '[.artifacts[] | select(.expired | not)][0].workflow_run.id // empty')"
+          run=""
+          for candidate in $(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=halonic-installers-$SHA&per_page=10" \
+            --jq '.artifacts[] | select(.expired | not) | .workflow_run.id'); do
+            source="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$candidate" --jq '"\(.path) \(.head_repository.full_name) \(.event)"')"
+            case "$source" in
+              ".github/workflows/studio-preview.yml $GITHUB_REPOSITORY push" | ".github/workflows/studio-preview.yml $GITHUB_REPOSITORY workflow_dispatch")
+                run="$candidate"
+                break
+                ;;
+            esac
+          done
           echo "run=$run" >> "$GITHUB_OUTPUT"
           if [ -n "$run" ]; then
             echo "Reusing the installers run $run built from $SHA." >> "$GITHUB_STEP_SUMMARY"
@@ -310,9 +322,10 @@ jobs:
     # runner of its own: the upgrade install, the Start menu shortcut, WSL as
     # on a PC, and a throwaway Paperclip that holds no secret.
     name: Click through the installed app
-    needs: [resolve, installer]
-    # The installer job is skipped when the run reuses an earlier one's setups.
-    if: ${{ !cancelled() && needs.resolve.result == 'success' && needs.installer.result != 'failure' }}
+    needs: [resolve, wsl-runtime, wsl-image, installer]
+    # The build jobs are skipped when the run reuses an earlier one's setups;
+    # a failed one (a WSL job's included) leaves nothing to test.
+    if: ${{ !cancelled() && needs.resolve.result == 'success' && !contains(needs.*.result, 'failure') }}
     concurrency:
       group: studio-preview-click-test-${{ inputs.nightly && 'nightly' || github.ref }}
       cancel-in-progress: false
@@ -415,7 +428,8 @@ jobs:
           $sha = (Get-FileHash $zip -Algorithm SHA256).Hash
           Expand-Archive $zip (Join-Path $env:RUNNER_TEMP 'edgedriver')
           "### Click-test driver`n`nmsedgedriver $version for WebView2 $version, edgedriver_win64.zip SHA-256 $sha" >> $env:GITHUB_STEP_SUMMARY
-      - name: Wait for the Paperclip and seed it
+      # The suite seeds it (src/test-paperclip.ts), so its steps know the ids.
+      - name: Wait for the Paperclip
         run: |
           $pcHome = Join-Path $env:RUNNER_TEMP 'paperclip'
           $url = 'http://127.0.0.1:3100'
@@ -430,10 +444,6 @@ jobs:
             foreach ($log in 'out.log', 'err.log') { "--- $log"; Get-Content (Join-Path $pcHome $log) -Tail 40 -ErrorAction SilentlyContinue }
             throw 'Paperclip never answered /api/health'
           }
-          $post = { param($path, $body) Invoke-RestMethod "$url$path" -Method Post -ContentType 'application/json' -Body ($body | ConvertTo-Json -Depth 5) }
-          $company = & $post '/api/companies' @{ name = 'Acme Click Test' }
-          & $post "/api/companies/$($company.id)/issues" @{ title = 'Acme: answer the click test' } | Out-Null
-          & $post "/api/companies/$($company.id)/approvals" @{ type = 'approve_ceo_strategy'; payload = @{ plan = 'Acme click-test card' } } | Out-Null
           "PAPERCLIP_URL=$url" >> $env:GITHUB_ENV
       # A merge's build runs the short check plus the steps its change touched
       # since main's last green build (HAL-18863), so builds skipped or failed

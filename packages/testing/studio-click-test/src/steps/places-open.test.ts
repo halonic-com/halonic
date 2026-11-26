@@ -36,7 +36,7 @@ function shownPage(name: string): string {
 }
 
 verifies("studio-click-test.places-open", () => {
-  describe("step 16, the places open", () => {
+  describe("step 22, the places open", () => {
     it("closes Settings, then opens each place from the Places list and passes on its text", async () => {
       const studio = studioWithPlaces(shownPage);
       await expect(placesOpen.run(studio.context)).resolves.toEqual({ passed: true });
