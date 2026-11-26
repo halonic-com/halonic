@@ -2,8 +2,14 @@
 export interface ClickTestRun {
   /** The run's page on GitHub. */
   readonly url: string;
-  /** The name of the workflow that ran. */
-  readonly workflowName: string;
+  /** The repository the run was read from, as `owner/name`. */
+  readonly repository: string;
+  /** The workflow file that ran, such as `.github/workflows/studio-preview.yml`. */
+  readonly path: string;
+  /** The repository the run's code came from: a fork's pull request names the fork. */
+  readonly headRepository: string;
+  /** What started the run, such as `push` or `workflow_dispatch`. */
+  readonly event: string;
   /** The run's `results.md`: the pass/fail table. */
   readonly table: string;
   /** The step screenshots, by file name, such as `01-engine-answers.png`. */
@@ -28,8 +34,14 @@ export interface EvidenceTarget {
   comment(task: string, body: string): Promise<void>;
 }
 
-/** The workflow whose runs hold click-test evidence; another workflow's artifact isn't trusted. */
-export const clickTestWorkflow = "Studio preview (Windows, unsigned)";
+/**
+ * The workflow whose runs hold click-test evidence. A name can be copied, so a run counts only by
+ * its workflow file, in the repository itself, started by a push or by hand, the way the installer
+ * lookup in that workflow trusts an artifact: a fork's pull request could otherwise upload a
+ * crafted `halonic-click-test` that an agent's key then posts (Liam, HAL-18354 review).
+ */
+export const clickTestWorkflow = ".github/workflows/studio-preview.yml";
+const trustedEvents: readonly string[] = ["push", "workflow_dispatch"];
 
 /** A screenshot name the click test's runner writes; anything else in the artifact isn't posted. */
 const screenshotName = /^\d{2}-[a-z0-9-]+\.png$/;
@@ -47,9 +59,8 @@ export async function postClickTestEvidence(
 ): Promise<string> {
   if (!/^\d+$/.test(runId)) throw new Error(`"${runId}" isn't a GitHub run id`);
   const run = await github.read(runId);
-  if (run.workflowName !== clickTestWorkflow) {
-    throw new Error(`run ${runId} is a "${run.workflowName}" run, not "${clickTestWorkflow}"`);
-  }
+  const untrusted = whyUntrusted(run);
+  if (untrusted !== undefined) throw new Error(`run ${runId} ${untrusted}`);
   if (run.table.trim() === "") throw new Error(`run ${runId} has no results table`);
   let table = run.table;
   for (const screenshot of run.screenshots) {
@@ -60,4 +71,15 @@ export async function postClickTestEvidence(
   const body = `${table.trimEnd()}\n\nFrom [run ${runId}](${run.url}).\n`;
   await paperclip.comment(task, body);
   return body;
+}
+
+// Why the run's artifact can't be trusted, or undefined when it can.
+function whyUntrusted(run: ClickTestRun): string | undefined {
+  if (run.path !== clickTestWorkflow) return `ran ${run.path}, not ${clickTestWorkflow}`;
+  if (run.headRepository !== run.repository) {
+    return `ran code from ${run.headRepository}, not ${run.repository}`;
+  }
+  if (!trustedEvents.includes(run.event))
+    return `was started by ${run.event}, not a push or by hand`;
+  return undefined;
 }
