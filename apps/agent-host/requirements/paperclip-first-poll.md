@@ -8,9 +8,9 @@ When a Paperclip sign-in connects a source, the agent host shall read every conn
 
 ## Examples
 
-- Given a window in front and a poll due in 30 seconds,
+- Given a window open, no live events and a poll due in 5 seconds,
   when a sign-in connects a source,
-  then the engine reads the connections at once, and next 30 seconds after that read.
+  then the engine reads the connections at once, and next 10 seconds after that read.
 - Given a host whose polling has stopped,
   when a sign-in connects a source,
   then no read happens.

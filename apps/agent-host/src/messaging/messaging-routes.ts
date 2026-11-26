@@ -1,4 +1,5 @@
 import type { ServerResponse } from "node:http";
+import type { SyncScheduler } from "@halonicjs/host-paperclip-sync";
 import { readInboxAnswer } from "@halonicjs/host-server";
 import type { AgentMessaging, AnswerResult, AttachmentRead, TeamRunsQuery } from "@halonicjs/ports";
 import { type Infer, type Schema, s } from "@halonicjs/schema-kit";
@@ -6,7 +7,6 @@ import { paperclipConnectionNamePattern } from "../paperclip/paperclip-key-route
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
 import type { DesktopMessaging } from "./desktop-messaging.ts";
-import type { MessagingPoller } from "./messaging-poller.ts";
 import type { ReplyWatch } from "./reply-watch.ts";
 import { serverEngineMessage } from "./server-engine.ts";
 import type { WorkspaceMessaging } from "./workspace-messaging.ts";
@@ -48,8 +48,9 @@ const disconnectBody = s
 /** What the messaging routes reach. */
 export interface MessagingRouteDeps {
   messaging: DesktopMessaging;
-  poller: MessagingPoller;
-  /** The conversations a send waits on, which make the poller read every 5 seconds. */
+  /** When the sync polls: a send and Studio's focus change it. */
+  sync: SyncScheduler;
+  /** The conversations a send waits on, which make the sync poll every 5 seconds. */
   replies: ReplyWatch;
   /** Where the host writes what failed; never a key. */
   log: (text: string) => void;
@@ -68,7 +69,7 @@ type ReadBody = Infer<typeof readBody>;
  *   takes (an answer it doesn't is refused with `bad-answer`), and
  *   `POST /v1/messaging/send` with `{ conversation, body }` answer
  *   `{ result }`: the source answers or refuses, and offline nothing is kept
- *   to send later. A message sent makes the poller read every 5 seconds
+ *   to send later. A message sent makes the sync poll every 5 seconds
  *   while its conversation waits for the agent (`agent-host.paperclip-polling`).
  * - `POST /v1/messaging/attachment` with `{ attachment }` answers
  *   `{ result }`: the bytes as base64url with their type, or why they were
@@ -77,8 +78,8 @@ type ReadBody = Infer<typeof readBody>;
  *   the sources that changed since Studio's last look. With `wait: true` it
  *   answers as soon as one has, or with none after about 25 seconds: a long
  *   poll, so Studio hears of a change at once without asking every few seconds.
- * - `POST /v1/messaging/focus` with `{ inFront }` tells the poller whether
- *   Studio's window is in front.
+ * - `POST /v1/messaging/focus` with `{ inFront }` tells the sync whether
+ *   Studio's window is open and in front, which sets how often it polls.
  * - `POST /v1/messaging/runs` with `{ agent?, since? }` answers `{ items }`:
  *   each source's `TeamRuns`, the live runs and the finished ones since
  *   `since`, kept in memory only (`agent-host.team-activity-routes`).
@@ -152,7 +153,7 @@ export function messagingRoutes(deps: MessagingRouteDeps): HostRoute[] {
       const result = await messaging.messaging.send(body.conversation, body.body);
       if (result.outcome === "sent") {
         deps.replies.watch(messaging.messaging, body.conversation);
-        await deps.poller.expectReply();
+        await deps.sync.expectReply();
       }
       return { result };
     }),
@@ -192,7 +193,7 @@ export function messagingRoutes(deps: MessagingRouteDeps): HostRoute[] {
       sendJson(response, 200, disconnected);
     }),
     route("/v1/messaging/focus", focusBody, async (body, response) => {
-      await deps.poller.setInFront(body.inFront);
+      await deps.sync.setWindowOpen(body.inFront);
       sendJson(response, 200, {});
     }),
   ];

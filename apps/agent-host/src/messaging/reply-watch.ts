@@ -1,5 +1,5 @@
+import { pollRates } from "@halonicjs/host-paperclip-sync";
 import type { AgentMessaging, Clock, Conversation, MessagingId } from "@halonicjs/ports";
-import { fastPollWindowMs } from "./messaging-poller.ts";
 
 /** One conversation the person sent to, in the messaging that holds it. */
 interface Watched {
@@ -18,7 +18,7 @@ export interface ReplyWatchOptions {
 
 /**
  * The conversations the person sent to and whose agent hasn't answered yet,
- * for the poller's fast reads (requirement `agent-host.paperclip-polling`).
+ * for the sync's fast polls (requirement `agent-host.paperclip-polling`).
  * Each check is one read of the conversation list, never of a conversation's
  * messages, so a fast poll costs the source a list read and nothing more: a
  * conversation waits for its agent while its agent is working on it, or until
@@ -27,9 +27,9 @@ export interface ReplyWatchOptions {
  *
  * @example
  * const replies = new ReplyWatch({ clock, report });
- * const poller = new MessagingPoller({ scheduler, clock, poll, waiting: () => replies.waiting() });
+ * const sync = new SyncScheduler({ scheduler, clock, poll, waiting: () => replies.waiting() });
  * replies.watch(messaging, conversation);
- * await poller.expectReply();
+ * await sync.expectReply();
  */
 export class ReplyWatch {
   readonly #clock: Clock;
@@ -52,7 +52,7 @@ export class ReplyWatch {
 
   /** Whether any watched conversation still waits for its agent. Never rejects. */
   async waiting(): Promise<boolean> {
-    const since = this.#clock.now().getTime() - fastPollWindowMs;
+    const since = this.#clock.now().getTime() - pollRates.waitingForMs;
     const recent = this.#watched.filter((each) => each.sentAt > since);
     const messagings = [...new Set(recent.map((each) => each.messaging))];
     // One list read per messaging, however many of its conversations are watched.

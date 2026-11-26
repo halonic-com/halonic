@@ -90,8 +90,9 @@ function servedFromCache<Item extends object>(item: Item): Item {
  *
  * @example
  * const hub = new TeamStatusHub({ providers, clock, folder, workspaceRoots, warn, report });
- * const poller = new MessagingPoller({ scheduler, clock, poll: () => hub.refresh(),
- *   timer: teamStatusTickTimer, every: { inFrontMs: teamStatusMaxAgeMs, inBackgroundMs: teamStatusMaxAgeMs } });
+ * const every = { windowOpenMs: teamStatusMaxAgeMs, windowClosedMs: teamStatusMaxAgeMs };
+ * const tick = new SyncScheduler({ scheduler, clock, poll: () => hub.refresh(), timer: teamStatusTickTimer,
+ *   rates: { ...pollRates, connected: every, down: every } });
  */
 export class TeamStatusHub implements TeamStatus {
   readonly #providers: readonly NamedTeamStatusProvider[];
