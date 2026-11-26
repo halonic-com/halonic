@@ -23,6 +23,7 @@ import {
   trialResultsDeclaration,
 } from "./trial-results-declaration.ts";
 import { pluginVersion } from "./version.ts";
+import { wakeHoldConfigProperties } from "./wake-hold-declaration.ts";
 
 /**
  * The capability of our local server patch (HAL-16413). Paperclip's shared
@@ -324,6 +325,7 @@ export const manifest: PaperclipPluginManifestV1 = {
       },
       ...trialResultsConfigProperties,
       ...statePacketConfigProperties,
+      ...wakeHoldConfigProperties,
       ...chiefLine.properties,
     },
   },

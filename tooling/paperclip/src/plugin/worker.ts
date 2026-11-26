@@ -42,6 +42,7 @@ import { thinSpecCheck } from "./thin-spec-check.ts";
 import { registerTools } from "./tools.ts";
 import { registerTrialResults } from "./trial-results.ts";
 import { measureWakeGate } from "./wake-gate-data.ts";
+import { registerWakeHold } from "./wake-hold.ts";
 import {
   handleWorkerAgentsRequest,
   registerWorkerAgentsData,
@@ -58,7 +59,8 @@ import {
  * new code task whose text looks thin, and answers the agent tools, the `gh` wrapper's route,
  * the board's Worker agents page and the board's GitHub summary routes, and
  * builds the state packet the server asks for before a monitor wake's run, and
- * answers the front bot's run choice before a chat message's run.
+ * answers the front bot's run choice before a chat message's run and
+ * whether to hold a chat message's wake.
  */
 let context: PluginContext | undefined;
 /** The companies the jobs dispatch to, learnt from scoped calls (see companies.ts). */
@@ -124,6 +126,7 @@ export const plugin = definePlugin({
     const botPending = pendingMessages();
     const bot = frontBot(ctx, { ...botDeps, ...lookupDeps }, botQueue, botPending);
     registerRunChoice(ctx, botPending);
+    registerWakeHold(ctx);
     // Off unless the board turns them on too; reads only Paperclip's own API for the run (HAL-19218).
     const notes = progressNotes(
       ctx,

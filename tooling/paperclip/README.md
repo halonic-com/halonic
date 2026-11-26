@@ -952,6 +952,23 @@ effort, and the front bot's first-reply call has already read it.
   on. It goes on only after HAL-17402 is live and step 1 has been measured.
   Requirement `paperclip.front-bot-run-choice`.
 
+## Wake-hold for chat bursts
+
+HAL-19315, the plugin half of HAL-19292 (design in HAL-19223's
+`wake-hold-draft`). Before Paperclip wakes a chat's agent for a person's
+message, the server's patch asks the data key `wake-hold`
+(`src/plugin/wake-hold.ts`) with `{ companyId, issueId, owedCount,
+oldestOwedAt, newestOwedAt }`, never message text.
+
+- **Wake now** when `wakeHoldEnabled` is off (the default), when the task
+  isn't one of the company's chat tasks, or when a run on it is live (a
+  message sent during a run already waits for it).
+- **Otherwise a sliding hold:** `{ wake: "after", seconds }`, the setting
+  `wakeHoldSeconds` (whole number 1–10, default 3) minus the seconds since the
+  newest owed message, rounded up and at least 1; now once that has passed.
+- No model or network call. The server waits at most 300 ms for the answer
+  and never holds a message longer than 15 s. Requirement `paperclip.wake-hold`.
+
 ## State packet in monitor wakes
 
 HAL-17402, with Liam's design review of 24 Nov. A wait-check run usually spends
