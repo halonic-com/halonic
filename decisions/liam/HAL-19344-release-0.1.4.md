@@ -1,9 +1,8 @@
 # Decision: the request log names a retry, and the integration entry offers `retryDelayMs`
 
-- Approval: Liam OK'd the HAL-19172 plan (section 2.1, PR 1) on 26 Nov, with each attempt logged with `retry: 1 | 2` and Google's `retryDelayMs` moved into the kit; he approves this note in review
+- Approval: Liam OK'd the HAL-19172 plan (section 2.1, PR 1) on 26 Nov, with each attempt logged with `retry: 1 | 2` and Google's `retryDelayMs` moved into the kit, and signed this note on #6366; this pull request carries #6366 unchanged into the kit's 0.1.4 release branch, so Julian signs it here, as Liam wrote it
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:vQH1+7+G8/hsmXkvbJwGmM9vS2BcGiai7R4KxsJwePttUFNpAFl4Oz+fYvULrHStEsxL3RXibJQ78SjSxHy1Dg==
-- Task: HAL-19184, PR 1 of the HAL-19172 plan
+- Task: HAL-19344 (release 0.1.4), carrying HAL-19184, PR 1 of the HAL-19172 plan
 
 ## What changes
 
