@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19778 (Julian's security review on HAL-19649, 26 Nov 12:08 UTC, [major] and [minor] items; the board's ci-fasttrack item 1 on HAL-19248)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:SVSsYwDT9LcZBhR3iUOBZVl+l4oFfPnJHFhfwr/xJKpH6PQlwWwwPT818bJ3LL24zDzr1zGMJNUUoTCfOqgfBw==
 
 Merge control's change-request rule let another reviewer's approval clear an open change request: after "Liam: approved on head X", "Liam: changes requested on head X", a later "Nora: approved on head X" (or Julian's) queued the pull request. Now a change request stays open until the same reviewer approves the head after it, or the author pushes after it. The same pass bundles Julian's minor items.
 
