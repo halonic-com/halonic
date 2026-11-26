@@ -83,6 +83,11 @@ export const serverErrors = {
     code: "routine_not_found",
     message: "There is no such routine.",
   },
+  answerNotFound: {
+    status: 404,
+    code: "answer_not_found",
+    message: "This run has no such answer open.",
+  },
   eventNotAccepted: {
     status: 409,
     code: "event_not_accepted",

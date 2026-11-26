@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { Server } from "./api.ts";
 import { manyUserRouteTable } from "./many-user-routes.ts";
 import type { ManyUserPorts, RunOwnership } from "./many-users-api.ts";
+import { memoryAnswerHandles } from "./memory-answer-handles.test-helper.ts";
 import { memoryRunOwnership } from "./memory-run-ownership.test-helper.ts";
 import { describeRoutes, type RouteDescription } from "./route-table.ts";
 import { ids, StubSessionVerifier } from "./stub-session-verifier.test-helper.ts";
@@ -45,6 +46,7 @@ function setup() {
     run_bob: { startedBy: ids.bob, visibility: "private" },
   };
   const ownership = memoryRunOwnership(owners);
+  const answers = memoryAnswerHandles();
   const acted: string[] = [];
   const executor = {
     start: async (request: { runId: string }) => {
@@ -73,7 +75,7 @@ function setup() {
       "carol-token": member(carol, "admin"),
     }),
     cookieName: "acme-session",
-    scopedRuns: () => ({ runs: executor, runStore, ownership }),
+    scopedRuns: () => ({ runs: executor, runStore, ownership, answers }),
   };
   const server = testServer({
     passwordHash: null,
@@ -84,7 +86,7 @@ function setup() {
     config: { allowedHosts: [host], maxBodyBytes: 4096 },
     manyUsers,
   });
-  return { server, acted, ownership };
+  return { server, acted, ownership, answers };
 }
 
 function call(server: Server, token: string, method: string, path: string, body?: unknown) {
@@ -105,8 +107,20 @@ function callRoute(server: Server, token: string, route: RouteDescription, runId
     const start = { hubId: "acme", workflowId: "review", agentId: "triage", prompt: "hi", runId };
     return call(server, token, route.method, path, start);
   }
-  const body = route.method === "POST" ? { event: "approve" } : undefined;
+  const body = route.method === "POST" ? approveWith("ah_any") : undefined;
   return call(server, token, route.method, path, body);
+}
+
+/** The body that approves with a handle. */
+const approveWith = (handle: string) => ({ handle, payload: { approved: true } });
+
+/** Stores an approval handle for the run's call `call-1`, as reading the run would. */
+function storeApproval(answers: ReturnType<typeof memoryAnswerHandles>, runId: string) {
+  const answer = {
+    point: { kind: "approval", callId: "call-1" },
+    waitingSince: "2026-11-25T09:01:00.000Z",
+  } as const;
+  return answers.claim(runId, "approval call-1", "ah_approveAAAA", answer);
 }
 
 const routesOf = (...kinds: RouteDescription["kind"][]) =>
@@ -161,9 +175,13 @@ describe("runs belong to whoever started them", () => {
       expect(shown).not.toHaveProperty("context");
       const events = await call(server, "carol-token", "GET", "/api/runs/run_private/events");
       expect(events.status).toBe(403);
-      const answer = await call(server, "carol-token", "POST", "/api/runs/run_private/events", {
-        event: "approve",
-      });
+      const answer = await call(
+        server,
+        "carol-token",
+        "POST",
+        "/api/runs/run_private/events",
+        approveWith("ah_approveAAAA"),
+      );
       expect(answer.status).toBe(403);
       const cancel = await call(server, "carol-token", "POST", "/api/runs/run_private/cancel", {});
       expect(cancel.status).toBe(200);
@@ -171,10 +189,15 @@ describe("runs belong to whoever started them", () => {
     });
 
     it("lets whoever started a run answer it", async () => {
-      const { server, acted } = setup();
-      const answer = await call(server, "alice-token", "POST", "/api/runs/run_private/events", {
-        event: "approve",
-      });
+      const { server, acted, answers } = setup();
+      const handle = await storeApproval(answers, "run_private");
+      const answer = await call(
+        server,
+        "alice-token",
+        "POST",
+        "/api/runs/run_private/events",
+        approveWith(handle),
+      );
       expect(answer.status).toBe(200);
       expect(acted).toEqual(["send run_private"]);
     });

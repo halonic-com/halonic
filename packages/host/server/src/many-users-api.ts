@@ -1,3 +1,4 @@
+import type { WaitingPoint } from "@halonicjs/events";
 import type { ServerPorts } from "./api.ts";
 import type { CloudSignInPorts } from "./cloud-sign-in-api.ts";
 import type { Principal } from "./principal.ts";
@@ -30,6 +31,38 @@ export interface RunOwnershipStore {
 }
 
 /**
+ * What one answer handle stands for: the run's waiting point, and when the run started that wait
+ * (its summary's `lastWaitingAt`), so an answer to a wait that has since moved on is refused.
+ */
+export interface StoredAnswer {
+  readonly point: WaitingPoint;
+  readonly waitingSince: string;
+}
+
+/**
+ * One scope's answer handles: the opaque ids an end user answers a waiting run with, instead of
+ * an event name, a call id or a state. A handle belongs to one run and is spent by its first use.
+ */
+export interface AnswerHandleStore {
+  /**
+   * The unspent handle stored for this waiting point of the run, storing `candidate` for it
+   * when there is none, in one step, so two readers of one wait get the same handle.
+   *
+   * @param pointKey - names the point and its wait; a later wait at the same step has another key
+   * @returns the handle now stored for the point
+   */
+  claim(runId: string, pointKey: string, candidate: string, answer: StoredAnswer): Promise<string>;
+  /** What an unspent handle of the run stands for, or `null` for any other handle. */
+  get(runId: string, handle: string): Promise<StoredAnswer | null>;
+  /**
+   * Spends the handle in one step, so it answers only once.
+   *
+   * @returns `true` for the one call that spent it, `false` when it was spent or never stored
+   */
+  spend(runId: string, handle: string): Promise<boolean>;
+}
+
+/**
  * The run ports of one scope: the runs and run list a principal's scope owns, and who started
  * each run. Two principals with different scopes get ports that share no stored data.
  */
@@ -41,6 +74,11 @@ export type ScopedRunPorts = Pick<ServerPorts, "runs" | "runStore"> & {
   readonly ownership?: RunOwnershipStore;
   /** Who may see a run the principal starts; `private` when the scope sets nothing. */
   readonly defaultRunVisibility?: RunVisibility;
+  /**
+   * The scope's answer handles. Without it no handle is ever stored, so no end user can answer
+   * a run: every handle answers as unknown.
+   */
+  readonly answers?: AnswerHandleStore;
 };
 
 /** What the account menu shows of a scope's use of its plan (S2-25). */
