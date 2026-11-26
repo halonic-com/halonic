@@ -33,6 +33,11 @@ export interface ReadMarks {
   markRead(keys: readonly string[]): void;
   /** Marks an item unread again, as **Mark as unread** does. */
   markUnread(key: string): void;
+  /**
+   * Calls `listener` after each change this page makes, so the sidebar's new count follows it
+   * (`inbox.sidebar-new`). Returns a function that stops the calls.
+   */
+  subscribe(listener: () => void): () => void;
 }
 
 /**
@@ -52,6 +57,7 @@ export class StoredReadMarks implements ReadMarks {
   #marks: Map<string, string> | undefined;
   /** The last write failed: the marks live only in this page until one lands. */
   #unsaved = false;
+  readonly #listeners = new Set<() => void>();
 
   constructor(storage: ReadMarkStorage | null, now: () => Date = () => new Date()) {
     this.#storage = storage;
@@ -75,6 +81,11 @@ export class StoredReadMarks implements ReadMarks {
     const marks = this.#fresh();
     if (!marks.delete(key)) return;
     this.#write(marks);
+  }
+
+  subscribe(listener: () => void): () => void {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
   }
 
   /** The marks as another window may have just written them, now this page's copy. */
@@ -113,5 +124,7 @@ export class StoredReadMarks implements ReadMarks {
       this.#unsaved = true;
       console.error("Couldn't keep the Inbox's read marks on this device.", error);
     }
+    // This page's marks changed whether or not storage took them.
+    for (const listener of [...this.#listeners]) listener();
   }
 }

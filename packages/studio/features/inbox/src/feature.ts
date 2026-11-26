@@ -20,6 +20,7 @@ import {
   ServedHomeHintService,
 } from "./api.ts";
 import { Inbox } from "./inbox.ts";
+import { inboxNewSignal } from "./inbox-count.ts";
 import type { InboxNotices } from "./notices/inbox-notices.ts";
 import { joinInboxNotices } from "./notices/merge-notices.ts";
 import { StoredReadMarks } from "./read-marks.ts";
@@ -96,9 +97,20 @@ export const inboxFeature = defineFeature({
       id: "inbox",
       view: "InboxPage",
       load: () => import("./ui/inbox-page.tsx"),
-      signal: (context) => context.services.get(InboxService).signal(),
-      subscribeSignal: (context, listener) =>
-        context.services.get(InboxService).subscribe(listener),
+      // The new items, not all that wait: Home's Needs you keeps that count (inbox.sidebar-new).
+      signal: (context) => {
+        const inbox = context.services.get(InboxService);
+        return inboxNewSignal(inbox.state.items, inbox.readMarks);
+      },
+      subscribeSignal: (context, listener) => {
+        const inbox = context.services.get(InboxService);
+        const stopItems = inbox.subscribe(listener);
+        const stopMarks = inbox.readMarks.subscribe(listener);
+        return () => {
+          stopItems();
+          stopMarks();
+        };
+      },
     });
     // The Inbox's own window, Halonic Inbox (shell.focused-apps): the same page, its list on the
     // frame and the item on a framed panel beside it (inbox.framed-sidebar).

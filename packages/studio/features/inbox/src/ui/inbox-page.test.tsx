@@ -90,7 +90,11 @@ verifies("inbox.page", () => {
       const place = shell.contributions.places.list().find((added) => added.id === "inbox");
       const context = shell.services.contextFor("inbox", workspace);
       await workspace.get(InboxService).refresh();
-      expect(place?.signal?.(context)).toEqual({ mark: "count", value: 1, spoken: "1 waiting" });
+      expect(place?.signal?.(context)).toEqual({
+        mark: "new",
+        value: 1,
+        spoken: "1 new, 1 waiting",
+      });
 
       const listener = vi.fn();
       const stop = place?.subscribeSignal?.(context, listener);

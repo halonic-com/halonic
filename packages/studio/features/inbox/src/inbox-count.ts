@@ -1,5 +1,6 @@
 import type { PlaceSignal } from "@halonicjs/studio-shell";
 import type { InboxItem } from "./inbox-items.ts";
+import { type ReadMarks, readKey } from "./read-marks.ts";
 
 /**
  * The Inbox's count for the sidebar, Home's Needs you and the phone's bar:
@@ -12,6 +13,20 @@ import type { InboxItem } from "./inbox-items.ts";
 export function inboxSignal(items: readonly InboxItem[]): PlaceSignal {
   const waiting = waitingCount(items);
   return { mark: "count", value: waiting, spoken: `${waiting} waiting` };
+}
+
+/**
+ * The Inbox's place in the sidebar and the phone's bar (`inbox.sidebar-new`): how many of the
+ * items that wait are new, as the Needs you heading counts them, with the place's name semibold.
+ * A screen reader hears the new items, then all that wait. Nothing shows while nothing is new.
+ *
+ * @example
+ * inboxNewSignal(items, marks); // { mark: "new", value: 3, spoken: "3 new, 8 waiting" }
+ */
+export function inboxNewSignal(items: readonly InboxItem[], marks: ReadMarks): PlaceSignal {
+  const waiting = items.filter(waits);
+  const fresh = waiting.filter((item) => !marks.isRead(readKey(item))).length;
+  return { mark: "new", value: fresh, spoken: `${fresh} new, ${waiting.length} waiting` };
 }
 
 /** How many items still wait for you: a fixed setup item stays in the list but doesn't wait. */
