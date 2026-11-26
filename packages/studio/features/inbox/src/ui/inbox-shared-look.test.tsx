@@ -89,7 +89,7 @@ verifies("inbox.row-marks", () => {
     expect(mark("Ship 0.2 today?")?.textContent).toBe("C");
   });
 
-  it("starts a question from a person, not an agent, with a question mark", async () => {
+  it("starts a question from a person, not an agent, with their initials on grey and a ? badge", async () => {
     const messaging = new FakeAgentMessaging({ now });
     const source = messaging.addSource({ label: "Paperclip · Acme", provider: "paperclip" });
     messaging.addInboxItem(source.id, {
@@ -98,8 +98,9 @@ verifies("inbox.row-marks", () => {
     });
     const { root } = await openInbox(fakeRuns([]).runs, messaging);
     const mark = rowTitled(root, "Which hostname?").querySelector('[aria-hidden="true"]');
-    expect(mark?.querySelector("circle")).not.toBeNull();
-    expect(mark?.textContent).toBe("");
+    expect(mark?.textContent).toBe("AS");
+    expect(mark?.innerHTML).not.toMatch(/bg-agent-/);
+    expect(mark?.querySelector("[data-avatar-badge] svg")).not.toBeNull();
   });
 });
 

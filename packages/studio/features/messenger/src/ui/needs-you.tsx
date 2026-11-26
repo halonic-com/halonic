@@ -1,5 +1,5 @@
-import type { MessagingId } from "@halonicjs/ports";
-import { Avatar, agentTint, Button, PlaceIcon } from "@halonicjs/studio-kit";
+import { inboxItemKind, type MessagingId } from "@halonicjs/ports";
+import { Avatar, agentTint, Button, KindIcon, PlaceIcon } from "@halonicjs/studio-kit";
 import { useSettleAway, useSettling } from "@halonicjs/studio-kit/settle";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { chatAgent } from "../chat-name.ts";
@@ -82,12 +82,15 @@ export function NeedsYouEntry({
 export function NeedsYouPanel({
   messenger,
   read,
+  pictureOf,
   onOpenChat,
   onAnswered,
 }: {
   readonly messenger: Messenger;
   /** Undefined until the first read landed. */
   readonly read: NeedsYouRead | undefined;
+  /** The asking agent's picture, by its ID, when it was read. */
+  readonly pictureOf: (agent: MessagingId) => ImageBitmap | undefined;
   readonly onOpenChat: (conversation: MessagingId) => void;
   /** A card was answered: the page reads what waits again. */
   readonly onAnswered: () => void;
@@ -164,6 +167,7 @@ export function NeedsYouPanel({
               <SettlingItem
                 key={each.card.id}
                 waiting={each}
+                picture={pictureOf(each.agentId)}
                 onOpenChat={onOpenChat}
                 onGone={() => {
                   answeredHere.current.delete(each.card.id);
@@ -175,6 +179,7 @@ export function NeedsYouPanel({
                 key={each.card.id}
                 messenger={messenger}
                 waiting={each}
+                picture={pictureOf(each.agentId)}
                 onOpenChat={onOpenChat}
                 onAnswered={(option) => answered(each.card.id, option)}
               />
@@ -188,21 +193,27 @@ export function NeedsYouPanel({
 
 const waitingKey = (waiting: WaitingCard): MessagingId => waiting.card.id;
 
-/** One waiting card: who asked and where, **Open chat**, then the chat's own card. */
+/**
+ * One waiting card: who asked and where, **Open chat**, then the chat's own card. Who asked shows
+ * as their picture, else their initial on their tint, with the card's kind as its badge, as in the
+ * Inbox (`messenger.needs-you-badge`).
+ */
 function WaitingItem({
   messenger,
   waiting,
+  picture,
   onOpenChat,
   onAnswered,
 }: {
   readonly messenger: Messenger;
   readonly waiting: WaitingCard;
+  readonly picture: ImageBitmap | undefined;
   readonly onOpenChat: (conversation: MessagingId) => void;
   readonly onAnswered: (option: string) => Promise<void>;
 }) {
   return (
     <li data-needs-you-card={waiting.card.id} className={itemClasses}>
-      <AskedBy waiting={waiting} onOpenChat={onOpenChat} />
+      <AskedBy waiting={waiting} picture={picture} onOpenChat={onOpenChat} />
       <ChatCard
         quickActions={messenger.quickActions}
         row={waiting.row}
@@ -217,10 +228,12 @@ function WaitingItem({
 /** A card that left the list as it ended: its final state for the kit's hold, then it settles out. */
 function SettlingItem({
   waiting,
+  picture,
   onOpenChat,
   onGone,
 }: {
   readonly waiting: WaitingCard;
+  readonly picture: ImageBitmap | undefined;
   readonly onOpenChat: (conversation: MessagingId) => void;
   readonly onGone: () => void;
 }) {
@@ -228,7 +241,7 @@ function SettlingItem({
   useSettleAway(item, onGone);
   return (
     <li ref={item} data-needs-you-settling={waiting.card.id} className={itemClasses}>
-      <AskedBy waiting={waiting} onOpenChat={onOpenChat} />
+      <AskedBy waiting={waiting} picture={picture} onOpenChat={onOpenChat} />
       <FinalCard card={waiting.card} />
     </li>
   );
@@ -239,18 +252,25 @@ const itemClasses = "mx-auto flex w-full max-w-3xl flex-col gap-2";
 /** Who asked and where, with **Open chat**. */
 function AskedBy({
   waiting,
+  picture,
   onOpenChat,
 }: {
   readonly waiting: WaitingCard;
+  readonly picture: ImageBitmap | undefined;
   readonly onOpenChat: (conversation: MessagingId) => void;
 }): ReactNode {
-  const { row, agent, agentId } = waiting;
+  const { card, row, agent, agentId } = waiting;
   // Where by name alone: "Liam · in Liam", not the full "Liam · CTO" of the list row.
   const where = chatAgent(row)?.name ?? row.conversation.title;
   return (
     <div className="flex items-center gap-2 text-small text-fg-muted">
       {/* The asker's tint, also in a channel, as on their messages there (Sofia, HAL-19777). */}
-      <Avatar name={agent} tint={agentTint(agentId)} />
+      <Avatar
+        name={agent}
+        tint={agentTint(agentId)}
+        picture={picture}
+        badge={<KindIcon kind={inboxItemKind(card)} />}
+      />
       <span className="min-w-0 flex-1 truncate">
         <bdi className="font-semibold text-fg">{agent}</bdi> · <bdi>{words.where(where)}</bdi>
       </span>

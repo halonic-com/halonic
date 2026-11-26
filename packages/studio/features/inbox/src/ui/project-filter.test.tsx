@@ -50,9 +50,17 @@ async function mixedInbox(projects = true) {
 
 function titles(root: HTMLElement): string[] {
   return [...root.querySelectorAll('[role="grid"] tr')]
-    .map((row) => row.querySelector('[role="gridcell"]')?.textContent ?? "")
+    .map((row) => shownText(row.querySelector('[role="gridcell"]')))
     .map((text) => text.replace(/\?.*$/s, "?"))
     .sort();
+}
+
+/** The text a reader gets, without the decoration: a person's initials on their row's picture. */
+function shownText(cell: Element | null): string {
+  const copy = cell?.cloneNode(true);
+  if (!(copy instanceof Element)) return "";
+  for (const hidden of copy.querySelectorAll('[aria-hidden="true"]')) hidden.remove();
+  return copy.textContent ?? "";
 }
 
 function chips(root: HTMLElement): HTMLElement[] {
