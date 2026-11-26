@@ -24,6 +24,8 @@ export const manifest: PaperclipPluginManifestV1 = {
     "database.namespace.read",
     "database.namespace.write",
     "jobs.schedule",
+    // seats.read calls ctx.companies.list() (src/plugin/companies.ts); without this every job run fails.
+    "companies.read",
     // Board-only routes: every route below says `auth: "board"`, and src/seats/plugin/routes.ts checks it again.
     "api.routes.register",
     // seat_usage: read-only, answers only the agents the board lists in seatUsageAgents.
