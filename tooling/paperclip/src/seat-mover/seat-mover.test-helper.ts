@@ -28,6 +28,7 @@ export function seat(
     method: "subscription",
     reading: { sessionPercent: session, weekPercent: week, weekResetsAt, at: now.toISOString() },
     quotaHit: false,
+    connected: true,
     ...rest,
   };
 }

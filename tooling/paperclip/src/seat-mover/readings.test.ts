@@ -55,6 +55,7 @@ verifies("paperclip.seat-mover-job", () => {
         at: fresh.at,
       },
       quotaHit: false,
+      connected: true,
     });
   });
 
@@ -86,7 +87,7 @@ verifies("paperclip.seat-mover-job", () => {
     expect(buildSeats(connections, readings, before, now, 45)[0]?.quotaHit).toBe(false);
   });
 
-  test("revoked connections are left out; a connection no readings seat names has no reading", () => {
+  test("a revoked connection stays as a seat that isn't connected; one no readings seat names has no reading", () => {
     const connections = parseConnections({
       connections: [
         connection("c-1"),
@@ -101,9 +102,12 @@ verifies("paperclip.seat-mover-job", () => {
       now,
       45,
     );
-    expect(seats.map((seat) => [seat.name, seat.method, seat.reading === undefined])).toEqual([
-      ["c-2", "api_key", true],
-      ["Noah", "subscription", false],
+    expect(
+      seats.map((seat) => [seat.name, seat.method, seat.reading === undefined, seat.connected]),
+    ).toEqual([
+      ["c-2", "api_key", true, true],
+      ["c-3", "subscription", true, false],
+      ["Noah", "subscription", false, true],
     ]);
   });
 });
