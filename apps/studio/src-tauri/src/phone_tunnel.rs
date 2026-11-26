@@ -87,13 +87,22 @@ pub async fn phone_computers<R: Runtime>(app: AppHandle<R>) -> ComputersAnswer {
     ComputersAnswer::Stopped(NO_TUNNEL)
 }
 
-/// Forgets a computer: its connection, its key and its details.
+/// Forgets a computer: its connection, its key, its details and what the
+/// phone saved of its Inbox and Messenger. Without a tunnel the page's own
+/// `SavedMessaging.forget()` still deletes the saved file, through
+/// `phone_saved_clear`.
 #[tauri::command]
 pub async fn phone_forget<R: Runtime>(app: AppHandle<R>, computer: String) -> ForgetOutcome {
     #[cfg(target_os = "android")]
     {
         if let Some(tunnel) = android::tunnel(&app) {
-            return tunnel.forget(&computer).await;
+            let outcome = tunnel.forget(&computer).await;
+            if matches!(outcome, ForgetOutcome::Forgotten)
+                && let Ok(id) = halonic_device_keys::ComputerId::parse(&computer)
+            {
+                crate::saved_messaging::clear(&app, &id);
+            }
+            return outcome;
         }
     }
     #[cfg(not(target_os = "android"))]
@@ -346,6 +355,10 @@ mod android {
         }
 
         fn status_changed(&self, computer: &ComputerId, status: &PageStatus) {
+            // Removed deletes what the phone saved of the computer, as Forget does.
+            if matches!(status, PageStatus::Removed) {
+                crate::saved_messaging::clear(&self.app, computer);
+            }
             let event = TunnelEvent::Status {
                 computer: computer.as_str().to_owned(),
                 status: *status,

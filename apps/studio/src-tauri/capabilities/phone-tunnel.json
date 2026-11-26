@@ -1,6 +1,6 @@
 {
   "identifier": "phone-tunnel",
-  "description": "On Android, the app's own page may pair with a computer, list, forget, connect to and disconnect from paired computers, and watch their statuses, through the phone_* commands and phone_tunnel_watch (HAL-15157), and send and end gateway sessions through tunnel_send and tunnel_end_session (HAL-15177). The shell keeps every key and does the sealing: the page gets only check codes, computer names, ids, endpoints, times, states, session generations and gateway message text. Statuses and messages reach the page only while the window is on the app's own page. It is local only, so the Studio the computer serves gets none of these.",
+  "description": "On Android, the app's own page may pair with a computer, list, forget, connect to and disconnect from paired computers, and watch their statuses, through the phone_* commands and phone_tunnel_watch (HAL-15157), and send and end gateway sessions through tunnel_send and tunnel_end_session (HAL-15177), and read, write and clear its saved Inbox and Messenger text through phone_saved_read, phone_saved_write and phone_saved_clear, which the shell keeps sealed by the Android Keystore (HAL-19026). The shell keeps every key and does the sealing: the page gets only check codes, computer names, ids, endpoints, times, states, session generations and gateway message text. Statuses and messages reach the page only while the window is on the app's own page. It is local only, so the Studio the computer serves gets none of these.",
   "local": true,
   "windows": [
     "main"
@@ -18,6 +18,9 @@
     "allow-phone-disconnect",
     "allow-phone-tunnel-watch",
     "allow-tunnel-send",
-    "allow-tunnel-end-session"
+    "allow-tunnel-end-session",
+    "allow-phone-saved-read",
+    "allow-phone-saved-write",
+    "allow-phone-saved-clear"
   ]
 }

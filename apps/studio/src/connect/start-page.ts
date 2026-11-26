@@ -4,6 +4,7 @@ import type {
   NearbyComputers,
   OwnerCheckAvailable,
   PhoneTunnel,
+  SavedDataStore,
 } from "@halonicjs/studio-feature-remote/phone";
 import { type ConnectPageOptions, startConnectPage } from "./connect-page.ts";
 import type { PairingScanner } from "./pair-scan.ts";
@@ -18,6 +19,8 @@ export interface PageOptions extends ConnectPageOptions {
   readonly computerTunnel?: ComputerTunnelOf;
   /** The shell's `owner_check_available`; without it `risky` approvals stay on the computer. */
   readonly ownerCheckAvailable?: OwnerCheckAvailable;
+  /** The shell's store of each computer's saved Inbox and Messenger. */
+  readonly saved?: SavedDataStore;
   readonly scanner: PairingScanner;
   /** The shell's list of computers on this Wi-Fi, for the typed route's picker. */
   readonly nearby?: NearbyComputers;
@@ -68,6 +71,7 @@ export async function startPage(options: PageOptions): Promise<void> {
     ...(options.ownerCheckAvailable === undefined
       ? {}
       : { ownerCheckAvailable: options.ownerCheckAvailable }),
+    ...(options.saved === undefined ? {} : { saved: options.saved }),
     scanner: options.scanner,
     ...(options.nearby === undefined ? {} : { nearby: options.nearby }),
     window: options.window,

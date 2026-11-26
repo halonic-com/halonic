@@ -14,17 +14,30 @@
 //! wipes the copies it owns; the JSON and the JVM's strings it can't, and
 //! they stay in the app's own memory until they are reused.
 //!
+//! The same Keystore key seals what the phone saved of each computer's
+//! Inbox and Messenger ([`SavedTexts`], `saved_messaging`), under another
+//! context, so a sealed key and saved text can't be swapped.
+//!
 //! A debug build can also run the store and wrapper contracts against the
 //! real Keystore (`device_key_check`, HAL-13784).
 
+use std::sync::Mutex;
+
 use halonic_blob_store::base64url;
-use halonic_device_keys::{DeviceKeyError, KeyWrapper, WrappedFileStore};
+use halonic_device_keys::{DeviceKeyError, KeyWrapper, SavedTextStore, WrappedFileStore};
 use serde::{Deserialize, Serialize};
 use tauri::plugin::{PluginHandle, TauriPlugin};
 use tauri::{AppHandle, Manager, Runtime};
 
 /// The folder in the app's data that holds the sealed keys.
 const FOLDER: &str = "device-keys";
+
+/// The folder in the app's data that holds the saved Inbox and Messenger.
+const SAVED_FOLDER: &str = "saved-messaging";
+
+/// The saved Inbox and Messenger of each computer, as the shell keeps it:
+/// one call at a time, so a clear can't cross a write still under way.
+pub struct SavedTexts<R: Runtime>(pub Mutex<SavedTextStore<AndroidKeystore<R>>>);
 
 /// The phone's key store, as the shell keeps it.
 pub type DeviceKeys<R> = WrappedFileStore<AndroidKeystore<R>>;
@@ -123,6 +136,9 @@ pub fn plugin<R: Runtime>() -> TauriPlugin<R> {
             let data = app.path().app_data_dir()?;
             #[cfg(debug_assertions)]
             let check_wrapper = AndroidKeystore(handle.clone());
+            let saved =
+                SavedTextStore::new(data.join(SAVED_FOLDER), AndroidKeystore(handle.clone()));
+            app.manage(SavedTexts(Mutex::new(saved)));
             let store = WrappedFileStore::new(data.join(FOLDER), AndroidKeystore(handle));
             app.manage::<DeviceKeys<R>>(store);
             #[cfg(debug_assertions)]

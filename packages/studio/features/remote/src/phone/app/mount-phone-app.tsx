@@ -5,6 +5,7 @@ import type { OwnerCheckAvailable } from "../gateway-client.ts";
 import type { NearbyComputers } from "../nearby-computers.ts";
 import type { PhoneScanner } from "../pairing-flow.ts";
 import type { PhoneTunnel } from "../phone-tunnel.ts";
+import type { SavedDataStore } from "../saved-messaging.ts";
 import type { PhoneOutside } from "./computer-screen.tsx";
 import { type ComputerTunnelOf, holdGateway } from "./held-gateway.ts";
 import { PhoneApp } from "./phone-app.tsx";
@@ -34,6 +35,8 @@ export interface PhoneAppMount extends PhoneOutside {
    * answered on the computer only.
    */
   readonly ownerCheckAvailable?: OwnerCheckAvailable;
+  /** The shell's store of each computer's saved Inbox and Messenger. Without it nothing is saved. */
+  readonly saved?: SavedDataStore;
   /** Where a call the shell refused goes, for the log. */
   readonly report: (problem: string) => void;
 }
@@ -49,6 +52,7 @@ export function mountPhoneApp(container: HTMLElement, mount: PhoneAppMount): () 
     tunnel: mount.tunnel,
     scanner: mount.scanner,
     report: mount.report,
+    ...(mount.saved === undefined ? {} : { saved: mount.saved }),
     ...(mount.computerTunnel === undefined
       ? {}
       : {

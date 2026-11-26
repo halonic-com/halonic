@@ -18,6 +18,8 @@
 //! - [`PairedComputers`]: the computers the phone has paired with, each
 //!   one's [`ComputerDetails`] and [`Standing`] next to its key. Removed
 //!   wipes the key and keeps the entry; Forget deletes both.
+//! - [`SavedTextStore`]: what the phone saved of each computer's Inbox and
+//!   Messenger, sealed by the same [`KeyWrapper`], one file per computer.
 //! - [`check_store_contract`] and [`check_wrapper_contract`]: the behaviour
 //!   every store and every wrapper must show. [`FakeWrapper`] is for tests.
 //!
@@ -32,6 +34,7 @@ mod file_store;
 mod files;
 mod key;
 mod paired;
+mod saved_text;
 mod store;
 mod wrapper;
 
@@ -43,6 +46,8 @@ mod file_store_tests;
 mod key_tests;
 #[cfg(test)]
 mod paired_tests;
+#[cfg(test)]
+mod saved_text_tests;
 
 pub use computer::{ComputerId, MAX_COMPUTER_ID_LENGTH};
 pub use contract::{check_store_contract, check_wrapper_contract};
@@ -52,5 +57,6 @@ pub use fake::FakeWrapper;
 pub use file_store::WrappedFileStore;
 pub use key::{DeviceKeyPair, KEY_BYTES, PrivateKey};
 pub use paired::{NewPairing, PairedComputer, PairedComputers};
+pub use saved_text::{MAX_SAVED_TEXT_BYTES, SavedTextError, SavedTextStore};
 pub use store::DeviceKeyStore;
 pub use wrapper::KeyWrapper;
