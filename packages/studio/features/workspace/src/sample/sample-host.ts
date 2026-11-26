@@ -30,4 +30,10 @@ export interface SampleHost {
    * refusal is `cant`.
    */
   create(known: readonly string[]): Promise<CreatedSample>;
+  /**
+   * As {@link create}, but in a folder the person picks with the folder picker, for
+   * **Choose a folder…** when the demo couldn't be copied to Documents. Resolves with `undefined`
+   * when the picker was cancelled. Without it Welcome offers no other folder.
+   */
+  createInChosen?(known: readonly string[]): Promise<CreatedSample | undefined>;
 }

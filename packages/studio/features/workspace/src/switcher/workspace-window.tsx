@@ -122,21 +122,27 @@ export function WorkspaceWindow({
   };
   const knownSamples = () =>
     switcher.recent.list().flatMap((each) => (each.sample === true ? [each.location] : []));
+  // What Welcome hears of a copy: nothing once it opened or the picker was cancelled, else why not.
+  const sampleFrom = async (
+    made: CreatedSample | undefined,
+  ): Promise<WelcomeSampleProblem | undefined> => {
+    if (made === undefined) return undefined;
+    if (made.kind === "cant") {
+      return {
+        folder: made.folder,
+        reason: made.reason,
+        ...(made.unavailable === true ? { unavailable: true as const } : {}),
+      };
+    }
+    await openSample(made, createdLine);
+    return undefined;
+  };
   const trySample =
-    sample === undefined
+    sample === undefined ? undefined : async () => sampleFrom(await sample.create(knownSamples()));
+  const trySampleInChosen =
+    sample?.createInChosen === undefined
       ? undefined
-      : async (): Promise<WelcomeSampleProblem | undefined> => {
-          const made = await sample.create(knownSamples());
-          if (made.kind === "cant") {
-            return {
-              folder: made.folder,
-              reason: made.reason,
-              ...(made.unavailable === true ? { unavailable: true as const } : {}),
-            };
-          }
-          await openSample(made, createdLine);
-          return undefined;
-        };
+      : async () => sampleFrom(await sample.createInChosen?.(knownSamples()));
   // A second press while a copy is being written would write a second one, so an ask made
   // meanwhile waits for that copy and is told when it is written.
   const freshCopyRunning = useRef(false);
@@ -247,6 +253,7 @@ export function WorkspaceWindow({
           onOpenFolder={() => showByPerson(() => switcher.pickAndOpen())}
           onNewWorkspace={askNewWorkspace}
           onTrySample={trySample}
+          onTrySampleInChosen={trySampleInChosen}
           start={start}
           recent={{
             workspaces: switcher.recent.list(),
