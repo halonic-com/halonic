@@ -16,9 +16,11 @@ opened no folder still starts no shortcut. The shell already lets all three wind
 (`desktop-feedback-capture.json`), so no Rust or capability changes.
 
 The test "starts no feedback shortcut in the inbox / messenger window" now says "while it opened no
-folder", which is what it always set up (no Recent folder). Its assertions are unchanged. A new
-test checks that Ctrl+Shift+F in a window that opened Acme asks the shell for a capture. No test
-was weakened or skipped. The requirement is unreleased.
+folder", which is what it always set up (no Recent folder). Its assertions are unchanged. New
+tests check that Ctrl+Shift+F asks the shell for a capture in a window that opened Acme: once
+through the window's feedback starter, and once in each of the Inbox and Messenger windows as
+`startFocusedApp` starts them, with the folder opener given by the test. No test was weakened or
+skipped. The requirement is unreleased.
 
 ## Why
 

@@ -36,6 +36,8 @@ export interface FocusedAppParts {
   readonly language: string;
   /** The window's display settings, as Studio's window keeps them. */
   readonly display: DisplaySettings;
+  /** Opens the workspace in a folder; {@link openFolder} unless a test gives its own. */
+  readonly openWorkspace?: ((location: string) => Promise<OpenedWorkspace>) | undefined;
 }
 
 /**
@@ -55,12 +57,12 @@ export function focusedAppOf(
 /**
  * Starts a focused app's window (`studio.focused-app-window`): only that app, on the approved
  * frame, for the workspace it showed before, or else the one Studio last had open, opened as a
- * Recent row opens it (`studio.window-content`). With no
- * workspace in Recent, or one that can't be opened, the window says to open Halonic, its button
- * brings Studio's window forward, and the reason it couldn't open goes to the console. Its times
- * follow the system's region format, as Studio's window's do, and it hears the feedback shortcut
- * as Studio's window does, sending through the workspace it opened. It never opens the workspace's engine for routines:
- * Studio's window does, and engine locks are held per window. Quick ask's box starts through
+ * Recent row opens it (`studio.window-content`). With no workspace in Recent, or one that can't
+ * be opened, the window says to open Halonic, its button brings Studio's window forward, and the
+ * reason it couldn't open goes to the console. Its times follow the system's region format, as
+ * Studio's window's do, and it hears the feedback shortcut as Studio's window does, sending
+ * through the workspace it opened. It never opens the workspace's engine for routines: Studio's
+ * window does, and engine locks are held per window. Quick ask's box starts through
  * `startAskBox` instead, which opens no engine at all.
  */
 export function startFocusedApp(page: StudioPage, parts: FocusedAppParts): StartedStudio {
@@ -86,9 +88,9 @@ export function startFocusedApp(page: StudioPage, parts: FocusedAppParts): Start
   const opening = readWindowContent(ipc).then(async (content) => {
     const location = locationToOpen(device.recent.list(), content);
     if (location === undefined) return undefined;
-    const opened = await openLast(ipc, location, (at) =>
-      openFolder(shell, page.window, at, display, device),
-    );
+    const open =
+      parts.openWorkspace ?? ((at: string) => openFolder(shell, page.window, at, display, device));
+    const opened = await openLast(ipc, location, open);
     return opened === undefined ? undefined : { opened, location, content };
   });
   const shown = opening.then((found) => {
