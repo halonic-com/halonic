@@ -3,6 +3,7 @@
 - Task: HAL-19234
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19234 (the board's check of the first woken run, 26 Nov 14:32 UTC, and Chief's ask on the task at 14:33 UTC; Liam approves this note in review)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:lx1koqhDH3pDdWA67ibKpHxG5HIBx4SsitlYXjVM3HyPGJZz67quY9KY7UHrPpD7Q5BD/wCfiR1sauB4awGBBQ==
 
 `paperclip.merger-wake` changes how it wakes the Merger. It no longer wakes the holder of `mergerWake.task` through that task. It starts a run of that holder with no task (`agents.invoke`), as the Merger's heartbeat does. The run's prompt names the changes and asks for one pass, as on a timer heartbeat.
 
