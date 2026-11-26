@@ -2,6 +2,7 @@
 
 - Approval: HAL-19379 (follows halonic's `routine-reviewer` from HAL-19246)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Nd++UsphfrJiUj6znl3mjhT80ahADHkxctW3qQeopl+7lD7JVljQZuY8sVw3sEpNRrPqmoG32SiGRbu/xquNAw==
 
 The `reviewerRules` of `github.pull-request` take one more optional setting, `narrowTo`: a
 `role`, `folders` and `patterns` regexes. A pull request that no rule escalates goes to
