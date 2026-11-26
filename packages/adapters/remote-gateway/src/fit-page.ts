@@ -10,8 +10,9 @@ export type GatewayPage = Extract<GatewayHostMessage, { type: "msg-data" | "team
  * message, or `undefined` when not even its first item fits. When items are
  * left, the page carries `more`, the cursor `cursorAt` makes for the index of
  * the first item left out; the phone hands it back to read on. No caller sets
- * `page.more` yet: a provider's own cursor would need `sendPage` and `isCursor`
- * to accept it first.
+ * `page.more` yet: a provider's own cursor would need `sendPage`, `isCursor`
+ * and the phone's `more` check (`isMessagingPage` and `isTeamPage` in the
+ * remote feature) to accept it first.
  */
 export function fitPage(
   page: GatewayPage,
