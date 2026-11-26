@@ -3,6 +3,7 @@
 - Task: HAL-19017
 - Approval: Sofia decided the behaviour and the words on HAL-19017 (https://paperclip.halonic.com/HAL/issues/HAL-19017), under the board's "Sofia and Tomas decide details" on HAL-18562. A team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:IHzw5oDkeV7Jv1oQEEwmC1v91M2wXLfT+5pKt8hN+DuY3ssmUyx56hntdAcjjlAmlhQEFk0EP4uo1QZw85uBAw==
 
 ## What changes
 
