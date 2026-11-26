@@ -2666,6 +2666,9 @@ importers:
 
   packages/core/action-steppers:
     dependencies:
+      '@halonicjs/events':
+        specifier: workspace:*
+        version: link:../events
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../ports

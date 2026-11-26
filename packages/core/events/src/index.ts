@@ -7,6 +7,7 @@ export {
   maxActionErrorLength,
   maxActionReasonLength,
   maxActionStep,
+  maxActionValueLength,
 } from "./action-event-check.ts";
 export type {
   ActionEvent,
