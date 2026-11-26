@@ -3,6 +3,7 @@
 - Task: HAL-19604
 - Approval: Liam decided this on HAL-19603 (option 1: fix it in the changeset text, not by escaping in `tooling/publish/`); he reviews it and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:g4rfN5w1qEkZfXmy62GIy3Qshvxa2HSvJw0JU7AE0kw+8X9UMWrJiCL5MkgEL6kTa3kvX75Ro2N5gyGqXFj2BQ==
 
 ## What changes
 
