@@ -26,17 +26,22 @@ rule applies again when that content goes to halonic.com.
 
 ### How fresh it must be
 
-The review covers the **exact commit** being released, or a commit at most
-**7 days and 50 merged pull requests** older. In that second case, a **delta
-review** covers the diff between the reviewed commit and the release commit,
-with the same model and settings, over the changed files and what they touch.
-If more has changed, run a new full review.
+A release is never published with no A0 review. Which one you run depends on how
+far the release commit is from the last full review:
+
+- **Same commit:** the full review already covers it.
+- **Within 7 days and 50 merged pull requests of the full review:** run a
+  **delta review**. It covers the diff between the reviewed commit and the
+  release commit, with the same model and settings, over the changed files and
+  what they touch. Even a small diff needs one; "nothing much changed" is not a
+  reason to skip it.
+- **Beyond 7 days or 50 merged pull requests:** run a new **full review**.
 
 For a patch release from a `release/<version>` branch, the review covers the commit the branch was cut from and each fix on it (a delta review). See [Release branch](../../tooling/publish/README.md#release-branch).
 
 Run the full review early, about 5 days before the release, on the release
 candidate. That leaves time for fixes. Then run a delta review on the final
-commit if it changed.
+commit, even if little changed. Add it to the release-candidate checklist.
 
 ## Who does what
 
