@@ -12,6 +12,12 @@ each provider route's timing, over 24 hours in memory: counts and timings only, 
 body or an ID (requirement `agent-host.sync-diagnostics`). The agent host answers them at
 `GET /v1/sync/diagnostics`.
 
+`LiveSync` keeps each source's live events socket open through a `LiveEventsKeeper` (reconnect after
+1, 2, 4 … 60 seconds with full jitter, none after a refusal until a new key), brings a read 300 ms
+after an event that touches the local copy, and tells `SyncScheduler` and `SyncCounters` whether
+events reach the engine (requirement `agent-host.paperclip-live-events`). The provider opens the
+socket and cuts each event down to an `EventsSignal`; no event's content reaches this package.
+
 - **Layer:** host
 - **Owner:** tomas
 - **Public API:** `@halonicjs/host-paperclip-sync`
