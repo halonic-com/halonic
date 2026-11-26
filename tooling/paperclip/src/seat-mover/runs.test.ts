@@ -5,6 +5,24 @@ import { databaseSeatRuns, parkedReasons } from "./runs.ts";
 interface SentQuery {
   readonly sql: string;
   readonly params: readonly unknown[];
+  /** The statement as Paperclip's plugin `db.query` hands it to Postgres. */
+  readonly postgresSql: string;
+}
+
+/**
+ * What Paperclip's plugin `db.query` does with an array parameter: it expands
+ * `$n` into one placeholder per element, `($n, $n+1, ...)`, and renumbers the
+ * placeholders after it.
+ */
+function asTheSdkSendsIt(sql: string, params: readonly unknown[]): string {
+  let next = 1;
+  const placeholders = params.map((param) => {
+    const width = Array.isArray(param) ? param.length : 1;
+    const numbers = Array.from({ length: width }, (_, index) => `$${next + index}`);
+    next += width;
+    return Array.isArray(param) ? `(${numbers.join(", ")})` : (numbers[0] ?? "");
+  });
+  return sql.replace(/\$(\d+)/g, (_, number: string) => placeholders[Number(number) - 1] ?? "");
 }
 
 /** Records what the job sends, and answers with the given rows. */
@@ -14,12 +32,15 @@ function recordingDb(rows: Record<string, unknown>[] = []) {
     sent,
     db: {
       query: async <T>(sql: string, params: unknown[] = []) => {
-        sent.push({ sql, params });
+        sent.push({ sql, params, postgresSql: asTheSdkSendsIt(sql, params) });
         return rows as T[];
       },
     },
   };
 }
+
+/** A parenthesised list cast to an array type, which Postgres reads as a row and refuses. */
+const rowCastToArray = /\(\$\d+(?:, \$\d+)+\)\s*::\s*\w+\[\]/;
 
 /** The highest `$n` placeholder in a statement. */
 const highestPlaceholder = (sql: string) =>
@@ -39,6 +60,8 @@ verifies("paperclip.seat-mover-job", () => {
     expect(highestPlaceholder(query?.sql ?? "")).toBe(query?.params.length);
     expect(query?.sql).toContain("r.scheduled_retry_reason IN ($2, $3, $4)");
     expect(query?.sql).not.toContain("::text[]");
+    expect(query?.postgresSql).not.toMatch(rowCastToArray);
+    expect(query?.postgresSql).toBe(query?.sql);
   });
 
   test("the provider_quota query sends only scalar parameters", async () => {
@@ -48,6 +71,15 @@ verifies("paperclip.seat-mover-job", () => {
     const [query] = sent;
     expect(query?.params).toEqual(["company-1", "2026-11-26T10:00:00.000Z"]);
     expect(highestPlaceholder(query?.sql ?? "")).toBe(query?.params.length);
+    expect(query?.postgresSql).toBe(query?.sql);
+  });
+
+  test("the SDK's expansion of an array parameter is what broke the old query", () => {
+    const old = "r.scheduled_retry_reason = ANY($2::text[])";
+    expect(asTheSdkSendsIt(old, ["company-1", [...parkedReasons]])).toBe(
+      "r.scheduled_retry_reason = ANY(($2, $3, $4)::text[])",
+    );
+    expect(asTheSdkSendsIt(old, ["company-1", [...parkedReasons]])).toMatch(rowCastToArray);
   });
 
   test("a parked row is read with its seat, and a row naming no seat has none", async () => {
