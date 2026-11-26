@@ -1,6 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
 import { planMoves } from "./plan.ts";
+import { buildSeats, parseConnections } from "./readings.ts";
 import { agent, now, seat, settings } from "./seat-mover.test-helper.ts";
 
 const hours = (n: number) => new Date(now.getTime() + n * 3_600_000).toISOString();
@@ -254,6 +255,26 @@ verifies("paperclip.seat-mover-checklist", () => {
 
 verifies("paperclip.seat-mover-spread", () => {
   describe("one pass with several moves (HAL-19394)", () => {
+    test("a reviewer sharing with a pinned agent takes the empty seat before the others spread (HAL-19464)", () => {
+      const seats = [
+        seat("X", 85, 10),
+        seat("Busy", 10, 10),
+        seat("Empty", 30, 10),
+        seat("Rev", 10, 10),
+      ];
+      const agents = [
+        agent("kim", "X"),
+        agent("mara", "X"),
+        agent("nina", "Busy"),
+        agent("liam", "Rev"),
+        agent("pip", "Rev"),
+      ];
+      const plan = planMoves(seats, agents, settings, now);
+      expect(movesOf(plan)).toEqual(["liam → Empty", "kim → Busy", "mara → Rev"]);
+      expect(plan.moves[0]?.reason).toBe("b-reviewer-not-alone");
+      expect(plan.stuck).toEqual([]);
+    });
+
     test("two light agents leaving a full seat go to two different legal seats", () => {
       const seats = [seat("Full", 85, 10), seat("B", 40, 10), seat("C", 20, 10)];
       const agents = [agent("kim", "Full"), agent("mara", "Full")];
@@ -266,11 +287,13 @@ verifies("paperclip.seat-mover-spread", () => {
       expect(movesOf(planMoves(seats, agents, settings, now))).toEqual(["kim → B", "mara → B"]);
     });
   });
+});
 
+verifies("paperclip.seat-mover-not-connected", () => {
   describe("a seat whose connection isn't connected (HAL-19394)", () => {
     test("its agents move to a legal seat, paused or not, and it takes nobody", () => {
       const seats = [
-        seat("Gone", 0, 0, { connected: false }),
+        seat("Gone", 0, 0, { connection: "not-connected" }),
         seat("A", 85, 10),
         seat("B", 30, 10),
       ];
@@ -281,12 +304,43 @@ verifies("paperclip.seat-mover-spread", () => {
     });
 
     test("with no legal seat, the agent stays and is listed as stuck", () => {
-      const seats = [seat("Gone", 0, 0, { connected: false }), seat("Full", 90, 10)];
+      const seats = [seat("Gone", 0, 0, { connection: "not-connected" }), seat("Full", 90, 10)];
       const plan = planMoves(seats, [agent("kim", "Gone")], settings, now);
       expect(plan.moves).toEqual([]);
       expect(plan.stuck).toEqual([
         expect.objectContaining({ from: "c-Gone", reason: "not-connected" }),
       ]);
+    });
+  });
+
+  describe("a connection with no status (HAL-19464)", () => {
+    test("its agent stays put and nobody is sent there", () => {
+      const connections = parseConnections({
+        connections: [
+          { id: "c-NoStatus", grantId: "g-NoStatus", method: "subscription" },
+          { id: "c-A", grantId: "g-A", method: "subscription", status: "connected" },
+          { id: "c-B", grantId: "g-B", method: "subscription", status: "connected" },
+        ],
+      });
+      const reading = (name: string, session: number) => ({
+        name,
+        connectionId: `c-${name}`,
+        at: now.toISOString(),
+        error: undefined,
+        sessionPercent: session,
+        weekPercent: 10,
+        weekResets: undefined,
+      });
+      const seats = buildSeats(
+        connections,
+        [reading("NoStatus", 0), reading("A", 85), reading("B", 40)],
+        new Map(),
+        now,
+        45,
+      );
+      const plan = planMoves(seats, [agent("kim", "NoStatus"), agent("mara", "A")], settings, now);
+      expect(movesOf(plan)).toEqual(["mara → B"]);
+      expect(plan.stuck).toEqual([]);
     });
   });
 });
