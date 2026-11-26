@@ -3,6 +3,7 @@
 - Task: HAL-20010
 - Approval: Liam's review of #6641 (HAL-19992) named this as a condition for the flag; Liam reviews and signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:wSamWJIS3rjI0w32rLxKJqUxzLHBK7zdxuKI1lx0KRDB5T2G+07bsgHAUKIBaJAKLNX90JexCdoet7peaDdUBQ==
 
 ## What changes
 
