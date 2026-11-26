@@ -149,8 +149,12 @@ stopped on `provider_limit_wait` or `provider_quota` less than 5 hours ago and
 nothing of theirs started since. The plugin SDK's task reads don't show those
 runs, so the watcher GETs `/api/companies/<id>/heartbeat-runs` with the task
 effort handler's `paperclipApiUrl` and `paperclipApiKey`, once per reviewer
-and pass and only when a reviewer holds a waiting task. Without those
-settings, or when the read fails, nothing moves.
+and pass and only when a reviewer holds a waiting task. Like the plugin's
+other calls to Paperclip's API, the read uses Node's own `fetch`, not the
+host's, with a 15 s timeout and redirects refused. Without those settings, or
+when the read fails, nothing moves; a failed read logs "PR watcher: couldn't
+read <agent>'s runs:" with a fixed code (`http_<status>`, `not_a_list` or the
+error's name), never the answer's text.
 
 **Longest wait first** (HAL-17920). In the same step, while such a head has
 waited more than an hour since its "ready for review" comment, the watcher

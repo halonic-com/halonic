@@ -76,8 +76,15 @@ export const plugin = definePlugin({
     context = ctx;
     // Each job only dispatches; its pass runs in a call scoped to the company (scheduled.ts).
     const lifecycle = lifecycleRunner(ctx);
+    // Its reviewer run reads go to Paperclip's own API with Node's fetch, like the task effort handler's.
     const watcher = scheduledPerCompany(ctx, roster, "pr-watch", (companyId, now) =>
-      runWatcher(ctx, now, async () => [companyId], lifecycle),
+      runWatcher(
+        ctx,
+        now,
+        async () => [companyId],
+        lifecycle,
+        (url, init) => fetch(url, init),
+      ),
     );
     ctx.jobs.register("pr-watch", () => watcher.dispatch());
     const board = boardCheck(ctx);
