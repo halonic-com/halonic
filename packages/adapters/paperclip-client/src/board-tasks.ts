@@ -63,8 +63,9 @@ export function boardTaskToItem(
     webLink,
     work: context.ids.make("task", id),
     risk: "normal",
-    // Paperclip keeps no time of the assignment; a task's last change is the closest it has.
-    createdAt: timeOf(record, "updatedAt"),
+    // Paperclip keeps no time of the assignment. The task's creation stays put when someone
+    // comments on or edits it, so the item's waiting time and its place in the Inbox do too.
+    createdAt: text(record, "createdAt") ?? timeOf(record, "updatedAt"),
     attachments: [],
     state: { kind: "open" },
   };

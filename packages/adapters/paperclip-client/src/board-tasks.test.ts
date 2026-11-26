@@ -36,6 +36,7 @@ function photosTask(overrides: Record<string, unknown> = {}) {
     status: "todo",
     assigneeUserId: me,
     createdByAgentId: agentAda,
+    createdAt: "2026-11-23T09:00:00.000Z",
     updatedAt: "2026-11-24T10:06:00.000Z",
     ...overrides,
   };
@@ -71,6 +72,19 @@ async function taskItems(): Promise<InboxItem[]> {
   return items.filter((item) => item.kind === "task");
 }
 
+/** The provider as a host that names no user makes it, such as the server engine. */
+function withoutUser(): PaperclipMessaging {
+  return new PaperclipMessaging({
+    address: paperclip.address,
+    key: testKey,
+    connection: "acme",
+    company,
+    label: "Paperclip · Acme",
+    now: () => testNow,
+    fetch: paperclip.fetch,
+  });
+}
+
 beforeEach(() => {
   paperclip = new FakePaperclip();
 });
@@ -91,6 +105,8 @@ verifies("paperclip-client.board-tasks", () => {
         webLink: { link: "https://paperclip.acme.test/ACME/issues/ACME-9", site: "Paperclip" },
         project: { id: `${source}:project:${websiteProject}`, name: "Website" },
         options: [],
+        // The task's creation, not its last change, so a comment doesn't reset the wait.
+        createdAt: "2026-11-23T09:00:00.000Z",
         state: { kind: "open" },
       });
       expect(item?.question).toBe(
@@ -106,20 +122,33 @@ verifies("paperclip-client.board-tasks", () => {
     });
 
     it("shows only its card when a card on it waits on the person", async () => {
-      serve([], { assigneeUserId: me });
+      // No approval, so only the cards can hide the task's own item.
+      const data = { ...acmeData(), approvals: [] };
+      serve([], { assigneeUserId: me, assigneeAgentId: null }, data);
       const items = await connect(paperclip, { offline: false }).listInboxItems();
 
       expect(items.filter((item) => item.kind === "task")).toEqual([]);
-      expect(items.some((item) => item.work === `${source}:task:${plainTask}`)).toBe(true);
+      expect(items.length).toBeGreaterThan(0);
+      expect(items.every((item) => item.work === `${source}:task:${plainTask}`)).toBe(true);
     });
 
     it("shows only its approval when an approval on it waits on the person", async () => {
       const data = { ...acmeData(), cards: [] };
-      serve([], { assigneeUserId: me }, data);
+      serve([], { assigneeUserId: me, assigneeAgentId: null }, data);
       const items = await connect(paperclip, { offline: false }).listInboxItems();
 
       expect(items.filter((item) => item.kind === "task")).toEqual([]);
       expect(items.map((item) => item.kind)).toEqual(["approval"]);
+    });
+
+    it("lists the person's task on the first read when the host names no user", async () => {
+      serve([photosTask()]);
+      paperclip.on("GET", "/api/cli-auth/me", { body: { userId: me } });
+      const items = await withoutUser().listInboxItems();
+
+      expect(items.filter((item) => item.kind === "task").map((item) => item.id)).toEqual([
+        boardTaskItem,
+      ]);
     });
   });
 
@@ -148,16 +177,7 @@ verifies("paperclip-client.board-tasks", () => {
     it("lists none while the provider doesn't know who is signed in", async () => {
       serve([photosTask()]);
       // No user named, and Paperclip names none: an agent's key, or a server without `whoAmI`.
-      const messaging = new PaperclipMessaging({
-        address: paperclip.address,
-        key: testKey,
-        connection: "acme",
-        company,
-        label: "Paperclip · Acme",
-        now: () => testNow,
-        fetch: paperclip.fetch,
-      });
-      const items = await messaging.listInboxItems();
+      const items = await withoutUser().listInboxItems();
 
       expect(items.filter((item) => item.kind === "task")).toEqual([]);
     });

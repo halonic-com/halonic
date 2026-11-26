@@ -443,6 +443,9 @@ export class PaperclipMessaging implements AgentMessaging {
 
   async #inboxFrom(tasks: readonly JsonRecord[] | undefined): Promise<InboxItem[]> {
     await this.#knowAgents();
+    // A host that names no user, such as the server engine, may poll before any chat is read, and
+    // the `task` items need the user's ID (`paperclip-client.board-tasks`).
+    await this.#user.know();
     const items = await this.#inbox.list(this.#context(), tasks);
     this.#lastInbox = items;
     return items;
