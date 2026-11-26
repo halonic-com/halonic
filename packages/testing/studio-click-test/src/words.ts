@@ -19,6 +19,19 @@ export const words = {
   addressPlaceholder: connections.ADDRESS_PLACEHOLDER,
   continueLabel: connections.CONTINUE,
   connected: connections.stateChips.online,
+  disconnect: connections.DISCONNECT,
+  // The label is the account's, such as "Paperclip · Acme"; the rest of the line is fixed.
+  keyRevoked: connections.disconnectedRevoked("").slice("Disconnected .".length).trim(),
+  readOnly: connections.READ_ONLY,
+  keyPower: connections.KEY_POWER,
+  signInAgain: connections.SIGN_IN_AGAIN,
+  signedOut: connections.stateChips["signed-out"],
+  signedOutCallout: connections.SIGNED_OUT_CALLOUT,
+  httpsOnly: connections.ADDRESS_HTTPS_ONLY,
+  addAccount: connections.ADD_ACCOUNT,
+  addAccountLead: connections.ADD_ACCOUNT_LEAD,
+  openApproval: connections.OPEN_APPROVAL,
+  switcher: connections.accountSwitcherWords,
 };
 
 /**
