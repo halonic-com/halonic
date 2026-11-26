@@ -3,6 +3,7 @@
 - Task: HAL-19839
 - Approval: Liam approved this step as PR 2 of the plan on HAL-19832 (26 Nov); he signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:nUpoPYIZsBaWL+vNowdXt5+4OF9I4jCQase4D0tQnqUjYasJg0k6rmEHlom8nHKlceOwXz7rZjp5W/5x8IhuCg==
 
 ## What changes
 
