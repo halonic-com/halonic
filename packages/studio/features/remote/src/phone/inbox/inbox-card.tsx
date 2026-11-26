@@ -17,11 +17,18 @@ export function answersOnPhone(item: InboxItem, view: RemoteView): boolean {
   return item.risk !== "risky" || view.answersRisky;
 }
 
-/** Why the card's answers are off, first reason first; `undefined` while they are on. */
-function offReasonOf(item: InboxItem, view: RemoteView): string | undefined {
-  if (!view.canAnswer) return view.offReason ?? RECONNECT_TO_ANSWER;
-  if (!answersOnPhone(item, view)) return ANSWER_RISKY_ON_COMPUTER;
-  if (!view.ownerCheckAvailable) return inboxWords.noScreenLock;
+/** The card's answers are off, with the line that says why, if any; `undefined` while they are on. */
+type Off = { readonly line: string | undefined } | undefined;
+
+/**
+ * Why the card's answers are off, first reason first. Off with no line while the owner check
+ * hasn't answered yet, so a phone that has a screen lock never flashes the line asking for one.
+ */
+function offOf(item: InboxItem, view: RemoteView): Off {
+  if (!view.canAnswer) return { line: view.offReason ?? RECONNECT_TO_ANSWER };
+  if (!answersOnPhone(item, view)) return { line: ANSWER_RISKY_ON_COMPUTER };
+  if (view.ownerCheck === "unavailable") return { line: inboxWords.noScreenLock };
+  if (view.ownerCheck === "unknown") return { line: undefined };
   return undefined;
 }
 
@@ -75,10 +82,10 @@ export function InboxCard({
   const [sending, setSending] = useState<string | undefined>(undefined);
   const [answered, setAnswered] = useState<Answered | undefined>(undefined);
   useEffect(() => heading.current?.focus(), []);
-  const offReason = offReasonOf(item, view);
+  const off = offOf(item, view);
   const settled = answered?.settled === true;
   const send = (key: string, label: string, answer: GatewayInboxAnswer) => {
-    if (offReason !== undefined || sending !== undefined) return;
+    if (off !== undefined || sending !== undefined) return;
     setSending(key);
     setAnswered(undefined);
     void messaging
@@ -107,7 +114,7 @@ export function InboxCard({
       {settled ? null : (
         <CardAnswers
           item={item}
-          offReason={offReason}
+          off={off}
           sending={sending}
           onSend={send}
           onOpenSettings={onOpenSettings}
@@ -126,18 +133,18 @@ export function InboxCard({
 }
 
 /**
- * The card's options, or its reply box and Reply, off with `offReason` under them; Open settings
+ * The card's options, or its reply box and Reply, off with `off`'s line under them; Open settings
  * too while the phone has no screen lock.
  */
 function CardAnswers({
   item,
-  offReason,
+  off,
   sending,
   onSend,
   onOpenSettings,
 }: {
   readonly item: InboxItem;
-  readonly offReason: string | undefined;
+  readonly off: Off;
   /** The option, or `reply`, whose answer is on its way. */
   readonly sending: string | undefined;
   readonly onSend: (key: string, label: string, answer: GatewayInboxAnswer) => void;
@@ -145,7 +152,7 @@ function CardAnswers({
 }) {
   const reasonId = useId();
   const [text, setText] = useState("");
-  const unavailable = offReason === undefined ? undefined : { reason: reasonId };
+  const unavailable = off === undefined ? undefined : { reason: reasonId };
   return (
     <div className="flex flex-col gap-2">
       {item.options.length === 0 ? (
@@ -179,12 +186,12 @@ function CardAnswers({
           </Button>
         ))
       )}
-      {offReason === undefined ? null : (
+      {off?.line === undefined ? null : (
         <p id={reasonId} className="text-small text-fg-muted">
-          {offReason}
+          {off.line}
         </p>
       )}
-      {offReason === inboxWords.noScreenLock ? (
+      {off?.line === inboxWords.noScreenLock ? (
         <Button variant="secondary" size="touch" onClick={onOpenSettings}>
           {inboxWords.openSettings}
         </Button>
