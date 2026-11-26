@@ -33,11 +33,8 @@ import { KindedError, randomIds } from "@halonicjs/std";
 import {
   type Listening,
   listenOnNode,
-  NetworkNeedsPasswordError,
-  NoNetworkAddressError,
   openDiskRequestCountStore,
   openStudioPageFolder,
-  PublicOriginNeedsPasswordError,
 } from "@halonicjs/target-node-runtime";
 import {
   type CommandContext,
@@ -65,6 +62,7 @@ import type { RunSetup } from "../run/run.ts";
 import { workspaceAgentNames } from "./agent-names.ts";
 import { openChoiceHistory } from "./choice-files.ts";
 import { workspaceGoogleRead } from "./google-read.ts";
+import { listenRefused } from "./listen-refusal.ts";
 import { startsOnLiveVersion } from "./live-version-runs.ts";
 import {
   answerBrowserWithoutStudio,
@@ -451,24 +449,8 @@ async function listenOnComputer(
     report: (line) => context.printAhead(serveMessages.address(printable(line)).phrase),
     logError: logRequestFailure,
   });
-  return await listening.catch((error: unknown) => {
-    // The runtime's own sentences say what to do, so they reach the person as they are.
-    if (
-      error instanceof NetworkNeedsPasswordError ||
-      error instanceof PublicOriginNeedsPasswordError
-    ) {
-      throw new KindedError("invalid_input", error.message, { cause: error });
-    }
-    if (error instanceof NoNetworkAddressError) {
-      throw new KindedError("unavailable", error.message, { cause: error });
-    }
-    if ((error as NodeJS.ErrnoException).code === "EADDRINUSE") {
-      const other = listen.port === 65535 ? listen.port - 1 : listen.port + 1;
-      const message = serveMessages.portInUse(listen.port, other);
-      throw new KindedError("conflict", plainText(message.phrase), { cause: error });
-    }
-    throw error;
-  });
+  const server = await listening.catch((error: unknown) => listenRefused(error, listen.port));
+  return paperclip.pollWhile(server);
 }
 
 /** Resolves once `signal` is aborted: at Ctrl C or SIGTERM, or when three ticks or wake-ups in a row fail. */

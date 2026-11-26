@@ -135,7 +135,7 @@ class FollowedChanges implements AsyncIterableIterator<MessagingId> {
     for (const source of changed) this.#push(source);
     const following = messaging.changes()[Symbol.asyncIterator]();
     this.#following = following;
-    this.#pump(following).catch(this.#failed);
+    this.#pump(following).catch((error: unknown) => this.#streamFailed(following, error));
   }
 
   next(): Promise<IteratorResult<MessagingId>> {
@@ -148,13 +148,8 @@ class FollowedChanges implements AsyncIterableIterator<MessagingId> {
   }
 
   return(): Promise<IteratorResult<MessagingId>> {
-    this.#left = true;
     this.#queued = [];
-    this.#stopFollowing();
-    this.#onLeave();
-    const waiting = this.#waiting;
-    this.#waiting = undefined;
-    waiting?.({ done: true, value: undefined });
+    this.#end();
     return Promise.resolve({ done: true, value: undefined });
   }
 
@@ -162,13 +157,37 @@ class FollowedChanges implements AsyncIterableIterator<MessagingId> {
     return this;
   }
 
-  /** Copies one messaging's stream into the queue until it ends or is no longer followed. */
+  /**
+   * Copies one messaging's stream into the queue until it ends or is no longer followed. A
+   * change that arrives from a stream after a swap stopped following it is dropped: the swap
+   * already named what it changed.
+   */
   async #pump(following: AsyncIterator<MessagingId>): Promise<void> {
     while (!this.#left && this.#following === following) {
       const next = await following.next();
-      if (next.done === true) return;
+      if (next.done === true || this.#following !== following) return;
       this.#push(next.value);
     }
+  }
+
+  /**
+   * The followed stream failed: the reader ends after the changes it already queued, so the
+   * client sees its stream close and opens it again, instead of waiting for a swap that may
+   * never come. A stream a swap already left only reports its failure.
+   */
+  #streamFailed(following: AsyncIterator<MessagingId>, error: unknown): void {
+    this.#failed(error);
+    if (this.#following === following) this.#end();
+  }
+
+  /** Stops following, leaves the swaps, and answers a waiting `next` with the end. */
+  #end(): void {
+    this.#left = true;
+    this.#stopFollowing();
+    this.#onLeave();
+    const waiting = this.#waiting;
+    this.#waiting = undefined;
+    waiting?.({ done: true, value: undefined });
   }
 
   #push(source: MessagingId): void {

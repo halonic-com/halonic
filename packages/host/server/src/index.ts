@@ -110,6 +110,11 @@ export {
   type ServerClientFailure,
   type ServerFetch,
 } from "./messaging-client-transport.ts";
+export {
+  MessagingPollLoop,
+  type MessagingPollLoopOptions,
+  type MessagingSnapshot,
+} from "./messaging-poll-loop.ts";
 export { messagingPathPrefix } from "./messaging-routes.ts";
 export { messagingRefusals, readInboxAnswer } from "./messaging-wire.ts";
 export type { ModelChoicePort } from "./model-choice-api.ts";
@@ -122,6 +127,7 @@ export type {
 } from "./paperclip-key-api.ts";
 export type { KeyChange } from "./paperclip-key-changes.ts";
 export { paperclipKeyPathPrefix } from "./paperclip-key-routes.ts";
+export { PolledMessaging, polledMessagingPorts } from "./polled-messaging.ts";
 export {
   type CheckedSession,
   checkClaims,

@@ -164,11 +164,27 @@ verifies("cli.commands.serve.messaging-mount", () => {
     expect(await sourceIds(client)).toEqual(["paperclip:halonic"]);
 
     expect(await signInSecond(client, "studio")).toMatchObject({ status: "connected" });
+    const before = paperclip.keys.length;
 
     expect(await sourceIds(client)).toEqual(["paperclip:halonic", "paperclip:studio"]);
-    const before = paperclip.keys.length;
     await client.get("/api/messaging/agents");
     expect(paperclip.keys.slice(before)).toContain(newKey);
+  });
+
+  it("answers every client's list reads from the one poll loop, not from Paperclip", async () => {
+    const address = await startServe();
+    const first = await signedInClient(address);
+    const second = await signedInClient(address);
+    expect(await sourceIds(first)).toEqual(["paperclip:halonic"]);
+    const polled = paperclip.keys.length;
+
+    for (const client of [first, second]) {
+      for (const path of ["sources", "agents", "conversations", "inbox-items", "work"]) {
+        expect((await client.get(`/api/messaging/${path}`)).status).toBe(200);
+      }
+    }
+
+    expect(paperclip.keys.length).toBe(polled);
   });
 
   it("drops a disconnected connection at once, and no later call carries its key", async () => {
