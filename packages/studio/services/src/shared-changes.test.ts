@@ -1,12 +1,14 @@
 import type { MessagingId } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { SharedChanges } from "./shared-changes.ts";
 
 /** An inner stream the test drives: each `open` counts, and `send` or `fail` answers its waiting read. */
 class DrivenChanges {
   opened = 0;
   stopped = 0;
+  /** Set to make the inner stream's `return` fail. */
+  stopError: Error | undefined;
   #waiting:
     | { resolve: (result: IteratorResult<MessagingId>) => void; reject: (error: unknown) => void }
     | undefined;
@@ -21,6 +23,7 @@ class DrivenChanges {
           }),
         return: async () => {
           this.stopped += 1;
+          if (this.stopError !== undefined) throw this.stopError;
           this.#waiting?.resolve({ done: true, value: undefined });
           return { done: true, value: undefined };
         },
@@ -34,6 +37,10 @@ class DrivenChanges {
 
   fail(error: Error): void {
     this.#waiting?.reject(error);
+  }
+
+  finish(): void {
+    this.#waiting?.resolve({ done: true, value: undefined });
   }
 }
 
@@ -90,6 +97,80 @@ verifies("services.shared-changes", () => {
       for (const read of reads) await expect(read).rejects.toThrow("isn't answering");
       shared.listen();
       expect(inner.opened).toBe(2);
+    });
+
+    it("serves a for-await loop, and a break leaves the shared stream", async () => {
+      const inner = new DrivenChanges();
+      const shared = new SharedChanges(inner.open);
+      const seen: MessagingId[] = [];
+      const loop = (async () => {
+        for await (const source of shared.listen()) {
+          seen.push(source);
+          break;
+        }
+      })();
+
+      inner.send("paperclip:acme");
+      await loop;
+
+      expect(seen).toEqual(["paperclip:acme"]);
+      expect(inner.stopped).toBe(1);
+    });
+
+    it("ends every reader when the inner stream ends, also one that reads afterwards", async () => {
+      const inner = new DrivenChanges();
+      const shared = new SharedChanges(inner.open);
+      const waiting = shared.listen();
+      const late = shared.listen();
+      const read = waiting.next();
+
+      inner.finish();
+
+      expect(await read).toEqual({ done: true, value: undefined });
+      expect(await late.next()).toEqual({ done: true, value: undefined });
+      await late.return?.();
+      expect(inner.stopped).toBe(0);
+    });
+
+    it("hands a failure to a reader that reads after it", async () => {
+      const inner = new DrivenChanges();
+      const shared = new SharedChanges(inner.open);
+      const waiting = shared.listen();
+      const late = shared.listen();
+      const read = waiting.next();
+
+      inner.fail(new Error("The agent host isn't answering."));
+
+      await expect(read).rejects.toThrow("isn't answering");
+      await expect(late.next()).rejects.toThrow("isn't answering");
+    });
+
+    it("logs a failure to stop the inner stream rather than dropping it", async () => {
+      const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      const inner = new DrivenChanges();
+      inner.stopError = new Error("The agent host isn't answering.");
+      const shared = new SharedChanges(inner.open);
+
+      await shared.listen().return?.();
+      await vi.waitFor(() => expect(logged).toHaveBeenCalledTimes(1));
+
+      expect(logged).toHaveBeenCalledWith("Stopping the shared changes stream", inner.stopError);
+      logged.mockRestore();
+    });
+
+    it("leaves an inner stream that can't be stopped to end on its own", async () => {
+      let opened = 0;
+      const shared = new SharedChanges(() => {
+        opened += 1;
+        return {
+          [Symbol.asyncIterator]: () => ({ next: () => new Promise<never>(() => undefined) }),
+        };
+      });
+
+      await shared.listen().return?.();
+      shared.listen();
+
+      expect(opened).toBe(2);
     });
   });
 });
