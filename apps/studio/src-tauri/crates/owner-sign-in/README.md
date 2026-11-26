@@ -7,6 +7,7 @@ Signs the desktop shell in to an owner's own server (`mode: owner`) with the ser
 - `sign_in`: the hello check first, the password only after it passes and only to `POST /api/login`, then the `__Host-halonic-session` cookie and the time into the keychain. The password is never stored.
 - `sign_out`: removes the local entry first, then asks the server; succeeds when the server can't be reached.
 - `OwnerAnswer`: all the page learns, `signedIn`, `notSignedIn` or an error code.
+- `DeploymentRoute`, `session_for` and `not_redirected` (HAL-20105): what the shell's `deployment_request` and `deployment_stream` commands (`src/deployment_calls.rs`) may call once signed in. Three read routes by name, a run id checked with `halonic-run-store`'s rule and refused rather than encoded, the session only for the exact origin it was kept for, and no redirect. Requirement `deployment-call-commands`, whose tests start with `deployment_call_commands_`.
 
 The session's keychain entry is `owner_session__` and 32 hex digits of the origin's SHA-256, one per origin. `halonic-secrets` reserves the prefix, so `secret_get`, `token_get`, the engine and the agent host can't reach it (RO-15).
 

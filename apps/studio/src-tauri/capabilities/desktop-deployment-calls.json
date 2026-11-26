@@ -1,0 +1,18 @@
+{
+  "identifier": "desktop-deployment-calls",
+  "description": "On desktop, the app's own page may read the runs of an owner server it signed in to, through deployment_request, deployment_stream and deployment_stream_end (HAL-20105). The page names the origin, a route of a fixed list (the waiting runs, a run, a run's events) and a run id; the shell calls only an origin it keeps a session for, at the addresses the connect check pins, adds the session itself and follows no redirect. The page never sees the session. It is local only, so the Studio the computer serves gets none of it.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "allow-deployment-request",
+    "allow-deployment-stream",
+    "allow-deployment-stream-end"
+  ]
+}

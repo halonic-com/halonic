@@ -165,7 +165,7 @@ pub fn signed_in(keychain: &dyn SecretBackend, origin: &str) -> OwnerAnswer {
 }
 
 /// The stored session, only when it was made for `origin`.
-fn read_stored(value: &str, origin: &str) -> Option<StoredSession> {
+pub(crate) fn read_stored(value: &str, origin: &str) -> Option<StoredSession> {
     let stored: StoredSession = serde_json::from_str(value).ok()?;
     (stored.origin == origin).then_some(stored)
 }

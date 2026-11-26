@@ -10,6 +10,8 @@ publish.workspace = true
 [dependencies]
 # The pinned-address check and the hello answer, shared with the connect page.
 halonic-connect = { path = "../connect" }
+# The run id rule, so a run the page names is refused rather than encoded.
+halonic-run-store = { path = "../run-store" }
 # The keychain rules: the session's reserved name and the backend trait.
 halonic-secrets = { path = "../secrets" }
 serde = { version = "1", features = ["derive"] }

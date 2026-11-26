@@ -30,17 +30,22 @@ const OLDEST_SERVER: &str = "0.1.0";
 /// How long the sign-in call waits: the server hashes the password first.
 const LOGIN_TIMEOUT: Duration = Duration::from_secs(15);
 
+/// How long any call may take to connect, before its own time limit.
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+
 /// An owner server at the checked addresses: `https` only, no proxy, no
 /// redirects, and no second name lookup that could land somewhere else.
-struct PinnedServer {
+/// The run reads of `deployment_calls` go through it too.
+pub(crate) struct PinnedServer {
     client: reqwest::Client,
     /// The origin with its port, such as `https://halonic.example:443`.
     origin: String,
 }
 
 impl PinnedServer {
-    fn new(checked: &CheckedAddress) -> Option<Self> {
+    pub(crate) fn new(checked: &CheckedAddress) -> Option<Self> {
         let mut client = reqwest::Client::builder()
+            .connect_timeout(CONNECT_TIMEOUT)
             .no_proxy()
             .https_only(true)
             .redirect(reqwest::redirect::Policy::none());
@@ -55,6 +60,11 @@ impl PinnedServer {
 
     fn url(&self, path: &str) -> String {
         format!("{}{path}", self.origin)
+    }
+
+    /// A `GET` of `path` on the pinned addresses, with no time limit yet.
+    pub(crate) fn get(&self, path: &str) -> reqwest::RequestBuilder {
+        self.client.get(self.url(path))
     }
 }
 
@@ -134,7 +144,7 @@ impl OwnerServer for PinnedServer {
 
 /// A call that got no HTTP answer: a certificate the secure connection
 /// refused, or no answer at all.
-fn failed<T>(error: &reqwest::Error) -> Call<T> {
+pub(crate) fn failed<T>(error: &reqwest::Error) -> Call<T> {
     if is_certificate_error(error) {
         Call::InvalidCertificate
     } else {
@@ -165,7 +175,7 @@ fn is_certificate_error(error: &(dyn Error + 'static)) -> bool {
 
 /// Checks the origin (`https` only, before any lookup) and pins its
 /// addresses. The lookup blocks, so it runs on a worker thread.
-async fn checked(origin: &str) -> Result<CheckedAddress, OwnerError> {
+pub(crate) async fn checked(origin: &str) -> Result<CheckedAddress, OwnerError> {
     owner_origin(origin)?;
     let input = origin.to_owned();
     tauri::async_runtime::spawn_blocking(move || {

@@ -1777,6 +1777,7 @@ name = "halonic-owner-sign-in"
 version = "0.1.1"
 dependencies = [
  "halonic-connect",
+ "halonic-run-store",
  "halonic-secrets",
  "serde",
  "serde_json",
