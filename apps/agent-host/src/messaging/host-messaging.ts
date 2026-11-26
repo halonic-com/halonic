@@ -28,6 +28,8 @@ import { messagingRoutes } from "./messaging-routes.ts";
 import { paperclipFeedback } from "./paperclip-provider.ts";
 import { ReplyWatch } from "./reply-watch.ts";
 import { ServerPairings } from "./server-engine.ts";
+import { ServerEnginePairing } from "./server-pairing.ts";
+import { serverPairingRoutes } from "./server-pairing-routes.ts";
 
 /** The host's agent messaging: its routes, and what stops it. */
 export interface HostMessaging {
@@ -49,7 +51,8 @@ export const messagingCacheFolderName = "agent-messaging-cache";
  *
  * Each workspace's messaging engine is read from the profile; a server's
  * device token comes from `pairingSecrets`, the host's keychain, and
- * without one a workspace set to a server reads as signed out.
+ * without one a workspace set to a server reads as signed out and the
+ * pairing routes answer 409 `keychain_needed`.
  *
  * Polling starts with the host but reads only connected sources, and none is
  * connected until Studio hands a key over, so a host that starts calls
@@ -83,13 +86,10 @@ export function hostMessaging(
       `Agent messaging: ${failure.provider} failed ${failure.action}: ${describe(failure.error)}\n`,
     );
   const warn = (message: string) => log(`Agent messaging engine: ${message}\n`);
+  const setting = new MessagingEngineSetting({ profile, digest: webCryptoDigest, warn });
   const messaging = new DesktopMessaging({
     keys,
-    engines: {
-      setting: new MessagingEngineSetting({ profile, digest: webCryptoDigest, warn }),
-      pairings: new ServerPairings(pairingSecrets),
-      warn,
-    },
+    engines: { setting, pairings: new ServerPairings(pairingSecrets), warn },
     cacheRoot: join(profile.root, messagingCacheFolderName),
     workspaceRoots,
     readConnection: readConnectionFile,
@@ -141,6 +141,14 @@ export function hostMessaging(
       ...messagingRoutes({ messaging, poller, replies, log }),
       ...paperclipSignInRoutes({ signIn, workspaceRoots, log, usesServer }),
       ...feedback,
+      ...serverPairingRoutes({
+        messaging,
+        pairing:
+          pairingSecrets === undefined
+            ? undefined
+            : new ServerEnginePairing({ messaging, setting, keychain: pairingSecrets, log }),
+        log,
+      }),
     ],
     ...(workspaceRoots.length === 0
       ? {}

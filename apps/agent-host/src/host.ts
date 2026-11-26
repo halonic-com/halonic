@@ -11,6 +11,7 @@ import {
 } from "@halonicjs/adapter-sandbox-srt";
 import type { SandboxChoiceService } from "@halonicjs/app";
 import type { GoogleSetupPorts } from "@halonicjs/host-server";
+import type { SecretStore } from "@halonicjs/ports";
 import type { ProfileFolder } from "@halonicjs/profile";
 import { BridgeTable, bridgeRoutes } from "./bridge/bridge-routes.ts";
 import { bridgeProviderFetches } from "./bridge/provider-fetches.ts";
@@ -26,7 +27,6 @@ import { ConnectorTable } from "./connector/connector-table.ts";
 import { connectorPlaces } from "./connector-places.ts";
 import { hostDoctorRoutes } from "./doctor/host-doctor-routes.ts";
 import { type EngineIo, engineCommand } from "./engine/engine-command.ts";
-import { redactStandardError } from "./engine/secret-redactor.ts";
 import { RunLedger } from "./gateway/run-ledger.ts";
 import { googleRoutes } from "./google/google-routes.ts";
 import { harnessFolders } from "./harness/harness-folders.ts";
@@ -76,7 +76,7 @@ import { hostKeychainOf } from "./secrets/host-keychain.ts";
 import { healthRoute } from "./server/health-route.ts";
 import { type HostServices, relayPortForServing, serveHost } from "./serving-modes.ts";
 import { hostIntegrationSignIns } from "./sign-in/host-sign-ins.ts";
-import { takeStandardOutput } from "./stdio/standard-output.ts";
+import { standardIo } from "./stdio/standard-io.ts";
 import { openTerminal } from "./terminal/open-terminal.ts";
 import { hostThisComputer } from "./this-computer/host-this-computer.ts";
 import { thisComputerRoutes } from "./this-computer/this-computer-routes.ts";
@@ -103,17 +103,6 @@ export interface HostIo {
    * on, `write` and anything else that prints go to standard error.
    */
   takeOutput(): Writable;
-}
-
-/** The host's own standard input, output and error. */
-function standardIo(): HostIo {
-  return {
-    input: process.stdin,
-    write: (text) => process.stdout.write(text),
-    writeError: (text) => process.stderr.write(text),
-    redactStandardError: (redactor) => redactStandardError(redactor),
-    takeOutput: () => takeStandardOutput(),
-  };
 }
 
 /** The first line the host prints when it serves: where it listens, and its token. */
@@ -238,6 +227,7 @@ export async function run(
           log: (text) => io.writeError(text),
         },
     sharedFolders.length > 0,
+    keychain?.pairings,
   );
   // Waits for the frame stream to run; a move that fails has said why, and is tried again on use.
   keychain?.secrets.moveOutOfFile().catch(() => undefined);
@@ -311,6 +301,7 @@ async function hostServices(
   wslRemover: WslRemover | undefined,
   remote: ServedRemoteHome | undefined,
   onWsl: boolean,
+  pairings: SecretStore | undefined,
 ): Promise<HostServices> {
   const sessions = new SessionTable();
   // The sessions opened without the sandbox, whose runs start only with the host's environment.
@@ -324,7 +315,7 @@ async function hostServices(
   const ledger = remote === undefined ? undefined : new RunLedger();
   const runs = new RunTable(ledger);
   // Built before remote, so the gateway serves a paired phone the messaging Studio reads.
-  const messaging = hostMessaging(profile, connectors.workspaceRoots, logToError);
+  const messaging = hostMessaging(profile, connectors.workspaceRoots, logToError, pairings);
   const hostRemote = await openHostRemote(
     remote === undefined || ledger === undefined
       ? undefined

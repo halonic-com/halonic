@@ -91,6 +91,11 @@ export class MessagingEngineSetting {
     }
   }
 
+  /** The workspace's key in the profile, which also names its server pairing in the keychain. */
+  async keyOf(workspace: string): Promise<string> {
+    return (await this.#place(workspace)).key;
+  }
+
   /** Saves "This computer": removes the file without reading it, so a damaged one goes too. */
   async useThisComputer(workspace: string): Promise<void> {
     await rm((await this.#place(workspace)).file, { force: true });

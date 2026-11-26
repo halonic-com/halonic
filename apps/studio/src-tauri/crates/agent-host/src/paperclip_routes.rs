@@ -74,6 +74,48 @@ pub(crate) const PAPERCLIP_ROUTES: &[(&str, Route)] = &[
         "POST /v1/messaging/pull-requests",
         route(Method::Post, "/v1/messaging/pull-requests", Answer::Json),
     ),
+    // The server engine's pairing (HAL-18744): the host puts the device token
+    // straight into the keychain, so no answer holds it.
+    (
+        "POST /v1/messaging/server-engine/state",
+        route(
+            Method::Post,
+            "/v1/messaging/server-engine/state",
+            Answer::Json,
+        ),
+    ),
+    (
+        "POST /v1/messaging/server-engine/pair",
+        route(
+            Method::Post,
+            "/v1/messaging/server-engine/pair",
+            Answer::Json,
+        ),
+    ),
+    (
+        "POST /v1/messaging/server-engine/pair-status",
+        route(
+            Method::Post,
+            "/v1/messaging/server-engine/pair-status",
+            Answer::Json,
+        ),
+    ),
+    (
+        "POST /v1/messaging/server-engine/pair-cancel",
+        route(
+            Method::Post,
+            "/v1/messaging/server-engine/pair-cancel",
+            Answer::Json,
+        ),
+    ),
+    (
+        "POST /v1/messaging/server-engine/use-this-computer",
+        route(
+            Method::Post,
+            "/v1/messaging/server-engine/use-this-computer",
+            Answer::Json,
+        ),
+    ),
     (
         "POST /v1/messaging/focus",
         route(Method::Post, "/v1/messaging/focus", Answer::Json),

@@ -1,3 +1,4 @@
+import { rm } from "node:fs/promises";
 import type { ConnectionRowState } from "@halonicjs/adapter-agent-host-client";
 import { CachedAgentMessaging } from "@halonicjs/adapter-agent-messaging-cache";
 import { type PaperclipTeamStatus, paperclipSourceId } from "@halonicjs/adapter-paperclip-client";
@@ -132,6 +133,17 @@ export class WorkspaceMessaging {
     this.#engine = engine;
     this.#rejoin();
     for (const source of new Set([...before, ...this.#sourceNames()])) this.#changes.note(source);
+  }
+
+  /**
+   * Back to "This computer" after a server (`agent-host.server-engine-pairing`):
+   * joins the Paperclip providers kept meanwhile and deletes everything the
+   * cache kept for this workspace, so nothing the server answered stays here.
+   * The providers' next reads fill it again.
+   */
+  async leaveServer(): Promise<void> {
+    this.switchEngine({ kind: "this-computer" });
+    await rm(this.#options.cacheFolder, { recursive: true, force: true });
   }
 
   /** What Studio reads and answers through: every connected source, cached. */

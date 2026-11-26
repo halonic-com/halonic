@@ -304,7 +304,7 @@ export async function startDesktop(): Promise<Desktop> {
 }
 
 /** The page's calls to the host over loopback, recording every answer's text. */
-function pageTransport(url: string, token: string, answers: string[]): AgentHostTransport {
+export function pageTransport(url: string, token: string, answers: string[]): AgentHostTransport {
   return {
     request: async (route, body) => {
       const [method = "GET", path = "/"] = route.split(" ");
