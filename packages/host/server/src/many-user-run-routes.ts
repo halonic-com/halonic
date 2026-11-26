@@ -1,5 +1,6 @@
 import type { RunSummary } from "@halonicjs/events";
 import type { AccountMenuParts } from "./account-menu-route.ts";
+import { maxHandleLength, sendBodyOf } from "./answer-handles.ts";
 import type { ServerPorts } from "./api.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import type { RunOwnership, RunOwnershipStore, ScopedRunPorts } from "./many-users-api.ts";
@@ -121,8 +122,50 @@ function actionHandler(
   };
 }
 
-/** `POST /api/runs/<runId>/events`: an answer or a continue, only from whoever started the run. */
-export const sendHandler = actionHandler("send", "POST events");
+/** The `{ handle, payload }` an end user answers with; `null` for any other body. */
+function parseAnswer(body: Uint8Array): { handle: string; payload: unknown } | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(new TextDecoder().decode(body));
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return null;
+  const { handle, payload, ...rest } = parsed as Record<string, unknown>;
+  // Only these two fields: an event name, a call id or a state is never taken from an end user.
+  if (Object.keys(rest).length > 0 || typeof handle !== "string") return null;
+  if (handle.length === 0 || handle.length > maxHandleLength) return null;
+  return { handle, payload };
+}
+
+/**
+ * `POST /api/runs/<runId>/events`: an answer by handle, only from whoever started the run. A
+ * handle of another run or scope, a spent one and an unknown one all get the same answer. A
+ * payload of the wrong shape spends nothing. The answer names the run, never its summary.
+ */
+export const sendHandler: SignedInHandler = async (request, body, scoped, { runId }) => {
+  if (runId === undefined) return errorResponse(serverErrors.notFound);
+  if (!isJsonRequest(request)) return errorResponse(serverErrors.unsupportedMediaType);
+  const access = actionAccess(scoped.principal, await ownershipOf(scoped, runId), "send");
+  if (access === "not-found") return errorResponse(serverErrors.runNotFound);
+  if (access === "forbidden") return errorResponse(serverErrors.runActionForbidden);
+  const answer = parseAnswer(body);
+  if (answer === null) return errorResponse(serverErrors.badRequest);
+  const { answers } = scoped.ports;
+  const stored = answers === undefined ? null : await answers.get(runId, answer.handle);
+  if (answers === undefined || stored === null) return errorResponse(serverErrors.answerNotFound);
+  const send = sendBodyOf(stored, answer.payload);
+  if (send === null) return errorResponse(serverErrors.badRequest);
+  if (!(await answers.spend(runId, answer.handle))) {
+    return errorResponse(serverErrors.answerNotFound);
+  }
+  const sent = await scoped.runRoutes.send(
+    request,
+    runId,
+    new TextEncoder().encode(JSON.stringify(send)),
+  );
+  return sent.ok ? Response.json({ id: runId }) : sent;
+};
 
 /** `POST /api/runs/<runId>/cancel`: from whoever started the run, or an organisation's owner or admin. */
 export const cancelHandler = actionHandler("cancel", "POST cancel");
