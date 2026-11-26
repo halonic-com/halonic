@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: Julian's review of the server's messaging poll loop (HAL-19493), follow-up HAL-19584
 
-When the Paperclip provider's `refresh` ends, it shall keep the agents (when it read them), the chats and channels, the Inbox, the work and the channels to browse that it read, and the next read of each of those lists shall answer from what it kept, without a request to Paperclip, when made within 10 seconds of that `refresh`. Each kept list shall answer one read only. A write (a send, an answer, starting a channel, changing its members, joining or leaving it, or revoking the key) shall forget what was kept, also when it starts while a `refresh` is in progress, so a list read made after a write reads Paperclip again.
+When the Paperclip provider's `refresh` ends, it shall keep the agents (when it read them), the chats and channels, the Inbox, the work and the channels to browse that it read, and the next read of each of those lists shall answer from what it kept, without a request to Paperclip, when made within 10 seconds of that `refresh`. Each kept list shall answer one read only. A write (a send, an answer, starting a channel, changing its members, joining or leaving it, or revoking the key) shall forget what was kept when it starts and again when it ends, so a `refresh` that ran during the write keeps nothing, so a list read made after a write reads Paperclip again.
 
 ## Examples
 
@@ -16,3 +16,5 @@ When the Paperclip provider's `refresh` ends, it shall keep the agents (when it 
   then the open tasks are read from Paperclip again.
 - Given the work was listed once after a `refresh`, when it is listed again,
   then the open tasks are read from Paperclip again.
+- Given a `refresh` ran while a message was being sent, when the chats are listed after the send,
+  then the open tasks and the chats are read from Paperclip again.

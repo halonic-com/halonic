@@ -365,6 +365,7 @@ export class PaperclipMessaging implements AgentMessaging {
   async revoke(): Promise<boolean> {
     this.#refreshReads.forget();
     const answer = await this.#reader.send("revokeKey");
+    this.#refreshReads.forget();
     return answer.kind === "ok";
   }
 
@@ -374,6 +375,8 @@ export class PaperclipMessaging implements AgentMessaging {
   }
 
   #changedAfter(wrote: boolean): void {
+    // A `refresh` that began during the write may have read Paperclip before the write landed.
+    this.#refreshReads.forget();
     if (wrote) {
       // `#lastSeen` stays: forgetting it would make the next poll a silent first read, and that
       // poll is the one that sees the agent's run start after a send (HAL-19362).

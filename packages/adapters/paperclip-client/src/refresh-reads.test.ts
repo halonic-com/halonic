@@ -14,8 +14,8 @@ beforeEach(() => {
   now = testNow;
 });
 
-/** A client for the Acme connection whose clock is {@link now}. */
-function client(): PaperclipMessaging {
+/** A client for the Acme connection whose clock is {@link now}, sending through `fetch`. */
+function client(fetch: typeof paperclip.fetch = paperclip.fetch): PaperclipMessaging {
   return new PaperclipMessaging({
     address: paperclip.address,
     key: testKey,
@@ -24,7 +24,7 @@ function client(): PaperclipMessaging {
     label: "Paperclip · Acme",
     userId: me,
     now: () => now,
-    fetch: paperclip.fetch,
+    fetch,
   });
 }
 
@@ -91,6 +91,30 @@ verifies("paperclip-client.refresh-reads", () => {
       await messaging.listConversations();
       await messaging.listWork();
       expect(taskReads()).toBe(2);
+    });
+
+    it("read Paperclip again after a write that a refresh ran during", async () => {
+      paperclip.on("POST", `/api/issues/${chatTask}/comments`, {
+        body: { id: "m9", body: "Thanks", authorUserId: me, createdAt: "2026-11-24T10:12:00Z" },
+      });
+      // Holds the comment's POST until the test lets it through, after the `refresh` read Paperclip.
+      let land = () => {};
+      const landed = new Promise<void>((resolve) => {
+        land = resolve;
+      });
+      const messaging = client(async (input, init) => {
+        if (init?.method === "POST") {
+          await landed;
+        }
+        return paperclip.fetch(input, init);
+      });
+      const sending = messaging.send(`paperclip:acme:chat:${chatTask}`, "Thanks");
+      await messaging.refresh();
+      land();
+      expect((await sending).outcome).toBe("sent");
+      paperclip.seen.length = 0;
+      await messaging.listConversations();
+      expect(taskReads()).toBe(1);
     });
 
     it("read Paperclip again for a second read of the same list", async () => {
