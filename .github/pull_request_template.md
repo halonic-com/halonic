@@ -8,6 +8,8 @@
 List the requirement IDs this change adds, changes or proves, one per line:
 - agents.explorer.filter-by-hub
 Or write: No behaviour change: <reason>
+For a user-visible Studio requirement, also name the click step you added or
+extended (`packages/testing/studio-click-test`), or say why none is needed.
 A check reads this section. Changing an active requirement or weakening a test
 needs a decision note (see CONTRIBUTING.md).
 -->
