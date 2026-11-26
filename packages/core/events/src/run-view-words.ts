@@ -2,8 +2,8 @@ import type { RunViewFailure } from "./run-view.ts";
 
 /**
  * The fixed sentences of the run view (design 16.4, H11): one per failure cause, and the
- * lines for an approval whose seller wrote no approval text and a question without a title. They name no tool, model or
- * error text. `{limit}` is the plan's stop code and `{connection}` the connection's name.
+ * lines for an approval whose seller wrote no approval text and a question without a title.
+ * They name no tool, model or error text. `{limit}` is the plan's stop code and `{connection}` the connection's name.
  */
 export const runViewWords = {
   stopped: "This run was stopped.",

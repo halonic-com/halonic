@@ -16,6 +16,9 @@ import { summarize } from "./summarize.ts";
 /** The longest run title, cut from the end user's first message. */
 export const maxRunViewTitleLength = 80;
 
+/** The longest value one `{name}` placeholder of an approval text is filled with; a longer one is cut. */
+export const maxApprovalArgumentLength = 200;
+
 /** The longest chat message an end user may send with a `message` handle. */
 export const maxAnswerMessageLength = 20_000;
 
@@ -59,7 +62,7 @@ export function toRunView(
     asks,
     message,
     nextTimer: summary.status === "waiting" ? summary.nextTimer : null,
-    limit: summary.limit?.code ?? null,
+    limit: summary.status === "waiting" ? (summary.limit?.code ?? null) : null,
     usage: { inputTokens: summary.usage.inputTokens, outputTokens: summary.usage.outputTokens },
     cost: summary.cost,
     failure: summary.status === "failed" ? runViewFailureOf(summary.reason, summary.cause) : null,
@@ -153,7 +156,7 @@ function approvalAsk(
 
 /**
  * The seller's approval text for a tool call, with `{name}` filled in from that argument when
- * it is a plain value. Without such text, the fixed line, never the tool or its arguments.
+ * it is a plain value, cut at {@link maxApprovalArgumentLength} characters. Without such text, the fixed line, never the tool or its arguments.
  */
 export function approvalTextOf(approval: PendingApproval, marks: RunViewMarks): string {
   const key =
@@ -170,7 +173,7 @@ function argumentOf(args: unknown, name: string): string | null {
   if (typeof args !== "object" || args === null || !Object.hasOwn(args, name)) return null;
   const value: unknown = (args as Record<string, unknown>)[name];
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-    return String(value);
+    return String(value).slice(0, maxApprovalArgumentLength);
   }
   return null;
 }

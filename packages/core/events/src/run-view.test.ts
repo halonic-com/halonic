@@ -53,7 +53,6 @@ verifies("events.run-view", () => {
       expect(view.messages.map(({ from, text }) => ({ from, text }))).toEqual([
         { from: "you", text: "Where is my order?\nIt's late." },
         { from: "product", text: "It ships today." },
-        { from: "you", text: "Thanks!" },
       ]);
       expect(new Set(viewEvents.map((event) => event.kind))).toEqual(
         new Set(["message", "file", "waiting", "answered", "completed", "failed"]),
@@ -186,6 +185,54 @@ verifies("events.run-view", () => {
       }),
     );
     expect(limit).toMatchObject({ waitsFor: "limit", limit: "plan.runs", asks: [] });
+  });
+
+  it("shows a received event only when it answers what the run waits for", () => {
+    const answered = log(
+      { type: "event.received", event: "deploy-hook", payload: { text: hidden } },
+      { type: "run.waiting", state: "chat", events: ["message"] },
+      { type: "event.received", event: "message", payload: { text: "Thanks!" } },
+      { type: "event.received", event: "message", payload: { text: hidden } },
+    );
+    const viewEvents = toRunViewEvents(answered, acmeMarks);
+    expect(viewEvents.map((event) => event.kind)).toEqual(["message", "waiting", "message"]);
+    expect(JSON.stringify(viewEvents)).not.toContain(hidden);
+    expect(viewOf(answered).messages.map((message) => message.text)).toEqual(["Hello", "Thanks!"]);
+  });
+
+  it("cuts each filled approval argument at 200 characters", () => {
+    const view = viewOf(
+      log(
+        {
+          type: "approval.requested",
+          state: "ship",
+          agent: "shipper",
+          tool: "push",
+          connector: "github",
+          args: { branch: "b".repeat(300), repo: "acme/shop" },
+          callId: "call-3",
+          resume: { messages: [], calls: [], step: 1 },
+        },
+        { type: "run.waiting", state: "ship", events: ["approve", "reject"] },
+      ),
+    );
+    expect(view.asks.map((ask) => ask.title)).toEqual([
+      `Push branch ${"b".repeat(200)} to acme/shop`,
+    ]);
+  });
+
+  it("names the plan limit only while the run waits at it", () => {
+    const limitWaiting: RunEventBody = {
+      type: "run.limit-waiting",
+      state: "reply",
+      error: "plan stop",
+      cause: { kind: "limit_reached", code: "plan.runs" },
+      until: "T9",
+      input: {},
+    };
+    expect(viewOf(log(limitWaiting)).limit).toBe("plan.runs");
+    const goneOn = viewOf(log(limitWaiting, { type: "state.entered", state: "reply" }));
+    expect(goneOn).toMatchObject({ status: "running", limit: null, waitsFor: null });
   });
 
   describe("a failure", () => {

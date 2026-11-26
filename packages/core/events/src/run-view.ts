@@ -17,7 +17,10 @@ export type AnswerPayloadSchema =
   | { readonly type: "choice"; readonly choices: readonly string[] }
   | { readonly type: "message"; readonly maxLength: number };
 
-/** An answer an end user sends with a handle; its shape is the handle's {@link AnswerPayloadSchema}. */
+/**
+ * An answer an end user sends with a handle; its shape is the handle's
+ * {@link AnswerPayloadSchema}.
+ */
 export type AnswerPayload =
   | { readonly approved: boolean }
   | { readonly choice: number }
