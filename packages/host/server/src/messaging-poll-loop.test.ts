@@ -187,6 +187,40 @@ verifies("server.messaging-rate", () => {
       expect(conversations).toHaveLength(1);
     });
 
+    it("answers a read made when one of two providers names a change while the other still refreshes", async () => {
+      const provider = countedProvider();
+      const { loop, scheduler, sessions } = await polledServer(provider, 1);
+      const [desktop] = sessions;
+      if (desktop === undefined) throw new Error("no desktop");
+      const [source] = await desktop.messaging.listSources();
+      if (source === undefined) throw new Error("no source");
+      const chief = provider.fake.addAgent(source.id, { name: "Chief" });
+      // The hub's `refresh`: Acme names its change, and Globex's `refresh` is held until the
+      // client's read has reached the loop.
+      const named = gate();
+      const reached = gate();
+      const working = provider.refresh;
+      provider.refresh = async () => {
+        provider.refresh = working;
+        provider.fake.addConversation(chief.id);
+        named.open();
+        await reached.opened;
+      };
+      const list = loop.list.bind(loop);
+      loop.list = (name) => {
+        const answer = list(name);
+        reached.open();
+        return answer;
+      };
+
+      const passing = scheduler.pass(idlePollMs);
+      await named.opened;
+      const conversations = await desktop.messaging.listConversations();
+      await passing;
+
+      expect(conversations).toHaveLength(1);
+    });
+
     it("keeps a list's last good value when only its read fails, and fails only that list when it has none", async () => {
       const provider = countedProvider();
       const { loop, scheduler, sessions, errors } = await polledServer(provider, 1);

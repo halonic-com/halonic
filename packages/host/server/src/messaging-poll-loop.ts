@@ -71,8 +71,9 @@ interface Running {
  * last poll read, so the number of clients never multiplies the calls to Paperclip.
  *
  * A poll first runs `refresh`, which tells `changes` readers what changed, then reads the lists.
- * A client that hears a change reads again at once, so a list read made while a poll reads its
- * lists waits for them: it never answers from the poll before the change.
+ * Each provider names its change at the end of its own `refresh`, while the others may still be
+ * refreshing, and a client that hears it reads again at once. So a list read made while a poll
+ * runs waits for that poll's lists: it never answers from the poll before the change.
  *
  * What a poll read belongs to one generation of the source. A write, a sign-in or a Disconnect
  * starts a new one ({@link invalidate}): a poll of the generation before is thrown away when it
@@ -91,8 +92,6 @@ export class MessagingPollLoop {
   #generation = 0;
   #kept: Kept | undefined;
   #polling: Running | undefined;
-  /** The running poll once its `refresh` is done, while it reads the lists. */
-  #listing: Running | undefined;
   #lastPollAt: number | undefined;
   #focusAt: number | undefined;
   /** The ISO time the loop's timer is set for; a delivery for any other time is late or repeated. */
@@ -168,10 +167,10 @@ export class MessagingPollLoop {
     this.#kept = undefined;
   }
 
-  /** What list reads answer from now: a poll's lists still being read, the last poll's, or a new poll's. */
+  /** What list reads answer from now: the running poll's lists, the last poll's, or a new poll's. */
   #current(): Promise<Kept> {
     const generation = this.#generation;
-    if (this.#listing?.generation === generation) return this.#listing.done;
+    if (this.#polling?.generation === generation) return this.#polling.done;
     if (this.#kept?.generation === generation) return Promise.resolve(this.#kept);
     return this.#poll();
   }
@@ -196,13 +195,7 @@ export class MessagingPollLoop {
   /** Runs `refresh`, then reads the lists; a failed `refresh` is reported and the lists still read. */
   async #read(generation: number): Promise<Kept> {
     await this.#refresh().catch(this.#report);
-    const done = this.#readLists(generation);
-    this.#listing = { generation, done };
-    try {
-      return await done;
-    } finally {
-      if (this.#listing?.done === done) this.#listing = undefined;
-    }
+    return this.#readLists(generation);
   }
 
   /**
