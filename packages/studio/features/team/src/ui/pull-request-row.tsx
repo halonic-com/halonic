@@ -63,13 +63,16 @@ export const pullRequestKey = (id: MessagingId) => `pr:${id}`;
 /**
  * "#5641 title" with the number as the muted mono label, on a row and as the PR page's h1. The
  * title is written by whoever opened the PR, outsiders included, so it's React text: never
- * Markdown or a link.
+ * Markdown or a link. On a row the number is small text; on the h1 (`heading`) it keeps the
+ * title's own size, as P12 draws it, so it doesn't sit small and low beside a large title.
  */
-export function PullRequestTitleWords({ pullRequest }: { pullRequest: PullRequest }) {
+export function PullRequestTitleWords(props: { pullRequest: PullRequest; heading?: boolean }) {
+  const { pullRequest } = props;
+  const labelClass =
+    props.heading === true ? "font-mono text-fg-muted" : "font-mono text-small text-fg-muted";
   return (
     <>
-      <span className="font-mono text-small text-fg-muted">{pullRequest.label}</span>{" "}
-      {pullRequest.title}
+      <span className={labelClass}>{pullRequest.label}</span> {pullRequest.title}
     </>
   );
 }
