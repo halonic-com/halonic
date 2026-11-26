@@ -77,6 +77,8 @@ export type {
   SetupFocus,
   SetupViewProps,
 } from "./setup-source.ts";
+// The cards below are exported for the workflows feature's e2e pages, which draw them from made-up data.
+export { AgentItemCard, type AgentItemCardProps } from "./ui/agent-item-card.tsx";
 export { PlanLimitCard, type PlanLimitCardProps } from "./ui/plan-limit-card.tsx";
 export { WaitCard, type WaitCardProps } from "./ui/wait-card.tsx";
 
