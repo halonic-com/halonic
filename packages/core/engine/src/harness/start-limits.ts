@@ -86,6 +86,12 @@ export interface StartLimits {
    * `engine.harness-hedge-wait`).
    */
   wait(ms: number): TimedWait;
+  /**
+   * The limits of one attempt of the call, with timers of their own, so the
+   * early hedge's attempts and its fallback, which run on one call, never
+   * end or move each other's timers.
+   */
+  forAttempt(name: string): StartLimits;
 }
 
 /** A wait {@link StartLimits.wait} started. */

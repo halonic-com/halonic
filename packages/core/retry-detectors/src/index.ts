@@ -1,4 +1,5 @@
 export { type AttemptStep, countChangedLines, turnStepTool } from "./attempt-step.ts";
+export type { WriterSetup } from "./calibration.ts";
 export {
   endOfRunModel,
   inRunModels,

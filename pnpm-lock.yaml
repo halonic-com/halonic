@@ -2792,6 +2792,9 @@ importers:
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../ports
+      '@halonicjs/retry-detectors':
+        specifier: workspace:*
+        version: link:../retry-detectors
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../std
