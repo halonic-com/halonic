@@ -4,15 +4,19 @@ import { useCallback, useEffect, useState } from "react";
 import { withCode } from "../connect/connect-steps.tsx";
 import * as connectWords from "../connections-words.ts";
 import * as words from "../server-engine-words.ts";
-import { PairDialog } from "./pair-dialog.tsx";
+import { PairDialog, type PairedAs } from "./pair-dialog.tsx";
 import { type EngineNote, SwitchBackDialog } from "./switch-back-dialog.tsx";
 
 type Engine = "this-computer" | "server";
 
-/** The paired server as this window last heard it: when it checked, and the pairing's end. */
+/**
+ * The paired server as this window last heard it: when it checked, the pairing's end, and the name
+ * the server lists this computer by.
+ */
 interface Paired {
   readonly checkedAt: string;
   readonly sessionEndsAt: string;
+  readonly deviceName: string;
 }
 
 /** The address's host, as the row shows it: `halonic.example.com`. */
@@ -60,10 +64,15 @@ export function EngineRow({ engine, announce, now }: EngineRowProps) {
   };
 
   const onPaired = useCallback(
-    (done: { readonly address: string; readonly sessionEndsAt: string }) => {
+    (done: PairedAs) => {
       setPairing(undefined);
       setNote(undefined);
-      setPaired({ checkedAt: new Date(now?.() ?? Date.now()).toISOString(), ...done });
+      const { sessionEndsAt, deviceName } = done;
+      setPaired({
+        checkedAt: new Date(now?.() ?? Date.now()).toISOString(),
+        sessionEndsAt,
+        deviceName,
+      });
       announce(words.pairedLine(hostOf(done.address)));
       read();
     },
@@ -111,7 +120,7 @@ export function EngineRow({ engine, announce, now }: EngineRowProps) {
         <PairDialog
           engine={engine}
           again={pairing.again}
-          computerName={words.NAME_FALLBACK}
+          computerName={paired?.deviceName ?? words.NAME_FALLBACK}
           onClose={() => setPairing(undefined)}
           onPaired={onPaired}
           onCancelFailed={() =>
@@ -124,7 +133,7 @@ export function EngineRow({ engine, announce, now }: EngineRowProps) {
         <SwitchBackDialog
           engine={engine}
           host={host}
-          name={words.NAME_FALLBACK}
+          name={paired?.deviceName ?? words.NAME_FALLBACK}
           onDone={(done, switched) => {
             setSwitching(false);
             if (done !== undefined) tell(done);

@@ -181,10 +181,10 @@ verifies("connections.server-pair-dialog", () => {
       expect(text()).toContain("Waiting for Allow on the server…");
     });
 
-    it("hands the pairing's end to the opener once allowed", async () => {
+    it("hands the pairing's end and the name it paired as to the opener once allowed", async () => {
       const sessionEndsAt = "2027-02-22T14:00:00.000Z";
       const { paired } = await endWith([{ state: "paired", sessionEndsAt }]);
-      expect(paired).toHaveBeenCalledWith({ address, sessionEndsAt });
+      expect(paired).toHaveBeenCalledWith({ address, sessionEndsAt, deviceName: "Acme laptop" });
     });
 
     it("cancels the pairing on Cancel and closes", async () => {

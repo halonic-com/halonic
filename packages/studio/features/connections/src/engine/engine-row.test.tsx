@@ -153,6 +153,30 @@ verifies("connections.engine-row", () => {
       );
     });
 
+    it("names this computer as it was paired when the pairing is still valid", async () => {
+      const sessionEndsAt = "2027-02-22T14:00:00.000Z";
+      const { root, engine } = await showRow({
+        status: [{ state: "paired", sessionEndsAt }],
+        left: { stillValid: true },
+      });
+      await pick(radio(root, "Server"));
+      const [addressField, codeField, nameField] = [...(dialog()?.querySelectorAll("input") ?? [])];
+      typeInto(addressField ?? null, address);
+      typeInto(codeField ?? null, "7KQ2M9XF");
+      typeInto(nameField ?? null, "Work laptop");
+      engine.answers.state = server;
+      await press(button("Continue", dialog() ?? document));
+      act(() => vi.advanceTimersByTime(pairPollMs));
+      await settle();
+      expect(engine.pairs.map((pair) => pair.deviceName)).toEqual(["Work laptop"]);
+
+      await pick(radio(root, "This computer"));
+      engine.answers.state = { engine: "this-computer" };
+      await press(button("Use this computer", dialog() ?? document));
+      expect(root.textContent).toContain("Remove Work laptop with halonic serve devices");
+      expect(root.textContent).not.toContain("Halonic Studio");
+    });
+
     it("says what the keychain kept", async () => {
       const left = { stillValid: true, keychainEntryKept: true } as const;
       const { root, engine } = await showRow({ state: server, left });

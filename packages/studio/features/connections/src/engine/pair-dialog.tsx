@@ -24,11 +24,24 @@ export interface PairDialogProps {
   /** Runs once the dialog has cancelled its pairing; the opener unmounts it. */
   readonly onClose: () => void;
   /** Runs once the server allowed this computer and the keychain holds the pairing. */
-  readonly onPaired: (paired: { readonly address: string; readonly sessionEndsAt: string }) => void;
+  readonly onPaired: (paired: PairedAs) => void;
   /** Runs after `onClose` when the server wasn't told to drop the pairing. */
   readonly onCancelFailed: () => void;
   /** Where the countdown counts from. Default the clock. */
   readonly now?: () => number;
+}
+
+/** What the row hears once paired: the address, the pairing's end and the name the server lists. */
+export interface PairedAs {
+  readonly address: string;
+  readonly sessionEndsAt: string;
+  /** This computer's name as it was sent to the server. */
+  readonly deviceName: string;
+}
+
+/** The name a pairing sends: the one typed, or the fallback when the field is empty. */
+function deviceNameOf(typed: string): string {
+  return typed.trim() || words.NAME_FALLBACK;
 }
 
 /** An ending's heading and text, with this computer's name where it names it. */
@@ -73,8 +86,9 @@ export function PairDialog(props: PairDialogProps) {
 
   const sessionEndsAt = view.stage === "paired" ? view.sessionEndsAt : undefined;
   useEffect(() => {
-    if (sessionEndsAt !== undefined) onPaired({ address: address.trim(), sessionEndsAt });
-  }, [sessionEndsAt, onPaired, address]);
+    if (sessionEndsAt === undefined) return;
+    onPaired({ address: address.trim(), sessionEndsAt, deviceName: deviceNameOf(name) });
+  }, [sessionEndsAt, onPaired, address, name]);
 
   const close = () => {
     pairing.cancel().then(
@@ -206,7 +220,7 @@ function EnterStep(props: {
       return;
     }
     setChecked(undefined);
-    props.pairing.start(address, plain, props.name.trim() || words.NAME_FALLBACK);
+    props.pairing.start(address, plain, deviceNameOf(props.name));
   };
 
   return (
