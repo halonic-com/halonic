@@ -115,12 +115,12 @@ async function bodyOf(request: Request): Promise<unknown> {
   return text === "" ? undefined : JSON.parse(text);
 }
 
-/** The tasks Paperclip's `q=` would match: the query in the identifier, title or description, ignoring case. */
 /** `records` in `status`, or all of them without one, as Paperclip's list filters take it. */
 function byStatus<T extends { status: string }>(records: readonly T[], status: string | null) {
   return status === null ? records : records.filter((record) => record.status === status);
 }
 
+/** The tasks Paperclip's `q=` would match: the query in the identifier, title or description, ignoring case. */
 function matchingTasks<T extends object>(tasks: readonly T[], query: string | null): readonly T[] {
   if (query === null) {
     return tasks;

@@ -6,6 +6,9 @@ import type { MessengerTab } from "./messenger.ts";
 const filesNotSent =
   "These files can't be sent. Up to 5 files of 10 MB each can: PNG, JPEG, GIF or WebP pictures, PDFs and text files.";
 
+/** Option labels as one phrase: "Request changes and Reject", "A, B and C". */
+const labelList = new Intl.ListFormat("en-GB", { type: "conjunction" });
+
 /**
  * The Messenger's words. "Messenger", "All" and "Waiting for me" are the
  * HAL-17421 renders' (approved by the board, 24 Nov); a single conversation is
@@ -101,6 +104,14 @@ export const messengerWords = {
   card: {
     needsYou: "Needs you",
     alsoInInbox: "Also in your Inbox. Answering here answers it there.",
+    /**
+     * Instead of `alsoInInbox` when options needing a note were left out of the card (HAL-19018):
+     * "Request changes needs a note: choose it in your Inbox."
+     */
+    needsNoteInInbox: (labels: readonly string[]) =>
+      labels.length === 1
+        ? `${labelList.format(labels)} needs a note: choose it in your Inbox.`
+        : `${labelList.format(labels)} need a note: choose them in your Inbox.`,
     answeredBy: (name: string) => `${name} answered this first.`,
     answeredByYou: "You already answered this.",
     /** Read out once an option answered the card, which then leaves the chat. */

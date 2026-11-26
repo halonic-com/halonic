@@ -138,6 +138,18 @@ verifies("paperclip-client.board-requests", () => {
       expect(question).not.toContain("..");
     });
 
+    it("asks why on a secret proposal's Reject, without requiring it, and not on a join request's", async () => {
+      const items = await connect(acmeWith([proposal()], [joinRequest()]), {
+        offline: false,
+      }).listInboxItems();
+      const rejectOf = (id: string) =>
+        items.find((item) => item.id === id)?.options.find((option) => option.id === "reject");
+      expect(rejectOf(proposalItem)?.noteLabel).toBe("Why are you rejecting this?");
+      expect(rejectOf(proposalItem)?.noteRequired).toBeUndefined();
+      expect(rejectOf(joinItem)).toBeDefined();
+      expect(rejectOf(joinItem)?.noteLabel).toBeUndefined();
+    });
+
     it("approves with an empty body, and rejects with the note or a fixed reason", async () => {
       const paperclip = acmeWith([proposal()])
         .on("POST", `${proposals}/${proposalId}/approve`, { body: {} })

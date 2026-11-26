@@ -2,6 +2,7 @@
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { messengerWords } from "../messenger-words.ts";
 import { askForUpdateText } from "../quick-actions.ts";
 import { byText, openChat, openMessenger, press, said, settle } from "../test-support/page.tsx";
 import { unmountAll } from "../test-support/render.tsx";
@@ -227,5 +228,33 @@ verifies("messenger.option-note", () => {
     expect(buttons).toContain("Hire");
     expect(buttons).toContain("Later");
     expect(buttons).not.toContain("Request changes");
+  });
+
+  it("says which left-out options need a note in the Inbox, instead of the Also in your Inbox line", async () => {
+    const { messaging, acme, chief } = chiefAsks();
+    const changes = { id: "changes", label: "Request changes", noteRequired: true };
+    messaging.addInboxItem(acme.id, {
+      question: "Ship #13?",
+      from: { kind: "agent", agent: chief.id, name: "Chief" },
+      options: [{ id: "approve", label: "Approve" }, { id: "reject", label: "Reject" }, changes],
+    });
+    const page = await openMessenger(messaging);
+    await openChat(page, "Chief");
+    const card = [...page.querySelectorAll("[data-chat-card]")].find((each) =>
+      each.textContent?.includes("Ship #13?"),
+    );
+    const buttons = [...(card?.querySelectorAll("button") ?? [])].map((b) => b.textContent);
+    expect(buttons).toEqual(["Approve", "Reject"]);
+    expect(card?.textContent).toContain("Request changes needs a note: choose it in your Inbox.");
+    expect(card?.textContent).not.toContain("Also in your Inbox");
+  });
+
+  it("names two or more left-out options together", () => {
+    expect(messengerWords.card.needsNoteInInbox(["Request changes", "Reject"])).toBe(
+      "Request changes and Reject need a note: choose them in your Inbox.",
+    );
+    expect(messengerWords.card.needsNoteInInbox(["A", "B", "C"])).toBe(
+      "A, B and C need a note: choose them in your Inbox.",
+    );
   });
 });

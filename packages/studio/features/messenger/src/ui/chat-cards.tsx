@@ -211,7 +211,7 @@ function ChatCard({
         ))}
       </div>
       <p className="text-small text-fg-muted" role="status">
-        {line ?? alsoInInbox(row)}
+        {line ?? whereElse(row, card)}
       </p>
     </article>
   );
@@ -236,6 +236,15 @@ export function alsoInInbox(row: ConversationRow): string {
     : messengerWords.card.alsoInInbox;
 }
 
+/**
+ * The card's footer before any answer: which options left out of it need a note in the Inbox,
+ * else where else it shows, so a missing option never goes unsaid (HAL-19018).
+ */
+function whereElse(row: ConversationRow, card: InboxItem): string {
+  const leftOut = card.options.filter(needsNote).map((option) => option.label);
+  return leftOut.length === 0 ? alsoInInbox(row) : messengerWords.card.needsNoteInInbox(leftOut);
+}
+
 /** What the card says after an answer that didn't land; nothing more once it did. */
 export function lineOf(outcome: AnswerResult, row: ConversationRow): string | undefined {
   if (outcome.outcome === "refused") {
@@ -255,7 +264,12 @@ export function lineOf(outcome: AnswerResult, row: ConversationRow): string | un
  * no note field yet; the Inbox answers them (`messenger.option-note`).
  */
 function answerableHere(card: InboxItem): readonly InboxItem["options"][number][] {
-  return card.options.filter((option) => option.noteRequired !== true);
+  return card.options.filter((option) => !needsNote(option));
+}
+
+/** Whether an option can't be answered without a note, which a chat has no field for yet. */
+function needsNote(option: InboxItem["options"][number]): boolean {
+  return option.noteRequired === true;
 }
 
 /** The 1st option is primary, the 2nd secondary and any later one ghost (render 4e). */
