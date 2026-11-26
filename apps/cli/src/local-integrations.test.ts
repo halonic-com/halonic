@@ -4,8 +4,13 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { workspaceIntegrations } from "@halonicjs/adapter-doctor-node";
 import { FileSystemFolderReader, FileTrustStore } from "@halonicjs/adapter-fs-node";
-import { MemoryFolderReader, MemoryUnfencedRunConsentStore } from "@halonicjs/adapter-memory";
 import {
+  MemoryFolderReader,
+  MemoryRecordStore,
+  MemoryUnfencedRunConsentStore,
+} from "@halonicjs/adapter-memory";
+import {
+  ConnectorPauses,
   type GatedRunner,
   IntegrationNotTrustedError,
   RunnerStartGate,
@@ -122,6 +127,7 @@ function runnerStarts() {
     workspace: new FileSystemFolderReader(acme),
     digest: webCryptoDigest,
     gate,
+    pauses: new ConnectorPauses({ records: new MemoryRecordStore(), place: "pauses", clock }),
   });
   const started: Sandbox[] = [];
   const startIn = async (picked: Sandbox): Promise<GatedRunner> => {
@@ -261,7 +267,10 @@ verifies("cli.local-integrations", () => {
       expect(trusted.status).toBe("trusted");
       await putFiles({ "integrations/station/src/index.js": "export default { changed: 2 };\n" });
       const error = await refusal(
-        starts.start({ trust: trusted, folder: "integrations/station", settings: {} }, startIn),
+        starts.start(
+          { trust: trusted, folder: "integrations/station", connector: "station", settings: {} },
+          startIn,
+        ),
       );
       expect(error.reason).toBe("code-changed");
       expect(started).toEqual([]);
@@ -287,7 +296,10 @@ verifies("cli.local-integrations", () => {
       const check = await (await acmeTrust()).check();
       expect(check.status).toBe("new");
       const error = await refusal(
-        starts.start({ trust: check, folder: "integrations/station", settings: {} }, startIn),
+        starts.start(
+          { trust: check, folder: "integrations/station", connector: "station", settings: {} },
+          startIn,
+        ),
       );
       expect(error.reason).toBe("workspace-not-trusted");
       expect(started).toEqual([]);
