@@ -26,7 +26,6 @@ import {
   type CommandResult,
   OwnLineError,
   type StoppedResult,
-  UsageError,
 } from "../../command.ts";
 import type { AddedPlugins } from "../../connector-plugin.ts";
 import { followUntilStopped } from "../../follow-run.ts";
@@ -71,6 +70,7 @@ import { eventLines } from "./event-lines.ts";
 import { runHarnessOf } from "./harness.ts";
 import { checkFirstStepInput, runInputOf } from "./input.ts";
 import { liveLines } from "./live-lines.ts";
+import { oneWorkflow } from "./one-workflow.ts";
 import { runResult } from "./result.ts";
 import { type RunPlace, sendEvent } from "./send-event.ts";
 import { checkRunTrust, type RunTrustMachine } from "./trust.ts";
@@ -123,7 +123,7 @@ export async function followWorkflow(
   context: CommandContext,
   setup: RunSetup,
 ): Promise<FollowedResult | StoppedResult> {
-  const typed = oneWorkflow(input);
+  const typed = await oneWorkflow(input, context, setup);
   const dir = await openWorkspaceDir(input, context);
   const typedDir = givenDir(input, dir);
   const loaded = await liveWorkspace(dir, setup);
@@ -452,15 +452,6 @@ async function liveWorkspace(
     throw new OwnLineError("conflict", runMessages.nothingLive(), runMessages.nothingLiveFix());
   }
   return run;
-}
-
-/** The one argument, the workflow as typed; else the usage error with the usage line. */
-function oneWorkflow(input: CommandInput): string {
-  const [workflow, ...more] = input.positionals;
-  if (workflow === undefined || more.length > 0) {
-    throw new UsageError(runMessages.takesOneWorkflow(input.positionals));
-  }
-  return workflow;
 }
 
 function optionText(input: CommandInput, name: string): string | undefined {

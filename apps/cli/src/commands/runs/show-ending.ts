@@ -29,6 +29,7 @@ import { stepName } from "../../messages/step-name.ts";
 import { runFailureDetails } from "../../run-failure-details.ts";
 import { agentName, hasAgentOutput, type RunDefinitions, receiptOf } from "../../run-view.ts";
 import { runEnding, waitDescription } from "./listed-run.ts";
+import { waitBodyLines } from "./wait-body.ts";
 
 /**
  * What follows the step lines: a finished run's "✓ Support reply finished
@@ -413,6 +414,7 @@ function waitingEnding(
   return [
     [],
     ...waiting.map((line) => phrase`${markPart("needsYou")} ${line}`),
+    ...waitBodyLines(summary),
     phrase`  ${answer.phrase}`,
     ...(waiting.length > 1 ? [phrase`  ${runMessages.answerAnotherCall().phrase}`] : []),
   ];

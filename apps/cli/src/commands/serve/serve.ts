@@ -12,7 +12,7 @@
 // `halonic trust`. Later versions are checked as `routines watch` checks them.
 // The routines on a clock run as `routines watch` runs them (`server.routines`).
 
-import { access, realpath } from "node:fs/promises";
+import { realpath } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { makePrivateFolder } from "@halonicjs/adapter-fs-node";
@@ -66,6 +66,7 @@ import { workspaceAgentNames } from "./agent-names.ts";
 import { openChoiceHistory } from "./choice-files.ts";
 import { workspaceGoogleRead } from "./google-read.ts";
 import { startsOnLiveVersion } from "./live-version-runs.ts";
+import { answerBrowserWithoutStudio, studioPageIsBuilt } from "./no-studio-page.ts";
 import { type ConsoleTransport, openServeConsole, type ServeConsole } from "./serve-console.ts";
 import { openServePaperclip } from "./serve-paperclip.ts";
 import { type ServedRoutines, servedRoutines } from "./serve-routines.ts";
@@ -309,17 +310,9 @@ function studioFolderOf(setup: ServeSetup): string | null {
 async function studioPageLine(setup: ServeSetup): Promise<Phrase | null> {
   const studioFolder = studioFolderOf(setup);
   if (studioFolder === null) return serveMessages.studioNotInPackage().phrase;
-  if (!(await isBuilt(studioFolder))) return serveMessages.studioNotBuilt().phrase;
+  if (!(await studioPageIsBuilt(studioFolder))) return serveMessages.studioNotBuilt().phrase;
   if (await isOutdated(setup, studioFolder)) return serveMessages.studioOutdated().phrase;
   return null;
-}
-
-/** Whether the Studio page's entry is there to serve. */
-async function isBuilt(studioFolder: string): Promise<boolean> {
-  return access(join(studioFolder, "studio.html")).then(
-    () => true,
-    () => false,
-  );
 }
 
 /** Whether the built page is older than the app it is built from, such as after a `git pull`. */
@@ -425,17 +418,20 @@ async function listenOnComputer(
     createServer: (allowedHosts) =>
       // A refused webhook delivery gets a line, so the terminal says why it started nothing (HAL-15084).
       reportWebhookRefusals(
-        createServer({
-          config: {
-            deploymentId: "local",
-            version: halonicVersion,
-            minAppVersion: halonicVersion,
-            allowedHosts,
-            maxBodyBytes,
-            ...(listen.publicOrigin === undefined ? {} : { publicOrigin: listen.publicOrigin }),
-          },
-          ports,
-        }),
+        answerBrowserWithoutStudio(
+          createServer({
+            config: {
+              deploymentId: "local",
+              version: halonicVersion,
+              minAppVersion: halonicVersion,
+              allowedHosts,
+              maxBodyBytes,
+              ...(listen.publicOrigin === undefined ? {} : { publicOrigin: listen.publicOrigin }),
+            },
+            ports,
+          }),
+          studioFolder === null,
+        ),
         {
           routineName: async (key) => (await findWebhookRoutine(key))?.routine.name ?? null,
           print: (line) => context.printAhead(line),

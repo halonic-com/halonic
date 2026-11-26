@@ -63,7 +63,8 @@ export const initMessages = defineMessages("init", {
 
   /** The reason when the folder has files in it (`conflict`, exit 5). */
   notEmpty: () => phrase`the folder isn't empty.`,
-  notEmptyFix: () => phrase`Pick a new folder name, or run it in an empty folder.`,
+  notEmptyFix: () =>
+    phrase`Pick a new folder name, for example halonic init my-workspace, or run it in an empty folder.`,
   unknownExample: (name: string) => phrase`There's no example called "${name}".`,
   unknownExampleNear: (name: string, near: string) =>
     phrase`There's no example called "${name}". Did you mean ${near}?`,

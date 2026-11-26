@@ -11,6 +11,13 @@ stdout:
   \e[2mOn Sample answers: the built-in test model wrote this run's answers, not a real model.\e[22m
   
   \e[33m!\e[39m Waiting for you: Approve this reply?
+  
+    Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.
+  
+    Acme support
+  
+    Approving finishes the run. Nothing is sent.
+  
     Answer with: halonic runs send 01jd8q approve \e[2m(or reject)\e[22m
 stderr:
 
@@ -27,6 +34,13 @@ stdout:
   On Sample answers: the built-in test model wrote this run's answers, not a real model.
   
   ! Waiting for you: Approve this reply?
+  
+    Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.
+  
+    Acme support
+  
+    Approving finishes the run. Nothing is sent.
+  
     Answer with: halonic runs send 01jd8q approve (or reject)
 stderr:
 
