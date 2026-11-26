@@ -41,6 +41,8 @@ export function checkRunnable(
   now: number,
 ): Runnable {
   if (request.finished) return { ok: false, reason: "closed" };
-  if (now >= request.expiresAt) return { ok: false, reason: "expired" };
-  return { ok: true };
+  // Run only when `now` is provably before the expiry: an expiry that isn't a
+  // number (`NaN` from parsing a date that doesn't exist) fails closed.
+  if (now < request.expiresAt) return { ok: true };
+  return { ok: false, reason: "expired" };
 }

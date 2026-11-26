@@ -47,6 +47,23 @@ verifies("action-steppers.request-expiry", () => {
       });
     });
 
+    it("refuses a request whose expiry isn't a number", () => {
+      const notADate = requestExpiresAt({
+        receivedAt,
+        requested: Date.parse("2026-99-99T00:00:00Z"),
+      });
+
+      expect(notADate).toBeNaN();
+      expect(checkRunnable({ expiresAt: notADate, finished: false }, receivedAt)).toEqual({
+        ok: false,
+        reason: "expired",
+      });
+      expect(checkRunnable({ expiresAt: expiresAt, finished: false }, Number.NaN)).toEqual({
+        ok: false,
+        reason: "expired",
+      });
+    });
+
     it("refuses a finished request even before its expiry", () => {
       expect(checkRunnable({ expiresAt, finished: true }, receivedAt)).toEqual({
         ok: false,
