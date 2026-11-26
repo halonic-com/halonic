@@ -60,6 +60,22 @@ const agentBudgets = s
     `name at most ${MAX_BUDGET_AGENTS} agents`,
   );
 
+/** The most projects one budget list names. */
+export const MAX_BUDGET_PROJECTS = 500;
+
+/** A project's url key in Paperclip, such as `website` or `phase-3`. */
+const projectUrlKey = s
+  .string()
+  .regex(/^[a-z0-9][a-z0-9-]{0,63}$/, "write the project's url key, such as 'website'");
+
+/** What each project's monthly budget should be, by url key. */
+const projectBudgets = s
+  .record(projectUrlKey, monthlyDollars)
+  .refine(
+    (budgets) => Object.keys(budgets).length <= MAX_BUDGET_PROJECTS,
+    `name at most ${MAX_BUDGET_PROJECTS} projects`,
+  );
+
 /**
  * The kinds of seat rule a workspace may give an agent (HAL-18962):
  * `shared` (the default: the seats plugin places it), `pinned` (never moved)
@@ -246,11 +262,11 @@ export const TOOL_ACTIONS = {
   },
   "paperclip.budgets": {
     about:
-      "Compares each agent's monthly budget in Paperclip with the one the workspace sets, and flags the differences. Changes nothing.",
+      "Compares each agent's and each project's monthly budget in Paperclip with the one the workspace sets, and flags the differences. Changes nothing.",
     writes: false,
     keys: ["paperclip-api"],
     parameters: none,
-    settings: s.object({ agents: agentBudgets }).strict(),
+    settings: s.object({ agents: agentBudgets, projects: projectBudgets.default({}) }).strict(),
   },
   "paperclip.seat-rules": {
     about:

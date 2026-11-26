@@ -1,5 +1,5 @@
 import type { ActionCall } from "../handlers.ts";
-import type { AgentRecord } from "../host.ts";
+import type { AgentRecord, ProjectRecord } from "../host.ts";
 
 /**
  * Paperclip's lists stop at a limit, and a report that read a full page
@@ -36,4 +36,11 @@ export async function listAgents(call: ActionCall): Promise<LimitedList<AgentRec
   const { paperclip, companyId } = call;
   const items = await paperclip.agents.list({ companyId, limit: LIST_LIMIT });
   return { items, limitNote: limitNote("agents", items.length) };
+}
+
+/** The company's projects, up to the limit, with the note when it was reached. */
+export async function listProjects(call: ActionCall): Promise<LimitedList<ProjectRecord>> {
+  const { paperclip, companyId } = call;
+  const items = await paperclip.projects.list({ companyId, limit: LIST_LIMIT });
+  return { items, limitNote: limitNote("projects", items.length) };
 }

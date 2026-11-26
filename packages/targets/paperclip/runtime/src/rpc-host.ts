@@ -87,6 +87,9 @@ export function rpcHost(
       },
       list: async (input) => asList("agents.list", await to("agents.list", { ...input })),
     },
+    projects: {
+      list: async (input) => asList("projects.list", await to("projects.list", { ...input })),
+    },
     issues: {
       get: async (issueId, companyId) =>
         asRecordOrNull("issues.get", await to("issues.get", { issueId, companyId })),

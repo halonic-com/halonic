@@ -49,6 +49,30 @@ verifies("runtime.paperclip-writes", () => {
       expect(asked).toEqual([{ companyId: "acme" }]);
     });
 
+    test("lists projects only for an action that declared projects.read, before the host", async () => {
+      const { host } = fakePaperclip();
+      const asked: unknown[] = [];
+      const recording = {
+        ...host,
+        projects: {
+          list: async (input: unknown) => {
+            asked.push(input);
+            return [];
+          },
+        },
+      };
+      const noProjects = paperclipAccess(recording, ["agents.read"], call);
+      expect(() => noProjects.projects.list({ companyId: "acme" })).toThrow(
+        "this action doesn't declare projects.read, so it may not use it.",
+      );
+      expect(asked).toEqual([]);
+      await paperclipAccess(recording, ["projects.read"], call).projects.list({
+        companyId: "globex",
+        limit: 5,
+      });
+      expect(asked).toEqual([{ companyId: "acme", limit: 5 }]);
+    });
+
     test("lists the call's company's agents, whatever company the action asks for", async () => {
       const { recording, asked } = recordingAgentList();
       const access = paperclipAccess(recording, ["agents.read"], call);

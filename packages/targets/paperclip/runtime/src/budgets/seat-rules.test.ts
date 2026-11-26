@@ -14,6 +14,9 @@ const declarations: ToolDeclaration[] = ["seat_rules", "budgets"].map((name) => 
   parametersSchema: { type: "object", properties: {} },
 }));
 
+/** One agent's seat rule as the tool file states it. */
+type SeatRule = { seat: "shared" | "pinned" | "own-seat"; paidApi?: "never" };
+
 const paperclipAgents: AgentRecord[] = [
   { id: "agent-ravi", name: "Ravi", urlKey: "ravi" },
   { id: "agent-mateo", name: "Mateo", urlKey: "mateo" },
@@ -29,7 +32,7 @@ const fullPage: AgentRecord[] = Array.from({ length: LIST_LIMIT }, (_, i) => ({
 
 /** A worker serving `seat_rules` and `budgets` with these settings, and these agents in Paperclip. */
 function worker(
-  settings: { seats?: Record<string, unknown>; budgets?: Record<string, number> },
+  settings: { seats?: Record<string, SeatRule>; budgets?: Record<string, number> },
   agents: readonly AgentRecord[],
 ) {
   const host = fakeHost({}, {});
@@ -39,7 +42,7 @@ function worker(
       action: { run: "paperclip.seat-rules", with: { agents: settings.seats ?? {} } },
     }),
     acmeTool("budgets", {
-      action: { run: "paperclip.budgets", with: { agents: settings.budgets ?? {} } },
+      action: { run: "paperclip.budgets", with: { agents: settings.budgets ?? {}, projects: {} } },
     }),
   ];
   registerWorkspaceTools(host.ctx, {
@@ -140,7 +143,8 @@ verifies("runtime.paperclip-seat-rules", () => {
     test("the budgets say so when the agent list came back full", async () => {
       const { call } = worker({ budgets: { "agent-0": 10 } }, fullPage);
       const result = await call("budgets", {});
-      expect(result.content?.split("\n")[1]).toBe(note);
+      // Right under the agents' heading, which follows the summary line.
+      expect(result.content?.split("\n").slice(1, 3)).toEqual(["Agents:", note]);
       expect(result.data).toMatchObject({ agentListCut: true });
     });
 

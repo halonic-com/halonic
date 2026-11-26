@@ -200,13 +200,28 @@ verifies("format.tool-actions", () => {
     );
     expect(parsedValue("tool", cents).action).toEqual({
       run: "paperclip.budgets",
-      with: { agents: { mateo: 12.5 } },
+      with: { agents: { mateo: 12.5 }, projects: {} },
+    });
+    const projects = budgets.replace(
+      "{ repositories: [acme/website] }",
+      "{ agents: {}, projects: { website: 80 } }",
+    );
+    expect(parsedValue("tool", projects).action).toEqual({
+      run: "paperclip.budgets",
+      with: { agents: {}, projects: { website: 80 } },
     });
     const fraction = budgets.replace(
       "{ repositories: [acme/website] }",
       "{ agents: { mateo: 12.345 } }",
     );
     expect(summary(problemsOf("tool", fraction))).toEqual(["action.with.agents.mateo custom 7"]);
+    const projectFraction = budgets.replace(
+      "{ repositories: [acme/website] }",
+      "{ agents: {}, projects: { website: 12.345 } }",
+    );
+    expect(summary(problemsOf("tool", projectFraction))).toEqual([
+      "action.with.projects.website custom 7",
+    ]);
   });
 
   it("refuses a GitHub action without its repositories, and fills in the others' defaults", () => {
