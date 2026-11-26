@@ -4,7 +4,7 @@ import { ReadRefused } from "../merge-control/read-client.ts";
 import type { GitHubQuery } from "../snapshot/graphql.ts";
 import { fakeChiefLine, lineRequest } from "./chief-line.test-helper.ts";
 import { handleChiefLineRequest } from "./chief-line.ts";
-import { type MergerWakeApi, mergerWake } from "./merger-wake.ts";
+import { type MergerWakeApi, mergerWake, passPrompt, timerPassDueInMs } from "./merger-wake.ts";
 import { changesBetween, type PullPrint, readPrints } from "./merger-wake-prints.ts";
 
 const print = (patch: Partial<PullPrint> = {}): PullPrint => ({
@@ -27,6 +27,8 @@ afterEach(() => {
 /**
  * The Merger wake on a fake host: the Merger's task `task-merger`, held by
  * `agent-merger`, and GitHub answers from `github.prints` or `github.error`.
+ * A wake starts a run of `agent-merger` with no task, or fails with `merger.wakeError`.
+ * The Merger has no timer heartbeat unless a test sets `merger.heartbeat`.
  * `request` runs the next pass at once, as the job's event would.
  */
 function setUp(options: { enabled?: boolean } = {}) {
@@ -34,8 +36,15 @@ function setUp(options: { enabled?: boolean } = {}) {
     prints: new Map([[6085, print()]]),
     reads: 0,
   };
-  const merger = { status: "idle", activeRun: null as { id: string } | null };
-  const wakes: { task: string; reason?: string }[] = [];
+  const merger: {
+    status: string;
+    activeRun: { id: string } | null;
+    wakeError?: Error;
+    heartbeat?: { enabled: boolean; intervalSec: number };
+    lastHeartbeatAt: Date | null;
+  } = { status: "idle", activeRun: null, lastHeartbeatAt: null };
+  const wakes: { agent: string; reason?: string; prompt: string }[] = [];
+  const wokeAt: number[] = [];
   const logs: string[] = [];
   const log = (message: string) => logs.push(message);
   const ctx = {
@@ -53,12 +62,27 @@ function setUp(options: { enabled?: boolean } = {}) {
         id === "task-merger"
           ? { id, assigneeAgentId: "agent-merger", activeRun: merger.activeRun }
           : null,
-      requestWakeup: async (task: string, _: string, wake?: { reason?: string }) => {
-        wakes.push({ task, ...(wake?.reason === undefined ? {} : { reason: wake.reason }) });
-        return {};
+    },
+    agents: {
+      get: async () => ({
+        id: "agent-merger",
+        status: merger.status,
+        runtimeConfig: merger.heartbeat === undefined ? {} : { heartbeat: merger.heartbeat },
+        lastHeartbeatAt: merger.lastHeartbeatAt,
+      }),
+      invoke: async (agent: string, _: string, wake: { prompt: string; reason?: string }) => {
+        if (merger.wakeError !== undefined) {
+          throw merger.wakeError;
+        }
+        wokeAt.push(Date.now());
+        wakes.push({
+          agent,
+          prompt: wake.prompt,
+          ...(wake.reason === undefined ? {} : { reason: wake.reason }),
+        });
+        return { runId: `run-${wakes.length}` };
       },
     },
-    agents: { get: async () => ({ id: "agent-merger", status: merger.status }) },
     logger: { info: log, warn: log, error: log },
   } as unknown as MergerWakeApi;
   const passes: Promise<void>[] = [];
@@ -75,19 +99,41 @@ function setUp(options: { enabled?: boolean } = {}) {
     },
   });
   const pass = () => waker.pass("acme", new Date());
-  return { github, merger, wakes, logs, waker, pass, settle: () => Promise.all(passes) };
+  return { github, merger, wakes, wokeAt, logs, waker, pass, settle: () => Promise.all(passes) };
 }
 
 verifies("paperclip.merger-wake", () => {
-  test("a new head wakes the Merger once on its own task; the first pass only takes the baseline", async () => {
+  test("a new head wakes the Merger once with no task and a pass prompt; the first pass only takes the baseline", async () => {
     const { github, wakes, logs, pass } = setUp();
     await pass();
     expect(wakes).toEqual([]);
     github.prints.set(6085, print({ head: "b".repeat(40) }));
     await vi.advanceTimersByTimeAsync(60_000);
     await pass();
-    expect(wakes).toEqual([{ task: "task-merger", reason: "merger_pr_change" }]);
+    expect(wakes).toEqual([
+      { agent: "agent-merger", reason: "merger_pr_change", prompt: passPrompt(["#6085 head"]) },
+    ]);
     expect(logs).toContain("Merger wake: woke the Merger for #6085 head.");
+  });
+
+  test("the woken run's prompt names the changes and asks for one pass as on a timer heartbeat", () => {
+    expect(passPrompt(["#6085 head", "#6086 opened"])).toBe(
+      "Merger wake (Agent tools plugin, HAL-19234): #6085 head; #6086 opened.\n" +
+        "Run one full pass now, exactly as on a timer heartbeat (MERGER.md: `pass.js`), then end the run.",
+    );
+  });
+
+  test("a wake that fails keeps its changes for the next wake", async () => {
+    const { github, merger, wakes, logs, pass } = setUp();
+    await pass();
+    github.prints.set(6085, print({ review: "APPROVED" }));
+    merger.wakeError = new Error("Agent is paused");
+    await pass();
+    expect(logs).toContain("Merger wake: couldn't wake the Merger: Agent is paused");
+    delete merger.wakeError;
+    await vi.advanceTimersByTimeAsync(60_000);
+    await pass();
+    expect(wakes.map((wake) => wake.prompt)).toEqual([passPrompt(["#6085 review"])]);
   });
 
   test("a pull request whose fields didn't change wakes nobody, however often it is read", async () => {
@@ -109,23 +155,79 @@ verifies("paperclip.merger-wake", () => {
     github.prints.set(6085, print({ checks: "SUCCESS", labels: "built-on:paperclip,fast-track" }));
     await pass();
     expect(wakes).toHaveLength(1);
+    expect(github.reads).toBe(2);
     await vi.advanceTimersByTimeAsync(35_000);
     await settle();
     expect(wakes).toHaveLength(2);
     expect(logs).toContain("Merger wake: woke the Merger for #6085 labels.");
   });
 
-  test("while a Merger run is in progress the change waits, and the next pass after it wakes", async () => {
+  test("while a Merger run is in progress GitHub isn't read, and the next pass after it wakes", async () => {
     const { github, merger, wakes, pass } = setUp();
     await pass();
     merger.status = "running";
     github.prints.set(6086, print());
     await pass();
     expect(wakes).toEqual([]);
+    expect(github.reads).toBe(1);
     merger.status = "idle";
     await vi.advanceTimersByTimeAsync(60_000);
     await pass();
     expect(wakes).toHaveLength(1);
+  });
+
+  test("no wake while the Merger's timer pass is due within 30 s, and GitHub isn't read; after the timer pass it wakes", async () => {
+    const { github, merger, wakes, pass } = setUp();
+    merger.heartbeat = { enabled: true, intervalSec: 60 };
+    merger.lastHeartbeatAt = new Date();
+    await pass();
+    github.prints.set(6085, print({ checks: "SUCCESS" }));
+    await vi.advanceTimersByTimeAsync(35_000);
+    await pass();
+    expect(wakes).toEqual([]);
+    expect(github.reads).toBe(1);
+    await vi.advanceTimersByTimeAsync(25_000);
+    merger.lastHeartbeatAt = new Date();
+    await vi.advanceTimersByTimeAsync(5_000);
+    await pass();
+    expect(wakes.map((wake) => wake.prompt)).toEqual([passPrompt(["#6085 checks"])]);
+  });
+
+  test("timerPassDueInMs counts from the last heartbeat; no timer heartbeat or no run yet gives undefined", () => {
+    const now = Date.parse("2026-11-26T07:00:00Z");
+    const heartbeat = { enabled: true, intervalSec: 60 };
+    const ranAt = (seconds: number) => new Date(now - seconds * 1000);
+    expect(
+      timerPassDueInMs({ runtimeConfig: { heartbeat }, lastHeartbeatAt: ranAt(40) }, now),
+    ).toBe(20_000);
+    expect(
+      timerPassDueInMs({ runtimeConfig: { heartbeat }, lastHeartbeatAt: ranAt(90) }, now),
+    ).toBe(-30_000);
+    expect(
+      timerPassDueInMs({ runtimeConfig: { heartbeat }, lastHeartbeatAt: null }, now),
+    ).toBeUndefined();
+    const off = { heartbeat: { enabled: false, intervalSec: 60 } };
+    expect(
+      timerPassDueInMs({ runtimeConfig: off, lastHeartbeatAt: ranAt(40) }, now),
+    ).toBeUndefined();
+    expect(
+      timerPassDueInMs({ runtimeConfig: {}, lastHeartbeatAt: ranAt(40) }, now),
+    ).toBeUndefined();
+  });
+
+  test("changes every 10 s for 3 minutes wake the Merger at most once in any 45 s", async () => {
+    const { github, wokeAt, pass, settle } = setUp();
+    await pass();
+    for (let step = 1; step <= 18; step += 1) {
+      github.prints.set(6085, print({ head: String(step).padStart(40, "0") }));
+      await pass();
+      await vi.advanceTimersByTimeAsync(10_000);
+      await settle();
+    }
+    expect(wokeAt.length).toBeGreaterThan(1);
+    for (let index = 1; index < wokeAt.length; index += 1) {
+      expect((wokeAt[index] ?? 0) - (wokeAt[index - 1] ?? 0)).toBeGreaterThanOrEqual(45_000);
+    }
   });
 
   test("a rate limit logs one line and pauses the reads until GitHub's reset time", async () => {
