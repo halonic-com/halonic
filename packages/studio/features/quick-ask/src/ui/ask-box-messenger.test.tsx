@@ -13,6 +13,19 @@ const liam = agent("Liam");
 
 afterEach(unmountAll);
 
+/** The name a screen reader gives an element with no label: its text, leaving out what's hidden. */
+function accessibleName(element: Node): string {
+  if (element instanceof HTMLElement && element.getAttribute("aria-hidden") === "true") return "";
+  if (!(element instanceof HTMLElement)) return element.textContent ?? "";
+  return [...element.childNodes].map(accessibleName).join("");
+}
+
+/** The text of the elements an element's `aria-describedby` names. */
+function accessibleDescription(element: Element | undefined): string {
+  const ids = element?.getAttribute("aria-describedby")?.split(" ") ?? [];
+  return ids.map((id) => document.getElementById(id)?.textContent ?? "").join(" ");
+}
+
 verifies("quick-ask.messenger", () => {
   describe("the answer", () => {
     it("offers Open in Messenger after Copy, which closes the box on the agent's chat", async () => {
@@ -56,6 +69,17 @@ verifies("quick-ask.messenger", () => {
       await press(answer);
       expect(window.chatsOpened).toEqual(["chat-Chief"]);
     });
+
+    it("describes Answer in Messenger by the card's question, so several cards' buttons differ", async () => {
+      const messenger = new FakeMessenger([chat(chief)]);
+      const { page } = await openBox(messenger);
+      await ask(page, "Shall we ship?");
+      messenger.cardsOf = [card(chief, "Ship 0.2.0 today?", "2026-11-25T13:41:00.000Z")];
+      await act(async () => messenger.change("acme"));
+
+      const button = byText(page, "[data-answer] button", "Answer in Messenger");
+      expect(accessibleDescription(button)).toBe("Ship 0.2.0 today?");
+    });
   });
 
   describe("last answer", () => {
@@ -74,6 +98,8 @@ verifies("quick-ask.messenger", () => {
       const link = byText(page, "footer button", "Last answer");
       expect(link?.textContent).toBe(`Last answer: Liam, ${time} ›`);
       expect(link?.className).toBe(`ml-auto ${standaloneLinkClasses}`);
+      // The chevron is drawn, not read: screen readers hear the words alone.
+      expect(link === undefined ? "" : accessibleName(link)).toBe(`Last answer: Liam, ${time}`);
       await press(link);
       expect(window.chatsOpened).toEqual(["chat-Liam"]);
       expect(new AskMemory(storage).pending()).toBeUndefined();

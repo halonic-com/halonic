@@ -36,8 +36,11 @@ export const quickAskWords = {
   working: (agent: string) => `${agent} is working`,
   /** Under the question while it waits: the box can close, the answer isn't lost. */
   canClose: (agent: string) => `You can close this. The answer comes to your chat with ${agent}.`,
-  /** The hint row's link to an answer that came after the box closed: "Last answer: Liam, 13:41 ›". */
-  lastAnswer: (agent: string, time: string) => `Last answer: ${agent}, ${time} ›`,
+  /**
+   * The hint row's link to an answer that came after the box closed: "Last answer: Liam, 13:41". The
+   * link draws its "›" after these words, hidden from screen readers.
+   */
+  lastAnswer: (agent: string, time: string) => `Last answer: ${agent}, ${time}`,
   /** Copies the answer's text. */
   copy: "Copy",
   /** What Copy did, in a status line: the kit's CopyButton's own words. */

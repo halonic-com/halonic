@@ -1,6 +1,6 @@
 import type { Message, MessagingId } from "@halonicjs/ports";
 import { Button, ChatText, enter, standaloneLinkClasses } from "@halonicjs/studio-kit";
-import { type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useId, useRef } from "react";
 import type { AnswerState } from "../ask-answer.ts";
 import { quickAskWords } from "../quick-ask-words.ts";
 import type { Exchange } from "./use-ask-box.ts";
@@ -90,17 +90,38 @@ function AnswerView({
     <Arriving data-answer="" className="flex max-h-[380px] flex-col gap-2 overflow-y-auto">
       <Replies messages={answer.messages} />
       {answer.kind === "card" ? (
-        <div className="flex flex-col items-start gap-2 rounded-md border border-border px-3 py-2">
-          <div>
-            <p className="text-body-strong">{quickAskWords.cardAsks(agent)}</p>
-            <p className="text-body">{answer.card.question}</p>
-          </div>
-          <Button variant="primary" size="sm" onClick={onAnswerCard}>
-            {quickAskWords.answerInMessenger}
-          </Button>
-        </div>
+        <CardAsks agent={agent} question={answer.card.question} onAnswer={onAnswerCard} />
       ) : null}
     </Arriving>
+  );
+}
+
+/**
+ * What a card asks, with **Answer in Messenger**. The button is described by the card's question,
+ * so a screen reader tells one card's button from another's when several answers hold a card.
+ */
+function CardAsks({
+  agent,
+  question,
+  onAnswer,
+}: {
+  readonly agent: string;
+  readonly question: string;
+  readonly onAnswer: () => void;
+}) {
+  const questionId = useId();
+  return (
+    <div className="flex flex-col items-start gap-2 rounded-md border border-border px-3 py-2">
+      <div>
+        <p className="text-body-strong">{quickAskWords.cardAsks(agent)}</p>
+        <p id={questionId} className="text-body">
+          {question}
+        </p>
+      </div>
+      <Button variant="primary" size="sm" aria-describedby={questionId} onClick={onAnswer}>
+        {quickAskWords.answerInMessenger}
+      </Button>
+    </div>
   );
 }
 
