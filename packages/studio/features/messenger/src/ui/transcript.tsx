@@ -1,4 +1,4 @@
-import type { InboxItem, Message, MessagingId } from "@halonicjs/ports";
+import type { InboxItem, Message, MessagingId, ReactionEmoji } from "@halonicjs/ports";
 import { Button, ChatLoading, EmptyState, enter } from "@halonicjs/studio-kit";
 import type { EngineWords } from "@halonicjs/studio-shell";
 import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -13,6 +13,7 @@ import { failureReason, reportMotion } from "./load-states.tsx";
 import { DayItem, MessageItem, PendingItem } from "./message-item.tsx";
 import { asksQuestions, QuestionCardItem } from "./question-card.tsx";
 import { agentTyping, TypingLine } from "./typing-line.tsx";
+import type { ReactionsView } from "./use-reactions.ts";
 
 /** Within this many pixels of the end, the person reads the newest entry and the chat stays there. */
 const PINNED_WITHIN_PX = 24;
@@ -45,6 +46,8 @@ export interface TranscriptProps {
   readonly picture: ImageBitmap | undefined;
   /** Called with an option's label once it answered a card. */
   readonly onAnswered: (option: string) => Promise<void>;
+  /** The chat's reactions; none where nothing keeps them (`messenger.reactions`). */
+  readonly reactions?: ReactionsView | undefined;
 }
 
 /**
@@ -102,7 +105,12 @@ export function Transcript(props: TranscriptProps) {
   }
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-      <div ref={scroller} onScroll={onScroll} className="min-h-0 flex-1 overflow-auto">
+      <div
+        ref={scroller}
+        onScroll={onScroll}
+        data-transcript
+        className="min-h-0 flex-1 overflow-auto"
+      >
         <div role="status">
           {failure === undefined ? null : (
             <p className="mx-auto max-w-[800px] px-4 pt-4 text-small text-fg-muted">
@@ -166,8 +174,19 @@ function Line({ line, ...props }: TranscriptProps & { readonly line: ChatLine })
       questions={props.questions}
       found={foundOf(line.message.id, props.found)}
       onAsked={props.onAsked}
+      reactions={reactionsOf(line.message.id, props.reactions)}
     />
   );
+}
+
+/** A message's reactions and how to toggle the person's own, from the chat's. */
+function reactionsOf(message: MessagingId, view: ReactionsView | undefined) {
+  if (view === undefined) return undefined;
+  return {
+    reactions: view.byMessage[message] ?? [],
+    canReact: view.canReact,
+    onToggle: (emoji: ReactionEmoji) => view.toggle(message, emoji),
+  };
 }
 
 /** Whether the find bar found a message, and whether it is the match shown. */

@@ -4,8 +4,15 @@
  * promise run, so the test looks only after the page's reads have landed.
  */
 
-import type { AgentMessaging } from "@halonicjs/ports";
-import { FormatLocaleProvider, NarrowProvider, OpenExternalProvider } from "@halonicjs/studio-kit";
+import type { AgentMessaging, MessageReactions } from "@halonicjs/ports";
+import {
+  createToastStore,
+  FormatLocaleProvider,
+  NarrowProvider,
+  OpenExternalProvider,
+  ToastRegion,
+  ToastStoreProvider,
+} from "@halonicjs/studio-kit";
 import type { AgentActivity } from "@halonicjs/studio-services";
 import { act, StrictMode } from "react";
 import { Messenger } from "../messenger.ts";
@@ -22,7 +29,8 @@ export async function settle(): Promise<void> {
 /**
  * Renders the Messenger and lets its first reads land; links it opens go to `opened`. `narrow`
  * renders it in a window narrower than 900px; `now` gives the Messenger its own clock; `activity`
- * gives it the agents' activity, for the activity panel. Strict mode, as Studio renders every page, so an
+ * gives it the agents' activity, for the activity panel; `reactions` the reactions on its messages.
+ * Its toasts show in the page, as the shell's do. Strict mode, as Studio renders every page, so an
  * effect that can't run twice fails here too.
  */
 export async function openMessenger(
@@ -31,14 +39,20 @@ export async function openMessenger(
   narrow = false,
   now?: () => Date,
   activity?: AgentActivity,
+  reactions?: MessageReactions,
 ): Promise<HTMLElement> {
+  const messenger = new Messenger(messaging, now, activity, undefined, reactions);
+  const toasts = createToastStore();
   // A fixed format, so a row's time reads the same on every machine.
   const page = render(
     <StrictMode>
       <FormatLocaleProvider locale="en-GB">
         <NarrowProvider narrow={narrow}>
           <OpenExternalProvider openExternal={async (address) => void opened.push(await address)}>
-            <MessengerPage messenger={new Messenger(messaging, now, activity)} />
+            <ToastStoreProvider store={toasts}>
+              <MessengerPage messenger={messenger} />
+              <ToastRegion store={toasts} />
+            </ToastStoreProvider>
           </OpenExternalProvider>
         </NarrowProvider>
       </FormatLocaleProvider>

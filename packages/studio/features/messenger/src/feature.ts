@@ -1,4 +1,8 @@
-import { AgentActivityService, AgentMessagingService } from "@halonicjs/studio-services";
+import {
+  AgentActivityService,
+  AgentMessagingService,
+  MessageReactionsService,
+} from "@halonicjs/studio-services";
 import { defineFeature } from "@halonicjs/studio-shell";
 import { ChatOpensService, MessengerService } from "./api.ts";
 import { Messenger } from "./messenger.ts";
@@ -16,8 +20,8 @@ export const messengerFeature = defineFeature({
   title: "Messenger",
   // Wanted, not needed: until the engine serves AgentMessaging, Studio still opens. Without
   // AgentActivity the Messenger offers no activity panel. Without the shell's chat hand-overs, as in
-  // a browser, quick ask opens no chat here.
-  wants: [AgentMessagingService, AgentActivityService, ChatOpensService],
+  // a browser, quick ask opens no chat here. Without MessageReactions, messages show no reactions.
+  wants: [AgentMessagingService, AgentActivityService, MessageReactionsService, ChatOpensService],
   provides: [MessengerService],
   register(studio) {
     studio.services.provide(
@@ -29,6 +33,7 @@ export const messengerFeature = defineFeature({
           services.find(AgentActivityService),
           // On this device, shared by every window; without storage, for this page only.
           new StoredReadMarks(globalThis.localStorage ?? null),
+          services.find(MessageReactionsService),
         ),
     );
     studio.focusedApps.add({

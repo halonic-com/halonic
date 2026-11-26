@@ -18,6 +18,7 @@ import { ChatMenu } from "./chat-menu.tsx";
 import { FindBar, FindButton, useFind } from "./find-bar.tsx";
 import { MembersPanel } from "./members-panel.tsx";
 import { Transcript } from "./transcript.tsx";
+import { useReactions } from "./use-reactions.ts";
 import { WaitingBar } from "./waiting-bar.tsx";
 
 /** The props of {@link ConversationView}. */
@@ -74,6 +75,7 @@ export function ConversationView({
   const section = useRef<HTMLElement>(null);
   const { messages, questions, failure, read } = useMessages(messenger, row, changed, say);
   const { pending, sending } = usePending();
+  const reactions = useReactions(messenger.reactions, row, changed, messenger.now);
   const find = useFind(messages);
   const current = find.matches[find.at];
   // The match shown scrolls into the middle of the chat.
@@ -148,6 +150,7 @@ export function ConversationView({
           onAsked={read}
           picture={picture}
           onAnswered={onAnswered}
+          reactions={reactions}
         />
         {membersOpen ? (
           <MembersPanel

@@ -16,6 +16,7 @@ import type { ConversationRow, Messenger } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import { AttachmentList } from "./attachment-list.tsx";
 import { authorOf, MessageTo, WorkLines } from "./channel-message.tsx";
+import { AddReaction, type MessageReactionsProps, ReactionChips } from "./reactions.tsx";
 import { ReadTicks } from "./read-ticks.tsx";
 
 /**
@@ -27,7 +28,8 @@ import { ReadTicks } from "./read-ticks.tsx";
  * edge and a small mark (`messenger.automatic-notes`). `data-head` and `data-follows` let the transcript
  * set a run's messages close together and a new run further apart. Each says who wrote it to a screen reader; in a
  * channel the person's say who they went to and what each agent did with them
- * (`messenger.channel-messages`).
+ * (`messenger.channel-messages`). Under any message, old ones included, its reactions show, and
+ * an "Add a reaction" button sits beside it while the person may react (`messenger.reactions`).
  */
 export function MessageItem({
   messenger,
@@ -39,6 +41,7 @@ export function MessageItem({
   questions,
   found,
   onAsked,
+  reactions,
 }: {
   readonly messenger: Messenger;
   readonly row: ConversationRow;
@@ -53,26 +56,18 @@ export function MessageItem({
   readonly found?: "current" | "match" | undefined;
   /** **Ask again** sent the message again: the chat reads its messages again. */
   readonly onAsked: () => Promise<void>;
+  /** Its reactions; none where nothing keeps them (`messenger.reactions`). */
+  readonly reactions?: MessageReactionsProps | undefined;
 }) {
   const mark = foundData(message.id, found);
-  const openLink = useOpenExternal();
   const channel = isChannel(row);
   const author = authorOf(message, row);
-  const body = (
-    <>
-      <span className="sr-only">{author}: </span>
-      {message.plainText === true ? (
-        // Shown as written: never read as Markdown, so nothing in it becomes a link or styling.
-        <p data-plain-text dir="auto" className="whitespace-pre-line text-reading text-fg">
-          {message.body}
-        </p>
-      ) : (
-        <ChatText openLink={openLink}>{message.body}</ChatText>
-      )}
-      <AttachmentList messenger={messenger} attachments={message.attachments} />
-    </>
-  );
+  const body = <MessageBody messenger={messenger} message={message} author={author} />;
   const time = decidedAt(new Date(message.sentAt));
+  const { chips, add } = reactionParts(
+    reactions,
+    message.author.kind === "me" ? undefined : author,
+  );
   if (message.author.kind === "me") {
     return (
       <Bubble
@@ -89,6 +84,8 @@ export function MessageItem({
           )
         }
         above={channel ? <MessageTo message={message} row={row} /> : null}
+        add={add}
+        reactions={chips}
         after={
           channel ? (
             <WorkLines
@@ -120,7 +117,7 @@ export function MessageItem({
       {...mark}
       {...(automatic ? { "data-automatic": "" } : {})}
       {...runData(head, follows)}
-      className={`max-w-[80%] ${foundRing}`}
+      className={`group/message max-w-[80%] ${foundRing}`}
     >
       {head ? (
         // The sr-only "<name>: " says it, so a screen reader reads it once (MS11). The name in the
@@ -139,9 +136,48 @@ export function MessageItem({
           {body}
         </div>
         {automatic ? <AutomaticMark author={author} /> : null}
+        {add}
       </div>
+      {chips === null ? null : <div className="mt-1.5 ps-9">{chips}</div>}
     </li>
   );
+}
+
+/** A message's text, said with its author to a screen reader, and its files. */
+function MessageBody({
+  messenger,
+  message,
+  author,
+}: {
+  readonly messenger: Messenger;
+  readonly message: Message;
+  readonly author: string;
+}) {
+  const openLink = useOpenExternal();
+  return (
+    <>
+      <span className="sr-only">{author}: </span>
+      {message.plainText === true ? (
+        // Shown as written: never read as Markdown, so nothing in it becomes a link or styling.
+        <p data-plain-text dir="auto" className="whitespace-pre-line text-reading text-fg">
+          {message.body}
+        </p>
+      ) : (
+        <ChatText openLink={openLink}>{message.body}</ChatText>
+      )}
+      <AttachmentList messenger={messenger} attachments={message.attachments} />
+    </>
+  );
+}
+
+/** A message's chips, and its add button while the person may react; neither without reactions. */
+function reactionParts(reactions: MessageReactionsProps | undefined, author: string | undefined) {
+  if (reactions === undefined) return { chips: null, add: null };
+  return {
+    // No reactions, no row: an empty one would still add its margin under the message.
+    chips: reactions.reactions.length === 0 ? null : <ReactionChips {...reactions} />,
+    add: reactions.canReact ? <AddReaction {...reactions} author={author} /> : null,
+  };
 }
 
 /**
@@ -241,6 +277,8 @@ function Bubble({
   under,
   above,
   after,
+  add,
+  reactions,
   children,
 }: {
   readonly data: Record<string, string>;
@@ -250,14 +288,25 @@ function Bubble({
   readonly above?: ReactNode;
   /** In a channel, what each agent did with it. */
   readonly after?: ReactNode;
+  /** The "Add a reaction" button, before the bubble. */
+  readonly add?: ReactNode;
+  /** The reactions' chips, between the bubble and its time. */
+  readonly reactions?: ReactNode;
   readonly children: ReactNode;
 }) {
   return (
-    <li {...data} className={`ms-auto flex max-w-[80%] flex-col items-end gap-1 ${foundRing}`}>
+    <li
+      {...data}
+      className={`group/message ms-auto flex max-w-[80%] flex-col items-end gap-1 ${foundRing}`}
+    >
       {above}
-      <div data-bubble className="rounded-lg bg-surface-muted px-3 py-2 wrap-break-word">
-        {children}
+      <div className="flex items-start gap-2">
+        {add}
+        <div data-bubble className="rounded-lg bg-surface-muted px-3 py-2 wrap-break-word">
+          {children}
+        </div>
       </div>
+      {reactions}
       {/* A div: the ticks' tooltip is one. */}
       <div className="text-small text-fg-muted">{under}</div>
       {after}
