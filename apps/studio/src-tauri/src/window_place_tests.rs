@@ -239,7 +239,6 @@ fn a_maximised_window_on_a_screen_still_there_stays() {
             RIGHT_SCREEN,
             &[ULTRAWIDE, RIGHT_SCREEN],
             Some(ULTRAWIDE_WORK_AREA),
-            SLACK,
         ),
         None
     );
@@ -248,7 +247,7 @@ fn a_maximised_window_on_a_screen_still_there_stays() {
 #[test]
 fn a_maximised_or_fullscreen_window_on_a_screen_now_gone_stretches_over_the_primary() {
     assert_eq!(
-        stretched_fallback(RIGHT_SCREEN, &[ULTRAWIDE], Some(ULTRAWIDE_WORK_AREA), SLACK),
+        stretched_fallback(RIGHT_SCREEN, &[ULTRAWIDE], Some(ULTRAWIDE_WORK_AREA)),
         Some(ULTRAWIDE_WORK_AREA)
     );
 }
