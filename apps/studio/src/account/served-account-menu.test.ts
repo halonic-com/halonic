@@ -8,8 +8,12 @@ const sofia = {
   plan: "Pro",
   usedPercent: 62,
   warnings: [],
+  billing: null,
   accountUrl: "https://account.example.com/acme",
   planUrl: "https://account.example.com/acme#plan",
+  plansUrl: "https://account.example.com/acme/plans?from=app",
+  billingUrl: "https://account.example.com/acme#billing",
+  exportUrl: "https://account.example.com/acme/export",
 };
 
 /** The page's fetch, answering each `<method> <path>` from `answers`, with what it was sent. */
@@ -49,6 +53,12 @@ verifies("studio.served-account-menu", () => {
       expect(await menu.load()).toEqual(nearly);
     });
 
+    it("reads a customer's billing state", async () => {
+      const trial = { ...sofia, billing: { state: "trial_ends", until: "2026-12-02" } };
+      const { menu } = served({ "GET /api/account-menu": () => Response.json(trial) });
+      expect(await menu.load()).toEqual(trial);
+    });
+
     it("reads a customer with no plan and no cost limit", async () => {
       const bare = { ...sofia, plan: null, usedPercent: null };
       const { menu } = served({ "GET /api/account-menu": () => Response.json(bare) });
@@ -68,6 +78,13 @@ verifies("studio.served-account-menu", () => {
       ["an http: account address", { ...sofia, accountUrl: "http://account.example.com/acme" }],
       ["a user in the plan address", { ...sofia, planUrl: "https://eve@account.example.com/" }],
       ["a script address", { ...sofia, planUrl: "javascript:alert(1)" }],
+      ["an http: plans address", { ...sofia, plansUrl: "http://account.example.com/acme/plans" }],
+      [
+        "a user in the billing address",
+        { ...sofia, billingUrl: "https://eve@account.example.com/" },
+      ],
+      ["a script export address", { ...sofia, exportUrl: "javascript:alert(1)" }],
+      ["an unknown billing state", { ...sofia, billing: { state: "late", until: "2026-12-02" } }],
       ["a field too many", { ...sofia, extra: true }],
       ["a missing name", { ...sofia, name: undefined }],
       ["no warnings", { ...sofia, warnings: undefined }],

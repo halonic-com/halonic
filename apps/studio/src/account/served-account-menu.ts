@@ -14,7 +14,18 @@ const warningSchema = s
   .object({ unit: s.string(), percent: s.number(), resetsAt: s.string() })
   .strict();
 
-/** `GET /api/account-menu`'s answer: exactly these seven fields. */
+/** The customer's billing state in the answer (`server.account-menu`), or `null` without one. */
+const billingSchema = s.union([
+  s
+    .object({
+      state: s.enum(["payment_failed", "trial_ends", "no_plan"]),
+      until: s.string(),
+    })
+    .strict(),
+  s.null(),
+]);
+
+/** `GET /api/account-menu`'s answer: exactly these eleven fields. */
 const answerSchema = s
   .object({
     name: s.string(),
@@ -22,8 +33,12 @@ const answerSchema = s
     plan: s.union([s.string(), s.null()]),
     usedPercent: s.union([s.number(), s.null()]),
     warnings: s.array(warningSchema),
+    billing: billingSchema,
     accountUrl: s.string(),
     planUrl: s.string(),
+    plansUrl: s.string(),
+    billingUrl: s.string(),
+    exportUrl: s.string(),
   })
   .strict();
 
@@ -31,7 +46,7 @@ const answerSchema = s
  * The account menu of a served window (`studio.served-account-menu`): it asks the computer
  * running Halonic, on the page's own address and session, for the signed-in customer, and signs
  * out there. A 404 means this Studio has no account menu. Any other refusal, or an answer that
- * isn't the seven fields with two `https:` addresses and a time in each warning, rejects, so no
+ * isn't the eleven fields with five `https:` addresses and a time in each warning, rejects, so no
  * menu or banner shows half-known facts.
  */
 export class ServedAccountMenu implements AccountMenuHost {
@@ -63,8 +78,7 @@ export class ServedAccountMenu implements AccountMenuHost {
     const answer = parse(answerSchema, await response.json());
     const addressesOk =
       answer.ok &&
-      isAccountAddress(answer.value.accountUrl) &&
-      isAccountAddress(answer.value.planUrl) &&
+      addressesOf(answer.value).every(isAccountAddress) &&
       answer.value.warnings.every(({ resetsAt }) => !Number.isNaN(Date.parse(resetsAt)));
     if (!answer.ok || !addressesOk) {
       throw new Error(`The computer's ${accountMenuPath} answer isn't an account menu.`);
@@ -96,6 +110,17 @@ export class ServedAccountMenu implements AccountMenuHost {
   open(address: string): void {
     this.#open(address);
   }
+}
+
+/** Every address in an answer, each checked before any becomes a link. */
+function addressesOf(answer: {
+  readonly accountUrl: string;
+  readonly planUrl: string;
+  readonly plansUrl: string;
+  readonly billingUrl: string;
+  readonly exportUrl: string;
+}): string[] {
+  return [answer.accountUrl, answer.planUrl, answer.plansUrl, answer.billingUrl, answer.exportUrl];
 }
 
 /**

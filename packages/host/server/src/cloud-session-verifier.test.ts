@@ -282,7 +282,25 @@ describe("cloud session profile", () => {
         name: "Sofia Marin",
         account: "https://account.acme.example/prod_acmeAAAAAAAAAAAAAAAA",
         productName: "Acme Agents",
+        billing: null,
       });
+    });
+
+    it("passes a signed billing pair on, and accepts a token whose pair is wrong", async () => {
+      const pair = { billing: "payment_failed", billing_until: "2026-12-02" };
+      const signed = await verifyToken(await token({ payload: { ...profile, ...pair } }));
+      expect(checkClaims(signed)?.profile?.billing).toEqual({
+        state: "payment_failed",
+        until: "2026-12-02",
+      });
+      for (const wrong of [
+        { ...pair, billing: "late" },
+        { ...pair, billing_until: "2026-02-30" },
+        { billing: "payment_failed" },
+      ]) {
+        const accepted = await verifyToken(await token({ payload: { ...profile, ...wrong } }));
+        expect(checkClaims(accepted)?.profile?.billing, JSON.stringify(wrong)).toBeNull();
+      }
     });
 
     it("refuses an http account address, or one with a user or password in it", async () => {
