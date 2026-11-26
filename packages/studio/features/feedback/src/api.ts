@@ -1,6 +1,32 @@
 /**
- * The services and types other features may use. Features
- * import each other only through this file. Empty until this feature
- * offers something.
+ * The services and types other features may use. Features import each other only through this
+ * file.
  */
-export {};
+import { type KeyboardPlatform, type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
+
+export { feedbackPrefs } from "./feedback-prefs.ts";
+
+/**
+ * What changing the feedback shortcut came to, as the shell answers `plugin:feedback|shortcut_set`:
+ * saved, `taken` by the system or another app, `invalid` (no Ctrl, Alt or ⌘), `unavailable` where
+ * Studio hears no keys, or `failed` when it couldn't be saved and the old keys came back.
+ */
+export type ShortcutChange = "saved" | "taken" | "invalid" | "unavailable" | "failed";
+
+/**
+ * What Settings → Keyboard and Settings → Feedback need of the desktop app. Only Studio's own
+ * main window has it: the shell grants `shortcut_set` to no other window, and served Studio has
+ * no shell, so there the two sections don't show.
+ */
+export interface FeedbackSettingsHost {
+  /** The platform the keys are shown for: ⌘ ⌥ F on macOS, Ctrl Alt F elsewhere. */
+  readonly platform: KeyboardPlatform;
+  /** Asks the shell to hear `shortcut` instead of the feedback shortcut it hears now. */
+  setShortcut(shortcut: string): Promise<ShortcutChange>;
+  /** How many feedbacks wait to be sent; absent until the app keeps them, and then no line shows. */
+  waiting?(): Promise<number>;
+}
+
+/** The desktop app's {@link FeedbackSettingsHost}. */
+export const FeedbackSettingsService: ServiceKey<FeedbackSettingsHost> =
+  serviceKey<FeedbackSettingsHost>("feedback.settings");

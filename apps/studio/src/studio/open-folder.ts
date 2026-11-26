@@ -40,6 +40,7 @@ import {
 import { itemLocationKey, placeNames, type Shell, StudioWorkspace } from "@halonicjs/studio-shell";
 import { showEngineLockLost } from "../engine/engine-lock-lost-toast.ts";
 import { openShellEngine } from "../engine/remote-engine.ts";
+import { provideFeedbackSettings } from "../feedback/provide-feedback-settings.ts";
 import { provideKeepAwake, provideRemoteControl } from "../remote/provide-remote.ts";
 import { provideRunNotifications } from "../runs/run-notifications-watch.ts";
 import { provideAssistant } from "./assistant-workspace.ts";
@@ -122,6 +123,7 @@ export async function openFolder(
   await provideAgentSandbox(services, window, ipc, device.platform ?? "linux");
   provideRemoteControl(services, tauriAgentHostTransport(window));
   provideKeepAwake(services, ipc, windowLabelOf(window));
+  provideFeedbackSettings(services, ipc, windowLabelOf(window), device.platform ?? "linux");
   if (ipc !== undefined) {
     services.provide(UpdaterService, updaterOf(ipc));
     services.provide(RestartRunsService, restartRunsOfWindow(services));
