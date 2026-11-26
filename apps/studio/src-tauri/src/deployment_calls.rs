@@ -8,7 +8,9 @@
 
 use std::time::Duration;
 
-use halonic_owner_sign_in::{Call, CallRefusal, DeploymentRoute, OwnerError, session_for};
+use halonic_owner_sign_in::{
+    Call, CallRefusal, DeploymentRoute, OwnerError, owner_origin, session_for,
+};
 use serde::Serialize;
 use serde_json::Value;
 use tauri::ipc::Channel;
@@ -16,7 +18,7 @@ use tauri::{AppHandle, Manager, Runtime, Webview};
 use tauri_plugin_http::reqwest;
 use tauri_plugin_http::reqwest::header::{ACCEPT, COOKIE};
 
-use crate::deployment_reads::{read_answer, read_events};
+use crate::deployment_reads::{IDLE_TIMEOUT, read_answer, read_events};
 use crate::engine::EngineStreamMessage;
 use crate::owner_sign_in::{PinnedServer, checked, failed};
 use crate::page_streams::{OpenRefusal, PageStreams, StreamKey};
@@ -120,9 +122,22 @@ pub async fn deployment_stream<R: Runtime>(
     stream: u64,
     channel: Channel<EngineStreamMessage>,
 ) -> Result<DeploymentStreamStart, DeploymentRefusal> {
-    let mut request = prepare(&webview, &origin, &route, run.as_deref(), true)
-        .await?
-        .header(ACCEPT, "text/event-stream");
+    let canonical = owner_origin(&origin)?;
+    let prepared = prepare(&webview, &origin, &route, run.as_deref(), true);
+    open_stream(&webview, &canonical, stream, after, prepared, channel).await
+}
+
+/// Opens the page's stream `stream` to the owner server at `origin` with
+/// the request `prepare` makes, as [`deployment_stream`] does.
+pub(crate) async fn open_stream<R: Runtime>(
+    webview: &Webview<R>,
+    origin: &str,
+    stream: u64,
+    after: Option<u64>,
+    prepare: impl Future<Output = Result<reqwest::RequestBuilder, DeploymentRefusal>>,
+    channel: Channel<EngineStreamMessage>,
+) -> Result<DeploymentStreamStart, DeploymentRefusal> {
+    let mut request = prepare.await?.header(ACCEPT, "text/event-stream");
     if let Some(after) = after {
         request = request.header("Last-Event-ID", after.to_string());
     }
@@ -131,7 +146,7 @@ pub async fn deployment_stream<R: Runtime>(
         stream,
     };
     let state = webview.state::<DeploymentState>();
-    let serial = state.streams.open(&key).map_err(open_refusal)?;
+    let serial = state.streams.open_tagged(&key, origin).map_err(open_refusal)?;
     let opened = tokio::time::timeout(REQUEST_TIMEOUT, opening_of(request))
         .await
         .unwrap_or_else(|_| Err(OwnerError::NotAnswering.into()));
@@ -175,6 +190,14 @@ pub fn deployment_stream_end<R: Runtime>(webview: Webview<R>, stream: u64) {
 pub fn end_page<R: Runtime>(app: &impl Manager<R>, page: &str) {
     if let Some(state) = app.try_state::<DeploymentState>() {
         state.streams.end(|key| key.page == page);
+    }
+}
+
+/// Ends every stream open to the owner server at `origin`, the canonical
+/// origin [`owner_origin`] answers, whose session the shell is forgetting.
+pub fn end_origin<R: Runtime>(app: &impl Manager<R>, origin: &str) {
+    if let Some(state) = app.try_state::<DeploymentState>() {
+        state.streams.end_tagged(origin);
     }
 }
 
@@ -237,7 +260,7 @@ async fn forward_events<R: Runtime>(
     mut response: reqwest::Response,
     channel: Channel<EngineStreamMessage>,
 ) {
-    let ending = read_events(&mut response, &channel).await;
+    let ending = read_events(&mut response, &channel, IDLE_TIMEOUT).await;
     drop(response);
     // The page may have gone; then nobody hears how it ended.
     let _ = channel.send(ending);
@@ -251,3 +274,7 @@ fn open_refusal(refusal: OpenRefusal) -> DeploymentRefusal {
         OpenRefusal::Poisoned => "unreadable",
     })
 }
+
+#[cfg(test)]
+#[path = "deployment_calls_tests.rs"]
+mod tests;
