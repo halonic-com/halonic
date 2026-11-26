@@ -1,4 +1,4 @@
-import type { ManualForm, Step } from "./stepper-types.ts";
+import type { ApiStep, ManualForm, Step } from "./stepper-types.ts";
 
 /** What the per-request record says happened to one step. */
 export type StepOutcome = "succeeded" | "failed" | "skipped";
@@ -37,10 +37,10 @@ export function planResume(
   // Any failed API step, not just the first step left: an earlier failed
   // guided step must not carry a failed API step along into the run.
   const failedApiIndex = steps.findIndex(
-    (step, index) => step.kind === "script" && outcomes.get(index + 1) === "failed",
+    (step, index) => isApiStep(step) && outcomes.get(index + 1) === "failed",
   );
   const failedApi = steps[failedApiIndex];
-  if (failedApi?.kind === "script") {
+  if (failedApi !== undefined && isApiStep(failedApi)) {
     return {
       kind: "stop",
       step: failedApiIndex + 1,
@@ -56,6 +56,10 @@ export function planResume(
     if (isInput || isLeft) toRun.push(index + 1);
   });
   return { kind: "run", steps: toRun };
+}
+
+function isApiStep(step: Step): step is ApiStep {
+  return step.kind === "call" || step.kind === "check" || step.kind === "script";
 }
 
 /** An `input` step never counts as done on its own: it only matters for the steps after it. */

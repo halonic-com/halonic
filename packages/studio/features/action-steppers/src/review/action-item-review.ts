@@ -156,6 +156,13 @@ function stepAction(
       };
     case "input":
       return { kind: "input", label: step.label, secret: step.secret };
+    case "call":
+    case "check": {
+      if (route?.kind === "call") return callAction(route, parameters);
+      // A catalog without routes still shows where the step goes; the shell sends nothing off its own list.
+      const method = step.kind === "check" ? "GET" : step.method;
+      return { kind: "call", call: { method, address: fill(step.path, parameters, true) } };
+    }
     case "script":
       // A script step runs once the catalog has its call route; until then the review names it.
       return route?.kind === "call"

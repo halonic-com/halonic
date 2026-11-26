@@ -1,4 +1,5 @@
-import type { ActionRoute } from "@halonicjs/ports";
+import type { ActionKeptValue } from "@halonicjs/events";
+import type { ActionMethod, ActionRoute, ActionValue } from "@halonicjs/ports";
 import type { Schema } from "@halonicjs/schema-kit";
 import type { StepperRisk } from "./stepper-risk.ts";
 
@@ -48,8 +49,8 @@ export interface ManualForm {
 }
 
 /**
- * An API step (`call` or `check`). Its shape comes from the ToolScript ADR
- * (HAL-17560); until then a step names only the script it will run, and the
+ * An API step a reviewed ToolScript does (ToolScript ADR, HAL-17560). Until
+ * scripts run in Studio (HAL-17571) a step names only the script, and the
  * stepper can't run it (architecture note, 7.9). Its manual form is required,
  * so the manual guide can always say how to do it by hand.
  */
@@ -59,8 +60,50 @@ export interface ScriptStep {
   manual: ManualForm;
 }
 
+/**
+ * One field of a `call` step's body. A `parameter` field takes the request's
+ * parameter of the same name, checked by that parameter's own field; a
+ * `constant` is the definition's value, which the shell adds itself.
+ */
+export type CallBodyField =
+  | { name: string; kind: "parameter" }
+  | { name: string; kind: "constant"; value: ActionValue };
+
+/**
+ * An API step that changes something (architecture note, 1.2): one request on
+ * the service's fixed API origin, which the shell sends with the user's token
+ * only because its route is in the list generated from the catalog.
+ */
+export interface CallStep {
+  kind: "call";
+  method: Exclude<ActionMethod, "GET">;
+  /** The path with `{name}` placeholders, each a parameter, such as `/repos/{owner}/{repo}/actions/variables/{name}`. */
+  path: string;
+  body: readonly CallBodyField[];
+  /** The top-level fields of a successful answer to keep, each a plain value. */
+  keep: readonly string[];
+  manual: ManualForm;
+}
+
+/**
+ * A read-only `GET` (architecture note, 1.2 and 6.2): it reads the state a
+ * later step changes, so the preview can show it and the request's `expect`
+ * can be compared with it before anything changes.
+ */
+export interface CheckStep {
+  kind: "check";
+  /** The path with `{name}` placeholders, each a parameter. */
+  path: string;
+  /** The top-level fields of the answer to keep, each a plain value. */
+  keep: readonly string[];
+  manual: ManualForm;
+}
+
+/** A step that calls the service's API: a reviewed `call` or `check`, or a ToolScript's `script`. */
+export type ApiStep = CallStep | CheckStep | ScriptStep;
+
 /** One step of a stepper definition. */
-export type Step = GuidedStep | InputStep | ScriptStep;
+export type Step = GuidedStep | InputStep | ApiStep;
 
 /** Something a stepper touches, shown before anything runs, such as GitHub repository `acme/app`. */
 export interface StepperTarget {
@@ -89,8 +132,15 @@ export interface StepperDefinition<Parameters = unknown> {
   steps: readonly Step[];
   /** What the stepper touches for these parameters. */
   targets(parameters: Parameters): readonly StepperTarget[];
-  /** One plain-language sentence per step, for these parameters. */
-  preview(parameters: Parameters): readonly string[];
+  /**
+   * One plain-language sentence per step, for these parameters. `current` is
+   * what the definition's `check` steps kept, once they've run, so a sentence
+   * can set today's state next to the change (architecture note, 2.3).
+   */
+  preview(
+    parameters: Parameters,
+    current?: Readonly<Record<string, ActionKeptValue>>,
+  ): readonly string[];
 }
 
 /**

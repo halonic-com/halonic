@@ -81,6 +81,15 @@ function fieldSchema(name: string, field: ParameterField): Schema {
 }
 
 /**
+ * A definition's parameter schema with the fields it was built from, so the
+ * routes the shell checks take each placeholder's pattern from the same field
+ * the page parses with (see `routesOf`).
+ */
+export type ParameterSchema = Schema<Record<string, string | number>> & {
+  readonly parameterFields: Readonly<Record<string, ParameterField>>;
+};
+
+/**
  * Builds a stepper definition's parameter schema: strict, so an unknown key is
  * refused, and every text has an anchored pattern and is one safe path
  * segment. Parse with `parse` from `@halonicjs/schema-kit`.
@@ -93,11 +102,21 @@ function fieldSchema(name: string, field: ParameterField): Schema {
  */
 export function strictParameters(
   fields: Readonly<Record<string, ParameterField>>,
-): Schema<Record<string, string | number>> {
+): ParameterSchema {
   const shape: Record<string, Schema> = {};
   for (const [name, field] of Object.entries(fields)) {
     const schema = fieldSchema(name, field);
     shape[name] = field.optional === true ? schema.optional() : schema;
   }
-  return s.object(shape).strict() as Schema<Record<string, string | number>>;
+  const schema = s.object(shape).strict() as Schema<Record<string, string | number>>;
+  return Object.assign(schema, { parameterFields: { ...fields } });
+}
+
+/** The fields a definition's parameters were built from, or `undefined` when `strictParameters` didn't build them. */
+export function parameterFieldsOf(
+  parameters: Schema<unknown>,
+): Readonly<Record<string, ParameterField>> | undefined {
+  return "parameterFields" in parameters
+    ? (parameters as ParameterSchema).parameterFields
+    : undefined;
 }
