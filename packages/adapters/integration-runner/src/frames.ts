@@ -181,7 +181,8 @@ export const halonicFrame = s.discriminatedUnion("type", [
     .object({
       type: s.literal("head"),
       id: frameId,
-      status: s.number().int().min(200).max(599),
+      // Any three-digit status the global `fetch` passes on, 600 included.
+      status: s.number().int().min(200).max(999),
       statusText: s.string(),
       headers: headerList,
       url: s.string(),

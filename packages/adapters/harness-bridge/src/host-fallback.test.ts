@@ -371,3 +371,55 @@ verifies("harness-bridge.host-fallback", () => {
     expect(upstream.calls).toHaveLength(1);
   });
 });
+
+/**
+ * A fetch that answers its first call with status 600, as the global `fetch`
+ * gives it (`new Response()` takes no such status), and the next ones with
+ * `then`. It tells whether the bridge let go of the 600's body.
+ */
+function busyOnce(then: { fetch: Fetch }) {
+  let busy = true;
+  const state = { cancelled: false };
+  const fetch: Fetch = async (input, init) => {
+    if (!busy) return then.fetch(input, init);
+    busy = false;
+    const body = new ReadableStream({
+      cancel: () => {
+        state.cancelled = true;
+      },
+    });
+    const reply = new Response(body, { status: 500 });
+    Object.defineProperty(reply, "status", { value: 600 });
+    return reply;
+  };
+  return { fetch, state };
+}
+
+verifies("harness-bridge.odd-status", () => {
+  it("moves a call answered with a status above 599 on to the next pin", async () => {
+    const upstream = answers();
+    const busy = busyOnce(upstream);
+    const opened = await open("anthropic", keyed("anthropic", [backup]), busy);
+
+    expect((await programSends(opened, "anthropic")).status).toBe(200);
+    expect(sentPins(upstream.calls)).toEqual([backup.routing]);
+    expect(busy.state.cancelled).toBe(true);
+    expect(opened.recorded.find((event) => event.type === "llm.fallback")).toMatchObject({
+      error: "unavailable: Anthropic answered 600, which isn't a status Halonic can pass on.",
+    });
+  });
+
+  it("answers 503 `unavailable` when the last pin answers with such a status", async () => {
+    const opened = await open("anthropic", keyed("anthropic", []), busyOnce(answers()));
+
+    const reply = await programSends(opened, "anthropic");
+
+    expect(reply.status).toBe(503);
+    expect(JSON.parse(reply.text)).toMatchObject({
+      error: {
+        type: "unavailable",
+        message: "Anthropic answered 600, which isn't a status Halonic can pass on.",
+      },
+    });
+  });
+});

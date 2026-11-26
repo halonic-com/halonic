@@ -69,6 +69,8 @@ user name or password.
 - `signal` aborts the request and the body.
 - The body is read the way `fetch` reads it, so a string or `URLSearchParams` gets the same bytes
   and `content-type`. A streamed request body is refused.
+- A status above 599 comes back as `fetch` gives it, with `ok` false; one below 200 fails, as in `fetch`. A reason phrase a
+  `Response` can't hold, such as one with a control character, becomes `""`, where `fetch` keeps it.
 
 **It decompresses responses itself** (`gzip`, `deflate`, `br`, `zstd`) and removes
 `content-encoding` and `content-length`, so the kit's secret filter and size limit see the real
