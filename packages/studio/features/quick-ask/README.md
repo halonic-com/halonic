@@ -16,6 +16,29 @@ floating on the see-through window the desktop shell shows for quick ask's keys.
 gives it `AskWindowService`, which hides that window and brings Studio forward. Every word is in
 `quick-ask-words.ts`. Open in Messenger comes in a later change.
 
+## The box's states
+
+`quick-ask.box` holds the exact words; in short, the box shows one of these:
+
+- **Ready:** the text box "Ask {agent} anything" has the focus, with the hints
+  "Enter ask · Tab another agent · Esc close".
+- **Picking an agent:** Tab or a click on the agent opens "Find an agent", Recent first, then
+  each workspace and team ("No longer connected" for an agent whose source is gone). Esc closes
+  only the picker.
+- **Working:** after sending, the question shows at once with "{agent} is working".
+- **Waiting:** "You can close this. The answer comes to your chat with {agent}." An earlier
+  question's working line turns into this when a newer question goes out.
+- **Answered:** the answer in a polite live region, **Copy** in place of the hints, and "Reply to
+  {agent}" in the text box. When the answer holds a card: "{agent} asks you to choose" and the
+  card's question.
+- **Not sent:** the question edged in the danger colour, "Not sent · Try again" and
+  "Couldn't reach {source}. Your question is still here."
+- **No agents:** "No agents yet", "Connect a workspace or a team in Studio to ask its agents." and
+  **Open Studio**.
+
+Esc, or a click beside the box, fades it out and hides its window. It opens again empty, with the
+unsent text and the picked agent kept.
+
 ## Example
 
 ```ts
