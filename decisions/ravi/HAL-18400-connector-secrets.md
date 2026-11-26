@@ -2,6 +2,7 @@
 
 - Approval: HAL-18400 (filed from Liam's review of #6025 on HAL-18268). Liam approves this note in review of this PR, with Julian's security OK on the same task.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:7PhHbaWPowoWgmGjb4ah2pxpLVofj3DWtgBBvTUMef3t6NSJoOH1mO1YK/aj3GmNj2yM0HDbwduON5KxnTbrDA==
 
 The named-only gate of the Build chat counted a permission sheet's secrets
 but not the workspace secrets a connector file points at through `secret`,
