@@ -52,8 +52,8 @@ verifies("inbox.page", () => {
     await settled();
     const cells = rowCells(root);
     expect(cells.map(heardName).sort()).toEqual([
-      "Approve this reply?Support reply · run 01jd8q · a person step · Waiting 1\u00a0h",
-      "Approve this reply?Support reply · run 891b5a · a person step · Waiting 1\u00a0h",
+      "Approve this reply?Support reply · run 01jd8q · a person step · Waiting 1\u00a0hunread",
+      "Approve this reply?Support reply · run 891b5a · a person step · Waiting 1\u00a0hunread",
     ]);
     // Named by their content, so the id is in what a screen reader hears, not only on screen.
     expect(cells.filter((cell) => cell.hasAttribute("aria-label"))).toEqual([]);

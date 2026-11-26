@@ -28,6 +28,7 @@ import {
   proposalListsOf,
   type RunProposalEntry,
 } from "./proposal-items.ts";
+import { type ReadMarks, StoredReadMarks } from "./read-marks.ts";
 import type { InboxSetupSource, SetupEntry, SetupFocus } from "./setup-source.ts";
 import { ShownItem } from "./shown-item.ts";
 
@@ -122,6 +123,8 @@ export class Inbox {
    * notice); the Notices section shows them with the app's. Set where the sources are added.
    */
   extraNotices: InboxNotices | undefined;
+  /** Which items the person opened (`inbox.read-marks`); the feature keeps them on the device. */
+  readMarks: ReadMarks = new StoredReadMarks(null);
   /** The runs other pages show and announce, so the Inbox's "Waiting for you" leaves them out. */
   readonly shownRuns = new ShownRuns();
   /** The item the page shows, for its window to keep (`inbox.window-item`). */

@@ -34,13 +34,14 @@ import {
 } from "../api.ts";
 import type { Inbox } from "../inbox.ts";
 import { waits } from "../inbox-count.ts";
-import type { InboxItem } from "../inbox-items.ts";
 import type { InboxNotices } from "../notices/inbox-notices.ts";
 import { mergeNotices } from "../notices/merge-notices.ts";
 import type { ProposalDecisions } from "../proposal-decisions.ts";
+import { readKey } from "../read-marks.ts";
 import type { InboxRequests } from "../request/inbox-requests.ts";
 import { DoneSection } from "./done-proposals.tsx";
 import {
+  currentRow,
   InboxPanes,
   itemPaneClass,
   ListHeader,
@@ -48,6 +49,7 @@ import {
   listScrollClass,
   needsYouCount,
   nextItem,
+  openRow,
   placeOf,
 } from "./inbox-page-parts.tsx";
 import { countDetail, inboxRow, lateCount } from "./inbox-row.tsx";
@@ -61,9 +63,10 @@ import { OpenCard } from "./open-card.tsx";
 import { ProposalsElsewhere } from "./proposals-elsewhere.tsx";
 import { itemMark } from "./row-marks.tsx";
 import type { RunFactsOf } from "./run-facts.ts";
-import { type AgentItems, useAgentItems } from "./use-agent-items.tsx";
+import { useAgentItems } from "./use-agent-items.tsx";
 import { useOpenItem } from "./use-open-item.ts";
 import { useProjectFilter } from "./use-project-filter.tsx";
+import { useReadMarks } from "./use-read-marks.ts";
 import { useRequestPane } from "./use-request-pane.tsx";
 import { useRunFacts } from "./use-run-facts.ts";
 import { useRunReview } from "./use-run-review.ts";
@@ -194,7 +197,7 @@ export interface InboxViewProps {
 /**
  * The Inbox (flow-inbox 3.1, UX checklist 2.1, 2.3, 2.9 and 2.10): "Inbox", then Needs you, a
  * grid of what waits for you, setup items first, then newest first, with its count in the heading
- * ("Needs you, 2 waiting"), beside the open item's card. Nothing is open at first, unless Home's Needs you asked
+ * ("Needs you, 2 waiting, 1 new"), beside the open item's card. Nothing is open at first, unless Home's Needs you asked
  * for an item (`Inbox.requestOpen`) or a run's **Review in Inbox** for what the run waits on. Enter or a click opens a
  * row's card, which takes focus; once decided, the card stays, with **Next** to the next item.
  *
@@ -295,16 +298,22 @@ export function InboxView({
     else render();
   };
   const waitingOrder = [
-    ...state.items.filter(waits).map((item) => ({ key: item.key, items: 1 })),
+    ...state.items
+      .filter(waits)
+      .map((item) => ({ key: item.key, items: 1, keys: [readKey(item)] })),
     ...agent.order,
   ];
+  // Opening an item marks it read; an agent's row, each of its cards (`inbox.read-marks`).
+  const reading = useReadMarks(inbox.readMarks, open, agent.openItemKeys);
+  const openKey = open?.key ?? agent.openKey;
+  const openWaiting = waitingOrder.find((row) => row.key === openKey);
   const sentCard = useSentRequestCard({
     items: state.items,
     openItem,
     sheetOpen: requestSheetOpen,
     announce,
   });
-  const place = placeOf(open?.key ?? agent.openKey, waitingOrder);
+  const place = placeOf(openKey, waitingOrder);
   const heading = openHeading(open, place !== null, agent.heading, now(), runFacts);
   const request = useRequestPane({
     inbox,
@@ -350,14 +359,21 @@ export function InboxView({
               heading={{
                 name: "Needs you",
                 headingRef: needsYouHeading,
-                ...countDetail(needsYouCount(waitingOrder), lateCount(state.items, now())),
+                ...countDetail(
+                  needsYouCount(waitingOrder),
+                  lateCount(state.items, now()),
+                  reading.newCount(waitingOrder),
+                ),
               }}
-              rows={[
-                ...project
-                  .own(listed)
-                  .map((item) => ({ ...inboxRow(item, now(), runFacts), ...itemMark(item) })),
-                ...agent.rows(now(), project.filter),
-              ]}
+              rows={reading.mark(
+                [
+                  ...project
+                    .own(listed)
+                    .map((item) => ({ ...inboxRow(item, now(), runFacts), ...itemMark(item) })),
+                  ...agent.rows(now(), project.filter),
+                ],
+                waitingOrder,
+              )}
               onOpen={(key) =>
                 paneMotion(
                   itemPane.current,
@@ -365,7 +381,7 @@ export function InboxView({
                   "in",
                 )
               }
-              {...currentRow(open?.key ?? agent.openKey)}
+              {...currentRow(openKey)}
               // The Messenger's plain rows (`inbox.plain-rows`); still a grid, so the arrows work.
               plain
               empty={
@@ -408,7 +424,13 @@ export function InboxView({
       {request.sheet}
       <div ref={itemPane} data-pane="item" className={itemPaneClass(onePane, anyOpen, framed)}>
         {heading === undefined ? null : (
-          <ItemHeader heading={heading} back={onePane} place={place} close={close} />
+          <ItemHeader
+            heading={heading}
+            back={onePane}
+            place={place}
+            close={close}
+            markUnread={() => reading.markUnread(close, openWaiting)}
+          />
         )}
         {/* Fills the pane under the header, so a card's body scrolls with its answers in sight. */}
         <div className="mx-auto flex min-h-0 w-full max-w-190 flex-1 flex-col short:min-h-auto">
@@ -447,20 +469,4 @@ export function InboxView({
       </div>
     </InboxPanes>
   );
-}
-
-/** Opens a row's item: an agent's in its own card, else the Inbox's own item of that key. */
-function openRow(
-  key: string,
-  agent: AgentItems,
-  listed: readonly InboxItem[],
-  openItem: (item: InboxItem | null) => void,
-): void {
-  if (agent.open(key)) openItem(null);
-  else openItem(listed.find((item) => item.key === key) ?? null);
-}
-
-/** The List's current row, when one is open. */
-function currentRow(key: string | undefined): { current?: string } {
-  return key === undefined ? {} : { current: key };
 }

@@ -37,7 +37,7 @@ export interface AgentItems {
    * Each row that waits, in list order, with how many items it holds, so the open item's place
    * ("2 of 6") counts as the heading does (`inbox.one-count`).
    */
-  readonly order: readonly { readonly key: string; readonly items: number }[];
+  readonly order: readonly AgentRowOrder[];
   /** The items that wait, for the project filter's chips. */
   readonly waitingItems: readonly AgentItem[];
   /**
@@ -49,6 +49,8 @@ export interface AgentItems {
   readonly lines: (now: Date) => ReactNode;
   /** The open row's key, while one is open. */
   readonly openKey: string | undefined;
+  /** The keys of the open row's cards, for their read marks (`inbox.read-marks`); none while closed. */
+  readonly openItemKeys: readonly string[];
   /**
    * The header over the open row's cards: its row's title and line, with the first card's asker at
    * 40px (`inbox.header-avatar`); `undefined` while none is open.
@@ -59,6 +61,13 @@ export interface AgentItems {
   readonly close: () => void;
   /** The open row's cards, or `otherwise` while none is open. */
   readonly card: (now: () => Date, otherwise: ReactNode) => ReactNode;
+}
+
+/** A row that waits: its key, how many items it holds and their keys, oldest first. */
+export interface AgentRowOrder {
+  readonly key: string;
+  readonly items: number;
+  readonly keys: readonly string[];
 }
 
 const nothing: AgentInboxState = {
@@ -135,7 +144,11 @@ export function useAgentItems(
 
   return {
     waiting: waiting.length,
-    order: bundles.map((bundle) => ({ key: bundle.key, items: bundle.items.length })),
+    order: bundles.map((bundle) => ({
+      key: bundle.key,
+      items: bundle.items.length,
+      keys: bundle.items.map(agentItemKey),
+    })),
     waitingItems: waiting,
     rows: (now, filter) =>
       bundles
@@ -153,6 +166,7 @@ export function useAgentItems(
       openItems.length === 0 || opened === undefined
         ? undefined
         : (rowKeyHolding(opened, bundles) ?? opened.key),
+    openItemKeys: openItems.map(agentItemKey),
     heading: (now) => {
       const [first] = openItems;
       if (first === undefined || opened === undefined) return undefined;

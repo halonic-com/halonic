@@ -135,15 +135,23 @@ function proposalRow(item: ProposalItem, now: Date): ListRow {
 }
 
 /**
- * "2 waiting · 1 late" after the heading, read "Needs you, 2 waiting, 1 late". "Waiting" is the
- * user's turn, so violet; "late" is amber with a dot. No count when it is 0, never "0 late".
+ * "8 waiting · 3 new · 1 late" after the heading, read "Needs you, 8 waiting, 3 new, 1 late".
+ * "Waiting" is the user's turn, so violet; "new" is the blue of the rows' unread dot
+ * (`inbox.read-marks`); "late" is amber with a dot. No count when it is 0, never "0 new".
  */
-export function countDetail(waiting: number, late = 0): { detail?: ReactNode } {
+export function countDetail(waiting: number, late = 0, fresh = 0): { detail?: ReactNode } {
   if (waiting === 0) return {};
   return {
     detail: (
       <>
         <span className="text-warning">{waiting} waiting</span>
+        {fresh === 0 ? null : (
+          <>
+            <span aria-hidden="true"> · </span>
+            <span className="sr-only">, </span>
+            <span className="text-primary">{fresh} new</span>
+          </>
+        )}
         {late === 0 ? null : (
           <>
             <span aria-hidden="true"> · </span>

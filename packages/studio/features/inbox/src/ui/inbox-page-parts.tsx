@@ -1,11 +1,13 @@
-// The Inbox page's layout parts: the list's title and column, the open item's place, and the item
-// the decided card's **Next** opens. Kept apart from `InboxView`, which puts them together.
+// The Inbox page's layout parts: the list's title and column, the open item's place, the row that
+// opens and is current, and the item the decided card's **Next** opens. Kept apart from
+// `InboxView`, which puts them together.
 
 import { framedPanelClass } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import type { InboxItem } from "../inbox-items.ts";
 import type { NextItem } from "./card-parts.tsx";
 import { itemTitle } from "./inbox-row.tsx";
+import type { AgentItems } from "./use-agent-items.tsx";
 
 /** The props of {@link ListHeader}. */
 interface ListHeaderProps {
@@ -125,4 +127,20 @@ export function nextItem(
     left: others.length,
     open: () => setOpen(next),
   };
+}
+
+/** Opens a row's item: an agent's in its own card, else the Inbox's own item of that key. */
+export function openRow(
+  key: string,
+  agent: AgentItems,
+  listed: readonly InboxItem[],
+  openItem: (item: InboxItem | null) => void,
+): void {
+  if (agent.open(key)) openItem(null);
+  else openItem(listed.find((item) => item.key === key) ?? null);
+}
+
+/** The List's current row, when one is open. */
+export function currentRow(key: string | undefined): { current?: string } {
+  return key === undefined ? {} : { current: key };
 }
