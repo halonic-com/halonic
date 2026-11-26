@@ -73,7 +73,8 @@ address and the company, and never a key or any data
 as "Paperclip · Halonic", and its items are read-only proxies that run nothing
 locally. Opening a workspace that holds a connection file makes no call.
 Connecting is always a user action: the user first sees the address and the
-company.
+company. Opening a workspace only restores an earlier Connect made in it (see
+*Restoring a sign-in on open*).
 
 **The key** (`ports.paperclip-key`). The board accepted that a board key
 carries all of the board's powers. A key from the sign-in route expires after
@@ -87,6 +88,22 @@ review of HAL-17495): a second workspace with a file of the same name, address
 and company, such as a clone, gets no call until the person connects it there
 too. The keychain entry stays one per connection name, so that second Connect
 reuses it.
+
+**Restoring a sign-in on open** (HAL-18910, Liam's OK on HAL-18911). The
+engine holds keys in memory only, so after a restart every connection was
+signed out and the person had to sign in again each time. The keychain entry
+now also lists the workspaces the person signed in from, by the real path the
+engine resolved. When one of them opens and the person has trusted it (or
+trusts it later), Studio hands the key back to the engine once, quietly, but
+only when the entry names that workspace and its address
+(scheme, host and port) and company match the connection file. Opening replays
+an earlier Connect in that workspace; it doesn't start a new one, so a
+workspace's files still never decide where a key goes. A clone, a file that
+now names another address or company, and an entry saved before this change
+get nothing and show *Sign in again*. Disconnect deletes the whole entry, list
+included. Nothing else changes: the provider still compares the address and
+company with the file before every call, and the engine still binds the key
+to the workspace it was handed over for.
 
 The provider sends the key only in the `Authorization` header, uses `https`
 (plain `http` only to `localhost`, `127.0.0.1` and `::1`), never turns off

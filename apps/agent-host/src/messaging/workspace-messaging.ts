@@ -67,6 +67,8 @@ export interface ConnectionRow {
   /** "Paperclip · Halonic", and whom it is signed in as once known: "Paperclip · Halonic · Board Supervisor". */
   label: string;
   address: string;
+  /** The Paperclip company's ID the file names, which Studio compares with its keychain entry. */
+  company: string;
   state: MessagingSourceState;
   /** The Paperclip user the connection is signed in as, once read. */
   userName?: string;
@@ -246,6 +248,7 @@ export class WorkspaceMessaging {
         name,
         label: userName === undefined ? label : withUserName(label, userName),
         address: connection.address,
+        company: connection.company,
         state: provider === undefined ? { kind: "signed-out" } : stateOf(id, sources, asOf),
         ...(userName === undefined ? {} : { userName }),
       };

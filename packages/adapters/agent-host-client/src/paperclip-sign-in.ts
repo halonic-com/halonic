@@ -10,6 +10,7 @@ const sourceState = s.discriminatedUnion("kind", [
 
 const connectionsAnswer = s
   .object({
+    workspace: s.string(),
     connections: s.array(
       s
         .object({
@@ -17,6 +18,7 @@ const connectionsAnswer = s
           name: s.string(),
           label: s.string(),
           address: s.string(),
+          company: s.string(),
           state: sourceState,
           userName: s.string().optional(),
         })
@@ -70,9 +72,18 @@ export interface PaperclipConnectionRow {
   /** "Paperclip · Halonic", with whom it is signed in as once known: "Paperclip · Halonic · Board Supervisor". */
   readonly label: string;
   readonly address: string;
+  /** The Paperclip company's ID the file names. */
+  readonly company: string;
   readonly state: MessagingSourceState;
   /** The Paperclip user the connection is signed in as, once the engine read it. */
   readonly userName?: string | undefined;
+}
+
+/** The workspace's connection files, with the workspace's real path as the host resolved it. */
+export interface PaperclipConnectionList {
+  /** The real path the host binds keys to: links and `..` resolved, the way the disk spells it. */
+  readonly workspace: string;
+  readonly connections: readonly PaperclipConnectionRow[];
 }
 
 /** How starting a sign-in went. */
@@ -101,9 +112,14 @@ export class AgentHostPaperclipSignIn {
 
   /** The workspace's connection files with their states; never a key. */
   async connections(): Promise<readonly PaperclipConnectionRow[]> {
+    return (await this.listed()).connections;
+  }
+
+  /** The workspace's connection files with their states, and its real path; never a key. */
+  async listed(): Promise<PaperclipConnectionList> {
     const route = "POST /v1/paperclip/connections";
     const answer = await this.#transport.request(route, { workspace: this.#workspace });
-    return readAnswer(route, answer, connectionsAnswer).connections;
+    return readAnswer(route, answer, connectionsAnswer);
   }
 
   /**

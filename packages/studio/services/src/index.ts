@@ -92,6 +92,7 @@ export {
   paperclipKeyEntryText,
   paperclipKeyTokenName,
 } from "./paperclip-key.ts";
+export { type RestoreTrust, restoreWhenTrusted } from "./paperclip-restore.ts";
 export {
   isQuiet,
   type QuietHours,

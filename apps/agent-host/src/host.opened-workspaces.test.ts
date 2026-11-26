@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Machine, SrtSandbox } from "@halonicjs/adapter-sandbox-srt";
@@ -100,7 +100,10 @@ verifies("agent-host.opened-workspaces", () => {
       // Once the host has answered the notice, the very next request finds the folder.
       const after = await connections();
       expect(after.status).toBe(200);
-      expect(JSON.parse(after.body)).toEqual({ connections: [] });
+      expect(JSON.parse(after.body)).toEqual({
+        workspace: await realpath(workspace),
+        connections: [],
+      });
       expect(await host.stop()).toBe(0);
     });
 

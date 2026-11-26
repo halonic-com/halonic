@@ -17,10 +17,11 @@ const acmeRow: PaperclipConnectionRow = {
   name: "acme",
   label: "Paperclip · Acme",
   address,
+  company: "acme",
   state: { kind: "online", asOf: "2026-11-24T14:00:00.000Z" },
 };
-/** The row as Settings gets it: no file name. */
-const { name: _name, ...acmeListed } = acmeRow;
+/** The row as Settings gets it: no file name or company. */
+const { name: _name, company: _company, ...acmeListed } = acmeRow;
 const connected: PaperclipSignInState = {
   status: "connected",
   connection: "acme",
@@ -48,8 +49,8 @@ class FakeSignIn {
     expiresAt: new Date(startedAt + 600_000).toISOString(),
   };
 
-  async connections() {
-    return this.rows;
+  async listed() {
+    return { workspace: "/work/acme", connections: this.rows };
   }
   async start(atAddress: string, connection?: string, options?: { newConnection?: boolean }) {
     this.starts.push({ address: atAddress, connection, ...options });
@@ -77,7 +78,7 @@ class FakeSignIn {
   }
 }
 
-function setUp(options: { setFails?: boolean; revoked?: boolean } = {}) {
+function setUp(options: { getFails?: boolean; setFails?: boolean; revoked?: boolean } = {}) {
   const signIn = new FakeSignIn();
   const kept = new Map<string, string>();
   const disconnected: PaperclipConnectionRef[] = [];
@@ -86,13 +87,17 @@ function setUp(options: { setFails?: boolean; revoked?: boolean } = {}) {
   const connections = new HostAgentConnections({
     signIn,
     host: {
+      handOver: async () => {},
       disconnect: async (ref) => {
         disconnected.push(ref);
         return { revoked: options.revoked ?? true };
       },
     },
     tokens: {
-      get: async (name) => kept.get(name) ?? null,
+      get: async (name) => {
+        if (options.getFails) throw new Error("The keychain is locked.");
+        return kept.get(name) ?? null;
+      },
       set: async (name, value) => {
         if (options.setFails) throw new Error("The keychain is locked.");
         kept.set(name, value);
@@ -152,6 +157,7 @@ verifies("services.host-agent-connections", () => {
         key: fakeKey,
         address,
         company: "acme",
+        workspaces: ["/work/acme"],
       });
       expect(signIn.confirms).toEqual(["sign-in-1"]);
       expect(signIn.cancels).toEqual([]);
@@ -216,6 +222,17 @@ verifies("services.host-agent-connections", () => {
       expect(signIn.cancels).toEqual(["sign-in-1"]);
     });
 
+    it("writes nothing and cancels when the keychain can't be read first", async () => {
+      const { signIn, kept, reported, connections } = setUp({ getFails: true });
+      signIn.states = [connected];
+      const { result } = await resultOf(connections);
+      expect(result).toEqual({ outcome: "key-not-saved" });
+      expect(kept.size).toBe(0);
+      expect(signIn.confirms).toEqual([]);
+      expect(signIn.cancels).toEqual(["sign-in-1"]);
+      expect(reported).toHaveLength(1);
+    });
+
     it("sends a confirm whose answer got lost once more, and connects when the host has the key", async () => {
       const { signIn, kept, reported, connections } = setUp();
       signIn.states = [connected];
@@ -231,7 +248,7 @@ verifies("services.host-agent-connections", () => {
     it("still connects when the list fails after the key is kept", async () => {
       const { signIn, connections } = setUp();
       signIn.states = [connected];
-      signIn.connections = async () => {
+      signIn.listed = async () => {
         throw new Error("The host can't be reached.");
       };
       const { result } = await resultOf(connections);

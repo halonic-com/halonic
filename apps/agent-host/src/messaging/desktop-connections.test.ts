@@ -1,3 +1,6 @@
+import { mkdtemp, rm, symlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { AgentHostPaperclipSignIn } from "@halonicjs/adapter-agent-host-client";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it } from "vitest";
@@ -21,10 +24,24 @@ verifies("agent-host.paperclip-connection", () => {
           name: "halonic",
           label: "Paperclip · Halonic",
           address: acme.address,
+          company: acme.company,
           state: { kind: "signed-out" },
         },
       ]);
       expect(desktop.paperclip.seen).toEqual([]);
+    });
+
+    it("answers the workspace's real path, also when Studio names it through a link", async () => {
+      desktop = await startDesktop();
+      const links = await mkdtemp(join(tmpdir(), "acme-links-"));
+      try {
+        const linked = join(links, "acme");
+        await symlink(desktop.workspace, linked, "dir");
+        const listed = await new AgentHostPaperclipSignIn(desktop.transport, linked).listed();
+        expect(listed.workspace).toBe(desktop.workspace);
+      } finally {
+        await rm(links, { recursive: true, force: true });
+      }
     });
 
     it("lists a connected one with its source's state, and answers no key", async () => {
