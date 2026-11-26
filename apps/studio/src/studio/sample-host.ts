@@ -13,8 +13,11 @@ import {
 } from "./new-workspace-host.ts";
 import { sampleSource } from "./sample-files.ts";
 
-/** The folder name of the first copy; later copies are "Acme sample 2", "Acme sample 3", … */
-const sampleName = "Acme sample";
+/** The folder name of the first copy; later copies are "Acme demo 2", "Acme demo 3", … */
+const demoName = "Acme demo";
+
+/** The name copies had before the demo was called the demo (HAL-19402): only reopened, never made. */
+const legacyName = "Acme sample";
 
 /** Where the copies go, the same word on every computer (microcopy 3.2, HAL-12891), never a path. */
 const documentsName = "Documents";
@@ -23,9 +26,9 @@ const documentsName = "Documents";
 const mostCopies = 99;
 
 /**
- * The app's side of **Open demo** (flow-first-run 2.2, first-run-flow 3.2): the first of `Acme sample`,
- * `Acme sample 2`, … that isn't in Documents yet (or a sample the device already knows, which is
- * reopened instead), made through the shell, with the bundled
+ * The app's side of **Open demo** (flow-first-run 2.2, first-run-flow 3.2): the first of `Acme demo`,
+ * `Acme demo 2`, … that isn't in Documents yet (or a demo the device already knows, under that name
+ * or the older `Acme sample`, which is reopened instead), made through the shell, with the bundled
  * `examples/acme` copied in by `copyWorkspace` and trusted at once, since Halonic wrote every
  * file. It never writes into a folder that is there, and never asks where.
  *
@@ -42,7 +45,8 @@ export function sampleHostOf(parts: NewWorkspaceHostParts): SampleHost {
       let written = false;
       try {
         const parent = await documentsOf(parts);
-        const place = await freeName(parts, parent, known);
+        const place =
+          (await knownLegacy(parts, parent, known)) ?? (await freeName(parts, parent, known));
         if (place.kind === "known") return { kind: "existing", folder: place.folder };
         const { name } = place;
         const made = await madeFolder(parts.shell, parent, name);
@@ -76,13 +80,38 @@ async function documentsOf(parts: NewWorkspaceHostParts): Promise<string> {
   return documents;
 }
 
-/** Where the sample goes: a sample folder the device knows, or the first name that isn't taken. */
+/** Where the demo goes: a demo folder the device knows, or the first name that isn't taken. */
 type Place =
   | { readonly kind: "known"; readonly folder: string }
   | { readonly kind: "free"; readonly name: string };
 
+/** The `number`th name of a series: `Acme demo`, `Acme demo 2`, … */
+function nameOf(series: string, number: number): string {
+  return number === 1 ? series : `${series} ${number}`;
+}
+
 /**
- * Walks `Acme sample`, `Acme sample 2`, … and stops at the first that is a known sample folder,
+ * Looks through `Acme sample`, `Acme sample 2`, … only for a demo the device made before the rename
+ * (HAL-19402), so it opens again instead of getting a second copy. It asks the shell only about names
+ * the device knows, and never makes a folder under the old name.
+ */
+async function knownLegacy(
+  parts: NewWorkspaceHostParts,
+  parent: string,
+  known: readonly string[],
+): Promise<Place | undefined> {
+  for (let number = 1; number <= mostCopies; number += 1) {
+    const name = nameOf(legacyName, number);
+    const folder = joined(parent, name, parts.separator);
+    if (!known.includes(folder)) continue;
+    const found: WorkspaceFolderProbe = await probed(parts.shell, parent, name);
+    if (found !== "new") return { kind: "known", folder };
+  }
+  return undefined;
+}
+
+/**
+ * Walks `Acme demo`, `Acme demo 2`, … and stops at the first that is a known demo folder,
  * which is reopened, or that isn't there, which is made. Any other taken name is passed by.
  */
 async function freeName(
@@ -91,13 +120,13 @@ async function freeName(
   known: readonly string[],
 ): Promise<Place> {
   for (let number = 1; number <= mostCopies; number += 1) {
-    const name = number === 1 ? sampleName : `${sampleName} ${number}`;
+    const name = nameOf(demoName, number);
     const found: WorkspaceFolderProbe = await probed(parts.shell, parent, name);
     if (found === "new") return { kind: "free", name };
     const folder = joined(parent, name, parts.separator);
     if (known.includes(folder)) return { kind: "known", folder };
   }
-  throw new Error(`there are already ${mostCopies} copies of the sample`);
+  throw new Error(`there are already ${mostCopies} copies of the demo`);
 }
 
 /** The folder's location as the shell gives it: the parent, a separator, the name. */

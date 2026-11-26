@@ -30,29 +30,29 @@ function hostOf(taken: string[], answers: Record<string, unknown> = {}) {
 }
 
 verifies("studio.try-sample", () => {
-  it("copies the example into Acme sample and trusts it", async () => {
+  it("copies the example into Acme demo and trusts it", async () => {
     const { host, store, trust } = hostOf([]);
 
     expect(await host.create([])).toEqual({
       kind: "created",
-      folder: "/docs/Documents/Acme sample",
-      name: "Acme sample",
+      folder: "/docs/Documents/Acme demo",
+      name: "Acme demo",
       trust: { kind: "trusted" },
     });
     const files = await store.list();
     expect(files).toContain("workspace.yaml");
     expect(files).toContain("hubs/support/hub.yaml");
-    expect(trust).toHaveBeenCalledWith("/docs/Documents/Acme sample");
+    expect(trust).toHaveBeenCalledWith("/docs/Documents/Acme demo");
   });
 
   it("never writes into a folder that is there: it takes the next free name", async () => {
-    const { host, calls } = hostOf(["Acme sample", "Acme sample 2"]);
+    const { host, calls } = hostOf(["Acme demo", "Acme demo 2"]);
 
     const made = await host.create([]);
 
-    expect(made).toMatchObject({ kind: "created", name: "Acme sample 3" });
+    expect(made).toMatchObject({ kind: "created", name: "Acme demo 3" });
     expect(calls.filter(([command]) => command === "create_workspace_folder")).toEqual([
-      ["create_workspace_folder", { parent: "/docs/Documents", name: "Acme sample 3" }],
+      ["create_workspace_folder", { parent: "/docs/Documents", name: "Acme demo 3" }],
     ]);
   });
 
@@ -88,12 +88,12 @@ verifies("studio.try-sample", () => {
     expect(await host.create([])).not.toHaveProperty("unavailable");
   });
 
-  it("reopens the first taken name when the device knows it as a sample, and writes nothing", async () => {
-    const { host, store, trust, calls } = hostOf(["Acme sample"]);
+  it("reopens the first taken name when the device knows it as a demo, and writes nothing", async () => {
+    const { host, store, trust, calls } = hostOf(["Acme demo"]);
 
-    expect(await host.create(["/docs/Documents/Acme sample"])).toEqual({
+    expect(await host.create(["/docs/Documents/Acme demo"])).toEqual({
       kind: "existing",
-      folder: "/docs/Documents/Acme sample",
+      folder: "/docs/Documents/Acme demo",
     });
     expect(await store.list()).toEqual([]);
     expect(trust).not.toHaveBeenCalled();
@@ -101,11 +101,31 @@ verifies("studio.try-sample", () => {
   });
 
   it("passes by a taken folder it doesn't know, then reopens a known later copy", async () => {
-    const { host } = hostOf(["Acme sample", "Acme sample 2"]);
+    const { host } = hostOf(["Acme demo", "Acme demo 2"]);
 
-    expect(await host.create(["/docs/Documents/Acme sample 2"])).toEqual({
+    expect(await host.create(["/docs/Documents/Acme demo 2"])).toEqual({
       kind: "existing",
-      folder: "/docs/Documents/Acme sample 2",
+      folder: "/docs/Documents/Acme demo 2",
+    });
+  });
+
+  it("reopens a demo the device made as Acme sample, and makes no new folder", async () => {
+    const { host, store, calls } = hostOf(["Acme sample"]);
+
+    expect(await host.create(["/docs/Documents/Acme sample"])).toEqual({
+      kind: "existing",
+      folder: "/docs/Documents/Acme sample",
+    });
+    expect(await store.list()).toEqual([]);
+    expect(calls.some(([command]) => command === "create_workspace_folder")).toBe(false);
+  });
+
+  it("never makes a folder named Acme sample, even when the device knows one that is gone", async () => {
+    const { host } = hostOf([]);
+
+    expect(await host.create(["/docs/Documents/Acme sample"])).toMatchObject({
+      kind: "created",
+      name: "Acme demo",
     });
   });
 });
