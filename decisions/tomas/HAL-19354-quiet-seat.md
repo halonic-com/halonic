@@ -3,6 +3,7 @@
 - Task: HAL-19354
 - Approval: the board's pre-move checklist item g (timer agents on the quiet seat, no fast burner moved onto it), which the board supervisor asked the mover to be checked against before act mode on HAL-19354 (https://paperclip.halonic.com/HAL/issues/HAL-19354#comment-86bbdf18-45fb-4b30-b1b9-e7cf22db1830). Liam approves the change in review on HAL-19354.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Hrn2ldOsOFpmXFxZ/ME649JRtIt66YhfX8ZbtjZNQ9CoiE7l4VXQoQ9URKfZb6BXANHempk7q8PnyCWncXYpCg==
 
 ## What changes
 
