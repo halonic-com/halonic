@@ -111,11 +111,15 @@ export function queueLoginOf(config: Readonly<Record<string, unknown>>): string 
   return typeof value === "string" && /^[A-Za-z0-9-]{1,39}$/.test(value.trim()) ? value.trim() : "";
 }
 
-/** `defaultSettings` with the queue login added to the auto-label authors, never written in code. */
+/**
+ * `defaultSettings` with the queue login added to the auto-label authors and to the
+ * `fast-track` labellers, never written in code.
+ */
 export function rulesOf(config: Readonly<Record<string, unknown>>): MergeSettings {
   const login = queueLoginOf(config);
   return {
     ...defaultSettings,
+    fastTrackLabellers: login === "" ? [] : [login],
     autoLabelAuthors: [
       ...defaultSettings.autoLabelAuthors,
       ...(login === "" || defaultSettings.autoLabelAuthors.includes(login) ? [] : [login]),

@@ -143,7 +143,7 @@ function redFastTrack(): PullNode {
           __typename: "LabeledEvent",
           createdAt: ago(100),
           label: { name: "fast-track" },
-          actor: { login: "halonic-dev" },
+          actor: { login: merger },
         },
       ],
     },
