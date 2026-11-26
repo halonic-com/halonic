@@ -3,6 +3,7 @@
 - Task: HAL-19791 (follows HAL-15359 and HAL-18722)
 - Approval: the task asks for this change; Liam approves this note in review on HAL-19791
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:1oNpZkI5UHxj+489dTKDIqWAp8EuBpmApyKdHfDRJyMxK7sfK1eMEMXk/+qs3ZBZmZOTFQFByK0jHzi7wCTKBw==
 
 ## What changes
 
