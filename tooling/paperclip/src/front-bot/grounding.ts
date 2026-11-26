@@ -56,12 +56,13 @@ const bareAcknowledgements = new Set([
 ]);
 
 /** A reply that starts by answering the question; the bot never answers, it only frames. */
-const unhedgedAnswer =
+export const unhedgedAnswer =
   /^\s*(?:yes|no|yep|nope|correct|right|sure thing|definitely|it is|it's|it isn't)\b/i;
 
-const firstPerson = /(?<![\w'’])(?:I|I'm|I’m|I'll|I’ll|I've|I’ve|I'd|I’d|me|my|mine)(?![\w'’])/;
-const bannedWords = /\bsafe(?:ly)?\b|!|\p{Extended_Pictographic}/iu;
-const timePromises =
+export const firstPerson =
+  /(?<![\w'’])(?:I|I'm|I’m|I'll|I’ll|I've|I’ve|I'd|I’d|me|my|mine)(?![\w'’])/;
+export const bannedWords = /\bsafe(?:ly)?\b|!|\p{Extended_Pictographic}/iu;
+export const timePromises =
   /\b(?:in (?:a|\d+) (?:moment|minute|minutes|min|mins|hour|hours|sec|second|seconds|bit|few)|within|shortly|soon|right away|asap|by (?:today|tonight|tomorrow|the end|end of))\b/i;
 
 /**
@@ -73,12 +74,17 @@ const credentialWords =
   /\b(?:api[- ]?keys?|keys?|tokens?|passwords?|passphrases?|secrets?|credentials?)\b/i;
 const handOverWords = /\b(?:paste|send|share|provide|enter)\b/i;
 
+/** Whether a line names a credential or asks the reader to hand something over. */
+export function asksForCredential(line: string): boolean {
+  return credentialWords.test(line) || handOverWords.test(line);
+}
+
 /**
  * Words that state a result or a claimed action. Allowed only when negated
  * ("Not done yet.") or quoted from an earlier comment together with that
  * comment's own time.
  */
-const resultWords = [
+export const resultWords = [
   "merged",
   "done",
   "fixed",
@@ -107,7 +113,7 @@ const resultWords = [
   "updated",
 ];
 const resultPattern = new RegExp(`\\b(?:${resultWords.join("|")})\\b`, "gi");
-const negation =
+export const negation =
   /\b(?:not|isn't|isn’t|aren't|aren’t|wasn't|wasn’t|hasn't|hasn’t|haven't|haven’t|never|no)\s+(?:\w+\s+)?$/i;
 
 /**
@@ -128,11 +134,11 @@ const numberPattern = /\d+(?:[.:]\d+)*/g;
 const linkPattern = /https?:\/\/[^\s)>\]]+|\]\(([^)\s]+)\)/g;
 const capitalisedPattern = /\b[A-Z][\w'’-]*/g;
 
-function words(text: string): string[] {
+export function words(text: string): string[] {
   return text.split(/\s+/).filter((word) => word !== "");
 }
 
-function isBareAcknowledgement(line: string): boolean {
+export function isBareAcknowledgement(line: string): boolean {
   const normalised = line
     .toLowerCase()
     .replace(/[^\p{L}\p{N} ]/gu, "")
@@ -140,12 +146,12 @@ function isBareAcknowledgement(line: string): boolean {
   return bareAcknowledgements.has(normalised);
 }
 
-function allNumbersKnown(line: string, input: string): boolean {
+export function allNumbersKnown(line: string, input: string): boolean {
   const known = new Set(input.match(numberPattern) ?? []);
   return (line.match(numberPattern) ?? []).every((number) => known.has(number));
 }
 
-function allLinksKnown(line: string, input: string): boolean {
+export function allLinksKnown(line: string, input: string): boolean {
   for (const match of line.matchAll(linkPattern)) {
     const link = (match[1] ?? match[0]).replace(/[.,;:]+$/, "");
     if (!input.includes(link)) {
@@ -155,11 +161,17 @@ function allLinksKnown(line: string, input: string): boolean {
   return true;
 }
 
-function allNamesKnown(line: string, input: string): boolean {
+/** Whether every capitalised word in `line` is in `input` or is a common word (`extraCommon` adds more). */
+export function allNamesKnown(
+  line: string,
+  input: string,
+  extraCommon: ReadonlySet<string> = new Set(),
+): boolean {
   const known = new Set((input.match(/[\p{L}\p{N}_-]+/gu) ?? []).map((word) => word));
   for (const match of line.match(capitalisedPattern) ?? []) {
     const name = match.replace(/['’]s$/, "").replace(/[-'’]+$/, "");
-    if (!known.has(name) && !commonWords.has(name.toLowerCase())) {
+    const lower = name.toLowerCase();
+    if (!known.has(name) && !commonWords.has(lower) && !extraCommon.has(lower)) {
       return false;
     }
   }
@@ -202,7 +214,7 @@ export function checkGrounding(line: string, given: FrontBotInput): Grounding {
   const input = frontBotUserText(given);
   const reject = (reason: GroundingReason): Grounding => ({ ok: false, reason });
   if (findCredentialShape(line) !== undefined) return reject("secret_shape");
-  if (credentialWords.test(line) || handOverWords.test(line)) return reject("credential_request");
+  if (asksForCredential(line)) return reject("credential_request");
   if (line.length > maxCharacters || words(line).length > maxWords) return reject("too_long");
   if (isBareAcknowledgement(line)) return reject("bare_acknowledgement");
   if (unhedgedAnswer.test(line)) return reject("unhedged_answer");

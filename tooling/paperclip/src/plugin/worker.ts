@@ -11,7 +11,9 @@ import { difficultyTagger } from "./difficulty-tagger.ts";
 import { lifecycleRunner } from "./fast-track-lifecycle-job.ts";
 import { fetchHonouringSignal } from "./fetch-signal.ts";
 import { frontBot } from "./front-bot.ts";
+import { serial } from "./front-bot-budget.ts";
 import { chatNotesRouteKey, handleChatNotes } from "./front-bot-notes.ts";
+import { progressNotes } from "./front-bot-progress.ts";
 import { handleGhGuard } from "./gh-guard-route.ts";
 import {
   githubPullRouteKey,
@@ -94,14 +96,28 @@ export const plugin = definePlugin({
     );
     ctx.jobs.register("precheck-wake", () => precheckJob.dispatch());
     // Off unless the board turns it on; its only outside call is to api.anthropic.com (HAL-19136).
-    const bot = frontBot(ctx, {
-      anthropicFetch: (url, init) => fetch(url, init),
+    const botDeps = {
+      anthropicFetch: (url: string | URL | Request, init?: RequestInit) => fetch(url, init),
       now: () => new Date(),
-    });
+    };
+    // First replies and progress notes count the same day's spend, one call at a time.
+    const botQueue = serial();
+    const bot = frontBot(ctx, botDeps, botQueue);
+    // Off unless the board turns them on too; reads only Paperclip's own API for the run (HAL-19218).
+    const notes = progressNotes(
+      ctx,
+      {
+        ...botDeps,
+        paperclipFetch: (url, init) => fetch(url, init),
+        sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+      },
+      botQueue,
+    );
     ctx.events.on("issue.comment.created", async (event) => {
       roster.remember(event.companyId);
       // Not awaited: the bot's queue never holds up the other comment handlers.
       void bot.onCommentCreated(event);
+      void notes.onCommentCreated(event);
       await Promise.all([
         board.onCommentCreated(event, new Date()),
         onChiefLineComment(ctx, event),

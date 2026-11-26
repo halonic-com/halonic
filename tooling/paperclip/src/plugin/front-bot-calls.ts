@@ -1,12 +1,7 @@
 import type { PluginSecretsClient } from "@paperclipai/plugin-sdk";
 import { type CallUsage, tokenCount } from "../front-bot/limits.ts";
 import type { FrontBotReason } from "../front-bot/log-record.ts";
-import {
-  type FrontBotAnswer,
-  type FrontBotInput,
-  frontBotRequest,
-  parseFrontBotAnswer,
-} from "../front-bot/prompt.ts";
+import { type FrontBotAnswer, parseFrontBotAnswer } from "../front-bot/prompt.ts";
 import type { SecretRef } from "../task-effort/settings.ts";
 
 /**
@@ -30,7 +25,7 @@ export interface FrontBotDeps {
 /** The only address the bot calls (HAL-18847 section 4.4). */
 export const messagesUrl = "https://api.anthropic.com/v1/messages";
 
-/** A first reply is only worth it within seconds; a slower answer is dropped. */
+/** A first reply or note is only worth it within seconds; a slower answer is dropped. */
 const requestTimeoutMs = 8_000;
 
 /**
@@ -85,7 +80,7 @@ function answerText(body: { content?: { type?: string; text?: string }[] }): str
 async function callMessages(
   deps: FrontBotDeps,
   key: string,
-  input: FrontBotInput,
+  request: Record<string, unknown>,
   signal: AbortSignal,
 ): Promise<FrontBotCall> {
   const response = await deps.anthropicFetch(messagesUrl, {
@@ -95,7 +90,7 @@ async function callMessages(
       "anthropic-version": "2023-06-01",
       "content-type": "application/json",
     },
-    body: JSON.stringify(frontBotRequest(input)),
+    body: JSON.stringify(request),
     // A redirect would take the key header to another host.
     redirect: "error",
     signal,
@@ -116,19 +111,22 @@ async function callMessages(
   };
 }
 
-/** Asks Haiku for one first reply, giving up after {@link requestTimeoutMs}. Never throws. */
+/**
+ * Sends one request (a first reply's or a progress note's) to Haiku, giving
+ * up after {@link requestTimeoutMs}. Never throws.
+ */
 export async function askFrontBot(
   ctx: { readonly secrets: Pick<PluginSecretsClient, "resolve"> },
   deps: FrontBotDeps,
   keyRef: SecretRef,
   companyId: string,
-  input: FrontBotInput,
+  request: Record<string, unknown>,
 ): Promise<FrontBotCall> {
   try {
     // Read at call time, sent only to Anthropic in a header, never logged or kept.
     const key = await ctx.secrets.resolve(keyRef, { companyId });
     const call = await withTimeout(
-      (signal) => callMessages(deps, key, input, signal),
+      (signal) => callMessages(deps, key, request, signal),
       requestTimeoutMs,
     );
     return call === "timeout" ? { answered: false, reason: "timeout" } : call;
