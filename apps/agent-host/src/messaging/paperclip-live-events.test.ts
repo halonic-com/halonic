@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { serverPairingSecretName } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it } from "vitest";
@@ -164,6 +165,24 @@ verifies("agent-host.paperclip-live-events", () => {
 
       expect(on.sockets.opened).toHaveLength(2);
       expect(on.sockets.opened[1]?.closed).toBe(false);
+    });
+
+    it("a socket that fails to open on leaving the server is logged, and the server's cache is still deleted", async () => {
+      const on = await connectedWithEvents();
+      const { key } = await on.setting.read(on.workspace);
+      await on.keychain.set(serverPairingSecretName(key), on.server.token);
+      await on.setting.useServer(on.workspace, on.server.address);
+      await on.messaging.switchEngine(on.workspace);
+      await on.studio.listAgents();
+      const cache = join(on.profile, "agent-messaging-cache");
+      expect((await on.filesIn(cache)).size).toBeGreaterThan(0);
+
+      on.failLiveAdds(new Error("timer not set"));
+      await on.setting.useThisComputer(on.workspace);
+      await on.messaging.leaveServer(on.workspace);
+
+      expect([...(await on.filesIn(cache)).keys()]).toEqual([]);
+      expect(on.logged).toContain("paperclip:halonic live events\n");
     });
   });
 });

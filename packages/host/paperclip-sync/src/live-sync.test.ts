@@ -292,6 +292,33 @@ verifies("agent-host.paperclip-live-events", () => {
       expect(on.events.sockets).toHaveLength(2);
     });
 
+    it("keeps a retried reconnect's due time, so one due after the next poll waits for it", async () => {
+      const on = await startLive(() => 0.999_999);
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        await on.events.current.say({ kind: "closed", refused: false });
+        await on.scheduler.pass(on.reconnectDueIn() ?? 0);
+      }
+      const schedule = on.scheduler.schedule.bind(on.scheduler);
+      on.scheduler.schedule = async () => {
+        on.scheduler.schedule = schedule;
+        throw new Error("The scheduler's store is full.");
+      };
+
+      // The fifth wait is 15,999 ms; the poll that sets it again comes sooner.
+      await on.events.current.say({ kind: "closed", refused: false });
+      const pollDueIn = on.pollDueIn() ?? 0;
+      expect(pollDueIn).toBeLessThan(15_999);
+      await on.scheduler.pass(pollDueIn);
+      expect(on.events.sockets).toHaveLength(5);
+      expect(on.reconnectDueIn()).toBe(15_999 - pollDueIn);
+
+      await on.scheduler.pass(15_999 - pollDueIn - 1);
+      expect(on.events.sockets).toHaveLength(5);
+      await on.scheduler.pass(1);
+
+      expect(on.events.sockets).toHaveLength(6);
+    });
+
     it("closes the socket and tries no more once removed", async () => {
       const on = await startLive();
       await on.events.current.say({ kind: "closed", refused: false });
@@ -317,6 +344,36 @@ verifies("agent-host.paperclip-live-events", () => {
       expect(late.sockets).toHaveLength(0);
       expect(after.sockets).toHaveLength(0);
       expect(on.events.current.closed).toBe(true);
+    });
+
+    it("waits for an add still telling the sync whether events reach it", async () => {
+      const scheduler = new FakeScheduler("2026-11-26T10:00:00.000Z");
+      let held: Promise<void> | undefined;
+      const sync = { pollNow: async () => {}, setEvents: () => held ?? Promise.resolve() };
+      const live = new LiveSync({ scheduler, clock: scheduler.clock, sync, report: () => {} });
+      const refused = new FakeEvents();
+      await live.add("acme", refused.open);
+      await refused.current.say({ kind: "closed", refused: true });
+      let release = () => {};
+      held = new Promise((resolve) => {
+        release = resolve;
+      });
+      // A new key turns "not-allowed" back into "polling-only", which the sync hears.
+      const replaced = new FakeEvents();
+      const adding = live.add("acme", replaced.open);
+      await settle();
+      expect(replaced.sockets).toHaveLength(1);
+
+      let stopped = false;
+      const stopping = live.stop().then(() => {
+        stopped = true;
+      });
+      await settle();
+      expect(stopped).toBe(false);
+
+      release();
+      await Promise.all([adding, stopping]);
+      expect(replaced.current.closed).toBe(true);
     });
   });
 
