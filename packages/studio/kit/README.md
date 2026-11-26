@@ -141,6 +141,12 @@ Colour changes and short fades only. Nothing slides, scales or moves on its own,
 with motion, and status dots stay still. The one exception is the busy spinner (`animate-spin`).
 The curves and durations stay in the file for later.
 
+A card that ended settles away (`kit.settle`, imported from `@halonicjs/studio-kit/settle`): `useSettling` keeps it in its
+list while it shows its final state, one line from `finalState` ("Approved by Ada · 14:02",
+`kit.final-state`); `useSettleAway` holds it 4 seconds, paused while the pointer or the focus is
+on it, then it fades out and its height and the space above it close. Under reduced motion it only
+fades. A test puts in its own motion with `SettleMotionProvider` instead of stubbing the browser's.
+
 ## More contrast
 
 When macOS or Linux asks for more contrast (`prefers-contrast: more`), colours aren't forced, so

@@ -3,8 +3,9 @@
 import { agentTint } from "@halonicjs/studio-kit";
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
-import { afterEach, describe, expect, it } from "vitest";
-import { byText, openMessenger, press } from "../test-support/page.tsx";
+import { act } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { byText, openMessenger, press, settle, settleHoldMs } from "../test-support/page.tsx";
 import { unmountAll } from "../test-support/render.tsx";
 
 afterEach(unmountAll);
@@ -95,13 +96,22 @@ verifies("messenger.needs-you", () => {
       expect(entry(page)?.textContent).toBe("Needs you1 1 waiting");
     });
 
-    it("says nothing is waiting, with no count, once every card is answered", async () => {
+    it("says nothing is waiting, with no count, once every card is answered and has settled away", async () => {
       const page = await openMessenger(acme());
       await press(entry(page));
-      await press(byText(page, "main [data-needs-you-card] button", "Yes"));
-      await press(byText(page, "main [data-needs-you-card] button", "docs.acme.example"));
-      expect(page.querySelector("main header")?.textContent).toBe("Needs you");
-      expect(byText(page, "main p", "Nothing is waiting for you.")).toBeDefined();
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+      try {
+        await press(byText(page, "main [data-needs-you-card] button", "Yes"));
+        await press(byText(page, "main [data-needs-you-card] button", "docs.acme.example"));
+        expect(page.querySelector("main header")?.textContent).toBe("Needs you");
+        await act(async () => {
+          vi.advanceTimersByTime(settleHoldMs);
+        });
+        await settle();
+        expect(byText(page, "main p", "Nothing is waiting for you.")).toBeDefined();
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it("opens the chat where a card was asked", async () => {

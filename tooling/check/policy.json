@@ -128,7 +128,8 @@
     ],
     "@halonicjs/studio-kit": [
       "./app-glyphs",
-      "./fonts"
+      "./fonts",
+      "./settle"
     ],
     "@halonicjs/studio-services": [
       "./tauri-ipc",

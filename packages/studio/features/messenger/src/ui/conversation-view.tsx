@@ -151,6 +151,7 @@ export function ConversationView({
           picture={picture}
           onAnswered={onAnswered}
           reactions={reactions}
+          announce={say}
         />
         {membersOpen ? (
           <MembersPanel

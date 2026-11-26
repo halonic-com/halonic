@@ -51,3 +51,18 @@ export function waitingCards(
   }
   return [...waiting.values()].sort((a, b) => a.card.createdAt.localeCompare(b.card.createdAt));
 }
+
+/** What "Needs you" reads: what waits, and every Inbox item as read, so a card that left shows how it ended. */
+export interface NeedsYouRead {
+  readonly waiting: readonly WaitingCard[];
+  readonly items: readonly InboxItem[];
+}
+
+/**
+ * A card that left "Needs you", as it ended (`messenger.final-state`), or `undefined` while it
+ * still waits or once the source no longer lists it.
+ */
+export function endedCard(items: readonly InboxItem[], left: WaitingCard): WaitingCard | undefined {
+  const item = items.find((each) => each.id === left.card.id);
+  return item === undefined || item.state.kind === "open" ? undefined : { ...left, card: item };
+}

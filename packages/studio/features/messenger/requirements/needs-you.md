@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: the Messenger look and layout changes approved by the board on HAL-10 (26 Nov, 03:51 UTC) and HAL-19132 (point 8), Sofia's sketches on HAL-19134 (sketch B); built on HAL-19141
+- Source: the Messenger look and layout changes approved by the board on HAL-10 (26 Nov, 03:51 UTC) and HAL-19132 (point 8), Sofia's sketches on HAL-19134 (sketch B); built on HAL-19141; an ended card goes away after its final state, the board's addition on HAL-10 (comment 910fe451), HAL-19496
 
-The Messenger shall show one entry, "Needs you", at the top of its list, with a violet count of the cards and questions waiting for the person across its chats, and no count when none waits. When the person opens it, the Messenger shall show in the chat's place a "Needs you" panel that says "3 waiting, oldest first" and lists each waiting card or question once, oldest first, with who asked, where ("in Engineering" for a channel, or the chat's name), **Open chat**, and the chat's own card, which the person can answer there as in the chat. Once answered, a card shall leave the panel and its count. **Open chat** shall open that chat.
+The Messenger shall show one entry, "Needs you", at the top of its list, with a violet count of the cards and questions waiting for the person across its chats, and no count when none waits. When the person opens it, the Messenger shall show in the chat's place a "Needs you" panel that says "3 waiting, oldest first" and lists each waiting card or question once, oldest first, with who asked, where ("in Engineering" for a channel, or the chat's name), **Open chat**, and the chat's own card, which the person can answer there as in the chat. Once a card ended, here or elsewhere, it shall leave the count at once, and leave the panel after its final state, as `messenger.final-state` says. **Open chat** shall open that chat.
 
 ## Examples
 
@@ -13,7 +13,7 @@ The Messenger shall show one entry, "Needs you", at the top of its list, with a 
   then the entry's count is 2, the panel says "2 waiting, oldest first" and lists Elena's question "in Engineering" before Chief's card.
 - Given the same panel,
   when the person answers Chief's card with "Yes",
-  then the card leaves the panel and the count is 1.
+  then the count is 1, and the card leaves the panel once its final state showed.
 - Given the same panel,
   when the person presses **Open chat** on Elena's question,
   then the channel Engineering opens.

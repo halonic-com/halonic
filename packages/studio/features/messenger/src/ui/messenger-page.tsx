@@ -142,7 +142,7 @@ export function MessengerPage({
                 selected={selected}
                 onSelect={select}
                 pictures={pictures}
-                waiting={waiting}
+                waiting={waiting?.waiting}
                 needsYou={needsYou}
                 onNeedsYou={openNeedsYou}
                 newMenu={<NewMenu messenger={messenger} onOpen={openChannel} />}
@@ -165,7 +165,7 @@ export function MessengerPage({
             {needsYou ? (
               <NeedsYouPanel
                 messenger={messenger}
-                waiting={waiting}
+                read={waiting}
                 onOpenChat={select}
                 onAnswered={readAgain}
               />

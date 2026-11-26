@@ -1,7 +1,7 @@
 import type { InboxItem, Message } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { cardRecord, chatTimeline, waitingCards } from "./chat-timeline.ts";
+import { chatTimeline, waitingCards } from "./chat-timeline.ts";
 import { messengerWords } from "./messenger-words.ts";
 
 /** A local time on 25 Nov 2026, as ISO text. */
@@ -84,61 +84,6 @@ verifies("messenger.inline-cards", () => {
       expect(messengerWords.cardsWaiting(50)).toBe("50 cards waiting");
       expect(messengerWords.cardsWaiting(2)).toBe("2 cards waiting");
       expect(messengerWords.cardsWaiting(1)).toBe("1 card waiting");
-    });
-  });
-
-  describe("cardRecord", () => {
-    it("says an answered card's choice and time, and nothing for an open card", () => {
-      const answeredAt = at(12, 10);
-      const answer = (answer: Extract<InboxItem["state"], { kind: "answered" }>["answer"]) =>
-        cardRecord(card("merge", at(10), { kind: "answered", by: me, answer, answeredAt }));
-      expect(answer({ kind: "option", option: "approve" })).toBe("Approve, 12:10");
-      expect(answer({ kind: "reply", text: "Not yet" })).toBe("“Not yet”, 12:10");
-      expect(answer({ kind: "action-result", outcome: "succeeded", steps: [] })).toBe(
-        "Succeeded, 12:10",
-      );
-      expect(answer({ kind: "action-result", outcome: "declined", steps: [] })).toBe(
-        "Declined, 12:10",
-      );
-      expect(cardRecord(card("merge", at(10)))).toBeUndefined();
-    });
-
-    it("says the labels picked for a card's questions", () => {
-      const asking: InboxItem = {
-        ...card("decide", at(10), {
-          kind: "answered",
-          by: me,
-          answer: {
-            kind: "answers",
-            answers: [
-              { question: "repo", options: ["separate"] },
-              { question: "phase", options: ["tests", "docs"] },
-            ],
-          },
-          answeredAt: at(12, 10),
-        }),
-        options: [],
-        questions: [
-          {
-            id: "repo",
-            prompt: "Where?",
-            selection: "single",
-            required: true,
-            options: [{ id: "separate", label: "A separate repo" }],
-          },
-          {
-            id: "phase",
-            prompt: "What?",
-            selection: "multiple",
-            required: false,
-            options: [
-              { id: "tests", label: "Tests" },
-              { id: "docs", label: "Docs" },
-            ],
-          },
-        ],
-      };
-      expect(cardRecord(asking)).toBe("A separate repo, Tests, Docs, 12:10");
     });
   });
 });

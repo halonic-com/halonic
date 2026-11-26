@@ -13,11 +13,15 @@ import {
   ToastRegion,
   ToastStoreProvider,
 } from "@halonicjs/studio-kit";
+import { SettleMotionProvider } from "@halonicjs/studio-kit/settle";
 import type { AgentActivity } from "@halonicjs/studio-services";
 import { act, StrictMode } from "react";
 import { Messenger } from "../messenger.ts";
 import { MessengerPage } from "../ui/messenger-page.tsx";
 import { render } from "./render.tsx";
+
+/** The 4 seconds a card shows its final state before it settles out (`messenger.final-state`). */
+export const settleHoldMs = 4000;
 
 /** Lets every promise that is already settled run its callbacks, with no timer. */
 export async function settle(): Promise<void> {
@@ -30,7 +34,8 @@ export async function settle(): Promise<void> {
  * Renders the Messenger and lets its first reads land; links it opens go to `opened`. `narrow`
  * renders it in a window narrower than 900px; `now` gives the Messenger its own clock; `activity`
  * gives it the agents' activity, for the activity panel; `reactions` the reactions on its messages.
- * Its toasts show in the page, as the shell's do. Strict mode, as Studio renders every page, so an
+ * `out` is how a card that
+ * ended settles out, instead of the kit's motion. Its toasts show in the page, as the shell's do. Strict mode, as Studio renders every page, so an
  * effect that can't run twice fails here too.
  */
 export async function openMessenger(
@@ -40,17 +45,24 @@ export async function openMessenger(
   now?: () => Date,
   activity?: AgentActivity,
   reactions?: MessageReactions,
+  out?: (element: HTMLElement) => Promise<void>,
 ): Promise<HTMLElement> {
   const messenger = new Messenger(messaging, now, activity, undefined, reactions);
   const toasts = createToastStore();
   // A fixed format, so a row's time reads the same on every machine.
-  const page = render(
+  const rendered = render(
     <StrictMode>
       <FormatLocaleProvider locale="en-GB">
         <NarrowProvider narrow={narrow}>
           <OpenExternalProvider openExternal={async (address) => void opened.push(await address)}>
             <ToastStoreProvider store={toasts}>
-              <MessengerPage messenger={messenger} />
+              {out === undefined ? (
+                <MessengerPage messenger={messenger} />
+              ) : (
+                <SettleMotionProvider out={out}>
+                  <MessengerPage messenger={messenger} />
+                </SettleMotionProvider>
+              )}
               <ToastRegion store={toasts} />
             </ToastStoreProvider>
           </OpenExternalProvider>
@@ -59,7 +71,7 @@ export async function openMessenger(
     </StrictMode>,
   );
   await settle();
-  return page;
+  return rendered;
 }
 
 /** What the open chat's status region last read out: a new message or an answered card. */

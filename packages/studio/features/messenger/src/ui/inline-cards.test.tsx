@@ -97,14 +97,14 @@ verifies("messenger.inline-cards", () => {
       expect(document.activeElement).toBe(oldest?.querySelector("button"));
     });
 
-    it("an answered card stays in place as its choice and time, and the bar counts one fewer", async () => {
+    it("an answered card shows its final state in its place, and the bar counts one fewer", async () => {
       const { messaging, clock } = chiefWithCards(50);
       const page = await openMessenger(messaging);
       await openChat(page, "Chief");
       clock.now = new Date(2026, 10, 25, 12, 10);
       await press(byText(page, "main ol > li:nth-child(3) button", "Approve"));
       const entries = timeline(page);
-      expect(entries[1]).toBe("Answered: Approve, 12:10");
+      expect(entries[1]).toContain("Approved by you · 12:10");
       expect(entries[2]).toContain("Merge #2?");
       expect(bar(page)).toBe("49 cards waiting");
     });
@@ -125,11 +125,11 @@ verifies("messenger.inline-cards", () => {
       expect(bar(page)).toBe("1 card waiting");
       await press(byText(page, "main ol button", "Reject"));
       expect(bar(page)).toBeUndefined();
-      expect(timeline(page)).toEqual([
-        "CChief · 09:00Chief: Morning",
-        "Answered: Reject, 11:30",
-        "CChief · 11:30Chief: Done",
-      ]);
+      const entries = timeline(page);
+      expect(entries).toHaveLength(3);
+      expect(entries[0]).toBe("CChief · 09:00Chief: Morning");
+      expect(entries[1]).toContain("Rejected by you · 11:30");
+      expect(entries[2]).toBe("CChief · 11:30Chief: Done");
     });
 
     it("in a channel with open cards, shows only the waiting bar, not the cards bar", async () => {

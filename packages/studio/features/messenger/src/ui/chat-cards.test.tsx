@@ -4,7 +4,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { messengerWords } from "../messenger-words.ts";
 import { askForUpdateText } from "../quick-actions.ts";
-import { byText, openChat, openMessenger, press, said, settle } from "../test-support/page.tsx";
+import { byText, openChat, openMessenger, press, said } from "../test-support/page.tsx";
 import { unmountAll } from "../test-support/render.tsx";
 
 afterEach(unmountAll);
@@ -44,7 +44,9 @@ verifies("messenger.quick-actions", () => {
       await press(byText(page, "main ol button", "Approve"));
       expect(answer.mock.calls).toEqual([[card.id, { kind: "option", option: "approve" }]]);
       expect(send).not.toHaveBeenCalled();
-      expect(transcript(page)).not.toContain("Merge #12?");
+      // It ends as a card decided elsewhere does: its final state, then it settles away.
+      expect(page.querySelector("[data-chat-card]")).toBeNull();
+      expect(transcript(page)).toContain("Approved by you · 10:00");
     });
 
     it("reads out the option that answered a card, and focuses the next card's first option, then the box", async () => {
@@ -61,7 +63,8 @@ verifies("messenger.quick-actions", () => {
       await openChat(page, "Chief");
       await press(byText(page, "main ol button", "Tomorrow"));
       expect(said(page)).toBe("Answered: Tomorrow.");
-      expect(transcript(page)).not.toContain("When shall I ship?");
+      expect(transcript(page)).toContain("Answered by you · 10:00");
+      expect(byText(page, "main ol button", "Tomorrow")).toBeUndefined();
       expect(document.activeElement).toBe(byText(page, "main ol button", "Approve"));
       await press(byText(page, "main ol button", "Approve"));
       expect(said(page)).toBe("Answered: Approve.");
@@ -161,38 +164,6 @@ verifies("messenger.quick-actions", () => {
       await press(byText(page, "main button", "Ask for an update"));
       expect(send).not.toHaveBeenCalled();
       expect(page.textContent).toContain("Paperclip · Acme is offline, so nothing was sent.");
-    });
-  });
-});
-
-verifies("messenger.inline-cards", () => {
-  describe("an answered card's motion", () => {
-    it("keeps the card with its choice while it folds away, though the source reports the answer at once", async () => {
-      const { messaging } = chiefAsks();
-      const page = await openMessenger(messaging);
-      await openChat(page, "Chief");
-      // Every motion waits until the test lets it end, as the 320 ms hold and the fade do.
-      let end = () => {};
-      const ended = new Promise<void>((resolve) => {
-        end = resolve;
-      });
-      const animate = vi.fn(() => ({ finished: ended }) as unknown as Animation);
-      HTMLElement.prototype.animate = animate;
-      try {
-        await press(byText(page, "main ol button", "Approve"));
-        await settle();
-        // The source said the card is answered, and the page read it again during the hold.
-        expect(animate).toHaveBeenCalled();
-        expect(page.querySelector("[data-chat-card-record]")).toBeNull();
-        expect(page.querySelector("[data-chat-card]")?.textContent).toContain("Approve");
-        expect(byText(page, "main ol button", "Approve")).toBeUndefined();
-        end();
-        await settle();
-        expect(page.querySelector("[data-chat-card]")).toBeNull();
-        expect(page.querySelector("[data-chat-card-record]")?.textContent).toContain("Approve");
-      } finally {
-        Reflect.deleteProperty(HTMLElement.prototype, "animate");
-      }
     });
   });
 });
