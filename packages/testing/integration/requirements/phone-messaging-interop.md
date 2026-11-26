@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-17643 (phase 2 L2; rows L2-1 to L2-9 in the `acceptance` document on HAL-17997)
 
-The suite shall run the phone's messaging client against the real remote gateway on loopback, through the gateway's test phone, with the desktop's allow-list view (`phoneMessaging`) over the real Paperclip provider and a fake Paperclip that refuses any request it doesn't expect. It shall check that a paired phone reads the Inbox, answers a normal card once and the answer reaches Paperclip exactly once, can't answer a risky item, reads the merge queue, is refused while Paperclip is offline, and gets `cut-off` when the gateway closes.
+The suite shall run the phone's messaging client against the real remote gateway on loopback, through the gateway's test phone, with the desktop's allow-list view (`phoneMessaging`) over the real Paperclip provider and a fake Paperclip that refuses any request it doesn't expect. It shall check that a paired phone reads the Inbox, answers a normal card once and the answer reaches Paperclip exactly once, can't answer a risky item, reads the merge queue, is refused while Paperclip is offline, and sends nothing once the gateway has closed.
 
 ## Examples
 
@@ -23,6 +23,6 @@ The suite shall run the phone's messaging client against the real remote gateway
 - Given Paperclip offline,
   when the phone answers the card,
   then the host refuses it and Paperclip saw no answer.
-- Given an open session,
-  when the gateway closes while a read is out,
-  then the phone gets `cut-off`.
+- Given an open session and the card read,
+  when the gateway closes and the phone then answers the card,
+  then the phone gets `not-sent` with `not-open` and Paperclip saw no answer.

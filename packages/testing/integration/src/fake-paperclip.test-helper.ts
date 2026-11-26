@@ -5,8 +5,11 @@
 
 /** A made-up key; no real Paperclip ever saw it. */
 export const acmeKey = "made-up-acme-key-for-tests-only";
+/** The invented Acme company the phone reads. */
 export const acmeCompany = "c0000000-0000-4000-8000-000000000001";
+/** The Acme task that holds the card. */
 export const acmeTask = "i0000000-0000-4000-8000-000000000001";
+/** The card the phone may answer ("Launch on Friday?"). */
 export const acmeCard = "f0000000-0000-4000-8000-000000000001";
 const acmeApproval = "p0000000-0000-4000-8000-000000000001";
 const agentBo = "a0000000-0000-4000-8000-000000000001";

@@ -131,7 +131,6 @@ verifies("integration.phone-messaging-interop", () => {
       paperclip.offline = true;
       const outcome = await client.messaging.answer(card.id, { kind: "option", option: "accept" });
       expect(outcome.kind).toBe("refused");
-      paperclip.offline = false;
       expect(paperclip.count(acceptCard)).toBe(0);
       expect(paperclip.unexpected).toEqual([]);
     });
