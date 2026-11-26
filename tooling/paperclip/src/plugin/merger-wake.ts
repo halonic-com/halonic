@@ -13,9 +13,11 @@ import { changesBetween, type Prints, readPrints } from "./merger-wake-prints.ts
 
 /**
  * Wakes the live Merger when a pull request changes (HAL-19234), so a ready
- * pull request doesn't wait for its next heartbeat. The wake goes through the
- * Merger's own task (`mergerWake.task`), as the chief line wakes Chief, so the
- * woken run has the Merger's own responsible user and credential.
+ * pull request doesn't wait for its next heartbeat. `mergerWake.task` names a
+ * task the Merger holds; the wake starts a run of that task's holder with no
+ * task, as its heartbeat does, so the run has the same responsible user and
+ * credential as a timer run, and its prompt asks for one pass. (A wake on the
+ * task itself made a run about that task, which never ran a pass.)
  *
  * Each pass reads the open pull requests' prints (merger-wake-prints.ts) on
  * the read token and compares them with the last pass's. The `merger-wake`
@@ -23,7 +25,9 @@ import { changesBetween, type Prints, readPrints } from "./merger-wake-prints.ts
  * for one 10 seconds after a webhook delivery, and a signed approval counts
  * as a change by itself, as GitHub's review decision doesn't see it. A
  * change wakes the Merger at most once every 45 seconds, and not while a
- * Merger run is in progress: it waits for the next pass. The Merger's own
+ * Merger run is in progress: it waits for the next pass. Within 45 seconds of
+ * a wake, or while the Merger is busy, a pass doesn't read GitHub at all, so
+ * the shared token isn't spent when no wake can follow. The Merger's own
  * heartbeat stays as the fallback. A GitHub rate limit pauses the passes
  * until the limit resets, with one log line.
  */
@@ -35,10 +39,18 @@ export const nudgeWaitMs = 10_000;
 /** How long a rate limit pauses the passes when GitHub names no reset time. */
 export const backoffMs = 15 * 60_000;
 
+/** The woken run's prompt: one pass, as on a timer heartbeat, for these changes. */
+export function passPrompt(changes: readonly string[]) {
+  return [
+    `Merger wake (Agent tools plugin, HAL-19234): ${changes.join("; ")}.`,
+    "Run one full pass now, exactly as on a timer heartbeat (MERGER.md: `pass.js`), then end the run.",
+  ].join("\n");
+}
+
 /** The settings this reads, under `mergerWake`. */
 export interface MergerWakeSettings {
   readonly enabled: boolean;
-  /** The id of the Merger's task the wake goes to. */
+  /** The id of a task the Merger holds; the wake goes to that task's holder. */
   readonly task: string;
 }
 
@@ -58,8 +70,8 @@ export interface MergerWakeApi {
   readonly config: PluginConfigClient;
   readonly secrets: Pick<PluginSecretsClient, "resolve">;
   readonly http: Pick<PluginHttpClient, "fetch">;
-  readonly issues: Pick<PluginIssuesClient, "get" | "requestWakeup">;
-  readonly agents: Pick<PluginAgentsClient, "get">;
+  readonly issues: Pick<PluginIssuesClient, "get">;
+  readonly agents: Pick<PluginAgentsClient, "get" | "invoke">;
   readonly logger: Pick<PluginLogger, "info" | "warn" | "error">;
 }
 
@@ -161,52 +173,55 @@ export function mergerWake(
     nudgeWaitMs,
   );
 
-  /** Why the Merger can't be woken now, or undefined when it can. */
-  async function busy(companyId: string, task: string): Promise<string | undefined> {
+  /** The Merger's agent id, or why it can't be woken now. */
+  async function merger(
+    companyId: string,
+    task: string,
+  ): Promise<{ readonly agentId: string } | { readonly busy: string }> {
     const issue = await ctx.issues.get(task, companyId);
     if (issue === null) {
-      return "its task isn't there";
+      return { busy: "its task isn't there" };
     }
     if (issue.activeRun != null) {
-      return "a run on its task is in progress";
+      return { busy: "a run on its task is in progress" };
     }
     if (issue.assigneeAgentId == null) {
-      return "its task has no assignee";
+      return { busy: "its task has no assignee" };
     }
     const agent = await ctx.agents.get(issue.assigneeAgentId, companyId);
-    return agent?.status === "running" ? "a Merger run is in progress" : undefined;
+    return agent?.status === "running"
+      ? { busy: "a Merger run is in progress" }
+      : { agentId: issue.assigneeAgentId };
   }
 
-  /** Wakes the Merger for the pending changes, unless a wake was too recent or it is busy. */
-  async function wakeIfDue(companyId: string, task: string, state: CompanyState, now: number) {
-    if (state.pending.length === 0) {
-      return;
-    }
+  /** Whether a wake within the last 45 seconds holds this pass back; then one pass follows at the mark. */
+  function tooSoon(companyId: string, state: CompanyState, now: number) {
     const since = state.lastWakeAt === undefined ? wakeEveryMs : now - state.lastWakeAt;
-    if (since < wakeEveryMs) {
-      if (!state.retryQueued) {
-        state.retryQueued = true;
-        timers.setTimeout(() => {
-          state.retryQueued = false;
-          void askAgain(companyId);
-        }, wakeEveryMs - since);
-      }
-      return;
+    if (since >= wakeEveryMs) {
+      return false;
     }
-    const reason = await busy(companyId, task);
-    if (reason !== undefined) {
-      ctx.logger.info(`Merger wake: not now, ${reason}; the next pass tries again.`, { companyId });
-      return;
+    if (!state.retryQueued) {
+      state.retryQueued = true;
+      timers.setTimeout(() => {
+        state.retryQueued = false;
+        void askAgain(companyId);
+      }, wakeEveryMs - since);
     }
+    return true;
+  }
+
+  /** Wakes the Merger for the pending changes; on an error they stay pending for the next pass. */
+  async function wake(companyId: string, agentId: string, state: CompanyState, now: number) {
     state.lastWakeAt = now;
     const changes = state.pending.splice(0);
     try {
-      await ctx.issues.requestWakeup(task, companyId, {
+      await ctx.agents.invoke(agentId, companyId, {
+        prompt: passPrompt(changes),
         reason: "merger_pr_change",
-        idempotencyKey: `merger-wake ${new Date(now).toISOString()}`,
       });
       ctx.logger.info(`Merger wake: woke the Merger for ${changes.join("; ")}.`, { companyId });
     } catch (error) {
+      state.pending.unshift(...changes);
       ctx.logger.error(`Merger wake: couldn't wake the Merger: ${messageOf(error)}`, { companyId });
     }
   }
@@ -246,23 +261,31 @@ export function mergerWake(
     }
   }
 
-  async function pass(companyId: string, now: Date): Promise<void> {
-    const config = (await companyConfig(ctx.config, companyId)) ?? {};
-    const settings = readMergerWakeSettings(config);
-    if (!settings.enabled) {
-      companies.delete(companyId);
-      return;
-    }
-    const state = stateOf(companyId);
-    const at = now.getTime();
+  /**
+   * The Merger's agent id when a wake could follow this pass, or undefined when
+   * a recent wake, a rate limit or a Merger run holds it back.
+   */
+  async function wakeable(companyId: string, task: string, state: CompanyState, at: number) {
     if (state.pausedUntil !== undefined && at < state.pausedUntil) {
-      return;
+      return undefined;
     }
-    const read = await readOrPause(companyId, config, state, at);
-    if (read === undefined) {
-      return;
+    if (tooSoon(companyId, state, at)) {
+      return undefined;
     }
-    const { repo, prints } = read;
+    const target = await merger(companyId, task);
+    if (!("busy" in target)) {
+      return target.agentId;
+    }
+    if (state.pending.length > 0 || state.approvals.length > 0) {
+      ctx.logger.info(`Merger wake: not now, ${target.busy}; the next pass tries again.`, {
+        companyId,
+      });
+    }
+    return undefined;
+  }
+
+  /** Adds the changes since the last read and the approvals since then to the pending ones. */
+  function record(state: CompanyState, repo: string, prints: Prints) {
     if (state.prints !== undefined) {
       state.pending.push(...changesBetween(state.prints, prints));
     }
@@ -272,7 +295,29 @@ export function mergerWake(
         state.pending.push(`#${approval.number} approval`);
       }
     }
-    await wakeIfDue(companyId, settings.task, state, at);
+  }
+
+  async function pass(companyId: string, now: Date): Promise<void> {
+    const config = (await companyConfig(ctx.config, companyId)) ?? {};
+    const settings = readMergerWakeSettings(config);
+    if (!settings.enabled) {
+      companies.delete(companyId);
+      return;
+    }
+    const state = stateOf(companyId);
+    const at = now.getTime();
+    const agentId = await wakeable(companyId, settings.task, state, at);
+    if (agentId === undefined) {
+      return;
+    }
+    const read = await readOrPause(companyId, config, state, at);
+    if (read === undefined) {
+      return;
+    }
+    record(state, read.repo, read.prints);
+    if (state.pending.length > 0) {
+      await wake(companyId, agentId, state, at);
+    }
   }
 
   const nudge: MergerNudge = (companyId, pull) => {

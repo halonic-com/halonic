@@ -11,7 +11,7 @@ export const mergerWakeJob: PluginJobDeclaration = {
   jobKey: "merger-wake",
   displayName: "Merger wake",
   description:
-    "Every minute, when it is on: reads the open pull requests' head, base, review decision, checks and labels, and wakes the Merger on its own task when one changed, at most once every 45 seconds and not while a Merger run is in progress.",
+    "Every minute, when it is on: reads the open pull requests' head, base, review decision, checks and labels, and when one changed starts a Merger run that runs one pass, as its heartbeat does, at most once every 45 seconds and not while a Merger run is in progress.",
   schedule: "* * * * *",
 };
 
@@ -25,14 +25,14 @@ export const mergerWakeConfigProperties = {
         type: "boolean",
         title: "On",
         description:
-          "On: a change to an open pull request on the first repository (head, base, review decision, checks, labels, opened or closed) or a signed approval wakes the Merger on the task below. Off: nothing is read and nobody is woken; the Merger's own heartbeat goes on either way.",
+          "On: a change to an open pull request on the first repository (head, base, review decision, checks, labels, opened or closed) or a signed approval starts a run of the task's holder below, with no task, that runs one Merger pass. Off: nothing is read and nobody is woken; the Merger's own heartbeat goes on either way.",
         default: false,
       },
       task: {
         type: "string",
         title: "The Merger's task",
         description:
-          "The id of an open task assigned to the Merger. The wake goes there, so the woken run is the Merger's own. Empty: the wake is off.",
+          "The id of a task assigned to the Merger. The wake starts a run of that task's holder with no task, as its heartbeat does, so the woken run is the Merger's own. Empty: the wake is off.",
       },
     },
   },
