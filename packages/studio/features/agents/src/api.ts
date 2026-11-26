@@ -9,6 +9,7 @@ import type { ChatMessage, ChatSessions } from "@halonicjs/ports";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import type { TryItChanges } from "./chat/try-it-changes.ts";
 import type { AgentHarnessId, HarnessReadiness, HarnessSignIn } from "./harness-api.ts";
+import type { AliasSummary, MissingModelKey } from "./model-api.ts";
 import type { AgentPlacementState, ThisComputerChoice } from "./placement-api.ts";
 import type { AgentTeamMember } from "./team.ts";
 
@@ -18,6 +19,7 @@ export {
   type HarnessReadiness,
   type HarnessSignIn,
 } from "./harness-api.ts";
+export type { AliasCost, AliasSummary, MissingModelKey } from "./model-api.ts";
 export { type AgentTeamMember, alreadyHandsWork, handOffPath, loopRefusal } from "./team.ts";
 
 /** Names one agent the way a deep link does: its hub and its id. */
@@ -228,16 +230,6 @@ export interface AgentChatRequest {
   readonly listener?: ChatAnswerListener | undefined;
 }
 
-/** An agent's model that needs an API key that isn't stored here (states H19). */
-export interface MissingModelKey {
-  /** The model as the agent's file names it, such as `smart`. */
-  readonly model: string;
-  /** The provider's name, such as Anthropic. */
-  readonly provider: string;
-  /** The name the provider's key is stored under, never the key, for its key block on Models. */
-  readonly secretName: string;
-}
-
 /** A workflow that runs an agent in one of its task steps. */
 export interface AgentUser {
   readonly hubId: string;
@@ -316,6 +308,11 @@ export interface AgentsHost {
    * workspace's; `undefined` when neither names one. Rejects with the reason it couldn't read it.
    */
   defaultModel(hubId: string): Promise<string | undefined>;
+  /**
+   * The alias's provider, model and cost, for the line under the Model page's picker; `undefined`
+   * for an alias the hub doesn't have. Absent where the app can't tell, which shows no line.
+   */
+  aliasSummary?(ref: AgentRef, alias: string): Promise<AliasSummary | undefined>;
   /**
    * The Library items the agent's hub can use, for the Tools page's pickers: the hub's own and the
    * shared ones (only those its `uses` lists, when it has one), each list in the Library's order.

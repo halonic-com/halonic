@@ -1,10 +1,12 @@
 import { Field, Input, Select, type SelectOption } from "@halonicjs/studio-kit";
 import { useAutoSaved, useReportNotSaved } from "@halonicjs/studio-shell";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
-import type { AgentChange, AgentSettings } from "../api.ts";
+import type { AgentChange, AgentSettings, AgentsHost } from "../api.ts";
 import { ReviewMark } from "../review/review-marks.tsx";
+import { AliasLine, type OpenAlias } from "./alias-line.tsx";
 import { configurationWords as words } from "./configuration-words.ts";
 import { MoreSettings } from "./more-settings.tsx";
+import { useAliasSummary } from "./use-alias-summary.ts";
 
 /** The model call limit a file gets when the field is left empty (`agents.editor.max-steps-default`). */
 export const DEFAULT_TURN_LIMIT = 6;
@@ -28,6 +30,8 @@ export const modelCheck = (model: string, aliases: readonly string[]): string | 
 
 /** Props for {@link ModelPage}. */
 export interface ModelPageProps {
+  /** The host, for the provider, model and price of the alias picked. */
+  readonly host: AgentsHost;
   readonly settings: AgentSettings;
   /** The model aliases the agent's hub can use. */
   readonly aliases: readonly string[];
@@ -41,15 +45,18 @@ export interface ModelPageProps {
   readonly focus?: boolean;
   /** Called once the picker took the focus. */
   readonly onFocused?: () => void;
+  /** Opens an alias on Models, for the line under the picker; absent where the window can't. */
+  readonly openAlias?: OpenAlias | undefined;
 }
 
 /**
  * The Model page (`agents.configuration.model`): the model, picked from the workspace's aliases,
- * the model call limit, and the model settings folded under More settings. Each saves by itself. A
+ * with the alias's provider, model and price on the line under it, the model call limit, and the model settings folded under More settings. Each saves by itself. A
  * model call limit with a mistake isn't saved, and counts as a field not saved, as does one whose
  * save failed.
  */
 export function ModelPage({
+  host,
   settings,
   aliases,
   defaultModel,
@@ -57,8 +64,11 @@ export function ModelPage({
   reportNotSaved,
   focus = false,
   onFocused,
+  openAlias,
 }: ModelPageProps) {
   const [model, setModel] = useState(settings.model ?? "");
+  // Only an alias of the hub has a line: a `provider/model` name or a missing alias has none.
+  const summary = useAliasSummary(host, settings, aliases.includes(model) ? model : "");
   const picker = useRef<HTMLElement>(null);
   const focusPicker = useEffectEvent(() => {
     picker.current?.focus();
@@ -85,24 +95,31 @@ export function ModelPage({
   return (
     <div className="flex flex-col gap-6">
       <ReviewMark agent={settings} field="model">
-        <Field
-          label={words.model}
-          hint={aliases.length === 0 ? words.noAliases : undefined}
-          error={modelCheck(model, aliases)}
-        >
-          <Select
-            ref={picker}
-            options={options}
-            value={model}
-            placeholder={
-              defaultModel === undefined ? words.chooseModel : words.workspaceDefault(defaultModel)
-            }
-            onChange={(next) => {
-              setModel(next);
-              void save({ model: next });
-            }}
-          />
-        </Field>
+        <div className="flex flex-col gap-1">
+          <Field
+            label={words.model}
+            hint={aliases.length === 0 ? words.noAliases : undefined}
+            error={modelCheck(model, aliases)}
+          >
+            <Select
+              ref={picker}
+              options={options}
+              value={model}
+              placeholder={
+                defaultModel === undefined
+                  ? words.chooseModel
+                  : words.workspaceDefault(defaultModel)
+              }
+              onChange={(next) => {
+                setModel(next);
+                void save({ model: next });
+              }}
+            />
+          </Field>
+          {summary !== undefined && (
+            <AliasLine alias={model} summary={summary} openAlias={openAlias} />
+          )}
+        </div>
       </ReviewMark>
       <ReviewMark agent={settings} field="maxSteps">
         <Field

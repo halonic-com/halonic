@@ -1,6 +1,7 @@
 import { sandboxStartCheckKey } from "@halonicjs/app";
 import { ShowInChatService } from "@halonicjs/studio-feature-assistant/api";
 import { FilesHostService } from "@halonicjs/studio-feature-files/api";
+import { ModelsService } from "@halonicjs/studio-feature-models/api";
 import { RoutineRunAgentsService } from "@halonicjs/studio-feature-routines/api";
 import { defineFeature, FilesWithErrorsService } from "@halonicjs/studio-shell";
 import { AgentReviewService, AgentsHostService } from "./api.ts";
@@ -26,6 +27,8 @@ export const agentsFeature = defineFeature({
     AgentReviewService,
     // Show in chat in a row's and the page's ⋮ (assistant.chat.show-in-chat).
     ShowInChatService,
+    // Try it's Set the key › and the Model page's alias line open Models (models flow 3.3, UX 2.5).
+    ModelsService,
   ],
   // The confirm-again Callout of an agent on hold, on the page of a routine that runs it.
   provides: [RoutineRunAgentsService],

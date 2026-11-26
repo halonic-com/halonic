@@ -58,6 +58,12 @@ export const configurationWords = {
   workspaceDefault: (name: string) =>
     name === "default" ? "Workspace default" : `Workspace default (${name})`,
   noAliases: "No models yet. Add one in Models.",
+  /** Microcopy 8.5, UX 2.5: the cost at the end of the line under the picker. */
+  aliasPrice: (input: string, output: string) => `${input} in, ${output} out per million tokens`,
+  aliasNoPrice: "No price",
+  addAPrice: "Add a price",
+  aliasOnThisComputer: "On this computer, no cost",
+  aliasTestModel: "Built-in test model, no cost",
   /** `maxSteps` counts per step, and Claude Code and Codex don't read it (HAL-12642). */
   turnLimit: "Model call limit",
   turnLimitHint:

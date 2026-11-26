@@ -29,6 +29,7 @@ import type {
 import type { Load } from "../page/use-load.ts";
 import { PageMarks } from "../review/review-marks.tsx";
 import { AgentStepsPage } from "./agent-steps-page.tsx";
+import type { OpenAlias } from "./alias-line.tsx";
 import { BehaviourPage } from "./behaviour-page.tsx";
 import { type ConfigurationErrors, noConfigurationErrors } from "./configuration-errors.ts";
 import { configurationWords as words } from "./configuration-words.ts";
@@ -58,6 +59,8 @@ export interface ConfigurationProps {
   readonly startOnInstructions?: boolean | undefined;
   /** Opens Library on a Tools list's tab, for **Open Library ›**; absent where the app can't. */
   readonly openLibrary?: ((list: AgentToolList) => void) | undefined;
+  /** Opens an alias on Models, for the Model page's line under the picker; absent where the app can't. */
+  readonly openAlias?: OpenAlias | undefined;
   /** Opens a subagent as a card on top of the panel; absent where there are no cards. */
   readonly openSubagent?: ((agent: AgentListing) => void) | undefined;
   /** Opens an agent step as a card on top of the panel; absent where there are no cards. */
@@ -205,6 +208,7 @@ export function Configuration({
   startOnInstructions,
   save,
   openLibrary,
+  openAlias,
   reportNotSaved,
   openSubagent,
   openAgentStep,
@@ -303,6 +307,7 @@ export function Configuration({
                 />
               ) : (
                 <ModelPage
+                  host={host}
                   settings={load.value}
                   aliases={aliases.kind === "ready" ? aliases.value : []}
                   defaultModel={defaultModel}
@@ -310,6 +315,7 @@ export function Configuration({
                   reportNotSaved={reportNotSaved}
                   focus={focusModel}
                   onFocused={() => setFocusModel(false)}
+                  openAlias={openAlias}
                 />
               ))}
             {page === "harness" && <HarnessPage host={host} settings={load.value} save={save} />}
