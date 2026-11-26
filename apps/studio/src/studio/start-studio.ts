@@ -118,8 +118,7 @@ export function startStudio(page: StudioPage, desktop = desktopFeatures): Starte
       });
     }
     const shell = createShell({ ...desktop, host, platform });
-    // Halonic Inbox and Halonic Messenger load this page too, in a window of their own. They have
-    // no folder to send feedback from, so only the main window hears its shortcut (HAL-19671).
+    // Halonic Inbox and Halonic Messenger load this page too, in a window of their own.
     const app = focusedAppOf(page.window, shell);
     if (app === undefined) return startDesktopApp(page, { shell, ipc, platform });
     return startFocusedApp(page, {
