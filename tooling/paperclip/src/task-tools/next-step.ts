@@ -125,6 +125,18 @@ export function readBlockedBy(value: unknown): readonly string[] {
   return [...new Set(tasks)];
 }
 
+/**
+ * `readyPr`: the number of the caller's own pull request to mark ready before
+ * the task changes (HAL-18983), or undefined when the call leaves out GitHub.
+ */
+export function readReadyPr(params: unknown): number | undefined {
+  const { readyPr } = asParams(params);
+  if (readyPr === undefined) {
+    return undefined;
+  }
+  return wholeNumber(readyPr, "readyPr", 1, Number.MAX_SAFE_INTEGER);
+}
+
 /** Handing a task on ends the calling run, so only `finish_run` may do it (HAL-16988, condition 5). */
 function refuseHandoff(params: Params): void {
   for (const key of ["to", "assignee", "assigneeAgentId", "assigneeUserId"]) {

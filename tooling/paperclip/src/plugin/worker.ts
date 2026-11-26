@@ -23,6 +23,7 @@ import { passLock } from "./merge-control-lock.ts";
 import { mergeFactsReader } from "./merge-control-reader.ts";
 import { type PassNudge, passTrigger } from "./merge-control-trigger.ts";
 import { registerNextStepTools } from "./next-step-tools.ts";
+import { readyStep, registerPrWriteTools } from "./pr-write-tools.ts";
 import { precheckWaits } from "./precheck-waits.ts";
 import { realDeps, registerReadyForReview } from "./ready-for-review.ts";
 import { scheduledPerCompany } from "./scheduled.ts";
@@ -127,7 +128,8 @@ export const plugin = definePlugin({
     registerReadyForReview(ctx, waits);
     registerBoardTools(ctx);
     registerTaskTools(ctx);
-    registerNextStepTools(ctx);
+    registerNextStepTools(ctx, undefined, readyStep(ctx));
+    registerPrWriteTools(ctx);
     registerTrialResults(ctx);
     registerStatePacket(ctx);
     registerWorkerAgentsData(ctx, workerAgentsDeps(ctx, databaseWorkerTables(ctx.db)));

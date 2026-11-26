@@ -74,3 +74,29 @@ export const rebasePrDeclaration: PluginToolDeclaration = {
     required: ["pr"],
   },
 };
+
+/** The `write_pr` tool (HAL-18983): open or update the caller's own pull request. */
+export const writePrDeclaration: PluginToolDeclaration = {
+  name: "write_pr",
+  displayName: "Open or update my PR",
+  description:
+    "Opens your branch's pull request on halonic-com/halonic against main (a draft unless state is ready, with the built-on:paperclip label and line), or updates the open one: title, body, built-on label, draft or ready. Fields you leave out stay as they are. Only your own branch (<agent>/HAL-<n>-…); it never pushes, merges, queues or adds fast-track. Push the branch first.",
+  parametersSchema: {
+    type: "object",
+    properties: {
+      branch: { type: "string", description: "Your pushed branch, such as priya/HAL-1-name." },
+      title: {
+        type: "string",
+        description: "Conventional title, task id at the end; needed to open.",
+      },
+      body: { type: "string", description: "The body in Markdown; needed to open." },
+      state: { type: "string", enum: ["draft", "ready"] },
+      labels: {
+        type: "array",
+        items: { type: "string", enum: ["built-on:paperclip", "built-on:halonic"] },
+        description: "Only the built-on labels.",
+      },
+    },
+    required: ["branch"],
+  },
+};

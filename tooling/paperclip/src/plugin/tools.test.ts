@@ -93,6 +93,7 @@ verifies("paperclip.pr-tools", () => {
         "pr_status",
         "ci_failures",
         "rebase_pr",
+        "write_pr",
         "queue_state",
         "ready_for_review",
         "board_asks",

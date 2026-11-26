@@ -9,9 +9,11 @@ import { ToolInputError } from "../task-tools/input.ts";
 import {
   monitorPolicy,
   readFinishRunParams,
+  readReadyPr,
   readSetNextStepParams,
 } from "../task-tools/next-step.ts";
 import type { MetricsApi } from "./metrics.ts";
+import type { ReadyStep } from "./pr-write-tools.ts";
 import { findTask, registerCounted, type TaskToolsApi } from "./task-tools.ts";
 
 /**
@@ -22,6 +24,10 @@ import { findTask, registerCounted, type TaskToolsApi } from "./task-tools.ts";
  * the same disposition guard, wakes, monitor rules and answers as the agent's
  * own request (HAL-16988, decision B). The rules in next-step.ts only refuse
  * states that are sure to be wrong before anything is sent.
+ *
+ * With `readyPr`, either tool first marks the caller's own pull request ready
+ * (HAL-18983), so the closing call does comment, state, ready and handoff at
+ * once. A refused ready step stops the call before the task changes.
  */
 
 /** The change `issues.setDisposition` takes; the SDK's index doesn't export the type. */
@@ -78,6 +84,7 @@ async function send(
   issue: Issue,
   companyId: string,
   patch: DispositionPatch,
+  readyNote = "",
 ): Promise<ToolResult> {
   const result = await ctx.issues.setDisposition(issue.id, companyId, patch);
   if (!result.ok) {
@@ -87,28 +94,49 @@ async function send(
   const identifier = issue.identifier ?? issue.id;
   const monitor = task.monitorNextCheckAt == null ? "none" : String(task.monitorNextCheckAt);
   return {
-    content: `${identifier} is now ${task.status ?? patch.status}; next monitor check: ${monitor}. Your comment is posted.`,
+    content: `${readyNote}${identifier} is now ${task.status ?? patch.status}; next monitor check: ${monitor}. Your comment is posted.`,
     data: { task: identifier, status: task.status ?? null, monitorNextCheckAt: monitor },
   };
 }
 
 /** `set_next_step` and `finish_run` on `now`'s clock, ready to register. */
-export function nextStepHandlers(now: () => Date) {
+export function nextStepHandlers(now: () => Date, ready?: ReadyStep) {
+  /** Marks `readyPr` ready when the call names one; the note leads the answer. */
+  async function readyFirst(params: unknown, runCtx: ToolRunContext): Promise<string> {
+    const number = readReadyPr(params);
+    if (number === undefined) {
+      return "";
+    }
+    if (ready === undefined) {
+      throw new ToolInputError("readyPr isn't available here: run gh pr ready yourself.");
+    }
+    return `${await ready(number, runCtx)} `;
+  }
+
   async function setNextStep(ctx: NextStepToolsApi, params: unknown, runCtx: ToolRunContext) {
     const { task, step, comment } = readSetNextStepParams(params);
     const issue = await findTask(ctx, task, runCtx.companyId);
+    const blockedByIssueIds =
+      step.status === "blocked" ? await blockerIds(ctx, step.blockedBy, runCtx.companyId) : [];
+    const readyNote = await readyFirst(params, runCtx);
     if (step.status === "in_progress") {
       const checksUsed = issue.executionState?.monitor?.attemptCount ?? 0;
       const monitor = monitorPolicy(step.monitor, now(), checksUsed);
-      return send(ctx, issue, runCtx.companyId, { status: "in_progress", monitor, comment });
+      return send(
+        ctx,
+        issue,
+        runCtx.companyId,
+        { status: "in_progress", monitor, comment },
+        readyNote,
+      );
     }
-    const blockedByIssueIds = await blockerIds(ctx, step.blockedBy, runCtx.companyId);
-    return send(ctx, issue, runCtx.companyId, {
-      status: "blocked",
-      blockedByIssueIds,
-      comment,
-      ...clearedMonitor(issue),
-    });
+    return send(
+      ctx,
+      issue,
+      runCtx.companyId,
+      { status: "blocked", blockedByIssueIds, comment, ...clearedMonitor(issue) },
+      readyNote,
+    );
   }
 
   async function finishRun(ctx: NextStepToolsApi, params: unknown, runCtx: ToolRunContext) {
@@ -116,16 +144,23 @@ export function nextStepHandlers(now: () => Date) {
     const issue = await findTask(ctx, task, runCtx.companyId);
     const companyId = runCtx.companyId;
     if (outcome.outcome === "done") {
-      return send(ctx, issue, companyId, { status: "done", comment });
+      return send(
+        ctx,
+        issue,
+        companyId,
+        { status: "done", comment },
+        await readyFirst(params, runCtx),
+      );
     }
     if (outcome.outcome === "blocked") {
       const blockedByIssueIds = await blockerIds(ctx, outcome.blockedBy, companyId);
-      return send(ctx, issue, companyId, {
-        status: "blocked",
+      const patch = {
+        status: "blocked" as const,
         blockedByIssueIds,
         comment,
         ...clearedMonitor(issue),
-      });
+      };
+      return send(ctx, issue, companyId, patch, await readyFirst(params, runCtx));
     }
     const agent = await agentNamed(ctx, outcome.to, companyId);
     if (agent.id === runCtx.agentId) {
@@ -133,19 +168,28 @@ export function nextStepHandlers(now: () => Date) {
         "the task is already yours: to keep working, call set_next_step instead.",
       );
     }
+    const readyNote = await readyFirst(params, runCtx);
     // Paperclip stops this run as the task changes hands, so this answer may never arrive.
-    return send(ctx, issue, companyId, {
-      status: "todo",
-      assigneeAgentId: agent.id,
-      comment,
-      ...clearedMonitor(issue),
-    });
+    return send(
+      ctx,
+      issue,
+      companyId,
+      { status: "todo", assigneeAgentId: agent.id, comment, ...clearedMonitor(issue) },
+      readyNote,
+    );
   }
 
   return { set_next_step: setNextStep, finish_run: finishRun };
 }
 
-/** Registers `set_next_step` and `finish_run` as the manifest declares them, each call counted. */
-export function registerNextStepTools(ctx: NextStepToolsApi, now = () => new Date()): void {
-  registerCounted(ctx, nextStepHandlers(now));
+/**
+ * Registers `set_next_step` and `finish_run` as the manifest declares them, each call counted;
+ * `ready` is the ready step for `readyPr`.
+ */
+export function registerNextStepTools(
+  ctx: NextStepToolsApi,
+  now = () => new Date(),
+  ready?: ReadyStep,
+): void {
+  registerCounted(ctx, nextStepHandlers(now, ready));
 }
