@@ -4,6 +4,7 @@
 - Task: HAL-19579 (the visual check of #6433 on HAL-19551, step 4 of the HAL-19364 plan; a team decision, no board card)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19579
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:GBWTKOAFvczaVDuLwUvFG8RH+nrTmenEK32E8ZSsC8kXFNUGJbMDHCDXi6nkO2WsrJ885NcsuU+iTkg+hTtOAA==
 
 Once an update was downloaded, two buttons offered it with the same icon: the status bar's
 **Restart to update**, which restarted at once, and the title bar's new **Update**, which opened the
