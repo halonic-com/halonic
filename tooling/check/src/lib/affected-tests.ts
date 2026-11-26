@@ -69,6 +69,7 @@ export const docsReaders: Readonly<Record<string, readonly string[]>> = {
   "docs/guides/area-owners.md": ["@halonicjs/tooling-check"],
   "docs/guides/integrations.md": ["@halonicjs/format"],
   "docs/guides/server-engine.md": ["halonic"],
+  "docs/guides/server-engine-public.md": ["halonic"],
   "docs/legal/dco-standing-statement.md": ["@halonicjs/tooling-check"],
 };
 

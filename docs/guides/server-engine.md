@@ -7,6 +7,8 @@ deploy.
 
 This is part 1: the server engine listens on `127.0.0.1` only. There is no
 proxy site and no public hostname, so nothing outside the server can reach it.
+[Part 2](server-engine-public.md) opens it to the board's desktops under a
+public name.
 
 The design is in the [agent messaging ADR](../adr/2026-11-24-agent-messaging.md),
 section (b). The rules the server follows are in
