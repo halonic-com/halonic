@@ -26,28 +26,39 @@ export function holdsKey(row: Pick<PaperclipConnectionRow, "state">): boolean {
 }
 
 /**
- * Sends the feedback of one open folder through its first Paperclip connection that holds a key
+ * Sends the feedback of one open folder through one of its Paperclip connections, by its ID
  * (`studio.feedback-sender`). The host keeps the key, so the page never sees one. A host that isn't
- * answering is `offline`, a folder with no such connection `not-connected`; both keep the feedback
- * to send later. The host never passes on Paperclip's words, so a refusal has no reason.
+ * answering is `offline`, and a connection that doesn't hold its key now `not-connected`; both keep
+ * the feedback to send later. The host never passes on Paperclip's words, so a refusal has no reason.
  */
 export class FolderFeedbackSender implements FeedbackSender {
   readonly #host: FolderFeedbackHost;
+  /** The ID of the connection it sends through, as `AgentConnection.id` and the host's row say. */
+  readonly #connection: string;
 
-  constructor(host: FolderFeedbackHost) {
+  constructor(host: FolderFeedbackHost, connection: string) {
     this.#host = host;
+    this.#connection = connection;
   }
 
   async send(id: string, task: FeedbackTask, image: Uint8Array | null): Promise<SendOutcome> {
-    let listed: PaperclipConnectionList;
     try {
-      listed = await this.#host.listed();
+      return await this.#sendThroughHost(id, task, image);
     } catch (error) {
+      // The host can stop answering between listing the connections and sending.
       if (error instanceof AgentHostNotAnswering) return { kind: "offline" };
       throw error;
     }
-    const connection = listed.connections.find(holdsKey);
-    if (connection === undefined) return { kind: "not-connected" };
+  }
+
+  async #sendThroughHost(
+    id: string,
+    task: FeedbackTask,
+    image: Uint8Array | null,
+  ): Promise<SendOutcome> {
+    const listed: PaperclipConnectionList = await this.#host.listed();
+    const connection = listed.connections.find((row) => row.id === this.#connection);
+    if (connection === undefined || !holdsKey(connection)) return { kind: "not-connected" };
     const sent = await this.#host.send({
       workspace: listed.workspace,
       connection: connection.name,
@@ -71,6 +82,14 @@ function outcomeOf(sent: FeedbackSent): SendOutcome {
   }
   if (sent.outcome === "refused") return { kind: "refused", reason: "" };
   return { kind: sent.outcome };
+}
+
+/**
+ * Where an outbox sends: one folder's one Paperclip connection, so a feedback kept for it never goes
+ * to another connection that signs in later.
+ */
+export function destinationOf(location: string, connection: string): string {
+  return JSON.stringify([location, connection]);
 }
 
 /** The task's ID from its page, the last part of its path: `ACME-12` from `…/ACME/issues/ACME-12`. */
