@@ -2,6 +2,7 @@
 
 - Approval: the board asked for short times and bigger header avatars across Halonic's apps on HAL-10 (HAL-19536 items 3 and 4); Sofia named these Studio places on HAL-19755's `proposal`; Liam signs this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:vvsPPsv2dxljWzVY5+cdofQEl3rvtFStLWrXgzlA88kMUIK3L3q7Te8pgHOcCVNNUy5TPpU3Mrd3WybaqDTcDw==
 
 `assistant.chat.menu` said a chat's row shows when it was last used as
 "10:42" today, "yesterday", "Mon" within the week, then "3 Nov", a format of
