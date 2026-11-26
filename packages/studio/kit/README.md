@@ -254,6 +254,7 @@ The kit's button: a native `<button>`, `type="button"` unless it submits a form.
 | `icon` | A 16px icon before the label. With `label` and no children, the button is a square icon button |
 | `label` | An icon button's name, saying what and which: "Close Support reply", never just "Close" |
 | `round` | An icon button only: a circle instead of a square, for the ✕ at the end of a round chip (a Tools chip), so its high-contrast edge and hover fill follow the chip's round end |
+| `pressed` | An icon button only: a toggle's state, set while what it opens is open (the Messenger's activity panel). Sets `aria-pressed`; leave it out on a button that isn't a toggle |
 | `busy` | While its request runs: the spinner takes the icon's place, `aria-busy`, clicks ignored |
 | `busyLabel` | The label while busy ("Creating…"). Both labels share one cell, so the width never changes |
 | `name` | A button with words only: what screen readers hear when the words leave something out, starting with those words ("Next: Approve this reply?, 2 left" for "Next: Approve this reply? · 2 left") |
@@ -279,6 +280,7 @@ names several ids gives the first one's first line, as laid out on the page.
 | Default | `primary` fill, `secondary` white with a `border-strong` edge, `ghost` no fill, `danger-outline` `surface` with a `danger` edge and `danger` text, `danger` fill |
 | Hover | `primary-hover`, `surface-subtle`, `surface-muted` with `fg` text, `danger-soft`, `danger-hover`; a press the same |
 | Focus | The standard focus ring |
+| Pressed | The hover look, kept while `pressed`: a ghost button's `surface-muted` tile with `fg` text (`surface` on a tint); a 2px outline in high contrast |
 | Unavailable | 45% opacity, `not-allowed` cursor; hover and keyboard focus show the reason's first line as a Tooltip, and nothing else changes; its reason is read with it, once |
 | Busy | The spinner in the icon's place (in front of the label when there's no icon); the label stays |
 | Error | None: a failed action shows a toast or a field error, never a red button |

@@ -1,4 +1,4 @@
-import { CloseIcon, decidedAt, EmptyState, leave } from "@halonicjs/studio-kit";
+import { Button, CloseIcon, decidedAt, EmptyState, leave } from "@halonicjs/studio-kit";
 import { type EngineWords, focusedPanelClass } from "@halonicjs/studio-shell";
 import {
   type KeyboardEvent,
@@ -20,6 +20,12 @@ import type { ActivityRead } from "./use-activity.ts";
 
 /** The panel's ID, for the chat header button's `aria-controls`. */
 export const activityPanelId = "messenger-activity";
+
+/**
+ * The id of the control that closes the panel: a place's **‹ Chief** or the kit's **×**, whichever
+ * shows. It takes the focus as a sheet or a place opens, and **Ctrl+I** closes through it.
+ */
+export const panelCloseId = `${activityPanelId}-close`;
 
 /**
  * Where the panel shows (HAL-18558 section 3): `beside` the chat on a wide window, a `sheet` over
@@ -107,7 +113,7 @@ function usePanelMotion(
     if (place === "sheet" && aside.current !== null) arriveFromEnd(aside.current);
   }, [aside, place]);
   useEffect(() => {
-    if (place !== "beside") aside.current?.querySelector<HTMLElement>("[data-closes]")?.focus();
+    if (place !== "beside") aside.current?.querySelector<HTMLElement>(`#${panelCloseId}`)?.focus();
   }, [aside, place]);
   return () => {
     const sheet = aside.current;
@@ -136,10 +142,10 @@ function PanelHeader({
       {place === "place" ? (
         <button
           type="button"
-          data-closes
+          id={panelCloseId}
           aria-label={activityWords.backTo(chat)}
           onClick={onClose}
-          className="rounded-sm px-1 text-small text-fg-muted hover:text-fg"
+          className="focus-ring inline-flex min-h-6 items-center rounded-sm px-1 text-small text-fg-muted hover:text-fg"
         >
           <span aria-hidden="true">‹ </span>
           <bdi>{chat}</bdi>
@@ -149,15 +155,14 @@ function PanelHeader({
         <bdi>{activityWords.title(name)}</bdi>
       </h2>
       {place === "place" ? null : (
-        <button
-          type="button"
-          data-closes
-          aria-label={activityWords.close}
+        <Button
+          id={panelCloseId}
+          variant="ghost"
+          size="sm"
+          icon={<CloseIcon />}
+          label={activityWords.close}
           onClick={onClose}
-          className="rounded-sm px-1 text-fg-muted hover:text-fg"
-        >
-          <CloseIcon />
-        </button>
+        />
       )}
     </div>
   );
@@ -210,7 +215,7 @@ function ViewBody({ view, now }: { readonly view: ActivityView; readonly now: Da
       <>
         <Status tone="idle" label={activityWords.starting} detail={at} />
         <Section title={activityWords.task}>
-          <TaskCard task={view.task} />
+          <TaskCard task={view.task} state="queued" />
         </Section>
       </>
     );
@@ -230,7 +235,7 @@ function ViewBody({ view, now }: { readonly view: ActivityView; readonly now: Da
         </p>
       </div>
       <Section title={activityWords.task}>
-        <TaskCard task={view.task} />
+        <TaskCard task={view.task} state="running" />
       </Section>
       <PullRequests pulls={view.pullRequests} />
     </>
@@ -263,7 +268,7 @@ function EndedBody({
         <Status tone="done" label={activityWords.idle} detail={at ? ended(at) : undefined} />
       )}
       <Section title={activityWords.lastRun}>
-        <TaskCard task={view.task} outcome={view.outcome} />
+        <TaskCard task={view.task} state={view.outcome} />
       </Section>
       <PullRequests pulls={view.pullRequests} />
     </>

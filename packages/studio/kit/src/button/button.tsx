@@ -92,6 +92,7 @@ interface ButtonWithLabel extends ButtonBase {
   readonly name?: string | undefined;
   readonly label?: never;
   readonly round?: never;
+  readonly pressed?: never;
 }
 
 /** A square button with only an icon, or a round one at the end of a round chip. */
@@ -104,6 +105,12 @@ interface IconButton extends ButtonBase {
    * and its hover fill follow the chip's round end.
    */
   readonly round?: boolean;
+  /**
+   * A toggle's state: the button is pressed while what it shows is open, such as a side panel.
+   * A pressed button keeps its variant's hover fill (a ghost one its full text too), and a 2px
+   * outline in high contrast, so the state shows without colour alone.
+   */
+  readonly pressed?: boolean;
   readonly children?: never;
   readonly busyLabel?: never;
   readonly busyName?: never;
@@ -124,11 +131,13 @@ const shared = [
   "aria-disabled:cursor-not-allowed aria-disabled:opacity-45 contrast-more:aria-disabled:opacity-60",
   "aria-disabled:text-forced-disabled aria-disabled:border-forced-disabled",
   "forced-colors:aria-disabled:opacity-100",
+  // A pressed toggle keeps a 2px outline in high contrast, which drops its fill.
+  "forced-colors:aria-pressed:outline-2 forced-colors:aria-pressed:outline-solid",
 ].join(" ");
 
 /**
  * Hover changes only a fill or a text colour, and a press shows the hover fill at once. Neither
- * applies while the button is unavailable. Only `secondary` and `danger-outline` show their edge;
+ * applies while the button is unavailable. A pressed toggle (`pressed`) keeps the hover look. Only `secondary` and `danger-outline` show their edge;
  * the others keep it see-through, each in its own variant so two edge colours never meet on one
  * button.
  */
@@ -136,23 +145,28 @@ const variantClasses: Record<ButtonVariant, string> = {
   primary: [
     "border-transparent bg-primary text-on-primary",
     "not-aria-disabled:hover:bg-primary-hover not-aria-disabled:active:bg-primary-hover",
+    "aria-pressed:bg-primary-hover",
   ].join(" "),
   secondary: [
     "border-border-strong bg-surface text-fg",
     "not-aria-disabled:hover:bg-surface-subtle not-aria-disabled:active:bg-surface-subtle",
+    "aria-pressed:bg-surface-subtle",
   ].join(" "),
   ghost: [
     "border-transparent text-fg-muted",
     "not-aria-disabled:hover:bg-surface-muted not-aria-disabled:hover:text-fg",
     "not-aria-disabled:active:bg-surface-muted not-aria-disabled:active:text-fg",
+    "aria-pressed:bg-surface-muted aria-pressed:text-fg",
   ].join(" "),
   "danger-outline": [
     "border-danger bg-surface text-danger",
     "not-aria-disabled:hover:bg-danger-soft not-aria-disabled:active:bg-danger-soft",
+    "aria-pressed:bg-danger-soft",
   ].join(" "),
   danger: [
     "border-transparent bg-danger text-on-danger",
     "not-aria-disabled:hover:bg-danger-hover not-aria-disabled:active:bg-danger-hover",
+    "aria-pressed:bg-danger-hover",
   ].join(" "),
 };
 
@@ -214,6 +228,7 @@ export const OnTintContext = createContext(false);
 const ghostOnTint = [
   "border-transparent text-accent-text",
   "not-aria-disabled:hover:bg-surface not-aria-disabled:active:bg-surface",
+  "aria-pressed:bg-surface",
 ].join(" ");
 
 const iconSlot = "inline-grid size-icon-sm shrink-0 place-items-center *:size-full";
@@ -296,6 +311,7 @@ export function Button(props: ButtonProps) {
         aria-disabled={unavailable === undefined ? undefined : true}
         aria-haspopup={props["aria-haspopup"]}
         aria-expanded={props["aria-expanded"]}
+        aria-pressed={props.pressed}
         aria-controls={props["aria-controls"]}
         popoverTarget={props.popoverTarget}
         aria-describedby={describedBy(unavailable?.reason, props["aria-describedby"])}

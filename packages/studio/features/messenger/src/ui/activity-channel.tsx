@@ -61,7 +61,7 @@ export function BackToChannel({ onBack }: { readonly onBack: () => void }) {
       data-back-to-channel
       aria-label={activityWords.backToChannel}
       onClick={onBack}
-      className="-mt-2 self-start rounded-sm px-1 text-small text-fg-muted hover:text-fg"
+      className="focus-ring -mt-2 inline-flex min-h-6 items-center self-start rounded-sm px-1 text-small text-fg-muted hover:text-fg"
     >
       <span aria-hidden="true">‹ </span>
       {activityWords.channel}
