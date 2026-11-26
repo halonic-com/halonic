@@ -2,6 +2,7 @@ import {
   type GatewayHostMessage,
   gatewayFallbackProtocolVersion,
   gatewayMaxMessageBytes,
+  gatewayMaxMessagingIdLength,
   gatewayProtocolVersion,
 } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
@@ -209,12 +210,19 @@ verifies("remote.phone-messaging-client", () => {
       },
       { type: "msg-result", replyTo: "p-4", result: { outcome: "sent", message: sent } },
       { type: "msg-changed", source: "acme" },
+      // A provider's ids may hold `:` and `%`; the phone takes them as the host does.
+      { type: "msg-changed", source: "acme:c%2F1" },
+      {
+        type: "msg-result",
+        replyTo: "p-4",
+        result: { outcome: "sent", message: { ...sent, id: "m:1", conversation: "c%201" } },
+      },
     ]) {
       expect(problemOf(JSON.stringify(message))).toBeUndefined();
     }
   });
 
-  it("refuses a page with an extra key or an item that isn't an object, and any from a version 3 host", () => {
+  it("refuses a host message with an extra key, an item that isn't an object or a messaging id off the rule, and any from a version 3 host", () => {
     expect(problemOf(JSON.stringify({ ...page, extra: 1 }))).toBe("malformed");
     expect(problemOf(JSON.stringify({ ...page, items: ["i1"] }))).toBe("malformed");
     expect(problemOf(JSON.stringify({ ...page, what: "seats" }))).toBe("malformed");
@@ -225,6 +233,14 @@ verifies("remote.phone-messaging-client", () => {
     });
     expect(problemOf(JSON.stringify(result({ id: "m1" })))).toBe("malformed");
     expect(problemOf(JSON.stringify(result({ ...sent, extra: 1 })))).toBe("malformed");
+    for (const source of ["a b", "a/b", "i".repeat(gatewayMaxMessagingIdLength + 1)]) {
+      const changed = { type: "msg-changed", source };
+      expect(problemOf(JSON.stringify(changed))).toBe("malformed");
+    }
+    // `more` is the host's own cursor, so it keeps the host's strict id rule.
+    expect(problemOf(JSON.stringify({ ...page, more: "a b" }))).toBe("malformed");
+    expect(problemOf(JSON.stringify({ ...page, more: "a:b" }))).toBe("malformed");
+    expect(problemOf(JSON.stringify(result({ ...sent, to: ["a@b"] })))).toBe("malformed");
     const older = parseHostMessage(JSON.stringify(page), gatewayFallbackProtocolVersion);
     expect(older).toEqual({ ok: false, problem: "malformed" });
   });
