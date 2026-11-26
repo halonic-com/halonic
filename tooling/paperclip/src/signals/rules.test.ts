@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
 import { maxInputBytes, ruleInputs } from "./pr-watcher-input.ts";
-import { impurities } from "./purity.test-helper.ts";
+import { impureUses, impurities, valueImports } from "./purity.test-helper.ts";
 import { decide, type WatchedTask } from "./rules/pr-watcher.ts";
 
 const now = "2026-11-25T04:00:00Z";
@@ -48,7 +48,8 @@ verifies("paperclip.signal-pr-watcher", () => {
   test("each rule imports only types, reads no clock, network, file or randomness, and stays under 300 lines", () => {
     for (const file of readdirSync(rules)) {
       const source = readFileSync(join(rules, file), "utf8");
-      expect(impurities(file, source), file).toEqual([]);
+      expect(valueImports(file, source), file).toEqual([]);
+      expect(impureUses(file, source), file).toEqual([]);
       expect(source.split("\n").length, file).toBeLessThanOrEqual(300);
     }
   });

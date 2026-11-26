@@ -96,12 +96,8 @@ function isGuardedGlobal(node: ts.Expression): boolean {
   return ts.isIdentifier(node) && (node.text === "Date" || node.text === "Math");
 }
 
-/** Why one node isn't pure, or undefined. */
-function nodeProblem(node: ts.Node): string | undefined {
-  const imported = importProblem(node);
-  if (imported !== undefined) {
-    return imported;
-  }
+/** Why one node's use of code, a clock, randomness or I/O isn't pure, or undefined. Imports are `importProblem`'s. */
+function useProblem(node: ts.Node): string | undefined {
   if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
     return "loads code with import(…)";
   }
@@ -123,24 +119,46 @@ function nodeProblem(node: ts.Node): string | undefined {
   return forbiddenGlobals.has(node.text) ? `names ${node.text}` : undefined;
 }
 
-/**
- * Every place in `source` a ToolScript rule may not have, as
- * `line:column what`; empty for a pure rule.
- *
- * @example
- * impurities("a.ts", "export const now = () => Date.now();"); // ["1:26 uses Date other than …"]
- */
-export function impurities(fileName: string, source: string): string[] {
+/** Every node of `source` for which `problem` gives a reason, as `line:column reason`. */
+function findAll(
+  fileName: string,
+  source: string,
+  problem: (node: ts.Node) => string | undefined,
+): string[] {
   const file = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true);
   const found: string[] = [];
   const visit = (node: ts.Node): void => {
-    const problem = nodeProblem(node);
-    if (problem !== undefined) {
+    const reason = problem(node);
+    if (reason !== undefined) {
       const { line, character } = file.getLineAndCharacterOfPosition(node.getStart(file));
-      found.push(`${line + 1}:${character + 1} ${problem}`);
+      found.push(`${line + 1}:${character + 1} ${reason}`);
     }
     ts.forEachChild(node, visit);
   };
   visit(file);
   return found;
+}
+
+/**
+ * Every import or re-export in `source` that brings in a value rather than
+ * only types, as `line:column what`; empty when the rule imports only types.
+ */
+export function valueImports(fileName: string, source: string): string[] {
+  return findAll(fileName, source, importProblem);
+}
+
+/**
+ * Every place in `source` that loads code, reads a clock, randomness, the
+ * network or the process, or reaches the global object, as `line:column what`.
+ *
+ * @example
+ * impureUses("a.ts", "export const now = () => Date.now();"); // ["1:26 uses Date other than …"]
+ */
+export function impureUses(fileName: string, source: string): string[] {
+  return findAll(fileName, source, useProblem);
+}
+
+/** Every place in `source` a ToolScript rule may not have, imports first; empty for a pure rule. */
+export function impurities(fileName: string, source: string): string[] {
+  return [...valueImports(fileName, source), ...impureUses(fileName, source)];
 }
