@@ -2,6 +2,7 @@
 
 - Approval: wording for A, B and C decided by the team on HAL-19285 (Sofia, building on the approved run view); D's way in decided by Liam on HAL-19285, its strings checked by Sofia
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:G+BtnQ3RPHzIylJCOC+TbrWcZ5OZXXFnbD13AWP55DaTouetMnFbdxKF0au7SvR6eOJVaisULDsmhsUYbaD1Ag==
 - Task: HAL-19285
 
 Two requirements change their words, and goldens change with them. Nothing they already
