@@ -1,6 +1,6 @@
 import type { Conversation, MessagingAgent, MessagingId } from "@halonicjs/ports";
-import { FilterChips } from "@halonicjs/studio-kit";
-import { useEffect, useMemo, useState } from "react";
+import { EmptyState, FilterChips } from "@halonicjs/studio-kit";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import type { MessagingClient } from "./messaging-client.ts";
 import { OlderComputerPanel } from "./older-computer-note.tsx";
 import { PhoneChat } from "./phone-chat.tsx";
@@ -46,7 +46,7 @@ function MessengerLists({ messaging, computer, onOpenLink }: PhoneMessengerProps
   const listed = useListRead(messaging, "conversations", isConversation, open === undefined);
   const agents = useListRead(messaging, "agents", isAgent, open === undefined);
   const names: AgentNames = useMemo(
-    () => new Map(agents.items.map((agent) => [agent.id, agent.name])),
+    () => new Map((agents.items ?? []).map((agent) => [agent.id, agent.name])),
     [agents.items],
   );
   const failure = listed.failure ?? agents.failure;
@@ -65,10 +65,57 @@ function MessengerLists({ messaging, computer, onOpenLink }: PhoneMessengerProps
       />
     );
   }
+  const failedLine = (
+    <ReadFailedLine
+      messaging={messaging}
+      failure={failure}
+      computer={computer}
+      onTryAgain={() => {
+        listed.retry();
+        agents.retry();
+      }}
+    />
+  );
+  // No chips and no "No chats yet" until the computer has answered: a list still on its way or
+  // one that couldn't be read isn't an empty one.
+  if (conversations === undefined || conversations.length === 0) {
+    return (
+      <ListPlaceholder
+        failedLine={failure === undefined ? undefined : failedLine}
+        answered={conversations !== undefined}
+        computer={computer}
+      />
+    );
+  }
+  return (
+    <ConversationList
+      conversations={conversations}
+      failedLine={failedLine}
+      waitingOnly={waitingOnly}
+      onWaitingOnly={setWaitingOnly}
+      onOpen={setOpen}
+    />
+  );
+}
+
+/** p02b: the chips, All or Waiting for me, over the chats; the filter outlives an opened chat. */
+function ConversationList({
+  conversations,
+  failedLine,
+  waitingOnly,
+  onWaitingOnly,
+  onOpen,
+}: {
+  readonly conversations: readonly Conversation[];
+  readonly failedLine: ReactNode;
+  readonly waitingOnly: boolean;
+  readonly onWaitingOnly: (waitingOnly: boolean) => void;
+  readonly onOpen: (conversation: Conversation) => void;
+}) {
   const waiting = conversations.filter((conversation) => conversation.waitingForMe);
   const shown = waitingOnly ? waiting : conversations;
   return (
-    <div className="flex flex-col gap-3 p-4">
+    <div className="flex flex-col gap-3">
       <FilterChips
         label={words.title}
         flush
@@ -77,24 +124,19 @@ function MessengerLists({ messaging, computer, onOpenLink }: PhoneMessengerProps
           { value: "waiting", label: words.waitingChip(waiting.length) },
         ]}
         value={waitingOnly ? "waiting" : "all"}
-        onChange={(value) => setWaitingOnly(value === "waiting")}
+        onChange={(value) => onWaitingOnly(value === "waiting")}
       />
-      <ReadFailedLine
-        messaging={messaging}
-        failure={failure}
-        computer={computer}
-        onTryAgain={() => {
-          listed.retry();
-          agents.retry();
-        }}
-      />
+      {failedLine}
+      {shown.length === 0 ? (
+        <p className="text-small text-fg-muted">{words.nothingWaiting}</p>
+      ) : null}
       <ul className="flex flex-col">
         {shown.map((conversation) => (
           <li key={conversation.id}>
             <button
               type="button"
               className="flex min-h-12 w-full items-center rounded-md px-2 text-left text-body text-fg focus-ring"
-              onClick={() => setOpen(conversation)}
+              onClick={() => onOpen(conversation)}
             >
               {conversation.title}
             </button>
@@ -105,9 +147,38 @@ function MessengerLists({ messaging, computer, onOpenLink }: PhoneMessengerProps
   );
 }
 
+/**
+ * The tab before it has chats to list: why the read failed, "Loading Messenger" until the computer
+ * answers, or the empty state once it said it has none.
+ */
+function ListPlaceholder({
+  failedLine,
+  answered,
+  computer,
+}: {
+  readonly failedLine: ReactNode;
+  readonly answered: boolean;
+  readonly computer: string;
+}) {
+  if (failedLine !== undefined) return failedLine;
+  if (!answered) {
+    return (
+      <p role="status" className="text-small text-fg-muted">
+        {words.loading}
+      </p>
+    );
+  }
+  return (
+    <div className="flex flex-1 flex-col justify-center">
+      <EmptyState title={words.emptyTitle} description={words.emptyText(computer)} />
+    </div>
+  );
+}
+
 /** A list read whole, why its newest read failed, and a way to read it again. */
 interface ListRead<Item> {
-  readonly items: readonly Item[];
+  /** `undefined` until the computer answers the first read, and again while a retry is out. */
+  readonly items: readonly Item[] | undefined;
   readonly failure: ReadFailure | undefined;
   /** Reads the list again, only if its newest read failed. */
   readonly retry: () => void;
@@ -120,7 +191,7 @@ function useListRead<Item>(
   isItem: (item: unknown) => item is Item,
   active: boolean,
 ): ListRead<Item> {
-  const [items, setItems] = useState<readonly Item[]>([]);
+  const [items, setItems] = useState<readonly Item[] | undefined>(undefined);
   const [failure, setFailure] = useState<ReadFailure | undefined>(undefined);
   const [reads, setReads] = useState(0);
 
@@ -140,6 +211,8 @@ function useListRead<Item>(
   const retry = () => {
     if (failure === undefined) return;
     setFailure(undefined);
+    // Back to loading, so a list that failed empty doesn't read as "No chats yet" meanwhile.
+    setItems(undefined);
     setReads((count) => count + 1);
   };
   return { items, failure, retry };

@@ -12,6 +12,13 @@ export const phoneMessengerWords = {
   /** p02b, the list's chips: "Waiting for me · 2" while something waits. */
   all: "All",
   waitingChip: (count: number) => (count > 0 ? `Waiting for me · ${count}` : "Waiting for me"),
+  /** Until the first conversations read answers, as the Inbox's (Noah's HAL-20039 design note). */
+  loading: "Loading Messenger",
+  /** The computer has no chats (HAL-20039). */
+  emptyTitle: "No chats yet",
+  emptyText: (computer: string) => `Chats you start on ${computer} show up here.`,
+  /** Waiting for me picked, and nothing waits (HAL-20039). */
+  nothingWaiting: "Nothing is waiting for you.",
   /** p04a: "Message Chief…", as the prompt box writes it. */
   placeholder: (title: string) => `Message ${title}…`,
   /** The box's name for a screen reader. */
