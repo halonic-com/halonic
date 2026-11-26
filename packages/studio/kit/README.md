@@ -2509,8 +2509,8 @@ list the same `now`, so they all read against one moment.
 <TimeStamp at={new Date(chat.sentAt)} now={now} />;
 ```
 
-It follows the window's `FormatLocale`, which the Studio window sets from the system's region
-format (the browser's language when served), so en-US reads "9:41 AM" and "Nov 26"; pass `locale`
+It follows the window's `FormatLocale`, which Studio's window and each focused app's window (such
+as the Messenger's) set from the system's region format (the browser's language when served), so en-US reads "9:41 AM" and "Nov 26"; pass `locale`
 to override it. `shortTime(at, now, locale)` and `fullTime(at, locale)` give the same text as
 strings, and `formatTag` turns a system tag such as `en_GB.UTF-8` into `en-GB`.
 

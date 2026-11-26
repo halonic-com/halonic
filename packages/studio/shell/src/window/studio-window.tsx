@@ -1,4 +1,4 @@
-import { FormatLocale, formatTag, type MenuEntry } from "@halonicjs/studio-kit";
+import type { MenuEntry } from "@halonicjs/studio-kit";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HeaderBadges } from "../badges/header-badges.tsx";
 import { FeatureDialogs } from "../dialogs/feature-dialogs.tsx";
@@ -50,6 +50,7 @@ import { StudioPage } from "./studio-page.tsx";
 import { StudioPhonePage, StudioPhoneTopBar } from "./studio-phone.tsx";
 import { StudioSidebar } from "./studio-sidebar.tsx";
 import type { StudioWorkspace } from "./studio-workspace.ts";
+import { WindowFormatLocale } from "./window-format.tsx";
 import { useWindowOpeners } from "./window-openers.ts";
 import { windowPanelParts } from "./window-panel.tsx";
 import { useOpenSettings } from "./window-settings.ts";
@@ -135,9 +136,9 @@ export function StudioWindow(props: StudioWindowProps) {
   // and its times follow the system's region format, as Formats' "Follow this computer" does.
   return (
     <StudioHostContext value={props.host}>
-      <FormatLocale value={formatTag(props.regionFormat ?? navigator.language)}>
+      <WindowFormatLocale regionFormat={props.regionFormat}>
         <StudioWindowBody {...props} />
-      </FormatLocale>
+      </WindowFormatLocale>
     </StudioHostContext>
   );
 }

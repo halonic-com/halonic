@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 
-import { useNarrow } from "@halonicjs/studio-kit";
+import { TimeStamp, useNarrow } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { defineFeature } from "../feature.ts";
 import type { FocusedAppContribution } from "../points/frame.ts";
 import { createShell } from "../shell.ts";
@@ -29,6 +29,7 @@ beforeEach(() => {
 afterEach(() => {
   element.remove();
   restoreMedia();
+  vi.restoreAllMocks();
 });
 
 /**
@@ -57,7 +58,11 @@ function shellWith(app: FocusedAppContribution) {
   return createShell({ features: [feature], timers: new FakeTimers() });
 }
 
-async function mount(name: string | undefined, shown: FocusedAppContribution = inboxApp) {
+async function mount(
+  name: string | undefined,
+  shown: FocusedAppContribution = inboxApp,
+  regionFormat?: string,
+) {
   const shell = shellWith(shown);
   const services = new MapTarget();
   shell.services.instantiate(services);
@@ -69,7 +74,14 @@ async function mount(name: string | undefined, shown: FocusedAppContribution = i
   const studioShown: number[] = [];
   const openStudio = () => studioShown.push(1);
   await act(async () => {
-    focused = mountFocusedWindow(element, { shell, app, workspace, language: "en", openStudio });
+    focused = mountFocusedWindow(element, {
+      shell,
+      app,
+      workspace,
+      language: "en",
+      regionFormat,
+      openStudio,
+    });
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
   return { studioShown, unmount: () => act(() => focused?.unmount()) };
@@ -155,5 +167,34 @@ verifies("shell.focused-apps", () => {
       defineFeature({ id, title: id, register: (studio) => studio.focusedApps.add(inboxApp) });
 
     expect(() => createShell({ features: [twice("one"), twice("two")] })).toThrow(ShellError);
+  });
+});
+
+/** The Acme Messenger's view: one chat row's time, 09:41 today, with no locale of its own. */
+function AcmeMessenger() {
+  return <TimeStamp at={new Date(2026, 10, 26, 9, 41)} now={new Date(2026, 10, 26, 12, 0)} />;
+}
+
+const messengerApp: FocusedAppContribution = {
+  id: "messenger",
+  title: "Messenger",
+  view: "AcmeMessenger",
+  load: async () => ({ AcmeMessenger }),
+  panel: true,
+};
+
+verifies("kit.time-stamp", () => {
+  it("gives the focused app's times the system's region format, over the browser's language", async () => {
+    vi.spyOn(navigator, "language", "get").mockReturnValue("en-US");
+    await mount("Acme", messengerApp, "en_GB.UTF-8");
+
+    expect(element.querySelector("time")?.textContent).toBe("09:41");
+  });
+
+  it("follows the browser's language in a focused app with no region format", async () => {
+    vi.spyOn(navigator, "language", "get").mockReturnValue("en-US");
+    await mount("Acme", messengerApp);
+
+    expect(element.querySelector("time")?.textContent).toBe("9:41 AM");
   });
 });

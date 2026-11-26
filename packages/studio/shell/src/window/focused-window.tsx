@@ -25,6 +25,7 @@ import { LoadedView } from "../view-loading.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import type { PlaceViewProps } from "./studio-page.tsx";
 import type { StudioWorkspace } from "./studio-workspace.ts";
+import { WindowFormatLocale } from "./window-format.tsx";
 import { appName } from "./window-title.ts";
 
 /**
@@ -66,6 +67,11 @@ export interface FocusedWindowProps {
   readonly workspace: StudioWorkspace | undefined;
   /** The language of the Studio's words, such as `en`, set on `<html lang>`. */
   readonly language: string;
+  /**
+   * The system's region format, such as `en_GB.UTF-8`, read by the desktop app. The app's times
+   * follow it, as in Studio's window; without it they follow the browser's language.
+   */
+  readonly regionFormat?: string | undefined;
   /** Brings Studio's window forward, for the "Open Halonic" button while there is no workspace. */
   readonly openStudio: () => void;
 }
@@ -75,10 +81,12 @@ export interface FocusedWindowProps {
  * its feature's context for the open workspace, and none of Studio's tabs, places or status bar.
  * With no workspace it says to open Halonic, with a button that does. Its title is the app's, then the workspace's, then the
  * app's own name: "Inbox · Acme · Halonic Inbox". Below 900px wide its app shows one pane at a
- * time, as in Studio's window, through the kit's `NarrowProvider`. A `floating` app, quick ask's
+ * time, as in Studio's window, through the kit's `NarrowProvider`, and its times follow the system's
+ * region format (`regionFormat`) as Studio's window's do. A `floating` app, quick ask's
  * box, draws on the see-through window itself, with no frame.
  */
-export function FocusedWindow({ shell, app, workspace, language, openStudio }: FocusedWindowProps) {
+export function FocusedWindow(props: FocusedWindowProps) {
+  const { shell, app, workspace, language, regionFormat, openStudio } = props;
   const { announcer, closeStack, toasts } = shell;
   const presentation = usePresentationFromWidth();
   const narrow = useNarrowFromWidth();
@@ -90,28 +98,30 @@ export function FocusedWindow({ shell, app, workspace, language, openStudio }: F
   }, [app.title, workspace?.name]);
 
   return (
-    <PresentationProvider presentation={presentation}>
-      <NarrowProvider narrow={narrow}>
-        <ModalRegionsProvider pushModalRegions={(regions) => announcer.pushModalRegions(regions)}>
-          <FieldAnnounceProvider announce={(text) => announcer.announce(text)}>
-            <ToastStoreProvider store={toasts}>
-              <div
-                data-focused-app={app.id}
-                className={`relative flex h-dvh flex-col text-fg ${frameClassOf(app)}`}
-              >
-                {workspace === undefined ? (
-                  <NoWorkspace app={app} openStudio={openStudio} />
-                ) : (
-                  <FocusedPage shell={shell} app={app} workspace={workspace} />
-                )}
-                <ToastRegion store={toasts} />
-              </div>
-              <FrameRegions announcer={announcer} />
-            </ToastStoreProvider>
-          </FieldAnnounceProvider>
-        </ModalRegionsProvider>
-      </NarrowProvider>
-    </PresentationProvider>
+    <WindowFormatLocale regionFormat={regionFormat}>
+      <PresentationProvider presentation={presentation}>
+        <NarrowProvider narrow={narrow}>
+          <ModalRegionsProvider pushModalRegions={(regions) => announcer.pushModalRegions(regions)}>
+            <FieldAnnounceProvider announce={(text) => announcer.announce(text)}>
+              <ToastStoreProvider store={toasts}>
+                <div
+                  data-focused-app={app.id}
+                  className={`relative flex h-dvh flex-col text-fg ${frameClassOf(app)}`}
+                >
+                  {workspace === undefined ? (
+                    <NoWorkspace app={app} openStudio={openStudio} />
+                  ) : (
+                    <FocusedPage shell={shell} app={app} workspace={workspace} />
+                  )}
+                  <ToastRegion store={toasts} />
+                </div>
+                <FrameRegions announcer={announcer} />
+              </ToastStoreProvider>
+            </FieldAnnounceProvider>
+          </ModalRegionsProvider>
+        </NarrowProvider>
+      </PresentationProvider>
+    </WindowFormatLocale>
   );
 }
 
