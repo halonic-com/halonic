@@ -11,7 +11,7 @@ import { useState } from "react";
 import type { ConversationRow } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import type { QuickActions } from "../quick-actions.ts";
-import { alsoInInbox, lineOf } from "./chat-cards.tsx";
+import { alsoInInbox, lineOf, tryAnswer } from "./chat-cards.tsx";
 
 /** A card that asks several questions, or one with several picks, and, once answered, was answered with them. */
 type QuestionCard = InboxItem & { readonly questions: readonly InboxQuestion[] };
@@ -58,9 +58,9 @@ export function QuestionCardItem({
   async function submit(answers: InboxQuestionsAnswer["answers"]) {
     setBusy(true);
     try {
-      const outcome = await quickActions.answerQuestions(row, card, answers);
+      const outcome = await tryAnswer(() => quickActions.answerQuestions(row, card, answers));
       setLine(lineOf(outcome, row));
-      if (outcome.outcome !== "answered") return;
+      if (outcome?.outcome !== "answered") return;
     } finally {
       setBusy(false);
     }

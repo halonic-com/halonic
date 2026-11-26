@@ -264,9 +264,12 @@ function sentAfter(result: AnswerResult, chosen: InboxAnswer): Sent {
     case "already-answered":
       return { kind: "elsewhere", by: result.by, answeredAt: result.answeredAt };
     case "refused":
-      // Offline or signed out, the source's own line says so once it is read again; an item
-      // that is gone can't be answered, so it is a failure to try again.
-      return result.reason === "not-found" ? { kind: "failed", answer: chosen } : { kind: "idle" };
+      // Offline or signed out, the source's own line says so once it is read again. Any other
+      // refusal, such as an item that is gone or an answer that doesn't fit, is a failure the
+      // card shows, never a silent reset (HAL-19350).
+      return result.reason === "offline" || result.reason === "signed-out"
+        ? { kind: "idle" }
+        : { kind: "failed", answer: chosen };
   }
 }
 

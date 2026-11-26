@@ -160,10 +160,10 @@ export function ChatCard({
     setBusy(option.id);
     onFolding(true);
     try {
-      const outcome = await quickActions.answerCard(row, card, option.id);
+      const outcome = await tryAnswer(() => quickActions.answerCard(row, card, option.id));
       setLine(lineOf(outcome, row));
       // Only an answer that landed takes the card away; otherwise it stays, saying why.
-      if (outcome.outcome !== "answered") return;
+      if (outcome?.outcome !== "answered") return;
       setChosen(option.label);
       await foldAway(article.current).catch(reportMotion);
     } finally {
@@ -248,8 +248,30 @@ function whereElse(row: ConversationRow, card: InboxItem): string {
   return leftOut.length === 0 ? alsoInInbox(row) : messengerWords.card.needsNoteInInbox(leftOut);
 }
 
-/** What the card says after an answer that didn't land; nothing more once it did. */
-export function lineOf(outcome: AnswerResult, row: ConversationRow): string | undefined {
+/**
+ * The answer's result, or `undefined` when sending it failed, such as the engine refusing the
+ * request: the failure goes to the console, and the card says so (HAL-19350).
+ */
+export async function tryAnswer(
+  send: () => Promise<AnswerResult>,
+): Promise<AnswerResult | undefined> {
+  try {
+    return await send();
+  } catch (error) {
+    console.error("The card couldn't be answered:", error);
+    return undefined;
+  }
+}
+
+/**
+ * What the card says after an answer that didn't land, `undefined` being one whose sending
+ * failed; nothing more once it did.
+ */
+export function lineOf(
+  outcome: AnswerResult | undefined,
+  row: ConversationRow,
+): string | undefined {
+  if (outcome === undefined) return messengerWords.card.notRecorded;
   if (outcome.outcome === "refused") {
     return messengerWords.notSent[outcome.reason](row.source?.label ?? "");
   }
