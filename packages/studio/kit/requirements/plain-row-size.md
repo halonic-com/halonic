@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: the board's decision on HAL-10 (26 Nov): bigger rows in the Inbox's and the Messenger's sidebar lists; built on HAL-19735
 
-The rows of a `PlainList` and of a `plain` `List`, the sidebar lists of the Inbox and the Messenger, shall be at least 80px high with 10px of padding above and below, on a phone too; their title shall be 15px and the line under it 14px. A plain `List` shall give a row's avatar a 60px place. Where an `Avatar` is given the sidebar size, it shall draw its initials in `text-heading` or its picture on a 60px round tile, with the picture drawn at 60px in device pixels. A `List` that isn't `plain` shall keep its rows' sizes.
+The rows of a `PlainList` and of a `plain` `List`, the sidebar lists of the Inbox and the Messenger, shall be at least 80px high with 10px of padding above and below, on a phone too; their title shall be 15px and the line under it 14px. A plain `List` shall give a row's avatar a 60px place. Where an `Avatar` is given the sidebar size, it shall draw its initials in `text-heading` or its picture on a 60px round tile, with the picture drawn at 60px in device pixels. While they load, their skeleton rows shall have the same 80px height and padding, with a 60px round block in the picture's place, so nothing moves when the rows arrive. A `List` that isn't `plain` shall keep its rows' sizes.
 
 ## Examples
 
@@ -20,3 +20,12 @@ The rows of a `PlainList` and of a `plain` `List`, the sidebar lists of the Inbo
 - Given a 400px picture and the sidebar size, on a screen with one device pixel per CSS pixel,
   when the avatar renders,
   then it draws the picture on a 60 by 60 canvas.
+- Given a plain List on a phone, with a row whose avatar is an `Avatar` with the sidebar size,
+  when it renders,
+  then the row is at least 80px high with 10px above and below, and the avatar's place is 60px.
+- Given a plain List that is loading, with an avatar in its skeleton shape,
+  when its skeleton rows show,
+  then each is at least 80px high with 10px above and below, with a 60px round block.
+- Given the Messenger's chats on their way,
+  when the loading rows show,
+  then each is at least 80px high with 10px above and below, with a 60px round block.

@@ -60,7 +60,8 @@ const sizes = {
 const neutral = "bg-surface-muted";
 
 /**
- * A member's initials, or their picture, on a 28px round tile (40px with `size="header"`): who is signed in, in Cloud's top
+ * A member's initials, or their picture, on a 28px round tile (40px with `size="header"`, 60px with
+ * `size="sidebar"` in a two-pane app's sidebar row): who is signed in, in Cloud's top
  * bar (HAL-16050), or an agent in the Messenger. `surface-muted` with a `border-strong` edge and `fg-muted`, not the accent,
  * so it doesn't read as a product. An agent's initials sit on its own tint instead, in `fg` so
  * they read as well on every tint, with the same edge. It's decoration: the member's name is next to it, or in the

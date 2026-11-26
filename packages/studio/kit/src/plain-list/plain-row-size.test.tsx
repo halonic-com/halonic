@@ -1,15 +1,19 @@
 // @vitest-environment jsdom
 import { verifies } from "@halonicjs/testing-spec";
+import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { Avatar } from "../avatar/avatar.tsx";
 import { List } from "../list/list.tsx";
 import type { ListRow } from "../list/list-props.ts";
+import { SKELETON_AFTER_MS } from "../list/list-skeleton.tsx";
+import { PresentationProvider } from "../presentation/presentation.tsx";
 import { render, unmountAll } from "../test/render.tsx";
 import { PlainList, PlainRow } from "./plain-list.tsx";
 
 afterEach(() => {
   unmountAll();
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 const classesOf = (element: Element | null | undefined) => element?.className.split(" ") ?? [];
@@ -22,9 +26,12 @@ const row: ListRow = {
 };
 
 /** A List's row: its main cell's inside, its avatar's place, its title and its meta line. */
-function renderListRow(plain: boolean) {
+function renderListRow(plain: boolean, phone = false) {
+  const list = (
+    <List heading={{ name: "Needs you" }} rows={[row]} onOpen={() => undefined} plain={plain} />
+  );
   const { container } = render(
-    <List heading={{ name: "Needs you" }} rows={[row]} onOpen={() => undefined} plain={plain} />,
+    phone ? <PresentationProvider presentation="phone">{list}</PresentationProvider> : list,
   );
   const cell = container.querySelector('[role="gridcell"]') as HTMLElement;
   const inside = cell.querySelector("div") as HTMLElement;
@@ -94,5 +101,37 @@ verifies("kit.plain-row-size", () => {
     expect(classesOf(initials)).toEqual(expect.arrayContaining(["size-15", "text-heading"]));
     expect(classesOf(pictured)).toContain("size-15");
     expect([canvas.width, canvas.height]).toEqual([60, 60]);
+  });
+
+  it("keeps a plain List's row at least 80px on a phone, with its 60px avatar", () => {
+    const { inside, leading } = renderListRow(true, true);
+
+    expect(classesOf(inside)).toEqual(expect.arrayContaining(["min-h-20", "py-2.5"]));
+    expect(classesOf(inside)).not.toContain("min-h-14");
+    expect(classesOf(leading)).toContain("size-15");
+  });
+
+  it("loads a plain List in 80px rows with a 60px round block, and other Lists at 56px", () => {
+    vi.useFakeTimers();
+    const loading = (plain: boolean) =>
+      render(
+        <List
+          rows={[]}
+          label="Needs you"
+          loading
+          loadingLabel="Loading the Inbox"
+          skeleton={{ leading: "avatar" }}
+          plain={plain}
+        />,
+      ).container;
+    const [plainList, boxed] = [loading(true), loading(false)];
+    act(() => vi.advanceTimersByTime(SKELETON_AFTER_MS));
+    const firstRow = (container: HTMLElement) =>
+      container.querySelector('[aria-hidden="true"] > div') as HTMLElement;
+
+    expect(classesOf(firstRow(plainList))).toEqual(expect.arrayContaining(["min-h-20", "py-2.5"]));
+    expect(classesOf(firstRow(plainList).firstElementChild)).toContain("size-15");
+    expect(classesOf(firstRow(boxed))).toContain("min-h-14");
+    expect(classesOf(firstRow(boxed).firstElementChild)).toContain("size-7");
   });
 });

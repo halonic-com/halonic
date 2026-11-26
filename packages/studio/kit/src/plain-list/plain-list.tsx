@@ -90,8 +90,8 @@ const actionClasses =
  * it is a button of its own, reached with Tab after the row.
  *
  * @example
- * <PlainRow id={chat.id} picture={<Avatar name="Chief" />} title="Chief" line="Shall I merge #12?"
- *   time="09:30" unread={{ label: " unread", count: "2" }} onSelect={open} />
+ * <PlainRow id={chat.id} picture={<Avatar name="Chief" size="sidebar" />} title="Chief"
+ *   line="Shall I merge #12?" time="09:30" unread={{ label: " unread", count: "2" }} onSelect={open} />
  */
 export function PlainRow(props: PlainRowProps) {
   const { id, picture, current = false, onSelect, action, time } = props;
