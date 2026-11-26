@@ -15,7 +15,10 @@
     "@halonicjs/action-steppers": "workspace:*"
   },
   "devDependencies": {
+    "@halonicjs/ports": "workspace:*",
     "@halonicjs/schema-kit": "workspace:*",
+    "@halonicjs/testing-contracts": "workspace:*",
+    "@halonicjs/testing-integration": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
     "@types/node": "catalog:",

@@ -8,6 +8,8 @@ describe("shippedKeys", () => {
       "device/check-android-build",
       "device/check-phone-pairing",
       "device/check-windows-build",
+      "github/change-branch-protection",
+      "github/change-ruleset",
       "github/upload-social-preview",
       "google/configure-oauth-consent",
       "google/create-cloud-project",

@@ -4,6 +4,8 @@ import { definition as cloudflareEnableEmailRouting } from "./cloudflare/enable-
 import { definition as deviceCheckAndroidBuild } from "./device/check-android-build.ts";
 import { definition as deviceCheckPhonePairing } from "./device/check-phone-pairing.ts";
 import { definition as deviceCheckWindowsBuild } from "./device/check-windows-build.ts";
+import { definition as githubChangeBranchProtection } from "./github/change-branch-protection.ts";
+import { definition as githubChangeRuleset } from "./github/change-ruleset.ts";
 import { definition as githubUploadSocialPreview } from "./github/upload-social-preview.ts";
 import { definition as googleConfigureOauthConsent } from "./google/configure-oauth-consent.ts";
 import { definition as googleCreateCloudProject } from "./google/create-cloud-project.ts";
@@ -33,6 +35,14 @@ export const catalogEntries = {
   "device/check-windows-build": {
     definition: deviceCheckWindowsBuild,
     sourceHash: "05abd4bf8afb20c21cc723a4c7b80b128906f33af7dfd39d987557e528e8aecd",
+  },
+  "github/change-branch-protection": {
+    definition: githubChangeBranchProtection,
+    sourceHash: "550859c92d4a843122817d78068dbe34203f14fa9bb2fa4d333cad7c793ca36a",
+  },
+  "github/change-ruleset": {
+    definition: githubChangeRuleset,
+    sourceHash: "ec543dcfb7588f1755323ab67e7eb6ee85d6ed32cd613d3af5198d79dc2cf39b",
   },
   "github/upload-social-preview": {
     definition: githubUploadSocialPreview,
