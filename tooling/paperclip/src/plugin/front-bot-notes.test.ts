@@ -51,13 +51,13 @@ verifies("paperclip.front-bot-own-comments", () => {
     await rememberNote(state, "acme", taskId, note);
     expect(await handleChatNotes(notesRequest(board), { state })).toEqual({
       status: 200,
-      body: { automaticNotes: [note] },
+      body: { automaticNotes: [note], progressNotes: null },
     });
     expect((await handleChatNotes(notesRequest(agent), { state })).status).toBe(403);
     expect((await handleChatNotes(notesRequest(board, "../other"), { state })).status).toBe(404);
     expect(await handleChatNotes(notesRequest(board, taskId, "other-company"), { state })).toEqual({
       status: 200,
-      body: { automaticNotes: [] },
+      body: { automaticNotes: [], progressNotes: null },
     });
   });
 

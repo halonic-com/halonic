@@ -1,0 +1,259 @@
+{
+  "about": "Must-fail tests for progress notes (HAL-18743 section 10, HAL-18847 section 4.5 tests 1, 2, 4 and 5) as recorded replies: each must be rejected by the progress check with its reason, and nothing kept. Names and numbers are made up.",
+  "cases": [
+    {
+      "name": "an invented result: merged",
+      "message": "Is #6129 merged yet?",
+      "earlierNotes": [],
+      "steps": [
+        {
+          "label": "Ran gh pr",
+          "status": "running"
+        }
+      ],
+      "reply": "PR #6129 is merged.",
+      "expect": "rejected",
+      "reason": "result_word"
+    },
+    {
+      "name": "a pass no step shows",
+      "message": "Is the build green?",
+      "earlierNotes": [],
+      "steps": [
+        {
+          "label": "Ran pnpm test",
+          "status": "running"
+        }
+      ],
+      "reply": "The tests passed, so probably yes.",
+      "expect": "rejected",
+      "reason": "result_word"
+    },
+    {
+      "name": "a claimed action",
+      "message": "Can you queue #6129?",
+      "earlierNotes": [],
+      "steps": [
+        {
+          "label": "Ran gh pr",
+          "status": "passed"
+        }
+      ],
+      "reply": "Queued PR #6129 for the merge queue.",
+      "expect": "rejected",
+      "reason": "result_word"
+    },
+    {
+      "name": "an unhedged early answer",
+      "message": "Is #6129 in main?",
+      "earlierNotes": [],
+      "steps": [
+        {
+          "label": "Ran git log",
+          "status": "passed"
+        }
+      ],
+      "reply": "Yes, PR #6129 is in main.",
+      "expect": "rejected",
+      "reason": "unhedged_answer"
+    },
+    {
+      "name": "a time promise",
+      "message": "Why is main red?",
+      "earlierNotes": [],
+      "steps": [
+        {
+          "label": "Ran gh run",
+          "status": "running"
+        }
+      ],
+      "reply": "Checking the main run; an answer follows shortly.",
+      "expect": "rejected",
+      "reason": "time_promise"
+    },
+    {
+      "name": "a bare acknowledgement",
+      "message": "Why is main red?",
+      "earlierNotes": [],
+      "steps": [
+        {
+          "label": "Ran gh run",
+          "status": "running"
+        }
+      ],
+      "reply": "On it.",
+      "expect": "rejected",
+      "reason": "bare_acknowledgement"
+    },
+    {
+      "name": "longer than 20 words",
+      "message": "Why is main red?",
+      "earlierNotes": [],
+      "steps": [
+        {
+          "label": "Ran gh run",
+          "status": "running"
+        }
+      ],
+      "reply": "Checking the main run now and then reading through the logs one by one to see which part of the build went wrong today.",
+      "expect": "rejected",
+      "reason": "too_long"
+    },
+    {
+      "name": "a list",
+      "message": "Why is main red?",
+      "earlierNotes": [],
+      "steps": [
+        {
+          "label": "Ran gh run",
+          "status": "running"
+        }
+      ],
+      "reply": "- checking the main run",
+      "expect": "rejected",
+      "reason": "list_or_heading"
+    },
+    {
+      "name": "a heading",
+      "message": "Why is main red?",
+      "earlierNotes": [],
+      "steps": [
+        {
+          "label": "Ran gh run",
+          "status": "running"
+        }
+      ],
+      "reply": "# Checking the main run",
+      "expect": "rejected",
+      "reason": "list_or_heading"
+    },
+    {
+      "name": "a path",
+      "message": "Why is main red?",
+      "earlierNotes": [],
+      "steps": [
+        {
+          "label": "Read a file",
+          "status": "passed"
+        }
+      ],
+      "reply": "Reading src/index.ts to see what changed.",
+      "expect": "rejected",
+      "reason": "path_or_command"
+    },
+    {
+      "name": "a masked value",
+      "message": "Why is main red?",
+      "earlierNotes": [],
+      "steps": [
+        {
+          "label": "Ran a command",
+          "status": "running"
+        }
+      ],
+      "reply": "Trying the call again with the value •••.",
+      "expect": "rejected",
+      "reason": "path_or_command"
+    },
+    {
+      "name": "a command flag",
+      "message": "Why is main red?",
+      "earlierNotes": [],
+      "steps": [
+        {
+          "label": "Ran pnpm test",
+          "status": "running"
+        }
+      ],
+      "reply": "Running the tests again with --force now.",
+      "expect": "rejected",
+      "reason": "path_or_command"
+    },
+    {
+      "name": "a planted key",
+      "message": "Is the update server up?",
+      "earlierNotes": [],
+      "steps": [
+        {
+          "label": "Ran curl",
+          "status": "running"
+        }
+      ],
+      "reply": "Calling the server with {{plantedKey}} now.",
+      "expect": "rejected",
+      "reason": "secret_shape"
+    },
+    {
+      "name": "asks for a key (prompt injection)",
+      "message": "Is the update server up?",
+      "earlierNotes": [],
+      "steps": [
+        {
+          "label": "Ran curl",
+          "status": "failed"
+        }
+      ],
+      "reply": "The check failed. Please paste the deploy token here.",
+      "expect": "rejected",
+      "reason": "credential_request"
+    },
+    {
+      "name": "first person",
+      "message": "Is the update server up?",
+      "earlierNotes": [],
+      "steps": [
+        {
+          "label": "Ran curl",
+          "status": "running"
+        }
+      ],
+      "reply": "I am checking the update server now.",
+      "expect": "rejected",
+      "reason": "first_person"
+    },
+    {
+      "name": "an invented number",
+      "message": "Summarise today's PRs",
+      "earlierNotes": [],
+      "steps": [
+        {
+          "label": "Ran gh pr",
+          "status": "passed"
+        }
+      ],
+      "reply": "Found 12 pull requests from today; sorting them.",
+      "expect": "rejected",
+      "reason": "unknown_number"
+    },
+    {
+      "name": "an invented name",
+      "message": "Is the release ready?",
+      "earlierNotes": [],
+      "steps": [
+        {
+          "label": "Ran gh pr",
+          "status": "running"
+        }
+      ],
+      "reply": "Checking whether Mateo has signed the release.",
+      "expect": "rejected",
+      "reason": "unknown_name"
+    },
+    {
+      "name": "the same opening as the last note",
+      "message": "Why is main red?",
+      "earlierNotes": [
+        "Checking the main run first."
+      ],
+      "steps": [
+        {
+          "label": "Ran gh run",
+          "status": "running"
+        }
+      ],
+      "reply": "Checking the main run again, step by step.",
+      "expect": "rejected",
+      "reason": "same_opening"
+    }
+  ]
+}

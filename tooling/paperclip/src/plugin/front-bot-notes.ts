@@ -66,6 +66,66 @@ export async function rememberNote(
   await state.set(notesKey(taskId), { companyId, notes: [...notes, note].slice(-keptNotes) });
 }
 
+/** One progress note (HAL-19218): never a comment, kept here and served on the same route. */
+export interface ProgressNote {
+  readonly at: string;
+  readonly text: string;
+}
+
+/** The progress notes of a task's newest watched run. */
+export interface RunNotes {
+  readonly runId: string;
+  readonly notes: readonly ProgressNote[];
+}
+
+/** Progress notes are dropped a day after the newest one (HAL-18743 section 5). */
+const progressKeptMs = 24 * 60 * 60_000;
+
+function progressKey(taskId: string) {
+  return {
+    scopeKind: "issue",
+    scopeId: taskId,
+    namespace: "front-bot",
+    stateKey: "progress",
+  } as const;
+}
+
+/** The task's progress notes, for this company and less than a day old; otherwise undefined. */
+export async function progressNotes(
+  state: StateGet,
+  companyId: string,
+  taskId: string,
+  now: Date,
+): Promise<RunNotes | undefined> {
+  const record = (await state.get(progressKey(taskId))) as
+    | (RunNotes & { companyId: string })
+    | null;
+  if (record === null || record.companyId !== companyId) {
+    return undefined;
+  }
+  const newest = record.notes.at(-1);
+  if (newest === undefined || now.getTime() - new Date(newest.at).getTime() > progressKeptMs) {
+    return undefined;
+  }
+  return { runId: record.runId, notes: record.notes };
+}
+
+/** Adds a progress note; a note of a new run replaces the last run's notes. */
+export async function rememberProgressNote(
+  state: StateGetSet,
+  companyId: string,
+  taskId: string,
+  runId: string,
+  note: ProgressNote,
+): Promise<void> {
+  const record = (await state.get(progressKey(taskId))) as
+    | (RunNotes & { companyId: string })
+    | null;
+  const sameRun = record !== null && record.companyId === companyId && record.runId === runId;
+  const notes = sameRun ? [...record.notes, note] : [note];
+  await state.set(progressKey(taskId), { companyId, runId, notes });
+}
+
 /** A comment as the other handlers see it. */
 interface CommentLike {
   readonly id?: string;
@@ -103,10 +163,14 @@ export async function automaticNoteIds(
 /** A task id: Paperclip's ids are UUIDs; anything else is refused before reading state. */
 const taskIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Answers `GET /chat-notes/{taskId}`: the bot's comment ids on that task, board only. */
+/**
+ * Answers `GET /chat-notes/{taskId}`, board only: the bot's comment ids on
+ * that task and the progress notes of its newest run (`null` when there are none).
+ */
 export async function handleChatNotes(
   input: PluginApiRequestInput,
   ctx: { readonly state: StateGet },
+  now: Date = new Date(),
 ): Promise<PluginApiResponse> {
   const userId = input.actor.actorType === "user" ? input.actor.userId : undefined;
   if (typeof userId !== "string" || userId === "") {
@@ -118,6 +182,9 @@ export async function handleChatNotes(
   }
   return {
     status: 200,
-    body: { automaticNotes: await automaticNotes(ctx.state, input.companyId, taskId) },
+    body: {
+      automaticNotes: await automaticNotes(ctx.state, input.companyId, taskId),
+      progressNotes: (await progressNotes(ctx.state, input.companyId, taskId, now)) ?? null,
+    },
   };
 }
