@@ -24,6 +24,16 @@ export {
   seedEntries,
 } from "./effective-list.ts";
 export { checkEligibility, type Eligibility, type NotEligibleReason } from "./eligibility.ts";
+export { evaluateWriteAhead, Ledger, type LedgerOptions, type LedgerStore } from "./ledger.ts";
+export {
+  type ChainCheck,
+  chainEntry,
+  genesisHash,
+  type LedgerEntry,
+  type LedgerInput,
+  type ShadowOutcome,
+  verifyChain,
+} from "./ledger-entry.ts";
 export {
   type Hold,
   type NeverList,

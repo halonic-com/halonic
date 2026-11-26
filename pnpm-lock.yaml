@@ -1317,6 +1317,9 @@ importers:
       '@halonicjs/adapter-watch-kit':
         specifier: workspace:*
         version: link:../watch-kit
+      '@halonicjs/auto-approvals':
+        specifier: workspace:*
+        version: link:../../core/auto-approvals
       '@halonicjs/events':
         specifier: workspace:*
         version: link:../../core/events
