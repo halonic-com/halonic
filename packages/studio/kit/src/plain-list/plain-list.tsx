@@ -27,7 +27,10 @@ export interface PlainRowAction {
 export interface PlainRowProps {
   /** Stable, never the index: tests and code find the row by its `data-row-id`. */
   readonly id: string;
-  /** The 60px picture before the text: an `Avatar` with `size="sidebar"`. Decoration. */
+  /**
+   * The 60px picture before the text: an `Avatar` with `size="sidebar"`. Decoration. `null` for a
+   * row without one, which is 56px high instead of 80px.
+   */
   readonly picture: ReactNode;
   /** The row's name. A node, so a search can mark the part it found. Cut with an ellipsis. */
   readonly title: ReactNode;
@@ -52,7 +55,7 @@ export interface PlainRowProps {
  * A list of plain rows for a two-pane app's list, the Messenger's chats and the Inbox's items
  * (HAL-19192, `kit.plain-list`): no borders or box, 4px apart. Its rows are a sidebar's bigger
  * ones (HAL-19735, `kit.plain-row-size`): at least 80px high, a 60px picture, a 15px title over a
- * 14px line.
+ * 14px line. Rows without a picture keep the 56px list row.
  */
 export function PlainList({ label, children, listRef }: PlainListProps) {
   return (
@@ -63,13 +66,20 @@ export function PlainList({ label, children, listRef }: PlainListProps) {
 }
 
 const rowClasses =
-  "flex min-h-20 w-full items-center gap-3 rounded-md px-3 py-2.5 text-start transition-colors duration-(--duration-fast) ease-standard hover:bg-surface-muted focus-ring aria-[current=true]:bg-surface-muted";
+  "flex w-full items-center gap-3 rounded-md px-3 text-start transition-colors duration-(--duration-fast) ease-standard hover:bg-surface-muted focus-ring aria-[current=true]:bg-surface-muted";
+
+/**
+ * A row with a picture is a sidebar's bigger one, at least 80px (HAL-19735). A row without one,
+ * such as the Assistant's Recent chats on a phone, keeps the kit's 56px list row (HAL-19949).
+ */
+const sizeClasses = (picture: ReactNode) =>
+  picture === null || picture === undefined ? "min-h-14 py-3" : "min-h-20 py-2.5";
 
 /**
  * A row with an action keeps the hover fill while the pointer is on the action or the row has
  * focus, because the action covers the title's end with that same fill (HAL-19622).
  */
-const rowWithActionClasses = `${rowClasses} group-hover:bg-surface-muted group-focus-within:bg-surface-muted`;
+const withActionClasses = "group-hover:bg-surface-muted group-focus-within:bg-surface-muted";
 
 /**
  * The action sits over the title's end, so it carries the row's fill and covers what's under it.
@@ -103,7 +113,7 @@ export function PlainRow(props: PlainRowProps) {
         type="button"
         aria-current={current ? "true" : undefined}
         onClick={onSelect}
-        className={action === undefined ? rowClasses : rowWithActionClasses}
+        className={`${rowClasses} ${sizeClasses(picture)}${action === undefined ? "" : ` ${withActionClasses}`}`}
       >
         {picture}
         <span className="flex min-w-0 flex-1 flex-col">
