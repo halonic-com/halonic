@@ -2,7 +2,8 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
 import type { SeatApi } from "./api.ts";
 import { type AgentRow, type SeatMoverMemory, seatMoverPass } from "./pass.ts";
-import type { ParkedRun } from "./runs.ts";
+import type { SeatResets } from "./reset.ts";
+import type { ParkedRun, QuotaFailure } from "./runs.ts";
 import { defaultSeatMoverSettings, type SeatMoverSettings } from "./settings.ts";
 
 const now = new Date("2026-11-26T10:00:00.000Z");
@@ -93,6 +94,8 @@ function deps(
   options: {
     settings?: Partial<SeatMoverSettings>;
     parked?: ParkedRun[];
+    quota?: QuotaFailure[];
+    resets?: SeatResets;
     memory?: { value: SeatMoverMemory };
   } = {},
 ) {
@@ -113,8 +116,12 @@ function deps(
         ...options.settings,
       },
       api: fake.api,
-      runs: { parked: async () => options.parked ?? [], quotaFailuresSince: async () => [] },
+      runs: {
+        parked: async () => options.parked ?? [],
+        quotaFailuresSince: async () => options.quota ?? [],
+      },
       agents: async () => agents,
+      resets: async () => options.resets ?? {},
       issueStatus: async () => "in_progress",
       wake: async (issueId: string) => {
         wakes.push(issueId);
@@ -274,6 +281,42 @@ verifies("paperclip.seat-mover-job", () => {
           /^HAL-9: \*\*Seat mover: no legal seat\.\*\* Kim stays on the A seat/,
         ),
       ]);
+    });
+  });
+});
+
+verifies("paperclip.seat-mover-reset", () => {
+  describe("after the board reset a seat", () => {
+    // The One seat's reading (09:47) and its quota failure (09:55) both came before the reset at 09:58.
+    const usage: Usage = { One: [100, 40], Two: [20, 10] };
+    const quota: QuotaFailure[] = [{ connectionId: "c-One", at: "2026-11-26T09:55:00.000Z" }];
+    const resets: SeatResets = { "c-One": "2026-11-26T09:58:00.000Z" };
+
+    test("a reading or quota failure from before the reset moves nobody off the seat", async () => {
+      const agents = [row("kim", "One")];
+      const fake = world(usage, agents);
+      await seatMoverPass(deps(fake, agents, { settings: { mode: "act" }, quota, resets }).deps);
+      expect(fake.writes).toEqual([]);
+
+      const unreset = world(usage, agents);
+      await seatMoverPass(deps(unreset, agents, { settings: { mode: "act" }, quota }).deps);
+      expect(unreset.writes).toEqual(["move a-kim c-Two"]);
+    });
+
+    test("a parked run whose retry is already due doesn't move its agent", async () => {
+      const agents = [row("kim", "Two")];
+      const fake = world({ One: [10, 10], Two: [10, 10] }, agents);
+      const due: ParkedRun[] = [
+        {
+          id: "r",
+          agentId: "a-kim",
+          issueId: "i",
+          connectionId: "c-Two",
+          retryAt: now.toISOString(),
+        },
+      ];
+      await seatMoverPass(deps(fake, agents, { settings: { mode: "act" }, parked: due }).deps);
+      expect(fake.writes).toEqual([]);
     });
   });
 });

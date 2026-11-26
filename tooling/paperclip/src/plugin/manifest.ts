@@ -15,7 +15,7 @@ import {
 import { prWriteConfigProperties } from "./pr-write-settings.ts";
 import { fastTrackConfigProperties, mergeControlConfigProperties } from "./queue-settings.ts";
 import { precheckWakeJob, readyForReviewDeclaration } from "./ready-for-review-declaration.ts";
-import { seatMoveJob, seatMoverConfigProperties } from "./seat-move-declaration.ts";
+import { seatMoveJob, seatMoverConfigProperties, seatResetRoute } from "./seat-move-declaration.ts";
 import { stackRebaseConfigProperties } from "./stack-rebase-settings.ts";
 import { statePacketConfigProperties } from "./state-packet-declaration.ts";
 import { taskToolDeclarations } from "./task-tool-declarations.ts";
@@ -27,9 +27,8 @@ import { pluginVersion } from "./version.ts";
 import { wakeHoldConfigProperties } from "./wake-hold-declaration.ts";
 
 /**
- * The capability of our local server patch (HAL-16413). Paperclip's shared
- * capability list (2026.1117.0) doesn't name it, so the type doesn't either;
- * the patched host accepts it in a manifest.
+ * The capability of our local server patch (HAL-16413). Paperclip's shared capability list
+ * (2026.1117.0) doesn't name it, so the type doesn't either; the patched host accepts it.
  */
 const monitorPostpone = "issues.monitors.postpone" as PluginCapability;
 
@@ -398,6 +397,7 @@ export const manifest: PaperclipPluginManifestV1 = {
       companyResolution: { from: "query", key: "companyId" },
     },
     ...chiefLine.routes,
+    seatResetRoute,
   ],
   ui: {
     slots: [
