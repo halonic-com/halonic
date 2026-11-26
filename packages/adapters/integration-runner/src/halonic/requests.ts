@@ -229,10 +229,12 @@ export class RequestTable {
         onLogged: (logged) => this.#log(frame.call, logged),
       });
     } catch (error) {
-      if (!this.#isLive(frame.id, entry)) return;
-      this.#live.delete(frame.id);
+      // Reported even when the request was aborted or its call ended meanwhile:
+      // the integration sent it, so not awaiting it mustn't hide the block.
       const block = error instanceof IntegrationRefusedError ? blockFor(error) : undefined;
       if (block !== undefined) this.#hooks.onBlocked(block);
+      if (!this.#isLive(frame.id, entry)) return;
+      this.#live.delete(frame.id);
       return this.#fail(frame.id, requestFailure(error));
     }
     entry.answered = true;

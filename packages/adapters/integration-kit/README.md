@@ -276,7 +276,8 @@ connector on any of them. Every other code is an ordinary mistake, or, like
 such as `host-not-allowed`, also carries `url`: its `host`, and `fromRedirect`
 when a redirect chose it. The integration runner reports a `host-not-allowed`
 for the integration's own request as a block of its own, and none for a
-redirect.
+redirect. `url` is for Halonic's side only: an integration in the runner gets
+the refusal's code and message, without `url`, so don't rely on it there.
 
 ## Loading an integration
 

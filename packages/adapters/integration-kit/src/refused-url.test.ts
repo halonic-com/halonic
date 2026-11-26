@@ -28,4 +28,21 @@ verifies("integration-kit.refused-url", () => {
     expect(refusal.url).toEqual({ host: "undeclared.example.net", fromRedirect: true });
     expect(sent).toHaveLength(1);
   });
+
+  it.each([
+    ["scheme-not-allowed", "http://undeclared.example.net/collect"],
+    ["bad-url", "https://user:pw@undeclared.example.net/collect"],
+  ])("names the host of a URL refused as %s", async (code, url) => {
+    const { http } = client();
+    const refusal = await refusedWith(http.fetch(url));
+    expect(refusal.code).toBe(code);
+    expect(refusal.url).toEqual({ host: "undeclared.example.net", fromRedirect: false });
+  });
+
+  it("names no host for a URL that doesn't parse", async () => {
+    const { http } = client();
+    const refusal = await refusedWith(http.fetch("/v1/forecast"));
+    expect(refusal.code).toBe("bad-url");
+    expect(refusal.url).toBeUndefined();
+  });
 });
