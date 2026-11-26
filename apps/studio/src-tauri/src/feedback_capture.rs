@@ -151,11 +151,12 @@ fn caller_state<R: Runtime>(window: &WebviewWindow<R>) -> CallerState {
 }
 
 /// Takes the still of `window`'s own area, inside its frame, and holds it,
-/// for that window only, for STILL_LIFETIME.
+/// for that window only, for STILL_LIFETIME. The error is `Send` because
+/// it comes back from the blocking task `start` runs this on.
 fn take_window_still<R: Runtime>(
     app: &AppHandle<R>,
     window: &WebviewWindow<R>,
-) -> Result<Started, Box<dyn std::error::Error>> {
+) -> Result<Started, Box<dyn std::error::Error + Send + Sync>> {
     let position = window.inner_position()?;
     let size = window.inner_size()?;
     let area = ScreenArea {
