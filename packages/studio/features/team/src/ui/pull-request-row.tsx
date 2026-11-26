@@ -55,18 +55,23 @@ export const OpenPullRequest = createContext<((id: MessagingId) => void) | undef
 export const pullRequestKey = (id: MessagingId) => `pr:${id}`;
 
 /**
- * A row's "#5641 title", as a button with › that opens the PR's page when the screen has one. The
+ * "#5641 title" with the number as the muted mono label, on a row and as the PR page's h1. The
  * title is written by whoever opened the PR, outsiders included, so it's React text: never
  * Markdown or a link.
  */
-export function PullRequestTitle({ pullRequest }: { pullRequest: PullRequest }) {
-  const open = useContext(OpenPullRequest);
-  const words = (
+export function PullRequestTitleWords({ pullRequest }: { pullRequest: PullRequest }) {
+  return (
     <>
       <span className="font-mono text-small text-fg-muted">{pullRequest.label}</span>{" "}
       {pullRequest.title}
     </>
   );
+}
+
+/** A row's "#5641 title", as a button with › that opens the PR's page when the screen has one. */
+export function PullRequestTitle({ pullRequest }: { pullRequest: PullRequest }) {
+  const open = useContext(OpenPullRequest);
+  const words = <PullRequestTitleWords pullRequest={pullRequest} />;
   if (open === undefined) return <p className="wrap-anywhere text-body-strong">{words}</p>;
   return (
     <p data-opens={pullRequestKey(pullRequest.id)} className="wrap-anywhere text-body-strong">

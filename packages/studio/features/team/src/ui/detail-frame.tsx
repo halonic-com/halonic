@@ -92,7 +92,8 @@ function BackLink({ onBack, back }: { onBack: () => void; back: DetailWords }) {
  */
 export function DetailFrame<Value>(props: {
   shown: Read<Value | undefined>;
-  title: (value: Value) => string;
+  /** The h1's words; a node, so a PR's number can keep its muted mono label. */
+  title: (value: Value) => ReactNode;
   onBack: () => void;
   onTryAgain: () => void;
   children: (value: Value) => ReactNode;

@@ -6,6 +6,7 @@ import { act } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { PullRequests } from "../pull-requests.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
+import { boxFrame, listBox } from "./pr-list-parts.tsx";
 import { PullRequestsPage } from "./pull-requests-page.tsx";
 
 afterEach(unmountAll);
@@ -103,7 +104,14 @@ verifies("team.pull-request-detail", () => {
       );
       expect(text(page)).toContain("Ravi · task ACME-17 · 312 lines");
       expect(text(page)).toContain("✕ Failing: typecheck · 2 h");
-      expect(text(page)).toContain("Stuck since 11:00");
+      // An attention StatusChip with the clock, in the state row next to the state's own chip.
+      const stuck = [...(shownMain(page)?.querySelectorAll("span.bg-attention-soft") ?? [])].find(
+        (chip) => chip.textContent === "Stuck since 11:00",
+      );
+      expect(stuck?.querySelector("svg")).not.toBeNull();
+      expect(stuck?.closest("div")?.textContent).toBe(
+        "✕ Failing: typecheck · 2 hStuck since 11:00",
+      );
       expect(facts(page)).toEqual([
         ["Review", "Not asked yet (needs a green ci-ok first)"],
         ["Queue", "Not in the queue"],
@@ -116,10 +124,25 @@ verifies("team.pull-request-detail", () => {
         "10:30Out of draft",
         "11:00[x](javascript:alert(1))",
       ]);
+      const dots = steps.map((step) => step.querySelector("[aria-hidden] > span")?.className);
+      expect(dots.map((dot) => dot?.includes("bg-danger"))).toEqual([false, true]);
       expect(shownMain(page)?.querySelector("a")).toBeNull();
       expect(text(page)).toContain(
         "Read-only: nothing merges, queues, labels, approves, closes or reruns from here.",
       );
+    });
+
+    it("shows the timeline before the facts, each in a bordered box, as P12 does", async () => {
+      const fake = acme();
+      const id = fake.add("#5641", { state: "failing", since: minutesAgo(120) });
+      fake.team.addPullRequestEvent(id, { kind: "other", text: "Opened", at: minutesAgo(150) });
+      const page = await open(fake);
+      await press(page, "#5641");
+      // In the page's order: the timeline's list, then the facts.
+      const boxes = [...(shownMain(page)?.querySelectorAll("section ol, dl") ?? [])];
+      expect(boxes.map((box) => box.tagName)).toEqual(["OL", "DL"]);
+      expect(boxes[0]?.className).toContain(boxFrame);
+      expect(boxes[1]?.className).toBe(listBox);
     });
 
     it("says a queued PR's place, its group's run and who approved it", async () => {
@@ -164,9 +187,12 @@ verifies("team.pull-request-detail", () => {
       });
       const page = await open(fake);
       await press(page, "#7");
-      expect(text(page)).toContain(
-        "Stuck since Sun 13:00 · Fast-track review is due within 30 min",
+      const stuck = [...(shownMain(page)?.querySelectorAll("span.bg-attention-soft") ?? [])].find(
+        (chip) =>
+          chip.textContent === "Stuck since Sun 13:00 · Fast-track review is due within 30 min",
       );
+      // The row lets its chips shrink, so this long one wraps instead of running off a narrow page.
+      expect(stuck?.parentElement?.className).toContain("*:min-w-0");
       const steps = [...(shownMain(page)?.querySelectorAll("section li") ?? [])];
       expect(steps.map((step) => step.textContent)).toEqual([
         "12:55Fast-track label added",
