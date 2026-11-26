@@ -26,10 +26,10 @@ function surfaceOf(root: HTMLElement): string[] {
 
 function planLimitCard(): HTMLElement {
   const [item] = inboxItems([runAtLimit()]);
-  if (item?.kind !== "wait") throw new Error("expected a limit item");
+  if (item?.kind !== "wait" || item.limit === undefined) throw new Error("expected a limit item");
   return render(
     <PlanLimitCard
-      item={item}
+      item={{ ...item, limit: item.limit }}
       decisions={{ answer: async () => waitingRun("r43") }}
       next={null}
       now={() => now}
