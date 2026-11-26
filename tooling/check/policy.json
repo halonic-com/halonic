@@ -6,6 +6,7 @@
     "@halonicjs/yaml",
     "@halonicjs/events",
     "@halonicjs/ports",
+    "@halonicjs/retry-detectors",
     "@halonicjs/action-steppers",
     "@halonicjs/action-catalog",
     "@halonicjs/profile",
@@ -21,8 +22,7 @@
     "@halonicjs/test-runner",
     "@halonicjs/words",
     "@halonicjs/assistant",
-    "@halonicjs/openui-lang",
-    "@halonicjs/retry-detectors"
+    "@halonicjs/openui-lang"
   ],
   "apiTypes": [
     "@halonicjs/events",
