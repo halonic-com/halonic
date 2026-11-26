@@ -12,7 +12,7 @@ function examples(name: string): FrontBotExample[] {
 }
 
 /** What the bot would have been given for an example, which the check compares against. */
-function inputOf(example: FrontBotExample): FrontBotInput {
+function inputOf(example: Pick<FrontBotExample, "title" | "message" | "earlier">): FrontBotInput {
   return {
     title: example.title,
     message: example.message,
@@ -43,7 +43,7 @@ verifies("paperclip.front-bot-grounding", () => {
 
   test("a reply shaped like a key is rejected before anything else", () => {
     const key = `sk-ant-api03-${"Q7x2Lm9K".repeat(4)}`;
-    const input = inputOf({ title: "Chat", earlier: [], message: key } as FrontBotExample);
+    const input = inputOf({ title: "Chat", earlier: [], message: key });
     expect(checkGrounding(`About ${key}.`, input)).toEqual({ ok: false, reason: "secret_shape" });
   });
 
@@ -65,7 +65,7 @@ verifies("paperclip.front-bot-grounding", () => {
       title: "Merge #6129",
       message: "Is #6129 merged yet?",
       earlier: [{ author: "Liam", at: "2026-11-26T13:52:00Z", body: "Merged #6129." }],
-    } as FrontBotExample);
+    });
     expect(checkGrounding("About PR #6129: Liam said merged at 13:52.", input)).toEqual({
       ok: true,
     });
