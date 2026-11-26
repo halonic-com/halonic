@@ -5,6 +5,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::Managed;
+use crate::notes::OfferedNotes;
 use crate::track::UpdateTrack;
 
 /// Everything About Halonic and the status bar need, in one value.
@@ -44,7 +45,8 @@ pub struct JustUpdated {
     pub not_carried_over: Vec<String>,
 }
 
-/// Where the updater is. `notesUrl` is the release page of that version.
+/// Where the updater is. `notesUrl` is the release page of that version;
+/// `changes` is what changed up to it, from its manifest (HAL-19545).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(
     tag = "kind",
@@ -60,6 +62,8 @@ pub enum UpdateState {
     Available {
         version: String,
         notes_url: String,
+        #[serde(flatten)]
+        changes: OfferedNotes,
     },
     /// Reported from the first byte; `total` is `None` when the server
     /// doesn't say.
@@ -82,6 +86,8 @@ pub enum UpdateState {
     Ready {
         version: String,
         notes_url: String,
+        #[serde(flatten)]
+        changes: OfferedNotes,
     },
     /// Halonic started on an older version than it installed.
     DidNotInstall {

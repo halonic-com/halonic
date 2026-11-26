@@ -6,7 +6,7 @@ use std::time::Instant;
 
 use halonic_update_state::{
     CHECK_TIME_LIMIT, DOWNLOAD_STALL_LIMIT, DownloadFailure, PROGRESS_EVERY, Unit, UpdateState,
-    UpdateTrack, Version, notes_url,
+    UpdateTrack, Version, notes_url, offered_notes,
 };
 use tauri::{AppHandle, Runtime};
 use tauri_plugin_updater::{Error as UpdaterError, Update};
@@ -38,17 +38,23 @@ pub(super) fn start_download<R: Runtime>(app: &AppHandle<R>) {
     });
     inner.notify();
     let track = inner.track();
+    let current = inner.current.clone();
     let task_app = app.clone();
     inner.download = Some(tauri::async_runtime::spawn(async move {
-        download(&task_app, &found, track).await;
+        download(&task_app, &found, track, &current).await;
     }));
 }
 
 /// Downloads `found` and keeps it when its signature matches. The check's
 /// 15-second limit would cap the whole download, so it is made again from
 /// the check's answer with a limit per read instead: no data for 60 s stops
-/// it as stalled.
-async fn download<R: Runtime>(app: &AppHandle<R>, found: &Update, track: UpdateTrack) {
+/// it as stalled. Ready keeps what changed since `current`.
+async fn download<R: Runtime>(
+    app: &AppHandle<R>,
+    found: &Update,
+    track: UpdateTrack,
+    current: &str,
+) {
     let version = found.version.clone();
     let update = updater_on_proxy_rules(app, |client| {
         client
@@ -99,6 +105,7 @@ async fn download<R: Runtime>(app: &AppHandle<R>, found: &Update, track: UpdateT
         Ok(Some(ready)) => {
             inner.state = Some(UpdateState::Ready {
                 notes_url: notes_url(&version),
+                changes: offered_notes(&found.raw_json, current, &version),
                 version,
             });
             inner.ready = Some(ready);

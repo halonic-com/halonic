@@ -1,6 +1,7 @@
 use super::{
     CheckFailure, DownloadFailure, JustUpdated, Unit, UpdateState, UpdateStatus, notes_url,
 };
+use crate::notes::OfferedNotes;
 use crate::track::UpdateTrack;
 use serde_json::json;
 
@@ -59,6 +60,7 @@ fn update_state_names_each_state_as_the_plan_does() {
             UpdateState::Ready {
                 version: "0.1.1".to_owned(),
                 notes_url: notes_url("0.1.1"),
+                changes: OfferedNotes::default(),
             },
             json!({
                 "kind": "ready",

@@ -16,18 +16,32 @@ export type DownloadFailure =
   | "proxy-setting"
   | "proxy";
 
+/** What changed in one version, as plain text from the update's manifest. */
+export interface VersionNotes {
+  readonly version: string;
+  readonly notes: string;
+}
+
+/** What changed up to an offered version, as the shell reads it from the manifest (HAL-19545). */
+interface OfferedChanges {
+  /** What changed in the offered version itself; absent when the manifest has none. */
+  readonly notes?: string;
+  /** Every version after the installed one up to the offered one, newest first. */
+  readonly releaseNotes?: readonly VersionNotes[];
+  /** The list stops above the installed version: the older notes are on the release page. */
+  readonly olderOnReleasePage?: boolean;
+}
+
 /** Where the updater is. One state per row of flow-install-update 4.3. */
 export type UpdateState =
   | { readonly kind: "never-checked" }
   | { readonly kind: "up-to-date" }
   | { readonly kind: "cant-check"; readonly reason: CheckFailure }
-  | {
+  | ({
       readonly kind: "available";
       readonly version: string;
       readonly notesUrl: string;
-      /** What changed, as plain text from the update's manifest; absent when it has none. */
-      readonly notes?: string;
-    }
+    } & OfferedChanges)
   | {
       readonly kind: "downloading";
       readonly version: string;
@@ -46,12 +60,11 @@ export type UpdateState =
       readonly version: string;
       readonly attempts: number;
     }
-  | {
+  | ({
       readonly kind: "ready";
       readonly version: string;
       readonly notesUrl: string;
-      readonly notes?: string;
-    }
+    } & OfferedChanges)
   | { readonly kind: "did-not-install"; readonly version: string; readonly attempts: number };
 
 /** Another tool keeps this install up to date (Scoop): Studio downloads and installs nothing. */

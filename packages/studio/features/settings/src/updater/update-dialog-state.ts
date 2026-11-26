@@ -1,7 +1,7 @@
 import { TRY_AGAIN } from "./about-text.ts";
 import * as text from "./update-dialog-text.ts";
 import type { UpdaterHost } from "./updater-host.ts";
-import type { UpdateState, UpdateStatus } from "./updater-status.ts";
+import type { UpdateState, UpdateStatus, VersionNotes } from "./updater-status.ts";
 
 /** The states in which the title bar shows **Update**: a newer version is found, coming or ready. */
 const SHOWN = [
@@ -52,17 +52,22 @@ export function dialogConfirm(state: OfferedState): UpdateDialogConfirm {
   }
 }
 
-/** What changed in an offered version and where its release page is. */
+/** What changed up to an offered version and where its release page is. */
 export interface OfferedNotes {
-  readonly notes: string | null;
+  /** Each version's notes, newest first; empty when the manifest had none. */
+  readonly versions: readonly VersionNotes[];
+  /** The list stops above the installed version: the older notes are on the release page. */
+  readonly older: boolean;
   readonly notesUrl: string | null;
 }
+
+const NO_NOTES: OfferedNotes = { versions: [], older: false, notesUrl: null };
 
 /** The notes each page's updater has offered, by version: a download's states don't carry them. */
 const notesSeen = new WeakMap<UpdaterHost, Map<string, OfferedNotes>>();
 
 /**
- * The notes of the offered version: the state's own when it has them (available, ready), else
+ * The notes up to the offered version: the state's own when it has them (available, ready), else
  * those the same updater offered for that version before the download started. The title bar
  * button sees every state, so it remembers them for the dialog.
  */
@@ -70,9 +75,15 @@ export function notesFor(host: UpdaterHost, state: OfferedState): OfferedNotes {
   const seen = notesSeen.get(host) ?? new Map<string, OfferedNotes>();
   notesSeen.set(host, seen);
   if (state.kind === "available" || state.kind === "ready") {
-    const notes = { notes: state.notes ?? null, notesUrl: state.notesUrl };
+    // A shell before HAL-19545's list sends only the offered version's own notes.
+    const own = state.notes === undefined ? [] : [{ version: state.version, notes: state.notes }];
+    const notes = {
+      versions: state.releaseNotes ?? own,
+      older: state.olderOnReleasePage === true,
+      notesUrl: state.notesUrl,
+    };
     seen.set(state.version, notes);
     return notes;
   }
-  return seen.get(state.version) ?? { notes: null, notesUrl: null };
+  return seen.get(state.version) ?? NO_NOTES;
 }

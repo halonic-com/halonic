@@ -212,3 +212,34 @@ verifies("settings.update-dialog", () => {
     });
   });
 });
+
+verifies("settings.update-dialog-versions", () => {
+  describe("the Update available dialog over several versions", () => {
+    const entry = (version: string) => ({ version, notes: `- Changed in ${version}.` });
+    const skipping: UpdateState = {
+      kind: "available",
+      version: "0.4.4",
+      notesUrl,
+      notes: "- Changed in 0.4.4.",
+      releaseNotes: [entry("0.4.4"), entry("0.4.3"), entry("0.4.2")],
+    };
+
+    it("shows each skipped version's notes under it, newest first", async () => {
+      const { view } = await mount(statusOf(skipping, { current: "0.4.1" }));
+      await openDialog(view);
+      const headings = [...(dialog()?.querySelectorAll("h4") ?? [])].map((h) => h.textContent);
+      expect(headings).toEqual(["Halonic 0.4.4", "Halonic 0.4.3", "Halonic 0.4.2"]);
+      expect(dialog()?.textContent).toContain("- Changed in 0.4.2.");
+      expect(dialog()?.textContent).not.toContain("earlier versions");
+    });
+
+    it("says the release notes have the earlier versions when the list stops early", async () => {
+      const short = { ...skipping, releaseNotes: [entry("0.4.4")], olderOnReleasePage: true };
+      const { view } = await mount(statusOf(short, { current: "0.4.1" }));
+      await openDialog(view);
+      expect(dialog()?.textContent).toContain(
+        "The release notes say what changed in earlier versions.",
+      );
+    });
+  });
+});
