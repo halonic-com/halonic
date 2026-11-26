@@ -21,6 +21,13 @@ verifies("feedback.overlay", () => {
     expect(() => readStill("gone")).toThrow("isn't bytes");
   });
 
+  it("reads the still from a list of bytes, as Tauri's postMessage IPC answers, and refuses a non-byte", () => {
+    const listed = Array.from(answer(3, 2, 6));
+    expect(readStill(listed).width).toBe(3);
+    expect(() => readStill([...listed.slice(0, -1), 256])).toThrow("isn't bytes");
+    expect(() => readStill([...listed.slice(0, -1), "1"])).toThrow("isn't bytes");
+  });
+
   it("scales a box by the still's pixels per CSS pixel, and keeps none under 8 × 8", () => {
     const still = readStill(answer(300, 150, 300 * 150).buffer);
     const screen = overlayScreen(still, { width: 200, height: 100 });

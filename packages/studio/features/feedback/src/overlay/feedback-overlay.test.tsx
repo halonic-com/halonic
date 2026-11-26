@@ -25,8 +25,20 @@ let element: HTMLDivElement;
 const closed = vi.fn();
 const kept = vi.fn();
 
+/** The browser's top layer as jsdom can't keep it: each modal `<dialog>` in the order it opened. */
+let topLayer: HTMLDialogElement[] = [];
+
 beforeEach(() => {
   Object.assign(window, { innerWidth: viewport.width, innerHeight: viewport.height });
+  topLayer = [];
+  HTMLDialogElement.prototype.showModal = function showModal(this: HTMLDialogElement) {
+    this.setAttribute("open", "");
+    topLayer.push(this);
+  };
+  HTMLDialogElement.prototype.close = function close(this: HTMLDialogElement) {
+    this.removeAttribute("open");
+    topLayer = topLayer.filter((each) => each !== this);
+  };
   element = document.createElement("div");
   document.body.append(element);
 });
@@ -89,6 +101,23 @@ verifies("feedback.overlay", () => {
     expect(overlay().className).toContain("cursor-crosshair");
     expect(overlay().innerHTML).toContain("rgba(0, 0, 0, 0.25)");
     expect(hintText()).toBe("Drag to select an area · Enter for the whole window · Esc to cancel");
+  });
+
+  it("shows over a modal the app has open, and leaves the top layer when it closes", async () => {
+    // A modal <dialog> sits in the top layer, above any z-index (the board, HAL-19757).
+    const appModal = document.createElement("dialog");
+    document.body.append(appModal);
+    appModal.showModal();
+    await mount();
+    expect(overlay().tagName).toBe("DIALOG");
+    expect(topLayer.at(-1)).toBe(overlay());
+    const cancel = new Event("cancel", { cancelable: true });
+    overlay().dispatchEvent(cancel);
+    expect(cancel.defaultPrevented).toBe(true);
+    act(() => root?.unmount());
+    root = undefined;
+    expect(topLayer).toEqual([appModal]);
+    appModal.remove();
   });
 
   it("selects the whole window on Enter, closes, and says so once the shell kept the crop", async () => {

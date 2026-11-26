@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-18970 (plan on HAL-18919); inside the window and see-through from the board (26 Nov); words and look from Sofia's sketch on HAL-18562, §1; Enter and the two-click box from HAL-19017
+- Source: HAL-18970 (plan on HAL-18919); inside the window and see-through from the board (26 Nov); words and look from Sofia's sketch on HAL-18562, §1; Enter and the two-click box from HAL-19017; above an open modal from the board (26 Nov, HAL-19757)
 
 When the feedback starts in one of Studio's windows (`feedback.in-app`), the Feedback feature shall
 show the selection overlay inside that window only, over the live app: see-through, under black at
@@ -22,6 +22,8 @@ above; when it is smaller, the feature shall call nothing and show the hint agai
 refuses the box, the feature shall call `plugin:feedback|end`, unless it refuses it as
 `other_window` because another window's press took the still since. When the person presses Esc, the feature shall take the overlay away and call `plugin:feedback|end`. Enter and Esc
 shall not reach the app under the overlay.
+While a modal of the app is open in that window, the feature shall show the overlay above it, and
+the modal shall take no pointer or key until the overlay is taken away.
 
 ## Examples
 
@@ -40,3 +42,6 @@ shall not reach the app under the overlay.
 - Given an open overlay,
   when the person presses Esc,
   then the feature calls `plugin:feedback|end`.
+- Given a modal open in Studio's window,
+  when the person presses the feedback shortcut,
+  then the overlay shows above the modal.
