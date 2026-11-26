@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.ing/HAL/issues/HAL-19921
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:M5P+8xu2xKDHljZ8nAvX+QnALTigjGAnDuS9F7RQDvXIoY2A25/wdTzAuzDRRr2B6iA/vpBK7bZmPCMkFEk8Aw==
 
 `messenger.one-panel` (HAL-19539, built in #6530) put the Messenger's chat list, the open chat and
 the activity panel on one joined panel. That came from a misread of the board's polish feedback on
