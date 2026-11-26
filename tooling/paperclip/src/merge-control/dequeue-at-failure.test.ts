@@ -75,11 +75,66 @@ verifies("paperclip.merge-control-dequeue-at-failure", () => {
     expect(enqueued(second)).toEqual([]);
   });
 
-  test("a cancelled group isn't dequeued: GitHub's removal is waited for", () => {
-    const decision = passQueued(group(5, { conclusion: "cancelled" }));
+  test("a group fail-fast cancelled after a required job failed is dequeued and held (run 45764061940, #6381)", () => {
+    // As GitHub listed it: `ci-ok` is left out of the failed jobs, the rest ended cancelled.
+    const decision = passQueued(
+      group(5, {
+        conclusion: "cancelled",
+        failedJobs: [
+          {
+            id: 2,
+            name: "Typecheck, lint, test, build (studio)",
+            url: "https://github.com/acme/tools/job/2",
+            failedSteps: ["Typecheck, lint, test, build"],
+            annotationTitles: [],
+          },
+        ],
+      }),
+    );
+    expect(actionsOf(decision, "dequeue").map((each) => [each.number, each.reason])).toEqual([
+      [5, "group-failed"],
+    ]);
+    expect(decision.state.failedHeads).toEqual({ "5": headOf(5) });
+    expect(decision.state.lastQueue).toEqual([6]);
+    expect(logText(decision)).toContain("DEQUEUE_AT_FAILURE #5");
+  });
+
+  test("a cancelled group with no failed job isn't dequeued: GitHub's removal is waited for", () => {
+    const decision = passQueued(group(5, { conclusion: "cancelled", failedJobs: [] }));
     expect(actionsOf(decision, "dequeue")).toEqual([]);
     expect(decision.state.failedHeads).toEqual({});
     expect(decision.state.lastQueue).toEqual([5, 6]);
+  });
+
+  test("a cancelled group whose only failed job isn't one ci-ok needs isn't dequeued", () => {
+    const watcher = {
+      id: 3,
+      name: "Cancel the run on the first failure",
+      url: "https://github.com/acme/tools/job/3",
+      failedSteps: ["Watch the other jobs"],
+      annotationTitles: [],
+    };
+    const decision = passQueued(group(5, { conclusion: "cancelled", failedJobs: [watcher] }));
+    expect(actionsOf(decision, "dequeue")).toEqual([]);
+    expect(decision.state.lastQueue).toEqual([5, 6]);
+  });
+
+  test("a cancelled group the runner hook refused isn't dequeued", () => {
+    const refused = group(5, {
+      conclusion: "cancelled",
+      failedJobs: [
+        {
+          id: 1,
+          name: "Test (core)",
+          url: "https://github.com/acme/tools/job/1",
+          failedSteps: [],
+          annotationTitles: [hookRefusedTitle],
+        },
+      ],
+    });
+    const decision = passQueued(refused);
+    expect(actionsOf(decision, "dequeue")).toEqual([]);
+    expect(decision.state.failedHeads).toEqual({});
   });
 
   test("a group the runner hook refused isn't dequeued", () => {

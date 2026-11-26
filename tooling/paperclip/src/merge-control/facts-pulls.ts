@@ -187,6 +187,7 @@ export function gatePullOf(node: PullNode): GatePull {
     number: node.number,
     id: node.id,
     title: node.title,
+    ...(node.body === undefined ? {} : { body: node.body }),
     author: node.author?.login ?? null,
     branch: node.headRefName,
     base: node.baseRefName,

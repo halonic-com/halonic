@@ -11,7 +11,7 @@ When a merge-group CI run of the last 3 hours failed, or was cancelled with a fa
 - Given a failed group whose pull request is out of the queue,
   when two passes run,
   then it is held on its head, the comment names `Test (core)` once, and a new head lifts the hold.
-- Given a group cancelled with a failed job whose pull request is still queued,
+- Given a group cancelled with only a failed job that `ci-ok` doesn't need, whose pull request is still queued,
   when a pass runs,
   then nothing is held and the run is looked at again next pass.
 - Given a cancelled group without a failed job,

@@ -7,6 +7,7 @@ import {
 } from "./approval.ts";
 import { type CiOk, ciOkOf, requiredWorkflowProblems } from "./checks.ts";
 import { isBuiltOn } from "./facts-pulls.ts";
+import { securityReason } from "./security-signoff.ts";
 import type { GatePull, MergeSnapshot, QueueEntry } from "./snapshot.ts";
 import type { MergeSettings } from "./state.ts";
 
@@ -56,6 +57,21 @@ export function fastTrackVerified(pull: GatePull, settings: MergeSettings): bool
   );
 }
 
+/**
+ * Why a pull request on another base waits. A base that is an open pull
+ * request's branch is a stack: it queues once that one merges. Any other
+ * base, such as `release/*`, never reaches `main` by itself (#6416, the live
+ * Merger's since 26 Nov 09:11 UTC, HAL-19508). With the open list unread (a
+ * replayed pass), the base counts as a stack, as before.
+ */
+function baseReason(snapshot: MergeSnapshot, base: string): string {
+  const branches = [...(snapshot.open ?? []), ...snapshot.pulls].map((each) => each.branch);
+  if (snapshot.open === null || branches.includes(base)) {
+    return `targets ${base}, not main (stacked PR): it queues once its base merges and it is retargeted`;
+  }
+  return `targets ${base}, not main: retarget to main, or the release captain merges it into the release branch`;
+}
+
 /** The gate for one pull request. */
 export function gateRow(snapshot: MergeSnapshot, pull: GatePull, settings: MergeSettings): GateRow {
   const h9 = pull.head.slice(0, 9);
@@ -66,6 +82,10 @@ export function gateRow(snapshot: MergeSnapshot, pull: GatePull, settings: Merge
     reasons.push(
       `changes requested by ${changeRequest.who} at ${utc(changeRequest.at)} UTC, newer than the approval for head ${h9}: needs a new approval that names the new head`,
     );
+  }
+  const security = securityReason(pull, settings.teamLogin);
+  if (security !== undefined) {
+    reasons.push(security);
   }
   const ci = ciOkOf(pull);
   if (ci.state !== "success") {
@@ -82,9 +102,7 @@ export function gateRow(snapshot: MergeSnapshot, pull: GatePull, settings: Merge
     );
   }
   if (pull.base !== "main") {
-    reasons.push(
-      `targets ${pull.base}, not main (stacked PR): it queues once its base merges and it is retargeted`,
-    );
+    reasons.push(baseReason(snapshot, pull.base));
   }
   if (pull.mergeable === "CONFLICTING") {
     reasons.push("conflicts with main: please rebase");
