@@ -38,11 +38,18 @@ export interface SeatRuns {
 
 const connectionOf = `r.context_snapshot -> 'aiConnection' ->> 'connectionId'`;
 
+/**
+ * Paperclip's plugin `db.query` expands an array parameter into a row of
+ * parameters (`($2, $3, $4)`), which Postgres can't cast to `text[]`. So every
+ * reason is its own scalar parameter: `IN ($2, $3, $4)`.
+ */
+const reasonParams = parkedReasons.map((_, index) => `$${index + 2}`).join(", ");
+
 const parkedSql = `SELECT r.id AS id, r.agent_id AS agent_id, r.issue_id AS issue_id,
   ${connectionOf} AS connection_id, r.scheduled_retry_at AS retry_at
 FROM public.heartbeat_runs r
 WHERE r.company_id = $1 AND r.status = 'scheduled_retry' AND r.started_at IS NULL
-  AND r.scheduled_retry_reason = ANY($2::text[])`;
+  AND r.scheduled_retry_reason IN (${reasonParams})`;
 
 const quotaSql = `SELECT ${connectionOf} AS connection_id, max(coalesce(r.finished_at, r.updated_at)) AS at
 FROM public.heartbeat_runs r
@@ -66,7 +73,7 @@ export function databaseSeatRuns(db: Pick<PluginDatabaseClient, "query">): SeatR
     async parked(companyId) {
       const rows = await db.query<Record<string, unknown>>(parkedSql, [
         companyId,
-        [...parkedReasons],
+        ...parkedReasons,
       ]);
       return rows.map((row) => ({
         id: String(row["id"]),
