@@ -34,11 +34,11 @@ function host(rows: PaperclipConnectionRow[], answer = { outcome: "sent", taskUr
 }
 
 verifies("studio.feedback-sender", () => {
-  it("sends through the folder's first connection that holds its key, with its real path", async () => {
-    const acme = host([row("old", "signed-out"), row("board", "online"), row("other", "online")]);
+  it("sends through the connection it was given, with the folder's real path", async () => {
+    const acme = host([row("other", "online"), row("board", "online")]);
     const png = new Uint8Array([0x89, 0x50]);
 
-    const outcome = await new FolderFeedbackSender(acme).send("id-1", task, png);
+    const outcome = await new FolderFeedbackSender(acme, "board").send("id-1", task, png);
 
     expect(outcome).toEqual({
       kind: "sent",
@@ -60,20 +60,37 @@ verifies("studio.feedback-sender", () => {
   });
 
   it("keeps the feedback offline when the host isn't answering", async () => {
-    const sender = new FolderFeedbackSender({
-      listed: async () => {
-        throw new AgentHostNotAnswering(new AgentHostError(0, "host_unavailable", "not running"));
+    const sender = new FolderFeedbackSender(
+      {
+        listed: async () => {
+          throw new AgentHostNotAnswering(new AgentHostError(0, "host_unavailable", "not running"));
+        },
+        send: async () => ({ outcome: "offline" }),
       },
-      send: async () => ({ outcome: "offline" }),
-    });
+      "board",
+    );
 
     expect(await sender.send("id-1", task, null)).toEqual({ kind: "offline" });
   });
 
-  it("keeps it until connected when no connection holds its key, sending nothing", async () => {
-    const acme = host([row("board", "no-key"), row("old", "signed-out")]);
+  it("keeps the feedback offline when the host stops answering as it sends", async () => {
+    const sender = new FolderFeedbackSender(
+      {
+        listed: async () => ({ workspace: "/real/acme", connections: [row("board", "online")] }),
+        send: async () => {
+          throw new AgentHostNotAnswering(new AgentHostError(0, "host_unavailable", "stopped"));
+        },
+      },
+      "board",
+    );
 
-    expect(await new FolderFeedbackSender(acme).send("id-1", task, null)).toEqual({
+    expect(await sender.send("id-1", task, null)).toEqual({ kind: "offline" });
+  });
+
+  it("keeps it until its own connection holds its key, though another does, sending nothing", async () => {
+    const acme = host([row("board", "no-key"), row("other", "online")]);
+
+    expect(await new FolderFeedbackSender(acme, "board").send("id-1", task, null)).toEqual({
       kind: "not-connected",
     });
     expect(acme.sent).toEqual([]);
@@ -82,7 +99,7 @@ verifies("studio.feedback-sender", () => {
   it("passes on a refusal without words, as the host keeps Paperclip's to itself", async () => {
     const acme = host([row("board", "offline")], { outcome: "refused" } as never);
 
-    expect(await new FolderFeedbackSender(acme).send("id-1", task, null)).toEqual({
+    expect(await new FolderFeedbackSender(acme, "board").send("id-1", task, null)).toEqual({
       kind: "refused",
       reason: "",
     });
