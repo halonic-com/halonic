@@ -15,8 +15,14 @@ line.
 
 The test for that case (`packages/studio/features/inbox/src/ui/plan-limit-card.test.tsx`) no longer
 checks that the card's whole text is unchanged, since the line is new; it checks that the title is
-unchanged, no error shows, the line shows and is announced, and Continue is still there. No test is
-skipped or deleted.
+unchanged, no error shows, the line shows and is announced, and Continue is still there.
+
+#6353 (HAL-19119) merged a narrower answer to the same press while this note was in review: it only
+announced "The run is still waiting at your plan's limit.", and its test checked that sentence. This
+change replaces that sentence with the line above, so it deletes that word and that one test: the
+test above checks the same card (title unchanged, line announced) with the new words. #6353's other
+test, that nothing extra is said once the run goes on, stays. Its changeset now names only the
+banner part.
 
 ## Why
 
