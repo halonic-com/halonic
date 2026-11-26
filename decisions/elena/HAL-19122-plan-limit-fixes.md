@@ -32,3 +32,4 @@ like a broken button, and a screen reader heard nothing (Noah, HAL-19110).
 ## Covers
 
 - inbox.plan-limit-card
+- packages/studio/features/inbox/src/ui/plan-limit-card.test.tsx
