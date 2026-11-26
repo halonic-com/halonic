@@ -135,7 +135,7 @@ const promptStateClasses: Record<FieldBoxState, string> = {
  * buttons or the text, so one line is a full pill and the 24px corners stay as it grows.
  */
 export function promptBoxClasses(state: FieldBoxState, align: FieldBoxAlign = "center"): string {
-  const box = "flex w-full gap-2 rounded-prompt border transition-[border-color,box-shadow]";
+  const box = "flex w-full gap-2 rounded-prompt border transition";
   return `${box} ${alignClasses[align]} ${promptStateClasses[state]}`;
 }
 
