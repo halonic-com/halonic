@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.ing/HAL/issues/HAL-19958
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:bkGfc6+hX4JIFI8WRY1GyGTXTceZtaWFxpNS+Awt7XNe3C2ghZs5qGRYkuDmk0fcFBZxvGMhk03UdSe95rmsBw==
 
 Since `studio.window-content` (HAL-19734), Studio reopens at start the workspace its window showed
 last, through the same folder opener as Welcome. `workspace.open-folder` and
