@@ -208,10 +208,11 @@
  * After a pointer press the shell marks `<html data-input="pointer">` (`useInputModality`), and a
  * heading code focused then shows no ring: WebKit matches `:focus-visible` on every focus from
  * code, so a page opened by a click had its title ringed (HAL-19399 G9). The next key press shows
- * it again. Outside any layer, so it also wins over a heading's own `focus-ring` class. The
+ * it again. Outside any layer, so it also wins over a heading's own `focus-ring` class. Another
+ * element code focuses opts in with `data-code-focus`, such as Welcome's start line (G11). The
  * outline stays: in Windows high-contrast mode a heading keeps its ring, as every focus does there.
  */
-:root[data-input="pointer"] :is(h1, h2, h3, h4, h5, h6)[tabindex="-1"] {
+:root[data-input="pointer"] :is(:is(h1, h2, h3, h4, h5, h6)[tabindex="-1"], [data-code-focus]) {
   @variant focus-visible {
     box-shadow: none;
   }

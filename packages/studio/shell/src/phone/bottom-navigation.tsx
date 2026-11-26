@@ -118,7 +118,7 @@ function IconSignal({ signal }: { readonly signal: PlaceSignal }) {
     return (
       <span
         aria-hidden="true"
-        className="absolute -end-3.5 -top-0.5 rounded-full bg-surface ring-2 ring-surface"
+        className="absolute -end-3.5 top-0 rounded-full bg-surface ring-2 ring-surface"
       >
         <SignalCount signal={signal} />
       </span>

@@ -150,7 +150,7 @@ export interface WelcomeStartAreaProps {
  * line shows, so nothing under it moves; then either nothing, with "Halonic is ready" said once,
  * or **Halonic's engine didn't start** with the cause's sentence, **Try again**, **Check this
  * computer** and **Copy report**, which takes focus. Under them, while Open demo and Open folder
- * are off, the line that says why. The waiting line sits centred and takes focus when it shows.
+ * are off, the line that says why. The waiting line takes focus when it shows.
  */
 export function WelcomeStartArea(props: WelcomeStartAreaProps) {
   return props.start === undefined ? null : <StartArea {...props} start={props.start} />;
@@ -338,9 +338,14 @@ function StartLine({
   readonly lineRef: RefObject<HTMLDivElement | null>;
 }) {
   const waitedMs = seconds * 1000;
-  // As wide as its words, so Welcome's column centres it under the buttons (HAL-19399 G11).
+  // Code focuses it, so after a press it shows no ring (`shell.focus-ring-after-pointer`).
   return (
-    <div ref={lineRef} tabIndex={-1} className="focus-ring max-w-full rounded-sm text-left">
+    <div
+      ref={lineRef}
+      tabIndex={-1}
+      data-code-focus=""
+      className="focus-ring w-full rounded-sm text-left"
+    >
       <WaitingLine
         what={welcomeStartWords.starting}
         waitedMs={waitedMs}

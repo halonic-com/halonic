@@ -144,7 +144,8 @@ verifies("shell.phone-bars", () => {
     expect(count?.textContent).toContain("3");
     // The 20px icon sits 4px inside the 28px pill and 18px from its ends: the count, measured from
     // the icon's top and end, stays inside the pill whatever its width (G13).
-    expect(count?.className).toContain("-top-0.5");
+    expect(count?.className).toContain("top-0");
+    expect(count?.className).not.toContain("-top-");
     expect(count?.className).toContain("-end-3.5");
     const dot = link("Runs").querySelector('[aria-hidden="true"].absolute');
     expect(dot?.className).toContain("bg-running");

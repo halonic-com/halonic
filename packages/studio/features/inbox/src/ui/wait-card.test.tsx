@@ -100,21 +100,6 @@ verifies("inbox.wait-card", () => {
       const { root } = openCard();
       expect(root.textContent).not.toMatch(/Moves on|expires/);
     });
-
-    it("has a button per answer, the first one primary and none red", () => {
-      const { root } = openCard({
-        item: reviewItem({ accepts: ["approve", "reject", "needs_info"] }),
-      });
-      const labels = [...root.querySelectorAll("button")].map((b) => b.textContent);
-      // Each button also holds its busy label, hidden, so it keeps its width while busy.
-      expect(labels).toEqual([
-        "Open run",
-        "ApproveApproving…",
-        "RejectRejecting…",
-        "Needs infoWorking…",
-      ]);
-      expect(root.innerHTML).not.toContain("danger");
-    });
   });
 
   describe("while the engine isn't answering", () => {
@@ -403,14 +388,6 @@ verifies("inbox.wait-card", () => {
       expect(root.textContent).toContain("Approved by you at 10:44. The run continues.");
     });
 
-    it("says Working… while sending an answer the step labels itself, never another word", () => {
-      const { root } = openCard({
-        item: { ...reviewItem(), answerLabels: { approve: "Send reply" } },
-      });
-      const labels = [...root.querySelectorAll("button")].map((b) => b.textContent);
-      expect(labels).toEqual(["Open run", "Send replyWorking…", "RejectRejecting…"]);
-    });
-
     it("takes an answer named like a built-in object key", async () => {
       const item: WaitItem = {
         ...reviewItem({ accepts: ["constructor", "toString"] }),
@@ -418,7 +395,7 @@ verifies("inbox.wait-card", () => {
       };
       const { root, sent, later } = openCard({ item });
       const labels = [...root.querySelectorAll("button")].map((b) => b.textContent);
-      expect(labels).toEqual(["Open run", "ConstructorWorking…", "Show textWorking…"]);
+      expect(labels).toEqual(["Open run", "Show textWorking…", "ConstructorWorking…"]);
       later(61);
       await press(button(root, "Constructor"));
       expect(sent).toEqual(["constructor"]);

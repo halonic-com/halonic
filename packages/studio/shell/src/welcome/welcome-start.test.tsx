@@ -112,8 +112,7 @@ verifies("shell.welcome-start", () => {
     const line = document.activeElement as HTMLElement;
     expect(line.textContent).toContain("Starting Halonic…");
     expect(line.querySelector('[role="status"]')).not.toBeNull();
-    expect(line.className).toContain("max-w-full");
-    expect(line.classList.contains("w-full")).toBe(false);
+    expect(line.hasAttribute("data-code-focus")).toBe(true);
 
     start.answer({ state: "ready", seconds: 4 });
     expect(root.textContent).toContain("New here?");
