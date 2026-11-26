@@ -68,6 +68,22 @@ verifies("ports.agent-messaging-avatars", () => {
       expect(ada?.avatar).not.toContain("/");
     });
 
+    // HAL-19133: Paperclip names its own pictures by a set, a palette and a file, with a size
+    // query, and the installed preview showed only initials because that path was left out.
+    it("is an ID for Paperclip's own pictures too, read without their size query", async () => {
+      serveAgents("/api/agent-avatars/cap-v1/coral-mint/rest.png?size=512&scale=1");
+      const [ada] = await client().listAgents();
+      expect(ada?.avatar).toBe("paperclip:acme:avatar:cap-v1%2Fcoral-mint%2Frest.png");
+      paperclip.on("GET", "/api/agent-avatars/cap-v1/coral-mint/rest.png", {
+        body: png,
+        headers: { "content-type": "image/png" },
+      });
+      expect(await client().readAttachment(ada?.avatar ?? "")).toMatchObject({ outcome: "read" });
+      const request = paperclip.seen.at(-1);
+      expect(request?.path).toBe("/api/agent-avatars/cap-v1/coral-mint/rest.png");
+      expect(findRequest(request?.method ?? "", request?.path ?? "")).toBe("readAgentAvatarSet");
+    });
+
     it("is left out for an absolute, foreign or other address", async () => {
       serveAgents(
         "https://paperclip.acme.test/api/agent-avatars/ada.png",
@@ -75,13 +91,15 @@ verifies("ports.agent-messaging-avatars", () => {
         "//elsewhere.example/api/agent-avatars/ada.png",
         "/api/agent-avatars/../keys",
         "/api/agent-avatars/%2e%2e",
-        "/api/agent-avatars/ada.png?size=big",
+        "/api/agent-avatars/ada.png#size",
         "/api/agent-avatars/team/ada.png",
+        "/api/agent-avatars/cap-v1/../rest.png",
+        "/api/agent-avatars/cap-v1/coral-mint/pose/rest.png",
         "/avatars/ada.png",
         null,
       );
       const agents = await client().listAgents();
-      expect(agents).toHaveLength(9);
+      expect(agents).toHaveLength(11);
       expect(agents.filter((agent) => "avatar" in agent)).toEqual([]);
     });
 
@@ -172,6 +190,7 @@ verifies("ports.agent-messaging-avatars", () => {
         "paperclip:other:avatar:ada.png",
         "paperclip:acme:avatar:..",
         "paperclip:acme:avatar:a%2Fb.png",
+        "paperclip:acme:avatar:cap-v1%2F..%2Frest.png",
       ]) {
         expect(await client().readAttachment(id)).toEqual({
           outcome: "refused",

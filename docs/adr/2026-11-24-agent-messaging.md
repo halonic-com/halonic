@@ -133,7 +133,7 @@ our server's version, it uses that instead.
 **The provider's requests** are the whole list. It may list agents, projects,
 tasks, comments, cards and pending approvals, read one approval and the tasks
 it is linked to, read an agent's picture
-(`GET /api/agent-avatars/<segment>`, HAL-18485), answer a
+(`GET /api/agent-avatars/<segment>` or `<set>/<palette>/<file>`, HAL-18485, HAL-19133), answer a
 card, approve or reject an approval, and comment on one of the person's own
 chat tasks. It approves, rejects, answers or comments only when the person
 does so in Halonic, and shows an approval's type (what approving does) next to

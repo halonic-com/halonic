@@ -166,6 +166,7 @@ verifies("agent-host.paperclip-key", () => {
         // Full answers (HAL-18756), pinned in full-answers.test.ts.
         "readFullAnswer",
         "readAgentAvatar",
+        "readAgentAvatarSet",
         // Runs (HAL-18650), pinned in team-runs.test.ts; run control (HAL-18695) in run-control.test.ts.
         "listLiveRuns",
         "listRuns",

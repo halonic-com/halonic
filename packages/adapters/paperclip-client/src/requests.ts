@@ -179,6 +179,11 @@ export const paperclipRequests = {
   // Agents' pictures (HAL-18485): the one read that isn't JSON. The answer must be a PNG, JPEG or
   // WebP picture of at most 256 KB (`avatars.ts`); anything else is refused, its body unread.
   readAgentAvatar: { method: "GET", path: "/api/agent-avatars/:avatar" },
+  // Paperclip's own pictures: a set, a palette and a file (HAL-19133), read the same way.
+  readAgentAvatarSet: {
+    method: "GET",
+    path: "/api/agent-avatars/:avatarSet/:avatarPalette/:avatar",
+  },
   // Runs (`paperclip-client.team-runs`, HAL-18650): reads only. The live runs, and the newest
   // finished ones (`agentId=` and `limit=` only). The answers carry logs and wake text; the mapping
   // keeps none of it. Stopping a run is a separate row with its own review (HAL-18624 PR 3).

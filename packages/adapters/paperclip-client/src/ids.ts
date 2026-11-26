@@ -35,7 +35,7 @@ const partCounts: Readonly<Record<PaperclipItemKind, number>> = {
   seat: 1,
   // A pull request: its repository (`owner/name`) and its number.
   pull: 2,
-  // An agent's picture: its file's segment under `/api/agent-avatars/`, never the path itself.
+  // An agent's picture: its path under `/api/agent-avatars/` as one part, never the whole path.
   avatar: 1,
   run: 1,
 };

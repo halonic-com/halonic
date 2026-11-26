@@ -7,7 +7,7 @@ import type {
   WorkItem,
   WorkState,
 } from "@halonicjs/ports";
-import { avatarSegment } from "./avatars.ts";
+import { avatarPathOf } from "./avatars.ts";
 import type { PaperclipIds } from "./ids.ts";
 import { type JsonRecord, text } from "./json.ts";
 
@@ -71,7 +71,7 @@ export function toAgent(context: MapContext, record: JsonRecord): MessagingAgent
     return undefined;
   }
   const title = text(record, "title");
-  const avatar = avatarSegment(text(record, "avatarUrl"));
+  const avatar = avatarPathOf(text(record, "avatarUrl"));
   return {
     id: context.ids.make("agent", id),
     source: context.ids.source(),
