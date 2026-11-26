@@ -2,6 +2,7 @@
 
 - Approval: scope set on HAL-19025; the package owner (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:1JT7YTN9eAyTbwSyGRWmBVmfY91HVdtSbbCc+UgeDdY7kRb9oXQWWIuCYgGjC7/9DRJqjtB+vGF+8AqBN/O/Dw==
 
 ## What changes
 
