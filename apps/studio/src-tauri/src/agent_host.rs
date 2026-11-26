@@ -68,6 +68,8 @@ use refusal::{poisoned, unavailable};
 pub mod progress;
 use progress::StartProgress;
 pub use progress::page_loaded;
+#[cfg(desktop)]
+pub use progress::since_page_loaded;
 
 /// How long the host may take to unpack its files and serve. The installer's
 /// wait for `started-<version>` (windows/installer.nsi, `WaitForStartOrGoBack`)

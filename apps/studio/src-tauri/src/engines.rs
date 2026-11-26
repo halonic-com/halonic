@@ -30,6 +30,7 @@ use tauri::{AppHandle, Manager, Runtime, Webview};
 use crate::engine::EngineState;
 use crate::engine_table::{AfterCrash, EngineTable, EnginesSummary};
 use crate::git::GitState;
+use crate::open_timings;
 use crate::profile::cli_profile;
 use crate::secrets::SecretsState;
 
@@ -96,7 +97,13 @@ fn open<R: Runtime>(
         .folders()
         .check(Path::new(location))
         .map_err(|_| refusal("folder_not_open", "the shell hasn't opened that folder"))?;
+    let asked = Instant::now();
+    let asked_after_page_load = crate::agent_host::since_page_loaded(app);
     let handshake = running_engine(app, &workspace, location, Some(window))?;
+    open_timings::record(open_timings::engine_open_line(
+        asked_after_page_load,
+        asked.elapsed(),
+    ));
     connect(app, window, handshake)
 }
 

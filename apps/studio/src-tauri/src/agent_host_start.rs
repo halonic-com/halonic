@@ -6,7 +6,7 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use halonic_agent_host::{
     AgentHost, AgentHostError, Handshake, SettingCopy, WslError, copy_sandbox_setting,
@@ -27,6 +27,7 @@ use super::{
     AgentHostState, DistroCommand, HostRefusal, Launch, START_WAIT, poisoned, unavailable,
 };
 use crate::git::GitState;
+use crate::open_timings::{self, StepTimes};
 use crate::profile::cli_profile;
 use crate::secrets::SecretsState;
 
@@ -48,6 +49,10 @@ pub(super) async fn running_host<R: Runtime>(app: &AppHandle<R>) -> Result<Hands
         let (mut started, updates) = match start_host(&app, &state) {
             Ok(started) => {
                 state.progress.host_started();
+                let since = state.progress.since_page_loaded(Instant::now());
+                if let Some(line) = open_timings::ready_line(since) {
+                    open_timings::record(line);
+                }
                 started
             }
             Err(refusal) => {
@@ -85,18 +90,27 @@ fn start_host<R: Runtime>(
         }
         Launch::Real => match chosen_host(app)? {
             (HostKind::Local, _) => {
-                let started = start_local(real_host_command(app)?, Some(host_keychain(app)))?;
+                let command = real_host_command(app)?;
+                let mut times = StepTimes::starting_at(Instant::now());
+                let started =
+                    times.timed("start", || start_local(command, Some(host_keychain(app))))?;
+                open_timings::record(times.line("the agent host started beside the shell"));
                 Ok((started, None))
             }
             (HostKind::Distro, setting) => {
-                let (wsl, command) = distro_host_command_for_real_wsl()?;
+                let mut times = StepTimes::starting_at(Instant::now());
+                let (wsl, command) = times.timed("wsl", distro_host_command_for_real_wsl)?;
                 state.progress.wsl_ready();
-                clean_import_mounts(&wsl);
-                install_runtime_beside_shell(&wsl)?;
-                copy_into_distro(&wsl, setting.as_ref())?;
-                run_security_update(&wsl);
-                let started = start_in_distro(&command, Some(host_keychain(app)))?;
-                Ok((started, Some(read_in_distro(&wsl))))
+                times.timed("mounts", || clean_import_mounts(&wsl));
+                times.timed("runtime", || install_runtime_beside_shell(&wsl))?;
+                times.timed("copy", || copy_into_distro(&wsl, setting.as_ref()))?;
+                times.timed("security update", || run_security_update(&wsl));
+                let started = times.timed("start", || {
+                    start_in_distro(&command, Some(host_keychain(app)))
+                })?;
+                let checks = times.timed("checks", || read_in_distro(&wsl));
+                open_timings::record(times.line("the agent host started in the distro"));
+                Ok((started, Some(checks)))
             }
         },
     }
