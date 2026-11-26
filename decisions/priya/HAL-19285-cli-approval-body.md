@@ -17,7 +17,9 @@ required is dropped.
 - `cli.commands.init.create-workspace`: the fix for a folder that isn't empty now gives an example
   name: "Pick a new folder name, for example halonic init my-workspace, or run it in an empty folder."
 - `cli.commands.serve.npm-package-page`: the line under "Serving" now names the way in for an npm
-  user, the phone app and `halonic serve pair`, and a browser's `GET /` with `Accept: text/html`
+  user, the Halonic app for Android and `halonic serve pair`; without `--network` or
+  `--public-origin` it says to serve with `halonic serve --network` first, since a phone can't
+  reach `localhost`. A a browser's `GET /` with `Accept: text/html`
   gets a plain HTML page with that line instead of the JSON 404. Every other path and every
   request that doesn't ask for HTML gets the same answer as before.
 - The `run` waiting golden (`support-reply-waiting.txt`) and the `runs show` waiting test now show

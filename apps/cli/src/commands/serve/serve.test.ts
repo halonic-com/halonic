@@ -377,7 +377,7 @@ verifies("cli.commands.serve.npm-package-page", () => {
     const address = addressOf(io.stdout[0]);
 
     expect(io.stdout[2]).toBe(
-      "Open it from the Halonic app on your phone: run halonic serve pair to add it. The Studio page for a browser doesn't come with the npm package.",
+      "The Studio page for a browser doesn't come with the npm package. To open it from the Halonic app for Android, serve it with halonic serve --network, then run halonic serve pair.",
     );
     expect((await fetch(`${address}/`)).status).toBe(404);
     expect((await fetch(`${address}/api/hello`)).status).toBe(200);
@@ -400,7 +400,7 @@ verifies("cli.commands.serve.npm-package-page", () => {
     expect(page.status).toBe(200);
     expect(page.headers.get("Content-Type")).toBe("text/html; charset=utf-8");
     expect(await page.text()).toContain(
-      "<p>Open it from the Halonic app on your phone: run halonic serve pair to add it. The Studio page for a browser doesn't come with the npm package.</p>",
+      "<p>The Studio page for a browser doesn't come with the npm package. To open it from the Halonic app for Android, serve it with halonic serve --network, then run halonic serve pair.</p>",
     );
     expect(elsewhere.status).toBe(404);
     expect(await elsewhere.json()).toMatchObject({ code: "not_found" });

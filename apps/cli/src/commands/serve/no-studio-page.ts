@@ -24,21 +24,25 @@ export async function studioPageIsBuilt(studioFolder: string): Promise<boolean> 
  * `server` as it is when the npm package's missing page isn't the case
  * (`noPage` false). Else `server`, with a browser's `GET /` (or `HEAD /`) that
  * asks for HTML and would get a 404 answered by a plain page saying how to
- * open the workspace.
+ * open the workspace; `reachable` as for `serveMessages.studioNotInPackage`.
  * Every other path, and a request that doesn't ask for HTML, gets the
  * server's own answer, so a script still reads the JSON it reads today.
  *
  * @example
- * answerBrowserWithoutStudio(server, true);
- * // GET / with "Accept: text/html" → 200, "<p>Open it from the Halonic app on your phone: …</p>"
+ * answerBrowserWithoutStudio(server, true, true);
+ * // GET / with "Accept: text/html" → 200, "<p>Open it from the Halonic app for Android: …</p>"
  */
-export function answerBrowserWithoutStudio(server: Server, noPage: boolean): Server {
+export function answerBrowserWithoutStudio(
+  server: Server,
+  noPage: boolean,
+  reachable: boolean,
+): Server {
   if (!noPage) return server;
   return {
     async handle(request, context) {
       const response = await server.handle(request, context);
       if (response.status !== 404 || !asksForThePage(request)) return response;
-      const page = noStudioPage();
+      const page = noStudioPage(reachable);
       return new Response(request.method === "HEAD" ? null : page, {
         status: 200,
         headers: {

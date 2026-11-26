@@ -265,6 +265,7 @@ async function serveVersions(
         await printServing(context, setup, versions, deviceConsole, {
           name: printable(workspaceNameOf(workspace, dir)),
           address: listen.publicOrigin ?? `http://localhost:${server.port}`,
+          reachable: reachableFromPhone(listen),
         });
         await stopped(engine.signal);
       } finally {
@@ -286,12 +287,12 @@ async function printServing(
   setup: ServeSetup,
   versions: WatchedVersions,
   deviceConsole: ServeConsole,
-  served: { readonly name: string; readonly address: string },
+  served: { readonly name: string; readonly address: string; readonly reachable: boolean },
 ): Promise<void> {
   context.printAhead(serveMessages.serving(served.name, served.address).phrase);
   if (!(await passwordIsSet(context))) context.printAhead(serveMessages.noPassword().phrase);
   if (deviceConsole.warning !== null) context.warn(deviceConsole.warning);
-  const studioLine = await studioPageLine(setup);
+  const studioLine = await studioPageLine(setup, served.reachable);
   if (studioLine !== null) context.printAhead(studioLine);
   // Each webhook routine's address, so a routine that never starts says why (HAL-14299).
   const loaded = await versions.routines.listLoaded();
@@ -306,10 +307,15 @@ function studioFolderOf(setup: ServeSetup): string | null {
     : setup.studioFolder;
 }
 
+/** Whether a phone can reach the address: served with `--network` or `--public-origin`. */
+function reachableFromPhone(listen: ListenChoice): boolean {
+  return listen.network || listen.publicOrigin !== undefined;
+}
+
 /** The line under the "Serving" line about the Studio page, or null when the page is there and current. */
-async function studioPageLine(setup: ServeSetup): Promise<Phrase | null> {
+async function studioPageLine(setup: ServeSetup, reachable: boolean): Promise<Phrase | null> {
   const studioFolder = studioFolderOf(setup);
-  if (studioFolder === null) return serveMessages.studioNotInPackage().phrase;
+  if (studioFolder === null) return serveMessages.studioNotInPackage(reachable).phrase;
   if (!(await studioPageIsBuilt(studioFolder))) return serveMessages.studioNotBuilt().phrase;
   if (await isOutdated(setup, studioFolder)) return serveMessages.studioOutdated().phrase;
   return null;
@@ -431,6 +437,7 @@ async function listenOnComputer(
             ports,
           }),
           studioFolder === null,
+          reachableFromPhone(listen),
         ),
         {
           routineName: async (key) => (await findWebhookRoutine(key))?.routine.name ?? null,
