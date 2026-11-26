@@ -223,10 +223,11 @@ export class LocalExecutor implements RunExecutor {
    * needs a person's OK for is recorded in the run as `approval.requested`,
    * and answered by a `send` of `approve` or `reject`; the first answer wins.
    * With no harness call of the run going on, or no `runs`, every request is
-   * answered with no.
+   * answered with no. `attemptId` names the bridge's own harness call
+   * among the run's, as the bridge's agent carries it (HAL-19425).
    */
-  bridgeApprovals(runId: string): BridgeApprovals {
-    return this.runs?.bridgeApprovals(runId) ?? noRunApprovals;
+  bridgeApprovals(runId: string, attemptId?: string): BridgeApprovals {
+    return this.runs?.bridgeApprovals(runId, attemptId) ?? noRunApprovals;
   }
 
   /**

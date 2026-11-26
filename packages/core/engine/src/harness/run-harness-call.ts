@@ -22,7 +22,7 @@ import type {
 import { type StopSignal, StopSource } from "@halonicjs/std";
 import { type CallBudget, noCallBudget } from "../budget/call-budget.ts";
 import type { RunHarnessEffect } from "../kernel/decide-types.ts";
-import type { AskingCall } from "../run/bridge-approvals.ts";
+import type { AskingCall, ListedCall } from "../run/bridge-approvals.ts";
 import { StartFailedError } from "../run/start-failed-error.ts";
 import { BlockedAccesses } from "./blocked-accesses.ts";
 import { bridgeRecorderOf } from "./bridge-recorder.ts";
@@ -106,8 +106,8 @@ export interface HarnessCall {
 
 /** Where running harness calls list themselves for their bridge's approvals, as `RunBridgeApprovals` does. */
 export interface BridgeCallList {
-  /** @returns the function that takes the call off the list again */
-  add(runId: string, call: AskingCall): () => void;
+  /** @returns the attempt id the bridge is opened with, and how to take the call off the list again */
+  add(runId: string, call: AskingCall): ListedCall;
 }
 
 /**
@@ -277,16 +277,24 @@ async function runInBridge(
   const { options, call, agent, harness, log, stop } = started;
   const { effect } = call;
   const model = await programModelOf(options, call);
-  const bridge = await unlessStopped(
-    stop,
-    options.bridges.open(agent, recorder, placement.runsOn),
-    (late) => late.close(),
-  );
   // Under the call's own stop: an attempt of the early hedge is stopped apart from its run.
-  const unlist = call.bridgeCalls?.add(call.runId, {
+  // The bridge is opened with the attempt id, so its questions find this call (HAL-19425).
+  const listed = call.bridgeCalls?.add(call.runId, {
     approvals: started.approvals,
     log,
     stop: engineStop,
+  });
+  const bridge = await unlessStopped(
+    stop,
+    options.bridges.open(
+      listed === undefined ? agent : { ...agent, attemptId: listed.attemptId },
+      recorder,
+      placement.runsOn,
+    ),
+    (late) => late.close(),
+  ).catch((error: unknown) => {
+    listed?.unlist();
+    throw error;
   });
   let instructions: OpenInstructions | null = null;
   try {
@@ -356,7 +364,7 @@ async function runInBridge(
     }
   } finally {
     // The program and its session have stopped by now, so the bridge asks nothing more.
-    unlist?.();
+    listed?.unlist();
     // After the session: the sandbox may still read the folder until it has closed.
     await instructions?.release();
     await bridge.close();

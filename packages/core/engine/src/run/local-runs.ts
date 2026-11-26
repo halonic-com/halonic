@@ -266,8 +266,8 @@ export class LocalRuns {
   }
 
   /** The approvals of one run's bridge ({@link LocalHarnessCalls.bridgeApprovals}). */
-  bridgeApprovals(runId: string) {
-    return this.#harnessCalls.bridgeApprovals(runId);
+  bridgeApprovals(runId: string, attemptId?: string) {
+    return this.#harnessCalls.bridgeApprovals(runId, attemptId);
   }
 
   /** The remote decisions on one run's bridge ({@link LocalHarnessCalls.bridgeRemoteDecisions}). */

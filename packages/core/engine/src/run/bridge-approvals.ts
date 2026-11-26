@@ -61,35 +61,48 @@ export interface AskingCall {
   readonly stop: StopSignal;
 }
 
+/** A harness call listed for its bridge's approvals ({@link RunBridgeApprovals.add}). */
+export interface ListedCall {
+  /** Names this call's bridge apart from the run's other bridges open at the same time. */
+  readonly attemptId: string;
+  /** Takes the call off the list again, once it ended. */
+  unlist(): void;
+}
+
 /**
  * The bridge approvals of the runs of one engine. A harness call lists
- * itself here while it runs; a request finds the call by the run it is for.
- * A request with no call to ask through, or with more than one (the run
- * can't tell which one the program belongs to), is answered with no. Nothing
- * here ever answers yes by itself.
+ * itself here while its bridge is open, under an attempt id of its own; a
+ * request finds the call by the run and the attempt it is for (HAL-19425),
+ * so each attempt of the early hedge asks through its own approvals. A
+ * request that names no attempt finds the run's only call. A request with no
+ * call to ask through, or with more than one and no attempt to pick one by,
+ * is answered with no. Nothing here ever answers yes by itself.
  */
 export class RunBridgeApprovals {
-  readonly #calls = new Map<string, Set<AskingCall>>();
+  readonly #calls = new Map<string, Map<string, AskingCall>>();
   /** The run's call id of each question that waits, by run and then by the bridge's own call id. */
   readonly #asked = new Map<string, Map<string, string>>();
+  #attempts = 0;
 
-  /**
-   * Lists a running harness call.
-   *
-   * @returns the function that takes the call off the list again, once it ended
-   */
-  add(runId: string, call: AskingCall): () => void {
-    const calls = this.#calls.get(runId) ?? new Set<AskingCall>();
-    calls.add(call);
+  /** Lists a running harness call under a new attempt id. */
+  add(runId: string, call: AskingCall): ListedCall {
+    this.#attempts += 1;
+    const attemptId = `attempt_${this.#attempts}`;
+    const calls = this.#calls.get(runId) ?? new Map<string, AskingCall>();
+    calls.set(attemptId, call);
     this.#calls.set(runId, calls);
-    return () => {
-      calls.delete(call);
-      if (calls.size === 0 && this.#calls.get(runId) === calls) this.#calls.delete(runId);
+    return {
+      attemptId,
+      unlist: () => {
+        calls.delete(attemptId);
+        if (calls.size === 0 && this.#calls.get(runId) === calls) this.#calls.delete(runId);
+      },
     };
   }
 
   /**
-   * The approvals of one run's bridge. A request asks through the run, one
+   * The approvals of one run's bridge: the bridge of the attempt `attemptId`
+   * names, or with none, the run's only bridge. A request asks through the run, one
    * question at a time: the call's log is held while a question waits, so
    * the next waits behind it.
    *
@@ -98,13 +111,13 @@ export class RunBridgeApprovals {
    * to what was asked; one still waiting its turn is dropped and never asked.
    * The program gets no yes from either.
    */
-  of(runId: string): BridgeApprovals {
+  of(runId: string, attemptId?: string): BridgeApprovals {
     return {
       request: async (
         { callId, tool, connector, args },
         { signal },
       ): Promise<BridgeApprovalDecision> => {
-        const call = this.#onlyCallOf(runId);
+        const call = this.#callOf(runId, attemptId);
         if (call === undefined) return { approved: false, comment: bridgeNoCallComment };
         signal.throwIfAborted();
         try {
@@ -165,10 +178,11 @@ export class RunBridgeApprovals {
     }
   }
 
-  #onlyCallOf(runId: string): AskingCall | undefined {
+  #callOf(runId: string, attemptId: string | undefined): AskingCall | undefined {
     const calls = this.#calls.get(runId);
+    if (attemptId !== undefined) return calls?.get(attemptId);
     if (calls === undefined || calls.size !== 1) return undefined;
-    return [...calls][0];
+    return [...calls.values()][0];
   }
 }
 

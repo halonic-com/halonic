@@ -57,10 +57,11 @@ export interface StudioHarnessInput extends StudioKeyParts {
   /** The person's trusted instructions, which the shell keeps; a run whose instructions aren't trusted doesn't start. */
   readonly instructionTrust: Pick<InstructionTrustService, "check">;
   /**
-   * The approvals of one run's bridge, asked when the bridge opens. Called
-   * only once the engine is built; `refusingApprovals` until then.
+   * The approvals of one run's bridge, asked when the bridge opens: the
+   * bridge of the attempt `attemptId` names, when the engine opened it with
+   * one (HAL-19425). Called only once the engine is built; `refusingApprovals` until then.
    */
-  approvalsOf(runId: string): BridgeApprovals | undefined;
+  approvalsOf(runId: string, attemptId?: string): BridgeApprovals | undefined;
   /**
    * Takes the decisions a phone makes on one run's bridge questions into the
    * same approvals. Called only once the engine is built; until then, and
@@ -176,7 +177,7 @@ async function bridgeServicesOf(
   const remoteDecisions = input.remoteDecisionsOf(agent.runId);
   return {
     ...served,
-    approvals: input.approvalsOf(agent.runId) ?? refusingApprovals,
+    approvals: input.approvalsOf(agent.runId, agent.attemptId) ?? refusingApprovals,
     ...(remoteDecisions === undefined ? {} : { remoteDecisions }),
     secrets: keys.bridgeSecrets,
   };

@@ -49,6 +49,12 @@ export interface HarnessAgent {
    */
   readonly harness: ProgramHarness;
   /**
+   * Which of the run's bridges open at once this is, as the engine opened it:
+   * an attempt of the early hedge asks through its own approvals
+   * (HAL-19425). Only a bridge's agent has one.
+   */
+  readonly attemptId?: string;
+  /**
    * The agent's file as the call reads it: the run's kept definitions, or
    * for a chat turn the workspace's. The host reads the working folder and
    * the allowed sites from here, never from today's files.
