@@ -1,6 +1,7 @@
 import { type CopyAgent, copyTaskOf } from "../pr-tools/approval-copy.ts";
 import { branchOwner } from "../pr-watcher/decide.ts";
-import { reviewerRoleFor, routineRefusal } from "../reviewer-paths.ts";
+import { routineRefusal } from "../reviewer-paths.ts";
+import { pathReviewer } from "../reviewer-paths-who.ts";
 import { type ImportComment, importDrafts } from "../verdicts/import.ts";
 import { judgeVerdicts, type VerdictPull, type Verdicts } from "../verdicts/reader.ts";
 import type { VerdictDraft, VerdictRecord } from "../verdicts/record.ts";
@@ -76,11 +77,10 @@ export function verdictPullOf(
 ): VerdictPull {
   const all = pull.filesTotal <= pull.files.length;
   const routed = routedOf(pull);
-  const byPaths = reviewerRoleFor(routed) === "code-reviewer" ? "liam" : "julian";
   return {
     head: pull.head,
     author: pull.crossRepository ? undefined : branchOwner(pull.branch),
-    reviewer: all ? byPaths : undefined,
+    reviewer: all ? pathReviewer(routed) : undefined,
     routineRefusal: all ? routineRefusal(routed) : `${pull.filesTotal} files (can't check all)`,
     fingerprint: patchIds[pull.head] ?? null,
   };

@@ -1,4 +1,10 @@
 import { judgeApprovals } from "../pr-tools/approvals.ts";
+import {
+  approvalRole,
+  limitedReviewerNames as limitedReviewers,
+  type Reviewer,
+  reviewerNames,
+} from "../reviewer-paths-who.ts";
 import { type Answers, answeredKey, answerLine } from "./answered.ts";
 import { carriedOnHead } from "./carry-over.ts";
 import {
@@ -18,18 +24,7 @@ import {
  * `decide.ts`; `watch.ts` carries them out.
  */
 
-/** Who reviews a pull request on `halonic` (HAL-14809, HAL-19283). */
-export type Reviewer = "nora" | "julian" | "liam";
-
-/** Each reviewer's name as their signed line writes it. */
-const reviewerNames: Readonly<Record<Reviewer, string>> = {
-  nora: "Nora",
-  julian: "Julian",
-  liam: "Liam",
-};
-
-/** The reviewers whose approval counts only within their limits: Julian's, and Nora's routine scope. */
-const limitedReviewers: readonly string[] = ["Julian", "Nora"];
+export type { Reviewer };
 
 /** What a pull request's paths say: its reviewer, and whether they make it a security one. */
 export interface PathReview {
@@ -137,7 +132,7 @@ export function refusalOf(pull: PullFacts, paths: PathReview): string | null {
   const judged = judgeApprovals(pull.approvals ?? [], {
     head: pull.head,
     author: branchOwner(pull.branch),
-    reviewer: paths.reviewer === "liam" ? "liam" : "julian",
+    reviewer: approvalRole(paths.reviewer),
     ...(paths.rebaseRefusal === undefined ? {} : { rebaseRefusal: paths.rebaseRefusal }),
     ...(paths.routineRefusal === undefined ? {} : { routineRefusal: paths.routineRefusal }),
   }).filter(({ head }) => pull.head.startsWith(head));
@@ -205,28 +200,6 @@ export function waitingForReview(
   const waiting = open.filter((pull) => !approvedOrCarried(pull, refused, memory) && !pull.inQueue);
   const unreported = (pull: PullFacts) => !memory.reported.has(handoffKey(pull, refused, answers));
   return waiting.some(unreported) ? waiting : [];
-}
-
-/**
- * The reviewer of the task: Liam when any of its pull requests is his by
- * the path rules, else Julian when any is his, else Nora (HAL-19283). Liam's
- * own pull requests go to Julian, whose approval counts on any path there,
- * and Julian's go to Liam (HAL-14809).
- */
-export function reviewerOf(author: string | undefined, byPaths: readonly Reviewer[]): Reviewer {
-  if (author === "liam") {
-    return "julian";
-  }
-  if (author === "julian") {
-    return "liam";
-  }
-  if (byPaths.includes("liam")) {
-    return "liam";
-  }
-  // Nora never reviews her own: her pull requests go to Julian at the least.
-  return byPaths.includes("julian") || byPaths.length === 0 || author === "nora"
-    ? "julian"
-    : "nora";
 }
 
 /** The newest approval by someone else, on an older head, of a pull request not approved on its head. */

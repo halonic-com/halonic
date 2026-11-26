@@ -12,12 +12,11 @@ import {
 import {
   isSecurityPath,
   julianRebaseRefusal,
-  reviewerFor,
-  reviewerRoleFor,
   routedPaths,
   routineRefusal,
 } from "../reviewer-paths.ts";
 import { manifestFileOf } from "../reviewer-paths-manifest.ts";
+import { pathReviewer, reviewerOfPull } from "../reviewer-paths-who.ts";
 import type { Routing } from "../routing.ts";
 import { type CopyReader, readCopySource, withCopies } from "./approval-copy.ts";
 import { type Approval, approvals, type PullComment } from "./approvals.ts";
@@ -61,7 +60,7 @@ export interface PrStatus {
   /**
    * The reviewer by the path rules (HAL-14809), from the changed files and
    * lines: the agent the routing names for the role, or today's person
-   * without a routing. Whose signed approval counts doesn't follow the
+   * without a routing, never the author (`reviewerOfPull`, HAL-19639). Whose signed approval counts doesn't follow the
    * routing: a routing never widens who may approve.
    */
   readonly reviewer: string;
@@ -193,7 +192,7 @@ export async function prStatus(
   const judged = approvals(comments, {
     head,
     author,
-    reviewer: reviewerRoleFor(routed) === "code-reviewer" ? "liam" : "julian",
+    reviewer: pathReviewer(routed),
     rebaseRefusal,
     routineRefusal: routineRefusal(routed),
   });
@@ -201,7 +200,7 @@ export async function prStatus(
     copies === undefined
       ? { approvals: judged }
       : await judgedWithCopies(judged, copies, ours, pull.head);
-  const reviewer = reviewerFor(routed, routing);
+  const reviewer = reviewerOfPull(routed, author, routing);
   const manifestFile = manifestFileOf(paths);
   const title = shownTitle(pull);
   return {
