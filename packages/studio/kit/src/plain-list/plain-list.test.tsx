@@ -133,6 +133,16 @@ verifies("kit.plain-list", () => {
     expect(classesOf(action)).not.toContain("top-2");
   });
 
+  it("rings the focused action inside its box, so the ring never covers the unread count", () => {
+    const { row } = renderRow({ action: { label: "Mark as unread", onClick: () => undefined } });
+    const action = row.querySelector(":scope > button:last-child") as HTMLButtonElement;
+
+    expect(classesOf(action)).toEqual(
+      expect.arrayContaining(["focus-ring-inset", "pe-1", "-me-1"]),
+    );
+    expect(classesOf(action)).not.toContain("focus-ring");
+  });
+
   it("leaves a row without an action on its own hover fill", () => {
     const { button } = renderRow();
 

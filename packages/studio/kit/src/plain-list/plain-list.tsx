@@ -75,10 +75,11 @@ const rowWithActionClasses = `${rowClasses} group-hover:bg-surface-muted group-f
  * The action sits over the title's end, so it carries the row's fill and covers what's under it.
  * While hidden it takes no clicks, so a tap where hover doesn't apply opens the row instead; it
  * stays in the tab order. Its box is 24px high (WCAG 2.5.8), raised 2px so its words stay on the
- * title's line (HAL-19643).
+ * title's line (HAL-19643). Its focus ring is inset, so it never covers the unread count below;
+ * `pe-1` gives the ring air and `-me-1` keeps the label's end lined up with the time (HAL-19656).
  */
 const actionClasses =
-  "absolute end-3 top-1.5 min-h-6 rounded-sm bg-surface-muted ps-2 text-small text-fg-muted opacity-0 pointer-events-none transition-opacity duration-(--duration-fast) hover:text-fg focus-ring group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100";
+  "absolute end-3 -me-1 top-1.5 min-h-6 rounded-sm bg-surface-muted ps-2 pe-1 text-small text-fg-muted opacity-0 pointer-events-none transition-opacity duration-(--duration-fast) hover:text-fg focus-ring-inset group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100";
 
 /**
  * One row of a `PlainList`: its picture, its title over one line, its time on the right and its
