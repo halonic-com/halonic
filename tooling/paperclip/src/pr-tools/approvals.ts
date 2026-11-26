@@ -1,4 +1,5 @@
 import { byReviewer } from "../pr-watcher/github.ts";
+import type { ReviewRole } from "../reviewer-paths.ts";
 import type { CopyState } from "./approval-copy.ts";
 
 /**
@@ -9,11 +10,12 @@ import type { CopyState } from "./approval-copy.ts";
  * request Liam wrote; nobody approves their own. Julian's "re-approved on
  * head `<new>` (rebase only, range-diff vs `<old>`)" also counts outside his
  * limits when Liam approved `<old>` and `julianRebaseRefusal` allows it, as
- * in the Merger's gate (`merge-control/approval.ts`, HAL-18459).
+ * in the Merger's gate (`merge-control/approval.ts`, HAL-18459). Nora's
+ * counts only where the routine reviewer may approve alone (HAL-19248).
  */
 
 /** The reviewers whose signed approvals count. */
-export const reviewers: readonly string[] = ["Liam", "Julian"];
+export const reviewers: readonly string[] = ["Liam", "Julian", "Nora"];
 
 /** One signed approval found on the pull request. */
 export interface Approval {
@@ -80,6 +82,11 @@ export interface ApprovedPull {
    */
   readonly reviewer: "julian" | "liam" | undefined;
   /**
+   * The role by the path rules (`reviewerRoleFor`, which the Merger's
+   * `outsideNoraScope` applies too), or undefined when the changed files weren't read.
+   */
+  readonly role?: ReviewRole;
+  /**
    * Why Julian's rebase-only re-approval can't count here
    * (`julianRebaseRefusal`), null when it can, or undefined when the changed
    * files weren't read.
@@ -102,6 +109,9 @@ export function judgeApprovals(signed: readonly SignedApproval[], pull: Approved
     if (by.toLowerCase() === pull.author) {
       return { ...approval, counts: false, note: "the author's own pull request" };
     }
+    if (by === "Nora") {
+      return noraApproval(approval, pull.role);
+    }
     if (by !== "Julian") {
       return { ...approval, counts: true };
     }
@@ -117,6 +127,21 @@ export function judgeApprovals(signed: readonly SignedApproval[], pull: Approved
           note: "only within his limits (HAL-14809); pr_status checks",
         };
   });
+}
+
+/**
+ * Nora's counts only where the routine reviewer may approve alone
+ * (`routineRefusal`, HAL-19246), without Julian's exceptions: no pull
+ * request Liam wrote on any path, no rebase-only re-approval outside them
+ * (HAL-19248).
+ */
+function noraApproval(approval: SignedApproval, role: ApprovedPull["role"]): Approval {
+  if (role !== undefined && role !== "routine-reviewer") {
+    return { ...approval, counts: false, note: "outside Nora's limits (the routine reviewer's)" };
+  }
+  return role === "routine-reviewer"
+    ? { ...approval, counts: true, note: "unless it's a security or release pull request" }
+    : { ...approval, counts: true, note: "only within her limits (HAL-19248); pr_status checks" };
 }
 
 /**

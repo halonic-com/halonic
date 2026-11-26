@@ -193,6 +193,14 @@ function excluded(row: GateRow, limits: FillLimits): string | undefined {
   return undefined;
 }
 
+/** Who approved, for the log line: Julian or Nora within their scope, or nothing. */
+function approvalTag(approval: GateRow["approval"]): string {
+  if (approval?.julian === true) {
+    return "(approval=julian)";
+  }
+  return approval?.nora === true ? "(approval=nora)" : "";
+}
+
 /** Sends the enqueue and its carry-over note, and logs it. */
 function enqueue(
   context: PassContext,
@@ -216,11 +224,7 @@ function enqueue(
     commentOnce(context, "carried", number, head, texts.carried(carried, head));
     logLine(context, "fill", `added #${number}(approval=carried (rebase, identical diff))`);
   } else {
-    logLine(
-      context,
-      "fill",
-      `added #${number}${row.approval?.julian === true ? "(approval=julian)" : ""}`,
-    );
+    logLine(context, "fill", `added #${number}${approvalTag(row.approval)}`);
   }
 }
 

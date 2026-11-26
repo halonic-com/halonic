@@ -2,7 +2,9 @@ import {
   isLiamPath,
   julianRebaseRefusal,
   overLineLimit,
+  type RoutedPull,
   reviewerRoleFor,
+  routineRefusal,
 } from "../reviewer-paths.ts";
 import { anySignedApproval, blockWords, fixedWords, signedApproval } from "./signed.ts";
 import type { GatePull, PullText } from "./snapshot.ts";
@@ -11,15 +13,20 @@ import type { GatePull, PullText } from "./snapshot.ts";
  * The approval rules of the gate (MERGER.md §4, rules 1–6): signed
  * approvals on the current head after the last push, carry-over across a
  * rebase with an identical diff, Julian within `reviewerRoleFor` or re-approving
- * after a rebase-only push (HAL-18459), "Author: Liam", and open change
- * requests. The texts follow the Merger's own matching,
+ * after a rebase-only push (HAL-18459), "Author: Liam", Nora within the routine
+ * reviewer's scope (HAL-19248, board 26 Nov) and open change requests. The texts follow
+ * the Merger's own matching,
  * which differs from `pr-tools/approvals.ts`: a bare "re-approved on head"
  * counts here (HAL-15553), and time after the last push matters. A signed
  * line counts on any line of a comment, outside code and quotes, once, and
  * never in a change request (`signed.ts`, HAL-17946, HAL-17927).
  */
 
-const signedLine = /^[ \t]*(Liam|Julian):/im;
+const signedLine = /^[ \t]*(Liam|Julian|Nora):/im;
+const reviewerName = /\b(Liam|Julian|Nora)\b/;
+
+/** A reviewer whose approval counts within Julian's scope. */
+type ScopedReviewer = "Julian" | "Nora";
 const rejectWords =
   /\b(changes requested|request(ing)? changes|blocking|not approved|do not merge|don't merge|needs? (a )?(fix|rework|changes)|reject)/i;
 
@@ -29,6 +36,8 @@ export interface ApprovalVerdict {
   readonly at?: string;
   /** Approved by Julian within his scope. */
   readonly julian?: boolean;
+  /** Approved by Nora within her scope, which is Julian's (HAL-19248). */
+  readonly nora?: boolean;
   /** The older head whose approval carried over. */
   readonly carried?: string;
   /** Names another head. */
@@ -106,16 +115,17 @@ export type JulianApproval = ApprovalVerdict & {
   readonly rebaseOf?: string;
 };
 
-/** Julian's newest signed approval, with whether it holds on the head. */
+/** Julian's (or Nora's) newest signed approval, with whether it holds on the head. */
 export function julianApproval(
   pull: GatePull,
   teamLogin: string,
   patchIds: Readonly<Record<string, string | null>>,
+  reviewer: ScopedReviewer = "Julian",
 ): JulianApproval | null {
   const text = teamTexts(pull, teamLogin)
-    .filter((each) => !ours(each) && signedApproval(each.body, "Julian") !== null)
+    .filter((each) => !ours(each) && signedApproval(each.body, reviewer) !== null)
     .pop();
-  const signed = text === undefined ? null : signedApproval(text.body, "Julian");
+  const signed = text === undefined ? null : signedApproval(text.body, reviewer);
   if (text === undefined || signed === null) {
     return null;
   }
@@ -159,14 +169,27 @@ export function rebaseOnlyAfterLiam(
 
 /** Why Julian's approval doesn't count here, or null when it is within his scope (HAL-14809). */
 export function outsideJulianScope(pull: GatePull): string | null {
+  return outsideScope(pull, "Julian");
+}
+
+/**
+ * Why Nora's approval doesn't count here: Julian's limits, never on her own
+ * branch, and none of the routine reviewer's exclusions (`routineRefusal`:
+ * core, host, the spec helper, a public interface; HAL-19246, HAL-19248).
+ */
+export function outsideNoraScope(pull: GatePull): string | null {
+  return outsideScope(pull, "Nora");
+}
+
+function outsideScope(pull: GatePull, reviewer: ScopedReviewer): string | null {
   if (pull.filesTotal > pull.files.length) {
     return `${pull.filesTotal} files (can't check all)`;
   }
   if (pull.branch.startsWith("changeset-release/")) {
     return "changeset-release branch";
   }
-  if (pull.branch.startsWith("julian/")) {
-    return "Julian's own branch";
+  if (pull.branch.startsWith(`${reviewer.toLowerCase()}/`)) {
+    return `${reviewer}'s own branch`;
   }
   const changedLines = pull.additions + pull.deletions;
   const routed = {
@@ -177,9 +200,14 @@ export function outsideJulianScope(pull: GatePull): string | null {
   };
   // By role, as the PR watcher routes (`reviewerRoleFor`): a routing never widens Julian's limits.
   // The routine reviewer's scope (HAL-19246) is inside them, so Julian's approval counts there too.
-  if (reviewerRoleFor(routed) !== "code-reviewer") {
-    return null;
+  if (reviewerRoleFor(routed) === "code-reviewer") {
+    return codeReviewerReason(pull, routed);
   }
+  return reviewer === "Nora" ? routineRefusal(routed) : null;
+}
+
+/** Why only the code reviewer may approve this pull request, in the gate's words. */
+function codeReviewerReason(pull: GatePull, routed: RoutedPull): string {
   const bad = pull.files.filter(isLiamPath);
   if (bad.length > 0) {
     return `touches ${bad.slice(0, 2).join(", ")}${bad.length > 2 ? " …" : ""}`;
@@ -240,9 +268,8 @@ function julianVerdict(
   }
   const liamOwn = pull.branch.startsWith("liam/");
   const anyPath = liamOwn && julian.authorLiam && !pull.branch.startsWith("changeset-release/");
-  const liamRequest = liamChangeRequestAt(pull, teamLogin);
-  if (liamRequest !== "" && liamRequest >= lastPushOf(pull)) {
-    return { note: "waiting for Liam: his change request on this head is still open" };
+  if (liamRequestOpen(pull, teamLogin)) {
+    return { note: liamRequestNote };
   }
   const out = anyPath ? null : outsideJulianScope(pull);
   if (out === null || (!liamOwn && rebaseOnlyAfterLiam(pull, teamLogin, julian))) {
@@ -256,10 +283,42 @@ function julianVerdict(
   };
 }
 
+const liamRequestNote = "waiting for Liam: his change request on this head is still open";
+
+function liamRequestOpen(pull: GatePull, teamLogin: string): boolean {
+  const liamRequest = liamChangeRequestAt(pull, teamLogin);
+  return liamRequest !== "" && liamRequest >= lastPushOf(pull);
+}
+
+/**
+ * Nora's approval when it counts, or the note that says why it doesn't. She
+ * shares Julian's scope without his exceptions: no "Author: Liam" on any
+ * path, no rebase-only re-approval outside it (board, 26 Nov, HAL-19248).
+ */
+function noraVerdict(
+  pull: GatePull,
+  teamLogin: string,
+  patchIds: PatchIds,
+): { readonly approval?: ApprovalVerdict; readonly note?: string } {
+  const nora = julianApproval(pull, teamLogin, patchIds, "Nora");
+  if (nora?.ok !== true) {
+    return {};
+  }
+  if (liamRequestOpen(pull, teamLogin)) {
+    return { note: liamRequestNote };
+  }
+  const out = outsideNoraScope(pull);
+  if (out === null) {
+    const carried = nora.carried === undefined ? {} : { carried: nora.carried };
+    return { approval: { ok: true, nora: true, ...withAt(nora.at), ...carried } };
+  }
+  return { note: `Nora approved, but it is outside her scope (${out}): needs Liam` };
+}
+
 function approvalReason(pull: GatePull, approval: ApprovalVerdict | null, reReview: boolean) {
   const h9 = pull.head.slice(0, 9);
   if (pull.branch.startsWith("liam/") && (approval === null || approval.selfLiam === true)) {
-    return `Liam's own PR: needs a second reviewer's approval (Julian, within his scope) on head ${h9}`;
+    return `Liam's own PR: needs a second reviewer's approval (Julian or Nora, within their scope) on head ${h9}`;
   }
   if (approval === null) {
     return `no approval from Liam found for head ${h9}`;
@@ -280,8 +339,9 @@ export function approvalOf(pull: GatePull, teamLogin: string, patchIds: PatchIds
   let note: string | undefined;
   if (approval?.ok !== true) {
     const julian = julianVerdict(pull, teamLogin, patchIds);
-    approval = julian.approval ?? approval;
-    note = julian.note;
+    const nora = julian.approval === undefined ? noraVerdict(pull, teamLogin, patchIds) : {};
+    approval = julian.approval ?? nora.approval ?? approval;
+    note = nora.approval === undefined ? (julian.note ?? nora.note) : undefined;
   }
   const reReview =
     approval?.ok === false && (approval.stale !== undefined || approval.moved === true);
@@ -312,8 +372,8 @@ function approvesHead(text: PullText, head: string): boolean {
 }
 
 /**
- * The newest change request by Liam or Julian that is newer than the head's
- * approval, in words (rule 6) or as the newest signed line naming a head.
+ * The newest change request by Liam, Julian or Nora that is newer than the
+ * head's approval, in words (rule 6) or as the newest signed line naming a head.
  */
 export function changeRequestOf(
   pull: GatePull,
@@ -321,7 +381,7 @@ export function changeRequestOf(
   approval: ApprovalVerdict | null,
 ): ChangeRequest | null {
   const texts = teamTexts(pull, teamLogin).filter((text) => !ours(text));
-  const named = texts.filter((text) => /\b(Liam|Julian)\b/.test(text.body.slice(0, 160)));
+  const named = texts.filter((text) => reviewerName.test(text.body.slice(0, 160)));
   const blocks = named.filter(
     (text) =>
       !approves(text.body) && blockWords.test(text.body.slice(0, 600).replace(fixedWords, "")),
@@ -332,7 +392,7 @@ export function changeRequestOf(
       named.filter((text) => approvesHead(text, pull.head)).pop()?.at ?? approval?.at ?? "";
     if (last.at > approvedAt) {
       return {
-        who: /\b(Liam|Julian)\b/.exec(last.body.slice(0, 160))?.[1] ?? "a reviewer",
+        who: reviewerName.exec(last.body.slice(0, 160))?.[1] ?? "a reviewer",
         at: last.at,
       };
     }
