@@ -26,15 +26,16 @@ export const planLimitWords = {
   continueRun: "Continue the run",
   continuing: "Continuing the run…",
   seeUsage: "See usage",
-  /** After **Continue the run**, as the wait card says it after an answer. */
+  /** After **Continue the run**, as the wait card says it after an answer. Words for 1–6 not in C3: Sofia, HAL-19057. */
   continues: "The run continues.",
   finished: "The run finished.",
   /** After **Continue the run** when the run ended another way, such as an account no longer active. */
-  ended: "The run has ended.",
+  ended: "The run ended without finishing.",
   usedUp: (unit: string) => `This run stopped: you've used this month's ${unit}`,
   reserveTitle: (unit: string) => `This step can't start: not enough ${unit} left this month`,
+  /** Under 1% left reads "less than 1%", as "0% left" reads like a limit used up (Sofia, HAL-19057). */
   reserveLine: (unit: string, neededPercent: number, leftPercent: number) =>
-    `It needs up to ${neededPercent}% of your monthly ${unit} and you have ${leftPercent}% left.`,
+    `It needs up to ${neededPercent}% of your monthly ${unit} and you have ${leftPercent === 0 ? "less than 1%" : `${leftPercent}%`} left.`,
   resets: (date: string) => `It resets on ${date}.`,
   stoppedForGood: "This run stopped for good",
   waitedTooLong: "It waited 7 days at your plan's limit. Its results so far are kept.",
@@ -42,7 +43,8 @@ export const planLimitWords = {
     `You have ${running} ${running === 1 ? "run" : "runs"} going, the most your plan allows at once`,
   startWhenOneFinishes: "Start this one when one of them finishes.",
   noPlan: "You don't have a plan right now",
-  choosePlan: "Choose a plan to start runs.",
+  /** S3 has no Choose a plan, so the line says what's missing; S4-16 brings "Choose a plan…" back. */
+  needPlan: "You need a plan to start runs.",
 } as const;
 
 /** A run's message at a plan limit: its chip, its title and the line under it ("" for none). */
@@ -106,7 +108,7 @@ function stoppedMessage(stop: PlanStop): PlanLimitMessage | undefined {
       return {
         chip: planLimitWords.notStartedChip,
         title: planLimitWords.noPlan,
-        line: planLimitWords.choosePlan,
+        line: planLimitWords.needPlan,
       };
     default:
       return undefined;

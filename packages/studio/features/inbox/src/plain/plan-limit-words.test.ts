@@ -56,6 +56,13 @@ verifies("inbox.plan-limit-card", () => {
         line: "It needs up to 8% of your monthly usage and you have 3% left. It resets on 2 December.",
       });
     });
+
+    it("says less than 1% left rather than 0%, as some of the limit is still there", () => {
+      const reserve = { phase: "reserve", used: "9.97", needed: "0.8", left: "0.03" };
+      expect(waitingMessage(planStop("plan.cost", reserve))?.line).toBe(
+        "It needs up to 8% of your monthly usage and you have less than 1% left. It resets on 2 December.",
+      );
+    });
   });
 
   describe("C3's other run messages", () => {
@@ -87,7 +94,7 @@ verifies("inbox.plan-limit-card", () => {
       expect(stoppedMessage({ kind: "limit_reached", code: "plan.none" })).toEqual({
         chip: "Not started",
         title: "You don't have a plan right now",
-        line: "Choose a plan to start runs.",
+        line: "You need a plan to start runs.",
       });
     });
 
