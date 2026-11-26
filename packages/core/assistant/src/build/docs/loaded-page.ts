@@ -1,10 +1,11 @@
-// What a docs page can't do once it is loaded in a Build chat
-// (`assistant.build.loaded-page`). A page is loaded once a `read_docs`
-// result with anything a site sent, a page or a redirect, is in the chat's
-// messages, and it stays loaded for the rest of the chat. From then on the chat offers only the builder's own
-// tools, and `read_docs` asks only for sites the person named. Both are
-// read from the messages before each model turn and on each call, so a page
-// read in the middle of an answer counts from the next turn on.
+// What untrusted text can't do once it is loaded in a Build chat
+// (`assistant.build.loaded-page`). It is loaded once a `read_docs` result
+// with anything a site sent, a page or a redirect, or a `read_request_log`
+// result with the log's lines is in the chat's messages, and it stays loaded
+// for the rest of the chat. From then on the chat offers only the builder's
+// own tools, and `read_docs` asks only for sites the person named. Both are
+// read from the messages before each model turn and on each call, so text
+// loaded in the middle of an answer counts from the next turn on.
 
 import { type ChatTool, fenceStart } from "@halonicjs/app";
 import type { ChatMessage, ToolCall } from "@halonicjs/ports";
@@ -12,8 +13,9 @@ import { docsTexts } from "./docs-texts.ts";
 import { checkDocsUrl, loggedUrl } from "./docs-url.ts";
 
 /**
- * The Build chat's own tools: the only ones a chat offers while a page is loaded. A tool added
- * to the chat later, such as a connector's or a run's, isn't one of them, so a page can't reach it.
+ * The Build chat's own tools: the only ones a chat offers while untrusted text is loaded. A tool
+ * added to the chat later, such as a connector's or a run's, isn't one of them, so a page or a
+ * request log can't reach it.
  */
 export const builderToolNames: readonly string[] = [
   "list_files",
@@ -25,19 +27,47 @@ export const builderToolNames: readonly string[] = [
   "propose_delete",
   "show",
   "read_docs",
+  "read_request_log",
 ];
 
 /**
- * The tools a turn offers: all of `tools` until a page is loaded in `messages`, then only those
- * in {@link builderToolNames}. Give it to the chat service as `offerTools`, so it is checked
+ * The tools a turn offers: all of `tools` until untrusted text is loaded in `messages`, then only
+ * those in {@link builderToolNames}. Give it to the chat service as `offerTools`, so it is checked
  * again before each model turn (`app.chat-tools-per-turn`).
  */
-export function toolsWhilePageLoaded(
+export function toolsWhileUntrustedLoaded(
   tools: readonly ChatTool[],
   messages: readonly ChatMessage[],
 ): readonly ChatTool[] {
-  if (sitesRead(messages).length === 0) return tools;
+  if (!untrustedTextLoaded(messages)) return tools;
   return tools.filter((tool) => builderToolNames.includes(tool.definition.name));
+}
+
+/** Whether untrusted text is loaded in `messages`: a docs page, or a request log's lines. */
+export function untrustedTextLoaded(messages: readonly ChatMessage[]): boolean {
+  return sitesRead(messages).length > 0 || requestLogRead(messages);
+}
+
+/**
+ * Whether a `read_request_log` result with the log's lines is in `messages`. Its answers without
+ * lines, such as for an untrusted workspace or an empty log, hold no fence and don't count.
+ */
+function requestLogRead(messages: readonly ChatMessage[]): boolean {
+  const logCalls = new Set(
+    messages
+      .flatMap((message) =>
+        message.role === "assistant"
+          ? (message.toolCalls ?? []).filter((call) => call.name === "read_request_log")
+          : [],
+      )
+      .map((call) => call.id),
+  );
+  return messages.some(
+    (message) =>
+      message.role === "tool" &&
+      logCalls.has(message.toolCallId) &&
+      message.content.includes(fenceStart),
+  );
 }
 
 /** The sites of the pages loaded in `messages`, each once, in the order they were first read. */

@@ -8,6 +8,7 @@ import type { DefinitionSource, Digest, ExpectedContent } from "@halonicjs/ports
 import { contentDigest } from "@halonicjs/std";
 import type { DocsOptions } from "./docs/docs-sites.ts";
 import { isGatedPath, namedOnlyRefusal } from "./named-only.ts";
+import type { RequestLogReading } from "./request-log-tool.ts";
 
 /** What the Build chat's tools need from the host, for one chat. */
 export interface BuildToolsOptions {
@@ -37,6 +38,11 @@ export interface BuildToolsOptions {
    * (`assistant.build.read-docs`). Absent: the chat has no `read_docs`.
    */
   readonly docs?: DocsOptions | undefined;
+  /**
+   * The local request log of the integration the chat is about (`assistant.build.read-request-log`).
+   * Absent: the chat has no `read_request_log`.
+   */
+  readonly requestLog?: RequestLogReading | undefined;
 }
 
 /** An item the `show` tool shows, as the model names it. */

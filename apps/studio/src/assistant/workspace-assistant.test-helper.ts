@@ -8,6 +8,7 @@ import {
 } from "@halonicjs/app";
 import type { ChatTurnRequest, ChatTurnResponse, ToolCall } from "@halonicjs/ports";
 import type { DocsReading } from "./chat-docs.ts";
+import type { RequestLogs } from "./chat-request-log.ts";
 import { WorkspaceAssistant } from "./workspace-assistant.ts";
 
 /** An invented workspace with two mock model aliases and one hub. */
@@ -49,6 +50,8 @@ export function setup(
     sessions?: MemoryChatSessions;
     /** What `read_docs` reads with; without it the Build chat has no `read_docs`. */
     docs?: DocsReading;
+    /** What `read_request_log` reads; without it no chat has `read_request_log`. */
+    requestLogs?: RequestLogs;
   } = {},
 ) {
   const store = new MemoryDefinitionStore({ ...acme, ...options.files }, "memory:acme");
@@ -98,6 +101,7 @@ export function setup(
     chats: { sessions: options.sessions ?? new MemoryChatSessions(), location: "memory:acme" },
     now: options.now ?? (() => new Date("2026-11-23T10:00:00.000Z")),
     docs: options.docs,
+    requestLogs: options.requestLogs,
   });
   const stopEngine = () => {
     engineAnswering = false;

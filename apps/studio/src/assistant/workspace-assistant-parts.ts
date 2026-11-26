@@ -2,6 +2,7 @@ import type { ChatAnswer, ChatAnswerRequest, HostSettings, ReviewService } from 
 import type { DefinitionStore, Digest } from "@halonicjs/ports";
 import type { DocsReading } from "./chat-docs.ts";
 import type { HasKey } from "./chat-models.ts";
+import type { RequestLogs } from "./chat-request-log.ts";
 import type { ChatStore } from "./kept-chats.ts";
 
 /** What `WorkspaceAssistant` works on. */
@@ -49,6 +50,11 @@ export interface WorkspaceAssistantParts {
    * where there is no shell: the chat has no `read_docs`.
    */
   readonly docs?: DocsReading | undefined;
+  /**
+   * Reads a local integration's request log, for a trusted Build chat about that integration
+   * (`assistant.build.read-request-log`). Absent: no chat has `read_request_log`.
+   */
+  readonly requestLogs?: RequestLogs | undefined;
 }
 
 /** The window's engine connection, as `WorkspaceAssistant` follows it. */

@@ -18,7 +18,7 @@ import {
   ownAuthoringSkill,
   type ShowOutcome,
   sheetHostsNamedIn,
-  toolsWhilePageLoaded,
+  toolsWhileUntrustedLoaded,
 } from "@halonicjs/assistant";
 import type { ChatMessage, SavedChatDocs } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
@@ -41,6 +41,7 @@ import { acceptedFiles, isAuthoringSkillPath } from "./accepted-files.ts";
 import { answerSiteCard, docsOptionsOf, KeptDocsSites, noDocs, withCallIds } from "./chat-docs.ts";
 import { answerWithFailure } from "./chat-failure.ts";
 import { agentOfKind, chatAgentsOf, modelOptionsOf } from "./chat-models.ts";
+import { localIntegrationOf, requestLogReading } from "./chat-request-log.ts";
 import { forTheModel } from "./for-the-model.ts";
 import { type KeptChat, KeptChats } from "./kept-chats.ts";
 import {
@@ -295,7 +296,10 @@ export class WorkspaceAssistant implements AssistantHost {
     // Trust first: an untrusted workspace refuses an agent chat before its file is read.
     const buildSettings = chatSettingsOf(chat.model, loaded, this.#parts.settings);
     const answerOn = this.#answererOf(chat, buildSettings, loaded);
-    const model = this.#modelOf(chat, loaded);
+    const aboutLocal =
+      this.#parts.requestLogs !== undefined &&
+      (await localIntegrationOf(loaded, this.#parts.files, chat.about)) !== undefined;
+    const model = this.#modelOf(chat, loaded, aboutLocal);
     const messages = forTheModel(
       [...chat.messages, ...shownNote(request.shown)],
       sent,
@@ -371,14 +375,14 @@ export class WorkspaceAssistant implements AssistantHost {
    * The model and tools of one answer, and an agent chat's model call limit. An agent chat answers as the agent's Try
    * it chat does (flow-assistant 5.3): its own model, instructions and skills, no authoring tools.
    */
-  #modelOf(chat: KeptChat, loaded: LoadedWorkspace): ChatModelParts {
+  #modelOf(chat: KeptChat, loaded: LoadedWorkspace, aboutLocal: boolean): ChatModelParts {
     const agent = agentOfKind(chat.kind);
     if (agent === undefined) {
       // The Build chat's model call limit depends on trust, so `#answererOf` picks it.
       return {
         settings: chatSettingsOf(chat.model, loaded, this.#parts.settings),
-        tools: this.#toolsOf(chat.id),
-        offerTools: toolsWhilePageLoaded,
+        tools: this.#toolsOf(chat.id, aboutLocal),
+        offerTools: toolsWhileUntrustedLoaded,
       };
     }
     const file = filesOf(loaded, "agent").find(
@@ -398,9 +402,10 @@ export class WorkspaceAssistant implements AssistantHost {
   /**
    * The chat's tools, made once to remember what the model read; `show` uses `#shows`, and
    * `read_docs` keeps its sites and log with the chat (`studio.assistant-read-docs`).
+   * `read_request_log` is offered only in a chat about a local integration (`aboutLocal`).
    */
-  #toolsOf(chatId: string): readonly ChatTool[] {
-    const { files, review, isTrusted, digest } = this.#parts;
+  #toolsOf(chatId: string, aboutLocal: boolean): readonly ChatTool[] {
+    const { files, review, isTrusted, digest, requestLogs } = this.#parts;
     let tools = this.#tools.get(chatId);
     if (tools === undefined) {
       const show = async (item: ItemRef): Promise<ShowOutcome> =>
@@ -413,14 +418,21 @@ export class WorkspaceAssistant implements AssistantHost {
       const now = this.#parts.now ?? (() => new Date());
       const messages = async () => (await this.#chats.get(chatId)).messages;
       const docs = reading === undefined ? undefined : docsOptionsOf(reading, sites, messages, now);
+      const about = async () => (await this.#chats.get(chatId)).about;
+      const requestLog = requestLogs && requestLogReading(files, about, requestLogs);
       const options = { chatId, files, review, isTrusted, digest, show, personMessages, docs };
-      tools = withCallIds(buildChatTools(options), sites);
+      tools = withCallIds(buildChatTools({ ...options, requestLog }), sites);
       this.#tools.set(chatId, tools);
     }
     // Before trust a turn offers exactly the six authoring tools (`studio.assistant-authoring-turn`),
-    // so `show`, `integration_guide` and `read_docs` wait for trust.
-    const afterTrust = ["show", "integration_guide", "read_docs"];
-    return isTrusted() ? tools : tools.filter((tool) => !afterTrust.includes(tool.definition.name));
+    // so `show`, `integration_guide`, `read_docs` and `read_request_log` wait for trust.
+    const afterTrust = ["show", "integration_guide", "read_docs", "read_request_log"];
+    const offered = tools.filter(
+      (tool) => aboutLocal || tool.definition.name !== "read_request_log",
+    );
+    return isTrusted()
+      ? offered
+      : offered.filter((tool) => !afterTrust.includes(tool.definition.name));
   }
 
   /**
