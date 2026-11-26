@@ -96,8 +96,8 @@ const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "
 
 /**
  * The time in a reset text such as `Nov 27, 8pm (UTC)` or `8:39pm (UTC)`,
- * read in the reading's year (and on the reading's day when the text names
- * none), or `undefined` for any other form or time zone.
+ * read in the reading's year (and on the reading's day, or the next one, when
+ * the text names none), or `undefined` for any other form or time zone.
  */
 export function parseResetText(resets: string, readAt: string): string | undefined {
   const match =
@@ -117,11 +117,13 @@ export function parseResetText(resets: string, readAt: string): string | undefin
   const day = dayText === undefined ? base.getUTCDate() : Number(dayText);
   const hour = (Number(hourText) % 12) + (half?.toLowerCase() === "pm" ? 12 : 0);
   const at = Date.UTC(base.getUTCFullYear(), month, day, hour, Number(minuteText ?? 0));
-  // A reset is never before its reading: one named for early January was read in December.
+  // A reset is never before its reading: one named for early January was read in December,
+  // and a time with no day more than an hour before the reading is on the next day.
   const yearOn = at < base.getTime() - 86_400_000 && monthName !== undefined;
+  const dayOn = at < base.getTime() - 3_600_000 && monthName === undefined;
   const fixed = yearOn
     ? Date.UTC(base.getUTCFullYear() + 1, month, day, hour, Number(minuteText ?? 0))
-    : at;
+    : at + (dayOn ? 86_400_000 : 0);
   return new Date(fixed).toISOString();
 }
 
@@ -144,13 +146,29 @@ function usableReading(
   }
   const resetTime = (resets: string | undefined) =>
     resets === undefined ? undefined : parseResetText(resets, at);
+  const sessionResetsAt = resetTime(seat.sessionResets);
+  const weekResetsAt = resetTime(seat.weekResets);
   return {
-    sessionPercent,
-    sessionResetsAt: resetTime(seat.sessionResets),
-    weekPercent,
-    weekResetsAt: resetTime(seat.weekResets),
+    sessionPercent: resetSince(at, sessionResetsAt, now) ? 0 : sessionPercent,
+    sessionResetsAt,
+    weekPercent: resetSince(at, weekResetsAt, now) ? 0 : weekPercent,
+    weekResetsAt,
     at,
   };
+}
+
+/**
+ * Whether a window reset after the reading was taken: its use in the reading
+ * is from the window before, so the seat starts again at 0% until the next
+ * reading. Readings come only at :17 and :47, so a seat that reset at :49
+ * would otherwise look full for half an hour.
+ */
+function resetSince(readAt: string, resetsAt: string | undefined, now: Date): boolean {
+  if (resetsAt === undefined) {
+    return false;
+  }
+  const reset = Date.parse(resetsAt);
+  return reset > Date.parse(readAt) && reset <= now.getTime();
 }
 
 /**

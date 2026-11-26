@@ -34,6 +34,34 @@ verifies("paperclip.seat-mover-job", () => {
     expect(parseResetText("Nov 27, 8pm (Europe/Amsterdam)", fresh.at)).toBeUndefined();
   });
 
+  test("a reset time with no day, more than an hour before the reading, is on the next day", () => {
+    expect(parseResetText("1:15am (UTC)", "2026-11-26T23:47:00.000Z")).toBe(
+      "2026-11-27T01:15:00.000Z",
+    );
+    expect(parseResetText("9:45am (UTC)", fresh.at)).toBe("2026-11-26T09:45:00.000Z");
+  });
+
+  test("a window that reset after the reading was taken counts as 0% until the next reading", () => {
+    const connections = [connection("c-1")];
+    // Read at 09:47 at 100% for 5 hours and 92% for the week; the 5-hour window reset at 09:49.
+    const full = parseSeatReadings(
+      readingsBody({
+        ...fresh,
+        usage: {
+          session: { percent: 100, resets: "9:49am (UTC)" },
+          week: { percent: 92, resets: "Nov 26, 9:50am (UTC)" },
+        },
+      }),
+    );
+    const before = new Date("2026-11-26T09:48:00.000Z");
+    expect(buildSeats(connections, full, new Map(), before, 45)[0]?.reading).toMatchObject({
+      sessionPercent: 100,
+      weekPercent: 92,
+    });
+    const [seat] = buildSeats(connections, full, new Map(), now, 45);
+    expect(seat?.reading).toMatchObject({ sessionPercent: 0, weekPercent: 0, at: fresh.at });
+  });
+
   test("a fresh reading becomes the seat's use, named after its readings seat", () => {
     const readings = parseSeatReadings(readingsBody(fresh));
     const [seat] = buildSeats(
