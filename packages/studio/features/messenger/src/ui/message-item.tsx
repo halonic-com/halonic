@@ -60,23 +60,9 @@ export function MessageItem({
   readonly reactions?: MessageReactionsProps | undefined;
 }) {
   const mark = foundData(message.id, found);
-  const openLink = useOpenExternal();
   const channel = isChannel(row);
   const author = authorOf(message, row);
-  const body = (
-    <>
-      <span className="sr-only">{author}: </span>
-      {message.plainText === true ? (
-        // Shown as written: never read as Markdown, so nothing in it becomes a link or styling.
-        <p data-plain-text dir="auto" className="whitespace-pre-line text-reading text-fg">
-          {message.body}
-        </p>
-      ) : (
-        <ChatText openLink={openLink}>{message.body}</ChatText>
-      )}
-      <AttachmentList messenger={messenger} attachments={message.attachments} />
-    </>
-  );
+  const body = <MessageBody messenger={messenger} message={message} author={author} />;
   const time = decidedAt(new Date(message.sentAt));
   const { chips, add } = reactionParts(
     reactions,
@@ -154,6 +140,33 @@ export function MessageItem({
       </div>
       {chips === null ? null : <div className="mt-1.5 ps-9">{chips}</div>}
     </li>
+  );
+}
+
+/** A message's text, said with its author to a screen reader, and its files. */
+function MessageBody({
+  messenger,
+  message,
+  author,
+}: {
+  readonly messenger: Messenger;
+  readonly message: Message;
+  readonly author: string;
+}) {
+  const openLink = useOpenExternal();
+  return (
+    <>
+      <span className="sr-only">{author}: </span>
+      {message.plainText === true ? (
+        // Shown as written: never read as Markdown, so nothing in it becomes a link or styling.
+        <p data-plain-text dir="auto" className="whitespace-pre-line text-reading text-fg">
+          {message.body}
+        </p>
+      ) : (
+        <ChatText openLink={openLink}>{message.body}</ChatText>
+      )}
+      <AttachmentList messenger={messenger} attachments={message.attachments} />
+    </>
   );
 }
 
