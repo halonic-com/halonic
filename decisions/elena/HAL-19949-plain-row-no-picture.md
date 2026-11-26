@@ -9,6 +9,7 @@
   the kit's 56px row, at least 56px high with 12px above and below, not the sidebar's 80px.
   Everything the requirement already said about rows with a picture, plain `List`s, the sidebar
   `Avatar` and the skeleton rows stays as it is.
+- `kit.plain-row-size`'s `Source:` line names this team decision next to the board's.
 
 ## Why
 

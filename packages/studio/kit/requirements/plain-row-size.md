@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: unreleased
-- Source: the board's decision on HAL-10 (26 Nov): bigger rows in the Inbox's and the Messenger's sidebar lists; built on HAL-19735
+- Source: the board's decision on HAL-10 (26 Nov): bigger rows in the Inbox's and the Messenger's sidebar lists; built on HAL-19735; the team's decision on HAL-19949 (26 Nov): a `PlainRow` without a picture keeps the 56px row
 
 The rows of a `PlainList` and of a `plain` `List`, the sidebar lists of the Inbox and the Messenger, shall be at least 80px high with 10px of padding above and below, on a phone too; their title shall be 15px and the line under it 14px. A plain `List` shall give a row's avatar a 60px place. Where an `Avatar` is given the sidebar size, it shall draw its initials in `text-heading` or its picture on a 60px round tile, with the picture drawn at 60px in device pixels. While they load, their skeleton rows shall have the same 80px height and padding, with a 60px round block in the picture's place, so nothing moves when the rows arrive. A `List` that isn't `plain` shall keep its rows' sizes. A `PlainRow` without a picture shall keep the kit's 56px row, at least 56px high with 12px of padding above and below.
 

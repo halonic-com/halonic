@@ -1133,6 +1133,8 @@ Both draw a sidebar's bigger rows (HAL-19735): at least 80px high with 10px abov
 phone too, a 60px picture, a 15px title (`text-reading`) and a 14px line (`text-body`). Their
 loading rows have the same shape: give a `plain` List `skeleton={{ leading: "avatar" }}` and its
 skeleton rows are 80px with a 60px round block.
+A `PlainRow` without a picture (`picture={null}`), as the Assistant's Recent chats on a phone,
+keeps the kit's 56px row instead: at least 56px high with 12px above and below (HAL-19949).
 
 Pick `PlainList` for a new two-pane list with no grid of its own; pick `plain` on a `List` that has
 one. The unread and flag dots draw in `CanvasText` in forced colours, so they don't vanish there.
