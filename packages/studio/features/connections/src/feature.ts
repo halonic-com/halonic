@@ -32,9 +32,12 @@ export const connectionsFeature = defineFeature({
     });
     studio.settings.add({
       id: "connections",
+      icon: "connections",
       title: SECTION_TITLE,
       scope: "workspace",
-      order: 40,
+      group: "connections",
+      // After Trust (20); first in Account and connections, before Remote (35).
+      order: 30,
       description: SECTION_LINE,
       available: connectionsAvailable,
       view: "ConnectionsSection",

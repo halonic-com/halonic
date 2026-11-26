@@ -51,7 +51,7 @@ import {
 } from "./inbox-page-parts.tsx";
 import { countDetail, inboxRow, lateCount } from "./inbox-row.tsx";
 import { type InboxMotion, kitMotion, useGlidingState } from "./list-motion.ts";
-import { failureReason, isSignedOut, loadFailed, StaleLine } from "./load-lines.tsx";
+import { failureReason, isSignedOut, loadFailed, openItemWords, StaleLine } from "./load-lines.tsx";
 import { needsYouListed } from "./needs-you-listed.ts";
 import { NothingOpen, nothingWaiting } from "./nothing-open.tsx";
 import { NoticesSection } from "./notices-section.tsx";
@@ -421,7 +421,7 @@ export function InboxView({
               now={now}
               answering={state.error === undefined}
               signedOut={isSignedOut(state.error)}
-              words={words}
+              words={openItemWords(state.error, words)}
               close={close}
             />
           )}

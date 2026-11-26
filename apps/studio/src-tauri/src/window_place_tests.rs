@@ -54,12 +54,7 @@ fn keeps_each_app_window_under_its_own_label() {
 
 #[test]
 fn leaves_the_other_windows_alone() {
-    for label in [
-        crate::feedback_capture::FEEDBACK_WINDOW,
-        "feedback-unavailable",
-        "server-session-brief",
-        "",
-    ] {
+    for label in ["feedback-unavailable", "server-session-brief", ""] {
         assert!(!is_kept(label), "{label:?}");
     }
 }

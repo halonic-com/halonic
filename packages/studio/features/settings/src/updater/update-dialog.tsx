@@ -3,7 +3,7 @@ import { useId } from "react";
 import type { AgentSandboxHost } from "../api.ts";
 import { DownloadBar } from "./about-section.tsx";
 import { aboutView } from "./about-state.ts";
-import { CANCEL_DOWNLOAD, TRY_AGAIN, UPDATER_DIDNT_ANSWER, versionHeading } from "./about-text.ts";
+import { CANCEL_DOWNLOAD, TRY_AGAIN, UPDATER_DIDNT_ANSWER } from "./about-text.ts";
 import { dialogConfirm, notesFor, offeredUpdate } from "./update-dialog-state.ts";
 import * as text from "./update-dialog-text.ts";
 import { UpdateNotes } from "./update-notes.tsx";
@@ -23,7 +23,8 @@ export interface UpdateDialogProps {
 }
 
 /**
- * **Update available** (`settings.update-dialog`): the version, what changed, and one button for
+ * **Update available** (`settings.update-dialog`): the state line, which names the version (no
+ * heading repeats it, HAL-19579), what changed, and one button for
  * where the update is. **Install** downloads it, with the progress bar, and becomes **Restart**
  * when it is ready; an update already downloaded offers **Restart** at once. A failed download
  * says why with **Try again**, and a press the updater didn't answer says so: nothing fails
@@ -66,7 +67,6 @@ export function UpdateDialog({ host, sandbox, announce, onRestart, onClose }: Up
       {...failure}
     >
       <div className="flex flex-col gap-4">
-        <h3 className="text-body font-medium">{versionHeading(state.version)}</h3>
         {view.callout ? (
           <Callout tone="warning">
             <span id={lineId}>{view.line}</span>

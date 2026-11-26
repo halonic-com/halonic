@@ -1,4 +1,5 @@
 import { reviewToolsCommand } from "@halonicjs/app";
+import { ItemChatService } from "@halonicjs/studio-feature-assistant/api";
 import { Button, usePresentation } from "@halonicjs/studio-kit";
 import {
   engineWordsOf,
@@ -121,6 +122,8 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
     [listedTools, item.id],
   );
   const { openItem } = context;
+  // A trouble's **Let the assistant look** opens a Build chat about the connector (I7, HAL-19175).
+  const itemChat = context.services.find(ItemChatService);
   const secretsSection = secretsSectionOf(context, connector);
   // A phone has no tabs to open the file in, so the sentence stays and the link goes.
   const desktop = usePresentation() !== "phone";
@@ -228,6 +231,14 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
         model={model}
         words={engineWordsOf(context)}
         announceState={(key, text) => context.announcer.announceState(key, text)}
+        onLook={
+          itemChat === undefined
+            ? undefined
+            : (ask) => {
+                const about = { kind: "connector", hub: item.hub, id: item.id } as const;
+                void itemChat.askAbout(about, name, context, ask);
+              }
+        }
       />
       <Sections />
     </div>

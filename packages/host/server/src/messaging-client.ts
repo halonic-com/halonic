@@ -34,6 +34,10 @@ const readAnswer = s
   .strict();
 const changeData = s.object({ source: s.string() }).strict();
 
+/** The wait before `changes` is opened again; it doubles after each stream that heard nothing. */
+const firstReopenDelayMs = 1000;
+const longestReopenDelayMs = 60_000;
+
 /** Where the server is and how this device signs in to it. */
 export interface ServerAgentMessagingOptions {
   /** The server's origin: `https`, or plain `http` to this computer only. */
@@ -45,6 +49,8 @@ export interface ServerAgentMessagingOptions {
   /** The `fetch` to use; the platform's own by default. */
   readonly fetch?: ServerFetch;
   readonly now?: () => Date;
+  /** Waits before `changes` is opened again; a platform timer by default, a fake clock in tests. */
+  readonly wait?: (milliseconds: number) => Promise<void>;
 }
 
 /**
@@ -65,6 +71,7 @@ export class ServerAgentMessaging implements AgentMessaging {
   readonly #connection: ServerConnection;
   readonly #label: string;
   readonly #now: () => Date;
+  readonly #wait: (milliseconds: number) => Promise<void>;
   /** The sources the server listed last, so a signed-out or offline server still names them. */
   #known: readonly MessagingSource[] | undefined;
 
@@ -76,6 +83,9 @@ export class ServerAgentMessaging implements AgentMessaging {
     );
     this.#label = options.label;
     this.#now = options.now ?? (() => new Date());
+    this.#wait =
+      options.wait ??
+      ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
   }
 
   async listSources(): Promise<readonly MessagingSource[]> {
@@ -153,28 +163,51 @@ export class ServerAgentMessaging implements AgentMessaging {
     return this.#result<ChannelResult>("leave-channel", { channel });
   }
 
-  /** Reads the server's `changes` event stream: each `change` message names a source. */
+  /**
+   * Reads the server's `changes` event stream: each `change` message names a source. The
+   * server ends its stream when its own feed fails, and an offline server answers nothing, so
+   * the stream is opened again after a wait: 1 s, doubling up to 60 s, and 1 s again after a
+   * stream that named a change (`server.messaging-client-changes`). It ends only when the
+   * reader stops, or throws when the server refuses for any reason but `offline`.
+   */
   async *changes(): AsyncGenerator<MessagingId> {
+    let delay = firstReopenDelayMs;
+    for (;;) {
+      const heard = yield* this.#oneChangesStream();
+      if (heard) delay = firstReopenDelayMs;
+      await this.#wait(delay);
+      delay = Math.min(delay * 2, longestReopenDelayMs);
+    }
+  }
+
+  /** Opens `changes` once and reads it to its end; says whether it named any change. */
+  async *#oneChangesStream(): AsyncGenerator<MessagingId, boolean> {
     const answer = await this.#connection.send("GET", "changes");
+    if (answer.kind === "refused" && answer.reason === "offline") return false;
     if (answer.kind === "refused") throw refused("changes", answer.reason);
     const reader = answer.response.body?.getReader();
-    if (reader === undefined) return;
+    if (reader === undefined) return false;
     const decoder = new TextDecoder();
     let buffered = "";
+    let heard = false;
     try {
       for (;;) {
-        const { done, value } = await reader.read();
-        if (done) return;
-        buffered += decoder.decode(value, { stream: true });
+        const read = await reader.read().catch(() => undefined);
+        // A connection that drops mid-stream ends it the same way the server ending it does.
+        if (read === undefined || read.done) return heard;
+        buffered += decoder.decode(read.value, { stream: true });
         const frames = buffered.split("\n\n");
         buffered = frames.pop() ?? "";
         for (const frame of frames) {
           const source = changedSource(frame);
-          if (source !== undefined) yield source;
+          if (source === undefined) continue;
+          heard = true;
+          yield source;
         }
       }
     } finally {
-      await reader.cancel();
+      // A dropped stream refuses to be cancelled; it is closed already.
+      await reader.cancel().catch(() => undefined);
     }
   }
 

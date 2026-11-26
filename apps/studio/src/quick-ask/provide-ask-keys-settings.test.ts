@@ -1,5 +1,5 @@
 import { ServiceRegistry } from "@halonicjs/app";
-import { AskKeysSettingsService } from "@halonicjs/studio-feature-quick-ask/api";
+import { AskKeysSettingsService, AskOpenerService } from "@halonicjs/studio-feature-quick-ask/api";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -61,6 +61,33 @@ describe("provideAskKeysSettings", () => {
       provideAskKeysSettings(services, shell(), "ask", "linux");
       provideAskKeysSettings(services, undefined, "main", "linux");
       expect(services.has(AskKeysSettingsService)).toBe(false);
+      expect(services.has(AskOpenerService)).toBe(false);
     });
+
+    it("tells its subscribers about saved keys only", async () => {
+      const told = vi.fn();
+      const saving = askKeysSettingsOf(shell(), "linux");
+      const stop = saving.subscribe?.(told);
+      await saving.setKeys("Control+Alt+KeyK");
+      expect(told).toHaveBeenCalledTimes(1);
+
+      const refusing = askKeysSettingsOf(shell(undefined, "taken"), "linux");
+      refusing.subscribe?.(told);
+      await refusing.setKeys("Control+Alt+KeyK");
+      stop?.();
+      await saving.setKeys("Control+Alt+KeyL");
+      expect(told).toHaveBeenCalledTimes(1);
+    });
+  });
+});
+
+verifies("feedback.help-quick-ask", () => {
+  it("gives the main window plugin:quick-ask|show to show the box", async () => {
+    const services = new ServiceRegistry();
+    const ipc = shell();
+    provideAskKeysSettings(services, ipc, "main", "windows");
+
+    await services.get(AskOpenerService).open();
+    expect(ipc.invoke).toHaveBeenCalledWith("plugin:quick-ask|show");
   });
 });

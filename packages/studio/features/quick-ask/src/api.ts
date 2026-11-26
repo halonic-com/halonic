@@ -59,6 +59,11 @@ export interface AskKeysSettings {
   keys(): Promise<AskKeys>;
   /** Asks the shell to open the box on `shortcut` instead of the keys it hears now. */
   setKeys(shortcut: string): Promise<AskKeysChange>;
+  /**
+   * Calls `listener` after `setKeys` saved new keys, so what names them can read them again.
+   * Returns a function that stops the calls. Left out, the keys are read only once.
+   */
+  subscribe?(listener: () => void): () => void;
 }
 
 /**
@@ -68,3 +73,16 @@ export interface AskKeysSettings {
  */
 export const AskKeysSettingsService: ServiceKey<AskKeysSettings> =
   serviceKey<AskKeysSettings>("quick-ask.keys-settings");
+
+/** What Help › Quick ask and its Ctrl K entry need: showing the box from Studio's own window. */
+export interface AskOpener {
+  /** Shows the box, as the tray's Ask… does; rejects with the shell's refusal. */
+  open(): Promise<void>;
+}
+
+/**
+ * The desktop app's {@link AskOpener}, in Studio's own main window only: the shell grants
+ * `plugin:quick-ask|show` to no other window, and served Studio has no shell, so there Help and
+ * Ctrl K name no Quick ask.
+ */
+export const AskOpenerService: ServiceKey<AskOpener> = serviceKey<AskOpener>("quick-ask.opener");

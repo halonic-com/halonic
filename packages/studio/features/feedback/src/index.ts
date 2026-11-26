@@ -43,6 +43,12 @@ export {
   maxTitleLength,
 } from "./payload.ts";
 export { discardedToast, feedbackToast } from "./send/feedback-toast.ts";
+export type {
+  FeedbackDetails,
+  OutgoingFeedback,
+  SendAnswer,
+  SendOutgoing,
+} from "./send/hand-on.ts";
 export {
   canvasPng,
   maxScreenshotBytes,
@@ -50,10 +56,5 @@ export {
   type ScreenshotPng,
   screenshotPng,
 } from "./send/screenshot-png.ts";
-export {
-  type FeedbackDetails,
-  type OutgoingFeedback,
-  SendFeedback,
-  type SendFeedbackProps,
-  type SendOutgoing,
-} from "./send/send-feedback.tsx";
+export { SendFeedback, type SendFeedbackProps } from "./send/send-feedback.tsx";
+export type { FeedbackConnection } from "./send/send-notice.tsx";

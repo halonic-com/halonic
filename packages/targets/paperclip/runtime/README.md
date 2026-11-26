@@ -123,8 +123,8 @@ a token and never takes a key from the workspace.
 
 `paperclip.task` reads Paperclip only through the plugin's own read clients (`issues.get`,
 `issues.listComments`, `issues.relations.get`, `issues.documents.list` and `get`, `agents.list`).
-Only that action asks for `issues.read`, `issue.comments.read`, `issue.documents.read` and
-`issue.relations.read`, so a plugin without a task tool doesn't get them.
+Only that action asks for `issue.documents.read` and `issue.relations.read`, so a plugin without a
+task tool doesn't get them.
 
 `github.pull-request` and `github.open-pull-requests` ask for `issues.read`,
 `issue.comments.read` and `agents.read`: they read the comments on the task a branch names

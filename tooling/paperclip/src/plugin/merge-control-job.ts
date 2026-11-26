@@ -1,6 +1,7 @@
 import type {
   PluginAgentsClient,
   PluginConfigClient,
+  PluginEntitiesClient,
   PluginHttpClient,
   PluginIssuesClient,
   PluginLogger,
@@ -44,6 +45,8 @@ import { type QueueWriteClient, queueWriteClient } from "../merge-control/write-
 import { paperclipCopies } from "./approval-copies.ts";
 import { companyConfig, readSettings, requestTimeoutMs } from "./job.ts";
 import { type MergeStateClient, type PassLock, passStateKey } from "./merge-control-lock.ts";
+import { verdictReviewerIds } from "./review-verdict-declaration.ts";
+import { withVerdictChecks } from "./verdict-shadow.ts";
 
 /**
  * The `merge-control` job's pass for one company (ADR on HAL-17700): read
@@ -63,6 +66,8 @@ export interface MergeControlApi {
   readonly issues: Pick<PluginIssuesClient, "createComment" | "get" | "listComments">;
   /** The approvals' Paperclip copies, for the shadow diff (HAL-19324). */
   readonly agents: Pick<PluginAgentsClient, "list">;
+  /** The recorded verdicts, compared with the gate in shadow mode (HAL-19481). */
+  readonly entities: Pick<PluginEntitiesClient, "upsert" | "list">;
   readonly logger: Pick<PluginLogger, "info" | "error">;
 }
 
@@ -100,6 +105,8 @@ export interface MergeControlSettings {
   readonly budget: BudgetSettings;
   /** The rules' settings: today's, with the board's queue login from config (HAL-18506). */
   readonly rules: MergeSettings;
+  /** The reviewers' agents the board named for `review_verdict`, by name (HAL-19481). */
+  readonly verdictReviewers: Readonly<Record<string, string>>;
 }
 
 const modes: readonly MergeControlMode[] = ["off", "shadow", "act"];
@@ -111,11 +118,15 @@ export function queueLoginOf(config: Readonly<Record<string, unknown>>): string 
   return typeof value === "string" && /^[A-Za-z0-9-]{1,39}$/.test(value.trim()) ? value.trim() : "";
 }
 
-/** `defaultSettings` with the queue login added to the auto-label authors, never written in code. */
+/**
+ * `defaultSettings` with the queue login added to the auto-label authors and to the
+ * `fast-track` labellers, never written in code.
+ */
 export function rulesOf(config: Readonly<Record<string, unknown>>): MergeSettings {
   const login = queueLoginOf(config);
   return {
     ...defaultSettings,
+    fastTrackLabellers: login === "" ? [] : [login],
     autoLabelAuthors: [
       ...defaultSettings.autoLabelAuthors,
       ...(login === "" || defaultSettings.autoLabelAuthors.includes(login) ? [] : [login]),
@@ -141,6 +152,7 @@ export function readMergeControlSettings(
     diffTask: typeof section.diffTask === "string" ? section.diffTask.trim() : "",
     repo: readSettings(config).repos[0] ?? "halonic-com/halonic",
     budget: readBudgetSettings(section),
+    verdictReviewers: verdictReviewerIds(config),
     rules: rulesOf(config),
   };
 }
@@ -378,9 +390,15 @@ async function lockedPass(
   if (settings.mode === "shadow") {
     const day = await shadowDay(ctx, companyId, settings, stored.shadow, now);
     if (day !== undefined) {
+      const verdictShadow = {
+        repo: settings.repo,
+        teamLogin: settings.rules.teamLogin,
+        reviewerIds: settings.verdictReviewers,
+      };
       const view = passView(facts.snapshot, decision, settings.rules);
       shadow = recordShadow(day, decision.actions, facts.observed, now, view);
       shadow = await withCopyChecks(ctx, companyId, shadow, facts.snapshot, view, now);
+      shadow = await withVerdictChecks(ctx, companyId, shadow, facts.snapshot, verdictShadow, now);
     }
   }
   const state = keepSent(stored.state, decision.state, decision.actions, results);

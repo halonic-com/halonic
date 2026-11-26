@@ -4,6 +4,7 @@ import { type AgentPlace, type Seat, targetRefusal } from "./checklist.ts";
 import { planMoves, type SeatPlan } from "./plan.ts";
 import { buildSeats, parseConnections, parseSeatReadings } from "./readings.ts";
 import { batchComment, moveLine, stuckNote } from "./report.ts";
+import type { SeatResets } from "./reset.ts";
 import type { ParkedRun, SeatRuns } from "./runs.ts";
 import type { SeatMoverSettings } from "./settings.ts";
 
@@ -41,6 +42,8 @@ export interface SeatMoverDeps {
   readonly api: SeatApi;
   readonly runs: SeatRuns;
   readonly agents: () => Promise<readonly AgentRow[]>;
+  /** The seats the board reset by hand lately (HAL-19490): older readings of them don't count. */
+  readonly resets: () => Promise<SeatResets>;
   readonly issueStatus: (issueId: string) => Promise<string | undefined>;
   /** Wakes a task's assignee the way the line threads do, so the run stays on the agent's own seat. */
   readonly wake: (issueId: string, idempotencyKey: string) => Promise<void>;
@@ -68,12 +71,18 @@ function connectionOf(agent: AgentRow): string | undefined {
 /**
  * Where each agent sits, and whether it has runs parked on that seat. Only a
  * run pinned to the seat counts: a run that names no seat is never released
- * after a move, so it would move the agent again every pass.
+ * after a move, so it would move the agent again every pass. A run already
+ * due (released by a seat reset, HAL-19490) is about to start, so it doesn't
+ * count either.
  */
 export function agentPlaces(
   agents: readonly AgentRow[],
   parked: readonly ParkedRun[],
+  now: Date,
 ): AgentPlace[] {
+  const waiting = parked.filter(
+    (run) => run.retryAt === undefined || Date.parse(run.retryAt) > now.getTime(),
+  );
   return agents
     .filter((agent) => agent.status !== "terminated")
     .map((agent) => {
@@ -84,7 +93,7 @@ export function agentPlaces(
         name: agent.name,
         paused: agent.status === "paused",
         connectionId,
-        parked: parked.some(
+        parked: waiting.some(
           (run) =>
             run.agentId === agent.id &&
             connectionId !== undefined &&
@@ -100,17 +109,19 @@ export async function seatMoverPass(deps: SeatMoverDeps): Promise<SeatPlan | und
     return undefined;
   }
   const since = new Date(now.getTime() - quotaLookbackMs).toISOString();
-  const [connections, readings, parked, quota, agentRows] = await Promise.all([
+  const [connections, readings, parked, quota, agentRows, resets] = await Promise.all([
     deps.api.connections().then(parseConnections),
     deps.api.seatReadings().then(parseSeatReadings),
     deps.runs.parked(deps.companyId),
     deps.runs.quotaFailuresSince(deps.companyId, since),
     deps.agents(),
+    deps.resets(),
   ]);
   const quotaAt = new Map(quota.map((failure) => [failure.connectionId, failure.at]));
-  const seatList = buildSeats(connections, readings, quotaAt, now, settings.readingMaxAgeMinutes);
+  const maxAge = settings.readingMaxAgeMinutes;
+  const seatList = buildSeats(connections, readings, quotaAt, now, maxAge, resets);
   const seats = new Map(seatList.map((seat) => [seat.connectionId, seat]));
-  const agents = agentPlaces(agentRows, parked);
+  const agents = agentPlaces(agentRows, parked, now);
   const plan = planMoves(seatList, agents, settings, now);
   if (plan.refused.length > 0) {
     deps.logError("Seat mover: the batch would break the checklist, so nobody moves this pass.", {

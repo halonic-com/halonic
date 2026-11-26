@@ -34,6 +34,7 @@ export const workspaceFeature = defineFeature({
       icon: "trusted-sources",
       title: trustedSourcesText.SECTION_TITLE,
       scope: "host",
+      group: "agents",
       order: 40,
       description: (_context, place) =>
         place === "served" ? trustedSourcesText.LEAD_SERVED : trustedSourcesText.LEAD,
@@ -45,6 +46,7 @@ export const workspaceFeature = defineFeature({
       icon: "trust",
       title: "Trust",
       scope: "workspace",
+      group: "agents",
       order: 20,
       workspaceLine: false,
       summary: trustSummary,

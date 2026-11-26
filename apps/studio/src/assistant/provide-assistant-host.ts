@@ -17,6 +17,7 @@ import type { ShellEngine } from "@halonicjs/studio-shell";
 import { answerChatOn } from "../engine/answer-chat-on.ts";
 import { type AuthoringTurnParts, authoringChatExecutor } from "../engine/authoring-chat-turn.ts";
 import type { WorkspaceTrust } from "../studio/workspace-trust.ts";
+import type { RequestLogs } from "./chat-request-log.ts";
 import { WorkspaceAssistant } from "./workspace-assistant.ts";
 
 /** What the open folder's Assistant is built from. */
@@ -44,6 +45,11 @@ export interface AssistantHostParts {
    * docs with (`studio.assistant-read-docs`). Absent: the chat has no `read_docs`.
    */
   readonly docsHttp?: HttpClient | undefined;
+  /**
+   * The workspace's local request logs, which a trusted Build chat about a local integration reads
+   * with `read_request_log` (`assistant.build.read-request-log`). Absent: no chat has the tool.
+   */
+  readonly requestLogs?: RequestLogs | undefined;
 }
 
 /**
@@ -83,6 +89,7 @@ export function provideAssistantHost(services: ServiceRegistry, parts: Assistant
       chats: { sessions: parts.chatSessions, location: parts.location },
       askTrust: parts.askTrust,
       docs: parts.docsHttp === undefined ? undefined : { http: parts.docsHttp },
+      requestLogs: parts.requestLogs,
     }),
   );
 }

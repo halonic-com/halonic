@@ -55,7 +55,7 @@ verifies("paperclip.seat-mover-job", () => {
         at: fresh.at,
       },
       quotaHit: false,
-      connected: true,
+      connection: "connected",
     });
   });
 
@@ -87,12 +87,13 @@ verifies("paperclip.seat-mover-job", () => {
     expect(buildSeats(connections, readings, before, now, 45)[0]?.quotaHit).toBe(false);
   });
 
-  test("a revoked connection stays as a seat that isn't connected; one no readings seat names has no reading", () => {
+  test("a revoked connection stays as a seat that isn't connected; one without a status is unknown; one no readings seat names has no reading", () => {
     const connections = parseConnections({
       connections: [
         connection("c-1"),
         connection("c-2", "api_key"),
         connection("c-3", "subscription", "revoked"),
+        { id: "c-4", grantId: "g-c-4", method: "subscription" },
       ],
     });
     const seats = buildSeats(
@@ -103,11 +104,12 @@ verifies("paperclip.seat-mover-job", () => {
       45,
     );
     expect(
-      seats.map((seat) => [seat.name, seat.method, seat.reading === undefined, seat.connected]),
+      seats.map((seat) => [seat.name, seat.method, seat.reading === undefined, seat.connection]),
     ).toEqual([
-      ["c-2", "api_key", true, true],
-      ["c-3", "subscription", true, false],
-      ["Noah", "subscription", false, true],
+      ["c-2", "api_key", true, "connected"],
+      ["c-3", "subscription", true, "not-connected"],
+      ["c-4", "subscription", true, "unknown"],
+      ["Noah", "subscription", false, "connected"],
     ]);
   });
 });

@@ -1,5 +1,5 @@
 import type { Message, MessagingId } from "@halonicjs/ports";
-import { Avatar } from "@halonicjs/studio-kit";
+import { Avatar, ContentHeader } from "@halonicjs/studio-kit";
 import type { EngineWords } from "@halonicjs/studio-shell";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { isChannel } from "../channel.ts";
@@ -273,19 +273,23 @@ function ConversationHeader({
 }) {
   const activity = messengerWords.activity[activityOf(row)];
   return (
-    <header className="flex items-center gap-3 border-b border-border px-4 py-3">
-      <Avatar name={chatAgent(row)?.name ?? row.conversation.title} picture={picture} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <h2 className="truncate text-body-strong">
-          <bdi>{chatName(row)}</bdi>
-        </h2>
-        <p className="text-small text-fg-muted">
-          {[row.source?.label ?? "", activity].filter((part) => part !== "").join(" · ")}
-        </p>
-      </div>
-      {children}
-      {find}
-      <ActivityButton />
-    </header>
+    <ContentHeader
+      picture={
+        <Avatar
+          name={chatAgent(row)?.name ?? row.conversation.title}
+          picture={picture}
+          size="header"
+        />
+      }
+      title={chatName(row)}
+      line={[row.source?.label ?? "", activity].filter((part) => part !== "").join(" · ")}
+      actions={
+        <>
+          {children}
+          {find}
+          <ActivityButton />
+        </>
+      }
+    />
   );
 }

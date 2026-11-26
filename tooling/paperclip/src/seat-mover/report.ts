@@ -19,6 +19,7 @@ const reasonWords: Record<MoveReason, string> = {
   "b-reviewers-share": "two reviewers shared a seat",
   "b-reviewer-not-alone": "the reviewer wasn't alone and the others couldn't move",
   "c-heavy-limit": "its seat had too many heavy agents",
+  "g-quiet-seat": "it sat on the timer agents' quiet seat",
 };
 
 function usage(seat: Seat | undefined): string {

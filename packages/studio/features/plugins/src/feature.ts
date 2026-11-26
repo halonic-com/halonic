@@ -55,6 +55,7 @@ export const pluginsFeature = defineFeature({
       title: "Plugins",
       icon: "plugins",
       scope: "host",
+      group: "agents",
       order: 60,
       description: PLUGINS_SENTENCE,
       view: "PluginsSettingsSection",

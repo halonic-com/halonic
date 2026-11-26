@@ -16,9 +16,6 @@ export const OPEN_RELEASE_PAGE = "Open release page";
 export const WHATS_NEW = "What's new";
 export const TRY_AGAIN = "Try again";
 
-/** The status bar item's accessible name; its icon is hidden from screen readers. */
-export const itemName = (version: string) => `Halonic ${version} is ready. ${RESTART_TO_UPDATE}`;
-
 /** Said once, politely, when a download ends. */
 export const announceReady = (version: string) =>
   `Halonic ${version} is ready to install. ${RESTART_TO_UPDATE}.`;

@@ -1,4 +1,5 @@
 import type { RunSummary } from "@halonicjs/events";
+import type { AskKeysText } from "@halonicjs/studio-feature-feedback/api";
 import type { AnsweredViewProps, InboxAnsweredView } from "@halonicjs/studio-feature-inbox/api";
 import {
   costParts,
@@ -32,15 +33,16 @@ export function youDidItSource(
 
 /**
  * The view of "You did it", loaded once it claims an answer, with the runs it reads the record
- * from: the Inbox gives a view only its own props.
+ * from and quick ask's keys, where the app gives them: the Inbox gives a view only its own props.
  */
-export function youDidItView(runs: RunsList): ViewRef {
+export function youDidItView(runs: RunsList, askKeys?: AskKeysText): ViewRef {
   return {
     view: "YouDidItView",
     load: async () => {
       const { YouDidItView } = await import("./ui/you-did-it-view.tsx");
       return {
-        YouDidItView: (props: AnsweredViewProps) => createElement(YouDidItView, { ...props, runs }),
+        YouDidItView: (props: AnsweredViewProps) =>
+          createElement(YouDidItView, { ...props, runs, askKeys }),
       };
     },
   };

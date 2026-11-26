@@ -69,9 +69,10 @@ export class CountedResponse {
         controller.enqueue(chunk);
       },
     });
+    // No `statusText`: `new Response()` throws on a reason phrase `fetch` passes through (a byte of
+    // 0x80 or more, a control character), and nothing reads it.
     this.response = new Response(response.body.pipeThrough(counter), {
       status: response.status,
-      statusText: response.statusText,
       headers: response.headers,
     });
   }

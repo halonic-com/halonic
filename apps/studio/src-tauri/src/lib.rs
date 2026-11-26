@@ -101,6 +101,7 @@ mod native_dialogs;
 mod navigation;
 #[cfg(desktop)]
 mod notification_clicks;
+mod open_timings;
 #[cfg(target_os = "android")]
 mod owner_check;
 mod owner_check_page;

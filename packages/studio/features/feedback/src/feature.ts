@@ -1,24 +1,34 @@
-import { AskKeysSettingsService } from "@halonicjs/studio-feature-quick-ask/api";
+import { AskKeysSettingsService, AskOpenerService } from "@halonicjs/studio-feature-quick-ask/api";
 import { HostSettingsService } from "@halonicjs/studio-feature-settings/api";
 import { defineFeature, type WorkspaceContext } from "@halonicjs/studio-shell";
-import { FeedbackSettingsService } from "./api.ts";
+import { AskKeysTextService, FeedbackSettingsService } from "./api.ts";
+import { AskKeysWatch } from "./help/ask-keys-watch.ts";
+import { quickAskCommands, quickAskHelpItems } from "./help/quick-ask-entry.ts";
 import { settingsWords } from "./settings/settings-words.ts";
 
 /**
  * The Feedback feature: Settings → Keyboard, where the feedback shortcut and quick ask's keys
  * change, and Settings → Feedback, where feedback goes (`feedback.settings-shortcut`,
  * `feedback.settings-quick-ask`, `feedback.settings-section`). Both show only where the app gives
- * a {@link FeedbackSettingsService}: Studio's own main window.
+ * a {@link FeedbackSettingsService}: Studio's own main window. Help › Quick ask and its Ctrl K
+ * entry show the box, with its keys, where the app gives an opener (`feedback.help-quick-ask`).
  */
 export const feedbackFeature = defineFeature({
   id: "feedback",
   title: "Feedback",
-  wants: [FeedbackSettingsService, HostSettingsService, AskKeysSettingsService],
+  wants: [FeedbackSettingsService, HostSettingsService, AskKeysSettingsService, AskOpenerService],
+  provides: [AskKeysTextService],
   register(studio) {
+    studio.services.provide(
+      AskKeysTextService,
+      (services) => new AskKeysWatch(services.find(AskKeysSettingsService)),
+    );
     studio.settings.add({
       id: "keyboard",
+      icon: "keyboard",
       title: settingsWords.keyboardTitle,
       scope: "host",
+      group: "keyboard",
       // After Agent sandbox (30) and Remote (35), before Trusted sources (40).
       order: 36,
       phone: false,
@@ -28,13 +38,27 @@ export const feedbackFeature = defineFeature({
     });
     studio.settings.add({
       id: "feedback",
+      icon: "feedback",
       title: settingsWords.feedbackTitle,
       scope: "host",
+      group: "general",
       order: 37,
       phone: false,
       available: feedbackSettingsAvailable,
       view: "FeedbackSection",
       load: () => import("./settings/feedback-section.tsx"),
+    });
+    // After Check this computer (10), before First run (20).
+    studio.help.add({
+      id: "feedback.help",
+      order: 15,
+      items: (context) => quickAskHelpItems(context.services),
+      subscribe: (context, listener) =>
+        context.services.get(AskKeysTextService).subscribe(listener),
+    });
+    studio.commands.addSource({
+      id: "feedback.shortcuts",
+      commands: (context) => (context === undefined ? [] : quickAskCommands(context.services)),
     });
   },
 });

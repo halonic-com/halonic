@@ -225,7 +225,8 @@ requests, only to `api.github.com`, about 20 calls per pass on `halonic`.
 `tools.ts` (the agent tools) and `host.ts`, the adapter to Paperclip's
 plugin API. It asks for the fewest capabilities the watcher and the tools
 need: jobs, reading companies, agents, tasks and comments, creating
-comments, wake-ups, `issues.update`, outbound HTTP, reading a secret,
+comments, creating a chief-line thread (`issues.create`, only in
+`chief-line.ts`), wake-ups, `issues.update`, outbound HTTP, reading a secret,
 registering agent tools, writing metrics and keeping plugin state (the
 GitHub snapshot). The board check adds events, the two documents, reading
 approvals, a task's subtree, its blockers and its pending cards (see Board
@@ -1242,13 +1243,15 @@ a seat that never started and the `provider_quota` failures of the last hour.
 An agent leaves its seat at the 5-hour stop (80%, 70% for a reviewer), the
 weekly stop (88%), after a `provider_quota` failure on the seat since its
 reading, with runs parked on it, on an excluded seat or the paid API, beside a
-reviewer, as a heavy agent past the limit, or on a connection that isn't
-`connected` (expired or revoked). Every target passes the board's
+reviewer, as a heavy agent past the limit, as a running heavy agent on the
+quiet seat, or on a connection that isn't `connected` (expired or revoked). Every target passes the board's
 checklist (`src/seat-mover/checklist.ts`): (a) week below 88% unless the seat is
 on the reset-fill list or its weekly reset is under 24 hours away; (b) reviewers
 alone, on the seat with the most 5-hour room, and nobody joins them; (c) at
 most two heavy agents a seat; (d) never an excluded seat (Admin, and the board
-adds its own); (e) never the paid API; (f) never a seat at its 5-hour stop.
+adds its own); (e) never the paid API; (f) never a seat at its 5-hour stop;
+(g) for a running heavy agent, never the quiet seat (a seat an agent on
+`seatMover.pinned`, the seat starter or a timer agent, sits on).
 Among the legal seats, the one the pass has sent the fewest agents to comes
 first, so agents leaving one full seat spread out (HAL-19394). An agent no seat
 may take stays, and the board task hears of it once.

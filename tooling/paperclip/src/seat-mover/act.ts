@@ -1,4 +1,4 @@
-import type { SeatApi } from "./api.ts";
+import type { AgentConfig, SeatApi } from "./api.ts";
 import type { Move } from "./plan.ts";
 import type { ParkedRun } from "./runs.ts";
 
@@ -13,26 +13,44 @@ export type MoveOutcome = "moved" | "moved-heartbeat-restored" | "skipped-placem
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
+/**
+ * Sends an agent's whole `runtimeConfig` back with `change` applied, reads it
+ * again and puts `heartbeat` back if it changed. Answers whether it had to.
+ */
+export async function sendRuntimeConfig(
+  api: SeatApi,
+  before: AgentConfig,
+  change: Record<string, unknown>,
+): Promise<"sent" | "heartbeat-restored"> {
+  const heartbeat = before.runtimeConfig["heartbeat"];
+  await api.setRuntimeConfig(before.id, { ...before.runtimeConfig, ...change });
+  const after = await api.agent(before.id);
+  if (same(after.runtimeConfig["heartbeat"], heartbeat)) {
+    return "sent";
+  }
+  await api.setRuntimeConfig(before.id, { ...after.runtimeConfig, heartbeat, ...change });
+  return "heartbeat-restored";
+}
+
+/** The `aiConnection` an agent's runtimeConfig names, or an empty one. */
+export function aiConnectionOf(config: AgentConfig): Record<string, unknown> {
+  return (config.runtimeConfig["aiConnection"] ?? {}) as Record<string, unknown>;
+}
+
 export async function moveAgent(api: SeatApi, move: Move): Promise<MoveOutcome> {
   const before = await api.agent(move.agent.id);
-  const connection = (before.runtimeConfig["aiConnection"] ?? {}) as Record<string, unknown>;
+  const connection = aiConnectionOf(before);
   if (connection["connectionId"] !== move.from) {
     // Someone moved it since the plan read it: the plan no longer holds for it.
     return "skipped-placement-changed";
   }
-  const heartbeat = before.runtimeConfig["heartbeat"];
   const aiConnection = {
     ...connection,
     connectionId: move.to.connectionId,
     grantId: move.to.grantId,
   };
-  await api.setRuntimeConfig(move.agent.id, { ...before.runtimeConfig, aiConnection });
-  const after = await api.agent(move.agent.id);
-  if (same(after.runtimeConfig["heartbeat"], heartbeat)) {
-    return "moved";
-  }
-  await api.setRuntimeConfig(move.agent.id, { ...after.runtimeConfig, heartbeat, aiConnection });
-  return "moved-heartbeat-restored";
+  const sent = await sendRuntimeConfig(api, before, { aiConnection });
+  return sent === "sent" ? "moved" : "moved-heartbeat-restored";
 }
 
 /** How close a parked run's own retry may be and still be left to restart by itself. */

@@ -3,20 +3,22 @@
 // runner starts only when the workspace's trust check is `trusted`, its
 // trusted content covers this integration's folder, the folder's files hash
 // now to the `code` that was trusted, and the settings it starts with give
-// the addresses that were trusted. Only then does the start gate pick the
-// sandbox. Without all of that it throws and starts no process: no
+// the addresses that were trusted, and the connector isn't paused for that
+// code (HAL-19188). Only then does the start gate pick the sandbox. Without all of that it throws and starts no process: no
 // sandbox session, no Node, no bridge.
 //
 // The folder is hashed again at every start, the restart after an idle stop
 // included, because files can change while Halonic runs and the trust check
 // was made earlier. A setting such as the URL of a `{ fromSetting }` host
-// changes no file, so it is compared on its own. The fence status is read by the gate per run and is
+// changes no file, so it is compared on its own. A pause is read here too, at
+// every start, so a pause made while the run goes holds at the next start. The fence status is read by the gate per run and is
 // never part of the trust content, so a saved yes for running without the
 // fence can never stand in for trust.
 
 import type { Digest, FolderReader } from "@halonicjs/ports";
 import { canonicalJson, posixPath } from "@halonicjs/std";
 import { integrationSettingAddresses } from "@halonicjs/workspace";
+import { ConnectorPausedError, type ConnectorPauses } from "./connector-pauses.ts";
 import { type IntegrationFolderProblem, readIntegrationFolder } from "./integration-folder.ts";
 import type {
   GatedRunner,
@@ -72,6 +74,8 @@ export interface TrustedRunnerStartOptions {
   readonly digest: Digest;
   /** The gate that picks the sandbox once trust is settled. */
   readonly gate: RunnerStartGate;
+  /** The paused connectors, read at every start after the trust. */
+  readonly pauses: ConnectorPauses;
 }
 
 /** The local integration a start is for. */
@@ -84,6 +88,8 @@ export interface TrustedRunnerSubject {
    * folder is, so `integrations/home-station/` names the same one.
    */
   readonly folder: string;
+  /** The id of the connector that runs it, the key of its pause with the code. */
+  readonly connector: string;
   /**
    * The workspace's settings for the integration that the runner starts
    * with, such as `{ url: "http://192.168.1.20:8123" }`; `{}` while a
@@ -98,26 +104,30 @@ export interface TrustedRunnerSubject {
  * Starts local integrations' runners only with a trust that covers them.
  *
  * @example
- * const starts = new TrustedRunnerStart({ workspace, digest, gate });
- * const gated = await starts.start({ trust, folder, settings }, (sandbox) => startRunner({ ...options, sandbox }));
+ * const starts = new TrustedRunnerStart({ workspace, digest, gate, pauses });
+ * const gated = await starts.start({ trust, folder, connector, settings }, (sandbox) => startRunner({ ...options, sandbox }));
  * if (gated.run === "needs-yes") showTrustCheck(gated.reason);
  */
 export class TrustedRunnerStart {
   readonly #workspace: FolderReader;
   readonly #digest: Digest;
   readonly #gate: RunnerStartGate;
+  readonly #pauses: ConnectorPauses;
 
   constructor(options: TrustedRunnerStartOptions) {
     this.#workspace = options.workspace;
     this.#digest = options.digest;
     this.#gate = options.gate;
+    this.#pauses = options.pauses;
   }
 
   /**
    * Checks that `subject.trust` covers the integration in `subject.folder` as
-   * it is on disk now, then starts its runner through the start gate.
+   * it is on disk now and that the connector isn't paused for that code, then
+   * starts its runner through the start gate.
    *
    * @throws IntegrationNotTrustedError when it doesn't; `startIn` is never called then
+   * @throws ConnectorPausedError when the connector is paused, or the pauses can't be read; `startIn` is never called then
    * @throws what the gate or `startIn` throws
    */
   async start<Runner extends GatedRunner>(
@@ -152,6 +162,17 @@ export class TrustedRunnerStart {
     const addresses = integrationSettingAddresses(now.value.sheet, settings);
     if (canonicalJson(addresses) !== canonicalJson(trusted.addresses)) {
       throw new IntegrationNotTrustedError(folder, "settings-changed");
+    }
+    // Keyed by the code as it is now, which is the trusted code: trusting the
+    // same code again leaves the pause, and only changed code goes past it.
+    const key = {
+      location: trust.grant.location,
+      connector: subject.connector,
+      code: now.value.code,
+    };
+    const pause = await this.#pauses.find(key);
+    if (pause !== undefined) {
+      throw new ConnectorPausedError(subject.connector, "connector-paused", pause);
     }
   }
 }

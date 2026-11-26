@@ -132,6 +132,7 @@ const displayFeature = defineFeature({
       id: "appearance",
       title: "Appearance",
       scope: "display",
+      group: "general",
       order: 10,
       view: "AppearanceSection",
       load: async () => ({ AppearanceSection }),

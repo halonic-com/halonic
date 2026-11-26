@@ -1,4 +1,5 @@
-import type { Seat, SeatReading } from "./checklist.ts";
+import type { ConnectionState, Seat, SeatReading } from "./checklist.ts";
+import { beforeReset, type SeatResets } from "./reset.ts";
 
 /**
  * Turns what Paperclip answers into the seats the plan works on (HAL-19354):
@@ -12,7 +13,8 @@ export interface Connection {
   readonly id: string;
   readonly grantId: string | undefined;
   readonly method: string;
-  readonly status: string;
+  /** `undefined` when the API gives no status. */
+  readonly status: string | undefined;
 }
 
 /** One readings seat with its newest reading. */
@@ -54,7 +56,7 @@ export function parseConnections(body: unknown): Connection[] {
         id,
         grantId: text(row["grantId"]),
         method: text(row["method"]) ?? "unknown",
-        status: text(row["status"]) ?? "unknown",
+        status: text(row["status"]),
       },
     ];
   });
@@ -143,12 +145,25 @@ function usableReading(
 }
 
 /**
+ * Only an explicit status other than `connected` (expired, revoked) is
+ * `not-connected`; no status is `unknown`, which moves nobody off (HAL-19464).
+ */
+function connectionState(status: string | undefined): ConnectionState {
+  if (status === undefined || status === "unknown") {
+    return "unknown";
+  }
+  return status === "connected" ? "connected" : "not-connected";
+}
+
+/**
  * The seats: every connection, named and read by the readings seat on it. One
  * that isn't `connected` (expired, revoked) stays in the list, marked, so its
  * agents get a reason to move (HAL-19394). A connection no readings seat names
- * keeps its id as its name and no reading, so nobody is moved onto it. `quotaSince` gives, per connection,
+ * keeps its id as its name and no reading, so nobody is moved onto it. `quotaAt` gives, per connection,
  * the newest `provider_quota` failure; it marks the seat full when it came
- * after the reading.
+ * after the reading. After the board reset a seat by hand (`resets`,
+ * HAL-19490), a reading or quota failure from before the reset no longer
+ * counts: the seat has no reading until the next one.
  */
 export function buildSeats(
   connections: readonly Connection[],
@@ -156,12 +171,17 @@ export function buildSeats(
   quotaAt: ReadonlyMap<string, string>,
   now: Date,
   maxAgeMinutes: number,
+  resets: SeatResets = {},
 ): Seat[] {
   return connections
     .map((connection) => {
+      const sinceReset = (at: string | undefined) =>
+        at !== undefined && !beforeReset(resets, connection.id, at);
       const named = readings.find((seat) => seat.connectionId === connection.id);
-      const reading = named === undefined ? undefined : usableReading(named, now, maxAgeMinutes);
-      const quota = quotaAt.get(connection.id);
+      const usable = named === undefined ? undefined : usableReading(named, now, maxAgeMinutes);
+      const reading = sinceReset(usable?.at) ? usable : undefined;
+      const quotaFailure = quotaAt.get(connection.id);
+      const quota = sinceReset(quotaFailure) ? quotaFailure : undefined;
       return {
         connectionId: connection.id,
         grantId: connection.grantId,
@@ -171,7 +191,7 @@ export function buildSeats(
         quotaHit:
           quota !== undefined &&
           (reading === undefined || Date.parse(quota) > Date.parse(reading.at)),
-        connected: connection.status === "connected",
+        connection: connectionState(connection.status),
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name));

@@ -60,6 +60,7 @@ function section(
     id,
     title,
     scope,
+    group: "general",
     order,
     view: "SectionView",
     load: async () => ({ SectionView }),

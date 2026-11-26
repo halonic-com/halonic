@@ -27,7 +27,7 @@ export {
   appLogoIds,
 } from "./app-logo/app-glyphs.ts";
 export { AppLogo, type AppLogoProps } from "./app-logo/app-logo.tsx";
-export { Avatar, type AvatarProps } from "./avatar/avatar.tsx";
+export { Avatar, type AvatarProps, type AvatarSize } from "./avatar/avatar.tsx";
 export {
   Button,
   type ButtonProps,
@@ -101,6 +101,7 @@ export {
   CommandBox,
   type CommandBoxProps,
 } from "./command-box/command-box.tsx";
+export { ContentHeader, type ContentHeaderProps } from "./content-header/content-header.tsx";
 export {
   ClipboardProvider,
   type ClipboardProviderProps,
@@ -318,6 +319,14 @@ export {
   PickerSheet,
   type PickerSheetProps,
 } from "./picker-sheet/picker-sheet.tsx";
+export {
+  PlainList,
+  type PlainListProps,
+  PlainRow,
+  type PlainRowAction,
+  type PlainRowProps,
+  type PlainRowUnread,
+} from "./plain-list/plain-list.tsx";
 export {
   NarrowProvider,
   type NarrowProviderProps,

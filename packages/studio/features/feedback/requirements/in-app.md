@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: unreleased
-- Source: board request (26 Nov): the shortcut only in the focused window, the overlay inside it; the shell's commands in `studio.src-tauri.feedback-capture`
+- Source: board request (26 Nov): the shortcut only in the focused window, the overlay inside it; the shell's commands in `studio.src-tauri.feedback-capture`; the Send feedback dialog in the same window (HAL-19528)
 
 While one of Studio's own windows on the desktop (Studio, Halonic Inbox, Halonic Messenger) is
 focused, the Feedback feature shall hear the feedback shortcut in that window and only there, before
@@ -12,7 +12,10 @@ another is saved, matched by its physical key and exactly its modifiers; a saved
 none of Ctrl, Alt and ⌘ shall count as Ctrl+Shift+F. When the person presses it
 and no overlay shows, the feature shall call `plugin:feedback|start` and, when the shell answers the
 still's width and height, show the selection overlay (`feedback.overlay`) in that window. When the
-shell refuses with `send_open`, `unavailable` or `busy`, the feature shall show nothing. When the
+shell refuses with `unavailable` or `busy`, the feature shall show nothing. When the shell has kept
+the crop of the box selected on the overlay, the feature shall show the Send feedback dialog
+(`feedback.send-window`) in that same window. While the dialog shows, a press shall leave it as it
+is, with its text, and ask nothing of the shell. When the
 person presses it while the overlay shows, the feature shall take the overlay away and call
 `plugin:feedback|end`. When the overlay has shown for two minutes, the time the shell holds the
 still, the feature shall take it away. The feature shall ignore a held key's repeats.
@@ -34,6 +37,9 @@ still, the feature shall take it away. The feature shall ignore a held key's rep
 - Given the overlay showing for two minutes,
   when no box was drawn,
   then the overlay goes away.
-- Given the Send feedback window open,
-  when the person presses Ctrl+Shift+F and the shell answers `send_open`,
+- Given the Send feedback dialog open with text typed,
+  when the person presses Ctrl+Shift+F,
+  then the dialog stays with its text, and the shell isn't asked to start.
+- Given Studio's window on macOS,
+  when the person presses ⌘⇧F and the shell answers `unavailable`,
   then no overlay shows.

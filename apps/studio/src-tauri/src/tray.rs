@@ -137,7 +137,7 @@ fn clicked<R: Runtime>(app: &AppHandle<R>, id: &str) {
     if id == OPEN || id.starts_with(STATUS) {
         crate::focused_apps::started_again(app, &[]);
     } else if id == ASK {
-        if let Err(error) = crate::quick_ask::show(app) {
+        if let Err(error) = crate::quick_ask::show_box(app) {
             halonic_shell_log::record("tray", format_args!("the box didn't open: {error}"));
         }
     } else if id == TRY_AGAIN {

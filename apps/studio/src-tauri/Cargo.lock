@@ -1627,7 +1627,7 @@ dependencies = [
 
 [[package]]
 name = "halonic-action-send"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "halonic-secrets",
  "halonic-shell-log",
@@ -1638,7 +1638,7 @@ dependencies = [
 
 [[package]]
 name = "halonic-agent-host"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "halonic-secrets",
  "halonic-shell-log",
@@ -1649,18 +1649,18 @@ dependencies = [
 
 [[package]]
 name = "halonic-blob-store"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "sha2",
 ]
 
 [[package]]
 name = "halonic-command-paths"
-version = "0.1.0"
+version = "0.1.1"
 
 [[package]]
 name = "halonic-connect"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -1668,11 +1668,11 @@ dependencies = [
 
 [[package]]
 name = "halonic-device-keys"
-version = "0.1.0"
+version = "0.1.1"
 
 [[package]]
 name = "halonic-e2e-noise-wasm"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -1681,7 +1681,7 @@ dependencies = [
 
 [[package]]
 name = "halonic-elevate-start"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "halonic-publisher",
  "windows-sys 0.61.2",
@@ -1689,7 +1689,7 @@ dependencies = [
 
 [[package]]
 name = "halonic-engine-pipe"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "halonic-agent-host",
  "halonic-secret-broker",
@@ -1699,7 +1699,7 @@ dependencies = [
 
 [[package]]
 name = "halonic-engine-supervisor"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "halonic-agent-host",
  "halonic-engine-pipe",
@@ -1710,21 +1710,21 @@ dependencies = [
 
 [[package]]
 name = "halonic-file-identity"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "windows-sys 0.61.2",
 ]
 
 [[package]]
 name = "halonic-git-guard"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "libc",
 ]
 
 [[package]]
 name = "halonic-host-settings"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "libc",
  "serde_json",
@@ -1732,7 +1732,7 @@ dependencies = [
 
 [[package]]
 name = "halonic-http-guard"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -1741,14 +1741,14 @@ dependencies = [
 
 [[package]]
 name = "halonic-keep-awake"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "windows-sys 0.61.2",
 ]
 
 [[package]]
 name = "halonic-keychain"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "halonic-secrets",
  "keyring",
@@ -1756,25 +1756,25 @@ dependencies = [
 
 [[package]]
 name = "halonic-login-item"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "windows-sys 0.61.2",
 ]
 
 [[package]]
 name = "halonic-login-shell"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "libc",
 ]
 
 [[package]]
 name = "halonic-owner-check"
-version = "0.1.0"
+version = "0.1.1"
 
 [[package]]
 name = "halonic-owner-sign-in"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "halonic-connect",
  "halonic-secrets",
@@ -1785,7 +1785,7 @@ dependencies = [
 
 [[package]]
 name = "halonic-phone-tunnel"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "futures-util",
  "halonic-blob-store",
@@ -1802,7 +1802,7 @@ dependencies = [
 
 [[package]]
 name = "halonic-process-probe"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "libc",
  "windows-sys 0.61.2",
@@ -1810,7 +1810,7 @@ dependencies = [
 
 [[package]]
 name = "halonic-profile"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "halonic-workspace-files",
  "icu_normalizer",
@@ -1820,14 +1820,14 @@ dependencies = [
 
 [[package]]
 name = "halonic-publisher"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "windows-sys 0.61.2",
 ]
 
 [[package]]
 name = "halonic-record-store"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "halonic-run-lock",
  "serde_json",
@@ -1836,7 +1836,7 @@ dependencies = [
 
 [[package]]
 name = "halonic-resource-probe"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "libc",
  "windows-sys 0.61.2",
@@ -1844,7 +1844,7 @@ dependencies = [
 
 [[package]]
 name = "halonic-run-lock"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -1852,7 +1852,7 @@ dependencies = [
 
 [[package]]
 name = "halonic-run-store"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "halonic-run-lock",
  "libc",
@@ -1861,7 +1861,7 @@ dependencies = [
 
 [[package]]
 name = "halonic-sandbox-elevate"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "halonic-file-identity",
  "halonic-publisher",
@@ -1871,7 +1871,7 @@ dependencies = [
 
 [[package]]
 name = "halonic-screen-still"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "windows",
  "x11rb",
@@ -1879,7 +1879,7 @@ dependencies = [
 
 [[package]]
 name = "halonic-secret-broker"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "halonic-secrets",
  "halonic-shell-log",
@@ -1890,11 +1890,11 @@ dependencies = [
 
 [[package]]
 name = "halonic-secrets"
-version = "0.1.0"
+version = "0.1.1"
 
 [[package]]
 name = "halonic-server-session"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "halonic-command-paths",
  "serde_json",
@@ -1902,11 +1902,11 @@ dependencies = [
 
 [[package]]
 name = "halonic-shell-log"
-version = "0.1.0"
+version = "0.1.1"
 
 [[package]]
 name = "halonic-studio"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "halonic-action-send",
  "halonic-agent-host",
@@ -1967,7 +1967,7 @@ dependencies = [
 
 [[package]]
 name = "halonic-trust-grant"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "halonic-file-identity",
  "halonic-git-guard",
@@ -1979,7 +1979,7 @@ dependencies = [
 
 [[package]]
 name = "halonic-trust-store"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "libc",
  "serde",
@@ -1989,7 +1989,7 @@ dependencies = [
 
 [[package]]
 name = "halonic-tunnel"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "futures-util",
  "halonic-blob-store",
@@ -2007,7 +2007,7 @@ dependencies = [
 
 [[package]]
 name = "halonic-update-state"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -2015,21 +2015,21 @@ dependencies = [
 
 [[package]]
 name = "halonic-window-app-id"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "windows",
 ]
 
 [[package]]
 name = "halonic-window-caption"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "windows",
 ]
 
 [[package]]
 name = "halonic-workspace-files"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "libc",
  "serde_json",

@@ -88,6 +88,8 @@ export interface GatePull {
   /** GraphQL node id, for the queue mutations. */
   readonly id: string;
   readonly title: string;
+  /** The description; missing in a snapshot from before HAL-19508. */
+  readonly body?: string;
   /** Who opened it; null when GitHub doesn't say, missing in a snapshot from before HAL-18506. */
   readonly author?: string | null;
   readonly branch: string;

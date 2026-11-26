@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { acmeData, agentAda, agentBo, company, me } from "./acme-data.test-helper.ts";
 import { channelMembersLine, childTaskDescription } from "./channels.ts";
 import {
+  asListed,
   connect,
   FakePaperclip,
   type Network,
@@ -72,8 +73,12 @@ function serve(
   paperclip
     .serveAcme(data)
     .on("GET", `/api/companies/${company}/issues`, ({ query }) => ({
-      body: query.get("parentId") === channelTask ? children : [...data.tasks, engineering],
+      body:
+        query.get("parentId") === channelTask
+          ? children
+          : asListed([...data.tasks, engineering], query),
     }))
+    .on("GET", `/api/issues/${channelTask}`, { body: engineering })
     .on("GET", `/api/issues/${channelTask}/comments`, {
       body: [
         {

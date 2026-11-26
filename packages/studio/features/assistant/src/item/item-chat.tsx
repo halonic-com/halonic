@@ -29,9 +29,9 @@ export const itemChat: ItemChat = {
       render: () => <ItemPageChatBody about={about} name={name} context={context} />,
     };
   },
-  async askAbout(about, name, context) {
+  async askAbout(about, name, context, text) {
     // The item-page chat's placeholder, with the item's name in it (HAL-18155, point 4).
-    await openInPanel(context, about, { placeholder: buildChatWords.itemPlaceholder(name) });
+    await openInPanel(context, about, { text, placeholder: buildChatWords.itemPlaceholder(name) });
     // The chip under "Shown:" keeps what the chat is about in sight after a tab switch (5.7).
     const chats = buildChatsOf(context.services.get(AssistantHostService));
     await chats.showItem({ item: about, name });
@@ -49,7 +49,7 @@ export function itemChatOf(services: ServiceLookup): ItemChat {
   const ours = (context: WorkspaceContext) => withAssistantServices(context, services);
   return {
     chatFor: (about, name, context) => itemChat.chatFor(about, name, ours(context)),
-    askAbout: (about, name, context) => itemChat.askAbout(about, name, ours(context)),
+    askAbout: (about, name, context, text) => itemChat.askAbout(about, name, ours(context), text),
     describe: (text, context) => itemChat.describe(text, ours(context)),
   };
 }

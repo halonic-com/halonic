@@ -8,14 +8,20 @@ import { mergeControlJob } from "./merge-control-declaration.ts";
 import { mergerWakeConfigProperties, mergerWakeJob } from "./merger-wake-declaration.ts";
 import {
   ciFailuresDeclaration,
+  mergeSpeedDeclaration,
   prStatusDeclaration,
+  queueStateDeclaration,
   rebasePrDeclaration,
   writePrDeclaration,
 } from "./pr-tool-declarations.ts";
 import { prWriteConfigProperties } from "./pr-write-settings.ts";
 import { fastTrackConfigProperties, mergeControlConfigProperties } from "./queue-settings.ts";
 import { precheckWakeJob, readyForReviewDeclaration } from "./ready-for-review-declaration.ts";
-import { seatMoveJob, seatMoverConfigProperties } from "./seat-move-declaration.ts";
+import {
+  reviewVerdictConfigProperties,
+  reviewVerdictDeclaration,
+} from "./review-verdict-declaration.ts";
+import { seatMoveJob, seatMoverConfigProperties, seatResetRoute } from "./seat-move-declaration.ts";
 import { stackRebaseConfigProperties } from "./stack-rebase-settings.ts";
 import { statePacketConfigProperties } from "./state-packet-declaration.ts";
 import { taskToolDeclarations } from "./task-tool-declarations.ts";
@@ -27,9 +33,8 @@ import { pluginVersion } from "./version.ts";
 import { wakeHoldConfigProperties } from "./wake-hold-declaration.ts";
 
 /**
- * The capability of our local server patch (HAL-16413). Paperclip's shared
- * capability list (2026.1117.0) doesn't name it, so the type doesn't either;
- * the patched host accepts it in a manifest.
+ * The capability of our local server patch (HAL-16413). Paperclip's shared capability list
+ * (2026.1117.0) doesn't name it, so the type doesn't either; the patched host accepts it.
  */
 const monitorPostpone = "issues.monitors.postpone" as PluginCapability;
 
@@ -63,6 +68,9 @@ export const manifest: PaperclipPluginManifestV1 = {
     "companies.read",
     "agents.read",
     "issues.read",
+    // Only the chief line's findOrCreateThread (src/plugin/chief-line.ts, pinned by host.test.ts): a line
+    // with no live thread gets a new "[chief-line] …" or "[line] <caller> → <agent>" task (HAL-19471).
+    "issues.create",
     // Only `done`, `todo` with the reviewer as assignee, and `todo` on a blocked task whose
     // blockers all finished (HAL-17692): src/plugin/host.ts is the one place that writes a
     // status, through doneOnly, handoffOnly and todoOnly.
@@ -149,6 +157,10 @@ export const manifest: PaperclipPluginManifestV1 = {
     // the plugin keeps nothing in its own schema. src/worker-agents/tables.ts names every column.
     "database.namespace.migrate",
     "database.namespace.read",
+    // review_verdict (HAL-19481): only to check that the calling run holds the task it names
+    // (src/plugin/review-verdict-tool.ts). The check can also hand a free or stale checkout to
+    // the calling run, so the tool asks it only after the run is among the task's running runs.
+    "issues.checkout",
   ],
   entrypoints: { worker: "dist/worker.js", ui: "dist/ui" },
   database: {
@@ -174,6 +186,7 @@ export const manifest: PaperclipPluginManifestV1 = {
       ...mergerWakeConfigProperties,
       ...stackRebaseConfigProperties,
       ...prWriteConfigProperties,
+      ...reviewVerdictConfigProperties,
       repos: {
         type: "array",
         title: "Repositories",
@@ -398,6 +411,7 @@ export const manifest: PaperclipPluginManifestV1 = {
       companyResolution: { from: "query", key: "companyId" },
     },
     ...chiefLine.routes,
+    seatResetRoute,
   ],
   ui: {
     slots: [
@@ -415,13 +429,7 @@ export const manifest: PaperclipPluginManifestV1 = {
     ciFailuresDeclaration,
     rebasePrDeclaration,
     writePrDeclaration,
-    {
-      name: "queue_state",
-      displayName: "Merge queue",
-      description:
-        "The merge queue from the PR watcher's last snapshot (at most about 10 minutes old, and it says when it's older): each entry's position, state, group ci-ok, time in the queue and who queued it; merge-group jobs waiting for a runner and the longest wait; open pull requests labelled fast-track with who added the label (unknown never counts as allowed). Sends no GitHub request.",
-      parametersSchema: { type: "object", properties: {} },
-    },
+    queueStateDeclaration,
     readyForReviewDeclaration,
     {
       name: "board_asks",
@@ -454,25 +462,10 @@ export const manifest: PaperclipPluginManifestV1 = {
         },
       },
     },
-    {
-      name: "merge_speed",
-      displayName: "Merge speed",
-      description:
-        "Merges per hour, the share of pull requests dropped from the merge queue without merging, and the time in the queue of the merged ones, from the PR watcher's last GitHub snapshot. Queue exits count only from the board check's first pass. Pull request numbers and times only.",
-      parametersSchema: {
-        type: "object",
-        properties: {
-          hours: {
-            type: "integer",
-            minimum: 1,
-            maximum: 168,
-            description: "How many hours back; 6 by default.",
-          },
-        },
-      },
-    },
+    mergeSpeedDeclaration,
     ...taskToolDeclarations,
     trialResultsDeclaration,
+    reviewVerdictDeclaration,
   ],
 };
 

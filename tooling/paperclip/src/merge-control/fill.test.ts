@@ -79,7 +79,10 @@ verifies("paperclip.merge-control-fast-track", () => {
     );
     expect(enqueued(decision)).toEqual([2, 1, 3, 4]);
     expect(logText(decision)).toContain("FAST_UNVERIFIED #3(someone) #4(?)");
-    expect(enqueued(pass(snapshot({ pulls: [pull(1), fast(5, "halonic-dev")] })))).toEqual([5, 1]);
+    // The shared account every agent posts as never fast-tracks (2.3 of HAL-19228).
+    const shared = pass(snapshot({ pulls: [pull(1), fast(5, "halonic-dev")] }));
+    expect(enqueued(shared)).toEqual([1, 5]);
+    expect(logText(shared)).toContain("FAST_UNVERIFIED #5(halonic-dev)");
   });
 
   test("a board boost above 50,000 doesn't put a normal pull request ahead of a fast-track one", () => {

@@ -1,7 +1,14 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
 import { decide } from "./decide.ts";
-import { capacityAnswers, groupRuns, prometheusUrl, repo, statusUrl } from "./facts.test-helper.ts";
+import {
+  capacityAnswers,
+  groupRuns,
+  merger,
+  prometheusUrl,
+  repo,
+  statusUrl,
+} from "./facts.test-helper.ts";
 import { factsCaches, readMergeFacts } from "./facts.ts";
 import { recorded } from "./facts-recorded.test-helper.ts";
 import { headOf, now } from "./merge-control.test-helper.ts";
@@ -34,7 +41,7 @@ verifies("paperclip.merge-control-facts", () => {
     expect(queued?.forcePushedAt).toHaveLength(1);
     expect(queued?.retargetedAt).toHaveLength(1);
     expect(Object.keys(queued?.manifests ?? {})).toEqual(["packages/acme/package.json"]);
-    expect(fast?.fastTrackBy).toBe("halonic-dev");
+    expect(fast?.fastTrackBy).toBe(merger);
     expect(fast?.ciOkRun).toMatchObject({ runId: 9103, ciOkJobId: 10301 });
     expect(fast?.ciOkRun?.ciOkLog).toContain("Rerun the failed jobs");
     expect(snapshot.merged).toEqual([{ number: 99, mergedAt: expect.any(String) }]);
@@ -57,7 +64,8 @@ verifies("paperclip.merge-control-facts", () => {
     expect(snapshot.mainRuns.map((run) => run.id)).toEqual([6001]);
     expect(snapshot.tasks.map((task) => task.identifier)).toEqual(["HAL-101"]);
 
-    const decision = decide(snapshot, emptyMergeState, defaultSettings, now);
+    const settings = { ...defaultSettings, fastTrackLabellers: [merger] };
+    const decision = decide(snapshot, emptyMergeState, settings, now);
     const kinds = decision.actions.map((action) => {
       if ("number" in action) {
         return `${action.kind} #${action.number}`;

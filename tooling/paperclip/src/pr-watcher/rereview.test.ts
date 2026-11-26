@@ -3,7 +3,7 @@ import { expect, test } from "vitest";
 import { agentComment, agents, fakeGitHub, task } from "./fakes.test-helper.ts";
 import { head, mateoBranch, oldHead, open, repo, setup } from "./handoff.test-helper.ts";
 import type { Reviewer } from "./handoff.ts";
-import { gitHubRebaseOnly, sameChanges } from "./rebase-only.ts";
+import { changeIdOf, gitHubRebaseOnly, sameChanges } from "./rebase-only.ts";
 
 /** The re-review after a push to an approved pull request (HAL-17759), on facts given directly. */
 
@@ -142,6 +142,21 @@ verifies("paperclip.pr-watcher-rereview", () => {
     );
     expect(sameChanges([patch(10)], [patch(10), { ...patch(1), filename: "b.ts" }])).toBe(false);
     expect(sameChanges([{ filename: "logo.png", status: "modified" }], [])).toBe(false);
+  });
+
+  test("a renamed file GitHub lists without a patch counts by its content (HAL-19481)", () => {
+    const renamed = (sha?: string) => ({
+      filename: "b.png",
+      previous_filename: "a.png",
+      status: "renamed",
+      ...(sha === undefined ? {} : { sha }),
+    });
+    expect(sameChanges([renamed("1111")], [renamed("1111")])).toBe(true);
+    expect(sameChanges([renamed("1111")], [renamed("2222")])).toBe(false);
+    expect(sameChanges([renamed()], [renamed()])).toBe(false);
+    expect(changeIdOf([renamed("1111")])).toBe(changeIdOf([renamed("1111")]));
+    expect(changeIdOf([renamed("1111")])).not.toBe(changeIdOf([renamed("2222")]));
+    expect(changeIdOf([renamed()])).toBeNull();
   });
 
   test("compares on GitHub with GET requests only", async () => {

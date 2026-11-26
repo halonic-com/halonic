@@ -9,7 +9,7 @@ import { settingsSectionToOpen } from "./settings-sections.ts";
 const load = async () => ({ View: () => "view" });
 
 function section(id: string, scope: SettingsScope, order: number) {
-  return { id, title: id, scope, order, view: "View", load };
+  return { id, title: id, scope, group: "general" as const, order, view: "View", load };
 }
 
 verifies("shell.frame-points", () => {

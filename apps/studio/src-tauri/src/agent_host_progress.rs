@@ -224,6 +224,16 @@ impl StartProgress {
         });
     }
 
+    /// How long ago, at `now`, the page loaded or a new try started; `None`
+    /// before either.
+    pub fn since_page_loaded(&self, now: Instant) -> Option<Duration> {
+        let since = match self.seen.lock() {
+            Ok(seen) => seen.since,
+            Err(poisoned) => poisoned.into_inner().since,
+        };
+        since.map(|since| now.saturating_duration_since(since))
+    }
+
     pub fn report(&self, now: Instant) -> StartReport {
         match self.seen.lock() {
             Ok(seen) => seen.report(now),
@@ -244,6 +254,13 @@ pub fn page_loaded<R: Runtime>(app: &AppHandle<R>) {
     app.state::<AgentHostState>()
         .progress
         .page_loaded(Instant::now());
+}
+
+/// How long ago the page loaded, for the timing lines in `shell.log`.
+#[cfg(desktop)]
+pub fn since_page_loaded<R: Runtime>(app: &AppHandle<R>) -> Option<Duration> {
+    app.try_state::<AgentHostState>()
+        .and_then(|state| state.progress.since_page_loaded(Instant::now()))
 }
 
 /// The page's engine is ready. The shell then starts the agent host, unless

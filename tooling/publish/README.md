@@ -9,7 +9,7 @@ small workspace packages stay private and keep their own names.
 - **Layer:** tooling
 - **Owner:** mateo
 - **Public API:** `@halonicjs/tooling-publish` (`stageLayer`, `rewriteSpecifiers`, `buildWorkerBundle`)
-- **Requirements:** `publish.staged-package`, `publish.matching-versions`, `publish.packed-import`, `publish.worker-bundle`, `publish.staged-cli`
+- **Requirements:** `publish.staged-package`, `publish.matching-versions`, `publish.packed-import`, `publish.worker-bundle`, `publish.staged-cli`, `publish.release-notes`, `publish.release-notes-history`
 
 ## Example
 
@@ -87,16 +87,25 @@ requirement `publish.staged-cli`.
 
 ### Publishing the CLI: move `latest`
 
-On npm, `halonic` 1.0.0 is our placeholder, and it holds the `latest` tag. It and `0.0.0-stage` are
+On npm, `halonic` 1.0.0 is our placeholder. It and `0.0.0-stage` are
 already deprecated ("Empty placeholder. Use halonic 0.1.0 or later.", checked on 18 Nov 2026), so nothing
-more is needed for them. A real 0.1.x is lower
-than 1.0.0, so npm won't move `latest` to it by itself, and `npm install halonic` would keep installing the
-placeholder (HAL-12286). Every CLI publish before 1.0.0 therefore takes one more step:
+more is needed for them. `latest` names 0.1.1 since that release (checked on 26 Nov 2026). A real 0.1.x
+is lower than 1.0.0, so npm won't move `latest` to it by itself, and without the tag an install that leaves
+out `@latest` would get the placeholder again (HAL-12286).
+
+Our install lines say `npm install -g halonic@latest`, not plain `halonic`, until a real version is above
+1.0.0. When the `latest` version's `engines` doesn't match the user's Node.js (older than 26.12), an install
+without `@latest` falls back to the highest version that does, the placeholder 1.0.0, which installs
+quietly with no `halonic` command. With `@latest`, npm installs the tagged version, and `halonic` then says
+which Node.js it needs (HAL-19454).
+
+Every CLI publish before 1.0.0 therefore takes one more step:
 
 1. On a real run, the release workflow's `npm-cli` job stages the `cli-package` tarball with
    `npm stage publish <tarball> --tag latest` (HAL-16209), and a person approves it on npmjs.com. If it
    went live without the tag, run `npm dist-tag add halonic@<version> latest` right after.
-2. Once the version is live, check that `npm view halonic dist-tags` shows `latest: <version>`.
+2. Once the version is live, check that `npm view halonic dist-tags` shows `latest: <version>`, and that
+   `npm install -g halonic@latest` followed by `halonic --version` prints it.
 3. Check the npm page with `npm view halonic license readme`: it must show `Apache-2.0` and the README from
    `cli/README.md`. npm shows the `latest` version's licence and README, so until `latest` moves it still
    shows the placeholder's ISC licence and its one-word README.
@@ -127,6 +136,27 @@ The CLI goes the same way from [`release.yml`](../../.github/workflows/release.y
 exists. That job runs in the `npm-publish-cli` environment, which allows `v*` tags only, and npm's
 trusted publisher for `halonic` names `release.yml` and that environment, with staged publishing only.
 Both are set up once by the board before the first release that ships the CLI (HAL-16209).
+
+### Release notes
+
+`src/cli/release-notes.ts` writes the notes of a desktop build into a folder (`publish.release-notes`,
+`publish.release-notes-history`, HAL-19542):
+
+- `notes.md`, the build's own notes: for a release, its version's section of `apps/studio/CHANGELOG.md`
+  (the release fails without one); for a preview, the app's changesets merged since the previous
+  Preview build's commit, or since the newest stable tag when there is none. At most 20,000 characters.
+- `release-notes.json`, the notes of this version and older ones, newest first: the changelog's sections
+  from this version down, or for a preview its own notes before the previous build's list. At most
+  100,000 characters and 50 versions.
+
+The updater-manifest action puts them in latest.json as `notes` and `halonic.releaseNotes`, with the
+build's commit as `halonic.source` for the next Preview build. The app shows the notes of every version
+after the installed one; the workflows put `notes` in the GitHub release's description.
+
+```sh
+node tooling/publish/src/cli/release-notes.ts changelog 0.1.1 release-notes
+node tooling/publish/src/cli/release-notes.ts preview 0.1.2-preview.7 HEAD release-notes previous-latest.json
+```
 
 ## Release branch
 

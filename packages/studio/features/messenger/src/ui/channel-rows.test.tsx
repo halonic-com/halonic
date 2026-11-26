@@ -97,7 +97,7 @@ verifies("messenger.channel-waiting", () => {
       const { messaging } = withQuestions();
       const page = await openMessenger(messaging);
       const row = rowOf(page, "Engineering");
-      expect(row?.querySelector("[data-needs-you]")?.textContent).toBe(", needs you");
+      expect(row?.querySelector("[data-flag]")?.textContent).toBe(", needs you");
       expect(row?.textContent).not.toContain("asks you");
     });
 

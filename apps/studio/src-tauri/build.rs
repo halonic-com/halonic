@@ -159,6 +159,7 @@ fn main() {
     // `plugin:quick-ask|hide` needs `quick-ask:allow-hide`.
     let quick_ask = tauri_build::InlinedPlugin::new().commands(&[
         "hide",
+        "show",
         "shortcut",
         "shortcut_set",
         "open_chat",

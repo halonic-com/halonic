@@ -1,59 +1,38 @@
 import { Button, Tooltip, UpdateReadyIcon } from "@halonicjs/studio-kit";
 import type { StatusBarItemProps } from "@halonicjs/studio-shell";
 import { UpdaterService } from "../api.ts";
-import { RestartFlowService, restartApplies } from "./restart-flow.ts";
 import * as text from "./restart-text.ts";
 import type { UpdaterHost } from "./updater-host.ts";
 import { useUpdateStatus } from "./use-update-status.ts";
 
 /**
- * The status bar's "Restart to update" (`settings.restart-item`): only while an update is ready,
- * only in a window 900px or wider, and never when another tool manages updates. It appears
- * quietly; a press opens the restart flow. When Scoop manages updates and has a newer version,
- * the item instead says to run its command, and a press opens About Halonic.
+ * The status bar's update item (`settings.restart-item`): only when Scoop manages updates and has
+ * a newer version, only in a window 900px or wider. It says to run Scoop's command, and a press
+ * opens About Halonic. An update Studio installs itself has no item here: the title bar's
+ * **Update** is its one way in (HAL-19579), so a ready update doesn't show two buttons.
  */
 export function RestartStatusItem({ context }: StatusBarItemProps) {
   const host = context.services.find(UpdaterService);
-  const flow = context.services.find(RestartFlowService);
-  if (host === undefined || flow === undefined) return null;
-  return (
-    <UpdateItem
-      host={host}
-      request={() => flow.request()}
-      openAbout={() => context.openSettings?.("about")}
-    />
-  );
+  if (host === undefined) return null;
+  return <UpdateItem host={host} openAbout={() => context.openSettings?.("about")} />;
 }
 
 function UpdateItem({
   host,
-  request,
   openAbout,
 }: {
   readonly host: UpdaterHost;
-  readonly request: () => void;
   readonly openAbout: () => void;
 }) {
   const status = useUpdateStatus(host);
   if (status === null) return null;
-  if (status.managed !== null && status.state.kind === "available") {
-    return (
-      <ManagedItem
-        version={status.state.version}
-        command={status.managed.command}
-        openAbout={openAbout}
-      />
-    );
-  }
-  if (!restartApplies(status)) return null;
+  if (status.managed === null || status.state.kind !== "available") return null;
   return (
-    // `data-status-update` tells the status bar the resource item gives way to this one at 900 to 1199px.
-    <span data-status-update className="hidden wide:contents">
-      <Button variant="ghost" size="sm" icon={<UpdateReadyIcon />} onClick={request}>
-        <span aria-hidden="true">{text.RESTART_TO_UPDATE}</span>
-        <span className="sr-only">{text.itemName(status.state.version)}</span>
-      </Button>
-    </span>
+    <ManagedItem
+      version={status.state.version}
+      command={status.managed.command}
+      openAbout={openAbout}
+    />
   );
 }
 

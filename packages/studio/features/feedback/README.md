@@ -26,7 +26,8 @@ hand it in, with the key behind its guard.
   asks the shell for a still of that window (`plugin:feedback|start`) and shows the overlay in it
   (`feedback.in-app`). `overlay/` is that see-through selection overlay over the live app: a
   light dim, the hint, the box and its size; letting go of a box calls `plugin:feedback|select`
-  and Esc `plugin:feedback|end` (`feedback.overlay`).
+  and Esc `plugin:feedback|end` (`feedback.overlay`). Once the shell kept the crop, `send/` is the
+  Send feedback dialog in that same window (`feedback.send-window`).
 - `feedback-windows.tsx`: the pages Studio mounts in the shell's feedback windows, with no
   workspace. `unavailable/` is
   the window a press opens where no still can be taken yet, macOS and Wayland
@@ -36,12 +37,24 @@ hand it in, with the key behind its guard.
   shortcut and hands it to the shell's `plugin:feedback|shortcut_set` (`feedback.settings-shortcut`),
   under it the **Quick ask** row, for quick ask's keys through `AskKeysSettingsService` from
   quick ask's `api.ts`, with the taken and Wayland lines (`feedback.settings-quick-ask`),
-  and Settings → Feedback, the **Project** and **Assign to** the Send feedback window reads
+  and Settings → Feedback, the **Project** and **Assign to** the Send feedback dialog reads
   (`feedbackPrefs`, host settings) and how many feedbacks wait (`feedback.settings-section`). Both
   show only in Studio's own main window, where the app gives `FeedbackSettingsService`.
 
+- `send/`: the Send feedback dialog, its crop, text and footnote (`feedback.send-window`), and
+  its fallback states (`feedback.send-states`): the crop's skeleton and the crop that couldn't be
+  loaded, with **Send without a screenshot**; the offline Callout before Send (the dialog's
+  `connection`); and a refused Send, which keeps the dialog open with **Try again**. The sender
+  answers `taken` or `refused` with Paperclip's reason. The crop that couldn't be loaded offers
+  **Select again** only where the page gets `selectAgain`.
+- `help/`: **Help › Quick ask ({keys})** and its Ctrl K entry, which show quick ask's box through
+  the app's `AskOpenerService` (`feedback.help-quick-ask`), and `AskKeysTextService`, quick ask's
+  keys as a sentence names them, which the first-run card reads too. Keys that don't work aren't
+  named.
+
 The still and the shortcut's saved value are the shell's (`apps/studio/src-tauri/src/feedback_*.rs`).
-The Send feedback window comes in a later pull request.
+Sending from the Send feedback dialog, through the outbox and the agent host, comes in a later
+pull request (HAL-19528).
 
 ## Example
 

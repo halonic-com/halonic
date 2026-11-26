@@ -209,6 +209,9 @@ export const paperclipRequests = {
     },
   },
   listTaskAttachments: { method: "GET", path: "/api/issues/:task/attachments" },
+  // Card files (`paperclip-client.card-files`, HAL-19494): a listed picture's bytes, read only when
+  // the person asks. The answer must be a PNG, JPEG, GIF or WebP picture of at most 10 MB.
+  readAttachmentContent: { method: "GET", path: "/api/attachments/:attachment/content" },
   attachScreenshot: {
     method: "POST",
     path: "/api/companies/:company/issues/:task/attachments",

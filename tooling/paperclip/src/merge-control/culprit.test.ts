@@ -57,12 +57,18 @@ verifies("paperclip.merge-control-culprit-hold", () => {
     expect(enqueued(pass(snapshot({ pulls: [pushed] }), state))).toEqual([5]);
   });
 
-  test("while GitHub still has it queued, a cancelled group with a failed job is looked at again next pass", () => {
+  test("while GitHub still has it queued, a cancelled group whose only failed job ci-ok doesn't need is looked at again next pass", () => {
+    const watcher = {
+      id: 3,
+      name: "Cancel the run on the first failure",
+      url: "https://github.com/acme/tools/job/3",
+      failedSteps: ["Watch the other jobs"],
+    };
     const decision = pass(
       snapshot({
         pulls: [pull(5)],
         queue: [entry(5, 1)],
-        groupRuns: [group(5, { conclusion: "cancelled" })],
+        groupRuns: [group(5, { conclusion: "cancelled", failedJobs: [watcher] })],
       }),
     );
     expect(decision.state.failedHeads).toEqual({});

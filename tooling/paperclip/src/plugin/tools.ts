@@ -54,7 +54,7 @@ export const toolTimeoutMs = 10_000;
 export const toolRequestTimeoutMs = 8_000;
 
 /** Rejects once `ms` have passed, so a slow GitHub can't hold the agent's run. */
-function withTimeout<T>(promise: Promise<T>, ms: number, what: string): Promise<T> {
+export function withTimeout<T>(promise: Promise<T>, ms: number, what: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(() => reject(new Error(`${what} took longer than ${ms / 1000} s.`)), ms);

@@ -5,8 +5,8 @@
      approving from the phone works on the release candidate (HAL-195, HAL-7650). -->
 
 > **Studio runs on Windows. The command line runs on Windows (WSL 2),
-> macOS and Linux.** 0.1.0 isn't released yet, and nothing here is a stable interface
-> yet.
+> macOS and Linux.** 0.1.1 is an early release, and nothing here is a stable
+> interface yet.
 
 Halonic is a local-first Studio, engine and command-line tool for designing,
 running and supervising AI agent workflows. Workflows, agents and settings live
@@ -15,7 +15,7 @@ as plain files in your own git repository.
 [![A terminal: halonic init --example acme makes the Acme workspace, halonic test says 5 tests passed, halonic run stops at 'Approve this reply?' and waits, halonic runs send approves it and the run finishes, having sent nothing. The example only drafts replies. Nothing is sent.](docs/assets/readme/first-run-still.svg)](docs/assets/readme/first-run.svg)
 
 *The example only drafts replies. Nothing is sent.*
-*Real output from Halonic 0.1.0. Typing and pauses are paced for reading.*
+*Real output from Halonic. Typing and pauses are paced for reading.*
 Click the picture to watch it play.
 
 New here? [Getting started](https://docs.halonic.dev/getting-started) has the
@@ -27,8 +27,10 @@ when something fails.
 
 ## Studio
 
-Studio is the desktop app, for Windows. Its installer comes with the 0.1.0
-release. To build it yourself, see [apps/studio](apps/studio/README.md).
+Studio is the desktop app, for Windows. Download its installer,
+`Halonic-<version>-windows-x64-setup.exe`, from the
+[latest release](https://github.com/halonic-com/halonic/releases/latest). To
+build it yourself, see [apps/studio](apps/studio/README.md).
 
 Studio's Welcome screen has **Open demo**, **Open folder** and **New
 workspace**. The demo opens a copy of Acme, an invented company's support
@@ -70,11 +72,13 @@ not in PowerShell or Command Prompt. Check your Node.js first with
 `node --version`: it must say v26.12 or later.
 
 ```sh
-npm install -g halonic
+npm install -g halonic@latest
 halonic --version
 ```
 
-The last command prints `Halonic` and the version you installed.
+The last command prints `Halonic` and the version you installed. Keep the
+`@latest`: without it, an older Node.js quietly gets an empty placeholder
+with no `halonic` command.
 
 ### Install from source
 
@@ -100,7 +104,7 @@ halonic --version
 cd ..
 ```
 
-The last command should print `Halonic 0.1.0`.
+The last command should print `Halonic` and a version number.
 
 `cd ..` leaves the clone, so the next steps don't create files inside it.
 
@@ -174,7 +178,7 @@ draft a reply. Then it stops at **Approve this reply?** and waits for you:
   Answer with: halonic runs send 4f873c approve (or reject)
 ```
 
-Your run id is different from `4f873c`. Copy the command from your own output.
+The reply it asks about shows first, between the "Waiting for you" line and the "Answer with:" line, so you read what you approve. This excerpt skips it. Your run id is different from `4f873c`. Copy the command from your own output.
 
 ### Answer it
 

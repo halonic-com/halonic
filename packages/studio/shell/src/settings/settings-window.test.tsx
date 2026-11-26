@@ -47,7 +47,15 @@ function SectionView({ context, surface }: SettingsSectionProps) {
 }
 
 function section(id: string, title: string, scope: SettingsScope, order: number) {
-  return { id, title, scope, order, view: "SectionView", load: async () => ({ SectionView }) };
+  return {
+    id,
+    title,
+    scope,
+    group: "general" as const,
+    order,
+    view: "SectionView",
+    load: async () => ({ SectionView }),
+  };
 }
 
 /** The sections the card's context listed when it last drew. */
@@ -203,8 +211,10 @@ verifies("shell.settings-window", () => {
 
     expect(pressed.defaultPrevented).toBe(true);
     expect(settingsDialog()).not.toBeNull();
-    const headings = [...document.querySelectorAll("dialog nav h3")].map((h) => h.textContent);
-    expect(headings).toEqual(["On this computer"]);
+    const groups = [...document.querySelectorAll('dialog nav [role="group"]')].map((group) =>
+      group.getAttribute("aria-label"),
+    );
+    expect(groups).toEqual(["General"]);
     expect(shownSection()).toBe("Appearance");
     expect(settingsDialog()?.querySelector(".section-view")?.textContent).toBe("drawn");
     expect(settingsDialog()?.querySelector(".section-view")?.getAttribute("data-surface")).toBe(

@@ -13,7 +13,19 @@ function random(seed: number) {
   };
 }
 
-const names = ["liam", "julian", "elena", "priya", "tomas", "mateo", "kim", "nina", "mara", "noah"];
+const names = [
+  "liam",
+  "julian",
+  "elena",
+  "priya",
+  "tomas",
+  "mateo",
+  "kim",
+  "nina",
+  "mara",
+  "noah",
+  "pip",
+];
 
 function scenario(seed: number): { seats: Seat[]; agents: AgentPlace[] } {
   const pick = random(seed);
@@ -74,6 +86,7 @@ verifies("paperclip.seat-mover-checklist", () => {
       seat("Api", 0, 0, { method: "api_key" }),
       seat("R", 0, 0),
       seat("H", 0, 0),
+      seat("Quiet", 0, 0),
     ];
     const agents = [
       agent("kim", "Admin"),
@@ -83,6 +96,8 @@ verifies("paperclip.seat-mover-checklist", () => {
       agent("elena", "H"),
       agent("priya", "H"),
       agent("tomas", "H"),
+      agent("pip", "Quiet"),
+      agent("mateo", "Quiet"),
     ];
     const placement = new Map(agents.map((one) => [one.id, one.connectionId ?? ""]));
     const bySeat = new Map(seats.map((one) => [one.connectionId, one]));
@@ -92,6 +107,7 @@ verifies("paperclip.seat-mover-checklist", () => {
       "e-paid-api",
       "b-reviewer-not-alone",
       "c-heavy-limit",
+      "g-quiet-seat",
     ]);
   });
 });

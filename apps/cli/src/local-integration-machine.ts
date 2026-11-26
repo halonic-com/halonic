@@ -14,7 +14,11 @@ import { rm } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { workspaceIntegrations } from "@halonicjs/adapter-doctor-node";
-import { FileSandboxSettingStore, FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
+import {
+  FileRecordStore,
+  FileSandboxSettingStore,
+  FileSystemFolderReader,
+} from "@halonicjs/adapter-fs-node";
 import { type AddressCheckingHttpClient, connectorHostClass } from "@halonicjs/adapter-http-kit";
 import { createNodeHttpClient, type Resolve } from "@halonicjs/adapter-http-node";
 import {
@@ -27,6 +31,7 @@ import {
 import { createHostSandbox } from "@halonicjs/adapter-sandbox-host";
 import { makeRunnerTempFolder, sandboxRuntimeFolder } from "@halonicjs/adapter-sandbox-srt";
 import {
+  ConnectorPauses,
   noUnfencedRunConsent,
   RunnerStartGate,
   type SaveTimers,
@@ -34,6 +39,7 @@ import {
 } from "@halonicjs/app";
 import type { Sandbox, UnfencedRunConsentStore } from "@halonicjs/ports";
 import {
+  connectorPausesFolder,
   type ProfileEnvironment,
   pluginsFolder,
   profileFolder,
@@ -44,6 +50,7 @@ import {
 import { systemClock } from "@halonicjs/std";
 import { proxySetting, recordingSrtSandbox } from "@halonicjs/target-node-harness";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
+import { workspaceRequestLog } from "./integration-request-logs.ts";
 import type { LocalIntegrationMachine } from "./open-local-integration.ts";
 import type { PluginBackendMachine } from "./open-plugin-backend.ts";
 import { openPluginService } from "./plugin-host.ts";
@@ -134,12 +141,24 @@ export function computerIntegrationMachine(
   const gate = computerGate(sandboxes, saved);
   const reportUnfenced = unfencedIntegrationReporter(input.lines);
   const trust = cliTrustService(input.trust.trustStore, input.trust.clock);
+  const pausesFolder = connectorPausesFolder(profile);
   const made: string[] = [];
   return {
     // Shown as the workspace, since a copy's own path means nothing to the person.
     folderAt: (root) => new FileSystemFolderReader(root, input.dir.shown),
     digest: webCryptoDigest,
     gate,
+    pauses: new ConnectorPauses({
+      records: new FileRecordStore(pausesFolder),
+      place: pausesFolder,
+      clock: input.trust.clock,
+    }),
+    pauseNotSaved: (error) => {
+      const reason = error instanceof Error ? error.message : String(error);
+      process.stderr.write(
+        `The connector's pause couldn't be saved in ${pausesFolder}: ${reason}\n`,
+      );
+    },
     sandboxes,
     unreadableYes: () => saved.unreadableFile,
     // The choice Studio's shell saves in `<profile>/sandbox`, as the agent host reads it.
@@ -155,6 +174,8 @@ export function computerIntegrationMachine(
       runnerFile: runnerFile(),
     },
     transport: input.transport ?? integrationTransport(),
+    // Under the workspace's own key, even when the runner starts from a copy of a commit.
+    requestLog: () => workspaceRequestLog(profile, input.dir.root),
     // Read again at every start: what was checked when the command began is never reused.
     // The integrations in the folder the runner starts from, as the start hashes them, so
     // the two agree; one that differs from the trusted version fails closed.

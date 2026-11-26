@@ -7,7 +7,13 @@ import {
   restoredChat,
   titleAfterSend,
 } from "@halonicjs/assistant";
-import type { ChatMessage, ChatSessions, SavedChatDocs, SavedChatSummary } from "@halonicjs/ports";
+import type {
+  ChatMessage,
+  ChatSessions,
+  SavedChatDocs,
+  SavedChatSummary,
+  SavedFixAttempts,
+} from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
 import {
   type ChatAbout,
@@ -31,6 +37,11 @@ export interface KeptChat {
   readonly stoppedWhenClosed: boolean;
   /** A Build chat's docs sites and log (`studio.assistant-read-docs`); absent until it reads docs. */
   readonly docs?: SavedChatDocs | undefined;
+  /**
+   * A Build chat's fix attempts on the local integration it is about
+   * (`assistant.build.fix-attempts`); absent until a fix is accepted.
+   */
+  readonly fixes?: SavedFixAttempts | undefined;
 }
 
 /** Where the chats of one workspace are saved. */
@@ -150,6 +161,14 @@ export class KeptChats {
     this.#set({ ...chat, docs: change(chat.docs ?? { sites: [], log: [] }) });
   }
 
+  /**
+   * Keeps a chat's fix attempts, read with {@link KeptChats.get} before, and saves them with the
+   * chat in the profile, never in the workspace. As with the docs, the chat's place stays.
+   */
+  changeFixes(chatId: string, fixes: SavedFixAttempts): void {
+    this.#set({ ...this.#got(chatId), fixes });
+  }
+
   /** Marks whether the chat is answering, saved so a chat cut off by closing comes back stopped. */
   answering(chatId: string, answering: boolean): void {
     if (answering) this.#answering.add(chatId);
@@ -186,7 +205,7 @@ export class KeptChats {
       const saved = await sessions.load(location, summary.id);
       if (saved === null) continue;
       const { chat, stoppedWhenClosed } = restoredChat(saved);
-      const { id, kind, title, lastUsedAt, model, messages, about, docs } = chat;
+      const { id, kind, title, lastUsedAt, model, messages, about, docs, fixes } = chat;
       // A chat changed in this window while the store answered wins over its saved copy.
       if (!this.#savedIsNewer(summary)) continue;
       this.#confirmed.add(id);
@@ -201,6 +220,7 @@ export class KeptChats {
         stoppedWhenClosed,
         ...(about === undefined ? {} : { about }),
         ...(docs === undefined ? {} : { docs }),
+        ...(fixes === undefined ? {} : { fixes }),
       });
     }
   }
@@ -256,6 +276,7 @@ export class KeptChats {
       model: chat.model,
       messages: [...chat.messages],
       ...(chat.docs === undefined ? {} : { docs: chat.docs }),
+      ...(chat.fixes === undefined ? {} : { fixes: chat.fixes }),
     });
     if (toSave === null) return;
     this.#store(async (sessions, location) => {

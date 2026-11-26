@@ -34,8 +34,11 @@ import { registerNextStepTools } from "./next-step-tools.ts";
 import { readyStep, registerPrWriteTools } from "./pr-write-tools.ts";
 import { precheckWaits } from "./precheck-waits.ts";
 import { realDeps, registerReadyForReview } from "./ready-for-review.ts";
+import { registerReviewVerdictTool } from "./review-verdict-tool.ts";
 import { scheduledPerCompany } from "./scheduled.ts";
+import { seatResetRouteKey } from "./seat-move-declaration.ts";
 import { seatMovePass } from "./seat-move-job.ts";
+import { handleSeatReset } from "./seat-reset-route.ts";
 import { registerStatePacket } from "./state-packet-data.ts";
 import { taskEffort } from "./task-effort.ts";
 import { registerTaskTools } from "./task-tools.ts";
@@ -194,6 +197,7 @@ export const plugin = definePlugin({
     registerTaskTools(ctx);
     registerNextStepTools(ctx, undefined, readyStep(ctx));
     registerPrWriteTools(ctx);
+    registerReviewVerdictTool(ctx);
     registerTrialResults(ctx);
     registerStatePacket(ctx, (params) => measureWakeGate(ctx, params));
     registerWorkerAgentsData(ctx, workerAgentsDeps(ctx, databaseWorkerTables(ctx.db)));
@@ -222,6 +226,9 @@ export const plugin = definePlugin({
     }
     if (input.routeKey === githubPullRouteKey) {
       return await handleGitHubPull(input, context);
+    }
+    if (input.routeKey === seatResetRouteKey) {
+      return await handleSeatReset(input, context, (url, init) => fetch(url, init), new Date());
     }
     if (input.routeKey !== "gh-guard") {
       return { status: 404, body: { error: "No such Agent tools route." } };

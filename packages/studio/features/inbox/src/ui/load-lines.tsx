@@ -72,13 +72,27 @@ export interface ListAge {
  */
 function staleReason(error: unknown, words: EngineWords, age: ListAge): string {
   if (isSignedOut(error)) return failureReason(error, words);
-  const reason = engineSilent(error)
-    ? words.showingLast
-    : `${failureReason(error, words)} Showing what was read last.`;
+  const reason = engineSilent(error) ? words.showingLast : refusedLine(error, words);
   const { updatedAt } = age;
   return updatedAt === undefined
     ? reason
     : `${reason} Last updated ${clockTime(updatedAt, age.now())}.`;
+}
+
+/** The line for a list the engine refused to read again: the refusal's reason, then that it is old. */
+function refusedLine(error: unknown, words: EngineWords): string {
+  return `${failureReason(error, words)} Showing what was read last.`;
+}
+
+/**
+ * The engine words for the open item while the list's last load failed. When the engine answered
+ * with a refusal, the item's "showing what it said last" line, which its buttons name as their
+ * reason, gives the list line's reason instead, so the two don't contradict each other
+ * (HAL-19449). Signed out, the item keeps its own "Sign in again" line.
+ */
+export function openItemWords(error: unknown, words: EngineWords): EngineWords {
+  if (error === undefined || isSignedOut(error) || engineSilent(error)) return words;
+  return { ...words, showingLast: refusedLine(error, words) };
 }
 
 /**

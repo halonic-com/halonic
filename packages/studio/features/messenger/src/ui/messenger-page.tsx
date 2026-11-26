@@ -257,8 +257,10 @@ function useOnePane(
   };
   const back = () => {
     flushSync(() => setSelected(undefined));
-    const chats = list.current?.querySelectorAll<HTMLElement>("[data-chat]") ?? [];
-    [...chats].find((each) => each.getAttribute("data-chat") === selected)?.focus();
+    // The kit's plain row carries the chat's id; its first button is the row itself.
+    const chats = list.current?.querySelectorAll<HTMLElement>("[data-row-id]") ?? [];
+    const row = [...chats].find((each) => each.getAttribute("data-row-id") === selected);
+    row?.querySelector<HTMLElement>("button")?.focus();
   };
   return { onePane, list, chat, select, back };
 }

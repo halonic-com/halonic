@@ -2,9 +2,11 @@ import {
   type AgentPlace,
   type Break,
   breaks,
+  breaksQuietSeat,
   isExcluded,
   isHeavy,
   isPaidApi,
+  isPinned,
   isReviewer,
   type Placement,
   type Seat,
@@ -35,7 +37,8 @@ export type MoveReason =
   | "b-reviewer-seat"
   | "b-reviewers-share"
   | "b-reviewer-not-alone"
-  | "c-heavy-limit";
+  | "c-heavy-limit"
+  | "g-quiet-seat";
 
 export interface Move {
   readonly agent: AgentPlace;
@@ -78,7 +81,7 @@ function moveReason(
   if (seat !== undefined && isPaidApi(seat)) {
     return "e-paid-api";
   }
-  if (seat !== undefined && !seat.connected) {
+  if (seat?.connection === "not-connected") {
     return "not-connected";
   }
   const others = connectionId === undefined ? [] : seatedOn(connectionId, placement, agents);
@@ -89,7 +92,11 @@ function moveReason(
     // A paused agent uses nothing: only where it sits can be wrong.
     return undefined;
   }
-  return usageReason(agent, seat, settings, now) ?? heavyReason(agent, others, settings);
+  return (
+    usageReason(agent, seat, settings, now) ??
+    heavyReason(agent, others, settings) ??
+    (breaksQuietSeat(agent, others, settings) ? "g-quiet-seat" : undefined)
+  );
 }
 
 function usageReason(
@@ -171,15 +178,13 @@ export function planMoves(
   now: Date,
 ): SeatPlan {
   const batch = new Batch(seatList, agentList, settings, now);
-  const movable = batch.agents.filter((agent) => !settings.pinned.includes(agent.key));
+  const movable = batch.agents.filter((agent) => !isPinned(agent, settings));
   const reviewers = movable.filter((agent) => isReviewer(agent, settings));
-  // Reviewers first: they get the seats with the most 5-hour room, alone.
+  // Reviewers first: they get the seats with the most 5-hour room, alone. One
+  // sitting with a pinned agent moves now too, before spreading the others
+  // can take the empty seat it needs (HAL-19464).
   for (const reviewer of reviewers) {
-    const shares = sharesWithReviewer(reviewer, batch.placement, batch.agents, settings);
-    batch.moveIfNeeded(
-      reviewer,
-      batch.reasonFor(reviewer) ?? (shares ? "b-reviewers-share" : undefined),
-    );
+    batch.moveIfNeeded(reviewer, batch.reasonFor(reviewer) ?? reviewerSeatReason(reviewer, batch));
   }
   // Then heavy agents, whose limit is the tighter one, then everyone else.
   const rest = movable.filter((agent) => !isReviewer(agent, settings));
@@ -273,6 +278,21 @@ class Batch {
   hasMoved(agent: AgentPlace): boolean {
     return this.moves.some((move) => move.agent.id === agent.id);
   }
+}
+
+/** Why a reviewer with no reason of its own still leaves: it shares its seat with one that stays. */
+function reviewerSeatReason(reviewer: AgentPlace, batch: Batch): MoveReason | undefined {
+  const { placement, agents, settings } = batch;
+  if (sharesWithReviewer(reviewer, placement, agents, settings)) {
+    return "b-reviewers-share";
+  }
+  const connectionId = placement.get(reviewer.id);
+  const pinnedMate =
+    connectionId !== undefined &&
+    seatedOn(connectionId, placement, agents).some(
+      (other) => other.id !== reviewer.id && isPinned(other, settings),
+    );
+  return pinnedMate ? "b-reviewer-not-alone" : undefined;
 }
 
 function sharesWithReviewer(

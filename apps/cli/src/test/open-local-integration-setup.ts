@@ -3,10 +3,17 @@
  * a start gate over a fake sandbox, and a runner that counts its starts and
  * stops (`cli.open-local-integration`).
  */
+
+import { join } from "node:path";
 import { workspaceIntegrations } from "@halonicjs/adapter-doctor-node";
-import { FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
+import { FileRecordStore, FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
 import type { AddressCheckingHttpClient } from "@halonicjs/adapter-http-kit";
-import type { StartedRunner } from "@halonicjs/adapter-integration-runner";
+import {
+  type LocalRequestLog,
+  type RunnerBlock,
+  RunnerStoppedError,
+  type StartedRunner,
+} from "@halonicjs/adapter-integration-runner";
 import {
   MemorySecrets,
   MemoryTokenStore,
@@ -14,6 +21,7 @@ import {
   MemoryUnfencedRunConsentStore,
 } from "@halonicjs/adapter-memory";
 import {
+  ConnectorPauses,
   RunnerStartGate,
   type TrustCheck,
   trustContentInputOf,
@@ -89,8 +97,14 @@ export async function setupOpener(
     runSettings?: Record<string, string>;
     /** What the integration's requests go out through; one that answers `{}` unless a test says otherwise. */
     transport?: AddressCheckingHttpClient;
-    /** What the runner's tool does with the kit's client; it answers with the tool's name unless a test says otherwise. */
-    tool?: (http: IntegrationHttpClient) => Promise<string>;
+    /**
+     * What the runner's tool does with the kit's client; it answers with the
+     * tool's name unless a test says otherwise. `block` reports a block as the
+     * runner does, before the refusal goes back to the code.
+     */
+    tool?: (http: IntegrationHttpClient, block: (block: RunnerBlock) => void) => Promise<string>;
+    /** The profile's folder of paused connectors; a new run of the same profile passes the same one. */
+    pausesFolder?: string;
     /** The user's saved yes to run without the sandbox, for this reason. */
     savedYes?: string;
     /** The saved yes's file, as the machine reports it when the yes can't be read. */
@@ -101,10 +115,14 @@ export async function setupOpener(
     studioYesReaches?: boolean;
     /** The folder the run starts the runner from, such as a copy of a commit; `root`, the trusted one, unless a test says otherwise. */
     startFrom?: string;
+    /** Where the integration's requests are kept; nowhere unless a test says otherwise. */
+    requestLog?: () => Promise<LocalRequestLog>;
   } = {},
 ) {
   const { check = passes, runnerBuilt = true, beforeTrustCheck, trustedSettings } = options;
   const { runSettings = trustedSettings, startFrom = root } = options;
+  // Outside `integrations`, so the trust check never reads it, and removed with `root`.
+  const { pausesFolder = join(root, ".profile", "connector-pauses") } = options;
   const trust = cliTrustService(new MemoryTrustStore(), clock);
   // The trust check reads the integration's settings from its connector file,
   // as `trustContentInputOf` does for every command.
@@ -135,9 +153,13 @@ export async function setupOpener(
       .integrations,
     providers: [],
   });
-  const shown = await trust.check(await subject(root));
-  if (shown.status === "refused") throw new Error("nothing to refuse");
-  await trust.grant(await subject(root), shown.fingerprint, "cli");
+  /** Trusts the workspace as it is now, as a person would. */
+  const trustAgain = async () => {
+    const shown = await trust.check(await subject(root));
+    if (shown.status === "refused") throw new Error("nothing to refuse");
+    await trust.grant(await subject(root), shown.fingerprint, "cli");
+  };
+  await trustAgain();
 
   const seen = {
     starts: 0,
@@ -152,9 +174,15 @@ export async function setupOpener(
     await store.save({ reason: options.savedYes, allowedAt: "2026-11-09T10:00:00.000Z" });
   }
   const launcher = sandbox(check);
+  const pauses = new ConnectorPauses({
+    records: new FileRecordStore(pausesFolder),
+    place: pausesFolder,
+    clock,
+  });
   const machine: LocalIntegrationMachine = {
     folderAt: (folder) => new FileSystemFolderReader(folder, root),
     digest: webCryptoDigest,
+    pauses,
     gate: new RunnerStartGate({
       platform: "linux",
       fenced: sandbox(check),
@@ -185,8 +213,12 @@ export async function setupOpener(
       timeLimitMs: 1000,
     }),
     runnerExists: () => runnerBuilt,
+    ...(options.requestLog === undefined ? {} : { requestLog: options.requestLog }),
     startRunner: async (start) => {
       seen.starts += 1;
+      // Closing fails every call in flight and every later one, as the runner's bridge does.
+      const inFlight = new Set<(error: Error) => void>();
+      let closed = false;
       seen.entries.push(`${start.entry.file}#${start.entry.exportName}`);
       seen.settings.push(start.settings);
       const runner: StartedRunner = {
@@ -196,9 +228,18 @@ export async function setupOpener(
             : (options.fenceProof ?? { state: "fenced" }),
         declaration: { name: "notes", version: "1.0.0", tools: [readNote] },
         stopped: new Promise(() => {}),
-        callTool: async (name) => (options.tool ? options.tool(start.http) : `answer from ${name}`),
+        callTool: (name) =>
+          new Promise<string>((resolve, reject) => {
+            if (closed) return reject(new RunnerStoppedError({ reason: "closed" }));
+            inFlight.add(reject);
+            const block = (reported: RunnerBlock) => start.onBlocked?.(reported);
+            const answer = options.tool ? options.tool(start.http, block) : `answer from ${name}`;
+            Promise.resolve(answer).then(resolve, reject);
+          }),
         close: async () => {
           seen.stops += 1;
+          closed = true;
+          for (const fail of inFlight) fail(new RunnerStoppedError({ reason: "closed" }));
         },
       };
       return runner;
@@ -216,6 +257,7 @@ export async function setupOpener(
     folder: "notes",
     ...(runSettings === undefined ? {} : { settings: runSettings }),
   };
-  const client = () => factory.create({ id: "notes", transport, secretEnv: {} }, context);
-  return { seen, client };
+  /** The connector `id`, of the integration `notes`. */
+  const client = (id = "notes") => factory.create({ id, transport, secretEnv: {} }, context);
+  return { seen, client, trustAgain, pauses, pausesFolder };
 }

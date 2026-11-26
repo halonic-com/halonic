@@ -1,4 +1,5 @@
 import type { RunSummary } from "@halonicjs/events";
+import type { AskKeysText } from "@halonicjs/studio-feature-feedback/api";
 import type { AnsweredViewProps } from "@halonicjs/studio-feature-inbox/api";
 import { type RunModelPath, type RunsList, runModelPath } from "@halonicjs/studio-feature-runs/api";
 import { RUN_FORM_STEP } from "@halonicjs/studio-feature-workflows/api";
@@ -14,21 +15,27 @@ const supportReply: ItemRef = { kind: "workflow", hub: SUPPORT_HUB, id: SUPPORT_
 /** The demo's model alias, whose tab Pick a model opens once the first run is done. */
 const defaultModel: ItemRef = { kind: "model-alias", hub: "local", id: DEFAULT_ALIAS };
 
-/** Props for {@link YouDidItView}: the Inbox's, and the runs it reads the run's record from. */
+/**
+ * Props for {@link YouDidItView}: the Inbox's, the runs it reads the run's record from, and quick
+ * ask's keys where the app gives them.
+ */
 export interface YouDidItViewProps extends AnsweredViewProps {
   readonly runs: Pick<RunsList, "state" | "subscribe" | "source">;
+  readonly askKeys?: AskKeysText | undefined;
 }
 
 /**
  * "You did it" (`first-run.you-did-it`, first-run-flow 3.5): the title, which takes focus as it
  * opens, the run's real numbers once the runs list has it finished, the two next steps, the quiet
  * Google line and **Close**. On Sample answers the cost part gives way to the sample line, and
- * **Pick a model** replaces Run it again.
+ * **Pick a model** replaces Run it again. While quick ask's keys work, a last line names them
+ * (`first-run.you-did-it-quick-ask`).
  */
-export function YouDidItView({ item, runs, close, openItem }: YouDidItViewProps) {
+export function YouDidItView({ item, runs, askKeys, close, openItem }: YouDidItViewProps) {
   const title = useRef<HTMLHeadingElement>(null);
   useEffect(() => title.current?.focus(), []);
   const summary = useFinishedRun(runs, item.runId);
+  const keys = useAskKeys(askKeys);
   const path = usePathOnce(runs.source, summary?.id);
   const facts =
     summary === undefined || path === undefined
@@ -75,6 +82,9 @@ export function YouDidItView({ item, runs, close, openItem }: YouDidItViewProps)
               </Button>
               <span className="text-small text-fg-muted">{youDidItWords.changeHint}</span>
             </li>
+            {keys !== undefined && (
+              <li className="px-3 text-small text-fg-muted">{youDidItWords.askAnywhere(keys)}</li>
+            )}
           </ul>
         </div>
       )}
@@ -85,6 +95,14 @@ export function YouDidItView({ item, runs, close, openItem }: YouDidItViewProps)
         </Button>
       </div>
     </section>
+  );
+}
+
+/** Quick ask's keys while they work; none without `askKeys`. */
+function useAskKeys(askKeys: AskKeysText | undefined): string | undefined {
+  return useSyncExternalStore(
+    (listener) => askKeys?.subscribe(listener) ?? (() => undefined),
+    () => askKeys?.current(),
   );
 }
 

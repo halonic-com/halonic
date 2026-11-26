@@ -1,0 +1,29 @@
+{
+  "name": "@halonicjs/auto-approvals",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "description": "Auto approvals in shadow mode: the typed approval card, the workspace never-list and the checks that may only block. Pure; no I/O.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "core",
+    "owner": "owen",
+    "coverage": {
+      "lines": 90,
+      "branches": 85
+    }
+  }
+}

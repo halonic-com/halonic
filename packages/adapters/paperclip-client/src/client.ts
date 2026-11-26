@@ -28,6 +28,7 @@ import { PaperclipChannelSender } from "./channel-send.ts";
 import { PaperclipChannelWork } from "./channel-work.ts";
 import { readChannel, toChannel } from "./channels.ts";
 import { readWorkingChats, withAgentWorking, withReadAt } from "./chat-signals.ts";
+import { PaperclipCommentThreads } from "./comment-threads.ts";
 import { PaperclipFullAnswers } from "./full-answers.ts";
 import { PaperclipIds } from "./ids.ts";
 import { PaperclipInbox } from "./inbox.ts";
@@ -69,9 +70,6 @@ export interface PaperclipMessagingOptions extends TransportOptions {
 
 export type { PaperclipUser } from "./signed-in-user.ts";
 
-/** How many of a chat's newest messages are read. */
-const messagePage = "100";
-
 /** How many of Paperclip's matching tasks a search reads. */
 const searchPage = "50";
 
@@ -97,6 +95,7 @@ export class PaperclipMessaging implements AgentMessaging {
   readonly #members: PaperclipChannelMembers;
   readonly #channelWork: PaperclipChannelWork;
   readonly #fullAnswers: PaperclipFullAnswers;
+  readonly #threads: PaperclipCommentThreads;
   readonly #feed = new ChangeFeed<MessagingId>();
   #agentNames = new Map<string, string>();
   /** Each chat task's agent, as the chats were last read, for its messages' `readAt`. */
@@ -123,6 +122,7 @@ export class PaperclipMessaging implements AgentMessaging {
     this.#members = new PaperclipChannelMembers(this.#reader, options.company, options.userId);
     this.#channelWork = new PaperclipChannelWork(this.#reader, options.company, options.userId);
     this.#fullAnswers = new PaperclipFullAnswers(this.#reader, options.warn);
+    this.#threads = new PaperclipCommentThreads(this.#reader);
   }
 
   async listSources(): Promise<readonly MessagingSource[]> {
@@ -170,15 +170,10 @@ export class PaperclipMessaging implements AgentMessaging {
     }
     await this.#knowAgents();
     await this.#user.know();
-    const body = await this.#reader.read("listComments", {
-      path: { task },
-      query: { order: "desc", limit: messagePage },
-    });
     const context = this.#context();
-    const messages = asRecords(body)
+    const messages = (await this.#threads.read(task))
       .flatMap((record) => toMessage(context, task, record) ?? [])
-      .map((message) => ({ ...message, conversation }))
-      .reverse();
+      .map((message) => ({ ...message, conversation }));
     if (channel !== undefined) {
       return this.#channelWork.add(context, channel, conversation, messages);
     }
@@ -231,13 +226,13 @@ export class PaperclipMessaging implements AgentMessaging {
   }
 
   /**
-   * Reads an agent's picture (`ports.agent-messaging-avatars`). This provider lists no files on
-   * messages or cards yet, so any other ID is refused with `not-found` before any request.
+   * Reads an agent's picture (`ports.agent-messaging-avatars`) or a picture the last Inbox list
+   * gave a card (`paperclip-client.card-files`); any other ID is refused before any request.
    */
   async readAttachment(attachment: MessagingId): Promise<AttachmentRead> {
     const [avatar] = this.#ids.read(attachment, "avatar") ?? [];
     return avatar === undefined
-      ? { outcome: "refused", reason: "not-found" }
+      ? this.#inbox.files.read(this.#ids, attachment)
       : readAvatar(this.#reader, avatar);
   }
 

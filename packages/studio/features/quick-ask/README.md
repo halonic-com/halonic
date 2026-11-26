@@ -15,7 +15,13 @@ and its screen: the focused app `ask`, a `dialog` labelled "Ask an agent" with i
 floating on the see-through window the desktop shell shows for quick ask's keys. The desktop app
 gives it `AskWindowService`, which hides that window, brings Studio forward and opens a chat in
 Messenger for **Open in Messenger**, **Answer in Messenger** and **Last answer ›** (the shell's
-`plugin:quick-ask|open_chat`). Every word is in `quick-ask-words.ts`.
+`plugin:quick-ask|open_chat`). In Studio's own window it also gives `AskOpenerService`, which shows
+the box (`plugin:quick-ask|show`) for **Help › Quick ask** and its Ctrl K entry; the feedback
+feature draws those, with the keys, since it already names them in Settings → Keyboard. In the
+desktop app the shell lets the box's window call only three agent host routes,
+`POST /v1/messaging/read`, `/send` and `/changes`; asking through another one also needs the
+shell's list in `apps/studio/src-tauri/src/agent_host_window_routes.rs`. Every word
+is in `quick-ask-words.ts`.
 
 ## The box's states
 

@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-17703; the merge controller ADR (HAL-17700); HAL-15971; HAL-17697 (board, HAL-10, 24 Nov 17:36); MERGER.md "Fast-track PRs"; HAL-17762
+- Source: HAL-17703; the merge controller ADR (HAL-17700); HAL-15971; HAL-17697 (board, HAL-10, 24 Nov 17:36); MERGER.md "Fast-track PRs"; HAL-17762; HAL-19481 (2.3 of the plan on HAL-19228)
 
-When a candidate carries `fast-track` added by the board's login from the plugin's config or by `halonic-dev`, the plugin shall enqueue it before the others and past the fill target, with a jump only when more than 8 entries are queued and no fast-track pull request is queued or added in the pass, shall never take a queued pull request out to jump it again, and shall log a label added by anyone else.
+When a candidate carries `fast-track` added by the board's queue login from the plugin's config (never by `halonic-dev`, the account every agent posts as), the plugin shall enqueue it before the others and past the fill target, with a jump only when more than 8 entries are queued and no fast-track pull request is queued or added in the pass, shall never take a queued pull request out to jump it again, and shall log a label added by anyone else.
 
 ## Examples
 

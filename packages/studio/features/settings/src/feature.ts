@@ -25,7 +25,8 @@ import { updateCommands } from "./updater/update-commands.ts";
 
 /**
  * The sections this feature adds to Settings, in no particular order: the shell lists them by
- * scope, then `order` (`shell.frame-points`). A new section goes into this list. Without
+ * `group` in the desktop app's dialog (`shell.settings-dialog-groups`) and by scope elsewhere,
+ * then `order` (`shell.frame-points`). A new section goes into this list. Without
  * `showUnfinished` it leaves out the sections hidden until they work, and Appearance's summary
  * leaves out Agent characters (`unfinished.ts`).
  */
@@ -36,6 +37,7 @@ export function settingsSectionsFor(showUnfinished: boolean): SettingsSectionCon
       icon: "appearance",
       title: "Appearance",
       scope: "display",
+      group: "general",
       order: 10,
       summary(context) {
         const settings = context.services.get(DisplaySettingsService);
@@ -51,6 +53,7 @@ export function settingsSectionsFor(showUnfinished: boolean): SettingsSectionCon
       icon: "formats",
       title: "Formats",
       scope: "display",
+      group: "general",
       order: 20,
       view: "FormatsSection",
       load: () => import("./formats/formats-section.tsx"),
@@ -60,6 +63,7 @@ export function settingsSectionsFor(showUnfinished: boolean): SettingsSectionCon
       icon: "assistant",
       title: "Assistant",
       scope: "host",
+      group: "agents",
       order: 10,
       description: (_context, place) => assistantText.FIRST_LINE[place],
       summary: assistantSummary,
@@ -68,9 +72,11 @@ export function settingsSectionsFor(showUnfinished: boolean): SettingsSectionCon
     },
     {
       id: "notifications",
+      icon: "notifications",
       title: notificationsText.TITLE,
       scope: "host",
-      // After Assistant (10), before Agent sandbox (30). No icon of its own yet: the design has none.
+      group: "general",
+      // After Formats (20), by its id.
       order: 20,
       view: "NotificationsSection",
       load: () => import("./notifications/notifications-section.tsx"),
@@ -80,6 +86,7 @@ export function settingsSectionsFor(showUnfinished: boolean): SettingsSectionCon
       icon: "agent-sandbox",
       title: "Agent sandbox",
       scope: "host",
+      group: "agents",
       order: 30,
       description: sandboxText.FIRST_LINE,
       summary: agentSandboxSummary,
@@ -91,7 +98,8 @@ export function settingsSectionsFor(showUnfinished: boolean): SettingsSectionCon
       icon: "server-session",
       title: serverSessionText.TITLE,
       scope: "host",
-      // After Trusted sources (40), before Plugins and About (60).
+      group: "connections",
+      // After Remote (35).
       order: 50,
       description: serverSessionText.FIRST_LINE,
       view: "ServerSessionSection",
@@ -102,7 +110,9 @@ export function settingsSectionsFor(showUnfinished: boolean): SettingsSectionCon
       icon: "about",
       title: "About Halonic",
       scope: "host",
-      order: 60,
+      group: "about",
+      // Last everywhere, after Plugins (60) too, which shares served Studio's host group.
+      order: 90,
       view: "AboutSection",
       load: () => import("./updater/about-section.tsx"),
     },

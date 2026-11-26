@@ -36,6 +36,32 @@ function pushedChanges() {
   return { fake, state };
 }
 
+/**
+ * A messaging whose `changes` stream the test drives by hand: `next` waits until the test
+ * answers it, and stopping the stream doesn't answer a `next` already waiting, as a stream
+ * that is in the middle of a read may not.
+ */
+function heldChanges() {
+  const fake = new FakeAgentMessaging();
+  const held = {
+    answer: (_result: IteratorResult<string>) => {},
+    fail: (_error: unknown) => {},
+  };
+  fake.changes = () => {
+    const reader: AsyncIterableIterator<string> = {
+      next: () =>
+        new Promise((resolve, reject) => {
+          held.answer = resolve;
+          held.fail = reject;
+        }),
+      return: () => Promise.resolve({ done: true, value: undefined }),
+      [Symbol.asyncIterator]: () => reader,
+    };
+    return reader;
+  };
+  return { fake, held };
+}
+
 function failOnError(error: unknown): never {
   throw error;
 }
@@ -85,6 +111,37 @@ verifies("cli.commands.serve.messaging-mount", () => {
       expect(await waiting).toEqual({ done: true, value: undefined });
       expect(old.state.stopped).toBe(true);
       expect(next.state.stopped).toBe(false);
+      expect(await reader.next()).toEqual({ done: true, value: undefined });
+    });
+    it("drops a change the old stream gives after the swap stopped following it", async () => {
+      const old = heldChanges();
+      const next = pushedChanges();
+      const messaging = new SwappableMessaging(old.fake, failOnError);
+      const reader = messaging.changes()[Symbol.asyncIterator]();
+
+      messaging.swap(next.fake, ["paperclip:studio"]);
+      old.held.answer({ done: false, value: "paperclip:late" });
+      next.state.push("paperclip:halonic");
+
+      expect(await reader.next()).toEqual({ done: false, value: "paperclip:studio" });
+      expect(await reader.next()).toEqual({ done: false, value: "paperclip:halonic" });
+    });
+
+    it("ends the reader after its queued changes when the stream it follows fails, and reports why", async () => {
+      const failing = heldChanges();
+      const failures: unknown[] = [];
+      const messaging = new SwappableMessaging(failing.fake, (error) => failures.push(error));
+      const reader = messaging.changes()[Symbol.asyncIterator]();
+      const failure = new Error("stream broke");
+
+      failing.held.answer({ done: false, value: "paperclip:halonic" });
+      await Promise.resolve();
+      failing.held.fail(failure);
+
+      expect(await reader.next()).toEqual({ done: false, value: "paperclip:halonic" });
+      expect(await reader.next()).toEqual({ done: true, value: undefined });
+      expect(failures).toEqual([failure]);
+      messaging.swap(new FakeAgentMessaging(), ["paperclip:studio"]);
       expect(await reader.next()).toEqual({ done: true, value: undefined });
     });
   });

@@ -13,6 +13,7 @@ import { databaseSeatRuns } from "../seat-mover/runs.ts";
 import { readSeatMoverSettings } from "../seat-mover/settings.ts";
 import { readTaskEffortSettings } from "../task-effort/settings.ts";
 import { companyConfig } from "./job.ts";
+import { seatResetsState } from "./seat-reset-route.ts";
 
 /**
  * The `seat-move` job's pass for one company (HAL-19354, src/seat-mover/):
@@ -74,6 +75,7 @@ export async function seatMovePass(
     api,
     runs: databaseSeatRuns(ctx.db),
     agents: () => ctx.agents.list({ companyId, limit: 500 }),
+    resets: () => seatResetsState(ctx.state, companyId).get(),
     issueStatus: async (issueId) => (await ctx.issues.get(issueId, companyId))?.status,
     wake: async (issueId, idempotencyKey) => {
       await ctx.issues.requestWakeup(issueId, companyId, {

@@ -1,22 +1,15 @@
-import type { InboxItem, MessagingProject } from "@halonicjs/ports";
+import type { Attachment, InboxItem, MessagingProject } from "@halonicjs/ports";
 import { PaperclipBoardRequests } from "./board-requests.ts";
+import { cardFilesOf, PaperclipCardFiles } from "./card-files.ts";
 import { approvalToItem, cardToItem } from "./cards.ts";
+import { mayBeChannel } from "./channels.ts";
 import { decisionPage, decisionToItem } from "./decisions.ts";
 import { asRecords, type JsonRecord, text } from "./json.ts";
 import { type MapContext, newestFirst } from "./map.ts";
 import type { PaperclipReader } from "./reader.ts";
 import type { PaperclipSteppers } from "./steppers.ts";
+import { PaperclipTaskList } from "./task-list.ts";
 import { companyPrefix, type PaperclipWebLinks, prefixOf, withWebLink } from "./web-links.ts";
-
-/** Task states whose cards may still wait on the person. A closed task's cards can't be answered. */
-export const openTaskStates = "backlog,todo,in_progress,in_review,blocked";
-
-/**
- * Paperclip's largest page of tasks. The provider reads one page: a company
- * with more than 1000 open tasks loses the rest from work and the Inbox
- * without an error. Paging comes when a company gets near that.
- */
-const taskPage = "1000";
 
 /** Approval states the Inbox shows: waiting on the person, or on the agent after Request changes. */
 const waitingApprovalStates = ["pending", "revision_requested"] as const;
@@ -74,10 +67,15 @@ export class PaperclipInbox {
   readonly #company: string;
   readonly #steppers: PaperclipSteppers | undefined;
   readonly #boardRequests: PaperclipBoardRequests;
+  readonly #tasks: PaperclipTaskList;
   readonly #webLinks: PaperclipWebLinks;
+  /** The files on cards and approvals, and the only ones `readAttachment` reads. */
+  readonly files: PaperclipCardFiles;
   #cards = new Map<string, TaskCards>();
   /** Each pending approval's first linked task, read once: an approval's links don't change. */
   #approvalTasks = new Map<string, JsonRecord | undefined>();
+  /** Each pending approval's files, read once: they are the files posted before it was made. */
+  #approvalFiles = new Map<string, Attachment[]>();
 
   /**
    * `webLinks` gives cards and approvals their page in Paperclip. With `steppers`, a card that
@@ -94,15 +92,14 @@ export class PaperclipInbox {
     this.#webLinks = webLinks;
     this.#steppers = steppers;
     this.#boardRequests = new PaperclipBoardRequests(reader, company);
+    // A channel's members line is in its description, which the task list's index view leaves out.
+    this.#tasks = new PaperclipTaskList(reader, company, { readWhole: mayBeChannel });
+    this.files = new PaperclipCardFiles(reader);
   }
 
-  /** The company's open tasks. */
-  async openTasks(): Promise<JsonRecord[]> {
-    const body = await this.#reader.read("listTasks", {
-      path: { company: this.#company },
-      query: { status: openTaskStates, limit: taskPage },
-    });
-    return asRecords(body);
+  /** The company's open tasks, read as the changes since the last read (`paperclip-client.delta-reads`). */
+  openTasks(): Promise<readonly JsonRecord[]> {
+    return this.#tasks.read();
   }
 
   /** The cards on task `task`, as Paperclip has them now. */
@@ -126,10 +123,12 @@ export class PaperclipInbox {
       this.#steppers === undefined
         ? read
         : await this.#steppers.refresh(read, (item) => context.ids.read(item.id, "card")?.[0]);
-    return newestFirst(
+    const items = newestFirst(
       [...approvals, ...decisions, ...boardRequests, ...cards],
       (item) => item.createdAt,
     );
+    this.files.remember(context.ids, items);
+    return items;
   }
 
   /** The company's projects, read once per list, as a lookup. */
@@ -158,6 +157,7 @@ export class PaperclipInbox {
   ): Promise<InboxItem[]> {
     const items: InboxItem[] = [];
     const known = new Map<string, JsonRecord | undefined>();
+    const files = new Map<string, Attachment[]>();
     for (const record of await this.#approvalRecords()) {
       const approval = text(record, "id");
       if (approval === undefined) {
@@ -166,12 +166,15 @@ export class PaperclipInbox {
       const linked = await this.#taskOfApproval(approval);
       known.set(approval, linked);
       const task = text(linked, "id");
-      const item = approvalToItem(
+      const mapped = approvalToItem(
         context,
         record,
         task === undefined ? undefined : context.ids.make("task", task),
       );
-      if (item !== undefined) {
+      if (mapped !== undefined) {
+        const attachments = await this.#approvalFilesOf(context, approval, task, mapped.createdAt);
+        files.set(approval, attachments);
+        const item = { ...mapped, attachments };
         // An approval with no task has no project.
         const linkedPrefix = prefixOf(text(linked, "identifier")) ?? prefix;
         const webLink = this.#webLinks.approval(linkedPrefix, approval);
@@ -180,7 +183,21 @@ export class PaperclipInbox {
     }
     // Decided approvals drop out, so the cache holds only open ones.
     this.#approvalTasks = known;
+    this.#approvalFiles = files;
     return items;
+  }
+
+  /** An approval's files, from its first linked task only; none without one. */
+  async #approvalFilesOf(
+    context: MapContext,
+    approval: string,
+    task: string | undefined,
+    madeAt: string,
+  ): Promise<Attachment[]> {
+    const known = this.#approvalFiles.get(approval);
+    if (known !== undefined) return known;
+    if (task === undefined) return [];
+    return cardFilesOf(context.ids, task, await this.files.recordsOf(task), madeAt);
   }
 
   /**
@@ -240,13 +257,17 @@ export class PaperclipInbox {
     }
     await eachLimited(changed, cardReadsAtOnce, async ({ id, ...task }) => {
       const items: InboxItem[] = [];
-      for (const record of await this.cardsOf(id)) {
+      const cards = (await this.cardsOf(id)).flatMap((record) => {
         const item = cardToItem(context, id, record);
-        if (item !== undefined) {
-          items.push(
-            this.#steppers === undefined ? item : await this.#steppers.serve(id, record, item),
-          );
-        }
+        return item === undefined ? [] : [{ record, item }];
+      });
+      // A task's files are read only when it has a card for the person, once per change.
+      const files = cards.length === 0 ? [] : await this.files.recordsOf(id);
+      for (const { record, item: read } of cards) {
+        const item = { ...read, attachments: cardFilesOf(context.ids, id, files, read.createdAt) };
+        items.push(
+          this.#steppers === undefined ? item : await this.#steppers.serve(id, record, item),
+        );
       }
       next.set(id, { ...task, items });
     });

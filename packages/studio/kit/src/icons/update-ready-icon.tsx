@@ -1,7 +1,7 @@
 /**
  * The update-ready mark: an arrow pointing up inside a circle, outline style, in the text colour.
- * The status bar's "Restart to update" item puts it before its words. It is not the text
- * character ↑, so it can't be mistaken for git's "main ↑2" beside it.
+ * The title bar's **Update** and the status bar's Scoop item put it before their words. It is not
+ * the text character ↑, so it can't be mistaken for git's "main ↑2" in the status bar.
  */
 export function UpdateReadyIcon() {
   return (

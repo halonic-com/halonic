@@ -174,6 +174,7 @@ verifies("agent-host.paperclip-key", () => {
         "cancelRun",
         "createFeedbackTask",
         "listTaskAttachments",
+        "readAttachmentContent",
         "attachScreenshot",
         // Read receipts (HAL-18772), pinned in chat-signals.test.ts.
         "listIssueRuns",
