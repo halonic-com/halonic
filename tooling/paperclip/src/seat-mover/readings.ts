@@ -143,9 +143,10 @@ function usableReading(
 }
 
 /**
- * The seats: every connected connection, named and read by the readings seat on
- * it. A connection no readings seat names keeps its id as its name and no
- * reading, so nobody is moved onto it. `quotaSince` gives, per connection,
+ * The seats: every connection, named and read by the readings seat on it. One
+ * that isn't `connected` (expired, revoked) stays in the list, marked, so its
+ * agents get a reason to move (HAL-19394). A connection no readings seat names
+ * keeps its id as its name and no reading, so nobody is moved onto it. `quotaSince` gives, per connection,
  * the newest `provider_quota` failure; it marks the seat full when it came
  * after the reading.
  */
@@ -157,7 +158,6 @@ export function buildSeats(
   maxAgeMinutes: number,
 ): Seat[] {
   return connections
-    .filter((connection) => connection.status === "connected")
     .map((connection) => {
       const named = readings.find((seat) => seat.connectionId === connection.id);
       const reading = named === undefined ? undefined : usableReading(named, now, maxAgeMinutes);
@@ -171,6 +171,7 @@ export function buildSeats(
         quotaHit:
           quota !== undefined &&
           (reading === undefined || Date.parse(quota) > Date.parse(reading.at)),
+        connected: connection.status === "connected",
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name));

@@ -10,6 +10,7 @@ import type { Move, MoveReason, SeatPlan, Stuck } from "./plan.ts";
 const reasonWords: Record<MoveReason, string> = {
   "d-admin": "it sat on an excluded seat",
   "e-paid-api": "it sat on the paid API",
+  "not-connected": "its seat's connection isn't connected",
   "quota-hit": "a run on its seat just failed on the seat's quota",
   parked: "it has runs parked waiting for its seat",
   "session-stop": "its seat passed its 5-hour stop",

@@ -251,3 +251,42 @@ verifies("paperclip.seat-mover-checklist", () => {
     });
   });
 });
+
+verifies("paperclip.seat-mover-spread", () => {
+  describe("one pass with several moves (HAL-19394)", () => {
+    test("two light agents leaving a full seat go to two different legal seats", () => {
+      const seats = [seat("Full", 85, 10), seat("B", 40, 10), seat("C", 20, 10)];
+      const agents = [agent("kim", "Full"), agent("mara", "Full")];
+      expect(movesOf(planMoves(seats, agents, settings, now))).toEqual(["kim → C", "mara → B"]);
+    });
+
+    test("with one legal seat left, both still go there", () => {
+      const seats = [seat("Full", 85, 10), seat("B", 40, 10), seat("Late", 82, 10)];
+      const agents = [agent("kim", "Full"), agent("mara", "Full")];
+      expect(movesOf(planMoves(seats, agents, settings, now))).toEqual(["kim → B", "mara → B"]);
+    });
+  });
+
+  describe("a seat whose connection isn't connected (HAL-19394)", () => {
+    test("its agents move to a legal seat, paused or not, and it takes nobody", () => {
+      const seats = [
+        seat("Gone", 0, 0, { connected: false }),
+        seat("A", 85, 10),
+        seat("B", 30, 10),
+      ];
+      const agents = [agent("kim", "Gone", { paused: true }), agent("mara", "A")];
+      const plan = planMoves(seats, agents, settings, now);
+      expect(movesOf(plan)).toEqual(["kim → B", "mara → B"]);
+      expect(plan.moves[0]?.reason).toBe("not-connected");
+    });
+
+    test("with no legal seat, the agent stays and is listed as stuck", () => {
+      const seats = [seat("Gone", 0, 0, { connected: false }), seat("Full", 90, 10)];
+      const plan = planMoves(seats, [agent("kim", "Gone")], settings, now);
+      expect(plan.moves).toEqual([]);
+      expect(plan.stuck).toEqual([
+        expect.objectContaining({ from: "c-Gone", reason: "not-connected" }),
+      ]);
+    });
+  });
+});

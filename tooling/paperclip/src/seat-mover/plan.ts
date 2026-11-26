@@ -27,6 +27,7 @@ import type { SeatMoverSettings } from "./settings.ts";
 export type MoveReason =
   | "d-admin"
   | "e-paid-api"
+  | "not-connected"
   | "quota-hit"
   | "parked"
   | "session-stop"
@@ -77,6 +78,9 @@ function moveReason(
   if (seat !== undefined && isPaidApi(seat)) {
     return "e-paid-api";
   }
+  if (seat !== undefined && !seat.connected) {
+    return "not-connected";
+  }
   const others = connectionId === undefined ? [] : seatedOn(connectionId, placement, agents);
   if (!isReviewer(agent, settings) && others.some((other) => isReviewer(other, settings))) {
     return "b-reviewer-seat";
@@ -123,13 +127,23 @@ function heavyReason(
   return heavy.indexOf(agent) >= settings.maxHeavyPerSeat ? "c-heavy-limit" : undefined;
 }
 
-/** The most 5-hour room first, then the soonest weekly reset, then the emptiest, then the name. */
+/**
+ * The seat with the fewest agents already sent to it this pass first, then the
+ * most 5-hour room, the soonest weekly reset, the emptiest, and the name.
+ * Readings don't change within a pass, so without the first rule every agent
+ * leaving a full seat would pick the same seat (HAL-19394).
+ */
 function compareTargets(
   a: Seat,
   b: Seat,
   placement: Placement,
   agents: readonly AgentPlace[],
+  arrivals: (seat: Seat) => number,
 ): number {
+  const sent = arrivals(a) - arrivals(b);
+  if (sent !== 0) {
+    return sent;
+  }
   const session = (a.reading?.sessionPercent ?? 100) - (b.reading?.sessionPercent ?? 100);
   if (session !== 0) {
     return session;
@@ -231,13 +245,22 @@ class Batch {
           targetRefusal(seat, agent, this.placement, this.agents, this.settings, this.now) ===
           undefined,
       )
-      .sort((a, b) => compareTargets(a, b, this.placement, this.agents))[0];
+      .sort((a, b) =>
+        compareTargets(a, b, this.placement, this.agents, (seat) => this.arrivals(seat)),
+      )[0];
     if (to === undefined) {
       this.stuck.push({ agent, from, reason });
       return;
     }
     this.placement.set(agent.id, to.connectionId);
     this.moves.push({ agent, from, to, reason });
+  }
+
+  /** How many agents this batch has sent to the seat so far. */
+  arrivals(seat: Seat): number {
+    return seatedOn(seat.connectionId, this.placement, this.agents).filter(
+      (agent) => this.start.get(agent.id) !== seat.connectionId,
+    ).length;
   }
 
   hasCompany(agent: AgentPlace): boolean {

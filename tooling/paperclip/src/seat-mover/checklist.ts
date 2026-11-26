@@ -28,6 +28,8 @@ export interface Seat {
   readonly reading: SeatReading | undefined;
   /** A run on this seat failed with `provider_quota` since its reading: it is full now. */
   readonly quotaHit: boolean;
+  /** The connection's status is `connected`; nobody may sit on an expired or revoked one. */
+  readonly connected: boolean;
 }
 
 /** One agent and where it sits. */
@@ -54,6 +56,7 @@ export type TargetRefusal =
   | "d-admin"
   | "e-paid-api"
   | "f-session-stop"
+  | "not-connected"
   | "unread"
   | "same-seat";
 
@@ -135,6 +138,9 @@ export function targetRefusal(
   }
   if (isPaidApi(seat)) {
     return "e-paid-api";
+  }
+  if (!seat.connected) {
+    return "not-connected";
   }
   if (seat.reading === undefined || seat.grantId === undefined) {
     return "unread";
