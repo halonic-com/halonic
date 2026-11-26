@@ -10,9 +10,10 @@
 //! The local Studio page reads the status with `update_status`, follows it
 //! with `update_watch` and acts with the other `update_*` commands
 //! (capabilities/desktop-updates.json); the served Studio gets none. The
-//! download is in `updates_download.rs`. Nothing
-//! here blocks the window: checks run on their own thread or task, and a
-//! failure only changes the status and the log (C58).
+//! download is in `updates_download.rs`, and where it waits until it is
+//! installed in `updates_pending.rs`. Nothing here blocks the window:
+//! checks run on their own thread or task, and a failure only changes the
+//! status and the log (C58).
 
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
@@ -51,6 +52,9 @@ use file::{read_file, write_over};
 #[path = "updates_track.rs"]
 pub mod track;
 
+#[path = "updates_pending.rs"]
+mod pending;
+
 #[path = "updates_way_back.rs"]
 mod way_back;
 use way_back::{log_way_back, prove_started};
@@ -81,9 +85,9 @@ struct Inner {
     managed: Option<Managed>,
     /// What the last check found.
     found: Option<Update>,
-    /// The downloaded installer, its signature checked. Kept for this
-    /// session only: after a crash the next check downloads it again.
-    ready: Option<(Update, Vec<u8>)>,
+    /// The downloaded installer, its signature checked, and where it waits
+    /// in the pending folder: a restart reuses it (HAL-19635).
+    ready: Option<(Update, PathBuf)>,
     download: Option<JoinHandle<()>>,
     /// The pages following the status, by window label.
     watchers: Vec<(String, Channel<UpdateStatus>)>,
@@ -161,6 +165,7 @@ pub fn start<R: Runtime>(app: &AppHandle<R>) {
         .name("halonic-updates".to_owned())
         .spawn(move || {
             load(&app);
+            pending::reuse_at_start(&app);
             prove_started(&app);
             background(&app, ready);
         });
@@ -355,16 +360,16 @@ async fn check<R: Runtime>(app: &AppHandle<R>) {
 /// the installer, which ends Halonic on Windows. `relaunch` reopens Halonic
 /// afterwards. Answers why it couldn't, for the log.
 fn install<R: Runtime>(app: &AppHandle<R>, relaunch: bool) -> Result<(), String> {
-    let (update, bytes, track) = {
+    let (update, installer, track) = {
         let mut inner = lock(app);
-        let Some((update, bytes)) = inner.ready.take() else {
+        let Some((update, installer)) = inner.ready.take() else {
             return Err("no update is ready".to_owned());
         };
         let current = inner.current.clone();
         inner.record.before_install(&update.version, &current);
         inner.save();
         log_way_back(&inner, &update.version);
-        (update, bytes, inner.track())
+        (update, installer, inner.track())
     };
     let host_app = app.clone();
     let update = on_track_key(app.updater_builder(), track)
@@ -375,7 +380,7 @@ fn install<R: Runtime>(app: &AppHandle<R>, relaunch: bool) -> Result<(), String>
         .and_then(|updater| updater.restore_update(update.raw_json.clone()))
         .map_err(|error| error.to_string())?
         .ok_or_else(|| "the update is no longer newer".to_owned())?;
-    update.install(bytes).map_err(|error| error.to_string())
+    pending::install_from(&update, &installer)
 }
 
 /// Installs a ready update when Halonic quits, without reopening it.
@@ -438,7 +443,8 @@ pub fn update_cancel<R: Runtime>(app: AppHandle<R>) -> UpdateStatus {
     let mut inner = lock(&app);
     if let Some(task) = inner.download.take() {
         task.abort();
-        if let Some(found) = inner.found.clone() {
+        // A newer download stopped: the update already ready stays as it is.
+        if let Some(found) = inner.found.clone().filter(|_| inner.ready.is_none()) {
             let current = inner.current.clone();
             inner.state = Some(available(&mut inner.record, &found, &current));
         }
