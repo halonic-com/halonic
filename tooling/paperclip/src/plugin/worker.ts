@@ -3,6 +3,7 @@ import { fittedModel } from "../thin-spec/model.ts";
 import { workerAgentsRouteKey } from "../worker-agents/keys.ts";
 import { databaseWorkerTables } from "../worker-agents/tables.ts";
 import { boardCheck } from "./board-check.ts";
+import { boardMentions, boardMentionsRouteKey, handleBoardMentions } from "./board-mentions.ts";
 import { registerBoardTools } from "./board-tools.ts";
 import { handleChiefLineRequest, isChiefLineRoute } from "./chief-line.ts";
 import { onChiefLineComment } from "./chief-line-signal.ts";
@@ -96,6 +97,7 @@ export const plugin = definePlugin({
     );
     ctx.jobs.register("pr-watch", () => watcher.dispatch());
     const board = boardCheck(ctx);
+    const mentions = boardMentions(ctx);
     const boardJob = scheduledPerCompany(ctx, roster, "board-check", (companyId, now) =>
       board.run(now, async () => [companyId]),
     );
@@ -165,6 +167,7 @@ export const plugin = definePlugin({
       void notes.onCommentCreated(event);
       await Promise.all([
         board.onCommentCreated(event, new Date()),
+        mentions.onCommentCreated(event, new Date()),
         onChiefLineComment(ctx, event),
       ]);
     });
@@ -226,6 +229,9 @@ export const plugin = definePlugin({
     }
     if (input.routeKey === githubSummaryRouteKey) {
       return await handleGitHubSummary(input, context);
+    }
+    if (input.routeKey === boardMentionsRouteKey) {
+      return await handleBoardMentions(input, context);
     }
     if (input.routeKey === chatNotesRouteKey) {
       return await handleChatNotes(input, context);

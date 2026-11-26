@@ -309,6 +309,15 @@ export const manifest: PaperclipPluginManifestV1 = {
       capability: "api.routes.register",
       companyResolution: { from: "query", key: "companyId" },
     },
+    {
+      // Comments that mention the calling person, for Halonic's Inbox, board only (src/plugin/board-mentions.ts).
+      routeKey: "board-mentions",
+      method: "GET",
+      path: "/board/mentions",
+      auth: "board",
+      capability: "api.routes.register",
+      companyResolution: { from: "query", key: "companyId" },
+    },
     ...chiefLine.routes,
     seatResetRoute,
     ...reactionRoutes,
