@@ -86,6 +86,9 @@ function sizeOf(record: JsonRecord): number {
   return typeof size === "number" && Number.isFinite(size) && size >= 0 ? size : 0;
 }
 
+/** Reads task `task`'s file records, as {@link PaperclipCardFiles.recordsOf} does. */
+export type FilesOf = (task: string) => Promise<JsonRecord[]>;
+
 /**
  * Lists the files of Paperclip tasks for cards and reads a listed picture's bytes. Only files the
  * last Inbox list gave a card can be read, each bound to its task, so a made-up or stale ID, or
@@ -108,6 +111,18 @@ export class PaperclipCardFiles {
     const answer = await this.#reader.send("listTaskAttachments", { path: { task } });
     if (answer.kind === "failed" && answer.failure === "not-found") return [];
     return asRecords(bodyOf("listTaskAttachments", answer));
+  }
+
+  /** A reader of task file records for one Inbox list, which reads each task's files once. */
+  oncePerList(): FilesOf {
+    const read = new Map<string, Promise<JsonRecord[]>>();
+    return (task) => {
+      const known = read.get(task);
+      if (known !== undefined) return known;
+      const records = this.recordsOf(task);
+      read.set(task, records);
+      return records;
+    };
   }
 
   /** Keeps the files of `items` as the ones that may be read, and forgets every other. */
