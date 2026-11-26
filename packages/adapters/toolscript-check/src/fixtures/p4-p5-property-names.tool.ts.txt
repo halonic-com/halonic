@@ -1,0 +1,20 @@
+// Banned names as property names are fine (P4, P5).
+import type { AgentContext } from "@halonicjs/toolscript";
+
+export const header = {
+  format: "halonic.toolscript/1",
+  id: "acme.comment-on-task",
+  version: 1,
+  audience: "agent",
+  title: "Comment on a task",
+  summary: "Posts one comment on a task.",
+  risk: "routine",
+  inputs: { task: { type: "string", pattern: "^ACME-[0-9]{1,6}$", description: "The task." } },
+  uses: ["acme.comment@1"],
+  tool: { name: "comment_on_task", description: "Posts one comment on a task." },
+} as const;
+
+export async function run(ctx: AgentContext<typeof header>): Promise<void> {
+  const note = { fetch: "a", self: "b" };
+  await ctx.acme.comment({ task: ctx.input.task, body: note.self + note.fetch });
+}

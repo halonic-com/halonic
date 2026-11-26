@@ -1,0 +1,13 @@
+// A declarative ToolScript: steps and no run.
+export const header = {
+  format: "halonic.toolscript/1",
+  id: "acme.comment-step",
+  version: 1,
+  audience: "user",
+  title: "Comment on a task",
+  summary: "Posts one comment on a task.",
+  risk: "routine",
+  inputs: { task: { type: "string", pattern: "^ACME-[0-9]{1,6}$", description: "The task." } },
+  uses: [],
+  steps: [{ kind: "step", ref: "acme.comment@1", parameters: { task: "{input.task}" } }],
+} as const;

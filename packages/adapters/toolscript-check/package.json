@@ -1,0 +1,36 @@
+{
+  "name": "@halonicjs/adapter-toolscript-check",
+  "private": true,
+  "type": "module",
+  "description": "Checks a ToolScript against the profile rules P1–P7 and builds its artifact with the TypeScript compiler API.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/schema-kit": "workspace:*",
+    "@halonicjs/std": "workspace:*",
+    "@halonicjs/toolscript": "workspace:*",
+    "@typescript/typescript6": "catalog:"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "adapters",
+    "owner": "elena",
+    "coverage": {
+      "lines": 80
+    },
+    "runtime": "any"
+  }
+}
