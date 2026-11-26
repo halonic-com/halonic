@@ -100,3 +100,31 @@ export const writePrDeclaration: PluginToolDeclaration = {
     required: ["branch"],
   },
 };
+
+/** `queue_state` (HAL-16003): the merge queue from the watcher's snapshot. */
+export const queueStateDeclaration: PluginToolDeclaration = {
+  name: "queue_state",
+  displayName: "Merge queue",
+  description:
+    "The merge queue from the PR watcher's last snapshot (at most about 10 minutes old, and it says when it's older): each entry's position, state, group ci-ok, time in the queue and who queued it; merge-group jobs waiting for a runner and the longest wait; open pull requests labelled fast-track with who added the label (unknown never counts as allowed). Sends no GitHub request.",
+  parametersSchema: { type: "object", properties: {} },
+};
+
+/** `merge_speed`: merges per hour and time in the queue, from the watcher's snapshot. */
+export const mergeSpeedDeclaration: PluginToolDeclaration = {
+  name: "merge_speed",
+  displayName: "Merge speed",
+  description:
+    "Merges per hour, the share of pull requests dropped from the merge queue without merging, and the time in the queue of the merged ones, from the PR watcher's last GitHub snapshot. Queue exits count only from the board check's first pass. Pull request numbers and times only.",
+  parametersSchema: {
+    type: "object",
+    properties: {
+      hours: {
+        type: "integer",
+        minimum: 1,
+        maximum: 168,
+        description: "How many hours back; 6 by default.",
+      },
+    },
+  },
+};

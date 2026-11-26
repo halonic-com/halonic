@@ -12,6 +12,8 @@ export interface CompareFile {
   readonly previous_filename?: string;
   readonly status?: string;
   readonly patch?: string;
+  /** The file's blob after the change. */
+  readonly sha?: string;
 }
 
 /** GitHub lists at most this many files in a compare; a longer one can't be judged. */
@@ -20,6 +22,18 @@ const compareFileLimit = 300;
 /** A hunk's header names its line numbers, which a rebase moves; its body is the change. */
 function changeOf(patch: string): string {
   return patch.replace(/^@@ [^@]* @@/gm, "@@");
+}
+
+/**
+ * A file's change, line numbers aside. A renamed file GitHub lists without a
+ * patch (a pure rename, or a binary or very large file) counts by its content,
+ * its blob, so a change hidden behind the missing patch still shows (HAL-19481).
+ */
+function changeOfFile(file: CompareFile): string | undefined {
+  if (file.patch !== undefined) {
+    return changeOf(file.patch);
+  }
+  return file.status === "renamed" && file.sha !== undefined ? `blob ${file.sha}` : undefined;
 }
 
 /**
@@ -32,14 +46,12 @@ function changes(files: readonly CompareFile[]): Map<string, string> | undefined
   }
   const byName = new Map<string, string>();
   for (const file of files) {
-    if (file.patch === undefined && file.status !== "renamed") {
+    const change = changeOfFile(file);
+    if (change === undefined) {
       return undefined;
     }
     const from = file.previous_filename === undefined ? "" : `${file.previous_filename} -> `;
-    byName.set(
-      `${from}${file.filename ?? ""}`,
-      `${file.status ?? ""}\n${changeOf(file.patch ?? "")}`,
-    );
+    byName.set(`${from}${file.filename ?? ""}`, `${file.status ?? ""}\n${change}`);
   }
   return byName;
 }

@@ -34,6 +34,7 @@ import { registerNextStepTools } from "./next-step-tools.ts";
 import { readyStep, registerPrWriteTools } from "./pr-write-tools.ts";
 import { precheckWaits } from "./precheck-waits.ts";
 import { realDeps, registerReadyForReview } from "./ready-for-review.ts";
+import { registerReviewVerdictTool } from "./review-verdict-tool.ts";
 import { scheduledPerCompany } from "./scheduled.ts";
 import { seatResetRouteKey } from "./seat-move-declaration.ts";
 import { seatMovePass } from "./seat-move-job.ts";
@@ -196,6 +197,7 @@ export const plugin = definePlugin({
     registerTaskTools(ctx);
     registerNextStepTools(ctx, undefined, readyStep(ctx));
     registerPrWriteTools(ctx);
+    registerReviewVerdictTool(ctx);
     registerTrialResults(ctx);
     registerStatePacket(ctx, (params) => measureWakeGate(ctx, params));
     registerWorkerAgentsData(ctx, workerAgentsDeps(ctx, databaseWorkerTables(ctx.db)));
