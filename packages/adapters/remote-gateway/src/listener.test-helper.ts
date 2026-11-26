@@ -3,7 +3,12 @@ import { connect, type Socket } from "node:net";
 import { TestPhone } from "./e2e-phone.test-helper.ts";
 import { FakePairing, FakePhones } from "./e2e-session.test-helper.ts";
 import { FakeSource } from "./fake-source.test-helper.ts";
-import { type GatewayListener, gatewayPath, startGatewayListener } from "./gateway-listener.ts";
+import {
+  type GatewayListener,
+  type GatewayMessagingHost,
+  gatewayPath,
+  startGatewayListener,
+} from "./gateway-listener.ts";
 
 /** Frame types a test client sends. */
 export const op = { text: 1, binary: 2, close: 8, ping: 9 } as const;
@@ -185,6 +190,8 @@ export async function openListener(
     heartbeatMs?: number;
     helloTimeoutMs?: number;
     handshakeTimeoutMs?: number;
+    /** The Inbox, Messenger and team status phones may read; without it they are `not-supported`. */
+    messaging?: GatewayMessagingHost;
   } = {},
 ) {
   const source = new FakeSource();
@@ -206,6 +213,7 @@ export async function openListener(
     ...(options.handshakeTimeoutMs === undefined
       ? {}
       : { handshakeTimeoutMs: options.handshakeTimeoutMs }),
+    ...(options.messaging === undefined ? {} : { messaging: options.messaging }),
   });
   return {
     source,

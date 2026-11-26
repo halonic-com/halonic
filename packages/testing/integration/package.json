@@ -22,7 +22,9 @@
     "vitest": "catalog:"
   },
   "devDependencies": {
+    "@halonicjs/adapter-paperclip-client": "workspace:*",
     "@halonicjs/adapter-remote-gateway": "workspace:*",
+    "@halonicjs/app-agent-host": "workspace:*",
     "@halonicjs/studio-feature-remote": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
