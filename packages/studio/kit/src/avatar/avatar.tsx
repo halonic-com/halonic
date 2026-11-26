@@ -19,7 +19,7 @@ export interface AvatarProps {
   readonly size?: AvatarSize;
   /**
    * An agent's own colour, from `agentTint`, for the initials' tile, so the agent looks the same
-   * wherever it shows (`kit.avatar-tint`). A person's avatar has none and stays neutral.
+   * wherever it shows (`kit.avatar-tint`). Without a tint, as for the signed-in person, it stays neutral.
    */
   readonly tint?: AgentTint | undefined;
 }

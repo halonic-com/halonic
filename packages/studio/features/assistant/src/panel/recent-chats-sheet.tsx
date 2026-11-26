@@ -1,5 +1,5 @@
-import { List, type ListRow, SidePanel, StatusChip } from "@halonicjs/studio-kit";
-import { type ReactNode, useEffect, useRef } from "react";
+import { PlainList, PlainRow, SidePanel } from "@halonicjs/studio-kit";
+import { useEffect, useRef } from "react";
 import type { AssistantHost, ChatSummary } from "../api.ts";
 import type { BuildChats } from "../chat/build-chats.ts";
 import { chatTime, chatMenuWords as words } from "../chat/chat-menu-words.ts";
@@ -19,10 +19,11 @@ export interface RecentChatsSheetProps {
 
 /**
  * ⋮ › **Recent chats** on a phone (`assistant.chat.phone-screen`, flow-assistant 11.3): a panel
- * sheet over the chat with the kept Build chats as a flush List, most recently used first. Each
- * row has its title, when it was last used under it, and at the right the running dot or "2 to
- * review". Agent chats aren't listed: on a phone they're on their agent's Try it. The footer says
- * how many chats are kept.
+ * sheet over the chat with the kept Build chats as plain rows, most recently used first, as the
+ * Messenger's chats (`assistant.chat.recent-chats-dot`). Each row has its title, the violet dot
+ * while it has items to review, and at the right when it was last used, after the running dot
+ * while it answers. Agent chats aren't listed: on a phone they're on their agent's Try it. The
+ * footer says how many chats are kept.
  */
 export function RecentChatsSheet({
   host,
@@ -34,28 +35,25 @@ export function RecentChatsSheet({
   const recent = useRecentChats(host).filter((chat) => chat.kind === "build");
   const frame = useEscapeCloses(onClose);
   const now = new Date();
-  const rows: ListRow[] = recent.map((chat) => {
-    const time = chatTime(chat.lastUsedAt, now);
-    return {
-      id: chat.id,
-      title: chat.title,
-      wrapTitle: true,
-      meta: time,
-      trailing: trailingOf(chat),
-      label: words.rowName(chat.title, time, chat.answering, chat.itemsToReview),
-    };
-  });
   return (
     <div ref={frame} className="absolute inset-0 z-10 flex flex-col bg-surface">
       <SidePanel title={words.phone.recentChats} onClose={onClose}>
-        {rows.length === 0 ? null : (
-          <div className="-mx-4 -mt-3">
-            <List
-              label={words.phone.recentChats}
-              rows={rows}
-              {...(currentId === undefined ? {} : { current: currentId })}
-              onOpen={(id) => void chats.pick(id).then(onPicked)}
-            />
+        {recent.length === 0 ? null : (
+          <div className="-mx-3">
+            <PlainList label={words.phone.recentChats}>
+              {recent.map((chat) => (
+                <PlainRow
+                  key={chat.id}
+                  id={chat.id}
+                  picture={null}
+                  title={chat.title}
+                  flag={flagOf(chat)}
+                  time={<RowTime chat={chat} now={now} />}
+                  current={chat.id === currentId}
+                  onSelect={() => void chats.pick(chat.id).then(onPicked)}
+                />
+              ))}
+            </PlainList>
           </div>
         )}
         <p className="pt-3 text-small text-fg-muted">{words.phone.footer}</p>
@@ -64,15 +62,25 @@ export function RecentChatsSheet({
   );
 }
 
-/** The row's one job on the right: the running dot while it answers, else what's left to review. */
-function trailingOf(chat: ChatSummary): ReactNode {
-  if (chat.answering) {
-    return (
-      <span className="size-1.5 shrink-0 rounded-full bg-running forced-color-adjust-none forced-colors:bg-[CanvasText]" />
-    );
-  }
-  if (chat.itemsToReview > 0) return <StatusChip>{words.toReview(chat.itemsToReview)}</StatusChip>;
-  return undefined;
+/** The violet dot's words while a chat that isn't answering has items to review: ", 2 to review". */
+function flagOf(chat: ChatSummary): string | undefined {
+  if (chat.answering || chat.itemsToReview === 0) return undefined;
+  return `, ${words.toReview(chat.itemsToReview)}`;
+}
+
+/** When the chat was last used, after the running dot while it answers. */
+function RowTime({ chat, now }: { readonly chat: ChatSummary; readonly now: Date }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="sr-only">, </span>
+      {chat.answering ? (
+        <span className="size-1.5 shrink-0 rounded-full bg-running forced-color-adjust-none forced-colors:bg-[CanvasText]">
+          <span className="sr-only">{words.answering}, </span>
+        </span>
+      ) : null}
+      {chatTime(chat.lastUsedAt, now)}
+    </span>
+  );
 }
 
 /** Escape while focus is in the sheet closes it alone; the shell's close stack isn't open to features. */
