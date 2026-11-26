@@ -138,7 +138,7 @@ export function AgentItemCard({
   const label = source?.label;
 
   return (
-    <section aria-labelledby={titleId} className={`${cardClasses} shadow-1`}>
+    <section aria-labelledby={titleId} className={cardClasses}>
       <div className={cardBodyClasses}>
         <Asker from={item.from} agents={agents} />
         <CardHeader
