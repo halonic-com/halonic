@@ -115,6 +115,9 @@ function InlinePart({ inline }: { readonly inline: MarkdownInline }) {
           {inline.text}
         </code>
       );
+    case "app-link":
+      // `readMarkdown` reads these only when asked for `appLinks`, which this screen doesn't.
+      return inline.text;
     case "link":
       // The plugin writes the link's words, so they can't be trusted to say where it goes: its
       // host shows after it for everyone, keyboard and touch included, and the full address on

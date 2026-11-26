@@ -97,6 +97,9 @@ function Inline({ inline }: { readonly inline: MarkdownInline }) {
           {inline.text}
         </code>
       );
+    case "app-link":
+      // `readMarkdown` reads these only when asked for `appLinks`, which this screen doesn't.
+      return inline.text;
     case "link":
       // The agent writes the link's words, so they can't be trusted to say where it goes: its
       // host follows them, as the URL parser writes it, so a look-alike name shows as `xn--`.

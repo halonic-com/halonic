@@ -389,6 +389,7 @@ export { sizeText } from "./text/file-size.ts";
 export {
   type MarkdownBlock,
   type MarkdownInline,
+  type MarkdownOptions,
   readMarkdown,
 } from "./text/markdown.ts";
 export {
