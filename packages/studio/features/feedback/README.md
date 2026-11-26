@@ -29,6 +29,12 @@ hand it in, with the key behind its guard.
   the window a press opens where no still can be taken yet, macOS and Wayland
   (`feedback.unavailable`).
 
+- `settings/`: Settings → Keyboard, the **Send feedback** row whose **Change** records a new
+  shortcut and hands it to the shell's `plugin:feedback|shortcut_set` (`feedback.settings-shortcut`),
+  and Settings → Feedback, the **Project** and **Assign to** the Send feedback window reads
+  (`feedbackPrefs`, host settings) and how many feedbacks wait (`feedback.settings-section`). Both
+  show only in Studio's own main window, where the app gives `FeedbackSettingsService`.
+
 The shortcut and the screen capture are the shell's (`apps/studio/src-tauri/src/feedback_*.rs`).
 The Send feedback window comes in a later pull request.
 

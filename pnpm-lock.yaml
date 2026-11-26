@@ -3882,6 +3882,12 @@ importers:
 
   packages/studio/features/feedback:
     dependencies:
+      '@halonicjs/app':
+        specifier: workspace:*
+        version: link:../../../core/app
+      '@halonicjs/studio-feature-settings':
+        specifier: workspace:*
+        version: link:../settings
       '@halonicjs/studio-kit':
         specifier: workspace:*
         version: link:../../kit
