@@ -1,3 +1,4 @@
+import { useNarrow } from "@halonicjs/studio-kit";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { activityWords } from "../activity-words.ts";
 import { activityPanelId } from "./activity-panel.tsx";
@@ -7,6 +8,13 @@ const rememberedKey = "halonic.messenger.activity-open";
 
 /** The minimum width of a wide window, where the panel sits beside the chat (HAL-18558 section 3). */
 const wideQuery = "(min-width: 1200px)";
+
+/**
+ * Where the panel goes in this window (HAL-18558 section 3): beside the chat on a wide window
+ * (1200 px and up), a sheet over the chat's right side on a medium one (900–1199 px), and a place
+ * of its own, instead of the chat, on a narrow one (under 900 px).
+ */
+export type ActivityWidth = "wide" | "medium" | "narrow";
 
 /** The open chat's activity panel, for the header button and the working line. */
 export interface ActivityToggle {
@@ -21,18 +29,25 @@ export interface ActivityToggle {
 export const ActivityToggleContext = createContext<ActivityToggle | undefined>(undefined);
 
 /**
- * Whether the panel is open: open by default on a wide window, then as the person last left it,
- * remembered on this computer. It never opens or closes by itself. **Ctrl+I** opens and closes it,
- * except while focus is in a text field, such as the message box or the search.
+ * Whether the panel is open. On a wide window it's open by default, then as the person last left
+ * it, remembered on this computer; on a medium or narrow one it starts closed, and the choice made
+ * there isn't remembered. When the window crosses a width, it starts again as that width starts.
+ * It never opens or closes by itself. **Ctrl+I** opens and closes it, except while focus is in a
+ * text field, such as the message box or the search.
  */
-export function useActivityOpen(): readonly [boolean, () => void] {
-  const [open, setOpen] = useState(() => remembered() ?? true);
+export function useActivityOpen(width: ActivityWidth): readonly [boolean, () => void] {
+  const [open, setOpen] = useState(() => startsOpen(width));
+  const [openedAt, setOpenedAt] = useState(width);
+  if (openedAt !== width) {
+    setOpenedAt(width);
+    setOpen(startsOpen(width));
+  }
   const toggle = useCallback(() => {
     setOpen((before) => {
-      remember(!before);
+      if (width === "wide") remember(!before);
       return !before;
     });
-  }, []);
+  }, [width]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (!event.ctrlKey || event.altKey || event.metaKey || event.key.toLowerCase() !== "i")
@@ -48,11 +63,19 @@ export function useActivityOpen(): readonly [boolean, () => void] {
   return [open, toggle];
 }
 
+/** Where the panel goes in this window: the kit's narrow width first, then the wide query. */
+export function useActivityWidth(): ActivityWidth {
+  const narrow = useNarrow();
+  const wide = useWide();
+  if (narrow) return "narrow";
+  return wide ? "wide" : "medium";
+}
+
 /**
  * Whether the window is wide enough for the panel beside the chat (1200 px and up). A test's jsdom
  * has no `matchMedia`, so it counts as wide there.
  */
-export function useWide(): boolean {
+function useWide(): boolean {
   const [wide, setWide] = useState(() => globalThis.matchMedia?.(wideQuery).matches ?? true);
   useEffect(() => {
     const query = globalThis.matchMedia?.(wideQuery);
@@ -119,6 +142,10 @@ function PanelIcon() {
       <path d="M10 2.5v11" />
     </svg>
   );
+}
+
+function startsOpen(width: ActivityWidth): boolean {
+  return width === "wide" ? (remembered() ?? true) : false;
 }
 
 function remembered(): boolean | undefined {

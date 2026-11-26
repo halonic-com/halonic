@@ -131,7 +131,7 @@ export function MessengerPage({
         </ListColumn>
       )}
       {onePane && !panelFirst ? null : (
-        <WithActivity messenger={messenger} row={open} words={words} offered={!onePane}>
+        <WithActivity messenger={messenger} row={open} words={words}>
           <main ref={chat} className={`flex min-w-0 flex-1 flex-col ${focusedPanelClass}`}>
             {onePane && (open !== undefined || needsYou) ? (
               <div className="px-2 pt-2">
