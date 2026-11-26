@@ -11,9 +11,9 @@ export function rowCount(text: string): number {
   return text.split(words.keyPower).length - 1;
 }
 
-/** The rows the text shows, and how many of them are signed out, for the step's note. */
+/** The rows the text shows, and how many of them can't be used, for the step's note. */
 export function listSummary(text: string): string {
-  return `${rowCount(text)} rows, ${signedOutCount(text)} signed out`;
+  return `${rowCount(text)} rows, ${signedOutCount(text)} signed out, ${noKeyCount(text)} not connected`;
 }
 
 /**
@@ -25,10 +25,18 @@ function signedOutCount(text: string): number {
 }
 
 /**
+ * How many rows this computer holds no key for: each shows the not-connected callout once.
+ * Disconnect deletes the key here, so that's how a disconnected row shows (HAL-19032, run 45749966189).
+ */
+function noKeyCount(text: string): number {
+  return text.split(words.noKeyCallout).length - 1;
+}
+
+/**
  * Step 7: the connected row's Add another account opens its dialog with the
  * Paperclip's address filled in; Continue, approved on the test Paperclip,
  * lists a second connection. The step then disconnects that second one, which
- * stays listed as Signed out, so step 3's is the only connected one again.
+ * stays listed as Not connected, so step 3's is the only connected one again.
  */
 export const addAccount: Step = {
   id: "add-account",
@@ -95,13 +103,17 @@ async function disconnectSecond(context: StepContext): Promise<StepOutcome> {
     }
   }
   // Disconnect forgets the key and the cache but keeps the workspace's connection file, so the
-  // row stays, signed out (agent host's `connections()`; run 45712189624).
+  // row stays (agent host's `connections()`; run 45712189624). With its key gone from this
+  // computer it shows Not connected (`connections.connection-row`); an engine from before
+  // HAL-19032 showed Signed out, which still counts.
   const gone = await waitForText(context, 30_000, (text) =>
-    rowCount(text) === 2 && signedOutCount(text) === 1 && text.includes(words.keyRevoked)
+    rowCount(text) === 2 &&
+    signedOutCount(text) + noKeyCount(text) === 1 &&
+    text.includes(words.keyRevoked)
       ? true
       : undefined,
   );
   const after = `After Disconnect: ${listSummary(gone.text)}.`;
   if (gone.value === true) return { passed: true, note: after };
-  return failure("NOT_DISCONNECTED", `The second connection didn't sign out. ${after}`, gone.text);
+  return failure("NOT_DISCONNECTED", `The second connection stayed connected. ${after}`, gone.text);
 }

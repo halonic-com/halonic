@@ -139,11 +139,30 @@ verifies("studio-click-test.connections-steps", () => {
   });
 
   describe("add another account", () => {
+    /** How the disconnected row reads, as Studio shows it today and before HAL-19032. */
+    const disconnectedRows = {
+      // Run 45749966189: Disconnect deleted the key, so the row says Not connected and Sign in.
+      "no-key": [userLabel, words.notConnected, words.noKeyCallout, words.signIn, words.keyPower],
+      // The callout's own text says Sign in again too (run 45715326517).
+      "signed-out": [
+        userLabel,
+        words.signedOut,
+        words.signedOutCallout,
+        words.signInAgain,
+        words.keyPower,
+      ],
+      connected: [row(userLabel)],
+    };
+
     /**
      * A Studio whose Add another account, once approved, lists `afterApproval`
-     * rows, and the context whose approval does that.
+     * rows, and whose Disconnect leaves the second row as `disconnected` reads;
+     * and the context whose approval does that.
      */
-    function studioAddingAccount(afterApproval: number): {
+    function studioAddingAccount(
+      afterApproval: number,
+      disconnected: keyof typeof disconnectedRows = "no-key",
+    ): {
       studio: FakeStudio;
       context: StepContext;
     } {
@@ -157,15 +176,8 @@ verifies("studio-click-test.connections-steps", () => {
       button(studio, "main", words.disconnect, () => {
         disconnectClicks += 1;
         if (disconnectClicks === 2) {
-          // As the row shows it: the callout's own text says Sign in again too (run 45715326517).
-          const signedOut = [
-            userLabel,
-            words.signedOut,
-            words.signedOutCallout,
-            words.signInAgain,
-            words.keyPower,
-          ].join("\n");
-          setText(studio, `Disconnected x. ${words.keyRevoked}\n${row(userLabel)}\n${signedOut}`);
+          const second = disconnectedRows[disconnected].join("\n");
+          setText(studio, `Disconnected x. ${words.keyRevoked}\n${row(userLabel)}\n${second}`);
         }
       });
       const context: StepContext = {
@@ -182,7 +194,7 @@ verifies("studio-click-test.connections-steps", () => {
       const { studio, context } = studioAddingAccount(2);
       await expect(addAccount.run(context)).resolves.toEqual({
         passed: true,
-        note: "Listed: 2 rows, 0 signed out. After Disconnect: 2 rows, 1 signed out.",
+        note: "Listed: 2 rows, 0 signed out, 0 not connected. After Disconnect: 2 rows, 0 signed out, 1 not connected.",
       });
       expect(studio.clicks.slice(-4)).toEqual([
         words.addAccount,
@@ -190,6 +202,22 @@ verifies("studio-click-test.connections-steps", () => {
         words.disconnect,
         words.disconnect,
       ]);
+    });
+
+    it("passes when the disconnected row shows Signed out, as before HAL-19032", async () => {
+      const { context } = studioAddingAccount(2, "signed-out");
+      await expect(addAccount.run(context)).resolves.toMatchObject({
+        passed: true,
+        note: expect.stringContaining("After Disconnect: 2 rows, 1 signed out, 0 not connected."),
+      });
+    });
+
+    it("fails as NOT_DISCONNECTED when the second row stays connected", async () => {
+      const { context } = studioAddingAccount(2, "connected");
+      await expect(addAccount.run(context)).resolves.toMatchObject({
+        passed: false,
+        code: "NOT_DISCONNECTED",
+      });
     });
 
     it("picks the second row's Disconnect", () => {
