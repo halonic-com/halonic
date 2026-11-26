@@ -14,7 +14,7 @@ interface PlaceFailure {
 }
 
 /**
- * Step 16 (HAL-18870): the demo's other places open. From the Places list it
+ * Step 22 (HAL-18870): the demo's other places open. From the Places list it
  * opens Inbox, Runs, Library and Changes in turn, and each page must show its
  * own text. It checks every place even after one fails, so one run names them
  * all, and reports the first failure's code.
