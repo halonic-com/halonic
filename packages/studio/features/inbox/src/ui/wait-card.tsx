@@ -217,6 +217,7 @@ export function WaitCard(props: WaitCardProps) {
           )}
           next={next}
           back={back}
+          runOpens={openRun !== undefined}
           callout={answered}
         />
       ) : null}

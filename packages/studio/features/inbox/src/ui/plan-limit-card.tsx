@@ -120,6 +120,7 @@ export function PlanLimitCard(props: PlanLimitCardProps) {
           text={afterText(state.after)}
           next={props.next}
           back={null}
+          runOpens={openRun !== undefined}
           callout={continued}
         />
       ) : null}

@@ -263,6 +263,7 @@ export function ApprovalCard(props: ApprovalCardProps) {
           {...(state.decided.kind === "note" ? { note: state.decided.note } : {})}
           next={next}
           back={back}
+          runOpens={props.onOpenRun !== undefined}
           callout={decided}
         />
       ) : (
