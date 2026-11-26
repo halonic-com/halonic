@@ -13,18 +13,22 @@ export const wideWindow: WindowSize = { width: 1280, height: 800 };
 const dockedFromWidth = 900;
 
 /**
- * Runs `step` in a window of {@link wideWindow}'s size, then gives the window its size back, so
+ * Runs `step` in Studio's main window at {@link wideWindow}'s size, then gives the window its size back, so
  * the steps after it, which expect the narrow window, find ☰ Places where they look for it.
  * Fails as `NO_WIDE_WINDOW` when the window can't be made wide, and as `WINDOW_NOT_RESTORED`
- * when a step that passed can't give the size back.
+ * when a step that passed can't give the size back. A failed step's note names the size it ran
+ * in, since the runner's screenshot comes after the window is narrow again.
  */
 export async function inWideWindow(
   context: StepContext,
   step: () => Promise<StepOutcome>,
 ): Promise<StepOutcome> {
   const { driver } = context;
+  // An earlier step can leave the session on another window, such as Messenger after the Start
+  // menu step, and the runner may skip the step that would have switched back.
   const sized = await driver
-    .windowSize()
+    .switchToWindow(context.mainWindow)
+    .then(() => driver.windowSize())
     .then(async (before) => ({ before, wide: await driver.setWindowSize(wideWindow) }))
     .catch(errorText);
   if (typeof sized === "string") {
@@ -42,7 +46,13 @@ export async function inWideWindow(
     throw error;
   });
   const whyNot = await restore();
-  if (whyNot === undefined) return outcome;
+  if (whyNot === undefined) {
+    if (outcome.passed) return outcome;
+    return {
+      ...outcome,
+      note: `${outcome.note} It ran in a ${wide.width} × ${wide.height} window.`,
+    };
+  }
   const kept = `The window kept ${wide.width} × ${wide.height} (${whyNot}).`;
   if (outcome.passed) return { passed: false, code: "WINDOW_NOT_RESTORED", note: kept };
   return { ...outcome, note: `${outcome.note} ${kept}` };

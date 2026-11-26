@@ -42,6 +42,28 @@ verifies("studio-click-test.wide-window", () => {
     expect(new Set(sizes)).toEqual(new Set(["1280"]));
   });
 
+  it("sizes Studio's main window when an earlier step left the session on another", async () => {
+    const studio = studioOnDemo();
+    studio.windows.set("messenger", { text: "Messenger", buttons: new Map() });
+    studio.current = "messenger";
+    const sizedWindows: string[] = [];
+    const setWindowSize = studio.context.driver.setWindowSize;
+    studio.context.driver.setWindowSize = async (size) => {
+      sizedWindows.push(studio.current);
+      return setWindowSize(size);
+    };
+    await expect(demoWorkspace.run(studio.context)).resolves.toEqual({ passed: true });
+    expect(sizedWindows).toEqual(["main", "main"]);
+  });
+
+  it("names the size a failed step ran in", async () => {
+    const studio = fakeStudio("Home");
+    await expect(windowTabs.run(studio.context)).resolves.toMatchObject({
+      passed: false,
+      note: expect.stringMatching(/ It ran in a 1280 × 800 window\.$/),
+    });
+  });
+
   it("passes in the size the driver answers when a small screen caps it", async () => {
     const studio = studioOnDemo();
     const setWindowSize = studio.context.driver.setWindowSize;
