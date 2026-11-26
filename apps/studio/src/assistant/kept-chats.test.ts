@@ -154,6 +154,30 @@ verifies("studio.workspace-assistant", () => {
       expect((await next.get(chat.id)).about).toEqual(about);
     });
 
+    it("saves a chat's fix attempts with it, through later changes, and a new window reads them back", async () => {
+      const store = newStore();
+      const fixes = {
+        integration: "notes",
+        folder: "integrations/notes",
+        failed: 1,
+        pendingSince: "2026-11-24T08:00:05.000Z",
+      };
+      const first = new KeptChats({ store, now: ticking() });
+      const chat = await first.newChat("build", { kind: "assistant" });
+      first.add(chat.id, { role: "user", content: "Fix the notes search" });
+      first.changeFixes(chat.id, fixes);
+      first.add(chat.id, { role: "assistant", content: "Proposed a fix." });
+      await first.change(chat.id, { title: "Notes search" });
+      await first.saved();
+      expect((await store.sessions.load(store.location, chat.id))?.fixes).toEqual(fixes);
+
+      const next = new KeptChats({ store, now: ticking() });
+      expect((await next.get(chat.id)).fixes).toEqual(fixes);
+      next.add(chat.id, { role: "user", content: "Still broken" });
+      await next.saved();
+      expect((await store.sessions.load(store.location, chat.id))?.fixes).toEqual(fixes);
+    });
+
     it("says which chat went when it is deleted", async () => {
       const gone: string[] = [];
       const chats = new KeptChats({

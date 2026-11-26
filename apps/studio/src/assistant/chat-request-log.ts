@@ -8,8 +8,8 @@ import {
   type AgentHostTransport,
 } from "@halonicjs/adapter-agent-host-client";
 import { integrationsFolder, type RequestLogLine, readIntegrationSheets } from "@halonicjs/app";
-import type { RequestLogReading } from "@halonicjs/assistant";
-import type { DefinitionSource, SavedChatAbout } from "@halonicjs/ports";
+import type { LocalIntegration, RequestLogReading } from "@halonicjs/assistant";
+import { type DefinitionSource, type SavedChatAbout, segmentAsOpened } from "@halonicjs/ports";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 
 /** Reads one local integration's request log, by the id its sheet names, oldest first. */
@@ -53,12 +53,33 @@ export async function localIntegrationOf(
   files: DefinitionSource,
   about: SavedChatAbout | undefined,
 ): Promise<string | undefined> {
+  return (await localIntegrationIn(loaded, files, about))?.id;
+}
+
+/**
+ * The local integration a chat about `about` is about, with its folder as the workspace lists it,
+ * such as `integrations/notes`, never with a trailing `/`. The connector's folder name compares
+ * as a file system opens it, so `folder: Notes` runs `integrations/notes` too.
+ */
+export async function localIntegrationIn(
+  loaded: LoadedWorkspace,
+  files: DefinitionSource,
+  about: SavedChatAbout | undefined,
+): Promise<LocalIntegration | undefined> {
   if (about?.kind !== "connector") return undefined;
   const connector = filesOf(loaded, "connector").find(
     (file) => file.hub === about.hub && file.value.id === about.id,
   );
   const transport = connector?.value.transport;
   if (transport === undefined || !("integration" in transport)) return undefined;
-  const folder = `${integrationsFolder}/${transport.integration.folder}`;
-  return (await readIntegrationSheets(files)).find((each) => each.folder === folder)?.sheet.id;
+  const folder = folderKey(`${integrationsFolder}/${transport.integration.folder}`);
+  const found = (await readIntegrationSheets(files)).find(
+    (each) => folderKey(each.folder) === folder,
+  );
+  return found === undefined ? undefined : { id: found.sheet.id, folder: found.folder };
+}
+
+/** A folder as a file system opens it: `integrations/Notes` and `integrations/notes` are one. */
+function folderKey(folder: string): string {
+  return folder.split("/").map(segmentAsOpened).join("/");
 }
