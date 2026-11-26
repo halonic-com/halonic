@@ -338,9 +338,9 @@ export class PaperclipMessaging implements AgentMessaging {
    */
   async refresh(): Promise<void> {
     const reading = this.#refreshReads.start();
-    const agents = this.#agentNames.size === 0 ? await this.#readAgents() : undefined;
     // One read of the open tasks serves the Inbox, the chats, the work and the channels.
     const tasks = await this.#inbox.openTasks();
+    const agents = this.#agentNames.size === 0 ? await this.#readAgents() : undefined;
     const lists: RefreshLists = {
       inboxItems: await this.#inboxFrom(tasks),
       conversations: await this.#conversations.list(this.#context(), tasks),
