@@ -1,6 +1,6 @@
 import type { StepContext, StepOutcome } from "../runner.ts";
 import { clickOrWhyNot, clickWhenShown, lastWords, waitForText } from "../screen.ts";
-import { buttonLabels, errorCodeIn, screenText, words } from "../words.ts";
+import { buttonLabels, closeSettingsLabel, errorCodeIn, screenText, words } from "../words.ts";
 
 /** How long Studio may take to start its engine on a fresh profile (the WSL import included). */
 export const startWaitMs = 5 * 60_000;
@@ -38,6 +38,18 @@ export async function onWorkspace(context: StepContext): Promise<StepOutcome> {
   );
   if (!text.includes(buttonLabels.openDemo.text)) return { passed: true };
   return openDemo(context);
+}
+
+/**
+ * Puts the main window on a workspace with no Settings over it. Connect Paperclip leaves Settings
+ * open on Connections, and that modal dialog keeps the switcher and the tabs strip from being
+ * clicked (HAL-19005), so a step that needs them closes it first with its ×. No Settings is fine.
+ */
+export async function onWorkspaceWithoutSettings(context: StepContext): Promise<StepOutcome> {
+  const workspace = await onWorkspace(context);
+  if (!workspace.passed) return workspace;
+  await clickWhenShown(context, closeSettingsLabel, 2_000);
+  return { passed: true };
 }
 
 /**
