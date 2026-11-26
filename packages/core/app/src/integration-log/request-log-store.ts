@@ -5,7 +5,7 @@
 // headers and no bodies, as the kit's log doesn't, and paths are masked when
 // an entry is written, never when it is read (Liam, HAL-18391).
 
-import { maskedPath, maskedSegment } from "./masked-path.ts";
+import { codeIndex, maskedPath, maskedSegment } from "./masked-path.ts";
 
 /** One request an integration made, as the kit's request log has it. */
 export interface LoggedRequest {
@@ -60,15 +60,30 @@ const methodPattern = /^[A-Z][A-Z-]{0,15}$/;
 const hostPattern = /^(?:[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*|\[[0-9A-Fa-f:.]+\])(?::[0-9]{1,5})?$/;
 const maxHostLength = 260;
 
-/** The store of every integration's local request log. */
+/** Reads the integration's code as it is now, for masking the paths of a write. */
+export type CodeReader = () => Promise<string>;
+
+/**
+ * The store of every integration's local request log. Make one per profile:
+ * it keeps the lines waiting for each file, and a remove or a forget drops them.
+ *
+ * Lines wait while the file's previous write runs, then go in one write: one
+ * code read and one file write for all of them. At most `limit` of each type
+ * wait, the oldest dropped first, so an integration that makes requests in a
+ * tight loop can't grow the queue (Julian, HAL-19169).
+ */
 export class RequestLogStore {
   readonly #files: RequestLogFiles;
   readonly #limit: number;
   /** The write running for each file, so two writes never interleave. */
   readonly #writes = new Map<string, Promise<void>>();
+  /** The lines waiting for each file's next write. */
+  readonly #pending = new Map<string, PendingLines>();
+  /** The workspaces being forgotten: a line added for one meanwhile is dropped. */
+  readonly #forgetting = new Set<string>();
   readonly #now: () => Date;
 
-  /** @param limit - how many requests, and how many failure notes, each file keeps */
+  /** @param limit - how many requests, and how many failure notes, each file keeps and each write takes */
   constructor(files: RequestLogFiles, options: { limit?: number; now?: () => Date } = {}) {
     this.#files = files;
     this.#limit = options.limit ?? 200;
@@ -76,37 +91,39 @@ export class RequestLogStore {
   }
 
   /**
-   * Adds a request, with every path segment `code` doesn't hold masked. A
-   * method or host that isn't in its plain shape is stored as `{…}`; an
-   * empty host stays empty.
+   * Adds a request, with every path segment the code doesn't hold masked
+   * when it is written. A method or host that isn't in its plain shape is
+   * stored as `{…}`; an empty host stays empty.
    *
-   * @param code - the integration's code as it is now
+   * @param code - the integration's code, or how to read it as it is when the line is written
    * @throws RangeError when the workspace key or integration id can't name a file
    */
   async addRequest(
     workspace: string,
     integration: string,
     request: LoggedRequest,
-    code: string,
+    code: string | CodeReader,
   ): Promise<void> {
     const { method, host, path, status, durationMs, outcome, refusal } = request;
-    await this.#add(workspace, integration, {
+    const line: RequestLogLine = {
       type: "request",
       at: this.#now().toISOString(),
       method: methodPattern.test(method) ? method : maskedSegment,
       host: host === "" || isPlainHost(host) ? host : maskedSegment,
-      path: maskedPath(path, code),
+      path,
       ...(status === undefined ? {} : { status }),
       durationMs,
       outcome,
       ...(refusal === undefined ? {} : { refusal }),
-    });
+    };
+    const readCode = typeof code === "string" ? async () => code : code;
+    return this.#add(workspace, integration, line, readCode);
   }
 
   /** Adds the note of a failed call. A field name that isn't a plain path is stored as `{…}`. */
   async addFailure(workspace: string, integration: string, failure: FailedCall): Promise<void> {
     const { tool, kind, fields } = failure;
-    await this.#add(workspace, integration, {
+    return this.#add(workspace, integration, {
       type: "failure",
       at: this.#now().toISOString(),
       tool,
@@ -117,40 +134,84 @@ export class RequestLogStore {
     });
   }
 
+  /** How many lines wait for the integration's next write. */
+  pendingCount(workspace: string, integration: string): number {
+    return this.#pending.get(fileKey(workspace, integration))?.lines.length ?? 0;
+  }
+
   /** The integration's log, oldest first. */
   async lines(workspace: string, integration: string): Promise<RequestLogLine[]> {
     await this.#writes.get(fileKey(workspace, integration))?.catch(() => undefined);
     return parseLines(await this.#files.read(workspace, fileName(workspace, integration)));
   }
 
-  /** Deletes the integration's log, as when the integration is removed. */
+  /** Drops the integration's waiting lines and deletes its log, as when the integration is removed. */
   async removeIntegration(workspace: string, integration: string): Promise<void> {
-    await this.#queue(workspace, integration, () =>
-      this.#files.remove(workspace, fileName(workspace, integration)),
-    );
+    const file = fileName(workspace, integration);
+    this.#pending.delete(fileKey(workspace, integration));
+    await this.#queue(workspace, integration, () => this.#files.remove(workspace, file));
   }
 
-  /** Deletes the logs of every integration in the workspace, as when the workspace is forgotten. */
+  /**
+   * Drops the waiting lines of every integration in the workspace and deletes
+   * its logs, as when the workspace is forgotten. A write already running
+   * finishes first, so no file comes back after the folder is gone.
+   */
   async forgetWorkspace(workspace: string): Promise<void> {
     checkWorkspace(workspace);
-    await Promise.allSettled(this.#writes.values());
-    await this.#files.removeWorkspace(workspace);
+    this.#forgetting.add(workspace);
+    try {
+      for (const key of this.#pending.keys()) {
+        if (key.startsWith(`${workspace}/`)) this.#pending.delete(key);
+      }
+      await Promise.allSettled(this.#writes.values());
+      await this.#files.removeWorkspace(workspace);
+    } finally {
+      this.#forgetting.delete(workspace);
+    }
   }
 
-  async #add(workspace: string, integration: string, line: RequestLogLine): Promise<void> {
+  /** Adds `line` to the file's next write, starting one when none waits. */
+  #add(
+    workspace: string,
+    integration: string,
+    line: RequestLogLine,
+    readCode?: CodeReader,
+  ): Promise<void> {
     const file = fileName(workspace, integration);
-    await this.#queue(workspace, integration, async () => {
-      const lines = [...parseLines(await this.#files.read(workspace, file)), line];
-      const kept = new Set([
-        ...lastOf(lines, "request", this.#limit),
-        ...lastOf(lines, "failure", this.#limit),
-      ]);
-      const text = lines
-        .filter((each) => kept.has(each))
-        .map((each) => `${JSON.stringify(each)}\n`)
-        .join("");
-      await this.#files.write(workspace, file, text);
-    });
+    if (this.#forgetting.has(workspace)) return Promise.resolve();
+    const key = fileKey(workspace, integration);
+    let pending = this.#pending.get(key);
+    if (pending === undefined) {
+      const waiting = new PendingLines(this.#limit);
+      waiting.written = this.#queue(workspace, integration, () =>
+        this.#write(workspace, file, key, waiting),
+      );
+      this.#pending.set(key, waiting);
+      pending = waiting;
+    }
+    pending.push(line, readCode);
+    return pending.written;
+  }
+
+  /** Writes the waiting lines, unless a remove or a forget dropped them. */
+  async #write(workspace: string, file: string, key: string, pending: PendingLines) {
+    if (this.#pending.get(key) !== pending) return;
+    this.#pending.delete(key);
+    const code = codeIndex(pending.readCode === undefined ? "" : await pending.readCode());
+    const added = pending.lines.map((line) =>
+      line.type === "request" ? { ...line, path: maskedPath(line.path, code) } : line,
+    );
+    const lines = [...parseLines(await this.#files.read(workspace, file)), ...added];
+    const kept = new Set([
+      ...lastOf(lines, "request", this.#limit),
+      ...lastOf(lines, "failure", this.#limit),
+    ]);
+    const text = lines
+      .filter((each) => kept.has(each))
+      .map((each) => `${JSON.stringify(each)}\n`)
+      .join("");
+    await this.#files.write(workspace, file, text);
   }
 
   /** Runs `write` after the file's earlier writes; a failed write doesn't stop the next one. */
@@ -163,6 +224,37 @@ export class RequestLogStore {
     } finally {
       if (this.#writes.get(key) === next) this.#writes.delete(key);
     }
+  }
+}
+
+/**
+ * The lines waiting for one file's next write, in the order they came: at
+ * most `limit` of each type, the oldest dropped first. A request's path is
+ * masked only when it is written, against the code as it is then.
+ */
+class PendingLines {
+  readonly lines: RequestLogLine[] = [];
+  /** How to read the code, from the newest request. */
+  readCode: CodeReader | undefined;
+  /** Settles once these lines are written, or dropped. */
+  written: Promise<void> = Promise.resolve();
+  readonly #limit: number;
+
+  constructor(limit: number) {
+    this.#limit = limit;
+  }
+
+  push(line: RequestLogLine, readCode: CodeReader | undefined): void {
+    this.lines.push(line);
+    if (readCode !== undefined) this.readCode = readCode;
+    const oldest = this.lines.find((each) => each.type === line.type);
+    if (oldest !== undefined && this.#count(line.type) > this.#limit) {
+      this.lines.splice(this.lines.indexOf(oldest), 1);
+    }
+  }
+
+  #count(type: RequestLogLine["type"]): number {
+    return this.lines.filter((each) => each.type === type).length;
   }
 }
 

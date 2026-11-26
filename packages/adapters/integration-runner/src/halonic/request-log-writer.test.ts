@@ -68,9 +68,9 @@ verifies("app.integration-request-log", () => {
     await rm(folder, { recursive: true, force: true });
   });
 
-  it("writes each request masked and each failed call's note, with neither the secret nor the reply", async () => {
-    const files = memoryFiles();
-    const loaded = await loadLocalIntegration({
+  /** Loads the weather integration with its log in `files`; its tool requests the forecast for Ghent and fails. */
+  const loadWeather = (files: RequestLogFiles) =>
+    loadLocalIntegration({
       sheet,
       approvedSheet: sheet,
       folder,
@@ -107,6 +107,10 @@ verifies("app.integration-request-log", () => {
         },
       }),
     });
+
+  it("writes each request masked and each failed call's note, with neither the secret nor the reply", async () => {
+    const files = memoryFiles();
+    const loaded = await loadWeather(files);
     if (!loaded.ok) expect.fail(JSON.stringify(loaded.error));
     const { integration, host } = loaded.value;
     await expect(integration.connect(host).callTool("forecast", {})).rejects.toThrow(
@@ -129,5 +133,17 @@ verifies("app.integration-request-log", () => {
       { type: "request", host: "api.example.com", path: "/v2/forecast/{…}", status: 200 },
       { type: "failure", tool: "forecast", kind: "unavailable", fields: ["today.high"] },
     ]);
+  });
+
+  it("skips a code file past the size cap, so its words mask instead of keeping a segment", async () => {
+    await writeFile(join(folder, "big.js"), `"/v2/forecast/Ghent"\n${" ".repeat(1_000_000)}`);
+    const files = memoryFiles();
+    const loaded = await loadWeather(files);
+    if (!loaded.ok) expect.fail(JSON.stringify(loaded.error));
+    const { integration, host } = loaded.value;
+    await expect(integration.connect(host).callTool("forecast", {})).rejects.toThrow();
+    await vi.waitFor(() =>
+      expect(files.texts.get(`${workspace}/weather.jsonl`)).toContain("/v2/forecast/{…}"),
+    );
   });
 });
