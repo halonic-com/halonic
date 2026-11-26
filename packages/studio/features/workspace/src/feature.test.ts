@@ -62,7 +62,12 @@ verifies("workspace.trusted-sources", () => {
 
   it("adds Trusted sources to Settings, on this computer, right after Trust", async () => {
     const section = shell.contributions.settings.list().find((one) => one.id === "trusted-sources");
-    expect(section).toMatchObject({ title: "Trusted sources", scope: "host", order: 25 });
+    expect(section).toMatchObject({
+      title: "Trusted sources",
+      scope: "host",
+      group: "agents",
+      order: 25,
+    });
     expect(await section?.load()).toHaveProperty(section?.view ?? "");
   });
 });

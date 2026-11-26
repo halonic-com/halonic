@@ -71,7 +71,12 @@ verifies("settings.notifications-section", () => {
     expect(settingsSectionsFor(false).map(({ id }) => id)).not.toContain("notifications");
     const sections = settingsSectionsFor(true);
     const notifications = sections.find(({ id }) => id === "notifications");
-    expect(notifications).toMatchObject({ title: "Notifications", scope: "host", order: 25 });
+    expect(notifications).toMatchObject({
+      title: "Notifications",
+      scope: "host",
+      group: "general",
+      order: 25,
+    });
   });
 
   it("says the settings couldn't be read, with Try again, and shows the switches once they are", async () => {
