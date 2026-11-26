@@ -153,6 +153,11 @@ export interface Message {
    */
   automatic?: boolean;
   /**
+   * The body is plain text, such as a progress note written from what the agent is doing: apps
+   * show it exactly as written, never as Markdown or HTML.
+   */
+  plainText?: boolean;
+  /**
    * Only on an agent's message: the full answer its short reply links, a document on the
    * conversation's own work. Absent when the reply links none, or when the source couldn't read it.
    */

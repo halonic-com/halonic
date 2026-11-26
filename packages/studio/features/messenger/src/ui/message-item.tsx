@@ -60,7 +60,14 @@ export function MessageItem({
   const body = (
     <>
       <span className="sr-only">{author}: </span>
-      <ChatText openLink={openLink}>{message.body}</ChatText>
+      {message.plainText === true ? (
+        // Shown as written: never read as Markdown, so nothing in it becomes a link or styling.
+        <p data-plain-text dir="auto" className="whitespace-pre-line text-reading text-fg">
+          {message.body}
+        </p>
+      ) : (
+        <ChatText openLink={openLink}>{message.body}</ChatText>
+      )}
       <AttachmentList messenger={messenger} attachments={message.attachments} />
     </>
   );

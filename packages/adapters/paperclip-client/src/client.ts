@@ -119,7 +119,7 @@ export class PaperclipMessaging implements AgentMessaging {
     this.#members = new PaperclipChannelMembers(this.#reader, options.company, options.userId);
     this.#channelWork = new PaperclipChannelWork(this.#reader, options.company, options.userId);
     this.#fullAnswers = new PaperclipFullAnswers(this.#reader, options.warn);
-    this.#botNotes = new PaperclipBotNotes(this.#reader, options.company, options.warn);
+    this.#botNotes = new PaperclipBotNotes(this.#reader, options.company, options.warn, now);
     this.#threads = new PaperclipCommentThreads(this.#reader);
     this.#conversations = new PaperclipConversations(
       this.#reader,
@@ -193,7 +193,7 @@ export class PaperclipMessaging implements AgentMessaging {
     if (agent === undefined) {
       return answered;
     }
-    const marked = await this.#botNotes.mark(context, task, agent, answered);
+    const marked = await this.#botNotes.mark(context, { task, agent, conversation }, answered);
     return withReadAt(this.#reader, this.#ids, { task, agent }, marked);
   }
 
