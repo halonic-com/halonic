@@ -35,8 +35,9 @@ pub const MAX_CONTENT_BYTES: usize = 2048;
 const FORMAT_VERSION: u32 = 1;
 
 /// The most of the file that is read: three windows with the most content
-/// each, and room to spare.
-const MAX_FILE_BYTES: u64 = 16 * 1024;
+/// each, every byte of it a character JSON writes as `\uXXXX` (six bytes),
+/// and room to spare.
+const MAX_FILE_BYTES: u64 = 48 * 1024;
 
 /// One app window that showed.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -118,11 +119,13 @@ pub fn kept(windows: Vec<OpenWindow>) -> Vec<OpenWindow> {
     kept
 }
 
-/// What the shell knows of the open windows while Halonic runs: the list
-/// last written, each window's content, whether the recorded windows were
-/// opened again, and whether Halonic is quitting.
+/// What the shell knows of the open windows while Halonic runs: the windows
+/// open at the last quit, until they are opened again, the list last
+/// written, each window's content, whether the recorded windows were opened
+/// again, and whether Halonic is quitting.
 #[derive(Debug, Default)]
 pub struct OpenSet {
+    recorded: Vec<OpenWindow>,
     last: Vec<OpenWindow>,
     contents: Vec<(String, String)>,
     reopened: bool,
@@ -137,30 +140,36 @@ impl OpenSet {
             .filter_map(|window| Some((window.label.clone(), window.content.clone()?)))
             .collect();
         OpenSet {
+            recorded: recorded.to_vec(),
             last: recorded.to_vec(),
             contents,
             ..OpenSet::default()
         }
     }
 
-    /// Whether this is the first window a start opens, which opens the
-    /// recorded ones with it: once per run, so a start at login reopens
-    /// them with the first window the user opens, and a later start only
-    /// shows the window it asks for.
-    pub fn first_open(&mut self) -> bool {
-        !std::mem::replace(&mut self.reopened, true)
+    /// The windows to open with the first window a start opens: the ones
+    /// open at the last quit, once per run, so a start at login reopens them
+    /// with the first window the user opens, however it opens, and a later
+    /// start only shows the window it asks for. Empty after the first call.
+    pub fn first_open(&mut self) -> Vec<OpenWindow> {
+        if std::mem::replace(&mut self.reopened, true) {
+            return Vec::new();
+        }
+        std::mem::take(&mut self.recorded)
     }
 
     /// The list to write now that the windows `showing` show, by label and
     /// whether each has the focus, or `None` to keep the last one: when
     /// nothing changed, when no window shows, or once Halonic is quitting.
-    /// So a quit, the last window closing or a shutdown, which close the
-    /// windows one by one, leave the windows that showed before.
+    /// When the focus is on no app window, as when the user clicks the tray
+    /// or switches to another program, the app window that had it last
+    /// keeps it. The last window closing leaves its own entry; every other
+    /// close writes the shorter list.
     pub fn note(&mut self, showing: &[(&str, bool)]) -> Option<Vec<OpenWindow>> {
         if self.quitting {
             return None;
         }
-        let windows = kept(
+        let mut windows = kept(
             showing
                 .iter()
                 .map(|(label, focused)| OpenWindow {
@@ -170,6 +179,15 @@ impl OpenSet {
                 })
                 .collect(),
         );
+        if !windows.iter().any(|window| window.focused) {
+            let previous = self.last.iter().find(|window| window.focused);
+            if let Some(window) = windows
+                .iter_mut()
+                .find(|window| previous.is_some_and(|previous| previous.label == window.label))
+            {
+                window.focused = true;
+            }
+        }
         if windows.is_empty() || windows == self.last {
             return None;
         }

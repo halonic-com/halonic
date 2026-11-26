@@ -85,7 +85,7 @@ fn open_windows_quit_writes_what_changed_since_the_last_write() {
 }
 
 #[test]
-fn open_windows_the_last_window_closing_or_a_shutdown_leaves_the_list() {
+fn open_windows_the_last_window_closing_leaves_its_own_entry() {
     let mut set = OpenSet::default();
     assert!(set.note(&ALL_THREE).is_some());
     // The same windows again write nothing.
@@ -97,6 +97,56 @@ fn open_windows_the_last_window_closing_or_a_shutdown_leaves_the_list() {
     assert_eq!(two.len(), 2);
     // ...but none showing keeps what showed before.
     assert_eq!(set.note(&[]), None);
+}
+
+#[test]
+fn open_windows_the_last_focused_app_window_stays_in_front_when_the_focus_leaves_them_all() {
+    let mut set = OpenSet::default();
+    let written = set.note(&ALL_THREE).expect("written");
+    // A click on the tray, or another program, takes the focus from every
+    // app window: nothing changed for the list.
+    let unfocused = [("main", false), ("inbox", false), ("messenger", false)];
+    assert_eq!(set.note(&unfocused), None);
+    assert_eq!(set.quit(&unfocused), None);
+    assert_eq!(
+        opening_order(&written, None).last().map(String::as_str),
+        Some("inbox")
+    );
+    // The focus moving to another app window is written.
+    let mut set = OpenSet::from_recorded(&written);
+    let moved = set
+        .note(&[("main", true), ("inbox", false), ("messenger", false)])
+        .expect("written");
+    assert_eq!(
+        opening_order(&moved, None).last().map(String::as_str),
+        Some("main")
+    );
+}
+
+#[test]
+fn open_windows_a_first_window_opened_another_way_still_reopens_the_recorded_ones() {
+    let recorded = [window("main", false, None), window("inbox", true, None)];
+    let mut set = OpenSet::from_recorded(&recorded);
+    // After a start at login, a notification's click opens the Messenger:
+    // the list is kept up to date from the start...
+    assert!(set.note(&[("messenger", true)]).is_some());
+    // ...and the step that opens it still reopens the windows of the last quit.
+    assert_eq!(set.first_open(), recorded);
+    assert!(set.first_open().is_empty());
+}
+
+#[test]
+fn open_windows_three_contents_of_escaped_characters_still_read_back() {
+    let scratch = Scratch::new("escaped");
+    let file = scratch.file();
+    let content = "\u{1}".repeat(MAX_CONTENT_BYTES);
+    let windows = [
+        window("main", false, Some(&content)),
+        window("inbox", true, Some(&content)),
+        window("messenger", false, Some(&content)),
+    ];
+    record(&file, &windows).expect("recorded");
+    assert_eq!(read(&file), windows);
 }
 
 #[test]
@@ -139,7 +189,7 @@ fn open_windows_a_damaged_file_reads_as_none() {
         "not json".to_owned(),
         json!({"version": 2, "windows": [{"label": "main", "focused": true}]}).to_string(),
         json!({"version": 1, "windows": [], "more": true}).to_string(),
-        " ".repeat(16 * 1024 + 1),
+        " ".repeat(usize::try_from(MAX_FILE_BYTES).expect("small") + 1),
     ] {
         fs::write(&file, text).expect("written");
         assert!(read(&file).is_empty());
@@ -198,9 +248,10 @@ fn open_windows_content_is_written_with_its_window_and_comes_back_at_start() {
 
 #[test]
 fn open_windows_reopen_once_per_run() {
-    let mut set = OpenSet::default();
-    assert!(set.first_open());
-    assert!(!set.first_open());
+    let recorded = [window("main", true, None)];
+    let mut set = OpenSet::from_recorded(&recorded);
+    assert_eq!(set.first_open(), recorded);
+    assert!(set.first_open().is_empty());
 }
 
 #[test]

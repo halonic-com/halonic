@@ -267,6 +267,9 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .plugin(navigation::guard())
         .setup(|app| {
             profile::start_shell_log(app.handle());
+            // Before any window opens, so the list is kept from the first.
+            #[cfg(desktop)]
+            open_windows_track::start(app.handle());
             // Studio's window, the focused app's that `--app` names, or none.
             #[cfg(desktop)]
             let background =

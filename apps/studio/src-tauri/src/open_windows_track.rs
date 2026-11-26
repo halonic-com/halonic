@@ -1,10 +1,12 @@
 //! Keeps the list of open windows (`open_windows.rs`) up to date while
 //! Halonic runs, and opens the recorded windows again at start.
 //!
-//! The list and the windows' places are written as they change: when a
-//! window shows, hides, closes or loses the focus, and when Halonic starts
-//! quitting. Windows doesn't tell Halonic when it shuts down (tao handles no
-//! `WM_ENDSESSION`), so a shutdown leaves what was last written. Once Quit
+//! The list is read once at start (`start`), so it is kept up to date
+//! however the first window opens. The list and the windows' places are
+//! written as they change: when a window shows, hides, closes, or the focus
+//! moves between app windows, and when Halonic starts quitting. Windows
+//! doesn't tell Halonic when it shuts down (tao handles no `WM_ENDSESSION`),
+//! so a shutdown writes nothing and leaves what was last written. Once Quit
 //! starts, nothing more is written, since quitting closes every window.
 //!
 //! Each app window's page may keep a short content string here, what it
@@ -23,7 +25,7 @@ use tauri_plugin_window_state::AppHandleExt;
 use crate::focused_apps::{FocusedApp, STUDIO_WINDOW, window_labels};
 use crate::open_windows::{self, OpenSet};
 
-/// The open windows: where their list lives, once a start found it, the
+/// The open windows: where their list lives, once `start` found it, the
 /// set, and whether a window moved since the places were last saved.
 #[derive(Default)]
 pub struct OpenWindowsState {
@@ -37,21 +39,15 @@ struct Tracked {
     moved: bool,
 }
 
-/// Opens the window a start asks for (Studio's for `None`). The first one
-/// in a run opens every window open at the last quit with it, the one
-/// asked for in front, unless "Reopen windows on start" is off.
+/// Opens the window `asked` for (Studio's for `None`): a start, the tray,
+/// a notification's click or quick ask's chat. The first one in a run opens
+/// every window open at the last quit with it, the one asked for in front,
+/// unless "Reopen windows on start" is off.
 pub fn open<R: Runtime>(app: &AppHandle<R>, asked: Option<FocusedApp>) -> tauri::Result<()> {
     if asked == Some(FocusedApp::Ask) {
         return crate::focused_apps::show(app, asked);
     }
-    let recorded = {
-        let mut tracked = lock(app);
-        if tracked.set.first_open() {
-            load(app, &mut tracked)
-        } else {
-            Vec::new()
-        }
-    };
+    let recorded = lock(app).set.first_open();
     if recorded.is_empty() || !reopens(app) {
         return crate::focused_apps::show(app, asked);
     }
@@ -64,14 +60,15 @@ pub fn open<R: Runtime>(app: &AppHandle<R>, asked: Option<FocusedApp>) -> tauri:
     Ok(())
 }
 
-/// Reads the list at start, and remembers where it lives so changes are
-/// written there. No profile means no list, and nothing is written.
-fn load<R: Runtime>(app: &AppHandle<R>, tracked: &mut Tracked) -> Vec<open_windows::OpenWindow> {
+/// Reads the list at start, before any window opens, and remembers where it
+/// lives so changes are written there. No profile means no list, and
+/// nothing is written.
+pub fn start<R: Runtime>(app: &AppHandle<R>) {
     // The tests' apps keep no list: they must not read or write the profile
     // of the computer that runs them (`open_windows_tests.rs` checks the
     // list's rules on their own).
     if cfg!(test) {
-        return Vec::new();
+        return;
     }
     let file = match crate::profile::cli_profile(app) {
         Ok(profile) => PathBuf::from(join_path(
@@ -81,14 +78,13 @@ fn load<R: Runtime>(app: &AppHandle<R>, tracked: &mut Tracked) -> Vec<open_windo
         )),
         Err(problem) => {
             halonic_shell_log::record("window", format_args!("no list of open windows: {problem}"));
-            return Vec::new();
+            return;
         }
     };
     let recorded = open_windows::read(&file);
+    let mut tracked = lock(app);
     tracked.file = Some(file);
     tracked.set = OpenSet::from_recorded(&recorded);
-    tracked.set.first_open();
-    recorded
 }
 
 fn reopens<R: Runtime>(app: &AppHandle<R>) -> bool {
@@ -115,7 +111,8 @@ fn app_for(label: &str) -> Option<FocusedApp> {
         .find(|app| app.name() == label)
 }
 
-/// A window changed: the list is written again when what shows changed.
+/// A window changed: the list is written again when what shows, or the
+/// app window last focused, changed.
 pub fn window_event<R: Runtime>(window: &Window<R>, event: &WindowEvent) {
     if !window_labels().contains(&window.label()) {
         return;
@@ -191,7 +188,7 @@ fn write(tracked: &Tracked, list: Option<Vec<open_windows::OpenWindow>>) {
 }
 
 /// Saves the windows' places (`window_place.rs`) when one moved since the
-/// last save, or always when Halonic quits; never before a start found the
+/// last save, or always when Halonic quits; never before `start` found the
 /// list, as on the tests' apps.
 fn save_places<R: Runtime>(app: &AppHandle<R>, always: bool) {
     let (moved, tracking) = {
