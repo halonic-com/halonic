@@ -2,9 +2,9 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  chainHistory,
   changelogHistory,
-  previewNotes,
+  previewRelease,
+  previousPreview,
   type ReleaseNote,
 } from "../release-notes.ts";
 
@@ -80,39 +80,21 @@ function changelogRun(version: string): { own: string; history: ReleaseNote[] } 
   return { own: own.notes, history };
 }
 
-/** What the previous preview's latest.json says, all of it untrusted. */
-interface Previous {
-  readonly version: unknown;
-  readonly source: unknown;
-  readonly releaseNotes: unknown;
-}
-
-/** The previous preview's latest.json: its version, source commit and notes list. */
-function readPrevious(path: string | undefined): Previous {
-  if (path === undefined || !existsSync(path)) {
-    return { version: undefined, source: undefined, releaseNotes: undefined };
-  }
-  const manifest: { version?: unknown; halonic?: { source?: unknown; releaseNotes?: unknown } } =
-    JSON.parse(readFileSync(path, "utf8"));
-  return {
-    version: manifest.version,
-    source: manifest.halonic?.source,
-    releaseNotes: manifest.halonic?.releaseNotes,
-  };
-}
-
 function previewRun(version: string, head: string, previousPath: string | undefined) {
-  const previous = readPrevious(previousPath);
-  const source = typeof previous.source === "string" ? previous.source : "";
-  const chained = /^[0-9a-f]{40}$/.test(source) && isAncestor(source, head);
+  const previous =
+    previousPath !== undefined && existsSync(previousPath)
+      ? previousPreview(JSON.parse(readFileSync(previousPath, "utf8")))
+      : undefined;
+  const chained = previous !== undefined && isAncestor(previous.source, head);
   const tag = newestStableTag();
-  const base = chained ? source : git(["merge-base", head, tag]).trim();
-  const since = chained ? String(previous.version) : tag.slice(1);
-  const notes = previewNotes(changesetsSince(base, head), since);
-  const own = notes ?? `No changes users see since ${since}.`;
-  const history = chainHistory({ version, notes: own }, chained ? previous.releaseNotes : []);
-  // A build without changes adds nothing to the list; its own notes still say so.
-  return { own, history: notes === undefined ? history.slice(1) : history };
+  const base = chained ? previous.source : git(["merge-base", head, tag]).trim();
+  const since = chained ? previous.version : tag.slice(1);
+  return previewRelease(
+    version,
+    changesetsSince(base, head),
+    since,
+    chained ? previous.releaseNotes : [],
+  );
 }
 
 function run(): { own: string; history: ReleaseNote[]; dir: string } {

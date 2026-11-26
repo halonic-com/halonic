@@ -160,3 +160,43 @@ export function previewNotes(changesets: readonly string[], since: string): stri
   if (entries.length === 0) return undefined;
   return fitNotes([`Changes since ${since}, newest first:`, "", ...entries].join("\n"));
 }
+
+/** What the previous preview build's latest.json says: its version, commit and notes list. */
+export interface PreviousPreview {
+  readonly version: string;
+  readonly source: string;
+  /** Untrusted: {@link chainHistory} keeps only well-formed entries. */
+  readonly releaseNotes: unknown;
+}
+
+/**
+ * The previous preview build from its latest.json, read as untrusted JSON. Undefined when it has
+ * no version or no full commit as `halonic.source` (builds from before HAL-19542), so the notes
+ * start again from the newest stable release.
+ */
+export function previousPreview(manifest: unknown): PreviousPreview | undefined {
+  if (typeof manifest !== "object" || manifest === null) return undefined;
+  const { version, halonic } = manifest as { version?: unknown; halonic?: unknown };
+  const fields = typeof halonic === "object" && halonic !== null ? halonic : {};
+  const { source, releaseNotes } = fields as { source?: unknown; releaseNotes?: unknown };
+  if (typeof version !== "string" || version === "") return undefined;
+  if (typeof source !== "string" || !/^[0-9a-f]{40}$/.test(source)) return undefined;
+  return { version, source, releaseNotes };
+}
+
+/**
+ * A preview build's own notes and its `halonic.releaseNotes`: `changesets` are those merged since
+ * `since` (the previous build, or the newest stable release), `previous` the previous build's list.
+ * A build without changes says so in its own notes and adds nothing to the list.
+ */
+export function previewRelease(
+  version: string,
+  changesets: readonly string[],
+  since: string,
+  previous: unknown,
+): { own: string; history: ReleaseNote[] } {
+  const notes = previewNotes(changesets, since);
+  const own = notes ?? `No changes users see since ${since}.`;
+  const history = chainHistory({ version, notes: own }, previous);
+  return { own, history: notes === undefined ? history.slice(1) : history };
+}
