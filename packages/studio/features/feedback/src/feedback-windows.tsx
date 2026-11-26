@@ -1,7 +1,9 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import type { FeedbackIpc } from "./feedback-ipc.ts";
-import { type FeedbackDetails, SendFeedback, type SendOutgoing } from "./send/send-feedback.tsx";
+import type { FeedbackDetails, SendOutgoing } from "./send/hand-on.ts";
+import { SendFeedback } from "./send/send-feedback.tsx";
+import type { FeedbackConnection } from "./send/send-notice.tsx";
 import { CaptureUnavailable } from "./unavailable/capture-unavailable.tsx";
 
 /** A feedback window's page, drawn into its element until it is unmounted. */
@@ -18,7 +20,13 @@ export type FeedbackWindowKind = "unavailable";
 /** A feedback window to draw, with what the Send feedback window needs to send. */
 export type FeedbackWindow =
   | { readonly kind: FeedbackWindowKind }
-  | { readonly kind: "send"; readonly send: SendOutgoing; readonly details: FeedbackDetails };
+  | {
+      readonly kind: "send";
+      readonly send: SendOutgoing;
+      readonly details: FeedbackDetails;
+      /** How Studio reaches Paperclip as the window opens; `online` by default. */
+      readonly connection?: FeedbackConnection;
+    };
 
 /**
  * Draws a feedback window's page into `element`: the Send feedback window, or the window that
@@ -39,7 +47,14 @@ export function mountFeedbackWindow(
 
 function pageOf(window: FeedbackWindow, ipc: FeedbackIpc) {
   if (window.kind === "send") {
-    return <SendFeedback ipc={ipc} send={window.send} details={window.details} />;
+    return (
+      <SendFeedback
+        ipc={ipc}
+        send={window.send}
+        details={window.details}
+        connection={window.connection ?? "online"}
+      />
+    );
   }
   return <CaptureUnavailable ipc={ipc} />;
 }

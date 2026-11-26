@@ -39,4 +39,26 @@ export const feedbackWords = {
   savedUntilConnected: "It sends by itself once Studio is connected to Paperclip.",
   discardedTitle: "Feedback discarded",
   undo: "Undo",
+  /**
+   * The Send feedback window's fallback states (Noah's design on HAL-19384, words approved with
+   * Sofia's changes on HAL-19391). In the crop box when the crop couldn't be loaded:
+   */
+  cropFailed: "Couldn't load the screenshot.",
+  selectAgain: "Select again",
+  sendWithoutScreenshot: "Send without a screenshot",
+  /** Above the footnote before Send, when Send would save the feedback to send later. */
+  offlineTitle: "Studio is offline",
+  offlineText:
+    "Send saves your feedback on this computer and sends it automatically once Studio is back online.",
+  notConnectedTitle: "Studio isn't connected to Paperclip",
+  notConnectedText:
+    "Send saves your feedback on this computer and sends it automatically once Studio is connected to Paperclip.",
+  /** Above the footnote when Paperclip refused the feedback; `reason` has no full stop at its end. */
+  refusedTitle: "Couldn't send your feedback",
+  refusedText: (reason: string) =>
+    `Paperclip said: ${reason}. Your text and screenshot are still here.`,
+  tryAgain: "Try again",
+  /** Above the footnote when the crop couldn't be made into a PNG. */
+  noPngTitle: "Couldn't prepare the screenshot",
+  noPngText: "Your text is still here.",
 } as const;
