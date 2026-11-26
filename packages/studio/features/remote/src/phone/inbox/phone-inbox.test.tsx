@@ -209,7 +209,7 @@ verifies("remote.phone-inbox", () => {
     const ownerCheck = () => Promise.resolve({ approval: false, answer: true });
     const { scene } = await mountInbox([item()], { ownerCheck });
     expect(scene.client.view().ownerCheck).toBe("unavailable");
-    await press("Chief" + "Ship phase 2 now?");
+    await open("Ship phase 2 now?");
     expect(text()).not.toContain(noScreenLock);
     await press("Today");
     expect(scene.tunnel.sentOf("msg-answer")).toHaveLength(1);
@@ -329,7 +329,7 @@ verifies("remote.phone-inbox-parts", () => {
   it("shows the skeleton only after a moment, and says it is loading", () => {
     vi.useFakeTimers();
     try {
-      const scene = new GatewayScene(() => Promise.resolve(true));
+      const scene = new GatewayScene(() => Promise.resolve({ approval: true, answer: true }));
       scenes.push(scene);
       const inbox = (
         <PhoneInbox
