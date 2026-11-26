@@ -78,6 +78,27 @@ export interface SavedChat extends SavedChatSummary {
    * read no docs. Kept with the chat, never in the workspace, so no workspace file can allow a site.
    */
   docs?: SavedChatDocs;
+  /**
+   * A Build chat's fix attempts on the local integration it is about. Missing for a chat that
+   * had no fix accepted. Kept with the chat, never in the workspace, so no workspace file can
+   * reset the count.
+   */
+  fixes?: SavedFixAttempts;
+}
+
+/**
+ * The fix attempts of one Build chat on one local integration (HAL-18391 plan section 2.4): a
+ * loop guard for the model, not a security boundary. A new chat starts at zero.
+ */
+export interface SavedFixAttempts {
+  /** The integration's id, as its permission sheet names it. */
+  integration: string;
+  /** The integration's folder, as a workspace path, as it was when the first fix was accepted. */
+  folder: string;
+  /** How many accepted fixes were followed by a failed call. */
+  failed: number;
+  /** When the newest fix was accepted, as ISO text, while no call has settled it yet. */
+  pendingSince?: string;
 }
 
 /** What the person said about one docs site in a chat: `asked` while its card waits. */
@@ -164,8 +185,8 @@ const aboutKinds: ReadonlySet<unknown> = new Set(savedChatAboutKinds);
 /**
  * Whether `value` is a {@link SavedChat}: every field with its type, an id that matches
  * {@link savedChatIdPattern}, a known kind and model, an `about` (when there is one) with a known kind and a hub and id that
- * aren't empty, and messages that each have a known role and
- * text content. Adapters check what they read with it.
+ * aren't empty, messages that each have a known role and
+ * text content, and fix attempts (when there are some) with a count that isn't negative. Adapters check what they read with it.
  *
  * @example
  * const chat = isSavedChat(JSON.parse(text)) ? JSON.parse(text) : null;
@@ -184,7 +205,20 @@ export function isSavedChat(value: unknown): value is SavedChat {
     (chat.about === undefined || isAbout(chat.about)) &&
     Array.isArray(chat.messages) &&
     chat.messages.every(isMessage) &&
-    (chat.docs === undefined || isDocs(chat.docs))
+    (chat.docs === undefined || isDocs(chat.docs)) &&
+    (chat.fixes === undefined || isFixes(chat.fixes))
+  );
+}
+
+function isFixes(value: unknown): boolean {
+  if (typeof value !== "object" || value === null) return false;
+  const fixes = value as { readonly [Field in keyof SavedFixAttempts]?: unknown };
+  return (
+    typeof fixes.integration === "string" &&
+    typeof fixes.folder === "string" &&
+    Number.isSafeInteger(fixes.failed) &&
+    (fixes.failed as number) >= 0 &&
+    (fixes.pendingSince === undefined || typeof fixes.pendingSince === "string")
   );
 }
 

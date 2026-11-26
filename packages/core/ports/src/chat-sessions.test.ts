@@ -65,6 +65,25 @@ verifies("ports.chat-sessions", () => {
     }
   });
 
+  it("knows a Build chat's fix attempts, and refuses malformed ones", () => {
+    const build: SavedChat = { ...chat, kind: "build" };
+    const fixes = { integration: "notes", folder: "integrations/notes", failed: 1 };
+    expect(isSavedChat({ ...build, fixes })).toBe(true);
+    expect(isSavedChat({ ...build, fixes: { ...fixes, pendingSince: chat.lastUsedAt } })).toBe(
+      true,
+    );
+    for (const malformed of [
+      null,
+      { ...fixes, failed: -1 },
+      { ...fixes, failed: 1.5 },
+      { ...fixes, failed: "2" },
+      { ...fixes, folder: undefined },
+      { ...fixes, pendingSince: 7 },
+    ]) {
+      expect(isSavedChat({ ...build, fixes: malformed }), JSON.stringify(malformed)).toBe(false);
+    }
+  });
+
   it("refuses an id that couldn't be a file name", () => {
     for (const id of ["../acme", "C-1", "", "-a", "a".repeat(65), 7]) {
       expect(isSavedChat({ ...chat, id })).toBe(false);

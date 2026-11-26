@@ -108,9 +108,14 @@ type Start = { readonly expected: ExpectedContent } | { readonly answer: string 
  * What the write expects the file to hold: what the model last read in
  * this chat. A file the model never read may be created, so a missing one
  * is `"absent"`; one that exists must be read first. A path the assistant
- * may not write is answered before anything is read.
+ * may not write, or one in a folder two fixes already failed for
+ * (`assistant.build.fix-attempts`), is answered before anything is read.
  */
 async function startOf(chat: BuildChat, path: string): Promise<Start> {
+  const stop = await chat.options.fixes?.stopped(path);
+  if (stop !== undefined) {
+    return { answer: stop };
+  }
   const refusal = proposalRefusal(path, chat.options.isTrusted());
   if (refusal !== null) {
     return { answer: refusalText(path, refusal) };
