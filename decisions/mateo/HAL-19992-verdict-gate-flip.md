@@ -3,6 +3,7 @@
 - Task: HAL-19992
 - Approval: Julian's security review of #6636 (HAL-19980) named these as conditions for the flag; Liam reviews and signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:vqh8ixX/YfcqnR5vyHb5PpaxYlHrsL46NUFfzaCDCG64XtMEak9YYMbVM7Jrt3dRE0fWEQyAIs+Nai0xHw3hAQ==
 
 ## What changes
 
