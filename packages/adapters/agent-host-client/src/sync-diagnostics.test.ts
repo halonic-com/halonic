@@ -1,8 +1,9 @@
 import type { SyncDiagnostics } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { FakeHost, ok, refused } from "./fake-host.test-helper.ts";
-import { AgentHostSyncDiagnostics } from "./sync-diagnostics.ts";
+import { AgentHostSyncDiagnostics, readTimeoutMs } from "./sync-diagnostics.ts";
+import type { AgentHostTransport } from "./transport.ts";
 
 const route = "GET /v1/sync/diagnostics";
 const none = { count: 0, share: 0 };
@@ -28,6 +29,10 @@ const diagnostics: SyncDiagnostics = {
   ],
 };
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 verifies("agent-host-client.sync-diagnostics", () => {
   describe("AgentHostSyncDiagnostics", () => {
     it("reads the host's counts and timings", async () => {
@@ -49,6 +54,23 @@ verifies("agent-host-client.sync-diagnostics", () => {
       await expect(new AgentHostSyncDiagnostics(host).read()).rejects.toMatchObject({
         status: 404,
       });
+    });
+
+    it("gives up on a host that doesn't answer", async () => {
+      vi.useFakeTimers();
+      // A host that never answers, until the call is stopped.
+      const silent: AgentHostTransport = {
+        request: (_route, _body, options) =>
+          new Promise((_resolve, reject) => {
+            options?.signal?.addEventListener("abort", () => reject(options.signal?.reason));
+          }),
+        stream: () => Promise.reject(new Error("No streams here")),
+      };
+      const read = new AgentHostSyncDiagnostics(silent).read();
+      const failed = expect(read).rejects.toThrow("didn't answer within 10 s");
+
+      await vi.advanceTimersByTimeAsync(readTimeoutMs);
+      await failed;
     });
   });
 });

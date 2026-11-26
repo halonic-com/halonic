@@ -50,15 +50,19 @@ verifies("connections.sync-diagnostics", () => {
       await settle();
 
       const container = view;
+      expect(container.textContent).toContain("Counted since Halonic started, 2 h ago.");
       expect(container.textContent).toContain(
         "Live updates are off, so Halonic checks Paperclip for changes regularly.",
       );
       expect(rowText(container, "Regular checks")).toBe("3 (75 %)");
       expect(rowText(container, "Live updates")).toBe("1 (25 %)");
-      expect(rowText(container, "Delay of regular checks")).toBe("typical 1.2 s, slowest 5 % 4 s");
+      expect(rowText(container, "Delay of regular checks")).toBe(
+        "1.2 s typical, 4 s for the slowest 5 %",
+      );
       expect(rowText(container, "Delay of live updates")).toBe("None yet");
       expect(rowText(container, "Live updates reconnected")).toBe("2");
       expect(rowText(container, "Time checking only")).toBe("2 h 12 min");
+      expect(rowText(container, "Time live updates weren't allowed")).toBe("0 min");
       const cells = [...container.querySelectorAll("tbody tr > *")].map((cell) => cell.textContent);
       expect(cells).toEqual([
         "GET companies/:company/issues",
@@ -68,6 +72,39 @@ verifies("connections.sync-diagnostics", () => {
         "900 ms",
         "4 KB",
       ]);
+    });
+
+    it("heads its parts one level under the section's title, in the dialog and on the phone", async () => {
+      const read = async () => diagnostics;
+      const inDialog = render(<SyncDiagnosticsView reader={{ read }} surface="window" />);
+      const onPhone = render(<SyncDiagnosticsView reader={{ read }} surface="phone" />);
+      await settle();
+
+      const headings = (view: HTMLElement, level: string) =>
+        [...view.querySelectorAll(level)].map((heading) => heading.textContent);
+      const parts = ["How changes arrived", "Delays and connection", "Paperclip calls"];
+      expect(headings(inDialog, "h4")).toEqual(parts);
+      expect(headings(onPhone, "h2")).toEqual(parts);
+      const calls = inDialog.querySelectorAll("section")[2];
+      expect(calls?.getAttribute("aria-labelledby")).toBe(calls?.querySelector("h4")?.id);
+    });
+
+    it("shows Reading… on the button until the read ends", async () => {
+      let answer: (read: SyncDiagnostics) => void = () => undefined;
+      const read = () =>
+        new Promise<SyncDiagnostics>((resolve) => {
+          answer = resolve;
+        });
+      const view = render(<SyncDiagnosticsView reader={{ read }} />);
+      await settle();
+      expect(view.querySelector('[aria-busy="true"]')?.textContent).toContain("Reading…");
+
+      answer({ ...diagnostics, windowMs: 24 * 60 * 60_000 });
+      await settle();
+      expect(view.querySelector('[aria-busy="true"]')).toBeNull();
+      expect(view.textContent).not.toContain("Counted since");
+      await press(button("Read again", view));
+      expect(view.querySelector('[aria-busy="true"]')).not.toBeNull();
     });
 
     it("says when the read failed, and Try again reads again", async () => {
@@ -91,6 +128,7 @@ verifies("connections.sync-diagnostics", () => {
   });
 
   it("writes long stretches in hours and minutes", () => {
+    expect(spanText(0)).toBe("0 min");
     expect(spanText(30_000)).toBe("under 1 min");
     expect(spanText(45 * 60_000)).toBe("45 min");
     expect(spanText(3 * 60 * 60_000)).toBe("3 h");

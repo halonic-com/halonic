@@ -40,10 +40,12 @@ export const TIME_IN: Record<SyncConnection, string> = {
 
 /** The heading and columns of the Paperclip calls. */
 export const CALLS = "Paperclip calls";
-export const CALL_COLUMNS = ["Call", "Calls", "Failed", "Typical", "Slowest 5 %", "Data"] as const;
+export const CALL_COLUMNS = ["Route", "Calls", "Failed", "Typical", "Slowest 5 %", "Data"] as const;
 export const NO_CALLS = "No calls to Paperclip yet.";
 
 export const READ_AGAIN = "Read again";
+/** Read again and Try again while a read runs. */
+export const READING = "Reading…";
 export const READ_FAILED = "Sync diagnostics couldn't be read.";
 export const TRY_AGAIN = "Try again";
 
@@ -58,14 +60,27 @@ export function msText(ms: number): string {
   return `${(ms / 1000).toFixed(1).replace(/\.0$/, "")} s`;
 }
 
-/** A delay's typical and slowest time, such as "typical 1.2 s, slowest 5 % 4 s", or "None yet". */
+/**
+ * A delay's typical and slowest time, such as "1.2 s typical, 4 s for the slowest 5 %", or
+ * "None yet".
+ */
 export function delayLine(timing: SyncTiming): string {
   if (timing.p50Ms === null || timing.p95Ms === null) return "None yet";
-  return `typical ${msText(timing.p50Ms)}, slowest 5 % ${msText(timing.p95Ms)}`;
+  return `${msText(timing.p50Ms)} typical, ${msText(timing.p95Ms)} for the slowest 5 %`;
 }
 
-/** A long stretch of time, such as "3 h 12 min", "45 min" or "under 1 min". */
+/**
+ * When the counters cover less than the 24 hours the section's line names, because Halonic
+ * started since: "Counted since Halonic started, 2 h 12 min ago."
+ */
+export function countedSince(windowMs: number): string {
+  return `Counted since Halonic started, ${spanText(windowMs)} ago.`;
+}
+
+/** A long stretch of time, such as "3 h 12 min", "45 min", "under 1 min" or, for none, "0 min". */
 export function spanText(ms: number): string {
+  // "under 1 min" would say it happened; most of these times are zero.
+  if (ms <= 0) return "0 min";
   const minutes = Math.floor(ms / 60_000);
   if (minutes < 1) return "under 1 min";
   const hours = Math.floor(minutes / 60);
