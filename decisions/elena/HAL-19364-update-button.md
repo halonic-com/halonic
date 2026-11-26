@@ -4,6 +4,7 @@
 - Task: HAL-19364 (the board's request on HAL-10, 26 Nov: "when it restarts it should show a modal that it was updated and whats new"); plan approved on HAL-19365
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19365 (Liam asked for this note for the toast change)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:yQfWa8XvYUSEd1qxGp8MqpiE6pEVwn2f8rtUKCoAaI0aqRS4nz5DZ9Kg00AmAFXQVTIO8vLKCKrMzHeH0ZZYDA==
 
 At the first start after an update, Studio showed an info toast "Updated to Halonic 0.1.1" with
 **What's new**, which opened the release page. The board asked for a dialog instead, one that says
