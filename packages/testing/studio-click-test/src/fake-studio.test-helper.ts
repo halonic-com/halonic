@@ -69,6 +69,7 @@ export function fakeStudio(text = ""): FakeStudio {
     count: async (xpath) => studio.elements.get(xpath) ?? 0,
     describePage: async () => `buttons [${[...window().buttons.keys()].join(" | ")}]`,
     screenshot: async () => new Uint8Array([137, 80, 78, 71]),
+    runAsync: async () => undefined,
     windowHandles: async () => [...studio.windows.keys()],
     switchToWindow: async (handle) => {
       studio.current = handle;

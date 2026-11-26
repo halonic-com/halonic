@@ -32,6 +32,8 @@ export interface Driver {
   describePage(): Promise<string>;
   /** A PNG of the current window. */
   screenshot(): Promise<Uint8Array>;
+  /** Runs an async script in the page (its last argument is the callback) and returns its answer. */
+  runAsync(script: string): Promise<unknown>;
   /** The handles of every window the app has open. */
   windowHandles(): Promise<string[]>;
   /** Makes the window with this handle the current one. */
@@ -121,6 +123,7 @@ export async function openSession(serverUrl: string, debuggerAddress: string): P
         throw new WebDriverError("unknown error", "the screenshot isn't text");
       return Uint8Array.from(Buffer.from(base64, "base64"));
     },
+    runAsync: async (script) => call("POST", "/execute/async", { script, args: [] }),
     windowHandles: async () => {
       const handles = await call("GET", "/window/handles");
       return Array.isArray(handles) ? handles.filter((handle) => typeof handle === "string") : [];

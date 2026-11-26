@@ -4,6 +4,7 @@ import { seedNames } from "../test-paperclip.ts";
 import { keys } from "../webdriver.ts";
 import { screenText } from "../words.ts";
 import { closeDialogs, onWorkspace, openPlace } from "./open-demo.ts";
+import { hookScript, readScript } from "./search-diagnostics.ts";
 
 /**
  * Step 10: search finds the seeded task. Ctrl+K opens the search box, as the
@@ -19,6 +20,7 @@ export const searchTask: Step = {
     const workspace = await onWorkspace(context);
     if (!workspace.passed) return workspace;
     await closeDialogs(context);
+    const hooked = await context.driver.runAsync(hookScript).catch((error: unknown) => String(error));
     await context.driver.pressKeys([keys.control, "k"]);
     const box = `//input[@aria-label='${screenText.search.text}']`;
     const typed = await context.driver.type(box, seedNames.task).then(
@@ -28,7 +30,12 @@ export const searchTask: Step = {
     if (!typed) return { passed: false, code: "NO_SEARCH_BOX", note: `No box ${box}.` };
     if (await clickRow(context, seedNames.task, 30_000)) return { passed: true };
     const { text } = await waitForText(context, 0, () => undefined);
-    return { passed: false, code: "NOT_FOUND", note: lastWords(text) };
+    const seen = await context.driver
+      .runAsync(readScript(seedNames.task))
+      .catch((error: unknown) => String(error));
+    const shell = await context.shellLog().catch((error: unknown) => String(error));
+    const diagnostics = `${String(hooked)} | ${String(seen)} | shell log: ${shell}`;
+    return { passed: false, code: "NOT_FOUND", note: `${lastWords(text)} DIAGNOSTICS: ${diagnostics}` };
   },
 };
 
