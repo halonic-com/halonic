@@ -2,6 +2,7 @@
 
 - Approval: Liam OK'd the HAL-19172 plan (section 2.1, PR 1) on 26 Nov, with each attempt logged with `retry: 1 | 2` and Google's `retryDelayMs` moved into the kit; he approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:vQH1+7+G8/hsmXkvbJwGmM9vS2BcGiai7R4KxsJwePttUFNpAFl4Oz+fYvULrHStEsxL3RXibJQ78SjSxHy1Dg==
 - Task: HAL-19184, PR 1 of the HAL-19172 plan
 
 ## What changes
