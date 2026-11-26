@@ -131,3 +131,17 @@ export const SandboxPassesService: ServiceKey<SandboxPasses> =
  */
 export const ProposalDecisionsService: ServiceKey<ProposalDecisions> =
   serviceKey<ProposalDecisions>("inbox.proposal-decisions");
+
+/** What the served Studio knows about the workspace it serves, for Needs you's next step. */
+export interface ServedHomeHint {
+  /** Whether the computer serves the sample workspace. */
+  isDemo(): boolean;
+}
+
+/**
+ * The served Studio's hint for Home's Needs you (`inbox.home-next-step`). Only a served Studio
+ * provides it: with it, Needs you says under "Nothing is waiting for you." where runs come from,
+ * and on the sample how to start one; without it, as in the desktop app, the one line stays.
+ */
+export const ServedHomeHintService: ServiceKey<ServedHomeHint> =
+  serviceKey<ServedHomeHint>("inbox.served-home-hint");

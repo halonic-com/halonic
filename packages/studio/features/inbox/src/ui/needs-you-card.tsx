@@ -7,8 +7,8 @@ import {
   firstLoad,
   type HomeCardProps,
 } from "@halonicjs/studio-shell";
-import { use, useCallback, useSyncExternalStore } from "react";
-import { InboxService } from "../api.ts";
+import { type ReactNode, use, useCallback, useSyncExternalStore } from "react";
+import { InboxService, type ServedHomeHint, ServedHomeHintService } from "../api.ts";
 import type { Inbox } from "../inbox.ts";
 import { inboxRow } from "./inbox-row.tsx";
 import { SignedOutLine } from "./load-lines.tsx";
@@ -26,6 +26,7 @@ export function NeedsYouCard({ context, attempt }: HomeCardProps) {
     <NeedsYouView
       inbox={context.services.get(InboxService)}
       runFacts={runFacts}
+      served={context.services.find(ServedHomeHintService)}
       words={engineWordsOf(context)}
       attempt={attempt}
       {...(openPlace === undefined ? {} : { openInbox: () => openPlace("inbox") })}
@@ -46,13 +47,34 @@ export interface NeedsYouViewProps {
   readonly attempt?: number;
   /** The engine words for this window's host, for a sign-in that ended with no reason of its own. */
   readonly words?: EngineWords;
+  /** The served Studio's hint; with it an empty Needs you says what comes here (`inbox.home-next-step`). */
+  readonly served?: ServedHomeHint | undefined;
+}
+
+/** The first line under an empty Needs you in a served Studio. */
+const servedNextStep = "Runs that need your yes show up here.";
+
+/** The line after it on the sample: how to start a run that will wait here. */
+const servedDemoStep = "Start one on your computer: Run the Support reply workflow in Studio.";
+
+/** What an empty Needs you says under its title: nothing in the desktop app, the served lines otherwise. */
+function nextStepOf(served: ServedHomeHint | undefined): ReactNode {
+  if (served === undefined) return undefined;
+  if (!served.isDemo()) return servedNextStep;
+  return (
+    <>
+      <span className="block">{servedNextStep}</span>
+      <span className="block">{servedDemoStep}</span>
+    </>
+  );
 }
 
 /**
  * Home's Needs you (UX checklist T2 1.9, PH 2.3): the Inbox's rows, newest first, as the Inbox page
  * shows them, with their run's workflow, under the heading the shell draws with the Inbox's count. Rows have no button: Enter or a click opens the
  * item's card in the Inbox. On a phone, the first three, then **See all N in Inbox**. With nothing
- * waiting, the one line "Nothing is waiting for you." and the heading stays.
+ * waiting, the one line "Nothing is waiting for you." and the heading stays; a served Studio adds
+ * where runs come from, and on the sample how to start one (`inbox.home-next-step`).
  *
  * The section shows its skeleton until the Inbox's first list loads, and its error with **Try
  * again** if that load fails; a later failed load keeps the rows as they were. When the served
@@ -65,6 +87,7 @@ export function NeedsYouView({
   now = () => new Date(),
   attempt = 0,
   words = engineWords["desktop-app"],
+  served,
 }: NeedsYouViewProps) {
   const subscribe = useCallback((listener: () => void) => inbox.subscribe(listener), [inbox]);
   const state = useSyncExternalStore(subscribe, () => inbox.state);
@@ -86,7 +109,11 @@ export function NeedsYouView({
         label="Needs you"
         rows={shown.map((item) => inboxRow(item, now(), runFacts))}
         {...(openInbox === undefined ? {} : { onOpen: open })}
-        empty={{ title: "Nothing is waiting for you.", plain: true }}
+        empty={{
+          title: "Nothing is waiting for you.",
+          plain: true,
+          description: nextStepOf(served),
+        }}
       />
       {phone && openInbox !== undefined && waiting.length > PHONE_ROWS ? (
         <Button variant="ghost" size="touch" onClick={openInbox}>

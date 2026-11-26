@@ -364,3 +364,38 @@ verifies("studio.served-google-setup-accounts", () => {
     );
   });
 });
+
+verifies("inbox.home-next-step", () => {
+  const demoStep = "Start one on your computer: Run the Support reply workflow in Studio.";
+
+  /** Starts the served Studio on a workspace with nothing waiting; `sample` says if it is the sample. */
+  function startEmpty(sample: boolean) {
+    started = startStudio({
+      element,
+      window,
+      userAgent: "Mozilla/5.0 (X11; Linux x86_64)",
+      fetch: async (path) =>
+        path === "/api/workspace"
+          ? Response.json({ name: "Acme", sample, folder: "~/Projects/acme" })
+          : Response.json({ runs: [] }),
+    });
+  }
+
+  it("says on Home where runs that need you come from, and how to start one on the sample", async () => {
+    startEmpty(true);
+    await vi.waitFor(
+      () => expect(element.textContent).toContain("Runs that need your yes show up here."),
+      { timeout: 4_000 },
+    );
+    expect(element.textContent).toContain(demoStep);
+  });
+
+  it("leaves out how to start one on a workspace that isn't the sample", async () => {
+    startEmpty(false);
+    await vi.waitFor(
+      () => expect(element.textContent).toContain("Runs that need your yes show up here."),
+      { timeout: 4_000 },
+    );
+    expect(element.textContent).not.toContain(demoStep);
+  });
+});

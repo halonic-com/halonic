@@ -7,7 +7,7 @@ import { ModelChoiceHostService } from "@halonicjs/studio-feature-first-run/api"
 import { servedGoogleSetupFeature } from "@halonicjs/studio-feature-google-setup";
 import { GoogleSetupAccountsService } from "@halonicjs/studio-feature-google-setup/api";
 import { inboxFeature } from "@halonicjs/studio-feature-inbox";
-import { InboxRunsService } from "@halonicjs/studio-feature-inbox/api";
+import { InboxRunsService, ServedHomeHintService } from "@halonicjs/studio-feature-inbox/api";
 import {
   type DisplaySettings,
   settingsFeature,
@@ -55,7 +55,8 @@ interface ServedStudioOptions {
  * (`studio.served-settings`) until the page has the computer's host settings, plus the
  * workspace's Models, whose Model row opens Pick a model on the computer's model choice
  * (`studio.served-model-choice`). With many users and a Cloud session, the title bar has the
- * customer's account menu (`studio.served-account-menu`).
+ * customer's account menu (`studio.served-account-menu`). Home's Needs you learns whether the
+ * workspace is the sample, for its next step (`inbox.home-next-step`).
  */
 export function startServedStudio(
   page: StudioPage,
@@ -72,6 +73,7 @@ export function startServedStudio(
     ],
     hostServices: [
       InboxRunsService,
+      ServedHomeHintService,
       DisplaySettingsService,
       HostSettingsService,
       GoogleSetupAccountsService,
@@ -88,6 +90,9 @@ export function startServedStudio(
     new ServedAccountMenu(pageFetch, pageOpener(page.window)),
   );
   services.provide(DisplaySettingsService, display);
+  // The window is drawn once the computer said which workspace it serves, so Home reads it set.
+  let sample = false;
+  services.provide(ServedHomeHintService, { isDemo: () => sample });
   shell.services.instantiate(services);
   const load = () => loadServedWorkspace(pageFetch);
   let window: MountedServedWindow | undefined;
@@ -95,6 +100,7 @@ export function startServedStudio(
   let stopped = false;
   const draw = (served: ServedWorkspace | undefined) => {
     if (stopped) return;
+    sample = served?.sample === true;
     workspace = new StudioWorkspace({
       toasts: shell.toasts,
       services,

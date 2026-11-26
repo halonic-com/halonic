@@ -6,7 +6,7 @@ import { createShell } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, Component, type ReactNode, Suspense, useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { InboxRunsService, InboxService } from "../api.ts";
+import { InboxRunsService, InboxService, type ServedHomeHint } from "../api.ts";
 import { fakeRuns, WorkspaceServices } from "../fake-runs.test-helper.ts";
 import { inboxFeature } from "../feature.ts";
 import { Inbox, type InboxRuns } from "../inbox.ts";
@@ -69,7 +69,11 @@ class Section extends Component<
 }
 
 /** Needs you inside a stand-in section, which mounts it again on Try again as Home does. */
-function OnHome(props: { readonly inbox: Inbox; readonly openInbox?: () => void }) {
+function OnHome(props: {
+  readonly inbox: Inbox;
+  readonly openInbox?: () => void;
+  readonly served?: ServedHomeHint;
+}) {
   const [attempt, setAttempt] = useState(0);
   return (
     <Section key={attempt} onRetry={() => setAttempt((count) => count + 1)}>
@@ -278,5 +282,45 @@ verifies("inbox.home", () => {
     fake.answer();
     await act(() => inbox.refresh());
     expect(status?.textContent).toBe("");
+  });
+});
+
+verifies("inbox.home-next-step", () => {
+  const nextStep = "Runs that need your yes show up here.";
+  const demoStep = "Start one on your computer: Run the Support reply workflow in Studio.";
+
+  it("says in a served Studio where runs that need you come from, with no demo line", async () => {
+    const inbox = new Inbox(fakeRuns([]).runs);
+    const root = await renderSuspending(<OnHome inbox={inbox} served={{ isDemo: () => false }} />);
+    await settled();
+
+    expect(root.textContent).toContain("Nothing is waiting for you.");
+    expect(root.textContent).toContain(nextStep);
+    expect(root.textContent).not.toContain(demoStep);
+  });
+
+  it("adds how to start one from the computer on the sample", async () => {
+    const inbox = new Inbox(fakeRuns([]).runs);
+    const root = await renderSuspending(<OnHome inbox={inbox} served={{ isDemo: () => true }} />);
+    await settled();
+
+    expect(root.textContent).toContain(nextStep);
+    expect(root.textContent).toContain(demoStep);
+  });
+
+  it("keeps the desktop app's one line", async () => {
+    const inbox = new Inbox(fakeRuns([]).runs);
+    const root = await renderSuspending(<OnHome inbox={inbox} />);
+    await settled();
+
+    expect(root.textContent).toBe("Nothing is waiting for you.");
+  });
+
+  it("says nothing more while something waits", async () => {
+    const inbox = new Inbox(fakeRuns([review]).runs);
+    const root = await renderSuspending(<OnHome inbox={inbox} served={{ isDemo: () => true }} />);
+    await settled();
+
+    expect(root.textContent).not.toContain(nextStep);
   });
 });
