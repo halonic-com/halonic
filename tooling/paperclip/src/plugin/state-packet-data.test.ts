@@ -10,6 +10,7 @@ import {
   type StatePacketApi,
   statePacketDataKey,
 } from "./state-packet-data.ts";
+import { measureWakeGate } from "./wake-gate-data.ts";
 
 const companyId = "company-1";
 const request = { companyId, issueId: "task-41", wakeReason: "issue_monitor_due" };
@@ -29,7 +30,8 @@ async function fakeContext(config: Record<string, unknown>) {
     http: { fetch: () => Promise.reject(new Error("no GitHub in this test")) },
     data: { register: (key: string, handler: Handler) => handlers.set(key, handler) },
     issues: {
-      get: async (issueId: string) => (issueId === "task-41" ? { identifier: "HAL-41" } : null),
+      get: async (issueId: string) =>
+        issueId === "task-41" ? { identifier: "HAL-41", assigneeAgentId: "agent-ada" } : null,
       listComments: async () => [
         {
           authorAgentId: "agent-liam",
@@ -86,6 +88,40 @@ verifies("paperclip.state-packet", () => {
         packet: null,
         reason: "companyId, issueId and wakeReason are required",
       });
+    });
+  });
+});
+
+verifies("paperclip.wake-gate", () => {
+  describe("the wake gate on the state-packet data key", () => {
+    test("the setting starts off: nothing logged or counted", async () => {
+      const { ctx, written, logged } = await fakeContext({});
+      expect(await measureWakeGate(ctx, request)).toBeUndefined();
+      expect(logged).toEqual([]);
+      expect(written).toEqual([]);
+      const declared = manifest.instanceConfigSchema?.["properties"] as Record<
+        string,
+        { default?: unknown }
+      >;
+      expect(declared["wakeGate"]?.default).toBe("off");
+    });
+
+    test("in measure mode it logs and counts its verdict; the newest comment is a person's, so it runs", async () => {
+      const { ctx, written, logged } = await fakeContext({ wakeGate: "measure" });
+      expect((await measureWakeGate(ctx, request))?.verdict?.kind).toBe("run");
+      expect(logged).toEqual([
+        "Wake gate (measure only): would run HAL-41: the newest comment is from someone else",
+      ]);
+      expect(written).toEqual([{ name: "wake_gate.would_run", value: 1, tags: { companyId } }]);
+    });
+
+    test("the server's answer stays the packet's, and the gate is measured after it", async () => {
+      const { ctx, handlers } = await fakeContext({ wakeGate: "measure" });
+      const measured: unknown[] = [];
+      registerStatePacket(ctx, async (params) => measured.push(params));
+      const answer = await handlers.get(statePacketDataKey)?.(request);
+      expect(answer).toEqual({ packet: null, reason: "the statePacket setting is off" });
+      expect(measured).toEqual([request]);
     });
   });
 });
