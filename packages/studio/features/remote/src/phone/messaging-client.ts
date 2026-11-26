@@ -134,14 +134,11 @@ export class MessagingClient {
     }
     return this.request(
       (id) => ({ type: "msg-answer", id, item, answer, confirmed: true }),
+      // By exclusion, so an answer outcome added later (such as `closed`) still settles it.
       (message) => {
         if (message.type !== "msg-result") return undefined;
         const { result } = message;
-        return result.outcome === "answered" ||
-          result.outcome === "already-answered" ||
-          result.outcome === "refused"
-          ? result
-          : undefined;
+        return result.outcome !== "sent" && result.outcome !== "saved" ? result : undefined;
       },
     );
   }

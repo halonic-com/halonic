@@ -82,6 +82,49 @@ verifies("remote.phone-messaging-client", () => {
       expect(await read).toEqual({ kind: "cut-off" });
     });
 
+    it("ends the session on a reactions page whose cursor breaks the host's id rule", async () => {
+      const scene = new GatewayScene();
+      scene.connect();
+      const read = scene.client.messaging.readReactions("c1");
+      // `:` is fine in a messaging id, but never in the host's own cursor.
+      scene.host({
+        type: "msg-data",
+        replyTo: scene.tunnel.lastOf("msg-read").id,
+        what: "reactions",
+        items: [],
+        more: "a:b",
+      });
+      expect(scene.tunnel.ended).toEqual([1]);
+      expect(await read).toEqual({ kind: "cut-off" });
+    });
+
+    it("still settles an answer by a closed result, and keeps the connection", async () => {
+      const scene = new GatewayScene();
+      scene.connect();
+      const answer = scene.client.messaging.answer("i1", { kind: "option", option: "yes" });
+      const result = {
+        outcome: "closed",
+        reason: "expired",
+        closedAt: "2026-11-25T08:00:00Z",
+      } as const;
+      scene.host({ type: "msg-result", replyTo: scene.tunnel.lastOf("msg-answer").id, result });
+      expect(await answer).toEqual({ kind: "done", value: result });
+      expect(scene.tunnel.ended).toEqual([]);
+    });
+
+    it("ends the session on a saved result to a msg-answer", async () => {
+      const scene = new GatewayScene();
+      scene.connect();
+      const answer = scene.client.messaging.answer("i1", { kind: "option", option: "yes" });
+      scene.host({
+        type: "msg-result",
+        replyTo: scene.tunnel.lastOf("msg-answer").id,
+        result: { outcome: "saved", reactions: [] },
+      });
+      expect(scene.tunnel.ended).toEqual([1]);
+      expect(await answer).toEqual({ kind: "cut-off" });
+    });
+
     it("ends the session on a saved result to a msg-send", async () => {
       const scene = new GatewayScene();
       scene.connect();

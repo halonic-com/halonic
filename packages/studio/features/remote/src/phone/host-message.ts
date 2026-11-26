@@ -189,7 +189,10 @@ const isMessagingPage = exactly(
 /** One reaction as the port gives it: which of the six, who and when. */
 const isReaction = exactly({ emoji: oneOf(...reactionEmoji), by: isAuthor, at: isText });
 
-/** Version 5's page of a conversation's reactions: each item one message's. */
+/**
+ * Version 5's page of a conversation's reactions: each item one message's.
+ * `more` is the host's own cursor, read back by its strict id rule.
+ */
 const isReactionsPage = exactly(
   {
     type: oneOf("msg-data"),
@@ -197,7 +200,7 @@ const isReactionsPage = exactly(
     what: oneOf("reactions"),
     items: listOf(exactly({ message: isMessagingId, reactions: listOf(isReaction) })),
   },
-  { more: isMessagingId },
+  { more: isId },
 );
 
 /** Version 5's `ReactResult` once saved: the message's reactions after it. */
