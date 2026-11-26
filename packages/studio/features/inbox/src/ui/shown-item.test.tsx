@@ -91,6 +91,7 @@ verifies("inbox.window-item", () => {
 
       expect(await reopened).toBe(false);
       expect(inbox.shownItem.key).toBeUndefined();
+      expect(inbox.takeOpenRequest()).toBeUndefined();
     });
   });
 

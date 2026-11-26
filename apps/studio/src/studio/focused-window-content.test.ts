@@ -28,11 +28,11 @@ function chatShown(listed: readonly string[]) {
   return { shown, show };
 }
 
-/** The shell's `window_content_set`, recording what it was given. */
+/** The shell's `window_content_set`, recording what it was given; `invoke` can hold an answer back. */
 function shellKeeping() {
   const invoke = vi.fn(async (_command: string, _args?: Record<string, unknown>) => null);
   const kept = () => invoke.mock.calls.map(([, args]) => args?.["content"]);
-  return { keeper: new WindowContentKeeper({ invoke }), kept };
+  return { keeper: new WindowContentKeeper({ invoke }), kept, invoke };
 }
 
 verifies("studio.window-content", () => {
@@ -96,6 +96,7 @@ verifies("studio.window-content", () => {
       const { shown, show } = chatShown(["chat-1"]);
       shown.reopen.mockImplementationOnce(() => new Promise<boolean>(() => {}));
       const { keeper, kept } = shellKeeping();
+      const keep = vi.spyOn(keeper, "keep");
 
       const keeping = keepFocusedContent(keeper, shown, "/work/acme", {
         chat: "chat-1",
@@ -106,6 +107,7 @@ verifies("studio.window-content", () => {
 
       const signal = shown.reopen.mock.calls[0]?.[1];
       expect(signal?.aborted).toBe(true);
+      expect(keep).not.toHaveBeenCalled();
       expect(kept()).toEqual([]);
     });
 
@@ -127,6 +129,30 @@ verifies("studio.window-content", () => {
       keeping.stop();
 
       expect(kept()).toEqual(['{"workspace":"/work/acme","chat":"chat-2"}']);
+    });
+    it("keeps a chat opened while the shell still keeps the kept one", async () => {
+      const { shown, show } = chatShown(["chat-1", "chat-2"]);
+      const { keeper, kept, invoke } = shellKeeping();
+      let answer = (): void => {};
+      invoke.mockImplementationOnce(
+        () => new Promise<null>((resolve) => (answer = () => resolve(null))),
+      );
+
+      const keeping = keepFocusedContent(keeper, shown, "/work/acme", {
+        chat: "chat-1",
+        workspace: "/work/acme",
+      });
+      await vi.waitFor(() => expect(kept()).toHaveLength(1));
+      show("chat-2");
+      answer();
+      await keeping.ready;
+      await vi.waitFor(() => expect(kept()).toHaveLength(2));
+      keeping.stop();
+
+      expect(kept()).toEqual([
+        '{"workspace":"/work/acme","chat":"chat-1"}',
+        '{"workspace":"/work/acme","chat":"chat-2"}',
+      ]);
     });
   });
 
