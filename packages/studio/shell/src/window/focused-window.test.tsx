@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { TimeStamp, useNarrow } from "@halonicjs/studio-kit";
+import { ExternalLink, type OpenExternal, TimeStamp, useNarrow } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -64,6 +64,7 @@ async function mount(
   shown: FocusedAppContribution = inboxApp,
   regionFormat?: string,
   chosenFormat?: FakeChosenFormat,
+  openExternal?: OpenExternal,
 ) {
   const shell = shellWith(shown);
   const services = new MapTarget();
@@ -76,15 +77,19 @@ async function mount(
   const studioShown: number[] = [];
   const openStudio = () => studioShown.push(1);
   await act(async () => {
-    focused = mountFocusedWindow(element, {
-      shell,
-      app,
-      workspace,
-      language: "en",
-      regionFormat,
-      chosenFormat,
-      openStudio,
-    });
+    focused = mountFocusedWindow(
+      element,
+      {
+        shell,
+        app,
+        workspace,
+        language: "en",
+        regionFormat,
+        chosenFormat,
+        openStudio,
+      },
+      openExternal,
+    );
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
   return { studioShown, unmount: () => act(() => focused?.unmount()) };
@@ -208,5 +213,48 @@ verifies("kit.time-stamp", () => {
 
     act(() => chosen.choose(undefined));
     expect(element.querySelector("time")?.textContent).toBe("9:41 AM");
+  });
+});
+
+/** The Acme Messenger's chat: one reply with a link to a Paperclip task. */
+function AcmeChat() {
+  return <ExternalLink href="https://paperclip.example/ACME/issues/ACME-7">ACME-7</ExternalLink>;
+}
+
+const chatApp: FocusedAppContribution = {
+  id: "messenger",
+  title: "Messenger",
+  view: "AcmeChat",
+  load: async () => ({ AcmeChat }),
+  panel: true,
+};
+
+verifies("kit.external-link", () => {
+  // In the desktop app a new tab goes nowhere, so a link that fell back to one did nothing (HAL-19406).
+  it("opens a link in the focused app through the openExternal it was given, not a new tab", async () => {
+    const opened: string[] = [];
+    const openExternal: OpenExternal = async (address) => {
+      opened.push(await address);
+    };
+    const newTab = vi.spyOn(window, "open").mockReturnValue(null);
+    await mount("Acme", chatApp, undefined, undefined, openExternal);
+
+    await act(async () => element.querySelector("a")?.click());
+
+    expect(opened).toEqual(["https://paperclip.example/ACME/issues/ACME-7"]);
+    expect(newTab).not.toHaveBeenCalled();
+  });
+
+  it("opens a link in a new tab when it was given no openExternal", async () => {
+    const newTab = vi.spyOn(window, "open").mockReturnValue(null);
+    await mount("Acme", chatApp);
+
+    act(() => element.querySelector("a")?.click());
+
+    expect(newTab).toHaveBeenCalledWith(
+      "https://paperclip.example/ACME/issues/ACME-7",
+      "_blank",
+      "noopener,noreferrer",
+    );
   });
 });

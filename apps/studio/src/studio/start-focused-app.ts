@@ -103,7 +103,8 @@ export function startFocusedApp(page: StudioPage, parts: FocusedAppParts): Start
       chosenFormat: chosenFormatOf(display),
       openStudio: () => showStudio(ipc),
     };
-    mounted = mountFocusedWindow(page.element, windowProps);
+    // Its links open in the system browser, as in Studio's window (HAL-19406).
+    mounted = mountFocusedWindow(page.element, windowProps, desktopOpenExternal(page.window));
     return found?.opened;
   });
   // The chat or item is asked for once the page shows, while the page is listening.
