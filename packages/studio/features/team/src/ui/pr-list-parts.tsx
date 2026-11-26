@@ -4,9 +4,11 @@ import type { PullRequestRow } from "../pull-requests.ts";
 import type { TeamClock } from "../team-format.ts";
 import { PullRequestRowView, type WebLinkOpener } from "./pull-request-row.tsx";
 
-/** One bordered list per section, its rows split by lines, as the lists on Spend and seats. */
-export const listBox =
-  "flex flex-col divide-y divide-border rounded-md border border-border bg-surface";
+/** The bordered box a list sits in, as the lists on Spend and seats. */
+export const boxFrame = "rounded-md border border-border bg-surface";
+
+/** One bordered list per section, its rows split by lines. */
+export const listBox = `flex flex-col divide-y divide-border ${boxFrame}`;
 
 /** A section of rows under its List heading: "Stuck · worst first", "Failing · 1". */
 export function Section(props: { name: string; detail: string | undefined; children: ReactNode }) {
