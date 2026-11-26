@@ -50,6 +50,7 @@ import { StudioPage } from "./studio-page.tsx";
 import { StudioPhonePage, StudioPhoneTopBar } from "./studio-phone.tsx";
 import { StudioSidebar } from "./studio-sidebar.tsx";
 import type { StudioWorkspace } from "./studio-workspace.ts";
+import { WindowFormatLocale } from "./window-format.tsx";
 import { useWindowOpeners } from "./window-openers.ts";
 import { windowPanelParts } from "./window-panel.tsx";
 import { useOpenSettings } from "./window-settings.ts";
@@ -131,10 +132,13 @@ export interface StudioWindowProps {
  * <StudioWindow shell={shell} workspace={workspace} host="desktop-app" platform="windows" language="en" />
  */
 export function StudioWindow(props: StudioWindowProps) {
-  // What the window draws deep down, such as a page that can't load its code, reads the host here.
+  // What the window draws deep down, such as a page that can't load its code, reads the host here,
+  // and its times follow the system's region format, as Formats' "Follow this computer" does.
   return (
     <StudioHostContext value={props.host}>
-      <StudioWindowBody {...props} />
+      <WindowFormatLocale regionFormat={props.regionFormat}>
+        <StudioWindowBody {...props} />
+      </WindowFormatLocale>
     </StudioHostContext>
   );
 }

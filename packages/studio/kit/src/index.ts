@@ -327,6 +327,7 @@ export {
   type PlainRowProps,
   type PlainRowUnread,
 } from "./plain-list/plain-list.tsx";
+export { PHONE_MAX_WIDTH, WIDE_MIN_WIDTH } from "./presentation/breakpoints.ts";
 export {
   NarrowProvider,
   type NarrowProviderProps,
@@ -400,6 +401,7 @@ export {
   type MarkdownInline,
   readMarkdown,
 } from "./text/markdown.ts";
+export { fullTime, shortTime } from "./text/short-time.ts";
 export {
   calendarDay,
   clockTime,
@@ -412,6 +414,8 @@ export {
   waitingSince,
 } from "./text/waiting-time.ts";
 export { TextSheet, type TextSheetProps } from "./text-sheet/text-sheet.tsx";
+export { FormatLocale, formatTag, useFormatLocale } from "./time-stamp/format-locale.ts";
+export { TimeStamp, type TimeStampProps } from "./time-stamp/time-stamp.tsx";
 export {
   TOAST_CLOSES_AFTER_MS,
   TOAST_WITH_ACTION_CLOSES_AFTER_MS,
@@ -458,20 +462,6 @@ export { Window, WindowBar, type WindowBarProps, type WindowProps } from "./wind
 /** The npm name of this package. */
 export const packageName = "@halonicjs/studio-kit";
 
-/**
- * Below this width (in CSS pixels) the Studio uses its phone layout, the same width as the
- * `phone:` variant in theme-utilities.css. For the shell's `matchMedia("(width < 600px)")`; a
- * media query can't read a CSS variable, so the number lives in both places and a test keeps them
- * equal.
- */
-export const PHONE_MAX_WIDTH = 600;
-
-/**
- * From this width (in CSS pixels) the desktop shows its full layout; between `PHONE_MAX_WIDTH`
- * and this it is the narrow window, with the sidebar as a drawer (component specs 24.4). The same
- * width as `--breakpoint-wide` in theme.css, kept equal by a test.
- */
-export const WIDE_MIN_WIDTH = 900;
 export {
   MONTH_COUNT,
   type Month,

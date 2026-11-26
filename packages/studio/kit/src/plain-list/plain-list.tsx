@@ -39,8 +39,8 @@ export interface PlainRowProps {
   readonly flag?: string | undefined;
   /** The line under the title. Cut with an ellipsis. */
   readonly line?: ReactNode | undefined;
-  /** On the title line's end, never cut: "09:30". */
-  readonly time?: string | undefined;
+  /** On the title line's end, never cut: a `TimeStamp`, or text such as "09:30". */
+  readonly time?: ReactNode | undefined;
   /** Unread: a semibold title, a full-colour line and a blue count or dot. Read without it. */
   readonly unread?: PlainRowUnread | undefined;
   /** The row whose item is open beside the list: the selected background and `aria-current`. */
@@ -109,7 +109,9 @@ export function PlainRow(props: PlainRowProps) {
           <span className="flex items-baseline gap-2">
             <RowTitle {...props} />
             {time === undefined ? null : (
-              <span className={`shrink-0 text-small text-fg-muted ${hidesTime}`}>{time}</span>
+              <span className={`shrink-0 whitespace-nowrap text-small text-fg-muted ${hidesTime}`}>
+                {time}
+              </span>
             )}
           </span>
           <RowLine {...props} />

@@ -37,6 +37,8 @@ verifies("messenger.chat-rows", () => {
       const { messaging } = acme();
       const page = await openMessenger(messaging, [], false, noon);
       expect(row(page, "Chief")?.textContent).toBe("CChief09:30Shall I merge #12?1 unread");
+      // The kit's short time (`kit.time-stamp`), with the full date and time on hover.
+      expect(row(page, "Chief")?.querySelector("time")?.getAttribute("title")).toMatch(/09:30$/u);
       expect(row(page, "Liam")?.textContent).toBe("LLiam");
     });
 

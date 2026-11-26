@@ -1,9 +1,33 @@
 // @vitest-environment jsdom
 
 import { RecentWorkspaces } from "@halonicjs/studio-feature-workspace";
+import type { FocusedWindowProps } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { type StartedStudio, startStudio } from "./start-studio.ts";
+
+/** Every set of props a focused app's window was drawn with, in order. */
+const focusedWindowsDrawn = vi.hoisted((): FocusedWindowProps[] => []);
+
+// The shell's own focused window, recording what it's drawn with: the region format reaches the
+// app's times only through these props (`kit.time-stamp`).
+vi.mock("@halonicjs/studio-shell", async (importOriginal) => {
+  const shell = await importOriginal<typeof import("@halonicjs/studio-shell")>();
+  return {
+    ...shell,
+    mountFocusedWindow: (element: Element, props: FocusedWindowProps) => {
+      focusedWindowsDrawn.push(props);
+      const mounted = shell.mountFocusedWindow(element, props);
+      return {
+        unmount: () => mounted.unmount(),
+        update: (next: FocusedWindowProps) => {
+          focusedWindowsDrawn.push(next);
+          mounted.update(next);
+        },
+      };
+    },
+  };
+});
 
 /** A desktop window: jsdom has no `matchMedia`, and the shell follows the phone width with it. */
 function desktopMediaQueries(query: string): MediaQueryList {
@@ -20,9 +44,10 @@ function desktopMediaQueries(query: string): MediaQueryList {
 }
 
 /** The desktop app's webview in the window the shell labelled `label`, over the Acme folder. */
-function webviewLabelled(label: string, called: string[] = []) {
+function webviewLabelled(label: string, called: string[] = [], region?: string) {
   const invoke = async (command: string) => {
     called.push(command);
+    if (command === "system_region") return region ?? null;
     if (command === "resource_report") {
       return { engineMemoryBytes: 0, childProcesses: [], dataBytes: 0, freeDiskBytes: 0 };
     }
@@ -71,12 +96,13 @@ afterEach(async () => {
   await started?.stop();
   started = undefined;
   element.remove();
+  focusedWindowsDrawn.length = 0;
 });
 
-function start(label: string, remembered = true, called: string[] = []) {
+function start(label: string, remembered = true, called: string[] = [], region?: string) {
   started = startStudio({
     element,
-    window: webviewLabelled(label, called),
+    window: webviewLabelled(label, called, region),
     userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
     storage: storageWithAcme(remembered),
   });
@@ -145,4 +171,33 @@ verifies("studio.focused-app-window", () => {
     await vi.waitFor(() => expect(element.textContent).toContain("Halonic Studio"));
     expect(element.querySelector("[data-focused-app]")).toBeNull();
   });
+});
+
+verifies("kit.time-stamp", () => {
+  it("gives the Messenger's window the system's region format for its times", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    start("messenger", true, [], "en_GB.UTF-8");
+
+    await vi.waitFor(() => expect(focusedWindowsDrawn.at(-1)?.regionFormat).toBe("en_GB.UTF-8"), {
+      timeout: 15_000,
+    });
+    expect(focusedWindowsDrawn.at(-1)?.app.id).toBe("messenger");
+    vi.restoreAllMocks();
+  }, 30_000);
+
+  it("leaves the Messenger's window on the browser's language when the system names no region", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const called: string[] = [];
+    start("messenger", true, called);
+
+    await vi.waitFor(
+      () => expect(element.querySelector('nav[aria-label="Messenger"]')).not.toBeNull(),
+      {
+        timeout: 15_000,
+      },
+    );
+    expect(called).toContain("system_region");
+    expect(focusedWindowsDrawn.every((props) => props.regionFormat === undefined)).toBe(true);
+    vi.restoreAllMocks();
+  }, 30_000);
 });

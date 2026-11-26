@@ -4,6 +4,7 @@ import { type OpenedWorkspace, RecentWorkspaces } from "@halonicjs/studio-featur
 import type { TauriIpc } from "@halonicjs/studio-services";
 import {
   type FocusedAppContribution,
+  type FocusedWindowProps,
   type KeyboardPlatform,
   type MountedFocusedWindow,
   mountFocusedWindow,
@@ -14,6 +15,7 @@ import type { DeviceMemory } from "./device-memory.ts";
 import { focusedFrameColour, followFrameColour } from "./frame-colour.ts";
 import { noStorage, openFolder } from "./open-folder.ts";
 import type { StartedStudio, StudioPage } from "./start-studio.ts";
+import { followSystemRegion } from "./system-region.ts";
 import { readWindowContent, type WindowContent, WindowContentKeeper } from "./window-content.ts";
 import { windowLabelOf } from "./window-label.ts";
 
@@ -48,7 +50,8 @@ export function focusedAppOf(
  * frame, for the workspace it showed before, or else the one Studio last had open, opened as a
  * Recent row opens it (`studio.window-content`). With no
  * workspace in Recent, or one that can't be opened, the window says to open Halonic, its button
- * brings Studio's window forward, and the reason it couldn't open goes to the console. It never opens the workspace's engine for routines:
+ * brings Studio's window forward, and the reason it couldn't open goes to the console. Its times
+ * follow the system's region format, as Studio's window's do. It never opens the workspace's engine for routines:
  * Studio's window does, and engine locks are held per window. Quick ask's box starts through
  * `startAskBox` instead, which opens no engine at all.
  */
@@ -64,6 +67,15 @@ export function startFocusedApp(page: StudioPage, parts: FocusedAppParts): Start
   };
   const keeper = new WindowContentKeeper(ipc);
   let mounted: MountedFocusedWindow | undefined;
+  let windowProps: FocusedWindowProps | undefined;
+  let regionFormat: string | undefined;
+  // The app's times follow the system's region format once the shell has read it, as Studio's do.
+  const stopRegion = followSystemRegion(ipc, (region) => {
+    regionFormat = region;
+    if (windowProps === undefined) return;
+    windowProps = { ...windowProps, regionFormat };
+    mounted?.update(windowProps);
+  });
   const opening = readWindowContent(ipc).then(async (content) => {
     const location = locationToOpen(device.recent.list(), content);
     if (location === undefined) return undefined;
@@ -74,19 +86,22 @@ export function startFocusedApp(page: StudioPage, parts: FocusedAppParts): Start
     return opened;
   });
   const shown = opening.then((opened) => {
-    mounted = mountFocusedWindow(page.element, {
+    windowProps = {
       shell,
       app,
       workspace: opened?.workspace,
       language,
+      regionFormat,
       openStudio: () => showStudio(ipc),
-    });
+    };
+    mounted = mountFocusedWindow(page.element, windowProps);
     return opened;
   });
   return {
     host: "desktop-app",
     stop: async () => {
       const opened = await shown;
+      stopRegion();
       mounted?.unmount();
       stopFrameColour();
       stopAppearance();

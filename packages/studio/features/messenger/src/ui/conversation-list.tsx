@@ -1,5 +1,5 @@
 import type { MessagingId } from "@halonicjs/ports";
-import { Avatar, clockTime, PlainList, PlainRow, type PlainRowAction } from "@halonicjs/studio-kit";
+import { Avatar, PlainList, PlainRow, type PlainRowAction, TimeStamp } from "@halonicjs/studio-kit";
 import { useRef } from "react";
 import { channelSize, isChannel, workingMembers } from "../channel.ts";
 import { chatAgent, chatName } from "../chat-name.ts";
@@ -171,7 +171,9 @@ function Row({
       afterTitle={afterName(row, named)}
       flag={waitsForPerson(row) ? messengerWords.needsYouDot : undefined}
       line={<Highlighted text={line} term={highlight} />}
-      time={row.last === undefined ? undefined : clockTime(new Date(row.last.sentAt), now)}
+      time={
+        row.last === undefined ? undefined : <TimeStamp at={new Date(row.last.sentAt)} now={now} />
+      }
       unread={
         unread === 0
           ? undefined

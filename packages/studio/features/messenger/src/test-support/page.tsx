@@ -5,7 +5,7 @@
  */
 
 import type { AgentMessaging } from "@halonicjs/ports";
-import { NarrowProvider, OpenExternalProvider } from "@halonicjs/studio-kit";
+import { FormatLocale, NarrowProvider, OpenExternalProvider } from "@halonicjs/studio-kit";
 import type { AgentActivity } from "@halonicjs/studio-services";
 import { act, StrictMode } from "react";
 import { Messenger } from "../messenger.ts";
@@ -32,13 +32,16 @@ export async function openMessenger(
   now?: () => Date,
   activity?: AgentActivity,
 ): Promise<HTMLElement> {
+  // A fixed format, so a row's time reads the same on every machine.
   const page = render(
     <StrictMode>
-      <NarrowProvider narrow={narrow}>
-        <OpenExternalProvider openExternal={async (address) => void opened.push(await address)}>
-          <MessengerPage messenger={new Messenger(messaging, now, activity)} />
-        </OpenExternalProvider>
-      </NarrowProvider>
+      <FormatLocale value="en-GB">
+        <NarrowProvider narrow={narrow}>
+          <OpenExternalProvider openExternal={async (address) => void opened.push(await address)}>
+            <MessengerPage messenger={new Messenger(messaging, now, activity)} />
+          </OpenExternalProvider>
+        </NarrowProvider>
+      </FormatLocale>
     </StrictMode>,
   );
   await settle();
