@@ -125,6 +125,22 @@ verifies("messenger.reactions", () => {
       expect(document.activeElement).toBe(addButton(page, "Morning"));
     });
 
+    it("gives every reaction button the kit's focus ring, and others' chips a hover tint", async () => {
+      const page = await openChiefsChat(chiefsChat());
+      const chips = [...page.querySelectorAll("main button[data-chip]")];
+      expect(chips.map((chip) => chip.classList.contains("focus-ring"))).toEqual([true, true]);
+      expect(byText(page, "main button[data-chip]", "😂")?.className).toContain(
+        "hover:bg-surface-muted",
+      );
+      expect(addButton(page, "Morning")?.classList.contains("focus-ring")).toBe(true);
+      await press(addButton(page, "Morning"));
+      const items = [
+        ...page.querySelectorAll('main [data-add-reaction] [role="menuitemcheckbox"]'),
+      ];
+      expect(items).toHaveLength(6);
+      expect(items.every((each) => each.classList.contains("focus-ring"))).toBe(true);
+    });
+
     it("names the row after whose message it is", async () => {
       const page = await openChiefsChat(chiefsChat());
       await press(addButton(page, "Morning"));

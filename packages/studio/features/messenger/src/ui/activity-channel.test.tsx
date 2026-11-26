@@ -94,6 +94,15 @@ verifies("messenger.activity-channel", () => {
       expect(document.activeElement?.textContent).toBe("Liam · Working on ACME-7");
     });
 
+    it("rings the agent lines inside the list, which an outer ring would clip", async () => {
+      const { messaging, activity } = acme();
+      const page = await openMessenger(messaging, [], false, now, activity);
+      await openChat(page, "Launch");
+      const found = [...(panel(page)?.querySelectorAll("button[data-agent-line]") ?? [])];
+      expect(found).toHaveLength(2);
+      expect(found.every((line) => line.classList.contains("focus-ring-inset"))).toBe(true);
+    });
+
     it("shows the header button's dot while one of its agents works", async () => {
       mediumWindow();
       const { messaging, activity } = acme();

@@ -124,7 +124,7 @@ function InboxList({
           <li key={item.id} className="border-b border-border">
             <button
               type="button"
-              className="flex w-full items-start gap-3 px-4 py-3 text-left focus-ring-inset"
+              className="flex w-full items-start gap-3 px-4 py-3 text-start focus-ring-inset"
               onClick={() => onOpen(item)}
             >
               <span

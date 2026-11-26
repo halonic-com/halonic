@@ -29,6 +29,8 @@ export function ReactionChips({ reactions, canReact, onToggle }: MessageReaction
         const look = `inline-flex h-6 items-center gap-1 rounded-full border px-2 text-small ${
           mine ? "border-accent bg-accent-soft text-accent-text" : "border-border-strong bg-surface"
         }`;
+        // Only the button gets the focus ring and, for others' chips, the hover tint.
+        const buttonLook = `focus-ring ${look}${mine ? "" : " hover:bg-surface-muted"}`;
         const content = (
           <>
             <span aria-hidden="true">
@@ -47,7 +49,7 @@ export function ReactionChips({ reactions, canReact, onToggle }: MessageReaction
                   data-chip={emoji}
                   aria-pressed={mine}
                   onClick={() => onToggle(emoji)}
-                  className={look}
+                  className={buttonLook}
                 >
                   {content}
                 </button>
@@ -115,7 +117,7 @@ export function AddReaction({
               setBelow(noRoomAbove(button.current));
               setOpen(true);
             }}
-            className="flex size-7 items-center justify-center rounded-full border border-border-strong bg-surface-raised text-fg-muted shadow-1"
+            className="focus-ring flex size-7 items-center justify-center rounded-full border border-border-strong bg-surface-raised text-fg-muted shadow-1 hover:bg-surface-muted hover:text-fg"
           >
             <span className="size-4">
               <SmileyPlusIcon />
@@ -147,7 +149,7 @@ export function AddReaction({
                   onToggle(emoji);
                   close(true);
                 }}
-                className={`size-8 rounded-full border text-body ${mine ? "border-accent bg-accent-soft" : "border-transparent hover:bg-surface-muted"}`}
+                className={`focus-ring size-8 rounded-full border text-body ${mine ? "border-accent bg-accent-soft" : "border-transparent hover:bg-surface-muted"}`}
               >
                 {emoji}
               </button>
