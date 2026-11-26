@@ -258,6 +258,21 @@ verifies("integration-kit.retry-rate-limited", () => {
     expect(sent).toHaveLength(1);
   });
 
+  it.each([
+    ["the first answer", [] as (() => Response)[], undefined],
+    ["the answer to a retry", [tooMany()], 1],
+  ])("logs %s that is too large as refused, not as ok", async (_what, before, retry) => {
+    const tooLarge = () => new Response("12345", { headers: { "content-length": "5" } });
+    const { http, log } = clockClient(inTurn(...before, tooLarge), { maxResponseBytes: 4 });
+    const pending = refusal(http.fetch(url));
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(await pending).toBe("response-too-large");
+    const last = log.entries().at(-1);
+    expect(last).toMatchObject({ outcome: "refused", refusal: "response-too-large" });
+    expect(last?.retry).toBe(retry);
+    expect(log.entries()).toHaveLength(before.length + 1);
+  });
+
   it("offers integrations the same waits, uncapped, for retries of their own", () => {
     const now = Date.now();
     expect(retryDelayMs(new Headers({ "retry-after": "120" }), 1, now)).toBe(120_000);

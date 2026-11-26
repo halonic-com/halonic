@@ -190,9 +190,14 @@ async function send(
       const context = { hop, values, declared, carried, guard, maxBodyBytes, timers };
       const response = await followHops(options, context);
       timers.stopHeaders();
+      const waitMs = rateLimitRetryMs(own.method, response, retry, waitedMs, options.now);
+      if (waitMs === undefined) {
+        // Logged only once the guard accepts it: a refused body logs as refused.
+        const guarded = guardBody(policy, response, hop.url, guard);
+        attempts.answered(response.status, hop.url);
+        return guarded;
+      }
       attempts.answered(response.status, hop.url);
-      const waitMs = rateLimitRetryMs(own.method, response, retry, waitedMs, options.now());
-      if (waitMs === undefined) return guardBody(policy, response, hop.url, guard);
       // So the connection isn't held during the wait.
       await response.body?.cancel();
       await integrationWait(waitMs, timers.combined);
