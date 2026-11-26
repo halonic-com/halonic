@@ -1,3 +1,5 @@
+import { runChoiceInstruction } from "./run-choice.ts";
+
 /**
  * The front bot's request and answer (HAL-19136, design on HAL-18847
  * sections 4.1 and 4.2): the fixed prompt with Sofia's voice rules and
@@ -98,12 +100,19 @@ export function frontBotUserText(input: FrontBotInput): string {
   ].join("\n\n");
 }
 
-/** The Messages API request body. */
-export function frontBotRequest(input: FrontBotInput): Record<string, unknown> {
+/**
+ * The Messages API request body. With `runChoice` (front bot v2, HAL-19219)
+ * the prompt also asks for a last line that says whether the run is quick.
+ */
+export function frontBotRequest(
+  input: FrontBotInput,
+  options: { readonly runChoice?: boolean } = {},
+): Record<string, unknown> {
   return {
     model: frontBotModel,
     max_tokens: frontBotMaxTokens,
-    system: frontBotPrompt,
+    system:
+      options.runChoice === true ? `${frontBotPrompt}\n\n${runChoiceInstruction}` : frontBotPrompt,
     messages: [{ role: "user", content: frontBotUserText(input) }],
   };
 }
@@ -114,8 +123,9 @@ export type FrontBotAnswer =
   | { readonly kind: "line"; readonly line: string };
 
 /**
- * Reads the model's text. An empty answer, `SKIP` or more than two lines all
- * count as SKIP: the voice allows one or two short sentences on one line.
+ * Reads the model's text, without its run line (see `splitRunLine`). An
+ * empty answer, `SKIP` or more than two lines all count as SKIP: the voice
+ * allows one or two short sentences on one line.
  */
 export function parseFrontBotAnswer(text: string): FrontBotAnswer {
   const line = text

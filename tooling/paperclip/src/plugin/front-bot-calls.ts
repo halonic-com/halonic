@@ -2,6 +2,7 @@ import type { PluginSecretsClient } from "@paperclipai/plugin-sdk";
 import { type CallUsage, tokenCount } from "../front-bot/limits.ts";
 import type { FrontBotReason } from "../front-bot/log-record.ts";
 import { type FrontBotAnswer, parseFrontBotAnswer } from "../front-bot/prompt.ts";
+import { type RunKind, splitRunLine } from "../front-bot/run-choice.ts";
 import type { SecretRef } from "../task-effort/settings.ts";
 
 /**
@@ -57,6 +58,8 @@ export type FrontBotCall =
   | {
       readonly answered: true;
       readonly answer: FrontBotAnswer;
+      /** Whether the message is a quick question (front bot v2); `normal` when not asked. */
+      readonly run: RunKind;
       readonly inputTokens: number;
       readonly outputTokens: number;
       readonly usage: CallUsage | undefined;
@@ -81,6 +84,7 @@ async function callMessages(
   deps: FrontBotDeps,
   key: string,
   request: Record<string, unknown>,
+  runChoice: boolean,
   signal: AbortSignal,
 ): Promise<FrontBotCall> {
   const response = await deps.anthropicFetch(messagesUrl, {
@@ -102,9 +106,11 @@ async function callMessages(
     content?: { type?: string; text?: string }[];
     usage?: CallUsage;
   };
+  const { reply, run } = splitRunLine(answerText(body));
   return {
     answered: true,
-    answer: parseFrontBotAnswer(answerText(body)),
+    answer: parseFrontBotAnswer(reply),
+    run: runChoice ? run : "normal",
     inputTokens: tokenCount(body.usage?.input_tokens),
     outputTokens: tokenCount(body.usage?.output_tokens),
     usage: body.usage,
@@ -113,7 +119,8 @@ async function callMessages(
 
 /**
  * Sends one request (a first reply's or a progress note's) to Haiku, giving
- * up after {@link requestTimeoutMs}. Never throws.
+ * up after {@link requestTimeoutMs}. With `runChoice`, the first reply also
+ * says whether the run is quick. Never throws.
  */
 export async function askFrontBot(
   ctx: { readonly secrets: Pick<PluginSecretsClient, "resolve"> },
@@ -121,12 +128,13 @@ export async function askFrontBot(
   keyRef: SecretRef,
   companyId: string,
   request: Record<string, unknown>,
+  runChoice = false,
 ): Promise<FrontBotCall> {
   try {
     // Read at call time, sent only to Anthropic in a header, never logged or kept.
     const key = await ctx.secrets.resolve(keyRef, { companyId });
     const call = await withTimeout(
-      (signal) => callMessages(deps, key, request, signal),
+      (signal) => callMessages(deps, key, request, runChoice, signal),
       requestTimeoutMs,
     );
     return call === "timeout" ? { answered: false, reason: "timeout" } : call;

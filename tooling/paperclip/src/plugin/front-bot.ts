@@ -15,7 +15,8 @@ import {
   notCalledRecord,
 } from "../front-bot/log-record.ts";
 import { automaticNotePrefix, frontBotRequest } from "../front-bot/prompt.ts";
-import { frontBotKey, readFrontBotSettings } from "../front-bot/settings.ts";
+import { choiceFor } from "../front-bot/run-choice.ts";
+import { type FrontBotSettings, frontBotKey, readFrontBotSettings } from "../front-bot/settings.ts";
 import { errorCode } from "./board-check-api.ts";
 import {
   type Budget,
@@ -28,6 +29,7 @@ import {
 } from "./front-bot-budget.ts";
 import { askFrontBot, type FrontBotDeps } from "./front-bot-calls.ts";
 import { rememberNote } from "./front-bot-notes.ts";
+import { type PendingMessages, pendingMessages, storeRunChoice } from "./front-bot-run-choice.ts";
 import { agentAnswered, inputBlock, inputOf, type Scene, sceneOf } from "./front-bot-scene.ts";
 import { companyConfig } from "./job.ts";
 import { writeMetrics } from "./metrics.ts";
@@ -79,6 +81,7 @@ type RecordBase = Pick<FrontBotLogRecord, "at" | "companyId" | "taskId" | "runId
 /** A message the bot may call for: what it read, and the day's spend and call health before the call. */
 interface Ready extends Budget {
   readonly scene: Scene;
+  readonly settings: FrontBotSettings;
   readonly keyRef: NonNullable<ReturnType<typeof frontBotKey>>;
   readonly base: RecordBase;
   readonly started: Date;
@@ -123,7 +126,7 @@ async function beforeCall(
   const budget = await readBudget(ctx, companyId, started);
   if (budget === "cap_reached") return stop("capped", "cap_reached");
   if (budget === "error_rate") return stop("stopped", "error_rate");
-  return { scene, keyRef, base, started, ...budget };
+  return { scene, settings, keyRef, base, started, ...budget };
 }
 
 /**
@@ -156,7 +159,29 @@ async function postNote(
   }
 }
 
-/** Calls Haiku, counts the call, checks the reply and posts it when it passes. */
+/**
+ * Front bot v2 (HAL-19219): keeps what the call said about the run, for the
+ * server's run-start hook to read. A normal run is kept too, so the hook
+ * learns at once that there is nothing to change. A failure to keep it only
+ * means the run starts with its normal settings.
+ */
+async function keepRunChoice(ctx: FrontBotApi, ready: Ready, run: "quick" | "normal") {
+  if (!ready.settings.runChoice) return;
+  const { scene, base } = ready;
+  try {
+    await storeRunChoice(ctx.state, scene.issue.id, {
+      commentId: scene.message.id,
+      at: base.at,
+      choice: choiceFor(run, ready.settings.quickRun) ?? null,
+    });
+  } catch (error) {
+    ctx.logger.error(`Front bot: couldn't keep the run choice (${errorCode(error)}).`, {
+      companyId: scene.issue.companyId,
+    });
+  }
+}
+
+/** Calls Haiku, counts the call, keeps its run choice, checks the reply and posts it when it passes. */
 async function callAndPost(
   ctx: FrontBotApi,
   deps: FrontBotDeps,
@@ -165,12 +190,21 @@ async function callAndPost(
   const { scene, base, started } = ready;
   const { companyId } = scene.issue;
   const input = await inputOf(ctx, scene);
-  const call = await askFrontBot(ctx, deps, ready.keyRef, companyId, frontBotRequest(input));
+  const runChoice = ready.settings.runChoice;
+  const call = await askFrontBot(
+    ctx,
+    deps,
+    ready.keyRef,
+    companyId,
+    frontBotRequest(input, { runChoice }),
+    runChoice,
+  );
   await recordCall(ctx, companyId, ready.health, deps.now(), !call.answered);
   const latencyMs = () => deps.now().getTime() - started.getTime();
   if (!call.answered) {
     return { ...notCalledRecord(base, "failed", call.reason), latencyMs: latencyMs() };
   }
+  await keepRunChoice(ctx, ready, call.run);
   const cost = callCostMicroUsd(call.usage);
   await countSpend(ctx, companyId, ready.spend, cost);
   const called = (outcome: FrontBotOutcome, reason?: FrontBotReason): FrontBotLogRecord => ({
@@ -220,11 +254,13 @@ export interface FrontBot {
  * together with the progress notes, so the day's spend and the error window
  * are never counted from a stale total. It never throws: a failure is one log
  * line with its code and shows nothing in the chat.
+ * `pending` lets the run-choice data key wait for a message still in work.
  */
 export function frontBot(
   ctx: FrontBotApi,
   deps: FrontBotDeps,
   inOrder: Serial = serial(),
+  pending: PendingMessages = pendingMessages(),
 ): FrontBot {
   return {
     async onCommentCreated(event) {
@@ -240,7 +276,10 @@ export function frontBot(
           });
         }
       };
-      await inOrder(work);
+      const done = inOrder(work);
+      const { commentId } = eventIds(event);
+      if (commentId !== undefined) pending.track(commentId, done);
+      await done;
     },
   };
 }
