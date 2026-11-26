@@ -88,6 +88,11 @@ verifies("paperclip.merge-control-security-signoff", () => {
     );
   });
 
+  test("an action catalog path counts (HAL-20215)", () => {
+    const files = ["packages/core/action-catalog/src/github/x.ts"];
+    expect(reasonsOf(pull(9, { files, filesTotal: 1 }))).toContain("security PR: waiting for");
+  });
+
   test("a queued security PR without the sign-off isn't taken out", () => {
     const decision = pass(snapshot({ pulls: [trustPull()], queue: [entry(6418, 1)] }));
     expect(decision.actions.filter((action) => action.kind === "dequeue")).toEqual([]);
