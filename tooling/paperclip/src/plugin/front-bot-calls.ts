@@ -34,7 +34,7 @@ const requestTimeoutMs = 8_000;
  * that point even if `work` ignores the signal, so a hanging call never holds
  * the bot's queue past the limit.
  */
-async function withTimeout<T>(
+export async function withTimeout<T>(
   work: (signal: AbortSignal) => Promise<T>,
   ms: number,
 ): Promise<T | "timeout"> {

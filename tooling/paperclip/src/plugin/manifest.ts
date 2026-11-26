@@ -85,9 +85,10 @@ export const manifest: PaperclipPluginManifestV1 = {
     // readers, and GETs the CI status file and Prometheus at the addresses in the settings
     // (src/plugin/merge-control-reader.ts). The front bot sends one POST to
     // api.anthropic.com/v1/messages per board message on a chat task, with its own key, and
-    // nothing else (src/plugin/front-bot-calls.ts, HAL-19136). The PR watcher GETs Liam's and
-    // Julian's newest runs from Paperclip's API at the address in the settings, to move a
-    // limited reviewer's review (src/plugin/reviewer-runs.ts, HAL-19203).
+    // nothing else (src/plugin/front-bot-calls.ts, HAL-19136). Its lookups, off by default, read a
+    // pull request with pr_status's GET requests (src/plugin/front-bot-lookup.ts, HAL-19222).
+    // The PR watcher GETs Liam's and Julian's newest runs from Paperclip's API at the address in
+    // the settings, to move a limited reviewer's review (src/plugin/reviewer-runs.ts, HAL-19203).
     "http.outbound",
     "secrets.read-ref",
     // pr_status: GitHub reads only, with the same token and origin guard.

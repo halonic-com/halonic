@@ -12,6 +12,7 @@ import { lifecycleRunner } from "./fast-track-lifecycle-job.ts";
 import { fetchHonouringSignal } from "./fetch-signal.ts";
 import { frontBot } from "./front-bot.ts";
 import { serial } from "./front-bot-budget.ts";
+import { gitHubPrStatus } from "./front-bot-lookup.ts";
 import { chatNotesRouteKey, handleChatNotes } from "./front-bot-notes.ts";
 import { progressNotes } from "./front-bot-progress.ts";
 import { pendingMessages, registerRunChoice } from "./front-bot-run-choice.ts";
@@ -102,11 +103,13 @@ export const plugin = definePlugin({
       anthropicFetch: (url: string | URL | Request, init?: RequestInit) => fetch(url, init),
       now: () => new Date(),
     };
+    // The lookups, off unless turned on as well, read GitHub with GET only (HAL-19222).
+    const lookupDeps = { now: botDeps.now, readPrStatus: gitHubPrStatus(ctx) };
     // First replies and progress notes count the same day's spend, one call at a time.
     const botQueue = serial();
     // The run-choice data key (HAL-19219) waits briefly for a message the bot is still on.
     const botPending = pendingMessages();
-    const bot = frontBot(ctx, botDeps, botQueue, botPending);
+    const bot = frontBot(ctx, { ...botDeps, ...lookupDeps }, botQueue, botPending);
     registerRunChoice(ctx, botPending);
     // Off unless the board turns them on too; reads only Paperclip's own API for the run (HAL-19218).
     const notes = progressNotes(

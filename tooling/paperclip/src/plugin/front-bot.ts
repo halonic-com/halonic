@@ -28,7 +28,8 @@ import {
   serial,
 } from "./front-bot-budget.ts";
 import { askFrontBot, type FrontBotDeps } from "./front-bot-calls.ts";
-import { rememberNote } from "./front-bot-notes.ts";
+import { answerLookup, type LookupDeps } from "./front-bot-lookup.ts";
+import { postNote } from "./front-bot-notes.ts";
 import { type PendingMessages, pendingMessages, storeRunChoice } from "./front-bot-run-choice.ts";
 import { agentAnswered, inputBlock, inputOf, type Scene, sceneOf } from "./front-bot-scene.ts";
 import { companyConfig } from "./job.ts";
@@ -41,8 +42,10 @@ import { writeMetrics } from "./metrics.ts";
  * with no author, which wakes nobody. It makes no call when the board turned
  * it off, the day's cap or the error stop holds, the message is out of scope
  * or holds something shaped like a key, or the agent already answered. A
- * reply that fails the grounding check is never posted. Every decision leaves
- * one log record with ids, numbers and a fixed reason code only.
+ * reply that fails the grounding check is never posted. With its own setting
+ * on too, it answers a plain PR or run status question from a read-only
+ * source instead (HAL-19222, front-bot-lookup.ts). Every decision leaves one
+ * log record with ids, numbers and a fixed reason code only.
  */
 
 /** The part of the plugin context the front bot uses, so tests can fake it. */
@@ -66,17 +69,21 @@ function eventIds(event: PluginEvent): { taskId?: string; commentId?: string } {
 
 /** Writes the one record of a decision to the log and the metrics. */
 async function report(ctx: FrontBotApi, record: FrontBotLogRecord): Promise<void> {
-  ctx.logger.info(`Front bot: first reply ${record.outcome}.`, logMeta(record));
+  const firstReply = record.callType === "first_reply";
+  ctx.logger.info(
+    `Front bot: ${firstReply ? "first reply" : "lookup"} ${record.outcome}.`,
+    logMeta(record),
+  );
   const tags = {
     companyId: record.companyId,
     outcome: record.outcome,
     reason: record.reason ?? "none",
   };
-  await writeMetrics(ctx, { "front_bot.first_reply": 1 }, tags);
+  await writeMetrics(ctx, { [firstReply ? "front_bot.first_reply" : "front_bot.lookup"]: 1 }, tags);
 }
 
 /** The ids and time every record of one message carries. */
-type RecordBase = Pick<FrontBotLogRecord, "at" | "companyId" | "taskId" | "runId">;
+export type RecordBase = Pick<FrontBotLogRecord, "at" | "companyId" | "taskId" | "runId">;
 
 /** A message the bot may call for: what it read, and the day's spend and call health before the call. */
 interface Ready extends Budget {
@@ -87,21 +94,27 @@ interface Ready extends Budget {
   readonly started: Date;
 }
 
+/** A board user's message on a chat task with the bot on: the settings, what the bot read, and its records' ids. */
+interface Message {
+  readonly settings: FrontBotSettings;
+  readonly scene: Scene;
+  readonly base: RecordBase;
+}
+
 /**
- * Decides whether to call: undefined when the message isn't the bot's
- * business (off or out of scope: no record), a record when a rail stops the
- * call, or what the call needs.
+ * The message, or undefined when it isn't the bot's business: the bot is
+ * off, or the comment is out of scope. Then there is no record, and agents
+ * work exactly as before.
  */
-async function beforeCall(
+async function messageOf(
   ctx: FrontBotApi,
   deps: FrontBotDeps,
   event: PluginEvent,
-): Promise<Ready | FrontBotLogRecord | undefined> {
+): Promise<Message | undefined> {
   const { companyId } = event;
   const { taskId, commentId } = eventIds(event);
   const config = await companyConfig(ctx.config, companyId);
   const settings = config === undefined ? undefined : readFrontBotSettings(config);
-  // Off, or out of scope: no call, no record, and agents work exactly as before.
   if (settings?.enabled !== true || taskId === undefined) {
     return undefined;
   }
@@ -109,54 +122,30 @@ async function beforeCall(
   if (scene === undefined) {
     return undefined;
   }
-  const started = deps.now();
   const base = {
-    at: started.toISOString(),
+    at: deps.now().toISOString(),
     companyId,
     taskId: scene.issue.id,
     runId: scene.issue.activeRun?.id,
   };
+  return { settings, scene, base };
+}
+
+/** Decides whether to call Haiku: a record when a rail stops the call, or what the call needs. */
+async function beforeCall(
+  ctx: FrontBotApi,
+  deps: FrontBotDeps,
+  { settings, scene, base }: Message,
+): Promise<Ready | FrontBotLogRecord> {
   const stop = (outcome: FrontBotOutcome, reason: FrontBotReason) =>
     notCalledRecord(base, outcome, reason);
   const keyRef = frontBotKey(settings);
   if (keyRef === undefined) return stop("not_called", "no_key");
-  const blocked = inputBlock(scene);
-  if (blocked !== undefined) return stop("not_called", blocked);
-  if (await agentAnswered(ctx, scene)) return stop("not_called", "agent_answered");
-  const budget = await readBudget(ctx, companyId, started);
+  const started = deps.now();
+  const budget = await readBudget(ctx, scene.issue.companyId, started);
   if (budget === "cap_reached") return stop("capped", "cap_reached");
   if (budget === "error_rate") return stop("stopped", "error_rate");
   return { scene, settings, keyRef, base, started, ...budget };
-}
-
-/**
- * What posting the note came to: not posted, posted and its id kept, or
- * posted but its id not kept. The readers still skip an unkept note by its
- * prefix, so it is logged as posted with its own reason.
- */
-type PostResult = "failed" | "posted" | "unsaved";
-
-/** Posts the line as an Automatic note with no author and keeps its id. */
-async function postNote(
-  ctx: FrontBotApi,
-  scene: Scene,
-  line: string,
-  base: RecordBase,
-): Promise<PostResult> {
-  const { companyId, id } = scene.issue;
-  let commentId: string;
-  try {
-    const posted = await ctx.issues.createComment(id, `${automaticNotePrefix}${line}`, companyId);
-    commentId = posted.id;
-  } catch {
-    return "failed";
-  }
-  try {
-    await rememberNote(ctx.state, companyId, id, { commentId, runId: base.runId, at: base.at });
-    return "posted";
-  } catch {
-    return "unsaved";
-  }
 }
 
 /**
@@ -222,21 +211,42 @@ async function callAndPost(
   if (!grounding.ok) return called("rejected", grounding.reason);
   // The agent may have answered while Haiku wrote: then the line would talk over it.
   if (await agentAnswered(ctx, scene)) return called("rejected", "agent_answered");
-  const posted = await postNote(ctx, scene, call.answer.line, base);
+  const body = `${automaticNotePrefix}${call.answer.line}`;
+  const posted = await postNote(ctx, scene.issue, body, { runId: base.runId, at: base.at });
   if (posted === "failed") return called("failed", "post_failed");
   const record = called("posted", posted === "unsaved" ? "note_unsaved" : undefined);
   await writeMetrics(ctx, { "front_bot.latency_ms": record.latencyMs }, { companyId });
   return record;
 }
 
-/** One message, start to finish. Returns the record of what it decided, or undefined when there is none. */
+/**
+ * One message, start to finish, and the records of what it decided: none when
+ * it isn't the bot's business. Nothing goes out for a message shaped like a
+ * key or one the agent already answered. With the lookups on, a plain lookup
+ * question is answered from its source and needs no Haiku call; any other
+ * message, or a lookup that goes to the agent, gets the first reply as before.
+ */
 async function handle(
   ctx: FrontBotApi,
-  deps: FrontBotDeps,
+  deps: FrontBotDeps & LookupDeps,
   event: PluginEvent,
-): Promise<FrontBotLogRecord | undefined> {
-  const ready = await beforeCall(ctx, deps, event);
-  return ready === undefined || !("scene" in ready) ? ready : await callAndPost(ctx, deps, ready);
+): Promise<FrontBotLogRecord[]> {
+  const message = await messageOf(ctx, deps, event);
+  if (message === undefined) {
+    return [];
+  }
+  const { scene, base } = message;
+  const blocked = inputBlock(scene);
+  if (blocked !== undefined) return [notCalledRecord(base, "not_called", blocked)];
+  if (await agentAnswered(ctx, scene))
+    return [notCalledRecord(base, "not_called", "agent_answered")];
+  const lookup = message.settings.lookups ? await answerLookup(ctx, deps, scene, base) : undefined;
+  if (lookup?.outcome === "posted") {
+    return [lookup];
+  }
+  const ready = await beforeCall(ctx, deps, message);
+  const reply = "scene" in ready ? await callAndPost(ctx, deps, ready) : ready;
+  return lookup === undefined ? [reply] : [lookup, reply];
 }
 
 /** The front bot for one plugin worker. */
@@ -258,7 +268,7 @@ export interface FrontBot {
  */
 export function frontBot(
   ctx: FrontBotApi,
-  deps: FrontBotDeps,
+  deps: FrontBotDeps & LookupDeps,
   inOrder: Serial = serial(),
   pending: PendingMessages = pendingMessages(),
 ): FrontBot {
@@ -266,8 +276,7 @@ export function frontBot(
     async onCommentCreated(event) {
       const work = async () => {
         try {
-          const record = await handle(ctx, deps, event);
-          if (record !== undefined) {
+          for (const record of await handle(ctx, deps, event)) {
             await report(ctx, record);
           }
         } catch (error) {

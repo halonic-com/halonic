@@ -22,6 +22,11 @@ export interface FrontBotSettings {
   readonly runChoice: boolean;
   /** What a quick run gets. */
   readonly quickRun: QuickRunSettings;
+  /**
+   * The Studio lookups (HAL-19222): only when this is exactly `true` and the
+   * kill switch is on too, so turning the bot off stops them as well.
+   */
+  readonly lookups: boolean;
 }
 
 function quickEffort(value: unknown): QuickEffort {
@@ -46,6 +51,7 @@ export function readFrontBotSettings(config: Readonly<Record<string, unknown>>):
       effort: quickEffort(config["frontBotQuickEffort"]),
       model: quickModel(config["frontBotQuickModel"]),
     },
+    lookups: config["frontBotEnabled"] === true && config["frontBotLookups"] === true,
   };
 }
 
@@ -88,6 +94,13 @@ export const frontBotConfigProperties = {
     description:
       "The secret with the front bot's own Anthropic API key (FRONT_BOT_ANTHROPIC_API_KEY), from its own Anthropic workspace with a spend limit. Sent only to api.anthropic.com; never logged.",
     format: "secret-ref",
+  },
+  frontBotLookups: {
+    type: "boolean",
+    title: "Front bot lookups (Automatic answer)",
+    description:
+      'Off: the front bot never answers by itself. On, with the front bot on: a board user\'s plain question about a PR\'s status ("Is #6129 merged?") or a task\'s run ("Is HAL-123 running?") gets an answer read from GitHub or Paperclip, labelled "Automatic answer · from PR status" or "· from run status". It reads only, never acts, needs no Anthropic key, and leaves everything else to the agent.',
+    default: false,
   },
   frontBotNotesEnabled: {
     type: "boolean",
