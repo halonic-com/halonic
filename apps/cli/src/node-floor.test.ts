@@ -18,10 +18,18 @@ verifies("cli.node-floor", () => {
     expect(nodeTooOldLines(version)).toEqual([]);
   });
 
-  it("keeps the floor equal to devEngines.runtime in the root package.json", () => {
+  // The repo may pin a newer patch or minor than the floor (a Node security
+  // release, HAL-20054), but never an older one or another major line.
+  it("keeps devEngines.runtime in the root package.json in the floor's line, at or above it", () => {
     const root = JSON.parse(
       readFileSync(new URL("../../../package.json", import.meta.url), "utf8"),
     );
-    expect(root.devEngines.runtime.version).toBe(`^${nodeFloor.major}.${nodeFloor.minor}.0`);
+    const [major, minor] = /^\^(\d+)\.(\d+)\.\d+$/
+      .exec(root.devEngines.runtime.version)
+      ?.slice(1)
+      .map(Number) ?? [Number.NaN, Number.NaN];
+    expect(major).toBe(nodeFloor.major);
+    expect(minor).toBeGreaterThanOrEqual(nodeFloor.minor);
+    expect(nodeTooOldLines(root.devEngines.runtime.version.slice(1))).toEqual([]);
   });
 });
