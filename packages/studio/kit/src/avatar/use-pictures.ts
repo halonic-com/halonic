@@ -13,13 +13,15 @@ const pictureTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
 
 /**
  * Reads each of `ids` once with `read` and decodes it for `Avatar`'s `picture`, while the caller is
- * mounted (`messenger.agent-pictures`, `inbox.picture-badge`): a later render with the same IDs reads nothing again, and one that was
- * refused or didn't decode isn't tried again until the caller mounts again, so its initial stays.
+ * mounted (`messenger.agent-pictures`, `inbox.picture-badge`): a later render with the same IDs
+ * reads nothing again, and one that was refused or didn't decode isn't tried again until the
+ * caller mounts again, so its initial stays.
  * The pictures are closed on unmount. The Messenger reads its chat agents' pictures with it, the
  * Inbox the pictures of the agents who ask.
  *
  * @example
- * const pictures = usePictures(messaging.readAttachment, agents.flatMap((agent) => agent.avatar ?? []));
+ * const avatars = agents.flatMap((agent) => agent.avatar ?? []);
+ * const pictures = usePictures((avatar) => messaging.readAttachment(avatar), avatars);
  */
 export function usePictures(
   read: (id: string) => Promise<PictureRead>,
