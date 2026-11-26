@@ -20,8 +20,8 @@ page are in
 | --- | --- |
 | Public name | `engine.<your domain>`, in the same Cloudflare account as Paperclip's |
 | Unit override | `/etc/systemd/system/halonic-engine.service.d/public.conf`: `serve --public-origin` |
-| Access application | `engine.<your domain>`, every path: Paperclip's policy plus a service token per desktop |
-| Rate-limiting rule | `POST /api/pair` and `POST /api/devices/code` on `engine.<your domain>` |
+| Access application | `engine.<your domain>`, every path: Paperclip's policy plus the engine desktops' service tokens, by tag or by name |
+| Rate-limiting rule | `POST /api/pair`, `POST /api/devices/code` and `POST /api/login` on `engine.<your domain>` |
 | Tunnel route | `engine.<your domain>`, path `^/api/`, to `http://127.0.0.1:4747` |
 
 The steps go in this order on purpose: the name gets its Access application and
@@ -88,23 +88,42 @@ application:
 - Policies, two of them:
   1. **Allow**, with the same rules as Paperclip's main application, so only
      the board's identities get in with a browser.
-  2. **Service Auth**, including the service tokens of the board's desktops
-     (made below). A desktop calls the server with no browser, so this is its
-     way through.
+  2. **Service Auth**, including only the engine desktops' service tokens: the
+     **Service Token Tag** selector with a tag that only those tokens carry,
+     such as `halonic-engine`, or the **Service Token** selector naming each
+     token. Never **Any Access Service Token**: that selector admits every
+     service token in the Cloudflare account, now and later. A desktop calls
+     the server with no browser, so this is its way through.
 - Add no bypass policy for `/api/*`. On Paperclip's name the API bypasses
   Access because the desktop engine calls it; here `/api/*` is the whole name,
   so a bypass would leave nothing behind Access.
 
-Then make one service token per desktop, under Access, Service auth, Service
-tokens. Name it after the desktop, and copy its client ID and client secret
-straight into that desktop's pairing dialog in step 6; Cloudflare shows the
-secret only once. Keep the token nowhere else: no file, note or task. The
-desktop stores both in its keychain and sends them only to
-`https://engine.<your domain>`.
+Check that the Service Auth policy shows the tag or the token names, not
+"Any Access Service Token".
+
+The board makes the service tokens in the Cloudflare dashboard, never the
+server session or an agent: Cloudflare's API answer carries the client secret,
+which would then sit in a transcript. Make each desktop's token in step 6,
+right before pairing it, not now, so its secret is kept nowhere in between.
 
 To cut one desktop off, revoke its token here: Access refuses it before the
-server sees the request. When a token is rotated, enter the new pair in the
-same server setting on that desktop; it doesn't need to pair again.
+server sees the request. Also take its device session away on the server, so a
+later way in that doesn't pass through Access, such as a tailnet, refuses it
+too:
+
+```sh
+engine serve devices --dir /srv/halonic-engine/workspace
+engine serve devices --dir /srv/halonic-engine/workspace --revoke <device id>
+```
+
+The first lists the devices with their IDs, the second signs that one out.
+
+If the serve password may be known too, set a new one as in part 1's step 4.
+That ends every device session, pairing code and pairing request, so every
+desktop pairs again.
+
+When a token is rotated, enter the new pair in the same server setting on that
+desktop; it doesn't need to pair again.
 
 ## 3. Limit pairing at Cloudflare
 
@@ -116,13 +135,18 @@ address on its own, before the request reaches the server.
 Under Security, WAF, Rate limiting rules, add one rule for the zone:
 
 - If incoming requests match:
-  `http.host eq "engine.<your domain>" and http.request.method eq "POST" and http.request.uri.path in {"/api/pair" "/api/devices/code"}`
+  `http.host eq "engine.<your domain>" and http.request.method eq "POST" and http.request.uri.path in {"/api/pair" "/api/devices/code" "/api/login"}`
 - Count by IP, 5 requests per period, with the longest period and block time
   your plan offers.
 - Action: Block.
 
 `POST /api/pair/status` isn't in the rule: a desktop asks it every few seconds
-while it waits for Allow.
+while it waits for Allow. `POST /api/login` is in it, because it takes the
+password.
+
+Check that the zone's "Normalize incoming URLs" setting, under Rules,
+Settings, is on (the default), so a rule on a path also matches the same path
+written with `%2e` or `//`.
 
 ## 4. Get both reviews
 
@@ -136,6 +160,10 @@ Without both, stop here. Steps 1 to 3 change nothing anyone outside can reach.
 
 ## 5. Add the tunnel route
 
+First ask the server session to check the tunnel's last ingress rule, the
+catch-all: it must be `service: http_status:404`, so a path outside `/api/`
+reaches nothing. If it points at a service, stop and fix that first.
+
 In Cloudflare Zero Trust, under Networks, Tunnels, open the tunnel that
 fronts Paperclip and add a public hostname:
 
@@ -147,9 +175,18 @@ fronts Paperclip and add a public hostname:
 | Service | `http://127.0.0.1:4747` |
 
 Leave the HTTP Host header setting empty, so the server sees
-`engine.<your domain>`. Saving the route makes the name resolve. A path outside
-`/api/` falls through to the tunnel's last rule, which answers `404` without
-reaching the server.
+`engine.<your domain>`. Under its additional application settings, Access,
+turn on **Protect with Access** and pick the `engine.<your domain>`
+application from step 2. `cloudflared` then refuses any request without a
+valid Access token for that application, so the name stays closed even if the
+Access application is later changed, or another one, such as a wildcard name
+or a `/api/*` bypass like Paperclip's, comes to cover it.
+
+Saving the route makes the name resolve. A path outside `/api/` falls through
+to the tunnel's last rule, which answers `404` without reaching the server.
+That path rule keeps Studio's pages off the name, but it isn't a security
+boundary: `cloudflared` matches the path as it arrives, and the server resolves
+`/api/%2e%2e/x` to `/x`. Access and pairing are what keep callers out.
 
 ## 6. Check it
 
@@ -174,16 +211,28 @@ In a browser signed in to Access:
 
 On the server:
 
-6. Make a pairing code with `engine serve pair` (the `engine` helper from part
-   1) and pair the board's desktop through `https://engine.<your domain>`,
-   with its service token in the pairing dialog. The journal shows a `POST /api/pair` line
+6. The board makes the desktop's service token now, in the Cloudflare
+   dashboard under Access, Service auth, Service tokens: named after the
+   desktop, with the tag from step 2 (or added by name to the Service Auth
+   policy), and with an expiry, such as a year. Note on the deploy task the
+   token's name and when it ends, never its ID or secret. Cloudflare shows the
+   secret only once: paste the client ID and client secret straight into the
+   desktop's pairing dialog, and keep them nowhere else, no file, note or
+   task. The desktop stores both in its keychain and sends them only to
+   `https://engine.<your domain>`.
+
+   Then make a pairing code with
+   `engine serve pair --dir /srv/halonic-engine/workspace` (the `engine`
+   helper from part 1) and pair the desktop through
+   `https://engine.<your domain>`. The journal shows a `POST /api/pair` line
    with status `200`, and neither the code nor the token:
 
    ```sh
    journalctl -u halonic-engine --since '-15 min' | grep 'POST /api/pair'
    ```
 
-7. Ten wrong codes, then an eleventh:
+7. Ten wrong codes, then an eleventh. This locks pairing for 15 minutes, so
+   run it only after check 6:
 
    ```sh
    for try in 1 2 3 4 5 6 7 8 9 10 11; do curl -s -o /dev/null -w '%{http_code}\n' -H 'Host: engine.<your domain>' -H 'Content-Type: application/json' -d '{"code":"AAAA-AAAA","deviceName":"limit check"}' http://127.0.0.1:4747/api/pair; done
@@ -192,8 +241,8 @@ On the server:
    ```
 
    The loop prints `401` ten times, then `429`. The journal has at least one
-   `429` line and no `AAAA`. Run this after step 6: for the next 15 minutes the
-   server refuses every pairing code and every password typed again.
+   `429` line and no `AAAA`. For the next 15 minutes the server refuses every
+   pairing code and every password typed again.
 
 ## Deploy a new commit
 
@@ -202,9 +251,14 @@ Then repeat checks 1 and 4 from step 6.
 
 ## Roll back
 
-As in part 1. The device sessions stay in the profile folder, so the paired
-desktop stays signed in: after the restart it shows the server's messages
-again, without pairing. Repeat checks 1 and 4 from step 6.
+As in part 1, and only to a commit at or after `23a96a08f` (#6346), which logs
+every request. To go back further, take the name away first, as in the second
+way under Emergency off.
+
+The device sessions stay in the profile folder. The paired desktop stays
+signed in only if the older commit knows the version of that session record;
+then after the restart it shows the server's messages again, without pairing.
+If not, pair it again as in check 6. Repeat checks 1 and 4 from step 6.
 
 ## Emergency off
 
