@@ -3,6 +3,7 @@
 - Task: HAL-19027
 - Approval: Liam approved restoring a sign-in on open on HAL-18911 and HAL-19030; he reviews this PR and signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:e9Y07yhRq6WwpLcZMIhIYkfJbq0tpyfMaZ7cNMYWtPtSG53rFEMUZnRjhjeqh+uvfFRQF+qrO9jIf9Ue6VwjBQ==
 
 ## What changes
 
