@@ -1,6 +1,6 @@
 import { useId } from "react";
 import { type GridRow, useGridNavigation } from "../grid-navigation/use-grid-navigation.ts";
-import { ListHeading } from "../list-heading/list-heading.tsx";
+import { InsetListHeading, type ListHeadingInset } from "../list-heading/list-heading.tsx";
 import { usePresentation } from "../presentation/presentation.tsx";
 import { EmptyList, useFocusOnEmpty } from "./empty-list.tsx";
 import { boxClasses, type ListLook } from "./list-lines.ts";
@@ -74,7 +74,12 @@ export function List<Id extends string>({
   const emptyFocus = useFocusOnEmpty(showEmpty);
   const headingNode =
     heading === undefined ? null : (
-      <ListHeading id={headingId} {...heading} headingLevel={headingLevel} />
+      <InsetListHeading
+        id={headingId}
+        {...heading}
+        headingLevel={headingLevel}
+        inset={headingInset(look)}
+      />
     );
   const labelProps =
     heading === undefined ? { "aria-label": label } : { "aria-labelledby": headingId };
@@ -218,6 +223,11 @@ function GridTable<Id extends string>({
  */
 const plainSpacing = "border-spacing-x-0 border-spacing-y-1 -my-1";
 
+/** A heading starts where its rows' content does: 12px over plain rows, else 16px (HAL-19956). */
+function headingInset(look: ListLook): ListHeadingInset {
+  return look === "plain" ? "plain" : "default";
+}
+
 /** The rows' look: `plain` over `flush`, else the bordered box. */
 function lookOf(plain: boolean, flush: boolean): ListLook {
   if (plain) {
@@ -313,10 +323,11 @@ function Section<Id extends string>({
       {heading === undefined ? null : (
         <tr>
           <td colSpan={columns} className="p-0">
-            <ListHeading
+            <InsetListHeading
               id={headingId}
               {...heading}
               headingLevel={heading.headingLevel ?? headingLevel}
+              inset={headingInset(shared.look)}
             />
           </td>
         </tr>

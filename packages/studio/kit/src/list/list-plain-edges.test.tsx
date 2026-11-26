@@ -61,14 +61,37 @@ verifies("kit.list-plain-edges", () => {
     expect(classesOf(container.querySelector('[role="grid"]'))).not.toContain("-my-1");
   });
 
-  it("pads a plain List's loading rows by 12px, 4px apart, so nothing moves when the rows arrive", () => {
+  it("starts a plain List's headings at 12px and keeps a bordered List's at 16px", () => {
+    const heading = { name: "Needs you" };
+    const { container } = render(
+      <>
+        <List heading={heading} rows={rows} onOpen={() => undefined} plain />
+        <List
+          label="Grouped"
+          groups={[{ id: "today", heading: { name: "Today" }, rows }]}
+          onOpen={() => undefined}
+          plain
+        />
+        <List heading={{ name: "Notices" }} rows={rows} onOpen={() => undefined} />
+      </>,
+    );
+    const headingNamed = (name: string) =>
+      Array.from(container.querySelectorAll("h2, h3")).find((node) => node.textContent === name);
+    for (const name of ["Needs you", "Today"]) {
+      expect(classesOf(headingNamed(name))).toContain("px-3");
+      expect(classesOf(headingNamed(name))).not.toContain("px-4");
+    }
+    expect(classesOf(headingNamed("Notices"))).toContain("px-4");
+  });
+
+  it("pads a plain List's loading heading and rows by 12px, rows 4px apart, so nothing moves when the rows arrive", () => {
     vi.useFakeTimers();
     const loading = (plain: boolean) =>
       render(
         <List
           rows={[]}
-          label="Needs you"
           loading
+          heading={{ name: "Needs you" }}
           loadingLabel="Loading"
           skeleton={{ leading: "avatar" }}
           plain={plain}
@@ -78,7 +101,15 @@ verifies("kit.list-plain-edges", () => {
     const bordered = loading(false);
     act(() => vi.advanceTimersByTime(SKELETON_AFTER_MS));
     const rowsOf = (container: HTMLElement) =>
-      Array.from(container.querySelectorAll('[aria-busy="true"] [aria-hidden="true"] > div'));
+      Array.from(
+        container.querySelectorAll(
+          '[aria-busy="true"] [aria-hidden="true"] > div:not(.box-content)',
+        ),
+      );
+    const headingBar = (container: HTMLElement) =>
+      container.querySelector('[aria-busy="true"] [aria-hidden="true"].box-content');
+    expect(classesOf(headingBar(plainList))).toEqual(expect.arrayContaining(["px-3", "-mb-1"]));
+    expect(classesOf(headingBar(bordered))).toContain("px-4");
     expect(rowsOf(plainList)).toHaveLength(3);
     for (const row of rowsOf(plainList)) expect(classesOf(row)).toContain("px-3");
     expect(classesOf(rowsOf(plainList)[0]?.parentElement)).toEqual(

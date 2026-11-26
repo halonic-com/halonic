@@ -116,14 +116,14 @@ export function ListSkeleton({
       <div aria-busy="true">
         {wait === "early" ? null : (
           <>
-            {grouped ? <HeadingBar /> : null}
+            {grouped ? <HeadingBar look={look} /> : null}
             {/* Nothing in it takes focus, so it can clip the rows to the box's corners. */}
             <div
               aria-hidden="true"
               className={`overflow-hidden ${boxClasses[look]} ${skeletonSpacing(look)} ${columns === undefined ? "" : "@container"}`}
             >
               {/* The heading is the box's first line, as in the real List. */}
-              {heading === undefined ? null : <HeadingBar />}
+              {heading === undefined ? null : <HeadingBar look={look} />}
               {barWidths.map((widths, index) => {
                 const line = index === 0 ? "" : lineClasses[look].main;
                 const row = (
@@ -164,10 +164,15 @@ export function ListSkeleton({
   );
 }
 
-/** In the heading's place, at the height of its one line of caption text. */
-function HeadingBar() {
+/**
+ * In the heading's place, at the height of its one line of caption text, and at its inset: 12px
+ * in a `plain` List, else 16px (HAL-19956). In a `plain` List it takes back the 4px gap below it,
+ * since the real rows start right under the heading.
+ */
+function HeadingBar({ look }: { readonly look: ListLook }) {
+  const inset = look === "plain" ? "px-3 -mb-1" : "px-4";
   return (
-    <div aria-hidden="true" className="flex h-4 items-center px-4 pt-4 pb-1 box-content">
+    <div aria-hidden="true" className={`flex h-4 items-center ${inset} pt-4 pb-1 box-content`}>
       <SkeletonBar kind="heading" />
     </div>
   );
