@@ -256,6 +256,8 @@ output can include your home folder.
 
 - Use local models through Ollama, LM Studio, llama.cpp or vLLM, or cloud
   models with your own API key. No markup, no credits.
+- Agents ask for a model alias such as `fast`, so you change a model in one
+  place: [Choose a model for an agent](docs/how-to/choose-a-model-for-an-agent.md).
 - No account.
 - Halonic talks only to the models and services you set up. Local models keep
   your prompts on your computer.
