@@ -226,6 +226,12 @@ export const manifest: PaperclipPluginManifestV1 = {
         description:
           "The id of the task where problems open 6 hours on the same head are reported once as UNHANDLED, waking its holder (Chat with Chief). Empty: it only logs.",
       },
+      boardLineTask: {
+        type: "string",
+        title: "Board line task",
+        description:
+          "The id of the board's line to Chief, where an agent with a role that had no work in its first hour live is reported beside the UNHANDLED task (HAL-19641). Empty: only the UNHANDLED task.",
+      },
       handQueueBranches: {
         type: "array",
         title: "Branches merge control can't queue",

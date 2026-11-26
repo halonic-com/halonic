@@ -42,6 +42,7 @@ const live: WatchersSettings = {
   dryRun: false,
   wakeTasks: { Liam: "task-liam-chat", Julian: "task-julian-chat" },
   unhandledTask: "task-chief-chat",
+  boardLineTask: "task-board-line",
   handQueueBranches: [],
 };
 
@@ -89,6 +90,7 @@ verifies("paperclip.merge-watchers-reviewer-wake", () => {
       dryRun: true,
       wakeTasks: { Liam: "", Julian: "" },
       unhandledTask: "",
+      boardLineTask: "",
       handQueueBranches: [],
     });
     expect(
@@ -97,12 +99,14 @@ verifies("paperclip.merge-watchers-reviewer-wake", () => {
         liamWakeTask: " a ",
         julianWakeTask: "b",
         unhandledTask: 7,
+        boardLineTask: " task-board ",
         handQueueBranches: [" board/ ", 3, ""],
       }),
     ).toEqual({
       dryRun: false,
       wakeTasks: { Liam: "a", Julian: "b" },
       unhandledTask: "",
+      boardLineTask: "task-board",
       handQueueBranches: ["board/"],
     });
   });
