@@ -190,6 +190,7 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
       finalStates: Object.keys(workflow.states).filter(
         (stateId) => workflow.states[stateId]?.type === "final",
       ),
+      ...(workflow.start === undefined ? {} : { startField: workflow.start.field }),
     };
   }
 

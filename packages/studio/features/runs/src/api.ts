@@ -96,6 +96,11 @@ export interface RunWorkflow {
   readonly stepDescription: (stateId: string) => string | undefined;
   /** The ids of its final states, the endings it can reach; left out when not known. */
   readonly finalStates?: readonly string[];
+  /**
+   * The input field its start fills (`start.field`), such as `mail`; left out when it has no
+   * start. The Inbox quotes that input above a wait step's draft (`inbox.wait-context`).
+   */
+  readonly startField?: string;
 }
 
 /** What the routine that started a run says about it: its name, and when it runs. */
