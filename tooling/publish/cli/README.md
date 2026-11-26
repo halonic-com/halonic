@@ -24,11 +24,13 @@ gives you an older version. On Windows, run all of this inside
 PowerShell or Command Prompt.
 
 ```sh
-npm i -g halonic
+npm install -g halonic@latest
 halonic --version
 ```
 
-The last command prints `Halonic` and the version you installed.
+The last command prints `Halonic` and the version you installed. Keep the
+`@latest`: without it, an older Node.js quietly gets an empty placeholder
+with no `halonic` command.
 
 ## Try it in 5 minutes
 
