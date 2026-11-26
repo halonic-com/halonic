@@ -21,14 +21,22 @@ values gain the new words and nothing else; each still checks all it checked bef
   with the same text, so the test takes the innermost such span, the meta line itself, and still
   checks it wraps to two lines.
 
+Two active requirements whose words those tests check say so too: `inbox.page` names Needs you
+"Needs you, 2 waiting, 2 new" in its rule and its example, and `inbox.home` says Home's Needs you
+shows the page's rows without the unread mark, since Home doesn't say what is new. Nothing else in
+either changes.
+
 The pull request also fixes the second example of `inbox.header-avatar`, which Nora's review of
 #6615 found didn't match its test: the test opens an approval next to a person step and sees
-"1 of 2", not the second of two approvals and "2 of 2". The rule itself doesn't change. The plan
+"1 of 2", not the second of two approvals and "2 of 2"; "1 of 2" now sits before the new ··· button
+rather than at the header's end. The rule itself doesn't change. The plan
 was approved by Liam on HAL-19492.
 
 ## Covers
 
 - inbox.header-avatar
+- inbox.page
+- inbox.home
 - packages/studio/features/inbox/src/ui/inbox-page.test.tsx
 - packages/studio/features/inbox/src/ui/setup-row.test.tsx
 - packages/studio/features/inbox/src/ui/inbox-row-names.test.tsx

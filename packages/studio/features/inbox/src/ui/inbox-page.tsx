@@ -38,6 +38,7 @@ import type { InboxItem } from "../inbox-items.ts";
 import type { InboxNotices } from "../notices/inbox-notices.ts";
 import { mergeNotices } from "../notices/merge-notices.ts";
 import type { ProposalDecisions } from "../proposal-decisions.ts";
+import { readKey } from "../read-marks.ts";
 import type { InboxRequests } from "../request/inbox-requests.ts";
 import { DoneSection } from "./done-proposals.tsx";
 import {
@@ -195,7 +196,7 @@ export interface InboxViewProps {
 /**
  * The Inbox (flow-inbox 3.1, UX checklist 2.1, 2.3, 2.9 and 2.10): "Inbox", then Needs you, a
  * grid of what waits for you, setup items first, then newest first, with its count in the heading
- * ("Needs you, 2 waiting"), beside the open item's card. Nothing is open at first, unless Home's Needs you asked
+ * ("Needs you, 2 waiting, 1 new"), beside the open item's card. Nothing is open at first, unless Home's Needs you asked
  * for an item (`Inbox.requestOpen`) or a run's **Review in Inbox** for what the run waits on. Enter or a click opens a
  * row's card, which takes focus; once decided, the card stays, with **Next** to the next item.
  *
@@ -296,18 +297,22 @@ export function InboxView({
     else render();
   };
   const waitingOrder = [
-    ...state.items.filter(waits).map((item) => ({ key: item.key, items: 1, keys: [item.key] })),
+    ...state.items
+      .filter(waits)
+      .map((item) => ({ key: item.key, items: 1, keys: [readKey(item)] })),
     ...agent.order,
   ];
   // Opening an item marks it read; an agent's row, each of its cards (`inbox.read-marks`).
-  const reading = useReadMarks(inbox.readMarks, open?.key, agent.openItemKeys);
+  const reading = useReadMarks(inbox.readMarks, open, agent.openItemKeys);
+  const openKey = open?.key ?? agent.openKey;
+  const openWaiting = waitingOrder.find((row) => row.key === openKey);
   const sentCard = useSentRequestCard({
     items: state.items,
     openItem,
     sheetOpen: requestSheetOpen,
     announce,
   });
-  const place = placeOf(open?.key ?? agent.openKey, waitingOrder);
+  const place = placeOf(openKey, waitingOrder);
   const heading = openHeading(open, place !== null, agent.heading, now(), runFacts);
   const request = useRequestPane({
     inbox,
@@ -375,7 +380,7 @@ export function InboxView({
                   "in",
                 )
               }
-              {...currentRow(open?.key ?? agent.openKey)}
+              {...currentRow(openKey)}
               // The Messenger's plain rows (`inbox.plain-rows`); still a grid, so the arrows work.
               plain
               empty={
@@ -423,7 +428,7 @@ export function InboxView({
             back={onePane}
             place={place}
             close={close}
-            markUnread={() => reading.markUnread(close)}
+            markUnread={() => reading.markUnread(close, openWaiting)}
           />
         )}
         {/* Fills the pane under the header, so a card's body scrolls with its answers in sight. */}

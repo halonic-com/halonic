@@ -1,3 +1,14 @@
+import { type InboxItem, isRunItem } from "./inbox-items.ts";
+
+/**
+ * The key an item's read mark goes by. A run's item keeps its key when the run comes back to the
+ * same step (`inbox.live`), so its mark also names since when it waits, as the Inbox's answers do:
+ * the step waiting again is new again. Any other item goes by its key.
+ */
+export function readKey(item: InboxItem): string {
+  return isRunItem(item) ? `${item.key}@${item.since}` : item.key;
+}
+
 /** The part of the page's `localStorage` the read marks use. */
 export type ReadMarkStorage = Pick<Storage, "getItem" | "setItem">;
 

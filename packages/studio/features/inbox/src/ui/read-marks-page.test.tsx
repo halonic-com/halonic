@@ -77,6 +77,16 @@ async function press(element: Element | null | undefined) {
   await settled();
 }
 
+/** Picks **Mark as unread** in the open item's ··· header menu. */
+async function markUnread(root: HTMLElement) {
+  const header = root.querySelector('[data-pane="item"] header');
+  await press(header?.querySelector('button[aria-label^="More actions for"]'));
+  const entry = [...document.querySelectorAll("[role=menuitem]")].find(
+    (each) => each.textContent === "Mark as unread",
+  );
+  await press(entry);
+}
+
 verifies("inbox.read-marks", () => {
   it("says each item nobody opened is new, and opening one marks it read but keeps it", async () => {
     const root = await openInbox(inboxOf(fakeRuns([notes, invoice]).runs));
@@ -94,12 +104,7 @@ verifies("inbox.read-marks", () => {
   it("marks the open item unread from the header's menu, closes it and focuses its row", async () => {
     const root = await openInbox(inboxOf(fakeRuns([notes, invoice]).runs));
     await press(cell(root, "create_note"));
-    const header = root.querySelector('[data-pane="item"] header');
-    await press(header?.querySelector('button[aria-label^="More actions for"]'));
-    const entry = [...document.querySelectorAll("[role=menuitem]")].find(
-      (each) => each.textContent === "Mark as unread",
-    );
-    await press(entry);
+    await markUnread(root);
     expect(root.querySelector('[data-pane="item"] header')).toBeNull();
     expect(document.activeElement).toBe(cell(root, "create_note"));
     expect(isUnread(root, "create_note")).toBe(true);
@@ -146,5 +151,39 @@ verifies("inbox.read-marks", () => {
     const again = await openInbox(inboxOf(fakeRuns([notes]).runs, new StoredReadMarks(storage)));
     expect(isUnread(again, "create_note")).toBe(false);
     expect(heading(again)).toBe("Needs you, 1 waiting");
+  });
+
+  it("says a step is new again when the run comes back to it", async () => {
+    const step = waitingRun("r3", { waitingFor: { title: "Approve this reply?", body: "" } });
+    const marks = new StoredReadMarks(null);
+    const first = await openInbox(inboxOf(fakeRuns([step]).runs, marks));
+    await press(cell(first, "Approve this reply?"));
+    unmountAll();
+
+    const back = { ...step, lastWaitingAt: "2026-11-10T11:30:00.000Z" };
+    const again = await openInbox(inboxOf(fakeRuns([back]).runs, marks));
+    expect(isUnread(again, "Approve this reply?")).toBe(true);
+    expect(heading(again)).toBe("Needs you, 1 waiting, 1 new");
+  });
+
+  it("marks a bundle's card that still waits unread, not one answered while it was open", async () => {
+    const messaging = new FakeAgentMessaging({ now });
+    const source = messaging.addSource({ label: "Paperclip · Acme", provider: "paperclip" });
+    const chief = messaging.addAgent(source.id, { name: "Chief" });
+    const from = { kind: "agent", agent: chief.id, name: "Chief" } as const;
+    const ship = messaging.addInboxItem(source.id, { question: "Ship 0.2 today?", from });
+    const move = messaging.addInboxItem(source.id, { question: "Move the board meeting?", from });
+    const marks = new StoredReadMarks(null);
+    const root = await openInbox(inboxOf(fakeRuns([]).runs, marks), messaging);
+    await press(cell(root, "2 cards from Chief"));
+    await act(async () => {
+      await messaging.answer(move.id, { kind: "reply", text: "Yes, Friday." });
+    });
+    await settled();
+
+    await markUnread(root);
+    expect(marks.isRead(`agent:${ship.id}`)).toBe(false);
+    expect(marks.isRead(`agent:${move.id}`)).toBe(true);
+    expect(heading(root)).toBe("Needs you, 1 waiting, 1 new");
   });
 });

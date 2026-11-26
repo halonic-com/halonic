@@ -14,7 +14,7 @@ When an item is open, the Inbox shall show a header over its card, as the Messen
   and the card under it starts with "Chief · Chief of Staff asks" and has no picture.
 - Given an approval and a person step that wait,
   when you open the approval,
-  then the header shows the stamp at 40px before its title, and "1 of 2" at its end.
+  then the header shows the stamp at 40px before its title, and "1 of 2" before its ··· button.
 - Given the same question from Chief, open,
   when it is answered,
   then the header's line reads "Paperclip · Acme · Chief", with no "Waiting" and no place.
