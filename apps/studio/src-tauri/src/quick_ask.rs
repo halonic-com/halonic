@@ -19,7 +19,8 @@ use std::sync::{Mutex, MutexGuard, PoisonError};
 use serde_json::Value;
 use tauri::plugin::TauriPlugin;
 use tauri::{
-    AppHandle, Manager, Monitor, PhysicalPosition, PhysicalSize, Runtime, Webview, WebviewWindow,
+    AppHandle, Manager, Monitor, PhysicalPosition, PhysicalSize, RunEvent, Runtime, Webview,
+    WebviewWindow, WindowEvent,
 };
 use tauri_plugin_global_shortcut::Shortcut;
 
@@ -47,13 +48,25 @@ struct Keys {
 }
 
 /// The `quick-ask` plugin, whose commands build.rs names, so each needs its
-/// capability.
+/// capability. It registers the saved keys at start and closes the box
+/// after the last other window, as the feedback plugin does for its keys.
 pub fn commands<R: Runtime>() -> TauriPlugin<R> {
     tauri::plugin::Builder::new("quick-ask")
         .invoke_handler(tauri::generate_handler![hide, shortcut, shortcut_set])
         .setup(|app, _api| {
             app.manage(QuickAsk::default());
+            register_saved(app);
             Ok(())
+        })
+        .on_event(|app, event| {
+            if let RunEvent::WindowEvent {
+                label,
+                event: WindowEvent::Destroyed,
+                ..
+            } = event
+            {
+                window_closed(app, label);
+            }
         })
         .build()
 }

@@ -47,10 +47,6 @@
 //! capability names, so it gets no command either (`server_session_brief.rs`).
 //! The feedback shortcut's windows get only the `feedback` plugin's
 //! commands (capabilities/desktop-feedback-*.json, `feedback_capture.rs`).
-//! Quick ask's box (`--app ask`, `quick_ask.rs`) gets what the focused
-//! apps' windows get, and `plugin:quick-ask|hide`
-//! (capabilities/desktop-quick-ask-window.json); only Studio's window reads
-//! and changes its keys (capabilities/desktop-quick-ask-shortcut.json).
 
 #[cfg(desktop)]
 mod action_parts;
@@ -164,8 +160,7 @@ pub fn run() {
     if raised_start::refused() {
         return;
     }
-    // Outside `shell`, so the tests' apps claim neither: one instance, and
-    // the global keys of the feedback shortcut and quick ask.
+    // Outside `shell`, so the tests' apps claim neither: one instance, and the global keys.
     #[cfg(desktop)]
     let builder = global_keys::keys(focused_apps::single_instance(Builder::default()));
     #[cfg(mobile)]
@@ -273,8 +268,6 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             notification_clicks::listen(app.handle());
             #[cfg(desktop)]
             background_start::after_tray(app.handle(), background, tray::start(app.handle()));
-            #[cfg(desktop)]
-            quick_ask::register_saved(app.handle());
             Ok(())
         })
         // A page that reloads or closes can't end its agent host streams
@@ -310,8 +303,6 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
                 engine::end_page(window.app_handle(), window.label());
                 #[cfg(desktop)]
                 engines::window_closed(window.app_handle(), window.label());
-                #[cfg(desktop)]
-                quick_ask::window_closed(window.app_handle(), window.label());
                 http_fetch::end_page_calls(window.app_handle(), window.label());
                 #[cfg(desktop)]
                 actions::end_page(window.app_handle(), window.label());
