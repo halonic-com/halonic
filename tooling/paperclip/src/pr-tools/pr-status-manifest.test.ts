@@ -17,6 +17,7 @@ function pull(comments: readonly string[], files: readonly string[]) {
     [`${pulls}/4588`]: {
       ...(recorded[`${pulls}/4588`] as object),
       head: { sha: head, ref: "mateo/HAL-1-plugin", repo: { full_name: repo } },
+      user: { login: "halonic-dev" },
       additions: 40,
       deletions: 10,
     },

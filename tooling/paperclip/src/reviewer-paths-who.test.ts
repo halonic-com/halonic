@@ -20,6 +20,7 @@ function gitHubWith(branch: string, files: readonly string[]): GitHubGet {
     additions: 100,
     deletions: 20,
     head: { sha: "a".repeat(40), ref: branch, repo: { full_name: repo } },
+    user: { login: "halonic-dev" },
     base: { ref: "main" },
   };
   const answers: Readonly<Record<string, unknown>> = {

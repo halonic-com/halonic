@@ -35,6 +35,7 @@ function pr4588(
     [`${pulls}/4588`]: {
       ...(recorded[`${pulls}/4588`] as object),
       head: { sha: head, ref, repo: headRepo },
+      user: { login: "halonic-dev" },
       title: "feat(engine): the engine contract",
       additions: 120,
       deletions: 30,

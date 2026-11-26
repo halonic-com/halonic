@@ -57,19 +57,21 @@ export function fastTrackVerified(pull: GatePull, settings: MergeSettings): bool
   );
 }
 
+/** Release bases, as the live Merger names them (`gate.js`, 26 Nov 09:11 UTC). */
+const releaseBase = /^(release|changeset-release|hotfix)\//;
+
 /**
- * Why a pull request on another base waits. A base that is an open pull
- * request's branch is a stack: it queues once that one merges. Any other
- * base, such as `release/*`, never reaches `main` by itself (#6416, the live
- * Merger's since 26 Nov 09:11 UTC, HAL-19508). With the open list unread (a
- * replayed pass), the base counts as a stack, as before.
+ * Why a pull request on another base waits, in the live Merger's words
+ * (HAL-19779). A release base never reaches `main` by itself (#6416,
+ * HAL-19508). A base that is an open pull request's branch is a stack: it
+ * queues once that one merges. Any other base, or one with the open list
+ * unread (a replayed pass), counts as a stack too.
  */
-function baseReason(snapshot: MergeSnapshot, base: string): string {
-  const branches = [...(snapshot.open ?? []), ...snapshot.pulls].map((each) => each.branch);
-  if (snapshot.open === null || branches.includes(base)) {
-    return `targets ${base}, not main (stacked PR): it queues once its base merges and it is retargeted`;
+function baseReason(base: string): string {
+  if (releaseBase.test(base)) {
+    return `targets ${base}, not main (a release branch): retarget it to main, or the release captain merges it into the release branch`;
   }
-  return `targets ${base}, not main: retarget to main, or the release captain merges it into the release branch`;
+  return `targets ${base}, not main (stacked PR): it queues once its base merges and it is retargeted`;
 }
 
 /** The gate for one pull request. */
@@ -102,7 +104,7 @@ export function gateRow(snapshot: MergeSnapshot, pull: GatePull, settings: Merge
     );
   }
   if (pull.base !== "main") {
-    reasons.push(baseReason(snapshot, pull.base));
+    reasons.push(baseReason(pull.base));
   }
   if (pull.mergeable === "CONFLICTING") {
     reasons.push("conflicts with main: please rebase");

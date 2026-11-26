@@ -82,17 +82,24 @@ export interface PullOrigin {
   /** Whether the branch is in a fork. */
   readonly crossRepository: boolean;
   readonly labels: readonly string[];
+  /** The opener's login; null or missing when GitHub's answer didn't name one. */
+  readonly author?: string | null;
 }
 
 /** A team branch: `<agent>/HAL-<n>-<words>`, as the PR watcher reads it. */
 const teamBranch = /^[a-z]+\/HAL-\d+(-|$)/i;
 
+/** The account every agent opens pull requests with. */
+const teamAuthor = "halonic-dev";
+
 /**
  * Whether the team wrote the pull request (HAL-19283): a team branch in our
- * own repository. Bots, forks and the board's other branches aren't routine.
+ * own repository, opened by the team's account. Bots, forks, the board's
+ * other branches and an unknown author aren't routine (the live Merger's
+ * origin check since 26 Nov 09:17 UTC, HAL-19779).
  */
 export function writtenByTeam(origin: PullOrigin): boolean {
-  return !origin.crossRepository && teamBranch.test(origin.branch);
+  return !origin.crossRepository && origin.author === teamAuthor && teamBranch.test(origin.branch);
 }
 
 /** Branches that release, and the label that marks trust and sandbox work. */
