@@ -57,7 +57,8 @@ const windowTitleFile = "packages/studio/shell/src/window/window-title.ts";
 
 /**
  * Text the Studio basics steps read (HAL-18866): Welcome, the workspace switcher and its menu,
- * the window tabs and the window title. `words.test.ts` checks each is still in its file.
+ * the window tabs, folded or not, the narrow window's Places button and the window title.
+ * `words.test.ts` checks each is still in its file.
  */
 export const basicsText = {
   welcomeTitle: { text: "Halonic Studio", file: welcomeFile },
@@ -74,6 +75,8 @@ export const basicsText = {
     file: "packages/studio/features/workspace/src/switcher/workspace-menu.ts",
   },
   openTabs: { text: "Open tabs", file: "packages/studio/shell/src/tabs/window-tab-strip.tsx" },
+  foldedTabs: { text: " open tab", file: "packages/studio/shell/src/tabs/open-tabs-menu.tsx" },
+  placesButton: { text: "Places", file: "packages/studio/shell/src/frame/sidebar-slot.tsx" },
   appName: { text: "Halonic", file: windowTitleFile },
   titleSeparator: { text: " · ", file: windowTitleFile },
   settingsTitle: {

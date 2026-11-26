@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { button, type FakeStudio, fakeStudio } from "./fake-studio.test-helper.ts";
 import { closeWorkspace } from "./steps/close-workspace.ts";
 import { demoWorkspace, switcherXpath } from "./steps/demo-workspace.ts";
+import { placesButtonXpath } from "./steps/narrow-window.ts";
 import { tabXpath, windowTabs } from "./steps/window-tabs.ts";
 import { clickTestSteps } from "./steps.ts";
 import { keys } from "./webdriver.ts";
@@ -34,6 +35,27 @@ function studioWithTabs(counts: { newTab: number; close: number; reopen: number 
   button(studio, "main", keys.escape);
   button(studio, "main", `${keys.control}+w`, set(counts.close));
   button(studio, "main", `${keys.control}+${keys.shift}+t`, set(counts.reopen));
+  return studio;
+}
+
+/**
+ * The demo in the narrow window (studio-preview run 45731345493): the switcher is in the folded
+ * sidebar, and shows only once the Places button has opened the drawer.
+ */
+function studioOnFoldedDemo(menu: string): FakeStudio {
+  const studio = fakeStudio("Support reply");
+  studio.title = "Support reply · Acme · Halonic";
+  const drawer = (open: boolean) => {
+    studio.elements.set(placesButtonXpath(false), open ? 0 : 1);
+    studio.elements.set(placesButtonXpath(true), open ? 1 : 0);
+  };
+  drawer(false);
+  button(studio, "main", placesButtonXpath(false), () => {
+    drawer(true);
+    button(studio, "main", switcherXpath, () => setText(studio, menu));
+  });
+  button(studio, "main", placesButtonXpath(true), () => drawer(false));
+  button(studio, "main", keys.escape);
   return studio;
 }
 
@@ -87,6 +109,17 @@ verifies("studio-click-test.basics-steps", () => {
       expect(studio.clicks).toEqual([closeSettingsLabel, switcherXpath, keys.escape]);
     });
 
+    it("opens the folded sidebar for the switcher in the narrow window, and folds it again", async () => {
+      const studio = studioOnFoldedDemo(`${demoRow} ${openFolderRow.text}`);
+      await expect(demoWorkspace.run(studio.context)).resolves.toEqual({ passed: true });
+      expect(studio.clicks).toEqual([
+        placesButtonXpath(false),
+        switcherXpath,
+        keys.escape,
+        placesButtonXpath(true),
+      ]);
+    });
+
     it("fails as NO_SWITCHER when no workspace switcher shows", async () => {
       const studio = fakeStudio("Support reply");
       studio.title = "Support reply · Acme · Halonic";
@@ -107,6 +140,16 @@ verifies("studio-click-test.basics-steps", () => {
         `${keys.control}+${keys.shift}+t`,
         `${keys.control}+w`,
       ]);
+    });
+
+    it("counts the folded tabs badge in the narrow window, which has no strip", async () => {
+      const studio = fakeStudio("Home 1 open tab");
+      const show = (text: string) => () => setText(studio, `Home ${text}`);
+      button(studio, "main", buttonLabels.newTab.text, show("2 open tabs"));
+      button(studio, "main", keys.escape);
+      button(studio, "main", `${keys.control}+w`, show("1 open tab"));
+      button(studio, "main", `${keys.control}+${keys.shift}+t`, show("2 open tabs"));
+      await expect(windowTabs.run(studio.context)).resolves.toEqual({ passed: true });
     });
 
     it("fails as TAB_NOT_CLOSED when Ctrl W leaves the tab", async () => {
@@ -160,6 +203,17 @@ verifies("studio-click-test.basics-steps", () => {
       const outcome = await closeWorkspace.run(studio.context);
       expect(outcome).toMatchObject({ passed: false, code: "NO_WELCOME" });
       expect(outcome.passed ? "" : outcome.note).toContain(`no "${demoTag.text}".`);
+    });
+
+    it("opens the folded sidebar for the workspace menu in the narrow window", async () => {
+      const studio = studioOnFoldedDemo("");
+      button(studio, "main", buttonLabels.closeWorkspace.text, () => setText(studio, welcome));
+      await expect(closeWorkspace.run(studio.context)).resolves.toEqual({ passed: true });
+      expect(studio.clicks).toEqual([
+        placesButtonXpath(false),
+        switcherXpath,
+        buttonLabels.closeWorkspace.text,
+      ]);
     });
 
     it("fails as NO_CLOSE_WORKSPACE when the menu has no such row", async () => {

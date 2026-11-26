@@ -2,6 +2,7 @@ import type { Step, StepContext, StepOutcome } from "../runner.ts";
 import { lastWords, missingParts, waitForText } from "../screen.ts";
 import { keys } from "../webdriver.ts";
 import { basicsText } from "../words.ts";
+import { foldSidebar, unfoldSidebar } from "./narrow-window.ts";
 import { onWorkspaceWithoutSettings } from "./open-demo.ts";
 
 /**
@@ -42,6 +43,7 @@ export const demoWorkspace: Step = {
       wanted.every((part) => text.includes(part)) ? true : undefined,
     );
     await context.driver.pressKeys([keys.escape]);
+    await foldSidebar(context);
     if (listed.value === true) return { passed: true };
     const missing = missingParts(wanted, listed.text);
     const note = `The workspace menu has no ${missing}. Screen: ${lastWords(listed.text)}`;
@@ -51,16 +53,19 @@ export const demoWorkspace: Step = {
 
 /**
  * Opens the workspace menu from the sidebar's switcher, waiting until the window shows a workspace.
+ * In the narrow window the sidebar is folded into the Places drawer, so it opens that first.
  * Fails as `NO_SWITCHER` when no switcher shows.
  */
 export async function openWorkspaceMenu(context: StepContext): Promise<StepOutcome> {
   let whyNot: string | undefined = "never tried";
   for (let tries = 0; tries < 10 && whyNot !== undefined; tries += 1) {
     if (tries > 0) await context.sleep(2_000);
-    whyNot = await context.driver.click(switcherXpath).then(
-      () => undefined,
-      (error: unknown) => (error instanceof Error ? error.message : String(error)),
-    );
+    whyNot = await unfoldSidebar(context)
+      .then(() => context.driver.click(switcherXpath))
+      .then(
+        () => undefined,
+        (error: unknown) => (error instanceof Error ? error.message : String(error)),
+      );
   }
   if (whyNot === undefined) return { passed: true };
   return { passed: false, code: "NO_SWITCHER", note: `No workspace switcher (${whyNot}).` };

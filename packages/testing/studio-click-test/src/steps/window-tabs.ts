@@ -2,6 +2,7 @@ import type { Step, StepContext } from "../runner.ts";
 import { clickWhenShown, pollEveryMs } from "../screen.ts";
 import { keys } from "../webdriver.ts";
 import { basicsText, buttonLabels } from "../words.ts";
+import { foldedTabCount } from "./narrow-window.ts";
 import { onWorkspaceWithoutSettings } from "./open-demo.ts";
 
 /** Every tab in the title bar's strip. */
@@ -12,7 +13,8 @@ const tabWaitMs = 10_000;
 /**
  * Step 9: the window tabs. **+** (New tab) adds a tab, Ctrl W closes the active one and
  * Ctrl Shift T brings it back, each counted in the Open tabs strip. **+** also opens Ctrl K over
- * the new tab, a modal dialog that keeps the window keys off, so Esc closes it first.
+ * the new tab, a modal dialog that keeps the window keys off, so Esc closes it first. The narrow
+ * window folds the strip into "N open tabs ▾", whose count stands in for the strip's.
  */
 export const windowTabs: Step = {
   id: "window-tabs",
@@ -21,7 +23,7 @@ export const windowTabs: Step = {
   run: async (context) => {
     const workspace = await onWorkspaceWithoutSettings(context);
     if (!workspace.passed) return workspace;
-    const before = await context.driver.count(tabXpath);
+    const before = await countTabs(context);
     if (before === 0) return { passed: false, code: "NO_TABS", note: "No Open tabs strip." };
     if (!(await clickWhenShown(context, buttonLabels.newTab.text, tabWaitMs))) {
       return { passed: false, code: "NO_NEW_TAB_BUTTON", note: "No New tab button." };
@@ -45,12 +47,19 @@ export const windowTabs: Step = {
 
 /** Counts the tabs until there are `wanted`, for at most {@link tabWaitMs}, and returns the last count. */
 async function waitForTabs(context: StepContext, wanted: number): Promise<number> {
-  let count = await context.driver.count(tabXpath);
+  let count = await countTabs(context);
   for (let waited = 0; count !== wanted && waited < tabWaitMs; waited += pollEveryMs) {
     await context.sleep(pollEveryMs);
-    count = await context.driver.count(tabXpath);
+    count = await countTabs(context);
   }
   return count;
+}
+
+/** The tabs in the Open tabs strip, or, with no strip, the count on the folded tabs badge. */
+async function countTabs(context: StepContext): Promise<number> {
+  const inStrip = await context.driver.count(tabXpath);
+  if (inStrip > 0) return inStrip;
+  return foldedTabCount(await context.driver.pageText());
 }
 
 function tabsFailure(code: string, action: string, before: number, after: number) {
