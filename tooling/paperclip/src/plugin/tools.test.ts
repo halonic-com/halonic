@@ -59,6 +59,10 @@ function fakeTools(
     },
     config: { get: async () => config },
     secrets: { resolve: async () => "test-token" },
+    agents: {
+      get: async (agentId: string) =>
+        agentId === runCtx.agentId ? { id: agentId, urlKey: "mateo" } : null,
+    },
     http: {
       fetch: async (url: string) => {
         sent.push(url);
@@ -88,6 +92,7 @@ verifies("paperclip.pr-tools", () => {
       expect(manifest.tools?.map((tool) => tool.name)).toEqual([
         "pr_status",
         "ci_failures",
+        "rebase_pr",
         "queue_state",
         "ready_for_review",
         "board_asks",
@@ -185,5 +190,36 @@ verifies("paperclip.agent-tools-metrics", () => {
       },
     ]);
     expect(sent.length).toBeGreaterThan(0);
+  });
+});
+
+verifies("paperclip.rebase-pr", () => {
+  /** #4605 on Mateo's own branch in the repository, level with main. */
+  const own4605 = {
+    ...pr4605,
+    "/repos/halonic-com/halonic/pulls/4605": {
+      ...(recording("green")["/repos/halonic-com/halonic/pulls/4605"] as object),
+      head: {
+        sha: "1939fbf169fbda4b54561c1d29e52650527d0cf9",
+        ref: "mateo/HAL-15342-inbox-retry-focus",
+        repo: { full_name: "halonic-com/halonic" },
+      },
+    },
+  };
+
+  test("rebase_pr answers for the calling agent's own pull request, with GET requests only", async () => {
+    const { call, sent } = fakeTools({ githubToken: token }, own4605);
+    const result = await call("rebase_pr", { pr: 4605 });
+    expect(result.error).toBeUndefined();
+    expect(result.data).toMatchObject({ number: 4605, verdict: "up-to-date" });
+    expect(result.content).toContain("up-to-date: it's up to date with main");
+    expect(sent.every((url) => url.startsWith("https://api.github.com/"))).toBe(true);
+  });
+
+  test("rebase_pr refuses a pull request whose branch names no agent of the repository", async () => {
+    const { call } = fakeTools({ githubToken: token }, pr4605);
+    const result = await call("rebase_pr", { pr: 4605 });
+    expect(result.data).toMatchObject({ verdict: "refused" });
+    expect(result.content).toContain("its branch names no agent, or it comes from a fork");
   });
 });

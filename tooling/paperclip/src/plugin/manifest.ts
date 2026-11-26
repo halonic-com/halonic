@@ -3,7 +3,11 @@ import { workerAgentsRouteKey } from "../worker-agents/keys.ts";
 import { workerReadTables } from "../worker-agents/tables.ts";
 import { chiefLine } from "./chief-line-settings.ts";
 import { mergeControlJob } from "./merge-control-declaration.ts";
-import { ciFailuresDeclaration, prStatusDeclaration } from "./pr-tool-declarations.ts";
+import {
+  ciFailuresDeclaration,
+  prStatusDeclaration,
+  rebasePrDeclaration,
+} from "./pr-tool-declarations.ts";
 import { fastTrackConfigProperties, mergeControlConfigProperties } from "./queue-settings.ts";
 import { precheckWakeJob, readyForReviewDeclaration } from "./ready-for-review-declaration.ts";
 import { stackRebaseConfigProperties } from "./stack-rebase-settings.ts";
@@ -379,6 +383,7 @@ export const manifest: PaperclipPluginManifestV1 = {
   tools: [
     prStatusDeclaration,
     ciFailuresDeclaration,
+    rebasePrDeclaration,
     {
       name: "queue_state",
       displayName: "Merge queue",

@@ -290,7 +290,7 @@ worst first. Open PRs say "Not available yet" until HAL-16251.
 ## PR tools
 
 Agent tools (HAL-15920, B1) that replace a handful of `gh` calls with
-one. `pr_status` and `ci_failures` read GitHub with GET requests only, through the same reader and
+one. `pr_status`, `ci_failures` and `rebase_pr` read GitHub with GET requests only, through the same reader and
 token as the watcher, and give up after 10 s (each request after 8 s),
 inside the about 15 s the tool bridge gives a call.
 
@@ -318,6 +318,19 @@ inside the about 15 s the tool bridge gives a call.
   redirect to another host, which the reader refuses so the token stays
   on api.github.com, and they need the Actions read permission. About 3
   requests, plus one per failed job.
+- **`rebase_pr(pr, repo?)`** (HAL-18984, token plan Track B on HAL-18938):
+  whether the calling agent's own pull request (its branch starts with the
+  agent's url key, in the same repository) needs a rebase on its base and
+  can get one: `rebase` when it's open, not queued, mergeable and behind;
+  `up-to-date` when it's level; otherwise `refused`, with the reason. It
+  names the approvals on the head and whether they carry over the rebase
+  (the Merger's carry-over: not for a security pull request by its paths, a
+  release one, Liam's own or a stacked one whose base isn't `main`), and warns that an approved pull request is
+  rebased only for a conflict or when the queue asks. It reads as
+  `pr_status` does and sends no write: GitHub's rebase waits for the board's
+  decision on the branch credential (HAL-18091), so for a `rebase` or a
+  conflict it gives the commands to run in the agent's clone, only for
+  branch names of letters, digits and `._/-`.
 - `my_prs()` moved to the workspace plugin (workspace-company, HAL-17968);
   the gh guard still points `gh pr list` and `gh pr status` to it there.
 - **`queue_state()`** (Board Checker addendum on HAL-15997, for the Merger

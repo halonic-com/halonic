@@ -1,4 +1,5 @@
 import type {
+  PluginAgentsClient,
   PluginConfigClient,
   PluginHttpClient,
   PluginSecretsClient,
@@ -9,6 +10,7 @@ import type {
 import { type CiTarget, ciFailures, ciFailuresText } from "../pr-tools/ci-failures.ts";
 import { prStatus, statusText } from "../pr-tools/pr-status.ts";
 import { queueState, queueStateText } from "../pr-tools/queue-state.ts";
+import { rebaseCheck, rebaseCheckText } from "../pr-tools/rebase-pr.ts";
 import { type GitHubGet, gitHubReader } from "../pr-watcher/github.ts";
 import type { Snapshot } from "../snapshot/shape.ts";
 import { loadSnapshot, type StateApi } from "../snapshot/store.ts";
@@ -17,8 +19,8 @@ import { manifest } from "./manifest.ts";
 import { countingGet, type MetricsApi, writeMetrics } from "./metrics.ts";
 
 /**
- * The agent tools `pr_status`, `ci_failures` and `queue_state`. Like the watcher,
- * `pr_status` and `ci_failures` read GitHub with GET requests only, through `ctx.http`, with
+ * The agent tools `pr_status`, `ci_failures`, `rebase_pr` and `queue_state`. Like the watcher,
+ * `pr_status`, `ci_failures` and `rebase_pr` read GitHub with GET requests only, through `ctx.http`, with
  * the company's read-only token. `queue_state` reads the watcher's last
  * snapshot from plugin state and sends no request at all. `my_prs` moved to
  * the workspace plugin (HAL-17968).
@@ -30,6 +32,8 @@ export interface ToolsApi extends MetricsApi, StateApi {
   readonly config: PluginConfigClient;
   readonly secrets: Pick<PluginSecretsClient, "resolve">;
   readonly http: PluginHttpClient;
+  /** `rebase_pr` reads the calling agent's url key, which its own branches start with. */
+  readonly agents: Pick<PluginAgentsClient, "get">;
 }
 
 /**
@@ -183,7 +187,7 @@ async function fromSnapshot(
   return recordCall(ctx, name, runCtx, result, 0);
 }
 
-/** Registers `pr_status`, `ci_failures` and `queue_state` as the manifest declares them. */
+/** Registers `pr_status`, `ci_failures`, `rebase_pr` and `queue_state` as the manifest declares them. */
 export function registerTools(ctx: ToolsApi): void {
   const declared = new Map((manifest.tools ?? []).map((tool) => [tool.name, tool]));
   const declaration = (name: string) => {
@@ -213,6 +217,21 @@ export function registerTools(ctx: ToolsApi): void {
       }
       const failures = await ciFailures(get, target);
       return { content: ciFailuresText(failures), data: failures };
+    }),
+  );
+
+  ctx.tools.register("rebase_pr", declaration("rebase_pr"), (params, runCtx) =>
+    run(ctx, "rebase_pr", runCtx, async (get, repos) => {
+      const target = readPrParams(params, repos);
+      if (typeof target === "string") {
+        return { error: `rebase_pr: ${target}` };
+      }
+      const agent = await ctx.agents.get(runCtx.agentId, runCtx.companyId);
+      if (agent === null) {
+        return { error: "rebase_pr: the calling agent isn't one of the company's agents." };
+      }
+      const check = rebaseCheck(await prStatus(get, target.repo, target.number), agent.urlKey);
+      return { content: rebaseCheckText(check), data: check };
     }),
   );
 

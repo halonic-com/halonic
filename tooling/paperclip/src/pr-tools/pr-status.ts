@@ -9,7 +9,12 @@ import {
   inMergeQueue,
   latestReview,
 } from "../pr-watcher/github.ts";
-import { julianRebaseRefusal, type RoutedPull, reviewerFor } from "../reviewer-paths.ts";
+import {
+  isSecurityPath,
+  julianRebaseRefusal,
+  type RoutedPull,
+  reviewerFor,
+} from "../reviewer-paths.ts";
 import type { Routing } from "../routing.ts";
 import { type Approval, approvals, type PullComment } from "./approvals.ts";
 import { type ChangedFile, linesByFile, readManifests } from "./manifests.ts";
@@ -30,6 +35,8 @@ export interface PrStatus {
   readonly state: "open" | "merged" | "closed";
   readonly draft: boolean;
   readonly branch: string;
+  /** The branch it merges into. */
+  readonly base: string;
   readonly author: string | undefined;
   readonly task: string | undefined;
   readonly head: string;
@@ -50,6 +57,8 @@ export interface PrStatus {
    */
   readonly reviewer: string;
   readonly changedLines: number;
+  /** The first changed file that makes it a security pull request by its paths (`isSecurityPath`). */
+  readonly securityFile: string | undefined;
   /** The newest review finding on the head, as `<id> at <time>`. */
   readonly latestReviewFinding: string | undefined;
   /**
@@ -185,6 +194,7 @@ export async function prStatus(
     state,
     draft: pull.draft === true,
     branch: pull.head.ref,
+    base: pull.base.ref,
     author,
     task: ours ? taskOfBranch(pull.head.ref) : undefined,
     head,
@@ -196,6 +206,7 @@ export async function prStatus(
     approvedOnHead: found.some((approval) => approval.counts),
     reviewer,
     changedLines,
+    securityFile: paths.find(isSecurityPath),
     latestReviewFinding: review === undefined ? undefined : `${review.id} at ${review.at}`,
     requiredWorkflows: required,
   };
