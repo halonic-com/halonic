@@ -12,6 +12,12 @@ export type PairingTrouble =
   /** 401 to `POST /api/pair`: the code is wrong, used or older than 10 minutes. */
   | "code_refused";
 
+/** Whether the server answers this device: as a messaging source's state names it. */
+export type ServerReach = "online" | "offline" | "signed-out";
+
+/** How long the state route waits for the server's answer before it calls it offline. */
+export const checkTimeoutMs = 5000;
+
 /** What `POST /api/pair` gave. */
 export type PairStart =
   | { kind: "pending"; pendingId: string; checkCode: string; expiresAt: string }
@@ -110,12 +116,29 @@ export class ServerPairingClient {
     return response?.status === 204 || response?.status === 401;
   }
 
+  /**
+   * `GET /api/messaging/sources` with the device's own token, as the hub's
+   * server client lists them (`server.messaging-client`): `online` when it
+   * answers, `signed-out` for a 401 (the server ended the pairing), and
+   * `offline` for no answer within {@link checkTimeoutMs} or any other.
+   */
+  async check(token: string): Promise<ServerReach> {
+    if (!/^[\x21-\x7e]+$/.test(token)) return "signed-out";
+    const signal = AbortSignal.timeout(checkTimeoutMs);
+    const response = await this.#send("GET", "/api/messaging/sources", undefined, token, signal);
+    await response?.body?.cancel().catch(() => undefined);
+    if (response === undefined) return "offline";
+    if (response.status === 401) return "signed-out";
+    return response.ok ? "online" : "offline";
+  }
+
   /** One request; `undefined` when nothing answered or the answer was a redirect. */
   async #send(
     method: "GET" | "POST",
     path: string,
     body?: unknown,
     token?: string,
+    signal?: AbortSignal,
   ): Promise<Response | undefined> {
     const headers: Record<string, string> = { accept: "application/json" };
     if (body !== undefined) headers["content-type"] = "application/json";
@@ -126,6 +149,7 @@ export class ServerPairingClient {
         headers,
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
         redirect: "manual",
+        ...(signal === undefined ? {} : { signal }),
       });
       if (response.status >= 300 && response.status < 400) {
         await response.body?.cancel();

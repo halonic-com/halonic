@@ -30,6 +30,8 @@ export class FakePairingServer {
   status = () => json({ state: "waiting", expiresAt }, 202);
   cancel = () => new Response(null, { status: 204 });
   signOut = () => new Response(null, { status: 204 });
+  /** The messaging sources the state route's check reads with the device token. */
+  sources = () => json({ items: [] });
 
   /** The device token Allow hands out: the canary. */
   readonly token: string;
@@ -55,6 +57,7 @@ export class FakePairingServer {
       "/api/pair/status": this.status,
       "/api/pair/cancel": this.cancel,
       "/api/devices/sign-out": this.signOut,
+      "/api/messaging/sources": this.sources,
     };
     return (answers[path] ?? (() => json({ code: "not_found" }, 404)))();
   };
@@ -119,25 +122,30 @@ export interface PairingDesktop extends Desktop {
   raw(name: string, body: unknown, site?: string): Promise<{ status: number; text: string }>;
 }
 
+/** How {@link startPairingDesktop} starts the host. */
+export interface PairingDesktopOptions {
+  /** Whether the host has a keychain; it has one by default. */
+  keychain?: boolean;
+  /** This computer's own name; none by default, so no test reads the runner's host name. */
+  computerName?: string;
+}
+
 /**
  * {@link startDesktop} with the server engine's pairing routes on a host of
  * their own, over the same messaging, setting and keychain. Without a
  * keychain the routes answer 409 `keychain_needed`.
  */
-export async function startPairingDesktop(options = { keychain: true }): Promise<PairingDesktop> {
+export async function startPairingDesktop(
+  options: PairingDesktopOptions = {},
+): Promise<PairingDesktop> {
   const desktop = await startDesktop();
   const pairingServer = new FakePairingServer(desktop.server.token);
   const pairingKeychain = new PairingKeychain(desktop.keychain, desktop.server.token);
   const log = (text: string) => desktop.logged.push(text);
-  const pairing = options.keychain
-    ? new ServerEnginePairing({
-        messaging: desktop.messaging,
-        setting: desktop.setting,
-        keychain: pairingKeychain,
-        log,
-        fetch: pairingServer.fetch,
-      })
-    : undefined;
+  const pairing =
+    options.keychain === false
+      ? undefined
+      : pairingOf(desktop, pairingKeychain, pairingServer, () => options.computerName);
   const token = randomLaunchToken();
   const host: HostServer = await startHostServer(
     token,
@@ -168,6 +176,23 @@ export async function startPairingDesktop(options = { keychain: true }): Promise
       await desktop.close();
     },
   };
+}
+
+/** The host's pairing over the desktop's messaging and setting, as a host started again would make it. */
+export function pairingOf(
+  desktop: Desktop,
+  keychain: SecretStore,
+  server: FakePairingServer,
+  computerName: () => string | undefined = () => undefined,
+): ServerEnginePairing {
+  return new ServerEnginePairing({
+    messaging: desktop.messaging,
+    setting: desktop.setting,
+    keychain,
+    log: (text) => desktop.logged.push(text),
+    fetch: server.fetch,
+    computerName,
+  });
 }
 
 function json(body: unknown, status = 200): Response {

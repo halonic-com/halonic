@@ -16,6 +16,10 @@ import { pairPollMs } from "./pair-flow.ts";
 const startedAt = Date.parse("2026-11-24T14:00:00.000Z");
 const address = "https://halonic.acme.test";
 const server = { engine: "server", address, pairing: "kept" } as const;
+const sessionEndsAt = "2027-02-22T14:00:00.000Z";
+/** What the host answers once it checked the server at 14:02. */
+const checked = (state: "online" | "offline" | "signed-out") =>
+  ({ ...server, sessionEndsAt, server: { state, checkedAt: "2026-11-24T14:02:00.000Z" } }) as const;
 
 beforeEach(() => {
   polyfillDialog();
@@ -78,6 +82,33 @@ verifies("connections.engine-row", () => {
       expect(dialog()?.querySelector("input")?.value).toBe(address);
     });
 
+    it("shows when it checked and the pairing's end from the host, as after a restart", async () => {
+      const { root } = await showRow({ state: checked("online") });
+      expect(root.textContent).toContain("Connected");
+      expect(root.textContent).toContain("Checked 14:02 · pairing ends 22 Feb 2027");
+    });
+
+    it("shows Offline with the server's callout when the server isn't answering", async () => {
+      const { root } = await showRow({ state: checked("offline") });
+      expect(root.textContent).toContain("Offline");
+      expect(root.textContent).toContain("Offline, as of 14:02");
+      expect(root.textContent).toContain(
+        "The server isn't answering. Inbox and Messenger show what was read last; answering is off until it's back.",
+      );
+      expect(button("Pair again", root)).toBeUndefined();
+      expect(radio(root, "Server")?.checked).toBe(true);
+    });
+
+    it("says Signed out, with Pair again, when the server ended the pairing", async () => {
+      const { root } = await showRow({ state: checked("signed-out") });
+      expect(root.textContent).toContain("Signed out");
+      expect(root.textContent).toContain("pairing expired or removed");
+      expect(root.textContent).toContain(
+        "This computer's pairing with halonic.acme.test has ended.",
+      );
+      expect(button("Pair again", root)).toBeDefined();
+    });
+
     it("says it couldn't read this computer's pairing from the keychain", async () => {
       const { root } = await showRow({ state: { ...server, pairing: "unreadable" } });
       expect(root.textContent).toContain(
@@ -95,7 +126,6 @@ verifies("connections.engine-row", () => {
 
   describe("pairing", () => {
     it("opens Pair with a server on Server, and stays on This computer until paired", async () => {
-      const sessionEndsAt = "2027-02-22T14:00:00.000Z";
       const answers: FakeServerEngineAnswers = { status: [{ state: "paired", sessionEndsAt }] };
       const { root, said, engine } = await showRow(answers);
       await pick(radio(root, "Server"));
@@ -104,16 +134,24 @@ verifies("connections.engine-row", () => {
       const [addressField, codeField] = [...(dialog()?.querySelectorAll("input") ?? [])];
       typeInto(addressField ?? null, address);
       typeInto(codeField ?? null, "7KQ2M9XF");
-      engine.answers.state = server;
+      engine.answers.state = checked("online");
       await press(button("Continue", dialog() ?? document));
       act(() => vi.advanceTimersByTime(pairPollMs));
       await settle();
       expect(dialog()).toBeNull();
       expect(radio(root, "Server")?.checked).toBe(true);
-      expect(root.textContent).toContain("Checked 14:00 · pairing ends 22 Feb 2027");
+      expect(root.textContent).toContain("Checked 14:02 · pairing ends 22 Feb 2027");
       expect(said).toEqual([
         "Paired with halonic.acme.test. Inbox and Messenger now read from the server.",
       ]);
+    });
+
+    it("fills in this computer's name as the host gives it", async () => {
+      const state = { engine: "this-computer", computerName: "Ada's MacBook" } as const;
+      const { root } = await showRow({ state });
+      await pick(radio(root, "Server"));
+      const fields = [...(dialog()?.querySelectorAll("input") ?? [])];
+      expect(fields.at(-1)?.value).toBe("Ada's MacBook");
     });
 
     it("says so when a cancelled pairing couldn't be dropped on the server", async () => {
@@ -151,6 +189,16 @@ verifies("connections.engine-row", () => {
       expect(root.textContent).toContain(
         "Switched to this computer. The pairing is still valid on the server.",
       );
+    });
+
+    it("names the computer as the server lists it, never the name filled in by default", async () => {
+      const state = { ...server, computerName: "Work laptop" };
+      const { root, engine } = await showRow({ state, left: { stillValid: true } });
+      await pick(radio(root, "This computer"));
+      engine.answers.state = { engine: "this-computer" };
+      await press(button("Use this computer", dialog() ?? document));
+      expect(root.textContent).toContain("Remove Work laptop with halonic serve devices");
+      expect(root.textContent).not.toContain("Halonic Studio");
     });
 
     it("says what the keychain kept", async () => {

@@ -1,4 +1,11 @@
-import { Callout, Field, RadioGroup, type RadioOption, StatusChip } from "@halonicjs/studio-kit";
+import {
+  Callout,
+  Field,
+  RadioGroup,
+  type RadioOption,
+  StatusChip,
+  type StatusChipTone,
+} from "@halonicjs/studio-kit";
 import type { ServerEngine, ServerEngineView } from "@halonicjs/studio-services";
 import { useCallback, useEffect, useState } from "react";
 import { withCode } from "../connect/connect-steps.tsx";
@@ -9,11 +16,18 @@ import { type EngineNote, SwitchBackDialog } from "./switch-back-dialog.tsx";
 
 type Engine = "this-computer" | "server";
 
-/** The paired server as this window last heard it: when it checked, and the pairing's end. */
-interface Paired {
-  readonly checkedAt: string;
-  readonly sessionEndsAt: string;
-}
+/** The host's answer while the engine is a server. */
+type OnServer = Extract<ServerEngineView, { engine: "server" }>;
+
+/** What the row shows under Server: the server's own answer, or why the pairing can't be used. */
+type Shown = "online" | "offline" | "signed-out" | "unreadable";
+
+const chipTones: Record<Shown, StatusChipTone> = {
+  online: "success",
+  offline: "attention",
+  "signed-out": "danger",
+  unreadable: "danger",
+};
 
 /** The address's host, as the row shows it: `halonic.example.com`. */
 function hostOf(address: string): string {
@@ -41,7 +55,6 @@ export interface EngineRowProps {
  */
 export function EngineRow({ engine, announce, now }: EngineRowProps) {
   const [state, setState] = useState<ServerEngineView>();
-  const [paired, setPaired] = useState<Paired>();
   const [pairing, setPairing] = useState<{ readonly again?: { readonly address: string } }>();
   const [switching, setSwitching] = useState(false);
   const [note, setNote] = useState<EngineNote>();
@@ -60,19 +73,21 @@ export function EngineRow({ engine, announce, now }: EngineRowProps) {
   };
 
   const onPaired = useCallback(
-    (done: { readonly address: string; readonly sessionEndsAt: string }) => {
+    (done: { readonly address: string }) => {
       setPairing(undefined);
       setNote(undefined);
-      setPaired({ checkedAt: new Date(now?.() ?? Date.now()).toISOString(), ...done });
       announce(words.pairedLine(hostOf(done.address)));
       read();
     },
-    [announce, now, read],
+    [announce, read],
   );
 
   if (state === undefined) return null;
   const engineNow: Engine = state.engine === "server" ? "server" : "this-computer";
   const host = state.engine === "server" ? hostOf(state.address) : "";
+  // The name the server lists this computer as, or on This computer its own name for P1.
+  const name =
+    (state.engine === "keychain-needed" ? undefined : state.computerName) ?? words.NAME_FALLBACK;
 
   const pick = (picked: Engine) => {
     if (picked === engineNow) return;
@@ -90,8 +105,7 @@ export function EngineRow({ engine, announce, now }: EngineRowProps) {
             state.engine === "server" ? (
               <ServerLine
                 host={host}
-                pairing={state.pairing}
-                paired={paired}
+                state={state}
                 onPairAgain={() => setPairing({ again: { address: state.address } })}
               />
             ) : null,
@@ -111,7 +125,7 @@ export function EngineRow({ engine, announce, now }: EngineRowProps) {
         <PairDialog
           engine={engine}
           again={pairing.again}
-          computerName={words.NAME_FALLBACK}
+          computerName={name}
           onClose={() => setPairing(undefined)}
           onPaired={onPaired}
           onCancelFailed={() =>
@@ -124,14 +138,11 @@ export function EngineRow({ engine, announce, now }: EngineRowProps) {
         <SwitchBackDialog
           engine={engine}
           host={host}
-          name={words.NAME_FALLBACK}
+          name={name}
           onDone={(done, switched) => {
             setSwitching(false);
             if (done !== undefined) tell(done);
-            if (switched) {
-              setPaired(undefined);
-              read();
-            }
+            if (switched) read();
           }}
         />
       ) : null}
@@ -139,37 +150,63 @@ export function EngineRow({ engine, announce, now }: EngineRowProps) {
   );
 }
 
+/** What the row shows: the server's answer while the keychain holds the pairing; a 401 is signed out. */
+function shownOf(state: OnServer): Shown {
+  if (state.pairing === "missing") return "signed-out";
+  if (state.pairing === "unreadable") return "unreadable";
+  return state.server?.state ?? "online";
+}
+
+/** The meta line after the host: "Checked 14:02 · pairing ends 23 Feb 2027", or none. */
+function metaOf(state: OnServer, shown: Shown): string | undefined {
+  const asOf = state.server?.checkedAt;
+  switch (shown) {
+    case "online":
+      if (asOf === undefined) return undefined;
+      return state.sessionEndsAt === undefined
+        ? connectWords.stateMeta({ kind: "online", asOf }, undefined)
+        : words.connectedMeta(asOf, state.sessionEndsAt);
+    case "offline":
+      return asOf === undefined
+        ? undefined
+        : connectWords.stateMeta({ kind: "offline", asOf }, undefined);
+    case "signed-out":
+      return words.SIGNED_OUT_META;
+    default:
+      return undefined;
+  }
+}
+
 /** Under Server: the host, its chip and meta line, and a callout when it can't be used. */
 function ServerLine({
   host,
-  pairing,
-  paired,
+  state,
   onPairAgain,
 }: {
   readonly host: string;
-  readonly pairing: "kept" | "missing" | "unreadable";
-  readonly paired: Paired | undefined;
+  readonly state: OnServer;
   readonly onPairAgain: () => void;
 }) {
-  const kept = pairing === "kept";
-  const meta = kept
-    ? paired && words.connectedMeta(paired.checkedAt, paired.sessionEndsAt)
-    : pairing === "missing" && words.SIGNED_OUT_META;
+  const shown = shownOf(state);
+  const meta = metaOf(state, shown);
   const pairAgain = { label: words.PAIR_AGAIN, onClick: onPairAgain };
   return (
     <div className="flex flex-col gap-3 rounded-md border border-border p-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-mono text-body-strong text-fg">{host}</span>
-        <StatusChip tone={kept ? "success" : "danger"} dot>
-          {connectWords.stateChips[kept ? "online" : "signed-out"]}
+        <StatusChip tone={chipTones[shown]} dot>
+          {connectWords.stateChips[shown === "unreadable" ? "signed-out" : shown]}
         </StatusChip>
       </div>
-      {meta ? <p className="m-0 text-small text-fg-muted">{meta}</p> : null}
-      {kept ? null : (
+      {meta === undefined ? null : <p className="m-0 text-small text-fg-muted">{meta}</p>}
+      {shown === "offline" ? (
+        <Callout tone="attention">{words.SERVER_OFFLINE_CALLOUT}</Callout>
+      ) : null}
+      {shown === "signed-out" || shown === "unreadable" ? (
         <Callout tone="danger" action={pairAgain}>
-          {pairing === "missing" ? words.signedOutCallout(host) : words.KEYCHAIN_UNREADABLE}
+          {shown === "signed-out" ? words.signedOutCallout(host) : words.KEYCHAIN_UNREADABLE}
         </Callout>
-      )}
+      ) : null}
     </div>
   );
 }

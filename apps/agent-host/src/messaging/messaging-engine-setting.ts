@@ -18,7 +18,20 @@ export const messagingEngineFileName = "messaging-engine.json";
 const settingVersion = 1;
 
 /** Where a workspace's messaging runs: on this computer (the default), or on a Halonic server. */
-export type MessagingEngine = { kind: "this-computer" } | { kind: "server"; address: string };
+export type MessagingEngine =
+  | { kind: "this-computer" }
+  | ({ kind: "server"; address: string } & Paired);
+
+/** What pairing gave, kept with a server setting; a file written before S8c has neither. */
+export interface Paired {
+  /** The name this computer paired as, which the server's device list shows. */
+  computerName?: string;
+  /** When the server ends the pairing, as the server said on Allow. */
+  sessionEndsAt?: string;
+}
+
+/** The server's own pattern for a device's name (`server.device-pairing`). */
+export const computerNamePattern = /^[^\p{Cc}\p{Cf}]{1,80}$/u;
 
 /** A workspace's setting, with the key that names its folder in the profile and its server pairing. */
 export interface WorkspaceEngineSetting {
@@ -38,7 +51,8 @@ export interface MessagingEngineSettingOptions {
 /**
  * Each workspace's messaging engine (`agent-host.messaging-engine`), kept in
  * the profile at `workspaces/<key>/messaging-engine.json` as
- * `{ "version": 1, "engine": "server", "address": "https://…" }`. The key
+ * `{ "version": 1, "engine": "server", "address": "https://…" }`, with the
+ * `computerName` and `sessionEndsAt` pairing gave when it has them. The key
  * comes from the profile's `workspaceFolders`, never from the workspace's
  * own files, so a `git pull` can't change the engine. The file never holds
  * a token: the device token lives in the keychain (`ServerPairings`).
@@ -71,15 +85,18 @@ export class MessagingEngineSetting {
   }
 
   /**
-   * Saves "Server" at `address`: a temporary file with mode 0600, renamed
-   * over the setting, so a reader sees the old setting or the new one.
+   * Saves "Server" at `address`, with what pairing gave: a temporary file
+   * with mode 0600, renamed over the setting, so a reader sees the old
+   * setting or the new one. A name or an end it wouldn't read back is left out.
    *
    * @throws ServerClientError when the address breaks the server client's rule; nothing is written
    */
-  async useServer(workspace: string, address: string): Promise<void> {
+  async useServer(workspace: string, address: string, paired: Paired = {}): Promise<void> {
     const origin = checkedServerOrigin(address);
     const { folder, file } = await this.#place(workspace);
-    const text = `${JSON.stringify({ version: settingVersion, engine: "server", address: origin }, null, 2)}\n`;
+    const kept = pairedOf(paired.computerName, paired.sessionEndsAt);
+    const setting = { version: settingVersion, engine: "server", address: origin, ...kept };
+    const text = `${JSON.stringify(setting, null, 2)}\n`;
     const temporary = `${file}.${randomUUID()}.tmp`;
     await makePrivateFolder(folder);
     try {
@@ -116,21 +133,24 @@ export class MessagingEngineSetting {
       return this.#thisComputer("it isn't JSON");
     }
     if (!isRecord(setting)) return this.#thisComputer("it isn't a setting");
-    const { version, engine, address } = setting;
+    const { version, engine, address, computerName, sessionEndsAt } = setting;
     if (typeof version === "number" && version > settingVersion) {
       return this.#thisComputer(`a newer Halonic wrote it (version ${version})`);
     }
-    const fields = Object.keys(setting).sort().join(",");
     if (
       version !== settingVersion ||
       engine !== "server" ||
       typeof address !== "string" ||
-      fields !== "address,engine,version"
+      Object.keys(setting).some((field) => !settingFields.has(field))
     ) {
       return this.#thisComputer("it isn't a setting this version of Halonic reads");
     }
     try {
-      return { kind: "server", address: checkedServerOrigin(address) };
+      return {
+        kind: "server",
+        address: checkedServerOrigin(address),
+        ...pairedOf(computerName, sessionEndsAt),
+      };
     } catch {
       return this.#thisComputer("its server address isn't https, nor plain http to this computer");
     }
@@ -143,6 +163,22 @@ export class MessagingEngineSetting {
     );
     return { kind: "this-computer" };
   }
+}
+
+/** The fields a setting may hold; `computerName` and `sessionEndsAt` are optional. */
+const settingFields = new Set(["version", "engine", "address", "computerName", "sessionEndsAt"]);
+
+/** The name and the end a file holds; one that isn't a name or a date is left out, never trusted. */
+function pairedOf(computerName: unknown, sessionEndsAt: unknown): Paired {
+  const name = typeof computerName === "string" && computerNamePattern.test(computerName);
+  const ends =
+    typeof sessionEndsAt === "string" &&
+    sessionEndsAt.length <= 64 &&
+    Number.isFinite(Date.parse(sessionEndsAt));
+  return {
+    ...(name ? { computerName: computerName as string } : {}),
+    ...(ends ? { sessionEndsAt: sessionEndsAt as string } : {}),
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

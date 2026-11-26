@@ -40,7 +40,10 @@ type Answer = { status: number; body: unknown };
  * token never goes to the profile's secrets file. No answer holds the token.
  *
  * - `POST …/state` with `{ workspace }` answers `{ engine: "this-computer" }`
- *   or `{ engine: "server", address, pairing: "kept" | "missing" | "unreadable" }`.
+ *   with this computer's `computerName`, or `{ engine: "server", address,
+ *   pairing: "kept" | "missing" | "unreadable" }` with the `computerName`
+ *   and `sessionEndsAt` pairing gave, and while the pairing is kept
+ *   `server: { state: "online" | "offline" | "signed-out", checkedAt }`.
  * - `POST …/pair` with `{ workspace, address, code, deviceName }` answers
  *   `{ state: "waiting", pairingId, checkCode, expiresAt }`, or the reason it
  *   didn't start: `address_not_allowed`, `unreachable`, `not_halonic`,
