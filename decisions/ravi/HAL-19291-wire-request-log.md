@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19291 (the task's plan, with Julian's security conditions on it; Liam approves this note in review, and Julian gives his security OK on the task)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:41CR0os/bnaG1d1yC0BajywJZvvkBvzmHjP7Y6rph042uxbNIqZjMmMTPKLYs2YMQ9ow1obrMrbJXSOPg9AFAQ==
 
 The CLI's engine now keeps each local integration's requests in the profile, and a trusted Build chat about that integration reads them through the agent host. Three requirements change with it, each only stricter:
 
