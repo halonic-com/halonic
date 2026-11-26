@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19492
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:DT+Z18ugrR2s0gRaTmOsd8L4DYR62ZHfN6QRuIRxwW28tnCaniPepWgLtazkug/BJEnBbAwrKSUluQ4KDPHzDw==
 
 The read and unread rule the board approved on HAL-19192 (Sofia's sketches of 26 Nov, 07:58 and
 09:08) now reaches the Inbox (`inbox.read-marks`, new): an item nobody opened has the unread row
