@@ -48,6 +48,8 @@ interface TableRequest {
   leftover?: Uint8Array | undefined;
   /** A `pull` is being answered; a second one at the same time breaks the protocol. */
   pulling: boolean;
+  /** The kit has logged the request: it has an answer, or it failed. */
+  logged: boolean;
 }
 
 /** Halonic's record of the runner's requests. */
@@ -118,6 +120,7 @@ export class RequestTable {
       call: frame.call,
       abort: new AbortController(),
       pulling: false,
+      logged: false,
     };
     this.#live.set(frame.id, entry);
     this.#send(frame, body, entry).catch((error) => this.#broke(error));
@@ -174,9 +177,17 @@ export class RequestTable {
   /**
    * The kit's log entries of the requests call `call` made while it ran,
    * oldest first: only entries the kit logged for a `fetch` frame of that
-   * call, so two calls running at once never see each other's.
+   * call, so two calls running at once never see each other's. `undefined`
+   * while a request of the call is still waiting for its answer, because the
+   * kit hasn't logged it yet: it may reach the service after the call ends,
+   * and a list without it could make a refusal look like the call's last
+   * request. A request whose head has come is logged, so a body still
+   * streaming doesn't count.
    */
-  requestsOf(call: number): readonly ConnectorCallRequest[] {
+  requestsOf(call: number): readonly ConnectorCallRequest[] | undefined {
+    for (const entry of this.#live.values()) {
+      if (entry.call === call && !entry.logged) return undefined;
+    }
     return [...(this.#logged.get(call) ?? [])];
   }
 
@@ -213,7 +224,10 @@ export class RequestTable {
         body,
         auth: frame.auth.map(toPlacement),
         signal: entry.abort.signal,
-        onLogged: (logged) => this.#log(frame.call, logged),
+        onLogged: (logged) => {
+          entry.logged = true;
+          this.#log(frame.call, logged);
+        },
       });
     } catch (error) {
       if (!this.#isLive(frame.id, entry)) return;

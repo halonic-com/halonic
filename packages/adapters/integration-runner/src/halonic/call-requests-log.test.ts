@@ -21,11 +21,26 @@ const policy = {
   tokens: [],
 };
 
-/** The kit's real client over a server that answers each path with its status. */
-function realKit(statuses: Readonly<Record<string, number>>) {
+/**
+ * The kit's real client over a server that answers each path with its
+ * status, and never answers a path in `hanging`, calling `onHang` instead:
+ * the request waits until it is aborted.
+ */
+function realKit(
+  statuses: Readonly<Record<string, number>>,
+  hanging: readonly string[] = [],
+  onHang: () => void = () => undefined,
+) {
   const transport: HttpClient = {
-    fetch: async (url) => {
-      const status = statuses[new URL(url).pathname] ?? 200;
+    fetch: async (url, init = {}) => {
+      const path = new URL(url).pathname;
+      if (hanging.includes(path)) {
+        onHang();
+        return new Promise<Response>((_resolve, reject) => {
+          init.signal?.addEventListener("abort", () => reject(init.signal?.reason));
+        });
+      }
+      const status = statuses[path] ?? 200;
       return new Response(`{"note":"${replyCanary}"}`, { status });
     },
   };
@@ -113,6 +128,24 @@ verifies("integration-runner.call-requests-log", () => {
     await finish();
     expect(slow.callRequests?.map((request) => request.status)).toStrictEqual([429]);
     expect(forbidden.callRequests?.map((request) => request.status)).toStrictEqual([403]);
+  });
+
+  it("carries none while a request of the call still waits for its answer", async () => {
+    let postArrived: () => void = () => undefined;
+    const postReachedTheKit = new Promise<void>((resolve) => {
+      postArrived = resolve;
+    });
+    const tool: Tool = async (host) => {
+      await (await host.http.fetch("https://api.example.com/v1/items")).text();
+      // Never answered: it may still reach the service after the call ends.
+      void host.http.fetch("https://api.example.com/v1/orders", { method: "POST" }).catch(() => {});
+      await postReachedTheKit;
+      throw new Error("Too many requests.");
+    };
+    const kit = realKit({ "/v1/items": 429 }, ["/v1/orders"], () => postArrived());
+    const { run } = await bridged(tool, kit);
+    const error = await failure(run());
+    expect(error).not.toHaveProperty("callRequests");
   });
 
   it("holds no placed secret and nothing of the reply", async () => {

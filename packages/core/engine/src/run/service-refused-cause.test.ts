@@ -142,6 +142,38 @@ verifies("engine.tool-result-cause", () => {
     });
   });
 
+  it("keeps the outcome unknown when an earlier POST broke off without an answer", async () => {
+    const result = await callOn(mailFailing([request("POST", undefined), request("GET", 429)]));
+
+    expect(result.outcome).toBe("unknown");
+    expect(result.cause).toStrictEqual({
+      code: "service-refused",
+      why: "slow-down",
+      retries: 0,
+      sentOnce: true,
+    });
+  });
+
+  it("counts an earlier POST the kit refused as never sent", async () => {
+    const refused = request("POST", undefined, { refusal: "secret-in-request" });
+
+    const result = await callOn(mailFailing([refused, request("GET", 429)]));
+
+    expect(result).toMatchObject({ outcome: "error", cause: { why: "slow-down" } });
+  });
+
+  it("logs unknown with no cause when the error carries no requests", async () => {
+    const mail = new ScriptedConnector("mail", [sendMail]);
+    mail.callTool = async () => {
+      throw Object.assign(new Error("Too many requests."), { name: "RunnerToolError" });
+    };
+
+    const result = await callOn(mail);
+
+    expect(result.outcome).toBe("unknown");
+    expect(result).not.toHaveProperty("cause");
+  });
+
   it("logs an error when only GET requests got through before the refusal", async () => {
     const result = await callOn(mailFailing([request("GET", 200), request("POST", 403)]));
 

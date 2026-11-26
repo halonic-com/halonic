@@ -30,8 +30,11 @@ export interface CallTableHooks {
   onIdle(): void;
   /** A call stopped running: it answered, was cancelled, or failed with the runner. */
   onEnded(call: number): void;
-  /** Halonic's log of the requests the call made so far, oldest first. */
-  requestsOf(call: number): readonly ConnectorCallRequest[];
+  /**
+   * Halonic's log of the requests the call made so far, oldest first, or
+   * `undefined` while one of them still waits for its answer.
+   */
+  requestsOf(call: number): readonly ConnectorCallRequest[] | undefined;
 }
 
 interface TableCall {
@@ -150,14 +153,15 @@ export class CallTable {
   }
 
   /**
-   * The call's requests, when it made any and the secret filter changes none
-   * of their texts. One it changes would leave a gap, which could put the
-   * wrong request last, so then the call has none: no cause beats a wrong one.
+   * The call's requests, when it made any, none still waits for its answer,
+   * and the secret filter changes none of their texts. A missing or changed
+   * one would leave a gap, which could put the wrong request last, so then
+   * the call has none: no cause beats a wrong one.
    */
   #unchangedRequests(
-    requests: readonly ConnectorCallRequest[],
+    requests: readonly ConnectorCallRequest[] | undefined,
   ): readonly ConnectorCallRequest[] | undefined {
-    if (requests.length === 0) return undefined;
+    if (requests === undefined || requests.length === 0) return undefined;
     const unchanged = requests.every(
       (request) =>
         this.#isUnchanged(request.method) &&

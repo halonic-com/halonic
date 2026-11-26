@@ -12,7 +12,7 @@ export interface ServiceRefusedCall {
   readonly cause: Extract<ToolFailureCause, { code: "service-refused" }>;
   /**
    * `error` when no earlier request of the call that could change something
-   * got through, so the call didn't do its work; else `unknown`.
+   * got through or broke off, so the call didn't do its work; else `unknown`.
    */
   readonly outcome: "error" | "unknown";
 }
@@ -42,7 +42,7 @@ export function serviceRefusedOf(
       ...refusal,
       ...(sentNothingTwice(requests) ? { sentOnce: true } : {}),
     },
-    outcome: earlier.some(changeGotThrough) ? "unknown" : "error",
+    outcome: earlier.some(mayHaveGoneThrough) ? "unknown" : "error",
   };
 }
 
@@ -71,14 +71,15 @@ function mayChange(request: ConnectorCallRequest): boolean {
   return !readMethods.has(request.method.toUpperCase());
 }
 
-/** A request that may change something, and that the service accepted (2xx) or moved on (3xx). */
-function changeGotThrough(request: ConnectorCallRequest): boolean {
-  return (
-    mayChange(request) &&
-    request.status !== undefined &&
-    request.status >= 200 &&
-    request.status < 400
-  );
+/**
+ * A request that may change something and may have reached the service: the
+ * service accepted it (2xx) or moved it on (3xx), or it broke off without an
+ * answer (no status), such as on a reset connection or a time-out. A request
+ * the kit refused never left, so it isn't one.
+ */
+function mayHaveGoneThrough(request: ConnectorCallRequest): boolean {
+  if (!mayChange(request) || request.refusal !== undefined) return false;
+  return request.status === undefined || (request.status >= 200 && request.status < 400);
 }
 
 /**

@@ -17,8 +17,12 @@ service, or the kit, refused the call's **last** request: `code: "service-refuse
   `connectorCallRequestsOf` (`ports.connector-call-requests`). Never the integration's message
   or the reply.
 - Outcome: `error` when no earlier request of the call other than a `GET` or `HEAD` got a
-  `2xx` or `3xx`, so the run goes on as for a tool that answered with an error; otherwise it
-  stays `unknown`, with the cause, and the run still waits for a person.
+  `2xx` or `3xx` or broke off without an answer (no status and no refusal from the kit: it may
+  have reached the service), so the run goes on as for a tool that answered with an error;
+  otherwise it stays `unknown`, with the cause, and the run still waits for a person. Counting
+  a request that broke off is Liam's change to his own rule, from his review of #6369.
+- A call with a request still waiting for its answer when it fails carries no requests at all,
+  so it gets no cause: that request may still reach the service.
 - `sentOnce: true` only when no request other than a `GET` or `HEAD` went out twice in the call.
 - The host's main part: the last two labels, or three under a two-part ending from
   `two-part-endings.ts` (one test per entry); IP addresses and `localhost` as they are; an
