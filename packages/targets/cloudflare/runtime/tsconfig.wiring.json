@@ -23,6 +23,7 @@
     "src/delete-scope-routes.test.ts",
     "src/limits-push.test.ts",
     "src/usage-meter-calls.test.ts",
+    "src/account-usage-calls.test.ts",
     "src/container-outbound.test.ts",
     "src/run-object-bridge.test.ts",
     "src/container-wiring.node.test.ts",
