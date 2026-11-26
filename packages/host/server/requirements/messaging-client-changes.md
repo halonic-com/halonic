@@ -22,6 +22,9 @@ Rationale: Studio's Inbox and Messenger stop following when `changes` ends, so a
 - Given a server that answers `changes` with 400,
   when the reader reads,
   then the client throws `bad-answer` and opens `changes` no second time.
+- Given a server that answers `send` with 503,
+  when a message is sent,
+  then the client throws `bad-answer` after one request and doesn't wait.
 - Given a reader that heard one change,
   when it stops reading,
   then the client opens `changes` no second time.
