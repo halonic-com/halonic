@@ -4,7 +4,7 @@ Owner: maya · Layer: core · Read the root `AGENTS.md` first; this file adds lo
 
 ## Scope
 
-ToolScript format name (the header schema, context types and artifact format follow).
+ToolScript header schema, context types and artifact format.
 
 This package may change only through tasks that name it. Its public API is `src/index.ts`;
 everything else is internal.

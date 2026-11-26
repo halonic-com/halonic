@@ -25,5 +25,9 @@
       "lines": 90,
       "branches": 85
     }
+  },
+  "dependencies": {
+    "@halonicjs/action-steppers": "workspace:*",
+    "@halonicjs/schema-kit": "workspace:*"
   }
 }
