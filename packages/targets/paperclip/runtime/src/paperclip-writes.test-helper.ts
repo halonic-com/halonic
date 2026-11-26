@@ -86,8 +86,9 @@ export function fakePaperclip(options: FakeHostOptions = {}) {
   const host = {
     issues,
     agents: { get: async () => null, list: async () => agents },
+    projects: { list: async () => [] },
     state: { get: async () => null },
-  } as unknown as Pick<RuntimeHost, "issues" | "agents" | "state">;
+  } as unknown as Pick<RuntimeHost, "issues" | "agents" | "projects" | "state">;
   return { host, received };
 }
 
@@ -113,7 +114,7 @@ export function writingTool(
  * are the tool file's `with`, or null for a tool file without one.
  */
 export async function callAction(
-  host: Pick<RuntimeHost, "issues" | "agents" | "state">,
+  host: Pick<RuntimeHost, "issues" | "agents" | "projects" | "state">,
   action: ToolActionName,
   params: unknown,
   settings: Record<string, unknown> | null = { mode: "write" },

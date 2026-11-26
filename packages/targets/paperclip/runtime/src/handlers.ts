@@ -1,5 +1,6 @@
 import type { Routing, Template, Tool, ToolActionName } from "@halonicjs/format";
 import { budgetsHandler } from "./budgets/budgets.ts";
+import { seatRulesHandler } from "./budgets/seat-rules.ts";
 import type { GitHubGet, GitHubQuery } from "./github.ts";
 import type { Capability, ToolResult } from "./host.ts";
 import type { PaperclipAccess } from "./paperclip-access.ts";
@@ -73,6 +74,7 @@ export const runtimeHandlers: ActionHandlers = {
   "paperclip.failed-runs": failedRunsHandler,
   "github.merge-queue": mergeQueueHandler,
   "paperclip.budgets": budgetsHandler,
+  "paperclip.seat-rules": seatRulesHandler,
   "github.merge-times": mergeTimesHandler,
   ...writeActionHandlers,
   "halonic.precheck": precheckHandler,

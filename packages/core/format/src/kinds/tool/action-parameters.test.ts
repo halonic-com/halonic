@@ -32,6 +32,7 @@ verifies("format.tool-action-parameters", () => {
       "paperclip.task task!,comments?,document?",
       "paperclip.failed-runs since?",
       "paperclip.budgets ",
+      "paperclip.seat-rules ",
       "paperclip.template id?",
       "paperclip.comment task!,body!",
       "paperclip.next-step task!,status!,comment!,monitor?,monitorInMinutes?,monitorRef?,monitorService?,monitorMaxChecks?,blockedBy?",

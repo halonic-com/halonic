@@ -80,7 +80,7 @@ function run(params: unknown, paperclip: Pick<RuntimeHost, "agents" | "issues">)
     companyId: "acme",
     now: new Date("2026-11-24T12:00:00Z"),
     paperclip: paperclipAccess(
-      { ...paperclip, state: { get: async () => null } },
+      { ...paperclip, projects: { list: async () => [] }, state: { get: async () => null } },
       handler.capabilities,
       { companyId: "acme", runId: "run-1" },
     ),

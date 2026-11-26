@@ -151,6 +151,7 @@ export const ToolActionChoice = s.discriminatedUnion("run", [
   actionChoice("paperclip.task"),
   actionChoice("paperclip.failed-runs"),
   actionChoice("paperclip.budgets"),
+  actionChoice("paperclip.seat-rules"),
   actionChoice("paperclip.template"),
   actionChoice("paperclip.comment"),
   actionChoice("paperclip.next-step"),

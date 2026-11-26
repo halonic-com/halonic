@@ -193,6 +193,22 @@ export interface AgentRecord {
   readonly budgetMonthlyCents?: number;
 }
 
+/** A project's budget as the host's project list gives it, when the project has one. */
+export interface ProjectBudget {
+  readonly amountCents: number;
+  /** `calendar_month_utc` for a monthly budget; `lifetime` for one over the project's whole life. */
+  readonly windowKind: string;
+}
+
+/** A project as the host's project list returns it: only the fields the actions read. */
+export interface ProjectRecord {
+  readonly id: string;
+  readonly name: string;
+  readonly urlKey: string;
+  /** Its active budget, as Paperclip's project list gives it; null or missing when it has none. */
+  readonly budget?: ProjectBudget | null;
+}
+
 /**
  * The plugin host's clients the runtime calls. A tool call may get its own
  * host, whose calls Paperclip scopes to that call (the worker client gives
@@ -215,6 +231,12 @@ export interface RuntimeHost {
       readonly companyId: string;
       readonly limit?: number;
     }): Promise<readonly AgentRecord[]>;
+  };
+  readonly projects: {
+    list(input: {
+      readonly companyId: string;
+      readonly limit?: number;
+    }): Promise<readonly ProjectRecord[]>;
   };
   readonly issues: IssuesClient;
   readonly config: { get(companyId: string): Promise<Record<string, unknown>> };
@@ -242,6 +264,7 @@ export interface RuntimeHost {
 export type Capability =
   | "agent.tools.register"
   | "agents.read"
+  | "projects.read"
   | "plugin.state.read"
   | "plugin.state.write"
   | "metrics.write"

@@ -17,6 +17,7 @@ const callCapability: Readonly<Record<string, Capability | undefined>> = {
   "http.fetch": "http.outbound",
   "agents.get": "agents.read",
   "agents.list": "agents.read",
+  "projects.list": "projects.read",
   "issues.get": "issues.read",
   "issues.listComments": "issue.comments.read",
   "issues.createComment": "issue.comments.create",
