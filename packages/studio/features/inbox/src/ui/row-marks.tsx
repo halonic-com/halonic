@@ -50,18 +50,14 @@ const markTileSize: Record<AvatarSize, string> = {
 };
 
 /**
- * The Avatar's neutral fill: `surface-muted`, and `surface` on a plain row that is hovered, pressed
- * or current, which is filled `surface-muted` itself (HAL-19751, `kit.avatar-on-row-fill`).
+ * A glyph centred on the Avatar's round tile, in its colours: `surface` on a hovered or open row's
+ * muted fill, as the Avatar's (HAL-19751, `kit.avatar-on-row-fill`).
  */
-const markTileFill =
-  "bg-surface-muted group-hover/plain:bg-surface group-active/plain:bg-surface group-has-[[aria-current=true]]/plain:bg-surface";
-
-/** A glyph centred on the Avatar's round tile, in its colours. */
 function MarkTile({ glyph, size }: { readonly glyph: ReactNode; readonly size: AvatarSize }) {
   return (
     <span
       aria-hidden="true"
-      className={`flex ${markTileSize[size]} shrink-0 items-center justify-center rounded-full ${markTileFill} text-fg-muted`}
+      className={`flex ${markTileSize[size]} shrink-0 items-center justify-center rounded-full bg-surface-muted on-muted:bg-surface text-fg-muted`}
     >
       {glyph}
     </span>

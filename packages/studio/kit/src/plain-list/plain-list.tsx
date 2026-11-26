@@ -108,8 +108,14 @@ export function PlainRow(props: PlainRowProps) {
   const hidesTime =
     action === undefined ? "" : "group-hover:invisible group-focus-within:invisible";
   return (
-    // `group/plain` lets the Avatar's tile change its fill on a filled row (`kit.avatar-on-row-fill`).
-    <li data-row-id={id} className="group group/plain relative">
+    // The row marks its muted fill, so the Avatar's tile on it steps up (`kit.avatar-on-row-fill`).
+    <li
+      data-row-id={id}
+      data-hover-fill="muted"
+      data-fill={current ? "muted" : undefined}
+      data-focus-fill={action === undefined ? undefined : "muted"}
+      className="group relative"
+    >
       <button
         type="button"
         aria-current={current ? "true" : undefined}

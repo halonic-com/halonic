@@ -12,10 +12,19 @@ export const messengerProbe = "Click test: hello from Messenger";
 /** A kit Avatar whose picture is drawn says so; the initials never do (`kit.avatar-picture`). */
 const drawnPicture = "//*[@data-picture='drawn']";
 
+/** The seeded agent's row in the chat list, a kit `PlainRow`. */
+export const agentChatRow = `//li[@data-row-id][contains(normalize-space(), '${seedNames.agent}')]`;
+
 /** Where step 9 looks for the seeded agent's picture: its chat row and the open chat's header. */
 export const agentPictureIn = {
-  "chat row": `//button[@data-chat][contains(normalize-space(), '${seedNames.agent}')]${drawnPicture}`,
+  "chat row": `${agentChatRow}${drawnPicture}`,
   header: `//header[.//h2[contains(normalize-space(), '${seedNames.agent}')]]${drawnPicture}`,
+} as const;
+
+/** The open chat's row, filled `surface-muted`, and its picture's tile on that fill. */
+export const openRowFillOf = {
+  row: `${agentChatRow}/button`,
+  tile: agentPictureIn["chat row"],
 } as const;
 
 /** How long the Messenger gets to read and draw a picture once its place shows. */
@@ -25,7 +34,8 @@ const pictureWaitMs = 10_000;
  * Step 10: in Halonic Messenger, the seeded chat with Acme Clicky takes a
  * message, and the test Paperclip has it as a comment on that chat. The
  * chat's row and its header show Acme Clicky's picture, which Paperclip gives
- * every agent, not its initials (HAL-19151).
+ * every agent, not its initials (HAL-19151). On the open chat's filled row,
+ * the picture's tile keeps a fill of its own, so its circle shows (HAL-19751).
  */
 export const messengerSend: Step = {
   id: "messenger-send",
@@ -36,6 +46,7 @@ export const messengerSend: Step = {
     "messenger.send-text",
     "messenger.agent-pictures",
     "kit.avatar-picture",
+    "kit.avatar-on-row-fill",
   ],
   needs: ["connect-paperclip"],
   run: async (context) => {
@@ -57,14 +68,33 @@ export const messengerSend: Step = {
     if (!sent.passed) return sent;
     const headerPicture = await pictureShows(context, agentPictureIn.header);
     const missing = [rowPicture ? [] : ["chat row"], headerPicture ? [] : ["header"]].flat();
-    if (missing.length === 0) return { passed: true };
-    return {
-      passed: false,
-      code: "NO_AGENT_PICTURE",
-      note: `${seedNames.agent}'s ${missing.join(" and ")} showed its initials, not its picture.`,
-    };
+    if (missing.length > 0) {
+      return {
+        passed: false,
+        code: "NO_AGENT_PICTURE",
+        note: `${seedNames.agent}'s ${missing.join(" and ")} showed its initials, not its picture.`,
+      };
+    }
+    return tileOnOpenRow(context);
   },
 };
+
+/**
+ * Compares the backgrounds the app drew for the open chat's row and its picture's tile: the same
+ * colour means the tile's circle vanished into the row's fill (`kit.avatar-on-row-fill`). A narrow
+ * window shows only the open chat, with no list, so there is nothing to compare.
+ */
+async function tileOnOpenRow(context: StepContext): Promise<StepOutcome> {
+  if ((await context.driver.count(agentChatRow)) === 0) return { passed: true };
+  const row = await context.driver.cssValue(openRowFillOf.row, "background-color");
+  const tile = await context.driver.cssValue(openRowFillOf.tile, "background-color");
+  if (row !== tile) return { passed: true };
+  return {
+    passed: false,
+    code: "TILE_ON_ROW_FILL",
+    note: `The open chat's row and its picture's tile are both ${row}, so the tile's circle doesn't show.`,
+  };
+}
 
 /** Types the probe in the open chat, sends it, and waits for it as a comment on Paperclip. */
 async function sendProbe(context: StepContext): Promise<StepOutcome> {

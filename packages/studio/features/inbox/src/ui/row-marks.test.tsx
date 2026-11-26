@@ -40,14 +40,9 @@ verifies("inbox.row-marks", () => {
     expect(tileClasses(agentMark(ada))).toContain("size-15");
   });
 
-  it("fills a mark's tile surface on a hovered, pressed or current plain row (HAL-19751)", () => {
+  it("steps a mark's tile up to surface on a hovered or open row's muted fill (HAL-19751)", () => {
     expect(tileClasses(itemMark(setup))).toEqual(
-      expect.arrayContaining([
-        "bg-surface-muted",
-        "group-hover/plain:bg-surface",
-        "group-active/plain:bg-surface",
-        "group-has-[[aria-current=true]]/plain:bg-surface",
-      ]),
+      expect.arrayContaining(["bg-surface-muted", "on-muted:bg-surface"]),
     );
   });
 });

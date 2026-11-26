@@ -28,6 +28,18 @@ export const plainStateClasses = {
   inert: { fill: "", row: "", main: "" },
 } as const satisfies Record<string, RowStateClasses>;
 
+/**
+ * How a plain row marks its muted fill in each state, so a neutral fill on it, such as an Avatar's
+ * tile, steps up with `on-muted:` (`kit.avatar-on-row-fill`): muted on hover and press at rest,
+ * muted while selected or current, and not at all while unavailable or inert, as the fills above.
+ */
+export const plainFillMarks = {
+  default: { "data-hover-fill": "muted" },
+  selected: { "data-fill": "muted" },
+  unavailable: {},
+  inert: {},
+} as const satisfies Record<keyof typeof plainStateClasses, Record<string, string>>;
+
 /** Every plain row is rounded on both ends, since there's no box round it. */
 export function plainCorners(side: "left" | "right"): string {
   return side === "left" ? "rounded-l-md" : "rounded-r-md";

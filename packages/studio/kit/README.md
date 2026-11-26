@@ -878,9 +878,14 @@ window width. Tests set the provider directly.
 
 A neutral fill on a `surface-muted` fill disappears, so it steps up with `on-muted:`
 (`on-muted:bg-border on-muted:text-fg`). The muted fill marks itself: `data-fill="muted"` while it
-is muted (an unselected tab, the active menu item), or `data-hover-fill="muted"` when it's muted only on
-hover and press (a sidebar row). With more contrast `border` is too dark under `fg`, so the step is
+is muted (an unselected tab, the active menu item, the open sidebar row), `data-hover-fill="muted"` when
+it's muted only on hover and press (a sidebar row), and `data-focus-fill="muted"` when it's also muted
+while focus is inside it (a sidebar row with an action). `PlainRow` and a `plain` List's rows set them
+themselves. With more contrast `border` is too dark under `fg`, so the step is
 `surface` instead (`contrast-more:on-muted:bg-surface`), set apart by the chip's own edge.
+
+An `Avatar`'s neutral tile steps up to `surface` (`on-muted:bg-surface`), so its circle stays
+visible on a hovered or open sidebar row (`kit.avatar-on-row-fill`).
 
 A coloured chip's soft fill is see-through, so on a muted fill it would darken with it and drop
 its text below 4.5:1, as the "Needs you" counter on an unselected tab did. There it lays its soft

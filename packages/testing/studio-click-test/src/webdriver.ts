@@ -28,6 +28,8 @@ export interface Driver {
   pressKeys(keys: readonly string[]): Promise<void>;
   /** The value of an attribute of the first element the XPath finds, or null when it has none. */
   attribute(xpath: string, name: string): Promise<string | null>;
+  /** The computed value of a CSS property of the first element the XPath finds, such as `rgb(…)`. */
+  cssValue(xpath: string, property: string): Promise<string>;
   /** The visible text of the current window's page. */
   pageText(): Promise<string>;
   /** The current window's title, as the task bar shows it. */
@@ -105,6 +107,11 @@ export async function openSession(serverUrl: string, debuggerAddress: string): P
       const element = await find(xpath);
       const value = await call("GET", `/element/${element}/attribute/${encodeURIComponent(name)}`);
       return typeof value === "string" ? value : null;
+    },
+    cssValue: async (xpath, property) => {
+      const element = await find(xpath);
+      const value = await call("GET", `/element/${element}/css/${encodeURIComponent(property)}`);
+      return typeof value === "string" ? value : "";
     },
     pageText: async () => {
       const text = await call("POST", "/execute/sync", {

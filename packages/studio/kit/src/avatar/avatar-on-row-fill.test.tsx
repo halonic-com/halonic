@@ -2,6 +2,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it, vi } from "vitest";
 import { List } from "../list/list.tsx";
+import type { ListRow } from "../list/list-props.ts";
 import { PlainList, PlainRow } from "../plain-list/plain-list.tsx";
 import { render, unmountAll } from "../test/render.tsx";
 import { Avatar } from "./avatar.tsx";
@@ -13,19 +14,24 @@ afterEach(() => {
 
 const classesOf = (element: Element | null | undefined) => element?.className.split(" ") ?? [];
 
-/** The tile's fill on a hovered, pressed or current plain row: never the row's own `surface-muted`. */
-const tileOnFilledRow = [
-  "group-hover/plain:bg-surface",
-  "group-active/plain:bg-surface",
-  "group-has-[[aria-current=true]]/plain:bg-surface",
-];
+/** The nearest element that marks a muted fill, as `on-muted:` reads it, and how. */
+function fillMarkOf(element: Element) {
+  const marked = element.closest("[data-fill],[data-hover-fill],[data-focus-fill]");
+  return {
+    marked,
+    fill: marked?.getAttribute("data-fill") ?? null,
+    hover: marked?.getAttribute("data-hover-fill") ?? null,
+    focus: marked?.getAttribute("data-focus-fill") ?? null,
+  };
+}
 
-/** A `PlainRow` with a picture, current or not. */
-function renderPlainRow(current: boolean) {
+/** A `PlainRow` with a picture: its item, its button and the picture's tile. */
+function renderPlainRow({ current = false, withAction = false } = {}) {
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
     drawImage: () => undefined,
   } as unknown as CanvasRenderingContext2D);
   const picture = { width: 120, height: 120 } as ImageBitmap;
+  const action = { label: "Mark as unread", onClick: () => undefined };
   const { container } = render(
     <PlainList label="Chats">
       <PlainRow
@@ -34,6 +40,7 @@ function renderPlainRow(current: boolean) {
         title="Chief"
         current={current}
         onSelect={() => undefined}
+        action={withAction ? action : undefined}
       />
     </PlainList>,
   );
@@ -44,13 +51,12 @@ function renderPlainRow(current: boolean) {
 }
 
 /** A List's row with an Avatar: its row, its main cell and the Avatar's tile. */
-function renderListRow(plain: boolean, current?: string) {
+function renderListRow(plain: boolean, rowProps: Partial<ListRow> = {}, current?: string) {
+  const avatar = <Avatar name="Liam" size="sidebar" />;
   const { container } = render(
     <List
       heading={{ name: "Needs you" }}
-      rows={[
-        { id: "notes", title: "Approve the notes", avatar: <Avatar name="Liam" size="sidebar" /> },
-      ]}
+      rows={[{ id: "notes", title: "Approve the notes", avatar, ...rowProps }]}
       onOpen={() => undefined}
       plain={plain}
       {...(current === undefined ? {} : { current })}
@@ -63,47 +69,58 @@ function renderListRow(plain: boolean, current?: string) {
 }
 
 verifies("kit.avatar-on-row-fill", () => {
-  it("fills a picture's tile surface on a current or hovered PlainRow, which is filled surface-muted", () => {
-    const { item, row, tile } = renderPlainRow(true);
-
-    expect(row.getAttribute("aria-current")).toBe("true");
-    expect(classesOf(row)).toEqual(
-      expect.arrayContaining(["hover:bg-surface-muted", "aria-[current=true]:bg-surface-muted"]),
+  it("steps the tile up to surface on a muted fill, and keeps it muted elsewhere", () => {
+    const { tile } = renderPlainRow();
+    expect(classesOf(tile)).toEqual(
+      expect.arrayContaining(["bg-surface-muted", "on-muted:bg-surface"]),
     );
+  });
+
+  it("marks a current PlainRow muted, where its row is filled surface-muted", () => {
+    const { item, row, tile } = renderPlainRow({ current: true });
+
+    expect(classesOf(row)).toContain("aria-[current=true]:bg-surface-muted");
     expect(tile.getAttribute("data-picture")).toBe("drawn");
-    expect(classesOf(tile)).toEqual(
-      expect.arrayContaining(["bg-surface-muted", ...tileOnFilledRow]),
-    );
-    expect(tile.closest(".group\\/plain")).toBe(item);
-    expect(item.querySelector('[aria-current="true"]')).toBe(row);
+    expect(fillMarkOf(tile)).toEqual({ marked: item, fill: "muted", hover: "muted", focus: null });
   });
 
-  it("keeps the tile's group on a PlainRow that isn't current, so only hover changes it", () => {
-    const { item, row, tile } = renderPlainRow(false);
+  it("marks a PlainRow muted on hover and press, and on focus only when it has an action", () => {
+    const plain = renderPlainRow();
+    expect(classesOf(plain.row)).toContain("hover:bg-surface-muted");
+    expect(fillMarkOf(plain.tile)).toEqual({
+      marked: plain.item,
+      fill: null,
+      hover: "muted",
+      focus: null,
+    });
+    unmountAll();
 
-    expect(row.getAttribute("aria-current")).toBeNull();
-    expect(item.querySelector('[aria-current="true"]')).toBeNull();
-    expect(tile.closest(".group\\/plain")).toBe(item);
+    const withAction = renderPlainRow({ withAction: true });
+    expect(classesOf(withAction.row)).toContain("group-focus-within:bg-surface-muted");
+    expect(fillMarkOf(withAction.tile).focus).toBe("muted");
   });
 
-  it("fills an Avatar's tile surface on a current or hovered plain List row", () => {
-    const { row, cell, tile } = renderListRow(true, "notes");
+  it("marks a plain List row muted on hover at rest, and while current", () => {
+    const rest = renderListRow(true);
+    expect(classesOf(rest.cell)).toContain("group-hover:bg-surface-muted");
+    expect(fillMarkOf(rest.tile)).toMatchObject({ marked: rest.row, fill: null, hover: "muted" });
+    unmountAll();
 
-    expect(row.getAttribute("aria-current")).toBe("true");
-    expect(classesOf(cell)).toContain("bg-surface-muted");
-    expect(classesOf(tile)).toEqual(
-      expect.arrayContaining(["bg-surface-muted", ...tileOnFilledRow]),
-    );
-    expect(tile.closest(".group\\/plain")).toBe(row);
-
-    const hovered = renderListRow(true);
-    expect(classesOf(hovered.cell)).toContain("group-hover:bg-surface-muted");
-    expect(hovered.tile.closest(".group\\/plain")).toBe(hovered.row);
+    const current = renderListRow(true, {}, "notes");
+    expect(classesOf(current.cell)).toContain("bg-surface-muted");
+    expect(fillMarkOf(current.tile)).toMatchObject({ marked: current.row, fill: "muted" });
   });
 
-  it("leaves the tile surface-muted in a bordered List, whose rows aren't filled surface-muted", () => {
-    const { tile } = renderListRow(false, "notes");
+  it("marks no fill on an unavailable plain List row, which isn't filled on hover", () => {
+    const { cell, tile } = renderListRow(true, { unavailable: { reason: "Needs a key" } });
 
-    expect(tile.closest(".group\\/plain")).toBeNull();
+    expect(classesOf(cell)).not.toContain("group-hover:bg-surface-muted");
+    expect(fillMarkOf(tile).marked).toBeNull();
+  });
+
+  it("marks no fill on a bordered List row, whose fill isn't surface-muted", () => {
+    const { tile } = renderListRow(false, {}, "notes");
+
+    expect(fillMarkOf(tile).marked).toBeNull();
   });
 });
