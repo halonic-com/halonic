@@ -197,6 +197,10 @@ export function WorkspaceWindow({
     (onChange) => switcher.recent.subscribe(onChange),
     () => switcher.recent.version,
   );
+  const reopening = useSyncExternalStore(
+    (onChange) => switcher.subscribe(onChange),
+    () => switcher.reopening,
+  );
   const busy = useSyncExternalStore(
     (onChange) => switcher.subscribe(onChange),
     () => switcher.busy,
@@ -263,6 +267,7 @@ export function WorkspaceWindow({
             workspaces: switcher.recent.list(),
             onOpen: (location) => showByPerson(() => switcher.openLocation(location)),
             onRemove: (location) => switcher.removeFromRecent(location),
+            reopening,
           }}
         />
         {dialog}

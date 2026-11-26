@@ -7,12 +7,14 @@ import {
 import { openOnSupportReply } from "../sample/demo-start.ts";
 import { showCantOpenToast } from "./cant-open-toast.ts";
 import { OpenWorkspaces } from "./open-workspaces.ts";
-import type {
-  CloseRequest,
-  OpenedWorkspace,
-  WorkspaceSwitcherOptions,
+import {
+  type CloseRequest,
+  closeOpened,
+  type OpenedWorkspace,
+  type WorkspaceSwitcherOptions,
 } from "./opened-workspace.ts";
 import type { RecentWorkspaces } from "./recent-workspaces.ts";
+import { StartReopen } from "./start-reopen.ts";
 
 export {
   type CloseRequest,
@@ -47,6 +49,7 @@ export class WorkspaceSwitcher {
   #savingForClose: string | undefined;
   /** The "Opened Acme" or "Created Acme" toast of each open workspace, closed with it. */
   readonly #openedToasts = new Map<string, string>();
+  readonly #startReopen = new StartReopen(() => this.#notify());
 
   constructor(options: WorkspaceSwitcherOptions) {
     this.#options = options;
@@ -61,7 +64,12 @@ export class WorkspaceSwitcher {
     return this.#buttonBusy;
   }
 
-  /** Calls `listener` whenever {@link busy} changes; returns the way to stop. */
+  /** The folder the window reopens by itself at start, while it does ({@link reopenOnStart}). */
+  get reopening(): string | undefined {
+    return this.#startReopen.location;
+  }
+
+  /** Calls `listener` whenever {@link busy} or {@link reopening} changes; returns the way to stop. */
   subscribe(listener: () => void): () => void {
     this.#listeners.add(listener);
     return () => {
@@ -81,7 +89,8 @@ export class WorkspaceSwitcher {
     this.#busy = true;
     try {
       const location = await this.#options.pickFolder();
-      return location === undefined ? undefined : await this.#openUntilAnswered(location);
+      if (location === undefined) return undefined;
+      return (await this.#startReopen.join(location)) ?? (await this.#openUntilAnswered(location));
     } catch (error) {
       return cantOpenProblem("the folder", error);
     } finally {
@@ -122,6 +131,39 @@ export class WorkspaceSwitcher {
     }
     this.#busy = true;
     try {
+      // Only a reopen of this same folder is waited for, so any other open starts at once.
+      const reopened = this.#startReopen.join(location);
+      return (
+        (reopened === undefined ? undefined : await reopened) ??
+        (await this.#reopenAndOpen(location, toast, asSample))
+      );
+    } finally {
+      this.#busy = false;
+    }
+  }
+
+  /**
+   * Reopens the workspace the window showed, at start, as its Recent row does, without holding the
+   * person up (`workspace.reopen-gives-way`): {@link reopening} names it meanwhile, and a
+   * folder the person opens first wins. Does nothing while another folder is opening.
+   */
+  reopenOnStart(location: string): Promise<WelcomeOpenProblem | undefined> {
+    if (this.#busy) {
+      return Promise.resolve(undefined);
+    }
+    return this.#startReopen.run(location, (wanted) =>
+      this.#reopenAndOpen(location, undefined, false, wanted),
+    );
+  }
+
+  /** {@link openLocation}'s steps: the app reopens the folder picked before, then it opens. */
+  async #reopenAndOpen(
+    location: string,
+    toast: string | undefined,
+    asSample: boolean,
+    wanted?: () => boolean,
+  ): Promise<WelcomeOpenProblem | undefined> {
+    try {
       const { reopenFolder } = this.#options;
       if (reopenFolder !== undefined && this.open.find(location) === undefined) {
         try {
@@ -130,11 +172,9 @@ export class WorkspaceSwitcher {
           return cantReopenProblem(location, error);
         }
       }
-      return await this.#open(location, toast, asSample);
+      return await this.#open(location, toast, asSample, wanted);
     } catch (error) {
       return cantOpenProblem(location, error);
-    } finally {
-      this.#busy = false;
     }
   }
 
@@ -274,9 +314,7 @@ export class WorkspaceSwitcher {
       this.#openedToasts.delete(location);
       this.#options.toasts.close(toast);
     }
-    closed.value.saving?.dispose();
-    closed.value.workspace.dispose();
-    await closed.value.dispose();
+    await closeOpened(closed.value);
   }
 
   #setCloseRequest(request: CloseRequest | undefined): void {
@@ -373,7 +411,10 @@ export class WorkspaceSwitcher {
     location: string,
     toast?: string,
     asSample = false,
+    wanted: () => boolean = () => true,
   ): Promise<WelcomeOpenProblem | undefined> {
+    // A dropped reopen shows nothing, not even a folder the person opened since.
+    if (!wanted()) return undefined;
     if (this.open.find(location) !== undefined) {
       if (asSample) this.recent.markSample(location);
       this.open.show(location);
@@ -385,6 +426,11 @@ export class WorkspaceSwitcher {
       opened = await this.#options.openFolder(location);
     } catch (error) {
       return cantOpenProblem(location, error);
+    }
+    if (!wanted()) {
+      // A folder the person opened meanwhile won: this one closes again, never shown.
+      await closeOpened(opened);
+      return undefined;
     }
     // Before the workspace is added, which tells whoever draws it.
     if (asSample) this.recent.remember({ location, name: opened.name, sample: true });

@@ -22,11 +22,11 @@ function switcherWith(remembered: readonly string[]) {
   });
   for (const location of remembered) recent.remember({ location, name: location });
   const open = new OpenWorkspaces<object>();
-  const openLocation = vi.fn(async (location: string): Promise<WelcomeOpenProblem | undefined> => {
+  const reopenOnStart = vi.fn(async (location: string): Promise<WelcomeOpenProblem | undefined> => {
     open.add(location, {});
     return undefined;
   });
-  return { open, recent, openLocation } satisfies ContentSwitcher;
+  return { open, recent, reopenOnStart } satisfies ContentSwitcher;
 }
 
 /** The shell's commands, answering `kept` to `window_content_get` and `settings` to `host_settings_read`. */
@@ -46,7 +46,7 @@ verifies("studio.window-content", () => {
       const { ready, stop } = keepStudioWorkspace({ invoke }, switcher);
       await ready;
 
-      expect(switcher.openLocation).toHaveBeenCalledWith("/work/beta");
+      expect(switcher.reopenOnStart).toHaveBeenCalledWith("/work/beta");
       expect(switcher.open.shown?.location).toBe("/work/beta");
       expect(invoke.mock.calls.at(-1)).toEqual([
         "window_content_set",
@@ -62,7 +62,7 @@ verifies("studio.window-content", () => {
       const { ready, stop } = keepStudioWorkspace({ invoke }, switcher);
       await ready;
 
-      expect(switcher.openLocation).not.toHaveBeenCalled();
+      expect(switcher.reopenOnStart).not.toHaveBeenCalled();
       expect(switcher.open.shown).toBeUndefined();
       expect(invoke.mock.calls.at(-1)).toEqual(["window_content_set", { content: null }]);
       stop();
@@ -77,7 +77,7 @@ verifies("studio.window-content", () => {
       const { ready, stop } = keepStudioWorkspace({ invoke }, switcher);
       await ready;
 
-      expect(switcher.openLocation).not.toHaveBeenCalled();
+      expect(switcher.reopenOnStart).not.toHaveBeenCalled();
       expect(switcher.open.shown).toBeUndefined();
       expect(invoke.mock.calls.at(-1)).toEqual(["window_content_set", { content: null }]);
       stop();
@@ -92,7 +92,7 @@ verifies("studio.window-content", () => {
       const { ready, stop } = keepStudioWorkspace({ invoke }, switcher);
       await ready;
 
-      expect(switcher.openLocation).toHaveBeenCalledWith("/work/acme");
+      expect(switcher.reopenOnStart).toHaveBeenCalledWith("/work/acme");
       stop();
     });
 
@@ -102,11 +102,11 @@ verifies("studio.window-content", () => {
 
     it("stops at once while the kept workspace never finishes opening", async () => {
       const switcher = switcherWith(["/work/acme"]);
-      switcher.openLocation.mockImplementationOnce(() => new Promise<never>(() => {}));
+      switcher.reopenOnStart.mockImplementationOnce(() => new Promise<never>(() => {}));
       const invoke = shellKeeping('{"workspace":"/work/acme"}');
 
       const { stop } = keepStudioWorkspace({ invoke }, switcher);
-      await vi.waitFor(() => expect(switcher.openLocation).toHaveBeenCalled());
+      await vi.waitFor(() => expect(switcher.reopenOnStart).toHaveBeenCalled());
 
       expect(stop()).toBeUndefined();
       expect(invoke).not.toHaveBeenCalledWith("window_content_set", expect.anything());
@@ -115,13 +115,13 @@ verifies("studio.window-content", () => {
     it("keeps nothing once a reopen under way at stop ends", async () => {
       const switcher = switcherWith(["/work/acme"]);
       let opened = (_problem: WelcomeOpenProblem | undefined): void => {};
-      switcher.openLocation.mockImplementationOnce(
+      switcher.reopenOnStart.mockImplementationOnce(
         () => new Promise((resolve) => (opened = resolve)),
       );
       const invoke = shellKeeping('{"workspace":"/work/acme"}');
 
       const { ready, stop } = keepStudioWorkspace({ invoke }, switcher);
-      await vi.waitFor(() => expect(switcher.openLocation).toHaveBeenCalled());
+      await vi.waitFor(() => expect(switcher.reopenOnStart).toHaveBeenCalled());
       stop();
       opened(undefined);
       await ready;
@@ -137,7 +137,7 @@ verifies("studio.window-content", () => {
       const { ready, stop } = keepStudioWorkspace({ invoke: shellKeeping("{workspace") }, switcher);
       await ready;
 
-      expect(switcher.openLocation).not.toHaveBeenCalled();
+      expect(switcher.reopenOnStart).not.toHaveBeenCalled();
       stop();
     });
 
@@ -145,7 +145,7 @@ verifies("studio.window-content", () => {
       const error = vi.spyOn(console, "error").mockImplementation(() => {});
       const switcher = switcherWith(["/work/acme"]);
       const problem = { folder: "acme", reason: "It was moved.", kind: "not_found" as const };
-      switcher.openLocation.mockResolvedValueOnce(problem);
+      switcher.reopenOnStart.mockResolvedValueOnce(problem);
 
       const { ready, stop } = keepStudioWorkspace(
         { invoke: shellKeeping('{"workspace":"/work/acme"}') },
