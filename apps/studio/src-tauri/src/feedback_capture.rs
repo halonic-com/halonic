@@ -1,7 +1,9 @@
 //! The feedback capture's native side (HAL-18778, sketch on HAL-18562).
 //! The shortcut is heard only by the focused one of Studio's own windows, never
 //! system-wide: the focused window's page asks `plugin:feedback|start`, which takes one
-//! still of that window's own area, in memory, never in a file. The page
+//! still of that window's own area, in memory, never in a file, and only
+//! while that window is focused, so a page script in a window behind
+//! another app can't capture what covers it. The page
 //! then draws its see-through selection overlay over the live app and
 //! hands the box to `plugin:feedback|select`; the Send feedback window
 //! gets only that crop (`plugin:feedback|crop`). Where no still can be
@@ -80,13 +82,19 @@ pub struct Started {
 /// A press of the feedback shortcut in one of Studio's own windows. Brings the Send
 /// feedback window forward when it is open (`send_open`); otherwise takes
 /// one still of that window's own area and holds it. Refused as
-/// `busy` while a still is being taken, and as `unavailable` (after
-/// opening the window that says so) where no still can be taken. Async,
-/// because Windows can't open a window from a command on the main thread.
+/// `not_focused` unless the calling window is focused: the still is the
+/// screen under the window, so a window behind another app would capture
+/// that app. Refused as `busy` while a still is being taken, and as
+/// `unavailable` (after opening the window that says so) where no still
+/// can be taken. Async, because Windows can't open a window from a command
+/// on the main thread.
 #[tauri::command]
 pub async fn start<R: Runtime>(window: WebviewWindow<R>) -> Result<Started, &'static str> {
     if !studio_window(window.label()) {
         return Err("not_a_studio_window");
+    }
+    if !window.is_focused().unwrap_or(false) {
+        return Err("not_focused");
     }
     let app = window.app_handle().clone();
     let windows = app.webview_windows();
@@ -132,8 +140,8 @@ pub async fn start<R: Runtime>(window: WebviewWindow<R>) -> Result<Started, &'st
     }
 }
 
-/// Takes the still of `window`'s own area, inside its frame, and holds it
-/// for STILL_LIFETIME.
+/// Takes the still of `window`'s own area, inside its frame, and holds it,
+/// for that window only, for STILL_LIFETIME.
 fn take_window_still<R: Runtime>(
     app: &AppHandle<R>,
     window: &WebviewWindow<R>,
@@ -151,7 +159,7 @@ fn take_window_still<R: Runtime>(
         width: still.width,
         height: still.height,
     };
-    let press = held(app).hold(vec![still], Instant::now());
+    let press = held(app).hold(still, window.label(), Instant::now());
     let timer = app.clone();
     tauri::async_runtime::spawn(async move {
         tokio::time::sleep(STILL_LIFETIME).await;
@@ -159,6 +167,7 @@ fn take_window_still<R: Runtime>(
     });
     Ok(started)
 }
+
 /// The small window that says screen capture isn't available on this
 /// system yet, brought forward when it is already open.
 fn show_unavailable<R: Runtime>(app: &AppHandle<R>) {
@@ -210,7 +219,9 @@ fn page_window<R: Runtime>(app: &AppHandle<R>, label: &str) -> tauri::Result<Web
 /// Drops the still and the crop, and closes every feedback window.
 fn finish<R: Runtime>(app: &AppHandle<R>) {
     held(app).clear();
-    close_windows(app, |label| label == FEEDBACK_WINDOW || label == UNAVAILABLE_WINDOW);
+    close_windows(app, |label| {
+        label == FEEDBACK_WINDOW || label == UNAVAILABLE_WINDOW
+    });
 }
 
 /// Closes every window whose label `closes` picks.
@@ -228,9 +239,12 @@ fn log(message: String) {
     halonic_shell_log::record("feedback", message);
 }
 
-/// Keeps the crop of `area` of the window's still, drops the still
-/// and opens the Send feedback window. Async, because Windows can't open
-/// a window from a command on the main thread.
+/// Keeps the crop of `area` of the still the calling window's press took,
+/// drops the still and opens the Send feedback window. Refused as
+/// `other_window`, leaving what is held alone, when another window's press
+/// took it, and as `gone`, ending the feedback, when there is no still.
+/// Async, because Windows can't open a window from a command on the main
+/// thread.
 #[tauri::command]
 pub async fn select<R: Runtime>(
     webview: Webview<R>,
@@ -240,9 +254,12 @@ pub async fn select<R: Runtime>(
         return Err("not_a_studio_window");
     }
     let app = webview.app_handle().clone();
-    if !held(&app).select(0, area.into(), Instant::now()) {
-        finish(&app);
-        return Err("gone");
+    let selected = held(&app).select(webview.label(), area.into(), Instant::now());
+    if let Err(refusal) = selected {
+        if refusal == "gone" {
+            finish(&app);
+        }
+        return Err(refusal);
     }
     let window = page_window(&app, FEEDBACK_WINDOW).map_err(|_| "failed")?;
     window

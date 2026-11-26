@@ -1,9 +1,9 @@
 import type { KeyboardPlatform } from "@halonicjs/studio-shell";
 
 /**
- * The shortcut used when none is saved (`DEFAULT_SHORTCUT` in `feedback_held.rs`): Ctrl+Shift+F,
- * ⌘ ⇧ F on macOS. Studio's own window hears it only while focused, so it takes nothing from
- * other apps, and it holds Ctrl (⌘), so it works while typing.
+ * The shortcut used when none is saved, or the saved one holds none of Ctrl, Alt and ⌘
+ * ({@link heardShortcut}): Ctrl+Shift+F, ⌘ ⇧ F on macOS. Studio's own window hears it only while
+ * focused, so it takes nothing from other apps, and it holds Ctrl (⌘), so it works while typing.
  */
 export const defaultShortcut = "CommandOrControl+Shift+F";
 
@@ -55,6 +55,21 @@ const modifierOf: Readonly<Record<string, "Ctrl" | "Super" | "Alt" | "Shift" | "
   cmdorctrl: "Mod",
   cmdorcontrol: "Mod",
 };
+
+/**
+ * The shortcut the feedback hears for the saved `shortcut`: itself when it holds Ctrl, Alt or ⌘
+ * (`CommandOrControl` counts), and {@link defaultShortcut} otherwise. The shell refuses to save such
+ * a shortcut (`plugin:feedback|shortcut_set`), but a settings file edited by hand could hold one,
+ * and a saved Shift+F would take every capital F typed in Studio.
+ */
+export function heardShortcut(shortcut: string): string {
+  const holding = shortcut
+    .split("+")
+    .slice(0, -1)
+    .map((part) => modifierOf[part.trim().toLowerCase()])
+    .some((modifier) => modifier !== undefined && modifier !== "Shift");
+  return holding ? shortcut : defaultShortcut;
+}
 
 /** The order the keys show in, as every hint in the Studio (`hintKeys`): Ctrl, ⌘, Alt, Shift. */
 const shownOrder = ["Ctrl", "Super", "Alt", "Shift"] as const;

@@ -4,15 +4,27 @@ import { createRoot, type Root } from "react-dom/client";
 import { type FeedbackIpc, feedbackCommands } from "../feedback-ipc.ts";
 import type { StillSize } from "../overlay/drag.ts";
 import { FeedbackOverlay } from "../overlay/feedback-overlay.tsx";
-import { matchesShortcut } from "../settings/shortcut-keys.ts";
+import { heardShortcut, matchesShortcut } from "../settings/shortcut-keys.ts";
+
+/**
+ * How long the shell holds the still for a selection (`STILL_LIFETIME` in `feedback_held.rs`). The
+ * overlay closes itself after as long, since a box drawn later would find nothing to crop.
+ */
+export const stillLifetime = 120_000;
 
 /** What {@link startInAppFeedback} needs of the window it runs in. */
 export interface InAppFeedbackParts {
-  /** The shell; `plugin:feedback|start`, `select` and `end` are granted to the main window only. */
+  /**
+   * The shell; `plugin:feedback|start`, `select` and `end` are granted to Studio's own windows only
+   * (Studio, Halonic Inbox and Halonic Messenger).
+   */
   readonly ipc: FeedbackIpc;
   /** The platform the shortcut is read for: `CommandOrControl` is ⌘ on macOS. */
   readonly platform: KeyboardPlatform;
-  /** The feedback shortcut now, as the shell saves it; read on every key press. */
+  /**
+   * The feedback shortcut now, as the shell saves it; read on every key press. One that holds none
+   * of Ctrl, Alt and ⌘ counts as the default.
+   */
   readonly shortcut: () => string;
   /** The window whose keys start the feedback and whose page shows the overlay. */
   readonly window: Window;
@@ -24,17 +36,25 @@ export interface InAppFeedbackParts {
  * take a still of this window (`plugin:feedback|start`) and then shows the see-through selection
  * overlay over the live app; a press while the overlay shows ends the feedback. The shell answers
  * `send_open` when it brought the Send feedback window forward instead, and `unavailable` when it
- * showed the window that says capture isn't available: then no overlay shows. Gives the stop.
+ * showed the window that says capture isn't available: then no overlay shows. The overlay closes
+ * itself when the shell drops the still, after {@link stillLifetime}. Gives the stop.
  */
 export function startInAppFeedback(parts: InAppFeedbackParts): () => void {
   const { ipc, platform, shortcut, window } = parts;
-  let shown: { readonly root: Root; readonly element: HTMLElement } | undefined;
+  let shown:
+    | {
+        readonly root: Root;
+        readonly element: HTMLElement;
+        readonly expiry: ReturnType<typeof setTimeout>;
+      }
+    | undefined;
   let starting = false;
 
   const close = () => {
     const closing = shown;
     shown = undefined;
     if (closing === undefined) return;
+    clearTimeout(closing.expiry);
     closing.root.unmount();
     closing.element.remove();
   };
@@ -45,7 +65,7 @@ export function startInAppFeedback(parts: InAppFeedbackParts): () => void {
     element.dataset["feedbackLayer"] = "";
     document.body.append(element);
     const root = createRoot(element);
-    shown = { root, element };
+    shown = { root, element, expiry: setTimeout(close, stillLifetime) };
     root.render(
       <StrictMode>
         <FeedbackOverlay ipc={ipc} still={still} onClose={close} />
@@ -54,7 +74,7 @@ export function startInAppFeedback(parts: InAppFeedbackParts): () => void {
   };
 
   const onKey = (event: KeyboardEvent) => {
-    if (event.repeat || !matchesShortcut(shortcut(), event, platform)) return;
+    if (event.repeat || !matchesShortcut(heardShortcut(shortcut()), event, platform)) return;
     event.preventDefault();
     event.stopPropagation();
     if (shown !== undefined) {

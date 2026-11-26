@@ -18,8 +18,9 @@ away and call `plugin:feedback|select` with the whole still: left 0, top 0, and 
 height. When the person clicks without dragging, the feature shall take the click as one corner of a
 box that follows the pointer, at full brightness with its size label, until a second click sets the
 opposite corner. When that box is 8 × 8 logical pixels or more, the feature shall select it as
-above; when it is smaller, the feature shall call nothing and show the hint again. When the person
-presses Esc, the feature shall take the overlay away and call `plugin:feedback|end`. Enter and Esc
+above; when it is smaller, the feature shall call nothing and show the hint again. When the shell
+refuses the box, the feature shall call `plugin:feedback|end`, unless it refuses it as
+`other_window` because another window's press took the still since. When the person presses Esc, the feature shall take the overlay away and call `plugin:feedback|end`. Enter and Esc
 shall not reach the app under the overlay.
 
 ## Examples

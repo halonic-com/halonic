@@ -2,7 +2,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { startInAppFeedback } from "./in-app-feedback.tsx";
+import { startInAppFeedback, stillLifetime } from "./in-app-feedback.tsx";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -80,6 +80,32 @@ verifies("feedback.in-app", () => {
     await press(ctrlShiftF);
     expect(shell.invoke).toHaveBeenCalledWith("plugin:feedback|start");
     expect(overlay()).toBeNull();
+  });
+
+  it("takes the overlay away when the shell drops the still, after two minutes", async () => {
+    vi.useFakeTimers();
+    try {
+      const shell = fakeShell();
+      startWith(shell);
+      await press(ctrlShiftF);
+      expect(overlay()).not.toBeNull();
+      await act(async () => vi.advanceTimersByTime(stillLifetime - 1));
+      expect(overlay()).not.toBeNull();
+      await act(async () => vi.advanceTimersByTime(1));
+      expect(overlay()).toBeNull();
+      expect(stillLifetime).toBe(120_000);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("hears the default when the saved shortcut holds none of Ctrl, Alt and ⌘", async () => {
+    const shell = fakeShell();
+    startWith(shell, "Shift+F");
+    await press({ code: "KeyF", key: "F", shiftKey: true });
+    expect(shell.invoke).not.toHaveBeenCalled();
+    await press(ctrlShiftF);
+    expect(shell.invoke).toHaveBeenCalledWith("plugin:feedback|start");
   });
 
   it("uses the saved shortcut", async () => {

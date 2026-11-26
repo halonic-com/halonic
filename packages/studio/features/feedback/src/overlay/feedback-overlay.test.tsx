@@ -11,8 +11,13 @@ import { FeedbackOverlay } from "./feedback-overlay.tsx";
 const viewport = { width: 100, height: 50 };
 const still = { width: 200, height: 100 };
 
-function fakeShell() {
-  return { invoke: vi.fn(async (_command: string, _args?: Record<string, unknown>) => null) };
+function fakeShell(selecting: () => Promise<unknown> = async () => null) {
+  return {
+    invoke: vi.fn(
+      async (command: string, _args?: Record<string, unknown>): Promise<unknown> =>
+        command === "plugin:feedback|select" ? selecting() : null,
+    ),
+  };
 }
 
 let root: Root | undefined;
@@ -91,6 +96,19 @@ verifies("feedback.overlay", () => {
       ["plugin:feedback|select", { area: { left: 0, top: 0, width: 200, height: 100 } }],
     ]);
     expect(closed).toHaveBeenCalled();
+  });
+
+  it("ends the feedback when the shell refuses the box, unless another window's press took the still", async () => {
+    const gone = await mount(fakeShell(() => Promise.reject("gone")));
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await act(async () => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" })));
+    expect(gone.invoke).toHaveBeenCalledWith("plugin:feedback|end");
+    act(() => root?.unmount());
+    const otherWindow = await mount(fakeShell(() => Promise.reject("other_window")));
+    await act(async () => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" })));
+    expect(selected(otherWindow)).toHaveLength(1);
+    expect(otherWindow.invoke).not.toHaveBeenCalledWith("plugin:feedback|end");
+    quiet.mockRestore();
   });
 
   it("draws a box with a click, a move and a second click, without dragging", async () => {

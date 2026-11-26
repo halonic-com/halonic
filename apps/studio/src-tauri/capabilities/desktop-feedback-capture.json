@@ -1,6 +1,6 @@
 {
   "identifier": "desktop-feedback-capture",
-  "description": "On desktop, each of Studio's own windows (Studio, Halonic Inbox, Halonic Messenger) hears the feedback shortcut while it is focused and may start a capture of its own area through plugin:feedback|start, hand the box drawn on its see-through overlay to plugin:feedback|select, or end the feedback with plugin:feedback|end (HAL-18778). The still covers only the calling window, and no system-wide key is registered. It is local only, so the Studio the computer serves gets nothing.",
+  "description": "On desktop, each of Studio's own windows (Studio, Halonic Inbox, Halonic Messenger) hears the feedback shortcut while it is focused and may start a capture of its own area through plugin:feedback|start, hand the box drawn on its see-through overlay to plugin:feedback|select, or end the feedback with plugin:feedback|end (HAL-18778). The caller must be the focused window: start is refused as not_focused otherwise, so a window behind another app never captures that app. The still covers only the calling window, only that window may select from it, and no system-wide key is registered. It is local only, so the Studio the computer serves gets nothing.",
   "local": true,
   "windows": [
     "main",

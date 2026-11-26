@@ -1,6 +1,6 @@
 //! What the feedback shortcut holds between a press and the send
-//! (HAL-18778): the still of the main window from one press, until two
-//! minutes pass or a box is selected, and then only the crop of that box.
+//! (HAL-18778): the still of the window the shortcut was pressed in, until
+//! two minutes pass or a box is selected, and then only the crop of that box.
 //! Plain values and functions, so they test without windows or a screen.
 
 use std::str::FromStr;
@@ -9,24 +9,25 @@ use std::time::{Duration, Instant};
 
 use halonic_screen_still::{CropBox, Still};
 use serde::Deserialize;
-use serde_json::Value;
 use tauri_plugin_global_shortcut::{Modifiers, Shortcut};
-
-/// Ctrl+Shift+F, or ⌘⇧F on macOS. Heard only in Studio's own focused
-/// window, so it takes nothing from other apps, and it works while typing.
-pub const DEFAULT_SHORTCUT: &str = "CommandOrControl+Shift+F";
 
 /// The label of the window that says screen capture isn't available on
 /// this system yet, such as macOS or Linux on Wayland.
 pub const UNAVAILABLE_WINDOW: &str = "feedback-unavailable";
 
-/// How long the stills wait for a selection before they are dropped.
+/// How long the still waits for a selection before it is dropped. The
+/// page's overlay closes itself after as long (`stillLifetime` in
+/// `in-app-feedback.tsx`).
 pub const STILL_LIFETIME: Duration = Duration::from_secs(120);
 
-/// The stills of one press, by screen number, or the crop made from them.
+/// The still of one press, the window it was taken of, or the crop made
+/// from it.
 #[derive(Default)]
 pub struct Held {
-    stills: Vec<Still>,
+    still: Option<Still>,
+    /// The label of the window whose press took the still: only that window
+    /// may select from it.
+    window: Option<String>,
     taken: Option<Instant>,
     crop: Option<Still>,
     /// Counts the presses, so a timer set for one never drops a later one.
@@ -48,20 +49,22 @@ pub struct OpenWindows {
 /// What a press of the shortcut does.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Press {
-    /// Nothing: the last press is still taking its stills.
+    /// Nothing: the last press is still taking its still.
     Ignore,
     /// Brings the Send feedback window forward, keeping what is typed in it.
     ShowSendFeedback,
-    /// Takes the main window's still; `capture_done` follows.
+    /// Takes the still of the window the shortcut was pressed in;
+    /// `capture_done` follows.
     Capture,
 }
 
 impl Held {
-    /// Holds the stills of a new press, dropping anything held before, and
-    /// gives the press's number for `expire`.
-    pub fn hold(&mut self, stills: Vec<Still>, now: Instant) -> u64 {
+    /// Holds the still a new press took of `window`, dropping anything held
+    /// before, and gives the press's number for `expire`.
+    pub fn hold(&mut self, still: Still, window: &str, now: Instant) -> u64 {
         *self = Held {
-            stills,
+            still: Some(still),
+            window: Some(window.to_owned()),
             taken: Some(now),
             crop: None,
             press: self.press + 1,
@@ -78,7 +81,7 @@ impl Held {
     }
 
     /// What a press of the shortcut does while `open` windows are open.
-    /// A capture marks the stills as being taken until `capture_done`, so
+    /// A capture marks the still as being taken until `capture_done`, so
     /// a press in between is ignored instead of starting a second one.
     pub fn on_press(&mut self, open: OpenWindows) -> Press {
         if self.capturing {
@@ -106,23 +109,15 @@ impl Held {
         self.send_feedback_closing = false;
     }
 
-    /// Drops the stills of press `press` when no box was selected from them
+    /// Drops the still of press `press` when no box was selected from it
     /// yet: its STILL_LIFETIME is over. A later press is left alone.
-    /// Says whether it dropped them.
+    /// Says whether it dropped it.
     pub fn expire(&mut self, press: u64) -> bool {
-        let expired = self.press == press && !self.stills.is_empty();
+        let expired = self.press == press && self.still.is_some();
         if expired {
-            self.stills.clear();
+            self.still = None;
         }
         expired
-    }
-
-    /// Drops the stills of press `press` and keeps the crop: one of its
-    /// windows closed some other way, such as Alt+F4.
-    pub fn drop_stills_of(&mut self, press: u64) {
-        if self.press == press {
-            self.stills.clear();
-        }
     }
 
     /// Drops everything: the feedback ended. Later presses keep counting,
@@ -137,33 +132,45 @@ impl Held {
     }
 
     /// Drops everything held for press `press`: its Send feedback window
-    /// closed. A later press's stills are left alone.
+    /// closed. A later press's still is left alone.
     pub fn clear_press(&mut self, press: u64) {
         if self.press == press {
             self.clear();
         }
     }
 
-    /// Screen `index`'s still, while it is younger than STILL_LIFETIME.
-    /// An older one is dropped.
-    pub fn still(&mut self, index: usize, now: Instant) -> Option<&Still> {
+    /// The still, while it is younger than STILL_LIFETIME. An older one is
+    /// dropped.
+    pub fn still(&mut self, now: Instant) -> Option<&Still> {
         let fresh = self
             .taken
             .is_some_and(|taken| now.duration_since(taken) < STILL_LIFETIME);
         if !fresh {
-            self.stills.clear();
+            self.still = None;
         }
-        self.stills.get(index)
+        self.still.as_ref()
     }
 
-    /// Keeps the crop of screen `index`'s still and drops every still;
-    /// `false`, keeping nothing, when the box isn't inside that still.
-    pub fn select(&mut self, index: usize, crop: CropBox, now: Instant) -> bool {
-        let cropped = self.still(index, now).and_then(|still| still.crop(crop));
-        let selected = cropped.is_some();
-        self.stills.clear();
+    /// Keeps the crop of the still and drops the still, when `window` is the
+    /// one whose press took it. Refused as `other_window`, leaving what is
+    /// held alone, when another window's press took it, and as `gone`,
+    /// keeping nothing, when no still is held or the box isn't inside it.
+    pub fn select(
+        &mut self,
+        window: &str,
+        crop: CropBox,
+        now: Instant,
+    ) -> Result<(), &'static str> {
+        if self.window.as_deref().is_some_and(|held| held != window) {
+            return Err("other_window");
+        }
+        let cropped = self.still(now).and_then(|still| still.crop(crop));
+        self.still = None;
         self.crop = cropped;
-        selected
+        if self.crop.is_none() {
+            return Err("gone");
+        }
+        Ok(())
     }
 
     /// The selected crop, until the feedback ends.
@@ -185,7 +192,7 @@ impl Drop for Capturing<'_> {
     }
 }
 
-/// The box the main window's overlay selected, in its still's pixels. Negative or
+/// The box the window's overlay selected, in its still's pixels. Negative or
 /// fractional numbers aren't a box: they are refused before the command.
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
 pub struct SelectedBox {
@@ -212,15 +219,6 @@ pub fn shortcut_of(text: &str) -> Option<Shortcut> {
     let shortcut = Shortcut::from_str(text).ok()?;
     let holding = Modifiers::CONTROL | Modifiers::ALT | Modifiers::SUPER;
     shortcut.mods.intersects(holding).then_some(shortcut)
-}
-
-/// The shortcut the saved `value` names, or the default when nothing is
-/// saved or the value isn't a shortcut `shortcut_of` takes.
-pub fn saved_shortcut(value: Option<&Value>) -> Shortcut {
-    value
-        .and_then(Value::as_str)
-        .and_then(shortcut_of)
-        .unwrap_or_else(|| shortcut_of(DEFAULT_SHORTCUT).expect("the default holds Ctrl"))
 }
 
 /// A still as the page reads it: width and height as two little-endian

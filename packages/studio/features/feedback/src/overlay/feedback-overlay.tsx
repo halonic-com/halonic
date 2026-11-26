@@ -200,11 +200,14 @@ function useEscapeCloses(ipc: FeedbackIpc, onClose: () => void): void {
   }, [ipc, onClose]);
 }
 
-/** Hands `area` to the shell, which opens the Send feedback window; if it can't, the feedback ends. */
+/**
+ * Hands `area` to the shell, which opens the Send feedback window; if it can't, the feedback ends.
+ * When another window's press took the still since (`other_window`), that feedback is left alone.
+ */
 function selectArea(ipc: FeedbackIpc, area: SelectedArea): void {
   ipc.invoke(feedbackCommands.select, { area }).catch((error: unknown) => {
     console.error("The box wasn't selected:", error);
-    endFeedback(ipc);
+    if (error !== "other_window") endFeedback(ipc);
   });
 }
 
