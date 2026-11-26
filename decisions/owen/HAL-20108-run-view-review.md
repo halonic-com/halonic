@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-20108; Liam's review of #6679 asked for these changes
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:sSTlhfAHB1wDFnpHXs1ErvkJyTecxQSlPeo+bWNJ7o7RQsLdqWqEPVWI8NQ/3kfp2wC2tmIN/GUHilLOzdIkDA==
 
 Liam's review of the run view (#6679) found three places where the view could show more than it should. This change narrows each of them:
 
