@@ -217,7 +217,7 @@ function ManagedBlock({
 }
 
 /** The progress bar: 4px, at most 360px wide; the numbers are in the line above, so no label of its own. */
-function DownloadBar({ progress }: { readonly progress: AboutProgress }) {
+export function DownloadBar({ progress }: { readonly progress: AboutProgress }) {
   const known = progress.fraction !== null;
   return (
     <div

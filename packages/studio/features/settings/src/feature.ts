@@ -140,8 +140,9 @@ export const settingsFeature = createSettingsFeature();
  * (`settings.section-commands`), named as its row, which opens Settings on it. It reads the
  * window's display settings from the app (`DisplaySettingsService`) and the computer's host
  * settings (`HostSettingsService`). It reads the updater, the agent sandbox and the Assistant's
- * workspace only if the app gives them. For updates it adds the status bar's Restart to update,
- * the restart dialog and update toasts (`settings.restart-flow`), and the Ctrl K commands Check for
+ * workspace only if the app gives them. For updates it adds the title bar's Update button and its
+ * dialog (`settings.update-button`), the status bar's Restart to update, the restart dialog, the
+ * Updated to dialog and update toasts (`settings.restart-flow`), and the Ctrl K commands Check for
  * Halonic updates, About Halonic and Restart to update Halonic. Only with `showUnfinished` does
  * it add the sections hidden until they work (`unfinished.ts`).
  */
@@ -172,6 +173,13 @@ export function createSettingsFeature(showUnfinished = showUnfinishedSettings) {
         order: 1000,
         view: "RestartStatusItem",
         load: () => import("./updater/restart-status-item.tsx"),
+      });
+      // Before the account menu (100), at the title bar's right end.
+      studio.titleBar.add({
+        id: "settings.update-button",
+        order: 50,
+        view: "UpdateButton",
+        load: () => import("./updater/update-button.tsx"),
       });
       studio.dialogs.add({
         id: "settings.restart-host",

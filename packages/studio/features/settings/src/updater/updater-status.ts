@@ -21,7 +21,13 @@ export type UpdateState =
   | { readonly kind: "never-checked" }
   | { readonly kind: "up-to-date" }
   | { readonly kind: "cant-check"; readonly reason: CheckFailure }
-  | { readonly kind: "available"; readonly version: string; readonly notesUrl: string }
+  | {
+      readonly kind: "available";
+      readonly version: string;
+      readonly notesUrl: string;
+      /** What changed, as plain text from the update's manifest; absent when it has none. */
+      readonly notes?: string;
+    }
   | {
       readonly kind: "downloading";
       readonly version: string;
@@ -40,7 +46,12 @@ export type UpdateState =
       readonly version: string;
       readonly attempts: number;
     }
-  | { readonly kind: "ready"; readonly version: string; readonly notesUrl: string }
+  | {
+      readonly kind: "ready";
+      readonly version: string;
+      readonly notesUrl: string;
+      readonly notes?: string;
+    }
   | { readonly kind: "did-not-install"; readonly version: string; readonly attempts: number };
 
 /** Another tool keeps this install up to date (Scoop): Studio downloads and installs nothing. */
@@ -50,12 +61,14 @@ export interface ManagedUpdates {
   readonly command: string;
 }
 
-/** The update this start finished, for the "Updated to" toast. */
+/** The update this start finished, for the "Updated to" dialog. */
 export interface JustUpdated {
   readonly from: string;
   readonly to: string;
   /** The settings a migration couldn't carry over (shown by HAL-1845, not here). */
   readonly notCarriedOver: readonly string[];
+  /** What changed in `to`, kept from its manifest for the "Updated to" dialog; absent when it had none. */
+  readonly notes?: string;
 }
 
 /** Which builds an install updates to (HAL-18480): released versions, or every passing build. */
