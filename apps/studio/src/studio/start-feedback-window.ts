@@ -32,7 +32,7 @@ export function startFeedbackWindow(
   },
 ): StartedStudio {
   const stopAppearance = watchAppearance(parts.display, page.element.ownerDocument.documentElement);
-  const mounted = mountFeedbackWindow(page.element, parts.kind, parts.ipc);
+  const mounted = mountFeedbackWindow(page.element, { kind: parts.kind }, parts.ipc);
   return {
     host: "desktop-app",
     stop: async () => {

@@ -59,7 +59,7 @@ afterEach(() => {
 
 async function mount(kind: "overlay" | "unavailable", shell = fakeShell()) {
   await act(async () => {
-    mounted = mountFeedbackWindow(element, kind, shell);
+    mounted = mountFeedbackWindow(element, { kind }, shell);
   });
   return shell;
 }
@@ -142,6 +142,14 @@ verifies("feedback.overlay", () => {
     await mount("overlay", shell);
     await vi.waitFor(() => expect(shell.invoke).toHaveBeenCalledWith("plugin:feedback|end"));
     expect(drawn).not.toHaveBeenCalled();
+    errors.mockRestore();
+  });
+
+  it("ends the feedback when its canvas can't draw", async () => {
+    canvasPrototype["getContext"] = () => null;
+    const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const shell = await mount("overlay");
+    await vi.waitFor(() => expect(shell.invoke).toHaveBeenCalledWith("plugin:feedback|end"));
     errors.mockRestore();
   });
 });

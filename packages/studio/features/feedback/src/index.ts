@@ -14,6 +14,7 @@ export {
 export { feedbackFeature } from "./feature.ts";
 export { type FeedbackIpc, feedbackCommands } from "./feedback-ipc.ts";
 export {
+  type FeedbackWindow,
   type FeedbackWindowKind,
   type MountedFeedbackWindow,
   mountFeedbackWindow,
@@ -40,3 +41,18 @@ export {
   isoWithOffset,
   maxTitleLength,
 } from "./payload.ts";
+export { discardedToast, feedbackToast } from "./send/feedback-toast.ts";
+export {
+  canvasPng,
+  maxScreenshotBytes,
+  type PngEncoder,
+  type ScreenshotPng,
+  screenshotPng,
+} from "./send/screenshot-png.ts";
+export {
+  type FeedbackDetails,
+  type OutgoingFeedback,
+  SendFeedback,
+  type SendFeedbackProps,
+  type SendOutgoing,
+} from "./send/send-feedback.tsx";

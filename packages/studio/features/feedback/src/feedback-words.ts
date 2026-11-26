@@ -16,4 +16,23 @@ export const feedbackWords = {
   notNow: "Not now",
   /** Under the text field when Send is pressed with nothing written. */
   emptyText: "Write a line about what you saw.",
+  /** The Send feedback window's title, and its two buttons. */
+  sendTitle: "Send feedback",
+  cancel: "Cancel",
+  send: "Send",
+  placeholder: "What did you notice? The first line becomes the title.",
+  /** Under the text field: where the task goes and what it carries. */
+  footnote: (project: string, assignee: string) =>
+    `Goes to ${project} as a task for ${assignee}, with the app, window, time and Studio version.`,
+  /** After the Ctrl Enter (⌘ ↩) keys at the footnote's right. */
+  sendKeyHint: "send",
+  /** The toasts after Send, from the sketch's §3. */
+  sentTitle: "Feedback sent",
+  sentLine: (taskId: string, title: string) => `${taskId} · ${title}`,
+  openTask: "Open task",
+  savedTitle: "Feedback saved",
+  savedUntilOnline: "It sends by itself once Studio is back online.",
+  savedUntilConnected: "It sends by itself once Studio is connected to Paperclip.",
+  discardedTitle: "Feedback discarded",
+  undo: "Undo",
 } as const;
