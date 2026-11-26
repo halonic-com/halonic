@@ -137,7 +137,7 @@ pub async fn start<R: Runtime>(window: WebviewWindow<R>) -> Result<Started, &'st
 fn take_window_still<R: Runtime>(
     app: &AppHandle<R>,
     window: &WebviewWindow<R>,
-) -> Result<Started, Box<dyn std::error::Error>> {
+) -> Result<Started, Box<dyn std::error::Error + Send + Sync>> {
     let position = window.inner_position()?;
     let size = window.inner_size()?;
     let area = ScreenArea {
