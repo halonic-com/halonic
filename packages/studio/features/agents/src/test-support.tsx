@@ -26,10 +26,11 @@ export async function redraw(node: React.ReactNode): Promise<void> {
   await act(async () => root?.render(node));
 }
 
-/** The button with this text, or `undefined`. */
+/** The button with this text, or this label when it shows only an icon; or `undefined`. */
 export function buttonNamed(page: HTMLElement, text: string): HTMLButtonElement | undefined {
+  // An icon button, such as the chat's round Send, goes by its label.
   return [...page.querySelectorAll("button")].find((button) =>
-    button.textContent?.trim().startsWith(text),
+    (button.textContent?.trim() || button.getAttribute("aria-label"))?.startsWith(text),
   );
 }
 

@@ -1,6 +1,7 @@
 import type { MessagingId } from "@halonicjs/ports";
 import {
   Avatar,
+  Button,
   ChevronDownIcon,
   EmptyState,
   enter,
@@ -35,14 +36,14 @@ export interface AskBoxProps {
 }
 
 /**
- * The 640 px box, 16 px corners and the dialogs' shadow; in dark it lifts by its strong border and
- * a 1 px white line along its top edge. On a screen narrower than the box and its 32 px margin, the
+ * The 640 px box with the prompt look's 24 px corners and edge, but the dialogs' shadow, because it
+ * floats over any app (HAL-19142); in dark it also lifts by a 1 px white line along its top edge. On a screen narrower than the box and its 32 px margin, the
  * margin is 16 px. It never grows past its window, so a long answer scrolls the exchanges instead of
  * pushing the footer out of sight (HAL-19213).
  */
 const boxClasses = [
-  "flex max-h-full w-full max-w-[640px] flex-col overflow-hidden rounded-lg bg-surface-raised text-fg shadow-3",
-  "border border-[light-dark(var(--color-border),var(--color-border-strong))]",
+  "flex max-h-full w-full max-w-[640px] flex-col overflow-hidden rounded-prompt bg-surface-raised text-fg shadow-3",
+  "border border-border-prompt",
   "inset-shadow-[0_1px_0_light-dark(transparent,rgb(255_255_255/0.06))]",
 ].join(" ");
 
@@ -51,14 +52,6 @@ const agentChipClasses = [
   "order-first flex h-8 max-w-48 shrink-0 items-center gap-1.5 rounded-full border border-border",
   "py-0.5 ps-0.5 pe-2 text-body text-fg hover:bg-surface-muted focus-ring",
 ].join(" ");
-
-/** **Ask**: quiet on the muted tile while the box is empty, primary once there's text, as Messenger's Send. */
-function askClasses(hasText: boolean): string {
-  const look = hasText
-    ? "bg-primary text-on-primary hover:bg-primary-hover active:bg-primary-hover"
-    : "bg-surface-muted text-fg";
-  return `grid size-control-md shrink-0 place-items-center rounded-sm border border-transparent focus-ring ${look}`;
-}
 
 /**
  * Quick ask's box (requirement `quick-ask.box`, design HAL-18594 sections 4–6): a `dialog`
@@ -220,7 +213,8 @@ interface QuestionRowProps {
 
 /**
  * The box's top row: the text box first, so the focus starts there, then the picked agent's
- * chip, drawn before it, and **Ask** with its drawn arrow.
+ * chip, drawn before it, and **Ask**, a round arrow: grey while the box is empty, blue once
+ * there's a question (HAL-19142).
  */
 function QuestionRow({
   name,
@@ -263,16 +257,16 @@ function QuestionRow({
           <ChevronDownIcon />
         </span>
       </button>
-      <button
+      <Button
         ref={ask}
-        type="button"
-        aria-label={quickAskWords.ask}
+        variant={value.trim() === "" ? "soft" : "primary"}
+        size="prompt"
+        round
+        icon={<ArrowUp />}
+        label={quickAskWords.ask}
         aria-keyshortcuts="Enter"
         onClick={() => model.send()}
-        className={askClasses(value.trim() !== "")}
-      >
-        <ArrowUp />
-      </button>
+      />
     </div>
   );
 }

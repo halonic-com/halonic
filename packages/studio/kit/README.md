@@ -254,8 +254,8 @@ The kit's button: a native `<button>`, `type="button"` unless it submits a form.
 
 | Prop | What it is |
 | --- | --- |
-| `variant` | `primary` once per view, `secondary` (the default), `ghost` for Cancel, `danger-outline` for a destructive action that opens a confirm, `danger` only to confirm it |
-| `size` | `xs` 20px in the caption type, only for the status bar (on a touch screen it stays 20px with a 48px hit area; on a phone it grows to 40px); `sm` 28px, `md` 32px (the default), `lg` 40px, `touch` 48px for a phone's bottom bar or sheet |
+| `variant` | `primary` once per view, `secondary` (the default), `ghost` for Cancel, `soft` (a grey fill) only for the round buttons inside a prompt box, `danger-outline` for a destructive action that opens a confirm, `danger` only to confirm it |
+| `size` | `xs` 20px in the caption type, only for the status bar (on a touch screen it stays 20px with a 48px hit area; on a phone it grows to 40px); `sm` 28px, `md` 32px (the default), `lg` 40px, `prompt` 36px only for the round buttons inside a prompt box (it keeps 36px on touch, with a 48px hit area), `touch` 48px for a phone's bottom bar or sheet |
 | `block` | Full width |
 | `icon` | A 16px icon before the label. With `label` and no children, the button is a square icon button |
 | `label` | An icon button's name, saying what and which: "Close Support reply", never just "Close" |
@@ -642,7 +642,7 @@ hold no chat logic: each feature turns its `ChatService` answer into these rows 
 | `ChatText` | A text step of a reply, in `text-reading`, keeping its line breaks. Its Markdown never becomes HTML and loads no image. A link shows its words and its address as text that opens nothing; with `openLink` (such as `useOpenExternal()`, for an agent's message) the words are an `ExternalLink` that opens outside the app |
 | `ChatToolLine` | One quiet line per tool call: spinner while `running`, tick when `done`, alert mark in `danger` when `failed` |
 | `ChatEndLine` | The line that ends a reply: `danger` for a failure, `plain` for "Stopped by you." and the like, with its actions (a `button`, or a `link` for a way to another place). A `button` given `unavailable` waits in its place with a visible reason, as Try again does while the engine isn't answering |
-| `ChatComposer` | The message box and its button. Enter sends, Shift Enter adds a line; while `answering` the button is **Stop**, the same button, so focus stays. `sendUnavailable` makes Send wait with a visible reason. `line` goes under the box. A `picker` (such as a channel's `@` members) opens a list above the box: the box is then a combobox naming the active row with `aria-activedescendant`, ↑↓ move it, Enter picks it instead of sending, Esc calls `onClose`, and focus stays in the box |
+| `ChatComposer` | The message box in the prompt look (24px corners, a soft edge and shadow; HAL-19142) with its round Send inside it at the right, grey while blank and blue once there's text, and an optional round `leading` button at the left. Enter sends, Shift Enter adds a line; while `answering` the button is **Stop**, the same button, so focus stays. `sendUnavailable` makes Send wait with a visible reason. `line` goes under the box. A `picker` (such as a channel's `@` members) opens a list above the box: the box is then a combobox naming the active row with `aria-activedescendant`, ↑↓ move it, Enter picks it instead of sending, Esc calls `onClose`, and focus stays in the box |
 | `ChatBoxLine` | The line under the box: `warning` (triangle) for what stops a message, such as no key or a key in the message, `muted` for a calm fact; its actions follow the sentence |
 
 Nothing in the transcript is a live region: a reply isn't read while it streams in. The composer's line under the box sits in a status region, so it's read once when it appears. The feature announces the
@@ -2166,6 +2166,15 @@ A one-line text field.
 `sm` ghost icon `Button`, such as Clear). A button inside the box keeps the general focus ring, so
 you can tell it from the text. A press anywhere in the box, padding and icon included, puts the
 caret in the text; a press on the trailing button doesn't.
+
+**Prompt look.** `look="prompt"` is only for a box where you type to start something with an
+agent, such as the Messenger's chat search (requirement `kit.prompt-look`, HAL-19142): a 40px pill
+with 24px corners, the `border-prompt` edge, the `surface-prompt` fill (6% white over the panel in
+dark) and the `shadow-prompt` shadow. With focus the edge turns `accent` and the shadow deepens
+(`focus-prompt`), with no 3px ring. Its edge is softer than a field's 3:1 on purpose: the
+placeholder and the shadow mark the box. Form fields, such as Settings, keep the default look.
+`TextArea` takes the same `look`, with round buttons in `leading` and `trailing`; the
+`ChatComposer` uses it.
 
 **Width.** The box fills its column (`width="full"`, the default). For a small number, such as a
 turn limit or a count, use `width="short"`: the box fits about 6 characters of its text

@@ -4,12 +4,14 @@ import { describedBy } from "../field/control.ts";
 import { useFieldControl } from "../field/field.tsx";
 import { isComposing } from "../keyboard/is-composing.ts";
 import {
+  type FieldLook,
   type FieldSize,
   type FieldWidth,
   fieldBoxClasses,
   fieldBoxState,
   fieldTextClasses,
   focusTextOnPress,
+  promptBoxClasses,
   shortTextClasses,
 } from "./field-box.ts";
 import { type InputLeadingButton, LeadingButton } from "./leading-button.tsx";
@@ -48,6 +50,11 @@ interface InputBase extends Omit<InputHTMLAttributes<HTMLInputElement>, OwnedAtt
   readonly invalid?: boolean;
   /** Mono text, for a value that is code: a model id, a secret name, a URL. */
   readonly mono?: boolean;
+  /**
+   * `prompt` only for a search you type to start something, such as the Messenger's chat search:
+   * a 40px pill with the soft edge and shadow (HAL-19142). It takes no `size` or `width`.
+   */
+  readonly look?: FieldLook;
   readonly ref?: Ref<HTMLInputElement>;
 }
 
@@ -86,6 +93,7 @@ export function Input({
   leadingButton,
   trailing,
   mono = false,
+  look = "field",
   describedBy: extraDescription,
   invalid: invalidOutside = false,
   ref,
@@ -107,7 +115,14 @@ export function Input({
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: a mouse convenience only; the keyboard reaches the text itself.
-    <div className={fieldBoxClasses(state, size, "center", width)} onMouseDown={focusTextOnPress}>
+    <div
+      className={
+        look === "prompt"
+          ? `${promptBoxClasses(state)} min-h-control-lg px-4 phone:min-h-touch`
+          : fieldBoxClasses(state, size, "center", width)
+      }
+      onMouseDown={focusTextOnPress}
+    >
       {leadingButton === undefined ? null : (
         <LeadingButton
           button={leadingButton}

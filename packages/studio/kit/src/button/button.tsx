@@ -13,15 +13,23 @@ import { Spinner } from "./spinner.tsx";
 
 /**
  * What the button does: `primary` once per view, `ghost` for Cancel, `danger-outline` for a
- * destructive action that opens a confirm, and `danger` only to confirm it.
+ * destructive action that opens a confirm, and `danger` only to confirm it. `soft`, a grey fill, only
+ * for the round buttons inside a prompt box: Attach, and Send while there's nothing to send.
  */
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger-outline" | "danger";
+export type ButtonVariant =
+  | "primary"
+  | "secondary"
+  | "ghost"
+  | "soft"
+  | "danger-outline"
+  | "danger";
 
 /**
  * The button's height: `xs` 20px, only for the status bar, `sm` 28px, `md` 32px (the default),
- * `lg` 40px. `touch` is 48px, for a phone's bottom bar and a sheet's confirming button.
+ * `lg` 40px. `touch` is 48px, for a phone's bottom bar and a sheet's confirming button. `prompt` is
+ * 36px, only for the round buttons inside a prompt box (HAL-19142).
  */
-export type ButtonSize = "xs" | "sm" | "md" | "lg" | "touch";
+export type ButtonSize = "xs" | "sm" | "md" | "lg" | "prompt" | "touch";
 
 /**
  * Why a button can't be used right now, written as visible text next to it. The text's first line
@@ -158,6 +166,11 @@ const variantClasses: Record<ButtonVariant, string> = {
     "not-aria-disabled:active:bg-surface-muted not-aria-disabled:active:text-fg",
     "aria-pressed:bg-surface-muted aria-pressed:text-fg",
   ].join(" "),
+  soft: [
+    "border-transparent bg-surface-muted text-fg-muted",
+    "not-aria-disabled:hover:bg-border not-aria-disabled:hover:text-fg",
+    "not-aria-disabled:active:bg-border not-aria-disabled:active:text-fg",
+  ].join(" "),
   "danger-outline": [
     "border-danger bg-surface text-danger",
     "not-aria-disabled:hover:bg-danger-soft not-aria-disabled:active:bg-danger-soft",
@@ -194,6 +207,7 @@ const sizeClasses: Record<ButtonSize, string> = {
   sm: `min-h-control-sm px-2.5 text-body-strong ${wrapsWhenNarrow} ${asLargeOnTouch} ${hitArea}`,
   md: `min-h-control-md px-3 text-body-strong ${wrapsWhenNarrow} ${asLargeOnTouch} ${hitArea}`,
   lg: `min-h-control-lg px-4 text-body-strong ${wrapsWhenNarrow} ${hitArea}`,
+  prompt: `min-h-9 px-3.5 text-body-strong ${wrapsWhenNarrow} ${asLargeOnTouch} ${hitArea}`,
   // A touch label wraps between words, so at large text the button grows taller, not wider.
   touch: "min-h-touch px-4 py-2 text-center text-body-strong",
 };
@@ -208,6 +222,8 @@ const iconButtonClasses: Record<ButtonSize, string> = {
   sm: "size-control-sm touch:size-control-lg touch:hit-touch phone:size-touch",
   md: "size-control-md touch:size-control-lg touch:hit-touch phone:size-touch",
   lg: "size-control-lg touch:hit-touch phone:size-touch",
+  // Inside a prompt box it keeps its size on a touch screen and a phone, so the box doesn't grow.
+  prompt: `size-9 ${hitArea}`,
   touch: "size-touch",
 };
 

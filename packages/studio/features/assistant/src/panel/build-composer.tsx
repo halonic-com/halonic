@@ -100,7 +100,7 @@ export function BuildComposer(props: BuildComposerProps) {
   // The glow goes on a wrapper, since the box's focus look is its own shadow (flow-assistant 6.2).
   return (
     <div className="px-4 pt-2 pb-3">
-      <div className={props.glow === true ? "rounded-lg shadow-halo-glow" : undefined}>
+      <div className={props.glow === true ? "rounded-prompt shadow-halo-glow" : undefined}>
         <ChatComposer
           label={label}
           placeholder={placeholder}

@@ -153,7 +153,8 @@ function SearchRow({ box, listId, activeId, words, onWordsChange, onKeyDown }: S
         value={words}
         onChange={(event) => onWordsChange(event.target.value)}
         onKeyDown={onKeyDown}
-        className="min-w-0 flex-1 bg-transparent text-section font-normal text-fg outline-none placeholder:text-fg-subtle"
+        // The palette's 16px, a step over the other prompts' 15px (HAL-19142).
+        className="min-w-0 flex-1 bg-transparent text-input-touch text-fg outline-none placeholder:text-fg-subtle"
       />
     </div>
   );

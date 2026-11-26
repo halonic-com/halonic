@@ -54,7 +54,8 @@ verifies("kit.palette-box", () => {
     for (const name of [
       "palette-frame",
       "w-palette",
-      "rounded-lg",
+      "rounded-prompt",
+      "border-border-prompt",
       "bg-surface-raised",
       "shadow-3",
       "open:flex",

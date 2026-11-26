@@ -3,9 +3,11 @@ import { type Ref, useRef } from "react";
 import type { DraftFile } from "../draft-files.ts";
 import { messengerFileLimits } from "../file-limits.ts";
 import { messengerWords } from "../messenger-words.ts";
+import { AttachIcon } from "./attach-icon.tsx";
 
 /**
- * "Attach a file", which picks only the types the port sends. Nothing is
+ * "Attach a file", a round paperclip inside the box at its left (HAL-19142), which picks only the
+ * types the port sends. Nothing is
  * read or sent until the person sends the message.
  */
 export function AttachFileButton({
@@ -18,9 +20,15 @@ export function AttachFileButton({
   const picker = useRef<HTMLInputElement>(null);
   return (
     <>
-      <Button ref={buttonRef} variant="secondary" size="sm" onClick={() => picker.current?.click()}>
-        {messengerWords.files.attach}
-      </Button>
+      <Button
+        ref={buttonRef}
+        variant="soft"
+        size="prompt"
+        round
+        icon={<AttachIcon />}
+        label={messengerWords.files.attach}
+        onClick={() => picker.current?.click()}
+      />
       <input
         ref={picker}
         type="file"

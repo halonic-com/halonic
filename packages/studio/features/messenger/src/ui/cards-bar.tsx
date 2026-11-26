@@ -30,7 +30,7 @@ export function CardsBar({
     card?.querySelector<HTMLElement>("button, input")?.focus({ preventScroll: true });
   };
   return (
-    <div data-cards-bar className="border-t border-border px-4 py-1">
+    <div data-cards-bar className="px-4 py-1">
       <div className="mx-auto flex w-full max-w-[800px] items-center justify-center gap-1">
         <Button size="sm" variant="ghost" onClick={show}>
           {messengerWords.cardsWaiting(waiting.length)}
