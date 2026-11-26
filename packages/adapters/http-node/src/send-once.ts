@@ -126,11 +126,30 @@ function toResponse(url: URL, method: string, incoming: http.IncomingMessage): R
     headers.delete("content-encoding");
     headers.delete("content-length");
   }
+  const statusText = incoming.statusMessage ?? "";
   const response = new Response(body === null ? null : (Readable.toWeb(body) as ReadableStream), {
-    status,
-    statusText: incoming.statusMessage ?? "",
+    // `new Response()` throws outside 200–599, but the global `fetch` passes
+    // any status on. Build it as a 500, which isn't `ok` either, and give it
+    // the real status, so callers see the HTTP status instead of a failure.
+    status: buildableStatus(status) ? status : 500,
+    // Nobody acts on the reason phrase, so one `new Response()` would refuse
+    // is left out rather than failing the request.
+    statusText: reasonPhrase.test(statusText) ? statusText : "",
     headers,
   });
   Object.defineProperty(response, "url", { value: url.href });
+  if (!buildableStatus(status)) {
+    Object.defineProperty(response, "status", { value: status });
+  }
   return response;
+}
+
+/**
+ * A reason phrase as the Fetch standard takes it: tabs, spaces, visible ASCII
+ * and the bytes from 0x80, which `node:http` reads as Latin-1.
+ */
+const reasonPhrase = /^[\t\x20-\x7e\x80-\xff]*$/;
+
+function buildableStatus(status: number): boolean {
+  return status >= 200 && status <= 599;
 }
