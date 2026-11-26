@@ -139,12 +139,28 @@ verifies("kit.plain-list", () => {
     expect(classesOf(action)).not.toContain("invisible");
   });
 
-  it("gives the action a 24px target, raised so its words stay on the title's line", () => {
+  it("draws the action's box 20px high on the time's line, its words centred in it", () => {
     const { row } = renderRow({ action: { label: "Mark as unread", onClick: () => undefined } });
     const action = row.querySelector(":scope > button:last-child") as HTMLButtonElement;
 
-    expect(classesOf(action)).toEqual(expect.arrayContaining(["min-h-6", "top-1.5"]));
-    expect(classesOf(action)).not.toContain("top-2");
+    expect(classesOf(action)).toEqual(
+      expect.arrayContaining(["min-h-5", "top-2", "inline-flex", "items-center"]),
+    );
+    expect(classesOf(action)).not.toContain("min-h-6");
+  });
+
+  it("gives the action an invisible hit area 2px above and below its box, so it's 24px", () => {
+    const { row } = renderRow({ action: { label: "Mark as unread", onClick: () => undefined } });
+    const action = row.querySelector(":scope > button:last-child") as HTMLButtonElement;
+
+    expect(classesOf(action)).toEqual(
+      expect.arrayContaining([
+        "after:absolute",
+        "after:-inset-y-0.5",
+        "after:inset-x-0",
+        "after:content-['']",
+      ]),
+    );
   });
 
   it("rings the focused action inside its box, so the ring never covers the unread count", () => {
