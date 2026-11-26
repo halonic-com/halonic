@@ -63,7 +63,8 @@ export function WelcomeRecent({ workspaces, opening, onOpen, rowRef, failed }: W
       </h2>
       <ul className="flex flex-col">
         {shown.map((workspace) => {
-          const busy = workspace.location === opening?.location;
+          const step = openingStepOf(opening, workspace.location);
+          const busy = step !== undefined;
           const failedRow = workspace.location === failed?.location;
           return (
             <li key={workspace.location}>
@@ -89,11 +90,7 @@ export function WelcomeRecent({ workspaces, opening, onOpen, rowRef, failed }: W
                     ) : null}
                   </span>
                   <MiddleCut text={workspace.location} />
-                  {busy && opening !== undefined ? (
-                    <span className="text-caption text-fg-muted">
-                      {welcomeOpenWords.steps[opening.step]}
-                    </span>
-                  ) : null}
+                  <OpeningStep step={step} />
                 </span>
                 {!phone && workspace.sample === true ? <SampleTag /> : null}
                 {busy ? (
@@ -112,6 +109,21 @@ export function WelcomeRecent({ workspaces, opening, onOpen, rowRef, failed }: W
           : ""}
       </span>
     </section>
+  );
+}
+
+/** The step an opening row's folder is at, `undefined` for a row that isn't opening. */
+function openingStepOf(
+  opening: WelcomeRecentProps["opening"],
+  location: string,
+): RecentOpenStep | undefined {
+  return opening?.location === location ? opening.step : undefined;
+}
+
+/** What an opening row waits on, under its folder: seen, while a screen reader hears "Opening…". */
+function OpeningStep({ step }: { readonly step: RecentOpenStep | undefined }) {
+  return step === undefined ? null : (
+    <span className="text-caption text-fg-muted">{welcomeOpenWords.steps[step]}</span>
   );
 }
 

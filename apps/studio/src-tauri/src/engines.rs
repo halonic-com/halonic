@@ -99,12 +99,14 @@ fn open<R: Runtime>(
         .map_err(|_| refusal("folder_not_open", "the shell hasn't opened that folder"))?;
     let asked = Instant::now();
     let asked_after_page_load = crate::agent_host::since_page_loaded(app);
-    let handshake = running_engine(app, &workspace, location, Some(window))?;
+    let opened = running_engine(app, &workspace, location, Some(window));
+    // A refusal is timed too: a failed or timed-out open is the slow one to explain.
     open_timings::record(open_timings::engine_open_line(
         asked_after_page_load,
         asked.elapsed(),
+        opened.as_ref().err().map(|refusal| refusal.kind),
     ));
-    connect(app, window, handshake)
+    connect(app, window, opened?)
 }
 
 /// A start at login (`background_start.rs`): starts the engine of

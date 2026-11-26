@@ -39,12 +39,25 @@ fn says_how_long_the_engine_took_and_when_it_was_asked() {
     assert_eq!(
         engine_open_line(
             Some(Duration::from_millis(12_000)),
-            Duration::from_millis(3_250)
+            Duration::from_millis(3_250),
+            None
         ),
         "a window's engine answered in 3250 ms, asked 12000 ms after the page loaded"
     );
     assert_eq!(
-        engine_open_line(None, Duration::from_millis(2)),
+        engine_open_line(None, Duration::from_millis(2), None),
         "a window's engine answered in 2 ms"
+    );
+}
+
+#[test]
+fn says_how_long_a_refused_or_timed_out_engine_open_took() {
+    assert_eq!(
+        engine_open_line(
+            Some(Duration::from_millis(1_500)),
+            Duration::from_millis(60_000),
+            Some("engine_failed")
+        ),
+        "a window's engine was refused (engine_failed) after 60000 ms, asked 1500 ms after the page loaded"
     );
 }

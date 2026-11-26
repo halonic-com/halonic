@@ -24,7 +24,7 @@ import {
   trySampleWords,
   type WelcomeSampleProblem,
 } from "./welcome-sample.tsx";
-import { useWelcomeStart, WelcomeStartArea } from "./welcome-start.tsx";
+import { useWelcomeStart, WelcomeStartArea, type WelcomeStartState } from "./welcome-start.tsx";
 
 /** The Welcome screen's Recent list and what its rows do. */
 export interface WelcomeRecentList {
@@ -86,6 +86,17 @@ async function untilAnswered<T>(
     }
     await new Promise((resolve) => setTimeout(resolve, engineRetryMs));
   }
+}
+
+/** How a press waits for the start: a Recent row only for the engine, not the agent host (HAL-19599). */
+function holdFor(start: WelcomeStartState, what: Opening): WelcomeStartState["afterStart"] {
+  return what.from === "recent" ? start.afterEngine : start.afterStart;
+}
+
+/** The Recent row that is opening, and the step it waits on. */
+function recentOpening(opening: Opening | undefined, engineReady: boolean) {
+  if (opening?.from !== "recent") return undefined;
+  return { location: opening.location, step: engineReady ? "workspace" : "engine" } as const;
 }
 
 /** What failed to open, and whether a Recent row asked for it. */
@@ -189,10 +200,11 @@ export function Welcome({
     setShownProblem(undefined);
     setSampleProblem(undefined);
     try {
-      // The picker's folder is retried by whoever opens it, so the picker isn't shown again. A
-      // Recent row waits only for the engine, not the agent host (HAL-19599).
-      const hold = what.from === "recent" ? startState.afterEngine : startState.afterStart;
-      const problem = await hold(() =>
+      // The picker's folder is retried by whoever opens it, so the picker isn't shown again.
+      const problem = await holdFor(
+        startState,
+        what,
+      )(() =>
         what.from === "recent"
           ? untilAnswered(open, (answer) => answer?.kind === "unavailable")
           : open(),
@@ -327,14 +339,7 @@ export function Welcome({
         {recent === undefined ? null : (
           <WelcomeRecent
             workspaces={recent.workspaces}
-            opening={
-              opening?.from === "recent"
-                ? {
-                    location: opening.location,
-                    step: startState.engineReady ? "workspace" : "engine",
-                  }
-                : undefined
-            }
+            opening={recentOpening(opening, startState.engineReady)}
             onOpen={(location) => run({ from: "recent", location }, () => recent.onOpen(location))}
             rowRef={rowRef}
             failed={
