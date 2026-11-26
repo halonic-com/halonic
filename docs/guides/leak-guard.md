@@ -44,6 +44,16 @@ that holds a term as `[withheld]`.
   default rules from `.github/actions/gitleaks/gitleaks.toml`, no ignore
   list and no inline `gitleaks:allow` comments, so a `.gitleaks.toml`,
   `.gitleaksignore` or `gitleaks:allow` in a pull request changes nothing.
+- **Daily**, the `Personal terms in pull request comments` job of
+  `scheduled.yml` scans pull request bodies, comments, review bodies and
+  review comments updated since its last successful run, since a comment
+  can't be checked before it is posted. It uses the same terms secret and
+  skips texts by the logins in the `HALONIC_BOARD_LOGINS` secret of the
+  `leak-terms` environment. A hit opens or updates the issue "Personal terms
+  in pull request comments", which lists pull request numbers and links,
+  never the text: edit each text to say "the board", then close the issue.
+  A manual run of `scheduled.yml` with `pr-comments-full-scan` scans every
+  pull request. Until the terms secret is set, the job passes with a notice.
 
 `pnpm install` installs the hooks. It copies them from
 `tooling/check/hooks` into a `halonic-hooks` folder in the clone's git dir
