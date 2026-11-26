@@ -227,8 +227,14 @@ verifies("settings.update-dialog-versions", () => {
     it("shows each skipped version's notes under it, newest first", async () => {
       const { view } = await mount(statusOf(skipping, { current: "0.4.1" }));
       await openDialog(view);
-      const headings = [...(dialog()?.querySelectorAll("h4") ?? [])].map((h) => h.textContent);
-      expect(headings).toEqual(["Halonic 0.4.4", "Halonic 0.4.3", "Halonic 0.4.2"]);
+      const headings = [...(dialog()?.querySelectorAll("h4") ?? [])];
+      expect(headings.map((h) => h.textContent)).toEqual([
+        "Halonic 0.4.4",
+        "Halonic 0.4.3",
+        "Halonic 0.4.2",
+      ]);
+      // In the text colour, so each version stands out from the muted notes under it (HAL-19827).
+      for (const heading of headings) expect(heading.classList).toContain("text-fg");
       expect(dialog()?.textContent).toContain("- Changed in 0.4.2.");
       expect(dialog()?.textContent).not.toContain("earlier versions");
     });
@@ -240,6 +246,8 @@ verifies("settings.update-dialog-versions", () => {
       expect(dialog()?.textContent).toContain(
         "The release notes say what changed in earlier versions.",
       );
+      // One version's notes need no version heading.
+      expect(dialog()?.querySelector("h4")).toBeNull();
     });
   });
 });

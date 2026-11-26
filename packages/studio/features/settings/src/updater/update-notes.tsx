@@ -45,7 +45,7 @@ export function UpdateNotes({
           ) : (
             notes.map((entry) => (
               <div key={entry.version} className="flex flex-col gap-1">
-                <h4 className="font-medium">{versionHeading(entry.version)}</h4>
+                <h4 className="font-medium text-fg">{versionHeading(entry.version)}</h4>
                 <p className="whitespace-pre-wrap">{entry.notes}</p>
               </div>
             ))
