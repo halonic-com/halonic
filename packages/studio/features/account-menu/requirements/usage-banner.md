@@ -2,9 +2,7 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-19052 (S3-11 PR 3, plan approved by Liam on HAL-14163); flow C3's 80% row
-  (`limit.warning`); board 10's first row (HAL-13521, round 5); unit names from the flows' Units
-  table (HAL-12484)
+- Source: HAL-19052 (S3-11 PR 3, plan approved by Liam on HAL-14163); flow C3's 80% row (`limit.warning`); board 10's first row (HAL-13521, round 5); unit names from the flows' Units table (HAL-12484)
 
 Where the app provides the account menu host and the signed-in customer's facts list `warnings`
 (`server.account-menu-warnings`), the Account Menu feature shall show one quiet banner under the

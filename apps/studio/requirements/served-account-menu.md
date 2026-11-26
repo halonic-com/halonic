@@ -2,8 +2,7 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-18216 (S2-25 PR 4, plan on HAL-14151); `account-menu.menu`, `account-menu.sign-out`;
-  `warnings` from HAL-19052 (S3-11 PR 3, plan on HAL-14163), for `account-menu.usage-banner`
+- Source: HAL-18216 (S2-25 PR 4, plan on HAL-14151); `account-menu.menu`, `account-menu.sign-out`; `warnings` from HAL-19052 (S3-11 PR 3, plan on HAL-14163), for `account-menu.usage-banner`
 
 The served Studio shall give the account menu (`account-menu.menu`) through the computer, on the
 page's own address and session: `GET /api/account-menu` for the signed-in customer, where a 404
