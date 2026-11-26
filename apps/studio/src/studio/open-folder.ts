@@ -51,6 +51,7 @@ import { unfencedRunsOf } from "./integration-runs-status.ts";
 import { openFolderScope, savingOf } from "./open-folder-scope.ts";
 import { openTrustsOf, shellFiles, workspaceTrustOf } from "./open-trusts.ts";
 import { provideAgentSandbox } from "./provide-agent-sandbox.ts";
+import { provideChatClicks } from "./provide-chat-clicks.ts";
 import { provideFolderServices } from "./provide-folder-services.ts";
 import { restartRunsOfWindow } from "./restart-runs.ts";
 import { sampleWorkspaceOf } from "./sample-workspace.ts";
@@ -125,6 +126,7 @@ export async function openFolder(
   await provideAgentSandbox(services, window, ipc, platform);
   provideRemoteControl(services, tauriAgentHostTransport(window));
   provideKeepAwake(services, ipc, windowLabelOf(window));
+  provideChatClicks(services, ipc, windowLabelOf(window));
   provideFeedbackSettings(services, ipc, windowLabelOf(window), platform);
   provideAskKeysSettings(services, ipc, windowLabelOf(window), platform);
   if (ipc !== undefined) {

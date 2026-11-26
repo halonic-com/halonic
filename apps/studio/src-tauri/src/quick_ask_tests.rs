@@ -209,7 +209,10 @@ fn the_box_may_only_hide_itself_and_only_studio_changes_the_keys() {
         "../capabilities/desktop-quick-ask-window.json"
     ));
     assert_eq!(window["windows"], json!(["ask"]));
-    assert_eq!(window["permissions"], json!(["quick-ask:allow-hide"]));
+    assert_eq!(
+        window["permissions"],
+        json!(["quick-ask:allow-hide", "quick-ask:allow-open-chat"])
+    );
     let keys = capability(include_str!(
         "../capabilities/desktop-quick-ask-shortcut.json"
     ));

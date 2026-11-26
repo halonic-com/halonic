@@ -1,5 +1,6 @@
 import type { MessagingId } from "@halonicjs/ports";
 import { Button, useNarrow } from "@halonicjs/studio-kit";
+import type { ChatClicks } from "@halonicjs/studio-services";
 import {
   connectFrom,
   type EngineWords,
@@ -11,13 +12,14 @@ import {
 } from "@halonicjs/studio-shell";
 import { type ReactNode, type RefObject, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { MessengerService } from "../api.ts";
+import { ChatClicksService, MessengerService } from "../api.ts";
 import type { ConversationRow, Messenger } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import { WithActivity } from "./activity-host.tsx";
 import { type AgentPictures, pictureOf, useAgentPictures } from "./agent-pictures.ts";
 import { ChatsColumn, useChats } from "./chats-column.tsx";
 import { ConversationView } from "./conversation-view.tsx";
+import { useHandedChats } from "./handed-chats.ts";
 import { useFadeIn } from "./load-states.tsx";
 import { NeedsYouPanel, useWaiting } from "./needs-you.tsx";
 import { NewMenu } from "./new-menu.tsx";
@@ -30,6 +32,8 @@ export interface MessengerPageProps {
   readonly onConnect?: () => void;
   /** How a failed read says the engine isn't answering, worded for where the Studio runs. */
   readonly words?: EngineWords;
+  /** The chats the desktop shell hands this window to open, such as quick ask's. */
+  readonly chats?: ChatClicks | undefined;
 }
 
 /**
@@ -52,6 +56,7 @@ export function MessengerPage({
   messenger,
   onConnect,
   words = engineWords["desktop-app"],
+  chats,
 }: MessengerPageProps) {
   const { rows, connected, failure, changed, readAgain } = useChats(messenger);
   const [selected, setSelected] = useState<MessagingId | undefined>(undefined);
@@ -66,6 +71,7 @@ export function MessengerPage({
     setNeedsYou(false);
     onePaneState.select(conversation);
   };
+  useHandedChats(chats, select);
   const back = () => {
     setNeedsYou(false);
     onePaneState.back();
@@ -249,7 +255,8 @@ function useOnePane(
 
 /**
  * The Messenger's focused app, Halonic Messenger (`shell.focused-apps`): the open workspace's
- * Messenger, with its list on the window's frame and the open chat as the one panel.
+ * Messenger, with its list on the window's frame and the open chat as the one panel. It opens the
+ * chats the desktop shell hands it, such as quick ask's **Open in Messenger**.
  */
 export function MessengerWindow({ context }: PlaceViewProps) {
   const onConnect = connectFrom(context);
@@ -257,6 +264,7 @@ export function MessengerWindow({ context }: PlaceViewProps) {
     <MessengerPage
       messenger={context.services.get(MessengerService)}
       words={engineWordsOf(context)}
+      chats={context.services.find(ChatClicksService)}
       {...(onConnect === undefined ? {} : { onConnect })}
     />
   );

@@ -59,6 +59,7 @@ export {
   type RunSourceName,
   type SourceRead,
 } from "./all-runs.ts";
+export { type ChatClicks, shellChatClicks } from "./chat-clicks.ts";
 export {
   EngineCallRefused,
   type EngineFetch,
@@ -102,6 +103,7 @@ export {
 export { type RunNoticeClicks, shellRunNoticeClicks } from "./run-notice-clicks.ts";
 export { scopeToAccount } from "./scope-to-account.ts";
 export { actionStepsKey, provideActionSteps } from "./shell-actions.ts";
+export type { ShellClicks } from "./shell-clicks.ts";
 export { hostSettingsStoreKey, provideShellHostSettings } from "./shell-host-settings.ts";
 export {
   publicOnlyShellHttpClient,
