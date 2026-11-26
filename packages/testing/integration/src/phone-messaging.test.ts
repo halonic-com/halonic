@@ -47,7 +47,7 @@ function desktopMessaging(paperclip: FakePaperclip) {
   });
   const rates = new PhoneRateLimits({ now });
   return {
-    view: phoneMessaging(messaging, team),
+    view: phoneMessaging(messaging, team, messaging.reactions()),
     rateLimitFor: (phoneKey: Uint8Array) => rates.forPhone(phoneKey),
   };
 }

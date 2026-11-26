@@ -21,7 +21,10 @@ phone messages: a `msg-read` of a conversation's `reactions` and `msg-react`.
   reactions requests; at version 4 it sends none and settles them as not sent.
 
 The tests that pinned version 4 now pin 5 and the step through 4. Each
-version-3 test still checks Agents only, now reached through 5 and 4. No
+version-3 test still checks Agents only, now reached through 5 and 4. In
+`tunnel-attacks.frame-attacks`, the list of `hello` versions the host refuses
+swaps 5, which it now speaks, for 6, so the test still covers a version just
+above the newest one. No
 test is skipped or deleted, and no requirement is retired.
 `remote-gateway.phone-reactions` is new.
 
