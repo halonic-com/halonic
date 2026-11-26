@@ -5,6 +5,7 @@ import type {
   TeamRun,
   TeamRuns,
 } from "@halonicjs/ports";
+import { outcomeOf } from "./activity-today.ts";
 import type { ConversationRow } from "./messenger.ts";
 
 /** After this long without a sign of work, "Last activity" turns the attention colour. */
@@ -20,6 +21,9 @@ export interface ActivityTask {
   /** The task's short name, such as `ACME-7`; none for a chat or a task the key can't see. */
   readonly identifier?: string;
   readonly title?: string;
+  readonly runId: MessagingId;
+  /** The run's task; none for a run on no task. */
+  readonly taskId?: MessagingId;
   /** The run's short ID, "3f9c2a", for "run 3f9c2a". */
   readonly run: string;
   readonly startedAt?: Date;
@@ -82,6 +86,7 @@ export function activityView(
   }
   const queued = all.find((run) => run.state === "queued");
   if (queued !== undefined) {
+    // A queued run has no start; its last sign of work is being queued, so that is its time.
     return { kind: "queued", queuedAt: dateOf(queued.lastActivityAt), task: taskOf(queued, row) };
   }
   const last = newestBy(
@@ -115,6 +120,8 @@ function taskOf(run: TeamRun, row: ConversationRow, onChat = false): ActivityTas
   return {
     onChat,
     ...known,
+    runId: run.id,
+    ...(run.task === undefined ? {} : { taskId: run.task.id }),
     run: shortRun(run.id),
     ...(startedAt === undefined ? {} : { startedAt }),
     ...(finishedAt === undefined ? {} : { finishedAt }),
@@ -128,13 +135,6 @@ function pullRequestsOf(run: TeamRun, pulls: readonly PullRequestList[]): readon
   const open = pulls.flatMap((list) => list.open);
   const recent = pulls.flatMap((list) => list.recent);
   return [...open, ...recent].filter((pull) => pull.work === task);
-}
-
-/** Done, Failed or Stopped: a lost run (`interrupted`) didn't fail its work, so it stopped. */
-function outcomeOf(run: TeamRun): RunOutcome {
-  if (run.state === "succeeded") return "done";
-  if (run.state === "failed" || run.state === "timed-out") return "failed";
-  return "stopped";
 }
 
 /**

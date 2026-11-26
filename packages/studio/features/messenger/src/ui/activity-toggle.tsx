@@ -22,7 +22,8 @@ export const ActivityToggleContext = createContext<ActivityToggle | undefined>(u
 
 /**
  * Whether the panel is open: open by default on a wide window, then as the person last left it,
- * remembered on this computer. It never opens or closes by itself. **Ctrl+I** opens and closes it.
+ * remembered on this computer. It never opens or closes by itself. **Ctrl+I** opens and closes it,
+ * except while focus is in a text field, such as the message box or the search.
  */
 export function useActivityOpen(): readonly [boolean, () => void] {
   const [open, setOpen] = useState(() => remembered() ?? true);
@@ -36,6 +37,8 @@ export function useActivityOpen(): readonly [boolean, () => void] {
     const onKey = (event: KeyboardEvent) => {
       if (!event.ctrlKey || event.altKey || event.metaKey || event.key.toLowerCase() !== "i")
         return;
+      // While the person types, Ctrl+I belongs to the text field (HAL-18567 review).
+      if (isTextField(event.target)) return;
       event.preventDefault();
       toggle();
     };
@@ -125,4 +128,9 @@ function remembered(): boolean | undefined {
 
 function remember(open: boolean): void {
   globalThis.localStorage?.setItem(rememberedKey, open ? "open" : "closed");
+}
+
+function isTextField(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.isContentEditable || target.closest("input, textarea, select") !== null;
 }
