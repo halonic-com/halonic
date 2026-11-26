@@ -9,6 +9,7 @@ import { onChiefLineComment } from "./chief-line-signal.ts";
 import { companyRoster } from "./companies.ts";
 import { difficultyTagger } from "./difficulty-tagger.ts";
 import { lifecycleRunner } from "./fast-track-lifecycle-job.ts";
+import { fetchHonouringSignal } from "./fetch-signal.ts";
 import { frontBot } from "./front-bot.ts";
 import { chatNotesRouteKey, handleChatNotes } from "./front-bot-notes.ts";
 import { handleGhGuard } from "./gh-guard-route.ts";
@@ -92,7 +93,7 @@ export const plugin = definePlugin({
     ctx.jobs.register("precheck-wake", () => precheckJob.dispatch());
     // Off unless the board turns it on; its only outside call is to api.anthropic.com (HAL-19136).
     const bot = frontBot(ctx, {
-      anthropicFetch: (url, init) => ctx.http.fetch(String(url), init),
+      anthropicFetch: fetchHonouringSignal((url, init) => ctx.http.fetch(url, init)),
       now: () => new Date(),
     });
     ctx.events.on("issue.comment.created", async (event) => {
@@ -109,12 +110,12 @@ export const plugin = definePlugin({
     });
     const effort = taskEffort(ctx, { fetch: (url, init) => fetch(url, init) });
     const tagger = difficultyTagger(ctx, {
-      anthropicFetch: (url, init) => ctx.http.fetch(String(url), init),
+      anthropicFetch: fetchHonouringSignal((url, init) => ctx.http.fetch(url, init)),
       paperclipFetch: (url, init) => fetch(url, init),
       now: () => new Date(),
     });
     const thinSpec = thinSpecCheck(ctx, {
-      anthropicFetch: (url, init) => ctx.http.fetch(String(url), init),
+      anthropicFetch: fetchHonouringSignal((url, init) => ctx.http.fetch(url, init)),
       paperclipFetch: (url, init) => fetch(url, init),
       now: () => new Date(),
       model: fittedModel,

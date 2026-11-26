@@ -1,4 +1,3 @@
-import { findSecretShape } from "@halonicjs/std";
 import {
   clockTime,
   commentLimit,
@@ -6,6 +5,7 @@ import {
   frontBotUserText,
   shownEarlier,
 } from "./prompt.ts";
+import { holdsSecretShape } from "./secret-shape.ts";
 
 /**
  * The plain-code check every first reply passes before it is posted
@@ -191,7 +191,7 @@ function resultWordsAllowed(line: string, input: FrontBotInput): boolean {
 export function checkGrounding(line: string, given: FrontBotInput): Grounding {
   const input = frontBotUserText(given);
   const reject = (reason: GroundingReason): Grounding => ({ ok: false, reason });
-  if (findSecretShape(line) !== undefined) return reject("secret_shape");
+  if (holdsSecretShape(line)) return reject("secret_shape");
   if (line.length > maxCharacters || words(line).length > maxWords) return reject("too_long");
   if (isBareAcknowledgement(line)) return reject("bare_acknowledgement");
   if (unhedgedAnswer.test(line)) return reject("unhedged_answer");

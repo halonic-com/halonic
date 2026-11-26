@@ -1,7 +1,7 @@
-import { findSecretShape } from "@halonicjs/std";
 import type { IssueComment } from "@paperclipai/plugin-sdk";
 import type { FrontBotReason } from "../front-bot/log-record.ts";
 import type { FrontBotInput } from "../front-bot/prompt.ts";
+import { holdsSecretShape } from "../front-bot/secret-shape.ts";
 import type { FrontBotApi } from "./front-bot.ts";
 import { automaticNoteIds, isAutomaticNote } from "./front-bot-notes.ts";
 
@@ -65,10 +65,7 @@ export async function inputOf(ctx: FrontBotApi, scene: Scene): Promise<FrontBotI
   const agents = await ctx.agents.list({ companyId: scene.issue.companyId, limit: 500 });
   const names = new Map(agents.map((agent) => [agent.id, agent.name]));
   const earlier = scene.before
-    .filter(
-      (comment) =>
-        !isAutomaticNote(comment, scene.ownIds) && findSecretShape(comment.body) === undefined,
-    )
+    .filter((comment) => !isAutomaticNote(comment, scene.ownIds) && !holdsSecretShape(comment.body))
     .map((comment) => ({
       author:
         comment.authorAgentId === null ? "board" : (names.get(comment.authorAgentId) ?? "an agent"),
@@ -85,6 +82,6 @@ export async function inputOf(ctx: FrontBotApi, scene: Scene): Promise<FrontBotI
 
 /** Why the bot makes no call before it reads its limits, or undefined when it may. */
 export function inputBlock(scene: Scene): FrontBotReason | undefined {
-  const secret = findSecretShape(scene.message.body) ?? findSecretShape(scene.issue.title);
-  return secret === undefined ? undefined : "secret_in_input";
+  const secret = holdsSecretShape(scene.message.body) || holdsSecretShape(scene.issue.title);
+  return secret ? "secret_in_input" : undefined;
 }
