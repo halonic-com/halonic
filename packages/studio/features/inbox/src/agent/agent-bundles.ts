@@ -54,16 +54,36 @@ export function bundleAgentItems(newestFirst: readonly AgentItem[]): AgentBundle
 }
 
 /**
+ * The row an open card belongs to: the one it was opened from while that row is there, else the
+ * row that now holds one of its items, since a bundle that shrinks to one item, or an item that
+ * joins a bundle, changes its row's key. `undefined` once none of its items is waiting.
+ */
+export function rowKeyHolding(
+  opened: { readonly key: string; readonly ids: readonly string[] },
+  bundles: readonly AgentBundle[],
+): string | undefined {
+  if (bundles.some((bundle) => bundle.key === opened.key)) return opened.key;
+  const holding = bundles.find((bundle) =>
+    bundle.items.some((item) => opened.ids.includes(item.id)),
+  );
+  return holding?.key;
+}
+
+/**
  * A bundle's title: "2 cards on ACME-12 · Fix the login" when they share work the source has,
- * else "2 cards from Chief".
+ * else "2 cards from Chief" when one agent asks them all, else "3 cards".
  */
 export function bundleTitle(bundle: AgentBundle, work: WorkItem | undefined): string {
   const count = `${bundle.items.length} cards`;
   if (work !== undefined) {
     return `${count} on ${markHiddenName(work.label)} · ${markHiddenName(work.title)}`;
   }
-  const from = bundle.items[0]?.from;
-  return from === undefined || from.kind === "me" ? count : `${count} from ${authorName(from)}`;
+  // A work bundle whose work the source doesn't have may hold several agents' cards.
+  const names = new Set(
+    bundle.items.map((item) => (item.from.kind === "me" ? undefined : authorName(item.from))),
+  );
+  const [only] = names;
+  return names.size === 1 && only !== undefined ? `${count} from ${only}` : count;
 }
 
 /**

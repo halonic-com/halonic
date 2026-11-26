@@ -132,7 +132,7 @@ our server's version, it uses that instead.
 
 **The provider's requests** are the whole list. It may list agents, projects,
 tasks, comments, cards and pending approvals, read one approval and the tasks
-it is linked to, read the content of an attachment on one of those, read an agent's picture
+it is linked to, read an agent's picture
 (`GET /api/agent-avatars/<segment>`, HAL-18485), answer a
 card, approve or reject an approval, and comment on one of the person's own
 chat tasks. It approves, rejects, answers or comments only when the person

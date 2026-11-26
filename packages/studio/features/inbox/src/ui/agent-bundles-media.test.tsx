@@ -8,7 +8,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { fakeRuns } from "../fake-runs.test-helper.ts";
 import { Inbox } from "../inbox.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
-import { attachmentLine } from "./agent-attachments.tsx";
+import { attachmentLine, maxImageBytes, maxImagePixels } from "./agent-attachments.tsx";
 import { InboxView } from "./inbox-page.tsx";
 
 afterEach(() => {
@@ -134,14 +134,40 @@ verifies("inbox.agent-item-bundles", () => {
     ]);
     expect(rows(root)[1]?.textContent).toContain("Paperclip · Acme · Chief, Ravi · Waiting 3 h");
   });
+
+  it("names no single agent on a bundle of several agents' cards whose work it can't find", async () => {
+    const { messaging, source, chief, ravi } = acme();
+    messaging.addInboxItem(source.id, { question: "Approve?", from: chief, work: "gone-task" });
+    messaging.addInboxItem(source.id, { question: "Use it?", from: ravi, work: "gone-task" });
+    const root = await openInbox(messaging);
+
+    expect(rows(root)).toHaveLength(1);
+    expect(rows(root)[0]?.textContent).toContain("2 cards");
+    expect(rows(root)[0]?.textContent).not.toContain("2 cards from");
+  });
+
+  it("keeps the open bundle's row highlighted when it shrinks to one card", async () => {
+    const { messaging, source, chief, at } = acme();
+    messaging.addInboxItem(source.id, { question: "Ship the release?", from: chief });
+    at(noon);
+    messaging.addInboxItem(source.id, { question: "Merge the fix?", from: chief });
+    const root = await openInbox(messaging);
+    await openFirstRow(root);
+    expect(rows(root)[0]?.getAttribute("aria-current")).toBe("true");
+
+    await click(buttons(root, "Yes")[0]);
+    expect(rows(root)).toHaveLength(1);
+    expect(rows(root)[0]?.textContent).toContain("Merge the fix?");
+    expect(rows(root)[0]?.getAttribute("aria-current")).toBe("true");
+  });
 });
 
 /**
  * Draws nothing for real: jsdom has no image decoder or canvas, so the test plays both. A closed
  * picture refuses to be drawn, as a browser's does.
  */
-function fakePictures() {
-  const picture = { width: 40, height: 30, closed: false, close: vi.fn() };
+function fakePictures(size = { width: 40, height: 30 }) {
+  const picture = { ...size, closed: false, close: vi.fn() };
   picture.close.mockImplementation(() => {
     picture.closed = true;
   });
@@ -219,6 +245,85 @@ verifies("inbox.agent-item-media", () => {
     expect(root.querySelector("section")?.textContent).toContain("chart.svg · 2 KB");
     expect(buttons(root, "Show image")).toHaveLength(0);
     expect(decode).not.toHaveBeenCalled();
+  });
+
+  it("closes a shown picture only when its card goes, so strict mode still draws it", async () => {
+    const { drawImage, picture } = fakePictures();
+    const { messaging, source, chief } = acme();
+    messaging.addInboxItem(source.id, { question: "Look?", from: chief, files: [screenshot] });
+    const root = await openInbox(messaging);
+    await openFirstRow(root);
+
+    await click(buttons(root, "Show image")[0]);
+    expect(drawImage).toHaveBeenCalledWith(picture, 0, 0);
+    expect(picture.close).not.toHaveBeenCalled();
+    unmountAll();
+    expect(picture.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("never decodes an image whose read gives a type it doesn't draw", async () => {
+    const { decode } = fakePictures();
+    const { messaging, source, chief } = acme();
+    messaging.addInboxItem(source.id, { question: "Look?", from: chief, files: [screenshot] });
+    vi.spyOn(messaging, "readAttachment").mockResolvedValue({
+      outcome: "read",
+      bytes: new Uint8Array([60, 115, 118, 103]),
+      type: "image/svg+xml",
+    });
+    const root = await openInbox(messaging);
+    await openFirstRow(root);
+
+    await click(buttons(root, "Show image")[0]);
+    expect(decode).not.toHaveBeenCalled();
+    expect(root.textContent).toContain("Couldn't load the image.");
+    expect(root.querySelector("canvas")).toBeNull();
+  });
+
+  it("never reads or decodes an image listed above the size limit", async () => {
+    const { decode } = fakePictures();
+    const { messaging, source, chief } = acme();
+    const huge = { ...screenshot, bytes: new Uint8Array(maxImageBytes + 1) };
+    messaging.addInboxItem(source.id, { question: "Look?", from: chief, files: [huge] });
+    const read = vi.spyOn(messaging, "readAttachment");
+    const root = await openInbox(messaging);
+    await openFirstRow(root);
+
+    await click(buttons(root, "Show image")[0]);
+    expect(read).not.toHaveBeenCalled();
+    expect(decode).not.toHaveBeenCalled();
+    expect(root.textContent).toContain("Couldn't load the image.");
+  });
+
+  it("never decodes an image whose read is above the size limit, whatever size it listed", async () => {
+    const { decode } = fakePictures();
+    const { messaging, source, chief } = acme();
+    messaging.addInboxItem(source.id, { question: "Look?", from: chief, files: [screenshot] });
+    vi.spyOn(messaging, "readAttachment").mockResolvedValue({
+      outcome: "read",
+      bytes: new Uint8Array(maxImageBytes + 1),
+      type: "image/png",
+    });
+    const root = await openInbox(messaging);
+    await openFirstRow(root);
+
+    await click(buttons(root, "Show image")[0]);
+    expect(decode).not.toHaveBeenCalled();
+    expect(root.textContent).toContain("Couldn't load the image.");
+  });
+
+  it("never draws a picture that decodes above the pixel limit, and closes it", async () => {
+    const { decode, drawImage, picture } = fakePictures({ width: maxImagePixels, height: 2 });
+    const { messaging, source, chief } = acme();
+    messaging.addInboxItem(source.id, { question: "Look?", from: chief, files: [screenshot] });
+    const root = await openInbox(messaging);
+    await openFirstRow(root);
+
+    await click(buttons(root, "Show image")[0]);
+    expect(decode).toHaveBeenCalledTimes(1);
+    expect(drawImage).not.toHaveBeenCalled();
+    expect(picture.close).toHaveBeenCalledTimes(1);
+    expect(root.textContent).toContain("Couldn't load the image.");
+    expect(root.querySelector("canvas")).toBeNull();
   });
 
   it("says a file's size in words that read right at every edge (HAL-17457)", () => {
