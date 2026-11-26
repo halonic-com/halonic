@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+
+import { agentTint } from "@halonicjs/studio-kit";
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it } from "vitest";
@@ -12,6 +14,11 @@ afterEach(unmountAll);
  * Engineering, where Elena asked "Which hostname?" at 8:30.
  */
 function acme() {
+  return acmeWithElena().messaging;
+}
+
+/** {@link acme}, with Elena's ID. */
+function acmeWithElena() {
   const messaging = new FakeAgentMessaging();
   const source = messaging.addSource({ label: "Paperclip · Acme" });
   const chief = messaging.addAgent(source.id, { name: "Chief", title: "CTO" });
@@ -40,7 +47,7 @@ function acme() {
     from: { kind: "agent", agent: chief.id, name: "Chief" },
     options: [{ id: "yes", label: "Yes" }],
   });
-  return messaging;
+  return { messaging, elena: elena.id };
 }
 
 function entry(page: HTMLElement): Element | null {
@@ -104,5 +111,20 @@ verifies("messenger.needs-you", () => {
       expect(page.querySelector("main header h2")?.textContent).toBe("Engineering");
       expect(entry(page)?.getAttribute("aria-current")).toBeNull();
     });
+  });
+});
+
+verifies("messenger.agent-avatar-tint", () => {
+  it("draws a channel question's asker on their own tint, the channel's avatar neutral", async () => {
+    const { messaging, elena } = acmeWithElena();
+    const page = await openMessenger(messaging);
+    await press(entry(page));
+    // Elena's question is the oldest, so the first card.
+    const card = page.querySelector("main [data-needs-you-card]");
+    const tile = card?.querySelector("span.rounded-full");
+    expect(tile?.textContent).toBe("E");
+    expect(tile?.className).toContain(agentTint(elena));
+    const channel = byText(page, "nav li button", "Engineering");
+    expect(channel?.querySelector("span.rounded-full")?.className).not.toMatch(/bg-agent-/);
   });
 });

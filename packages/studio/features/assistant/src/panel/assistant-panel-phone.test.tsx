@@ -52,6 +52,10 @@ function phonePanel(fake: ReturnType<typeof fakeHost>) {
 
 const topBar = (page: HTMLElement) => page.querySelector("header") as HTMLElement;
 const statusLine = (page: HTMLElement) => topBar(page).querySelector("p")?.textContent;
+/** The Recent chats sheet's rows, by their buttons. */
+const recentRows = (page: HTMLElement) => [
+  ...page.querySelectorAll<HTMLElement>("[data-row-id] > button"),
+];
 const moreEntries = (page: HTMLElement) =>
   [...topBar(page).querySelectorAll("[role^=menuitem]")].map((item) => item.textContent);
 
@@ -114,12 +118,10 @@ verifies("assistant.chat.phone-screen", () => {
   it("lists the kept Build chats in Recent chats, with the phone's footer", async () => {
     const page = await show(phonePanel(fakeHost([routine, alias, triage])));
     await pickFromMore(page, "Recent chats");
-    const names = [...page.querySelectorAll("[role=gridcell]")].map((cell) =>
-      cell.getAttribute("aria-label"),
-    );
+    const names = recentRows(page).map((row) => row.textContent);
     expect(names).toHaveLength(2);
-    expect(names[0]).toMatch(/^Add a routine, /);
-    expect(names[1]).toMatch(/^Fix the triage alias, .*, 2 to review$/);
+    expect(names[0]).toMatch(/^Add a routine, \S+$/);
+    expect(names[1]).toMatch(/^Fix the triage alias, 2 to review, \S+$/);
     expect(page.textContent).toContain("Keeps your 40 most recent chats on your computer.");
     expect([...page.querySelectorAll("aside")].at(-1)?.querySelector("h2")?.textContent).toBe(
       "Recent chats",
@@ -130,11 +132,11 @@ verifies("assistant.chat.phone-screen", () => {
   it("shows a picked chat in place of the one before, with the focus on Assistant", async () => {
     const page = await show(phonePanel(fakeHost([routine, alias])));
     await pickFromMore(page, "Recent chats");
-    const row = [...page.querySelectorAll<HTMLElement>("[role=gridcell]")].find((cell) =>
-      cell.getAttribute("aria-label")?.startsWith("Fix the triage alias"),
+    const row = recentRows(page).find((each) =>
+      each.textContent?.startsWith("Fix the triage alias"),
     );
     await act(async () => row?.click());
-    expect(page.querySelector("[role=grid]")).toBeNull();
+    expect(page.querySelector("[data-row-id]")).toBeNull();
     expect(page.querySelector("[data-chat-message]")?.textContent).toContain("Fix the alias");
     expect(document.activeElement?.textContent).toBe("Assistant");
   });
@@ -176,5 +178,27 @@ verifies("assistant.chat.phone-screen", () => {
     expect(heading?.className).toContain("text-heading");
     expect(heading?.parentElement?.className).toContain("justify-center");
     expect(page.textContent).not.toContain("customize skill");
+  });
+});
+
+verifies("assistant.chat.recent-chats-dot", () => {
+  it("marks a chat with items to review with the violet dot, not a label", async () => {
+    const page = await show(phonePanel(fakeHost([routine, alias])));
+    await pickFromMore(page, "Recent chats");
+    const [plain, toReview] = recentRows(page);
+    expect(plain?.querySelector("[data-flag]")).toBeNull();
+    const dot = toReview?.querySelector("[data-flag]");
+    expect(dot?.className).toContain("bg-warning");
+    expect(dot?.textContent).toBe(", 2 to review");
+    expect(toReview?.querySelector(".bg-running")).toBeNull();
+  });
+
+  it("shows the running dot, and no violet dot, while a chat answers", async () => {
+    const page = await show(phonePanel(fakeHost([{ ...alias, answering: true }])));
+    await pickFromMore(page, "Recent chats");
+    const [answering] = recentRows(page);
+    expect(answering?.querySelector(".bg-running")).not.toBeNull();
+    expect(answering?.querySelector("[data-flag]")).toBeNull();
+    expect(answering?.textContent).toMatch(/^Fix the triage alias, answering, \S+$/);
   });
 });

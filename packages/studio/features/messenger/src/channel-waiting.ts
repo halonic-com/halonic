@@ -7,6 +7,8 @@ export interface ChannelQuestion {
   readonly item: InboxItem;
   /** The agent's name, as the channel's source lists it. */
   readonly agent: string;
+  /** The agent's ID, for its tint on the asker's avatar (`messenger.agent-avatar-tint`). */
+  readonly agentId: MessagingId;
 }
 
 /**
@@ -29,6 +31,8 @@ export function channelQuestions(
     .flatMap((item) => {
       const agent = item.work === undefined ? undefined : asking.get(item.work);
       const name = agent === undefined ? undefined : agentName(row, agent);
-      return name === undefined ? [] : [{ item, agent: name }];
+      return name === undefined || agent === undefined
+        ? []
+        : [{ item, agent: name, agentId: agent }];
     });
 }

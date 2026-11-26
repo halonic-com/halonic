@@ -11,6 +11,8 @@ export interface WaitingCard {
   readonly row: ConversationRow;
   /** Who asked, as the source names them. */
   readonly agent: string;
+  /** Who asked, by ID, for the tint of their avatar (`messenger.agent-avatar-tint`). */
+  readonly agentId: MessagingId;
 }
 
 /**
@@ -27,7 +29,12 @@ export function waitingCards(
   for (const row of rows) {
     for (const question of row.questions ?? []) {
       if (!waiting.has(question.item.id)) {
-        waiting.set(question.item.id, { card: question.item, row, agent: question.agent });
+        waiting.set(question.item.id, {
+          card: question.item,
+          row,
+          agent: question.agent,
+          agentId: question.agentId,
+        });
       }
     }
   }
@@ -39,6 +46,7 @@ export function waitingCards(
       card: item,
       row,
       agent: chatAgent(row)?.name ?? row.conversation.title,
+      agentId: row.conversation.agent,
     });
   }
   return [...waiting.values()].sort((a, b) => a.card.createdAt.localeCompare(b.card.createdAt));

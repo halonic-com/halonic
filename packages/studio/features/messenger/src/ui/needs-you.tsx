@@ -1,7 +1,6 @@
 import type { MessagingId } from "@halonicjs/ports";
-import { Avatar, Button, PlaceIcon } from "@halonicjs/studio-kit";
+import { Avatar, agentTint, Button, PlaceIcon } from "@halonicjs/studio-kit";
 import { useCallback, useEffect, useState } from "react";
-import { chatTint } from "../agent-tint.ts";
 import { chatAgent } from "../chat-name.ts";
 import { listWords } from "../list-words.ts";
 import type { ConversationRow, Messenger } from "../messenger.ts";
@@ -145,13 +144,14 @@ function WaitingItem({
   readonly onOpenChat: (conversation: MessagingId) => void;
   readonly onAnswered: (option: string) => Promise<void>;
 }) {
-  const { card, row, agent } = waiting;
+  const { card, row, agent, agentId } = waiting;
   // Where by name alone: "Liam · in Liam", not the full "Liam · CTO" of the list row.
   const where = chatAgent(row)?.name ?? row.conversation.title;
   return (
     <li data-needs-you-card={card.id} className="mx-auto flex w-full max-w-3xl flex-col gap-2">
       <div className="flex items-center gap-2 text-small text-fg-muted">
-        <Avatar name={agent} tint={chatTint(row)} />
+        {/* The asker's tint, also in a channel, as on their messages there (Sofia, HAL-19777). */}
+        <Avatar name={agent} tint={agentTint(agentId)} />
         <span className="min-w-0 flex-1 truncate">
           <bdi className="font-semibold text-fg">{agent}</bdi> · <bdi>{words.where(where)}</bdi>
         </span>
