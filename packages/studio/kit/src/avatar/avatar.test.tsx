@@ -74,4 +74,20 @@ verifies("kit.avatar-picture", () => {
   it("shows the initials when it has no picture", () => {
     expect(avatarOf("Ada Lovelace").textContent).toBe("AL");
   });
+
+  it("marks the tile data-picture drawn only once the picture is drawn", () => {
+    const picture = { width: 2, height: 2 } as ImageBitmap;
+    const getContext = vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+    const undrawn = render(<Avatar name="Ada" picture={picture} />).container
+      .firstElementChild as HTMLElement;
+    expect(undrawn.hasAttribute("data-picture")).toBe(false);
+
+    getContext.mockReturnValue({
+      drawImage: () => undefined,
+    } as unknown as CanvasRenderingContext2D);
+    const drawn = render(<Avatar name="Ada" picture={picture} />).container
+      .firstElementChild as HTMLElement;
+    expect(drawn.getAttribute("data-picture")).toBe("drawn");
+    expect(avatarOf("Ada").hasAttribute("data-picture")).toBe(false);
+  });
 });

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /** The props of `Avatar`. */
 export interface AvatarProps {
@@ -42,10 +42,13 @@ export function Avatar({ name, picture }: AvatarProps) {
  * Draws the picture's centre square on a canvas the tile's size in device pixels, never larger
  * than the square itself. Drawing it small here, with high-quality smoothing, keeps fine detail
  * from turning into moiré, which a CSS shrink of a full-size canvas does, and a 2000px picture
- * from holding 16 MB per row (HAL-18570). It is drawn again only for another picture.
+ * from holding 16 MB per row (HAL-18570). It is drawn again only for another picture. Once drawn,
+ * the tile says so with `data-picture="drawn"`: the canvas's pixels are out of WebDriver's reach,
+ * so that is how the click test tells a picture from the initials (HAL-19151).
  */
 function AvatarPicture({ picture }: { readonly picture: ImageBitmap }) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const [pictureDrawn, setPictureDrawn] = useState(false);
   useEffect(() => {
     const target = canvas.current;
     if (target === null) return;
@@ -59,9 +62,14 @@ function AvatarPicture({ picture }: { readonly picture: ImageBitmap }) {
     const left = (picture.width - side) / 2;
     const top = (picture.height - side) / 2;
     context.drawImage(picture, left, top, side, side, 0, 0, drawn, drawn);
+    setPictureDrawn(true);
   }, [picture]);
   return (
-    <span aria-hidden="true" className={`block overflow-hidden ${tile}`}>
+    <span
+      aria-hidden="true"
+      data-picture={pictureDrawn ? "drawn" : undefined}
+      className={`block overflow-hidden ${tile}`}
+    >
       <canvas ref={canvas} className="block size-full" />
     </span>
   );
