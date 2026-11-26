@@ -38,11 +38,11 @@ function requestCounts(): Map<string, number> {
   return counts;
 }
 
-/** How many times the open tasks were read. */
+/** How many times the open tasks were read, whole or as changes; a search (`q=`) doesn't count. */
 const taskReads = () =>
   paperclip.seen.filter(
     ({ method, path, query }) =>
-      method === "GET" && path === `/api/companies/${company}/issues` && query.has("status"),
+      method === "GET" && path === `/api/companies/${company}/issues` && !query.has("q"),
   ).length;
 
 /** The server's poll loop: one `refresh`, then its six lists, read at once. */
