@@ -59,21 +59,26 @@ export class FakeFolders implements AttemptFolders {
 
 /**
  * A harness whose attempts report `events` (and fail with `error` when set),
- * while a run on the fallback model reports `fallbackEvents`.
+ * while a run on the fallback model reports `fallbackEvents`, and neither
+ * hangs nor runs `whileRunning`.
  */
 export class PilotHarness extends FakeHarness {
   fallbackEvents: HarnessEvent[] = [finished("from opus")];
 
   override start(task: HarnessTask): HarnessRun {
     if (task.model !== "opus") return super.start(task);
-    const { events, error } = this;
+    const { events, error, hangs, whileRunning } = this;
     this.events = this.fallbackEvents;
     this.error = undefined;
+    this.hangs = false;
+    this.whileRunning = undefined;
     try {
       return super.start(task);
     } finally {
       this.events = events;
       this.error = error;
+      this.hangs = hangs;
+      this.whileRunning = whileRunning;
     }
   }
 }

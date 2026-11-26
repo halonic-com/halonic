@@ -22,6 +22,7 @@ import type {
 import { type StopSignal, StopSource } from "@halonicjs/std";
 import { type CallBudget, noCallBudget } from "../budget/call-budget.ts";
 import type { RunHarnessEffect } from "../kernel/decide-types.ts";
+import type { AskingCall } from "../run/bridge-approvals.ts";
 import { StartFailedError } from "../run/start-failed-error.ts";
 import { BlockedAccesses } from "./blocked-accesses.ts";
 import { bridgeRecorderOf } from "./bridge-recorder.ts";
@@ -33,6 +34,7 @@ import { hedgedWriterOf, type RunAttempt, runHedgedWriter } from "./run-hedged-w
 import { harnessCauseOf } from "./start-failure-causes.ts";
 import { type StartLimits, seconds } from "./start-limits.ts";
 import { type HarnessLimitError, StepLimits } from "./step-limits.ts";
+import { stopRun } from "./stop-harness-run.ts";
 import { unlessStopped } from "./unless-stopped.ts";
 
 /** Where a harness call writes its events: the run's log, one event after the other. */
@@ -93,6 +95,19 @@ export interface HarnessCall {
   readonly filesFolder: string | null;
   /** What the call's model calls keep to; a call without it has no budget. */
   readonly budget?: CallBudget;
+  /**
+   * Where the call lists itself while its bridge is open, so what the bridge
+   * asks a person goes through the `approvals` this call runs with. An
+   * attempt of the early hedge runs with its own, which ask nobody, so its
+   * bridge's questions never reach the run's. None when nothing lists it.
+   */
+  readonly bridgeCalls?: BridgeCallList;
+}
+
+/** Where running harness calls list themselves for their bridge's approvals, as `RunBridgeApprovals` does. */
+export interface BridgeCallList {
+  /** @returns the function that takes the call off the list again */
+  add(runId: string, call: AskingCall): () => void;
 }
 
 /**
@@ -267,6 +282,12 @@ async function runInBridge(
     options.bridges.open(agent, recorder, placement.runsOn),
     (late) => late.close(),
   );
+  // Under the call's own stop: an attempt of the early hedge is stopped apart from its run.
+  const unlist = call.bridgeCalls?.add(call.runId, {
+    approvals: started.approvals,
+    log,
+    stop: engineStop,
+  });
   let instructions: OpenInstructions | null = null;
   try {
     instructions = await unlessStopped(
@@ -334,45 +355,13 @@ async function runInBridge(
       if (!engineStop.stopped) await blocked.writeTotals();
     }
   } finally {
+    // The program and its session have stopped by now, so the bridge asks nothing more.
+    unlist?.();
     // After the session: the sandbox may still read the folder until it has closed.
     await instructions?.release();
     await bridge.close();
     await log.settled();
   }
-}
-
-/**
- * Stops the harness run and ends its event stream. The stream ends even when
- * `cancel()` rejects, so a harness written as a generator still runs its own
- * clean-up. A program that couldn't be stopped may still be running, so that
- * failure is what the step reports, in place of its own result or error;
- * `original` stays as its `cause`.
- *
- * @param original - the error the step was ending with, if it was ending with one
- * @throws Error when the run couldn't be stopped
- */
-async function stopRun(
-  harness: Harness,
-  run: HarnessRun,
-  events: AsyncIterator<HarnessEvent>,
-  original: { error: unknown } | undefined,
-): Promise<void> {
-  let stopFailure: { error: unknown } | undefined;
-  try {
-    await run.cancel();
-  } catch (error) {
-    stopFailure = { error };
-  }
-  // Only after `cancel()`: the port then ends the stream, so a read
-  // still waiting settles and `return()` doesn't wait behind it. A
-  // harness written as a generator runs its own clean-up here.
-  await events.return?.();
-  if (stopFailure === undefined) return;
-  const reason =
-    stopFailure.error instanceof Error ? stopFailure.error.message : String(stopFailure.error);
-  throw new Error(`${harness.name} couldn't be stopped, so it may still be running: ${reason}`, {
-    cause: original === undefined ? stopFailure.error : original.error,
-  });
 }
 
 /**

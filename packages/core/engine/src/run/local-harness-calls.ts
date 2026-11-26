@@ -117,18 +117,16 @@ export class LocalHarnessCalls {
         effort: run.effort,
         filesFolder,
         ...(budget === undefined ? {} : { budget: new RunCallBudget(budget, run, clock) }),
+        // Each bridge lists its own call while it is open: an attempt of the early hedge
+        // with its own approvals, so its questions never reach the run's (HAL-19363).
+        bridgeCalls: this.#bridgeApprovals,
       };
       // Last before the harness starts, so a trust removed meanwhile still stops it (HAL-12811).
       // Raced against `stop`, so a check that hangs doesn't hold the engine's close either.
       if (mayStart !== undefined) {
         await unlessStopped(stop, refuseUnlessMayStart(mayStart, call.agent, harness));
       }
-      const unlist = this.#bridgeApprovals.add(runId, { approvals, log, stop });
-      try {
-        return await runHarnessCall(harnesses, harnessCall, log, approvals, limits, stop);
-      } finally {
-        unlist();
-      }
+      return await runHarnessCall(harnesses, harnessCall, log, approvals, limits, stop);
     };
     return this.#live.run(runId, running, topLevelRunId);
   }
@@ -147,7 +145,8 @@ export class LocalHarnessCalls {
    * The approvals of the run's bridge: what the program or a Halonic tool
    * needs a person's OK for goes to the run as an approval, answered with
    * `approve` or `reject`. With no harness call of the run going on, each
-   * request is answered with no.
+   * request is answered with no. Under the early hedge, an attempt's bridge
+   * asks through the attempt, which stops it without asking anyone.
    */
   bridgeApprovals(runId: string): BridgeApprovals {
     return this.#bridgeApprovals.of(runId);
