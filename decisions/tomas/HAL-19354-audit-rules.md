@@ -3,7 +3,7 @@
 - Task: HAL-19354
 - Approval: the board's audit rules for the plugin mover, posted on HAL-19354 on 26 Nov (https://paperclip.halonic.com/HAL/issues/HAL-19354#comment-671fec72-2d83-4255-a283-efec38fd3ccc), which the board's shadow session audits every move against, and the board supervisor's follow-ups (https://paperclip.halonic.com/HAL/issues/HAL-19354#comment-f8f991b1-a0c8-43b0-80ae-d0132a8368f0, https://paperclip.halonic.com/HAL/issues/HAL-19354#comment-4805ea20-74cf-41f3-a095-c85759d31761). Liam approves the change in review on HAL-19354.
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:nrkjHx2IGpIk7XNF0E8Fc+y/WkvyT6O8c6HRrHcgYjjphcmSh7xs/kX4J2IqnW6Hb4QKqTYBEGO6h7KLJDwECg==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:a6Zypf2CU1nLjoUGR5JYxhYgzI/UiyfP+82AcKDo9s38sHsdJ2qctumyDFwS6alxTWKvtzV4X5xr0P+CdpOjBA==
 
 ## What changes
 
