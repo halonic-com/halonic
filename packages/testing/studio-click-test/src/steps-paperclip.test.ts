@@ -96,6 +96,44 @@ verifies("studio-click-test.paperclip-steps", () => {
       });
     });
 
+    /**
+     * A card that stays open once answered, with its "Answered at" line, as run 45834340178
+     * showed it; Back to Inbox shows the list, with `staleLine` over it.
+     */
+    function studioKeepingCard(staleLine = ""): FakeStudio {
+      const studio = connectedStudio({
+        [screenText.inbox.text]: () => {
+          main(studio).text = `Needs you ${screenText.strategyApproval.text}`;
+          button(studio, "main", screenText.strategyApproval.text, () => {
+            main(studio).text = `${screenText.strategyApproval.text} ${seedNames.card}`;
+            button(studio, "main", buttonLabels.approve.text, () => {
+              studio.paperclip.status = "approved";
+              main(studio).text = `${seedNames.card} Answered at 14:22: Approve.`;
+              button(studio, "main", screenText.backToInbox.text, () => {
+                main(studio).text = `${staleLine}Needs you ${screenText.nothingWaiting.text} Done`;
+              });
+            });
+          });
+        },
+      });
+      return studio;
+    }
+
+    it("goes back to the list when the answered card stays open", async () => {
+      const studio = studioKeepingCard();
+      await expect(inboxAnswer.run(studio.context)).resolves.toEqual({ passed: true });
+      expect(studio.clicks.slice(-1)).toEqual([screenText.backToInbox.text]);
+    });
+
+    it("fails as STALE_INBOX when the list it went back to shows the line, naming the load", async () => {
+      const studio = studioKeepingCard(`${screenText.engineShowingLast.text} `);
+      studio.rootAttributes.set("data-failed", "setup:sandbox unexplained");
+      await expect(inboxAnswer.run(studio.context)).resolves.toMatchObject({
+        code: "STALE_INBOX",
+        note: expect.stringContaining("Failed load: setup:sandbox unexplained"),
+      });
+    });
+
     it("fails as NO_CARD when the Inbox never shows it", async () => {
       const studio = connectedStudio({ [screenText.inbox.text]: () => undefined });
       await expect(inboxAnswer.run(studio.context)).resolves.toMatchObject({ code: "NO_CARD" });
