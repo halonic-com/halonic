@@ -7,8 +7,10 @@
 ## What changes
 
 In `.github/workflows/release.yml`, the command-line line of the release notes changes from
-`npm install -g halonic` to `npm install -g halonic@latest`. Nothing else in the workflow changes:
-no step, permission, token, trigger or publish command.
+`npm install -g halonic` to `npm install -g halonic@latest`. Two comments, at the top of the file and
+above the `npm stage publish` step, now give the current reason for `--tag latest`: 0.1.1 holds
+`latest`, and npm skips the 1.0.0 placeholder only while it is deprecated. Nothing else in the
+workflow changes: no step, permission, token, trigger or publish command.
 
 ## Why
 
