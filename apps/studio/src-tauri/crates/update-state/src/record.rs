@@ -6,7 +6,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
-use crate::notes::{OfferedNotes, offered_notes};
+use crate::notes::{OfferedNotes, kept_notes, offered_notes};
 use crate::status::{CheckFailure, JustUpdated, UpdateState, notes_url};
 use crate::track::{UpdateTrack, chosen_or_none};
 use crate::version::Version;
@@ -78,6 +78,10 @@ pub struct InstallRecord {
     pub failures: u32,
     /// The installer ran and no start has looked at the result yet.
     pub pending: bool,
+    /// What changed in `target`, for the "Updated to" dialog after the
+    /// restart (HAL-19364). Cleaned again when read: the file can be edited.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notes: Option<String>,
 }
 
 /// What a start learns from the install record.
@@ -96,6 +100,9 @@ pub enum StartOutcome {
 }
 
 /// What was in the record file.
+// Read once per start and taken apart at once, so its size doesn't matter;
+// boxing the record would only make every caller unbox it.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecordRead {
     Read(UpdaterRecord),
@@ -210,9 +217,10 @@ impl UpdaterRecord {
         }
     }
 
-    /// Writes down, just before the installer runs, what it installs. A
-    /// second try of the same version keeps its count of failures.
-    pub fn before_install(&mut self, target: &str, current: &str) {
+    /// Writes down, just before the installer runs, what it installs and
+    /// what changed in it. A second try of the same version keeps its count
+    /// of failures.
+    pub fn before_install(&mut self, target: &str, current: &str, notes: Option<&str>) {
         let failures = match &self.install {
             Some(install) if install.target == target => install.failures,
             _ => 0,
@@ -222,6 +230,7 @@ impl UpdaterRecord {
             from: current.to_owned(),
             failures,
             pending: true,
+            notes: kept_notes(notes),
         });
     }
 
@@ -252,6 +261,7 @@ impl UpdaterRecord {
                 from: install.from.clone(),
                 to: install.target.clone(),
                 not_carried_over: Vec::new(),
+                notes: kept_notes(install.notes.as_deref()),
             })
         } else {
             StartOutcome::Nothing

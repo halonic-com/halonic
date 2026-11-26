@@ -43,6 +43,9 @@ pub struct JustUpdated {
     pub to: String,
     /// The settings a migration couldn't carry over (FS6), for Studio to show.
     pub not_carried_over: Vec<String>,
+    /// What changed in `to`, kept from its manifest (HAL-19364).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notes: Option<String>,
 }
 
 /// Where the updater is. `notesUrl` is the release page of that version;

@@ -16,6 +16,7 @@ fn update_state_sends_the_status_in_the_agreed_shape() {
             from: "0.1.0".to_owned(),
             to: "0.1.1".to_owned(),
             not_carried_over: Vec::new(),
+            notes: None,
         }),
         managed: None,
         sandbox_setup_again: true,
