@@ -14,6 +14,7 @@ import { frontBot } from "./front-bot.ts";
 import { serial } from "./front-bot-budget.ts";
 import { chatNotesRouteKey, handleChatNotes } from "./front-bot-notes.ts";
 import { progressNotes } from "./front-bot-progress.ts";
+import { pendingMessages, registerRunChoice } from "./front-bot-run-choice.ts";
 import { handleGhGuard } from "./gh-guard-route.ts";
 import {
   githubPullRouteKey,
@@ -54,7 +55,8 @@ import {
  * back after 3 hand-offs, asks for acceptance criteria on a
  * new code task whose text looks thin, and answers the agent tools, the `gh` wrapper's route,
  * the board's Worker agents page and the board's GitHub summary routes, and
- * builds the state packet the server asks for before a monitor wake's run.
+ * builds the state packet the server asks for before a monitor wake's run, and
+ * answers the front bot's run choice before a chat message's run.
  */
 let context: PluginContext | undefined;
 /** The companies the jobs dispatch to, learnt from scoped calls (see companies.ts). */
@@ -102,7 +104,10 @@ export const plugin = definePlugin({
     };
     // First replies and progress notes count the same day's spend, one call at a time.
     const botQueue = serial();
-    const bot = frontBot(ctx, botDeps, botQueue);
+    // The run-choice data key (HAL-19219) waits briefly for a message the bot is still on.
+    const botPending = pendingMessages();
+    const bot = frontBot(ctx, botDeps, botQueue, botPending);
+    registerRunChoice(ctx, botPending);
     // Off unless the board turns them on too; reads only Paperclip's own API for the run (HAL-19218).
     const notes = progressNotes(
       ctx,

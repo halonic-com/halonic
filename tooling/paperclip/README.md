@@ -922,6 +922,31 @@ requests and the merge queue. Requirement `paperclip.github-routes`.
   plugin state key `agent-merges` (pull request, agent, merge time; 30 days;
   `src/snapshot/agent-merges.ts`). Requirement `paperclip.agent-merge-counts`.
 
+## Front bot run choice (v2)
+
+HAL-19219, front bot v2 from the design on HAL-18847 section 2.3, with Liam's
+condition 5. A quick question on a chat task doesn't need the agent's full
+effort, and the front bot's first-reply call has already read it.
+
+- **Who decides:** the first-reply call (`src/plugin/front-bot.ts`). While
+  `frontBotRunChoice` is on, its prompt asks for a last line `Run: quick` or
+  `Run: normal` (`src/front-bot/run-choice.ts`). The model never names a model
+  or an effort: "quick" means the board's `frontBotQuickEffort` (`minimal`,
+  `low` or `medium`, default `low`) and, if set, `frontBotQuickModel`.
+- **Where it is kept:** per chat task, the newest message's comment id and
+  choice (plugin state `front-bot` / `run-choice`). A normal run keeps "no
+  choice", so the hook learns at once that nothing changes.
+- **Who reads it:** the server, through the data key `front-bot-run-choice`
+  (`src/plugin/front-bot-run-choice.ts`), just before a chat message's run
+  starts, with `{ companyId, issueId, commentId }`. It answers only that
+  message's choice, at most 10 minutes old, and waits at most 1.2 s for a
+  message the bot is still on. No model call. The server patch
+  (`halonic-com/server`, HAL-19219) gives up after 1.5 s, only ever lowers
+  effort and only allows models on `HALONIC_TASK_MODELS`, for that one run.
+- **Setting:** `frontBotRunChoice`, off by default; it also needs the front bot
+  on. It goes on only after HAL-17402 is live and step 1 has been measured.
+  Requirement `paperclip.front-bot-run-choice`.
+
 ## State packet in monitor wakes
 
 HAL-17402, with Liam's design review of 24 Nov. A wait-check run usually spends

@@ -1,4 +1,5 @@
 import { readTaskEffortSettings, type SecretRef, secretRef } from "../task-effort/settings.ts";
+import { type QuickEffort, type QuickRunSettings, quickEfforts } from "./run-choice.ts";
 
 /**
  * The front bot's settings, as the board saves them in the plugin's settings
@@ -17,6 +18,18 @@ export interface FrontBotSettings {
   /** Paperclip's API and the key the notes read a run's status and log with, shared with the other handlers. */
   readonly apiUrl: string | undefined;
   readonly apiKey: SecretRef | undefined;
+  /** Front bot v2 (HAL-19219): store a quick message's run choice for the server's hook. Off unless exactly `true`. */
+  readonly runChoice: boolean;
+  /** What a quick run gets. */
+  readonly quickRun: QuickRunSettings;
+}
+
+function quickEffort(value: unknown): QuickEffort {
+  return quickEfforts.find((effort) => effort === value) ?? "low";
+}
+
+function quickModel(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() !== "" ? value.trim() : undefined;
 }
 
 /** Reads the front bot's settings; anything odd counts as off or unset. */
@@ -28,6 +41,11 @@ export function readFrontBotSettings(config: Readonly<Record<string, unknown>>):
     notesEnabled: config["frontBotNotesEnabled"] === true,
     apiUrl: paperclip.apiUrl,
     apiKey: paperclip.apiKey,
+    runChoice: config["frontBotRunChoice"] === true,
+    quickRun: {
+      effort: quickEffort(config["frontBotQuickEffort"]),
+      model: quickModel(config["frontBotQuickModel"]),
+    },
   };
 }
 
@@ -77,5 +95,26 @@ export const frontBotConfigProperties = {
     description:
       "Off: no progress notes. On (with the front bot on): while an agent works on a board user's chat message, up to 5 short notes from Haiku 4.5 about what its run shows, read from the run's tool steps only (never their output or the agent's thinking). Notes are never comments; Messenger reads them from the chat-notes route. They share the front bot's $3 daily cap and need Paperclip's API url and key.",
     default: false,
+  },
+  frontBotRunChoice: {
+    type: "boolean",
+    title: "Front bot: lower effort for quick questions",
+    description:
+      "Off: chat runs start with the agent's normal settings. On: when the front bot's first-reply call finds a message is only a quick question, the run it wakes gets the quick-run effort (and model) below, for that run only. Needs the front bot on and the server patch from HAL-19219, which only ever lowers effort and only allows models on HALONIC_TASK_MODELS.",
+    default: false,
+  },
+  frontBotQuickEffort: {
+    type: "string",
+    enum: [...quickEfforts],
+    title: "Front bot: quick-run effort",
+    description:
+      "The effort a quick question's run gets. The server ignores it when it isn't lower than the run's own effort.",
+    default: "low",
+  },
+  frontBotQuickModel: {
+    type: "string",
+    title: "Front bot: quick-run model",
+    description:
+      "Optional model for a quick question's run. Empty: the agent's own model. The server uses it only when it is on HALONIC_TASK_MODELS.",
   },
 } as const;
