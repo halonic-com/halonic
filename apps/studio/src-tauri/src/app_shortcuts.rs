@@ -52,6 +52,7 @@ pub enum PinScreen {
 
 /// Kotlin's answer to `takeOpenTarget`.
 #[derive(Debug, Deserialize)]
+#[cfg_attr(not(any(target_os = "android", test)), expect(dead_code))]
 pub(crate) struct Taken {
     target: Option<String>,
     computer: Option<String>,
@@ -80,6 +81,7 @@ pub(crate) fn chat_fits(chat: &LastChat) -> bool {
 
 /// The screen Kotlin's answer names. A chat that doesn't check out opens
 /// the Messenger list, as a chat that's gone does; anything else, none.
+#[cfg_attr(not(any(target_os = "android", test)), expect(dead_code))]
 pub(crate) fn target_of(taken: Taken) -> Option<OpenTarget> {
     match taken.target.as_deref()? {
         "inbox" => Some(OpenTarget::Inbox),
