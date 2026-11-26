@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19923 (the board's correction on HAL-10, 26 Nov 16:53 UTC: "the sidebar of messenger was good how it was, in the frame. I meant to do the same at studio and inbox"; plan approved by Liam on HAL-19929)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5DLCtgN8OZ40mWd19PwBf/Qzj/Dzke+FRf331dyb/Eo88BQgmLAcrhKrnKnooRx2aBu9rO8dyUFSAaF0MFjiDg==
 
 HAL-19921 put the Messenger's chat list back on the window's frame (`messenger.framed-list`).
 The board asked for the same framed sidebar in the Inbox and in Studio. The kit now draws it once
