@@ -3,6 +3,7 @@
 - Approval: the task asks for this change (HAL-19167, Julian's review of #6362); Julian approves
   and signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:T8+BXbbGAAS0ylqIzmB7NwAEDyU+MzRxEXSVMnSUsyPErz1S3Ike+F9hKQJ64Y5cjrDyi6RCHxigwso7aQBICg==
 
 ## What changes
 
