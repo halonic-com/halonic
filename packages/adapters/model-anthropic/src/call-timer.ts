@@ -66,7 +66,9 @@ export class CallTimer {
   watch(reply: Response): Response {
     const idleMs = this.#limits.idleTimeoutMs;
     this.#arm("idle", idleMs);
-    if (reply.body === null) return reply;
+    // `fetch` passes on any status, but `new Response()` throws outside
+    // 200–599: such a reply goes on as it is, to the normal error path.
+    if (reply.body === null || reply.status < 200 || reply.status > 599) return reply;
     const source = reply.body.getReader();
     // Read on demand, not piped, so cancelling the watched body cancels the
     // reply's own body straight away and the connection closes.
@@ -82,8 +84,10 @@ export class CallTimer {
       },
       cancel: (reason) => source.cancel(reason),
     });
-    const { status, statusText, headers } = reply;
-    return new Response(watched, { status, statusText, headers });
+    // No statusText: nothing reads it, and `new Response()` throws on some
+    // text `fetch` passes on (outside Latin-1, or a control character).
+    const { status, headers } = reply;
+    return new Response(watched, { status, headers });
   }
 
   /** Stops the timer. Call it once the call is over, however it ended. */
