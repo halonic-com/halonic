@@ -2,6 +2,7 @@
 
 - Approval: the task asks for this change (https://paperclip.halonic.com/HAL/issues/HAL-19254, Liam's follow-up from #6376); Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:iA4zhvtWJ2wBJ6Mr82LgBnSu18Ize7DzHF+gOQ8PVTxEntmuTAoqvdQzKK7WancBZepTHWa0aqR+bF30RRWhDg==
 
 Liam's review of #6376 (HAL-19203) asked for this follow-up. A reviewer whose
 newest run stopped on a seat or usage limit counted as limited for 5 hours
