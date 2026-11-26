@@ -172,6 +172,7 @@ export function OpenCard({
         signedOut={signedOut}
         words={words}
         waiting={items.some((waiting) => waiting.key === item.key)}
+        announce={announce}
       />
     );
   }

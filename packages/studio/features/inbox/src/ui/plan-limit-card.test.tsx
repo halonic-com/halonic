@@ -109,6 +109,25 @@ verifies("inbox.plan-limit-card", () => {
       expect(root.querySelector('[role="alert"]')?.textContent).toBe("");
     });
 
+    it("says the run is still waiting, with the card unchanged, when there's still no room", async () => {
+      const said: string[] = [];
+      const { root } = openCard(async () => runAtLimit(), { announce: (line) => said.push(line) });
+      await press(button(root, "Continue the run"));
+      expect(said).toEqual(["The run is still waiting at your plan's limit."]);
+      expect(root.querySelector("h2")?.textContent).toBe(
+        "This run stopped: you've used this month's usage",
+      );
+    });
+
+    it("says nothing extra once the run goes on", async () => {
+      const said: string[] = [];
+      const { root } = openCard(async () => waitingRun("r51", { status: "running" }), {
+        announce: (line) => said.push(line),
+      });
+      await press(button(root, "Continue the run"));
+      expect(said).toEqual([]);
+    });
+
     it("says Continue failed, with Try again, when the computer can't be reached", async () => {
       const { root } = openCard(async () => {
         throw new KindedError("unavailable", "Halonic couldn't reach the computer.");

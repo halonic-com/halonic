@@ -11,6 +11,8 @@ import { resetDay, unitName, usageBannerWords } from "./usage-banner-words.ts";
  * which opens the account page's plan section, and a close button. It shows the highest unit at
  * 80% or more and under 100%, once per unit and period: closing it is remembered on this device.
  * Without a host, while loading, when the computer can't say or once signed out, it draws nothing.
+ * A section named by its sentence, so the landmark list finds it as a region; not a live one, so
+ * a load doesn't read it out (the design says quiet).
  */
 export function UsageBanner({ context }: StripProps) {
   const host = context.services.find(AccountMenuHostService);
@@ -30,7 +32,7 @@ export function UsageBanner({ context }: StripProps) {
     start.focus({ preventScroll: true });
   };
   return (
-    <div className="px-4 pt-3">
+    <section aria-labelledby={titleId} className="px-4 pt-3">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border bg-surface px-4 py-2.5 text-body">
         <span
           aria-hidden="true"
@@ -57,7 +59,7 @@ export function UsageBanner({ context }: StripProps) {
           />
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 
