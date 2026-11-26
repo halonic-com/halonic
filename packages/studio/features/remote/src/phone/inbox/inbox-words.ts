@@ -15,6 +15,12 @@ export const inboxWords = {
   tab: "Inbox",
   needsYou: "Needs you",
   waiting: (count: number) => `${count} waiting`,
+  /** The project chips (p02a); the row's name is for screen readers. */
+  projects: "Project",
+  allProjects: "All",
+  noProject: "No project",
+  asks: (name: string) => `${name} asks`,
+  approval: (name: string) => `${name} · approval`,
   /** The card's back button: the phone's back label names where it goes. */
   back: "Inbox",
   reply: "Reply",

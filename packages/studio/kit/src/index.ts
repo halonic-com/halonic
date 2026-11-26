@@ -245,6 +245,7 @@ export { SparkIcon } from "./icons/spark-icon.tsx";
 export { TickIcon } from "./icons/tick-icon.tsx";
 export { UpdateReadyIcon } from "./icons/update-ready-icon.tsx";
 export { WarningIcon } from "./icons/warning-icon.tsx";
+export { WifiIcon } from "./icons/wifi-icon.tsx";
 export type { FieldSize, FieldWidth } from "./input/field-box.ts";
 export { Input, type InputProps } from "./input/input.tsx";
 export type { InputLeadingButton } from "./input/leading-button.tsx";
