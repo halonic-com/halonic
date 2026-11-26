@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-16394; #5007, #5008 and #5009 stayed blocked for about 7 hours on 22 Nov after GitHub moved their base to `main` (HAL-16392). HAL-17869; #5737 stayed blocked for about 2 hours on 24 Nov because its task was in `backlog`. HAL-18147: a parked task is done once its pull requests landed, and is woken for a held head
+- Source: HAL-16394; #5007, #5008 and #5009 stayed blocked for about 7 hours on 22 Nov after GitHub moved their base to `main` (HAL-16392). HAL-17869; #5737 stayed blocked for about 2 hours on 24 Nov because its task was in `backlog`. HAL-18147: a parked task is done once its pull requests landed, and is woken for a held head. HAL-19031: #6183 was retargeted at 20:25 on 25 Nov while its reviewer held HAL-18625, and stayed blocked until 01:01
 
-When the PR watcher checks a task in `todo`, `in_progress`, `in_review`, `backlog` or `blocked` whose author holds it and has no run going, the PR watcher shall comment on the task and ask Paperclip to wake its author, once per pull request head, if one of its open pull requests, neither a draft nor in the merge queue, had its base changed to the repository's default branch, by hand or by GitHub after the old base branch was deleted, after it was last reopened, force-pushed or given a new head commit, and shall tell the author to close and reopen it or push a commit.
+When the PR watcher checks a task in `todo`, `in_progress`, `in_review`, `backlog` or `blocked` whose author holds it, or its reviewer (Liam or Julian, when not its author) holds it, and whose holder has no run going, the PR watcher shall comment on the task and ask Paperclip to wake its holder, once per pull request head, if one of its open pull requests, neither a draft nor in the merge queue, had its base changed to the repository's default branch, by hand or by GitHub after the old base branch was deleted, after it was last reopened, force-pushed or given a new head commit, and shall tell the holder to close and reopen it or push a commit.
 
 For a task in `backlog` or `blocked`, apart from marking it done (`paperclip.pr-watcher-done`) and waking its author for a held head (`paperclip.pr-watcher-held`), this is the only thing the PR watcher shall do: it shall not wake its author for anything else, hand it to a reviewer or move its monitor, and for this wake it shall leave the task's status as it is unless Paperclip refuses to wake a task in that status, in which case it shall set the status to `todo` and wake the author.
 
@@ -25,6 +25,12 @@ GitHub runs a ruleset's required workflow only on `opened`, `synchronize` and `r
   when the watcher runs,
   then it does nothing.
 - Given a retargeted pull request that is a draft, or one in the merge queue,
+  when the watcher runs,
+  then it does nothing.
+- Given the same pull request on Mateo's branch, its task held by its reviewer Liam,
+  when the watcher runs twice,
+  then it comments once and wakes Liam once, saying to close and reopen it; a new head wakes him again.
+- Given a task its reviewer holds whose pull request is a draft, in the merge queue, or red and conflicting without a retarget,
   when the watcher runs,
   then it does nothing.
 - Given a task in `backlog` or `blocked` whose author holds it, with the retargeted pull request,

@@ -96,6 +96,7 @@ export function freshStatus(number: number): PrStatus {
     reviewer: "liam",
     changedLines: 40,
     latestReviewFinding: undefined,
+    requiredWorkflows: [],
   };
 }
 

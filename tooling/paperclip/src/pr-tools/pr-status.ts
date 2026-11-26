@@ -13,6 +13,7 @@ import { julianRebaseRefusal, type RoutedPull, reviewerFor } from "../reviewer-p
 import type { Routing } from "../routing.ts";
 import { type Approval, approvals, type PullComment } from "./approvals.ts";
 import { type ChangedFile, linesByFile, readManifests } from "./manifests.ts";
+import { requiredWorkflowsOf } from "./required-workflows.ts";
 
 /**
  * The `pr_status` tool: everything an agent asks GitHub when it checks a
@@ -51,6 +52,13 @@ export interface PrStatus {
   readonly changedLines: number;
   /** The newest review finding on the head, as `<id> at <time>`. */
   readonly latestReviewFinding: string | undefined;
+  /**
+   * What the merge queue's gate says about the required workflows besides CI
+   * (`Guard notes`, `Built-on label`) on the head, such as `Guard notes failure
+   * (Decision note and the guard's own paths)`; empty when they passed, and
+   * for a closed pull request (HAL-19031).
+   */
+  readonly requiredWorkflows: readonly string[];
 }
 
 /** The parts of GitHub's pull request the tools read. */
@@ -132,7 +140,7 @@ export async function prStatus(
   const head = pull.head.sha;
   const state = stateOf(pull);
   const open = state === "open";
-  const [ciOkOnHead, comments, files, review, inQueue, compare] = await Promise.all([
+  const [ciOkOnHead, comments, files, review, inQueue, compare, required] = await Promise.all([
     ciOkOf(get, repo, pull),
     everyPage(get, `/repos/${repo}/issues/${number}/comments`) as Promise<PullComment[]>,
     everyPage(get, `/repos/${repo}/pulls/${number}/files`) as Promise<ChangedFile[]>,
@@ -144,6 +152,7 @@ export async function prStatus(
           merge_base_commit?: { sha?: string };
         }>)
       : Promise.resolve(undefined),
+    open ? requiredWorkflowsOf(get, repo, number, head) : Promise.resolve([]),
   ]);
   // Only an open pull request is compared, so a closed one's manifests count as Liam's.
   const manifests = await readManifests(get, repo, files, {
@@ -188,6 +197,7 @@ export async function prStatus(
     reviewer,
     changedLines,
     latestReviewFinding: review === undefined ? undefined : `${review.id} at ${review.at}`,
+    requiredWorkflows: required,
   };
 }
 
@@ -208,6 +218,11 @@ function nextSteps(status: PrStatus): string[] {
   const steps: string[] = [];
   if (status.ciOk === "failure") steps.push("fix the red ci-ok");
   if (status.mergeable === "conflict") steps.push("rebase: it conflicts with its base");
+  if (!status.draft && status.requiredWorkflows.length > 0) {
+    steps.push(
+      "fix the required workflows: GitHub won't merge it while they fail, even with ci-ok green",
+    );
+  }
   if (status.draft && status.ciOk === "success")
     steps.push("mark it ready: the light run is green");
   if (!status.draft && status.ciOk === "success" && !status.approvedOnHead) {
@@ -261,6 +276,13 @@ export function headFactsText(facts: HeadFacts): [string, string] {
   ];
 }
 
+/** The gate's required-workflow problems, JSON-quoted: a pull request's own workflows name the jobs. */
+function requiredText(problems: readonly string[]): string {
+  return problems.length === 0
+    ? "ok"
+    : problems.map((problem) => JSON.stringify(problem)).join(", ");
+}
+
 /**
  * The short text an agent reads: one line per fact, then what needs doing.
  * The title and branch come from whoever opened the pull request, a stranger
@@ -273,6 +295,7 @@ export function statusText(status: PrStatus): string {
     `${untrustedNote}; ${titleText(status.title)}; branch ${JSON.stringify(status.branch)}`,
     `${status.state}${status.draft ? ", draft" : ""}; task ${status.task ?? "none"}; author ${status.author ?? "unknown"}`,
     ...headFactsText({ ...status, behindBase: status.behindBase ?? "n/a" }),
+    `required workflows: ${requiredText(status.requiredWorkflows)}`,
     `${status.changedLines} changed lines; reviewer by the path rules: ${status.reviewer}`,
     ...(status.latestReviewFinding === undefined
       ? []

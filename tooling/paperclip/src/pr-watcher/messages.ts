@@ -2,6 +2,7 @@ import { commandForJob, rebaseCommand } from "../merge-control/author-wake.ts";
 import { type ConflictFileMap, conflictFilesText } from "./conflict-files.ts";
 import { marker, type PullFacts, type Reason } from "./decide.ts";
 import { pullKey } from "./facts.ts";
+import { requiredFix } from "./required-workflows.ts";
 import type { PullSummary } from "./wake-status.ts";
 
 /**
@@ -34,6 +35,8 @@ const reasonText: Record<Reason["kind"], (head: string, reason: Reason) => strin
   merged: () =>
     "it merged and `ci-ok` is green, but the task has comments since. Mark it done if nothing else is left.",
   held: heldText,
+  "required-failed": (head, { failed }) =>
+    `the required workflow \`${failed?.workflow}\` failed on its head \`${head}\` (job \`${failed?.job}\`), so GitHub won't merge it even with \`ci-ok\` green. ${requiredFix(failed?.workflow ?? "")}`,
   "stack-conflict": (head, { base }) =>
     `#${base?.number} below it merged, and GitHub couldn't rebase it on \`main\` (head \`${head}\`). Rebase it without #${base?.number}'s old commits: \`git rebase --onto origin/main ${base?.head.slice(0, 7)}\`, then push.`,
 };

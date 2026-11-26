@@ -1,3 +1,5 @@
+import type { FailedWorkflow } from "./required-workflows.ts";
+
 /**
  * What the PR watcher does with one task, worked out from facts only: mark
  * it done, wake its author, or leave it alone. No I/O here, so every rule
@@ -27,6 +29,8 @@ export interface PullFacts {
   readonly retargeted: boolean;
   /** Open only: checks the merge queue requires with no run on the head, such as `Guard notes`. */
   readonly missingChecks?: readonly string[];
+  /** Open only: required workflows besides CI whose newest run on the head failed (HAL-19031). */
+  readonly failedRequired?: readonly FailedWorkflow[];
   /**
    * Open only: the newest review or inline comment made on the current head,
    * with the reviewer its text names (Liam or Julian) when it names one.
@@ -92,8 +96,11 @@ export interface Reason {
     | "approved"
     | "merged"
     | "stack-conflict"
-    | "held";
+    | "held"
+    | "required-failed";
   readonly key: string;
+  /** `required-failed` only: the workflow that failed and its job. */
+  readonly failed?: FailedWorkflow;
   /** `stack-conflict` only: the keys of the reasons it answers, marked as reported with it. */
   readonly also?: readonly string[];
   /** `stack-conflict` only: the merged pull request it was stacked on and that one's last head. */
@@ -167,6 +174,11 @@ function openReasons(pull: PullFacts): Reason[] {
   }
   if (pull.retargeted && !pull.inQueue && !pull.draft) {
     found.push({ pull, kind: "retargeted", key: `${at} retargeted` });
+  }
+  if (!pull.draft) {
+    for (const failed of pull.failedRequired ?? []) {
+      found.push({ pull, kind: "required-failed", key: `${at} ${failed.workflow} failed`, failed });
+    }
   }
   if (pull.latestReview !== undefined) {
     found.push({ pull, kind: "review", key: `${at} review ${pull.latestReview.id}` });
@@ -317,6 +329,34 @@ function parkedDecision(task: WatchedTask, pulls: readonly PullFacts[], memory: 
   const reasons = newReasons(parkedCandidates(pulls), memory);
   return reasons.length === 0
     ? { kind: "skip", why: "it is parked; only a retargeted or held pull request wakes it" }
+    : { kind: "wake", reasons };
+}
+
+/**
+ * The states that wake a reviewer who holds the task (HAL-19031): the ones
+ * that keep a green, approved pull request out of the queue whoever holds it,
+ * a retargeted base (#6183 sat 5 hours while its reviewer held HAL-18625) and
+ * a failed required workflow. On a parked task only a retargeted one.
+ */
+export function reviewerCandidates(task: WatchedTask, pulls: readonly PullFacts[]): Reason[] {
+  return candidates(pulls).filter(
+    (reason) =>
+      reason.kind === "retargeted" || (reason.kind === "required-failed" && task.parked !== true),
+  );
+}
+
+/** The decision for a task its reviewer holds: a wake once per state and head, or nothing. */
+export function reviewerDecision(
+  task: WatchedTask,
+  pulls: readonly PullFacts[],
+  memory: Memory,
+): Decision {
+  if (task.running) {
+    return { kind: "skip", why: "its reviewer is already running on it" };
+  }
+  const reasons = newReasons(reviewerCandidates(task, pulls), memory);
+  return reasons.length === 0
+    ? { kind: "skip", why: "its reviewer holds it, with nothing retargeted or failed" }
     : { kind: "wake", reasons };
 }
 

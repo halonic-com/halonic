@@ -8,6 +8,8 @@ import {
   type Memory,
   type PullFacts,
   parkedCandidates,
+  reviewerCandidates,
+  reviewerDecision,
 } from "./decide.ts";
 import type { FoundPulls, PullRef } from "./discover.ts";
 import { type PullFactsReader, pullKey } from "./facts.ts";
@@ -225,6 +227,22 @@ function needsMemory(task: TaskRow, pulls: readonly PullFacts[]): boolean {
   return wakes.length > 0 || closedOutcome(pulls)?.kind === "done";
 }
 
+/** A retargeted or failed-workflow wake for a task its reviewer holds (HAL-19031); undefined for any other task. */
+async function reviewerTask(options: TickOptions, task: TaskRow, refs: TickRefs) {
+  const pulls = reviewerHeldPulls(task, refs.found, refs.owners).map((ref) =>
+    factsOf(ref, refs.facts),
+  );
+  const holder = task.assigneeAgentId;
+  if (pulls.length === 0 || holder === null) {
+    return undefined;
+  }
+  const wakes = reviewerCandidates(task, pulls).length > 0;
+  const memory = wakes
+    ? readMemory(await options.paperclip.comments(task.id), holder)
+    : emptyMemory;
+  return reviewerDecision(task, pulls, memory);
+}
+
 async function decideTask(
   options: TickOptions,
   task: TaskRow,
@@ -235,6 +253,10 @@ async function decideTask(
     return undefined;
   }
   if (watchedPulls(task, refs.found, refs.owners).length === 0) {
+    const reviewed = await reviewerTask(options, task, refs);
+    if (reviewed !== undefined) {
+      return reviewed;
+    }
     const listedOwner = ownerOf(
       found.map((ref) => ref.branch),
       refs.owners,

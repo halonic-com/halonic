@@ -25,6 +25,7 @@ function pullOf(pull: PullFacts): WatchedPull {
     latestReview: pull.latestReview ?? null,
     githubApproved: pull.githubApproval !== undefined,
     held: pull.held !== undefined,
+    requiredFailed: (pull.failedRequired ?? []).map((failed) => failed.workflow),
     landed: pull.landed,
     mergedAt: pull.mergedAt ?? null,
   };
