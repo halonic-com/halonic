@@ -87,6 +87,20 @@ verifies("workflows.runs.runs-view", () => {
     const time = page.querySelector("li time");
     expect(time?.textContent).toBe("Yesterday");
     expect(time?.getAttribute("dateTime")).toBe(yesterday.toISOString());
+    // A screen reader hears the same day, not only the time of day.
+    expect(page.querySelector("li button")?.getAttribute("aria-label")).toMatch(/, Yesterday\.$/);
+  });
+
+  it("names a row without a time when its start isn't a date", async () => {
+    const { source } = memoryRuns([
+      runSummary({ id: "run_a_01done", status: "completed", state: null, startedAt: "not a date" }),
+    ]);
+    const page = await show(<Connected source={source} />);
+
+    expect(page.querySelector("li time")).toBeNull();
+    expect(page.querySelector("li button")?.getAttribute("aria-label")).toBe(
+      "Run 01done, Support reply, done, finished. Started by you, in the terminal.",
+    );
   });
 
   it("says there are no runs yet", async () => {

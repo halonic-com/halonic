@@ -117,10 +117,10 @@ export const rowLabelWords = {
     workflow: string,
     what: string,
     startedBy: string,
-    time: string,
+    time: string | undefined,
     test: boolean,
   ) =>
-    `Run ${shortId}, ${workflow}, ${endSentence(what)} Started by ${startedBy}, ${time}${test ? ", test run" : ""}.`,
+    `Run ${shortId}, ${workflow}, ${endSentence(what)} Started by ${startedBy}${time === undefined ? "" : `, ${time}`}${test ? ", test run" : ""}.`,
 };
 
 /**

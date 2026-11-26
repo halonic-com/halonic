@@ -5,6 +5,7 @@ import {
   SkeletonBar,
   StatusChip,
   TimeStamp,
+  useFormatLocale,
   usePresentation,
 } from "@halonicjs/studio-kit";
 import { type ReactNode, useMemo, useRef } from "react";
@@ -62,11 +63,12 @@ export function RunsView({
   const rowButtons = useRef(new Map<string, HTMLButtonElement>());
   const { hubId, id } = workflow;
   const ready = load.kind === "ready" ? load.runs : undefined;
+  const locale = useFormatLocale();
   // One clock for the rows and their times, so every row reads against the same moment.
   const { rows, now } = useMemo(() => {
     const read = new Date();
-    return { rows: ready ? runRowsOf(ready, { hubId, id }, source, read) : [], now: read };
-  }, [ready, hubId, id, source]);
+    return { rows: ready ? runRowsOf(ready, { hubId, id }, source, read, locale) : [], now: read };
+  }, [ready, hubId, id, source, locale]);
 
   if (load.kind === "failed") {
     return (

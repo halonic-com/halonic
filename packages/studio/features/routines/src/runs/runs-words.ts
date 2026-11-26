@@ -33,8 +33,8 @@ export const runsWords = {
    * A run row's name, so it isn't read as its loose words ("Done 81d0ae Run now 08:39"), the way
    * the Runs list names its rows: "Run 81d0ae, done. Started: Run now, 08:39." (HAL-14241).
    */
-  rowName: (shortId: string, outcome: string, startedBy: string, time: string) =>
-    `Run ${shortId}, ${outcome.toLowerCase()}. Started: ${startedBy}, ${time}.`,
+  rowName: (shortId: string, outcome: string, startedBy: string, time: string | undefined) =>
+    `Run ${shortId}, ${outcome.toLowerCase()}. Started: ${startedBy}${time === undefined ? "" : `, ${time}`}.`,
 } as const;
 
 /** The chip word for each outcome of a run (the Runs list's words). */
@@ -192,9 +192,12 @@ export function queuedSentence(
 /**
  * When a run started, for its row's name: the kit's short time (`kit.time-stamp`), as the row
  * shows it, so "09:05" today, "Yesterday", "Thu" this week, then the date, in `locale`'s way.
+ * None for a start that isn't a date, as the row shows none.
  */
-export function runTime(iso: string, now: Date, locale?: string): string {
-  return shortTime(new Date(iso), now, locale);
+export function runTime(iso: string, now: Date, locale?: string): string | undefined {
+  const moment = new Date(iso);
+  // `shortTime` throws on an invalid date, which would take the routine's page down.
+  return Number.isNaN(moment.getTime()) ? undefined : shortTime(moment, now, locale);
 }
 
 /** A time for the empty line: "Fri 6 Nov at 07:30". */
