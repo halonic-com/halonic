@@ -238,8 +238,8 @@ export interface Desktop {
   counters: SyncCounters;
   /** The events sockets the host opened for its connections; none opens until a test says so. */
   sockets: FakeLiveSockets;
-  /** Makes every later `live.add` reject with `error`, as a scheduler that can't set a timer would. */
-  failLiveAdds(error: Error): void;
+  /** Makes every later `live.add` or `live.remove` reject with `error`, as a scheduler that can't set or cancel a timer would. */
+  failLive(call: "add" | "remove", error: Error): void;
   keys: PaperclipKeys;
   /** Moves the scheduler's clock on by `ms` and delivers the timers that are due: no sleep. */
   wait(ms: number): Promise<void>;
@@ -291,13 +291,14 @@ export async function startDesktop(): Promise<Desktop> {
   // Its lines go nowhere, so `logged` holds only what failed.
   const counters = new SyncCounters({ clock, log: () => undefined });
   const sockets = new FakeLiveSockets();
-  let liveAddFailure: Error | undefined;
+  const liveFailures: { add?: Error; remove?: Error } = {};
   const messaging = new DesktopMessaging({
     counters,
     live: {
       add: (id, open) =>
-        liveAddFailure === undefined ? live.add(id, open) : Promise.reject(liveAddFailure),
-      remove: (id) => live.remove(id),
+        liveFailures.add === undefined ? live.add(id, open) : Promise.reject(liveFailures.add),
+      remove: (id) =>
+        liveFailures.remove === undefined ? live.remove(id) : Promise.reject(liveFailures.remove),
       countersFor: (id, kept) => live.countersFor(id, kept),
     },
     openEvents: () => sockets.open,
@@ -372,8 +373,8 @@ export async function startDesktop(): Promise<Desktop> {
     messaging,
     counters,
     sockets,
-    failLiveAdds: (error) => {
-      liveAddFailure = error;
+    failLive: (call, error) => {
+      liveFailures[call] = error;
     },
     keys,
     wait: async (ms) => {
