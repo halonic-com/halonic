@@ -1,0 +1,29 @@
+{
+  "name": "@halonicjs/tooling-open-timings",
+  "private": true,
+  "type": "module",
+  "description": "Reads Studio's open timings from shell.log and writes them as a CI job summary table, failing past a 10 s open.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run",
+    "timings": "node src/cli.ts"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "tooling",
+    "owner": "elena",
+    "coverage": {
+      "lines": 80
+    }
+  }
+}
