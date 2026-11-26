@@ -3,6 +3,7 @@
 - Task: HAL-19018
 - Approval: Sofia's words and accessibility check of #6270 and #6273 on HAL-19015 asked for both changes and set their words on HAL-19018; Liam reviews this change on HAL-19018.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:uhXNIiSM1w7ZLGOmHzHTgh0ipyRtg5BNRzvJcKfH1PZPFdcJNCN+xItnL9un9BZ5Fb5eHPsIYZTQXPI0TEbMAQ==
 
 ## What changes
 
