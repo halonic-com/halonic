@@ -185,7 +185,7 @@ function GridTable<Id extends string>({
       role="grid"
       {...labelProps}
       aria-multiselectable={selection?.multiple === true ? true : undefined}
-      className={`w-full table-fixed border-separate ${look === "plain" ? "border-spacing-x-0 border-spacing-y-1" : "border-spacing-0"}`}
+      className={`w-full table-fixed border-separate ${look === "plain" ? plainSpacing : "border-spacing-0"}`}
       {...grid.gridProps}
       onFocus={() => {
         grid.gridProps.onFocus();
@@ -210,6 +210,13 @@ function GridTable<Id extends string>({
     </table>
   );
 }
+
+/**
+ * A plain List's rows sit 4px apart. Border spacing also puts 4px above the first row and below
+ * the last, so the table's margin takes those back and the rows start where `PlainList`'s do
+ * (HAL-19916).
+ */
+const plainSpacing = "border-spacing-x-0 border-spacing-y-1 -my-1";
 
 /** The rows' look: `plain` over `flush`, else the bordered box. */
 function lookOf(plain: boolean, flush: boolean): ListLook {

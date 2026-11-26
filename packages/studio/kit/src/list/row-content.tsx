@@ -178,6 +178,17 @@ function UnreadLine({
 }
 
 /**
+ * The row's side padding: 16px in a box, 12px in a `plain` List, as `PlainRow`'s, so the Inbox's
+ * avatars and titles line up with the Messenger's (HAL-19916). After a checkbox only the right side.
+ */
+function inset(plain: boolean, afterCheck: boolean): string {
+  if (plain) {
+    return afterCheck ? "pr-3" : "px-3";
+  }
+  return afterCheck ? "pr-4" : "px-4";
+}
+
+/**
  * The main cell's inside: the icon or avatar, the title, the meta line, what goes under it, the
  * actions and the trailing part.
  */
@@ -215,7 +226,7 @@ export function RowContent({
 
   return (
     <div
-      className={`flex items-center gap-3 ${afterCheck ? "pr-4" : "px-4"} ${heightClasses(phone, dense, meta !== undefined, wrap, plain)}`}
+      className={`flex items-center gap-3 ${inset(plain, afterCheck)} ${heightClasses(phone, dense, meta !== undefined, wrap, plain)}`}
     >
       <Leading row={row} small={dense && !phone} sidebar={plain} />
       <div className="flex min-w-0 flex-1 flex-col">

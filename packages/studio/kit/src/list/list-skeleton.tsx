@@ -120,7 +120,7 @@ export function ListSkeleton({
             {/* Nothing in it takes focus, so it can clip the rows to the box's corners. */}
             <div
               aria-hidden="true"
-              className={`overflow-hidden ${boxClasses[look]} ${columns === undefined ? "" : "@container"}`}
+              className={`overflow-hidden ${boxClasses[look]} ${skeletonSpacing(look)} ${columns === undefined ? "" : "@container"}`}
             >
               {/* The heading is the box's first line, as in the real List. */}
               {heading === undefined ? null : <HeadingBar />}
@@ -173,6 +173,14 @@ function HeadingBar() {
   );
 }
 
+/**
+ * A `plain` List's rows sit 4px apart with no space at the edges, as its real rows do, so they
+ * don't drop when the rows arrive (HAL-19916, `kit.list-plain-edges`).
+ */
+function skeletonSpacing(look: ListLook): string {
+  return look === "plain" ? "flex flex-col gap-1" : "";
+}
+
 /** A skeleton row's height: a `plain` List's sidebar row, else a real row with a meta line. */
 function skeletonHeight(look: ListLook, phone: boolean): string {
   // A sidebar row is at least 80px, on a phone too (HAL-19735, `kit.plain-row-size`).
@@ -201,7 +209,7 @@ function SkeletonRow({
   const leading = look === "plain" && shape.leading === "avatar" ? "sidebar" : shape.leading;
   return (
     <div
-      className={`flex items-center gap-3 bg-surface px-4 ${skeletonHeight(look, phone)} ${line}`}
+      className={`flex items-center gap-3 bg-surface ${look === "plain" ? "px-3" : "px-4"} ${skeletonHeight(look, phone)} ${line}`}
     >
       {leading === undefined ? null : <SkeletonBar kind={leading} />}
       <div className="flex min-w-0 flex-1 flex-col gap-2">
