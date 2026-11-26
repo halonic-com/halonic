@@ -12,6 +12,7 @@ import {
   emptyAuthorNudge,
   type NudgeTask,
 } from "./author-nudge.ts";
+import { emptyIdleRole, type IdleRoleState, idleRolePass, idleRoleText } from "./idle-role.ts";
 import {
   emptyReviewerWake,
   type Reviewer,
@@ -23,8 +24,8 @@ import { emptyUnhandled, type UnhandledState, unhandledPass, unhandledText } fro
 
 /**
  * The merge control watchers' run inside each `pr-watch` pass (HAL-17938):
- * the reviewer wake, the 6-hour escalation and the author nudges
- * (HAL-17929). They read the pass's snapshot, plugin state and Paperclip's
+ * the reviewer wake, the 6-hour escalation, the author nudges (HAL-17929)
+ * and the idle role check (HAL-19641). They read the pass's snapshot, plugin state and Paperclip's
  * tasks and agents, and send no GitHub request; their only writes are a
  * comment and a wake-up on the chat tasks their settings name or on the task
  * a branch names (set to `todo` first where a nudge needs it), and only once
@@ -39,6 +40,8 @@ export interface WatchersSettings {
   readonly wakeTasks: Readonly<Record<Reviewer, string>>;
   /** The task UNHANDLED problems go to (Chief's chat, HAL-10), by id; empty: no write. */
   readonly unhandledTask: string;
+  /** The board line's task, where an idle role is reported beside Chief's chat (HAL-19641), by id; empty: Chief's chat only. */
+  readonly boardLineTask: string;
   /** Branch prefixes merge control can't queue (a workspace company's, the board session's); empty: none. */
   readonly handQueueBranches: readonly string[];
 }
@@ -61,6 +64,7 @@ export function readWatchersSettings(config: Readonly<Record<string, unknown>>):
     dryRun: config["mergeWatchersDryRun"] !== false,
     wakeTasks: { Liam: text(config, "liamWakeTask"), Julian: text(config, "julianWakeTask") },
     unhandledTask: text(config, "unhandledTask"),
+    boardLineTask: text(config, "boardLineTask"),
     handQueueBranches: textList(config, "handQueueBranches"),
   };
 }
@@ -204,6 +208,35 @@ async function runAuthorNudges(ctx: WatchersApi, input: WatchersInput): Promise<
   await ctx.state.set(stateKey(companyId, "author-nudge"), pass.state);
 }
 
+/**
+ * The idle role check once: reported on Chief's chat (the UNHANDLED task),
+ * which wakes Chief, and on the board line, which only gets the comment.
+ */
+async function runIdleRole(ctx: WatchersApi, input: WatchersInput): Promise<void> {
+  const { companyId, settings, now } = input;
+  const before = await load<IdleRoleState>(ctx, companyId, "idle-role", emptyIdleRole);
+  const agents = await ctx.agents.list({ companyId, limit: 500 });
+  const assigned = new Set(input.tasks.flatMap((task) => task.assigneeAgentId ?? []));
+  // The plugin reads today's people, like `pr_status`: it has no workspace snapshot's routing.
+  const pass = idleRolePass(before, { agents, assigned, routing: undefined, now });
+  if (pass.reports.length > 0) {
+    const body = idleRoleText(pass.reports);
+    const key = `idle-role ${pass.reports.map((report) => `${report.agent}@${report.since}`).join(",")}`;
+    const what = "Idle role report";
+    await post(ctx, companyId, {
+      taskId: settings.unhandledTask,
+      body,
+      key,
+      dryRun: settings.dryRun,
+      what,
+    });
+    if (!settings.dryRun && settings.boardLineTask !== "") {
+      await ctx.issues.createComment(settings.boardLineTask, body, companyId);
+    }
+  }
+  await ctx.state.set(stateKey(companyId, "idle-role"), pass.state);
+}
+
 /** Runs the watchers once. A failure in one is logged and leaves the others alone. */
 export async function runMergeWatchers(ctx: WatchersApi, input: WatchersInput): Promise<void> {
   const { companyId, snapshot, settings, now } = input;
@@ -250,5 +283,10 @@ export async function runMergeWatchers(ctx: WatchersApi, input: WatchersInput): 
     await runAuthorNudges(ctx, input);
   } catch (error) {
     ctx.logger.error(`Author nudge: couldn't run: ${(error as Error).message}`, { companyId });
+  }
+  try {
+    await runIdleRole(ctx, input);
+  } catch (error) {
+    ctx.logger.error(`Idle role: couldn't run: ${(error as Error).message}`, { companyId });
   }
 }

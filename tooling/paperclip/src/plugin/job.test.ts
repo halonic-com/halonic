@@ -177,6 +177,7 @@ describe("the job", () => {
         dryRun: true,
         wakeTasks: { Liam: "", Julian: "" },
         unhandledTask: "",
+        boardLineTask: "",
         handQueueBranches: [],
       },
       fastTrackSharedLabelScope: {
