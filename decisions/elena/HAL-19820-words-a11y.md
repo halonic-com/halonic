@@ -3,6 +3,7 @@
 - Task: HAL-19820
 - Approval: team-decided wording from Sofia's words and a11y check on HAL-19815 (HAL-2282); the reviewer approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:a5ioEEH8x8G9wmB37f9ATUfXndwLMWMAiTCAhoedpZWk7L5pBhWGRiyb2PM5c9rb3dEjjs8gMJHxmF99KWQoAw==
 
 ## What changes
 
