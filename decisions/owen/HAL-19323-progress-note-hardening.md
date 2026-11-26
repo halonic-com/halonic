@@ -3,6 +3,7 @@
 - Approval: HAL-19323, from the review of the progress notes on HAL-19236; the package owner's
   reviewer (Liam) approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:wIp8z2W6o37uk8Tp11/s9lgLBhON0aJ33JXq6YdM9je6rWjTb5F05Dd9nO/f5AWShLy5GW6eY4hw0ANxzKh1Dg==
 - Task: HAL-19323
 
 ## What changes
