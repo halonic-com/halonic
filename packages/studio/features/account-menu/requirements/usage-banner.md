@@ -11,7 +11,7 @@ used 80% of this month's {unit}** · It resets on {day month}.", **See usage**, 
 answer's `planUrl`, and a close button named "Close". The day shall be the warning's `resetsAt` in
 UTC, such as "2 December". The units shall read "runs", "steps", "tokens", "agent time"
 (`harnessMs`) and, for the cost unit, "usage": a percentage only, never an amount of money. A unit
-without one of these names shall get no banner.
+without one of these names shall get no banner. "This month's" is deliberate: the usage account's periods are monthly, so a `resetsAt` that ends any other period shall still read "this month's" until the periods change and this requirement with them.
 
 Closing the banner shall be remembered on this device by the unit and its `resetsAt`, so it shows
 once per unit and period: the next highest unit's banner may show, and the same unit's shows again
