@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-19060 (split from Liam's review of #6315 on HAL-19028); Liam reviews the PR and signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:sF/KwTTxftRDsUCg5lYgq+ZjGekjMZbHXbUBBq4ePlN9O2Wcy+vx7XRjKiPK88xme8CUhyc6pFC9y2TAv5fJBA==
 - Task: HAL-19060
 
 ## What changes
