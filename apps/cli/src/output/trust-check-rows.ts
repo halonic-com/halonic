@@ -37,6 +37,7 @@ import {
   labelledLines,
   rowIndent,
   siteLines,
+  transportAddress,
   underRow,
 } from "./trust-row-lines.ts";
 
@@ -132,9 +133,7 @@ function addressRowLines(connector: ConnectorTrustContent, pluginHosts: PluginHo
     return [integrationConnectorRow(connector)];
   }
   if (connector.transport !== "plugin") {
-    const address =
-      connector.transport === "http" ? text(connector.settings["url"]) : connector.transport;
-    return [addressLine(connector, phrase`${printable(address)}`)];
+    return [addressLine(connector, transportAddress(connector))];
   }
   const plugin = text(connector.settings["id"]);
   const hosts = [...new Set((pluginHosts.get(plugin) ?? []).map(shownHost))];

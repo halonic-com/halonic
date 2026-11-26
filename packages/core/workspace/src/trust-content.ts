@@ -74,7 +74,7 @@ export interface TrustContent {
 export interface ConnectorTrustContent {
   version?: unknown;
   id: string;
-  /** `stdio`, `http`, `google`, `integration` or `plugin`, so switching transport is a change. */
+  /** `stdio`, `http`, `google`, `integration`, `plugin` or `paperclip`, so switching transport is a change. */
   transport: string;
   /** The transport's settings, normalised. */
   settings: Record<string, unknown>;
@@ -294,6 +294,12 @@ function runnerTransportContent(transport: Connector["transport"]): TransportCon
     const { plugin } = transport;
     return { kind: "plugin", settings: withUnknown({ id: plugin.id }, plugin, pluginFields) };
   }
+  if ("paperclip" in transport) {
+    // The connection by name, so the trust check can show which one changed (HAL-19787).
+    const { paperclip } = transport;
+    const settings = { connection: paperclip.connection };
+    return { kind: "paperclip", settings: withUnknown(settings, paperclip, paperclipFields) };
+  }
   return unknownTransport(transport);
 }
 
@@ -318,6 +324,7 @@ const httpFields = new Set(["url", "headers"]);
 const googleFields = new Set(["account", "client"]);
 const integrationFields = new Set(["folder", "settings", "secrets"]);
 const pluginFields = new Set(["id"]);
+const paperclipFields = new Set(["connection"]);
 const toolsFields = new Set(["allow", "approve"]);
 
 /** Adds the fields of `source` that aren't in `known`, as written, under `unknown`. */

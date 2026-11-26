@@ -320,11 +320,16 @@ function addressOnlyRow(
   const secretLines = secrets.length === 0 ? [] : [["Gets secrets", secrets.join(", ")] as const];
   if (connector.transport === "plugin")
     return pluginConnectorRow(connector, pluginHosts, secretLines);
-  return {
-    id: connector.id,
-    detail: connector.transport === "http" ? text(connector.settings["url"]) : connector.transport,
-    lines: secretLines,
-  };
+  return { id: connector.id, detail: transportDetail(connector), lines: secretLines };
+}
+
+/** An HTTP connector's address, a Paperclip connector's connection (HAL-19787), or else its transport. */
+function transportDetail(connector: ConnectorTrustContent): string {
+  if (connector.transport === "http") return text(connector.settings["url"]);
+  if (connector.transport === "paperclip") {
+    return `paperclip · ${text(connector.settings["connection"])}`;
+  }
+  return connector.transport;
 }
 
 /**
