@@ -32,6 +32,7 @@ verifies("integration-kit.integration-entry", () => {
       "IntegrationRefusedError",
       "IntegrationTimeoutError",
       "maxIntegrationWaitMs",
+      "retryDelayMs",
       "runTool",
     ]);
   });
