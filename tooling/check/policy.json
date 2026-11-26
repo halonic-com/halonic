@@ -8,6 +8,7 @@
     "@halonicjs/ports",
     "@halonicjs/retry-detectors",
     "@halonicjs/action-steppers",
+    "@halonicjs/toolscript",
     "@halonicjs/action-catalog",
     "@halonicjs/profile",
     "@halonicjs/format",
