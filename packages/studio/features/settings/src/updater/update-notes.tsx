@@ -6,6 +6,7 @@ import * as text from "./update-dialog-text.ts";
  * What changed in an update, under a heading, with its release page. The notes come from the
  * update's manifest, which isn't signed, so they are only ever a text node: no Markdown, no HTML
  * and no links made from them (HAL-19365). The box scrolls, so it takes focus for the keyboard.
+ * With neither notes nor a release page there is nothing to point at, so it draws nothing.
  */
 export function UpdateNotes({
   heading,
@@ -17,6 +18,7 @@ export function UpdateNotes({
   readonly notesUrl: string | null;
 }) {
   const headingId = useId();
+  if (notes === null && notesUrl === null) return null;
   return (
     <section className="flex flex-col gap-2" aria-labelledby={headingId}>
       <h3 id={headingId} className="text-body font-medium">

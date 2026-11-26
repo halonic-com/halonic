@@ -2,7 +2,7 @@ import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import type { UpdateStatus } from "./updater-status.ts";
 
 /**
- * How the three ways to "Restart to update" (the status bar item, About Halonic and Ctrl K) reach
+ * How the three ways to "Restart to update" (the Update dialog, About Halonic and Ctrl K) reach
  * the one restart dialog. The dialog host listens; it also reports the updater's status, so Ctrl K
  * can offer the command only while an update is ready.
  */
