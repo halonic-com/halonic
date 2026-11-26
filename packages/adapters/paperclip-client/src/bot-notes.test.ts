@@ -21,6 +21,14 @@ const comments = [
   { id: "m1", body: "Is 0.3 ready?", authorUserId: me, createdAt: "2026-11-24T10:01:00.000Z" },
 ];
 
+/** The person's question from a week ago: the plugin has dropped any progress notes on it. */
+const lastWeek = {
+  id: "m0",
+  body: "Is 0.2 ready?",
+  authorUserId: me,
+  createdAt: "2026-11-17T10:01:00.000Z",
+};
+
 /** Serves Acme with the chat holding `chatComments`, the bot's route answering `notes`. */
 function serve(chatComments: unknown[], notes: { status?: number; body?: unknown }) {
   paperclip
@@ -57,8 +65,8 @@ verifies("paperclip-client.bot-notes", () => {
       expect(warnings).toEqual([]);
     });
 
-    it("cost no read when every comment has an author", async () => {
-      serve([comments[2]], { body: { automaticNotes: [] } });
+    it("cost no read when every comment has an author and the person's is over a day old", async () => {
+      serve([lastWeek], { body: { automaticNotes: [] } });
       await listed();
       expect(reads()).toHaveLength(0);
     });
@@ -74,6 +82,62 @@ verifies("paperclip-client.bot-notes", () => {
       serve(comments, { status: 500 });
       expect((await listed()).some((message) => message.automatic)).toBe(false);
       expect(warnings).toHaveLength(1);
+    });
+  });
+});
+
+/** A progress note as the route serves it, for run `r1`. */
+function progress(notes: readonly { at: string; text: string }[]) {
+  return { automaticNotes: [], progressNotes: { runId: "r1", notes } };
+}
+
+/** A note that would be bold, HTML and a script link if anything read it as markup. */
+const markup = "**x** <b>y</b> [z](javascript:1)";
+
+verifies("paperclip-client.progress-notes", () => {
+  describe("the front bot's progress notes", () => {
+    it("are the chat agent's automatic messages, their text exactly as the route gave it", async () => {
+      serve([comments[2]], { body: progress([{ at: "2026-11-24T10:02:00.000Z", text: markup }]) });
+      const [question, note] = await listed();
+      expect(question?.author).toEqual({ kind: "me" });
+      expect(note).toMatchObject({
+        conversation: chat,
+        author: { kind: "agent", name: "Ada" },
+        body: markup,
+        sentAt: "2026-11-24T10:02:00.000Z",
+        automatic: true,
+        plainText: true,
+        attachments: [],
+      });
+      expect(note?.body).toBe("**x** <b>y</b> [z](javascript:1)");
+      expect(reads()[0]?.query.get("companyId")).toBe(company);
+    });
+
+    it("go in time order among the comments; a broken note is left out", async () => {
+      const notes = [
+        { at: "2026-11-24T10:02:30.000Z", text: "Reading the release checklist." },
+        { at: "2026-11-24T10:01:30.000Z", text: "Looking at PR #6129." },
+        { at: "not a time", text: "Lost." },
+        { at: "2026-11-24T10:04:00.000Z", text: "   " },
+      ];
+      serve(comments, { body: { ...progress(notes), automaticNotes: [{ commentId: "m3" }] } });
+      const bodies = (await listed()).map((message) => [message.body, message.plainText]);
+      expect(bodies).toEqual([
+        ["Is 0.3 ready?", undefined],
+        ["Looking at PR #6129.", true],
+        ["*Assistant:* Ada's on it.", undefined],
+        ["Reading the release checklist.", true],
+        ["*Assistant:* Ada's on it.", undefined],
+      ]);
+    });
+
+    it("are none for a chat with no notes", async () => {
+      serve([comments[2]], { body: { automaticNotes: [], progressNotes: null } });
+      const messages = await listed();
+      expect(messages.filter((message) => message.plainText === true)).toEqual([]);
+      expect(messages.map((message) => message.body)).toEqual(["Is 0.3 ready?"]);
+      expect(reads()).toHaveLength(1);
+      expect(warnings).toEqual([]);
     });
   });
 });

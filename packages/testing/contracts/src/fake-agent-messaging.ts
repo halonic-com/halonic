@@ -295,7 +295,7 @@ export class FakeAgentMessaging implements AgentMessaging {
   addMessage(
     conversation: MessagingId,
     message: { body: string; attachments?: readonly FakeAttachment[] } & Partial<
-      Pick<Message, "author" | "to" | "work" | "automatic" | "fullAnswer">
+      Pick<Message, "author" | "to" | "work" | "automatic" | "plainText" | "fullAnswer">
     >,
   ): Message {
     const found = this.live.conversations.find((each) => each.id === conversation);

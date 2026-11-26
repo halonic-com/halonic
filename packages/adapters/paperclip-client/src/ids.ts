@@ -6,6 +6,7 @@ export type PaperclipItemKind =
   | "chat"
   | "channel"
   | "comment"
+  | "progress-note"
   | "card"
   | "approval"
   | "decision"
@@ -26,6 +27,8 @@ const partCounts: Readonly<Record<PaperclipItemKind, number>> = {
   // A channel: its parent task.
   channel: 1,
   comment: 2,
+  // A front bot progress note: its task, the run it follows and its place in that run's notes.
+  "progress-note": 3,
   card: 2,
   approval: 1,
   decision: 1,

@@ -209,6 +209,7 @@ const message = {
   work: [work],
   readAt: "2026-11-26T08:01:00.000Z",
   automatic: true,
+  plainText: true,
   fullAnswer,
 } satisfies Required<Message>;
 

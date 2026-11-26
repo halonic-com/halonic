@@ -64,6 +64,7 @@ export function keptMessage(message: Message): Message {
   if (message.work !== undefined) kept.work = message.work.map(keptMessageWork);
   if (message.readAt !== undefined) kept.readAt = message.readAt;
   if (message.automatic === true) kept.automatic = true;
+  if (message.plainText === true) kept.plainText = true;
   if (message.fullAnswer !== undefined) {
     const { key, title, markdown } = message.fullAnswer;
     kept.fullAnswer = { key, title, markdown };
