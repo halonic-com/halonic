@@ -1,13 +1,17 @@
 //! Requirement `studio.src-tauri.quick-ask-window`.
 
 use std::str::FromStr;
+use std::sync::{Arc, Mutex};
 
 use serde_json::{Value, json};
 use tauri::test::{MockRuntime, mock_builder};
 use tauri::webview::WebviewWindowBuilder;
-use tauri::{App, Manager, Webview, WebviewUrl};
+use tauri::{App, Listener, Manager, Webview, WebviewUrl};
 use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut};
 
+use super::chat::{
+    OPEN_CONVERSATION_EVENT, OpenConversation, open_chat, open_chat_from, take_chat,
+};
 use super::keys::{
     Area, KeyState, box_closes_after, default_shortcut, desktop_allows_keys, placement,
     saved_shortcut,
@@ -228,4 +232,115 @@ fn no_capability_grants_the_global_shortcut_plugin() {
         let text = std::fs::read_to_string(&path).expect("a readable capability");
         assert!(!text.contains("global-shortcut"), "{}", path.display());
     }
+}
+
+/// Every `open-conversation` event the app sends, as its payload's text.
+fn heard_chats(app: &App<MockRuntime>) -> Arc<Mutex<Vec<String>>> {
+    let heard = Arc::new(Mutex::new(Vec::new()));
+    let sink = Arc::clone(&heard);
+    app.listen_any(OPEN_CONVERSATION_EVENT, move |event| {
+        sink.lock()
+            .expect("not poisoned")
+            .push(event.payload().to_owned());
+    });
+    heard
+}
+
+fn open_chat_in(
+    app: &App<MockRuntime>,
+    label: &str,
+    conversation: &str,
+) -> Result<(), &'static str> {
+    tauri::async_runtime::block_on(open_chat(webview(app, label), conversation.to_owned()))
+}
+
+fn labels(app: &App<MockRuntime>) -> Vec<String> {
+    let mut labels: Vec<String> = app.webview_windows().into_keys().collect();
+    labels.sort();
+    labels
+}
+
+/// `studio.src-tauri.quick-ask-open-chat`
+#[test]
+fn only_the_box_opens_a_chat_in_messenger() {
+    let app = app_with(&["main", "inbox", "messenger", "ask"]);
+    let heard = heard_chats(&app);
+    for label in ["main", "inbox", "messenger"] {
+        assert_eq!(
+            open_chat_in(&app, label, "chat-acme-chief"),
+            Err("not_the_box")
+        );
+    }
+    assert!(heard.lock().expect("not poisoned").is_empty());
+}
+
+/// `studio.src-tauri.quick-ask-open-chat`
+#[test]
+fn the_box_hides_then_an_open_messenger_is_told_the_chat() {
+    let app = app_with(&["ask", "messenger"]);
+    let heard = heard_chats(&app);
+    let hidden = std::cell::Cell::new(false);
+    let opened = open_chat_from(app.handle(), "ask", "chat-acme-chief".to_owned(), || {
+        assert!(
+            heard.lock().expect("not poisoned").is_empty(),
+            "hidden first"
+        );
+        hidden.set(true);
+    });
+    assert_eq!(opened, Ok(()));
+    assert!(hidden.get());
+    assert_eq!(
+        *heard.lock().expect("not poisoned"),
+        [r#"{"conversation":"chat-acme-chief"}"#]
+    );
+    assert_eq!(take_chat(webview(&app, "messenger")), Ok(None));
+    assert_eq!(open_chat_in(&app, "ask", "chat-acme-liam"), Ok(()));
+    assert_eq!(heard.lock().expect("not poisoned").len(), 2);
+}
+
+/// `studio.src-tauri.quick-ask-open-chat`
+#[test]
+fn a_closed_messenger_opens_and_its_page_takes_the_chat_once() {
+    let app = app_with(&["main", "ask"]);
+    let heard = heard_chats(&app);
+    assert_eq!(open_chat_in(&app, "ask", "chat-acme-1"), Ok(()));
+    assert_eq!(open_chat_in(&app, "ask", "chat-acme-2"), Ok(()));
+    assert_eq!(labels(&app), ["ask", "main", "messenger"]);
+    assert_eq!(
+        *heard.lock().expect("not poisoned"),
+        [r#"{"conversation":"chat-acme-2"}"#]
+    );
+    assert_eq!(take_chat(webview(&app, "main")), Err("not_messenger"));
+    assert_eq!(take_chat(webview(&app, "ask")), Err("not_messenger"));
+    let taken = OpenConversation {
+        conversation: "chat-acme-1".to_owned(),
+    };
+    assert_eq!(take_chat(webview(&app, "messenger")), Ok(Some(taken)));
+    assert_eq!(take_chat(webview(&app, "messenger")), Ok(None));
+}
+
+/// `studio.src-tauri.quick-ask-open-chat`
+#[test]
+fn an_empty_or_too_long_chat_id_is_refused_and_opens_nothing() {
+    let app = app_with(&["ask"]);
+    assert_eq!(open_chat_in(&app, "ask", ""), Err("invalid"));
+    assert_eq!(open_chat_in(&app, "ask", &"c".repeat(513)), Err("invalid"));
+    assert_eq!(labels(&app), ["ask"]);
+    assert_eq!(open_chat_in(&app, "ask", &"c".repeat(512)), Ok(()));
+    assert_eq!(labels(&app), ["ask", "messenger"]);
+}
+
+/// `studio.src-tauri.quick-ask-open-chat`
+#[test]
+fn only_the_box_may_open_a_chat_and_only_messenger_take_it() {
+    let open = capability(include_str!(
+        "../capabilities/desktop-quick-ask-open-chat.json"
+    ));
+    assert_eq!(open["windows"], json!(["ask"]));
+    assert_eq!(open["permissions"], json!(["quick-ask:allow-open-chat"]));
+    let take = capability(include_str!(
+        "../capabilities/desktop-quick-ask-take-chat.json"
+    ));
+    assert_eq!(take["windows"], json!(["messenger"]));
+    assert_eq!(take["permissions"], json!(["quick-ask:allow-take-chat"]));
 }
