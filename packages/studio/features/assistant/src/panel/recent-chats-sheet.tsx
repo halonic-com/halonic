@@ -1,4 +1,4 @@
-import { PlainList, PlainRow, SidePanel } from "@halonicjs/studio-kit";
+import { PlainList, PlainRow, SidePanel, useFormatLocale } from "@halonicjs/studio-kit";
 import { useEffect, useRef } from "react";
 import type { AssistantHost, ChatSummary } from "../api.ts";
 import type { BuildChats } from "../chat/build-chats.ts";
@@ -34,6 +34,7 @@ export function RecentChatsSheet({
 }: RecentChatsSheetProps) {
   const recent = useRecentChats(host).filter((chat) => chat.kind === "build");
   const frame = useEscapeCloses(onClose);
+  const locale = useFormatLocale();
   const now = new Date();
   return (
     <div ref={frame} className="absolute inset-0 z-10 flex flex-col bg-surface">
@@ -48,7 +49,7 @@ export function RecentChatsSheet({
                   picture={null}
                   title={chat.title}
                   flag={flagOf(chat)}
-                  time={<RowTime chat={chat} now={now} />}
+                  time={<RowTime chat={chat} now={now} locale={locale} />}
                   current={chat.id === currentId}
                   onSelect={() => void chats.pick(chat.id).then(onPicked)}
                 />
@@ -69,7 +70,15 @@ function flagOf(chat: ChatSummary): string | undefined {
 }
 
 /** When the chat was last used, after the running dot while it answers. */
-function RowTime({ chat, now }: { readonly chat: ChatSummary; readonly now: Date }) {
+function RowTime({
+  chat,
+  now,
+  locale,
+}: {
+  readonly chat: ChatSummary;
+  readonly now: Date;
+  readonly locale: string | undefined;
+}) {
   return (
     <span className="inline-flex items-center gap-1.5">
       <span className="sr-only">, </span>
@@ -78,7 +87,7 @@ function RowTime({ chat, now }: { readonly chat: ChatSummary; readonly now: Date
           <span className="sr-only">{words.answering}, </span>
         </span>
       ) : null}
-      {chatTime(chat.lastUsedAt, now)}
+      {chatTime(chat.lastUsedAt, now, locale)}
     </span>
   );
 }

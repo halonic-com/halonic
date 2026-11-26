@@ -1,4 +1,4 @@
-import { Avatar, Button, Menu, type MenuEntry } from "@halonicjs/studio-kit";
+import { Avatar, Menu, type MenuEntry } from "@halonicjs/studio-kit";
 import type { Announcer, StatusBarItemProps } from "@halonicjs/studio-shell";
 import { useEffect, useState } from "react";
 import { type AccountMenuFacts, type AccountMenuHost, AccountMenuHostService } from "../api.ts";
@@ -60,12 +60,16 @@ function AccountMenu(props: {
       description={accountMenuWords.signedInAs(facts.name)}
       entries={entries}
       trigger={(trigger) => (
-        <Button
+        // Not a kit Button: its icon slot is 16px, which shrank the initials to an icon. The 28px
+        // tile is as big as the 35px top bar takes (HAL-19536 item 3); the 40px is for headers.
+        <button
           {...trigger}
-          variant="ghost"
-          icon={<Avatar name={facts.name} />}
-          label={accountMenuWords.trigger(facts.name)}
-        />
+          type="button"
+          aria-label={accountMenuWords.trigger(facts.name)}
+          className="focus-ring shrink-0 rounded-full hover:opacity-80"
+        >
+          <Avatar name={facts.name} />
+        </button>
       )}
     />
   );
