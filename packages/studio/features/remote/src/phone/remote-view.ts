@@ -128,11 +128,18 @@ export interface RemoteView {
    */
   readonly answersRisky: boolean;
   /**
-   * Whether the phone's owner check (a screen lock with a fingerprint, face or
-   * PIN) could ask, checked again after the last session list. Without it the
-   * phone reads the Inbox but answers nothing.
+   * Whether the phone's owner check could ask for an answer to an approval (a
+   * strong biometric: a fingerprint or a strong face unlock), checked again
+   * after the last session list. Without it `risky` approvals stay on the
+   * computer.
    */
   readonly ownerCheck: OwnerCheckHint;
+  /**
+   * Whether the phone's owner check could ask for an Inbox answer (a strong
+   * biometric or the phone's PIN, pattern or password), checked with
+   * `ownerCheck`. Without it the phone reads the Inbox but answers nothing.
+   */
+  readonly answerCheck: OwnerCheckHint;
   /**
    * Whether the computer and this phone speak different versions of the
    * gateway's messages, from the last connection that got that far. While it

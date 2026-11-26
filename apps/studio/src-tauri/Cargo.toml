@@ -29,6 +29,10 @@ crate-type = ["cdylib", "rlib"]
 tauri-build = { version = "=2.7.4", features = [] }
 
 [dependencies]
+# The owner check before the phone answers (HAL-15194, board decision 4b):
+# Android's own BiometricPrompt, through the shell's `owner_check` module.
+# Every platform builds `owner_check_page`, which reads its port (HAL-19060).
+halonic-owner-check = { path = "crates/owner-check" }
 # User-only action steppers' calls, sign-in and pages (HAL-17525, HAL-18084).
 halonic-action-send = { path = "crates/action-send" }
 halonic-agent-host = { path = "crates/agent-host" }
@@ -176,15 +180,12 @@ halonic-device-keys = { path = "crates/device-keys" }
 # commands dial through (HAL-15157).
 halonic-tunnel = { path = "crates/tunnel" }
 
-# The owner check before the phone answers an approval (HAL-15194, board
-# decision 4b): Android's own BiometricPrompt, strong biometrics only,
-# through the shell's `owner_check` module. No plugin from outside.
-halonic-owner-check = { path = "crates/owner-check" }
-
 # Tauri's mock runtime, for the test that every command is refused from the
 # served page.
 [dev-dependencies]
 tauri = { version = "=2.12.5", features = ["test"] }
+# The fake owner check, for what `owner_check_available` answers (HAL-19060).
+halonic-owner-check = { path = "crates/owner-check", features = ["fake"] }
 # The .ico picker, so every platform tests each app's window icons (HAL-19716).
 halonic-window-app-id = { path = "crates/window-app-id" }
 

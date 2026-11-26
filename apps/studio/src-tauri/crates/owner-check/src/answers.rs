@@ -1,9 +1,11 @@
 /// Whether the phone can check its owner right now.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Availability {
-    /// A strong biometric is enrolled and can be asked for.
+    /// A strong biometric is enrolled and can be asked for; for an inbox
+    /// answer, the phone's PIN, pattern or password is enough.
     Ready,
-    /// The phone has a strong biometric sensor, but nothing is enrolled.
+    /// The phone has a strong biometric sensor, but nothing is enrolled; for
+    /// an inbox answer, no screen lock is set either.
     NotEnrolled,
     /// The phone has no strong biometric: no sensor, or only a weak one
     /// such as face unlock from the front camera.
@@ -35,7 +37,8 @@ impl Availability {
 /// How one owner check ended. Only [`Self::Confirmed`] lets an answer out.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Confirmation {
-    /// The person passed a strong biometric in this prompt.
+    /// The person passed a strong biometric in this prompt, or for an inbox
+    /// answer the phone's PIN, pattern or password.
     Confirmed,
     /// The person closed the prompt, or Android closed it (the app went to
     /// the background, the screen turned off).

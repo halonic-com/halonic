@@ -46,8 +46,10 @@ export class GatewayClient implements PhoneRemote {
   private sessions: readonly GatewaySession[] = [];
   /** What the last session list said of the risky switch: only a hint for the view. */
   private answersRisky = false;
-  /** Whether the owner check could ask, checked again after every session list. */
+  /** Whether the owner check could ask for an approval, checked again after every session list. */
   private ownerCheckHint: OwnerCheckHint = "unknown";
+  /** The same for an Inbox answer, which the phone's PIN passes too. */
+  private answerCheckHint: OwnerCheckHint = "unknown";
   /** Counts the owner checks asked for, so an older answer never overwrites a newer one. */
   private ownerChecks = 0;
   /** The last connection found the computer on another message version. */
@@ -78,7 +80,8 @@ export class GatewayClient implements PhoneRemote {
 
   /**
    * `ownerCheck` asks the shell whether the phone's owner check can ask now;
-   * without one it never can, and every `risky` approval stays on the computer.
+   * without one it never can: every `risky` approval stays on the computer, and
+   * the Inbox answers nothing.
    */
   constructor(tunnel: ComputerTunnel, computer: string, ownerCheck: OwnerCheckAvailable = never) {
     this.tunnel = tunnel;
@@ -301,22 +304,22 @@ export class GatewayClient implements PhoneRemote {
   /**
    * Asks again whether the owner check can ask, after every session list: a
    * fingerprint removed since the last list turns Approve off for `risky`
-   * approvals. Until the answer comes the hint is `unknown`, so answers stay
-   * off without asking for a screen lock; any error reads as no.
+   * approvals, a screen lock removed turns the Inbox's answers off. Until the
+   * answer comes both hints are `unknown`, so answers stay off without asking
+   * for a screen lock; any error reads as no.
    */
   private checkOwner(): void {
     this.ownerChecks += 1;
     const asked = this.ownerChecks;
     this.ownerCheckHint = "unknown";
-    const settle = (available: boolean) => {
+    this.answerCheckHint = "unknown";
+    const settle = (ready: OwnerCheckReady) => {
       if (asked !== this.ownerChecks) return;
-      this.ownerCheckHint = available ? "ready" : "unavailable";
+      this.ownerCheckHint = ready.approval === true ? "ready" : "unavailable";
+      this.answerCheckHint = ready.answer === true ? "ready" : "unavailable";
       this.changed();
     };
-    this.ownerCheck().then(
-      (available) => settle(available === true),
-      () => settle(false),
-    );
+    this.ownerCheck().then(settle, () => settle(NOT_READY));
   }
 
   private watch(sessionId: string): void {
@@ -395,6 +398,7 @@ export class GatewayClient implements PhoneRemote {
     this.answersRisky = false;
     this.ownerChecks += 1;
     this.ownerCheckHint = "unknown";
+    this.answerCheckHint = "unknown";
     this.memories.clear();
     this.sentAnswers.clear();
     this.asOf = undefined;
@@ -419,6 +423,7 @@ export class GatewayClient implements PhoneRemote {
       sentAnswers: this.sentAnswers,
       answersRisky: this.answersRisky,
       ownerCheck: this.ownerCheckHint,
+      answerCheck: this.answerCheckHint,
       updateNeeded: this.updateNeeded,
       olderComputer: this.olderComputer,
     });
@@ -430,10 +435,22 @@ export class GatewayClient implements PhoneRemote {
   }
 }
 
-/** Whether the phone's owner check can ask now: the shell's `owner_check_available`. */
-export type OwnerCheckAvailable = () => Promise<boolean>;
+/**
+ * Whether the phone's owner check can ask now, for an answer to an approval (a
+ * strong biometric) and for an Inbox answer (a strong biometric or the phone's
+ * PIN): the shell's `owner_check_available`.
+ */
+export interface OwnerCheckReady {
+  readonly approval: boolean;
+  readonly answer: boolean;
+}
 
-const never: OwnerCheckAvailable = () => Promise.resolve(false);
+/** Asks the shell's `owner_check_available`. */
+export type OwnerCheckAvailable = () => Promise<OwnerCheckReady>;
+
+const NOT_READY: OwnerCheckReady = { approval: false, answer: false };
+
+const never: OwnerCheckAvailable = () => Promise.resolve(NOT_READY);
 
 function notSent(reason: "off" | "invalid"): Promise<RemoteSendOutcome> {
   return Promise.resolve({ kind: "not-sent", reason });

@@ -46,10 +46,39 @@ fn owner_check_fake_shows_no_prompt_when_unavailable() {
     let check = FakeOwnerCheck::new();
     check.set_availability(Availability::NotEnrolled);
     check.answer_next(Confirmation::Confirmed);
-    assert_eq!(now(check.availability()), Availability::NotEnrolled);
+    assert_eq!(
+        now(check.availability(Decision::Deny)),
+        Availability::NotEnrolled
+    );
     assert_eq!(
         now(check.confirm(Decision::Deny)),
         Confirmation::Unavailable(Availability::NotEnrolled)
     );
     assert!(check.asked().is_empty());
+}
+
+#[test]
+fn owner_check_fake_takes_a_screen_lock_for_inbox_answers_only() {
+    // A phone with a PIN and no strong biometric (HAL-19060).
+    let check = FakeOwnerCheck::new();
+    check.set_availability(Availability::NoStrongBiometric);
+    check.set_screen_lock(true);
+    assert_eq!(
+        now(check.availability(Decision::Answer)),
+        Availability::Ready
+    );
+    assert_eq!(
+        now(check.availability(Decision::Approve)),
+        Availability::NoStrongBiometric
+    );
+    check.answer_next(Confirmation::Confirmed);
+    assert_eq!(
+        now(check.confirm(Decision::Approve)),
+        Confirmation::Unavailable(Availability::NoStrongBiometric)
+    );
+    assert_eq!(
+        now(check.confirm(Decision::Answer)),
+        Confirmation::Confirmed
+    );
+    assert_eq!(check.asked(), [Decision::Answer]);
 }

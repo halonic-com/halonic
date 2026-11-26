@@ -39,10 +39,12 @@ export interface ClientHolding {
   /** What the last session list said of the risky switch. */
   readonly answersRisky: boolean;
   /**
-   * Whether the phone's owner check could ask, checked again after the last
-   * session list arrived. `unknown` until that check answers.
+   * Whether the phone's owner check could ask for an approval, checked again
+   * after the last session list arrived. `unknown` until that check answers.
    */
   readonly ownerCheck: OwnerCheckHint;
+  /** The same for an Inbox answer, which the phone's PIN passes too. */
+  readonly answerCheck: OwnerCheckHint;
   /** The last connection found the two sides on different message versions. */
   readonly updateNeeded: boolean;
   /** The last `welcome` was version 3's, after the computer refused version 4. */
@@ -63,6 +65,7 @@ export function viewOf(holding: ClientHolding): RemoteView {
     offReason: live ? undefined : notLiveReason,
     answersRisky: holding.answersRisky,
     ownerCheck: holding.ownerCheck,
+    answerCheck: holding.answerCheck,
     updateNeeded: holding.updateNeeded,
     olderComputer: holding.olderComputer,
   };

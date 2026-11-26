@@ -13,7 +13,8 @@
 //!
 //! The shell's Android adapter (`owner_check`, `OwnerCheckPlugin.kt`) puts
 //! Android's own `BiometricPrompt` behind the port, with strong (Class 3)
-//! biometrics only. This crate holds no Tauri types.
+//! biometrics only, and for an inbox answer the phone's PIN, pattern or
+//! password too. This crate holds no Tauri types.
 
 mod answers;
 mod check;

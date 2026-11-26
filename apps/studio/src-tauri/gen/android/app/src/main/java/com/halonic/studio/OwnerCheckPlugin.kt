@@ -41,10 +41,15 @@ class OwnerCheckPlugin(private val host: Activity) : Plugin(host) {
   /** Times the app left the screen (background, screen off or locked) since it started. */
   private var timesAway = 0L
 
-  /** Answers `{status}` without asking the person anything. */
+  /**
+   * `{allowDeviceCredential}`, answers `{status}` without asking the person
+   * anything: whether [confirmOwner] with the same `allowDeviceCredential` could
+   * ask now. A missing `allowDeviceCredential` reads as false.
+   */
   @Command
   fun ownerCheckStatus(invoke: Invoke) {
-    invoke.resolve(JSObject().put("status", status()))
+    val allowDeviceCredential = invoke.getArgs().optBoolean("allowDeviceCredential", false)
+    invoke.resolve(JSObject().put("status", status(allowDeviceCredential)))
   }
 
   /** Answers `{timesAway}`, without asking the person anything. */
@@ -71,9 +76,7 @@ class OwnerCheckPlugin(private val host: Activity) : Plugin(host) {
       answer(invoke, "android-too-old")
       return
     }
-    val authenticators =
-      if (args.optBoolean("allowDeviceCredential", false)) BIOMETRIC_STRONG or DEVICE_CREDENTIAL
-      else BIOMETRIC_STRONG
+    val authenticators = authenticators(args.optBoolean("allowDeviceCredential", false))
     val status = strongStatus(authenticators)
     if (status != "ready") {
       answer(invoke, status)
@@ -168,10 +171,13 @@ class OwnerCheckPlugin(private val host: Activity) : Plugin(host) {
     )
   }
 
-  private fun status(): String {
+  private fun status(allowDeviceCredential: Boolean): String {
     if (Build.VERSION.SDK_INT < ANDROID_11) return "android-too-old"
-    return strongStatus(BIOMETRIC_STRONG)
+    return strongStatus(authenticators(allowDeviceCredential))
   }
+
+  private fun authenticators(allowDeviceCredential: Boolean): Int =
+    if (allowDeviceCredential) BIOMETRIC_STRONG or DEVICE_CREDENTIAL else BIOMETRIC_STRONG
 
   @RequiresApi(ANDROID_11)
   private fun strongStatus(authenticators: Int): String {

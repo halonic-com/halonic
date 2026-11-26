@@ -7,7 +7,7 @@ use tauri::test::MockRuntime;
 use tauri::{Manager, Webview};
 
 use super::{CONNECT_PAGE, SERVED_PAGE, app_window, invoke};
-use crate::owner_check_page::available;
+use crate::owner_check_page::{OwnerCheckReady, available};
 
 const AVAILABLE: &str = "owner_check_available";
 const PERMISSION: &str = "allow-owner-check-available";
@@ -141,7 +141,10 @@ fn main_webview() -> Webview<MockRuntime> {
 fn owner_check_available_answers_false_without_the_android_check() {
     // Desktop, or an Android shell whose plugin didn't load: fails closed.
     let webview = main_webview();
-    assert!(!tauri::async_runtime::block_on(available(&webview)));
+    assert_eq!(
+        tauri::async_runtime::block_on(available(&webview)),
+        OwnerCheckReady::default()
+    );
 }
 
 #[test]
@@ -150,5 +153,8 @@ fn owner_check_available_answers_false_while_the_window_is_on_the_served_page() 
     webview
         .navigate(SERVED_PAGE.parse().expect("a test URL"))
         .expect("the mock webview navigates");
-    assert!(!tauri::async_runtime::block_on(available(&webview)));
+    assert_eq!(
+        tauri::async_runtime::block_on(available(&webview)),
+        OwnerCheckReady::default()
+    );
 }

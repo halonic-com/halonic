@@ -7,7 +7,7 @@ import { act, useSyncExternalStore } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { GatewayScene, SCENE_COMPUTER } from "../../test-support/gateway-scene.ts";
 import { render, unmountAll } from "../../test-support/render.tsx";
-import type { OwnerCheckAvailable } from "../gateway-client.ts";
+import type { OwnerCheckAvailable, OwnerCheckReady } from "../gateway-client.ts";
 import { timeOf } from "./inbox-words.ts";
 import { PhoneInbox } from "./phone-inbox.tsx";
 import { usePhoneInbox } from "./use-phone-inbox.ts";
@@ -49,7 +49,7 @@ async function mountInbox(
   {
     answersRisky = false,
     screenLock = true,
-    ownerCheck = () => Promise.resolve(screenLock),
+    ownerCheck = () => Promise.resolve({ approval: screenLock, answer: screenLock }),
   }: { answersRisky?: boolean; screenLock?: boolean; ownerCheck?: OwnerCheckAvailable } = {},
 ) {
   const scene = new GatewayScene(ownerCheck);
@@ -204,12 +204,23 @@ verifies("remote.phone-inbox", () => {
     expect(onOpenSettings).toHaveBeenCalledOnce();
   });
 
+  it("answers a card on a phone with a PIN and no strong biometric", async () => {
+    // The shell takes the PIN for an Inbox answer, not for a risky approval (HAL-19060).
+    const ownerCheck = () => Promise.resolve({ approval: false, answer: true });
+    const { scene } = await mountInbox([item()], { ownerCheck });
+    expect(scene.client.view().ownerCheck).toBe("unavailable");
+    await open("Ship phase 2 now?");
+    expect(text()).not.toContain(noScreenLock);
+    await press("Today");
+    expect(scene.tunnel.sentOf("msg-answer")).toHaveLength(1);
+  });
+
   it.each([true, false])(
     "keeps answers off with no screen-lock line until the owner check answers, then %s",
     async (screenLock) => {
-      let answerCheck: (available: boolean) => void = () => undefined;
+      let answerCheck: (ready: OwnerCheckReady) => void = () => undefined;
       const ownerCheck = () =>
-        new Promise<boolean>((resolve) => {
+        new Promise<OwnerCheckReady>((resolve) => {
           answerCheck = resolve;
         });
       const { scene } = await mountInbox([item()], { ownerCheck });
@@ -219,7 +230,7 @@ verifies("remote.phone-inbox", () => {
       await press("Today");
       expect(scene.tunnel.sentOf("msg-answer")).toEqual([]);
 
-      await step(() => answerCheck(screenLock));
+      await step(() => answerCheck({ approval: screenLock, answer: screenLock }));
       expect(text().includes(noScreenLock)).toBe(!screenLock);
       expect(button("Today").getAttribute("aria-disabled") === "true").toBe(!screenLock);
     },
@@ -318,7 +329,7 @@ verifies("remote.phone-inbox-parts", () => {
   it("shows the skeleton only after a moment, and says it is loading", () => {
     vi.useFakeTimers();
     try {
-      const scene = new GatewayScene(() => Promise.resolve(true));
+      const scene = new GatewayScene(() => Promise.resolve({ approval: true, answer: true }));
       scenes.push(scene);
       const inbox = (
         <PhoneInbox
