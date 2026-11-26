@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19511 (fallback states on an approved window are the team's call, HAL-2282; design on HAL-19384, words approved on HAL-19391)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:IyoBIwxUgjW8KXqkN3Olq9QMgo6ctIIl9Uwx8Q6AWM6VEfE0s39eXW+KZ8HCwj4YtB9aTdJgzwBIe61NEhXRDg==
 - Task: HAL-19511
 
 ## What changes
