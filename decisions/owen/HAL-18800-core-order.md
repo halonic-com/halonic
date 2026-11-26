@@ -3,6 +3,7 @@
 - Approval: Paperclip task HAL-18801 (Liam's approval of the HAL-18800 plan, point a); Liam approves this note in review
 - Kind: internal
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:CXx4dMxkokE4B66QfmVVp4NL3mZmVnQ0UFrMrI+d8ps42zYRt+vlHtik5ZXr8eA/QfxZ2GNvqjYCOwZmSrSWDw==
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:SPXlTkcWIyA06Blp1F/sgDVuZj5vEkfOj5dlwHFs3mG40R/Fok2w5C+RiXqx0gqAjPJsUnYH2HL1d68l/T2+BQ==
 
 The engine is to run a writer step under the early hedge from `@halonicjs/retry-detectors` (HAL-18800). A core package may use only core packages listed before it in `coreOrder`, and `retry-detectors` was listed last, after `@halonicjs/engine`. It moves to right after `@halonicjs/ports`.
 
