@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19492
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:wRUDENMUdbFbToZkKjDWHTFI1gC/y27hlkCbxylgIRDgUsyGB5HM7Z4lEkWO8eLpHhhgvY3YT3TGsmcFJOLgCw==
 
 Two follow-ups to `inbox.read-marks` (#6648), which isn't released yet:
 
