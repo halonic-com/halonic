@@ -28,10 +28,12 @@ exact lists are `paperclip.routine-review` and `paperclip.reviewer-paths` in
 changes a module a Paperclip plugin manifest is built from (`manifestFileOf`:
 the `manifest`, `declaration` and `settings` modules in
 `tooling/paperclip/src/plugin/` and `tooling/paperclip/src/seats/plugin/`,
-and the modules `manifest.ts` imports) needs the second reviewer's approval
-on its head as well as its own reviewer's, at any size. The plugin deployer
-ships it only then, so the Merger doesn't queue it before and `pr_status`
-says so (`paperclip.manifest-julian`).
+every module the manifests import, directly or further down, and the build
+files that bundle them) needs the second reviewer's approval on its head as
+well as its own reviewer's, at any size. The plugin deployer ships it only
+then, so the Merger doesn't queue it before and `pr_status` says so
+(`paperclip.manifest-julian`). A test fails when the list misses a module
+the manifests' bundle holds (`paperclip.manifest-closure`).
 
 On a pull request outside its scope, the routine reviewer may post a first
 pass of findings; the role `pr_status` names still gives the signed approval.

@@ -1,12 +1,12 @@
 import {
   isLiamPath,
   julianRebaseRefusal,
-  manifestFileOf,
   overLineLimit,
   type RoutedPull,
   reviewerRoleFor,
   routineRefusal,
 } from "../reviewer-paths.ts";
+import { manifestFileOf } from "../reviewer-paths-manifest.ts";
 import { anySignedApproval, blockWords, fixedWords, signedApproval } from "./signed.ts";
 import type { GatePull, PullText } from "./snapshot.ts";
 

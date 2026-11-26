@@ -1,6 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
-import { manifestFileOf, reviewerRoleFor } from "../reviewer-paths.ts";
+import { reviewerRoleFor } from "../reviewer-paths.ts";
+import { manifestFileOf } from "../reviewer-paths-manifest.ts";
 import { approvalOf } from "./approval.ts";
 import { enqueued, headOf, pass, pull, said, snapshot } from "./merge-control.test-helper.ts";
 

@@ -5,6 +5,7 @@
  * apart.
  */
 import type { Routing } from "@halonicjs/format";
+import { manifestFileOf } from "./reviewer-paths-manifest.ts";
 import { personFor } from "./routing.ts";
 
 /** Exact files only Liam reviews. The root `package.json` counts too. */
@@ -161,36 +162,6 @@ export function isLiamPath(path: string): boolean {
  */
 export function isSecurityPath(path: string): boolean {
   return path === "SECURITY.md" || path.startsWith("docs/security/") || hasLiamWord(path);
-}
-
-/**
- * The plugin manifests' own modules: `manifest.ts` and the declaration and
- * settings modules next to it, tests excluded. The same list as the plugin
- * deployer's `touchesManifest` (server `plugin-deployer/gates.mjs`), so the
- * Merger asks for the approvals the deployer does (HAL-19440).
- */
-const manifestModule =
-  /^tooling\/paperclip\/src\/(?:plugin|seats\/plugin)\/[^/]*(?:manifest|declaration|settings)[^/]*\.ts$/;
-
-/** Modules `plugin/manifest.ts` imports whose names don't match `manifestModule`; keep in step with the deployer's. */
-export const manifestImports: readonly string[] = [
-  "tooling/paperclip/src/front-bot/settings.ts",
-  "tooling/paperclip/src/worker-agents/keys.ts",
-  "tooling/paperclip/src/worker-agents/tables.ts",
-  "tooling/paperclip/src/plugin/front-bot-notes.ts",
-  "tooling/paperclip/src/plugin/version.ts",
-];
-
-/**
- * The first changed file that builds a plugin manifest, or undefined when
- * none does. Such a pull request needs Julian's approval on its head as well
- * as its reviewer's (`reviewerFor`), whoever that is (HAL-19440).
- */
-export function manifestFileOf(files: readonly string[]): string | undefined {
-  return files.find(
-    (path) =>
-      (manifestModule.test(path) && !path.endsWith(".test.ts")) || manifestImports.includes(path),
-  );
 }
 
 /** What the rebase-only rule needs to know about a pull request: all its changed files, and its branch. */

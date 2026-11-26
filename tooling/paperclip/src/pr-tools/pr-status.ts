@@ -12,11 +12,11 @@ import {
 import {
   isSecurityPath,
   julianRebaseRefusal,
-  manifestFileOf,
   type RoutedPull,
   reviewerFor,
   reviewerRoleFor,
 } from "../reviewer-paths.ts";
+import { manifestFileOf } from "../reviewer-paths-manifest.ts";
 import type { Routing } from "../routing.ts";
 import { type CopyReader, readCopySource, withCopies } from "./approval-copy.ts";
 import { type Approval, approvals, type PullComment } from "./approvals.ts";
@@ -276,14 +276,26 @@ function nextSteps(status: PrStatus): string[] {
   if (status.draft && status.ciOk === "success")
     steps.push("mark it ready: the light run is green");
   if (!status.draft && status.ciOk === "success" && !status.approvedOnHead) {
-    steps.push(`get a review on this head (${status.reviewer} by the path rules)`);
-    if (status.manifestFile !== undefined) {
-      steps.push(
-        `and Julian's approval of it too: it changes a plugin manifest (${status.manifestFile})`,
-      );
-    }
+    steps.push(...reviewSteps(status));
   }
   return steps;
+}
+
+/**
+ * Whose approval the head still needs. When a reviewer's approval already
+ * counts and only Julian's for a plugin manifest is missing, it asks for his
+ * alone, not again for the reviewer the path rules name (HAL-19469).
+ */
+function reviewSteps(status: PrStatus): string[] {
+  const review = `get a review on this head (${status.reviewer} by the path rules)`;
+  if (status.manifestFile === undefined) {
+    return [review];
+  }
+  const why = `it changes a plugin manifest (${status.manifestFile})`;
+  if (status.approvals.some((approval) => approval.counts)) {
+    return [`get Julian's approval on this head: ${why}`];
+  }
+  return [review, `and Julian's approval of it too: ${why}`];
 }
 
 /** What one head looks like, as `pr_status` and the PR watcher's wake comment both say it. */
