@@ -34,6 +34,8 @@ const notPorts = new Set([
   "remote-gateway-session.ts",
   "run-failure-error.ts",
   "run-target-not-found.ts",
+  // The answer of the agent host's `GET /v1/sync/diagnostics`: counts and timings, no methods.
+  "sync-diagnostics.ts",
   // The types of `TeamStatus.runs`, versioned with `TeamStatus`.
   "team-runs.ts",
   "vcs-status.ts",
