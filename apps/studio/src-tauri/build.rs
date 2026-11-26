@@ -153,8 +153,13 @@ fn main() {
     ]);
     // Quick ask's commands (HAL-18787), as the `quick-ask` plugin:
     // `plugin:quick-ask|hide` needs `quick-ask:allow-hide`.
-    let quick_ask =
-        tauri_build::InlinedPlugin::new().commands(&["hide", "shortcut", "shortcut_set"]);
+    let quick_ask = tauri_build::InlinedPlugin::new().commands(&[
+        "hide",
+        "shortcut",
+        "shortcut_set",
+        "open_chat",
+        "take_chat",
+    ]);
     let attributes = tauri_build::Attributes::new()
         .app_manifest(commands)
         .plugin("feedback", feedback)

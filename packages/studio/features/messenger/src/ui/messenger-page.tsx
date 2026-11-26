@@ -1,5 +1,6 @@
 import type { MessagingId } from "@halonicjs/ports";
 import { Button, useNarrow } from "@halonicjs/studio-kit";
+import type { ChatOpens } from "@halonicjs/studio-services";
 import {
   connectFrom,
   type EngineWords,
@@ -11,7 +12,7 @@ import {
 } from "@halonicjs/studio-shell";
 import { type ReactNode, type RefObject, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { MessengerService } from "../api.ts";
+import { ChatOpensService, MessengerService } from "../api.ts";
 import type { ConversationRow, Messenger } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import { WithActivity } from "./activity-host.tsx";
@@ -21,6 +22,7 @@ import { ConversationView } from "./conversation-view.tsx";
 import { useFadeIn } from "./load-states.tsx";
 import { NeedsYouPanel, useWaiting } from "./needs-you.tsx";
 import { NewMenu } from "./new-menu.tsx";
+import { useChatOpens } from "./use-chat-opens.ts";
 import { useLeft } from "./use-left.ts";
 
 /** The props of {@link MessengerPage}. */
@@ -30,6 +32,8 @@ export interface MessengerPageProps {
   readonly onConnect?: () => void;
   /** How a failed read says the engine isn't answering, worded for where the Studio runs. */
   readonly words?: EngineWords;
+  /** The chats quick ask's box hands over, each opened with the focus in its box. */
+  readonly opens?: ChatOpens | undefined;
 }
 
 /**
@@ -47,11 +51,14 @@ export interface MessengerPageProps {
  *
  * Leaving a channel says so in the page's status region and puts focus on the row that took its
  * place in the list (`useLeft`, HAL-18835).
+ *
+ * A chat quick ask's box hands over opens with the focus in its box (`useChatOpens`, HAL-19097).
  */
 export function MessengerPage({
   messenger,
   onConnect,
   words = engineWords["desktop-app"],
+  opens,
 }: MessengerPageProps) {
   const { rows, connected, failure, changed, readAgain } = useChats(messenger);
   const [selected, setSelected] = useState<MessagingId | undefined>(undefined);
@@ -75,6 +82,15 @@ export function MessengerPage({
     setNeedsYou(true);
   };
   useFadeIn(chat, needsYou ? "needs-you" : open?.conversation.id);
+  useChatOpens(
+    opens,
+    (conversation) => {
+      setNeedsYou(false);
+      setSelected(conversation);
+    },
+    open?.conversation.id,
+    chat,
+  );
   const waiting = useWaiting(messenger, rows);
   // In one pane, nothing connected shows the panel, so a narrow window still offers Connect.
   const panelFirst = open !== undefined || needsYou || connected === false;
@@ -257,6 +273,7 @@ export function MessengerWindow({ context }: PlaceViewProps) {
     <MessengerPage
       messenger={context.services.get(MessengerService)}
       words={engineWordsOf(context)}
+      opens={context.services.find(ChatOpensService)}
       {...(onConnect === undefined ? {} : { onConnect })}
     />
   );

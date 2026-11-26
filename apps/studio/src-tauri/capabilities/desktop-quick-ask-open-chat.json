@@ -1,0 +1,16 @@
+{
+  "identifier": "desktop-quick-ask-open-chat",
+  "description": "On desktop, quick ask's box (the ask window, HAL-19097) may hide itself and open Messenger's window on a chat through plugin:quick-ask|open_chat, for Open in Messenger, Answer in Messenger and Last answer. The command takes one opaque conversation ID, which the shell only checks for length and hands to Messenger's page, and is refused from any other window. It is local only, so the Studio the computer serves gets nothing.",
+  "local": true,
+  "windows": [
+    "ask"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "quick-ask:allow-open-chat"
+  ]
+}

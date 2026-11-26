@@ -1,0 +1,16 @@
+{
+  "identifier": "desktop-quick-ask-take-chat",
+  "description": "On desktop, Messenger's window may take the chat quick ask's box opened it on, once, through plugin:quick-ask|take_chat, which its page calls on start (HAL-19097). The command takes nothing and returns only an ID the shell checked, and is refused from any other window. Studio's, Inbox's and the box's windows don't get it, and it is local only, so the Studio the computer serves gets nothing.",
+  "local": true,
+  "windows": [
+    "messenger"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "quick-ask:allow-take-chat"
+  ]
+}

@@ -13,6 +13,10 @@
 //! `plugin:quick-ask|shortcut_set`). The keys work while Halonic runs in
 //! the tray, with Studio's window closed too. Where the keys can't work,
 //! the tray's Ask… and `--app ask` still open the box.
+//!
+//! The box hands a chat over to Messenger through `plugin:quick-ask|open_chat`,
+//! and Messenger's page takes the chat that opened its window through
+//! `plugin:quick-ask|take_chat` (`quick_ask_chat.rs`, HAL-19097).
 
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
@@ -27,8 +31,11 @@ use tauri_plugin_global_shortcut::Shortcut;
 use crate::focused_apps::FocusedApp;
 use crate::global_keys::shortcuts;
 
+#[path = "quick_ask_chat.rs"]
+mod chat;
 #[path = "quick_ask_keys.rs"]
 mod keys;
+use chat::PendingChat;
 use keys::{
     Area, KeyState, KeyStatus, SHORTCUT_SETTING, box_closes_after, desktop_allows_keys, placement,
     saved_shortcut, shortcut_of,
@@ -52,9 +59,16 @@ struct Keys {
 /// after the last other window, as the feedback plugin does for its keys.
 pub fn commands<R: Runtime>() -> TauriPlugin<R> {
     tauri::plugin::Builder::new("quick-ask")
-        .invoke_handler(tauri::generate_handler![hide, shortcut, shortcut_set])
+        .invoke_handler(tauri::generate_handler![
+            hide,
+            shortcut,
+            shortcut_set,
+            chat::open_chat,
+            chat::take_chat
+        ])
         .setup(|app, _api| {
             app.manage(QuickAsk::default());
+            app.manage(PendingChat::default());
             register_saved(app);
             Ok(())
         })

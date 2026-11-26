@@ -44,11 +44,7 @@ import {
 } from "@halonicjs/studio-feature-models/api";
 import { AskWindowService } from "@halonicjs/studio-feature-quick-ask/api";
 import { RoutinesHostService } from "@halonicjs/studio-feature-routines/api";
-import {
-  InstructionTrustHostService,
-  RunNoticeClicksService,
-  RunsSourceService,
-} from "@halonicjs/studio-feature-runs/api";
+import { InstructionTrustHostService, RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import { HostSettingsService } from "@halonicjs/studio-feature-settings/api";
 import { VersionDialogService } from "@halonicjs/studio-feature-source-control/api";
 import {
@@ -59,10 +55,8 @@ import {
   ShellHttpClient,
   shellKeychain,
   shellKeyOrigins,
-  shellRunNoticeClicks,
   type TauriIpc,
   tauriAgentHostTransport,
-  tauriChannelIpc,
 } from "@halonicjs/studio-services";
 import {
   EngineNotAnswering,
@@ -111,6 +105,7 @@ import { folderEngine } from "./folder-engine.ts";
 import { focusOf, storageOf } from "./page-window.ts";
 import { provideEngineAutoOpen } from "./provide-engine-auto-open.ts";
 import { provideRunStart } from "./provide-run-start.ts";
+import { provideShellHandOvers } from "./provide-shell-hand-overs.ts";
 import { provideWorkspaceRuns } from "./provide-workspace-runs.ts";
 import { WorkspaceInstructionTrust } from "./workspace-instruction-trust.ts";
 import type { WorkspaceTrust } from "./workspace-trust.ts";
@@ -363,12 +358,7 @@ export function provideFolderServices(
     }),
   );
   provideRunStart(services, { workflows, engine, askTrust, trust });
-  // A click on a run notification opens the run (`runs.run-notification-open`).
-  const channelIpc = tauriChannelIpc(window);
-  if (channelIpc !== undefined) {
-    const onError = (error: unknown) => console.error("Opening a run notification", error);
-    services.provide(RunNoticeClicksService, shellRunNoticeClicks(channelIpc, onError));
-  }
+  provideShellHandOvers(services, window);
   services.provide(
     InboxRequestsService,
     new WorkspaceRequests({
