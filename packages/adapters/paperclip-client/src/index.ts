@@ -43,6 +43,17 @@ export {
   runAgainComment,
 } from "./run-control.ts";
 export {
+  type ShadowCallCounts,
+  type ShadowRequestName,
+  shadowRequestNames,
+} from "./shadow-fetch.ts";
+export {
+  PaperclipShadowReader,
+  type PaperclipShadowReaderOptions,
+  type ShadowApprovalRead,
+  shadowAnswerMaxBytes,
+} from "./shadow-reads.ts";
+export {
   approvalPageUrl,
   PaperclipSignInClient,
   type PaperclipSignInClientOptions,

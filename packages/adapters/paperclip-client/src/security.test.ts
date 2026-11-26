@@ -15,6 +15,8 @@ import {
 import { PaperclipMessaging } from "./client.ts";
 import { FakePaperclip } from "./fake-paperclip.test-helper.ts";
 import { buildPath, findRequest, paperclipRequests, UnsafeIdError } from "./requests.ts";
+import { everyRow, readEverything, serveShadow, shadowReader } from "./shadow-data.test-helper.ts";
+import { ShadowCallCounter, shadowRequestNames } from "./shadow-fetch.ts";
 import { PaperclipTransport } from "./transport.ts";
 
 /** Puts `fake` behind a real HTTP server on 127.0.0.1, so the platform's own `fetch` talks to it. */
@@ -342,5 +344,82 @@ verifies("agent-host.paperclip-key", () => {
     expect(all).not.toContain("secret-body");
     expect(all).not.toMatch(/bearer|authorization/i);
     expect(all).not.toContain(agentAda);
+  });
+});
+
+verifies("paperclip-client.shadow-reads", () => {
+  describe("the shadow reader", () => {
+    // G2.1: the rows come from the fixed list, so a new write row is covered without anyone adding it.
+    it.each(everyRow().filter(([, method]) => method !== "GET"))(
+      "refuses %s (%s %s) before anything is sent",
+      async (_, method, path) => {
+        const counter = new ShadowCallCounter();
+        let fetched = 0;
+        const guarded = counter.guardFetch(async () => {
+          fetched += 1;
+          return new Response("{}");
+        });
+        const url = new URL(path, "https://paperclip.acme.test");
+        await expect(guarded(url, { method, body: "{}" })).rejects.toMatchObject({
+          reason: "refused",
+        });
+        await expect(guarded(url, { method })).rejects.toMatchObject({ reason: "refused" });
+        expect(fetched).toBe(0);
+        expect(counter.counts()).toEqual({ sent: 0, refused: 2, refusedNotGet: 2 });
+      },
+    );
+
+    it("refuses a GET that isn't on the shadow list, sending nothing", async () => {
+      const offList = everyRow().filter(
+        ([name, method]) =>
+          method === "GET" && !(shadowRequestNames as readonly string[]).includes(name),
+      );
+      expect(offList.length).toBeGreaterThan(10);
+      const counter = new ShadowCallCounter();
+      const guarded = counter.guardFetch(() => Promise.reject(new Error("sent")));
+      for (const [, , path] of offList) {
+        await expect(guarded(new URL(path, "https://paperclip.acme.test"))).rejects.toMatchObject({
+          reason: "refused",
+        });
+      }
+      expect(counter.counts().sent).toBe(0);
+      expect(counter.counts().refusedNotGet).toBe(0);
+    });
+
+    it("has only GET rows on its shadow list", () => {
+      for (const name of shadowRequestNames) {
+        expect(paperclipRequests[name].method, name).toBe("GET");
+      }
+    });
+
+    it("never issues a non-GET over a real connection, and counts every call", async () => {
+      serveShadow(paperclip);
+      const reader = shadowReader(paperclip);
+      await readEverything(reader);
+      expect(paperclip.seen.length).toBe(9);
+      for (const request of paperclip.seen) {
+        expect(request.method).toBe("GET");
+        expect(shadowRequestNames).toContain(findRequest(request.method, request.path));
+        expect(request.headers.get("authorization")).toBe(`Bearer ${testKey}`);
+      }
+      expect(reader.counts()).toEqual({ sent: 9, refused: 0, refusedNotGet: 0 });
+    });
+
+    it("refuses a redirect, and the other host never hears from it", async () => {
+      const other = new FakePaperclip();
+      const otherServer = await listen(other);
+      try {
+        paperclip.on("GET", `/api/companies/${company}/approvals`, {
+          status: 307,
+          headers: { location: `${other.address}/steal` },
+        });
+        await expect(shadowReader(paperclip).pendingApprovals()).rejects.toMatchObject({
+          reason: "redirect",
+        });
+        expect(other.seen).toEqual([]);
+      } finally {
+        await close(otherServer);
+      }
+    });
   });
 });

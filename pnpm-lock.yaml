@@ -1953,6 +1953,9 @@ importers:
       '@halonicjs/adapter-websocket-frames':
         specifier: workspace:*
         version: link:../websocket-frames
+      '@halonicjs/auto-approvals':
+        specifier: workspace:*
+        version: link:../../core/auto-approvals
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports

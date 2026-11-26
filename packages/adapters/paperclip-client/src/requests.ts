@@ -231,6 +231,21 @@ export const paperclipRequests = {
   // upgrade only. `fetch` never sends it; only the transport's socket path does, with the key in
   // the `Authorization` header and no query, so the key is never in an address.
   liveEvents: { method: "GET", path: "/api/companies/:company/events/ws", upgrade: true },
+  // Auto approvals in shadow mode (`paperclip-client.shadow-reads`, HAL-19796): reads only, sent
+  // by the shadow reader alone. The document rows name their one key in the path; no row on this
+  // list writes, locks, unlocks or deletes those two documents (`security.test.ts`).
+  listApprovalComments: { method: "GET", path: "/api/approvals/:approval/comments" },
+  listCompanyActivity: { method: "GET", path: "/api/companies/:company/activity" },
+  readNeverList: { method: "GET", path: "/api/issues/:task/documents/never-list" },
+  listNeverListRevisions: {
+    method: "GET",
+    path: "/api/issues/:task/documents/never-list/revisions",
+  },
+  readStopDocument: { method: "GET", path: "/api/issues/:task/documents/auto-approve-stop" },
+  listStopDocumentRevisions: {
+    method: "GET",
+    path: "/api/issues/:task/documents/auto-approve-stop/revisions",
+  },
 } as const satisfies Record<string, RequestRule>;
 
 /**

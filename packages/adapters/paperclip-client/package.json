@@ -15,6 +15,7 @@
   "dependencies": {
     "@halonicjs/action-steppers": "workspace:*",
     "@halonicjs/adapter-websocket-frames": "workspace:*",
+    "@halonicjs/auto-approvals": "workspace:*",
     "@halonicjs/ports": "workspace:*"
   },
   "devDependencies": {
