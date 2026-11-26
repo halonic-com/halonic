@@ -62,3 +62,44 @@ verifies("studio.feedback-windows", () => {
     expect(called).toEqual([]);
   });
 });
+
+verifies("studio.feedback-window", () => {
+  it.each(["inbox", "messenger"])("starts no feedback shortcut in the %s window", async (label) => {
+    const called: string[] = [];
+    // The page's own window, so a shortcut started in it would hear the keys. jsdom has no
+    // `matchMedia`, which the shell follows the phone width with.
+    const page = Object.assign(window, webviewLabelled(label, called), {
+      matchMedia: (media: string) => ({
+        matches: false,
+        media,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+      }),
+    });
+    try {
+      started = startStudio({
+        element,
+        window: page,
+        userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+      });
+      await vi.waitFor(() => expect(element.textContent).not.toBe(""));
+      const keys = new KeyboardEvent("keydown", {
+        code: "KeyF",
+        key: "F",
+        ctrlKey: true,
+        shiftKey: true,
+        cancelable: true,
+      });
+      window.dispatchEvent(keys);
+
+      expect(keys.defaultPrevented).toBe(false);
+      expect(called).not.toContain("plugin:feedback|start");
+    } finally {
+      await started?.stop();
+      started = undefined;
+      Reflect.deleteProperty(window, "__TAURI_INTERNALS__");
+    }
+  });
+});

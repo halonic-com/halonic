@@ -49,3 +49,18 @@ describe("provideFeedbackSettings", () => {
     });
   });
 });
+
+verifies("studio.feedback-window", () => {
+  it("gives Settings › Feedback the main window's waiting count and connection", async () => {
+    const services = new ServiceRegistry();
+    const connected = { current: () => false, subscribe: () => () => undefined };
+    provideFeedbackSettings(services, shell(), "main", "windows", {
+      ...connected,
+      waiting: async () => 3,
+    });
+
+    const host = services.get(FeedbackSettingsService);
+    expect(await host.waiting?.()).toBe(3);
+    expect(host.connected?.current()).toBe(false);
+  });
+});

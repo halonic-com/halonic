@@ -20,7 +20,7 @@ import {
   type Shell,
   type StudioHost,
 } from "@halonicjs/studio-shell";
-import { startWindowFeedback } from "../feedback/start-window-feedback.ts";
+import { mainWindowFeedbackOf, startWindowFeedback } from "../feedback/start-window-feedback.ts";
 import { desktopFeatures } from "./desktop-features.ts";
 import { newWorkspaceOf } from "./desktop-new-workspace.ts";
 import { desktopOpenExternal } from "./desktop-open-external.ts";
@@ -117,20 +117,18 @@ export function startStudio(page: StudioPage, desktop = desktopFeatures): Starte
       });
     }
     const shell = createShell({ ...desktop, host, platform });
-    // Halonic Inbox and Halonic Messenger load this page too, in a window of their own.
+    // Halonic Inbox and Halonic Messenger load this page too, in a window of their own. They have
+    // no folder to send feedback from, so only the main window hears its shortcut (HAL-19671).
     const app = focusedAppOf(page.window, shell);
-    const started =
-      app === undefined
-        ? startDesktopApp(page, { shell, ipc, platform })
-        : startFocusedApp(page, {
-            shell,
-            ipc,
-            platform,
-            app,
-            language: studioLanguage,
-            display: displaySettingsOf(page),
-          });
-    return withWindowFeedback(started, startWindowFeedback(page, ipc, platform, shell.toasts));
+    if (app === undefined) return startDesktopApp(page, { shell, ipc, platform });
+    return startFocusedApp(page, {
+      shell,
+      ipc,
+      platform,
+      app,
+      language: studioLanguage,
+      display: displaySettingsOf(page),
+    });
   }
   return startServedStudio(page, {
     host,
@@ -163,10 +161,18 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
   const newWorkspaceAsks = new NewWorkspaceAsks();
   const freshCopyAsks = new FreshCopyAsks();
   const newWorkspace = newWorkspaceOf(page.window, platform);
+  const openExternal = desktopOpenExternal(page.window);
+  // Send feedback follows the folder shown, so it reads the switcher made below once it starts.
+  const feedback = mainWindowFeedbackOf(page, {
+    folders: () => switcher.open,
+    toasts: shell.toasts,
+    openTask: (taskUrl) => void openExternal?.(taskUrl),
+  });
   const device: DeviceMemory = {
     recent: new RecentWorkspaces(page.storage ?? noStorage),
     storage: page.storage ?? noStorage,
     platform,
+    feedback,
     ...(newWorkspace.newWorkspace === undefined
       ? {}
       : { startOwnWorkspace: () => newWorkspaceAsks.ask() }),
@@ -182,6 +188,7 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
     recent: device.recent,
     toasts: shell.toasts,
   });
+  const stopFeedback = startWindowFeedback(page, ipc, platform, shell.toasts, feedback);
   const resources = watchDesktopResources(ipc);
   const start = watchStart(ipc, platform, halonicVersion);
   const parts = {
@@ -195,7 +202,7 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
     newWorkspaceAsks,
     freshCopyAsks,
   };
-  const window = mountWorkspaceWindow(page.element, parts, desktopOpenExternal(page.window));
+  const window = mountWorkspaceWindow(page.element, parts, openExternal);
   // Formats follows the system's region once the shell has read it; until then, the browser's.
   const stopRegion = followSystemRegion(ipc, (r) => window.update({ ...parts, regionFormat: r }));
   const stopListening = onWindowCloseRequested(
@@ -214,6 +221,7 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
   });
   const stopped = once(async () => {
     keepingContent.stop();
+    stopFeedback();
     stopRegion();
     resources.stop();
     start.stop();
@@ -224,17 +232,6 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
     await switcher.dispose();
   });
   return { host: "desktop-app", stop: stopped };
-}
-
-/** `started`, whose stop also stops the window's feedback shortcut. */
-function withWindowFeedback(started: StartedStudio, stopFeedback: () => void): StartedStudio {
-  return {
-    ...started,
-    stop: async () => {
-      stopFeedback();
-      await started.stop();
-    },
-  };
 }
 
 /** Runs `task` on the first call and gives every later call the same run. */
