@@ -2,6 +2,7 @@
 
 - Approval: HAL-19170, the plan is HAL-18391 rev 2 section 2.3 (Liam's OK, 26 Nov); Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:R4+DZLGIfPdS5iLqCMDnIJVZihQcHAAMtCf+J0rt23ApeWITVXUiXbXFdRecKntQLl5vvgNHt/RELbgnRFoHCA==
 - Task: HAL-19170
 
 ## What changes
