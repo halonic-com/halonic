@@ -35,6 +35,7 @@ export const manifestImports: readonly string[] = [
   "tooling/paperclip/src/plugin/version.ts",
   "tooling/paperclip/src/seat-mover/settings.ts",
   "tooling/paperclip/src/task-effort/settings.ts",
+  "tooling/paperclip/src/verdicts/record.ts",
   "tooling/paperclip/src/worker-agents/keys.ts",
   "tooling/paperclip/src/worker-agents/tables.ts",
   // The build: the scripts and options that bundle the manifests, and the package's pointer to them.
