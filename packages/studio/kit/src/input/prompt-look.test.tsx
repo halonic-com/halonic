@@ -56,7 +56,7 @@ verifies("kit.prompt-look", () => {
     expect(text.parentElement?.contains(send)).toBe(true);
     expect(send.className).toContain("rounded-full");
     expect(send.className).toContain("size-9");
-    expect(send.className).toContain("bg-surface-muted");
+    expect(send.className).toContain("bg-surface-soft");
     rerender(composer({ value: "Ship it" }));
     expect(send.className).toContain("bg-primary");
   });
@@ -82,6 +82,15 @@ verifies("kit.prompt-look", () => {
     expect(field).not.toContain("shadow-prompt");
   });
 
+  it("gives a prompt Input the 15px prompt text and no browser clear button beside its Esc", () => {
+    const { container } = render(<Input look="prompt" type="search" aria-label="Search chats" />);
+    const text = (container.querySelector("input") as HTMLInputElement).className;
+    expect(text).toContain("text-reading");
+    expect(text).toContain("[&::-webkit-search-cancel-button]:appearance-none");
+    const field = render(<Input aria-label="Workspace name" />).container.querySelector("input");
+    expect(field?.className).toContain("text-body");
+  });
+
   it("builds the board's values in light and the lighter box in dark", async () => {
     const css = await buildCss(["rounded-prompt", "border-border-prompt", "shadow-prompt"]);
     expect(css).toContain("--radius-prompt: 24px");
@@ -89,6 +98,13 @@ verifies("kit.prompt-look", () => {
     expect(css).toContain("--color-surface-prompt: light-dark(#ffffff, rgb(255 255 255 / 0.06))");
     expect(css).toContain("--shadow-prompt: 0 4px 18px -2px var(--shade-prompt)");
     expect(css).toContain("--shade-prompt: light-dark(rgb(60 64 67 / 0.12), rgb(0 0 0 / 0.5))");
+  });
+
+  it("keeps the round soft buttons a step above the box in dark", async () => {
+    const css = await buildCss(["bg-surface-soft"]);
+    expect(css).toContain(
+      "--color-surface-soft: light-dark(var(--color-surface-muted), rgb(255 255 255 / 0.08))",
+    );
   });
 
   it("turns the edge accent and deepens the shadow on focus, with no 3px ring", async () => {

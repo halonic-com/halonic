@@ -91,6 +91,10 @@
   --color-border-prompt: light-dark(#dcdfe5, #353c4c);
   /* In dark the box is a step lighter than whatever panel it sits on: 6% white over it. */
   --color-surface-prompt: light-dark(#ffffff, rgb(255 255 255 / 0.06));
+  /* The round buttons inside a prompt box (the `soft` Button). In dark, surface-muted sat almost
+     on the box's 6% white, so the circle vanished; 8% white over the box keeps it a step above. */
+  --color-surface-soft: light-dark(var(--color-surface-muted), rgb(255 255 255 / 0.08));
+  --color-surface-soft-hover: light-dark(var(--color-border), rgb(255 255 255 / 0.14));
 
   /* ---------------------------------------------------------------- Colour: text (text-fg*) */
   /* Ink with a deep indigo cast, toned down with alpha so it sits on any surface. */

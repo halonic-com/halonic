@@ -167,9 +167,9 @@ const variantClasses: Record<ButtonVariant, string> = {
     "aria-pressed:bg-surface-muted aria-pressed:text-fg",
   ].join(" "),
   soft: [
-    "border-transparent bg-surface-muted text-fg-muted",
-    "not-aria-disabled:hover:bg-border not-aria-disabled:hover:text-fg",
-    "not-aria-disabled:active:bg-border not-aria-disabled:active:text-fg",
+    "border-transparent bg-surface-soft text-fg-muted",
+    "not-aria-disabled:hover:bg-surface-soft-hover not-aria-disabled:hover:text-fg",
+    "not-aria-disabled:active:bg-surface-soft-hover not-aria-disabled:active:text-fg",
   ].join(" "),
   "danger-outline": [
     "border-danger bg-surface text-danger",

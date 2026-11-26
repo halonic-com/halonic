@@ -12,6 +12,7 @@ import {
   fieldTextClasses,
   focusTextOnPress,
   promptBoxClasses,
+  promptTextClasses,
   shortTextClasses,
 } from "./field-box.ts";
 import { type InputLeadingButton, LeadingButton } from "./leading-button.tsx";
@@ -143,7 +144,7 @@ export function Input({
         id={field?.id}
         data-field-text=""
         data-text-entry=""
-        className={textClasses(width, mono)}
+        className={textClasses(width, mono, look)}
         aria-describedby={describedBy(field?.describedBy, extraDescription)}
         aria-invalid={invalid || undefined}
         aria-required={field?.required || undefined}
@@ -156,10 +157,14 @@ export function Input({
 
 /**
  * The text's classes. It is as tall as the box, so a press above or below the line of text lands
- * on it.
+ * on it. A prompt's text is 15px like the other prompt boxes, and it hides the browser's own
+ * search clear button, since the prompt look puts its own Esc in the box (HAL-19768).
  */
-function textClasses(width: FieldWidth, mono: boolean): string {
-  const classes = [fieldTextClasses, "self-stretch"];
+function textClasses(width: FieldWidth, mono: boolean, look: FieldLook): string {
+  const classes =
+    look === "prompt"
+      ? [promptTextClasses, "self-stretch [&::-webkit-search-cancel-button]:appearance-none"]
+      : [fieldTextClasses, "self-stretch"];
   if (width === "short") classes.push(shortTextClasses);
   if (mono) classes.push("font-mono");
   return classes.join(" ");
