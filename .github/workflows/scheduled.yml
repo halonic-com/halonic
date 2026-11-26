@@ -7,9 +7,14 @@ name: Scheduled checks
 
 on:
   schedule:
-    - cron: "17 4 * * *" # daily: advisories, the lockfile, mutation testing, failures on main
+    - cron: "17 4 * * *" # daily: advisories, the lockfile, mutation testing, failures on main, pull request comments
     - cron: "47 4 * * 1" # weekly: full terms and secret scan, Rust advisories
   workflow_dispatch:
+    inputs:
+      pr-comments-full-scan:
+        description: Scan every pull request's comments, not only those updated since the last scan
+        type: boolean
+        default: false
 
 permissions: {}
 
@@ -123,6 +128,44 @@ jobs:
       - name: gitleaks over the whole history
         uses: $/.github/actions/gitleaks
 
+  pr-comments:
+    # A comment can't be checked before it is posted, so pull request
+    # bodies, comments and reviews are scanned for the personal terms
+    # afterwards (HAL-20064). A hit opens or updates one issue with pull
+    # request numbers and links, never the text, and the job still passes:
+    # the issue is the signal. The job's name is read by the script to find
+    # the last run it succeeded in.
+    name: Personal terms in pull request comments
+    if: github.event.schedule != '47 4 * * 1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    # The terms and the board's logins live in this environment; only main may use it (HAL-11232).
+    environment: leak-terms
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The script needs only Node's own modules, so nothing is installed.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26"
+          package-manager-cache: false
+      - name: Scan pull request bodies, comments and reviews
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HALONIC_DENY_TERMS: ${{ secrets.HALONIC_DENY_TERMS }}
+          HALONIC_BOARD_LOGINS: ${{ secrets.HALONIC_BOARD_LOGINS }}
+          HALONIC_TERMS_REQUIRED: ${{ vars.HALONIC_TERMS_ENFORCED == 'true' && 'true' || 'false' }}
+          FULL_SCAN: ${{ inputs.pr-comments-full-scan }}
+        run: |
+          if [ "$FULL_SCAN" = "true" ]; then set -- --full; fi
+          node tooling/check/src/cli/pr-comments.ts --apply "$@"
+
   main-failures:
     # Every push to main runs ci.yml's Linux jobs and the hourly run its macOS
     # and Windows jobs (HAL-15889), so this job doesn't run them again: it
@@ -166,7 +209,7 @@ jobs:
 
   report:
     name: Open an issue on failure
-    needs: [advisories, cargo-deny, mutation, full-scan, main-failures]
+    needs: [advisories, cargo-deny, mutation, full-scan, pr-comments, main-failures]
     if: failure()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
