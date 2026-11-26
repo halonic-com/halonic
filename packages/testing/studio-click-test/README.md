@@ -72,7 +72,8 @@ The steps, in `src/steps/`:
 | 20 | Agent sandbox and About Halonic | `settings.agent-sandbox-section`, `settings.agent-sandbox-state`, `settings.about-section` | Agent sandbox shows a state chip without a button pressed, and About Halonic shows Check now and Update Halonic automatically |
 | 21 | Writer's Try it chat comes back | `agents.chat.saved`, `agents.chat.first-load` | in the demo the Settings steps opened again, Writer opened from the Agents list shows step 1's message |
 | 22 | A key in a Try it message is held | `agents.chat.box-lines` | a message with a made-up key stays out of the chat while the key line shows, and Send anyway sends it |
-| 23 | The places open | `shell.sidebar-places`, `inbox.page`, `inbox.request`, `runs.app-list`, `library.library-place`, `library.library-page`, `source-control.changes-page` | with Settings closed, Inbox, Runs, Library and Changes each open from Places and show their own text (New request, the Runs app's "No runs yet today.", the Skills sentence, a Changes state); every place is tried, and the note names each that failed |
+| 23 | The Model page checks the harness | `agents.configuration.harness-model` | on Writer's page, Configuration › Harness › Codex, then Model › `default` (the demo's test model) shows "This model can't be used with Codex. Choose another.", and Writer goes back to Halonic |
+| 24 | The places open | `shell.sidebar-places`, `inbox.page`, `inbox.request`, `runs.app-list`, `library.library-place`, `library.library-page`, `source-control.changes-page` | with Settings closed, Inbox, Runs, Library and Changes each open from Places and show their own text (New request, the Runs app's "No runs yet today.", the Skills sentence, a Changes state); every place is tried, and the note names each that failed |
 
 Steps 4 to 8 cover the Connections requirements (`requirements/connections-steps.md`, HAL-18868).
 They and steps 9 to 14 come straight after Connect Paperclip: the restart after a failing step used
@@ -87,8 +88,9 @@ suite seeds itself, with Disconnect last. Steps 15 to 17 are the Studio basics (
 ends the basics because it leaves the window on Welcome; a later step that needs a workspace, such
 as each Settings step, opens the demo again from there. Steps 21 and 22 are Try it (HAL-18869);
 they come straight after Settings so they find step 1's chat in that reopened demo. The Build chat
-has no step: the desktop app doesn't load the Assistant feature. Step 23 opens the other places
-(HAL-18870) last, so its page visits come after Try it has read the chat.
+has no step: the desktop app doesn't load the Assistant feature. Step 23 puts Writer in Codex
+for the Model page's check (HAL-18930) on the page Try it leaves open, and back on Halonic. Step 24
+opens the other places (HAL-18870) last, so its page visits come after Try it has read the chat.
 The app opens at 800 × 600, a narrow window
 where the sidebar sits behind ☰ Places and the tabs fold into "1 open tab ▾", so each basics step
 sizes the window to 1280 × 800 first and gives it its size back afterwards (HAL-19048).

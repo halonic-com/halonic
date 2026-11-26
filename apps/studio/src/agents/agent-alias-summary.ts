@@ -29,13 +29,21 @@ export function aliasSummaryOf(
   };
 }
 
-/** The harnesses that start a program, which calls one API only. */
-const programHarnesses: readonly AgentHarnessId[] = ["claude-code", "codex", "opencode"];
+/**
+ * Every harness, keyed by the type, so a harness the agents feature gains is a type error here
+ * until it's listed. Halonic's own loop always fits; the programs each call one API only.
+ */
+const everyHarness: Readonly<Record<AgentHarnessId, true>> = {
+  halonic: true,
+  "claude-code": true,
+  codex: true,
+  opencode: true,
+};
 
-/** Each program harness that doesn't simply fit the provider, with why. */
+/** Each harness that doesn't simply fit the provider, with why. */
 function harnessFitOf(provider: Provider): NonNullable<AliasSummary["harnessFit"]> {
   const fits: Partial<Record<AgentHarnessId, "refused" | "check-endpoint">> = {};
-  for (const harness of programHarnesses) {
+  for (const harness of Object.keys(everyHarness) as AgentHarnessId[]) {
     const fit = harnessModelFit(harness, provider.type);
     if (fit !== "fits") fits[harness] = fit;
   }

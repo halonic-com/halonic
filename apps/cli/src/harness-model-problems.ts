@@ -19,15 +19,14 @@ import { validateMessages } from "./messages/validate.ts";
 /** The code of the error for a model the agent's harness can't use. */
 export const harnessModelRefusedCode = "harness-model-refused";
 
-/** The code of the warning for a Codex agent on an OpenAI-compatible provider. */
-export const harnessEndpointCode = "harness-endpoint-unchecked";
-
 /**
- * One problem per agent whose harness is a program and whose `model` is an
- * alias of its hub that the program can't call (an error), or that Codex
- * calls at an address that may not speak the Responses API (a warning). A
- * name that is no alias goes to the program as written, so it gets none, as
- * does an alias whose provider no file has: the loader reports that.
+ * One error per agent whose harness is a program and whose `model` is an
+ * alias of its hub that the program can't call. A name that is no alias goes
+ * to the program as written, so it gets none, as does an alias whose provider
+ * no file has: the loader reports that. Only what `run` refuses: the Model
+ * page's endpoint line for Codex on an OpenAI-compatible provider isn't a
+ * problem here, since `validate` couldn't ever set it aside and `--strict`
+ * would never pass.
  *
  * @example
  * harnessModelProblems(workspace);
@@ -45,27 +44,22 @@ function problemOf(
   agent: LoadedFileOf<"agent">,
 ): WorkspaceIssue | undefined {
   const { id, harness, model } = agent.value;
-  if (agent.hub === null || harness === undefined || model === undefined) return undefined;
+  if (agent.hub === null || model === undefined) return undefined;
+  if (harness === undefined || harness === "halonic") return undefined;
   if (model.includes("/")) return undefined;
   const target = resolveModel(workspace, agent.hub, model);
   if (target === undefined) return undefined;
   const provider = definitionsOf(workspace, agent.hub).providers[target.provider];
   if (provider === undefined) return undefined;
-  const fit = harnessModelFit(harness, provider.type);
-  if (fit === "fits") return undefined;
-  const refused = fit === "refused";
+  if (harnessModelFit(harness, provider.type) !== "refused") return undefined;
   return {
     file: agent.path,
-    severity: refused ? "error" : "warning",
+    severity: "error",
     source: "check",
-    code: refused ? harnessModelRefusedCode : harnessEndpointCode,
+    code: harnessModelRefusedCode,
     path: ["model"],
     line: 1,
     col: 1,
-    message: plainText(
-      refused
-        ? validateMessages.harnessModelRefused(id, model, harness).phrase
-        : validateMessages.harnessEndpoint(id, provider.id).phrase,
-    ),
+    message: plainText(validateMessages.harnessModelRefused(id, model, harness).phrase),
   };
 }

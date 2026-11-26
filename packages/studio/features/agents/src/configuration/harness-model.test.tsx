@@ -36,13 +36,17 @@ const codexRefused = "This model can't be used with Codex. Choose another.";
 const claudeRefused = "Claude Code can use Anthropic models only.";
 const endpoint = "Make sure this endpoint supports the Responses API.";
 
-/** Coder's Model page, on `model` in `harness`. */
-async function modelPage(model: string, harness: AgentHarnessId): Promise<HTMLElement> {
+/** Coder's Model page, on `model` in `harness`, with a host that tells `told`; `null`, it can't tell. */
+async function modelPage(
+  model: string,
+  harness: AgentHarnessId,
+  told: Readonly<Record<string, AliasSummary>> | null = summaries,
+): Promise<HTMLElement> {
   const host = memoryAgentsHost({
     hubs: [{ id: "acme", name: "acme" }],
     agents: [{ hubId: "acme", id: "coder", name: "Coder", model, harness }],
     modelAliases: Object.keys(summaries),
-    aliasSummaries: summaries,
+    ...(told === null ? {} : { aliasSummaries: told }),
   });
   const page = await show(<AgentScreen host={host} hubId="acme" id="coder" />);
   await act(async () => buttonNamed(page, "Configuration")?.click());
@@ -93,5 +97,16 @@ verifies("agents.configuration.harness-model", () => {
       expect(page.textContent).not.toContain(endpoint);
       unmount();
     }
+  });
+
+  it("says nothing of the harness for an alias the hub doesn't have, or a host that can't tell", async () => {
+    const unknown = await modelPage("fast", "codex");
+    expect(unknown.textContent).toContain("fast isn't a model alias in this workspace.");
+    expect(unknown.textContent).not.toContain(codexRefused);
+    unmount();
+
+    const cantTell = await modelPage("sonnet", "codex", null);
+    expect(cantTell.textContent).not.toContain(codexRefused);
+    expect(cantTell.textContent).not.toContain(endpoint);
   });
 });

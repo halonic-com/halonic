@@ -47,11 +47,8 @@ export const validateMessages = defineMessages("validate", {
    * An agent whose harness can't call its model alias's provider (HAL-18930),
    * with the Model page's sentence for that harness (flow 5.6, UX 2.5).
    */
-  harnessModelRefused: (agent: string, model: string, harness: string) =>
-    phrase`Agent ${agent} names model ${model}. ${harnessRefusal(harness)}`,
-  /** A Codex agent on an OpenAI-compatible provider (HAL-18930, flow 5.6). */
-  harnessEndpoint: (agent: string, provider: string) =>
-    phrase`Agent ${agent} runs in Codex on provider ${provider}. Make sure this endpoint supports the Responses API.`,
+  harnessModelRefused: (agent: string, model: string, harness: ProgramHarness) =>
+    phrase`Agent ${agent} names model ${model}. ${harnessRefusals[harness]}`,
 
   noProblems: (checked: number, workspace: string) =>
     phrase`Checked ${counted(checked, "file", "files")} in ${workspace}. No problems.`,
@@ -88,17 +85,16 @@ function foundProblems(counts: ValidateCounts): Phrase {
   return phrase`${bold(errors)} and ${warnings}`;
 }
 
+/** The harnesses that start a program, by the agent file's `harness` values other than `halonic`. */
+export type ProgramHarness = "claude-code" | "codex" | "opencode";
+
 /**
  * Why the harness can't use the model, in the Model page's words (flow 5.6, UX 2.5), with what to
- * do: Claude Code and OpenCode call Anthropic's API only, Codex OpenAI's Responses API only.
+ * do: Claude Code and OpenCode call Anthropic's API only, Codex OpenAI's Responses API only. A
+ * harness the agent file gains is a type error where `validate` passes it here, until it has one.
  */
-function harnessRefusal(harness: string): string {
-  switch (harness) {
-    case "codex":
-      return "This model can't be used with Codex. Choose another.";
-    case "opencode":
-      return "OpenCode can use Anthropic models only. Choose another.";
-    default:
-      return "Claude Code can use Anthropic models only. Choose another.";
-  }
-}
+const harnessRefusals: Readonly<Record<ProgramHarness, string>> = {
+  "claude-code": "Claude Code can use Anthropic models only. Choose another.",
+  codex: "This model can't be used with Codex. Choose another.",
+  opencode: "OpenCode can use Anthropic models only. Choose another.",
+};

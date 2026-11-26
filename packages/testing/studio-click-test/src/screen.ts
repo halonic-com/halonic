@@ -11,13 +11,47 @@ export const pollEveryMs = 2_000;
  */
 export function buttonNamed(text: string): string {
   // A kit List row opens from its gridcell, whose title isn't a button (run 45665141501).
-  const control = "(self::button or self::a or @role='button' or @role='tab' or @role='gridcell')";
+  return controlNamed(
+    "(self::button or self::a or @role='button' or @role='tab' or @role='gridcell')",
+    text,
+  );
+}
+
+/**
+ * An XPath for a tab named `text`, such as an agent page's Configuration or a Configuration page,
+ * where a button or link with the same words elsewhere on the page mustn't be clicked instead. A
+ * tab with a counter also holds the count, so its part that holds `text` counts too.
+ */
+export function tabNamed(text: string): string {
+  return controlNamed("@role='tab'", text);
+}
+
+/** A `control` with `text` as its words, its accessible name, or a part of it that isn't hidden. */
+function controlNamed(control: string, text: string): string {
   const named = `normalize-space()=${xpathString(text)}`;
   const hidden =
     "ancestor-or-self::*[contains(concat(' ', normalize-space(@class), ' '), ' invisible ')]";
   const shownPart = `.//*[${named} and not(${hidden})]`;
   const name = `(${named} or @aria-label=${xpathString(text)} or ${shownPart})`;
   return `//*[${control} and ${name} and not(@disabled) and not(@aria-disabled='true')]`;
+}
+
+/**
+ * An XPath for a kit RadioGroup's option by its words: a native radio named by the label's
+ * `aria-labelledby` words only, since its note sits in the same label.
+ */
+export function radioNamed(text: string): string {
+  const words = `//*[normalize-space()=${xpathString(text)}]/@id`;
+  return `//input[@type='radio' and not(@disabled) and @aria-labelledby=${words}]`;
+}
+
+/** Clicks the element `xpath` finds once it shows and is enabled, waiting at most `waitMs`. */
+export async function clickXPathWhenShown(
+  context: StepContext,
+  xpath: string,
+  waitMs: number,
+): Promise<boolean> {
+  return (await clickXPathOrWhyNot(context, xpath, waitMs)) === undefined;
 }
 
 /**

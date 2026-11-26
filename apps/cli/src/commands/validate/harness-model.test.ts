@@ -63,15 +63,26 @@ verifies("cli.commands.validate.harness-model", () => {
     );
   });
 
-  it("warns, and passes, for a Codex agent on an OpenAI-compatible endpoint", async () => {
+  it("fails on an OpenCode agent with a model that isn't Anthropic's", async () => {
+    withAgent("opencode", "gpt", "openai");
+
+    expect(await problems()).toContainEqual(
+      expect.objectContaining({
+        code: "harness-model-refused",
+        message:
+          "Agent coder names model gpt. OpenCode can use Anthropic models only. Choose another.",
+      }),
+    );
+  });
+
+  // The endpoint line is the Model page's: `validate` couldn't ever set it aside (HAL-18930 review).
+  it("passes a Codex agent on an OpenAI-compatible endpoint, with --strict too", async () => {
     withAgent("codex", "coder-model", "openai-compatible");
 
-    const { code, io } = await validateIn(workspace);
+    const { code, io } = await validateIn(workspace, "--strict");
 
     expect(code).toBe(exitCode.ok);
-    expect(io.stdout.join("\n")).toContain(
-      "Agent coder runs in Codex on provider gateway. Make sure this endpoint supports the Responses API.  (harness-endpoint-unchecked)",
-    );
+    expect(io.stdout.join("\n")).not.toContain("Responses API");
   });
 
   it("says nothing when the harness can call the provider, or the agent runs in Halonic", async () => {
