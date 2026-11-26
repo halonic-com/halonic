@@ -112,8 +112,8 @@ export class PaperclipSteppers {
 
   /**
    * Card `record`'s item `item` as a stepper item when it is open and pins a
-   * request: options gone, the request on it. A request that can't be read
-   * leaves a normal card that says why, so the agent can fix it.
+   * request: options gone, the request on it, kind `action`. A request that
+   * can't be read leaves a normal card that says why, so the agent can fix it.
    */
   async serve(task: string, record: JsonRecord, item: InboxItem): Promise<InboxItem> {
     const revision = pinnedRevision(record);
@@ -123,7 +123,10 @@ export class PaperclipSteppers {
       item.action === undefined
         ? await this.read(task, revision)
         : { kind: "unreadable", reason: "the card already names an action" };
-    if (pinned.kind === "readable") return { ...item, options: [], stepper: pinned.stepper };
+    if (pinned.kind === "readable") {
+      // The card's own kind (an approval for a confirmation) would no longer fit an action item.
+      return { ...item, kind: "action", options: [], stepper: pinned.stepper };
+    }
     return {
       ...item,
       question: `${item.question}\n\nThis card has a stepper Halonic can't read: ${pinned.reason}`,

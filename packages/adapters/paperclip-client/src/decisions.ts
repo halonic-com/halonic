@@ -49,6 +49,7 @@ export function decisionToItem(context: MapContext, record: JsonRecord): InboxIt
     from: authorOf(context, text(record, "originAgentId"), undefined),
     question: fullLinksOf(context, body === undefined ? title : `${title}\n\n${body}`),
     options,
+    kind: "question",
     ...(task === undefined ? {} : { work: context.ids.make("task", task) }),
     risk: destructive ? "risky" : "normal",
     createdAt: timeOf(record, "createdAt"),
