@@ -3,6 +3,7 @@
 - Task: HAL-19764 (PR 2 of HAL-19753)
 - Approval: Sofia's alignment proposal on HAL-19755, carried out under the board's "build first, review after" rule for HAL-19753 (26 Nov, 13:27 UTC); the Needs you tint is Sofia's finding on the design check HAL-19777
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:LCtX0knSpFcfFn86dBIWZchJg0LPyVyWTEKUs4Y77mLDqoSXkeBKrcfMfOpYvrgq1uV4oGl2rVuzHjBl5mzSCw==
 
 ## What changes
 
