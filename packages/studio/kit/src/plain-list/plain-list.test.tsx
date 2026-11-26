@@ -91,4 +91,62 @@ verifies("kit.plain-list", () => {
     act(() => button.click());
     expect(onSelect).toHaveBeenCalledOnce();
   });
+
+  it("gives the action the row's fill, so a long title's end doesn't show through it", () => {
+    const long = "Chief, the agent that plans the releases and reviews every pull request";
+    const { row, button } = renderRow({
+      title: long,
+      flag: "needs you",
+      action: { label: "Mark as unread", onClick: () => undefined },
+    });
+    const action = row.querySelector(":scope > button:last-child") as HTMLButtonElement;
+
+    expect(classesOf(action)).toEqual(expect.arrayContaining(["bg-surface-muted", "ps-2"]));
+    expect(classesOf(button)).toEqual(
+      expect.arrayContaining([
+        "group-hover:bg-surface-muted",
+        "group-focus-within:bg-surface-muted",
+      ]),
+    );
+  });
+
+  it("lets the hidden action take no clicks, but keeps it in the tab order", () => {
+    const { row } = renderRow({ action: { label: "Mark as unread", onClick: () => undefined } });
+    const action = row.querySelector(":scope > button:last-child") as HTMLButtonElement;
+
+    expect(classesOf(action)).toEqual(
+      expect.arrayContaining([
+        "opacity-0",
+        "pointer-events-none",
+        "group-hover:pointer-events-auto",
+        "group-focus-within:pointer-events-auto",
+      ]),
+    );
+    expect(classesOf(action)).not.toContain("invisible");
+  });
+
+  it("gives the action a 24px target, raised so its words stay on the title's line", () => {
+    const { row } = renderRow({ action: { label: "Mark as unread", onClick: () => undefined } });
+    const action = row.querySelector(":scope > button:last-child") as HTMLButtonElement;
+
+    expect(classesOf(action)).toEqual(expect.arrayContaining(["min-h-6", "top-1.5"]));
+    expect(classesOf(action)).not.toContain("top-2");
+  });
+
+  it("rings the focused action inside its box, so the ring never covers the unread count", () => {
+    const { row } = renderRow({ action: { label: "Mark as unread", onClick: () => undefined } });
+    const action = row.querySelector(":scope > button:last-child") as HTMLButtonElement;
+
+    expect(classesOf(action)).toEqual(
+      expect.arrayContaining(["focus-ring-inset", "pe-1", "-me-1"]),
+    );
+    expect(classesOf(action)).not.toContain("focus-ring");
+  });
+
+  it("leaves a row without an action on its own hover fill", () => {
+    const { button } = renderRow();
+
+    expect(classesOf(button)).toContain("hover:bg-surface-muted");
+    expect(classesOf(button)).not.toContain("group-focus-within:bg-surface-muted");
+  });
 });
