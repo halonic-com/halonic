@@ -5,11 +5,11 @@ import { act } from "react";
 import { afterEach, expect, it } from "vitest";
 import { fakeRuns } from "../fake-runs.test-helper.ts";
 import { Inbox } from "../inbox.ts";
-import type { SetupItem } from "../inbox-items.ts";
+import { inboxItems, type SetupItem } from "../inbox-items.ts";
 import { waitingRun } from "../test-runs.test-helper.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { InboxView } from "./inbox-page.tsx";
-import { inboxRow } from "./inbox-row.tsx";
+import { inboxRow, wholeLine } from "./inbox-row.tsx";
 
 afterEach(unmountAll);
 
@@ -23,25 +23,49 @@ async function settled(): Promise<void> {
   });
 }
 
+/** The Inbox with one run waiting at a person step for an hour, titled `title`. */
+async function inboxWith(title: string): Promise<HTMLElement> {
+  const run = waitingRun("run_mfx3k9z7_891b5a", {
+    lastWaitingAt: at(9, 0),
+    waitingFor: { title, body: "Dear Ben, your order ships today." },
+  });
+  const root = render(
+    <InboxView
+      inbox={new Inbox(fakeRuns([run]).runs)}
+      now={() => new Date(2026, 10, 8, 10, 0)}
+      runFacts={() => facts}
+    />,
+  );
+  await settled();
+  return root;
+}
+
+/** The spans in the Needs you grid's cells whose text is exactly `text`. */
+function spanWith(root: HTMLElement, text: string): Element | undefined {
+  return [...root.querySelectorAll('[role="grid"] [role="gridcell"] span')].find(
+    (span) => span.textContent === text,
+  );
+}
+
 verifies("inbox.row-meta-wraps", () => {
-  it("lets a row's meta line take two lines, so Waiting 1 h isn't cut off", async () => {
-    const run = waitingRun("run_mfx3k9z7_891b5a", {
-      lastWaitingAt: at(9, 0),
-      waitingFor: { title: "Approve this reply?", body: "Dear Ben, your order ships today." },
-    });
-    const root = render(
-      <InboxView
-        inbox={new Inbox(fakeRuns([run]).runs)}
-        now={() => new Date(2026, 10, 8, 10, 0)}
-        runFacts={() => facts}
-      />,
-    );
-    await settled();
-    const meta = [...root.querySelectorAll('[role="grid"] [role="gridcell"] span')].find(
-      (span) =>
-        span.textContent === "Support reply · run 891b5a · a person step · Waiting 1\u00a0h",
-    );
-    expect(meta?.className).toContain("line-clamp-2");
+  it("keeps the Inbox row's line on one line, with Waiting 1 h whole at its end", async () => {
+    const root = await inboxWith("Approve this reply?");
+    const line = spanWith(root, "Support reply · run 891b5a · a person step · Waiting 1\u00a0h");
+    expect(line?.className).not.toContain("line-clamp-2");
+    const [before, end] = Array.from(line?.children ?? []);
+    expect(before?.textContent).toBe("Support reply · run 891b5a · a person step");
+    expect(before?.className).toContain("truncate");
+    expect(end?.textContent).toBe(" · Waiting 1\u00a0h");
+    expect(end?.className).toContain("shrink-0");
+  });
+
+  it("splits the wait off the line, which reads the same whole", () => {
+    const now = new Date(2026, 10, 8, 10, 0);
+    const [item] = inboxItems([waitingRun("run_mfx3k9z7_891b5a", { lastWaitingAt: at(9, 0) })]);
+    if (item === undefined) throw new Error("no item");
+    const row = inboxRow(item, now, () => facts);
+    expect(row.metaEnd).toBe(" · Waiting 1\u00a0h");
+    expect(wholeLine(row)).toBe("Support reply · run 891b5a · a person step · Waiting 1\u00a0h");
   });
 
   it("sets it on every row, as Home's Needs you shows them too", () => {
@@ -56,5 +80,15 @@ verifies("inbox.row-meta-wraps", () => {
       changedAt: at(9, 0),
     };
     expect(inboxRow(setup, now, undefined).wrapMeta).toBe(true);
+  });
+});
+
+verifies("inbox.proposal-page", () => {
+  it("clamps a long title to two lines in the Inbox's 80px rows", async () => {
+    const root = await inboxWith("Approve the refund for the Acme order from last week");
+    const title = spanWith(root, "Approve the refund for the Acme order from last week");
+    expect(title?.className).toContain("line-clamp-2");
+    expect(title?.className).toContain("leading-5");
+    expect(title?.closest('[role="gridcell"]')?.firstElementChild?.className).toContain("min-h-20");
   });
 });

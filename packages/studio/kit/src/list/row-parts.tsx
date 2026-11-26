@@ -21,13 +21,14 @@ export function showsError(row: AnyListRow): boolean {
 
 /**
  * How the meta line fits: an error's reason wraps; any other line fits as the row's other lines,
- * or, with `wrapMeta`, on up to two lines and then cut, so a long line keeps its end.
+ * or, with `wrapMeta`, on up to two lines and then cut, so a long line keeps its end. A `plain`
+ * List's line stays on one line, so its row stays 80px (HAL-20018): its end is a `metaEnd` there.
  */
-function metaFit(row: AnyListRow): string {
+function metaFit(row: AnyListRow, plain: boolean): string {
   if (showsError(row)) {
     return "wrap-break-word";
   }
-  if (row.wrap !== true && row.wrapMeta === true) {
+  if (row.wrap !== true && row.wrapMeta === true && !plain) {
     return "line-clamp-2 wrap-break-word";
   }
   return lineFit(row);
@@ -99,8 +100,43 @@ interface MetaLineProps {
   readonly chip: ReactNode;
   /** Full colour, not muted: an unread row's line in a `plain` List. */
   readonly full?: boolean;
-  /** 14px, not 13px: a `plain` List's line, a sidebar's (HAL-19735). */
-  readonly large?: boolean;
+  /** A `plain` List's line, a sidebar's: 14px, not 13px (HAL-19735), and never wrapped (HAL-20018). */
+  readonly plain?: boolean;
+}
+
+interface MetaTextProps {
+  readonly text: ReactNode;
+  readonly end: string | undefined;
+  readonly id: string | undefined;
+  /** The line's fit, size and colour. */
+  readonly fit: string;
+  readonly look: string;
+}
+
+/**
+ * The meta line's text and its end. On one cut line only the text before the end is cut, so
+ * "Support reply · run 891b5a · a pe… · Waiting 1 h" keeps its wait; a line that wraps or clamps
+ * holds both as one run of text. `relative`, so the cut also clips the text's screen-reader-only
+ * words (`sr-only` is absolute): otherwise they sit past the row's end and make the page scroll
+ * sideways.
+ */
+function MetaText({ text, end, id, fit, look }: MetaTextProps) {
+  if (end === undefined || fit !== "truncate") {
+    return (
+      <span id={id} className={`relative ${fit} ${look}`}>
+        {text}
+        {end}
+      </span>
+    );
+  }
+  return (
+    <span id={id} className={`relative flex min-w-0 ${look}`}>
+      <span className="relative min-w-0 truncate">{text}</span>
+      <span data-part="meta-end" className="shrink-0 whitespace-pre">
+        {end}
+      </span>
+    </span>
+  );
 }
 
 /**
@@ -108,22 +144,22 @@ interface MetaLineProps {
  * a chip, the chip comes first and only the text is cut; without text, the chip has the line alone.
  * An error's chip sits on its own line, above its reason.
  */
-export function MetaLine({ row, text, id, chip, full = false, large = false }: MetaLineProps) {
+export function MetaLine({ row, text, id, chip, full = false, plain = false }: MetaLineProps) {
   if (text === undefined && chip === undefined) {
     return null;
   }
   // An unavailable row's reason stays at full strength, so it can be read (VRK 0.6).
   const colour = metaColour(showsError(row), full);
-  // `relative`, so the cut also clips the text's screen-reader-only words (`sr-only` is absolute):
-  // otherwise they sit past the row's end and make the page scroll sideways.
   const line =
     text === undefined ? null : (
-      <span
+      <MetaText
+        text={text}
+        // A reason takes the whole line's place, the row's `metaEnd` included.
+        end={text === row.meta ? row.metaEnd : undefined}
         id={describesRow(row) ? id : undefined}
-        className={`relative ${metaFit(row)} ${large ? "text-body" : "text-small"} ${colour}`}
-      >
-        {text}
-      </span>
+        fit={metaFit(row, plain)}
+        look={`${plain ? "text-body" : "text-small"} ${colour}`}
+      />
     );
   if (chip === undefined) {
     return line;

@@ -972,7 +972,7 @@ List draws them.
 | `current` | The row whose item shows beside the list, as the Inbox's open item: the selected look and `aria-current`, but not selected, and it still opens |
 | `dense` | 32px rows, for menus and pickers |
 | `flush` | No outer border or radius, lines from 16px. On by default on a phone |
-| `plain` | Rows as `PlainList`'s: no box or lines, rounded rows 4px apart, a regular 15px title over a 14px meta line, rows at least 80px with a 60px avatar, the muted fill on hover and on `current`. A row's `unread` then makes its title semibold, its meta line full colour and ends it with the blue dot or count. Wins over `flush` |
+| `plain` | Rows as `PlainList`'s: no box or lines, rounded rows 4px apart, a regular 15px title over a 14px meta line, rows 80px with a 60px avatar (a `wrapTitle` title takes at most two 20px lines and the meta line one, `kit.plain-row-fit`), the muted fill on hover and on `current`. A row's `unread` then makes its title semibold, its meta line full colour and ends it with the blue dot or count. Wins over `flush` |
 | `chevrons` | Each row opens a page of its own, as History's versions: on a phone each row ends in a 20px `fg-subtle` chevron, hidden from screen readers, and its `trailing` chip starts its meta line. Desktop rows don't change. Not with `columns` |
 | `empty` | An [`EmptyState`](#emptystate)'s props, shown in place of the box when there are no rows |
 | `loading` | Skeleton rows in place of the rows; see **Loading** below |
@@ -988,7 +988,8 @@ A row has a `title`, an optional `meta` line (cut with an ellipsis), a 20px `ico
 for a finished step, `wrapTitle`, a title that wraps onto more lines instead of being cut, for
 one whose end tells rows apart, as Home's "Support reply · run 2ff090", `wrapMeta`, a meta line that
 wraps onto a second line and is then cut, for one whose end is what the row is for, as the
-Inbox's "… · a person step · Waiting 1 h", and `inert`: a click, Enter or Space does nothing and the row has no hover or
+Inbox's "… · a person step · Waiting 1 h", `metaEnd`, the meta line's end, never cut, as the
+Inbox's " · Waiting 1 h": on one line only the text before it is cut (`kit.list-meta-end`), and `inert`: a click, Enter or Space does nothing and the row has no hover or
 press tint, but the arrows still reach it, and Tab enters the List at the first row that isn't
 inert. Unlike the Button's, an unavailable row's `reason` is the text itself: the
 List draws it in place of the meta line and points `aria-describedby` at it.

@@ -1,7 +1,7 @@
 import { BackIcon, Button, ContentHeader, Tooltip } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import { type InboxItem, isRunItem } from "../inbox-items.ts";
-import { inboxRow, runItemContext } from "./inbox-row.tsx";
+import { inboxRow, runItemContext, wholeLine } from "./inbox-row.tsx";
 import { itemMark } from "./row-marks.tsx";
 import type { RunFactsOf } from "./run-facts.ts";
 
@@ -28,7 +28,7 @@ export function openHeading(
   if (item === null) return agentHeading(now);
   const row = inboxRow(item, now, runFacts);
   const picture = itemMark(item, "header").avatar;
-  if (waits || !isRunItem(item)) return { picture, title: row.title, line: row.meta };
+  if (waits || !isRunItem(item)) return { picture, title: row.title, line: wholeLine(row) };
   const context = runItemContext(item, runFacts?.(item.runId));
   return { picture, title: row.title, line: context === "" ? undefined : context };
 }

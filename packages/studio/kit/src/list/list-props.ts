@@ -59,7 +59,8 @@ export interface ListRow<Id extends string = string> extends ListRowBase<Id> {
   readonly muted?: boolean;
   /**
    * The title wraps onto more lines instead of being cut, as Home's Recent runs' "Support reply ·
-   * run 2ff090", whose end is what tells two rows apart (HAL-13305). The meta line stays cut.
+   * run 2ff090", whose end is what tells two rows apart (HAL-13305). The meta line stays cut. In a
+   * `plain` List it takes at most two 20px lines, then is cut, so the row stays 80px (HAL-20018).
    */
   readonly wrapTitle?: boolean;
   /**
@@ -70,8 +71,15 @@ export interface ListRow<Id extends string = string> extends ListRowBase<Id> {
   /**
    * The meta line wraps onto a second line, then is cut with an ellipsis, as the Inbox's "Support
    * reply · run 891b5a · a person step · Waiting 1 h", whose end is what the row is for (HAL-15126).
+   * A `plain` List keeps it on one line, so the row stays 80px: give the end as `metaEnd` there.
    */
   readonly wrapMeta?: boolean;
+  /**
+   * The meta line's end, never cut, as the Inbox's " · Waiting 1 h" (HAL-20018): on one line only
+   * the text before it is cut; when the line wraps, it follows the text. An error's or an
+   * unavailable row's reason takes the whole line's place, end and all.
+   */
+  readonly metaEnd?: string;
   /**
    * A click, Enter or Space on the row does nothing, as a done setup step's: no hover or press tint
    * and the default cursor. It still takes focus with the arrows and is read as usual, but Tab
@@ -130,6 +138,7 @@ interface ListColumnsRowBase<Id extends string> extends ListRowBase<Id> {
   readonly wrapTitle?: never;
   readonly titleEnd?: never;
   readonly wrapMeta?: never;
+  readonly metaEnd?: never;
   readonly inert?: never;
   readonly wrap?: never;
   readonly metaDescribes?: never;
