@@ -43,7 +43,11 @@ interface ChangedFile {
 export interface ChangedFiles {
   /** Both sides of a rename, so moving a file out of a folder still counts. */
   readonly paths: readonly string[];
-  /** Changed lines by path; both sides of a rename get the file's count. */
+  /**
+   * Changed lines by path. A renamed file counts once, under its new name, as
+   * halonic's own `linesByFile` does; its old name counts 0, so it never falls
+   * back to the whole pull request's lines.
+   */
   readonly lines: Readonly<Record<string, number>>;
 }
 
@@ -57,14 +61,13 @@ export async function changedFiles(
   const paths: string[] = [];
   const lines: Record<string, number> = {};
   for (const file of files) {
-    const sides =
-      file.previous_filename === undefined
-        ? [file.filename]
-        : [file.filename, file.previous_filename];
-    for (const path of sides) {
-      paths.push(path);
-      lines[path] = (file.additions ?? 0) + (file.deletions ?? 0);
+    if (file.previous_filename !== undefined) {
+      paths.push(file.previous_filename);
+      // `??=`: when files swap names, the old name is another file's new one.
+      lines[file.previous_filename] ??= 0;
     }
+    paths.push(file.filename);
+    lines[file.filename] = (file.additions ?? 0) + (file.deletions ?? 0);
   }
   return { paths, lines };
 }

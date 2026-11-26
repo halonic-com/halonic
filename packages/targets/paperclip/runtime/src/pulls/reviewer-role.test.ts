@@ -157,10 +157,34 @@ verifies("runtime.github-reviewer-rules", () => {
       };
       const files = await changedFiles(get, "acme/website", 12);
       expect(files).toEqual({
-        paths: ["scripts/deploy.ts", "infra/deploy.ts"],
-        lines: { "scripts/deploy.ts": 3, "infra/deploy.ts": 3 },
+        paths: ["infra/deploy.ts", "scripts/deploy.ts"],
+        lines: { "infra/deploy.ts": 0, "scripts/deploy.ts": 3 },
       });
       expect(reviewerByPaths(rules, files, 3, routing).person).toBe("priya");
+    });
+
+    test("counts a renamed file's lines once, under its new name", async () => {
+      const get: GitHubGet = async () => [
+        {
+          filename: "src/kernel/step.ts",
+          previous_filename: "src/kernel/run.ts",
+          additions: 500,
+          deletions: 200,
+        },
+      ];
+      const files = await changedFiles(get, "acme/website", 12);
+      expect(files.lines).toEqual({ "src/kernel/run.ts": 0, "src/kernel/step.ts": 700 });
+      // Counted on both sides, 1,400 lines would pass the kernel's 800.
+      expect(reviewerByPaths(rules, files, 700, routing).person).toBe("mateo");
+    });
+
+    test("keeps each file's count when two files swap names", async () => {
+      const get: GitHubGet = async () => [
+        { filename: "src/a.ts", previous_filename: "src/b.ts", additions: 4, deletions: 0 },
+        { filename: "src/b.ts", previous_filename: "src/a.ts", additions: 5, deletions: 0 },
+      ];
+      const files = await changedFiles(get, "acme/website", 12);
+      expect(files.lines).toEqual({ "src/a.ts": 4, "src/b.ts": 5 });
     });
   });
 });
