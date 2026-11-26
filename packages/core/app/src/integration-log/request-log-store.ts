@@ -50,6 +50,15 @@ const workspaceKeyPattern = /^[0-9a-f]{32}$/;
 const integrationIdPattern = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 /** A field name keeps only path characters; anything else could be reply text. */
 const fieldPattern = /^[A-Za-z0-9_.[\]-]{1,100}$/;
+/** An HTTP method token, such as `GET`; the bridge passes on any 32 characters. */
+const methodPattern = /^[A-Z][A-Z-]{0,15}$/;
+/**
+ * A plain host name or a bracketed IP address, with an optional port. A
+ * refused request's host comes from the integration's own URL, which can
+ * hold an opaque host of any text (Julian, HAL-19169).
+ */
+const hostPattern = /^(?:[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*|\[[0-9A-Fa-f:.]+\])(?::[0-9]{1,5})?$/;
+const maxHostLength = 260;
 
 /** The store of every integration's local request log. */
 export class RequestLogStore {
@@ -67,7 +76,9 @@ export class RequestLogStore {
   }
 
   /**
-   * Adds a request, with every path segment `code` doesn't hold masked.
+   * Adds a request, with every path segment `code` doesn't hold masked. A
+   * method or host that isn't in its plain shape is stored as `{…}`; an
+   * empty host stays empty.
    *
    * @param code - the integration's code as it is now
    * @throws RangeError when the workspace key or integration id can't name a file
@@ -82,8 +93,8 @@ export class RequestLogStore {
     await this.#add(workspace, integration, {
       type: "request",
       at: this.#now().toISOString(),
-      method,
-      host,
+      method: methodPattern.test(method) ? method : maskedSegment,
+      host: host === "" || isPlainHost(host) ? host : maskedSegment,
       path: maskedPath(path, code),
       ...(status === undefined ? {} : { status }),
       durationMs,
@@ -153,6 +164,10 @@ export class RequestLogStore {
       if (this.#writes.get(key) === next) this.#writes.delete(key);
     }
   }
+}
+
+function isPlainHost(host: string): boolean {
+  return host.length <= maxHostLength && hostPattern.test(host);
 }
 
 function lastOf(lines: readonly RequestLogLine[], type: RequestLogLine["type"], limit: number) {

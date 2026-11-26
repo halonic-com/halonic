@@ -158,6 +158,32 @@ verifies("app.integration-request-log", () => {
       await store.forgetWorkspace(workspace);
     });
 
+    it("keeps a method and host only in their plain shape, and stores anything else as {…}", async () => {
+      const store = storeIn(profile);
+      const sent = [
+        { method: "GET", host: "shop.example.com:8443" },
+        { method: "PATCH", host: "[2001:db8::1]" },
+        { method: "GET", host: "" },
+        { method: "get me the orders", host: 'a"b.example' },
+        { method: "DELETE", host: `{${"x".repeat(300)}}` },
+        { method: "POST", host: "x".repeat(261) },
+      ];
+      for (const shape of sent) {
+        await store.addRequest(workspace, "shop", { ...request("/v2"), ...shape }, code);
+      }
+      const kept = await store.lines(workspace, "shop");
+      expect(kept.map((line) => (line.type === "request" ? [line.method, line.host] : []))).toEqual(
+        [
+          ["GET", "shop.example.com:8443"],
+          ["PATCH", "[2001:db8::1]"],
+          ["GET", ""],
+          ["{…}", "{…}"],
+          ["DELETE", "{…}"],
+          ["POST", "{…}"],
+        ],
+      );
+    });
+
     it("refuses a workspace key or integration id that could lead out of its folder", async () => {
       const store = storeIn(profile);
       await expect(store.addRequest("..", "shop", request("/v2"), code)).rejects.toThrow(
