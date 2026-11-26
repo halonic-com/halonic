@@ -132,3 +132,26 @@ verifies("shell.sidebar-places", () => {
     expect(await loadView(home as PlaceContribution)).toBe(HomePage);
   });
 });
+
+verifies("shell.home-signal-tone", () => {
+  const counted = (tone?: "warning"): HomeCardContribution => ({
+    ...card("needs-you", "Inbox rows"),
+    signal: () => ({ mark: "count", value: 2, spoken: "2 waiting" }),
+    ...(tone === undefined ? {} : { signalTone: tone }),
+  });
+
+  it("draws the count in the Needs you violet when the card asks for it", async () => {
+    const container = await renderHome([counted("warning")]);
+    const heading = container.querySelector("h2");
+    const count = [...(heading?.querySelectorAll("span") ?? [])].find(
+      (span) => span.textContent === "2 waiting",
+    );
+    expect(count?.className).toBe("text-warning");
+    expect(heading?.className).toContain("text-fg-muted");
+  });
+
+  it("leaves the count in the heading's colour without a tone", async () => {
+    const container = await renderHome([counted()]);
+    expect(container.querySelector("h2 .text-warning")).toBeNull();
+  });
+});

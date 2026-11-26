@@ -6,21 +6,24 @@ const dayInMs = 24 * 60 * 60 * 1000;
  * else the short date ("26/11/2025"). Each part is in English, the language of the Studio's words,
  * written the way `locale`'s region writes it (the runtime's own when it's undefined), so one line
  * never mixes languages (HAL-19540): en-US reads "9:41 AM" and "Nov 26", de-DE reads "09:41" and
- * "26 Nov", never "26. Nov.". A time later than `now` reads as its day.
+ * "26 Nov", never "26. Nov.". A time later than `now` reads as its day. Days and times are the
+ * computer's own unless `timeZone` (an IANA zone such as "UTC") says otherwise.
  *
  * @example
  * shortTime(new Date(2026, 10, 25, 18, 2), new Date(2026, 10, 26, 9, 41), "en-GB"); // "Yesterday"
  */
-export function shortTime(at: Date, now: Date, locale?: string): string {
-  const daysAgo = calendarDaysBetween(at, now);
+export function shortTime(at: Date, now: Date, locale?: string, timeZone?: string): string {
+  const atDay = calendarDay(at, timeZone);
+  const nowDay = calendarDay(now, timeZone);
+  const daysAgo = Math.round((nowDay.start - atDay.start) / dayInMs);
   // The locale's own short time: "09:41" for en-GB, "9:41 AM" for en-US.
-  if (daysAgo === 0) return format(at, locale, { timeStyle: "short" });
+  if (daysAgo === 0) return format(at, locale, { timeStyle: "short", timeZone });
   if (daysAgo === 1) return "Yesterday";
-  if (daysAgo > 1 && daysAgo < 7) return format(at, locale, { weekday: "short" });
-  if (at.getFullYear() === now.getFullYear()) {
-    return format(at, locale, { day: "numeric", month: "short" });
+  if (daysAgo > 1 && daysAgo < 7) return format(at, locale, { weekday: "short", timeZone });
+  if (atDay.year === nowDay.year) {
+    return format(at, locale, { day: "numeric", month: "short", timeZone });
   }
-  return format(at, locale, { day: "2-digit", month: "2-digit", year: "numeric" });
+  return format(at, locale, { day: "2-digit", month: "2-digit", year: "numeric", timeZone });
 }
 
 /**
@@ -74,9 +77,32 @@ function englishOfRegion(locale: string | undefined): string {
 /** The English a region without English data reads in (HAL-19540). */
 const fallbackEnglish = "en-GB";
 
-/** Whole local calendar days from `at` to `now`; rounded, so a daylight-saving day still counts as one. */
-function calendarDaysBetween(at: Date, now: Date): number {
-  const start = new Date(at.getFullYear(), at.getMonth(), at.getDate()).getTime();
-  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  return Math.round((end - start) / dayInMs);
+/**
+ * The calendar day `at` falls on in `timeZone` (the computer's own when undefined): its year, and
+ * its start as a UTC midnight, so whole days between two of them divide evenly, and a
+ * daylight-saving day still counts as one.
+ */
+function calendarDay(at: Date, timeZone: string | undefined): { year: number; start: number } {
+  if (timeZone === undefined) {
+    return {
+      year: at.getFullYear(),
+      start: Date.UTC(at.getFullYear(), at.getMonth(), at.getDate()),
+    };
+  }
+  const parts = dayParts(timeZone).formatToParts(at);
+  const part = (type: string) => Number(parts.find((each) => each.type === type)?.value);
+  return { year: part("year"), start: Date.UTC(part("year"), part("month") - 1, part("day")) };
 }
+
+/** The numeric day parts of a time zone, one formatter per zone. */
+function dayParts(timeZone: string): Intl.DateTimeFormat {
+  let formatter = dayFormatters.get(timeZone);
+  if (formatter === undefined) {
+    const options = { year: "numeric", month: "numeric", day: "numeric", timeZone } as const;
+    formatter = new Intl.DateTimeFormat("en-US", options);
+    dayFormatters.set(timeZone, formatter);
+  }
+  return formatter;
+}
+
+const dayFormatters = new Map<string, Intl.DateTimeFormat>();

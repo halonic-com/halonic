@@ -5,11 +5,17 @@ import {
   type PullRequest,
   type PullRequestState,
 } from "@halonicjs/ports";
-import { Button, StatusChip, type StatusChipTone } from "@halonicjs/studio-kit";
+import {
+  Button,
+  StatusChip,
+  type StatusChipTone,
+  shortTime,
+  useFormatLocale,
+} from "@halonicjs/studio-kit";
 import { createContext, type ReactNode, useContext } from "react";
 import { formatAge, pullRequestWords, type StateWords } from "../pull-request-words.ts";
 import type { PullRequestRow } from "../pull-requests.ts";
-import { formatTime, minutesSince, type TeamClock } from "../team-format.ts";
+import { minutesSince, type TeamClock } from "../team-format.ts";
 import { Chevron } from "./detail-frame.tsx";
 
 /** Where a web link may open: the connection's Paperclip origin, and the opener the shell gives. */
@@ -108,12 +114,15 @@ const stateTones: Record<PullRequestState, StatusChipTone> = {
   other: "neutral",
 };
 
-/** The state's chip and detail words, as HAL-17515's state words have them. */
-function stateWords(row: PullRequestRow, clock: TeamClock): StateWords {
+/**
+ * The state's chip and detail words, as HAL-17515's state words have them, with the time in the
+ * kit's short time, as the Messenger and the Inbox write it (`team.short-times`).
+ */
+function stateWords(row: PullRequestRow, clock: TeamClock, locale: string | undefined): StateWords {
   const { pullRequest, queue } = row;
   return pullRequestWords.state[pullRequest.state]({
     age: formatAge(minutesSince(pullRequest.since, clock)),
-    time: formatTime(pullRequest.since, clock),
+    time: shortTime(new Date(pullRequest.since), clock.now(), locale, clock.timeZone),
     reviewer: pullRequest.reviewer === undefined ? undefined : authorName(pullRequest.reviewer),
     reason: pullRequest.reason,
     queue:
@@ -136,7 +145,7 @@ function Dot() {
  * after it, and the Fast-track tag. Colour is never the only sign: the chip always has its words.
  */
 export function StateLine({ row, clock }: { row: PullRequestRow; clock: TeamClock }) {
-  const { chip, detail } = stateWords(row, clock);
+  const { chip, detail } = stateWords(row, clock, useFormatLocale());
   return (
     <span className="flex flex-wrap items-center gap-y-1 text-small">
       {chip === "" ? null : (

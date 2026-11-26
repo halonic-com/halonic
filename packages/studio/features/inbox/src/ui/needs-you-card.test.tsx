@@ -326,3 +326,11 @@ verifies("inbox.home-next-step", () => {
     expect(root.textContent).not.toContain(nextStep);
   });
 });
+
+verifies("shell.home-signal-tone", () => {
+  it("asks Home to draw Needs you's count in the Needs you violet", () => {
+    const shell = createShell({ features: [inboxFeature], hostServices: [InboxRunsService] });
+    const card = shell.contributions.home.cards().find((added) => added.id === "needs-you");
+    expect(card?.signalTone).toBe("warning");
+  });
+});

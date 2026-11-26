@@ -4,7 +4,7 @@ import type { PullRequestState } from "@halonicjs/ports";
 export interface StateFacts {
   /** "2 d", "3 h", "20 min". */
   readonly age: string;
-  /** When it entered this state as a clock time, "14:20". */
+  /** When it entered this state, as the kit's short time: "14:20" today, else "Yesterday". */
   readonly time: string;
   readonly reviewer: string | undefined;
   readonly reason: string | undefined;
@@ -106,7 +106,11 @@ export const pullRequestWords = {
     failing: (facts) => ({ chip: withReason("✕ Failing", facts), detail: facts.age }),
     conflicting: (facts) => ({ chip: "✕ Conflicts with main", detail: facts.age }),
     dequeued: (facts) => ({ chip: withReason("⊘ Taken out", facts), detail: facts.age }),
-    merged: (facts) => ({ chip: `Merged ${facts.time}`, detail: undefined }),
+    // Merged in the last 24 hours, so today's time or yesterday, in lower case after "Merged".
+    merged: (facts) => ({
+      chip: `Merged ${facts.time === "Yesterday" ? "yesterday" : facts.time}`,
+      detail: undefined,
+    }),
     // Closed PRs aren't on any list.
     closed: () => ({ chip: "", detail: undefined }),
     other: (facts) => ({ chip: "", detail: facts.age }),

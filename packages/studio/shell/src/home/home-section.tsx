@@ -3,6 +3,7 @@ import {
   type ComponentType,
   createContext,
   lazy,
+  type ReactNode,
   type RefObject,
   Suspense,
   useCallback,
@@ -122,7 +123,7 @@ export function HomeSectionRegion({ card, context }: HomeSectionRegionProps) {
         id={headingId}
         headingRef={headingRef}
         name={name}
-        {...(signal === undefined ? {} : { detail: signal })}
+        {...(signal === undefined ? {} : { detail: signalDetail(signal, card.signalTone) })}
       />
       <ViewErrorBoundary
         // A new attempt starts a new boundary, which forgets the error and mounts the card again.
@@ -166,6 +167,11 @@ function useCardSignal(card: HomeCardContribution, context: WorkspaceContext): s
     const signal = card.signal?.(latest.current);
     return signal === undefined || signal.value <= 0 ? undefined : signal.spoken;
   });
+}
+
+/** The count after the heading, in the card's tone when it has one: Needs you's violet. */
+function signalDetail(signal: string, tone: HomeCardContribution["signalTone"]): ReactNode {
+  return tone === "warning" ? <span className="text-warning">{signal}</span> : signal;
 }
 
 /** The shape of a section's skeleton when it isn't rows: Cards show two cards, Spend one. */

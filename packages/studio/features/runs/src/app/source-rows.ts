@@ -156,7 +156,10 @@ export function teamAppRun(run: TeamRunFields, context: TeamRowContext): AllRuns
     title,
     line,
     where: context.where,
-    by: { kind: "agent", name: context.agent?.name ?? teamRowWords.unknownAgent },
+    by:
+      context.agent === undefined
+        ? { kind: "agent", name: teamRowWords.unknownAgent }
+        : { kind: "agent", name: context.agent.name, id: run.agent },
     chip: { word: look.word, tone: look.tone },
     label: teamRowWords.label(look.word, title, line, context.where),
     notice: {
