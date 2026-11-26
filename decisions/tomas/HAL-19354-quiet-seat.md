@@ -6,8 +6,9 @@
 
 ## What changes
 
-A seat any agent on the seat mover's never-move list sits on is the quiet seat. The timer agents
-and the seat starter are on that list, so their seat is the quiet one. The mover never sends a
+A seat any agent on the seat mover's never-move list (`seatMover.pinned`) sits on is the quiet
+seat. The board puts the timer agents and the seat starter on that list, so their seat is the
+quiet one; pinning anyone else would close that agent's seat to heavy agents too. The mover never sends a
 running heavy agent there, moves one that already sits there off, and refuses a batch that adds
 one. Reviewers were already kept off, because a reviewer only takes an empty seat. Light agents
 may still join.
@@ -17,10 +18,11 @@ break, plus one example. Tests for the target refusal, the move off, the stuck c
 are added, and the 500-state test now includes a pinned agent. No test was weakened or skipped.
 
 The requirement's tests make 2220 expect calls instead of 2252. That comes from the 500-state
-test: it makes one expect per planned move and one per break a seat keeps. Adding the pinned
-agent to its random states changes the random draws, and that agent never moves, so the same
-500 states plan fewer moves in total. Every assertion is still there and still runs on every
-state.
+test: it makes one expect per planned move and one per break a seat keeps. The pinned agent is
+drawn last, so the seats and the other agents draw exactly as before. The drop comes from the
+pinned agent's seat: it is no longer empty, so it takes no reviewer, and by item g it takes no
+running heavy agent, so some agents that moved before are now stuck. Every assertion is still
+there and still runs on every state.
 
 ## Why
 

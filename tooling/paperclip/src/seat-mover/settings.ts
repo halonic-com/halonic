@@ -13,10 +13,7 @@ export interface SeatMoverSettings {
   readonly reviewers: readonly string[];
   /** Url keys of the heavy agents: at most `maxHeavyPerSeat` of them share a seat. */
   readonly heavy: readonly string[];
-  /**
-   * Url keys of agents the mover never moves: the seat starter and the timer
-   * agents. A seat any of them sits on is the quiet seat, which no heavy agent joins.
-   */
+  /** Url keys of agents the mover never moves (the seat starter). */
   readonly pinned: readonly string[];
   /** Seat names the board is draining to its weekly limit: the weekly stop doesn't apply to them. */
   readonly resetFill: readonly string[];

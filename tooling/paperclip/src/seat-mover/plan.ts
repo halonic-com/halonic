@@ -290,7 +290,7 @@ function reviewerSeatReason(reviewer: AgentPlace, batch: Batch): MoveReason | un
   const pinnedMate =
     connectionId !== undefined &&
     seatedOn(connectionId, placement, agents).some(
-      (other) => other.id !== reviewer.id && settings.pinned.includes(other.key),
+      (other) => other.id !== reviewer.id && isPinned(other, settings),
     );
   return pinnedMate ? "b-reviewer-not-alone" : undefined;
 }
