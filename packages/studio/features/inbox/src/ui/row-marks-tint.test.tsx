@@ -3,10 +3,13 @@ import type { InboxItem as AgentItem } from "@halonicjs/ports";
 import { agentTint } from "@halonicjs/studio-kit";
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
+import { act } from "react";
 import { afterEach, expect, it } from "vitest";
+import { fakeRuns } from "../fake-runs.test-helper.ts";
+import { Inbox } from "../inbox.ts";
 import type { WaitItem } from "../inbox-items.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
-import { AgentItemCard } from "./agent-item-card.tsx";
+import { InboxView } from "./inbox-page.tsx";
 import { agentMark, itemMark } from "./row-marks.tsx";
 
 afterEach(unmountAll);
@@ -44,23 +47,27 @@ verifies("inbox.agent-mark-tint", () => {
   });
 
   it("draws the open item's header picture on the same tint as its row", async () => {
-    const asked = new Date(2026, 10, 26, 9, 0);
-    const messaging = new FakeAgentMessaging({ now: () => asked });
+    const asked = () => new Date(2026, 10, 26, 9, 0);
+    const messaging = new FakeAgentMessaging({ now: asked });
     const source = messaging.addSource({ label: "Paperclip · Acme", provider: "paperclip" });
-    const item = messaging.addInboxItem(source.id, {
+    messaging.addInboxItem(source.id, {
       question: "Ship the release notes?",
       from: { kind: "agent", agent: "agent-chief", name: "Chief" },
     });
-    const [read] = await messaging.listSources();
     const container = render(
-      <AgentItemCard
-        item={item}
-        source={read}
-        now={() => asked}
-        answer={(answer) => messaging.answer(item.id, answer)}
-        readAttachment={(attachment) => messaging.readAttachment(attachment)}
+      <InboxView
+        inbox={new Inbox(fakeRuns([]).runs, asked)}
+        now={asked}
+        agentMessaging={messaging}
       />,
     );
-    expect(container.innerHTML.match(tints)).toEqual([agentTint("agent-chief")]);
+    const settled = () => act(async () => await new Promise((resolve) => setTimeout(resolve, 0)));
+    await settled();
+    const row = container.querySelector<HTMLElement>('[role="grid"] [role="gridcell"]');
+    expect(row?.innerHTML.match(tints)).toEqual([agentTint("agent-chief")]);
+    await act(async () => row?.click());
+    await settled();
+    const header = container.querySelector('[data-pane="item"] header');
+    expect(header?.innerHTML.match(tints)).toEqual([agentTint("agent-chief")]);
   });
 });

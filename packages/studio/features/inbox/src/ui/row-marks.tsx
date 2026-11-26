@@ -35,7 +35,9 @@ export function agentMark(
   size: AvatarSize = "sidebar",
 ): Pick<ListRow, "avatar"> {
   if (item?.from.kind === "agent") {
-    return { avatar: <Avatar name={item.from.name} size={size} tint={agentTint(item.from.agent)} /> };
+    return {
+      avatar: <Avatar name={item.from.name} size={size} tint={agentTint(item.from.agent)} />,
+    };
   }
   return { avatar: <MarkTile glyph={<HelpIcon />} size={size} /> };
 }
