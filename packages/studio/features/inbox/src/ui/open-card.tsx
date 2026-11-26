@@ -7,7 +7,7 @@ import { secretTarget } from "../plain/secret-target.ts";
 import type { ProposalDecisions } from "../proposal-decisions.ts";
 import type { SetupFocus } from "../setup-source.ts";
 import { ApprovalCard } from "./approval-card.tsx";
-import type { NextItem } from "./card-parts.tsx";
+import type { NextItem } from "./decided-bar.tsx";
 import { DoneProposalCard } from "./done-proposals.tsx";
 import { PlanLimitCard } from "./plan-limit-card.tsx";
 import { ProposalCard } from "./proposal-card.tsx";

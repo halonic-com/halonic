@@ -97,6 +97,40 @@ verifies("shell.welcome-start", () => {
     }
   });
 
+  it("hides New here? while the start shows, and moves focus from Open demo to the line (HAL-19399 G11)", () => {
+    const root = renderWelcome();
+    expect(document.activeElement?.textContent).toContain("Open demo");
+    expect(root.textContent).toContain("New here?");
+
+    start.answer({ state: "starting", seconds: 3 });
+    expect(root.textContent).not.toContain("New here?");
+    // No description points at the hidden time line.
+    const describedBy = button(root, "Open demo").getAttribute("aria-describedby") ?? "";
+    for (const id of describedBy.split(" ").filter(Boolean)) {
+      expect(document.getElementById(id)).not.toBeNull();
+    }
+    const line = document.activeElement as HTMLElement;
+    expect(line.textContent).toContain("Starting Halonic…");
+    expect(line.querySelector('[role="status"]')).not.toBeNull();
+    expect(line.className).toContain("max-w-full");
+    expect(line.classList.contains("w-full")).toBe(false);
+
+    start.answer({ state: "ready", seconds: 4 });
+    expect(root.textContent).toContain("New here?");
+    expect(document.activeElement?.textContent).toContain("Open demo");
+  });
+
+  it("leaves focus on a busy button when the line shows", async () => {
+    const root = renderWelcome();
+    start.answer({ state: "starting", seconds: 1 });
+    // jsdom's click doesn't focus the button, as a press in a browser does.
+    button(root, "Open folder").focus();
+    await act(async () => button(root, "Open folder").click());
+
+    start.answer({ state: "starting", seconds: 3 });
+    expect(document.activeElement?.textContent).toContain("Opening…");
+  });
+
   it("keeps room for both sentences and Something wrong? from the moment the line shows", () => {
     const root = renderWelcome();
     start.answer({ state: "starting", seconds: 3 });

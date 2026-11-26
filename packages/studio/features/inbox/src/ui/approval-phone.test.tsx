@@ -38,6 +38,19 @@ verifies("inbox.approval-phone", () => {
       expect(root.textContent).not.toContain("The run continues.");
     });
 
+    it("says where to see what the run did when nothing else waits (HAL-19399 G14)", async () => {
+      const { root, later } = openCard({}, "phone");
+      later(61);
+      await press(button(root, "Approve"));
+      const line = [...root.querySelectorAll("p")].find((each) =>
+        each.textContent?.startsWith("Nothing else is waiting for you."),
+      );
+      expect(line?.textContent).toBe(
+        "Nothing else is waiting for you. See what it did in Studio on your computer.",
+      );
+      expect(line?.parentElement?.className).toContain("justify-start");
+    });
+
     it("still says the run finished when the approve finished it", async () => {
       const { root, later } = openCard(
         {
@@ -55,5 +68,13 @@ verifies("inbox.approval-phone", () => {
         "Approved by you at 10:44. The run finished.",
       );
     });
+  });
+
+  it("says nothing of Studio on your computer on the computer", async () => {
+    const { root, later } = openCard();
+    later(61);
+    await press(button(root, "Approve"));
+    expect(root.textContent).toContain("Nothing else is waiting for you.");
+    expect(root.textContent).not.toContain("See what it did");
   });
 });

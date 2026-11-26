@@ -75,3 +75,66 @@ const moreTab: PhoneTab<BottomNavigationPlace> = {
   href: "#more",
   icon: () => <MenuIcon />,
 };
+<<<<<<< HEAD
+=======
+
+interface NavigationPillProps {
+  readonly current: boolean;
+  readonly signal: PlaceSignal | undefined;
+  readonly children: ReactNode;
+}
+
+/**
+ * The 56×28px pill round the icon: the halo tint where you are, `surface-muted` while pressed
+ * elsewhere. It's never wider than its item, so at 195px (400 % zoom of a 780px window) the four
+ * items' 49px still hold it inside the window (HAL-13895). In forced colours the tint is gone, so
+ * every pill gets a 1px edge and where you are a 2px `Highlight` one (VK T2-F14).
+ */
+function NavigationPill({ current, signal, children }: NavigationPillProps) {
+  const fill = current
+    ? "bg-halo-tint text-accent forced-colors:border-2 forced-colors:border-[Highlight] forced-colors:text-[CanvasText]"
+    : "text-fg-muted group-active:bg-surface-muted forced-colors:border forced-colors:border-[CanvasText]";
+  return (
+    <span
+      className={`flex h-7 w-14 max-w-full shrink-0 items-center justify-center rounded-full ${fill}`}
+    >
+      <span className="relative size-icon-md *:size-full">
+        {children}
+        {signal === undefined ? null : <IconSignal signal={signal} />}
+      </span>
+    </span>
+  );
+}
+
+/**
+ * A signal at the icon's corner (component specs 15.2, rev. 6): the count's right edge and top
+ * 2px inside the 56×28px pill, ring included, so however wide the count, it stays inside the
+ * current place's filled pill (HAL-19399 G13); the dot centred on the icon's top right
+ * corner. Both have a 2px `surface` ring, and the count sits on a `surface` backing so the pill
+ * doesn't show through its soft fill. The link's name already says it, so it's hidden here.
+ */
+function IconSignal({ signal }: { readonly signal: PlaceSignal }) {
+  if (signal.mark !== "running") {
+    return (
+      <span
+        aria-hidden="true"
+        className="absolute -end-3.5 -top-0.5 rounded-full bg-surface ring-2 ring-surface"
+      >
+        <SignalCount signal={signal} />
+      </span>
+    );
+  }
+  // Still, never breathing (UX settled values). In forced colours it keeps its fill.
+  return (
+    <span
+      aria-hidden="true"
+      className="absolute -end-0.75 -top-0.75 size-1.5 rounded-full bg-running ring-2 ring-surface forced-color-adjust-none forced-colors:bg-[CanvasText]"
+    />
+  );
+}
+
+function labelClasses(current: boolean): string {
+  // `text-caption` is already weight 500, as the spec asks for where you are.
+  return `max-w-full truncate text-caption ${current ? "text-fg" : "text-fg-muted"}`;
+}
+>>>>>>> 4607bf588 (feat(studio): first-run polish from the 0.2.0 walk-through (HAL-19399))

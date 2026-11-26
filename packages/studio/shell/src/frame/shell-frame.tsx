@@ -18,6 +18,7 @@ import type { EngineStarting } from "../engine/engine-starting.ts";
 import {
   useDocumentLanguage,
   useEscapeClosesTopLayer,
+  useInputModality,
   useNarrowFromWidth,
   usePresentationFromWidth,
   useWindowFocusForAnnouncer,
@@ -141,6 +142,7 @@ export function ShellFrame(props: ShellFrameProps) {
   const narrow = useNarrowFromWidth();
   useDocumentLanguage(language);
   useEscapeClosesTopLayer(closeStack);
+  useInputModality();
   useWindowFocusForAnnouncer(announcer);
 
   return (
