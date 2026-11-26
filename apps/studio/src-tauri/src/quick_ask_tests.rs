@@ -1,4 +1,5 @@
-//! Requirement `studio.src-tauri.quick-ask-window`.
+//! Requirements `studio.src-tauri.quick-ask-window` and
+//! `studio.src-tauri.quick-ask-show`.
 
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
@@ -169,6 +170,12 @@ fn the_box_opens_once_under_its_own_label_and_only_it_can_hide_itself() {
     assert_eq!(labels, ["ask", "main"]);
     assert_eq!(hide(webview(&app, "main")), Err("not_the_box"));
     assert_eq!(hide(webview(&app, "ask")), Ok(()));
+}
+
+fn labels(app: &App<MockRuntime>) -> Vec<String> {
+    let mut labels: Vec<String> = app.webview_windows().into_keys().collect();
+    labels.sort();
+    labels
 }
 
 fn show_from(app: &App<MockRuntime>, label: &str) -> Result<(), &'static str> {
