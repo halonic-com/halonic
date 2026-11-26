@@ -4,4 +4,4 @@
 # commit message, author or committer.
 # Installed by `pnpm install`; see docs/guides/leak-guard.md.
 . "$(dirname "$0")/run-leak-guard.sh"
-exec "$node" "$hooks_dir/../src/cli/leaks.ts" --push "$1"
+exec "$node" "$check_dir/src/cli/leaks.ts" --push "$1"

@@ -1,16 +1,42 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// Each test starts real git and Node.js processes; give them room on a loaded runner.
+vi.setConfig({ testTimeout: 60_000 });
 
 const script = resolve(import.meta.dirname, "install-hooks.ts");
-const hooksPath = "tooling/check/hooks";
+const oldHooksPath = "tooling/check/hooks";
 
 let repo = "";
+let installedPath = "";
 
 function git(...args: string[]): string {
-  const result = spawnSync("git", args, { cwd: repo, encoding: "utf8" });
+  const result = spawnSync("git", args, {
+    cwd: repo,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      GIT_CONFIG_GLOBAL: join(repo, "no-global-config"),
+      GIT_CONFIG_NOSYSTEM: "1",
+      GIT_AUTHOR_NAME: "Test",
+      GIT_AUTHOR_EMAIL: "test@example.com",
+      GIT_COMMITTER_NAME: "Test",
+      GIT_COMMITTER_EMAIL: "test@example.com",
+    },
+  });
   return result.stdout.trim();
 }
 
@@ -25,8 +51,9 @@ function install(extra: NodeJS.ProcessEnv = {}): { status: number; output: strin
 }
 
 beforeEach(() => {
-  repo = mkdtempSync(join(tmpdir(), "install-hooks-"));
-  git("init", "-q");
+  repo = realpathSync(mkdtempSync(join(tmpdir(), "install-hooks-")));
+  installedPath = join(repo, ".git", "halonic-hooks");
+  git("init", "-q", "-b", "main");
 });
 
 afterEach(() => {
@@ -34,16 +61,61 @@ afterEach(() => {
 });
 
 describe("install-hooks", () => {
-  it("points a fresh clone at the repo's hooks", () => {
+  it("copies the hooks under the git dir and points git at them", () => {
     const result = install();
     expect(result.status).toBe(0);
-    expect(git("config", "--local", "core.hooksPath")).toBe(hooksPath);
+    expect(git("config", "--local", "core.hooksPath")).toBe(installedPath);
+    expect(readdirSync(installedPath).sort()).toEqual([
+      "pre-commit",
+      "pre-push",
+      "run-leak-guard.sh",
+    ]);
+    if (process.platform !== "win32") {
+      expect(statSync(join(installedPath, "pre-commit")).mode & 0o111).toBe(0o111);
+    }
     expect(result.output).toContain("git hooks installed");
   });
 
-  it("does nothing when the hooks are already installed", () => {
-    git("config", "--local", "core.hooksPath", hooksPath);
+  it("copies the hooks afresh on every install, quietly once installed", () => {
+    install();
+    writeFileSync(join(installedPath, "pre-commit"), "stale\n");
+    writeFileSync(join(installedPath, "post-merge"), "stale\n");
     expect(install().output).toBe("");
+    expect(readdirSync(installedPath)).not.toContain("post-merge");
+    expect(statSync(join(installedPath, "pre-commit")).size).toBeGreaterThan("stale\n".length);
+  });
+
+  it("never runs a hook a checked-out branch brings along", () => {
+    install();
+    git("switch", "-q", "-c", "brings-a-hook");
+    const hook = join(repo, oldHooksPath, "post-checkout");
+    mkdirSync(join(repo, oldHooksPath), { recursive: true });
+    writeFileSync(hook, `#!/bin/sh\ntouch "$(git rev-parse --show-toplevel)/marker"\n`);
+    chmodSync(hook, 0o755);
+    git("add", oldHooksPath);
+    // The installed pre-commit hook needs the guard's code, which this throwaway repo doesn't have.
+    git("commit", "-q", "--no-verify", "-m", "add a hook");
+    git("switch", "-q", "main");
+    git("switch", "-q", "brings-a-hook");
+    expect(existsSync(hook)).toBe(true);
+    expect(existsSync(join(repo, "marker"))).toBe(false);
+
+    // The same checkout with the old in-tree hooks path does run it, so the check above means something.
+    git("config", "--local", "core.hooksPath", oldHooksPath);
+    git("switch", "-q", "main");
+    git("switch", "-q", "brings-a-hook");
+    expect(existsSync(join(repo, "marker"))).toBe(true);
+  });
+
+  it.each([
+    ["relative", oldHooksPath],
+    ["absolute", () => join(repo, oldHooksPath)],
+  ])("replaces the %s in-tree hooks path an older install set", (_kind, value) => {
+    git("config", "--local", "core.hooksPath", typeof value === "string" ? value : value());
+    const result = install();
+    expect(result.status).toBe(0);
+    expect(git("config", "--local", "core.hooksPath")).toBe(installedPath);
+    expect(result.output).toContain("git hooks installed");
   });
 
   it("never replaces a hooks path someone else set, and says how to opt in", () => {
@@ -51,6 +123,7 @@ describe("install-hooks", () => {
     const result = install();
     expect(result.status).toBe(0);
     expect(git("config", "--local", "core.hooksPath")).toBe(".husky");
+    expect(existsSync(installedPath)).toBe(false);
     expect(result.output).toContain("NOT installed");
     expect(result.output).toContain(".husky");
   });
@@ -59,5 +132,6 @@ describe("install-hooks", () => {
     const result = install({ CI: "true" });
     expect(result.status).toBe(0);
     expect(git("config", "--local", "core.hooksPath")).toBe("");
+    expect(existsSync(installedPath)).toBe(false);
   });
 });

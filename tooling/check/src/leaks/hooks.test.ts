@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -16,6 +16,7 @@ import { absolute, fakeSecrets, testTerms } from "./test-values.ts";
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
 
 const hooksPath = resolve(import.meta.dirname, "../../hooks");
+const checkSource = resolve(import.meta.dirname, "..");
 const [term = ""] = testTerms;
 
 let scratch = "";
@@ -55,7 +56,10 @@ beforeEach(() => {
     GIT_CONFIG_GLOBAL: join(scratch, "gitconfig"),
     GIT_CONFIG_NOSYSTEM: "1",
   };
-  mkdirSync(repo);
+  mkdirSync(join(repo, "tooling", "check"), { recursive: true });
+  // The hooks run the guard from the work tree they commit in: link its code in, untracked.
+  // Only the code, so the repo's own allow-list stays out of this throwaway repo.
+  symlinkSync(checkSource, join(repo, "tooling", "check", "src"), "junction");
   run("git", ["init", "-q", "-b", "main"]);
   run("git", ["config", "core.hooksPath", hooksPath]);
 });

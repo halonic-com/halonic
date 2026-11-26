@@ -2,8 +2,10 @@
 # repo's own Node when `pnpm install` has fetched it, otherwise with the
 # Node on PATH. Sourced, not run, so "$@" are the hook's own arguments.
 
-hooks_dir=$(dirname "$0")
+# `pnpm install` copies the hooks under the git dir (install-hooks.ts), so the
+# guard's code is found in the work tree being committed from.
 repo_root=$(git rev-parse --show-toplevel)
+check_dir="$repo_root/tooling/check"
 node="$repo_root/node_modules/.bin/node"
 if [ ! -x "$node" ]; then
   node=node
