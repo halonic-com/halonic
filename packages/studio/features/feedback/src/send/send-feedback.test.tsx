@@ -101,7 +101,7 @@ verifies("feedback.send-window", () => {
     expect(textField().placeholder).toBe("What did you notice? The first line becomes the title.");
     expect(document.activeElement).toBe(textField());
     expect(element.textContent).toContain(
-      "Goes to Acme apps as a task for Robin, with the app, window, time and Studio version.",
+      "Goes to Acme apps as a task in Paperclip for Robin, with the time and Studio version.",
     );
     expect(element.textContent).toContain("CtrlEntersend");
   });

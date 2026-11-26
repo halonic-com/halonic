@@ -7,8 +7,8 @@
 When the Send feedback window opens, the Feedback feature shall show the crop from
 `plugin:feedback|crop`, fitted inside a box 220 pixels high and never stretched, with its size as
 "{width} × {height}" under it, the text field focused with the placeholder "What did you notice?
-The first line becomes the title.", and the footnote "Goes to {project} as a task for {assignee},
-with the app, window, time and Studio version." When the person presses Send or Ctrl Enter (⌘ ↩)
+The first line becomes the title.", and the footnote "Goes to {project} as a task in Paperclip for
+{assignee}, with the time and Studio version." When the person presses Send or Ctrl Enter (⌘ ↩)
 with text, the feature shall hand on one feedback, with the crop as a PNG of at most 7 MiB, scaled
 down when it is larger, and then call `plugin:feedback|end`. When the text holds nothing but
 spaces, the feature shall say "Write a line about what you saw.", focus the field and hand on

@@ -11,7 +11,7 @@ export const feedbackWords = {
    * Where no still can be taken yet, such as macOS or Linux on Wayland. The one string no
    * sketch had; Sofia checks it on HAL-18970.
    */
-  unavailable: "Studio can't take a screenshot for feedback on this system yet.",
+  unavailable: "Studio can't take a screenshot for feedback on this system.",
   /** Closes the not-available window. */
   notNow: "Not now",
   /** Under the text field when Send is pressed with nothing written. */
@@ -23,7 +23,7 @@ export const feedbackWords = {
   placeholder: "What did you notice? The first line becomes the title.",
   /** Under the text field: where the task goes and what it carries. */
   footnote: (project: string, assignee: string) =>
-    `Goes to ${project} as a task for ${assignee}, with the app, window, time and Studio version.`,
+    `Goes to ${project} as a task in Paperclip for ${assignee}, with the time and Studio version.`,
   /** After the Ctrl Enter (⌘ ↩) keys at the footnote's right. */
   sendKeyHint: "send",
   /** The toasts after Send, from the sketch's §3. */
