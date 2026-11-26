@@ -130,6 +130,28 @@ on this head". The pass summary and the metric
 `pr_watcher.review_waits` count these notes, so Chief's team check can list
 them.
 
+**A limited reviewer's review moves at once** (HAL-19203). Before that note,
+when the reviewer holding such a task is limited, the watcher gives the task
+to the other reviewer (status `todo`) with "PR watcher: Liam is parked on a
+pool wait since <time>, so this review goes to Julian now (HAL-19203):" and
+one line per waiting pull request. A run of theirs that is only queued or
+parked on the task doesn't stop the move, which cancels it; a working run
+does. Julian takes it only when every waiting pull request is his by
+`reviewerFor` and none is a security one, or Liam wrote them; Liam takes any
+Julian holds but his own. When the other reviewer is limited too, the task
+stays and gets one note per head, "PR watcher: both reviewers are limited
+(…)", waking nobody. Each head moves to each reviewer at most once. The pass
+summary and the metrics `pr_watcher.review_rerouted` and
+`pr_watcher.review_both_limited` count both. A reviewer is limited when one of
+their 20 newest runs is parked (`scheduled_retry`) on
+`ai_connection_pool_wait` and nothing of theirs started since, or a run
+stopped on `provider_limit_wait` or `provider_quota` less than 5 hours ago and
+nothing of theirs started since. The plugin SDK's task reads don't show those
+runs, so the watcher GETs `/api/companies/<id>/heartbeat-runs` with the task
+effort handler's `paperclipApiUrl` and `paperclipApiKey`, once per reviewer
+and pass and only when a reviewer holds a waiting task. Without those
+settings, or when the read fails, nothing moves.
+
 **Longest wait first** (HAL-17920). In the same step, while such a head has
 waited more than an hour since its "ready for review" comment, the watcher
 raises the task's priority to `high` if it is `low` or `medium` when re-read

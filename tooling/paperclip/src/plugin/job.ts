@@ -38,6 +38,7 @@ import type { LifecycleRunner } from "./fast-track-lifecycle-job.ts";
 import { type HostApi, paperclipHost, unblockHost } from "./host.ts";
 import { passStateKey } from "./merge-control-lock.ts";
 import { countingFetch, type MetricsApi, writeMetrics } from "./metrics.ts";
+import { reviewerLimitsOf } from "./reviewer-runs.ts";
 import { prWatcherSignalPass, watcherRecorder } from "./signal-pass-job.ts";
 import {
   readStackRebaseSettings,
@@ -186,6 +187,8 @@ async function recordPass(
       "pr_watcher.warned_after_approval": summary.warned,
       "pr_watcher.review_waits": summary.reviewWaits,
       "pr_watcher.review_priority_raised": summary.priorityRaised,
+      "pr_watcher.review_rerouted": summary.rerouted,
+      "pr_watcher.review_both_limited": summary.bothLimited,
       "pr_watcher.github_requests": calls.snapshot + calls.watcher + calls.thinSpec,
       "pr_watcher.github_requests_snapshot": calls.snapshot,
       "pr_watcher.duration_ms": durationMs,
@@ -202,7 +205,7 @@ async function recordPass(
     ctx.logger.error(`PR watcher: couldn't save its metrics: ${failure.message}`, { companyId });
   }
   ctx.logger.info(
-    `PR watcher: ${summary.checked} tasks with a pull request, ${summary.done} done, ${summary.woken} woken, ${summary.handedOff} handed to review, ${summary.warned} warned after approval, ${summary.reviewWaits} waiting for review over 1 h, ${summary.priorityRaised} raised to high, ${summary.failed.length} failed, ${callsText(calls)}, ${monitors.firedOnPrTasks} monitors fired on those tasks, ${summary.postponed} moved later${dryRun ? " (dry run)" : ""}.`,
+    `PR watcher: ${summary.checked} tasks with a pull request, ${summary.done} done, ${summary.woken} woken, ${summary.handedOff} handed to review, ${summary.warned} warned after approval, ${summary.reviewWaits} waiting for review over 1 h, ${summary.priorityRaised} raised to high, ${summary.rerouted} moved off a limited reviewer, ${summary.bothLimited} with both reviewers limited, ${summary.failed.length} failed, ${callsText(calls)}, ${monitors.firedOnPrTasks} monitors fired on those tasks, ${summary.postponed} moved later${dryRun ? " (dry run)" : ""}.`,
     { companyId },
   );
   // The top 5, so Chief's team check can list the longest review waits (HAL-17920).
@@ -331,6 +334,8 @@ async function watchCompany(
   let tasks: TaskRow[] = [];
   // What the watcher decided from, for the signal rule beside it (HAL-18197).
   const recorder = watcherRecorder();
+  const log = (line: string) => ctx.logger.info(line, { companyId });
+  const config = await companyConfig(ctx.config, companyId);
   const summary = await tick({
     paperclip: {
       ...paperclip,
@@ -343,7 +348,7 @@ async function watchCompany(
     // One read of each base branch's newest green run per pass, shared by every task.
     facts: snapshotFacts({ snapshot, query, fallback, greenSince: baseGreenSince(get) }),
     dryRun: settings.dryRun,
-    log: (line) => ctx.logger.info(line, { companyId }),
+    log,
     now,
     summary: snapshotSummary(snapshot),
     route: gitHubRoute(get),
@@ -351,6 +356,7 @@ async function watchCompany(
     conflictFiles: gitHubConflictFiles(get),
     held: await heldOf(ctx, companyId, settings.repos[0] ?? defaultRepos[0] ?? ""),
     observe: recorder.observe,
+    limits: reviewerLimitsOf(ctx, config, { companyId, now, log }),
     ...(stackRebase === undefined ? {} : { stackRebase }),
   });
   // After the watcher's tick, so a task it just marked done unblocks its dependents in the same pass.
@@ -378,7 +384,7 @@ async function watchCompany(
   // Server sessions' pull requests on their chief lines (HAL-18586); a failure is logged.
   await chiefLinePrPass(ctx, {
     companyId,
-    settings: readChiefLineSettings(await companyConfig(ctx.config, companyId)),
+    settings: readChiefLineSettings(config),
     snapshot,
     get,
     watched: settings.repos,

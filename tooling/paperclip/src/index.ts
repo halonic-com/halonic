@@ -50,15 +50,10 @@ export {
   newestCheck,
   newestFinding,
 } from "./pr-watcher/github.ts";
+export { isSelf, readMemory } from "./pr-watcher/memory.ts";
 export { doneMessage, wakeMessage } from "./pr-watcher/messages.ts";
 export type { AgentRow, CommentRow, Paperclip, TaskRow } from "./pr-watcher/paperclip.ts";
-export {
-  isSelf,
-  readMemory,
-  type TickOptions,
-  type TickSummary,
-  tick,
-} from "./pr-watcher/watch.ts";
+export { type TickOptions, type TickSummary, tick } from "./pr-watcher/watch.ts";
 export {
   coreFolders,
   coreLineLimit,

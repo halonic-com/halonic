@@ -9,7 +9,7 @@ export interface FakeIssue {
   readonly status: string;
   readonly assigneeAgentId: string | null;
   readonly parentId?: string | null;
-  readonly activeRun?: { readonly id: string } | null;
+  readonly activeRun?: { readonly id: string; readonly status?: string } | null;
   readonly monitorNextCheckAt?: Date | null;
   readonly monitorLastTriggeredAt?: Date | null;
   readonly priority?: string;

@@ -39,6 +39,8 @@ verifies("paperclip.pr-watcher-done", () => {
       warned: 0,
       reviewWaits: 0,
       priorityRaised: 0,
+      rerouted: 0,
+      bothLimited: 0,
       longestWaits: [],
       failed: [],
     });
@@ -62,6 +64,8 @@ verifies("paperclip.pr-watcher-done", () => {
       warned: 0,
       reviewWaits: 0,
       priorityRaised: 0,
+      rerouted: 0,
+      bothLimited: 0,
       longestWaits: [],
       failed: [],
     });
@@ -81,6 +85,8 @@ verifies("paperclip.pr-watcher-done", () => {
       warned: 0,
       reviewWaits: 0,
       priorityRaised: 0,
+      rerouted: 0,
+      bothLimited: 0,
       longestWaits: [],
       failed: [],
     });
@@ -108,6 +114,8 @@ verifies("paperclip.pr-watcher-done", () => {
       warned: 0,
       reviewWaits: 0,
       priorityRaised: 0,
+      rerouted: 0,
+      bothLimited: 0,
       longestWaits: [],
       failed: [],
     });
@@ -154,6 +162,8 @@ verifies("paperclip.pr-watcher-done", () => {
       warned: 0,
       reviewWaits: 0,
       priorityRaised: 0,
+      rerouted: 0,
+      bothLimited: 0,
       longestWaits: [],
       failed: [],
     });
@@ -191,6 +201,8 @@ verifies("paperclip.pr-watcher-wake", () => {
       warned: 0,
       reviewWaits: 0,
       priorityRaised: 0,
+      rerouted: 0,
+      bothLimited: 0,
       longestWaits: [],
       failed: [],
     });
@@ -317,6 +329,8 @@ verifies("paperclip.pr-watcher-wake", () => {
       warned: 0,
       reviewWaits: 0,
       priorityRaised: 0,
+      rerouted: 0,
+      bothLimited: 0,
       longestWaits: [],
       failed: [],
     });
