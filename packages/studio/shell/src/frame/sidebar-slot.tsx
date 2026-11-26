@@ -168,6 +168,7 @@ export function SidebarSlot(props: SidebarSlotProps) {
 
   return (
     <>
+      {/* pointer-check-ignore: the drawer itself isn't clickable; it hears its links' clicks. */}
       {/* biome-ignore lint/a11y/noStaticElementInteractions: it only hears the links' own clicks and focus, Enter included. */}
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: a link's Enter is a click, so the keyboard is covered. */}
       <div
@@ -184,7 +185,7 @@ export function SidebarSlot(props: SidebarSlotProps) {
         // The scrim is for the pointer only; the keyboard closes the drawer with Esc.
         <div
           aria-hidden="true"
-          className="absolute inset-y-0 start-sidebar end-0 z-20 bg-(--stack-scrim)"
+          className="absolute inset-y-0 start-sidebar end-0 z-20 cursor-pointer bg-(--stack-scrim)"
           onClick={onClose}
         />
       ) : null}

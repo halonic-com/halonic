@@ -93,7 +93,7 @@ export function StackedCards(props: StackedCardsProps) {
         // For the pointer only: the keyboard goes back with Esc, ← or the breadcrumb.
         <div
           aria-hidden="true"
-          className="absolute inset-0 bg-(--stack-scrim)"
+          className="absolute inset-0 cursor-pointer bg-(--stack-scrim)"
           onClick={() => onChange(closeTopCard(stack))}
         />
       ) : null}
@@ -186,7 +186,7 @@ function CardBand({ card, depth, behind, onGoBack }: CardBandProps) {
   return (
     <div
       aria-hidden="true"
-      className={`absolute rounded-md border border-border ${shade}`}
+      className={`absolute cursor-pointer rounded-md border border-border ${shade}`}
       style={cardPlace(depth, behind, card.docked === true)}
       onClick={onGoBack}
     />

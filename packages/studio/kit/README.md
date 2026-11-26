@@ -173,6 +173,12 @@ and 60% instead of 45% for a waiting button. Windows high-contrast mode wins whe
   contrast on every surface;
 - the kit imports no other Studio package, in any import form.
 
+The pointer cursor (`theme-cursor.css`) has its check in the Studio app, because it reads the
+shell, every feature and the app too: `pnpm turbo run test --filter=@halonicjs/app-studio` fails an
+element with an `onClick` that has no clickable tag or role and no `cursor-*` class, and any
+`cursor-default` or `cursor-auto` class. An element that needs no pointer says why in a
+`pointer-check-ignore:` comment in the three lines above it.
+
 After tuning a colour, run the tests and adjust until they pass.
 
 ## ActionBar

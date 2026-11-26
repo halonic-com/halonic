@@ -244,6 +244,7 @@ function PrefixRow({
   const focusControl = () => document.getElementById(controlId)?.focus();
   return (
     <div className="flex items-center gap-2">
+      {/* pointer-check-ignore: like a label, it only moves focus to the field next to it. */}
       <span aria-hidden="true" className="shrink-0 text-body text-fg-muted" onClick={focusControl}>
         {symbol}
       </span>

@@ -130,6 +130,7 @@ export function RenameRow({ name, onApply, check, impact, onStranded, onCancel }
 
   return (
     // The tree's keys and clicks stay out of the field.
+    // pointer-check-ignore: it only stops clicks reaching the tree; the field keeps its cursor.
     // biome-ignore lint/a11y/noStaticElementInteractions: it only stops events reaching the tree
     <span
       className="min-w-0 flex-1"

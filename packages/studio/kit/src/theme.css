@@ -32,13 +32,14 @@
  */
 
 /* The selection and high-contrast utilities (selected-bar, selected-forced, the forced disabled
-   colours), the custom variants and the other utilities, and the safe areas live in their own
-   files. They hold no tokens, only rules that read them. The one exception is
+   colours), the pointer cursor, the custom variants and the other utilities, and the safe areas
+   live in their own files. They hold no tokens, only rules that read them. The one exception is
    theme-agent-pages.css: the agent orb, stacked card and canvas variables, which only those
    pages read, next to the canvas grid utility. The Inter font faces are not imported here: the
    desktop Studio imports them as `@halonicjs/studio-kit/fonts` (theme-font.css). */
 @import "./theme-selection.css";
 @import "./theme-lines.css";
+@import "./theme-cursor.css";
 @import "./checkbox/checkbox.css";
 @import "./switch/switch.css";
 @import "./radio/radio.css";
