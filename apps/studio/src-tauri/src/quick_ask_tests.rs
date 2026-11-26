@@ -172,12 +172,6 @@ fn the_box_opens_once_under_its_own_label_and_only_it_can_hide_itself() {
     assert_eq!(hide(webview(&app, "ask")), Ok(()));
 }
 
-fn labels(app: &App<MockRuntime>) -> Vec<String> {
-    let mut labels: Vec<String> = app.webview_windows().into_keys().collect();
-    labels.sort();
-    labels
-}
-
 fn show_from(app: &App<MockRuntime>, label: &str) -> Result<(), &'static str> {
     tauri::async_runtime::block_on(show(webview(app, label)))
 }
