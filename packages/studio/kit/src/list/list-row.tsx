@@ -4,7 +4,12 @@ import type { GridNavigation } from "../grid-navigation/use-grid-navigation.ts";
 import { MoreIcon } from "../icons/more-icon.tsx";
 import { CheckCell, checkColumnWidth } from "./check-cell.tsx";
 import { type ListLook, lineClasses } from "./list-lines.ts";
-import { plainCorners, plainStateClasses, type RowStateClasses } from "./list-plain.ts";
+import {
+  plainCorners,
+  plainRowLabel,
+  plainStateClasses,
+  type RowStateClasses,
+} from "./list-plain.ts";
 import type { AnyListRow, ListColumn, ListSelection } from "./list-props.ts";
 import { RowContent } from "./row-content.tsx";
 import { rowHandlers } from "./row-handlers.ts";
@@ -254,6 +259,7 @@ export function Row<Id extends string>({ row, place, shared }: RowProps<Id>) {
   const states = look === "plain" ? plainStateClasses : rowStateClasses;
   const state = states[rowState(isUnavailable, isInert, isSelected || isCurrent)];
   const cells = cellClasses({ look, ...place, state, hasCheck, hasMore });
+  const label = look === "plain" ? plainRowLabel(row.label, row.unread) : row.label;
   const mainColumn = firstFocusColumn(hasCheck);
   const mainCell = grid.cell(row.id, mainColumn);
   const more = moreClasses[phone ? "phone" : "desktop"];
@@ -295,7 +301,7 @@ export function Row<Id extends string>({ row, place, shared }: RowProps<Id>) {
         }}
         // Also on the cell, where focus is, so a screen reader says the row is the current one.
         aria-current={isCurrent ? true : undefined}
-        aria-label={shared.columns === undefined ? row.label : undefined}
+        aria-label={shared.columns === undefined ? label : undefined}
         aria-describedby={describesRow(row) ? reasonId : undefined}
         className={`p-0 ${cells.main} ${cursorOf(isUnavailable, isInert)}`}
         onClick={onClick}

@@ -4,6 +4,8 @@
  * list-row.tsx, which keeps the bordered and flush looks.
  */
 
+import type { PlainRowUnread } from "../plain-list/unread-mark.tsx";
+
 /** A row state's classes: the cells' fill, the row's own, and the main cell's. */
 export interface RowStateClasses {
   readonly fill: string;
@@ -29,4 +31,18 @@ export const plainStateClasses = {
 /** Every plain row is rounded on both ends, since there's no box round it. */
 export function plainCorners(side: "left" | "right"): string {
   return side === "left" ? "rounded-l-md" : "rounded-r-md";
+}
+
+/**
+ * A labelled plain row's name: its `label`, then the unread words while it's unread ("Approve the
+ * notes, unread"), since the cell's `aria-label` hides the words drawn in its unread mark.
+ */
+export function plainRowLabel(
+  label: string | undefined,
+  unread: PlainRowUnread | undefined,
+): string | undefined {
+  if (label === undefined || unread === undefined) {
+    return label;
+  }
+  return `${label}, ${`${unread.count ?? ""}${unread.label}`.trim()}`;
 }

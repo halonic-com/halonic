@@ -147,3 +147,22 @@ verifies("inbox.proposal-done", () => {
     expect(openRun).toHaveBeenCalledWith("support", "01JD8Q");
   });
 });
+
+verifies("inbox.plain-rows", () => {
+  it("draws Done as plain rows too, the open done item with the soft fill and no bar", async () => {
+    const { root } = await inboxWithDone([
+      done("01JD8Q", ["accepted"]),
+      done("01JD7A", ["rejected"]),
+    ]);
+    act(() => doneCells(root)[0]?.click());
+    for (const cell of doneCells(root)) {
+      expect(cell.className.split(" ")).toEqual(
+        expect.arrayContaining(["rounded-l-md", "rounded-r-md"]),
+      );
+      expect(cell.className).not.toMatch(/border-t|selected-bar/);
+    }
+    const open = doneCells(root)[0] as HTMLElement;
+    expect(open.getAttribute("aria-current")).toBe("true");
+    expect(open.className.split(" ")).toContain("bg-surface-muted");
+  });
+});

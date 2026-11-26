@@ -103,7 +103,7 @@ export interface ListRow<Id extends string = string> extends ListRowBase<Id> {
   /**
    * Unread, in a `plain` List, as the Inbox's new items: a semibold title, a full-colour meta line
    * and `PlainRow`'s blue dot or count at its end, with its words for screen readers. Read rows
-   * leave it out. With a `label`, put the words in it too.
+   * leave it out. With a `label`, the kit adds the words to it.
    */
   readonly unread?: PlainRowUnread;
   readonly tag?: never;
