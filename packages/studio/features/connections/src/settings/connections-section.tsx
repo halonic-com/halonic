@@ -3,23 +3,30 @@ import {
   type AgentConnection,
   type AgentConnections,
   AgentConnectionsService,
+  ServerEngineService,
 } from "@halonicjs/studio-services";
 import { type SettingsSectionProps, sectionHeading } from "@halonicjs/studio-shell";
 import { useEffect, useRef, useState } from "react";
 import { ConnectDialog } from "../connect/connect-dialog.tsx";
 import * as words from "../connections-words.ts";
+import { EngineRow } from "../engine/engine-row.tsx";
 import { ConnectionRow } from "./connection-row.tsx";
 import { DisconnectDialog, type DisconnectNote } from "./disconnect-dialog.tsx";
 
-/** Settings › Connections as the settings container shows it, over the engine's connections. */
+/**
+ * Settings › Connections as the settings container shows it: the Messaging engine row where the
+ * host serves the server engine, then the engine's connections.
+ */
 export function ConnectionsSection({ context }: SettingsSectionProps) {
   const connections = context.services.find(AgentConnectionsService);
+  const serverEngine = context.services.find(ServerEngineService);
   if (connections === undefined) return null;
+  const announce = (line: string) => context.announcer.announce(line);
   return (
-    <ConnectionsView
-      connections={connections}
-      announce={(line) => context.announcer.announce(line)}
-    />
+    <div className="flex flex-col gap-6">
+      {serverEngine === undefined ? null : <EngineRow engine={serverEngine} announce={announce} />}
+      <ConnectionsView connections={connections} announce={announce} />
+    </div>
   );
 }
 
