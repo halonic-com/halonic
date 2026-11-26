@@ -1,14 +1,9 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
-import {
-  type Decision,
-  type Memory,
-  type PullFacts,
-  decide as watcherDecide,
-} from "../pr-watcher/decide.ts";
+import { type Memory, type PullFacts, decide as watcherDecide } from "../pr-watcher/decide.ts";
 import { fakeGitHub, recording, restFacts } from "../pr-watcher/fakes.test-helper.ts";
-import { watchedTask } from "./pr-watcher-input.ts";
-import { decide, type PrWatcherAction } from "./rules/pr-watcher.ts";
+import { decisionActions, watchedTask } from "./pr-watcher-input.ts";
+import { decide } from "./rules/pr-watcher.ts";
 
 /**
  * Today's PR watcher, replayed through the signal rule (HAL-17980): every
@@ -20,27 +15,6 @@ const halonic = "halonic-com/halonic";
 const recorded = [4605, 4485, 468, 4574, 4614, 4588];
 const before = "2026-11-20T00:00:00Z";
 const after = "2026-11-30T00:00:00Z";
-
-/** Today's decision as the rule's actions: done is a task update, each wake reason a wake. */
-function decisionActions(task: string, decision: Decision): PrWatcherAction[] {
-  if (decision.kind === "skip") {
-    return [];
-  }
-  if (decision.kind === "done") {
-    const pulls = decision.pulls.map((pull) => `${pull.repo}#${pull.number}`);
-    return [
-      { kind: "task-update", key: `${task}|${pulls.join(",")}|done`, task, status: "done", pulls },
-    ];
-  }
-  return decision.reasons.map(({ pull, kind, key }) => ({
-    kind: "wake",
-    key,
-    task,
-    pr: `${pull.repo}#${pull.number}`,
-    head: pull.head,
-    reason: kind === "stack-conflict" ? "conflict" : kind,
-  }));
-}
 
 async function recordedFacts(): Promise<Map<number, PullFacts>> {
   const github = fakeGitHub(

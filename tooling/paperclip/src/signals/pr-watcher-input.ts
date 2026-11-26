@@ -1,5 +1,11 @@
-import type { Memory, PullFacts, WatchedTask as WatcherTask } from "../pr-watcher/decide.ts";
 import type {
+  Decision,
+  Memory,
+  PullFacts,
+  WatchedTask as WatcherTask,
+} from "../pr-watcher/decide.ts";
+import type {
+  PrWatcherAction,
   PrWatcherInput,
   PrWatcherSettings,
   WatchedPull,
@@ -60,6 +66,30 @@ export function watchedTask(
     },
     pulls: pulls.map(pullOf),
   };
+}
+
+/**
+ * Today's watcher's decision on a task as the rule's actions: done is a task
+ * update, each wake reason a wake.
+ */
+export function decisionActions(task: string, decision: Decision): PrWatcherAction[] {
+  if (decision.kind === "skip") {
+    return [];
+  }
+  if (decision.kind === "done") {
+    const pulls = decision.pulls.map((pull) => `${pull.repo}#${pull.number}`);
+    return [
+      { kind: "task-update", key: `${task}|${pulls.join(",")}|done`, task, status: "done", pulls },
+    ];
+  }
+  return decision.reasons.map(({ pull, kind, key }) => ({
+    kind: "wake",
+    key,
+    task,
+    pr: `${pull.repo}#${pull.number}`,
+    head: pull.head,
+    reason: kind === "stack-conflict" ? "conflict" : kind,
+  }));
 }
 
 /** The ToolScript `inputBytes` default (HAL-17772): the most bytes one rule input may have. */

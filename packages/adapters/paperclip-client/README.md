@@ -141,6 +141,7 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `pullRequestsSummary` | `GET /api/plugins/halonic.agent-tools/api/github/summary?companyId=` | pull requests and the merge queue |
 | `pullRequestDetail` | `GET /api/plugins/halonic.agent-tools/api/github/pr/{number}?repo=&companyId=` | one pull request; `{number}` a positive integer |
 | `chatNotes` | `GET /api/plugins/halonic.agent-tools/api/chat-notes/{task}?companyId=` | when a chat has a comment with no author: which comments the front bot posted, shown as the chat agent's automatic messages |
+| `prWatcherPass` | `GET /api/plugins/halonic.agent-tools/api/pr-watcher/pass?companyId=` | the served `pr-watcher` workflow: the last watcher pass's rule input and the actions the watcher took (`at`, `input`, `actions`, `truncated`) |
 | `getTask` | `GET /api/issues/{task}` | before a task write: the task's ID and company; once per chat whose full answer is linked by identifier: that identifier |
 | `wakeTask` | `PATCH /api/issues/{task}` with exactly `{ assigneeAgentId, status: "todo", comment }` | a workflow wakes an agent on a task |
 | `finishTask` | `PATCH /api/issues/{task}` with exactly `{ status: "done", comment }` | a workflow closes a task as done |

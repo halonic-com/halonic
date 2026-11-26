@@ -36,7 +36,8 @@ export interface GitHubRoutesApi {
 /** A pull request number: a positive integer of at most 9 digits, nothing else. */
 const numberPattern = /^[1-9]\d{0,8}$/;
 
-function isBoard(input: PluginApiRequestInput): boolean {
+/** Whether the request comes from a signed-in board user. */
+export function isBoard(input: PluginApiRequestInput): boolean {
   const userId = input.actor.actorType === "user" ? input.actor.userId : undefined;
   return typeof userId === "string" && userId !== "";
 }

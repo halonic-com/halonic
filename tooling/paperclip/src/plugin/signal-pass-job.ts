@@ -1,5 +1,5 @@
 import type { PluginLogger, PluginStateClient, ScopeKey } from "@paperclipai/plugin-sdk";
-import type { TaskObserver } from "../pr-watcher/watch.ts";
+import type { ActionObserver, TaskObserver } from "../pr-watcher/watch.ts";
 import { loadSignals } from "../signals/load.ts";
 import {
   dryRunSignalExecutors,
@@ -7,9 +7,15 @@ import {
   type SignalState,
   signalPass,
 } from "../signals/pass.ts";
-import { ruleInputs, watchedTask } from "../signals/pr-watcher-input.ts";
-import { decide, type PrWatcherSettings, type WatchedTask } from "../signals/rules/pr-watcher.ts";
+import { decisionActions, ruleInputs, watchedTask } from "../signals/pr-watcher-input.ts";
+import {
+  decide,
+  type PrWatcherAction,
+  type PrWatcherSettings,
+  type WatchedTask,
+} from "../signals/rules/pr-watcher.ts";
 import type { WatcherPass } from "../workflow-host/pr-watcher-lifecycle-pass.ts";
+import { passAnswer, savePass } from "./pr-watcher-pass-route.ts";
 
 /**
  * The `pr-watcher` signal rule inside each `pr-watch` pass (HAL-18197), in
@@ -20,21 +26,29 @@ import type { WatcherPass } from "../workflow-host/pr-watcher-lifecycle-pass.ts"
  * leaves the watcher's own work alone.
  */
 
-/** Collects what the watcher read about each task, as the rule reads it. */
+/** Collects what the watcher read about each task and did, as the rule reads and does it. */
 export interface WatcherRecorder {
   readonly observe: TaskObserver;
+  readonly acted: ActionObserver;
   /** The tasks heard so far, in the watcher's order. */
   tasks(): readonly WatchedTask[];
+  /** The dones and wakes the watcher wrote so far (HAL-19720). */
+  actions(): readonly PrWatcherAction[];
 }
 
 /** A recorder for one company's pass. */
 export function watcherRecorder(): WatcherRecorder {
   const tasks: WatchedTask[] = [];
+  const actions: PrWatcherAction[] = [];
   return {
     observe: (task, ownerId, pulls, memory) => {
       tasks.push(watchedTask(task, ownerId, pulls, memory));
     },
+    acted: (task, decision) => {
+      actions.push(...decisionActions(task.identifier, decision));
+    },
     tasks: () => tasks,
+    actions: () => actions,
   };
 }
 
@@ -72,15 +86,17 @@ function logAll(ctx: SignalJobApi, companyId: string, lines: readonly string[]):
 
 /**
  * One dry pass of the `pr-watcher` signal on the tasks the watcher read.
- * Returns the tasks and actions for the lifecycle, or undefined when the
- * rule is off or the pass failed.
+ * Keeps the rule's input with the watcher's own actions for the
+ * `pr-watcher-pass` route. Returns the tasks and actions for the lifecycle,
+ * or undefined when the rule is off or the pass failed.
  */
 export async function prWatcherSignalPass(
   ctx: SignalJobApi,
   companyId: string,
-  tasks: readonly WatchedTask[],
+  recorder: Pick<WatcherRecorder, "tasks" | "actions">,
   now: Date,
 ): Promise<WatcherPass | undefined> {
+  const tasks = recorder.tasks();
   try {
     // The plugin reads no workspace snapshot yet, so the built-in signals run. Once it does,
     // `readSnapshot` refuses a snapshot with a broken signal whole before it gets here (#5966 review).
@@ -99,6 +115,14 @@ export async function prWatcherSignalPass(
         companyId,
       });
     }
+    const empty = { now: now.toISOString(), settings, tasks: [] };
+    await savePass(ctx, companyId, passAnswer(empty, inputs, tooLarge, recorder.actions())).catch(
+      (error: unknown) => {
+        ctx.logger.error(`Signal pr-watcher: couldn't keep the pass: ${(error as Error).message}`, {
+          companyId,
+        });
+      },
+    );
     const actions = inputs.flatMap(decide);
     const result = await signalPass({
       plan,

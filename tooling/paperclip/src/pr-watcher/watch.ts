@@ -58,6 +58,8 @@ export interface TickOptions {
    * (HAL-18197); nothing when unset.
    */
   readonly observe?: TaskObserver;
+  /** Hears each done or wake the watcher wrote, so the pass can serve it (HAL-19720); nothing when unset. */
+  readonly acted?: ActionObserver;
   /** Whether a reviewer is parked or at a limit, by agent id (HAL-19203); without it, no review moves. */
   readonly limits?: ReviewerLimits | undefined;
 }
@@ -69,6 +71,9 @@ export type TaskObserver = (
   pulls: readonly PullFacts[],
   memory: Memory,
 ) => void;
+
+/** Called with a done or wake decision the watcher wrote to its task. */
+export type ActionObserver = (task: TaskRow, decision: Decision) => void;
 
 /** How a tick went: counts, and the tasks it couldn't check. */
 export interface TickSummary {
@@ -259,6 +264,7 @@ async function act(options: TickOptions, task: TaskRow, decision: Decision): Pro
     options.log(`${task.identifier}: closed during this pass, so left alone`);
     return false;
   }
+  options.acted?.(task, decision);
   return true;
 }
 

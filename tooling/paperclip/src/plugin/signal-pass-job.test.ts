@@ -1,6 +1,10 @@
 import { readFileSync } from "node:fs";
 import { verifies } from "@halonicjs/testing-spec";
+import type { PluginApiRequestInput } from "@paperclipai/plugin-sdk";
 import { expect, test } from "vitest";
+import { loadSignals } from "../signals/load.ts";
+import { ruleInputs } from "../signals/pr-watcher-input.ts";
+import type { PrWatcherAction, PrWatcherSettings } from "../signals/rules/pr-watcher.ts";
 import {
   fakeHost,
   fakeJobContext,
@@ -9,6 +13,7 @@ import {
 } from "./fake-host.test-helper.ts";
 import type { LifecycleRunner } from "./fast-track-lifecycle-job.ts";
 import { runWatcher } from "./job.ts";
+import { handlePrWatcherPass, type PrWatcherPassAnswer } from "./pr-watcher-pass-route.ts";
 
 const now = new Date("2026-11-22T07:20:00Z");
 const token = { type: "secret_ref", secretId: "secret-pr-watcher" };
@@ -137,6 +142,58 @@ verifies("paperclip.signal-pass-in-watcher", () => {
     expect(pass?.tasks.map((task) => task.task).sort()).toEqual(["HAL-15916", "HAL-4485"]);
     expect(pass?.actions).toContainEqual(
       expect.objectContaining({ kind: "task-update", task: "HAL-4485" }),
+    );
+  });
+});
+
+/** The board's call to the pass route. */
+const boardCall = {
+  routeKey: "pr-watcher-pass",
+  method: "GET",
+  path: "/pr-watcher/pass",
+  params: {},
+  query: { companyId: "acme" },
+  body: undefined,
+  headers: {},
+  companyId: "acme",
+  actor: { actorType: "user", actorId: "user-1", userId: "user-1" },
+} as unknown as PluginApiRequestInput;
+
+/** An action in the form `writtenKeys` gives. */
+function actionKey(action: PrWatcherAction): string {
+  return action.kind === "task-update" ? `${action.task} done` : `${action.task} ${action.key}`;
+}
+
+verifies("paperclip.pr-watcher-pass-route", () => {
+  test("after a pass, the route answers the rule's input and the actions the watcher wrote", async () => {
+    const { host, writes } = fakeHost(tasks);
+    const { ctx } = fakeJobContext({
+      host,
+      configs: { acme: { githubToken: token, dryRun: false } },
+      answers: recordedAnswers(),
+    });
+    const handed: Parameters<LifecycleRunner["runPrWatcher"]>[1][] = [];
+    await runWatcher(ctx, now, undefined, {
+      run: async () => {},
+      runPrWatcher: async (_companyId, pass) => {
+        handed.push(pass);
+      },
+    });
+    const response = await handlePrWatcherPass(boardCall, ctx);
+    expect(response.status).toBe(200);
+    const answer = response.body as PrWatcherPassAnswer;
+    const plan = loadSignals(undefined).plans.get("pr-watcher");
+    if (plan === undefined || plan === "off") throw new Error("the built-in pr-watcher is off");
+    const settings = plan.settings as PrWatcherSettings;
+    const { inputs } = ruleInputs(now.toISOString(), settings, handed[0]?.tasks ?? []);
+    expect(inputs).toHaveLength(1);
+    expect(answer.input).toEqual(inputs[0]);
+    expect(answer.at).toBe(now.toISOString());
+    expect(answer.truncated).toBe(false);
+    expect(answer.actions.map(actionKey).sort()).toEqual(writtenKeys(writes).sort());
+    // The rule decides the same, so the served workflow's dry run can compare with these.
+    expect([...answer.actions].sort((a, b) => a.key.localeCompare(b.key))).toEqual(
+      [...(handed[0]?.actions ?? [])].sort((a, b) => a.key.localeCompare(b.key)),
     );
   });
 });
