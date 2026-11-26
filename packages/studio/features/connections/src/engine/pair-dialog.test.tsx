@@ -230,6 +230,19 @@ verifies("connections.server-pair-dialog", () => {
       expect(button("Close", dialog() ?? document)).toBeDefined();
     });
 
+    it("names this computer as it paired when the name field was cleared", async () => {
+      const { engine } = await openDialog({
+        status: [{ state: "waiting", expiresAt: "2026-11-24T14:10:00.000Z" }, { state: "lost" }],
+      });
+      typeInto(inputs()[2] ?? null, "  ");
+      await enter();
+      expect(engine.pairs.map((pair) => pair.deviceName)).toEqual(["Halonic Studio"]);
+      expect(text()).toContain("The server sees this computer as Halonic Studio.");
+      await poll();
+      await poll();
+      expect(text()).toContain("If halonic serve devices lists Halonic Studio, remove it there");
+    });
+
     it("starts again with the address and the name kept and the code empty", async () => {
       await endWith([{ state: "refused" }]);
       await press(button("Start again", dialog() ?? document));

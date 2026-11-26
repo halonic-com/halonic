@@ -120,7 +120,7 @@ export function EngineRow({ engine, announce, now }: EngineRowProps) {
         <PairDialog
           engine={engine}
           again={pairing.again}
-          computerName={paired?.deviceName ?? words.NAME_FALLBACK}
+          computerName={words.NAME_FALLBACK}
           onClose={() => setPairing(undefined)}
           onPaired={onPaired}
           onCancelFailed={() =>

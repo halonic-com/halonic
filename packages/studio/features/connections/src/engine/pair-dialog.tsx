@@ -125,7 +125,7 @@ export function PairDialog(props: PairDialogProps) {
     return (
       <EndingStep
         title={title}
-        ending={endingOf(ending, name.trim())}
+        ending={endingOf(ending, deviceNameOf(name))}
         onClose={close}
         onStartAgain={pairing.again}
       />
@@ -133,7 +133,13 @@ export function PairDialog(props: PairDialogProps) {
   }
   if (view.stage === "waiting") {
     return (
-      <WaitStep title={title} view={view} name={name.trim()} leftMs={leftMs} onCancel={close} />
+      <WaitStep
+        title={title}
+        view={view}
+        name={deviceNameOf(name)}
+        leftMs={leftMs}
+        onCancel={close}
+      />
     );
   }
   return null;
