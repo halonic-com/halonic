@@ -16,6 +16,12 @@ export interface SeatReading {
   readonly at: string;
 }
 
+/**
+ * A connection's status: `connected`, an explicit other status such as
+ * expired or revoked (`not-connected`), or none given (`unknown`).
+ */
+export type ConnectionState = "connected" | "not-connected" | "unknown";
+
 /** One AI connection agents can sit on. */
 export interface Seat {
   readonly connectionId: string;
@@ -28,8 +34,11 @@ export interface Seat {
   readonly reading: SeatReading | undefined;
   /** A run on this seat failed with `provider_quota` since its reading: it is full now. */
   readonly quotaHit: boolean;
-  /** The connection's status is `connected`; nobody may sit on an expired or revoked one. */
-  readonly connected: boolean;
+  /**
+   * Nobody may sit on a `not-connected` seat. An `unknown` one takes nobody
+   * new but moves nobody off, like a seat without a reading.
+   */
+  readonly connection: ConnectionState;
 }
 
 /** One agent and where it sits. */
@@ -57,6 +66,7 @@ export type TargetRefusal =
   | "e-paid-api"
   | "f-session-stop"
   | "not-connected"
+  | "connection-unknown"
   | "unread"
   | "same-seat";
 
@@ -139,8 +149,11 @@ export function targetRefusal(
   if (isPaidApi(seat)) {
     return "e-paid-api";
   }
-  if (!seat.connected) {
+  if (seat.connection === "not-connected") {
     return "not-connected";
+  }
+  if (seat.connection === "unknown") {
+    return "connection-unknown";
   }
   if (seat.reading === undefined || seat.grantId === undefined) {
     return "unread";
