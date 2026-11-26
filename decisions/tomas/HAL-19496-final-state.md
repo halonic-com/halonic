@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.ing/HAL/issues/HAL-19496
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:cWG/Do8zzRAnGylK8CQ3TzvoDEri07JKQyqlPAeFXqVuHib/rSFMcxVsqPGMf5jhsTk+55jcB+F52nj5jyznCQ==
 
 On HAL-10 the board asked for cards processed in Paperclip to update in the Messenger and to
 animate to their final state (comment 20e30d36, 26 Nov). The board's addition (comment 910fe451)
