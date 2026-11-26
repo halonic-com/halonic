@@ -13,6 +13,16 @@ fn listed(versions: &[&str]) -> Value {
     json!({ "version": versions[0], "notes": "- Own notes.", "halonic": { "releaseNotes": list } })
 }
 
+/// Like `listed`, but every entry's notes are short whatever its version, so
+/// only the version's own length counts toward the cap.
+fn listed_with_short_notes(versions: &[&str]) -> Value {
+    let list: Vec<Value> = versions
+        .iter()
+        .map(|version| json!({ "version": version, "notes": "- Fixed." }))
+        .collect();
+    json!({ "version": versions[0], "notes": "- Own notes.", "halonic": { "releaseNotes": list } })
+}
+
 fn versions(notes: &OfferedNotes) -> Vec<&str> {
     notes
         .release_notes
@@ -114,14 +124,17 @@ fn update_notes_keeps_at_most_fifty_versions() {
 #[test]
 fn update_notes_drops_build_metadata_of_any_length() {
     let long = format!("0.4.3+{}", "x".repeat(200_000));
-    let notes = offered_notes(&listed(&["0.4.4", &long, "0.4.1"]), "0.4.1", "0.4.4");
+    let manifest = listed_with_short_notes(&["0.4.4", &long, "0.4.1"]);
+    let notes = offered_notes(&manifest, "0.4.1", "0.4.4");
     assert_eq!(versions(&notes), ["0.4.4", "0.4.3"]);
+    assert!(!notes.older_on_release_page);
 }
 
 #[test]
 fn update_notes_counts_versions_toward_the_character_cap() {
     let long = format!("0.4.3-{}", "a".repeat(200_000));
-    let notes = offered_notes(&listed(&["0.4.4", &long, "0.4.1"]), "0.4.1", "0.4.4");
+    let manifest = listed_with_short_notes(&["0.4.4", &long, "0.4.1"]);
+    let notes = offered_notes(&manifest, "0.4.1", "0.4.4");
     assert_eq!(versions(&notes), ["0.4.4"]);
     assert!(notes.older_on_release_page);
     let sent: usize = notes
