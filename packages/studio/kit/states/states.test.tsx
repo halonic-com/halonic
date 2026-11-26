@@ -38,7 +38,8 @@ type Forced = "hover" | "active" | "focus";
 
 /**
  * How each state shows in a real selector. The on-muted: variant's own hover and focus are left
- * out, as the muted fill's state rather than the part's (HAL-19751), and so is the ActionBar's
+ * out, as the muted fill's state rather than the part's (HAL-19751, and its keyboard focus for a
+ * plain List row, HAL-19492), and so is the ActionBar's
  * hiding while a field has the focus, which is the page's state, not a part's.
  */
 const real: Record<Forced, RegExp> = {
@@ -51,7 +52,8 @@ const real: Record<Forced, RegExp> = {
 const isReal = (selector: string, state: Forced) =>
   real[state].test(selector) &&
   !selector.includes("data-hover-fill") &&
-  !selector.includes("data-focus-fill");
+  !selector.includes("data-focus-fill") &&
+  !selector.includes("data-focus-visible-fill");
 const isForced = (selector: string, state: Forced) =>
   selector.includes(`[data-force-state="${state}"]`);
 

@@ -11,7 +11,7 @@ import {
   plainStateClasses,
   type RowStateClasses,
 } from "./list-plain.ts";
-import { HoverActionCell, hoverActionRow } from "./list-plain-action.tsx";
+import { HoverActionCell } from "./list-plain-action.tsx";
 import type { AnyListRow, ListColumn, ListSelection } from "./list-props.ts";
 import { RowContent } from "./row-content.tsx";
 import { rowHandlers } from "./row-handlers.ts";
@@ -284,7 +284,7 @@ export function Row<Id extends string>({ row, place, shared }: RowProps<Id>) {
       aria-current={isCurrent ? true : undefined}
       aria-disabled={isUnavailable ? true : undefined}
       {...(look === "plain" ? plainFillMarks[stateName] : {})}
-      className={`group ${hoverActionRow(shared.hasHoverAction)} ${state.row}`}
+      className={`group ${state.row}`}
     >
       {hasCheck && selection !== undefined ? (
         <CheckCell

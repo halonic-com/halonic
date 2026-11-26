@@ -17,6 +17,14 @@ the word "new" is "the heading's word for it", since a fixed setup row says it b
 `inbox.setup-items` keeps its rule, "no Approve, Reject or Delete"; its example said the row "has
 no button", and now says "no button but its Mark as read on hover".
 
+Nora's review of #6686 found that keyboard focus, which now fills a `plain` List row
+`surface-muted` so the action sits on the fill, wasn't marked for the kit's `on-muted:` variant,
+so an Avatar's neutral tile (the Inbox's approval, person-step and setup marks) lost its circle on
+the focused row. The row now sets `data-focus-visible-fill="muted"`, which `on-muted:` reads with
+`:has(:focus-visible)`, so a click's focus still fills nothing. `kit.avatar-on-row-fill` and
+`kit.list-plain` name keyboard focus among a plain row's fills, and each gains it in an example
+or its rule.
+
 Two existing tests change:
 
 - `setup-row.test.tsx` (`inbox.setup-items`): the setup row's text now ends "Setup" then "new",
@@ -29,5 +37,7 @@ Two existing tests change:
 
 - inbox.read-marks
 - inbox.setup-items
+- kit.avatar-on-row-fill
+- kit.list-plain
 - packages/studio/features/inbox/src/ui/setup-row.test.tsx
 - packages/studio/features/inbox/src/ui/read-marks-page.test.tsx

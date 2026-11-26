@@ -15,13 +15,17 @@ export interface RowStateClasses {
 }
 
 /**
- * The fills of a plain row in each state. Keyboard focus in a row gives it the hover fill, so its
- * `hoverAction`, shown then too, sits on the fill (HAL-20148). The current row keeps `selected-forced`, so forced
- * colours still outline it, but no accent bar: the fill alone marks it, as in the Messenger.
+ * The fills of a plain row in each state. Keyboard focus in a row gives it the hover fill, so
+ * its `hoverAction`, shown then too, sits on the fill (HAL-20148). The current row keeps
+ * `selected-forced`, so forced colours still outline it, but no accent bar: the fill alone marks
+ * it, as in the Messenger.
  */
 export const plainStateClasses = {
   default: {
-    fill: "transition-colors group-hover:bg-surface-muted group-active:bg-surface-muted group-has-[:focus-visible]:bg-surface-muted",
+    fill: [
+      "transition-colors group-hover:bg-surface-muted group-active:bg-surface-muted",
+      "group-has-[:focus-visible]:bg-surface-muted",
+    ].join(" "),
     row: "",
     main: "",
   },
@@ -32,11 +36,12 @@ export const plainStateClasses = {
 
 /**
  * How a plain row marks its muted fill in each state, so a neutral fill on it, such as an Avatar's
- * tile, steps up with `on-muted:` (`kit.avatar-on-row-fill`): muted on hover and press at rest,
- * muted while selected or current, and not at all while unavailable or inert, as the fills above.
+ * tile, steps up with `on-muted:` (`kit.avatar-on-row-fill`): muted on hover, press and keyboard
+ * focus at rest, muted while selected or current, and not at all while unavailable or inert, as
+ * the fills above. Keyboard focus is `data-focus-visible-fill`: a click's focus fills nothing.
  */
 export const plainFillMarks = {
-  default: { "data-hover-fill": "muted" },
+  default: { "data-hover-fill": "muted", "data-focus-visible-fill": "muted" },
   selected: { "data-fill": "muted" },
   unavailable: {},
   inert: {},
@@ -61,7 +66,11 @@ export function plainRowLabel(
   return `${label}, ${`${unread.count ?? ""}${unread.label}`.trim()}`;
 }
 
-/** How many grid cells a row's buttons take after its main cell: its `actions`, then its `hoverAction`. */
-export function actionCount(row: AnyListRow): number {
-  return (row.actions?.length ?? 0) + (row.hoverAction === undefined ? 0 : 1);
+/**
+ * How many grid cells a row's buttons take after its main cell: its `actions`, then its
+ * `hoverAction`, which only a `plain` List draws.
+ */
+export function actionCount(row: AnyListRow, plain: boolean): number {
+  const hoverAction = plain && row.hoverAction !== undefined ? 1 : 0;
+  return (row.actions?.length ?? 0) + hoverAction;
 }

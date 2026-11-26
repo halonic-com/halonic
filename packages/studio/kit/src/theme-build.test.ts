@@ -72,6 +72,7 @@ describe("theme.css built by Tailwind: on a muted fill", () => {
       [':where([data-hover-fill="muted"]:hover) .on-muted\\:bg-border'],
       [':where([data-hover-fill="muted"]:active) .on-muted\\:bg-border'],
       [':where([data-focus-fill="muted"]:focus-within) .on-muted\\:bg-border'],
+      [':where([data-focus-visible-fill="muted"]:has(:focus-visible)) .on-muted\\:bg-border'],
     ]);
     // Hover only where there is one, as Tailwind's own hover: does.
     expect(css).toMatch(/@media \(hover: hover\) \{\s*:where\(\[data-hover-fill="muted"\]:hover\)/);

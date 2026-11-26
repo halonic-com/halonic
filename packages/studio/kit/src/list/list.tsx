@@ -66,8 +66,13 @@ export function List<Id extends string>({
   const hasMore = allRows.some((row) => row.more !== undefined);
   const hasHoverAction = look === "plain" && allRows.some((row) => row.hoverAction !== undefined);
   const hasCheck = onOpen !== undefined && selection !== undefined;
-  const actionColumns = allRows.reduce((most, row) => Math.max(most, actionCount(row)), 0);
-  const grid = useGridNavigation(gridRows(sections, { hasCheck, actionColumns, hasMore }), {
+  const plainLook = look === "plain";
+  const actionColumns = allRows.reduce(
+    (most, row) => Math.max(most, actionCount(row, plainLook)),
+    0,
+  );
+  const gridColumns = { hasCheck, actionColumns, hasMore, plain: plainLook };
+  const grid = useGridNavigation(gridRows(sections, gridColumns), {
     startColumn: firstFocusColumn(hasCheck),
     // Tab enters at the first row that does something; the arrows still reach the inert ones.
     startRow: allRows.find((row) => row.inert !== true)?.id,
@@ -274,6 +279,8 @@ interface GridColumns {
   /** The most actions any row has: each takes a column of its own after the main cell. */
   readonly actionColumns: number;
   readonly hasMore: boolean;
+  /** A `plain` List, the only look that draws a row's `hoverAction`. */
+  readonly plain: boolean;
 }
 
 /** The grid as `useGridNavigation` sees it: every heading row and row, in order. */
@@ -291,8 +298,9 @@ function gridRows<Id extends string>(
  * A row's focusable cells: its checkbox, its main cell, its actions and its More button. A row
  * with fewer actions than another leaves those columns empty, so its More button lines up.
  */
-function gridCells(row: AnyListRow, { hasCheck, actionColumns, hasMore }: GridColumns): boolean[] {
-  const actions = actionCount(row);
+function gridCells(row: AnyListRow, columns: GridColumns): boolean[] {
+  const { hasCheck, actionColumns, hasMore } = columns;
+  const actions = actionCount(row, columns.plain);
   return [
     ...(hasCheck ? [true] : []),
     true,

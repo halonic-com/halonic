@@ -56,8 +56,12 @@ verifies("kit.list-plain-action", () => {
     const { container, cell, action } = renderPlain([notes(() => undefined)]);
     expect(cell("notes").contains(action("notes"))).toBe(false);
     expect(cell("notes").textContent).toBe("Approve the release notesRelease 0.2 · Liam");
-    expect(action("notes").closest("td")?.className).toContain("w-0");
-    expect(container.querySelector('tr[data-row-id="notes"]')?.className).toContain("relative");
+    // The button is placed against its own cell, not the row: WebKit before April 2026 doesn't
+    // make a `relative` table row a containing block (WebKit bug 240961).
+    expect(action("notes").closest("td")?.className.split(" ")).toEqual(
+      expect.arrayContaining(["relative", "w-0"]),
+    );
+    expect(container.querySelector('tr[data-row-id="notes"]')?.className).not.toContain("relative");
   });
 
   it("hides the action and takes no clicks until the row is hovered or has keyboard focus", () => {
@@ -67,7 +71,7 @@ verifies("kit.list-plain-action", () => {
     expect(classes).toEqual(
       expect.arrayContaining(["group-hover:opacity-100", "group-has-[:focus-visible]:opacity-100"]),
     );
-    // Not on any focus: a click leaves focus on the button, and it would stay on a row without its fill.
+    // Not on any focus: a click leaves focus on the button, on a row without its fill.
     expect(classes).not.toContain("group-focus-within:opacity-100");
     // The row takes its fill on keyboard focus too, so the action never sits on a bare row.
     const fill = action("notes").closest("tr")?.querySelector('[role="gridcell"]')?.className;
@@ -85,6 +89,22 @@ verifies("kit.list-plain-action", () => {
       />,
     );
     expect(container.querySelector("button")).toBeNull();
+  });
+
+  it("takes no grid column in a List that isn't plain, so → reaches the row's More button", () => {
+    const { container } = render(
+      <List
+        heading={{ name: "Needs you" }}
+        rows={[{ ...notes(() => undefined), more: { label: "More", onClick: () => undefined } }]}
+        onOpen={() => undefined}
+      />,
+    );
+    const cell = container.querySelector(
+      'tr[data-row-id="notes"] [role="gridcell"]',
+    ) as HTMLElement;
+    act(() => cell.focus());
+    press(cell, "ArrowRight");
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("More");
   });
 
   it("puts an unread row's dot under its trailing chip", () => {

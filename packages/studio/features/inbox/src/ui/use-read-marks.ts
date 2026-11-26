@@ -63,7 +63,7 @@ export function useReadMarks(
     redraw();
   }, [marks, opened]);
   const isNew = (key: string) => !marks.isRead(key);
-  /** A new row's **Mark as read** marks all it holds; a read row's **Mark as unread**, its newest. */
+  /** A new row's **Mark as read** marks all it holds; a read row's **Mark as unread** its newest. */
   const rowAction = (title: string, keys: readonly string[], fresh: boolean): PlainRowAction => {
     const label = fresh ? "Mark as read" : "Mark as unread";
     const onClick = () => {

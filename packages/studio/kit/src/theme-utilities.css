@@ -30,8 +30,10 @@
  * on-muted: a neutral fill placed on a surface-muted fill (an unselected tab, the active menu
  * item, a hovered sidebar row) steps up to border, or its box disappears (component specs 10,
  * 14). The fill sets data-fill="muted" while it is muted, data-hover-fill="muted" when it is
- * only muted on hover and press, and data-focus-fill="muted" when it is also muted while focus is
- * inside it (a sidebar row with an action, HAL-19751). :where() keeps the specificity of the class alone.
+ * only muted on hover and press, data-focus-fill="muted" when it is also muted while focus is
+ * inside it (a sidebar row with an action, HAL-19751), and data-focus-visible-fill="muted" when it
+ * is muted only while keyboard focus is inside it (a plain List row, HAL-19492): a click's focus
+ * leaves that one unfilled. :where() keeps the specificity of the class alone.
  */
 @custom-variant on-muted {
   :where([data-fill="muted"]) & {
@@ -49,6 +51,10 @@
   }
 
   :where([data-focus-fill="muted"]:focus-within) & {
+    @slot;
+  }
+
+  :where([data-focus-visible-fill="muted"]:has(:focus-visible)) & {
     @slot;
   }
 }

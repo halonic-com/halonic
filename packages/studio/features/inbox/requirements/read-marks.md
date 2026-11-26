@@ -32,6 +32,6 @@ The Inbox shall keep on the device which of its items the person opened. While a
 - Given a fixed setup item nobody opened,
   when you open the Inbox,
   then its row shows the blue dot and a screen reader hears "new" after its name.
-- Given an approval you opened and closed,
-  when you hover its row and pick "Mark as unread",
-  then the row shows the blue dot again, and on hover it offers "Mark as read".
+- Given a new approval in Needs you,
+  when you pick "Mark as read" on its row,
+  then its dot goes, the heading has one new item fewer, and the row offers "Mark as unread", which brings the dot back.
