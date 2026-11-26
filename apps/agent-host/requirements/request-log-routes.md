@@ -14,6 +14,6 @@ When Studio asks for a local integration's request log, the agent host shall ans
 - Given a workspace the launcher didn't name, with a log of `notes`,
   when Studio asks for it,
   then the answer is 404 `unknown_workspace`.
-- Given a log file replaced by a link,
+- Given a log file replaced by a folder,
   when Studio asks for it,
   then the answer is 422 with "The request log can't be read." and nothing of the file or its path.

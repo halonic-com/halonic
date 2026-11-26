@@ -8,14 +8,14 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { profileRequestLogs, workspaceRequestLog } from "./integration-request-logs.ts";
 import { setupOpener, sheet } from "./test/open-local-integration-setup.ts";
 import { removeTestFolder } from "./test/remove-folder.ts";
-import { webCryptoDigest } from "./workspace-runs.ts";
+import { profilePlatformOf, webCryptoDigest } from "./workspace-runs.ts";
 
 let root: string;
 let profile: ProfileFolder;
 
 beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), "halonic-cli-request-log-"));
-  profile = { platform: "linux", root: join(root, "profile") };
+  profile = { platform: profilePlatformOf(process.platform), root: join(root, "profile") };
   const files = {
     "workspace/integrations/notes/integration.yaml": sheet,
     "workspace/integrations/notes/backend/index.js": "export default { path: '/v2' };\n",
@@ -70,7 +70,8 @@ verifies("cli.open-local-integration", () => {
         }),
         expect.objectContaining({ path: "/v2/{…}/{…}", outcome: "refused" }),
       ]);
-      expect((await stat(logFile)).mode & 0o777).toBe(0o600);
+      // Windows keeps no Unix mode bits; the private file is its own test there.
+      if (process.platform !== "win32") expect((await stat(logFile)).mode & 0o777).toBe(0o600);
     });
 
     it("leaves no folder once a forgotten workspace's integration, still loaded, makes calls", async () => {
