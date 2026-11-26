@@ -91,7 +91,19 @@ board's password manager. The routes that change something need it, and so do
 
 The test routine runs every 5 minutes and starts a workflow with one `rule`
 step and no model. Make these 5 files in `/srv/halonic-engine/workspace`, owned
-by `halonic-engine`:
+by `halonic-engine`. First make their folders as that user:
+
+```sh
+sudo -u halonic-engine mkdir -p /srv/halonic-engine/workspace/hubs/checks/rules /srv/halonic-engine/workspace/hubs/checks/workflows/routines
+```
+
+Then write each file as that user too, so it gets the right owner: run
+`sudo -u halonic-engine tee <file> > /dev/null` with the file's full path,
+paste its content, and press Ctrl-D. For the first one:
+
+```sh
+sudo -u halonic-engine tee /srv/halonic-engine/workspace/workspace.yaml > /dev/null
+```
 
 `workspace.yaml`:
 
@@ -157,10 +169,11 @@ engine validate --dir /srv/halonic-engine/workspace
 engine trust --dir /srv/halonic-engine/workspace
 ```
 
-`validate` ends with `No problems.` For this workspace, `trust` says
-`Server engine needs no trust`. When you add a routine that reaches a model, a
-connector or Paperclip, `trust` lists what it may reach: read that list before
-you confirm.
+`validate` ends with `No problems.` `trust` usually asks for a yes at a prompt.
+This workspace reaches no model, so `trust` says `Server engine needs no trust`,
+asks nothing and saves nothing: there is nothing to answer. When you add a
+routine that reaches a model, a connector or Paperclip, `trust` lists what it
+may reach and asks: read that list before you answer yes.
 
 ### 6. Install the unit
 
@@ -290,9 +303,10 @@ echo "$(date -u +%FT%TZ) <previous commit> (rollback)" | sudo -u halonic-engine 
 sudo systemctl restart halonic-engine
 ```
 
-The password, the runs and the paused state stay in the profile folder, so the
-routine goes on after the restart. Repeat checks 2 and 5: the run list shows a
-new run after the rollback.
+The password and the runs stay in the profile folder, so the routine goes on
+after the restart. A pause doesn't: `serve` keeps it in memory and starts with
+its routines on, so pause them again after the restart if you had paused them.
+Repeat checks 2 and 5: the run list shows a new run after the rollback.
 
 ## Emergency off
 
