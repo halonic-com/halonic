@@ -50,6 +50,13 @@ the kit's `finalStateWords.outcomes`, word for word, so an action card reads "De
 12:10" in a neutral tone, never as a green "Answered". `recordPrefix` went with the record it
 prefixed. The final-state line is plain text, read out once through the view's one status region.
 
+The kit's `index.ts` was already at the 480 lines a pull request may grow it to, so the kit's
+settle helpers (`finalState`, `SettleMotionProvider`, `useSettleAway`, `useSettling`) come from
+their own entry point, `@halonicjs/studio-kit/settle`, next to `./app-glyphs` and `./fonts`. That
+is one more entry in `tooling/check/policy.json`'s `extraExports` for `@halonicjs/studio-kit`,
+`"./settle"`, and nothing else in the file changes. It points only at `src/settle/settle.tsx`, whose
+every export is documented and meant for other packages.
+
 ## Covers
 
 - messenger.inline-cards
@@ -60,3 +67,4 @@ prefixed. The final-state line is plain text, read out once through the view's o
 - packages/studio/features/messenger/src/ui/question-cards.test.tsx
 - packages/studio/features/messenger/src/ui/needs-you.test.tsx
 - packages/studio/features/messenger/src/chat-timeline.test.ts
+- tooling/check/policy.json
