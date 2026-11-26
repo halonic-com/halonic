@@ -4,7 +4,7 @@ import { Button, type CalloutHandle, StatusChip, waitingSince } from "@halonicjs
 import { useEffect, useId, useRef, useState } from "react";
 import { type AfterAnswer, afterAnswer, type InboxDecisions } from "../decide.ts";
 import type { WaitItem } from "../inbox-items.ts";
-import { planLimitWords, stillNoRoomLine, unitMessage } from "../plain/plan-limit-words.ts";
+import { planLimitWords, stillAtLimitLine, unitMessage } from "../plain/plan-limit-words.ts";
 import {
   CardHeader,
   cardBodyClasses,
@@ -31,7 +31,7 @@ export interface PlanLimitCardProps extends EngineState {
   readonly startedBy?: string | undefined;
   /** Opens the customer's usage, the account page's plan; without it there's no **See usage**. */
   readonly onSeeUsage?: (() => void) | undefined;
-  /** Says a line where a screen reader hears it: "There's still no room…" after a Continue that changed nothing. */
+  /** Says a line where a screen reader hears it: "This run is still at your plan's limit…" after a Continue that changed nothing. */
   readonly announce?: ((line: string) => void) | undefined;
   /** The next item, or `null` when nothing else is waiting. */
   readonly next: NextItem | null;
@@ -47,7 +47,7 @@ type CardState =
       /** **Continue the run** failed: the failure's own sentence, or `null` for none. */
       readonly failed: { readonly detail: string | null; readonly elsewhere: boolean } | null;
       /** **Continue the run** left the run waiting at its limit: the line that says so, or `null`. */
-      readonly stillNoRoom: string | null;
+      readonly atLimitLine: string | null;
     }
   | { readonly kind: "continuing" }
   | { readonly kind: "continued"; readonly after: AfterAnswer };
@@ -65,7 +65,7 @@ export function PlanLimitCard(props: PlanLimitCardProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   const continued = useRef<CalloutHandle>(null);
   const section = useRef<HTMLElement>(null);
-  const [state, setState] = useState<CardState>({ kind: "open", failed: null, stillNoRoom: null });
+  const [state, setState] = useState<CardState>({ kind: "open", failed: null, atLimitLine: null });
   const message = unitMessage(item.limit);
   useEveryMinute();
   useEffect(() => heading.current?.focus({ preventScroll: true }), []);
@@ -84,7 +84,7 @@ export function PlanLimitCard(props: PlanLimitCardProps) {
       run = await props.decisions.answer(item, "continue");
     } catch (error) {
       const failed = { detail: failureDetailOf(error), elsewhere: wasDecidedElsewhere(error) };
-      setState({ kind: "open", failed, stillNoRoom: null });
+      setState({ kind: "open", failed, atLimitLine: null });
       return;
     }
     if (!stillAtLimit(run)) {
@@ -92,8 +92,8 @@ export function PlanLimitCard(props: PlanLimitCardProps) {
       return;
     }
     // The press needs an answer, or the button reads as broken (Noah, HAL-19110).
-    const line = stillNoRoomLine(planRunOf(run)?.stop ?? item.limit);
-    setState({ kind: "open", failed: null, stillNoRoom: line });
+    const line = stillAtLimitLine(planRunOf(run)?.stop ?? item.limit);
+    setState({ kind: "open", failed: null, atLimitLine: line });
     props.announce?.(line);
   }
 
@@ -161,11 +161,11 @@ function ContinueBar({ state, engine, onContinue, onSeeUsage, onOpenRun }: Conti
   const reasonId = useId();
   const unavailable = unavailableWhile(engine.answering ?? true, reasonId);
   const failed = state.kind === "open" ? state.failed : null;
-  const stillNoRoom = state.kind === "open" ? state.stillNoRoom : null;
+  const atLimitLine = state.kind === "open" ? state.atLimitLine : null;
   return (
     <div className="flex flex-col gap-2 border-t border-border p-4">
       <NotAnsweringLine id={reasonId} {...engine} />
-      {stillNoRoom === null ? null : <p className="text-small text-fg-muted">{stillNoRoom}</p>}
+      {atLimitLine === null ? null : <p className="text-small text-fg-muted">{atLimitLine}</p>}
       <FailedLine
         onRetry={failed === null || failed.elsewhere ? null : onContinue}
         detail={failed?.detail ?? null}

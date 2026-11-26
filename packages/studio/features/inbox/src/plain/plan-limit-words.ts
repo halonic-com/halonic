@@ -29,8 +29,8 @@ export const planLimitWords = {
   reserveLine: (unit: string, neededPercent: number, leftPercent: number) =>
     `It needs up to ${neededPercent}% of your monthly ${unit} and you have ${leftPercent === 0 ? "less than 1%" : `${leftPercent}%`} left.`,
   resets: (date: string) => `It resets on ${date}.`,
-  /** After **Continue the run** when the run still waits at its limit (Noah, HAL-19110; words: Sofia). */
-  stillNoRoom: "There's still no room for this run.",
+  /** After **Continue the run** when the run still waits at its limit (Noah, HAL-19110; Sofia, HAL-19150). */
+  stillAtLimit: "This run is still at your plan's limit.",
   stoppedForGood: "This run stopped for good",
   waitedTooLong: "It waited 7 days at your plan's limit. Its results so far are kept.",
   tooMany: (running: number) =>
@@ -92,13 +92,13 @@ export function unitMessage(stop: PlanUnitStop): Pick<PlanLimitMessage, "title" 
  * limit resets when the stop says it.
  *
  * @example
- * stillNoRoomLine(stop); // "There's still no room for this run. It resets on 2 December."
+ * stillAtLimitLine(stop); // "This run is still at your plan's limit. It resets on 2 December."
  */
-export function stillNoRoomLine(stop: PlanStop): string {
+export function stillAtLimitLine(stop: PlanStop): string {
   const day =
     stop.kind === "unit" && stop.resetsAt !== undefined ? dayOf(stop.resetsAt) : undefined;
   return [
-    planLimitWords.stillNoRoom,
+    planLimitWords.stillAtLimit,
     ...(day === undefined ? [] : [planLimitWords.resets(day)]),
   ].join(" ");
 }

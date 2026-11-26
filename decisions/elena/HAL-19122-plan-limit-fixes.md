@@ -8,7 +8,7 @@
 
 `inbox.plan-limit-card` said that when the run still waits at its plan limit after **Continue the
 run**, the card stays as it was, with no new error. It still does, and now also shows one quiet line
-over its buttons, said to a screen reader too: "There's still no room for this run. It resets on
+over its buttons, said to a screen reader too: "This run is still at your plan's limit. It resets on
 {day}.", without the second sentence when the stop gives no day. The example for that case gains the
 line.
 

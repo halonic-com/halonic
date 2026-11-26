@@ -100,14 +100,14 @@ verifies("inbox.plan-limit-card", () => {
       expect(root.textContent).toContain("The run continues.");
     });
 
-    it("stays as it was, with no error, and says and announces there's still no room", async () => {
+    it("stays as it was, with no error, and says and announces it's still at the plan's limit", async () => {
       const announced: string[] = [];
       const { root, sent } = openCard(async () => runAtLimit(), {
         announce: (line) => announced.push(line),
       });
       const title = root.querySelector("h2")?.textContent;
       await press(button(root, "Continue the run"));
-      const line = "There's still no room for this run. It resets on 2 December.";
+      const line = "This run is still at your plan's limit. It resets on 2 December.";
       expect(sent).toEqual(["continue"]);
       expect(root.querySelector("h2")?.textContent).toBe(title);
       expect(root.querySelector('[role="alert"]')?.textContent).toBe("");
