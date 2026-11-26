@@ -34,10 +34,15 @@ export {
   maxRefusals,
   maxWaiting,
   maxWaitingBytes,
+  type OutboxLock,
   type OutboxParts,
+  outboxLockName,
+  pageOutboxLock,
   type SendOutcome,
   type SubmitOutcome,
   type WaitingFeedback,
+  type WebLocks,
+  webOutboxLock,
 } from "./outbox.ts";
 export {
   buildFeedbackTask,
