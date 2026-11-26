@@ -67,6 +67,32 @@
       ],
       "reply": "Release wird gerade angeschaut.",
       "expect": "posted"
+    },
+    {
+      "name": "an -ing step the agent is really doing (HAL-19588 review)",
+      "message": "Can you cover the links bug with a test?",
+      "earlierNotes": [],
+      "steps": [
+        {
+          "label": "Edit links test",
+          "status": "running"
+        }
+      ],
+      "reply": "Adding a test for it now.",
+      "expect": "posted"
+    },
+    {
+      "name": "another -ing step said as under way",
+      "message": "The docs page is out of date.",
+      "earlierNotes": [],
+      "steps": [
+        {
+          "label": "Edit docs page",
+          "status": "running"
+        }
+      ],
+      "reply": "Updating the docs page.",
+      "expect": "posted"
     }
   ]
 }

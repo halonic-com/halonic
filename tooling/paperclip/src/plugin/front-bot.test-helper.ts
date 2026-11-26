@@ -71,6 +71,10 @@ export interface HarnessOptions {
   readonly agentAnswersDuringCall?: boolean;
   /** What GitHub's PR status source gives per pull request; any other number fails (HAL-19222). */
   readonly pulls?: Readonly<Record<number, PrStatusResult | "hangs">>;
+  /** Runs at each pause between a reply's lines, such as the agent answering meanwhile. */
+  readonly onPause?: () => void;
+  /** Posting fails from this line on (1-based), as if the host refused the comment. */
+  readonly postFailsFrom?: number;
   /** Other tasks of the company, found by their identifier, for the run status lookup. */
   readonly tasks?: readonly OtherTask[];
 }
@@ -147,6 +151,9 @@ export function frontBotHarness(options: HarnessOptions = {}) {
   let clock = new Date("2026-11-26T14:03:00.300Z").getTime();
   /** Every read a lookup source made, such as `pr:6129` or `task:HAL-5`. */
   const sourceReads: string[] = [];
+  /** Every pause the bot took between lines, in ms; none really waits. */
+  const pauses: number[] = [];
+  let postsTried = 0;
   const deps: FrontBotDeps & LookupDeps = {
     readPrStatus: async (_company, pr) => {
       sourceReads.push(`pr:${pr}`);
@@ -158,6 +165,11 @@ export function frontBotHarness(options: HarnessOptions = {}) {
     now: () => {
       clock += 200;
       return new Date(clock);
+    },
+    pause: async (ms) => {
+      pauses.push(ms);
+      clock += ms;
+      options.onPause?.();
     },
     anthropicFetch: async (url, init) => {
       requests.push({
@@ -211,11 +223,16 @@ export function frontBotHarness(options: HarnessOptions = {}) {
       },
       listComments: async (issueId: string) =>
         comments.filter((comment) => comment.issueId === issueId),
-      createComment: async (issueId: string, body: string) =>
-        addComment(
+      createComment: async (issueId: string, body: string) => {
+        postsTried += 1;
+        if (options.postFailsFrom !== undefined && postsTried >= options.postFailsFrom) {
+          throw new Error("Host refused the comment.");
+        }
+        return addComment(
           { authorAgentId: null, authorUserId: null, body, createdAt: new Date(clock) },
           issueId,
-        ),
+        );
+      },
     },
   };
   const bot = frontBot(ctx as unknown as Parameters<typeof frontBot>[0], deps);
@@ -229,6 +246,7 @@ export function frontBotHarness(options: HarnessOptions = {}) {
     logs,
     requests,
     sourceReads,
+    pauses,
     comments,
     message,
     task,

@@ -2,8 +2,13 @@ import { readFileSync } from "node:fs";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
 import type { FrontBotExample } from "../plugin/front-bot.test-helper.ts";
-import { checkGrounding } from "./grounding.ts";
-import { type FrontBotInput, frontBotUserText, parseFrontBotAnswer } from "./prompt.ts";
+import { checkGrounding, checkReply } from "./grounding.ts";
+import {
+  type FrontBotInput,
+  frontBotUserText,
+  parseFirstReply,
+  parseFrontBotAnswer,
+} from "./prompt.ts";
 
 /** The recorded examples in `examples/<name>.json`. */
 function examples(name: string): FrontBotExample[] {
@@ -12,6 +17,12 @@ function examples(name: string): FrontBotExample[] {
 }
 
 /** What the bot would have been given for an example, which the check compares against. */
+/** A recorded reply's chat lines. */
+function linesOf(reply: string): readonly string[] {
+  const parsed = parseFirstReply(reply);
+  return parsed.kind === "lines" ? parsed.lines : [];
+}
+
 function inputOf(example: Pick<FrontBotExample, "title" | "message" | "earlier">): FrontBotInput {
   return {
     title: example.title,
@@ -25,7 +36,7 @@ verifies("paperclip.front-bot-grounding", () => {
   describe("the approved voice examples pass", () => {
     for (const example of examples("voice").filter((each) => each.expect === "posted")) {
       test(example.name, () => {
-        expect(checkGrounding(example.reply, inputOf(example))).toEqual({ ok: true });
+        expect(checkReply(linesOf(example.reply), inputOf(example))).toEqual({ ok: true });
       });
     }
   });
@@ -33,7 +44,7 @@ verifies("paperclip.front-bot-grounding", () => {
   describe("every must-fail reply is rejected with its reason", () => {
     for (const example of examples("must-fail")) {
       test(example.name, () => {
-        expect(checkGrounding(example.reply, inputOf(example))).toEqual({
+        expect(checkReply(linesOf(example.reply), inputOf(example))).toEqual({
           ok: false,
           reason: example.reason,
         });
@@ -97,7 +108,20 @@ verifies("paperclip.front-bot-grounding", () => {
 });
 
 verifies("paperclip.front-bot-first-reply", () => {
-  test("SKIP, an empty answer or more than one line count as nothing to post", () => {
+  test("a first reply is one chat message per line; SKIP or an empty answer is nothing", () => {
+    expect(parseFirstReply("SKIP")).toEqual({ kind: "skip" });
+    expect(parseFirstReply("  \n ")).toEqual({ kind: "skip" });
+    expect(parseFirstReply('Got it\n\n"Looking into it now"')).toEqual({
+      kind: "lines",
+      lines: ["Got it", "Looking into it now"],
+    });
+    expect(parseFirstReply('"Got it" | "Looking into it now"')).toEqual({
+      kind: "lines",
+      lines: ["Got it", "Looking into it now"],
+    });
+  });
+
+  test("a progress note's answer: SKIP, an empty answer or more than one line count as nothing", () => {
     expect(parseFrontBotAnswer("SKIP")).toEqual({ kind: "skip" });
     expect(parseFrontBotAnswer("  ")).toEqual({ kind: "skip" });
     expect(parseFrontBotAnswer("About PR #1.\nAnd more.")).toEqual({ kind: "skip" });

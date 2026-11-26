@@ -34,14 +34,14 @@ function onlyRecord(logs: { meta: unknown }[]): Record<string, unknown> {
 }
 
 verifies("paperclip.front-bot-first-reply", () => {
-  describe("each approved example is posted as an Automatic note with no author", () => {
+  describe("each recorded reply is posted line by line, labelled as the assistant's, with no author", () => {
     for (const example of examples("voice").filter((each) => each.expect === "posted")) {
       test(example.name, async () => {
         const { posted, requests, logs } = await runExample(example);
         expect(requests).toHaveLength(1);
-        expect(posted().map((comment) => comment.body)).toEqual([
-          `*Automatic note:* ${example.reply}`,
-        ]);
+        expect(posted().map((comment) => comment.body)).toEqual(
+          example.reply.split("\n").map((line) => `*Assistant:* ${line}`),
+        );
         expect(onlyRecord(logs)["outcome"]).toBe("posted");
       });
     }
@@ -53,7 +53,9 @@ verifies("paperclip.front-bot-first-reply", () => {
         const { posted, logs } = await runExample(example);
         expect(posted()).toEqual([]);
         expect(onlyRecord(logs)).toMatchObject({ outcome: "rejected", reason: example.reason });
-        expect(JSON.stringify(logs)).not.toContain(example.reply);
+        for (const line of example.reply.split("\n")) {
+          expect(JSON.stringify(logs)).not.toContain(line);
+        }
       });
     }
   });
@@ -79,7 +81,7 @@ verifies("paperclip.front-bot-first-reply", () => {
       return set(key, value);
     };
     await harness.bot.onCommentCreated(commentCreated(harness.message.id));
-    expect(harness.posted()).toHaveLength(1);
+    expect(harness.posted()).toHaveLength(example.reply.split("\n").length);
     expect(onlyRecord(harness.logs)).toMatchObject({ outcome: "posted", reason: "note_unsaved" });
   });
 
@@ -279,7 +281,7 @@ verifies("paperclip.front-bot-first-reply", () => {
     });
     await harness.bot.onCommentCreated(commentCreated(harness.message.id));
     const note = harness.posted()[0];
-    expect(note?.body).toBe("*Automatic note:* About PR #6129.");
+    expect(note?.body).toBe("*Assistant:* About PR #6129.");
     await harness.bot.onCommentCreated(commentCreated(note?.id ?? ""));
     expect(harness.requests).toHaveLength(1);
     expect(harness.saved.get(JSON.stringify(notesKey))).toEqual({

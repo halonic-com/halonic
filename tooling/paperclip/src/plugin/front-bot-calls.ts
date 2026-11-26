@@ -21,6 +21,8 @@ export interface FrontBotDeps {
    */
   readonly anthropicFetch: typeof fetch;
   readonly now: () => Date;
+  /** Waits between a first reply's chat lines (HAL-19588); tests pass one that doesn't wait. */
+  readonly pause?: (ms: number) => Promise<void>;
 }
 
 /** The only address the bot calls (HAL-18847 section 4.4). */
@@ -58,6 +60,8 @@ export type FrontBotCall =
   | {
       readonly answered: true;
       readonly answer: FrontBotAnswer;
+      /** The answer's text without its run line, for a first reply of several lines. */
+      readonly text: string;
       /** Whether the message is a quick question (front bot v2); `normal` when not asked. */
       readonly run: RunKind;
       readonly inputTokens: number;
@@ -110,6 +114,7 @@ async function callMessages(
   return {
     answered: true,
     answer: parseFrontBotAnswer(reply),
+    text: reply,
     run: runChoice ? run : "normal",
     inputTokens: tokenCount(body.usage?.input_tokens),
     outputTokens: tokenCount(body.usage?.output_tokens),
