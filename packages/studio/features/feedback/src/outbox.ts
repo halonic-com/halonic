@@ -17,6 +17,11 @@ export interface WaitingFeedback {
   /** Also the idempotency key Paperclip gets, so every try makes the same one task. */
   readonly id: string;
   readonly task: FeedbackTask;
+  /**
+   * Where it goes: the folder and Paperclip connection it was written for, as Studio names them.
+   * Only an outbox for that same place sends it, so feedback never reaches another Paperclip.
+   */
+  readonly destination: string;
   /** When it was kept, in milliseconds since 1970; the oldest is sent, and dropped, first. */
   readonly keptAt: number;
   /** Its screenshot's size in bytes, 0 without one, so the cap needs no screenshot loaded. */
@@ -84,13 +89,49 @@ export interface OutboxParts {
   readonly now: () => number;
   /** Says that a waiting feedback was dropped to keep the cap; Studio logs it. */
   readonly dropped: (feedback: WaitingFeedback) => void;
+  /** Where this outbox sends: it keeps new feedback for this place and sends only feedback for it. */
+  readonly destination: string;
+  /**
+   * Runs the outbox's work on the store while no other outbox on it runs its own. Every window of
+   * Studio shares the one store, so Studio gives {@link webOutboxLock}.
+   */
+  readonly lock: OutboxLock;
+}
+
+/** Runs `work` alone among the outboxes that share the lock, and settles as it does. */
+export type OutboxLock = <T>(work: () => Promise<T>) => Promise<T>;
+
+/** The name of the lock every Studio window's outbox takes (`feedback.outbox-windows`). */
+export const outboxLockName = "halonic-feedback-outbox";
+
+/** The part of the page's `navigator.locks` the lock uses. */
+export interface WebLocks {
+  request<T>(name: string, callback: () => Promise<T>): Promise<T>;
+}
+
+/** The lock shared by every window on the page's origin, through the Web Locks API. */
+export function webOutboxLock(locks: WebLocks): OutboxLock {
+  return (work) => locks.request(outboxLockName, work);
+}
+
+/** A lock within one page only, one piece of work after another, for a page without `locks`. */
+export function pageOutboxLock(): OutboxLock {
+  let last: Promise<unknown> = Promise.resolve();
+  return (work) => {
+    const run = last.then(work);
+    // The next piece of work waits for this one, however this one ends.
+    last = run.catch(() => undefined);
+    return run;
+  };
 }
 
 /**
  * Sends feedback now when Studio can, and keeps it to send later when
  * Studio is offline or not yet connected to Paperclip. The caller runs
  * {@link FeedbackOutbox.flush} when the connection comes back; the outbox
- * keeps no timer of its own.
+ * keeps no timer of its own. Keeping and flushing take the outbox's lock, so
+ * two windows never send the same waiting feedback, nor keep past the cap
+ * (`feedback.outbox-windows`).
  */
 export class FeedbackOutbox {
   private readonly store: FeedbackStore;
@@ -107,7 +148,8 @@ export class FeedbackOutbox {
 
   /**
    * Sends one feedback now, or saves it when there is no connection. A refusal saves nothing.
-   * It doesn't wait for older waiting feedback, so its task can come before theirs.
+   * It doesn't wait for older waiting feedback, so its task can come before theirs, and it sends
+   * without the lock, so a pass sending the waiting feedback doesn't hold it up.
    */
   async submit(task: FeedbackTask, image: Uint8Array | null): Promise<SubmitOutcome> {
     const id = this.parts.newId();
@@ -120,30 +162,36 @@ export class FeedbackOutbox {
     const feedback: WaitingFeedback = {
       id,
       task,
+      destination: this.parts.destination,
       keptAt: this.parts.now(),
       imageBytes: image?.byteLength ?? 0,
       refusals: 0,
       lastRefusal: null,
     };
-    await this.makeRoomFor(feedback);
-    await this.store.add(feedback, image);
+    await this.parts.lock(async () => {
+      await this.makeRoomFor(feedback);
+      await this.store.add(feedback, image);
+    });
     return { kind: "saved", until: outcome.kind === "offline" ? "online" : "connected" };
   }
 
-  /** How many feedbacks wait to be sent (Settings → Feedback). */
+  /** How many feedbacks wait to be sent, for any place (Settings → Feedback). */
   async waiting(): Promise<number> {
     return (await this.store.list()).length;
   }
 
   /**
-   * Sends the waiting feedback, oldest first, and stops at the first one
-   * that finds no connection. A call while a pass is running joins that pass.
+   * Sends the waiting feedback for this outbox's place, oldest first, and stops at the first one
+   * that finds no connection; feedback for another place keeps waiting. A call while a pass is
+   * running joins that pass. The pass holds the lock, so it lists only what no other pass sent.
    */
   flush(): Promise<FlushReport> {
     if (this.flushing === undefined) {
-      this.flushing = this.flushOnce().finally(() => {
-        this.flushing = undefined;
-      });
+      this.flushing = this.parts
+        .lock(() => this.flushOnce())
+        .finally(() => {
+          this.flushing = undefined;
+        });
     }
     return this.flushing;
   }
@@ -151,7 +199,10 @@ export class FeedbackOutbox {
   private async flushOnce(): Promise<FlushReport> {
     const sent: FlushReport["sent"][number][] = [];
     const givenUp: FlushReport["givenUp"][number][] = [];
-    for (const feedback of await this.oldestFirst()) {
+    const ours = (await this.oldestFirst()).filter(
+      (feedback) => feedback.destination === this.parts.destination,
+    );
+    for (const feedback of ours) {
       const image = feedback.imageBytes === 0 ? null : await this.store.loadImage(feedback.id);
       const outcome = await this.sender.send(feedback.id, feedback.task, image);
       if (outcome.kind === "offline" || outcome.kind === "not-connected") {

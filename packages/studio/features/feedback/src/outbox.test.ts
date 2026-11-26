@@ -5,9 +5,13 @@ import {
   type FeedbackStore,
   maxWaiting,
   maxWaitingBytes,
+  type OutboxLock,
   type OutboxParts,
+  outboxLockName,
+  pageOutboxLock,
   type SendOutcome,
   type WaitingFeedback,
+  webOutboxLock,
 } from "./outbox.ts";
 import type { FeedbackTask } from "./payload.ts";
 
@@ -51,8 +55,17 @@ class MemoryStore implements FeedbackStore {
   }
 }
 
-/** The outbox's IDs, clock and dropped list: `waiting-1`, `waiting-2` …, kept a second apart. */
-function partsFor(dropped: string[] = [], firstId = "waiting"): OutboxParts {
+/**
+ * The outbox's IDs, clock and dropped list: `waiting-1`, `waiting-2` …, kept a second apart, for
+ * the Acme folder's connection unless `destination` says otherwise, with a lock of its own unless
+ * it shares `lock`.
+ */
+function partsFor(
+  dropped: string[] = [],
+  firstId = "waiting",
+  destination = "acme",
+  lock: OutboxLock = pageOutboxLock(),
+): OutboxParts {
   let next = 0;
   let clock = 0;
   return {
@@ -65,6 +78,8 @@ function partsFor(dropped: string[] = [], firstId = "waiting"): OutboxParts {
       return clock;
     },
     dropped: (feedback) => dropped.push(feedback.task.title),
+    destination,
+    lock,
   };
 }
 
@@ -233,9 +248,11 @@ verifies("feedback.outbox", () => {
 
     const pass = heldSender.flush();
     expect(heldSender.flush()).toBe(pass);
-    await heldSender.submit(task("Late"), null);
+    // Keeping it waits for the pass's lock (`feedback.outbox-windows`), so it settles after.
+    const late = heldSender.submit(task("Late"), null);
     releaseFirst();
     const report = await pass;
+    await late;
 
     expect(report.sent.map((each) => each.feedback.task.title)).toEqual(["First"]);
     expect(store.titles).toEqual(["Late"]);
@@ -350,5 +367,82 @@ verifies("feedback.outbox-cap", () => {
 
     expect(store.entries.has("waiting-1")).toBe(false);
     expect(store.images.size).toBe(0);
+  });
+});
+
+verifies("feedback.outbox-windows", () => {
+  it("sends a waiting feedback once when two windows flush at the same time", async () => {
+    const store = new MemoryStore();
+    const lock = pageOutboxLock();
+    let online = false;
+    const sentIds: string[] = [];
+    const sender = {
+      async send(id: string): Promise<SendOutcome> {
+        if (!online) return { kind: "offline" };
+        sentIds.push(id);
+        return { kind: "sent", taskId: "ACME-1", taskUrl: "https://paperclip.example" };
+      },
+    };
+    const main = new FeedbackOutbox(store, sender, partsFor([], "waiting", "acme", lock));
+    const other = new FeedbackOutbox(store, sender, partsFor([], "other", "acme", lock));
+    await main.submit(task("Run list jumps"), null);
+    online = true;
+
+    const reports = await Promise.all([main.flush(), other.flush()]);
+
+    expect(sentIds).toEqual(["waiting-1"]);
+    expect(reports.map((report) => report.sent.length)).toEqual([1, 0]);
+    expect(store.entries.size).toBe(0);
+  });
+
+  it("keeps two windows' feedback under the cap when both keep one at once", async () => {
+    const store = new MemoryStore();
+    const lock = pageOutboxLock();
+    const dropped: string[] = [];
+    const offline = { send: async (): Promise<SendOutcome> => ({ kind: "offline" }) };
+    const main = new FeedbackOutbox(store, offline, partsFor(dropped, "main", "acme", lock));
+    const other = new FeedbackOutbox(store, offline, partsFor(dropped, "other", "acme", lock));
+    for (let index = 1; index < maxWaiting; index += 1) {
+      await main.submit(task(`Feedback ${index}`), null);
+    }
+
+    await Promise.all([
+      main.submit(task("From main"), null),
+      other.submit(task("From other"), null),
+    ]);
+
+    expect(await main.waiting()).toBe(maxWaiting);
+    expect(dropped).toEqual(["Feedback 1"]);
+  });
+
+  it("sends only the feedback written for its own folder's connection", async () => {
+    const store = new MemoryStore();
+    let online = false;
+    const { sender, created } = paperclip(() => (online ? "sent" : { kind: "offline" }));
+    const acme = new FeedbackOutbox(store, sender, partsFor([], "acme", "acme"));
+    const globex = new FeedbackOutbox(store, sender, partsFor([], "globex", "globex"));
+    await acme.submit(task("For Acme"), null);
+    await globex.submit(task("For Globex"), null);
+    online = true;
+
+    const report = await acme.flush();
+
+    expect(created).toEqual(["For Acme"]);
+    expect(store.titles).toEqual(["For Globex"]);
+    expect(report.waiting).toBe(1);
+    expect(store.entries.get("globex-1")?.destination).toBe("globex");
+  });
+
+  it("takes the lock every Studio window shares, by its name", async () => {
+    const asked: string[] = [];
+    const locks = {
+      request<T>(name: string, callback: () => Promise<T>): Promise<T> {
+        asked.push(name);
+        return callback();
+      },
+    };
+
+    expect(await webOutboxLock(locks)(async () => "done")).toBe("done");
+    expect(asked).toEqual([outboxLockName]);
   });
 });

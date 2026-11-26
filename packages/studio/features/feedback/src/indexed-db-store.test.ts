@@ -102,6 +102,7 @@ function waiting(id: string, imageBytes: number): WaitingFeedback {
       assignee: "Robin",
       screenshot: null,
     },
+    destination: "acme",
     keptAt: 1000,
     imageBytes,
     refusals: 0,
