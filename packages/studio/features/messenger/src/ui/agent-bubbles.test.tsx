@@ -53,3 +53,20 @@ verifies("messenger.agent-bubbles", () => {
     });
   });
 });
+
+verifies("messenger.agent-avatar-tint", () => {
+  it("draws the chat agent's initials on its bubbles' tint in the list, the header and the run", async () => {
+    const page = await openMessenger(chiefsChat(), [], false, noon);
+    await openChat(page, "Chief");
+    const bubble = page.querySelector("main ol > li[data-author='agent'] [data-bubble]");
+    const tint = bubble?.className.match(/bg-agent-\w+/)?.[0];
+    expect(tint).toBeDefined();
+    const initials = [...page.querySelectorAll<HTMLElement>("span.rounded-full")].filter(
+      (tile) => tile.textContent === "C",
+    );
+    // The list row, the header (40px) and the run's author line.
+    expect(initials.map((tile) => tile.className.includes("size-10"))).toContain(true);
+    expect(initials.length).toBeGreaterThanOrEqual(3);
+    for (const tile of initials) expect(tile.className).toContain(tint);
+  });
+});

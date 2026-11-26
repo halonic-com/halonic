@@ -1,6 +1,7 @@
 import type { Message, MessagingId } from "@halonicjs/ports";
 import {
-  Avatar,
+  type AgentTint,
+  AuthorLine,
   ChatText,
   decidedAt,
   SparkIcon,
@@ -8,7 +9,7 @@ import {
   useOpenExternal,
 } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
-import { type AgentTint, agentTint } from "../agent-tint.ts";
+import { agentTint } from "../agent-tint.ts";
 import { isChannel } from "../channel.ts";
 import type { PendingMessage } from "../chat-layout.ts";
 import type { ConversationRow, Messenger } from "../messenger.ts";
@@ -122,17 +123,15 @@ export function MessageItem({
       className={`max-w-[80%] ${foundRing}`}
     >
       {head ? (
-        // The sr-only "<name>: " says it, so a screen reader reads it once (MS11).
-        <p aria-hidden="true" className="flex items-center gap-2 text-small text-fg-muted">
-          <Avatar name={author} picture={channel ? undefined : picture} />
-          <span>
-            {/* The name in the normal text colour, the time muted (HAL-19132, point 4). */}
-            <bdi data-author-name aria-hidden="true" className="font-semibold text-fg">
-              {author}
-            </bdi>{" "}
-            · {time}
-          </span>
-        </p>
+        // The sr-only "<name>: " says it, so a screen reader reads it once (MS11). The name in the
+        // normal text colour, the time muted (HAL-19132, point 4), on the agent's own tint.
+        <AuthorLine
+          name={author}
+          time={time}
+          picture={channel ? undefined : picture}
+          tint={tint}
+          visualOnly
+        />
       ) : null}
       <div className="flex items-start gap-2 ps-9">
         <div data-bubble className={agentBubble(automatic, tint)}>

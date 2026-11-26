@@ -27,6 +27,8 @@ export {
   appLogoIds,
 } from "./app-logo/app-glyphs.ts";
 export { AppLogo, type AppLogoProps } from "./app-logo/app-logo.tsx";
+export { type AgentTint, agentTint } from "./avatar/agent-tint.ts";
+export { AuthorLine, type AuthorLineProps } from "./avatar/author-line.tsx";
 export { Avatar, type AvatarProps, type AvatarSize } from "./avatar/avatar.tsx";
 export {
   Button,
