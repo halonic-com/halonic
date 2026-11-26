@@ -10,14 +10,28 @@ export interface AvatarProps {
    * (`kit.avatar-picture`). The caller owns it and closes it; without one, the initials show.
    */
   readonly picture?: ImageBitmap | undefined;
+  /**
+   * The tile's size: 28px in a row (the default), or 40px in an open item's header, where 28px is
+   * hard to see beside a two-line title (HAL-19192, `kit.avatar-size`).
+   */
+  readonly size?: AvatarSize;
 }
 
-const tile = "size-7 shrink-0 rounded-full bg-surface-muted";
-/** The tile's side in CSS pixels; it matches `size-7`. */
-const tilePixels = 28;
+/** The Avatar's two sizes: 28px in a row, 40px in a header. */
+export type AvatarSize = "row" | "header";
+
+/** Each size's tile classes, its initials' text style, and its side in CSS pixels. */
+const sizes = {
+  row: { tile: "size-7 shrink-0 rounded-full bg-surface-muted", text: "text-caption", pixels: 28 },
+  header: {
+    tile: "size-10 shrink-0 rounded-full bg-surface-muted",
+    text: "text-small",
+    pixels: 40,
+  },
+} as const satisfies Record<AvatarSize, { tile: string; text: string; pixels: number }>;
 
 /**
- * A member's initials, or their picture, on a 28px round tile: who is signed in, in Cloud's top
+ * A member's initials, or their picture, on a 28px round tile (40px with `size="header"`): who is signed in, in Cloud's top
  * bar (HAL-16050), or an agent in the Messenger. `surface-muted` and `fg-muted`, not the accent,
  * so it doesn't read as a product. It's decoration: the member's name is next to it, or in the
  * top bar's name for screen readers.
@@ -26,12 +40,13 @@ const tilePixels = 28;
  * <Avatar name={member.name} />
  * <Avatar name={agent.name} picture={pictures.get(agent.avatar)} />
  */
-export function Avatar({ name, picture }: AvatarProps) {
-  if (picture !== undefined) return <AvatarPicture picture={picture} />;
+export function Avatar({ name, picture, size = "row" }: AvatarProps) {
+  const { tile, text } = sizes[size];
+  if (picture !== undefined) return <AvatarPicture picture={picture} size={size} />;
   return (
     <span
       aria-hidden="true"
-      className={`flex items-center justify-center text-caption font-semibold text-fg-muted ${tile}`}
+      className={`flex items-center justify-center ${text} font-semibold text-fg-muted ${tile}`}
     >
       {initials(name)}
     </span>
@@ -46,7 +61,14 @@ export function Avatar({ name, picture }: AvatarProps) {
  * the tile says so with `data-picture="drawn"`: the canvas's pixels are out of WebDriver's reach,
  * so that is how the click test tells a picture from the initials (HAL-19151).
  */
-function AvatarPicture({ picture }: { readonly picture: ImageBitmap }) {
+function AvatarPicture({
+  picture,
+  size,
+}: {
+  readonly picture: ImageBitmap;
+  readonly size: AvatarSize;
+}) {
+  const { tile, pixels: tilePixels } = sizes[size];
   const canvas = useRef<HTMLCanvasElement>(null);
   const [pictureDrawn, setPictureDrawn] = useState(false);
   useEffect(() => {
@@ -63,7 +85,7 @@ function AvatarPicture({ picture }: { readonly picture: ImageBitmap }) {
     const top = (picture.height - side) / 2;
     context.drawImage(picture, left, top, side, side, 0, 0, drawn, drawn);
     setPictureDrawn(true);
-  }, [picture]);
+  }, [picture, tilePixels]);
   return (
     <span
       aria-hidden="true"

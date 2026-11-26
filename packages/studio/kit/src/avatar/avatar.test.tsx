@@ -91,3 +91,29 @@ verifies("kit.avatar-picture", () => {
     expect(avatarOf("Ada").hasAttribute("data-picture")).toBe(false);
   });
 });
+
+verifies("kit.avatar-size", () => {
+  it("draws the header size on a 40px tile, initials and picture alike", () => {
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      drawImage: () => undefined,
+    } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(window, "devicePixelRatio", "get").mockReturnValue(1);
+    const initials = render(<Avatar name="Ada Lovelace" size="header" />).container
+      .firstElementChild as HTMLElement;
+    const pictured = render(
+      <Avatar name="Ada" size="header" picture={{ width: 400, height: 400 } as ImageBitmap} />,
+    ).container.firstElementChild as HTMLElement;
+    const canvas = pictured.querySelector("canvas") as HTMLCanvasElement;
+
+    expect(initials.textContent).toBe("AL");
+    expect(initials.className.split(" ")).toEqual(
+      expect.arrayContaining(["size-10", "text-small"]),
+    );
+    expect(pictured.className.split(" ")).toContain("size-10");
+    expect([canvas.width, canvas.height]).toEqual([40, 40]);
+  });
+
+  it("stays 28px in a row by default", () => {
+    expect(avatarOf("Ada").className.split(" ")).toContain("size-7");
+  });
+});
