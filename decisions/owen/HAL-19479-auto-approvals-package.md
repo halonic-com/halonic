@@ -2,6 +2,7 @@
 
 - Approval: Liam confirmed the shadow-mode build plan on HAL-19475, including PR 1's new core package `packages/core/auto-approvals`, from the shadow-mode card the board approved on HAL-19416. It changes `tooling/check/policy.json`, a trust root, so both guardians sign: Julian, then Liam
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:acFjJDWkK7yGyCK4Po/uShsRs3vmYS0K1fjktIQI1gsCq3YWEjwkQDWezhP6eIMj1ED0s4kA2lay/CCVW+exCA==
 
 ## What changes
 
