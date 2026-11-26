@@ -1227,6 +1227,13 @@ bundle in `ui/`, the migrations and the folder's own `package.json`, which the b
 (Settings → Plugins). It isn't installed, and no seat's sign-in moves into
 it, until HAL-16015 is done.
 
+Each job lists the companies to find the one whose settings hold the
+seats, so the manifest lists `companies.read` (since 0.1.1, HAL-19468;
+0.1.0 lacked it and the host refused every job). A new capability means
+the board reinstalls the plugin. `src/plugin-capabilities.test.ts` checks,
+for this plugin and Agent tools, that every host call the worker makes has
+its capability in the manifest.
+
 ## Seat mover (`seat-move`)
 
 The Seat Keeper's seat moves, as code (HAL-19354, `src/seat-mover/`). Every

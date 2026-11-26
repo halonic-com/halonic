@@ -13,7 +13,7 @@ import type { PaperclipPluginManifestV1 } from "@paperclipai/plugin-sdk";
 export const manifest: PaperclipPluginManifestV1 = {
   id: "halonic.seats",
   apiVersion: 1,
-  version: "0.1.0",
+  version: "0.1.1",
   displayName: "AI seats",
   description:
     "Reads each AI seat's usage limits, keeps their history for the seat forecast, and proposes moving agents between seats. It never moves an agent unless the board turns that on.",
@@ -24,6 +24,9 @@ export const manifest: PaperclipPluginManifestV1 = {
     "database.namespace.read",
     "database.namespace.write",
     "jobs.schedule",
+    // Every job lists the companies to find the one whose settings hold the seats
+    // (seatsOwner in src/seats/plugin/read-job.ts). Without it every job failed (HAL-19468).
+    "companies.read",
     // Board-only routes: every route below says `auth: "board"`, and src/seats/plugin/routes.ts checks it again.
     "api.routes.register",
     // seat_usage: read-only, answers only the agents the board lists in seatUsageAgents.
