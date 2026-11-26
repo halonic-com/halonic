@@ -51,10 +51,11 @@ function withConnectDialog(studio: FakeStudio, afterContinue: string) {
 verifies("studio-click-test.connections-steps", () => {
   it("come straight after Connect Paperclip, so no restart signs its connection out first", () => {
     // Run 45721379968: after the basics failed, the restart left step 3's connection signed out.
-    expect(clickTestSteps.slice(2, 7).map((step) => step.id)).toEqual([
+    expect(clickTestSteps.slice(2, 8).map((step) => step.id)).toEqual([
       "connect-paperclip",
       "account-switcher",
       "connection-row",
+      "restart-keeps-sign-in",
       "connect-https-only",
       "add-account",
     ]);

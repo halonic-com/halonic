@@ -6,7 +6,7 @@ import { screenText } from "../words.ts";
 import { closeDialogs, onWorkspace, openPlace } from "./open-demo.ts";
 
 /**
- * Step 10: search finds the seeded task. Ctrl+K opens the search box, as the
+ * Step 11: search finds the seeded task. Ctrl+K opens the search box, as the
  * sidebar's Search button says; the step types the task's title and opens
  * the result.
  */
@@ -32,7 +32,7 @@ export const searchTask: Step = {
   },
 };
 
-/** Step 11: the overview and the recap show, with their headings. */
+/** Step 12: the overview and the recap show, with their headings. */
 export const overviewRecap: Step = {
   id: "overview-recap",
   title: "Overview and recap show",

@@ -33,7 +33,7 @@ function noKeyCount(text: string): number {
 }
 
 /**
- * Step 7: the connected row's Add another account opens its dialog with the
+ * Step 8: the connected row's Add another account opens its dialog with the
  * Paperclip's address filled in; Continue, approved on the test Paperclip,
  * lists a second connection. The step then disconnects that second one, which
  * stays listed as Not connected, so step 3's is the only connected one again.

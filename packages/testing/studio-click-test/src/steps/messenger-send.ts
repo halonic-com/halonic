@@ -6,7 +6,7 @@ import { words } from "../words.ts";
 import { openAppWindow } from "./app-window.ts";
 import { onWorkspace } from "./open-demo.ts";
 
-/** What step 9 sends. */
+/** What step 10 sends. */
 export const messengerProbe = "Click test: hello from Messenger";
 
 /** A kit Avatar whose picture is drawn says so; the initials never do (`kit.avatar-picture`). */
@@ -22,7 +22,7 @@ export const agentPictureIn = {
 const pictureWaitMs = 10_000;
 
 /**
- * Step 9: in Halonic Messenger, the seeded chat with Acme Clicky takes a
+ * Step 10: in Halonic Messenger, the seeded chat with Acme Clicky takes a
  * message, and the test Paperclip has it as a comment on that chat. The
  * chat's row and its header show Acme Clicky's picture, which Paperclip gives
  * every agent, not its initials (HAL-19151).
