@@ -20,15 +20,28 @@ export interface AvatarProps {
 /** The Avatar's two sizes: 28px in a row, 40px in a header. */
 export type AvatarSize = "row" | "header";
 
-/** Each size's tile classes, its initials' text style, and its side in CSS pixels. */
+/**
+ * Each size's tile classes, its initials' text style, its side in CSS pixels, and the padding
+ * around a picture inside the tile, so a face doesn't touch the circle's edge (HAL-19539,
+ * `kit.avatar-inset`): 2px at 28px, 3px at 40px.
+ */
 const sizes = {
-  row: { tile: "size-7 shrink-0 rounded-full bg-surface-muted", text: "text-caption", pixels: 28 },
+  row: {
+    tile: "size-7 shrink-0 rounded-full bg-surface-muted",
+    text: "text-caption",
+    pixels: 28,
+    inset: "p-0.5",
+  },
   header: {
     tile: "size-10 shrink-0 rounded-full bg-surface-muted",
     text: "text-small",
     pixels: 40,
+    inset: "p-[3px]",
   },
-} as const satisfies Record<AvatarSize, { tile: string; text: string; pixels: number }>;
+} as const satisfies Record<
+  AvatarSize,
+  { tile: string; text: string; pixels: number; inset: string }
+>;
 
 /**
  * A member's initials, or their picture, on a 28px round tile (40px with `size="header"`): who is signed in, in Cloud's top
@@ -54,7 +67,8 @@ export function Avatar({ name, picture, size = "row" }: AvatarProps) {
 }
 
 /**
- * Draws the picture's centre square on a canvas the tile's size in device pixels, never larger
+ * Draws the picture's centre square, inside the tile's padding, on a round canvas drawn at the
+ * tile's size in device pixels (`kit.avatar-size`), never larger
  * than the square itself. Drawing it small here, with high-quality smoothing, keeps fine detail
  * from turning into moiré, which a CSS shrink of a full-size canvas does, and a 2000px picture
  * from holding 16 MB per row (HAL-18570). It is drawn again only for another picture. Once drawn,
@@ -68,7 +82,7 @@ function AvatarPicture({
   readonly picture: ImageBitmap;
   readonly size: AvatarSize;
 }) {
-  const { tile, pixels: tilePixels } = sizes[size];
+  const { tile, pixels: tilePixels, inset } = sizes[size];
   const canvas = useRef<HTMLCanvasElement>(null);
   const [pictureDrawn, setPictureDrawn] = useState(false);
   useEffect(() => {
@@ -90,9 +104,9 @@ function AvatarPicture({
     <span
       aria-hidden="true"
       data-picture={pictureDrawn ? "drawn" : undefined}
-      className={`block overflow-hidden ${tile}`}
+      className={`block overflow-hidden ${inset} ${tile}`}
     >
-      <canvas ref={canvas} className="block size-full" />
+      <canvas ref={canvas} className="block size-full rounded-full" />
     </span>
   );
 }

@@ -260,3 +260,30 @@ verifies("messenger.conversations", () => {
     });
   });
 });
+
+verifies("messenger.one-panel", () => {
+  it("draws the list and the open chat on one panel, with a line between them and no gap", async () => {
+    const { messaging } = twoChiefs();
+    const page = await openMessenger(messaging);
+    await openAcmeChat(page);
+    const list = page.querySelector("nav") as HTMLElement;
+    const chat = page.querySelector("main") as HTMLElement;
+    const surface = list.parentElement as HTMLElement;
+
+    expect(surface.className.split(" ")).toEqual(
+      expect.arrayContaining(["bg-app-panel", "rounded-lg", "border"]),
+    );
+    expect(surface.className.split(" ")).not.toContain("gap-2");
+    expect(surface.contains(chat)).toBe(true);
+    expect(list.className.split(" ")).toEqual(
+      expect.arrayContaining(["border-e", "border-border"]),
+    );
+    for (const pane of [list, chat]) {
+      const classes = pane.className.split(" ");
+      expect(classes.some((name) => name.startsWith("rounded") || name.startsWith("shadow"))).toBe(
+        false,
+      );
+      expect(classes).not.toContain("bg-app-panel");
+    }
+  });
+});

@@ -117,3 +117,36 @@ verifies("kit.avatar-size", () => {
     expect(avatarOf("Ada").className.split(" ")).toContain("size-7");
   });
 });
+
+verifies("kit.avatar-inset", () => {
+  const pictured = (size: "row" | "header") => {
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      drawImage: () => undefined,
+    } as unknown as CanvasRenderingContext2D);
+    return render(
+      <Avatar name="Ada" size={size} picture={{ width: 400, height: 400 } as ImageBitmap} />,
+    ).container.firstElementChild as HTMLElement;
+  };
+
+  it("pads a picture 2px inside the 28px tile and 3px inside the 40px tile, round", () => {
+    const row = pictured("row");
+    const header = pictured("header");
+
+    expect(row.className.split(" ")).toEqual(expect.arrayContaining(["size-7", "p-0.5"]));
+    expect(header.className.split(" ")).toEqual(expect.arrayContaining(["size-10", "p-[3px]"]));
+    for (const tile of [row, header]) {
+      expect(tile.querySelector("canvas")?.className.split(" ")).toContain("rounded-full");
+    }
+  });
+
+  it("keeps the initials centred, with no padding, at both sizes", () => {
+    for (const size of ["row", "header"] as const) {
+      const tile = render(<Avatar name="Ada Lovelace" size={size} />).container
+        .firstElementChild as HTMLElement;
+      const classes = tile.className.split(" ");
+      expect(tile.textContent).toBe("AL");
+      expect(classes).toEqual(expect.arrayContaining(["flex", "items-center", "justify-center"]));
+      expect(classes.some((name) => /^p-/u.test(name))).toBe(false);
+    }
+  });
+});

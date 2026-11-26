@@ -37,9 +37,10 @@ export interface MessengerPageProps {
 }
 
 /**
- * The Messenger (HAL-17421 render 4a): the list on the left, on the frame,
- * and the open conversation as the one panel on the right. It reads the list
- * when it opens and whenever a source says it changed.
+ * The Messenger (HAL-17421 render 4a): the list on the left and the open conversation on the
+ * right, on one panel with a 1px line between them (`messenger.one-panel`, HAL-19539). The page
+ * draws that panel itself, rather than the window's `panel`, so the chat stays the page's one
+ * `main`. It reads the list when it opens and whenever a source says it changed.
  *
  * A window narrower than 900px (`useNarrow`, such as 320px or 400 % zoom) shows one pane at a
  * time, as the Inbox does: the list, or the open chat with **Back to chats**, which puts focus
@@ -112,7 +113,7 @@ export function MessengerPage({
     back();
   };
   return (
-    <div className="flex h-full min-h-0 gap-2">
+    <div className={`flex h-full min-h-0 ${focusedPanelClass}`}>
       <h1 className="sr-only">{messengerWords.title}</h1>
       <p role="status" className="sr-only" data-page-status>
         <span key={said.count}>{said.text}</span>
@@ -138,7 +139,7 @@ export function MessengerPage({
       )}
       {onePane && !panelFirst ? null : (
         <WithActivity messenger={messenger} row={open} words={words}>
-          <main ref={chat} className={`flex min-w-0 flex-1 flex-col ${focusedPanelClass}`}>
+          <main ref={chat} className="flex min-w-0 flex-1 flex-col">
             {onePane && (open !== undefined || needsYou) ? (
               <div className="px-2 pt-2">
                 <Button variant="ghost" size="sm" onClick={back}>
@@ -191,7 +192,9 @@ function ListColumn({
   readonly connected: boolean | undefined;
   readonly children: ReactNode;
 }) {
-  const className = onePane ? "flex min-w-0 flex-1 flex-col" : "flex w-80 shrink-0 flex-col";
+  const className = onePane
+    ? "flex min-w-0 flex-1 flex-col"
+    : "flex w-80 shrink-0 flex-col border-e border-border";
   if (connected === false) return <div className={className} />;
   return (
     <nav ref={listRef} aria-label={messengerWords.title} className={className}>
@@ -277,7 +280,7 @@ function useOnePane(
 
 /**
  * The Messenger's focused app, Halonic Messenger (`shell.focused-apps`): the open workspace's
- * Messenger, with its list on the window's frame and the open chat as the one panel.
+ * Messenger, its list and open chat on the one panel the page draws.
  */
 export function MessengerWindow({ context }: PlaceViewProps) {
   const onConnect = connectFrom(context);

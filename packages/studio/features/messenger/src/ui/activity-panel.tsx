@@ -1,5 +1,5 @@
 import { CloseIcon, decidedAt, EmptyState, leave } from "@halonicjs/studio-kit";
-import { type EngineWords, focusedPanelClass } from "@halonicjs/studio-shell";
+import type { EngineWords } from "@halonicjs/studio-shell";
 import { type KeyboardEvent, type RefObject, useEffect, useLayoutEffect, useRef } from "react";
 import { type ActivityView, minutesBetween } from "../activity.ts";
 import { endedJustNow } from "../activity-today.ts";
@@ -22,9 +22,13 @@ export const activityPanelId = "messenger-activity";
  */
 export type PanelPlace = "beside" | "sheet" | "place";
 
+/**
+ * Each place's classes. Beside the chat or over it, the panel is part of the Messenger's one
+ * panel, set off by a 1px line, not a card of its own (`messenger.one-panel`, HAL-19539).
+ */
 const placeClass: Record<PanelPlace, string> = {
-  beside: "w-80 shrink-0",
-  sheet: "absolute inset-y-0 end-0 z-10 w-80 shadow-2",
+  beside: "w-80 shrink-0 border-s border-border",
+  sheet: "absolute inset-y-0 end-0 z-10 w-80 border-s border-border shadow-2",
   place: "min-w-0 flex-1",
 };
 
@@ -69,7 +73,7 @@ export function ActivityPanel({
       id={activityPanelId}
       aria-labelledby={`${activityPanelId}-title`}
       onKeyDown={onKeyDown}
-      className={`flex flex-col ${placeClass[place]} ${focusedPanelClass}`}
+      className={`flex flex-col bg-app-panel ${placeClass[place]}`}
     >
       <PanelHeader name={name} place={place} onClose={close} />
       <div ref={body} className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-4 py-4">
