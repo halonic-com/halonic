@@ -47,6 +47,9 @@ pub fn open<R: Runtime>(app: &AppHandle<R>, asked: Option<FocusedApp>) -> tauri:
     if asked == Some(FocusedApp::Ask) {
         return crate::focused_apps::show(app, asked);
     }
+    if !keeps_a_list(app) {
+        return crate::focused_apps::show(app, asked);
+    }
     let recorded = lock(app).set.first_open();
     if recorded.is_empty() || !reopens(app) {
         return crate::focused_apps::show(app, asked);
@@ -114,10 +117,10 @@ fn app_for(label: &str) -> Option<FocusedApp> {
 /// A window changed: the list is written again when what shows, or the
 /// app window last focused, changed.
 pub fn window_event<R: Runtime>(window: &Window<R>, event: &WindowEvent) {
-    if !window_labels().contains(&window.label()) {
+    let app = window.app_handle();
+    if !window_labels().contains(&window.label()) || !keeps_a_list(app) {
         return;
     }
-    let app = window.app_handle();
     match event {
         WindowEvent::Moved(_) | WindowEvent::Resized(_) => lock(app).moved = true,
         WindowEvent::Focused(focused) => {
@@ -137,6 +140,9 @@ pub fn window_event<R: Runtime>(window: &Window<R>, event: &WindowEvent) {
 /// Halonic starts quitting: the list and the places are written one last
 /// time, before any window closes.
 pub fn quitting<R: Runtime>(app: &AppHandle<R>) {
+    if !keeps_a_list(app) {
+        return;
+    }
     let showing = showing(app, None);
     let mut tracked = lock(app);
     let list = tracked.set.quit(&borrowed(&showing));
@@ -201,6 +207,12 @@ fn save_places<R: Runtime>(app: &AppHandle<R>, always: bool) {
     if let Err(error) = app.save_window_state(crate::window_place::kept()) {
         halonic_shell_log::record("window", format_args!("the places weren't saved: {error}"));
     }
+}
+
+/// Whether `app` manages the open windows' state: some of the tests' apps
+/// don't, and only show their windows.
+fn keeps_a_list<R: Runtime>(app: &AppHandle<R>) -> bool {
+    app.try_state::<OpenWindowsState>().is_some()
 }
 
 fn lock<R: Runtime>(app: &AppHandle<R>) -> MutexGuard<'_, Tracked> {
