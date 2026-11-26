@@ -48,6 +48,7 @@ export class StartDeadlines {
         waits += 1;
         return this.#wait(runId, `${startTimer}wait:${callId}:${waits}`, ms);
       },
+      forAttempt: (name) => this.of(runId, `${callId}~${name}`),
     };
   }
 

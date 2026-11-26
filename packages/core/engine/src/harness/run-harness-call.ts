@@ -29,6 +29,7 @@ import type { HarnessRunsOptions, OpenInstructions, PlacementAnswer } from "./ha
 import { logHarnessStart } from "./log-harness-start.ts";
 import { openSandbox, type StartedCall, startTimeoutOf } from "./open-harness-sandbox.ts";
 import { type PreparedHarnessCall, prepareHarnessCall } from "./prepare-harness-call.ts";
+import { hedgedWriterOf, type RunAttempt, runHedgedWriter } from "./run-hedged-writer.ts";
 import { harnessCauseOf } from "./start-failure-causes.ts";
 import { type StartLimits, seconds } from "./start-limits.ts";
 import { type HarnessLimitError, StepLimits } from "./step-limits.ts";
@@ -127,6 +128,9 @@ export interface HarnessCall {
  * bridge have stopped, in that order, and every event they reported is in
  * the log.
  *
+ * When the host's early hedge applies to the step, it runs under the hedge
+ * instead, as `runHedgedWriter` says (requirement `engine.harness-early-hedge`).
+ *
  * @returns the `output` of the agent's own `agent.finished`
  * @throws {ModelCallError} `local-only` when the workspace is local only, before anything starts
  * @throws RunFailureError `sandbox-start-failed` when the sandbox doesn't open in time, or
@@ -147,7 +151,24 @@ export async function runHarnessCall(
   stop: StopSignal,
 ): Promise<unknown> {
   const prepared = await prepareHarnessCall(options, call);
-  return await runPreparedHarnessCall(options, call, prepared, log, approvals, limits, stop);
+  const hedged = await hedgedWriterOf(options.earlyHedge, call, prepared.agent);
+  if (hedged === null) {
+    return await runPreparedHarnessCall(options, call, prepared, log, approvals, limits, stop);
+  }
+  // Each attempt has its own folder, and the fallback its own model and limits,
+  // so the host's bridge and profile hear of them through the prepared agent too.
+  const runAttempt: RunAttempt = (attemptCall, ...rest) => {
+    const { filesFolder, agent: file } = attemptCall;
+    const agent = { ...prepared.agent, filesFolder, file };
+    return runPreparedHarnessCall(options, attemptCall, { ...prepared, agent }, ...rest);
+  };
+  return await runHedgedWriter(
+    { call, agent: prepared.agent, writer: hedged, runAttempt },
+    log,
+    approvals,
+    limits,
+    stop,
+  );
 }
 
 /**

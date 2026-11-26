@@ -20,6 +20,7 @@ import type {
   SandboxSession,
 } from "@halonicjs/ports";
 import type { ProgramHarness } from "../kernel/decide-types.ts";
+import type { EarlyHedgeHost } from "./early-hedge-host.ts";
 import type { StartPhase } from "./start-limits.ts";
 
 /** Where an agent's harness runs: in a sandbox, or on this computer outside one. */
@@ -254,6 +255,12 @@ export interface HarnessRunsOptions {
    * Without it, every name goes as written.
    */
   readonly models?: HarnessModelNames;
+  /**
+   * The early hedge of the DeepSeek writer pilot (requirement
+   * `engine.harness-early-hedge`). Without it, or with its flag off, every
+   * step runs once.
+   */
+  readonly earlyHedge?: EarlyHedgeHost;
 }
 
 /** Turns an agent file's `model` into the model id its provider knows. */

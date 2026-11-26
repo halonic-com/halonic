@@ -165,7 +165,7 @@ export class StepLimits {
  * Every token a model call used: input, output and what the prompt cache
  * served or stored. A cached token is still a token a seat pays for.
  */
-function tokensOf(usage: Usage): number {
+export function tokensOf(usage: Usage): number {
   return (
     usage.inputTokens +
     usage.outputTokens +
