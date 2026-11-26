@@ -19,15 +19,29 @@ const shownChars = 280;
 /** Looks up a Paperclip project ID in the projects read for this list. */
 export type ProjectOf = (projectId: string | undefined) => MessagingProject | undefined;
 
+/**
+ * Paperclip's mention link `[Name](user://<id>)`. Studio makes only http and https links
+ * clickable, so the item shows `@Name` instead. Both parts are bounded, which keeps the pattern
+ * linear on any text.
+ */
+const mentionLink = /\[([^\]\n]{1,100})\]\(user:\/\/[^)\s]{1,200}\)/g;
+
+/** `body` with each mention link as `@Name`. */
+function withMentionNames(body: string): string {
+  return body.replace(mentionLink, (_link, name: string) => `@${name.replace(/^@/, "")}`);
+}
+
 /** The first lines of a comment, without blank lines, cut to {@link shownChars}. */
 function firstLines(body: string): string {
-  const lines = body
+  const lines = withMentionNames(body)
     .split("\n")
     .map((line) => line.trimEnd())
     .filter((line) => line.trim() !== "");
-  const shown = lines.slice(0, shownLines).join("\n");
+  // Cut by code point, not by UTF-16 unit, so an emoji is never split in half.
+  const shown = Array.from(lines.slice(0, shownLines).join("\n"));
   const cut = shown.length > shownChars || lines.length > shownLines;
-  return cut ? `${shown.slice(0, shownChars).trimEnd()}…` : shown;
+  const kept = shown.slice(0, shownChars).join("");
+  return cut ? `${kept.trimEnd()}…` : kept;
 }
 
 /** Whether the person commented on the task after the mention: then it is answered. */

@@ -69,7 +69,7 @@ verifies("paperclip-client.board-mentions", () => {
         state: { kind: "open" },
       });
       expect(item?.question).toBe(
-        `Pick a launch date\n\n[Board](user://${me}) can you pick the date?\nFriday or Monday.\nThe shop opens at 9.…`,
+        "Pick a launch date\n\n@Board can you pick the date?\nFriday or Monday.\nThe shop opens at 9.…",
       );
       expect(item !== undefined && inboxItemFits(item)).toBe(true);
       const read = paperclip.seen.find((request) => request.path === mentionsRoute);
@@ -88,6 +88,13 @@ verifies("paperclip-client.board-mentions", () => {
       const open = acmeData().tasks.filter((task) => task.id !== plainTask);
       serve({ body: { mentions: [adasMention()] } }, open);
       expect(await comments()).toEqual([]);
+    });
+
+    it("show a long comment cut whole, never in the middle of an emoji", async () => {
+      const body = `${"a".repeat(279)}😀b`;
+      serve({ body: { mentions: [adasMention({ body })] } });
+      const [item] = await comments();
+      expect(item?.question).toBe(`Pick a launch date\n\n${"a".repeat(279)}😀…`);
     });
 
     it("are gone after 14 days", async () => {
