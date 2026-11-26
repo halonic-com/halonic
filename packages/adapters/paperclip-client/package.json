@@ -2,7 +2,7 @@
   "name": "@halonicjs/adapter-paperclip-client",
   "private": true,
   "type": "module",
-  "description": "The Paperclip provider behind AgentMessaging: reads agents, chats, cards and tasks over plain fetch.",
+  "description": "The Paperclip provider behind AgentMessaging: reads agents, chats, cards and tasks over plain fetch, and hears live events over its own WebSocket client.",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@halonicjs/action-steppers": "workspace:*",
+    "@halonicjs/adapter-websocket-frames": "workspace:*",
     "@halonicjs/ports": "workspace:*"
   },
   "devDependencies": {
@@ -30,6 +31,6 @@
     "coverage": {
       "lines": 80
     },
-    "runtime": "any"
+    "runtime": "node"
   }
 }

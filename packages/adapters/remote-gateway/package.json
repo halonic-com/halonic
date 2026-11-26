@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@halonicjs/adapter-e2e-noise": "workspace:*",
+    "@halonicjs/adapter-websocket-frames": "workspace:*",
     "@halonicjs/ports": "workspace:*"
   }
 }

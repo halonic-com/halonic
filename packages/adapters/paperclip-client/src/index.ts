@@ -18,6 +18,14 @@ export {
 } from "./feedback.ts";
 export { paperclipSourceId } from "./ids.ts";
 export {
+  type LiveClosedWhy,
+  LiveEventsConnection,
+  type LiveEventsOptions,
+  type LiveSignal,
+  liveFrameMaxBytes,
+} from "./live-events.ts";
+export type { LiveEvent } from "./live-messages.ts";
+export {
   findRequest,
   type PaperclipRequestName,
   paperclipRequests,

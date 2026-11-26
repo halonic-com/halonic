@@ -13,7 +13,7 @@ the company, "the board" or "outside contributor", never a login, and its GitHub
 
 - **Layer:** adapters
 - **Owner:** ravi
-- **Runtime:** any
+- **Runtime:** node (the events socket's upgrade uses `node:tls`)
 - **Public API:** `@halonicjs/adapter-paperclip-client`
 
 ## Example
@@ -149,6 +149,18 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `listTaskAttachments` | `GET /api/issues/{task}/attachments` | before an upload: whether the feedback's screenshot is already there |
 | `attachScreenshot` | `POST /api/companies/{company}/issues/{task}/attachments`, multipart, one `file` part | the feedback's screenshot: a PNG of at most 10 MB, the only file any row sends |
 | `listIssueRuns` | `GET /api/issues/{task}/runs` | a chat's messages: each run's agent, status, start and the comments that woke it, for `readAt` (nothing else kept) |
+| `liveEvents` | `GET /api/companies/{company}/events/ws`, a WebSocket upgrade only | live events: which record changed, so the local copy reads it again (`LiveEventsConnection`) |
+
+**Live events** (`paperclip-client.live-events`, HAL-19338). `LiveEventsConnection` opens the company's
+events socket with our own WebSocket client: an HTTP/1.1 upgrade over `node:tls` and the frame code of
+`@halonicjs/adapter-websocket-frames`, no library. The `liveEvents` row is an upgrade only: `fetch` refuses
+it, and only the transport's `openSocket` sends it. The key goes only in the `Authorization` header, never
+`?token=`; the address is `wss`, or plain `ws` only to this computer; a redirect is never followed; and a
+frame over 1 MB closes the connection (1009) before any of it is held. It sends `live.hello` and
+`live.interests` with no run IDs, so no run log is ever sent, and tells its owner `open`, each event
+(an `activity.logged` cut to its action, entity type and entity ID, or any other type's name), `resync`
+and `closed` with the close code and why. Paperclip answers a board key with 403 until it accepts board
+keys on the socket; that closes as `not-allowed`. Reconnecting is the owner's: a connection opens once.
 
 **Live check of `TeamStatus`.** `pnpm test:board` reads a real server with every `TeamStatus` method and
 fails unless each of the rows from `spendSummary` to `pullRequestDetail` answers 200 and maps. It never runs

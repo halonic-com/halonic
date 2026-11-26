@@ -1,13 +1,13 @@
 import { createHash } from "node:crypto";
 import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { Duplex } from "node:stream";
+import { encodeFrame, FrameReader, frameType } from "@halonicjs/adapter-websocket-frames";
 import { gatewayMaxFrameBytes, gatewaySessionLimits, type PhoneMessaging } from "@halonicjs/ports";
 import { GatewayConnection } from "./gateway-connection.ts";
 import type { GatewayRateLimit } from "./messaging-dispatch.ts";
 import type { GatewayPairing, GatewayPhones } from "./phone-access.ts";
 import { SecureSession } from "./secure-session.ts";
 import type { GatewayPolicy, GatewaySessionSource } from "./session-source.ts";
-import { encodeFrame, FrameReader, frameType } from "./websocket-frames.ts";
 
 /**
  * The only address the gateway listens on. A tunnel forwards to it from the

@@ -1,6 +1,11 @@
 /** Hosts that may be reached over plain `http`: this computer only. */
 const loopbackHosts: readonly string[] = ["localhost", "127.0.0.1", "[::1]"];
 
+/** Whether `hostname` (as a `URL` gives it) is this computer, the only host plain `http` or `ws` may reach. */
+export function isLoopbackHost(hostname: string): boolean {
+  return loopbackHosts.includes(hostname);
+}
+
 /** Thrown when a connection's address isn't one the client may send a key to. */
 export class UnsafeAddressError extends Error {
   constructor(reason: string) {
@@ -23,7 +28,7 @@ export function checkedOrigin(address: string): string {
   } catch {
     throw new UnsafeAddressError("it isn't a web address.");
   }
-  if (url.protocol === "http:" && !loopbackHosts.includes(url.hostname)) {
+  if (url.protocol === "http:" && !isLoopbackHost(url.hostname)) {
     throw new UnsafeAddressError("plain http is allowed only to this computer; use https.");
   }
   if (url.protocol !== "https:" && url.protocol !== "http:") {

@@ -1,7 +1,7 @@
+import { encodeFrame, FrameReader, frameType } from "@halonicjs/adapter-websocket-frames";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { clientFrame, op } from "./listener.test-helper.ts";
-import { encodeFrame, FrameReader, frameType } from "./websocket-frames.ts";
 
 const hello = Buffer.from('{"type":"list-sessions","id":"l"}');
 
