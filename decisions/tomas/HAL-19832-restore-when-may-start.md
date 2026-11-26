@@ -3,6 +3,7 @@
 - Task: HAL-19832
 - Approval: Liam approved the plan on HAL-19832 (26 Nov), with conditions; he reviews this PR and signs this note
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:OQCiFzkp8tzC6LVEbp44eALQd9+LUmetz8RiNdYpAt2bZfs1KkRaUq8xOwTI5UYmgqk5HC7ZCpQSjt3n9AV1BA==
 
 ## What changes
 
