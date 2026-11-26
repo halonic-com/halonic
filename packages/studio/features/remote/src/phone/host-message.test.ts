@@ -210,7 +210,7 @@ verifies("remote.phone-messaging-client", () => {
     }
   });
 
-  it("refuses a page with an extra key, an item that isn't an object or a messaging id off the rule, and any from a version 3 host", () => {
+  it("refuses a host message with an extra key, an item that isn't an object or a messaging id off the rule, and any from a version 3 host", () => {
     expect(problemOf(JSON.stringify({ ...page, extra: 1 }))).toBe("malformed");
     expect(problemOf(JSON.stringify({ ...page, items: ["i1"] }))).toBe("malformed");
     expect(problemOf(JSON.stringify({ ...page, what: "seats" }))).toBe("malformed");

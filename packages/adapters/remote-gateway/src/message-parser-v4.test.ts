@@ -111,22 +111,6 @@ verifies("ports.remote-gateway-protocol", () => {
       }
     });
 
-    it("accepts a provider's page cursor with `:` back, since `fitPage` hands it on as `more`", () => {
-      const cursor = "paperclip:acme:page:2";
-      const messages = [
-        { type: "msg-read", id: "r", what: "inbox", cursor },
-        { type: "msg-read", id: "r", what: "messages", conversation: "c1", before: cursor },
-      ];
-      for (const message of messages) {
-        expect(parse(message)).toEqual({ ok: true, message });
-      }
-      for (const bad of ["", "a b", "a/b"]) {
-        expect(parse({ type: "msg-read", id: "r", what: "inbox", cursor: bad })).toMatchObject({
-          ok: false,
-        });
-      }
-    });
-
     it("keeps request ids strict and caps messaging ids at their own length", () => {
       expect(parse({ ...answer, id: "a:1" })).toEqual({ ok: false, code: "malformed" });
       const item = (length: number) => parse({ ...answer, item: "i".repeat(length) });
