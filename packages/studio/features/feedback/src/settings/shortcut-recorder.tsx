@@ -42,7 +42,9 @@ export function ShortcutRecorder({ name, keys, spoken, onRecord }: ShortcutRecor
         <span aria-live="polite" className="flex items-center gap-1 text-small text-fg-muted">
           {recording ? (
             <>
-              {settingsWords.recording} · <Kbd keys={["Esc"]} /> {settingsWords.escToStop}
+              {/* Kbd is hidden from screen readers, so Esc is also said in words. */}
+              {settingsWords.recording} <span aria-hidden="true">·</span> <Kbd keys={["Esc"]} />
+              <span className="sr-only">Esc</span> {settingsWords.escToStop}
             </>
           ) : (
             <>
