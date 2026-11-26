@@ -146,10 +146,10 @@ export class LocalHarnessCalls {
    * needs a person's OK for goes to the run as an approval, answered with
    * `approve` or `reject`. With no harness call of the run going on, each
    * request is answered with no. Under the early hedge, an attempt's bridge
-   * asks through the attempt, which stops it without asking anyone.
+   * asks through the attempt `attemptId` names, which stops it without asking anyone.
    */
-  bridgeApprovals(runId: string): BridgeApprovals {
-    return this.#bridgeApprovals.of(runId);
+  bridgeApprovals(runId: string, attemptId?: string): BridgeApprovals {
+    return this.#bridgeApprovals.of(runId, attemptId);
   }
 
   /** The decisions a remote device makes on the questions of the run's bridge, taken as a card click is. */

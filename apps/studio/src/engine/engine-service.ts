@@ -408,7 +408,7 @@ export class EngineService {
       // Set once the engine is built; a bridge opens only during a run, so after that.
       let executor: LocalExecutor | undefined;
       const harnessHost = await openEngineHarnessHost(this.#options, latest, {
-        approvalsOf: (runId) => executor?.bridgeApprovals(runId),
+        approvalsOf: (runId, attemptId) => executor?.bridgeApprovals(runId, attemptId),
         remoteDecisionsOf: (runId) => executor?.bridgeRemoteDecisions(runId),
         runVersions: this.#runVersions,
       });

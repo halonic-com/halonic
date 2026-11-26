@@ -12,6 +12,7 @@ import {
 } from "./harness-test-kit.test-helper.ts";
 import type { HarnessApprovals, HarnessCall } from "./run-harness-call.ts";
 import { runHarnessCall } from "./run-harness-call.ts";
+import type { StartLimits } from "./start-limits.ts";
 
 /** The setup the detectors were fitted on, as the host names it for the pilot's writer. */
 const pilotSetup = { agent: "opencode", model: "deepseek-v4.1-flash", provider: "deepinfra-fp8" };
@@ -148,21 +149,20 @@ export async function runPilotOn(
     call = pilotCall,
     stop = new StopSource().signal,
     approvals = askedPeople().approvals,
-  }: { call?: HarnessCall; stop?: StopSource["signal"]; approvals?: HarnessApprovals } = {},
+    limits = startLimits().limits,
+  }: {
+    call?: HarnessCall;
+    stop?: StopSource["signal"];
+    approvals?: HarnessApprovals;
+    limits?: StartLimits;
+  } = {},
 ) {
   const written: RunEventBody[] = [];
   const log = logOf(async (event) => {
     written.push(event);
   });
   try {
-    const output = await runHarnessCall(
-      ports.options,
-      call,
-      log,
-      approvals,
-      startLimits().limits,
-      stop,
-    );
+    const output = await runHarnessCall(ports.options, call, log, approvals, limits, stop);
     return { output, written };
   } catch (error) {
     return { error, written };

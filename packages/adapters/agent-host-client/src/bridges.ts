@@ -40,6 +40,8 @@ export const bridgeOpenLimitMs = 30_000;
 /** The agent a bridge serves, as Studio's `servicesFor` is told it. */
 export interface BridgeAgent {
   readonly runId: string;
+  /** Which of the run's bridges open at once this is, as the engine opened it; its approvals go by it. */
+  readonly attemptId?: string;
   readonly agentId: string;
   /** The harness the agent's call runs in, whose program calls one provider. */
   readonly harness: ProgramHarness;
@@ -64,6 +66,7 @@ export interface BridgeAgent {
 /** The agent the engine opens a bridge for; the engine's `HarnessAgent` has these and more. */
 export interface OpeningAgent {
   readonly runId: string;
+  readonly attemptId?: string;
   readonly agentId: string;
   readonly harness: ProgramHarness;
   readonly hubId?: string;
@@ -437,6 +440,7 @@ function bridgeAgentOf(agent: OpeningAgent, runsOn: Placement): BridgeAgent {
   const effort = agent.file?.params?.reasoningEffort;
   return {
     runId: agent.runId,
+    ...(agent.attemptId === undefined ? {} : { attemptId: agent.attemptId }),
     agentId: agent.agentId,
     harness: agent.harness,
     ...(agent.hubId === undefined ? {} : { hubId: agent.hubId }),
