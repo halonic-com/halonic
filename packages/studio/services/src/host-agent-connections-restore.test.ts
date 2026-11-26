@@ -45,8 +45,17 @@ class FakeHost {
     };
   }
 
+  /** How many listings fail first, as while the host is still starting or doesn't serve the workspace yet. */
+  listingsRefused = 0;
+
   readonly signIn = {
-    listed: async () => ({ workspace: this.real, connections: [this.#row()] }),
+    listed: async () => {
+      if (this.listingsRefused > 0) {
+        this.listingsRefused--;
+        throw new Error("The host serves no such workspace.");
+      }
+      return { workspace: this.real, connections: [this.#row()] };
+    },
     start: async () => ({
       outcome: "started" as const,
       signInId: "sign-in-1",
@@ -173,6 +182,51 @@ verifies("services.paperclip-restore", () => {
 
       const afterRestart = new FakeHost("/real/acme");
       await open(keychain, afterRestart, "/real/acme").connections.restore();
+      expect(afterRestart.handedOver).toEqual([]);
+    });
+
+    it("tries again at the next list when the host couldn't list the workspace at the start", async () => {
+      const keychain: Keychain = new Map();
+      await signInThere(open(keychain, new FakeHost("/real/acme"), "/real/acme").connections);
+
+      const afterRestart = new FakeHost("/real/acme");
+      afterRestart.listingsRefused = 1;
+      const { connections, reported } = open(keychain, afterRestart, "/real/acme");
+      await connections.restore();
+      expect(afterRestart.handedOver).toEqual([]);
+      expect(reported).toHaveLength(1);
+
+      const listed = await connections.list();
+      expect(afterRestart.handedOver.map((entry) => entry.key)).toEqual([firstKey]);
+      expect(listed[0]?.state).toEqual(online);
+    });
+
+    it("tries nothing again once a listing succeeded, even when nothing was handed over", async () => {
+      // An empty keychain: the restore lists, finds no entry, and is done.
+      const keychain: Keychain = new Map();
+      let reads = 0;
+      const get = keychain.get.bind(keychain);
+      keychain.get = (name) => {
+        reads++;
+        return get(name);
+      };
+      const host = new FakeHost("/real/acme");
+      const { connections } = open(keychain, host, "/real/acme");
+      await connections.restore();
+      expect(reads).toBe(1);
+
+      await connections.list();
+      await connections.list();
+      expect(reads).toBe(1);
+      expect(host.handedOver).toEqual([]);
+    });
+
+    it("hands nothing over in a workspace that never asked for a restore, such as an untrusted one", async () => {
+      const keychain: Keychain = new Map();
+      await signInThere(open(keychain, new FakeHost("/real/acme"), "/real/acme").connections);
+
+      const afterRestart = new FakeHost("/real/acme");
+      await open(keychain, afterRestart, "/real/acme").connections.list();
       expect(afterRestart.handedOver).toEqual([]);
     });
   });
