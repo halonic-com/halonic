@@ -288,17 +288,22 @@ verifies("settings.restart-flow", () => {
     ]);
   });
 
-  it("shows the Updated to toast once, with What's new", async () => {
-    const justUpdated = { from: "0.1.0", to: "0.1.1", notCarriedOver: [] };
-    const { toasts, set, openExternal } = await mount(
-      statusOf({ kind: "up-to-date" }, { justUpdated }),
-    );
+  it("shows the Updated to dialog once, with what's new, in place of a toast", async () => {
+    localStorage.clear();
+    const notes = "- The title bar has an Update button.";
+    const justUpdated = { from: "0.1.0", to: "0.1.1", notCarriedOver: [], notes };
+    const { toasts, set } = await mount(statusOf({ kind: "up-to-date" }, { justUpdated }));
     set(statusOf({ kind: "up-to-date" }, { justUpdated }));
-    expect(titles(toasts)).toEqual(["Updated to Halonic 0.1.1"]);
-    toasts.list()[0]?.action?.onClick();
-    expect(openExternal).toHaveBeenCalledWith(
-      "https://github.com/halonic-com/halonic/releases/tag/v0.1.1",
-    );
+    expect(titles(toasts)).toEqual([]);
+    const shown = [...document.querySelectorAll("dialog[open]")];
+    expect(shown).toHaveLength(1);
+    expect(shown[0]?.textContent).toContain("Updated to Halonic 0.1.1");
+    expect(shown[0]?.textContent).toContain("You were on Halonic 0.1.0.");
+    expect(shown[0]?.textContent).toContain(notes);
+    unmountAll();
+    // A reload in the same run: the shell still says justUpdated, the page has seen it.
+    await mount(statusOf({ kind: "up-to-date" }, { justUpdated }));
+    expect(document.querySelectorAll("dialog[open]")).toHaveLength(0);
   });
 
   it("shows the didn't install toast with Try again, and the release page after a second failure", async () => {

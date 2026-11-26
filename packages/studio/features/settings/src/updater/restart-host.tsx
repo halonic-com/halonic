@@ -14,13 +14,15 @@ import { type RestartFlow, RestartFlowService } from "./restart-flow.ts";
 import type { RestartRuns } from "./restart-runs.ts";
 import * as text from "./restart-text.ts";
 import type { UpdaterHost } from "./updater-host.ts";
-import type { UpdateStatus } from "./updater-status.ts";
+import type { JustUpdated, UpdateStatus } from "./updater-status.ts";
 import { useUpdateStatus } from "./use-update-status.ts";
+import { WhatsNewDialog } from "./whats-new-dialog.tsx";
+import { whatsNewDue } from "./whats-new-seen.ts";
 
 /**
  * Draws the restart flow's dialog and says what the status bar can't (`settings.restart-host`):
- * the "Updated to" and "didn't install" toasts, once per start, and the download's start and end
- * for screen readers. It only reads the updater; a press on a button acts.
+ * the "Updated to" dialog (`settings.whats-new`) and the "didn't install" toast, once per start,
+ * and the download's start and end for screen readers. It only reads the updater; a press on a button acts.
  */
 export function RestartHost({ context }: DialogHostProps) {
   const host = context.services.find(UpdaterService);
@@ -43,7 +45,7 @@ interface RestartHostViewProps {
   readonly announce: (line: string, politeness?: "polite" | "assertive") => void;
 }
 
-/** The toasts already shown for each page's updater, so a window that remounts doesn't repeat them. */
+/** The toasts and dialogs already shown for each page's updater, so a window that remounts doesn't repeat them. */
 const toastsShown = new WeakMap<UpdaterHost, Set<string>>();
 
 /** The versions already announced as out under Scoop, so a window that remounts doesn't say it again. */
@@ -55,6 +57,7 @@ function RestartHostView({ host, flow, runs, announce }: RestartHostViewProps) {
   const writeClipboard = useWriteClipboard();
   const status = useUpdateStatus(host);
   const [asking, setAsking] = useState<{ runs: RestartRuns; version: string } | null>(null);
+  const [whatsNew, setWhatsNew] = useState<JustUpdated | null>(null);
   const [busy, setBusy] = useState(false);
   const before = useRef<UpdateStatus["state"]["kind"] | null>(null);
   const asked = useRef(false);
@@ -100,19 +103,20 @@ function RestartHostView({ host, flow, runs, announce }: RestartHostViewProps) {
     if (status === null) return;
     flow.report(status);
     const { state } = status;
-    if (before.current !== null && before.current !== state.kind) {
-      if (state.kind === "downloading") announce(text.announceDownloading(state.version));
-      if (state.kind === "ready" && before.current === "downloading") {
-        announce(text.announceReady(state.version));
-      }
-    }
+    announceDownload(before.current, state, announce);
     before.current = state.kind;
     announceManagedOnce(host, status, announce);
+    const updated = whatsNewOf(host, status);
+    if (updated !== null) setWhatsNew(updated);
     if (toasts !== null) showStartToasts(host, status, toasts, openExternal, writeClipboard);
     // Each status is handled once; the callbacks it reads are the page's own.
   }, [status]);
 
-  if (asking === null) return null;
+  if (asking === null) {
+    return whatsNew === null ? null : (
+      <WhatsNewDialog update={whatsNew} onClose={() => setWhatsNew(null)} />
+    );
+  }
   return (
     <Dialog
       title={text.DIALOG_TITLE}
@@ -135,6 +139,19 @@ function RestartHostView({ host, flow, runs, announce }: RestartHostViewProps) {
   );
 }
 
+/** Says that a download started and that it is ready, once each, never the percentage. */
+function announceDownload(
+  before: UpdateStatus["state"]["kind"] | null,
+  state: UpdateStatus["state"],
+  announce: RestartHostViewProps["announce"],
+): void {
+  if (before === null || before === state.kind) return;
+  if (state.kind === "downloading") announce(text.announceDownloading(state.version));
+  if (state.kind === "ready" && before === "downloading") {
+    announce(text.announceReady(state.version));
+  }
+}
+
 /** Under Scoop, says once per version that it is out; the status bar item itself stays quiet. */
 function announceManagedOnce(
   host: UpdaterHost,
@@ -155,7 +172,20 @@ function readyVersion(status: UpdateStatus | null): string | null {
     : null;
 }
 
-/** The toasts a start can show, each once for this page: after an update, settings left behind, and an update that didn't install. */
+/** The update to show the "Updated to" dialog for: once for this page, and once across reloads. */
+function whatsNewOf(host: UpdaterHost, { justUpdated }: UpdateStatus): JustUpdated | null {
+  if (justUpdated === null || !once(host, `updated:${justUpdated.to}`)) return null;
+  return whatsNewDue(justUpdated.to) ? justUpdated : null;
+}
+
+/** True the first time `key` is asked for this page's updater, so a window that remounts doesn't repeat it. */
+function once(host: UpdaterHost, key: string): boolean {
+  const shown = toastsShown.get(host) ?? new Set<string>();
+  toastsShown.set(host, shown);
+  return !shown.has(key) && Boolean(shown.add(key));
+}
+
+/** The toasts a start can show, each once for this page: settings left behind, and an update that didn't install. */
 function showStartToasts(
   host: UpdaterHost,
   status: UpdateStatus,
@@ -163,24 +193,11 @@ function showStartToasts(
   openExternal: (address: string) => Promise<void>,
   writeClipboard: (text: string) => Promise<boolean>,
 ): void {
-  const shown = toastsShown.get(host) ?? new Set<string>();
-  toastsShown.set(host, shown);
-  const once = (key: string) => !shown.has(key) && Boolean(shown.add(key));
   const { justUpdated, state } = status;
-  if (justUpdated !== null && once(`updated:${justUpdated.to}`)) {
-    toasts.show({
-      tone: "info",
-      title: text.updatedTo(justUpdated.to),
-      action: {
-        label: text.WHATS_NEW,
-        onClick: () => void openExternal(releasePage(justUpdated.to)),
-      },
-    });
-  }
   if (
     justUpdated !== null &&
     justUpdated.notCarriedOver.length > 0 &&
-    once(`not-carried-over:${justUpdated.to}`)
+    once(host, `not-carried-over:${justUpdated.to}`)
   ) {
     toasts.show({
       tone: "info",
@@ -195,7 +212,7 @@ function showStartToasts(
       },
     });
   }
-  if (state.kind === "did-not-install" && once(`failed:${state.version}:${state.attempts}`)) {
+  if (state.kind === "did-not-install" && once(host, `failed:${state.version}:${state.attempts}`)) {
     const again = {
       label: text.TRY_AGAIN,
       onClick: () =>
