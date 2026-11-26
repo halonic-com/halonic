@@ -26,6 +26,21 @@ const twoSecrets = notesSheet.replace(
 /** A connector to an MCP server at `url`. */
 const httpConnector = (url: string) => `id: notes\ntransport:\n  http:\n    url: ${url}\n`;
 
+/** A connector to the notes MCP server that hands it the workspace secret `name` as a bearer token. */
+const bearerConnector = (name: string) =>
+  `id: notes\ntransport:\n  http:\n    url: https://api.notes.example.com/mcp\nsecret: ${name}\n`;
+
+/** A connector to the local notes integration that gives it each of `names` as a sheet secret. */
+const integrationConnector = (...names: string[]) =>
+  `id: notes\ntransport:\n  integration:\n    folder: notes\n    secrets:\n${names.map((name, n) => `      key-${n}: ${name}\n`).join("")}`;
+
+/** A connector to a local notes MCP program that gets each of `names` in an environment variable. */
+const stdioConnector = (...names: string[]) =>
+  `id: notes\ntransport:\n  stdio:\n    command: notes-mcp\n    secretEnv:\n${names.map((name, n) => `      KEY_${n}: ${name}\n`).join("")}`;
+
+/** What the person says when they name the notes host but no sign-in. */
+const noSignIn = ["Connect my notes service at api.notes.example.com."];
+
 const hostRefusal = (path: string, host: string) =>
   `Couldn't change ${path}: ${host} isn't a host the person named in this chat. Only use hosts from their own messages, exactly as named; ask them for the host, or use { fromSetting } so they fill it in.`;
 
@@ -158,6 +173,75 @@ verifies("assistant.build.named-hosts-secrets", () => {
     it("leaves other files alone", async () => {
       const { answer } = await propose([], "docs/hosts.md", "evil.example.com\n");
       expect(answer).toMatch(/^Changed /u);
+    });
+  });
+
+  describe("a connector's secrets: the workspace secrets it points at (HAL-18400)", () => {
+    it.each([
+      ["secret", bearerConnector("notes-key")],
+      ["integration.secrets", integrationConnector("notes-key")],
+      ["stdio.secretEnv", stdioConnector("notes-key")],
+    ])("refuses a secret through %s when the person named no sign-in", async (_, content) => {
+      const { answer, written } = await propose(noSignIn, connector, content);
+      expect(answer).toBe(
+        `Couldn't change ${connector}: it adds 1 secret, but the person named no sign-in (an API key or a token) in this chat. Ask them how they sign in, and add at most one secret for each.`,
+      );
+      expect(written).toBeUndefined();
+    });
+
+    it.each([
+      ["integration.secrets", integrationConnector],
+      ["stdio.secretEnv", stdioConnector],
+    ])(
+      "allows one secret through %s for one sign-in, and refuses a second",
+      async (_, withSecrets) => {
+        expect((await propose([request], connector, withSecrets("notes-key"))).answer).toMatch(
+          /^Changed /u,
+        );
+        expect(
+          (await propose([request], connector, withSecrets("notes-key", "billing-key"))).answer,
+        ).toMatch(/it adds 2 secrets, but the person named only 1 sign-in/u);
+      },
+    );
+
+    it("counts a secret named twice once", async () => {
+      const content = stdioConnector("notes-key", "notes-key");
+      expect((await propose([request], connector, content)).answer).toMatch(/^Changed /u);
+    });
+
+    it("refuses a second secret added in a later edit", async () => {
+      const workspace = testWorkspace({});
+      const call = chatTools(workspace, [request]);
+      const first = bearerConnector("notes-key");
+      expect(await call("propose_file", { path: connector, content: first, why: "x" })).toMatch(
+        /^Changed /u,
+      );
+      // The http connector can only hand over one secret, so the edit moves to a local program.
+      const second = stdioConnector("notes-key", "billing-key");
+      expect(await call("propose_file", { path: connector, content: second, why: "x" })).toBe(
+        `Couldn't change ${connector}: it asks for 2 secrets in all, but the person named only 1 sign-in (an API key or a token) in this chat. Ask them how they sign in, and keep at most one secret for each.`,
+      );
+      expect(workspace.store.files.get(connector)).toBe(first);
+    });
+
+    it("allows an edit that keeps the secrets the connector on disk points at", async () => {
+      const onDisk = stdioConnector("notes-key", "billing-key");
+      const workspace = testWorkspace({ [connector]: onDisk });
+      const call = chatTools(workspace, ["Run notes-mcp with --verbose."]);
+      await call("read_file", { path: connector });
+      const edited = onDisk.replace(
+        "command: notes-mcp\n",
+        "command: notes-mcp\n    args: [--verbose]\n",
+      );
+      expect(await call("propose_file", { path: connector, content: edited, why: "x" })).toMatch(
+        /^Changed /u,
+      );
+      // Pointing one of them at another secret instead is a new secret, and isn't kept.
+      const swapped = edited.replace("billing-key", "admin-key");
+      expect(await call("propose_file", { path: connector, content: swapped, why: "x" })).toMatch(
+        /it adds 1 secret, but the person named no sign-in/u,
+      );
+      expect(workspace.store.files.get(connector)).toBe(edited);
     });
   });
 

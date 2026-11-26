@@ -34,7 +34,9 @@ type GatedKind = "integration" | "connector";
  * it asks for beyond what the file at `path` asks for now must be named:
  * each host exactly, no OAuth sign-in, and no more new secrets than the
  * sign-ins the person named. In all, the file keeps no more secrets than
- * it has now or than the sign-ins named, whichever is more.
+ * it has now or than the sign-ins named, whichever is more. A connector's
+ * secrets are the workspace secrets it points at, so it can't hand an
+ * MCP server or an integration a key the person didn't bring up.
  *
  * @param current - the file at `path` now, `null` when there is none
  * @param messages - the person's own messages in this chat

@@ -46,10 +46,10 @@ export const toolTexts = {
   /** A sheet or connector asks for hosts the person didn't name (`assistant.build.named-hosts-secrets`). */
   hostsNotNamed: (path: string, hosts: readonly string[]) =>
     `Couldn't change ${path}: ${hosts.join(", ")} ${hosts.length === 1 ? "isn't a host" : "aren't hosts"} the person named in this chat. Only use hosts from their own messages, exactly as named; ask them for the host, or use { fromSetting } so they fill it in.`,
-  /** A sheet asks for more new secrets than the sign-ins the person named. */
+  /** A sheet has, or a connector points at, more new secrets than the sign-ins the person named. */
   secretsNotNamed: (path: string, secrets: number, named: number) =>
     `Couldn't change ${path}: it adds ${secrets} ${secrets === 1 ? "secret" : "secrets"}, but the person named ${named === 0 ? "no sign-in" : `only ${named} ${named === 1 ? "sign-in" : "sign-ins"}`} (an API key or a token) in this chat. Ask them how they sign in, and add at most one secret for each.`,
-  /** A sheet asks for more secrets in all than it had and than the sign-ins the person named. */
+  /** A sheet or connector has more secrets in all than it had and than the sign-ins the person named. */
   tooManySecrets: (path: string, secrets: number, named: number) =>
     `Couldn't change ${path}: it asks for ${secrets} secrets in all, but the person named ${named === 0 ? "no sign-in" : `only ${named} ${named === 1 ? "sign-in" : "sign-ins"}`} (an API key or a token) in this chat. Ask them how they sign in, and keep at most one secret for each.`,
   /** A sheet adds an OAuth sign-in, which the person can't name in the Build chat. */
