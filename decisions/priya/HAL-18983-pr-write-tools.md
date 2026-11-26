@@ -2,6 +2,7 @@
 
 - Approval: Liam reviews the Agent tools plugin's new PR write tool and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:S7kPCBPvqO9ALnVEnuLYOZB9ZX+Z6GTS2jcphQSU5jwp0I4o19IUDZ25ETVD+p8ml3RChdwqNf5TD9dq1T5JAQ==
 
 Track B of the token plan (HAL-18938) adds the tool `write_pr` to the
 Agent tools plugin, declared in the manifest right after `rebase_pr`. The
