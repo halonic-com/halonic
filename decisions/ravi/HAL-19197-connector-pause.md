@@ -3,6 +3,7 @@
 - Task: HAL-19197
 - Approval: Liam approved halonic-com/halonic#6418 on HAL-19197 (https://paperclip.halonic.com/HAL/issues/HAL-19197). A team decision with no board card (HAL-2282 rule), Liam signs this note as the CTO.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:zYKnmlNer8epkDBa8AFwwsoP5ZZU2UDlU3yT9JvEw79/EUvGMEbq6FTT4UA6TYaxKlCbugNPwp2Ng81JRkWDBA==
 
 ## What changes
 
