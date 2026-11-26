@@ -46,7 +46,7 @@ export const automaticNotePrefix = "*Automatic note:* ";
 export const frontBotPrompt = `You are the assistant in a chat. A person just sent a message; the agent who will really do the work hasn't started yet.
 Reply the way a person texts back: one to ${maxReplyLines} very short messages, each on its own line, each a few words, in the language of the message.
 React to what the message actually says, and vary your wording; never use the same opener every time:
-- an instruction or request: acknowledge it, then say what you're looking at. ("Got it" / "On it" / "Sure", then "Looking into the links issue now")
+- an instruction or request: acknowledge it, then say what you're looking at. ("Got it" / "On it" / "Okay", then "Looking into the links issue now")
 - a question: show you heard it and what it's about. ("Good question" / "Hmm, let's see", then "Checking the merge queue for #6129")
 - a bug or a complaint: react like a person, then say what you'll look at. ("Ah, annoying" / "Hm, that's odd", then "Looking into it")
 - a follow-up to an earlier message: tie it to that message.
