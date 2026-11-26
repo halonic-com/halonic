@@ -11,11 +11,13 @@
 - **Why those three:** the box's page asks through Messenger's chats with the readers of `provideAgentMessagingReaders`: `read` lists the chats, their messages and cards, `send` sends the question, and `changes` waits for the answer. It doesn't send `focus`, which only Studio's windows send.
 - **A requirement changes its wording:** `studio.src-tauri.quick-ask-window` adds that the `ask` window's `agent_host_request` is refused as `not_for_the_box` for any route but those three, and leaves every other window the host's whole table, with an example. It also said the box got "nothing to read or change the keys". `host_settings_read` returns every host setting, `quick-ask.shortcut` included, so the box can read its saved keys. It now says "nothing to change the keys (`host_settings_read` shows the saved ones)" (Julian's first [nit]). The capability's description says the same.
 - **Two test helpers change, no test is weakened.** `request` in `agent_host_tests.rs` and `agent_host_messaging_tests.rs` now calls the command from Studio's window, since it takes a webview instead of the app; every assertion stays as it was. `every_capability()` in `quick_ask_tests.rs` now asserts that each file holds one capability object with an identifier, since Tauri also reads a list from one file, which `reaches_the_box` would skip (Julian's second [nit]). Every file in the folder already does.
+- **The stream tests move, unchanged.** `agent_host_tests.rs` was at 490 lines, and the new module's line pushed it past what a pull request may grow a file to, so its six stream tests move as they are to `agent_host_stream_tests.rs`, a module inside it.
 
 ## Covers
 
 - studio.src-tauri.quick-ask-window
 - apps/studio/src-tauri/capabilities/desktop-quick-ask-box.json
 - apps/studio/src-tauri/src/agent_host_tests.rs
+- apps/studio/src-tauri/src/agent_host_stream_tests.rs
 - apps/studio/src-tauri/src/agent_host_messaging_tests.rs
 - apps/studio/src-tauri/src/quick_ask_tests.rs
