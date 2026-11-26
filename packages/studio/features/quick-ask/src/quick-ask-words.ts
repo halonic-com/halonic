@@ -23,6 +23,8 @@ export const quickAskWords = {
   ],
   /** The picker's search box. */
   findAgent: "Find an agent",
+  /** In place of the picker's list when no agent's name holds the text (the Agents list's words). */
+  noMatch: (text: string) => `No agents match "${text}".`,
   /** The picker's first group: the agents asked or chatted with most recently. */
   recent: "Recent",
   /**
@@ -38,6 +40,9 @@ export const quickAskWords = {
   lastAnswer: (agent: string, time: string) => `Last answer: ${agent}, ${time} ›`,
   /** Copies the answer's text. */
   copy: "Copy",
+  /** What Copy did, in a status line: the kit's CopyButton's own words. */
+  copied: "Copied",
+  notCopied: "Couldn't copy. Select the text and copy it yourself.",
   /** Next to Copy: carries the conversation on in its Messenger chat. */
   openInMessenger: "Open in Messenger",
   /** The answer holds a card, which is answered in Messenger, not in the box. */
