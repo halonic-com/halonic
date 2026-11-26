@@ -3,6 +3,7 @@
 - Task: HAL-19599
 - Approval: Liam approved this as steps 2 and 5 of the plan on HAL-19531; the package owner (Liam) approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:qU+M1BpX3e+hpoD/8uA0NBFHPyg6WeGqzrAA0YPPbgqfn/IPBxNVskdvLqpDZ2g4/9BLlUKMFQQgO94jIKpuAA==
 
 ## What changes
 
