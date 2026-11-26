@@ -129,8 +129,11 @@ export function ChatCardItem({
   );
 }
 
-/** One open card: who waits since when, the question, its options, and where else it shows. */
-function ChatCard({
+/**
+ * One open card: who waits since when, the question, its options, and where else it shows. The
+ * Needs you panel shows the same card (`messenger.needs-you`).
+ */
+export function ChatCard({
   quickActions,
   row,
   card,

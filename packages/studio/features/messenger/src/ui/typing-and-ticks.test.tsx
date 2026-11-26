@@ -4,7 +4,7 @@ import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { openChat, openMessenger, settle, typeAndSend } from "../test-support/page.tsx";
+import { findInChat, openChat, openMessenger, settle, typeAndSend } from "../test-support/page.tsx";
 import { unmountAll } from "../test-support/render.tsx";
 
 afterEach(() => {
@@ -103,16 +103,7 @@ verifies("messenger.typing", () => {
       const working = chiefsChat({ agentWorking: true });
       const searched = await openMessenger(working.messaging, [], false, noon);
       await openChat(searched, "Chief");
-      const search = searched.querySelector('main input[type="search"]');
-      if (!(search instanceof HTMLInputElement)) throw new Error("no search");
-      await act(async () => {
-        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(
-          search,
-          "Thanks",
-        );
-        search.dispatchEvent(new Event("input", { bubbles: true }));
-      });
-      await settle();
+      await findInChat(searched, "Thanks");
       expect(typingLine(searched)).toBeUndefined();
     });
 

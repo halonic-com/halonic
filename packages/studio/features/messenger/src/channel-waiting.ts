@@ -1,6 +1,5 @@
 import type { InboxItem, Message, MessagingId } from "@halonicjs/ports";
 import { agentName } from "./channel.ts";
-import { channelWords } from "./channel-words.ts";
 import type { ConversationRow } from "./messenger.ts";
 
 /** A question an agent asked the person in a channel, still open: the Inbox's own item. */
@@ -32,12 +31,4 @@ export function channelQuestions(
       const name = agent === undefined ? undefined : agentName(row, agent);
       return name === undefined ? [] : [{ item, agent: name }];
     });
-}
-
-/** "Elena asks you: Which hostname? · +1 more", the oldest question first; none with none. */
-export function waitingLine(questions: readonly ChannelQuestion[]): string | undefined {
-  const [first, ...rest] = questions;
-  if (first === undefined) return undefined;
-  const line = channelWords.work.asksYou(first.agent, first.item.question);
-  return rest.length === 0 ? line : `${line} · ${channelWords.waiting.more(rest.length)}`;
 }

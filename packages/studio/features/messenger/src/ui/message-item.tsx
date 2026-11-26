@@ -36,6 +36,7 @@ export function MessageItem({
   follows,
   picture,
   questions,
+  found,
 }: {
   readonly messenger: Messenger;
   readonly row: ConversationRow;
@@ -46,7 +47,10 @@ export function MessageItem({
   /** The chat agent's picture; a channel's members show their initials. */
   readonly picture: ImageBitmap | undefined;
   readonly questions: ReadonlyMap<MessagingId, string>;
+  /** The find bar found it: the match shown, or another (`messenger.find-in-chat`). */
+  readonly found?: "current" | "match" | undefined;
 }) {
+  const mark = foundData(message.id, found);
   const openLink = useOpenExternal();
   const channel = isChannel(row);
   const author = authorOf(message, row);
@@ -61,7 +65,7 @@ export function MessageItem({
   if (message.author.kind === "me") {
     return (
       <Bubble
-        data={{ "data-author": "me", ...runData(false, follows) }}
+        data={{ "data-author": "me", ...mark, ...runData(false, follows) }}
         under={
           channel ? (
             time
@@ -89,9 +93,10 @@ export function MessageItem({
   return (
     <li
       data-author={message.author.kind}
+      {...mark}
       {...(automatic ? { "data-automatic": "" } : {})}
       {...runData(head, follows)}
-      className="max-w-[80%]"
+      className={`max-w-[80%] ${foundRing}`}
     >
       {head ? (
         // The sr-only "<name>: " says it, so a screen reader reads it once (MS11).
@@ -179,6 +184,17 @@ export function PendingItem({
   );
 }
 
+/**
+ * A message's ID, for the find bar to scroll to it, and what the find bar found: the bubble of the
+ * match shown gets the accent ring, any other match a quiet one.
+ */
+function foundData(
+  id: MessagingId,
+  found: "current" | "match" | undefined,
+): Record<string, string> {
+  return found === undefined ? { "data-message": id } : { "data-message": id, "data-found": found };
+}
+
 /** Where a message stands in its run, for the transcript's spacing. */
 function runData(head: boolean, follows: boolean): Record<string, string> {
   if (head) return { "data-head": "" };
@@ -193,6 +209,10 @@ export function DayItem({ label }: { readonly label: string }) {
     </li>
   );
 }
+
+/** The ring on a found message's bubble, set by the `data-found` its line carries. */
+const foundRing =
+  "[&[data-found=current]_[data-bubble]]:ring-2 [&[data-found=current]_[data-bubble]]:ring-accent [&[data-found=match]_[data-bubble]]:ring-1 [&[data-found=match]_[data-bubble]]:ring-border-strong";
 
 function Bubble({
   data,
@@ -211,9 +231,11 @@ function Bubble({
   readonly children: ReactNode;
 }) {
   return (
-    <li {...data} className="ms-auto flex max-w-[80%] flex-col items-end gap-1">
+    <li {...data} className={`ms-auto flex max-w-[80%] flex-col items-end gap-1 ${foundRing}`}>
       {above}
-      <div className="rounded-lg bg-surface-muted px-3 py-2 wrap-break-word">{children}</div>
+      <div data-bubble className="rounded-lg bg-surface-muted px-3 py-2 wrap-break-word">
+        {children}
+      </div>
       {/* A div: the ticks' tooltip is one. */}
       <div className="text-small text-fg-muted">{under}</div>
       {after}
