@@ -18,6 +18,10 @@ export const questionFormWords = {
   /** Why Submit is off while a required question has no pick. */
   answerEach: "Answer each question to submit.",
   answered: (day: string) => `Answered ${day}`,
+  /** Takes back the pick on an optional one-pick question. */
+  clear: "Clear answer",
+  /** What screen readers hear for it: which question it clears. */
+  clearName: (prompt: string) => `Clear answer to ${prompt}`,
 } as const;
 
 /** The props of `QuestionForm`. */
@@ -48,7 +52,8 @@ type Picked = ReadonlyMap<string, ReadonlySet<string>>;
 /**
  * A card's questions as a form: each prompt a `fieldset` and `legend`, its options radios for a
  * `single` question and checkboxes for a `multiple` one, then **Submit**, off until every required
- * question has a pick. Once `answered`, the picks stay ticked, every control is off and greyed,
+ * question has a pick. An optional `single` question's pick can be taken back with **Clear
+ * answer**. Once `answered`, the picks stay ticked, every control is off and greyed,
  * and "Answered 24 Nov" takes Submit's place.
  *
  * @example
@@ -155,18 +160,7 @@ function QuestionFieldset({
         )}
       </legend>
       {question.selection === "single" ? (
-        <RadioGroup
-          label={promptText(question.prompt)}
-          value={[...chosen][0] ?? null}
-          onChange={(option) => onPick(new Set([option]))}
-          options={question.options.map(
-            (option): RadioOption =>
-              readOnly === undefined
-                ? { value: option.id, label: option.label }
-                : // An answered card's radios are native `disabled`; the line under the form says why.
-                  { value: option.id, label: option.label, unavailable: true, note: null },
-          )}
-        />
+        <SingleChoice question={question} chosen={chosen} readOnly={readOnly} onPick={onPick} />
       ) : (
         question.options.map((option) => (
           <Checkbox
@@ -180,6 +174,66 @@ function QuestionFieldset({
         ))
       )}
     </fieldset>
+  );
+}
+
+/**
+ * A `single` question's radios. A radio can't be unpicked, so an optional question with a pick
+ * gets a **Clear answer** button under them, until the card is answered.
+ */
+function SingleChoice({
+  question,
+  chosen,
+  readOnly,
+  onPick,
+}: {
+  readonly question: FormQuestion;
+  readonly chosen: ReadonlySet<string>;
+  readonly readOnly: { readonly reason: string } | undefined;
+  readonly onPick: (options: ReadonlySet<string>) => void;
+}) {
+  const prompt = promptText(question.prompt);
+  const clearable = !question.required && readOnly === undefined && chosen.size > 0;
+  return (
+    <>
+      <RadioGroup
+        label={prompt}
+        value={[...chosen][0] ?? null}
+        onChange={(option) => onPick(new Set([option]))}
+        options={question.options.map(
+          (option): RadioOption =>
+            readOnly === undefined
+              ? { value: option.id, label: option.label }
+              : // An answered card's radios are native `disabled`, described by the answered line.
+                {
+                  value: option.id,
+                  label: option.label,
+                  unavailable: true,
+                  note: null,
+                  reason: readOnly.reason,
+                },
+        )}
+      />
+      {clearable ? (
+        <div>
+          <Button
+            variant="ghost"
+            size="sm"
+            name={questionFormWords.clearName(prompt)}
+            onClick={(event) => {
+              // The button goes once nothing is picked, so the focus moves to the first radio.
+              event.currentTarget
+                .closest("fieldset")
+                ?.querySelector<HTMLInputElement>('input[type="radio"]')
+                ?.focus();
+              onPick(new Set());
+            }}
+          >
+            {questionFormWords.clear}
+          </Button>
+        </div>
+      ) : null}
+    </>
   );
 }
 
