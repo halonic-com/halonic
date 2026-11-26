@@ -134,8 +134,9 @@ async function bundleCli(cliDirectory: string, directory: string, version: strin
 
 /**
  * Replaces the CLI's files that differ in the package: our own code, and `--version`, carry the
- * version of this package (`version.ts`), and code that looks for a repository folder looks only
- * inside the package (`npm-package.ts`).
+ * version of this package (`version.ts`), code that looks for a repository folder looks only
+ * inside the package (`npm-package.ts`), and the Paperclip plugin runtime, which the package
+ * doesn't ship, is never looked up (`runtime-worker.ts`).
  */
 function packageFacts(
   cliDirectory: string,

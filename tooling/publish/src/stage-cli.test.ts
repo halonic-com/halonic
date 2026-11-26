@@ -26,8 +26,14 @@ const consumer = join(scratch, "consumer");
 const version = "0.1.0-test.1";
 afterAll(() => rmSync(scratch, { recursive: true, force: true }));
 
+// pnpm runs the tests with NODE_PATH set to the workspace's node_modules and a NODE_OPTIONS resolve
+// hook that falls back to it, so the installed CLI found the workspace packages the tarball lacks
+// and `--version` passed while the published CLI crashed (HAL-19380, HAL-19423). A user's shell
+// has neither.
+const { NODE_PATH: _nodePath, NODE_OPTIONS: _nodeOptions, ...userEnv } = process.env;
+
 function run(command: string, args: string[], cwd: string) {
-  return spawnSync(command, args, { cwd, encoding: "utf8" });
+  return spawnSync(command, args, { cwd, encoding: "utf8", env: userEnv });
 }
 
 function runOk(command: string, args: string[], cwd: string): string {
@@ -132,6 +138,15 @@ verifies("publish.staged-cli", () => {
     expect(readme).not.toContain("**Layer:**");
   });
 
+  it("runs the installed package where the workspace's packages can't be found", () => {
+    const probe = join(consumer, "node_modules/halonic/dist/cli/probe.mjs");
+    writeFileSync(probe, 'import.meta.resolve("@halonicjs/target-paperclip-runtime/actions");\n');
+    const result = run(process.execPath, [probe], consumer);
+    rmSync(probe);
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("ERR_MODULE_NOT_FOUND");
+  });
+
   it("never resolves a workspace package when the bundle loads (HAL-19380)", () => {
     const bundle = readFileSync(join(stagedDirectory, "dist/cli/main.js"), "utf8");
     expect(bundle).not.toMatch(/import\.meta\.resolve\(\s*["']@halonicjs\//);
@@ -149,6 +164,30 @@ verifies("publish.staged-cli", () => {
       "acme-lib",
       "<computed>",
     ]);
+  });
+
+  it("refuses to stage a CLI whose bundle resolves a package with import.meta.resolve", async () => {
+    const fakeRoot = join(scratch, "resolving-root");
+    const source = join(fakeRoot, "apps/cli/src");
+    mkdirSync(source, { recursive: true });
+    for (const name of ["version.ts", "npm-package.ts", "runtime-worker.ts"]) {
+      writeFileSync(join(source, name), "export {};\n");
+    }
+    writeFileSync(
+      join(source, "main.ts"),
+      [
+        'import { halonicVersion } from "./version.ts";',
+        'import { inNpmPackage } from "./npm-package.ts";',
+        'import { runtimeWorkerUrl } from "./runtime-worker.ts";',
+        'console.log(halonicVersion, inNpmPackage, runtimeWorkerUrl(), import.meta.resolve("acme-lib"));',
+      ].join("\n"),
+    );
+    const runner = join(fakeRoot, "packages/adapters/integration-runner/dist/runner.mjs");
+    mkdirSync(dirname(runner), { recursive: true });
+    writeFileSync(runner, "export {};\n");
+    await expect(
+      stageCli(fakeRoot, version, join(scratch, "THIRD-PARTY-NOTICES.txt"), join(scratch, "never")),
+    ).rejects.toThrow("The CLI bundle imports acme-lib, which Node doesn't provide.");
   });
 
   it("refuses to stage when the notices file is missing", async () => {
