@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-18868 (HAL-18716 point 6, the board's yes on 25 Nov: backfill the Connections requirements)
 
-Straight after Connect Paperclip, before any other step (a restart after a failing step signs its connection out), the click test shall check Settings › Connections through Studio's windows, in order, each skipped when Connect Paperclip didn't pass:
+The click test shall check Settings › Connections through Studio's windows straight after Connect Paperclip, before any other step (a restart after a failing step signs its connection out), in order, each skipped when Connect Paperclip didn't pass:
 
 1. **Account switcher:** the switcher at the sidebar's bottom left opens its menu, "Show Inbox and Messenger for" with Settings › Connections, and that row opens the Connections section with the connection's row.
 2. **Connection row:** the row reads Read-only and Connected, offers no Sign in again, says what its key can do, and its label names the user it is signed in as ("Paperclip · <company> · <user>").
