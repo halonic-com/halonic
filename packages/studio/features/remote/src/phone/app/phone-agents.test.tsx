@@ -75,6 +75,7 @@ async function mountApp(tunnel = new FakePhoneTunnel()) {
         onCamera: () => undefined,
         onOpenSettings: () => undefined,
         onOpenTailscale: () => undefined,
+        onOpenLink: () => undefined,
       }),
     );
   });
@@ -348,7 +349,7 @@ verifies("remote.phone-inbox-parts", () => {
     expect(document.querySelector("h1")?.textContent).toBe("Work desktop");
     expect(next.tunnel.sentOf("msg-read")).toHaveLength(1);
     expect(text()).not.toContain("Ship phase 2 now?");
-    expect(document.querySelector("nav")?.textContent).toBe("InboxAgents");
+    expect(document.querySelector("nav")?.textContent).toBe("InboxMessengerAgents");
   });
 });
 

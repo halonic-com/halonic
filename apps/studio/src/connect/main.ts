@@ -27,7 +27,11 @@ const noScanner: PairingScanner = {
   scan: () => Promise.resolve({ kind: "noScanner" }),
   close: () => Promise.resolve(),
 };
-const noScreens: PhoneScreens = { openSettings: () => undefined, openTailscale: () => undefined };
+const noScreens: PhoneScreens = {
+  openSettings: () => undefined,
+  openTailscale: () => undefined,
+  openLink: () => undefined,
+};
 
 // Set by the Android shell; missing when the page opens in a browser.
 const internals = tauriIpc(window);

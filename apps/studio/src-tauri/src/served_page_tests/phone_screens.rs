@@ -89,3 +89,22 @@ fn phone_screens_open_nothing_while_the_window_is_on_the_served_page() {
         assert!(!tauri::async_runtime::block_on(open(&webview, screen)));
     }
 }
+
+#[test]
+fn served_page_test_sees_pull_request_links_granted_to_the_phone_s_own_page_only() {
+    // The Messenger tab's links (HAL-19050): the opener on Android, for a
+    // GitHub pull request page only, so a message can't open another site.
+    let text = include_str!("../../capabilities/phone-links.json");
+    let capability: Value = serde_json::from_str(text).expect("the capability is JSON");
+    assert_eq!(capability["local"], true);
+    assert_eq!(capability["windows"], json!(["main"]));
+    assert_eq!(capability["platforms"], json!(["android"]));
+    assert!(capability.get("remote").is_none(), "{capability}");
+    assert_eq!(
+        capability["permissions"],
+        json!([{
+            "identifier": "opener:allow-open-url",
+            "allow": [{ "url": "https://github.com/*/*/pull/*" }]
+        }])
+    );
+}

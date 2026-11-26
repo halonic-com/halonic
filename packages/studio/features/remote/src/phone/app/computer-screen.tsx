@@ -26,10 +26,15 @@ import { StatusSheet, type StatusSheetOf } from "../status-sheet.tsx";
 import { type ComputerTab, ComputerTabs, ComputerViews } from "./computer-tabs.tsx";
 import type { ComputerSheet, PhoneAppRouter } from "./phone-app-router.ts";
 
-/** What the phone does outside the page: Android's settings for Halonic, and Tailscale. */
+/**
+ * What the phone does outside the page: Android's settings for Halonic, Tailscale, and a message's
+ * link in the system browser.
+ */
 export interface PhoneOutside {
   readonly onOpenSettings: () => void;
   readonly onOpenTailscale: () => void;
+  /** Opens a link `isAllowedWebLink` passed in the system browser. */
+  readonly onOpenLink: (link: string) => void;
 }
 
 /**
@@ -37,9 +42,9 @@ export interface PhoneOutside {
  * can't reach it, the status sheet the label opens, and Removed or Can't confirm in place of the
  * body. Until the computer first answers, the body is the first reach's waiting line or its
  * give-up, which open Check this connection (first-run-progress 6). After that it is the picked
- * view over the tab bar at the foot (p02a): the Inbox, or "Update Halonic on…" in its place while
- * that computer speaks only version 3, or the agents from its gateway client with the prompt box
- * docked under them. The screen reads the Inbox, so the tab bar counts its cards; a tapped
+ * view over the tab bar at the foot (p02a): the Inbox and the Messenger, or "Update Halonic on…"
+ * in the place of each while that computer speaks only version 3, or the agents from its gateway
+ * client with the prompt box docked under them. The screen reads the Inbox, so the tab bar counts its cards; a tapped
  * agent's run detail shows in place of the whole screen. The computer's name is the screen's h1
  * on every state, hidden while the label shows; focus goes to it when the screen opens, and back
  * to the agent's row when its run detail closes (C48).
@@ -137,6 +142,7 @@ export function ComputerScreen({
               tab={tab}
               viewsId={viewsId}
               onOpenSettings={outside.onOpenSettings}
+              onOpenLink={outside.onOpenLink}
             />
           </div>
           <ComputerFoot
@@ -236,6 +242,7 @@ function ComputerBody({
   tab,
   viewsId,
   onOpenSettings,
+  onOpenLink,
 }: {
   readonly router: PhoneAppRouter;
   readonly computer: PairedComputer;
@@ -248,6 +255,7 @@ function ComputerBody({
   /** The id of the element that shows the picked view, which the tab bar's tabs control. */
   readonly viewsId: string;
   readonly onOpenSettings: () => void;
+  readonly onOpenLink: (link: string) => void;
 }) {
   if (state === "removed" || state === "cantConfirm") {
     return (
@@ -296,6 +304,7 @@ function ComputerBody({
           inbox={inbox}
           tab={tab}
           onOpenSettings={onOpenSettings}
+          onOpenLink={onOpenLink}
         />
       </div>
     </>

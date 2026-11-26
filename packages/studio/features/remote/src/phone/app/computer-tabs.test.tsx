@@ -23,7 +23,7 @@ function card(id: string): InboxItem {
 }
 
 verifies("remote.phone-inbox-parts", () => {
-  it("puts Inbox, with its count, and Agents in the kit's tab bar, a nav named after the computer", async () => {
+  it("puts Inbox, with its count, Messenger and Agents in the kit's tab bar, a nav named after the computer", async () => {
     const onSelect = vi.fn();
     const screen = render(
       <ComputerTabs
@@ -37,11 +37,12 @@ verifies("remote.phone-inbox-parts", () => {
     const nav = screen.querySelector("nav");
     expect(nav?.getAttribute("aria-label")).toBe("Tim's laptop");
     expect(nav?.className).toContain("pb-safe-inset");
-    const [inbox, agents] = [...(nav?.querySelectorAll("button") ?? [])];
+    const [inbox, messenger, agents] = [...(nav?.querySelectorAll("button") ?? [])];
     expect(inbox?.getAttribute("aria-current")).toBe("page");
     expect(inbox?.getAttribute("aria-controls")).toBe("views");
     expect(inbox?.querySelector('span[aria-hidden="true"]')?.textContent).toContain("2");
     expect(inbox?.querySelector(":scope > .sr-only")?.textContent).toBe(", 2 waiting");
+    expect(messenger?.textContent).toBe("Messenger");
     expect(agents?.textContent).toBe("Agents");
     await act(async () => agents?.click());
     expect(onSelect).toHaveBeenCalledWith("agents");
