@@ -4,8 +4,12 @@ import type { TauriIpc } from "@halonicjs/studio-services";
 import type { WelcomeOpenProblem } from "@halonicjs/studio-shell";
 import { readWindowContent, WindowContentKeeper } from "./window-content.ts";
 
-/** The host setting for Settings › Startup's "Reopen windows on start": `open_windows::SETTING` in the shell. */
-export const reopenWindowsSetting = "windows.reopenOnStart";
+/**
+ * The host setting for Settings › Startup's "Reopen windows on start": the key the shell reads
+ * (`open_windows::SETTING`) and the Settings switch saves (`reopenWindowsSetting` in the settings
+ * feature, which doesn't export it).
+ */
+export const reopenWindowsSetting = "windows.reopen-on-start";
 
 /** The parts of the workspace switcher (`WorkspaceSwitcher`) Studio's window content needs. */
 export interface ContentSwitcher {

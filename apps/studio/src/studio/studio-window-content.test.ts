@@ -3,7 +3,11 @@ import type { WelcomeOpenProblem } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { locationToOpen } from "./start-focused-app.ts";
-import { type ContentSwitcher, keepStudioWorkspace } from "./studio-window-content.ts";
+import {
+  type ContentSwitcher,
+  keepStudioWorkspace,
+  reopenWindowsSetting,
+} from "./studio-window-content.ts";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -66,7 +70,9 @@ verifies("studio.window-content", () => {
 
     it('stays on Welcome with "Reopen windows on start" off, and keeps that', async () => {
       const switcher = switcherWith(["/work/acme"]);
-      const invoke = shellKeeping('{"workspace":"/work/acme"}', { "windows.reopenOnStart": false });
+      const invoke = shellKeeping('{"workspace":"/work/acme"}', {
+        "windows.reopen-on-start": false,
+      });
 
       const { ready, stop } = keepStudioWorkspace({ invoke }, switcher);
       await ready;
@@ -79,13 +85,19 @@ verifies("studio.window-content", () => {
 
     it('reopens the workspace it showed with "Reopen windows on start" on', async () => {
       const switcher = switcherWith(["/work/acme"]);
-      const invoke = shellKeeping('{"workspace":"/work/acme"}', { "windows.reopenOnStart": true });
+      const invoke = shellKeeping('{"workspace":"/work/acme"}', {
+        "windows.reopen-on-start": true,
+      });
 
       const { ready, stop } = keepStudioWorkspace({ invoke }, switcher);
       await ready;
 
       expect(switcher.openLocation).toHaveBeenCalledWith("/work/acme");
       stop();
+    });
+
+    it("reads the key the shell reads and Settings › Startup saves", () => {
+      expect(reopenWindowsSetting).toBe("windows.reopen-on-start");
     });
 
     it("stops at once while the kept workspace never finishes opening", async () => {
