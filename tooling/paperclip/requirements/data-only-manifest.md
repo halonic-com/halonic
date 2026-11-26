@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-19231, the security review of halonic-com/server#80 (the server's plugin deployer must read a plugin manifest without running code)
 
-When a plugin build (`build:plugin` for Agent tools, `build:seats-plugin` for seats) writes the plugin's `manifest.js`, it shall write the manifest as one JSON literal exported as `manifest` and as the default export, with no other code, and the build shall fail when the manifest is not plain JSON data.
+When a plugin build (`build:plugin` for Agent tools, `build:seats-plugin` for seats) writes the plugin's `manifest.js`, it shall write the manifest as one JSON literal exported as `manifest` and as the default export, with no other code, and the build shall fail when the manifest is not plain JSON data or holds a `__proto__` key at any depth.
 
 ## Examples
 
@@ -14,3 +14,6 @@ When a plugin build (`build:plugin` for Agent tools, `build:seats-plugin` for se
 - Given a manifest object that holds a function,
   when the build writes the manifest,
   then the build fails with "not plain JSON data".
+- Given a manifest with a `__proto__` key under `instanceConfigSchema.properties`,
+  when the build writes the manifest,
+  then the build fails and names where the key is.
