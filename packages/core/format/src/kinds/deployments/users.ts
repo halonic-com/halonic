@@ -1,4 +1,5 @@
 import { type Infer, s } from "@halonicjs/schema-kit";
+import { ExposedWorkflow } from "./exposed.ts";
 
 /** The most characters a Halonic Cloud product id may have. */
 const PRODUCT_ID_MAX_LENGTH = 64;
@@ -97,6 +98,11 @@ export const DeploymentUsers = s
     config: ConfigMeterSettings.optional(),
     /** Settings used when `meter` is `cloud`. */
     cloud: CloudMeterSettings.optional(),
+    /**
+     * The workflows end users may start, with `mode: many` only. Without the
+     * list, or with an empty one, nothing is exposed.
+     */
+    exposed: s.array(ExposedWorkflow).optional(),
   })
   .strict();
 

@@ -24,8 +24,27 @@ export function checkUsers(file: Deployments): KindCheckProblem[] {
           ...checkOrganisations(id, deployment.users),
           ...checkConfigCountsNothing(id, deployment.users),
           ...checkUnusedMeterSettings(id, deployment.users),
+          ...checkExposedNeedsMany(id, deployment.users),
         ],
   );
+}
+
+/**
+ * Only a `mode: many` deployment has end users, so an `exposed` list on an
+ * owner deployment is refused rather than kept for later.
+ */
+function checkExposedNeedsMany(id: string, users: DeploymentUsers): KindCheckProblem[] {
+  if (users.exposed === undefined || users.mode === "many") {
+    return [];
+  }
+  return [
+    {
+      severity: "error",
+      code: "users-exposed-needs-many",
+      path: ["deployments", id, "users", "exposed"],
+      message: `Deployment "${id}" uses mode "${users.mode}", so it can't expose workflows; use mode "many"`,
+    },
+  ];
 }
 
 /**
