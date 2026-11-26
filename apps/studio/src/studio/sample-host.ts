@@ -22,6 +22,9 @@ const legacyName = "Acme sample";
 /** Where the copies go, the same word on every computer (microcopy 3.2, HAL-12891), never a path. */
 const documentsName = "Documents";
 
+/** What the line calls the folder when the shell refused to show the picker, so none was picked. */
+const unpickedName = "another folder";
+
 /** How many copies it looks through before it says there is no room for another. */
 const mostCopies = 99;
 
@@ -30,44 +33,73 @@ const mostCopies = 99;
  * `Acme demo 2`, … that isn't in Documents yet (or a demo the device already knows, under that name
  * or the older `Acme sample`, which is reopened instead), made through the shell, with the bundled
  * `examples/acme` copied in by `copyWorkspace` and trusted at once, since Halonic wrote every
- * file. It never writes into a folder that is there, and never asks where.
+ * file. It never writes into a folder that is there, and never asks where. **Choose a folder…**
+ * on Open demo's error does the same in a folder the person picks (`studio.try-sample-chosen-folder`).
  *
  * @example
  * const host = sampleHostOf({ shell, trust, separator: "/" });
  * const made = await host.create(knownSamples);
  */
 export function sampleHostOf(parts: NewWorkspaceHostParts): SampleHost {
-  const storeOf = parts.storeOf ?? ((folder) => new TauriDefinitionStore(parts.shell, folder));
   return {
-    create: async (known) => {
-      // Once the folder is made, trying again would make a second copy, so a failure from then on
-      // is never `unavailable`.
-      let written = false;
+    create: async (known) => createIn(parts, () => documentsOf(parts), documentsName, known),
+    createInChosen: async (known) => {
+      let picked: unknown;
       try {
-        const parent = await documentsOf(parts);
-        const place =
-          (await knownLegacy(parts, parent, known)) ?? (await freeName(parts, parent, known));
-        if (place.kind === "known") return { kind: "existing", folder: place.folder };
-        const { name } = place;
-        const made = await madeFolder(parts.shell, parent, name);
-        written = true;
-        const copied = await copyWorkspace(sampleSource(), storeOf(made));
-        if (!copied.ok) return cant("the folder isn't empty");
-        return { kind: "created", folder: made, name, trust: await trustOf(parts, made, true) };
+        picked = await parts.shell.invoke(commands.pickParent);
       } catch (reason) {
-        return cant(reasonOf(reason), !written && errorKindOf(reason) === "unavailable");
+        // A refused picker (busy, or a folder the shell can't resolve) is said on Welcome, never lost.
+        return cant(unpickedName, reasonOf(reason));
       }
+      if (typeof picked !== "string") return undefined;
+      return createIn(parts, async () => picked, lastName(picked, parts.separator), known);
     },
   };
+}
+
+/**
+ * Makes the first free sample folder in the parent `parentOf` finds and copies the sample in, or
+ * says why it couldn't, naming the parent as `folderName`.
+ */
+async function createIn(
+  parts: NewWorkspaceHostParts,
+  parentOf: () => Promise<string>,
+  folderName: string,
+  known: readonly string[],
+): Promise<CreatedSample> {
+  const storeOf = parts.storeOf ?? ((folder) => new TauriDefinitionStore(parts.shell, folder));
+  // Once the folder is made, trying again would make a second copy, so a failure from then on
+  // is never `unavailable`.
+  let written = false;
+  try {
+    const parent = await parentOf();
+    const place =
+      (await knownLegacy(parts, parent, known)) ?? (await freeName(parts, parent, known));
+    if (place.kind === "known") return { kind: "existing", folder: place.folder };
+    const { name } = place;
+    const made = await madeFolder(parts.shell, parent, name);
+    written = true;
+    const copied = await copyWorkspace(sampleSource(), storeOf(made));
+    if (!copied.ok) return cant(folderName, "the folder isn't empty");
+    return { kind: "created", folder: made, name, trust: await trustOf(parts, made, true) };
+  } catch (reason) {
+    return cant(folderName, reasonOf(reason), !written && errorKindOf(reason) === "unavailable");
+  }
+}
+
+/** The folder's own name, the last part of its location, as the person knows it. */
+function lastName(location: string, separator: string): string {
+  const parts = location.split(separator).filter((part) => part !== "");
+  return parts.at(-1) ?? location;
 }
 
 /** The refusal Welcome shows: where it was meant to go, as the person knows it, and why it didn't;
  * `unavailable` when the shell gave no answer before anything was written, which Welcome words
  * itself and tries again first. */
-function cant(reason: string, unavailable = false): CreatedSample {
+function cant(folder: string, reason: string, unavailable = false): CreatedSample {
   return {
     kind: "cant",
-    folder: documentsName,
+    folder,
     reason,
     ...(unavailable ? { unavailable: true as const } : {}),
   };

@@ -129,3 +129,51 @@ verifies("studio.try-sample", () => {
     });
   });
 });
+
+verifies("studio.try-sample-chosen-folder", () => {
+  it("copies the example into Acme demo in the folder picked", async () => {
+    const { host, store, trust, calls } = hostOf([], { pick_parent_folder: "/docs/Projects" });
+
+    expect(await host.createInChosen?.([])).toEqual({
+      kind: "created",
+      folder: "/docs/Projects/Acme demo",
+      name: "Acme demo",
+      trust: { kind: "trusted" },
+    });
+    expect(await store.list()).toContain("workspace.yaml");
+    expect(trust).toHaveBeenCalledWith("/docs/Projects/Acme demo");
+    expect(calls.some(([command]) => command === "documents_folder")).toBe(false);
+  });
+
+  it("names the picked folder when the shell refuses", async () => {
+    const { host } = hostOf([], {
+      pick_parent_folder: "/docs/Projects/",
+      create_workspace_folder: { reject: { kind: "parent_private" } },
+    });
+
+    expect(await host.createInChosen?.([])).toEqual({
+      kind: "cant",
+      folder: "Projects",
+      reason: "Halonic keeps its own files there",
+    });
+  });
+
+  it("says why when the shell refuses to show the picker, and writes nothing", async () => {
+    const { host, store, calls } = hostOf([], { pick_parent_folder: { reject: { kind: "busy" } } });
+
+    expect(await host.createInChosen?.([])).toMatchObject({
+      kind: "cant",
+      folder: "another folder",
+    });
+    expect(await store.list()).toEqual([]);
+    expect(calls.some(([command]) => command === "create_workspace_folder")).toBe(false);
+  });
+
+  it("writes nothing and says nothing when the picker is cancelled", async () => {
+    const { host, store, calls } = hostOf([], { pick_parent_folder: null });
+
+    expect(await host.createInChosen?.([])).toBeUndefined();
+    expect(await store.list()).toEqual([]);
+    expect(calls.some(([command]) => command === "create_workspace_folder")).toBe(false);
+  });
+});

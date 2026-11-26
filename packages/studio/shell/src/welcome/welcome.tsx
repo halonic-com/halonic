@@ -19,7 +19,7 @@ import {
   type WelcomeRecentWorkspace,
 } from "./welcome-recent.tsx";
 import {
-  cantCreateSampleLine,
+  SampleProblemBlock,
   TrySample,
   trySampleWords,
   type WelcomeSampleProblem,
@@ -52,6 +52,12 @@ export interface WelcomeProps {
    * `undefined`; without it Welcome has no **Open demo** action.
    */
   readonly onTrySample?: (() => Promise<WelcomeSampleProblem | undefined>) | undefined;
+  /**
+   * Shows the folder picker and copies the demo into the folder picked, for **Choose a folder…**
+   * when the demo couldn't be copied; resolves as `onTrySample`, and with `undefined` when the
+   * picker was cancelled. Without it the error offers only **Try again**.
+   */
+  readonly onTrySampleInChosen?: (() => Promise<WelcomeSampleProblem | undefined>) | undefined;
   /** The workspaces remembered on this device; without it, or while it's empty, none show. */
   readonly recent?: WelcomeRecentList | undefined;
   /**
@@ -111,6 +117,9 @@ type Opening = { readonly from: "picker" } | { readonly from: "recent"; readonly
  * **Try again** (`shell.welcome-start`). A press that comes before the start is ready keeps its
  * button busy, and runs once it is.
  *
+ * A demo that couldn't be copied says why right under the **Open demo** that was pressed, with
+ * **Try again** and **Choose a folder…** (`shell.welcome-sample-error`).
+ *
  * Under the button, **Recent** lists up to five remembered workspaces, and one press opens one
  * (states-flow-map W2). A row whose folder is gone says so on the same line with
  * **Remove from Recent**; the row stays until it's removed, and focus then goes to the next row,
@@ -123,18 +132,22 @@ export function Welcome({
   onOpenFolder,
   onNewWorkspace,
   onTrySample,
+  onTrySampleInChosen,
   recent,
   start,
 }: WelcomeProps) {
   const [opening, setOpening] = useState<Opening | undefined>(undefined);
-  /** True while the demo is being copied; Open folder and New workspace… stay usable. */
-  const [creatingSample, setCreatingSample] = useState(false);
+  /** Where the demo is being copied, while it is; Open folder and New workspace… stay usable. */
+  const [creatingIn, setCreatingIn] = useState<"documents" | "chosen" | undefined>(undefined);
+  const creatingSample = creatingIn !== undefined;
   const [shownProblem, setShownProblem] = useState<ShownProblem | undefined>(undefined);
   const [sampleProblem, setSampleProblem] = useState<WelcomeSampleProblem | undefined>(undefined);
   /** Where focus goes once a removed row is gone: a row's location, or `null` for Open folder. */
   const [focusAfterRemove, setFocusAfterRemove] = useState<string | null | undefined>(undefined);
   const openButton = useRef<HTMLButtonElement>(null);
   const demoButton = useRef<HTMLButtonElement>(null);
+  /** **Open demo** as the quiet link under Recent. */
+  const quietDemoButton = useRef<HTMLButtonElement>(null);
   const rows = useRef(new Map<string, HTMLButtonElement>());
   const copyDetails = useCopyDetails();
   const alertId = useId();
@@ -196,23 +209,36 @@ export function Welcome({
     }
   };
 
-  const trySample = async () => {
-    if (creatingSample || onTrySample === undefined) {
+  // The chosen folder is asked for once: a copy there isn't tried again by itself.
+  const trySample = async (inChosen = false) => {
+    const copy = inChosen ? onTrySampleInChosen : onTrySample;
+    if (creatingSample || copy === undefined) {
       return;
     }
-    setCreatingSample(true);
+    // Try again and Choose a folder… go with the error, so focus goes to the Open demo that was
+    // pressed, which turns busy and keeps it.
+    (demoButton.current ?? quietDemoButton.current)?.focus();
+    setCreatingIn(inChosen ? "chosen" : "documents");
     setShownProblem(undefined);
     setSampleProblem(undefined);
     try {
       setSampleProblem(
         await startState.afterStart(() =>
-          untilAnswered(onTrySample, (answer) => answer?.unavailable === true),
+          inChosen ? copy() : untilAnswered(copy, (answer) => answer?.unavailable === true),
         ),
       );
     } finally {
-      setCreatingSample(false);
+      setCreatingIn(undefined);
     }
   };
+  const sampleProblemBlock = (
+    <SampleProblemBlock
+      problem={sampleProblem}
+      onTryAgain={() => trySample()}
+      canChooseFolder={onTrySampleInChosen !== undefined}
+      onChooseFolder={() => trySample(true)}
+    />
+  );
 
   const remove = (location: string) => {
     if (recent === undefined) {
@@ -247,7 +273,15 @@ export function Welcome({
         </div>
         <WelcomeActions
           demo={
-            demoLeads ? { busy: creatingSample, onPress: trySample, ref: demoButton } : undefined
+            demoLeads
+              ? {
+                  busy: creatingSample,
+                  elsewhere: creatingIn === "chosen",
+                  onPress: () => trySample(),
+                  ref: demoButton,
+                  problem: sampleProblemBlock,
+                }
+              : undefined
           }
           openButton={openButton}
           openingFolder={opening?.from === "picker"}
@@ -258,7 +292,6 @@ export function Welcome({
           alert={
             <p id={alertId} role="alert" className="text-body text-danger break-words empty:hidden">
               {problem === undefined ? null : cantOpenSentence(problem)}
-              {sampleProblem === undefined ? null : cantCreateSampleLine(sampleProblem)}
             </p>
           }
           start={
@@ -303,7 +336,17 @@ export function Welcome({
           />
         )}
         {hasRecent && onTrySample !== undefined ? (
-          <TrySample quiet busy={creatingSample} onPress={trySample} offId={startState.offId} />
+          <div className="flex flex-col items-center gap-2">
+            <TrySample
+              quiet
+              busy={creatingSample}
+              elsewhere={creatingIn === "chosen"}
+              onPress={() => trySample()}
+              buttonRef={quietDemoButton}
+              offId={startState.offId}
+            />
+            {sampleProblemBlock}
+          </div>
         ) : null}
       </div>
     </div>
@@ -316,8 +359,12 @@ interface WelcomeActionsProps {
   readonly demo:
     | {
         readonly busy: boolean;
+        /** True while it copies into a folder the person picked, not Documents. */
+        readonly elsewhere: boolean;
         readonly onPress: () => void;
         readonly ref: Ref<HTMLButtonElement>;
+        /** Why the last copy failed, with its ways out, shown under the time line. */
+        readonly problem: ReactNode;
       }
     | undefined;
   readonly openButton: Ref<HTMLButtonElement>;
@@ -339,7 +386,8 @@ interface WelcomeActionsProps {
 /**
  * Welcome's buttons: **Open demo** and **Open folder** side by side when the demo leads, else
  * **Open folder** alone as the primary button; then Halonic's start while it shows; then the time
- * line while the demo leads, then the error line, and last the **New workspace…** link (`shell.welcome-sample`).
+ * line and the demo's error while the demo leads, then the error line, and last the
+ * **New workspace…** link (`shell.welcome-sample`, `shell.welcome-sample-error`).
  */
 function WelcomeActions({
   demo,
@@ -361,6 +409,7 @@ function WelcomeActions({
           <TrySample
             quiet={false}
             busy={demo.busy}
+            elsewhere={demo.elsewhere}
             onPress={demo.onPress}
             buttonRef={demo.ref}
             timeId={timeId}
@@ -384,6 +433,7 @@ function WelcomeActions({
           {trySampleWords.time}
         </p>
       ) : null}
+      {demo?.problem}
       {alert}
       {onNewWorkspace === undefined ? null : (
         <Button variant="ghost" onClick={() => opening || onNewWorkspace()}>

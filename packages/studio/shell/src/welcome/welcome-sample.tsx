@@ -16,9 +16,12 @@ export interface WelcomeSampleProblem {
 export const trySampleWords = {
   action: "Open demo",
   creating: "Copying the demo…",
-  /** What a screen reader hears while it is busy (microcopy 19); the demo always goes in Documents. */
+  /** What a screen reader hears while it copies to Documents (microcopy 19); `creating` elsewhere. */
   creatingName: "Copying the demo to Documents…",
   time: "New here? The demo takes about 4 minutes.",
+  /** The ways out of a copy that failed (`shell.welcome-sample-error`). */
+  tryAgain: "Try again",
+  chooseFolder: "Choose a folder…",
 } as const;
 
 /** The sentence under Welcome's text when the demo couldn't be copied, with a closing full stop. */
@@ -36,6 +39,8 @@ export interface TrySampleProps {
   readonly quiet: boolean;
   /** True while the demo is being copied. */
   readonly busy: boolean;
+  /** True while it is copied into a folder the person picked: the busy name then names no folder. */
+  readonly elsewhere?: boolean | undefined;
   readonly onPress: () => void;
   /** The primary button's element, which Welcome focuses first while the demo leads. */
   readonly buttonRef?: Ref<HTMLButtonElement> | undefined;
@@ -55,7 +60,15 @@ export interface TrySampleProps {
  * @example
  * <TrySample quiet={false} busy={false} onPress={copyDemo} timeId={timeId} />
  */
-export function TrySample({ quiet, busy, onPress, buttonRef, timeId, offId }: TrySampleProps) {
+export function TrySample({
+  quiet,
+  busy,
+  elsewhere = false,
+  onPress,
+  buttonRef,
+  timeId,
+  offId,
+}: TrySampleProps) {
   return (
     <Button
       {...(buttonRef === undefined ? {} : { ref: buttonRef })}
@@ -63,11 +76,60 @@ export function TrySample({ quiet, busy, onPress, buttonRef, timeId, offId }: Tr
       busy={busy}
       unavailable={busy || offId === undefined ? undefined : { reason: offId }}
       busyLabel={trySampleWords.creating}
-      busyName={trySampleWords.creatingName}
+      busyName={elsewhere ? trySampleWords.creating : trySampleWords.creatingName}
       {...(quiet || timeId === undefined ? {} : { "aria-describedby": timeId })}
       onClick={onPress}
     >
       {trySampleWords.action}
     </Button>
+  );
+}
+
+/** Props for {@link SampleProblemBlock}. */
+export interface SampleProblemBlockProps {
+  /** Why the last copy failed; without one nothing shows. */
+  readonly problem: WelcomeSampleProblem | undefined;
+  /** Copies the demo to Documents again, as **Open demo** does. */
+  readonly onTryAgain: () => void;
+  /** Whether the app can copy the demo into another folder: else there's no **Choose a folder…**. */
+  readonly canChooseFolder: boolean;
+  /** Shows the folder picker and copies the demo into the folder picked. */
+  readonly onChooseFolder: () => void;
+}
+
+/**
+ * Why the demo couldn't be copied, right under the **Open demo** that was pressed, with
+ * **Try again** and, when the app can copy it elsewhere, **Choose a folder…**
+ * (`shell.welcome-sample-error`). It only shows while there is a problem, so the line is announced
+ * as it appears.
+ *
+ * @example
+ * <SampleProblemBlock problem={problem} onTryAgain={copy} canChooseFolder onChooseFolder={copyElsewhere} />
+ */
+export function SampleProblemBlock({
+  problem,
+  onTryAgain,
+  canChooseFolder,
+  onChooseFolder,
+}: SampleProblemBlockProps) {
+  if (problem === undefined) {
+    return null;
+  }
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <p role="alert" className="text-body text-danger break-words">
+        {cantCreateSampleLine(problem)}
+      </p>
+      <div className="flex flex-wrap justify-center gap-3">
+        <Button variant="secondary" onClick={onTryAgain}>
+          {trySampleWords.tryAgain}
+        </Button>
+        {canChooseFolder ? (
+          <Button variant="ghost" onClick={onChooseFolder}>
+            {trySampleWords.chooseFolder}
+          </Button>
+        ) : null}
+      </div>
+    </div>
   );
 }
