@@ -2,6 +2,7 @@
 
 - Approval: the task asks for a rendered test of the box's layout (HAL-19213, from the design check on HAL-19208); Liam approves and signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:nAFG9pLYmEGNFlqiIQwuu2nxgrvhIlZDezw/jAWxgB0cAAqiPxtJmHuzs5pnz8NrJRc7TgE0xDPS49CGFYhhCA==
 
 ## What changes
 
