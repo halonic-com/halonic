@@ -2,6 +2,7 @@
 
 - Approval: the package owner (Liam) approves this note in review on HAL-19044
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jXpHA37Hohm6GlD84hcxaFjuhngrjBI9JgY02r5AoKOnPtpT9WeXrKIHA8d3d1NVuFlbPE++6jiSp9U8zrGfCQ==
 
 ## What changes
 
