@@ -31,4 +31,4 @@ When the PR watcher hands a task to its reviewer and one of its pull requests ha
   then it leaves the task with its author and compares nothing.
 - Given the approved head's change and the current head's change differ only in their hunk line numbers,
   when the watcher compares them,
-  then they match; a renamed file GitHub lists without a patch matches when its blob is the same, and makes them differ when the blob differs or GitHub gives none.
+  then they match; a renamed file GitHub lists without a patch matches when its blob is the same, and makes them differ when the blob differs or GitHub gives none; any other file GitHub lists without a patch makes them differ.
