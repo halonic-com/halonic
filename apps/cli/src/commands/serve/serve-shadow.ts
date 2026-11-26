@@ -122,6 +122,11 @@ class ShadowLoop implements ServeShadow {
   readonly #options: ServeShadowOptions;
   #cancel: (() => void) | undefined;
   #closed = false;
+  /**
+   * The head the last digest named, kept after a `ledger.head_mismatch` halt: a digest naming
+   * the current ledger's head instead would let the next restart pass the check (A44).
+   */
+  #keptHead: string | undefined;
   /** The UTC day the call counts are for, and where they start. */
   #day: { name: string; from: ShadowCallCounts; since: Date };
 
@@ -141,7 +146,9 @@ class ShadowLoop implements ServeShadow {
   }
 
   async start(): Promise<void> {
-    const halted = await this.#runner.start(await lastDigestHead(this.#files.digests));
+    const expectedHead = await lastDigestHead(this.#files.digests);
+    const halted = await this.#runner.start(expectedHead);
+    if (halted === "ledger.head_mismatch") this.#keptHead = expectedHead;
     if (halted !== undefined) {
       this.#options.log(logLine(serveShadowMessages.halted(halted)));
       await this.#writeDigests();
@@ -168,7 +175,10 @@ class ShadowLoop implements ServeShadow {
       // Before the poll, so its calls count toward the day they were made on.
       await this.#finishLastDay();
       const report = await this.#runner.poll();
-      if (report.stopped !== undefined) {
+      const halted = this.#runner.halted();
+      if (halted !== undefined) {
+        this.#options.log(logLine(serveShadowMessages.halted(halted)));
+      } else if (report.stopped !== undefined) {
         this.#options.log(logLine(serveShadowMessages.pollStopped(report.stopped)));
       }
     } finally {
@@ -207,6 +217,7 @@ class ShadowLoop implements ServeShadow {
       callsSince: this.#day.since,
       ...(documents === undefined ? {} : { documents }),
       ...(halted === undefined ? {} : { halted }),
+      ...(this.#keptHead === undefined ? {} : { head: this.#keptHead }),
       build: halonicVersion,
       until,
     });

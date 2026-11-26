@@ -165,6 +165,26 @@ verifies("cli.commands.serve.auto-approvals-shadow", () => {
         "Runner: halted since 2026-11-27 10:00 UTC (ledger.head_mismatch), until a person restarts it",
       );
     });
+
+    it("halts again on the next start after a head mismatch, such as a reboot", async () => {
+      await writeConfig(JSON.stringify(config));
+      const digests = join(shadowFolder(profile), "digests");
+      await mkdir(digests, { recursive: true });
+      await writeFile(join(digests, "2026-11-26.txt"), "Ledger head: 0123abcd\n");
+      const paperclip = failingPaperclip();
+      await (await openServeShadow(options(paperclip.fetch, manualTimers()).opened))?.start();
+      expect(await digestOf("2026-11-27")).toContain("Ledger head: 0123abcd");
+
+      time = new Date("2026-11-27T11:00:00.000Z");
+      const timers = manualTimers();
+      const restarted = await openServeShadow(options(paperclip.fetch, timers).opened);
+      await restarted?.start();
+      expect(timers.due).toEqual([]);
+      expect(paperclip.seen).toEqual([]);
+      expect(await digestOf("2026-11-27")).toContain(
+        "(ledger.head_mismatch), until a person restarts it",
+      );
+    });
   });
 
   describe("parseShadowConfig", () => {

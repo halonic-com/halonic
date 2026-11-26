@@ -22,6 +22,11 @@ export interface ShadowDigestInput {
   readonly halted?: { readonly reason: HaltReason; readonly since: Date };
   /** Both pinned documents as last read, for the day's revisions. */
   readonly documents?: { readonly neverList: PinnedDocument; readonly stop: PinnedDocument };
+  /**
+   * The ledger head the digest names; the ledger's newest entry's hash by default. After a
+   * `ledger.head_mismatch` halt it is the last digest's head, so a restart halts again (A44).
+   */
+  readonly head?: string;
   /** The build commit the runner runs. */
   readonly build: string;
   /** The red-team result for this build, or `undefined` when it wasn't run. */
@@ -58,7 +63,7 @@ export function shadowDigest(input: ShadowDigestInput): string {
   const counted = (test: (reason: string) => boolean) =>
     `${[...reasons.values()].filter(test).length} of ${seen}`;
   const stops = runEntries.filter((entry) => isStop(entry.reason));
-  const head = input.entries.at(-1)?.hash ?? "none";
+  const head = input.head ?? input.entries.at(-1)?.hash ?? "none";
 
   return [
     `Auto approvals shadow digest, ${input.day} (UTC)`,
