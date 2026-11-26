@@ -12,6 +12,14 @@ import { noStudioPage } from "../../messages/no-studio-page.ts";
 /** Nothing for the page to load: it has no script, style, image or frame. */
 const pageCsp = "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 
+/** Whether a phone can reach the address: served with `--network` or `--public-origin`. */
+export function reachableFromPhone(listen: {
+  readonly network: boolean;
+  readonly publicOrigin?: string;
+}): boolean {
+  return listen.network || listen.publicOrigin !== undefined;
+}
+
 /** Whether the Studio page's entry is there to serve. */
 export async function studioPageIsBuilt(studioFolder: string): Promise<boolean> {
   return access(join(studioFolder, "studio.html")).then(

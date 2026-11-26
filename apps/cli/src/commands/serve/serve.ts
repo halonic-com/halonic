@@ -66,7 +66,11 @@ import { workspaceAgentNames } from "./agent-names.ts";
 import { openChoiceHistory } from "./choice-files.ts";
 import { workspaceGoogleRead } from "./google-read.ts";
 import { startsOnLiveVersion } from "./live-version-runs.ts";
-import { answerBrowserWithoutStudio, studioPageIsBuilt } from "./no-studio-page.ts";
+import {
+  answerBrowserWithoutStudio,
+  reachableFromPhone,
+  studioPageIsBuilt,
+} from "./no-studio-page.ts";
 import { type ConsoleTransport, openServeConsole, type ServeConsole } from "./serve-console.ts";
 import { openServePaperclip } from "./serve-paperclip.ts";
 import { type ServedRoutines, servedRoutines } from "./serve-routines.ts";
@@ -305,11 +309,6 @@ function studioFolderOf(setup: ServeSetup): string | null {
   return setup.studioFolder === undefined
     ? (defaultStudioPlaces?.page ?? null)
     : setup.studioFolder;
-}
-
-/** Whether a phone can reach the address: served with `--network` or `--public-origin`. */
-function reachableFromPhone(listen: ListenChoice): boolean {
-  return listen.network || listen.publicOrigin !== undefined;
 }
 
 /** The line under the "Serving" line about the Studio page, or null when the page is there and current. */
