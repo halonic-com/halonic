@@ -7,6 +7,22 @@ export {
   type KeptCollectionOptions,
   keptItemsMax,
 } from "./kept-collection.ts";
+export {
+  type EventsSignal,
+  type EventsSocket,
+  LiveEventsKeeper,
+  type LiveEventsKeeperOptions,
+  type OpenEvents,
+  reconnectResetAfterMs,
+  reconnectWaits,
+} from "./live-events-keeper.ts";
+export {
+  combinedState,
+  eventsBatchMs,
+  LiveSync,
+  type LiveSyncOptions,
+  liveSyncTimers,
+} from "./live-sync.ts";
 export { type EventsState, type PollRates, pollRates } from "./poll-rates.ts";
 export {
   StoredAgentMessaging,

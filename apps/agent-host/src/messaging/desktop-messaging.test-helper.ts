@@ -8,7 +8,13 @@ import {
 } from "@halonicjs/adapter-agent-host-client";
 import { ManualClock, MemoryScheduler, MemorySecretStore } from "@halonicjs/adapter-memory";
 import { PaperclipKeys } from "@halonicjs/host-agent-messaging-hub";
-import { SyncCounters, SyncScheduler } from "@halonicjs/host-paperclip-sync";
+import {
+  type EventsSignal,
+  LiveSync,
+  type OpenEvents,
+  SyncCounters,
+  SyncScheduler,
+} from "@halonicjs/host-paperclip-sync";
 import { paperclipKeyRoutes } from "../paperclip/paperclip-key-routes.ts";
 import { profileOf } from "../profile-folder.ts";
 import { webCryptoDigest } from "../profile-token-key.ts";
@@ -43,6 +49,16 @@ export class FakePaperclip {
   me: unknown;
   /** When set, answers `/api/cli-auth/me` in place of {@link FakePaperclip.me}: a fault or a redirect. */
   meAnswer: (() => Response) | undefined;
+  /** The one chat `chats` answers, with Ada; a test changes it as a new message would. */
+  chat: Record<string, unknown> = {
+    id: "task-1",
+    title: "Chat with Ada",
+    conversationAgentId: "agent-ada",
+    conversationState: "waiting",
+    updatedAt: "2026-11-24T13:55:00.000Z",
+  };
+  /** What a read of the chat's comments answers. */
+  comments: unknown[] = [];
   /** What `live-runs` answers: the runs going now. */
   liveRuns: unknown[] = [];
   /** What `heartbeat-runs` answers: the newest runs, finished ones included. */
@@ -95,34 +111,30 @@ export class FakePaperclip {
         { id: "agent-bo", name: "Bo", status: "paused" },
       ]);
     }
-    if (path === `/api/companies/${acme.company}/chats`) {
-      return json([
-        {
-          id: "task-1",
-          title: "Chat with Ada",
-          conversationAgentId: "agent-ada",
-          conversationState: "waiting",
-          updatedAt: "2026-11-24T13:55:00.000Z",
-        },
-      ]);
-    }
+    if (path === `/api/companies/${acme.company}/chats`) return json([this.chat]);
     const list = this.#listAt(path);
     if (list !== undefined) return json(list);
     if (path === "/api/issues/task-1")
       return json({ identifier: "ACME-7", title: "Chat with Ada" });
-    // A message the person sends to Ada; what it says isn't read back.
-    if (path === "/api/issues/task-1/comments" && request.method === "POST") {
-      return json({
-        id: "c1",
-        body: "Sent",
-        authorUserId: "user-1",
-        createdAt: "2026-11-24T14:00:00.000Z",
-      });
-    }
+    if (path === "/api/issues/task-1/comments") return json(this.#commentsAnswer(request.method));
     if (path === "/api/cli-auth/revoke-current") return json({ revoked: true });
     if (path === "/api/cli-auth/me" && this.meAnswer !== undefined) return this.meAnswer();
     if (path === "/api/cli-auth/me" && this.me !== undefined) return json(this.me);
     return json({ error: "API route not found" }, 404);
+  }
+
+  /**
+   * The chat's comments for a read; for a send, the message the person sent to Ada, whose text
+   * isn't read back.
+   */
+  #commentsAnswer(method: string): unknown {
+    if (method !== "POST") return this.comments;
+    return {
+      id: "c1",
+      body: "Sent",
+      authorUserId: "user-1",
+      createdAt: "2026-11-24T14:00:00.000Z",
+    };
   }
 
   /** What a company list route answers, or `undefined` for any other path. */
@@ -158,6 +170,28 @@ function withCanary(value: unknown, canary: string): unknown {
     adapterConfig: { token: canary, headers: { authorization: `Bearer ${canary}` } },
     instanceUrl: instanceUrl.href,
   };
+}
+
+/** Every events socket the host opened, newest last; a test speaks for the newest one. */
+export class FakeLiveSockets {
+  readonly opened: { onSignal: (signal: EventsSignal) => void; closed: boolean }[] = [];
+
+  readonly open: OpenEvents = (onSignal) => {
+    const socket = { onSignal, closed: false };
+    this.opened.push(socket);
+    return {
+      close: () => {
+        socket.closed = true;
+      },
+    };
+  };
+
+  /** The newest socket says `signal`. */
+  say(signal: EventsSignal): void {
+    const socket = this.opened.at(-1);
+    if (socket === undefined) throw new Error("The host opened no events socket.");
+    socket.onSignal(signal);
+  }
 }
 
 /** A Halonic server stand-in on Acme's address: one source and one agent; it answers 401 to another token. */
@@ -202,6 +236,8 @@ export interface Desktop {
   messaging: DesktopMessaging;
   /** The sync's counters, which `GET /v1/sync/diagnostics` answers from. */
   counters: SyncCounters;
+  /** The events sockets the host opened for its connections; none opens until a test says so. */
+  sockets: FakeLiveSockets;
   keys: PaperclipKeys;
   /** Moves the scheduler's clock on by `ms` and delivers the timers that are due: no sleep. */
   wait(ms: number): Promise<void>;
@@ -252,8 +288,15 @@ export async function startDesktop(): Promise<Desktop> {
   const log = (text: string) => logged.push(text);
   // Its lines go nowhere, so `logged` holds only what failed.
   const counters = new SyncCounters({ clock, log: () => undefined });
+  const sockets = new FakeLiveSockets();
   const messaging = new DesktopMessaging({
     counters,
+    live: {
+      add: (id, open) => live.add(id, open),
+      remove: (id) => live.remove(id),
+      countersFor: (id, kept) => live.countersFor(id, kept),
+    },
+    openEvents: () => sockets.open,
     keys,
     cacheRoot: join(profile, "agent-messaging-cache"),
     workspaceRoots,
@@ -271,15 +314,27 @@ export async function startDesktop(): Promise<Desktop> {
     now: () => clock.now(),
   });
   const scheduler = new MemoryScheduler(
-    { onTimer: async (timer) => void (await sync.onTimer(timer)), onTick: async () => {} },
+    {
+      onTimer: async (timer) => {
+        if (!(await sync.onTimer(timer))) await live.onTimer(timer);
+      },
+      onTick: async () => {},
+    },
     clock,
   );
   const replies = new ReplyWatch({ clock, report: (error) => log(`watch replies ${error}\n`) });
   const sync = new SyncScheduler({
     scheduler,
     clock,
-    poll: () => messaging.refresh(),
+    poll: () => live.poll(() => messaging.refresh()),
     waiting: () => replies.waiting(),
+  });
+  const live = new LiveSync({
+    scheduler,
+    clock,
+    sync,
+    counters,
+    report: (error) => log(`live events ${error}\n`),
   });
   await sync.start();
   // The first full load is due at once, as the host's own scheduler would deliver it.
@@ -312,6 +367,7 @@ export async function startDesktop(): Promise<Desktop> {
     setting,
     messaging,
     counters,
+    sockets,
     keys,
     wait: async (ms) => {
       clock.advance(ms);
@@ -329,6 +385,7 @@ export async function startDesktop(): Promise<Desktop> {
     writeConnection: (address, company) => writeConnection(address, company),
     filesIn,
     close: async () => {
+      await live.stop();
       await sync.stop();
       messaging.close();
       await host.close();

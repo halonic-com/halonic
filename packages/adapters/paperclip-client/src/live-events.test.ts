@@ -1,3 +1,4 @@
+import type { Socket } from "node:net";
 import { encodeFrame, frameType } from "@halonicjs/adapter-websocket-frames";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -6,9 +7,10 @@ import {
   connectTo,
   FakeEventsServer,
   textFrame,
+  textHeader,
   upgradeAnswer,
 } from "./live-events.test-helper.ts";
-import { LiveEventsConnection, type LiveSignal } from "./live-events.ts";
+import { LiveEventsConnection, type LiveSignal, liveFrameMaxBytes } from "./live-events.ts";
 
 let paperclip: FakeEventsServer;
 
@@ -197,6 +199,56 @@ verifies("paperclip-client.live-events", () => {
         bytes: Buffer.from([0x03, 0xe8]),
       });
       expect(signals.filter((signal) => signal.kind === "closed")).toHaveLength(1);
+    });
+  });
+
+  describe("leaves no socket behind", () => {
+    /** A server that ignores the client's close and pings every few milliseconds, and says when its socket closed. */
+    async function pingingServer(write: (socket: Socket) => void = () => {}) {
+      const server = await new FakeEventsServer({ allowHalfOpen: true }).start();
+      const socketClosed = new Promise<void>((resolve) => {
+        server.onOpen = (socket) => {
+          // The client's end makes the next ping fail with EPIPE; that is the point.
+          socket.on("error", () => {});
+          write(socket);
+          const pings = setInterval(
+            () => socket.write(encodeFrame(frameType.ping, new Uint8Array(0))),
+            5,
+          );
+          socket.on("close", () => {
+            clearInterval(pings);
+            resolve();
+          });
+        };
+      });
+      return { server, socketClosed };
+    }
+
+    it("ends the socket after a normal close, also when Paperclip ignores it and keeps pinging", async () => {
+      const { server, socketClosed } = await pingingServer();
+      try {
+        const { connection, closed } = connectTo(server, { closeGraceMs: 20 });
+        await connection.open();
+        connection.close();
+        expect(await closed).toEqual({ kind: "closed", code: 1000, why: "stopped" });
+        await socketClosed;
+      } finally {
+        await server.stop();
+      }
+    });
+
+    it("ends the socket at once after a frame too large, without waiting for Paperclip", async () => {
+      const { server, socketClosed } = await pingingServer((socket) =>
+        socket.write(textHeader(liveFrameMaxBytes + 1)),
+      );
+      try {
+        const { connection, closed } = connectTo(server, { closeGraceMs: 60_000 });
+        await connection.open();
+        expect(await closed).toEqual({ kind: "closed", code: 1009, why: "too-large" });
+        await socketClosed;
+      } finally {
+        await server.stop();
+      }
     });
   });
 

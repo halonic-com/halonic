@@ -22,6 +22,12 @@ export const liveFrameMaxBytes = 1024 * 1024;
 export const liveIdleTimeoutMs = 75_000;
 
 /**
+ * How long after our close frame a socket may stay open for Paperclip's own close. A server that
+ * ignores it and keeps pinging would otherwise hold the socket, one more on every reconnect.
+ */
+export const liveCloseGraceMs = 3_000;
+
+/**
  * Why the connection ended. `not-allowed` is Paperclip's 403 at the upgrade, which a board key
  * gets until Paperclip accepts board keys on the socket: not worth retrying until the key changes.
  */
@@ -55,6 +61,8 @@ export interface LiveEventsOptions {
   upgradeTimeoutMs?: number;
   /** How long an open socket may stay silent; {@link liveIdleTimeoutMs} by default. */
   idleTimeoutMs?: number;
+  /** How long a closed socket waits for Paperclip's close; {@link liveCloseGraceMs} by default. */
+  closeGraceMs?: number;
 }
 
 /** The messages that ask for status events only: `runIds` stays empty, so no run log is ever sent. */
@@ -87,6 +95,7 @@ export class LiveEventsConnection {
   readonly #onSignal: (signal: LiveSignal) => void;
   readonly #upgradeTimeoutMs: number;
   readonly #idleTimeoutMs: number;
+  readonly #closeGraceMs: number;
   #socket: Socket | undefined;
   #started = false;
   #ended = false;
@@ -97,6 +106,7 @@ export class LiveEventsConnection {
     this.#onSignal = options.onSignal;
     this.#upgradeTimeoutMs = options.upgradeTimeoutMs ?? upgradeTimeoutMs;
     this.#idleTimeoutMs = options.idleTimeoutMs ?? liveIdleTimeoutMs;
+    this.#closeGraceMs = options.closeGraceMs ?? liveCloseGraceMs;
   }
 
   /** Connects; it resolves once the connection has said `open` or `closed`. */
@@ -195,14 +205,25 @@ export class LiveEventsConnection {
     this.#socket?.write(encodeFrame(opcode, bytes, randomBytes(4)));
   }
 
-  /** Sends a close frame with `code` (none for 1005, which no frame may carry), ends the socket and tells the owner. */
+  /**
+   * Sends a close frame with `code` (none for 1005, which no frame may carry), tells the owner and
+   * ends the socket: at once after a frame too large or broken, since nothing more of it is read,
+   * and otherwise once Paperclip closed too or {@link liveCloseGraceMs} passed.
+   */
   #closeWith(code: number, why: LiveClosedWhy): void {
     if (this.#ended) return;
     const payload =
       code === noStatusCode ? new Uint8Array(0) : Uint8Array.of(code >> 8, code & 0xff);
     this.#send(frameType.close, payload);
     this.#end(code, why);
-    this.#socket?.end();
+    const socket = this.#socket;
+    if (socket === undefined) return;
+    if (why === "too-large" || why === "bad-answer") {
+      socket.end(() => socket.destroy());
+      return;
+    }
+    socket.end();
+    setTimeout(() => socket.destroy(), this.#closeGraceMs).unref();
   }
 
   #end(code: number, why: LiveClosedWhy): void {
