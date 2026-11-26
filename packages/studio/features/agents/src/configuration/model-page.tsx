@@ -93,7 +93,9 @@ export function ModelPage({
   const options: SelectOption[] = aliases.map((alias) => ({ value: alias, label: alias }));
   if (model !== "" && !aliases.includes(model)) options.push({ value: model, label: model });
   // The alias line is the picker's hint, so a screen reader hears it on the picker.
-  const aliasLine = summary && <AliasLine alias={model} summary={summary} openAlias={openAlias} />;
+  const aliasLine = summary && (
+    <AliasLine alias={model} summary={summary} harness={settings.harness} openAlias={openAlias} />
+  );
   return (
     <div className="flex flex-col gap-6">
       <ReviewMark agent={settings} field="model">
