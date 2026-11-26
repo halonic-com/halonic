@@ -58,6 +58,20 @@ verifies("quick-ask.opening", () => {
       expect(page.querySelector("textarea")).toBeNull();
     });
 
+    it("lines the bars up with the question row, so nothing moves when the agents arrive", async () => {
+      const { messenger } = slowMessenger();
+      const { page } = await openBox(messenger);
+      await act(async () => vi.advanceTimersByTime(SKELETON_AFTER_MS));
+
+      const row = page.querySelector("[data-opening]");
+      expect(row?.className).toContain("items-start");
+      const avatarBox = row?.querySelector("[data-avatar-box]");
+      expect(avatarBox?.className).toContain("p-0.5");
+      expect(avatarBox?.querySelector('span[aria-hidden="true"]')?.className).toContain(
+        "rounded-full",
+      );
+    });
+
     it("gives way to the text box once the agents arrive", async () => {
       const { messenger, arrive } = slowMessenger();
       const { page } = await openBox(messenger);
