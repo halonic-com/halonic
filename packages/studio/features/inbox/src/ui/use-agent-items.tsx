@@ -4,13 +4,13 @@ import type {
   RequesterPolicy,
   StepperCatalog,
 } from "@halonicjs/studio-feature-action-steppers/api";
-import { Button, type ListRow, StatusChip } from "@halonicjs/studio-kit";
+import { Button, type ListRow, StatusChip, waitingFor } from "@halonicjs/studio-kit";
 import type { ActionSteps } from "@halonicjs/studio-services";
 import { type ReactNode, useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import {
   type AgentBundle,
   bundleAgentItems,
-  bundleMeta,
+  bundleAsker,
   bundleTitle,
   rowKeyHolding,
 } from "../agent/agent-bundles.ts";
@@ -18,7 +18,6 @@ import { AgentInbox, type AgentInboxState } from "../agent/agent-inbox.ts";
 import {
   agentItemAsker,
   agentItemKey,
-  agentItemMeta,
   agentItemTitle,
   isAgentItemLate,
   sourceDownLine,
@@ -26,6 +25,7 @@ import {
 import { agentItemShows, type ProjectFilter } from "../agent/project-filter.ts";
 import { ActionItemCard } from "./action-item-card.tsx";
 import { AgentItemCard, type AgentItemCardProps } from "./agent-item-card.tsx";
+import { lineEndingInWait, wholeLine } from "./inbox-row.tsx";
 import type { ItemHeading } from "./item-header.tsx";
 import { agentMark } from "./row-marks.tsx";
 
@@ -169,7 +169,7 @@ export function useAgentItems(
       return {
         picture: agentMark(bundle.items[0], "header").avatar,
         title: row.title,
-        line: row.meta,
+        line: wholeLine(row),
       };
     },
     open: (key) => {
@@ -222,7 +222,7 @@ function bundleRow(bundle: AgentBundle, state: AgentInboxState, now: Date): List
     ...agentMark(oldest),
     id: bundle.key,
     title: bundleTitle(bundle, work),
-    meta: bundleMeta(bundle, source, now),
+    ...lineEndingInWait(bundleAsker(bundle, source), waitingFor(new Date(oldest.createdAt), now)),
     wrapTitle: true,
     wrapMeta: true,
   };
@@ -237,7 +237,7 @@ function agentRow(item: AgentItem, source: MessagingSource | undefined, now: Dat
     ...agentMark(item),
     id: agentItemKey(item),
     title: agentItemTitle(item),
-    meta: agentItemMeta(item, source, now),
+    ...lineEndingInWait(agentItemAsker(item, source), waitingFor(new Date(item.createdAt), now)),
     wrapTitle: true,
     wrapMeta: true,
   };

@@ -55,10 +55,14 @@ function trailingOf(row: AnyListRow): ReactNode {
 
 /**
  * How the title fits: cut with an ellipsis, or wrapped when the row wraps or asks for `wrapTitle`,
- * which wraps the title alone and keeps the meta line cut.
+ * which wraps the title alone and keeps the meta line cut. A `plain` List's row is a sidebar's,
+ * exactly 80px: its `wrapTitle` takes at most two 20px lines, then is cut (HAL-20018).
  */
-function titleFit(row: AnyListRow): string {
-  return row.wrapTitle === true ? "wrap-break-word" : lineFit(row);
+function titleFit(row: AnyListRow, plain: boolean): string {
+  if (row.wrapTitle !== true) {
+    return lineFit(row);
+  }
+  return plain && row.wrap !== true ? "line-clamp-2 wrap-break-word leading-5" : "wrap-break-word";
 }
 
 /** The title's colour: `fg`, `fg-muted` for a muted row, `fg-disabled` for an unavailable one. */
@@ -83,7 +87,7 @@ function titleWeight(row: AnyListRow, plain: boolean): string {
 /** The title, with its `titleEnd` at the line's end when the row has one. */
 function TitleLine({ row, plain }: { readonly row: AnyListRow; readonly plain: boolean }) {
   const title = (
-    <span className={`${titleFit(row)} ${titleWeight(row, plain)} ${titleColour(row)}`}>
+    <span className={`${titleFit(row, plain)} ${titleWeight(row, plain)} ${titleColour(row)}`}>
       {row.title}
     </span>
   );
@@ -238,7 +242,7 @@ export function RowContent({
             id={reasonId}
             chip={trailingBelow ? trailing : undefined}
             full={plain && row.unread !== undefined}
-            large={plain}
+            plain={plain}
           />
         </UnreadLine>
         {row.under}

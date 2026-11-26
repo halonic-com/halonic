@@ -21,7 +21,9 @@ export function itemTitle(item: InboxItem): string {
  * the two read the same and two runs of one workflow read apart in both (a11y check H2). The title
  * wraps rather than being cut: in the 360 px list its end, such as the item a proposal changes, is
  * what tells two rows apart (HAL-15092, Noah's decision on HAL-15073). The meta line wraps onto
- * a second line, then is cut: its end, "Waiting 1 h", is what the row is for (HAL-15126).
+ * a second line, then is cut: its end, "Waiting 1 h", is what the row is for (HAL-15126). In the
+ * Inbox's own 80px rows, a `plain` List, the title takes two lines at most and the meta line one,
+ * keeping its wait whole (Noah's decision on HAL-20018).
  */
 export function inboxRow(item: InboxItem, now: Date, runFacts: RunFactsOf | undefined): ListRow {
   const facts = item.kind === "setup" ? undefined : runFacts?.(item.runId);
@@ -46,12 +48,36 @@ export function rowFor(item: InboxItem, now: Date, facts?: RunFacts): ListRow {
       ? ` · ${movesOnMeta(new Date(item.movesOnAt))}`
       : "";
   const context = runItemContext(item, facts);
-  const what = context === "" ? "" : `${context} · `;
-  const row = { id: item.key, title: itemTitle(item), meta: `${what}${waiting}${movesOn}` };
+  const row = {
+    id: item.key,
+    title: itemTitle(item),
+    ...lineEndingInWait(context, `${waiting}${movesOn}`),
+  };
   // Amber says "have a look": a day or more of waiting (the waiting time stays muted).
   return isLate(new Date(item.since), now)
     ? { ...row, trailing: <StatusChip tone="attention">Late</StatusChip> }
     : row;
+}
+
+/**
+ * A row's line that ends in how long its item has waited, with the wait as the line's `metaEnd`, so
+ * a one-line row cuts only what comes before it: "Support reply · run 891b5a · a pe… · Waiting 1 h"
+ * (HAL-20018). With nothing before it, the wait is the whole line.
+ */
+export function lineEndingInWait(before: string, wait: string): Pick<ListRow, "meta" | "metaEnd"> {
+  return before === "" ? { meta: wait } : { meta: before, metaEnd: ` · ${wait}` };
+}
+
+/** A row's whole line under its title, its `metaEnd` included, as the open item's header says it. */
+export function wholeLine(row: ListRow): ReactNode {
+  if (row.metaEnd === undefined) return row.meta;
+  if (typeof row.meta === "string") return `${row.meta}${row.metaEnd}`;
+  return (
+    <>
+      {row.meta}
+      {row.metaEnd}
+    </>
+  );
 }
 
 /**

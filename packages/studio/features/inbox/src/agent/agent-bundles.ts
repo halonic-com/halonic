@@ -5,7 +5,6 @@ import type {
   WorkItem,
 } from "@halonicjs/ports";
 import { markHiddenName } from "@halonicjs/std";
-import { waitingFor } from "@halonicjs/studio-kit";
 import { agentItemKey, authorName } from "./agent-item-text.ts";
 
 /**
@@ -87,21 +86,14 @@ export function bundleTitle(bundle: AgentBundle, work: WorkItem | undefined): st
 }
 
 /**
- * A bundle's meta line: its source, who asks, and how long the oldest has waited, so a bundle
- * never looks newer than the card at its bottom: "Paperclip · Acme · Chief, Ravi · Waiting 3 h".
+ * A bundle's meta line without its wait: its source and who asks, "Paperclip · Acme · Chief,
+ * Ravi". Its row ends in how long the oldest has waited, so a bundle never looks newer than the
+ * card at its bottom, and keeps that wait whole (HAL-20018).
  */
-export function bundleMeta(
-  bundle: AgentBundle,
-  source: MessagingSource | undefined,
-  now: Date,
-): string {
+export function bundleAsker(bundle: AgentBundle, source: MessagingSource | undefined): string {
   const names = new Set(
     bundle.items.flatMap((item) => (item.from.kind === "me" ? [] : [authorName(item.from)])),
   );
   const from = names.size === 0 ? [] : [[...names].join(", ")];
-  const parts = [...(source === undefined ? [] : [source.label]), ...from];
-  const oldest = bundle.items[0];
-  return oldest === undefined
-    ? parts.join(" · ")
-    : [...parts, waitingFor(new Date(oldest.createdAt), now)].join(" · ");
+  return [...(source === undefined ? [] : [source.label]), ...from].join(" · ");
 }

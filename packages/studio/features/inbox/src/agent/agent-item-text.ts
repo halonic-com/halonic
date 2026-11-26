@@ -14,7 +14,6 @@ import {
   isLate,
   type MarkdownInline,
   readMarkdown,
-  waitingFor,
 } from "@halonicjs/studio-kit";
 
 /** The list's key of an agent item; the item's ID is opaque, so the prefix keeps it apart from run items. */
@@ -83,17 +82,6 @@ function plainText(inlines: readonly MarkdownInline[]): string {
 /** Who wrote or answered, as a line says it: "you", or their name. */
 export function authorName(author: MessagingAuthor): string {
   return author.kind === "me" ? "you" : markHiddenName(author.name);
-}
-
-/** The row's meta line: "Paperclip · Acme · Chief · Waiting 3 h". */
-export function agentItemMeta(
-  item: AgentItem,
-  source: MessagingSource | undefined,
-  now: Date,
-): string {
-  const waiting = waitingFor(new Date(item.createdAt), now);
-  const asker = agentItemAsker(item, source);
-  return asker === "" ? waiting : `${asker} · ${waiting}`;
 }
 
 /**
