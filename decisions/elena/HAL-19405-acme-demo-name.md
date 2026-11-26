@@ -2,6 +2,7 @@
 
 - Approval: Nina's wording decision on HAL-19402 (from Sofia's walk-through, HAL-19383 G15), a team decision on approved screens; Liam signs this note with the pull request
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:3pDkPgQU3SxGgiDfw3tyKLjntW09Jwt1aXXAEPLnVwyPbrHRg2YYJ00Xx89ZscyL9tUO8dQ9pqvxSDjFOemHAA==
 - Task: HAL-19405
 
 ## What changes
