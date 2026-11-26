@@ -1,5 +1,6 @@
 import { MemoryChatSessions } from "@halonicjs/adapter-memory";
-import { requestLogTexts } from "@halonicjs/assistant";
+import type { RequestLogLine } from "@halonicjs/app";
+import { fixStopTexts, requestLogTexts } from "@halonicjs/assistant";
 import type { ToolCall } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
@@ -107,6 +108,66 @@ verifies("assistant.build.fix-attempts", () => {
     expect((await assistant.undo(accepted.step)).status).toBe("done");
 
     expect(await fixes()).toEqual(afterAccept);
+  });
+
+  it("stops the next fix after two accepted fixes each failed, also in the chat reopened", async () => {
+    const log: RequestLogLine[] = [];
+    const callFails = (at: string) => log.push({ type: "failure", at, tool: "search_notes" });
+    const sessions = new MemoryChatSessions();
+    const time = clock();
+    const fix = (id: string, content: string): ToolCall => ({
+      ...fixCode,
+      id,
+      arguments: { ...fixCode.arguments, content },
+    });
+    const read: ToolCall = {
+      id: "read-2",
+      name: "read_file",
+      arguments: { path: "integrations/Notes/backend/index.js" },
+    };
+    const first = setup({
+      files: notes,
+      requestLogs: async () => log,
+      sessions,
+      now: time.now,
+      turns: [
+        answered("", [fixCode]),
+        answered("Proposed."),
+        answered("", [read, fix("call-2", "export default { again: true };\n")]),
+        answered("Proposed."),
+      ],
+    });
+    const about = { kind: "connector", hub: "support", id: "notes" } as const;
+    const chat = await first.assistant.newChat("build", about);
+    await first.assistant.answer({ chatId: chat.id, message: "Search stopped working." });
+    await first.assistant.accept({ kind: "card", card: { chatId: chat.id, cardId: "call-1" } });
+    callFails("2026-11-26T09:05:00.000Z");
+    time.set("2026-11-26T09:10:00.000Z");
+    await first.assistant.answer({ chatId: chat.id, message: "Still broken." });
+    await first.assistant.accept({ kind: "card", card: { chatId: chat.id, cardId: "call-2" } });
+    callFails("2026-11-26T09:15:00.000Z");
+    await first.assistant.saved();
+
+    time.set("2026-11-26T09:20:00.000Z");
+    const reopened = setup({
+      files: notes,
+      requestLogs: async () => log,
+      sessions,
+      now: time.now,
+      turns: [answered("", [fix("call-3", "export default { third: true };\n")]), answered("")],
+    });
+    await reopened.assistant.answer({ chatId: chat.id, message: "Try once more." });
+
+    const results = (reopened.turnRequests.at(-1)?.messages ?? []).filter(
+      (each) => each.role === "tool",
+    );
+    expect(results.at(-1)?.content).toBe(fixStopTexts.result("notes"));
+    await reopened.assistant.saved();
+    expect((await sessions.load("memory:acme", chat.id))?.fixes).toEqual({
+      integration: "notes",
+      folder: "integrations/Notes",
+      failed: 2,
+    });
   });
 
   it("answers fixed sentences, not the error, when the log can't be read", async () => {
