@@ -37,6 +37,8 @@ class CountedSync {
   mapping = "1";
   /** When set, the next inbox read answers this batch instead of the whole list. */
   nextInbox: SyncBatch<InboxItem> | undefined;
+  /** When set, each read lists the fake's items, then waits for it before it answers. */
+  held: Promise<void> | undefined;
   readonly #live: AgentMessaging;
 
   constructor(live: AgentMessaging) {
@@ -76,7 +78,9 @@ class CountedSync {
       read: async (change) => {
         this.asked.push(change);
         const asOf = "2026-11-26T08:00:00.000Z";
-        return next() ?? { kind: "all", items: await list(), removed: [], asOf };
+        const batch = next() ?? { kind: "all", items: await list(), removed: [], asOf };
+        await this.held;
+        return batch;
       },
     };
   }
@@ -108,10 +112,21 @@ function counted(fake: FakeAgentMessaging): { live: AgentMessaging; reads: strin
   return { live, reads };
 }
 
+/** Waits until all four collections have started their held read, so it predates what follows. */
+async function untilReading(sync: CountedSync): Promise<void> {
+  const before = sync.asked.length;
+  for (let turn = 0; turn < 100; turn += 1) {
+    if (sync.asked.length >= before + 4) return;
+    await Promise.resolve();
+  }
+  throw new Error("the sync never started reading");
+}
+
 function storedOver(
   live: AgentMessaging,
   source: MessagingId,
   persistence = new MemoryPersistence(),
+  itemsMax?: number,
 ) {
   const sync = new CountedSync(live);
   const warned: string[] = [];
@@ -121,6 +136,7 @@ function storedOver(
     source,
     persistence,
     warn: (message) => warned.push(message),
+    ...(itemsMax === undefined ? {} : { itemsMax }),
   });
   return { stored, sync, persistence, warned };
 }
@@ -179,6 +195,59 @@ verifies("agent-host.paperclip-sync", () => {
 
       expect(await stored.listInboxItems()).toEqual([]);
       expect(sync.asked.at(-2)).toEqual({ kind: "since", asOf: "2026-11-26T08:00:00.000Z" });
+    });
+  });
+
+  describe("a sync in flight", () => {
+    it("keeps an answer accepted while a sync that read the card before it was still reading", async () => {
+      const { fake, source, card } = acmeSource();
+      const { stored, sync } = storedOver(fake, source);
+      await stored.refresh();
+      let release = () => {};
+      sync.held = new Promise((resolve) => {
+        release = resolve;
+      });
+      const reading = stored.refresh();
+      await untilReading(sync);
+
+      await stored.answer(card.id, { kind: "option", option: "yes" });
+      release();
+      await reading;
+
+      const [kept] = await stored.listInboxItems();
+      expect(kept?.state).toMatchObject({ kind: "answered", by: { kind: "me" } });
+    });
+
+    it("writes nothing after clear, when a sync that was reading ends", async () => {
+      const { fake, source } = acmeSource();
+      const { stored, sync, persistence } = storedOver(fake, source);
+      let release = () => {};
+      sync.held = new Promise((resolve) => {
+        release = resolve;
+      });
+      const reading = stored.refresh();
+      await untilReading(sync);
+
+      await stored.clear();
+      release();
+      await reading;
+
+      expect(persistence.records.size).toBe(0);
+    });
+
+    it("asks for every item again after the cap cut a changed batch", async () => {
+      const { fake, source, card } = acmeSource();
+      const { stored, sync } = storedOver(fake, source, new MemoryPersistence(), 1);
+      await stored.refresh();
+      const other = { ...card, id: "card-2" };
+      const asOf = "2026-11-26T09:00:00.000Z";
+      sync.nextInbox = { kind: "changed", items: [other], removed: [], asOf };
+      await stored.refresh();
+      sync.asked.length = 0;
+
+      await stored.refresh();
+
+      expect(sync.asked).toContainEqual({ kind: "all" });
     });
   });
 

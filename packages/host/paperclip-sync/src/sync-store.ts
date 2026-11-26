@@ -42,9 +42,13 @@ export class SyncStore {
     return this.#syncing;
   }
 
-  /** Deletes the source's saved copy and forgets what is kept in memory, as Disconnect does. */
+  /**
+   * Closes every collection, waits for the saves already started, then deletes the source's saved
+   * copy, as Disconnect does. A sync or a write still in flight then saves nothing, so the copy
+   * can't come back; the store keeps nothing more.
+   */
   async clear(): Promise<void> {
-    for (const kept of this.#all()) kept.forget();
+    await Promise.all(this.#all().map((kept) => kept.close()));
     await this.#options.persistence.clear();
   }
 
@@ -55,7 +59,7 @@ export class SyncStore {
     return settled.some((result) => result.status === "fulfilled" && result.value);
   }
 
-  #all(): readonly KeptCollection<{ id: string }>[] {
+  #all(): readonly Pick<KeptCollection<{ id: string }>, "sync" | "close">[] {
     return [this.agents, this.conversations, this.inbox, this.work];
   }
 }

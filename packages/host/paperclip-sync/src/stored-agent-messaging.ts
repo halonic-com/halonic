@@ -165,7 +165,10 @@ export class StoredAgentMessaging implements AgentMessaging {
     if (changed) this.#feed.push(this.#source);
   }
 
-  /** Deletes the source's local copy, as Disconnect does. */
+  /**
+   * Deletes the source's local copy for good, as Disconnect does: a sync, answer or send still in
+   * flight saves nothing afterwards, and reads go to the provider.
+   */
   clear(): Promise<void> {
     return this.#store.clear();
   }
