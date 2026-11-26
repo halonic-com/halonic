@@ -126,6 +126,17 @@ verifies("remote.phone-inbox", () => {
     expect(text()).toContain(`Answered in Paperclip by Mara at ${timeOf(answeredAt)}`);
   });
 
+  it("names the computer when the person already answered the card there", async () => {
+    const { scene } = await mountInbox([item()]);
+    await press("Chief" + "Ship phase 2 now?");
+    await press("Today");
+    await result(scene, { outcome: "already-answered", by: { kind: "me" }, answeredAt });
+    expect(text()).toContain(`Answered on ${SCENE_COMPUTER} at ${timeOf(answeredAt)}`);
+    expect(() => button("Today")).toThrow();
+    await press("Next");
+    expect(text()).toContain("Needs you");
+  });
+
   it("keeps a risky card on the computer, buttons off, while phones may not answer risky ones", async () => {
     const { scene } = await mountInbox([hire]);
     expect(text()).toContain("Answer this on your computer");
