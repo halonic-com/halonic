@@ -5,6 +5,7 @@
 - Task: HAL-18971, from Nina's words check on HAL-19210
 - Approval: Liam approves this note in his review of this pull request on HAL-18971
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/l7GQDPOwHxILB0tjNsSUE21kWvP7T/ZjNEoLbyJFQUOns3mUID3QXVRwbbpEMP2ILB/PBLEwktellzoOKaDDQ==
 
 ## What changes
 
