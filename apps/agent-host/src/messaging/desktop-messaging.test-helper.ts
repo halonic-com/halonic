@@ -68,6 +68,10 @@ export class FakePaperclip {
    * answer empty lists, so a whole poll works and fills the local copy (`agent-host.paperclip-sync`).
    */
   servesInbox = false;
+  /** The company's open tasks, which the Inbox reads cards on; none unless a test sets them. */
+  tasks: unknown[] = [];
+  /** Each open task's cards, by task ID. */
+  cards: Record<string, unknown[]> = {};
   /**
    * When set, a request to `path` calls `arrived` once seen, then waits for `until`: a read held
    * open, which a test knows has started.
@@ -119,6 +123,8 @@ export class FakePaperclip {
     if (path === "/api/issues/task-1")
       return json({ identifier: "ACME-7", title: "Chat with Ada" });
     if (path === "/api/issues/task-1/comments") return json(this.#commentsAnswer(request.method));
+    const cards = /^\/api\/issues\/([^/]+)\/interactions$/.exec(path)?.[1];
+    if (cards !== undefined) return json(this.cards[cards] ?? []);
     if (path === "/api/cli-auth/revoke-current") return json({ revoked: true });
     if (path === "/api/cli-auth/me" && this.meAnswer !== undefined) return this.meAnswer();
     if (path === "/api/cli-auth/me" && this.me !== undefined) return json(this.me);
@@ -149,8 +155,8 @@ export class FakePaperclip {
   /** What a company list route answers, or `undefined` for any other path. */
   #listAt(path: string): unknown[] | undefined {
     const company = `/api/companies/${acme.company}`;
-    // The open tasks, where the provider finds channels (`paperclip-client.channels`): none here.
-    if (path === `${company}/issues`) return [];
+    // The open tasks, where the provider finds channels (`paperclip-client.channels`) and cards.
+    if (path === `${company}/issues`) return this.tasks;
     if (path === `${company}/live-runs`) return this.liveRuns;
     if (path === `${company}/heartbeat-runs`) return this.runs;
     return this.servesInbox && inboxLists.has(path) ? [] : undefined;

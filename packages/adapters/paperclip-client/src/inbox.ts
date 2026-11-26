@@ -6,15 +6,20 @@ import { cardFilesOf, type FilesOf, PaperclipCardFiles } from "./card-files.ts";
 import { approvalToItem, cardToItem } from "./cards.ts";
 import { mayBeChannel } from "./channels.ts";
 import { decisionPage, decisionToItem } from "./decisions.ts";
-import { asRecords, type JsonRecord, text } from "./json.ts";
+import { EndedItems } from "./ended-items.ts";
+import { asRecord, asRecords, type JsonRecord, text } from "./json.ts";
 import { type MapContext, newestFirst } from "./map.ts";
 import type { PaperclipReader } from "./reader.ts";
 import type { PaperclipSteppers } from "./steppers.ts";
 import { PaperclipTaskList } from "./task-list.ts";
+import { bodyOf, isUnreadable } from "./transport.ts";
 import { companyPrefix, type PaperclipWebLinks, prefixOf, withWebLink } from "./web-links.ts";
 
 /** Approval states the Inbox shows: waiting on the person, or on the agent after Request changes. */
 const waitingApprovalStates = ["pending", "revision_requested"] as const;
+
+/** Where a decision that no longer waits is looked for, in this order, once one is gone from the list. */
+const endedDecisionStates = ["decided", "expired", "cancelled"] as const;
 
 /** How many card reads run at once, so a first read of a big company doesn't flood the server. */
 const cardReadsAtOnce = 4;
@@ -72,6 +77,11 @@ export class PaperclipInbox {
   readonly #tasks: PaperclipTaskList;
   readonly #webLinks: PaperclipWebLinks;
   readonly #mentions: PaperclipBoardMentions;
+  readonly #now: () => Date;
+  /** Approvals and decisions that ended since they were listed, kept a day with their final state. */
+  readonly #ended = new EndedItems();
+  /** Whether the last read of open decisions filled Paperclip's page, so more may wait past it. */
+  #openDecisionsFull = false;
   /** The files on cards and approvals, and the only ones `readAttachment` reads. */
   readonly files: PaperclipCardFiles;
   #cards = new Map<string, TaskCards>();
@@ -81,9 +91,10 @@ export class PaperclipInbox {
   #approvalFiles = new Map<string, Attachment[]>();
 
   /**
-   * `webLinks` gives cards and approvals their page in Paperclip. With `steppers`, a card that
-   * pins a stepper request is served as a stepper item. The comments that mention the person
-   * are items too; `connection.warn` hears when they can't be read.
+   * `webLinks` gives cards and approvals their page in Paperclip, and `now` the time an ended
+   * item was missed. With `steppers`, a card that pins a stepper request is served as a stepper
+   * item. The comments that mention the person are items too; `connection.warn` hears when they
+   * can't be read.
    */
   constructor(
     reader: PaperclipReader,
@@ -96,6 +107,7 @@ export class PaperclipInbox {
     this.#reader = reader;
     this.#company = company;
     this.#webLinks = webLinks;
+    this.#now = now;
     this.#steppers = steppers;
     this.#mentions = new PaperclipBoardMentions(reader, webLinks, connection, now);
     this.#boardRequests = new PaperclipBoardRequests(reader, company);
@@ -132,8 +144,12 @@ export class PaperclipInbox {
     const open = tasks ?? (await this.openTasks());
     // A task with both an approval and a card has its files read once.
     const filesOf = this.files.oncePerList();
-    const approvals = await this.#approvals(context, projectOf, companyPrefix(open), filesOf);
-    const decisions = await this.#decisions(context);
+    const waiting = [
+      ...(await this.#approvals(context, projectOf, companyPrefix(open), filesOf)),
+      ...(await this.#decisions(context)),
+    ];
+    const lookUp = (gone: readonly InboxItem[]) => this.#endedOf(context, gone);
+    const approvalsAndDecisions = await this.#ended.list(waiting, lookUp, this.#now());
     const boardRequests = await this.#boardRequests.list(context);
     const mentions = await this.#mentions.list(context, open, projectOf);
     const read = await this.#allCards(context, projectOf, open, filesOf);
@@ -141,7 +157,7 @@ export class PaperclipInbox {
       this.#steppers === undefined
         ? read
         : await this.#steppers.refresh(read, (item) => context.ids.read(item.id, "card")?.[0]);
-    const others = [...approvals, ...decisions, ...boardRequests, ...cards];
+    const others = [...approvalsAndDecisions, ...boardRequests, ...cards];
     const items = newestFirst(
       [...others, ...mentions, ...this.#boardTasks(context, projectOf, open, others)],
       (item) => item.createdAt,
@@ -265,11 +281,66 @@ export class PaperclipInbox {
 
   /** The open decisions, Paperclip's largest page of them. */
   async #decisions(context: MapContext): Promise<InboxItem[]> {
+    const open = await this.#decisionsIn(context, "open");
+    this.#openDecisionsFull = open.length >= Number(decisionPage);
+    return open;
+  }
+
+  /** The decisions in `status`, Paperclip's largest page of them; each read keeps only its own status. */
+  async #decisionsIn(context: MapContext, status: string): Promise<InboxItem[]> {
     const body = await this.#reader.read("listDecisions", {
       path: { company: this.#company },
-      query: { status: "open", limit: decisionPage },
+      query: { status, limit: decisionPage },
     });
-    return asRecords(body).flatMap((record) => decisionToItem(context, record) ?? []);
+    return asRecords(body)
+      .filter((record) => text(record, "status") === status)
+      .flatMap((record) => decisionToItem(context, record) ?? []);
+  }
+
+  /**
+   * The approvals and decisions in `gone`, read again now that Paperclip no longer lists them as
+   * waiting, each keeping what was read before (its files, project and page) with its new state.
+   */
+  async #endedOf(context: MapContext, gone: readonly InboxItem[]): Promise<InboxItem[]> {
+    const approvals = await this.#approvalsNow(context, gone);
+    const decisions = gone.filter((item) => context.ids.read(item.id, "decision") !== undefined);
+    return [...approvals, ...(await this.#decisionsNow(context, decisions))];
+  }
+
+  /** The approvals in `gone` as Paperclip has them now; one it no longer finds is left out. */
+  async #approvalsNow(context: MapContext, gone: readonly InboxItem[]): Promise<InboxItem[]> {
+    const now: InboxItem[] = [];
+    for (const item of gone) {
+      const approval = context.ids.read(item.id, "approval")?.[0];
+      if (approval === undefined) continue;
+      const answer = await this.#reader.send("getApproval", { path: { approval } });
+      // One deleted, or no longer the key's to see, ended without a decision here. Any other
+      // failure is thrown, so the next list reads it again.
+      if (isUnreadable(answer)) continue;
+      const record = asRecord(bodyOf("getApproval", answer));
+      const read = record === undefined ? undefined : approvalToItem(context, record, item.work);
+      if (read !== undefined) now.push({ ...item, state: read.state });
+    }
+    return now;
+  }
+
+  /**
+   * The decisions in `gone` found among the ended ones, read status by status until each is
+   * found. With a full page of open decisions, one not found may only have moved past that page,
+   * so it stays as it was.
+   */
+  async #decisionsNow(context: MapContext, gone: readonly InboxItem[]): Promise<InboxItem[]> {
+    const now: InboxItem[] = [];
+    const left = () => gone.filter((item) => !now.some((each) => each.id === item.id));
+    for (const status of endedDecisionStates) {
+      if (left().length === 0) break;
+      const read = await this.#decisionsIn(context, status);
+      for (const item of left()) {
+        const found = read.find((each) => each.id === item.id);
+        if (found !== undefined) now.push({ ...item, state: found.state });
+      }
+    }
+    return this.#openDecisionsFull ? [...now, ...left()] : now;
   }
 
   async #taskOfApproval(approval: string): Promise<JsonRecord | undefined> {

@@ -21,6 +21,11 @@ export interface MapContext {
   userId?: string;
   /** The connection's Paperclip origin, which links from its root get; without it they stay as written. */
   origin?: string;
+  /**
+   * When this read started. An answer or end Paperclip gives no time for happened by then, so its
+   * time falls back to this rather than to the item's creation.
+   */
+  readAt?: string;
 }
 
 /** `markdown` with its links from the root of Paperclip made full addresses, when the origin is known. */

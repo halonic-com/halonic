@@ -377,6 +377,14 @@ async function conflictDetails(
   };
 }
 
+/** Whether a read failed because the key can't find what it read (404) or may not read it (403). */
+export function isUnreadable(answer: PaperclipAnswer): boolean {
+  return (
+    answer.kind === "failed" &&
+    (answer.failure === "not-found" || (answer.failure === "refused" && answer.status === 403))
+  );
+}
+
 /**
  * The body of answer `answer` to request `name`, or a thrown
  * {@link PaperclipClientError} for a failed read, so the engine can fall

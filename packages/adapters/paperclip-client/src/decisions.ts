@@ -1,6 +1,12 @@
-import type { InboxAnswer, InboxItem, InboxItemOption } from "@halonicjs/ports";
+import type {
+  InboxAnswer,
+  InboxClosedReason,
+  InboxItem,
+  InboxItemOption,
+  InboxItemState,
+} from "@halonicjs/ports";
 import type { AnswerRequest } from "./cards.ts";
-import { answeredState } from "./cards.ts";
+import { answeredState, closedState } from "./cards.ts";
 import { asRecords, field, type JsonRecord, text } from "./json.ts";
 import { authorOf, fullLinksOf, type MapContext, timeOf } from "./map.ts";
 
@@ -24,14 +30,23 @@ function needsInput(record: JsonRecord): boolean {
   return asRecords(field(record, "inputs")).some((input) => field(input, "required") === true);
 }
 
+/** Decision states that ended without a pick (`paperclip-client.closed-items`). */
+const closedDecisions: ReadonlyMap<string, InboxClosedReason> = new Map([
+  ["expired", "expired"],
+  ["cancelled", "cancelled"],
+]);
+
 /**
- * A decision as an inbox item, or `undefined` when it no longer waits and wasn't decided
- * (expired or cancelled). `work` is the task the agent asked from.
+ * A decision as an inbox item, or `undefined` for a status Halonic doesn't know. One that expired
+ * or was cancelled is `closed`. `work` is the task the agent asked from.
  */
 export function decisionToItem(context: MapContext, record: JsonRecord): InboxItem | undefined {
   const id = text(record, "id");
-  const status = text(record, "status");
-  if (id === undefined || (status !== "open" && status !== "decided")) {
+  const status = text(record, "status") ?? "";
+  if (
+    id === undefined ||
+    (status !== "open" && status !== "decided" && !closedDecisions.has(status))
+  ) {
     return undefined;
   }
   const task = text(record, "originIssueId");
@@ -55,11 +70,22 @@ export function decisionToItem(context: MapContext, record: JsonRecord): InboxIt
     createdAt: timeOf(record, "createdAt"),
     // The provider lists no files yet; it reads none, so it makes no request for them.
     attachments: [],
-    state:
-      status === "decided" && chosen !== undefined
-        ? answeredState(context, record, { kind: "option", option: chosen })
-        : { kind: "open" },
+    state: decisionState(context, record, status, chosen),
   };
+}
+
+/** A decision's state: answered with the option picked, closed, or else open. */
+function decisionState(
+  context: MapContext,
+  record: JsonRecord,
+  status: string,
+  chosen: string | undefined,
+): InboxItemState {
+  if (status === "decided" && chosen !== undefined) {
+    return answeredState(context, record, { kind: "option", option: chosen });
+  }
+  const closed = closedDecisions.get(status);
+  return closed === undefined ? { kind: "open" } : closedState(context, record, closed);
 }
 
 /**

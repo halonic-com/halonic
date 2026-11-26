@@ -119,7 +119,7 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `listComments` | `GET /api/issues/{task}/comments?order=desc&limit=100`, then `?after={comment}&order=asc&limit=100` | a chat's newest messages, then only the new ones |
 | `listTaskCards` | `GET /api/issues/{task}/interactions` | a task's cards |
 | `listApprovals` | `GET /api/companies/{company}/approvals?status=pending`, then `?status=revision_requested` | pending approvals, and those waiting on the agent after Request changes, company-wide |
-| `getApproval` | `GET /api/approvals/{approval}` | before Approve or Reject: whether it is a budget override; who decided an approval first |
+| `getApproval` | `GET /api/approvals/{approval}` | before Approve or Reject: whether it is a budget override; who decided an approval first; once for a listed approval gone from the waiting ones, for its final state (`paperclip-client.closed-items`) |
 | `listApprovalTasks` | `GET /api/approvals/{approval}/issues` | the task an approval belongs to |
 | `listApprovalComments` | `GET /api/approvals/{approval}/comments` | auto approvals in shadow mode: who has commented on an approval |
 | `listCompanyActivity` | `GET /api/companies/{company}/activity?entityType=approval&entityId={approval}` | auto approvals in shadow mode: an approval's `approval.created` entry |
@@ -130,7 +130,7 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `respondToCard` | `POST /api/issues/{task}/interactions/{card}/respond` | answer a question card, every question at once |
 | `submitVerdicts` | `POST /api/issues/{task}/interactions/{card}/verdicts` | approve, reject or defer a verdict card's items, some or all |
 | `approve`, `rejectApproval` | `POST /api/approvals/{approval}/approve`, `/reject` | decide an approval |
-| `listDecisions` | `GET /api/companies/{company}/decisions?status=open&limit=100`, and `?status=decided` before an answer | the board's open decisions; who decided one first |
+| `listDecisions` | `GET /api/companies/{company}/decisions?status=open&limit=100`, and `?status=decided` before an answer; `decided`, then `expired`, then `cancelled` only while a listed decision is gone from the open ones | the board's open decisions; who decided one first; a gone decision's final state (`paperclip-client.closed-items`) |
 | `decide` | `POST /api/decisions/{decision}/decide` with `{ optionId, idempotencyKey }` | pick one option of a decision |
 | `listSecretProposals`, `listJoinRequests` | `GET /api/companies/{company}/secret-proposals?status=pending`, `/join-requests?status=pending_approval` (no filter before an answer) | what agents propose as secrets or bindings, and who asks to join; never a value |
 | `approveSecretProposal`, `rejectSecretProposal` | `POST /api/companies/{company}/secret-proposals/{id}/approve` with `{}`, `/reject` with `{ reason }` | decide a secret proposal; no overrides, no cascade |
