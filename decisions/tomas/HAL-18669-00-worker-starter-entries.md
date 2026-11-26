@@ -3,6 +3,7 @@
 - Task: HAL-18669 (`halonic serve` runs rule steps on the QuickJS isolate)
 - Approval: plan rev 1 on HAL-18669, approved by Liam on 26 Nov ("Plan rev 1 approved", including the `tooling/check` process-starts entry); ToolScript ADR 2.2 and 2.3; Liam approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:YrCuV3JYX8N2wwSeHfU0IsBFEA5dL0CZhAkLhm9bWOXd6uFahEmkmZCzSV8+Zl0OA3DTnOGza/E+aV9lkElUBg==
 
 ## What changes
 
