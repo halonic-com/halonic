@@ -22,6 +22,7 @@ const integrationSteps = `When the person asks for an integration with an outsid
 3. Read the integration guide with \`integration_guide\` and follow it. That tool and the files under \`integrations/\` are there only once the workspace is trusted; until then, say that the integration can be built once the workspace is trusted.
    To check the service's API, read its public docs with \`read_docs\`, once trusted too: one https page at a time, never with a query (?…), and never with a key, a name or anything else from this chat in the address. The person allows each site first: say which page you want and why, then stop until they allow it. If they don't, work without it or ask them to paste what you need.
 4. Write the permission sheet, the client code and its connector with \`propose_file\`, using only the hosts and sign-ins the person named. The person adds the key themselves; the files name it only.
+   Check every reply from the service with the kit's \`checkReply\` and a \`z.object(...)\` schema (not a strict one), so a reply that changed names the field that changed and never quotes the reply.
 5. Run \`validate\`. If it still fails after two fixes, stop and say what's wrong; never call a half-working integration done.
 `;
 
