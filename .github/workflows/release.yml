@@ -180,6 +180,11 @@ jobs:
           from="$VERSION"
           [ "$DRY_RUN" = "true" ] && from=latest
           node tooling/publish/src/cli/release-notes.ts changelog "$from" release-notes
+      # The agent hosts bundle the Node runtime pinned in pnpm-lock.yaml
+      # (HAL-20054). This fails when Node has a newer security release in
+      # that line; when Node's release list can't be read it only warns.
+      - name: Check the bundled Node has every security release
+        run: node tooling/publish/src/cli/check-node-runtime.ts
       - uses: $/.github/actions/setup
       # The Rust crates' licences are read with `cargo metadata`, on the
       # toolchain pinned in rust-toolchain.toml.
@@ -301,6 +306,14 @@ jobs:
       - uses: $/.github/actions/setup
       - name: Build the Linux agent host
         run: pnpm --filter @halonicjs/app-agent-host build:sea
+      # The executable is built by the Node that runs build:sea, so it
+      # reports that Node's process.version: the lockfile's pin (HAL-20054).
+      - name: Check the agent host's Node
+        run: |
+          built="$(pnpm --filter @halonicjs/app-agent-host exec node -p process.version)"
+          pinned="v$(sed -n 's/^  node@runtime:\([0-9.]*\):$/\1/p' pnpm-lock.yaml)"
+          echo "The agent host runs Node $built; pnpm-lock.yaml pins $pinned."
+          [ "$built" = "$pinned" ] || { echo "::error::The agent host was built with Node $built, not the pinned $pinned."; exit 1; }
       - name: Pack the WSL runtime
         env:
           VERSION: ${{ needs.build.outputs.version }}
