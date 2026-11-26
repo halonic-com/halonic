@@ -5,6 +5,7 @@
 - Approval: Liam decided this on HAL-19010 (options 2a and condition 3) and approves this note in
   his review of this pull request on HAL-18971
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:mkhLOe0KSWIHm08M+VlxslOPx32yjHtRxth2myIumSzI5DKR1mWJdNs1fkcvnXYSSEY7WLeABl+A/3k2KcPlDw==
 
 ## What changes
 
