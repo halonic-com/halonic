@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-18424 (Chief, 26 Nov 08:58 UTC: the studio split goes to Mateo, HAL-19508; Liam decides on it in review and signs this note if he takes it)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:23BUywkVET0lIFOKQSnPO0jlxvdXw3Q/HK87+1mO/phoa5/lHozwOuq+r3xtmsjmfqZL6kvOFGnYj80ypr5HAA==
 
 The merge queue's `studio` shard (`features-a`, `features-b` and `studio-testing` of the pull-request shards) becomes two: `studio-features` (`features-a`, `features-b`) and `studio-testing`. Everything else stays as HAL-17908 set it.
 
