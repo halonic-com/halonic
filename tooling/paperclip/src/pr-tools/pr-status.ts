@@ -12,6 +12,7 @@ import {
 import {
   isSecurityPath,
   julianRebaseRefusal,
+  manifestFileOf,
   type RoutedPull,
   reviewerFor,
   reviewerRoleFor,
@@ -50,7 +51,10 @@ export interface PrStatus {
   readonly behindBase: number | undefined;
   readonly inQueue: boolean;
   readonly approvals: readonly Approval[];
+  /** Approved on the head, by Julian too when it changes a plugin manifest (`manifestFile`). */
   readonly approvedOnHead: boolean;
+  /** The first changed file that builds a plugin manifest: Julian must approve as well (HAL-19440). */
+  readonly manifestFile?: string;
   /** Why the approvals' Paperclip copies couldn't be read; they then show no copy. */
   readonly copyError?: string;
   /**
@@ -201,6 +205,7 @@ export async function prStatus(
       ? { approvals: judged }
       : await judgedWithCopies(judged, copies, ours, pull.head);
   const reviewer = reviewerFor(routed, routing);
+  const manifestFile = manifestFileOf(paths);
   const title = shownTitle(pull);
   return {
     repo,
@@ -219,7 +224,8 @@ export async function prStatus(
     behindBase: compare?.behind_by,
     inQueue,
     approvals: found,
-    approvedOnHead: found.some((approval) => approval.counts),
+    approvedOnHead: approvedOnHead(found, { head, author }, manifestFile),
+    ...(manifestFile === undefined ? {} : { manifestFile }),
     ...(copyError === undefined ? {} : { copyError }),
     reviewer,
     changedLines,
@@ -227,6 +233,22 @@ export async function prStatus(
     latestReviewFinding: review === undefined ? undefined : `${review.id} at ${review.at}`,
     requiredWorkflows: required,
   };
+}
+
+/**
+ * Whether an approval counts on the head and, when the pull request changes a
+ * plugin manifest, Julian signed the head too, within his limits or not: the
+ * plugin deployer asks for both (HAL-19440). Nobody signs their own pull request.
+ */
+export function approvedOnHead(
+  found: readonly Approval[],
+  pull: { readonly head: string; readonly author: string | undefined },
+  manifestFile: string | undefined,
+): boolean {
+  const julianSigned =
+    pull.author !== "julian" &&
+    found.some((approval) => approval.by === "Julian" && pull.head.startsWith(approval.head));
+  return found.some((approval) => approval.counts) && (manifestFile === undefined || julianSigned);
 }
 
 /** Said before GitHub text in a tool's answer. */
@@ -255,6 +277,11 @@ function nextSteps(status: PrStatus): string[] {
     steps.push("mark it ready: the light run is green");
   if (!status.draft && status.ciOk === "success" && !status.approvedOnHead) {
     steps.push(`get a review on this head (${status.reviewer} by the path rules)`);
+    if (status.manifestFile !== undefined) {
+      steps.push(
+        `and Julian's approval of it too: it changes a plugin manifest (${status.manifestFile})`,
+      );
+    }
   }
   return steps;
 }
@@ -349,7 +376,11 @@ export function statusText(status: PrStatus): string {
       ? []
       : [`approval copies: couldn't read Paperclip (${status.copyError})`]),
     `required workflows: ${requiredText(status.requiredWorkflows)}`,
-    `${status.changedLines} changed lines; reviewer by the path rules: ${status.reviewer}`,
+    `${status.changedLines} changed lines; reviewer by the path rules: ${status.reviewer}${
+      status.manifestFile === undefined
+        ? ""
+        : `, and Julian too: it changes a plugin manifest (${status.manifestFile})`
+    }`,
     ...(status.latestReviewFinding === undefined
       ? []
       : [`newest review finding on this head: ${findingText(status.latestReviewFinding)}`]),
