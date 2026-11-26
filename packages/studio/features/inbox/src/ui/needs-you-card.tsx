@@ -21,10 +21,11 @@ export const PHONE_ROWS = 3;
 /** Home's Needs you card: the open workspace's Inbox, from `InboxService`. */
 export function NeedsYouCard({ context, attempt }: HomeCardProps) {
   const { openPlace } = context;
-  const runFacts = useRunFacts(context.services.find(RunsListService));
+  const inbox = context.services.get(InboxService);
+  const runFacts = useRunFacts(context.services.find(RunsListService), inbox);
   return (
     <NeedsYouView
-      inbox={context.services.get(InboxService)}
+      inbox={inbox}
       runFacts={runFacts}
       served={context.services.find(ServedHomeHintService)}
       words={engineWordsOf(context)}

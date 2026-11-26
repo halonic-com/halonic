@@ -58,7 +58,6 @@ import { nodeProfileEnvironment, webCryptoDigest } from "../../workspace-runs.ts
 import { needsNoTrust, trustedGrant, workspaceNameOf } from "../../workspace-trust.ts";
 import { type VersionChecks, WatchedVersions } from "../routines/watch-versions.ts";
 import type { RunSetup } from "../run/run.ts";
-import { workspaceAgentNames } from "./agent-names.ts";
 import { openChoiceHistory } from "./choice-files.ts";
 import { workspaceGoogleRead } from "./google-read.ts";
 import { listenRefused } from "./listen-refusal.ts";
@@ -77,6 +76,7 @@ import { servedRuleIsolate } from "./serve-rules.ts";
 import { servedModelChoice } from "./served-model-choice.ts";
 import { studioPageIsOutdated } from "./studio-page-age.ts";
 import { studioPlacesFor } from "./studio-places.ts";
+import { waitingListFacts } from "./wait-facts.ts";
 import { reportWebhookRefusals } from "./webhook-refusals.ts";
 import { webhookRoutineLines } from "./webhook-routines.ts";
 import { servedWorkspaceFacts } from "./workspace-facts.ts";
@@ -390,15 +390,14 @@ async function listenOnComputer(
     webhooks: { find: findWebhookRoutine },
     routineSchedule: listen.routines.schedule,
     workspace: {
-      // Both read at every request, from the live version as it is now: a rename shows once
-      // it is committed, before a run starts from that commit.
+      // Read at every request from the live version: a rename shows once committed, before a run.
       describe: servedWorkspaceFacts({
         workspace: () => versions.live(),
         dir,
         folder: root,
         home,
       }),
-      agentNames: workspaceAgentNames(() => versions.live()),
+      ...waitingListFacts(() => versions.live()),
     },
     // With no page, `/` answers 404 and the API is served as usual.
     ...(studioFolder === null ? {} : { studioPage: openStudioPageFolder(studioFolder) }),

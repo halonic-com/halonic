@@ -162,4 +162,5 @@ export {
 } from "./session-verifier.ts";
 export { createSignIn, passwordSecretName, type SignIn } from "./sign-in.ts";
 export { type SignInPlace, signInPlace } from "./sign-in-place.ts";
+export type { WaitContext, WaitFacts, WaitWorkflow } from "./wait-context.ts";
 export { WEBHOOK_TOLERANCE_SECONDS, webhookPathPrefix } from "./webhooks.ts";

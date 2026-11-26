@@ -32,7 +32,8 @@ export function WaitBody({
   return (
     <>
       {quote === undefined ? null : (
-        <blockquote className="border-s-2 border-border ps-3 text-body">
+        // Quieter than the draft: the draft is what you approve, the email is its context.
+        <blockquote className="border-s-2 border-border-strong ps-3 text-body text-fg-muted">
           <PlainValue text={quote} />
         </blockquote>
       )}

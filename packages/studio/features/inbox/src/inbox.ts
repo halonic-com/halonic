@@ -31,6 +31,7 @@ import {
 import { type ReadMarks, StoredReadMarks } from "./read-marks.ts";
 import type { InboxSetupSource, SetupEntry, SetupFocus } from "./setup-source.ts";
 import { ShownItem } from "./shown-item.ts";
+import type { InboxWaitContext } from "./wait-context.ts";
 
 /**
  * The runs the Inbox reads and answers. The app provides them for the open
@@ -50,6 +51,8 @@ export interface InboxRuns {
    * be read, and the Inbox then shows the id.
    */
   agentName?(agentId: string): string | undefined;
+  /** What the last list said about a waiting run, where the Studio has no Runs list (`studio.served-wait-context`). */
+  waitContext?(runId: string): InboxWaitContext | undefined;
   /** Sends an answer to a run; see `RunExecutor.send`. */
   send: RunExecutor["send"];
   /**
@@ -356,6 +359,11 @@ export class Inbox {
    */
   setAside(key: string, note: string): void {
     this.#setAside.set(key, note);
+  }
+
+  /** What the runs' host said about a waiting run; `undefined` when it says nothing. */
+  waitContext(runId: string): InboxWaitContext | undefined {
+    return this.#runs.waitContext?.(runId);
   }
 
   /** The note set aside for an item, left in place: for a render that reads it before {@link takeAside}. */

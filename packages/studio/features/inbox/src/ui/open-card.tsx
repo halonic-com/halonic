@@ -81,12 +81,13 @@ export function OpenCard({
     item.kind === "wait" ? runsSource : undefined,
     item.kind === "wait" ? item.runId : undefined,
   );
-  const quote = useStartInput(runsSource, item, facts?.startField);
+  const quote = useStartInput(runsSource, item, facts?.startField, facts?.startInput);
   // Open run needs the run's hub, which the Runs list gives; without it the card has no button.
+  const hubId = facts?.hubId;
   const openThisRun =
-    openRun === undefined || facts === undefined
+    openRun === undefined || hubId === undefined
       ? undefined
-      : (runId: string) => openRun(facts.hubId, runId);
+      : (runId: string) => openRun(hubId, runId);
   const target = secretTarget("google", items);
   // With no account to set up and no place to open, the button would do nothing, so it isn't offered.
   const somewhereToGo = target.kind === "setup" || openNewConnector !== undefined;
@@ -193,7 +194,7 @@ export function OpenCard({
       waiting={items.some((waiting) => waiting.key === item.key)}
       trust={trust}
       answeredViews={{ inbox, close, openItem: openPage }}
-      sample={modelPath === "sample"}
+      sample={modelPath === "sample" || facts?.sample === true}
       workflow={facts?.workflow}
       quote={quote}
       description={facts?.stepDescription?.(item.state)}

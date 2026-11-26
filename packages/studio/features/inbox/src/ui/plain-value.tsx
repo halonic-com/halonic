@@ -25,7 +25,8 @@ export function PlainValue({ text }: PlainValueProps) {
   const label = foldLabel(folded);
   return (
     <div className="min-w-0">
-      <bdi className="block whitespace-pre-wrap wrap-anywhere text-fg">
+      {/* No colour of its own: it takes its box's, such as a quote's or an answered draft's muted one. */}
+      <bdi className="block whitespace-pre-wrap wrap-anywhere">
         {marked.segments.map((segment, index) =>
           segment.kind === "text" ? (
             <span key={index}>{segment.text}</span>

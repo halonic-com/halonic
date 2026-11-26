@@ -27,6 +27,7 @@ import type { PaperclipKeyPorts } from "./paperclip-key-api.ts";
 import type { ProviderKeyStore } from "./provider-key-store.ts";
 import type { RequestCountStore } from "./request-count-store-api.ts";
 import type { RoutineSchedule } from "./routine-schedule-api.ts";
+import type { WaitFacts } from "./wait-context.ts";
 
 /**
  * The `Request → Response` handler behind `halonic serve` and a cloud Worker.
@@ -376,6 +377,8 @@ export interface WorkspaceInfo {
    * fails, the list names no agent and a caller shows the ids.
    */
   agentNames?(): Promise<ReadonlyMap<string, string>>;
+  /** The workflows and test models for the waiting list's `context`; without it there is none. */
+  waitFacts?(): Promise<WaitFacts>;
 }
 
 /**
@@ -400,8 +403,9 @@ export interface ServerPorts {
   /**
    * The run list and run summaries. A webhook start asks whether the routine
    * is already running, and the run routes look a run up by id. Read-only.
+   * With `events`, the waiting list also reads each run's start and models.
    */
-  readonly runStore: Pick<RunStore, "list" | "get">;
+  readonly runStore: Pick<RunStore, "list" | "get"> & Partial<Pick<RunStore, "events">>;
   /** Configured secrets, such as the sign-in password hash and webhook secrets. Read-only. */
   readonly secrets: Secrets;
   /**

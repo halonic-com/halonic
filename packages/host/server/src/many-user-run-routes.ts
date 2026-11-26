@@ -179,7 +179,7 @@ export const waitingHandler: SignedInHandler = async (_request, _body, scoped) =
     const ownership = await ownershipOf(scoped, run.id);
     if (ownership?.startedBy === scoped.principal.actor) own.push(run);
   }
-  return Response.json({ runs: own, agents: await scoped.runRoutes.agentNames(own) });
+  return scoped.runRoutes.waitingList(own);
 };
 
 /** The start's body as an object with a run id: the caller's, or a new one. `null` when it isn't JSON. */

@@ -83,6 +83,7 @@ export { reopenItem, type ShownItem } from "./shown-item.ts";
 export { AgentItemCard, type AgentItemCardProps } from "./ui/agent-item-card.tsx";
 export { PlanLimitCard, type PlanLimitCardProps } from "./ui/plan-limit-card.tsx";
 export { WaitCard, type WaitCardProps } from "./ui/wait-card.tsx";
+export type { InboxWaitContext } from "./wait-context.ts";
 
 /** The runs the Inbox reads and answers. The app provides it for each open workspace. */
 export const InboxRunsService: ServiceKey<InboxRuns> = serviceKey<InboxRuns>("inbox.runs");

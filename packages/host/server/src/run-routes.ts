@@ -2,16 +2,20 @@ import type { RunStore } from "@halonicjs/ports";
 import type { ErrorLog, ServerPorts, WorkspaceInfo } from "./api.ts";
 import { errorResponse, serverErrors } from "./errors.ts";
 import { refuseUnlessTrusted } from "./trust-routes.ts";
+import { waitContextOf } from "./wait-context.ts";
 
 /** Where the run routes start; `<runId>` and an optional action follow. */
 export const runPathPrefix = "/api/runs/";
 
 /** What the routes answer for a run: its summary, read from the run store. */
 export interface RunRoutes {
-  /** `GET /api/waiting-runs`: the summaries of the runs that wait for an answer, and their agents' names. */
+  /**
+   * `GET /api/waiting-runs`: the summaries of the runs that wait for an answer, their agents'
+   * names and, when the workspace gives its workflows, each run's context.
+   */
   waiting(): Promise<Response>;
-  /** The names of the agents the runs' approvals name, by id; empty when the workspace can't say. */
-  agentNames(runs: readonly RunSummary[]): Promise<Record<string, string>>;
+  /** The waiting list's answer for these runs, as {@link RunRoutes.waiting} gives it. */
+  waitingList(runs: readonly RunSummary[]): Promise<Response>;
   /** `GET /api/runs/<runId>`: the run's summary. */
   summary(runId: string): Promise<Response>;
   /** `POST /api/runs/<runId>/events`: delivers an event to a waiting run. */
@@ -142,14 +146,19 @@ export function createRunRoutes({
     async waiting() {
       // The run store belongs to the workspace the server runs, so no other workspace's run can be in the list.
       const waiting = (await runStore.list({ status: "waiting" })).slice(0, maxWaitingRuns);
-      return Response.json({
-        runs: waiting,
-        agents: await agentNamesOf(waiting, workspace, errorLog),
-      });
+      return this.waitingList(waiting);
     },
 
-    agentNames(listed) {
-      return agentNamesOf(listed, workspace, errorLog);
+    async waitingList(listed) {
+      const waitFacts = workspace?.waitFacts?.bind(workspace);
+      return Response.json({
+        runs: listed,
+        agents: await agentNamesOf(listed, workspace, errorLog),
+        // Only a host that gives its workflows adds `context`, so an older caller's list reads as before.
+        ...(waitFacts === undefined
+          ? {}
+          : { context: await waitContextOf(listed, waitFacts, runStore, errorLog) }),
+      });
     },
 
     async summary(runId) {
