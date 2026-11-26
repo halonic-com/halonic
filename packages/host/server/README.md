@@ -43,7 +43,7 @@ It never uses `createServer`'s routes. It serves its own `GET /api/hello` (only 
 
 ## `GET /api/hello`
 
-Answers 200 without a sign-in, with exactly three keys:
+Answers 200 without a sign-in, with exactly six keys:
 
 ```json
 { "product": "halonic", "version": "0.1.0", "minAppVersion": "0.1.0", "runExecutorVersion": 2, "mode": "owner", "minStudioVersion": "0.1.0" }

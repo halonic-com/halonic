@@ -36,7 +36,7 @@ pub use error::SecretError;
 pub use host::{delete_host_secret, get_host_secret, set_host_secret};
 pub use memory::MemoryBackend;
 pub use name::{
-    ACTION_PREFIX, HALONIC_NAMES, HOST_NAMES, MAX_NAME_LENGTH, SERVER_PAIRING_PREFIX, SecretName,
-    TOKEN_PREFIX, is_server_pairing_name,
+    ACTION_PREFIX, HALONIC_NAMES, HOST_NAMES, MAX_NAME_LENGTH, OWNER_SESSION_PREFIX,
+    SERVER_PAIRING_PREFIX, SecretName, TOKEN_PREFIX, is_server_pairing_name,
 };
 pub use origins::{AllowOrigin, MAX_ALLOWED_ORIGINS, allow_origin, allowed_origins};
