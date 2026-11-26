@@ -100,6 +100,8 @@ verifies("settings.update-button", () => {
           "UpdateUpdate available: Halonic 0.1.1",
         );
       }
+      // A ready update has this one button: the status bar shows no Restart to update.
+      expect(document.querySelectorAll("button")).toHaveLength(1);
       set(statusOf({ kind: "signature-mismatch", version: "0.1.1", attempts: 2 }));
       expect(view.querySelector("button")).not.toBeNull();
     });
@@ -120,6 +122,9 @@ verifies("settings.update-dialog", () => {
       expect(dialog()?.textContent).toContain("Update available");
       expect(dialog()?.textContent).toContain("Halonic 0.1.1 is available. You have 0.1.0.");
       expect(dialog()?.textContent).toContain("Faster start.");
+      // The line names the version; no heading says "Halonic 0.1.1" again.
+      const headings = [...(dialog()?.querySelectorAll("h1, h2, h3, h4") ?? [])];
+      expect(headings.map((heading) => heading.textContent)).not.toContain("Halonic 0.1.1");
       await click(buttonNamed("Install") as HTMLElement);
       expect(host.download).toHaveBeenCalledOnce();
 
@@ -180,6 +185,15 @@ verifies("settings.update-dialog", () => {
       await openDialog(view);
       expect(dialog()?.textContent).toContain("The release notes say what changed.");
       expect(dialog()?.textContent).toContain("Release notes");
+    });
+
+    it("leaves What changed out when it knows neither notes nor a release page", async () => {
+      // A download already under way when the window opened: its states carry no notes.
+      const { view } = await mount(statusOf(downloading));
+      await openDialog(view);
+      expect(dialog()?.querySelector("[role=progressbar]")).not.toBeNull();
+      expect(dialog()?.textContent).not.toContain("What changed");
+      expect(dialog()?.textContent).not.toContain("The release notes say what changed.");
     });
   });
 });

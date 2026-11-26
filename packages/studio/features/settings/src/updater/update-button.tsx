@@ -50,8 +50,11 @@ export function UpdateButtonView({ host, sandbox, announce, onRestart }: UpdateB
   notesFor(host, state);
   return (
     <>
-      <Button variant="ghost" size="sm" icon={<UpdateReadyIcon />} onClick={() => setOpen(true)}>
-        <span aria-hidden="true">{text.UPDATE}</span>
+      {/* Ghost, but in colour: muted it read like the window title beside it (HAL-19579). */}
+      <Button variant="ghost" size="sm" icon={<ReadyIcon />} onClick={() => setOpen(true)}>
+        <span aria-hidden="true" className="text-fg">
+          {text.UPDATE}
+        </span>
         <span className="sr-only">{text.buttonName(state.version)}</span>
       </Button>
       {open ? (
@@ -64,5 +67,14 @@ export function UpdateButtonView({ host, sandbox, announce, onRestart }: UpdateB
         />
       ) : null}
     </>
+  );
+}
+
+/** The update-ready mark in the primary colour, filling the button's icon slot. */
+function ReadyIcon() {
+  return (
+    <span className="block text-primary *:size-full">
+      <UpdateReadyIcon />
+    </span>
   );
 }

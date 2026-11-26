@@ -20,6 +20,7 @@ import { RestartHost } from "./restart-host.tsx";
 import type { RestartRuns } from "./restart-runs.ts";
 import { RestartStatusItem } from "./restart-status-item.tsx";
 import { runsBody } from "./restart-text.ts";
+import { UpdateButton } from "./update-button.tsx";
 import { updateCommands } from "./update-commands.ts";
 import type { UpdateState, UpdateStatus } from "./updater-status.ts";
 
@@ -130,18 +131,22 @@ async function mount(first: UpdateStatus, runs?: RestartRuns, count?: () => Prom
 }
 
 const settle = () => act(async () => {});
+/** A press on Restart to update, which the Update dialog, About Halonic and Ctrl K all make. */
+const press = (flow: { request(): void }) => act(async () => flow.request());
 const titles = (toasts: ToastStore) => toasts.list().map((toast) => toast.title);
 
 verifies("settings.restart-flow", () => {
-  it("shows Restart to update only while an update is ready, with a name that says the version", async () => {
-    const { view, set } = await mount(statusOf({ kind: "up-to-date" }));
-    expect(view.querySelector("button")).toBeNull();
+  it("shows no Restart to update in the status bar: with a ready update, only the title bar's Update", async () => {
+    const { view, set, context, frame } = await mount(statusOf({ kind: "up-to-date" }));
+    const titleBar = render(frame(<UpdateButton context={context} />));
+    await settle();
     set(statusOf(ready));
-    const item = view.querySelector("button");
-    expect(item?.textContent).toContain("Restart to update");
-    expect(item?.textContent).toContain("Halonic 0.1.1 is ready. Restart to update");
-    expect(item?.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
-    expect(view.querySelector("span.hidden")?.className).toContain("wide:contents");
+    expect(view.querySelector("button")).toBeNull();
+    expect(view.textContent).not.toContain("Restart to update");
+    const buttons = [...document.querySelectorAll("button")];
+    expect(buttons).toHaveLength(1);
+    expect(titleBar.contains(buttons[0] as HTMLElement)).toBe(true);
+    expect(buttons[0]?.textContent).toBe("UpdateUpdate available: Halonic 0.1.1");
   });
 
   it("shows nothing when another tool manages updates", async () => {
@@ -181,15 +186,15 @@ verifies("settings.restart-flow", () => {
   });
 
   it("restarts at once when no run would stop", async () => {
-    const { view, host } = await mount(statusOf(ready));
-    await click(view.querySelector("button") as HTMLElement);
+    const { flow, host } = await mount(statusOf(ready));
+    await press(flow);
     expect(host.restart).toHaveBeenCalledOnce();
     expect(document.querySelector("dialog[open]")).toBeNull();
   });
 
   it("asks first when runs would stop, with Cancel focused, and restarts only on the danger button", async () => {
-    const { view, host } = await mount(statusOf(ready), { running: 2, waitingForYou: 1 });
-    await click(view.querySelector("button") as HTMLElement);
+    const { flow, host } = await mount(statusOf(ready), { running: 2, waitingForYou: 1 });
+    await press(flow);
     const dialog = document.querySelector("dialog[open]") as HTMLElement;
     expect(dialog.textContent).toContain("Restart Halonic now?");
     expect(dialog.textContent).toContain(
@@ -210,8 +215,8 @@ verifies("settings.restart-flow", () => {
       .fn<() => Promise<RestartRuns>>()
       .mockRejectedValueOnce(new Error("down"))
       .mockResolvedValue({ running: 2, waitingForYou: 0 });
-    const { view, host, toasts } = await mount(statusOf(ready), undefined, count);
-    await click(view.querySelector("button") as HTMLElement);
+    const { flow, host, toasts } = await mount(statusOf(ready), undefined, count);
+    await press(flow);
     expect(titles(toasts)).toEqual(["Halonic's updater didn't answer."]);
     expect(host.restart).not.toHaveBeenCalled();
     const again = toasts.list()[0]?.action;
@@ -227,10 +232,9 @@ verifies("settings.restart-flow", () => {
   it("ignores a second press while the first is still counting runs", async () => {
     let release: (runs: RestartRuns) => void = () => {};
     const count = vi.fn(() => new Promise<RestartRuns>((resolve) => (release = resolve)));
-    const { view, host } = await mount(statusOf(ready), undefined, count);
-    const button = view.querySelector("button") as HTMLElement;
-    await click(button);
-    await click(button);
+    const { flow, host } = await mount(statusOf(ready), undefined, count);
+    await press(flow);
+    await press(flow);
     await act(async () => release({ running: 0, waitingForYou: 0 }));
     expect(count).toHaveBeenCalledOnce();
     expect(host.restart).toHaveBeenCalledOnce();
