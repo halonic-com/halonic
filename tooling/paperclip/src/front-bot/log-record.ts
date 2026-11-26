@@ -1,4 +1,5 @@
 import type { GroundingReason } from "./grounding.ts";
+import type { HandOver, LookupKind } from "./lookups.ts";
 import type { ProgressReason } from "./progress-check.ts";
 
 /**
@@ -16,12 +17,15 @@ export type FrontBotOutcome =
   | "capped"
   | "stopped"
   | "failed"
-  | "not_called";
+  | "not_called"
+  | "handed_over";
 
 /** Why, as a fixed code: a grounding reason, an API failure's status or type, or a reason for not calling. */
 export type FrontBotReason =
   | GroundingReason
   | ProgressReason
+  | HandOver
+  | "write_request"
   | "off"
   | "no_key"
   | "out_of_scope"
@@ -36,8 +40,12 @@ export type FrontBotReason =
   | "post_failed"
   | "note_unsaved";
 
-/** Which of the bot's two calls a record is about: the first reply (HAL-19136) or a progress note (HAL-19218). */
-export type FrontBotCallType = "first_reply" | "progress_note";
+/**
+ * What a record is about: the first reply (HAL-19136), a progress note
+ * (HAL-19218) or a lookup (HAL-19222): `lookup` for a message that asked for
+ * an action, so no lookup ran, else the lookup's kind.
+ */
+export type FrontBotCallType = "first_reply" | "progress_note" | "lookup" | `lookup_${LookupKind}`;
 
 /** The one record per decision. Every field is a number, a fixed code or an id. */
 export interface FrontBotLogRecord {

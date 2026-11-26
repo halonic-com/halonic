@@ -1,7 +1,9 @@
 import type { PluginEvent } from "@paperclipai/plugin-sdk";
+import type { PrStatusResult } from "../front-bot/lookups.ts";
 import { fakeMetrics, fakeState } from "./fake-host.test-helper.ts";
 import { frontBot } from "./front-bot.ts";
 import type { FrontBotDeps } from "./front-bot-calls.ts";
+import type { LookupDeps } from "./front-bot-lookup.ts";
 
 /**
  * A plugin host for the front bot's tests, with a chat task, its comments and
@@ -67,6 +69,22 @@ export interface HarnessOptions {
   readonly conversationAgentId?: string | null;
   /** Comments the agent writes while Haiku answers (must-fail test 3). */
   readonly agentAnswersDuringCall?: boolean;
+  /** What GitHub's PR status source gives per pull request; any other number fails (HAL-19222). */
+  readonly pulls?: Readonly<Record<number, PrStatusResult | "hangs">>;
+  /** Other tasks of the company, found by their identifier, for the run status lookup. */
+  readonly tasks?: readonly OtherTask[];
+}
+
+/** A task the run status lookup can read. */
+export interface OtherTask {
+  readonly identifier: string;
+  readonly companyId?: string;
+  readonly status: string;
+  readonly activeRun?: {
+    readonly status: string;
+    readonly agentId: string;
+    readonly startedAt: string | null;
+  } | null;
 }
 
 /** Settings with the bot on and its key stored. */
@@ -127,7 +145,16 @@ export function frontBotHarness(options: HarnessOptions = {}) {
   const answers = [...(options.answers ?? [])];
   const logs: { level: string; line: string; meta: unknown }[] = [];
   let clock = new Date("2026-11-26T14:03:00.300Z").getTime();
-  const deps: FrontBotDeps = {
+  /** Every read a lookup source made, such as `pr:6129` or `task:HAL-5`. */
+  const sourceReads: string[] = [];
+  const deps: FrontBotDeps & LookupDeps = {
+    readPrStatus: async (_company, pr) => {
+      sourceReads.push(`pr:${pr}`);
+      const recorded = options.pulls?.[pr];
+      if (recorded === "hangs") return new Promise<PrStatusResult>(() => {});
+      if (recorded === undefined) throw new Error("GitHub: GET answered 404.");
+      return recorded;
+    },
     now: () => {
       clock += 200;
       return new Date(clock);
@@ -176,8 +203,12 @@ export function frontBotHarness(options: HarnessOptions = {}) {
     },
     agents: { list: async () => agents },
     issues: {
-      get: async (id: string, company: string) =>
-        id === task.id && company === task.companyId ? task : null,
+      get: async (id: string, company: string) => {
+        if (id === task.id) return company === task.companyId ? task : null;
+        sourceReads.push(`task:${id}`);
+        const other = options.tasks?.find((each) => each.identifier === id);
+        return other === undefined ? null : { id: `id-${id}`, companyId, ...other };
+      },
       listComments: async (issueId: string) =>
         comments.filter((comment) => comment.issueId === issueId),
       createComment: async (issueId: string, body: string) =>
@@ -190,7 +221,20 @@ export function frontBotHarness(options: HarnessOptions = {}) {
   const bot = frontBot(ctx as unknown as Parameters<typeof frontBot>[0], deps);
   const posted = () =>
     comments.filter((comment) => comment.authorUserId === null && comment.authorAgentId === null);
-  return { bot, ctx, saved, written, logs, requests, comments, message, task, addComment, posted };
+  return {
+    bot,
+    ctx,
+    saved,
+    written,
+    logs,
+    requests,
+    sourceReads,
+    comments,
+    message,
+    task,
+    addComment,
+    posted,
+  };
 }
 
 /** The `issue.comment.created` event for a comment on the chat task. */

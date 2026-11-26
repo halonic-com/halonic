@@ -1,8 +1,10 @@
 import type {
   PluginApiRequestInput,
   PluginApiResponse,
+  PluginIssuesClient,
   PluginStateClient,
 } from "@paperclipai/plugin-sdk";
+import { automaticAnswerStart } from "../front-bot/lookups.ts";
 import { automaticNotePrefix } from "../front-bot/prompt.ts";
 
 /**
@@ -126,6 +128,34 @@ export async function rememberProgressNote(
   await state.set(progressKey(taskId), { companyId, runId, notes });
 }
 
+/**
+ * What posting a comment of the bot's came to: not posted, posted and its id
+ * kept, or posted but its id not kept. The readers still skip an unkept one by
+ * its prefix, so it is logged as posted with its own reason.
+ */
+export type PostResult = "failed" | "posted" | "unsaved";
+
+/** Posts the bot's comment with no author, which wakes nobody, and keeps its id. */
+export async function postNote(
+  ctx: { readonly issues: Pick<PluginIssuesClient, "createComment">; readonly state: StateGetSet },
+  task: { readonly id: string; readonly companyId: string },
+  body: string,
+  note: Omit<AutomaticNote, "commentId">,
+): Promise<PostResult> {
+  let commentId: string;
+  try {
+    commentId = (await ctx.issues.createComment(task.id, body, task.companyId)).id;
+  } catch {
+    return "failed";
+  }
+  try {
+    await rememberNote(ctx.state, task.companyId, task.id, { ...note, commentId });
+    return "posted";
+  } catch {
+    return "unsaved";
+  }
+}
+
 /** A comment as the other handlers see it. */
 interface CommentLike {
   readonly id?: string;
@@ -136,7 +166,8 @@ interface CommentLike {
 
 /**
  * Whether a comment is the bot's: its id is on the list, or it has no author
- * and starts with the prefix. Only the plugin and Paperclip itself post with
+ * and starts with the prefix of a note or of a lookup's answer (HAL-19222).
+ * Only the plugin and Paperclip itself post with
  * no author, so the second rule covers the moment between the post and the
  * list's save; a person typing the prefix still has an author.
  */
@@ -147,7 +178,7 @@ export function isAutomaticNote(comment: CommentLike, ownIds: ReadonlySet<string
   return (
     comment.authorAgentId === null &&
     comment.authorUserId === null &&
-    comment.body.startsWith(automaticNotePrefix)
+    (comment.body.startsWith(automaticNotePrefix) || comment.body.startsWith(automaticAnswerStart))
   );
 }
 
