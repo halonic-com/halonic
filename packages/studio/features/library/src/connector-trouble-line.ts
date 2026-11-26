@@ -9,6 +9,7 @@ import type { RefusalLinePart } from "./refusal-line.ts";
  */
 export const connectorTroubleWords = {
   look: "Let the assistant look",
+  pasteToken: "Paste a new token",
   replyChanged: "answered differently than before",
   notAccepted: "didn't accept the token. It may be mistyped or revoked.",
   notAllowed: "Your token isn't allowed to do this. Check its permissions at ",
@@ -22,6 +23,14 @@ const lookKinds: ReadonlySet<ConnectorTroubleKind> = new Set(["reply-changed", "
 
 /** How many field names the line names; the chat gets them all. */
 const fieldsInLine = 3;
+
+/**
+ * Whether the trouble's line offers **Paste a new token**: the service refused the token (401),
+ * which a new one in the page's Secrets section can fix.
+ */
+export function troubleHasPasteToken(trouble: ConnectorTrouble): boolean {
+  return trouble.kind === "not-accepted";
+}
 
 /** Whether the trouble's line offers **Let the assistant look**. */
 export function troubleHasLook(trouble: ConnectorTrouble): boolean {

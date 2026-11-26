@@ -69,9 +69,20 @@ function connectionOf({ transport, secret }: Connector): ConnectorConnection {
     };
   }
   if ("google" in transport) return { kind: "google", account: transport.google.account };
-  if ("integration" in transport)
-    return { kind: "integration", folder: transport.integration.folder };
+  if ("integration" in transport) {
+    const { folder, secrets } = transport.integration;
+    return { kind: "integration", folder, secrets: integrationSecretsOf(secrets) };
+  }
   return { kind: "plugin", id: transport.plugin.id };
+}
+
+/**
+ * The workspace secrets a local integration gets, by name: the one its file picks for each secret
+ * of the integration's sheet, once each and sorted. The runner gives it only these
+ * (`chosenSecrets`), never the connector's own `secret`, so the page offers no other.
+ */
+function integrationSecretsOf(picks: Readonly<Record<string, string>> | undefined): string[] {
+  return [...new Set(Object.values(picks ?? {}))].sort();
 }
 
 /** Whether the list names exactly the tools a new Google connector asks first about, in any order. */

@@ -24,7 +24,8 @@ function detailRowOf(connection: ConnectorConnection): { label: string; value: s
 /**
  * The names of the secrets the connection uses, or null when the row would mislead. Google keeps none;
  * a plugin or an integration declares its secrets in its own sheet, which the summary can't see, so
- * it shows no row rather than a false "none".
+ * it shows no row rather than a false "none". (An integration's page names the workspace secrets
+ * its file picks in its Secrets section, on the desktop app.)
  */
 function secretsOf(connection: ConnectorConnection): readonly string[] | null {
   switch (connection.kind) {

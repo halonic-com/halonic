@@ -16,6 +16,12 @@ export interface ConnectorSecretsSectionProps {
   readonly names: readonly string[];
   /** The connector's name, for the line about who gets the secret. */
   readonly sourceName: string;
+  /**
+   * For the trouble line's **Paste a new token**: the first secret's entry takes focus when this
+   * says yes. A new function asks again; one asked before the keychain answered is taken once the
+   * entry shows. It answers yes once per press, so an entry drawn again later doesn't take focus.
+   */
+  readonly takeFocus?: (() => boolean) | undefined;
 }
 
 /**
@@ -31,6 +37,7 @@ export function ConnectorSecretsSection({
   secrets,
   names,
   sourceName,
+  takeFocus,
 }: ConnectorSecretsSectionProps) {
   const headingId = useId();
   const [states, setStates] = useState<Readonly<Record<string, ConnectorSecretState>>>({});
@@ -71,9 +78,10 @@ export function ConnectorSecretsSection({
       <h2 id={headingId} className="text-heading text-fg">
         {words.heading}
       </h2>
-      {names.map((name) => (
+      {names.map((name, index) => (
         <SecretRow
           key={name}
+          takeFocus={index === 0 ? takeFocus : undefined}
           name={name}
           sourceName={sourceName}
           secrets={secrets}
@@ -91,10 +99,12 @@ interface SecretRowProps {
   readonly secrets: ConnectorSecrets;
   readonly state: ConnectorSecretState;
   readonly onState: (state: ConnectorSecretState) => void;
+  /** See {@link ConnectorSecretsSectionProps.takeFocus}. */
+  readonly takeFocus: (() => boolean) | undefined;
 }
 
 /** One secret: its state, an entry that never shows what's stored, and **Remove** once it is set. */
-function SecretRow({ name, sourceName, secrets, state, onState }: SecretRowProps) {
+function SecretRow({ name, sourceName, secrets, state, onState, takeFocus }: SecretRowProps) {
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const entry = useRef<HTMLInputElement>(null);
@@ -109,6 +119,9 @@ function SecretRow({ name, sourceName, secrets, state, onState }: SecretRowProps
   const focusRemove = useRef(false);
   // A save in flight, so Tab after Enter doesn't save the same value twice.
   const saving = useRef(false);
+  useEffect(() => {
+    if (takeFocus?.()) entry.current?.focus();
+  }, [takeFocus]);
 
   useEffect(() => {
     if (focusEntry.current) {

@@ -16,7 +16,7 @@ function orders(trouble: ConnectorTrouble): ConnectorStatus {
     name: "Shop orders",
     state: "connected",
     reason: "",
-    connection: { kind: "integration", folder: "shop-orders" },
+    connection: { kind: "integration", folder: "shop-orders", secrets: [] },
     trouble,
   };
 }
