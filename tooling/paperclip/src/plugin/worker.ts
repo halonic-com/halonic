@@ -29,6 +29,7 @@ import { mergeControlPass } from "./merge-control-job.ts";
 import { passLock } from "./merge-control-lock.ts";
 import { mergeFactsReader } from "./merge-control-reader.ts";
 import { type PassNudge, passTrigger } from "./merge-control-trigger.ts";
+import { gitHubPrints, type MergerNudge, mergerWake } from "./merger-wake.ts";
 import { registerNextStepTools } from "./next-step-tools.ts";
 import { readyStep, registerPrWriteTools } from "./pr-write-tools.ts";
 import { precheckWaits } from "./precheck-waits.ts";
@@ -50,7 +51,7 @@ import {
 /**
  * The Agent tools plugin's worker. The host starts it as `dist/worker.js`
  * (bundled by `pnpm run build:plugin`), runs the `pr-watch`,
- * `board-check`, `merge-control` and `precheck-wake` jobs on their schedules, looks at each new comment for a
+ * `board-check`, `merge-control`, `merger-wake` and `precheck-wake` jobs on their schedules, looks at each new comment for a
  * board ask, keeps each failed run, labels a created or changed task's
  * difficulty, sets its effort from its tags, assigns a channel's child task
  * back after 3 hand-offs, asks for acceptance criteria on a
@@ -64,6 +65,8 @@ let context: PluginContext | undefined;
 const roster = companyRoster();
 /** Starts a merge control pass for an approval or a green `ci-ok` (HAL-18729); set in `setup`. */
 let nudgeMergeControl: PassNudge | undefined;
+/** Asks the Merger wake for a pass for a webhook delivery (HAL-19234); set in `setup`. */
+let nudgeMerger: MergerNudge | undefined;
 
 export const plugin = definePlugin({
   async setup(ctx) {
@@ -92,6 +95,16 @@ export const plugin = definePlugin({
       (companyId, error) =>
         ctx.logger.error(`merge-control: couldn't start a pass: ${error.message}`, { companyId }),
     );
+    // Off unless the board turns it on: the pass then returns before reading anything.
+    const mergerJob = scheduledPerCompany(ctx, roster, "merger-wake", (companyId, now) =>
+      merger.pass(companyId, now),
+    );
+    const merger = mergerWake(ctx, {
+      readPrints: gitHubPrints(ctx),
+      request: (companyId) => mergerJob.request(companyId),
+    });
+    ctx.jobs.register("merger-wake", () => mergerJob.dispatch());
+    nudgeMerger = merger.nudge;
     // ready_for_review remembers a running check; the job wakes its task once it is done.
     const waits = precheckWaits(ctx, realDeps, (companyId) => roster.remember(companyId));
     const precheckJob = scheduledPerCompany(ctx, roster, "precheck-wake", (companyId) =>
@@ -180,7 +193,10 @@ export const plugin = definePlugin({
       );
     }
     if (isChiefLineRoute(input.routeKey)) {
-      return await handleChiefLineRequest(input, context, new Date(), nudgeMergeControl);
+      return await handleChiefLineRequest(input, context, new Date(), {
+        mergeControl: nudgeMergeControl,
+        merger: nudgeMerger,
+      });
     }
     if (input.routeKey === githubSummaryRouteKey) {
       return await handleGitHubSummary(input, context);

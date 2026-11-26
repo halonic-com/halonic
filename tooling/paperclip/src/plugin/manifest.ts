@@ -5,6 +5,7 @@ import { workerReadTables } from "../worker-agents/tables.ts";
 import { chiefLine } from "./chief-line-settings.ts";
 import { chatNotesRouteKey } from "./front-bot-notes.ts";
 import { mergeControlJob } from "./merge-control-declaration.ts";
+import { mergerWakeConfigProperties, mergerWakeJob } from "./merger-wake-declaration.ts";
 import {
   ciFailuresDeclaration,
   prStatusDeclaration,
@@ -67,7 +68,7 @@ export const manifest: PaperclipPluginManifestV1 = {
     // because the SDK's update leaves that field out. The difficulty tagger sends only a task's
     // labelIds, through setTaskLabels in the same file, changing only its D1–D4 and opus-only labels.
     "issues.update",
-    // The PR watcher, the board check and, once a check is done, the precheck-wake job (HAL-18980).
+    // The PR watcher, the board check, the precheck-wake job (HAL-18980) and the Merger wake (HAL-19234).
     "issues.wakeup",
     "issue.comments.read",
     "issue.comments.create",
@@ -102,7 +103,7 @@ export const manifest: PaperclipPluginManifestV1 = {
     // Difficulty tagger (HAL-16901): a created task, or one whose title or description changed.
     // Front bot (HAL-19136): a board user's message on a chat task gets a first reply.
     "events.subscribe",
-    // Each job emits only its own event (`pr-watch`, `board-check`, `merge-control`, `precheck-wake`),
+    // Each job emits only its own event (`pr-watch`, `board-check`, `merge-control`, `merger-wake`, `precheck-wake`),
     // once per company, so its pass runs in a call the host scopes to that company (HAL-16941,
     // src/plugin/scheduled.ts).
     "events.emit",
@@ -167,6 +168,7 @@ export const manifest: PaperclipPluginManifestV1 = {
         format: "secret-ref",
       },
       ...mergeControlConfigProperties,
+      ...mergerWakeConfigProperties,
       ...stackRebaseConfigProperties,
       ...prWriteConfigProperties,
       repos: {
@@ -341,6 +343,7 @@ export const manifest: PaperclipPluginManifestV1 = {
       schedule: "*/10 * * * *",
     },
     mergeControlJob,
+    mergerWakeJob,
     precheckWakeJob,
   ],
   apiRoutes: [

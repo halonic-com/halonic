@@ -66,7 +66,7 @@ function setUp(options: { prOutcomes?: boolean; passMs?: number } = {}) {
       lineRequest("chief-line-pr-event", { repo: "acme/tools", pr: 6089, ...body }),
       line.ctx,
       new Date(),
-      nudge,
+      { mergeControl: nudge },
     );
   return { job, passes, event, settle: () => Promise.all(delivered) };
 }

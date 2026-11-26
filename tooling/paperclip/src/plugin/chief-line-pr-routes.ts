@@ -17,6 +17,7 @@ import {
 } from "./chief-line-prs.ts";
 import { type ChiefLineSettings, callerPattern, threadTitle } from "./chief-line-settings.ts";
 import type { PassNudge } from "./merge-control-trigger.ts";
+import type { MergerNudge } from "./merger-wake.ts";
 
 /**
  * The chief line's two pull request routes (HAL-18586): `track` registers a
@@ -28,7 +29,8 @@ import type { PassNudge } from "./merge-control-trigger.ts";
  * new, so an event the webhook posted is never posted again by the pass.
  * The tracked pull request index (src/plugin/chief-line-pr-index.ts) lets
  * `pr-event` skip an untracked pull request without reading Paperclip.
- * An approval or a green `ci-ok` also starts a merge control pass (HAL-18729).
+ * An approval or a green `ci-ok` also starts a merge control pass (HAL-18729),
+ * and every valid delivery asks the Merger wake for a pass (HAL-19234).
  */
 
 const repoPattern = /^[\w.-]+\/[\w.-]+$/;
@@ -169,20 +171,27 @@ function startsPass(event: PrEvent): boolean {
   );
 }
 
+/** Who `pr-event` tells about a valid delivery before it posts anything. */
+export interface PrEventNudges {
+  readonly mergeControl?: PassNudge | undefined;
+  readonly merger?: MergerNudge | undefined;
+}
+
 /**
  * `POST /chief-line/pr-event` {repo, pr, kind, …}: posts the event on the
  * chief line of every caller tracking the pull request, unless a marker shows
  * it was already posted. Answers how many comments it posted; an untracked
  * pull request posts nothing. An event that `startsPass` nudges merge
- * control first, also while pull request outcomes are off: merge control's
- * own mode decides whether the pass does anything.
+ * control first, and every valid event nudges the Merger wake, also while
+ * pull request outcomes are off: their own settings decide whether the pass
+ * does anything.
  */
 export async function prEvent(
   ctx: PrOutcomesApi,
   companyId: string,
   settings: ChiefLineSettings,
   body: Record<string, unknown>,
-  nudge?: PassNudge,
+  nudges: PrEventNudges = {},
 ): Promise<PluginApiResponse> {
   const { repo, pr } = body;
   if (typeof repo !== "string" || !repoPattern.test(repo)) {
@@ -195,9 +204,11 @@ export async function prEvent(
   if (typeof event === "string") {
     return fail(400, event);
   }
-  if (nudge !== undefined && startsPass(event)) {
-    nudge(companyId);
+  const passes = startsPass(event);
+  if (passes) {
+    nudges.mergeControl?.(companyId);
   }
+  nudges.merger?.(companyId, { repo, number: pr, approval: passes && event.kind === "comment" });
   if (!settings.prOutcomes) {
     return fail(409, "Pull request outcomes are off: set chiefLine.prOutcomes.");
   }

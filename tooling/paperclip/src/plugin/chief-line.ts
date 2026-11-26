@@ -7,7 +7,7 @@ import type {
   PluginStateClient,
 } from "@paperclipai/plugin-sdk";
 import { boardPost } from "./board-post.ts";
-import { prEvent, trackPull } from "./chief-line-pr-routes.ts";
+import { type PrEventNudges, prEvent, trackPull } from "./chief-line-pr-routes.ts";
 import {
   type ChiefLineRecord,
   type ChiefLineSettings,
@@ -27,7 +27,6 @@ import {
   targetKey,
   targetTitle,
 } from "./line-target.ts";
-import type { PassNudge } from "./merge-control-trigger.ts";
 
 /**
  * The chief line (board supervisor to Chief): one task per caller, assigned
@@ -417,7 +416,7 @@ export async function handleChiefLineRequest(
   input: PluginApiRequestInput,
   ctx: ChiefLineSignalApi,
   now: Date = new Date(),
-  nudge?: PassNudge,
+  nudges: PrEventNudges = {},
 ): Promise<PluginApiResponse> {
   const userId = input.actor.actorType === "user" ? input.actor.userId : undefined;
   if (typeof userId !== "string" || userId === "") {
@@ -440,7 +439,7 @@ export async function handleChiefLineRequest(
     case chiefLineRouteKeys.track:
       return await trackPull(ctx, input.companyId, settings, body);
     case chiefLineRouteKeys.prEvent:
-      return await prEvent(ctx, input.companyId, settings, body, nudge);
+      return await prEvent(ctx, input.companyId, settings, body, nudges);
     default:
       return await subscribe(ctx, input.companyId, settings, body);
   }
