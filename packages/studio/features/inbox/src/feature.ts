@@ -1,4 +1,5 @@
 import { sandboxStartCheckKey } from "@halonicjs/app";
+import { AccountMenuHostService } from "@halonicjs/studio-feature-account-menu/api";
 import {
   ActionCatalogService,
   RequesterPolicyService,
@@ -53,6 +54,8 @@ export const inboxFeature = defineFeature({
     RequesterPolicyService,
     // What runs its steps with the user's sign-in, in the desktop app (inbox.agent-action-run).
     actionStepsKey,
+    // The customer's account page, for **See usage** on a run at a plan limit (inbox.plan-limit-card).
+    AccountMenuHostService,
   ],
   provides: [InboxService],
   register(studio) {

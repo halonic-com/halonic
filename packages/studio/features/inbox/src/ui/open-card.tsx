@@ -9,6 +9,7 @@ import type { SetupFocus } from "../setup-source.ts";
 import { ApprovalCard } from "./approval-card.tsx";
 import type { NextItem } from "./card-parts.tsx";
 import { DoneProposalCard } from "./done-proposals.tsx";
+import { PlanLimitCard } from "./plan-limit-card.tsx";
 import { ProposalCard } from "./proposal-card.tsx";
 import type { RunFactsOf } from "./run-facts.ts";
 import { SetupPane } from "./setup-pane.tsx";
@@ -30,6 +31,8 @@ export interface OpenCardProps {
   readonly runFacts: RunFactsOf | undefined;
   /** The runs' source, to tell a run on Sample answers; without it no card carries that chip. */
   readonly runsSource: RunsSource | undefined;
+  /** Opens the customer's usage, for **See usage** on a run at a plan limit; without it there's none. */
+  readonly seeUsage?: (() => void) | undefined;
   readonly announce: ((line: string) => void) | undefined;
   readonly next: NextItem | null;
   readonly now: () => Date;
@@ -41,7 +44,8 @@ export interface OpenCardProps {
 
 /**
  * The open item's card in the Inbox's item pane: a setup item's view, a run proposal's page (or
- * its read-only summary once done), an approval's card or a wait step's card.
+ * its read-only summary once done), an approval's card, a wait step's card or the card of a run
+ * waiting at a plan limit.
  */
 export function OpenCard({
   item,
@@ -61,6 +65,7 @@ export function OpenCard({
   openPage,
   runFacts,
   runsSource,
+  seeUsage,
   announce,
 }: OpenCardProps) {
   // A note set aside for a secret comes back with the card, once. It is read while rendering and
@@ -150,6 +155,23 @@ export function OpenCard({
         {...(somewhereToGo ? { onGoToSecret: goToSecret } : {})}
         secretPlace={target.kind}
         trust={trust}
+      />
+    );
+  }
+  if (item.limit !== undefined) {
+    return (
+      <PlanLimitCard
+        item={{ ...item, limit: item.limit }}
+        decisions={inbox.decisions}
+        onOpenRun={openThisRun}
+        startedBy={facts?.startedBy}
+        onSeeUsage={seeUsage}
+        next={next}
+        now={now}
+        answering={answering}
+        signedOut={signedOut}
+        words={words}
+        waiting={items.some((waiting) => waiting.key === item.key)}
       />
     );
   }

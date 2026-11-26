@@ -17,6 +17,7 @@
     "@halonicjs/events": "workspace:*",
     "@halonicjs/ports": "workspace:*",
     "@halonicjs/std": "workspace:*",
+    "@halonicjs/studio-feature-account-menu": "workspace:*",
     "@halonicjs/studio-feature-action-steppers": "workspace:*",
     "@halonicjs/studio-feature-runs": "workspace:*",
     "@halonicjs/studio-kit": "workspace:*",

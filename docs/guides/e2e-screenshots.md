@@ -92,6 +92,14 @@ loading, a failed first read, no snapshot and no access. The spec also checks th
 sideways on the 390 px phone. The page loads the screen through `loadPullRequestsScreen` in the
 team feature's `api.ts`.
 
+## A run at a plan limit
+
+`plan-limit-<waiting|reserve>-<1440|390>-<light|dark>.png` is the Inbox card of a made-up run
+waiting at its customer's plan limit, as flow C3 and board 10 word and draw it (HAL-19051): this
+month's usage used up, and a step that needs more agent time than is left. The spec also checks
+that nothing scrolls sideways on the 390 px phone. The page draws the card through `PlanLimitCard`
+in the Inbox feature's `api.ts`.
+
 ## Pictures for halonic.dev
 
 `e2e/site-screenshots.spec.ts` takes the pictures the website shows (HAL-10732): the run page of a
