@@ -20,6 +20,7 @@ import type {
 import { checkedOrigin } from "./address.ts";
 import { readAvatar } from "./avatars.ts";
 import { boardRequestOf } from "./board-requests.ts";
+import { PaperclipBotNotes } from "./bot-notes.ts";
 import { ChangeFeed } from "./changes.ts";
 import { PaperclipChannelMembers } from "./channel-members.ts";
 import { PaperclipChannelSender } from "./channel-send.ts";
@@ -87,6 +88,7 @@ export class PaperclipMessaging implements AgentMessaging {
   readonly #members: PaperclipChannelMembers;
   readonly #channelWork: PaperclipChannelWork;
   readonly #fullAnswers: PaperclipFullAnswers;
+  readonly #botNotes: PaperclipBotNotes;
   readonly #threads: PaperclipCommentThreads;
   readonly #conversations: PaperclipConversations;
   readonly #refreshReads: RefreshReads;
@@ -113,6 +115,7 @@ export class PaperclipMessaging implements AgentMessaging {
     this.#members = new PaperclipChannelMembers(this.#reader, options.company, options.userId);
     this.#channelWork = new PaperclipChannelWork(this.#reader, options.company, options.userId);
     this.#fullAnswers = new PaperclipFullAnswers(this.#reader, options.warn);
+    this.#botNotes = new PaperclipBotNotes(this.#reader, options.company, options.warn);
     this.#threads = new PaperclipCommentThreads(this.#reader);
     this.#conversations = new PaperclipConversations(
       this.#reader,
@@ -181,11 +184,13 @@ export class PaperclipMessaging implements AgentMessaging {
       return this.#channelWork.add(context, channel, conversation, messages);
     }
     const answered = await this.#fullAnswers.add(task, messages);
-    // A chat not yet listed has no known agent, so its messages wait for the next read for `readAt`.
+    // A chat not yet listed has no known agent: its `readAt` and bot notes wait for the next read.
     const agent = this.#conversations.agentOf(task);
-    return agent === undefined
-      ? answered
-      : withReadAt(this.#reader, this.#ids, { task, agent }, answered);
+    if (agent === undefined) {
+      return answered;
+    }
+    const marked = await this.#botNotes.mark(context, task, agent, answered);
+    return withReadAt(this.#reader, this.#ids, { task, agent }, marked);
   }
 
   async listInboxItems(): Promise<readonly InboxItem[]> {
