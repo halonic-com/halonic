@@ -11,6 +11,7 @@ import {
   pr12,
   pull,
   pulls,
+  repo,
   run,
 } from "./pulls.test-helper.ts";
 
@@ -64,6 +65,39 @@ verifies("runtime.github-approval-copy", () => {
         approvedOnHead: true,
         approvals: [{ counts: true, copy: "no" }],
       });
+    });
+
+    test("says copy: no on a new head that shares the approved head's first 7 characters", async () => {
+      // The PR moved to a head that starts like the approved one; Julian's copy names the old head.
+      const newHead = `${head.slice(0, 7)}${"0".repeat(33)}`;
+      const github = fakeGitHub({
+        ...pr12(["Julian: approved on head `7651f8c`"], {
+          head: { sha: newHead, ref: "priya/ACME-7-checkout", repo: ours },
+        }),
+        ...ciOk("success", "ci-ok", newHead),
+        [`/repos/${repo}/compare/main...${newHead}`]: { behind_by: 0 },
+      });
+      const result = await run("github.pull-request", { pr: 12 }, github.get, undefined, {
+        tasks: { "ACME-7": [julianCopy] },
+      });
+      expect(result.content).toContain("approvals: Julian on 7651f8c (copy: no)");
+      expect(result.data).toMatchObject({ approvals: [{ counts: true, copy: "no" }] });
+    });
+
+    test("shows no copy and says why when Paperclip can't be read, and the approval still counts", async () => {
+      const result = await run(
+        "github.pull-request",
+        { pr: 12 },
+        approvedByJulian("priya/ACME-7-checkout").get,
+        undefined,
+        { paperclipError: "Paperclip answered 503" },
+      );
+      expect(result.content).toContain("approvals: Julian on 7651f8c\n");
+      expect(result.content).toContain(
+        "approval copies: couldn't read Paperclip (Paperclip answered 503)",
+      );
+      expect(result.data).toMatchObject({ approvedOnHead: true, approvals: [{ counts: true }] });
+      expect(result.data).not.toHaveProperty("approvals.0.copy");
     });
 
     test("says copy: no when no agent's url key is the reviewer's name in lower case", async () => {
@@ -123,6 +157,25 @@ verifies("runtime.github-approval-copy", () => {
         { number: 21, approvedOnHead: true },
         { number: 24, approvedOnHead: true },
       ]);
+    });
+
+    test("shows no copy and says why when Paperclip can't be read", async () => {
+      const ref = "mateo/ACME-3-cart";
+      const github = fakeGitHub({
+        [`${pulls}?state=open&${page}`]: [{ number: 21, head: { ref, repo: ours } }],
+        [`${pulls}/21`]: pull(21, { title: "pr 21", head: { sha: head, ref, repo: ours } }),
+        ...ciOk("success"),
+        [`${issues}/21/comments?${page}`]: [
+          { body: "Julian: approved on head `7651f8c`", author_association: "MEMBER" },
+        ],
+      });
+      const result = await run("github.open-pull-requests", {}, github.get, undefined, {
+        paperclipError: "Paperclip answered 503",
+      });
+      expect(result.content?.split("\n")[1]).toBe(
+        '#21 (ACME-3): ready, ci-ok success, mergeable yes, approved on head (Julian), approval copies: couldn\'t read Paperclip (Paperclip answered 503); title "pr 21"',
+      );
+      expect(result.data).toMatchObject([{ number: 21, approvedOnHead: true }]);
     });
   });
 });

@@ -1,12 +1,12 @@
 import type { CheckState, GitHubGet } from "../github.ts";
 import type { ActionHandler } from "../handlers.ts";
 import {
+  approvalsWithCopies,
   type CopyReader,
   type CopyState,
   copyCapabilities,
+  copyErrorText,
   paperclipCopies,
-  readCopySource,
-  withCopies,
 } from "./approval-copy.ts";
 import {
   ciOkOf,
@@ -46,6 +46,8 @@ export interface OpenPullRequest {
   readonly approvedOnHead: boolean;
   /** Those approvals on the current head, each with whether its Paperclip copy exists. */
   readonly approvals: readonly HeadApproval[];
+  /** Why the approvals' Paperclip copies couldn't be read; they then show no copy. */
+  readonly copyError?: string;
   /** Out of sync: it conflicts or its `ci-ok` is red. */
   readonly needsYou: boolean;
 }
@@ -54,7 +56,8 @@ export interface OpenPullRequest {
 export interface HeadApproval {
   readonly by: string;
   readonly head: string;
-  readonly copy: CopyState;
+  /** Left out when Paperclip couldn't be read (`copyError`). */
+  readonly copy?: CopyState;
 }
 
 interface ListedPull {
@@ -83,10 +86,10 @@ async function openPullRequest(
   const onHead = signedApprovals(comments)
     .filter(({ by, head }) => pull.head.sha.startsWith(head) && !signedByAuthor(by, author))
     .map(({ by, head }) => ({ by, head }));
-  const approvals =
-    copies === undefined || onHead.length === 0
-      ? onHead.map((approval) => ({ ...approval, copy: "unknown" as const }))
-      : withCopies(onHead, await readCopySource(copies, task));
+  const { approvals, copyError } =
+    copies === undefined
+      ? { approvals: onHead.map((approval) => ({ ...approval, copy: "unknown" as const })) }
+      : await approvalsWithCopies(onHead, copies, task, pull.head.sha);
   return {
     repo,
     number,
@@ -99,6 +102,7 @@ async function openPullRequest(
     mergeable,
     approvedOnHead: approvals.length > 0,
     approvals,
+    ...(copyError === undefined ? {} : { copyError }),
     needsYou: ciOk === "failure" || mergeable === "conflict",
   };
 }
@@ -146,12 +150,13 @@ function label(pr: OpenPullRequest, oneRepo: boolean): string {
   return oneRepo ? `#${pr.number}` : `${pr.repo.slice(pr.repo.indexOf("/") + 1)}#${pr.number}`;
 }
 
-/** "approved on head (Liam copy: yes)", or "not approved on head". */
+/** "approved on head (Liam copy: yes)", "approved on head (Liam)" when the copies weren't read, or "not approved on head". */
 function approvedText(approvals: readonly HeadApproval[]): string {
   if (approvals.length === 0) {
     return "not approved on head";
   }
-  return `approved on head (${approvals.map(({ by, copy }) => `${by} copy: ${copy}`).join(", ")})`;
+  const each = approvals.map(({ by, copy }) => (copy === undefined ? by : `${by} copy: ${copy}`));
+  return `approved on head (${each.join(", ")})`;
 }
 
 /** One line per pull request, the ones that need the agent first, then the repositories not read. */
@@ -172,6 +177,7 @@ export function openPullRequestsText(
       `ci-ok ${pr.ciOk}`,
       `mergeable ${pr.mergeable}`,
       approvedText(pr.approvals),
+      ...(pr.copyError === undefined ? [] : [copyErrorText(pr.copyError)]),
     ].join(", ");
     return `${pr.needsYou ? "NEEDS YOU " : ""}${label(pr, oneRepo)} (${pr.task ?? "no task"}): ${facts}; ${titleText(pr.title)}`;
   });

@@ -95,12 +95,53 @@ export function copyState(approval: SignedApproval, source: CopySource | undefin
   return hasCopy(approval, source) ? "yes" : "no";
 }
 
-/** The approvals, each with its copy state; everything else stays as it was. */
+/**
+ * The approvals, each with its copy state; everything else stays as it was. An
+ * approval on the current head is matched against the pull request's full
+ * head, not a prefix of the GitHub line's short sha: a later head that shares
+ * those characters would otherwise still match the old head's copy.
+ */
 export function withCopies<T extends SignedApproval>(
   approvals: readonly T[],
   source: CopySource | undefined,
+  head: string,
 ): (T & { readonly copy: CopyState })[] {
-  return approvals.map((approval) => ({ ...approval, copy: copyState(approval, source) }));
+  return approvals.map((approval) => {
+    const onHead = head.toLowerCase().startsWith(approval.head.toLowerCase());
+    const matched = onHead ? { by: approval.by, head } : approval;
+    return { ...approval, copy: copyState(matched, source) };
+  });
+}
+
+/** Approvals with their copy states, or as they were with the error when Paperclip couldn't be read. */
+export type CopiesRead<T> =
+  | { readonly approvals: (T & { readonly copy: CopyState })[]; readonly copyError?: undefined }
+  | { readonly approvals: readonly T[]; readonly copyError: string };
+
+/**
+ * The approvals with their Paperclip copies, reading Paperclip only when there
+ * is an approval to look up. When Paperclip can't be read, they show no copy
+ * and the error is reported, rather than failing the whole status.
+ */
+export async function approvalsWithCopies<T extends SignedApproval>(
+  approvals: readonly T[],
+  copies: CopyReader,
+  task: string | undefined,
+  head: string,
+): Promise<CopiesRead<T>> {
+  if (approvals.length === 0) {
+    return { approvals: [] };
+  }
+  try {
+    return { approvals: withCopies(approvals, await readCopySource(copies, task), head) };
+  } catch (error) {
+    return { approvals, copyError: (error as Error).message };
+  }
+}
+
+/** The line that reports a failed copy read. */
+export function copyErrorText(copyError: string): string {
+  return `approval copies: couldn't read Paperclip (${copyError})`;
 }
 
 /**

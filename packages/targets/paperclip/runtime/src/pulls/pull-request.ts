@@ -3,11 +3,11 @@ import { amsterdamTime } from "../amsterdam-time.ts";
 import type { CheckState, GitHubGet } from "../github.ts";
 import type { ActionCall, ActionHandler } from "../handlers.ts";
 import {
+  approvalsWithCopies,
   type CopyReader,
   copyCapabilities,
+  copyErrorText,
   paperclipCopies,
-  readCopySource,
-  withCopies,
 } from "./approval-copy.ts";
 import {
   branchOwner,
@@ -64,6 +64,8 @@ export interface PullRequestStatus {
   readonly behindBase: number | undefined;
   readonly inQueue: boolean;
   readonly approvals: readonly Approval[];
+  /** Why the approvals' Paperclip copies couldn't be read; they then show no copy. */
+  readonly copyError?: string;
   readonly approvedOnHead: boolean;
   readonly changedLines: number;
   /** The newest review finding on the head, as `<id> at <time>`. */
@@ -162,11 +164,10 @@ export async function pullRequestStatus(
     reviewer,
     nameOf,
   );
-  // Paperclip is read only when there is an approval to look up.
-  const found =
-    copies === undefined || judged.length === 0
-      ? judged
-      : withCopies(judged, await readCopySource(copies, task));
+  const { approvals: found, copyError } =
+    copies === undefined
+      ? { approvals: judged, copyError: undefined }
+      : await approvalsWithCopies(judged, copies, task, head);
   const title = shownTitle(pull);
   return {
     repo,
@@ -184,6 +185,7 @@ export async function pullRequestStatus(
     behindBase: compare?.behind_by,
     inQueue,
     approvals: found,
+    ...(copyError === undefined ? {} : { copyError }),
     approvedOnHead: found.some((approval) => approval.counts),
     changedLines,
     latestReviewFinding: finding === undefined ? undefined : `${finding.id} at ${finding.at}`,
@@ -252,6 +254,7 @@ export function pullRequestText(status: PullRequestStatus): string {
     `${status.state}${status.draft ? ", draft" : ""}; task ${status.task ?? "none"}; author ${status.author ?? "unknown"}`,
     `head ${status.head.slice(0, 7)}: ci-ok ${status.ciOk}; mergeable ${status.mergeable}; behind base by ${status.behindBase ?? "n/a"}`,
     `merge queue: ${status.inQueue ? "queued" : "not queued"}; approvals: ${approvalsText(status.approvals)}`,
+    ...(status.copyError === undefined ? [] : [copyErrorText(status.copyError)]),
     `${status.changedLines} changed lines`,
     reviewerText(status.reviewer),
     ...(status.latestReviewFinding === undefined

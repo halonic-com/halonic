@@ -49,10 +49,10 @@ export function pull(number: number, overrides: Record<string, unknown> = {}) {
   };
 }
 
-/** A `ci-ok` run on the head. */
-export function ciOk(conclusion: string, name = "ci-ok") {
+/** A `ci-ok` run on the head, or on `sha`. */
+export function ciOk(conclusion: string, name = "ci-ok", sha = head) {
   return {
-    [`/repos/${repo}/commits/${head}/check-runs?check_name=${encodeURIComponent(name)}&per_page=100`]:
+    [`/repos/${repo}/commits/${sha}/check-runs?check_name=${encodeURIComponent(name)}&per_page=100`]:
       { check_runs: [{ status: "completed", conclusion, started_at: "2026-11-24T10:00:00Z" }] },
   };
 }
@@ -96,9 +96,12 @@ export function run(
     routing?: ActionCall["routing"];
     /** Paperclip's tasks by identifier, with their comments; Paperclip has no other task. */
     tasks?: Record<string, readonly CopyComment[]>;
+    /** When set, every Paperclip task read fails with this message. */
+    paperclipError?: string;
   } = {},
 ) {
   const tasks = extra.tasks ?? {};
+  const { paperclipError } = extra;
   const handler = runtimeHandlers[action];
   if (handler === undefined) throw new Error(`no handler for ${action}`);
   const call: ActionCall = {
@@ -124,7 +127,10 @@ export function run(
       {
         agents: { list: async () => agents },
         issues: {
-          get: async (identifier: string) => (identifier in tasks ? { id: identifier } : null),
+          get: async (identifier: string) => {
+            if (paperclipError !== undefined) throw new Error(paperclipError);
+            return identifier in tasks ? { id: identifier } : null;
+          },
           listComments: async (id: string) => tasks[id] ?? [],
         },
       } as never,

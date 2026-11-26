@@ -126,6 +126,11 @@ a token and never takes a key from the workspace.
 Only that action asks for `issues.read`, `issue.comments.read`, `issue.documents.read` and
 `issue.relations.read`, so a plugin without a task tool doesn't get them.
 
+`github.pull-request` and `github.open-pull-requests` ask for `issues.read`,
+`issue.comments.read` and `agents.read`: they read the comments on the task a branch names
+(`<agent>/<task>-…`) to show whether each signed approval has its Paperclip copy, and never return
+the comments' text. A fork's branch names no task, so nothing is read for it.
+
 ## Example
 
 ```ts
