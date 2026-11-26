@@ -78,21 +78,20 @@ function PullRequestBody(props: {
 
 /**
  * The state line with "Stuck since 11:00" as an attention chip at its right end (P12); on a
- * phone the chip wraps under the state.
+ * phone the chip wraps under the state. Its parts may shrink below their one-line width, so a
+ * long chip wraps its words inside the row instead of running past the page's edge.
  */
 function StateRow({ row, clock }: { row: PullRequestRow; clock: TeamClock }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="flex flex-wrap items-center justify-between gap-2 *:min-w-0">
       <StateLine row={row} clock={clock} />
       {row.stuck.length === 0 ? null : (
-        <span className="flex text-small">
-          <StatusChip tone="attention">
-            <span aria-hidden="true" className="inline-grid size-3 shrink-0 *:size-full">
-              <ClockIcon />
-            </span>
-            {stuckLine(row, clock)}
-          </StatusChip>
-        </span>
+        <StatusChip tone="attention">
+          <span aria-hidden="true" className="inline-grid size-3 shrink-0 *:size-full">
+            <ClockIcon />
+          </span>
+          {stuckLine(row, clock)}
+        </StatusChip>
       )}
     </div>
   );
@@ -228,7 +227,10 @@ function Rail({ failed, last }: { failed: boolean; last: boolean }) {
       <span
         className={`mt-2 size-1.5 rounded-full forced-color-adjust-none forced-colors:bg-[CanvasText] ${colour}`}
       />
-      {last ? null : <span className="absolute top-4 -bottom-2 w-px bg-border" />}
+      {last ? null : (
+        // 2px from this dot to 2px above the next one, whose step starts 8px (the list's gap) below.
+        <span className="absolute top-4 -bottom-3.5 w-px bg-border forced-color-adjust-none forced-colors:bg-[CanvasText]" />
+      )}
     </span>
   );
 }

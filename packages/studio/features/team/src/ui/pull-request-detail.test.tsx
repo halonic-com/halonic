@@ -187,9 +187,12 @@ verifies("team.pull-request-detail", () => {
       });
       const page = await open(fake);
       await press(page, "#7");
-      expect(text(page)).toContain(
-        "Stuck since Sun 13:00 · Fast-track review is due within 30 min",
+      const stuck = [...(shownMain(page)?.querySelectorAll("span.bg-attention-soft") ?? [])].find(
+        (chip) =>
+          chip.textContent === "Stuck since Sun 13:00 · Fast-track review is due within 30 min",
       );
+      // The row lets its chips shrink, so this long one wraps instead of running off a narrow page.
+      expect(stuck?.parentElement?.className).toContain("*:min-w-0");
       const steps = [...(shownMain(page)?.querySelectorAll("section li") ?? [])];
       expect(steps.map((step) => step.textContent)).toEqual([
         "12:55Fast-track label added",

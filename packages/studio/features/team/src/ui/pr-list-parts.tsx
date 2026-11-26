@@ -24,7 +24,7 @@ export function Section(props: { name: string; detail: string | undefined; child
 /** One line in a bordered box where rows would be, with an optional button on its right. */
 export function Note(props: { children: ReactNode; action?: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-surface px-4 py-3">
+    <div className={`flex flex-wrap items-center justify-between gap-2 px-4 py-3 ${boxFrame}`}>
       <p>{props.children}</p>
       {props.action}
     </div>
