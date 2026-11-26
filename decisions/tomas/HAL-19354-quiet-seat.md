@@ -16,6 +16,12 @@ The requirement `paperclip.seat-mover-checklist` gains item g, the new move reas
 break, plus one example. Tests for the target refusal, the move off, the stuck case and the break
 are added, and the 500-state test now includes a pinned agent. No test was weakened or skipped.
 
+The requirement's tests make 2220 expect calls instead of 2252. That comes from the 500-state
+test: it makes one expect per planned move and one per break a seat keeps. Adding the pinned
+agent to its random states changes the random draws, and that agent never moves, so the same
+500 states plan fewer moves in total. Every assertion is still there and still runs on every
+state.
+
 ## Why
 
 The mover had items a–f of the board's checklist but not g. With the board's settings (timer
