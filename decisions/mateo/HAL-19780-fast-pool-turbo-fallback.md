@@ -3,6 +3,7 @@
 - Task: HAL-19780
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19248 (the board via ci-fasttrack, 26 Nov 13:45 UTC, item 3: fast-pool runs need a Turbo restore step); Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:i6iQ3uFlFUfsm7/miEeck9RIQVcy45udTmXtsuqBYPG13dCzVHQYVlDs6bn+dui9sTKgb/VeB36IsWblgDbECQ==
 
 The build job on the fast pool reads Turbo's results from the CI server's disk snapshot (`/cache/turbo`, an overlay refreshed every 5 minutes) and skips GitHub's cache restore. In 12 fast-track pull request runs on 24 to 26 Nov, that snapshot was either warm (91-98% of typecheck and test tasks cached) or cold (0-14%), while a pull request on GitHub's runners at the same time had 87-96%.
 
