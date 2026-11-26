@@ -3,6 +3,7 @@
 - Task: HAL-20126, plan HAL-20108 PR B0
 - Approval: Liam decided option (a) and approved B0 with conditions on HAL-20126. Liam signs this note in his review, and Julian does the security pass
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:BFNbQjKKg7n9fP9xvkprGyJhsi163hlAAei/UUIrpK6cySMmATzwpsqaZo46Cf+j1L37QX4OQMUQ0t2U3dT1BA==
 
 ## What changes
 
