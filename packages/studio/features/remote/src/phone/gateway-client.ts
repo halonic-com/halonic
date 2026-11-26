@@ -11,7 +11,7 @@ import { parseHostMessage } from "./host-message.ts";
 import { MessagingClient } from "./messaging-client.ts";
 import { OpenSession, type Pending, type PendingSend } from "./open-session.ts";
 import type { PhoneState } from "./phone-status.ts";
-import type { PhoneRemote, RemoteSendOutcome, RemoteView } from "./remote-view.ts";
+import type { OwnerCheckHint, PhoneRemote, RemoteSendOutcome, RemoteView } from "./remote-view.ts";
 import { SentAnswers } from "./sent-answers.ts";
 import type { SessionMemory } from "./session-memory.ts";
 import { viewOf } from "./view-of.ts";
@@ -47,7 +47,7 @@ export class GatewayClient implements PhoneRemote {
   /** What the last session list said of the risky switch: only a hint for the view. */
   private answersRisky = false;
   /** Whether the owner check could ask, checked again after every session list. */
-  private ownerCheckAvailable = false;
+  private ownerCheckHint: OwnerCheckHint = "unknown";
   /** Counts the owner checks asked for, so an older answer never overwrites a newer one. */
   private ownerChecks = 0;
   /** The last connection found the computer on another message version. */
@@ -301,15 +301,16 @@ export class GatewayClient implements PhoneRemote {
   /**
    * Asks again whether the owner check can ask, after every session list: a
    * fingerprint removed since the last list turns Approve off for `risky`
-   * approvals. Until the answer comes they stay off; any error reads as no.
+   * approvals. Until the answer comes the hint is `unknown`, so answers stay
+   * off without asking for a screen lock; any error reads as no.
    */
   private checkOwner(): void {
     this.ownerChecks += 1;
     const asked = this.ownerChecks;
-    this.ownerCheckAvailable = false;
+    this.ownerCheckHint = "unknown";
     const settle = (available: boolean) => {
       if (asked !== this.ownerChecks) return;
-      this.ownerCheckAvailable = available;
+      this.ownerCheckHint = available ? "ready" : "unavailable";
       this.changed();
     };
     this.ownerCheck().then(
@@ -393,7 +394,7 @@ export class GatewayClient implements PhoneRemote {
     this.sessions = [];
     this.answersRisky = false;
     this.ownerChecks += 1;
-    this.ownerCheckAvailable = false;
+    this.ownerCheckHint = "unknown";
     this.memories.clear();
     this.sentAnswers.clear();
     this.asOf = undefined;
@@ -417,7 +418,7 @@ export class GatewayClient implements PhoneRemote {
       memories: this.memories,
       sentAnswers: this.sentAnswers,
       answersRisky: this.answersRisky,
-      ownerCheckAvailable: this.ownerCheckAvailable,
+      ownerCheck: this.ownerCheckHint,
       updateNeeded: this.updateNeeded,
       olderComputer: this.olderComputer,
     });

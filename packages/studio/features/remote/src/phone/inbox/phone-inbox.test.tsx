@@ -6,6 +6,7 @@ import { act, useSyncExternalStore } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { GatewayScene, SCENE_COMPUTER } from "../../test-support/gateway-scene.ts";
 import { render, unmountAll } from "../../test-support/render.tsx";
+import type { OwnerCheckAvailable } from "../gateway-client.ts";
 import { timeOf } from "./inbox-words.ts";
 import { PhoneInbox } from "./phone-inbox.tsx";
 
@@ -37,12 +38,19 @@ function item(overrides: Partial<InboxItem> = {}): InboxItem {
 
 const hire = item({ id: "i-hire", question: "Hire a designer?", risk: "risky" });
 
-/** The phone's Inbox over a gateway scene whose host has `items`, its list saying `answersRisky`. */
+/**
+ * The phone's Inbox over a gateway scene whose host has `items`, its list saying `answersRisky`;
+ * `ownerCheck` stands for the shell's, answering `screenLock` at once unless a test passes its own.
+ */
 async function mountInbox(
   items: readonly InboxItem[],
-  { answersRisky = false, screenLock = true } = {},
+  {
+    answersRisky = false,
+    screenLock = true,
+    ownerCheck = () => Promise.resolve(screenLock),
+  }: { answersRisky?: boolean; screenLock?: boolean; ownerCheck?: OwnerCheckAvailable } = {},
 ) {
-  const scene = new GatewayScene(() => Promise.resolve(screenLock));
+  const scene = new GatewayScene(ownerCheck);
   scenes.push(scene);
   const onOpenSettings = vi.fn();
   function Inbox() {
@@ -90,6 +98,8 @@ async function press(name: string): Promise<void> {
 }
 
 const text = () => document.body.textContent ?? "";
+
+const noScreenLock = "Set a screen lock on this phone to answer from it. Reading still works.";
 
 /** The host answers the phone's one `msg-answer` with `result`. */
 async function result(scene: GatewayScene, answer: AnswerResult): Promise<void> {
@@ -157,6 +167,27 @@ verifies("remote.phone-inbox", () => {
     await press("Open settings");
     expect(onOpenSettings).toHaveBeenCalledOnce();
   });
+
+  it.each([true, false])(
+    "keeps answers off with no screen-lock line until the owner check answers, then %s",
+    async (screenLock) => {
+      let answerCheck: (available: boolean) => void = () => undefined;
+      const ownerCheck = () =>
+        new Promise<boolean>((resolve) => {
+          answerCheck = resolve;
+        });
+      const { scene } = await mountInbox([item()], { ownerCheck });
+      await press("Chief" + "Ship phase 2 now?");
+      expect(text()).not.toContain(noScreenLock);
+      expect(button("Today").getAttribute("aria-disabled")).toBe("true");
+      await press("Today");
+      expect(scene.tunnel.sentOf("msg-answer")).toEqual([]);
+
+      await step(() => answerCheck(screenLock));
+      expect(text().includes(noScreenLock)).toBe(!screenLock);
+      expect(button("Today").getAttribute("aria-disabled") === "true").toBe(!screenLock);
+    },
+  );
 
   it("says nothing is waiting when the Inbox is empty", async () => {
     await mountInbox([
