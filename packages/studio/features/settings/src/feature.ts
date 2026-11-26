@@ -9,6 +9,7 @@ import {
   DisplaySettingsService,
   HalonicVersionService,
   HostSettingsService,
+  LoginItemService,
   RestartRunsService,
   UnfencedYesService,
   UpdaterService,
@@ -19,6 +20,8 @@ import * as assistantText from "./assistant/assistant-text.ts";
 import * as notificationsText from "./notifications/notifications-text.ts";
 import { agentSandboxSummary, assistantSummary } from "./section-summaries.ts";
 import * as serverSessionText from "./server-session/server-session-text.ts";
+import { startupAvailable, startupDescription } from "./startup/startup-available.ts";
+import * as startupText from "./startup/startup-text.ts";
 import { showUnfinishedSettings, unfinishedSectionIds } from "./unfinished.ts";
 import { createRestartFlow, RestartFlowService } from "./updater/restart-flow.ts";
 import { updateCommands } from "./updater/update-commands.ts";
@@ -106,6 +109,19 @@ export function settingsSectionsFor(showUnfinished: boolean): SettingsSectionCon
       load: () => import("./server-session/server-session-section.tsx"),
     },
     {
+      id: "startup",
+      icon: "startup",
+      title: startupText.SECTION_TITLE,
+      scope: "host",
+      group: "general",
+      // After Trusted sources (40) and Your server (50), before About Halonic (HAL-14213).
+      order: 55,
+      available: startupAvailable,
+      description: startupDescription,
+      view: "StartupSection",
+      load: () => import("./startup/startup-section.tsx"),
+    },
+    {
       id: "about",
       icon: "about",
       title: "About Halonic",
@@ -135,6 +151,7 @@ export const sectionsByName: readonly string[] = [
   "assistant",
   "trusted-sources",
   "agent-sandbox",
+  "startup",
 ];
 
 /**
@@ -172,6 +189,8 @@ export function createSettingsFeature(showUnfinished = showUnfinishedSettings) {
       // Settings › Agent sandbox's "Plugins and integrations" and its Take back (R16).
       UnfencedYesService,
       AssistantWorkspaceService,
+      // Settings › Startup's login item: the desktop app only.
+      LoginItemService,
       // Says why the sandbox can't start, under Settings › Agent sandbox's Not available.
       sandboxStartCheckKey,
     ],

@@ -14,6 +14,7 @@ export const sectionIconNames = [
   "notifications",
   "feedback",
   "keyboard",
+  "startup",
   "about",
 ] as const;
 
@@ -69,6 +70,8 @@ const drawings: Readonly<Record<SectionIconName, SectionDrawing>> = {
     outline:
       "M4 6h16a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V7a1 1 0 011-1zM7 10h.01M11 10h.01M15 10h.01M8 14h8",
   },
+  // The power mark, as starting up.
+  startup: { outline: "M12 3v8M7.05 6.05a7 7 0 109.9 0" },
   // The info mark.
   about: { outline: "M12 4a8 8 0 110 16 8 8 0 010-16zM12 11v5M12 8v.01" },
 };

@@ -48,6 +48,7 @@ import { provideAssistant } from "./assistant-workspace.ts";
 import type { DeviceMemory } from "./device-memory.ts";
 import { firstRunDeviceOf } from "./first-run-device.ts";
 import { unfencedRunsOf } from "./integration-runs-status.ts";
+import { provideLoginItem } from "./login-item.ts";
 import { openFolderScope, savingOf } from "./open-folder-scope.ts";
 import { openTrustsOf, shellFiles, workspaceTrustOf } from "./open-trusts.ts";
 import { provideAgentSandbox } from "./provide-agent-sandbox.ts";
@@ -130,6 +131,7 @@ export async function openFolder(
   if (ipc !== undefined) {
     services.provide(UpdaterService, updaterOf(ipc));
     services.provide(RestartRunsService, restartRunsOfWindow(services));
+    provideLoginItem(services, ipc, device.platform ?? "linux");
   }
   const assistant = provideAssistant(services, files, location, name, scope);
   if (ipc !== undefined && files !== undefined && trust !== undefined && scope !== undefined) {
