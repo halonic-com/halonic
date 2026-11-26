@@ -114,6 +114,8 @@ function acmeRoutes(): Map<string, unknown> {
       { ...card, status: "accepted" },
     ],
     ["GET /api/plugins/halonic.agent-tools/api/github/summary", snapshot],
+    // Every Inbox read asks for the comments that mention the person; Acme has none.
+    ["GET /api/plugins/halonic.agent-tools/api/board/mentions", { mentions: [] }],
   ]);
 }
 
