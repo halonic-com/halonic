@@ -176,7 +176,8 @@ export function outsideJulianScope(pull: GatePull): string | null {
     ...(pull.manifests === undefined ? {} : { manifests: pull.manifests }),
   };
   // By role, as the PR watcher routes (`reviewerRoleFor`): a routing never widens Julian's limits.
-  if (reviewerRoleFor(routed) === "second-reviewer") {
+  // The routine reviewer's scope (HAL-19246) is inside them, so Julian's approval counts there too.
+  if (reviewerRoleFor(routed) !== "code-reviewer") {
     return null;
   }
   const bad = pull.files.filter(isLiamPath);

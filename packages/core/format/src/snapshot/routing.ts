@@ -11,6 +11,7 @@ import { checkKeysIn, credentialName } from "../shared/key-in-value.ts";
 export const ROUTING_ROLES = [
   "code-reviewer",
   "second-reviewer",
+  "routine-reviewer",
   "clarifier",
   "merge-captain",
 ] as const;
@@ -47,6 +48,7 @@ export const Routing = s
       .object({
         "code-reviewer": agent.optional(),
         "second-reviewer": agent.optional(),
+        "routine-reviewer": agent.optional(),
         clarifier: agent.optional(),
         "merge-captain": agent.optional(),
       })

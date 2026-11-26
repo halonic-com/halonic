@@ -63,9 +63,7 @@ verifies("paperclip.reviewer-routing", () => {
         expect(reviewerFor(pull)).toBe(reviewer);
         expect(reviewerFor(pull, undefined)).toBe(reviewer);
         expect(reviewerFor(pull, today)).toBe(reviewer);
-        expect(reviewerRoleFor(pull)).toBe(
-          reviewer === "julian" ? "second-reviewer" : "code-reviewer",
-        );
+        expect(reviewerRoleFor(pull) === "code-reviewer").toBe(reviewer === "liam");
       },
     );
 
@@ -75,6 +73,19 @@ verifies("paperclip.reviewer-routing", () => {
       );
       expect(reviewerFor(cases[0]?.[0] as RoutedPull, routing)).toBe("kim");
       expect(reviewerFor(cases[1]?.[0] as RoutedPull, routing)).toBe("owen");
+    });
+
+    test("the routine reviewer covers routine pull requests, and the second reviewer without one", () => {
+      const roles = { "code-reviewer": "owen", "second-reviewer": "kim" };
+      const routine = cases[0]?.[0] as RoutedPull;
+      const core = cases[6]?.[0] as RoutedPull;
+      expect(reviewerRoleFor(routine)).toBe("routine-reviewer");
+      expect(reviewerRoleFor(core)).toBe("second-reviewer");
+      const withNora = routingOf(snapshotWith({ roles: { ...roles, "routine-reviewer": "nora" } }));
+      expect(reviewerFor(routine, withNora)).toBe("nora");
+      expect(reviewerFor(core, withNora)).toBe("kim");
+      expect(reviewerFor(routine, routingOf(snapshotWith({ roles })))).toBe("kim");
+      expect(personFor("routine-reviewer", undefined)).toBe("julian");
     });
 
     test("a role the routing leaves out goes to the code reviewer, never to no one", () => {

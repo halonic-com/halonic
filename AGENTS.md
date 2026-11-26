@@ -194,6 +194,14 @@ Stacks stay short, so a closed pull request never strands work above it:
   `packages/host`, the guard (`tooling/check`, `testing/spec`, `.github/workflows`), a new package,
   and any change to a package's public interface (what its `src/index.ts` exports; an API report
   replaces this once we generate one). Everything else merges on the teammates' approvals.
+- Three reviewers share the rest, by the paths a pull request changes (`reviewerFor` in
+  `tooling/paperclip/src/reviewer-paths.ts`; `pr_status` names the reviewer): the routine reviewer
+  approves alone everything outside the core building blocks above, `packages/host`,
+  `packages/testing/spec`, `tooling/paperclip`, `package.json` files and the second reviewer's
+  limits, up to 800 changed lines of code; the second reviewer takes the rest within their
+  limits; the maintainer takes everything else. Until the maintainer says the routine reviewer's
+  calibration is done, the second reviewer covers routine reviews
+  ([docs/guides/review.md](docs/guides/review.md#who-reviews-what)).
 - Nobody queues or merges a pull request by hand (no `gh pr merge`). The Merger queues approved
   pull requests with `ci-ok` green on their head, the bottom of a stack first.
 - The security reviewer also reviews tests, requirements, dependencies and `tooling/check`. The

@@ -67,7 +67,7 @@ verifies("paperclip.pr-watcher-handoff", () => {
     );
     for (const files of cases) {
       const routed = { files, changedLines: 40, sensitive: false };
-      const second = reviewerRoleFor(routed) === "second-reviewer";
+      const second = reviewerRoleFor(routed) !== "code-reviewer";
       expect(reviewerFor(routed, routing)).toBe(second ? "kim" : "owen");
       expect(outsideJulianScope(pull(6016, { files, filesTotal: files.length })) === null).toBe(
         second,
