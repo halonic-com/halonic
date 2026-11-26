@@ -18,6 +18,7 @@ import { discoverPulls } from "../pr-watcher/discover.ts";
 import { baseGreenSince, snapshotFacts } from "../pr-watcher/facts.ts";
 import { ciOk, gitHubReader } from "../pr-watcher/github.ts";
 import { type HeldHead, heldHeads } from "../pr-watcher/held.ts";
+import { dedupeModeOf } from "../pr-watcher/monitor-dedupe.ts";
 import { countMonitors, type MonitorCounts } from "../pr-watcher/monitors.ts";
 import type { TaskRow } from "../pr-watcher/paperclip.ts";
 import { gitHubRebaseOnly } from "../pr-watcher/rebase-only.ts";
@@ -39,6 +40,7 @@ import type { LifecycleRunner } from "./fast-track-lifecycle-job.ts";
 import { type HostApi, paperclipHost, unblockHost } from "./host.ts";
 import { passStateKey } from "./merge-control-lock.ts";
 import { countingFetch, type MetricsApi, writeMetrics } from "./metrics.ts";
+import { monitorChecks } from "./monitor-check.ts";
 import { type RunsFetch, reviewerLimitsOf } from "./reviewer-runs.ts";
 import { prWatcherSignalPass, watcherRecorder } from "./signal-pass-job.ts";
 import { addReviewers } from "./snapshot-reviewers.ts";
@@ -200,6 +202,9 @@ async function recordPass(
       "monitors.fired_on_pr_tasks": monitors.firedOnPrTasks,
       "monitors.postponed": summary.postponed,
       "monitors.postpone_refused": summary.postponeRefused,
+      "monitors.deduped": summary.dedupedWake + summary.dedupedUnchanged,
+      "monitors.deduped_wake": summary.dedupedWake,
+      "monitors.deduped_unchanged": summary.dedupedUnchanged,
     },
     { companyId, dryRun: String(dryRun) },
   );
@@ -207,7 +212,7 @@ async function recordPass(
     ctx.logger.error(`PR watcher: couldn't save its metrics: ${failure.message}`, { companyId });
   }
   ctx.logger.info(
-    `PR watcher: ${summary.checked} tasks with a pull request, ${summary.done} done, ${summary.woken} woken, ${summary.handedOff} handed to review, ${summary.warned} warned after approval, ${summary.reviewWaits} waiting for review over 1 h, ${summary.priorityRaised} raised to high, ${summary.rerouted} moved off a limited reviewer, ${summary.bothLimited} with both reviewers limited, ${summary.failed.length} failed, ${callsText(calls)}, ${monitors.firedOnPrTasks} monitors fired on those tasks, ${summary.postponed} moved later${dryRun ? " (dry run)" : ""}.`,
+    `PR watcher: ${summary.checked} tasks with a pull request, ${summary.done} done, ${summary.woken} woken, ${summary.handedOff} handed to review, ${summary.warned} warned after approval, ${summary.reviewWaits} waiting for review over 1 h, ${summary.priorityRaised} raised to high, ${summary.rerouted} moved off a limited reviewer, ${summary.bothLimited} with both reviewers limited, ${summary.failed.length} failed, ${callsText(calls)}, ${monitors.firedOnPrTasks} monitors fired on those tasks, ${summary.postponed} moved later, ${summary.dedupedWake + summary.dedupedUnchanged} short checks deduped${dryRun ? " (dry run)" : ""}.`,
     { companyId },
   );
   // The top 5, so Chief's team check can list the longest review waits (HAL-17920).
@@ -371,6 +376,10 @@ async function watchCompany(
     acted: recorder.acted,
     limits: reviewerLimitsOf(ctx, paperclipFetch, config, { companyId, now, log }),
     ...(stackRebase === undefined ? {} : { stackRebase }),
+    // One monitor wake per pull request (HAL-20175).
+    ...(dedupeModeOf(config ?? {}) === "on"
+      ? { lastCheck: monitorChecks(ctx, companyId).get }
+      : {}),
   });
   // After the watcher's tick, so a task it just marked done unblocks its dependents in the same pass.
   const unblocked = await unblockPass({

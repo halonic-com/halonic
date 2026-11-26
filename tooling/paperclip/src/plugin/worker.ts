@@ -31,6 +31,7 @@ import { passLock } from "./merge-control-lock.ts";
 import { mergeFactsReader } from "./merge-control-reader.ts";
 import { type PassNudge, passTrigger } from "./merge-control-trigger.ts";
 import { gitHubPrints, type MergerNudge, mergerWake } from "./merger-wake.ts";
+import { keepMonitorCheck } from "./monitor-check.ts";
 import { registerNextStepTools } from "./next-step-tools.ts";
 import { prWatcherPassRouteKey } from "./pr-watcher-pass-declaration.ts";
 import { handlePrWatcherPass } from "./pr-watcher-pass-route.ts";
@@ -208,7 +209,9 @@ export const plugin = definePlugin({
     registerReviewVerdictTool(ctx);
     registerReactTool(ctx);
     registerTrialResults(ctx);
-    registerStatePacket(ctx, (params) => measureWakeGate(ctx, params));
+    registerStatePacket(ctx, (params) =>
+      Promise.all([measureWakeGate(ctx, params), keepMonitorCheck(ctx, params)]),
+    );
     registerWorkerAgentsData(ctx, workerAgentsDeps(ctx, databaseWorkerTables(ctx.db)));
   },
   async onApiRequest(input) {

@@ -8,7 +8,7 @@ the merge queue's fill order (`queue.prio`).
 - **Layer:** tooling
 - **Owner:** mateo
 - **Public API:** `@halonicjs/tooling-paperclip` (the PR watcher's `tick`, `decide`, `discoverPulls` and its readers; the plugin's `manifest`, `runWatcher` and host adapter; the GitHub snapshot's reader and shape; `reviewerFor`, `isLiamPath` and the path lists; `queuePrio` and its weights)
-- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-conflict-files`, `paperclip.pr-watcher-wake-status`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-monitor-postpone`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-stack-rebase`, `paperclip.branch-update-write-scope`, `paperclip.pr-watcher-plugin`, `paperclip.pr-watcher-review-priority`, `paperclip.pr-watcher-parent-block`, `paperclip.pr-tools`, `paperclip.ci-failures-tool`, `paperclip.task-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-piles`, `paperclip.board-check-waiting`, `paperclip.board-check-load`, `paperclip.board-check-approvals`, `paperclip.board-check-merge-speed`, `paperclip.board-tools`, `paperclip.merge-speed-tool`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.github-routes`, `paperclip.agent-merge-counts`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`, `paperclip.ready-for-review-wake`, `paperclip.task-effort-rules`, `paperclip.task-effort-guard`, `paperclip.task-effort-writes`, `paperclip.handoff-limit`
+- **Requirements:** `paperclip.pr-watcher-done`, `paperclip.pr-watcher-wake`, `paperclip.pr-watcher-conflict-files`, `paperclip.pr-watcher-wake-status`, `paperclip.pr-watcher-retargeted`, `paperclip.pr-watcher-monitor-postpone`, `paperclip.monitor-dedupe`, `paperclip.pr-watcher-read-only`, `paperclip.pr-watcher-stack-rebase`, `paperclip.branch-update-write-scope`, `paperclip.pr-watcher-plugin`, `paperclip.pr-watcher-review-priority`, `paperclip.pr-watcher-parent-block`, `paperclip.pr-tools`, `paperclip.ci-failures-tool`, `paperclip.task-tools`, `paperclip.agent-tools-metrics`, `paperclip.board-check-writes`, `paperclip.board-check-asks`, `paperclip.board-check-failed-runs`, `paperclip.board-check-piles`, `paperclip.board-check-waiting`, `paperclip.board-check-load`, `paperclip.board-check-approvals`, `paperclip.board-check-merge-speed`, `paperclip.board-tools`, `paperclip.merge-speed-tool`, `paperclip.github-snapshot`, `paperclip.github-snapshot-store`, `paperclip.github-routes`, `paperclip.agent-merge-counts`, `paperclip.reviewer-paths`, `paperclip.queue-prio`, `paperclip.queue-state`, `paperclip.gh-guard`, `paperclip.gh-guard-route`, `paperclip.ready-for-review`, `paperclip.ready-for-review-wake`, `paperclip.task-effort-rules`, `paperclip.task-effort-guard`, `paperclip.task-effort-writes`, `paperclip.handoff-limit`
 
 ## PR watcher
 
@@ -865,7 +865,15 @@ front of each name. A metric that doesn't save is logged and changes nothing.
   fired isn't open any more, so `fired` is a lower bound.
   `monitors.postponed` counts the fallback monitors the watcher moved later
   (or would move, in a dry run), `monitors.postpone_refused` the moves
-  Paperclip refused.
+  Paperclip refused. `monitors.deduped` counts the author's short checks
+  (due within the hour) the watcher moved 6 hours out because a second wake
+  would add nothing, split into `monitors.deduped_wake` (the watcher woke the
+  author in the same pass) and `monitors.deduped_unchanged` (head and `ci-ok`
+  unchanged since the last monitor wake, which the `state-packet` data key
+  keeps per task; never with a failed `ci-ok` or a review finding on the
+  head). Each move logs a line starting `Monitor dedupe:`; the
+  `monitorDedupe` setting (`on` by default) turns it off
+  (`paperclip.monitor-dedupe`, HAL-20175).
 - **Each tool call** (tags `companyId`, `tool`, `outcome`): `tools.calls` and
   `tools.github_requests`. `ready_for_review` saves `tools.calls`,
   `tools.duration_ms`, one of `precheck.pass`, `.fail`, `.running`,

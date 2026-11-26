@@ -19,4 +19,12 @@ export const statePacketConfigProperties = {
       "measure: on each monitor wake of a task with a pull request on an <agent>/HAL-<n>-<words> branch, log and count whether the run would have been skipped because every pull request waits on someone else and nobody else commented (HAL-18985). The wake always starts. off: nothing is logged.",
     default: "off",
   },
+  monitorDedupe: {
+    type: "string",
+    enum: ["on", "off"],
+    title: "One monitor wake per pull request",
+    description:
+      "on: each monitor wake keeps its task's pull request heads and ci-ok, and the PR watcher moves the author's short check (due within the hour) 6 hours out when the watcher wakes the author in the same pass or nothing changed since that wake (HAL-20175). Each move is logged as 'Monitor dedupe:'. off: short checks fire as set.",
+    default: "on",
+  },
 } as const;

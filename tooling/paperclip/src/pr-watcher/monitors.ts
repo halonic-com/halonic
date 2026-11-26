@@ -1,4 +1,4 @@
-import type { TaskRow } from "./paperclip.ts";
+import type { Paperclip, TaskRow } from "./paperclip.ts";
 
 /**
  * Paperclip monitors on open tasks: the model runs the watcher replaces.
@@ -67,6 +67,40 @@ export function postponeUntil(nextCheckAt: string | null, now: Date): string | u
     return undefined;
   }
   return new Date(now.getTime() + fallbackAheadMs).toISOString();
+}
+
+/** What moving a monitor needs from the watcher's options. */
+export interface MoveOptions {
+  readonly paperclip: Pick<Paperclip, "postponeMonitor">;
+  readonly dryRun: boolean;
+  readonly log: (line: string) => void;
+}
+
+/**
+ * Moves a task's monitor to `until`, logging each line after `lead`:
+ * undefined when it was already due then or later, `refused` when
+ * Paperclip refused, with the reason in the log.
+ */
+export async function moveMonitor(
+  options: MoveOptions,
+  taskId: string,
+  until: string,
+  lead: string,
+): Promise<"postponed" | "refused" | undefined> {
+  if (options.dryRun) {
+    options.log(`${lead}would move its monitor to ${until} (dry run)`);
+    return "postponed";
+  }
+  try {
+    if ((await options.paperclip.postponeMonitor(taskId, until)) === "unchanged") {
+      return undefined;
+    }
+    options.log(`${lead}moved its monitor to ${until}`);
+    return "postponed";
+  } catch (error) {
+    options.log(`${lead}couldn't move its monitor: ${(error as Error).message}`);
+    return "refused";
+  }
 }
 
 /** An ISO time in milliseconds; no time compares false with every number. */
