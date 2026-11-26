@@ -19,6 +19,7 @@ import {
   type SendResult,
   type WorkItem,
 } from "@halonicjs/ports";
+import { checkedOrigin } from "./address.ts";
 import { readAvatar } from "./avatars.ts";
 import { boardRequestOf } from "./board-requests.ts";
 import { ChangeFeed } from "./changes.ts";
@@ -85,6 +86,7 @@ export class PaperclipMessaging implements AgentMessaging {
   readonly #ids: PaperclipIds;
   readonly #company: string;
   readonly #label: string;
+  readonly #origin: string;
   readonly #user: SignedInUser;
   /** The user the host named. Channel membership keeps to it; reading it from Paperclip there is HAL-18736's follow-up. */
   readonly #namedUserId: string | undefined;
@@ -108,6 +110,7 @@ export class PaperclipMessaging implements AgentMessaging {
     this.#ids = new PaperclipIds(options.connection);
     this.#company = options.company;
     this.#label = options.label;
+    this.#origin = checkedOrigin(options.address);
     this.#reader = new PaperclipReader(new PaperclipTransport(options), now);
     this.#user = new SignedInUser(this.#reader, options.userId);
     this.#namedUserId = options.userId;
@@ -470,6 +473,7 @@ export class PaperclipMessaging implements AgentMessaging {
     return {
       ids: this.#ids,
       agentNames: this.#agentNames,
+      origin: this.#origin,
       ...(this.#user.id === undefined ? {} : { userId: this.#user.id }),
     };
   }

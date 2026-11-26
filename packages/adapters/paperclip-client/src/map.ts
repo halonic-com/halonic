@@ -8,6 +8,7 @@ import type {
   WorkState,
 } from "@halonicjs/ports";
 import { avatarPathOf } from "./avatars.ts";
+import { withFullLinks } from "./full-links.ts";
 import type { PaperclipIds } from "./ids.ts";
 import { type JsonRecord, text } from "./json.ts";
 
@@ -18,6 +19,13 @@ export interface MapContext {
   agentNames: ReadonlyMap<string, string>;
   /** The Paperclip user the key belongs to, when the engine knows it. */
   userId?: string;
+  /** The connection's Paperclip origin, which links from its root get; without it they stay as written. */
+  origin?: string;
+}
+
+/** `markdown` with its links from the root of Paperclip made full addresses, when the origin is known. */
+export function fullLinksOf(context: MapContext, markdown: string): string {
+  return context.origin === undefined ? markdown : withFullLinks(markdown, context.origin);
 }
 
 const activities: Readonly<Record<string, AgentActivity>> = {
@@ -139,7 +147,7 @@ export function toMessage(
     id: context.ids.make("comment", task, id),
     conversation: context.ids.make("chat", task),
     author: authorOf(context, agentId, text(record, "authorUserId")),
-    body: text(record, "body") ?? "",
+    body: fullLinksOf(context, text(record, "body") ?? ""),
     sentAt: timeOf(record, "createdAt"),
     attachments: [],
   };

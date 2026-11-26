@@ -23,7 +23,7 @@ import {
   questionsAnswerOf,
 } from "./card-questions.ts";
 import { asList, asRecord, asRecords, field, type JsonRecord, text } from "./json.ts";
-import { authorOf, type MapContext, timeOf } from "./map.ts";
+import { authorOf, fullLinksOf, type MapContext, timeOf } from "./map.ts";
 import type { PaperclipRequestName } from "./requests.ts";
 
 /** The request that answers a card or an approval, and its body. */
@@ -155,7 +155,7 @@ export function cardToItem(
     id: context.ids.make("card", task, id),
     source: context.ids.source(),
     from: authorOf(context, text(record, "createdByAgentId"), text(record, "createdByUserId")),
-    question: questionOf(kind, record, payload),
+    question: fullLinksOf(context, questionOf(kind, record, payload)),
     options: questions === undefined ? optionsOf(kind, payload) : [],
     ...(questions === undefined ? {} : { questions }),
     work: context.ids.make("task", task),
@@ -317,7 +317,7 @@ export function approvalToItem(
     id: context.ids.make("approval", id),
     source: context.ids.source(),
     from: authorOf(context, text(record, "requestedByAgentId"), text(record, "requestedByUserId")),
-    question: approvalQuestion(type, asRecord(field(record, "payload"))),
+    question: fullLinksOf(context, approvalQuestion(type, asRecord(field(record, "payload")))),
     options: type === budgetOverrideType ? budgetOverrideOptions : approvalOptions,
     ...(work === undefined ? {} : { work }),
     risk: approvalRisk(type),
