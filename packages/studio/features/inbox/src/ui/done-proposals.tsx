@@ -51,6 +51,8 @@ export function DoneSection({ done, current, onOpen, error, words, onRetry }: Do
         {done.length === 0 ? null : (
           <List
             label="Done"
+            // Plain rows as Needs you's (`inbox.plain-rows`), so the page has one open-item look.
+            plain
             rows={done.map((item) => ({
               id: item.key,
               title: itemTitle(item),

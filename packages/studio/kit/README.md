@@ -972,6 +972,7 @@ List draws them.
 | `current` | The row whose item shows beside the list, as the Inbox's open item: the selected look and `aria-current`, but not selected, and it still opens |
 | `dense` | 32px rows, for menus and pickers |
 | `flush` | No outer border or radius, lines from 16px. On by default on a phone |
+| `plain` | Rows as `PlainList`'s: no box or lines, rounded rows 4px apart, a regular title, the muted fill on hover and on `current`. A row's `unread` then makes its title semibold, its meta line full colour and ends it with the blue dot or count. Wins over `flush` |
 | `chevrons` | Each row opens a page of its own, as History's versions: on a phone each row ends in a 20px `fg-subtle` chevron, hidden from screen readers, and its `trailing` chip starts its meta line. Desktop rows don't change. Not with `columns` |
 | `empty` | An [`EmptyState`](#emptystate)'s props, shown in place of the box when there are no rows |
 | `loading` | Skeleton rows in place of the rows; see **Loading** below |
@@ -1111,6 +1112,24 @@ skeleton and an error together, and the screen focuses its title.
   onRetry={reload}
 />;
 ```
+
+## Two-pane apps: PlainList, a plain List and ContentHeader
+
+The Messenger and the Inbox share one look (HAL-19192): a list of plain rows on the left, the open
+item on the right under a `ContentHeader`.
+
+- **`PlainList` and `PlainRow`** draw a list of buttons, one per row, each a Tab stop: the
+  Messenger's chats. A row has a 28px picture, a title over one line, a time, a violet `flag` dot,
+  an `unread` count or dot, and an `action` shown in place of the time on hover or focus.
+- **A `plain` `List`** draws the same rows inside the List's grid: one Tab stop, the arrows between
+  rows, a heading, loading rows and an Empty state. Use it where the list already is a `List`, as
+  the Inbox's Needs you is, so its keyboard and its states stay. Its rows take `unread` too, drawn
+  with the same mark as `PlainRow`'s.
+- **`ContentHeader`** goes over the open item in both: a 40px picture (`Avatar size="header"`, or
+  an item's mark), the title as a level-2 heading over one muted line, and the item's actions.
+
+Pick `PlainList` for a new two-pane list with no grid of its own; pick `plain` on a `List` that has
+one. The unread and flag dots draw in `CanvasText` in forced colours, so they don't vanish there.
 
 ## SetupSteps
 

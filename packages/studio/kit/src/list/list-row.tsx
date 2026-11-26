@@ -4,6 +4,12 @@ import type { GridNavigation } from "../grid-navigation/use-grid-navigation.ts";
 import { MoreIcon } from "../icons/more-icon.tsx";
 import { CheckCell, checkColumnWidth } from "./check-cell.tsx";
 import { type ListLook, lineClasses } from "./list-lines.ts";
+import {
+  plainCorners,
+  plainRowLabel,
+  plainStateClasses,
+  type RowStateClasses,
+} from "./list-plain.ts";
 import type { AnyListRow, ListColumn, ListSelection } from "./list-props.ts";
 import { RowContent } from "./row-content.tsx";
 import { rowHandlers } from "./row-handlers.ts";
@@ -77,6 +83,9 @@ function cornerClasses(
   last: boolean,
   side: "left" | "right",
 ): string {
+  if (look === "plain") {
+    return plainCorners(side);
+  }
   if (look === "flush") {
     return "";
   }
@@ -90,7 +99,7 @@ function cornerClasses(
  * border's 11px inner curve.
  */
 function cornerBarClasses(look: ListLook, top: boolean, last: boolean): string {
-  if (look === "flush") {
+  if (look !== "bordered") {
     return "";
   }
   return [top ? "after:top-2" : "", last ? "after:bottom-2" : ""].filter(Boolean).join(" ");
@@ -100,7 +109,7 @@ function rowState(
   isUnavailable: boolean,
   isInert: boolean,
   isSelected: boolean,
-): keyof typeof rowStateClasses {
+): keyof typeof rowStateClasses & keyof typeof plainStateClasses {
   if (isUnavailable) {
     return "unavailable";
   }
@@ -132,7 +141,7 @@ export interface RowPlace {
 
 interface CellOptions extends RowPlace {
   readonly look: ListLook;
-  readonly state: (typeof rowStateClasses)[keyof typeof rowStateClasses];
+  readonly state: RowStateClasses;
   readonly hasCheck: boolean;
   readonly hasMore: boolean;
 }
@@ -247,8 +256,10 @@ export function Row<Id extends string>({ row, place, shared }: RowProps<Id>) {
   const reasonId = useId();
   // Being current only changes the row's look: its `aria-selected` and checkbox follow the selection.
   const isInert = isRowInert(row, shared);
-  const state = rowStateClasses[rowState(isUnavailable, isInert, isSelected || isCurrent)];
+  const states = look === "plain" ? plainStateClasses : rowStateClasses;
+  const state = states[rowState(isUnavailable, isInert, isSelected || isCurrent)];
   const cells = cellClasses({ look, ...place, state, hasCheck, hasMore });
+  const label = look === "plain" ? plainRowLabel(row.label, row.unread) : row.label;
   const mainColumn = firstFocusColumn(hasCheck);
   const mainCell = grid.cell(row.id, mainColumn);
   const more = moreClasses[phone ? "phone" : "desktop"];
@@ -290,7 +301,7 @@ export function Row<Id extends string>({ row, place, shared }: RowProps<Id>) {
         }}
         // Also on the cell, where focus is, so a screen reader says the row is the current one.
         aria-current={isCurrent ? true : undefined}
-        aria-label={shared.columns === undefined ? row.label : undefined}
+        aria-label={shared.columns === undefined ? label : undefined}
         aria-describedby={describesRow(row) ? reasonId : undefined}
         className={`p-0 ${cells.main} ${cursorOf(isUnavailable, isInert)}`}
         onClick={onClick}
@@ -301,6 +312,7 @@ export function Row<Id extends string>({ row, place, shared }: RowProps<Id>) {
           row={row}
           phone={phone}
           dense={dense}
+          plain={look === "plain"}
           chevron={phone && shared.chevrons === true}
           reasonId={reasonId}
           afterCheck={hasCheck}

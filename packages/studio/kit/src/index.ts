@@ -326,8 +326,8 @@ export {
   PlainRow,
   type PlainRowAction,
   type PlainRowProps,
-  type PlainRowUnread,
 } from "./plain-list/plain-list.tsx";
+export type { PlainRowUnread } from "./plain-list/unread-mark.tsx";
 export { PHONE_MAX_WIDTH, WIDE_MIN_WIDTH } from "./presentation/breakpoints.ts";
 export {
   NarrowProvider,

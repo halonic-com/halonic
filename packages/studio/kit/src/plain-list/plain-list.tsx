@@ -1,4 +1,5 @@
 import type { ReactNode, Ref } from "react";
+import { FlagDot, type PlainRowUnread, UnreadMark } from "./unread-mark.tsx";
 
 /** The props of `PlainList`. */
 export interface PlainListProps {
@@ -8,14 +9,6 @@ export interface PlainListProps {
   readonly children: ReactNode;
   /** For code that fades the rows in once they arrive. */
   readonly listRef?: Ref<HTMLUListElement>;
-}
-
-/** A row's unread mark: a count, or a dot when only "new or not" matters. */
-export interface PlainRowUnread {
-  /** Words for screen readers, after the count: " unread", so they hear "2 unread"; a dot's alone. */
-  readonly label: string;
-  /** The count drawn in the blue badge, "99+" past 99; without it the row gets a blue dot. */
-  readonly count?: string | undefined;
 }
 
 /** A row's text button that shows in place of its time while the row is hovered or focused. */
@@ -149,11 +142,7 @@ function RowTitle({ title, afterTitle, flag, unread }: PlainRowProps) {
           <span className="text-small font-normal text-fg-muted"> · {afterTitle}</span>
         )}
       </span>
-      {flag === undefined ? null : (
-        <span data-flag className="ms-1.5 size-1.5 shrink-0 rounded-full bg-warning">
-          <span className="sr-only">{flag}</span>
-        </span>
-      )}
+      {flag === undefined ? null : <FlagDot label={flag} />}
     </span>
   );
 }
@@ -165,26 +154,6 @@ function RowLine({ line, unread }: PlainRowProps) {
     <span className="flex items-center gap-2">
       <span className={`min-w-0 flex-1 truncate text-small ${colour}`}>{line}</span>
       {unread === undefined ? null : <UnreadMark unread={unread} />}
-    </span>
-  );
-}
-
-/** The blue count, or the blue dot, with its words for screen readers. */
-function UnreadMark({ unread }: { readonly unread: PlainRowUnread }) {
-  if (unread.count === undefined) {
-    return (
-      <span data-unread className="size-2 shrink-0 rounded-full bg-primary">
-        <span className="sr-only">{unread.label}</span>
-      </span>
-    );
-  }
-  return (
-    <span
-      data-unread
-      className="inline-flex h-4.5 min-w-4.5 shrink-0 items-center justify-center rounded-full bg-primary px-1 text-caption text-on-primary"
-    >
-      {unread.count}
-      <span className="sr-only">{unread.label}</span>
     </span>
   );
 }

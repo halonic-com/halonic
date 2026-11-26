@@ -70,6 +70,14 @@ export function describesRow(row: AnyListRow): boolean {
   return row.unavailable !== undefined || row.metaDescribes === true;
 }
 
+/** The meta line's colour: `danger` for an error's reason, else muted, or full while unread. */
+function metaColour(error: boolean, full: boolean): string {
+  if (error) {
+    return "text-danger";
+  }
+  return full ? "text-fg" : "text-fg-muted";
+}
+
 interface MetaLineProps {
   readonly row: AnyListRow;
   readonly text: ReactNode;
@@ -79,6 +87,8 @@ interface MetaLineProps {
    * line of its own above the reason instead, so the reason gets the full width (C348 A8).
    */
   readonly chip: ReactNode;
+  /** Full colour, not muted: an unread row's line in a `plain` List. */
+  readonly full?: boolean;
 }
 
 /**
@@ -86,12 +96,12 @@ interface MetaLineProps {
  * a chip, the chip comes first and only the text is cut; without text, the chip has the line alone.
  * An error's chip sits on its own line, above its reason.
  */
-export function MetaLine({ row, text, id, chip }: MetaLineProps) {
+export function MetaLine({ row, text, id, chip, full = false }: MetaLineProps) {
   if (text === undefined && chip === undefined) {
     return null;
   }
   // An unavailable row's reason stays at full strength, so it can be read (VRK 0.6).
-  const colour = showsError(row) ? "text-danger" : "text-fg-muted";
+  const colour = metaColour(showsError(row), full);
   // `relative`, so the cut also clips the text's screen-reader-only words (`sr-only` is absolute):
   // otherwise they sit past the row's end and make the page scroll sideways.
   const line =

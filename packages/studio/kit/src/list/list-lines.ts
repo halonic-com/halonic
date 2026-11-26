@@ -1,5 +1,8 @@
-/** A bordered List in its box, or a `flush` one: the phone's form. */
-export type ListLook = "bordered" | "flush";
+/**
+ * A bordered List in its box, a `flush` one (the phone's form), or a `plain` one: rounded rows
+ * 4px apart with no box or lines, as `PlainList`'s.
+ */
+export type ListLook = "bordered" | "flush" | "plain";
 
 /**
  * The 1px line above every row but the first. In a flush list it starts at 16px, with the text.
@@ -12,6 +15,7 @@ export const lineClasses = {
     main: "relative before:absolute before:top-0 before:right-0 before:left-4 before:h-0 before:border-t before:border-border",
     more: "border-t border-border",
   },
+  plain: { main: "", more: "" },
 } as const satisfies Record<ListLook, { main: string; more: string }>;
 
 /**
@@ -21,4 +25,5 @@ export const lineClasses = {
 export const boxClasses: Record<ListLook, string> = {
   bordered: "rounded-md border border-border",
   flush: "",
+  plain: "",
 };

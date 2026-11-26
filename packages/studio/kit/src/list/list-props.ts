@@ -1,5 +1,6 @@
 import type { MouseEvent, ReactNode, Ref } from "react";
 import type { ListHeadingTone } from "../list-heading/list-heading.tsx";
+import type { PlainRowUnread } from "../plain-list/unread-mark.tsx";
 import type { ListEmpty } from "./empty-list.tsx";
 import type { ListSkeletonShape } from "./list-skeleton.tsx";
 
@@ -99,6 +100,12 @@ export interface ListRow<Id extends string = string> extends ListRowBase<Id> {
    * and the List stays one Tab stop. A click on one doesn't open the row.
    */
   readonly actions?: readonly ListRowAction[];
+  /**
+   * Unread, in a `plain` List, as the Inbox's new items: a semibold title, a full-colour meta line
+   * and `PlainRow`'s blue dot or count at its end, with its words for screen readers. Read rows
+   * leave it out. With a `label`, the kit adds the words to it.
+   */
+  readonly unread?: PlainRowUnread;
   readonly tag?: never;
   readonly cells?: never;
   readonly child?: never;
@@ -128,6 +135,7 @@ interface ListColumnsRowBase<Id extends string> extends ListRowBase<Id> {
   readonly metaDescribes?: never;
   readonly under?: never;
   readonly actions?: never;
+  readonly unread?: never;
 }
 
 /** A row on its own: its `label` is optional. */
@@ -250,6 +258,12 @@ interface ListBase<Id extends string> {
   readonly current?: Id;
   /** No outer border or radius and lines from 16px. On by default on a phone. */
   readonly flush?: boolean;
+  /**
+   * Rows as `PlainList`'s, as the Inbox's Needs you (HAL-19192): no box or lines, each row rounded
+   * and 4px apart, a regular title, and the muted fill on hover and on the `current` row. It wins
+   * over `flush`, on a phone too.
+   */
+  readonly plain?: boolean;
   /**
    * The Empty state shown in place of the rows when there are none: "No agents yet". The
    * heading stays. Its title is one level below the List's heading unless it names its own.
