@@ -7,6 +7,8 @@ import {
   boardMentionsRouteKey,
   handleBoardMentions,
   mentionedUserIds,
+  mostIdsPerComment,
+  mostMentions,
 } from "./board-mentions.ts";
 import { fakeState } from "./fake-host.test-helper.ts";
 import { manifest } from "./manifest.ts";
@@ -111,6 +113,49 @@ verifies("paperclip.board-mentions", () => {
       expect(await routeAfter(fakeApi([mention]).api, ["c-1"], late)).toEqual([]);
       const own = { ...mention, authorAgentId: null, authorUserId: "user-board" };
       expect(await routeAfter(fakeApi([own]).api, ["c-1"])).toEqual([]);
+    });
+
+    it("answers newest first, from the last 14 days only, with `repliedAt: null`", async () => {
+      const later = { ...mention, id: "c-4", createdAt: new Date("2026-11-26T11:30:00.000Z") };
+      const old = { ...mention, id: "c-5", createdAt: new Date("2026-11-11T12:00:00.000Z") };
+      const { api } = fakeApi([mention, later, old]);
+      const answer = await routeAfter(api, ["c-1", "c-4", "c-5"], "2026-10-01T00:00:00.000Z");
+      expect(answer.map((each) => [each["commentId"], each["repliedAt"]])).toEqual([
+        ["c-4", null],
+        ["c-1", null],
+      ]);
+    });
+
+    it(`answers at most ${mostMentions} mentions`, async () => {
+      const many = Array.from({ length: mostMentions + 1 }, (_, index) => ({
+        ...mention,
+        id: `c-many-${index}`,
+        createdAt: new Date(now.getTime() - (index + 1) * 60_000),
+      }));
+      const { api } = fakeApi(many);
+      const answer = await routeAfter(
+        api,
+        many.map((each) => each.id),
+      );
+      expect(answer).toHaveLength(mostMentions);
+      expect(answer.at(-1)?.["commentId"]).toBe(`c-many-${mostMentions - 1}`);
+    });
+
+    it("leaves out a deleted comment", async () => {
+      const { api } = fakeApi([mention]);
+      const index = boardMentions(api);
+      await index.onCommentCreated(commented("c-1"), now);
+      const deleted = { ...mention, body: "", deletedAt: new Date("2026-11-26T11:00:00.000Z") };
+      api.issues.listComments = async () => [deleted] as never;
+      const answer = await handleBoardMentions(mentionsRequest(boardActor), api, now);
+      expect(answer.body).toEqual({ mentions: [] });
+    });
+
+    it(`keeps at most ${mostIdsPerComment} people per comment, and reads long text in linear time`, () => {
+      const links = Array.from({ length: 50 }, (_, index) => `[P](user://user-${index})`).join(" ");
+      expect(mentionedUserIds(links)).toHaveLength(mostIdsPerComment);
+      // A pattern that backtracks on a run of `[` takes minutes here and trips the test's timeout.
+      expect(mentionedUserIds("[".repeat(1_000_000))).toEqual([]);
     });
 
     it("is declared board only and refuses an agent's key", async () => {

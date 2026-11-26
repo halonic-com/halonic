@@ -29,6 +29,8 @@ export const mostMentions = 100;
 const keptMentions = 2_000;
 /** The most of a comment's text the route sends; Halonic shows only its first lines. */
 const sentChars = 2_000;
+/** The most people one comment adds to the index, so one comment can't fill the shared record. */
+export const mostIdsPerComment = 20;
 
 /** A mention in the index. */
 export interface IndexedMention {
@@ -52,22 +54,29 @@ interface CommentLike {
   readonly authorAgentId: string | null;
   readonly authorUserId: string | null;
   readonly createdAt: Date | string;
+  /** Set when the comment was deleted: Paperclip keeps the row and empties its body. */
+  readonly deletedAt?: Date | string | null;
 }
 
 /** Statuses of a task that is closed: its mentions leave the route. */
 const closedStatuses = new Set(["done", "cancelled"]);
 
-/** A Markdown link whose target uses Paperclip's `user:` scheme. */
-const userLink = /\[[^\]]*\]\((user:[^)\s]+)\)/g;
+/**
+ * The target of a Markdown link with Paperclip's `user://` scheme. It matches only `](user://…)`,
+ * as Paperclip's own Inbox query does, and the bounded target keeps it linear on any text: a
+ * pattern that also matched the `[Name]` part backtracked quadratically on a long run of `[`.
+ */
+const userLinkTarget = /\]\((user:\/\/[^)\s]{1,200})\)/g;
 
 /**
- * The ids of the people `markdown` mentions, read the way Paperclip reads its own links
- * (`extractUserMentionIds` in Paperclip's shared package): the host and path of a `user://` link.
+ * The ids of the people `markdown` mentions, at most {@link mostIdsPerComment}, read the way
+ * Paperclip reads its own links (`extractUserMentionIds` in Paperclip's shared package): the host
+ * and path of a `user://` link.
  */
 export function mentionedUserIds(markdown: string): string[] {
   const ids = new Set<string>();
-  for (const [, href = ""] of markdown.matchAll(userLink)) {
-    if (!href.startsWith("user://")) continue;
+  for (const [, href = ""] of markdown.matchAll(userLinkTarget)) {
+    if (ids.size >= mostIdsPerComment) break;
     try {
       const url = new URL(href);
       const id = `${url.hostname}${url.pathname}`.replace(/^\/+/, "").trim();
@@ -168,20 +177,19 @@ export async function handleBoardMentions(
   const mine = (await readIndex(api, input.companyId))
     .filter((entry) => entry.userIds.includes(userId) && Date.parse(entry.at) >= since)
     .sort((left, right) => right.at.localeCompare(left.at));
+  const tasks = taskReader(api, input.companyId);
   const mentions: Record<string, unknown>[] = [];
-  const commentsOf = new Map<string, CommentLike[]>();
   for (const entry of mine) {
     if (mentions.length >= mostMentions) break;
-    const task = await api.issues.get(entry.taskId, input.companyId);
+    const task = await tasks.task(entry.taskId);
     if (task === null || closedStatuses.has(task.status)) continue;
-    const comments =
-      commentsOf.get(entry.taskId) ??
-      ((await api.issues.listComments(entry.taskId, input.companyId)) as CommentLike[]);
-    commentsOf.set(entry.taskId, comments);
+    const comments = await tasks.comments(entry.taskId);
     const comment = comments.find((candidate) => candidate.id === entry.commentId);
-    // A comment the person wrote themselves is no mention for them.
-    if (comment === undefined || comment.authorUserId === userId) continue;
-    const replies = comments.filter((candidate) => candidate.authorUserId === userId);
+    // A deleted comment is gone for Paperclip's own Inbox too; one the person wrote is no mention.
+    if (comment === undefined || isDeleted(comment) || comment.authorUserId === userId) continue;
+    const replies = comments.filter(
+      (candidate) => candidate.authorUserId === userId && !isDeleted(candidate),
+    );
     const repliedAt =
       replies
         .map((reply) => isoOf(reply.createdAt))
@@ -200,4 +208,28 @@ export async function handleBoardMentions(
     });
   }
   return { status: 200, body: { mentions } };
+}
+
+function isDeleted(comment: CommentLike): boolean {
+  return comment.deletedAt !== undefined && comment.deletedAt !== null;
+}
+
+/** Reads each task and its comments once per request, however many mentions it has. */
+function taskReader(api: BoardMentionsApi, companyId: string) {
+  const tasksById = new Map<string, ReturnType<BoardMentionsApi["issues"]["get"]>>();
+  const commentsById = new Map<string, Promise<CommentLike[]>>();
+  return {
+    task(taskId: string) {
+      const task = tasksById.get(taskId) ?? api.issues.get(taskId, companyId);
+      tasksById.set(taskId, task);
+      return task;
+    },
+    comments(taskId: string): Promise<CommentLike[]> {
+      const comments =
+        commentsById.get(taskId) ??
+        (api.issues.listComments(taskId, companyId) as Promise<CommentLike[]>);
+      commentsById.set(taskId, comments);
+      return comments;
+    },
+  };
 }
