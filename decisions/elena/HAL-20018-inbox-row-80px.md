@@ -1,14 +1,19 @@
 # Decision: the Inbox's sidebar rows stay 80px when their text is long
 
-- Requirements: `inbox.proposal-page`, `inbox.row-meta-wraps`
-  (`packages/studio/features/inbox/requirements/`), `kit.list-wrap-title`, `kit.list-wrap-meta`
-  (`packages/studio/kit/requirements/`)
-- Task: HAL-20018, built on HAL-19735
-- Source: the board's correction on HAL-10 (26 Nov): the Inbox's and the Messenger's sidebar rows
-  are exactly 80px, padding included; Noah's design decision on HAL-20018 (option B, with the wait
-  kept whole)
-- Approval: a team decision (Noah with Elena), a detail of a screen the board just corrected; the
-  maintainer signs this note
+- Approval: https://paperclip.halonic.com/HAL/issues/HAL-20018
+- Kind: user-visible
+
+Source: the board's correction on HAL-10 (26 Nov): the Inbox's and the Messenger's sidebar rows are
+exactly 80px, padding included; Noah's design decision on HAL-20018 (option B, with the wait kept
+whole). A team decision (Noah with Elena), a detail of a screen the board just corrected, built on
+HAL-19735.
+
+## Covers
+
+- inbox.proposal-page
+- inbox.row-meta-wraps
+- kit.list-wrap-title
+- kit.list-wrap-meta
 
 ## What changes
 
