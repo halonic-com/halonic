@@ -68,6 +68,7 @@ import type {
   RunStore,
   ScheduledTimer,
   Secrets,
+  ToolScriptIsolate,
 } from "@halonicjs/ports";
 import type { ProfileEnvironment } from "@halonicjs/profile";
 import { randomIds, systemClock } from "@halonicjs/std";
@@ -218,6 +219,11 @@ export interface OpenLocalEngineInput {
    * Left out, a tick does nothing, as for `halonic run`.
    */
   readonly routines?: (engine: RoutineEngine) => RoutineTicks;
+  /**
+   * The isolate the workflows' `rule` steps run in. Left out, as for
+   * `halonic run`, a run fails at its first rule step with an error that says so.
+   */
+  readonly toolScriptIsolate?: ToolScriptIsolate;
 }
 
 /** The engine of one workspace, open until {@link LocalEngine.close}. */
@@ -385,6 +391,9 @@ function engineOn(
             : await versions.definitionsOf(hubId, workflowId, version, runId),
         ...connectors?.runs,
         budget: workspaceBudget(latest),
+        ...(input.toolScriptIsolate === undefined
+          ? {}
+          : { toolScriptIsolate: input.toolScriptIsolate }),
       },
     },
     // Kept in the workspace's folder in the profile, so the last tick and queues survive a restart.

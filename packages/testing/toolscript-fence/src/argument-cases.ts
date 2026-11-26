@@ -1,5 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { expect } from "vitest";
+import { fenceIt } from "./fence-case.ts";
 import { type MakeToolScriptIsolate, recorder, runScript, script } from "./harness.ts";
 
 /** Arguments that aren't plain data, each built by a line of script. */
@@ -51,6 +52,7 @@ export function argumentCases(make: MakeToolScriptIsolate): void {
 
 /** Every argument that isn't plain data is refused, and none of its code runs. */
 function refusalCases(make: MakeToolScriptIsolate): void {
+  const it = fenceIt(make);
   for (const [label, argument] of notPlain) {
     it(`refuses ${label} without running any of the script's code`, async () => {
       const { result, calls } = await callWith(make, argument);
@@ -63,6 +65,7 @@ function refusalCases(make: MakeToolScriptIsolate): void {
 
 /** What the host gets is a frozen copy, made without the script's prototype tricks. */
 function copyCases(make: MakeToolScriptIsolate): void {
+  const it = fenceIt(make);
   it("gives the host a frozen copy of plain data", async () => {
     const { result, calls } = await callWith(
       make,
@@ -98,6 +101,7 @@ function copyCases(make: MakeToolScriptIsolate): void {
 
 /** The depth, item and byte limits of one argument. */
 function sizeCases(make: MakeToolScriptIsolate): void {
+  const it = fenceIt(make);
   it("takes 8 levels and refuses 9", async () => {
     expect((await callWith(make, nested(8))).result.ok).toBe(true);
     const nine = await callWith(make, nested(9));
@@ -120,6 +124,7 @@ function sizeCases(make: MakeToolScriptIsolate): void {
 
 /** An own `__proto__` key reaches the host as a plain key, in an argument and in the output. */
 function protoKeyCases(make: MakeToolScriptIsolate): void {
+  const it = fenceIt(make);
   const forms = [
     `JSON.parse('{"__proto__": {"admin": true}}')`,
     `({ ["__proto__"]: { admin: true } })`,

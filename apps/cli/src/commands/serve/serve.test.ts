@@ -21,7 +21,8 @@ import { savedVersionOf } from "../../workspace-at-version.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
 import { serveCommandWith } from "./command.ts";
-import { type ServeSetup, studioPlacesFor } from "./serve.ts";
+import type { ServeSetup } from "./serve.ts";
+import { studioPlacesFor } from "./studio-places.ts";
 
 /** The repository's root, from this test in `apps/cli/src/commands/serve`. */
 const repositoryRoot = join(import.meta.dirname, "../../../../..");

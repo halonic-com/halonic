@@ -49,6 +49,7 @@
     "@halonicjs/adapter-secrets-file": "workspace:*",
     "@halonicjs/adapter-system-node": "workspace:*",
     "@halonicjs/adapter-token-store": "workspace:*",
+    "@halonicjs/adapter-toolscript-quickjs-node": "workspace:*",
     "@halonicjs/adapter-workspace-engine-node": "workspace:*",
     "@halonicjs/adapter-workspace-models": "workspace:*",
     "@halonicjs/app": "workspace:*",

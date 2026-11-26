@@ -1,6 +1,7 @@
 import { isToolScriptSecretHandle, toolScriptSecretHandle } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { expect } from "vitest";
+import { fenceIt, leavesOut } from "./fence-case.ts";
 import { type MakeToolScriptIsolate, recorder, runScript, script } from "./harness.ts";
 
 const reference = "acme-deploy-token";
@@ -17,6 +18,9 @@ function handleFunctions() {
 
 /** S7: handles are ids made per run, looked up on the host, never readable or returnable. */
 export function handleCases(make: MakeToolScriptIsolate): void {
+  // Every handle comes from a host function, so an isolate without them leaves the whole group out.
+  if (leavesOut(make, "toolscript-fence.secret-handles")) return;
+  const it = fenceIt(make);
   verifies("toolscript-fence.secret-handles", () => {
     it("gives the script an id and the host its handle back", async () => {
       const { functions, calls } = handleFunctions();

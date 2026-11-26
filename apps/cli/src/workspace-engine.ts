@@ -13,7 +13,7 @@ import type {
   LocalRunConnectorsInput,
 } from "@halonicjs/adapter-workspace-engine-node";
 import type { RoutineEngine, RoutineTicks } from "@halonicjs/engine";
-import type { HttpClient, Secrets, TrustGrant } from "@halonicjs/ports";
+import type { HttpClient, Secrets, ToolScriptIsolate, TrustGrant } from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { recordingSrtSandbox } from "@halonicjs/target-node-harness";
@@ -130,6 +130,11 @@ export interface WorkspaceEngineTarget {
   readonly ownPorts?: () => Iterable<number>;
   /** The routine scheduler on the engine's tick, for `routines watch`; none for a single run. */
   readonly routines?: (engine: RoutineEngine) => RoutineTicks;
+  /**
+   * The isolate the workflows' `rule` steps run in, for `serve` only. Left out, as for `run`,
+   * `runs send` and `routines watch`, a run fails at its first rule step.
+   */
+  readonly toolScriptIsolate?: ToolScriptIsolate;
   /**
    * Hears a run whose step keeps failing, for `routines watch`, which
    * reports it and keeps watching. Left out, as for `run` and `runs send`,
@@ -258,6 +263,9 @@ export async function openWorkspaceEngine(
     holdsTimer: (timer) => stuck.holds(timer),
     ...(setup.profile === undefined ? {} : { environment: setup.profile }),
     ...(target.routines === undefined ? {} : { routines: countedTicks(target.routines, stuck) }),
+    ...(target.toolScriptIsolate === undefined
+      ? {}
+      : { toolScriptIsolate: target.toolScriptIsolate }),
     ...setup.engine,
     // Only failed wake-ups in a row count, as for ticks (HAL-5164).
     onWokeUp: () => {

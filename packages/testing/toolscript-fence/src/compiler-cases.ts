@@ -1,5 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { expect } from "vitest";
+import { fenceIt } from "./fence-case.ts";
 import { type MakeToolScriptIsolate, runScript, script } from "./harness.ts";
 
 /** Every path to the compiler a script could take (ADR T4 fence list). */
@@ -49,6 +50,7 @@ for (const [owner, key] of slots) {
 
 /** The eval and constructor paths, dynamic `import()` and module imports. */
 export function compilerCases(make: MakeToolScriptIsolate): void {
+  const it = fenceIt(make);
   verifies("toolscript-fence.no-compiler", () => {
     it("refuses every path to the compiler", async () => {
       const result = await runScript(make, tryEveryPath());

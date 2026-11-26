@@ -1,6 +1,7 @@
 import { ToolScriptStop } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it, vi } from "vitest";
+import { expect, vi } from "vitest";
+import { fenceIt } from "./fence-case.ts";
 import { held, type MakeToolScriptIsolate, recorder, runScript, script } from "./harness.ts";
 
 /** Calls `ctx.acme.ping` `count` times, one after the other. */
@@ -29,6 +30,7 @@ export function limitCases(make: MakeToolScriptIsolate): void {
 
 /** CPU, memory and stack: the isolate's own limits. */
 function isolateLimitCases(make: MakeToolScriptIsolate): void {
+  const it = fenceIt(make);
   it("stops a busy loop at the CPU limit", async () => {
     const result = await runScript(make, script("for (;;) {}"), { limits: { cpuMs: 100 } });
     expect(result).toMatchObject({ ok: false, reason: "limit.cpu" });
@@ -54,6 +56,7 @@ function isolateLimitCases(make: MakeToolScriptIsolate): void {
 
 /** Calls, pending promises, input, output and log: counted by the host. */
 function hostCountCases(make: MakeToolScriptIsolate): void {
+  const it = fenceIt(make);
   it("allows 32 pending host calls and stops at the 33rd", async () => {
     const allowed = held();
     const running = runScript(make, parallelCalls(32), {
@@ -102,6 +105,7 @@ function hostCountCases(make: MakeToolScriptIsolate): void {
 
 /** The wall clock, and host waits that aren't CPU. */
 function waitCases(make: MakeToolScriptIsolate): void {
+  const it = fenceIt(make);
   it("stops at the wall clock while the script waits", async () => {
     const never = held();
     const code = script("await ctx.acme.never(); return 1;");
@@ -134,6 +138,7 @@ function waitCases(make: MakeToolScriptIsolate): void {
 
 /** A host function's ToolScriptStop and the caller's cancel. */
 function stopCases(make: MakeToolScriptIsolate): void {
+  const it = fenceIt(make);
   it("stops with a host function's listed reason, and with a cancel", async () => {
     const decline = async () => {
       throw new ToolScriptStop("toolscript.declined");

@@ -14,7 +14,6 @@
 
 import { realpath } from "node:fs/promises";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { makePrivateFolder } from "@halonicjs/adapter-fs-node";
 import { createScryptHasher } from "@halonicjs/adapter-password-scrypt";
 import { workspaceModelSettings } from "@halonicjs/adapter-workspace-models";
@@ -73,8 +72,10 @@ import { serveRequestLog } from "./request-log.ts";
 import { type ConsoleTransport, openServeConsole, type ServeConsole } from "./serve-console.ts";
 import { openServePaperclip } from "./serve-paperclip.ts";
 import { type ServedRoutines, servedRoutines } from "./serve-routines.ts";
+import { servedRuleIsolate } from "./serve-rules.ts";
 import { servedModelChoice } from "./served-model-choice.ts";
 import { studioPageIsOutdated } from "./studio-page-age.ts";
+import { studioPlacesFor } from "./studio-places.ts";
 import { reportWebhookRefusals } from "./webhook-refusals.ts";
 import { webhookRoutineLines } from "./webhook-routines.ts";
 import { servedWorkspaceFacts } from "./workspace-facts.ts";
@@ -97,26 +98,6 @@ export interface ServeSetup extends RunSetup {
   readonly console?: ConsoleTransport;
   /** The `fetch` the Paperclip providers send with; the global one by default. */
   readonly paperclipFetch?: typeof fetch;
-}
-
-/** Where the built Studio page is and the app it is built from. */
-export interface StudioPlaces {
-  /** The page as `pnpm --filter @halonicjs/app-studio build` leaves it. */
-  readonly page: string;
-  /** The Studio app that build reads, to tell when the page is older than it. */
-  readonly app: string;
-}
-
-/**
- * The Studio page and app for code at `codeUrl`, in the repository; none in the npm package,
- * which doesn't ship the page. `serve` reads the page where it is built and keeps no copy.
- */
-export function studioPlacesFor(npmPackage: boolean, codeUrl: string): StudioPlaces | null {
-  if (npmPackage) return null;
-  return {
-    page: fileURLToPath(new URL("../../../../studio/dist/studio", codeUrl)),
-    app: fileURLToPath(new URL("../../../../studio", codeUrl)),
-  };
 }
 
 const defaultStudioPlaces = studioPlacesFor(inNpmPackage, import.meta.url);
@@ -249,6 +230,7 @@ async function serveVersions(
     ending: serveMessages.nothingServed(),
     ownPorts: () => [servePort],
     routines: (parts) => routines.ticks(parts),
+    ...servedRuleIsolate(inNpmPackage),
   });
   try {
     // The server takes the engine's own parts, the ones a webhook starts runs with. The webhook
