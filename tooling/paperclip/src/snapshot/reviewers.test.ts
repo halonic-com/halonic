@@ -103,6 +103,18 @@ verifies("paperclip.snapshot-reviewer", () => {
       expect(reviewersOf(elsewhere.snapshot)).toEqual(["Liam"]);
     });
 
+    test("reads the shared answer whatever the case of the repository's name", async () => {
+      const github = noraEverywhere();
+      const result = await withReviewers(snapshotOf(pull(1, {}, { headRepo: "Acme/Tools" })), {
+        repo: "ACME/tools",
+        before: emptyReviewerCache,
+        read: github.read,
+        log: () => {},
+      });
+      expect(reviewersOf(result.snapshot)).toEqual(["Nora"]);
+      expect(github.reads).toEqual([1]);
+    });
+
     test("a snapshot saved before the field gets the author rule's reviewer", () => {
       expect(snapshotReviewer(pull(1))).toBe("Liam");
       expect(snapshotReviewer(pull(1, {}, { branch: "liam/HAL-1-thing" }))).toBe("Julian");

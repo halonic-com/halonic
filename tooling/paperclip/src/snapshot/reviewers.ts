@@ -49,10 +49,13 @@ export interface ReviewerOptions {
   readonly log: (line: string) => void;
 }
 
+/** Whether two `owner/name`s are one repository: GitHub ignores their case. */
+function sameRepo(one: string | null, other: string): boolean {
+  return one?.toLowerCase() === other.toLowerCase();
+}
+
 function readsPaths(repo: string, pull: SnapshotPull): boolean {
-  return (
-    pull.open !== null && !pull.open.draft && pull.headRepo?.toLowerCase() === repo.toLowerCase()
-  );
+  return pull.open !== null && !pull.open.draft && sameRepo(pull.headRepo, repo);
 }
 
 /**
@@ -66,7 +69,7 @@ export async function withReviewers(
 ): Promise<{ readonly snapshot: Snapshot; readonly cache: ReviewerCache }> {
   const pulls: Record<string, { head: string; reviewer: string }> = {};
   const reviewerOfPull = async (repo: string, pull: SnapshotPull): Promise<string> => {
-    if (repo !== options.repo || !readsPaths(repo, pull)) {
+    if (!sameRepo(repo, options.repo) || !readsPaths(repo, pull)) {
       return authorRuleReviewer(pull);
     }
     const key = `${repo}#${pull.number}`;

@@ -22,7 +22,11 @@ export interface PullCheck {
   readonly number: number;
   /** Its task, from an own branch named `<agent>/HAL-<n>-…`; null for a fork or another name. */
   readonly task: string | null;
-  /** The reviewer the snapshot names (HAL-19653), or null in a snapshot saved before it named one. */
+  /**
+   * The reviewer the snapshot names (HAL-19653), or null in a snapshot saved
+   * before it named one: then no approval counts until a pass names one
+   * (`paperclip.snapshot-reviewer`), because a pure rule can't import the author rule.
+   */
   readonly reviewer: string | null;
   /** Its reviewer's signed approval names its head. */
   readonly approved: boolean;
