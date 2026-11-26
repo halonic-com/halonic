@@ -2,6 +2,7 @@
 
 - Approval: HAL-19256 (follows halonic's `overLineLimit` from HAL-18459)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xGNzgAgq1u82votUNwstGAmAo8Ah7EQGeCuuHQTxp3eGeHjuJTm5eMOOvmPdzflrXfCgF27OaULTSnrZ67ASDw==
 
 The `reviewerRules` line limit of `github.pull-request` takes one more optional setting,
 `folderLimits`: a list of `folders` with their own `max`, such as 800 changed lines in an engine's
