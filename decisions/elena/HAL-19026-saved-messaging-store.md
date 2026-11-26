@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19026 (phase 2 G3b shell, the architecture note on HAL-17511, section 2.4); Liam reviews this PR as a security PR, with Julian's check of the store's encryption
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:4BT/rT0W3/ZLdjh2y5YsAEG3i+XeWZ8dG8aOJo3KaL6um4r9RrpAWJ9hhu5ASKh9RNqwbuzf3wVo+0Of+T/ZAA==
 
 The phone's own page gets three new commands, on Android only, from the same local capability for
 the `main` window as the phone tunnel's (`capabilities/phone-tunnel.json`):
