@@ -189,6 +189,8 @@ verifies("connections.engine-row", () => {
       expect(root.textContent).toContain(
         "Switched to this computer. The pairing is still valid on the server.",
       );
+      // The host knows no name for this pairing: the text falls back to the default.
+      expect(root.textContent).toContain("Remove Halonic Studio with halonic serve devices");
     });
 
     it("names the computer as the server lists it, never the name filled in by default", async () => {

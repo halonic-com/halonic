@@ -31,6 +31,11 @@ export interface PairDialogProps {
   readonly now?: () => number;
 }
 
+/** The name a pairing sends: the one typed, or the fallback when the field is empty. */
+function deviceNameOf(typed: string): string {
+  return typed.trim() || words.NAME_FALLBACK;
+}
+
 /** An ending's heading and text, with this computer's name where it names it. */
 function endingOf(ending: PairEnding, name: string): connectWords.Ending {
   switch (ending) {
@@ -111,7 +116,7 @@ export function PairDialog(props: PairDialogProps) {
     return (
       <EndingStep
         title={title}
-        ending={endingOf(ending, name.trim())}
+        ending={endingOf(ending, deviceNameOf(name))}
         onClose={close}
         onStartAgain={pairing.again}
       />
@@ -119,7 +124,13 @@ export function PairDialog(props: PairDialogProps) {
   }
   if (view.stage === "waiting") {
     return (
-      <WaitStep title={title} view={view} name={name.trim()} leftMs={leftMs} onCancel={close} />
+      <WaitStep
+        title={title}
+        view={view}
+        name={deviceNameOf(name)}
+        leftMs={leftMs}
+        onCancel={close}
+      />
     );
   }
   return null;
@@ -201,7 +212,7 @@ function EnterStep(props: {
       return;
     }
     setChecked(undefined);
-    props.pairing.start(address, plain, props.name.trim() || words.NAME_FALLBACK);
+    props.pairing.start(address, plain, deviceNameOf(props.name));
   };
 
   return (
