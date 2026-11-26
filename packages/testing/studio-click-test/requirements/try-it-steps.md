@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-18716 point 6 (the board's yes, 25 Nov), HAL-18869
 
-After the Settings steps, in the demo they opened again, the click test shall check Writer's Try it chat:
+When the Settings steps have opened the demo again, the click test shall check Writer's Try it chat:
 
 1. **The chat comes back (step 14):** opening Writer from the Agents list shows the message step 1 sent, read from the saved chats (`agents.chat.saved`).
 2. **A key is held (step 15):** a message holding a made-up key, sent with Enter, stays out of the chat while the key line ("This looks like an API key. …") shows under the box; **Send anyway** then sends it, and the line goes (`agents.chat.box-lines`).
