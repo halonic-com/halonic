@@ -181,7 +181,7 @@ export function rebaseOnlyAfterLiam(
  * paths, who wrote it, and whether its branch or labels make it a security
  * or release one (HAL-19283).
  */
-function routedOf(pull: GatePull): RoutedPull {
+export function routedOf(pull: GatePull): RoutedPull {
   return {
     files: pull.files,
     changedLines: pull.additions + pull.deletions,

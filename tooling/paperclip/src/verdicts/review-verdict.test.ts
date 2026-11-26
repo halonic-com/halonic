@@ -72,7 +72,13 @@ function fakeDeps(
     pull: async () => ({ ...pullFacts, ...options.pull }),
     taskComments: async (identifier) =>
       identifier === "HAL-1"
-        ? [{ authorAgentId: "agent-elena", body: "Ready for review: halonic#6385." }]
+        ? [
+            {
+              authorAgentId: "agent-elena",
+              origin: "comment",
+              body: "Ready for review: halonic#6385.",
+            },
+          ]
         : [],
     agents: async () => agents,
     store: entityVerdicts(harness.ctx.entities, "acme"),
@@ -163,7 +169,9 @@ verifies("paperclip.review-verdict", () => {
     });
 
     test("applies the HAL-14809 rules: no own pull request, Julian only within his limits", async () => {
-      const liamComment = async () => [{ authorAgentId: "agent-liam", body: "halonic#6385" }];
+      const liamComment = async () => [
+        { authorAgentId: "agent-liam", origin: "comment", body: "halonic#6385" },
+      ];
       const own = fakeDeps({
         pull: { branch: "liam/HAL-1-name" },
         deps: { taskComments: liamComment },

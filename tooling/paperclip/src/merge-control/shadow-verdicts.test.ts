@@ -141,6 +141,34 @@ verifies("paperclip.verdicts-shadow", () => {
       expect(await store.list(repo, 3)).toHaveLength(1);
       expect(second["3"]?.imported).toBe(1);
     });
+
+    test("doesn't import a copy older than the reviewer's newer change request", async () => {
+      const { reader, store } = fakeReader([handOver, copy]);
+      // Stored with the store's own time, after the copy was written.
+      await reader.append({
+        repo,
+        pr: 3,
+        head: headOf(3),
+        fingerprint: null,
+        verdict: "changes-requested",
+        reviewer: "liam",
+        agentId: "agent-liam",
+        runId: "run-2",
+        task: "HAL-3",
+      });
+      const checks = await checkVerdicts(approvedOnGitHub, undefined, reader, settings, now);
+      expect(await store.list(repo, 3)).toHaveLength(1);
+      expect(checks["3"]).toMatchObject({
+        recorded: "not approved",
+        recordedWhy: "changes requested by Liam",
+      });
+      expect(checks["3"]?.imported).toBeUndefined();
+    });
+
+    test("doesn't import a copy whose origin isn't a comment", async () => {
+      const { store } = await checkOnce([handOver, { ...copy, origin: "system_note" }]);
+      expect(await store.list(repo, 3)).toEqual([]);
+    });
   });
 
   describe("the comparison", () => {

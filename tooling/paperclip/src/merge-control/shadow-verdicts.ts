@@ -1,10 +1,10 @@
 import { type CopyAgent, copyTaskOf } from "../pr-tools/approval-copy.ts";
 import { branchOwner } from "../pr-watcher/decide.ts";
-import { type RoutedPull, reviewerFor, reviewerRoleFor } from "../reviewer-paths.ts";
+import { reviewerRoleFor, routineRefusal } from "../reviewer-paths.ts";
 import { type ImportComment, importDrafts } from "../verdicts/import.ts";
 import { judgeVerdicts, type VerdictPull, type Verdicts } from "../verdicts/reader.ts";
 import type { VerdictDraft, VerdictRecord } from "../verdicts/record.ts";
-import { approvalOf, changeRequestOf } from "./approval.ts";
+import { approvalOf, changeRequestOf, routedOf } from "./approval.ts";
 import type { GatePull, MergeSnapshot } from "./snapshot.ts";
 
 /**
@@ -62,21 +62,11 @@ export interface VerdictShadowSettings {
 /** The same 15 minutes as the copies' check: a reviewer records a verdict after the GitHub line. */
 const recheckMs = 15 * 60_000;
 
-/** The pull request's files as the path rules read them, or undefined when the snapshot lists only some. */
-function routedOf(pull: GatePull): RoutedPull | undefined {
-  if (pull.filesTotal > pull.files.length) {
-    return undefined;
-  }
-  return {
-    files: pull.files,
-    changedLines: pull.additions + pull.deletions,
-    sensitive: false,
-    ...(pull.manifests === undefined ? {} : { manifests: pull.manifests }),
-  };
-}
-
 /**
- * What the reader needs about the pull request, from the snapshot. The
+ * What the reader needs about the pull request, from the snapshot, routed
+ * as the gate routes it (`routedOf`: a security or release origin, renamed
+ * files' old paths, who wrote it). When the snapshot lists only some files,
+ * there is no reviewer and Nora's approval can't count, as in the gate. The
  * fingerprint is the one the gate reads (`readPatchIds`): only a pull
  * request whose GitHub line names another head has one.
  */
@@ -84,12 +74,14 @@ export function verdictPullOf(
   pull: GatePull,
   patchIds: Readonly<Record<string, string | null>>,
 ): VerdictPull {
+  const all = pull.filesTotal <= pull.files.length;
   const routed = routedOf(pull);
+  const byPaths = reviewerRoleFor(routed) === "code-reviewer" ? "liam" : "julian";
   return {
     head: pull.head,
     author: pull.crossRepository ? undefined : branchOwner(pull.branch),
-    reviewer: routed === undefined ? undefined : reviewerFor(routed),
-    ...(routed === undefined ? {} : { role: reviewerRoleFor(routed) }),
+    reviewer: all ? byPaths : undefined,
+    routineRefusal: all ? routineRefusal(routed) : `${pull.filesTotal} files (can't check all)`,
     fingerprint: patchIds[pull.head] ?? null,
   };
 }
@@ -168,7 +160,7 @@ async function imported(
     openedBy: pull.author ?? "",
     teamLogin: settings.teamLogin,
     reviewer: facts.reviewer,
-    ...(facts.role === undefined ? {} : { role: facts.role }),
+    routineRefusal: facts.routineRefusal,
     fingerprint: facts.fingerprint,
     reviewerIds: reader.reviewerIds,
     agents,

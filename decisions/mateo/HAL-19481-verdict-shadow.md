@@ -14,6 +14,10 @@
   - The tool refuses an agent the settings don't name before any read.
   - `readVerdict` accepts only entities scoped to the reader's own company.
   - The manifest's comment on `issues.checkout` now says what that capability can do.
+- Julian's findings from his security review of #6489:
+  - The import skips a copy when the same reviewer recorded a verdict on the pull request after the copy was written. An import is stored with its own time, so an older approval copy would otherwise clear a newer change request.
+  - The shadow routes the pull request as the gate does (`routedOf` in `approval.ts`, now exported): a security or release origin, renamed files' old paths and who wrote it. It passes `routineRefusal` instead of the role that `main` dropped (#6408). When the snapshot lists only some files, Nora's approval can't count, as in the gate.
+  - The import and the author check accept only comments whose origin is `comment`, so an origin the server adds later doesn't count.
 - `verdictReviewerIds` reads the board's `verdictReviewers` for both the tool and the shadow; an empty id names nobody.
 
 ## Why
@@ -22,7 +26,7 @@ Steps 1 and 2 of 2.4 in the plan on HAL-19228: shadow mode ends after 48 hours w
 
 ## Tests
 
-No test was skipped or weakened. New tests cover the import's checks (edited, deleted, receipt, no run, another agent, short or older head, no hand-over, own pull request, once only), the comparison in both directions, a failed read as `unknown`, the 15-minute recheck and the diff text. `review-verdict.test.ts` adds the failed post after the record.
+No test was skipped or weakened. New tests cover the import's checks (edited, deleted, receipt, no run, another agent, short or older head, no hand-over, own pull request, once only), the comparison in both directions, a failed read as `unknown`, the 15-minute recheck and the diff text. `review-verdict.test.ts` adds the failed post after the record. New tests cover a copy older than the reviewer's newer change request and an origin that isn't `comment`; the author-check fixtures now carry `origin: "comment"`.
 
 ## Covers
 

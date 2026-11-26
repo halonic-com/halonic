@@ -1,6 +1,5 @@
 import { type CopyAgent, copyTaskOf } from "../pr-tools/approval-copy.ts";
 import { judgeApprovals, signedLines } from "../pr-tools/approvals.ts";
-import type { ReviewRole } from "../reviewer-paths.ts";
 import { type AuthorComment, authorOf } from "./author.ts";
 import { reviewerName, type VerdictDraft, type VerdictRecord } from "./record.ts";
 
@@ -14,7 +13,10 @@ import { reviewerName, type VerdictDraft, type VerdictRecord } from "./record.ts
  * - it is on the task the branch names, and names the current head by all
  *   40 characters, with no rebase part;
  * - the same author check (`authorOf`) and the same HAL-14809 rules
- *   (`judgeApprovals`) as `review_verdict` allow it.
+ *   (`judgeApprovals`) as `review_verdict` allow it;
+ * - the reviewer recorded no verdict on the pull request after writing it:
+ *   an import is stored with its own time, so an older approval copy would
+ *   otherwise clear a newer change request.
  * Each copy is imported once: its record keeps the comment's id. Everything
  * else waits for a new verdict with `review_verdict`.
  */
@@ -39,9 +41,10 @@ export interface ImportFacts {
   readonly ownBranch: boolean;
   readonly openedBy: string;
   readonly teamLogin: string;
-  /** The reviewer and role by the path rules, undefined when the changed files weren't all read. */
+  /** The reviewer by the path rules, undefined when the changed files weren't all read. */
   readonly reviewer: "julian" | "liam" | undefined;
-  readonly role?: ReviewRole;
+  /** Why Nora's approval can't count here (`routineRefusal`), or null when it can. */
+  readonly routineRefusal: string | null;
   /** The current head's fingerprint (`changeIdOf`), or null. */
   readonly fingerprint: string | null;
   /** The agent id of each reviewer the settings name, by lower-case name. */
@@ -58,7 +61,7 @@ const fullSha = /^[0-9a-f]{40}$/;
 function trusted(comment: ImportComment): comment is ImportComment & { createdByRunId: string } {
   return (
     !comment.deleted &&
-    comment.origin !== "fast_response" &&
+    comment.origin === "comment" &&
     typeof comment.createdByRunId === "string" &&
     comment.createdByRunId !== "" &&
     comment.updatedAt === comment.createdAt
@@ -77,9 +80,19 @@ export function importDrafts(facts: ImportFacts): VerdictDraft[] {
   }
   const imported = new Set(facts.records.flatMap((record) => record.importedFrom ?? []));
   const ids = Object.entries(facts.reviewerIds);
+  const newer = (reviewer: string, comment: ImportComment) =>
+    facts.records.some(
+      (record) =>
+        record.reviewer === reviewer && Date.parse(record.at) > Date.parse(comment.createdAt),
+    );
   return facts.comments.flatMap((comment): VerdictDraft[] => {
     const reviewer = ids.find(([, id]) => id === comment.authorAgentId)?.[0];
-    if (reviewer === undefined || !trusted(comment) || imported.has(comment.id)) {
+    if (
+      reviewer === undefined ||
+      !trusted(comment) ||
+      imported.has(comment.id) ||
+      newer(reviewer, comment)
+    ) {
       return [];
     }
     const by = reviewerName(reviewer);
