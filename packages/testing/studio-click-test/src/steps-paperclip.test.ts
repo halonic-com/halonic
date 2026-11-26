@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { button, type FakeStudio, fakeStudio } from "./fake-studio.test-helper.ts";
 import { placesList } from "./screen.ts";
 import { inboxAnswer } from "./steps/inbox-answer.ts";
-import { messengerProbe, messengerSend } from "./steps/messenger-send.ts";
+import { agentPictureIn, messengerProbe, messengerSend } from "./steps/messenger-send.ts";
 import { overviewRecap, searchTask } from "./steps/search-overview.ts";
 import { disconnect, startMenuShortcuts } from "./steps/shortcuts-disconnect.ts";
 import { seedNames } from "./test-paperclip.ts";
@@ -92,7 +92,8 @@ verifies("studio-click-test.paperclip-steps", () => {
   });
 
   describe("step 9, a Messenger message", () => {
-    it("sends in the seeded chat and finds it as a comment on Paperclip", async () => {
+    /** A Messenger whose sent message reaches Paperclip, drawing the agent's picture `where`. */
+    function studioSending(where: readonly (keyof typeof agentPictureIn)[]): FakeStudio {
       const studio = fakeStudio("Acme");
       shortcutsOpen(studio, { "Halonic Messenger": `${seedNames.agent} Chat` });
       Object.assign(studio.context.driver, {
@@ -100,8 +101,32 @@ verifies("studio-click-test.paperclip-steps", () => {
           studio.paperclip.comments.push(studio.typed.join(""));
         },
       });
+      for (const place of where) studio.elements.set(agentPictureIn[place], 1);
+      return studio;
+    }
+
+    it("sends in the seeded chat, finds it on Paperclip and sees the agent's picture", async () => {
+      const studio = studioSending(["chat row", "header"]);
       await expect(messengerSend.run(studio.context)).resolves.toEqual({ passed: true });
       expect(studio.typed).toEqual([messengerProbe]);
+    });
+
+    it("fails as NO_AGENT_PICTURE when the Messenger shows only the agent's initial", async () => {
+      const studio = studioSending([]);
+      await expect(messengerSend.run(studio.context)).resolves.toEqual({
+        passed: false,
+        code: "NO_AGENT_PICTURE",
+        note: `${seedNames.agent}'s chat row and header showed its initials, not its picture.`,
+      });
+      expect(studio.paperclip.comments).toEqual([messengerProbe]);
+    });
+
+    it("fails as NO_AGENT_PICTURE naming the header when only the row draws it", async () => {
+      const studio = studioSending(["chat row"]);
+      await expect(messengerSend.run(studio.context)).resolves.toMatchObject({
+        code: "NO_AGENT_PICTURE",
+        note: expect.stringContaining("header showed its initials"),
+      });
     });
 
     it("fails as NOT_ON_PAPERCLIP when no comment arrives", async () => {

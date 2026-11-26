@@ -4,13 +4,13 @@
 - Since: unreleased
 - Source: the board's ask on HAL-18473 (HAL-10, 25 Nov 12:07 UTC): each agent's picture in the Messenger, its initial as the fallback; plan HAL-18485, approved with amendments by Liam (25 Nov): a canvas, not an `<img>`, so Studio's content security policy stays as it is
 
-When the kit's `Avatar` is given a decoded picture, it shall draw the picture's centre square on a canvas on the same 28px round `surface-muted` tile, hidden from screen readers, and load no address. Without a picture, it shall show the initials as before.
+When the kit's `Avatar` is given a decoded picture, it shall draw the picture's centre square on a canvas on the same 28px round `surface-muted` tile, hidden from screen readers, and load no address. Once the picture is drawn, the tile shall carry `data-picture="drawn"`, so the click test can tell a drawn picture from the initials (HAL-19151). Without a picture, it shall show the initials as before.
 
 ## Examples
 
 - Given a picture 4 pixels wide and 2 high,
   when the avatar renders with it,
-  then it draws the middle 2 by 2 square on a hidden round canvas and shows no initials.
+  then it draws the middle 2 by 2 square on a hidden round canvas, marks the tile `data-picture="drawn"` and shows no initials.
 - Given no picture,
   when the avatar renders,
   then it shows the initials.
