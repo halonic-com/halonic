@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { HalonicMark } from "../halonic-mark/halonic-mark.tsx";
 import { type AppGlyphShape, type AppLogoId, appGlyphScale, appGlyphs } from "./app-glyphs.ts";
 
@@ -19,26 +20,50 @@ export interface AppLogoProps {
 /**
  * An app's logo (HAL-17379, approved with the Halonic apps card HAL-17358): the Halonic ring, with
  * the app's glyph where the point of light sits. Studio keeps the point of light, Messenger has a
- * message bubble, Inbox a tray, Workspaces stacked layers, Code brackets, Runs the play shape and
+ * message bubble, Inbox an envelope, Workspaces stacked layers, Code brackets, Runs the play shape and
  * Ask a question mark. Under 48px the glyph grows so it stays readable. The glyph takes the text
- * colour, so it is white on dark and near-black on light; the ring keeps the brand gradient. The
- * Studio's native icons are drawn from the same glyphs.
+ * colour, so it is white on dark and near-black on light; the ring keeps the brand gradient. A
+ * glyph's `cut` shapes are masked out of it, so the background shows through them. The Studio's
+ * native icons are drawn from the same glyphs.
  *
  * @example
  * <AppLogo app="messenger" label={narrow ? "Halonic Messenger" : undefined} />
  */
 export function AppLogo({ app, label, className = "size-icon-md", pixels = 20 }: AppLogoProps) {
   const scale = appGlyphScale(pixels);
+  const maskId = useId();
+  const shapes = appGlyphs[app];
+  const cuts = shapes.filter((shape) => shape.kind === "cut");
   return (
     <HalonicMark label={label} className={className}>
+      {cuts.length > 0 && (
+        // A mask's luminance only says keep (white) or cut (black), so these aren't theme colours.
+        <mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
+          <rect width="100" height="100" fill="white" />
+          {cuts.map((shape) => (
+            <path
+              key={keyOf(shape)}
+              d={shape.d}
+              fill="none"
+              stroke="black"
+              strokeWidth={shape.width}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ))}
+        </mask>
+      )}
       <g
         data-app-glyph={app}
         className="text-fg"
         transform={`translate(50 50) scale(${scale}) translate(-50 -50)`}
+        mask={cuts.length > 0 ? `url(#${maskId})` : undefined}
       >
-        {appGlyphs[app].map((shape) => (
-          <GlyphShape key={keyOf(shape)} shape={shape} />
-        ))}
+        {shapes
+          .filter((shape) => shape.kind !== "cut")
+          .map((shape) => (
+            <GlyphShape key={keyOf(shape)} shape={shape} />
+          ))}
       </g>
     </HalonicMark>
   );
@@ -61,6 +86,9 @@ function GlyphShape({ shape }: { readonly shape: AppGlyphShape }) {
           strokeLinejoin="round"
         />
       );
+    case "cut":
+      // Drawn by `AppLogo`'s mask, not as a shape.
+      return null;
     case "line":
       return (
         <path

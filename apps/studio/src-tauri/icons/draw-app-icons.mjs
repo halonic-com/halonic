@@ -1,6 +1,10 @@
 // Draws Studio's and the focused apps' native icons (HAL-18693) from the kit's app glyphs, the one
-// source the Studio's `AppLogo` draws too, as Noah's masters on HAL-17379 draw the approved set:
-// the slate tile, the brand ring and the app's glyph in white, grown under 48 px, glowing from 48 px.
+// source the Studio's `AppLogo` draws too. Windows' .ico files and the windows' icons are the
+// taskbar set the board approved on HAL-19183 (`draw-r6.js` there): no tile, the ring's outer edge
+// on the canvas edge with a whole-pixel stroke, a navy centre and the glyph at one share of the
+// ring's hole for each app, so the three look equally big. `icon.png` (macOS and Linux) keeps Noah's
+// masters on HAL-17379: the slate tile, the brand ring and the glyph, glowing.
+// A hand-tuned `tuned/<app>-<pixels>.png` (Noah's, HAL-19716) replaces the drawn image in the .ico.
 // Chromium turns each SVG into pixels, so it needs no image library, in three steps:
 //
 //   pnpm exec node apps/studio/src-tauri/icons/draw-app-icons.mjs page > page.html
@@ -8,10 +12,11 @@
 //   pnpm exec node apps/studio/src-tauri/icons/draw-app-icons.mjs write drawn.html
 //
 // The page is the script's own, with no network, so Chromium's sandbox (which containers often can't
-// start) guards nothing. The last step writes, next to this script: icon.svg, icon.png (512) and
-// icon.ico (Studio's, which the exe and the installer carry), and for each focused app apps/<app>.svg,
-// apps/<app>.ico (its Start menu shortcut) and apps/<app>.rgba (its window, 64 by 64 raw RGBA like
-// the tray's, so the shell needs no image decoder).
+// start) guards nothing. The last step writes, next to this script: icon.svg and icon.png (512, the
+// tile), icon.ico (Studio's, which the exe and the installer carry), and for each focused app
+// apps/<app>.svg (its taskbar drawing at 256 px), apps/<app>.ico (its Start menu shortcut) and
+// apps/<app>.rgba (its window, 64 by 64 raw RGBA like the tray's, so the shell needs no image
+// decoder).
 //
 // Android's shortcut icons (HAL-19143) need no Chromium, as Android draws them from vectors:
 //
@@ -19,13 +24,14 @@
 //
 // writes, for each focused app, the adaptive icon's slate background and its ring and glyph in front,
 // in the Android app's res/drawable: the same ring and glyph, at the size Android keeps clear of the mask.
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { appGlyphScale, appGlyphs } from "@halonicjs/studio-kit/app-glyphs";
 
 const here = import.meta.dirname;
 const focusedApps = ["inbox", "messenger"];
-const icoSizes = [16, 24, 32, 48, 64, 256];
+// Every size Windows asks for at 100, 125, 150 and 200% scaling, and the shell's 256.
+const icoSizes = [16, 20, 24, 30, 32, 36, 40, 48, 64, 256];
 const windowIconSize = 64;
 
 const blue = "#3175f2";
@@ -33,6 +39,9 @@ const cyan = "#1bc6c8";
 const slate950 = "#020617";
 
 const shapeMarkup = (shape) => {
+  if (shape.kind === "cut") {
+    return "";
+  }
   if (shape.kind === "dot") {
     return `<circle cx="${shape.cx}" cy="${shape.cy}" r="${shape.r}" fill="#fff"/>`;
   }
@@ -89,6 +98,42 @@ function appIconSvg(app, pixels) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${pixels}" height="${pixels}" viewBox="0 0 100 100" role="img" data-app="${app}"><title>${names[app]}</title><defs><linearGradient id="ring" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="${blue}"/><stop offset="1" stop-color="${cyan}"/></linearGradient>${filters}</defs><rect width="100" height="100" rx="22" fill="${slate950}"/>${edge}<g transform="translate(${at} ${at}) scale(${share})">${glows ? `<g filter="url(#r)">${ring}</g><g filter="url(#c)">${centre}</g>` : ring + centre}</g></svg>`;
 }
 
+// The ring's stroke at each size, in whole pixels so both its edges land on the pixel grid (SPEC
+// in `draw-r6.js`); 256 keeps 64's share.
+const ringStroke = { 16: 3, 20: 4, 24: 4, 30: 5, 32: 6, 36: 6, 40: 7, 48: 8, 64: 11, 256: 44 };
+// How much of the ring's hole the glyph spans, and the glyph's own width on its 100-unit box.
+const glyphFill = { studio: 0.45, messenger: 0.5, inbox: 0.58 };
+const glyphWidth = { studio: 14, messenger: 28, inbox: 34 };
+
+/** The glyph's `cut` shapes as a mask, in the glyph's own units, or nothing without one. */
+function cutMask(app) {
+  const cuts = appGlyphs[app].filter((shape) => shape.kind === "cut");
+  if (cuts.length === 0) {
+    return { defs: "", use: "" };
+  }
+  const paths = cuts
+    .map(
+      (cut) =>
+        `<path d="${cut.d}" fill="none" stroke="#000" stroke-width="${cut.width}" stroke-linecap="round" stroke-linejoin="round"/>`,
+    )
+    .join("");
+  return {
+    defs: `<mask id="cut" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><rect width="100" height="100" fill="#fff"/>${paths}</mask>`,
+    use: ' mask="url(#cut)"',
+  };
+}
+
+/** The app's taskbar icon at `pixels` (HAL-19183): the ring filling the canvas, nothing outside it. */
+function taskbarSvg(app, pixels) {
+  const stroke = ringStroke[pixels];
+  const centre = pixels / 2;
+  const hole = pixels - 2 * stroke;
+  const scale = (hole * glyphFill[app]) / glyphWidth[app];
+  const glyph = appGlyphs[app].map(shapeMarkup).join("");
+  const mask = cutMask(app);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${pixels}" height="${pixels}" viewBox="0 0 ${pixels} ${pixels}" role="img" data-app="${app}"><title>${names[app]}</title><defs><linearGradient id="ring" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="${blue}"/><stop offset="1" stop-color="${cyan}"/></linearGradient>${mask.defs}</defs><circle cx="${centre}" cy="${centre}" r="${centre - stroke + 0.5}" fill="${slate950}"/><circle cx="${centre}" cy="${centre}" r="${(pixels - stroke) / 2}" fill="none" stroke="url(#ring)" stroke-width="${stroke}"/><g transform="translate(${centre} ${centre}) scale(${scale}) translate(-50 -50)"${mask.use}>${glyph}</g></svg>`;
+}
+
 /** An .ico of PNG images, as Studio's icon.ico has always been. */
 function ico(pngs) {
   const header = Buffer.alloc(6 + 16 * pngs.length);
@@ -143,22 +188,34 @@ function drawnFrom(dom) {
   );
 }
 
+/** The .ico's image at `pixels`: Noah's hand-tuned one when there is one, else the drawn one. */
+function icoImage(drawn, app, pixels) {
+  const tuned = join(here, "tuned", `${app}-${pixels}.png`);
+  return existsSync(tuned) ? readFileSync(tuned) : drawn[`${app} ${pixels}`].png;
+}
+
 function write(drawn) {
   const icoOf = (app) =>
-    ico(icoSizes.map((pixels) => ({ pixels, png: drawn[`${app} ${pixels}`].png })));
+    ico(icoSizes.map((pixels) => ({ pixels, png: icoImage(drawn, app, pixels) })));
   writeFileSync(join(here, "icon.svg"), `${appIconSvg("studio", 512)}\n`);
-  writeFileSync(join(here, "icon.png"), drawn["studio 512"].png);
+  writeFileSync(join(here, "icon.png"), drawn["tile 512"].png);
   writeFileSync(join(here, "icon.ico"), icoOf("studio"));
   mkdirSync(join(here, "apps"), { recursive: true });
   for (const app of focusedApps) {
-    writeFileSync(join(here, "apps", `${app}.svg`), `${appIconSvg(app, 512)}\n`);
+    writeFileSync(join(here, "apps", `${app}.svg`), `${taskbarSvg(app, 256)}\n`);
     writeFileSync(join(here, "apps", `${app}.ico`), icoOf(app));
     writeFileSync(join(here, "apps", `${app}.rgba`), drawn[`${app} ${windowIconSize}`].rgba);
   }
 }
 
-/** One shape of a glyph as a vector path: white, filled or stroked as `shapeMarkup` draws it. */
+/**
+ * One shape of a glyph as a vector path: white, filled or stroked as `shapeMarkup` draws it. Vectors
+ * have no mask, so a `cut` is drawn in the slate the shortcut's ring sits on.
+ */
 function vectorPath(shape) {
+  if (shape.kind === "cut") {
+    return `<path android:strokeColor="${slate950}" android:strokeWidth="${shape.width}" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="${shape.d}" />`;
+  }
   if (shape.kind === "dot") {
     const { cx, cy, r } = shape;
     const circle = `M${cx - r},${cy} a${r},${r} 0 1,0 ${2 * r},0 a${r},${r} 0 1,0 ${-2 * r},0 Z`;
@@ -212,10 +269,11 @@ const [step, drawnPage] = process.argv.slice(2);
 if (step === "android") {
   writeAndroid();
 } else if (step === "page") {
-  const sizes = [...new Set([...icoSizes, windowIconSize, 512])];
+  const sizes = [...new Set([...icoSizes, windowIconSize])];
   const jobs = ["studio", ...focusedApps].flatMap((app) =>
-    sizes.map((pixels) => ({ key: `${app} ${pixels}`, pixels, svg: appIconSvg(app, pixels) })),
+    sizes.map((pixels) => ({ key: `${app} ${pixels}`, pixels, svg: taskbarSvg(app, pixels) })),
   );
+  jobs.push({ key: "tile 512", pixels: 512, svg: appIconSvg("studio", 512) });
   process.stdout.write(page(jobs));
 } else if (step === "write" && drawnPage !== undefined) {
   write(drawnFrom(readFileSync(drawnPage, "utf8")));

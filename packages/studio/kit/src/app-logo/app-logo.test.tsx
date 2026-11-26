@@ -29,11 +29,8 @@ verifies("kit.app-logo", () => {
       studio: ["dot r7"],
       // The bubble, its tail at the bottom left.
       messenger: [expect.stringMatching(/^solid M42 36\.25 H58 .* L38\.5 64\.75 .*Z$/)],
-      // The tray's outline and its notched floor.
-      inbox: [
-        expect.stringMatching(/^line M39 37 H61 .*Z$/),
-        "solid M37.25 52 H43 L45.75 57.25 H54.25 L57 52 H62.75 V60.75 H37.25 Z",
-      ],
+      // The envelope, its V flap cut out by a mask.
+      inbox: [expect.stringMatching(/^solid M40 38 H60 A7 7 .*Z$/)],
       // A diamond layer over a chevron.
       workspaces: [
         "solid M36.5 43.5 L50 36.25 L63.5 43.5 L50 50.75 Z",
@@ -59,6 +56,23 @@ verifies("kit.app-logo", () => {
       const drawn = appLogoIds.map((app) => shapesOf(glyphOf(app)).join(" | "));
       expect(new Set(drawn).size).toBe(appLogoIds.length);
     });
+  });
+
+  it("cuts Inbox's flap out of the envelope, so the background shows through", () => {
+    const svg = render(<AppLogo app="inbox" />).container.querySelector("svg") as SVGSVGElement;
+    const glyph = svg.querySelector("[data-app-glyph]") as SVGGElement;
+    const mask = svg.querySelector("mask") as SVGMaskElement;
+    expect(glyph.getAttribute("mask")).toBe(`url(#${mask.id})`);
+    const flap = mask.querySelector("path") as SVGPathElement;
+    expect(flap.getAttribute("d")).toBe("M35 40.5 L50 52 L65 40.5");
+    expect(flap.getAttribute("stroke")).toBe("black");
+    expect(flap.getAttribute("stroke-width")).toBe("7");
+  });
+
+  it("masks nothing out of a glyph without a cut", () => {
+    const svg = render(<AppLogo app="messenger" />).container.querySelector("svg");
+    expect(svg?.querySelector("mask")).toBeNull();
+    expect(svg?.querySelector("[data-app-glyph]")?.hasAttribute("mask")).toBe(false);
   });
 
   it("draws the glyph in the text colour, inside the brand ring", () => {
