@@ -39,28 +39,54 @@ struct Tracked {
     moved: bool,
 }
 
-/// Opens the window `asked` for (Studio's for `None`): a start, the tray,
-/// a notification's click or quick ask's chat. The first one in a run opens
-/// every window open at the last quit with it, the one asked for in front,
-/// unless "Reopen windows on start" is off.
+/// Opens the window a start, the tray or quick ask's chat asks for
+/// (Studio's for `None`, the one that had the focus in front when the first
+/// one reopens the others). The first one in a run opens every window open
+/// at the last quit with it, unless "Reopen windows on start" is off. Fails
+/// only when the window asked for didn't open.
 pub fn open<R: Runtime>(app: &AppHandle<R>, asked: Option<FocusedApp>) -> tauri::Result<()> {
-    if asked == Some(FocusedApp::Ask) {
-        return crate::focused_apps::show(app, asked);
-    }
-    if !keeps_a_list(app) {
+    reopen(app, asked, asked.map(FocusedApp::name))
+}
+
+/// Opens Studio's window by name, as a run notification's click does: in
+/// front of the windows the first one in a run reopens, whichever had the
+/// focus. Fails only when Studio's window didn't open.
+pub fn open_studio<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+    reopen(app, None, Some(STUDIO_WINDOW))
+}
+
+/// Opens the window `asked` for, with the recorded ones on the first open,
+/// `front` (or the one that had the focus) last, so it ends up in front.
+fn reopen<R: Runtime>(
+    app: &AppHandle<R>,
+    asked: Option<FocusedApp>,
+    front: Option<&str>,
+) -> tauri::Result<()> {
+    if asked == Some(FocusedApp::Ask) || !keeps_a_list(app) {
         return crate::focused_apps::show(app, asked);
     }
     let recorded = lock(app).set.first_open();
     if recorded.is_empty() || !reopens(app) {
         return crate::focused_apps::show(app, asked);
     }
-    let order = open_windows::opening_order(&recorded, asked.map(FocusedApp::name));
-    for label in &order {
+    let order = open_windows::opening_order(&recorded, front);
+    let Some((last, others)) = order.split_last() else {
+        return crate::focused_apps::show(app, asked);
+    };
+    for label in others {
         if let Err(error) = crate::focused_apps::show(app, app_for(label)) {
             halonic_shell_log::record("window", format_args!("a window didn't reopen: {error}"));
         }
     }
-    Ok(())
+    // The one in front is the one asked for: its error is the caller's.
+    crate::focused_apps::show(app, app_for(last))
+}
+
+/// Sets the windows open at the last quit, as `start` would have read them:
+/// the tests' apps read no profile.
+#[cfg(test)]
+pub fn seed<R: Runtime>(app: &AppHandle<R>, recorded: &[open_windows::OpenWindow]) {
+    lock(app).set = OpenSet::from_recorded(recorded);
 }
 
 /// Reads the list at start, before any window opens, and remembers where it
@@ -91,6 +117,10 @@ pub fn start<R: Runtime>(app: &AppHandle<R>) {
 }
 
 fn reopens<R: Runtime>(app: &AppHandle<R>) -> bool {
+    // The tests' apps don't read the profile of the computer that runs them.
+    if cfg!(test) {
+        return true;
+    }
     match crate::host_settings::saved_value(app, open_windows::SETTING) {
         Ok(saved) => open_windows::reopens(saved.as_ref()),
         Err(refusal) => {
@@ -226,8 +256,9 @@ fn lock<R: Runtime>(app: &AppHandle<R>) -> MutexGuard<'_, Tracked> {
 /// The `window_content_set` command: keeps what the calling app window
 /// shows, at most 2 KB, ids and paths its page checks again, never a
 /// secret or a file's text. Refused as `not_an_app_window` or `too_long`.
+/// Async, so a change waiting for the disk never holds up the window.
 #[tauri::command]
-pub fn window_content_set<R: Runtime>(
+pub async fn window_content_set<R: Runtime>(
     window: WebviewWindow<R>,
     content: Option<String>,
 ) -> Result<(), &'static str> {
@@ -249,3 +280,7 @@ pub fn window_content_get<R: Runtime>(
     }
     Ok(lock(window.app_handle()).set.content(window.label()))
 }
+
+#[cfg(test)]
+#[path = "open_windows_track_tests.rs"]
+mod tests;

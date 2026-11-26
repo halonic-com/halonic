@@ -278,6 +278,12 @@ fn open_windows_open_every_recorded_window_the_focused_one_last() {
         opening_order(&recorded, Some("messenger")),
         ["main", "inbox", "messenger"]
     );
+    // A run's click asks for Studio's window by name: in front, though
+    // the Inbox had the focus.
+    assert_eq!(
+        opening_order(&recorded[1..], Some("main")),
+        ["inbox", "messenger", "main"]
+    );
     // `--app inbox` opens the Inbox even when it wasn't open at quit.
     assert_eq!(
         opening_order(&[window("main", true, None)], Some("inbox")),
