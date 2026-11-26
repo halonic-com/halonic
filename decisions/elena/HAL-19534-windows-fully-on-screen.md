@@ -2,7 +2,6 @@
 
 - Approval: the board asked for this on HAL-10 (HAL-19534: "If a monitor is gone or the resolution changed, move the window fully onto a visible screen"); Liam approved the plan on HAL-19566 and signs this note in review
 - Kind: user-visible
-- Signature:
 
 `studio.src-tauri.window-place` moved a window only when less than 64 pixels
 of it were on any screen, and then always to the middle of the primary
