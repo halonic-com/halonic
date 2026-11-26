@@ -51,3 +51,45 @@ test("a long answer and a reply scroll the exchanges and keep the footer in the 
   expect(scroll.overflows).toBe(true);
   expect(scroll.fromEnd).toBeLessThanOrEqual(1);
 });
+
+test("the question stays pinned over a long answer, and the answer's first line shows whole at the top", async ({
+  page,
+}) => {
+  await page.goto("/box.html");
+  const box = page.getByRole("dialog", { name: "Ask an agent" });
+  const text = box.getByRole("textbox");
+  const question = "Where are we with the release?";
+
+  await text.fill(question);
+  await text.press("Enter");
+  await expect(box.getByRole("button", { name: "Copy" })).toBeVisible();
+
+  // The newest answer is in view, so its question has scrolled above the divider and is pinned.
+  const list = box.locator("ol");
+  await list.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  const pinned = box.locator("[data-pinned-question]");
+  await expect(pinned).toHaveText(question);
+  await expectInside(pinned, box);
+  expect((await bounds(pinned)).y).toBeGreaterThanOrEqual((await bounds(list)).y - 0.5);
+  await page.screenshot({
+    path: "test-results/screenshots/quick-ask-long-answer-end.png",
+    animations: "disabled",
+  });
+
+  // At the top, the question is back in the list and the first line sits below the fade.
+  await list.evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  await expect(pinned).toHaveCount(0);
+  const firstLine = box.locator("[data-answer] p").first();
+  const fade = box.locator("[data-fade]");
+  const fadeBottom = (await bounds(fade)).y + (await bounds(fade)).height;
+  expect((await bounds(firstLine)).y).toBeGreaterThanOrEqual(fadeBottom - 0.5);
+  await expectInside(firstLine, list);
+  await page.screenshot({
+    path: "test-results/screenshots/quick-ask-long-answer-top.png",
+    animations: "disabled",
+  });
+});
