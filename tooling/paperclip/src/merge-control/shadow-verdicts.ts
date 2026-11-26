@@ -5,7 +5,8 @@ import { pathReviewer } from "../reviewer-paths-who.ts";
 import { type ImportComment, importDrafts } from "../verdicts/import.ts";
 import { judgeVerdicts, type VerdictPull, type Verdicts } from "../verdicts/reader.ts";
 import type { VerdictDraft, VerdictRecord } from "../verdicts/record.ts";
-import { approvalOf, changeRequestOf, routedOf } from "./approval.ts";
+import { approvalOf, routedOf } from "./approval.ts";
+import { changeRequestOf } from "./change-request.ts";
 import type { GatePull, MergeSnapshot } from "./snapshot.ts";
 
 /**

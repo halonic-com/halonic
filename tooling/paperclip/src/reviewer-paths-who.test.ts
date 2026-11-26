@@ -129,6 +129,7 @@ function isSource(path: string): boolean {
 const knownCopies: Readonly<Record<string, string>> = {
   // Signature parsers: the names whose signed line is read, not who reviews.
   "merge-control/facts-patch-ids.ts": "reads Liam's, Julian's and Nora's signed lines",
+  "merge-control/change-request.ts": "reads Liam's, Julian's and Nora's change requests",
   "pr-tools/approvals.ts": "reads Liam's, Julian's and Nora's signed lines",
   // Defaults in the plugin manifest and its import closure, which the plugin deployer pins
   // (`MANIFEST_IMPORTS`): who counts as a reviewer, not who reviews a pull request. Importing

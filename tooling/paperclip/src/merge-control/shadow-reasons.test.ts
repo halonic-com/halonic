@@ -10,6 +10,7 @@ import {
   headOf,
   now,
   pull,
+  said,
   snapshot,
   testSettings,
 } from "./merge-control.test-helper.ts";
@@ -107,7 +108,13 @@ verifies("paperclip.merge-control-shadow-reasons", () => {
 
   test("a Merger enqueue past merge control's wait rule is a real miss, not late, agrees", () => {
     const enqueued: ObservedAction = { kind: "enqueue", number: 46, jump: false, at: ago(1) };
-    const wide = pull(46, { filesTotal: 150 });
+    const h7 = headOf(46).slice(0, 7);
+    const signed = [
+      `Liam: approved on head \`${h7}\``,
+      `Julian: security sign-off on head \`${h7}\``,
+    ];
+    const texts = signed.map((body) => said(body));
+    const wide = pull(46, { filesTotal: 150, texts });
     let day = shadowPass(emptyShadowDay(now), snapshot({ pulls: [wide] }), [], 2);
     day = shadowPass(day, snapshot({ pulls: [wide], queue: [entry(46, 1)] }), [enqueued]);
     const diff = shadowDiff(day);

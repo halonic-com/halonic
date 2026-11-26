@@ -21,9 +21,10 @@ function differentHead(head: string, sha: string): boolean {
 
 const reviewers: readonly Reviewer[] = ["Liam", "Julian", "Nora"];
 
-/** The heads Liam's, Julian's or Nora's signed approvals name other than the current one. */
-function approvedOtherHeads(pull: GatePull): string[] {
-  const shas = pull.texts.flatMap((text) =>
+/** The heads Liam's, Julian's or Nora's signed approvals by the team account name other than the current one. */
+function approvedOtherHeads(pull: GatePull, teamLogin: string): string[] {
+  const team = pull.texts.filter((text) => text.by === teamLogin);
+  const shas = team.flatMap((text) =>
     reviewers
       .map((reviewer) => signedApproval(text.body, reviewer))
       .flatMap((each) => (each === null ? [] : [each.sha])),
@@ -35,7 +36,9 @@ function approvedOtherHeads(pull: GatePull): string[] {
 export interface PatchIdDeps {
   readonly get: GitHubGet;
   readonly repo: string;
-  /** Change ids by `<base>...<sha>`; a failed read isn't kept. */
+  /** The account whose approval lines count; nobody else's make the reader compare. */
+  readonly teamLogin: string;
+  /** Change ids by `<base>...<sha>`; a failed read is kept as null too, so it isn't retried every pass. */
   readonly cache: BoundedCache<string | null>;
   readonly log: (line: string) => void;
 }
@@ -43,7 +46,8 @@ export interface PatchIdDeps {
 /**
  * One head's change id, or null when GitHub can't compare it (too many
  * files, a binary file, a head GitHub no longer has). A failed compare is
- * logged and gives null for this pass, so its approval doesn't carry.
+ * logged once and kept as null, so its approval doesn't carry and the
+ * reader doesn't ask again until the cache forgets it.
  */
 async function changeIdOfHead(deps: PatchIdDeps, base: string, sha: string) {
   const key = `${base}...${sha}`;
@@ -59,6 +63,7 @@ async function changeIdOfHead(deps: PatchIdDeps, base: string, sha: string) {
     return id;
   } catch (error) {
     deps.log(`patch-id of ${sha.slice(0, 9)} unknown, no carry-over: ${String(error)}`);
+    deps.cache.set(key, null);
     return null;
   }
 }
@@ -74,7 +79,7 @@ export async function readPatchIds(
   const ids: Record<string, string | null> = {};
   for (const pull of pulls) {
     ids[pull.head] = null;
-    const approved = approvedOtherHeads(pull);
+    const approved = approvedOtherHeads(pull, deps.teamLogin);
     if (approved.length === 0) {
       continue;
     }

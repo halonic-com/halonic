@@ -1,10 +1,6 @@
 import { fastTrackLabel } from "../pr-tools/queue-state.ts";
-import {
-  type ApprovalVerdict,
-  approvalOf,
-  type ChangeRequest,
-  changeRequestOf,
-} from "./approval.ts";
+import { type ApprovalVerdict, approvalOf } from "./approval.ts";
+import { type ChangeRequest, changeRequestOf } from "./change-request.ts";
 import { type CiOk, ciOkOf, requiredWorkflowProblems } from "./checks.ts";
 import { isBuiltOn } from "./facts-pulls.ts";
 import { securityReason } from "./security-signoff.ts";

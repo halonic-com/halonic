@@ -69,6 +69,16 @@ verifies("paperclip.merge-control-security-signoff", () => {
     expect(reasonsOf(pull(6431))).not.toContain("security PR");
   });
 
+  test("an indented or spaced security review line, or files past what the gate reads, mark it (HAL-19778)", () => {
+    for (const body of ["Summary\n  security review: HAL-1", "Security-Review\nwhy"]) {
+      expect(reasonsOf(pull(6431, { body }))).toContain("security PR: waiting for");
+    }
+    expect(reasonsOf(pull(6431, { body: "security-reviewed elsewhere" }))).not.toContain(
+      "security PR",
+    );
+    expect(reasonsOf(pull(6431, { filesTotal: 101 }))).toContain("security PR: waiting for");
+  });
+
   test("Tauri paths count; changesets, lockfiles and workflows don't", () => {
     const tauri = pull(7, { files: ["apps/studio/src-tauri/src/commands.rs"], filesTotal: 1 });
     expect(reasonsOf(tauri)).toContain("security PR");
