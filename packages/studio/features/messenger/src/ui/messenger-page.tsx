@@ -14,6 +14,7 @@ import { flushSync } from "react-dom";
 import { MessengerService } from "../api.ts";
 import { type ConversationRow, inTab, type Messenger, type MessengerTab } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
+import { WithActivity } from "./activity-host.tsx";
 import { type AgentPictures, pictureOf, useAgentPictures } from "./agent-pictures.ts";
 import { ConversationList } from "./conversation-list.tsx";
 import { ConversationView } from "./conversation-view.tsx";
@@ -141,27 +142,29 @@ export function MessengerPage({
         </ListColumn>
       )}
       {onePane && !panelFirst ? null : (
-        <main ref={chat} className={`flex min-w-0 flex-1 flex-col ${focusedPanelClass}`}>
-          {onePane && open !== undefined ? (
-            <div className="px-2 pt-2">
-              <Button variant="ghost" size="sm" onClick={back}>
-                {messengerWords.backToChats}
-              </Button>
-            </div>
-          ) : null}
-          <Panel
-            messenger={messenger}
-            loaded={rows !== undefined}
-            words={words}
-            connected={connected}
-            open={open}
-            changed={changed}
-            pictures={pictures}
-            onConnect={onConnect}
-            onLeft={left}
-            onChanged={() => setChanged((count) => count + 1)}
-          />
-        </main>
+        <WithActivity messenger={messenger} row={open} words={words} offered={!onePane}>
+          <main ref={chat} className={`flex min-w-0 flex-1 flex-col ${focusedPanelClass}`}>
+            {onePane && open !== undefined ? (
+              <div className="px-2 pt-2">
+                <Button variant="ghost" size="sm" onClick={back}>
+                  {messengerWords.backToChats}
+                </Button>
+              </div>
+            ) : null}
+            <Panel
+              messenger={messenger}
+              loaded={rows !== undefined}
+              words={words}
+              connected={connected}
+              open={open}
+              changed={changed}
+              pictures={pictures}
+              onConnect={onConnect}
+              onLeft={left}
+              onChanged={() => setChanged((count) => count + 1)}
+            />
+          </main>
+        </WithActivity>
       )}
     </div>
   );
