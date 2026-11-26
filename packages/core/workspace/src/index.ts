@@ -96,6 +96,7 @@ export {
   type ResolvedModelTarget,
   resolveModel,
 } from "./resolve-model.ts";
+export { maxRuleFileBytes } from "./rule-files.ts";
 export {
   errorsStoppingRun,
   namedInStep,

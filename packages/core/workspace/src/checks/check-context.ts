@@ -3,6 +3,7 @@ import { type FileProblem, fileKinds, type KindName, type KindValues } from "@ha
 import { readYaml, type SourcePosition } from "@halonicjs/yaml";
 import type { LoadedFile, LoadedFileOf, WorkspaceIssue } from "../load-workspace.ts";
 import { placeOf } from "../places.ts";
+import type { RuleFile } from "../rule-files.ts";
 
 /** One file as the loader read it: its path, its kind and its text. */
 export interface ReadFile {
@@ -59,6 +60,7 @@ export class CheckContext {
   readonly sheetHosts: SheetHosts | undefined;
   private readonly read: ReadonlyMap<string, ReadFile>;
   private readonly listed: ReadonlySet<string>;
+  private readonly ruleFiles: ReadonlyMap<string, RuleFile>;
   private readonly positions = new Map<string, (path: Path) => SourcePosition>();
 
   constructor(
@@ -66,8 +68,10 @@ export class CheckContext {
     read: readonly ReadFile[],
     listed: readonly string[],
     sheetHosts?: SheetHosts,
+    ruleFiles: ReadonlyMap<string, RuleFile> = new Map(),
   ) {
     this.files = files;
+    this.ruleFiles = ruleFiles;
     this.sheetHosts = sheetHosts;
     this.read = new Map(read.map((file) => [file.path, file]));
     this.listed = new Set(listed);
@@ -76,6 +80,11 @@ export class CheckContext {
   /** Whether the workspace has a file at this path, of any kind or of none, such as a README. */
   hasFile(path: string): boolean {
     return this.listed.has(path);
+  }
+
+  /** The rule file at this workspace path as the loader read it, or `undefined` when the workspace has none. */
+  ruleFile(path: string): RuleFile | undefined {
+    return this.ruleFiles.get(path);
   }
 
   /** The parsed files of one kind, sorted by path; with `hub`, only those in that hub (`null`: the root). */

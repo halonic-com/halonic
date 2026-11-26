@@ -1,5 +1,6 @@
 import type { SheetHosts } from "@halonicjs/format";
 import type { LoadedFile, WorkspaceIssue } from "../load-workspace.ts";
+import type { RuleFile } from "../rule-files.ts";
 import { checkAgents } from "./agent-references.ts";
 import { CheckContext, type ReadFile } from "./check-context.ts";
 import { checkDelegationLoops } from "./delegation-loops.ts";
@@ -14,6 +15,7 @@ import { checkModelsFile, checkSessionModel } from "./model-aliases.ts";
 import { checkModelProviders } from "./model-providers.ts";
 import { checkRoutineSignalLoops } from "./routine-signal-loops.ts";
 import { checkRoutines } from "./routines.ts";
+import { checkRuleFiles } from "./rule-files.ts";
 import { checkWorkflowTests } from "./workflow-tests.ts";
 import { checkSubflowLoops, checkWorkflows } from "./workflows.ts";
 import { checkWorkingFolders } from "./working-folders.ts";
@@ -36,6 +38,7 @@ const checks: readonly WorkspaceCheck[] = [
   checkTestTargets,
   checkWorkflowTests,
   checkWorkflows,
+  checkRuleFiles,
   checkSubflowLoops,
   checkForEachWaits,
   checkRoutines,
@@ -61,6 +64,7 @@ const checks: readonly WorkspaceCheck[] = [
  *   those that failed: a check's line comes from the text
  * @param listed - every path of the workspace, also of files no kind reads
  * @param sheetHosts - the hosts of the plugins' and local integrations' sheets, when known
+ * @param ruleFiles - the rule files the workflows name, by workspace path, as the loader read them
  * @returns the errors and warnings, each with its file, key path and line
  */
 export function checkWorkspace(
@@ -68,7 +72,8 @@ export function checkWorkspace(
   read: readonly ReadFile[],
   listed: readonly string[],
   sheetHosts?: SheetHosts,
+  ruleFiles?: ReadonlyMap<string, RuleFile>,
 ): WorkspaceIssue[] {
-  const context = new CheckContext(files, read, listed, sheetHosts);
+  const context = new CheckContext(files, read, listed, sheetHosts, ruleFiles);
   return checks.flatMap((check) => check(context));
 }
