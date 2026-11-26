@@ -36,6 +36,8 @@ export interface Driver {
   windowHandles(): Promise<string[]>;
   /** Makes the window with this handle the current one. */
   switchToWindow(handle: string): Promise<void>;
+  /** Closes the current window; the session goes on in the others. */
+  closeWindow(): Promise<void>;
   /** Ends the session, which closes the app. */
   close(): Promise<void>;
 }
@@ -125,6 +127,9 @@ export async function openSession(serverUrl: string, debuggerAddress: string): P
     },
     switchToWindow: async (handle) => {
       await call("POST", "/window", { handle });
+    },
+    closeWindow: async () => {
+      await call("DELETE", "/window");
     },
     close: async () => {
       await call("DELETE", "");

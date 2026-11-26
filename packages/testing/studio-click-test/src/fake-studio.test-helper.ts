@@ -1,4 +1,5 @@
 import type { StepContext } from "./runner.ts";
+import type { TestPaperclip } from "./test-paperclip.ts";
 import type { Driver } from "./webdriver.ts";
 
 /** A window of the fake Studio: its text, and what each button click does to it. */
@@ -21,6 +22,8 @@ export interface FakeStudio {
   /** How many elements each XPath finds; one it doesn't name finds none. */
   readonly elements: Map<string, number>;
   approval: string | undefined;
+  /** What the fake test Paperclip answers: the card's status, the chat's comments, the key. */
+  readonly paperclip: { status: string; comments: string[]; keyWorks: boolean | undefined };
   readonly context: StepContext;
 }
 
@@ -36,13 +39,14 @@ export function fakeStudio(text = ""): FakeStudio {
     title: "",
     elements: new Map(),
     approval: undefined,
+    paperclip: { status: "pending", comments: [], keyWorks: true },
     context: undefined as unknown as StepContext,
   };
   const window = () => studio.windows.get(studio.current) ?? { text: "", buttons: new Map() };
   const driver: Driver = {
     click: async (xpath) => {
-      // A button or an option, named in full or by how it starts.
-      const name = /normalize-space\(\)[=,]'([^']*)'/.exec(xpath)?.[1] ?? xpath;
+      // A button or an option, named in full or by how it starts, or a row by the text it holds.
+      const name = /normalize-space\(\)(?:[=,]|, )'([^']*)'/.exec(xpath)?.[1] ?? xpath;
       const press = window().buttons.get(name);
       if (press === undefined) throw new Error(`no such element: ${name}`);
       studio.clicks.push(name);
@@ -69,7 +73,16 @@ export function fakeStudio(text = ""): FakeStudio {
     switchToWindow: async (handle) => {
       studio.current = handle;
     },
+    closeWindow: async () => {
+      studio.windows.delete(studio.current);
+    },
     close: async () => undefined,
+  };
+  const paperclip: TestPaperclip = {
+    seeded: { companyId: "company-1", approvalId: "approval-1", chatId: "chat-1" },
+    approvalStatus: async () => studio.paperclip.status,
+    chatComments: async () => studio.paperclip.comments,
+    studioKeyWorks: async () => studio.paperclip.keyWorks,
   };
   Object.assign(studio, {
     context: {
@@ -82,6 +95,7 @@ export function fakeStudio(text = ""): FakeStudio {
       },
       mainWindow: "main",
       approveSignIn: async () => studio.approval,
+      paperclip,
     } satisfies StepContext,
   });
   return studio;

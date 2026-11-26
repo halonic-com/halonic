@@ -11,6 +11,8 @@ export interface PaperclipBoard {
     waitMs: number,
     sleep: (milliseconds: number) => Promise<void>,
   ): Promise<string | undefined>;
+  /** The key Studio last sent, so step 13 can check Paperclip revoked it. */
+  studioKey(): string | undefined;
   /** Stops the proxy. */
   close(): Promise<void>;
 }
@@ -18,6 +20,12 @@ export interface PaperclipBoard {
 interface Challenge {
   readonly id: string;
   readonly token: string;
+}
+
+/** What the proxy kept from Studio's traffic. */
+interface Recorded {
+  readonly challenges: Challenge[];
+  key: string | undefined;
 }
 
 /**
@@ -30,9 +38,10 @@ interface Challenge {
  */
 export async function startPaperclipBoard(paperclipUrl: string): Promise<PaperclipBoard> {
   const target = paperclipUrl.replace(/\/$/, "");
-  const challenges: Challenge[] = [];
+  const recorded: Recorded = { challenges: [], key: undefined };
+  const { challenges } = recorded;
   const server = createServer((request, response) => {
-    forward(target, request, response, challenges).catch((error: unknown) => {
+    forward(target, request, response, recorded).catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
       response.writeHead(502, { "content-type": "text/plain" }).end(`proxy: ${message}`);
     });
@@ -56,6 +65,7 @@ export async function startPaperclipBoard(paperclipUrl: string): Promise<Papercl
       if (answer.ok) return undefined;
       return `Paperclip refused the approval: HTTP ${answer.status} ${await answer.text()}`;
     },
+    studioKey: () => recorded.key,
     close: () =>
       new Promise<void>((resolve, reject) =>
         server.close((error) => (error ? reject(error) : resolve())),
@@ -67,9 +77,11 @@ async function forward(
   target: string,
   request: IncomingMessage,
   response: ServerResponse,
-  challenges: Challenge[],
+  recorded: Recorded,
 ): Promise<void> {
   const body = await readAll(request);
+  const bearer = /^Bearer (.+)$/i.exec(request.headers.authorization ?? "")?.[1];
+  if (bearer !== undefined) recorded.key = bearer;
   const headers = new Headers();
   for (const [name, value] of Object.entries(request.headers)) {
     if (typeof value === "string" && name !== "host" && name !== "connection")
@@ -81,7 +93,7 @@ async function forward(
   const answerBody = new Uint8Array(await answer.arrayBuffer());
   if (request.method === "POST" && request.url === challengesPath && answer.status === 201) {
     const created = readChallenge(answerBody);
-    if (created !== undefined) challenges.push(created);
+    if (created !== undefined) recorded.challenges.push(created);
   }
   const outHeaders: Record<string, string> = {};
   answer.headers.forEach((value, name) => {

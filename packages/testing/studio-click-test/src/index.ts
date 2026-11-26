@@ -9,5 +9,12 @@ export {
   type StepResult,
 } from "./runner.ts";
 export { clickTestSteps } from "./steps.ts";
+export {
+  type Seeded,
+  seedNames,
+  seedPaperclip,
+  type TestPaperclip,
+  testPaperclip,
+} from "./test-paperclip.ts";
 export { type Driver, openSession, WebDriverError } from "./webdriver.ts";
 export { errorCodeIn, words } from "./words.ts";

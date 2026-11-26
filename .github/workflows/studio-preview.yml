@@ -428,7 +428,8 @@ jobs:
           $sha = (Get-FileHash $zip -Algorithm SHA256).Hash
           Expand-Archive $zip (Join-Path $env:RUNNER_TEMP 'edgedriver')
           "### Click-test driver`n`nmsedgedriver $version for WebView2 $version, edgedriver_win64.zip SHA-256 $sha" >> $env:GITHUB_STEP_SUMMARY
-      - name: Wait for the Paperclip and seed it
+      # The suite seeds it (src/test-paperclip.ts), so its steps know the ids.
+      - name: Wait for the Paperclip
         run: |
           $pcHome = Join-Path $env:RUNNER_TEMP 'paperclip'
           $url = 'http://127.0.0.1:3100'
@@ -443,10 +444,6 @@ jobs:
             foreach ($log in 'out.log', 'err.log') { "--- $log"; Get-Content (Join-Path $pcHome $log) -Tail 40 -ErrorAction SilentlyContinue }
             throw 'Paperclip never answered /api/health'
           }
-          $post = { param($path, $body) Invoke-RestMethod "$url$path" -Method Post -ContentType 'application/json' -Body ($body | ConvertTo-Json -Depth 5) }
-          $company = & $post '/api/companies' @{ name = 'Acme Click Test' }
-          & $post "/api/companies/$($company.id)/issues" @{ title = 'Acme: answer the click test' } | Out-Null
-          & $post "/api/companies/$($company.id)/approvals" @{ type = 'approve_ceo_strategy'; payload = @{ plan = 'Acme click-test card' } } | Out-Null
           "PAPERCLIP_URL=$url" >> $env:GITHUB_ENV
       # A merge's build runs the short check plus the steps its change touched
       # since main's last green build (HAL-18863), so builds skipped or failed

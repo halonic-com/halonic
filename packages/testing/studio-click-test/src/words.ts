@@ -32,6 +32,7 @@ export const words = {
   addAccountLead: connections.ADD_ACCOUNT_LEAD,
   openApproval: connections.OPEN_APPROVAL,
   switcher: connections.accountSwitcherWords,
+  messengerComposer: messengerWords.composerLabel,
 };
 
 /**
@@ -49,6 +50,10 @@ export const buttonLabels = {
   closeWorkspace: {
     text: "Close workspace",
     file: "packages/studio/features/workspace/src/switcher/workspace-menu.ts",
+  },
+  approve: {
+    text: "Approve",
+    file: "packages/adapters/paperclip-client/src/approval-words.ts",
   },
 } as const;
 
@@ -88,12 +93,30 @@ export const closeSettingsLabel = `Close ${basicsText.settingsTitle.text}`;
 const tryItFile = "packages/studio/features/agents/src/chat/try-it-words.ts";
 
 /**
- * Text step 1 reads that no words entry point exports: the shell's place names, the agents
- * feature's Try it words, and the demo's agent. `words.test.ts` checks each is still in its file.
+ * Text the steps read that no words entry point exports: the shell's place names, the agents
+ * feature's Try it words, the demo's agent, and the Inbox, search and overview screens. `words.test.ts` checks each is still in its file.
  */
 export const screenText = {
   places: { text: "Places", file: "packages/studio/shell/src/sidebar/places-list.tsx" },
   agents: { text: "Agents", file: "packages/studio/shell/src/points/frame.ts" },
+  inbox: { text: "Inbox", file: "packages/studio/shell/src/points/frame.ts" },
+  // The Inbox row names a Paperclip approval by its type in words (paperclip-client.approval-fields).
+  strategyApproval: {
+    text: "Strategy approval",
+    file: "packages/adapters/paperclip-client/src/approval-words.ts",
+  },
+  // An answered Paperclip card leaves Needs you, which then says this (run 45727671231).
+  nothingWaiting: {
+    text: "Nothing is waiting for you.",
+    file: "packages/studio/features/inbox/src/ui/needs-you-card.tsx",
+  },
+  search: { text: "Search", file: "packages/studio/shell/src/palette/command-palette.tsx" },
+  overview: { text: "Overview", file: "packages/studio/features/overview/src/feature.ts" },
+  recap: { text: "Recap", file: "packages/studio/features/overview/src/ui/recap-view.tsx" },
+  nothingBlocked: {
+    text: "Nothing is blocked.",
+    file: "packages/studio/features/overview/src/ui/overview-view.tsx",
+  },
   writer: { text: "Writer", file: "examples/acme/hubs/support/agents/writer.agent.yaml" },
   chatWith: { text: "Chat with ", file: tryItFile },
   messageTo: { text: "Message ", file: tryItFile },
