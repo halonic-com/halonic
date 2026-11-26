@@ -146,6 +146,7 @@ verifies("agent-host.paperclip-key", () => {
         "pullRequestsSummary",
         "pullRequestDetail",
         "chatNotes",
+        "prWatcherPass",
         // Workflow task writes (HAL-17975), pinned in tasks.test.ts.
         "getTask",
         "wakeTask",

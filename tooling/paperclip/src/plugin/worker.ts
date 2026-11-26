@@ -31,6 +31,8 @@ import { mergeFactsReader } from "./merge-control-reader.ts";
 import { type PassNudge, passTrigger } from "./merge-control-trigger.ts";
 import { gitHubPrints, type MergerNudge, mergerWake } from "./merger-wake.ts";
 import { registerNextStepTools } from "./next-step-tools.ts";
+import { prWatcherPassRouteKey } from "./pr-watcher-pass-declaration.ts";
+import { handlePrWatcherPass } from "./pr-watcher-pass-route.ts";
 import { readyStep, registerPrWriteTools } from "./pr-write-tools.ts";
 import { precheckWaits } from "./precheck-waits.ts";
 import { registerReactTool } from "./react-tool.ts";
@@ -227,6 +229,9 @@ export const plugin = definePlugin({
     }
     if (input.routeKey === chatNotesRouteKey) {
       return await handleChatNotes(input, context);
+    }
+    if (input.routeKey === prWatcherPassRouteKey) {
+      return await handlePrWatcherPass(input, context);
     }
     if (input.routeKey === githubPullRouteKey) {
       return await handleGitHubPull(input, context);

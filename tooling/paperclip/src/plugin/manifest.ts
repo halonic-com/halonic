@@ -14,6 +14,7 @@ import {
   rebasePrDeclaration,
   writePrDeclaration,
 } from "./pr-tool-declarations.ts";
+import { prWatcherPassRoute } from "./pr-watcher-pass-declaration.ts";
 import { prWriteConfigProperties } from "./pr-write-settings.ts";
 import { fastTrackConfigProperties, mergeControlConfigProperties } from "./queue-settings.ts";
 import { reactDeclaration, reactionRoutes } from "./reaction-declarations.ts";
@@ -414,6 +415,7 @@ export const manifest: PaperclipPluginManifestV1 = {
     ...chiefLine.routes,
     seatResetRoute,
     ...reactionRoutes,
+    prWatcherPassRoute,
   ],
   ui: {
     slots: [

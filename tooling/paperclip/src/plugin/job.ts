@@ -362,6 +362,7 @@ async function watchCompany(
     conflictFiles: gitHubConflictFiles(get),
     held: await heldOf(ctx, companyId, settings.repos[0] ?? defaultRepos[0] ?? ""),
     observe: recorder.observe,
+    acted: recorder.acted,
     limits: reviewerLimitsOf(ctx, paperclipFetch, config, { companyId, now, log }),
     ...(stackRebase === undefined ? {} : { stackRebase }),
   });
@@ -373,7 +374,7 @@ async function watchCompany(
   });
   const watcherCalls = requests() - snapshotCalls;
   // In dry run beside the watcher's tick, from what it read: logs only, and a failure is logged.
-  const signalled = await prWatcherSignalPass(ctx, companyId, recorder.tasks(), now);
+  const signalled = await prWatcherSignalPass(ctx, companyId, recorder, now);
   if (signalled !== undefined) {
     await lifecycle?.runPrWatcher(companyId, signalled);
   }

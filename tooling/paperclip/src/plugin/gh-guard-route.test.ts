@@ -101,6 +101,7 @@ verifies("paperclip.gh-guard-route", () => {
         ["seat-reset", "board"],
         ["reactions-read", "board"],
         ["reactions-write", "board"],
+        ["pr-watcher-pass", "board"],
       ]);
       expect(manifest.capabilities).toContain("api.routes.register");
       const onApiRequest = plugin.definition.onApiRequest;
