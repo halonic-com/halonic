@@ -1,10 +1,11 @@
 import { AgentHostError } from "@halonicjs/adapter-agent-host-client";
 import { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
 import type { ProposedRecord } from "@halonicjs/app";
+import { AgentHostNotAnswering } from "@halonicjs/studio-services";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
 import { publishCall, realEngine, replyStart, textAnswer } from "../inbox/real-runs.test-helper.ts";
-import { hostProposalsOf } from "./host-proposals.ts";
+import { hostDoneProposalsOf, hostProposalsOf } from "./host-proposals.ts";
 import { WorkspaceRuns } from "./workspace-runs.ts";
 
 const files = () =>
@@ -92,6 +93,29 @@ verifies("studio.workspace-run-proposals", () => {
       () => true,
     )().catch((error: unknown) => error);
     expect(failure).toBeInstanceOf(AgentHostError);
+  });
+
+  it("lists none while the sandbox has no distro, and throws a host that stopped answering", async () => {
+    const refusing = (reason: string | undefined) => ({
+      request: async () => {
+        throw new AgentHostNotAnswering(
+          new AgentHostError(0, "host_unavailable", "The host didn't start.", reason),
+        );
+      },
+      stream: async () => {
+        throw new Error("No streams here.");
+      },
+    });
+    for (const reason of ["distro-missing", "wsl-missing"]) {
+      expect(await hostProposalsOf(refusing(reason), "/work/acme", () => true)()).toEqual([]);
+      expect(await hostDoneProposalsOf(refusing(reason), "/work/acme", () => true)()).toEqual([]);
+    }
+    for (const reason of [undefined, "runtime-missing"]) {
+      const failure = await hostProposalsOf(refusing(reason), "/work/acme", () => true)().catch(
+        (error: unknown) => error,
+      );
+      expect(failure).toBeInstanceOf(AgentHostNotAnswering);
+    }
   });
 
   it("asks the host nothing while the workspace isn't trusted", async () => {
