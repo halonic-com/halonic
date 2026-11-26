@@ -108,6 +108,8 @@ export const youDidItWords = {
   runAgain: "Run it again with your own message",
   change: "Change what the agents do",
   changeHint: "(open a file, or ask the chat)",
+  /** Last under What next?, only while quick ask's keys work: "Ctrl+Alt+Space", "⌥Space" on macOS. */
+  askAnywhere: (keys: string) => `Ask an agent from any app: ${keys}`,
   google:
     "Later: connect Gmail or Google Drive. About 15 minutes, once. It's in Settings when you want it.",
   close: "Close",

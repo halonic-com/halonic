@@ -4037,6 +4037,9 @@ importers:
       '@halonicjs/studio-feature-agents':
         specifier: workspace:*
         version: link:../agents
+      '@halonicjs/studio-feature-feedback':
+        specifier: workspace:*
+        version: link:../feedback
       '@halonicjs/studio-feature-inbox':
         specifier: workspace:*
         version: link:../inbox

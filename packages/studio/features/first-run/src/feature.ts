@@ -1,4 +1,5 @@
 import { AgentsHostService } from "@halonicjs/studio-feature-agents/api";
+import { AskKeysTextService } from "@halonicjs/studio-feature-feedback/api";
 import { InboxService } from "@halonicjs/studio-feature-inbox/api";
 import {
   ModelKeysService,
@@ -38,9 +39,10 @@ export const firstRunFeature = defineFeature({
   // A paused first run has a setup item in the Inbox, where there is one. Get set up reads the
   // agents and the model files where the app has them, and a key or a check to judge step 1.
   // The run starts and cancels where the app has an engine, and Pick a model saves a choice
-  // where it has files.
+  // where it has files. "You did it" names quick ask's keys where they work.
   wants: [
     InboxService,
+    AskKeysTextService,
     AgentsHostService,
     ModelsFilesService,
     ModelKeysService,
@@ -59,7 +61,8 @@ export const firstRunFeature = defineFeature({
       );
       const inbox = services.find(InboxService);
       inbox?.addSetupSource(firstRunSetupSource(firstRun));
-      inbox?.addAnsweredView(youDidItSource(firstRun, youDidItView(services.get(RunsListService))));
+      const view = youDidItView(services.get(RunsListService), services.find(AskKeysTextService));
+      inbox?.addAnsweredView(youDidItSource(firstRun, view));
       return firstRun;
     });
     studio.services.provide(
