@@ -162,6 +162,22 @@ verifies("inbox.agent-asks", () => {
   });
 });
 
+/** The first button labelled `name`; a kit button's text also holds its busy label. */
+function buttonNamed(root: HTMLElement, name: string): HTMLButtonElement | undefined {
+  return [...root.querySelectorAll("button")].find((button) =>
+    button.textContent?.startsWith(name),
+  );
+}
+
+/** Answers the first open card Yes. */
+async function answerFirstCard(root: HTMLElement): Promise<void> {
+  const card = root.querySelector("section") as HTMLElement;
+  await act(async () => {
+    buttonNamed(card, "Yes")?.click();
+  });
+  await settled();
+}
+
 /** The header over the open item. */
 function itemHeader(root: HTMLElement): HTMLElement {
   const header = root.querySelector<HTMLElement>('[data-pane="item"] header');
@@ -223,6 +239,33 @@ verifies("inbox.header-avatar", () => {
     const back = itemHeader(root).querySelector('button[aria-label="Back to Inbox"]');
     expect(back?.querySelector("svg")).not.toBeNull();
     expect(back?.textContent).toBe("");
+  });
+
+  it("keeps heading a bundle with what still waits once its first card is answered", async () => {
+    const { messaging } = acme("Ship 0.2 today?", "Move the board meeting?");
+    const { root } = await openInbox(fakeRuns([]).runs, messaging);
+    await open(rowTitled(root, "2 cards from Chief"));
+    expect(itemHeader(root).querySelector("h2")?.textContent).toBe("2 cards from Chief");
+
+    await answerFirstCard(root);
+    const header = itemHeader(root);
+    expect(header.querySelector("h2")?.textContent).toBe("Move the board meeting?");
+    expect(header.querySelector("h2 + p")?.textContent).toContain("Waiting");
+    expect(place(root)).toBe("1 of 1");
+  });
+
+  it("drops the wait from an approval's header line once you decide it", async () => {
+    const { root } = await openInbox(fakeRuns([notes, review]).runs);
+    await open(rowTitled(root, "create_note"));
+    expect(itemHeader(root).textContent).toContain("Waiting");
+
+    await act(async () => {
+      buttonNamed(root, "Approve")?.click();
+    });
+    await settled();
+    expect(root.textContent).toContain("Approved by you");
+    expect(itemHeader(root).textContent).not.toContain("Waiting");
+    expect(place(root)).toBeUndefined();
   });
 
   it("keeps the list's rows at the sidebar's 60px", async () => {

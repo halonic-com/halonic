@@ -290,7 +290,8 @@ export function InboxView({
     sheetOpen: requestSheetOpen,
     announce,
   });
-  const heading = openHeading(open, agent.heading, now(), runFacts);
+  const place = placeOf(open?.key ?? agent.openKey, waitingOrder);
+  const heading = openHeading(open, place !== null, agent.heading, now(), runFacts);
   const request = useRequestPane({
     inbox,
     requests,
@@ -393,14 +394,10 @@ export function InboxView({
       {request.sheet}
       <div ref={itemPane} data-pane="item" className={itemPaneClass(onePane, anyOpen)}>
         {heading === undefined ? null : (
-          <ItemHeader
-            heading={heading}
-            back={onePane}
-            place={placeOf(open?.key ?? agent.openKey, waitingOrder)}
-            close={close}
-          />
+          <ItemHeader heading={heading} back={onePane} place={place} close={close} />
         )}
-        <div className="mx-auto flex w-full max-w-190 flex-col">
+        {/* Fills the pane under the header, so a card's body scrolls with its answers in sight. */}
+        <div className="mx-auto flex min-h-0 w-full max-w-190 flex-1 flex-col short:min-h-auto">
           {open === null ? (
             agent.card(
               now,

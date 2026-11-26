@@ -3,7 +3,7 @@ import { markHiddenName } from "@halonicjs/std";
 import { sampleAnswersWord } from "@halonicjs/studio-feature-runs/api";
 import { isLate, type ListRow, movesOnMeta, StatusChip, waitingFor } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
-import { type InboxItem, isRunItem, type SetupItem } from "../inbox-items.ts";
+import { type InboxItem, isRunItem, type RunItem, type SetupItem } from "../inbox-items.ts";
 import { approvalTitle } from "../plain/approval-text.ts";
 import { doneOutcome, proposalMeta, proposalTitle } from "../plain/proposal-text.ts";
 import type { ProposalItem } from "../proposal-items.ts";
@@ -45,17 +45,25 @@ export function rowFor(item: InboxItem, now: Date, facts?: RunFacts): ListRow {
     item.kind === "wait" && item.movesOnAt !== null
       ? ` · ${movesOnMeta(new Date(item.movesOnAt))}`
       : "";
-  // A run at a plan limit waits for its customer, not at a person's step.
-  const personStep = item.kind === "wait" && item.limit === undefined;
-  const what =
-    facts === undefined
-      ? ""
-      : `${workflowMeta(facts.workflow, facts.sample === true)} · run ${shortRunId(item.runId)}${personStep ? " · a person step" : ""} · `;
+  const context = runItemContext(item, facts);
+  const what = context === "" ? "" : `${context} · `;
   const row = { id: item.key, title: itemTitle(item), meta: `${what}${waiting}${movesOn}` };
   // Amber says "have a look": a day or more of waiting (the waiting time stays muted).
   return isLate(new Date(item.since), now)
     ? { ...row, trailing: <StatusChip tone="attention">Late</StatusChip> }
     : row;
+}
+
+/**
+ * A run item's line without its wait: "Support reply · Sample answers · run 891b5a · a person
+ * step", the open item's header once it no longer waits (`inbox.header-avatar`); "" without the
+ * run's facts.
+ */
+export function runItemContext(item: RunItem, facts: RunFacts | undefined): string {
+  if (facts === undefined) return "";
+  // A run at a plan limit waits for its customer, not at a person's step.
+  const personStep = item.kind === "wait" && item.limit === undefined;
+  return `${workflowMeta(facts.workflow, facts.sample === true)} · run ${shortRunId(item.runId)}${personStep ? " · a person step" : ""}`;
 }
 
 /**

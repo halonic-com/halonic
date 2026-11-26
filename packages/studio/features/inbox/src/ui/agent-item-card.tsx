@@ -259,7 +259,8 @@ function AgentBody({ text }: { readonly text: string }) {
 
 /**
  * Who asks, over the title. Their 40px picture is in the header over the card, as the Messenger's
- * chat header has it (HAL-19192, `inbox.header-avatar`). An item you wrote yourself has the title alone.
+ * chat header has it (HAL-19192, `inbox.header-avatar`). An item you wrote yourself has the title
+ * alone.
  */
 function Asker({
   from,

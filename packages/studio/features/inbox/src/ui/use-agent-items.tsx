@@ -155,17 +155,22 @@ export function useAgentItems(
         : (rowKeyHolding(opened, bundles) ?? opened.key),
     heading: (now) => {
       const [first] = openItems;
-      if (first === undefined) return undefined;
-      const picture = agentMark(first, "header").avatar;
-      const bundle = bundles.find((each) => each.items.some((item) => item.id === first.id));
+      if (first === undefined || opened === undefined) return undefined;
+      // The row that holds any open card that still waits, as `openKey` finds it: answering a
+      // bundle's first card leaves the header on what still waits.
+      const key = rowKeyHolding(opened, bundles);
+      const bundle = bundles.find((each) => each.key === key);
       if (bundle === undefined) {
-        // An answered card stays open after its row has gone, so it heads itself, and its line
-        // ends at who asks: it no longer waits (HAL-19913).
+        // Once none waits, the first card heads itself, and its line ends at who asks (HAL-19913).
         const line = agentItemAsker(first, sourceOf(first));
-        return { picture, title: agentItemTitle(first), line };
+        return { picture: agentMark(first, "header").avatar, title: agentItemTitle(first), line };
       }
       const row = bundleRow(bundle, state, now);
-      return { picture, title: row.title, line: row.meta };
+      return {
+        picture: agentMark(bundle.items[0], "header").avatar,
+        title: row.title,
+        line: row.meta,
+      };
     },
     open: (key) => {
       const found = bundles.find((bundle) => bundle.key === key);
