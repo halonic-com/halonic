@@ -88,7 +88,9 @@ pub async fn phone_computers<R: Runtime>(app: AppHandle<R>) -> ComputersAnswer {
 }
 
 /// Forgets a computer: its connection, its key, its details and what the
-/// phone saved of its Inbox and Messenger.
+/// phone saved of its Inbox and Messenger. Without a tunnel the page's own
+/// `SavedMessaging.forget()` still deletes the saved file, through
+/// `phone_saved_clear`.
 #[tauri::command]
 pub async fn phone_forget<R: Runtime>(app: AppHandle<R>, computer: String) -> ForgetOutcome {
     #[cfg(target_os = "android")]

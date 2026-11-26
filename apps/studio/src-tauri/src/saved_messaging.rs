@@ -86,6 +86,8 @@ fn described(error: halonic_device_keys::DeviceKeyError) -> String {
 
 #[cfg(target_os = "android")]
 mod android {
+    use std::sync::PoisonError;
+
     use halonic_device_keys::{ComputerId, SavedTextStore};
     use tauri::{AppHandle, Manager, Runtime, Webview};
 
@@ -114,7 +116,9 @@ mod android {
             let app = self.0;
             tauri::async_runtime::spawn_blocking(move || {
                 let saved = app.try_state::<SavedTexts<R>>().ok_or(UNAVAILABLE)?;
-                let store = saved.0.lock().map_err(|_| UNAVAILABLE)?;
+                // The store keeps nothing in memory, so a panic in another
+                // call leaves nothing half done to guard against.
+                let store = saved.0.lock().unwrap_or_else(PoisonError::into_inner);
                 work(&store, &id)
             })
             .await
@@ -122,19 +126,24 @@ mod android {
         }
     }
 
-    /// Deletes what is saved for `computer`, as on Forget and Removed, and
-    /// logs a failure: the page asks again on its own.
+    /// Deletes what is saved for `computer`, as on Forget and Removed, on a
+    /// blocking thread: a write still under way holds the lock while the
+    /// Keystore seals, and the caller (the tunnel) mustn't wait for it. A
+    /// failure is logged; the page's own Forget asks again.
     pub fn clear<R: Runtime>(app: &AppHandle<R>, computer: &ComputerId) {
-        let Some(saved) = app.try_state::<SavedTexts<R>>() else {
-            return;
-        };
-        let cleared = match saved.0.lock() {
-            Ok(store) => store.clear(computer).map_err(|error| error.to_string()),
-            Err(_) => Err(UNAVAILABLE.to_owned()),
-        };
-        if let Err(problem) = cleared {
-            halonic_shell_log::record("saved-messaging", &format!("clear failed: {problem}"));
-        }
+        let app = app.clone();
+        let computer = computer.clone();
+        // Nothing waits for it: the clear runs on its own.
+        let detached = tauri::async_runtime::spawn_blocking(move || {
+            let Some(saved) = app.try_state::<SavedTexts<R>>() else {
+                return;
+            };
+            let store = saved.0.lock().unwrap_or_else(PoisonError::into_inner);
+            if let Err(problem) = store.clear(&computer) {
+                halonic_shell_log::record("saved-messaging", &format!("clear failed: {problem}"));
+            }
+        });
+        drop(detached);
     }
 }
 
