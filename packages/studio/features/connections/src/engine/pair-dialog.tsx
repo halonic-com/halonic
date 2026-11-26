@@ -2,7 +2,7 @@ import { Dialog, Field, Input } from "@halonicjs/studio-kit";
 import type { ServerEngine } from "@halonicjs/studio-services";
 import { useEffect, useRef, useState } from "react";
 import { isAllowedAddress } from "../connect/connect-dialog.tsx";
-import { EndingStep, useLeftMs, withCode } from "../connect/connect-steps.tsx";
+import { EndingStep, plainText, useLeftMs, withCode } from "../connect/connect-steps.tsx";
 import * as connectWords from "../connections-words.ts";
 import * as words from "../server-engine-words.ts";
 import {
@@ -123,11 +123,6 @@ export function PairDialog(props: PairDialogProps) {
     );
   }
   return null;
-}
-
-/** `text` without its backticks: a field's error is plain text, so a command can't be mono there. */
-function plainText(text: string): string {
-  return text.replaceAll("`", "");
 }
 
 /** The error under each field, for the problem P1 shows. */
