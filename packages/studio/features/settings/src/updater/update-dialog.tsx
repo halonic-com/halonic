@@ -45,6 +45,9 @@ export function UpdateDialog({ host, sandbox, announce, onRestart, onClose }: Up
     onClose();
     if (confirm.action === "restart") onRestart();
   };
+  // An install that failed (a download, or a signature that doesn't match) is a danger Callout;
+  // its one action, Try again or Close, stays in the footer.
+  const failed = view.callout || state.kind === "download-failed";
   const failure = updater.unanswered
     ? { error: UPDATER_DIDNT_ANSWER, errorAction: { label: TRY_AGAIN, onClick: updater.retry } }
     : {};
@@ -67,8 +70,8 @@ export function UpdateDialog({ host, sandbox, announce, onRestart, onClose }: Up
       {...failure}
     >
       <div className="flex flex-col gap-4">
-        {view.callout ? (
-          <Callout tone="warning">
+        {failed ? (
+          <Callout tone="danger">
             <span id={lineId}>{view.line}</span>
           </Callout>
         ) : (

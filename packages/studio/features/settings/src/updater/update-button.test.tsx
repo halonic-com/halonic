@@ -157,9 +157,24 @@ verifies("settings.update-dialog", () => {
       const failed: UpdateState = { kind: "download-failed", version: "0.1.1", reason: "offline" };
       const { host, view } = await mount(statusOf(failed));
       await openDialog(view);
-      expect(dialog()?.textContent).toContain("Couldn't download Halonic 0.1.1: you're offline.");
+      const callout = dialog()?.querySelector(".bg-danger-soft");
+      expect(callout?.textContent).toContain("Couldn't download Halonic 0.1.1: you're offline.");
+      expect(callout?.querySelector("button")).toBeNull();
       await click(buttonNamed("Try again") as HTMLElement);
       expect(host.download).toHaveBeenCalledOnce();
+    });
+
+    it("shows a refused signature in a danger Callout, the version only in its line", async () => {
+      const refused: UpdateState = { kind: "signature-mismatch", version: "0.1.1", attempts: 2 };
+      const { view } = await mount(statusOf(refused));
+      await openDialog(view);
+      const callout = dialog()?.querySelector(".bg-danger-soft");
+      expect(callout?.textContent).toContain("0.1.1");
+      expect(callout?.querySelector("button")).toBeNull();
+      expect(dialog()?.querySelector(".bg-warning-soft")).toBeNull();
+      const headings = [...(dialog()?.querySelectorAll("h3, h4") ?? [])];
+      expect(headings.map((heading) => heading.textContent)).not.toContain("Halonic 0.1.1");
+      expect(buttonNamed("Close")).toBeDefined();
     });
 
     it("says so when the updater doesn't answer a press", async () => {

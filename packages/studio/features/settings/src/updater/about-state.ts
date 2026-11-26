@@ -19,7 +19,7 @@ export interface AboutProgress {
 /** What the section draws under "Halonic 0.1.0" for one status. */
 export interface AboutView {
   readonly line: string;
-  /** The line is a warning Callout in place of plain text (signature doesn't match). */
+  /** The line is a Callout in place of plain text (signature doesn't match): warning in About, danger in the dialog. */
   readonly callout: boolean;
   readonly progress: AboutProgress | null;
   readonly actions: readonly AboutAction[];
