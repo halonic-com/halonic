@@ -136,7 +136,8 @@ export function NeedsYouPanel({
       {waiting?.length === 0 && settling.length === 0 ? (
         <p className="m-auto text-small text-fg-muted">{words.none}</p>
       ) : (
-        <ol className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+        // Margins, not a gap, so a card settling out closes the space above it (`kit.settle`).
+        <ol className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4 [&>li+li]:mt-3">
           {shown.map((each) =>
             settlingIds.has(each.card.id) ? (
               <SettlingItem

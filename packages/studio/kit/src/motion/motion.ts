@@ -79,31 +79,35 @@ export function leave(element: HTMLElement): Promise<void> {
 }
 
 /**
- * Takes a decided card away once its final state showed (`kit.settle`): it fades out while its
- * height closes, over `--duration-base` with `--ease-exit`, so what is below moves up into its
- * place. Under reduced motion only the `--duration-fast` fade, with nothing moving. Resolves when
- * it ends; the caller then removes the element.
+ * Takes a decided card away once its final state showed (`kit.settle`, motion 6 of the design
+ * review): it fades out over `--duration-fast` with `--ease-exit`, then its height and the space
+ * above it close over `--duration-base` with `--ease-standard`, so what is below moves up into its
+ * place without a jump. Under reduced motion only the fade, with nothing moving. Resolves when it
+ * ends; the caller then removes the element.
  */
-export function settleOut(element: HTMLElement): Promise<void> {
+export async function settleOut(element: HTMLElement): Promise<void> {
   if (!canAnimate(element)) {
-    return Promise.resolve();
+    return;
   }
   const tokens = readTokens(element);
-  if (prefersReducedMotion()) {
-    return play(element, [{ opacity: 1 }, { opacity: 0 }], {
-      duration: tokens.fast,
-      easing: tokens.easeExit,
-      fill: "forwards",
-    });
-  }
+  // Measured before the fade, which keeps the element's size.
   const height = `${element.getBoundingClientRect().height}px`;
-  return play(
+  const marginTop = getComputedStyle(element).marginTop || "0px";
+  await play(element, [{ opacity: 1 }, { opacity: 0 }], {
+    duration: tokens.fast,
+    easing: tokens.easeExit,
+    fill: "forwards",
+  });
+  if (prefersReducedMotion()) {
+    return;
+  }
+  await play(
     element,
     [
-      { opacity: 1, height, overflow: "hidden" },
-      { opacity: 0, height: "0px", overflow: "hidden" },
+      { opacity: 0, height, marginTop, overflow: "hidden" },
+      { opacity: 0, height: "0px", marginTop: "0px", overflow: "hidden" },
     ],
-    { duration: tokens.base, easing: tokens.easeExit, fill: "forwards" },
+    { duration: tokens.base, easing: tokens.easeStandard, fill: "forwards" },
   );
 }
 

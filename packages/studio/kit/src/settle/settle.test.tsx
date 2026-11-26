@@ -132,6 +132,8 @@ verifies("kit.settle", () => {
       element.style.setProperty("--duration-fast", "120ms");
       element.style.setProperty("--duration-base", "200ms");
       element.style.setProperty("--ease-exit", "ease-in");
+      element.style.setProperty("--ease-standard", "ease-out");
+      element.style.marginTop = "16px";
       element.getBoundingClientRect = () => ({ height: 96 }) as DOMRect;
       const calls: [Keyframe[], KeyframeAnimationOptions][] = [];
       element.animate = (keyframes, timing) => {
@@ -141,16 +143,17 @@ verifies("kit.settle", () => {
       return { element, calls };
     }
 
-    it("fades out while its height closes, over --duration-base", async () => {
+    it("fades out, then closes its height and the space above it, over --duration-base", async () => {
       const { element, calls } = animatable();
       await settleOut(element);
       expect(calls).toEqual([
+        [[{ opacity: 1 }, { opacity: 0 }], { duration: 120, easing: "ease-in", fill: "forwards" }],
         [
           [
-            { opacity: 1, height: "96px", overflow: "hidden" },
-            { opacity: 0, height: "0px", overflow: "hidden" },
+            { opacity: 0, height: "96px", marginTop: "16px", overflow: "hidden" },
+            { opacity: 0, height: "0px", marginTop: "0px", overflow: "hidden" },
           ],
-          { duration: 200, easing: "ease-in", fill: "forwards" },
+          { duration: 200, easing: "ease-out", fill: "forwards" },
         ],
       ]);
     });

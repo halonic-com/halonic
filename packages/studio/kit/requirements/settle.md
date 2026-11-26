@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-19496 (board report on HAL-10 and its addition, comment 910fe451: a card decided anywhere animates into its final state, then goes away); plan approved by Liam
 
-The kit shall offer `useSettling`, which keeps an item that leaves a shown list of open items, as it is once it ended, until it is said to be gone; an item that had already ended when the list first showed, or that nothing knows the end of, shall not be kept, and one that opens again shall stop settling. The kit shall offer `useSettleAway`, which holds an element for 4 seconds, pausing while the pointer is over it or the focus is in it and going on for what was left once both leave, then plays `settleOut` and says the element is gone. `settleOut` shall fade the element out while its height closes, over `--duration-base` with `--ease-exit`. While the person prefers reduced motion, `settleOut` shall only fade, over `--duration-fast`, with nothing moving; the 4-second hold shall stay.
+The kit shall offer `useSettling`, which keeps an item that leaves a shown list of open items, as it is once it ended, until it is said to be gone; an item that had already ended when the list first showed, or that nothing knows the end of, shall not be kept, and one that opens again shall stop settling. The kit shall offer `useSettleAway`, which holds an element for 4 seconds, pausing while the pointer is over it or the focus is in it and going on for what was left once both leave, then plays `settleOut` and says the element is gone. `settleOut` shall fade the element out over `--duration-fast` with `--ease-exit`, then close its height and the space above it over `--duration-base` with `--ease-standard`. While the person prefers reduced motion, `settleOut` shall only fade, over `--duration-fast`, with nothing moving; the 4-second hold shall stay.
 
 ## Examples
 
@@ -20,6 +20,9 @@ The kit shall offer `useSettling`, which keeps an item that leaves a shown list 
 - Given a settling element with the pointer over it for 10 seconds from its second second,
   when the pointer leaves,
   then it goes 3 seconds later.
+- Given a settling element 16px below the one before it,
+  when it settles out,
+  then it fades, then its height and the 16px close.
 - Given a settling element and a person who prefers reduced motion,
   when it settles out,
   then it only fades over `--duration-fast`.

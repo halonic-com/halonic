@@ -13,6 +13,8 @@ export interface ChatTextProps {
    * click calls this instead of navigating the window (`kit.chat-text-links`).
    */
   readonly openLink?: OpenExternal;
+  /** In `fg-muted` instead of `fg`, as the question of a card that ended (`kit.final-state`). */
+  readonly muted?: boolean;
 }
 
 // Set only when the caller gave `openLink`; the blocks and inlines in between don't need to know.
@@ -28,12 +30,14 @@ const OpenLinkContext = createContext<OpenExternal | undefined>(undefined);
  * <ChatText>{"I added **morning-sort**. It runs at `0 8 * * 1-5`."}</ChatText>
  * <ChatText openLink={useOpenExternal()}>{"See [the PR](https://example.com/pr/1)."}</ChatText>
  */
-export function ChatText({ children, openLink }: ChatTextProps) {
+export function ChatText({ children, openLink, muted = false }: ChatTextProps) {
   // The text grows while it streams; it's read again only when it changes.
   const blocks = useMemo(() => readMarkdown(children), [children]);
   return (
     <OpenLinkContext value={openLink}>
-      <div className="flex min-w-0 flex-col gap-3 text-reading text-fg wrap-break-word">
+      <div
+        className={`flex min-w-0 flex-col gap-3 text-reading wrap-break-word ${muted ? "text-fg-muted" : "text-fg"}`}
+      >
         {blocks.map((block, index) => (
           <ReplyBlock key={index} block={block} />
         ))}

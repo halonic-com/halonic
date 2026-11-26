@@ -50,6 +50,11 @@ async function pass(ms: number): Promise<void> {
   await settle();
 }
 
+/** A keyframe that moves its element up or down, as `enter`'s rise does. */
+function rises(keyframe: Keyframe): boolean {
+  return String(keyframe["transform"] ?? "").includes("translateY");
+}
+
 function holdTimers(): void {
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
 }
@@ -117,6 +122,33 @@ verifies("messenger.final-state", () => {
       await pass(settleHoldMs - 1000);
 
       expect(finalLines(page)).toEqual([]);
+    });
+
+    it("changes in place as it ends, with its question muted and no rise", async () => {
+      const played: { element: Element; keyframes: Keyframe[] }[] = [];
+      HTMLElement.prototype.animate = function animate(keyframes) {
+        played.push({ element: this, keyframes: keyframes as Keyframe[] });
+        return { finished: Promise.resolve() } as unknown as Animation;
+      };
+      const { messaging, cards } = chiefAsks("Merge #12?");
+      const page = await openMessenger(messaging);
+      await openChat(page, "Chief");
+      holdTimers();
+      played.length = 0;
+
+      messaging.answerElsewhere(cards[0]?.id ?? "", ada, approve);
+      await settle();
+
+      expect(finalLines(page)).toEqual(["Approved by Ada · 10:00"]);
+      const question = byText(page, "[data-final-state] p", "Merge #12?");
+      // The nearest colour wins: the question's own, not one around it.
+      const colour = question?.closest("[class*='text-fg']");
+      expect(colour?.classList.contains("text-fg-muted")).toBe(true);
+      const onTheCard = played.filter(({ element }) =>
+        element.matches("[data-chat-card-settling]"),
+      );
+      expect(onTheCard).toEqual([]);
+      expect(played.flatMap(({ keyframes }) => keyframes).some(rises)).toBe(false);
     });
 
     it("only fades out while the person prefers reduced motion", async () => {

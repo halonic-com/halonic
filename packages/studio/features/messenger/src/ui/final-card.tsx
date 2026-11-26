@@ -23,9 +23,9 @@ export function FinalCard({ card }: { readonly card: InboxItem }) {
       <p role="status" className="text-small">
         <StatusChip tone={tone}>{line}</StatusChip>
       </p>
-      <div className="text-fg-muted">
-        <ChatText openLink={openLink}>{card.question}</ChatText>
-      </div>
+      <ChatText openLink={openLink} muted>
+        {card.question}
+      </ChatText>
       <CardPageLink card={card} />
     </article>
   );

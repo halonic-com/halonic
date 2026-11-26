@@ -91,6 +91,7 @@ export function Transcript(props: TranscriptProps) {
     cards: cards !== undefined,
     searching: props.searching,
     typing,
+    settling: settle.settling,
   });
 
   if (messages === undefined && failure !== undefined) {
@@ -272,6 +273,8 @@ function useStickToEnd(
     };
     /** The typing line shows under the messages. */
     readonly typing: boolean;
+    /** The cards that ended and settle away: each changes in place, it isn't new. */
+    readonly settling: ReadonlySet<MessagingId>;
   },
 ) {
   const { searching } = read;
@@ -319,7 +322,7 @@ function useStickToEnd(
     // The cards' first read only puts them in their place: they aren't new either.
     const placed = cardsFirstLanded();
     const added = lines.filter(
-      (line) => !before.has(line.key) && line.kind !== "day" && !(placed && line.kind === "card"),
+      (line) => !before.has(line.key) && isNewLine(line, placed, read.settling),
     );
     if (swapped || added.length === 0) return;
     riseIntoView(list.current, lines, added);
@@ -352,6 +355,17 @@ function useStickToEnd(
   };
 
   return { unseen, onScroll, toEnd: () => toEnd(true) };
+}
+
+/**
+ * Whether a line that wasn't there before is new: not a day's label, not a card the cards' first
+ * read only `placed`, and not a card that ended. An ended card drops out of the open ones a render
+ * before it settles, so it comes back in place of itself (`messenger.final-state`).
+ */
+function isNewLine(line: ChatLine, placed: boolean, settling: ReadonlySet<MessagingId>): boolean {
+  if (line.kind === "day") return false;
+  if (line.kind !== "card") return true;
+  return !placed && !settling.has(line.card.id);
 }
 
 /** A message the person didn't write: their own, sent while scrolled up, is no news to them. */
