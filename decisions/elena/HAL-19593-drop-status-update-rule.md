@@ -2,6 +2,7 @@
 
 - Approval: Liam's review of #6506 (HAL-19579) asked for this follow-up
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:KexBu+e4L23iSPMfoAxDmoQI1ZqhkVQygWHgR9p1I7cGIFRPUACB+yygrHLJeaS8Wa/Esccb0ik06ijZdowRBA==
 - Task: HAL-19593
 
 ## What changes
