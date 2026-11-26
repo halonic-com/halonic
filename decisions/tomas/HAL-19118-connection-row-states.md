@@ -2,6 +2,7 @@
 
 - Approval: docs check HAL-19112 of the pull request for HAL-19032 asked for it (fix task HAL-19118); wording approved by Sofia on HAL-19034; Liam signs this note in his review of the pull request on HAL-19118
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:DbyVmI3KC4Gb4RJhAjthD8e74TAxL/SU+y9PZzbhA8J2gg3y7U8BnEgus+f1PFsNHNtjLQgmKWPHAjJEZt0qDQ==
 - Task: HAL-19118
 
 ## What changes
