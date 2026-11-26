@@ -39,9 +39,10 @@ verifies("studio-click-test.paperclip-steps", () => {
   describe("step 8, the Inbox card", () => {
     /**
      * A card whose Approve reaches the test Paperclip, or, with `reaches` false, doesn't. With
-     * `staleLine`, the Inbox shows that line over it.
+     * `staleLine`, the Inbox shows that line over it; with `staleAfter`, over the list after the
+     * answer, as a narrow window shows it once the card closed.
      */
-    function studioWithCard(reaches = true, staleLine = ""): FakeStudio {
+    function studioWithCard(reaches = true, staleLine = "", staleAfter = ""): FakeStudio {
       const studio = connectedStudio({
         [screenText.inbox.text]: () => {
           main(studio).text = `Needs you ${screenText.strategyApproval.text}`;
@@ -49,7 +50,7 @@ verifies("studio-click-test.paperclip-steps", () => {
             main(studio).text = `${staleLine}${screenText.strategyApproval.text} ${seedNames.card}`;
             button(studio, "main", buttonLabels.approve.text, () => {
               if (reaches) studio.paperclip.status = "approved";
-              main(studio).text = `Needs you ${screenText.nothingWaiting.text} Done`;
+              main(studio).text = `${staleAfter}Needs you ${screenText.nothingWaiting.text} Done`;
             });
           });
         },
@@ -82,6 +83,16 @@ verifies("studio-click-test.paperclip-steps", () => {
       const studio = studioWithCard(true, `${line} `);
       await expect(inboxAnswer.run(studio.context)).resolves.toMatchObject({
         code: "STALE_INBOX",
+      });
+    });
+
+    it("fails as STALE_INBOX when the line shows over the list after the answer, naming the load", async () => {
+      // Run 45807805141: the card hid the list and its line, so step 8 passed over a stale Inbox.
+      const studio = studioWithCard(true, "", `${screenText.engineShowingLast.text} `);
+      studio.rootAttributes.set("data-failed", "proposals host_unavailable");
+      await expect(inboxAnswer.run(studio.context)).resolves.toMatchObject({
+        code: "STALE_INBOX",
+        note: expect.stringContaining("Failed load: proposals host_unavailable"),
       });
     });
 

@@ -1,4 +1,4 @@
-import type { Step } from "../runner.ts";
+import type { Step, StepContext, StepOutcome } from "../runner.ts";
 import { clickRow, clickWhenShown, lastWords, waitForText } from "../screen.ts";
 import { seedNames } from "../test-paperclip.ts";
 import { buttonLabels, screenText } from "../words.ts";
@@ -18,9 +18,24 @@ function isStale(text: string): boolean {
 }
 
 /**
+ * A `STALE_INBOX` failure with the screen's last words, which load failed as the line's
+ * `data-failed` says it (`inbox.stale-source`), and the shell log's engine and agent host lines.
+ */
+async function stale(context: StepContext, text: string): Promise<StepOutcome> {
+  const failed = await context.driver.attribute(staleLine, "data-failed").catch(() => null);
+  const log = await context.shellLog();
+  const note = `${lastWords(text)}\nFailed load: ${failed ?? "(not named)"}\nshell.log:\n${log}`;
+  return { passed: false, code: "STALE_INBOX", note };
+}
+
+/** The Inbox's stale line, which names the load that failed. */
+const staleLine = "//*[@data-failed]";
+
+/**
  * Step 8: the Inbox shows the seeded board card, and Approve answers it. The
  * row shows the card's type; the card shows its title, from a fresh read: no
- * line says the Inbox shows what it read last (HAL-19190). The click must reach
+ * line says the Inbox shows what it read last, over the card or over the list after the answer
+ * (HAL-19190). The click must reach
  * the test Paperclip: its API says approved, and the card leaves Needs you.
  */
 export const inboxAnswer: Step = {
@@ -45,9 +60,7 @@ export const inboxAnswer: Step = {
       text.includes(seedNames.card) ? true : undefined,
     );
     if (card.value !== true) return { passed: false, code: "NO_CARD", note: lastWords(card.text) };
-    if (isStale(card.text)) {
-      return { passed: false, code: "STALE_INBOX", note: lastWords(card.text) };
-    }
+    if (isStale(card.text)) return stale(context, card.text);
     if (!(await clickWhenShown(context, buttonLabels.approve.text, 10_000))) {
       return { passed: false, code: "NO_ANSWER_BUTTON", note: lastWords(card.text) };
     }
@@ -62,6 +75,9 @@ export const inboxAnswer: Step = {
     if (answered.value !== true) {
       return { passed: false, code: "NO_ANSWERED_LINE", note: lastWords(answered.text) };
     }
+    // In a narrow window the open card hides the list and its line, so the list is checked again
+    // once the answer closed the card (run 45807805141).
+    if (isStale(answered.text)) return stale(context, answered.text);
     return { passed: true };
   },
 };

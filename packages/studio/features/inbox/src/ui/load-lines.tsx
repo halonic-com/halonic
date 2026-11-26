@@ -105,12 +105,15 @@ export function openItemWords(error: unknown, words: EngineWords): EngineWords {
  */
 export function StaleLine({
   error,
+  source,
   words,
   age,
   phone,
   onRetry,
 }: {
   readonly error: unknown;
+  /** Which load failed, as the Inbox state's `failedSource` says. */
+  readonly source?: string | undefined;
   readonly words: EngineWords;
   readonly age: ListAge;
   readonly phone: boolean;
@@ -119,12 +122,35 @@ export function StaleLine({
   // The Callout's own polite region holds the message alone, so Try again isn't read with every
   // change; it stays on the page while empty.
   return (
-    <div className={error === undefined ? undefined : linePadding(phone)}>
+    <div
+      className={error === undefined ? undefined : linePadding(phone)}
+      data-failed={error === undefined ? undefined : failedAs(source, error)}
+    >
       <Callout tone="info" announce="polite" action={{ label: "Try again", onClick: onRetry }}>
         {error === undefined ? "" : staleReason(error, words, age)}
       </Callout>
     </div>
   );
+}
+
+/**
+ * Which load failed and its error's fixed kind, never its message, for the click test and a bug
+ * report to read off the page (`inbox.stale-source`): the shell's `code`, else a kinded error's
+ * `kind`, else the error's name.
+ *
+ * @example
+ * failedAs("proposals", new AgentHostNotAnswering()); // "proposals host_unavailable"
+ */
+export function failedAs(source: string | undefined, error: unknown): string {
+  return `${source ?? "unknown"} ${kindOf(error)}`;
+}
+
+function kindOf(error: unknown): string {
+  if (typeof error !== "object" || error === null) return typeof error;
+  const { code, kind, name } = error as { code?: unknown; kind?: unknown; name?: unknown };
+  for (const value of [code, kind, name])
+    if (typeof value === "string" && value !== "") return value;
+  return "unknown";
 }
 
 /** The stale line's padding: on a phone it takes the list's own top space (SO3). */

@@ -89,6 +89,11 @@ export interface InboxState {
    */
   readonly error: unknown;
   /**
+   * Which load {@link error} came from: `runs`, `proposals` or `setup:<provider>`, so the stale
+   * line can name it for a test or a bug report (`inbox.stale-source`). `undefined` without one.
+   */
+  readonly failedSource?: string | undefined;
+  /**
    * Why the Done list didn't load, until it does. It keeps its last proposals and is the Done
    * heading's own error: Needs you and its buttons carry on (HAL-10916).
    */
@@ -242,10 +247,11 @@ export class Inbox {
     ]);
     if (load !== this.#loads || this.#disposed) return;
     if (runs.status === "rejected") {
-      this.#set({ ...this.#state, error: runs.reason });
+      this.#set({ ...this.#state, error: runs.reason, failedSource: "runs" });
       return;
     }
     let error: unknown;
+    let failedSource: string | undefined;
     const setups = sources.flatMap((source, index) => {
       const list = lists[index];
       if (list?.status === "fulfilled") {
@@ -253,6 +259,7 @@ export class Inbox {
         this.#setupItems.set(source, items);
         return items;
       }
+      failedSource ??= `setup:${source.provider}`;
       error ??= list?.reason;
       return this.#setupItems.get(source) ?? [];
     });
@@ -261,6 +268,7 @@ export class Inbox {
       this.#proposals = proposalListsOf(proposals.value, nameOfItem);
       this.#leftOver ??= new Set(this.#proposals.decided.map((item) => item.runId));
     } else {
+      failedSource ??= "proposals";
       error ??= proposals.reason;
     }
     if (done.status === "fulfilled") this.#doneItems = doneItems(done.value, nameOfItem);
@@ -278,6 +286,7 @@ export class Inbox {
       leftOver: this.#proposals.decided.filter((item) => this.#leftOver?.has(item.runId)),
       loaded: true,
       error,
+      failedSource,
       doneError: done.status === "rejected" ? done.reason : undefined,
       updatedAt: error === undefined ? this.#now() : this.#state.updatedAt,
     });
