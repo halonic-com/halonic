@@ -61,9 +61,10 @@ export interface InAppFeedbackParts {
  * dialog opens with the text kept (`feedback.select-again`). Cancel, the ✕ or Esc with text written
  * shows "Feedback discarded", whose Undo brings the dialog back with that text and crop
  * (`feedback.undo-discard`). While Studio isn't connected to Paperclip the shortcut is let through
- * as if unheard. Gives the stop.
+ * as if unheard. Gives its {@link InAppFeedback}, whose `start` begins a feedback as the shortcut
+ * does, for Help and Ctrl K (`feedback.help-send-feedback`).
  */
-export function startInAppFeedback(parts: InAppFeedbackParts): () => void {
+export function startInAppFeedback(parts: InAppFeedbackParts): InAppFeedback {
   const { ipc, platform, shortcut, window } = parts;
   const flow = feedbackFlow(parts);
 
@@ -82,12 +83,35 @@ export function startInAppFeedback(parts: InAppFeedbackParts): () => void {
     flow.begin("", () => undefined);
   };
 
+  // The menu or the palette that asked closes as the pick runs, so the still is taken once it's
+  // off the screen. A feedback already showing or starting stays as it is.
+  const start = () => {
+    if (parts.connected?.current() === false) return;
+    if (flow.layer.showing() !== undefined || flow.starting()) return;
+    flow.beginOnceDrawn("", () => undefined);
+  };
+
   // Heard first, so the composer or a find bar never takes the keys.
   window.addEventListener("keydown", onKey, true);
-  return () => {
-    window.removeEventListener("keydown", onKey, true);
-    flow.layer.close();
+  return {
+    start,
+    stop: () => {
+      window.removeEventListener("keydown", onKey, true);
+      flow.layer.close();
+    },
   };
+}
+
+/** The feedback in Studio's own window, as {@link startInAppFeedback} gives it. */
+export interface InAppFeedback {
+  /**
+   * Begins a feedback as the shortcut does, once the window has drawn twice, so the Help menu or
+   * the Ctrl K palette that asked isn't in the still. Does nothing while Studio isn't connected to
+   * Paperclip, or while a feedback shows or starts.
+   */
+  start(): void;
+  /** Stops hearing the shortcut and takes away the feedback showing. */
+  stop(): void;
 }
 
 /**
@@ -144,11 +168,16 @@ function feedbackFlow(parts: InAppFeedbackParts) {
   // crop, so the dialog then says it couldn't load the screenshot and offers to send the text alone.
   function selectAgain(text: string) {
     layer.close();
-    starting = true;
-    afterRepaint(window, () => begin(text, () => showDialog(text)));
+    beginOnceDrawn(text, () => showDialog(text));
   }
 
-  return { layer, begin, starting: () => starting };
+  // Starting from now, so a press before the still is asked for starts no second one.
+  function beginOnceDrawn(text: string, refused: () => void) {
+    starting = true;
+    afterRepaint(window, () => begin(text, refused));
+  }
+
+  return { layer, begin, beginOnceDrawn, starting: () => starting };
 }
 
 /**

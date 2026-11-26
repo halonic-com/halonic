@@ -52,7 +52,10 @@ hand it in, with the key behind its guard.
 - `help/`: **Help › Quick ask ({keys})** and its Ctrl K entry, which show quick ask's box through
   the app's `AskOpenerService` (`feedback.help-quick-ask`), and `AskKeysTextService`, quick ask's
   keys as a sentence names them, which the first-run card reads too. Keys that don't work aren't
-  named.
+  named. **Help › Send feedback ({keys})** and its Ctrl K entry begin a feedback through the
+  host's `start`, which the main window takes from `startInAppFeedback`. They show only while
+  Studio is connected to Paperclip, by the host's same `connected` check
+  (`feedback.help-send-feedback`).
 
 The still and the shortcut's saved value are the shell's (`apps/studio/src-tauri/src/feedback_*.rs`).
 Sending from the Send feedback dialog, through the outbox and the agent host, comes in a later

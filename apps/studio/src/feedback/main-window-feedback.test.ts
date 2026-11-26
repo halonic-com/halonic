@@ -193,3 +193,16 @@ verifies("studio.feedback-send", () => {
     ]);
   });
 });
+
+verifies("feedback.help-send-feedback", () => {
+  it("begins a feedback for Help and Ctrl K once the window's shortcut is set, and none before", () => {
+    const { feedback, stop } = mainWindow();
+    const begin = vi.fn();
+    feedback.begin();
+    feedback.beginWith(begin);
+    feedback.begin();
+    stop();
+
+    expect(begin).toHaveBeenCalledTimes(1);
+  });
+});

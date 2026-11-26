@@ -4,7 +4,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { OutgoingFeedback } from "../send/hand-on.ts";
-import { startInAppFeedback, stillLifetime } from "./in-app-feedback.tsx";
+import { type InAppFeedback, startInAppFeedback, stillLifetime } from "./in-app-feedback.tsx";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -36,7 +36,7 @@ const details = {
 };
 
 const canvasPrototype = HTMLCanvasElement.prototype as unknown as Record<string, unknown>;
-let stop: (() => void) | undefined;
+let inApp: InAppFeedback | undefined;
 let sent: OutgoingFeedback[] = [];
 /** Frames the window asked for and hasn't drawn yet; {@link drawFrame} draws them. */
 let frames: FrameRequestCallback[] = [];
@@ -67,8 +67,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  act(() => stop?.());
-  stop = undefined;
+  act(() => inApp?.stop());
+  inApp = undefined;
   sent = [];
   frames = [];
   toasts = [];
@@ -82,7 +82,7 @@ function startWith(
   shortcut = "CommandOrControl+Shift+F",
   connected?: () => boolean,
 ) {
-  stop = startInAppFeedback({
+  inApp = startInAppFeedback({
     ipc: shell,
     platform: "windows",
     shortcut: () => shortcut,
@@ -429,5 +429,45 @@ verifies("feedback.connected-only", () => {
     connected = true;
     await press(ctrlShiftF);
     expect(shell.invoke).toHaveBeenCalledWith("plugin:feedback|start");
+  });
+});
+
+verifies("feedback.help-send-feedback", () => {
+  it("starts from Help or Ctrl K only once the window has drawn twice, so neither is in the still", async () => {
+    const shell = fakeShell();
+    startWith(shell);
+    act(() => inApp?.start());
+    await drawFrame();
+    expect(shell.invoke).not.toHaveBeenCalled();
+    await drawFrame();
+    expect(shell.invoke).toHaveBeenCalledWith("plugin:feedback|start");
+    await settle();
+    expect(overlay()).not.toBeNull();
+    act(() => inApp?.start());
+    await drawFrame();
+    await drawFrame();
+    await settle();
+    expect(overlay()).not.toBeNull();
+    expect(shell.invoke).toHaveBeenCalledTimes(1);
+  });
+
+  it("starts one feedback when picked twice before the window draws", async () => {
+    const shell = fakeShell();
+    startWith(shell);
+    act(() => inApp?.start());
+    act(() => inApp?.start());
+    await drawFrame();
+    await drawFrame();
+    await settle();
+    expect(shell.invoke).toHaveBeenCalledTimes(1);
+  });
+
+  it("starts nothing while Studio isn't connected to Paperclip", async () => {
+    const shell = fakeShell();
+    startWith(shell, "CommandOrControl+Shift+F", () => false);
+    act(() => inApp?.start());
+    await drawFrame();
+    await drawFrame();
+    expect(shell.invoke).not.toHaveBeenCalled();
   });
 });

@@ -42,6 +42,14 @@ export function quickAskEntry(keys: string | undefined): string {
   return keys === undefined ? settingsWords.quickAsk : `${settingsWords.quickAsk} (${keys})`;
 }
 
+/**
+ * Help's and Ctrl K's entry for Send feedback: "Send feedback (Ctrl+Shift+F)", naming the shortcut
+ * the window hears (HAL-19400).
+ */
+export function sendFeedbackEntry(keys: string): string {
+  return `${settingsWords.sendFeedback} (${keys})`;
+}
+
 /** "Couldn't save "Send feedback" on this computer.", as Settings says a failed save. */
 export function notSavedLine(name: string): string {
   return `Couldn't save "${name}" on this computer.`;

@@ -39,6 +39,12 @@ export interface FeedbackSettingsHost {
   waiting?(): Promise<number>;
   /** Whether Studio is connected to Paperclip; absent counts as connected. */
   readonly connected?: FeedbackConnected;
+  /**
+   * Begins a feedback as the shortcut does, for Help › Send feedback and its Ctrl K entry
+   * (`feedback.help-send-feedback`); absent where the window doesn't take feedback, and then
+   * neither shows.
+   */
+  start?(): void;
 }
 
 /** The desktop app's {@link FeedbackSettingsHost}. */

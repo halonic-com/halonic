@@ -55,10 +55,11 @@ export function button(container: HTMLElement, text: string): HTMLButtonElement 
 
 /**
  * Loaded host settings over a store in memory, holding `saved`. `failSaves` makes saves fail, as
- * a locked file would.
+ * a locked file would, and `changeElsewhere` saves a value as the shell or another window would.
  */
 export async function memorySettings(saved: Record<string, string> = {}) {
   const stored = new Map<string, unknown>(Object.entries(saved));
+  const watchers = new Set<() => void>();
   const store = {
     failSaves: false,
     stored,
@@ -71,7 +72,16 @@ export async function memorySettings(saved: Record<string, string> = {}) {
       if (store.failSaves) throw new Error("The settings file is locked.");
       stored.delete(key);
     },
-    watch: () => () => undefined,
+    watch: (watcher: () => void) => {
+      watchers.add(watcher);
+      return () => {
+        watchers.delete(watcher);
+      };
+    },
+    changeElsewhere(key: string, value: string) {
+      stored.set(key, value);
+      for (const watcher of [...watchers]) watcher();
+    },
   };
   const settings = new HostSettings(store as ConstructorParameters<typeof HostSettings>[0]);
   await settings.load();
