@@ -2,6 +2,7 @@
 
 - Approval: Liam decided it on HAL-18716 (point 5); Liam reviews and signs it on HAL-18865
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:qqb1w++/tAkPjUNQfIlXj+uD1vfZCzockFJdrA1RyuAxaPOnIlm8LGTQurdbW04QHu9Kl+qpHT1y40tjJksBCw==
 
 `.github/pull_request_template.md` gets one line in its Requirements checklist: a
 user-visible Studio requirement adds or extends a click step in the same PR.
