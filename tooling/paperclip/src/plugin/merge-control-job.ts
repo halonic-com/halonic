@@ -45,7 +45,8 @@ import { type QueueWriteClient, queueWriteClient } from "../merge-control/write-
 import { paperclipCopies } from "./approval-copies.ts";
 import { companyConfig, readSettings, requestTimeoutMs } from "./job.ts";
 import { type MergeStateClient, type PassLock, passStateKey } from "./merge-control-lock.ts";
-import { verdictReviewerIds } from "./review-verdict-declaration.ts";
+import { verdictGateOn, verdictReviewerIds } from "./review-verdict-declaration.ts";
+import { withRecordedVerdicts } from "./verdict-gate.ts";
 import { withVerdictChecks } from "./verdict-shadow.ts";
 
 /**
@@ -131,6 +132,7 @@ export function rulesOf(config: Readonly<Record<string, unknown>>): MergeSetting
       ...defaultSettings.autoLabelAuthors,
       ...(login === "" || defaultSettings.autoLabelAuthors.includes(login) ? [] : [login]),
     ],
+    verdictGate: verdictGateOn(config),
   };
 }
 
@@ -374,6 +376,12 @@ async function lockedPass(
     const refused = await refusedPass(stateClient, companyId, stored, error, settings, now);
     info(refused.summary);
     return refused;
+  }
+  if (settings.rules.verdictGate) {
+    // The board's flag: the gate counts only the recorded verdicts (HAL-19969).
+    const verdictSettings = { repo: settings.repo, teamLogin: settings.rules.teamLogin };
+    const snapshot = await withRecordedVerdicts(ctx, companyId, facts.snapshot, verdictSettings);
+    facts = { ...facts, snapshot };
   }
   const decision = decide(facts.snapshot, stored.state, settings.rules, now);
   const writes = meteredWrites((url, init) =>

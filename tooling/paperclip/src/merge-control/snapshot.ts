@@ -1,5 +1,6 @@
 import type { ManifestChange } from "../reviewer-paths.ts";
 import type { PrioTask } from "../rules/queue-prio.ts";
+import type { RecordedGate } from "../verdicts/gate.ts";
 
 /**
  * What one merge-control pass knows about GitHub and Paperclip, read before
@@ -226,4 +227,9 @@ export interface MergeSnapshot {
   readonly capacity: RunnerCapacity | null;
   /** Newest `CI` push runs on `main`. */
   readonly mainRuns: readonly MainRun[];
+  /**
+   * What the recorded verdicts say, by pull request number; read only while
+   * the board's flag is on (`verdictGate`). A pull request missing here is not approved.
+   */
+  readonly recorded?: Readonly<Record<string, RecordedGate>>;
 }

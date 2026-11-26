@@ -1,9 +1,9 @@
 import { fastTrackLabel } from "../pr-tools/queue-state.ts";
-import { type ApprovalVerdict, approvalOf } from "./approval.ts";
-import { type ChangeRequest, changeRequestOf } from "./change-request.ts";
+import type { ApprovalVerdict } from "./approval.ts";
+import { commentSide, recordedSide } from "./approval-side.ts";
+import type { ChangeRequest } from "./change-request.ts";
 import { type CiOk, ciOkOf, requiredWorkflowProblems } from "./checks.ts";
 import { isBuiltOn } from "./facts-pulls.ts";
-import { securityReason } from "./security-signoff.ts";
 import type { GatePull, MergeSnapshot, QueueEntry } from "./snapshot.ts";
 import type { MergeSettings } from "./state.ts";
 
@@ -41,10 +41,6 @@ export interface SizeHold {
   readonly total: number;
 }
 
-function utc(at: string): string {
-  return at.slice(0, 16).replace("T", " ");
-}
-
 /** `fast-track` was added by a labeller from the settings; an unknown one never counts. */
 export function fastTrackVerified(pull: GatePull, settings: MergeSettings): boolean {
   const by = pull.fastTrackBy;
@@ -73,18 +69,11 @@ function baseReason(base: string): string {
 /** The gate for one pull request. */
 export function gateRow(snapshot: MergeSnapshot, pull: GatePull, settings: MergeSettings): GateRow {
   const h9 = pull.head.slice(0, 9);
-  const result = approvalOf(pull, settings.teamLogin, snapshot.patchIds);
-  const reasons = [...result.reasons];
-  const changeRequest = changeRequestOf(pull, settings.teamLogin, result.approval);
-  if (changeRequest !== null) {
-    reasons.push(
-      `changes requested by ${changeRequest.who} at ${utc(changeRequest.at)} UTC, newer than the approval for head ${h9}: needs a new approval that names the new head`,
-    );
-  }
-  const security = securityReason(pull, settings.teamLogin);
-  if (security !== undefined) {
-    reasons.push(security);
-  }
+  // The board's flag decides where approvals come from (HAL-19969).
+  const side = settings.verdictGate
+    ? recordedSide(snapshot, pull)
+    : commentSide(snapshot, pull, settings.teamLogin);
+  const reasons = [...side.reasons];
   const ci = ciOkOf(pull);
   if (ci.state !== "success") {
     const why = ci.state === "label-noop" && ci.why !== undefined ? `: ${ci.why}` : "";
@@ -108,10 +97,10 @@ export function gateRow(snapshot: MergeSnapshot, pull: GatePull, settings: Merge
   return {
     pull,
     entry: snapshot.queue.find((entry) => entry.number === pull.number),
-    approval: result.approval,
-    noApproval: result.approval?.ok !== true,
-    reReview: result.reReview,
-    changeRequest,
+    approval: side.approval,
+    noApproval: side.approval?.ok !== true,
+    reReview: side.reReview,
+    changeRequest: side.changeRequest,
     ci,
     foreign,
     paperclip: isBuiltOn(pull.labels),

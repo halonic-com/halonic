@@ -19,7 +19,7 @@ import type { VerdictStore } from "./store.ts";
  * - A change request holds the pull request at every head until the same
  *   reviewer records an approval or `withdrawn`.
  * - Julian's `security-ok` counts only on the exact head it names.
- * No gate reads it yet: the gates move to it in shadow mode first (2.4).
+ * The gates read it through `recordedGateOf` once the board's flag is on (2.4).
  */
 
 /** What deciding needs about the pull request: the approval rules' facts and the head's fingerprint. */
@@ -54,6 +54,8 @@ export interface Verdicts {
   readonly holds: readonly Hold[];
   /** Julian recorded `security-ok` on exactly this head. */
   readonly securityOkOnHead: boolean;
+  /** Julian approved this head's change, within his limits or not: a plugin manifest change needs it. */
+  readonly julianOnChange: boolean;
   /** An approval counts and no change request holds it. */
   readonly approved: boolean;
 }
@@ -91,14 +93,22 @@ function judgedApproval(record: VerdictRecord, pull: VerdictPull): RecordedAppro
   return { ...(judged as Approval), ...carried, record: record.id };
 }
 
-/** Each reviewer's change request that no later approval or `withdrawn` of theirs cleared. */
+/**
+ * Each reviewer's change request that no later approval or `withdrawn` of
+ * theirs cleared. An approval imported from a Paperclip copy (`importedFrom`)
+ * never clears one: the import can race a change request recorded while it
+ * reads (HAL-19968). Only a verdict recorded with `review_verdict` does.
+ */
 function holdsOf(records: readonly VerdictRecord[]): Hold[] {
   const open = new Map<string, Hold>();
   for (const record of records) {
     if (record.verdict === "changes-requested") {
       const by = reviewerName(record.reviewer);
       open.set(record.reviewer, { by, head: record.head, at: record.at, record: record.id });
-    } else if (record.verdict === "approved" || record.verdict === "withdrawn") {
+    } else if (
+      (record.verdict === "approved" && record.importedFrom === undefined) ||
+      record.verdict === "withdrawn"
+    ) {
       open.delete(record.reviewer);
     }
   }
@@ -115,8 +125,12 @@ export function judgeVerdicts(records: readonly VerdictRecord[], pull: VerdictPu
     (record) =>
       record.verdict === "security-ok" && record.reviewer === "julian" && record.head === pull.head,
   );
+  const julianOnChange = records.some(
+    (record) =>
+      record.verdict === "approved" && record.reviewer === "julian" && sameChange(record, pull),
+  );
   const approved = holds.length === 0 && approvals.some((approval) => approval.counts);
-  return { approvals, holds, securityOkOnHead, approved };
+  return { approvals, holds, securityOkOnHead, julianOnChange, approved };
 }
 
 /** The pull request's verdicts from the store; a read that fails gives `unknown`, never approved. */

@@ -21,6 +21,7 @@ import type { Routing } from "../routing.ts";
 import { type CopyReader, readCopySource, withCopies } from "./approval-copy.ts";
 import { type Approval, approvals, type PullComment } from "./approvals.ts";
 import { type ChangedFile, readManifests, routedFromRest } from "./manifests.ts";
+import { verdictGateText } from "./pr-status-verdicts.ts";
 import { requiredWorkflowsOf } from "./required-workflows.ts";
 
 /**
@@ -76,6 +77,10 @@ export interface PrStatus {
    * for a closed pull request (HAL-19031).
    */
   readonly requiredWorkflows: readonly string[];
+  /** Where the approvals come from by the board's flag (HAL-19969); unset when the caller didn't say. */
+  readonly verdictGate?: "on" | "off";
+  /** Why the recorded verdicts don't approve the head, with the flag on. */
+  readonly verdictWhy?: string;
 }
 
 /** The parts of GitHub's pull request the tools read. */
@@ -377,11 +382,13 @@ function requiredText(problems: readonly string[]): string {
  */
 export function statusText(status: PrStatus): string {
   const steps = nextSteps(status);
+  const source = verdictGateText(status);
   return [
     `#${status.number} (${status.repo})`,
     `${untrustedNote}; ${titleText(status.title)}; branch ${JSON.stringify(status.branch)}`,
     `${status.state}${status.draft ? ", draft" : ""}; task ${status.task ?? "none"}; author ${status.author ?? "unknown"}`,
     ...headFactsText({ ...status, behindBase: status.behindBase ?? "n/a" }),
+    ...(source === undefined ? [] : [source]),
     ...(status.copyError === undefined
       ? []
       : [`approval copies: couldn't read Paperclip (${status.copyError})`]),
