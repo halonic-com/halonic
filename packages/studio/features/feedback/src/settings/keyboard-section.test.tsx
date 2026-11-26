@@ -20,6 +20,18 @@ function shownKeys(container: HTMLElement): string {
   return [...container.querySelectorAll("kbd")].map((key) => key.textContent).join(" ");
 }
 
+/** What a screen reader hears from `element`: its text without `aria-hidden` nodes, spaces collapsed. */
+function spokenText(element: Element): string {
+  const parts: string[] = [];
+  const walk = (node: Node) => {
+    if (node instanceof Element && node.getAttribute("aria-hidden") === "true") return;
+    if (node.nodeType === Node.TEXT_NODE) parts.push(node.textContent ?? "");
+    node.childNodes.forEach(walk);
+  };
+  walk(element);
+  return parts.join(" ").replace(/\s+/g, " ").trim();
+}
+
 function showRow(host: FeedbackSettingsHost, announced: string[] = []) {
   return render(
     <KeyboardView host={host} saved="control+alt+KeyF" announce={(l) => announced.push(l)} />,
@@ -109,6 +121,15 @@ verifies("feedback.settings-shortcut", () => {
 
     expect(host.setShortcut).not.toHaveBeenCalled();
     expect(container.textContent).toContain("Press the new shortcut");
+  });
+
+  it("tells a screen reader which key stops recording", () => {
+    const container = showRow(fakeHost());
+    startRecording(container);
+
+    const live = container.querySelector("[aria-live]");
+    if (live === null) throw new Error("the row has no live region");
+    expect(spokenText(live)).toBe("Press the new shortcut Esc to stop");
   });
 
   it("stops when Change is chosen again", () => {
