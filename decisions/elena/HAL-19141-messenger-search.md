@@ -3,6 +3,7 @@
 - Task: HAL-19141
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19132 (the board approved the 8 Messenger look and layout changes on HAL-10, 26 Nov 03:51 UTC, and on the card on HAL-19132, 04:00 UTC; point 6: "In a chat, Ctrl+F opens a find bar (2 of 5, up/down, close)"; Sofia's sketch C on HAL-19134)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:m1Iozr5tewb3eL0ST8Z0eG5TiPI2FgovxCRRYwglEIIbpidNxN+KI/CGZdFx2nP0KoE3afNVy928kVlYBaXhDQ==
 
 ## What changes
 
