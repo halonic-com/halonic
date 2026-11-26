@@ -51,6 +51,18 @@ verifies("paperclip.front-bot-grounding", () => {
     expect(findCredentialShape(`code: ${random.repeat(3)}`)).toBe(undefined);
   });
 
+  test("a long earlier comment that names grant_type is checked quickly", () => {
+    // Every earlier comment in a chat goes through this check, not only the
+    // short reply. Without the per-line gate and the value's end, this took seconds.
+    const codes = `${"code=".repeat(800)}${random.repeat(3)}`;
+    const comments = [`grant_type\n${codes}`, `${codes} grant_typ`, `${codes}\ngrant_type`];
+    for (const comment of comments) {
+      const start = performance.now();
+      findCredentialShape(comment);
+      expect(performance.now() - start).toBeLessThan(500);
+    }
+  });
+
   test("Studio's shapes still count, and ordinary words don't", () => {
     expect(findCredentialShape(`sk-ant-api03-${random.repeat(4)}`)).toBe("ai-provider-key");
     expect(findCredentialShape("Is #6129 merged yet? See eyJ docs and the ghs_ prefix.")).toBe(

@@ -35,24 +35,35 @@ const assigned = String.raw`(?:["']?\s*[:=]\s*["']?)`;
 
 const oauthValue = `[A-Za-z0-9._~%/+=-]{16,}`;
 
+/** The value ends here: without this, a failed match retries every shorter value. */
+const oauthValueEnd = `(?![A-Za-z0-9._~%/+=-])`;
+
 /**
  * `code` is a common word, so, as in the leak guard, it counts only as a
  * sign-in code: in a query string or form body (`?code=…`, `&code=…`), or in
  * a token request that names `grant_type` on the same line.
+ *
+ * The check runs on every earlier comment in a chat, not only on the short
+ * reply. Both token-request alternatives look across the line, so, as in the
+ * leak guard, they run one line at a time and only on lines that name
+ * `grant_type`; otherwise a long comment takes seconds.
  */
 const oauthCodeInQuery = new RegExp(`[?&]code=${oauthValue}`);
+const grantType = /\bgrant_type\b/;
 const oauthCodeInTokenRequest = new RegExp(
   [
     String.raw`\bgrant_type\b.*\bcode${assigned}${oauthValue}`,
-    String.raw`\bcode${assigned}${oauthValue}.*\bgrant_type\b`,
+    String.raw`\bcode${assigned}${oauthValue}${oauthValueEnd}.*\bgrant_type\b`,
   ].join("|"),
 );
 
 function hasOAuthCode(text: string): boolean {
-  return (
-    oauthCodeInQuery.test(text) ||
-    (text.includes("grant_type") && oauthCodeInTokenRequest.test(text))
-  );
+  if (oauthCodeInQuery.test(text)) {
+    return true;
+  }
+  return text
+    .split("\n")
+    .some((line) => grantType.test(line) && oauthCodeInTokenRequest.test(line));
 }
 
 const extraPatterns: ReadonlyArray<readonly [ExtraShape, RegExp]> = [
