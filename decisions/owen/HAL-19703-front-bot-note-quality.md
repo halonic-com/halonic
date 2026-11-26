@@ -3,6 +3,7 @@
 - Task: HAL-19703
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19703 (Chief's task for the fixes listed under the step 1 live example on HAL-19136, 26 Nov 06:48 UTC: notes restate the ask or SKIP, and never claim "no prior context"; Julian's security review of #6549 signs the grounding change)
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:Y4A3Pw8/L5+x0h4NgLP2G7eJAPaZX7nqBBZZzvaGnAQwp90fKsG6MUVJaO+BOr0009ChkG/M0O0I9Y84R5OgAg==
 
 ## What changes
 
