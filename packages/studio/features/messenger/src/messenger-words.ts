@@ -65,6 +65,10 @@ export const messengerWords = {
   markUnread: "Mark as unread",
   /** On an unread row's hover (sketch D on HAL-19192). */
   markRead: "Mark as read",
+  /** A row's Mark as read for a screen reader or a voice user, so each row's button has its own name. */
+  markReadFor: (name: string) => `Mark as read: ${name}`,
+  /** A row's Mark as unread for a screen reader or a voice user. */
+  markUnreadFor: (name: string) => `Mark as unread: ${name}`,
   /** The chat header's ··· button, for a screen reader and as its tooltip. */
   moreActions: (name: string) => `More actions for ${name}`,
   /** Before the person's own message in a row's preview. */

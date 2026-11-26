@@ -92,6 +92,20 @@ verifies("kit.plain-list", () => {
     expect(onSelect).toHaveBeenCalledOnce();
   });
 
+  it("names the action with its spoken label, keeping the words seen", () => {
+    const { row } = renderRow({
+      action: {
+        label: "Mark as read",
+        spokenLabel: "Mark as read: Chief",
+        onClick: () => undefined,
+      },
+    });
+    const action = row.querySelector(":scope > button:last-child") as HTMLButtonElement;
+
+    expect(action.getAttribute("aria-label")).toBe("Mark as read: Chief");
+    expect(action.textContent).toBe("Mark as read");
+  });
+
   it("gives the action the row's fill, so a long title's end doesn't show through it", () => {
     const long = "Chief, the agent that plans the releases and reviews every pull request";
     const { row, button } = renderRow({

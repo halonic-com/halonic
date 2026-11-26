@@ -12,7 +12,7 @@ export interface WelcomeRecentWorkspace {
   readonly sample?: boolean | undefined;
 }
 
-/** What a screen reader hears while a row is busy: the same word as the Open folder button (microcopy 3.2). */
+/** What a screen reader hears while a row is busy, before its step is known: the same word as the Open folder button (microcopy 3.2). */
 export const openingStatus = "Opening…";
 
 /** The tag at the end of a sample's row: a fact, so an outline tag and not a tone chip (flow-first-run 2.1). */
@@ -42,7 +42,7 @@ export interface WelcomeRecentProps {
  * rows, each a button with the workspace's name over its folder, read "*Acme Support*,
  * *~/Documents/Acme Support*" (microcopy 19.6). One press opens it. The row whose folder is
  * opening is busy: a spinner at its end, `aria-busy`, presses ignored, the step it waits on under
- * its folder, such as "Starting the engine…", and a polite "Opening…" status for screen readers. Hidden while nothing is
+ * its folder, such as "Starting the engine…", and the same step in a polite status for screen readers. Hidden while nothing is
  * remembered, with no "No recent workspaces" sentence. A sample's Demo tag sits at the row's
  * right on desktop, and on a phone right after its name, so the folder keeps the row's width.
  *
@@ -105,7 +105,7 @@ export function WelcomeRecent({ workspaces, opening, onOpen, rowRef, failed }: W
       </ul>
       <span role="status" aria-live="polite" className="sr-only">
         {opening !== undefined && shown.some((workspace) => workspace.location === opening.location)
-          ? openingStatus
+          ? spokenStep(opening.step)
           : ""}
       </span>
     </section>
@@ -120,7 +120,12 @@ function openingStepOf(
   return opening?.location === location ? opening.step : undefined;
 }
 
-/** What an opening row waits on, under its folder: seen, while a screen reader hears "Opening…". */
+/** What a screen reader hears for an opening row: the step it shows, or "Opening…" until a step is known (WCAG 4.1.3). */
+function spokenStep(step: RecentOpenStep | undefined): string {
+  return step === undefined ? openingStatus : welcomeOpenWords.steps[step];
+}
+
+/** What an opening row waits on, under its folder; the polite status says the same step. */
 function OpeningStep({ step }: { readonly step: RecentOpenStep | undefined }) {
   return step === undefined ? null : (
     <span className="text-caption text-fg-muted">{welcomeOpenWords.steps[step]}</span>

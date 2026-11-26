@@ -31,7 +31,7 @@ verifies("shell.welcome-recent", () => {
     ["engine", "Starting the engine…"],
     ["workspace", "Reading the workspace…"],
   ] as const)(
-    "shows the opening row's %s step on the row, not only to a screen reader",
+    "shows the opening row's %s step on the row and says it in the polite status",
     (step, text) => {
       const location = "~/Documents/Acme Support";
       const container = render(
@@ -47,8 +47,8 @@ verifies("shell.welcome-recent", () => {
         (span) => span.textContent === text,
       );
       expect(shown?.closest(".sr-only")).toBeNull();
-      // A screen reader keeps the one polite "Opening…", rather than one line per step.
-      expect(container.querySelector('[role="status"]')?.textContent).toBe("Opening…");
+      // A screen reader hears the same step a sighted user sees (WCAG 4.1.3).
+      expect(container.querySelector('[role="status"]')?.textContent).toBe(text);
     },
   );
 });

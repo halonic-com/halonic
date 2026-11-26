@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-A recent workspace opens right after Halonic starts, without waiting for the agent host, and its row says what it is waiting on.
+A recent workspace opens as soon as Halonic starts, and its row says what it's waiting for, such as "Starting the engine…".

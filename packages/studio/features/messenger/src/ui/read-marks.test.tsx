@@ -48,6 +48,19 @@ verifies("messenger.read-marks", () => {
     expect(byText(chiefRow(page), "button", "Mark as unread")).toBeDefined();
   });
 
+  it("names each row's action after its chat, with the words seen first", async () => {
+    const page = await openMessenger(acme());
+    const markRead = byText(chiefRow(page), "button", "Mark as read");
+
+    expect(markRead?.getAttribute("aria-label")).toBe("Mark as read: Chief");
+    expect(markRead?.textContent).toBe("Mark as read");
+
+    await press(markRead);
+
+    const markUnread = byText(chiefRow(page), "button", "Mark as unread");
+    expect(markUnread?.getAttribute("aria-label")).toBe("Mark as unread: Chief");
+  });
+
   it("gives a read row its count again with Mark as unread", async () => {
     const page = await openMessenger(acme());
     await press(byText(chiefRow(page), "button", "Mark as read"));

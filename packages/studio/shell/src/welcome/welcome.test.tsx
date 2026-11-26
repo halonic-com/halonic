@@ -253,7 +253,7 @@ verifies("shell.welcome-recent", () => {
     expect(recentRow(root, "beta")?.hasAttribute("aria-busy")).toBe(false);
   });
 
-  it("a busy Recent row exposes a polite Opening… status, and clears it when done", async () => {
+  it("a busy Recent row says its step in a polite status, and clears it when done", async () => {
     let finish: () => void = () => {};
     const onOpen = vi.fn(
       () =>
@@ -272,7 +272,7 @@ verifies("shell.welcome-recent", () => {
 
     await act(async () => recentRow(root, "beta")?.click());
     expect(status()?.getAttribute("aria-live")).toBe("polite");
-    expect(status()?.textContent).toBe("Opening…");
+    expect(status()?.textContent).toBe("Reading the workspace…");
 
     await act(async () => finish());
     expect(status()?.textContent).toBe("");

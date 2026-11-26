@@ -22,6 +22,11 @@ export interface PlainRowUnread {
 export interface PlainRowAction {
   /** A verb that says what happens: "Mark as unread". */
   readonly label: string;
+  /**
+   * What a screen reader or a voice user calls it, when the label alone would repeat on every
+   * row: "Mark as unread: Chief". It starts with the label, so it holds the words seen (WCAG 2.5.3).
+   */
+  readonly spokenLabel?: string | undefined;
   readonly onClick: () => void;
 }
 
@@ -118,7 +123,12 @@ export function PlainRow(props: PlainRowProps) {
         </span>
       </button>
       {action === undefined ? null : (
-        <button type="button" onClick={action.onClick} className={actionClasses}>
+        <button
+          type="button"
+          aria-label={action.spokenLabel}
+          onClick={action.onClick}
+          className={actionClasses}
+        >
           {action.label}
         </button>
       )}

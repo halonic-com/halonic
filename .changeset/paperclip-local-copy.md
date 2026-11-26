@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-The Inbox and the Messenger open from a local copy of your Paperclip connection, so they no longer wait for Paperclip after the first sync; search still asks Paperclip.
+The Inbox and the Messenger now open from a copy of your Paperclip lists kept on this computer, so after the first sync they don't wait for Paperclip. Search still asks Paperclip.
