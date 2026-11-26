@@ -221,6 +221,12 @@ async function postLines(
   return { posted, unsaved, firstPostedAt };
 }
 
+/** Why a posted reply is not all there: a later line failed to post, or a line's id wasn't kept. */
+function partReason(lines: LinesPosted): FrontBotReason | undefined {
+  if (lines.stop === "post_failed") return "post_failed";
+  return lines.unsaved ? "note_unsaved" : undefined;
+}
+
 /** Calls Haiku, counts the call, keeps its run choice, checks the reply and posts it when it passes. */
 async function callAndPost(
   ctx: FrontBotApi,
@@ -271,7 +277,7 @@ async function callAndPost(
       ? called("rejected", "agent_answered")
       : called("failed", "post_failed");
   }
-  const record = called("posted", lines.unsaved ? "note_unsaved" : undefined, lines.firstPostedAt);
+  const record = called("posted", partReason(lines), lines.firstPostedAt);
   await writeMetrics(ctx, { "front_bot.latency_ms": record.latencyMs }, { companyId });
   return record;
 }

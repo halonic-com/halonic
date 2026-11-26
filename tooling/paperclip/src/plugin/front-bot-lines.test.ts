@@ -67,6 +67,16 @@ verifies("paperclip.front-bot-first-reply", () => {
     expect(onlyRecord(harness.logs)["outcome"]).toBe("posted");
   });
 
+  test("a later line that fails to post is logged as post_failed", async () => {
+    const harness = frontBotHarness({
+      answers: [{ reply: "Good question\nChecking the queue for #6129" }],
+      postFailsFrom: 2,
+    });
+    await harness.bot.onCommentCreated(commentCreated(harness.message.id));
+    expect(harness.posted().map((comment) => comment.body)).toEqual(["*Assistant:* Good question"]);
+    expect(onlyRecord(harness.logs)).toMatchObject({ outcome: "posted", reason: "post_failed" });
+  });
+
   test("one bad line rejects the whole reply, so its good lines aren't posted either", async () => {
     const harness = frontBotHarness({ answers: [{ reply: "On it\nAlready merged" }] });
     await harness.bot.onCommentCreated(commentCreated(harness.message.id));

@@ -125,7 +125,15 @@ export const resultWords = [
   "added",
   "opened",
   "updated",
-  // The same claims as ongoing actions: "On it, merging #6129 now".
+];
+
+/**
+ * The same claims as ongoing actions: "On it, merging #6129 now". Only the
+ * first reply rejects these. Progress notes come from the working agent's own
+ * steps, where "Adding a test for it now." is a true line, so
+ * `progress-check.ts` keeps using `resultWords` alone.
+ */
+const ongoingClaimWords = [
   "merging",
   "fixing",
   "deploying",
@@ -159,7 +167,10 @@ export const resultWords = [
   "canceling",
   "rolling back",
 ];
-const resultPattern = new RegExp(`\\b(?:${resultWords.join("|")})\\b`, "gi");
+const resultPattern = new RegExp(
+  `\\b(?:${[...resultWords, ...ongoingClaimWords].join("|")})\\b`,
+  "gi",
+);
 export const negation =
   /\b(?:not|isn't|isn’t|aren't|aren’t|wasn't|wasn’t|hasn't|hasn’t|haven't|haven’t|never|no)\s+(?:\w+\s+)?$/i;
 

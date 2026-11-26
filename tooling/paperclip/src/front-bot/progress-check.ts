@@ -71,7 +71,7 @@ const markup = /[<>[\]]|\b(?:javascript|data|vbscript|file|mailto):/i;
 /** Words a note may start a sentence with, or use as terms, beyond the first reply's. */
 const noteWords = new Set(
   (
-    "ran read edited searched used checked checking looking reading running digging trying now next " +
+    "ran read edited searched used checked checking looking reading running digging trying adding updating editing writing now next " +
     "then first " +
     "still probably looks seems likely might maybe close one another test tests file files command " +
     "commands code web page pull tool step steps"

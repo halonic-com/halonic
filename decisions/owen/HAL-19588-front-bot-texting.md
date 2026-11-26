@@ -21,8 +21,10 @@ words or 240 characters for the whole reply. A bare acknowledgement such as
 other reasons stay; the yes/no check now also covers yeah, yup, yea, nah,
 sure, "looks like it" and "seems so", and looks past texting openers such as
 "Hmm," or "Good question," so "Hmm, yeah, looks like it" is still rejected.
-The result words now include their "-ing" forms (merging, deploying,
-starting, rerunning, rolling back and the like).
+The first reply also rejects the "-ing" forms of the result words (merging,
+deploying, starting, rerunning, rolling back and the like). These sit in their
+own list: progress notes keep the old result words, so a true note such as
+"Adding a test for it now." still passes.
 
 `paperclip.front-bot-own-comments` treats a comment with no author that starts
 with `*Assistant:* ` as the bot's, and still recognises the older
