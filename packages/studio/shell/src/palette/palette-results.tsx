@@ -96,7 +96,7 @@ export function PaletteResults(props: PaletteResultsProps) {
 
 // A 40px row, 8px between icon and name. The active one has the grey fill and the 2px accent bar
 // (N1), so it isn't told by colour alone; in forced colours the bar is `Highlight`.
-const rowBase = "flex h-10 cursor-default items-center gap-2 rounded-sm px-2 text-body text-fg";
+const rowBase = "flex h-10 items-center gap-2 rounded-sm px-2 text-body text-fg";
 const rowClasses = {
   active: `${rowBase} bg-surface-muted selected-bar selected-forced`,
   other: `${rowBase} hover:bg-surface-subtle`,
@@ -104,7 +104,7 @@ const rowClasses = {
 
 // On a phone: a dense flush List row, padded 8px 16px, 56px with the kind line and 48px without.
 // Touch has no active row, so the bar shows only once an external keyboard moved it.
-const phoneRowBase = "flex cursor-default items-center gap-3 px-4 py-2 text-body text-fg";
+const phoneRowBase = "flex items-center gap-3 px-4 py-2 text-body text-fg";
 const phoneRowClasses = {
   active: `${phoneRowBase} bg-surface-muted selected-bar selected-forced`,
   other: `${phoneRowBase} active:bg-surface-subtle`,

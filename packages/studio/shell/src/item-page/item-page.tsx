@@ -273,7 +273,7 @@ export function ItemPage<Id extends string>({
           <div
             aria-hidden="true"
             data-maximise-margin=""
-            className="absolute inset-0 bg-(--stack-scrim)"
+            className="absolute inset-0 cursor-pointer bg-(--stack-scrim)"
             onClick={() => change({ maximised: false }, "maximise")}
           />
         ) : null}

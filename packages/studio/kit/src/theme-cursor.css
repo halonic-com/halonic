@@ -1,0 +1,61 @@
+/*
+ * The pointer (hand) cursor on everything a person can click, in every Halonic app: buttons,
+ * links, tabs, menu items, options, tree items, switches, checkboxes and radios. Tailwind v4's
+ * preflight gives a button the default cursor, so without this a part had to remember
+ * `cursor-pointer` and most didn't. An unavailable control shows `not-allowed`, as the kit's
+ * unavailable rows, tabs and menu items already do.
+ *
+ * In base and inside :where(), so a part's own `cursor-*` class still wins: a drag handle's
+ * `cursor-col-resize`, a canvas port's `cursor-crosshair`. A text field keeps its text cursor, as
+ * no selector here names it. cursor.test.ts holds the same list of tags and roles, and fails a
+ * clickable element the list doesn't cover unless it carries `cursor-pointer` or another cursor.
+ */
+@layer base {
+  :where(
+    button,
+    a[href],
+    summary,
+    select,
+    input:is(
+      [type="button"],
+      [type="submit"],
+      [type="reset"],
+      [type="checkbox"],
+      [type="radio"],
+      [type="file"],
+      [type="color"]
+    ),
+    [role="button"],
+    [role="link"],
+    [role="tab"],
+    [role="menuitem"],
+    [role="menuitemcheckbox"],
+    [role="menuitemradio"],
+    [role="option"],
+    [role="treeitem"],
+    [role="switch"],
+    [role="checkbox"],
+    [role="radio"]
+  ) {
+    cursor: pointer;
+  }
+
+  :where(
+    button,
+    select,
+    input,
+    [role="button"],
+    [role="link"],
+    [role="tab"],
+    [role="menuitem"],
+    [role="menuitemcheckbox"],
+    [role="menuitemradio"],
+    [role="option"],
+    [role="treeitem"],
+    [role="switch"],
+    [role="checkbox"],
+    [role="radio"]
+  ):is(:disabled, [aria-disabled="true"]) {
+    cursor: not-allowed;
+  }
+}

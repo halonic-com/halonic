@@ -114,6 +114,7 @@ function cursorOf(isUnavailable: boolean, isInert: boolean): string {
   if (isUnavailable) {
     return "cursor-not-allowed";
   }
+  // pointer-check-ignore: an inert row does nothing on a click, so it keeps the arrow.
   return isInert ? "cursor-default" : "cursor-pointer";
 }
 
@@ -275,6 +276,7 @@ export function Row<Id extends string>({ row, place, shared }: RowProps<Id>) {
           className={cells.start}
         />
       ) : null}
+      {/* pointer-check-ignore: cursorOf() below gives the cell its cursor. */}
       {/* biome-ignore lint/a11y/useFocusableInteractive: its tabIndex comes from grid.cell(), which Biome can't see */}
       <td
         // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a cell of the grid above

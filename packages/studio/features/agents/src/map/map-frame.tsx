@@ -151,7 +151,8 @@ export function MapFrame({
   // One section in both layouts, so the resize observer keeps watching it when the layout changes.
   return (
     <div className="relative size-full">
-      {/* The pointer's way to close the drawer; the keyboard's is Esc, so no key handler here. */}
+      {/* The pointer's way to close the drawer; the keyboard's is Esc, so no key handler here.
+          pointer-check-ignore: a press on the empty map closes it, so the map keeps the arrow. */}
       {/* biome-ignore lint/a11y/noStaticElementInteractions: see above. */}
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: see above. */}
       <div

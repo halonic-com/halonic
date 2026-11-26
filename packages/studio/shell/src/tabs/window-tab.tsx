@@ -27,7 +27,7 @@ export interface WindowTabViewProps {
  */
 const tabClasses = {
   common: [
-    "group relative flex w-50 min-w-24 shrink cursor-default select-none items-center gap-2 rounded-t-sm",
+    "group relative flex w-50 min-w-24 shrink select-none items-center gap-2 rounded-t-sm",
     "ps-3 pe-1.5 text-small outline-none focus-ring-inset",
   ].join(" "),
   inactive: [
