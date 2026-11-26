@@ -165,10 +165,11 @@ export class ServerAgentMessaging implements AgentMessaging {
 
   /**
    * Reads the server's `changes` event stream: each `change` message names a source. The
-   * server ends its stream when its own feed fails, and an offline server answers nothing, so
-   * the stream is opened again after a wait: 1 s, doubling up to 60 s, and 1 s again after a
-   * stream that named a change (`server.messaging-client-changes`). It ends only when the
-   * reader stops, or throws when the server refuses for any reason but `offline`.
+   * server ends its stream when its own feed fails, an offline server answers nothing, and a
+   * reverse proxy answers 5xx while the server restarts, so the stream is opened again after a
+   * wait: 1 s, doubling up to 60 s, and 1 s again after a stream that named a change
+   * (`server.messaging-client-changes`). It ends only when the reader stops, or throws when
+   * the server refuses for any reason but `offline`.
    */
   async *changes(): AsyncGenerator<MessagingId> {
     let delay = firstReopenDelayMs;

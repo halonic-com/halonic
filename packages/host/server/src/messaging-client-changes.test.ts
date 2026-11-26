@@ -41,6 +41,9 @@ function scripted(...answers: (() => Response)[]): { fetch: ServerFetch; sent: R
   };
 }
 
+/** More waits than any test here expects, so a reopen that should not happen fails fast. */
+const mostWaits = 20;
+
 /** A client whose waits pass at once on a fake clock that records each one. */
 function client(fetch: ServerFetch) {
   const waits: number[] = [];
@@ -51,6 +54,8 @@ function client(fetch: ServerFetch) {
     fetch,
     wait: async (milliseconds) => {
       waits.push(milliseconds);
+      if (waits.length > mostWaits)
+        throw new Error(`The client waited more than ${mostWaits} times.`);
     },
   });
   return { messaging, waits };
@@ -131,6 +136,51 @@ verifies("server.messaging-client-changes", () => {
       const stopped = await reader.return(undefined);
 
       expect(stopped).toEqual({ done: true, value: undefined });
+      expect(sent).toHaveLength(1);
+      expect(waits).toEqual([]);
+    });
+
+    it("opens changes again after a 5xx answer, as when the server can't be reached", async () => {
+      const stream = changesStream();
+      stream.send("src-1");
+      const unavailable = () => new Response("Service Unavailable", { status: 503 });
+      const { fetch, sent } = scripted(unavailable, unavailable, stream.response);
+      const { messaging, waits } = client(fetch);
+      const reader = messaging.changes();
+
+      const heard = await reader.next();
+
+      expect(heard).toEqual({ done: false, value: "src-1" });
+      expect(sent).toHaveLength(3);
+      expect(waits).toEqual([1000, 2000]);
+      await reader.return(undefined);
+    });
+
+    it("throws bad-answer without opening again after a 400 answer", async () => {
+      const { fetch, sent } = scripted(() => new Response("Bad Request", { status: 400 }));
+      const { messaging, waits } = client(fetch);
+
+      const failure = await messaging
+        .changes()
+        [Symbol.asyncIterator]()
+        .next()
+        .catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(ServerClientError);
+      expect((failure as ServerClientError).reason).toBe("bad-answer");
+      expect(sent).toHaveLength(1);
+      expect(waits).toEqual([]);
+    });
+
+    it("keeps throwing bad-answer when another call gets a 5xx answer", async () => {
+      // A write must not read as a refused `offline` ("nothing was sent"): the server may have sent it.
+      const { fetch, sent } = scripted(() => new Response("Service Unavailable", { status: 503 }));
+      const { messaging, waits } = client(fetch);
+
+      const failure = await messaging.send("conv-1", "Hello").catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(ServerClientError);
+      expect((failure as ServerClientError).reason).toBe("bad-answer");
       expect(sent).toHaveLength(1);
       expect(waits).toEqual([]);
     });

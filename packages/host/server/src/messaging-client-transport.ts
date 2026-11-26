@@ -91,8 +91,9 @@ export class ServerConnection {
 
   /**
    * Calls `/api/messaging/<call>`. No answer means `offline`, a 401 means
-   * `signed-out`, and a refusal's code is the port's refusal. A redirect or
-   * any other error throws.
+   * `signed-out`, and a refusal's code is the port's refusal. For `changes`
+   * only, a 5xx answer without a refusal's code also means `offline`, so the
+   * reader waits and opens it again. A redirect or any other error throws.
    */
   async send(method: "GET" | "POST", call: string, body?: unknown): Promise<ServerAnswer> {
     const headers: Record<string, string> = {
@@ -137,6 +138,8 @@ async function read(method: string, call: string, response: Response): Promise<S
   if (code !== undefined && (messagingRefusals as readonly string[]).includes(code)) {
     return { kind: "refused", reason: code as MessagingRefusal };
   }
+  // A reverse proxy answers 502 or 503 while the server restarts; `changes` waits that out.
+  if (call === "changes" && response.status >= 500) return { kind: "refused", reason: "offline" };
   throw new ServerClientError(
     `The server answered ${method} ${call} with ${response.status}.`,
     "bad-answer",
