@@ -2,6 +2,7 @@
 
 - Approval: HAL-20054; Liam reviews and signs
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:JOnvRg5MurVruoWMyL5O8CY/h0E5lsVa/W9y7pgOcfdNsCFsxGEIkX0b6PErBNYi0nUo+G+9DRw2pqsHUt67Cg==
 
 ## What changes
 
