@@ -116,15 +116,15 @@ verifies("app.integration-request-log", () => {
       ]);
     });
 
-    it.skipIf(process.platform === "win32")(
-      "[platform:win32] Windows has no file modes: writes a private file in the profile, outside the workspace",
-      async () => {
-        await storeIn(profile).addRequest(workspace, "shop", request("/v2"), code);
-        const file = join(profile, "integration-logs", workspace, "shop.jsonl");
+    it("writes a private file in the profile, outside the workspace", async () => {
+      await storeIn(profile).addRequest(workspace, "shop", request("/v2"), code);
+      const file = join(profile, "integration-logs", workspace, "shop.jsonl");
+      expect(relative(workspaceRoot, file).startsWith("..")).toBe(true);
+      // Windows has no file modes, so only the place is checked there.
+      if (process.platform !== "win32") {
         expect((await stat(file)).mode & 0o777).toBe(0o600);
-        expect(relative(workspaceRoot, file).startsWith("..")).toBe(true);
-      },
-    );
+      }
+    });
 
     it("deletes an integration's log when it is removed, and keeps the others", async () => {
       const store = storeIn(profile);
