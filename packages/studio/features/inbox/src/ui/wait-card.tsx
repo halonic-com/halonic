@@ -280,8 +280,8 @@ interface AnswerBarProps {
 /**
  * The bar under the card, none red (flow-inbox 5.1, first-run 4.3). On a phone the first answer is
  * primary and full width, the others secondary sharing a row under it. On a desktop they sit in one
- * right-aligned row at their natural width, in the step's order (HAL-19399 G8): stretched across a
- * 730 px pane they read as one bar. While one is sent it is busy and the others ignore presses but
+ * right-aligned row at their natural width with the first at the right end, as Approve is on the
+ * approval card (HAL-19399 G8): stretched across a 730 px pane they read as one bar. While one is sent it is busy and the others ignore presses but
  * keep focus.
  *
  * A step's label has no length limit, so a button keeps it on one line and ends it with an
@@ -356,7 +356,8 @@ function AnswerBar({
 
 /**
  * The answers' buttons: on a phone the first full width over a row of the others, on a desktop one
- * right-aligned row in the step's order (HAL-19399 G8).
+ * right-aligned row of the others then the first (HAL-19399 G8). Last in the DOM, not reversed by
+ * CSS, so Tab goes the way the eye does.
  */
 function AnswerButtons({
   events,
@@ -372,7 +373,8 @@ function AnswerButtons({
   if (!phone) {
     return (
       <div className="@container flex flex-wrap justify-end gap-2">
-        {events.map((event, index) => button(event, index === 0))}
+        {others.map((event) => button(event, false))}
+        {button(first, true)}
       </div>
     );
   }

@@ -7,16 +7,19 @@
 ## What changes
 
 `inbox.wait-card` (G8): on a desktop the answers sit in one right-aligned row at their natural
-width, in the step's order; the full-width first answer over a row of the others stays on the
-phone. Stretched across a 730 px pane, Approve and Reject read as one bar.
+width, the first at the right end, as Approve is on the approval card; the full-width first answer over a row of the others stays on the
+phone. Stretched across a 730 px pane, Approve and Reject read as one bar. Three tests in
+`wait-card.test.tsx` that held the buttons' desktop order now hold the new order, with the same
+labels.
 
 `shell.focus-ring-after-pointer` (G9, new): after a pointer press, a heading that code focused
-keeps focus but shows no ring; the next key press shows it again. WebKit counts every focus from
-code as visible, so the Inbox title was ringed after a click on **Open demo**.
+keeps focus but shows no ring; the next key press, not a modifier alone, shows it again. Welcome's
+start line, which code also focuses, follows the same rule. WebKit counts every focus from code as
+visible, so the Inbox title was ringed after a click on **Open demo**; the mark outlasts the frame
+Welcome swaps for the workspace's.
 
 `shell.welcome-start` and `shell.welcome-sample` (G11): while Halonic's start has turned **Open
-demo** and **Open folder** off, "New here? The demo takes about 4 minutes." is hidden, the waiting
-line sits centred, and focus moves from the turned-off button to the line, then back to the
+demo** and **Open folder** off, "New here? The demo takes about 4 minutes." is hidden and focus moves from the turned-off button to the line, then back to the
 leading button once the start is ready.
 
 `shell.welcome-sample` (G12): the **Demo** tag sits right after the name at any width, not at the
@@ -26,7 +29,7 @@ the name on both, and the row's text reads "AcmeDemo~/Documents/Acme sample".
 `inbox.approval-phone` (G14): on a phone the row under the decided line starts at the left, and
 "Nothing else is waiting for you." goes on "See what it did in Studio on your computer."
 
-The phone tab bar's count (G13) moves 2px inside the pill; `shell.phone-bars` doesn't say where,
+The phone tab bar's count (G13) moves inside the pill; `shell.phone-bars` doesn't say where,
 so its text is unchanged.
 
 No example was removed. G10 (the served Inbox's proposals line) isn't in this change: a served
