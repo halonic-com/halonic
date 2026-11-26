@@ -8,7 +8,8 @@ export type ConnectorConnection =
   | { readonly kind: "google"; readonly account: string }
   | { readonly kind: "http"; readonly url: string; readonly secrets: readonly string[] }
   | { readonly kind: "stdio"; readonly command: string; readonly secrets: readonly string[] }
-  | { readonly kind: "integration"; readonly folder: string }
+  /** `secrets` names the workspace secrets the integration gets, as its file picks them. */
+  | { readonly kind: "integration"; readonly folder: string; readonly secrets: readonly string[] }
   /** `name` is the plugin's display name, when its sheet gives one. */
   | { readonly kind: "plugin"; readonly id: string; readonly name?: string };
 

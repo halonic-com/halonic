@@ -9,6 +9,7 @@ import {
   connectorTroubleWords,
   troubleAsk,
   troubleHasLook,
+  troubleHasPasteToken,
   troubleLine,
 } from "../connector-trouble-line.ts";
 import { type RefusalLinePart, refusalLine, refusalLineText } from "../refusal-line.ts";
@@ -26,6 +27,12 @@ export interface ConnectorStatusSectionProps {
    * under a local integration's trouble; without it the line shows no button.
    */
   readonly onLook?: ((ask: string) => void) | undefined;
+  /**
+   * Moves focus to the token's entry in the page's Secrets section, for **Paste a new token**
+   * under a token the service didn't accept; without it (no Secrets section) the line shows no
+   * button.
+   */
+  readonly onPasteToken?: (() => void) | undefined;
 }
 
 /**
@@ -39,6 +46,7 @@ export function ConnectorStatusSection({
   words = engineWords["desktop-app"],
   announceState,
   onLook,
+  onPasteToken,
 }: ConnectorStatusSectionProps) {
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
   const state = useSyncExternalStore(subscribe, () => model.state);
@@ -65,6 +73,7 @@ export function ConnectorStatusSection({
               connector={state.connector}
               trouble={state.connector.trouble}
               onLook={onLook}
+              onPasteToken={onPasteToken}
             />
           )}
         </div>
@@ -93,21 +102,25 @@ export function ConnectorStatusSection({
 
 /**
  * What went wrong with a local integration's last call, as one plain line, with **Let the
- * assistant look** when new code can fix it and a chat can open. The parts are text, never markup.
+ * assistant look** when new code can fix it and a chat can open, or **Paste a new token** when a
+ * new token can and the page has its entry. The parts are text, never markup.
  */
 function TroubleLine({
   connector,
   trouble,
   onLook,
+  onPasteToken,
 }: {
   readonly connector: ConnectorStatus;
   readonly trouble: ConnectorTrouble;
   readonly onLook: ((ask: string) => void) | undefined;
+  readonly onPasteToken: (() => void) | undefined;
 }) {
   const { name, connection } = connector;
   const folder =
     connection?.kind === "integration" ? `${integrationsFolder}/${connection.folder}` : "";
   const look = onLook !== undefined && folder !== "" && troubleHasLook(trouble);
+  const pasteToken = onPasteToken !== undefined && troubleHasPasteToken(trouble);
   return (
     <div className="flex min-w-0 flex-col items-start gap-2">
       <p className="min-w-0 text-body [overflow-wrap:anywhere]">
@@ -128,6 +141,11 @@ function TroubleLine({
           onClick={() => onLook(troubleAsk(trouble, name, folder))}
         >
           {connectorTroubleWords.look}
+        </Button>
+      ) : null}
+      {pasteToken ? (
+        <Button variant="secondary" size="sm" onClick={onPasteToken}>
+          {connectorTroubleWords.pasteToken}
         </Button>
       ) : null}
     </div>

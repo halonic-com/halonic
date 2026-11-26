@@ -51,7 +51,7 @@ verifies("library.connection-summary", () => {
   });
 
   it("shows no Secrets row for an integration or a plugin, whose sheet declares its own", () => {
-    expect(rowsOf({ kind: "integration", folder: "acme-crm" })).toEqual([
+    expect(rowsOf({ kind: "integration", folder: "acme-crm", secrets: ["crm-key"] })).toEqual([
       "Transport: Local integration",
       "Folder: acme-crm",
     ]);

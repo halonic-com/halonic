@@ -69,9 +69,24 @@ function connectionOf({ transport, secret }: Connector): ConnectorConnection {
     };
   }
   if ("google" in transport) return { kind: "google", account: transport.google.account };
-  if ("integration" in transport)
-    return { kind: "integration", folder: transport.integration.folder };
+  if ("integration" in transport) {
+    const { folder, secrets } = transport.integration;
+    return { kind: "integration", folder, secrets: integrationSecretsOf(secret, secrets) };
+  }
   return { kind: "plugin", id: transport.plugin.id };
+}
+
+/**
+ * The workspace secrets a local integration gets, by name: the connector's own and the one its file
+ * picks for each secret of the integration's sheet, once each and sorted, as the trust check lists
+ * them (`secretNames`).
+ */
+function integrationSecretsOf(
+  own: string | undefined,
+  picks: Readonly<Record<string, string>> | undefined,
+): string[] {
+  const names = [...(own === undefined ? [] : [own]), ...Object.values(picks ?? {})];
+  return [...new Set(names)].sort();
 }
 
 /** Whether the list names exactly the tools a new Google connector asks first about, in any order. */

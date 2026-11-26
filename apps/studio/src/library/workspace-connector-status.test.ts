@@ -141,6 +141,15 @@ verifies("studio.workspace-connector-status", () => {
           "    args: [-y, '@acme/notes-mcp']",
           "    secretEnv: { NOTES_TOKEN: acme-notes-token }",
         ].join("\n"),
+        "library/connectors/shop.connector.yaml": [
+          "version: 1",
+          "id: shop",
+          "secret: shop-key",
+          "transport:",
+          "  integration:",
+          "    folder: shop-orders",
+          "    secrets: { api-key: shop-key, backup-key: acme-backup-key }",
+        ].join("\n"),
       }),
       refusals: new RefusalsFeed(),
       google: noGoogle,
@@ -164,6 +173,14 @@ verifies("studio.workspace-connector-status", () => {
           kind: "http",
           url: "https://search.acme.example/mcp",
           secrets: ["search-token"],
+        },
+      },
+      {
+        id: "shop",
+        connection: {
+          kind: "integration",
+          folder: "shop-orders",
+          secrets: ["acme-backup-key", "shop-key"],
         },
       },
     ]);

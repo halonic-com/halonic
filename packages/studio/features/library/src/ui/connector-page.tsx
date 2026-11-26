@@ -7,7 +7,7 @@ import {
   type ItemViewProps,
   PageBackLinkSlot,
 } from "@halonicjs/studio-shell";
-import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { takeConnectorTitleFocus } from "../connector-focus-request.ts";
 import { type ConnectorSecrets, ConnectorSecretsService } from "../connector-secrets-host.ts";
 import { type ConnectorConnection, ConnectorStatusHostService } from "../connector-status-host.ts";
@@ -49,8 +49,9 @@ function ListedToolsLine({
 
 /**
  * The store and names for the page's Secrets section, or `undefined` for none: only the desktop
- * app can write the keychain a connector's program reads its secrets from (HAL-14995), a phone
- * only views, and a connector that starts no program or declares no secret has nothing to set.
+ * app can write the keychain a connector's program or local integration reads its secrets from
+ * (HAL-14995, HAL-19445), a phone only views, and any other connector, or one that names no
+ * secret, has nothing to set here.
  */
 function secretsSectionOf(
   context: ItemViewProps["context"],
@@ -59,9 +60,8 @@ function secretsSectionOf(
   const secrets =
     context.host === "phone" ? undefined : context.services.find(ConnectorSecretsService);
   const connection = connector?.connection;
-  if (secrets === undefined || connection?.kind !== "stdio" || connection.secrets.length === 0) {
-    return undefined;
-  }
+  const local = connection?.kind === "stdio" || connection?.kind === "integration";
+  if (secrets === undefined || !local || connection.secrets.length === 0) return undefined;
   return { secrets, names: connection.secrets };
 }
 
@@ -69,12 +69,14 @@ function secretsSectionOf(
 function SecretsPart({
   section,
   sourceName,
+  focusRequest,
 }: {
   readonly section: ReturnType<typeof secretsSectionOf>;
   readonly sourceName: string;
+  readonly focusRequest: number;
 }) {
   return section === undefined ? null : (
-    <ConnectorSecretsSection {...section} sourceName={sourceName} />
+    <ConnectorSecretsSection {...section} sourceName={sourceName} focusRequest={focusRequest} />
   );
 }
 
@@ -125,6 +127,8 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
   // A trouble's **Let the assistant look** opens a Build chat about the connector (I7, HAL-19175).
   const itemChat = context.services.find(ItemChatService);
   const secretsSection = secretsSectionOf(context, connector);
+  // A 401 trouble's **Paste a new token** moves focus to the token's entry (HAL-19445).
+  const [tokenFocus, setTokenFocus] = useState(0);
   // A phone has no tabs to open the file in, so the sentence stays and the link goes.
   const desktop = usePresentation() !== "phone";
   const title = useRef<HTMLHeadingElement | null>(null);
@@ -219,7 +223,7 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
           secretsOnPage={secretsSection !== undefined}
         />
       )}
-      <SecretsPart section={secretsSection} sourceName={name} />
+      <SecretsPart section={secretsSection} sourceName={name} focusRequest={tokenFocus} />
       {connector?.connection === undefined ? null : (
         <ConnectionPart
           connection={connector.connection}
@@ -238,6 +242,9 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
                 const about = { kind: "connector", hub: item.hub, id: item.id } as const;
                 void itemChat.askAbout(about, name, context, ask);
               }
+        }
+        onPasteToken={
+          secretsSection === undefined ? undefined : () => setTokenFocus((count) => count + 1)
         }
       />
       <Sections />
