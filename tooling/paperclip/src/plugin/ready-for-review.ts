@@ -50,8 +50,18 @@ export const defaultPrecheckUrl = "http://halonic-precheck:8787";
 export const waitBudgetMs = 6_000;
 /** The pause between two reads of a running check. */
 export const pollIntervalMs = 2_000;
-/** One request to the service gives up after this long; it answers in milliseconds. */
+/**
+ * One read of a check gives up after this long. The service answers in
+ * milliseconds, except while it deletes a finished check's checkout, which
+ * stalls it for seconds (HAL-19369).
+ */
 export const requestTimeoutMs = 2_000;
+/**
+ * Starting a check may take longer: a start the tool gave up on still queues
+ * a check on the service, which nobody reads and which fills the queue.
+ * Within `waitBudgetMs`, so a slow start ends the call with RUNNING at once.
+ */
+export const startTimeoutMs = 5_000;
 /** The most of the service's summary an answer passes on, so a noisy log can't flood the agent. */
 export const summaryLimit = 4_000;
 
@@ -85,6 +95,8 @@ export interface ReadyForReviewResult {
   readonly durationS?: number;
   /** For RUNNING: the task the plugin wakes with the result, so the agent doesn't call again. */
   readonly wakeTask?: string;
+  /** For CHECK UNAVAILABLE: why, for the metrics. */
+  readonly reason?: UnavailableReason;
 }
 
 /** What a call asks for: a new check of a pushed branch, or an earlier check by its id. */
@@ -115,15 +127,41 @@ export function precheckUrl(config: Readonly<Record<string, unknown>>): string {
     : defaultPrecheckUrl;
 }
 
-/** Thrown when the service can't take or report a check; the agent goes on. */
-export class Unavailable extends Error {}
+/**
+ * Why the service couldn't take or report a check: no answer in time, no
+ * connection, a full queue, or another status (`http-5xx`, `http-4xx`).
+ */
+export type UnavailableReason = "timeout" | "unreachable" | "queue-full" | `http-${string}`;
 
-async function request(deps: ReadyForReviewDeps, url: string, init?: RequestInit) {
+/** Thrown when the service can't take or report a check; the agent goes on. */
+export class Unavailable extends Error {
+  readonly reason: UnavailableReason;
+
+  constructor(message: string, reason: UnavailableReason) {
+    super(message);
+    this.reason = reason;
+  }
+}
+
+function httpReason(status: number): UnavailableReason {
+  return `http-${String(status).charAt(0)}xx`;
+}
+
+async function request(
+  deps: ReadyForReviewDeps,
+  url: string,
+  init?: RequestInit,
+  timeoutMs = requestTimeoutMs,
+) {
   let response: Response;
   try {
-    response = await deps.fetch(url, { ...init, signal: AbortSignal.timeout(requestTimeoutMs) });
+    response = await deps.fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
   } catch (error) {
-    throw new Unavailable(`the precheck service can't be reached (${(error as Error).message})`);
+    const reason = (error as Error).name === "TimeoutError" ? "timeout" : "unreachable";
+    throw new Unavailable(
+      `the precheck service can't be reached (${(error as Error).message})`,
+      reason,
+    );
   }
   const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
   return { status: response.status, body };
@@ -135,11 +173,16 @@ async function startCheck(
   base: string,
   input: { branch: string; sha?: string },
 ): Promise<CheckView | string> {
-  const { status, body } = await request(deps, `${base}/check`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ ...input, wait: false }),
-  });
+  const { status, body } = await request(
+    deps,
+    `${base}/check`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...input, wait: false }),
+    },
+    startTimeoutMs,
+  );
   if (status === 202 && typeof body["id"] === "string") {
     return body as unknown as CheckView;
   }
@@ -147,9 +190,9 @@ async function startCheck(
     return `the precheck service refused the input: ${String(body["error"] ?? "bad input")}`;
   }
   if (status === 429) {
-    throw new Unavailable("the precheck queue is full; try again in a few minutes");
+    throw new Unavailable("the precheck queue is full; try again in a few minutes", "queue-full");
   }
-  throw new Unavailable(`the precheck service answered ${status}`);
+  throw new Unavailable(`the precheck service answered ${status}`, httpReason(status));
 }
 
 /** Reads a check once; a check the service doesn't know is a message, a failed request `Unavailable`. */
@@ -165,10 +208,14 @@ export async function readCheck(
   if (status === 404) {
     return `check ${checkId} is unknown (results are kept 24 h); start a new one with branch.`;
   }
-  throw new Unavailable(`the precheck service answered ${status}`);
+  throw new Unavailable(`the precheck service answered ${status}`, httpReason(status));
 }
 
-/** Reads the check until it is done or the call's wait budget is spent. */
+/**
+ * Reads the check until it is done or the call's wait budget is spent. A
+ * read that fails keeps the last state: the check was started and runs on,
+ * so the agent gets RUNNING with its id, not CHECK UNAVAILABLE.
+ */
 async function waitForCheck(
   deps: ReadyForReviewDeps,
   base: string,
@@ -181,7 +228,14 @@ async function waitForCheck(
       return check;
     }
     await deps.sleep(pollIntervalMs);
-    check = await readCheck(deps, base, check.id);
+    try {
+      check = await readCheck(deps, base, check.id);
+    } catch (error) {
+      if (error instanceof Unavailable) {
+        return check;
+      }
+      throw error;
+    }
   }
   return check;
 }
@@ -298,7 +352,11 @@ export async function readyForReview(
     if (!(error instanceof Unavailable)) {
       throw error;
     }
-    const result: ReadyForReviewResult = { verdict: "unavailable", summary: error.message };
+    const result: ReadyForReviewResult = {
+      verdict: "unavailable",
+      summary: error.message,
+      reason: error.reason,
+    };
     return { content: verdictText(result), data: result };
   }
 }
@@ -312,6 +370,7 @@ async function recordCheck(
 ): Promise<void> {
   const verdict = result.data?.verdict ?? "error";
   const durationS = result.data?.durationS;
+  const reason = result.data?.reason;
   await writeMetrics(
     ctx,
     {
@@ -325,6 +384,7 @@ async function recordCheck(
       tool: "ready_for_review",
       outcome: result.error === undefined ? "ok" : "error",
       result: verdict,
+      ...(reason === undefined ? {} : { reason }),
     },
   );
 }
