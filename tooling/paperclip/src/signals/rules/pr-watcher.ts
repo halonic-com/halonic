@@ -20,7 +20,8 @@ export type WakeKind =
   | "review"
   | "approved"
   | "merged"
-  | "held";
+  | "held"
+  | "required-failed";
 
 /** What the rule reads about one pull request. */
 export interface WatchedPull {
@@ -42,6 +43,8 @@ export interface WatchedPull {
   readonly githubApproved: boolean;
   /** Open only: merge control holds this head after its merge group failed. */
   readonly held: boolean;
+  /** Open only: required workflows besides CI whose newest run on the head failed; absent in older inputs. */
+  readonly requiredFailed?: readonly string[];
   /** Merged only: `ci-ok` passed on the merge commit, or a later base-branch commit is green. */
   readonly landed: boolean;
   readonly mergedAt: string | null;
@@ -123,6 +126,11 @@ function openReasons(pull: WatchedPull): Reason[] {
     [pull.ciOkOnHead === "failure", "ci-red", "ci-red"],
     [pull.conflicting && free, "conflict", "conflict"],
     [pull.retargeted && free, "retargeted", "retargeted"],
+    ...(pull.requiredFailed ?? []).map((workflow): [boolean, WakeKind, string] => [
+      !pull.draft,
+      "required-failed",
+      `${workflow} failed`,
+    ]),
     [pull.latestReview !== null, "review", `review ${pull.latestReview?.id}`],
     [pull.held, "held", "held"],
     [pull.githubApproved && free, "approved", "approved on GitHub"],

@@ -4,6 +4,7 @@ import type { OpenFacts, Snapshot, SnapshotPull } from "../snapshot/shape.ts";
 import type { CheckState, PullFacts } from "./decide.ts";
 import type { PullRef } from "./discover.ts";
 import type { GitHubGet } from "./github.ts";
+import { failedRequired } from "./required-workflows.ts";
 
 /** Says whether a green CI run on the base branch includes a merge commit. */
 export type BaseGreenSince = (repo: string, base: string, mergeCommit: string) => Promise<boolean>;
@@ -83,6 +84,7 @@ function openPullFacts(ref: PullRef, pull: SnapshotPull, open: OpenFacts): PullF
     inQueue: open.inQueue,
     retargeted: open.baseChangedSincePush === true,
     ...(open.missingChecks === undefined ? {} : { missingChecks: open.missingChecks }),
+    failedRequired: failedRequired(open.failingChecks ?? []),
     latestReview: open.finding ?? undefined,
     ...(open.headCommittedAt === undefined ? {} : { headCommittedAt: open.headCommittedAt }),
     ...(open.headCommittedByGitHub === true ? { headCommittedByGitHub: true } : {}),

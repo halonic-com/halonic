@@ -5,6 +5,13 @@ import { snapshotWith } from "../routing.test-helper.ts";
 import { routingOf } from "../routing-load.ts";
 import { judgeApprovals, signedApprovals } from "./approvals.ts";
 import { branchPath, prStatus, statusText } from "./pr-status.ts";
+import {
+  builtOnGreen,
+  builtOnRun,
+  greenRequired,
+  guardGreen,
+  requiredAnswers,
+} from "./required-workflows.test-helper.ts";
 
 const repo = "halonic-com/halonic";
 const head = "7651f8c1e4af38752f56d353156c5dd19ff54984";
@@ -23,7 +30,7 @@ function pr4588(
 ) {
   const recorded = recording("review-finding");
   const { ref = "priya/HAL-14219-engine-contract", ...rest } = pull;
-  return fakeGitHub(recorded, answers, {
+  return fakeGitHub(recorded, requiredAnswers(repo, 4588, head), answers, {
     [`${pulls}/4588`]: {
       ...(recorded[`${pulls}/4588`] as object),
       head: { sha: head, ref, repo: headRepo },
@@ -288,5 +295,26 @@ verifies("paperclip.pr-tools-reapproval", () => {
       });
       expect(judged).toEqual([{ by: "Liam", head: "bb12791", counts: true }]);
     });
+  });
+});
+
+verifies("paperclip.pr-tools-required-workflows", () => {
+  test("pr_status returns the gate's required-workflow problems and says to fix them, even with ci-ok green", async () => {
+    const noteJob = "Decision note and the guard's own paths";
+    const failed = requiredAnswers(repo, 4588, head, {
+      ...greenRequired,
+      checkRuns: [{ name: noteJob, conclusion: "failure", suite: 1 }, builtOnGreen],
+    });
+    const github = pr4588([], undefined, ours, {}, failed);
+    const status = await prStatus(github.get, repo, 4588);
+    expect(status.requiredWorkflows).toEqual([`Guard notes failure (${noteJob})`]);
+    const text = statusText({ ...status, ciOk: "success", draft: false });
+    expect(text).toContain(
+      `required workflows: ${JSON.stringify(`Guard notes failure (${noteJob})`)}`,
+    );
+    expect(text).toContain("fix the required workflows");
+    const green = await prStatus(pr4588([]).get, repo, 4588);
+    expect(green.requiredWorkflows).toEqual([]);
+    expect(statusText(green)).toContain("required workflows: ok");
   });
 });

@@ -72,7 +72,9 @@ export function ciOkOf(pull: GatePull): CiOk {
  * retarget; only its newest runs count (#4331): every run created at the
  * newest creation time, since GitHub refuses when any of them failed (#5649).
  */
-export function requiredWorkflowProblems(pull: GatePull): string[] {
+export function requiredWorkflowProblems(
+  pull: Pick<GatePull, "checks" | "retargetedAt">,
+): string[] {
   const retarget = [...pull.retargetedAt].sort().pop() ?? "";
   const problems: string[] = [];
   for (const workflow of requiredWorkflows) {

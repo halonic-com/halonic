@@ -2,6 +2,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import type { ToolResult, ToolRunContext } from "@paperclipai/plugin-sdk";
 import { createTestHarness } from "@paperclipai/plugin-sdk/testing";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { requiredAnswers } from "../pr-tools/required-workflows.test-helper.ts";
 import { recording } from "../pr-watcher/fakes.test-helper.ts";
 import { fakeMetrics } from "./fake-host.test-helper.ts";
 import { manifest } from "./manifest.ts";
@@ -31,6 +32,7 @@ const bridgeLimitMs = 15_000;
 /** #4605 from the green recording, with the further answers pr_status reads. */
 const pr4605 = {
   ...recording("green"),
+  ...requiredAnswers("halonic-com/halonic", 4605, "1939fbf169fbda4b54561c1d29e52650527d0cf9"),
   "/repos/halonic-com/halonic/pulls/4605/files?per_page=100&page=1": [
     { filename: "docs/guides/review.md" },
   ],
