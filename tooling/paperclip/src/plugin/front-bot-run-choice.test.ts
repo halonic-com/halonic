@@ -31,7 +31,10 @@ async function askAfter(answer: string, config: Record<string, unknown> = choice
   const harness = frontBotHarness({ answers: [{ reply: answer }], config });
   await harness.bot.onCommentCreated(commentCreated(harness.message.id));
   const params = { companyId: "acme", issueId: chatTaskId, commentId: harness.message.id };
-  const result = await answerRunChoice(harness.ctx, pendingMessages(), params);
+  // The harness's message is fixed in time, so the clock is too: the real one makes every
+  // stored choice "too old" ten minutes after that moment.
+  const justAfterMessage = () => new Date("2026-11-26T14:03:01Z");
+  const result = await answerRunChoice(harness.ctx, pendingMessages(), params, justAfterMessage);
   return { harness, result };
 }
 
