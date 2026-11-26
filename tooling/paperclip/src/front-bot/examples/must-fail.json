@@ -487,6 +487,15 @@
       "title": "Chat with Chief",
       "earlier": [],
       "expect": "rejected",
+      "name": "live note: a capitalised claim that the task has no context",
+      "message": "Better fix: would that need a patch?",
+      "reply": "About the better fix\nThere's no prior context in this task",
+      "reason": "context_claim"
+    },
+    {
+      "title": "Chat with Chief",
+      "earlier": [],
+      "expect": "rejected",
       "name": "a claim of missing information, after a good line",
       "message": "Better fix: would that need a patch?",
       "reply": "Good question\nnot enough information to tell",
