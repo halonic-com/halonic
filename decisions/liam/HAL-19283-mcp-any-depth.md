@@ -3,6 +3,7 @@
 - Task: HAL-19283
 - Approval: Julian's item 7 on HAL-19247 and his review of #6571; the board asked for it on HAL-19283. Julian signs, since Liam wrote the pull request
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:hYvByW/4eE/8k/qdInGUQR+Xt4x51IcQZ4+M1QKA32AKb68pJUw4HvNfGVfvS+HTkMhSAcvGJLaEpDFyG0ofBw==
 
 ## What changes
 
