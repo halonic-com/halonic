@@ -230,6 +230,9 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "owner_login",
         "owner_logout",
         "owner_status",
+        "deployment_request",
+        "deployment_stream",
+        "deployment_stream_end",
         "window_content_get",
         "window_content_set",
     ] {

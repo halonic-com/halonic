@@ -19,6 +19,8 @@ pub fn page_load<R: Runtime>(webview: &Webview<R>, payload: &PageLoadPayload<'_>
     agent_host::page_loaded(webview.app_handle());
     agent_host::end_page_streams(webview.app_handle(), webview.label());
     engine::end_page(webview.app_handle(), webview.label());
+    #[cfg(desktop)]
+    crate::deployment_calls::end_page(webview.app_handle(), webview.label());
     http_fetch::end_page_calls(webview.app_handle(), webview.label());
     #[cfg(desktop)]
     crate::actions::end_page(webview.app_handle(), webview.label());
@@ -48,6 +50,8 @@ pub fn window_event<R: Runtime>(window: &Window<R>, event: &WindowEvent) {
         .release_window(window.label());
     agent_host::end_page_streams(window.app_handle(), window.label());
     engine::end_page(window.app_handle(), window.label());
+    #[cfg(desktop)]
+    crate::deployment_calls::end_page(window.app_handle(), window.label());
     #[cfg(desktop)]
     crate::engines::window_closed(window.app_handle(), window.label());
     http_fetch::end_page_calls(window.app_handle(), window.label());

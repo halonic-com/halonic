@@ -62,6 +62,10 @@ mod background_start;
 mod blobs;
 mod command_paths;
 mod connect;
+#[cfg(desktop)]
+mod deployment_calls;
+#[cfg(desktop)]
+mod deployment_reads;
 // Debug builds only: the Keystore contract check (HAL-13784).
 #[cfg(all(target_os = "android", debug_assertions))]
 mod device_key_check;
@@ -236,6 +240,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
     #[cfg(desktop)]
     let builder = builder
         .manage(actions::ActionState::default())
+        .manage(deployment_calls::DeploymentState::default())
         .manage(updates::Updates::default())
         .manage(engines::EnginesState::default())
         .manage(tray::TrayShellState::default())
@@ -449,6 +454,12 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             owner_sign_in::owner_logout,
             #[cfg(desktop)]
             owner_sign_in::owner_status,
+            #[cfg(desktop)]
+            deployment_calls::deployment_request,
+            #[cfg(desktop)]
+            deployment_calls::deployment_stream,
+            #[cfg(desktop)]
+            deployment_calls::deployment_stream_end,
             #[cfg(desktop)]
             focused_apps::show_main_window,
             #[cfg(desktop)]

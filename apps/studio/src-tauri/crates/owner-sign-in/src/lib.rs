@@ -10,11 +10,13 @@
 //! never stored or logged.
 
 mod answer;
+mod calls;
 mod flow;
 mod hello;
 mod stored;
 
 pub use answer::{OwnerAnswer, OwnerError};
+pub use calls::{CallRefusal, DeploymentRoute, not_redirected, session_for};
 pub use flow::{
     Call, HelloAnswer, LoginAnswer, OwnerServer, owner_address, owner_origin, sign_in, sign_out,
     signed_in,
