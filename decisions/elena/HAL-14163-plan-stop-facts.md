@@ -3,6 +3,7 @@
 - Task: HAL-14163
 - Approval: /HAL/issues/HAL-14163 (Elena's plan, approved by Liam on the task, 26 Nov; takes point 1 of HAL-16574)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:89Gm9APO1xtloyE7o57FJ4deayUNyckLGXJlFHVJyIbYFlkNv1dzUndJ9FKNyKsJeGxGkl3h0cXke82IALI7BA==
 
 ## What changes
 
