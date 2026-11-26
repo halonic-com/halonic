@@ -29,7 +29,7 @@ use held::{
     Capturing, Held, MAX_SCREENS, OVERLAY_PREFIX, OpenWindows, Press, STILL_LIFETIME, SelectedBox,
     UNAVAILABLE_WINDOW, overlay_index, still_bytes,
 };
-pub use shortcut::keys;
+pub use shortcut::owns;
 
 /// The Send feedback window's label.
 pub const FEEDBACK_WINDOW: &str = "feedback";
@@ -71,7 +71,7 @@ fn held<R: Runtime>(app: &AppHandle<R>) -> MutexGuard<'_, Held> {
 /// feedback window forward when it is open, and otherwise takes the stills
 /// and opens the overlays. A press while the stills are still being taken
 /// does nothing.
-fn pressed<R: Runtime>(app: &AppHandle<R>) {
+pub fn pressed<R: Runtime>(app: &AppHandle<R>) {
     let windows = app.webview_windows();
     let open = OpenWindows {
         overlays: windows.keys().any(|label| overlay_index(label).is_some()),

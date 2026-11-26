@@ -53,6 +53,8 @@ impl IconScheme {
 
 /// A menu item's id, which the tray's click handler reads.
 pub const OPEN: &str = "open";
+/// Ask…: shows quick ask's box (HAL-18787), also where its keys don't work.
+pub const ASK: &str = "ask";
 /// The status lines' ids start with it (`status-0`, `status-1`): like Open
 /// Halonic, they open the window.
 pub const STATUS: &str = "status";
@@ -94,7 +96,7 @@ pub fn tray_view(summary: EnginesSummary, quitting: bool) -> TrayView {
             icon,
             menu: menu(
                 &[quitting_line(summary.active_runs)],
-                &[OPEN, pause_item(summary)],
+                &[ASK, OPEN, pause_item(summary)],
                 false,
             ),
         };
@@ -105,10 +107,13 @@ pub fn tray_view(summary: EnginesSummary, quitting: bool) -> TrayView {
                 "Routines aren't running".to_owned(),
                 "The background engine stopped 3 times".to_owned(),
             ],
-            vec![TRY_AGAIN, OPEN],
+            vec![TRY_AGAIN, ASK, OPEN],
         )
     } else {
-        (vec![status_line(summary)], vec![OPEN, pause_item(summary)])
+        (
+            vec![status_line(summary)],
+            vec![ASK, OPEN, pause_item(summary)],
+        )
     };
     TrayView {
         icon,
@@ -182,6 +187,7 @@ fn pause_item(summary: EnginesSummary) -> &'static str {
 fn action_text(id: &str) -> &'static str {
     match id {
         TRY_AGAIN => "Try again",
+        ASK => "Ask…",
         PAUSE => "Pause routines",
         RESUME => "Resume routines",
         _ => "Open Halonic",

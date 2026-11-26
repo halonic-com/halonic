@@ -69,7 +69,9 @@ verifies("studio.app-icons", () => {
       expect(shell).toContain(`include_bytes!("../icons/apps/${app}.rgba")`);
     }
     expect(read("icons/apps/inbox.rgba").equals(read("icons/apps/messenger.rgba"))).toBe(false);
-    expect(text("src/window.rs")).toContain("window.set_icon(app.icon())");
+    // Quick ask's window has no icon of its own, so `icon()` is optional.
+    expect(text("src/window.rs")).toContain("if let Some(icon) = app.icon()");
+    expect(text("src/window.rs")).toContain("window.set_icon(icon)");
   });
 
   it("installs each focused app's icon and gives its shortcut that icon", () => {

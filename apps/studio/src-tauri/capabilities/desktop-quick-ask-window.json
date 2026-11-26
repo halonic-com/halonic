@@ -1,0 +1,16 @@
+{
+  "identifier": "desktop-quick-ask-window",
+  "description": "On desktop, quick ask's box (the ask window, HAL-18787) may hide itself through plugin:quick-ask|hide, on Esc or a click beside the box. The command takes nothing and hides only the calling window, and is refused from any other. The box can't read or change its keys, and no page can register a key or hear one. It is local only, so the Studio the computer serves gets nothing.",
+  "local": true,
+  "windows": [
+    "ask"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "quick-ask:allow-hide"
+  ]
+}

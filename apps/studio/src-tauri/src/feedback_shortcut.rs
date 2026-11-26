@@ -1,44 +1,33 @@
-//! The feedback shortcut's keys (HAL-18778): the global-shortcut plugin,
-//! registered from Rust only with the one feedback shortcut, and the
-//! command that changes it. No capability grants the plugin's commands, so
-//! no page can register a key or hear one.
+//! The feedback shortcut's keys (HAL-18778): registered from Rust only,
+//! through the global-shortcut plugin it shares with quick ask
+//! (`global_keys.rs`), and the command that changes them. No capability
+//! grants the plugin's commands, so no page can register a key or hear one.
 
 use std::future::Future;
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
 use serde_json::Value;
 use tauri::async_runtime::Mutex as AsyncMutex;
-use tauri::{AppHandle, Builder, Manager, Runtime};
-use tauri_plugin_global_shortcut::{GlobalShortcut, Shortcut, ShortcutState};
+use tauri::{AppHandle, Manager, Runtime};
+use tauri_plugin_global_shortcut::Shortcut;
 
 use super::held::{saved_shortcut, shortcut_of};
-use super::{FeedbackCapture, log, pressed};
+use super::{FeedbackCapture, log};
+use crate::global_keys::shortcuts;
 
 /// The host setting that holds the shortcut, as the plugin writes it.
 pub const SHORTCUT_SETTING: &str = "feedback.shortcut";
 
-/// The global-shortcut plugin, whose only key is the feedback shortcut.
-/// Left out on Linux without an X display, which has no global keys: the
-/// plugin would stop Studio starting.
-pub fn keys<R: Runtime>(builder: Builder<R>) -> Builder<R> {
-    if cfg!(target_os = "linux") && std::env::var_os("DISPLAY").is_none() {
-        return builder;
-    }
-    builder.plugin(
-        tauri_plugin_global_shortcut::Builder::new()
-            .with_handler(|app, _shortcut, event| {
-                if event.state == ShortcutState::Pressed {
-                    pressed(app);
-                }
-            })
-            .build(),
-    )
-}
-
-/// The global-shortcut plugin, when Studio started with it.
-fn shortcuts<R: Runtime>(app: &AppHandle<R>) -> Option<&GlobalShortcut<R>> {
-    app.try_state::<GlobalShortcut<R>>()
-        .map(|state| state.inner())
+/// Whether `shortcut` is the registered feedback shortcut. A press while
+/// the shortcut is being changed is nobody's, so the handler never waits
+/// on the change.
+pub fn owns<R: Runtime>(app: &AppHandle<R>, shortcut: &Shortcut) -> bool {
+    app.try_state::<FeedbackCapture>().is_some_and(|state| {
+        state
+            .shortcut
+            .try_lock()
+            .is_ok_and(|registered| *registered == Some(*shortcut))
+    })
 }
 
 /// Registers the saved shortcut. It reads the profile, so it runs off the
