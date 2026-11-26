@@ -2,6 +2,7 @@
 
 - Approval: the board's feedback of 26 Nov on the feedback shortcut (HAL-18563), carried by the board's pull request halonic#6387 and taken over on Paperclip task HAL-19270
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:V+jexUa5RboioXCCGRKy7z0V1Ke8FufbGDameikYE0fn1gwfTk0f6DI0hmfLgWKl7dddbohmVNH+yTCDOT7MDg==
 
 The board decided on 26 Nov that the feedback shortcut is Ctrl+Shift+F (⌘⇧F on macOS), heard only
 by the focused Studio, Halonic Inbox or Halonic Messenger window, with no system-wide key. The
