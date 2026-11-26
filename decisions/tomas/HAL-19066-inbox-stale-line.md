@@ -3,6 +3,7 @@
 - Task: HAL-19066
 - Approval: HAL-19066 asks for this fix; Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:aQ4zqs+/XNbkoLUSdlkh2PEoZt56k/Aq2damtpMUP5Ogcg65SpwflDG/LNRtNUIY1eTnKfXxp1CjQhVzcFiEAQ==
 
 ## What changes
 
