@@ -4,6 +4,8 @@ import {
   FeedbackOutbox,
   type FeedbackStore,
   maxWaiting,
+  maxWaitingBytes,
+  type OutboxParts,
   type SendOutcome,
   type WaitingFeedback,
 } from "./outbox.ts";
@@ -19,25 +21,51 @@ function task(title: string): FeedbackTask {
   };
 }
 
-/** A store kept in memory, as Studio's would be on disk: the list, and one file per screenshot. */
+/**
+ * A store kept in memory, as Studio's IndexedDB one is: one entry per feedback, by its ID, with
+ * its screenshot. It lists newest first, so a test sees the outbox sort by when each was kept.
+ */
 class MemoryStore implements FeedbackStore {
-  saved: readonly WaitingFeedback[] = [];
+  readonly entries = new Map<string, WaitingFeedback>();
   readonly images = new Map<string, Uint8Array>();
-  async load() {
-    return this.saved;
+  /** The waiting feedback's titles, oldest first. */
+  get titles(): string[] {
+    return [...this.entries.values()].map((each) => each.task.title);
   }
-  async save(waiting: readonly WaitingFeedback[]) {
-    this.saved = waiting;
+  async list() {
+    return [...this.entries.values()].reverse();
   }
-  async saveImage(id: string, image: Uint8Array) {
-    this.images.set(id, image);
+  async add(feedback: WaitingFeedback, image: Uint8Array | null) {
+    this.entries.set(feedback.id, feedback);
+    if (image !== null) this.images.set(feedback.id, image);
+  }
+  async update(feedback: WaitingFeedback) {
+    this.entries.set(feedback.id, feedback);
   }
   async loadImage(id: string) {
     return this.images.get(id) ?? null;
   }
-  async deleteImage(id: string) {
+  async remove(id: string) {
+    this.entries.delete(id);
     this.images.delete(id);
   }
+}
+
+/** The outbox's IDs, clock and dropped list: `waiting-1`, `waiting-2` …, kept a second apart. */
+function partsFor(dropped: string[] = [], firstId = "waiting"): OutboxParts {
+  let next = 0;
+  let clock = 0;
+  return {
+    newId: () => {
+      next += 1;
+      return `${firstId}-${next}`;
+    },
+    now: () => {
+      clock += 1000;
+      return clock;
+    },
+    dropped: (feedback) => dropped.push(feedback.task.title),
+  };
 }
 
 /** A Paperclip that answers with `answer` for each task and numbers the tasks it creates. */
@@ -61,13 +89,13 @@ function paperclip(answer: (title: string) => SendOutcome | "sent") {
   return { sender, created };
 }
 
-function outboxWith(store: MemoryStore, answer: (title: string) => SendOutcome | "sent") {
-  let next = 0;
+function outboxWith(
+  store: MemoryStore,
+  answer: (title: string) => SendOutcome | "sent",
+  dropped: string[] = [],
+) {
   const { sender, created } = paperclip(answer);
-  const outbox = new FeedbackOutbox(store, sender, () => {
-    next += 1;
-    return `waiting-${next}`;
-  });
+  const outbox = new FeedbackOutbox(store, sender, partsFor(dropped));
   return { outbox, created };
 }
 
@@ -141,7 +169,7 @@ verifies("feedback.outbox", () => {
 
     expect(created).toEqual(["First"]);
     expect(report.waiting).toBe(2);
-    expect(store.saved.map((each) => each.task.title)).toEqual(["Second", "Third"]);
+    expect(store.titles).toEqual(["Second", "Third"]);
   });
 
   it("returns a refusal without keeping the feedback", async () => {
@@ -152,7 +180,7 @@ verifies("feedback.outbox", () => {
       kind: "refused",
       reason: "project not found",
     });
-    expect(store.saved).toEqual([]);
+    expect(store.entries.size).toBe(0);
   });
 
   it("gives up on waiting feedback Paperclip refuses three times, with the reason", async () => {
@@ -165,7 +193,10 @@ verifies("feedback.outbox", () => {
     online = true;
 
     expect((await outbox.flush()).givenUp).toEqual([]);
-    expect(store.saved[0]).toMatchObject({ refusals: 1, lastRefusal: "assignee not found" });
+    expect(store.entries.get("waiting-1")).toMatchObject({
+      refusals: 1,
+      lastRefusal: "assignee not found",
+    });
     expect((await outbox.flush()).givenUp).toEqual([]);
     const report = await outbox.flush();
 
@@ -173,17 +204,6 @@ verifies("feedback.outbox", () => {
       ["For a gone agent", "assignee not found"],
     ]);
     expect(report.waiting).toBe(0);
-  });
-
-  it("keeps no more than the limit and says it is full", async () => {
-    const store = new MemoryStore();
-    const { outbox } = outboxWith(store, () => ({ kind: "offline" }));
-    for (let index = 0; index < maxWaiting; index += 1) {
-      await outbox.submit(task(`Feedback ${index}`), null);
-    }
-
-    expect(await outbox.submit(task("One too many"), null)).toEqual({ kind: "full" });
-    expect(await outbox.waiting()).toBe(maxWaiting);
   });
 
   it("loses no feedback kept while a pass is sending, and joins a pass already running", async () => {
@@ -206,7 +226,7 @@ verifies("feedback.outbox", () => {
             : { kind: "offline" };
         },
       },
-      () => "late-1",
+      partsFor([], "late"),
     );
     await outbox.submit(task("First"), null);
     online = true;
@@ -218,7 +238,7 @@ verifies("feedback.outbox", () => {
     const report = await pass;
 
     expect(report.sent.map((each) => each.feedback.task.title)).toEqual(["First"]);
-    expect(store.saved.map((each) => each.task.title)).toEqual(["Late"]);
+    expect(store.titles).toEqual(["Late"]);
   });
 });
 
@@ -245,7 +265,7 @@ verifies("feedback.outbox-retry", () => {
         return { kind: "sent", taskId, taskUrl: `https://paperclip.example/ACME/issues/${taskId}` };
       },
     };
-    const outbox = new FeedbackOutbox(store, sender, () => "feedback-1");
+    const outbox = new FeedbackOutbox(store, sender, partsFor([], "feedback"));
     const image = new Uint8Array([137, 80, 78, 71]);
 
     expect(await outbox.submit(shotTask("Lost reply"), image)).toEqual({
@@ -260,7 +280,7 @@ verifies("feedback.outbox-retry", () => {
     expect(report.sent.map((each) => each.taskId)).toEqual(["ACME-1"]);
   });
 
-  it("keeps screenshots out of the waiting list, one file each, deleted once sent", async () => {
+  it("lists the waiting feedback without screenshots, and removes each with its own", async () => {
     const store = new MemoryStore();
     let online = false;
     const { outbox } = outboxWith(store, () => (online ? "sent" : { kind: "offline" }));
@@ -269,11 +289,12 @@ verifies("feedback.outbox-retry", () => {
     await outbox.submit(shotTask("With a screenshot"), image);
     await outbox.submit(task("Without one"), null);
 
-    expect(store.saved.map((each) => Object.keys(each).sort())).toEqual([
-      ["id", "lastRefusal", "refusals", "task"],
-      ["id", "lastRefusal", "refusals", "task"],
+    const listed = await store.list();
+    expect(listed.map((each) => [each.task.title, each.imageBytes])).toEqual([
+      ["Without one", 0],
+      ["With a screenshot", 8],
     ]);
-    expect(JSON.stringify(store.saved)).not.toContain("137");
+    expect(JSON.stringify(listed)).not.toContain("137");
     expect([...store.images.keys()]).toEqual(["waiting-1"]);
 
     online = true;
@@ -281,17 +302,53 @@ verifies("feedback.outbox-retry", () => {
 
     expect(store.images.size).toBe(0);
   });
+});
 
-  it("deletes the screenshot of a feedback it can't keep because the list is full", async () => {
+verifies("feedback.outbox-cap", () => {
+  it("drops the oldest past 50 waiting, and says which it dropped", async () => {
     const store = new MemoryStore();
-    const { outbox } = outboxWith(store, () => ({ kind: "offline" }));
+    const dropped: string[] = [];
+    const { outbox } = outboxWith(store, () => ({ kind: "offline" }), dropped);
     for (let index = 0; index < maxWaiting; index += 1) {
       await outbox.submit(task(`Feedback ${index}`), null);
     }
 
-    expect(await outbox.submit(shotTask("One too many"), new Uint8Array([1]))).toEqual({
-      kind: "full",
-    });
+    expect(await outbox.submit(task("One more"), null)).toEqual({ kind: "saved", until: "online" });
+    expect(await outbox.waiting()).toBe(maxWaiting);
+    expect(dropped).toEqual(["Feedback 0"]);
+    expect(store.titles.at(-1)).toBe("One more");
+  });
+
+  it("drops the oldest until the screenshots fit in 100 MB", async () => {
+    const store = new MemoryStore();
+    const dropped: string[] = [];
+    const { outbox } = outboxWith(store, () => ({ kind: "offline" }), dropped);
+    // Each screenshot is a quarter of the cap and a byte, so three fit and a fourth doesn't.
+    const quarter = () => new Uint8Array(maxWaitingBytes / 4 + 1);
+    await outbox.submit(shotTask("First"), quarter());
+    await outbox.submit(task("No screenshot"), null);
+    await outbox.submit(shotTask("Second"), quarter());
+    await outbox.submit(shotTask("Third"), quarter());
+    expect(dropped).toEqual([]);
+
+    await outbox.submit(shotTask("Fourth"), quarter());
+
+    expect(dropped).toEqual(["First"]);
+    expect(store.titles).toEqual(["No screenshot", "Second", "Third", "Fourth"]);
+    expect(store.images.has("waiting-1")).toBe(false);
+  });
+
+  it("deletes the screenshot of a feedback it drops to keep the cap", async () => {
+    const store = new MemoryStore();
+    const { outbox } = outboxWith(store, () => ({ kind: "offline" }));
+    await outbox.submit(shotTask("Oldest"), new Uint8Array([1]));
+    for (let index = 1; index < maxWaiting; index += 1) {
+      await outbox.submit(task(`Feedback ${index}`), null);
+    }
+
+    await outbox.submit(task("One more"), null);
+
+    expect(store.entries.has("waiting-1")).toBe(false);
     expect(store.images.size).toBe(0);
   });
 });
