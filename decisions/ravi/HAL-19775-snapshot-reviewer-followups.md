@@ -3,6 +3,7 @@
 - Task: HAL-19775
 - Approval: HAL-19775, from Liam's review of #6566 (HAL-19653), which offered either the same fallback or narrower wording
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:7AJBLBSrJnJwtrl0CXupArj63GU1NJ8QisHb2telq8mi8g9Ly6BTnrM7hnSANo4jbrvSyoCGaWyrBU5Az8t6Aw==
 
 ## What changes
 
