@@ -66,6 +66,19 @@ verifies("kit.plain-row-size", () => {
     expect(classesOf(line?.firstElementChild)).toContain("text-body");
   });
 
+  it("keeps a PlainRow without a picture at the 56px row, 12px padded", () => {
+    const { container } = render(
+      <PlainList label="Recent chats">
+        <PlainRow id="login" picture={null} title="Fix the login test" onSelect={() => undefined} />
+      </PlainList>,
+    );
+    const button = container.querySelector("button") as HTMLButtonElement;
+
+    expect(classesOf(button)).toEqual(expect.arrayContaining(["min-h-14", "py-3"]));
+    expect(classesOf(button)).not.toContain("min-h-20");
+    expect(classesOf(button)).not.toContain("py-2.5");
+  });
+
   it("draws a plain List's row at least 80px high with a 60px avatar, a 15px title, a 14px line", () => {
     const { inside, leading, title, meta } = renderListRow(true);
 
