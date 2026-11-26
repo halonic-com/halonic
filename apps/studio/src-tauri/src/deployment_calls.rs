@@ -137,19 +137,19 @@ pub(crate) async fn open_stream<R: Runtime>(
     prepare: impl Future<Output = Result<reqwest::RequestBuilder, DeploymentRefusal>>,
     channel: Channel<EngineStreamMessage>,
 ) -> Result<DeploymentStreamStart, DeploymentRefusal> {
-    let mut request = prepare.await?.header(ACCEPT, "text/event-stream");
-    if let Some(after) = after {
-        request = request.header("Last-Event-ID", after.to_string());
-    }
     let key = StreamKey {
         page: webview.label().to_owned(),
         stream,
     };
     let state = webview.state::<DeploymentState>();
-    let serial = state.streams.open_tagged(&key, origin).map_err(open_refusal)?;
-    let opened = tokio::time::timeout(REQUEST_TIMEOUT, opening_of(request))
-        .await
-        .unwrap_or_else(|_| Err(OwnerError::NotAnswering.into()));
+    // Noted before the keychain read and the name lookup, which may take
+    // seconds, so that the page can end the stream, or a reload end it,
+    // meanwhile (HAL-20149).
+    let serial = state
+        .streams
+        .open_tagged(&key, origin)
+        .map_err(open_refusal)?;
+    let opened = opening_after(&state.streams, &key, serial, prepare, after).await;
     let response = match opened {
         Ok(Ok(response)) => response,
         Ok(Err(answer)) => {
@@ -174,6 +174,28 @@ pub(crate) async fn open_stream<R: Runtime>(
         return Err(DeploymentRefusal::new("streamEnded"));
     }
     Ok(DeploymentStreamStart::Opened { stream })
+}
+
+/// Prepares the stream's request, then sends it from after the event
+/// `after` (as `Last-Event-ID`): the open stream, or the server's refusal.
+/// A stream the page ended while it was prepared calls nothing.
+async fn opening_after(
+    streams: &PageStreams,
+    key: &StreamKey,
+    serial: u64,
+    prepare: impl Future<Output = Result<reqwest::RequestBuilder, DeploymentRefusal>>,
+    after: Option<u64>,
+) -> Result<Result<reqwest::Response, DeploymentAnswer>, DeploymentRefusal> {
+    let mut request = prepare.await?.header(ACCEPT, "text/event-stream");
+    if !streams.holds(key, serial) {
+        return Err(DeploymentRefusal::new("streamEnded"));
+    }
+    if let Some(after) = after {
+        request = request.header("Last-Event-ID", after.to_string());
+    }
+    tokio::time::timeout(REQUEST_TIMEOUT, opening_of(request))
+        .await
+        .unwrap_or_else(|_| Err(OwnerError::NotAnswering.into()))
 }
 
 /// Ends a stream the page no longer reads. An id that has ended is fine.
