@@ -93,6 +93,22 @@ export type {
   SentSignal,
 } from "./run-summary.ts";
 export type { RunTask } from "./run-task.ts";
+export type {
+  AnswerHandle,
+  AnswerPayload,
+  AnswerPayloadSchema,
+  RunView,
+  RunViewAsk,
+  RunViewEvent,
+  RunViewFailure,
+  RunViewFile,
+  RunViewMarks,
+  RunViewMessage,
+  RunViewWaitsFor,
+  WaitingPoint,
+} from "./run-view.ts";
+export { maxRunViewMessageLength, toRunViewEvents } from "./run-view-events.ts";
+export { runViewFailureSentence, runViewWords } from "./run-view-words.ts";
 export type { LoggedSandboxBlock, SandboxBlock } from "./sandbox-blocked.ts";
 export { maxBlockedTargetsPerStep, sandboxBlockedView } from "./sandbox-blocked.ts";
 export type {
@@ -109,6 +125,12 @@ export { deniedPathGroupCodes, sandboxOpenedView } from "./sandbox-opened.ts";
 export { readSandboxOpened } from "./sandbox-opened-read.ts";
 export { summarize } from "./summarize.ts";
 export { entryOf } from "./timeline-entry.ts";
+export {
+  type HandleOf,
+  maxAnswerMessageLength,
+  maxRunViewTitleLength,
+  toRunView,
+} from "./to-run-view.ts";
 export {
   maxCauseHostLength,
   maxCauseNameLength,
