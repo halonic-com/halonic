@@ -8,7 +8,9 @@ import {
   type Conversation,
   channelMembersFit,
   type InboxAnswer,
+  type InboxClosedReason,
   type InboxItem,
+  type InboxItemState,
   type Message,
   type MessageSendOptions,
   type MessagingAgent,
@@ -22,6 +24,7 @@ import {
   type WorkItem,
 } from "@halonicjs/ports";
 import { FakeAgentFiles, type FakeAttachment } from "./fake-agent-files.ts";
+import { frozenHeld, type Held, settledAnswer } from "./fake-agent-held.ts";
 import { searchHits } from "./fake-agent-search.ts";
 import { copy, refused } from "./fake-agent-values.ts";
 import { Feed } from "./feed.ts";
@@ -44,15 +47,6 @@ export interface FakeAgentMessagingOptions {
   channels?: boolean;
 }
 
-/** Everything a source holds, live or as it was when its line was cut. */
-interface Held {
-  agents: MessagingAgent[];
-  conversations: Conversation[];
-  messages: Message[];
-  inbox: InboxItem[];
-  work: WorkItem[];
-}
-
 const me: MessagingAuthor = { kind: "me" };
 
 /** The source of an item that names one. */
@@ -66,7 +60,7 @@ const bySource = (item: { source: MessagingId }): MessagingId => item.source;
  *
  * A test adds sources and fills them with `addAgent`, `addConversation`,
  * `addMessage`, `addInboxItem` and `addWork`, plays another client with
- * `answerElsewhere`, and cuts a source's line with `goOffline`. Items and messages take files
+ * `answerElsewhere` and `closeElsewhere`, and cuts a source's line with `goOffline`. Items and messages take files
  * (`attachments`), whose bytes only `readAttachment` gives. Offline, that
  * source's items read as they were when the line was cut, and writes to it
  * are refused with `offline`, never queued. A channel is a conversation with
@@ -151,10 +145,8 @@ export class FakeAgentMessaging implements AgentMessaging {
     if (found === undefined) return Promise.resolve({ outcome: "refused", reason: "not-found" });
     const refusal = this.refusal(found.source);
     if (refusal !== undefined) return Promise.resolve({ outcome: "refused", reason: refusal });
-    if (found.state.kind === "answered") {
-      const { by, answeredAt } = found.state;
-      return Promise.resolve({ outcome: "already-answered", by, answeredAt });
-    }
+    const settled = settledAnswer(found.state);
+    if (settled !== undefined) return Promise.resolve(settled);
     if (!answerFitsItem(found, answer)) {
       return Promise.resolve({ outcome: "refused", reason: "bad-answer" });
     }
@@ -359,28 +351,28 @@ export class FakeAgentMessaging implements AgentMessaging {
 
   /** Another client answers an inbox item first. */
   answerElsewhere(item: MessagingId, by: MessagingAuthor, answer: InboxAnswer): void {
-    const found = this.live.inbox.find((each) => each.id === item);
-    if (found === undefined) throw new Error(`no inbox item has the id ${item}`);
-    found.state = { kind: "answered", by, answer, answeredAt: this.stamp() };
-    this.changed(found.source);
+    this.settleElsewhere(item, { kind: "answered", by, answer, answeredAt: this.stamp() });
+  }
+
+  /** The item closes unanswered elsewhere: someone cancelled it, or its time ran out. */
+  closeElsewhere(item: MessagingId, reason: InboxClosedReason, by?: MessagingAuthor): void {
+    const closedAt = this.stamp();
+    this.settleElsewhere(item, {
+      kind: "closed",
+      reason,
+      closedAt,
+      ...(by !== undefined && { by }),
+    });
   }
 
   /** Cuts a source's line: its items read as they are now, as of its last read, and writes to it are refused. */
   goOffline(source: MessagingId): void {
     const held = this.sourceOf(source);
     if (held.state.kind !== "online") return;
-    const pick = <Item extends { source: MessagingId }>(items: Item[]) =>
-      copy(items.filter((each) => each.source === source));
-    const messages = this.live.messages.filter(
-      (each) => this.sourceOfConversation(each.conversation) === source,
+    this.frozen.set(
+      source,
+      frozenHeld(this.live, source, (each) => this.sourceOfConversation(each)),
     );
-    this.frozen.set(source, {
-      agents: pick(this.live.agents),
-      conversations: pick(this.live.conversations),
-      messages: copy(messages),
-      inbox: pick(this.live.inbox),
-      work: pick(this.live.work),
-    });
     held.state = { kind: "offline", asOf: held.state.asOf };
     this.changed(source, true);
   }
@@ -404,6 +396,13 @@ export class FakeAgentMessaging implements AgentMessaging {
       (held) => held.messages,
       (message) => this.sourceOfConversation(message.conversation),
     );
+  }
+
+  private settleElsewhere(item: MessagingId, state: InboxItemState): void {
+    const found = this.live.inbox.find((each) => each.id === item);
+    if (found === undefined) throw new Error(`no inbox item has the id ${item}`);
+    found.state = state;
+    this.changed(found.source);
   }
 
   private add<Key extends keyof Held>(

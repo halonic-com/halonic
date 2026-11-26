@@ -162,6 +162,7 @@ const isSentMessage = exactly(
 const isMessagingResult = anyOf(
   exactly({ outcome: oneOf("answered"), answeredAt: isText }),
   exactly({ outcome: oneOf("already-answered"), by: isAuthor, answeredAt: isText }),
+  exactly({ outcome: oneOf("closed"), reason: oneOf("cancelled", "expired"), closedAt: isText }),
   exactly({ outcome: oneOf("refused"), reason: isMessagingRefusal }),
   exactly({ outcome: oneOf("sent"), message: isSentMessage }),
 );

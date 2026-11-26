@@ -297,6 +297,10 @@ function sentAfter(result: AnswerResult, chosen: InboxAnswer): Sent {
       return { kind: "answered", answer: chosen, answeredAt: result.answeredAt };
     case "already-answered":
       return { kind: "elsewhere", by: result.by, answeredAt: result.answeredAt };
+    case "closed":
+      // The card closed unanswered before this answer arrived: its own state says so once it
+      // is read again, as an answer elsewhere does (HAL-19496).
+      return { kind: "idle" };
     case "refused":
       // Offline or signed out, the source's own line says so once it is read again. Any other
       // refusal is a failure the card shows, never a silent reset (HAL-19350). An answer that

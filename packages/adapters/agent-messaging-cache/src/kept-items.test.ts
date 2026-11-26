@@ -163,6 +163,13 @@ const answered = {
 
 const open = { kind: "open" } satisfies Required<Extract<InboxItemState, { kind: "open" }>>;
 
+const closed = {
+  kind: "closed",
+  reason: "cancelled",
+  closedAt: "2026-11-26T09:00:00.000Z",
+  by: person,
+} satisfies Required<Extract<InboxItemState, { kind: "closed" }>>;
+
 const item = {
   id: "item-1",
   source: "acme",
@@ -269,6 +276,14 @@ verifies("agent-host.agent-messaging-cache", () => {
     it("keeps an open item's state", () => {
       const openItem = { ...item, state: open };
       expect(keptInboxItem(openItem)).toEqual(openItem);
+    });
+
+    it("keeps every field of a closed item's state, and none it doesn't have", () => {
+      const closedItem = { ...item, state: closed };
+      expect(keptInboxItem(closedItem)).toEqual(closedItem);
+      const { by: _by, ...nobody } = closed;
+      const expiredItem = { ...item, state: { ...nobody, reason: "expired" as const } };
+      expect(keptInboxItem(expiredItem)).toEqual(expiredItem);
     });
 
     it("keeps every field of a person author, on an item, its answer and a message", () => {

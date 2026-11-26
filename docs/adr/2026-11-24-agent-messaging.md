@@ -378,3 +378,23 @@ such a card showed nothing to tick (HAL-18762, from a board report on HAL-10).
 
 A new answer kind breaks every exhaustive `switch` on `InboxAnswer`, as
 `action-result` did in version 3, so this is a version bump.
+
+## Version 6: items closed without an answer (26 Nov 2026)
+
+A Paperclip card can end without a decision: someone cancels it, or its time
+runs out. Version 5 could say only `open` or `answered`, so the Paperclip
+provider dropped such a card and it vanished from Messenger and Inbox without a
+reason (HAL-19496, from a board report on HAL-10).
+`agentMessagingVersion` is 6 (`contracts.agent-messaging-closed`).
+
+- **The `closed` state** carries `reason` (`cancelled` or `expired`, nothing
+  else), `closedAt`, and `by` only when the source says who closed it. A
+  provider maps any other unanswered end, such as Paperclip's `failed`, to
+  `cancelled`: for the person the card ended without a decision.
+- **The `closed` answer outcome**: an answer to a closed item answers nothing
+  and gives back its reason and time, as `already-answered` does for an
+  answered one, so an app can show the item's final state at once.
+
+A new state breaks every exhaustive `switch` on `InboxItemState` and
+`AnswerResult`, so this is a version bump. A local copy made with version 5
+reads as missing and is read again.

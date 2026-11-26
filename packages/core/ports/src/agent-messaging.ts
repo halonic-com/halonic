@@ -10,8 +10,9 @@ import type { InboxStepperRequest } from "./agent-messaging-steppers.ts";
  * items and the `action-result` answer (ADR 2026-11-24, AgentMessaging version 3). Version 4 adds
  * channels: conversations with several agents (ADR 2026-11-24, agent messaging, "Version 4").
  * Version 5 adds items that ask several questions and the `answers` answer (same ADR, "Version 5").
+ * Version 6 adds items closed unanswered: the `closed` state and answer outcome (same ADR, "Version 6").
  */
-export const agentMessagingVersion = 5;
+export const agentMessagingVersion = 6;
 
 /**
  * An item's ID, opaque to apps: only the provider that made it reads it. It
@@ -215,10 +216,18 @@ export type InboxAnswer =
   | InboxQuestionsAnswer
   | ActionResultAnswer;
 
-/** Whether an inbox item still waits, and if not, who answered it and how. */
+/** Why an inbox item closed without an answer: someone cancelled it, or its time ran out. */
+export type InboxClosedReason = "cancelled" | "expired";
+
+/**
+ * Whether an inbox item still waits, and if not, who answered it and how, or why it closed
+ * unanswered (requirement `contracts.agent-messaging-closed`). A closed item names `by` only when
+ * the source says who closed it.
+ */
 export type InboxItemState =
   | { kind: "open" }
-  | { kind: "answered"; by: MessagingAuthor; answer: InboxAnswer; answeredAt: string };
+  | { kind: "answered"; by: MessagingAuthor; answer: InboxAnswer; answeredAt: string }
+  | { kind: "closed"; reason: InboxClosedReason; closedAt: string; by?: MessagingAuthor };
 
 /** A project in a source, such as a Paperclip project. Apps filter the Inbox by it. */
 export interface MessagingProject {
@@ -327,10 +336,14 @@ export type MessagingRefusal =
   | "bad-members"
   | "not-supported";
 
-/** What answering an inbox item did. An item is answered once; the source decides who was first. */
+/**
+ * What answering an inbox item did. An item is answered once; the source decides who was first.
+ * An item that closed unanswered takes no answer: `closed` says why and when.
+ */
 export type AnswerResult =
   | { outcome: "answered"; answeredAt: string }
   | { outcome: "already-answered"; by: MessagingAuthor; answeredAt: string }
+  | { outcome: "closed"; reason: InboxClosedReason; closedAt: string }
   | { outcome: "refused"; reason: MessagingRefusal };
 
 /** What sending a message did. */

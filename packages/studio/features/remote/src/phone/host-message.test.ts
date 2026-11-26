@@ -202,6 +202,11 @@ verifies("remote.phone-messaging-client", () => {
         replyTo: "p-4",
         result: { outcome: "already-answered", by: { kind: "me" }, answeredAt: "now" },
       },
+      {
+        type: "msg-result",
+        replyTo: "p-4",
+        result: { outcome: "closed", reason: "expired", closedAt: "now" },
+      },
       { type: "msg-result", replyTo: "p-4", result: { outcome: "sent", message: sent } },
       { type: "msg-changed", source: "acme" },
     ]) {
