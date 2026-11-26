@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { RecentWorkspaces } from "@halonicjs/studio-feature-workspace";
+import type { OpenExternal } from "@halonicjs/studio-kit";
 import type { FocusedWindowProps } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -9,15 +10,19 @@ import { type StartedStudio, startStudio } from "./start-studio.ts";
 /** Every set of props a focused app's window was drawn with, in order. */
 const focusedWindowsDrawn = vi.hoisted((): FocusedWindowProps[] => []);
 
+/** The `openExternal` each focused window was drawn with, in order. */
+const focusedWindowOpeners = vi.hoisted((): (OpenExternal | undefined)[] => []);
+
 // The shell's own focused window, recording what it's drawn with: the region format reaches the
 // app's times only through these props (`kit.time-stamp`).
 vi.mock("@halonicjs/studio-shell", async (importOriginal) => {
   const shell = await importOriginal<typeof import("@halonicjs/studio-shell")>();
   return {
     ...shell,
-    mountFocusedWindow: (element: Element, props: FocusedWindowProps) => {
+    mountFocusedWindow: (element: Element, props: FocusedWindowProps, open?: OpenExternal) => {
       focusedWindowsDrawn.push(props);
-      const mounted = shell.mountFocusedWindow(element, props);
+      focusedWindowOpeners.push(open);
+      const mounted = shell.mountFocusedWindow(element, props, open);
       return {
         unmount: () => mounted.unmount(),
         update: (next: FocusedWindowProps) => {
@@ -97,6 +102,7 @@ afterEach(async () => {
   started = undefined;
   element.remove();
   focusedWindowsDrawn.length = 0;
+  focusedWindowOpeners.length = 0;
 });
 
 function start(label: string, remembered = true, called: string[] = [], region?: string) {
@@ -215,6 +221,34 @@ verifies("kit.time-stamp", () => {
     await vi.waitFor(() => expect(focusedWindowsDrawn.at(-1)?.chosenFormat?.get()).toBe("de-DE"), {
       timeout: 15_000,
     });
+    vi.restoreAllMocks();
+  }, 30_000);
+});
+
+verifies("kit.external-link", () => {
+  // Without it a link in the Messenger's window fell back to a new tab, which goes nowhere (HAL-19406).
+  it("gives the Messenger's window the desktop opener, which asks the page for an outside address", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const asked: string[] = [];
+    const location = { origin: "tauri://localhost", assign: (url: string) => asked.push(url) };
+    started = startStudio({
+      element,
+      window: { ...webviewLabelled("messenger"), location },
+      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+      storage: storageWithAcme(true),
+    });
+
+    const open = await vi.waitFor(
+      () => {
+        const given = focusedWindowOpeners.at(-1);
+        if (given === undefined) throw new Error("The Messenger's window has no opener yet.");
+        return given;
+      },
+      { timeout: 15_000 },
+    );
+    await open("https://paperclip.example/ACME/issues/ACME-7");
+
+    expect(asked).toEqual(["https://paperclip.example/ACME/issues/ACME-7"]);
     vi.restoreAllMocks();
   }, 30_000);
 });

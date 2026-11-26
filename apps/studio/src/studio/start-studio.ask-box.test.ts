@@ -1,9 +1,26 @@
 // @vitest-environment jsdom
 
 import { RecentWorkspaces } from "@halonicjs/studio-feature-workspace";
+import type { OpenExternal } from "@halonicjs/studio-kit";
+import type { FocusedWindowProps } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { type StartedStudio, startStudio } from "./start-studio.ts";
+
+/** The `openExternal` each focused window was drawn with, in order. */
+const focusedWindowOpeners = vi.hoisted((): (OpenExternal | undefined)[] => []);
+
+// The shell's own focused window, recording the opener its links get (`kit.external-link`).
+vi.mock("@halonicjs/studio-shell", async (importOriginal) => {
+  const shell = await importOriginal<typeof import("@halonicjs/studio-shell")>();
+  return {
+    ...shell,
+    mountFocusedWindow: (element: Element, props: FocusedWindowProps, open?: OpenExternal) => {
+      focusedWindowOpeners.push(open);
+      return shell.mountFocusedWindow(element, props, open);
+    },
+  };
+});
 
 /** A desktop window: jsdom has no `matchMedia`, and the shell follows the phone width with it. */
 function desktopMediaQueries(query: string): MediaQueryList {
@@ -124,6 +141,7 @@ afterEach(async () => {
   await started?.stop();
   started = undefined;
   element.remove();
+  focusedWindowOpeners.length = 0;
 });
 
 function start(webview: object, remembered = true) {
@@ -187,5 +205,22 @@ verifies("studio.ask-box-window", () => {
     button.click();
 
     expect(called).toEqual(["show_main_window"]);
+  });
+});
+
+verifies("kit.external-link", () => {
+  it("gives quick ask's window the desktop opener, which asks the page for an outside address", async () => {
+    const asked: string[] = [];
+    const location = { origin: "tauri://localhost", assign: (url: string) => asked.push(url) };
+    start(Object.assign(askWebview([], []), { location }), false);
+
+    const open = await vi.waitFor(() => {
+      const given = focusedWindowOpeners.at(-1);
+      if (given === undefined) throw new Error("Quick ask's window has no opener yet.");
+      return given;
+    });
+    await open("https://paperclip.example/ACME/issues/ACME-7");
+
+    expect(asked).toEqual(["https://paperclip.example/ACME/issues/ACME-7"]);
   });
 });

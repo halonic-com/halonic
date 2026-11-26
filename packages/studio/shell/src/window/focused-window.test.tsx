@@ -59,12 +59,17 @@ function shellWith(app: FocusedAppContribution) {
   return createShell({ features: [feature], timers: new FakeTimers() });
 }
 
+/** What a test window is drawn with besides its workspace name; each is left out by default. */
+interface MountOptions {
+  readonly shown?: FocusedAppContribution;
+  readonly regionFormat?: string;
+  readonly chosenFormat?: FakeChosenFormat;
+  readonly openExternal?: OpenExternal;
+}
+
 async function mount(
   name: string | undefined,
-  shown: FocusedAppContribution = inboxApp,
-  regionFormat?: string,
-  chosenFormat?: FakeChosenFormat,
-  openExternal?: OpenExternal,
+  { shown = inboxApp, regionFormat, chosenFormat, openExternal }: MountOptions = {},
 ) {
   const shell = shellWith(shown);
   const services = new MapTarget();
@@ -112,11 +117,7 @@ verifies("shell.focused-apps", () => {
 
   it("draws a floating app, quick ask's box, on the see-through window with no frame or panel", async () => {
     await mount("Acme", {
-      ...inboxApp,
-      id: "ask",
-      title: "Ask an agent",
-      panel: false,
-      floating: true,
+      shown: { ...inboxApp, id: "ask", title: "Ask an agent", panel: false, floating: true },
     });
     const window = element.querySelector('[data-focused-app="ask"]');
 
@@ -194,21 +195,21 @@ const messengerApp: FocusedAppContribution = {
 verifies("kit.time-stamp", () => {
   it("gives the focused app's times the system's region format, over the browser's language", async () => {
     vi.spyOn(navigator, "language", "get").mockReturnValue("en-US");
-    await mount("Acme", messengerApp, "en_GB.UTF-8");
+    await mount("Acme", { shown: messengerApp, regionFormat: "en_GB.UTF-8" });
 
     expect(element.querySelector("time")?.textContent).toBe("09:41");
   });
 
   it("follows the browser's language in a focused app with no region format", async () => {
     vi.spyOn(navigator, "language", "get").mockReturnValue("en-US");
-    await mount("Acme", messengerApp);
+    await mount("Acme", { shown: messengerApp });
 
     expect(element.querySelector("time")?.textContent).toBe("9:41 AM");
   });
 
   it("follows the format chosen in Settings → Formats over the region, and a new choice at once", async () => {
     const chosen = new FakeChosenFormat("en-GB");
-    await mount("Acme", messengerApp, "en_US.UTF-8", chosen);
+    await mount("Acme", { shown: messengerApp, regionFormat: "en_US.UTF-8", chosenFormat: chosen });
     expect(element.querySelector("time")?.textContent).toBe("09:41");
 
     act(() => chosen.choose(undefined));
@@ -237,7 +238,7 @@ verifies("kit.external-link", () => {
       opened.push(await address);
     };
     const newTab = vi.spyOn(window, "open").mockReturnValue(null);
-    await mount("Acme", chatApp, undefined, undefined, openExternal);
+    await mount("Acme", { shown: chatApp, openExternal });
 
     await act(async () => element.querySelector("a")?.click());
 
@@ -247,7 +248,7 @@ verifies("kit.external-link", () => {
 
   it("opens a link in a new tab when it was given no openExternal", async () => {
     const newTab = vi.spyOn(window, "open").mockReturnValue(null);
-    await mount("Acme", chatApp);
+    await mount("Acme", { shown: chatApp });
 
     act(() => element.querySelector("a")?.click());
 

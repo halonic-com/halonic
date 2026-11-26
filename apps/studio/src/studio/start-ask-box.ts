@@ -25,6 +25,7 @@ import {
 } from "@halonicjs/studio-shell";
 import { provideAgentMessagingReaders } from "../inbox/provide-agent-messaging.ts";
 import { desktopAskWindow } from "./desktop-ask-window.ts";
+import { desktopOpenExternal } from "./desktop-open-external.ts";
 import { noStorage } from "./open-folder.ts";
 import { openLast, showStudio } from "./start-focused-app.ts";
 import type { StartedStudio, StudioPage } from "./start-studio.ts";
@@ -76,13 +77,12 @@ export function startAskBox(page: StudioPage, parts: AskBoxParts): StartedStudio
       ? Promise.resolve(undefined)
       : openLast(ipc, last.location, (location) => openAskBox(shell, page.window, ipc, location));
   const shown = opening.then((opened) => {
-    mounted = mountFocusedWindow(page.element, {
-      shell,
-      app,
-      workspace: opened?.workspace,
-      language,
-      openStudio: () => showStudio(ipc),
-    });
+    mounted = mountFocusedWindow(
+      page.element,
+      { shell, app, workspace: opened?.workspace, language, openStudio: () => showStudio(ipc) },
+      // Its links open in the system browser, as in Studio's window (HAL-19406).
+      desktopOpenExternal(page.window),
+    );
     return opened;
   });
   return {
