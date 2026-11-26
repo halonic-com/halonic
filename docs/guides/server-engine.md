@@ -228,6 +228,10 @@ journalctl -u halonic-engine -n 20
 
 The log shows `Serving Server engine at http://localhost:4747`. The line that
 says the Studio page isn't built is expected: the server engine needs no page.
+After that, every finished request gets one line with its method, path and
+status, such as `POST /api/pair 401` for a wrong pairing code and
+`POST /api/pair 429` once a caller has tried too often. The log never holds a
+query, a header or a body, so no code, pending ID or token appears in it.
 
 ### 7. Check it
 
