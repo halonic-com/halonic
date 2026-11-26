@@ -138,6 +138,7 @@ verifies("remote.phone-team-read", () => {
         { ...page, items: ["q1"] },
         { ...page, what: "inbox" },
         { ...page, replyTo: undefined },
+        { ...page, more: "a:b" },
       ]) {
         expect(parseHostMessage(JSON.stringify(wrong))).toEqual({
           ok: false,

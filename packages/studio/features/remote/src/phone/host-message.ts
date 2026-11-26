@@ -170,7 +170,10 @@ const isMessagingResult = anyOf(
   exactly({ outcome: oneOf("sent"), message: isSentMessage }),
 );
 
-/** A page of port values: each item one object, its fields the port's own. `more` is the host's own cursor, read back by its strict id rule. */
+/**
+ * A page of port values: each item one object, its fields the port's own.
+ * `more` is the host's own cursor, read back by its strict id rule.
+ */
 const isMessagingPage = exactly(
   {
     type: oneOf("msg-data"),
