@@ -17,7 +17,7 @@ export const keyMessage = `Click test: my key is ${fakeKey}`;
 export const writerBox = `//textarea[@aria-label='${screenText.messageTo.text}${screenText.writer.text}']`;
 
 /**
- * Step 14 (HAL-18869): Writer's Try it chat comes back. Runs after Close workspace and the
+ * Step 20 (HAL-18869): Writer's Try it chat comes back. Runs after Close workspace and the
  * Settings steps, which open the demo again, then goes to the Agents list (an 800 px window folds
  * the tabs into a menu, so there's no tab to close; run 45705871308), opens Writer, and passes
  * once the chat shows step 1's message again, read from the saved chats.
@@ -46,7 +46,7 @@ export const chatComesBack: Step = {
 };
 
 /**
- * Step 15 (HAL-18869): a Try it message that looks like it holds a key stays in the box with the
+ * Step 21 (HAL-18869): a Try it message that looks like it holds a key stays in the box with the
  * key line under it, and **Send anyway** sends it. The box's text isn't page text, so the key on
  * screen means the message was sent.
  */

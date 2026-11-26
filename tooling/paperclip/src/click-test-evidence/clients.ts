@@ -74,7 +74,11 @@ export function paperclipEvidence(apiUrl: string, apiKey: string, runId?: string
     attach: async (task, screenshot) => {
       const issue = await issueOf(task);
       const form = new FormData();
-      form.append("file", new Blob([new Uint8Array(screenshot.png)], { type: "image/png" }), screenshot.name);
+      form.append(
+        "file",
+        new Blob([new Uint8Array(screenshot.png)], { type: "image/png" }),
+        screenshot.name,
+      );
       const path = `/companies/${issue.companyId}/issues/${issue.id}/attachments`;
       const attachment = (await call(path, { method: "POST", body: form })) as {
         contentPath?: string;

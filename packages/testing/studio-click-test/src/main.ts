@@ -23,6 +23,7 @@ import { requirementFiles } from "./requirement-files.ts";
 import { allPassed, type LeftOut, resultsMarkdown } from "./results.ts";
 import { runSteps, type StepContext } from "./runner.ts";
 import { clickTestSteps } from "./steps.ts";
+import { seedPaperclip, testPaperclip } from "./test-paperclip.ts";
 import { type Driver, openSession } from "./webdriver.ts";
 
 const environment = process.env;
@@ -39,7 +40,9 @@ const leftOut: LeftOut | undefined =
     ? undefined
     : { since: (environment["CLICK_TEST_SINCE"] ?? "").slice(0, 7), steps: choice.notAffected };
 
-const board = await startPaperclipBoard(required("PAPERCLIP_URL"));
+const paperclipUrl = required("PAPERCLIP_URL");
+const board = await startPaperclipBoard(paperclipUrl);
+const paperclip = testPaperclip(paperclipUrl, await seedPaperclip(paperclipUrl), board.studioKey);
 const sleep = (milliseconds: number) => delay(milliseconds);
 const devTools = required("HALONIC_DEVTOOLS");
 let driver = await startApp();
@@ -98,6 +101,7 @@ async function contextFor(current: Driver): Promise<StepContext> {
     openShortcut,
     mainWindow,
     approveSignIn: () => board.approveSignIn(30_000, sleep),
+    paperclip,
   };
 }
 

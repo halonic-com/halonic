@@ -113,6 +113,24 @@ export function missingParts(wanted: readonly string[], text: string): string {
     .join(", ");
 }
 
+/**
+ * An XPath for the innermost row, cell or button whose text holds `text`, for
+ * rows whose whole text isn't known, such as an Inbox row with its meta line.
+ */
+export function rowContaining(text: string): string {
+  const control = "(self::button or @role='button' or @role='gridcell' or @role='option')";
+  return `(//*[${control} and contains(normalize-space(), ${xpathString(text)})])[last()]`;
+}
+
+/** Clicks the row holding `text` once it shows, waiting at most `waitMs`. */
+export async function clickRow(
+  context: StepContext,
+  text: string,
+  waitMs: number,
+): Promise<boolean> {
+  return (await clickXPathOrWhyNot(context, rowContaining(text), waitMs)) === undefined;
+}
+
 /** The end of the page text, short enough for the results table. */
 export function lastWords(text: string): string {
   const flat = text.replaceAll(/\s+/g, " ").trim();

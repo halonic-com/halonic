@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it } from "vitest";
 import { startPaperclipBoard } from "./paperclip-board.ts";
+import { seedNames, seedPaperclip, testPaperclip } from "./test-paperclip.ts";
 import { openSession, WebDriverError } from "./webdriver.ts";
 
 type Handler = (request: IncomingMessage, body: string) => { status: number; json: unknown };
@@ -36,6 +37,25 @@ async function fakeServer(handler: Handler): Promise<{ url: string; requests: Re
   const address = server.address();
   const port = typeof address === "object" && address !== null ? address.port : 0;
   return { url: `http://127.0.0.1:${port}`, requests };
+}
+
+/** A test Paperclip that answers the seed with ids, and steps 8, 9 and 13's reads. */
+function seededPaperclip(request: IncomingMessage): { status: number; json: unknown } {
+  const url = request.url ?? "";
+  if (url === "/api/approvals/a1") return { status: 200, json: { status: "approved" } };
+  if (url === "/api/issues/chat1/comments") return { status: 200, json: [{ body: "hi" }] };
+  if (url === "/api/cli-auth/me") {
+    const live = request.headers.authorization === "Bearer live";
+    return live ? { status: 200, json: { source: "board_key" } } : { status: 401, json: {} };
+  }
+  const ids: Record<string, string> = {
+    "/api/companies": "co1",
+    "/api/companies/co1/agents": "ag1",
+    "/api/companies/co1/issues": "t1",
+    "/api/companies/co1/approvals": "a1",
+    "/api/companies/co1/chats/ag1": "chat1",
+  };
+  return { status: 200, json: { id: ids[url] ?? "other" } };
 }
 
 verifies("studio-click-test.steps", () => {
@@ -147,6 +167,53 @@ verifies("studio-click-test.steps", () => {
       } finally {
         await board.close();
       }
+    });
+
+    it("keeps the key Studio sends, for step 13", async () => {
+      const paperclip = await fakeServer(() => ({ status: 200, json: [] }));
+      const board = await startPaperclipBoard(paperclip.url);
+      try {
+        expect(board.studioKey()).toBeUndefined();
+        await fetch(`${board.address}/api/companies/c1/agents`, {
+          headers: { authorization: "Bearer acme-key" },
+        });
+        expect(board.studioKey()).toBe("acme-key");
+      } finally {
+        await board.close();
+      }
+    });
+  });
+});
+
+verifies("studio-click-test.paperclip-steps", () => {
+  describe("seedPaperclip and testPaperclip", () => {
+    it("seeds a company, an agent, a task, a card on it and a chat, then reads them back", async () => {
+      const paperclip = await fakeServer(seededPaperclip);
+      const seeded = await seedPaperclip(`${paperclip.url}/`);
+      expect(seeded).toEqual({ companyId: "co1", approvalId: "a1", chatId: "chat1" });
+      const sent = paperclip.requests.map((request) => `${request.method} ${request.url}`);
+      expect(sent[0]).toBe("PATCH /api/instance/settings/experimental");
+      const approval = paperclip.requests.find((request) => request.url.endsWith("/approvals"));
+      expect(JSON.parse(approval?.body ?? "")).toMatchObject({
+        payload: { title: seedNames.card },
+        issueIds: ["t1"],
+      });
+      let key: string | undefined;
+      const checks = testPaperclip(paperclip.url, seeded, () => key);
+      await expect(checks.approvalStatus()).resolves.toBe("approved");
+      await expect(checks.chatComments()).resolves.toEqual(["hi"]);
+      await expect(checks.studioKeyWorks()).resolves.toBeUndefined();
+      key = "live";
+      await expect(checks.studioKeyWorks()).resolves.toBe(true);
+      key = "revoked";
+      await expect(checks.studioKeyWorks()).resolves.toBe(false);
+    });
+
+    it("stops the seed at the first call Paperclip refuses", async () => {
+      const paperclip = await fakeServer(() => ({ status: 404, json: { error: "disabled" } }));
+      await expect(seedPaperclip(paperclip.url)).rejects.toThrow(
+        'PATCH /api/instance/settings/experimental: HTTP 404 {"error":"disabled"}',
+      );
     });
   });
 });

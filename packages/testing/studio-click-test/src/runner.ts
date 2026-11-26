@@ -1,3 +1,4 @@
+import type { TestPaperclip } from "./test-paperclip.ts";
 import type { Driver } from "./webdriver.ts";
 
 /** What one step found: passed, or failed with the error code the screen showed. */
@@ -24,6 +25,8 @@ export interface StepContext {
    * started there. Resolves to why it couldn't, or undefined once approved.
    */
   readonly approveSignIn: () => Promise<string | undefined>;
+  /** The throwaway Paperclip's seeded records, read through its API to check a click landed. */
+  readonly paperclip: TestPaperclip;
 }
 
 /** One step of the click test, as a person would do it. */

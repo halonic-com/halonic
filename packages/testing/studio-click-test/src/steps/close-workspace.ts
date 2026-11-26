@@ -5,7 +5,7 @@ import { openWorkspaceMenu } from "./demo-workspace.ts";
 import { onWorkspaceWithoutSettings } from "./open-demo.ts";
 
 /**
- * Step 10: the workspace menu's Close workspace closes the demo, the only open workspace, so the
+ * Step 16: the workspace menu's Close workspace closes the demo, the only open workspace, so the
  * window shows Welcome again, now with the demo's folder under Recent with the Demo tag, and Open
  * demo still offered. A later step that needs a workspace opens the demo again from there.
  */
