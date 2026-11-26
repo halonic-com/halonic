@@ -54,6 +54,9 @@ verifies("agent-host.server-engine-pairing", () => {
         engine: "server",
         address: on.server.address,
         pairing: "kept",
+        computerName: deviceName,
+        sessionEndsAt,
+        server: { state: "online", checkedAt: expect.any(String) },
       });
       expect((await on.studio.listSources()).map((source) => source.id)).toEqual([
         "halonic-server:acme",

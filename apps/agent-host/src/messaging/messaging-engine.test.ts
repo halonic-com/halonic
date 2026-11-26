@@ -151,6 +151,32 @@ verifies("agent-host.messaging-engine", () => {
       if (process.platform !== "win32") expect((await stat(file)).mode & 0o777).toBe(0o600);
     });
 
+    it("keeps the name and the end pairing gave, and leaves out what isn't a name or a date", async () => {
+      desktop = await startDesktop();
+      const on = desktop;
+      const sessionEndsAt = "2027-02-22T14:00:00.000Z";
+      await on.setting.useServer(on.workspace, on.server.address, {
+        computerName: "Work laptop",
+        sessionEndsAt,
+      });
+      expect((await on.setting.read(on.workspace)).engine).toEqual({
+        kind: "server",
+        address: on.server.address,
+        computerName: "Work laptop",
+        sessionEndsAt,
+      });
+      const file = await settingFile(on);
+      const fields = { version: 1, engine: "server", address: on.server.address };
+      await writeFile(
+        file,
+        JSON.stringify({ ...fields, computerName: "a\nb", sessionEndsAt: "soon" }),
+      );
+      expect((await on.setting.read(on.workspace)).engine).toEqual({
+        kind: "server",
+        address: on.server.address,
+      });
+    });
+
     it("refuses to save an address that breaks the rule, and writes nothing", async () => {
       desktop = await startDesktop();
       const on = desktop;

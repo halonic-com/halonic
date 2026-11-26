@@ -65,6 +65,30 @@ verifies("agent-host.server-engine-pairing", () => {
       expectNoCanary(on);
     });
 
+    it("when the state's check of the server fails or is signed out, and repeats the token", async () => {
+      desktop = await startPairingDesktop();
+      const on = desktop;
+      expect(await pairedAnswer(on)).toMatchObject({ state: "paired" });
+      const echo = (status: number) => () => new Response(`no ${on.server.token}`, { status });
+      on.pairingServer.sources = echo(500);
+      expect(await on.engine.state()).toMatchObject({ server: { state: "offline" } });
+      on.pairingServer.sources = echo(401);
+      expect(await on.engine.state()).toMatchObject({ server: { state: "signed-out" } });
+      on.pairingServer.unreachable = true;
+      expect(await on.engine.state()).toMatchObject({ server: { state: "offline" } });
+      // The token went in the check's header only, never in a body or the address.
+      const checks = on.pairingServer.calls("/api/messaging/sources");
+      expect(checks).toHaveLength(3);
+      for (const check of checks) {
+        expect(check).toEqual({
+          path: "/api/messaging/sources",
+          body: "",
+          authorization: `Bearer ${on.server.token}`,
+        });
+      }
+      expectNoCanary(on);
+    });
+
     it("when the server's 5xx repeats the token, on the poll and on the sign-out", async () => {
       desktop = await startPairingDesktop();
       const on = desktop;

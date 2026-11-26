@@ -1,13 +1,28 @@
 import { randomBytes } from "node:crypto";
+import { hostname } from "node:os";
 import { type SecretStore, serverPairingSecretName } from "@halonicjs/ports";
 import type { DesktopMessaging } from "./desktop-messaging.ts";
-import type { MessagingEngineSetting } from "./messaging-engine-setting.ts";
-import { ServerPairingClient } from "./server-pairing-client.ts";
+import {
+  computerNamePattern,
+  type MessagingEngineSetting,
+  type Paired,
+} from "./messaging-engine-setting.ts";
+import { ServerPairingClient, type ServerReach } from "./server-pairing-client.ts";
 
-/** Where a workspace's engine stands, for Settings › Connections; never the token. */
+/**
+ * Where a workspace's engine stands, for Settings › Connections; never the
+ * token. `computerName` is the name this computer paired as, or on "This
+ * computer" its own name for the pairing dialog; `server` is what the server
+ * answered the device's token just now, when the keychain held one.
+ */
 export type EngineState =
-  | { engine: "this-computer" }
-  | { engine: "server"; address: string; pairing: "kept" | "missing" | "unreadable" };
+  | { engine: "this-computer"; computerName?: string }
+  | ({
+      engine: "server";
+      address: string;
+      pairing: "kept" | "missing" | "unreadable";
+      server?: { state: ServerReach; checkedAt: string };
+    } & Paired);
 
 /** What starting a pairing gave the page. */
 export type PairAnswer =
@@ -52,12 +67,16 @@ export interface ServerEnginePairingOptions {
   /** The `fetch` the server is called with; the global one by default. */
   fetch?: typeof fetch;
   now?: () => Date;
+  /** This computer's own name; the OS's host name by default. */
+  computerName?: () => string | undefined;
 }
 
 /** A pairing waiting for Allow, kept in this host's memory only. */
 interface Pending {
   workspace: string;
   address: string;
+  /** The name the server lists this computer as. */
+  deviceName: string;
   /** The server's pending ID: whoever holds it collects the token, so the page never sees it. */
   pendingId: string;
   expiresAt: string;
@@ -82,19 +101,31 @@ export class ServerEnginePairing {
     this.#options = options;
   }
 
-  /** The workspace's engine, and whether the keychain holds its pairing. */
+  /**
+   * The workspace's engine, whether the keychain holds its pairing, and
+   * when it does, whether the server answers it now (one call, with the token
+   * in its `Authorization` header only).
+   */
   async state(workspace: string): Promise<EngineState> {
     const { key, engine } = await this.#options.setting.read(workspace);
-    if (engine.kind === "this-computer") return { engine: "this-computer" };
+    if (engine.kind === "this-computer") {
+      const name = (this.#options.computerName ?? hostComputerName)();
+      return { engine: "this-computer", ...(name === undefined ? {} : { computerName: name }) };
+    }
+    const { kind, address, ...paired } = engine;
+    let token: string | null = null;
     let pairing: "kept" | "missing" | "unreadable";
     try {
-      const token = await this.#options.keychain.get(serverPairingSecretName(key));
+      token = await this.#options.keychain.get(serverPairingSecretName(key));
       pairing = token === null ? "missing" : "kept";
     } catch (error) {
       this.#failed("couldn't read the pairing from the keychain", error);
       pairing = "unreadable";
     }
-    return { engine: "server", address: engine.address, pairing };
+    const state: EngineState = { engine: "server", address, pairing, ...paired };
+    if (token === null) return state;
+    const reach = await this.#client(address).check(token);
+    return { ...state, server: { state: reach, checkedAt: this.#now().toISOString() } };
   }
 
   /** Checks the address is a Halonic server (`GET /api/hello`), then asks it to pair. */
@@ -121,6 +152,7 @@ export class ServerEnginePairing {
     this.#keepPending(pairingId, {
       workspace,
       address: client.origin,
+      deviceName,
       pendingId: started.pendingId,
       expiresAt: started.expiresAt,
     });
@@ -207,7 +239,10 @@ export class ServerEnginePairing {
       name = serverPairingSecretName(await setting.keyOf(pending.workspace));
       await keychain.set(name, token);
       if ((await keychain.get(name)) !== token) throw new PairingNotKept();
-      await setting.useServer(pending.workspace, pending.address);
+      await setting.useServer(pending.workspace, pending.address, {
+        computerName: pending.deviceName,
+        sessionEndsAt,
+      });
     } catch (error) {
       this.#failed("couldn't keep the new pairing, so it ends it on the server", error);
       if (name !== undefined) await keychain.remove(name).catch(() => undefined);
@@ -217,8 +252,12 @@ export class ServerEnginePairing {
     return { state: "paired", sessionEndsAt };
   }
 
+  #now(): Date {
+    return this.#options.now?.() ?? new Date();
+  }
+
   #keepPending(pairingId: string, pending: Pending): void {
-    const now = (this.#options.now?.() ?? new Date()).getTime();
+    const now = this.#now().getTime();
     for (const [id, each] of this.#pending) {
       if (Date.parse(each.expiresAt) <= now) this.#pending.delete(id);
     }
@@ -238,6 +277,16 @@ export class ServerEnginePairing {
     const name = /^\w{1,40}$/.test(named) ? named : "Error";
     this.#options.log(`Server engine: the host ${doing} (${name}).\n`);
   }
+}
+
+/**
+ * This computer's name as the pairing dialog fills it in: the OS's host
+ * name without a trailing `.local`, or `undefined` when that isn't a name
+ * the server would take.
+ */
+export function hostComputerName(name: string = hostname()): string | undefined {
+  const plain = name.replace(/\.local\.?$/i, "").trim();
+  return computerNamePattern.test(plain) ? plain : undefined;
 }
 
 /** The keychain gave back something else than the token it was given. */

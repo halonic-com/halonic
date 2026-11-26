@@ -11,10 +11,23 @@ const prefix = "POST /v1/messaging/server-engine";
 verifies("agent-host-client.server-engine", () => {
   describe("AgentHostServerEngine", () => {
     it("reads the workspace's engine with the workspace only", async () => {
-      const state = { engine: "server", address, pairing: "kept" };
+      const state = {
+        engine: "server",
+        address,
+        pairing: "kept",
+        computerName: "Work laptop",
+        sessionEndsAt: "2027-02-22T14:00:00.000Z",
+        server: { state: "offline", checkedAt: "2026-11-24T14:02:00.000Z" },
+      };
       const host = new FakeHost().answer(`${prefix}/state`, ok(state));
       expect(await new AgentHostServerEngine(host, workspace).state()).toEqual(state);
       expect(host.calls).toEqual([{ route: `${prefix}/state`, body: { workspace } }]);
+    });
+
+    it("reads This computer with its name", async () => {
+      const state = { engine: "this-computer", computerName: "Work laptop" };
+      const host = new FakeHost().answer(`${prefix}/state`, ok(state));
+      expect(await new AgentHostServerEngine(host, workspace).state()).toEqual(state);
     });
 
     it("pairs with the address, code and name, and answers the check code", async () => {
@@ -66,6 +79,16 @@ verifies("agent-host-client.server-engine", () => {
       const engine = new AgentHostServerEngine(host, workspace);
       await expect(engine.state()).rejects.toMatchObject({ status: 409, kind: "keychain_needed" });
       await expect(engine.status(pairingId)).rejects.toMatchObject({ kind: "answer_invalid" });
+    });
+
+    it("fails with answer_invalid for a state whose server check holds a token", async () => {
+      const server = { state: "online", checkedAt: "2026-11-24T14:02:00.000Z", token: "x" };
+      const host = new FakeHost().answer(
+        `${prefix}/state`,
+        ok({ engine: "server", address, pairing: "kept", server }),
+      );
+      const engine = new AgentHostServerEngine(host, workspace);
+      await expect(engine.state()).rejects.toMatchObject({ kind: "answer_invalid" });
     });
   });
 });
