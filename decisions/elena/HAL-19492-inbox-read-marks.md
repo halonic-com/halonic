@@ -17,9 +17,9 @@ values gain the new words and nothing else; each still checks all it checked bef
   rows end with "unread", before the Setup chip on the setup row.
 - `needs-you-card.test.tsx` (`inbox.home`): Home's Needs you rows still equal the page's, once the
   page's "unread" is taken off; Home's card doesn't say what is new.
-- `inbox-row-wrap.test.tsx` (`inbox.row-meta-wraps`): the unread mark wraps the meta line in a span
-  with the same text, so the test takes the innermost such span, the meta line itself, and still
-  checks it wraps to two lines.
+- `inbox-row-wrap.test.tsx` (`inbox.row-meta-wraps`): the unread mark wraps the row's line in a
+  span with the same text, so `spanWith` takes the innermost such span, the line itself, and the
+  tests still check what they checked.
 
 Two active requirements whose words those tests check say so too: `inbox.page` names Needs you
 "Needs you, 2 waiting, 2 new" in its rule and its example, and `inbox.home` says Home's Needs you

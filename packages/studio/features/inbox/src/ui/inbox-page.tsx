@@ -34,7 +34,6 @@ import {
 } from "../api.ts";
 import type { Inbox } from "../inbox.ts";
 import { waits } from "../inbox-count.ts";
-import type { InboxItem } from "../inbox-items.ts";
 import type { InboxNotices } from "../notices/inbox-notices.ts";
 import { mergeNotices } from "../notices/merge-notices.ts";
 import type { ProposalDecisions } from "../proposal-decisions.ts";
@@ -42,6 +41,7 @@ import { readKey } from "../read-marks.ts";
 import type { InboxRequests } from "../request/inbox-requests.ts";
 import { DoneSection } from "./done-proposals.tsx";
 import {
+  currentRow,
   InboxPanes,
   itemPaneClass,
   ListHeader,
@@ -49,6 +49,7 @@ import {
   listScrollClass,
   needsYouCount,
   nextItem,
+  openRow,
   placeOf,
 } from "./inbox-page-parts.tsx";
 import { countDetail, inboxRow, lateCount } from "./inbox-row.tsx";
@@ -62,7 +63,7 @@ import { OpenCard } from "./open-card.tsx";
 import { ProposalsElsewhere } from "./proposals-elsewhere.tsx";
 import { itemMark } from "./row-marks.tsx";
 import type { RunFactsOf } from "./run-facts.ts";
-import { type AgentItems, useAgentItems } from "./use-agent-items.tsx";
+import { useAgentItems } from "./use-agent-items.tsx";
 import { useOpenItem } from "./use-open-item.ts";
 import { useProjectFilter } from "./use-project-filter.tsx";
 import { useReadMarks } from "./use-read-marks.ts";
@@ -468,20 +469,4 @@ export function InboxView({
       </div>
     </InboxPanes>
   );
-}
-
-/** Opens a row's item: an agent's in its own card, else the Inbox's own item of that key. */
-function openRow(
-  key: string,
-  agent: AgentItems,
-  listed: readonly InboxItem[],
-  openItem: (item: InboxItem | null) => void,
-): void {
-  if (agent.open(key)) openItem(null);
-  else openItem(listed.find((item) => item.key === key) ?? null);
-}
-
-/** The List's current row, when one is open. */
-function currentRow(key: string | undefined): { current?: string } {
-  return key === undefined ? {} : { current: key };
 }
