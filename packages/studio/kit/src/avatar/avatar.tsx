@@ -45,7 +45,7 @@ const sizes = {
 
 /**
  * A member's initials, or their picture, on a 28px round tile (40px with `size="header"`): who is signed in, in Cloud's top
- * bar (HAL-16050), or an agent in the Messenger. `surface-muted` and `fg-muted`, not the accent,
+ * bar (HAL-16050), or an agent in the Messenger. `surface-muted` with a `border-strong` edge and `fg-muted`, not the accent,
  * so it doesn't read as a product. It's decoration: the member's name is next to it, or in the
  * top bar's name for screen readers.
  *
@@ -56,10 +56,12 @@ const sizes = {
 export function Avatar({ name, picture, size = "row" }: AvatarProps) {
   const { tile, text } = sizes[size];
   if (picture !== undefined) return <AvatarPicture picture={picture} size={size} />;
+  // A hovered, focused or open plain row is filled `surface-muted` too, so the edge keeps the
+  // circle from vanishing into it (`kit.avatar-edge`); a picture fills the tile on its own.
   return (
     <span
       aria-hidden="true"
-      className={`flex items-center justify-center ${text} font-semibold text-fg-muted ${tile}`}
+      className={`flex items-center justify-center ${text} font-semibold text-fg-muted ring-1 ring-inset ring-border-strong ${tile}`}
     >
       {initials(name)}
     </span>

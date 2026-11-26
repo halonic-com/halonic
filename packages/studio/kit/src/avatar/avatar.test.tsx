@@ -150,3 +150,24 @@ verifies("kit.avatar-inset", () => {
     }
   });
 });
+
+verifies("kit.avatar-edge", () => {
+  const edge = ["ring-1", "ring-inset", "ring-border-strong"];
+
+  it("draws a 1px inset border-strong edge on the initials tile, at both sizes", () => {
+    const header = render(<Avatar name="Ada Lovelace" size="header" />).container
+      .firstElementChild as HTMLElement;
+
+    expect(avatarOf("Ada Lovelace").className.split(" ")).toEqual(expect.arrayContaining(edge));
+    expect(header.className.split(" ")).toEqual(expect.arrayContaining(edge));
+  });
+
+  it("draws no edge around a picture", () => {
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+    const pictured = render(<Avatar name="Ada" picture={{ width: 2, height: 2 } as ImageBitmap} />)
+      .container.firstElementChild as HTMLElement;
+
+    const classes = pictured.className.split(" ");
+    for (const name of edge) expect(classes).not.toContain(name);
+  });
+});
