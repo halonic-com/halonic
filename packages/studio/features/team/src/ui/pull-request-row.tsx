@@ -68,10 +68,11 @@ export const pullRequestKey = (id: MessagingId) => `pr:${id}`;
  */
 export function PullRequestTitleWords(props: { pullRequest: PullRequest; heading?: boolean }) {
   const { pullRequest } = props;
-  const size = props.heading === true ? "" : " text-small";
+  const labelClass =
+    props.heading === true ? "font-mono text-fg-muted" : "font-mono text-small text-fg-muted";
   return (
     <>
-      <span className={`font-mono text-fg-muted${size}`}>{pullRequest.label}</span>{" "}
+      <span className={labelClass}>{pullRequest.label}</span>{" "}
       {pullRequest.title}
     </>
   );
