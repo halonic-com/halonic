@@ -2,6 +2,7 @@
 
 - Approval: HAL-19527 (from the second reviewer's review of #6465)
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:p0Anb+bD0WPVj9+aqYDrrLWUinTcgpjaqUgFpgUegJSSwq0ltG5i8vhNhgecJeEEBlMW5J3Ou1glrg/98wDlAg==
 
 ## What changes
 
