@@ -21,6 +21,7 @@ export interface RequestLogEntry {
 export class RequestLog {
   readonly #entries: RequestLogEntry[] = [];
   readonly #limit: number;
+  readonly #listeners = new Set<(entry: RequestLogEntry) => void>();
 
   constructor(limit = 200) {
     this.#limit = limit;
@@ -29,6 +30,22 @@ export class RequestLog {
   add(entry: RequestLogEntry): void {
     this.#entries.push(entry);
     if (this.#entries.length > this.#limit) this.#entries.shift();
+    for (const listener of this.#listeners) {
+      try {
+        listener(entry);
+      } catch {
+        // A listener only reads; its failure never fails the request.
+      }
+    }
+  }
+
+  /**
+   * Calls `listener` with each entry as it is added, until the returned
+   * function is called: how Halonic's local request log store keeps them.
+   */
+  onEntry(listener: (entry: RequestLogEntry) => void): () => void {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
   }
 
   /** A copy of the entries, oldest first. */

@@ -29,4 +29,18 @@ verifies("integration-kit.request-log", () => {
     log.entries().pop();
     expect(log.entries()).toHaveLength(1);
   });
+
+  it("hands each new entry to a listener until it stops listening, and a listener that throws doesn't stop the log", () => {
+    const log = new RequestLog();
+    const heard: string[] = [];
+    log.onEntry(() => {
+      throw new Error("broken listener");
+    });
+    const stop = log.onEntry((added) => heard.push(added.path));
+    log.add(entry(1));
+    stop();
+    log.add(entry(2));
+    expect(heard).toEqual(["/1"]);
+    expect(log.entries()).toHaveLength(2);
+  });
 });
