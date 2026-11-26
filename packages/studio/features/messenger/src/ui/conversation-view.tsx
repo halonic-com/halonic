@@ -7,6 +7,7 @@ import type { PendingMessage } from "../chat-layout.ts";
 import { chatAgent, chatName } from "../chat-name.ts";
 import { activityOf, type ConversationRow, type Messenger } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
+import { ActivityButton } from "./activity-toggle.tsx";
 import { CardsBar } from "./cards-bar.tsx";
 import { ChannelHeaderActions } from "./channel-header-actions.tsx";
 import { authorOf } from "./channel-message.tsx";
@@ -268,6 +269,7 @@ function ConversationHeader({
         </p>
       </div>
       {children}
+      <ActivityButton />
       <div className="w-56">
         <Input
           size="sm"

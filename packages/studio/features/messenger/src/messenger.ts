@@ -9,6 +9,7 @@ import type {
   MessagingRefusal,
   MessagingSource,
   SendResult,
+  TeamStatus,
 } from "@halonicjs/ports";
 import { ChannelAdmin } from "./channel-admin.ts";
 import { type ChannelQuestion, channelQuestions } from "./channel-waiting.ts";
@@ -17,6 +18,12 @@ import { isFromAgentOf, QuickActions } from "./quick-actions.ts";
 import { refusalOf } from "./refusal.ts";
 
 export { refusalOf } from "./refusal.ts";
+
+/**
+ * The reads of the activity panel: `AgentActivityService`'s shape, written from the ports so the
+ * Messenger's words still load in Node, without the Studio's services.
+ */
+type ActivityReads = Required<Pick<TeamStatus, "runs">> & Pick<TeamStatus, "pullRequests">;
 
 /** The Messenger's tabs: every conversation, or only those whose agent wrote last. */
 export type MessengerTab = "all" | "waiting";
@@ -69,15 +76,22 @@ export class Messenger {
   readonly files = new DraftFiles();
   /** The time now, for how long an agent has been working on what the person asked. */
   readonly now: () => Date;
+  /** What the agents are doing, for the activity panel; none where no agent host serves it. */
+  readonly activity: ActivityReads | undefined;
   private readonly messaging: AgentMessaging;
   private readonly drafts = new Map<MessagingId, string>();
   private readonly picks = new Map<MessagingId, readonly MessagingId[]>();
   /** When the newest message the person saw in each chat was sent, while this Messenger lives. */
   private readonly seen = new Map<MessagingId, string>();
 
-  constructor(messaging: AgentMessaging, now: () => Date = () => new Date()) {
+  constructor(
+    messaging: AgentMessaging,
+    now: () => Date = () => new Date(),
+    activity?: ActivityReads,
+  ) {
     this.messaging = messaging;
     this.now = now;
+    this.activity = activity;
     this.quickActions = new QuickActions(messaging);
     this.channels = new ChannelAdmin(messaging);
   }

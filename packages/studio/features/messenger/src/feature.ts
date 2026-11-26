@@ -1,4 +1,4 @@
-import { AgentMessagingService } from "@halonicjs/studio-services";
+import { AgentActivityService, AgentMessagingService } from "@halonicjs/studio-services";
 import { defineFeature } from "@halonicjs/studio-shell";
 import { MessengerService } from "./api.ts";
 import { Messenger } from "./messenger.ts";
@@ -13,13 +13,19 @@ import { messengerWords } from "./messenger-words.ts";
 export const messengerFeature = defineFeature({
   id: "messenger",
   title: "Messenger",
-  // Wanted, not needed: until the engine serves AgentMessaging, Studio still opens.
-  wants: [AgentMessagingService],
+  // Wanted, not needed: until the engine serves AgentMessaging, Studio still opens. Without
+  // AgentActivity the Messenger offers no activity panel.
+  wants: [AgentMessagingService, AgentActivityService],
   provides: [MessengerService],
   register(studio) {
     studio.services.provide(
       MessengerService,
-      (services) => new Messenger(services.get(AgentMessagingService)),
+      (services) =>
+        new Messenger(
+          services.get(AgentMessagingService),
+          undefined,
+          services.find(AgentActivityService),
+        ),
     );
     studio.focusedApps.add({
       id: "messenger",

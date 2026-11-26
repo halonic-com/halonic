@@ -3,6 +3,7 @@ import type { PendingMessage } from "../chat-layout.ts";
 import { chatAgent } from "../chat-name.ts";
 import type { ConversationRow } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
+import { ShowActivity } from "./activity-toggle.tsx";
 
 /**
  * Whether the chat's agent shows as typing (`messenger.typing`): its source says the agent has a
@@ -24,7 +25,8 @@ export function agentTyping(
 
 /**
  * "Chief is typing…" under the transcript, after three dots that pulse one after another, and stand
- * still under reduced motion. Its status region is always there, so a screen reader hears the
+ * still under reduced motion. While the activity panel is closed, the line offers **Show
+ * activity** (`messenger.activity-panel`). Its status region is always there, so a screen reader hears the
  * line when it appears, once.
  */
 export function TypingLine({
@@ -49,6 +51,7 @@ export function TypingLine({
             ))}
           </span>
           {messengerWords.typing(name)}
+          <ShowActivity />
         </p>
       ) : null}
     </div>

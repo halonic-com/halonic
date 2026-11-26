@@ -6,6 +6,7 @@
 
 import type { AgentMessaging } from "@halonicjs/ports";
 import { NarrowProvider, OpenExternalProvider } from "@halonicjs/studio-kit";
+import type { AgentActivity } from "@halonicjs/studio-services";
 import { act, StrictMode } from "react";
 import { Messenger } from "../messenger.ts";
 import { MessengerPage } from "../ui/messenger-page.tsx";
@@ -20,7 +21,8 @@ export async function settle(): Promise<void> {
 
 /**
  * Renders the Messenger and lets its first reads land; links it opens go to `opened`. `narrow`
- * renders it in a window narrower than 900px; `now` gives the Messenger its own clock. Strict mode, as Studio renders every page, so an
+ * renders it in a window narrower than 900px; `now` gives the Messenger its own clock; `activity`
+ * gives it the agents' activity, for the activity panel. Strict mode, as Studio renders every page, so an
  * effect that can't run twice fails here too.
  */
 export async function openMessenger(
@@ -28,12 +30,13 @@ export async function openMessenger(
   opened: string[] = [],
   narrow = false,
   now?: () => Date,
+  activity?: AgentActivity,
 ): Promise<HTMLElement> {
   const page = render(
     <StrictMode>
       <NarrowProvider narrow={narrow}>
         <OpenExternalProvider openExternal={async (address) => void opened.push(await address)}>
-          <MessengerPage messenger={new Messenger(messaging, now)} />
+          <MessengerPage messenger={new Messenger(messaging, now, activity)} />
         </OpenExternalProvider>
       </NarrowProvider>
     </StrictMode>,
