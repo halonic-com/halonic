@@ -13,16 +13,21 @@ const literal = (text: string) => text.replace(/[\\^$.*+?()[\]{}|/-]/g, "\\$&");
 /**
  * The pattern the shell checks a value with. The route list holds a pattern
  * without flags, so a text parameter that a route uses may not use `i`: the
- * shell would refuse values the page took.
+ * shell would refuse values the page took. A text pattern goes in as it is
+ * written, since the shell reads no groups (`action-send`'s `pattern.rs`);
+ * only one with a `|` is wrapped, so `^a|b$` can't match more than the whole
+ * value in a JavaScript check.
  */
 function patternOf(name: string, field: ParameterField): string {
   switch (field.kind) {
-    case "text":
+    case "text": {
       assert(
         !field.pattern.flags.includes("i"),
         `parameter ${name}: a pattern a route uses can't have the i flag`,
       );
-      return `^(?:${field.pattern.source.slice(1, -1)})$`;
+      const source = field.pattern.source;
+      return source.includes("|") ? `^(?:${source.slice(1, -1)})$` : source;
+    }
     case "choice":
       return `^(?:${field.options.map(literal).join("|")})$`;
     case "integer":

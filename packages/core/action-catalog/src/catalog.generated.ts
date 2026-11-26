@@ -24,19 +24,19 @@ export const catalogEntries = {
   },
   "device/check-android-build": {
     definition: deviceCheckAndroidBuild,
-    sourceHash: "0360b115f0e244bc769856dfea3b2eb15e13a7a7a4fd79092868cf94103b28eb",
+    sourceHash: "1d64b778fd92c6262595b222151f904790b921dafd526d2c95fbbf04de22effa",
   },
   "device/check-phone-pairing": {
     definition: deviceCheckPhonePairing,
-    sourceHash: "9cec75ae65cb92ed4911d92ed24f6f96b6e9f354d67f366eaf34b3948f7d2c11",
+    sourceHash: "24490ce3ed85b95a750ea2828b9cfa3c08a15fcf44b61a7a567a9f667e0b9486",
   },
   "device/check-windows-build": {
     definition: deviceCheckWindowsBuild,
-    sourceHash: "a4494faef076963a8e580e44ab9dfe5f5399c00e45803a35575ae88b86259ca0",
+    sourceHash: "05abd4bf8afb20c21cc723a4c7b80b128906f33af7dfd39d987557e528e8aecd",
   },
   "github/upload-social-preview": {
     definition: githubUploadSocialPreview,
-    sourceHash: "4acd17705d5af03ab432831313e88495ec55ca2b40ceff74ebfbf02242291c17",
+    sourceHash: "be05f69e3d28ebcdbdae53622dd2cafdd173688b0524b06c999135e8262eb24b",
   },
   "google/configure-oauth-consent": {
     definition: googleConfigureOauthConsent,
@@ -56,11 +56,11 @@ export const catalogEntries = {
   },
   "npm/renew-trusted-publisher": {
     definition: npmRenewTrustedPublisher,
-    sourceHash: "132acdded133ddb236f335df2b45d28d06622e62d476c43d869d33adc85ed1a5",
+    sourceHash: "cbfed91f0114c9e6377bd6a54268e39cfc01d33582e75c0bb1a02152e2b0948c",
   },
   "npm/set-trusted-publisher": {
     definition: npmSetTrustedPublisher,
-    sourceHash: "69a1e6a10f85fa67d1677289f8e3586c04caca2bc49f0ee0eec929ce95f9df87",
+    sourceHash: "dc7c9c790731e5b33aa8f79a506b153746651033d4babde70ee8873846f71d10",
   },
   "openrouter/add-credit": {
     definition: openrouterAddCredit,

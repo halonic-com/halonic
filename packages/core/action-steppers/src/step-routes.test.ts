@@ -55,12 +55,23 @@ function definition(
   };
 }
 
-const ownerPattern = "^(?:[A-Za-z0-9-]{1,39})$";
-const repoPattern = "^(?:[A-Za-z0-9._-]{1,100})$";
+// As written, so the shell's pattern subset, which has no groups, can read them.
+const ownerPattern = "^[A-Za-z0-9-]{1,39}$";
+const repoPattern = "^[A-Za-z0-9._-]{1,100}$";
 const environmentPattern = "^(?:staging|release)$";
 
 verifies("action-steppers.api-steps", () => {
   describe("routesOf", () => {
+    it("keeps a text pattern as written and wraps only one with a top-level |", () => {
+      const fields = { ...acmeFields, owner: { kind: "text", pattern: /^acme|beta$/ } } as const;
+      const [check] = routesOf(definition([readEnvironment], fields));
+      expect(check?.placeholders).toEqual({
+        owner: "^(?:acme|beta)$",
+        repo: repoPattern,
+        environment: environmentPattern,
+      });
+    });
+
     it("gives a check a routine GET with no body and a call its method, body and risk", () => {
       const [check, call] = routesOf(definition([readEnvironment, setWaitTimer]));
       const placeholders = {
