@@ -177,15 +177,16 @@ verifies("messenger.activity-panel", () => {
   });
 });
 
-verifies("messenger.one-panel", () => {
-  it("joins the activity panel beside the chat with a line, not a card of its own", async () => {
+verifies("messenger.framed-list", () => {
+  it("shows the activity panel beside the chat as a panel of its own, 8px from it", async () => {
     const { page } = await chiefsChat(working);
     const aside = panel(page) as HTMLElement;
     const classes = aside.className.split(" ");
 
-    expect(classes).toEqual(expect.arrayContaining(["w-80", "border-s", "border-border"]));
-    expect(classes.some((name) => name.startsWith("rounded"))).toBe(false);
-    expect(classes).not.toContain("border");
-    expect((aside.parentElement as HTMLElement).className.split(" ")).not.toContain("gap-2");
+    expect(classes).toEqual(
+      expect.arrayContaining(["w-80", "rounded-lg", "border", "border-border", "bg-app-panel"]),
+    );
+    expect(classes).not.toContain("border-s");
+    expect((aside.parentElement as HTMLElement).className.split(" ")).toContain("gap-2");
   });
 });

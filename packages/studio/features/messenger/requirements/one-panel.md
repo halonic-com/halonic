@@ -1,6 +1,6 @@
 # messenger.one-panel
 
-- Status: active
+- Status: retired
 - Since: unreleased
 - Source: the board's feedback on HAL-19536, item 5 (the Messenger's side panel joined to the content panel: one surface, no gap or separate card), plan approved by Liam on HAL-19539; built on HAL-19586
 
