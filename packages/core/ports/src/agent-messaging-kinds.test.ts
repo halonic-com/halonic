@@ -31,6 +31,17 @@ const stepper: InboxStepperRequest = {
 };
 
 const stepperItem: InboxItem = { ...asking, options: [], stepper };
+const actionItem: InboxItem = {
+  ...asking,
+  options: [],
+  action: {
+    definition: "github.approve-run",
+    version: 1,
+    parameters: { owner: "acme", repo: "app", runId: 123456 },
+    expect: { headSha: "abc1234" },
+    expires: "2026-11-27T10:00:00.000Z",
+  },
+};
 const elsewhere: InboxItem = {
   ...asking,
   options: [],
@@ -45,6 +56,7 @@ verifies("ports.agent-messaging-item-kind", () => {
   });
 
   it("works the kind out for an item without one", () => {
+    expect(inboxItemKind(actionItem)).toBe("action");
     expect(inboxItemKind(stepperItem)).toBe("action");
     expect(inboxItemKind(elsewhere)).toBe("elsewhere");
     expect(inboxItemKind(asking)).toBe("question");
@@ -55,6 +67,8 @@ verifies("ports.agent-messaging-item-kind", () => {
     expect(inboxItemFits({ ...asking, kind: "approval" })).toBe(true);
     expect(inboxItemFits({ ...elsewhere, kind: "elsewhere" })).toBe(true);
     expect(inboxItemFits({ ...asking, kind: "action" })).toBe(false);
+    expect(inboxItemFits({ ...actionItem, kind: "action" })).toBe(true);
+    expect(inboxItemFits({ ...actionItem, kind: "approval" })).toBe(false);
     expect(inboxItemFits({ ...stepperItem, kind: "question" })).toBe(false);
   });
 });

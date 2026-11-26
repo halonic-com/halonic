@@ -1,6 +1,6 @@
 // What kind of item an agent put in the Inbox (requirement `ports.agent-messaging-item-kind`).
-// Apps show it as a badge next to who asks. Only the source can tell an approval from a
-// confirmation card, so it says; for an item that doesn't, apps work the kind out the same way.
+// Apps show it as a badge next to who asks. An approval and a question can have the same fields,
+// so only the source can tell them apart; for an item it doesn't mark, apps work the kind out the same way.
 import type { InboxItem } from "./agent-messaging.ts";
 
 /**

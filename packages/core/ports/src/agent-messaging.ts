@@ -276,7 +276,7 @@ export interface InboxItem {
   conversation?: MessagingId;
   /**
    * What kind of item it is, set by the provider when it can tell, such as an approval from a
-   * confirmation card. Absent, apps work it out with `inboxItemKind`
+   * question with the same options. Absent, apps work it out with `inboxItemKind`
    * (requirement `ports.agent-messaging-item-kind`).
    */
   kind?: InboxItemKind;
