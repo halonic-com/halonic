@@ -2,6 +2,7 @@
 
 - Approval: the board's report on HAL-10 (26 Nov) that Send feedback opened a window it couldn't close, showing Studio's Open folder screen, and asking for the modal of the approved sketch (HAL-18562); plan approved by Liam on Paperclip task HAL-19528
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:jtg0x192bQTeCc/iFvH2KJzGfXRnmf/AaCxXfcxClOdNHLge53U+F7JTq1Uo9+Do/53XLTncHvDE8smrZn0aBw==
 
 After an area is selected, the Send feedback form now shows as a dialog inside the Studio, Halonic
 Inbox or Halonic Messenger window where the shortcut was pressed, as the sketch on HAL-18562 shows
