@@ -68,12 +68,8 @@ export function FeedbackOverlay({ ipc }: FeedbackOverlayProps) {
       onPointerLeave={() => setPointerHere(false)}
     >
       <canvas ref={canvas} className="absolute inset-0 h-full w-full" />
-      {selection === undefined ? (
-        <div
-          className="absolute inset-0 transition-opacity ease-(--ease-enter) starting:opacity-0"
-          style={{ background: dim }}
-        />
-      ) : (
+      <Dim box={selection?.box} />
+      {selection === undefined ? null : (
         <SelectionBox screen={selection.screen} box={selection.box} />
       )}
       {drag === undefined && pointerHere ? <Hint /> : null}
@@ -81,7 +77,31 @@ export function FeedbackOverlay({ ipc }: FeedbackOverlayProps) {
   );
 }
 
-/** The box at full brightness: everything around it dimmed, a white edge and a dark one outside it. */
+/**
+ * The dim over the still, with a hole where the box is. It stays mounted for the overlay's whole
+ * life, so its fade-in runs once when the overlay appears and never again on a click or a box
+ * that's too small (HAL-19019).
+ */
+function Dim({ box }: { readonly box: Rect | undefined }) {
+  return (
+    <div
+      className="absolute inset-0 transition-opacity duration-(--duration-fast) ease-(--ease-enter) starting:opacity-0"
+      data-feedback-dim=""
+      style={{ background: dim, clipPath: box === undefined ? undefined : holeFor(box) }}
+    />
+  );
+}
+
+/** The whole screen minus `box`: with `evenodd`, the box's outline cuts a hole in the screen's. */
+function holeFor(box: Rect): string {
+  const left = `${box.x}px`;
+  const top = `${box.y}px`;
+  const right = `${box.x + box.width}px`;
+  const bottom = `${box.y + box.height}px`;
+  return `polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0, ${left} ${top}, ${right} ${top}, ${right} ${bottom}, ${left} ${bottom}, ${left} ${top})`;
+}
+
+/** The box at full brightness, a hole in the {@link Dim}: a white edge and a dark one outside it. */
 function SelectionBox({ screen, box }: { readonly screen: Screen; readonly box: Rect }) {
   return (
     <>
@@ -94,7 +114,7 @@ function SelectionBox({ screen, box }: { readonly screen: Screen; readonly box: 
           top: box.y,
           width: box.width,
           height: box.height,
-          boxShadow: `0 0 0 2px rgb(0 0 0 / 0.35), 0 0 0 100vmax ${dim}`,
+          boxShadow: "0 0 0 2px rgb(0 0 0 / 0.35)",
         }}
       />
       <SizeLabel screen={screen} box={box} />
