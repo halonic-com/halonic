@@ -82,6 +82,18 @@ function dragFrom(start: [number, number], end: [number, number]) {
   act(() => pointer("pointermove", ...end));
 }
 
+function click(x: number, y: number) {
+  act(() => pointer("pointerdown", x, y));
+  act(() => pointer("pointerup", x, y));
+}
+
+/** The hint's parts as a person reads them, one space apart. */
+function hintText(): string | undefined {
+  const hint = element.querySelector("[data-feedback-hint]");
+  if (hint === null) return undefined;
+  return [...hint.children].map((part) => part.textContent).join(" ");
+}
+
 function selected(shell: ReturnType<typeof fakeShell>) {
   return shell.invoke.mock.calls.filter(([command]) => command === "plugin:feedback|select");
 }
@@ -97,7 +109,29 @@ verifies("feedback.overlay", () => {
     expect(image.data[0]).toBe(7);
     expect(overlay().className).toContain("cursor-crosshair");
     expect(overlay().innerHTML).toContain("rgba(0, 0, 0, 0.4)");
-    expect(element.textContent).toContain("Drag to select an area·Escto cancel");
+    expect(hintText()).toBe("Drag to select an area · Enter for the whole screen · Esc to cancel");
+  });
+
+  it("selects the whole screen on Enter", async () => {
+    const shell = await mount("overlay");
+    await vi.waitFor(() => expect(drawn).toHaveBeenCalled());
+    act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" })));
+    expect(selected(shell)).toEqual([
+      ["plugin:feedback|select", { area: { left: 0, top: 0, width: 200, height: 100 } }],
+    ]);
+  });
+
+  it("draws a box with a click, a move and a second click, without dragging", async () => {
+    const shell = await mount("overlay");
+    await vi.waitFor(() => expect(drawn).toHaveBeenCalled());
+    click(10, 10);
+    act(() => pointer("pointermove", 18, 18));
+    expect(element.querySelector("[data-feedback-size]")?.textContent).toBe("16 × 16");
+    expect(hintText()).toBeUndefined();
+    click(18, 18);
+    expect(selected(shell)).toEqual([
+      ["plugin:feedback|select", { area: { left: 20, top: 20, width: 16, height: 16 } }],
+    ]);
   });
 
   it("ends the feedback on Esc", async () => {
@@ -119,11 +153,11 @@ verifies("feedback.overlay", () => {
     ]);
   });
 
-  it("does nothing on a click or a box under 8 × 8, and stays open", async () => {
+  it("does nothing on a box under 8 × 8, dragged or clicked, and stays open", async () => {
     const shell = await mount("overlay");
     await vi.waitFor(() => expect(drawn).toHaveBeenCalled());
-    act(() => pointer("pointerdown", 30, 30));
-    act(() => pointer("pointerup", 30, 30));
+    click(30, 30);
+    click(33, 60);
     dragFrom([10, 10], [17, 40]);
     act(() => pointer("pointerup", 17, 40));
     expect(selected(shell)).toEqual([]);

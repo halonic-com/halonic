@@ -1,10 +1,23 @@
-import { deviceCrop, isSelection, type Point, type Rect, type Screen } from "../crop.ts";
+import {
+  deviceCrop,
+  isSelection,
+  minimumSelection,
+  type Point,
+  type Rect,
+  type Screen,
+} from "../crop.ts";
 import type { StillImage } from "./still.ts";
 
-/** A drag on an overlay: where the pointer went down and where it is now, in CSS pixels. */
+/**
+ * A box being drawn on an overlay: its first corner and where the pointer is now, in CSS pixels.
+ * It is `pressed` while the pointer is held from the first corner, as in a drag, and `anchored`
+ * after a click set that corner, until a second click sets the opposite one. Two clicks say the
+ * same as a drag, for a person who can't drag (WCAG 2.5.7).
+ */
 export interface Drag {
   readonly start: Point;
   readonly current: Point;
+  readonly phase: "pressed" | "anchored";
 }
 
 /** The box `plugin:feedback|select` takes, in the still's device pixels. */
@@ -39,4 +52,17 @@ export function releasedArea(screen: Screen, box: Rect): SelectedArea | undefine
   if (!isSelection(box)) return undefined;
   const crop = deviceCrop(screen, box);
   return { left: crop.x, top: crop.y, width: crop.width, height: crop.height };
+}
+
+/**
+ * Whether letting go of a pressed box was a click rather than a drag: the pointer moved less than
+ * the smallest box both ways, so it sets the first corner of a two-click box.
+ */
+export function wasClick(box: Rect): boolean {
+  return box.width < minimumSelection && box.height < minimumSelection;
+}
+
+/** The whole still, which Enter selects when no box is being drawn. */
+export function wholeStill(still: StillImage): SelectedArea {
+  return { left: 0, top: 0, width: still.width, height: still.height };
 }

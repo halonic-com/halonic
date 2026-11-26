@@ -18,5 +18,5 @@ export const boxEdge = "#ffffff";
 /** The hint and the size label: white text on a dark pill. */
 export const pill: CSSProperties = { background: "rgb(0 0 0 / 0.75)", color: "#ffffff" };
 
-/** The edge of the Esc key in the hint. */
+/** The edge of the Enter and Esc keys in the hint. */
 export const keyEdge: CSSProperties = { borderColor: "rgb(255 255 255 / 0.4)" };

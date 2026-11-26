@@ -3,8 +3,10 @@
  * (HAL-18562, decided with the team under the board's go-ahead on HAL-10).
  */
 export const feedbackWords = {
-  /** The overlay's hint, before the Esc key. */
+  /** The overlay's hint, before the Enter key. */
   dragHint: "Drag to select an area",
+  /** The overlay's hint, after the Enter key (Sofia, HAL-19017). */
+  enterHint: "for the whole screen",
   /** The overlay's hint, after the Esc key. */
   escHint: "to cancel",
   /**
