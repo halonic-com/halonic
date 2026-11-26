@@ -4,6 +4,9 @@
  */
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 
+/** The name a customer reads for a unit, for every screen that names one (the inbox's plan-limit card too). */
+export { unitName } from "./unit-words.ts";
+
 /**
  * What the account menu shows of the signed-in customer, from the computer's
  * `GET /api/account-menu` (S2-25). The words come from Halonic Cloud's signed session and are

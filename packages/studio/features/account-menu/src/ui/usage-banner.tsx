@@ -2,8 +2,9 @@ import { BarsIcon, Button, CloseIcon } from "@halonicjs/studio-kit";
 import { pageHeading, type StripProps } from "@halonicjs/studio-shell";
 import { useEffect, useId, useState } from "react";
 import { type AccountMenuHost, AccountMenuHostService, type UsageWarning } from "../api.ts";
+import { unitName } from "../unit-words.ts";
 import { bannerWarning, UsageBannerMemory } from "../usage-banner-memory.ts";
-import { resetDay, unitName, usageBannerWords } from "./usage-banner-words.ts";
+import { resetDay, usageBannerWords } from "./usage-banner-words.ts";
 
 /**
  * The 80% banner under the top bar (`account-menu.usage-banner`, flow C3, board 10's first row):
@@ -41,7 +42,7 @@ export function UsageBanner({ context }: StripProps) {
           <BarsIcon />
         </span>
         <p id={titleId} className="min-w-0 flex-1 basis-60 text-fg">
-          <strong className="font-medium">{usageBannerWords.title(name)}</strong>
+          <strong className="font-semibold">{usageBannerWords.title(name)}</strong>
           {" · "}
           {usageBannerWords.resets(resetDay(warning.resetsAt))}
         </p>
