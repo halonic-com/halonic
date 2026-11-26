@@ -36,11 +36,12 @@ fn window(x: i32, y: i32, width: u32, height: u32) -> Rect {
 }
 
 #[test]
-fn keeps_position_size_and_maximised_but_never_whether_it_shows() {
+fn keeps_position_size_maximised_and_fullscreen_but_never_whether_it_shows() {
     // StateFlags has no `==`, so its bits are compared.
     assert_eq!(
         kept().bits(),
-        (StateFlags::POSITION | StateFlags::SIZE | StateFlags::MAXIMIZED).bits()
+        (StateFlags::POSITION | StateFlags::SIZE | StateFlags::MAXIMIZED | StateFlags::FULLSCREEN)
+            .bits()
     );
     assert!(!kept().contains(StateFlags::VISIBLE));
 }
@@ -118,12 +119,80 @@ fn a_window_bigger_than_the_primary_shrinks_to_its_work_area() {
 }
 
 #[test]
-fn a_window_barely_on_screen_moves_to_the_primary() {
+fn a_window_barely_on_screen_moves_fully_onto_it() {
     // Only 20 pixels of it are left on the ultrawide's right edge.
     let messenger = window(7660, 400, 1200, 800);
     assert_eq!(
-        fallback(messenger, &[ULTRAWIDE], Some(ULTRAWIDE_WORK_AREA)),
-        Some(window(3240, 656, 1200, 800))
+        fallback(messenger, &[ULTRAWIDE_WORK_AREA], Some(ULTRAWIDE_WORK_AREA)),
+        Some(window(6480, 400, 1200, 800))
+    );
+}
+
+#[test]
+fn a_window_partly_below_the_taskbar_moves_up_onto_the_work_area() {
+    let inbox = window(1000, 1700, 1200, 800);
+    assert_eq!(
+        fallback(inbox, &[ULTRAWIDE_WORK_AREA], Some(ULTRAWIDE_WORK_AREA)),
+        Some(window(1000, 1312, 1200, 800))
+    );
+}
+
+#[test]
+fn after_the_resolution_went_down_a_window_shrinks_onto_the_screen() {
+    // Kept on a 2560×1440 screen that now runs at 1920×1080.
+    let smaller = Rect {
+        x: 0,
+        y: 0,
+        width: 1920,
+        height: 1032,
+    };
+    let studio = window(400, 200, 2000, 1200);
+    assert_eq!(
+        fallback(studio, &[smaller], Some(smaller)),
+        Some(window(0, 0, 1920, 1032))
+    );
+}
+
+#[test]
+fn a_window_across_two_screens_of_different_scales_moves_onto_the_one_it_overlaps_most() {
+    // A 4K screen at 150% and a 1080p screen at 100% to its right: both
+    // work areas in physical pixels, as the monitors report them.
+    let left_4k = Rect {
+        x: 0,
+        y: 0,
+        width: 3840,
+        height: 2088,
+    };
+    let right_1080p = Rect {
+        x: 3840,
+        y: 0,
+        width: 1920,
+        height: 1032,
+    };
+    let messenger = window(3500, 100, 1000, 700);
+    assert_eq!(
+        fallback(messenger, &[left_4k, right_1080p], Some(left_4k)),
+        Some(window(3840, 100, 1000, 700))
+    );
+}
+
+#[test]
+fn a_maximised_window_on_a_screen_still_there_stays() {
+    assert_eq!(
+        stretched_fallback(
+            RIGHT_SCREEN,
+            &[ULTRAWIDE, RIGHT_SCREEN],
+            Some(ULTRAWIDE_WORK_AREA)
+        ),
+        None
+    );
+}
+
+#[test]
+fn a_maximised_or_fullscreen_window_on_a_screen_now_gone_stretches_over_the_primary() {
+    assert_eq!(
+        stretched_fallback(RIGHT_SCREEN, &[ULTRAWIDE], Some(ULTRAWIDE_WORK_AREA)),
+        Some(ULTRAWIDE_WORK_AREA)
     );
 }
 
