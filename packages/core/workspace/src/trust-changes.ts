@@ -106,6 +106,38 @@ export function trustChanges(trusted: TrustContent, current: TrustContent): Trus
   };
 }
 
+/** What a changed local integration's sheet can do now that it couldn't when it was trusted. */
+export interface IntegrationAdditions {
+  /** The hosts it may reach now, as keyed in `hosts`, such as `cdn.example.com` or `‹setting url›`. */
+  hosts: string[];
+  /** The secrets it gets now, as `‹secret NAME›`. */
+  secrets: string[];
+  /** The tools it has now, by name. */
+  tools: string[];
+}
+
+/**
+ * The hosts, secrets and tools a changed local integration has that it
+ * didn't have when it was trusted, each in the order the current content
+ * has them. What it no longer has isn't in them: taking something out
+ * doesn't widen what the code may do (HAL-65 decision 9).
+ *
+ * @example
+ * integrationAdditions({ id: "shop", before, after, fields: ["code", "hosts"] });
+ * // { hosts: ["cdn.shopify.com"], secrets: [], tools: [] }
+ */
+export function integrationAdditions(changed: ChangedIntegration): IntegrationAdditions {
+  const { before, after } = changed;
+  const trustedSecrets = new Set(before.secrets.map((secret) => secret.secret));
+  return {
+    hosts: Object.keys(after.hosts).filter((host) => !Object.hasOwn(before.hosts, host)),
+    secrets: after.secrets
+      .map((secret) => secret.secret)
+      .filter((secret) => !trustedSecrets.has(secret)),
+    tools: Object.keys(after.tools).filter((tool) => !Object.hasOwn(before.tools, tool)),
+  };
+}
+
 function itemChanges<Content extends { id: string }>(
   trusted: readonly Content[],
   current: readonly Content[],

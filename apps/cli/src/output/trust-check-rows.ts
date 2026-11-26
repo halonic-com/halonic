@@ -29,6 +29,7 @@ import { type SecretPick, trustMessages } from "../messages/trust.ts";
 import type { PluginHosts } from "../sheet-hosts.ts";
 import { printable } from "./printable.ts";
 import { shellWord } from "./shell-word.ts";
+import { integrationAdditionLines } from "./trust-integration-additions.ts";
 import {
   connectorLines,
   firstColumn,
@@ -312,8 +313,8 @@ function namedRows(
 /**
  * A changed local integration's Changed rows: its setting addresses when one
  * changed, else the hosts the assistant added, then its folder when it
- * moved, then "code changed" when a file in it changed. Every other field is
- * in the sheet, so a change to one is a change to the code too.
+ * moved, then "code changed" when a file in it changed, then a "New:" line for
+ * each host, secret or tool it gained. Every other field is in the sheet.
  */
 export function integrationChanges(
   integration: ChangedIntegration,
@@ -343,6 +344,7 @@ export function integrationChanges(
     ...(fields.includes("code")
       ? [withTag(row(printable(id), trustMessages.integrationCodeChanged().phrase), changedRow)]
       : []),
+    ...integrationAdditionLines(integration),
   ];
 }
 
