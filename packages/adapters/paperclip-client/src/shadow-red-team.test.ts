@@ -94,6 +94,7 @@ verifies("paperclip-client.shadow-red-team", () => {
           day: digestDay,
           entries: store.stored,
           calls: reader.counts(),
+          callsSince: new Date(0),
           build: "abc1234",
           until: new Date(),
         });

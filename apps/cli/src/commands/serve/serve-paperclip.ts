@@ -19,6 +19,7 @@ import type { Clock, SecretStore } from "@halonicjs/ports";
 import { systemClock } from "@halonicjs/std";
 import { openServeMessaging, type ServeMessaging } from "./serve-messaging.ts";
 import { ServePaperclipSignIn } from "./serve-paperclip-sign-in.ts";
+import { openServeShadow } from "./serve-shadow.ts";
 
 /** What {@link openServePaperclip} needs. */
 export interface ServePaperclipOptions {
@@ -48,6 +49,7 @@ export interface ServePaperclip {
    * Starts the one poll loop for every client once `server` answers (`server.messaging-rate`),
    * and gives `server` back with a `close` that stops the loop's timer too, so the process can
    * end. The first poll isn't awaited: a slow Paperclip mustn't hold up the "Serving" line.
+   * The auto approvals shadow runner starts and stops with it, when the profile configures it.
    */
   pollWhile<Server extends { close(): Promise<void> }>(server: Server): Server;
 }
@@ -87,6 +89,13 @@ export async function openServePaperclip(options: ServePaperclipOptions): Promis
     clock,
     report: log,
   });
+  const shadow = await openServeShadow({
+    profileFolder: options.profileFolder,
+    keys,
+    log,
+    clock,
+    ...network,
+  });
   return {
     connected: messaging.connected,
     messaging: polledMessagingPorts(loop),
@@ -94,7 +103,13 @@ export async function openServePaperclip(options: ServePaperclipOptions): Promis
     pollWhile: (server) => {
       // `start` never rejects: a failed poll goes to the log.
       void loop.start();
-      return { ...server, close: () => server.close().finally(() => loop.close()) };
+      // `start` logs its own failures; a shadow runner that can't start leaves `serve` running.
+      shadow?.start().catch(log);
+      const stop = () => {
+        loop.close();
+        shadow?.close();
+      };
+      return { ...server, close: () => server.close().finally(stop) };
     },
   };
 }

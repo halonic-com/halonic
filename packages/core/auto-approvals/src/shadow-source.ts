@@ -38,7 +38,11 @@ export interface ShadowSource {
   approval(approvalId: string): Promise<ShadowApprovalRead>;
   /** The never-list and the stop document on the pinned issue, with every revision. */
   pinnedDocuments(issueId: string): Promise<{ neverList: PinnedDocument; stop: PinnedDocument }>;
-  /** The server's time from the newest answer's `Date` header, or `undefined` without one. */
+  /**
+   * The server's time from the newest answer's `Date` header, or `undefined` without one. The
+   * newest answer counts whatever its status, a 404 or a 429 included: any answer is the
+   * server's clock, which is all the skew check and the never-list's 24 hours need.
+   */
   serverTime(): Date | undefined;
   /** The calls made and refused so far. */
   counts(): ShadowCallCounts;

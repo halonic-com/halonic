@@ -96,6 +96,8 @@ export class ShadowRunner {
   readonly #limits: ShadowLimits;
   readonly #ledger: Ledger;
   #halted: HaltReason | undefined = "run.not_started";
+  /** When the runner halted, by the laptop clock; `undefined` before it first started. */
+  #haltedAt: Date | undefined;
   #delayMs: number;
   #documents: { neverList: PinnedDocument; stop: PinnedDocument } | undefined;
 
@@ -115,6 +117,15 @@ export class ShadowRunner {
     return this.#halted;
   }
 
+  /**
+   * Why and since when the runner halted, for the digest: a halt may write nothing to the
+   * ledger (a failed write can't), so the ledger alone would read as a quiet day.
+   */
+  haltedState(): { readonly reason: HaltReason; readonly since: Date } | undefined {
+    if (this.#halted === undefined || this.#haltedAt === undefined) return undefined;
+    return { reason: this.#halted, since: this.#haltedAt };
+  }
+
   /** How long to wait before the next poll: longer after Paperclip answered 429. */
   nextDelayMs(): number {
     return this.#delayMs;
@@ -128,17 +139,22 @@ export class ShadowRunner {
   /**
    * Checks the ledger and records the start. It never starts a new chain on
    * its own: a broken chain, or one without the last digest's head, halts.
+   * It keeps a `guard.refused` halt: the source's refused count never goes
+   * down, so only a new source (a person restarting Studio) clears it.
+   * Call it only when a person starts the runner, never from a timer.
    *
    * @param lastDigestHead - the ledger head the last digest named, when there is one
    */
   async start(lastDigestHead?: string): Promise<HaltReason | undefined> {
     const { store, digest } = this.#options;
+    if (this.#sourceRefused()) return this.#halt("guard.refused");
     const entries = await store.entries();
     if (!(await verifyChain(entries, digest)).ok) return this.#halt("ledger.chain_broken");
     if (lastDigestHead !== undefined && !entries.some((entry) => entry.hash === lastDigestHead)) {
       return this.#halt("ledger.head_mismatch");
     }
     this.#halted = undefined;
+    this.#haltedAt = undefined;
     try {
       await this.#ledger.append(runEntry(runStarted));
     } catch {
@@ -151,6 +167,10 @@ export class ShadowRunner {
   async poll(): Promise<PollReport> {
     if (this.#halted !== undefined) return { pending: 0, evaluated: 0, stopped: this.#halted };
     const progress = { pending: 0, evaluated: 0 };
+    // Checked before any read too, so a refusal made since the last poll sends nothing more.
+    if (this.#sourceRefused()) {
+      return { ...progress, stopped: await this.#recordStop(this.#halt("guard.refused")) };
+    }
     try {
       await this.#pollNow(progress);
       if (this.#sourceRefused()) throw new PollStop("guard.refused");
@@ -276,6 +296,7 @@ export class ShadowRunner {
   }
 
   #halt(reason: HaltReason): HaltReason {
+    if (this.#halted !== reason) this.#haltedAt = this.#options.clock.now();
     this.#halted = reason;
     return reason;
   }

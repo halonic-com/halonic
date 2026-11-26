@@ -146,6 +146,29 @@ verifies("auto-approvals.shadow-runner", () => {
       expect(reasons(store).at(-1)).toBe("guard.refused");
     });
 
+    it("reads nothing more once a refusal was made since the last poll", async () => {
+      const source = new MemorySource();
+      const store = new MemoryStore();
+      const shadow = runner(source, store);
+      await shadow.start();
+      source.calls = { sent: 3, refused: 1, refusedNotGet: 1, writesSent: 0 };
+      expect(await shadow.poll()).toEqual({ pending: 0, evaluated: 0, stopped: "guard.refused" });
+      expect(reasons(store)).toEqual(["run.started", "guard.refused"]);
+      expect(shadow.haltedState()).toEqual({ reason: "guard.refused", since: now });
+    });
+
+    it("keeps a guard.refused halt when started again", async () => {
+      const source = new MemorySource();
+      const store = new MemoryStore();
+      const shadow = runner(source, store);
+      await shadow.start();
+      source.calls = { sent: 3, refused: 1, refusedNotGet: 1, writesSent: 0 };
+      await shadow.poll();
+      expect(await shadow.start()).toBe("guard.refused");
+      expect((await shadow.poll()).stopped).toBe("guard.refused");
+      expect(reasons(store)).toEqual(["run.started", "guard.refused"]);
+    });
+
     it("halts when the ledger can't take an entry, and evaluates nothing more", async () => {
       const store = new MemoryStore();
       const shadow = runner(new MemorySource(), store);

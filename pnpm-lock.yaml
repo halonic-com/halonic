@@ -595,6 +595,9 @@ importers:
       '@halonicjs/app':
         specifier: workspace:*
         version: link:../../packages/core/app
+      '@halonicjs/auto-approvals':
+        specifier: workspace:*
+        version: link:../../packages/core/auto-approvals
       '@halonicjs/engine':
         specifier: workspace:*
         version: link:../../packages/core/engine
