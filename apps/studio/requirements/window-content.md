@@ -1,6 +1,6 @@
 # studio.window-content
 
-- Status: draft
+- Status: active
 - Since: unreleased
 - Source: HAL-19734 (part D of HAL-19534's plan, approved on HAL-19566); the shell's side in `studio.src-tauri.open-windows`, the focused apps' windows in `studio.focused-app-window`
 

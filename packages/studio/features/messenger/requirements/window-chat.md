@@ -1,6 +1,6 @@
 # messenger.window-chat
 
-- Status: draft
+- Status: active
 - Since: unreleased
 - Source: HAL-19734 (part D of HAL-19534's plan, approved on HAL-19566); the window's content in `studio.window-content`
 
