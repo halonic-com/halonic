@@ -50,6 +50,8 @@ export interface PrStatus {
   readonly inQueue: boolean;
   readonly approvals: readonly Approval[];
   readonly approvedOnHead: boolean;
+  /** Why the approvals' Paperclip copies couldn't be read; they then show no copy. */
+  readonly copyError?: string;
   /**
    * The reviewer by the path rules (HAL-14809), from the changed files and
    * lines: the agent the routing names for the role, or today's person
@@ -192,10 +194,10 @@ export async function prStatus(
     reviewer: reviewerFor(routed),
     rebaseRefusal,
   });
-  const found =
+  const { approvals: found, copyError } =
     copies === undefined
-      ? judged
-      : withCopies(judged, await readCopySource(copies, ours ? pull.head.ref : undefined));
+      ? { approvals: judged }
+      : await judgedWithCopies(judged, copies, ours, pull.head);
   const reviewer = reviewerFor(routed, routing);
   const title = shownTitle(pull);
   return {
@@ -216,6 +218,7 @@ export async function prStatus(
     inQueue,
     approvals: found,
     approvedOnHead: found.some((approval) => approval.counts),
+    ...(copyError === undefined ? {} : { copyError }),
     reviewer,
     changedLines,
     securityFile: paths.find(isSecurityPath),
@@ -281,6 +284,25 @@ function failingText(facts: HeadFacts): string {
   return ` (failing: ${named.join(", ")}${more})`;
 }
 
+/**
+ * The approvals with their Paperclip copies. When Paperclip can't be read, they
+ * show no copy and the error is reported, rather than failing the whole status,
+ * as the watcher does.
+ */
+async function judgedWithCopies(
+  judged: Approval[],
+  copies: CopyReader,
+  ours: boolean,
+  pullHead: { readonly ref: string; readonly sha: string },
+): Promise<{ readonly approvals: Approval[]; readonly copyError?: string }> {
+  try {
+    const source = await readCopySource(copies, ours ? pullHead.ref : undefined);
+    return { approvals: withCopies(judged, source, pullHead.sha) };
+  } catch (error) {
+    return { approvals: judged, copyError: (error as Error).message };
+  }
+}
+
 /** One approval: who, on which head, whether it counts and whether its Paperclip copy exists. */
 function approvalText(approval: Approval): string {
   const marks = [
@@ -321,6 +343,9 @@ export function statusText(status: PrStatus): string {
     `${untrustedNote}; ${titleText(status.title)}; branch ${JSON.stringify(status.branch)}`,
     `${status.state}${status.draft ? ", draft" : ""}; task ${status.task ?? "none"}; author ${status.author ?? "unknown"}`,
     ...headFactsText({ ...status, behindBase: status.behindBase ?? "n/a" }),
+    ...(status.copyError === undefined
+      ? []
+      : [`approval copies: couldn't read Paperclip (${status.copyError})`]),
     `required workflows: ${requiredText(status.requiredWorkflows)}`,
     `${status.changedLines} changed lines; reviewer by the path rules: ${status.reviewer}`,
     ...(status.latestReviewFinding === undefined

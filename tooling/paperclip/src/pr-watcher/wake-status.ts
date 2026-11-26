@@ -82,7 +82,8 @@ export function snapshotSummary(snapshot: Snapshot, copies?: SnapshotCopies): Pu
       mergeable: open.mergeable === "no" ? "conflict" : open.mergeable,
       inQueue: open.inQueue,
       // The snapshot holds no changed files, so Julian's limits stay unchecked.
-      approvals: copies?.has(key) === true ? withCopies(judged, copies.get(key)) : judged,
+      approvals:
+        copies?.has(key) === true ? withCopies(judged, copies.get(key), pull.head) : judged,
       // A snapshot saved before the field was added has none.
       failingChecks: open.failingChecks ?? [],
     });

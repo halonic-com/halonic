@@ -369,6 +369,30 @@ verifies("paperclip.pr-tools-approval-copy", () => {
       expect(read).toEqual([]);
     });
 
+    test("says copy: no for a full sha that shares the short head but isn't the pull request's head", async () => {
+      const otherHead = `7651f8c${"0".repeat(33)}`;
+      const { reader } = copyReader([
+        { authorAgentId: "agent-liam", body: `Liam: approved on head \`${otherHead}\`` },
+      ]);
+      const status = await prStatus(pr4588([line]).get, repo, 4588, undefined, reader);
+      expect(status.approvals.map(({ copy }) => copy)).toEqual(["no"]);
+    });
+
+    test("shows no copy and names the error when Paperclip can't be read, and still answers", async () => {
+      const reader: CopyReader = {
+        taskComments: async () => {
+          throw new Error("Paperclip is down");
+        },
+        agents: async () => [],
+      };
+      const status = await prStatus(pr4588([line]).get, repo, 4588, undefined, reader);
+      expect(status.approvals).toEqual([{ by: "Liam", head: "7651f8c", counts: true }]);
+      expect(status.copyError).toBe("Paperclip is down");
+      expect(statusText(status)).toContain(
+        "approval copies: couldn't read Paperclip (Paperclip is down)",
+      );
+    });
+
     test("shows no copy when no reader is given", async () => {
       const status = await prStatus(pr4588([line]).get, repo, 4588);
       expect(status.approvals).toEqual([{ by: "Liam", head: "7651f8c", counts: true }]);

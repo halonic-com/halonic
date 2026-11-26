@@ -78,12 +78,21 @@ export function copyState(
   return hasCopy(approval, source) ? "yes" : "no";
 }
 
-/** The approvals, each with its copy state; `counts` and the notes stay as they were. */
+/**
+ * The approvals, each with its copy state; `counts` and the notes stay as they
+ * were. An approval on the current head is matched against the pull request's
+ * full head, not a prefix of the GitHub line's short sha.
+ */
 export function withCopies(
   approvals: readonly Approval[],
   source: CopySource | undefined,
+  head: string,
 ): Approval[] {
-  return approvals.map((approval) => ({ ...approval, copy: copyState(approval, source) }));
+  return approvals.map((approval) => {
+    const onHead = head.toLowerCase().startsWith(approval.head.toLowerCase());
+    const matched = onHead ? { by: approval.by, head } : approval;
+    return { ...approval, copy: copyState(matched, source) };
+  });
 }
 
 /**

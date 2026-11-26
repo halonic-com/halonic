@@ -168,6 +168,23 @@ verifies("paperclip.pr-tools-approval-copy", () => {
     expect(lines({ repo, number: 4617 })[1]).not.toContain("copy:");
   });
 
+  test("matches a copy against the pull request's full head, not the GitHub line's short sha", async () => {
+    const otherHead = `7dd0ccf${"0".repeat(33)}`;
+    const copies = await snapshotCopies(
+      snapshot,
+      {
+        taskComments: async () => [
+          { authorAgentId: "agent-liam", body: `Liam: approved on head \`${otherHead}\`` },
+        ],
+        agents: async () => [{ id: "agent-liam", urlKey: "liam" }],
+      },
+      () => undefined,
+    );
+    expect(snapshotSummary(snapshot, copies)({ repo, number: 4614 })[1]).toContain(
+      "Liam on 7dd0ccf (copy: no)",
+    );
+  });
+
   test("logs a pull request whose copies couldn't be read and shows none for it", async () => {
     const logged: string[] = [];
     const copies = await snapshotCopies(
