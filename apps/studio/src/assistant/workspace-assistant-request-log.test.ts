@@ -1,6 +1,8 @@
-import type { RequestLogLine } from "@halonicjs/app";
+import type { AgentHostTransport } from "@halonicjs/adapter-agent-host-client";
+import { fenceStart, type RequestLogLine } from "@halonicjs/app";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
+import { engineRequestLogs } from "./chat-request-log.ts";
 import { answered, device, setup } from "./workspace-assistant.test-helper.ts";
 
 /** A local integration, `notes`, and the connector in the support hub that runs it. */
@@ -66,5 +68,38 @@ verifies("assistant.build.read-request-log", () => {
     const call = { id: "r1", name: "read_request_log", arguments: { integration: "notes" } };
     const { read } = await chatAbout("notes", { turns: [answered("", [call])] });
     expect(read).toEqual(["notes"]);
+  });
+
+  it("reads the line the engine kept through the agent host, inside the fence", async () => {
+    const asked: unknown[] = [];
+    const transport = {
+      request: async (route: string, body: unknown) => {
+        asked.push({ route, body });
+        return { status: 200, body: { lines: [line] } };
+      },
+    } as unknown as AgentHostTransport;
+    const call = { id: "r1", name: "read_request_log", arguments: { integration: "notes" } };
+    const { assistant, turnRequests } = setup({
+      files: notes,
+      requestLogs: engineRequestLogs(transport, "/work/acme"),
+      turns: [answered("", [call])],
+    });
+    const chat = await assistant.newChat("build", {
+      kind: "connector",
+      hub: "support",
+      id: "notes",
+    });
+    await assistant.answer({ chatId: chat.id, message: "It stopped working." });
+
+    expect(asked).toEqual([
+      {
+        route: "POST /v1/integration-logs/read",
+        body: { location: "/work/acme", integration: "notes" },
+      },
+    ]);
+    const result = turnRequests[1]?.messages.find((message) => message.role === "tool");
+    const [outside = "", inside = ""] = (result?.content ?? "").split(fenceStart);
+    expect(inside).toContain("api.notes.example.com/v1/notes/{…}: status 404");
+    expect(outside).not.toContain("/v1/notes/{…}");
   });
 });

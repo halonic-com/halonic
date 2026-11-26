@@ -71,6 +71,7 @@ export { AgentHostPluginToolCaller, type PluginToolArgs } from "./plugins.ts";
 export { AgentHostProgramCopies } from "./program-copies.ts";
 export { AgentHostProposalFolders, type ProposalFolderRun } from "./proposal-folders.ts";
 export { AgentHostRemoteControl } from "./remote-control.ts";
+export { AgentHostRequestLogs } from "./request-logs.ts";
 export {
   AgentHostInstructions,
   type AgentHostInstructionsOptions,

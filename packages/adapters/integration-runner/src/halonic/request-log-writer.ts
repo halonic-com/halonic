@@ -91,7 +91,9 @@ async function integrationCode(folder: string): Promise<string> {
   const texts: string[] = [];
   let bytes = 0;
   const look = async (current: string): Promise<void> => {
-    for (const entry of await readdir(current, { withFileTypes: true })) {
+    // A folder deleted since it was listed is skipped, as an unreadable file is.
+    const entries = await readdir(current, { withFileTypes: true }).catch(() => []);
+    for (const entry of entries) {
       if (entry.name === "node_modules" || entry.name.startsWith(".")) continue;
       const path = join(current, entry.name);
       if (entry.isDirectory()) {

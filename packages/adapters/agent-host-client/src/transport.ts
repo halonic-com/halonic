@@ -50,6 +50,7 @@ export const agentHostRequestRoutes = [
   "POST /v1/placements/get",
   "POST /v1/placements/save",
   "POST /v1/placements/remove",
+  "POST /v1/integration-logs/read",
   "POST /v1/harnesses/runs/send",
   "POST /v1/harnesses/runs/cancel",
   "POST /v1/connectors/open",

@@ -5,7 +5,7 @@
 // headers and no bodies, as the kit's log doesn't, and paths are masked when
 // an entry is written, never when it is read (Liam, HAL-18391).
 
-import { codeIndex, maskedPath, maskedSegment } from "./masked-path.ts";
+import { codeIndex, maskedSegment, PathMasking } from "./masked-path.ts";
 
 /** One request an integration made, as the kit's request log has it. */
 export interface LoggedRequest {
@@ -79,8 +79,12 @@ export class RequestLogStore {
   readonly #writes = new Map<string, Promise<void>>();
   /** The lines waiting for each file's next write. */
   readonly #pending = new Map<string, PendingLines>();
-  /** The workspaces being forgotten: a line added for one meanwhile is dropped. */
-  readonly #forgetting = new Set<string>();
+  /**
+   * The workspaces forgotten, or being forgotten: a line added for one is dropped, so an
+   * integration still loaded when its workspace is forgotten can't write its folder again
+   * (Julian, HAL-19291).
+   */
+  readonly #forgotten = new Set<string>();
   readonly #now: () => Date;
 
   /** @param limit - how many requests, and how many failure notes, each file keeps and each write takes */
@@ -155,20 +159,17 @@ export class RequestLogStore {
   /**
    * Drops the waiting lines of every integration in the workspace and deletes
    * its logs, as when the workspace is forgotten. A write already running
-   * finishes first, so no file comes back after the folder is gone.
+   * finishes first, and the store writes nothing for the workspace again, so
+   * no file comes back after the folder is gone.
    */
   async forgetWorkspace(workspace: string): Promise<void> {
     checkWorkspace(workspace);
-    this.#forgetting.add(workspace);
-    try {
-      for (const key of this.#pending.keys()) {
-        if (key.startsWith(`${workspace}/`)) this.#pending.delete(key);
-      }
-      await Promise.allSettled(this.#writes.values());
-      await this.#files.removeWorkspace(workspace);
-    } finally {
-      this.#forgetting.delete(workspace);
+    this.#forgotten.add(workspace);
+    for (const key of this.#pending.keys()) {
+      if (key.startsWith(`${workspace}/`)) this.#pending.delete(key);
     }
+    await Promise.allSettled(this.#writes.values());
+    await this.#files.removeWorkspace(workspace);
   }
 
   /** Adds `line` to the file's next write, starting one when none waits. */
@@ -179,7 +180,7 @@ export class RequestLogStore {
     readCode?: CodeReader,
   ): Promise<void> {
     const file = fileName(workspace, integration);
-    if (this.#forgetting.has(workspace)) return Promise.resolve();
+    if (this.#forgotten.has(workspace)) return Promise.resolve();
     const key = fileKey(workspace, integration);
     let pending = this.#pending.get(key);
     if (pending === undefined) {
@@ -199,8 +200,10 @@ export class RequestLogStore {
     if (this.#pending.get(key) !== pending) return;
     this.#pending.delete(key);
     const code = codeIndex(pending.readCode === undefined ? "" : await pending.readCode());
+    // One masking for the whole write, so its scans of the code are bounded together.
+    const masking = new PathMasking(code);
     const added = pending.lines.map((line) =>
-      line.type === "request" ? { ...line, path: maskedPath(line.path, code) } : line,
+      line.type === "request" ? { ...line, path: masking.path(line.path) } : line,
     );
     const lines = [...parseLines(await this.#files.read(workspace, file)), ...added];
     const kept = new Set([

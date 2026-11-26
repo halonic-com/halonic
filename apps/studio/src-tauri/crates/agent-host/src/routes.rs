@@ -214,6 +214,11 @@ const ROUTES: &[(&str, Route)] = &[
         "POST /v1/placements/remove",
         route(Method::Post, "/v1/placements/remove", Answer::Json),
     ),
+    // A local integration's request log, read only, for the Build chat (HAL-19291).
+    (
+        "POST /v1/integration-logs/read",
+        route(Method::Post, "/v1/integration-logs/read", Answer::Json),
+    ),
     (
         "POST /v1/harnesses/runs/start",
         route(Method::Post, "/v1/harnesses/runs/start", Answer::Stream),
