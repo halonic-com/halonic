@@ -523,6 +523,7 @@
                             "default": {
                               "type": "string",
                               "enum": [
+                                "routine-reviewer",
                                 "second-reviewer",
                                 "code-reviewer"
                               ]
@@ -530,6 +531,7 @@
                             "escalateTo": {
                               "type": "string",
                               "enum": [
+                                "routine-reviewer",
                                 "second-reviewer",
                                 "code-reviewer"
                               ]
@@ -630,6 +632,43 @@
                             "nestedPackageJson": {
                               "default": false,
                               "type": "boolean"
+                            },
+                            "narrowTo": {
+                              "type": "object",
+                              "properties": {
+                                "role": {
+                                  "type": "string",
+                                  "enum": [
+                                    "routine-reviewer",
+                                    "second-reviewer",
+                                    "code-reviewer"
+                                  ]
+                                },
+                                "folders": {
+                                  "default": [],
+                                  "maxItems": 100,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 300
+                                  }
+                                },
+                                "patterns": {
+                                  "default": [],
+                                  "maxItems": 30,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  }
+                                }
+                              },
+                              "required": [
+                                "role"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [

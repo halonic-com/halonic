@@ -5,8 +5,8 @@
 // declares (a security or release PR) and who wrote it route on top of them.
 import { type Infer, s } from "@halonicjs/schema-kit";
 
-/** A role the rules may name: the two review roles of the routing. */
-const reviewRole = s.enum(["second-reviewer", "code-reviewer"]);
+/** A role the rules may name: the review roles of the routing. */
+const reviewRole = s.enum(["routine-reviewer", "second-reviewer", "code-reviewer"]);
 
 /** Whether `source` compiles as a JavaScript regular expression. */
 function compiles(source: string): boolean {
@@ -38,7 +38,18 @@ const maxLines = s.number().int().min(1);
  */
 const FolderLineLimit = s.object({ folders: paths, max: maxLines }).strict();
 
-/** One repository's rules. A pull request goes to `escalateTo` when any rule fires. */
+/**
+ * A narrower role for some of the pull requests that stay with `default`,
+ * such as a review-only agent's: they go to `role` unless a path is under
+ * one of `folders` or matches one of `patterns`.
+ */
+const NarrowerRole = s.object({ role: reviewRole, folders: paths, patterns: patterns }).strict();
+
+/**
+ * One repository's rules. A pull request goes to `escalateTo` when any rule
+ * fires, to `narrowTo.role` when none does and `narrowTo` lets it, and to
+ * `default` otherwise.
+ */
 export const RepositoryReviewerRules = s
   .object({
     /** The role a pull request goes to when no rule fires. */
@@ -67,6 +78,8 @@ export const RepositoryReviewerRules = s
       .optional(),
     /** Whether a `package.json` below the root escalates. */
     nestedPackageJson: s.boolean().default(false),
+    /** An optional third tier below `default`. */
+    narrowTo: NarrowerRole.optional(),
   })
   .strict();
 

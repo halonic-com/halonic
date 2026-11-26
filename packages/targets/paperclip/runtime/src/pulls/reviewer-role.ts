@@ -83,6 +83,7 @@ function compiled(rules: RepositoryReviewerRules) {
   return {
     wordsSkip: toRegExps(rules.wordsSkip),
     lineSkip: toRegExps(rules.lineLimit?.skip ?? []),
+    narrowKeep: toRegExps(rules.narrowTo?.patterns ?? []),
     words: rules.words.map((word) => word.toLowerCase()),
   };
 }
@@ -157,8 +158,31 @@ function overLineLimit(
 }
 
 /**
+ * The role below `escalateTo`: `narrowTo.role` when the rules give one and
+ * no path is under its `folders` or matches its `patterns`; otherwise
+ * `default`.
+ */
+function roleBelowEscalation(
+  rules: RepositoryReviewerRules,
+  regexps: ReturnType<typeof compiled>,
+  paths: readonly string[],
+): ReviewRole {
+  const narrow = rules.narrowTo;
+  if (narrow === undefined) {
+    return rules.default;
+  }
+  const keepsDefault = paths.some(
+    (path) =>
+      narrow.folders.some((folder) => path.startsWith(folder)) ||
+      matchesAny(regexps.narrowKeep, path),
+  );
+  return keepsDefault ? rules.default : narrow.role;
+}
+
+/**
  * The role by the rules: `escalateTo` when a path fires a rule or the pull
- * request is over a line limit; otherwise `default`. `fileLines` gives each
+ * request is over a line limit; otherwise `narrowTo.role` when it lets the
+ * pull request narrow, and `default` when not. `fileLines` gives each
  * path's changed lines; without it, the line limits count the whole pull
  * request's `changedLines`.
  */
@@ -175,7 +199,7 @@ export function reviewRoleByPaths(
   ) {
     return rules.escalateTo;
   }
-  return rules.default;
+  return roleBelowEscalation(rules, regexps, paths);
 }
 
 /** The role and the agent the routing names for it. */
@@ -189,13 +213,13 @@ export function reviewerByPaths(
   return { role, person: routing?.roles[role] };
 }
 
-/** What an approval by the `default` reviewer can't see: the author's word that the PR is security or release. */
+/** What an approval by a reviewer below `escalateTo` can't see: the author's word that the PR is security or release. */
 export const defaultReviewerNote = "unless it's a security or release pull request";
 
 /**
  * The approvals, with the note on a counting one signed by the agent who
- * covers the rules' `default` role when the paths pick that role: the paths
- * let that reviewer approve, but a security or release pull request still
+ * covers the role the paths pick when it is below `escalateTo` (`default` or
+ * `narrowTo.role`): the paths let that reviewer approve, but a security or release pull request still
  * goes to the `escalateTo` role. `signedBy` matches a signature to the agent.
  */
 export function noteDefaultReviewer(
@@ -204,7 +228,7 @@ export function noteDefaultReviewer(
   reviewer: ReviewerByPaths | undefined,
   signedBy: (by: string) => boolean,
 ): Approval[] {
-  if (rules === undefined || reviewer?.person === undefined || reviewer.role !== rules.default) {
+  if (rules === undefined || reviewer?.person === undefined || reviewer.role === rules.escalateTo) {
     return [...found];
   }
   return found.map((approval) =>

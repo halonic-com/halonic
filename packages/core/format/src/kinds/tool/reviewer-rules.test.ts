@@ -81,6 +81,27 @@ verifies("format.tool-reviewer-rules", () => {
     });
   });
 
+  it("accepts a narrower role, and fills in its folders and patterns", () => {
+    const tool = parsedValue(
+      "tool",
+      prStatus(
+        ...rulesFor("acme/website", "narrowTo: { role: routine-reviewer, folders: [src/core/] }"),
+      ),
+    );
+    expect(tool.action.with).toMatchObject({
+      reviewerRules: {
+        "acme/website": {
+          narrowTo: { role: "routine-reviewer", folders: ["src/core/"], patterns: [] },
+        },
+      },
+    });
+  });
+
+  it("refuses a narrower role that names a person", () => {
+    const text = prStatus(...rulesFor("acme/website", "narrowTo: { role: nora }"));
+    expect(pathsOf(text)).toEqual(["action.with.reviewerRules.acme/website.narrowTo.role"]);
+  });
+
   it("refuses a folder limit without its max", () => {
     const text = prStatus(
       ...rulesFor("acme/website", "lineLimit: { max: 1200, folderLimits: [{ folders: [src/] }] }"),
