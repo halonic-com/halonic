@@ -23,7 +23,9 @@ export const usageWarningPercent = 80;
 /**
  * `GET /api/account-menu`: the customer's name, the product's name, their plan, the percent of
  * the cost limit they used, the units at 80% or more of their limit and under 100% (`warnings`,
- * highest first) and the two account page addresses. It answers 404 without account
+ * highest first), their billing state from Cloud's session (`billing`, `null` without one) and
+ * the account page's addresses, each built from the `account` claim alone, with a fixed path or
+ * fragment and nothing from the request or the user. It answers 404 without account
  * menu parts, so a single-user Studio, or many users without Cloud sign-in, shows no menu. The
  * server sends `Cache-Control: no-store` on every answer.
  */
@@ -39,8 +41,12 @@ export const accountMenuHandler: SignedInHandler = async (_request, _body, { acc
     plan: usage?.plan ?? null,
     usedPercent: usage?.usedPercent ?? null,
     warnings: warningsOf(usage?.units ?? []),
+    billing: profile.billing,
     accountUrl: profile.account,
-    planUrl: planAddress(profile.account),
+    planUrl: sectionAddress(profile.account, "plan"),
+    plansUrl: pageAddress(profile.account, "plans", "?from=app"),
+    billingUrl: sectionAddress(profile.account, "billing"),
+    exportUrl: pageAddress(profile.account, "export"),
   });
 };
 
@@ -55,9 +61,21 @@ function warningsOf(units: readonly UnitUsage[]): UnitUsage[] {
     .sort((left, right) => right.percent - left.percent);
 }
 
-/** The account page's plan section: the same address with `#plan` in place of any fragment. */
-function planAddress(account: string): string {
+/** A section of the account page: the same address with `#<section>` in place of any fragment. */
+function sectionAddress(account: string, section: string): string {
   const url = new URL(account);
-  url.hash = "plan";
+  url.hash = section;
+  return url.href;
+}
+
+/**
+ * A page under the account page: `<account>/<page>`, with the given query and no fragment.
+ * `from=app` on Choose a plan makes its back button return to the app.
+ */
+function pageAddress(account: string, page: string, query = ""): string {
+  const url = new URL(account);
+  url.pathname = `${url.pathname.replace(/\/+$/, "")}/${page}`;
+  url.search = query;
+  url.hash = "";
   return url.href;
 }

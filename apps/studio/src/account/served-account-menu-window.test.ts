@@ -11,8 +11,12 @@ const sofia = {
   plan: "Pro",
   usedPercent: 62,
   warnings: [],
+  billing: null,
   accountUrl: "https://account.example.com/acme",
   planUrl: "https://account.example.com/acme#plan",
+  plansUrl: "https://account.example.com/acme/plans?from=app",
+  billingUrl: "https://account.example.com/acme#billing",
+  exportUrl: "https://account.example.com/acme/export",
 };
 
 let element: HTMLElement;

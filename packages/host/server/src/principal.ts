@@ -72,6 +72,10 @@ export interface SessionClaims {
   readonly account?: unknown;
   /** The product's name, from Halonic Cloud; it grants nothing. */
   readonly product_name?: unknown;
+  /** Cloud's billing state for the banners; a wrong one is dropped, never refused. */
+  readonly billing?: unknown;
+  /** The day the billing state is about, `YYYY-MM-DD`; dropped with `billing` when wrong. */
+  readonly billing_until?: unknown;
 }
 
 /** A session that passed the checks: who is asking, and the client, which grants nothing. */
@@ -97,7 +101,8 @@ export interface CheckedSession {
  * role. The `client` claim never reaches the principal, so no permission can depend on it; it
  * must be 1 to 64 printable ASCII characters and is refused, never cleaned up, otherwise. The
  * `name`, `account` and `product_name` claims are checked by {@link checkCloudProfile}: all three
- * or none, and a wrong one refuses the session.
+ * or none, and a wrong one refuses the session. The optional `billing` pair it reads too is the
+ * exception: a wrong pair is dropped and never refuses the session.
  *
  * The claims are untrusted input whatever verifier returned them: anything that isn't an object
  * of claims, a missing claim or a claim of the wrong type is refused. Extra claims are ignored.

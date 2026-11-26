@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { Server } from "./api.ts";
 import type { CloudSignInPorts } from "./cloud-sign-in-api.ts";
 import type { AccountUsage, ManyUserPorts } from "./many-users-api.ts";
+import type { SessionClaims } from "./principal.ts";
 import { ids, personalClaims, StubSessionVerifier } from "./stub-session-verifier.test-helper.ts";
 import { testServer, unusedPort } from "./test-server.ts";
 
@@ -23,11 +24,21 @@ const cloudSignIn: CloudSignInPorts = {
   signOut: unusedPort("signOut"),
 };
 
+/** Cloud's profile on `account.example.com`, with any claim added or replaced. */
+function billingClaims(changes: Record<string, unknown>) {
+  const account = "https://account.example.com/prod_acmeAAAAAAAAAAAAAAAA";
+  return personalClaims(ids.alice, { ...profileClaims, account, ...changes });
+}
+
 /**
  * A many-user server where `alice-token` carries Cloud's profile and `bob-token` carries none,
- * with any many-user port replaced.
+ * with any many-user port replaced and any token added.
  */
-function manyUserServer(changes: Partial<ManyUserPorts> = {}, withCloudSignIn = true) {
+function manyUserServer(
+  changes: Partial<ManyUserPorts> = {},
+  withCloudSignIn = true,
+  tokens: Readonly<Record<string, SessionClaims>> = {},
+) {
   const errors: unknown[] = [];
   const server = testServer({
     passwordHash: null,
@@ -41,6 +52,7 @@ function manyUserServer(changes: Partial<ManyUserPorts> = {}, withCloudSignIn = 
       verifier: new StubSessionVerifier({
         "alice-token": personalClaims(ids.alice, profileClaims),
         "bob-token": personalClaims(ids.bob),
+        ...tokens,
       }),
       cookieName,
       scopedRuns: () => ({
@@ -86,8 +98,12 @@ describe("account menu route", () => {
         plan: "Pro",
         usedPercent: 42,
         warnings: [],
+        billing: null,
         accountUrl: "https://account.acme.example/prod_acmeAAAAAAAAAAAAAAAA",
         planUrl: "https://account.acme.example/prod_acmeAAAAAAAAAAAAAAAA#plan",
+        plansUrl: "https://account.acme.example/prod_acmeAAAAAAAAAAAAAAAA/plans?from=app",
+        billingUrl: "https://account.acme.example/prod_acmeAAAAAAAAAAAAAAAA#billing",
+        exportUrl: "https://account.acme.example/prod_acmeAAAAAAAAAAAAAAAA/export",
       });
       expect(asked).toEqual([ids.alice]);
     });
@@ -175,6 +191,47 @@ describe("account menu route", () => {
       const response = await readMenu(server, "alice-token");
       expect(response.status).toBe(500);
       expect(errors).toEqual([failure]);
+    });
+  });
+
+  verifies("server.cloud-session-profile", () => {
+    it("answers the session's billing state and the addresses for it", async () => {
+      const trialEnds = billingClaims({ billing: "trial_ends", billing_until: "2026-12-02" });
+      const { server } = manyUserServer({}, true, { "trial-token": trialEnds });
+      const response = await readMenu(server, "trial-token");
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({
+        billing: { state: "trial_ends", until: "2026-12-02" },
+        accountUrl: "https://account.example.com/prod_acmeAAAAAAAAAAAAAAAA",
+        plansUrl: "https://account.example.com/prod_acmeAAAAAAAAAAAAAAAA/plans?from=app",
+        billingUrl: "https://account.example.com/prod_acmeAAAAAAAAAAAAAAAA#billing",
+        exportUrl: "https://account.example.com/prod_acmeAAAAAAAAAAAAAAAA/export",
+      });
+    });
+
+    it("reads each billing state Cloud signs", async () => {
+      for (const state of ["payment_failed", "trial_ends", "no_plan"]) {
+        const claims = billingClaims({ billing: state, billing_until: "2028-02-29" });
+        const { server } = manyUserServer({}, true, { "billing-token": claims });
+        const answer = await (await readMenu(server, "billing-token")).json();
+        expect(answer, state).toMatchObject({ billing: { state, until: "2028-02-29" } });
+      }
+    });
+
+    it.each([
+      ["a billing state it doesn't know", { billing: "late", billing_until: "2026-12-02" }],
+      ["a billing state that isn't text", { billing: 3, billing_until: "2026-12-02" }],
+      ["a free-text date", { billing: "trial_ends", billing_until: "next week" }],
+      ["a date with a time", { billing: "trial_ends", billing_until: "2026-12-02T00:00:00Z" }],
+      ["a date that doesn't exist", { billing: "trial_ends", billing_until: "2026-02-30" }],
+      ["a month that doesn't exist", { billing: "trial_ends", billing_until: "2026-13-01" }],
+      ["only the billing state", { billing: "trial_ends" }],
+      ["only the date", { billing_until: "2026-12-02" }],
+    ])("drops the billing pair for %s, and keeps the session", async (_, changes) => {
+      const { server } = manyUserServer({}, true, { "billing-token": billingClaims(changes) });
+      const response = await readMenu(server, "billing-token");
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({ name: "Sofia Marin", billing: null });
     });
   });
 });

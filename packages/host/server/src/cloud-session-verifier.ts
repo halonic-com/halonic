@@ -198,7 +198,7 @@ async function isSignedBy(key: CloudKey, token: ParsedToken): Promise<boolean> {
  * The claims in the form the shared checks read. Cloud's `aud` names the product, which was
  * checked above, so the shared audience becomes `app`. A token without a scope works in its
  * user's own scope, the only kind there is until organisations come. The customer's name, account
- * page and product name go on for the account menu.
+ * page and product name, and the optional billing pair, go on for the account menu.
  */
 function claimsFor(payload: object, sessionId: string): SessionClaims {
   const sub = ownValue(payload, "sub");
@@ -212,6 +212,8 @@ function claimsFor(payload: object, sessionId: string): SessionClaims {
     name: ownValue(payload, "name"),
     account: ownValue(payload, "account"),
     product_name: ownValue(payload, "product_name"),
+    billing: ownValue(payload, "billing"),
+    billing_until: ownValue(payload, "billing_until"),
   };
 }
 
