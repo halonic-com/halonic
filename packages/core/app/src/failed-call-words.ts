@@ -49,7 +49,8 @@ export const failedCallWords = {
    * The lines for a call the service, or Halonic for it, refused (`service-refused`, HAL-19185),
    * from the I7 card's 401, 403 and 429 rows (HAL-19173) and the HAL-19172 plan, section 2.3,
    * as Chief approved them on HAL-19275: each says whose side the cause is on and one next step.
-   * They're filled from the log only, never from the reply, and only for the outcome `error`.
+   * They're filled from the log only, never from the reply, and only for the outcome `error`;
+   * the outcome `unknown` has its own lines below.
    */
   serviceNotAccepted:
     "Didn't work: the service didn't accept the token for the tool {tool}. It may be mistyped or revoked, so set a new one.",
@@ -62,8 +63,24 @@ export const failedCallWords = {
   /** `{host}` is only the main part of the host, such as `example.net`, so it can't pass for another service. */
   hostNotDeclared:
     "Didn't work: the tool {tool} tried to reach {host}, which its integration doesn't list. Halonic stopped it, so nothing reached {host}. Look at the integration's code.",
-  /** Added to the 429 line only when the log shows nothing but a `GET` or `HEAD` went out twice. */
+  /**
+   * Added to the 429 line only when the log shows a request other than a `GET` or `HEAD` went
+   * out and none went out twice, so never for a tool that only read (Chief, HAL-19373).
+   */
   nothingSentTwice: "{line} Nothing was sent twice.",
+  /**
+   * The same causes for the outcome `unknown`, when an earlier step may already have done its
+   * work, as Chief decided them on HAL-19373: one next step each, so never how often Halonic
+   * tried again or "Nothing was sent twice.".
+   */
+  serviceNotAcceptedMayHaveWorked:
+    "Didn't work: the service didn't accept the token for the tool {tool}, after an earlier step may already have done its work. Check before you try again, and set a new token if it was mistyped or revoked.",
+  serviceNotAllowedMayHaveWorked:
+    "Didn't work: the token isn't allowed to do what the tool {tool} asked, after an earlier step may already have done its work. Check before you try again.",
+  serviceSlowDownMayHaveWorked:
+    "Didn't work: the service asked Halonic to slow down when the tool {tool} called it, after an earlier step may already have done its work. Check before you try again.",
+  hostNotDeclaredMayHaveWorked:
+    "Didn't work: the tool {tool} tried to reach {host}, which its integration doesn't list, after an earlier step may already have done its work. Halonic stopped it, so nothing reached {host}. Check before you try again, and look at the integration's code.",
   /**
    * The line above a step's tool calls for a connector that couldn't list its tools when a turn
    * started, so the turn went without them: the `halonic tools review` lines decided on HAL-13829,

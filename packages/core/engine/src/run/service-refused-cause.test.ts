@@ -247,6 +247,25 @@ verifies("engine.tool-result-cause", () => {
 
       expect(result.cause).toStrictEqual({ code: "service-refused", why: "slow-down", retries: 0 });
     });
+
+    it("is absent when the call sent only GET and HEAD requests", async () => {
+      const result = await callOn(
+        mailFailing([request("HEAD", 200), request("GET", 429, { retry: 2 })]),
+      );
+
+      expect(result.cause).toStrictEqual({ code: "service-refused", why: "slow-down", retries: 2 });
+    });
+
+    it("is absent when the only POST was one the kit refused, so it never went out", async () => {
+      const refused = request("POST", undefined, {
+        host: "example.net",
+        refusal: "host-not-allowed",
+      });
+
+      const result = await callOn(mailFailing([refused]));
+
+      expect(result.cause).not.toHaveProperty("sentOnce");
+    });
   });
 
   it("logs neither a secret nor the reply that reached Halonic's side", async () => {
