@@ -1,6 +1,6 @@
 import type { InboxAnswer, InboxItemOption } from "@halonicjs/ports";
-import { Button } from "@halonicjs/studio-kit";
-import { useId, useState } from "react";
+import { Button, Field, TextArea, useFieldControl } from "@halonicjs/studio-kit";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 /** Props for {@link OptionButtons}. */
 export interface OptionButtonsProps {
@@ -12,55 +12,62 @@ export interface OptionButtonsProps {
 }
 
 /**
- * An item's options as buttons, the first one primary. An option that takes a note gets a field
- * labelled as the source says, and its button sends what was written there; while a required
- * note is empty its button stays off, and the field's label says why (`inbox.option-note`).
+ * An item's options as buttons, the first one primary (`inbox.option-note`). An option that takes
+ * a note sends nothing when pressed: the row makes room for a field labelled as the source says,
+ * focused, with that option's button and **Cancel** under it, the kit's form for Ask for changes
+ * (component specs 23 A8). Cancel or Escape brings the buttons back and sends nothing. While a
+ * required note is empty its button stays off, and the field's label says why.
  */
 export function OptionButtons({ options, unavailable, busy, onAnswer }: OptionButtonsProps) {
-  const fieldIds = useId();
-  const [notes, setNotes] = useState<Readonly<Record<string, string>>>({});
-  const answerOf = (option: InboxItemOption): InboxAnswer => {
-    const note = notes[option.id]?.trim() ?? "";
-    return note === ""
-      ? { kind: "option", option: option.id }
-      : { kind: "option", option: option.id, note };
-  };
-  const labelIdOf = (index: number) => `${fieldIds}-note-${index}`;
+  const [writing, setWriting] = useState<InboxItemOption | undefined>(undefined);
+  const buttons = useRef(new Map<string, HTMLButtonElement>());
+  const focusOnReturn = useRef<string | undefined>(undefined);
+  // After Cancel, focus goes back to the button that opened the field, once the row is drawn again.
+  useEffect(() => {
+    if (writing !== undefined || focusOnReturn.current === undefined) return;
+    buttons.current.get(focusOnReturn.current)?.focus();
+    focusOnReturn.current = undefined;
+  }, [writing]);
+
+  if (writing !== undefined) {
+    const close = () => {
+      focusOnReturn.current = writing.id;
+      setWriting(undefined);
+    };
+    return (
+      <NoteForm
+        option={writing}
+        label={noteLabelOf(writing) ?? writing.label}
+        unavailable={unavailable}
+        busy={busy}
+        onSend={onAnswer}
+        onCancel={close}
+      />
+    );
+  }
 
   return (
-    <>
-      {options.map((option, index) => {
-        const label = noteLabelOf(option);
-        if (label === undefined) return null;
-        return (
-          <NoteField
-            key={option.id}
-            fieldId={`${fieldIds}-field-${index}`}
-            labelId={labelIdOf(index)}
-            label={label}
-            value={notes[option.id] ?? ""}
-            onChange={(value) => setNotes((written) => ({ ...written, [option.id]: value }))}
-          />
-        );
-      })}
-      <div className="flex flex-wrap gap-2">
-        {options.map((option, index) => {
-          const chosen = answerOf(option);
-          const waitsForNote = option.noteRequired === true && !("note" in chosen);
-          return (
-            <Button
-              key={option.id}
-              variant={index === 0 ? "primary" : "secondary"}
-              unavailable={unavailable ?? (waitsForNote ? { reason: labelIdOf(index) } : undefined)}
-              busy={busy(chosen)}
-              onClick={() => onAnswer(chosen)}
-            >
-              {option.label}
-            </Button>
-          );
-        })}
-      </div>
-    </>
+    <div className="flex flex-wrap gap-2">
+      {options.map((option, index) => (
+        <Button
+          key={option.id}
+          ref={(button: HTMLButtonElement | null) => {
+            if (button === null) buttons.current.delete(option.id);
+            else buttons.current.set(option.id, button);
+          }}
+          variant={index === 0 ? "primary" : "secondary"}
+          unavailable={unavailable}
+          busy={busy({ kind: "option", option: option.id })}
+          onClick={() =>
+            noteLabelOf(option) === undefined
+              ? onAnswer({ kind: "option", option: option.id })
+              : setWriting(option)
+          }
+        >
+          {option.label}
+        </Button>
+      ))}
+    </div>
   );
 }
 
@@ -73,28 +80,64 @@ function noteLabelOf(option: InboxItemOption): string | undefined {
   return option.noteRequired === true ? option.label : undefined;
 }
 
-interface NoteFieldProps {
-  readonly fieldId: string;
-  readonly labelId: string;
+interface NoteFormProps {
+  readonly option: InboxItemOption;
   readonly label: string;
-  readonly value: string;
-  readonly onChange: (value: string) => void;
+  readonly unavailable: { readonly reason: string } | undefined;
+  readonly busy: (answer: InboxAnswer) => boolean;
+  readonly onSend: (answer: InboxAnswer) => void;
+  readonly onCancel: () => void;
 }
 
-/** The written note one option sends with it. */
-function NoteField({ fieldId, labelId, label, value, onChange }: NoteFieldProps) {
+/** The note one option sends with it, written in the kit's field, then that option's button or Cancel. */
+function NoteForm({ option, label, unavailable, busy, onSend, onCancel }: NoteFormProps) {
+  const [note, setNote] = useState("");
+  const written = note.trim();
+  const answer: InboxAnswer =
+    written === ""
+      ? { kind: "option", option: option.id }
+      : { kind: "option", option: option.id, note: written };
+  const waitsForNote = option.noteRequired === true && written === "";
+
   return (
-    <div className="flex flex-col gap-2">
-      <label id={labelId} htmlFor={fieldId} className="text-small text-fg-muted">
-        {label}
-      </label>
-      <textarea
-        id={fieldId}
-        value={value}
-        rows={3}
-        onChange={(event) => onChange(event.target.value)}
-        className="focus-ring rounded-sm border border-border bg-surface px-3 py-2 text-body text-fg"
+    <Field label={label}>
+      <TextArea
+        value={note}
+        minRows={3}
+        // The person just pressed the option to write its note.
+        autoFocus
+        onChange={(event) => setNote(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key !== "Escape") return;
+          // Escape closes only the note, not a sheet or page around the card.
+          event.stopPropagation();
+          onCancel();
+        }}
       />
-    </div>
+      <WithLabelId>
+        {(labelId) => (
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Button
+              variant="primary"
+              unavailable={unavailable ?? (waitsForNote ? { reason: labelId } : undefined)}
+              busy={busy(answer)}
+              onClick={() => onSend(answer)}
+            >
+              {option.label}
+            </Button>
+            <Button variant="secondary" onClick={onCancel}>
+              Cancel
+            </Button>
+          </div>
+        )}
+      </WithLabelId>
+    </Field>
   );
+}
+
+/** The `id` of the Field's label around it, so a button can say why it's off with the label's words. */
+function WithLabelId({ children }: { readonly children: (labelId: string) => ReactNode }) {
+  const field = useFieldControl();
+  if (field === undefined) throw new Error("WithLabelId is used outside a Field.");
+  return children(field.labelId);
 }
