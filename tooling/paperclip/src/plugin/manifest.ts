@@ -15,6 +15,7 @@ import {
 import { prWriteConfigProperties } from "./pr-write-settings.ts";
 import { fastTrackConfigProperties, mergeControlConfigProperties } from "./queue-settings.ts";
 import { precheckWakeJob, readyForReviewDeclaration } from "./ready-for-review-declaration.ts";
+import { seatMoveJob, seatMoverConfigProperties } from "./seat-move-declaration.ts";
 import { stackRebaseConfigProperties } from "./stack-rebase-settings.ts";
 import { statePacketConfigProperties } from "./state-packet-declaration.ts";
 import { taskToolDeclarations } from "./task-tool-declarations.ts";
@@ -327,6 +328,7 @@ export const manifest: PaperclipPluginManifestV1 = {
       ...statePacketConfigProperties,
       ...wakeHoldConfigProperties,
       ...chiefLine.properties,
+      ...seatMoverConfigProperties,
     },
   },
   jobs: [
@@ -347,6 +349,7 @@ export const manifest: PaperclipPluginManifestV1 = {
     mergeControlJob,
     mergerWakeJob,
     precheckWakeJob,
+    seatMoveJob,
   ],
   apiRoutes: [
     {

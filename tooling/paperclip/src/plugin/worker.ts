@@ -35,6 +35,7 @@ import { readyStep, registerPrWriteTools } from "./pr-write-tools.ts";
 import { precheckWaits } from "./precheck-waits.ts";
 import { realDeps, registerReadyForReview } from "./ready-for-review.ts";
 import { scheduledPerCompany } from "./scheduled.ts";
+import { seatMovePass } from "./seat-move-job.ts";
 import { registerStatePacket } from "./state-packet-data.ts";
 import { taskEffort } from "./task-effort.ts";
 import { registerTaskTools } from "./task-tools.ts";
@@ -52,7 +53,7 @@ import {
 /**
  * The Agent tools plugin's worker. The host starts it as `dist/worker.js`
  * (bundled by `pnpm run build:plugin`), runs the `pr-watch`,
- * `board-check`, `merge-control`, `merger-wake` and `precheck-wake` jobs on their schedules, looks at each new comment for a
+ * `board-check`, `merge-control`, `merger-wake`, `precheck-wake` and `seat-move` jobs on their schedules, looks at each new comment for a
  * board ask, keeps each failed run, labels a created or changed task's
  * difficulty, sets its effort from its tags, assigns a channel's child task
  * back after 3 hand-offs, asks for acceptance criteria on a
@@ -113,6 +114,11 @@ export const plugin = definePlugin({
       waits.pass(companyId),
     );
     ctx.jobs.register("precheck-wake", () => precheckJob.dispatch());
+    // Does nothing until the board sets `readingsPlugin`; reads and moves through Paperclip's own API (HAL-19354).
+    const seatJob = scheduledPerCompany(ctx, roster, "seat-move", (companyId, now) =>
+      seatMovePass(ctx, (url, init) => fetch(url, init), companyId, now),
+    );
+    ctx.jobs.register("seat-move", () => seatJob.dispatch());
     // Off unless the board turns it on; its only outside call is to api.anthropic.com (HAL-19136).
     const botDeps = {
       anthropicFetch: (url: string | URL | Request, init?: RequestInit) => fetch(url, init),
